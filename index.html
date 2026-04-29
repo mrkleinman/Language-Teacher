@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#d4a94a"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
+  <title>Thai Teacher</title>
+  <link rel="manifest" href="./manifest.json"/>
+  <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v6';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    let dp;
+    window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
+    function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
+    window.addEventListener('appinstalled',()=>{document.getElementById('ib').style.display='none'});
+  </script>
+  <div id="ib" onclick="installApp()" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#d4a94a,#b88a35);color:#0b1120;border:none;border-radius:24px;padding:12px 24px;font-family:Sarabun,sans-serif;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 20px rgba(212,169,74,.5);align-items:center;gap:8px;">⬇️ Install Thai Teacher</div>
+  <script type="text/babel">
+const { useState, useEffect, useCallback, useRef, useMemo } = React
+
+// ── Fonts ────────────────────────────────────────────────────────────────────
+const FontStyle = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Serif+Display:ital@0;1&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0b1120; }
+    :root {
+      --bg: #0b1120;
+      --surface: #131e35;
+      --surface2: #1a2847;
+      --gold: #d4a94a;
+      --gold-dim: #9a7a35;
+      --text: #e8edf5;
+      --muted: #6b7c9e;
+      --border: #1f3158;
+      --new: #4a90e2;
+      --learning: #f59e0b;
+      --known: #10b981;
+      --lapsed: #ef4444;
+    }
+    .app { font-family: 'Sarabun', sans-serif; background: var(--bg); min-height: 100vh; color: var(--text); }
+    .thai { font-family: 'Sarabun', sans-serif; }
+    .phon { font-family: 'DM Mono', monospace; }
+    .display { font-family: 'DM Serif Display', serif; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .fade-in { animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pulse-dot { animation: pulseDot 1.5s ease-in-out infinite; }
+    @keyframes pulseDot { 0%,100%{opacity:.3;transform:scale(.8)} 50%{opacity:1;transform:scale(1)} }
+  `}</style>
+)
+
+// ── Vocab Data (861 words) ────────────────────────────────────────────────────
+const RAW_VOCAB = [{"t":"โดย","e":"by","l":"hard","i":4,"r":5,"lp":0},{"t":"รถยนต์","e":"car","l":"hard","i":4,"r":5,"lp":0},{"t":"วิถีชีวิต","e":"lifestyle","l":"hard","i":4,"r":5,"lp":0},{"t":"ชาวเขา","e":"hill tribe","l":"hard","i":4,"r":5,"lp":0},{"t":"สะดวก","e":"convenient","l":"hard","i":4,"r":5,"lp":0},{"t":"ครอบครัว","e":"family","l":"hard","i":4,"r":5,"lp":0},{"t":"การบิน","e":"aviation","l":"hard","i":4,"r":5,"lp":0},{"t":"สาย","e":"line","l":"hard","i":4,"r":5,"lp":0},{"t":"เครื่องบิน","e":"airplane","l":"hard","i":4,"r":5,"lp":0},{"t":"จมูก","e":"nose","l":"hard","i":4,"r":5,"lp":0},{"t":"เส้นผม","e":"hair","l":"hard","i":4,"r":5,"lp":0},{"t":"ขน","e":"hair/fur","l":"hard","i":4,"r":5,"lp":0},{"t":"ผิว","e":"skin","l":"hard","i":4,"r":5,"lp":0},{"t":"ตัวเมือง","e":"downtown","l":"hard","i":3,"r":6,"lp":0},{"t":"จัด","e":"arrange","l":"hard","i":3,"r":6,"lp":0},{"t":"แพ","e":"raft","l":"hard","i":3,"r":6,"lp":0},{"t":"ธรรมชาติ","e":"nature","l":"hard","i":3,"r":6,"lp":0},{"t":"คดเคี้ยว","e":"winding","l":"hard","i":3,"r":6,"lp":0},{"t":"กะเหรี่ยงคอยาว","e":"long-neck Karen","l":"hard","i":3,"r":6,"lp":0},{"t":"มืดค่ำ","e":"dusk","l":"hard","i":3,"r":6,"lp":0},{"t":"ล่อง","e":"float","l":"hard","i":3,"r":6,"lp":0},{"t":"เส้นทาง","e":"route","l":"hard","i":3,"r":6,"lp":0},{"t":"คอ","e":"neck","l":"hard","i":3,"r":6,"lp":0},{"t":"นิ้ว","e":"finger","l":"hard","i":3,"r":6,"lp":0},{"t":"พา","e":"take","l":"hard","i":7,"r":7,"lp":0},{"t":"ขบวนแห่","e":"parade","l":"hard","i":7,"r":7,"lp":0},{"t":"เอาไว้","e":"keep","l":"hard","i":7,"r":7,"lp":0},{"t":"พักร้อน","e":"vacation","l":"hard","i":7,"r":7,"lp":0},{"t":"งานไม้ดอก","e":"flower festival","l":"hard","i":7,"r":7,"lp":0},{"t":"บูชา","e":"worship","l":"hard","i":7,"r":7,"lp":0},{"t":"ชุดว่ายน้ำ","e":"swimsuit","l":"hard","i":7,"r":7,"lp":0},{"t":"กุมารทอง","e":"golden child amulet","l":"hard","i":7,"r":7,"lp":0},{"t":"สะสาง","e":"clear up","l":"hard","i":7,"r":7,"lp":0},{"t":"ออฟฟิศ","e":"office","l":"hard","i":7,"r":7,"lp":0},{"t":"ชุดนักเรียน","e":"school uniform","l":"hard","i":7,"r":7,"lp":0},{"t":"ถุงเท้า","e":"socks","l":"hard","i":7,"r":7,"lp":0},{"t":"เขมร","e":"Khmer","l":"hard","i":7,"r":6,"lp":0},{"t":"เป็นต้น","e":"etc.","l":"hard","i":7,"r":6,"lp":0},{"t":"ตั๋วเครื่องบิน","e":"plane ticket","l":"hard","i":7,"r":6,"lp":0},{"t":"สนามบิน","e":"airport","l":"hard","i":7,"r":6,"lp":0},{"t":"ปราสาท","e":"castle","l":"hard","i":7,"r":6,"lp":0},{"t":"เช่น","e":"such as","l":"hard","i":7,"r":6,"lp":0},{"t":"หิน","e":"stone","l":"hard","i":7,"r":6,"lp":0},{"t":"บริการ","e":"service","l":"hard","i":7,"r":6,"lp":0},{"t":"นครวัด","e":"Angkor Wat","l":"hard","i":7,"r":6,"lp":0},{"t":"ประกวดนางงาม","e":"beauty pageant","l":"hard","i":8,"r":7,"lp":0},{"t":"เต็ม","e":"full","l":"hard","i":8,"r":7,"lp":0},{"t":"แย่ง","e":"compete","l":"hard","i":8,"r":7,"lp":0},{"t":"เก่า","e":"old","l":"hard","i":8,"r":7,"lp":0},{"t":"สาว","e":"girl","l":"hard","i":8,"r":7,"lp":0},{"t":"เข้ารอบ","e":"advance","l":"hard","i":8,"r":7,"lp":0},{"t":"นางงาม","e":"beauty queen","l":"hard","i":8,"r":7,"lp":0},{"t":"ทั้งนั้น","e":"all","l":"hard","i":8,"r":7,"lp":0},{"t":"หู","e":"ear","l":"hard","i":8,"r":7,"lp":0},{"t":"ปาก","e":"mouth","l":"hard","i":8,"r":7,"lp":0},{"t":"ฟัน","e":"tooth","l":"hard","i":8,"r":7,"lp":0},{"t":"หลาย","e":"many","l":"hard","i":8,"r":7,"lp":0},{"t":"ปลาย","e":"end","l":"hard","i":8,"r":7,"lp":0},{"t":"เหนือ","e":"north","l":"hard","i":8,"r":7,"lp":0},{"t":"ซึ่ง","e":"which","l":"hard","i":8,"r":7,"lp":0},{"t":"โคมลอย","e":"sky lantern","l":"hard","i":8,"r":7,"lp":0},{"t":"ช่วงนี้","e":"these days","l":"hard","i":8,"r":7,"lp":0},{"t":"เสื้อแจ็กเก็ต","e":"jacket","l":"hard","i":8,"r":7,"lp":0},{"t":"กางเกงใน","e":"underwear","l":"hard","i":8,"r":7,"lp":0},{"t":"สูท","e":"suit","l":"hard","i":8,"r":7,"lp":0},{"t":"เช่า","e":"rent","l":"hard","i":8,"r":6,"lp":0},{"t":"รบกวน","e":"disturb","l":"hard","i":8,"r":6,"lp":0},{"t":"ฮวงจุ้ย","e":"feng shui","l":"hard","i":8,"r":6,"lp":0},{"t":"พระพิฆเนศ","e":"Ganesha","l":"hard","i":8,"r":6,"lp":0},{"t":"เทพ","e":"god","l":"hard","i":8,"r":6,"lp":0},{"t":"ลูกค้า","e":"customer","l":"hard","i":8,"r":6,"lp":0},{"t":"วางหู","e":"hang up","l":"hard","i":8,"r":6,"lp":0},{"t":"เพิ่ง","e":"just","l":"hard","i":8,"r":6,"lp":0},{"t":"รถตู้","e":"van","l":"hard","i":9,"r":8,"lp":0},{"t":"พญานาค","e":"Naga","l":"hard","i":9,"r":8,"lp":0},{"t":"พร้อม","e":"ready","l":"hard","i":9,"r":8,"lp":0},{"t":"บั้งไฟ","e":"rocket festival","l":"hard","i":9,"r":8,"lp":0},{"t":"การเดินทาง","e":"travel","l":"hard","i":9,"r":8,"lp":0},{"t":"จอง","e":"book","l":"hard","i":9,"r":8,"lp":0},{"t":"แวะ","e":"stop by","l":"hard","i":9,"r":8,"lp":0},{"t":"ถวาย","e":"offer","l":"hard","i":9,"r":8,"lp":0},{"t":"นางกวัก","e":"beckoning lady","l":"hard","i":9,"r":8,"lp":0},{"t":"เชื่อ","e":"believe","l":"hard","i":9,"r":8,"lp":0},{"t":"ร้านดอกไม้","e":"flower shop","l":"hard","i":9,"r":8,"lp":0},{"t":"พวงมาลัย","e":"garland","l":"hard","i":9,"r":8,"lp":0},{"t":"เดี๋ยว","e":"soon","l":"hard","i":10,"r":9,"lp":0},{"t":"ผัดกะเพราหมู","e":"stir-fried pork with basil","l":"hard","i":10,"r":9,"lp":0},{"t":"คะน้าหมูกรอบ","e":"stir-fried kale with crispy pork","l":"hard","i":10,"r":9,"lp":0},{"t":"แกงส้ม","e":"sour curry","l":"hard","i":10,"r":9,"lp":0},{"t":"มันฝรั่งทอด","e":"french fries","l":"hard","i":10,"r":9,"lp":0},{"t":"ผัดเปรี้ยวหวานไก่","e":"sweet and sour chicken","l":"hard","i":10,"r":9,"lp":0},{"t":"ซอสมะเขือเทศ","e":"ketchup","l":"hard","i":10,"r":9,"lp":0},{"t":"เจ้า ...","e":"owner ...","l":"hard","i":10,"r":8,"lp":0},{"t":"กลับบ้าน","e":"go home","l":"hard","i":11,"r":9,"lp":0},{"t":"เสื้อผ้า","e":"clothes","l":"hard","i":11,"r":9,"lp":0},{"t":"การบ้าน","e":"homework","l":"hard","i":11,"r":9,"lp":0},{"t":"ตัวอักษร","e":"letter","l":"hard","i":11,"r":9,"lp":0},{"t":"ดึก","e":"late","l":"hard","i":11,"r":9,"lp":0},{"t":"แวะรับ","e":"pick up","l":"hard","i":11,"r":9,"lp":0},{"t":"ร้านซักรีด","e":"laundry","l":"hard","i":11,"r":9,"lp":0},{"t":"สวม","e":"wear","l":"hard","i":11,"r":8,"lp":0},{"t":"เสื้อ","e":"shirt","l":"hard","i":11,"r":8,"lp":0},{"t":"กระโปรง","e":"skirt","l":"hard","i":11,"r":8,"lp":0},{"t":"พอดี","e":"fit","l":"hard","i":11,"r":8,"lp":0},{"t":"วิ่ง","e":"run","l":"hard","i":11,"r":8,"lp":0},{"t":"แขน","e":"arm","l":"hard","i":11,"r":8,"lp":0},{"t":"สนามฟุตบอล","e":"football field","l":"hard","i":11,"r":8,"lp":0},{"t":"ชน","e":"hit","l":"hard","i":11,"r":8,"lp":0},{"t":"เจ็บ","e":"hurt","l":"hard","i":11,"r":8,"lp":0},{"t":"กระดูก","e":"bone","l":"hard","i":11,"r":8,"lp":0},{"t":"หัก","e":"break","l":"hard","i":11,"r":8,"lp":0},{"t":"เดี๋ยวนี้","e":"now","l":"hard","i":11,"r":8,"lp":0},{"t":"ตำรวจ","e":"police","l":"hard","i":12,"r":10,"lp":0},{"t":"เด็กผู้ชาย","e":"boy","l":"hard","i":12,"r":10,"lp":0},{"t":"บ้าน","e":"house","l":"hard","i":12,"r":10,"lp":0},{"t":"สีน้ำตาล","e":"brown","l":"hard","i":12,"r":10,"lp":0},{"t":"สีส้ม","e":"orange","l":"hard","i":12,"r":10,"lp":0},{"t":"เณร","e":"novice monk","l":"hard","i":12,"r":10,"lp":0},{"t":"ต้นไผ่","e":"bamboo","l":"hard","i":12,"r":10,"lp":0},{"t":"ตีสาม","e":"3 am","l":"hard","i":12,"r":10,"lp":0},{"t":"ถาม","e":"ask","l":"hard","i":12,"r":10,"lp":0},{"t":"สนใจ","e":"interested","l":"hard","i":12,"r":10,"lp":0},{"t":"เกรงใจ","e":"considerate","l":"hard","i":12,"r":10,"lp":0},{"t":"สัญญา","e":"promise","l":"hard","i":12,"r":10,"lp":0},{"t":"ไว้ใจ","e":"trust","l":"hard","i":12,"r":10,"lp":0},{"t":"ชวน","e":"invite","l":"hard","i":12,"r":10,"lp":0},{"t":"ดูทีวี","e":"watch TV","l":"hard","i":12,"r":9,"lp":0},{"t":"ผี","e":"ghost","l":"hard","i":12,"r":9,"lp":0},{"t":"ฉาย","e":"show","l":"hard","i":12,"r":9,"lp":0},{"t":"กาดสวนแก้ว","e":"Kad Suan Kaew","l":"hard","i":12,"r":9,"lp":0},{"t":"หิมะ","e":"snow","l":"hard","i":12,"r":9,"lp":0},{"t":"หนาว","e":"cold","l":"hard","i":12,"r":9,"lp":0},{"t":"เดินทาง","e":"travel","l":"hard","i":12,"r":9,"lp":0},{"t":"ต่างประเทศ","e":"foreign country","l":"hard","i":12,"r":9,"lp":0},{"t":"บ่อยๆ","e":"often","l":"hard","i":12,"r":9,"lp":0},{"t":"สวิตเซอร์แลนด์","e":"Switzerland","l":"hard","i":12,"r":9,"lp":0},{"t":"สนุก","e":"fun","l":"hard","i":10,"r":14,"lp":0},{"t":"ปาย","e":"Pai","l":"hard","i":10,"r":14,"lp":0},{"t":"ล่องแก่ง","e":"rafting","l":"hard","i":10,"r":14,"lp":0},{"t":"แม่น้ำ","e":"river","l":"hard","i":10,"r":14,"lp":0},{"t":"งั้นก็","e":"then","l":"hard","i":10,"r":14,"lp":0},{"t":"เข้าใจ","e":"understand","l":"hard","i":10,"r":14,"lp":0},{"t":"นักเดินทาง","e":"traveler","l":"hard","i":13,"r":9,"lp":0},{"t":"รับ","e":"receive","l":"hard","i":13,"r":9,"lp":0},{"t":"ที่ว่าง","e":"vacant","l":"hard","i":13,"r":9,"lp":0},{"t":"เครื่องดื่ม","e":"drink","l":"hard","i":13,"r":9,"lp":0},{"t":"บ้าง","e":"some","l":"hard","i":13,"r":9,"lp":0},{"t":"เปล่า","e":"no","l":"hard","i":13,"r":9,"lp":0},{"t":"วงดนตรี","e":"band","l":"hard","i":13,"r":9,"lp":0},{"t":"เล่นเพลง","e":"play music","l":"hard","i":13,"r":9,"lp":0},{"t":"ทุเรียน","e":"durian","l":"hard","i":13,"r":9,"lp":0},{"t":"เงาะ","e":"rambutan","l":"hard","i":13,"r":9,"lp":0},{"t":"ปกติ","e":"normal","l":"hard","i":13,"r":8,"lp":0},{"t":"พิเศษ","e":"special","l":"hard","i":13,"r":8,"lp":0},{"t":"ภาพ","e":"picture","l":"hard","i":13,"r":8,"lp":0},{"t":"ขาย","e":"sell","l":"hard","i":13,"r":8,"lp":0},{"t":"ของทำมือ","e":"handmade","l":"hard","i":13,"r":8,"lp":0},{"t":"สีม่วง","e":"purple","l":"hard","i":13,"r":8,"lp":0},{"t":"สีชมพู","e":"pink","l":"hard","i":13,"r":8,"lp":0},{"t":"สีทอง","e":"gold","l":"hard","i":13,"r":8,"lp":0},{"t":"สีเงิน","e":"silver","l":"hard","i":13,"r":8,"lp":0},{"t":"สีดำ","e":"black","l":"hard","i":13,"r":8,"lp":0},{"t":"กิน","e":"eat","l":"hard","i":12,"r":11,"lp":0},{"t":"ชิม","e":"taste","l":"hard","i":12,"r":11,"lp":0},{"t":"ลอง","e":"try","l":"hard","i":12,"r":11,"lp":0},{"t":"น้ำพริก","e":"chili dip","l":"hard","i":12,"r":11,"lp":0},{"t":"เกินไป","e":"too much","l":"hard","i":12,"r":11,"lp":0},{"t":"ปลา","e":"fish","l":"hard","i":12,"r":11,"lp":0},{"t":"น่า","e":"seems","l":"hard","i":12,"r":11,"lp":0},{"t":"แน่นท้อง","e":"full","l":"hard","i":12,"r":11,"lp":0},{"t":"แพง","e":"expensive","l":"hard","i":14,"r":10,"lp":0},{"t":"หิว","e":"hungry","l":"hard","i":14,"r":10,"lp":0},{"t":"ดีใจ","e":"happy","l":"hard","i":14,"r":10,"lp":0},{"t":"เย็นสบาย","e":"cool","l":"hard","i":14,"r":10,"lp":0},{"t":"ยาก","e":"difficult","l":"hard","i":14,"r":10,"lp":0},{"t":"ขับรถ","e":"drive","l":"hard","i":14,"r":10,"lp":0},{"t":"ทางโค้ง","e":"curve","l":"hard","i":14,"r":10,"lp":0},{"t":"อันตราย","e":"dangerous","l":"hard","i":14,"r":10,"lp":0},{"t":"หลับ","e":"sleep","l":"hard","i":14,"r":10,"lp":0},{"t":"เบื่อ","e":"bored","l":"hard","i":14,"r":10,"lp":0},{"t":"ง่วง","e":"sleepy","l":"hard","i":14,"r":10,"lp":0},{"t":"อิจฉา","e":"jealous","l":"hard","i":14,"r":10,"lp":0},{"t":"เลิก","e":"quit","l":"hard","i":14,"r":10,"lp":0},{"t":"ร้านกาแฟ","e":"coffee shop","l":"hard","i":14,"r":10,"lp":0},{"t":"มือถือ","e":"mobile phone","l":"hard","i":14,"r":10,"lp":0},{"t":"รุ่น","e":"model","l":"hard","i":14,"r":10,"lp":0},{"t":"งง","e":"confused","l":"hard","i":14,"r":10,"lp":0},{"t":"หิวน้ำ","e":"thirsty","l":"hard","i":14,"r":10,"lp":0},{"t":"อิ่ม","e":"full","l":"hard","i":14,"r":10,"lp":0},{"t":"กี่","e":"how many","l":"hard","i":12,"r":15,"lp":0},{"t":"สำคัญ","e":"important","l":"hard","i":12,"r":15,"lp":0},{"t":"ขวบ","e":"year (age)","l":"hard","i":12,"r":15,"lp":0},{"t":"เดือน","e":"month","l":"hard","i":12,"r":15,"lp":0},{"t":"ยอดขาย","e":"sales","l":"hard","i":15,"r":10,"lp":0},{"t":"ค่าใช้จ่าย","e":"expenses","l":"hard","i":15,"r":10,"lp":0},{"t":"ต้นทุน","e":"cost","l":"hard","i":15,"r":10,"lp":0},{"t":"กำไร","e":"profit","l":"hard","i":15,"r":10,"lp":0},{"t":"ขาดทุน","e":"loss","l":"hard","i":15,"r":10,"lp":0},{"t":"ตีสอง","e":"2 am","l":"hard","i":15,"r":10,"lp":0},{"t":"นักร้อง","e":"singer","l":"hard","i":15,"r":9,"lp":0},{"t":"ร้องเพลง","e":"sing","l":"hard","i":15,"r":9,"lp":0},{"t":"ใคร","e":"who","l":"hard","i":15,"r":9,"lp":0},{"t":"คนไหน","e":"which person","l":"hard","i":15,"r":9,"lp":0},{"t":"กว้าง","e":"wide","l":"hard","i":15,"r":9,"lp":0},{"t":"น่ากลัว","e":"scary","l":"hard","i":15,"r":9,"lp":0},{"t":"จัง","e":"very","l":"hard","i":15,"r":9,"lp":0},{"t":"อนุญาต","e":"allow","l":"hard","i":15,"r":9,"lp":0},{"t":"หา","e":"find","l":"hard","i":15,"r":9,"lp":0},{"t":"ข้าวกลางวัน","e":"lunch","l":"hard","i":15,"r":9,"lp":0},{"t":"ตัดสินใจ","e":"decide","l":"hard","i":15,"r":9,"lp":0},{"t":"ปรึกษา","e":"consult","l":"hard","i":15,"r":9,"lp":0},{"t":"แอร์โฮสเตส","e":"flight attendant","l":"hard","i":15,"r":9,"lp":0},{"t":"จบ","e":"finish","l":"hard","i":15,"r":9,"lp":0},{"t":"เสียใจ","e":"sorry","l":"hard","i":15,"r":9,"lp":0},{"t":"โกรธ","e":"angry","l":"hard","i":15,"r":9,"lp":0},{"t":"ขี้อาย","e":"shy","l":"hard","i":15,"r":9,"lp":0},{"t":"ตัดออก","e":"cut out","l":"hard","i":14,"r":11,"lp":0},{"t":"น่าสงสาร","e":"pitiful","l":"hard","i":14,"r":11,"lp":0},{"t":"ชีวิต","e":"life","l":"hard","i":14,"r":11,"lp":0},{"t":"สร้าง","e":"build","l":"hard","i":14,"r":11,"lp":0},{"t":"วุ่นวาย","e":"chaotic","l":"hard","i":14,"r":11,"lp":0},{"t":"ยุ่ง","e":"busy","l":"hard","i":14,"r":11,"lp":0},{"t":"ตลอด","e":"always","l":"hard","i":14,"r":11,"lp":0},{"t":"ต่างจังหวัด","e":"province","l":"hard","i":14,"r":11,"lp":0},{"t":"เสียงดัง","e":"loud","l":"hard","i":14,"r":11,"lp":0},{"t":"เที่ยงคืน","e":"midnight","l":"hard","i":14,"r":11,"lp":0},{"t":"บน","e":"on","l":"hard","i":14,"r":11,"lp":0},{"t":"เรียก","e":"call","l":"hard","i":14,"r":11,"lp":0},{"t":"ระหว่าง","e":"between","l":"hard","i":14,"r":11,"lp":0},{"t":"ไกล","e":"far","l":"hard","i":14,"r":11,"lp":0},{"t":"โต๊ะ","e":"table","l":"hard","i":14,"r":11,"lp":0},{"t":"รองเท้า","e":"shoes","l":"hard","i":14,"r":11,"lp":0},{"t":"ประตู","e":"door","l":"hard","i":14,"r":11,"lp":0},{"t":"ชื่อเล่น","e":"nickname","l":"hard","i":14,"r":11,"lp":0},{"t":"ใช้","e":"use","l":"hard","i":14,"r":11,"lp":0},{"t":"ตีห้า","e":"5 a.m.","l":"hard","i":14,"r":11,"lp":0},{"t":"พฤศจิกายน","e":"November","l":"hard","i":13,"r":14,"lp":0},{"t":"วันลอยกระทง","e":"Loy Krathong Day","l":"hard","i":13,"r":14,"lp":0},{"t":"วันสงกรานต์","e":"Songkran Day","l":"hard","i":13,"r":14,"lp":0},{"t":"เมษายน","e":"April","l":"hard","i":13,"r":14,"lp":0},{"t":"อนาคต","e":"future","l":"hard","i":13,"r":14,"lp":0},{"t":"ลูกสาว","e":"daughter","l":"hard","i":16,"r":10,"lp":0},{"t":"คุณแม่","e":"mother","l":"hard","i":16,"r":10,"lp":0},{"t":"ถือ","e":"hold","l":"hard","i":16,"r":10,"lp":0},{"t":"หนัก","e":"heavy","l":"hard","i":16,"r":10,"lp":0},{"t":"ทางโน้น","e":"over there","l":"hard","i":16,"r":10,"lp":0},{"t":"น้ำทะเล","e":"seawater","l":"ok","i":14,"r":23,"lp":0},{"t":"เลือก","e":"choose","l":"ok","i":14,"r":23,"lp":0},{"t":"เธอ","e":"she","l":"ok","i":14,"r":23,"lp":0},{"t":"เหมือน","e":"like","l":"ok","i":14,"r":23,"lp":0},{"t":"อินเทอร์เน็ต","e":"internet","l":"ok","i":14,"r":23,"lp":0},{"t":"วันอังคาร","e":"Tuesday","l":"ok","i":14,"r":23,"lp":0},{"t":"กุมภาพันธ์","e":"February","l":"ok","i":14,"r":23,"lp":0},{"t":"เจ็ดโมงเช้า","e":"7 a.m.","l":"ok","i":14,"r":23,"lp":0},{"t":"ออกแบบ","e":"design","l":"ok","i":14,"r":14,"lp":0},{"t":"ห้องนั่งเล่น","e":"living room","l":"ok","i":14,"r":14,"lp":0},{"t":"กลับ","e":"return","l":"ok","i":14,"r":14,"lp":0},{"t":"วันหลัง","e":"later","l":"ok","i":14,"r":12,"lp":0},{"t":"เป็นประจำ","e":"regularly","l":"ok","i":14,"r":12,"lp":0},{"t":"สิว","e":"acne","l":"ok","i":14,"r":12,"lp":0},{"t":"ขัด","e":"scrub","l":"ok","i":14,"r":12,"lp":0},{"t":"รักษา","e":"treat","l":"ok","i":14,"r":12,"lp":0},{"t":"ตีหนึ่ง","e":"1 a.m.","l":"ok","i":14,"r":12,"lp":0},{"t":"การตัดสินใจ","e":"decision","l":"ok","i":14,"r":12,"lp":0},{"t":"รายรับ","e":"income","l":"ok","i":14,"r":12,"lp":0},{"t":"รายได้","e":"earnings","l":"ok","i":14,"r":12,"lp":0},{"t":"เลี้ยว","e":"turn","l":"ok","i":14,"r":14,"lp":0},{"t":"ซ้าย","e":"left","l":"ok","i":14,"r":14,"lp":0},{"t":"ขวา","e":"right","l":"ok","i":14,"r":14,"lp":0},{"t":"ตรงไป","e":"go straight","l":"ok","i":14,"r":14,"lp":0},{"t":"หนู","e":"mouse","l":"ok","i":14,"r":16,"lp":0},{"t":"ท่าน","e":"you (formal)","l":"ok","i":14,"r":16,"lp":0},{"t":"เรียน","e":"study","l":"ok","i":14,"r":16,"lp":0},{"t":"มหาวิทยาลัย","e":"university","l":"ok","i":14,"r":16,"lp":0},{"t":"ช้อน","e":"spoon","l":"ok","i":14,"r":16,"lp":0},{"t":"ส้อม","e":"fork","l":"ok","i":14,"r":16,"lp":0},{"t":"แก้ว","e":"glass","l":"ok","i":14,"r":16,"lp":0},{"t":"อาจารย์","e":"teacher","l":"ok","i":14,"r":16,"lp":0},{"t":"ตีสี่","e":"4 a.m.","l":"ok","i":14,"r":16,"lp":0},{"t":"ห้องสมุด","e":"library","l":"ok","i":14,"r":14,"lp":0},{"t":"สี่แยก","e":"intersection","l":"ok","i":14,"r":14,"lp":0},{"t":"ชัด","e":"clear","l":"ok","i":14,"r":14,"lp":0},{"t":"ชาเขียว","e":"green tea","l":"ok","i":16,"r":11,"lp":0},{"t":"ห้าง","e":"mall","l":"ok","i":16,"r":11,"lp":0},{"t":"ครั้งแรก","e":"first time","l":"ok","i":16,"r":11,"lp":0},{"t":"อาหารญี่ปุ่น","e":"Japanese food","l":"ok","i":16,"r":11,"lp":0},{"t":"ร้านไหน","e":"which shop","l":"ok","i":16,"r":11,"lp":0},{"t":"สุดท้าย","e":"last","l":"ok","i":16,"r":11,"lp":0},{"t":"ไอติม","e":"ice cream","l":"ok","i":16,"r":11,"lp":0},{"t":"รส","e":"flavor","l":"ok","i":16,"r":11,"lp":0},{"t":"ห้าทุ่ม","e":"11 p.m.","l":"ok","i":16,"r":11,"lp":0},{"t":"เก้าโมงเช้า","e":"9 a.m.","l":"ok","i":16,"r":11,"lp":0},{"t":"จริงเหรอ","e":"really?","l":"ok","i":19,"r":7,"lp":0},{"t":"เล่นน้ำ","e":"play in water","l":"ok","i":19,"r":7,"lp":0},{"t":"ดีกว่า","e":"better","l":"ok","i":19,"r":7,"lp":0},{"t":"แรง","e":"strong","l":"ok","i":19,"r":7,"lp":0},{"t":"คลื่น","e":"wave","l":"ok","i":19,"r":7,"lp":0},{"t":"แมงกะพรุน","e":"jellyfish","l":"ok","i":19,"r":7,"lp":0},{"t":"ทั่ว","e":"all over","l":"ok","i":19,"r":7,"lp":0},{"t":"ไดร์เป่าผม","e":"hair dryer","l":"ok","i":19,"r":7,"lp":0},{"t":"รึเปล่า","e":"or not? (question particle)","l":"ok","i":19,"r":7,"lp":0},{"t":"โรงแรม","e":"hotel","l":"ok","i":19,"r":7,"lp":0},{"t":"ว่ายน้ำ","e":"swim","l":"ok","i":15,"r":12,"lp":0},{"t":"ข้าวสวย","e":"steamed rice","l":"ok","i":15,"r":12,"lp":0},{"t":"ผัดผักรวม","e":"stir-fried mixed vegetables","l":"ok","i":15,"r":12,"lp":0},{"t":"จาน","e":"plate","l":"ok","i":15,"r":12,"lp":0},{"t":"ปอเปี๊ยะทอด","e":"fried spring roll","l":"ok","i":15,"r":12,"lp":0},{"t":"ต้มข่าไก่","e":"chicken coconut soup","l":"ok","i":15,"r":12,"lp":0},{"t":"แกงเขียวหวาน","e":"green curry","l":"ok","i":15,"r":12,"lp":0},{"t":"ยำทะเล","e":"spicy seafood salad","l":"ok","i":15,"r":12,"lp":0},{"t":"อาหาร","e":"food","l":"ok","i":15,"r":20,"lp":0},{"t":"เสีย","e":"broken","l":"ok","i":15,"r":20,"lp":0},{"t":"เผ็ด","e":"spicy","l":"ok","i":15,"r":20,"lp":0},{"t":"ภาคใต้","e":"southern region","l":"ok","i":15,"r":20,"lp":0},{"t":"ค่า","e":"cost","l":"ok","i":15,"r":20,"lp":0},{"t":"โพสต์ลง","e":"post","l":"ok","i":15,"r":20,"lp":0},{"t":"พระอาทิตย์ตก","e":"sunset","l":"ok","i":15,"r":20,"lp":0},{"t":"วัฒนธรรม","e":"culture","l":"ok","i":15,"r":14,"lp":0},{"t":"ข้างหลัง","e":"behind","l":"ok","i":15,"r":14,"lp":0},{"t":"ข้างบน","e":"above","l":"ok","i":15,"r":14,"lp":0},{"t":"ข้างล่าง","e":"below","l":"ok","i":15,"r":14,"lp":0},{"t":"ข้างใน","e":"inside","l":"ok","i":15,"r":14,"lp":0},{"t":"ข้างนอก","e":"outside","l":"ok","i":15,"r":14,"lp":0},{"t":"หนังสือ","e":"book","l":"ok","i":15,"r":14,"lp":0},{"t":"เกี่ยวกับ","e":"about","l":"ok","i":15,"r":14,"lp":0},{"t":"รูป","e":"picture","l":"ok","i":15,"r":12,"lp":0},{"t":"เห็นด้วย","e":"agree","l":"ok","i":15,"r":23,"lp":0},{"t":"ที่สุด","e":"most","l":"ok","i":15,"r":23,"lp":0},{"t":"วันพุธ","e":"Wednesday","l":"ok","i":15,"r":23,"lp":0},{"t":"เดือนมีนาคม","e":"March","l":"ok","i":15,"r":23,"lp":0},{"t":"แปดโมงเช้า","e":"8 a.m.","l":"ok","i":15,"r":23,"lp":0},{"t":"เอว","e":"waist","l":"ok","i":15,"r":12,"lp":0},{"t":"แฟน","e":"partner","l":"ok","i":15,"r":12,"lp":0},{"t":"ติดบ้าน","e":"homebody","l":"ok","i":15,"r":12,"lp":0},{"t":"ถึง","e":"arrive","l":"ok","i":15,"r":12,"lp":0},{"t":"ข่าว","e":"news","l":"ok","i":15,"r":12,"lp":0},{"t":"ทุกวัน","e":"every day","l":"ok","i":15,"r":12,"lp":0},{"t":"พายุ","e":"storm","l":"ok","i":15,"r":12,"lp":0},{"t":"จนถึง","e":"until","l":"ok","i":15,"r":12,"lp":0},{"t":"ท่วม","e":"flood","l":"ok","i":15,"r":12,"lp":0},{"t":"ซอย","e":"alley","l":"ok","i":15,"r":12,"lp":0},{"t":"วันพฤหัสฯ","e":"Thursday","l":"ok","i":15,"r":12,"lp":0},{"t":"นักศึกษาแลกเปลี่ยน","e":"exchange student","l":"ok","i":15,"r":12,"lp":0},{"t":"สหรัฐอเมริกา","e":"United States","l":"ok","i":15,"r":12,"lp":0},{"t":"ตา","e":"eye","l":"ok","i":15,"r":12,"lp":0},{"t":"เจี๊ยบ","e":"chick","l":"ok","i":15,"r":12,"lp":0},{"t":"พี่","e":"older sibling","l":"ok","i":15,"r":12,"lp":0},{"t":"เมื่อกี้","e":"just now","l":"ok","i":15,"r":12,"lp":0},{"t":"เวลาว่าง","e":"free time","l":"ok","i":15,"r":12,"lp":0},{"t":"ยิน","e":"glad","l":"ok","i":15,"r":12,"lp":0},{"t":"เล่า","e":"tell","l":"ok","i":15,"r":12,"lp":0},{"t":"ฟัง","e":"listen","l":"ok","i":15,"r":12,"lp":0},{"t":"เพื่อนๆ","e":"friends","l":"ok","i":15,"r":12,"lp":0},{"t":"ผู้โดยสาร","e":"passenger","l":"ok","i":15,"r":12,"lp":0},{"t":"หนังสือเดินทาง","e":"passport","l":"ok","i":15,"r":12,"lp":0},{"t":"ขนาดนั้น","e":"that much","l":"ok","i":18,"r":10,"lp":0},{"t":"ตั้งแต่","e":"since","l":"ok","i":18,"r":10,"lp":0},{"t":"คบ","e":"date","l":"ok","i":18,"r":10,"lp":0},{"t":"เมื่อไหร่","e":"when","l":"ok","i":18,"r":10,"lp":0},{"t":"มีนาคม","e":"March","l":"ok","i":18,"r":10,"lp":0},{"t":"ปีที่แล้ว","e":"last year","l":"ok","i":18,"r":10,"lp":0},{"t":"จำได้","e":"remember","l":"ok","i":18,"r":10,"lp":0},{"t":"ข้าวเที่ยง","e":"lunch","l":"ok","i":18,"r":10,"lp":0},{"t":"สี่ทุ่ม","e":"10 p.m.","l":"ok","i":18,"r":10,"lp":0},{"t":"มาสาย","e":"be late","l":"ok","i":16,"r":13,"lp":0},{"t":"ตอนบ่าย","e":"afternoon","l":"ok","i":16,"r":13,"lp":0},{"t":"ที่หนึ่ง","e":"first place","l":"ok","i":16,"r":13,"lp":0},{"t":"นิดเดียว","e":"a little","l":"ok","i":16,"r":13,"lp":0},{"t":"รถติด","e":"traffic jam","l":"ok","i":16,"r":13,"lp":0},{"t":"ไฟแดง","e":"red light","l":"ok","i":16,"r":13,"lp":0},{"t":"ประชุม","e":"meeting","l":"ok","i":16,"r":13,"lp":0},{"t":"รีบ","e":"hurry","l":"ok","i":16,"r":13,"lp":0},{"t":"ครั้ง","e":"time","l":"ok","i":16,"r":13,"lp":0},{"t":"เดือนธันวาคม","e":"December","l":"ok","i":16,"r":13,"lp":0},{"t":"บ่ายสามโมง","e":"3 p.m.","l":"ok","i":16,"r":13,"lp":0},{"t":"ถ้วย","e":"cup","l":"ok","i":16,"r":13,"lp":0},{"t":"เงิน","e":"money","l":"ok","i":17,"r":22,"lp":0},{"t":"ตัว","e":"classifier for animals/things","l":"ok","i":17,"r":22,"lp":0},{"t":"ลด","e":"reduce","l":"ok","i":17,"r":22,"lp":0},{"t":"เสื้อยืด","e":"t-shirt","l":"ok","i":17,"r":22,"lp":0},{"t":"กระทิงแดง","e":"Red Bull","l":"ok","i":17,"r":22,"lp":0},{"t":"สีขาว","e":"white","l":"ok","i":17,"r":22,"lp":0},{"t":"สีน้ำเงิน","e":"blue","l":"ok","i":17,"r":22,"lp":0},{"t":"หน่อย","e":"a little","l":"ok","i":17,"r":22,"lp":0},{"t":"ปิด","e":"close","l":"ok","i":17,"r":13,"lp":0},{"t":"รอบคอบ","e":"careful","l":"ok","i":17,"r":13,"lp":0},{"t":"ใบงาน","e":"worksheet","l":"ok","i":17,"r":13,"lp":0},{"t":"หมด","e":"finished","l":"ok","i":17,"r":13,"lp":0},{"t":"ทำใหม่","e":"redo","l":"ok","i":17,"r":13,"lp":0},{"t":"ส่ง","e":"send","l":"ok","i":17,"r":13,"lp":0},{"t":"อีเมล","e":"email","l":"ok","i":17,"r":13,"lp":0},{"t":"ด่วน","e":"urgent","l":"ok","i":17,"r":13,"lp":0},{"t":"งั้น","e":"then","l":"ok","i":17,"r":13,"lp":0},{"t":"ห้าโมงเย็น","e":"5 p.m.","l":"ok","i":17,"r":13,"lp":0},{"t":"โปสการ์ด","e":"postcard","l":"ok","i":17,"r":14,"lp":0},{"t":"ใบ","e":"classifier for flat objects","l":"ok","i":17,"r":14,"lp":0},{"t":"ไปรษณีย์","e":"post office","l":"ok","i":17,"r":14,"lp":0},{"t":"เสือ","e":"tiger","l":"ok","i":17,"r":14,"lp":0},{"t":"จระเข้","e":"crocodile","l":"ok","i":17,"r":14,"lp":0},{"t":"โบราณ","e":"ancient","l":"ok","i":17,"r":14,"lp":0},{"t":"เกาะ","e":"island","l":"ok","i":17,"r":23,"lp":0},{"t":"ทราย","e":"sand","l":"ok","i":17,"r":23,"lp":0},{"t":"วันหยุด","e":"holiday","l":"ok","i":17,"r":23,"lp":0},{"t":"ไปเที่ยว","e":"to travel","l":"ok","i":17,"r":23,"lp":0},{"t":"ยาว","e":"long","l":"ok","i":17,"r":23,"lp":0},{"t":"มั้ย","e":"question particle","l":"ok","i":17,"r":23,"lp":0},{"t":"ทะเล","e":"sea","l":"ok","i":17,"r":23,"lp":0},{"t":"ใส","e":"clear","l":"ok","i":17,"r":23,"lp":0},{"t":"วันจันทร์","e":"Monday","l":"ok","i":17,"r":23,"lp":0},{"t":"มกราคม","e":"January","l":"ok","i":17,"r":23,"lp":0},{"t":"หกโมงเช้า","e":"6 AM","l":"ok","i":17,"r":23,"lp":0},{"t":"มาก","e":"very","l":"ok","i":25,"r":14,"lp":1},{"t":"กัปตัน","e":"captain","l":"ok","i":25,"r":14,"lp":1},{"t":"เวลา","e":"time","l":"ok","i":25,"r":14,"lp":1},{"t":"นาฬิกา","e":"clock","l":"ok","i":25,"r":14,"lp":1},{"t":"พวกเรา","e":"we","l":"ok","i":25,"r":14,"lp":1},{"t":"มาถึง","e":"arrive","l":"ok","i":25,"r":14,"lp":1},{"t":"ตื่นเต้น","e":"excited","l":"ok","i":25,"r":14,"lp":1},{"t":"ในขณะนี้","e":"now","l":"ok","i":25,"r":14,"lp":1},{"t":"หนัง","e":"movie","l":"ok","i":19,"r":11,"lp":0},{"t":"หนึ่งจาน","e":"one plate","l":"ok","i":19,"r":11,"lp":0},{"t":"เบียร์ช้าง","e":"Chang beer","l":"ok","i":19,"r":11,"lp":0},{"t":"ช้า","e":"slow","l":"ok","i":19,"r":11,"lp":0},{"t":"เพิ่ม","e":"add","l":"ok","i":19,"r":11,"lp":0},{"t":"น้อง","e":"younger sibling","l":"ok","i":19,"r":11,"lp":0},{"t":"ข้าวมันไก่","e":"chicken rice","l":"ok","i":19,"r":11,"lp":0},{"t":"หนึ่งทุ่ม","e":"7 PM","l":"ok","i":19,"r":11,"lp":0},{"t":"มาจาก","e":"come from","l":"ok","i":18,"r":18,"lp":0},{"t":"ทุก","e":"every","l":"ok","i":18,"r":18,"lp":0},{"t":"คุณเป็นคนตลก","e":"you are funny","l":"ok","i":18,"r":18,"lp":0},{"t":"เมืองไทย","e":"Thailand","l":"ok","i":18,"r":18,"lp":0},{"t":"เชิญ","e":"please","l":"ok","i":18,"r":18,"lp":0},{"t":"ถนนคนเดิน ...","e":"walking street ...","l":"ok","i":18,"r":14,"lp":0},{"t":"ชุด","e":"set / outfit","l":"ok","i":18,"r":13,"lp":0},{"t":"ลดน้ำหนัก","e":"lose weight","l":"ok","i":18,"r":13,"lp":0},{"t":"ใส่","e":"wear / put on","l":"ok","i":18,"r":13,"lp":0},{"t":"กางเกง","e":"pants","l":"ok","i":18,"r":13,"lp":0},{"t":"สูง","e":"tall","l":"ok","i":18,"r":13,"lp":0},{"t":"สิบสองนาฬิกา","e":"12 o'clock","l":"ok","i":18,"r":13,"lp":0},{"t":"กันยายน","e":"September","l":"ok","i":18,"r":13,"lp":0},{"t":"ทำไม","e":"why","l":"ok","i":18,"r":12,"lp":0},{"t":"หวาน","e":"sweet","l":"ok","i":18,"r":12,"lp":0},{"t":"ห้าม","e":"forbid","l":"ok","i":18,"r":12,"lp":0},{"t":"ส่วน","e":"part","l":"ok","i":18,"r":12,"lp":0},{"t":"ล่ะ","e":"question particle","l":"ok","i":18,"r":12,"lp":0},{"t":"อย่า","e":"don't","l":"ok","i":18,"r":12,"lp":0},{"t":"เม็ด","e":"grain / seed","l":"ok","i":18,"r":12,"lp":0},{"t":"ไส้ติ่งอักเสบ","e":"appendicitis","l":"ok","i":18,"r":12,"lp":0},{"t":"เขาว่ากันว่า","e":"they say","l":"ok","i":18,"r":12,"lp":0},{"t":"กล้วย","e":"banana","l":"ok","i":19,"r":14,"lp":0},{"t":"หวี","e":"comb","l":"ok","i":19,"r":14,"lp":0},{"t":"มะละกอ","e":"papaya","l":"ok","i":19,"r":14,"lp":0},{"t":"กิโล","e":"kilogram","l":"ok","i":19,"r":14,"lp":0},{"t":"มังคุด","e":"mangosteen","l":"ok","i":19,"r":14,"lp":0},{"t":"ลืม","e":"forget","l":"ok","i":19,"r":13,"lp":0},{"t":"ง่าย","e":"easy","l":"ok","i":19,"r":13,"lp":0},{"t":"ขี้เกียจ","e":"lazy","l":"ok","i":19,"r":13,"lp":0},{"t":"ขี้ลืม","e":"forgetful","l":"ok","i":19,"r":13,"lp":0},{"t":"เรือ","e":"boat","l":"ok","i":19,"r":13,"lp":0},{"t":"เที่ยวถัดไป","e":"next trip","l":"ok","i":19,"r":13,"lp":0},{"t":"เกสต์เฮาส์","e":"guesthouse","l":"ok","i":19,"r":16,"lp":0},{"t":"ถนน","e":"road","l":"ok","i":19,"r":16,"lp":0},{"t":"สะอาด","e":"clean","l":"ok","i":19,"r":16,"lp":0},{"t":"ถูก","e":"cheap / correct","l":"ok","i":19,"r":16,"lp":0},{"t":"รู้จัก","e":"know","l":"ok","i":19,"r":16,"lp":0},{"t":"นวด","e":"massage","l":"ok","i":19,"r":13,"lp":0},{"t":"น้ำมัน","e":"oil","l":"ok","i":19,"r":13,"lp":0},{"t":"เบาๆ","e":"gently","l":"ok","i":19,"r":13,"lp":0},{"t":"หลัง","e":"after / back","l":"ok","i":19,"r":13,"lp":0},{"t":"ชั่วโมง","e":"hour","l":"ok","i":19,"r":13,"lp":0},{"t":"ขา","e":"leg","l":"ok","i":19,"r":13,"lp":0},{"t":"เปลี่ยน","e":"change","l":"ok","i":19,"r":13,"lp":0},{"t":"เท้า","e":"foot","l":"ok","i":19,"r":13,"lp":0},{"t":"ปวด","e":"pain","l":"ok","i":19,"r":13,"lp":0},{"t":"ชอบ","e":"like","l":"ok","i":19,"r":19,"lp":0},{"t":"คนนี้","e":"this person","l":"ok","i":19,"r":19,"lp":0},{"t":"เป็นแฟนกัน","e":"be a couple","l":"ok","i":19,"r":19,"lp":0},{"t":"กะเทย","e":"transgender woman","l":"ok","i":19,"r":19,"lp":0},{"t":"ผู้ชาย","e":"man","l":"ok","i":19,"r":19,"lp":0},{"t":"หล่อ","e":"handsome","l":"ok","i":19,"r":19,"lp":0},{"t":"คนนั้น","e":"that person","l":"ok","i":19,"r":19,"lp":0},{"t":"ผู้หญิง","e":"woman","l":"ok","i":19,"r":19,"lp":0},{"t":"พอ","e":"enough","l":"ok","i":19,"r":19,"lp":0},{"t":"ไปเที่ยวกลางคืน","e":"go nightlife","l":"ok","i":19,"r":19,"lp":0},{"t":"ทำงาน","e":"work","l":"ok","i":19,"r":19,"lp":0},{"t":"นั่ง","e":"sit","l":"ok","i":19,"r":19,"lp":0},{"t":"ประเทศ","e":"country","l":"ok","i":19,"r":19,"lp":0},{"t":"นักเขียน","e":"writer","l":"ok","i":19,"r":19,"lp":0},{"t":"นักบิน","e":"pilot","l":"ok","i":19,"r":19,"lp":0},{"t":"นักธุรกิจ","e":"businessman","l":"ok","i":19,"r":19,"lp":0},{"t":"ภรรยา","e":"wife","l":"ok","i":19,"r":19,"lp":0},{"t":"คนอเมริกัน","e":"American","l":"ok","i":19,"r":19,"lp":0},{"t":"กิจกรรม","e":"activity","l":"hard","i":0,"r":0,"lp":0},{"t":"ประเพณี","e":"tradition","l":"hard","i":0,"r":0,"lp":0},{"t":"หมู่บ้าน","e":"village","l":"hard","i":0,"r":0,"lp":0},{"t":"ชาวไทยใหญ่","e":"Shan people","l":"hard","i":0,"r":0,"lp":0},{"t":"การบวชเณร","e":"novice ordination","l":"hard","i":0,"r":0,"lp":0},{"t":"ช่วง","e":"period","l":"hard","i":0,"r":0,"lp":0},{"t":"เดินป่า","e":"hiking","l":"hard","i":0,"r":0,"lp":0},{"t":"ปิดเทอม","e":"school break","l":"hard","i":0,"r":0,"lp":0},{"t":"พระสงฆ์","e":"monk","l":"ok","i":20,"r":14,"lp":0},{"t":"ตรงนั้น","e":"there","l":"ok","i":20,"r":14,"lp":0},{"t":"สำหรับ","e":"for","l":"ok","i":20,"r":14,"lp":0},{"t":"ถวายสังฆทาน","e":"offer to monks","l":"ok","i":20,"r":14,"lp":0},{"t":"ถัง","e":"bucket","l":"ok","i":20,"r":14,"lp":0},{"t":"สีเหลือง","e":"yellow","l":"ok","i":20,"r":14,"lp":0},{"t":"ของใช้","e":"belongings","l":"ok","i":20,"r":14,"lp":0},{"t":"สวดมนต์","e":"chant","l":"ok","i":20,"r":14,"lp":0},{"t":"แตกต่าง","e":"different","l":"ok","i":20,"r":14,"lp":0},{"t":"กำลัง","e":"currently","l":"ok","i":20,"r":14,"lp":0},{"t":"คนคริสต์","e":"Christian","l":"ok","i":20,"r":16,"lp":0},{"t":"นับถือ","e":"believe","l":"ok","i":20,"r":16,"lp":0},{"t":"จำนวน","e":"number","l":"ok","i":20,"r":16,"lp":0},{"t":"ชาวพุทธ","e":"Buddhist","l":"ok","i":20,"r":16,"lp":0},{"t":"ตั้งรกราก","e":"settle","l":"ok","i":20,"r":16,"lp":0},{"t":"ชาวมุสลิม","e":"Muslim","l":"ok","i":20,"r":16,"lp":0},{"t":"กับข้าว","e":"side dish","l":"ok","i":20,"r":16,"lp":0},{"t":"ศาสนา","e":"religion","l":"ok","i":20,"r":16,"lp":0},{"t":"อาหารทะเล","e":"seafood","l":"ok","i":20,"r":16,"lp":0},{"t":"ยืน","e":"stand","l":"ok","i":20,"r":14,"lp":0},{"t":"กลัว","e":"afraid","l":"ok","i":20,"r":14,"lp":0},{"t":"นกยูง","e":"peacock","l":"ok","i":20,"r":14,"lp":0},{"t":"กวาง","e":"deer","l":"ok","i":20,"r":14,"lp":0},{"t":"เกือบ","e":"almost","l":"ok","i":20,"r":14,"lp":0},{"t":"อูฐ","e":"camel","l":"ok","i":20,"r":14,"lp":0},{"t":"ตาย","e":"die","l":"ok","i":20,"r":14,"lp":0},{"t":"ควาย","e":"buffalo","l":"ok","i":20,"r":14,"lp":0},{"t":"ยิ้ม","e":"smile","l":"ok","i":20,"r":14,"lp":0},{"t":"หมูป่า","e":"wild boar","l":"ok","i":20,"r":14,"lp":0},{"t":"ยาย","e":"grandmother","l":"ok","i":20,"r":14,"lp":0},{"t":"คนกรุงเทพฯ","e":"Bangkokian","l":"ok","i":20,"r":14,"lp":0},{"t":"นั่งเรือ","e":"boat ride","l":"ok","i":20,"r":14,"lp":0},{"t":"น่าสนุก","e":"fun","l":"ok","i":20,"r":14,"lp":0},{"t":"หลาน","e":"grandchild","l":"ok","i":20,"r":14,"lp":0},{"t":"น่าสนใจ","e":"interesting","l":"ok","i":20,"r":14,"lp":0},{"t":"น่ารัก","e":"cute","l":"ok","i":20,"r":14,"lp":0},{"t":"หาด","e":"beach","l":"ok","i":20,"r":14,"lp":0},{"t":"ปีนหน้าผา","e":"rock climbing","l":"ok","i":20,"r":14,"lp":0},{"t":"มะม่วง","e":"mango","l":"ok","i":22,"r":11,"lp":0},{"t":"ฝรั่ง","e":"guava","l":"ok","i":22,"r":11,"lp":0},{"t":"กระเป๋า","e":"bag","l":"ok","i":22,"r":11,"lp":0},{"t":"ถื้อ","e":"carry","l":"ok","i":22,"r":11,"lp":0},{"t":"ผลไม้","e":"fruit","l":"ok","i":22,"r":11,"lp":0},{"t":"บ่ายสองโมง","e":"2 PM","l":"ok","i":22,"r":11,"lp":0},{"t":"เดือนพฤศจิกายน","e":"November","l":"ok","i":22,"r":11,"lp":0},{"t":"ชั้น","e":"floor","l":"ok","i":21,"r":19,"lp":0},{"t":"ผมจองไว้ครับ","e":"I have reserved","l":"ok","i":21,"r":19,"lp":0},{"t":"... ตั้งแต่","e":"... since","l":"ok","i":21,"r":19,"lp":0},{"t":"แตงโม","e":"watermelon","l":"ok","i":21,"r":19,"lp":0},{"t":"ถ่ายรูป","e":"take photo","l":"ok","i":21,"r":13,"lp":0},{"t":"สวย","e":"beautiful","l":"ok","i":21,"r":13,"lp":0},{"t":"คุณพ่อ","e":"father","l":"ok","i":21,"r":13,"lp":0},{"t":"วันเกิด","e":"birthday","l":"ok","i":21,"r":13,"lp":0},{"t":"ช่วย","e":"help","l":"ok","i":21,"r":13,"lp":0},{"t":"กล้อง","e":"camera","l":"ok","i":21,"r":13,"lp":0},{"t":"ของขวัญ","e":"gift","l":"ok","i":21,"r":13,"lp":0},{"t":"เดือนตุลาคม","e":"October","l":"ok","i":21,"r":15,"lp":0},{"t":"เทศกาล","e":"festival","l":"ok","i":21,"r":15,"lp":0},{"t":"ฝาก","e":"leave","l":"ok","i":21,"r":15,"lp":0},{"t":"รู้สึก","e":"feel","l":"ok","i":21,"r":15,"lp":0},{"t":"อ้วน","e":"fat","l":"ok","i":21,"r":15,"lp":0},{"t":"สุขภาพ","e":"health","l":"ok","i":21,"r":15,"lp":0},{"t":"ขึ้น","e":"up","l":"ok","i":21,"r":15,"lp":0},{"t":"เจ","e":"vegetarian","l":"ok","i":21,"r":15,"lp":0},{"t":"ผอม","e":"thin","l":"ok","i":21,"r":15,"lp":0},{"t":"รวย","e":"rich","l":"ok","i":21,"r":17,"lp":0},{"t":"แบบ","e":"style","l":"ok","i":21,"r":17,"lp":0},{"t":"การศึกษา","e":"education","l":"ok","i":21,"r":17,"lp":0},{"t":"มีรถขับ","e":"have a car","l":"ok","i":21,"r":17,"lp":0},{"t":"ใจดี","e":"kind","l":"ok","i":21,"r":17,"lp":0},{"t":"ดื่มเหล้า","e":"drink alcohol","l":"ok","i":21,"r":17,"lp":0},{"t":"ชอบที่เราเป็นเรา","e":"like being ourselves","l":"ok","i":21,"r":17,"lp":0},{"t":"เดือนมิถุนายน","e":"June","l":"ok","i":21,"r":17,"lp":0},{"t":"สิบโมงเช้า","e":"10 AM","l":"ok","i":21,"r":17,"lp":0},{"t":"วันศุกร์","e":"Friday","l":"ok","i":21,"r":17,"lp":0},{"t":"เร็ว","e":"fast","l":"ok","i":22,"r":12,"lp":0},{"t":"ชนะ","e":"win","l":"ok","i":22,"r":12,"lp":0},{"t":"ล้ม","e":"fall","l":"ok","i":22,"r":12,"lp":0},{"t":"ลุกขึ้น","e":"get up","l":"ok","i":22,"r":12,"lp":0},{"t":"กลิ่น","e":"smell","l":"ok","i":22,"r":15,"lp":0},{"t":"เรื่อง","e":"story","l":"ok","i":22,"r":15,"lp":0},{"t":"ดูหนัง","e":"watch movie","l":"ok","i":22,"r":15,"lp":0},{"t":"เสื้อแขนยาว","e":"long-sleeve shirt","l":"ok","i":22,"r":15,"lp":0},{"t":"บอก","e":"tell","l":"ok","i":22,"r":15,"lp":0},{"t":"ผู้จัดการ","e":"manager","l":"ok","i":22,"r":15,"lp":0},{"t":"โรงหนัง","e":"cinema","l":"ok","i":22,"r":15,"lp":0},{"t":"วันเสาร์","e":"Saturday","l":"ok","i":22,"r":15,"lp":0},{"t":"เดือนกรกฎาคม","e":"July","l":"ok","i":22,"r":15,"lp":0},{"t":"สิบเอ็ดโมงเช้า","e":"11 AM","l":"ok","i":22,"r":15,"lp":0},{"t":"นาที","e":"minute","l":"ok","i":25,"r":10,"lp":0},{"t":"ทาง","e":"way","l":"ok","i":25,"r":10,"lp":0},{"t":"ทางนี้","e":"this way","l":"ok","i":25,"r":10,"lp":0},{"t":"แล้วคุยกัน","e":"talk later","l":"ok","i":25,"r":10,"lp":0},{"t":"โชคดี","e":"good luck","l":"ok","i":25,"r":10,"lp":0},{"t":"ที่ขึ้นรถ","e":"boarding point","l":"ok","i":25,"r":10,"lp":0},{"t":"หมายเลข","e":"number","l":"ok","i":25,"r":10,"lp":0},{"t":"รถบัส","e":"bus","l":"ok","i":25,"r":10,"lp":0},{"t":"เพราะ","e":"because","l":"ok","i":23,"r":13,"lp":0},{"t":"ฝ่าย","e":"side","l":"ok","i":23,"r":13,"lp":0},{"t":"แดง","e":"red","l":"ok","i":23,"r":13,"lp":0},{"t":"ต่อย","e":"punch","l":"ok","i":23,"r":13,"lp":0},{"t":"ลงพนัน","e":"bet","l":"ok","i":23,"r":13,"lp":0},{"t":"เล่นพนัน","e":"gamble","l":"ok","i":23,"r":13,"lp":0},{"t":"ทัวร์วันเดียว","e":"one-day tour","l":"ok","i":23,"r":13,"lp":0},{"t":"เมือง","e":"city","l":"ok","i":23,"r":13,"lp":0},{"t":"ตลาดน้ำดำเนินสะดวก","e":"Damnoen Saduak floating market","l":"ok","i":23,"r":13,"lp":0},{"t":"สัตว์","e":"animal","l":"ok","i":23,"r":13,"lp":0},{"t":"ที่นั่น","e":"there","l":"ok","i":23,"r":13,"lp":0},{"t":"จับ","e":"catch","l":"ok","i":23,"r":13,"lp":0},{"t":"น้ำส้ม ...","e":"orange juice","l":"ok","i":23,"r":14,"lp":0},{"t":"พนักงาน","e":"staff","l":"easy","i":26,"r":8,"lp":0},{"t":"ธนาคาร","e":"bank","l":"easy","i":26,"r":8,"lp":0},{"t":"วิศวกร","e":"engineer","l":"easy","i":26,"r":8,"lp":0},{"t":"ได้ไหม","e":"can (I/you)?","l":"easy","i":26,"r":8,"lp":0},{"t":"ชื่อ","e":"name","l":"easy","i":28,"r":9,"lp":0},{"t":"ยินดีที่ได้รู้จัก","e":"nice to meet you","l":"easy","i":28,"r":9,"lp":0},{"t":"ขอโทษ","e":"sorry","l":"easy","i":28,"r":9,"lp":0},{"t":"ช่วย...ได้ไหม","e":"can you help?","l":"easy","i":28,"r":9,"lp":0},{"t":"พูด","e":"speak","l":"easy","i":28,"r":9,"lp":0},{"t":"นะ","e":"particle","l":"easy","i":28,"r":9,"lp":0},{"t":"ช้าๆ","e":"slowly","l":"easy","i":28,"r":9,"lp":0},{"t":"เช่นกัน","e":"also","l":"easy","i":28,"r":9,"lp":0},{"t":"ชื่ออะไร","e":"what's your name?","l":"easy","i":28,"r":9,"lp":0},{"t":"เรา","e":"we","l":"ok","i":23,"r":13,"lp":0},{"t":"ดื่ม","e":"drink","l":"ok","i":23,"r":13,"lp":0},{"t":"เคย","e":"have (done)","l":"ok","i":23,"r":13,"lp":0},{"t":"เมื่อ","e":"when","l":"ok","i":23,"r":13,"lp":0},{"t":"เพื่อน","e":"friend","l":"ok","i":23,"r":13,"lp":0},{"t":"สั่ง","e":"order","l":"ok","i":23,"r":13,"lp":0},{"t":"ใหม่","e":"new","l":"ok","i":23,"r":13,"lp":0},{"t":"เหล้าไทย","e":"Thai liquor","l":"ok","i":23,"r":13,"lp":0},{"t":"มวยไทย","e":"Muay Thai","l":"ok","i":23,"r":13,"lp":0},{"t":"สีแดง","e":"red","l":"ok","i":23,"r":13,"lp":0},{"t":"คุณอยู่ที่ไหน","e":"where are you?","l":"easy","i":24,"r":21,"lp":0},{"t":"ดิฉันเอง","e":"it's me (female)","l":"easy","i":24,"r":21,"lp":0},{"t":"เหมือนกัน","e":"same","l":"easy","i":24,"r":21,"lp":0},{"t":"ด้วยกัน","e":"together","l":"easy","i":24,"r":21,"lp":0},{"t":"ได้เลย","e":"sure","l":"easy","i":24,"r":21,"lp":0},{"t":"เบอร์โทรศัพท์","e":"phone number","l":"easy","i":24,"r":21,"lp":0},{"t":"ขอบคุณ","e":"thank you","l":"easy","i":28,"r":7,"lp":0},{"t":"ไป","e":"go","l":"easy","i":28,"r":7,"lp":0},{"t":"จะ","e":"will","l":"easy","i":28,"r":7,"lp":0},{"t":"ประเทศไทย","e":"Thailand","l":"easy","i":28,"r":7,"lp":0},{"t":"พรุ่งนี้","e":"tomorrow","l":"easy","i":28,"r":7,"lp":0},{"t":"ไปติดต่อธุรกิจ","e":"go on business","l":"easy","i":28,"r":7,"lp":0},{"t":"เดินทางปลอดภัย","e":"safe travels","l":"easy","i":28,"r":7,"lp":0},{"t":"คุณอายุเท่าไหร่","e":"how old are you?","l":"easy","i":30,"r":8,"lp":0},{"t":"ปี","e":"year","l":"easy","i":30,"r":8,"lp":0},{"t":"อายุ","e":"age","l":"easy","i":30,"r":8,"lp":0},{"t":"แก่","e":"old","l":"easy","i":30,"r":8,"lp":0},{"t":"ยี่สิบเจ็ด","e":"twenty-seven","l":"easy","i":30,"r":8,"lp":0},{"t":"กว่า","e":"more than","l":"easy","i":30,"r":8,"lp":0},{"t":"ห้า","e":"five","l":"easy","i":30,"r":8,"lp":0},{"t":"สามสิบสอง","e":"thirty-two","l":"easy","i":30,"r":8,"lp":0},{"t":"ร้อน","e":"hot","l":"easy","i":30,"r":8,"lp":0},{"t":"ไม่","e":"no/not","l":"easy","i":30,"r":8,"lp":0},{"t":"องศาเซลเซียส","e":"degree Celsius","l":"easy","i":30,"r":8,"lp":0},{"t":"และ","e":"and","l":"easy","i":30,"r":8,"lp":0},{"t":"อุณหภูมิ","e":"temperature","l":"easy","i":30,"r":8,"lp":0},{"t":"แย่แล้ว","e":"it's bad","l":"easy","i":30,"r":8,"lp":0},{"t":"มี","e":"have","l":"easy","i":30,"r":8,"lp":0},{"t":"หมวก","e":"hat","l":"easy","i":30,"r":8,"lp":0},{"t":"กางเกงขาสั้น","e":"shorts","l":"easy","i":30,"r":8,"lp":0},{"t":"เหตุผล","e":"reason","l":"easy","i":32,"r":9,"lp":0},{"t":"มา","e":"come","l":"easy","i":32,"r":9,"lp":0},{"t":"นานเท่าไหร่","e":"how long?","l":"easy","i":32,"r":9,"lp":0},{"t":"นี่ครับ","e":"here (male)","l":"easy","i":32,"r":9,"lp":0},{"t":"เหตุผลในการมา","e":"reason for coming","l":"easy","i":32,"r":9,"lp":0},{"t":"นี่","e":"this","l":"easy","i":32,"r":9,"lp":0},{"t":"นามบัตร","e":"business card","l":"easy","i":32,"r":9,"lp":0},{"t":"ของ","e":"of","l":"easy","i":32,"r":9,"lp":0},{"t":"เหรอ","e":"really?","l":"easy","i":26,"r":22,"lp":0},{"t":"บ่าย","e":"afternoon","l":"easy","i":26,"r":22,"lp":0},{"t":"เป็นอย่างไร","e":"how is it?","l":"easy","i":26,"r":22,"lp":0},{"t":"ห้อง","e":"room","l":"easy","i":26,"r":22,"lp":0},{"t":"นามสกุล","e":"surname","l":"easy","i":26,"r":22,"lp":0},{"t":"โมงเช้า","e":"o'clock AM","l":"easy","i":26,"r":22,"lp":0},{"t":"กุญแจ","e":"key","l":"easy","i":26,"r":22,"lp":0},{"t":"นัด","e":"appointment","l":"easy","i":26,"r":15,"lp":0},{"t":"ทราบ","e":"know","l":"easy","i":26,"r":15,"lp":0},{"t":"ว่า","e":"that","l":"easy","i":26,"r":15,"lp":0},{"t":"กรุณา","e":"please","l":"easy","i":26,"r":15,"lp":0},{"t":"ของฝาก","e":"souvenir","l":"easy","i":26,"r":15,"lp":0},{"t":"จาก","e":"from","l":"easy","i":26,"r":15,"lp":0},{"t":"เล็ก","e":"small","l":"easy","i":26,"r":15,"lp":0},{"t":"ไม่ได้เจอกันตั้งนาน","e":"long time no see","l":"easy","i":26,"r":15,"lp":0},{"t":"เยี่ยมมาก","e":"great","l":"easy","i":26,"r":16,"lp":0},{"t":"บริษัท","e":"company","l":"easy","i":26,"r":16,"lp":0},{"t":"คือ","e":"is","l":"easy","i":26,"r":16,"lp":0},{"t":"นี่คือ","e":"this is","l":"easy","i":26,"r":16,"lp":0},{"t":"มีนัดกับ","e":"have an appointment with","l":"easy","i":26,"r":16,"lp":0},{"t":"เลขา","e":"secretary","l":"easy","i":26,"r":16,"lp":0},{"t":"นี้","e":"this","l":"easy","i":27,"r":18,"lp":0},{"t":"ดู","e":"look","l":"easy","i":27,"r":18,"lp":0},{"t":"เยอะ","e":"many","l":"easy","i":27,"r":18,"lp":0},{"t":"เอา","e":"take","l":"easy","i":27,"r":18,"lp":0},{"t":"ยินดีต้อนรับ","e":"welcome","l":"easy","i":27,"r":18,"lp":0},{"t":"สู่","e":"to","l":"easy","i":27,"r":18,"lp":0},{"t":"ใหญ่","e":"big","l":"easy","i":27,"r":18,"lp":0},{"t":"หน้า","e":"face","l":"easy","i":27,"r":20,"lp":0},{"t":"ฤดู","e":"season","l":"easy","i":27,"r":20,"lp":0},{"t":"เดือนเมษายน","e":"April","l":"easy","i":27,"r":20,"lp":0},{"t":"รถแท็กซี่","e":"taxi","l":"easy","i":27,"r":20,"lp":0},{"t":"สวยงาม","e":"beautiful","l":"easy","i":27,"r":20,"lp":0},{"t":"เท่าไหร่","e":"how much","l":"easy","i":27,"r":20,"lp":0},{"t":"ราคา","e":"price","l":"easy","i":27,"r":20,"lp":0},{"t":"เงินทอน","e":"change","l":"easy","i":27,"r":20,"lp":0},{"t":"ลูก","e":"child","l":"easy","i":27,"r":20,"lp":0},{"t":"เป็น","e":"to be","l":"easy","i":27,"r":12,"lp":0},{"t":"ภาษาอังกฤษ","e":"English language","l":"easy","i":27,"r":12,"lp":0},{"t":"พัก","e":"rest","l":"easy","i":27,"r":12,"lp":0},{"t":"เก่ง","e":"skilled","l":"easy","i":27,"r":12,"lp":0},{"t":"ไหว","e":"able","l":"easy","i":27,"r":12,"lp":0},{"t":"ยังไง","e":"how","l":"easy","i":27,"r":12,"lp":0},{"t":"ตรงนี้","e":"here","l":"easy","i":27,"r":12,"lp":0},{"t":"แป๊บหนึ่ง","e":"just a moment","l":"easy","i":27,"r":12,"lp":0},{"t":"อะไร","e":"what","l":"easy","i":30,"r":8,"lp":0},{"t":"เกิด","e":"to be born","l":"easy","i":30,"r":8,"lp":0},{"t":"คน","e":"person","l":"easy","i":30,"r":8,"lp":0},{"t":"กรุงเทพฯ","e":"Bangkok","l":"easy","i":30,"r":8,"lp":0},{"t":"อเมริกัน","e":"American","l":"easy","i":30,"r":8,"lp":0},{"t":"แล้วคุณล่ะ","e":"and you?","l":"easy","i":30,"r":8,"lp":0},{"t":"ใช่","e":"yes","l":"easy","i":30,"r":8,"lp":0},{"t":"ที่ไหน","e":"where","l":"easy","i":30,"r":8,"lp":0},{"t":"ใบเสร็จ ...","e":"receipt","l":"easy","i":24,"r":12,"lp":0},{"t":"สิ","e":"particle (emphasis)","l":"easy","i":28,"r":14,"lp":0},{"t":"ไชโย","e":"cheers","l":"easy","i":28,"r":14,"lp":0},{"t":"ทานกันเลย","e":"let's eat","l":"easy","i":28,"r":14,"lp":0},{"t":"ลองนี่สิ","e":"try this","l":"easy","i":28,"r":14,"lp":0},{"t":"ต้มยำกุ้ง","e":"tom yum soup","l":"easy","i":28,"r":14,"lp":0},{"t":"เบียร์สิงห์","e":"Singha beer","l":"easy","i":28,"r":14,"lp":0},{"t":"กัน","e":"together","l":"easy","i":28,"r":14,"lp":0},{"t":"เอง","e":"self","l":"easy","i":29,"r":18,"lp":0},{"t":"ผมเอง","e":"it's me","l":"easy","i":29,"r":18,"lp":0},{"t":"ตอนนี้","e":"now","l":"easy","i":29,"r":18,"lp":0},{"t":"ก็","e":"also","l":"easy","i":29,"r":18,"lp":0},{"t":"รู้","e":"know","l":"easy","i":29,"r":18,"lp":0},{"t":"เห็น","e":"see","l":"easy","i":29,"r":18,"lp":0},{"t":"พวกคุณ","e":"you all","l":"easy","i":29,"r":18,"lp":0},{"t":"สวัสดีครับ","e":"hello (male)","l":"easy","i":29,"r":18,"lp":0},{"t":"น้ำเปล่า","e":"water","l":"easy","i":28,"r":9,"lp":0},{"t":"น้ำส้ม","e":"orange juice","l":"easy","i":28,"r":9,"lp":0},{"t":"กาแฟ","e":"coffee","l":"easy","i":28,"r":9,"lp":0},{"t":"ซาลาเปา","e":"steamed bun","l":"easy","i":28,"r":9,"lp":0},{"t":"อร่อย","e":"delicious","l":"easy","i":28,"r":9,"lp":0},{"t":"ขวด","e":"bottle","l":"easy","i":28,"r":9,"lp":0},{"t":"กระป๋อง","e":"can","l":"easy","i":28,"r":9,"lp":0},{"t":"นั่นอะไร","e":"what is that","l":"easy","i":28,"r":9,"lp":0},{"t":"รับอะไรเพิ่มไหม","e":"would you like more","l":"easy","i":28,"r":9,"lp":0},{"t":"ซื้อ","e":"buy","l":"easy","i":28,"r":9,"lp":0},{"t":"คิด","e":"think","l":"easy","i":31,"r":11,"lp":0},{"t":"สอน","e":"teach","l":"easy","i":31,"r":11,"lp":0},{"t":"แถว","e":"row","l":"easy","i":31,"r":11,"lp":0},{"t":"ไว้","e":"keep","l":"easy","i":31,"r":11,"lp":0},{"t":"นอกจาก","e":"besides","l":"easy","i":31,"r":11,"lp":0},{"t":"นวดแผนไทย","e":"Thai massage","l":"easy","i":31,"r":11,"lp":0},{"t":"ดัง","e":"famous","l":"easy","i":31,"r":11,"lp":0},{"t":"คืนนี้","e":"tonight","l":"easy","i":31,"r":11,"lp":0},{"t":"ตอน","e":"time","l":"easy","i":25,"r":12,"lp":0},{"t":"รอบ","e":"round","l":"easy","i":25,"r":12,"lp":0},{"t":"กี่โมง","e":"what time","l":"easy","i":25,"r":12,"lp":0},{"t":"สองทุ่ม","e":"8 PM","l":"easy","i":25,"r":12,"lp":0},{"t":"ออก","e":"leave","l":"easy","i":25,"r":12,"lp":0},{"t":"ไปถึง","e":"arrive","l":"easy","i":25,"r":12,"lp":0},{"t":"ตั๋ว","e":"ticket","l":"easy","i":25,"r":12,"lp":0},{"t":"ถ้า","e":"if","l":"easy","i":25,"r":12,"lp":0},{"t":"หกโมงเย็น","e":"6 PM","l":"easy","i":25,"r":12,"lp":0},{"t":"ทุกท่าน","e":"everyone","l":"easy","i":30,"r":20,"lp":0},{"t":"กับ","e":"with","l":"easy","i":30,"r":20,"lp":0},{"t":"เยี่ยม","e":"great","l":"easy","i":30,"r":20,"lp":0},{"t":"ผัดไทย","e":"pad thai","l":"easy","i":30,"r":20,"lp":0},{"t":"เชิญนั่ง","e":"please sit","l":"easy","i":30,"r":20,"lp":0},{"t":"ตลก","e":"funny","l":"easy","i":30,"r":20,"lp":0},{"t":"เที่ยงตรง","e":"noon sharp","l":"easy","i":30,"r":20,"lp":0},{"t":"อาหารกลางวัน","e":"lunch","l":"easy","i":30,"r":20,"lp":0},{"t":"ยัง","e":"still","l":"easy","i":31,"r":14,"lp":0},{"t":"นักท่องเที่ยว","e":"tourist","l":"easy","i":31,"r":14,"lp":0},{"t":"ชื่อเสียง","e":"reputation","l":"easy","i":31,"r":14,"lp":0},{"t":"พระบรมมหาราชวัง","e":"Grand Palace","l":"easy","i":31,"r":14,"lp":0},{"t":"ชม","e":"admire","l":"easy","i":31,"r":14,"lp":0},{"t":"เมื่อวาน","e":"yesterday","l":"easy","i":31,"r":14,"lp":0},{"t":"วัด","e":"temple","l":"easy","i":31,"r":14,"lp":0},{"t":"พระนอน","e":"reclining Buddha","l":"easy","i":31,"r":14,"lp":0},{"t":"เขา","e":"he","l":"easy","i":28,"r":13,"lp":0},{"t":"ปีน","e":"climb","l":"easy","i":28,"r":13,"lp":0},{"t":"คนเดียว","e":"alone","l":"easy","i":28,"r":13,"lp":0},{"t":"รอ","e":"wait","l":"easy","i":28,"r":13,"lp":0},{"t":"เที่ยวเดียว","e":"one way","l":"easy","i":28,"r":13,"lp":0},{"t":"ไปกลับ","e":"round trip","l":"easy","i":28,"r":13,"lp":0},{"t":"ก็ได้","e":"okay","l":"easy","i":28,"r":13,"lp":0},{"t":"อีก","e":"more","l":"easy","i":29,"r":11,"lp":0},{"t":"อาหารเช้า","e":"breakfast","l":"easy","i":29,"r":11,"lp":0},{"t":"ทาน","e":"eat","l":"easy","i":29,"r":11,"lp":0},{"t":"เดิน","e":"walk","l":"easy","i":29,"r":11,"lp":0},{"t":"แผน","e":"plan","l":"easy","i":29,"r":11,"lp":0},{"t":"ใกล้ๆ","e":"nearby","l":"easy","i":29,"r":11,"lp":0},{"t":"น่าดู","e":"interesting","l":"easy","i":29,"r":11,"lp":0},{"t":"พิพิธภัณฑสถานแห่งชาติ","e":"national museum","l":"easy","i":29,"r":11,"lp":0},{"t":"สนามหลวง","e":"Sanam Luang","l":"easy","i":29,"r":11,"lp":0},{"t":"ที่นี่","e":"here","l":"easy","i":29,"r":11,"lp":0},{"t":"ไม่ทราบว่า","e":"don't know","l":"ok","i":33,"r":26,"lp":1},{"t":"กระดาษ","e":"paper","l":"ok","i":33,"r":26,"lp":1},{"t":"รอสักครู่","e":"wait a moment","l":"ok","i":33,"r":26,"lp":1},{"t":"ให้น่อย","e":"please give","l":"ok","i":33,"r":26,"lp":1},{"t":"ใกล้","e":"near","l":"ok","i":33,"r":26,"lp":1},{"t":"ร้านอาหาร","e":"restaurant","l":"ok","i":33,"r":26,"lp":1},{"t":"เขียน","e":"write","l":"ok","i":33,"r":26,"lp":1},{"t":"ลง","e":"down","l":"ok","i":33,"r":26,"lp":1},{"t":"ให้","e":"give","l":"ok","i":33,"r":26,"lp":1},{"t":"อากาศ","e":"weather","l":"easy","i":31,"r":22,"lp":0},{"t":"ขอ","e":"ask","l":"easy","i":31,"r":22,"lp":0},{"t":"ด้วย","e":"with","l":"easy","i":31,"r":22,"lp":0},{"t":"ถ้าอย่างนั้น","e":"if so","l":"easy","i":31,"r":22,"lp":0},{"t":"ทั้งหมด","e":"all","l":"easy","i":31,"r":22,"lp":0},{"t":"ฝนตก","e":"rain","l":"easy","i":31,"r":22,"lp":0},{"t":"ตอนเช้า","e":"morning","l":"easy","i":31,"r":22,"lp":0},{"t":"แดดออก","e":"sunny","l":"easy","i":31,"r":22,"lp":0},{"t":"วันนี้","e":"today","l":"easy","i":31,"r":22,"lp":0},{"t":"ได้","e":"can","l":"easy","i":32,"r":18,"lp":0},{"t":"นิดหน่อย","e":"a little","l":"easy","i":32,"r":18,"lp":0},{"t":"เลย","e":"then","l":"easy","i":32,"r":18,"lp":0},{"t":"ตึก","e":"building","l":"easy","i":32,"r":18,"lp":0},{"t":"ไปที่","e":"go to","l":"easy","i":32,"r":18,"lp":0},{"t":"ดี","e":"good","l":"easy","i":32,"r":18,"lp":0},{"t":"แค่นิดหน่อย","e":"just a little","l":"easy","i":32,"r":18,"lp":0},{"t":"ไม่เชิง","e":"not exactly","l":"easy","i":32,"r":18,"lp":0},{"t":"เท่านั้น","e":"only","l":"easy","i":32,"r":18,"lp":0},{"t":"ไปที่ไหน","e":"go where","l":"easy","i":32,"r":18,"lp":0},{"t":"เริ่ม","e":"start","l":"ok","i":17,"r":13,"lp":0},{"t":"ตารางงาน","e":"schedule","l":"ok","i":17,"r":13,"lp":0},{"t":"เสร็จ","e":"finished","l":"ok","i":17,"r":13,"lp":0},{"t":"เปียก","e":"wet","l":"ok","i":17,"r":13,"lp":0},{"t":"ทัน","e":"on time","l":"ok","i":17,"r":13,"lp":0},{"t":"งาน","e":"work","l":"ok","i":17,"r":13,"lp":0},{"t":"บ่ายสี่โมง","e":"4 PM","l":"ok","i":17,"r":13,"lp":0},{"t":"ทำ","e":"do","l":"easy","i":34,"r":15,"lp":0},{"t":"อาทิตย์","e":"week","l":"easy","i":34,"r":15,"lp":0},{"t":"แต่","e":"but","l":"easy","i":34,"r":15,"lp":0},{"t":"หรือ","e":"or","l":"easy","i":34,"r":15,"lp":0},{"t":"อาทิตย์นี้","e":"this week","l":"easy","i":34,"r":15,"lp":0},{"t":"แน่ใจ","e":"sure","l":"easy","i":34,"r":15,"lp":0},{"t":"อยาก","e":"want","l":"easy","i":34,"r":15,"lp":0},{"t":"อาจจะ","e":"maybe","l":"easy","i":34,"r":15,"lp":0},{"t":"ไม่แน่ใจ","e":"not sure","l":"easy","i":34,"r":15,"lp":0},{"t":"ผม","e":"I (male)","l":"easy","i":40,"r":7,"lp":0},{"t":"ดิฉัน","e":"I (female)","l":"easy","i":40,"r":7,"lp":0},{"t":"สวัสดี","e":"hello","l":"easy","i":40,"r":7,"lp":0},{"t":"ค่ะ","e":"polite particle (female)","l":"easy","i":40,"r":7,"lp":0},{"t":"ครับ","e":"polite particle (male)","l":"easy","i":40,"r":7,"lp":0},{"t":"คะ","e":"polite question particle (female)","l":"easy","i":40,"r":7,"lp":0},{"t":"ไหม","e":"question particle","l":"easy","i":40,"r":7,"lp":0},{"t":"สบายดี","e":"fine","l":"easy","i":40,"r":7,"lp":0},{"t":"คุณ","e":"you","l":"easy","i":40,"r":7,"lp":0},{"t":"แล้ว","e":"already","l":"easy","i":40,"r":7,"lp":0},{"t":"ที่","e":"at","l":"easy","i":24,"r":20,"lp":0},{"t":"ชายหาด","e":"beach","l":"easy","i":24,"r":20,"lp":0},{"t":"ว่าง","e":"free","l":"easy","i":24,"r":20,"lp":0},{"t":"เจอ","e":"meet","l":"easy","i":24,"r":20,"lp":0},{"t":"สถานีรถไฟฟ้า","e":"skytrain station","l":"easy","i":24,"r":20,"lp":0},{"t":"แน่นอน","e":"certain","l":"easy","i":24,"r":20,"lp":0},{"t":"แล้วเจอกัน","e":"see you","l":"easy","i":24,"r":20,"lp":0}]
+
+// ── SRS Logic ────────────────────────────────────────────────────────────────
+const EASE = { easy: 2.5, ok: 1.3, hard: 0.6 }
+function calcInterval(cur, rating) {
+  return Math.min(Math.round(Math.max(cur, 1) * (EASE[rating] || 1.3) * 1.5), 365)
+}
+function applyRating(word, rating) {
+  const today = new Date().toISOString().slice(0, 10)
+  const newInt = calcInterval(word.interval || 0, rating)
+  const d = new Date(); d.setDate(d.getDate() + newInt)
+  let { status, lapses = 0 } = word
+  if (rating === 'hard') { if (status === 'known') { status = 'lapsed'; lapses++ } else status = 'learning' }
+  else status = (rating === 'easy' && newInt >= 21) ? 'known' : 'learning'
+  if (word.status === 'new') status = 'learning'
+  return { ...word, interval: newInt, lastSeen: today, dueDate: d.toISOString().slice(0, 10), repCount: (word.repCount || 0) + 1, lapses, status, difficulty: rating }
+}
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+async function stGet(key) {
+  try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : null } catch {}
+  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : null } catch {}
+  return null
+}
+async function stSet(key, val) {
+  try { await window.storage.set(key, JSON.stringify(val)) } catch {}
+  try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
+}
+
+// ── Vocab Helpers ─────────────────────────────────────────────────────────────
+function initVocab() {
+  return RAW_VOCAB.map((d, idx) => {
+    const l = d.l
+    let status = 'new', interval = 0, dueDate = null
+    if (l === 'easy') {
+      status = 'known'; interval = d.i || 24
+      const dd = new Date(); dd.setDate(dd.getDate() + Math.floor(Math.random() * 7))
+      dueDate = dd.toISOString().slice(0, 10)
+    } else if (l === 'ok') {
+      status = 'learning'; interval = d.i || 4
+      const dd = new Date(); dd.setDate(dd.getDate() + Math.floor(Math.random() * 3))
+      dueDate = dd.toISOString().slice(0, 10)
+    }
+    return { id: idx + 1, thai: d.t, english: d.e, status, difficulty: l, interval, lastSeen: null, dueDate, repCount: d.r || 0, lapses: d.lp || 0 }
+  })
+}
+
+function getStats(vocab) {
+  const today = new Date().toISOString().slice(0, 10)
+  return {
+    total: vocab.length,
+    due: vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today).length,
+    newW: vocab.filter(w => w.status === 'new').length,
+    learning: vocab.filter(w => w.status === 'learning').length,
+    known: vocab.filter(w => w.status === 'known').length,
+  }
+}
+
+function pickWords(vocab, mode) {
+  const today = new Date().toISOString().slice(0, 10)
+  let targets
+  if (mode === 'weak') {
+    targets = vocab.filter(w => w.difficulty === 'hard' || w.status === 'lapsed' || w.lapses >= 2).slice(0, 20)
+    if (!targets.length) targets = vocab.filter(w => w.status === 'learning').slice(0, 20)
+  } else {
+    const due = vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today).slice(0, 15)
+    const newW = vocab.filter(w => w.status === 'new').slice(0, 6)
+    targets = [...due, ...newW].slice(0, 20)
+  }
+  const targetIds = new Set(targets.map(w => w.id))
+  const anchors = vocab
+    .filter(w => (w.status === 'known' || w.status === 'learning') && !targetIds.has(w.id))
+    .sort((a, b) => (!a.lastSeen ? -1 : !b.lastSeen ? 1 : a.lastSeen.localeCompare(b.lastSeen)))
+    .slice(0, 25)
+  return { targets, anchors }
+}
+
+// ── Pimsleur Track Generator (local, no API) ──────────────────────────────────
+// Generates ~60 challenge-response pairs using full Thai sentences.
+// Each target word appears 3x at spaced intervals (intro → mid review → late review).
+// Anchor words fill gaps with 1-2 sentence reviews.
+
+function shuffle(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]] }
+  return a
+}
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)] }
+
+// Each frame returns { prompt, thai, english }
+// Thai answer is always a complete sentence (subject + verb + object + particle)
+const FRAMES = [
+  // "I want / would like"
+  w => ({ prompt: `Tell someone you want ${w.english}`, thai: `ผมอยากได้${w.thai}ครับ`, english: `I'd like some ${w.english}` }),
+  w => ({ prompt: `Say you really want to ${w.english}`, thai: `ผมอยาก${w.thai}มากครับ`, english: `I really want to ${w.english}` }),
+  // "I like / don't like"
+  w => ({ prompt: `Tell your friend you like ${w.english}`, thai: `ผมชอบ${w.thai}มากเลยครับ`, english: `I really like ${w.english}` }),
+  w => ({ prompt: `Say you don't like ${w.english}`, thai: `ผมไม่ชอบ${w.thai}เลยครับ`, english: `I don't like ${w.english} at all` }),
+  // "I have / don't have"
+  w => ({ prompt: `Say you have ${w.english}`, thai: `ผมมี${w.thai}อยู่ครับ`, english: `I have ${w.english}` }),
+  w => ({ prompt: `Say you don't have ${w.english}`, thai: `ผมไม่มี${w.thai}เลยครับ`, english: `I don't have any ${w.english}` }),
+  // "I'm going to / just did"
+  w => ({ prompt: `Tell someone you're about to ${w.english}`, thai: `ผมจะ${w.thai}แล้วครับ`, english: `I'm about to ${w.english}` }),
+  w => ({ prompt: `Say you just ${w.english}`, thai: `ผมเพิ่ง${w.thai}มาเมื่อกี้ครับ`, english: `I just ${w.english} a moment ago` }),
+  // "I need / must"
+  w => ({ prompt: `Say you need ${w.english}`, thai: `ผมต้องการ${w.thai}ครับ`, english: `I need ${w.english}` }),
+  w => ({ prompt: `Say you have to ${w.english}`, thai: `ผมต้อง${w.thai}ก่อนครับ`, english: `I have to ${w.english} first` }),
+  // Questions
+  w => ({ prompt: `Ask if they have ${w.english}`, thai: `มี${w.thai}ไหมครับ`, english: `Do you have ${w.english}?` }),
+  w => ({ prompt: `Ask if you can ${w.english}`, thai: `ผม${w.thai}ได้ไหมครับ`, english: `Can I ${w.english}?` }),
+  w => ({ prompt: `Ask how much the ${w.english} is`, thai: `${w.thai}นี้ราคาเท่าไหร่ครับ`, english: `How much is this ${w.english}?` }),
+  // Describing / commenting
+  w => ({ prompt: `Say this ${w.english} is very good`, thai: `${w.thai}นี้ดีมากเลยครับ`, english: `This ${w.english} is very good` }),
+  w => ({ prompt: `Tell them the ${w.english} looks great`, thai: `${w.thai}นี้ดูดีมากครับ`, english: `This ${w.english} looks really good` }),
+  w => ({ prompt: `Say the ${w.english} is too expensive`, thai: `${w.thai}นี้แพงเกินไปครับ`, english: `This ${w.english} is too expensive` }),
+  // "Someone said / I think"
+  w => ({ prompt: `Say you think ${w.english} is good`, thai: `ผมคิดว่า${w.thai}นี้ดีครับ`, english: `I think this ${w.english} is good` }),
+  w => ({ prompt: `Tell them you heard about ${w.english}`, thai: `ผมได้ยินเรื่อง${w.thai}มาครับ`, english: `I heard about ${w.english}` }),
+  // Currently doing / haven't yet
+  w => ({ prompt: `Say you're currently ${w.english}ing`, thai: `ตอนนี้ผมกำลัง${w.thai}อยู่ครับ`, english: `I'm currently ${w.english}ing` }),
+  w => ({ prompt: `Say you haven't ${w.english}ed yet`, thai: `ผมยังไม่ได้${w.thai}เลยครับ`, english: `I haven't ${w.english}ed yet` }),
+]
+
+// Reverse frames: Thai prompt → student recalls meaning / responds
+const REV_FRAMES = [
+  w => ({ prompt: `You hear: "${w.thai}" — what does this mean and how do you respond?`, thai: `${w.thai}`, english: `${w.english}` }),
+  w => ({ prompt: `Respond to: "${w.thai}"`, thai: `${w.thai}`, english: `(means: ${w.english})` }),
+]
+
+function makePair(w, framePool) {
+  const f = pick(framePool)(w)
+  return { ...f, wordId: w.id }
+}
+
+function generatePairsLocal(targets, anchors) {
+  // Target words get 3 appearances each: intro (early), review (middle), recall (late)
+  // Anchors fill the gaps — 1-2 appearances each
+
+  const TOTAL = 60  // ~30 min at ~30 sec per pair
+  const targetSlots = targets.length * 3  // 3 reps per target word
+  const anchorCount = Math.max(0, TOTAL - targetSlots)
+  const anchorSample = shuffle(anchors).slice(0, Math.ceil(anchorCount / 1.5))
+
+  // Build per-target triplets (intro, mid, late)
+  const introGroup = targets.map(w => makePair(w, FRAMES.slice(0, 8)))   // want/like/have frames
+  const midGroup   = targets.map(w => makePair(w, FRAMES.slice(6, 14)))  // need/question frames
+  const lateGroup  = targets.map(w => makePair(w, FRAMES.slice(12, 20))) // describe/think frames
+
+  // Build anchor review pairs (mix forward + some reverse)
+  const anchorPairs = anchorSample.flatMap(w => {
+    const fwd = makePair(w, FRAMES)
+    return Math.random() < 0.3 ? [fwd, makePair(w, REV_FRAMES)] : [fwd]
+  })
+
+  // Weave everything into a 60-pair Pimsleur sequence:
+  // [some anchors] → intro group → [anchors] → mid group → [anchors] → late group → [anchors]
+  const anchorChunks = chunkArray(shuffle(anchorPairs), 4)
+  const ac = i => anchorChunks[i] || []
+
+  const track = [
+    ...ac(0),
+    ...shuffle(introGroup),
+    ...ac(1),
+    ...shuffle(midGroup),
+    ...ac(2),
+    ...shuffle(lateGroup),
+    ...ac(3),
+    ...ac(4),
+  ].slice(0, TOTAL)
+
+  return track
+}
+
+function chunkArray(arr, n) {
+  const chunks = []
+  for (let i = 0; i < arr.length; i += n) chunks.push(arr.slice(i, i + n))
+  return chunks
+}
+
+async function askKru(msgs, ctx, apiKey) {
+  const system = `You are Kru (ครู), a warm and knowledgeable Thai teacher.
+Respond in English. Include Thai script + tone-marked romanization for examples.
+Tone marks: mid=none, low=à, falling=â, high=á, rising=ǎ. Hyphens between syllables.
+Keep answers focused and practical — 2-4 short paragraphs max.
+${ctx ? `\nSTUDENT'S CURRENT LESSON:\n${ctx}` : ''}`
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } : {}) },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, system, messages: msgs })
+  })
+  if (!res.ok) throw new Error(`API ${res.status}`)
+  const data = await res.json()
+  return data.content[0].text
+}
+
+// ── Micro Components ──────────────────────────────────────────────────────────
+const Spinner = ({ size = 20, color = 'var(--gold)' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className="spin" style={{ color }}>
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="60" strokeDashoffset="20" />
+  </svg>
+)
+
+const Badge = ({ status }) => {
+  const cfg = { new: ['#1e3a5f','#4a90e2','New'], learning: ['#3d2800','#f59e0b','Learning'], known: ['#063d2e','#10b981','Known'], lapsed: ['#3d0f0f','#ef4444','Lapsed'] }
+  const [bg, col, label] = cfg[status] || cfg.new
+  return <span style={{ background: bg, color: col, fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, letterSpacing: '0.04em' }}>{label}</span>
+}
+
+const Card = ({ children, style = {}, onClick, hover = true }) => (
+  <div onClick={onClick} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, cursor: onClick ? 'pointer' : 'default', transition: 'all 0.15s', ...style }}
+    onMouseEnter={e => hover && onClick && (e.currentTarget.style.borderColor = 'var(--gold-dim)')}
+    onMouseLeave={e => hover && onClick && (e.currentTarget.style.borderColor = 'var(--border)')}>
+    {children}
+  </div>
+)
+
+const Btn = ({ children, onClick, variant = 'primary', disabled, style = {}, size = 'md' }) => {
+  const v = {
+    primary: { background: 'linear-gradient(135deg, #d4a94a, #b88a35)', color: '#0b1120', border: 'none' },
+    secondary: { background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' },
+    ghost: { background: 'transparent', color: 'var(--muted)', border: '1px solid var(--border)' },
+    danger: { background: '#2d1515', color: '#ef4444', border: '1px solid #3d1a1a' },
+    success: { background: '#0a2d1e', color: '#10b981', border: '1px solid #0e3d28' },
+  }
+  const sz = { sm: { padding: '6px 12px', fontSize: 13 }, md: { padding: '10px 18px', fontSize: 14 }, lg: { padding: '14px 24px', fontSize: 16 } }
+  return (
+    <button onClick={onClick} disabled={disabled}
+      style={{ ...v[variant], ...sz[size], fontFamily: 'Sarabun, sans-serif', fontWeight: 600, borderRadius: 10, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, transition: 'all 0.15s', display: 'inline-flex', alignItems: 'center', gap: 6, ...style }}>
+      {children}
+    </button>
+  )
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+const Icon = ({ name, size = 18, color = 'currentColor' }) => {
+  const paths = {
+    home: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10',
+    play: 'M5 3l14 9-14 9V3z',
+    book: 'M4 19.5A2.5 2.5 0 016.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z',
+    plus: 'M12 5v14M5 12h14',
+    search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+    settings: 'M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z',
+    chat: 'M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z',
+    target: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 18a6 6 0 100-12 6 6 0 000 12z M12 14a2 2 0 100-4 2 2 0 000 4z',
+    star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+    clock: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2',
+    trend: 'M23 6l-9.5 9.5-5-5L1 18',
+    check: 'M20 6L9 17l-5-5',
+    x: 'M18 6L6 18M6 6l12 12',
+    send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
+    arrow_left: 'M19 12H5M12 19l-7-7 7-7',
+    bookmark: 'M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z',
+    sparkles: 'M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z M5 1l.75 2.25L8 4l-2.25.75L5 7l-.75-2.25L2 4l2.25-.75L5 1z M19 13l.75 2.25L22 16l-2.25.75L19 19l-.75-2.25L16 16l2.25-.75L19 13z',
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {(paths[name] || '').split(' M').map((p, i) => <path key={i} d={i === 0 ? p : 'M' + p} />)}
+    </svg>
+  )
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+function Header({ view, onNav }) {
+  const items = [
+    { id: 'dashboard', icon: 'home', label: 'Home' },
+    { id: 'browse', icon: 'book', label: 'Words' },
+    { id: 'add-words', icon: 'plus', label: 'Add' },
+    { id: 'settings', icon: 'settings', label: 'Settings' },
+  ]
+  return (
+    <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, background: 'rgba(11,17,32,0.95)', backdropFilter: 'blur(12px)', zIndex: 50 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #d4a94a, #b88a35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🇹🇭</div>
+        <span className="display" style={{ fontSize: 17, color: 'var(--gold)', letterSpacing: '-0.01em' }}>Thai Teacher</span>
+      </div>
+      <nav style={{ display: 'flex', gap: 4 }}>
+        {items.map(item => (
+          <button key={item.id} onClick={() => onNav(item.id)} title={item.label}
+            style={{ padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: view === item.id ? 'var(--surface2)' : 'transparent', color: view === item.id ? 'var(--gold)' : 'var(--muted)', transition: 'all 0.15s' }}>
+            <Icon name={item.icon} size={18} />
+          </button>
+        ))}
+      </nav>
+    </header>
+  )
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack }) {
+  const stats = useMemo(() => getStats(vocab), [vocab])
+  const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
+  const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
+
+  return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Hero */}
+      <div style={{ textAlign: 'center', padding: '24px 0 8px' }}>
+        <div className="thai display" style={{ fontSize: 42, color: 'var(--gold)', letterSpacing: '0.02em', lineHeight: 1 }}>สวัสดี!</div>
+        <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 8 }}>Your daily Thai practice awaits</p>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+        {[
+          { label: 'Words', val: stats.total, icon: 'book', color: 'var(--text)' },
+          { label: 'Due', val: stats.due, icon: 'clock', color: '#f59e0b' },
+          { label: 'Learning', val: stats.learning, icon: 'trend', color: '#4a90e2' },
+          { label: 'Known', val: stats.known, icon: 'star', color: '#10b981' },
+        ].map(s => (
+          <Card key={s.label} style={{ padding: '12px 10px', textAlign: 'center' }}>
+            <Icon name={s.icon} size={14} color={s.color} />
+            <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: s.color }}>{s.val}</div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, fontWeight: 500 }}>{s.label}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Progress */}
+      <Card style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Mastery</span>
+          <span className="phon" style={{ fontSize: 12, color: 'var(--gold)' }}>{pct}%</span>
+        </div>
+        <div style={{ height: 6, background: 'var(--surface2)', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #d4a94a, #10b981)', borderRadius: 3, transition: 'width 0.5s ease' }} />
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>{stats.known} known · {stats.learning} learning · {stats.newW} new</p>
+      </Card>
+
+      {/* Generate Buttons */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <button onClick={() => onNav('generate-daily')}
+          style={{ background: 'linear-gradient(135deg, #1e3a1e, #2a4a2a)', border: '1px solid #2d6b2d', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = '#10b981'}
+          onMouseLeave={e => e.currentTarget.style.borderColor = '#2d6b2d'}>
+          <Icon name="sparkles" size={22} color="#10b981" />
+          <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Daily Track</div>
+          <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>~30 min · {stats.due} due</div>
+        </button>
+        <button onClick={() => onNav('generate-weak')}
+          style={{ background: 'linear-gradient(135deg, #3a1e1e, #4a2a2a)', border: '1px solid #8b3030', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = '#ef4444'}
+          onMouseLeave={e => e.currentTarget.style.borderColor = '#8b3030'}>
+          <Icon name="target" size={22} color="#ef4444" />
+          <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Weak Track</div>
+          <div style={{ fontSize: 11, color: '#9a4040', marginTop: 2 }}>Memory repair</div>
+        </button>
+      </div>
+
+      {/* Import from Chat */}
+      <button onClick={() => onNav('import-track')}
+        style={{ width: '100%', background: 'var(--surface)', border: '1px dashed var(--gold-dim)', borderRadius: 12, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
+        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--gold-dim)'}>
+        <span style={{ fontSize: 22 }}>📋</span>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>Import Track from Claude</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>Ask Claude to generate a track → paste JSON here</div>
+        </div>
+      </button>
+
+      {/* Recent Tracks */}
+      {recent.length > 0 && (
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Recent Tracks</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {recent.map((track, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'stretch', gap:6 }}>
+                <Card onClick={() => onOpenTrack(track)} style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, flex:1 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: track.mode === 'weak' ? '#2d1515' : '#0a2d1e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name={track.mode === 'weak' ? 'target' : 'sparkles'} size={14} color={track.mode === 'weak' ? '#ef4444' : '#10b981'} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600 }}>{track.date}</p>
+                    <p style={{ fontSize: 11, color: 'var(--muted)' }}>{track.pairs?.length || 0} pairs · {track.keywords?.length || 0} keywords</p>
+                  </div>
+                  {track.rated && <Icon name="check" size={14} color="#10b981" />}
+                </Card>
+                <button onClick={e => { e.stopPropagation(); onDeleteTrack(tracks.length - 1 - i) }}
+                  style={{ background:'#2d1515', border:'1px solid #3d1a1a', borderRadius:10, padding:'0 12px', cursor:'pointer', color:'#ef4444', flexShrink:0, fontSize:16 }}>
+                  🗑
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Claude API Track Generation ───────────────────────────────────────────────
+async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, vocab) {
+  const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
+  const anchorList = anchors.slice(0, 30).map(w => `${w.thai} = ${w.english}`).join('\n')
+
+  // Full approved vocabulary — Claude may ONLY use these Thai words in sentences
+  // Include particles/grammar words by default since they're universal
+  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','ไม่','ได้','จะ','และ','แต่','หรือ','เพราะ','ว่า','ถ้า','ก่อน','หลัง','แล้วก็','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก']
+  const allThai = new Set([
+    ...ALWAYS_ALLOWED,
+    ...(vocab || []).map(w => w.thai)
+  ])
+  const approvedList = [...allThai].join('  ')
+
+  const system = `You are a Thai language teaching assistant creating Pimsleur-style audio lessons.
+Generate 60 challenge-response pairs. Each pair has:
+- "prompt": English instruction
+- "thai": full Thai sentence 6-12 words
+- "english": natural English translation
+- "phonetic": full romanization with tone marks, one token per Thai word, space-separated
+- "words": array of {"p": phonetic_token, "e": English_gloss} — one entry per Thai word in order, aligned with phonetic tokens
+
+TONE MARKS: mid=no mark, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ)
+
+CRITICAL VOCABULARY RULE: Thai sentences must ONLY use words from the APPROVED VOCABULARY LIST provided. Do not introduce any Thai word not on that list. The student has not learned other words yet. This is the most important rule.
+
+OTHER RULES:
+- Every TARGET WORD (★) must appear exactly 3 times across the 60 pairs, in different sentence contexts
+- Use varied prompt types: "Tell someone...", "Ask if...", "Say that...", "Respond to...", "How would you say..."
+- Thai sentences must be natural, complete sentences with particles (ครับ/ค่ะ/นะ)
+- Anchor words appear 1-2 times each for review
+- "words" array must have exactly the same number of entries as space-separated tokens in "phonetic"
+
+Example pair:
+{"prompt":"Tell someone you want to go home","thai":"ผมอยากกลับบ้านครับ","english":"I want to go home","phonetic":"phǒm yàak glàp bâan khrâp","words":[{"p":"phǒm","e":"I"},{"p":"yàak","e":"want"},{"p":"glàp","e":"return"},{"p":"bâan","e":"home"},{"p":"khrâp","e":"[polite]"}]}
+
+Respond ONLY with valid JSON array, no markdown:
+[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[...]}]`
+  const user = `APPROVED VOCABULARY (use ONLY these Thai words):\n${approvedList}\n\nTARGET WORDS (each must appear 3x):\n${targetList}\n\nANCHOR WORDS (review, 1-2x each):\n${anchorList}`
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 16000, stream: true, system, messages: [{ role: 'user', content: user }] })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err?.error?.message || `API error ${res.status}`)
+  }
+
+  // Stream the response and count pairs as they arrive
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let accumulated = ''
+  let pairsFound = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    const chunk = decoder.decode(value, { stream: true })
+    for (const line of chunk.split('\n')) {
+      if (!line.startsWith('data: ')) continue
+      const data = line.slice(6).trim()
+      if (data === '[DONE]') break
+      try {
+        const evt = JSON.parse(data)
+        if (evt.type === 'content_block_delta' && evt.delta?.text) {
+          accumulated += evt.delta.text
+          // Count completed pairs by counting "phonetic" keys (last key in each pair)
+          const found = (accumulated.match(/"phonetic"\s*:/g) || []).length
+          if (found !== pairsFound) {
+            pairsFound = found
+            onProgress && onProgress(pairsFound, 60)
+          }
+        }
+      } catch {}
+    }
+  }
+
+  let text = accumulated.trim().replace(/^```json\n?|\n?```$/g, '').trim()
+
+  // Robust parse — extract all complete objects even if array is truncated
+  function parsePartialArray(str) {
+    try { return JSON.parse(str) } catch {}
+    // Find all complete {...} objects by scanning for balanced braces
+    const pairs = []
+    let depth = 0, start = -1
+    for (let i = 0; i < str.length; i++) {
+      const c = str[i]
+      if (c === '{') { if (depth === 0) start = i; depth++ }
+      else if (c === '}') {
+        depth--
+        if (depth === 0 && start !== -1) {
+          try {
+            const obj = JSON.parse(str.slice(start, i + 1))
+            if (obj.prompt && obj.thai) pairs.push(obj)
+          } catch {}
+          start = -1
+        }
+      }
+    }
+    return pairs
+  }
+
+  const pairs = parsePartialArray(text)
+  if (!pairs.length) throw new Error('No pairs could be parsed from response')
+  onProgress && onProgress(pairs.length, pairs.length)
+  return pairs
+}
+
+// ── Track Generator ───────────────────────────────────────────────────────────
+function Generator({ vocab, mode, onGenerated, onBack, apiKey }) {
+  const [error, setError] = useState('')
+  const [pairsDone, setPairsDone] = useState(0)
+  const [pairsTotal, setPairsTotal] = useState(60)
+  const [phase, setPhase] = useState('starting') // starting | streaming | done | error
+  const { targets, anchors } = useMemo(() => pickWords(vocab, mode), [vocab, mode])
+
+  const isWeak = mode === 'weak'
+  const color = isWeak ? '#ef4444' : '#10b981'
+  const pct = Math.round((pairsDone / pairsTotal) * 100)
+
+  // Latest pair preview from stream
+  const [latestPair, setLatestPair] = useState(null)
+
+  useEffect(() => {
+    async function build() {
+      try {
+        let pairs
+        if (apiKey) {
+          setPhase('streaming')
+          let lastCount = 0
+          pairs = await generateTrackWithClaude(targets, anchors, apiKey, (done, total) => {
+            setPairsDone(done)
+            setPairsTotal(total)
+          }, vocab)
+        } else {
+          setPhase('streaming')
+          pairs = generatePairsLocal(targets, anchors)
+          setPairsDone(pairs.length)
+          setPairsTotal(pairs.length)
+        }
+        setPhase('done')
+        const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null }))
+        const track = {
+          date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
+        }
+        setTimeout(() => onGenerated(track), 400)
+      } catch(e) {
+        setPhase('error')
+        const msg = e.message || 'Unknown error'
+        const hint = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS')
+          ? msg + '\n\n⚠️ API calls are blocked when opening the file directly. Host the file on Netlify or GitHub Pages.'
+          : msg
+        setError(hint)
+      }
+    }
+    build()
+  }, [])
+
+  if (phase === 'error') return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:20 }}>
+      <div style={{ fontSize:40 }}>⚠️</div>
+      <div className="display" style={{ fontSize:20, textAlign:'center' }}>Generation Failed</div>
+      <p style={{ color:'var(--muted)', fontSize:13, textAlign:'center', maxWidth:320, whiteSpace:'pre-wrap' }}>{error}</p>
+      <div style={{ display:'flex', gap:10 }}>
+        <Btn onClick={() => { setPhase('starting'); setError(''); setPairsDone(0) }} variant="primary">Try Again</Btn>
+        <Btn onClick={onBack} variant="ghost">Back</Btn>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:24, paddingTop:40 }}>
+
+      {/* Title */}
+      <div style={{ textAlign:'center' }}>
+        <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
+          {phase === 'done' ? '✓ Track Ready!' : apiKey ? 'Claude is writing your track' : 'Building track...'}
+        </div>
+        <p style={{ color:'var(--muted)', fontSize:13 }}>
+          {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
+        </p>
+      </div>
+
+      {/* Big progress bar */}
+      <div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+          <span style={{ fontSize:12, color:'var(--muted)' }}>Pairs generated</span>
+          <span className="phon" style={{ fontSize:13, color:color, fontWeight:700 }}>{pct}%</span>
+        </div>
+        <div style={{ height:10, background:'var(--surface2)', borderRadius:6, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:`${pct}%`, background:`linear-gradient(90deg, ${color}, ${isWeak ? '#f59e0b' : '#d4a94a'})`, borderRadius:6, transition:'width 0.4s ease' }} />
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
+          <span style={{ fontSize:10, color:'var(--muted)' }}>0</span>
+          <span style={{ fontSize:10, color:'var(--muted)' }}>{pairsTotal}</span>
+        </div>
+      </div>
+
+      {/* Live pair counter tiles */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
+        {Array.from({length: pairsTotal}, (_, i) => (
+          <div key={i} style={{
+            height: 8, borderRadius: 3,
+            background: i < pairsDone ? color : 'var(--surface2)',
+            transition: 'background 0.2s',
+            opacity: i < pairsDone ? 1 : 0.4
+          }} />
+        ))}
+      </div>
+
+      {/* Status */}
+      <div style={{ textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+        {phase !== 'done' && <Spinner size={16} color={color} />}
+        <span style={{ fontSize:13, color:'var(--muted)' }}>
+          {phase === 'starting' && 'Connecting to Claude...'}
+          {phase === 'streaming' && pairsDone === 0 && 'Claude is thinking...'}
+          {phase === 'streaming' && pairsDone > 0 && `Writing pair ${pairsDone}...`}
+          {phase === 'done' && 'Starting lesson...'}
+        </span>
+      </div>
+
+      {/* Target words */}
+      {targets.length > 0 && (
+        <Card style={{ padding:'12px 14px' }}>
+          <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>Targeting {targets.length} words</p>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+            {targets.map((w,i) => (
+              <span key={i} className="thai" style={{ background: i * 3 < pairsDone ? 'var(--surface2)' : 'transparent', border:`1px solid ${i * 3 < pairsDone ? color : 'var(--border)'}`, color: i * 3 < pairsDone ? color : 'var(--muted)', padding:'3px 8px', borderRadius:6, fontSize:12, transition:'all 0.3s' }}>
+                {w.thai}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+// ── Track Player ─────────────────────────────────────────────────────────────
+
+// Duration based on character count
+function calcDuration(text, phase) {
+  const chars = (text || '').length
+  if (phase === 'prompt') return Math.max(3000, 1500 + chars * 67)   // ~15 chars/sec + 1.5s base
+  return Math.max(4000, 2000 + chars * 125)                           // ~8 chars/sec + 2s base (Thai tones)
+}
+
+function Player({ track, onComplete, onBack, onKru }) {
+  const pairs = track.pairs || []
+  const [idx, setIdx] = useState(0)
+  const [phase, setPhase] = useState('prompt')
+  const [playing, setPlaying] = useState(false)
+  const [countdown3, setCountdown3] = useState(3)
+  const [speaking, setSpeaking] = useState(false)
+  const [countdown, setCountdown] = useState(1)
+  const [lessonDone, setLessonDone] = useState(false)
+  const [keywords, setKeywords] = useState((track.keywords || []).map(k => ({ ...k, rating: null })))
+  const [allRated, setAllRated] = useState(false)
+  const [voices, setVoices] = useState([])
+  const [thaiSpeed, setThaiSpeed] = useState(() => { try { const s = localStorage.getItem('tt-speed'); return s ? parseFloat(s) : 0.8 } catch { return 0.8 } })
+  const cancelledRef = useRef(false)
+  const pausedRef = useRef(false)
+  const rafRef = useRef(null)
+
+  const pair = pairs[idx] || {}
+  const overallPct = Math.round((idx / pairs.length) * 100)
+  const HAS_SPEECH = typeof window !== 'undefined' && 'speechSynthesis' in window
+
+  // Estimated time remaining (sum of all remaining pairs)
+  const timeLeft = useMemo(() => {
+    let ms = 0
+    for (let i = idx; i < pairs.length; i++) {
+      const p = pairs[i]
+      ms += calcDuration(p.prompt, 'prompt') + 1800 + calcDuration(p.thai, 'reveal') + 2500
+    }
+    // Subtract current phase if already in reveal
+    if (phase === 'reveal') ms -= calcDuration(pair.prompt, 'prompt') + 1800
+    const mins = Math.ceil(ms / 60000)
+    return mins <= 1 ? '< 1 min' : `~${mins} min`
+  }, [idx, phase, pairs])
+
+  // ── 3-2-1 lead-in before playback starts ──
+  useEffect(() => {
+    let n = 3
+    setCountdown3(n)
+    const iv = setInterval(() => {
+      n--
+      if (n > 0) setCountdown3(n)
+      else { clearInterval(iv); setCountdown3(0); setPlaying(true) }
+    }, 1000)
+    return () => clearInterval(iv)
+  }, [])
+
+  useEffect(() => {
+    if (!HAS_SPEECH) return
+    function load() { const v = window.speechSynthesis.getVoices(); if (v.length) setVoices(v) }
+    load()
+    window.speechSynthesis.onvoiceschanged = load
+    return () => { try { window.speechSynthesis.onvoiceschanged = null } catch(e) {} }
+  }, [])
+
+  function startCountdown(ms) {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    const start = Date.now()
+    setCountdown(1)
+    function tick() {
+      const remaining = Math.max(0, 1 - (Date.now() - start) / ms)
+      setCountdown(remaining)
+      if (remaining > 0 && !cancelledRef.current) rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+  }
+
+  function stopCountdown() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    setCountdown(0)
+  }
+
+  function speakOrWait(text, lang, ms, onDone) {
+    if (!HAS_SPEECH) {
+      setSpeaking(true); startCountdown(ms)
+      const t = setTimeout(() => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }, ms)
+      return () => clearTimeout(t)
+    }
+    try { window.speechSynthesis.cancel() } catch(e) {}
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = lang
+    utter.rate = lang.startsWith('th') ? thaiSpeed : 0.88
+    const match = voices.find(v => v.lang.startsWith(lang.slice(0, 2)))
+    if (match) utter.voice = match
+    setSpeaking(true); startCountdown(ms)
+    utter.onend = () => { setSpeaking(false); stopCountdown(); if (!pausedRef.current && !cancelledRef.current) onDone() }
+    utter.onerror = () => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }
+    try { window.speechSynthesis.speak(utter) } catch(e) { setSpeaking(false); stopCountdown(); onDone() }
+    return () => { try { window.speechSynthesis.cancel() } catch(e) {} setSpeaking(false); stopCountdown() }
+  }
+
+  useEffect(() => {
+    if (!playing || lessonDone) return
+    cancelledRef.current = false; pausedRef.current = false
+    const promptDur = calcDuration(pair.prompt, 'prompt')
+    const revealDur = calcDuration(pair.thai, 'reveal')
+    let cleanup = () => {}
+    if (phase === 'prompt') {
+      cleanup = speakOrWait(pair.prompt, 'en-US', promptDur, () => {
+        startCountdown(1800)
+        const t = setTimeout(() => { if (!cancelledRef.current) { stopCountdown(); setPhase('reveal') } }, 1800)
+        return () => clearTimeout(t)
+      }) || (() => {})
+    } else {
+      cleanup = speakOrWait(pair.thai, 'th-TH', revealDur, () => {
+        startCountdown(2500)
+        const t = setTimeout(() => {
+          if (cancelledRef.current) return
+          stopCountdown()
+          if (idx < pairs.length - 1) { setIdx(i => i + 1); setPhase('prompt') }
+          else setLessonDone(true)
+        }, 2500)
+        return () => clearTimeout(t)
+      }) || (() => {})
+    }
+    return () => {
+      cancelledRef.current = true
+      try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {}
+      setSpeaking(false); stopCountdown(); cleanup()
+    }
+  }, [idx, phase, playing, lessonDone, voices])
+
+  function togglePlay() {
+    if (playing) {
+      pausedRef.current = true
+      try { if (HAS_SPEECH) window.speechSynthesis.pause() } catch(e) {}
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      setPlaying(false)
+    } else {
+      pausedRef.current = false
+      try { if (HAS_SPEECH) window.speechSynthesis.resume() } catch(e) {}
+      setPlaying(true)
+    }
+  }
+
+  function jumpTo(newIdx, newPhase = 'prompt') {
+    cancelledRef.current = true
+    try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {}
+    setSpeaking(false); stopCountdown()
+    setIdx(newIdx); setPhase(newPhase); setPlaying(true)
+    setTimeout(() => { cancelledRef.current = false }, 50)
+  }
+
+  function rateKeyword(i, rating) {
+    setKeywords(kw => {
+      const u = kw.map((k, ki) => ki === i ? { ...k, rating } : k)
+      setAllRated(u.every(k => k.rating))
+      return u
+    })
+  }
+
+  const Waveform = () => (
+    <div style={{ display:'flex', alignItems:'center', gap:3, height:24 }}>
+      {[0,1,2,3,4,5,6].map(i => (
+        <div key={i} style={{ width:3, borderRadius:2, background:phase==='reveal'?'var(--gold)':'#4a90e2', height:speaking?`${8+Math.sin(i*0.9)*8+4}px`:'4px', animation:speaking?`wave 0.7s ease-in-out ${i*0.09}s infinite alternate`:'none', transition:'height 0.2s' }} />
+      ))}
+      <style>{`@keyframes wave{from{height:4px}to{height:22px}}`}</style>
+    </div>
+  )
+
+  if (lessonDone) {
+    return (
+      <div className="fade-in" style={{ background:'var(--bg)', minHeight:'100vh', padding:'16px 16px 40px', maxWidth:500, margin:'0 auto' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
+          <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="x" size={20} /></button>
+          <div>
+            <div className="display" style={{ fontSize:18 }}>Lesson complete!</div>
+            <div style={{ fontSize:12, color:'var(--muted)' }}>Rate how well you knew each word</div>
+          </div>
+        </div>
+        <div style={{ height:3, background:'var(--gold)', borderRadius:2, marginBottom:24 }} />
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:24 }}>
+          {keywords.map((kw,i) => (
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
+              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:12 }}>
+                <span className="thai" style={{ fontSize:26, color:'var(--gold)' }}>{kw.thai}</span>
+                <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                {[['hard','😅','#ef4444','#2d1515'],['ok','👍','#f59e0b','#3d2800'],['easy','⭐','#10b981','#063d2e']].map(([r,e,col,bg]) => (
+                  <button key={r} onClick={() => rateKeyword(i,r)}
+                    style={{ flex:1, padding:'9px 4px', borderRadius:8, border:`1px solid ${kw.rating===r?col:'var(--border)'}`, background:kw.rating===r?bg:'transparent', color:kw.rating===r?col:'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                    {e} {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => onComplete(keywords)} disabled={!allRated}
+          style={{ width:'100%', padding:'15px', borderRadius:12, border:'none', background:allRated?'linear-gradient(135deg,#d4a94a,#b88a35)':'var(--surface2)', color:allRated?'#0b1120':'var(--muted)', fontSize:16, fontWeight:700, cursor:allRated?'pointer':'not-allowed', fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
+          Save Progress
+        </button>
+      </div>
+    )
+  }
+
+  const barColor = speaking ? (phase==='prompt' ? '#4a90e2' : 'var(--gold)') : 'var(--surface2)'
+
+  return (
+    <div style={{ background:'var(--bg)', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:500, margin:'0 auto', userSelect:'none' }}>
+
+      {/* Overall progress — top */}
+      <div style={{ height:3, background:'var(--surface2)' }}>
+        <div style={{ height:'100%', width:`${overallPct}%`, background:'linear-gradient(90deg,#d4a94a,#10b981)', transition:'width 0.5s ease' }} />
+      </div>
+
+      {/* Controls */}
+      <div style={{ display:'flex', alignItems:'center', padding:'10px 16px', gap:8 }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="arrow_left" size={18} /></button>
+        <span style={{ fontSize:13, color:'var(--muted)' }}>{idx+1} / {pairs.length}</span>
+        <span style={{ fontSize:11, color:'var(--gold-dim)', marginLeft:4 }}>{timeLeft}</span>
+        <div style={{ flex:1 }} />
+        <button onClick={() => idx>0 && jumpTo(idx-1)} disabled={idx===0}
+          style={{ background:'none', border:'none', color:idx===0?'var(--border)':'var(--muted)', cursor:idx===0?'default':'pointer', padding:'6px 8px', fontSize:18 }}>⏮</button>
+        <button onClick={togglePlay}
+          style={{ width:40, height:40, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          {playing ? '⏸' : '▶'}
+        </button>
+        <button onClick={() => idx<pairs.length-1 ? jumpTo(idx+1) : setLessonDone(true)}
+          style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:'6px 8px', fontSize:18 }}>⏭</button>
+        <button onClick={() => { togglePlay(); onKru(pair.prompt) }}
+          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'var(--gold)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>ครู</button>
+      </div>
+
+      {/* Thai speed control */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 16px 0' }}>
+        <span style={{ fontSize:11, color:'var(--muted)', whiteSpace:'nowrap' }}>🐢</span>
+        <input type="range" min="0.4" max="1.2" step="0.05" value={thaiSpeed}
+          onChange={e => { const v = parseFloat(e.target.value); setThaiSpeed(v); try { localStorage.setItem('tt-speed', v) } catch {} }}
+          style={{ flex:1, accentColor:'var(--gold)', height:4, cursor:'pointer' }} />
+        <span style={{ fontSize:11, color:'var(--muted)', whiteSpace:'nowrap' }}>🐇</span>
+        <span className="phon" style={{ fontSize:11, color:'var(--gold)', minWidth:28, textAlign:'right' }}>{thaiSpeed.toFixed(2)}x</span>
+      </div>
+
+      {/* Countdown bar — shrinks left to right, resets each phase */}
+      <div style={{ margin:'0 16px', height:5, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
+        <div style={{ height:'100%', width:`${countdown*100}%`, background:barColor, borderRadius:3, transition:'background 0.3s' }} />
+      </div>
+      <div style={{ textAlign:'center', padding:'6px 0 0', fontSize:10, letterSpacing:'0.1em', color:'var(--muted)', textTransform:'uppercase' }}>
+        {!playing && countdown3 > 0 ? `Starting in ${countdown3}...` : !playing ? '⏸ paused' : speaking ? (phase==='prompt' ? 'listening...' : 'repeat aloud ↑') : 'get ready...'}
+      </div>
+
+      {/* Main content */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px 32px 32px', textAlign:'center', gap:24 }}>
+        {phase === 'prompt' ? (
+          <div className="fade-in" key={`p-${idx}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:20 }}>
+            <div style={{ fontSize:11, letterSpacing:'0.12em', color:'#4a90e2', textTransform:'uppercase', fontWeight:600 }}>Say in Thai</div>
+            <p style={{ fontSize:22, fontWeight:600, lineHeight:1.65, color:'var(--text)', maxWidth:340 }}>{pair.prompt}</p>
+            <Waveform />
+          </div>
+        ) : (
+          <div className="fade-in" key={`r-${idx}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
+            <div style={{ fontSize:11, letterSpacing:'0.12em', color:'var(--gold)', textTransform:'uppercase', fontWeight:600 }}>Repeat aloud</div>
+            {/* Aligned phonetic + gloss or plain phonetic fallback */}
+            {pair.words && pair.words.length ? (
+              <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'6px 10px', maxWidth:360 }}>
+                {pair.words.map((w, i) => (
+                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
+                    <span className="phon" style={{ fontSize:17, color:'var(--gold)', fontWeight:500 }}>{w.p}</span>
+                    <span style={{ fontSize:10, color:'#7a8aad', fontStyle:'italic', whiteSpace:'nowrap' }}>{w.e}</span>
+                  </div>
+                ))}
+              </div>
+            ) : pair.phonetic ? (
+              <p className="phon" style={{ fontSize:28, color:'var(--gold)', lineHeight:1.5, maxWidth:340, textAlign:'center' }}>{pair.phonetic}</p>
+            ) : (
+              <p className="thai" style={{ fontSize:34, color:'var(--gold)', lineHeight:1.5, maxWidth:340 }}>{pair.thai}</p>
+            )}
+            <Waveform />
+            <p className="thai" style={{ fontSize:16, color:'#7a8aad', letterSpacing:'0.03em', textAlign:'center' }}>{pair.thai}</p>
+            <p style={{ fontSize:13, color:'var(--muted)', fontStyle:'italic' }}>{pair.english}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Browse Vocab ──────────────────────────────────────────────────────────────
+function Browser({ vocab, onBack }) {
+  const [q, setQ] = useState('')
+  const [filter, setFilter] = useState('all')
+
+  const filtered = useMemo(() => {
+    return vocab.filter(w => {
+      const matchQ = !q || w.thai.includes(q) || w.english.toLowerCase().includes(q.toLowerCase())
+      const matchF = filter === 'all' || w.status === filter
+      return matchQ && matchF
+    })
+  }, [vocab, q, filter])
+
+  const filters = [['all', 'All'], ['new', 'New'], ['learning', 'Learning'], ['known', 'Known'], ['lapsed', 'Lapsed']]
+
+  return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+          <Icon name="arrow_left" size={20} />
+        </button>
+        <span className="display" style={{ fontSize: 18 }}>Browse Vocabulary</span>
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)' }}>{filtered.length} words</span>
+      </div>
+
+      {/* Search */}
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <Icon name="search" size={16} color="var(--muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search Thai or English..."
+          style={{ width: '100%', padding: '10px 12px 10px 36px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 14, fontFamily: 'Sarabun, sans-serif', outline: 'none' }} />
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', paddingBottom: 4 }}>
+        {filters.map(([id, label]) => (
+          <button key={id} onClick={() => setFilter(id)}
+            style={{ padding: '6px 12px', borderRadius: 20, border: '1px solid', borderColor: filter === id ? 'var(--gold)' : 'var(--border)', background: filter === id ? '#1e1600' : 'transparent', color: filter === id ? 'var(--gold)' : 'var(--muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'Sarabun, sans-serif', transition: 'all 0.15s' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 'calc(100vh - 240px)' }}>
+        {filtered.map(w => (
+          <Card key={w.id} style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }} hover={false}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="thai" style={{ fontSize: 20, color: 'var(--text)' }}>{w.thai}</span>
+                <Badge status={w.status} />
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>{w.english}</p>
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <p className="phon" style={{ fontSize: 11, color: 'var(--muted)' }}>×{w.repCount}</p>
+              {w.lapses > 0 && <p style={{ fontSize: 10, color: '#ef4444' }}>{w.lapses} lapse</p>}
+            </div>
+          </Card>
+        ))}
+        {filtered.length === 0 && <p style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>No words found</p>}
+      </div>
+    </div>
+  )
+}
+
+// ── Add Words ─────────────────────────────────────────────────────────────────
+function Adder({ onBack, onAdded }) {
+  const [thai, setThai] = useState('')
+  const [english, setEnglish] = useState('')
+  const [added, setAdded] = useState([])
+  const [bulk, setBulk] = useState('')
+  const [tab, setTab] = useState('single')
+
+  function addSingle() {
+    if (!thai.trim() || !english.trim()) return
+    const word = { thai: thai.trim(), english: english.trim() }
+    setAdded(a => [...a, word])
+    setThai(''); setEnglish('')
+  }
+
+  function addBulk() {
+    const lines = bulk.split('\n').filter(l => l.includes('=') || l.includes('-') || l.includes(':') || l.includes('\t'))
+    const words = lines.map(l => {
+      const [t, e] = l.split(/[=\-:\t]/).map(s => s.trim())
+      return t && e ? { thai: t, english: e } : null
+    }).filter(Boolean)
+    setAdded(a => [...a, ...words])
+    setBulk('')
+  }
+
+  function save() {
+    if (!added.length) return
+    onAdded(added)
+  }
+
+  const inputStyle = { width: '100%', padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 15, fontFamily: 'Sarabun, sans-serif', outline: 'none', marginBottom: 10 }
+
+  return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+          <Icon name="arrow_left" size={20} />
+        </button>
+        <span className="display" style={{ fontSize: 18 }}>Add Words</span>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 16, background: 'var(--surface)', borderRadius: 10, padding: 4 }}>
+        {[['single', 'Single'], ['bulk', 'Bulk Import']].map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)}
+            style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: tab === id ? 'var(--surface2)' : 'transparent', color: tab === id ? 'var(--text)' : 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Sarabun, sans-serif', transition: 'all 0.15s' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'single' ? (
+        <div>
+          <input value={thai} onChange={e => setThai(e.target.value)} placeholder="Thai word (e.g. กิน)" className="thai" style={inputStyle} onKeyDown={e => e.key === 'Enter' && addSingle()} />
+          <input value={english} onChange={e => setEnglish(e.target.value)} placeholder="English meaning (e.g. eat)" style={inputStyle} onKeyDown={e => e.key === 'Enter' && addSingle()} />
+          <Btn onClick={addSingle} variant="secondary" style={{ width: '100%', justifyContent: 'center' }}>
+            <Icon name="plus" size={14} /> Add Word
+          </Btn>
+        </div>
+      ) : (
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>One word per line: Thai = English (or Thai - English, Thai: English)</p>
+          <textarea value={bulk} onChange={e => setBulk(e.target.value)} placeholder={"กิน = eat\nดื่ม = drink\nนอน = sleep"}
+            style={{ ...inputStyle, minHeight: 160, resize: 'vertical' }} />
+          <Btn onClick={addBulk} variant="secondary" style={{ width: '100%', justifyContent: 'center' }}>
+            <Icon name="plus" size={14} /> Parse & Add
+          </Btn>
+        </div>
+      )}
+
+      {/* Preview */}
+      {added.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)' }}>{added.length} words ready to save</p>
+            <button onClick={() => setAdded([])} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}>Clear</button>
+          </div>
+          <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {added.map((w, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, padding: '8px 12px', background: 'var(--surface)', borderRadius: 8, fontSize: 13 }}>
+                <span className="thai" style={{ color: 'var(--gold)' }}>{w.thai}</span>
+                <span style={{ color: 'var(--muted)' }}>= {w.english}</span>
+              </div>
+            ))}
+          </div>
+          <Btn onClick={save} variant="primary" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }}>
+            <Icon name="check" size={14} /> Save {added.length} Words
+          </Btn>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Kru Chat ──────────────────────────────────────────────────────────────────
+function KruPanel({ open, onClose, trackContext, vocab }) {
+  const [msgs, setMsgs] = useState([
+    { role: 'assistant', content: 'สวัสดีครับ! I\'m Kru, your Thai teacher. Ask me anything about Thai language — pronunciation, tones, grammar, vocabulary, culture!' }
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const bottomRef = useRef(null)
+  const inputRef = useRef(null)
+
+  useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 300) }, [open])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
+
+  async function send() {
+    const text = input.trim()
+    if (!text || loading) return
+    setInput('')
+    const userMsg = { role: 'user', content: text }
+    setMsgs(m => [...m, userMsg])
+    setLoading(true)
+    try {
+      const history = [...msgs, userMsg].filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content }))
+      const reply = await askKru(history, trackContext)
+      setMsgs(m => [...m, { role: 'assistant', content: reply }])
+    } catch (e) {
+      setMsgs(m => [...m, { role: 'assistant', content: `Sorry, I had trouble responding: ${e.message}` }])
+    }
+    setLoading(false)
+  }
+
+  if (!open) return null
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ marginTop: 'auto', background: 'var(--surface)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #d4a94a, #b88a35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>ครู</div>
+          <div>
+            <div className="display" style={{ fontSize: 16, color: 'var(--text)' }}>Kru</div>
+            <div style={{ fontSize: 11, color: '#10b981' }}>Thai Teacher · Online</div>
+          </div>
+          <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+            <Icon name="x" size={20} />
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {msgs.map((m, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div style={{ maxWidth: '85%', padding: '10px 14px', borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: m.role === 'user' ? 'linear-gradient(135deg, #1e3a1e, #2a4a2a)' : 'var(--surface2)', border: m.role === 'user' ? '1px solid #2d6b2d' : '1px solid var(--border)', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {m.content}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div style={{ display: 'flex', gap: 4, padding: '10px 14px', background: 'var(--surface2)', borderRadius: '16px 16px 16px 4px', width: 'fit-content', border: '1px solid var(--border)' }}>
+              {[0, 1, 2].map(i => <div key={i} className="pulse-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--gold)', animationDelay: `${i * 0.2}s` }} />)}
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input */}
+        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+          <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+            placeholder="Ask about Thai..." style={{ flex: 1, padding: '10px 14px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 14, fontFamily: 'Sarabun, sans-serif', outline: 'none' }} />
+          <button onClick={send} disabled={!input.trim() || loading}
+            style={{ width: 40, height: 40, borderRadius: 10, background: input.trim() && !loading ? 'linear-gradient(135deg, #d4a94a, #b88a35)' : 'var(--surface2)', border: 'none', cursor: input.trim() && !loading ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', color: '#0b1120' }}>
+            <Icon name="send" size={16} color={input.trim() && !loading ? '#0b1120' : 'var(--muted)'} />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Import Track (paste JSON from Claude chat) ────────────────────────────────
+function ImportTrack({ onBack, onImported, vocab }) {
+  const [text, setText] = useState('')
+  const [error, setError] = useState('')
+  const [preview, setPreview] = useState(null)
+
+  function parse() {
+    setError('')
+    try {
+      // Accept raw JSON or a code block
+      const clean = text.replace(/```json\n?|\n?```/g, '').trim()
+      const data = JSON.parse(clean)
+      // Accept array of pairs OR full track object
+      const pairs = Array.isArray(data) ? data : data.pairs
+      if (!pairs || !pairs.length) throw new Error('No pairs found')
+      // Validate first pair has required fields
+      if (!pairs[0].prompt || !pairs[0].thai) throw new Error('Pairs must have "prompt" and "thai" fields')
+      // Build keywords list by matching thai words to vocab
+      const keywords = []
+      const seen = new Set()
+      for (const p of pairs) {
+        const match = vocab.find(w => p.thai?.includes(w.thai) && !seen.has(w.id))
+        if (match) { keywords.push({ thai: match.thai, english: match.english, wordId: match.id, rating: null }); seen.add(match.id) }
+      }
+      const track = {
+        date: data.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        mode: data.mode || 'daily',
+        pairs,
+        keywords: keywords.slice(0, 20),
+        rated: false,
+        createdAt: new Date().toISOString(),
+      }
+      setPreview(track)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const wordCount = preview?.keywords?.length || 0
+
+  return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+          <Icon name="arrow_left" size={20} />
+        </button>
+        <span className="display" style={{ fontSize: 18 }}>Import Track from Chat</span>
+      </div>
+
+      {!preview ? (
+        <>
+          <Card style={{ padding: 16, marginBottom: 16, borderColor: 'var(--gold-dim)' }}>
+            <p style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 600, marginBottom: 6 }}>How to get your track:</p>
+            <ol style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.8, paddingLeft: 18 }}>
+              <li>Go back to the Claude chat</li>
+              <li>Say <strong style={{ color: 'var(--text)' }}>"Generate a daily track for me"</strong></li>
+              <li>Claude will output a JSON track</li>
+              <li>Copy the full JSON and paste it below</li>
+            </ol>
+          </Card>
+
+          <textarea value={text} onChange={e => setText(e.target.value)}
+            placeholder={'Paste track JSON here...\n\n[{"prompt": "...", "thai": "...", "english": "..."},\n ...]'}
+            style={{ width: '100%', minHeight: 200, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono, monospace', outline: 'none', resize: 'vertical', marginBottom: 10 }} />
+
+          {error && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 10 }}>⚠️ {error}</p>}
+
+          <Btn onClick={parse} variant="primary" disabled={!text.trim()} style={{ width: '100%', justifyContent: 'center' }}>
+            Parse Track
+          </Btn>
+        </>
+      ) : (
+        <div>
+          <Card style={{ padding: 16, marginBottom: 14, borderColor: '#2d6b2d' }}>
+            <p style={{ color: '#10b981', fontWeight: 600, marginBottom: 4 }}>✓ Track ready to load</p>
+            <p style={{ color: 'var(--muted)', fontSize: 13 }}>{preview.pairs.length} pairs · {wordCount} keywords matched to your vocab</p>
+          </Card>
+
+          <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+            {preview.pairs.slice(0, 8).map((p, i) => (
+              <Card key={i} style={{ padding: '10px 14px' }} hover={false}>
+                <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>{p.prompt}</p>
+                <p className="thai" style={{ fontSize: 18, color: 'var(--gold)' }}>{p.thai}</p>
+                {p.phonetic && <p className="phon" style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{p.phonetic}</p>}
+              </Card>
+            ))}
+            {preview.pairs.length > 8 && <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>+{preview.pairs.length - 8} more pairs</p>}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Btn onClick={() => setPreview(null)} variant="ghost" style={{ flex: 1, justifyContent: 'center' }}>Back</Btn>
+            <Btn onClick={() => onImported(preview)} variant="primary" style={{ flex: 2, justifyContent: 'center' }}>
+              <Icon name="play" size={14} /> Start Track
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+function Settings({ onBack, apiKey, onSaveKey }) {
+  const [key, setKey] = useState(apiKey || '')
+  const [saved, setSaved] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState('')
+
+  async function saveKey() {
+    const trimmed = key.trim()
+    await stSet('tt-apikey', trimmed)
+    onSaveKey(trimmed)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  async function testKey() {
+    if (!key.trim()) return
+    setTesting(true); setTestResult('')
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+      })
+      if (res.ok) setTestResult('✅ Key works!')
+      else { const d = await res.json().catch(()=>({})); setTestResult('❌ ' + (d?.error?.message || `Error ${res.status}`)) }
+    } catch(e) { setTestResult('❌ ' + e.message) }
+    setTesting(false)
+  }
+
+  const masked = key.length > 8 ? key.slice(0,8) + '••••••••••••••••' : key
+
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24 }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}>
+          <Icon name="arrow_left" size={20} />
+        </button>
+        <span className="display" style={{ fontSize:18 }}>Settings</span>
+      </div>
+
+      <Card style={{ marginBottom:12, borderColor:'var(--gold-dim)' }}>
+        <p style={{ fontSize:13, color:'var(--gold)', fontWeight:600, marginBottom:6 }}>Claude API Key</p>
+        <p style={{ fontSize:12, color:'var(--muted)', marginBottom:12, lineHeight:1.6 }}>
+          Get your key at <span style={{ color:'var(--text)' }}>console.anthropic.com</span> → API Keys. 
+          Stored only on this device. Enables AI-generated Pimsleur tracks.
+        </p>
+        <input
+          type="password"
+          value={key}
+          onChange={e => { setKey(e.target.value); setSaved(false); setTestResult('') }}
+          placeholder="sk-ant-..."
+          style={{ width:'100%', padding:'10px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, color:'var(--text)', fontSize:14, fontFamily:'DM Mono, monospace', outline:'none', marginBottom:10 }}
+        />
+        {key && apiKey && key === apiKey && (
+          <p style={{ fontSize:11, color:'var(--muted)', marginBottom:10 }}>Current: {masked}</p>
+        )}
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={testKey} disabled={!key.trim() || testing}
+            style={{ flex:1, padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', color:key.trim()?'var(--text)':'var(--muted)', cursor:key.trim()?'pointer':'not-allowed', fontSize:13, fontFamily:'Sarabun,sans-serif', fontWeight:600 }}>
+            {testing ? '...' : 'Test Key'}
+          </button>
+          <button onClick={saveKey} disabled={!key.trim()}
+            style={{ flex:2, padding:'10px', borderRadius:10, border:'none', background:saved?'#063d2e':'linear-gradient(135deg,#d4a94a,#b88a35)', color:saved?'#10b981':'#0b1120', cursor:key.trim()?'pointer':'not-allowed', fontSize:14, fontFamily:'Sarabun,sans-serif', fontWeight:700, transition:'all 0.3s' }}>
+            {saved ? '✓ Saved' : 'Save Key'}
+          </button>
+        </div>
+        {testResult && <p style={{ fontSize:13, marginTop:10, color: testResult.startsWith('✅') ? '#10b981' : '#ef4444' }}>{testResult}</p>}
+      </Card>
+
+      <Card style={{ borderColor: apiKey ? '#2d6b2d' : 'var(--border)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:32, height:32, borderRadius:'50%', background: apiKey ? '#063d2e' : 'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Icon name="sparkles" size={14} color={apiKey ? '#10b981' : 'var(--muted)'} />
+          </div>
+          <div>
+            <p style={{ fontSize:13, fontWeight:600, color: apiKey ? '#10b981' : 'var(--muted)' }}>
+              {apiKey ? 'AI Track Generation Active' : 'No API Key — Template Mode'}
+            </p>
+            <p style={{ fontSize:11, color:'var(--muted)', marginTop:2 }}>
+              {apiKey ? 'Tracks use Claude to generate natural Thai sentences' : 'Tracks use local templates. Add a key for full Pimsleur quality.'}
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+function ThaiTeacher() {
+  const [vocab, setVocab] = useState([])
+  const [tracks, setTracks] = useState([])
+  const [view, setView] = useState('dashboard')
+  const [loading, setLoading] = useState(true)
+  const [activeTrack, setActiveTrack] = useState(null)
+  const [genMode, setGenMode] = useState('daily')
+  const [kruOpen, setKruOpen] = useState(false)
+  const [kruCtx, setKruCtx] = useState('')
+  const [apiKey, setApiKey] = useState('')
+
+  // Init
+  useEffect(() => {
+    async function init() {
+      const sv = await stGet('tt-vocab')
+      const st = await stGet('tt-tracks')
+      setVocab(sv && sv.length ? sv : initVocab())
+      if (!sv || !sv.length) {
+        const v = initVocab()
+        setVocab(v)
+        await stSet('tt-vocab', v)
+      }
+      setTracks(st || [])
+      const sk = await stGet('tt-apikey')
+      if (sk) setApiKey(sk)
+      setLoading(false)
+    }
+    init()
+  }, [])
+
+  const saveVocab = useCallback(async v => { setVocab(v); await stSet('tt-vocab', v) }, [])
+  const saveTracks = useCallback(async t => { setTracks(t); await stSet('tt-tracks', t) }, [])
+
+  function navigate(v) {
+    if (v === 'generate-daily') { setGenMode('daily'); setView('generate') }
+    else if (v === 'generate-weak') { setGenMode('weak'); setView('generate') }
+    else setView(v)
+  }
+
+  function onTrackGenerated(track) {
+    const newTracks = [...tracks, track]
+    saveTracks(newTracks)
+    setActiveTrack(track)
+    setView('player')
+  }
+
+  function onTrackComplete(keywords) {
+    // Apply SRS ratings
+    const ratedIds = {}
+    keywords.forEach(k => { if (k.wordId && k.rating) ratedIds[k.wordId] = k.rating })
+    const newVocab = vocab.map(w => ratedIds[w.id] ? applyRating(w, ratedIds[w.id]) : w)
+    saveVocab(newVocab)
+
+    // Mark track as rated
+    const newTracks = tracks.map(t => t === activeTrack ? { ...t, rated: true, keywords } : t)
+    saveTracks(newTracks)
+    setActiveTrack(null)
+    setView('dashboard')
+  }
+
+  function onOpenTrack(track) {
+    setActiveTrack(track)
+    setView('player')
+  }
+
+  function onDeleteTrack(idx) {
+    const newTracks = tracks.filter((_, i) => i !== idx)
+    saveTracks(newTracks)
+  }
+
+  function onWordsAdded(words) {
+    const maxId = vocab.reduce((m, w) => Math.max(m, w.id), 0)
+    const newWords = words.map((w, i) => ({
+      id: maxId + i + 1, thai: w.thai, english: w.english, status: 'new', difficulty: 'hard', interval: 0, lastSeen: null, dueDate: null, repCount: 0, lapses: 0
+    }))
+    const newVocab = [...vocab, ...newWords]
+    saveVocab(newVocab)
+    navigate('dashboard')
+  }
+
+  function openKru(ctx = '') { setKruCtx(ctx); setKruOpen(true) }
+
+  if (loading) {
+    return (
+      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 16 }}>
+        <FontStyle />
+        <div className="thai display" style={{ fontSize: 36, color: 'var(--gold)' }}>สวัสดี</div>
+        <Spinner size={28} />
+        <p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading Thai Teacher...</p>
+      </div>
+    )
+  }
+
+  const trackContext = activeTrack
+    ? `Track: ${activeTrack.date}, mode: ${activeTrack.mode}. Keywords: ${(activeTrack.keywords || []).map(k => `${k.thai}=${k.english}`).join(', ')}`
+    : ''
+
+  return (
+    <div className="app">
+      <FontStyle />
+      <Header view={view} onNav={navigate} />
+      <main>
+        {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} />}
+        {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')} apiKey={apiKey} />}
+        {view === 'player' && activeTrack && (
+          <Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} />
+        )}
+        {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} />}
+        {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} />}
+        {view === 'import-track' && <ImportTrack onBack={() => navigate('dashboard')} onImported={track => { onTrackGenerated(track) }} vocab={vocab} />}
+        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} />}
+      </main>
+
+      {/* Kru floating button */}
+      {view !== 'player' && (
+        <button onClick={() => openKru()} title="Ask Kru"
+          style={{ position: 'fixed', bottom: 20, right: 20, width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg, #d4a94a, #b88a35)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(212,169,74,0.4)', fontSize: 22, zIndex: 40, transition: 'transform 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+          ครู
+        </button>
+      )}
+
+      <KruPanel open={kruOpen} onClose={() => setKruOpen(false)} trackContext={trackContext} vocab={vocab} />
+    </div>
+  )
+}
+
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
+  </script>
+</body>
+</html>

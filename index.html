@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v14';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v15';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v15').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -490,7 +490,7 @@ TARGET WORDS (each must appear 3x): ${targetList}
 ANCHOR WORDS (review): ${anchorList}
 Respond ONLY with valid JSON array, no markdown: [{"prompt":"...","thai":"...","english":"...","phonetic":"...","target_phonetic":"..."}]`
 
-  const res = await fetch('https://api.deepseek.com/chat/completions', {
+  const res = await fetch('/api/deepseek', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 16000, messages: [{ role: 'user', content: prompt }] })
@@ -680,17 +680,22 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
         let pairs
         if (apiKey) {
           setPhase('streaming')
-          let lastCount = 0
           // Fetch phonetics first (fast haiku call) so chips show immediately
-          fetchTargetPhonetics(targets, apiKey).then(map => {
-            if (Object.keys(map).length) setTargetPhonetics(map)
-          }).catch(() => {})
+          if (provider !== 'deepseek') {
+            fetchTargetPhonetics(targets, apiKey).then(map => {
+              if (Object.keys(map).length) setTargetPhonetics(map)
+            }).catch(() => {})
+          }
 
           pairs = await generateTrackWithClaude(targets, anchors, apiKey, (done, total, latestPair) => {
             setPairsDone(done)
             setPairsTotal(total)
           }, vocab, provider)
+        } else if (provider === 'deepseek') {
+          // DeepSeek selected but no key
+          throw new Error('No DeepSeek API key saved. Go to ⚙️ Settings and enter your DeepSeek key from platform.deepseek.com')
         } else {
+          // No key at all — use local templates
           setPhase('streaming')
           pairs = generatePairsLocal(targets, anchors)
           setPairsDone(pairs.length)
@@ -753,7 +758,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' ? '✓ Track Ready!' : apiKey ? 'Claude is writing your track' : 'Building track...'}
+          {phase === 'done' ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : 'Claude'} is writing your track` : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
@@ -792,7 +797,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting to Claude...'}
-          {phase === 'streaming' && pairsDone === 0 && 'Claude is thinking...'}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : 'Claude'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Writing pair ${pairsDone}...`}
           {phase === 'done' && 'Starting lesson...'}
         </span>

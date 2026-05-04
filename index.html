@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v6';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v13';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -333,6 +333,7 @@ function Header({ view, onNav }) {
     { id: 'browse', icon: 'book', label: 'Words' },
     { id: 'add-words', icon: 'plus', label: 'Add' },
     { id: 'settings', icon: 'settings', label: 'Settings' },
+    { id: 'data', icon: 'bookmark', label: 'Data' },
   ]
   return (
     <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, background: 'rgba(11,17,32,0.95)', backdropFilter: 'blur(12px)', zIndex: 50 }}>
@@ -457,7 +458,44 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack }) {
 }
 
 // ── Claude API Track Generation ───────────────────────────────────────────────
-async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, vocab) {
+
+async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab) {
+  const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
+  const anchorList = anchors.slice(0, 30).map(w => `${w.thai} = ${w.english}`).join('\n')
+  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก']
+  const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
+  const approvedList = [...allThai].join('  ')
+  const prompt = `You are a Thai language teaching assistant creating Pimsleur-style audio lessons.
+Generate 60 challenge-response pairs. Each pair: "prompt" (English instruction), "thai" (full Thai sentence 6-12 words), "english" (natural English translation), "phonetic" (tone-marked romanization, space-separated per word), "target_phonetic" (romanization of ONLY the target word marked ★).
+TONE MARKS: mid=none, low=à, falling=â, high=á, rising=ǎ
+CRITICAL: Only use words from APPROVED VOCABULARY.
+Each TARGET WORD (★) appears exactly 3 times in different contexts.
+APPROVED VOCABULARY: ${approvedList}
+TARGET WORDS (each must appear 3x): ${targetList}
+ANCHOR WORDS (review): ${anchorList}
+Respond ONLY with valid JSON array, no markdown: [{"prompt":"...","thai":"...","english":"...","phonetic":"...","target_phonetic":"..."}]`
+
+  const res = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 16000, messages: [{ role: 'user', content: prompt }] })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}))
+    throw new Error(err?.error?.message || `DeepSeek error ${res.status}`)
+  }
+  const data = await res.json()
+  let text = data.choices[0].message.content.trim().replace(/^```json\n?|\n?```$/g,'').trim()
+  const pairs = JSON.parse(text)
+  onProgress && onProgress(pairs.length, pairs.length, null)
+  return pairs
+}
+
+async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, vocab, provider) {
+  // DeepSeek uses OpenAI-compatible API
+  if (provider === 'deepseek') {
+    return generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab)
+  }
   const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
   const anchorList = anchors.slice(0, 30).map(w => `${w.thai} = ${w.english}`).join('\n')
 
@@ -477,6 +515,7 @@ Generate 60 challenge-response pairs. Each pair has:
 - "english": natural English translation
 - "phonetic": full romanization with tone marks, one token per Thai word, space-separated
 - "words": array of {"p": phonetic_token, "e": English_gloss} — one entry per Thai word in order, aligned with phonetic tokens
+- "target_phonetic": the romanized pronunciation of ONLY the target word (★) used in this pair. If no target word, omit this field.
 
 TONE MARKS: mid=no mark, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ)
 
@@ -490,7 +529,7 @@ OTHER RULES:
 - "words" array must have exactly the same number of entries as space-separated tokens in "phonetic"
 
 Example pair:
-{"prompt":"Tell someone you want to go home","thai":"ผมอยากกลับบ้านครับ","english":"I want to go home","phonetic":"phǒm yàak glàp bâan khrâp","words":[{"p":"phǒm","e":"I"},{"p":"yàak","e":"want"},{"p":"glàp","e":"return"},{"p":"bâan","e":"home"},{"p":"khrâp","e":"[polite]"}]}
+{"prompt":"Tell someone you want to go home","thai":"ผมอยากกลับบ้านครับ","english":"I want to go home","phonetic":"phǒm yàak glàp bâan khrâp","words":[{"p":"phǒm","e":"I"},{"p":"yàak","e":"want"},{"p":"glàp","e":"return"},{"p":"bâan","e":"home"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"glàp bâan"}
 
 Respond ONLY with valid JSON array, no markdown:
 [{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[...]}]`
@@ -528,7 +567,19 @@ Respond ONLY with valid JSON array, no markdown:
           const found = (accumulated.match(/"phonetic"\s*:/g) || []).length
           if (found !== pairsFound) {
             pairsFound = found
-            onProgress && onProgress(pairsFound, 60)
+            // Try to extract the most recently completed pair
+            let latestPair = null
+            try {
+              const lastBrace = accumulated.lastIndexOf('"}')
+              if (lastBrace > 0) {
+                const objStart = accumulated.lastIndexOf('{', lastBrace)
+                if (objStart >= 0) {
+                  const obj = JSON.parse(accumulated.slice(objStart, lastBrace + 2))
+                  if (obj.thai && obj.phonetic) latestPair = obj
+                }
+              }
+            } catch {}
+            onProgress && onProgress(pairsFound, 60, latestPair)
           }
         }
       } catch {}
@@ -566,11 +617,38 @@ Respond ONLY with valid JSON array, no markdown:
   return pairs
 }
 
+
+async function fetchTargetPhonetics(targets, apiKey) {
+  const wordList = targets.map(w => w.thai).join(', ')
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: `Give me the tone-marked romanization for each Thai word. Tone marks: mid=none, low=à, falling=â, high=á, rising=ǎ. Use hyphens between syllables.
+Words: ${wordList}
+Respond ONLY with valid JSON, no markdown: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }]
+    })
+  })
+  if (!res.ok) return {}
+  const data = await res.json()
+  const text = data.content[0].text.trim().replace(/^```json\n?|\n?```$/g, '').trim()
+  const parsed = JSON.parse(text)
+  const map = {}
+  for (const r of (parsed.results || [])) {
+    const match = targets.find(t => t.thai === r.thai)
+    if (match) map[match.id] = r.phonetic
+  }
+  return map
+}
+
 // ── Track Generator ───────────────────────────────────────────────────────────
-function Generator({ vocab, mode, onGenerated, onBack, apiKey }) {
+function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
   const [error, setError] = useState('')
   const [pairsDone, setPairsDone] = useState(0)
   const [pairsTotal, setPairsTotal] = useState(60)
+  const [targetPhonetics, setTargetPhonetics] = useState({})
   const [phase, setPhase] = useState('starting') // starting | streaming | done | error
   const { targets, anchors } = useMemo(() => pickWords(vocab, mode), [vocab, mode])
 
@@ -588,10 +666,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey }) {
         if (apiKey) {
           setPhase('streaming')
           let lastCount = 0
-          pairs = await generateTrackWithClaude(targets, anchors, apiKey, (done, total) => {
+          // Fetch phonetics first (fast haiku call) so chips show immediately
+          fetchTargetPhonetics(targets, apiKey).then(map => {
+            if (Object.keys(map).length) setTargetPhonetics(map)
+          }).catch(() => {})
+
+          pairs = await generateTrackWithClaude(targets, anchors, apiKey, (done, total, latestPair) => {
             setPairsDone(done)
             setPairsTotal(total)
-          }, vocab)
+          }, vocab, provider)
         } else {
           setPhase('streaming')
           pairs = generatePairsLocal(targets, anchors)
@@ -599,7 +682,24 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey }) {
           setPairsTotal(pairs.length)
         }
         setPhase('done')
-        const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null }))
+        // Stay on done screen so user can see chips with phonetics — they tap to start
+
+        // Build phonetic map using target_phonetic field Claude provides directly
+        const pairPhoneticMap = {}
+        for (const p of pairs) {
+          if (!p.thai || !p.target_phonetic) continue
+          for (const t of targets) {
+            if (pairPhoneticMap[t.id]) continue
+            // Match whole word only — avoid partial matches like ล่อง matching in longer words
+            const escaped = t.thai.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            if (new RegExp(escaped).test(p.thai)) {
+              pairPhoneticMap[t.id] = p.target_phonetic
+            }
+          }
+        }
+        setTargetPhonetics(pairPhoneticMap)
+
+        const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: pairPhoneticMap[w.id] || '' }))
         const track = {
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
@@ -684,12 +784,17 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey }) {
       {targets.length > 0 && (
         <Card style={{ padding:'12px 14px' }}>
           <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>Targeting {targets.length} words</p>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-            {targets.map((w,i) => (
-              <span key={i} className="thai" style={{ background: i * 3 < pairsDone ? 'var(--surface2)' : 'transparent', border:`1px solid ${i * 3 < pairsDone ? color : 'var(--border)'}`, color: i * 3 < pairsDone ? color : 'var(--muted)', padding:'3px 8px', borderRadius:6, fontSize:12, transition:'all 0.3s' }}>
-                {w.thai}
-              </span>
-            ))}
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+            {targets.map((w,i) => {
+              const done = i * 3 < pairsDone
+              const phonetic = targetPhonetics[w.id] || w.phonetic || ''
+              return (
+                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : 'transparent', border:`1px solid ${done ? color : 'var(--border)'}`, borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0 }}>
+                  <span className="thai" style={{ color: done ? color : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
+                  {phonetic && <span className="phon" style={{ color: done ? color : 'var(--gold)', fontSize:9, marginTop:1, opacity: done ? 1 : 0.7 }}>{phonetic}</span>}
+                </div>
+              )
+            })}
           </div>
         </Card>
       )}
@@ -699,11 +804,33 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey }) {
 
 // ── Track Player ─────────────────────────────────────────────────────────────
 
-// Duration based on character count
-function calcDuration(text, phase) {
-  const chars = (text || '').length
-  if (phase === 'prompt') return Math.max(3000, 1500 + chars * 67)   // ~15 chars/sec + 1.5s base
-  return Math.max(4000, 2000 + chars * 125)                           // ~8 chars/sec + 2s base (Thai tones)
+// Count syllables in Thai text (each Thai syllable cluster = 1 unit)
+// Simple heuristic: split on spaces, each token = ~1 syllable for short words, 2 for long
+// Count syllables from phonetic string (space-separated tokens = syllables)
+// Falls back to Thai char-based estimate if no phonetic available
+function countSyllables(thai, phonetic) {
+  if (phonetic && phonetic.trim()) {
+    return phonetic.trim().split(/\s+/).filter(Boolean).length
+  }
+  // Thai char estimate: avg ~2.5 chars per syllable (incl tone marks, vowels)
+  const chars = (thai || '').replace(/[\s]/g, '').length
+  return Math.max(2, Math.round(chars / 2.5))
+}
+
+// Pimsleur S = 1.5n + 1.0, but add TTS speaking time on top
+// TTS speaks at ~thaiSpeed rate so we add extra buffer
+function calcDuration(thai, phase, phonetic) {
+  if (phase === 'prompt') {
+    // English: ~130wpm reading pace + 1.5s thinking buffer
+    const words = (thai || '').trim().split(/\s+/).length
+    return Math.max(4000, Math.round(words * 460 + 1500))
+  }
+  const n = countSyllables(thai, phonetic)
+  // Pimsleur repeat pause: S = 1.5n + 1.0 seconds AFTER speech ends
+  // Add estimated TTS duration (~0.35s per syllable at 0.8x) 
+  const ttsDur = Math.round(n * 350)
+  const pauseDur = Math.round((1.5 * n + 1.0) * 1000)
+  return ttsDur + pauseDur
 }
 
 function Player({ track, onComplete, onBack, onKru }) {
@@ -732,10 +859,10 @@ function Player({ track, onComplete, onBack, onKru }) {
     let ms = 0
     for (let i = idx; i < pairs.length; i++) {
       const p = pairs[i]
-      ms += calcDuration(p.prompt, 'prompt') + 1800 + calcDuration(p.thai, 'reveal') + 2500
+      ms += calcDuration(p.prompt, 'prompt', null) + 1800 + calcDuration(p.thai, 'reveal', p.phonetic) + 2500
     }
     // Subtract current phase if already in reveal
-    if (phase === 'reveal') ms -= calcDuration(pair.prompt, 'prompt') + 1800
+    if (phase === 'reveal') ms -= calcDuration(pair.prompt, 'prompt', null) + 1800
     const mins = Math.ceil(ms / 60000)
     return mins <= 1 ? '< 1 min' : `~${mins} min`
   }, [idx, phase, pairs])
@@ -881,6 +1008,7 @@ function Player({ track, onComplete, onBack, onKru }) {
             <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
               <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:12 }}>
                 <span className="thai" style={{ fontSize:26, color:'var(--gold)' }}>{kw.thai}</span>
+                {kw.phonetic && <span className="phon" style={{ fontSize:13, color:'#7a8aad' }}>{kw.phonetic}</span>}
                 <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
               </div>
               <div style={{ display:'flex', gap:8 }}>
@@ -1322,8 +1450,137 @@ function ImportTrack({ onBack, onImported, vocab }) {
   )
 }
 
+
+// ── Export / Import Data ─────────────────────────────────────────────────────
+function DataManager({ onBack, vocab, tracks, onImport }) {
+  const [importing, setImporting] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  function exportData() {
+    const data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      vocab,
+      tracks,
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `thai-teacher-backup-${new Date().toISOString().slice(0,10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    setMsg('✅ Downloaded!')
+    setTimeout(() => setMsg(''), 3000)
+  }
+
+  function handleImport(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    // Warn if this looks like the manifest
+    if (file.name === 'manifest.json') {
+      setMsg('❌ That is the app manifest file, not your backup. Pick thai-teacher-backup-*.json')
+      return
+    }
+    setImporting(true)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const raw = ev.target.result
+        if (!raw || !raw.trim()) throw new Error('File is empty')
+        const data = JSON.parse(raw)
+        // Accept {version,vocab,tracks} format or raw vocab array
+        let vocab, tracks
+        if (Array.isArray(data)) {
+          // Raw vocab array
+          vocab = data; tracks = []
+        } else if (data && Array.isArray(data.vocab)) {
+          vocab = data.vocab; tracks = data.tracks || []
+        } else {
+          throw new Error('Could not find vocab data in file. Keys found: ' + Object.keys(data||{}).join(', '))
+        }
+        if (!vocab.length) throw new Error('Vocab list is empty')
+        onImport(vocab, tracks)
+        setMsg(`✅ Restored ${vocab.length} words and ${tracks.length} tracks`)
+      } catch(e) {
+        setMsg('❌ ' + e.message)
+      }
+      setImporting(false)
+    }
+    reader.readAsText(file)
+  }
+
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24 }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}>
+          <Icon name="arrow_left" size={20} />
+        </button>
+        <span className="display" style={{ fontSize:18 }}>Backup & Restore</span>
+      </div>
+
+      <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        <Card style={{ padding:16 }}>
+          <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', marginBottom:6 }}>Export Data</p>
+          <p style={{ fontSize:12, color:'var(--muted)', marginBottom:12, lineHeight:1.6 }}>
+            Downloads a JSON file with all your words, SRS progress, and track history. Save this to transfer to another device.
+          </p>
+          <p style={{ fontSize:11, color:'var(--muted)', marginBottom:12 }}>
+            {vocab.length} words · {tracks.length} tracks
+          </p>
+          <Btn onClick={exportData} variant="primary" style={{ width:'100%', justifyContent:'center' }}>
+            ⬇ Download Backup
+          </Btn>
+        </Card>
+
+        <Card style={{ padding:16, borderColor:'#3d1a1a' }}>
+          <p style={{ fontSize:13, fontWeight:600, color:'#ef4444', marginBottom:6 }}>Import & Replace</p>
+          <p style={{ fontSize:12, color:'var(--muted)', marginBottom:12, lineHeight:1.6 }}>
+            ⚠️ This replaces ALL current data with the backup file. Use to restore on a new device.
+          </p>
+          <label style={{ display:'block', padding:'12px', borderRadius:10, border:'1px dashed #3d1a1a', textAlign:'center', cursor:'pointer', color:'#ef4444', fontSize:14, fontWeight:600 }}>
+            📂 Choose Backup File
+            <p style={{ fontSize:10, color:'var(--muted)', marginTop:4 }}>Look for: thai-teacher-backup-YYYY-MM-DD.json</p>
+            <input type="file" accept=".json" onChange={handleImport} style={{ display:'none' }} />
+          </label>
+        </Card>
+
+        {msg && <p style={{ textAlign:'center', fontSize:13, color: msg.startsWith('✅') ? '#10b981' : '#ef4444', padding:8 }}>{msg}</p>}
+      </div>
+    </div>
+  )
+}
+
+function DeepSeekTestBtn({ dsKey }) {
+  const [status, setStatus] = useState('')
+  const [testing, setTesting] = useState(false)
+  async function test() {
+    if (!dsKey.trim()) return
+    setTesting(true); setStatus('')
+    try {
+      const res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${dsKey}` },
+        body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+      })
+      if (res.ok) setStatus('✅ DeepSeek key works!')
+      else { const d = await res.json().catch(()=>({})); setStatus('❌ ' + (d?.error?.message || `Error ${res.status}`)) }
+    } catch(e) { setStatus('❌ ' + e.message) }
+    setTesting(false)
+  }
+  return (
+    <div>
+      <button onClick={test} disabled={!dsKey.trim() || testing}
+        style={{ width:'100%', padding:'9px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', color:dsKey.trim()?'var(--text)':'var(--muted)', cursor:dsKey.trim()?'pointer':'not-allowed', fontSize:13, fontFamily:'Sarabun,sans-serif', fontWeight:600 }}>
+        {testing ? 'Testing...' : 'Test DeepSeek Key'}
+      </button>
+      {status && <p style={{ fontSize:12, marginTop:6, color:status.startsWith('✅')?'#10b981':'#ef4444' }}>{status}</p>}
+    </div>
+  )
+}
+
 // ── Settings ─────────────────────────────────────────────────────────────────
-function Settings({ onBack, apiKey, onSaveKey }) {
+function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey }) {
   const [key, setKey] = useState(apiKey || '')
   const [saved, setSaved] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -1402,10 +1659,31 @@ function Settings({ onBack, apiKey, onSaveKey }) {
               {apiKey ? 'AI Track Generation Active' : 'No API Key — Template Mode'}
             </p>
             <p style={{ fontSize:11, color:'var(--muted)', marginTop:2 }}>
-              {apiKey ? 'Tracks use Claude to generate natural Thai sentences' : 'Tracks use local templates. Add a key for full Pimsleur quality.'}
+              {apiKey ? `Tracks use ${provider==='deepseek'?'DeepSeek':'Claude'} to generate natural Thai sentences` : 'Tracks use local templates. Add a key for full Pimsleur quality.'}
             </p>
           </div>
         </div>
+      </Card>
+
+      <Card style={{ padding:16, marginTop:4 }}>
+        <p style={{ fontSize:13, fontWeight:600, marginBottom:10 }}>AI Provider</p>
+        <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+          {[['claude','Claude (Sonnet)'],['deepseek','DeepSeek (cheaper)']].map(([id,label]) => (
+            <button key={id} onClick={() => onSaveProvider(id)}
+              style={{ flex:1, padding:'9px 6px', borderRadius:10, border:`1px solid ${provider===id?'var(--gold)':'var(--border)'}`, background:provider===id?'#1e1600':'transparent', color:provider===id?'var(--gold)':'var(--muted)', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {provider === 'deepseek' && (
+          <div>
+            <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8 }}>DeepSeek API key from <span style={{color:'var(--text)'}}>platform.deepseek.com</span></p>
+            <input type="password" value={dsKey} onChange={e => onSaveDsKey(e.target.value)}
+              placeholder="sk-..."
+              style={{ width:'100%', padding:'10px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, color:'var(--text)', fontSize:14, fontFamily:'DM Mono,monospace', outline:'none', marginBottom:8 }} />
+            <DeepSeekTestBtn dsKey={dsKey} />
+          </div>
+        )}
       </Card>
     </div>
   )
@@ -1422,6 +1700,8 @@ function ThaiTeacher() {
   const [kruOpen, setKruOpen] = useState(false)
   const [kruCtx, setKruCtx] = useState('')
   const [apiKey, setApiKey] = useState('')
+  const [provider, setProvider] = useState('claude')
+  const [dsKey, setDsKey] = useState('')
 
   // Init
   useEffect(() => {
@@ -1437,6 +1717,8 @@ function ThaiTeacher() {
       setTracks(st || [])
       const sk = await stGet('tt-apikey')
       if (sk) setApiKey(sk)
+      const pv = await stGet('tt-provider'); if (pv) setProvider(pv)
+      const dk = await stGet('tt-dskey'); if (dk) setDsKey(dk)
       setLoading(false)
     }
     init()
@@ -1515,14 +1797,15 @@ function ThaiTeacher() {
       <Header view={view} onNav={navigate} />
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} />}
-        {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')} apiKey={apiKey} />}
+        {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')} apiKey={provider==='deepseek'?dsKey:apiKey} provider={provider} />}
         {view === 'player' && activeTrack && (
           <Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} />
         )}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} />}
         {view === 'import-track' && <ImportTrack onBack={() => navigate('dashboard')} onImported={track => { onTrackGenerated(track) }} vocab={vocab} />}
-        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} />}
+        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} />}
+        {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
       </main>
 
       {/* Kru floating button */}

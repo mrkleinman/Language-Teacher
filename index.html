@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v13';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v14';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -354,7 +354,7 @@ function Header({ view, onNav }) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack }) {
+function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider, onSetProvider, hasClaudeKey, hasDeepSeekKey }) {
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
   const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
@@ -394,6 +394,21 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack }) {
         </div>
         <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>{stats.known} known · {stats.learning} learning · {stats.newW} new</p>
       </Card>
+
+      {/* AI Provider Selector */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
+        <span style={{ fontSize:12, color:'var(--muted)', marginRight:4 }}>Generate with:</span>
+        {[['claude','⚡ Claude'],['deepseek','🐋 DeepSeek']].map(([id,label]) => {
+          const hasKey = id === 'claude' ? hasClaudeKey : hasDeepSeekKey
+          return (
+            <button key={id} onClick={() => onSetProvider(id)}
+              style={{ flex:1, padding:'7px 10px', borderRadius:9, border:`1px solid ${provider===id?'var(--gold)':'var(--border)'}`, background:provider===id?'#1e1600':'transparent', color:provider===id?'var(--gold)':hasKey?'var(--text)':'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s', position:'relative' }}>
+              {label}
+              {!hasKey && <span style={{ fontSize:9, color:'#ef4444', marginLeft:4 }}>no key</span>}
+            </button>
+          )
+        })}
+      </div>
 
       {/* Generate Buttons */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -1796,7 +1811,7 @@ function ThaiTeacher() {
       <FontStyle />
       <Header view={view} onNav={navigate} />
       <main>
-        {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} />}
+        {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} />}
         {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')} apiKey={provider==='deepseek'?dsKey:apiKey} provider={provider} />}
         {view === 'player' && activeTrack && (
           <Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} />

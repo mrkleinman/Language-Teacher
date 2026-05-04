@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v18';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v18').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v20';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v20').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -475,6 +475,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider,
 // ── Claude API Track Generation ───────────────────────────────────────────────
 
 async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab) {
+  console.log('DeepSeek called, key length:', apiKey?.length, 'url:', '/.netlify/functions/deepseek')
   const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
   const anchorList = anchors.slice(0, 30).map(w => `${w.thai} = ${w.english}`).join('\n')
   const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก']
@@ -490,7 +491,7 @@ TARGET WORDS (each must appear 3x): ${targetList}
 ANCHOR WORDS (review): ${anchorList}
 Respond ONLY with valid JSON array, no markdown: [{"prompt":"...","thai":"...","english":"...","phonetic":"...","target_phonetic":"..."}]`
 
-  const res = await fetch('/.netlify/functions/deepseek', {
+  const res = await fetch('/api/deepseek', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 16000, stream: true, messages: [{ role: 'user', content: prompt }] })
@@ -499,11 +500,41 @@ Respond ONLY with valid JSON array, no markdown: [{"prompt":"...","thai":"...","
     const err = await res.json().catch(()=>({}))
     throw new Error(err?.error?.message || err?.error || `DeepSeek proxy error ${res.status}`)
   }
-  const data = await res.json()
-  // Proxy returns Claude-format: {content:[{type:'text',text:'...'}]}
-  const rawText = (data.content?.[0]?.text || data.choices?.[0]?.message?.content || '').trim().replace(/^```json\n?|\n?```$/g,'').trim()
-  if (!rawText) throw new Error('Empty response from proxy. Check Netlify function logs.')
-  const pairs = parsePartialArray(rawText)
+
+  // Read the SSE stream from DeepSeek via proxy
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let accumulated = ''
+  let fullText = ''
+  let pairsFound = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    accumulated += decoder.decode(value, { stream: true })
+    for (const line of accumulated.split('\n')) {
+      if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+        try {
+          const evt = JSON.parse(line.slice(6))
+          const delta = evt.choices?.[0]?.delta?.content
+          if (delta) {
+            fullText += delta
+            const found = (fullText.match(/"phonetic"\s*:/g) || []).length
+            if (found !== pairsFound) {
+              pairsFound = found
+              onProgress && onProgress(pairsFound, 60, null)
+            }
+          }
+        } catch {}
+      }
+    }
+    const lines = accumulated.split('\n')
+    accumulated = lines[lines.length - 1]
+  }
+
+  const cleanText = fullText.trim().replace(/^```json\n?|\n?```$/g,'').trim()
+  if (!cleanText) throw new Error('Empty response from DeepSeek')
+  const pairs = parsePartialArray(cleanText)
   if (!pairs.length) throw new Error('No valid pairs in response')
   onProgress && onProgress(pairs.length, pairs.length, null)
   return pairs
@@ -731,7 +762,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
       } catch(e) {
         setPhase('error')
         const msg = e.message || 'Unknown error'
-        const isDeepSeekCors = (provider === 'deepseek') && (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS') || msg.includes('fetch'))
+        console.error('Generation error:', msg)
+          const isDeepSeekCors = (provider === 'deepseek') && (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS') || msg.includes('fetch'))
           const hint = isDeepSeekCors
           ? '🐋 DeepSeek cannot be called directly from a browser due to CORS restrictions.\n\nA free Cloudflare Worker proxy is needed (5 min setup). Ask Claude to help set it up, or switch to ⚡ Claude in the meantime.'
           : msg.includes('Failed to fetch') || msg.includes('NetworkError')

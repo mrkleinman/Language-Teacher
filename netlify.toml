@@ -1,7 +1,3 @@
-[functions]
-  directory = "netlify/functions"
-
-[[redirects]]
-  from = "/api/deepseek"
-  to = "/.netlify/functions/deepseek"
-  status = 200
+[[edge_functions]]
+  path = "/api/deepseek"
+  function = "deepseek"

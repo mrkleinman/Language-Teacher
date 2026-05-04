@@ -1,33 +1,42 @@
-exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
-      body: ''
-    }
+exports.handler = async (event, context) => {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
   }
 
-  const response = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': event.headers.authorization || event.headers.Authorization
-    },
-    body: event.body
-  })
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' }
+  }
 
-  const data = await response.text()
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: 'Method not allowed' }
+  }
 
-  return {
-    statusCode: response.status,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Content-Type': 'application/json'
-    },
-    body: data
+  try {
+    const authHeader = event.headers['authorization'] || event.headers['Authorization'] || ''
+    
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: event.body
+    })
+
+    const data = await response.text()
+    
+    return {
+      statusCode: response.status,
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: data
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
+    }
   }
 }

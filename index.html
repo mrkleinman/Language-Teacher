@@ -723,8 +723,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
       } catch(e) {
         setPhase('error')
         const msg = e.message || 'Unknown error'
-        const hint = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS')
-          ? msg + '\n\n⚠️ API calls are blocked when opening the file directly. Host the file on Netlify or GitHub Pages.'
+        const isDeepSeekCors = (provider === 'deepseek') && (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS') || msg.includes('fetch'))
+          const hint = isDeepSeekCors
+          ? '🐋 DeepSeek cannot be called directly from a browser due to CORS restrictions.\n\nA free Cloudflare Worker proxy is needed (5 min setup). Ask Claude to help set it up, or switch to ⚡ Claude in the meantime.'
+          : msg.includes('Failed to fetch') || msg.includes('NetworkError')
+          ? msg + '\n\n⚠️ Check your internet connection and API key.'
           : msg
         setError(hint)
       }
@@ -1812,7 +1815,10 @@ function ThaiTeacher() {
       <Header view={view} onNav={navigate} />
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} />}
-        {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')} apiKey={provider==='deepseek'?dsKey:apiKey} provider={provider} />}
+        {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
+          apiKey={provider==='deepseek' ? dsKey : (apiKey || dsKey)}
+          provider={provider==='deepseek' ? 'deepseek' : (apiKey ? 'claude' : (dsKey ? 'deepseek' : 'none'))}
+        />}
         {view === 'player' && activeTrack && (
           <Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} />
         )}

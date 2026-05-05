@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v21';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v21').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v22';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v22').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -476,25 +476,13 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider,
 
 async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab) {
   console.log('DeepSeek called, key length:', apiKey?.length, 'url:', '/.netlify/functions/deepseek')
-  const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
-  const anchorList = anchors.slice(0, 30).map(w => `${w.thai} = ${w.english}`).join('\n')
-  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก']
-  const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
-  const approvedList = [...allThai].join('  ')
-  const prompt = `You are a Thai language teaching assistant creating Pimsleur-style audio lessons.
-Generate 60 challenge-response pairs. Each pair: "prompt" (English instruction), "thai" (full Thai sentence 6-12 words), "english" (natural English translation), "phonetic" (tone-marked romanization, space-separated per word), "target_phonetic" (romanization of ONLY the target word marked ★).
-TONE MARKS: mid=none, low=à, falling=â, high=á, rising=ǎ
-CRITICAL: Only use words from APPROVED VOCABULARY.
-Each TARGET WORD (★) appears exactly 3 times in different contexts.
-APPROVED VOCABULARY: ${approvedList}
-TARGET WORDS (each must appear 3x): ${targetList}
-ANCHOR WORDS (review): ${anchorList}
-Respond ONLY with valid JSON array, no markdown: [{"prompt":"...","thai":"...","english":"...","phonetic":"...","target_phonetic":"..."}]`
+  const { system, user } = buildGenerationPrompt(targets, anchors, vocab)
+  const prompt = system + '\n\n' + user
 
   const res = await fetch('/api/deepseek', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 16000, stream: true, messages: [{ role: 'user', content: prompt }] })
+    body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 16000, stream: true, system: system, messages: [{ role: 'user', content: user }] })
   })
   if (!res.ok) {
     const err = await res.json().catch(()=>({}))
@@ -538,6 +526,46 @@ Respond ONLY with valid JSON array, no markdown: [{"prompt":"...","thai":"...","
   if (!pairs.length) throw new Error('No valid pairs in response')
   onProgress && onProgress(pairs.length, pairs.length, null)
   return pairs
+}
+
+
+// ── Shared prompt builder for ALL AI providers ────────────────────────────────
+function buildGenerationPrompt(targets, anchors, vocab) {
+  const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
+  const anchorList = anchors.slice(0, 30).map(w => `${w.thai} = ${w.english}`).join('\n')
+  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก']
+  const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
+  const approvedList = [...allThai].join('  ')
+
+  const system = `You are a Thai language teaching assistant creating Pimsleur-style audio lessons.
+Generate 60 challenge-response pairs. Each pair must have ALL these fields:
+- "prompt": English instruction (VARY the types: "Tell someone...", "Ask if...", "Say that...", "Respond to...", "How would you say...", "Ask someone...", "Explain that..."). Do NOT repeat the same type consecutively.
+- "thai": full natural Thai sentence 6-12 words, ALWAYS end with a polite particle (ครับ for male, ค่ะ/นะคะ for female, alternate throughout)
+- "english": natural English translation
+- "phonetic": tone-marked romanization, one space-separated token per Thai word
+- "words": array of {"p": phonetic_token, "e": English_gloss} — one per Thai word, aligned exactly with phonetic tokens
+- "target_phonetic": romanization of ONLY the ★ target word used in this pair
+
+TONE MARKS: mid=no mark, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ)
+
+CRITICAL RULES:
+1. ONLY use Thai words from the APPROVED VOCABULARY LIST — no exceptions
+2. Every TARGET WORD (★) must appear exactly 3 times in different sentence contexts
+3. Polite particles (ครับ/ค่ะ) are REQUIRED in every sentence
+4. Vary prompt types — never use "Say..." more than twice in a row
+5. "words" array must have exactly the same count as space-separated tokens in "phonetic"
+
+APPROVED VOCABULARY: ${approvedList}
+
+Example pair:
+{"prompt":"Ask if your friend wants to float on a raft","thai":"คุณอยากล่องแพไปตามแม่น้ำไหมครับ","english":"Do you want to float on a raft down the river?","phonetic":"khun yàak lông phae pai taam mâe nám mǎi khrâp","words":[{"p":"khun","e":"you"},{"p":"yàak","e":"want"},{"p":"lông","e":"float"},{"p":"phae","e":"raft"},{"p":"pai","e":"go"},{"p":"taam","e":"along"},{"p":"mâe nám","e":"river"},{"p":"mǎi","e":"?"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"lông phae"}
+
+Respond ONLY with valid JSON array, no markdown:
+[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[...],"target_phonetic":"..."}]`
+
+  const user = `TARGET WORDS (each must appear 3x):\n${targetList}\n\nANCHOR WORDS (review, 1-2x each):\n${anchorList}`
+
+  return { system, user, approvedList }
 }
 
 function parsePartialArray(str) {
@@ -715,7 +743,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
         if (apiKey) {
           setPhase('streaming')
           // Fetch phonetics first (fast haiku call) so chips show immediately
-          if (provider !== 'deepseek') {
+          // Only for Claude since DeepSeek goes through proxy
+          if (provider !== 'deepseek' && apiKey) {
             fetchTargetPhonetics(targets, apiKey).then(map => {
               if (Object.keys(map).length) setTargetPhonetics(map)
             }).catch(() => {})

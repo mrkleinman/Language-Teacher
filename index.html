@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v24';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v24').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v25';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v25').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -770,8 +770,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
               setTargetPhonetics(prev => {
                 const updated = { ...prev }
                 for (const t of targets) {
-                  if (!updated[t.id] && latestPair.thai.includes(t.thai)) {
-                    updated[t.id] = latestPair.target_phonetic
+                  if (!updated[t.thai] && latestPair.thai.includes(t.thai)) {
+                    updated[t.thai] = latestPair.target_phonetic
                   }
                 }
                 return updated
@@ -898,7 +898,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
             {targets.map((w,i) => {
               const done = i * 3 < pairsDone
-              const phonetic = targetPhonetics[w.id] || w.phonetic || ''
+              const phonetic = targetPhonetics[w.thai] || targetPhonetics[w.id] || w.phonetic || ''
               return (
                 <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : 'transparent', border:`1px solid ${done ? color : 'var(--border)'}`, borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0 }}>
                   <span className="thai" style={{ color: done ? color : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>

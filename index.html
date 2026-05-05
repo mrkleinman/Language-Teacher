@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v22';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v22').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v23';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v23').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -510,7 +510,19 @@ async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, v
             const found = (fullText.match(/"phonetic"\s*:/g) || []).length
             if (found !== pairsFound) {
               pairsFound = found
-              onProgress && onProgress(pairsFound, 60, null)
+              // Extract latest pair for chip phonetics
+              let latestPair = null
+              try {
+                const lastBrace = fullText.lastIndexOf('"}')
+                if (lastBrace > 0) {
+                  const objStart = fullText.lastIndexOf('{', lastBrace)
+                  if (objStart >= 0) {
+                    const obj = JSON.parse(fullText.slice(objStart, lastBrace + 2))
+                    if (obj.thai && obj.target_phonetic) latestPair = obj
+                  }
+                }
+              } catch {}
+              onProgress && onProgress(pairsFound, 60, latestPair)
             }
           }
         } catch {}
@@ -913,10 +925,10 @@ function calcDuration(thai, phase, phonetic) {
     return Math.max(4000, Math.round(words * 460 + 1500))
   }
   const n = countSyllables(thai, phonetic)
-  // Pimsleur repeat pause: S = 1.5n + 1.0 seconds AFTER speech ends
-  // Add estimated TTS duration (~0.35s per syllable at 0.8x) 
-  const ttsDur = Math.round(n * 350)
-  const pauseDur = Math.round((1.5 * n + 1.0) * 1000)
+  // Pimsleur repeat pause: S = 2.0n + 1.5 seconds AFTER speech ends
+  // Add estimated TTS duration (~0.4s per syllable at 0.8x)
+  const ttsDur = Math.round(n * 400)
+  const pauseDur = Math.round((2.0 * n + 1.5) * 1000)
   return ttsDur + pauseDur
 }
 
@@ -1180,7 +1192,7 @@ function Player({ track, onComplete, onBack, onKru }) {
                 {pair.words.map((w, i) => (
                   <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
                     <span className="phon" style={{ fontSize:17, color:'var(--gold)', fontWeight:600 }}>{w.p}</span>
-                    <span style={{ fontSize:13, color:'#7a8aad', fontStyle:'italic', whiteSpace:'nowrap' }}>{w.e}</span>
+                    <span style={{ fontSize:16, color:'#7a8aad', fontStyle:'italic', whiteSpace:'nowrap' }}>{w.e}</span>
                   </div>
                 ))}
               </div>

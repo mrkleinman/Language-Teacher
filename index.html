@@ -482,7 +482,7 @@ async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, v
   const res = await fetch('/api/deepseek', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 16000, stream: true, system: system, messages: [{ role: 'user', content: user }] })
+    body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 16000, stream: true, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   })
   if (!res.ok) {
     const err = await res.json().catch(()=>({}))

@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v33';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v33').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v34';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v34').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -574,7 +574,7 @@ async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, v
 // ── Shared prompt builder for ALL AI providers ────────────────────────────────
 function buildGenerationPrompt(targets, anchors, vocab) {
   const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
-  const anchorList = anchors.slice(0, 30).map(w => `${w.thai} = ${w.english}`).join('\n')
+  const anchorList = anchors.slice(0, 50).map(w => `${w.thai} = ${w.english}`).join('\n')
   const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก']
   const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
   const approvedList = [...allThai].join('  ')
@@ -592,10 +592,12 @@ TONE MARKS: mid=no mark, low=grave(à), falling=circumflex(â), high=acute(á), 
 
 CRITICAL RULES:
 1. ONLY use Thai words from the APPROVED VOCABULARY LIST — no exceptions
-2. Every TARGET WORD (★) must appear exactly 3 times in different sentence contexts
+2. Every TARGET WORD (★) MUST appear EXACTLY 3 times — ALL 20 target words must be used, none skipped
 3. Polite particles (ครับ/ค่ะ) are REQUIRED in every sentence
 4. Vary prompt types — never use "Say..." more than twice in a row
 5. "words" array must have exactly the same count as space-separated tokens in "phonetic"
+6. Use ANCHOR WORDS liberally as supporting vocabulary in sentences — don't just use target words with each other
+7. Before finishing, verify every ★ target word appears exactly 3 times in your output
 
 APPROVED VOCABULARY: ${approvedList}
 
@@ -669,7 +671,7 @@ async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, voc
     return generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab)
   }
   const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
-  const anchorList = anchors.slice(0, 30).map(w => `${w.thai} = ${w.english}`).join('\n')
+  const anchorList = anchors.slice(0, 50).map(w => `${w.thai} = ${w.english}`).join('\n')
 
   // Full approved vocabulary — Claude may ONLY use these Thai words in sentences
   // Include particles/grammar words by default since they're universal

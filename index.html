@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v32';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v32').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v33';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v33').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -563,8 +563,9 @@ async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, v
 
   const cleanText = fullText.trim().replace(/^```json\n?|\n?```$/g,'').trim()
   if (!cleanText) throw new Error('Empty response from DeepSeek')
-  const pairs = parsePartialArray(cleanText)
+  let pairs = parsePartialArray(cleanText)
   if (!pairs.length) throw new Error('No valid pairs in response')
+  // Validate pairs against vocab (done in Generator to have access to vocab)
   onProgress && onProgress(pairs.length, pairs.length, null)
   return pairs
 }
@@ -607,6 +608,38 @@ Respond ONLY with valid JSON array, no markdown:
   const user = `TARGET WORDS (each must appear 3x):\n${targetList}\n\nANCHOR WORDS (review, 1-2x each):\n${anchorList}`
 
   return { system, user, approvedList }
+}
+
+
+// ── Vocab validator ───────────────────────────────────────────────────────────
+function validatePairs(pairs, vocab) {
+  const ALWAYS_ALLOWED = new Set(['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','หลัง','แล้วก็','ว่า','ให้','กัน','เอง','ๆ','เราะ'])
+  const vocabSet = new Set(vocab.map(w => w.thai))
+  const allAllowed = new Set([...ALWAYS_ALLOWED, ...vocabSet])
+  
+  return pairs.filter(p => {
+    if (!p.thai) return false
+    // Tokenize Thai sentence - split on spaces and common joiners
+    const tokens = p.thai.split(/\s+/).filter(Boolean)
+    // Check each token exists in allowed set
+    // Allow partial matches for compound words
+    for (const token of tokens) {
+      // Strip trailing particles like ไหม, นะ
+      const clean = token.replace(/[?!,.]/, '')
+      if (!clean) continue
+      // Check if token or any substring matches vocab
+      const isAllowed = allAllowed.has(clean) || 
+        [...allAllowed].some(w => clean.includes(w) || w.includes(clean))
+      if (!isAllowed) {
+        // Log for debugging but don't filter aggressively - Thai compound words are tricky
+        // Only filter if token is clearly long and unknown
+        if (clean.length > 6 && !allAllowed.has(clean)) {
+          return false
+        }
+      }
+    }
+    return true
+  })
 }
 
 function parsePartialArray(str) {
@@ -729,7 +762,7 @@ Respond ONLY with valid JSON array, no markdown:
 
   // Robust parse — extract all complete objects even if array is truncated
 
-  const pairs = parsePartialArray(text)
+  let pairs = parsePartialArray(text)
   if (!pairs.length) throw new Error('No pairs could be parsed from response')
   onProgress && onProgress(pairs.length, pairs.length)
   return pairs

@@ -1488,9 +1488,7 @@ Respond ONLY with valid JSON: {"english":"...","phonetic":"..."}` }] })
       })
       if (res.ok) {
         const data = await res.json()
-        let text = (data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim().replace(/^```json
-?|
-?```$/g, '').trim()
+        let text = (data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g, '').trim()
         const parsed = JSON.parse(text)
         if (parsed.english && !english) setEnglish(parsed.english)
         if (parsed.phonetic) setPhonetic(parsed.phonetic)
@@ -2066,7 +2064,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
-export default function ThaiTeacher() {
+function ThaiTeacher() {
   const [vocab, setVocab] = useState([])
   const [tracks, setTracks] = useState([])
   const [view, setView] = useState('dashboard')

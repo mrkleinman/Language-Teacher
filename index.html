@@ -1,4 +1,32 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/><meta name="theme-color" content="#d4a94a"/><meta name="mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/><meta name="apple-mobile-web-app-title" content="Thai Teacher"/><title>Thai Teacher</title><link rel="manifest" href="./manifest.json"/><style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style></head><body><div id="root"></div><script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script><script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script><script>if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v31';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v31').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}let dp;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}window.addEventListener('appinstalled',()=>{document.getElementById('ib').style.display='none'});</script><div id="ib" onclick="installApp()" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#d4a94a,#b88a35);color:#0b1120;border:none;border-radius:24px;padding:12px 24px;font-family:Sarabun,sans-serif;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 20px rgba(212,169,74,.5);align-items:center;gap:8px;">⬇️ Install Thai Teacher</div><script type="text/babel">const { useState, useEffect, useCallback, useRef, useMemo } = React
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#d4a94a"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
+  <title>Thai Teacher</title>
+  <link rel="manifest" href="./manifest.json"/>
+  <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v32';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v32').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    let dp;
+    window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
+    function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
+    window.addEventListener('appinstalled',()=>{document.getElementById('ib').style.display='none'});
+  </script>
+  <div id="ib" onclick="installApp()" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#d4a94a,#b88a35);color:#0b1120;border:none;border-radius:24px;padding:12px 24px;font-family:Sarabun,sans-serif;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 20px rgba(212,169,74,.5);align-items:center;gap:8px;">⬇️ Install Thai Teacher</div>
+  <script type="text/babel">
+const { useState, useEffect, useCallback, useRef, useMemo } = React
 
 // ── Fonts ────────────────────────────────────────────────────────────────────
 const FontStyle = () => (
@@ -446,6 +474,35 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider,
 
 // ── Claude API Track Generation ───────────────────────────────────────────────
 
+
+async function fetchTargetPhoneticsDeepSeek(targets, apiKey) {
+  const wordList = targets.map(w => w.thai).join(', ')
+  const res = await fetch('/api/deepseek', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      max_tokens: 500,
+      messages: [
+        { role: 'system', content: 'You give tone-marked romanization for Thai words. Respond ONLY with valid JSON.' },
+        { role: 'user', content: `Give romanization for each Thai word. Tone marks: mid=none, low=à, falling=â, high=á, rising=ǎ. Use hyphens between syllables.
+Words: ${wordList}
+Respond ONLY with valid JSON, no markdown: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }
+      ]
+    })
+  })
+  if (!res.ok) return {}
+  const data = await res.json()
+  const text = (data.content?.[0]?.text || '').trim().replace(/^```json\n?|\n?```$/g,'').trim()
+  const parsed = JSON.parse(text)
+  const map = {}
+  for (const r of (parsed.results || [])) {
+    const match = targets.find(t => t.thai === r.thai)
+    if (match) { map[match.thai] = r.phonetic; map[match.id] = r.phonetic }
+  }
+  return map
+}
+
 async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab) {
   console.log('DeepSeek called, key length:', apiKey?.length, 'url:', '/.netlify/functions/deepseek')
   const { system, user } = buildGenerationPrompt(targets, anchors, vocab)
@@ -727,11 +784,17 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
         if (apiKey) {
           setPhase('streaming')
           // Fetch phonetics first (fast haiku call) so chips show immediately
-          // Only for Claude since DeepSeek goes through proxy
-          if (provider !== 'deepseek' && apiKey) {
-            fetchTargetPhonetics(targets, apiKey).then(map => {
-              if (Object.keys(map).length) setTargetPhonetics(map)
-            }).catch(() => {})
+          // Fetch phonetics upfront for all providers
+          if (apiKey) {
+            if (provider === 'deepseek') {
+              fetchTargetPhoneticsDeepSeek(targets, apiKey).then(map => {
+                if (Object.keys(map).length) setTargetPhonetics(map)
+              }).catch(() => {})
+            } else {
+              fetchTargetPhonetics(targets, apiKey).then(map => {
+                if (Object.keys(map).length) setTargetPhonetics(map)
+              }).catch(() => {})
+            }
           }
 
           pairs = await generateTrackWithClaude(targets, anchors, apiKey, (done, total, latestPair) => {
@@ -778,7 +841,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider }) {
         }
         setTargetPhonetics(pairPhoneticMap)
 
-        const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: pairPhoneticMap[w.id] || '' }))
+        const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: pairPhoneticMap[w.thai] || pairPhoneticMap[w.id] || '' }))
         const track = {
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
@@ -1015,7 +1078,7 @@ function Player({ track, onComplete, onBack, onKru }) {
     if (phase === 'prompt') {
       // Pause after prompt = Pimsleur formula based on Thai answer syllables
       const n = countSyllables(pair.thai, pair.phonetic)
-      const thinkMs = Math.round((0.75 * n + 0.5) * 1000)
+      const thinkMs = Math.round((0.6 * n + 0.4) * 1000)
       cleanup = speakOrWait(pair.prompt, 'en-US', promptDur, () => {
         // This fires from utter.onend — AFTER speech actually finishes
         startCountdown(thinkMs)
@@ -1915,4 +1978,7 @@ function ThaiTeacher() {
 }
 
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))</script></body></html>
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
+  </script>
+</body>
+</html>

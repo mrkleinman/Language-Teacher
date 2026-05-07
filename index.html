@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v35';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v34').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v36';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v34').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -354,6 +354,97 @@ function Header({ view, onNav, onHome }) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
+
+// ── Belt Rank ─────────────────────────────────────────────────────────────────
+const BELT_RANKS = [
+  { rank: 'Mukyu',   minWords: 0,    color: '#6b7280', belt: '#4b5563', label: 'No Belt' },
+  { rank: '10th Kyu', minWords: 100,  color: '#f3f4f6', belt: '#e5e7eb', label: 'White' },
+  { rank: '9th Kyu',  minWords: 200,  color: '#f97316', belt: '#ea580c', label: 'Orange' },
+  { rank: '8th Kyu',  minWords: 350,  color: '#f97316', belt: '#ea580c', label: 'Orange' },
+  { rank: '7th Kyu',  minWords: 500,  color: '#3b82f6', belt: '#2563eb', label: 'Blue' },
+  { rank: '6th Kyu',  minWords: 750,  color: '#3b82f6', belt: '#2563eb', label: 'Blue' },
+  { rank: '5th Kyu',  minWords: 1000, color: '#eab308', belt: '#ca8a04', label: 'Yellow' },
+  { rank: '4th Kyu',  minWords: 1500, color: '#eab308', belt: '#ca8a04', label: 'Yellow' },
+  { rank: '3rd Kyu',  minWords: 2000, color: '#22c55e', belt: '#16a34a', label: 'Green' },
+  { rank: '2nd Kyu',  minWords: 3000, color: '#92400e', belt: '#78350f', label: 'Brown' },
+  { rank: '1st Kyu',  minWords: 4000, color: '#92400e', belt: '#78350f', label: 'Brown' },
+  { rank: 'Shodan',   minWords: 5000, color: '#d4a94a', belt: '#0b1120', label: 'Black' },
+]
+
+function calculateBeltRank(known) {
+  let current = BELT_RANKS[0]
+  let next = BELT_RANKS[1]
+  for (let i = BELT_RANKS.length - 1; i >= 0; i--) {
+    if (known >= BELT_RANKS[i].minWords) {
+      current = BELT_RANKS[i]
+      next = BELT_RANKS[i + 1] || null
+      break
+    }
+  }
+  const wordsToNext = next ? next.minWords - known : 0
+  const rangeStart = current.minWords
+  const rangeEnd = next ? next.minWords : current.minWords + 1000
+  const progress = next ? Math.round(((known - rangeStart) / (rangeEnd - rangeStart)) * 100) : 100
+  return { current, next, wordsToNext, progress, known }
+}
+
+function BeltRankCard({ vocab, onNav }) {
+  const known = useMemo(() => vocab.filter(w => w.status === 'known').length, [vocab])
+  const { current, next, wordsToNext, progress } = useMemo(() => calculateBeltRank(known), [known])
+  const isShodan = !next
+
+  return (
+    <Card style={{ padding: '16px', cursor: 'pointer' }} onClick={() => onNav('belt-rank')}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Belt sash visual */}
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: current.rank === 'Shodan' ? 'linear-gradient(135deg,#1a1a1a,#2a2a2a)' : current.belt, border: current.rank === 'Shodan' ? '2px solid var(--gold)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 10px ${current.color}44`, flexShrink: 0 }}>
+            <span style={{ fontSize: 18 }}>🥋</span>
+          </div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: current.color, lineHeight: 1 }}>{current.rank}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{current.label} Belt</div>
+          </div>
+        </div>
+        {next && (
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 10, color: 'var(--muted)' }}>Next rank</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{next.rank}</div>
+            <div style={{ fontSize: 11, color: '#f59e0b' }}>{wordsToNext} words to go</div>
+          </div>
+        )}
+        {isShodan && (
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 12, color: 'var(--gold)' }}>最高位</div>
+          </div>
+        )}
+      </div>
+
+      {/* Known words count */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>Known words</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#10b981' }}>{known}{next ? ` / ${next.minWords}` : ''}</span>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ height: 6, background: 'var(--surface2)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${current.color}, ${next ? next.color : current.color})`, borderRadius: 3, transition: 'width 0.6s ease' }} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--muted)' }}>{current.rank}</span>
+        {next && <span style={{ fontSize: 10, color: 'var(--muted)' }}>{next.rank}</span>}
+        <span style={{ fontSize: 10, color: 'var(--gold)' }}>{progress}%</span>
+      </div>
+
+      {/* Partial grading note */}
+      <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
+        Vocab rank only · Phrase, grammar & scenario banks coming soon
+      </p>
+    </Card>
+  )
+}
+
 function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider, onSetProvider, hasClaudeKey, hasDeepSeekKey, hasOrKey }) {
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
@@ -394,6 +485,9 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider,
         </div>
         <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>{stats.known} known · {stats.learning} learning · {stats.newW} new</p>
       </Card>
+
+      {/* Belt Rank */}
+      <BeltRankCard vocab={vocab} onNav={onNav} />
 
       {/* AI Provider Selector */}
       <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
@@ -813,6 +907,83 @@ Respond ONLY with valid JSON, no markdown: {"results":[{"thai":"word","phonetic"
 }
 
 // ── Track Generator ───────────────────────────────────────────────────────────
+
+// ── Belt Rank Detail View ────────────────────────────────────────────────────
+function BeltRankView({ vocab, onBack }) {
+  const known = useMemo(() => vocab.filter(w => w.status === 'known').length, [vocab])
+  const { current, next, wordsToNext, progress } = useMemo(() => calculateBeltRank(known), [known])
+
+  return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+          <Icon name="arrow_left" size={20} />
+        </button>
+        <span className="display" style={{ fontSize: 18 }}>Belt Rank</span>
+      </div>
+
+      {/* Current rank hero */}
+      <Card style={{ padding: '24px 20px', textAlign: 'center', marginBottom: 12, background: `linear-gradient(135deg, var(--surface), ${current.color}11)`, borderColor: current.color + '44' }}>
+        <div style={{ fontSize: 52, marginBottom: 8 }}>🥋</div>
+        <div style={{ fontSize: 32, fontWeight: 800, color: current.color, lineHeight: 1 }}>{current.rank}</div>
+        <div style={{ fontSize: 14, color: 'var(--muted)', marginTop: 4 }}>{current.label} Belt</div>
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 6 }}>
+          <div style={{ width: 48, height: 10, borderRadius: 5, background: current.belt, border: current.rank === 'Shodan' ? '1px solid var(--gold)' : 'none', boxShadow: `0 0 8px ${current.color}66` }} />
+        </div>
+      </Card>
+
+      {/* All ranks ladder */}
+      <Card style={{ padding: '14px 16px', marginBottom: 12 }}>
+        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Rank Ladder</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[...BELT_RANKS].reverse().map((r, i) => {
+            const achieved = known >= r.minWords
+            const isCurrent = r.rank === current.rank
+            return (
+              <div key={r.rank} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: achieved ? 1 : 0.4 }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: achieved ? r.color : 'var(--border)', flexShrink: 0, boxShadow: isCurrent ? `0 0 8px ${r.color}` : 'none' }} />
+                <div style={{ width: 24, height: 6, borderRadius: 3, background: r.belt, flexShrink: 0, border: r.rank === 'Shodan' ? '1px solid var(--gold)' : 'none' }} />
+                <span style={{ fontSize: 13, fontWeight: isCurrent ? 700 : 400, color: isCurrent ? r.color : 'var(--text)', flex: 1 }}>{r.rank}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{r.minWords.toLocaleString()} words</span>
+                {isCurrent && <span style={{ fontSize: 10, background: r.color + '22', color: r.color, padding: '2px 7px', borderRadius: 10, fontWeight: 600 }}>YOU</span>}
+                {achieved && !isCurrent && <span style={{ fontSize: 12, color: '#10b981' }}>✓</span>}
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+
+      {/* Progress to next */}
+      {next && (
+        <Card style={{ padding: '14px 16px', marginBottom: 12 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Progress to {next.rank}</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 13, color: 'var(--text)' }}>Known words</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#10b981' }}>{known} / {next.minWords}</span>
+          </div>
+          <div style={{ height: 8, background: 'var(--surface2)', borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
+            <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${current.color}, ${next.color})`, borderRadius: 4, transition: 'width 0.6s ease' }} />
+          </div>
+          <p style={{ fontSize: 12, color: '#f59e0b', marginTop: 4 }}>
+            {wordsToNext} more known words needed to reach {next.rank}
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6, lineHeight: 1.6 }}>
+            Rate words <strong style={{color:'var(--text)'}}>Easy</strong> during review to move them from Learning → Known
+          </p>
+        </Card>
+      )}
+
+      {/* Partial grading notice */}
+      <Card style={{ padding: '12px 14px', borderColor: '#f59e0b44', background: '#1a1200' }}>
+        <p style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600, marginBottom: 4 }}>⚠ Grading is partial</p>
+        <p style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.6 }}>
+          Full belt grading will include phrase bank, grammar patterns, idioms, and scenario tests. Currently ranking by known vocabulary only.
+        </p>
+      </Card>
+    </div>
+  )
+}
+
 function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets }) {
   const [error, setError] = useState('')
   const [pairsDone, setPairsDone] = useState(0)
@@ -2202,6 +2373,7 @@ function ThaiTeacher() {
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
         {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
+        {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
       </main>
 
       {/* Kru floating button */}

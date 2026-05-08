@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v37';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v34').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v38';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v34').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -492,14 +492,13 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider,
       {/* AI Provider Selector */}
       <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
         <span style={{ fontSize:12, color:'var(--muted)', marginRight:4 }}>Generate with:</span>
-        {[['claude','⚡ Claude'],['deepseek','🐋 DeepSeek']].map(([id,label]) => {
-          const hasKey = id === 'claude' ? hasClaudeKey : hasDeepSeekKey
+        {[['claude','⚡ Claude'],['deepseek','🐋 DeepSeek'],['qwen','✨ Qwen']].map(([id,label]) => {
+          const hasKey = id === 'claude' ? hasClaudeKey : id === 'deepseek' ? hasDeepSeekKey : hasOrKey
           return (
             <button key={id} onClick={() => onSetProvider(id)}
               style={{ flex:1, padding:'7px 10px', borderRadius:9, border:`1px solid ${provider===id?'var(--gold)':'var(--border)'}`, background:provider===id?'#1e1600':'transparent', color:provider===id?'var(--gold)':hasKey?'var(--text)':'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s', position:'relative' }}>
               {label}
               {!hasKey && <span style={{ fontSize:9, color:'#ef4444', marginLeft:4 }}>no key</span>}
-              {id==='deepseek' && hasKey && hasOrKey && <span style={{ fontSize:9, color:'#10b981', marginLeft:4 }}>+Qwen</span>}
             </button>
           )
         })}
@@ -775,11 +774,86 @@ function parsePartialArray(str) {
   return pairs
 }
 
-async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, vocab, provider) {
-  // DeepSeek uses OpenAI-compatible API
-  if (provider === 'deepseek') {
-    return generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab)
+
+async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab) {
+  const { system, user } = buildGenerationPrompt(targets, anchors, vocab)
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://magical-druid-656889.netlify.app',
+      'X-Title': 'Thai Teacher'
+    },
+    body: JSON.stringify({
+      model: 'qwen/qwen3.5-flash-02-23',
+      max_tokens: 16000,
+      temperature: 0.3,
+      stream: true,
+      // Disable thinking for structured JSON output
+      extra_body: { thinking: { type: 'disabled' } },
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }]
+    })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err?.error?.message || `Qwen error ${res.status}`)
   }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let accumulated = ''
+  let fullText = ''
+  let pairsFound = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    accumulated += decoder.decode(value, { stream: true })
+    for (const line of accumulated.split('\n')) {
+      if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+        try {
+          const evt = JSON.parse(line.slice(6))
+          const delta = evt.choices?.[0]?.delta?.content
+          if (delta) {
+            fullText += delta
+            const found = (fullText.match(/"phonetic"\s*:/g) || []).length
+            if (found !== pairsFound) {
+              pairsFound = found
+              let latestPair = null
+              try {
+                const lastBrace = fullText.lastIndexOf('"}')
+                if (lastBrace > 0) {
+                  const objStart = fullText.lastIndexOf('{', lastBrace)
+                  if (objStart >= 0) {
+                    const obj = JSON.parse(fullText.slice(objStart, lastBrace + 2))
+                    if (obj.thai && obj.target_phonetic) latestPair = obj
+                  }
+                }
+              } catch {}
+              onProgress && onProgress(pairsFound, 60, latestPair)
+            }
+          }
+        } catch {}
+      }
+    }
+    const lines = accumulated.split('\n')
+    accumulated = lines[lines.length - 1]
+  }
+
+  // Strip any <think>...</think> blocks Qwen might emit
+  const cleanText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+    .replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g, '').trim()
+  if (!cleanText) throw new Error('Empty response from Qwen')
+  const pairs = parsePartialArray(cleanText)
+  if (!pairs.length) throw new Error('No valid pairs in Qwen response')
+  onProgress && onProgress(pairs.length, pairs.length, null)
+  return pairs
+}
+
+async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, vocab, provider) {
+  if (provider === 'deepseek') return generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab)
+  if (provider === 'qwen') return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab)
   const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
   const anchorList = anchors.slice(0, 50).map(w => `${w.thai} = ${w.english}`).join('\n')
 
@@ -1025,9 +1099,10 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           if (needsPhonetics.length > 0) {
             const doPhonetics = async () => {
               let map = {}
-              if (orKey) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey)
-              else if (provider !== 'deepseek') map = await fetchTargetPhonetics(needsPhonetics, apiKey)
-              else map = await fetchTargetPhoneticsDeepSeek(needsPhonetics, apiKey)
+              // Use selected provider's key for phonetics
+              if (provider === 'qwen' || (orKey && provider !== 'claude' && provider !== 'deepseek')) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey || apiKey)
+              else if (provider === 'deepseek') map = await fetchTargetPhoneticsDeepSeek(needsPhonetics, apiKey)
+              else map = await fetchTargetPhonetics(needsPhonetics, apiKey)
               if (Object.keys(map).length) {
                 phoneticsRef.current = { ...phoneticsRef.current, ...map }
                 setTargetPhonetics({ ...phoneticsRef.current })
@@ -2075,165 +2150,117 @@ function DeepSeekTestBtn({ dsKey }) {
   )
 }
 
-function QwenTestBtn({ orKey }) {
-  const [status, setStatus] = useState('')
-  const [testing, setTesting] = useState(false)
-  async function test() {
-    if (!orKey.trim()) return
-    setTesting(true); setStatus('')
-    try {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-        body: JSON.stringify({ model: 'qwen/qwen3.5-flash-02-23', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
-      })
-      if (res.ok) setStatus('✅ Qwen key works!')
-      else { const d = await res.json().catch(()=>({})); setStatus('❌ ' + (d?.error?.message || `Error ${res.status}`)) }
-    } catch(e) { setStatus('❌ ' + e.message) }
-    setTesting(false)
-  }
-  return (
-    <div>
-      <button onClick={test} disabled={!orKey.trim() || testing}
-        style={{ width:'100%', padding:'9px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', color:orKey.trim()?'var(--text)':'var(--muted)', cursor:orKey.trim()?'pointer':'not-allowed', fontSize:13, fontFamily:'Sarabun,sans-serif', fontWeight:600 }}>
-        {testing ? 'Testing...' : 'Test Qwen Key'}
-      </button>
-      {status && <p style={{ fontSize:12, marginTop:6, color:status.startsWith('✅')?'#10b981':'#ef4444' }}>{status}</p>}
-    </div>
-  )
-}
-
 // ── Settings ─────────────────────────────────────────────────────────────────
+const PROVIDERS = [
+  { id: 'claude',   label: 'Claude',   sub: 'Sonnet',       placeholder: 'sk-ant-...',    storage: 'tt-apikey',  testUrl: null },
+  { id: 'deepseek', label: 'DeepSeek', sub: 'V4 Flash',     placeholder: 'sk-...',        storage: 'tt-dskey',   testUrl: null },
+  { id: 'qwen',     label: 'Qwen',     sub: '3.5 Flash',    placeholder: 'sk-or-v1-...', storage: 'tt-orkey',   testUrl: null },
+]
+
 function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey }) {
-  const [key, setKey] = useState(apiKey || '')
-  const [saved, setSaved] = useState(false)
+  // Key state per provider
+  const [keys, setKeys] = useState({ claude: apiKey || '', deepseek: dsKey || '', qwen: orKey || '' })
+  const [saved, setSaved] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
-  const [orKeyLocal, setOrKeyLocal] = useState(orKey || '')
-  const [orSaved, setOrSaved] = useState(false)
+
+  const prov = PROVIDERS.find(p => p.id === provider) || PROVIDERS[0]
+  const currentKey = keys[provider] || ''
+
+  function setKey(k) { setKeys(prev => ({ ...prev, [provider]: k })); setSaved(''); setTestResult('') }
 
   async function saveKey() {
-    const trimmed = key.trim()
-    await stSet('tt-apikey', trimmed)
-    onSaveKey(trimmed)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  async function saveOrKey() {
-    await stSet('tt-orkey', orKeyLocal.trim())
-    onSaveOrKey(orKeyLocal.trim())
-    setOrSaved(true)
-    setTimeout(() => setOrSaved(false), 2000)
+    const trimmed = currentKey.trim()
+    if (provider === 'claude') { await stSet('tt-apikey', trimmed); onSaveKey(trimmed) }
+    else if (provider === 'deepseek') { await stSet('tt-dskey', trimmed); onSaveDsKey(trimmed) }
+    else if (provider === 'qwen') { await stSet('tt-orkey', trimmed); onSaveOrKey(trimmed) }
+    setSaved(provider)
+    setTimeout(() => setSaved(''), 2000)
   }
 
   async function testKey() {
-    if (!key.trim()) return
+    if (!currentKey.trim()) return
     setTesting(true); setTestResult('')
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': key.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
-      })
+      let res
+      if (provider === 'claude') {
+        res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': currentKey.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+        })
+      } else if (provider === 'deepseek') {
+        res = await fetch('/api/deepseek', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}` },
+          body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+        })
+      } else {
+        res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
+          body: JSON.stringify({ model: 'qwen/qwen3.5-flash-02-23', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+        })
+      }
       if (res.ok) setTestResult('✅ Key works!')
-      else { const d = await res.json().catch(()=>({})); setTestResult('❌ ' + (d?.error?.message || `Error ${res.status}`)) }
+      else { const d = await res.json().catch(() => ({})); setTestResult('❌ ' + (d?.error?.message || `Error ${res.status}`)) }
     } catch(e) { setTestResult('❌ ' + e.message) }
     setTesting(false)
   }
 
-  const masked = key.length > 8 ? key.slice(0,8) + '••••••••••••••••' : key
+  const keySource = { claude: 'console.anthropic.com → API Keys', deepseek: 'platform.deepseek.com → API Keys', qwen: 'openrouter.ai → Keys' }
 
   return (
-    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24 }}>
-        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}>
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}>
           <Icon name="arrow_left" size={20} />
         </button>
-        <span className="display" style={{ fontSize:18 }}>Settings</span>
+        <span className="display" style={{ fontSize: 18 }}>Settings</span>
       </div>
 
-      <Card style={{ marginBottom:12, borderColor:'var(--gold-dim)' }}>
-        <p style={{ fontSize:13, color:'var(--gold)', fontWeight:600, marginBottom:6 }}>Claude API Key</p>
-        <p style={{ fontSize:12, color:'var(--muted)', marginBottom:12, lineHeight:1.6 }}>
-          Get your key at <span style={{ color:'var(--text)' }}>console.anthropic.com</span> → API Keys. 
-          Stored only on this device. Enables AI-generated Pimsleur tracks.
-        </p>
-        <input
-          type="password"
-          value={key}
-          onChange={e => { setKey(e.target.value); setSaved(false); setTestResult('') }}
-          placeholder="sk-ant-..."
-          style={{ width:'100%', padding:'10px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, color:'var(--text)', fontSize:14, fontFamily:'DM Mono, monospace', outline:'none', marginBottom:10 }}
-        />
-        {key && apiKey && key === apiKey && (
-          <p style={{ fontSize:11, color:'var(--muted)', marginBottom:10 }}>Current: {masked}</p>
-        )}
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={testKey} disabled={!key.trim() || testing}
-            style={{ flex:1, padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', color:key.trim()?'var(--text)':'var(--muted)', cursor:key.trim()?'pointer':'not-allowed', fontSize:13, fontFamily:'Sarabun,sans-serif', fontWeight:600 }}>
-            {testing ? '...' : 'Test Key'}
-          </button>
-          <button onClick={saveKey} disabled={!key.trim()}
-            style={{ flex:2, padding:'10px', borderRadius:10, border:'none', background:saved?'#063d2e':'linear-gradient(135deg,#d4a94a,#b88a35)', color:saved?'#10b981':'#0b1120', cursor:key.trim()?'pointer':'not-allowed', fontSize:14, fontFamily:'Sarabun,sans-serif', fontWeight:700, transition:'all 0.3s' }}>
-            {saved ? '✓ Saved' : 'Save Key'}
-          </button>
-        </div>
-        {testResult && <p style={{ fontSize:13, marginTop:10, color: testResult.startsWith('✅') ? '#10b981' : '#ef4444' }}>{testResult}</p>}
-      </Card>
+      <Card style={{ padding: 16, marginBottom: 12 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>AI Provider</p>
 
-      <Card style={{ borderColor: apiKey ? '#2d6b2d' : 'var(--border)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:32, height:32, borderRadius:'50%', background: apiKey ? '#063d2e' : 'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <Icon name="sparkles" size={14} color={apiKey ? '#10b981' : 'var(--muted)'} />
-          </div>
-          <div>
-            <p style={{ fontSize:13, fontWeight:600, color: apiKey ? '#10b981' : 'var(--muted)' }}>
-              {apiKey ? 'AI Track Generation Active' : 'No API Key — Template Mode'}
-            </p>
-            <p style={{ fontSize:11, color:'var(--muted)', marginTop:2 }}>
-              {apiKey ? `Tracks use ${provider==='deepseek'?'DeepSeek':'Claude'} to generate natural Thai sentences` : 'Tracks use local templates. Add a key for full Pimsleur quality.'}
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      <Card style={{ padding:16, marginTop:4, borderColor: orKey ? '#2d6b2d' : 'var(--border)' }}>
-        <p style={{ fontSize:13, fontWeight:600, marginBottom:6 }}>OpenRouter Key <span style={{ fontSize:11, color:'var(--muted)', fontWeight:400 }}>(Qwen phonetics)</span></p>
-        <p style={{ fontSize:12, color:'var(--muted)', marginBottom:12, lineHeight:1.6 }}>
-          Get a free key at <span style={{color:'var(--text)'}}>openrouter.ai</span> → Keys. Used for phonetic romanization in Browse and track chips.
-        </p>
-        <input type="password" value={orKeyLocal} onChange={e => { setOrKeyLocal(e.target.value); setOrSaved(false) }}
-          placeholder="sk-or-v1-..."
-          style={{ width:'100%', padding:'10px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, color:'var(--text)', fontSize:14, fontFamily:'DM Mono,monospace', outline:'none', marginBottom:8 }} />
-        <div style={{ display:'flex', gap:8 }}>
-          <QwenTestBtn orKey={orKeyLocal} />
-          <button onClick={saveOrKey} disabled={!orKeyLocal.trim()}
-            style={{ flex:2, padding:'10px', borderRadius:10, border:'none', background:orSaved?'#063d2e':'linear-gradient(135deg,#d4a94a,#b88a35)', color:orSaved?'#10b981':'#0b1120', fontSize:14, fontFamily:'Sarabun,sans-serif', fontWeight:700, cursor:orKeyLocal.trim()?'pointer':'not-allowed', transition:'all 0.3s' }}>
-            {orSaved ? '✓ Saved' : 'Save Key'}
-          </button>
-        </div>
-      </Card>
-
-      <Card style={{ padding:16, marginTop:4 }}>
-        <p style={{ fontSize:13, fontWeight:600, marginBottom:10 }}>AI Provider</p>
-        <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-          {[['claude','Claude (Sonnet)'],['deepseek','DeepSeek (cheaper)']].map(([id,label]) => (
-            <button key={id} onClick={() => onSaveProvider(id)}
-              style={{ flex:1, padding:'9px 6px', borderRadius:10, border:`1px solid ${provider===id?'var(--gold)':'var(--border)'}`, background:provider===id?'#1e1600':'transparent', color:provider===id?'var(--gold)':'var(--muted)', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
-              {label}
+        {/* Provider selector */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          {PROVIDERS.map(p => (
+            <button key={p.id} onClick={() => { onSaveProvider(p.id); setTestResult('') }}
+              style={{ flex: 1, padding: '10px 4px', borderRadius: 10, border: `1px solid ${provider === p.id ? 'var(--gold)' : 'var(--border)'}`, background: provider === p.id ? '#1e1600' : 'transparent', color: provider === p.id ? 'var(--gold)' : 'var(--muted)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Sarabun,sans-serif', textAlign: 'center', lineHeight: 1.3 }}>
+              <div>{p.label}</div>
+              <div style={{ fontSize: 10, opacity: 0.7 }}>{p.sub}</div>
             </button>
           ))}
         </div>
-        {provider === 'deepseek' && (
-          <div>
-            <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8 }}>DeepSeek API key from <span style={{color:'var(--text)'}}>platform.deepseek.com</span></p>
-            <input type="password" value={dsKey} onChange={e => onSaveDsKey(e.target.value)}
-              placeholder="sk-..."
-              style={{ width:'100%', padding:'10px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, color:'var(--text)', fontSize:14, fontFamily:'DM Mono,monospace', outline:'none', marginBottom:8 }} />
-            <DeepSeekTestBtn dsKey={dsKey} />
-          </div>
-        )}
+
+        {/* Key input for selected provider */}
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>
+          Get your key at <span style={{ color: 'var(--text)' }}>{keySource[provider]}</span>
+        </p>
+        <input type="password" value={currentKey} onChange={e => setKey(e.target.value)}
+          placeholder={prov.placeholder}
+          style={{ width: '100%', padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 14, fontFamily: 'DM Mono, monospace', outline: 'none', marginBottom: 8 }} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={testKey} disabled={!currentKey.trim() || testing}
+            style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', color: currentKey.trim() ? 'var(--text)' : 'var(--muted)', cursor: currentKey.trim() ? 'pointer' : 'not-allowed', fontSize: 13, fontFamily: 'Sarabun,sans-serif', fontWeight: 600 }}>
+            {testing ? 'Testing...' : 'Test Key'}
+          </button>
+          <button onClick={saveKey} disabled={!currentKey.trim()}
+            style={{ flex: 2, padding: '10px', borderRadius: 10, border: 'none', background: saved === provider ? '#063d2e' : 'linear-gradient(135deg,#d4a94a,#b88a35)', color: saved === provider ? '#10b981' : '#0b1120', cursor: currentKey.trim() ? 'pointer' : 'not-allowed', fontSize: 14, fontFamily: 'Sarabun,sans-serif', fontWeight: 700, transition: 'all 0.3s' }}>
+            {saved === provider ? '✓ Saved' : 'Save Key'}
+          </button>
+        </div>
+        {testResult && <p style={{ fontSize: 13, marginTop: 10, color: testResult.startsWith('✅') ? '#10b981' : '#ef4444' }}>{testResult}</p>}
+
+        {/* Status */}
+        <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: (provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || (provider === 'qwen' && orKey) ? '#10b981' : '#6b7280', flexShrink: 0 }} />
+          <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+            {(provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || (provider === 'qwen' && orKey)
+              ? `${prov.label} ${prov.sub} active — generates tracks, phonetics and translation`
+              : `No ${prov.label} key saved — add your key above to enable AI track generation`}
+          </p>
+        </div>
       </Card>
     </div>
   )
@@ -2367,8 +2394,8 @@ function ThaiTeacher() {
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} hasOrKey={!!orKey} />}
         {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
-          apiKey={provider==='deepseek' ? dsKey : (apiKey || dsKey)}
-          provider={provider==='deepseek' ? 'deepseek' : (apiKey ? 'claude' : (dsKey ? 'deepseek' : 'none'))}
+          apiKey={provider==='deepseek' ? dsKey : provider==='qwen' ? orKey : (apiKey || dsKey || orKey)}
+          provider={provider==='deepseek' ? 'deepseek' : provider==='qwen' ? 'qwen' : (apiKey ? 'claude' : dsKey ? 'deepseek' : orKey ? 'qwen' : 'none')}
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
         />}
         {view === 'player' && activeTrack && (

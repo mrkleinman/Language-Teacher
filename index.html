@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v36';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v34').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v37';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v34').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -1386,13 +1386,17 @@ function Player({ track, onComplete, onBack, onKru }) {
                 {kw.phonetic && <span className="phon" style={{ fontSize:13, color:'#7a8aad' }}>{kw.phonetic}</span>}
                 <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
               </div>
-              <div style={{ display:'flex', gap:8 }}>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {[['hard','😅','#ef4444','#2d1515'],['ok','👍','#f59e0b','#3d2800'],['easy','⭐','#10b981','#063d2e']].map(([r,e,col,bg]) => (
                   <button key={r} onClick={() => rateKeyword(i,r)}
                     style={{ flex:1, padding:'9px 4px', borderRadius:8, border:`1px solid ${kw.rating===r?col:'var(--border)'}`, background:kw.rating===r?bg:'transparent', color:kw.rating===r?col:'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
                     {e} {r}
                   </button>
                 ))}
+                <button onClick={() => rateKeyword(i,'skip')}
+                  style={{ flexBasis:'100%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='skip'?'#6b7280':'var(--border)'}`, background:kw.rating==='skip'?'#1a1a2e':'transparent', color:kw.rating==='skip'?'#9ca3af':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                  🚫 Didn't appear in track
+                </button>
               </div>
             </div>
           ))}
@@ -1992,7 +1996,8 @@ function DataManager({ onBack, vocab, tracks, onImport }) {
         }
         if (!vocab.length) throw new Error('Vocab list is empty')
         onImport(vocab, tracks)
-        setMsg(`✅ Restored ${vocab.length} words and ${tracks.length} tracks`)
+        setMsg(`✅ Restored ${vocab.length} words and ${tracks.length} tracks — reloading...`)
+        setTimeout(() => window.location.reload(), 1200)
       } catch(e) {
         setMsg('❌ ' + e.message)
       }
@@ -2295,9 +2300,9 @@ function ThaiTeacher() {
   }
 
   function onTrackComplete(keywords) {
-    // Apply SRS ratings
+    // Apply SRS ratings — skip words marked as 'skip' (didn't appear)
     const ratedIds = {}
-    keywords.forEach(k => { if (k.wordId && k.rating) ratedIds[k.wordId] = k.rating })
+    keywords.forEach(k => { if (k.wordId && k.rating && k.rating !== 'skip') ratedIds[k.wordId] = k.rating })
     const newVocab = vocab.map(w => ratedIds[w.id] ? applyRating(w, ratedIds[w.id]) : w)
     saveVocab(newVocab)
 

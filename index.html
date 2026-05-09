@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v44';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v44').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v45';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v45').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -493,7 +493,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider,
       <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
         <span style={{ fontSize:12, color:'var(--muted)', marginRight:4 }}>Generate with:</span>
         {[['claude','⚡ Claude'],['deepseek','🐋 DeepSeek'],['qwen','✨ Qwen']].map(([id,label]) => {
-          const hasKey = id === 'claude' ? hasClaudeKey : id === 'deepseek' ? hasDeepSeekKey : hasOrKey
+          const hasKey = id === 'claude' ? hasClaudeKey : hasOrKey
           return (
             <button key={id} onClick={() => onSetProvider(id)}
               style={{ flex:1, padding:'7px 10px', borderRadius:9, border:`1px solid ${provider===id?'var(--gold)':'var(--border)'}`, background:provider===id?'#1e1600':'transparent', color:provider===id?'var(--gold)':hasKey?'var(--text)':'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s', position:'relative' }}>
@@ -823,8 +823,9 @@ function parsePartialArray(str) {
 }
 
 
-async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab) {
+async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
   const { system, user } = buildGenerationPrompt(targets, anchors, vocab)
+  const orModel = model || 'qwen/qwen3.5-flash-02-23'
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -834,7 +835,7 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
       'X-Title': 'Thai Teacher'
     },
     body: JSON.stringify({
-      model: 'qwen/qwen3.5-flash-02-23',
+      model: orModel,
       max_tokens: 16000,
       temperature: 0.3,
       stream: true,
@@ -900,8 +901,8 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
 }
 
 async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, vocab, provider) {
-  if (provider === 'deepseek') return generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab)
-  if (provider === 'qwen') return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab)
+  if (provider === 'deepseek') return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, 'deepseek/deepseek-chat')
+  if (provider === 'qwen') return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, 'qwen/qwen3.5-flash-02-23')
   const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
   const anchorList = anchors.slice(0, 50).map(w => `${w.thai} = ${w.english}`).join('\n')
 
@@ -1229,7 +1230,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'qwen' ? 'Qwen' : 'Claude'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'claude' ? 'Claude' : provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
@@ -1268,7 +1269,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting to Claude...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'qwen' ? 'Qwen' : 'Claude'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'claude' ? 'Claude' : provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Writing pair ${pairsDone}...`}
           {phase === 'done' && 'Starting lesson...'}
         </span>
@@ -2239,9 +2240,9 @@ function DeepSeekTestBtn({ dsKey }) {
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
-  { id: 'claude',   label: 'Claude',   sub: 'Sonnet',       placeholder: 'sk-ant-...',    storage: 'tt-apikey',  testUrl: null },
-  { id: 'deepseek', label: 'DeepSeek', sub: 'V4 Flash',     placeholder: 'sk-...',        storage: 'tt-dskey',   testUrl: null },
-  { id: 'qwen',     label: 'Qwen',     sub: '3.5 Flash',    placeholder: 'sk-or-v1-...', storage: 'tt-orkey',   testUrl: null },
+  { id: 'claude',   label: 'Claude',   sub: 'Sonnet',      placeholder: 'sk-ant-...',    storage: 'tt-apikey' },
+  { id: 'deepseek', label: 'DeepSeek', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
+  { id: 'qwen',     label: 'Qwen',     sub: '3.5 Flash',   placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
 ]
 
 function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey }) {
@@ -2259,8 +2260,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
   async function saveKey() {
     const trimmed = currentKey.trim()
     if (provider === 'claude') { await stSet('tt-apikey', trimmed); onSaveKey(trimmed) }
-    else if (provider === 'deepseek') { await stSet('tt-dskey', trimmed); onSaveDsKey(trimmed) }
-    else if (provider === 'qwen') { await stSet('tt-orkey', trimmed); onSaveOrKey(trimmed) }
+    else { await stSet('tt-orkey', trimmed); onSaveOrKey(trimmed) }
     setSaved(provider)
     setTimeout(() => setSaved(''), 2000)
   }
@@ -2276,12 +2276,6 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
           headers: { 'Content-Type': 'application/json', 'x-api-key': currentKey.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
           body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
-      } else if (provider === 'deepseek') {
-        res = await fetch('/api/deepseek', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}` },
-          body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
-        })
       } else {
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -2295,7 +2289,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { claude: 'console.anthropic.com → API Keys', deepseek: 'platform.deepseek.com → API Keys', qwen: 'openrouter.ai → Keys' }
+  const keySource = { claude: 'console.anthropic.com → API Keys', deepseek: 'openrouter.ai → Keys (uses deepseek/deepseek-chat)', qwen: 'openrouter.ai → Keys' }
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
@@ -2487,8 +2481,8 @@ function ThaiTeacher() {
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} hasOrKey={!!orKey} />}
         {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
-          apiKey={provider==='deepseek' ? dsKey : provider==='qwen' ? orKey : (apiKey || dsKey || orKey)}
-          provider={provider==='deepseek' ? 'deepseek' : provider==='qwen' ? 'qwen' : (apiKey ? 'claude' : dsKey ? 'deepseek' : orKey ? 'qwen' : 'none')}
+          apiKey={provider==='claude' ? apiKey : orKey}
+          provider={provider}
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
         />}
         {view === 'player' && activeTrack && (

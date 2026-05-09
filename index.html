@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v43';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v43').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v44';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v44').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2376,16 +2376,12 @@ function ThaiTeacher() {
       const sv = await stGet('tt-vocab')
       const st = await stGet('tt-tracks')
       if (sv && sv.length) {
-        // Migration: backfill phonetics from RAW_VOCAB for any word missing them
+        // Migration: overwrite ALL phonetics from corrected RAW_VOCAB
         const phMap = {}
         RAW_VOCAB.forEach((d, i) => { if (d.ph) phMap[i + 1] = d.ph })
-        const migrated = sv.map(w => {
-          if (!w.phonetic && phMap[w.id]) return { ...w, phonetic: phMap[w.id] }
-          return w
-        })
-        const changed = migrated.some((w, i) => w.phonetic !== sv[i].phonetic)
+        const migrated = sv.map(w => phMap[w.id] ? { ...w, phonetic: phMap[w.id] } : w)
         setVocab(migrated)
-        if (changed) await stSet('tt-vocab', migrated)
+        await stSet('tt-vocab', migrated)
       } else {
         const v = initVocab()
         setVocab(v)

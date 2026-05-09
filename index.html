@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v39';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v39').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v40';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v40').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -688,16 +688,46 @@ function buildGenerationPrompt(targets, anchors, vocab) {
   const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
   const approvedList = [...allThai].join('  ')
 
+  // Sentence length by learner rank
+  const known = (vocab||[]).filter(w => w.status === 'known').length
+  const learning = (vocab||[]).filter(w => w.status === 'learning').length
+  let goalMin = 6, goalMax = 12, hardCeil = 12
+  if (known < 100)       { goalMin=1;  goalMax=2;  hardCeil=2  }
+  else if (known < 200)  { goalMin=2;  goalMax=3;  hardCeil=4  }
+  else if (known < 350)  { goalMin=3;  goalMax=4;  hardCeil=6  }
+  else if (known < 500)  { goalMin=4;  goalMax=5;  hardCeil=8  }
+  else if (known < 750)  { goalMin=5;  goalMax=6;  hardCeil=10 }
+  else if (known < 1000) { goalMin=6;  goalMax=7;  hardCeil=11 }
+  else if (known < 1500) { goalMin=7;  goalMax=8;  hardCeil=12 }
+  else if (known < 2000) { goalMin=8;  goalMax=10; hardCeil=14 }
+  else if (known < 3000) { goalMin=10; goalMax=12; hardCeil=16 }
+  else if (known < 4000) { goalMin=12; goalMax=14; hardCeil=18 }
+  else if (known < 5000) { goalMin=14; goalMax=16; hardCeil=20 }
+  else                   { goalMin=15; goalMax=20; hardCeil=25 }
+  // Each learning word costs 2 words of headroom
+  const learningPenalty = Math.min(learning, 3) * 2
+  const effectiveCeil = Math.max(goalMin + 1, hardCeil - learningPenalty)
+
   const system = `You are a Thai language teaching assistant creating Pimsleur-style audio lessons.
 Generate 60 challenge-response pairs. Each pair must have ALL these fields:
 - "prompt": English instruction (VARY the types: "Tell someone...", "Ask if...", "Say that...", "Respond to...", "How would you say...", "Ask someone...", "Explain that..."). Do NOT repeat the same type consecutively.
-- "thai": full natural Thai sentence 6-12 words, ALWAYS end with a polite particle (ครับ for male, ค่ะ/นะคะ for female, alternate throughout)
+- "thai": natural Thai sentence, TARGET LENGTH ${goalMin}–${goalMax} Thai words, HARD MAX ${effectiveCeil} words. ALWAYS end with a polite particle (ครับ for male, ค่ะ/นะคะ for female, alternate throughout)
 - "english": natural English translation
 - "phonetic": tone-marked romanization, one space-separated token per Thai word
 - "words": array of {"p": phonetic_token, "e": English_gloss} — one per Thai word, aligned exactly with phonetic tokens
 - "target_phonetic": romanization of ONLY the ★ target word used in this pair
 
-TONE MARKS: mid=no mark, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ)
+TONE MARKS — MANDATORY, NEVER OMIT:
+- Mid tone: no mark (e.g. khun, pai, tham)
+- Low tone: grave accent ` + '`' + ` on vowel (e.g. phàak, yàak, kàp)
+- Falling tone: circumflex on vowel (e.g. khâo, mâak, bâan)
+- High tone: acute on vowel (e.g. náam, mái, kháo)
+- Rising tone: caron on vowel (e.g. mǎi, sǎam, nǎo)
+EVERY SINGLE WORD in "phonetic" and every "p" in "words" MUST carry the correct tone mark on its vowel.
+A bare romanization like "khao" with no mark means mid tone — only use it if the word is genuinely mid tone.
+WRONG: "phonetic":"khao kin khao khrâp" — kin and khao have no marks, is that intentional?
+RIGHT: "phonetic":"khâo kin khâo khrâp" — every syllable marked deliberately.
+Before writing each "phonetic" field, say to yourself: "What tone is each syllable?" then mark accordingly.
 
 CRITICAL RULES:
 1. ONLY use Thai words from the APPROVED VOCABULARY LIST — no exceptions
@@ -707,11 +737,12 @@ CRITICAL RULES:
 5. "words" array must have exactly the same count as space-separated tokens in "phonetic"
 6. Use ANCHOR WORDS liberally as supporting vocabulary in sentences — don't just use target words with each other
 7. Before finishing, verify every ★ target word appears exactly 3 times in your output
+8. Sentences must stay within TARGET LENGTH ${goalMin}–${goalMax} words, NEVER exceed ${effectiveCeil} words
 
-APPROVED VOCABULARY: ${approvedList}
+APPROVED VOCABULARY: \${approvedList}
 
-Example pair:
-{"prompt":"Ask if your friend wants to float on a raft","thai":"คุณอยากล่องแพไปตามแม่น้ำไหมครับ","english":"Do you want to float on a raft down the river?","phonetic":"khun yàak lông phae pai taam mâe nám mǎi khrâp","words":[{"p":"khun","e":"you"},{"p":"yàak","e":"want"},{"p":"lông","e":"float"},{"p":"phae","e":"raft"},{"p":"pai","e":"go"},{"p":"taam","e":"along"},{"p":"mâe nám","e":"river"},{"p":"mǎi","e":"?"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"lông phae"}
+Example pair (correct tone marks on every word):
+{"prompt":"Ask if your friend wants to go eat rice","thai":"คุณอยากไปกินข้าวไหมครับ","english":"Do you want to go eat rice?","phonetic":"khun yàak pai gin khâo mǎi khrâp","words":[{"p":"khun","e":"you"},{"p":"yàak","e":"want"},{"p":"pai","e":"go"},{"p":"gin","e":"eat"},{"p":"khâo","e":"rice"},{"p":"mǎi","e":"?"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"gin"}
 
 Respond ONLY with valid JSON array, no markdown:
 [{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[...],"target_phonetic":"..."}]`
@@ -1508,6 +1539,8 @@ function Player({ track, onComplete, onBack, onKru }) {
         </button>
         <button onClick={() => idx<pairs.length-1 ? jumpTo(idx+1) : setLessonDone(true)}
           style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:'6px 8px', fontSize:18 }}>⏭</button>
+        <button onClick={() => { cancelledRef.current = true; try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {} setSpeaking(false); stopCountdown(); setLessonDone(true) }}
+          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'#f59e0b', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>☑ Review</button>
         <button onClick={() => { togglePlay(); onKru(pair.prompt) }}
           style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'var(--gold)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>ครู</button>
       </div>
@@ -1547,19 +1580,19 @@ function Player({ track, onComplete, onBack, onKru }) {
               <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'6px 10px', maxWidth:360 }}>
                 {pair.words.map((w, i) => (
                   <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
-                    <span className="phon" style={{ fontSize:17, color:'var(--gold)', fontWeight:600 }}>{w.p}</span>
-                    <span style={{ fontSize:16, color:'#7a8aad', fontStyle:'italic', whiteSpace:'nowrap' }}>{w.e}</span>
+                    <span className="phon" style={{ fontSize:22, color:'var(--gold)', fontWeight:700 }}>{w.p}</span>
+                    <span style={{ fontSize:18, color:'#7a8aad', fontStyle:'italic', whiteSpace:'nowrap' }}>{w.e}</span>
                   </div>
                 ))}
               </div>
             ) : pair.phonetic ? (
-              <p className="phon" style={{ fontSize:28, color:'var(--gold)', lineHeight:1.5, maxWidth:340, textAlign:'center' }}>{pair.phonetic}</p>
+              <p className="phon" style={{ fontSize:36, color:'var(--gold)', lineHeight:1.5, maxWidth:340, textAlign:'center' }}>{pair.phonetic}</p>
             ) : (
               <p className="thai" style={{ fontSize:34, color:'var(--gold)', lineHeight:1.5, maxWidth:340 }}>{pair.thai}</p>
             )}
             <Waveform />
-            <p className="thai" style={{ fontSize:16, color:'#7a8aad', letterSpacing:'0.03em', textAlign:'center' }}>{pair.thai}</p>
-            <p style={{ fontSize:13, color:'var(--muted)', fontStyle:'italic' }}>{pair.english}</p>
+            <p className="thai" style={{ fontSize:24, color:'#7a8aad', letterSpacing:'0.03em', textAlign:'center' }}>{pair.thai}</p>
+            <p style={{ fontSize:19, color:'var(--muted)', fontStyle:'italic' }}>{pair.english}</p>
           </div>
         )}
       </div>
@@ -1696,6 +1729,8 @@ function Browser({ vocab, onBack, initialFilter, phonetics, onCustomTrack, orKey
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className="thai" style={{ fontSize: 20, color: 'var(--text)' }}>{w.thai}</span>
                   <Badge status={w.status} />
+                  <button onClick={e => { e.stopPropagation(); const u = new SpeechSynthesisUtterance(w.thai); u.lang='th-TH'; u.rate=0.8; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u) }}
+                    style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, padding:'0 2px', color:'var(--muted)', lineHeight:1 }} title="Speak">🔊</button>
                 </div>
                 {phonetic && <p className="phon" style={{ fontSize: 11, color: 'var(--gold)', marginTop: 2 }}>{phonetic}</p>}
                 <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>{w.english}</p>

@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v41';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v34').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v42';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v42').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -1660,28 +1660,38 @@ function Browser({ vocab, onBack, initialFilter, phonetics, onCustomTrack, orKey
     return false
   }
 
+  const [fetchCount, setFetchCount] = useState(0)
+  const [fetchTotal, setFetchTotal] = useState(0)
+
   async function getPhonetics() {
     if (!orKey || fetchingPhonetics) return
     const needsFix = vocab.filter(w => phoneticsNeedsFixing(w.phonetic))
     if (!needsFix.length) { setFetchProgress('✅ All phonetics look good!'); setTimeout(() => setFetchProgress(''), 3000); return }
     setFetchingPhonetics(true)
+    setFetchCount(0)
+    setFetchTotal(needsFix.length)
     const BATCH = 40
     let updated = [...vocab]
+    let done = 0
     for (let i = 0; i < needsFix.length; i += BATCH) {
       const batch = needsFix.slice(i, i + BATCH)
-      setFetchProgress(`Fixing ${i + 1}–${Math.min(i + BATCH, needsFix.length)} of ${needsFix.length}...`)
       try {
         const map = await fetchTargetPhoneticsQwen(batch, orKey)
-        updated = updated.map(w => {
-          if (map[w.id]) return { ...w, phonetic: map[w.id] }
-          return w
-        })
+        // Update count one by one as results come in
+        for (const w of batch) {
+          if (map[w.id]) {
+            done++
+            setFetchCount(done)
+            updated = updated.map(v => v.id === w.id ? { ...v, phonetic: map[w.id] } : v)
+          }
+        }
         onVocabUpdate && onVocabUpdate(updated)
       } catch {}
     }
     setFetchingPhonetics(false)
+    setFetchTotal(0)
     const good = updated.filter(w => !phoneticsNeedsFixing(w.phonetic)).length
-    setFetchProgress(`✅ ${good} / ${vocab.length} words have clean phonetics`)
+    setFetchProgress(`✅ ${good} / ${vocab.length} words fixed`)
     setTimeout(() => setFetchProgress(''), 5000)
   }
 
@@ -1719,12 +1729,23 @@ function Browser({ vocab, onBack, initialFilter, phonetics, onCustomTrack, orKey
         <div style={{ marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button onClick={getPhonetics} disabled={fetchingPhonetics}
-              style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid var(--border)', background: 'var(--surface)', color: fetchingPhonetics ? 'var(--muted)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: fetchingPhonetics ? 'default' : 'pointer', fontFamily: 'Sarabun,sans-serif' }}>
-              {fetchingPhonetics ? '⏳ Fetching...' : '🔤 Get Phonetics'}
+              style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${fetchingPhonetics ? 'var(--gold)' : 'var(--border)'}`, background: 'var(--surface)', color: fetchingPhonetics ? 'var(--gold)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: fetchingPhonetics ? 'default' : 'pointer', fontFamily: 'Sarabun,sans-serif', minWidth: 120, textAlign: 'center' }}>
+              {fetchingPhonetics ? `⏳ ${fetchCount} / ${fetchTotal}` : '🔤 Fix Phonetics'}
             </button>
-            <span style={{ fontSize: 11, color: 'var(--gold)' }}>{vocab.filter(w => !phoneticsNeedsFixing(w.phonetic)).length}/{vocab.length} clean phonetics</span>
+            <span style={{ fontSize: 11, color: 'var(--gold)' }}>{vocab.filter(w => !phoneticsNeedsFixing(w.phonetic)).length}/{vocab.length} clean</span>
           </div>
-          {fetchProgress && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{fetchProgress}</p>}
+          {fetchingPhonetics && fetchTotal > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                <span style={{ fontSize: 12, color: 'var(--gold)' }}>✔ {fetchCount} / {fetchTotal} words updated</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{Math.round(fetchCount/fetchTotal*100)}%</span>
+              </div>
+              <div style={{ height: 4, background: 'var(--surface2)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.round(fetchCount/fetchTotal*100)}%`, background: 'var(--gold)', borderRadius: 2, transition: 'width 0.1s ease' }} />
+              </div>
+            </div>
+          )}
+          {!fetchingPhonetics && fetchProgress && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{fetchProgress}</p>}
         </div>
       )}
 

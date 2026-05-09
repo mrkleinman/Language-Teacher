@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v40';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v40').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v41';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v34').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -127,12 +127,12 @@ function pickWords(vocab, mode) {
   const today = new Date().toISOString().slice(0, 10)
   let targets
   if (mode === 'weak') {
-    targets = vocab.filter(w => w.difficulty === 'hard' || w.status === 'lapsed' || w.lapses >= 2).slice(0, 20)
-    if (!targets.length) targets = vocab.filter(w => w.status === 'learning').slice(0, 20)
+    targets = vocab.filter(w => w.difficulty === 'hard' || w.status === 'lapsed' || w.lapses >= 2).slice(0, 30)
+    if (!targets.length) targets = vocab.filter(w => w.status === 'learning').slice(0, 30)
   } else {
-    const due = vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today).slice(0, 15)
-    const newW = vocab.filter(w => w.status === 'new').slice(0, 6)
-    targets = [...due, ...newW].slice(0, 20)
+    const due = vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today).slice(0, 22)
+    const newW = vocab.filter(w => w.status === 'new').slice(0, 9)
+    targets = [...due, ...newW].slice(0, 30)
   }
   const targetIds = new Set(targets.map(w => w.id))
   const anchors = vocab
@@ -203,7 +203,7 @@ function generatePairsLocal(targets, anchors) {
   // Target words get 3 appearances each: intro (early), review (middle), recall (late)
   // Anchors fill the gaps — 1-2 appearances each
 
-  const TOTAL = 60  // ~30 min at ~30 sec per pair
+  const TOTAL = 90  // ~45 min at ~30 sec per pair
   const targetSlots = targets.length * 3  // 3 reps per target word
   const anchorCount = Math.max(0, TOTAL - targetSlots)
   const anchorSample = shuffle(anchors).slice(0, Math.ceil(anchorCount / 1.5))
@@ -512,7 +512,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider,
           onMouseLeave={e => e.currentTarget.style.borderColor = '#2d6b2d'}>
           <Icon name="sparkles" size={22} color="#10b981" />
           <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Daily Track</div>
-          <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>~30 min · {stats.due} due</div>
+          <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>~45 min · {stats.due} due</div>
         </button>
         <button onClick={() => onNav('generate-weak')}
           style={{ background: 'linear-gradient(135deg, #3a1e1e, #4a2a2a)', border: '1px solid #8b3030', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
@@ -709,7 +709,7 @@ function buildGenerationPrompt(targets, anchors, vocab) {
   const effectiveCeil = Math.max(goalMin + 1, hardCeil - learningPenalty)
 
   const system = `You are a Thai language teaching assistant creating Pimsleur-style audio lessons.
-Generate 60 challenge-response pairs. Each pair must have ALL these fields:
+Generate 90 challenge-response pairs. Each pair must have ALL these fields:
 - "prompt": English instruction (VARY the types: "Tell someone...", "Ask if...", "Say that...", "Respond to...", "How would you say...", "Ask someone...", "Explain that..."). Do NOT repeat the same type consecutively.
 - "thai": natural Thai sentence, TARGET LENGTH ${goalMin}–${goalMax} Thai words, HARD MAX ${effectiveCeil} words. ALWAYS end with a polite particle (ครับ for male, ค่ะ/นะคะ for female, alternate throughout)
 - "english": natural English translation
@@ -731,13 +731,14 @@ Before writing each "phonetic" field, say to yourself: "What tone is each syllab
 
 CRITICAL RULES:
 1. ONLY use Thai words from the APPROVED VOCABULARY LIST — no exceptions
-2. Every TARGET WORD (★) MUST appear EXACTLY 3 times — ALL 20 target words must be used, none skipped
+2. Every TARGET WORD (★) MUST appear EXACTLY 3 times — ALL 30 target words must be used, none skipped
 3. Polite particles (ครับ/ค่ะ) are REQUIRED in every sentence
 4. Vary prompt types — never use "Say..." more than twice in a row
 5. "words" array must have exactly the same count as space-separated tokens in "phonetic"
 6. Use ANCHOR WORDS liberally as supporting vocabulary in sentences — don't just use target words with each other
 7. Before finishing, verify every ★ target word appears exactly 3 times in your output
 8. Sentences must stay within TARGET LENGTH ${goalMin}–${goalMax} words, NEVER exceed ${effectiveCeil} words
+9. You have 90 pairs total — spread the 30 target words evenly, 3 appearances each across early/mid/late sections
 
 APPROVED VOCABULARY: \${approvedList}
 
@@ -745,7 +746,7 @@ Example pair (correct tone marks on every word):
 {"prompt":"Ask if your friend wants to go eat rice","thai":"คุณอยากไปกินข้าวไหมครับ","english":"Do you want to go eat rice?","phonetic":"khun yàak pai gin khâo mǎi khrâp","words":[{"p":"khun","e":"you"},{"p":"yàak","e":"want"},{"p":"pai","e":"go"},{"p":"gin","e":"eat"},{"p":"khâo","e":"rice"},{"p":"mǎi","e":"?"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"gin"}
 
 Respond ONLY with valid JSON array, no markdown:
-[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[...],"target_phonetic":"..."}]`
+[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[...],"target_phonetic":"..."}] (90 pairs total)`
 
   const user = `TARGET WORDS (each must appear 3x):\n${targetList}\n\nANCHOR WORDS (review, 1-2x each):\n${anchorList}`
 
@@ -755,32 +756,48 @@ Respond ONLY with valid JSON array, no markdown:
 
 // ── Vocab validator ───────────────────────────────────────────────────────────
 function validatePairs(pairs, vocab) {
-  const ALWAYS_ALLOWED = new Set(['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','หลัง','แล้วก็','ว่า','ให้','กัน','เอง','ๆ','เราะ'])
+  const ALWAYS_ALLOWED = new Set([
+    'ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
+    'หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
+    'ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','หลัง','แล้วก็','ให้','กัน','เอง','ๆ','ไหม','ใช่','แค่',
+    'ตาม','อย่าง','พอ','แบบ','ต้อง','อยาก','ทุก','บาง','เคย','เพิ่ง','กำลัง','ต่อ','เอา','ใส่','ออก',
+    'เข้า','ขึ้น','ลง','ถึง','ผ่าน','แล้วก็','ก็คือ','นั่น','นี่','นั้น','ซึ่ง','เมื่อ','ตั้งแต่','จน','พร้อม',
+    'แม้','ทั้ง','ทำให้','ทำให้','ต้องการ','สามารถ','เพื่อ','โดย','ระหว่าง','หลังจาก','ก่อนที่','เวลา',
+    'ผม','ฉัน','คุณ','เขา','เธอ','เรา','พวกเขา','มัน','ท่าน'
+  ])
   const vocabSet = new Set(vocab.map(w => w.thai))
   const allAllowed = new Set([...ALWAYS_ALLOWED, ...vocabSet])
-  
-  return pairs.filter(p => {
-    if (!p.thai) return false
-    // Tokenize Thai sentence - split on spaces and common joiners
-    const tokens = p.thai.split(/\s+/).filter(Boolean)
-    // Check each token exists in allowed set
-    // Allow partial matches for compound words
-    for (const token of tokens) {
-      // Strip trailing particles like ไหม, นะ
-      const clean = token.replace(/[?!,.]/, '')
-      if (!clean) continue
-      // Check if token or any substring matches vocab
-      const isAllowed = allAllowed.has(clean) || 
-        [...allAllowed].some(w => clean.includes(w) || w.includes(clean))
-      if (!isAllowed) {
-        // Log for debugging but don't filter aggressively - Thai compound words are tricky
-        // Only filter if token is clearly long and unknown
-        if (clean.length > 6 && !allAllowed.has(clean)) {
-          return false
-        }
+  // Sort by length descending for greedy matching
+  const allAllowedArr = [...allAllowed].sort((a, b) => b.length - a.length)
+
+  function coverSentence(thai) {
+    // Greedy: try to cover all Thai characters using known words
+    let remaining = thai
+    // Remove non-Thai chars (spaces, punctuation)
+    remaining = remaining.replace(/[^ก-๙]/g, '')
+    if (!remaining) return true
+    // Try to consume from left using longest match first
+    let attempts = 0
+    while (remaining.length > 0 && attempts < 200) {
+      attempts++
+      const matched = allAllowedArr.find(w => remaining.startsWith(w))
+      if (matched) {
+        remaining = remaining.slice(matched.length)
+      } else {
+        // Can't match first char — unknown word
+        // Allow up to 2 unmatched chars (tone markers, special chars)
+        remaining = remaining.slice(1)
+        // If we still have 3+ unmatched chars in a row, it's unknown
+        const nextMatch = allAllowedArr.find(w => remaining.startsWith(w))
+        if (!nextMatch && remaining.length >= 3) return false
       }
     }
-    return true
+    return remaining.length <= 2
+  }
+
+  return pairs.filter(p => {
+    if (!p.thai) return false
+    return coverSentence(p.thai)
   })
 }
 
@@ -1092,7 +1109,7 @@ function BeltRankView({ vocab, onBack }) {
 function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets }) {
   const [error, setError] = useState('')
   const [pairsDone, setPairsDone] = useState(0)
-  const [pairsTotal, setPairsTotal] = useState(60)
+  const [pairsTotal, setPairsTotal] = useState(90)
   const [targetPhonetics, setTargetPhonetics] = useState({})
   const [phase, setPhase] = useState('starting') // starting | streaming | done | error
   const phoneticsRef = useRef({})
@@ -1632,26 +1649,40 @@ function Browser({ vocab, onBack, initialFilter, phonetics, onCustomTrack, orKey
   const [fetchingPhonetics, setFetchingPhonetics] = useState(false)
   const [fetchProgress, setFetchProgress] = useState('')
 
+  function phoneticsNeedsFixing(p) {
+    if (!p) return true  // missing
+    // IPA characters that don't belong in romanization
+    if (/[ɔɛɯʰŋːɪɐɑʌʊ]/u.test(p)) return true
+    // No tone marks at all AND more than one syllable (single syllable mid-tone ok)
+    const toneMarks = 'àáâǎ'
+    const hasTone = [...toneMarks].some(c => p.includes(c))
+    if (!hasTone && p.replace(/[-\s]/g,'').length > 4) return true
+    return false
+  }
+
   async function getPhonetics() {
     if (!orKey || fetchingPhonetics) return
-    const missing = vocab.filter(w => !w.phonetic)
-    if (!missing.length) { setFetchProgress('✅ All words have phonetics!'); setTimeout(() => setFetchProgress(''), 3000); return }
+    const needsFix = vocab.filter(w => phoneticsNeedsFixing(w.phonetic))
+    if (!needsFix.length) { setFetchProgress('✅ All phonetics look good!'); setTimeout(() => setFetchProgress(''), 3000); return }
     setFetchingPhonetics(true)
-    const BATCH = 50
+    const BATCH = 40
     let updated = [...vocab]
-    for (let i = 0; i < missing.length; i += BATCH) {
-      const batch = missing.slice(i, i + BATCH)
-      setFetchProgress(`Fetching ${i + 1}–${Math.min(i + BATCH, missing.length)} of ${missing.length}...`)
+    for (let i = 0; i < needsFix.length; i += BATCH) {
+      const batch = needsFix.slice(i, i + BATCH)
+      setFetchProgress(`Fixing ${i + 1}–${Math.min(i + BATCH, needsFix.length)} of ${needsFix.length}...`)
       try {
         const map = await fetchTargetPhoneticsQwen(batch, orKey)
-        updated = updated.map(w => (map[w.id] && !w.phonetic) ? { ...w, phonetic: map[w.id] } : w)
+        updated = updated.map(w => {
+          if (map[w.id]) return { ...w, phonetic: map[w.id] }
+          return w
+        })
         onVocabUpdate && onVocabUpdate(updated)
       } catch {}
     }
     setFetchingPhonetics(false)
-    const filled = updated.filter(w => w.phonetic).length
-    setFetchProgress(`✅ ${filled} / ${vocab.length} words have phonetics`)
-    setTimeout(() => setFetchProgress(''), 4000)
+    const good = updated.filter(w => !phoneticsNeedsFixing(w.phonetic)).length
+    setFetchProgress(`✅ ${good} / ${vocab.length} words have clean phonetics`)
+    setTimeout(() => setFetchProgress(''), 5000)
   }
 
   const filters = [['all','All'],['due','Due'],['new','New'],['learning','Learning'],['known','Known'],['lapsed','Lapsed']]
@@ -1691,7 +1722,7 @@ function Browser({ vocab, onBack, initialFilter, phonetics, onCustomTrack, orKey
               style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid var(--border)', background: 'var(--surface)', color: fetchingPhonetics ? 'var(--muted)' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: fetchingPhonetics ? 'default' : 'pointer', fontFamily: 'Sarabun,sans-serif' }}>
               {fetchingPhonetics ? '⏳ Fetching...' : '🔤 Get Phonetics'}
             </button>
-            <span style={{ fontSize: 11, color: 'var(--gold)' }}>{vocab.filter(w => w.phonetic).length}/{vocab.length} have phonetics</span>
+            <span style={{ fontSize: 11, color: 'var(--gold)' }}>{vocab.filter(w => !phoneticsNeedsFixing(w.phonetic)).length}/{vocab.length} clean phonetics</span>
           </div>
           {fetchProgress && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{fetchProgress}</p>}
         </div>

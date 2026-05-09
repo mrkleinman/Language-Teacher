@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v45';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v45').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v47';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v47').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -143,7 +143,7 @@ function pickWords(vocab, mode) {
 }
 
 // ── Pimsleur Track Generator (local, no API) ──────────────────────────────────
-// Generates ~60 challenge-response pairs using full Thai sentences.
+// Generates ~90 challenge-response pairs using full Thai sentences.
 // Each target word appears 3x at spaced intervals (intro → mid review → late review).
 // Anchor words fill gaps with 1-2 sentence reviews.
 
@@ -219,7 +219,7 @@ function generatePairsLocal(targets, anchors) {
     return Math.random() < 0.3 ? [fwd, makePair(w, REV_FRAMES)] : [fwd]
   })
 
-  // Weave everything into a 60-pair Pimsleur sequence:
+  // Weave everything into a 90-pair Pimsleur sequence:
   // [some anchors] → intro group → [anchors] → mid group → [anchors] → late group → [anchors]
   const anchorChunks = chunkArray(shuffle(anchorPairs), 4)
   const ac = i => anchorChunks[i] || []
@@ -660,7 +660,7 @@ async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, v
                   }
                 }
               } catch {}
-              onProgress && onProgress(pairsFound, 60, latestPair)
+              onProgress && onProgress(pairsFound, 90, latestPair)
             }
           }
         } catch {}
@@ -836,11 +836,11 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     },
     body: JSON.stringify({
       model: orModel,
-      max_tokens: 16000,
+      max_tokens: 32000,
       temperature: 0.3,
       stream: true,
-      // Disable thinking for structured JSON output
-      extra_body: { thinking: { type: 'disabled' } },
+      // Note: extra_body thinking control is Qwen-only, not passed to DeepSeek
+      ...(orModel.startsWith('qwen') ? { extra_body: { thinking: { type: 'disabled' } } } : {}),
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }]
     })
   })
@@ -880,7 +880,7 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
                   }
                 }
               } catch {}
-              onProgress && onProgress(pairsFound, 60, latestPair)
+              onProgress && onProgress(pairsFound, 90, latestPair)
             }
           }
         } catch {}
@@ -916,7 +916,7 @@ async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, voc
   const approvedList = [...allThai].join('  ')
 
   const system = `You are a Thai language teaching assistant creating Pimsleur-style audio lessons.
-Generate 60 challenge-response pairs. Each pair has:
+Generate 90 challenge-response pairs. Each pair has:
 - "prompt": English instruction
 - "thai": full Thai sentence 6-12 words
 - "english": natural English translation
@@ -929,7 +929,7 @@ TONE MARKS: mid=no mark, low=grave(à), falling=circumflex(â), high=acute(á), 
 CRITICAL VOCABULARY RULE: Thai sentences must ONLY use words from the APPROVED VOCABULARY LIST provided. Do not introduce any Thai word not on that list. The student has not learned other words yet. This is the most important rule.
 
 OTHER RULES:
-- Every TARGET WORD (★) must appear exactly 3 times across the 60 pairs, in different sentence contexts
+- Every TARGET WORD (★) must appear exactly 3 times across the 90 pairs, in different sentence contexts
 - Use varied prompt types: "Tell someone...", "Ask if...", "Say that...", "Respond to...", "How would you say..."
 - Thai sentences must be natural, complete sentences with particles (ครับ/ค่ะ/นะ)
 - Anchor words appear 1-2 times each for review
@@ -986,7 +986,7 @@ Respond ONLY with valid JSON array, no markdown:
                 }
               }
             } catch {}
-            onProgress && onProgress(pairsFound, 60, latestPair)
+            onProgress && onProgress(pairsFound, 90, latestPair)
           }
         }
       } catch {}

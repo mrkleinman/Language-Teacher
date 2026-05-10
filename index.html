@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v48';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v48').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v49';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v49').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -1349,9 +1349,10 @@ function calcDuration(thai, phase, phonetic) {
   return ttsDur + pauseDur
 }
 
-function Player({ track, onComplete, onBack, onKru }) {
+function Player({ track, onComplete, onBack, onKru, onBookmark }) {
   const pairs = track.pairs || []
-  const [idx, setIdx] = useState(0)
+  const [idx, setIdx] = useState(track.bookmark || 0)
+  const [bookmarked, setBookmarked] = useState(false)
   const [phase, setPhase] = useState('prompt')
   const [playing, setPlaying] = useState(false)
   const [countdown3, setCountdown3] = useState(3)
@@ -1580,9 +1581,21 @@ function Player({ track, onComplete, onBack, onKru }) {
           style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:'6px 8px', fontSize:18 }}>⏭</button>
         <button onClick={() => { cancelledRef.current = true; try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {} setSpeaking(false); stopCountdown(); setLessonDone(true) }}
           style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'#f59e0b', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>☑ Review</button>
+        <button onClick={() => { onBookmark && onBookmark(idx); setBookmarked(true); setTimeout(() => setBookmarked(false), 2000) }}
+          style={{ background: bookmarked ? '#1a2a00' : 'var(--surface)', border:`1px solid ${bookmarked ? '#4a7a00' : 'var(--border)'}`, borderRadius:20, padding:'5px 10px', cursor:'pointer', color: bookmarked ? '#86c900' : 'var(--muted)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
+          {bookmarked ? '✓ Saved' : '🔖 Pair ' + (idx + 1)}</button>
         <button onClick={() => { togglePlay(); onKru(pair.prompt) }}
           style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'var(--gold)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>ครู</button>
       </div>
+
+      {/* Resume from bookmark banner */}
+      {track.bookmark > 0 && idx === (track.bookmark || 0) && !playing && (
+        <div style={{ margin:'6px 16px 0', background:'#0d1a00', border:'1px solid #3a6000', borderRadius:8, padding:'7px 12px', display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:13 }}>🔖</span>
+          <span style={{ fontSize:12, color:'#86c900', flex:1 }}>Resuming from pair {(track.bookmark || 0) + 1} of {pairs.length}</span>
+          <button onClick={() => { setIdx(0) }} style={{ background:'none', border:'none', color:'var(--muted)', fontSize:11, cursor:'pointer', fontFamily:'Sarabun,sans-serif' }}>Start over</button>
+        </div>
+      )}
 
       {/* Thai speed control */}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 16px 0' }}>
@@ -2507,7 +2520,13 @@ function ThaiTeacher() {
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
         />}
         {view === 'player' && activeTrack && (
-          <Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} />
+          <Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)}
+            onBookmark={async (pairIdx) => {
+              const updated = tracks.map(t => t === activeTrack ? { ...t, bookmark: pairIdx } : t)
+              await saveTracks(updated)
+              setActiveTrack(prev => ({ ...prev, bookmark: pairIdx }))
+            }}
+          />
         )}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}

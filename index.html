@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v47';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v47').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v48';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v48').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -915,32 +915,53 @@ async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, voc
   ])
   const approvedList = [...allThai].join('  ')
 
-  const system = `You are a Thai language teaching assistant creating Pimsleur-style audio lessons.
-Generate 90 challenge-response pairs. Each pair has:
-- "prompt": English instruction
-- "thai": full Thai sentence 6-12 words
+
+  // Build per-word usage schedule — 3 appearances each, spread across 90 pairs
+  const schedule = []
+  targets.forEach((t, ti) => {
+    [ti * 3, ti * 3 + 1, ti * 3 + 2].forEach(s => schedule.push({ slot: s % 90, word: t.thai, eng: t.english }))
+  })
+  schedule.sort((a, b) => a.slot - b.slot)
+  const scheduleStr = schedule.map(s => `Pair ${s.slot + 1}: ★${s.word} (${s.eng})`).join('\n')
+
+  const system = `You are a strict Thai language teaching assistant creating Pimsleur-style audio lessons.
+
+Generate EXACTLY 90 challenge-response pairs as a JSON array.
+
+PAIR STRUCTURE — every pair must have ALL these fields:
+- "prompt": creative English instruction using varied types
+- "thai": natural Thai sentence, TARGET ${goalMin}–${goalMax} words, MAX ${effectiveCeil} words, MUST end with ครับ or ค่ะ
 - "english": natural English translation
-- "phonetic": full romanization with tone marks, one token per Thai word, space-separated
-- "words": array of {"p": phonetic_token, "e": English_gloss} — one entry per Thai word in order, aligned with phonetic tokens
-- "target_phonetic": the romanized pronunciation of ONLY the target word (★) used in this pair. If no target word, omit this field.
+- "phonetic": tone-marked romanization, one space-separated token per Thai word
+- "words": array of {"p": phonetic_token, "e": English_gloss} — EXACTLY one per Thai word
+- "target_phonetic": romanization of the ★ target word in this pair
 
-TONE MARKS: mid=no mark, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ)
+RULE 1 — STRICT WORD SCHEDULE (HIGHEST PRIORITY):
+Follow this assignment exactly — each pair number has one assigned target word:
+${scheduleStr}
+Do not use a target word in any pair except its assigned slots.
 
-CRITICAL VOCABULARY RULE: Thai sentences must ONLY use words from the APPROVED VOCABULARY LIST provided. Do not introduce any Thai word not on that list. The student has not learned other words yet. This is the most important rule.
+RULE 2 — VOCABULARY: Use ONLY Thai words from the APPROVED VOCABULARY LIST. Zero exceptions.
 
-OTHER RULES:
-- Every TARGET WORD (★) must appear exactly 3 times across the 90 pairs, in different sentence contexts
-- Use varied prompt types: "Tell someone...", "Ask if...", "Say that...", "Respond to...", "How would you say..."
-- Thai sentences must be natural, complete sentences with particles (ครับ/ค่ะ/นะ)
-- Anchor words appear 1-2 times each for review
-- "words" array must have exactly the same number of entries as space-separated tokens in "phonetic"
+RULE 3 — PROMPT VARIETY:
+Use these types creatively in rotation — no type more than 3 times in a row:
+Tell someone | Ask if | Say that | Ask someone to | Respond to | How would you say |
+Explain that | Ask where | Ask when | Ask why | Suggest that | Invite someone to |
+Warn someone | Refuse politely | Agree by saying | Express surprise | Complain that |
+Confirm that | Deny that | Ask how many | Admit that | Promise that | Describe
+"Ask" "Say" "Tell" must each appear fewer than 12 times total across 90 pairs.
 
-Example pair:
-{"prompt":"Tell someone you want to go home","thai":"ผมอยากกลับบ้านครับ","english":"I want to go home","phonetic":"phǒm yàak glàp bâan khrâp","words":[{"p":"phǒm","e":"I"},{"p":"yàak","e":"want"},{"p":"glàp","e":"return"},{"p":"bâan","e":"home"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"glàp bâan"}
+RULE 4 — TONE MARKS (MANDATORY ON EVERY WORD):
+mid=no mark | low=grave(à) | falling=circumflex(â) | high=acute(á) | rising=caron(ǎ)
 
-Respond ONLY with valid JSON array, no markdown:
-[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[...]}]`
-  const user = `APPROVED VOCABULARY (use ONLY these Thai words):\n${approvedList}\n\nTARGET WORDS (each must appear 3x):\n${targetList}\n\nANCHOR WORDS (review, 1-2x each):\n${anchorList}`
+RULE 5 — SENTENCE CREATIVITY:
+Every sentence must be a different situation. Mix questions, statements, invitations,
+refusals, suggestions, complaints. Never repeat the same sentence structure twice in a row.
+
+RULE 6 — WORDS ARRAY: Must have EXACTLY the same token count as "phonetic" space-separated.
+
+Respond ONLY with valid JSON array of 90 objects. No markdown, no explanation, no preamble.`
+  const user = `APPROVED VOCABULARY (use ONLY these Thai words):\n${approvedList}\n\nANCHOR WORDS (for supporting sentences, 1-2x each):\n${anchorList}\n\nRemember: follow the pair schedule in the system prompt exactly. Every pair number has an assigned target word.`
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -1599,18 +1620,18 @@ function Player({ track, onComplete, onBack, onKru }) {
                 {pair.words.map((w, i) => (
                   <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
                     <span className="phon" style={{ fontSize:22, color:'var(--gold)', fontWeight:700 }}>{w.p}</span>
-                    <span style={{ fontSize:18, color:'#7a8aad', fontStyle:'italic', whiteSpace:'nowrap' }}>{w.e}</span>
+                    <span style={{ fontSize:18, color:'#c8d8f0', fontStyle:'italic', whiteSpace:'nowrap' }}>{w.e}</span>
                   </div>
                 ))}
               </div>
             ) : pair.phonetic ? (
-              <p className="phon" style={{ fontSize:36, color:'var(--gold)', lineHeight:1.5, maxWidth:340, textAlign:'center' }}>{pair.phonetic}</p>
+              <p className="phon" style={{ fontSize:38, color:'var(--gold)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>{pair.phonetic}</p>
             ) : (
               <p className="thai" style={{ fontSize:34, color:'var(--gold)', lineHeight:1.5, maxWidth:340 }}>{pair.thai}</p>
             )}
             <Waveform />
-            <p className="thai" style={{ fontSize:24, color:'#7a8aad', letterSpacing:'0.03em', textAlign:'center' }}>{pair.thai}</p>
-            <p style={{ fontSize:19, color:'var(--muted)', fontStyle:'italic' }}>{pair.english}</p>
+            <p className="thai" style={{ fontSize:26, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center' }}>{pair.thai}</p>
+            <p style={{ fontSize:21, color:'#e8d5a3', fontStyle:'italic' }}>{pair.english}</p>
           </div>
         )}
       </div>

@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v49';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v49').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v51';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v51').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -445,7 +445,7 @@ function BeltRankCard({ vocab, onNav }) {
   )
 }
 
-function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider, onSetProvider, hasClaudeKey, hasDeepSeekKey, hasOrKey }) {
+function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenConvo, provider, onSetProvider, hasClaudeKey, hasDeepSeekKey, hasOrKey }) {
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
   const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
@@ -532,21 +532,37 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, provider,
           <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Recent Tracks</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recent.map((track, i) => (
-              <div key={i} style={{ display:'flex', alignItems:'stretch', gap:6 }}>
-                <Card onClick={() => onOpenTrack(track)} style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, flex:1 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: track.mode === 'weak' ? '#2d1515' : '#0a2d1e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon name={track.mode === 'weak' ? 'target' : 'sparkles'} size={14} color={track.mode === 'weak' ? '#ef4444' : '#10b981'} />
+              <div key={i} style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                {/* Track info row */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)' }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:track.mode==='weak'?'#2d1515':'#0a2d1e', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Icon name={track.mode==='weak'?'target':'sparkles'} size={12} color={track.mode==='weak'?'#ef4444':'#10b981'} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600 }}>{track.date}</p>
-                    <p style={{ fontSize: 11, color: 'var(--muted)' }}>{track.pairs?.length || 0} pairs · {track.keywords?.length || 0} keywords</p>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:13, fontWeight:600 }}>{track.date}</p>
+                    <p style={{ fontSize:11, color:'var(--muted)' }}>
+                      {track.pairs?.length||0} pairs · {track.keywords?.length||0} words
+                      {track.bookmark > 0 && <span style={{ color:'#86c900', marginLeft:6 }}>🔖 {track.bookmark+1}</span>}
+                      {track.convo && <span style={{ color:'#4a90e2', marginLeft:6 }}>💬</span>}
+                    </p>
                   </div>
                   {track.rated && <Icon name="check" size={14} color="#10b981" />}
-                </Card>
-                <button onClick={e => { e.stopPropagation(); onDeleteTrack(tracks.length - 1 - i) }}
-                  style={{ background:'#2d1515', border:'1px solid #3d1a1a', borderRadius:10, padding:'0 12px', cursor:'pointer', color:'#ef4444', flexShrink:0, fontSize:16 }}>
-                  🗑
-                </button>
+                  <button onClick={e => { e.stopPropagation(); onDeleteTrack(tracks.length-1-i) }}
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:14, padding:'4px 6px' }}>🗑</button>
+                </div>
+                {/* Action buttons */}
+                <div style={{ display:'flex', gap:6 }}>
+                  {track.convo && (
+                    <button onClick={() => onOpenConvo(track)}
+                      style={{ flex:1, padding:'9px', borderRadius:10, border:'1px solid #1e3a5f', background:'#0a1a2e', color:'#4a90e2', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
+                      💬 Convo
+                    </button>
+                  )}
+                  <button onClick={() => onOpenTrack(track)}
+                    style={{ flex:2, padding:'9px', borderRadius:10, border:`1px solid ${track.rated?'var(--border)':'var(--gold-dim)'}`, background:track.rated?'transparent':'#1e1600', color:track.rated?'var(--muted)':'var(--gold)', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
+                    {track.rated ? '✓ Done — Redo SRS' : '▶ SRS Track'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -682,11 +698,14 @@ async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, v
 
 // ── Shared prompt builder for ALL AI providers ────────────────────────────────
 function buildGenerationPrompt(targets, anchors, vocab) {
-  const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
-  const anchorList = anchors.slice(0, 50).map(w => `${w.thai} = ${w.english}`).join('\n')
+  // Include stored phonetics so AI uses correct romanization, not its own
+  const targetList = targets.map(w => `★ ${w.thai}${w.phonetic ? ` [${w.phonetic}]` : ''} = ${w.english}`).join('\n')
+  const anchorList = anchors.slice(0, 50).map(w => `${w.thai}${w.phonetic ? ` [${w.phonetic}]` : ''} = ${w.english}`).join('\n')
   const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก']
   const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
-  const approvedList = [...allThai].join('  ')
+  // approvedList with phonetics for words that have them
+  const vocabPhonMap = Object.fromEntries((vocab||[]).map(w => [w.thai, w.phonetic]).filter(([,p]) => p))
+  const approvedList = [...allThai].map(t => vocabPhonMap[t] ? `${t}[${vocabPhonMap[t]}]` : t).join('  ')
 
   // Sentence length by learner rank
   const known = (vocab||[]).filter(w => w.status === 'known').length
@@ -713,32 +732,25 @@ Generate 90 challenge-response pairs. Each pair must have ALL these fields:
 - "prompt": English instruction (VARY the types: "Tell someone...", "Ask if...", "Say that...", "Respond to...", "How would you say...", "Ask someone...", "Explain that..."). Do NOT repeat the same type consecutively.
 - "thai": natural Thai sentence, TARGET LENGTH ${goalMin}–${goalMax} Thai words, HARD MAX ${effectiveCeil} words. ALWAYS end with a polite particle (ครับ for male, ค่ะ/นะคะ for female, alternate throughout)
 - "english": natural English translation
-- "phonetic": tone-marked romanization, one space-separated token per Thai word
-- "words": array of {"p": phonetic_token, "e": English_gloss} — one per Thai word, aligned exactly with phonetic tokens
-- "target_phonetic": romanization of ONLY the ★ target word used in this pair
+- "phonetic": romanization using the EXACT phonetics from APPROVED VOCABULARY (shown in [brackets]). Copy them verbatim, space-separated.
+- "words": array of {"p": phonetic_token, "e": English_gloss} — one per Thai word, copy phonetics from approved list
+- "target_phonetic": phonetic of the ★ target word — copy EXACTLY from the bracket shown in the target list
 
-TONE MARKS — MANDATORY, NEVER OMIT:
-- Mid tone: no mark (e.g. khun, pai, tham)
-- Low tone: grave accent ` + '`' + ` on vowel (e.g. phàak, yàak, kàp)
-- Falling tone: circumflex on vowel (e.g. khâo, mâak, bâan)
-- High tone: acute on vowel (e.g. náam, mái, kháo)
-- Rising tone: caron on vowel (e.g. mǎi, sǎam, nǎo)
-EVERY SINGLE WORD in "phonetic" and every "p" in "words" MUST carry the correct tone mark on its vowel.
-A bare romanization like "khao" with no mark means mid tone — only use it if the word is genuinely mid tone.
-WRONG: "phonetic":"khao kin khao khrâp" — kin and khao have no marks, is that intentional?
-RIGHT: "phonetic":"khâo kin khâo khrâp" — every syllable marked deliberately.
-Before writing each "phonetic" field, say to yourself: "What tone is each syllable?" then mark accordingly.
+PHONETICS: Use ONLY the romanizations shown in [brackets] in the vocabulary list. Do NOT invent your own.
+For words without brackets, use standard romanization with tone marks:
+mid=no mark | low=grave(à) | falling=circumflex(â) | high=acute(á) | rising=caron(ǎ)
 
 CRITICAL RULES:
-1. ONLY use Thai words from the APPROVED VOCABULARY LIST — no exceptions
-2. Every TARGET WORD (★) MUST appear EXACTLY 3 times — ALL 30 target words must be used, none skipped
-3. Polite particles (ครับ/ค่ะ) are REQUIRED in every sentence
-4. Vary prompt types — never use "Say..." more than twice in a row
-5. "words" array must have exactly the same count as space-separated tokens in "phonetic"
-6. Use ANCHOR WORDS liberally as supporting vocabulary in sentences — don't just use target words with each other
-7. Before finishing, verify every ★ target word appears exactly 3 times in your output
-8. Sentences must stay within TARGET LENGTH ${goalMin}–${goalMax} words, NEVER exceed ${effectiveCeil} words
-9. You have 90 pairs total — spread the 30 target words evenly, 3 appearances each across early/mid/late sections
+1. ONLY use Thai words from the APPROVED VOCABULARY LIST — no exceptions, no invented words
+2. EVERY ★ TARGET WORD MUST APPEAR EXACTLY 3 TIMES — if any target word appears 0, 1, or 2 times you have FAILED
+   After every 30 pairs, check: has each target word appeared the right number of times?
+   Spread evenly: first appearance in pairs 1-30, second in 31-60, third in 61-90
+3. Polite particles (ครับ/ค่ะ) are REQUIRED in every sentence — alternate male/female
+4. VARY PROMPT TYPES — use at minimum 15 different prompt starters across 90 pairs
+   Never use the same type more than 3 times in a row. Mix: Tell/Ask/Say/Respond/Explain/Warn/Suggest/Invite/Confirm/Deny/Express/Describe/Admit/Promise/Ask how
+5. "words" array must have EXACTLY the same token count as space-separated tokens in "phonetic"
+6. Use ANCHOR WORDS as supporting vocabulary — don't cluster all target words together
+7. Sentences must stay within ${goalMin}–${goalMax} words, NEVER exceed ${effectiveCeil} words
 
 APPROVED VOCABULARY: \${approvedList}
 
@@ -1128,12 +1140,170 @@ function BeltRankView({ vocab, onBack }) {
   )
 }
 
+
+// ── Pre-track conversation builder ───────────────────────────────────────────
+function buildConvoPrompt(targets, vocab) {
+  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก','ผม','ฉัน','คุณ','เขา','เธอ','เรา','พวกเขา']
+  const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
+  const vocabPhonMap = Object.fromEntries((vocab||[]).map(w=>[w.thai,w.phonetic]).filter(([,p])=>p))
+  const targetList = targets.map(w=>`${w.thai}${w.phonetic?` [${w.phonetic}]`:''} = ${w.english}`).join(', ')
+  const approvedList = [...allThai].map(t=>vocabPhonMap[t]?`${t}[${vocabPhonMap[t]}]`:t).join('  ')
+
+  const system = `You are creating a short natural Thai conversation for a language learner.
+The conversation must use ALL of these target words at least once: ${targetList}
+Use ONLY Thai words from this approved list: ${approvedList}
+Rules:
+- Write a realistic conversation between a Thai man (speaker "M") and Thai woman (speaker "W")
+- The man uses male polite particles: ครับ, ผม
+- The woman uses female polite particles: ค่ะ, คะ, ฉัน, หนู
+- Use every target word naturally at least once
+- Keep sentences short and natural (3-7 words each)
+- Include phonetics for every Thai word using the [brackets] shown, or standard romanization
+- Respond ONLY with valid JSON, no markdown:
+{"lines":[{"speaker":"M","thai":"...","phonetic":"...","english":"..."},{"speaker":"W","thai":"...","phonetic":"...","english":"..."},...]}
+- Aim for 12-18 lines total covering all target words
+- Make the conversation feel natural — a real situation like meeting, planning a trip, shopping, eating out, etc.`
+
+  return { system, user: 'Generate the conversation now.' }
+}
+
+async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
+  const { system, user } = buildConvoPrompt(targets, vocab)
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
+    body: JSON.stringify({ model: model || 'qwen/qwen3.5-flash-02-23', max_tokens: 4000, temperature: 0.4, stream: false,
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
+  })
+  if (!res.ok) throw new Error(`Convo error ${res.status}`)
+  const data = await res.json()
+  let text = (data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
+  const parsed = JSON.parse(text)
+  return parsed.lines || []
+}
+
+async function generateConvoWithClaude(targets, vocab, apiKey) {
+  const { system, user } = buildConvoPrompt(targets, vocab)
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4000,
+      system, messages: [{ role: 'user', content: user }] })
+  })
+  if (!res.ok) throw new Error(`Claude convo error ${res.status}`)
+  const data = await res.json()
+  let text = (data.content?.[0]?.text || '').replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
+  const parsed = JSON.parse(text)
+  return parsed.lines || []
+}
+
+
+// ── Pre-track Conversation Player ────────────────────────────────────────────
+function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
+  const [lineIdx, setLineIdx] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [voices, setVoices] = useState([])
+  const cancelRef = useRef(false)
+  const HAS_SPEECH = typeof window !== 'undefined' && 'speechSynthesis' in window
+
+  useEffect(() => {
+    if (!HAS_SPEECH) return
+    const load = () => { const v = window.speechSynthesis.getVoices(); if (v.length) setVoices(v) }
+    load(); window.speechSynthesis.onvoiceschanged = load
+    return () => { try { window.speechSynthesis.onvoiceschanged = null } catch(e) {} }
+  }, [])
+
+  useEffect(() => {
+    if (!playing || lineIdx >= lines.length) { if (lineIdx >= lines.length) onDone(); return }
+    cancelRef.current = false
+    const line = lines[lineIdx]
+    const speakLine = () => {
+      if (!HAS_SPEECH || cancelRef.current) { setTimeout(() => { if (!cancelRef.current) setLineIdx(i => i + 1) }, 1200); return }
+      try { window.speechSynthesis.cancel() } catch(e) {}
+      const u = new SpeechSynthesisUtterance(line.thai)
+      u.lang = 'th-TH'; u.rate = speed || 0.8
+      const match = voices.find(v => v.lang.startsWith('th'))
+      if (match) u.voice = match
+      u.onend = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 800) }
+      u.onerror = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 1000) }
+      window.speechSynthesis.speak(u)
+    }
+    speakLine()
+    return () => { cancelRef.current = true; try { window.speechSynthesis.cancel() } catch(e) {} }
+  }, [playing, lineIdx, lines, speed, voices])
+
+  const line = lines[lineIdx] || lines[lines.length - 1] || {}
+
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', minHeight:'100vh' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+        <div>
+          <div className="display" style={{ fontSize:17, color:'var(--gold)' }}>Preview Conversation</div>
+          <div style={{ fontSize:11, color:'var(--muted)' }}>Using all {lines.length > 0 ? 'target' : ''} words from this track</div>
+        </div>
+        <button onClick={() => { cancelRef.current = true; try { window.speechSynthesis.cancel() } catch(e) {} onSkip() }}
+          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'7px 14px', cursor:'pointer', color:'var(--muted)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
+          Skip →
+        </button>
+      </div>
+
+      {/* Speed control */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, background:'var(--surface)', borderRadius:10, padding:'8px 12px' }}>
+        <span style={{ fontSize:11, color:'var(--muted)' }}>🐢</span>
+        <input type="range" min="0.4" max="1.2" step="0.05" value={speed}
+          onChange={e => onSpeedChange(parseFloat(e.target.value))}
+          style={{ flex:1, accentColor:'var(--gold)', height:4, cursor:'pointer' }} />
+        <span style={{ fontSize:11, color:'var(--muted)' }}>🐇</span>
+        <span className="phon" style={{ fontSize:11, color:'var(--gold)', minWidth:28 }}>{speed.toFixed(2)}x</span>
+      </div>
+
+      {/* Progress */}
+      <div style={{ height:3, background:'var(--surface2)', borderRadius:2, marginBottom:20 }}>
+        <div style={{ height:'100%', width:`${Math.round((lineIdx/Math.max(lines.length,1))*100)}%`, background:'var(--gold)', borderRadius:2, transition:'width 0.4s' }} />
+      </div>
+
+      {/* Conversation lines */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8, overflowY:'auto', marginBottom:16 }}>
+        {lines.map((l, i) => {
+          const isA = l.speaker === 'M'
+          const isCurrent = i === lineIdx && playing
+          const isPast = i < lineIdx
+          return (
+            <div key={i} style={{ display:'flex', flexDirection: isA ? 'row' : 'row-reverse', gap:8, opacity: isPast ? 0.5 : isCurrent ? 1 : 0.7 }}>
+              <div style={{ width:28, height:28, borderRadius:'50%', background: isA ? '#1e3a5f' : '#2a1e3a', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0, marginTop:4, border: isCurrent ? `2px solid ${isA ? '#4a90e2' : '#c084fc'}` : '2px solid transparent' }}>
+                {isA ? '👨' : '👩'}
+              </div>
+              <div style={{ maxWidth:'75%', background: isCurrent ? (isA ? '#0a1a2e' : '#1a0a2e') : 'var(--surface)', border:`1px solid ${isCurrent ? (isA ? '#4a90e2' : '#c084fc') : 'var(--border)'}`, borderRadius:12, padding:'10px 12px' }}>
+                <p className="thai" style={{ fontSize:20, color: isCurrent ? 'var(--text)' : 'var(--muted)', marginBottom:4 }}>{l.thai}</p>
+                <p className="phon" style={{ fontSize:13, color:'var(--gold)', marginBottom:3 }}>{l.phonetic}</p>
+                <p style={{ fontSize:13, color:'#c8d8f0', fontStyle:'italic' }}>{l.english}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Play/pause button */}
+      <button onClick={() => setPlaying(p => !p)}
+        style={{ width:'100%', padding:'15px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#d4a94a,#b88a35)', color:'#0b1120', fontSize:16, fontWeight:700, cursor:'pointer', fontFamily:'Sarabun,sans-serif' }}>
+        {playing ? '⏸ Pause' : lineIdx === 0 ? '▶ Play Conversation' : '▶ Resume'}
+      </button>
+    </div>
+  )
+}
+
 function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets }) {
   const [error, setError] = useState('')
   const [pairsDone, setPairsDone] = useState(0)
   const [pairsTotal, setPairsTotal] = useState(90)
   const [targetPhonetics, setTargetPhonetics] = useState({})
   const [phase, setPhase] = useState('starting') // starting | streaming | done | error
+  const [convoLines, setConvoLines] = useState(null)
+  const [showConvo, setShowConvo] = useState(false)
+  const [convoLoading, setConvoLoading] = useState(false)
+  const [convoSpeed, setConvoSpeed] = useState(() => { try { return parseFloat(localStorage.getItem('tt-speed') || '0.8') } catch { return 0.8 } })
+  const [generatedTrack, setGeneratedTrack] = useState(null)
   const phoneticsRef = useRef({})
   const { targets, anchors } = useMemo(() => {
     if (customTargets && customTargets.length) {
@@ -1204,8 +1374,6 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           setPairsDone(pairs.length)
           setPairsTotal(pairs.length)
         }
-        setPhase('done')
-
         // Use pre-call phonetics (phoneticsRef) — reliable, per-word accurate
         // Previous regex pair-matching was buggy and overwrote correct data
         if (onPhonetics && Object.keys(phoneticsRef.current).length) {
@@ -1216,7 +1384,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
         }
-        setTimeout(() => onGenerated(track), 400)
+        setGeneratedTrack(track)
+        // Track ready — user taps button to start
+        setPhase('done')
       } catch(e) {
         setPhase('error')
         const msg = e.message || 'Unknown error'
@@ -1251,7 +1421,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'claude' ? 'Claude' : provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'claude' ? 'Claude' : provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
@@ -1285,16 +1455,41 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         ))}
       </div>
 
-      {/* Status */}
+      {/* Status / Action buttons */}
       <div style={{ textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
-          {phase === 'starting' && 'Connecting to Claude...'}
+          {phase === 'starting' && 'Connecting...'}
           {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'claude' ? 'Claude' : provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Writing pair ${pairsDone}...`}
-          {phase === 'done' && 'Starting lesson...'}
         </span>
       </div>
+
+      {/* Track ready actions */}
+      {phase === 'done' && generatedTrack && (
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <Btn onClick={() => { onGenerated(generatedTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
+            ▶ Start SRS Track
+          </Btn>
+          <Btn onClick={async () => {
+            setConvoLoading(true)
+            try {
+              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-chat' : 'qwen/qwen3.5-flash-02-23'
+              const convoKey = provider === 'claude' ? apiKey : orKey
+              const lines = provider === 'claude'
+                ? await generateConvoWithClaude(targets, vocab, apiKey)
+                : await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
+              const trackWithConvo = { ...generatedTrack, convo: lines }
+              setGeneratedTrack(trackWithConvo)
+              setConvoLines(lines)
+              setShowConvo(true)
+            } catch(e) { alert('Convo failed: ' + e.message) }
+            setConvoLoading(false)
+          }} variant="secondary" style={{ width:'100%', justifyContent:'center' }} disabled={convoLoading}>
+            {convoLoading ? '⏳ Generating conversation...' : convoLines ? '💬 View Conversation' : '💬 Generate Conversation'}
+          </Btn>
+        </div>
+      )}
 
       {/* Target words */}
       {targets.length > 0 && (
@@ -2513,7 +2708,7 @@ function ThaiTeacher() {
       <FontStyle />
       <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} />
       <main>
-        {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} hasOrKey={!!orKey} />}
+        {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} onOpenConvo={track => { setActiveTrack(track); setView('convo') }} provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} hasOrKey={!!orKey} />}
         {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
           apiKey={provider==='claude' ? apiKey : orKey}
           provider={provider}
@@ -2533,6 +2728,15 @@ function ThaiTeacher() {
         {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
+        {view === 'convo' && activeTrack?.convo && (
+          <ConvoPlayer
+            lines={activeTrack.convo}
+            speed={parseFloat(localStorage.getItem('tt-speed') || '0.8')}
+            onSpeedChange={s => { try { localStorage.setItem('tt-speed', s) } catch {} }}
+            onSkip={() => { setView('dashboard') }}
+            onDone={() => { setView('dashboard') }}
+          />
+        )}
       </main>
 
       {/* Kru floating button */}

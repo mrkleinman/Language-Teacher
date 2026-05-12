@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v53';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v53').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v55';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v55').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -446,6 +446,7 @@ function BeltRankCard({ vocab, onNav }) {
 }
 
 function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenConvo, onGenerateConvo, provider, onSetProvider, hasClaudeKey, hasDeepSeekKey, hasOrKey }) {
+  const [convoLoadingId, setConvoLoadingId] = useState(null)
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
   const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
@@ -563,9 +564,15 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                     {track.rated ? '✓ Done — Redo SRS' : '▶ SRS Track'}
                   </button>
                   {!track.convo && (
-                    <button onClick={() => onGenerateConvo(track, tracks.length-1-i)}
+                    <button onClick={async () => {
+                        const id = track.createdAt || i
+                        setConvoLoadingId(id)
+                        await onGenerateConvo(track)
+                        setConvoLoadingId(null)
+                      }}
+                      disabled={convoLoadingId === (track.createdAt || i)}
                       style={{ flex:1, padding:'9px', borderRadius:10, border:'1px solid #1e3a5f', background:'#0a1a2e', color:'#4a90e2', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
-                      💬
+                      {convoLoadingId === (track.createdAt || i) ? '⏳' : '💬'}
                     </button>
                   )}
                 </div>
@@ -582,6 +589,10 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
 
 
 async function fetchTargetPhoneticsDeepSeek(targets, apiKey) {
+  // Deprecated — now uses Qwen via OpenRouter
+  return fetchTargetPhoneticsQwen(targets, apiKey)
+}
+async function _deadPhoneticsDeepSeek_UNUSED(targets, apiKey) {
   const wordList = targets.map(w => w.thai).join(', ')
   const res = await fetch('/api/deepseek', {
     method: 'POST',
@@ -635,7 +646,10 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
 }
 
 async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab) {
-  console.log('DeepSeek called, key length:', apiKey?.length, 'url:', '/.netlify/functions/deepseek')
+  // Deprecated — DeepSeek now routes via OpenRouter
+  return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, 'deepseek/deepseek-chat')
+}
+async function _deadDeepSeekFn_UNUSED(targets, anchors, apiKey, onProgress, vocab) {
   const { system, user } = buildGenerationPrompt(targets, anchors, vocab)
   const prompt = system + '\n\n' + user
 
@@ -2740,20 +2754,23 @@ function ThaiTeacher() {
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
-            onGenerateConvo={async (track, trackIdx) => {
+            onGenerateConvo={async (track) => {
               const orModel = provider === 'deepseek' ? 'deepseek/deepseek-chat' : 'qwen/qwen3.5-flash-02-23'
               const convoKey = provider === 'claude' ? apiKey : orKey
               if (!convoKey) { alert('Add an API key in Settings first'); return }
               const targets = vocab.filter(w => (track.keywords||[]).some(k => k.wordId === w.id))
+              if (!targets.length) { alert('No matching words found for this track'); return }
               try {
                 const lines = provider === 'claude'
                   ? await generateConvoWithClaude(targets, vocab, apiKey)
                   : await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
-                const updated = tracks.map((t, i) => i === trackIdx ? { ...t, convo: lines } : t)
+                if (!lines || !lines.length) throw new Error('No conversation lines returned')
+                // Find and update track by createdAt
+                const updated = tracks.map(t => t.createdAt === track.createdAt ? { ...t, convo: lines } : t)
                 await saveTracks(updated)
                 setActiveTrack({ ...track, convo: lines })
                 setView('convo')
-              } catch(e) { alert('Failed: ' + e.message) }
+              } catch(e) { alert('Convo failed: ' + e.message) }
             }}
             provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} hasOrKey={!!orKey} />}
         {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}

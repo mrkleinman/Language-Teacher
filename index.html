@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v60';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v60').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v61';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v61').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -1365,7 +1365,11 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
   const [playing, setPlaying] = useState(false)
   const [voices, setVoices] = useState([])
   const cancelRef = useRef(false)
+  const speedRef = useRef(speed)  // ref so speed changes take effect immediately
   const HAS_SPEECH = typeof window !== 'undefined' && 'speechSynthesis' in window
+
+  // Keep speedRef in sync
+  useEffect(() => { speedRef.current = speed }, [speed])
 
   useEffect(() => {
     if (!HAS_SPEECH) return
@@ -1382,33 +1386,38 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
       if (!HAS_SPEECH || cancelRef.current) { setTimeout(() => { if (!cancelRef.current) setLineIdx(i => i + 1) }, 1200); return }
       try { window.speechSynthesis.cancel() } catch(e) {}
       const u = new SpeechSynthesisUtterance(line.thai)
-      u.lang = 'th-TH'; u.rate = speed || 0.8
       const isMale = line.speaker === 'M'
-      // Try to find gender-specific voice first
-      const maleVoice = voices.find(v => v.lang.startsWith('th') && /male|man/i.test(v.name) && !/female|woman/i.test(v.name))
-      const femaleVoice = voices.find(v => v.lang.startsWith('th') && /female|woman/i.test(v.name))
-      const anyThaiVoice = voices.find(v => v.lang.startsWith('th'))
-      const chosenVoice = isMale ? (maleVoice || anyThaiVoice) : (femaleVoice || anyThaiVoice)
-      if (chosenVoice) u.voice = chosenVoice
-      // Use pitch to differentiate when only one voice available
-      u.pitch = isMale ? 0.75 : 1.3
-      u.onend = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 800) }
-      u.onerror = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 1000) }
+      u.lang = 'th-TH'
+      u.rate = speedRef.current || 0.8  // use ref for real-time speed
+      u.pitch = 1  // no pitch manipulation — let voices be natural
+      // Google TTS Thai voices: female = th-TH-Standard-A, male = th-TH-Standard-B
+      // Also handles: Google ภาษาไทย (female/male), Nexus voices
+      const googleFemale = voices.find(v => v.lang.startsWith('th') && /Standard-A|หญิง|female/i.test(v.name))
+      const googleMale = voices.find(v => v.lang.startsWith('th') && /Standard-B|Standard-C|ชาย|male/i.test(v.name))
+      const anyThai = voices.filter(v => v.lang.startsWith('th'))
+      // If 2+ voices, pick by index: first=female, second=male
+      const byIndex = isMale ? (anyThai[1] || anyThai[0]) : (anyThai[0])
+      const chosen = isMale ? (googleMale || byIndex) : (googleFemale || anyThai[0])
+      if (chosen) u.voice = chosen
+      u.onend = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 700) }
+      u.onerror = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 900) }
       window.speechSynthesis.speak(u)
     }
     speakLine()
     return () => { cancelRef.current = true; try { window.speechSynthesis.cancel() } catch(e) {} }
-  }, [playing, lineIdx, lines, speed, voices])
+  }, [playing, lineIdx, lines, voices])  // removed speed from deps — speedRef handles it
 
   const line = lines[lineIdx] || lines[lines.length - 1] || {}
+  const pct = Math.round((lineIdx / Math.max(lines.length, 1)) * 100)
 
   return (
     <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', minHeight:'100vh' }}>
+
       {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
         <div>
-          <div className="display" style={{ fontSize:17, color:'var(--gold)' }}>Preview Conversation</div>
-          <div style={{ fontSize:11, color:'var(--muted)' }}>Using all {lines.length > 0 ? 'target' : ''} words from this track</div>
+          <div className="display" style={{ fontSize:17, color:'var(--gold)' }}>Thai Conversation</div>
+          <div style={{ fontSize:11, color:'var(--muted)' }}>{lines.length} lines · all track words covered</div>
         </div>
         <button onClick={() => { cancelRef.current = true; try { window.speechSynthesis.cancel() } catch(e) {} onSkip() }}
           style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'7px 14px', cursor:'pointer', color:'var(--muted)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
@@ -1416,47 +1425,48 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
         </button>
       </div>
 
-      {/* Speed control */}
-      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, background:'var(--surface)', borderRadius:10, padding:'8px 12px' }}>
-        <span style={{ fontSize:11, color:'var(--muted)' }}>🐢</span>
+      {/* Play button — at top */}
+      <button onClick={() => setPlaying(p => !p)}
+        style={{ width:'100%', padding:'13px', borderRadius:12, border:'none', background: playing ? '#1a2a00' : 'linear-gradient(135deg,#d4a94a,#b88a35)', color: playing ? '#86c900' : '#0b1120', fontSize:15, fontWeight:700, cursor:'pointer', fontFamily:'Sarabun,sans-serif', marginBottom:10 }}>
+        {playing ? '⏸ Pause' : lineIdx === 0 ? '▶ Play Conversation' : '▶ Resume'}
+      </button>
+
+      {/* Speed + progress row */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, background:'var(--surface)', borderRadius:10, padding:'7px 12px' }}>
+        <span style={{ fontSize:11 }}>🐢</span>
         <input type="range" min="0.4" max="1.2" step="0.05" value={speed}
           onChange={e => onSpeedChange(parseFloat(e.target.value))}
           style={{ flex:1, accentColor:'var(--gold)', height:4, cursor:'pointer' }} />
-        <span style={{ fontSize:11, color:'var(--muted)' }}>🐇</span>
-        <span className="phon" style={{ fontSize:11, color:'var(--gold)', minWidth:28 }}>{speed.toFixed(2)}x</span>
+        <span style={{ fontSize:11 }}>🐇</span>
+        <span className="phon" style={{ fontSize:11, color:'var(--gold)', minWidth:32 }}>{speed.toFixed(2)}x</span>
+        <span style={{ fontSize:11, color:'var(--muted)', marginLeft:4 }}>{pct}%</span>
       </div>
 
-      {/* Progress */}
-      <div style={{ height:3, background:'var(--surface2)', borderRadius:2, marginBottom:20 }}>
-        <div style={{ height:'100%', width:`${Math.round((lineIdx/Math.max(lines.length,1))*100)}%`, background:'var(--gold)', borderRadius:2, transition:'width 0.4s' }} />
+      {/* Progress bar */}
+      <div style={{ height:3, background:'var(--surface2)', borderRadius:2, marginBottom:14 }}>
+        <div style={{ height:'100%', width:`${pct}%`, background:'var(--gold)', borderRadius:2, transition:'width 0.4s' }} />
       </div>
 
       {/* Conversation lines */}
-      <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8, overflowY:'auto', marginBottom:16 }}>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8, overflowY:'auto' }}>
         {lines.map((l, i) => {
           const isA = l.speaker === 'M'
           const isCurrent = i === lineIdx && playing
           const isPast = i < lineIdx
           return (
-            <div key={i} style={{ display:'flex', flexDirection: isA ? 'row' : 'row-reverse', gap:8, opacity: isPast ? 0.5 : isCurrent ? 1 : 0.7 }}>
-              <div style={{ width:28, height:28, borderRadius:'50%', background: isA ? '#1e3a5f' : '#2a1e3a', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0, marginTop:4, border: isCurrent ? `2px solid ${isA ? '#4a90e2' : '#c084fc'}` : '2px solid transparent' }}>
+            <div key={i} style={{ display:'flex', flexDirection: isA ? 'row' : 'row-reverse', gap:8, opacity: isPast ? 0.45 : isCurrent ? 1 : 0.75 }}>
+              <div style={{ width:30, height:30, borderRadius:'50%', background: isA ? '#1e3a5f' : '#2a1e3a', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0, marginTop:4, border: isCurrent ? `2px solid ${isA ? '#4a90e2' : '#c084fc'}` : '2px solid transparent', transition:'border 0.2s' }}>
                 {isA ? '👨' : '👩'}
               </div>
-              <div style={{ maxWidth:'75%', background: isCurrent ? (isA ? '#0a1a2e' : '#1a0a2e') : 'var(--surface)', border:`1px solid ${isCurrent ? (isA ? '#4a90e2' : '#c084fc') : 'var(--border)'}`, borderRadius:12, padding:'10px 12px' }}>
-                <p className="thai" style={{ fontSize:20, color: isCurrent ? 'var(--text)' : 'var(--muted)', marginBottom:4 }}>{l.thai}</p>
-                <p className="phon" style={{ fontSize:13, color:'var(--gold)', marginBottom:3 }}>{l.phonetic}</p>
-                <p style={{ fontSize:13, color:'#c8d8f0', fontStyle:'italic' }}>{l.english}</p>
+              <div style={{ maxWidth:'78%', background: isCurrent ? (isA ? '#0a1a2e' : '#1a0a2e') : 'var(--surface)', border:`1px solid ${isCurrent ? (isA ? '#4a90e2' : '#c084fc') : 'var(--border)'}`, borderRadius:12, padding:'10px 12px', transition:'all 0.2s' }}>
+                <p className="thai" style={{ fontSize:20, color: isCurrent ? 'var(--text)' : '#8899aa', marginBottom:3 }}>{l.thai}</p>
+                <p className="phon" style={{ fontSize:13, color:'var(--gold)', marginBottom:2 }}>{l.phonetic}</p>
+                <p style={{ fontSize:12, color:'#c8d8f0', fontStyle:'italic' }}>{l.english}</p>
               </div>
             </div>
           )
         })}
       </div>
-
-      {/* Play/pause button */}
-      <button onClick={() => setPlaying(p => !p)}
-        style={{ width:'100%', padding:'15px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#d4a94a,#b88a35)', color:'#0b1120', fontSize:16, fontWeight:700, cursor:'pointer', fontFamily:'Sarabun,sans-serif' }}>
-        {playing ? '⏸ Pause' : lineIdx === 0 ? '▶ Play Conversation' : '▶ Resume'}
-      </button>
     </div>
   )
 }

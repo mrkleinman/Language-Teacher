@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v57';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v57').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v60';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v60').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -355,6 +355,48 @@ function Header({ view, onNav, onHome }) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
+
+function downloadTrack(track) {
+  const keywords = track.keywords || []
+  const pairs = track.pairs || []
+  
+  // Build readable text file
+  const lines = []
+  lines.push('THAI TEACHER — TRACK EXPORT')
+  lines.push('=' .repeat(50))
+  lines.push(`Date: ${track.date}`)
+  lines.push(`Mode: ${track.mode || 'daily'}`)
+  lines.push(`Pairs: ${pairs.length}`)
+  lines.push(`Created: ${track.createdAt || ''}`)
+  lines.push('')
+  
+  lines.push('TARGET WORDS (' + keywords.length + ')')
+  lines.push('-'.repeat(30))
+  keywords.forEach((k, i) => {
+    lines.push(`${String(i+1).padStart(2,'0')}. ${k.thai}  [${k.phonetic || ''}]  —  ${k.english}`)
+  })
+  lines.push('')
+  
+  lines.push('TRACK PAIRS (' + pairs.length + ')')
+  lines.push('-'.repeat(30))
+  pairs.forEach((p, i) => {
+    lines.push(`\n[${String(i+1).padStart(3,'0')}] ${p.prompt || ''}`)
+    lines.push(`  TH: ${p.thai || ''}`)
+    lines.push(`  PH: ${p.phonetic || ''}`)
+    lines.push(`  EN: ${p.english || ''}`)
+  })
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'thai-track-' + track.date.replace(/ /g,'-') + '-' + (track.mode||'daily') + '.txt'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 // ── Belt Rank ─────────────────────────────────────────────────────────────────
 const BELT_RANKS = [
   { rank: 'Mukyu',   minWords: 0,    color: '#6b7280', belt: '#4b5563', label: 'No Belt' },
@@ -549,6 +591,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                     </p>
                   </div>
                   {track.rated && <Icon name="check" size={14} color="#10b981" />}
+                  <button onClick={e => { e.stopPropagation(); downloadTrack(track) }}
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }} title="Download track">⬇️</button>
                   <button onClick={e => { e.stopPropagation(); onDeleteTrack(tracks.length-1-i) }}
                     style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:14, padding:'4px 6px' }}>🗑</button>
                 </div>
@@ -867,82 +911,160 @@ function parsePartialArray(str) {
 }
 
 
-async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
-  const { system, user } = buildGenerationPrompt(targets, anchors, vocab)
-  const orModel = model || 'qwen/qwen3.5-flash-02-23'
+async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://magical-druid-656889.netlify.app',
-      'X-Title': 'Thai Teacher'
-    },
-    body: JSON.stringify({
-      model: orModel,
-      max_tokens: 32000,
-      temperature: 0.3,
-      stream: true,
-      // Note: extra_body thinking control is Qwen-only, not passed to DeepSeek
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
+    body: JSON.stringify({ model: orModel, max_tokens: 12000, temperature: 0.4, stream: true,
       ...(orModel.startsWith('qwen') ? { extra_body: { thinking: { type: 'disabled' } } } : {}),
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }]
-    })
+      messages })
   })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err?.error?.message || `Qwen error ${res.status}`)
-  }
-
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let accumulated = ''
-  let fullText = ''
-  let pairsFound = 0
-
+  if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err?.error?.message || `API error ${res.status}`) }
+  const reader = res.body.getReader(); const decoder = new TextDecoder()
+  let accumulated = '', fullText = ''
   while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
+    const { done, value } = await reader.read(); if (done) break
     accumulated += decoder.decode(value, { stream: true })
     for (const line of accumulated.split('\n')) {
       if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-        try {
-          const evt = JSON.parse(line.slice(6))
-          const delta = evt.choices?.[0]?.delta?.content
-          if (delta) {
-            fullText += delta
-            const found = (fullText.match(/"phonetic"\s*:/g) || []).length
-            if (found !== pairsFound) {
-              pairsFound = found
-              let latestPair = null
-              try {
-                const lastBrace = fullText.lastIndexOf('"}')
-                if (lastBrace > 0) {
-                  const objStart = fullText.lastIndexOf('{', lastBrace)
-                  if (objStart >= 0) {
-                    const obj = JSON.parse(fullText.slice(objStart, lastBrace + 2))
-                    if (obj.thai && obj.target_phonetic) latestPair = obj
-                  }
-                }
-              } catch {}
-              onProgress && onProgress(pairsFound, 90, latestPair)
-            }
-          }
-        } catch {}
+        try { const delta = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content; if (delta) { fullText += delta; onToken && onToken(fullText) } } catch {}
       }
     }
-    const lines = accumulated.split('\n')
-    accumulated = lines[lines.length - 1]
+    accumulated = accumulated.split('\n').slice(-1)[0]
+  }
+  return fullText.replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
+}
+
+function checkBatchQuality(pairs, batchTargets, existingThais) {
+  const issues = []
+  // Missing or under-used target words
+  const missing = batchTargets.filter(t => pairs.filter(p => p.thai && p.thai.includes(t.thai)).length < 3)
+  if (missing.length) issues.push({ type:'missing', words: missing })
+  // Repeated sentences in this batch
+  const seen = new Set(); const dupes = []
+  for (const p of pairs) {
+    if (!p.thai) continue
+    if (seen.has(p.thai) || existingThais.has(p.thai)) dupes.push(p.thai)
+    seen.add(p.thai)
+  }
+  if (dupes.length) issues.push({ type:'dupes', sentences: dupes })
+  // Prompt variety
+  const counts = pairs.reduce((a,p) => { const s=(p.prompt||'').split(' ')[0]; a[s]=(a[s]||0)+1; return a }, {})
+  const overused = Object.entries(counts).filter(([,n]) => n > 8)
+  if (overused.length) issues.push({ type:'variety', overused })
+  return issues
+}
+
+function buildBatchSystem(batchTargets, anchors, vocab, batchNum) {
+  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง','ไหม','ก็ได้','นะครับ','นะคะ']
+  const vocabPhonMap = Object.fromEntries((vocab||[]).map(w=>[w.thai,w.phonetic]).filter(([,p])=>p))
+  const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
+  const approvedList = [...allThai].map(t => vocabPhonMap[t] ? `${t}[${vocabPhonMap[t]}]` : t).join('  ')
+  const targetList = batchTargets.map(w => `★ ${w.thai}${w.phonetic?` [${w.phonetic}]`:''} = ${w.english}`).join('\n')
+  const anchorSample = anchors.slice(0,25).map(w=>`${w.thai}${w.phonetic?` [${w.phonetic}]`:''} = ${w.english}`).join('\n')
+  const TYPES = 'Tell someone that | Ask if | Say that | Ask someone to | How would you say | Explain that | Ask where | Ask when | Suggest that | Invite someone to | Warn someone that | Confirm that | Deny that | Express surprise that | Complain that | Admit that | Promise that | Describe | Ask how many | Respond to someone who said'
+  return `You are a strict Thai language teacher. Generate EXACTLY 30 Pimsleur-style challenge-response pairs.
+
+BATCH ${batchNum} OF 3 — TARGET WORDS FOR THIS BATCH ONLY:
+${targetList}
+
+ABSOLUTE RULES:
+1. Each ★ word MUST appear in EXACTLY 3 different pairs. All ${batchTargets.length} words required.
+2. Use ONLY words from APPROVED VOCABULARY below. Zero exceptions.
+3. Every sentence MUST end with ครับ or ค่ะ (alternate M/F).
+4. VARIETY: Use at least 12 different prompt types from: ${TYPES}
+   "Ask" "Tell" "Say" each must appear FEWER than 6 times.
+5. EVERY Thai sentence must be completely unique — no repetition whatsoever.
+6. Sentence length: 4–7 Thai words. Max 9 words.
+7. "words" array must match "phonetic" token count exactly.
+8. Copy phonetics from [brackets] in the vocabulary — never invent romanization.
+
+FORMAT (return ONLY a JSON array of 30 objects, no markdown):
+[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[{"p":"...","e":"..."}],"target_phonetic":"..."}]
+
+APPROVED VOCABULARY: ${approvedList}
+ANCHOR WORDS (use 1-2x each): ${anchorSample}`
+}
+
+async function generateBatch(batchTargets, anchors, vocab, apiKey, orModel, batchNum, existingPairs, onProgress, offset) {
+  const existingThais = new Set(existingPairs.map(p => p.thai))
+  const system = buildBatchSystem(batchTargets, anchors, vocab, batchNum)
+  let pairsFound = 0
+
+  // First attempt
+  const text1 = await callOpenRouterStream(apiKey, orModel,
+    [{ role:'system', content:system }, { role:'user', content:`Generate 30 pairs now. Each of the ${batchTargets.length} target words must appear in exactly 3 pairs.` }],
+    t => { const f=(t.match(/"phonetic"\s*:/g)||[]).length; if(f!==pairsFound){pairsFound=f; onProgress&&onProgress(offset+f,90,null)} }
+  )
+  let pairs = parsePartialArray(text1)
+  // Deduplicate
+  const seen1 = new Set()
+  pairs = pairs.filter(p => { if(!p.thai||seen1.has(p.thai)||existingThais.has(p.thai))return false; seen1.add(p.thai); return true })
+
+  const issues = checkBatchQuality(pairs, batchTargets, existingThais)
+
+  if (issues.length > 0) {
+    // Build targeted fix instruction
+    const fixInstructions = []
+    for (const issue of issues) {
+      if (issue.type === 'missing') {
+        const wordList = issue.words.map(w => {
+          const have = pairs.filter(p => p.thai&&p.thai.includes(w.thai)).length
+          return `★ ${w.thai} [${w.phonetic||''}] = ${w.english} (has ${have}, needs ${3-have} more)`
+        }).join('\n')
+        fixInstructions.push(`MISSING WORDS — add pairs for:\n${wordList}`)
+      }
+      if (issue.type === 'dupes') fixInstructions.push(`REMOVE these repeated sentences and replace with unique ones: ${issue.sentences.slice(0,5).join(' | ')}`)
+      if (issue.type === 'variety') fixInstructions.push(`TOO REPETITIVE: ${issue.overused.map(([k,n])=>`"${k}" used ${n}x`).join(', ')} — replace with different prompt types`)
+    }
+
+    // Second attempt — fix specific issues
+    const fixPrompt = `You generated 30 pairs but there are quality issues to fix:
+${fixInstructions.join('\n')}
+
+Here are the pairs you generated:
+${JSON.stringify(pairs.slice(0,30))}
+
+Return a corrected complete array of 30 pairs fixing ALL the issues above.
+Keep the good pairs, fix or replace the problematic ones.
+Return ONLY the JSON array, no markdown.`
+
+    const text2 = await callOpenRouterStream(apiKey, orModel,
+      [{ role:'system', content:system }, { role:'user', content:fixPrompt }],
+      t => { const f=(t.match(/"phonetic"\s*:/g)||[]).length; if(f!==pairsFound){pairsFound=f; onProgress&&onProgress(offset+f,90,null)} }
+    )
+    const pairs2 = parsePartialArray(text2)
+    const seen2 = new Set()
+    const deduped2 = pairs2.filter(p => { if(!p.thai||seen2.has(p.thai)||existingThais.has(p.thai))return false; seen2.add(p.thai); return true })
+    if (deduped2.length >= pairs.length) pairs = deduped2
+    else {
+      // Merge: keep fixed pairs, fill gaps with original good pairs
+      const fixedThais = new Set(deduped2.map(p=>p.thai))
+      const kept = pairs.filter(p => !checkBatchQuality([p], batchTargets.filter(t=>p.thai&&p.thai.includes(t.thai)), existingThais).length && !fixedThais.has(p.thai))
+      pairs = [...deduped2, ...kept].slice(0,30)
+    }
   }
 
-  // Strip any <think>...</think> blocks Qwen might emit
-  const cleanText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
-    .replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g, '').trim()
-  if (!cleanText) throw new Error('Empty response from Qwen')
-  const pairs = parsePartialArray(cleanText)
-  if (!pairs.length) throw new Error('No valid pairs in Qwen response')
-  onProgress && onProgress(pairs.length, 90, null)
+  onProgress && onProgress(offset + pairs.length, 90, null)
   return pairs
 }
+
+async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
+  const orModel = model || 'qwen/qwen3.5-flash-02-23'
+  // Split 30 targets into 3 batches of 10
+  const batches = [targets.slice(0,10), targets.slice(10,20), targets.slice(20,30)]
+  let allPairs = []
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i]
+    if (!batch.length) continue
+    const batchPairs = await generateBatch(batch, anchors, vocab, apiKey, orModel, i+1, allPairs, onProgress, allPairs.length)
+    allPairs = [...allPairs, ...batchPairs]
+  }
+  if (!allPairs.length) throw new Error('No pairs generated')
+  onProgress && onProgress(allPairs.length, 90, null)
+  return allPairs
+}
+
 
 async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, vocab, provider) {
   if (provider === 'deepseek') return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, 'deepseek/deepseek-chat')
@@ -1261,8 +1383,15 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
       try { window.speechSynthesis.cancel() } catch(e) {}
       const u = new SpeechSynthesisUtterance(line.thai)
       u.lang = 'th-TH'; u.rate = speed || 0.8
-      const match = voices.find(v => v.lang.startsWith('th'))
-      if (match) u.voice = match
+      const isMale = line.speaker === 'M'
+      // Try to find gender-specific voice first
+      const maleVoice = voices.find(v => v.lang.startsWith('th') && /male|man/i.test(v.name) && !/female|woman/i.test(v.name))
+      const femaleVoice = voices.find(v => v.lang.startsWith('th') && /female|woman/i.test(v.name))
+      const anyThaiVoice = voices.find(v => v.lang.startsWith('th'))
+      const chosenVoice = isMale ? (maleVoice || anyThaiVoice) : (femaleVoice || anyThaiVoice)
+      if (chosenVoice) u.voice = chosenVoice
+      // Use pitch to differentiate when only one voice available
+      u.pitch = isMale ? 0.75 : 1.3
       u.onend = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 800) }
       u.onerror = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 1000) }
       window.speechSynthesis.speak(u)

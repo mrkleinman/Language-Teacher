@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v63';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v63').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v64';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v64').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -956,77 +956,101 @@ function checkBatchQuality(pairs, batchTargets, existingThais) {
 }
 
 function buildBatchSystem(batchTargets, anchors, vocab, batchNum) {
-  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง','ไหม','ก็ได้']
+  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
+    'หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
+    'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง','ไหม','ก็ได้']
   const vocabPhonMap = Object.fromEntries((vocab||[]).map(w=>[w.thai,w.phonetic]).filter(([,p])=>p))
 
-  // Only give the AI this batch's targets + a small anchor set — NOT all 861 words
-  // This prevents the AI from using words outside the working set
-  const targetLines = batchTargets.map(w =>
-    `★ ${w.thai} = ${w.english}${w.phonetic ? ' | phonetic: ' + w.phonetic : ''}`
+  // Per-target word: phonetic + english for the prompt
+  const targetLines = batchTargets.map((w,i) =>
+    `${i+1}. ★ ${w.thai} (${w.english})${w.phonetic ? ' phonetic: '+w.phonetic : ''}`
   ).join('\n')
 
-  const anchorLines = anchors.slice(0, 15).map(w =>
-    `${w.thai} = ${w.english}${w.phonetic ? ' | ' + w.phonetic : ''}`
+  const anchorLines = anchors.slice(0,15).map(w =>
+    `${w.thai} = ${w.english}${w.phonetic ? ' ['+w.phonetic+']' : ''}`
   ).join('\n')
 
-  const allowedLines = ALWAYS_ALLOWED.join(' ')
+  const allowedParticles = ALWAYS_ALLOWED.join(' ')
 
-  // Explicit pair slots — word i owns pairs i*3+1, i*3+2, i*3+3
-  const slotMap = batchTargets.map((t, wi) =>
-    `Pair ${wi*3+1}: ★${t.thai}  |  Pair ${wi*3+2}: ★${t.thai}  |  Pair ${wi*3+3}: ★${t.thai}`
-  ).join('\n')
+  // Build slot map: each target word owns exactly 3 pair numbers
+  const slotMap = batchTargets.map((t,wi) => {
+    const p1=wi*3+1, p2=wi*3+2, p3=wi*3+3
+    return `Pairs ${p1},${p2},${p3} → must use ★${t.thai} (${t.english})`
+  }).join('\n')
 
-  // 20 prompt types indexed for rotation enforcement
+  // 9th Kyu sentence rules (user has 263 known words)
+  const kyu = 'USER IS 9TH KYU: sentences must be 3–4 Thai words ideally, MAXIMUM 6 words. Simple, clear sentences.'
+
+  // Prompt type rotation — 30 slots, 20 types cycling
   const TYPES = [
-    'Tell someone that','Ask if','How would you say','Explain that',
-    'Ask where','Ask when','Suggest that','Invite someone to',
-    'Warn someone that','Confirm that','Deny that','Express surprise that',
-    'Complain that','Admit that','Promise that','Describe',
-    'Ask how many','Respond to someone who said','Ask someone to','Say you want to'
+    'Tell someone that [concrete situation using the target word]',
+    'Ask if [yes/no question using the target word]',
+    'Say that you [action using the target word]',
+    'Ask someone where [location question using the target word]',
+    'Ask someone when [time question using the target word]',
+    'Suggest that [recommendation using the target word]',
+    'Invite someone to [activity using the target word]',
+    'Warn someone that [caution using the target word]',
+    'Confirm that [affirmation using the target word]',
+    'Deny that [negation using the target word]',
+    'Express surprise that [reaction using the target word]',
+    'Complain that [complaint using the target word]',
+    'Admit that [confession using the target word]',
+    'Ask how many [quantity using the target word]',
+    'Respond to a friend who mentioned [the target word]',
+    'Ask someone to [request using the target word]',
+    'Say you want to [desire using the target word]',
+    'Explain that [explanation using the target word]',
+    'Promise that [commitment using the target word]',
+    'Describe [a scene using the target word]',
   ]
-  // Pre-assign prompt types round-robin so variety is guaranteed
-  const typeAssignments = Array.from({length:30}, (_,i) => TYPES[i % TYPES.length])
-  const typeMap = typeAssignments.map((t,i) => `Pair ${i+1}: "${t}..."`).join('  ')
+  const typeRotation = Array.from({length:30}, (_,i) => `Pair ${i+1}: ${TYPES[i%TYPES.length]}`).join('\n')
 
-  return `You are a strict Thai language teacher creating Pimsleur-style audio pairs.
-Generate EXACTLY 30 pairs for BATCH ${batchNum} of 3.
+  return `You are a Thai language teacher writing Pimsleur-style audio lesson pairs.
+Generate EXACTLY 30 pairs for BATCH ${batchNum}/3.
 
-═══════════════════════════════════
-VOCABULARY — YOU MAY ONLY USE THESE THAI WORDS. NO OTHERS.
-═══════════════════════════════════
-TARGET WORDS (★ — each must appear in exactly 3 pairs):
-${targetLines}
+${kyu}
 
-ANCHOR WORDS (supporting words, use 1–2x each):
-${anchorLines}
-
-PARTICLES & GRAMMAR WORDS (always allowed):
-${allowedLines}
-
-⛔ DO NOT USE any Thai word not listed above. Not ป่า, not ตลาด, not ปลอดภัย, not ทึ่ง — NOTHING outside this list.
-If you cannot make a sentence without an unlisted word, use simpler anchor words instead.
-
-═══════════════════════════════════
-PAIR ASSIGNMENTS — FOLLOW EXACTLY
-═══════════════════════════════════
+══════════════════════════════════════
+STEP 1 — WORD ASSIGNMENTS (follow exactly):
 ${slotMap}
 
-PROMPT TYPE ASSIGNMENTS — USE EXACTLY THESE:
-${typeMap}
+STEP 2 — PROMPT INSTRUCTIONS (use these exact types, fill in the concrete situation):
+${typeRotation}
 
-═══════════════════════════════════
-SENTENCE CHECKLIST — verify each before outputting:
-[1] ✓ Does "thai" contain the assigned ★ word for this pair number?
-[2] ✓ Is EVERY Thai word in the vocabulary lists above? (check each word individually)
-[3] ✓ Does "thai" end with ครับ or ค่ะ? (alternate: odd pairs = ครับ, even = ค่ะ)
-[4] ✓ Is "thai" completely different from all previous "thai" sentences?
-[5] ✓ Does "thai" START with a different Thai word than the previous 2 sentences?
-[6] ✓ Is "phonetic" space-separated tokens (NOT in brackets)? e.g. "khun yàak pai" not "[khun] [yàak]"
-[7] ✓ Does "words" array have exactly the same number of entries as space-separated tokens in "phonetic"?
-═══════════════════════════════════
+Example of a GOOD prompt: "Tell someone you want to visit the hill tribe area"
+Example of a BAD prompt: "Tell someone that..." ← NEVER leave it as just a template
 
-OUTPUT — JSON array of 30 objects only. No markdown, no text before or after:
-[{"prompt":"Tell someone that...","thai":"...ครับ","english":"...","phonetic":"tok-kên yàak pai khrâp","words":[{"p":"tok-kên","e":"..."},{"p":"yàak","e":"want"},...,{"p":"khrâp","e":"[polite]"}],"target_phonetic":"..."}]`
+══════════════════════════════════════
+VOCABULARY — USE ONLY THESE WORDS IN THAI SENTENCES:
+
+TARGET WORDS (use each in exactly its 3 assigned pairs):
+${targetLines}
+
+ANCHOR WORDS (supporting context, 1–2x each max):
+${anchorLines}
+
+ALWAYS ALLOWED (particles/grammar):
+${allowedParticles}
+
+⛔ HARD RULE: If a word is not in the lists above, DO NOT USE IT.
+No ควร, no ป่า, no ตลาด, no สบาย, no ไง, no เด็ก — nothing outside the lists.
+If you cannot form a sentence without an unlisted word, simplify the sentence.
+
+══════════════════════════════════════
+BEFORE OUTPUTTING EACH PAIR, verify ALL of these:
+[1] "prompt" is a complete English instruction with a real concrete situation — NOT "Tell someone that..."
+[2] "thai" contains the ★ target word assigned to this pair number
+[3] Every Thai word in "thai" is in the vocabulary lists above
+[4] "thai" ends with ครับ (odd pairs) or ค่ะ (even pairs)
+[5] "thai" is 3–6 Thai words — count them
+[6] "thai" starts with a different word than the previous 2 sentences
+[7] "phonetic" uses space-separated romanization tokens — NO brackets e.g. khun yàak pai khrâp
+[8] "words" array has exactly as many entries as "phonetic" has space-separated tokens
+[9] "target_phonetic" is the romanization of the ★ target word only
+
+OUTPUT — JSON array of 30 objects only, no markdown, no text outside the array:
+[{"prompt":"Tell someone you want to visit the hill tribe village","thai":"คุณอยากไปหมู่บ้านชาวเขาครับ","english":"I want to visit the hill tribe village","phonetic":"khun yàak pai mûu-bâan chaao-khǎo khrâp","words":[{"p":"khun","e":"you"},{"p":"yàak","e":"want"},{"p":"pai","e":"go"},{"p":"mûu-bâan","e":"village"},{"p":"chaao-khǎo","e":"hill tribe"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"chaao-khǎo"}]`
 }
 
 async function generateBatch(batchTargets, anchors, vocab, apiKey, orModel, batchNum, existingPairs, onProgress, offset) {

@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v64';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v64').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v65';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v65').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -911,15 +911,33 @@ function parsePartialArray(str) {
 }
 
 
-async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
+async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: orModel, max_tokens: 12000, temperature: 0.4, stream: true,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
+    body: JSON.stringify({ model: orModel, max_tokens: maxTokens || 2000, temperature: 0.35, stream: false,
       ...(orModel.startsWith('qwen') ? { extra_body: { thinking: { type: 'disabled' } } } : {}),
       messages })
   })
-  if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err?.error?.message || `API error ${res.status}`) }
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `API error ${res.status}`) }
+  const data = await res.json()
+  let text = (data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
+  const j1 = text.indexOf('['), j2 = text.lastIndexOf(']')
+  if (j1 >= 0 && j2 > j1) text = text.slice(j1, j2+1)
+  return text
+}
+
+async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
+    body: JSON.stringify({ model: orModel, max_tokens: 16000, temperature: 0.35, stream: true,
+      ...(orModel.startsWith('qwen') ? { extra_body: { thinking: { type: 'disabled' } } } : {}),
+      messages })
+  })
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `API error ${res.status}`) }
   const reader = res.body.getReader(); const decoder = new TextDecoder()
   let accumulated = '', fullText = ''
   while (true) {
@@ -937,161 +955,132 @@ async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
 
 function checkBatchQuality(pairs, batchTargets, existingThais) {
   const issues = []
-  // Missing or under-used target words
   const missing = batchTargets.filter(t => pairs.filter(p => p.thai && p.thai.includes(t.thai)).length < 3)
   if (missing.length) issues.push({ type:'missing', words: missing })
-  // Repeated sentences in this batch
   const seen = new Set(); const dupes = []
-  for (const p of pairs) {
-    if (!p.thai) continue
-    if (seen.has(p.thai) || existingThais.has(p.thai)) dupes.push(p.thai)
-    seen.add(p.thai)
-  }
+  for (const p of pairs) { if (!p.thai) continue; if (seen.has(p.thai) || existingThais.has(p.thai)) dupes.push(p.thai); seen.add(p.thai) }
   if (dupes.length) issues.push({ type:'dupes', sentences: dupes })
-  // Prompt variety
-  const counts = pairs.reduce((a,p) => { const s=(p.prompt||'').split(' ')[0]; a[s]=(a[s]||0)+1; return a }, {})
-  const overused = Object.entries(counts).filter(([,n]) => n > 8)
-  if (overused.length) issues.push({ type:'variety', overused })
   return issues
 }
 
 function buildBatchSystem(batchTargets, anchors, vocab, batchNum) {
   const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
     'หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
-    'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง','ไหม','ก็ได้']
+    'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง',
+    'ไหม','ก็ได้']
   const vocabPhonMap = Object.fromEntries((vocab||[]).map(w=>[w.thai,w.phonetic]).filter(([,p])=>p))
-
-  // Per-target word: phonetic + english for the prompt
   const targetLines = batchTargets.map((w,i) =>
-    `${i+1}. ★ ${w.thai} (${w.english})${w.phonetic ? ' phonetic: '+w.phonetic : ''}`
-  ).join('\n')
-
+    `${i+1}. ★ ${w.thai} (${w.english})${w.phonetic ? ' phonetic: '+w.phonetic : ''}`).join('\n')
   const anchorLines = anchors.slice(0,15).map(w =>
-    `${w.thai} = ${w.english}${w.phonetic ? ' ['+w.phonetic+']' : ''}`
-  ).join('\n')
-
+    `${w.thai} = ${w.english}${w.phonetic ? ' ['+w.phonetic+']' : ''}`).join('\n')
   const allowedParticles = ALWAYS_ALLOWED.join(' ')
-
-  // Build slot map: each target word owns exactly 3 pair numbers
-  const slotMap = batchTargets.map((t,wi) => {
-    const p1=wi*3+1, p2=wi*3+2, p3=wi*3+3
-    return `Pairs ${p1},${p2},${p3} → must use ★${t.thai} (${t.english})`
-  }).join('\n')
-
-  // 9th Kyu sentence rules (user has 263 known words)
-  const kyu = 'USER IS 9TH KYU: sentences must be 3–4 Thai words ideally, MAXIMUM 6 words. Simple, clear sentences.'
-
-  // Prompt type rotation — 30 slots, 20 types cycling
-  const TYPES = [
-    'Tell someone that [concrete situation using the target word]',
-    'Ask if [yes/no question using the target word]',
-    'Say that you [action using the target word]',
-    'Ask someone where [location question using the target word]',
-    'Ask someone when [time question using the target word]',
-    'Suggest that [recommendation using the target word]',
-    'Invite someone to [activity using the target word]',
-    'Warn someone that [caution using the target word]',
-    'Confirm that [affirmation using the target word]',
-    'Deny that [negation using the target word]',
-    'Express surprise that [reaction using the target word]',
-    'Complain that [complaint using the target word]',
-    'Admit that [confession using the target word]',
-    'Ask how many [quantity using the target word]',
-    'Respond to a friend who mentioned [the target word]',
-    'Ask someone to [request using the target word]',
-    'Say you want to [desire using the target word]',
-    'Explain that [explanation using the target word]',
-    'Promise that [commitment using the target word]',
-    'Describe [a scene using the target word]',
-  ]
+  const slotMap = batchTargets.map((t,wi) => `Pairs ${wi*3+1},${wi*3+2},${wi*3+3} → must use ★${t.thai} (${t.english})`).join('\n')
+  const TYPES = ['Tell someone that [concrete situation]','Ask if [yes/no question]','Say that you [action]',
+    'Ask someone where [location question]','Ask someone when [time question]','Suggest that [recommendation]',
+    'Invite someone to [activity]','Warn someone that [caution]','Confirm that [affirmation]','Deny that [negation]',
+    'Express surprise that [reaction]','Complain that [complaint]','Admit that [confession]','Ask how many [quantity]',
+    'Respond to a friend who mentioned','Ask someone to [request]','Say you want to [desire]',
+    'Explain that [explanation]','Promise that [commitment]','Describe [a scene]']
   const typeRotation = Array.from({length:30}, (_,i) => `Pair ${i+1}: ${TYPES[i%TYPES.length]}`).join('\n')
-
-  return `You are a Thai language teacher writing Pimsleur-style audio lesson pairs.
-Generate EXACTLY 30 pairs for BATCH ${batchNum}/3.
-
-${kyu}
-
-══════════════════════════════════════
-STEP 1 — WORD ASSIGNMENTS (follow exactly):
-${slotMap}
-
-STEP 2 — PROMPT INSTRUCTIONS (use these exact types, fill in the concrete situation):
-${typeRotation}
-
-Example of a GOOD prompt: "Tell someone you want to visit the hill tribe area"
-Example of a BAD prompt: "Tell someone that..." ← NEVER leave it as just a template
-
-══════════════════════════════════════
-VOCABULARY — USE ONLY THESE WORDS IN THAI SENTENCES:
-
-TARGET WORDS (use each in exactly its 3 assigned pairs):
-${targetLines}
-
-ANCHOR WORDS (supporting context, 1–2x each max):
-${anchorLines}
-
-ALWAYS ALLOWED (particles/grammar):
-${allowedParticles}
-
-⛔ HARD RULE: If a word is not in the lists above, DO NOT USE IT.
-No ควร, no ป่า, no ตลาด, no สบาย, no ไง, no เด็ก — nothing outside the lists.
-If you cannot form a sentence without an unlisted word, simplify the sentence.
-
-══════════════════════════════════════
-BEFORE OUTPUTTING EACH PAIR, verify ALL of these:
-[1] "prompt" is a complete English instruction with a real concrete situation — NOT "Tell someone that..."
-[2] "thai" contains the ★ target word assigned to this pair number
-[3] Every Thai word in "thai" is in the vocabulary lists above
-[4] "thai" ends with ครับ (odd pairs) or ค่ะ (even pairs)
-[5] "thai" is 3–6 Thai words — count them
-[6] "thai" starts with a different word than the previous 2 sentences
-[7] "phonetic" uses space-separated romanization tokens — NO brackets e.g. khun yàak pai khrâp
-[8] "words" array has exactly as many entries as "phonetic" has space-separated tokens
-[9] "target_phonetic" is the romanization of the ★ target word only
-
-OUTPUT — JSON array of 30 objects only, no markdown, no text outside the array:
-[{"prompt":"Tell someone you want to visit the hill tribe village","thai":"คุณอยากไปหมู่บ้านชาวเขาครับ","english":"I want to visit the hill tribe village","phonetic":"khun yàak pai mûu-bâan chaao-khǎo khrâp","words":[{"p":"khun","e":"you"},{"p":"yàak","e":"want"},{"p":"pai","e":"go"},{"p":"mûu-bâan","e":"village"},{"p":"chaao-khǎo","e":"hill tribe"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"chaao-khǎo"}]`
+  return `You are a Thai language teacher writing Pimsleur-style audio lesson pairs. Generate EXACTLY 30 pairs for BATCH ${batchNum}/3.
+USER IS 9TH KYU: sentences must be 3–5 Thai words ideally, MAXIMUM 6 words.
+SLOT ASSIGNMENTS: ${slotMap}
+PROMPT TYPES: ${typeRotation}
+VOCABULARY — USE ONLY THESE WORDS:
+TARGET: ${targetLines}
+ANCHORS: ${anchorLines}
+PARTICLES: ${allowedParticles}
+⛔ No other Thai words. If stuck, use simpler sentence.
+CHECKLIST before each pair:
+[1] prompt is a complete concrete English instruction (NOT "Tell someone that...")
+[2] thai contains the ★ target word for this pair number
+[3] every Thai word is in the vocabulary lists
+[4] thai ends with ครับ (odd) or ค่ะ (even)
+[5] thai is 3–6 words
+[6] thai starts differently from previous 2 sentences
+[7] phonetic is space-separated tokens (not brackets)
+[8] words array count matches phonetic token count
+OUTPUT: JSON array of 30 objects only. Example:
+[{"prompt":"Tell someone you want to visit the hill tribe","thai":"คุณอยากไปหมู่บ้านชาวเขาครับ","english":"I want to visit the hill tribe village","phonetic":"khun yàak pai mûu-bâan chaao-khǎo khrâp","words":[{"p":"khun","e":"you"},{"p":"yàak","e":"want"},{"p":"pai","e":"go"},{"p":"mûu-bâan","e":"village"},{"p":"chaao-khǎo","e":"hill tribe"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"chaao-khǎo"}]`
 }
 
-async function generateBatch(batchTargets, anchors, vocab, apiKey, orModel, batchNum, existingPairs, onProgress, offset) {
-  const existingThais = new Set(existingPairs.map(p => p.thai))
-  const system = buildBatchSystem(batchTargets, anchors, vocab, batchNum)
-  let pairsFound = 0
+function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, promptType3, existingThais, pairOffset) {
+  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
+    'หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
+    'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง','ไหม','ก็ได้']
+  const anchorLines = anchors.slice(0,12).map(w => `${w.thai} = ${w.english}${w.phonetic?' ['+w.phonetic+']':''}`).join(' | ')
+  const existingList = [...existingThais].slice(-6).join(' | ')
 
-  const text = await callOpenRouterStream(apiKey, orModel,
-    [{ role:'system', content:system },
-     { role:'user', content:`Generate all 30 pairs now following the word assignments and 5-point checklist. Output only the JSON array.` }],
-    t => { const f=(t.match(/"phonetic"\s*:/g)||[]).length; if(f!==pairsFound){pairsFound=f; onProgress&&onProgress(offset+f,90,null)} }
-  )
+  return `Write EXACTLY 3 Thai-language Pimsleur pairs using the target word ★${target.thai} (${target.english}).${target.phonetic?' Phonetic: '+target.phonetic:''}
 
-  let pairs = parsePartialArray(text)
-  // Client-side dedup — fast, no extra API call
-  const seen = new Set()
-  pairs = pairs.filter(p => {
-    if (!p.thai || seen.has(p.thai) || existingThais.has(p.thai)) return false
-    seen.add(p.thai); return true
-  })
+RULES:
+1. ★${target.thai} MUST appear in ALL 3 sentences.
+2. Use ONLY: target word + these anchors: ${anchorLines} + particles: ${ALWAYS_ALLOWED.join(' ')}
+3. Sentences: 3–6 Thai words. End pair ${pairOffset+1} with ครับ, pair ${pairOffset+2} with ค่ะ, pair ${pairOffset+3} with ครับ.
+4. 3 DIFFERENT situations. 3 DIFFERENT sentence structures. 3 DIFFERENT prompt types.
+5. Use these exact prompt types: Pair 1: ${promptType1} | Pair 2: ${promptType2} | Pair 3: ${promptType3}
+6. Prompt must be a complete instruction e.g. "Tell someone you want to go to the flower festival" NOT "Tell someone that..."
+7. phonetic = space-separated tokens NO brackets. words array must match phonetic token count.
+8. Do NOT repeat any of these existing sentences: ${existingList || 'none yet'}
 
-  onProgress && onProgress(offset + pairs.length, 90, null)
-  return pairs
+Return ONLY a JSON array of exactly 3 objects:
+[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[{"p":"...","e":"..."}],"target_phonetic":"${target.phonetic||'...'}"}]`
 }
 
 async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
   const orModel = model || 'qwen/qwen3.5-flash-02-23'
-  // Split 30 targets into 3 batches of 10
-  const batches = [targets.slice(0,10), targets.slice(10,20), targets.slice(20,30)]
-  let allPairs = []
-  for (let i = 0; i < batches.length; i++) {
-    const batch = batches[i]
-    if (!batch.length) continue
-    const batchPairs = await generateBatch(batch, anchors, vocab, apiKey, orModel, i+1, allPairs, onProgress, allPairs.length)
-    allPairs = [...allPairs, ...batchPairs]
+  const existingThais = new Set()
+  const allPairs = []
+
+  // 20 prompt types to rotate through
+  const PROMPT_TYPES = [
+    'Tell someone that','Ask if','Say that you','Ask where','Ask when',
+    'Suggest that','Invite someone to','Warn someone that','Confirm that','Deny that',
+    'Express surprise that','Complain that','Admit that','Ask how many','Respond to',
+    'Ask someone to','Say you want to','Explain that','Promise that','Describe'
+  ]
+
+  // 30 micro-calls — one per target word, 3 pairs each
+  for (let i = 0; i < targets.length; i++) {
+    const target = targets[i]
+    // Pick 3 different prompt types for this word's 3 pairs
+    const t1 = PROMPT_TYPES[(i * 3) % PROMPT_TYPES.length]
+    const t2 = PROMPT_TYPES[(i * 3 + 1) % PROMPT_TYPES.length]
+    const t3 = PROMPT_TYPES[(i * 3 + 2) % PROMPT_TYPES.length]
+
+    const prompt = buildMicroPrompt(target, anchors, vocab, t1, t2, t3, existingThais, allPairs.length)
+
+    let pairs = []
+    let attempts = 0
+    while (attempts < 2) {
+      try {
+        const text = await callOpenRouterOnce(apiKey, orModel,
+          [{ role:'user', content: prompt }], 2000)
+        const parsed = parsePartialArray(text)
+        // Validate: target word must be in all 3 pairs
+        const valid = parsed.filter(p => p.thai && p.thai.includes(target.thai) && !existingThais.has(p.thai))
+        if (valid.length >= 2) { pairs = valid.slice(0,3); break }
+      } catch(e) {}
+      attempts++
+    }
+
+    // If still missing pairs, add fallback
+    if (pairs.length < 3) {
+      const fallbacks = [
+        { prompt: `Tell someone you know ${target.english}`, thai: `ผมรู้จัก${target.thai}ครับ`, english: `I know ${target.english}`, phonetic: `phǒm rúu-jàk ${target.phonetic||target.thai} khrâp`, words: [{p:'phǒm',e:'I'},{p:'rúu-jàk',e:'know'},{p:target.phonetic||target.thai,e:target.english},{p:'khrâp',e:'[polite]'}], target_phonetic: target.phonetic||'' },
+        { prompt: `Ask if someone has ${target.english}`, thai: `มี${target.thai}ไหมคะ`, english: `Do you have ${target.english}?`, phonetic: `mii ${target.phonetic||target.thai} mǎi khá`, words: [{p:'mii',e:'have'},{p:target.phonetic||target.thai,e:target.english},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}], target_phonetic: target.phonetic||'' },
+        { prompt: `Say you see ${target.english}`, thai: `เห็น${target.thai}ครับ`, english: `I see ${target.english}`, phonetic: `hěn ${target.phonetic||target.thai} khrâp`, words: [{p:'hěn',e:'see'},{p:target.phonetic||target.thai,e:target.english},{p:'khrâp',e:'[polite]'}], target_phonetic: target.phonetic||'' }
+      ]
+      while (pairs.length < 3) pairs.push(fallbacks[pairs.length])
+    }
+
+    for (const p of pairs) existingThais.add(p.thai)
+    allPairs.push(...pairs)
+    onProgress && onProgress(allPairs.length, targets.length * 3, null)
   }
-  if (!allPairs.length) throw new Error('No pairs generated')
-  onProgress && onProgress(allPairs.length, 90, null)
+
   return allPairs
 }
-
 
 async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, vocab, provider) {
   if (provider === 'deepseek') return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, 'deepseek/deepseek-chat')
@@ -1560,7 +1549,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
           pairs = await generateTrackWithClaude(targets, anchors, apiKey, (done, total, latestPair) => {
             setPairsDone(done)
-            setPairsTotal(90)  // always keep target at 90
+            setPairsTotal(targets.length * 3)
             // Update chip phonetics from streaming target_word field (reliable)
             if (latestPair && latestPair.target_word && latestPair.target_phonetic) {
               const t = targets.find(t => t.thai === latestPair.target_word)
@@ -1667,7 +1656,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
           {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'claude' ? 'Claude' : provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is thinking...`}
-          {phase === 'streaming' && pairsDone > 0 && `Writing pair ${pairsDone}...`}
+          {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
         </span>
       </div>
 

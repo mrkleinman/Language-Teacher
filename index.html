@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v72';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v72').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v74';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v74').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -78,9 +78,15 @@ function applyRating(word, rating) {
   const d = new Date(); d.setDate(d.getDate() + newInt)
   let { status, lapses = 0 } = word
   if (rating === 'hard') { if (status === 'known') { status = 'lapsed'; lapses++ } else status = 'learning' }
-  else status = (rating === 'easy' && newInt >= 21) ? 'known' : 'learning'
+  else status = (rating === 'easy' && newInt >= 14) ? 'known' : 'learning'
   if (word.status === 'new') status = 'learning'
   return { ...word, interval: newInt, lastSeen: today, dueDate: d.toISOString().slice(0, 10), repCount: (word.repCount || 0) + 1, lapses, status, difficulty: rating }
+}
+
+function markWordKnown(word) {
+  const today = new Date().toISOString().slice(0, 10)
+  const d = new Date(); d.setDate(d.getDate() + 30)
+  return { ...word, status: 'known', interval: 30, dueDate: d.toISOString().slice(0, 10), lastSeen: today, difficulty: 'easy' }
 }
 
 // ── Storage ───────────────────────────────────────────────────────────────────
@@ -1039,69 +1045,76 @@ OUTPUT: JSON array of 30 objects only. Example:
 }
 
 function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, promptType3, existingThais, pairOffset) {
-  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
+  const PARTICLES = ['ครับ','ค่ะ','คะ','นะ','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
     'หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
     'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง','ไหม','ก็ได้']
   const anchorLines = anchors.slice(0,8).map(w => w.thai + '=' + w.english).join(' | ')
   const existingList = [...existingThais].slice(-4).join(' | ')
   const { goalMin: gMin, goalMax: gMax, effectiveCeil: eCeil } = getSentenceLengthForVocab(vocab)
-  const lenRule = gMin === gMax ? 'exactly ' + gMin + ' Thai words' : gMin + '-' + gMax + ' Thai words, MAX ' + eCeil
 
-  const lines = [
-    'Write 3 Thai Pimsleur pairs. Target word: ' + target.thai + ' (' + target.english + ').' + (target.phonetic ? ' Phonetic: ' + target.phonetic : ''),
-    '',
-    'PROMPT RULE: Natural English, 4-7 words, matches what the sentence says.',
-    'GOOD: "Say you see a flower festival" | "Ask if they liked the parade" | "Say you have never seen the Karen tribe"',
-    'GOOD: "Ask where the skytrain station is" | "Say you just saw the route" | "Ask if there is a flower route"',
-    'BAD (too elaborate): "Suggest discussing lifestyle topics during a casual chat with a friend"',
-    'BAD (word-for-word): "Say talk lifestyle okay"',
-    'USE DIFFERENT TENSES: past (already, just), present (now, currently), future (will, going to), negation (never, don\'t)',
-    '',
-    'Pair 1: ' + promptType1 + ' with ' + target.thai,
-    'Pair 2: ' + promptType2 + ' with ' + target.thai,
-    'Pair 3: ' + promptType3 + ' with ' + target.thai,
-    '',
-    'RULES:',
-    '- Sentence: ' + lenRule,
-    '- ONLY these Thai words: ' + target.thai + ' | ' + anchorLines + ' | ' + ALWAYS_ALLOWED.slice(0,15).join(' '),
-    '- NO other Thai words. If stuck, use simpler structure.',
-    '- Pair 1 ends khrâp (male), Pair 2 ends khâ (female), Pair 3 ends khrâp',
-    '- phonetic: space-separated romanization tokens, NO brackets',
-    '- words array must have same count as phonetic tokens',
-    'Avoid repeating: ' + (existingList || 'none yet'),
-    '',
-    'Return ONLY a JSON array of exactly 3 objects. No markdown, no explanation.',
-  ]
-  return lines.join('\n')
+  const tw = target.thai
+  const eng = target.english
+  const ph = target.phonetic || ''
+
+  return 'Write 3 natural Thai sentences using ' + tw + ' (' + eng + ') as the main word.' + (ph ? ' Phonetic: ' + ph : '') + `
+
+Think carefully about what "${eng}" means and what kind of word it is:
+- If it's a NOUN (person/place/thing): use it as subject or object naturally
+- If it's a VERB (action): use it in an action sentence  
+- If it's an ADJECTIVE/ADVERB: describe something using it
+- Do NOT say "I see ${eng}" if ${eng} is not something you can see
+- Do NOT say "have ${eng}" if ${eng} is not a thing you can own
+
+Use 3 different sentence patterns — vary the subject (ผม/คุณ/เขา) and tense (now/already/will/never):
+
+Pair 1: ${promptType1} — write a natural Thai sentence using ${tw}
+Pair 2: ${promptType2} — write a different natural Thai sentence using ${tw}  
+Pair 3: ${promptType3} — write a third natural Thai sentence using ${tw}
+
+ALLOWED THAI WORDS: ${tw} | ${anchorLines} | ${PARTICLES.slice(0,15).join(' ')}
+Sentence length: ${gMin}–${gMax} words (not counting ครับ/ค่ะ). Max ${eCeil} words total.
+End pair 1 with ครับ, pair 2 with ค่ะ, pair 3 with ครับ.
+
+PROMPT: Write in natural English, 4-8 words, describing what to say.
+Good: "Say you already saw the parade" | "Ask if they like feng shui" | "Tell someone you want to eat pad krapao"
+Bad: "Say you see disturb" | "Ask if they have which" — these make no sense in English
+
+Avoid repeating: ${existingList || 'none yet'}
+
+Return ONLY a JSON array of 3:
+[{"prompt":"...","thai":"...","english":"...","phonetic":"space separated tokens","words":[{"p":"...","e":"..."}],"target_phonetic":"${ph}"}]`
 }
 
 function makeFallbackPairs(target) {
   const ph = target.phonetic || target.thai
   const eng = target.english
-  // Varied fallbacks — different structures and tenses
+  const tw = target.thai
+  // Universal fallbacks that work for ANY word type
+  // Pattern: คุณ[word]ไหม works as "do you [word]?" for verbs, "do you have [word]?" for nouns
+  // Pattern: ผม[word]ครับ works as "I [word]" or "I have [word]" or "I am [word]"
   return [
     {
-      prompt: 'Say you see ' + eng,
-      thai: 'เห็น' + target.thai + 'ครับ',
-      english: 'I see ' + eng,
-      phonetic: 'hěn ' + ph + ' khrâp',
-      words: [{p:'hěn',e:'see'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],
+      prompt: 'Say "I ' + eng + '"',
+      thai: 'ผม' + tw + 'ครับ',
+      english: 'I ' + eng,
+      phonetic: 'phǒm ' + ph + ' khrâp',
+      words: [{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],
       target_phonetic: ph
     },
     {
-      prompt: 'Ask if they have ' + eng,
-      thai: 'มี' + target.thai + 'ไหมคะ',
-      english: 'Do you have ' + eng + '?',
-      phonetic: 'mii ' + ph + ' mǎi khá',
-      words: [{p:'mii',e:'have'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],
+      prompt: 'Ask "Do you ' + eng + '?"',
+      thai: 'คุณ' + tw + 'ไหมคะ',
+      english: 'Do you ' + eng + '?',
+      phonetic: 'khun ' + ph + ' mǎi khá',
+      words: [{p:'khun',e:'you'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],
       target_phonetic: ph
     },
     {
-      prompt: 'Say you already saw ' + eng,
-      thai: 'เห็น' + target.thai + 'แล้วครับ',
-      english: 'I already saw ' + eng,
-      phonetic: 'hěn ' + ph + ' lâeo khrâp',
-      words: [{p:'hěn',e:'see'},{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],
+      prompt: 'Say "I already ' + eng + '"',
+      thai: 'ผม' + tw + 'แล้วครับ',
+      english: 'I already ' + eng,
+      phonetic: 'phǒm ' + ph + ' lâeo khrâp',
+      words: [{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],
       target_phonetic: ph
     }
   ]
@@ -1109,21 +1122,10 @@ function makeFallbackPairs(target) {
 
 
 function validatePair(pair, target, allAllowed, existingThais) {
-  if (!pair || !pair.thai || !pair.prompt || !pair.phonetic) return false
-  // Must contain target word
+  if (!pair || !pair.thai || !pair.prompt) return false
   if (!pair.thai.includes(target.thai)) return false
-  // Must end with polite particle (check whole-word endings)
-  const t = pair.thai.trim()
-  const hasParticle = t.endsWith('ครับ') || t.endsWith('ค่ะ') || t.endsWith('คะ') || t.endsWith('นะครับ') || t.endsWith('นะคะ') || t.endsWith('ครับ') || t.endsWith('นะ')
-  if (!hasParticle) return false
-  // Must not be duplicate
   if (existingThais.has(pair.thai)) return false
-  // Phonetic must not use brackets
-  if (pair.phonetic.includes('[') || pair.phonetic.includes(']')) return false
-  // Words array must exist
-  if (!pair.words || !pair.words.length) return false
-  // Prompt must be complete
-  if (pair.prompt.trim().endsWith('...') || pair.prompt.trim().length < 12) return false
+  if (pair.prompt.trim().endsWith('...') || pair.prompt.trim().length < 8) return false
   return true
 }
 
@@ -2058,9 +2060,13 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
                     {e} {r}
                   </button>
                 ))}
+                <button onClick={() => rateKeyword(i,'known')}
+                  style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='known'?'#10b981':'var(--border)'}`, background:kw.rating==='known'?'#063d2e':'transparent', color:kw.rating==='known'?'#10b981':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                  ✓ Mark Known
+                </button>
                 <button onClick={() => rateKeyword(i,'skip')}
-                  style={{ flexBasis:'100%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='skip'?'#6b7280':'var(--border)'}`, background:kw.rating==='skip'?'#1a1a2e':'transparent', color:kw.rating==='skip'?'#9ca3af':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
-                  🚫 Didn't appear in track
+                  style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='skip'?'#6b7280':'var(--border)'}`, background:kw.rating==='skip'?'#1a1a2e':'transparent', color:kw.rating==='skip'?'#9ca3af':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                  🚫 Didn't appear
                 </button>
               </div>
             </div>
@@ -2337,6 +2343,10 @@ function Browser({ vocab, onBack, initialFilter, phonetics, onCustomTrack, orKey
                   <Badge status={w.status} />
                   <button onClick={e => { e.stopPropagation(); const u = new SpeechSynthesisUtterance(w.thai); u.lang='th-TH'; u.rate=0.8; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u) }}
                     style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, padding:'0 2px', color:'var(--muted)', lineHeight:1 }} title="Speak">🔊</button>
+                  {w.status !== 'known' && (
+                    <button onClick={e => { e.stopPropagation(); onVocabUpdate && onVocabUpdate(vocab.map(v => v.id===w.id ? markWordKnown(v) : v)) }}
+                      style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, padding:'0 3px', color:'#10b981', lineHeight:1, fontWeight:700 }} title="Mark Known">✓K</button>
+                  )}
                 </div>
                 {phonetic && <p className="phon" style={{ fontSize: 11, color: 'var(--gold)', marginTop: 2 }}>{phonetic}</p>}
                 <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>{w.english}</p>
@@ -2969,8 +2979,17 @@ function ThaiTeacher() {
   function onTrackComplete(keywords) {
     // Apply SRS ratings — skip words marked as 'skip' (didn't appear)
     const ratedIds = {}
-    keywords.forEach(k => { if (k.wordId && k.rating && k.rating !== 'skip') ratedIds[k.wordId] = k.rating })
-    const newVocab = vocab.map(w => ratedIds[w.id] ? applyRating(w, ratedIds[w.id]) : w)
+    const knownIds = new Set()
+    keywords.forEach(k => {
+      if (!k.wordId || !k.rating || k.rating === 'skip') return
+      if (k.rating === 'known') knownIds.add(k.wordId)
+      else ratedIds[k.wordId] = k.rating
+    })
+    const newVocab = vocab.map(w => {
+      if (knownIds.has(w.id)) return markWordKnown(w)
+      if (ratedIds[w.id]) return applyRating(w, ratedIds[w.id])
+      return w
+    })
     saveVocab(newVocab)
 
     // Mark track as rated

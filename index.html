@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v69';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v69').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v70';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v70').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -1026,46 +1026,35 @@ function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, prom
   const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
     'หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
     'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง','ไหม','ก็ได้']
-
-  // Pick anchors relevant to the target word — avoid anchors that create absurd combinations
-  const anchorLines = anchors.slice(0,8).map(w => `${w.thai}=${w.english}`).join(' | ')
+  const anchorLines = anchors.slice(0,8).map(w => w.thai + '=' + w.english).join(' | ')
   const existingList = [...existingThais].slice(-4).join(' | ')
-
-  // Generate 3 specific real-world scenarios using this word
-  const scenarios = [
-    `talking about ${target.english} in daily conversation`,
-    `asking about ${target.english} in a practical situation`,
-    `expressing something about ${target.english} naturally`
-  ]
-
   const { goalMin: gMin, goalMax: gMax, effectiveCeil: eCeil } = getSentenceLengthForVocab(vocab)
-  const lenRule = gMin === gMax
-    ? `exactly ${gMin} Thai words`
-    : `${gMin}–${gMax} Thai words, MAX ${eCeil}`
+  const lenRule = gMin === gMax ? 'exactly ' + gMin + ' Thai words' : gMin + '-' + gMax + ' Thai words, MAX ' + eCeil
 
-  return `Write 3 short Thai sentences using ★${target.thai} (${target.english}).${target.phonetic ? ' Phonetic: '+target.phonetic : ''}
-
-KEEP IT SIMPLE. Short sentence, short prompt. Match the complexity of the answer.
-Good prompt: "Say you have a nose" → ผมมีจมูกครับ
-Bad prompt: "Warn a colleague that asking about lifestyle might be too personal" — TOO COMPLICATED
-
-Pair 1: ${promptType1} something using ★${target.thai}
-Pair 2: ${promptType2} something using ★${target.thai}  
-Pair 3: ${promptType3} something using ★${target.thai}
-
-RULES:
-• Sentence: ${lenRule}. Count: ผม+มี+จมูก+ครับ = 4 words ✓
-• Thai words allowed ONLY: ★${target.thai} + ${anchorLines} + ${ALWAYS_ALLOWED.slice(0,15).join(' ')}
-• NO other Thai words. Simplify if needed.
-• Pair 1 ends ครับ, Pair 2 ends ค่ะ, Pair 3 ends ครับ
-• prompt = short simple English like "Say you have [word]" or "Ask if someone likes [word]"
-• phonetic: space-separated tokens, NO brackets
-• words array count must match phonetic token count
-
-Do NOT repeat: ${existingList || 'none yet'}
-
-Return ONLY JSON array of 3:
-[{"prompt":"Say you have ${target.english}","thai":"ผมมี${target.thai}ครับ","english":"I have ${target.english}","phonetic":"phǒm mii ${target.phonetic||'...'} khrâp","words":[{"p":"phǒm","e":"I"},{"p":"mii","e":"have"},{"p":"${target.phonetic||'...'}","e":"${target.english}"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"${target.phonetic||''}"}]`
+  const lines = [
+    'Write 3 Thai Pimsleur pairs. Target word: ' + target.thai + ' (' + target.english + ').' + (target.phonetic ? ' Phonetic: ' + target.phonetic : ''),
+    '',
+    'PROMPT RULE: Natural English, 4-7 words, matches what the sentence says.',
+    'GOOD: "Say you have a nose" | "Ask if they like the lifestyle" | "Suggest talking about lifestyle"',
+    'BAD (too elaborate): "Suggest discussing lifestyle topics during a casual chat with a friend"',
+    'BAD (word-for-word): "Say talk lifestyle okay"',
+    '',
+    'Pair 1: ' + promptType1 + ' with ' + target.thai,
+    'Pair 2: ' + promptType2 + ' with ' + target.thai,
+    'Pair 3: ' + promptType3 + ' with ' + target.thai,
+    '',
+    'RULES:',
+    '- Sentence: ' + lenRule,
+    '- ONLY these Thai words: ' + target.thai + ' | ' + anchorLines + ' | ' + ALWAYS_ALLOWED.slice(0,15).join(' '),
+    '- NO other Thai words. If stuck, use simpler structure.',
+    '- Pair 1 ends khrâp (male), Pair 2 ends khâ (female), Pair 3 ends khrâp',
+    '- phonetic: space-separated romanization tokens, NO brackets',
+    '- words array must have same count as phonetic tokens',
+    'Avoid repeating: ' + (existingList || 'none yet'),
+    '',
+    'Return ONLY a JSON array of exactly 3 objects. No markdown, no explanation.',
+  ]
+  return lines.join('\n')
 }
 
 function makeFallbackPairs(target) {

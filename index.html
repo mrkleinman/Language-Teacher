@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v71';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v71').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v72';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v72').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -1051,9 +1051,11 @@ function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, prom
     'Write 3 Thai Pimsleur pairs. Target word: ' + target.thai + ' (' + target.english + ').' + (target.phonetic ? ' Phonetic: ' + target.phonetic : ''),
     '',
     'PROMPT RULE: Natural English, 4-7 words, matches what the sentence says.',
-    'GOOD: "Say you have a nose" | "Ask if they like the lifestyle" | "Suggest talking about lifestyle"',
+    'GOOD: "Say you see a flower festival" | "Ask if they liked the parade" | "Say you have never seen the Karen tribe"',
+    'GOOD: "Ask where the skytrain station is" | "Say you just saw the route" | "Ask if there is a flower route"',
     'BAD (too elaborate): "Suggest discussing lifestyle topics during a casual chat with a friend"',
     'BAD (word-for-word): "Say talk lifestyle okay"',
+    'USE DIFFERENT TENSES: past (already, just), present (now, currently), future (will, going to), negation (never, don\'t)',
     '',
     'Pair 1: ' + promptType1 + ' with ' + target.thai,
     'Pair 2: ' + promptType2 + ' with ' + target.thai,
@@ -1074,32 +1076,32 @@ function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, prom
 }
 
 function makeFallbackPairs(target) {
-  // Sensible fallback sentences that actually make sense for any word
   const ph = target.phonetic || target.thai
   const eng = target.english
+  // Varied fallbacks — different structures and tenses
   return [
     {
-      prompt: `Tell someone you have ${eng}`,
-      thai: `ผมมี${target.thai}ครับ`,
-      english: `I have ${eng}`,
-      phonetic: `phǒm mii ${ph} khrâp`,
-      words: [{p:'phǒm',e:'I'},{p:'mii',e:'have'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],
+      prompt: 'Say you see ' + eng,
+      thai: 'เห็น' + target.thai + 'ครับ',
+      english: 'I see ' + eng,
+      phonetic: 'hěn ' + ph + ' khrâp',
+      words: [{p:'hěn',e:'see'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],
       target_phonetic: ph
     },
     {
-      prompt: `Ask if someone likes ${eng}`,
-      thai: `คุณชอบ${target.thai}ไหมคะ`,
-      english: `Do you like ${eng}?`,
-      phonetic: `khun chôop ${ph} mǎi khá`,
-      words: [{p:'khun',e:'you'},{p:'chôop',e:'like'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],
+      prompt: 'Ask if they have ' + eng,
+      thai: 'มี' + target.thai + 'ไหมคะ',
+      english: 'Do you have ' + eng + '?',
+      phonetic: 'mii ' + ph + ' mǎi khá',
+      words: [{p:'mii',e:'have'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],
       target_phonetic: ph
     },
     {
-      prompt: `Say you want ${eng}`,
-      thai: `อยาก${target.thai}ครับ`,
-      english: `I want ${eng}`,
-      phonetic: `yàak ${ph} khrâp`,
-      words: [{p:'yàak',e:'want'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],
+      prompt: 'Say you already saw ' + eng,
+      thai: 'เห็น' + target.thai + 'แล้วครับ',
+      english: 'I already saw ' + eng,
+      phonetic: 'hěn ' + ph + ' lâeo khrâp',
+      words: [{p:'hěn',e:'see'},{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],
       target_phonetic: ph
     }
   ]
@@ -1110,22 +1112,18 @@ function validatePair(pair, target, allAllowed, existingThais) {
   if (!pair || !pair.thai || !pair.prompt || !pair.phonetic) return false
   // Must contain target word
   if (!pair.thai.includes(target.thai)) return false
-  // Must end with polite particle
-  if (!/[ครับค่ะคะ]$/.test(pair.thai.trim())) return false
+  // Must end with polite particle (check whole-word endings)
+  const t = pair.thai.trim()
+  const hasParticle = t.endsWith('ครับ') || t.endsWith('ค่ะ') || t.endsWith('คะ') || t.endsWith('นะครับ') || t.endsWith('นะคะ') || t.endsWith('ครับ') || t.endsWith('นะ')
+  if (!hasParticle) return false
   // Must not be duplicate
   if (existingThais.has(pair.thai)) return false
-  // Must not have OOV words (greedy cover check)
-  let rem = pair.thai
-  for (const w of [...allAllowed].sort((a,b) => b.length - a.length)) rem = rem.split(w).join('▓'.repeat(w.length))
-  const unknown = rem.replace(/[▓\s]/g,'').replace(/[^ก-๙]/g,'')
-  if (unknown.length > 3) return false  // allow up to 3 chars (tone marks etc)
-  // Phonetic must be space-separated, no brackets
+  // Phonetic must not use brackets
   if (pair.phonetic.includes('[') || pair.phonetic.includes(']')) return false
-  // Words array must exist and have entries
+  // Words array must exist
   if (!pair.words || !pair.words.length) return false
-  // Length check will be done externally with vocab context
-  // Prompt must be complete (not end with ...)
-  if (pair.prompt.trim().endsWith('...') || pair.prompt.trim().length < 15) return false
+  // Prompt must be complete
+  if (pair.prompt.trim().endsWith('...') || pair.prompt.trim().length < 12) return false
   return true
 }
 

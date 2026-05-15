@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v75';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v75').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v76';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v76').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -145,6 +145,19 @@ function pickWords(vocab, mode) {
     .filter(w => (w.status === 'known' || w.status === 'learning') && !targetIds.has(w.id))
     .sort((a, b) => (!a.lastSeen ? -1 : !b.lastSeen ? 1 : a.lastSeen.localeCompare(b.lastSeen)))
     .slice(0, 25)
+  // Filter out words that shouldn't be standalone targets
+  const PURE_PARTICLES = new Set(['ก็','ที่','ของ','กับ','ว่า','แต่','หรือ','และ','เพราะ','แล้ว','ด้วย','นะ','ก็ได้'])
+  const TOO_COMMON = new Set(['มี','ไป','มา','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ไม่','ได้','จะ','เป็น','ทำ','รู้'])
+  targets = targets.filter(t =>
+    t.thai.length >= 2 &&
+    !PURE_PARTICLES.has(t.thai) &&
+    !TOO_COMMON.has(t.thai)
+  )
+  // Shuffle to avoid same words always first/last
+  for (let i = targets.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [targets[i], targets[j]] = [targets[j], targets[i]]
+  }
   return { targets, anchors }
 }
 
@@ -542,8 +555,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
       {/* AI Provider Selector */}
       <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
         <span style={{ fontSize:12, color:'var(--muted)', marginRight:4 }}>Generate with:</span>
-        {[['claude','⚡ Claude'],['deepseek','🐋 DeepSeek'],['qwen','✨ Qwen']].map(([id,label]) => {
-          const hasKey = id === 'claude' ? hasClaudeKey : hasOrKey
+        {[['deepseek','🐋 DeepSeek'],['qwen','✨ Qwen']].map(([id,label]) => {
+          const hasKey = hasOrKey
           return (
             <button key={id} onClick={() => onSetProvider(id)}
               style={{ flex:1, padding:'7px 10px', borderRadius:9, border:`1px solid ${provider===id?'var(--gold)':'var(--border)'}`, background:provider===id?'#1e1600':'transparent', color:provider===id?'var(--gold)':hasKey?'var(--text)':'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s', position:'relative' }}>
@@ -642,7 +655,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
             ))}
           </div>
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
@@ -1067,6 +1081,18 @@ function getWordTypeHint(target) {
     return { type: 'quantifier', hint: `"${thai}" means "${eng}". Use it before or after a noun: ${thai}อยู่ที่นี่ (${eng} is here), เห็น${thai} (saw ${eng}), มี${thai} (there is ${eng})` }
   if (ABSTRACT.some(w => eng.includes(w)))
     return { type: 'abstract', hint: `"${thai}" means "${eng}". Use it in a list or comparison context.` }
+  // Food words
+  const FOOD_WORDS = ['curry','rice','soup','salad','noodle','chicken','pork','beef','fish','vegetable','fruit','drink','beer','coffee','tea','cake','bread','egg','shrimp','crab']
+  if (FOOD_WORDS.some(w => eng.includes(w)))
+    return { type: 'food', hint: `"${thai}" is a food/drink. Use กิน (eat), ชอบ (like), อร่อย (delicious), สั่ง (order), or อยากกิน (want to eat) with it.` }
+  // Place words  
+  const PLACE_WORDS = ['station','market','shop','store','hotel','restaurant','hospital','school','temple','road','street','beach','river','mountain','park','airport','bank']
+  if (PLACE_WORDS.some(w => eng.includes(w)))
+    return { type: 'place', hint: `"${thai}" is a place. Use อยู่ที่ (located at), ไป (go to), มาจาก (come from), or อยู่ใกล้ (near) with it.` }
+  // Body parts
+  const BODY_WORDS = ['nose','ear','mouth','eye','hair','skin','arm','leg','hand','foot','head','face','tooth','finger','nail']
+  if (BODY_WORDS.some(w => eng.includes(w)))
+    return { type: 'body', hint: `"${thai}" is a body part. Use มี (have), ปวด (hurt/pain), เห็น (see), or ล้าง (wash) naturally. e.g. ปวด${thai} (${thai} hurts), มี${thai} (has a ${eng}).` }
   // Default: can be used naturally
   return { type: 'normal', hint: '' }
 }
@@ -1101,9 +1127,9 @@ ALLOWED THAI WORDS: ${tw} | ${anchorLines} | ${PARTICLES.slice(0,15).join(' ')}
 Sentence length: ${gMin}–${gMax} words (not counting ครับ/ค่ะ). Max ${eCeil}.
 End pair 1 with ครับ, pair 2 with ค่ะ, pair 3 with ครับ.
 
-PROMPT: Natural English instruction, 4-8 words, matching what the sentence actually says.
-Good: "Say the wind is strong" | "Ask if the waves are big today" | "Tell someone to come soon"
-Bad: "Say I which" | "Say I 1am" | "Say I ketchup" — these make no English sense
+PROMPT: Natural English, max ${promptCap} words. Include the key Thai word meaning so learner knows what to say.
+Good: "Say the [คลื่น/waves] are strong" | "Ask if they like [ฮวงจุ้ย/feng shui]" | "Say you already ate [ยำทะเล]"
+Bad: "Say I which" | "Say I 1am" | prompt longer than ${promptCap} words
 
 Avoid repeating: ${existingList || 'none yet'}
 
@@ -1111,49 +1137,109 @@ Return ONLY a JSON array of 3:
 [{"prompt":"...","thai":"...","english":"...","phonetic":"space separated","words":[{"p":"...","e":"..."}],"target_phonetic":"${ph}"}]`
 }
 
+// Pre-written fallbacks for known problem words
+const HARDCODED_FALLBACKS = {
+  'เหมือน': [
+    {prompt:'Say they look similar',thai:'มันเหมือนกันครับ',english:'They are similar.',phonetic:'man mǔean gan khrâp',words:[{p:'man',e:'it'},{p:'mǔean',e:'similar'},{p:'gan',e:'same'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mǔean'},
+    {prompt:'Ask if it looks like yours',thai:'มันเหมือนของคุณไหมคะ',english:'Does it look like yours?',phonetic:'man mǔean khɔ̌ɔng khun mǎi khá',words:[{p:'man',e:'it'},{p:'mǔean',e:'similar'},{p:'khɔ̌ɔng',e:'of'},{p:'khun',e:'you'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'mǔean'},
+    {prompt:'Say it looks the same as before',thai:'มันเหมือนเดิมครับ',english:'It looks the same as before.',phonetic:'man mǔean dəəm khrâp',words:[{p:'man',e:'it'},{p:'mǔean',e:'similar'},{p:'dəəm',e:'original'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mǔean'},
+  ],
+  'ซึ่ง': [
+    {prompt:'Say the route you like',thai:'เส้นทางซึ่งชอบครับ',english:'The route that I like.',phonetic:'sên-thaang sûeng chôop khrâp',words:[{p:'sên-thaang',e:'route'},{p:'sûeng',e:'which'},{p:'chôop',e:'like'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sûeng'},
+    {prompt:'Ask about the one you want',thai:'อันซึ่งอยากได้ไหมคะ',english:'Is it the one you want?',phonetic:'an sûeng yàak dâi mǎi khá',words:[{p:'an',e:'one'},{p:'sûeng',e:'which'},{p:'yàak',e:'want'},{p:'dâi',e:'get'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'sûeng'},
+    {prompt:'Say the place where you live',thai:'บ้านซึ่งอยู่ครับ',english:'The house where I live.',phonetic:'bâan sûeng yùu khrâp',words:[{p:'bâan',e:'house'},{p:'sûeng',e:'which'},{p:'yùu',e:'live'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sûeng'},
+  ],
+  'การเดินทาง': [
+    {prompt:'Say traveling is fun',thai:'การเดินทางสนุกครับ',english:'Traveling is fun.',phonetic:'kaan-dəən-thaang sà-nùk khrâp',words:[{p:'kaan-dəən-thaang',e:'travel'},{p:'sà-nùk',e:'fun'},{p:'khrâp',e:'[polite]'}],target_phonetic:'kaan-dəən-thaang'},
+    {prompt:'Ask if they like traveling',thai:'ชอบการเดินทางไหมคะ',english:'Do you like traveling?',phonetic:'chôop kaan-dəən-thaang mǎi khá',words:[{p:'chôop',e:'like'},{p:'kaan-dəən-thaang',e:'travel'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'kaan-dəən-thaang'},
+    {prompt:'Say the trip was long',thai:'การเดินทางนานครับ',english:'The journey was long.',phonetic:'kaan-dəən-thaang naan khrâp',words:[{p:'kaan-dəən-thaang',e:'travel'},{p:'naan',e:'long time'},{p:'khrâp',e:'[polite]'}],target_phonetic:'kaan-dəən-thaang'},
+  ],
+  'เดี๋ยว': [
+    {prompt:'Say they will come soon',thai:'เดี๋ยวมาครับ',english:'Coming soon.',phonetic:'dǐao maa khrâp',words:[{p:'dǐao',e:'soon'},{p:'maa',e:'come'},{p:'khrâp',e:'[polite]'}],target_phonetic:'dǐao'},
+    {prompt:'Ask if it will be ready soon',thai:'เดี๋ยวเสร็จไหมคะ',english:'Will it be done soon?',phonetic:'dǐao sèt mǎi khá',words:[{p:'dǐao',e:'soon'},{p:'sèt',e:'done'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'dǐao'},
+    {prompt:'Say you will go soon',thai:'เดี๋ยวไปครับ',english:'Going soon.',phonetic:'dǐao pai khrâp',words:[{p:'dǐao',e:'soon'},{p:'pai',e:'go'},{p:'khrâp',e:'[polite]'}],target_phonetic:'dǐao'},
+  ],
+  'เพิ่ง': [
+    {prompt:'Say you just arrived',thai:'เพิ่งมาถึงครับ',english:'I just arrived.',phonetic:'phûeng maa thǔeng khrâp',words:[{p:'phûeng',e:'just'},{p:'maa',e:'come'},{p:'thǔeng',e:'arrive'},{p:'khrâp',e:'[polite]'}],target_phonetic:'phûeng'},
+    {prompt:'Ask if they just woke up',thai:'เพิ่งตื่นไหมคะ',english:'Did you just wake up?',phonetic:'phûeng tùen mǎi khá',words:[{p:'phûeng',e:'just'},{p:'tùen',e:'wake'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'phûeng'},
+    {prompt:'Say you just ate',thai:'เพิ่งกินข้าวครับ',english:'I just ate.',phonetic:'phûeng gin khâao khrâp',words:[{p:'phûeng',e:'just'},{p:'gin',e:'eat'},{p:'khâao',e:'rice'},{p:'khrâp',e:'[polite]'}],target_phonetic:'phûeng'},
+  ],
+}
+
 function makeFallbackPairs(target) {
   const ph = target.phonetic || target.thai
   const eng = target.english
   const tw = target.thai
-  // Universal fallbacks that work for ANY word type
-  // Pattern: คุณ[word]ไหม works as "do you [word]?" for verbs, "do you have [word]?" for nouns
-  // Pattern: ผม[word]ครับ works as "I [word]" or "I have [word]" or "I am [word]"
+  // Use hardcoded fallbacks for known problem words
+  if (HARDCODED_FALLBACKS[tw]) return HARDCODED_FALLBACKS[tw]
+  // For food words — use eating context
+  const foodWords = ['curry','rice','soup','salad','noodle','chicken','pork','beef','fish']
+  if (foodWords.some(f => eng.includes(f))) {
+    return [
+      {prompt:'Say you want to eat ' + eng,thai:'อยากกิน'+tw+'ครับ',english:'I want to eat '+eng+'.',phonetic:'yàak gin '+ph+' khrâp',words:[{p:'yàak',e:'want'},{p:'gin',e:'eat'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+      {prompt:'Ask if they like ' + eng,thai:'ชอบ'+tw+'ไหมคะ',english:'Do you like '+eng+'?',phonetic:'chôop '+ph+' mǎi khá',words:[{p:'chôop',e:'like'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+      {prompt:'Say you already ate ' + eng,thai:'กิน'+tw+'แล้วครับ',english:'I already ate '+eng+'.',phonetic:'gin '+ph+' lâeo khrâp',words:[{p:'gin',e:'eat'},{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    ]
+  }
+  // Generic fallback — statement + question + past
   return [
-    {
-      prompt: 'Say "I ' + eng + '"',
-      thai: 'ผม' + tw + 'ครับ',
-      english: 'I ' + eng,
-      phonetic: 'phǒm ' + ph + ' khrâp',
-      words: [{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],
-      target_phonetic: ph
-    },
-    {
-      prompt: 'Ask "Do you ' + eng + '?"',
-      thai: 'คุณ' + tw + 'ไหมคะ',
-      english: 'Do you ' + eng + '?',
-      phonetic: 'khun ' + ph + ' mǎi khá',
-      words: [{p:'khun',e:'you'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],
-      target_phonetic: ph
-    },
-    {
-      prompt: 'Say "I already ' + eng + '"',
-      thai: 'ผม' + tw + 'แล้วครับ',
-      english: 'I already ' + eng,
-      phonetic: 'phǒm ' + ph + ' lâeo khrâp',
-      words: [{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],
-      target_phonetic: ph
-    }
+    {prompt:'Say you know about ' + eng,thai:'รู้จัก'+tw+'ครับ',english:'I know about '+eng+'.',phonetic:'rúu-jàk '+ph+' khrâp',words:[{p:'rúu-jàk',e:'know'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they know ' + eng,thai:'รู้จัก'+tw+'ไหมคะ',english:'Do you know '+eng+'?',phonetic:'rúu-jàk '+ph+' mǎi khá',words:[{p:'rúu-jàk',e:'know'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you already saw ' + eng,thai:'เห็น'+tw+'แล้วครับ',english:'I already saw '+eng+'.',phonetic:'hěn '+ph+' lâeo khrâp',words:[{p:'hěn',e:'see'},{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 }
 
 
 function validatePair(pair, target, allAllowed, existingThais) {
-  if (!pair || !pair.thai || !pair.prompt) return false
+  if (!pair || !pair.thai || !pair.prompt || !pair.english || !pair.phonetic) return false
+  // Must contain target word
   if (!pair.thai.includes(target.thai)) return false
+  // Must not be duplicate
   if (existingThais.has(pair.thai)) return false
+  // Prompt must be complete
   if (pair.prompt.trim().endsWith('...') || pair.prompt.trim().length < 8) return false
+  // Reject no-verb sentences: EN like "I god", "I ketchup", "I which"
+  if (/^(I|He|She|We|They) [A-Z][a-z]+$/.test(pair.english.trim())) return false
+  if (/^(I|He|She|We|They) [a-z]+$/.test(pair.english.trim()) &&
+      !/(am|is|are|was|were|have|has|had|do|did|can|will|would|should|go|went|see|saw|like|want|eat|ate|know|feel|think|come|came)/i.test(pair.english)) return false
+  // Phonetic must not contain Thai script
+  if (/[ก-๙]/.test(pair.phonetic)) return false
+  // Phonetic must not contain plain English articles/verbs
+  if (/(the|a|an|is|are|was|were)/.test(pair.phonetic)) return false
+  // Duplicate phonetic tokens
+  const tokens = pair.phonetic.split(' ').filter(Boolean)
+  if (new Set(tokens).size < tokens.length - 1) return false  // allow 1 repeat (particles)
+  // Words array should roughly match phonetic count
+  if (pair.words && pair.words.length > 0 && Math.abs(pair.words.length - tokens.length) > 2) return false
+  // EN too long = AI over-explained
+  if (pair.english.split(' ').length > 15) return false
+  // Reject verbatim example sentence from prompt
+  if (pair.thai === 'ผมมี' + target.thai + 'ครับ' && pair.english === 'I have ' + target.english) {
+    // only reject if it's the generic fallback AND not a valid sentence for this word
+    const isFood = ['curry','rice','soup','chicken','pork','fish'].some(f => target.english.includes(f))
+    if (!isFood) return false  // "I have [abstract word]" is usually wrong
+  }
+  // Cross-checks: EN vs Thai consistency
+  const en = pair.english.toLowerCase()
+  const th = pair.thai
+  if ((en.includes("already") || en.includes("already")) && !th.includes('แล้ว')) return false
+  if ((en.includes("don't") || en.includes("not ") || en.includes("never")) && !th.includes('ไม่')) return false
+  if (en.includes('?') && !pair.prompt.toLowerCase().includes('ask') && !/[ไหมหรือเหรอใช่]/.test(th)) return false
   return true
 }
+
+const TRIPLETS = [
+    ['Say you have','Ask if they like','Say you already used'],
+    ['Tell someone you want to','Ask where','Say you will'],
+    ['Say you see','Ask if they have','Say you just saw'],
+    ['Tell someone it is','Ask when','Say you never'],
+    ['Say you like','Ask how many','Say you don\'t'],
+    ['Tell a friend about','Ask if they want to','Say you already'],
+    ['Say you went to','Ask who has','Say you want to'],
+    ['Tell someone you know','Ask if it is','Say you already went'],
+    ['Say you will go','Ask where the','Say you just'],
+    ['Tell someone to','Ask if they already','Say there is no'],
+  ]
 
 async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
   const orModel = model || 'qwen/qwen3.5-flash-02-23'
@@ -1175,14 +1261,29 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
 
   for (let i = 0; i < targets.length; i++) {
     const target = targets[i]
-    // Spread anchors — cycle through so each word gets different supporting context
-    const anchorOffset = (i * 4) % Math.max(anchors.length - 8, 1)
-    const localAnchors = anchors.slice(anchorOffset, anchorOffset + 8)
+    // Semantic affinity — pick anchors relevant to this target word's category
+    const eng_lower = (target.english || '').toLowerCase()
+    let localAnchors
+    if (['curry','rice','soup','salad','noodle','chicken','pork','beef','fish','drink','beer','food'].some(f => eng_lower.includes(f))) {
+      // Food words: prioritize food/eating anchors
+      const foodAnchors = anchors.filter(a => ['กิน','ชอบ','อร่อย','สั่ง','ร้าน','ข้าว','น้ำ','เมนู'].some(w => a.thai.includes(w)))
+      localAnchors = [...foodAnchors, ...anchors.filter(a => !foodAnchors.includes(a))].slice(0, 8)
+    } else if (['station','market','shop','hotel','beach','temple','road','airport','bank'].some(f => eng_lower.includes(f))) {
+      // Place words: prioritize movement anchors
+      const placeAnchors = anchors.filter(a => ['ไป','มา','อยู่','ใกล้','ไกล','ถึง','จาก'].some(w => a.thai.includes(w)))
+      localAnchors = [...placeAnchors, ...anchors.filter(a => !placeAnchors.includes(a))].slice(0, 8)
+    } else if (['nose','ear','mouth','eye','hair','skin','arm','leg','tooth'].some(f => eng_lower.includes(f))) {
+      // Body parts: prioritize body-related anchors
+      const bodyAnchors = anchors.filter(a => ['ปวด','มี','เห็น','ล้าง','สวย','แข็งแรง'].some(w => a.thai.includes(w)))
+      localAnchors = [...bodyAnchors, ...anchors.filter(a => !bodyAnchors.includes(a))].slice(0, 8)
+    } else {
+      const anchorOffset = (i * 4) % Math.max(anchors.length - 8, 1)
+      localAnchors = anchors.slice(anchorOffset, anchorOffset + 8)
+    }
 
-    // 3 different prompt types, spread across the 20 types
-    const t1 = PROMPT_TYPES[(i * 3) % PROMPT_TYPES.length]
-    const t2 = PROMPT_TYPES[(i * 3 + 7) % PROMPT_TYPES.length]
-    const t3 = PROMPT_TYPES[(i * 3 + 14) % PROMPT_TYPES.length]
+    // Each word gets a guaranteed triplet: statement + question + past/future
+    const triplet = TRIPLETS[i % TRIPLETS.length]
+    const t1 = triplet[0], t2 = triplet[1], t3 = triplet[2]
 
     const prompt = buildMicroPrompt(target, localAnchors, vocab, t1, t2, t3, existingThais, allPairs.length)
 
@@ -1220,262 +1321,24 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     onProgress && onProgress(allPairs.length, targets.length * 3, null)
   }
 
-  return allPairs
-}
-
-async function generateTrackWithClaude(targets, anchors, apiKey, onProgress, vocab, provider) {
-  if (provider === 'deepseek') return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, 'deepseek/deepseek-chat')
-  if (provider === 'qwen') return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, 'qwen/qwen3.5-flash-02-23')
-  const targetList = targets.map(w => `★ ${w.thai} = ${w.english}`).join('\n')
-  const anchorList = anchors.slice(0, 50).map(w => `${w.thai} = ${w.english}`).join('\n')
-
-  // Full approved vocabulary — Claude may ONLY use these Thai words in sentences
-  // Include particles/grammar words by default since they're universal
-  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','ไม่','ได้','จะ','และ','แต่','หรือ','เพราะ','ว่า','ถ้า','ก่อน','หลัง','แล้วก็','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก']
-  const allThai = new Set([
-    ...ALWAYS_ALLOWED,
-    ...(vocab || []).map(w => w.thai)
-  ])
-  const approvedList = [...allThai].join('  ')
-
-
-  // Build per-word usage schedule — 3 appearances each, spread across 90 pairs
-  const schedule = []
-  targets.forEach((t, ti) => {
-    [ti * 3, ti * 3 + 1, ti * 3 + 2].forEach(s => schedule.push({ slot: s % 90, word: t.thai, eng: t.english }))
-  })
-  schedule.sort((a, b) => a.slot - b.slot)
-  const scheduleStr = schedule.map(s => `Pair ${s.slot + 1}: ★${s.word} (${s.eng})`).join('\n')
-
-  const system = `You are a strict Thai language teaching assistant creating Pimsleur-style audio lessons.
-
-Generate EXACTLY 90 challenge-response pairs as a JSON array.
-
-PAIR STRUCTURE — every pair must have ALL these fields:
-- "prompt": creative English instruction using varied types
-- "thai": natural Thai sentence, TARGET ${goalMin}–${goalMax} words, MAX ${effectiveCeil} words, MUST end with ครับ or ค่ะ
-- "english": natural English translation
-- "phonetic": tone-marked romanization, one space-separated token per Thai word
-- "words": array of {"p": phonetic_token, "e": English_gloss} — EXACTLY one per Thai word
-- "target_phonetic": romanization of the ★ target word in this pair
-
-RULE 1 — STRICT WORD SCHEDULE (HIGHEST PRIORITY):
-Follow this assignment exactly — each pair number has one assigned target word:
-${scheduleStr}
-Do not use a target word in any pair except its assigned slots.
-
-RULE 2 — VOCABULARY: Use ONLY Thai words from the APPROVED VOCABULARY LIST. Zero exceptions.
-
-RULE 3 — PROMPT VARIETY:
-Use these types creatively in rotation — no type more than 3 times in a row:
-Tell someone | Ask if | Say that | Ask someone to | Respond to | How would you say |
-Explain that | Ask where | Ask when | Ask why | Suggest that | Invite someone to |
-Warn someone | Refuse politely | Agree by saying | Express surprise | Complain that |
-Confirm that | Deny that | Ask how many | Admit that | Promise that | Describe
-"Ask" "Say" "Tell" must each appear fewer than 12 times total across 90 pairs.
-
-RULE 4 — TONE MARKS (MANDATORY ON EVERY WORD):
-mid=no mark | low=grave(à) | falling=circumflex(â) | high=acute(á) | rising=caron(ǎ)
-
-RULE 5 — SENTENCE CREATIVITY:
-Every sentence must be a different situation. Mix questions, statements, invitations,
-refusals, suggestions, complaints. Never repeat the same sentence structure twice in a row.
-
-RULE 6 — WORDS ARRAY: Must have EXACTLY the same token count as "phonetic" space-separated.
-
-Respond ONLY with valid JSON array of 90 objects. No markdown, no explanation, no preamble.`
-  const user = `APPROVED VOCABULARY (use ONLY these Thai words):\n${approvedList}\n\nANCHOR WORDS (for supporting sentences, 1-2x each):\n${anchorList}\n\nRemember: follow the pair schedule in the system prompt exactly. Every pair number has an assigned target word.`
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 16000, stream: true, system, messages: [{ role: 'user', content: user }] })
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err?.error?.message || `API error ${res.status}`)
-  }
-
-  // Stream the response and count pairs as they arrive
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let accumulated = ''
-  let pairsFound = 0
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    const chunk = decoder.decode(value, { stream: true })
-    for (const line of chunk.split('\n')) {
-      if (!line.startsWith('data: ')) continue
-      const data = line.slice(6).trim()
-      if (data === '[DONE]') break
-      try {
-        const evt = JSON.parse(data)
-        if (evt.type === 'content_block_delta' && evt.delta?.text) {
-          accumulated += evt.delta.text
-          // Count completed pairs by counting "phonetic" keys (last key in each pair)
-          const found = (accumulated.match(/"phonetic"\s*:/g) || []).length
-          if (found !== pairsFound) {
-            pairsFound = found
-            // Try to extract the most recently completed pair
-            let latestPair = null
-            try {
-              const lastBrace = accumulated.lastIndexOf('"}')
-              if (lastBrace > 0) {
-                const objStart = accumulated.lastIndexOf('{', lastBrace)
-                if (objStart >= 0) {
-                  const obj = JSON.parse(accumulated.slice(objStart, lastBrace + 2))
-                  if (obj.thai && obj.phonetic) latestPair = obj
-                }
-              }
-            } catch {}
-            onProgress && onProgress(pairsFound, 90, latestPair)
-          }
-        }
-      } catch {}
+  // Retry any missing pairs to reach target count
+  const targetCount = targets.length * 3
+  if (allPairs.length < targetCount) {
+    const missing = targetCount - allPairs.length
+    const existingThaisFinal = new Set(allPairs.map(p => p.thai))
+    for (let retry = 0; retry < missing && retry < 10; retry++) {
+      const targetIdx = retry % targets.length
+      const t = targets[targetIdx]
+      const tCount = allPairs.filter(p => p.thai && p.thai.includes(t.thai)).length
+      if (tCount < 3) {
+        const fb = makeFallbackPairs(t)
+        const candidate = fb.find(f => !existingThaisFinal.has(f.thai))
+        if (candidate) { allPairs.push(candidate); existingThaisFinal.add(candidate.thai) }
+      }
     }
   }
-
-  let text = accumulated.trim().replace(/^```json\n?|\n?```$/g, '').trim()
-
-  // Robust parse — extract all complete objects even if array is truncated
-
-  let pairs = parsePartialArray(text)
-  if (!pairs.length) throw new Error('No pairs could be parsed from response')
-  onProgress && onProgress(pairs.length, 90)
-  return pairs
-}
-
-
-async function fetchTargetPhonetics(targets, apiKey) {
-  const wordList = targets.map(w => w.thai).join(', ')
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1000,
-      messages: [{ role: 'user', content: `Give me the tone-marked romanization for each Thai word. Tone marks: mid=none, low=à, falling=â, high=á, rising=ǎ. Use hyphens between syllables.
-Words: ${wordList}
-Respond ONLY with valid JSON, no markdown: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }]
-    })
-  })
-  if (!res.ok) return {}
-  const data = await res.json()
-  const text = data.content[0].text.trim().replace(/^```json\n?|\n?```$/g, '').trim()
-  const parsed = JSON.parse(text)
-  const map = {}
-  for (const r of (parsed.results || [])) {
-    const match = targets.find(t => t.thai === r.thai)
-    if (match) map[match.id] = r.phonetic
-  }
-  return map
-}
-
-// ── Track Generator ───────────────────────────────────────────────────────────
-
-// ── Belt Rank Detail View ────────────────────────────────────────────────────
-function BeltRankView({ vocab, onBack }) {
-  const known = useMemo(() => vocab.filter(w => w.status === 'known').length, [vocab])
-  const { current, next, wordsToNext, progress } = useMemo(() => calculateBeltRank(known), [known])
-
-  return (
-    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
-          <Icon name="arrow_left" size={20} />
-        </button>
-        <span className="display" style={{ fontSize: 18 }}>Belt Rank</span>
-      </div>
-
-      {/* Current rank hero */}
-      <Card style={{ padding: '24px 20px', textAlign: 'center', marginBottom: 12, background: `linear-gradient(135deg, var(--surface), ${current.color}11)`, borderColor: current.color + '44' }}>
-        <div style={{ fontSize: 52, marginBottom: 8 }}>🥋</div>
-        <div style={{ fontSize: 32, fontWeight: 800, color: current.color, lineHeight: 1 }}>{current.rank}</div>
-        <div style={{ fontSize: 14, color: 'var(--muted)', marginTop: 4 }}>{current.label} Belt</div>
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 6 }}>
-          <div style={{ width: 48, height: 10, borderRadius: 5, background: current.belt, border: current.rank === 'Shodan' ? '1px solid var(--gold)' : 'none', boxShadow: `0 0 8px ${current.color}66` }} />
-        </div>
-      </Card>
-
-      {/* All ranks ladder */}
-      <Card style={{ padding: '14px 16px', marginBottom: 12 }}>
-        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Rank Ladder</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[...BELT_RANKS].reverse().map((r, i) => {
-            const achieved = known >= r.minWords
-            const isCurrent = r.rank === current.rank
-            return (
-              <div key={r.rank} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: achieved ? 1 : 0.4 }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: achieved ? r.color : 'var(--border)', flexShrink: 0, boxShadow: isCurrent ? `0 0 8px ${r.color}` : 'none' }} />
-                <div style={{ width: 24, height: 6, borderRadius: 3, background: r.belt, flexShrink: 0, border: r.rank === 'Shodan' ? '1px solid var(--gold)' : 'none' }} />
-                <span style={{ fontSize: 13, fontWeight: isCurrent ? 700 : 400, color: isCurrent ? r.color : 'var(--text)', flex: 1 }}>{r.rank}</span>
-                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{r.minWords.toLocaleString()} words</span>
-                {isCurrent && <span style={{ fontSize: 10, background: r.color + '22', color: r.color, padding: '2px 7px', borderRadius: 10, fontWeight: 600 }}>YOU</span>}
-                {achieved && !isCurrent && <span style={{ fontSize: 12, color: '#10b981' }}>✓</span>}
-              </div>
-            )
-          })}
-        </div>
-      </Card>
-
-      {/* Progress to next */}
-      {next && (
-        <Card style={{ padding: '14px 16px', marginBottom: 12 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Progress to {next.rank}</p>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 13, color: 'var(--text)' }}>Known words</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#10b981' }}>{known} / {next.minWords}</span>
-          </div>
-          <div style={{ height: 8, background: 'var(--surface2)', borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${current.color}, ${next.color})`, borderRadius: 4, transition: 'width 0.6s ease' }} />
-          </div>
-          <p style={{ fontSize: 12, color: '#f59e0b', marginTop: 4 }}>
-            {wordsToNext} more known words needed to reach {next.rank}
-          </p>
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6, lineHeight: 1.6 }}>
-            Rate words <strong style={{color:'var(--text)'}}>Easy</strong> during review to move them from Learning → Known
-          </p>
-        </Card>
-      )}
-
-      {/* Partial grading notice */}
-      <Card style={{ padding: '12px 14px', borderColor: '#f59e0b44', background: '#1a1200' }}>
-        <p style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600, marginBottom: 4 }}>⚠ Grading is partial</p>
-        <p style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.6 }}>
-          Full belt grading will include phrase bank, grammar patterns, idioms, and scenario tests. Currently ranking by known vocabulary only.
-        </p>
-      </Card>
-    </div>
-  )
-}
-
-
-// ── Pre-track conversation builder ───────────────────────────────────────────
-function buildConvoPrompt(targets, vocab) {
-  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก','ผม','ฉัน','คุณ','เขา','เธอ','เรา','พวกเขา']
-  const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
-  const vocabPhonMap = Object.fromEntries((vocab||[]).map(w=>[w.thai,w.phonetic]).filter(([,p])=>p))
-  const targetList = targets.map(w=>`${w.thai}${w.phonetic?` [${w.phonetic}]`:''} = ${w.english}`).join(', ')
-  const approvedList = [...allThai].map(t=>vocabPhonMap[t]?`${t}[${vocabPhonMap[t]}]`:t).join('  ')
-
-  const system = `You are creating a short natural Thai conversation for a language learner.
-The conversation must use ALL of these target words at least once: ${targetList}
-Use ONLY Thai words from this approved list: ${approvedList}
-Rules:
-- Write a realistic conversation between a Thai man (speaker "M") and Thai woman (speaker "W")
-- The man uses male polite particles: ครับ, ผม
-- The woman uses female polite particles: ค่ะ, คะ, ฉัน, หนู
-- Use every target word naturally at least once
-- Keep sentences short and natural (3-7 words each)
-- Include phonetics for every Thai word using the [brackets] shown, or standard romanization
-- Respond ONLY with valid JSON, no markdown:
-{"lines":[{"speaker":"M","thai":"...","phonetic":"...","english":"..."},{"speaker":"W","thai":"...","phonetic":"...","english":"..."},...]}
-- Aim for 12-18 lines total covering all target words
-- Make the conversation feel natural — a real situation like meeting, planning a trip, shopping, eating out, etc.`
-
-  return { system, user: 'Generate the conversation now.' }
+  onProgress && onProgress(allPairs.length, targetCount, null)
+  return allPairs
 }
 
 async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
@@ -1496,25 +1359,6 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const parsed = JSON.parse(text)
   return parsed.lines || []
 }
-
-async function generateConvoWithClaude(targets, vocab, apiKey) {
-  const { system, user } = buildConvoPrompt(targets, vocab)
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4000,
-      system, messages: [{ role: 'user', content: user }] })
-  })
-  if (!res.ok) throw new Error(`Claude convo error ${res.status}`)
-  const data = await res.json()
-  let text = (data.content?.[0]?.text || '').replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
-  const jsonStart = text.indexOf('{')
-  const jsonEnd = text.lastIndexOf('}')
-  if (jsonStart >= 0 && jsonEnd > jsonStart) text = text.slice(jsonStart, jsonEnd + 1)
-  const parsed = JSON.parse(text)
-  return parsed.lines || []
-}
-
 
 // ── Pre-track Conversation Player ────────────────────────────────────────────
 function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
@@ -1688,28 +1532,10 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             doPhonetics().catch(() => {})
           }
 
-          pairs = await generateTrackWithClaude(targets, anchors, apiKey, (done, total, latestPair) => {
-            setPairsDone(done)
-            setPairsTotal(targets.length * 3)
-            // Update chip phonetics from streaming target_word field (reliable)
-            if (latestPair && latestPair.target_word && latestPair.target_phonetic) {
-              const t = targets.find(t => t.thai === latestPair.target_word)
-              if (t && !phoneticsRef.current[t.id]) {
-                phoneticsRef.current = { ...phoneticsRef.current, [t.id]: latestPair.target_phonetic, [t.thai]: latestPair.target_phonetic }
-                setTargetPhonetics({ ...phoneticsRef.current })
-              }
-            }
-          }, vocab, provider)
-        } else if (provider === 'deepseek') {
-          // DeepSeek selected but no key
-          throw new Error('No DeepSeek API key saved. Go to ⚙️ Settings and enter your DeepSeek key from platform.deepseek.com')
-        } else {
-          // No key at all — use local templates
-          setPhase('streaming')
-          pairs = generatePairsLocal(targets, anchors)
-          setPairsDone(pairs.length)
-          setPairsTotal(90)
-        }
+          pairs = await generateTrackWithQwen(targets, anchors, apiKey,
+            (done) => { setPairsDone(done); setPairsTotal(targets.length * 3) },
+            vocab, provider === "deepseek" ? "deepseek/deepseek-chat" : "qwen/qwen3.5-flash-02-23")
+          }
         // Use pre-call phonetics (phoneticsRef) — reliable, per-word accurate
         // Previous regex pair-matching was buggy and overwrote correct data
         if (onPhonetics && Object.keys(phoneticsRef.current).length) {
@@ -1720,8 +1546,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
         }
+        // Item 42: Verify track can be serialized before showing ready
+        try { JSON.stringify(track) } catch(e) { throw new Error('Track data invalid: ' + e.message) }
         setGeneratedTrack(track)
-        // Track ready — user taps button to start
         setPhase('done')
       } catch(e) {
         setPhase('error')
@@ -1729,7 +1556,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         console.error('Generation error:', msg)
           const isDeepSeekCors = (provider === 'deepseek') && (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS') || msg.includes('fetch'))
           const hint = isDeepSeekCors
-          ? '🐋 DeepSeek cannot be called directly from a browser due to CORS restrictions.\n\nA free Cloudflare Worker proxy is needed (5 min setup). Ask Claude to help set it up, or switch to ⚡ Claude in the meantime.'
+          ? '🐋 DeepSeek via OpenRouter requires your OpenRouter API key in Settings.'
           : msg.includes('Failed to fetch') || msg.includes('NetworkError')
           ? msg + '\n\n⚠️ Check your internet connection and API key.'
           : msg
@@ -1757,7 +1584,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'claude' ? 'Claude' : provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
@@ -1796,17 +1623,31 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'claude' ? 'Claude' : provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
         </span>
       </div>
 
       {/* Track ready actions */}
-      {phase === 'done' && generatedTrack && (
-        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          <Btn onClick={() => { onGenerated(generatedTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
-            ▶ Start SRS Track
-          </Btn>
+      {phase === 'done' && generatedTrack && (() => {
+        const totalPairs = generatedTrack.pairs?.length || 0
+        const targetWords = generatedTrack.keywords?.length || 0
+        const fallbackPairs = generatedTrack.pairs?.filter(p => p.prompt?.startsWith('Say "I ') || p.prompt?.startsWith('Ask "Do you ')).length || 0
+        const missingWords = (generatedTrack.keywords || []).filter(k =>
+          !(generatedTrack.pairs || []).some(p => p.thai?.includes(k.thai))
+        ).length
+        const score = Math.max(0, Math.round(((totalPairs - fallbackPairs * 2 - missingWords * 3) / Math.max(totalPairs, 1)) * 100))
+        const scoreColor = score >= 85 ? '#10b981' : score >= 65 ? '#f59e0b' : '#ef4444'
+        return (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {/* Quality score */}
+            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 14px', display:'flex', gap:12, alignItems:'center' }}>
+              <span style={{ fontSize:22, fontWeight:800, color:scoreColor }}>{score}%</span>
+              <div style={{ flex:1, fontSize:12, color:'var(--muted)' }}>
+                <div style={{ color:'var(--text)', fontWeight:600, marginBottom:2 }}>Track Quality</div>
+                <div>{totalPairs} pairs · {fallbackPairs > 0 ? `⚠️ ${fallbackPairs} fallbacks · ` : '✅ no fallbacks · '}{missingWords > 0 ? `❌ ${missingWords} words missing` : '✅ all words covered'}</div>
+              </div>
+            </div>
           {convoLoading && (
             <div>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
@@ -1826,9 +1667,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               const ticker = setInterval(() => setConvoPct(p => p < 85 ? p + Math.random() * 8 : p), 600)
               const orModel = provider === 'deepseek' ? 'deepseek/deepseek-chat' : 'qwen/qwen3.5-flash-02-23'
               const convoKey = provider === 'claude' ? apiKey : orKey
-              const lines = provider === 'claude'
-                ? await generateConvoWithClaude(targets, vocab, apiKey)
-                : await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
+              const lines = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
               clearInterval(ticker)
               setConvoPct(100)
               const trackWithConvo = { ...generatedTrack, convo: lines }
@@ -1841,7 +1680,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             {convoLoading ? '⏳ Generating conversation...' : convoLines ? '💬 View Conversation' : '💬 Generate Conversation'}
           </Btn>
         </div>
-      )}
+        )
+      })()}
 
       {/* Target words */}
       {targets.length > 0 && (
@@ -2829,7 +2669,6 @@ function DeepSeekTestBtn({ dsKey }) {
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
-  { id: 'claude',   label: 'Claude',   sub: 'Sonnet',      placeholder: 'sk-ant-...',    storage: 'tt-apikey' },
   { id: 'deepseek', label: 'DeepSeek', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
   { id: 'qwen',     label: 'Qwen',     sub: '3.5 Flash',   placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
 ]
@@ -2848,8 +2687,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
 
   async function saveKey() {
     const trimmed = currentKey.trim()
-    if (provider === 'claude') { await stSet('tt-apikey', trimmed); onSaveKey(trimmed) }
-    else { await stSet('tt-orkey', trimmed); onSaveOrKey(trimmed) }
+    await stSet('tt-orkey', trimmed); onSaveOrKey(trimmed)
     setSaved(provider)
     setTimeout(() => setSaved(''), 2000)
   }
@@ -2878,7 +2716,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { claude: 'console.anthropic.com → API Keys', deepseek: 'openrouter.ai → Keys (uses deepseek/deepseek-chat)', qwen: 'openrouter.ai → Keys' }
+  const keySource = { deepseek: 'openrouter.ai → Keys (model: deepseek/deepseek-chat)', qwen: 'openrouter.ai → Keys (model: qwen/qwen3.5-flash-02-23)' }
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
@@ -2982,7 +2820,12 @@ function ThaiTeacher() {
   }, [])
 
   const saveVocab = useCallback(async v => { setVocab(v); await stSet('tt-vocab', v) }, [])
-  const saveTracks = useCallback(async t => { setTracks(t); await stSet('tt-tracks', t) }, [])
+  const saveTracks = useCallback(async t => {
+    // Item 41: Cap at 20 tracks, remove oldest
+    const capped = t.length > 20 ? t.slice(t.length - 20) : t
+    setTracks(capped)
+    await stSet('tt-tracks', capped)
+  }, [])
 
   function navigate(v) {
     if (v === 'generate-daily') { setGenMode('daily'); setCustomTargets(null); setView('generate') }
@@ -3083,15 +2926,13 @@ function ThaiTeacher() {
               const orModel = provider === 'deepseek' ? 'deepseek/deepseek-chat' : 'qwen/qwen3.5-flash-02-23'
               const convoKey = provider === 'claude' ? apiKey : orKey
               if (!convoKey) {
-                alert(`No ${provider === 'claude' ? 'Claude' : 'OpenRouter'} key found. Go to Settings and save your key first.`)
+                alert('No OpenRouter key found. Go to Settings and save your key first.')
                 return
               }
               const targets = vocab.filter(w => (track.keywords||[]).some(k => k.wordId === w.id))
               if (!targets.length) { alert('No matching words found for this track'); return }
               try {
-                const lines = provider === 'claude'
-                  ? await generateConvoWithClaude(targets, vocab, apiKey)
-                  : await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
+                const lines = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
                 if (!lines || !lines.length) throw new Error('No conversation lines returned')
                 // Find and update track by createdAt
                 const updated = tracks.map(t => t.createdAt === track.createdAt ? { ...t, convo: lines } : t)
@@ -3102,7 +2943,7 @@ function ThaiTeacher() {
             }}
             provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} hasOrKey={!!orKey} />}
         {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
-          apiKey={provider==='claude' ? apiKey : orKey}
+          apiKey={orKey}
           provider={provider}
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
         />}

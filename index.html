@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v70';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v70').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v71';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v71').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -775,7 +775,23 @@ async function _deadDeepSeekFn_UNUSED(targets, anchors, apiKey, onProgress, voca
 // ── Shared prompt builder for ALL AI providers ────────────────────────────────
 
 function getSentenceLengthForVocab(vocab) {
-  const { goalMin, goalMax, hardCeil, effectiveCeil, known } = getSentenceLengthForVocab(vocab)
+  const known = (vocab||[]).filter(w => w.status === 'known').length
+  const learning = (vocab||[]).filter(w => w.status === 'learning').length
+  let goalMin = 6, goalMax = 12, hardCeil = 12
+  if (known < 100)       { goalMin=1;  goalMax=2;  hardCeil=2  }
+  else if (known < 200)  { goalMin=2;  goalMax=3;  hardCeil=4  }
+  else if (known < 350)  { goalMin=3;  goalMax=4;  hardCeil=6  }
+  else if (known < 500)  { goalMin=4;  goalMax=5;  hardCeil=8  }
+  else if (known < 750)  { goalMin=5;  goalMax=6;  hardCeil=10 }
+  else if (known < 1000) { goalMin=6;  goalMax=7;  hardCeil=11 }
+  else if (known < 1500) { goalMin=7;  goalMax=8;  hardCeil=12 }
+  else if (known < 2000) { goalMin=8;  goalMax=10; hardCeil=14 }
+  else if (known < 3000) { goalMin=10; goalMax=12; hardCeil=16 }
+  else if (known < 4000) { goalMin=12; goalMax=14; hardCeil=18 }
+  else if (known < 5000) { goalMin=14; goalMax=16; hardCeil=20 }
+  else                   { goalMin=15; goalMax=20; hardCeil=25 }
+  const learningPenalty = Math.min(learning, 3) * 2
+  const effectiveCeil = Math.max(goalMin + 1, hardCeil - learningPenalty)
   return { goalMin, goalMax, hardCeil, effectiveCeil, known }
 }
 

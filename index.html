@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v66';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v66').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v69';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v69').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -773,6 +773,12 @@ async function _deadDeepSeekFn_UNUSED(targets, anchors, apiKey, onProgress, voca
 
 
 // ── Shared prompt builder for ALL AI providers ────────────────────────────────
+
+function getSentenceLengthForVocab(vocab) {
+  const { goalMin, goalMax, hardCeil, effectiveCeil, known } = getSentenceLengthForVocab(vocab)
+  return { goalMin, goalMax, hardCeil, effectiveCeil, known }
+}
+
 function buildGenerationPrompt(targets, anchors, vocab) {
   // Include stored phonetics so AI uses correct romanization, not its own
   const targetList = targets.map(w => `★ ${w.thai}${w.phonetic ? ` [${w.phonetic}]` : ''} = ${w.english}`).join('\n')
@@ -1032,29 +1038,34 @@ function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, prom
     `expressing something about ${target.english} naturally`
   ]
 
-  return `Write 3 Thai Pimsleur pairs. Each uses ★${target.thai} (${target.english}).${target.phonetic ? ' Phonetic: ' + target.phonetic : ''}
+  const { goalMin: gMin, goalMax: gMax, effectiveCeil: eCeil } = getSentenceLengthForVocab(vocab)
+  const lenRule = gMin === gMax
+    ? `exactly ${gMin} Thai words`
+    : `${gMin}–${gMax} Thai words, MAX ${eCeil}`
 
-IMPORTANT: Think about what ★${target.thai} means and write sentences where it makes REAL SENSE in context.
-Do NOT force the word into unrelated situations (e.g. don't put จมูก/nose in a beach sentence).
+  return `Write 3 short Thai sentences using ★${target.thai} (${target.english}).${target.phonetic ? ' Phonetic: '+target.phonetic : ''}
 
-Pair 1 — ${promptType1} about ${scenarios[0]}
-Pair 2 — ${promptType2} about ${scenarios[1]}
-Pair 3 — ${promptType3} about ${scenarios[2]}
+KEEP IT SIMPLE. Short sentence, short prompt. Match the complexity of the answer.
+Good prompt: "Say you have a nose" → ผมมีจมูกครับ
+Bad prompt: "Warn a colleague that asking about lifestyle might be too personal" — TOO COMPLICATED
 
-HARD RULES:
-• Each sentence: MAXIMUM 5 Thai words (count them: subject+verb+object+particle = 4, that's fine)
-• Long compound words like กะเหรี่ยงคอยาว or สถานีรถไฟฟ้า count as 1 word each
-• Thai words allowed: ★${target.thai} + these anchors: ${anchorLines} + particles: ${ALWAYS_ALLOWED.slice(0,20).join(' ')}
-• NO other Thai words — if you need a word not listed, simplify the sentence instead
+Pair 1: ${promptType1} something using ★${target.thai}
+Pair 2: ${promptType2} something using ★${target.thai}  
+Pair 3: ${promptType3} something using ★${target.thai}
+
+RULES:
+• Sentence: ${lenRule}. Count: ผม+มี+จมูก+ครับ = 4 words ✓
+• Thai words allowed ONLY: ★${target.thai} + ${anchorLines} + ${ALWAYS_ALLOWED.slice(0,15).join(' ')}
+• NO other Thai words. Simplify if needed.
 • Pair 1 ends ครับ, Pair 2 ends ค่ะ, Pair 3 ends ครับ
-• prompt must be a complete English instruction with real context — NOT "Tell someone that..."
-• phonetic: space-separated tokens matching each Thai word — NO brackets
-• words array must have same count as phonetic tokens
+• prompt = short simple English like "Say you have [word]" or "Ask if someone likes [word]"
+• phonetic: space-separated tokens, NO brackets
+• words array count must match phonetic token count
 
 Do NOT repeat: ${existingList || 'none yet'}
 
-Return ONLY a JSON array of 3 objects:
-[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[{"p":"...","e":"..."}],"target_phonetic":"${target.phonetic||''}"}]`
+Return ONLY JSON array of 3:
+[{"prompt":"Say you have ${target.english}","thai":"ผมมี${target.thai}ครับ","english":"I have ${target.english}","phonetic":"phǒm mii ${target.phonetic||'...'} khrâp","words":[{"p":"phǒm","e":"I"},{"p":"mii","e":"have"},{"p":"${target.phonetic||'...'}","e":"${target.english}"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"${target.phonetic||''}"}]`
 }
 
 function makeFallbackPairs(target) {
@@ -1090,16 +1101,45 @@ function makeFallbackPairs(target) {
 }
 
 
+function validatePair(pair, target, allAllowed, existingThais) {
+  if (!pair || !pair.thai || !pair.prompt || !pair.phonetic) return false
+  // Must contain target word
+  if (!pair.thai.includes(target.thai)) return false
+  // Must end with polite particle
+  if (!/[ครับค่ะคะ]$/.test(pair.thai.trim())) return false
+  // Must not be duplicate
+  if (existingThais.has(pair.thai)) return false
+  // Must not have OOV words (greedy cover check)
+  let rem = pair.thai
+  for (const w of [...allAllowed].sort((a,b) => b.length - a.length)) rem = rem.split(w).join('▓'.repeat(w.length))
+  const unknown = rem.replace(/[▓\s]/g,'').replace(/[^ก-๙]/g,'')
+  if (unknown.length > 3) return false  // allow up to 3 chars (tone marks etc)
+  // Phonetic must be space-separated, no brackets
+  if (pair.phonetic.includes('[') || pair.phonetic.includes(']')) return false
+  // Words array must exist and have entries
+  if (!pair.words || !pair.words.length) return false
+  // Length check will be done externally with vocab context
+  // Prompt must be complete (not end with ...)
+  if (pair.prompt.trim().endsWith('...') || pair.prompt.trim().length < 15) return false
+  return true
+}
+
 async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
   const orModel = model || 'qwen/qwen3.5-flash-02-23'
   const existingThais = new Set()
   const allPairs = []
 
+  // Build full allowed set for validation
+  const ALWAYS_ALLOWED_V = ['ครับ','ค่ะ','คะ','นะ','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
+    'หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
+    'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง',
+    'ไหม','ก็ได้','เคย','อยาก','ต้อง','อาจจะ','กำลัง','เพิ่ง','อย่า']
+  const allAllowed = new Set([...ALWAYS_ALLOWED_V, ...vocab.map(w=>w.thai)])
+
   const PROMPT_TYPES = [
-    'Tell someone that','Ask if','Say that you','Ask where','Ask when',
-    'Suggest that','Invite someone to','Warn someone that','Confirm that','Deny that',
-    'Express surprise that','Complain that','Admit that','Ask how many','Respond to',
-    'Ask someone to','Say you want to','Explain that','Promise that','Describe'
+    'Say','Ask if','Tell someone','Say you want to','Ask where',
+    'Ask when','Say you have','Say you like','Ask how many','Say you don\'t',
+    'Ask someone to','Say you already','Ask if someone has','Say it\'s','Tell a friend'
   ]
 
   for (let i = 0; i < targets.length; i++) {
@@ -1122,19 +1162,25 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
         const text = await callOpenRouterOnce(apiKey, orModel,
           [{ role:'user', content: prompt }], 2000)
         const parsed = parsePartialArray(text)
-        const valid = parsed.filter(p => p.thai && p.thai.includes(target.thai) && !existingThais.has(p.thai))
+        // Hard validate each pair client-side
+        const { effectiveCeil } = getSentenceLengthForVocab(vocab)
+        const valid = parsed.filter(p => {
+          if (!validatePair(p, target, allAllowed, existingThais)) return false
+          const tokenCount = (p.phonetic||'').split(' ').filter(Boolean).length
+          if (tokenCount > effectiveCeil + 1) return false  // +1 tolerance for polite particle
+          return true
+        })
         if (valid.length >= 2) { pairs = valid.slice(0,3); break }
       } catch(e) {}
       attempts++
     }
 
-    // Use smart fallback if AI failed
+    // Use smart fallback for any missing pairs
     if (pairs.length < 3) {
       const fb = makeFallbackPairs(target)
-      while (pairs.length < 3) {
-        const f = fb[pairs.length]
+      for (const f of fb) {
+        if (pairs.length >= 3) break
         if (!existingThais.has(f.thai)) pairs.push(f)
-        else pairs.push({...f, thai: f.thai.replace('ครับ','นะครับ'), phonetic: f.phonetic + ' ná'})
       }
     }
 

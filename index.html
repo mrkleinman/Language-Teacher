@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v77';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v77').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v78';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v78').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -1649,9 +1649,12 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               <span style={{ fontSize:22, fontWeight:800, color:scoreColor }}>{score}%</span>
               <div style={{ flex:1, fontSize:12, color:'var(--muted)' }}>
                 <div style={{ color:'var(--text)', fontWeight:600, marginBottom:2 }}>Track Quality</div>
-                <div>{totalPairs} pairs · {fallbackPairs > 0 ? `⚠️ ${fallbackPairs} fallbacks · ` : '✅ no fallbacks · '}{missingWords > 0 ? `❌ ${missingWords} words missing` : '✅ all words covered'}</div>
+                <div>{totalPairs} pairs · {fallbackPairs > 0 ? `⚠️ ${fallbackPairs} fallbacks · ` : '✅ · '}{missingWords > 0 ? `❌ ${missingWords} missing` : '✅ all covered'}</div>
               </div>
             </div>
+            <Btn onClick={() => { onGenerated(generatedTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
+              ▶ Start SRS Track
+            </Btn>
           {convoLoading && (
             <div>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>

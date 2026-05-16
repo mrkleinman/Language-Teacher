@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v86';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v86').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v87';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v87').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -153,6 +153,8 @@ function pickWords(vocab, mode) {
   // Hard repairs: known broken entries
   const REPAIRS = {
     'เจ้า': { thai: 'เจ้าของ', english: 'owner', phonetic: 'jâo-khɔ̌ɔng' },
+    'เจ้า ...': { thai: 'เจ้าของ', english: 'owner', phonetic: 'jâo-khɔ̌ɔng' },
+    'ถนนคนเดิน ...': { thai: 'ถนนคนเดิน', english: 'walking street', phonetic: 'thà-nǒn-khon-dəən' },
   }
   targets = targets
     .map(t => {
@@ -1221,7 +1223,8 @@ function classifyWord(target) {
   // Adjectives/states
   const ADJ = ['broken','ready','strong','hot','cold','expensive','cheap','fast','slow',
     'difficult','easy','tired','hungry','painful','clean','dirty','full','empty','busy',
-    'safe','dangerous','loud','quiet','clear','cloudy','wet','dry','late','early','long','short']
+    'safe','dangerous','loud','quiet','clear','cloudy','wet','dry','late','early','long','short',
+    'fit','fitting','just right','perfect fit','exact','precise','appropriate']
   if (ADJ.some(w => eng.includes(w))) return 'adjective'
 
   // Verb/action words — transitive
@@ -1362,6 +1365,7 @@ function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, prom
     '══ RULES ══',
     '• Sentence: ' + gMin + '-' + gMax + ' Thai words (not counting ครับ/ค่ะ). Max ' + eCeil + ' total.',
     '• ONLY: ' + tw + ' | ' + anchorLines + ' | particles',
+    '• รู้ vs รู้จัก: use รู้จัก for people/places (ผมรู้จักเมืองไทยครับ), รู้ for facts (ผมรู้ว่า...)',
     '• Pair 1 ends ครับ (male learner), Pair 2 ends ค่ะ (female teacher STATEMENT only), Pair 3 ends ครับ',
     '• QUESTIONS with female voice MUST end คะ not ค่ะ. ไหมคะ ✓ | ไหมค่ะ ✗ | ที่ไหนคะ ✓ | ที่ไหนค่ะ ✗',
     '• phonetic: space-separated tokens with tone marks. No Thai script. No brackets.',
@@ -1497,9 +1501,9 @@ function makeFallbackPairs(target) {
 
   // Transitive verb — needs object
   if (type === 'verb_transitive') return [
-    {prompt:'Say you want to '+eng,thai:'อยาก'+tw+'ครับ',english:'I want to '+eng+'.',phonetic:'yàak '+ph+' khrâp',words:[{p:'yàak',e:'want'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Ask if you can '+eng,thai:tw+'ได้ไหมคะ',english:'Can you '+eng+'?',phonetic:ph+' dâi mǎi khá',words:[{p:ph,e:eng},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Say you already '+eng,thai:tw+'แล้วครับ',english:'I already '+eng+'.',phonetic:ph+' lâeo khrâp',words:[{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if you can '+eng+' it',thai:tw+'ได้ไหมคะ',english:'Can you '+eng+' it?',phonetic:ph+' dâi mǎi khá',words:[{p:ph,e:eng},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you already '+eng+' it',thai:tw+'แล้วครับ',english:'I already '+eng+' it.',phonetic:ph+' lâeo khrâp',words:[{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you have not '+eng+' yet',thai:'ยังไม่ได้'+tw+'ครับ',english:'I have not '+eng+' yet.',phonetic:'yang mâi dâi '+ph+' khrâp',words:[{p:'yang',e:'still'},{p:'mâi-dâi',e:"haven't"},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
   // Place
@@ -1509,16 +1513,17 @@ function makeFallbackPairs(target) {
     {prompt:'Say you already went to the '+eng,thai:'ผมไปที่'+tw+'แล้วครับ',english:'I already went to the '+eng+'.',phonetic:'phǒm pai thîi '+ph+' lâeo khrâp',words:[{p:'phǒm',e:'I'},{p:'pai',e:'go'},{p:'thîi',e:'to'},{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
-  // Full sentence phrase
+  // Full sentence phrase — tw IS the sentence already, just add particles
   if (type === 'full_sentence') {
-    // Extract the verb/state from the sentence for question form
-    const stmt = tw + 'ครับ'
-    const q = tw.replace('ผม','คุณ').replace('เขา','คุณ') + 'ไหมคะ'
-    const third = tw.replace('คุณ','เขา').replace('ผม','เขา') + 'ครับ'
+    // tw is e.g. "คุณเป็นคนตลก" — use it directly, swap subject for variations
+    const stmt = tw.endsWith('ครับ') || tw.endsWith('ค่ะ') || tw.endsWith('คะ') ? tw : tw + 'ครับ'
+    const qThai = tw.replace(/^คุณ/,'คุณ').replace(/^ผม/,'คุณ').replace(/^เขา/,'คุณ') + 'ไหมคะ'
+    const thirdThai = tw.replace(/^คุณ/,'เขา').replace(/^ผม/,'เขา') + 'ครับ'
+    const engClean = eng.replace('you are','').replace('i am','').replace('he is','').trim()
     return [
-      {prompt:'Say: '+eng,thai:stmt,english:eng+'.',phonetic:ph+' khrâp',words:[{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
-      {prompt:'Ask: are you '+eng.replace('you are','').replace('I am','').trim()+'?',thai:q,english:'Are you '+eng.replace('you are','').replace('I am','').trim()+'?',phonetic:ph+' mǎi khá',words:[{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
-      {prompt:'Say they are '+eng.replace('you are','').replace('I am','').trim(),thai:third,english:'They are '+eng.replace('you are','').replace('I am','').trim()+'.',phonetic:ph+' khrâp',words:[{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+      {prompt:'Say '+eng,thai:stmt,english:eng+'.',phonetic:ph+' khrâp',words:[{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+      {prompt:'Ask if they are '+engClean,thai:qThai,english:'Are you '+engClean+'?',phonetic:ph+' mǎi khá',words:[{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+      {prompt:'Say they are '+engClean,thai:thirdThai,english:'They are '+engClean+'.',phonetic:ph+' khrâp',words:[{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
     ]
   }
 
@@ -1628,7 +1633,7 @@ function validatePair(pair, target, allAllowed, existingThais) {
 
   // ── HARD QA GATE — check target is actually present ────────────────────────
   // Generic filler sentences (target missing) — always reject
-  const FILLER_SENTENCES = ['ผมชอบครับ','ดีไหมคะ','ไปแล้วครับ','ไปแล้วครับ','ผมชอบค่ะ','ดีไหมค่ะ']
+  const FILLER_SENTENCES = ['ผมชอบครับ','ดีไหมคะ','ไปแล้วครับ','ผมชอบค่ะ','ดีไหมค่ะ','ไม่มีครับ','ได้ไหมคะ']
   if (FILLER_SENTENCES.includes(th)) return false
   // Prompt contains "using [word]" or "differently" = template failure
   if (/using .+ differently/.test(pr) || pr.includes(' using ') || pr.endsWith(' using')) return false
@@ -1646,8 +1651,26 @@ function validatePair(pair, target, allAllowed, existingThais) {
   if (th.includes('ขอคุณเป็น') || th.includes('ไม่มีคุณเป็น') || th.includes('มีคุณเป็นคน')) return false
   // Quantifier used standalone
   if (/เอาทุก[ครับค่าคะ]/.test(th) || /มีทุก[ครับค่าคะ]/.test(th)) return false
-  // Adjective used as destination/object
-  if (/ผมไป[ใสช้าดึกเผ็ดแพงถูก]ครับ/.test(th) || /ผมอยาก[ใสช้าดึกตื่นเต้น]ครับ/.test(th)) return false
+  // Adjective used as destination/object (expanded)
+  const ADJ_TARGETS = ['ใส','ช้า','ดึก','ตื่นเต้น','เผ็ด','แพง','ถูก','เหนื่อย','เบื่อ','สนุก','ดีใจ','เสียใจ','กลัว','พอดี']
+  for (const adj of ADJ_TARGETS) {
+    if (th === 'ผมไป'+adj+'ครับ' || th === 'ผมอยาก'+adj+'ครับ' || th === adj+'ผมเจ็บครับ') return false
+    if (th.startsWith('ขอ'+adj) || th.startsWith('มี'+adj+'ไหม') || th.startsWith('ไม่มี'+adj)) return false
+    if (en.includes('went to '+adj.toLowerCase()) || en.includes('want to '+adj.toLowerCase())) return false
+  }
+  // ซึ่ง incomplete clause — reject if ซึ่ง is not followed by subject+verb
+  if (th.includes('ซึ่งชอบ') || th.includes('ซึ่งอยู่') || th.includes('ซึ่งอยาก') || th.includes('ซึ่งดี') || th.includes('ซึ่งอร่อย')) return false
+  // เมื่อกี้ as object
+  if (th.startsWith('ขอเมื่อกี้') || th.includes('มีเมื่อกี้') || th.includes('ไม่มีเมื่อกี้')) return false
+  // ไม่เคย + เมื่อกี้ (logically contradictory)
+  if (th.includes('ไม่เคย') && th.includes('เมื่อกี้')) return false
+  // Double ได้ (จำได้ได้)
+  if (th.includes('ได้ได้')) return false
+  // รู้ + place/person without จัก (should be รู้จัก)
+  const placePersonWords = ['เมืองไทย','กรุงเทพ','ร้าน','ตลาด','ซอย','ถนน','เพื่อน','พี่','น้อง']
+  for (const w of placePersonWords) {
+    if (th.includes('รู้'+w) && !th.includes('รู้จัก')) return false
+  }
   // Food with เจอ/เห็น instead of กิน
   // (allow if really visual context, but flag as suspicious)
   const foodNouns = ['ผัดเปรี้ยว','คะน้า','ข้าวมันไก่','ต้มยำ','ข้าวผัด','ก๋วยเตี๋ยว','หมูปิ้ง']
@@ -1684,7 +1707,7 @@ function validatePair(pair, target, allAllowed, existingThais) {
 }
 
 const TRIPLETS = [
-    ['Say you have','Ask if you like','Say you already used'],
+    ['Say you like','Ask if you enjoy','Say you already tried'],
     ['Say you want to','Ask where you can find','Say you will'],
     ['Say you see','Ask if you have','Say you just saw'],
     ['Say it is','Ask when you can','Say you never'],
@@ -2492,7 +2515,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
           <div className="fade-in" key={`r-${idx}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
             <div style={{ fontSize:11, letterSpacing:'0.12em', color:'var(--gold)', textTransform:'uppercase', fontWeight:600 }}>Repeat aloud</div>
             {/* Aligned phonetic + gloss or plain phonetic fallback */}
-            {pair.words && pair.words.length ? (
+            {pair.words && pair.words.length > 0 ? (
               <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'6px 10px', maxWidth:360 }}>
                 {pair.words.map((w, i) => (
                   <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
@@ -2504,7 +2527,9 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
             ) : pair.phonetic ? (
               <p className="phon" style={{ fontSize:38, color:'var(--gold)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>{pair.phonetic}</p>
             ) : (
-              <p className="phon" style={{ fontSize:24, color:'var(--muted)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>No phonetic available</p>
+              <p className="phon" style={{ fontSize:22, color:'var(--muted)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>
+                {pair.phonetic || '—'}
+              </p>
             )}
             <Waveform />
             <p className="thai" style={{ fontSize:26, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center' }}>{pair.thai}</p>

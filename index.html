@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v84';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v84').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v86';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v86').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -147,14 +147,37 @@ function pickWords(vocab, mode) {
     .filter(w => (w.status === 'known' || w.status === 'learning') && !targetIds.has(w.id))
     .sort((a, b) => (!a.lastSeen ? -1 : !b.lastSeen ? 1 : a.lastSeen.localeCompare(b.lastSeen)))
     .slice(0, 25)
-  // Filter out words that shouldn't be standalone targets
+  // ── Repair and validate targets before generation ─────────────────────────
   const PURE_PARTICLES = new Set(['ก็','ที่','ของ','กับ','ว่า','แต่','หรือ','และ','เพราะ','แล้ว','ด้วย','นะ','ก็ได้'])
   const TOO_COMMON = new Set(['มี','ไป','มา','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ไม่','ได้','จะ','เป็น','ทำ','รู้'])
-  targets = targets.filter(t =>
-    t.thai.length >= 2 &&
-    !PURE_PARTICLES.has(t.thai) &&
-    !TOO_COMMON.has(t.thai)
-  )
+  // Hard repairs: known broken entries
+  const REPAIRS = {
+    'เจ้า': { thai: 'เจ้าของ', english: 'owner', phonetic: 'jâo-khɔ̌ɔng' },
+  }
+  targets = targets
+    .map(t => {
+      // Repair known broken entries
+      if (REPAIRS[t.thai]) return { ...t, ...REPAIRS[t.thai] }
+      // Strip trailing "..." or "…" from thai and english
+      if (t.thai.includes('...') || t.thai.includes('…')) {
+        return { ...t, thai: t.thai.replace(/\.{2,}|…/g,'').trim(), english: t.english.replace(/\.{2,}|…/g,'').trim() }
+      }
+      return t
+    })
+    .filter(t => {
+      if (!t.thai || t.thai.length < 2) return false
+      if (PURE_PARTICLES.has(t.thai)) return false
+      if (TOO_COMMON.has(t.thai)) return false
+      // Skip if target IS a full sentence (contains spaces AND has a verb particle pattern)
+      // Full sentences like "คุณเป็นคนตลก" should be kept but flagged as phrase type
+      return true
+    })
+  // Tag full-sentence targets so generator knows not to treat them as nouns
+  targets = targets.map(t => {
+    const isFull = t.thai.includes('คุณ') || t.thai.includes('ผม') || t.thai.includes('เขา')
+    if (isFull && t.thai.split(' ').length > 1) return { ...t, _phraseType: 'full_sentence' }
+    return t
+  })
   // Shuffle to avoid same words always first/last
   for (let i = targets.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -570,7 +593,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
       {/* AI Provider Selector */}
       <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
         <span style={{ fontSize:12, color:'var(--muted)', marginRight:4 }}>Generate with:</span>
-        {[['deepseek','🐋 DeepSeek'],['qwen','✨ Qwen']].map(([id,label]) => {
+        {[['deepseek','🐋 DeepSeek'],['gpt4omini','⚡ GPT-4o mini'],['haiku','🔶 Haiku 4.5']].map(([id,label]) => {
           const hasKey = hasOrKey
           return (
             <button key={id} onClick={() => onSetProvider(id)}
@@ -681,7 +704,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
 
 
 async function fetchTargetPhoneticsDeepSeek(targets, apiKey) {
-  // Deprecated — now uses Qwen via OpenRouter
+  // Uses OpenRouter for phonetics
   return fetchTargetPhoneticsQwen(targets, apiKey)
 }
 async function _deadPhoneticsDeepSeek_UNUSED(targets, apiKey) {
@@ -720,7 +743,7 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-      body: JSON.stringify({ model: 'qwen/qwen3.5-flash-02-23', max_tokens: 600, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
+      body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 600, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
     })
     if (!res.ok) return {}
     const data = await res.json()
@@ -976,7 +999,7 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
     body: JSON.stringify({ model: orModel, max_tokens: maxTokens || 2000, temperature: 0.35, stream: true,
-      ...(orModel.startsWith('qwen') ? { extra_body: { thinking: { type: 'disabled' } } } : {}),
+      
       messages })
   })
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `API error ${res.status}`) }
@@ -1004,7 +1027,7 @@ async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
     body: JSON.stringify({ model: orModel, max_tokens: 16000, temperature: 0.35, stream: true,
-      ...(orModel.startsWith('qwen') ? { extra_body: { thinking: { type: 'disabled' } } } : {}),
+      
       messages })
   })
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `API error ${res.status}`) }
@@ -1104,6 +1127,28 @@ function classifyWord(target) {
   if (eng === 'why') return 'question_why'
   if (eng === 'how') return 'question_how'
   if (['how many','how much'].some(w => eng.startsWith(w))) return 'question_howmany'
+
+  // Full sentence phrase targets
+  if (target._phraseType === 'full_sentence') return 'full_sentence'
+
+  // Quantifiers — must attach to noun, never standalone
+  if (['every','all of','each','any','some','both','several','whole'].some(w => eng === w || eng.startsWith(w+' ')) ||
+      ['ทุก','บาง','แต่ละ','ทั้งหมด','ทั้ง','หลาย'].includes(thai)) return 'quantifier'
+
+  // Quantity phrases — classifier expressions
+  if (/^(one|two|three|four|five|\d+) (plate|cup|glass|piece|item|portion|bottle|bowl|bag)/.test(eng) ||
+      /^[หนึ่งสองสามสี่ห้า]+(จาน|แก้ว|ชิ้น|ที่|ขวด|ถ้วย|กล่อง)/.test(thai)) return 'quantity_phrase'
+
+  // Verb phrases — cannot be used as nouns
+  if (['come from','go out','go eat','pick up','arrive','work out','exercise'].some(w => eng === w) ||
+      ['มาจาก','ไปเที่ยว','แวะรับ','มาถึง','ออกกำลังกาย','ไปกิน','ไปซื้อ'].includes(thai)) return 'verb_phrase'
+
+  // Emotion words
+  if (['excited','happy','sad','afraid','bored','fun','nervous','proud','surprised','worried','angry','lonely'].some(w => eng.includes(w)) ||
+      ['ตื่นเต้น','ดีใจ','เสียใจ','กลัว','เบื่อ','สนุก','ภูมิใจ','ตกใจ','กังวล','โกรธ'].includes(thai)) return 'emotion'
+
+  // Polite command / invitation words
+  if (thai === 'เชิญ' || eng === 'please (invite)' || eng === 'please come in') return 'polite_command'
 
   // Condition/event/situation phrases
   if (thai === 'รถติด' || eng.includes('traffic')) return 'condition_traffic'
@@ -1221,6 +1266,12 @@ function getWordTypeHint(target) {
     condition_rain: { hint: 'WEATHER EVENT (ฝนตก): ฝนตกครับ (it is raining), ฝนตกไหมคะ. NEVER: ผมมีฝน, ผมไปฝนตก.' },
     condition_event: { hint: 'SITUATION EVENT: observation/state. [situation]แล้วครับ, มี[situation]ไหมคะ. NEVER as destination or time.' },
     rank: { hint: 'RANK/ACHIEVEMENT ('+thai+'): use ได้, เป็น, ชนะ. ผมได้'+thai+'ครับ, ใครได้'+thai+'คะ, อยากได้'+thai+'ครับ. NEVER: ไป'+thai+', มี'+thai+'.' },
+    full_sentence: { hint: 'FULL SENTENCE PHRASE ('+thai+'): this IS already a sentence. Do NOT wrap in ขอ/มี/ไม่มี. Use as: statement → '+thai+'ครับ, question → swap subject to คุณ+verb+ไหมคะ, variation → เขา+verb+ครับ' },
+    quantifier: { hint: 'QUANTIFIER ('+thai+'='+eng+'): MUST attach to a noun. ทุกวันครับ (every day), ทุกคนพร้อมไหมคะ (is everyone ready?). NEVER standalone: เอา'+thai+', มี'+thai+', เห็น'+thai },
+    quantity_phrase: { hint: 'QUANTITY PHRASE ('+thai+'='+eng+'): must attach to food/item. สั่ง+food+'+thai+'ครับ, เอา+food+'+thai+'ครับ. NEVER: ไป'+thai+', อยาก'+thai+', ใคร'+thai },
+    verb_phrase: { hint: 'VERB PHRASE ('+thai+'='+eng+'): needs subject+origin/destination. คุณมาจากไหนคะ (where are you from?), ผมมาจากเมืองไทยครับ (I come from Thailand). NEVER: ขอ'+thai+', ไม่มี'+thai+', มี'+thai },
+    emotion: { hint: 'EMOTION ('+thai+'='+eng+'): describes a person state. ผม'+thai+'ครับ (I am '+eng+'), คุณ'+thai+'ไหมคะ. NEVER: หา'+thai+', มี'+thai+' as object.' },
+    polite_command: { hint: 'POLITE COMMAND ('+thai+'): used as invitation/permission. '+thai+'ครับ (please go ahead), '+thai+'นั่งครับ (please sit), ผม'+thai+'พี่มาครับ (I invited...). NEVER: มี'+thai+', ชอบ'+thai+', ส่ง'+thai },
     time: { hint: 'TIME EXPRESSION ('+thai+'): attach to action/availability. '+thai+'ผมว่างครับ, ผมจะไป'+thai+'ครับ, เจอกัน'+thai+'ได้ไหมคะ. NEVER: มี'+thai+' (unless มีนัด), เห็น'+thai+', อยาก'+thai+' alone.' },
     location: { hint: 'LOCATION WORD ('+thai+'): tells WHERE. [object]อยู่'+thai+'ครับ, อยู่ใกล้'+thai+'ครับ. NEVER: มี'+thai+' as object, เห็น'+thai+' alone.' },
     abstract: { hint: 'ABSTRACT NOUN ('+thai+'): use มี/ทำ/ชอบ/adjective. ผมชอบ'+thai+'ครับ, '+thai+'ดีไหมคะ, ผมมี'+thai+'ครับ. NEVER: เห็น'+thai+', ไป'+thai+'. For verb use, drop การ prefix.' },
@@ -1311,7 +1362,8 @@ function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, prom
     '══ RULES ══',
     '• Sentence: ' + gMin + '-' + gMax + ' Thai words (not counting ครับ/ค่ะ). Max ' + eCeil + ' total.',
     '• ONLY: ' + tw + ' | ' + anchorLines + ' | particles',
-    '• Pair 1 ends ครับ, Pair 2 ends ค่ะ, Pair 3 ends ครับ',
+    '• Pair 1 ends ครับ (male learner), Pair 2 ends ค่ะ (female teacher STATEMENT only), Pair 3 ends ครับ',
+    '• QUESTIONS with female voice MUST end คะ not ค่ะ. ไหมคะ ✓ | ไหมค่ะ ✗ | ที่ไหนคะ ✓ | ที่ไหนค่ะ ✗',
     '• phonetic: space-separated tokens with tone marks. No Thai script. No brackets.',
     '• words array count must match phonetic token count',
     'Avoid repeating: ' + (existingList || 'none yet'),
@@ -1457,6 +1509,54 @@ function makeFallbackPairs(target) {
     {prompt:'Say you already went to the '+eng,thai:'ผมไปที่'+tw+'แล้วครับ',english:'I already went to the '+eng+'.',phonetic:'phǒm pai thîi '+ph+' lâeo khrâp',words:[{p:'phǒm',e:'I'},{p:'pai',e:'go'},{p:'thîi',e:'to'},{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
+  // Full sentence phrase
+  if (type === 'full_sentence') {
+    // Extract the verb/state from the sentence for question form
+    const stmt = tw + 'ครับ'
+    const q = tw.replace('ผม','คุณ').replace('เขา','คุณ') + 'ไหมคะ'
+    const third = tw.replace('คุณ','เขา').replace('ผม','เขา') + 'ครับ'
+    return [
+      {prompt:'Say: '+eng,thai:stmt,english:eng+'.',phonetic:ph+' khrâp',words:[{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+      {prompt:'Ask: are you '+eng.replace('you are','').replace('I am','').trim()+'?',thai:q,english:'Are you '+eng.replace('you are','').replace('I am','').trim()+'?',phonetic:ph+' mǎi khá',words:[{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+      {prompt:'Say they are '+eng.replace('you are','').replace('I am','').trim(),thai:third,english:'They are '+eng.replace('you are','').replace('I am','').trim()+'.',phonetic:ph+' khrâp',words:[{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    ]
+  }
+
+  // Quantifier — must attach to noun
+  if (type === 'quantifier') return [
+    {prompt:'Say you go every day',thai:tw+'วันครับ',english:'Every day.',phonetic:ph+' wan khrâp',words:[{p:ph,e:eng},{p:'wan',e:'day'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if everyone is ready',thai:tw+'คนพร้อมไหมคะ',english:'Is everyone ready?',phonetic:ph+' khon phrôom mǎi khá',words:[{p:ph,e:eng},{p:'khon',e:'person'},{p:'phrôom',e:'ready'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you eat lunch every day',thai:'กินข้าวเที่ยง'+tw+'วันครับ',english:'I eat lunch every day.',phonetic:'gin khâao-thîang '+ph+' wan khrâp',words:[{p:'gin',e:'eat'},{p:'khâao-thîang',e:'lunch'},{p:ph,e:eng},{p:'wan',e:'day'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Quantity phrase — attach to food/item
+  if (type === 'quantity_phrase') return [
+    {prompt:'Order one plate of chicken rice',thai:'สั่งข้าวมันไก่'+tw+'ครับ',english:'I will order one plate of chicken rice.',phonetic:'sàng khâao-man-gài '+ph+' khrâp',words:[{p:'sàng',e:'order'},{p:'khâao-man-gài',e:'chicken rice'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask how many plates',thai:'สั่งกี่จานคะ',english:'How many plates should we order?',phonetic:'sàng gìi jaan khá',words:[{p:'sàng',e:'order'},{p:'gìi',e:'how many'},{p:'jaan',e:'plates'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say please give me one plate',thai:'เอา'+tw+'ครับ',english:'One plate, please.',phonetic:'ao '+ph+' khrâp',words:[{p:'ao',e:'take/give'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Verb phrase — needs subject + context
+  if (type === 'verb_phrase') return [
+    {prompt:'Ask where you are from',thai:'คุณมาจากไหนคะ',english:'Where are you from?',phonetic:'khun maa jàak nǎi khá',words:[{p:'khun',e:'you'},{p:'maa-jàak',e:'come from'},{p:'nǎi',e:'where'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you come from Thailand',thai:'ผมมาจากเมืองไทยครับ',english:'I come from Thailand.',phonetic:'phǒm maa-jàak mueang-thai khrâp',words:[{p:'phǒm',e:'I'},{p:'maa-jàak',e:'come from'},{p:'mueang-thai',e:'Thailand'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask where they come from',thai:'เขามาจากที่ไหนครับ',english:'Where do they come from?',phonetic:'khǎo maa-jàak thîi-nǎi khrâp',words:[{p:'khǎo',e:'they'},{p:'maa-jàak',e:'come from'},{p:'thîi-nǎi',e:'where'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Emotion — describe person
+  if (type === 'emotion') return [
+    {prompt:'Say you are '+eng,thai:'ผม'+tw+'ครับ',english:'I am '+eng+'.',phonetic:'phǒm '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if you are '+eng,thai:'คุณ'+tw+'ไหมคะ',english:'Are you '+eng+'?',phonetic:'khun '+ph+' mǎi khá',words:[{p:'khun',e:'you'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you are very '+eng,thai:'ผม'+tw+'มากครับ',english:'I am very '+eng+'.',phonetic:'phǒm '+ph+' mâak khrâp',words:[{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'mâak',e:'very'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Polite command
+  if (type === 'polite_command') return [
+    {prompt:'Say please sit down',thai:tw+'นั่งครับ',english:'Please sit down.',phonetic:ph+' nâng khrâp',words:[{p:ph,e:'please'},{p:'nâng',e:'sit'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say please come in',thai:tw+'เข้ามาครับ',english:'Please come in.',phonetic:ph+' khâo-maa khrâp',words:[{p:ph,e:'please'},{p:'khâo-maa',e:'come in'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say please go ahead',thai:tw+'เลยครับ',english:'Please go ahead.',phonetic:ph+' ləəi khrâp',words:[{p:ph,e:'please'},{p:'ləəi',e:'go ahead'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
   // Connector/degree — use safe fixed sentences
   if (type.startsWith('connector') || type.startsWith('degree')) return [
     {prompt:'Say this one is the best',thai:'อันนี้ดีที่สุดครับ',english:'This one is the best.',phonetic:'an-níi dii thîi-sùt khrâp',words:[{p:'an-níi',e:'this'},{p:'dii',e:'good'},{p:'thîi-sùt',e:'most'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
@@ -1526,6 +1626,33 @@ function validatePair(pair, target, allAllowed, existingThais) {
   // "never" in prompt → ไม่เคย in Thai
   if (pr.includes('never') && !th.includes('ไม่เคย')) return false
 
+  // ── HARD QA GATE — check target is actually present ────────────────────────
+  // Generic filler sentences (target missing) — always reject
+  const FILLER_SENTENCES = ['ผมชอบครับ','ดีไหมคะ','ไปแล้วครับ','ไปแล้วครับ','ผมชอบค่ะ','ดีไหมค่ะ']
+  if (FILLER_SENTENCES.includes(th)) return false
+  // Prompt contains "using [word]" or "differently" = template failure
+  if (/using .+ differently/.test(pr) || pr.includes(' using ') || pr.endsWith(' using')) return false
+  // Questions must end คะ not ค่ะ
+  if (th.includes('ไหมค่ะ') || th.includes('ที่ไหนค่ะ') || th.includes('เมื่อไหร่ค่ะ') || th.includes('ใครค่ะ') || th.includes('อะไรค่ะ')) return false
+  // กี่ + ไหม together = broken question
+  if (th.includes('กี่') && th.includes('ไหม')) return false
+  // ขอ + time/verb phrase = nonsense
+  if (th.startsWith('ขอเมื่อ') || th.startsWith('ขอวัน') || th.startsWith('ขอมา') || th.startsWith('ขอซึ่ง')) return false
+  // ไม่มี + verb phrase = nonsense
+  if (th.startsWith('ไม่มีมา') || th.startsWith('ไม่มีไป') || th.startsWith('ไม่มีซึ่ง')) return false
+  // Incomplete relative clause (ซึ่ง at end or followed only by particle)
+  if (th.includes('ซึ่งชอบ') || th.includes('ซึ่งอยู่') || th.includes('ซึ่งอยาก') || /ซึ่ง[ครับค่าคะนะ]/.test(th)) return false
+  // Full sentence being used as noun  
+  if (th.includes('ขอคุณเป็น') || th.includes('ไม่มีคุณเป็น') || th.includes('มีคุณเป็นคน')) return false
+  // Quantifier used standalone
+  if (/เอาทุก[ครับค่าคะ]/.test(th) || /มีทุก[ครับค่าคะ]/.test(th)) return false
+  // Adjective used as destination/object
+  if (/ผมไป[ใสช้าดึกเผ็ดแพงถูก]ครับ/.test(th) || /ผมอยาก[ใสช้าดึกตื่นเต้น]ครับ/.test(th)) return false
+  // Food with เจอ/เห็น instead of กิน
+  // (allow if really visual context, but flag as suspicious)
+  const foodNouns = ['ผัดเปรี้ยว','คะน้า','ข้าวมันไก่','ต้มยำ','ข้าวผัด','ก๋วยเตี๋ยว','หมูปิ้ง']
+  if (foodNouns.some(f => th.includes(f)) && (th.startsWith('เห็น') || th.startsWith('เจอ'))) return false
+
   // ── BANNED PATTERNS ──────────────────────────────────────────────────────
   const BANNED_PATTERNS = [
     // Nonsense combinations
@@ -1570,7 +1697,7 @@ const TRIPLETS = [
   ]
 
 async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
-  const orModel = model || 'qwen/qwen3.5-flash-02-23'
+  const orModel = model || 'openai/gpt-4o-mini'
   const existingThais = new Set()
   const allPairs = []
 
@@ -1685,7 +1812,7 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: model || 'qwen/qwen3.5-flash-02-23', max_tokens: 4000, temperature: 0.4, stream: false,
+    body: JSON.stringify({ model: model || 'openai/gpt-4o-mini', max_tokens: 4000, temperature: 0.4, stream: false,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   })
   if (!res.ok) throw new Error(`Convo error ${res.status}`)
@@ -1859,7 +1986,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             const doPhonetics = async () => {
               let map = {}
               // Use selected provider's key for phonetics
-              if (provider === 'qwen' || (orKey && provider !== 'claude' && provider !== 'deepseek')) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey || apiKey)
+              if (provider === 'gpt4omini' || provider === 'haiku' || (orKey && provider !== 'deepseek')) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey || apiKey)
               else if (provider === 'deepseek') map = await fetchTargetPhoneticsDeepSeek(needsPhonetics, apiKey)
               else map = await fetchTargetPhonetics(needsPhonetics, apiKey)
               if (Object.keys(map).length) {
@@ -1873,7 +2000,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
           pairs = await generateTrackWithQwen(targets, anchors, apiKey,
             (done) => { setPairsDone(done); setPairsTotal(targets.length * 3) },
-            vocab, provider === "deepseek" ? "deepseek/deepseek-chat" : "qwen/qwen3.5-flash-02-23")
+            vocab, provider === "deepseek" ? "deepseek/deepseek-chat" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "openai/gpt-4o-mini")
           }
         // Use pre-call phonetics (phoneticsRef) — reliable, per-word accurate
         // Previous regex pair-matching was buggy and overwrote correct data
@@ -1923,7 +2050,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'GPT-4o mini'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
@@ -1962,7 +2089,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : 'Qwen'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'GPT-4o mini'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
         </span>
       </div>
@@ -2011,7 +2138,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               // Animate fake progress while waiting
               setConvoPct(5)
               const ticker = setInterval(() => setConvoPct(p => p < 85 ? p + Math.random() * 8 : p), 600)
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-chat' : 'qwen/qwen3.5-flash-02-23'
+              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-chat' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
               const convoKey = provider === 'claude' ? apiKey : orKey
               const lines = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
               clearInterval(ticker)
@@ -2593,7 +2720,7 @@ function Adder({ onBack, onAdded, orKey }) {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-        body: JSON.stringify({ model: 'qwen/qwen3.5-flash-02-23', max_tokens: 200, temperature: 0,
+        body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 200, temperature: 0,
           messages: [{ role: 'user', content: `For the Thai word/phrase "${thai.trim()}", give me:
 1. English translation (short, common meaning)
 2. Tone-marked romanization (mid=none, low=à, falling=â, high=á, rising=ǎ, hyphens between syllables)
@@ -3016,12 +3143,13 @@ function DeepSeekTestBtn({ dsKey }) {
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
   { id: 'deepseek', label: 'DeepSeek', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
-  { id: 'qwen',     label: 'Qwen',     sub: '3.5 Flash',   placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
+  { id: 'gpt4omini', label: 'GPT-4o mini', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
+  { id: 'haiku', label: 'Claude Haiku', sub: '4.5 via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
 ]
 
 function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey }) {
   // Key state per provider
-  const [keys, setKeys] = useState({ claude: apiKey || '', deepseek: dsKey || '', qwen: orKey || '' })
+  const [keys, setKeys] = useState({ claude: apiKey || '', deepseek: dsKey || '', gpt4omini: orKey || '' })
   const [saved, setSaved] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
@@ -3053,7 +3181,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-          body: JSON.stringify({ model: 'qwen/qwen3.5-flash-02-23', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
       }
       if (res.ok) setTestResult('✅ Key works!')
@@ -3062,7 +3190,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { deepseek: 'openrouter.ai → Keys (model: deepseek/deepseek-chat)', qwen: 'openrouter.ai → Keys (model: qwen/qwen3.5-flash-02-23)' }
+  const keySource = { deepseek: 'openrouter.ai → Keys (model: deepseek/deepseek-chat)', gpt4omini: 'openrouter.ai → Keys (model: openai/gpt-4o-mini)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
@@ -3108,9 +3236,9 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
 
         {/* Status */}
         <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: (provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || (provider === 'qwen' && orKey) ? '#10b981' : '#6b7280', flexShrink: 0 }} />
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: (provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'gpt4omini' || provider === 'haiku') && orKey) ? '#10b981' : '#6b7280', flexShrink: 0 }} />
           <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-            {(provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || (provider === 'qwen' && orKey)
+            {(provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'gpt4omini' || provider === 'haiku') && orKey)
               ? `${prov.label} ${prov.sub} active — generates tracks, phonetics and translation`
               : `No ${prov.label} key saved — add your key above to enable AI track generation`}
           </p>
@@ -3269,7 +3397,7 @@ function ThaiTeacher() {
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
             onGenerateConvo={async (track) => {
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-chat' : 'qwen/qwen3.5-flash-02-23'
+              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-chat' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
               const convoKey = provider === 'claude' ? apiKey : orKey
               if (!convoKey) {
                 alert('No OpenRouter key found. Go to Settings and save your key first.')

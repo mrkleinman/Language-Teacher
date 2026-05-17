@@ -18,7 +18,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v87';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v87').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v88';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v88').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -1241,6 +1241,25 @@ function classifyWord(target) {
   return 'object'
 }
 
+// Returns risk level for routing: 'high' | 'medium' | 'low'
+function getRisk(type) {
+  const HIGH = new Set([
+    'corrupted','full_sentence',
+    'connector_rel','connector_about','connector_because','connector_but','connector_if','connector_like',
+    'degree_super','degree_modifier','degree_extent','degree_compare',
+    'question_when','question_who','question_where','question_what','question_why','question_how','question_howmany',
+    'quantifier','quantity_phrase','verb_phrase',
+    'polite_command','condition_traffic','condition_rain','condition_event','rank',
+  ])
+  const MEDIUM = new Set([
+    'adjective','emotion','personality','body','nature','abstract','verb_transitive','verb_intrans',
+  ])
+  if (HIGH.has(type)) return 'high'
+  if (MEDIUM.has(type)) return 'medium'
+  return 'low'
+}
+
+
 function getWordTypeHint(target) {
   const type = classifyWord(target)
   const eng = (target.english || '').toLowerCase()
@@ -1297,7 +1316,7 @@ function getWordTypeHint(target) {
 }
 
 
-function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, promptType3, existingThais, pairOffset) {
+function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, promptType3, existingThais, pairOffset, wordType) {
   const PARTICLES = ['ครับ','ค่ะ','คะ','นะ','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
     'หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
     'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง','ไหม','ก็ได้']
@@ -1309,102 +1328,211 @@ function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, prom
   const tw = target.thai
   const eng = target.english
   const ph = target.phonetic || ''
-  const { type, hint } = getWordTypeHint(target)
+  const wType = wordType || classifyWord(target)
+  const risk = getRisk(wType)
+  const { hint } = getWordTypeHint(target)
 
+  // ── TIER 2: Medium-risk — locked frame, AI fills content ─────────────────
+  if (risk === 'medium') {
+    const FRAMES = {
+      adjective: [
+        'น้ำ'+tw+'ครับ (water is '+eng+')',
+        'อาหาร'+tw+'ครับ (food is '+eng+')',
+        'อากาศ'+tw+'ครับ (weather is '+eng+')',
+        'มัน'+tw+'ครับ (it is '+eng+')',
+      ],
+      emotion: [
+        'ผม'+tw+'ครับ (I am '+eng+')',
+        'คุณ'+tw+'ไหมคะ (are you '+eng+'?)',
+        'ผม'+tw+'มากครับ (I am very '+eng+')',
+      ],
+      body: [
+        tw+'ผมเจ็บครับ (my '+eng+' hurts)',
+        tw+'เจ็บไหมคะ (does your '+eng+' hurt?)',
+        tw+'ผมดีขึ้นแล้วครับ (my '+eng+' is better)',
+      ],
+      nature: [
+        tw+'แรงครับ (the '+eng+' is strong)',
+        'วันนี้'+tw+'แรงไหมคะ (is the '+eng+' strong today?)',
+        tw+'สวยครับ (the '+eng+' is beautiful)',
+      ],
+      abstract: [
+        'ผมชอบ'+tw+'ครับ (I like '+eng+')',
+        tw+'ดีไหมคะ (is the '+eng+' good?)',
+        'ผมมี'+tw+'ครับ (I have '+eng+')',
+      ],
+      personality: [
+        'ผมเป็นคน'+tw+'ครับ (I am a '+eng+' person)',
+        'คุณเป็นคน'+tw+'ไหมคะ (are you '+eng+'?)',
+        'ช่วงนี้ผม'+tw+'ครับ (lately I am '+eng+')',
+      ],
+      verb_transitive: [
+        tw+'อะไรดีคะ (what should I '+eng+'?)',
+        tw+'ได้ไหมคะ (can I '+eng+' it?)',
+        tw+'แล้วครับ (I already '+eng+'d it)',
+      ],
+      verb_intrans: [
+        'ผมจะ'+tw+'ครับ (I will '+eng+')',
+        tw+'ได้ไหมคะ (can you '+eng+'?)',
+        'ผม'+tw+'แล้วครับ (I already '+eng+'d)',
+      ],
+    }
+    const frames = FRAMES[wType] || FRAMES.abstract
+    return [
+      'Complete these 3 Thai sentences. Each frame is fixed — only fill the blank if needed.',
+      'Target: '+tw+' ('+eng+')'+( ph ? ', phonetic: '+ph : ''),
+      '',
+      'Frame 1 ('+promptType1+'): '+frames[0],
+      'Frame 2 ('+promptType2+'): '+frames[1 % frames.length],
+      'Frame 3 ('+promptType3+'): '+frames[2 % frames.length],
+      '',
+      'WORD CLASS: '+wType,
+      hint,
+      '',
+      'RULES:',
+      '- Write the complete Thai sentence based on the frame above',
+      '- '+gMin+'–'+gMax+' Thai words (not counting ครับ/ค่ะ)',
+      '- ONLY use: '+tw+' | '+anchorLines+' | grammar particles',
+      '- Frame 1 ends ครับ, Frame 2 ends ค่ะ, Frame 3 ends ครับ',
+      '- QUESTIONS end คะ not ค่ะ',
+      '- Prompt must name the target concept in natural English (max '+promptCap+' words)',
+      '- Thai must match English exactly',
+      'Avoid repeating: '+(existingList || 'none yet'),
+      '',
+      'Return ONLY JSON array of 3:',
+      '[{"prompt":"...","thai":"...","english":"...","phonetic":"tokens","words":[{"p":"...","e":"..."}],"target_phonetic":"'+ph+'"}]',
+    ].join('\n')
+  }
+
+  // ── TIER 3: Low-risk — AI generates with class guidance ───────────────────
   return [
-    'Write 3 Thai Pimsleur pairs. Target: ' + tw + ' (' + eng + ')' + (ph ? ', phonetic: ' + ph : ''),
+    'Write 3 Thai Pimsleur pairs. Target: '+tw+' ('+eng+')'+( ph ? ', phonetic: '+ph : ''),
     '',
-    'WORD CLASS: ' + type,
+    'WORD CLASS: '+wType+' ('+risk+' risk)',
     hint,
     '',
-    '═══ HARD BANNED PATTERNS (these produce nonsense Thai) ═══',
-    'NEVER use these regardless of prompt type:',
-    '• เห็น + verb/connector/question-word/degree/time/location/abstract',
-    '• มี + question-word (มีเมื่อไหร่, มีที่ไหน)',
-    '• ไป + condition/situation phrase (ไปรถติด, ไปฝนตก)',
-    '• อยาก + bare noun — always add verb: อยากกิน+food, อยากได้+object, อยากไป+place',
-    '• ไม่+verb translated as "never" — use ไม่เคย+verb for never',
-    '• จะ+verb+ไหม translated as "can" — use verb+ได้ไหม for ability/permission',
-    '• ดิฉัน + ครับ (female pronoun + male particle)',
-    '• question word (กี่/ใคร/เมื่อไหร่) + ไหม together',
-    '• บ้านซึ่งอยู่ (connector without full clause after it)',
-    '• สบายดี for non-people/non-animals',
-    '• ไป + meal without กิน (ไปข้าวเที่ยง → must be ไปกินข้าวเที่ยง)',
-    '• ไป + rank (ไปที่หนึ่ง → must be ได้ที่หนึ่ง)',
-    '• มี + abstract/degree/connector used as object',
+    'ABSOLUTE BANS (these produce nonsense — never generate):',
+    '✗ ขอ+[word]+หน่อย unless word is a physical object, food, ticket, or document',
+    '✗ ไม่มี+[word] unless word is a physical thing that can be absent',
+    '✗ สบายดี for non-people/animals',
+    '✗ [place/field]+ผมเจ็บ (only body parts can hurt)',
+    '✗ ใคร+verb+ไหม — use ใคร+verb+คะ or มีใคร+verb+ไหมคะ',
+    '✗ questions ending ค่ะ — questions use คะ, statements use ค่ะ',
+    '✗ รู้+place/person — use รู้จัก',
+    '✗ ไม่+verb translated as "never" — never uses ไม่เคย',
     '',
-    '═══ TENSE/ASPECT MAP (strict) ═══',
-    '• "never" = ไม่เคย + verb (NOT ไม่ + verb)',
-    '• "do not / will not" = ไม่ + verb',
-    '• "not yet" = ยังไม่ได้ + verb',
-    '• "already" = verb + แล้ว (NOT a generic past tense)',
-    '• "was/were" = ตอนนั้น + adj/situation (NOT adj + แล้ว)',
-    '• "just did" = เพิ่ง + verb',
-    '• "can" = verb + ได้ไหม (NOT จะ + verb + ไหม)',
-    '• "will" = จะ + verb + ไหม',
-    '• "have you done?" = verb + แล้วหรือยังคะ (NOT verb + ไหมคะ)',
+    'GENDER (no exceptions):',
+    '- Learner = MALE: ผม+ครับ',
+    '- Teacher question = FEMALE: ไหมคะ',
+    '- Teacher statement = FEMALE: ค่ะ',
     '',
-    '═══ GENDER RULES (no exceptions) ═══',
-    '• Learner = MALE: ผม + ครับ',
-    '• Teacher question = FEMALE: คุณ/ใคร + ไหมคะ',
-    '• Teacher statement = FEMALE: ends ค่ะ',
-    '• NEVER: ดิฉัน+ครับ, question+ค่ะ, subjectless sentence when English says "Can I..."',
+    'ALIGNMENT RULE: Write Thai first → derive prompt and English from it. All 3 must match exactly.',
+    'Prompt must name the target word in natural English. Max '+promptCap+' words. No Thai script in prompt.',
     '',
-    '═══ THREE-WAY ALIGNMENT RULE ═══',
-    'Write Thai FIRST. Then derive both fields from it:',
-    '• "english" = direct natural translation of that exact Thai sentence',
-    '• "prompt" = natural English instruction (max ' + promptCap + ' words, NO Thai script) matching the Thai',
-    '• All 3 must have SAME subject, tense, modality, object — no divergence',
-    '• Prompt must NAME the target word (e.g. "Say the worksheet is good" not "Say it is good")',
+    'Pair 1: '+promptType1+' using '+tw,
+    'Pair 2: '+promptType2+' using '+tw+' differently',
+    'Pair 3: '+promptType3+' using '+tw+' differently again',
     '',
-    '══ PAIRS ══',
-    'Pair 1: ' + promptType1 + ' using ' + tw,
-    'Pair 2: ' + promptType2 + ' using ' + tw + ' differently',
-    'Pair 3: ' + promptType3 + ' using ' + tw + ' differently again',
-    '',
-    '══ RULES ══',
-    '• Sentence: ' + gMin + '-' + gMax + ' Thai words (not counting ครับ/ค่ะ). Max ' + eCeil + ' total.',
-    '• ONLY: ' + tw + ' | ' + anchorLines + ' | particles',
-    '• รู้ vs รู้จัก: use รู้จัก for people/places (ผมรู้จักเมืองไทยครับ), รู้ for facts (ผมรู้ว่า...)',
-    '• Pair 1 ends ครับ (male learner), Pair 2 ends ค่ะ (female teacher STATEMENT only), Pair 3 ends ครับ',
-    '• QUESTIONS with female voice MUST end คะ not ค่ะ. ไหมคะ ✓ | ไหมค่ะ ✗ | ที่ไหนคะ ✓ | ที่ไหนค่ะ ✗',
-    '• phonetic: space-separated tokens with tone marks. No Thai script. No brackets.',
-    '• words array count must match phonetic token count',
-    'Avoid repeating: ' + (existingList || 'none yet'),
+    '- Sentence: '+gMin+'–'+gMax+' words (not counting ครับ/ค่ะ). Max '+eCeil+'.',
+    '- ONLY: '+tw+' | '+anchorLines+' | particles',
+    '- Pair 1 ends ครับ, Pair 2 ends ค่ะ, Pair 3 ends ครับ',
+    'Avoid: '+(existingList || 'none'),
     '',
     'Return ONLY JSON array of 3:',
-    '[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[{"p":"...","e":"..."}],"target_phonetic":"' + ph + '"}]',
+    '[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[{"p":"...","e":"..."}],"target_phonetic":"'+ph+'"}]',
   ].join('\n')
 }
 
 // Pre-written fallbacks for known problem words
 const HARDCODED_FALLBACKS = {
-  'เหมือน': [
-    {prompt:'Say they look similar',thai:'มันเหมือนกันครับ',english:'They are similar.',phonetic:'man mǔean gan khrâp',words:[{p:'man',e:'it'},{p:'mǔean',e:'similar'},{p:'gan',e:'same'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mǔean'},
-    {prompt:'Ask if it looks like yours',thai:'มันเหมือนของคุณไหมคะ',english:'Does it look like yours?',phonetic:'man mǔean khɔ̌ɔng khun mǎi khá',words:[{p:'man',e:'it'},{p:'mǔean',e:'similar'},{p:'khɔ̌ɔng',e:'of'},{p:'khun',e:'you'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'mǔean'},
-    {prompt:'Say it looks the same as before',thai:'มันเหมือนเดิมครับ',english:'It looks the same as before.',phonetic:'man mǔean dəəm khrâp',words:[{p:'man',e:'it'},{p:'mǔean',e:'similar'},{p:'dəəm',e:'original'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mǔean'},
-  ],
   'ซึ่ง': [
-    {prompt:'Say the route you like',thai:'เส้นทางซึ่งชอบครับ',english:'The route that I like.',phonetic:'sên-thaang sûeng chôop khrâp',words:[{p:'sên-thaang',e:'route'},{p:'sûeng',e:'which'},{p:'chôop',e:'like'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sûeng'},
-    {prompt:'Ask about the one you want',thai:'อันซึ่งอยากได้ไหมคะ',english:'Is it the one you want?',phonetic:'an sûeng yàak dâi mǎi khá',words:[{p:'an',e:'one'},{p:'sûeng',e:'which'},{p:'yàak',e:'want'},{p:'dâi',e:'get'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'sûeng'},
-    {prompt:'Say the place where you live',thai:'บ้านซึ่งอยู่ครับ',english:'The house where I live.',phonetic:'bâan sûeng yùu khrâp',words:[{p:'bâan',e:'house'},{p:'sûeng',e:'which'},{p:'yùu',e:'live'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sûeng'},
+    {prompt:'Say the book which you like',thai:'นี่คือหนังสือที่ผมชอบครับ',english:'This is the book that I like.',phonetic:'nîi khʉʉ nǎng-sʉʉ thîi phǒm chôop khrâp',words:[{p:'nîi',e:'this'},{p:'khʉʉ',e:'is'},{p:'nǎng-sʉʉ',e:'book'},{p:'thîi',e:'that'},{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sûeng'},
+    {prompt:'Ask if that is the one you want',thai:'อันที่คุณอยากได้ไหมคะ',english:'Is it the one you want?',phonetic:'an thîi khun yàak dâi mǎi khá',words:[{p:'an',e:'one'},{p:'thîi',e:'that'},{p:'khun',e:'you'},{p:'yàak',e:'want'},{p:'dâi',e:'get'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'sûeng'},
+    {prompt:'Say the house where you live',thai:'บ้านที่ผมอยู่ครับ',english:'The house where I live.',phonetic:'bâan thîi phǒm yùu khrâp',words:[{p:'bâan',e:'house'},{p:'thîi',e:'where'},{p:'phǒm',e:'I'},{p:'yùu',e:'live'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sûeng'},
+    {prompt:'Say the route you prefer',thai:'เส้นทางที่ผมชอบครับ',english:'The route that I like.',phonetic:'sên-thaang thîi phǒm chôop khrâp',words:[{p:'sên-thaang',e:'route'},{p:'thîi',e:'that'},{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sûeng'},
+    {prompt:'Ask if that is the shop you know',thai:'ร้านที่คุณรู้จักไหมคะ',english:'Is that the shop you know?',phonetic:'ráan thîi khun rúu-jàk mǎi khá',words:[{p:'ráan',e:'shop'},{p:'thîi',e:'that'},{p:'khun',e:'you'},{p:'rúu-jàk',e:'know'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'sûeng'},
+  ],
+  'โดย': [
+    {prompt:'Say you went by car',thai:'ผมไปโดยรถยนต์ครับ',english:'I went by car.',phonetic:'phǒm pai doi rót-yon khrâp',words:[{p:'phǒm',e:'I'},{p:'pai',e:'went'},{p:'doi',e:'by'},{p:'rót-yon',e:'car'},{p:'khrâp',e:'[polite]'}],target_phonetic:'doi'},
+    {prompt:'Ask if you can travel by plane',thai:'เดินทางโดยเครื่องบินได้ไหมคะ',english:'Can we travel by plane?',phonetic:'dəən-thaang doi khrûeang-bin dâi mǎi khá',words:[{p:'dəən-thaang',e:'travel'},{p:'doi',e:'by'},{p:'khrûeang-bin',e:'plane'},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'doi'},
+    {prompt:'Say you paid by cash',thai:'ผมจ่ายโดยเงินสดครับ',english:'I paid by cash.',phonetic:'phǒm jàai doi ngəən-sòt khrâp',words:[{p:'phǒm',e:'I'},{p:'jàai',e:'paid'},{p:'doi',e:'by'},{p:'ngəən-sòt',e:'cash'},{p:'khrâp',e:'[polite]'}],target_phonetic:'doi'},
+    {prompt:'Say you went by Skytrain',thai:'ผมไปโดยรถไฟฟ้าครับ',english:'I went by Skytrain.',phonetic:'phǒm pai doi rót-fai-fáa khrâp',words:[{p:'phǒm',e:'I'},{p:'pai',e:'went'},{p:'doi',e:'by'},{p:'rót-fai-fáa',e:'Skytrain'},{p:'khrâp',e:'[polite]'}],target_phonetic:'doi'},
+    {prompt:'Ask if you can pay by card',thai:'จ่ายโดยบัตรได้ไหมคะ',english:'Can I pay by card?',phonetic:'jàai doi bàt dâi mǎi khá',words:[{p:'jàai',e:'pay'},{p:'doi',e:'by'},{p:'bàt',e:'card'},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'doi'},
+    {prompt:'Say you came by bus',thai:'ผมมาโดยรถเมล์ครับ',english:'I came by bus.',phonetic:'phǒm maa doi rót-mee khrâp',words:[{p:'phǒm',e:'I'},{p:'maa',e:'came'},{p:'doi',e:'by'},{p:'rót-mee',e:'bus'},{p:'khrâp',e:'[polite]'}],target_phonetic:'doi'},
+  ],
+  'ทุก': [
+    {prompt:'Say you go every day',thai:'ผมไปทุกวันครับ',english:'I go every day.',phonetic:'phǒm pai thúk wan khrâp',words:[{p:'phǒm',e:'I'},{p:'pai',e:'go'},{p:'thúk',e:'every'},{p:'wan',e:'day'},{p:'khrâp',e:'[polite]'}],target_phonetic:'thúk'},
+    {prompt:'Ask if everyone is ready',thai:'ทุกคนพร้อมไหมคะ',english:'Is everyone ready?',phonetic:'thúk khon phrôom mǎi khá',words:[{p:'thúk',e:'every'},{p:'khon',e:'person'},{p:'phrôom',e:'ready'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'thúk'},
+    {prompt:'Say you eat lunch every day',thai:'ผมกินข้าวเที่ยงทุกวันครับ',english:'I eat lunch every day.',phonetic:'phǒm gin khâao-thîang thúk wan khrâp',words:[{p:'phǒm',e:'I'},{p:'gin',e:'eat'},{p:'khâao-thîang',e:'lunch'},{p:'thúk',e:'every'},{p:'wan',e:'day'},{p:'khrâp',e:'[polite]'}],target_phonetic:'thúk'},
+    {prompt:'Say you do it every time',thai:'ผมทำแบบนี้ทุกครั้งครับ',english:'I do it every time.',phonetic:'phǒm tham bàep-níi thúk khráng khrâp',words:[{p:'phǒm',e:'I'},{p:'tham',e:'do'},{p:'bàep-níi',e:'this way'},{p:'thúk',e:'every'},{p:'khráng',e:'time'},{p:'khrâp',e:'[polite]'}],target_phonetic:'thúk'},
+    {prompt:'Ask if everyone knows',thai:'ทุกคนรู้ไหมคะ',english:'Does everyone know?',phonetic:'thúk khon rúu mǎi khá',words:[{p:'thúk',e:'every'},{p:'khon',e:'person'},{p:'rúu',e:'know'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'thúk'},
+    {prompt:'Say you come every morning',thai:'ผมมาทุกเช้าครับ',english:'I come every morning.',phonetic:'phǒm maa thúk cháo khrâp',words:[{p:'phǒm',e:'I'},{p:'maa',e:'come'},{p:'thúk',e:'every'},{p:'cháo',e:'morning'},{p:'khrâp',e:'[polite]'}],target_phonetic:'thúk'},
+  ],
+  'เมื่อกี้': [
+    {prompt:'Say you arrived just now',thai:'ผมมาถึงเมื่อกี้ครับ',english:'I arrived just now.',phonetic:'phǒm maa-thǔeng mûea-gìi khrâp',words:[{p:'phǒm',e:'I'},{p:'maa-thǔeng',e:'arrived'},{p:'mûea-gìi',e:'just now'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mûea-gìi'},
+    {prompt:'Ask if you called just now',thai:'คุณโทรมาเมื่อกี้ไหมคะ',english:'Did you call just now?',phonetic:'khun thoo maa mûea-gìi mǎi khá',words:[{p:'khun',e:'you'},{p:'thoo',e:'call'},{p:'maa',e:'came'},{p:'mûea-gìi',e:'just now'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'mûea-gìi'},
+    {prompt:'Say you saw it just now',thai:'ผมเพิ่งเห็นเมื่อกี้ครับ',english:'I just saw it a moment ago.',phonetic:'phǒm phûeng hěn mûea-gìi khrâp',words:[{p:'phǒm',e:'I'},{p:'phûeng',e:'just'},{p:'hěn',e:'saw'},{p:'mûea-gìi',e:'just now'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mûea-gìi'},
+    {prompt:'Say you came just now',thai:'ผมมาเมื่อกี้ครับ',english:'I came just now.',phonetic:'phǒm maa mûea-gìi khrâp',words:[{p:'phǒm',e:'I'},{p:'maa',e:'came'},{p:'mûea-gìi',e:'just now'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mûea-gìi'},
+    {prompt:'Say you just ate',thai:'ผมเพิ่งกินข้าวเมื่อกี้ครับ',english:'I just ate a moment ago.',phonetic:'phǒm phûeng gin khâao mûea-gìi khrâp',words:[{p:'phǒm',e:'I'},{p:'phûeng',e:'just'},{p:'gin',e:'eat'},{p:'khâao',e:'rice'},{p:'mûea-gìi',e:'just now'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mûea-gìi'},
+  ],
+  'มาจาก': [
+    {prompt:'Ask where you are from',thai:'คุณมาจากไหนคะ',english:'Where are you from?',phonetic:'khun maa-jàak nǎi khá',words:[{p:'khun',e:'you'},{p:'maa-jàak',e:'come from'},{p:'nǎi',e:'where'},{p:'khá',e:'[polite]'}],target_phonetic:'maa-jàak'},
+    {prompt:'Say you come from Thailand',thai:'ผมมาจากเมืองไทยครับ',english:'I come from Thailand.',phonetic:'phǒm maa-jàak mueang-thai khrâp',words:[{p:'phǒm',e:'I'},{p:'maa-jàak',e:'come from'},{p:'mueang-thai',e:'Thailand'},{p:'khrâp',e:'[polite]'}],target_phonetic:'maa-jàak'},
+    {prompt:'Ask where they come from',thai:'เขามาจากที่ไหนครับ',english:'Where do they come from?',phonetic:'khǎo maa-jàak thîi-nǎi khrâp',words:[{p:'khǎo',e:'they'},{p:'maa-jàak',e:'come from'},{p:'thîi-nǎi',e:'where'},{p:'khrâp',e:'[polite]'}],target_phonetic:'maa-jàak'},
+    {prompt:'Say you come from Bangkok',thai:'ผมมาจากกรุงเทพฯครับ',english:'I come from Bangkok.',phonetic:'phǒm maa-jàak grung-thêep khrâp',words:[{p:'phǒm',e:'I'},{p:'maa-jàak',e:'come from'},{p:'grung-thêep',e:'Bangkok'},{p:'khrâp',e:'[polite]'}],target_phonetic:'maa-jàak'},
+    {prompt:'Ask if you are from Japan',thai:'คุณมาจากญี่ปุ่นไหมคะ',english:'Are you from Japan?',phonetic:'khun maa-jàak yîi-pùn mǎi khá',words:[{p:'khun',e:'you'},{p:'maa-jàak',e:'from'},{p:'yîi-pùn',e:'Japan'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'maa-jàak'},
+  ],
+  'ขนาดนั้น': [
+    {prompt:'Say it is not that far',thai:'ไม่ไกลขนาดนั้นครับ',english:'It is not that far.',phonetic:'mâi glai khà-nàat-nán khrâp',words:[{p:'mâi',e:'not'},{p:'glai',e:'far'},{p:'khà-nàat-nán',e:'that much'},{p:'khrâp',e:'[polite]'}],target_phonetic:'khà-nàat-nán'},
+    {prompt:'Ask if it is really that expensive',thai:'แพงขนาดนั้นเลยไหมคะ',english:'Is it really that expensive?',phonetic:'phaeng khà-nàat-nán ləəi mǎi khá',words:[{p:'phaeng',e:'expensive'},{p:'khà-nàat-nán',e:'that much'},{p:'ləəi',e:'really'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'khà-nàat-nán'},
+    {prompt:'Say you do not have that much time',thai:'ผมไม่มีเวลาขนาดนั้นครับ',english:'I do not have that much time.',phonetic:'phǒm mâi-mii wee-laa khà-nàat-nán khrâp',words:[{p:'phǒm',e:'I'},{p:'mâi-mii',e:"don't have"},{p:'wee-laa',e:'time'},{p:'khà-nàat-nán',e:'that much'},{p:'khrâp',e:'[polite]'}],target_phonetic:'khà-nàat-nán'},
+    {prompt:'Say it is not that spicy',thai:'ไม่เผ็ดขนาดนั้นครับ',english:'It is not that spicy.',phonetic:'mâi phèt khà-nàat-nán khrâp',words:[{p:'mâi',e:'not'},{p:'phèt',e:'spicy'},{p:'khà-nàat-nán',e:'that much'},{p:'khrâp',e:'[polite]'}],target_phonetic:'khà-nàat-nán'},
+    {prompt:'Ask if it is really that urgent',thai:'ต้องรีบขนาดนั้นไหมคะ',english:'Is it really that urgent?',phonetic:'tông rîip khà-nàat-nán mǎi khá',words:[{p:'tông',e:'must'},{p:'rîip',e:'hurry'},{p:'khà-nàat-nán',e:'that much'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'khà-nàat-nán'},
+  ],
+  'รถติด': [
+    {prompt:'Say there is traffic',thai:'รถติดครับ',english:'There is traffic.',phonetic:'rót-tìt khrâp',words:[{p:'rót-tìt',e:'traffic'},{p:'khrâp',e:'[polite]'}],target_phonetic:'rót-tìt'},
+    {prompt:'Ask if there is traffic',thai:'รถติดไหมคะ',english:'Is there traffic?',phonetic:'rót-tìt mǎi khá',words:[{p:'rót-tìt',e:'traffic'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'rót-tìt'},
+    {prompt:'Say you came late because of traffic',thai:'ผมมาช้าเพราะรถติดครับ',english:'I came late because of traffic.',phonetic:'phǒm maa cháa phrô rót-tìt khrâp',words:[{p:'phǒm',e:'I'},{p:'maa-cháa',e:'came late'},{p:'phrô',e:'because'},{p:'rót-tìt',e:'traffic'},{p:'khrâp',e:'[polite]'}],target_phonetic:'rót-tìt'},
+    {prompt:'Say you cannot go because of traffic',thai:'ไปไม่ได้เพราะรถติดครับ',english:'I cannot go because of traffic.',phonetic:'pai mâi-dâi phrô rót-tìt khrâp',words:[{p:'pai',e:'go'},{p:'mâi-dâi',e:'cannot'},{p:'phrô',e:'because'},{p:'rót-tìt',e:'traffic'},{p:'khrâp',e:'[polite]'}],target_phonetic:'rót-tìt'},
+    {prompt:'Say traffic is very bad',thai:'รถติดมากครับ',english:'Traffic is very bad.',phonetic:'rót-tìt mâak khrâp',words:[{p:'rót-tìt',e:'traffic'},{p:'mâak',e:'very'},{p:'khrâp',e:'[polite]'}],target_phonetic:'rót-tìt'},
+  ],
+  'เหมือน': [
+    {prompt:'Say they look the same',thai:'มันเหมือนกันครับ',english:'They look the same.',phonetic:'man mǔean gan khrâp',words:[{p:'man',e:'it'},{p:'mǔean',e:'similar'},{p:'gan',e:'each other'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mǔean'},
+    {prompt:'Ask if it looks like yours',thai:'มันเหมือนของคุณไหมคะ',english:'Does it look like yours?',phonetic:'man mǔean khɔ̌ɔng-khun mǎi khá',words:[{p:'man',e:'it'},{p:'mǔean',e:'like'},{p:'khɔ̌ɔng-khun',e:'yours'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'mǔean'},
+    {prompt:'Say it looks the same as before',thai:'มันเหมือนเดิมครับ',english:'It looks the same as before.',phonetic:'man mǔean dəəm khrâp',words:[{p:'man',e:'it'},{p:'mǔean',e:'same as'},{p:'dəəm',e:'original'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mǔean'},
+    {prompt:'Say it looks like a hotel',thai:'มันเหมือนโรงแรมครับ',english:'It looks like a hotel.',phonetic:'man mǔean roong-raem khrâp',words:[{p:'man',e:'it'},{p:'mǔean',e:'looks like'},{p:'roong-raem',e:'hotel'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mǔean'},
+    {prompt:'Say you feel the same way',thai:'ผมรู้สึกเหมือนกันครับ',english:'I feel the same way.',phonetic:'phǒm rúu-sùek mǔean-gan khrâp',words:[{p:'phǒm',e:'I'},{p:'rúu-sùek',e:'feel'},{p:'mǔean-gan',e:'same'},{p:'khrâp',e:'[polite]'}],target_phonetic:'mǔean'},
   ],
   'การเดินทาง': [
-    {prompt:'Say traveling is fun',thai:'การเดินทางสนุกครับ',english:'Traveling is fun.',phonetic:'kaan-dəən-thaang sà-nùk khrâp',words:[{p:'kaan-dəən-thaang',e:'travel'},{p:'sà-nùk',e:'fun'},{p:'khrâp',e:'[polite]'}],target_phonetic:'kaan-dəən-thaang'},
-    {prompt:'Ask if they like traveling',thai:'ชอบการเดินทางไหมคะ',english:'Do you like traveling?',phonetic:'chôop kaan-dəən-thaang mǎi khá',words:[{p:'chôop',e:'like'},{p:'kaan-dəən-thaang',e:'travel'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'kaan-dəən-thaang'},
-    {prompt:'Say the trip was long',thai:'การเดินทางนานครับ',english:'The journey was long.',phonetic:'kaan-dəən-thaang naan khrâp',words:[{p:'kaan-dəən-thaang',e:'travel'},{p:'naan',e:'long time'},{p:'khrâp',e:'[polite]'}],target_phonetic:'kaan-dəən-thaang'},
+    {prompt:'Say traveling is fun',thai:'การเดินทางสนุกครับ',english:'Traveling is fun.',phonetic:'gaan-dəən-thaang sà-nùk khrâp',words:[{p:'gaan-dəən-thaang',e:'travel'},{p:'sà-nùk',e:'fun'},{p:'khrâp',e:'[polite]'}],target_phonetic:'gaan-dəən-thaang'},
+    {prompt:'Ask if you like traveling',thai:'ชอบการเดินทางไหมคะ',english:'Do you like traveling?',phonetic:'chôop gaan-dəən-thaang mǎi khá',words:[{p:'chôop',e:'like'},{p:'gaan-dəən-thaang',e:'travel'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'gaan-dəən-thaang'},
+    {prompt:'Say the journey was long',thai:'การเดินทางนานครับ',english:'The journey was long.',phonetic:'gaan-dəən-thaang naan khrâp',words:[{p:'gaan-dəən-thaang',e:'journey'},{p:'naan',e:'long'},{p:'khrâp',e:'[polite]'}],target_phonetic:'gaan-dəən-thaang'},
+    {prompt:'Say today\'s journey was tiring',thai:'การเดินทางวันนี้เหนื่อยครับ',english:'Today\'s journey was tiring.',phonetic:'gaan-dəən-thaang wan-níi nùeai khrâp',words:[{p:'gaan-dəən-thaang',e:'journey'},{p:'wan-níi',e:'today'},{p:'nùeai',e:'tiring'},{p:'khrâp',e:'[polite]'}],target_phonetic:'gaan-dəən-thaang'},
   ],
   'เดี๋ยว': [
-    {prompt:'Say they will come soon',thai:'เดี๋ยวมาครับ',english:'Coming soon.',phonetic:'dǐao maa khrâp',words:[{p:'dǐao',e:'soon'},{p:'maa',e:'come'},{p:'khrâp',e:'[polite]'}],target_phonetic:'dǐao'},
-    {prompt:'Ask if it will be ready soon',thai:'เดี๋ยวเสร็จไหมคะ',english:'Will it be done soon?',phonetic:'dǐao sèt mǎi khá',words:[{p:'dǐao',e:'soon'},{p:'sèt',e:'done'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'dǐao'},
+    {prompt:'Say you will come soon',thai:'เดี๋ยวมาครับ',english:'Coming soon.',phonetic:'dǐao maa khrâp',words:[{p:'dǐao',e:'soon'},{p:'maa',e:'come'},{p:'khrâp',e:'[polite]'}],target_phonetic:'dǐao'},
+    {prompt:'Ask if it will be done soon',thai:'เดี๋ยวเสร็จไหมคะ',english:'Will it be done soon?',phonetic:'dǐao sèt mǎi khá',words:[{p:'dǐao',e:'soon'},{p:'sèt',e:'done'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'dǐao'},
     {prompt:'Say you will go soon',thai:'เดี๋ยวไปครับ',english:'Going soon.',phonetic:'dǐao pai khrâp',words:[{p:'dǐao',e:'soon'},{p:'pai',e:'go'},{p:'khrâp',e:'[polite]'}],target_phonetic:'dǐao'},
+    {prompt:'Say wait a moment',thai:'เดี๋ยวก่อนครับ',english:'Wait a moment.',phonetic:'dǐao gɔ̀ɔn khrâp',words:[{p:'dǐao',e:'a moment'},{p:'gɔ̀ɔn',e:'first'},{p:'khrâp',e:'[polite]'}],target_phonetic:'dǐao'},
+    {prompt:'Say you will call soon',thai:'เดี๋ยวโทรครับ',english:'I will call soon.',phonetic:'dǐao thoo khrâp',words:[{p:'dǐao',e:'soon'},{p:'thoo',e:'call'},{p:'khrâp',e:'[polite]'}],target_phonetic:'dǐao'},
   ],
   'เพิ่ง': [
-    {prompt:'Say you just arrived',thai:'เพิ่งมาถึงครับ',english:'I just arrived.',phonetic:'phûeng maa thǔeng khrâp',words:[{p:'phûeng',e:'just'},{p:'maa',e:'come'},{p:'thǔeng',e:'arrive'},{p:'khrâp',e:'[polite]'}],target_phonetic:'phûeng'},
-    {prompt:'Ask if they just woke up',thai:'เพิ่งตื่นไหมคะ',english:'Did you just wake up?',phonetic:'phûeng tùen mǎi khá',words:[{p:'phûeng',e:'just'},{p:'tùen',e:'wake'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'phûeng'},
-    {prompt:'Say you just ate',thai:'เพิ่งกินข้าวครับ',english:'I just ate.',phonetic:'phûeng gin khâao khrâp',words:[{p:'phûeng',e:'just'},{p:'gin',e:'eat'},{p:'khâao',e:'rice'},{p:'khrâp',e:'[polite]'}],target_phonetic:'phûeng'},
+    {prompt:'Say you just arrived',thai:'ผมเพิ่งมาถึงครับ',english:'I just arrived.',phonetic:'phǒm phûeng maa-thǔeng khrâp',words:[{p:'phǒm',e:'I'},{p:'phûeng',e:'just'},{p:'maa-thǔeng',e:'arrived'},{p:'khrâp',e:'[polite]'}],target_phonetic:'phûeng'},
+    {prompt:'Ask if you just woke up',thai:'เพิ่งตื่นไหมคะ',english:'Did you just wake up?',phonetic:'phûeng tùen mǎi khá',words:[{p:'phûeng',e:'just'},{p:'tùen',e:'wake up'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'phûeng'},
+    {prompt:'Say you just ate',thai:'ผมเพิ่งกินข้าวครับ',english:'I just ate.',phonetic:'phǒm phûeng gin khâao khrâp',words:[{p:'phǒm',e:'I'},{p:'phûeng',e:'just'},{p:'gin',e:'eat'},{p:'khâao',e:'rice'},{p:'khrâp',e:'[polite]'}],target_phonetic:'phûeng'},
+    {prompt:'Say you just came back',thai:'ผมเพิ่งกลับมาครับ',english:'I just came back.',phonetic:'phǒm phûeng glàp-maa khrâp',words:[{p:'phǒm',e:'I'},{p:'phûeng',e:'just'},{p:'glàp-maa',e:'came back'},{p:'khrâp',e:'[polite]'}],target_phonetic:'phûeng'},
+    {prompt:'Say you just bought it',thai:'ผมเพิ่งซื้อมาครับ',english:'I just bought it.',phonetic:'phǒm phûeng sʉ́ʉ maa khrâp',words:[{p:'phǒm',e:'I'},{p:'phûeng',e:'just'},{p:'sʉ́ʉ',e:'bought'},{p:'maa',e:'came'},{p:'khrâp',e:'[polite]'}],target_phonetic:'phûeng'},
+  ],
+  'ที่สุด': [
+    {prompt:'Say this one is the best',thai:'อันนี้ดีที่สุดครับ',english:'This one is the best.',phonetic:'an-níi dii thîi-sùt khrâp',words:[{p:'an-níi',e:'this one'},{p:'dii',e:'good'},{p:'thîi-sùt',e:'most'},{p:'khrâp',e:'[polite]'}],target_phonetic:'thîi-sùt'},
+    {prompt:'Ask if it is the spiciest',thai:'อาหารนี้เผ็ดที่สุดไหมคะ',english:'Is this the spiciest?',phonetic:'aa-hǎan-níi phèt thîi-sùt mǎi khá',words:[{p:'aa-hǎan-níi',e:'this food'},{p:'phèt',e:'spicy'},{p:'thîi-sùt',e:'most'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'thîi-sùt'},
+    {prompt:'Say you like this shop the most',thai:'ผมชอบร้านนี้ที่สุดครับ',english:'I like this shop the most.',phonetic:'phǒm chôop ráan-níi thîi-sùt khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'ráan-níi',e:'this shop'},{p:'thîi-sùt',e:'most'},{p:'khrâp',e:'[polite]'}],target_phonetic:'thîi-sùt'},
+    {prompt:'Say it is the furthest',thai:'ไกลที่สุดครับ',english:'It is the furthest.',phonetic:'glai thîi-sùt khrâp',words:[{p:'glai',e:'far'},{p:'thîi-sùt',e:'most'},{p:'khrâp',e:'[polite]'}],target_phonetic:'thîi-sùt'},
+    {prompt:'Say today was the most tiring',thai:'วันนี้เหนื่อยที่สุดครับ',english:'Today was the most tiring.',phonetic:'wan-níi nùeai thîi-sùt khrâp',words:[{p:'wan-níi',e:'today'},{p:'nùeai',e:'tired'},{p:'thîi-sùt',e:'most'},{p:'khrâp',e:'[polite]'}],target_phonetic:'thîi-sùt'},
   ],
 }
+
+
 
 function makeFallbackPairs(target) {
   const ph = target.phonetic || target.thai
@@ -1584,7 +1712,7 @@ function makeFallbackPairs(target) {
   ]
 }
 
-function validatePair(pair, target, allAllowed, existingThais) {
+function validatePair(pair, target, allAllowed, existingThais, wordType) {
   if (!pair || !pair.thai || !pair.prompt || !pair.english || !pair.phonetic) return false
   const th = pair.thai.trim()
   const en = pair.english.toLowerCase()
@@ -1631,6 +1759,15 @@ function validatePair(pair, target, allAllowed, existingThais) {
   // "never" in prompt → ไม่เคย in Thai
   if (pr.includes('never') && !th.includes('ไม่เคย')) return false
 
+  // ── CLASS-SPECIFIC BANNED PATTERNS ─────────────────────────────────────────
+  // Never use ขอ+X+หน่อย unless X is a physical/requestable object (low risk)
+  const wType = wordType || classifyWord(target)
+  const risk = getRisk(wType)
+  if (risk !== 'low') {
+    if (th.startsWith('ขอ'+tw) || th.includes('ขอ'+tw+'หน่อย')) return false
+    if (th.startsWith('ไม่มี'+tw) && risk === 'high') return false
+    if (th.startsWith('มี'+tw+'ไหม') && risk === 'high') return false
+  }
   // ── HARD QA GATE — check target is actually present ────────────────────────
   // Generic filler sentences (target missing) — always reject
   const FILLER_SENTENCES = ['ผมชอบครับ','ดีไหมคะ','ไปแล้วครับ','ผมชอบค่ะ','ดีไหมค่ะ','ไม่มีครับ','ได้ไหมคะ']
@@ -1770,34 +1907,63 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     const triplet = TRIPLETS[i % TRIPLETS.length]
     const t1 = triplet[0], t2 = triplet[1], t3 = triplet[2]
 
-    const prompt = buildMicroPrompt(target, localAnchors, vocab, t1, t2, t3, existingThais, allPairs.length)
-
+    const wordType = classifyWord(target)
+    const risk = getRisk(wordType)
     let pairs = []
-    let attempts = 0
-    while (attempts < 2) {
-      try {
-        const text = await callOpenRouterOnce(apiKey, orModel,
-          [{ role:'user', content: prompt }], 2000)
-        const parsed = parsePartialArray(text)
-        // Hard validate each pair client-side
-        const { effectiveCeil } = getSentenceLengthForVocab(vocab)
-        const valid = parsed.filter(p => {
-          if (!validatePair(p, target, allAllowed, existingThais)) return false
-          const tokenCount = (p.phonetic||'').split(' ').filter(Boolean).length
-          if (tokenCount > effectiveCeil + 1) return false  // +1 tolerance for polite particle
-          return true
-        })
-        if (valid.length >= 2) { pairs = valid.slice(0,3); break }
-      } catch(e) {}
-      attempts++
+
+    // ── TIER 1: High-risk words — skip AI, use hardcoded bank ─────────────
+    if (risk === 'high') {
+      const bank = HARDCODED_FALLBACKS[target.thai]
+      if (bank && bank.length > 0) {
+        // Rotate through bank: pick 3 based on track offset
+        const offset = (i + allPairs.length) % Math.max(bank.length - 2, 1)
+        const rotated = [...bank.slice(offset), ...bank.slice(0, offset)]
+        pairs = rotated.filter(p => !existingThais.has(p.thai)).slice(0, 3)
+        // Fill any remaining slots from start of bank
+        if (pairs.length < 3) {
+          for (const p of bank) {
+            if (pairs.length >= 3) break
+            if (!existingThais.has(p.thai) && !pairs.includes(p)) pairs.push(p)
+          }
+        }
+      } else {
+        // No hardcoded bank — use type-aware fallback
+        pairs = makeFallbackPairs(target).filter(p => !existingThais.has(p.thai)).slice(0, 3)
+      }
     }
 
-    // Use smart fallback for any missing pairs
-    if (pairs.length < 3) {
-      const fb = makeFallbackPairs(target)
-      for (const f of fb) {
-        if (pairs.length >= 3) break
-        if (!existingThais.has(f.thai)) pairs.push(f)
+    // ── TIER 2+3: Medium/Low risk — AI generates inside class-approved frames ─
+    if (risk !== 'high' || pairs.length < 3) {
+      const prompt = buildMicroPrompt(target, localAnchors, vocab, t1, t2, t3, existingThais, allPairs.length, wordType)
+      let attempts = 0
+      while (attempts < 2 && pairs.length < 3) {
+        try {
+          const text = await callOpenRouterOnce(apiKey, orModel,
+            [{ role:'user', content: prompt }], 2000)
+          const parsed = parsePartialArray(text)
+          const { effectiveCeil } = getSentenceLengthForVocab(vocab)
+          const valid = parsed.filter(p => {
+            if (!validatePair(p, target, allAllowed, existingThais, wordType)) return false
+            const tokenCount = (p.phonetic||'').split(' ').filter(Boolean).length
+            if (tokenCount > effectiveCeil + 1) return false
+            return true
+          })
+          for (const p of valid) {
+            if (pairs.length >= 3) break
+            if (!existingThais.has(p.thai)) pairs.push(p)
+          }
+          if (pairs.length >= 3) break
+        } catch(e) {}
+        attempts++
+      }
+
+      // Use type-aware fallback for any still missing
+      if (pairs.length < 3) {
+        const fb = makeFallbackPairs(target)
+        for (const f of fb) {
+          if (pairs.length >= 3) break
+          if (!existingThais.has(f.thai)) pairs.push(f)
+        }
       }
     }
 

@@ -745,7 +745,7 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-      body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 600, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
+      body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
     })
     if (!res.ok) return {}
     const data = await res.json()
@@ -2038,7 +2038,7 @@ const TRIPLETS = [
 async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
   const orModel = model || 'openai/gpt-4o-mini'
   const existingThais = new Set()
-  const allPairs = []
+  let allPairs = []
 
   // Deprioritize overly common words as anchors — they appear naturally anyway
   const HIGH_FREQ = new Set(['มี','ไป','มา','ผม','ฉัน','คุณ','เขา','เธอ','เรา','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','เป็น'])
@@ -2488,20 +2488,18 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       </div>
 
       {/* Track ready actions */}
-      {phase === 'done' && generatedTrack && (() => {
+      {phase === 'done' && generatedTrack && (()=>{
         const totalPairs = generatedTrack.pairs?.length || 0
-        const targetWords = generatedTrack.keywords?.length || 0
         const fallbackPairs = generatedTrack.pairs?.filter(p => {
           const pr = p.prompt || ''
-          return pr.startsWith('Say "I ') || pr.startsWith('Ask "Do you ') ||
-            pr.includes('know about') || pr === '' || pr.length < 10
+          return pr.startsWith('Say "I ') || pr.startsWith('Ask "Do you ') || pr.includes('know about') || pr === '' || pr.length < 10
         }).length || 0
         const missingWords = (generatedTrack.keywords || []).filter(k =>
           !(generatedTrack.pairs || []).some(p => p.thai?.includes(k.thai))
         ).length
         const score = Math.max(0, Math.round(((totalPairs - fallbackPairs * 2 - missingWords * 3) / Math.max(totalPairs, 1)) * 100))
         const scoreColor = score >= 85 ? '#10b981' : score >= 65 ? '#f59e0b' : '#ef4444'
-        return <React.Fragment><div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+        return (<div style={{ display:'flex', flexDirection:'column', gap:10 }}><div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {/* Quality score */}
             <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 14px', display:'flex', gap:12, alignItems:'center' }}>
               <span style={{ fontSize:22, fontWeight:800, color:scoreColor }}>{score}%</span>
@@ -2544,7 +2542,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           }} variant="secondary" style={{ width:'100%', justifyContent:'center' }} disabled={convoLoading}>
             {convoLoading ? '⏳ Generating conversation...' : convoLines ? '💬 View Conversation' : '💬 Generate Conversation'}
           </Btn>
-        </div></React.Fragment>
+        </div></div>)
       })()}
 
       {/* Target words */}
@@ -2883,7 +2881,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
           <div className="fade-in" key={`r-${idx}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
             <div style={{ fontSize:11, letterSpacing:'0.12em', color:'var(--gold)', textTransform:'uppercase', fontWeight:600 }}>Repeat aloud</div>
             {/* Aligned phonetic + gloss or plain phonetic fallback */}
-            {pair.words && pair.words.length > 0 ? (
+            {pair.words && pair.words.length > 0 && pair.words.some(w => w.p) ? (
               <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'6px 10px', maxWidth:360 }}>
                 {pair.words.map((w, i) => (
                   <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
@@ -2896,7 +2894,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
               <p className="phon" style={{ fontSize:38, color:'var(--gold)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>{pair.phonetic}</p>
             ) : (
               <p className="phon" style={{ fontSize:22, color:'var(--muted)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>
-                {pair.phonetic || '—'}
+                {pair.phonetic || pair.target_phonetic || ''}
               </p>
             )}
             <Waveform />
@@ -2962,23 +2960,23 @@ function Browser({ vocab, onBack, initialFilter, phonetics, onCustomTrack, orKey
     setFetchingPhonetics(true)
     setFetchCount(0)
     setFetchTotal(needsFix.length)
-    const BATCH = 40
+    const BATCH = 20  // smaller batch so all fit in token limit
     let updated = [...vocab]
     let done = 0
     for (let i = 0; i < needsFix.length; i += BATCH) {
       const batch = needsFix.slice(i, i + BATCH)
       try {
         const map = await fetchTargetPhoneticsQwen(batch, orKey)
-        // Update count one by one as results come in
         for (const w of batch) {
-          if (map[w.id]) {
+          const ph = map[w.id] || map[w.thai]  // check both id and thai key
+          if (ph) {
             done++
             setFetchCount(done)
-            updated = updated.map(v => v.id === w.id ? { ...v, phonetic: map[w.id] } : v)
+            updated = updated.map(v => v.id === w.id ? { ...v, phonetic: ph } : v)
           }
         }
         onVocabUpdate && onVocabUpdate(updated)
-      } catch {}
+      } catch(e) { console.warn('Phonetic batch failed:', e) }
     }
     setFetchingPhonetics(false)
     setFetchTotal(0)

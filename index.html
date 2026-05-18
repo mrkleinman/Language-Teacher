@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v105"/>
-<meta name="app-version" content="v105"/>
+<meta name="app-version" content="v110"/>
+<meta name="app-version" content="v110"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v105';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v105').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v110';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v110').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2014,7 +2014,7 @@ const LESSON_DATA = [{
 
 
 // ── SRS Logic ────────────────────────────────────────────────────────────────
-const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v105' } catch { return 'v105' } })()
+const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v110' } catch { return 'v110' } })()
 
 const EASE = { easy: 2.5, ok: 1.3, hard: 0.6 }
 function calcInterval(cur, rating) {
@@ -3219,6 +3219,24 @@ function classifyWord(target) {
     'meet (attend)','practise','compete','interview','train']
   if (INTRANS.some(w => eng.includes(w))) return 'verb_intrans'
 
+  // Common words that often get misclassified
+  if (thai === 'สาย' || eng === 'line' || eng === 'late' || eng === 'cord') return 'object'
+  if (thai === 'นางงาม' || eng === 'beauty queen') return 'person'
+  if (thai === 'แพ' || eng === 'raft') return 'object'
+  if (thai === 'มืดค่ำ' || eng === 'dusk' || eng === 'nightfall') return 'time'
+  if (thai === 'เส้นทาง' || eng === 'route' || eng === 'path') return 'place'
+  if (thai === 'เส้นผม' || eng.includes('hair strand')) return 'body'
+  if (thai === 'ขน' || eng === 'hair/fur' || eng === 'fur' || eng === 'feather') return 'body'
+  if (thai === 'ชาวเขา' || eng === 'hill tribe' || eng.includes('hill tribe')) return 'person'
+  if (thai === 'กะเหรี่ยงคอยาว' || eng.includes('long-neck')) return 'person'
+  if (thai === 'เก่า' || eng === 'old' || eng === 'old (thing)') return 'adjective'
+  if (thai === 'เต็ม' || eng === 'full') return 'adjective'
+  if (thai === 'สาว' || eng === 'girl' || eng === 'young woman') return 'person'
+  if (thai === 'แย่ง' || eng === 'compete' || eng === 'to compete' || eng === 'to snatch') return 'verb_intrans'
+  if (thai === 'จัด' || eng === 'arrange' || eng === 'organize') return 'verb_transitive'
+  if (thai === 'เข้ารอบ' || eng === 'advance' || eng === 'qualify') return 'verb_phrase'
+  if (thai === 'สะดวก' || eng === 'convenient') return 'adjective'
+
   // Object nouns
   return 'object'
 }
@@ -3282,51 +3300,65 @@ function selectConceptFrame(target, concepts) {
 function buildConceptPairs(target, conceptFrame) {
   const tw = target.thai
   const eng = target.english
-  const ph = target.phonetic || ''
+  const ph = target.phonetic || tw
   const { concept, frame } = conceptFrame
 
-  // Build 3 pairs using the concept's good examples as templates, substituting target
   const frames = concept.generatorFrames || []
+  const ex = concept.goodExamples || []
+
+  // Build real sentences from concept frames, not "Say: X" templates
   const pairs = []
 
-  // Pattern 1: statement (ครับ)
-  const f0 = (frames[0] || '{target}ครับ').replace('{target}', tw)
-  const f1 = (frames[1] || frames[0] || '{target}ครับ').replace('{target}', tw)
-  const f2 = (frames[2] || frames[0] || '{target}ครับ').replace('{target}', tw)
+  // Use the actual frame templates
+  const f0 = frames[0] ? frames[0].replace('{target}', tw) : tw + 'ครับ'
+  const f1 = frames[1] ? frames[1].replace('{target}', tw) : tw + 'ไหมคะ'
 
-  // Use good examples as models, sub in target
-  const ex = concept.goodExamples || []
-  const model = ex[0] || { thai: tw + 'ครับ', phonetic: ph + ' khrâp', english: eng + '.' }
+  // Ensure proper sentence endings
+  const stmt = (f0.endsWith('ครับ') || f0.endsWith('ค่ะ') || f0.endsWith('คะ')) ? f0 : f0 + 'ครับ'
+  const qst = (f1.includes('ไหม') || f1.includes('หรือ') || f1.includes('ที่ไหน') || f1.includes('อะไร'))
+    ? (f1.endsWith('คะ') || f1.endsWith('ค่ะ') ? f1 : f1.replace('ครับ','คะ').replace(/คะ$/,'คะ'))
+    : f1 + 'ไหมคะ'
 
-  pairs.push({
-    prompt: 'Say: ' + eng,
-    thai: f0.includes('ครับ') || f0.includes('คะ') ? f0 : f0 + 'ครับ',
-    english: eng + '.',
-    phonetic: ph + ' khrâp',
-    words: [{p: ph, e: eng}, {p: 'khrâp', e: '[polite]'}],
-    target_phonetic: ph,
-    _source: 'concept:' + concept.id,
-  })
-  pairs.push({
-    prompt: 'Ask: ' + eng + '?',
-    thai: f1.includes('คะ') || f1.includes('ไหม') ? f1 : f1.replace('ครับ','').replace('คะ','') + 'ไหมคะ',
-    english: eng + '?',
-    phonetic: ph + ' mǎi khá',
-    words: [{p: ph, e: eng}, {p: 'mǎi', e: '?'}, {p: 'khá', e: '[polite]'}],
-    target_phonetic: ph,
-    _source: 'concept:' + concept.id,
-  })
-  pairs.push({
-    prompt: 'Negative: ' + eng,
-    thai: 'ไม่ได้' + tw + 'ครับ',
-    english: "I didn't " + eng + '.',
-    phonetic: 'mâi-dâi ' + ph + ' khrâp',
-    words: [{p: 'mâi-dâi', e: "didn't"}, {p: ph, e: eng}, {p: 'khrâp', e: '[polite]'}],
-    target_phonetic: ph,
-    _source: 'concept:' + concept.id,
-  })
+  // Statement
+  if (stmt.includes(tw)) {
+    pairs.push({
+      prompt: ex[0] ? ex[0].english.replace(ex[0].thai, eng) : concept.meaning.replace('{target}', eng),
+      thai: stmt,
+      english: eng + '.',
+      phonetic: ph + ' khrâp',
+      target_phonetic: ph,
+      _source: 'concept:' + concept.id,
+    })
+  }
 
-  return pairs.filter(p => p.thai && p.thai.includes(tw))
+  // Question
+  if (qst.includes(tw)) {
+    const qEng = ex[0] ? ex[0].english : concept.meaning.replace('{target}', eng) + '?'
+    pairs.push({
+      prompt: 'Ask: ' + (concept.meaning || eng).replace('{target}', eng),
+      thai: qst,
+      english: qEng,
+      phonetic: ph + ' mǎi khá',
+      target_phonetic: ph,
+      _source: 'concept:' + concept.id,
+    })
+  }
+
+  // Negative using ยังไม่/ไม่ได้ depending on context
+  const neg = 'ยังไม่' + tw + 'ครับ'
+  if (neg.includes(tw)) {
+    pairs.push({
+      prompt: 'Say you have not ' + eng + ' yet',
+      thai: neg,
+      english: "I have not " + eng + " yet.",
+      phonetic: 'yang mâi ' + ph + ' khrâp',
+      target_phonetic: ph,
+      _source: 'concept:' + concept.id,
+    })
+  }
+
+  // Return only pairs that contain the target word and have decent prompts
+  return pairs.filter(p => p.thai && p.thai.includes(tw) && p.prompt && p.prompt.length > 8)
 }
 
 
@@ -3892,11 +3924,27 @@ function makeFallbackPairs(target) {
     {prompt:'Ask if you can '+eng,thai:tw+'ได้ไหมคะ',english:'Can you '+eng+'?',phonetic:ph+' dâi mǎi khá',words:[{p:ph,e:eng},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
     {prompt:'Say you already '+eng,thai:tw+'แล้วครับ',english:'I already '+eng+'.',phonetic:ph+' lâeo khrâp',words:[{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
-  // Corrupted or question words — safe fixed sentences
+  // Generic fallback — use word type context
+  const engUpper = eng.charAt(0).toUpperCase() + eng.slice(1)
+  if (type === 'adjective') return [
+    {prompt:'Say it is '+eng,thai:'มัน'+tw+'ครับ',english:'It is '+eng+'.',phonetic:'man '+ph+' khrâp',words:[{p:'man',e:'it'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if it is '+eng,thai:'มัน'+tw+'ไหมคะ',english:'Is it '+eng+'?',phonetic:'man '+ph+' mǎi khá',words:[{p:'man',e:'it'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say it is very '+eng,thai:'มัน'+tw+'มากครับ',english:'It is very '+eng+'.',phonetic:'man '+ph+' mâak khrâp',words:[{p:'man',e:'it'},{p:ph,e:eng},{p:'mâak',e:'very'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+  if (type === 'person') return [
+    {prompt:'Ask where the '+eng+' is',thai:tw+'อยู่ที่ไหนครับ',english:'Where is the '+eng+'?',phonetic:ph+' yùu thîi-nǎi khrâp',words:[{p:ph,e:eng},{p:'yùu',e:'is'},{p:'thîi-nǎi',e:'where'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you met the '+eng,thai:'เจอ'+tw+'แล้วครับ',english:'I met the '+eng+'.',phonetic:'jooe '+ph+' lâeo khrâp',words:[{p:'jooe',e:'meet'},{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if you know the '+eng,thai:'รู้จัก'+tw+'ไหมคะ',english:'Do you know the '+eng+'?',phonetic:'rúu-jàk '+ph+' mǎi khá',words:[{p:'rúu-jàk',e:'know'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+  ]
+  if (type === 'time') return [
+    {prompt:'Say it is '+eng,thai:tw+'แล้วครับ',english:'It is '+eng+' now.',phonetic:ph+' lâeo khrâp',words:[{p:ph,e:eng},{p:'lâeo',e:'now'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if it is '+eng+' already',thai:tw+'แล้วหรือยังคะ',english:'Is it '+eng+' already?',phonetic:ph+' lâeo rǔue yang khá',words:[{p:ph,e:eng},{p:'lâeo-rǔue-yang',e:'already?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say it will be '+eng+' soon',thai:'อีกไม่นาน'+tw+'แล้วครับ',english:'It will be '+eng+' soon.',phonetic:'ìik mâi naan '+ph+' lâeo khrâp',words:[{p:'ìik-mâi-naan',e:'soon'},{p:ph,e:eng},{p:'lâeo',e:'now'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
   return [
-    {prompt:'Say you like it',thai:'ผมชอบครับ',english:'I like it.',phonetic:'phǒm chôop khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Ask if it is good',thai:'ดีไหมคะ',english:'Is it good?',phonetic:'dii mǎi khá',words:[{p:'dii',e:'good'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Say you already went',thai:'ไปแล้วครับ',english:'I already went.',phonetic:'pai lâeo khrâp',words:[{p:'pai',e:'go'},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you have a '+eng,thai:'ผมมี'+tw+'ครับ',english:'I have a '+eng+'.',phonetic:'phǒm mii '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'mii',e:'have'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if there is a '+eng,thai:'มี'+tw+'ไหมคะ',english:'Is there a '+eng+'?',phonetic:'mii '+ph+' mǎi khá',words:[{p:'mii',e:'have'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say there is no '+eng,thai:'ไม่มี'+tw+'ครับ',english:'There is no '+eng+'.',phonetic:'mâi mii '+ph+' khrâp',words:[{p:'mâi',e:'no'},{p:'mii',e:'have'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 }
 
@@ -3920,9 +3968,7 @@ function validatePair(pair, target, allAllowed, existingThais, wordType) {
   if (/[ก-๙]/.test(ph)) return false
   // EN too long
   if (en.split(' ').length > 15) return false
-  // Words array roughly matches phonetic
-  const tokens = pair.phonetic.split(' ').filter(Boolean)
-  if (pair.words && pair.words.length > 0 && Math.abs(pair.words.length - tokens.length) > 1) return false
+  // Words array check removed - AI responses don't include words array
 
   // ── TENSE ALIGNMENT ─────────────────────────────────────────────────────
   // "never" must use ไม่เคย, not ไม่
@@ -4066,13 +4112,45 @@ const TRIPLETS = [
     ['Tell someone to','Ask if you already','Say there is no'],
   ]
 
+const SCENARIO_CONTEXTS = {
+  travel: { name: 'Travel & Getting Around', setting: 'Two people planning or on a trip, discussing transport, routes, and getting places.' },
+  nature: { name: 'Nature & Northern Thailand', setting: 'Friends exploring the Thai countryside, visiting hill tribes, experiencing the natural environment.' },
+  river: { name: 'On the River', setting: 'A river trip — rafting or floating downstream, enjoying the scenery.' },
+  body: { name: 'Health & Appearance', setting: 'A conversation about the body, health, beauty, or physical appearance.' },
+  competition: { name: 'Competition & Events', setting: 'Watching or taking part in a competition, beauty contest, or organised event.' },
+  city: { name: 'City Life', setting: 'Around town — driving, navigating, everyday urban life.' },
+  culture: { name: 'Thai Culture & Lifestyle', setting: 'Discussing Thai culture, traditional ways of life, and local customs.' },
+  family: { name: 'Family & People', setting: 'Talking about family, people you know, and everyday social life.' },
+  general: { name: 'Everyday Conversation', setting: 'A relaxed everyday conversation between two people in Thailand.' },
+}
+
+function getScenarioForTarget(target) {
+  const eng = (target.english || '').toLowerCase()
+  const thai = target.thai || ''
+  const type = classifyWord(target)
+  if (['aviation','airplane','flight','route','convenient','transport','by'].some(w => eng.includes(w)) ||
+      ['การบิน','เครื่องบิน','เส้นทาง','โดย','สะดวก'].includes(thai)) return 'travel'
+  if (['nature','hill tribe','long-neck','winding','dusk','lifestyle','tradition'].some(w => eng.includes(w)) ||
+      ['ธรรมชาติ','ชาวเขา','กะเหรี่ยง','คดเคี้ยว','มืดค่ำ','วิถีชีวิต'].includes(thai)) return 'nature'
+  if (['raft','float','river','cruise','drift'].some(w => eng.includes(w)) ||
+      ['แพ','ล่อง'].includes(thai)) return 'river'
+  if (['nose','ear','eye','skin','hair','fur','tooth','body'].some(w => eng.includes(w)) ||
+      ['จมูก','หู','ผิว','เส้นผม','ขน'].includes(thai)) return 'body'
+  if (['beauty queen','compete','advance','contest','arrange','pageant'].some(w => eng.includes(w)) ||
+      ['นางงาม','แย่ง','เข้ารอบ','จัด'].includes(thai)) return 'competition'
+  if (['downtown','city','car','old','full','line','traffic'].some(w => eng.includes(w)) ||
+      ['ตัวเมือง','รถยนต์','เก่า','เต็ม','สาย'].includes(thai)) return 'city'
+  if (['family','girl','woman','person','people'].some(w => eng.includes(w)) ||
+      ['ครอบครัว','สาว'].includes(thai)) return 'family'
+  if (type === 'abstract' || ['culture','lifestyle','tradition'].some(w => eng.includes(w))) return 'culture'
+  return 'general'
+}
+
 async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
-  // ── Models — use selected provider for gen+recheck, GPT escalates if cheaper model ──
-  const SELECTED_MODEL = model || 'openai/gpt-4o-mini'
-  const V2_MODEL  = SELECTED_MODEL   // generate + first recheck with selected model
-  const GPT_MODEL = SELECTED_MODEL === 'openai/gpt-4o-mini'
-    ? 'openai/gpt-4o-mini'           // already best, no escalation needed
-    : 'openai/gpt-4o-mini'           // escalate to GPT if using cheaper model
+  // ── Models: GPT-4o mini generates + rechecks, Haiku escalates ──────────────
+  const GPT_MODEL   = 'openai/gpt-4o-mini'
+  const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
+  console.log('[generator] GPT-4o mini → GPT recheck → Haiku escalation')
 
   const existingThais = new Set()
   let allPairs = []
@@ -4085,7 +4163,8 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง',
     'ไหม','ก็ได้','เคย','อยาก','ต้อง','อาจจะ','กำลัง','เพิ่ง','อย่า']
   const allAllowed = new Set([...ALWAYS_ALLOWED_V, ...vocab.map(w=>w.thai)])
-  const { effectiveCeil } = getSentenceLengthForVocab(vocab)
+  const _lenRes = getSentenceLengthForVocab(vocab) || {}
+  const effectiveCeil = _lenRes.effectiveCeil || 7
 
   // ── Get 30 most relevant concept cards for a target word ──────────────────
   function getConceptBlock(target) {
@@ -4106,12 +4185,10 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
       return true
     }).slice(0, 30)
 
-    if (compat.length === 0) {
-      // Fallback: return the 30 most general concepts
-      return cards.filter(c => c.allowedClasses && c.allowedClasses.includes('verb')).slice(0, 30)
-    }
+    const pool = compat.length > 0 ? compat
+      : cards.filter(c => c.allowedClasses && c.allowedClasses.includes('verb')).slice(0, 30)
 
-    return compat.map(c => ({
+    return pool.map(c => ({
       id: c.id,
       name: c.name,
       pattern: c.pattern,
@@ -4126,20 +4203,35 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
   // ── Build vocab context (known + learning words only) ─────────────────────
   function getVocabContext() {
     const knownWords = vocab.filter(w => w.l === 'known' || (w.i && w.i >= 7))
-      .map(w => w.t + '(' + w.e + ')').slice(0, 120)
-    const learningWords = vocab.filter(w => w.l === 'learning' || (w.i && w.i >= 1 && w.i < 7))
-      .map(w => w.t + '(' + w.e + ')').slice(0, 80)
-    return 'KNOWN WORDS (use freely): ' + knownWords.join(', ') + ' | LEARNING WORDS (use as support): ' + learningWords.join(', ')
+      .map(w => w.t + '(' + w.e + ')').slice(0, 60)
+    return 'USE ONLY THESE KNOWN WORDS (plus target): ' + knownWords.join(', ')
   }
 
   // ── Build prompt for a target word ────────────────────────────────────────
-  function buildSmartPrompt(target, conceptBlock, vocabContext, isRecheck, failureReason) {
+  function buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, failureReason) {
     const type = classifyWord(target)
-    const { floor, ceil } = getSentenceLengthForVocab(vocab)
-    const conceptLines = conceptBlock.map(c => '[' + c.id + '] ' + c.name + ': ' + c.pattern + ' = ' + c.meaning + (c.frames.length ? ' | ' + c.frames.join(' | ') : '') + (c.example ? ' | e.g. ' + c.example : '')).join(' ## ')
+    const lenResult = getSentenceLengthForVocab(vocab) || {}
+    const floor = lenResult.floor || 5
+    const ceil = lenResult.ceil || 7
+    const scenarioCtx = scenario ? (SCENARIO_CONTEXTS[scenario] || SCENARIO_CONTEXTS.general) : SCENARIO_CONTEXTS.general
+    const conceptLines = (conceptBlock || []).slice(0,15).map(c =>
+      (c.pattern||'') + '=' + (c.meaning||'') + ((c.frames && c.frames.length) ? '[' + c.frames[0] + ']' : '')
+    ).join(' | ')
 
-    const recheckNote = isRecheck ? 'ISSUE: ' + failureReason + ' Fix sentence keeping target word ' + target.thai + '.' : ''
-    return 'WORD: ' + target.thai + ' = ' + (target.english||'') + ' | CLASS: ' + type + ' | LEN: ' + floor + '-' + ceil + (recheckNote ? ' | ' + recheckNote : '') + ' | PATTERNS: ' + conceptLines + ' | ' + vocabContext + ' | Build 3 sentences using patterns. Only use vocab provided. Return JSON array: [{"prompt":"Say: ...","thai":"...","phonetic":"...","english":"..."}]'
+    const recheckLine = isRecheck
+      ? 'PREVIOUS ATTEMPT FAILED: ' + failureReason + '. Rewrite using a different grammar pattern. Keep the target word ' + target.thai + '.'
+      : ''
+
+    return 'SCENARIO: ' + scenarioCtx.setting +
+      '\nTARGET: ' + target.thai + ' (' + (target.phonetic||target.thai) + ') = ' + (target.english||'') +
+      '\nCLASS: ' + type + ' | LENGTH: ' + floor + '-' + ceil + ' Thai words' +
+      (recheckLine ? '\n' + recheckLine : '') +
+      '\nGRAMMAR PATTERNS: ' + conceptLines +
+      '\n' + vocabContext +
+      '\nWRITE 3 sentences using the target word, each using a different grammar pattern.' +
+      ' The "prompt" field = natural English instruction (e.g. "Ask if the route is winding", NOT "Say: route").' +
+      ' Mix: 1 statement + 1 question + 1 other.' +
+      '\nRETURN ONLY: [{"prompt":"...","thai":"...","phonetic":"...","english":"..."},...]'
   }
 
   // ── Validate pairs (reuse existing validator) ──────────────────────────────
@@ -4147,25 +4239,50 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     const valid = []
     const failures = []
     for (const p of pairs) {
-      if (!p.thai || !p.english) { failures.push('missing fields'); continue }
-      if (!p.thai.includes(target.thai)) { failures.push('missing target word: ' + target.thai); continue }
-      const tokenCount = (p.thai || '').split('').filter(c => /[฀-๿]/.test(c)).length
-      if (tokenCount < 3) { failures.push('too short'); continue }
-      if (!validatePair(p, target, allAllowed, existingThais, classifyWord(target))) {
-        failures.push('failed validator')
-        continue
+      // Basic field check
+      if (!p.thai || !p.english || !p.prompt) { failures.push('missing fields'); continue }
+      // Must contain target word
+      if (!p.thai.includes(target.thai)) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
+      // Must be a real Thai sentence (at least 3 Thai chars)
+      const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
+      if (thaiChars < 5) { failures.push('too short: ' + p.thai); continue }
+      // Must not be a duplicate
+      if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
+      // Prompt must be reasonable English (not "Say: X" or "Say X" with just the word)
+      const pr = (p.prompt || '').toLowerCase().trim()
+      // Reject lazy "Say: X" / "Ask: X?" / "Negative: X" format
+      const engLower = target.english.toLowerCase()
+      if (pr === 'say: ' + engLower || pr === 'say ' + engLower ||
+          pr === 'ask: ' + engLower + '?' || pr === 'ask ' + engLower ||
+          pr === 'negative: ' + engLower || pr.match(/^(say|ask|negative):\s*\S+$/i)) {
+        failures.push('lazy prompt: ' + p.prompt); continue
+      }
+      if (p.prompt.length < 10) { failures.push('prompt too short'); continue }
+      // Question check: if prompt says "ask" Thai must have question marker
+      if (pr.startsWith('ask') && !p.thai.includes('ไหม') && !p.thai.includes('หรือ') &&
+          !p.thai.includes('ที่ไหน') && !p.thai.includes('อะไร') && !p.thai.includes('ใคร')) {
+        failures.push('ask prompt but no question marker'); continue
       }
       valid.push(p)
     }
+    console.log('[validate] ' + target.thai + ': ' + valid.length + ' valid, ' + failures.length + ' failed: ' + failures.join(' | '))
     return { valid, failures }
   }
 
   // ── Single API call with retry ─────────────────────────────────────────────
   async function callModel(mdl, prompt) {
     try {
-      const text = await callOpenRouterOnce(apiKey, mdl, [{ role:'user', content: prompt }], 1500)
-      return parsePartialArray(text)
+      const sysMsg = 'You are a Thai language teacher. Return ONLY a valid JSON array with objects containing: prompt (natural English instruction like "Ask if the bus is late"), thai (Thai sentence), phonetic (romanisation), english (translation). Never use "Say: X" or "Negative: X" as a prompt.'
+      const messages = [
+        { role: 'system', content: sysMsg },
+        { role: 'user', content: prompt }
+      ]
+      const text = await callOpenRouterOnce(apiKey, mdl, messages, 3000)
+      const parsed = parsePartialArray(text)
+      console.log('[AI] ' + mdl.split('/').pop().slice(0,10) + ' returned ' + parsed.length + ' pairs')
+      return parsed
     } catch(e) {
+      console.error('[AI] error:', e.message)
       return []
     }
   }
@@ -4191,6 +4308,15 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
 
   // ── Pre-compute shared context ─────────────────────────────────────────────
   const vocabContext = getVocabContext()
+  const failureLog = {}  // tracks why each word used fallback
+
+  // Sort targets by scenario so pairs from the same scenario are adjacent — better track flow
+  const scenarioOrder = ['body','travel','river','nature','competition','city','family','culture','general']
+  targets = [...targets].sort((a,b) => {
+    const sa = scenarioOrder.indexOf(getScenarioForTarget(a))
+    const sb = scenarioOrder.indexOf(getScenarioForTarget(b))
+    return (sa < 0 ? 99 : sa) - (sb < 0 ? 99 : sb)
+  })
 
   // ── Main loop — word by word ───────────────────────────────────────────────
   for (let i = 0; i < targets.length; i++) {
@@ -4203,13 +4329,8 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     const compatConcepts = getCompatibleConceptsForTarget(target)
     const conceptFrame = (risk === 'low' || risk === 'medium') && compatConcepts.length > 0
       ? selectConceptFrame(target, compatConcepts) : null
-    if (conceptFrame && !HARDCODED_FALLBACKS[target.thai]) {
-      const cpairs = buildConceptPairs(target, conceptFrame)
-      if (cpairs.length >= 2) {
-        pairs = cpairs.slice(0, 3)
-        console.log('[Concept] ' + target.thai + ' → ' + conceptFrame.concept.id)
-      }
-    }
+    // Concept tier disabled - concept cards feed AI as context instead
+    // (buildConceptPairs produced unreliable output for most word types)
 
     // ── TIER 1: Hardcoded bank ────────────────────────────────────────────
     const hasHardcode = !!HARDCODED_FALLBACKS[target.thai]
@@ -4235,34 +4356,37 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     // ── TIER 2: Smart AI generation (V2 + V2 recheck + GPT escalation) ───
     if (pairs.length < 3) {
       const conceptBlock = getConceptBlock(target)
+      const scenario = getScenarioForTarget(target)
 
       // ── Call 1: V2 generates ─────────────────────────────────────────────
-      const prompt1 = buildSmartPrompt(target, conceptBlock, vocabContext, false, '')
-      let generated = await callModel(V2_MODEL, prompt1)
+      const prompt1 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, false, '')
+      let generated = await callModel(GPT_MODEL, prompt1)
       let { valid, failures } = validateSmartPairs(generated, target)
-      for (const p of valid) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'v2:'+ target.thai}) }
+      for (const p of valid) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt:'+ target.thai}) }
 
-      console.log('[V2] ' + target.thai + ': ' + valid.length + '/3 valid, failures: ' + failures.slice(0,2).join(', '))
+      if (failures.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat(failures.map(f => 'GPT1: ' + f))
+      console.log('[GPT] ' + target.thai + ': ' + valid.length + '/3 valid, failures: ' + failures.slice(0,2).join(', '))
 
       // ── Call 2: V2 rechecks failures (if still need pairs) ───────────────
       if (pairs.length < 3) {
         const failReason = failures.slice(0, 3).join('; ') || 'sentences incomplete or grammatically wrong'
-        const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, true, failReason)
-        const recheck1 = await callModel(V2_MODEL, prompt2)
+        const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason)
+        const recheck1 = await callModel(GPT_MODEL, prompt2)
         const { valid: v2, failures: f2 } = validateSmartPairs(recheck1, target)
-        for (const p of v2) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'v2-recheck:'+ target.thai}) }
+        for (const p of v2) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck:'+ target.thai}) }
 
-        console.log('[V2 recheck] ' + target.thai + ': ' + v2.length + ' more valid')
+        if (f2.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat(f2.map(f => 'GPT2: ' + f))
+      console.log('[GPT recheck] ' + target.thai + ': ' + v2.length + ' more valid')
 
         // ── Call 3: GPT-4o mini escalation (if V2 still failed) ──────────
         if (pairs.length < 3) {
           const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after V2 recheck'
-          const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, true, failReason2)
-          const recheck2 = await callModel(GPT_MODEL, prompt3)
+          const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2)
+          const recheck2 = await callModel(HAIKU_MODEL, prompt3)
           const { valid: v3 } = validateSmartPairs(recheck2, target)
-          for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-escalation:'+ target.thai}) }
+          for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
 
-          console.log('[GPT escalation] ' + target.thai + ': ' + v3.length + ' more valid')
+          console.log('[Haiku] ' + target.thai + ': ' + v3.length + ' more valid')
         }
       }
 
@@ -4270,6 +4394,7 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
       if (pairs.length < 3) {
         const fb = makeFallbackPairs(target).filter(p => !existingThais.has(p.thai))
         for (const f of fb) { if (pairs.length >= 3) break; pairs.push({...f, _source:'fallback:'+ target.thai}) }
+        if (pairs.length < 3) failureLog[target.thai] = (failureLog[target.thai] || []).concat(['FINAL FALLBACK: only ' + pairs.length + '/3 pairs'])
       }
     }
 
@@ -4279,7 +4404,7 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
 
     for (const p of pairs) existingThais.add(p.thai)
     allPairs.push(...pairs.slice(0, 3))
-    onProgress && onProgress(allPairs.length, targets.length * 3, null)
+    onProgress && onProgress(allPairs.length, targets.length * 3, null, null)
   }
 
   // ── Audit ─────────────────────────────────────────────────────────────────
@@ -4314,7 +4439,13 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
   allPairs = allPairs.filter(p => { if (seen.has(p.thai)) return false; seen.add(p.thai); return true })
 
   if (allPairs.length < targets.length * 3) console.warn('[ThaiTeacher] Still short after repair: ' + allPairs.length + '/' + (targets.length*3))
-  onProgress && onProgress(allPairs.length, targets.length * 3, null)
+  // Build final failure summary
+  const fallbackWords = Object.keys(failureLog)
+  if (fallbackWords.length > 0) {
+    console.warn('[ThaiTeacher] Fallback report:')
+    fallbackWords.forEach(w => console.warn('  ' + w + ': ' + failureLog[w].join(' → ')))
+  }
+  onProgress && onProgress(allPairs.length, targets.length * 3, { failureLog, fallbackWords })
   return allPairs
 }
 
@@ -4627,6 +4758,24 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {phase === 'done' && generatedTrack ? (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           <TrackQuality track={generatedTrack} />
+          {fallbackReport && fallbackReport.fallbackWords && fallbackReport.fallbackWords.length > 0 && (
+            <div style={{ background:'#1a0a0a', border:'1px solid #7f1d1d', borderRadius:10, padding:'12px 14px' }}>
+              <div style={{ fontSize:11, color:'#ef4444', fontWeight:700, marginBottom:8 }}>
+                ⚠ {fallbackReport.fallbackWords.length} WORD{fallbackReport.fallbackWords.length > 1 ? 'S' : ''} USED FALLBACK
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {fallbackReport.fallbackWords.map(word => (
+                  <div key={word} style={{ fontSize:11, color:'var(--muted)' }}>
+                    <span style={{ color:'#fca5a5', fontWeight:700 }}>{word}</span>
+                    {' → '}
+                    <span style={{ color:'#9ca3af' }}>
+                      {(fallbackReport.failureLog[word] || []).slice(0,2).join(' · ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <Btn onClick={() => { onGenerated(generatedTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
             ▶ Start SRS Track
           </Btn>
@@ -5684,7 +5833,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { deepseek: 'openrouter.ai → Keys (model: deepseek/deepseek-v2)', gpt4omini: 'openrouter.ai → Keys (model: openai/gpt-4o-mini)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
+  const keySource = { deepseek: 'openrouter.ai → Keys (used for GPT-4o mini + Claude Haiku)', gpt4omini: 'openrouter.ai → Keys (model: openai/gpt-4o-mini)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>

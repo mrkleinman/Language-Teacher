@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v104"/>
-<meta name="app-version" content="v104"/>
+<meta name="app-version" content="v105"/>
+<meta name="app-version" content="v105"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v104';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v104').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v105';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v105').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2014,7 +2014,7 @@ const LESSON_DATA = [{
 
 
 // ── SRS Logic ────────────────────────────────────────────────────────────────
-const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v95' } catch { return 'v104' } })()
+const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v105' } catch { return 'v105' } })()
 
 const EASE = { easy: 2.5, ok: 1.3, hard: 0.6 }
 function calcInterval(cur, rating) {
@@ -4067,9 +4067,12 @@ const TRIPLETS = [
   ]
 
 async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
-  // ── Models ────────────────────────────────────────────────────────────────
-  const V2_MODEL  = 'deepseek/deepseek-v2'    // generate + first recheck (cheap)
-  const GPT_MODEL = 'openai/gpt-4o-mini'       // second recheck (escalation)
+  // ── Models — use selected provider for gen+recheck, GPT escalates if cheaper model ──
+  const SELECTED_MODEL = model || 'openai/gpt-4o-mini'
+  const V2_MODEL  = SELECTED_MODEL   // generate + first recheck with selected model
+  const GPT_MODEL = SELECTED_MODEL === 'openai/gpt-4o-mini'
+    ? 'openai/gpt-4o-mini'           // already best, no escalation needed
+    : 'openai/gpt-4o-mini'           // escalate to GPT if using cheaper model
 
   const existingThais = new Set()
   let allPairs = []
@@ -4526,7 +4529,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
           pairs = await generateTrackWithQwen(targets, anchors, apiKey,
             (done) => { setPairsDone(done); setPairsTotal(targets.length * 3) },
-            vocab, provider === "deepseek" ? "deepseek/deepseek-chat" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "openai/gpt-4o-mini")
+            vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "openai/gpt-4o-mini")
           }
         // Use pre-call phonetics (phoneticsRef) — reliable, per-word accurate
         // Previous regex pair-matching was buggy and overwrote correct data
@@ -5681,7 +5684,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { deepseek: 'openrouter.ai → Keys (model: deepseek/deepseek-chat)', gpt4omini: 'openrouter.ai → Keys (model: openai/gpt-4o-mini)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
+  const keySource = { deepseek: 'openrouter.ai → Keys (model: deepseek/deepseek-v2)', gpt4omini: 'openrouter.ai → Keys (model: openai/gpt-4o-mini)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v112"/>
-<meta name="app-version" content="v112"/>
+<meta name="app-version" content="v113"/>
+<meta name="app-version" content="v113"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v112';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v112').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v113';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v113').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2014,7 +2014,7 @@ const LESSON_DATA = [{
 
 
 // ── SRS Logic ────────────────────────────────────────────────────────────────
-const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v112' } catch { return 'v112' } })()
+const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v113' } catch { return 'v113' } })()
 
 const EASE = { easy: 2.5, ok: 1.3, hard: 0.6 }
 function calcInterval(cur, rating) {
@@ -4378,15 +4378,24 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
         if (f2 && f2.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((f2||[]).map(f => 'GPT2: ' + f))
       console.log('[GPT recheck] ' + target.thai + ': ' + v2.length + ' more valid')
 
-        // ── Call 3: GPT-4o mini escalation (if V2 still failed) ──────────
+        // ── Call 3: GPT second check ─────────────────────────────────────
         if (pairs.length < 3) {
-          const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after V2 recheck'
+          const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after GPT recheck'
           const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2)
-          const recheck2 = await callModel(HAIKU_MODEL, prompt3)
-          const { valid: v3 } = validateSmartPairs(recheck2, target)
-          for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
+          const recheck2 = await callModel(GPT_MODEL, prompt3)
+          const { valid: v3, failures: f3 } = validateSmartPairs(recheck2, target)
+          for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck2:'+ target.thai}) }
+          console.log('[GPT second] ' + target.thai + ': ' + v3.length + ' more valid')
 
-          console.log('[Haiku] ' + target.thai + ': ' + v3.length + ' more valid')
+          // ── Call 4: Haiku final escalation ───────────────────────────────
+          if (pairs.length < 3) {
+            const failReason3 = f3.slice(0, 3).join('; ') || 'still failing after GPT second check'
+            const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3)
+            const recheck3 = await callModel(HAIKU_MODEL, prompt4)
+            const { valid: v4 } = validateSmartPairs(recheck3, target)
+            for (const p of v4) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
+            console.log('[Haiku] ' + target.thai + ': ' + v4.length + ' more valid')
+          }
         }
       }
 
@@ -4404,7 +4413,10 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
 
     for (const p of pairs) existingThais.add(p.thai)
     allPairs.push(...pairs.slice(0, 3))
-    try { onProgress && onProgress(allPairs.length, targets.length * 3, null) } catch(e) {}
+    try {
+      const latestSource = pairs.length > 0 ? (pairs[pairs.length-1]._source || '') : ''
+      onProgress && onProgress(allPairs.length, targets.length * 3, null, latestSource)
+    } catch(e) {}
   }
 
   // ── Audit ─────────────────────────────────────────────────────────────────
@@ -4659,10 +4671,17 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           }
 
           pairs = await generateTrackWithQwen(targets, anchors, apiKey,
-            (done, total, meta) => {
+            (done, total, meta, source) => {
               setPairsDone(done)
               setPairsTotal(targets.length * 3)
               try { if (meta && meta.fallbackWords && typeof setFallbackReport === 'function') setFallbackReport(meta) } catch(e) {}
+              try {
+                if (source && pairSources.current) {
+                  for (let si = Math.max(0, done-3); si < done; si++) {
+                    if (!pairSources.current[si]) pairSources.current[si] = source
+                  }
+                }
+              } catch(e) {}
             },
             vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "openai/gpt-4o-mini")
           }
@@ -4738,14 +4757,24 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
       {/* Live pair counter tiles */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
-        {Array.from({length: 90}, (_, i) => (
-          <div key={i} style={{
-            height: 8, borderRadius: 3,
-            background: i < pairsDone ? color : 'var(--surface2)',
-            transition: 'background 0.2s',
-            opacity: i < pairsDone ? 1 : 0.4
-          }} />
-        ))}
+        {Array.from({length: 90}, (_, i) => {
+          const src = (pairSources.current && pairSources.current[i]) || ''
+          const brickColor = i >= pairsDone ? 'var(--surface2)'
+            : src.startsWith('gpt:') ? '#ffffff'
+            : src.startsWith('gpt-recheck:') && !src.startsWith('gpt-recheck2:') ? '#10b981'
+            : src.startsWith('gpt-recheck2:') ? '#065f46'
+            : src.startsWith('haiku:') ? '#FA8072'
+            : src.startsWith('hardcoded:') || src.startsWith('fallback:') ? '#ef4444'
+            : color
+          return (
+            <div key={i} style={{
+              height: 8, borderRadius: 3,
+              background: brickColor,
+              transition: 'background 0.2s',
+              opacity: i < pairsDone ? 1 : 0.4
+            }} />
+          )
+        })}
       </div>
 
       {/* Status / Action buttons */}

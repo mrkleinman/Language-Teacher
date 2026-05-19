@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v118"/>
-<meta name="app-version" content="v118"/>
+<meta name="app-version" content="v119"/>
+<meta name="app-version" content="v119"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v118';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v118').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v119';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v119').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2014,7 +2014,7 @@ const LESSON_DATA = [{
 
 
 // ── SRS Logic ────────────────────────────────────────────────────────────────
-const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v118' } catch { return 'v118' } })()
+const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v119' } catch { return 'v119' } })()
 
 const EASE = { easy: 2.5, ok: 1.3, hard: 0.6 }
 function calcInterval(cur, rating) {
@@ -4245,14 +4245,14 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
       : ''
 
     return 'SCENARIO: ' + scenarioCtx.setting +
-      '\nTARGET: ' + target.thai + ' (' + (target.phonetic||target.thai) + ') = ' + (target.english||'') +
+      '\nTARGET WORD: ' + target.thai + ' (' + (target.phonetic||target.thai) + ') = "' + (target.english||'') + '"' +
+      '\n⚠ CRITICAL: Every Thai sentence MUST contain the EXACT word "' + target.thai + '". Do NOT replace it with synonyms.' +
       '\nCLASS: ' + type + ' | LENGTH: ' + floor + '-' + ceil + ' Thai words' +
       (recheckLine ? '\n' + recheckLine : '') +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
-      '\nWRITE 3 sentences using the target word, each using a different grammar pattern.' +
-      ' The "prompt" field = natural English instruction (e.g. "Ask if the route is winding", NOT "Say: route").' +
-      ' Mix: 1 statement + 1 question + 1 other.' +
+      '\nWRITE 3 sentences each containing "' + target.thai + '". Use 3 different grammar patterns.' +
+      ' "prompt" = natural English instruction. Mix statement + question + negative/other.' +
       '\nRETURN ONLY: [{"prompt":"...","thai":"...","phonetic":"...","english":"..."},...]'
   }
 
@@ -4286,9 +4286,11 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
       // Question check
       const hasAnyQuestion = p.thai.includes('ไหม') || p.thai.includes('หรือ') ||
           p.thai.includes('ที่ไหน') || p.thai.includes('อะไร') || p.thai.includes('ใคร') ||
-          p.thai.includes('ทำไม') || p.thai.includes('ยังไง') || p.thai.includes('กี่') ||
-          p.thai.includes('เมื่อไหร่') || p.thai.includes('ได้ไหม') || p.thai.includes('เหรอ') ||
-          p.thai.includes('มั้ย') || p.thai.endsWith('คะ') || p.thai.endsWith('ครับ') === false
+          p.thai.includes('ทำไม') || p.thai.includes('ยังไง') || p.thai.includes('อย่างไร') ||
+          p.thai.includes('กี่') || p.thai.includes('เมื่อไหร่') || p.thai.includes('เท่าไหร่') ||
+          p.thai.includes('ได้ไหม') || p.thai.includes('เหรอ') || p.thai.includes('มั้ย') ||
+          p.thai.includes('เป็นยังไง') || p.thai.includes('อย่างงั้น') ||
+          !p.thai.endsWith('ครับ')
       if (pr.startsWith('ask') && !hasAnyQuestion) {
         failures.push('ask prompt but no question marker'); continue
       }
@@ -4454,7 +4456,8 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     allPairs.push(...pairs.slice(0, 3))
     try {
       const latestSource = pairs.length > 0 ? (pairs[pairs.length-1]._source || '') : ''
-      onProgress && onProgress(allPairs.length, targets.length * 3, null, latestSource)
+      const wordSource = { word: target.thai, source: latestSource }
+      onProgress && onProgress(allPairs.length, targets.length * 3, null, latestSource, wordSource)
     } catch(e) {}
   }
 
@@ -4723,6 +4726,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                   }
                 }
               } catch(e) {}
+              try {
+                if (arguments[4] && arguments[4].word && wordSources.current) {
+                  wordSources.current[arguments[4].word] = arguments[4].source
+                }
+              } catch(e) {}
             },
             vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "openai/gpt-4o-mini")
           }
@@ -4873,307 +4881,40 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
       {/* Target words */}
       {targets.length > 0 && (
+        <>
         <Card style={{ padding:'12px 14px' }}>
           <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>Targeting {targets.length} words</p>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
             {targets.map((w,i) => {
               const done = i * 3 < pairsDone
               const phonetic = targetPhonetics[w.thai] || targetPhonetics[w.id] || w.phonetic || ''
+              const src = (wordSources.current && wordSources.current[w.thai]) || ''
+              const chipColor = !done ? 'var(--border)'
+                : src.startsWith('gpt:') ? '#888888'
+                : src.startsWith('gpt-recheck2:') ? '#065f46'
+                : src.startsWith('gpt-recheck:') ? '#10b981'
+                : src.startsWith('haiku:') ? '#FA8072'
+                : src.startsWith('hardcoded:') || src.startsWith('fallback:') ? '#111111'
+                : done ? color : 'var(--border)'
+              const isFallback = done && (src.startsWith('hardcoded:') || src.startsWith('fallback:'))
               return (
-                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : 'transparent', border:`1px solid ${done ? color : 'var(--border)'}`, borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0 }}>
-                  <span className="thai" style={{ color: done ? color : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
-                  {phonetic && <span className="phon" style={{ color: done ? color : 'var(--gold)', fontSize:9, marginTop:1, opacity: done ? 1 : 0.7 }}>{phonetic}</span>}
+                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background:'var(--surface2)', border:'1px solid ' + chipColor, borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0, opacity: done ? 1 : 0.5 }}>
+                  <span className="thai" style={{ color: isFallback ? '#ef4444' : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
+                  {phonetic ? <span className="phon" style={{ color: done ? chipColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{phonetic}</span> : null}
                 </div>
               )
             })}
           </div>
         </Card>
-      )}
-    </div>
-  )
-}
 
-// ── Track Player ─────────────────────────────────────────────────────────────
-
-// Count syllables in Thai text (each Thai syllable cluster = 1 unit)
-// Simple heuristic: split on spaces, each token = ~1 syllable for short words, 2 for long
-// Count syllables from phonetic string (space-separated tokens = syllables)
-// Falls back to Thai char-based estimate if no phonetic available
-function countSyllables(thai, phonetic) {
-  if (phonetic && phonetic.trim()) {
-    return phonetic.trim().split(/\s+/).filter(Boolean).length
-  }
-  // Thai char estimate: avg ~2.5 chars per syllable (incl tone marks, vowels)
-  const chars = (thai || '').replace(/[\s]/g, '').length
-  return Math.max(2, Math.round(chars / 2.5))
-}
-
-// Pimsleur S = 1.5n + 1.0, but add TTS speaking time on top
-// TTS speaks at ~thaiSpeed rate so we add extra buffer
-function calcDuration(thai, phase, phonetic) {
-  if (phase === 'prompt') {
-    // English: ~130wpm reading pace + 1.5s thinking buffer
-    const words = (thai || '').trim().split(/\s+/).length
-    return Math.max(4000, Math.round(words * 460 + 1500))
-  }
-  const n = countSyllables(thai, phonetic)
-  // Pimsleur repeat pause: S = 2.0n + 1.5 seconds AFTER speech ends
-  // Add estimated TTS duration (~0.4s per syllable at 0.8x)
-  const ttsDur = Math.round(n * 400)
-  const pauseDur = Math.round((2.0 * n + 1.5) * 1000)
-  return ttsDur + pauseDur
-}
-
-function Player({ track, onComplete, onBack, onKru, onBookmark }) {
-  const pairs = track.pairs || []
-  const [idx, setIdx] = useState(track.bookmark || 0)
-  const [bookmarked, setBookmarked] = useState(false)
-  const [phase, setPhase] = useState('prompt')
-  const [playing, setPlaying] = useState(false)
-  const [countdown3, setCountdown3] = useState(3)
-  const [speaking, setSpeaking] = useState(false)
-  const [countdown, setCountdown] = useState(1)
-  const [lessonDone, setLessonDone] = useState(false)
-  const [keywords, setKeywords] = useState((track.keywords || []).map(k => ({ ...k, rating: null })))
-  const [allRated, setAllRated] = useState(false)
-  const [voices, setVoices] = useState([])
-  const [thaiSpeed, setThaiSpeed] = useState(() => { try { const s = localStorage.getItem('tt-speed'); return s ? parseFloat(s) : 0.8 } catch { return 0.8 } })
-  const cancelledRef = useRef(false)
-  const pausedRef = useRef(false)
-  const rafRef = useRef(null)
-
-  const pair = pairs[idx] || {}
-  const overallPct = Math.round((idx / pairs.length) * 100)
-  const HAS_SPEECH = typeof window !== 'undefined' && 'speechSynthesis' in window
-
-  // Estimated time remaining (sum of all remaining pairs)
-  const timeLeft = useMemo(() => {
-    let ms = 0
-    for (let i = idx; i < pairs.length; i++) {
-      const p = pairs[i]
-      ms += calcDuration(p.prompt, 'prompt', null) + 1800 + calcDuration(p.thai, 'reveal', p.phonetic) + 2500
-    }
-    // Subtract current phase if already in reveal
-    if (phase === 'reveal') ms -= calcDuration(pair.prompt, 'prompt', null) + 1800
-    const mins = Math.ceil(ms / 60000)
-    return mins <= 1 ? '< 1 min' : `~${mins} min`
-  }, [idx, phase, pairs])
-
-  // ── 3-2-1 lead-in before playback starts ──
-  useEffect(() => {
-    let n = 3
-    setCountdown3(n)
-    const iv = setInterval(() => {
-      n--
-      if (n > 0) setCountdown3(n)
-      else { clearInterval(iv); setCountdown3(0); setPlaying(true) }
-    }, 1000)
-    return () => clearInterval(iv)
-  }, [])
-
-  useEffect(() => {
-    if (!HAS_SPEECH) return
-    function load() { const v = window.speechSynthesis.getVoices(); if (v.length) setVoices(v) }
-    load()
-    window.speechSynthesis.onvoiceschanged = load
-    return () => { try { window.speechSynthesis.onvoiceschanged = null } catch(e) {} }
-  }, [])
-
-  function startCountdown(ms) {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    const start = Date.now()
-    setCountdown(1)
-    function tick() {
-      const remaining = Math.max(0, 1 - (Date.now() - start) / ms)
-      setCountdown(remaining)
-      if (remaining > 0 && !cancelledRef.current) rafRef.current = requestAnimationFrame(tick)
-    }
-    rafRef.current = requestAnimationFrame(tick)
-  }
-
-  function stopCountdown() {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    setCountdown(0)
-  }
-
-  function speakOrWait(text, lang, ms, onDone) {
-    if (!HAS_SPEECH) {
-      setSpeaking(true); startCountdown(ms)
-      const t = setTimeout(() => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }, ms)
-      return () => clearTimeout(t)
-    }
-    try { window.speechSynthesis.cancel() } catch(e) {}
-    const utter = new SpeechSynthesisUtterance(text)
-    utter.lang = lang
-    utter.rate = lang.startsWith('th') ? thaiSpeed : 0.88
-    const match = voices.find(v => v.lang.startsWith(lang.slice(0, 2)))
-    if (match) utter.voice = match
-    setSpeaking(true); startCountdown(ms)
-    utter.onend = () => { setSpeaking(false); stopCountdown(); if (!pausedRef.current && !cancelledRef.current) onDone() }
-    utter.onerror = () => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }
-    try { window.speechSynthesis.speak(utter) } catch(e) { setSpeaking(false); stopCountdown(); onDone() }
-    return () => { try { window.speechSynthesis.cancel() } catch(e) {} setSpeaking(false); stopCountdown() }
-  }
-
-  useEffect(() => {
-    if (!playing || lessonDone) return
-    cancelledRef.current = false; pausedRef.current = false
-    const promptDur = calcDuration(pair.prompt, 'prompt')
-    const revealDur = calcDuration(pair.thai, 'reveal')
-    let cleanup = () => {}
-    if (phase === 'prompt') {
-      // Pause after prompt = Pimsleur formula based on Thai answer syllables
-      const n = countSyllables(pair.thai, pair.phonetic)
-      const thinkMs = Math.round((0.6 * n + 0.4) * 1000)
-      cleanup = speakOrWait(pair.prompt, 'en-US', promptDur, () => {
-        // This fires from utter.onend — AFTER speech actually finishes
-        startCountdown(thinkMs)
-        const t = setTimeout(() => { if (!cancelledRef.current) { stopCountdown(); setPhase('reveal') } }, thinkMs)
-        return () => clearTimeout(t)
-      }) || (() => {})
-    } else {
-      cleanup = speakOrWait(pair.thai, 'th-TH', revealDur, () => {
-        startCountdown(2500)
-        const t = setTimeout(() => {
-          if (cancelledRef.current) return
-          stopCountdown()
-          if (idx < pairs.length - 1) { setIdx(i => i + 1); setPhase('prompt') }
-          else setLessonDone(true)
-        }, 2500)
-        return () => clearTimeout(t)
-      }) || (() => {})
-    }
-    return () => {
-      cancelledRef.current = true
-      try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {}
-      setSpeaking(false); stopCountdown(); cleanup()
-    }
-  }, [idx, phase, playing, lessonDone, voices])
-
-  function togglePlay() {
-    if (playing) {
-      pausedRef.current = true
-      try { if (HAS_SPEECH) window.speechSynthesis.pause() } catch(e) {}
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      setPlaying(false)
-    } else {
-      pausedRef.current = false
-      try { if (HAS_SPEECH) window.speechSynthesis.resume() } catch(e) {}
-      setPlaying(true)
-    }
-  }
-
-  function jumpTo(newIdx, newPhase = 'prompt') {
-    cancelledRef.current = true
-    try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {}
-    setSpeaking(false); stopCountdown()
-    setIdx(newIdx); setPhase(newPhase); setPlaying(true)
-    setTimeout(() => { cancelledRef.current = false }, 50)
-  }
-
-  function rateKeyword(i, rating) {
-    setKeywords(kw => {
-      const u = kw.map((k, ki) => ki === i ? { ...k, rating } : k)
-      setAllRated(u.every(k => k.rating))
-      return u
-    })
-  }
-
-  const Waveform = () => (
-    <div style={{ display:'flex', alignItems:'center', gap:3, height:24 }}>
-      {[0,1,2,3,4,5,6].map(i => (
-        <div key={i} style={{ width:3, borderRadius:2, background:phase==='reveal'?'var(--gold)':'#4a90e2', height:speaking?`${8+Math.sin(i*0.9)*8+4}px`:'4px', animation:speaking?`wave 0.7s ease-in-out ${i*0.09}s infinite alternate`:'none', transition:'height 0.2s' }} />
-      ))}
-      <style>{`@keyframes wave{from{height:4px}to{height:22px}}`}</style>
-    </div>
-  )
-
-  if (lessonDone) {
-    return (
-      <div className="fade-in" style={{ background:'var(--bg)', minHeight:'100vh', padding:'16px 16px 40px', maxWidth:500, margin:'0 auto' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
-          <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="x" size={20} /></button>
-          <div>
-            <div className="display" style={{ fontSize:18 }}>Lesson complete!</div>
-            <div style={{ fontSize:12, color:'var(--muted)' }}>Rate how well you knew each word</div>
+        {track && track.bookmark > 0 && idx === (track.bookmark || 0) && !playing && (
+          <div style={{ margin:'6px 0 0', background:'#0d1a00', border:'1px solid #3a6000', borderRadius:8, padding:'7px 12px', display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:13 }}>🔖</span>
+            <span style={{ fontSize:12, color:'#86c900', flex:1 }}>Resuming from pair {(track.bookmark || 0) + 1} of {pairs.length}</span>
+            <button onClick={() => { setIdx(0) }} style={{ background:'none', border:'none', color:'var(--muted)', fontSize:11, cursor:'pointer', fontFamily:'Sarabun,sans-serif' }}>Start over</button>
           </div>
-        </div>
-        <div style={{ height:3, background:'var(--gold)', borderRadius:2, marginBottom:24 }} />
-        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:24 }}>
-          {keywords.map((kw,i) => (
-            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
-              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:12 }}>
-                <span className="thai" style={{ fontSize:26, color:'var(--gold)' }}>{kw.thai}</span>
-                {kw.phonetic && <span className="phon" style={{ fontSize:13, color:'#7a8aad' }}>{kw.phonetic}</span>}
-                <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
-              </div>
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                {[['hard','😅','#ef4444','#2d1515'],['ok','👍','#f59e0b','#3d2800'],['easy','⭐','#10b981','#063d2e']].map(([r,e,col,bg]) => (
-                  <button key={r} onClick={() => rateKeyword(i,r)}
-                    style={{ flex:1, padding:'9px 4px', borderRadius:8, border:`1px solid ${kw.rating===r?col:'var(--border)'}`, background:kw.rating===r?bg:'transparent', color:kw.rating===r?col:'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
-                    {e} {r}
-                  </button>
-                ))}
-                <button onClick={() => rateKeyword(i,'known')}
-                  style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='known'?'#10b981':'var(--border)'}`, background:kw.rating==='known'?'#063d2e':'transparent', color:kw.rating==='known'?'#10b981':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
-                  ✓ Mark Known
-                </button>
-                <button onClick={() => rateKeyword(i,'skip')}
-                  style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='skip'?'#6b7280':'var(--border)'}`, background:kw.rating==='skip'?'#1a1a2e':'transparent', color:kw.rating==='skip'?'#9ca3af':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
-                  🚫 Didn't appear
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <button onClick={() => onComplete(keywords)} disabled={!allRated}
-          style={{ width:'100%', padding:'15px', borderRadius:12, border:'none', background:allRated?'linear-gradient(135deg,#d4a94a,#b88a35)':'var(--surface2)', color:allRated?'#0b1120':'var(--muted)', fontSize:16, fontWeight:700, cursor:allRated?'pointer':'not-allowed', fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
-          Save Progress
-        </button>
-      </div>
-    )
-  }
-
-  const barColor = speaking ? (phase==='prompt' ? '#4a90e2' : 'var(--gold)') : 'var(--surface2)'
-
-  return (
-    <div style={{ background:'var(--bg)', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:500, margin:'0 auto', userSelect:'none' }}>
-
-      {/* Overall progress — top */}
-      <div style={{ height:3, background:'var(--surface2)' }}>
-        <div style={{ height:'100%', width:`${overallPct}%`, background:'linear-gradient(90deg,#d4a94a,#10b981)', transition:'width 0.5s ease' }} />
-      </div>
-
-      {/* Controls */}
-      <div style={{ display:'flex', alignItems:'center', padding:'10px 16px', gap:8 }}>
-        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="arrow_left" size={18} /></button>
-        <span style={{ fontSize:13, color:'var(--muted)' }}>{idx+1} / {pairs.length}</span>
-        <span style={{ fontSize:11, color:'var(--gold-dim)', marginLeft:4 }}>{timeLeft}</span>
-        <div style={{ flex:1 }} />
-        <button onClick={() => idx>0 && jumpTo(idx-1)} disabled={idx===0}
-          style={{ background:'none', border:'none', color:idx===0?'var(--border)':'var(--muted)', cursor:idx===0?'default':'pointer', padding:'6px 8px', fontSize:18 }}>⏮</button>
-        <button onClick={togglePlay}
-          style={{ width:40, height:40, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          {playing ? '⏸' : '▶'}
-        </button>
-        <button onClick={() => idx<pairs.length-1 ? jumpTo(idx+1) : setLessonDone(true)}
-          style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:'6px 8px', fontSize:18 }}>⏭</button>
-        <button onClick={() => { cancelledRef.current = true; try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {} setSpeaking(false); stopCountdown(); setLessonDone(true) }}
-          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'#f59e0b', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>☑ Review</button>
-        <button onClick={() => { onBookmark && onBookmark(idx); setBookmarked(true); setTimeout(() => setBookmarked(false), 2000) }}
-          style={{ background: bookmarked ? '#1a2a00' : 'var(--surface)', border:`1px solid ${bookmarked ? '#4a7a00' : 'var(--border)'}`, borderRadius:20, padding:'5px 10px', cursor:'pointer', color: bookmarked ? '#86c900' : 'var(--muted)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
-          {bookmarked ? '✓ Saved' : '🔖 Pair ' + (idx + 1)}</button>
-        <button onClick={() => { togglePlay(); onKru(pair.prompt) }}
-          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'var(--gold)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>ครู</button>
-      </div>
-
-      {/* Resume from bookmark banner */}
-      {track.bookmark > 0 && idx === (track.bookmark || 0) && !playing && (
-        <div style={{ margin:'6px 16px 0', background:'#0d1a00', border:'1px solid #3a6000', borderRadius:8, padding:'7px 12px', display:'flex', alignItems:'center', gap:8 }}>
-          <span style={{ fontSize:13 }}>🔖</span>
-          <span style={{ fontSize:12, color:'#86c900', flex:1 }}>Resuming from pair {(track.bookmark || 0) + 1} of {pairs.length}</span>
-          <button onClick={() => { setIdx(0) }} style={{ background:'none', border:'none', color:'var(--muted)', fontSize:11, cursor:'pointer', fontFamily:'Sarabun,sans-serif' }}>Start over</button>
-        </div>
+        )}
+        </>
       )}
 
       {/* Thai speed control */}
@@ -5223,7 +4964,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
                 {pair.phonetic || pair.target_phonetic || ''}
               </p>
             )}
-            <p style={{ fontSize:16, color:'#e8d5a3', fontStyle:'italic', textAlign:'center', opacity:0.85 }}>{pair.english}</p>
+            <p style={{ fontSize:22, color:'#e8d5a3', fontWeight:600, textAlign:'center', lineHeight:1.4, maxWidth:340 }}>{pair.english}</p>
             <Waveform />
             <p className="thai" style={{ fontSize:26, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center' }}>{pair.thai}</p>
           </div>

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v133"/>
-<meta name="app-version" content="v133"/>
+<meta name="app-version" content="v134"/>
+<meta name="app-version" content="v134"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v133';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v133').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v134';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v134').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4380,6 +4380,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
   function validateSmartPairs(pairs, target, strict=true) {
     const valid = []
     const failures = []
+    const failedPairs = []  // {pair, reason} — for repair calls
 
     // Build known vocab set - include ALL vocab words (target words may not have repCount yet)
     const knownThaiWords = new Set(
@@ -4403,71 +4404,69 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
     ])
 
     for (const p of pairs) {
+      let failReason = null
       // Basic field check
-      if (!p.thai || !p.english || !p.prompt) { failures.push('missing fields'); continue }
+      if (!p.thai || !p.english || !p.prompt) { failReason = 'missing fields' }
       // Must contain target word
-      if (!p.thai.includes(target.thai)) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
-      // Must be a real Thai sentence (at least 5 Thai chars)
-      const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
-      if (thaiChars < 5) { failures.push('too short: ' + p.thai); continue }
-      // Length check via phonetic word count (spaces = word boundaries, reliable)
-      const phWords = (p.phonetic || '').trim().split(/\s+/).filter(w => w && !/^[?.!,]$/.test(w)).length
-      const lenCheck = getSentenceLengthForVocab(vocab) || {}
-      const minWords = 5  // user-set minimum
-      const maxWords = (lenCheck.hardCeil || 8) + 2  // allow 2 over
-      // If phonetic looks incomplete (≤2 tokens), fall back to Thai char count estimate
-      const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
-      if (effectiveLen < minWords) { failures.push('too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai); continue }
-      if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
-      // Must not be a duplicate
-      if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
-      // ── Unknown vocab check (skipped on lenient mode for final AI attempts) ──
-      if (strict && knownThaiWords.size > 0) {
-        // Find Thai substrings not covered by known words or always-ok words
-        let remaining = p.thai
-        // Remove target word
-        remaining = remaining.split(target.thai).join(' ')
-        // Remove all known words
-        for (const w of [...knownThaiWords, ...alwaysOk]) {
-          remaining = remaining.split(w).join(' ')
+      else if (!p.thai.includes(target.thai)) { failReason = 'no target: ' + target.thai + ' in: ' + p.thai.slice(0,30) }
+      else {
+        // Must be a real Thai sentence (at least 5 Thai chars)
+        const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
+        if (thaiChars < 5) { failReason = 'too short: ' + p.thai }
+        else {
+          // Length check via phonetic word count
+          const phWords = (p.phonetic || '').trim().split(/\s+/).filter(w => w && !/^[?.!,]$/.test(w)).length
+          const lenCheck = getSentenceLengthForVocab(vocab) || {}
+          const minWords = 5  // user-set minimum
+          const maxWords = (lenCheck.hardCeil || 8) + 2
+          const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
+          if (effectiveLen < minWords) { failReason = 'too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai }
+          else if (phWords > 2 && phWords > maxWords) { failReason = 'too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai }
+          else if (existingThais.has(p.thai)) { failReason = 'duplicate' }
+          else if (strict && knownThaiWords.size > 0) {
+            let remaining = p.thai
+            remaining = remaining.split(target.thai).join(' ')
+            for (const w of [...knownThaiWords, ...alwaysOk]) {
+              remaining = remaining.split(w).join(' ')
+            }
+            const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
+            if (unknownChars.length > 3) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
+          }
+          if (!failReason) {
+            const pr = (p.prompt || '').toLowerCase().trim()
+            const engLower = target.english.toLowerCase()
+            if (pr === 'say: ' + engLower || pr === 'say ' + engLower ||
+                pr === 'ask: ' + engLower + '?' || pr === 'ask ' + engLower ||
+                pr === 'negative: ' + engLower || pr.match(/^(say|ask|negative):\s*\S+$/i)) {
+              failReason = 'lazy prompt: ' + p.prompt
+            } else if (p.prompt.length < 10) {
+              failReason = 'prompt too short'
+            } else {
+              const vagueVerbs = /^(describe|discuss|talk about|inquire about|mention|explain|elaborate|explore|consider|reflect|think about|share|express your thoughts|tell me about|speak about|comment on)/i
+              if (vagueVerbs.test(pr)) { failReason = 'vague prompt: ' + p.prompt }
+              else {
+                const hasAnyQuestion = p.thai.includes('ไหม') || p.thai.includes('หรือ') ||
+                    p.thai.includes('ที่ไหน') || p.thai.includes('อะไร') || p.thai.includes('ใคร') ||
+                    p.thai.includes('ทำไม') || p.thai.includes('ยังไง') || p.thai.includes('อย่างไร') ||
+                    p.thai.includes('กี่') || p.thai.includes('เมื่อไหร่') || p.thai.includes('เท่าไหร่') ||
+                    p.thai.includes('ได้ไหม') || p.thai.includes('เหรอ') || p.thai.includes('มั้ย') ||
+                    p.thai.includes('เป็นยังไง') || !p.thai.endsWith('ครับ')
+                if (pr.startsWith('ask') && !hasAnyQuestion) { failReason = 'ask prompt but no question marker' }
+              }
+            }
+          }
         }
-        // Remove non-Thai chars and spaces
-        const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
-        if (unknownChars.length > 3) {
-          // More than 3 unknown Thai chars = likely has unknown vocab
-          failures.push('unknown vocab: ' + unknownChars.slice(0,20))
-          continue
-        }
       }
-      // Prompt must be reasonable English
-      const pr = (p.prompt || '').toLowerCase().trim()
-      const engLower = target.english.toLowerCase()
-      if (pr === 'say: ' + engLower || pr === 'say ' + engLower ||
-          pr === 'ask: ' + engLower + '?' || pr === 'ask ' + engLower ||
-          pr === 'negative: ' + engLower || pr.match(/^(say|ask|negative):\s*\S+$/i)) {
-        failures.push('lazy prompt: ' + p.prompt); continue
+      if (failReason) {
+        failures.push(failReason)
+        // Track the failed pair + reason so we can attempt targeted repair
+        failedPairs.push({ pair: p, reason: failReason })
+      } else {
+        valid.push(p)
       }
-      if (p.prompt.length < 10) { failures.push('prompt too short'); continue }
-      // Reject vague meta-instruction prompts — must be specific speaking instructions
-      const vagueVerbs = /^(describe|discuss|talk about|inquire about|mention|explain|elaborate|explore|consider|reflect|think about|share|express your thoughts|tell me about|speak about|comment on)/i
-      if (vagueVerbs.test(pr)) {
-        failures.push('vague prompt (not specific): ' + p.prompt); continue
-      }
-      // Question check
-      const hasAnyQuestion = p.thai.includes('ไหม') || p.thai.includes('หรือ') ||
-          p.thai.includes('ที่ไหน') || p.thai.includes('อะไร') || p.thai.includes('ใคร') ||
-          p.thai.includes('ทำไม') || p.thai.includes('ยังไง') || p.thai.includes('อย่างไร') ||
-          p.thai.includes('กี่') || p.thai.includes('เมื่อไหร่') || p.thai.includes('เท่าไหร่') ||
-          p.thai.includes('ได้ไหม') || p.thai.includes('เหรอ') || p.thai.includes('มั้ย') ||
-          p.thai.includes('เป็นยังไง') || p.thai.includes('อย่างงั้น') ||
-          !p.thai.endsWith('ครับ')
-      if (pr.startsWith('ask') && !hasAnyQuestion) {
-        failures.push('ask prompt but no question marker'); continue
-      }
-      valid.push(p)
     }
     console.log('[validate] ' + target.thai + ': ' + valid.length + ' valid, ' + failures.length + ' failed: ' + failures.join(' | '))
-    return { valid, failures }
+    return { valid, failures, failedPairs }
   }
 
   // ── Single API call with retry ─────────────────────────────────────────────
@@ -4600,6 +4599,27 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
 
       // ── Final fallback — only reached after all 4 AI calls failed ──────────
       if (pairs.length < 3) console.warn('[generateTrack] ALL 4 AI calls failed for: ' + target.thai + ' | failures: ' + JSON.stringify(failureLog[target.thai]||[]))
+
+      // ── Validator repair: take best failed pairs, ask AI to fix the specific issues ──
+      if (pairs.length < 3) {
+        const allFailed = [
+          ...(validateSmartPairs([...pairs], target, false).failedPairs || []),
+        ]
+        // Collect failed pairs from all previous calls (stored in failureLog descriptions)
+        const repairReasons = [...new Set((failureLog[target.thai] || []).filter(r => !r.includes('FINAL')).slice(-4))]
+        if (repairReasons.length > 0) {
+          const repairHint = 'VALIDATOR REJECTED previous attempts because: ' + repairReasons.join(' | ') +
+            '. Fix each issue specifically. Every sentence must include "' + target.thai + '".'
+          const repairPrompt = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, repairHint)
+          const repaired = await callModel(GPT_MODEL, repairPrompt)
+          const { valid: vRepair } = validateSmartPairs(repaired, target, false)
+          for (const p of vRepair) {
+            if (pairs.length >= 3) break
+            if (!existingThais.has(p.thai)) pairs.push({...p, _source:'validator-repair:'+target.thai})
+          }
+          console.log('[repair] ' + target.thai + ': ' + vRepair.length + ' fixed')
+        }
+      }
       if (pairs.length < 3) {
         // Try hardcoded bank (now last resort, not first choice)
         const hbank = HARDCODED_FALLBACKS[target.thai]
@@ -4989,6 +5009,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             : src.startsWith('gpt-recheck2:') ? '#065f46'
             : src.startsWith('gpt-recheck:') ? '#10b981'
             : src.startsWith('haiku:') ? '#FA8072'
+            : src.startsWith('validator-repair:') ? '#f59e0b'
             : src.startsWith('hardcoded:') || src.startsWith('fallback:') ? '#111111'
             : i < pairsDone ? color : 'var(--surface2)'
           return <div key={i} style={{ height:8, borderRadius:3, background:bg, transition:'background 0.2s', opacity:i < pairsDone ? 1 : 0.4 }} />

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v115"/>
-<meta name="app-version" content="v115"/>
+<meta name="app-version" content="v117"/>
+<meta name="app-version" content="v117"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v115';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v115').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v117';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v117').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2014,7 +2014,7 @@ const LESSON_DATA = [{
 
 
 // ── SRS Logic ────────────────────────────────────────────────────────────────
-const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v115' } catch { return 'v115' } })()
+const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v117' } catch { return 'v117' } })()
 
 const EASE = { easy: 2.5, ok: 1.3, hard: 0.6 }
 function calcInterval(cur, rating) {
@@ -2781,8 +2781,8 @@ async function _deadDeepSeekFn_UNUSED(targets, anchors, apiKey, onProgress, voca
 // ── Shared prompt builder for ALL AI providers ────────────────────────────────
 
 function getSentenceLengthForVocab(vocab) {
-  const known = (vocab||[]).filter(w => w.status === 'known').length
-  const learning = (vocab||[]).filter(w => w.status === 'learning').length
+  const known = (vocab||[]).filter(w => w.l === 'known' || w.status === 'known').length
+  const learning = (vocab||[]).filter(w => w.l === 'learning' || w.status === 'learning').length
   // Sentence length targets per belt rank
   let goalMin = 2, goalMax = 4, hardCeil = 4
   if      (known < 100)  { goalMin=2;  goalMax=4;  hardCeil=4  }  // Mukyu
@@ -3081,7 +3081,8 @@ function classifyWord(target) {
 
   // Quantifiers — must attach to noun, never standalone
   if (['every','all of','each','any','some','both','several','whole'].some(w => eng === w || eng.startsWith(w+' ')) ||
-      ['ทุก','บาง','แต่ละ','ทั้งหมด','ทั้ง','หลาย'].includes(thai)) return 'quantifier'
+      ['ทุก','บาง','แต่ละ','ทั้งหมด','ทั้ง'].includes(thai)) return 'quantifier'
+  if (thai === 'หลาย' || eng === 'many' || eng === 'several') return 'adjective'
 
   // Quantity phrases — classifier expressions
   if (/^(one|two|three|four|five|\d+) (plate|cup|glass|piece|item|portion|bottle|bowl|bag)/.test(eng) ||
@@ -3172,6 +3173,10 @@ function classifyWord(target) {
     'doctor','nurse','driver','owner','customer','staff','officer','person','older person','younger']
   if (PERSON.some(w => eng.includes(w)) || ['พี่','น้อง','เพื่อน','แม่','พ่อ','ครู','หมอ','เจ้าของ','ลูกค้า'].includes(thai)) return 'person'
 
+  // Clothing - must not be classified as body
+  if (['underwear','pants','shirt','shorts','socks','bra','clothes','clothing','dress','skirt'].some(w => eng.includes(w)) ||
+      ['กางเกง','เสื้อ','ถุงเท้า','กระโปรง','ชุด'].some(w => thai.startsWith(w))) return 'object'
+
   // Body parts
   const BODY = ['head','eye','ear','nose','mouth','tooth','neck','shoulder','arm','hand',
     'finger','chest','stomach','back','waist','leg','knee','foot','toe','skin','hair']
@@ -3218,6 +3223,23 @@ function classifyWord(target) {
   const INTRANS = ['hurry','arrive','wait','travel','work','sleep','walk','run','swim',
     'meet (attend)','practise','compete','interview','train']
   if (INTRANS.some(w => eng.includes(w))) return 'verb_intrans'
+
+  // Specific problem words
+  if (thai === 'เดี๋ยวนี้' || eng === 'now' || eng === 'right now') return 'time'
+  if (thai === 'รบกวน' || eng === 'disturb' || eng === 'bother') return 'verb_transitive'
+  if (thai === 'หัก' || eng === 'break' || eng === 'snap') return 'verb_transitive'
+  if (thai === 'ปลาย' || eng === 'end' || eng === 'tip') return 'object'
+  if (thai === 'เช่น' || eng === 'such as' || eng === 'for example' || eng === 'like') return 'connector_about'
+  if (thai === 'จอง' || eng === 'book' || eng === 'reserve' || eng === 'booking') return 'verb_transitive'
+  if (thai === 'เช่า' || eng === 'rent' || eng === 'hire') return 'verb_transitive'
+  if (thai === 'ซึ่ง' || eng === 'which' || eng === 'that') return 'connector_rel'
+  if (thai === 'โคมลอย' || eng === 'sky lantern' || eng.includes('lantern')) return 'object'
+  if (thai === 'กุมารทอง' || eng.includes('golden child') || eng.includes('amulet')) return 'object'
+  if (thai === 'นางกวัก' || eng.includes('beckoning')) return 'object'
+  if (thai === 'พระพิฆเนศ' || eng === 'ganesha' || eng.includes('ganesha')) return 'person'
+  if (thai === 'นครวัด' || eng.includes('angkor')) return 'place'
+  if (thai === 'งานไม้ดอก' || eng.includes('flower festival')) return 'place'
+  if (thai === 'กุมารทอง' || eng.includes('golden child')) return 'object'
 
   // Common words that often get misclassified
   if (thai === 'สาย' || eng === 'line' || eng === 'late' || eng === 'cord') return 'object'
@@ -4238,19 +4260,32 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
   function validateSmartPairs(pairs, target) {
     const valid = []
     const failures = []
+    // Get target sentence length for current belt rank
+    const lenResult = getSentenceLengthForVocab(vocab) || {}
+    const minWords = lenResult.goalMin || 4
+    const maxWords = lenResult.hardCeil || 8
+
     for (const p of pairs) {
       // Basic field check
       if (!p.thai || !p.english || !p.prompt) { failures.push('missing fields'); continue }
       // Must contain target word
       if (!p.thai.includes(target.thai)) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
-      // Must be a real Thai sentence (at least 3 Thai chars)
+      // Must be a real Thai sentence (at least 5 Thai chars)
       const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
       if (thaiChars < 5) { failures.push('too short: ' + p.thai); continue }
+      // ── Sentence length check ──────────────────────────────────────────────
+      // Estimate word count: count distinct Thai word clusters
+      // Thai has no spaces so approximate by counting meaningful char groups
+      // A rough but reliable method: count syllable-initiating consonants
+      const wordEstimate = (p.thai.match(/[ก-ฮ]/g) || []).length
+      const tooShort = wordEstimate < Math.max(2, minWords - 2)  // allow 2 under minimum
+      const tooLong  = wordEstimate > maxWords + 3               // allow 3 over maximum
+      if (tooShort) { failures.push('sentence too short: ' + wordEstimate + ' words (min ' + minWords + ')'); continue }
+      if (tooLong)  { failures.push('sentence too long: '  + wordEstimate + ' words (max ' + maxWords + ')'); continue }
       // Must not be a duplicate
       if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
-      // Prompt must be reasonable English (not "Say: X" or "Say X" with just the word)
+      // Prompt must be reasonable English
       const pr = (p.prompt || '').toLowerCase().trim()
-      // Reject lazy "Say: X" / "Ask: X?" / "Negative: X" format
       const engLower = target.english.toLowerCase()
       if (pr === 'say: ' + engLower || pr === 'say ' + engLower ||
           pr === 'ask: ' + engLower + '?' || pr === 'ask ' + engLower ||
@@ -4258,9 +4293,13 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
         failures.push('lazy prompt: ' + p.prompt); continue
       }
       if (p.prompt.length < 10) { failures.push('prompt too short'); continue }
-      // Question check: if prompt says "ask" Thai must have question marker
-      if (pr.startsWith('ask') && !p.thai.includes('ไหม') && !p.thai.includes('หรือ') &&
-          !p.thai.includes('ที่ไหน') && !p.thai.includes('อะไร') && !p.thai.includes('ใคร')) {
+      // Question check
+      const hasAnyQuestion = p.thai.includes('ไหม') || p.thai.includes('หรือ') ||
+          p.thai.includes('ที่ไหน') || p.thai.includes('อะไร') || p.thai.includes('ใคร') ||
+          p.thai.includes('ทำไม') || p.thai.includes('ยังไง') || p.thai.includes('กี่') ||
+          p.thai.includes('เมื่อไหร่') || p.thai.includes('ได้ไหม') || p.thai.includes('เหรอ') ||
+          p.thai.includes('มั้ย') || p.thai.endsWith('คะ') || p.thai.endsWith('ครับ') === false
+      if (pr.startsWith('ask') && !hasAnyQuestion) {
         failures.push('ask prompt but no question marker'); continue
       }
       valid.push(p)
@@ -4369,7 +4408,9 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
 
       // ── Call 2: GPT recheck — ALWAYS runs to improve quality ─────────────
       {
-        const recheckHint = (failures && failures.length > 0) ? failures.slice(0,3).join('; ') : 'improve variety and naturalness'
+        const lenRes = getSentenceLengthForVocab(vocab) || {}
+        const lenHint = 'REQUIRED: sentences must be ' + (lenRes.goalMin||4) + '-' + (lenRes.hardCeil||8) + ' Thai words long'
+        const recheckHint = lenHint + (failures && failures.length > 0 ? '. ALSO FIX: ' + failures.slice(0,3).join('; ') : '. Improve variety and naturalness')
         const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, recheckHint)
         const recheck1 = await callModel(GPT_MODEL, prompt2)
         const { valid: v2, failures: f2 } = validateSmartPairs(recheck1, target)
@@ -5192,9 +5233,9 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
                 {pair.phonetic || pair.target_phonetic || ''}
               </p>
             )}
+            <p style={{ fontSize:16, color:'#e8d5a3', fontStyle:'italic', textAlign:'center', opacity:0.85 }}>{pair.english}</p>
             <Waveform />
             <p className="thai" style={{ fontSize:26, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center' }}>{pair.thai}</p>
-            <p style={{ fontSize:21, color:'#e8d5a3', fontStyle:'italic' }}>{pair.english}</p>
           </div>
         )}
       </div>

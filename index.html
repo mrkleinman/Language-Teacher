@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v131"/>
-<meta name="app-version" content="v131"/>
+<meta name="app-version" content="v132"/>
+<meta name="app-version" content="v132"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v131';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v131').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v132';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v132').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2014,7 +2014,7 @@ const LESSON_DATA = [{
 
 
 // ── SRS Logic ────────────────────────────────────────────────────────────────
-const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v131' } catch { return 'v131' } })()
+const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v124' } catch { return 'v124' } })()
 
 const EASE = { easy: 2.5, ok: 1.3, hard: 0.6 }
 function calcInterval(cur, rating) {
@@ -3241,6 +3241,36 @@ function classifyWord(target) {
   if (thai === 'งานไม้ดอก' || eng.includes('flower festival')) return 'place'
   if (thai === 'กุมารทอง' || eng.includes('golden child')) return 'object'
 
+  // Clothing verbs — must NEVER get body-pain template
+  if (['wear','put on','take off','remove (clothing)','dress'].some(w => eng === w || eng.startsWith(w+' ')) ||
+      ['สวม','ใส่','ถอด'].includes(thai)) return 'clothing_verb'
+
+  // Prohibition/command verbs
+  if (['forbid','prohibit','ban','not allowed','disallow'].some(w => eng.includes(w)) || thai === 'ห้าม') return 'verb_command'
+
+  // Negative imperative particle
+  if (eng === "don't" || eng === 'do not (imperative)' || thai === 'อย่า') return 'negative_particle'
+
+  // Compound verb phrases — weight loss, exercise
+  if (eng.includes('lose weight') || eng.includes('weight loss') || thai === 'ลดน้ำหนัก') return 'verb_phrase'
+
+  // Fixed phrase expressions (they say, it is said that)
+  if (eng.includes('they say') || eng.includes('it is said') || thai === 'เขาว่ากันว่า') return 'full_sentence'
+
+  // Medical/health conditions
+  if (eng.includes('appendicitis') || eng.includes('-itis') || eng.includes('disease') || eng.includes('fever') ||
+      thai === 'ไส้ติ่งอักเสบ') return 'abstract'
+
+  // More person words — religious roles
+  if (['monk','novice','priest','clergy','nun','abbot'].some(w => eng.includes(w)) ||
+      ['เณร','พระ','ภิกษุ','ภิกษุณี'].includes(thai)) return 'person'
+
+  // Tropical/exotic fruits not caught by generic 'fruit' keyword
+  if (['papaya','banana','durian','pineapple','coconut','lychee','longan','rambutan','dragon fruit',
+       'jackfruit','guava','pomelo','mangosteen','tamarind','rose apple'].some(w => eng.includes(w)) ||
+      ['มะละกอ','กล้วย','ทุเรียน','สับปะรด','มะพร้าว','ลำไย','ลิ้นจี่','เงาะ','แตงโม','ฝรั่ง','ส้มโอ',
+       'มะขาม','ชมพู่','สตรอเบอรี่'].includes(thai)) return 'food'
+
   // Common words that often get misclassified
   if (thai === 'สาย' || eng === 'line' || eng === 'late' || eng === 'cord') return 'object'
   if (thai === 'นางงาม' || eng === 'beauty queen') return 'person'
@@ -3275,7 +3305,7 @@ function getRisk(type) {
   ])
   const MEDIUM = new Set([
     'adjective','emotion','personality','body','nature','abstract','verb_transitive','verb_intrans',
-    'location','person','colour','study_material',
+    'location','person','colour','study_material','clothing_verb','verb_command','negative_particle',
   ])
   if (HIGH.has(type)) return 'high'
   if (MEDIUM.has(type)) return 'medium'
@@ -3767,6 +3797,48 @@ const HARDCODED_FALLBACKS = {
     {prompt:'Ask if there is traffic downtown',thai:'ตัวเมืองรถติดไหมคะ',english:'Is there traffic downtown?',phonetic:'tua-mueang rót-tìt mǎi khá',words:[{p:'tua-mueang',e:'downtown'},{p:'rót-tìt',e:'traffic'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'tua-mueang'},
     {prompt:'Say you already went downtown',thai:'ผมไปตัวเมืองแล้วครับ',english:'I already went downtown.',phonetic:'phǒm pai tua-mueang lâeo khrâp',words:[{p:'phǒm',e:'I'},{p:'pai',e:'went'},{p:'tua-mueang',e:'downtown'},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:'tua-mueang'},
   ],
+  'สวม': [
+    {prompt:'Say you are wearing a shirt',thai:'ผมสวมเสื้อครับ',english:'I am wearing a shirt.',phonetic:'phǒm sùam sûea khrâp',words:[{p:'phǒm',e:'I'},{p:'sùam',e:'wear'},{p:'sûea',e:'shirt'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sùam'},
+    {prompt:'Ask if you can wear this here',thai:'สวมอันนี้ที่นี่ได้ไหมครับ',english:'Can I wear this here?',phonetic:'sùam an-níi thîi-nîi dâi mǎi khrâp',words:[{p:'sùam',e:'wear'},{p:'an-níi',e:'this'},{p:'thîi-nîi',e:'here'},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sùam'},
+    {prompt:'Say you have not worn the hat yet',thai:'ผมยังไม่สวมหมวกครับ',english:'I have not worn the hat yet.',phonetic:'phǒm yang mâi sùam mùak khrâp',words:[{p:'phǒm',e:'I'},{p:'yang-mâi',e:'not yet'},{p:'sùam',e:'wear'},{p:'mùak',e:'hat'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sùam'},
+    {prompt:'Say you like wearing a uniform',thai:'ผมชอบสวมเครื่องแบบครับ',english:'I like wearing a uniform.',phonetic:'phǒm chôop sùam khrûeang-bàep khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'sùam',e:'wear'},{p:'khrûeang-bàep',e:'uniform'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sùam'},
+    {prompt:'Ask if they are wearing a raincoat',thai:'คุณสวมเสื้อกันฝนไหมคะ',english:'Are you wearing a raincoat?',phonetic:'khun sùam sûea-gan-fǒn mǎi khá',words:[{p:'khun',e:'you'},{p:'sùam',e:'wear'},{p:'sûea-gan-fǒn',e:'raincoat'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'sùam'},
+  ],
+  'ใส่': [
+    {prompt:'Say you put on your shoes',thai:'ผมใส่รองเท้าครับ',english:'I put on my shoes.',phonetic:'phǒm sài rong-tháo khrâp',words:[{p:'phǒm',e:'I'},{p:'sài',e:'put on'},{p:'rong-tháo',e:'shoes'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sài'},
+    {prompt:'Ask if you can wear this one',thai:'ใส่อันนี้ได้ไหมครับ',english:'Can I wear this one?',phonetic:'sài an-níi dâi mǎi khrâp',words:[{p:'sài',e:'wear'},{p:'an-níi',e:'this'},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sài'},
+    {prompt:'Say you have not put on your jacket yet',thai:'ผมยังไม่ใส่เสื้อกันหนาวครับ',english:'I have not put on my jacket yet.',phonetic:'phǒm yang mâi sài sûea-gan-nǎao khrâp',words:[{p:'phǒm',e:'I'},{p:'yang-mâi',e:'not yet'},{p:'sài',e:'wear'},{p:'sûea-gan-nǎao',e:'jacket'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sài'},
+    {prompt:'Say you like wearing a black shirt',thai:'ผมชอบใส่เสื้อดำครับ',english:'I like wearing a black shirt.',phonetic:'phǒm chôop sài sûea-dam khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'sài',e:'wear'},{p:'sûea-dam',e:'black shirt'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sài'},
+    {prompt:'Ask what they are putting on today',thai:'วันนี้ใส่อะไรมาคะ',english:'What did you wear today?',phonetic:'wan-níi sài à-rai maa khá',words:[{p:'wan-níi',e:'today'},{p:'sài',e:'wearing'},{p:'à-rai',e:'what'},{p:'maa',e:'came'},{p:'khá',e:'[polite]'}],target_phonetic:'sài'},
+  ],
+  'เขาว่ากันว่า': [
+    {prompt:'Say people say this place is great',thai:'เขาว่ากันว่าที่นี่ดีมากครับ',english:'People say this place is great.',phonetic:'khǎo-wâa-kan-wâa thîi-nîi dii mâak khrâp',words:[{p:'khǎo-wâa-kan-wâa',e:'they say'},{p:'thîi-nîi',e:'here'},{p:'dii',e:'good'},{p:'mâak',e:'very'},{p:'khrâp',e:'[polite]'}],target_phonetic:'khǎo-wâa-kan-wâa'},
+    {prompt:'Ask if what people say is really true',thai:'เขาว่ากันว่าจริงไหมคะ',english:'Is what people say really true?',phonetic:'khǎo-wâa-kan-wâa jing mǎi khá',words:[{p:'khǎo-wâa-kan-wâa',e:'they say'},{p:'jing',e:'true'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'khǎo-wâa-kan-wâa'},
+    {prompt:'Say people say the food here is delicious',thai:'เขาว่ากันว่าอาหารที่นี่อร่อยครับ',english:'People say the food here is delicious.',phonetic:'khǎo-wâa-kan-wâa aa-hǎan thîi-nîi à-ròi khrâp',words:[{p:'khǎo-wâa-kan-wâa',e:'they say'},{p:'aa-hǎan',e:'food'},{p:'thîi-nîi',e:'here'},{p:'à-ròi',e:'delicious'},{p:'khrâp',e:'[polite]'}],target_phonetic:'khǎo-wâa-kan-wâa'},
+    {prompt:'Say people say the weather will be good',thai:'เขาว่ากันว่าอากาศจะดีครับ',english:'People say the weather will be nice.',phonetic:'khǎo-wâa-kan-wâa aa-gàat jà dii khrâp',words:[{p:'khǎo-wâa-kan-wâa',e:'they say'},{p:'aa-gàat',e:'weather'},{p:'jà',e:'will'},{p:'dii',e:'good'},{p:'khrâp',e:'[polite]'}],target_phonetic:'khǎo-wâa-kan-wâa'},
+    {prompt:'Ask what people are saying about it',thai:'เขาว่ากันว่าอะไรคะ',english:'What are people saying about it?',phonetic:'khǎo-wâa-kan-wâa à-rai khá',words:[{p:'khǎo-wâa-kan-wâa',e:'they say'},{p:'à-rai',e:'what'},{p:'khá',e:'[polite]'}],target_phonetic:'khǎo-wâa-kan-wâa'},
+  ],
+  'ลดน้ำหนัก': [
+    {prompt:'Say you want to lose weight',thai:'ผมอยากลดน้ำหนักครับ',english:'I want to lose weight.',phonetic:'phǒm yàak lót-nám-nàk khrâp',words:[{p:'phǒm',e:'I'},{p:'yàak',e:'want to'},{p:'lót-nám-nàk',e:'lose weight'},{p:'khrâp',e:'[polite]'}],target_phonetic:'lót-nám-nàk'},
+    {prompt:'Ask if they are trying to lose weight',thai:'คุณกำลังลดน้ำหนักอยู่ไหมคะ',english:'Are you trying to lose weight?',phonetic:'khun gam-lang lót-nám-nàk yùu mǎi khá',words:[{p:'khun',e:'you'},{p:'gam-lang',e:'currently'},{p:'lót-nám-nàk',e:'lose weight'},{p:'yùu',e:'[ongoing]'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'lót-nám-nàk'},
+    {prompt:'Say you have been trying to lose weight',thai:'ผมพยายามลดน้ำหนักมาสักพักแล้วครับ',english:'I have been trying to lose weight for a while.',phonetic:'phǒm pha-yaa-yaam lót-nám-nàk maa sàk phâk lâeo khrâp',words:[{p:'phǒm',e:'I'},{p:'pha-yaa-yaam',e:'try'},{p:'lót-nám-nàk',e:'lose weight'},{p:'maa-sàk-phâk',e:'for a while'},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:'lót-nám-nàk'},
+    {prompt:'Say you exercise to lose weight',thai:'ผมออกกำลังกายเพื่อลดน้ำหนักครับ',english:'I exercise to lose weight.',phonetic:'phǒm òok-gam-lang-gaai phûea lót-nám-nàk khrâp',words:[{p:'phǒm',e:'I'},{p:'òok-gam-lang-gaai',e:'exercise'},{p:'phûea',e:'to'},{p:'lót-nám-nàk',e:'lose weight'},{p:'khrâp',e:'[polite]'}],target_phonetic:'lót-nám-nàk'},
+    {prompt:'Say losing weight is not easy',thai:'ลดน้ำหนักไม่ง่ายครับ',english:'Losing weight is not easy.',phonetic:'lót-nám-nàk mâi ngâai khrâp',words:[{p:'lót-nám-nàk',e:'lose weight'},{p:'mâi',e:'not'},{p:'ngâai',e:'easy'},{p:'khrâp',e:'[polite]'}],target_phonetic:'lót-nám-nàk'},
+  ],
+  'ห้าม': [
+    {prompt:'Say no entry allowed',thai:'ห้ามเข้าครับ',english:'No entry.',phonetic:'hâam khâo khrâp',words:[{p:'hâam',e:'forbidden'},{p:'khâo',e:'enter'},{p:'khrâp',e:'[polite]'}],target_phonetic:'hâam'},
+    {prompt:'Ask if photography is forbidden here',thai:'ที่นี่ห้ามถ่ายรูปไหมคะ',english:'Is photography forbidden here?',phonetic:'thîi-nîi hâam thàai-rûup mǎi khá',words:[{p:'thîi-nîi',e:'here'},{p:'hâam',e:'forbidden'},{p:'thàai-rûup',e:'take photos'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'hâam'},
+    {prompt:'Say no smoking here',thai:'ที่นี่ห้ามสูบบุหรี่ครับ',english:'No smoking here.',phonetic:'thîi-nîi hâam sùup-bu-rîi khrâp',words:[{p:'thîi-nîi',e:'here'},{p:'hâam',e:'forbidden'},{p:'sùup-bu-rîi',e:'smoke'},{p:'khrâp',e:'[polite]'}],target_phonetic:'hâam'},
+    {prompt:'Say they forbid you from going',thai:'เขาห้ามผมไปครับ',english:'They forbid me from going.',phonetic:'khǎo hâam phǒm pai khrâp',words:[{p:'khǎo',e:'they'},{p:'hâam',e:'forbid'},{p:'phǒm',e:'me'},{p:'pai',e:'go'},{p:'khrâp',e:'[polite]'}],target_phonetic:'hâam'},
+    {prompt:'Ask if it is forbidden to park here',thai:'ที่นี่ห้ามจอดรถไหมคะ',english:'Is parking forbidden here?',phonetic:'thîi-nîi hâam jòot-rót mǎi khá',words:[{p:'thîi-nîi',e:'here'},{p:'hâam',e:'forbidden'},{p:'jòot-rót',e:'park a car'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'hâam'},
+  ],
+  'อย่า': [
+    {prompt:'Tell them not to go there',thai:'อย่าไปที่นั่นครับ',english:'Do not go there.',phonetic:'yàa pai thîi-nán khrâp',words:[{p:'yàa',e:"don't"},{p:'pai',e:'go'},{p:'thîi-nán',e:'there'},{p:'khrâp',e:'[polite]'}],target_phonetic:'yàa'},
+    {prompt:'Tell them not to worry',thai:'อย่ากังวลครับ',english:'Do not worry.',phonetic:'yàa gang-won khrâp',words:[{p:'yàa',e:"don't"},{p:'gang-won',e:'worry'},{p:'khrâp',e:'[polite]'}],target_phonetic:'yàa'},
+    {prompt:'Tell them not to forget',thai:'อย่าลืมนะครับ',english:'Do not forget, okay?',phonetic:'yàa luem ná khrâp',words:[{p:'yàa',e:"don't"},{p:'luem',e:'forget'},{p:'ná',e:'okay?'},{p:'khrâp',e:'[polite]'}],target_phonetic:'yàa'},
+    {prompt:'Tell them not to be late',thai:'อย่ามาสายนะครับ',english:'Do not be late.',phonetic:'yàa maa sǎai ná khrâp',words:[{p:'yàa',e:"don't"},{p:'maa',e:'come'},{p:'sǎai',e:'late'},{p:'ná',e:'okay?'},{p:'khrâp',e:'[polite]'}],target_phonetic:'yàa'},
+    {prompt:'Tell them not to run inside',thai:'อย่าวิ่งในห้องครับ',english:'No running inside.',phonetic:'yàa wîng nai hôong khrâp',words:[{p:'yàa',e:"don't"},{p:'wîng',e:'run'},{p:'nai',e:'inside'},{p:'hôong',e:'room'},{p:'khrâp',e:'[polite]'}],target_phonetic:'yàa'},
+  ],
 }
 
 
@@ -3779,6 +3851,33 @@ function makeFallbackPairs(target) {
   if (HARDCODED_FALLBACKS[tw]) return HARDCODED_FALLBACKS[tw]
 
   const type = classifyWord(target)
+
+  // Clothing verb — wear/put on clothing (NEVER body-pain template)
+  if (type === 'clothing_verb') return [
+    {prompt:'Say you are wearing a shirt',thai:'ผม'+tw+'เสื้อครับ',english:'I am wearing a shirt.',phonetic:'phǒm '+ph+' sûea khrâp',words:[{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'sûea',e:'shirt'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if you can wear this',thai:tw+'อันนี้ได้ไหมครับ',english:'Can I wear this?',phonetic:ph+' an-níi dâi mǎi khrâp',words:[{p:ph,e:eng},{p:'an-níi',e:'this'},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you have not worn it yet',thai:'ผมยังไม่'+tw+'ครับ',english:'I have not worn it yet.',phonetic:'phǒm yang mâi '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'yang-mâi',e:'not yet'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you like wearing jeans',thai:'ผมชอบ'+tw+'กางเกงครับ',english:'I like to wear these pants.',phonetic:'phǒm chôop '+ph+' kaang-keeng khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:ph,e:eng},{p:'kaang-keeng',e:'pants'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask what they are wearing today',thai:'วันนี้'+tw+'อะไรมาคะ',english:'What did you wear today?',phonetic:'wan-níi '+ph+' à-rai maa khá',words:[{p:'wan-níi',e:'today'},{p:ph,e:eng},{p:'à-rai',e:'what'},{p:'maa',e:'came'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Verb command — forbid/prohibit
+  if (type === 'verb_command') return [
+    {prompt:'Say entry is not allowed',thai:tw+'เข้าครับ',english:'No entry.',phonetic:ph+' khâo khrâp',words:[{p:ph,e:'no'},{p:'khâo',e:'enter'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if photography is forbidden here',thai:'ที่นี่'+tw+'ถ่ายรูปไหมคะ',english:'Is photography forbidden here?',phonetic:'thîi-nîi '+ph+' thàai-rûup mǎi khá',words:[{p:'thîi-nîi',e:'here'},{p:ph,e:'forbidden'},{p:'thàai-rûup',e:'take photos'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say smoking is not allowed here',thai:'ที่นี่'+tw+'สูบบุหรี่ครับ',english:'No smoking here.',phonetic:'thîi-nîi '+ph+' sùup-bu-rîi khrâp',words:[{p:'thîi-nîi',e:'here'},{p:ph,e:'no'},{p:'sùup-bu-rîi',e:'smoke'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say they forbid you from going',thai:'เขา'+tw+'ผมไปครับ',english:'They forbid me from going.',phonetic:'khǎo '+ph+' phǒm pai khrâp',words:[{p:'khǎo',e:'they'},{p:ph,e:'forbid'},{p:'phǒm',e:'me'},{p:'pai',e:'go'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if dogs are not allowed in',thai:tw+'นำสุนัขเข้าไหมคะ',english:'Are dogs not allowed in?',phonetic:ph+' nam sù-nák khâo mǎi khá',words:[{p:ph,e:'forbidden'},{p:'nam',e:'bring'},{p:'sù-nák',e:'dog'},{p:'khâo',e:'enter'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Negative particle — อย่า (don't)
+  if (type === 'negative_particle') return [
+    {prompt:'Tell them not to go there',thai:tw+'ไปที่นั่นครับ',english:'Do not go there.',phonetic:ph+' pai thîi-nán khrâp',words:[{p:ph,e:"don't"},{p:'pai',e:'go'},{p:'thîi-nán',e:'there'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Tell them not to worry',thai:tw+'กังวลครับ',english:'Do not worry.',phonetic:ph+' gang-won khrâp',words:[{p:ph,e:"don't"},{p:'gang-won',e:'worry'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Tell them not to forget',thai:tw+'ลืมนะครับ',english:'Do not forget, okay?',phonetic:ph+' luem ná khrâp',words:[{p:ph,e:"don't"},{p:'luem',e:'forget'},{p:'ná',e:'okay?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Tell them not to be late',thai:tw+'มาสายนะครับ',english:'Do not be late.',phonetic:ph+' maa sǎai ná khrâp',words:[{p:ph,e:"don't"},{p:'maa',e:'come'},{p:'sǎai',e:'late'},{p:'ná',e:'okay?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Tell them not to run inside',thai:tw+'วิ่งในห้องครับ',english:'No running inside.',phonetic:ph+' wîng nai hôong khrâp',words:[{p:ph,e:"don't"},{p:'wîng',e:'run'},{p:'nai',e:'inside'},{p:'hôong',e:'room'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
 
   // Food/drink
   if (type === 'food' || type === 'meal') return [
@@ -4250,10 +4349,25 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       ? 'PREVIOUS ATTEMPT FAILED: ' + failureReason + '. Rewrite using a different grammar pattern. Keep the target word ' + target.thai + '.'
       : ''
 
+    // Type-specific hints to prevent GPT from using wrong templates
+    let typeHint = ''
+    if (type === 'clothing_verb') {
+      typeHint = '\n⚠ CLOTHING VERB: "' + target.thai + '" = to WEAR clothing. Write sentences about wearing/putting on clothes (เสื้อ/กางเกง/รองเท้า). NEVER use body-pain (เจ็บ/ปวด) — that is completely wrong. Example: ผมสวมเสื้อครับ, ใส่กางเกงได้ไหม'
+    } else if (type === 'verb_command') {
+      typeHint = '\n⚠ PROHIBITION VERB: "' + target.thai + '" = FORBID/NO. Write prohibition sentences like ห้ามเข้าครับ, ที่นี่ห้ามสูบบุหรี่ครับ. NEVER use ขอ' + target.thai + 'หน่อย — that is nonsensical.'
+    } else if (type === 'negative_particle') {
+      typeHint = '\n⚠ NEGATIVE PARTICLE: "' + target.thai + '" = DON\'T. Always followed by a verb: อย่าไปครับ, อย่าลืมครับ. NEVER say ขออย่าหน่อย — that is completely wrong.'
+    } else if (type === 'verb_phrase' && target.thai === 'ลดน้ำหนัก') {
+      typeHint = '\n⚠ VERB PHRASE: "' + target.thai + '" = to LOSE WEIGHT. Write sentences about weight loss: อยากลดน้ำหนัก, กำลังลดน้ำหนักอยู่. NEVER use ขอลดน้ำหนักหน่อย.'
+    } else if (type === 'full_sentence') {
+      typeHint = '\n⚠ FIXED PHRASE: "' + target.thai + '" is a complete expression meaning "' + (target.english||'') + '". Embed it naturally at the start of sentences: ' + target.thai + ' + statement. NEVER say ขอ' + target.thai + 'หน่อย.'
+    }
+
     return 'SCENARIO: ' + scenarioCtx.setting +
       '\nTARGET WORD: ' + target.thai + ' (' + (target.phonetic||target.thai) + ') = "' + (target.english||'') + '"' +
       '\n⚠ CRITICAL: Every Thai sentence MUST contain the EXACT word "' + target.thai + '". Do NOT replace it with synonyms.' +
       '\nCLASS: ' + type + ' | SENTENCE LENGTH: MUST be ' + floor + '-' + ceil + ' Thai words. Sentences shorter than ' + floor + ' words will be rejected.' +
+      typeHint +
       (recheckLine ? '\n' + recheckLine : '') +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
@@ -4528,17 +4642,20 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
 
   // ── Repair pass ───────────────────────────────────────────────────────────
   for (const t of targets) {
-    const tPairs = allPairs.filter(p => p.thai && p.thai.includes(t.thai))
+    // Count pairs specifically sourced to this target (not just containing the word)
+    const tPairs = allPairs.filter(p => p._source && p._source.includes(':'+t.thai))
     const need = 3 - tPairs.length
     if (need > 0) {
       const bank = HARDCODED_FALLBACKS[t.thai]
       const fb = bank && bank.length ? bank : makeFallbackPairs(t)
       const existingNow = new Set(allPairs.map(p => p.thai))
+      let repairAdded = 0
       for (const f of fb) {
-        if (tPairs.length >= 3) break
+        if (repairAdded >= need) break  // stop once we have enough
         if (!existingNow.has(f.thai)) {
           allPairs.push({...f, _source:'repair:'+t.thai})
           existingNow.add(f.thai)
+          repairAdded++
         }
       }
     }
@@ -6710,7 +6827,7 @@ function ThaiTeacher() {
 }
 
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
-  </script>
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ThaiTeacher))
+</script>
 </body>
 </html>

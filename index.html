@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v121"/>
-<meta name="app-version" content="v121"/>
+<meta name="app-version" content="v130"/>
+<meta name="app-version" content="v130"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v121';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v121').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v130';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v130').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2014,7 +2014,7 @@ const LESSON_DATA = [{
 
 
 // ── SRS Logic ────────────────────────────────────────────────────────────────
-const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v121' } catch { return 'v121' } })()
+const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v130' } catch { return 'v130' } })()
 
 const EASE = { easy: 2.5, ok: 1.3, hard: 0.6 }
 function calcInterval(cur, rating) {
@@ -2709,7 +2709,7 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
 
 async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab) {
   // Deprecated — DeepSeek now routes via OpenRouter
-  return generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, 'deepseek/deepseek-v2')
+  return generateTrack(targets, anchors, apiKey, onProgress, vocab, 'deepseek/deepseek-v2')
 }
 async function _deadDeepSeekFn_UNUSED(targets, anchors, apiKey, onProgress, vocab) {
   const { system, user } = buildGenerationPrompt(targets, anchors, vocab)
@@ -4168,7 +4168,7 @@ function getScenarioForTarget(target) {
   return 'general'
 }
 
-async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab, model) {
+async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model) {
   // ── Models: GPT-4o mini generates + rechecks, Haiku escalates ──────────────
   const GPT_MODEL   = 'openai/gpt-4o-mini'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
@@ -4224,17 +4224,23 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
 
   // ── Build vocab context (known + learning words only) ─────────────────────
   function getVocabContext() {
-    const knownWords = vocab.filter(w => w.l === 'known' || (w.i && w.i >= 7))
-      .map(w => w.t + '(' + w.e + ')').slice(0, 60)
-    return 'USE ONLY THESE KNOWN WORDS (plus target): ' + knownWords.join(', ')
+    // Words sorted by repCount - most reviewed = most familiar
+    const seen = vocab
+      .filter(w => w.repCount && w.repCount >= 1)
+      .sort((a, b) => (b.repCount || 0) - (a.repCount || 0))
+      .slice(0, 80)
+    // Always include basic grammar words even if not in vocab
+    const basics = ['ผม','คุณ','เขา','เรา','มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ','ให้','กัน','อยู่','เป็น','ครับ','คะ','แล้ว','ก็','จะ','และ','หรือ','ใน','มาก','น้อย','ดี','ใหญ่','เล็ก']
+    const seenWords = seen.map(w => w.t + '(' + w.e + '×' + w.repCount + ')')
+    return 'WHITELIST — build sentences using ONLY these words plus the target word. Do NOT use any Thai word not in this list:\n' + seenWords.join(', ') + '\nBasic grammar words also allowed: ' + basics.join(' ')
   }
 
   // ── Build prompt for a target word ────────────────────────────────────────
   function buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, failureReason) {
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
-    const floor = lenResult.floor || 5
-    const ceil = lenResult.ceil || 7
+    const floor = lenResult.goalMin || 6
+    const ceil = lenResult.goalMax || 7
     const scenarioCtx = scenario ? (SCENARIO_CONTEXTS[scenario] || SCENARIO_CONTEXTS.general) : SCENARIO_CONTEXTS.general
     const conceptLines = (conceptBlock || []).slice(0,15).map(c =>
       (c.pattern||'') + '=' + (c.meaning||'') + ((c.frames && c.frames.length) ? '[' + c.frames[0] + ']' : '')
@@ -4247,19 +4253,41 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     return 'SCENARIO: ' + scenarioCtx.setting +
       '\nTARGET WORD: ' + target.thai + ' (' + (target.phonetic||target.thai) + ') = "' + (target.english||'') + '"' +
       '\n⚠ CRITICAL: Every Thai sentence MUST contain the EXACT word "' + target.thai + '". Do NOT replace it with synonyms.' +
-      '\nCLASS: ' + type + ' | LENGTH: ' + floor + '-' + ceil + ' Thai words' +
+      '\nCLASS: ' + type + ' | SENTENCE LENGTH: MUST be ' + floor + '-' + ceil + ' Thai words. Sentences shorter than ' + floor + ' words will be rejected.' +
       (recheckLine ? '\n' + recheckLine : '') +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
-      '\nWRITE 3 sentences each containing "' + target.thai + '". Use 3 different grammar patterns.' +
+      '\nWRITE 3 sentence pairs each containing "' + target.thai + '". Use 3 different grammar patterns: 1 statement, 1 yes/no question, 1 other. Each "prompt" must be SPECIFIC: tell the student exactly what to say (e.g. "Say the [target] is [adjective]", "Ask if the [target] is [quality]"). ONLY use Thai words from the WHITELIST above.' +
       ' "prompt" = natural English instruction. Mix statement + question + negative/other.' +
-      '\nRETURN ONLY: [{"prompt":"...","thai":"...","phonetic":"...","english":"..."},...]'
+      '\nRETURN ONLY: [{"prompt":"...","thai":"...","phonetic":"...","english":"...","words":[{"p":"phǒm","e":"I"},{"p":"mii","e":"have"},...]},...] — include a words array with one entry per phonetic token showing its meaning.'
   }
 
   // ── Validate pairs (reuse existing validator) ──────────────────────────────
-  function validateSmartPairs(pairs, target) {
+  function validateSmartPairs(pairs, target, strict=true) {
     const valid = []
     const failures = []
+
+    // Build known vocab set from repCount - words student has actually seen
+    const knownThaiWords = new Set(
+      vocab
+        .filter(w => w.repCount && w.repCount >= 1)
+        .map(w => w.t || w.thai)
+        .filter(Boolean)
+    )
+    // Always allow basic grammar/particles (these are universal Thai building blocks)
+    const alwaysOk = new Set([
+      'ผม','คุณ','เขา','เรา','พวกเรา','มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ',
+      'ให้','กัน','อยู่','เป็น','ครับ','คะ','ค่ะ','แล้ว','ก็','จะ','และ','หรือ','ใน',
+      'มาก','น้อย','ดี','ใหญ่','เล็ก','นี่','นั่น','อยาก','ต้อง','ช่วย','หน่อย','บาง',
+      'หลาย','กำลัง','ยัง','เคย','เพิ่ง','เพิ่งจะ','ทุก','ทั้ง','แค่','เลย','สิ','นะ',
+      'ด้วย','ก็ได้','เท่า','กี่','เมื่อ','เมื่อไหร่','เท่าไหร่','อะไร','ใคร','ทำไม',
+      'ยังไง','อย่างไร','ที่ไหน','ไหน','อย่าง','แบบ','ราคา','ของผม','ของคุณ',
+      'ตอน','วัน','เวลา','ตอนนี้','วันนี้','ที่นี่','ตรงนี้','ข้างๆ','ใกล้','ไกล',
+      'ไป','มา','กลับ','ออก','เข้า','ขึ้น','ลง','เดิน','นาน','เร็ว','ช้า',
+      'กิน','ดื่ม','นอน','พูด','ฟัง','ดู','รู้','รู้สึก','คิด','เห็น','เจอ',
+      'บ้าน','รถ','ถนน','น้ำ','ข้าว','ร้าน','วิธี','แบบ','สี','ขนาด',
+      'ขอ','โปรด','สวัสดี','ขอบคุณ','ไม่เป็นไร','โอเค','ใช่','เปล่า','ได้เลย',
+    ])
 
     for (const p of pairs) {
       // Basic field check
@@ -4269,11 +4297,33 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
       // Must be a real Thai sentence (at least 5 Thai chars)
       const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
       if (thaiChars < 5) { failures.push('too short: ' + p.thai); continue }
-      // Length check: just reject obvious stubs (< 8 Thai chars = definitely too short)
-      // Full length enforcement is in the AI prompt - consonant counting is unreliable
-      if (thaiChars < 8) { failures.push('sentence stub: ' + p.thai); continue }
+      // Length check via phonetic word count (spaces = word boundaries, reliable)
+      const phWords = (p.phonetic || '').trim().split(/\s+/).filter(w => w && !/^[?.!,]$/.test(w)).length
+      const lenCheck = getSentenceLengthForVocab(vocab) || {}
+      const minWords = lenCheck.goalMin || 5
+      const maxWords = (lenCheck.hardCeil || 8) + 2  // allow 2 over
+      if (phWords < minWords) { failures.push('too short: ' + phWords + ' words (need ' + minWords + '+): ' + p.thai); continue }
+      if (phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
       // Must not be a duplicate
       if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
+      // ── Unknown vocab check (skipped on lenient mode for final AI attempts) ──
+      if (strict && knownThaiWords.size > 0) {
+        // Find Thai substrings not covered by known words or always-ok words
+        let remaining = p.thai
+        // Remove target word
+        remaining = remaining.split(target.thai).join(' ')
+        // Remove all known words
+        for (const w of [...knownThaiWords, ...alwaysOk]) {
+          remaining = remaining.split(w).join(' ')
+        }
+        // Remove non-Thai chars and spaces
+        const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
+        if (unknownChars.length > 3) {
+          // More than 3 unknown Thai chars = likely has unknown vocab
+          failures.push('unknown vocab: ' + unknownChars.slice(0,20))
+          continue
+        }
+      }
       // Prompt must be reasonable English
       const pr = (p.prompt || '').toLowerCase().trim()
       const engLower = target.english.toLowerCase()
@@ -4283,6 +4333,11 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
         failures.push('lazy prompt: ' + p.prompt); continue
       }
       if (p.prompt.length < 10) { failures.push('prompt too short'); continue }
+      // Reject vague meta-instruction prompts — must be specific speaking instructions
+      const vagueVerbs = /^(describe|discuss|talk about|inquire about|mention|explain|elaborate|explore|consider|reflect|think about|share|express your thoughts|tell me about|speak about|comment on)/i
+      if (vagueVerbs.test(pr)) {
+        failures.push('vague prompt (not specific): ' + p.prompt); continue
+      }
       // Question check
       const hasAnyQuestion = p.thai.includes('ไหม') || p.thai.includes('หรือ') ||
           p.thai.includes('ที่ไหน') || p.thai.includes('อะไร') || p.thai.includes('ใคร') ||
@@ -4303,7 +4358,13 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
   // ── Single API call with retry ─────────────────────────────────────────────
   async function callModel(mdl, prompt) {
     try {
-      const sysMsg = 'You are a Thai language teacher. Return ONLY a valid JSON array with objects containing: prompt (natural English instruction like "Ask if the bus is late"), thai (Thai sentence), phonetic (romanisation), english (translation). Never use "Say: X" or "Negative: X" as a prompt.'
+      const sysMsg = 'You are a Thai language teacher writing Pimsleur-style speaking prompts. ' +
+        'STRICT RULE: Every Thai word must be from the WHITELIST in the prompt or be the target word. ' +
+        'The "prompt" field must be a SPECIFIC, CONCRETE instruction — exactly what the student should say. ' +
+        'GOOD prompts: "Say your nose is big", "Ask if the route is winding", "Tell them you just arrived", "Ask how much the raft costs". ' +
+        'BAD prompts: "Describe your nose", "Discuss the route", "Talk about transport", "Inquire about hair" — these are vague topics not speaking instructions. ' +
+        'Each prompt must tell the student precisely what sentence to produce. ' +
+        'Return ONLY a JSON array: [{"prompt":"...","thai":"...","phonetic":"...","english":"..."}].'
       const messages = [
         { role: 'system', content: sysMsg },
         { role: 'user', content: prompt }
@@ -4363,26 +4424,8 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     // Concept tier disabled - concept cards feed AI as context instead
     // (buildConceptPairs produced unreliable output for most word types)
 
-    // ── TIER 1: Hardcoded bank ────────────────────────────────────────────
+    // ── TIER 1: Hardcoded bank removed from front — all words go through AI ───
     const hasHardcode = !!HARDCODED_FALLBACKS[target.thai]
-    if ((risk === 'high' || hasHardcode) && pairs.length < 3) {
-      const bank = HARDCODED_FALLBACKS[target.thai]
-      if (bank && bank.length > 0) {
-        const offset = (i + allPairs.length) % Math.max(bank.length - 2, 1)
-        const rotated = [...bank.slice(offset), ...bank.slice(0, offset)]
-        pairs = rotated.filter(p => !existingThais.has(p.thai)).slice(0, 3).map(p => ({...p, _source:'hardcoded:'+target.thai}))
-        if (pairs.length < 3) {
-          for (const p of bank) {
-            if (pairs.length >= 3) break
-            if (!existingThais.has(p.thai) && !pairs.some(x => x.thai === p.thai)) pairs.push({...p, _source:'hardcoded:'+target.thai})
-          }
-        }
-      }
-      if (pairs.length < 3) {
-        const fb = makeFallbackPairs(target).filter(p => !existingThais.has(p.thai))
-        for (const f of fb) { if (pairs.length >= 3) break; pairs.push(f) }
-      }
-    }
 
     // ── TIER 2: Smart AI generation (V2 + V2 recheck + GPT escalation) ───
     if (pairs.length < 3) {
@@ -4424,7 +4467,7 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
           const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after GPT recheck'
           const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2)
           const recheck2 = await callModel(GPT_MODEL, prompt3)
-          const { valid: v3, failures: f3 } = validateSmartPairs(recheck2, target)
+          const { valid: v3, failures: f3 } = validateSmartPairs(recheck2, target, false)  // lenient on 3rd attempt
           for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck2:'+ target.thai}) }
           console.log('[GPT second] ' + target.thai + ': ' + v3.length + ' more valid')
 
@@ -4433,17 +4476,29 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
             const failReason3 = f3.slice(0, 3).join('; ') || 'still failing after GPT second check'
             const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3)
             const recheck3 = await callModel(HAIKU_MODEL, prompt4)
-            const { valid: v4 } = validateSmartPairs(recheck3, target)
+            const { valid: v4 } = validateSmartPairs(recheck3, target, false)  // lenient — accept Haiku output
             for (const p of v4) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
             console.log('[Haiku] ' + target.thai + ': ' + v4.length + ' more valid')
           }
         }
       }
 
-      // ── Final fallback if all 3 calls failed ─────────────────────────────
+      // ── Final fallback — only reached after all 4 AI calls failed ──────────
+      if (pairs.length < 3) console.warn('[generateTrack] ALL 4 AI calls failed for: ' + target.thai + ' | failures: ' + JSON.stringify(failureLog[target.thai]||[]))
       if (pairs.length < 3) {
-        const fb = makeFallbackPairs(target).filter(p => !existingThais.has(p.thai))
-        for (const f of fb) { if (pairs.length >= 3) break; pairs.push({...f, _source:'fallback:'+ target.thai}) }
+        // Try hardcoded bank (now last resort, not first choice)
+        const hbank = HARDCODED_FALLBACKS[target.thai]
+        if (hbank) {
+          for (const p of hbank) {
+            if (pairs.length >= 3) break
+            if (!existingThais.has(p.thai)) pairs.push({...p, _source:'hardcoded:'+target.thai})
+          }
+        }
+        // Generic fallback if still not enough
+        if (pairs.length < 3) {
+          const fb = makeFallbackPairs(target).filter(p => !existingThais.has(p.thai))
+          for (const f of fb) { if (pairs.length >= 3) break; pairs.push({...f, _source:'fallback:'+target.thai}) }
+        }
         if (pairs.length < 3) failureLog[target.thai] = (failureLog[target.thai] || []).concat(['FINAL FALLBACK: only ' + pairs.length + '/3 pairs'])
       }
     }
@@ -4455,9 +4510,9 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     for (const p of pairs) existingThais.add(p.thai)
     allPairs.push(...pairs.slice(0, 3))
     try {
-      const latestSource = pairs.length > 0 ? (pairs[pairs.length-1]._source || '') : ''
-      const wordSource = { word: target.thai, source: latestSource }
-      onProgress && onProgress(allPairs.length, targets.length * 3, null, latestSource, wordSource)
+      const src = pairs.length > 0 ? (pairs[pairs.length-1]._source || '') : ''
+      // Pass source and base index for this word's bricks
+      onProgress && onProgress(allPairs.length, targets.length * 3, null, src, i)
     } catch(e) {}
   }
 
@@ -4499,7 +4554,7 @@ async function generateTrackWithQwen(targets, anchors, apiKey, onProgress, vocab
     console.warn('[ThaiTeacher] Fallback report:')
     fallbackWords.forEach(w => console.warn('  ' + w + ': ' + failureLog[w].join(' → ')))
   }
-  try { onProgress && onProgress(allPairs.length, targets.length * 3, { failureLog, fallbackWords }) } catch(e) { onProgress && onProgress(allPairs.length, targets.length * 3, null) }
+  try { onProgress && onProgress(allPairs.length, targets.length * 3, null, '') } catch(e) {}
   return allPairs
 }
 
@@ -4654,7 +4709,8 @@ function TrackQuality({ track }) {
 
 function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets }) {
   const [error, setError] = useState('')
-  const pairSources = React.useRef([])
+  const [brickSources, setBrickSources] = useState({})
+  const [currentTier, setCurrentTier] = useState('')
   const [pairsDone, setPairsDone] = useState(0)
   const [pairsTotal, setPairsTotal] = useState(90)
   const [targetPhonetics, setTargetPhonetics] = useState({})
@@ -4713,17 +4769,26 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             doPhonetics().catch(() => {})
           }
 
-          pairs = await generateTrackWithQwen(targets, anchors, apiKey,
-            (done, total, meta, source) => {
+          pairs = await generateTrack(targets, anchors, apiKey,
+            (done, total, meta, source, wordIdx) => {
               setPairsDone(done)
               setPairsTotal(targets.length * 3)
-              try {
-                if (source && pairSources.current) {
-                  for (let si = Math.max(0, done-3); si < done; si++) {
-                    if (!pairSources.current[si]) pairSources.current[si] = source
-                  }
-                }
-              } catch(e) {}
+              if (source && wordIdx !== undefined) setBrickSources(prev => {
+                const next = {...prev}
+                const base = wordIdx * 3
+                for (let si = base; si < base + 3; si++) next[si] = source
+                return next
+              })
+              if (source) {
+                const tierName = source.startsWith('gpt-recheck2:') ? '🟢 GPT second check'
+                  : source.startsWith('gpt-recheck:') ? '🟩 GPT first check'
+                  : source.startsWith('gpt:') ? '⬜ GPT first pass'
+                  : source.startsWith('haiku:') ? '🩷 Haiku'
+                  : source.startsWith('hardcoded:') ? '⬛ Hardcoded (all 4 AI calls failed)'
+                  : source.startsWith('fallback:') ? '⬛ Generic fallback (all 4 AI calls failed)'
+                  : '🟡 Unknown'
+                setCurrentTier(tierName)
+              }
             },
             vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "openai/gpt-4o-mini")
           }
@@ -4761,7 +4826,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:20 }}>
       <div style={{ fontSize:40 }}>⚠️</div>
       <div className="display" style={{ fontSize:20, textAlign:'center' }}>Generation Failed</div>
-      <p style={{ color:'var(--muted)', fontSize:13, textAlign:'center', maxWidth:320, whiteSpace:'pre-wrap' }}>{error}</p>
+      <p style={{ color:'#fca5a5', fontSize:18, fontWeight:700, textAlign:'center', maxWidth:320, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{error || 'Unknown error'}</p>
       <div style={{ display:'flex', gap:10 }}>
         <Btn onClick={() => { setPhase('starting'); setError(''); setPairsDone(0) }} variant="primary">Try Again</Btn>
         <Btn onClick={onBack} variant="ghost">Back</Btn>
@@ -4778,7 +4843,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'GPT-4o mini'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
-          {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
+          {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs${currentTier ? ' — ' + currentTier : ''}`}
         </p>
       </div>
 
@@ -4800,22 +4865,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Live pair counter tiles */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
         {Array.from({length: 90}, (_, i) => {
-          const src = (pairSources.current && pairSources.current[i]) || ''
-          const brickColor = i >= pairsDone ? 'var(--surface2)'
+          const src = brickSources[i] || ''
+          const bg = i >= pairsDone ? 'var(--surface2)'
             : src.startsWith('gpt:') ? '#ffffff'
-            : src.startsWith('gpt-recheck:') && !src.startsWith('gpt-recheck2:') ? '#10b981'
             : src.startsWith('gpt-recheck2:') ? '#065f46'
+            : src.startsWith('gpt-recheck:') ? '#10b981'
             : src.startsWith('haiku:') ? '#FA8072'
             : src.startsWith('hardcoded:') || src.startsWith('fallback:') ? '#111111'
-            : color
-          return (
-            <div key={i} style={{
-              height: 8, borderRadius: 3,
-              background: brickColor,
-              transition: 'background 0.2s',
-              opacity: i < pairsDone ? 1 : 0.4
-            }} />
-          )
+            : i < pairsDone ? color : 'var(--surface2)'
+          return <div key={i} style={{ height:8, borderRadius:3, background:bg, transition:'background 0.2s', opacity:i < pairsDone ? 1 : 0.4 }} />
         })}
       </div>
 
@@ -4874,6 +4932,290 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         </Card>
       )}
 
+      
+    </div>
+  )
+}
+
+// ── Browse Vocab ──────────────────────────────────────────────────────────────
+
+function countSyllables(thai, phonetic) {
+  if (phonetic && phonetic.trim()) {
+    return phonetic.trim().split(/\s+/).filter(Boolean).length
+  }
+  // Thai char estimate: avg ~2.5 chars per syllable (incl tone marks, vowels)
+  const chars = (thai || '').replace(/[\s]/g, '').length
+  return Math.max(2, Math.round(chars / 2.5))
+}
+
+// Pimsleur S = 1.5n + 1.0, but add TTS speaking time on top
+// TTS speaks at ~thaiSpeed rate so we add extra buffer
+function calcDuration(thai, phase, phonetic) {
+  if (phase === 'prompt') {
+    // English: ~130wpm reading pace + 1.5s thinking buffer
+    const words = (thai || '').trim().split(/\s+/).length
+    return Math.max(4000, Math.round(words * 460 + 1500))
+  }
+  const n = countSyllables(thai, phonetic)
+  // Pimsleur repeat pause: S = 2.0n + 1.5 seconds AFTER speech ends
+  // Add estimated TTS duration (~0.4s per syllable at 0.8x)
+  const ttsDur = Math.round(n * 400)
+  const pauseDur = Math.round((2.0 * n + 1.5) * 1000)
+  return ttsDur + pauseDur
+}
+
+function Player({ track, onComplete, onBack, onKru, onBookmark }) {
+  const pairs = track.pairs || []
+  const [idx, setIdx] = useState(track.bookmark || 0)
+  const [bookmarked, setBookmarked] = useState(false)
+  const [phase, setPhase] = useState('prompt')
+  const [playing, setPlaying] = useState(false)
+  const [countdown3, setCountdown3] = useState(3)
+  const [speaking, setSpeaking] = useState(false)
+  const [countdown, setCountdown] = useState(1)
+  const [lessonDone, setLessonDone] = useState(false)
+  const [keywords, setKeywords] = useState((track.keywords || []).map(k => ({ ...k, rating: null })))
+  const [allRated, setAllRated] = useState(false)
+  const [voices, setVoices] = useState([])
+  const [thaiSpeed, setThaiSpeed] = useState(() => { try { const s = localStorage.getItem('tt-speed'); return s ? parseFloat(s) : 0.8 } catch { return 0.8 } })
+  const cancelledRef = useRef(false)
+  const pausedRef = useRef(false)
+  const rafRef = useRef(null)
+
+  const pair = pairs[idx] || {}
+  const overallPct = Math.round((idx / pairs.length) * 100)
+  const HAS_SPEECH = typeof window !== 'undefined' && 'speechSynthesis' in window
+
+  // Estimated time remaining (sum of all remaining pairs)
+  const timeLeft = useMemo(() => {
+    let ms = 0
+    for (let i = idx; i < pairs.length; i++) {
+      const p = pairs[i]
+      ms += calcDuration(p.prompt, 'prompt', null) + 1800 + calcDuration(p.thai, 'reveal', p.phonetic) + 2500
+    }
+    // Subtract current phase if already in reveal
+    if (phase === 'reveal') ms -= calcDuration(pair.prompt, 'prompt', null) + 1800
+    const mins = Math.ceil(ms / 60000)
+    return mins <= 1 ? '< 1 min' : `~${mins} min`
+  }, [idx, phase, pairs])
+
+  // ── 3-2-1 lead-in before playback starts ──
+  useEffect(() => {
+    let n = 3
+    setCountdown3(n)
+    const iv = setInterval(() => {
+      n--
+      if (n > 0) setCountdown3(n)
+      else { clearInterval(iv); setCountdown3(0); setPlaying(true) }
+    }, 1000)
+    return () => clearInterval(iv)
+  }, [])
+
+  useEffect(() => {
+    if (!HAS_SPEECH) return
+    function load() { const v = window.speechSynthesis.getVoices(); if (v.length) setVoices(v) }
+    load()
+    window.speechSynthesis.onvoiceschanged = load
+    return () => { try { window.speechSynthesis.onvoiceschanged = null } catch(e) {} }
+  }, [])
+
+  function startCountdown(ms) {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    const start = Date.now()
+    setCountdown(1)
+    function tick() {
+      const remaining = Math.max(0, 1 - (Date.now() - start) / ms)
+      setCountdown(remaining)
+      if (remaining > 0 && !cancelledRef.current) rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+  }
+
+  function stopCountdown() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    setCountdown(0)
+  }
+
+  function speakOrWait(text, lang, ms, onDone) {
+    if (!HAS_SPEECH) {
+      setSpeaking(true); startCountdown(ms)
+      const t = setTimeout(() => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }, ms)
+      return () => clearTimeout(t)
+    }
+    try { window.speechSynthesis.cancel() } catch(e) {}
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = lang
+    utter.rate = lang.startsWith('th') ? thaiSpeed : 0.88
+    const match = voices.find(v => v.lang.startsWith(lang.slice(0, 2)))
+    if (match) utter.voice = match
+    setSpeaking(true); startCountdown(ms)
+    utter.onend = () => { setSpeaking(false); stopCountdown(); if (!pausedRef.current && !cancelledRef.current) onDone() }
+    utter.onerror = () => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }
+    try { window.speechSynthesis.speak(utter) } catch(e) { setSpeaking(false); stopCountdown(); onDone() }
+    return () => { try { window.speechSynthesis.cancel() } catch(e) {} setSpeaking(false); stopCountdown() }
+  }
+
+  useEffect(() => {
+    if (!playing || lessonDone) return
+    cancelledRef.current = false; pausedRef.current = false
+    const promptDur = calcDuration(pair.prompt, 'prompt')
+    const revealDur = calcDuration(pair.thai, 'reveal')
+    let cleanup = () => {}
+    if (phase === 'prompt') {
+      // Pause after prompt = Pimsleur formula based on Thai answer syllables
+      const n = countSyllables(pair.thai, pair.phonetic)
+      const thinkMs = Math.round((0.6 * n + 0.4) * 1000)
+      cleanup = speakOrWait(pair.prompt, 'en-US', promptDur, () => {
+        // This fires from utter.onend — AFTER speech actually finishes
+        startCountdown(thinkMs)
+        const t = setTimeout(() => { if (!cancelledRef.current) { stopCountdown(); setPhase('reveal') } }, thinkMs)
+        return () => clearTimeout(t)
+      }) || (() => {})
+    } else {
+      cleanup = speakOrWait(pair.thai, 'th-TH', revealDur, () => {
+        startCountdown(2500)
+        const t = setTimeout(() => {
+          if (cancelledRef.current) return
+          stopCountdown()
+          if (idx < pairs.length - 1) { setIdx(i => i + 1); setPhase('prompt') }
+          else setLessonDone(true)
+        }, 2500)
+        return () => clearTimeout(t)
+      }) || (() => {})
+    }
+    return () => {
+      cancelledRef.current = true
+      try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {}
+      setSpeaking(false); stopCountdown(); cleanup()
+    }
+  }, [idx, phase, playing, lessonDone, voices])
+
+  function togglePlay() {
+    if (playing) {
+      pausedRef.current = true
+      try { if (HAS_SPEECH) window.speechSynthesis.pause() } catch(e) {}
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      setPlaying(false)
+    } else {
+      pausedRef.current = false
+      try { if (HAS_SPEECH) window.speechSynthesis.resume() } catch(e) {}
+      setPlaying(true)
+    }
+  }
+
+  function jumpTo(newIdx, newPhase = 'prompt') {
+    cancelledRef.current = true
+    try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {}
+    setSpeaking(false); stopCountdown()
+    setIdx(newIdx); setPhase(newPhase); setPlaying(true)
+    setTimeout(() => { cancelledRef.current = false }, 50)
+  }
+
+  function rateKeyword(i, rating) {
+    setKeywords(kw => {
+      const u = kw.map((k, ki) => ki === i ? { ...k, rating } : k)
+      setAllRated(u.every(k => k.rating))
+      return u
+    })
+  }
+
+  const Waveform = () => (
+    <div style={{ display:'flex', alignItems:'center', gap:3, height:24 }}>
+      {[0,1,2,3,4,5,6].map(i => (
+        <div key={i} style={{ width:3, borderRadius:2, background:phase==='reveal'?'var(--gold)':'#4a90e2', height:speaking?`${8+Math.sin(i*0.9)*8+4}px`:'4px', animation:speaking?`wave 0.7s ease-in-out ${i*0.09}s infinite alternate`:'none', transition:'height 0.2s' }} />
+      ))}
+      <style>{`@keyframes wave{from{height:4px}to{height:22px}}`}</style>
+    </div>
+  )
+
+  if (lessonDone) {
+    return (
+      <div className="fade-in" style={{ background:'var(--bg)', minHeight:'100vh', padding:'16px 16px 40px', maxWidth:500, margin:'0 auto' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
+          <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="x" size={20} /></button>
+          <div>
+            <div className="display" style={{ fontSize:18 }}>Lesson complete!</div>
+            <div style={{ fontSize:12, color:'var(--muted)' }}>Rate how well you knew each word</div>
+          </div>
+        </div>
+        <div style={{ height:3, background:'var(--gold)', borderRadius:2, marginBottom:24 }} />
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:24 }}>
+          {keywords.map((kw,i) => (
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
+              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:12 }}>
+                <span className="thai" style={{ fontSize:26, color:'var(--gold)' }}>{kw.thai}</span>
+                {kw.phonetic && <span className="phon" style={{ fontSize:13, color:'#7a8aad' }}>{kw.phonetic}</span>}
+                <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
+              </div>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {[['hard','😅','#ef4444','#2d1515'],['ok','👍','#f59e0b','#3d2800'],['easy','⭐','#10b981','#063d2e']].map(([r,e,col,bg]) => (
+                  <button key={r} onClick={() => rateKeyword(i,r)}
+                    style={{ flex:1, padding:'9px 4px', borderRadius:8, border:`1px solid ${kw.rating===r?col:'var(--border)'}`, background:kw.rating===r?bg:'transparent', color:kw.rating===r?col:'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                    {e} {r}
+                  </button>
+                ))}
+                <button onClick={() => rateKeyword(i,'known')}
+                  style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='known'?'#10b981':'var(--border)'}`, background:kw.rating==='known'?'#063d2e':'transparent', color:kw.rating==='known'?'#10b981':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                  ✓ Mark Known
+                </button>
+                <button onClick={() => rateKeyword(i,'skip')}
+                  style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='skip'?'#6b7280':'var(--border)'}`, background:kw.rating==='skip'?'#1a1a2e':'transparent', color:kw.rating==='skip'?'#9ca3af':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                  🚫 Didn't appear
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => onComplete(keywords)} disabled={!allRated}
+          style={{ width:'100%', padding:'15px', borderRadius:12, border:'none', background:allRated?'linear-gradient(135deg,#d4a94a,#b88a35)':'var(--surface2)', color:allRated?'#0b1120':'var(--muted)', fontSize:16, fontWeight:700, cursor:allRated?'pointer':'not-allowed', fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
+          Save Progress
+        </button>
+      </div>
+    )
+  }
+
+  const barColor = speaking ? (phase==='prompt' ? '#4a90e2' : 'var(--gold)') : 'var(--surface2)'
+
+  return (
+    <div style={{ background:'var(--bg)', minHeight:'100vh', display:'flex', flexDirection:'column', maxWidth:500, margin:'0 auto', userSelect:'none' }}>
+
+      {/* Overall progress — top */}
+      <div style={{ height:3, background:'var(--surface2)' }}>
+        <div style={{ height:'100%', width:`${overallPct}%`, background:'linear-gradient(90deg,#d4a94a,#10b981)', transition:'width 0.5s ease' }} />
+      </div>
+
+      {/* Controls */}
+      <div style={{ display:'flex', alignItems:'center', padding:'10px 16px', gap:8 }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="arrow_left" size={18} /></button>
+        <span style={{ fontSize:13, color:'var(--muted)' }}>{idx+1} / {pairs.length}</span>
+        <span style={{ fontSize:11, color:'var(--gold-dim)', marginLeft:4 }}>{timeLeft}</span>
+        <div style={{ flex:1 }} />
+        <button onClick={() => idx>0 && jumpTo(idx-1)} disabled={idx===0}
+          style={{ background:'none', border:'none', color:idx===0?'var(--border)':'var(--muted)', cursor:idx===0?'default':'pointer', padding:'6px 8px', fontSize:18 }}>⏮</button>
+        <button onClick={togglePlay}
+          style={{ width:40, height:40, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          {playing ? '⏸' : '▶'}
+        </button>
+        <button onClick={() => idx<pairs.length-1 ? jumpTo(idx+1) : setLessonDone(true)}
+          style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:'6px 8px', fontSize:18 }}>⏭</button>
+        <button onClick={() => { cancelledRef.current = true; try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {} setSpeaking(false); stopCountdown(); setLessonDone(true) }}
+          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'#f59e0b', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>☑ Review</button>
+        <button onClick={() => { onBookmark && onBookmark(idx); setBookmarked(true); setTimeout(() => setBookmarked(false), 2000) }}
+          style={{ background: bookmarked ? '#1a2a00' : 'var(--surface)', border:`1px solid ${bookmarked ? '#4a7a00' : 'var(--border)'}`, borderRadius:20, padding:'5px 10px', cursor:'pointer', color: bookmarked ? '#86c900' : 'var(--muted)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
+          {bookmarked ? '✓ Saved' : '🔖 Pair ' + (idx + 1)}</button>
+        <button onClick={() => { togglePlay(); onKru(pair.prompt) }}
+          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'var(--gold)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>ครู</button>
+      </div>
+
+      {/* Resume from bookmark banner */}
+      {track.bookmark > 0 && idx === (track.bookmark || 0) && !playing && (
+        <div style={{ margin:'6px 16px 0', background:'#0d1a00', border:'1px solid #3a6000', borderRadius:8, padding:'7px 12px', display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:13 }}>🔖</span>
+          <span style={{ fontSize:12, color:'#86c900', flex:1 }}>Resuming from pair {(track.bookmark || 0) + 1} of {pairs.length}</span>
+          <button onClick={() => { setIdx(0) }} style={{ background:'none', border:'none', color:'var(--muted)', fontSize:11, cursor:'pointer', fontFamily:'Sarabun,sans-serif' }}>Start over</button>
+        </div>
+      )}
+
       {/* Thai speed control */}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 16px 0' }}>
         <span style={{ fontSize:11, color:'var(--muted)', whiteSpace:'nowrap' }}>🐢</span>
@@ -4906,11 +5248,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             <div style={{ fontSize:11, letterSpacing:'0.12em', color:'var(--gold)', textTransform:'uppercase', fontWeight:600 }}>Repeat aloud</div>
             {/* Aligned phonetic + gloss or plain phonetic fallback */}
             {pair.words && pair.words.length > 0 && pair.words.some(w => w.p) ? (
-              <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'6px 10px', maxWidth:360 }}>
+              <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
                 {pair.words.map((w, i) => (
-                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
-                    <span className="phon" style={{ fontSize:22, color:'var(--gold)', fontWeight:700 }}>{w.p}</span>
-                    <span style={{ fontSize:18, color:'#c8d8f0', fontStyle:'italic', whiteSpace:'nowrap' }}>{w.e}</span>
+                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+                    <span className="phon" style={{ fontSize:20, color:'var(--gold)', fontWeight:700, whiteSpace:'nowrap' }}>{w.p}</span>
+                    <span style={{ fontSize:13, color:'#94a3b8', whiteSpace:'nowrap' }}>{w.e}</span>
                   </div>
                 ))}
               </div>
@@ -4921,9 +5263,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 {pair.phonetic || pair.target_phonetic || ''}
               </p>
             )}
-            <p style={{ fontSize:22, color:'#e8d5a3', fontWeight:600, textAlign:'center', lineHeight:1.4, maxWidth:340 }}>{pair.english}</p>
             <Waveform />
-            <p className="thai" style={{ fontSize:26, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center' }}>{pair.thai}</p>
+            <p className="thai" style={{ fontSize:28, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center', lineHeight:1.6 }}>{pair.thai}</p>
+            <p style={{ fontSize:20, color:'#e8d5a3', fontWeight:600, textAlign:'center', lineHeight:1.4, maxWidth:340 }}>{pair.english}</p>
           </div>
         )}
       </div>
@@ -6138,6 +6480,20 @@ function LessonsView({ vocab, onVocabUpdate, onBack }) {
 }
 
 
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null } }
+  static getDerivedStateFromError(error) { return { hasError: true, error } }
+  componentDidCatch(error, info) { console.error('ErrorBoundary caught:', error, info) }
+  render() {
+    if (this.state.hasError) {
+      return React.createElement('div', {
+        style: { padding:24, color:'#ff6b6b', fontSize:18, fontWeight:700, textAlign:'center', marginTop:80 }
+      }, '❌ CRASH: ' + (this.state.error && this.state.error.message ? this.state.error.message : String(this.state.error)))
+    }
+    return this.props.children
+  }
+}
+
 function ThaiTeacher() {
   const [vocab, setVocab] = useState([])
   const [tracks, setTracks] = useState([])
@@ -6305,19 +6661,20 @@ function ThaiTeacher() {
               } catch(e) { alert('Convo failed: ' + e.message) }
             }}
             provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} hasOrKey={!!orKey} />}
-        {view === 'generate' && <Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
+        {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
           apiKey={orKey}
           provider={provider}
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
-        />}
+        /></ErrorBoundary>}
         {view === 'player' && activeTrack && (
-          <Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)}
+          <ErrorBoundary><Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)}
             onBookmark={async (pairIdx) => {
               const updated = tracks.map(t => t === activeTrack ? { ...t, bookmark: pairIdx } : t)
               await saveTracks(updated)
               setActiveTrack(prev => ({ ...prev, bookmark: pairIdx }))
             }}
           />
+          </ErrorBoundary>
         )}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v120"/>
-<meta name="app-version" content="v120"/>
+<meta name="app-version" content="v121"/>
+<meta name="app-version" content="v121"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v120';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v120').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v121';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v121').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2014,7 +2014,7 @@ const LESSON_DATA = [{
 
 
 // ── SRS Logic ────────────────────────────────────────────────────────────────
-const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v120' } catch { return 'v120' } })()
+const APP_VERSION = (() => { try { return document.querySelector('meta[name="app-version"]')?.content || 'v121' } catch { return 'v121' } })()
 
 const EASE = { easy: 2.5, ok: 1.3, hard: 0.6 }
 function calcInterval(cur, rating) {
@@ -4654,7 +4654,6 @@ function TrackQuality({ track }) {
 
 function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets }) {
   const [error, setError] = useState('')
-  const [fallbackReport, setFallbackReport] = useState(null)
   const pairSources = React.useRef([])
   const [pairsDone, setPairsDone] = useState(0)
   const [pairsTotal, setPairsTotal] = useState(90)
@@ -4718,17 +4717,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             (done, total, meta, source) => {
               setPairsDone(done)
               setPairsTotal(targets.length * 3)
-              try { if (meta && meta.fallbackWords && typeof setFallbackReport === 'function') setFallbackReport(meta) } catch(e) {}
               try {
                 if (source && pairSources.current) {
                   for (let si = Math.max(0, done-3); si < done; si++) {
                     if (!pairSources.current[si]) pairSources.current[si] = source
                   }
-                }
-              } catch(e) {}
-              try {
-                if (arguments[4] && arguments[4].word && wordSources.current) {
-                  wordSources.current[arguments[4].word] = arguments[4].source
                 }
               } catch(e) {}
             },
@@ -4840,24 +4833,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {phase === 'done' && generatedTrack ? (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           <TrackQuality track={generatedTrack} />
-          {fallbackReport && fallbackReport.fallbackWords && fallbackReport.fallbackWords.length > 0 && (
-            <div style={{ background:'#1a0a0a', border:'1px solid #7f1d1d', borderRadius:10, padding:'12px 14px' }}>
-              <div style={{ fontSize:11, color:'#ef4444', fontWeight:700, marginBottom:8 }}>
-                ⚠ {fallbackReport.fallbackWords.length} WORD{fallbackReport.fallbackWords.length > 1 ? 'S' : ''} USED FALLBACK
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                {(fallbackReport.fallbackWords || []).map(word => (
-                  <div key={word} style={{ fontSize:11, color:'var(--muted)' }}>
-                    <span style={{ color:'#fca5a5', fontWeight:700 }}>{word}</span>
-                    {' → '}
-                    <span style={{ color:'#9ca3af' }}>
-                      {((fallbackReport.failureLog && fallbackReport.failureLog[word]) || ['no details']).slice(0,2).join(' · ')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
           <Btn onClick={() => { onGenerated(generatedTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
             ▶ Start SRS Track
           </Btn>
@@ -4887,19 +4863,10 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             {targets.map((w,i) => {
               const done = i * 3 < pairsDone
               const phonetic = targetPhonetics[w.thai] || targetPhonetics[w.id] || w.phonetic || ''
-              const src = (wordSources.current && wordSources.current[w.thai]) || ''
-              const chipColor = !done ? 'var(--border)'
-                : src.startsWith('gpt:') ? '#888888'
-                : src.startsWith('gpt-recheck2:') ? '#065f46'
-                : src.startsWith('gpt-recheck:') ? '#10b981'
-                : src.startsWith('haiku:') ? '#FA8072'
-                : src.startsWith('hardcoded:') || src.startsWith('fallback:') ? '#111111'
-                : done ? color : 'var(--border)'
-              const isFallback = done && (src.startsWith('hardcoded:') || src.startsWith('fallback:'))
               return (
-                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background:'var(--surface2)', border:'1px solid ' + chipColor, borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0, opacity: done ? 1 : 0.5 }}>
-                  <span className="thai" style={{ color: isFallback ? '#ef4444' : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
-                  {phonetic ? <span className="phon" style={{ color: done ? chipColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{phonetic}</span> : null}
+                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : 'transparent', border:'1px solid ' + (done ? color : 'var(--border)'), borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0 }}>
+                  <span className="thai" style={{ color: done ? color : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
+                  {phonetic ? <span className="phon" style={{ color: done ? color : 'var(--muted)', fontSize:10, lineHeight:1.2, opacity:0.7 }}>{phonetic}</span> : null}
                 </div>
               )
             })}

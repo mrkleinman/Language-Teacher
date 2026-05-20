@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v137"/>
-<meta name="app-version" content="v137"/>
+<meta name="app-version" content="v138"/>
+<meta name="app-version" content="v138"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v137';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v137').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v138';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v138').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4909,6 +4909,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const [convoSpeed, setConvoSpeed] = useState(() => { try { return parseFloat(localStorage.getItem('tt-speed') || '0.8') } catch { return 0.8 } })
   const [generatedTrack, setGeneratedTrack] = useState(null)
   const [fixingFallbacks, setFixingFallbacks] = useState(false)
+  const [fixProgress, setFixProgress] = useState({ done: 0, total: 0, current: '' })
   const phoneticsRef = useRef({})
   const { targets, anchors } = useMemo(() => {
     if (customTargets && customTargets.length) {
@@ -5095,51 +5096,65 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           </Btn>
 
           {fallbackTargets.length > 0 && (
-            <Btn
-              onClick={async () => {
-                if (!apiKey) return
-                setFixingFallbacks(true)
-                try {
-                  const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
-                  const fixKey = orKey || apiKey
-                  const anchors = (generatedTrack.pairs || []).filter(p => p._source && !p._source.startsWith('fallback:') && !p._source.startsWith('hardcoded:')).slice(0,12)
-                  const fixedPairsMap = {}
-                  for (const t of fallbackTargets) {
-                    const scenario = generatedTrack.scenario || 'general'
-                    const newPairs = await generateTrack([t], anchors, fixKey, null, vocab, orModel)
-                    if (newPairs && newPairs.length > 0) {
-                      fixedPairsMap[t.thai] = newPairs.slice(0,3)
-                    }
-                  }
-                  // Splice fixed pairs into the track
-                  const patchedPairs = [...(generatedTrack.pairs || [])]
-                  const patchedSources = {...brickSources}
-                  for (const t of fallbackTargets) {
-                    const wIdx = targets.findIndex(x => x.thai === t.thai)
-                    if (wIdx < 0) continue
-                    const fixed = fixedPairsMap[t.thai]
-                    if (!fixed || fixed.length === 0) continue
-                    for (let k = 0; k < 3; k++) {
-                      const pIdx = wIdx * 3 + k
-                      if (fixed[k]) {
-                        patchedPairs[pIdx] = fixed[k]
-                        patchedSources[pIdx] = fixed[k]._source || ('fix:' + t.thai)
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              <Btn
+                onClick={async () => {
+                  if (!apiKey) return
+                  setFixingFallbacks(true)
+                  setFixProgress({ done: 0, total: fallbackTargets.length, current: '' })
+                  try {
+                    const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
+                    const fixKey = orKey || apiKey
+                    const anchors = (generatedTrack.pairs || []).filter(p => p._source && !p._source.startsWith('fallback:') && !p._source.startsWith('hardcoded:')).slice(0,12)
+                    const fixedPairsMap = {}
+                    for (let fi = 0; fi < fallbackTargets.length; fi++) {
+                      const t = fallbackTargets[fi]
+                      setFixProgress({ done: fi, total: fallbackTargets.length, current: t.thai })
+                      const newPairs = await generateTrack([t], anchors, fixKey, null, vocab, orModel)
+                      if (newPairs && newPairs.length > 0) {
+                        fixedPairsMap[t.thai] = newPairs.slice(0,3)
                       }
+                      // Patch bricks live as each word completes
+                      setFixProgress({ done: fi + 1, total: fallbackTargets.length, current: fi + 1 < fallbackTargets.length ? fallbackTargets[fi + 1].thai : '' })
+                      const patchedPairsLive = [...(generatedTrack.pairs || [])]
+                      const patchedSourcesLive = {...brickSources}
+                      for (const [tw, fixed] of Object.entries(fixedPairsMap)) {
+                        const wIdx = targets.findIndex(x => x.thai === tw)
+                        if (wIdx < 0 || !fixed) continue
+                        for (let k = 0; k < 3; k++) {
+                          if (fixed[k]) {
+                            patchedPairsLive[wIdx * 3 + k] = fixed[k]
+                            patchedSourcesLive[wIdx * 3 + k] = fixed[k]._source || ('fix:' + tw)
+                          }
+                        }
+                      }
+                      setGeneratedTrack(prev => ({...prev, pairs: patchedPairsLive}))
+                      setBrickSources(patchedSourcesLive)
                     }
-                  }
-                  setGeneratedTrack({...generatedTrack, pairs: patchedPairs})
-                  setBrickSources(patchedSources)
-                } catch(e) { alert('Fix failed: ' + e.message) }
-                setFixingFallbacks(false)
-              }}
-              variant="secondary"
-              style={{ width:'100%', justifyContent:'center', opacity: fixingFallbacks ? 0.6 : 1 }}
-              disabled={fixingFallbacks}
-            >
-              {fixingFallbacks
-                ? `⏳ Re-running AI for ${fallbackTargets.length} word${fallbackTargets.length > 1 ? 's' : ''}...`
-                : `⬛ Fix ${fallbackTargets.length} fallback word${fallbackTargets.length > 1 ? 's' : ''}`}
-            </Btn>
+                  } catch(e) { alert('Fix failed: ' + e.message) }
+                  setFixingFallbacks(false)
+                  setFixProgress({ done: 0, total: 0, current: '' })
+                }}
+                variant="secondary"
+                style={{ width:'100%', justifyContent:'center', opacity: fixingFallbacks ? 0.7 : 1 }}
+                disabled={fixingFallbacks}
+              >
+                {fixingFallbacks
+                  ? `Fixing ${fixProgress.done} / ${fixProgress.total}${fixProgress.current ? ' — ' + fixProgress.current : ''}...`
+                  : `⬛ Fix ${fallbackTargets.length} fallback word${fallbackTargets.length > 1 ? 's' : ''}`}
+              </Btn>
+              {fixingFallbacks && fixProgress.total > 0 && (
+                <div style={{ height: 4, borderRadius: 2, background: 'var(--surface2)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    borderRadius: 2,
+                    background: '#22d3ee',
+                    width: `${Math.round((fixProgress.done / fixProgress.total) * 100)}%`,
+                    transition: 'width 0.4s ease'
+                  }} />
+                </div>
+              )}
+            </div>
           )}
 
           <Btn onClick={async () => {

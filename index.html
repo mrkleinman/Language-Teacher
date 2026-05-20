@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v134"/>
-<meta name="app-version" content="v134"/>
+<meta name="app-version" content="v135"/>
+<meta name="app-version" content="v135"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v134';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v134').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v135';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v135').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4338,8 +4338,10 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
   function buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, failureReason) {
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
-    const floor = 5  // user-set minimum
-    const ceil = lenResult.goalMax || 7
+    const baseMin = lenResult.goalMin || 6
+    const baseMax = lenResult.goalMax || 8
+    const floor = Math.max(3, Math.floor(baseMin * 0.9))  // -10%
+    const ceil  = Math.ceil(baseMax * 1.1)                 // +10%
     const scenarioCtx = scenario ? (SCENARIO_CONTEXTS[scenario] || SCENARIO_CONTEXTS.general) : SCENARIO_CONTEXTS.general
     const conceptLines = (conceptBlock || []).slice(0,15).map(c =>
       (c.pattern||'') + '=' + (c.meaning||'') + ((c.frames && c.frames.length) ? '[' + c.frames[0] + ']' : '')
@@ -4417,8 +4419,10 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           // Length check via phonetic word count
           const phWords = (p.phonetic || '').trim().split(/\s+/).filter(w => w && !/^[?.!,]$/.test(w)).length
           const lenCheck = getSentenceLengthForVocab(vocab) || {}
-          const minWords = 5  // user-set minimum
-          const maxWords = (lenCheck.hardCeil || 8) + 2
+          const baseMin = lenCheck.goalMin || 6
+          const baseMax = lenCheck.goalMax || 8
+          const minWords = Math.max(3, Math.floor(baseMin * 0.9))  // -10%
+          const maxWords = Math.ceil(baseMax * 1.1) + 1            // +10% + 1 buffer
           const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
           if (effectiveLen < minWords) { failReason = 'too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai }
           else if (phWords > 2 && phWords > maxWords) { failReason = 'too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai }
@@ -4555,7 +4559,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       if (failures && failures.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((failures||[]).map(f => 'GPT1: ' + f))
       console.log('[GPT] ' + target.thai + ': ' + valid.length + '/3 valid, failures: ' + failures.slice(0,2).join(', '))
 
-      // ── Call 2: GPT recheck — ALWAYS runs to improve quality ─────────────
+      // ── Call 2: GPT recheck — quality upgrade ONLY, never blocks escalation ─
       {
         const lenRes = getSentenceLengthForVocab(vocab) || {}
         const lenHint = 'REQUIRED: sentences must be ' + (lenRes.goalMin||4) + '-' + (lenRes.hardCeil||8) + ' Thai words long'
@@ -4563,18 +4567,20 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, recheckHint)
         const recheck1 = await callModel(GPT_MODEL, prompt2)
         const { valid: v2, failures: f2 } = validateSmartPairs(recheck1, target)
+        // Only swap out white (tier-1) pairs with better ones — do NOT add new pairs beyond what we have
         for (const p of v2) {
-          if (!existingThais.has(p.thai)) {
-            if (pairs.length < 3) {
-              pairs.push({...p, _source:'gpt-recheck:'+ target.thai})
-            } else {
-              const whiteIdx = pairs.findIndex(x => x._source && x._source.startsWith('gpt:' + target.thai))
-              if (whiteIdx >= 0) pairs[whiteIdx] = {...p, _source:'gpt-recheck:'+ target.thai}
-            }
+          if (existingThais.has(p.thai)) continue
+          const whiteIdx = pairs.findIndex(x => x._source && x._source.startsWith('gpt:' + target.thai))
+          if (whiteIdx >= 0) {
+            // Replace a tier-1 pair with better quality
+            existingThais.delete(pairs[whiteIdx].thai)
+            pairs[whiteIdx] = {...p, _source:'gpt-recheck:'+ target.thai}
+            existingThais.add(p.thai)
           }
+          // Do NOT push new pairs — that would block calls 3 & 4
         }
         if (f2 && f2.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((f2||[]).map(f => 'GPT2: ' + f))
-        console.log('[GPT recheck always] ' + target.thai + ': ' + v2.length + ' valid')
+        console.log('[GPT recheck quality-swap] ' + target.thai + ': ' + v2.length + ' candidates, pairs now: ' + pairs.length)
 
         // ── Call 3: GPT second check ─────────────────────────────────────
         if (pairs.length < 3) {
@@ -4859,6 +4865,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const [convoPct, setConvoPct] = useState(0)
   const [convoSpeed, setConvoSpeed] = useState(() => { try { return parseFloat(localStorage.getItem('tt-speed') || '0.8') } catch { return 0.8 } })
   const [generatedTrack, setGeneratedTrack] = useState(null)
+  const [fixingFallbacks, setFixingFallbacks] = useState(false)
   const phoneticsRef = useRef({})
   const { targets, anchors } = useMemo(() => {
     if (customTargets && customTargets.length) {
@@ -4919,11 +4926,13 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               })
               if (source) {
                 const tierName = source.startsWith('gpt-recheck2:') ? '🟢 GPT second check'
-                  : source.startsWith('gpt-recheck:') ? '🟩 GPT first check'
+                  : source.startsWith('gpt-recheck:') ? '🟩 GPT recheck'
                   : source.startsWith('gpt:') ? '⬜ GPT first pass'
                   : source.startsWith('haiku:') ? '🩷 Haiku'
-                  : source.startsWith('hardcoded:') ? '⬛ Hardcoded (all 4 AI calls failed)'
-                  : source.startsWith('fallback:') ? '⬛ Generic fallback (all 4 AI calls failed)'
+                  : source.startsWith('validator-repair:') ? '🟡 Validator repair'
+                  : source.startsWith('fix:') ? '🔧 Manual fix'
+                  : source.startsWith('hardcoded:') ? '⬛ Hardcoded (all AI calls failed)'
+                  : source.startsWith('fallback:') ? '⬛ Generic fallback (all AI calls failed)'
                   : '🟡 Unknown'
                 setCurrentTier(tierName)
               }
@@ -5010,6 +5019,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             : src.startsWith('gpt-recheck:') ? '#10b981'
             : src.startsWith('haiku:') ? '#FA8072'
             : src.startsWith('validator-repair:') ? '#f59e0b'
+            : src.startsWith('fix:') ? '#22d3ee'
             : src.startsWith('hardcoded:') || src.startsWith('fallback:') ? '#111111'
             : i < pairsDone ? color : 'var(--surface2)'
           return <div key={i} style={{ height:8, borderRadius:3, background:bg, transition:'background 0.2s', opacity:i < pairsDone ? 1 : 0.4 }} />
@@ -5027,13 +5037,68 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       </div>
 
       {/* Track ready actions */}
-      {phase === 'done' && generatedTrack ? (
+      {phase === 'done' && generatedTrack ? (() => {
+        const fallbackPairIdxs = Object.entries(brickSources)
+          .filter(([,src]) => src.startsWith('fallback:') || src.startsWith('hardcoded:'))
+          .map(([i]) => parseInt(i))
+        const fallbackWordIdxs = [...new Set(fallbackPairIdxs.map(i => Math.floor(i/3)))]
+        const fallbackTargets = fallbackWordIdxs.map(i => targets[i]).filter(Boolean)
+        return (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           <TrackQuality track={generatedTrack} />
 
           <Btn onClick={() => { onGenerated(generatedTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
             ▶ Start SRS Track
           </Btn>
+
+          {fallbackTargets.length > 0 && (
+            <Btn
+              onClick={async () => {
+                if (!apiKey) return
+                setFixingFallbacks(true)
+                try {
+                  const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
+                  const fixKey = orKey || apiKey
+                  const anchors = (generatedTrack.pairs || []).filter(p => p._source && !p._source.startsWith('fallback:') && !p._source.startsWith('hardcoded:')).slice(0,12)
+                  const fixedPairsMap = {}
+                  for (const t of fallbackTargets) {
+                    const scenario = generatedTrack.scenario || 'general'
+                    const newPairs = await generateTrack([t], anchors, fixKey, null, vocab, orModel)
+                    if (newPairs && newPairs.length > 0) {
+                      fixedPairsMap[t.thai] = newPairs.slice(0,3)
+                    }
+                  }
+                  // Splice fixed pairs into the track
+                  const patchedPairs = [...(generatedTrack.pairs || [])]
+                  const patchedSources = {...brickSources}
+                  for (const t of fallbackTargets) {
+                    const wIdx = targets.findIndex(x => x.thai === t.thai)
+                    if (wIdx < 0) continue
+                    const fixed = fixedPairsMap[t.thai]
+                    if (!fixed || fixed.length === 0) continue
+                    for (let k = 0; k < 3; k++) {
+                      const pIdx = wIdx * 3 + k
+                      if (fixed[k]) {
+                        patchedPairs[pIdx] = fixed[k]
+                        patchedSources[pIdx] = fixed[k]._source || ('fix:' + t.thai)
+                      }
+                    }
+                  }
+                  setGeneratedTrack({...generatedTrack, pairs: patchedPairs})
+                  setBrickSources(patchedSources)
+                } catch(e) { alert('Fix failed: ' + e.message) }
+                setFixingFallbacks(false)
+              }}
+              variant="secondary"
+              style={{ width:'100%', justifyContent:'center', opacity: fixingFallbacks ? 0.6 : 1 }}
+              disabled={fixingFallbacks}
+            >
+              {fixingFallbacks
+                ? `⏳ Re-running AI for ${fallbackTargets.length} word${fallbackTargets.length > 1 ? 's' : ''}...`
+                : `⬛ Fix ${fallbackTargets.length} fallback word${fallbackTargets.length > 1 ? 's' : ''}`}
+            </Btn>
+          )}
+
           <Btn onClick={async () => {
             setConvoLoading(true)
             try {
@@ -5050,7 +5115,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             {convoLines ? '💬 View Conversation' : '💬 Generate Conversation'}
           </Btn>
         </div>
-      ) : null}
+        )
+      })() : null}
 
       {/* Target words */}
       {targets.length > 0 && (

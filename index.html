@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v135"/>
-<meta name="app-version" content="v135"/>
+<meta name="app-version" content="v137"/>
+<meta name="app-version" content="v137"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v135';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v135').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v137';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v137').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2348,24 +2348,42 @@ function Header({ view, onNav, onHome }) {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 
-function downloadTrack(track) {
+function downloadTrack(track, vocab) {
   const keywords = track.keywords || []
   const pairs = track.pairs || []
-  
+
+  // Build a quick lookup for vocab status by thai word
+  const vocabMap = {}
+  for (const w of (vocab || [])) {
+    vocabMap[w.thai] = w
+  }
+
   // Build readable text file
   const lines = []
   lines.push('THAI TEACHER — TRACK EXPORT')
-  lines.push('=' .repeat(50))
+  lines.push('='.repeat(50))
   lines.push(`Date: ${track.date}`)
   lines.push(`Mode: ${track.mode || 'daily'}`)
   lines.push(`Pairs: ${pairs.length}`)
   lines.push(`Created: ${track.createdAt || ''}`)
   lines.push('')
-  
+
   lines.push('TARGET WORDS (' + keywords.length + ')')
   lines.push('-'.repeat(30))
   keywords.forEach((k, i) => {
-    lines.push(`${String(i+1).padStart(2,'0')}. ${k.thai}  [${k.phonetic || ''}]  —  ${k.english}`)
+    const vw = vocabMap[k.thai] || {}
+    const status   = vw.status    || k.status    || 'unknown'
+    const reps     = vw.repCount  != null ? vw.repCount  : '—'
+    const lapses   = vw.lapses    != null ? vw.lapses    : '—'
+    const interval = vw.interval  != null ? vw.interval  : '—'
+    const due      = vw.dueDate   || '—'
+    const diff     = vw.difficulty || '—'
+    lines.push(
+      `${String(i+1).padStart(2,'0')}. ${k.thai}  [${k.phonetic || ''}]  —  ${k.english}`
+    )
+    lines.push(
+      `    status: ${status}  |  reps: ${reps}  |  lapses: ${lapses}  |  interval: ${interval}d  |  due: ${due}  |  difficulty: ${diff}`
+    )
   })
   lines.push('')
   
@@ -2596,7 +2614,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                     </p>
                   </div>
                   {track.rated && <Icon name="check" size={14} color="#10b981" />}
-                  <button onClick={e => { e.stopPropagation(); downloadTrack(track) }}
+                  <button onClick={e => { e.stopPropagation(); downloadTrack(track, vocab) }}
                     style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }} title="Download track">⬇️</button>
                   <button onClick={e => { e.stopPropagation(); onDeleteTrack(tracks.length-1-i) }}
                     style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:14, padding:'4px 6px' }}>🗑</button>
@@ -4392,17 +4410,38 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
     )
     // Always allow basic grammar/particles (these are universal Thai building blocks)
     const alwaysOk = new Set([
-      'ผม','คุณ','เขา','เรา','พวกเรา','มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ',
-      'ให้','กัน','อยู่','เป็น','ครับ','คะ','ค่ะ','แล้ว','ก็','จะ','และ','หรือ','ใน',
-      'มาก','น้อย','ดี','ใหญ่','เล็ก','นี่','นั่น','อยาก','ต้อง','ช่วย','หน่อย','บาง',
-      'หลาย','กำลัง','ยัง','เคย','เพิ่ง','เพิ่งจะ','ทุก','ทั้ง','แค่','เลย','สิ','นะ',
-      'ด้วย','ก็ได้','เท่า','กี่','เมื่อ','เมื่อไหร่','เท่าไหร่','อะไร','ใคร','ทำไม',
-      'ยังไง','อย่างไร','ที่ไหน','ไหน','อย่าง','แบบ','ราคา','ของผม','ของคุณ',
-      'ตอน','วัน','เวลา','ตอนนี้','วันนี้','ที่นี่','ตรงนี้','ข้างๆ','ใกล้','ไกล',
-      'ไป','มา','กลับ','ออก','เข้า','ขึ้น','ลง','เดิน','นาน','เร็ว','ช้า',
+      // Pronouns & basic grammar
+      'ผม','คุณ','เขา','เรา','พวกเรา','ฉัน','เธอ','มัน','หนู','เขาเธอ',
+      'มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ','ให้','กัน','อยู่','เป็น',
+      'ครับ','คะ','ค่ะ','แล้ว','ก็','จะ','และ','หรือ','ใน','นะ','เลย','สิ',
+      // Degree & quantity
+      'มาก','น้อย','หลาย','ทุก','ทั้ง','แค่','เท่า','กี่','บาง','บ้าง',
+      // Common adjectives
+      'ดี','ใหญ่','เล็ก','สวย','แพง','ถูก','เก่า','ใหม่','เร็ว','ช้า','นาน','ไกล','ใกล้',
+      // Demonstratives & locatives
+      'นี่','นั่น','อยาก','ต้อง','ช่วย','หน่อย','ด้วย','ก็ได้',
+      'ตอน','วัน','เวลา','ตอนนี้','วันนี้','ที่นี่','ตรงนี้','ข้างๆ',
+      // Movement
+      'ไป','มา','กลับ','ออก','เข้า','ขึ้น','ลง','เดิน',
+      // Common verbs
       'กิน','ดื่ม','นอน','พูด','ฟัง','ดู','รู้','รู้สึก','คิด','เห็น','เจอ',
-      'บ้าน','รถ','ถนน','น้ำ','ข้าว','ร้าน','วิธี','แบบ','สี','ขนาด',
+      'ทำ','บอก','ถาม','ตอบ','ชอบ','รัก','อยาก','ต้องการ','พยายาม',
+      // Common nouns
+      'บ้าน','รถ','ถนน','น้ำ','ข้าว','ร้าน','วิธี','แบบ','สี','ขนาด','คน','เรื่อง',
+      'เงิน','งาน','โรงเรียน','โรงพยาบาล','ประเทศ','เมือง','ที่','ห้อง',
+      // Politeness
       'ขอ','โปรด','สวัสดี','ขอบคุณ','ไม่เป็นไร','โอเค','ใช่','เปล่า','ได้เลย',
+      // Time words (often sub-components of target words)
+      'ตี','โมง','ทุ่ม','คืน','เช้า','เที่ยง','บ่าย','เย็น','กลางคืน','กลางวัน',
+      'สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า','สิบ','สอง','หนึ่ง',
+      // Aspect markers & particles
+      'กำลัง','ยัง','เคย','เพิ่ง','เพิ่งจะ','แล้วก็','ก่อน','หลัง','ระหว่าง',
+      'อะไร','ใคร','ทำไม','ยังไง','อย่างไร','ที่ไหน','ไหน','เมื่อ','เมื่อไหร่','เท่าไหร่',
+      'อย่าง','เกี่ยวกับ','สำหรับ','เพราะ','ดังนั้น','ถ้า','แม้','แต่','เพื่อ',
+      // Common prefixes/suffixes that appear in compound words
+      'ขี้','เจ้า','ห้า','ข้าง','ต้น','ลูก','หัว','มือ','ตา','หู','ปาก','จมูก',
+      'ผัด','ต้ม','แกง','ทอด','นึ่ง', // cooking methods
+      'ไก่','หมู','ปลา','เนื้อ','ผัก','ข้าว','น้ำ','น้ำมัน', // food basics
     ])
 
     for (const p of pairs) {
@@ -4434,7 +4473,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
               remaining = remaining.split(w).join(' ')
             }
             const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
-            if (unknownChars.length > 3) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
+            if (unknownChars.length > 6) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
           }
           if (!failReason) {
             const pr = (p.prompt || '').toLowerCase().trim()
@@ -4559,7 +4598,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       if (failures && failures.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((failures||[]).map(f => 'GPT1: ' + f))
       console.log('[GPT] ' + target.thai + ': ' + valid.length + '/3 valid, failures: ' + failures.slice(0,2).join(', '))
 
-      // ── Call 2: GPT recheck — quality upgrade ONLY, never blocks escalation ─
+      // ── Call 2: GPT recheck — fills gaps AND upgrades quality ─────────────
       {
         const lenRes = getSentenceLengthForVocab(vocab) || {}
         const lenHint = 'REQUIRED: sentences must be ' + (lenRes.goalMin||4) + '-' + (lenRes.hardCeil||8) + ' Thai words long'
@@ -4567,20 +4606,24 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, recheckHint)
         const recheck1 = await callModel(GPT_MODEL, prompt2)
         const { valid: v2, failures: f2 } = validateSmartPairs(recheck1, target)
-        // Only swap out white (tier-1) pairs with better ones — do NOT add new pairs beyond what we have
         for (const p of v2) {
           if (existingThais.has(p.thai)) continue
-          const whiteIdx = pairs.findIndex(x => x._source && x._source.startsWith('gpt:' + target.thai))
-          if (whiteIdx >= 0) {
-            // Replace a tier-1 pair with better quality
-            existingThais.delete(pairs[whiteIdx].thai)
-            pairs[whiteIdx] = {...p, _source:'gpt-recheck:'+ target.thai}
+          if (pairs.length < 3) {
+            // Slot is empty — just fill it
+            pairs.push({...p, _source:'gpt-recheck:'+ target.thai})
             existingThais.add(p.thai)
+          } else {
+            // All 3 slots full — quality-swap a tier-1 pair if one exists
+            const whiteIdx = pairs.findIndex(x => x._source && x._source.startsWith('gpt:' + target.thai))
+            if (whiteIdx >= 0) {
+              existingThais.delete(pairs[whiteIdx].thai)
+              pairs[whiteIdx] = {...p, _source:'gpt-recheck:'+ target.thai}
+              existingThais.add(p.thai)
+            }
           }
-          // Do NOT push new pairs — that would block calls 3 & 4
         }
         if (f2 && f2.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((f2||[]).map(f => 'GPT2: ' + f))
-        console.log('[GPT recheck quality-swap] ' + target.thai + ': ' + v2.length + ' candidates, pairs now: ' + pairs.length)
+        console.log('[GPT recheck] ' + target.thai + ': ' + v2.length + ' valid, pairs now: ' + pairs.length)
 
         // ── Call 3: GPT second check ─────────────────────────────────────
         if (pairs.length < 3) {
@@ -5979,9 +6022,17 @@ function DataManager({ onBack, vocab, tracks, onImport }) {
   const [msg, setMsg] = useState('')
 
   function exportData() {
+    const statusSummary = {
+      total: vocab.length,
+      known:    vocab.filter(w => w.status === 'known').length,
+      learning: vocab.filter(w => w.status === 'learning').length,
+      new:      vocab.filter(w => w.status === 'new').length,
+      lapsed:   vocab.filter(w => w.status === 'lapsed').length,
+    }
     const data = {
       version: 1,
       exportedAt: new Date().toISOString(),
+      statusSummary,
       vocab,
       tracks,
     }

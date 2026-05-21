@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v144"/>
-<meta name="app-version" content="v144"/>
+<meta name="app-version" content="v146"/>
+<meta name="app-version" content="v146"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v144';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v144').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v146';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v146').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4500,14 +4500,19 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
     return 'SCENARIO: ' + scenarioCtx.setting +
       '\nTARGET WORD: ' + target.thai + ' (' + (target.phonetic||target.thai) + ') = "' + (target.english||'') + '"' +
       '\n⚠ CRITICAL: Every Thai sentence MUST contain the EXACT word "' + target.thai + '". Do NOT replace it with synonyms.' +
-      '\nCLASS: ' + type + ' | SENTENCE LENGTH: MUST be ' + floor + '-' + ceil + ' Thai words. Sentences shorter than ' + floor + ' words will be rejected.' +
+      '\nCLASS: ' + type + ' | SENTENCE LENGTH: MUST be ' + floor + '-' + ceil + ' Thai words counted in phonetic (each space-separated token = 1 word). REJECTED if outside this range.' +
       typeHint +
       (recheckLine ? '\n' + recheckLine : '') +
+      '\nVALIDATOR HARD RULES — these cause automatic rejection:' +
+      '\n  • sentence must contain "' + target.thai + '" exactly' +
+      '\n  • length must be ' + floor + '–' + ceil + ' phonetic words' +
+      '\n  • prompt says "ask" → Thai MUST end with ไหมครับ or ไหมคะ' +
+      '\n  • prompt must be ≥10 chars and specific (never "Describe X" or "Discuss X")' +
+      '\n  • no duplicate Thai sentences across the 3 pairs' +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
-      '\nWRITE 3 sentence pairs each containing "' + target.thai + '". Use 3 different grammar patterns: 1 statement, 1 yes/no question, 1 other. Each "prompt" must be SPECIFIC: tell the student exactly what to say (e.g. "Say the [target] is [adjective]", "Ask if the [target] is [quality]"). ONLY use Thai words from the WHITELIST above.' +
-      ' "prompt" = natural English instruction. Mix statement + question + negative/other.' +
-      '\nRETURN ONLY: [{"prompt":"...","thai":"...","phonetic":"...","english":"...","words":[{"p":"phǒm","e":"I"},{"p":"mii","e":"have"},...]},...] — include a words array with one entry per phonetic token showing its meaning.'
+      '\nWRITE exactly 3 pairs: (1) statement "Say...", (2) yes/no question "Ask... [must end ไหมครับ/คะ]", (3) variation (negative/past/different context).' +
+      '\nRETURN ONLY JSON: [{"prompt":"...","thai":"...","phonetic":"...","english":"...","words":[{"p":"phǒm","e":"I"},{"p":"mii","e":"have"},...]},...] — words = one entry per phonetic token.'
   }
 
   // ── Validate pairs (reuse existing validator) ──────────────────────────────
@@ -4581,13 +4586,17 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           else if (phWords > 2 && phWords > maxWords) { failReason = 'too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai }
           else if (existingThais.has(p.thai)) { failReason = 'duplicate' }
           else if (strict && knownThaiWords.size > 0) {
-            let remaining = p.thai
-            remaining = remaining.split(target.thai).join(' ')
-            for (const w of [...knownThaiWords, ...alwaysOk]) {
-              remaining = remaining.split(w).join(' ')
+            // Skip unknown vocab check for types that naturally use specialized vocab
+            const skipVocabCheck = ['proper_place','classifier','particle','weather','full_sentence','verb_screen'].includes(classifyWord(target))
+            if (!skipVocabCheck) {
+              let remaining = p.thai
+              remaining = remaining.split(target.thai).join(' ')
+              for (const w of [...knownThaiWords, ...alwaysOk]) {
+                remaining = remaining.split(w).join(' ')
+              }
+              const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
+              if (unknownChars.length > 6) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
             }
-            const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
-            if (unknownChars.length > 6) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
           }
           // ── Semantic sanity checks ─────────────────────────────────────────
           // 1. "want" in prompt but จะ (will) used instead of อยาก/ต้องการ

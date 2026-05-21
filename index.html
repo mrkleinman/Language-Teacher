@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v149"/>
-<meta name="app-version" content="v149"/>
+<meta name="app-version" content="v150"/>
+<meta name="app-version" content="v150"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v149';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v149').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v150';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v150').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2968,14 +2968,22 @@ function parsePartialArray(str) {
 
 
 async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
+  const isQwen = orModel.includes('qwen')
   // Use streaming (same as main calls) to avoid CORS issues with non-streaming
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: orModel, max_tokens: maxTokens || 2000, temperature: 0.35, stream: true,
-      
-      messages })
+    body: JSON.stringify({
+      model: orModel,
+      max_tokens: maxTokens || 2000,
+      temperature: isQwen ? 0.7 : 0.35,
+      top_p: isQwen ? 0.8 : 1,
+      top_k: isQwen ? 20 : undefined,
+      stream: true,
+      ...(isQwen ? { thinking: { type: 'disabled' } } : {}),
+      messages
+    })
   })
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `API error ${res.status}`) }
   const reader = res.body.getReader(); const decoder = new TextDecoder()
@@ -4764,7 +4772,9 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
   // ── Single API call with retry ─────────────────────────────────────────────
   async function callModel(mdl, prompt) {
     try {
-      const sysMsg = 'You are a Thai language teacher writing Pimsleur-style speaking prompts. ' +
+      const isQwen = mdl.includes('qwen')
+      const sysMsg = (isQwen ? '/no_think\n' : '') +
+        'You are a Thai language teacher writing Pimsleur-style speaking prompts. ' +
         'STRICT RULE: Every Thai word must be from the WHITELIST in the prompt or be the target word. ' +
         'The "prompt" field must be a SPECIFIC, CONCRETE instruction — exactly what the student should say. ' +
         'GOOD prompts: "Say your nose is big", "Ask if the route is winding", "Tell them you just arrived", "Ask how much the raft costs". ' +
@@ -4775,7 +4785,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         { role: 'system', content: sysMsg },
         { role: 'user', content: prompt }
       ]
-      const text = await callOpenRouterOnce(apiKey, mdl, messages, 3000)
+      const maxTok = isQwen ? 4000 : 3000  // Qwen needs more room as thinking tokens can eat budget
+      const text = await callOpenRouterOnce(apiKey, mdl, messages, maxTok)
       const parsed = parsePartialArray(text)
       console.log('[AI] ' + mdl.split('/').pop().slice(0,10) + ' returned ' + parsed.length + ' pairs')
       return parsed

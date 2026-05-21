@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v151"/>
-<meta name="app-version" content="v151"/>
+<meta name="app-version" content="v153"/>
+<meta name="app-version" content="v153"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v151';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v151').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v153';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v153').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2976,10 +2976,12 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
       'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
     body: JSON.stringify({
       model: orModel,
-      max_tokens: maxTokens || 2000,
+      max_tokens: isQwen ? Math.max(maxTokens || 2000, 8000) : (maxTokens || 2000),
       temperature: isQwen ? 0.7 : 0.35,
       top_p: isQwen ? 0.8 : 1,
       top_k: isQwen ? 20 : undefined,
+      // Disable reasoning/thinking for Qwen3 — thinking tokens eat the entire token budget
+      ...(isQwen ? { reasoning: { enabled: false } } : {}),
       stream: true,
       messages
     })
@@ -2998,6 +3000,12 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
     accumulated = accumulated.split('\n').slice(-1)[0]
   }
   let text = fullText.replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
+  if (!text && fullText.length > 0) {
+    // All content was inside <think> tags — model thought but produced no output
+    // This means thinking mode is still active and ate the entire token budget
+    console.warn('[OR] Response was all thinking, no output. fullText length:', fullText.length)
+    throw new Error('Model returned only thinking tokens, no JSON output. Token budget exhausted by thinking.')
+  }
   const j1 = text.indexOf('['), j2 = text.lastIndexOf(']')
   if (j1 >= 0 && j2 > j1) text = text.slice(j1, j2+1)
   return text
@@ -4402,7 +4410,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
   // ── Models: Qwen3-14B generates + rechecks, Haiku escalates ──────────────
   const GPT_MODEL   = 'qwen/qwen3-14b'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
-  console.log('[generator] Qwen3-14B → GPT recheck → Haiku escalation')
+  console.log('[generator] Qwen3-14B call 1 → call 2 recheck → call 3 second check → Haiku escalation')
 
   const existingThais = new Set()
   let allPairs = []
@@ -4857,7 +4865,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       if (failures && failures.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((failures||[]).map(f => 'GPT1: ' + f))
       console.log('[GPT] ' + target.thai + ': ' + valid.length + '/3 valid, failures: ' + failures.slice(0,2).join(', '))
 
-      // ── Call 2: GPT recheck — fills gaps AND upgrades white (tier-1) bricks ─
+      // ── Call 2: Qwen recheck — fills gaps AND upgrades white (tier-1) bricks ─
       // Always runs — if GPT1 got 3, still tries to swap whites for greens
       {
         const lenRes = getSentenceLengthForVocab(vocab) || {}
@@ -4883,18 +4891,18 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           }
         }
         if (f2 && f2.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((f2||[]).map(f => 'GPT2: ' + f))
-        console.log('[GPT recheck] ' + target.thai + ': ' + v2.length + ' valid, pairs now: ' + pairs.length)
+        console.log('[Qwen recheck] ' + target.thai + ': ' + v2.length + ' valid, pairs now: ' + pairs.length)
 
-        // ── Call 3: GPT second check — only if still short ───────────────
+        // ── Call 3: Qwen second check — only if still short ───────────────
         let f3 = []
         if (pairs.length < 3) {
-          const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after GPT recheck'
+          const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after Qwen recheck'
           const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2)
           const recheck2 = await callModel(GPT_MODEL, prompt3)
           const r3 = validateSmartPairs(recheck2, target, false)
           f3 = r3.failures || []
           for (const p of r3.valid) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck2:'+ target.thai}) }
-          console.log('[GPT second] ' + target.thai + ': ' + r3.valid.length + ' more valid')
+          console.log('[Qwen second] ' + target.thai + ': ' + r3.valid.length + ' more valid')
         }
 
         // ── Call 4: Haiku — fires when GPT failed to fill all 3 slots ───
@@ -5242,9 +5250,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 return next
               })
               if (source) {
-                const tierName = source.startsWith('gpt-recheck2:') ? '🟢 GPT second check'
-                  : source.startsWith('gpt-recheck:') ? '🟩 GPT recheck'
-                  : source.startsWith('gpt:') ? '⬜ GPT first pass'
+                const tierName = source.startsWith('gpt-recheck2:') ? '🟢 Qwen second check'
+                  : source.startsWith('gpt-recheck:') ? '🟩 Qwen recheck'
+                  : source.startsWith('gpt:') ? '⬜ Qwen first pass'
                   : source.startsWith('haiku:') ? '🩷 Haiku'
                   : source.startsWith('validator-repair:') ? '🟡 Validator repair'
                   : source.startsWith('fix:') ? '🔧 Manual fix'

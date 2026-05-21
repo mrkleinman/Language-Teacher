@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v146"/>
-<meta name="app-version" content="v146"/>
+<meta name="app-version" content="v147"/>
+<meta name="app-version" content="v147"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v146';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v146').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v147';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v147').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4509,6 +4509,13 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       '\n  • prompt says "ask" → Thai MUST end with ไหมครับ or ไหมคะ' +
       '\n  • prompt must be ≥10 chars and specific (never "Describe X" or "Discuss X")' +
       '\n  • no duplicate Thai sentences across the 3 pairs' +
+      '\nQUALITY RULES:' +
+      '\n  • prompt field must be ENGLISH ONLY — never put Thai script in the prompt' +
+      '\n  • every Thai sentence MUST end with ครับ or ค่ะ or คะ' +
+      '\n  • ขอ...หน่อย only for concrete requestable objects/food — NOT activities, animals, places, abstract concepts' +
+      '\n  • sentences must make real-world sense (not "my grandmother is big", not "I bought a receipt", not "next trip was last month")' +
+      '\n  • connector words like งั้นก็ go at START of sentence, never at the end' +
+      '\n  • all 3 pairs must use meaningfully different grammar patterns (not all มี...ไหมครับ)' +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
       '\nWRITE exactly 3 pairs: (1) statement "Say...", (2) yes/no question "Ask... [must end ไหมครับ/คะ]", (3) variation (negative/past/different context).' +
@@ -4637,6 +4644,25 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
               bodyPainTypes.includes(classifyWord(target)) &&
               p.thai.includes(target.thai)) {
             failReason = 'body-pain sentence for non-body word: ' + target.thai + ' type=' + classifyWord(target)
+          }
+          // 6. Thai script in the prompt field
+          if (!failReason && /[ก-๙]/.test(p.prompt || '')) {
+            failReason = 'Thai script in prompt field: ' + (p.prompt||'').slice(0,40)
+          }
+          // 7. Missing polite particle at end
+          if (!failReason) {
+            const thaiTrim = (p.thai||'').trim().replace(/[.?!。]$/, '')
+            if (!/[ครับค่ะคะ]$/.test(thaiTrim) && !thaiTrim.endsWith('ครับ') && !thaiTrim.endsWith('ค่ะ') && !thaiTrim.endsWith('คะ')) {
+              failReason = 'missing polite particle (ครับ/ค่ะ/คะ) at end: ' + p.thai
+            }
+          }
+          // 8. ขอ...หน่อย for non-requestable types
+          if (!failReason) {
+            const wtype = classifyWord(target)
+            const nonReq = ['verb_intrans','verb_screen','proper_place','weather','personality','adjective','colour','abstract','particle','classifier','full_sentence','verb_command','negative_particle']
+            if (/^ขอ.+หน่อย/.test((p.thai||'').trim()) && nonReq.includes(wtype)) {
+              failReason = 'ขอ...หน่อย not valid for type: ' + wtype + ' (' + target.thai + ')'
+            }
           }
           if (!failReason) {
             const pr = (p.prompt || '').toLowerCase().trim()

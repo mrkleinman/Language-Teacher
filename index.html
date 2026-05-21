@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v140"/>
-<meta name="app-version" content="v140"/>
+<meta name="app-version" content="v141"/>
+<meta name="app-version" content="v141"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v140';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v140').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v141';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v141').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3289,6 +3289,28 @@ function classifyWord(target) {
       ['มะละกอ','กล้วย','ทุเรียน','สับปะรด','มะพร้าว','ลำไย','ลิ้นจี่','เงาะ','แตงโม','ฝรั่ง','ส้มโอ',
        'มะขาม','ชมพู่','สตรอเบอรี่'].includes(thai)) return 'food'
 
+  // ── Sentence particles — specific usage patterns ─────────────────────────
+  if (['ล่ะ','นะ','สิ','เลย','หน่อย','ด้วย','ก็ได้'].includes(thai) ||
+      ['question particle','emphasis particle','softening particle'].some(w => eng.includes(w))) return 'particle'
+
+  // ── Countries and proper places ──────────────────────────────────────────
+  const COUNTRIES = ['สวิตเซอร์แลนด์','ญี่ปุ่น','ฝรั่งเศส','เยอรมนี','อังกฤษ','อเมริกา','จีน','เกาหลี',
+    'ออสเตรเลีย','แคนาดา','อิตาลี','สเปน','รัสเซีย','บราซิล','อินเดีย','สิงคโปร์','มาเลเซีย']
+  if (COUNTRIES.includes(thai) || eng.match(/^(Switzerland|Japan|France|Germany|England|America|China|Korea|Australia|Canada|Italy|Spain|Russia|Brazil|India|Singapore|Malaysia)$/i)) return 'proper_place'
+
+  // ── Abstract concepts that cannot be requested/owned ─────────────────────
+  if (['จำนวน','ปริมาณ','ความ','จำนวนมาก'].includes(thai) ||
+      ['quantity','amount','number of','a number of'].some(w => eng.includes(w))) return 'abstract'
+
+  // ── ต่างประเทศ = "abroad" / "foreign country" — a concept, not a place you visit ──
+  if (thai === 'ต่างประเทศ' || eng === 'abroad' || eng === 'foreign country' || eng === 'overseas') return 'abstract'
+
+  // ── Intransitive verbs — cannot be owned or requested ────────────────────
+  const INTRANS_VERBS = ['stand','sit','walk','run','sleep','lie down','swim','fly','jump','fall',
+    'smile','laugh','cry','shout','whisper','breathe','cough','sneeze','yawn','blink']
+  if (INTRANS_VERBS.some(w => eng === w || eng === w+'ing') ||
+      ['ยืน','นั่ง','เดิน','วิ่ง','นอน','ว่ายน้ำ','บิน','กระโดด','ล้ม','ยิ้ม','หัวเราะ','ร้องไห้'].includes(thai)) return 'verb_intrans'
+
   // ── Proper nouns / places — MUST come before generic checks ──────────────
   if (['กาดสวนแก้ว','เซ็นทรัล','ห้างสรรพสินค้า','พารากอน','เอ็มควอเทียร์',
        'สยามพารากอน','ไอคอนสยาม','เทอร์มินัล21'].includes(thai) ||
@@ -3921,6 +3943,15 @@ function makeFallbackPairs(target) {
     {prompt:'Tell them not to run inside',thai:tw+'วิ่งในห้องครับ',english:'No running inside.',phonetic:ph+' wîng nai hôong khrâp',words:[{p:ph,e:"don't"},{p:'wîng',e:'run'},{p:'nai',e:'inside'},{p:'hôong',e:'room'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
+  // Particle — ล่ะ teaches the "what about X?" pattern specifically
+  if (type === 'particle' && tw === 'ล่ะ') return [
+    {prompt:'Ask "and what about you?" after someone speaks',thai:'แล้วคุณล่ะครับ',english:'And what about you?',phonetic:'lâeo khun lâ khrâp',words:[{p:'lâeo',e:'and'},{p:'khun',e:'you'},{p:'lâ',e:'(what about?)'},{p:'khrâp',e:'[polite]'}],target_phonetic:'lâ'},
+    {prompt:'Ask what about the price then',thai:'แล้วราคาล่ะครับ',english:'And what about the price?',phonetic:'lâeo raa-khaa lâ khrâp',words:[{p:'lâeo',e:'and'},{p:'raa-khaa',e:'price'},{p:'lâ',e:'(what about?)'},{p:'khrâp',e:'[polite]'}],target_phonetic:'lâ'},
+    {prompt:'Ask what about tomorrow then',thai:'แล้วพรุ่งนี้ล่ะครับ',english:'What about tomorrow then?',phonetic:'lâeo phrûng-níi lâ khrâp',words:[{p:'lâeo',e:'and'},{p:'phrûng-níi',e:'tomorrow'},{p:'lâ',e:'(what about?)'},{p:'khrâp',e:'[polite]'}],target_phonetic:'lâ'},
+    {prompt:'Ask what about me then',thai:'แล้วผมล่ะครับ',english:'And what about me?',phonetic:'lâeo phǒm lâ khrâp',words:[{p:'lâeo',e:'and'},{p:'phǒm',e:'me'},{p:'lâ',e:'(what about?)'},{p:'khrâp',e:'[polite]'}],target_phonetic:'lâ'},
+    {prompt:'Ask what about next week',thai:'แล้วอาทิตย์หน้าล่ะครับ',english:'And next week?',phonetic:'lâeo aa-thít-nâa lâ khrâp',words:[{p:'lâeo',e:'and'},{p:'aa-thít-nâa',e:'next week'},{p:'lâ',e:'(what about?)'},{p:'khrâp',e:'[polite]'}],target_phonetic:'lâ'},
+  ]
+
   // Proper place — named location you visit
   if (type === 'proper_place') return [
     {prompt:'Say you want to go to '+eng,thai:'ผมอยากไป'+tw+'ครับ',english:'I want to go to '+eng+'.',phonetic:'phǒm yàak pai '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'yàak',e:'want'},{p:'pai',e:'go'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
@@ -4438,6 +4469,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       typeHint = '\n⚠ VERB (screen/show media): "' + target.thai + '" must be followed by the thing being shown (หนัง/ภาพยนตร์). Pattern: subject + ' + target.thai + ' + หนัง. NEVER use it as a noun.'
     } else if (type === 'personality') {
       typeHint = '\n⚠ PERSONALITY ADJECTIVE: "' + target.thai + '" describes how someone is. NEVER generate a body-pain sentence (เจ็บ/ปวด) — adjectives are not body parts. Use it in: เขาหล่อมาก, คุณหล่อไหม, ผมไม่หล่อ.'
+    } else if (type === 'particle' && target.thai === 'ล่ะ') {
+      typeHint = '\n⚠ PARTICLE ล่ะ: NOT a generic sentence-ender. Its core use is "แล้ว X ล่ะ?" = "And what about X?". EVERY sentence must follow the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ. Examples: แล้วคุณล่ะครับ, แล้วราคาล่ะครับ, แล้วพรุ่งนี้ล่ะครับ. Do NOT just stick ล่ะ at the end of unrelated statements.'
+    } else if (type === 'abstract') {
+      typeHint = '\n⚠ ABSTRACT NOUN: "' + target.thai + '" = "' + (target.english||'') + '" is an abstract concept. NEVER use ขอ' + target.thai + 'หน่อย — you cannot request an abstract concept. Write sentences using it naturally: stating amounts, asking quantities, describing situations.'
+    } else if (type === 'verb_intrans') {
+      typeHint = '\n⚠ INTRANSITIVE VERB: "' + target.thai + '" = "' + (target.english||'') + '" is an action, not a thing. NEVER say นี่คือ' + target.thai + 'ของผม (nonsense) or คุณมี' + target.thai + 'ไหม (wrong). Write sentences where subjects DO the action: ผม' + target.thai + 'ที่นี่ครับ, คุณ' + target.thai + 'ได้ไหมครับ.'
     }
 
     return 'SCENARIO: ' + scenarioCtx.setting +
@@ -4539,6 +4576,16 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
               !p.thai.includes('อยาก') && !p.thai.includes('ต้องการ') &&
               p.thai.includes('จะ')) {
             failReason = 'prompt says want but Thai uses จะ (will) — needs อยาก'
+          }
+          // 1b. Broken Thai — random spaces inserted mid-word (e.g. "ผมมี กวาง หนึ่งตัว")
+          if (!failReason) {
+            const thaiTokens = p.thai.split(' ').filter(t => /[ก-๙]/.test(t))
+            // Flag if a short solo Thai token appears surrounded by Thai tokens (broken word)
+            const hasBrokenThai = thaiTokens.some((tok, i) =>
+              tok.length === 1 && i > 0 && i < thaiTokens.length - 1 &&
+              /[ก-๙]/.test(thaiTokens[i-1]) && /[ก-๙]/.test(thaiTokens[i+1])
+            )
+            if (hasBrokenThai) failReason = 'broken Thai: random spaces in Thai text: ' + p.thai
           }
           // 2. "don't want" vs ไม่ได้ (past/ability negation)
           if (!failReason && promptLower.includes("don't want") && p.thai.includes('ไม่ได้')) {
@@ -5432,10 +5479,14 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
       const n = countSyllables(pair.thai, pair.phonetic)
       const thinkMs = Math.round((0.6 * n + 0.4) * 1000)
       cleanup = speakOrWait(pair.prompt, 'en-US', promptDur, () => {
-        // This fires from utter.onend — AFTER speech actually finishes
-        startCountdown(thinkMs)
-        const t = setTimeout(() => { if (!cancelledRef.current) { stopCountdown(); setPhase('reveal') } }, thinkMs)
-        return () => clearTimeout(t)
+        // 200ms safety buffer — some devices fire onend slightly early
+        const safetyGap = 200
+        const t0 = setTimeout(() => {
+          startCountdown(thinkMs)
+          const t = setTimeout(() => { if (!cancelledRef.current) { stopCountdown(); setPhase('reveal') } }, thinkMs)
+          return () => clearTimeout(t)
+        }, safetyGap)
+        return () => clearTimeout(t0)
       }) || (() => {})
     } else {
       cleanup = speakOrWait(pair.thai, 'th-TH', revealDur, () => {

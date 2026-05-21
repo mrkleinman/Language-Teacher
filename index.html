@@ -3294,14 +3294,6 @@ function classifyWord(target) {
   if (CLASSIFIERS.includes(thai) || eng.startsWith('classifier for') || eng === 'classifier') return 'classifier'
 
   // ── น่า-compound adjectives (น่าสนุก, น่าสนใจ, น่ากลัว etc.) ──────────────
-  if (thai.startsWith('น่า') || eng.startsWith('seems ') || eng.startsWith('worth ') ||
-      eng === 'fun' || eng === 'interesting' || eng === 'scary' || eng === 'cute' || eng === 'pitiful') return 'personality'
-
-  // ── Classifiers — never a standalone focus word ──────────────────────────
-  const CLASSIFIERS = ['ใบ','ตัว','อัน','คน','เล่ม','ขวด','ถ้วย','จาน','ชิ้น','คู่','ผล','ลูก','แผ่น','ท่อน','ก้อน','หลัง','คัน','ลำ','เครื่อง']
-  if (CLASSIFIERS.includes(thai) || eng.startsWith('classifier for') || eng === 'classifier') return 'classifier'
-
-  // ── น่า-compound adjectives (น่าสนุก, น่าสนใจ, น่ากลัว etc.) ──────────────
   if (thai.startsWith('น่า')) return 'personality'
 
   // ── Sentence particles — specific usage patterns ─────────────────────────

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v141"/>
-<meta name="app-version" content="v141"/>
+<meta name="app-version" content="v144"/>
+<meta name="app-version" content="v144"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v141';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v141').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v144';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v144').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3289,6 +3289,21 @@ function classifyWord(target) {
       ['มะละกอ','กล้วย','ทุเรียน','สับปะรด','มะพร้าว','ลำไย','ลิ้นจี่','เงาะ','แตงโม','ฝรั่ง','ส้มโอ',
        'มะขาม','ชมพู่','สตรอเบอรี่'].includes(thai)) return 'food'
 
+  // ── Classifiers — can ONLY appear after a noun, never standalone ─────────
+  const CLASSIFIERS = ['ใบ','ตัว','อัน','คน','เล่ม','ขวด','ถ้วย','จาน','ชิ้น','คู่','ผล','ลูก','แผ่น','ท่อน','ก้อน','หลัง','คัน','ลำ','เครื่อง']
+  if (CLASSIFIERS.includes(thai) || eng.startsWith('classifier for') || eng === 'classifier') return 'classifier'
+
+  // ── น่า-compound adjectives (น่าสนุก, น่าสนใจ, น่ากลัว etc.) ──────────────
+  if (thai.startsWith('น่า') || eng.startsWith('seems ') || eng.startsWith('worth ') ||
+      eng === 'fun' || eng === 'interesting' || eng === 'scary' || eng === 'cute' || eng === 'pitiful') return 'personality'
+
+  // ── Classifiers — never a standalone focus word ──────────────────────────
+  const CLASSIFIERS = ['ใบ','ตัว','อัน','คน','เล่ม','ขวด','ถ้วย','จาน','ชิ้น','คู่','ผล','ลูก','แผ่น','ท่อน','ก้อน','หลัง','คัน','ลำ','เครื่อง']
+  if (CLASSIFIERS.includes(thai) || eng.startsWith('classifier for') || eng === 'classifier') return 'classifier'
+
+  // ── น่า-compound adjectives (น่าสนุก, น่าสนใจ, น่ากลัว etc.) ──────────────
+  if (thai.startsWith('น่า')) return 'personality'
+
   // ── Sentence particles — specific usage patterns ─────────────────────────
   if (['ล่ะ','นะ','สิ','เลย','หน่อย','ด้วย','ก็ได้'].includes(thai) ||
       ['question particle','emphasis particle','softening particle'].some(w => eng.includes(w))) return 'particle'
@@ -4471,6 +4486,19 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       typeHint = '\n⚠ PERSONALITY ADJECTIVE: "' + target.thai + '" describes how someone is. NEVER generate a body-pain sentence (เจ็บ/ปวด) — adjectives are not body parts. Use it in: เขาหล่อมาก, คุณหล่อไหม, ผมไม่หล่อ.'
     } else if (type === 'particle' && target.thai === 'ล่ะ') {
       typeHint = '\n⚠ PARTICLE ล่ะ: NOT a generic sentence-ender. Its core use is "แล้ว X ล่ะ?" = "And what about X?". EVERY sentence must follow the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ. Examples: แล้วคุณล่ะครับ, แล้วราคาล่ะครับ, แล้วพรุ่งนี้ล่ะครับ. Do NOT just stick ล่ะ at the end of unrelated statements.'
+    } else if (type === 'classifier') {
+      const classifierExamples = {
+        'ใบ': 'flat objects — ตั๋วหนึ่งใบ (one ticket), กระดาษสองใบ (two sheets), ใบเสร็จสามใบ (three receipts)',
+        'ตัว': 'animals/items — สุนัขสองตัว (two dogs), เสื้อสามตัว (three shirts)',
+        'อัน': 'general items — ดินสอสองอัน (two pencils), ปากกาหนึ่งอัน (one pen)',
+        'เล่ม': 'books/volumes — หนังสือสองเล่ม (two books)',
+        'คัน': 'vehicles — รถสองคัน (two cars)',
+      }
+      const examples = classifierExamples[target.thai] || 'noun + number + ' + target.thai
+      typeHint = '\n⚠ CLASSIFIER: "' + target.thai + '" counts objects and always appears AFTER the noun: [noun] + [number] + ' + target.thai + '. ' +
+        'Examples: ' + examples + '. ' +
+        'Build varied sentences: asking for items (ขอ...), saying how many you have (มี...), asking how many (กี่' + target.thai + '?), ordering/buying. ' +
+        'NEVER put ' + target.thai + ' at the start of a sentence or use it without a noun+number before it.'
     } else if (type === 'abstract') {
       typeHint = '\n⚠ ABSTRACT NOUN: "' + target.thai + '" = "' + (target.english||'') + '" is an abstract concept. NEVER use ขอ' + target.thai + 'หน่อย — you cannot request an abstract concept. Write sentences using it naturally: stating amounts, asking quantities, describing situations.'
     } else if (type === 'verb_intrans') {
@@ -4759,24 +4787,26 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         if (f2 && f2.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((f2||[]).map(f => 'GPT2: ' + f))
         console.log('[GPT recheck] ' + target.thai + ': ' + v2.length + ' valid, pairs now: ' + pairs.length)
 
-        // ── Call 3: GPT second check ─────────────────────────────────────
+        // ── Call 3: GPT second check — only if still short ───────────────
+        let f3 = []
         if (pairs.length < 3) {
           const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after GPT recheck'
           const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2)
           const recheck2 = await callModel(GPT_MODEL, prompt3)
-          const { valid: v3, failures: f3 } = validateSmartPairs(recheck2, target, false)  // lenient on 3rd attempt
-          for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck2:'+ target.thai}) }
-          console.log('[GPT second] ' + target.thai + ': ' + v3.length + ' more valid')
+          const r3 = validateSmartPairs(recheck2, target, false)
+          f3 = r3.failures || []
+          for (const p of r3.valid) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck2:'+ target.thai}) }
+          console.log('[GPT second] ' + target.thai + ': ' + r3.valid.length + ' more valid')
+        }
 
-          // ── Call 4: Haiku final escalation ───────────────────────────────
-          if (pairs.length < 3) {
-            const failReason3 = f3.slice(0, 3).join('; ') || 'still failing after GPT second check'
-            const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3)
-            const recheck3 = await callModel(HAIKU_MODEL, prompt4)
-            const { valid: v4 } = validateSmartPairs(recheck3, target, false)  // lenient — accept Haiku output
-            for (const p of v4) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
-            console.log('[Haiku] ' + target.thai + ': ' + v4.length + ' more valid')
-          }
+        // ── Call 4: Haiku — fires when GPT failed to fill all 3 slots ───
+        if (pairs.length < 3) {
+          const failReason3 = (f3.length ? f3 : f2).slice(0,3).join('; ') || 'GPT failed — write fresh pairs'
+          const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3)
+          const recheck3 = await callModel(HAIKU_MODEL, prompt4)
+          const { valid: v4 } = validateSmartPairs(recheck3, target, false)
+          for (const p of v4) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+target.thai}) }
+          console.log('[Haiku] ' + target.thai + ': ' + v4.length + ' valid, pairs now: ' + pairs.length)
         }
       }
 

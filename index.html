@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v147"/>
-<meta name="app-version" content="v147"/>
+<meta name="app-version" content="v149"/>
+<meta name="app-version" content="v149"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v147';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v147').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v149';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v149').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2319,7 +2319,7 @@ const Icon = ({ name, size = 18, color = 'currentColor' }) => {
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
-function Header({ view, onNav, onHome }) {
+function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance }) {
   const items = [
     { id: 'lessons', icon: 'book', label: 'Lessons' },
     { id: 'browse', icon: 'book', label: 'Words' },
@@ -2333,6 +2333,15 @@ function Header({ view, onNav, onHome }) {
         <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #d4a94a, #b88a35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🇹🇭</div>
         <span className="display" style={{ fontSize: 17, color: 'var(--gold)', letterSpacing: '-0.01em' }}>Thai Teacher</span>
       </div>
+      {orKey && (
+        <button onClick={onRefreshBalance} title="OpenRouter balance — tap to refresh"
+          style={{ background: 'var(--surface2)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>OR</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: orBalance !== null ? (orBalance < 1 ? '#ef4444' : orBalance < 5 ? '#f59e0b' : '#10b981') : 'var(--muted)' }}>
+            {orBalance !== null ? '$' + orBalance.toFixed(2) : '…'}
+          </span>
+        </button>
+      )}
       <nav style={{ display: 'flex', gap: 4 }}>
         {items.map(item => (
           <button key={item.id} onClick={() => onNav(item.id)} title={item.label}
@@ -2559,7 +2568,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
       {/* AI Provider Selector */}
       <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
         <span style={{ fontSize:12, color:'var(--muted)', marginRight:4 }}>Generate with:</span>
-        {[['deepseek','🐋 DeepSeek'],['gpt4omini','⚡ GPT-4o mini'],['haiku','🔶 Haiku 4.5']].map(([id,label]) => {
+        {[['deepseek','🐋 DeepSeek'],['qwen3_14b','⚡ Qwen3-14B'],['haiku','🔶 Haiku 4.5']].map(([id,label]) => {
           const hasKey = hasOrKey
           return (
             <button key={id} onClick={() => onSetProvider(id)}
@@ -2708,7 +2717,7 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-      body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
+      body: JSON.stringify({ model: 'qwen/qwen3-14b', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
     })
     if (!res.ok) return {}
     const data = await res.json()
@@ -3288,6 +3297,14 @@ function classifyWord(target) {
        'jackfruit','guava','pomelo','mangosteen','tamarind','rose apple'].some(w => eng.includes(w)) ||
       ['มะละกอ','กล้วย','ทุเรียน','สับปะรด','มะพร้าว','ลำไย','ลิ้นจี่','เงาะ','แตงโม','ฝรั่ง','ส้มโอ',
        'มะขาม','ชมพู่','สตรอเบอรี่'].includes(thai)) return 'food'
+
+  // ── Activity verb phrases — can't be requested with ขอ...หน่อย ────────────
+  const ACTIVITY_PHRASES = ['ล่องแก่ง','นั่งเรือ','ปีนหน้าผา','เล่นกีฬา','ว่ายน้ำ','ดำน้ำ','ปีนเขา','ตกปลา','เดินป่า','ขี่จักรยาน','ตั้งแคมป์']
+  if (ACTIVITY_PHRASES.includes(thai)) return 'verb_intrans'
+
+  // ── Locations that can't be requested with ขอ...หน่อย ────────────────────
+  const NON_REQUESTABLE_NOUNS = ['หาด','ชั้น','ถนน','สวน','ภูเขา','แม่น้ำ','ทะเล','ป่า','ทุ่ง','เกาะ']
+  if (NON_REQUESTABLE_NOUNS.includes(thai)) return 'location'
 
   // ── Classifiers — can ONLY appear after a noun, never standalone ─────────
   const CLASSIFIERS = ['ใบ','ตัว','อัน','คน','เล่ม','ขวด','ถ้วย','จาน','ชิ้น','คู่','ผล','ลูก','แผ่น','ท่อน','ก้อน','หลัง','คัน','ลำ','เครื่อง']
@@ -4375,10 +4392,10 @@ function getScenarioForTarget(target) {
 }
 
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model) {
-  // ── Models: GPT-4o mini generates + rechecks, Haiku escalates ──────────────
-  const GPT_MODEL   = 'openai/gpt-4o-mini'
+  // ── Models: Qwen3-14B generates + rechecks, Haiku escalates ──────────────
+  const GPT_MODEL   = 'qwen/qwen3-14b'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
-  console.log('[generator] GPT-4o mini → GPT recheck → Haiku escalation')
+  console.log('[generator] Qwen3-14B → GPT recheck → Haiku escalation')
 
   const existingThais = new Set()
   let allPairs = []
@@ -4516,6 +4533,11 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       '\n  • sentences must make real-world sense (not "my grandmother is big", not "I bought a receipt", not "next trip was last month")' +
       '\n  • connector words like งั้นก็ go at START of sentence, never at the end' +
       '\n  • all 3 pairs must use meaningfully different grammar patterns (not all มี...ไหมครับ)' +
+      '\n  • ONLY use Thai words from the WHITELIST below — every Thai word must be either the target word or from this list' +
+      (target.english === 'then' || target.thai === 'งั้นก็' ? '\n  • งั้นก็ means "in that case / if so then" — sentences should show consequence or reaction, not just use งั้นก็ as filler' : '') +
+      (target.thai === 'ล่ะ' ? '\n  • ล่ะ ONLY in the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ meaning "And what about X?" — never at end of random statements' : '') +
+      (target.thai === 'ยิน' ? '\n  • The target word ยิน is used as part of ยินดี (glad/pleased). Always write ยินดี in sentences — never standalone ยิน' : '') +
+      (['พี่ชาย','น้องชาย','พี่สาว','น้องสาว','พี่','น้อง'].includes(target.thai) ? '\n  • ALWAYS specify OLDER (พี่) or YOUNGER (น้อง) in prompts — never just "brother" or "sister"' : '') +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
       '\nWRITE exactly 3 pairs: (1) statement "Say...", (2) yes/no question "Ask... [must end ไหมครับ/คะ]", (3) variation (negative/past/different context).' +
@@ -4526,7 +4548,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
   function validateSmartPairs(pairs, target, strict=true) {
     const valid = []
     const failures = []
-    const failedPairs = []  // {pair, reason} — for repair calls
+    const failedPairs = []
+    const seenPrompts = []  // track prompts within this batch to catch duplicates
 
     // Build known vocab set - include ALL vocab words (target words may not have repCount yet)
     const knownThaiWords = new Set(
@@ -4659,10 +4682,47 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           // 8. ขอ...หน่อย for non-requestable types
           if (!failReason) {
             const wtype = classifyWord(target)
-            const nonReq = ['verb_intrans','verb_screen','proper_place','weather','personality','adjective','colour','abstract','particle','classifier','full_sentence','verb_command','negative_particle']
+            const nonReq = ['verb_intrans','verb_screen','proper_place','weather','personality','adjective','colour','abstract','particle','classifier','full_sentence','verb_command','negative_particle','location']
             if (/^ขอ.+หน่อย/.test((p.thai||'').trim()) && nonReq.includes(wtype)) {
               failReason = 'ขอ...หน่อย not valid for type: ' + wtype + ' (' + target.thai + ')'
             }
+          }
+          // 9. ไม่มี + verb phrase (ungrammatical — ไม่มี only valid before nouns)
+          if (!failReason) {
+            const wtype = classifyWord(target)
+            if (/^ไม่มี/.test((p.thai||'').trim()) && ['verb_intrans','verb_transitive','verb_command','clothing_verb','verb_screen','verb_phrase'].includes(wtype)) {
+              failReason = 'ไม่มี + verb phrase is ungrammatical: ' + p.thai
+            }
+          }
+          // 10. เดี๋ยวนี้ used as past "just now" — it only means RIGHT NOW (present)
+          if (!failReason) {
+            const enLower = (p.english||'').toLowerCase()
+            if (p.thai.includes('เดี๋ยวนี้') && (enLower.includes('just now') || enLower.includes('a moment ago') || enLower.includes('was there') || enLower.includes('were there'))) {
+              failReason = 'เดี๋ยวนี้ means right now (present) not just now (past): ' + p.thai
+            }
+          }
+          // 11. น่า-compound wrong negation (ไม่เป็นน่า... → should be ไม่น่า...)
+          if (!failReason && /ไม่เป็นน่า/.test(p.thai||'')) {
+            failReason = 'wrong negation of น่า-compound: use ไม่น่า not ไม่เป็นน่า: ' + p.thai
+          }
+          // 8. WH-question word + ไหม in same sentence (can\'t mix WH and yes/no)
+          if (!failReason) {
+            const whWords = ['เมื่อไหร่','ที่ไหน','ทำไม','ยังไง','อย่างไร','เท่าไหร่']
+            if (whWords.some(w => (p.thai||'').includes(w)) && (p.thai||'').includes('ไหม')) {
+              failReason = 'WH-question word + ไหม combined in same sentence: ' + p.thai
+            }
+          }
+      // 12. Duplicate prompt within this batch
+          if (!failReason) {
+            const promptNorm = (p.prompt||'').toLowerCase().trim().replace(/\s+/g,' ')
+            const isDupPrompt = seenPrompts.some(sp => {
+              const words1 = promptNorm.split(' ')
+              const words2 = sp.split(' ')
+              const common = words1.filter(w => words2.includes(w)).length
+              return common / Math.max(words1.length, words2.length) > 0.7
+            })
+            if (isDupPrompt) failReason = 'duplicate prompt (>70% overlap with earlier pair): ' + p.prompt
+            else seenPrompts.push(promptNorm)
           }
           if (!failReason) {
             const pr = (p.prompt || '').toLowerCase().trim()
@@ -4787,7 +4847,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       if (failures && failures.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((failures||[]).map(f => 'GPT1: ' + f))
       console.log('[GPT] ' + target.thai + ': ' + valid.length + '/3 valid, failures: ' + failures.slice(0,2).join(', '))
 
-      // ── Call 2: GPT recheck — fills gaps AND upgrades quality ─────────────
+      // ── Call 2: GPT recheck — fills gaps AND upgrades white (tier-1) bricks ─
+      // Always runs — if GPT1 got 3, still tries to swap whites for greens
       {
         const lenRes = getSentenceLengthForVocab(vocab) || {}
         const lenHint = 'REQUIRED: sentences must be ' + (lenRes.goalMin||4) + '-' + (lenRes.hardCeil||8) + ' Thai words long'
@@ -4953,7 +5014,7 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: model || 'openai/gpt-4o-mini', max_tokens: 4000, temperature: 0.4, stream: false,
+    body: JSON.stringify({ model: model || 'qwen/qwen3-14b', max_tokens: 4000, temperature: 0.4, stream: false,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   })
   if (!res.ok) throw new Error(`Convo error ${res.status}`)
@@ -5148,7 +5209,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             const doPhonetics = async () => {
               let map = {}
               // Use selected provider's key for phonetics
-              if (provider === 'gpt4omini' || provider === 'haiku' || (orKey && provider !== 'deepseek')) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey || apiKey)
+              if (provider === 'qwen3_14b' || provider === 'haiku' || (orKey && provider !== 'deepseek')) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey || apiKey)
               else if (provider === 'deepseek') map = await fetchTargetPhoneticsDeepSeek(needsPhonetics, apiKey)
               else map = await fetchTargetPhonetics(needsPhonetics, apiKey)
               if (Object.keys(map).length) {
@@ -5183,7 +5244,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 setCurrentTier(tierName)
               }
             },
-            vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "openai/gpt-4o-mini")
+            vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "qwen/qwen3-14b")
           }
         // Use pre-call phonetics (phoneticsRef) — reliable, per-word accurate
         // Previous regex pair-matching was buggy and overwrote correct data
@@ -5233,7 +5294,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'GPT-4o mini'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-14B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs${currentTier ? ' — ' + currentTier : ''}`}
@@ -5277,7 +5338,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'GPT-4o mini'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-14B'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
         </span>
       </div>
@@ -5305,7 +5366,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                   setFixingFallbacks(true)
                   setFixProgress({ done: 0, total: fallbackTargets.length, current: '' })
                   try {
-                    const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
+                    const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-14b'
                     const fixKey = orKey || apiKey
                     const anchors = (generatedTrack.pairs || []).filter(p => p && p._source && !p._source.startsWith('fallback:') && !p._source.startsWith('hardcoded:') && !p._source.startsWith('repair:')).slice(0,12)
                     const fixedPairsMap = {}
@@ -5367,7 +5428,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={async () => {
             setConvoLoading(true)
             try {
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
+              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-14b'
               const convoKey = provider === 'claude' ? apiKey : orKey
               const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
               const trackWithConvo = { ...generatedTrack, convo: convoResult }
@@ -5951,7 +6012,7 @@ function Adder({ onBack, onAdded, orKey }) {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-        body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 200, temperature: 0,
+        body: JSON.stringify({ model: 'qwen/qwen3-14b', max_tokens: 200, temperature: 0,
           messages: [{ role: 'user', content: `For the Thai word/phrase "${thai.trim()}", give me:
 1. English translation (short, common meaning)
 2. Tone-marked romanization (mid=none, low=à, falling=â, high=á, rising=ǎ, hyphens between syllables)
@@ -6382,13 +6443,13 @@ function DeepSeekTestBtn({ dsKey }) {
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
   { id: 'deepseek', label: 'DeepSeek', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
-  { id: 'gpt4omini', label: 'GPT-4o mini', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
+  { id: 'qwen3_14b', label: 'Qwen3-14B', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
   { id: 'haiku', label: 'Claude Haiku', sub: '4.5 via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
 ]
 
 function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey }) {
   // Key state per provider
-  const [keys, setKeys] = useState({ claude: apiKey || '', deepseek: dsKey || '', gpt4omini: orKey || '' })
+  const [keys, setKeys] = useState({ claude: apiKey || '', deepseek: dsKey || '', qwen3_14b: orKey || '' })
   const [saved, setSaved] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
@@ -6420,7 +6481,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-          body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: 'qwen/qwen3-14b', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
       }
       if (res.ok) setTestResult('✅ Key works!')
@@ -6429,7 +6490,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { deepseek: 'openrouter.ai → Keys (used for GPT-4o mini + Claude Haiku)', gpt4omini: 'openrouter.ai → Keys (model: openai/gpt-4o-mini)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
+  const keySource = { deepseek: 'openrouter.ai → Keys (used for Qwen3-14B + Claude Haiku)', qwen3_14b: 'openrouter.ai → Keys (model: qwen/qwen3-14b)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
@@ -6475,9 +6536,9 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
 
         {/* Status */}
         <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: (provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'gpt4omini' || provider === 'haiku') && orKey) ? '#10b981' : '#6b7280', flexShrink: 0 }} />
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: (provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'qwen3_14b' || provider === 'haiku') && orKey) ? '#10b981' : '#6b7280', flexShrink: 0 }} />
           <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-            {(provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'gpt4omini' || provider === 'haiku') && orKey)
+            {(provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'qwen3_14b' || provider === 'haiku') && orKey)
               ? `${prov.label} ${prov.sub} active — generates tracks, phonetics and translation`
               : `No ${prov.label} key saved — add your key above to enable AI track generation`}
           </p>
@@ -6989,6 +7050,21 @@ function ThaiTeacher() {
   const [provider, setProvider] = useState('claude')
   const [dsKey, setDsKey] = useState('')
   const [orKey, setOrKey] = useState('')
+  const [orBalance, setOrBalance] = useState(null)
+
+  async function fetchOrBalance(key) {
+    if (!key) return
+    try {
+      const r = await fetch('https://openrouter.ai/api/v1/credits', {
+        headers: { 'Authorization': 'Bearer ' + key }
+      })
+      const d = await r.json()
+      if (d.data) {
+        const remaining = (d.data.total_credits || 0) - (d.data.total_usage || 0)
+        setOrBalance(remaining)
+      }
+    } catch(e) { /* silently fail */ }
+  }
   const [customTargets, setCustomTargets] = useState(null)
   const [browseFilter, setBrowseFilter] = useState('all')
 
@@ -7014,7 +7090,7 @@ function ThaiTeacher() {
       if (sk) setApiKey(sk)
       const pv = await stGet('tt-provider'); if (pv) setProvider(pv)
       const dk = await stGet('tt-dskey'); if (dk) setDsKey(dk)
-      const ok = await stGet('tt-orkey'); if (ok) setOrKey(ok)
+      const ok = await stGet('tt-orkey'); if (ok) { setOrKey(ok); fetchOrBalance(ok) }
       setLoading(false)
     }
     init()
@@ -7119,12 +7195,12 @@ function ThaiTeacher() {
   return (
     <div className="app">
       <FontStyle />
-      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} />
+      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} />
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
             onGenerateConvo={async (track) => {
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
+              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-14b'
               const convoKey = provider === 'claude' ? apiKey : orKey
               if (!convoKey) {
                 alert('No OpenRouter key found. Go to Settings and save your key first.')
@@ -7160,7 +7236,7 @@ function ThaiTeacher() {
         )}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
-        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k) }} />}
+        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'lessons' && <LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} />}

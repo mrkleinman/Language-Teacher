@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v157"/>
-<meta name="app-version" content="v157"/>
+<meta name="app-version" content="v158"/>
+<meta name="app-version" content="v158"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v157';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v157').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v158';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v158').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3444,6 +3444,7 @@ function getRisk(type) {
   const MEDIUM = new Set([
     'adjective','emotion','personality','body','nature','abstract','verb_transitive','verb_intrans',
     'location','person','colour','study_material','clothing_verb','verb_command','negative_particle',
+    'verb_social','person_group','relative_pronoun','frequency_adverb','discourse_connector',
   ])
   if (HIGH.has(type)) return 'high'
   if (MEDIUM.has(type)) return 'medium'
@@ -4058,6 +4059,51 @@ function makeFallbackPairs(target) {
     {prompt:'Say they showed a good film',thai:'เขา'+tw+'หนังดีครับ',english:'They showed a good film.',phonetic:'khǎo '+ph+' nǎng dii khrâp',words:[{p:'khǎo',e:'they'},{p:ph,e:'showed'},{p:'nǎng',e:'film'},{p:'dii',e:'good'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
     {prompt:'Ask what film is being shown',thai:tw+'หนังอะไรอยู่คะ',english:'What film is being shown?',phonetic:ph+' nǎng à-rai yùu khá',words:[{p:ph,e:'showing'},{p:'nǎng',e:'film'},{p:'à-rai',e:'what'},{p:'yùu',e:'[ongoing]'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
     {prompt:'Say you want to screen the film tomorrow',thai:'ผมอยาก'+tw+'หนังพรุ่งนี้ครับ',english:'I want to show the film tomorrow.',phonetic:'phǒm yàak '+ph+' nǎng phrûng-níi khrâp',words:[{p:'phǒm',e:'I'},{p:'yàak',e:'want'},{p:ph,e:'show'},{p:'nǎng',e:'film'},{p:'phrûng-níi',e:'tomorrow'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Discourse connector — two-clause pattern
+  if (type === 'discourse_connector') return [
+    {prompt:'Say "If you are tired, then rest first"',thai:'ถ้าเหนื่อย'+tw+'พักก่อนครับ',english:'If you are tired, then rest first.',phonetic:'thâa nùeai '+ph+' phák gàwn khrâp',words:[{p:'thâa',e:'if'},{p:'nùeai',e:'tired'},{p:ph,e:'then'},{p:'phák',e:'rest'},{p:'gàwn',e:'first'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say "In that case, I will not eat"',thai:'คุณไม่ชอบเหรอ'+tw+'ไม่ต้องกินครับ',english:'You don\'t like it? Then you don\'t have to eat.',phonetic:'khun mâi chôop rǒe '+ph+' mâi dtông gin khrâp',words:[{p:'khun',e:'you'},{p:'mâi-chôop',e:'don\'t like'},{p:'rǒe',e:'?'},{p:ph,e:'then'},{p:'mâi-dtông',e:'don\'t have to'},{p:'gin',e:'eat'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say "If that is the case, I will go"',thai:'ถ้าอย่างนั้น'+tw+'ผมจะไปครับ',english:'If that\'s the case, then I will go.',phonetic:'thâa yàang nán '+ph+' phǒm jà pai khrâp',words:[{p:'thâa-yàang-nán',e:'if that\'s the case'},{p:ph,e:'then'},{p:'phǒm',e:'I'},{p:'jà',e:'will'},{p:'pai',e:'go'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say "You said you don\'t want it, so I will take it"',thai:'คุณบอกว่าไม่เอา'+tw+'ผมจะเอาเองครับ',english:'You said you don\'t want it, so I\'ll take it.',phonetic:'khun bàawk wâa mâi ao '+ph+' phǒm jà ao eeng khrâp',words:[{p:'khun-bàawk',e:'you said'},{p:'mâi-ao',e:'don\'t want'},{p:ph,e:'so'},{p:'phǒm',e:'I'},{p:'jà-ao-eeng',e:'will take it myself'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say "It is raining, so I will stay home"',thai:'ฝนตก'+tw+'ผมจะอยู่บ้านครับ',english:'It\'s raining, so I\'ll stay home.',phonetic:'fǒn dtòk '+ph+' phǒm jà yùu bâan khrâp',words:[{p:'fǒn-dtòk',e:'raining'},{p:ph,e:'so'},{p:'phǒm',e:'I'},{p:'jà-yùu-bâan',e:'will stay home'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Social/mental verb — internal states
+  if (type === 'verb_social') return [
+    {prompt:'Say you feel '+eng+' about this',thai:'ผม'+tw+'เรื่องนี้ครับ',english:'I feel '+eng+' about this.',phonetic:'phǒm '+ph+' rûeang níi khrâp',words:[{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'rûeang-níi',e:'about this'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they feel '+eng,thai:'คุณ'+tw+'ไหมครับ',english:'Do you feel '+eng+'?',phonetic:'khun '+ph+' mǎi khrâp',words:[{p:'khun',e:'you'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you do not feel '+eng,thai:'ผมไม่'+tw+'ครับ',english:'I do not feel '+eng+'.',phonetic:'phǒm mâi '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'mâi',e:'not'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say they feel very '+eng,thai:'เขา'+tw+'มากครับ',english:'They feel very '+eng+'.',phonetic:'khǎo '+ph+' mâak khrâp',words:[{p:'khǎo',e:'they'},{p:ph,e:eng},{p:'mâak',e:'very'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask why they feel '+eng,thai:'ทำไมคุณถึง'+tw+'ครับ',english:'Why do you feel '+eng+'?',phonetic:'tham-mai khun thǔeng '+ph+' khrâp',words:[{p:'tham-mai',e:'why'},{p:'khun',e:'you'},{p:'thǔeng',e:'(emphasis)'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Person/group noun
+  if (type === 'person_group') return [
+    {prompt:'Say you like this '+eng,thai:'ผมชอบ'+tw+'นี้ครับ',english:'I like this '+eng+'.',phonetic:'phǒm chôop '+ph+' níi khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:ph,e:eng},{p:'níi',e:'this'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if there is a '+eng+' here',thai:'ที่นี่มี'+tw+'ไหมครับ',english:'Is there a '+eng+' here?',phonetic:'thîi-nîi mii '+ph+' mǎi khrâp',words:[{p:'thîi-nîi',e:'here'},{p:'mii',e:'have'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you are in the '+eng,thai:'ผมอยู่ใน'+tw+'ครับ',english:'I am in the '+eng+'.',phonetic:'phǒm yùu nai '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'yùu-nai',e:'in'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say the '+eng+' is very good',thai:tw+'นี้ดีมากครับ',english:'This '+eng+' is very good.',phonetic:ph+' níi dii mâak khrâp',words:[{p:ph,e:eng},{p:'níi',e:'this'},{p:'dii',e:'good'},{p:'mâak',e:'very'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they want to join the '+eng,thai:'คุณอยากเข้าร่วม'+tw+'ไหมครับ',english:'Do you want to join the '+eng+'?',phonetic:'khun yàak khâo-ruâm '+ph+' mǎi khrâp',words:[{p:'khun',e:'you'},{p:'yàak',e:'want'},{p:'khâo-ruâm',e:'join'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Relative pronoun — always links noun to clause
+  if (type === 'relative_pronoun') return [
+    {prompt:'Say the shirt that you like is expensive',thai:'เสื้อ'+tw+'คุณชอบแพงครับ',english:'The shirt that you like is expensive.',phonetic:'sûea '+ph+' khun chôop phaeng khrâp',words:[{p:'sûea',e:'shirt'},{p:ph,e:'that'},{p:'khun-chôop',e:'you like'},{p:'phaeng',e:'expensive'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say the person who speaks Thai is friendly',thai:'คน'+tw+'พูดไทยใจดีครับ',english:'The person who speaks Thai is friendly.',phonetic:'khon '+ph+' phûut thai jai-dii khrâp',words:[{p:'khon',e:'person'},{p:ph,e:'who'},{p:'phûut-thai',e:'speaks Thai'},{p:'jai-dii',e:'friendly'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say the food that you ordered is delicious',thai:'อาหาร'+tw+'คุณสั่งอร่อยครับ',english:'The food that you ordered is delicious.',phonetic:'aa-hǎan '+ph+' khun sàng à-ròi khrâp',words:[{p:'aa-hǎan',e:'food'},{p:ph,e:'that'},{p:'khun-sàng',e:'you ordered'},{p:'à-ròi',e:'delicious'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask which one is the shirt that you want',thai:'อันไหนคือเสื้อ'+tw+'คุณต้องการครับ',english:'Which one is the shirt that you want?',phonetic:'an-nǎi khuue sûea '+ph+' khun dtông-gaan khrâp',words:[{p:'an-nǎi',e:'which one'},{p:'khuue',e:'is'},{p:'sûea',e:'shirt'},{p:ph,e:'that'},{p:'khun-dtông-gaan',e:'you want'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say the place that I want to go is far',thai:'ที่'+tw+'ผมอยากไปอยู่ไกลครับ',english:'The place that I want to go is far.',phonetic:'thîi '+ph+' phǒm yàak pai yùu glai khrâp',words:[{p:'thîi',e:'place'},{p:ph,e:'that'},{p:'phǒm-yàak-pai',e:'I want to go'},{p:'yùu-glai',e:'is far'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Frequency adverb — always after verb
+  if (type === 'frequency_adverb') return [
+    {prompt:'Say you go to the market '+eng,thai:'ผมไปตลาด'+tw+'ครับ',english:'I go to the market '+eng+'.',phonetic:'phǒm pai tà-làat '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'pai',e:'go'},{p:'tà-làat',e:'market'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they eat spicy food '+eng,thai:'คุณกินอาหารเผ็ด'+tw+'ไหมครับ',english:'Do you eat spicy food '+eng+'?',phonetic:'khun gin aa-hǎan phèt '+ph+' mǎi khrâp',words:[{p:'khun',e:'you'},{p:'gin',e:'eat'},{p:'aa-hǎan-phèt',e:'spicy food'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you do not drink coffee '+eng,thai:'ผมไม่ดื่มกาแฟ'+tw+'ครับ',english:'I do not drink coffee '+eng+'.',phonetic:'phǒm mâi dùuem gaa-fae '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'mâi',e:'not'},{p:'dùuem-gaa-fae',e:'drink coffee'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say they exercise '+eng,thai:'เขาออกกำลังกาย'+tw+'ครับ',english:'They exercise '+eng+'.',phonetic:'khǎo òok-gam-lang-gaai '+ph+' khrâp',words:[{p:'khǎo',e:'they'},{p:'òok-gam-lang-gaai',e:'exercise'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you see them '+eng+' at the park',thai:'ผมเจอเขาที่สวน'+tw+'ครับ',english:'I see them '+eng+' at the park.',phonetic:'phǒm jəə khǎo thîi sǔan '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'jəə',e:'see'},{p:'khǎo',e:'them'},{p:'thîi-sǔan',e:'at park'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
   // Food/drink

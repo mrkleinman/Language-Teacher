@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v154"/>
-<meta name="app-version" content="v154"/>
+<meta name="app-version" content="v155"/>
+<meta name="app-version" content="v155"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v154';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v154').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v155';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v155').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2077,15 +2077,27 @@ function getStats(vocab) {
   }
 }
 
-function pickWords(vocab, mode) {
+function pickWords(vocab, mode, tracks) {
   const today = new Date().toISOString().slice(0, 10)
+
+  // ── Track queue: exclude words already locked in pending/in_progress tracks ─
+  const lockedThais = new Set()
+  if (tracks && tracks.length) {
+    for (const t of tracks) {
+      if (t.status === 'pending' || t.status === 'in_progress') {
+        for (const kw of (t.keywords || [])) {
+          if (kw.thai) lockedThais.add(kw.thai)
+        }
+      }
+    }
+  }
   let targets
   if (mode === 'weak') {
     targets = vocab.filter(w => w.difficulty === 'hard' || w.status === 'lapsed' || w.lapses >= 2).slice(0, 30)
     if (!targets.length) targets = vocab.filter(w => w.status === 'learning').slice(0, 30)
   } else {
-    const due = vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today).slice(0, 22)
-    const newW = vocab.filter(w => w.status === 'new').slice(0, 9)
+    const due = vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today && !lockedThais.has(w.thai)).slice(0, 22)
+    const newW = vocab.filter(w => w.status === 'new' && !lockedThais.has(w.thai)).slice(0, 9)
     targets = [...due, ...newW].slice(0, 30)
   }
   const targetIds = new Set(targets.map(w => w.id))
@@ -2581,14 +2593,22 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
       </div>
 
       {/* Generate Buttons */}
+      {(() => {
+        const unreviewed = (tracks||[]).filter(t => t.status === 'pending' || t.status === 'in_progress').length
+        const queueFull = unreviewed >= 3
+        return (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <button onClick={() => onNav('generate-daily')}
-          style={{ background: 'linear-gradient(135deg, #1a3a2a, #2a5a3a)', border: '1px solid #2d6b2d', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = '#10b981'}
-          onMouseLeave={e => e.currentTarget.style.borderColor = '#2d6b2d'}>
-          <Icon name="sparkles" size={22} color="#10b981" />
+        <button onClick={() => !queueFull && onNav('generate-daily')}
+          disabled={queueFull}
+          title={queueFull ? `${unreviewed} tracks waiting — review them first` : ''}
+          style={{ background: queueFull ? 'var(--surface2)' : 'linear-gradient(135deg, #1a3a2a, #2a5a3a)', border: '1px solid ' + (queueFull ? 'var(--border)' : '#2d6b2d'), borderRadius: 12, padding: '18px 12px', cursor: queueFull ? 'not-allowed' : 'pointer', textAlign: 'center', color: queueFull ? 'var(--muted)' : 'var(--text)', transition: 'all 0.15s', opacity: queueFull ? 0.6 : 1 }}
+          onMouseEnter={e => { if (!queueFull) e.currentTarget.style.borderColor = '#10b981' }}
+          onMouseLeave={e => { if (!queueFull) e.currentTarget.style.borderColor = '#2d6b2d' }}>
+          <Icon name="sparkles" size={22} color={queueFull ? 'var(--muted)' : '#10b981'} />
           <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Daily Track</div>
-          <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>~45 min · {stats.due} due</div>
+          <div style={{ fontSize: 11, color: queueFull ? 'var(--muted)' : '#4a9960', marginTop: 2 }}>
+            {queueFull ? `${unreviewed}/3 tracks in queue` : `~45 min · ${stats.due} due`}
+          </div>
         </button>
         <button onClick={() => onNav('lessons')}
           style={{ background: 'linear-gradient(135deg, #1a1e3a, #1e2a5a)', border: '1px solid #2d3a6b', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
@@ -2599,7 +2619,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
           <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 2, opacity: 0.7 }}>Noob Season One</div>
         </button>
       </div>
-
+        )
+      })()}
 
 
       {/* Recent Tracks */}
@@ -3292,6 +3313,16 @@ function classifyWord(target) {
 
   // Negative imperative particle
   if (eng === "don't" || eng === 'do not (imperative)' || thai === 'อย่า') return 'negative_particle'
+
+  // Social/mental state verbs — internal states, never requestable
+  const SOCIAL_VERBS = ['เกรงใจ','อาย','กลัว','อยากรู้','อิจฉา','ละอาย','สงสาร','แคร์','ภูมิใจ','อับอาย','กังวล']
+  if (SOCIAL_VERBS.includes(thai) ||
+      ['be embarrassed','feel ashamed','be considerate','feel jealous','feel sorry for','be proud','be worried','feel awkward'].some(w => eng.includes(w))) return 'verb_social'
+
+  // Group/collective nouns — never get ห้าม template
+  const GROUP_NOUNS = ['วงดนตรี','ทีม','นักเรียน','นักดนตรี','นักกีฬา','กลุ่ม','ชมรม','คณะ','องค์กร','สมาคม']
+  if (GROUP_NOUNS.includes(thai) ||
+      ['band','orchestra','team','group','club','organization','association','society'].some(w => eng.includes(w))) return 'person_group'
 
   // Compound verb phrases — weight loss, exercise
   if (eng.includes('lose weight') || eng.includes('weight loss') || thai === 'ลดน้ำหนัก') return 'verb_phrase'
@@ -4559,6 +4590,30 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         'Pattern: ถ้า/เมื่อ/เพราะ... + ' + target.thai + ' + [verb phrase]. ' +
         'Examples: ถ้าเหนื่อย' + target.thai + 'พักก่อนครับ / คุณไม่ชอบเหรอ' + target.thai + 'ไม่ต้องกินครับ. ' +
         'NEVER write a standalone sentence starting with just ' + target.thai + ' + verb without a preceding clause.'
+    } else if (type === 'verb_social') {
+      typeHint = '\n⚠ SOCIAL/MENTAL VERB: "' + target.thai + '" = "' + (target.english||'') + '" is an internal state. ' +
+        'Pattern: subject + ' + target.thai + ' + [object/clause]. ' +
+        'NEVER use ขอ' + target.thai + 'หน่อย — you cannot request a mental state. ' +
+        'Good: ผม' + target.thai + 'คน..., คุณ' + target.thai + 'ไหมครับ, เขา' + target.thai + 'มากครับ.'
+    } else if (type === 'person_group') {
+      typeHint = '\n⚠ GROUP NOUN: "' + target.thai + '" = "' + (target.english||'') + '" is a collective noun for people. ' +
+        'Write sentences about what the group does, where they are, or asking about them. ' +
+        'NEVER apply prohibition (ห้าม/อย่า) to this word as if it were a verb. ' +
+        'Good: ' + target.thai + 'เล่นเพลงดีมากครับ, คุณอยู่ใน' + target.thai + 'ไหมครับ, ผมชอบ' + target.thai + 'นี้ครับ.'
+    } else if (target.thai === 'ทั้งนั้น') {
+      typeHint = '\n⚠ ทั้งนั้น = emphatic "all of that / it\'s all just... (dismissive tone)." NOT the same as ทั้งหมด (all items). ' +
+        'Always at the END: ล้วนเป็น...ทั้งนั้น, ก็แค่...ทั้งนั้น. ' +
+        'NEVER use ทั้งนั้น to mean "all ingredients" or mid-sentence.'
+    } else if (target.thai === 'เปล่า') {
+      typeHint = '\n⚠ เปล่า = plain/blank/without filling. TWO uses: ' +
+        '(1) Plain food/drink: น้ำเปล่า (plain water), ข้าวเปล่า (plain rice). ' +
+        '(2) Sentence-final negation: ทำเปล่าๆ (doing it for nothing), มาเปล่า (came for nothing). ' +
+        'NEVER use เปล่า to mean "any." Good: ขอน้ำเปล่าหน่อยครับ, คุณกินข้าวเปล่าไหมครับ.'
+    } else if (['เชื่อ','รู้สึก','คิด','หวัง','สงสัย','แน่ใจ'].includes(target.thai)) {
+      typeHint = '\n⚠ COGNITION VERB: "' + target.thai + '" MUST be followed by ว่า before a clause. ' +
+        'CORRECT: ผม' + target.thai + 'ว่าอากาศดีครับ. WRONG: ผม' + target.thai + 'อากาศดีครับ (missing ว่า). ' +
+        'Never skip ว่า when a clause follows.'
+    } else if (type === 'particle' && target.thai === 'ล่ะ') {
       typeHint = '\n⚠ PARTICLE ล่ะ: NOT a generic sentence-ender. Its core use is "แล้ว X ล่ะ?" = "And what about X?". EVERY sentence must follow the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ. Examples: แล้วคุณล่ะครับ, แล้วราคาล่ะครับ, แล้วพรุ่งนี้ล่ะครับ. Do NOT just stick ล่ะ at the end of unrelated statements.'
     } else if (type === 'classifier') {
       const classifierExamples = {
@@ -4755,7 +4810,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           // 8. ขอ...หน่อย for non-requestable types
           if (!failReason) {
             const wtype = classifyWord(target)
-            const nonReq = ['verb_intrans','verb_screen','proper_place','weather','personality','adjective','colour','abstract','particle','classifier','full_sentence','verb_command','negative_particle','location']
+            const nonReq = ['verb_intrans','verb_transitive','verb_social','verb_screen','proper_place','weather','personality','adjective','colour','abstract','particle','classifier','full_sentence','verb_command','negative_particle','location']
             if (/^ขอ.+หน่อย/.test((p.thai||'').trim()) && nonReq.includes(wtype)) {
               failReason = 'ขอ...หน่อย not valid for type: ' + wtype + ' (' + target.thai + ')'
             }
@@ -4796,6 +4851,53 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
             })
             if (isDupPrompt) failReason = 'duplicate prompt (>70% overlap with earlier pair): ' + p.prompt
             else seenPrompts.push(promptNorm)
+          }
+          // 13. Discourse connector with no setup clause before it
+          if (!failReason && type === 'discourse_connector') {
+            const thTrim = (p.thai||'').trim()
+            const startsWithConnector = thTrim.startsWith(target.thai)
+            if (startsWithConnector) {
+              failReason = 'discourse connector "' + target.thai + '" starts sentence with no setup clause before it: ' + p.thai
+            }
+          }
+          // 14. นี่คือ used for existence (should use มี)
+          if (!failReason && (p.thai||'').includes('นี่คือ') &&
+              ['there is','there are','there was'].some(w => (p.english||'').toLowerCase().includes(w))) {
+            failReason = 'นี่คือ used for existence — use มี instead: ' + p.thai
+          }
+          // 15. เพิ่ง (just/recently) combined with past time word
+          if (!failReason && (p.thai||'').includes('เพิ่ง')) {
+            const pastWords = ['เมื่อวาน','อาทิตย์ที่แล้ว','เดือนที่แล้ว','ปีที่แล้ว','เมื่อกี้ก่อน']
+            if (pastWords.some(w => (p.thai||'').includes(w))) {
+              failReason = 'เพิ่ง (just) combined with distant past time word: ' + p.thai
+            }
+          }
+          // 16. Prompt text pasted as English translation
+          if (!failReason) {
+            const prNorm = (p.prompt||'').toLowerCase().trim().replace(/^(say|ask|tell)\s+/,'')
+            const enNorm = (p.english||'').toLowerCase().trim().replace(/[.?!]$/,'')
+            if (prNorm === enNorm || (p.prompt||'').trim() === (p.english||'').trim()) {
+              failReason = 'English is a copy of the prompt, not a translation: ' + p.english
+            }
+          }
+          // 17. Cognition verb missing ว่า before clause
+          if (!failReason && ['เชื่อ','รู้สึก','คิด','หวัง','สงสัย','แน่ใจ'].includes(target.thai)) {
+            const th = p.thai || ''
+            const verbIdx = th.indexOf(target.thai)
+            if (verbIdx >= 0) {
+              const after = th.slice(verbIdx + target.thai.length).trim()
+              // If what follows is NOT ว่า and looks like a clause (has Thai verb/adj)
+              if (after && !after.startsWith('ว่า') && !after.startsWith('ไหม') && 
+                  !after.startsWith('ด้วย') && !after.startsWith('มาก') &&
+                  after.length > 2 && /[ก-๙]/.test(after[0])) {
+                failReason = 'cognition verb "' + target.thai + '" missing ว่า before clause: ' + th
+              }
+            }
+          }
+          // 18. Speaker gender inconsistency — ค่ะ with ผม speaker
+          if (!failReason && (p.thai||'').includes('ผม') && 
+              ((p.thai||'').endsWith('ค่ะ') || (p.thai||'').endsWith('ค่ะ'))) {
+            failReason = 'gender inconsistency: ผม (male) with ค่ะ (female particle): ' + p.thai
           }
           if (!failReason) {
             const pr = (p.prompt || '').toLowerCase().trim()
@@ -5255,7 +5357,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         .slice(0, 25)
       return { targets: customTargets, anchors: anch }
     }
-    return pickWords(vocab, mode)
+    return pickWords(vocab, mode, tracks)
   }, [vocab, mode, customTargets])
 
   const isWeak = mode === 'weak'
@@ -5328,6 +5430,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         const track = {
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
+          status: 'pending',
         }
         // Item 42: Verify track can be serialized before showing ready
         try { JSON.stringify(track) } catch(e) { throw new Error('Track data invalid: ' + e.message) }
@@ -5523,12 +5626,38 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>Targeting {targets.length} words</p>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
             {targets.map((w,i) => {
-              const done = i * 3 < pairsDone
+              const wordBase = i * 3
+              // Get the best source for this word (prefer highest tier)
+              const tierOrder = ['gpt-recheck2:','gpt-recheck:','haiku:','validator-repair:','fix:','gpt:','repair:','hardcoded:','fallback:']
+              let bestSrc = ''
+              for (let k = 0; k < 3; k++) {
+                const s = brickSources[wordBase + k] || ''
+                if (!bestSrc) { bestSrc = s; continue }
+                const bestRank = tierOrder.findIndex(t => bestSrc.startsWith(t))
+                const sRank = tierOrder.findIndex(t => s.startsWith(t))
+                if (sRank >= 0 && (bestRank < 0 || sRank < bestRank)) bestSrc = s
+              }
+              const chipColor = bestSrc.startsWith('gpt-recheck2:') ? '#065f46'
+                : bestSrc.startsWith('gpt-recheck:') ? '#10b981'
+                : bestSrc.startsWith('gpt:') ? '#e5e7eb'
+                : bestSrc.startsWith('haiku:') ? '#FA8072'
+                : bestSrc.startsWith('validator-repair:') ? '#f59e0b'
+                : bestSrc.startsWith('fix:') ? '#22d3ee'
+                : (bestSrc.startsWith('hardcoded:') || bestSrc.startsWith('fallback:') || bestSrc.startsWith('repair:')) ? '#374151'
+                : ''
+              const done = !!brickSources[wordBase]
               const phonetic = targetPhonetics[w.thai] || targetPhonetics[w.id] || w.phonetic || ''
               return (
-                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : 'transparent', border:'1px solid ' + (done ? color : 'var(--border)'), borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0 }}>
-                  <span className="thai" style={{ color: done ? color : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
-                  {phonetic ? <span className="phon" style={{ color: done ? color : 'var(--muted)', fontSize:10, lineHeight:1.2, opacity:0.7 }}>{phonetic}</span> : null}
+                <div key={i} style={{
+                  display:'flex', flexDirection:'column', alignItems:'center',
+                  background: done && chipColor ? chipColor + '22' : done ? 'var(--surface2)' : 'transparent',
+                  border: '1px solid ' + (done && chipColor ? chipColor : done ? color : 'var(--border)'),
+                  borderRadius:8, padding:'4px 10px',
+                  transition:'all 0.4s ease',
+                  minWidth:0
+                }}>
+                  <span className="thai" style={{ color: done && chipColor ? chipColor : done ? color : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
+                  {phonetic ? <span className="phon" style={{ color: done && chipColor ? chipColor : done ? color : 'var(--muted)', fontSize:10, lineHeight:1.2, opacity:0.7 }}>{phonetic}</span> : null}
                 </div>
               )
             })}
@@ -7211,15 +7340,23 @@ function ThaiTeacher() {
     })
     saveVocab(newVocab)
 
-    // Mark track as rated
-    const newTracks = tracks.map(t => t === activeTrack ? { ...t, rated: true, keywords } : t)
+    // Mark track as rated and reviewed
+    const newTracks = tracks.map(t => t === activeTrack ? { ...t, rated: true, keywords, status: 'reviewed' } : t)
     saveTracks(newTracks)
     setActiveTrack(null)
     setView('dashboard')
   }
 
   function onOpenTrack(track) {
-    setActiveTrack(track)
+    // Mark as in_progress when first opened (if still pending)
+    if (track.status === 'pending') {
+      const updated = { ...track, status: 'in_progress' }
+      const newTracks = tracks.map(t => t === track ? updated : t)
+      saveTracks(newTracks)
+      setActiveTrack(updated)
+    } else {
+      setActiveTrack(track)
+    }
     setView('player')
   }
 
@@ -7296,6 +7433,7 @@ function ThaiTeacher() {
           apiKey={orKey}
           provider={provider}
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
+          tracks={tracks}
         /></ErrorBoundary>}
         {view === 'player' && activeTrack && (
           <ErrorBoundary><Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)}

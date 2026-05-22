@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v160"/>
-<meta name="app-version" content="v160"/>
+<meta name="app-version" content="v161"/>
+<meta name="app-version" content="v161"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v160';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v160').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v161';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v161').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3370,6 +3370,20 @@ function classifyWord(target) {
   if (CLASSIFIERS.includes(thai) || eng.startsWith('classifier for') || eng === 'classifier') return 'classifier'
 
   // ── น่า-compound adjectives (น่าสนุก, น่าสนใจ, น่ากลัว etc.) ──────────────
+  // Events — attend/go to, cannot be requested with ขอ...หน่อย
+  const EVENTS = ['เทศกาล','งาน','คอนเสิร์ต','งานแต่งงาน','ขบวนพาเหรด','นิทรรศการ','การแข่งขัน','งานบุญ']
+  if (EVENTS.includes(thai) || ['festival','concert','ceremony','exhibition','parade','competition','event'].some(w => eng.includes(w))) return 'event'
+
+  // Month/season/time expressions — cannot be requested
+  const MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
+  const SEASONS_TH = ['ฤดูร้อน','ฤดูหนาว','ฤดูฝน','ฤดูใบไม้ผลิ','ฤดูใบไม้ร่วง']
+  if (MONTHS_TH.some(m => thai.includes(m)) || SEASONS_TH.includes(thai) ||
+      ['january','february','march','april','may','june','july','august','september','october','november','december','spring','summer','autumn','fall','winter'].some(w => eng.toLowerCase().includes(w))) return 'time_expression'
+
+  // Physical/financial state adjectives — used directly after subject, never with ความ
+  const PHYS_ADJ = ['ผอม','อ้วน','รวย','จน','สูง','เตี้ย','แข็งแรง','อ่อนแอ','หนัก','เบา','แก่','หนุ่ม','สาว']
+  if (PHYS_ADJ.includes(thai) || ['thin','fat','rich','poor','tall','short','strong','weak','young','old (person)'].some(w => eng === w || eng === w+' (person)')) return 'personality'
+
   if (thai.startsWith('น่า')) return 'personality'
 
   // ── Sentence particles — specific usage patterns ─────────────────────────
@@ -3447,6 +3461,7 @@ function getRisk(type) {
     'adjective','emotion','personality','body','nature','abstract','verb_transitive','verb_intrans',
     'location','person','colour','study_material','clothing_verb','verb_command','negative_particle',
     'verb_social','person_group','relative_pronoun','frequency_adverb','discourse_connector',
+    'event','time_expression',
   ])
   if (HIGH.has(type)) return 'high'
   if (MEDIUM.has(type)) return 'medium'
@@ -4063,6 +4078,24 @@ function makeFallbackPairs(target) {
     {prompt:'Say you want to screen the film tomorrow',thai:'ผมอยาก'+tw+'หนังพรุ่งนี้ครับ',english:'I want to show the film tomorrow.',phonetic:'phǒm yàak '+ph+' nǎng phrûng-níi khrâp',words:[{p:'phǒm',e:'I'},{p:'yàak',e:'want'},{p:ph,e:'show'},{p:'nǎng',e:'film'},{p:'phrûng-níi',e:'tomorrow'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
+  // Event — something you attend/go to
+  if (type === 'event') return [
+    {prompt:'Say you want to go to the '+eng,thai:'ผมอยากไป'+tw+'ครับ',english:'I want to go to the '+eng+'.',phonetic:'phǒm yàak pai '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'yàak-pai',e:'want to go'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if there is a '+eng+' this year',thai:'ปีนี้มี'+tw+'ไหมครับ',english:'Is there a '+eng+' this year?',phonetic:'pii-níi mii '+ph+' mǎi khrâp',words:[{p:'pii-níi',e:'this year'},{p:'mii',e:'have'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say the '+eng+' is very fun',thai:tw+'ปีนี้สนุกมากครับ',english:'The '+eng+' this year is very fun.',phonetic:ph+' pii-níi sà-nùk mâak khrâp',words:[{p:ph,e:eng},{p:'pii-níi',e:'this year'},{p:'sà-nùk',e:'fun'},{p:'mâak',e:'very'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask when the '+eng+' is',thai:tw+'คือเมื่อไหร่ครับ',english:'When is the '+eng+'?',phonetic:ph+' khuue mûea-rài khrâp',words:[{p:ph,e:eng},{p:'khuue',e:'is'},{p:'mûea-rài',e:'when'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you went to the '+eng+' yesterday',thai:'เมื่อวานผมไป'+tw+'ครับ',english:'I went to the '+eng+' yesterday.',phonetic:'mûea-waan phǒm pai '+ph+' khrâp',words:[{p:'mûea-waan',e:'yesterday'},{p:'phǒm',e:'I'},{p:'pai',e:'went'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
+  // Time expression — month/season used as time reference
+  if (type === 'time_expression') return [
+    {prompt:'Say your birthday is in '+eng,thai:'วันเกิดผมอยู่ใน'+tw+'ครับ',english:'My birthday is in '+eng+'.',phonetic:'wan-gəət phǒm yùu nai '+ph+' khrâp',words:[{p:'wan-gəət',e:'birthday'},{p:'phǒm',e:'my'},{p:'yùu-nai',e:'is in'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they will travel in '+eng,thai:'คุณจะเดินทางใน'+tw+'ไหมครับ',english:'Will you travel in '+eng+'?',phonetic:'khun jà dəən-thaang nai '+ph+' mǎi khrâp',words:[{p:'khun',e:'you'},{p:'jà',e:'will'},{p:'dəən-thaang',e:'travel'},{p:'nai',e:'in'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say the weather in '+eng+' is good',thai:'อากาศใน'+tw+'ดีครับ',english:'The weather in '+eng+' is good.',phonetic:'aa-gàat nai '+ph+' dii khrâp',words:[{p:'aa-gàat',e:'weather'},{p:'nai',e:'in'},{p:ph,e:eng},{p:'dii',e:'good'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if the event is in '+eng,thai:'งานอยู่ใน'+tw+'ไหมครับ',english:'Is the event in '+eng+'?',phonetic:'ngaan yùu nai '+ph+' mǎi khrâp',words:[{p:'ngaan',e:'event'},{p:'yùu-nai',e:'is in'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you have been here since '+eng,thai:'ผมอยู่ที่นี่ตั้งแต่'+tw+'ครับ',english:'I have been here since '+eng+'.',phonetic:'phǒm yùu thîi-nîi dtâng-dtàe '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'yùu-thîi-nîi',e:'been here'},{p:'dtâng-dtàe',e:'since'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
   // Discourse connector — two-clause pattern
   if (type === 'discourse_connector') return [
     {prompt:'Say "If you are tired, then rest first"',thai:'ถ้าเหนื่อย'+tw+'พักก่อนครับ',english:'If you are tired, then rest first.',phonetic:'thâa nùeai '+ph+' phák gàwn khrâp',words:[{p:'thâa',e:'if'},{p:'nùeai',e:'tired'},{p:ph,e:'then'},{p:'phák',e:'rest'},{p:'gàwn',e:'first'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
@@ -4630,22 +4663,44 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
     } else if (type === 'personality') {
       typeHint = '\n⚠ PERSONALITY ADJECTIVE: "' + target.thai + '" describes how someone is. NEVER generate a body-pain sentence (เจ็บ/ปวด) — adjectives are not body parts. Use it in: เขาหล่อมาก, คุณหล่อไหม, ผมไม่หล่อ.'
     } else if (type === 'relative_pronoun') {
-      typeHint = '\n⚠ RELATIVE PRONOUN: "' + target.thai + '" links a noun to a describing clause. ' +
+      typeHint = '\n⚠ RELATIVE PRONOUN: "' + target.thai + '" links a noun to its describing clause. ' +
         'Pattern: [noun] + ' + target.thai + ' + [describing clause]. ' +
-        'Examples: หนังสือ' + target.thai + 'ผมชอบ (the book that I like), คนซึ่งพูดไทย (a person who speaks Thai). ' +
-        'NEVER use ' + target.thai + ' as a standalone verb or at the start of a sentence.'
+        'CORRECT: หนังสือ' + target.thai + 'ผมชอบแพงครับ (the book that I like is expensive). ' +
+        'WRONG (1): Never start a sentence with ' + target.thai + '. ' +
+        'WRONG (2): Never use ' + target.thai + ' to mean "which one?" — use อันไหน/ตัวไหน for interrogative. ' +
+        'WRONG (3): Never use ' + target.thai + ' without a noun immediately before it.'
     } else if (type === 'frequency_adverb') {
       typeHint = '\n⚠ FREQUENCY ADVERB: "' + target.thai + '" = "' + (target.english||'') + '" must come AFTER the verb, not before it. ' +
         'Pattern: subject + verb + ' + target.thai + '. ' +
         'CORRECT: ผมไป' + target.thai + 'ครับ (I go often). WRONG: ผม' + target.thai + 'ไปครับ. ' +
         'Build sentences about activities the speaker does frequently/sometimes.'
+    } else if (type === 'event') {
+      typeHint = '\n⚠ EVENT: "' + target.thai + '" = "' + (target.english||'') + '" is an event you ATTEND or PARTICIPATE IN. ' +
+        'Write sentences about going to it, asking about it, whether it is happening. ' +
+        'NEVER use ขอ' + target.thai + 'หน่อย — you cannot request an event like a dish. ' +
+        'Good: ผมจะไป' + target.thai + 'ครับ, มี' + target.thai + 'ไหมครับ, ' + target.thai + 'ปีนี้ดีมากครับ.'
+    } else if (type === 'time_expression') {
+      typeHint = '\n⚠ TIME EXPRESSION: "' + target.thai + '" = "' + (target.english||'') + '" is a time period. ' +
+        'Write sentences using it as a time reference: in/during/since/until this period. ' +
+        'NEVER use ขอ' + target.thai + 'หน่อย — you cannot request a month or season. ' +
+        'Good: ผมจะไปใน' + target.thai + 'ครับ, ' + target.thai + 'อากาศดีครับ, วันเกิดผมอยู่ใน' + target.thai + 'ครับ. ' +
+        'Vary the contexts: travel, events, weather, birthdays, plans.'
     } else if (type === 'discourse_connector') {
-      typeHint = '\n⚠ DISCOURSE CONNECTOR: "' + target.thai + '" = "' + (target.english||'') + '" links two clauses causally. ' +
-        'EVERY sentence MUST be two-part: [situation/reason] + ' + target.thai + ' + [consequence/response]. ' +
-        'Pattern: ถ้า/เมื่อ/เพราะ... + ' + target.thai + ' + [verb phrase]. ' +
-        'Examples: ถ้าเหนื่อย' + target.thai + 'พักก่อนครับ / คุณไม่ชอบเหรอ' + target.thai + 'ไม่ต้องกินครับ. ' +
-        'NEVER write a standalone sentence starting with just ' + target.thai + ' + verb without a preceding clause.'
-    } else if (type === 'verb_social') {
+      typeHint = '\n⚠ DISCOURSE CONNECTOR: "' + target.thai + '" MUST sit BETWEEN two clauses. ' +
+        'Pattern: [situation] + ' + target.thai + ' + [consequence]. ' +
+        'CORRECT: ถ้าเหนื่อย' + target.thai + 'พักก่อนครับ, คุณไม่ชอบเหรอ' + target.thai + 'ไม่ต้องกินครับ. ' +
+        'WRONG: ผมจะกินกล้วย' + target.thai + 'ครับ (' + target.thai + ' dangling at end — connector must have BOTH sides). ' +
+        'WRONG: ' + target.thai + 'ผมจะไปครับ (no setup clause before connector).'
+    } else if (type === 'personality' && ['ผอม','อ้วน','รวย','จน','สูง','เตี้ย','แข็งแรง','อ่อนแอ'].includes(target.thai)) {
+      typeHint = '\n⚠ PHYSICAL/STATE ADJECTIVE: "' + target.thai + '" is used DIRECTLY after the subject. ' +
+        'CORRECT: ผม' + target.thai + 'ครับ, เขา' + target.thai + 'มากครับ. ' +
+        'WRONG: ผมมีความ' + target.thai + 'ครับ (NEVER use ความ + adjective). ' +
+        'WRONG: ผมเป็น' + target.thai + 'ครับ (no เป็น before adjectives — just say ผม' + target.thai + 'ครับ).'
+    } else if (target.thai === 'สุขภาพ') {
+      typeHint = '\n⚠ สุขภาพ = health. Describe it with adjectives: สุขภาพดี / สุขภาพไม่ดี / สุขภาพแข็งแรง. ' +
+        'NEVER: ไม่มีสุขภาพ (you cannot "not have" health). ' +
+        'NEVER: สุขภาพเป็นดี (no เป็น before adjective). ' +
+        'CORRECT: สุขภาพของผมดีครับ, สุขภาพผมไม่ค่อยดีครับ, ดูแลสุขภาพด้วยนะครับ.'
       typeHint = '\n⚠ SOCIAL/MENTAL VERB: "' + target.thai + '" = "' + (target.english||'') + '" is an internal state. ' +
         'Pattern: subject + ' + target.thai + ' + [object/clause]. ' +
         'NEVER use ขอ' + target.thai + 'หน่อย — you cannot request a mental state. ' +
@@ -4729,6 +4784,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       '\n  • สวย = feminine beauty. NEVER use สวย for ผม (male). Use หล่อ for handsome men.' +
       '\n  • "english" field must be a real English translation — never paste phonetics (romanization) or copy the prompt text' +
       '\n  • Time/date target words: use 3 meaningfully DIFFERENT contexts (not 3 variations of the same situation)' +
+      '\n  • NEVER use ความ before an adjective (ความรวย/ความผอม/ความอ้วน = unnatural). Use adjectives directly: ผมรวยครับ.' +
+      '\n  • NEVER use เป็น before an adjective (เป็นดี/เป็นสวย/เป็นรวย = wrong). Say ดีครับ/สวยครับ directly.' +
       (target.english === 'then' || target.thai === 'งั้นก็' ? '\n  • งั้นก็ means "in that case / if so then" — sentences should show consequence or reaction, not just use งั้นก็ as filler' : '') +
       (target.thai === 'ล่ะ' ? '\n  • ล่ะ ONLY in the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ meaning "And what about X?" — never at end of random statements' : '') +
       (target.thai === 'ยิน' ? '\n  • The target word ยิน is used as part of ยินดี (glad/pleased). Always write ยินดี in sentences — never standalone ยิน' : '') +
@@ -4885,7 +4942,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           // 8. ขอ...หน่อย for non-requestable types
           if (!failReason) {
             const wtype = classifyWord(target)
-            const nonReq = ['verb_intrans','verb_transitive','verb_social','verb_screen','proper_place','weather','personality','adjective','colour','abstract','particle','classifier','full_sentence','verb_command','negative_particle','location']
+            const nonReq = ['verb_intrans','verb_transitive','verb_social','verb_screen','proper_place','weather','personality','adjective','colour','abstract','particle','classifier','full_sentence','verb_command','negative_particle','location','event','time_expression']
             if (/^ขอ.+หน่อย/.test((p.thai||'').trim()) && nonReq.includes(wtype)) {
               failReason = 'ขอ...หน่อย not valid for type: ' + wtype + ' (' + target.thai + ')'
             }
@@ -4927,7 +4984,47 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
             if (isDupPrompt) failReason = 'duplicate prompt (>70% overlap with earlier pair): ' + p.prompt
             else seenPrompts.push(promptNorm)
           }
-          // Fix 4: EN field is phonetic transcription, not real English
+          // Fix 4: งั้นก็ dangling at END of sentence (must be between two clauses)
+          if (!failReason && type === 'discourse_connector') {
+            const thTrim = (p.thai||'').trim()
+            // Starts with connector = no setup clause before it
+            if (thTrim.startsWith(target.thai)) {
+              failReason = 'discourse connector "' + target.thai + '" starts sentence with no setup clause: ' + p.thai
+            }
+            // Ends with connector + ครับ/ค่ะ = dangling at end
+            const endsWithConnector = thTrim.endsWith(target.thai + 'ครับ') || thTrim.endsWith(target.thai + 'ค่ะ') || thTrim.endsWith(target.thai + 'คะ') || thTrim.endsWith(target.thai)
+            if (!failReason && endsWithConnector) {
+              failReason = 'discourse connector "' + target.thai + '" dangles at end — must be between two clauses: ' + p.thai
+            }
+          }
+          // Fix 5: ซึ่ง/relative pronoun at sentence start
+          if (!failReason && type === 'relative_pronoun') {
+            const thTrim = (p.thai||'').trim()
+            if (thTrim.startsWith(target.thai)) {
+              failReason = '"' + target.thai + '" cannot start a sentence — must follow a noun: ' + p.thai
+            }
+          }
+          // Fix 6: ความ + adjective over-nominalization
+          if (!failReason) {
+            const badNominals = ['ความรวย','ความจน','ความอ้วน','ความผอม','ความสูง','ความเตี้ย','ความดี','ความสวย','ความหล่อ','ความแข็งแรง','ความอ่อนแอ']
+            if (badNominals.some(b => (p.thai||'').includes(b))) {
+              failReason = 'over-nominalization: use adjective directly, not ความ+adjective: ' + p.thai
+            }
+          }
+          // Fix 7: ไม่มี + health/state concept
+          if (!failReason) {
+            const stateConcepts = ['สุขภาพ','ความสุข','ความโกรธ','ความรัก','ความเศร้า','ความสงบ']
+            if (/^ไม่มี/.test((p.thai||'').trim()) && stateConcepts.some(s => (p.thai||'').includes(s))) {
+              failReason = 'ไม่มี + state concept is wrong — use ไม่ดี/ไม่มีความสุข etc.: ' + p.thai
+            }
+          }
+          // Fix 8: เป็น + standalone adjective (เป็นดี, เป็นสวย etc.)
+          if (!failReason) {
+            const adjAfterBpen = /เป็น(ดี|สวย|หล่อ|รวย|จน|อ้วน|ผอม|สูง|เตี้ย|แข็งแรง|อ่อนแอ|เก่|ใหม่|ใหญ่|เล็ก)/.test(p.thai||'')
+            if (adjAfterBpen) {
+              failReason = 'เป็น + adjective is wrong — adjectives do not need เป็น: ' + p.thai
+            }
+          }
           if (!failReason) {
             const enText = (p.english || '').trim()
             // Phonetics: only contains romanized chars, tone marks, hyphens, spaces

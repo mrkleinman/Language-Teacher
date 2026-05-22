@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v159"/>
-<meta name="app-version" content="v159"/>
+<meta name="app-version" content="v160"/>
+<meta name="app-version" content="v160"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v159';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v159').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v160';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v160').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3141,6 +3141,8 @@ function classifyWord(target) {
 
   // Full sentence phrase targets
   if (target._phraseType === 'full_sentence') return 'full_sentence'
+  // Complete polite sentences (ends in ครับ/ค่ะ/คะ and has 2+ words)
+  if ((thai.endsWith('ครับ') || thai.endsWith('ค่ะ') || thai.endsWith('คะ')) && thai.includes(' ') && thai.length > 8) return 'full_sentence'
 
   // Quantifiers — must attach to noun, never standalone
   if (['every','all of','each','any','some','both','several','whole'].some(w => eng === w || eng.startsWith(w+' ')) ||
@@ -3348,8 +3350,8 @@ function classifyWord(target) {
   if (['ซึ่ง','ผู้'].includes(thai) || eng === 'which' || eng === 'who (relative)' || eng === 'that (relative)') return 'relative_pronoun'
 
   // ── Frequency adverbs — must come AFTER verb, not before ─────────────────
-  const FREQ_ADV = ['บ่อยๆ','บ่อย','บางครั้ง','บางที','นานๆ ครั้ง','ส่วนใหญ่','โดยปกติ','เสมอ']
-  if (FREQ_ADV.includes(thai) || ['often','sometimes','occasionally','usually','always','rarely','frequently'].some(w => eng === w)) return 'frequency_adverb'
+  const FREQ_ADV = ['บ่อยๆ','บ่อย','บางครั้ง','บางที','นานๆ ครั้ง','ส่วนใหญ่','โดยปกติ','เสมอ','ปกติ','ปกติแล้ว']
+  if (FREQ_ADV.includes(thai) || ['often','sometimes','occasionally','usually','normally','always','rarely','frequently'].some(w => eng === w || eng.startsWith(w+' '))) return 'frequency_adverb'
 
   // ── Discourse connectors — two-clause structure required ─────────────────
   const DISCOURSE = ['งั้นก็','ดังนั้น','เพราะฉะนั้น','อย่างไรก็ตาม','ถึงกระนั้น','นอกจากนั้น','ยิ่งกว่านั้น','ทั้งนั้น']
@@ -4567,8 +4569,15 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
     const baseMin = lenResult.goalMin || 6
     const baseMax = lenResult.goalMax || 8
-    const floor = Math.max(3, Math.floor(baseMin * 0.9))  // -10%
-    const ceil  = Math.ceil(baseMax * 1.1)                 // +10%
+    let floor = Math.max(3, Math.floor(baseMin * 0.9))
+    let ceil  = Math.ceil(baseMax * 1.1)
+
+    // Fix 13: full_sentence targets already contribute words — subtract their count
+    if (type === 'full_sentence') {
+      const targetWordCount = (target.phonetic || target.thai).split(/\s+/).filter(Boolean).length
+      floor = Math.max(2, floor - targetWordCount)
+      ceil  = Math.max(floor + 1, ceil - targetWordCount + 2)
+    }
     const scenarioCtx = scenario ? (SCENARIO_CONTEXTS[scenario] || SCENARIO_CONTEXTS.general) : SCENARIO_CONTEXTS.general
     const conceptLines = (conceptBlock || []).slice(0,15).map(c =>
       (c.pattern||'') + '=' + (c.meaning||'') + ((c.frames && c.frames.length) ? '[' + c.frames[0] + ']' : '')
@@ -4659,8 +4668,24 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       typeHint = '\n⚠ COGNITION VERB: "' + target.thai + '" MUST be followed by ว่า before a clause. ' +
         'CORRECT: ผม' + target.thai + 'ว่าอากาศดีครับ. WRONG: ผม' + target.thai + 'อากาศดีครับ (missing ว่า). ' +
         'Never skip ว่า when a clause follows.'
+    } else if (target.thai === 'สวย') {
+      typeHint = '\n⚠ สวย = feminine beauty/prettiness. Use for female subjects (คุณ, เธอ, น้องสาว, ผู้หญิง). ' +
+        'NEVER use สวย with ผม (male speaker describing himself) — use หล่อ for men. ' +
+        'Good: น้องสาวคุณสวยมากครับ, คุณสวยมากเลยครับ. Wrong: ผมสวยครับ.'
+    } else if (target.thai === 'ถ่ายรูป') {
+      typeHint = '\n⚠ ถ่ายรูป = to TAKE A PHOTO (verb). Always used as a verb: subject + ถ่ายรูป + [object/location/context]. ' +
+        'NEVER treat it as a noun: ผมมีถ่ายรูปครับ is WRONG. ' +
+        'Good: ผมถ่ายรูปที่นี่ครับ, คุณถ่ายรูปได้ไหมครับ, ผมชอบถ่ายรูปครับ.'
+    } else if (type === 'full_sentence') {
+      typeHint = '\n⚠ FULL SENTENCE TARGET: "' + target.thai + '" is already a complete phrase. ' +
+        'Embed it in a LONGER sentence by adding context BEFORE or AFTER it. ' +
+        'Examples: ผมจองไว้ครับ → คืนนี้ผมจองไว้ครับ (added time), ขอโทษนะครับ ผมจองไว้ครับ (added apology). ' +
+        'The full phrase must appear intact in every sentence. Add ' + Math.max(2, Math.floor((lenResult.goalMin||6)*0.9) - (target.phonetic||target.thai).split(/\s+/).length) + '+ more words around it.'
     } else if (type === 'particle' && target.thai === 'ล่ะ') {
-      typeHint = '\n⚠ PARTICLE ล่ะ: NOT a generic sentence-ender. Its core use is "แล้ว X ล่ะ?" = "And what about X?". EVERY sentence must follow the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ. Examples: แล้วคุณล่ะครับ, แล้วราคาล่ะครับ, แล้วพรุ่งนี้ล่ะครับ. Do NOT just stick ล่ะ at the end of unrelated statements.'
+      typeHint = '\n⚠ PARTICLE ล่ะ: ONLY valid pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ = "And what about X?". ' +
+        'CORRECT: แล้วคุณล่ะครับ, แล้วราคาล่ะครับ, แล้วพรุ่งนี้ล่ะครับ. ' +
+        'WRONG: ผมยังไม่กินล่ะครับ (ล่ะ after verb), แล้วประชุมล่ะไหมครับ (ล่ะ + ไหม together). ' +
+        'ล่ะ must come DIRECTLY after the topic noun/pronoun — nothing between the noun and ล่ะ.'
     } else if (type === 'classifier') {
       const classifierExamples = {
         'ใบ': 'flat objects — ตั๋วหนึ่งใบ (one ticket), กระดาษสองใบ (two sheets), ใบเสร็จสามใบ (three receipts)',
@@ -4701,6 +4726,9 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       '\n  • connector words like งั้นก็ go at START of sentence, never at the end' +
       '\n  • all 3 pairs must use meaningfully different grammar patterns (not all มี...ไหมครับ)' +
       '\n  • ONLY use Thai words from the WHITELIST below — every Thai word must be either the target word or from this list' +
+      '\n  • สวย = feminine beauty. NEVER use สวย for ผม (male). Use หล่อ for handsome men.' +
+      '\n  • "english" field must be a real English translation — never paste phonetics (romanization) or copy the prompt text' +
+      '\n  • Time/date target words: use 3 meaningfully DIFFERENT contexts (not 3 variations of the same situation)' +
       (target.english === 'then' || target.thai === 'งั้นก็' ? '\n  • งั้นก็ means "in that case / if so then" — sentences should show consequence or reaction, not just use งั้นก็ as filler' : '') +
       (target.thai === 'ล่ะ' ? '\n  • ล่ะ ONLY in the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ meaning "And what about X?" — never at end of random statements' : '') +
       (target.thai === 'ยิน' ? '\n  • The target word ยิน is used as part of ยินดี (glad/pleased). Always write ยินดี in sentences — never standalone ยิน' : '') +
@@ -4899,7 +4927,33 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
             if (isDupPrompt) failReason = 'duplicate prompt (>70% overlap with earlier pair): ' + p.prompt
             else seenPrompts.push(promptNorm)
           }
-          // 13. Discourse connector with no setup clause before it
+          // Fix 4: EN field is phonetic transcription, not real English
+          if (!failReason) {
+            const enText = (p.english || '').trim()
+            // Phonetics: only contains romanized chars, tone marks, hyphens, spaces
+            const isPhonetics = enText.length > 3 && /^[a-zA-Z\s\-āàâáǎāēèêéěīìîíǐōòôóǒūùûúǔ̂ɔɛŋ̀]+$/.test(enText) &&
+              !/\b(the|a|an|is|are|I|you|he|she|we|they|it|my|your|this|that|have|has|do|not|can|will|want|like)\b/i.test(enText)
+            if (isPhonetics) failReason = 'English field contains phonetics not a real translation: ' + enText.slice(0,30)
+          }
+          // Fix 5: มี + verb_intrans target (verb treated as noun)
+          if (!failReason && type === 'verb_intrans') {
+            const th = p.thai || ''
+            if (th.includes('มี' + target.thai) || th.includes('มี ' + target.thai)) {
+              failReason = '"' + target.thai + '" is a verb — cannot use มี (have) + verb: ' + th
+            }
+          }
+          // Fix 6: Say/Tell prompt but Thai is a WH-question
+          if (!failReason) {
+            const prL = (p.prompt||'').toLowerCase()
+            const whWords = ['ที่ไหน','เมื่อไหร่','ทำไม','ยังไง','อย่างไร','อะไร','ใคร']
+            if ((prL.startsWith('say') || prL.startsWith('tell')) && whWords.some(w => (p.thai||'').includes(w))) {
+              failReason = 'prompt says SAY but Thai is a WH-question: ' + p.thai
+            }
+          }
+          // Fix 7: ล่ะ + ไหม in same sentence
+          if (!failReason && (p.thai||'').includes('ล่ะ') && (p.thai||'').includes('ไหม')) {
+            failReason = 'ล่ะ and ไหม cannot both appear in same sentence: ' + p.thai
+          }
           if (!failReason && type === 'discourse_connector') {
             const thTrim = (p.thai||'').trim()
             const startsWithConnector = thTrim.startsWith(target.thai)

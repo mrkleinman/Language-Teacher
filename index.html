@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v153"/>
-<meta name="app-version" content="v153"/>
+<meta name="app-version" content="v154"/>
+<meta name="app-version" content="v154"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v153';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v153').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v154';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v154').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3313,6 +3313,17 @@ function classifyWord(target) {
       ['มะละกอ','กล้วย','ทุเรียน','สับปะรด','มะพร้าว','ลำไย','ลิ้นจี่','เงาะ','แตงโม','ฝรั่ง','ส้มโอ',
        'มะขาม','ชมพู่','สตรอเบอรี่'].includes(thai)) return 'food'
 
+  // ── Relative pronouns — connectors between clauses ───────────────────────
+  if (['ซึ่ง','ผู้'].includes(thai) || eng === 'which' || eng === 'who (relative)' || eng === 'that (relative)') return 'relative_pronoun'
+
+  // ── Frequency adverbs — must come AFTER verb, not before ─────────────────
+  const FREQ_ADV = ['บ่อยๆ','บ่อย','บางครั้ง','บางที','นานๆ ครั้ง','ส่วนใหญ่','โดยปกติ','เสมอ']
+  if (FREQ_ADV.includes(thai) || ['often','sometimes','occasionally','usually','always','rarely','frequently'].some(w => eng === w)) return 'frequency_adverb'
+
+  // ── Discourse connectors — two-clause structure required ─────────────────
+  const DISCOURSE = ['งั้นก็','ดังนั้น','เพราะฉะนั้น','อย่างไรก็ตาม','ถึงกระนั้น','นอกจากนั้น','ยิ่งกว่านั้น','ทั้งนั้น']
+  if (DISCOURSE.includes(thai) || ['therefore','thus','consequently','in that case','nevertheless','furthermore','moreover'].some(w => eng.includes(w))) return 'discourse_connector'
+
   // ── Activity verb phrases — can't be requested with ขอ...หน่อย ────────────
   const ACTIVITY_PHRASES = ['ล่องแก่ง','นั่งเรือ','ปีนหน้าผา','เล่นกีฬา','ว่ายน้ำ','ดำน้ำ','ปีนเขา','ตกปลา','เดินป่า','ขี่จักรยาน','ตั้งแคมป์']
   if (ACTIVITY_PHRASES.includes(thai)) return 'verb_intrans'
@@ -4490,6 +4501,30 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       ? 'PREVIOUS ATTEMPT FAILED: ' + failureReason + '. Rewrite using a different grammar pattern. Keep the target word ' + target.thai + '.'
       : ''
 
+    // For compound verbs Qwen may not know, decompose into components with meaning
+    let compoundGloss = ''
+    if ((type === 'verb_intrans' || type === 'verb_transitive' || type === 'verb_phrase') && target.thai.length >= 4) {
+      // Auto-decompose compound verbs: แวะรับ → แวะ + รับ
+      const KNOWN_COMPONENTS = {
+        'แวะ':'stop by/swing by', 'รับ':'receive/pick up', 'ส่ง':'send/drop off',
+        'พา':'take/bring (a person)', 'ไป':'go', 'มา':'come', 'กลับ':'return',
+        'ออก':'exit/go out', 'เข้า':'enter', 'ขึ้น':'go up', 'ลง':'go down',
+        'ล่อง':'drift/travel by water', 'แก่ง':'rapids', 'ปีน':'climb',
+        'หน้า':'face/front', 'ผา':'cliff', 'ขับ':'drive', 'เดิน':'walk',
+        'วิ่ง':'run', 'ว่าย':'swim', 'บิน':'fly', 'ถ่าย':'take (photo)',
+        'ตาม':'follow', 'หา':'find/look for', 'เลือก':'choose', 'ลอง':'try',
+      }
+      const thaiWord = target.thai
+      let found = []
+      for (const [component, meaning] of Object.entries(KNOWN_COMPONENTS)) {
+        if (thaiWord.includes(component)) found.push(component + '=' + meaning)
+      }
+      if (found.length >= 2) {
+        compoundGloss = '\nCOMPOUND MEANING: ' + thaiWord + ' = ' + found.join(' + ') + 
+          '. Use in sentences about: ' + (target.english||'') + '. Show variety: doing it, asking about it, saying you will/did/can\'t do it.'
+      }
+    }
+
     // Type-specific hints to prevent GPT from using wrong templates
     let typeHint = ''
     if (type === 'clothing_verb') {
@@ -4508,7 +4543,22 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       typeHint = '\n⚠ VERB (screen/show media): "' + target.thai + '" must be followed by the thing being shown (หนัง/ภาพยนตร์). Pattern: subject + ' + target.thai + ' + หนัง. NEVER use it as a noun.'
     } else if (type === 'personality') {
       typeHint = '\n⚠ PERSONALITY ADJECTIVE: "' + target.thai + '" describes how someone is. NEVER generate a body-pain sentence (เจ็บ/ปวด) — adjectives are not body parts. Use it in: เขาหล่อมาก, คุณหล่อไหม, ผมไม่หล่อ.'
-    } else if (type === 'particle' && target.thai === 'ล่ะ') {
+    } else if (type === 'relative_pronoun') {
+      typeHint = '\n⚠ RELATIVE PRONOUN: "' + target.thai + '" links a noun to a describing clause. ' +
+        'Pattern: [noun] + ' + target.thai + ' + [describing clause]. ' +
+        'Examples: หนังสือ' + target.thai + 'ผมชอบ (the book that I like), คนซึ่งพูดไทย (a person who speaks Thai). ' +
+        'NEVER use ' + target.thai + ' as a standalone verb or at the start of a sentence.'
+    } else if (type === 'frequency_adverb') {
+      typeHint = '\n⚠ FREQUENCY ADVERB: "' + target.thai + '" = "' + (target.english||'') + '" must come AFTER the verb, not before it. ' +
+        'Pattern: subject + verb + ' + target.thai + '. ' +
+        'CORRECT: ผมไป' + target.thai + 'ครับ (I go often). WRONG: ผม' + target.thai + 'ไปครับ. ' +
+        'Build sentences about activities the speaker does frequently/sometimes.'
+    } else if (type === 'discourse_connector') {
+      typeHint = '\n⚠ DISCOURSE CONNECTOR: "' + target.thai + '" = "' + (target.english||'') + '" links two clauses causally. ' +
+        'EVERY sentence MUST be two-part: [situation/reason] + ' + target.thai + ' + [consequence/response]. ' +
+        'Pattern: ถ้า/เมื่อ/เพราะ... + ' + target.thai + ' + [verb phrase]. ' +
+        'Examples: ถ้าเหนื่อย' + target.thai + 'พักก่อนครับ / คุณไม่ชอบเหรอ' + target.thai + 'ไม่ต้องกินครับ. ' +
+        'NEVER write a standalone sentence starting with just ' + target.thai + ' + verb without a preceding clause.'
       typeHint = '\n⚠ PARTICLE ล่ะ: NOT a generic sentence-ender. Its core use is "แล้ว X ล่ะ?" = "And what about X?". EVERY sentence must follow the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ. Examples: แล้วคุณล่ะครับ, แล้วราคาล่ะครับ, แล้วพรุ่งนี้ล่ะครับ. Do NOT just stick ล่ะ at the end of unrelated statements.'
     } else if (type === 'classifier') {
       const classifierExamples = {
@@ -4533,6 +4583,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       '\nTARGET WORD: ' + target.thai + ' (' + (target.phonetic||target.thai) + ') = "' + (target.english||'') + '"' +
       '\n⚠ CRITICAL: Every Thai sentence MUST contain the EXACT word "' + target.thai + '". Do NOT replace it with synonyms.' +
       '\nCLASS: ' + type + ' | SENTENCE LENGTH: MUST be ' + floor + '-' + ceil + ' Thai words counted in phonetic (each space-separated token = 1 word). REJECTED if outside this range.' +
+      compoundGloss +
       typeHint +
       (recheckLine ? '\n' + recheckLine : '') +
       '\nVALIDATOR HARD RULES — these cause automatic rejection:' +
@@ -4612,8 +4663,15 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       let failReason = null
       // Basic field check
       if (!p.thai || !p.english || !p.prompt) { failReason = 'missing fields' }
-      // Must contain target word
-      else if (!p.thai.includes(target.thai)) { failReason = 'no target: ' + target.thai + ' in: ' + p.thai.slice(0,30) }
+      // Must contain target word — check BEFORE anything else
+      else if (!p.thai.includes(target.thai)) {
+        // Confabulation check: does the sentence contain ANY of the target's characters in sequence?
+        const targetChars = target.thai.split('')
+        const hasAnyChars = targetChars.filter(c => p.thai.includes(c)).length >= Math.ceil(targetChars.length * 0.5)
+        failReason = hasAnyChars
+          ? 'no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)
+          : 'CONFABULATION: model ignored target "' + target.thai + '" entirely, wrote about: ' + p.thai.slice(0,30)
+      }
       else {
         // Must be a real Thai sentence (at least 5 Thai chars)
         const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
@@ -4827,12 +4885,9 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
   const failureLog = {}  // tracks why each word used fallback
 
   // Sort targets by scenario so pairs from the same scenario are adjacent — better track flow
-  const scenarioOrder = ['body','travel','river','nature','competition','city','family','culture','general']
-  targets = [...targets].sort((a,b) => {
-    const sa = scenarioOrder.indexOf(getScenarioForTarget(a))
-    const sb = scenarioOrder.indexOf(getScenarioForTarget(b))
-    return (sa < 0 ? 99 : sa) - (sb < 0 ? 99 : sb)
-  })
+  // Note: targets are kept in original order — sorting by scenario caused
+  // pairs/keywords index mismatch since keywords are built from original order
+  // const scenarioOrder = ['body','travel','river','nature','competition','city','family','culture','general']
 
   // ── Main loop — word by word ───────────────────────────────────────────────
   for (let i = 0; i < targets.length; i++) {

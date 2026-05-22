@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v161"/>
-<meta name="app-version" content="v161"/>
+<meta name="app-version" content="v163"/>
+<meta name="app-version" content="v163"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v161';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v161').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v163';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v163').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5381,6 +5381,102 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
   return allPairs
 }
 
+
+function buildConvoPrompt(targets, vocab) {
+  // ── Belt level for complexity control ──────────────────────────────────
+  const known = vocab.filter(w => w.status === 'known').length
+  const belt = calculateBeltRank(known)
+  const beltName = belt.current.rank
+  const complexityNote = known < 300
+    ? 'BEGINNER level (' + beltName + '): simple present tense only, short sentences, basic questions. No compound clauses, no conditionals, no formal register.'
+    : known < 750
+    ? 'LOWER-INTERMEDIATE (' + beltName + '): simple past/future ok, basic questions and requests, polite register. Avoid complex grammar.'
+    : known < 2000
+    ? 'INTERMEDIATE (' + beltName + '): compound sentences ok, casual and polite registers, can include งั้นก็/ถ้า constructions.'
+    : 'UPPER-INTERMEDIATE (' + beltName + '): natural flowing conversation, idioms ok, varied grammar structures.'
+
+  // ── Semantic clustering ─────────────────────────────────────────────────
+  const CLUSTERS = {
+    food:     ['food','meal','eat','drink','fruit','vegetable','rice','curry','noodle','soup','sauce','spicy','sweet','restaurant','order','cook'],
+    place:    ['market','shop','mall','temple','hotel','hospital','school','road','street','floor','floor level','here','there','near','far','location'],
+    time:     ['january','february','march','april','may','june','july','august','september','october','november','december','morning','afternoon','evening','night','today','tomorrow','yesterday','month','year','week','season','time','date','birthday'],
+    people:   ['person','friend','family','father','mother','brother','sister','child','grandchild','teacher','doctor','man','woman','boy','girl','people'],
+    activity: ['go','come','walk','run','stand','sit','carry','travel','trip','climb','raft','play','take photo','sing','music','band','exercise','swim'],
+    describe: ['big','small','fat','thin','tall','short','rich','poor','beautiful','handsome','old','new','hot','cold','spicy','sweet','colour','brown','purple','gold','pink'],
+    feeling:  ['happy','sad','angry','surprised','feel','love','like','want','afraid','proud','embarrassed','believe','think'],
+    language: ['word','sentence','language','speak','say','tell','ask','answer','promise','letter','sign'],
+  }
+
+  const clusterCounts = {}
+  for (const [cluster, keywords] of Object.entries(CLUSTERS)) {
+    clusterCounts[cluster] = targets.filter(t =>
+      keywords.some(k => (t.english||'').toLowerCase().includes(k))
+    ).length
+  }
+  const dominantCluster = Object.entries(clusterCounts).sort((a,b) => b[1]-a[1])[0]?.[0] || 'activity'
+
+  // ── Scenario + speaker roles based on dominant cluster ─────────────────
+  const SCENARIOS = {
+    food:     { scene: 'at a street food stall in Chiang Mai', A: 'a male customer (uses ผม/ครับ)', B: 'a female vendor (uses ค่ะ/นะคะ)', goal: 'A wants to order food and ask about the menu' },
+    place:    { scene: 'asking for directions near a night market', A: 'a male tourist (uses ผม/ครับ)', B: 'a friendly local woman (uses ค่ะ)', goal: 'A is trying to find a specific place' },
+    time:     { scene: 'two colleagues planning a trip', A: 'a male colleague (uses ผม/ครับ)', B: 'a female colleague (uses ฉัน/ค่ะ)', goal: 'A and B are deciding when and where to travel' },
+    people:   { scene: 'catching up with a friend at a café', A: 'a male friend (uses ผม/ครับ)', B: 'a female friend (uses ฉัน/ค่ะ)', goal: 'A and B are catching up on family and life' },
+    activity: { scene: 'planning a weekend activity together', A: 'a male friend (uses ผม/ครับ)', B: 'a female friend (uses ฉัน/ค่ะ)', goal: 'A suggests an activity, B responds and they make a plan' },
+    describe: { scene: 'shopping for clothes at a local market', A: 'a male customer (uses ผม/ครับ)', B: 'a female shopkeeper (uses ค่ะ)', goal: 'A is looking for something specific and describing what he wants' },
+    feeling:  { scene: 'two friends talking after a difficult day', A: 'a male friend (uses ผม/ครับ)', B: 'a female friend (uses ฉัน/ค่ะ)', goal: 'A shares how he feels, B responds with empathy and advice' },
+    language: { scene: 'a Thai lesson between a student and teacher', A: 'a male foreign student (uses ผม/ครับ)', B: 'a female Thai teacher (uses ค่ะ/นะคะ)', goal: 'A asks about language or pronunciation, B explains' },
+  }
+  const scenario = SCENARIOS[dominantCluster] || SCENARIOS.activity
+
+  // ── Select words most likely to fit the scenario ────────────────────────
+  const scenarioKeywords = CLUSTERS[dominantCluster] || []
+  const priorityWords = targets.filter(t => scenarioKeywords.some(k => (t.english||'').toLowerCase().includes(k)))
+  const otherWords = targets.filter(t => !priorityWords.includes(t))
+  const wordPool = [...priorityWords, ...otherWords].slice(0, 15)
+  const wordList = wordPool.map(t => t.thai + ' (' + (t.english||'') + ')').join(', ')
+
+  // ── Few-shot example of natural rhythm ─────────────────────────────────
+  const example = `EXAMPLE of natural rhythm (NOT about your target words — just showing style):
+A: ขอโทษครับ ร้านอาหารอยู่แถวนี้ไหมครับ
+B: มีครับ เดินตรงไปสักนิดแล้วเลี้ยวขวาค่ะ
+A: ไกลไหมครับ
+B: ไม่ไกลเลยค่ะ แค่สองนาทีเองค่ะ
+A: ขอบคุณมากครับ แล้วร้านนั้นอร่อยไหมครับ
+B: อร่อยมากเลยค่ะ ลองสั่งผัดกะเพราดูนะคะ
+A: โอเคครับ จะลองดูครับ ขอบคุณครับ
+Notice: each line directly responds to the previous one. Speaker B answers A's questions specifically. The conversation has a clear goal and resolution.`
+
+  const system = '/no_think\nYou are a Thai language teacher writing a natural Thai conversation for a language learner. ' +
+    'Write realistic, flowing dialogue — not a vocabulary exercise. ' +
+    'Every line must logically follow the previous one. ' +
+    'GRAMMAR RULES (always apply):\n' +
+    '• Every Thai sentence ends with ครับ (male) or ค่ะ/คะ (female) — no exceptions\n' +
+    '• เชื่อ/คิด/รู้สึก/หวัง must be followed by ว่า before a clause\n' +
+    '• งั้นก็ must sit BETWEEN two clauses, never at the end\n' +
+    '• ซึ่ง must follow a noun, never start a sentence\n' +
+    '• No เป็น before adjectives (เป็นดี = wrong, ดีครับ = right)\n' +
+    '• No ความ before adjectives (ความรวย = wrong, รวยครับ = right)\n' +
+    'Return ONLY valid JSON — no markdown, no preamble, no thinking.'
+
+  const user = example + '\n\n' +
+    'NOW write a 15-line conversation with these details:\n' +
+    'SCENE: ' + scenario.scene + '\n' +
+    'SPEAKER A: ' + scenario.A + '\n' +
+    'SPEAKER B: ' + scenario.B + '\n' +
+    'GOAL: ' + scenario.goal + '\n' +
+    'LEVEL: ' + complexityNote + '\n' +
+    'TARGET WORDS to use naturally (use 8-12 of these, only where they fit): ' + wordList + '\n\n' +
+    'Rules:\n' +
+    '• 15 lines total, alternating A and B\n' +
+    '• A has a clear goal, B responds specifically to what A says\n' +
+    '• Natural conversational rhythm — some lines can be short (2-4 words), some longer\n' +
+    '• End with a natural resolution (thanks, goodbye, agreement, plan made)\n' +
+    '• Include phonetic romanization for every line\n\n' +
+    'Return ONLY this JSON:\n' +
+    '{"lines":[{"speaker":"A","thai":"...","phonetic":"...","english":"..."},{"speaker":"B","thai":"...","phonetic":"...","english":"..."}]}'
+
+  return { system, user }
+}
 
 async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const { system, user } = buildConvoPrompt(targets, vocab)

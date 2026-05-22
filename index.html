@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v163"/>
-<meta name="app-version" content="v163"/>
+<meta name="app-version" content="v164"/>
+<meta name="app-version" content="v164"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v163';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v163').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v164';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v164').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5454,7 +5454,7 @@ Notice: each line directly responds to the previous one. Speaker B answers A's q
     '• เชื่อ/คิด/รู้สึก/หวัง must be followed by ว่า before a clause\n' +
     '• งั้นก็ must sit BETWEEN two clauses, never at the end\n' +
     '• ซึ่ง must follow a noun, never start a sentence\n' +
-    '• No เป็น before adjectives (เป็นดี = wrong, ดีครับ = right)\n' +
+    '• Add commas (,) in Thai sentences where a natural spoken pause would occur — especially after นะ, after an introductory clause, and before งั้นก็/แล้ว/แต่\n' +
     '• No ความ before adjectives (ความรวย = wrong, รวยครับ = right)\n' +
     'Return ONLY valid JSON — no markdown, no preamble, no thinking.'
 
@@ -5523,23 +5523,44 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
     const speakLine = () => {
       if (!HAS_SPEECH || cancelRef.current) { setTimeout(() => { if (!cancelRef.current) setLineIdx(i => i + 1) }, 1200); return }
       try { window.speechSynthesis.cancel() } catch(e) {}
-      const u = new SpeechSynthesisUtterance(line.thai)
+
       const isMale = line.speaker === 'M'
-      u.lang = 'th-TH'
-      u.rate = speedRef.current || 0.8  // use ref for real-time speed
-      u.pitch = 1  // no pitch manipulation — let voices be natural
-      // Google TTS Thai voices: female = th-TH-Standard-A, male = th-TH-Standard-B
-      // Also handles: Google ภาษาไทย (female/male), Nexus voices
       const googleFemale = voices.find(v => v.lang.startsWith('th') && /Standard-A|หญิง|female/i.test(v.name))
       const googleMale = voices.find(v => v.lang.startsWith('th') && /Standard-B|Standard-C|ชาย|male/i.test(v.name))
       const anyThai = voices.filter(v => v.lang.startsWith('th'))
-      // If 2+ voices, pick by index: first=female, second=male
       const byIndex = isMale ? (anyThai[1] || anyThai[0]) : (anyThai[0])
-      const chosen = isMale ? (googleMale || byIndex) : (googleFemale || anyThai[0])
-      if (chosen) u.voice = chosen
-      u.onend = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 700) }
-      u.onerror = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 900) }
-      window.speechSynthesis.speak(u)
+      const chosenVoice = isMale ? (googleMale || byIndex) : (googleFemale || anyThai[0])
+
+      // Split on Thai commas/pauses for natural rhythm
+      // Thai uses ， or , or ๆ pauses — split and speak as sequential utterances
+      const rawText = line.thai || ''
+      const segments = rawText.split(/[,，]/).map(s => s.trim()).filter(Boolean)
+
+      const speakSegments = (segs, idx) => {
+        if (cancelRef.current || idx >= segs.length) {
+          if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 1200)
+          return
+        }
+        const u = new SpeechSynthesisUtterance(segs[idx])
+        u.lang = 'th-TH'
+        u.rate = speedRef.current || 0.8
+        u.pitch = 1
+        if (chosenVoice) u.voice = chosenVoice
+        u.onend = () => {
+          if (cancelRef.current) return
+          if (idx < segs.length - 1) {
+            // Pause between comma segments (300ms)
+            setTimeout(() => speakSegments(segs, idx + 1), 300)
+          } else {
+            // Done — pause before next speaker
+            setTimeout(() => { if (!cancelRef.current) setLineIdx(i => i + 1) }, 1200)
+          }
+        }
+        u.onerror = () => { if (!cancelRef.current) speakSegments(segs, idx + 1) }
+        window.speechSynthesis.speak(u)
+      }
+
+      speakSegments(segments, 0)
     }
     speakLine()
     return () => { cancelRef.current = true; try { window.speechSynthesis.cancel() } catch(e) {} }

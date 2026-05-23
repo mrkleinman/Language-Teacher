@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v165"/>
-<meta name="app-version" content="v165"/>
+<meta name="app-version" content="v167"/>
+<meta name="app-version" content="v167"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v165';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v165').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v167';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v167').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2580,7 +2580,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
       {/* AI Provider Selector */}
       <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
         <span style={{ fontSize:12, color:'var(--muted)', marginRight:4 }}>Generate with:</span>
-        {[['deepseek','🐋 DeepSeek'],['qwen3_14b','⚡ Qwen3-14B'],['haiku','🔶 Haiku 4.5']].map(([id,label]) => {
+        {[['deepseek','🐋 DeepSeek'],['qwen3_14b','⚡ Qwen3-32B'],['haiku','🔶 Haiku 4.5']].map(([id,label]) => {
           const hasKey = hasOrKey
           return (
             <button key={id} onClick={() => onSetProvider(id)}
@@ -2738,7 +2738,7 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-      body: JSON.stringify({ model: 'qwen/qwen3-14b', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
+      body: JSON.stringify({ model: 'qwen/qwen3-32b', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
     })
     if (!res.ok) return {}
     const data = await res.json()
@@ -3112,6 +3112,22 @@ function classifyWord(target) {
   const eng = (target.english || '').toLowerCase().trim()
   const thai = target.thai || ''
 
+  // ── HIGH-PRIORITY checks — must come BEFORE generic catch-alls ────────────
+
+  // Events — attend/go to, cannot be requested with ขอ...หน่อย
+  const EVENTS_TOP = ['เทศกาล','งานเทศกาล','คอนเสิร์ต','งานแต่งงาน','ขบวนพาเหรด','นิทรรศการ','การแข่งขัน','งานบุญ','งานวัด']
+  if (EVENTS_TOP.includes(thai) || ['festival','concert','ceremony','exhibition','parade','competition','event'].some(w => eng.includes(w))) return 'event'
+
+  // Month/season/time expressions — cannot be requested
+  const MONTHS_TOP = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
+  const SEASONS_TOP = ['ฤดูร้อน','ฤดูหนาว','ฤดูฝน','ฤดูใบไม้ผลิ','ฤดูใบไม้ร่วง']
+  if (MONTHS_TOP.some(m => thai.includes(m)) || SEASONS_TOP.includes(thai) ||
+      ['january','february','march','april','may','june','july','august','september','october','november','december','spring','summer','autumn','fall','winter'].some(w => eng.toLowerCase().includes(w))) return 'time_expression'
+
+  // Physical/financial adjectives — used directly, never with ความ or เป็น
+  const PHYS_ADJ_TOP = ['ผอม','อ้วน','รวย','จน','สูง','เตี้ย','แข็งแรง','อ่อนแอ','หนัก','เบา','แก่','หนุ่ม','สาว']
+  if (PHYS_ADJ_TOP.includes(thai)) return 'personality'
+
   // Corrupted entries
   if (thai.includes('...') || thai.includes('…') || eng.includes('...'))
     return 'corrupted'
@@ -3141,8 +3157,10 @@ function classifyWord(target) {
 
   // Full sentence phrase targets
   if (target._phraseType === 'full_sentence') return 'full_sentence'
-  // Complete polite sentences (ends in ครับ/ค่ะ/คะ and has 2+ words)
-  if ((thai.endsWith('ครับ') || thai.endsWith('ค่ะ') || thai.endsWith('คะ')) && thai.includes(' ') && thai.length > 8) return 'full_sentence'
+  // Complete polite sentences (ends in ครับ/ค่ะ/คะ, has 2+ words, 8+ chars)
+  // Also catch phrases like ผมจองไว้ครับ which have spaces
+  if ((thai.endsWith('ครับ') || thai.endsWith('ค่ะ') || thai.endsWith('คะ')) &&
+      (thai.includes(' ') || thai.length > 10) && thai.length > 8) return 'full_sentence'
 
   // Quantifiers — must attach to noun, never standalone
   if (['every','all of','each','any','some','both','several','whole'].some(w => eng === w || eng.startsWith(w+' ')) ||
@@ -4530,10 +4548,10 @@ function getScenarioForTarget(target) {
 }
 
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model) {
-  // ── Models: Qwen3-14B generates + rechecks, Haiku escalates ──────────────
-  const GPT_MODEL   = 'qwen/qwen3-14b'
+  // ── Models: Qwen3-32B generates + rechecks, Haiku escalates ──────────────
+  const GPT_MODEL   = 'qwen/qwen3-32b'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
-  console.log('[generator] Qwen3-14B call 1 → call 2 recheck → call 3 second check → Haiku escalation')
+  console.log('[generator] Qwen3-32B call 1 → call 2 recheck → call 3 second check → Haiku escalation')
 
   const existingThais = new Set()
   let allPairs = []
@@ -4696,7 +4714,15 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         'CORRECT: ผม' + target.thai + 'ครับ, เขา' + target.thai + 'มากครับ. ' +
         'WRONG: ผมมีความ' + target.thai + 'ครับ (NEVER use ความ + adjective). ' +
         'WRONG: ผมเป็น' + target.thai + 'ครับ (no เป็น before adjectives — just say ผม' + target.thai + 'ครับ).'
-    } else if (target.thai === 'สุขภาพ') {
+    } else if (target.thai === 'ขึ้น') {
+      typeHint = '\n⚠ ขึ้น = go up / rise / increase (direction upward). ' +
+        'Use for: going to a higher floor (ขึ้นชั้นสอง), prices rising (ราคาขึ้น), getting on transport (ขึ้นรถ). ' +
+        'NEVER use ขึ้น for hanging objects — that is แขวน. NEVER ขึ้นเสื้อ (putting shirt up = nonsense).'
+    } else if (target.thai === 'บ้าง') {
+      typeHint = '\n⚠ บ้าง = some / sometimes / a bit. ' +
+        'Pattern: [verb/noun] + บ้าง at the END. มีบ้าง = have some. กินบ้าง = eat some. ไปบ้าง = go sometimes. ' +
+        'NEVER put บ้าง before วัน (บ้างวัน = wrong, บางวัน = some days). ' +
+        'NEVER put บ้าง before a noun at the start of a sentence.'
       typeHint = '\n⚠ สุขภาพ = health. Describe it with adjectives: สุขภาพดี / สุขภาพไม่ดี / สุขภาพแข็งแรง. ' +
         'NEVER: ไม่มีสุขภาพ (you cannot "not have" health). ' +
         'NEVER: สุขภาพเป็นดี (no เป็น before adjective). ' +
@@ -4786,6 +4812,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       '\n  • Time/date target words: use 3 meaningfully DIFFERENT contexts (not 3 variations of the same situation)' +
       '\n  • NEVER use ความ before an adjective (ความรวย/ความผอม/ความอ้วน = unnatural). Use adjectives directly: ผมรวยครับ.' +
       '\n  • NEVER use เป็น before an adjective (เป็นดี/เป็นสวย/เป็นรวย = wrong). Say ดีครับ/สวยครับ directly.' +
+      '\n  • NEVER add time words (วันนี้/เมื่อวาน/ตอนนี้), quantities (หนึ่งชิ้น), or specific objects not in the prompt — write only what the prompt says.' +
+      '\n  • keep a promise = รักษาสัญญา NOT เก็บสัญญา. Use กับ for WITH people not ของ (ทริปของเพื่อน = wrong).' +
       (target.english === 'then' || target.thai === 'งั้นก็' ? '\n  • งั้นก็ means "in that case / if so then" — sentences should show consequence or reaction, not just use งั้นก็ as filler' : '') +
       (target.thai === 'ล่ะ' ? '\n  • ล่ะ ONLY in the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ meaning "And what about X?" — never at end of random statements' : '') +
       (target.thai === 'ยิน' ? '\n  • The target word ยิน is used as part of ยินดี (glad/pleased). Always write ยินดี in sentences — never standalone ยิน' : '') +
@@ -4984,17 +5012,19 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
             if (isDupPrompt) failReason = 'duplicate prompt (>70% overlap with earlier pair): ' + p.prompt
             else seenPrompts.push(promptNorm)
           }
-          // Fix 4: งั้นก็ dangling at END of sentence (must be between two clauses)
+          // Fix 2: งั้นก็ position check — must be between two clauses
           if (!failReason && type === 'discourse_connector') {
             const thTrim = (p.thai||'').trim()
-            // Starts with connector = no setup clause before it
             if (thTrim.startsWith(target.thai)) {
-              failReason = 'discourse connector "' + target.thai + '" starts sentence with no setup clause: ' + p.thai
+              failReason = 'discourse connector "' + target.thai + '" starts sentence — needs setup clause before it: ' + p.thai
             }
-            // Ends with connector + ครับ/ค่ะ = dangling at end
-            const endsWithConnector = thTrim.endsWith(target.thai + 'ครับ') || thTrim.endsWith(target.thai + 'ค่ะ') || thTrim.endsWith(target.thai + 'คะ') || thTrim.endsWith(target.thai)
-            if (!failReason && endsWithConnector) {
-              failReason = 'discourse connector "' + target.thai + '" dangles at end — must be between two clauses: ' + p.thai
+            if (!failReason) {
+              // Connector in last 55% of sentence = dangling at end
+              const pos = thTrim.lastIndexOf(target.thai)
+              const threshold = thTrim.length * 0.55
+              if (pos > threshold) {
+                failReason = 'discourse connector "' + target.thai + '" dangles at end — must be between two clauses: ' + p.thai
+              }
             }
           }
           // Fix 5: ซึ่ง/relative pronoun at sentence start
@@ -5004,25 +5034,35 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
               failReason = '"' + target.thai + '" cannot start a sentence — must follow a noun: ' + p.thai
             }
           }
-          // Fix 6: ความ + adjective over-nominalization
+          // Fix 3+6: ความ + adjective over-nominalization (moved earlier in loop)
           if (!failReason) {
-            const badNominals = ['ความรวย','ความจน','ความอ้วน','ความผอม','ความสูง','ความเตี้ย','ความดี','ความสวย','ความหล่อ','ความแข็งแรง','ความอ่อนแอ']
+            const badNominals = ['ความรวย','ความจน','ความอ้วน','ความผอม','ความสูง','ความเตี้ย','ความดี','ความสวย','ความหล่อ','ความแข็งแรง','ความอ่อนแอ','ความใหม่','ความเก่า']
             if (badNominals.some(b => (p.thai||'').includes(b))) {
               failReason = 'over-nominalization: use adjective directly, not ความ+adjective: ' + p.thai
             }
           }
-          // Fix 7: ไม่มี + health/state concept
+          // Fix 4: เป็น + adjective (expanded list)
           if (!failReason) {
-            const stateConcepts = ['สุขภาพ','ความสุข','ความโกรธ','ความรัก','ความเศร้า','ความสงบ']
+            const adjAfterBpen = /เป็น(ดี|สวย|หล่อ|รวย|จน|อ้วน|ผอม|สูง|เตี้ย|แข็งแรง|อ่อนแอ|เก่า|ใหม่|ใหญ่|เล็ก|ดัง|ถูก|แพง|สั้น|ยาว|หนัก|เบา|แก่|หนุ่ม|สาว|เร็ว|ช้า)/.test(p.thai||'')
+            if (adjAfterBpen) {
+              failReason = 'เป็น + adjective is wrong — adjectives do not need เป็น: ' + p.thai
+            }
+          }
+          // Fix 7: ไม่มี + health/state concept (added สุขภาพ)
+          if (!failReason) {
+            const stateConcepts = ['สุขภาพ','ความสุข','ความโกรธ','ความรัก','ความเศร้า','ความสงบ','ความเครียด','ความกลัว']
             if (/^ไม่มี/.test((p.thai||'').trim()) && stateConcepts.some(s => (p.thai||'').includes(s))) {
               failReason = 'ไม่มี + state concept is wrong — use ไม่ดี/ไม่มีความสุข etc.: ' + p.thai
             }
           }
-          // Fix 8: เป็น + standalone adjective (เป็นดี, เป็นสวย etc.)
-          if (!failReason) {
-            const adjAfterBpen = /เป็น(ดี|สวย|หล่อ|รวย|จน|อ้วน|ผอม|สูง|เตี้ย|แข็งแรง|อ่อนแอ|เก่|ใหม่|ใหญ่|เล็ก)/.test(p.thai||'')
-            if (adjAfterBpen) {
-              failReason = 'เป็น + adjective is wrong — adjectives do not need เป็น: ' + p.thai
+          // Fix 8: เก็บสัญญา wrong idiom
+          if (!failReason && (p.thai||'').includes('เก็บสัญญา')) {
+            failReason = 'wrong idiom: use รักษาสัญญา not เก็บสัญญา: ' + p.thai
+          }
+          // Fix 6b: ซึ่ง immediately followed by classifier/demonstrative (no noun before it)
+          if (!failReason && type === 'relative_pronoun') {
+            if (/ซึ่ง(ตัว|อัน|นั้น|นี้|เหล่า|พวก)/.test(p.thai||'')) {
+              failReason = 'ซึ่ง directly followed by classifier/demonstrative without a preceding noun: ' + p.thai
             }
           }
           if (!failReason) {
@@ -5056,6 +5096,64 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
             const startsWithConnector = thTrim.startsWith(target.thai)
             if (startsWithConnector) {
               failReason = 'discourse connector "' + target.thai + '" starts sentence with no setup clause before it: ' + p.thai
+            }
+          }
+          // Fix 22: ถ่ายรูป — prompt using verb as noun ("it is take photo")
+          if (!failReason && target.thai === 'ถ่ายรูป') {
+            const en = (p.english||'').toLowerCase()
+            if (en.includes('it is take photo') || en.includes('is it take photo') || en.includes('is take photo')) {
+              failReason = 'nonsensical ถ่ายรูป prompt — "take photo" is a verb, not a noun: ' + p.english
+            }
+          }
+          // Fix 23: สวย + คน + male speaker (ผมเป็นคนสวย = man calling himself beautiful)
+          if (!failReason && target.thai === 'สวย') {
+            const th = p.thai || ''
+            if (th.includes('ผม') && (th.includes('เป็นคนสวย') || th.includes('คนสวย'))) {
+              failReason = 'สวย = feminine beauty — male speaker (ผม) cannot say ผมเป็นคนสวย, use หล่อ: ' + th
+            }
+          }
+          if (!failReason) {
+            const prL = (p.prompt||'').toLowerCase()
+            if ((prL.includes('need help') || prL.includes('i need')) && (p.thai||'').includes('ไม่ได้')) {
+              failReason = 'prompt says need help but ไม่ได้ means cannot — opposite meaning: ' + p.thai
+            }
+          }
+          // Fix 10: prompt says "your" but Thai uses ของผม in a question
+          if (!failReason) {
+            const prL = (p.prompt||'').toLowerCase()
+            if (/(your |^your)/.test(prL) && (p.thai||'').includes('ของผม') && (p.thai||'').includes('ไหม')) {
+              failReason = 'pronoun mismatch: prompt says "your" but Thai uses ของผม (my): ' + p.thai
+            }
+          }
+          // Fix 11: prompt says "just" but Thai uses แล้ว without เพิ่ง
+          if (!failReason) {
+            const prL = (p.prompt||'').toLowerCase()
+            if (/\bjust\b/.test(prL) && !prL.includes('just now') && !prL.includes('just like') &&
+                (p.thai||'').includes('แล้ว') && !(p.thai||'').includes('เพิ่ง')) {
+              failReason = 'prompt says "just" but Thai uses แล้ว (already) not เพิ่ง (just recently): ' + p.thai
+            }
+          }
+          // Fix 12: want to [action] but Thai uses ขอ (requesting) not อยาก (wanting)
+          if (!failReason) {
+            const prL = (p.prompt||'').toLowerCase()
+            if (/\bwant to (eat|drink|go|do|try|see|buy|get|visit|find)\b/.test(prL) &&
+                /^ขอ/.test((p.thai||'').trim()) && !(p.thai||'').includes('อยาก')) {
+              failReason = 'prompt says "want to [action]" but Thai uses ขอ (request) not อยาก (want): ' + p.thai
+            }
+          }
+          // Fix 13: Qwen embellishment — time words not in prompt
+          if (!failReason) {
+            const prL = (p.prompt||'').toLowerCase()
+            const embellishCheck = [
+              { word: 'วันนี้', trigger: ['today','tonight'] },
+              { word: 'เมื่อวาน', trigger: ['yesterday'] },
+              { word: 'ตอนนี้', trigger: ['now','right now','currently','at the moment'] },
+            ]
+            for (const { word, trigger } of embellishCheck) {
+              if ((p.thai||'').includes(word) && !trigger.some(t => prL.includes(t))) {
+                failReason = 'embellishment: "' + word + '" added by model but not in prompt: ' + p.thai
+                break
+              }
             }
           }
           // 14. นี่คือ used for existence (should use มี)
@@ -5490,7 +5588,7 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: model || 'qwen/qwen3-14b', max_tokens: 4000, temperature: 0.4, stream: false,
+    body: JSON.stringify({ model: model || 'qwen/qwen3-32b', max_tokens: 4000, temperature: 0.4, stream: false,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   })
   if (!res.ok) throw new Error(`Convo error ${res.status}`)
@@ -5663,10 +5761,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const [targetPhonetics, setTargetPhonetics] = useState({})
   const [phase, setPhase] = useState('starting') // starting | streaming | done | error
   const [convoLines, setConvoLines] = useState(null)
-  const [showConvo, setShowConvo] = useState(false)
   const [convoLoading, setConvoLoading] = useState(false)
-  const [convoPct, setConvoPct] = useState(0)
-  const [convoSpeed, setConvoSpeed] = useState(() => { try { return parseFloat(localStorage.getItem('tt-speed') || '0.8') } catch { return 0.8 } })
   const [generatedTrack, setGeneratedTrack] = useState(null)
   const [fixingFallbacks, setFixingFallbacks] = useState(false)
   const [fixProgress, setFixProgress] = useState({ done: 0, total: 0, current: '' })
@@ -5741,7 +5836,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 setCurrentTier(tierName)
               }
             },
-            vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "qwen/qwen3-14b")
+            vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "qwen/qwen3-32b")
           }
         // Use pre-call phonetics (phoneticsRef) — reliable, per-word accurate
         // Previous regex pair-matching was buggy and overwrote correct data
@@ -5792,7 +5887,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-14B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs${currentTier ? ' — ' + currentTier : ''}`}
@@ -5836,7 +5931,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-14B'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
         </span>
       </div>
@@ -5864,7 +5959,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                   setFixingFallbacks(true)
                   setFixProgress({ done: 0, total: fallbackTargets.length, current: '' })
                   try {
-                    const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-14b'
+                    const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
                     const fixKey = orKey || apiKey
                     const anchors = (generatedTrack.pairs || []).filter(p => p && p._source && !p._source.startsWith('fallback:') && !p._source.startsWith('hardcoded:') && !p._source.startsWith('repair:')).slice(0,12)
                     const fixedPairsMap = {}
@@ -5926,7 +6021,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={async () => {
             setConvoLoading(true)
             try {
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-14b'
+              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
               const convoKey = provider === 'claude' ? apiKey : orKey
               const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
               const trackWithConvo = { ...generatedTrack, convo: convoResult }
@@ -6536,7 +6631,7 @@ function Adder({ onBack, onAdded, orKey }) {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-        body: JSON.stringify({ model: 'qwen/qwen3-14b', max_tokens: 200, temperature: 0,
+        body: JSON.stringify({ model: 'qwen/qwen3-32b', max_tokens: 200, temperature: 0,
           messages: [{ role: 'user', content: `For the Thai word/phrase "${thai.trim()}", give me:
 1. English translation (short, common meaning)
 2. Tone-marked romanization (mid=none, low=à, falling=â, high=á, rising=ǎ, hyphens between syllables)
@@ -6829,7 +6924,6 @@ function ImportTrack({ onBack, onImported, vocab }) {
 
 // ── Export / Import Data ─────────────────────────────────────────────────────
 function DataManager({ onBack, vocab, tracks, onImport }) {
-  const [importing, setImporting] = useState(false)
   const [msg, setMsg] = useState('')
 
   function exportData() {
@@ -6967,7 +7061,7 @@ function DeepSeekTestBtn({ dsKey }) {
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
   { id: 'deepseek', label: 'DeepSeek', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
-  { id: 'qwen3_14b', label: 'Qwen3-14B', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
+  { id: 'qwen3_14b', label: 'Qwen3-32B', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
   { id: 'haiku', label: 'Claude Haiku', sub: '4.5 via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
 ]
 
@@ -7005,7 +7099,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-          body: JSON.stringify({ model: 'qwen/qwen3-14b', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: 'qwen/qwen3-32b', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
       }
       if (res.ok) setTestResult('✅ Key works!')
@@ -7014,7 +7108,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { deepseek: 'openrouter.ai → Keys (used for Qwen3-14B + Claude Haiku)', qwen3_14b: 'openrouter.ai → Keys (model: qwen/qwen3-14b)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
+  const keySource = { deepseek: 'openrouter.ai → Keys (used for Qwen3-32B + Claude Haiku)', qwen3_32b: 'openrouter.ai → Keys (model: qwen/qwen3-32b)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
@@ -7569,7 +7663,6 @@ function ThaiTeacher() {
   const [activeTrack, setActiveTrack] = useState(null)
   const [genMode, setGenMode] = useState('daily')
   const [kruOpen, setKruOpen] = useState(false)
-  const [kruCtx, setKruCtx] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [provider, setProvider] = useState('claude')
   const [dsKey, setDsKey] = useState('')
@@ -7732,7 +7825,7 @@ function ThaiTeacher() {
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
             onGenerateConvo={async (track) => {
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-14b'
+              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
               const convoKey = provider === 'claude' ? apiKey : orKey
               if (!convoKey) {
                 alert('No OpenRouter key found. Go to Settings and save your key first.')

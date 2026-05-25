@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v180"/>
-<meta name="app-version" content="v180"/>
+<meta name="app-version" content="v181"/>
+<meta name="app-version" content="v181"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v180';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v180').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v181';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v181').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4947,6 +4947,9 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       // Common Thai items that come up naturally
       'เค้ก','ขนม','ของหวาน','ผลไม้','ผัก','อาหาร',
       'แจกัน','แก้วน้ำ','จาน','ชาม','ช้อน','ส้อม','มีด',
+      // Common Thai loanwords — very frequent, no phonetic needed but must not fail OOV
+      'สไตล์','ดีไซน์','แฟชั่น','เทรนด์','คอนเซปต์','ออนไลน์',
+      'สภาพ','ข้อความ','รสชาติ','เสิร์ฟ','ปรุง','สูตร',
     ])
 
     for (const p of pairs) {
@@ -4988,9 +4991,26 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
             const skipVocabCheck = ['proper_place','classifier','particle','weather','full_sentence','verb_screen'].includes(classifyWord(target))
             if (!skipVocabCheck) {
               let remaining = p.thai
-              remaining = remaining.split(target.thai).join(' ')
-              for (const w of [...knownThaiWords, ...alwaysOk]) {
-                remaining = remaining.split(w).join(' ')
+              // Strip known words using WHOLE-WORD replacement (sort longest first to avoid
+              // substring false-positives like ภาพ stripping inside สภาพ, หา inside ปัญหา)
+              const stripWords = [...knownThaiWords, ...alwaysOk, target.thai]
+                .filter(Boolean).sort((a,b) => b.length - a.length)
+              for (const w of stripWords) {
+                // Only replace w when it appears as a standalone unit: preceded/followed by
+                // non-Thai or start/end of string. Use greedy left-to-right scan.
+                let pos = 0
+                let out = ''
+                while (pos < remaining.length) {
+                  if (remaining.startsWith(w, pos)) {
+                    const before = pos === 0 ? '' : remaining[pos-1]
+                    const after2 = remaining[pos + w.length]
+                    const beforeOk = pos === 0 || before < '\u0E00' || before > '\u0E7F'
+                    const afterOk = !after2 || after2 < '\u0E00' || after2 > '\u0E7F'
+                    if (beforeOk && afterOk) { out += ' '; pos += w.length; continue }
+                  }
+                  out += remaining[pos]; pos++
+                }
+                remaining = out
               }
               const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
               if (unknownChars.length > 2) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
@@ -5290,6 +5310,22 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           // NEW: อยากมี + drink — should be อยากดื่ม
           if (!failReason && (p.thai||'').includes('อยากมีเครื่องดื่ม')) {
             failReason = 'อยากมีเครื่องดื่ม = want to POSSESS a drink — use อยากดื่ม (want to drink) or อยากได้เครื่องดื่ม: ' + p.thai
+          }
+          // NEW: อยาก/ไม่อยาก followed directly by a noun (no verb between)
+          // อยาก requires a verb: อยากดื่ม, อยากกิน, อยากได้ — NOT อยาก+noun directly
+          if (!failReason) {
+            const th = p.thai || ''
+            // Check for อยาก/ไม่อยาก immediately followed by a known noun (not a verb)
+            const DRINK_NOUNS = ['เครื่องดื่ม','น้ำ','กาแฟ','ชา','เบียร์','น้ำส้ม','น้ำเปล่า']
+            const FOOD_NOUNS = ['อาหาร','ข้าว','ผลไม้','ขนม']
+            const badNouns = [...DRINK_NOUNS, ...FOOD_NOUNS]
+            if (badNouns.some(n => th.includes('อยาก' + n) || th.includes('ไม่อยาก' + n))) {
+              failReason = 'อยาก/ไม่อยาก + noun (missing verb): needs อยากดื่ม/กิน/ได้ before the noun: ' + th
+            }
+          }
+          // NEW: word order ว่างไม่ได้ (awkward) — should be ไม่ว่าง
+          if (!failReason && /ว่าง[ก-๙]*ไม่ได้/.test(p.thai||'')) {
+            failReason = 'ว่างไม่ได้ is awkward — use ไม่ว่าง for "not free/available": ' + p.thai
           }
           // NEW: ตั้งแต่ requires a VERB before it — Subject+VERB+ตั้งแต่+time
           if (!failReason && (p.thai||'').includes('ตั้งแต่')) {
@@ -5650,15 +5686,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         // Practical implementation: only accept if next char is space, non-Thai, or end.
         const after = remaining.slice(word.length)
         const nextIsThai = after.length > 0 && after[0] >= '\u0E00' && after[0] <= '\u0E7F'
-        // Don't match if what follows is Thai AND the combined token would be longer
-        // (prevents ขน matching inside ขนบธรรมเนียม)
+        // Only block a short word (1-2 chars) if the remaining string ACTUALLY starts with a longer word.
+        // Using combined-prefix check was wrong — it blocked ผม when ผมเอง was in vocab,
+        // even if the actual text was ผมเพิ่ง (which does NOT start with ผมเอง).
         if (nextIsThai && word.length < 3) {
-          // Short words (1-2 chars) only match if the remaining string starts with them
-          // AND they appear in the vocab as known standalone words at this exact boundary
-          // Check: does any longer vocab word start with word+after[0]?
-          const combined = word + after[0]
-          const hasLonger = sortedVocab.some(([w]) => w.startsWith(combined) && w.length > word.length)
-          if (hasLonger) continue  // skip short match, let longer word try
+          const hasLonger = sortedVocab.some(([w]) => w.length > word.length && remaining.startsWith(w))
+          if (hasLonger) continue  // actual longer match exists at this position
         }
         parts.push(ph)
         matchedChars += word.length

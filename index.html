@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v179"/>
-<meta name="app-version" content="v179"/>
+<meta name="app-version" content="v180"/>
+<meta name="app-version" content="v180"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v179';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v179').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v180';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v180').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2410,11 +2410,28 @@ function downloadTrack(track, vocab) {
   
   lines.push('TRACK PAIRS (' + pairs.length + ')')
   lines.push('-'.repeat(30))
+  // Source label lookup
+  function srcLabel(src) {
+    if (!src) return 'ai:gen'
+    if (src.startsWith('fallback:'))        return 'fallback:generic-template'
+    if (src.startsWith('hardcoded:'))       return 'fallback:hardcoded-template'
+    if (src.startsWith('repair:'))          return 'fallback:slot-repair'
+    if (src.startsWith('validator-repair:'))return 'ai:validator-repair'
+    if (src.startsWith('gpt-recheck2:'))    return 'ai:recheck-2'
+    if (src.startsWith('gpt-recheck:'))     return 'ai:recheck-1'
+    if (src.startsWith('haiku:'))           return 'ai:haiku-fallback'
+    if (src.startsWith('gpt:'))             return 'ai:gen'
+    if (src.startsWith('concept:'))        return 'ai:concept'
+    return src
+  }
+
   pairs.forEach((p, i) => {
+    const src = srcLabel(p._source || '')
     lines.push(`\n[${String(i+1).padStart(3,'0')}] ${p.prompt || ''}`)
     lines.push(`  TH: ${p.thai || ''}`)
     lines.push(`  PH: ${p.phonetic || ''}`)
     lines.push(`  EN: ${p.english || ''}`)
+    lines.push(`  SRC: ${src}`)
   })
 
   // Include conversation if present
@@ -4655,7 +4672,16 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       floor = Math.max(2, floor - targetWordCount)
       ceil  = Math.max(floor + 1, ceil - targetWordCount + 2)
     }
-    const scenarioCtx = scenario ? (SCENARIO_CONTEXTS[scenario] || SCENARIO_CONTEXTS.general) : SCENARIO_CONTEXTS.general
+    // Colour words eat the word budget — hard floor of 5 to force a real sentence with verb
+    if (type === 'colour') {
+      floor = Math.max(5, floor)
+    }
+    // Long compound targets (4+ syllable phonetic) eat budget — lower floor by 1
+    if (['food','food_dish','event','clothing'].includes(type)) {
+      const targetSyllables = (target.phonetic || '').split('-').filter(Boolean).length
+      if (targetSyllables >= 4) floor = Math.max(3, floor - 1)
+    }
+        const scenarioCtx = scenario ? (SCENARIO_CONTEXTS[scenario] || SCENARIO_CONTEXTS.general) : SCENARIO_CONTEXTS.general
     const conceptLines = (conceptBlock || []).slice(0,15).map(c =>
       (c.pattern||'') + '=' + (c.meaning||'') + ((c.frames && c.frames.length) ? '[' + c.frames[0] + ']' : '')
     ).join(' | ')
@@ -4898,6 +4924,29 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       'ขี้','เจ้า','ห้า','ข้าง','ต้น','ลูก','หัว','มือ','ตา','หู','ปาก','จมูก',
       'ผัด','ต้ม','แกง','ทอด','นึ่ง', // cooking methods
       'ไก่','หมู','ปลา','เนื้อ','ผัก','ข้าว','น้ำ','น้ำมัน', // food basics
+      // Very common context nouns (standalone forms not in vocab as full entries)
+      'ตลาด','ร้าน','โรงเรียน','ถนน','สนาม','ห้อง','ชั้น','ชาย','หญิง',
+      'ทั้ง','ใด','ทั้งหมด','ทั้งนั้น','อีก','ต่าง',
+      // Common verbs not in vocab standalone
+      'ยก','ยืด','วาง','นั่ง','ยืน','เดิน','วิ่ง','ว่าย','ขับ','ขี่',
+      'ตัด','ทำ','สร้าง','แก้','ซ่อม','ล้าง','ทำความสะอาด',
+      'พบ','หา','เอา','ส่ง','รับ','โทร','เปิด','ปิด','ใส่','เอาออก',
+      // Common adjectives/adverbs not in vocab
+      'จริง','จริงๆ','จริงจัง','สามารถ','ทันที','เลย','ง่าย','ยาก',
+      // Classifiers and quantifiers
+      'ทุกคน','ทุกอย่าง','ทุกที่','บางคน','บางอย่าง','บางที','บางส่วน',
+      // Common nouns people need in sentences
+      'สิ่ง','สิ่งของ','ของ','ที่','แห่ง','แบบ','ชนิด','ประเภท',
+      'เรื่อง','ปัญหา','วิธี','กฎ','กติกา','คำ','ภาษา','บท','บทเรียน',
+      'เหตุการณ์','สถานการณ์','ข่าว','ข้อมูล','ข้อเสนอ','โอกาส',
+      'สถานที่','สถานี','โรงพยาบาล','ร้านอาหาร','ตลาด','ห้างสรรพสินค้า',
+      'งาน','โปรเจกต์','รายงาน','เอกสาร','รายการ',
+      'ผล','ผลลัพธ์','ความ','การ',
+      // Body parts context
+      'แว่นตา','แว่น','ถุงมือ','รองเท้า',
+      // Common Thai items that come up naturally
+      'เค้ก','ขนม','ของหวาน','ผลไม้','ผัก','อาหาร',
+      'แจกัน','แก้วน้ำ','จาน','ชาม','ช้อน','ส้อม','มีด',
     ])
 
     for (const p of pairs) {
@@ -4925,7 +4974,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           const baseMax = lenCheck.goalMax || 8
           const minWords = Math.max(3, Math.floor(baseMin * 0.9))  // -10%
           const maxWords = Math.ceil(baseMax * 1.1) + 1            // +10% + 1 buffer
-          const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
+          // Use Thai space-count as authoritative length, phonetic as fallback
+          // Count Thai "words" by Thai script spaces + known compound words
+          const thaiSpaceWords = p.thai.split(/\s+/).filter(t => /[ก-๙]/.test(t)).length
+          // If phonetic has < 60% coverage of Thai chars, fall back to Thai space-word count
+          const phCoverage = phWords / Math.max(1, thaiSpaceWords)
+          const effectiveLen = (phWords <= 2 || phCoverage < 0.6) ? Math.max(phWords, thaiSpaceWords) : phWords
           if (effectiveLen < minWords) { failReason = 'too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai }
           else if (phWords > 2 && phWords > maxWords) { failReason = 'too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai }
           else if (existingThais.has(p.thai)) { failReason = 'duplicate' }
@@ -4939,7 +4993,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
                 remaining = remaining.split(w).join(' ')
               }
               const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
-              if (unknownChars.length > 6) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
+              if (unknownChars.length > 2) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
             }
           }
           // ── Semantic sanity checks ─────────────────────────────────────────
@@ -5236,6 +5290,15 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           // NEW: อยากมี + drink — should be อยากดื่ม
           if (!failReason && (p.thai||'').includes('อยากมีเครื่องดื่ม')) {
             failReason = 'อยากมีเครื่องดื่ม = want to POSSESS a drink — use อยากดื่ม (want to drink) or อยากได้เครื่องดื่ม: ' + p.thai
+          }
+          // NEW: ตั้งแต่ requires a VERB before it — Subject+VERB+ตั้งแต่+time
+          if (!failReason && (p.thai||'').includes('ตั้งแต่')) {
+            const th = p.thai || ''
+            // Strip subject pronouns then check if next real word is ตั้งแต่ directly
+            const subjectless = th.replace(/^(ผม|ดิฉัน|คุณ|เขา|เธอ|เรา|พวกเรา|หนู)\s*/,'')
+            if (subjectless.startsWith('ตั้งแต่') || /^(นะ|นะครับ|นะคะ)ตั้งแต่/.test(subjectless)) {
+              failReason = 'ตั้งแต่ requires a verb before it: Subject+VERB+ตั้งแต่+time (ผมรอตั้งแต่เช้า not ผมตั้งแต่เช้า): ' + p.thai
+            }
           }
           // 15. เพิ่ง (just/recently) combined with past time word
           if (!failReason && (p.thai||'').includes('เพิ่ง')) {
@@ -5574,16 +5637,40 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
     if (vocabLookup[clean]) return vocabLookup[clean]
     let remaining = clean
     const parts = []
+    let matchedChars = 0
     let safety = 0
     while (remaining.length > 0 && safety++ < 60) {
       let matched = false
       for (const [word, ph] of sortedVocab) {
-        if (remaining.startsWith(word)) {
-          parts.push(ph); remaining = remaining.slice(word.length); matched = true; break
+        if (!remaining.startsWith(word)) continue
+        // Word boundary check: match must consume to end of string, or be followed
+        // by a Thai char that starts a NEW vocab word (not mid-compound).
+        // Simple rule: after matching `word`, the next char must NOT be a Thai character
+        // that when combined with the last char of `word` could form a different word.
+        // Practical implementation: only accept if next char is space, non-Thai, or end.
+        const after = remaining.slice(word.length)
+        const nextIsThai = after.length > 0 && after[0] >= '\u0E00' && after[0] <= '\u0E7F'
+        // Don't match if what follows is Thai AND the combined token would be longer
+        // (prevents ขน matching inside ขนบธรรมเนียม)
+        if (nextIsThai && word.length < 3) {
+          // Short words (1-2 chars) only match if the remaining string starts with them
+          // AND they appear in the vocab as known standalone words at this exact boundary
+          // Check: does any longer vocab word start with word+after[0]?
+          const combined = word + after[0]
+          const hasLonger = sortedVocab.some(([w]) => w.startsWith(combined) && w.length > word.length)
+          if (hasLonger) continue  // skip short match, let longer word try
         }
+        parts.push(ph)
+        matchedChars += word.length
+        remaining = after
+        matched = true
+        break
       }
       if (!matched) remaining = remaining.slice(1)
     }
+    // Sparse coverage check: if we matched < 40% of Thai chars, phonetic is unreliable
+    const thaiCharCount = clean.split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
+    if (thaiCharCount > 0 && matchedChars / thaiCharCount < 0.4) return ''
     return parts.length > 0 ? parts.join(' ') : ''
   }
 

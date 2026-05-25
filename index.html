@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v176"/>
-<meta name="app-version" content="v176"/>
+<meta name="app-version" content="v177"/>
+<meta name="app-version" content="v177"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v176';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v176').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v177';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v177').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5635,7 +5635,7 @@ Notice: each line directly responds to the previous one. Speaker B answers A's q
     '• End with a natural resolution (thanks, goodbye, agreement, plan made)\n' +
     '• Include phonetic romanization for every line\n\n' +
     'Return ONLY this JSON:\n' +
-    '{"lines":[{"speaker":"A","thai":"...","phonetic":"...","english":"..."},{"speaker":"B","thai":"...","phonetic":"...","english":"..."}]}'
+    '{"lines":[{"speaker":"A","thai":"...","english":"..."},{"speaker":"B","thai":"...","english":"..."}]}'
 
   return { system, user }
 }
@@ -5659,25 +5659,64 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const lines = parsed.lines || []
 
   // Post-process: inject commas at natural Thai clause-boundary pause points
-  // Only insert before words that genuinely start a NEW clause — not particles that appear inside compounds
   const PAUSE_BEFORE = ['แต่','ดังนั้น','เพราะฉะนั้น','เพราะว่า','ถึงแม้','แม้ว่า']
-  // Deliberately excluded: ก็ (breaks งั้นก็), เพราะ (too short), ถ้า/หาก/เมื่อ (often mid-clause)
   const addPunctuation = (thai) => {
     if (!thai) return thai
     let result = thai
     for (const word of PAUSE_BEFORE) {
-      // Only add comma if the connector appears after 5+ characters (not at start of sentence)
       const re = new RegExp('([ก-๙].{4,})(' + word + ')', 'g')
       result = result.replace(re, (m, before, w) => before + ', ' + w)
     }
-    // Add comma after นะ mid-sentence only (not at end, not before ครับ/ค่ะ)
-    result = result.replace(/นะ(?![,ครับค่ะคะ\s]*$)/g, 'นะ,')
-    // Clean up double commas
+    // นะ mid-sentence only — NOT when นะ is followed by Thai script (e.g. แนะนำ → แนะ inside แนะ)
+    // Only fire when นะ is followed by space, comma, or end of content
+    result = result.replace(/นะ(?=[^ก-๙]|$)(?!ครับ|ค่ะ|คะ)/g, 'นะ,')
     result = result.replace(/,\s*,/g, ',')
     return result
   }
 
-  return lines.map(line => ({ ...line, thai: addPunctuation(line.thai) }))
+  // Build phonetics from vocab store — much more accurate than asking Qwen
+  const buildPhonetic = (thai) => {
+    if (!thai) return ''
+    // Build lookup from vocab: thai word → phonetic
+    const lookup = {}
+    for (const w of vocab) {
+      const t = w.t || w.thai
+      const ph = w.ph || w.phonetic
+      if (t && ph) lookup[t] = ph
+    }
+    // Try exact match first
+    const cleanThai = thai.replace(/[,，]/g, '').trim()
+    if (lookup[cleanThai]) return lookup[cleanThai]
+    // Try token-by-token: split on spaces and known Thai word boundaries
+    // Build the phonetic by finding matching vocab words in sequence
+    let remaining = cleanThai
+    const parts = []
+    // Sort vocab by length descending to match longest words first
+    const sorted = Object.entries(lookup).sort((a,b) => b[0].length - a[0].length)
+    let safety = 0
+    while (remaining.length > 0 && safety++ < 50) {
+      let matched = false
+      for (const [word, ph] of sorted) {
+        if (remaining.startsWith(word)) {
+          parts.push(ph)
+          remaining = remaining.slice(word.length)
+          matched = true
+          break
+        }
+      }
+      if (!matched) {
+        // Skip one character
+        remaining = remaining.slice(1)
+      }
+    }
+    return parts.join('-') || ''
+  }
+
+  return lines.map(line => ({
+    ...line,
+    thai: addPunctuation(line.thai),
+    phonetic: buildPhonetic(line.thai)
+  }))
 }
 
 // ── Pre-track Conversation Player ────────────────────────────────────────────

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v177"/>
-<meta name="app-version" content="v177"/>
+<meta name="app-version" content="v179"/>
+<meta name="app-version" content="v179"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v177';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v177').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v179';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v179').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5217,6 +5217,26 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
               ['there is','there are','there was'].some(w => (p.english||'').toLowerCase().includes(w))) {
             failReason = 'นี่คือ used for existence — use มี instead: ' + p.thai
           }
+          // NEW: เดี๋ยว placed between จะ and verb (wrong order — should be ผมเดี๋ยวจะ or ผมจะโทรเดี๋ยว)
+          if (!failReason && /จะเดี๋ยว[ก-๙]/.test(p.thai||'')) {
+            failReason = 'เดี๋ยว between จะ and verb: wrong order. Use ผมเดี๋ยวจะโทร or ผมจะโทรเดี๋ยว: ' + p.thai
+          }
+          // NEW: ไม่ at the end of sentence before ครับ/ค่ะ
+          if (!failReason && /ไม่(ครับ|ค่ะ|คะ)$/.test(p.thai||'')) {
+            failReason = 'ไม่ cannot end a sentence — move before the verb: ' + p.thai
+          }
+          // NEW: มี + verb + ตั้งแต่ (wrong — use verb + ตั้งแต่ directly)
+          if (!failReason && /มี[ก-๙]{1,8}ตั้งแต่/.test(p.thai||'')) {
+            failReason = 'มี+verb+ตั้งแต่ is wrong — use verb+ตั้งแต่ directly: ผมนั่งรอตั้งแต่เช้า not ผมมีนั่งรอตั้งแต่เช้า: ' + p.thai
+          }
+          // NEW: หักข่าว — หัก = physically break, wrong for "break news"; use แจ้งข่าว or บอกข่าว
+          if (!failReason && (p.thai||'').includes('หักข่าว')) {
+            failReason = 'หักข่าว is wrong — หัก = physically snap/break. Use แจ้งข่าว (deliver news) or บอกข่าว: ' + p.thai
+          }
+          // NEW: อยากมี + drink — should be อยากดื่ม
+          if (!failReason && (p.thai||'').includes('อยากมีเครื่องดื่ม')) {
+            failReason = 'อยากมีเครื่องดื่ม = want to POSSESS a drink — use อยากดื่ม (want to drink) or อยากได้เครื่องดื่ม: ' + p.thai
+          }
           // 15. เพิ่ง (just/recently) combined with past time word
           if (!failReason && (p.thai||'').includes('เพิ่ง')) {
             const pastWords = ['เมื่อวาน','อาทิตย์ที่แล้ว','เดือนที่แล้ว','ปีที่แล้ว','เมื่อกี้ก่อน']
@@ -5299,7 +5319,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         'GOOD prompts: "Say your nose is big", "Ask if the route is winding", "Tell them you just arrived", "Ask how much the raft costs". ' +
         'BAD prompts: "Describe your nose", "Discuss the route", "Talk about transport", "Inquire about hair" — these are vague topics not speaking instructions. ' +
         'Each prompt must tell the student precisely what sentence to produce. ' +
-        'Return ONLY a JSON array: [{"prompt":"...","thai":"...","phonetic":"...","english":"..."}].'
+        'CRITICAL 1:1 RULE: The "english" field must be an exact translation of what the Thai says — not a paraphrase of the prompt. If prompt says "just" Thai MUST have เพิ่ง. If prompt says "normally" Thai MUST have ปกติ. ' +
+        'Return ONLY a JSON array: [{"prompt":"...","thai":"...","english":"..."}].'
       const messages = [
         { role: 'system', content: sysMsg },
         { role: 'user', content: prompt }
@@ -5532,7 +5553,45 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
     fallbackWords.forEach(w => console.warn('  ' + w + ': ' + failureLog[w].join(' → ')))
   }
   try { onProgress && onProgress(allPairs.length, targets.length * 3, null, '') } catch(e) {}
-  return allPairs
+
+  // Rebuild phonetics from vocab store — Qwen phonetics are unreliable
+  // Same longest-match-first approach used for convos
+  const vocabLookup = {}
+  for (const w of vocab || []) {
+    const t = w.t || w.thai
+    const ph = w.ph || w.phonetic
+    if (t && ph) vocabLookup[t] = ph
+  }
+  // Also add target words' phonetics
+  for (const t of targets) {
+    if (t.thai && t.phonetic) vocabLookup[t.thai] = t.phonetic
+  }
+  const sortedVocab = Object.entries(vocabLookup).sort((a,b) => b[0].length - a[0].length)
+
+  function buildTrackPhonetic(thai) {
+    if (!thai) return ''
+    const clean = thai.replace(/[,，.!?]/g,'').trim()
+    if (vocabLookup[clean]) return vocabLookup[clean]
+    let remaining = clean
+    const parts = []
+    let safety = 0
+    while (remaining.length > 0 && safety++ < 60) {
+      let matched = false
+      for (const [word, ph] of sortedVocab) {
+        if (remaining.startsWith(word)) {
+          parts.push(ph); remaining = remaining.slice(word.length); matched = true; break
+        }
+      }
+      if (!matched) remaining = remaining.slice(1)
+    }
+    return parts.length > 0 ? parts.join(' ') : ''
+  }
+
+  return allPairs.map(p => {
+    if (!p) return p
+    const rebuilt = buildTrackPhonetic(p.thai)
+    return rebuilt ? { ...p, phonetic: rebuilt } : p
+  })
 }
 
 
@@ -5609,6 +5668,9 @@ Notice: each line directly responds to the previous one. Speaker B answers A's q
     '• งั้นก็ must sit BETWEEN two clauses, never at the end\n' +
     '• ซึ่ง must follow a noun, never start a sentence\n' +
     '• No ความ before adjectives (ความรวย = wrong, รวยครับ = right)\n' +
+    '• COMMA RULE: If a line contains two separate thoughts or clauses, separate them with a comma. ' +
+    'Examples: สวัสดีครับ, ผมกำลังหาเสื้อครับ / ได้เลยค่ะ, ลองดูที่ห้องลองได้เลยค่ะ / ดีมากเลยค่ะ, คุณดูดีขึ้นเลยค่ะ. ' +
+    'Short single-thought lines do not need a comma. Never add a comma that would break a compound word.\n' +
     'Return ONLY valid JSON — no markdown, no preamble, no thinking.'
 
   const user = example + '\n\n' +
@@ -5663,13 +5725,23 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const addPunctuation = (thai) => {
     if (!thai) return thai
     let result = thai
+
+    // Clause connector commas
     for (const word of PAUSE_BEFORE) {
       const re = new RegExp('([ก-๙].{4,})(' + word + ')', 'g')
       result = result.replace(re, (m, before, w) => before + ', ' + w)
     }
-    // นะ mid-sentence only — NOT when นะ is followed by Thai script (e.g. แนะนำ → แนะ inside แนะ)
-    // Only fire when นะ is followed by space, comma, or end of content
+
+    // นะ mid-sentence — only when followed by non-Thai-script
     result = result.replace(/นะ(?=[^ก-๙]|$)(?!ครับ|ค่ะ|คะ)/g, 'นะ,')
+
+    // Fallback: lines with 2+ apparent clauses but no comma yet
+    // Thai uses spaces between major phrase groups — insert comma after first
+    // ครับ/ค่ะ/คะ that has more Thai content after it
+    if (!result.includes(',')) {
+      result = result.replace(/(ครับ|ค่ะ|คะ)([ ]+)([ก-๙])/, '$1,$2$3')
+    }
+
     result = result.replace(/,\s*,/g, ',')
     return result
   }

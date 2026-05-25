@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v171"/>
-<meta name="app-version" content="v171"/>
+<meta name="app-version" content="v172"/>
+<meta name="app-version" content="v172"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v171';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v171').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v172';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v172').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2663,20 +2663,28 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                   </button>
                   {!track.convo && (
                     <div style={{ flex:1, display:'flex', flexDirection:'column', gap:4 }}>
-                      <button onClick={async () => {
-                          const id = track.createdAt || i
-                          setConvoLoadingId(id)
-                          setConvoProgress(5)
-                          const ticker = setInterval(() => setConvoProgress(p => p < 85 ? p + Math.random() * 10 : p), 500)
-                          await onGenerateConvo(track)
-                          clearInterval(ticker)
-                          setConvoProgress(100)
-                          setTimeout(() => { setConvoLoadingId(null); setConvoProgress(0) }, 400)
-                        }}
-                        disabled={convoLoadingId === (track.createdAt || i)}
-                        style={{ width:'100%', padding:'9px', borderRadius:10, border:`1px solid ${convoLoadingId===(track.createdAt||i)?'#4a90e2':'#1e3a5f'}`, background:'#0a1a2e', color:'#4a90e2', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
-                        {convoLoadingId === (track.createdAt || i) ? `💬 ${Math.round(convoProgress)}%` : '💬'}
-                      </button>
+                      <div style={{ display:'flex', gap:6 }}>
+                        <button onClick={async () => {
+                            const id = track.createdAt || i
+                            setConvoLoadingId(id)
+                            setConvoProgress(5)
+                            const ticker = setInterval(() => setConvoProgress(p => p < 85 ? p + Math.random() * 10 : p), 500)
+                            await onGenerateConvo(track)
+                            clearInterval(ticker)
+                            setConvoProgress(100)
+                            setTimeout(() => { setConvoLoadingId(null); setConvoProgress(0) }, 400)
+                          }}
+                          disabled={convoLoadingId === (track.createdAt || i)}
+                          style={{ flex: track.convo ? '0 0 auto' : 1, padding:'9px 10px', borderRadius:10, border:`1px solid ${convoLoadingId===(track.createdAt||i)?'#4a90e2':'#1e3a5f'}`, background:'#0a1a2e', color:'#4a90e2', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
+                          {convoLoadingId === (track.createdAt || i) ? `${Math.round(convoProgress)}%` : track.convo ? '🔄' : '💬 Convo'}
+                        </button>
+                        {track.convo && (
+                          <button onClick={() => onOpenConvo(track)}
+                            style={{ flex:1, padding:'9px', borderRadius:10, border:'1px solid #1e3a5f', background:'#0a1a2e', color:'#4a90e2', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
+                            💬 Convo
+                          </button>
+                        )}
+                      </div>
                       {convoLoadingId === (track.createdAt || i) && (
                         <div style={{ height:3, background:'var(--surface2)', borderRadius:2, overflow:'hidden' }}>
                           <div style={{ height:'100%', width:`${convoProgress}%`, background:'linear-gradient(90deg,#4a90e2,#c084fc)', borderRadius:2, transition:'width 0.4s ease' }} />

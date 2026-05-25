@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v175"/>
-<meta name="app-version" content="v175"/>
+<meta name="app-version" content="v176"/>
+<meta name="app-version" content="v176"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v175';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v175').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v176';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v176').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5618,7 +5618,8 @@ Notice: each line directly responds to the previous one. Speaker B answers A's q
     'SPEAKER B: ' + scenario.B + '\n' +
     'GOAL: ' + scenario.goal + '\n' +
     'LEVEL: ' + complexityNote + '\n' +
-    'TARGET WORDS to use naturally (use 8-12 of these, only where they fit): ' + wordList + '\n\n' +
+    'TARGET WORDS — use ONLY if they fit naturally in the scene (skip any that don\'t belong): ' + wordList + '\n' +
+    'CRITICAL: NEVER force a word into a sentence where it makes no sense. A clothes vendor does NOT mention food. A food stall does NOT mention clothing. Only use words that a real person in this scene would actually say.\n\n' +
     '⚠ PUNCTUATION RULE — CRITICAL: Every Thai sentence that has a natural pause MUST include a comma (,) at that pause point.\n' +
     'REQUIRED comma positions:\n' +
     '  • After นะ mid-sentence: "รู้จักกันนะ, ดีใจมากที่ได้พบครับ"\n' +
@@ -5657,20 +5658,22 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const parsed = JSON.parse(text)
   const lines = parsed.lines || []
 
-  // Post-process: inject commas at natural Thai pause points since models ignore the instruction
-  const PAUSE_BEFORE = ['แต่','งั้นก็','ดังนั้น','เพราะฉะนั้น','เพราะ','แล้วก็','แล้วก็','ถึงแม้','แม้ว่า','ถ้า','หาก','เมื่อ','พอ','ก็','ซึ่ง']
+  // Post-process: inject commas at natural Thai clause-boundary pause points
+  // Only insert before words that genuinely start a NEW clause — not particles that appear inside compounds
+  const PAUSE_BEFORE = ['แต่','ดังนั้น','เพราะฉะนั้น','เพราะว่า','ถึงแม้','แม้ว่า']
+  // Deliberately excluded: ก็ (breaks งั้นก็), เพราะ (too short), ถ้า/หาก/เมื่อ (often mid-clause)
   const addPunctuation = (thai) => {
     if (!thai) return thai
     let result = thai
     for (const word of PAUSE_BEFORE) {
-      // Add comma before the word if it appears mid-sentence (not at start, not already preceded by comma/space-comma)
-      const re = new RegExp('([ก-๙])(' + word + ')', 'g')
+      // Only add comma if the connector appears after 5+ characters (not at start of sentence)
+      const re = new RegExp('([ก-๙].{4,})(' + word + ')', 'g')
       result = result.replace(re, (m, before, w) => before + ', ' + w)
     }
-    // Add comma after นะ mid-sentence (not at end before ครับ/ค่ะ)
-    result = result.replace(/นะ(?!ครับ|ค่ะ|คะ|$)/g, 'นะ,')
-    // Clean up double commas or comma+space+comma
-    result = result.replace(/,\s*,/g, ',').replace(/,\s+,/g, ',')
+    // Add comma after นะ mid-sentence only (not at end, not before ครับ/ค่ะ)
+    result = result.replace(/นะ(?![,ครับค่ะคะ\s]*$)/g, 'นะ,')
+    // Clean up double commas
+    result = result.replace(/,\s*,/g, ',')
     return result
   }
 

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v167"/>
-<meta name="app-version" content="v167"/>
+<meta name="app-version" content="v168"/>
+<meta name="app-version" content="v168"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v167';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v167').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v168';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v168').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3114,6 +3114,19 @@ function classifyWord(target) {
 
   // ── HIGH-PRIORITY checks — must come BEFORE generic catch-alls ────────────
 
+  // Core transitive verbs — before any generic catch-alls
+  const CORE_VERBS = ['กิน','ดื่ม','พูด','ซื้อ','ขาย','ทำ','ใช้','รับ','ส่ง','ถาม','บอก','หา','เจอ','ชอบ','รัก','รู้','จำ','ลืม','เอา','ดู','ฟัง','เขียน','อ่าน']
+  if (CORE_VERBS.includes(thai)) return 'verb_transitive'
+
+  // Period/time expressions — ช่วงนี้, ช่วง + any time word
+  if (thai === 'ช่วงนี้' || thai === 'ช่วงนั้น' || thai === 'ช่วงนี้' ||
+      (thai.startsWith('ช่วง') && thai.length > 4) ||
+      eng === 'these days' || eng === 'this period' || eng === 'during this time') return 'time_expression'
+
+  // Beauty pageant and compound events
+  if (thai === 'ประกวดนางงาม' || thai.includes('ประกวด') ||
+      ['pageant','competition','contest'].some(w => eng.includes(w))) return 'event'
+
   // Events — attend/go to, cannot be requested with ขอ...หน่อย
   const EVENTS_TOP = ['เทศกาล','งานเทศกาล','คอนเสิร์ต','งานแต่งงาน','ขบวนพาเหรด','นิทรรศการ','การแข่งขัน','งานบุญ','งานวัด']
   if (EVENTS_TOP.includes(thai) || ['festival','concert','ceremony','exhibition','parade','competition','event'].some(w => eng.includes(w))) return 'event'
@@ -5112,6 +5125,36 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
               failReason = 'สวย = feminine beauty — male speaker (ผม) cannot say ผมเป็นคนสวย, use หล่อ: ' + th
             }
           }
+          // Fix 4: เป็น + colour word (เป็นสีดำ, เป็นสีเงิน)
+          if (!failReason && /เป็นสี[ก-๙]/.test(p.thai||'')) {
+            failReason = 'เป็น + colour: drop เป็น — say รถสีดำครับ not รถเป็นสีดำครับ: ' + p.thai
+          }
+          // Fix 5: ตั้งแต่ used for point-in-time (should be เมื่อ)
+          if (!failReason && (p.thai||'').includes('ตั้งแต่')) {
+            const enL = (p.english||'').toLowerCase()
+            if (['last month','last year','last week','ago','in january','in february','in march','in april','in may','in june','in july','in august','in september','in october','in november','in december'].some(w => enL.includes(w))) {
+              failReason = 'ตั้งแต่ = since (ongoing). Use เมื่อ for point-in-time: ' + p.thai
+            }
+          }
+          // Fix 6: เป็นต้น without preceding list
+          if (!failReason && (p.thai||'').includes('เป็นต้น')) {
+            const before = (p.thai||'').slice(0, (p.thai||'').indexOf('เป็นต้น'))
+            if (!before.includes('ๆ') && !before.includes('และ') && !before.includes('หรือ') && !(before.match(/[,，]/g)||[]).length && !before.includes('เช่น')) {
+              failReason = 'เป็นต้น (etc.) requires a preceding list of examples: ' + p.thai
+            }
+          }
+          // Fix 7: มาก directly after เป็น+role (เป็นนางงามมาก = nonsense)
+          if (!failReason && /เป็น[ก-๙A-Za-z]+มาก/.test(p.thai||'')) {
+            failReason = 'มาก after เป็น+role is nonsense — you either ARE or ARE NOT a role: ' + p.thai
+          }
+          // Fix 8: SAY/TELL prompt but Thai is a question (ends ไหม)
+          if (!failReason) {
+            const prL = (p.prompt||'').toLowerCase()
+            if ((prL.startsWith('say') || prL.startsWith('tell')) &&
+                ((p.thai||'').endsWith('ไหมครับ') || (p.thai||'').endsWith('ไหมคะ'))) {
+              failReason = 'SAY prompt but Thai ends with ไหม (question): ' + p.thai
+            }
+          }
           if (!failReason) {
             const prL = (p.prompt||'').toLowerCase()
             if ((prL.includes('need help') || prL.includes('i need')) && (p.thai||'').includes('ไม่ได้')) {
@@ -6294,13 +6337,26 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
         </div>
         <div style={{ height:3, background:'var(--gold)', borderRadius:2, marginBottom:24 }} />
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:24 }}>
-          {keywords.map((kw,i) => (
+          {keywords.map((kw,i) => {
+            const [phonShown, setPhonShown] = React.useState(false)
+            return (
             <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
-              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:12 }}>
+              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:8 }}>
                 <span className="thai" style={{ fontSize:26, color:'var(--gold)' }}>{kw.thai}</span>
-                {kw.phonetic && <span className="phon" style={{ fontSize:13, color:'#7a8aad' }}>{kw.phonetic}</span>}
                 <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
               </div>
+              {kw.phonetic && (
+                <div style={{ marginBottom:10 }}>
+                  {phonShown ? (
+                    <span className="phon" style={{ fontSize:15, color:'#7a8aad', display:'block', animation:'fadeIn 0.3s ease' }}>{kw.phonetic}</span>
+                  ) : (
+                    <button onClick={() => setPhonShown(true)}
+                      style={{ background:'transparent', border:'1px solid var(--border)', borderRadius:6, padding:'4px 10px', color:'var(--muted)', fontSize:12, cursor:'pointer', fontFamily:'Sarabun,sans-serif' }}>
+                      👁 Show phonetics
+                    </button>
+                  )}
+                </div>
+              )}
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {[['hard','😅','#ef4444','#2d1515'],['ok','👍','#f59e0b','#3d2800'],['easy','⭐','#10b981','#063d2e']].map(([r,e,col,bg]) => (
                   <button key={r} onClick={() => rateKeyword(i,r)}
@@ -6318,7 +6374,8 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
                 </button>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
         <button onClick={() => onComplete(keywords)} disabled={!allRated}
           style={{ width:'100%', padding:'15px', borderRadius:12, border:'none', background:allRated?'linear-gradient(135deg,#d4a94a,#b88a35)':'var(--surface2)', color:allRated?'#0b1120':'var(--muted)', fontSize:16, fontWeight:700, cursor:allRated?'pointer':'not-allowed', fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>

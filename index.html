@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v172"/>
-<meta name="app-version" content="v172"/>
+<meta name="app-version" content="v173"/>
+<meta name="app-version" content="v173"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v172';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v172').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v173';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v173').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2675,15 +2675,14 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                             setTimeout(() => { setConvoLoadingId(null); setConvoProgress(0) }, 400)
                           }}
                           disabled={convoLoadingId === (track.createdAt || i)}
-                          style={{ flex: track.convo ? '0 0 auto' : 1, padding:'9px 10px', borderRadius:10, border:`1px solid ${convoLoadingId===(track.createdAt||i)?'#4a90e2':'#1e3a5f'}`, background:'#0a1a2e', color:'#4a90e2', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
-                          {convoLoadingId === (track.createdAt || i) ? `${Math.round(convoProgress)}%` : track.convo ? '🔄' : '💬 Convo'}
+                          style={{ flex:'0 0 auto', padding:'9px 12px', borderRadius:10, border:`1px solid ${convoLoadingId===(track.createdAt||i)?'#4a90e2':'#1e3a5f'}`, background:'#0a1a2e', color:'#4a90e2', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
+                          {convoLoadingId === (track.createdAt || i) ? `${Math.round(convoProgress)}%` : '🔄'}
                         </button>
-                        {track.convo && (
-                          <button onClick={() => onOpenConvo(track)}
-                            style={{ flex:1, padding:'9px', borderRadius:10, border:'1px solid #1e3a5f', background:'#0a1a2e', color:'#4a90e2', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
-                            💬 Convo
-                          </button>
-                        )}
+                        <button onClick={() => onOpenConvo(track)}
+                          disabled={!track.convo}
+                          style={{ flex:1, padding:'9px', borderRadius:10, border:'1px solid #1e3a5f', background:'#0a1a2e', color: track.convo ? '#4a90e2' : '#2a3a5e', cursor: track.convo ? 'pointer' : 'not-allowed', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
+                          💬 Convo
+                        </button>
                       </div>
                       {convoLoadingId === (track.createdAt || i) && (
                         <div style={{ height:3, background:'var(--surface2)', borderRadius:2, overflow:'hidden' }}>
@@ -7774,6 +7773,41 @@ function ThaiTeacher() {
   const [tracks, setTracks] = useState([])
   const [view, setView] = useState('dashboard')
   const [loading, setLoading] = useState(true)
+  const swipeRef = useRef({ startX: 0, startY: 0, active: false })
+
+  // Swipe-back gesture from left edge
+  useEffect(() => {
+    let touchStartX = 0, touchStartY = 0
+
+    const onTouchStart = (e) => {
+      touchStartX = e.touches[0].clientX
+      touchStartY = e.touches[0].clientY
+    }
+
+    const onTouchEnd = (e) => {
+      const dx = e.changedTouches[0].clientX - touchStartX
+      const dy = Math.abs(e.changedTouches[0].clientY - touchStartY)
+      const fromEdge = touchStartX < 30  // left edge swipe
+      if (fromEdge && dx > 60 && dy < 80) {
+        // Swipe right from left edge = go back
+        setView(v => {
+          if (v === 'dashboard') {
+            // Already at home — ask to close
+            if (window.confirm('Close Thai Teacher?')) window.close()
+            return v
+          }
+          return 'dashboard'
+        })
+      }
+    }
+
+    document.addEventListener('touchstart', onTouchStart, { passive: true })
+    document.addEventListener('touchend', onTouchEnd, { passive: true })
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart)
+      document.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [])
   const [activeTrack, setActiveTrack] = useState(null)
   const [genMode, setGenMode] = useState('daily')
   const [kruOpen, setKruOpen] = useState(false)

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v170"/>
-<meta name="app-version" content="v170"/>
+<meta name="app-version" content="v171"/>
+<meta name="app-version" content="v171"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v170';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v170').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v171';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v171').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5642,7 +5642,26 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const jsonEnd = text.lastIndexOf('}')
   if (jsonStart >= 0 && jsonEnd > jsonStart) text = text.slice(jsonStart, jsonEnd + 1)
   const parsed = JSON.parse(text)
-  return parsed.lines || []
+  const lines = parsed.lines || []
+
+  // Post-process: inject commas at natural Thai pause points since models ignore the instruction
+  const PAUSE_BEFORE = ['แต่','งั้นก็','ดังนั้น','เพราะฉะนั้น','เพราะ','แล้วก็','แล้วก็','ถึงแม้','แม้ว่า','ถ้า','หาก','เมื่อ','พอ','ก็','ซึ่ง']
+  const addPunctuation = (thai) => {
+    if (!thai) return thai
+    let result = thai
+    for (const word of PAUSE_BEFORE) {
+      // Add comma before the word if it appears mid-sentence (not at start, not already preceded by comma/space-comma)
+      const re = new RegExp('([ก-๙])(' + word + ')', 'g')
+      result = result.replace(re, (m, before, w) => before + ', ' + w)
+    }
+    // Add comma after นะ mid-sentence (not at end before ครับ/ค่ะ)
+    result = result.replace(/นะ(?!ครับ|ค่ะ|คะ|$)/g, 'นะ,')
+    // Clean up double commas or comma+space+comma
+    result = result.replace(/,\s*,/g, ',').replace(/,\s+,/g, ',')
+    return result
+  }
+
+  return lines.map(line => ({ ...line, thai: addPunctuation(line.thai) }))
 }
 
 // ── Pre-track Conversation Player ────────────────────────────────────────────
@@ -5679,10 +5698,33 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
       const byIndex = isMale ? (anyThai[1] || anyThai[0]) : (anyThai[0])
       const chosenVoice = isMale ? (googleMale || byIndex) : (googleFemale || anyThai[0])
 
-      // Split on Thai commas/pauses for natural rhythm
-      // Thai uses ， or , or ๆ pauses — split and speak as sequential utterances
+      // Split Thai text on natural breath/pause points for more natural TTS rhythm
+      const splitIntoSegments = (text) => {
+        // Natural pause points in Thai speech
+        const breakPoints = ['แต่','งั้นก็','ดังนั้น','เพราะ','เพราะว่า','แล้วก็','และ','หรือ']
+        let result = [text]
+        for (const bp of breakPoints) {
+          result = result.flatMap(seg => {
+            const idx = seg.indexOf(bp)
+            if (idx > 4 && idx < seg.length - bp.length) { // not at start or very end
+              return [seg.slice(0, idx).trim(), seg.slice(idx).trim()]
+            }
+            return [seg]
+          })
+        }
+        // Also split after นะ mid-sentence (not at very end)
+        result = result.flatMap(seg => {
+          const idx = seg.indexOf('นะ')
+          if (idx > 2 && idx < seg.length - 5) {
+            return [seg.slice(0, idx + 2).trim(), seg.slice(idx + 2).trim()]
+          }
+          return [seg]
+        })
+        return result.filter(s => s.trim().length > 0)
+      }
+
       const rawText = line.thai || ''
-      const segments = rawText.split(/[,，]/).map(s => s.trim()).filter(Boolean)
+      const segments = rawText.split(/[,，]/).flatMap(s => splitIntoSegments(s.trim())).filter(Boolean)
 
       const speakSegments = (segs, idx) => {
         if (cancelRef.current || idx >= segs.length) {
@@ -6061,21 +6103,27 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             </div>
           )}
 
-          <Btn onClick={async () => {
-            setConvoLoading(true)
-            try {
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
-              const convoKey = provider === 'claude' ? apiKey : orKey
-              const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
-              const trackWithConvo = { ...generatedTrack, convo: convoResult }
-              setGeneratedTrack(trackWithConvo)
-              setConvoLines(convoResult)
-              setTimeout(() => setShowConvo(true), 400)
-            } catch(e) { alert('Convo failed: ' + e.message) }
-            setConvoLoading(false)
-          }} variant="secondary" style={{ width:'100%', justifyContent:'center' }} disabled={convoLoading}>
-            {convoLines ? '💬 View Conversation' : '💬 Generate Conversation'}
-          </Btn>
+          <div style={{ display:'flex', gap:8 }}>
+            <Btn onClick={async () => {
+              setConvoLoading(true)
+              try {
+                const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
+                const convoKey = provider === 'claude' ? apiKey : orKey
+                const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
+                setGeneratedTrack({ ...generatedTrack, convo: convoResult })
+                setConvoLines(convoResult)
+                setTimeout(() => setShowConvo(true), 400)
+              } catch(e) { alert('Convo failed: ' + e.message) }
+              setConvoLoading(false)
+            }} variant="secondary" style={{ flex: convoLines ? '0 0 auto' : 1, justifyContent:'center', padding: convoLines ? '10px 14px' : undefined }} disabled={convoLoading}>
+              {convoLoading ? '⏳' : convoLines ? '🔄' : '💬 Generate Conversation'}
+            </Btn>
+            {convoLines && (
+              <Btn onClick={() => setShowConvo(true)} variant="secondary" style={{ flex:1, justifyContent:'center' }}>
+                💬 View Conversation
+              </Btn>
+            )}
+          </div>
         </div>
         )
       })() : null}

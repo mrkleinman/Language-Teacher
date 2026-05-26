@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v185"/>
-<meta name="app-version" content="v185"/>
+<meta name="app-version" content="v186"/>
+<meta name="app-version" content="v186"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v185';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v185').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v186';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v186').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2331,7 +2331,7 @@ const Icon = ({ name, size = 18, color = 'currentColor' }) => {
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
-function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, grokBalance, grokKey, onRefreshGrokBalance }) {
+function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, grokBalance, grokKey, onRefreshGrokBalance, provider }) {
   const items = [
     { id: 'lessons', icon: 'book', label: 'Lessons' },
     { id: 'browse', icon: 'book', label: 'Words' },
@@ -2339,29 +2339,56 @@ function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, grokB
     { id: 'settings', icon: 'settings', label: 'Settings' },
     { id: 'data', icon: 'bookmark', label: 'Data' },
   ]
+
+  // Show balance for active provider; tap to refresh, long-press to see other
+  const isGrok = provider === 'grok'
+  const hasOr = !!orKey
+  const hasGrok = !!grokKey
+  const showBalance = isGrok ? (hasGrok || hasOr) : (hasOr || hasGrok)
+  const activeLabel = isGrok ? 'xAI' : 'OR'
+  const activeBalance = isGrok ? grokBalance : orBalance
+  const otherLabel = isGrok ? 'OR' : 'xAI'
+  const otherBalance = isGrok ? orBalance : grokBalance
+  const hasOther = isGrok ? hasOr : hasGrok
+  const [showOther, setShowOther] = React.useState(false)
+
+  function balanceColor(b) {
+    if (b === null) return 'var(--muted)'
+    return b < 1 ? '#ef4444' : b < 5 ? '#f59e0b' : '#10b981'
+  }
+
   return (
     <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, background: 'rgba(11,17,32,0.95)', backdropFilter: 'blur(12px)', zIndex: 50 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={onHome || (() => onNav('dashboard'))}>
         <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #d4a94a, #b88a35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🇹🇭</div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {orKey && (
-          <button onClick={onRefreshBalance} title="OpenRouter balance — tap to refresh"
+      <div style={{ position: 'relative' }}>
+        {showBalance && (
+          <button
+            onClick={() => { showOther ? setShowOther(false) : (isGrok ? onRefreshGrokBalance() : onRefreshBalance()); setShowOther(false) }}
+            onContextMenu={e => { e.preventDefault(); setShowOther(s => !s) }}
+            title="Tap to refresh · hold to toggle provider"
             style={{ background: 'var(--surface2)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>OR</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: orBalance !== null ? (orBalance < 1 ? '#ef4444' : orBalance < 5 ? '#f59e0b' : '#10b981') : 'var(--muted)' }}>
-              {orBalance !== null ? '$' + orBalance.toFixed(2) : '…'}
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{showOther ? otherLabel : activeLabel}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: balanceColor(showOther ? otherBalance : activeBalance) }}>
+              {(showOther ? otherBalance : activeBalance) !== null ? '$' + (showOther ? otherBalance : activeBalance).toFixed(2) : '…'}
             </span>
+            {hasOther && <span style={{ fontSize: 9, color: 'var(--muted)' }}>▾</span>}
           </button>
         )}
-        {grokKey && (
-          <button onClick={onRefreshGrokBalance} title="xAI Grok balance — tap to refresh"
-            style={{ background: 'var(--surface2)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>xAI</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: grokBalance !== null ? (grokBalance < 1 ? '#ef4444' : grokBalance < 5 ? '#f59e0b' : '#10b981') : 'var(--muted)' }}>
-              {grokBalance !== null ? '$' + grokBalance.toFixed(2) : '…'}
-            </span>
-          </button>
+        {showOther && hasOther && (
+          <div style={{ position: 'absolute', top: 36, right: 0, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 0', minWidth: 110, zIndex: 100, boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+            <button onClick={() => { onRefreshBalance(); setShowOther(false) }}
+              style={{ width: '100%', background: 'none', border: 'none', padding: '8px 14px', textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>OR</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: balanceColor(orBalance) }}>{orBalance !== null ? '$' + orBalance.toFixed(2) : '…'}</span>
+            </button>
+            <button onClick={() => { onRefreshGrokBalance(); setShowOther(false) }}
+              style={{ width: '100%', background: 'none', border: 'none', padding: '8px 14px', textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>xAI</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: balanceColor(grokBalance) }}>{grokBalance !== null ? '$' + grokBalance.toFixed(2) : '…'}</span>
+            </button>
+          </div>
         )}
       </div>
       <nav style={{ display: 'flex', gap: 4 }}>
@@ -6223,7 +6250,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             doPhonetics().catch(() => {})
           }
 
-          pairs = await generateTrack(targets, anchors, apiKey,
+          const activeKey = provider === 'grok' ? grokKey : apiKey
+          pairs = await generateTrack(targets, anchors, activeKey,
             (done, total, meta, source, wordIdx) => {
               setPairsDone(done)
               setPairsTotal(targets.length * 3)
@@ -6246,7 +6274,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 setCurrentTier(tierName)
               }
             },
-            vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "qwen/qwen3-32b")
+            vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : provider === "grok" ? "grok-4-fast" : "qwen/qwen3-32b")
           }
         // Use pre-call phonetics (phoneticsRef) — reliable, per-word accurate
         // Previous regex pair-matching was buggy and overwrote correct data
@@ -6297,7 +6325,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : provider === 'grok' ? 'Grok 4.1' : 'Qwen3-32B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs${currentTier ? ' — ' + currentTier : ''}`}
@@ -6341,7 +6369,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : provider === 'grok' ? 'Grok 4.1' : 'Qwen3-32B'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
         </span>
       </div>
@@ -8311,7 +8339,7 @@ function ThaiTeacher() {
   return (
     <div className="app">
       <FontStyle />
-      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} grokBalance={grokBalance} grokKey={grokKey} onRefreshGrokBalance={() => fetchGrokBalance(grokKey)} />
+      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} grokBalance={grokBalance} grokKey={grokKey} onRefreshGrokBalance={() => fetchGrokBalance(grokKey)} provider={provider} />
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}

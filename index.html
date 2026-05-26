@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v184"/>
-<meta name="app-version" content="v184"/>
+<meta name="app-version" content="v185"/>
+<meta name="app-version" content="v185"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v184';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v184').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v185';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v185').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2343,7 +2343,6 @@ function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, grokB
     <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, background: 'rgba(11,17,32,0.95)', backdropFilter: 'blur(12px)', zIndex: 50 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={onHome || (() => onNav('dashboard'))}>
         <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #d4a94a, #b88a35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🇹🇭</div>
-        <span className="display" style={{ fontSize: 17, color: 'var(--gold)', letterSpacing: '-0.01em' }}>Thai Teacher</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {orKey && (
@@ -2568,12 +2567,6 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Hero */}
-      <div style={{ textAlign: 'center', padding: '24px 0 8px' }}>
-        <div className="thai display" style={{ fontSize: 42, color: 'var(--gold)', letterSpacing: '0.02em', lineHeight: 1 }}>สวัสดี!</div>
-        <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 8 }}>Your daily Thai practice awaits</p>
-      </div>
-
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
         {[
@@ -4630,10 +4623,10 @@ function getScenarioForTarget(target) {
 }
 
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model) {
-  // ── Models: Qwen3-32B generates + rechecks, Haiku escalates ──────────────
-  const GPT_MODEL   = 'qwen/qwen3-32b'
+  // ── Models: primary model generates + rechecks, Haiku escalates ──────────
+  const GPT_MODEL   = model || 'qwen/qwen3-32b'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
-  console.log('[generator] Qwen3-32B call 1 → call 2 recheck → call 3 second check → Haiku escalation')
+  console.log('[generator] model:', GPT_MODEL)
 
   const existingThais = new Set()
   let allPairs = []

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v183"/>
-<meta name="app-version" content="v183"/>
+<meta name="app-version" content="v184"/>
+<meta name="app-version" content="v184"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v183';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v183').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v184';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v184').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2331,7 +2331,7 @@ const Icon = ({ name, size = 18, color = 'currentColor' }) => {
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
-function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance }) {
+function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, grokBalance, grokKey, onRefreshGrokBalance }) {
   const items = [
     { id: 'lessons', icon: 'book', label: 'Lessons' },
     { id: 'browse', icon: 'book', label: 'Words' },
@@ -2345,15 +2345,26 @@ function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance }) {
         <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #d4a94a, #b88a35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🇹🇭</div>
         <span className="display" style={{ fontSize: 17, color: 'var(--gold)', letterSpacing: '-0.01em' }}>Thai Teacher</span>
       </div>
-      {orKey && (
-        <button onClick={onRefreshBalance} title="OpenRouter balance — tap to refresh"
-          style={{ background: 'var(--surface2)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>OR</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: orBalance !== null ? (orBalance < 1 ? '#ef4444' : orBalance < 5 ? '#f59e0b' : '#10b981') : 'var(--muted)' }}>
-            {orBalance !== null ? '$' + orBalance.toFixed(2) : '…'}
-          </span>
-        </button>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {orKey && (
+          <button onClick={onRefreshBalance} title="OpenRouter balance — tap to refresh"
+            style={{ background: 'var(--surface2)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>OR</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: orBalance !== null ? (orBalance < 1 ? '#ef4444' : orBalance < 5 ? '#f59e0b' : '#10b981') : 'var(--muted)' }}>
+              {orBalance !== null ? '$' + orBalance.toFixed(2) : '…'}
+            </span>
+          </button>
+        )}
+        {grokKey && (
+          <button onClick={onRefreshGrokBalance} title="xAI Grok balance — tap to refresh"
+            style={{ background: 'var(--surface2)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>xAI</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: grokBalance !== null ? (grokBalance < 1 ? '#ef4444' : grokBalance < 5 ? '#f59e0b' : '#10b981') : 'var(--muted)' }}>
+              {grokBalance !== null ? '$' + grokBalance.toFixed(2) : '…'}
+            </span>
+          </button>
+        )}
+      </div>
       <nav style={{ display: 'flex', gap: 4 }}>
         {items.map(item => (
           <button key={item.id} onClick={() => onNav(item.id)} title={item.label}
@@ -2548,7 +2559,7 @@ function BeltRankCard({ vocab, onNav }) {
   )
 }
 
-function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenConvo, onGenerateConvo, provider, onSetProvider, hasClaudeKey, hasDeepSeekKey, hasOrKey }) {
+function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenConvo, onGenerateConvo, provider, onSetProvider, hasClaudeKey, hasDeepSeekKey, hasOrKey, hasGrokKey }) {
   const [convoLoadingId, setConvoLoadingId] = useState(null)
   const [convoProgress, setConvoProgress] = useState(0)
   const stats = useMemo(() => getStats(vocab), [vocab])
@@ -2596,17 +2607,14 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
 
       {/* AI Provider Selector */}
       <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
-        <span style={{ fontSize:12, color:'var(--muted)', marginRight:4 }}>Generate with:</span>
-        {[['deepseek','🐋 DeepSeek'],['qwen3_14b','⚡ Qwen3-32B'],['haiku','🔶 Haiku 4.5']].map(([id,label]) => {
-          const hasKey = hasOrKey
-          return (
-            <button key={id} onClick={() => onSetProvider(id)}
-              style={{ flex:1, padding:'7px 10px', borderRadius:9, border:`1px solid ${provider===id?'var(--gold)':'var(--border)'}`, background:provider===id?'#1e1600':'transparent', color:provider===id?'var(--gold)':hasKey?'var(--text)':'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s', position:'relative' }}>
-              {label}
-              {!hasKey && <span style={{ fontSize:9, color:'#ef4444', marginLeft:4 }}>no key</span>}
-            </button>
-          )
-        })}
+        <span style={{ fontSize:12, color:'var(--muted)', whiteSpace:'nowrap' }}>Generate with:</span>
+        <select value={provider} onChange={e => onSetProvider(e.target.value)}
+          style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text)', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif', cursor:'pointer', outline:'none' }}>
+          {PROVIDERS.map(p => (
+            <option key={p.id} value={p.id}>{p.label} — {p.sub}</option>
+          ))}
+        </select>
+        {!hasOrKey && !hasGrokKey && <span style={{ fontSize:10, color:'#ef4444', whiteSpace:'nowrap' }}>no key</span>}
       </div>
 
       {/* Generate Buttons */}
@@ -3020,11 +3028,15 @@ function parsePartialArray(str) {
 
 async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
   const isQwen = orModel.includes('qwen')
+  const isGrok = orModel.includes('grok')
+  const endpoint = isGrok ? 'https://api.x.ai/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions'
+  const headers = isGrok
+    ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }
+    : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' }
   // Use streaming (same as main calls) to avoid CORS issues with non-streaming
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
+    headers,
     body: JSON.stringify({
       model: orModel,
       max_tokens: isQwen ? Math.max(maxTokens || 2000, 8000) : (maxTokens || 2000),
@@ -6156,7 +6168,7 @@ function TrackQuality({ track }) {
 }
 
 
-function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets, tracks }) {
+function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, grokKey, onPhonetics, customTargets, tracks }) {
   const [error, setError] = useState('')
   const [brickSources, setBrickSources] = useState({})
   const [currentTier, setCurrentTier] = useState('')
@@ -6205,8 +6217,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             const doPhonetics = async () => {
               let map = {}
               // Use selected provider's key for phonetics
-              if (provider === 'qwen3_14b' || provider === 'haiku' || (orKey && provider !== 'deepseek')) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey || apiKey)
+              if (provider === 'qwen3_14b' || provider === 'haiku' || (orKey && provider !== 'deepseek' && provider !== 'grok')) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey || apiKey)
               else if (provider === 'deepseek') map = await fetchTargetPhoneticsDeepSeek(needsPhonetics, apiKey)
+              else if (provider === 'grok' && grokKey) map = await fetchTargetPhoneticsQwen(needsPhonetics, grokKey) // reuse same prompt, grok is OR-compatible
               else map = await fetchTargetPhonetics(needsPhonetics, apiKey)
               if (Object.keys(map).length) {
                 phoneticsRef.current = { ...phoneticsRef.current, ...map }
@@ -6363,8 +6376,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                   setFixingFallbacks(true)
                   setFixProgress({ done: 0, total: fallbackTargets.length, current: '' })
                   try {
-                    const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
-                    const fixKey = orKey || apiKey
+                    const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : provider === 'grok' ? 'grok-4-fast' : 'qwen/qwen3-32b'
+                    const fixKey = provider === 'grok' ? grokKey : (orKey || apiKey)
                     const anchors = (generatedTrack.pairs || []).filter(p => p && p._source && !p._source.startsWith('fallback:') && !p._source.startsWith('hardcoded:') && !p._source.startsWith('repair:')).slice(0,12)
                     const fixedPairsMap = {}
                     for (let fi = 0; fi < fallbackTargets.length; fi++) {
@@ -6426,8 +6439,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             <Btn onClick={async () => {
               setConvoLoading(true)
               try {
-                const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
-                const convoKey = provider === 'claude' ? apiKey : orKey
+                const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : provider === 'grok' ? 'grok-4-fast' : 'qwen/qwen3-32b'
+                const convoKey = provider === 'claude' ? apiKey : provider === 'grok' ? grokKey : orKey
                 const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
                 setGeneratedTrack({ ...generatedTrack, convo: convoResult })
                 setConvoLines(convoResult)
@@ -7486,14 +7499,14 @@ function DeepSeekTestBtn({ dsKey }) {
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
-  { id: 'deepseek', label: 'DeepSeek', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
-  { id: 'qwen3_14b', label: 'Qwen3-32B', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
-  { id: 'haiku', label: 'Claude Haiku', sub: '4.5 via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey' },
+  { id: 'qwen3_14b', label: '⚡ Qwen3-32B', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey', url: 'openrouter.ai/keys' },
+  { id: 'haiku',     label: '🔶 Haiku 4.5',  sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey', url: 'openrouter.ai/keys' },
+  { id: 'deepseek',  label: '🐋 DeepSeek',   sub: 'via OpenRouter', placeholder: 'sk-or-v1-...', storage: 'tt-orkey', url: 'openrouter.ai/keys' },
+  { id: 'grok',      label: '⚡ Grok 4.1 Fast', sub: 'via xAI',    placeholder: 'xai-...',      storage: 'tt-grokkey', url: 'console.x.ai' },
 ]
 
-function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey }) {
-  // Key state per provider
-  const [keys, setKeys] = useState({ claude: apiKey || '', deepseek: dsKey || '', qwen3_14b: orKey || '' })
+function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey, grokKey, onSaveGrokKey }) {
+  const [keys, setKeys] = useState({ claude: apiKey || '', deepseek: dsKey || '', qwen3_14b: orKey || '', haiku: orKey || '', grok: grokKey || '' })
   const [saved, setSaved] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
@@ -7505,7 +7518,11 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
 
   async function saveKey() {
     const trimmed = currentKey.trim()
-    await stSet('tt-orkey', trimmed); onSaveOrKey(trimmed)
+    if (provider === 'grok') {
+      await stSet('tt-grokkey', trimmed); onSaveGrokKey(trimmed)
+    } else {
+      await stSet('tt-orkey', trimmed); onSaveOrKey(trimmed)
+    }
     setSaved(provider)
     setTimeout(() => setSaved(''), 2000)
   }
@@ -7521,6 +7538,12 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
           headers: { 'Content-Type': 'application/json', 'x-api-key': currentKey.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
           body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
+      } else if (provider === 'grok') {
+        res = await fetch('https://api.x.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}` },
+          body: JSON.stringify({ model: 'grok-4-fast', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+        })
       } else {
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -7534,7 +7557,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { deepseek: 'openrouter.ai → Keys (used for Qwen3-32B + Claude Haiku)', qwen3_32b: 'openrouter.ai → Keys (model: qwen/qwen3-32b)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
+  const hasKey = provider === 'grok' ? !!grokKey : !!orKey
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
@@ -7548,20 +7571,17 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
       <Card style={{ padding: 16, marginBottom: 12 }}>
         <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>AI Provider</p>
 
-        {/* Provider selector */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        {/* Provider dropdown */}
+        <select value={provider} onChange={e => { onSaveProvider(e.target.value); setTestResult('') }}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, fontFamily: 'Sarabun,sans-serif', cursor: 'pointer', outline: 'none', marginBottom: 16 }}>
           {PROVIDERS.map(p => (
-            <button key={p.id} onClick={() => { onSaveProvider(p.id); setTestResult('') }}
-              style={{ flex: 1, padding: '10px 4px', borderRadius: 10, border: `1px solid ${provider === p.id ? 'var(--gold)' : 'var(--border)'}`, background: provider === p.id ? '#1e1600' : 'transparent', color: provider === p.id ? 'var(--gold)' : 'var(--muted)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Sarabun,sans-serif', textAlign: 'center', lineHeight: 1.3 }}>
-              <div>{p.label}</div>
-              <div style={{ fontSize: 10, opacity: 0.7 }}>{p.sub}</div>
-            </button>
+            <option key={p.id} value={p.id}>{p.label} — {p.sub}</option>
           ))}
-        </div>
+        </select>
 
         {/* Key input for selected provider */}
         <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>
-          Get your key at <span style={{ color: 'var(--text)' }}>{keySource[provider]}</span>
+          Get your key at <span style={{ color: 'var(--text)' }}>{prov.url}</span>
         </p>
         <input type="password" value={currentKey} onChange={e => setKey(e.target.value)}
           placeholder={prov.placeholder}
@@ -7580,10 +7600,10 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
 
         {/* Status */}
         <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: (provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'qwen3_14b' || provider === 'haiku') && orKey) ? '#10b981' : '#6b7280', flexShrink: 0 }} />
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: hasKey ? '#10b981' : '#6b7280', flexShrink: 0 }} />
           <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-            {(provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'qwen3_14b' || provider === 'haiku') && orKey)
-              ? `${prov.label} ${prov.sub} active — generates tracks, phonetics and translation`
+            {hasKey
+              ? `${prov.label} active — generates tracks, phonetics and translation`
               : `No ${prov.label} key saved — add your key above to enable AI track generation`}
           </p>
         </div>
@@ -8129,6 +8149,8 @@ function ThaiTeacher() {
   const [dsKey, setDsKey] = useState('')
   const [orKey, setOrKey] = useState('')
   const [orBalance, setOrBalance] = useState(null)
+  const [grokKey, setGrokKey] = useState('')
+  const [grokBalance, setGrokBalance] = useState(null)
 
   async function fetchOrBalance(key) {
     if (!key) return
@@ -8141,6 +8163,20 @@ function ThaiTeacher() {
         const remaining = (d.data.total_credits || 0) - (d.data.total_usage || 0)
         setOrBalance(remaining)
       }
+    } catch(e) { /* silently fail */ }
+  }
+
+  async function fetchGrokBalance(key) {
+    if (!key) return
+    try {
+      const r = await fetch('https://api.x.ai/v1/credits', {
+        headers: { 'Authorization': 'Bearer ' + key }
+      })
+      if (!r.ok) return
+      const d = await r.json()
+      // xAI returns {data:{totalCredits, usedCredits}} or similar
+      const remaining = d?.data?.totalCredits ?? d?.totalCredits ?? d?.balance ?? null
+      if (remaining !== null) setGrokBalance(Number(remaining))
     } catch(e) { /* silently fail */ }
   }
   const [customTargets, setCustomTargets] = useState(null)
@@ -8169,6 +8205,7 @@ function ThaiTeacher() {
       const pv = await stGet('tt-provider'); if (pv) setProvider(pv)
       const dk = await stGet('tt-dskey'); if (dk) setDsKey(dk)
       const ok = await stGet('tt-orkey'); if (ok) { setOrKey(ok); fetchOrBalance(ok) }
+      const gk = await stGet('tt-grokkey'); if (gk) { setGrokKey(gk); fetchGrokBalance(gk) }
       setLoading(false)
     }
     init()
@@ -8281,13 +8318,13 @@ function ThaiTeacher() {
   return (
     <div className="app">
       <FontStyle />
-      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} />
+      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} grokBalance={grokBalance} grokKey={grokKey} onRefreshGrokBalance={() => fetchGrokBalance(grokKey)} />
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
             onGenerateConvo={async (track) => {
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
-              const convoKey = provider === 'claude' ? apiKey : orKey
+              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : provider === 'grok' ? 'grok-4-fast' : 'qwen/qwen3-32b'
+              const convoKey = provider === 'claude' ? apiKey : provider === 'grok' ? grokKey : orKey
               if (!convoKey) {
                 alert('No OpenRouter key found. Go to Settings and save your key first.')
                 return
@@ -8297,18 +8334,17 @@ function ThaiTeacher() {
               try {
                 const lines = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
                 if (!lines || !lines.length) throw new Error('No conversation lines returned')
-                // Find and update track by createdAt
                 const updated = tracks.map(t => t.createdAt === track.createdAt ? { ...t, convo: lines } : t)
                 await saveTracks(updated)
                 setActiveTrack({ ...track, convo: lines })
                 setView('convo')
               } catch(e) { alert('Convo failed: ' + e.message) }
             }}
-            provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} hasOrKey={!!orKey} />}
+            provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasDeepSeekKey={!!dsKey} hasOrKey={!!orKey} hasGrokKey={!!grokKey} />}
         {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
           apiKey={orKey}
           provider={provider}
-          orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
+          orKey={orKey} grokKey={grokKey} onPhonetics={onPhonetics} customTargets={customTargets}
           tracks={tracks}
         /></ErrorBoundary>}
         {view === 'player' && activeTrack && (
@@ -8323,7 +8359,7 @@ function ThaiTeacher() {
         )}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
-        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} />}
+        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} grokKey={grokKey} onSaveGrokKey={async k => { setGrokKey(k); await stSet('tt-grokkey',k); fetchGrokBalance(k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'lessons' && <LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} />}

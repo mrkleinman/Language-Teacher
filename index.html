@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v182"/>
-<meta name="app-version" content="v182"/>
+<meta name="app-version" content="v183"/>
+<meta name="app-version" content="v183"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v182';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v182').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v183';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v183').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3490,7 +3490,13 @@ function classifyWord(target) {
   if (thai === 'สาย' || eng === 'line' || eng === 'late' || eng === 'cord') return 'object'
   if (thai === 'นางงาม' || eng === 'beauty queen') return 'person'
   if (thai === 'แพ' || eng === 'raft') return 'object'
+  // ล้ม = fall down (verb), NOT the autumn season — must be before time_expression check
+  if (thai === 'ล้ม' || (eng === 'fall' && thai && thai.length <= 3)) return 'verb_intrans'
+  if (thai === 'ทางโค้ง' || eng === 'curve' || eng === 'winding road' || eng === 'bend') return 'place'
   if (thai === 'มืดค่ำ' || eng === 'dusk' || eng === 'nightfall') return 'time'
+  // Clock times — e.g. สิบโมงเช้า, สองทุ่ม, หกโมงเย็น
+  if (thai.includes('โมง') || thai.includes('ทุ่ม') || thai.includes('นาฬิกา') ||
+      /^\d/.test(eng) && (eng.includes('AM') || eng.includes('PM') || eng.includes('am') || eng.includes('pm'))) return 'time'
   if (thai === 'เส้นทาง' || eng === 'route' || eng === 'path') return 'place'
   if (thai === 'เส้นผม' || eng.includes('hair strand')) return 'body'
   if (thai === 'ขน' || eng === 'hair/fur' || eng === 'fur' || eng === 'feather') return 'body'
@@ -3823,6 +3829,16 @@ const HARDCODED_FALLBACKS = {
     {prompt:'Say there is coffee, tea, and so on',thai:'ที่นี่มีกาแฟ ชา น้ำเปล่า เป็นต้นครับ',english:'There is coffee, tea, water, and so on here.',phonetic:'thîi-nîi mii gaa-fae chaa nám-bplào pen-tôn khrâp',words:[{p:'thîi-nîi',e:'here'},{p:'mii',e:'have'},{p:'gaa-fae',e:'coffee'},{p:'chaa',e:'tea'},{p:'nám-bplào',e:'water'},{p:'pen-tôn',e:'etc.'},{p:'khrâp',e:'[polite]'}],target_phonetic:'pen-tôn'},
     {prompt:'Say you like coffee and tea and so on',thai:'ผมชอบกาแฟ ชา เป็นต้นครับ',english:'I like coffee, tea, and so on.',phonetic:'phǒm chôop gaa-fae chaa pen-tôn khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'gaa-fae',e:'coffee'},{p:'chaa',e:'tea'},{p:'pen-tôn',e:'etc.'},{p:'khrâp',e:'[polite]'}],target_phonetic:'pen-tôn'},
     {prompt:'Say food and drinks and so on are available',thai:'มีอาหาร เครื่องดื่ม เป็นต้นครับ',english:'There are food, drinks, and so on.',phonetic:'mii aa-hǎan khrûeang-dùem pen-tôn khrâp',words:[{p:'mii',e:'there are'},{p:'aa-hǎan',e:'food'},{p:'khrûeang-dùem',e:'drinks'},{p:'pen-tôn',e:'etc.'},{p:'khrâp',e:'[polite]'}],target_phonetic:'pen-tôn'},
+  ],
+  'ยิน': [
+    {prompt:'Say you are glad to meet them',thai:'ผมยินดีที่ได้พบคุณครับ',english:'I am glad to meet you.',phonetic:'phǒm yin-dii thîi dâi phóp khun khrâp',words:[{p:'phǒm',e:'I'},{p:'yin-dii',e:'glad'},{p:'thîi-dâi',e:'to'},{p:'phóp',e:'meet'},{p:'khun',e:'you'},{p:'khrâp',e:'[polite]'}],target_phonetic:'yin'},
+    {prompt:'Ask if they are glad to be here',thai:'คุณยินดีที่จะอยู่ที่นี่ไหมคะ',english:'Are you glad to be here?',phonetic:'khun yin-dii thîi jà yùu thîi-nîi mǎi khá',words:[{p:'khun',e:'you'},{p:'yin-dii',e:'glad'},{p:'thîi-jà',e:'to'},{p:'yùu',e:'be'},{p:'thîi-nîi',e:'here'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'yin'},
+    {prompt:'Say you were not glad about it',thai:'ผมไม่ยินดีกับเรื่องนี้ครับ',english:'I was not glad about this.',phonetic:'phǒm mâi yin-dii gàp rûeang níi khrâp',words:[{p:'phǒm',e:'I'},{p:'mâi',e:'not'},{p:'yin-dii',e:'glad'},{p:'gàp',e:'about'},{p:'rûeang-níi',e:'this'},{p:'khrâp',e:'[polite]'}],target_phonetic:'yin'},
+  ],
+  'ชอบที่เราเป็นเรา': [
+    {prompt:'Say you like being yourself',thai:'ผมชอบที่เราเป็นเราครับ',english:'I like being who we are.',phonetic:'phǒm chɔ̂ɔp thîi rao pen rao khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'thîi',e:'that'},{p:'rao',e:'we'},{p:'pen-rao',e:'are ourselves'},{p:'khrâp',e:'[polite]'}],target_phonetic:'chɔ̂ɔp-thîi-rao-pen-rao'},
+    {prompt:'Ask if they like being themselves',thai:'คุณชอบที่เราเป็นเราไหมคะ',english:'Do you like being who you are?',phonetic:'khun chɔ̂ɔp thîi rao pen rao mǎi khá',words:[{p:'khun',e:'you'},{p:'chôop',e:'like'},{p:'thîi',e:'that'},{p:'rao-pen-rao',e:'being ourselves'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'chɔ̂ɔp-thîi-rao-pen-rao'},
+    {prompt:'Say it is good to like being yourself',thai:'ดีที่ชอบที่เราเป็นเราครับ',english:'It is good to like being yourself.',phonetic:'dii thîi chɔ̂ɔp thîi rao pen rao khrâp',words:[{p:'dii',e:'good'},{p:'thîi',e:'that'},{p:'chôop',e:'like'},{p:'rao-pen-rao',e:'being ourselves'},{p:'khrâp',e:'[polite]'}],target_phonetic:'chɔ̂ɔp-thîi-rao-pen-rao'},
   ],
   'ซึ่ง': [
     {prompt:'Say the book which you like',thai:'นี่คือหนังสือที่ผมชอบครับ',english:'This is the book that I like.',phonetic:'nîi khʉʉ nǎng-sʉʉ thîi phǒm chôop khrâp',words:[{p:'nîi',e:'this'},{p:'khʉʉ',e:'is'},{p:'nǎng-sʉʉ',e:'book'},{p:'thîi',e:'that'},{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sûeng'},
@@ -4291,9 +4307,15 @@ function makeFallbackPairs(target) {
     {prompt:'Say the shirt is not '+eng,thai:'เสื้อตัวนี้ไม่ใช่'+tw+'ครับ',english:'This shirt is not '+eng+'.',phonetic:'sûea tua níi mâi châi '+ph+' khrâp',words:[{p:'sûea',e:'shirt'},{p:'tua-níi',e:'this'},{p:'mâi-châi',e:'is not'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
+  // Intransitive verb — action you do (no object), not something you own
+  if (type === 'verb_intrans') return [
+    {prompt:'Say you will '+eng+' soon',thai:'ผมจะ'+tw+'เดี๋ยวครับ',english:'I will '+eng+' soon.',phonetic:'phǒm jà '+ph+' dǐao khrâp',words:[{p:'phǒm',e:'I'},{p:'jà',e:'will'},{p:ph,e:eng},{p:'dǐao',e:'soon'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you have not '+eng+' yet',thai:'ผมยังไม่'+tw+'ครับ',english:'I have not '+eng+' yet.',phonetic:'phǒm yang mâi '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'yang-mâi',e:'not yet'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they can '+eng,thai:'คุณ'+tw+'ได้ไหมครับ',english:'Can you '+eng+'?',phonetic:'khun '+ph+' dâi mǎi khrâp',words:[{p:'khun',e:'you'},{p:ph,e:eng},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+
   // Transitive verb — needs object
   if (type === 'verb_transitive') return [
-    {prompt:'Ask if you can '+eng+' it',thai:tw+'ได้ไหมคะ',english:'Can you '+eng+' it?',phonetic:ph+' dâi mǎi khá',words:[{p:ph,e:eng},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
     {prompt:'Say you already '+eng+' it',thai:tw+'แล้วครับ',english:'I already '+eng+' it.',phonetic:ph+' lâeo khrâp',words:[{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
     {prompt:'Say you have not '+eng+' yet',thai:'ยังไม่ได้'+tw+'ครับ',english:'I have not '+eng+' yet.',phonetic:'yang mâi dâi '+ph+' khrâp',words:[{p:'yang',e:'still'},{p:'mâi-dâi',e:"haven't"},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
@@ -5026,7 +5048,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
                 remaining = out
               }
               const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
-              if (unknownChars.length > 2) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
+              if (unknownChars.length > 4) { failReason = 'unknown vocab: ' + unknownChars.slice(0,20) }
             }
           }
           // ── Semantic sanity checks ─────────────────────────────────────────

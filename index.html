@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v181"/>
-<meta name="app-version" content="v181"/>
+<meta name="app-version" content="v182"/>
+<meta name="app-version" content="v182"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v181';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v181').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v182';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v182').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3819,6 +3819,11 @@ function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, prom
 
 // Pre-written fallbacks for known problem words
 const HARDCODED_FALLBACKS = {
+  'เป็นต้น': [
+    {prompt:'Say there is coffee, tea, and so on',thai:'ที่นี่มีกาแฟ ชา น้ำเปล่า เป็นต้นครับ',english:'There is coffee, tea, water, and so on here.',phonetic:'thîi-nîi mii gaa-fae chaa nám-bplào pen-tôn khrâp',words:[{p:'thîi-nîi',e:'here'},{p:'mii',e:'have'},{p:'gaa-fae',e:'coffee'},{p:'chaa',e:'tea'},{p:'nám-bplào',e:'water'},{p:'pen-tôn',e:'etc.'},{p:'khrâp',e:'[polite]'}],target_phonetic:'pen-tôn'},
+    {prompt:'Say you like coffee and tea and so on',thai:'ผมชอบกาแฟ ชา เป็นต้นครับ',english:'I like coffee, tea, and so on.',phonetic:'phǒm chôop gaa-fae chaa pen-tôn khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'gaa-fae',e:'coffee'},{p:'chaa',e:'tea'},{p:'pen-tôn',e:'etc.'},{p:'khrâp',e:'[polite]'}],target_phonetic:'pen-tôn'},
+    {prompt:'Say food and drinks and so on are available',thai:'มีอาหาร เครื่องดื่ม เป็นต้นครับ',english:'There are food, drinks, and so on.',phonetic:'mii aa-hǎan khrûeang-dùem pen-tôn khrâp',words:[{p:'mii',e:'there are'},{p:'aa-hǎan',e:'food'},{p:'khrûeang-dùem',e:'drinks'},{p:'pen-tôn',e:'etc.'},{p:'khrâp',e:'[polite]'}],target_phonetic:'pen-tôn'},
+  ],
   'ซึ่ง': [
     {prompt:'Say the book which you like',thai:'นี่คือหนังสือที่ผมชอบครับ',english:'This is the book that I like.',phonetic:'nîi khʉʉ nǎng-sʉʉ thîi phǒm chôop khrâp',words:[{p:'nîi',e:'this'},{p:'khʉʉ',e:'is'},{p:'nǎng-sʉʉ',e:'book'},{p:'thîi',e:'that'},{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'khrâp',e:'[polite]'}],target_phonetic:'sûeng'},
     {prompt:'Ask if that is the one you want',thai:'อันที่คุณอยากได้ไหมคะ',english:'Is it the one you want?',phonetic:'an thîi khun yàak dâi mǎi khá',words:[{p:'an',e:'one'},{p:'thîi',e:'that'},{p:'khun',e:'you'},{p:'yàak',e:'want'},{p:'dâi',e:'get'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:'sûeng'},
@@ -4209,11 +4214,11 @@ function makeFallbackPairs(target) {
     {prompt:'Say you just ate '+eng,thai:'เพิ่งกิน'+tw+'ครับ',english:'I just ate '+eng+'.',phonetic:'phûeng gin '+ph+' khrâp',words:[{p:'phûeng',e:'just'},{p:'gin',e:'eat'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
-  // Adjective/state
+  // Adjective/state — use ผม as subject, not มัน (มัน = animal/thing subject, sounds odd for self)
   if (type === 'adjective') return [
-    {prompt:'Say it is '+eng,thai:'มัน'+tw+'ครับ',english:'It is '+eng+'.',phonetic:'man '+ph+' khrâp',words:[{p:'man',e:'it'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Ask if it is '+eng,thai:'มัน'+tw+'ไหมคะ',english:'Is it '+eng+'?',phonetic:'man '+ph+' mǎi khá',words:[{p:'man',e:'it'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Say you feel '+eng,thai:'รู้สึก'+tw+'ครับ',english:'I feel '+eng+'.',phonetic:'rúu-sùek '+ph+' khrâp',words:[{p:'rúu-sùek',e:'feel'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you feel '+eng,thai:'ผมรู้สึก'+tw+'ครับ',english:'I feel '+eng+'.',phonetic:'phǒm rúu-sùek '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'rúu-sùek',e:'feel'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they feel '+eng,thai:'คุณรู้สึก'+tw+'ไหมครับ',english:'Do you feel '+eng+'?',phonetic:'khun rúu-sùek '+ph+' mǎi khrâp',words:[{p:'khun',e:'you'},{p:'rúu-sùek',e:'feel'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you do not feel '+eng,thai:'ผมไม่'+tw+'ครับ',english:'I am not '+eng+'.',phonetic:'phǒm mâi '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'mâi',e:'not'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
   // Abstract noun
@@ -4279,11 +4284,11 @@ function makeFallbackPairs(target) {
     {prompt:'Say you want to get '+eng,thai:'อยากได้'+tw+'ครับ',english:'I want to get '+eng+'.',phonetic:'yàak dâi '+ph+' khrâp',words:[{p:'yàak',e:'want'},{p:'dâi',e:'get'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
-  // Colour
+  // Colour — must have a verb, min 5 tokens (floor=5 enforced in prompt, match here too)
   if (type === 'colour') return [
-    {prompt:'Say the shirt is '+eng,thai:'เสื้อ'+tw+'ครับ',english:'The shirt is '+eng+'.',phonetic:'sûea '+ph+' khrâp',words:[{p:'sûea',e:'shirt'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Ask if the shirt is '+eng,thai:'เสื้อ'+tw+'ไหมคะ',english:'Is the shirt '+eng+'?',phonetic:'sûea '+ph+' mǎi khá',words:[{p:'sûea',e:'shirt'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Say you like '+eng,thai:'ผมชอบ'+tw+'ครับ',english:'I like '+eng+'.',phonetic:'phǒm chôop '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you like '+eng+' a lot',thai:'ผมชอบ'+tw+'มากครับ',english:'I really like '+eng+'.',phonetic:'phǒm chôop '+ph+' mâak khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:ph,e:eng},{p:'mâak',e:'a lot'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you just saw a '+eng+' car',thai:'ผมเพิ่งเห็นรถ'+tw+'ครับ',english:'I just saw a '+eng+' car.',phonetic:'phǒm phûeng hěn rót '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'phûeng',e:'just'},{p:'hěn',e:'saw'},{p:'rót',e:'car'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say the shirt is not '+eng,thai:'เสื้อตัวนี้ไม่ใช่'+tw+'ครับ',english:'This shirt is not '+eng+'.',phonetic:'sûea tua níi mâi châi '+ph+' khrâp',words:[{p:'sûea',e:'shirt'},{p:'tua-níi',e:'this'},{p:'mâi-châi',e:'is not'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
   // Transitive verb — needs object
@@ -4950,6 +4955,14 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       // Common Thai loanwords — very frequent, no phonetic needed but must not fail OOV
       'สไตล์','ดีไซน์','แฟชั่น','เทรนด์','คอนเซปต์','ออนไลน์',
       'สภาพ','ข้อความ','รสชาติ','เสิร์ฟ','ปรุง','สูตร',
+      // มัน = it (for things/animals) — used in adjective fallback templates and common speech
+      'มัน',
+      // Common context nouns that appear naturally around target words
+      'ซุป','บอล','สวน','กลุ่ม','กำแพง','ปาร์ตี้',
+      'ย้าย','พลาด','เที่ยวบิน','ตรงเวลา','สีสัน',
+      'อดีต','ท่องจำ','ท้องถิ่น','ขนบธรรมเนียม',
+      'แพทย์','แพทย์แผนโบราณ','ผลลัพธ์','เสียงดัง',
+      'สิ่ง','สิ่งสำคัญ','สิ่งของ',
     ])
 
     for (const p of pairs) {
@@ -5327,7 +5340,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
           if (!failReason && /ว่าง[ก-๙]*ไม่ได้/.test(p.thai||'')) {
             failReason = 'ว่างไม่ได้ is awkward — use ไม่ว่าง for "not free/available": ' + p.thai
           }
-          // NEW: ตั้งแต่ requires a VERB before it — Subject+VERB+ตั้งแต่+time
+          // NEW: สะสาง = clear up paperwork/backlog/admin — NOT skin/body clearing up
+          if (!failReason && (p.thai||'').includes('สะสาง')) {
+            if (/ผิว|สิว|หน้า|ผม|ผิวพรรณ/.test(p.thai||'')) {
+              failReason = 'สะสาง wrong domain: สะสาง = clear up admin/tasks/clutter, not skin/body. Use ผิวดีขึ้น or สิวหาย for skin: ' + p.thai
+            }
+          }
           if (!failReason && (p.thai||'').includes('ตั้งแต่')) {
             const th = p.thai || ''
             // Strip subject pronouns then check if next real word is ตั้งแต่ directly
@@ -5665,6 +5683,18 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
   for (const t of targets) {
     if (t.thai && t.phonetic) vocabLookup[t.thai] = t.phonetic
   }
+  // Hardcoded supplement: common words that are NOT in RAW_VOCAB but appear frequently
+  // and whose absence causes phonetic corruption (especially leading-vowel words)
+  const PHONETIC_SUPPLEMENT = {
+    'เปิด':'bəət','ปิด':'bìt','เดิน':'dəən','เร็ว':'reo','เก่า':'gào','เจ็บ':'jèp',
+    'เยอะ':'yə́','เที่ยว':'thîiao','เช็ก':'chék','เสร็จ':'sèt','เริ่ม':'rəəm',
+    'แพทย์':'phâet','แพทย์แผนโบราณ':'phâet-phǎen-boo-raan',
+    'มัน':'man','ย้าย':'yáai','พลาด':'phlâat','กลุ่ม':'glùm',
+    'สวน':'sǔan','กำแพง':'gam-phaaeng','ซุป':'súp','บอล':'bɔɔn',
+    'เที่ยวบิน':'thîiao-bin','ตรงเวลา':'trong-wee-laa',
+    'สีสัน':'sǐi-sǎn','ผลลัพธ์':'phǒn-lát',
+  }
+  Object.assign(vocabLookup, PHONETIC_SUPPLEMENT)
   const sortedVocab = Object.entries(vocabLookup).sort((a,b) => b[0].length - a[0].length)
 
   function buildTrackPhonetic(thai) {
@@ -5699,7 +5729,27 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         matched = true
         break
       }
-      if (!matched) remaining = remaining.slice(1)
+      if (!matched) {
+        // Thai leading vowels (เ แ โ ใ ไ) always precede their consonant.
+        // When we skip a leading vowel, we must ALSO skip the consonant(s) that follow it,
+        // otherwise เปิด becomes เ(skipped) + ปิด(matches vocab) → wrong phonetic.
+        const LEADING_VOWELS = new Set(['\u0E40','\u0E41','\u0E42','\u0E43','\u0E44']) // เ แ โ ใ ไ
+        if (LEADING_VOWELS.has(remaining[0])) {
+          // Skip the leading vowel plus all following Thai consonant/vowel chars until we hit
+          // another leading vowel, space, or non-Thai — this protects the syllable boundary
+          let skip = 1
+          while (skip < remaining.length) {
+            const c = remaining[skip]
+            if (c < '\u0E00' || c > '\u0E7F') break  // non-Thai
+            if (LEADING_VOWELS.has(c)) break           // next leading vowel = next syllable
+            if (c === '\u0E40' || c === '\u0E41' || c === '\u0E42' || c === '\u0E43' || c === '\u0E44') break
+            skip++
+          }
+          remaining = remaining.slice(skip)
+        } else {
+          remaining = remaining.slice(1)
+        }
+      }
     }
     // Sparse coverage check: if we matched < 40% of Thai chars, phonetic is unreliable
     const thaiCharCount = clean.split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length

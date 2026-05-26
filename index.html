@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v186"/>
-<meta name="app-version" content="v186"/>
+<meta name="app-version" content="v191"/>
+<meta name="app-version" content="v191"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -20,7 +20,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v186';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v186').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v191';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v191').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -2642,7 +2642,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
         const unreviewed = (tracks||[]).filter(t => !t.rated).length
         const queueFull = unreviewed >= 3
         return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
         <button onClick={() => !queueFull && onNav('generate-daily')}
           disabled={queueFull}
           title={queueFull ? `${unreviewed} tracks waiting — review them first` : ''}
@@ -2652,7 +2653,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
           <Icon name="sparkles" size={22} color={queueFull ? 'var(--muted)' : '#10b981'} />
           <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Daily Track</div>
           <div style={{ fontSize: 11, color: queueFull ? 'var(--muted)' : '#4a9960', marginTop: 2 }}>
-            {queueFull ? `${unreviewed}/3 tracks in queue` : `~45 min · ${stats.due} due`}
+            {queueFull ? `${unreviewed}/3 in queue` : `~45 min · ${stats.due} due`}
           </div>
         </button>
         <button onClick={() => onNav('lessons')}
@@ -2662,6 +2663,21 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
           <Icon name="book" size={22} color="var(--gold)" />
           <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Lessons</div>
           <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 2, opacity: 0.7 }}>Noob Season One</div>
+        </button>
+        </div>
+        <button onClick={() => !queueFull && onNav('external-track')}
+          disabled={queueFull}
+          title={queueFull ? `${unreviewed} tracks waiting — review them first` : ''}
+          style={{ background: queueFull ? 'var(--surface2)' : 'linear-gradient(135deg, #1e1a3a, #2a1e5a)', border: '1px solid ' + (queueFull ? 'var(--border)' : '#3d2d6b'), borderRadius: 12, padding: '14px 16px', cursor: queueFull ? 'not-allowed' : 'pointer', textAlign: 'center', color: queueFull ? 'var(--muted)' : 'var(--text)', transition: 'all 0.15s', opacity: queueFull ? 0.6 : 1, display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}
+          onMouseEnter={e => { if (!queueFull) e.currentTarget.style.borderColor = '#7c5cbf' }}
+          onMouseLeave={e => { if (!queueFull) e.currentTarget.style.borderColor = '#3d2d6b' }}>
+          <Icon name="bookmark" size={20} color={queueFull ? 'var(--muted)' : '#9b7fd4'} />
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Upload Track</div>
+            <div style={{ fontSize: 11, color: queueFull ? 'var(--muted)' : '#9b7fd4', marginTop: 1 }}>
+              {queueFull ? `${unreviewed}/3 in queue` : 'Copy prompt → paste to any AI'}
+            </div>
+          </div>
         </button>
       </div>
         )
@@ -4916,19 +4932,24 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       '\n  • ขอ...หน่อย only for concrete requestable objects/food — NOT activities, animals, places, abstract concepts' +
       '\n  • sentences must make real-world sense (not "my grandmother is big", not "I bought a receipt", not "next trip was last month")' +
       '\n  • connector words like งั้นก็ go at START of sentence, never at the end' +
-      '\n  • all 3 pairs must use meaningfully different grammar patterns (not all มี...ไหมครับ)' +
       '\n  • ONLY use Thai words from the WHITELIST below — every Thai word must be either the target word or from this list' +
-      '\n  • สวย = feminine beauty. NEVER use สวย for ผม (male). Use หล่อ for handsome men.' +
       '\n  • "english" field must be a real English translation — never paste phonetics (romanization) or copy the prompt text' +
       '\n  • Time/date target words: use 3 meaningfully DIFFERENT contexts (not 3 variations of the same situation)' +
-      '\n  • NEVER use ความ before an adjective (ความรวย/ความผอม/ความอ้วน = unnatural). Use adjectives directly: ผมรวยครับ.' +
-      '\n  • NEVER use เป็น before an adjective (เป็นดี/เป็นสวย/เป็นรวย = wrong). Say ดีครับ/สวยครับ directly.' +
       '\n  • NEVER add time words (วันนี้/เมื่อวาน/ตอนนี้), quantities (หนึ่งชิ้น), or specific objects not in the prompt — write only what the prompt says.' +
       '\n  • keep a promise = รักษาสัญญา NOT เก็บสัญญา. Use กับ for WITH people not ของ (ทริปของเพื่อน = wrong).' +
+      '\n  • all 3 Thai sentences must use DIFFERENT grammar patterns — vary subject, verb structure, and context. WRONG: 3 sentences all starting ผมมี... or using the same verb. RIGHT: statement / question / negative-or-past.' +
       (target.english === 'then' || target.thai === 'งั้นก็' ? '\n  • งั้นก็ means "in that case / if so then" — sentences should show consequence or reaction, not just use งั้นก็ as filler' : '') +
       (target.thai === 'ล่ะ' ? '\n  • ล่ะ ONLY in the pattern: แล้ว + [noun/pronoun] + ล่ะ + ครับ/คะ meaning "And what about X?" — never at end of random statements' : '') +
       (target.thai === 'ยิน' ? '\n  • The target word ยิน is used as part of ยินดี (glad/pleased). Always write ยินดี in sentences — never standalone ยิน' : '') +
       (['พี่ชาย','น้องชาย','พี่สาว','น้องสาว','พี่','น้อง'].includes(target.thai) ? '\n  • ALWAYS specify OLDER (พี่) or YOUNGER (น้อง) in prompts — never just "brother" or "sister"' : '') +
+      '\nFEW-SHOT EXAMPLES — follow these patterns exactly:' +
+      '\n OK: {prompt:"Say you just arrived",thai:"ผมเพิ่งมาถึงครับ",english:"I just arrived."} — เพิ่ง=just, english matches Thai exactly' +
+      '\n BAD: {prompt:"Say you just arrived",thai:"ผมมาถึงแล้วครับ",english:"I have arrived."} — แล้ว=already not just; english must translate Thai not rephrase prompt' +
+      '\n OK: {prompt:"Ask if the route is winding",thai:"เส้นทางนี้คดเคี้ยวไหมครับ",english:"Is this route winding?"} — ask ends ไหมครับ' +
+      '\n BAD: {prompt:"Ask if the route is winding",thai:"เส้นทางนี้คดเคี้ยวมากครับ",english:"The route is very winding."} — ask must end ไหมครับ not statement' +
+      '\n OK: {prompt:"Say you normally drink coffee",thai:"ผมดื่มกาแฟปกติครับ",english:"I normally drink coffee."} — ปกติ present for normally' +
+      '\n BAD: {prompt:"Say you normally drink coffee",thai:"ผมชอบดื่มกาแฟครับ",english:"I like drinking coffee."} — ปกติ missing; english must match Thai not paraphrase' +
+      '\nSELF-CHECK — before outputting, verify each pair: (1) Thai contains "' + target.thai + '"; (2) every Thai word is in the whitelist; (3) english is exact translation of Thai, not of the prompt; (4) each of the 3 pairs uses a different grammar structure. Rewrite any that fail.' +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
       '\nWRITE exactly 3 pairs: (1) statement "Say...", (2) yes/no question "Ask... [must end ไหมครับ/คะ]", (3) variation (negative/past/different context).' +
@@ -5091,15 +5112,22 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
               p.thai.includes('จะ')) {
             failReason = 'prompt says want but Thai uses จะ (will) — needs อยาก'
           }
-          // 1b. Broken Thai — random spaces inserted mid-word (e.g. "ผมมี กวาง หนึ่งตัว")
-          if (!failReason) {
+          // 1b. Broken Thai — Grok writes spaces between every Thai word, e.g. "ผม ยินดี ที่ เห็น เขา ครับ"
+          // This fires ALWAYS (not gated by strict) — spaced Thai is never acceptable
+          {
             const thaiTokens = p.thai.split(' ').filter(t => /[ก-๙]/.test(t))
-            // Flag if a short solo Thai token appears surrounded by Thai tokens (broken word)
-            const hasBrokenThai = thaiTokens.some((tok, i) =>
+            // If > 40% of space-separated tokens are short (≤3 chars) and there are ≥3 tokens → spaced Thai
+            const shortTokenRatio = thaiTokens.length > 0
+              ? thaiTokens.filter(t => t.length <= 3).length / thaiTokens.length : 0
+            const isSpacedThai = thaiTokens.length >= 4 && shortTokenRatio > 0.5
+            // Also catch single-char Thai tokens flanked by Thai (original check)
+            const hasBrokenSingle = thaiTokens.some((tok, i) =>
               tok.length === 1 && i > 0 && i < thaiTokens.length - 1 &&
               /[ก-๙]/.test(thaiTokens[i-1]) && /[ก-๙]/.test(thaiTokens[i+1])
             )
-            if (hasBrokenThai) failReason = 'broken Thai: random spaces in Thai text: ' + p.thai
+            if ((isSpacedThai || hasBrokenSingle) && !failReason) {
+              failReason = 'spaced Thai: model put spaces between Thai words — Thai has no word spaces: ' + p.thai
+            }
           }
           // 2. "don't want" vs ไม่ได้ (past/ability negation)
           if (!failReason && promptLower.includes("don't want") && p.thai.includes('ไม่ได้')) {
@@ -5475,6 +5503,27 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         valid.push(p)
       }
     }
+
+    // Batch-level: grammar variety — if all 3 valid pairs share identical structure, reject batch
+    if (valid.length === 3) {
+      const endings = valid.map(p => {
+        const th = p.thai || ''
+        if (th.endsWith('ไหมครับ') || th.endsWith('ไหมคะ') || th.endsWith('ไหมค่ะ')) return 'question'
+        if (/ไม่[ก-๙]/.test(th)) return 'negative'
+        return 'positive'
+      })
+      const uniqueEndings = new Set(endings)
+      // Also check first verb/word after subject is identical in all 3
+      const coreVerbs = valid.map(p =>
+        (p.thai||'').replace(/^(ผม|คุณ|เขา|เธอ|เรา|ดิฉัน|หนู)\s*/,'').slice(0,8)
+      )
+      const uniqueVerbs = new Set(coreVerbs)
+      if (uniqueEndings.size === 1 && uniqueVerbs.size === 1) {
+        failures.push('all 3 pairs identical structure — regenerating for variety')
+        return { valid: [], failures, failedPairs: [...failedPairs, ...valid.map(p => ({ pair: p, reason: 'identical grammar across all 3 pairs' }))] }
+      }
+    }
+
     console.log('[validate] ' + target.thai + ': ' + valid.length + ' valid, ' + failures.length + ' failed: ' + failures.join(' | '))
     return { valid, failures, failedPairs }
   }
@@ -7381,6 +7430,317 @@ function ImportTrack({ onBack, onImported, vocab }) {
 }
 
 
+// ── External Track: copy prompt to any AI, paste result back ─────────────────
+function buildExternalPrompt(targets, vocab) {
+  const today = new Date().toISOString().slice(0,10)
+
+  // Condense vocab whitelist to just Thai words (group into lines of 15)
+  const allKnown = [...new Set([...vocab.map(v=>v.t||v.thai), ...targets.map(t=>t.thai)])]
+    .filter(Boolean).filter(w => w.length >= 2)
+  const whitelistLines = []
+  for (let i = 0; i < allKnown.length; i += 20)
+    whitelistLines.push(allKnown.slice(i, i+20).join(', '))
+
+  const targetBlock = targets.map((t, i) =>
+    `${String(i+1).padStart(2,'0')}. ${t.thai} [${t.phonetic||t.thai}] = "${t.english||''}"`
+  ).join('\n')
+
+  return `THAI TEACHER — EXTERNAL TRACK GENERATION
+Generated: ${today}
+Task: Generate 90 Thai language speaking practice pairs (3 per target word × 30 words).
+
+══════════════════════════════════════════
+TARGET WORDS (30)
+══════════════════════════════════════════
+${targetBlock}
+
+══════════════════════════════════════════
+RULES
+══════════════════════════════════════════
+Each word needs exactly 3 pairs: (1) statement "Say...", (2) yes/no question "Ask... [MUST end ไหมครับ or ไหมคะ]", (3) variation (negative / past / different context).
+
+HARD RULES — automatic rejection if violated:
+• Every Thai sentence MUST contain the exact target word
+• Sentence length: 5–8 phonetic tokens (each space-separated romanisation token = 1 word)
+• Pair 2 prompt says "Ask..." → Thai MUST end with ไหมครับ or ไหมคะ
+• Every Thai sentence MUST end with ครับ, ค่ะ, or คะ
+• No two Thai sentences for the same word may be identical
+• All 3 pairs for each word must use DIFFERENT grammar structures (not all ผมมี... or all questions)
+• ONLY use Thai words from the WHITELIST below — no words outside the whitelist except the target word itself
+• Thai has NO spaces between words — write ผมกินข้าวครับ NOT ผม กิน ข้าว ครับ
+• The "english" field must be an EXACT translation of what the Thai says — not a paraphrase of the prompt
+
+QUALITY RULES:
+• ขอ...หน่อย only for concrete requestable objects/food — NOT for activities, places, abstract concepts, verbs
+• NEVER use ความ before an adjective (ความรวย, ความสวย = wrong — say รวยครับ directly)
+• NEVER use เป็น before an adjective (เป็นดี, เป็นสวย = wrong — say ดีครับ directly)
+• เพิ่ง = "just recently" (past), จะ = "will" (future), แล้ว = "already" — never confuse them
+• Cognition verbs (คิด, เชื่อ, รู้สึก) MUST be followed by ว่า before a clause: ผมคิดว่า... not ผมคิดอากาศดี
+• สวย = feminine beauty — NEVER use with ผม (male), use หล่อ for handsome men
+• prompt field must be ENGLISH ONLY — no Thai script in the prompt
+• Sentences must make real-world sense
+
+FEW-SHOT EXAMPLES:
+✅ GOOD: {"prompt":"Say you just arrived","thai":"ผมเพิ่งมาถึงครับ","english":"I just arrived."}
+❌ BAD:  {"prompt":"Say you just arrived","thai":"ผมมาถึงแล้วครับ","english":"I arrived."} — แล้ว=already, not just; english must match Thai
+✅ GOOD: {"prompt":"Ask if the route is winding","thai":"เส้นทางนี้คดเคี้ยวไหมครับ","english":"Is this route winding?"}
+❌ BAD:  {"prompt":"Ask if the route is winding","thai":"เส้นทางนี้คดเคี้ยวมากครับ","english":"The route is very winding."} — ask must end ไหมครับ
+✅ GOOD: {"prompt":"Say you normally drink coffee","thai":"ผมดื่มกาแฟปกติครับ","english":"I normally drink coffee."}
+❌ BAD:  {"prompt":"Say you normally drink coffee","thai":"ผมชอบดื่มกาแฟครับ","english":"I like drinking coffee."} — ปกติ missing from Thai
+
+SELF-CHECK before outputting: for each pair verify (1) Thai contains the target word, (2) every Thai word is in the whitelist, (3) english is exact translation of Thai sentence not the prompt, (4) each of the 3 pairs uses a different grammar structure. Rewrite any that fail.
+
+══════════════════════════════════════════
+VOCAB WHITELIST (use ONLY these Thai words + the target word)
+══════════════════════════════════════════
+${whitelistLines.join('\n')}
+
+══════════════════════════════════════════
+REQUIRED OUTPUT FORMAT
+══════════════════════════════════════════
+Return ONLY a valid JSON array — no markdown, no explanation, no code fences.
+Exactly 90 objects, 3 per target word, in order.
+
+[
+  {"prompt":"Say...", "thai":"...ครับ", "english":"..."},
+  {"prompt":"Ask if...", "thai":"...ไหมครับ", "english":"Is...?"},
+  {"prompt":"Say you don't...", "thai":"ผมไม่...ครับ", "english":"I don't..."},
+  ... (continue for all 30 words × 3 pairs = 90 total)
+]`
+}
+
+function ExternalTrack({ vocab, tracks, onBack, onSaved }) {
+  // Single-page layout — no step switching, so Android tab suspension doesn't lose state
+  const [targets, setTargets] = React.useState(null)
+  const [prompt, setPrompt] = React.useState('')
+  const [pasted, setPasted] = React.useState(() => {
+    // Restore pasted text from sessionStorage (survives tab suspension on Android)
+    try { return sessionStorage.getItem('tt-ext-paste') || '' } catch(e) { return '' }
+  })
+  const [parsing, setParsing] = React.useState(false)
+  const [parseError, setParseError] = React.useState('')
+  const [preview, setPreview] = React.useState(null)
+  const [copied, setCopied] = React.useState(false)
+
+  React.useEffect(() => {
+    try {
+      const { targets: t } = pickWords(vocab, 'daily', tracks)
+      setTargets(t)
+      setPrompt(buildExternalPrompt(t, vocab))
+    } catch(e) { console.error('[ExternalTrack] init error:', e) }
+  }, [])
+
+  // Persist pasted text to sessionStorage whenever it changes
+  React.useEffect(() => {
+    try { sessionStorage.setItem('tt-ext-paste', pasted) } catch(e) {}
+  }, [pasted])
+
+  function copyPrompt() {
+    const ta = document.getElementById('ext-prompt-ta')
+    if (ta) { ta.focus(); ta.select() }
+
+    const doCopy = () => {
+      // Try modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(prompt)
+      }
+      // Fallback: use the already-selected textarea with execCommand
+      if (ta) {
+        ta.focus(); ta.select()
+        const ok = document.execCommand('copy')
+        if (ok) return Promise.resolve()
+      }
+      // Last resort: create temporary element
+      const tmp = document.createElement('textarea')
+      tmp.value = prompt
+      tmp.style.cssText = 'position:fixed;top:0;left:0;opacity:0.01;width:1px;height:1px'
+      document.body.appendChild(tmp)
+      tmp.focus(); tmp.select()
+      document.execCommand('copy')
+      document.body.removeChild(tmp)
+      return Promise.resolve()
+    }
+    doCopy().then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 2500)
+    }).catch(() => setCopied(false))
+  }
+
+  function parseAndPreview() {
+    setParsing(true); setParseError(''); setPreview(null)
+    try {
+      let text = pasted.trim()
+      text = text.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim()
+      const jsonStart = text.indexOf('[')
+      const jsonEnd = text.lastIndexOf(']')
+      if (jsonStart === -1 || jsonEnd === -1) throw new Error('No JSON array found — paste the full AI response')
+      const raw = JSON.parse(text.slice(jsonStart, jsonEnd + 1))
+      if (!Array.isArray(raw)) throw new Error('Expected a JSON array')
+      if (raw.length < 30) throw new Error(`Only ${raw.length} pairs — need at least 90 (3 per word)`)
+      const vocabLookup = {}
+      for (const w of vocab) { const t=w.t||w.thai; const ph=w.ph||w.phonetic; if(t&&ph) vocabLookup[t]=ph }
+      for (const t of (targets||[])) { if(t.thai&&t.phonetic) vocabLookup[t.thai]=t.phonetic }
+      const sortedV = Object.entries(vocabLookup).sort((a,b)=>b[0].length-a[0].length)
+      function buildPH(thai) {
+        if (!thai) return ''
+        if (vocabLookup[thai]) return vocabLookup[thai]
+        let rem = thai.replace(/[,，.!?]/g,'').trim()
+        const parts = []; let safety = 0
+        while (rem.length > 0 && safety++ < 60) {
+          let matched = false
+          for (const [word, ph] of sortedV) {
+            if (!rem.startsWith(word)) continue
+            const after = rem.slice(word.length)
+            const nextThai = after.length > 0 && after[0] >= '\u0E00' && after[0] <= '\u0E7F'
+            if (nextThai && word.length < 3) {
+              if (sortedV.some(([w]) => w.length > word.length && rem.startsWith(w))) continue
+            }
+            parts.push(ph); rem = after; matched = true; break
+          }
+          if (!matched) {
+            const LEAD = new Set(['\u0E40','\u0E41','\u0E42','\u0E43','\u0E44'])
+            if (LEAD.has(rem[0])) { let s=1; while(s<rem.length&&rem[s]>='\u0E00'&&rem[s]<='\u0E7F'&&!LEAD.has(rem[s]))s++; rem=rem.slice(s) }
+            else rem = rem.slice(1)
+          }
+        }
+        return parts.join(' ')
+      }
+      const pairs = raw.slice(0, 90).map((p) => ({
+        prompt: p.prompt || '',
+        thai: (p.thai || '').replace(/([ก-๙\u0E40-\u0E44\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]) ([ก-๙\u0E40-\u0E44\u0E31\u0E34-\u0E3A\u0E47-\u0E4E])/g, '$1$2'),
+        phonetic: p.phonetic || buildPH(p.thai || ''),
+        english: p.english || '',
+        words: p.words || [],
+        _source: 'external:paste'
+      }))
+      let fallbacks = 0
+      if (targets) pairs.forEach((p, i) => { const tw = targets[Math.floor(i/3)]?.thai; if (tw && !p.thai.includes(tw)) fallbacks++ })
+      setPreview({ pairs, fallbacks, total: pairs.length })
+    } catch(e) { setParseError(e.message) }
+    setParsing(false)
+  }
+
+  function saveTrack() {
+    if (!preview) return
+    const keywords = (targets||[]).map(w => ({ thai:w.thai, english:w.english, wordId:w.id, rating:null, phonetic:w.phonetic||'' }))
+    onSaved({
+      date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }),
+      mode: 'daily', pairs: preview.pairs, keywords, rated: false,
+      createdAt: new Date().toISOString(), status: 'pending', source: 'external'
+    })
+    try { sessionStorage.removeItem('tt-ext-paste') } catch(e) {}
+  }
+
+  const unreviewed = (tracks||[]).filter(t => !t.rated).length
+  if (unreviewed >= 3) return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24 }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="arrow_left" size={20}/></button>
+        <span className="display" style={{ fontSize:18 }}>Upload Track</span>
+      </div>
+      <Card style={{ padding:20, textAlign:'center' }}>
+        <div style={{ fontSize:32, marginBottom:12 }}>🚫</div>
+        <p style={{ fontWeight:700, marginBottom:8 }}>Queue Full</p>
+        <p style={{ color:'var(--muted)', fontSize:13 }}>{unreviewed} unreviewed tracks — rate them first.</p>
+        <button onClick={onBack} style={{ marginTop:16, padding:'10px 24px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--text)', cursor:'pointer', fontSize:14 }}>Back</button>
+      </Card>
+    </div>
+  )
+
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="arrow_left" size={20}/></button>
+        <span className="display" style={{ fontSize:18 }}>Upload Track</span>
+      </div>
+
+      {/* Step 1: Words */}
+      {targets && (
+        <Card style={{ padding:14, marginBottom:12 }}>
+          <p style={{ fontSize:12, fontWeight:600, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>Step 1 — Copy prompt · {targets.length} words</p>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:12 }}>
+            {targets.map((t,i) => (
+              <div key={i} style={{ background:'var(--surface2)', borderRadius:8, padding:'3px 9px', fontSize:12 }}>
+                <span className="thai" style={{ fontWeight:600 }}>{t.thai}</span>
+                <span style={{ color:'var(--muted)', fontSize:10, marginLeft:5 }}>{t.english}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ position:'relative', marginBottom:10 }}>
+            <textarea
+              ref={el => { if (el) el._isPrompt = true }}
+              id="ext-prompt-ta"
+              readOnly
+              value={prompt}
+              onClick={e => { e.target.focus(); e.target.select() }}
+              style={{ width:'100%', height:130, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, padding:10, fontSize:11, color:'var(--muted)', fontFamily:'monospace', resize:'none', lineHeight:1.5, boxSizing:'border-box', userSelect:'text', WebkitUserSelect:'text' }}
+            />
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={copyPrompt}
+              style={{ flex:1, padding:'11px', borderRadius:10, border:'1px solid var(--border)', background: copied ? '#10b981' : 'var(--surface2)', color: copied ? '#fff' : 'var(--text)', cursor:'pointer', fontSize:13, fontWeight:700, transition:'all 0.2s' }}>
+              {copied ? '✓ Copied!' : '📋 Copy'}
+            </button>
+            <button onClick={() => { const ta = document.getElementById('ext-prompt-ta'); if(ta){ta.focus();ta.select()} }}
+              style={{ flex:1, padding:'11px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text)', cursor:'pointer', fontSize:13, fontWeight:600 }}>
+              Select All
+            </button>
+          </div>
+          <p style={{ fontSize:11, color:'var(--muted)', marginTop:8, textAlign:'center' }}>Tap the text above to select it, or use Copy button · then paste into any AI · scroll down ↓ to paste response</p>
+        </Card>
+      )}
+
+      {/* Step 2: Paste — always visible so Android tab resume lands here */}
+      <Card style={{ padding:14, marginBottom:12 }}>
+        <p style={{ fontSize:12, fontWeight:600, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Step 2 — Paste AI Response</p>
+        <textarea value={pasted} onChange={e => { setPasted(e.target.value); setPreview(null); setParseError('') }}
+          placeholder="Paste the full JSON response from the AI here..."
+          style={{ width:'100%', height:180, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, padding:10, fontSize:12, color:'var(--text)', fontFamily:'monospace', resize:'vertical', lineHeight:1.5, boxSizing:'border-box' }}/>
+        {parseError && <p style={{ color:'#ef4444', fontSize:12, marginTop:6 }}>❌ {parseError}</p>}
+        {!preview && (
+          <button onClick={parseAndPreview} disabled={!pasted.trim() || parsing}
+            style={{ width:'100%', marginTop:10, padding:'12px', borderRadius:10, background: pasted.trim() ? 'linear-gradient(135deg,#1a3a2a,#2a5a3a)' : 'var(--surface2)', border:'1px solid ' + (pasted.trim() ? '#2d6b2d' : 'var(--border)'), color: pasted.trim() ? 'var(--text)' : 'var(--muted)', cursor: pasted.trim() ? 'pointer' : 'not-allowed', fontSize:14, fontWeight:600 }}>
+            {parsing ? 'Parsing...' : 'Parse Response'}
+          </button>
+        )}
+      </Card>
+
+      {/* Preview + Save */}
+      {preview && (
+        <Card style={{ padding:14, marginBottom:12 }}>
+          <p style={{ fontSize:13, fontWeight:700, marginBottom:12 }}>Preview</p>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
+            <div style={{ background:'var(--surface2)', borderRadius:8, padding:'10px 12px', textAlign:'center' }}>
+              <p style={{ fontSize:22, fontWeight:700, color:'#10b981' }}>{preview.total}</p>
+              <p style={{ fontSize:11, color:'var(--muted)' }}>pairs</p>
+            </div>
+            <div style={{ background:'var(--surface2)', borderRadius:8, padding:'10px 12px', textAlign:'center' }}>
+              <p style={{ fontSize:22, fontWeight:700, color: preview.fallbacks > 0 ? '#f59e0b' : '#10b981' }}>{preview.fallbacks}</p>
+              <p style={{ fontSize:11, color:'var(--muted)' }}>missing target</p>
+            </div>
+          </div>
+          <div style={{ background:'var(--surface2)', borderRadius:8, padding:10, marginBottom:14, borderLeft:'3px solid var(--gold)' }}>
+            <p style={{ fontSize:11, color:'var(--muted)' }}>{preview.pairs[0]?.prompt}</p>
+            <p className="thai" style={{ fontSize:15, marginTop:4 }}>{preview.pairs[0]?.thai}</p>
+            <p style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>{preview.pairs[0]?.phonetic}</p>
+            <p style={{ fontSize:12, marginTop:2 }}>{preview.pairs[0]?.english}</p>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={() => { setPreview(null); setPasted(''); try{sessionStorage.removeItem('tt-ext-paste')}catch(e){} }}
+              style={{ flex:1, padding:'11px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--muted)', cursor:'pointer', fontSize:13 }}>
+              Re-paste
+            </button>
+            <button onClick={saveTrack}
+              style={{ flex:2, padding:'11px', borderRadius:10, background:'linear-gradient(135deg,#1a3a2a,#2a5a3a)', border:'1px solid #2d6b2d', color:'var(--text)', cursor:'pointer', fontSize:14, fontWeight:700 }}>
+              Save Track ✓
+            </button>
+          </div>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+
 // ── Export / Import Data ─────────────────────────────────────────────────────
 function DataManager({ onBack, vocab, tracks, onImport }) {
   const [msg, setMsg] = useState('')
@@ -8243,6 +8603,7 @@ function ThaiTeacher() {
   function navigate(v) {
     if (v === 'generate-daily') { setGenMode('daily'); setCustomTargets(null); setView('generate') }
     else if (v === 'generate-weak') { setGenMode('weak'); setCustomTargets(null); setView('generate') }
+    else if (v === 'external-track') { setView('external-track') }
     else if (v.startsWith('browse-')) { setBrowseFilter(v.replace('browse-', '')); setView('browse') }
     else setView(v)
   }
@@ -8382,6 +8743,7 @@ function ThaiTeacher() {
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
         {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} grokKey={grokKey} onSaveGrokKey={async k => { setGrokKey(k); await stSet('tt-grokkey',k); fetchGrokBalance(k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
+        {view === 'external-track' && <ExternalTrack vocab={vocab} tracks={tracks} onBack={() => navigate('dashboard')} onSaved={async (track) => { const updated = [track, ...tracks]; await saveTracks(updated); navigate('dashboard') }} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'lessons' && <LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} />}
         {view === 'convo' && activeTrack?.convo && (

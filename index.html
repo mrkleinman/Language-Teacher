@@ -5014,17 +5014,16 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
       if (!HAS_SPEECH || cancelRef.current) { setTimeout(() => { if (!cancelRef.current) setLineIdx(i => i + 1) }, 1200); return }
       try { window.speechSynthesis.cancel() } catch(e) {}
       const u = new SpeechSynthesisUtterance(line.thai)
-      const isMale = line.speaker === 'M'
+      // Speaker A = female, Speaker B = male
+      const isMale = line.speaker === 'B'
       u.lang = 'th-TH'
-      u.rate = speedRef.current || 0.8  // use ref for real-time speed
-      u.pitch = 1  // no pitch manipulation — let voices be natural
-      // Google TTS Thai voices: female = th-TH-Standard-A, male = th-TH-Standard-B
-      // Also handles: Google ภาษาไทย (female/male), Nexus voices
-      const googleFemale = voices.find(v => v.lang.startsWith('th') && /Standard-A|หญิง|female/i.test(v.name))
-      const googleMale = voices.find(v => v.lang.startsWith('th') && /Standard-B|Standard-C|ชาย|male/i.test(v.name))
+      u.rate = speedRef.current || 0.8
+      u.pitch = 1
       const anyThai = voices.filter(v => v.lang.startsWith('th'))
-      // If 2+ voices, pick by index: first=female, second=male
-      const byIndex = isMale ? (anyThai[1] || anyThai[0]) : (anyThai[0])
+      const googleFemale = anyThai.find(v => /Standard-A|Wavenet-A|Neural2-A|หญิง|female/i.test(v.name))
+      const googleMale = anyThai.find(v => /Standard-B|Standard-C|Wavenet-B|Neural2-B|Neural2-C|ชาย|male/i.test(v.name))
+      // Fallback: if 2+ voices available, first=female second=male (Chrome ordering)
+      const byIndex = isMale ? (anyThai[1] || anyThai[0]) : anyThai[0]
       const chosen = isMale ? (googleMale || byIndex) : (googleFemale || anyThai[0])
       if (chosen) u.voice = chosen
       u.onend = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 700) }

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v229"/>
-<meta name="app-version" content="v229"/>
+<meta name="app-version" content="v233"/>
+<meta name="app-version" content="v233"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2433,19 +2433,20 @@ function downloadTrack(track) {
 }
 
 // ── Belt Rank ─────────────────────────────────────────────────────────────────
+// Single source of truth — colours match BeltRankView
 const BELT_RANKS = [
-  { rank: 'Mukyu',   minWords: 0,    color: '#6b7280', belt: '#4b5563', label: 'No Belt' },
-  { rank: '10th Kyu', minWords: 100,  color: '#f3f4f6', belt: '#e5e7eb', label: 'White' },
-  { rank: '9th Kyu',  minWords: 200,  color: '#f97316', belt: '#ea580c', label: 'Orange' },
-  { rank: '8th Kyu',  minWords: 350,  color: '#f97316', belt: '#ea580c', label: 'Orange' },
-  { rank: '7th Kyu',  minWords: 500,  color: '#3b82f6', belt: '#2563eb', label: 'Blue' },
-  { rank: '6th Kyu',  minWords: 750,  color: '#3b82f6', belt: '#2563eb', label: 'Blue' },
-  { rank: '5th Kyu',  minWords: 1000, color: '#eab308', belt: '#ca8a04', label: 'Yellow' },
-  { rank: '4th Kyu',  minWords: 1500, color: '#eab308', belt: '#ca8a04', label: 'Yellow' },
-  { rank: '3rd Kyu',  minWords: 2000, color: '#22c55e', belt: '#16a34a', label: 'Green' },
+  { rank: 'Mukyu',    minWords: 0,    color: '#9ca3af', belt: '#6b7280', label: 'No Belt' },
+  { rank: '10th Kyu', minWords: 100,  color: '#f97316', belt: '#ea580c', label: 'Orange' },
+  { rank: '9th Kyu',  minWords: 200,  color: '#fb923c', belt: '#f97316', label: 'Orange + Stripe' },
+  { rank: '8th Kyu',  minWords: 350,  color: '#3b82f6', belt: '#2563eb', label: 'Blue' },
+  { rank: '7th Kyu',  minWords: 500,  color: '#60a5fa', belt: '#3b82f6', label: 'Blue + Stripe' },
+  { rank: '6th Kyu',  minWords: 750,  color: '#eab308', belt: '#ca8a04', label: 'Yellow' },
+  { rank: '5th Kyu',  minWords: 1000, color: '#facc15', belt: '#eab308', label: 'Yellow + Stripe' },
+  { rank: '4th Kyu',  minWords: 1500, color: '#22c55e', belt: '#16a34a', label: 'Green' },
+  { rank: '3rd Kyu',  minWords: 2000, color: '#4ade80', belt: '#22c55e', label: 'Green + Stripe' },
   { rank: '2nd Kyu',  minWords: 3000, color: '#92400e', belt: '#78350f', label: 'Brown' },
-  { rank: '1st Kyu',  minWords: 4000, color: '#92400e', belt: '#78350f', label: 'Brown' },
-  { rank: 'Shodan',   minWords: 5000, color: '#d4a94a', belt: '#0b1120', label: 'Black' },
+  { rank: '1st Kyu',  minWords: 4000, color: '#b45309', belt: '#92400e', label: 'Brown + Stripe' },
+  { rank: 'Shodan',   minWords: 5000, color: '#d4a94a', belt: '#111827', label: 'Black' },
 ]
 
 function calculateBeltRank(known) {
@@ -5197,13 +5198,19 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       const key = provider === 'claude' ? apiKey : orKey
       const newPairs = await repairPairsForTarget(target, vocab, anchors, key, mdl)
       if (newPairs.length > 0) {
-        // newPairs already have _source set by generateTrack — keep them as-is
-        // but mark them so we know they came from a manual fix pass
-        const tagged = newPairs.slice(0, 3).map(p => ({
-          ...p,
-          _source: (p._source || '').replace(/^(gpt|haiku|fallback|hardcoded):/, 'fix:')
-        }))
+        // Keep original _source from generateTrack — each pair may have come from a different tier
+        const tagged = newPairs.slice(0, 3)
         setPairOverrides(prev => ({ ...prev, [target.thai]: tagged }))
+        // Update each brick individually with its own source
+        const wordIdx = targets.findIndex(t => t.thai === target.thai)
+        if (wordIdx >= 0) {
+          setBrickSources(prev => {
+            const next = { ...prev }
+            const base = wordIdx * 3
+            tagged.forEach((p, si) => { next[base + si] = p._source || '' })
+            return next
+          })
+        }
       }
     } catch(e) {
       console.error('[repair]', e)

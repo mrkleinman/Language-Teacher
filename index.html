@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v224"/>
-<meta name="app-version" content="v224"/>
+<meta name="app-version" content="v228"/>
+<meta name="app-version" content="v228"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2705,7 +2705,7 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-      body: JSON.stringify({ model: 'google/gemini-2.0-flash-001', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
+      body: JSON.stringify({ model: 'qwen/qwen3.5-flash-02-23', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
     })
     if (!res.ok) return {}
     const data = await res.json()
@@ -2966,6 +2966,8 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
       temperature: 0.7,
       top_p: 0.8,
       stream: true,
+      // Disable thinking/reasoning mode — Qwen3.5-Flash supports it but we don't want it
+      ...(orModel.includes('qwen') ? { reasoning: { enabled: false } } : {}),
       messages
     })
   })
@@ -2999,7 +3001,7 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
 }
 
 async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
-  const isQwen = orModel.includes('qwen') || orModel.includes('gemini')
+  const isQwen = orModel.includes('qwen')
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
@@ -4188,7 +4190,7 @@ function getScenarioForTarget(target) {
 
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal) {
   // ── Models: primary model generates + rechecks, Haiku escalates ──────────────
-  const GPT_MODEL   = model || 'google/gemini-2.0-flash-001'
+  const GPT_MODEL   = model || 'qwen/qwen3.5-flash-02-23'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
   console.log('[generator] model:', GPT_MODEL)
 
@@ -4242,31 +4244,15 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
 
   // ── Build vocab context (known + learning words only) ─────────────────────
   function getVocabContext() {
-    const today = new Date().toISOString().slice(0, 10)
-    const currentTargetIds = new Set(targets.map(w => w.id))
-
-    // ── Next 60 upcoming words (next 2 tracks) — listed FIRST for priority ──
-    const due = vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today && !currentTargetIds.has(w.id))
-    const newWords = vocab.filter(w => w.status === 'new' && !currentTargetIds.has(w.id))
-    const upcoming = [...due, ...newWords].slice(0, 60)
-    const upcomingIds = new Set(upcoming.map(w => w.id))
-
-    // ── Top 40 most-reviewed (supporting context) — listed after ──
-    const reviewed = vocab
-      .filter(w => w.repCount && w.repCount >= 1 && !currentTargetIds.has(w.id) && !upcomingIds.has(w.id))
+    // Top 40 most-reviewed words — model uses these as sentence building blocks
+    const seen = vocab
+      .filter(w => w.repCount && w.repCount >= 1)
       .sort((a, b) => (b.repCount || 0) - (a.repCount || 0))
       .slice(0, 40)
-
-    // Basic grammar always present
     const basics = ['ผม','คุณ','เขา','เรา','มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ','ให้','กัน','อยู่','เป็น','ครับ','คะ','แล้ว','ก็','จะ','และ','หรือ','ใน','มาก','น้อย','ดี','ใหญ่','เล็ก']
-
-    const upcomingWords = upcoming.map(w => (w.t||w.thai) + '(' + (w.e||w.english) + ')')
-    const reviewedWords = reviewed.map(w => (w.t||w.thai) + '(' + (w.e||w.english) + ')')
-
-    return 'WHITELIST — use ONLY these Thai words plus the target word:\n' +
-      'PRIORITY (upcoming words — use these when possible): ' + upcomingWords.join(', ') + '\n' +
-      'ALSO ALLOWED (reviewed): ' + reviewedWords.join(', ') + '\n' +
-      'Basic grammar always allowed: ' + basics.join(' ')
+    const seenWords = seen.map(w => (w.t||w.thai) + '(' + (w.e||w.english) + ')')
+    return 'WHITELIST — build sentences using ONLY these words plus the target word:\n' +
+      seenWords.join(', ') + '\nBasic grammar always allowed: ' + basics.join(' ')
   }
 
   // ── Build prompt for a target word ────────────────────────────────────────
@@ -4381,7 +4367,18 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         // Find Thai substrings not covered by known words or always-ok words
         let remaining = p.thai
         // Strip known words WHOLE-WORD only (sort longest first to avoid substring false-positives)
-        const stripWords = [...knownThaiWords, ...alwaysOk, target.thai].filter(Boolean).sort((a,b) => b.length - a.length)
+        // Also add sub-components of compound target words (e.g. สีทอง → สี, ทอง)
+        const targetSubs = []
+        if (target.thai && target.thai.length >= 4) {
+          // Add all 2-4 char substrings of target word so compound components don't trip OOV
+          for (let si = 0; si < target.thai.length - 1; si++) {
+            for (let len = 2; len <= Math.min(4, target.thai.length - si); len++) {
+              const sub = target.thai.slice(si, si + len)
+              if (/^[ก-๙]+$/.test(sub)) targetSubs.push(sub)
+            }
+          }
+        }
+        const stripWords = [...knownThaiWords, ...alwaysOk, target.thai, ...targetSubs].filter(Boolean).sort((a,b) => b.length - a.length)
         for (const w of stripWords) {
           let pos = 0; let out = ''
           while (pos < remaining.length) {
@@ -4430,12 +4427,14 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       }
       // ── Grammar validators (v179-v182) ──────────────────────────────────
       let gramFail = null
-      // 1. Spaced Thai detector (catches Gemini/Grok spacing — avg token len ≤ 4.5 fires)
+      // 1. Spaced Thai detector — catches Gemini/Qwen spacing and compound word spaces
       {
         const thaiToks = p.thai.split(' ').filter(t => /[ก-๙]/.test(t))
         const shortRatio = thaiToks.length > 0 ? thaiToks.filter(t => t.length <= 3).length / thaiToks.length : 0
         const avgLen = thaiToks.length > 0 ? thaiToks.reduce((s,t) => s+t.length, 0) / thaiToks.length : 0
-        if (thaiToks.length >= 4 && (shortRatio > 0.5 || avgLen <= 4.5)) gramFail = 'spaced Thai: ' + p.thai
+        const hasInlineSpace = /[ก-๙] [ก-๙]/.test(p.thai)
+        if (hasInlineSpace || (thaiToks.length >= 4 && (shortRatio > 0.5 || avgLen <= 4.5)))
+          gramFail = 'spaced Thai: ' + p.thai
       }
       // 2. เดี๋ยว between จะ+verb
       if (!gramFail && /จะเดี๋ยว[ก-๙]/.test(p.thai)) gramFail = 'เดี๋ยว between จะ+verb: ' + p.thai
@@ -4899,7 +4898,7 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: model || 'google/gemini-2.0-flash-001', max_tokens: 4000, temperature: 0.4, stream: false,
+    body: JSON.stringify({ model: model || 'qwen/qwen3.5-flash-02-23', max_tokens: 4000, temperature: 0.4, stream: false,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   })
   if (!res.ok) throw new Error(`Convo error ${res.status}`)
@@ -5042,7 +5041,7 @@ function TrackQuality({ track }) {
 }
 
 
-function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets, orBalance, onBalanceRefresh }) {
+function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets, orBalance, onBalanceRefresh, tracks }) {
   const [error, setError] = useState('')
   const [brickSources, setBrickSources] = useState({})
   const [currentTier, setCurrentTier] = useState('')
@@ -5068,8 +5067,13 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         .slice(0, 25)
       return { targets: customTargets, anchors: anch }
     }
-    return pickWords(vocab, mode)
-  }, [vocab, mode, customTargets])
+    // Exclude words already used in today's tracks (deduplication)
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    const todayTracks = (tracks || []).filter(t => t.date === today)
+    const usedWordIds = new Set(todayTracks.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
+    const filteredVocab = usedWordIds.size > 0 ? vocab.filter(w => !usedWordIds.has(w.id)) : vocab
+    return pickWords(filteredVocab, mode)
+  }, [vocab, mode, customTargets, tracks])
 
   const isWeak = mode === 'weak'
   const color = isWeak ? '#ef4444' : '#10b981'
@@ -5085,6 +5089,14 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       try {
         let pairs
         if (apiKey) {
+          // Block if 3 tracks already generated today
+          const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+          const todayCount = (tracks || []).filter(t => t.date === today).length
+          if (todayCount >= 3 && !customTargets) {
+            setPhase('error')
+            setError('You already have 3 tracks for today. Come back tomorrow! 🎉')
+            return
+          }
           setPhase('streaming')
           // Quick API sanity check on first run
           console.log('[Generator] Using apiKey:', apiKey ? apiKey.slice(0,12)+'...' : 'NONE', 'model via provider:', provider)
@@ -5143,7 +5155,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 setCurrentTier(tierName)
               }
             },
-            vocab, provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'google/gemini-2.0-flash-001', stopSignal.current)
+            vocab, provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3.5-flash-02-23', stopSignal.current)
 
           // If paused mid-generation, use whatever pairs we have so far
           if (stopSignal.current.paused) {
@@ -5226,7 +5238,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : phase === 'paused' ? `⏸ Paused — ${pairsDone} of ${pairsTotal} pairs` : apiKey ? `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Gemini Flash 2.0'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : phase === 'paused' ? `⏸ Paused — ${pairsDone} of ${pairsTotal} pairs` : apiKey ? `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen3.5 Flash'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
@@ -5262,7 +5274,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Gemini Flash 2.0'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen3.5 Flash'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
           {phase === 'paused' && <span style={{ color: '#f59e0b' }}>Generation paused — {Math.ceil(pairsDone/3)} of {Math.ceil(pairsTotal/3)} words done</span>}
         </span>
@@ -5319,7 +5331,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={async () => {
             setConvoLoading(true)
             try {
-              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'google/gemini-2.0-flash-001'
+              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3.5-flash-02-23'
               const convoKey = provider === 'claude' ? apiKey : orKey
               const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
               const trackWithConvo = { ...generatedTrack, convo: convoResult }
@@ -5900,7 +5912,7 @@ function Adder({ onBack, onAdded, orKey }) {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-        body: JSON.stringify({ model: 'google/gemini-2.0-flash-001', max_tokens: 200, temperature: 0,
+        body: JSON.stringify({ model: 'qwen/qwen3.5-flash-02-23', max_tokens: 200, temperature: 0,
           messages: [{ role: 'user', content: `For the Thai word/phrase "${thai.trim()}", give me:
 1. English translation (short, common meaning)
 2. Tone-marked romanization (mid=none, low=à, falling=â, high=á, rising=ǎ, hyphens between syllables)
@@ -6321,7 +6333,7 @@ function DeepSeekTestBtn({ dsKey }) {
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
-  { id: 'qwen3_14b', label: '⚡ Gemini Flash 2.0', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
+  { id: 'qwen3_14b', label: '⚡ Qwen3.5 Flash', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
   { id: 'haiku',     label: '🔶 Haiku 4.5',  sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
 ]
 
@@ -6359,7 +6371,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-          body: JSON.stringify({ model: 'google/gemini-2.0-flash-001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: 'qwen/qwen3.5-flash-02-23', max_tokens: 10, reasoning: { enabled: false }, messages: [{ role: 'user', content: 'hi' }] })
         })
       }
       if (res.ok) setTestResult('✅ Key works!')
@@ -7074,7 +7086,7 @@ function ThaiTeacher() {
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
             onGenerateConvo={async (track) => {
-              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'google/gemini-2.0-flash-001'
+              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3.5-flash-02-23'
               const convoKey = provider === 'claude' ? apiKey : orKey
               if (!convoKey) {
                 alert('No OpenRouter key found. Go to Settings and save your key first.')
@@ -7098,6 +7110,7 @@ function ThaiTeacher() {
           provider={provider}
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
           orBalance={orBalance} onBalanceRefresh={(newBal, prevBal) => { setOrBalance(newBal); setLastTrackCost(prevBal !== null ? prevBal - newBal : null) }}
+          tracks={tracks}
         /></ErrorBoundary>}
         {view === 'player' && activeTrack && (
           <ErrorBoundary><Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)}

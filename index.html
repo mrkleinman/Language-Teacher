@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v203"/>
-<meta name="app-version" content="v203"/>
+<meta name="app-version" content="v221"/>
+<meta name="app-version" content="v221"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2387,14 +2387,18 @@ function downloadTrack(track) {
   lines.push('TRACK PAIRS (' + pairs.length + ')')
   lines.push('-'.repeat(30))
   function srcLabel(src) {
-    if (!src) return 'ai:gen'
+    if (!src) return 'ai:check-1'
     if (src.startsWith('fallback:') || src.startsWith('hardcoded:')) return 'fallback:template'
     if (src.startsWith('repair:')) return 'fallback:slot-repair'
-    if (src.startsWith('validator-repair:')) return 'ai:validator-repair'
-    if (src.startsWith('gpt-recheck2:') || src.startsWith('recheck2:')) return 'ai:recheck-2'
-    if (src.startsWith('gpt-recheck:') || src.startsWith('recheck:')) return 'ai:recheck-1'
-    if (src.startsWith('haiku:')) return 'ai:haiku-fallback'
-    return 'ai:gen'
+    if (src.startsWith('gpt-recheck7:')) return 'ai:check-8'
+    if (src.startsWith('gpt-recheck6:')) return 'ai:check-7'
+    if (src.startsWith('gpt-recheck5:')) return 'ai:check-6'
+    if (src.startsWith('gpt-recheck4:')) return 'ai:check-5'
+    if (src.startsWith('gpt-recheck3:')) return 'ai:check-4'
+    if (src.startsWith('gpt-recheck2:')) return 'ai:check-3'
+    if (src.startsWith('gpt-recheck:')) return 'ai:check-2'
+    if (src.startsWith('haiku:')) return 'ai:haiku'
+    return 'ai:check-1'
   }
   pairs.forEach((p, i) => {
     lines.push(`\n[${String(i+1).padStart(3,'0')}] ${p.prompt || ''}`)
@@ -2701,7 +2705,7 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-      body: JSON.stringify({ model: 'qwen/qwen2.5-72b-instruct', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
+      body: JSON.stringify({ model: 'google/gemini-2.0-flash-001', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
     })
     if (!res.ok) return {}
     const data = await res.json()
@@ -2948,18 +2952,6 @@ function parsePartialArray(str) {
 
 
 async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
-  const isQwen = orModel.includes('qwen')
-  const body = {
-    model: orModel,
-    max_tokens: maxTokens || 2000,
-    temperature: isQwen ? 0.7 : 0.35,
-    top_p: isQwen ? 0.8 : 1,
-    stream: false,
-    messages
-  }
-  // OpenRouter Qwen3: disable thinking via provider route
-  // top_k only valid for some providers, remove to avoid 400s
-  // reasoning disabled via provider-specific header instead of body param
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -2968,26 +2960,46 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
       'HTTP-Referer': 'https://magical-druid-656889.netlify.app',
       'X-Title': 'Thai Teacher',
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify({
+      model: orModel,
+      max_tokens: maxTokens || 2000,
+      temperature: 0.7,
+      top_p: 0.8,
+      stream: true,
+      messages
+    })
   })
   if (!res.ok) {
     const e = await res.json().catch(()=>({}))
     console.error('[API] error:', res.status, JSON.stringify(e).slice(0,200))
     throw new Error(e?.error?.message || `API error ${res.status}`)
   }
-  const data = await res.json()
-  let text = (data.choices?.[0]?.message?.content || '')
-    .replace(/<think>[\s\S]*?<\/think>/g, '')
-    .trim()
-    .replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g, '')
-    .trim()
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = '', fullText = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop()
+    for (const line of lines) {
+      if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+        try {
+          const delta = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content
+          if (delta) fullText += delta
+        } catch {}
+      }
+    }
+  }
+  let text = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g, '').trim()
   const j1 = text.indexOf('['), j2 = text.lastIndexOf(']')
   if (j1 >= 0 && j2 > j1) text = text.slice(j1, j2 + 1)
   return text
 }
 
 async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
-  const isQwen = orModel.includes('qwen')
+  const isQwen = orModel.includes('qwen') || orModel.includes('gemini')
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
@@ -4175,7 +4187,7 @@ function getScenarioForTarget(target) {
 
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal) {
   // ── Models: primary model generates + rechecks, Haiku escalates ──────────────
-  const GPT_MODEL   = model || 'qwen/qwen2.5-72b-instruct'
+  const GPT_MODEL   = model || 'google/gemini-2.0-flash-001'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
   console.log('[generator] model:', GPT_MODEL)
 
@@ -4342,10 +4354,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const lenCheck = getSentenceLengthForVocab(vocab) || {}
       const minWords = lenCheck.goalMin || 5
       const maxWords = (lenCheck.hardCeil || 8) + 2  // allow 2 over
-      // If phonetic looks incomplete (≤2 tokens), fall back to Thai char count estimate
-      const thaiSpaceWords = p.thai.split(/\s+/).filter(t => /[ก-๙]/.test(t)).length
-      const phCoverage = phWords / Math.max(1, thaiSpaceWords)
-      const effectiveLen = (phWords <= 2 || phCoverage < 0.6) ? Math.max(phWords, thaiSpaceWords) : phWords
+      const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
       if (effectiveLen < minWords) { failures.push('too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai); continue }
       if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
       // Must not be a duplicate
@@ -4503,11 +4512,14 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         { role: 'user', content: prompt }
       ]
       const text = await callOpenRouterOnce(apiKey, mdl, messages, 2000)
+      console.log('[AI] raw response length:', text.length, 'preview:', text.slice(0,80))
+      if (onProgress) onProgress(-1, -1, { apiError: 'Got: ' + (text.slice(0,60) || '(empty)') }, null, null)
       const parsed = parsePartialArray(text)
-      console.log('[AI] ' + mdl.split('/').pop().slice(0,10) + ' returned ' + parsed.length + ' pairs')
+      console.log('[AI] ' + mdl.split('/').pop().slice(0,15) + ' returned ' + parsed.length + ' pairs')
       return parsed
     } catch(e) {
-      console.error('[AI] error:', e.message)
+      console.error('[AI] CALL FAILED:', mdl, '|', e.message)
+      if (onProgress) onProgress(-1, -1, { apiError: e.message.slice(0,100) }, null, null)
       return []
     }
   }
@@ -4535,13 +4547,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
   const vocabContext = getVocabContext()
   const failureLog = {}  // tracks why each word used fallback
 
-  // Sort targets by scenario so pairs from the same scenario are adjacent — better track flow
-  const scenarioOrder = ['body','travel','river','nature','competition','city','family','culture','general']
-  targets = [...targets].sort((a,b) => {
-    const sa = scenarioOrder.indexOf(getScenarioForTarget(a))
-    const sb = scenarioOrder.indexOf(getScenarioForTarget(b))
-    return (sa < 0 ? 99 : sa) - (sb < 0 ? 99 : sb)
-  })
+  // targets kept in original display order — sorting caused chip/brick mismatch
 
   // ── Main loop — word by word ───────────────────────────────────────────────
   for (let i = 0; i < targets.length; i++) {
@@ -4573,7 +4579,10 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       let { valid, failures } = validateSmartPairs(generated, target)
       for (const p of valid) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt:'+ target.thai}) }
 
-      if (failures && failures.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((failures||[]).map(f => 'GPT1: ' + f))
+      if (failures && failures.length > 0) {
+        failureLog[target.thai] = (failureLog[target.thai] || []).concat((failures||[]).map(f => 'GPT1: ' + f))
+        onProgress && onProgress(-1, -1, { apiError: 'VALIDATOR: ' + failures[0].slice(0,70) }, null, null)
+      }
       console.log('[GPT] ' + target.thai + ': ' + valid.length + '/3 valid, failures: ' + failures.slice(0,2).join(', '))
 
       // ── Call 2: GPT recheck — only if we still need pairs ────────────────
@@ -4597,23 +4606,73 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         if (f2 && f2.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((f2||[]).map(f => 'GPT2: ' + f))
         console.log('[GPT recheck always] ' + target.thai + ': ' + v2.length + ' valid')
 
-        // ── Call 3: GPT second check ─────────────────────────────────────
+        // ── Call 3: Qwen 3rd check ────────────────────────────────────────
         if (pairs.length < 3) {
-          const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after GPT recheck'
+          const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after 2nd check'
           const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2)
           const recheck2 = await callModel(GPT_MODEL, prompt3)
-          const { valid: v3, failures: f3 } = validateSmartPairs(recheck2, target, false)  // lenient on 3rd attempt
+          const { valid: v3, failures: f3 } = validateSmartPairs(recheck2, target, false)
           for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck2:'+ target.thai}) }
-          console.log('[GPT second] ' + target.thai + ': ' + v3.length + ' more valid')
+          console.log('[Qwen 3rd] ' + target.thai + ': ' + v3.length + ' more valid')
 
-          // ── Call 4: Haiku final escalation ───────────────────────────────
+          // ── Call 4: 4th check (dark blue) ────────────────────────────────
           if (pairs.length < 3) {
-            const failReason3 = f3.slice(0, 3).join('; ') || 'still failing after GPT second check'
+            const failReason3 = f3.slice(0, 3).join('; ') || 'still failing after 3rd check'
             const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3)
-            const recheck3 = await callModel(HAIKU_MODEL, prompt4)
-            const { valid: v4 } = validateSmartPairs(recheck3, target, false)  // lenient — accept Haiku output
-            for (const p of v4) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
-            console.log('[Haiku] ' + target.thai + ': ' + v4.length + ' more valid')
+            const recheck3 = await callModel(GPT_MODEL, prompt4)
+            const { valid: v4, failures: f4 } = validateSmartPairs(recheck3, target, false)
+            for (const p of v4) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck3:'+ target.thai}) }
+            console.log('[4th] ' + target.thai + ': ' + v4.length + ' more valid')
+
+            // ── Call 5: 5th check (bright yellow) ────────────────────────────
+            if (pairs.length < 3) {
+              const failReason4 = f4.slice(0, 3).join('; ') || 'still failing after 4th check'
+              const prompt5 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason4)
+              const recheck4 = await callModel(GPT_MODEL, prompt5)
+              const { valid: v5, failures: f5 } = validateSmartPairs(recheck4, target, false)
+              for (const p of v5) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck4:'+ target.thai}) }
+              console.log('[5th] ' + target.thai + ': ' + v5.length + ' more valid')
+
+              // ── Call 6: 6th check (dark yellow) ──────────────────────────────
+              if (pairs.length < 3) {
+                const failReason5 = f5.slice(0, 3).join('; ') || 'still failing after 5th check'
+                const prompt6 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason5)
+                const recheck5 = await callModel(GPT_MODEL, prompt6)
+                const { valid: v6, failures: f6 } = validateSmartPairs(recheck5, target, false)
+                for (const p of v6) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck5:'+ target.thai}) }
+                console.log('[6th] ' + target.thai + ': ' + v6.length + ' more valid')
+
+                // ── Call 7: 7th check (light green) ─────────────────────────────
+                if (pairs.length < 3) {
+                  const failReason6 = f6.slice(0, 3).join('; ') || 'still failing after 6th check'
+                  const prompt7 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason6)
+                  const recheck6 = await callModel(GPT_MODEL, prompt7)
+                  const { valid: v7, failures: f7 } = validateSmartPairs(recheck6, target, false)
+                  for (const p of v7) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck6:'+ target.thai}) }
+                  console.log('[7th] ' + target.thai + ': ' + v7.length + ' more valid')
+
+                  // ── Call 8: 8th check (dark green) ───────────────────────────
+                  if (pairs.length < 3) {
+                    const failReason7 = f7.slice(0, 3).join('; ') || 'still failing after 7th check'
+                    const prompt8 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason7)
+                    const recheck7 = await callModel(GPT_MODEL, prompt8)
+                    const { valid: v8, failures: f8 } = validateSmartPairs(recheck7, target, false)
+                    for (const p of v8) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck7:'+ target.thai}) }
+                    console.log('[8th] ' + target.thai + ': ' + v8.length + ' more valid')
+
+                    // ── Call 9: Haiku final escalation ───────────────────────────
+                    if (pairs.length < 3) {
+                      const failReason8 = f8.slice(0, 3).join('; ') || 'still failing after 8th check'
+                      const prompt9 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason8)
+                      const recheck8 = await callModel(HAIKU_MODEL, prompt9)
+                      const { valid: v9 } = validateSmartPairs(recheck8, target, false)
+                      for (const p of v9) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
+                      console.log('[Haiku] ' + target.thai + ': ' + v9.length + ' more valid')
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -4647,7 +4706,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     try {
       // Pass individual sources for each of the 3 pairs so bricks get correct colours
       const pairSources = pairs.slice(0, 3).map(p => p._source || '')
-      onProgress && onProgress(allPairs.length, targets.length * 3, { allPairs }, pairSources, i)
+      onProgress && onProgress(allPairs.length, targets.length * 3, { allPairs, targetThai: target.thai }, pairSources, i)
     } catch(e) {}
   }
 
@@ -4819,7 +4878,7 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: model || 'qwen/qwen2.5-72b-instruct', max_tokens: 4000, temperature: 0.4, stream: false,
+    body: JSON.stringify({ model: model || 'google/gemini-2.0-flash-001', max_tokens: 4000, temperature: 0.4, stream: false,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   })
   if (!res.ok) throw new Error(`Convo error ${res.status}`)
@@ -5006,6 +5065,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         let pairs
         if (apiKey) {
           setPhase('streaming')
+          // Quick API sanity check on first run
+          console.log('[Generator] Using apiKey:', apiKey ? apiKey.slice(0,12)+'...' : 'NONE', 'model via provider:', provider)
           // Seed phoneticsRef from vocab words that already have phonetics stored
           const vocabPhonetics = {}
           for (const t of targets) { if (t.phonetic) { vocabPhonetics[t.id] = t.phonetic; vocabPhonetics[t.thai] = t.phonetic } }
@@ -5029,30 +5090,39 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
           pairs = await generateTrack(targets, anchors, apiKey,
             (done, total, meta, sources, wordIdx) => {
-              setPairsDone(done)
+              if (done >= 0) setPairsDone(done)
               setPairsTotal(targets.length * 3)
-              if (sources && wordIdx !== undefined) setBrickSources(prev => {
+              // Use targetThai to find the correct chip index in DISPLAY order (not sorted generation order)
+              const displayIdx = meta && meta.targetThai ? targets.findIndex(t => t.thai === meta.targetThai) : wordIdx
+              const chipIdx = displayIdx >= 0 ? displayIdx : wordIdx
+              if (sources && chipIdx !== undefined && chipIdx >= 0) setBrickSources(prev => {
                 const next = {...prev}
-                const base = wordIdx * 3
+                const base = chipIdx * 3
                 const srcArr = Array.isArray(sources) ? sources : [sources, sources, sources]
                 for (let si = 0; si < 3; si++) next[base + si] = srcArr[si] || ''
                 return next
               })
               // Save partial pairs so we can use them if paused
               partialPairsRef.current = meta && meta.allPairs ? meta.allPairs : partialPairsRef.current
+              if (meta && meta.apiError) setCurrentTier('❌ API: ' + meta.apiError)
               const lastSrc = Array.isArray(sources) ? (sources[sources.length-1] || '') : (sources || '')
               if (lastSrc) {
-                const tierName = lastSrc.startsWith('gpt-recheck2:') || lastSrc.startsWith('recheck2:') ? '🟢 Qwen second check'
-                  : lastSrc.startsWith('gpt-recheck:') || lastSrc.startsWith('recheck:') ? '🟩 Qwen recheck'
-                  : lastSrc.startsWith('gpt:') ? '⬜ Qwen first pass'
-                  : lastSrc.startsWith('haiku:') ? '🩷 Haiku fallback'
-                  : lastSrc.startsWith('hardcoded:') ? '⬛ Hardcoded (all AI calls failed)'
-                  : lastSrc.startsWith('fallback:') ? '⬛ Generic fallback (all AI calls failed)'
+                const tierName = lastSrc.startsWith('gpt-recheck7:') ? '🟢 8th check'
+                  : lastSrc.startsWith('gpt-recheck6:') ? '🟩 7th check'
+                  : lastSrc.startsWith('gpt-recheck5:') ? '🟡 6th check'
+                  : lastSrc.startsWith('gpt-recheck4:') ? '🟨 5th check'
+                  : lastSrc.startsWith('gpt-recheck3:') ? '🔵 4th check'
+                  : lastSrc.startsWith('gpt-recheck2:') ? '🔵 3rd check'
+                  : lastSrc.startsWith('gpt-recheck:') ? '🟠 2nd check'
+                  : lastSrc.startsWith('gpt:') ? '🟧 1st check'
+                  : lastSrc.startsWith('haiku:') ? '🩷 Haiku check'
+                  : lastSrc.startsWith('hardcoded:') ? '⬛ Hardcoded fallback'
+                  : lastSrc.startsWith('fallback:') ? '⬛ Template fallback'
                   : '🟡 Unknown'
                 setCurrentTier(tierName)
               }
             },
-            vocab, provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen2.5-72b-instruct', stopSignal.current)
+            vocab, provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'google/gemini-2.0-flash-001', stopSignal.current)
 
           // If paused mid-generation, use whatever pairs we have so far
           if (stopSignal.current.paused) {
@@ -5116,10 +5186,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
   const srcToColor = (src, fallback) => {
     if (!src) return fallback || 'var(--surface2)'
-    if (src.startsWith('gpt:')) return '#ffffff'
-    if (src.startsWith('gpt-recheck2:') || src.startsWith('recheck2:')) return '#065f46'
-    if (src.startsWith('gpt-recheck:') || src.startsWith('recheck:')) return '#10b981'
-    if (src.startsWith('haiku:')) return '#FA8072'
+    if (src.startsWith('gpt:')) return '#fb923c'           // 1st — light orange
+    if (src.startsWith('gpt-recheck:')) return '#92400e'   // 2nd — dark orange
+    if (src.startsWith('gpt-recheck2:')) return '#60a5fa'  // 3rd — light blue
+    if (src.startsWith('gpt-recheck3:')) return '#1e3a8a'  // 4th — dark blue
+    if (src.startsWith('gpt-recheck4:')) return '#fbbf24'  // 5th — bright yellow
+    if (src.startsWith('gpt-recheck5:')) return '#78350f'  // 6th — dark yellow
+    if (src.startsWith('gpt-recheck6:')) return '#86efac'  // 7th — light green
+    if (src.startsWith('gpt-recheck7:')) return '#14532d'  // 8th — very dark green
+    if (src.startsWith('haiku:')) return '#FA8072'          // Haiku — salmon
     if (src.startsWith('hardcoded:') || src.startsWith('fallback:')) return '#111111'
     return fallback || 'var(--surface2)'
   }
@@ -5130,10 +5205,10 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : phase === 'paused' ? `⏸ Paused — ${pairsDone} of ${pairsTotal} pairs` : apiKey ? `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen2.5-72B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : phase === 'paused' ? `⏸ Paused — ${pairsDone} of ${pairsTotal} pairs` : apiKey ? `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Gemini Flash 2.0'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
-          {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs${currentTier ? ' — ' + currentTier : ''}`}
+          {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
         </p>
       </div>
 
@@ -5156,7 +5231,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
         {Array.from({length: 90}, (_, i) => {
           const src = brickSources[i] || ''
-          const bg = i >= pairsDone ? 'var(--surface2)' : srcToColor(src, color)
+          const bg = (!src || i >= pairsDone) ? 'var(--surface2)' : srcToColor(src, '#888888')
           return <div key={i} style={{ height:8, borderRadius:3, background:bg, transition:'background 0.2s', opacity:i < pairsDone ? 1 : 0.4 }} />
         })}
       </div>
@@ -5166,11 +5241,16 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen2.5-72B'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Gemini Flash 2.0'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
           {phase === 'paused' && <span style={{ color: '#f59e0b' }}>Generation paused — {Math.ceil(pairsDone/3)} of {Math.ceil(pairsTotal/3)} words done</span>}
         </span>
       </div>
+      {currentTier && (
+        <p style={{ fontSize:11, color: currentTier.startsWith('❌') ? '#ef4444' : 'var(--muted)', textAlign:'center', marginTop:-8 }}>
+          {currentTier}
+        </p>
+      )}
 
 
       {/* Pause / Resume button — shown during streaming */}
@@ -5218,7 +5298,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={async () => {
             setConvoLoading(true)
             try {
-              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen2.5-72b-instruct'
+              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'google/gemini-2.0-flash-001'
               const convoKey = provider === 'claude' ? apiKey : orKey
               const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
               const trackWithConvo = { ...generatedTrack, convo: convoResult }
@@ -5799,7 +5879,7 @@ function Adder({ onBack, onAdded, orKey }) {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-        body: JSON.stringify({ model: 'qwen/qwen2.5-72b-instruct', max_tokens: 200, temperature: 0,
+        body: JSON.stringify({ model: 'google/gemini-2.0-flash-001', max_tokens: 200, temperature: 0,
           messages: [{ role: 'user', content: `For the Thai word/phrase "${thai.trim()}", give me:
 1. English translation (short, common meaning)
 2. Tone-marked romanization (mid=none, low=à, falling=â, high=á, rising=ǎ, hyphens between syllables)
@@ -6220,7 +6300,7 @@ function DeepSeekTestBtn({ dsKey }) {
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
-  { id: 'qwen3_14b', label: '⚡ Qwen2.5-72B', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
+  { id: 'qwen3_14b', label: '⚡ Gemini Flash 2.0', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
   { id: 'haiku',     label: '🔶 Haiku 4.5',  sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
 ]
 
@@ -6258,7 +6338,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-          body: JSON.stringify({ model: 'qwen/qwen2.5-72b-instruct', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: 'google/gemini-2.0-flash-001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
       }
       if (res.ok) setTestResult('✅ Key works!')
@@ -6973,7 +7053,7 @@ function ThaiTeacher() {
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
             onGenerateConvo={async (track) => {
-              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen2.5-72b-instruct'
+              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'google/gemini-2.0-flash-001'
               const convoKey = provider === 'claude' ? apiKey : orKey
               if (!convoKey) {
                 alert('No OpenRouter key found. Go to Settings and save your key first.')

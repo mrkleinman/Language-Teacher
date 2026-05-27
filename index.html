@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v221"/>
-<meta name="app-version" content="v221"/>
+<meta name="app-version" content="v224"/>
+<meta name="app-version" content="v224"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -3066,6 +3066,7 @@ function classifyWord(target) {
   // Quantifiers — must attach to noun, never standalone
   if (['every','all of','each','any','some','both','several','whole'].some(w => eng === w || eng.startsWith(w+' ')) ||
       ['ทุก','บาง','แต่ละ','ทั้งหมด','ทั้ง'].includes(thai)) return 'quantifier'
+  if (thai === 'ชิม' || eng === 'taste' || eng === 'to taste') return 'verb_transitive'
   if (thai === 'หลาย' || eng === 'many' || eng === 'several') return 'adjective'
 
   // Quantity phrases — classifier expressions
@@ -3871,9 +3872,9 @@ function makeFallbackPairs(target) {
   ]
   // Transitive verb — needs object
   if (type === 'verb_transitive') return [
-    {prompt:'Ask if you can '+eng+' it',thai:tw+'ได้ไหมคะ',english:'Can you '+eng+' it?',phonetic:ph+' dâi mǎi khá',words:[{p:ph,e:eng},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Say you already '+eng+' it',thai:tw+'แล้วครับ',english:'I already '+eng+' it.',phonetic:ph+' lâeo khrâp',words:[{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
-    {prompt:'Say you have not '+eng+' yet',thai:'ยังไม่ได้'+tw+'ครับ',english:'I have not '+eng+' yet.',phonetic:'yang mâi dâi '+ph+' khrâp',words:[{p:'yang',e:'still'},{p:'mâi-dâi',e:"haven't"},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you will '+eng+' it',thai:'ผมจะ'+tw+'ครับ',english:'I will '+eng+' it.',phonetic:'phǒm jà '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'jà',e:'will'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if you can '+eng+' this',thai:'ผม'+tw+'นี้ได้ไหมครับ',english:'Can I '+eng+' this?',phonetic:'phǒm '+ph+' níi dâi mǎi khrâp',words:[{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'níi',e:'this'},{p:'dâi-mǎi',e:'can?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you have not '+eng+' yet',thai:'ผมยังไม่ได้'+tw+'ครับ',english:'I have not '+eng+' yet.',phonetic:'phǒm yang mâi dâi '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'yang-mâi-dâi',e:'have not yet'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
   // Place
@@ -4241,15 +4242,31 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
 
   // ── Build vocab context (known + learning words only) ─────────────────────
   function getVocabContext() {
-    // Words sorted by repCount - most reviewed = most familiar
-    const seen = vocab
-      .filter(w => w.repCount && w.repCount >= 1)
+    const today = new Date().toISOString().slice(0, 10)
+    const currentTargetIds = new Set(targets.map(w => w.id))
+
+    // ── Next 60 upcoming words (next 2 tracks) — listed FIRST for priority ──
+    const due = vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today && !currentTargetIds.has(w.id))
+    const newWords = vocab.filter(w => w.status === 'new' && !currentTargetIds.has(w.id))
+    const upcoming = [...due, ...newWords].slice(0, 60)
+    const upcomingIds = new Set(upcoming.map(w => w.id))
+
+    // ── Top 40 most-reviewed (supporting context) — listed after ──
+    const reviewed = vocab
+      .filter(w => w.repCount && w.repCount >= 1 && !currentTargetIds.has(w.id) && !upcomingIds.has(w.id))
       .sort((a, b) => (b.repCount || 0) - (a.repCount || 0))
-      .slice(0, 80)
-    // Always include basic grammar words even if not in vocab
+      .slice(0, 40)
+
+    // Basic grammar always present
     const basics = ['ผม','คุณ','เขา','เรา','มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ','ให้','กัน','อยู่','เป็น','ครับ','คะ','แล้ว','ก็','จะ','และ','หรือ','ใน','มาก','น้อย','ดี','ใหญ่','เล็ก']
-    const seenWords = seen.map(w => w.t + '(' + w.e + '×' + w.repCount + ')')
-    return 'WHITELIST — build sentences using ONLY these words plus the target word. Do NOT use any Thai word not in this list:\n' + seenWords.join(', ') + '\nBasic grammar words also allowed: ' + basics.join(' ')
+
+    const upcomingWords = upcoming.map(w => (w.t||w.thai) + '(' + (w.e||w.english) + ')')
+    const reviewedWords = reviewed.map(w => (w.t||w.thai) + '(' + (w.e||w.english) + ')')
+
+    return 'WHITELIST — use ONLY these Thai words plus the target word:\n' +
+      'PRIORITY (upcoming words — use these when possible): ' + upcomingWords.join(', ') + '\n' +
+      'ALSO ALLOWED (reviewed): ' + reviewedWords.join(', ') + '\n' +
+      'Basic grammar always allowed: ' + basics.join(' ')
   }
 
   // ── Build prompt for a target word ────────────────────────────────────────
@@ -4381,7 +4398,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         }
         // Remove non-Thai chars and spaces
         const unknownChars = remaining.replace(/[^฀-๿]/g, '').trim()
-        if (unknownChars.length > 4) {
+        if (unknownChars.length > 6) {
           failures.push('unknown vocab: ' + unknownChars.slice(0,20))
           continue
         }
@@ -4413,11 +4430,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       }
       // ── Grammar validators (v179-v182) ──────────────────────────────────
       let gramFail = null
-      // 1. Grok spaced Thai
+      // 1. Spaced Thai detector (catches Gemini/Grok spacing — avg token len ≤ 4.5 fires)
       {
         const thaiToks = p.thai.split(' ').filter(t => /[ก-๙]/.test(t))
         const shortRatio = thaiToks.length > 0 ? thaiToks.filter(t => t.length <= 3).length / thaiToks.length : 0
-        if (thaiToks.length >= 4 && shortRatio > 0.5) gramFail = 'spaced Thai: model put spaces between Thai words: ' + p.thai
+        const avgLen = thaiToks.length > 0 ? thaiToks.reduce((s,t) => s+t.length, 0) / thaiToks.length : 0
+        if (thaiToks.length >= 4 && (shortRatio > 0.5 || avgLen <= 4.5)) gramFail = 'spaced Thai: ' + p.thai
       }
       // 2. เดี๋ยว between จะ+verb
       if (!gramFail && /จะเดี๋ยว[ก-๙]/.test(p.thai)) gramFail = 'เดี๋ยว between จะ+verb: ' + p.thai
@@ -4549,11 +4567,13 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
 
   // targets kept in original display order — sorting caused chip/brick mismatch
 
-  // ── Main loop — word by word ───────────────────────────────────────────────
-  for (let i = 0; i < targets.length; i++) {
-    // Check if paused before processing next word
+  // ── Main loop — 5 words parallel ────────────────────────────────────────────
+  const CONCURRENCY = 5
+  for (let batch = 0; batch < targets.length; batch += CONCURRENCY) {
     if (stopSignal && stopSignal.paused) break
-    const target = targets[i]
+    await Promise.all(targets.slice(batch, batch + CONCURRENCY).map(async (target, bi) => {
+      const i = batch + bi
+      if (stopSignal && stopSignal.paused) return
     const wordType = classifyWord(target)
     const risk = getRisk(wordType)
     let pairs = []
@@ -4708,6 +4728,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const pairSources = pairs.slice(0, 3).map(p => p._source || '')
       onProgress && onProgress(allPairs.length, targets.length * 3, { allPairs, targetThai: target.thai }, pairSources, i)
     } catch(e) {}
+    })) // end parallel word
   }
 
   // ── Audit ─────────────────────────────────────────────────────────────────

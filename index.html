@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v191"/>
-<meta name="app-version" content="v191"/>
+<meta name="app-version" content="v193"/>
+<meta name="app-version" content="v193"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2320,7 +2320,7 @@ const Icon = ({ name, size = 18, color = 'currentColor' }) => {
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
-function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance }) {
+function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastTrackCost }) {
   const items = [
     { id: 'lessons', icon: 'pencil', label: 'Lessons' },
     { id: 'browse', icon: 'book', label: 'Words' },
@@ -2341,6 +2341,11 @@ function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance }) {
           <span style={{ fontSize: 13, fontWeight: 600, color: balColor(orBalance) }}>
             {orBalance !== null ? '$' + orBalance.toFixed(2) : '…'}
           </span>
+          {lastTrackCost !== null && lastTrackCost > 0 && (
+            <span style={{ fontSize: 10, color: '#f59e0b', marginLeft: 2 }}>
+              (-${lastTrackCost < 0.01 ? lastTrackCost.toFixed(4) : lastTrackCost.toFixed(3)})
+            </span>
+          )}
         </button>
       )}
       <nav style={{ display: 'flex', gap: 4 }}>
@@ -2951,14 +2956,22 @@ function parsePartialArray(str) {
 
 
 async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
-  // Use streaming (same as main calls) to avoid CORS issues with non-streaming
+  const isQwen = orModel.includes('qwen')
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: orModel, max_tokens: maxTokens || 2000, temperature: 0.35, stream: true,
-      
-      messages })
+    body: JSON.stringify({
+      model: orModel,
+      max_tokens: maxTokens || 2000,
+      temperature: isQwen ? 0.7 : 0.35,
+      top_p: isQwen ? 0.8 : 1,
+      top_k: isQwen ? 20 : undefined,
+      // Disable Qwen3 thinking/reasoning — thinking tokens cost money and add latency
+      ...(isQwen ? { reasoning: { enabled: false } } : {}),
+      stream: true,
+      messages
+    })
   })
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `API error ${res.status}`) }
   const reader = res.body.getReader(); const decoder = new TextDecoder()
@@ -2984,9 +2997,14 @@ async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: orModel, max_tokens: 16000, temperature: 0.35, stream: true,
-      
-      messages })
+    body: JSON.stringify({
+      model: orModel, max_tokens: 8000, stream: true,
+      temperature: orModel.includes('qwen') ? 0.7 : 0.35,
+      top_p: orModel.includes('qwen') ? 0.8 : 1,
+      top_k: orModel.includes('qwen') ? 20 : undefined,
+      ...(orModel.includes('qwen') ? { reasoning: { enabled: false } } : {}),
+      messages
+    })
   })
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `API error ${res.status}`) }
   const reader = res.body.getReader(); const decoder = new TextDecoder()
@@ -4634,8 +4652,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         }
       }
 
-      // ── Final fallback — only reached after all 4 AI calls failed ──────────
-      if (pairs.length < 3) console.warn('[generateTrack] ALL 4 AI calls failed for: ' + target.thai + ' | failures: ' + JSON.stringify(failureLog[target.thai]||[]))
+      // ── Final fallback — only reached after all AI calls failed ──────────────
+      if (pairs.length < 3) console.warn('[generateTrack] All AI calls failed for: ' + target.thai + ' | failures: ' + JSON.stringify(failureLog[target.thai]||[]))
       if (pairs.length < 3) {
         // Try hardcoded bank (now last resort, not first choice)
         const hbank = HARDCODED_FALLBACKS[target.thai]
@@ -4661,9 +4679,9 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
     for (const p of pairs) existingThais.add(p.thai)
     allPairs.push(...pairs.slice(0, 3))
     try {
-      const src = pairs.length > 0 ? (pairs[pairs.length-1]._source || '') : ''
-      // Pass source and base index for this word's bricks
-      onProgress && onProgress(allPairs.length, targets.length * 3, null, src, i)
+      // Pass individual sources for each of the 3 pairs so bricks get correct colours
+      const pairSources = pairs.slice(0, 3).map(p => p._source || '')
+      onProgress && onProgress(allPairs.length, targets.length * 3, null, pairSources, i)
     } catch(e) {}
   }
 
@@ -4978,7 +4996,7 @@ function TrackQuality({ track }) {
 }
 
 
-function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets }) {
+function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets, orBalance, onBalanceRefresh }) {
   const [error, setError] = useState('')
   const [brickSources, setBrickSources] = useState({})
   const [currentTier, setCurrentTier] = useState('')
@@ -5013,6 +5031,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
   useEffect(() => {
     async function build() {
+      // Snapshot balance before generation so we can show cost after
+      const balanceBefore = orBalance
       try {
         let pairs
         if (apiKey) {
@@ -5041,22 +5061,24 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           }
 
           pairs = await generateTrack(targets, anchors, apiKey,
-            (done, total, meta, source, wordIdx) => {
+            (done, total, meta, sources, wordIdx) => {
               setPairsDone(done)
               setPairsTotal(targets.length * 3)
-              if (source && wordIdx !== undefined) setBrickSources(prev => {
+              if (sources && wordIdx !== undefined) setBrickSources(prev => {
                 const next = {...prev}
                 const base = wordIdx * 3
-                for (let si = base; si < base + 3; si++) next[si] = source
+                const srcArr = Array.isArray(sources) ? sources : [sources, sources, sources]
+                for (let si = 0; si < 3; si++) next[base + si] = srcArr[si] || ''
                 return next
               })
-              if (source) {
-                const tierName = source.startsWith('gpt-recheck2:') || source.startsWith('recheck2:') ? '🟢 Qwen second check'
-                  : source.startsWith('gpt-recheck:') || source.startsWith('recheck:') ? '🟩 Qwen recheck'
-                  : source.startsWith('gpt:') ? '⬜ Qwen first pass'
-                  : source.startsWith('haiku:') ? '🩷 Haiku fallback'
-                  : source.startsWith('hardcoded:') ? '⬛ Hardcoded (all 4 AI calls failed)'
-                  : source.startsWith('fallback:') ? '⬛ Generic fallback (all 4 AI calls failed)'
+              const lastSrc = Array.isArray(sources) ? (sources[sources.length-1] || '') : (sources || '')
+              if (lastSrc) {
+                const tierName = lastSrc.startsWith('gpt-recheck2:') || lastSrc.startsWith('recheck2:') ? '🟢 Qwen second check'
+                  : lastSrc.startsWith('gpt-recheck:') || lastSrc.startsWith('recheck:') ? '🟩 Qwen recheck'
+                  : lastSrc.startsWith('gpt:') ? '⬜ Qwen first pass'
+                  : lastSrc.startsWith('haiku:') ? '🩷 Haiku fallback'
+                  : source.startsWith('hardcoded:') ? '⬛ Hardcoded (all AI calls failed)'
+                  : source.startsWith('fallback:') ? '⬛ Generic fallback (all AI calls failed)'
                   : '🟡 Unknown'
                 setCurrentTier(tierName)
               }
@@ -5072,19 +5094,28 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         const track = {
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
+          costBefore: balanceBefore,
         }
         // Item 42: Verify track can be serialized before showing ready
         try { JSON.stringify(track) } catch(e) { throw new Error('Track data invalid: ' + e.message) }
         setGeneratedTrack(track)
         setPhase('done')
+        // Refresh balance so user can see what the track cost
+        if (orKey) {
+          try {
+            const r = await fetch('https://openrouter.ai/api/v1/credits', { headers: { 'Authorization': 'Bearer ' + orKey } })
+            const d = await r.json()
+            if (d.data) {
+              const newBal = (d.data.total_credits||0) - (d.data.total_usage||0)
+              onBalanceRefresh && onBalanceRefresh(newBal, balanceBefore)
+            }
+          } catch(e) {}
+        }
       } catch(e) {
         setPhase('error')
         const msg = e.message || 'Unknown error'
         console.error('Generation error:', msg)
-          const isDeepSeekCors = (provider === 'deepseek') && (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS') || msg.includes('fetch'))
-          const hint = isDeepSeekCors
-          ? '🐋 DeepSeek via OpenRouter requires your OpenRouter API key in Settings.'
-          : msg.includes('Failed to fetch') || msg.includes('NetworkError')
+          const hint = msg.includes('Failed to fetch') || msg.includes('NetworkError')
           ? msg + '\n\n⚠️ Check your internet connection and API key.'
           : msg
         setError(hint)
@@ -6777,6 +6808,7 @@ function ThaiTeacher() {
   const [dsKey, setDsKey] = useState('')
   const [orKey, setOrKey] = useState('')
   const [orBalance, setOrBalance] = useState(null)
+  const [lastTrackCost, setLastTrackCost] = useState(null)
 
   async function fetchOrBalance(key) {
     if (!key) return
@@ -6916,7 +6948,7 @@ function ThaiTeacher() {
   return (
     <div className="app">
       <FontStyle />
-      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} />
+      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} lastTrackCost={lastTrackCost} />
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
@@ -6944,6 +6976,7 @@ function ThaiTeacher() {
           apiKey={orKey}
           provider={provider}
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
+          orBalance={orBalance} onBalanceRefresh={(newBal, prevBal) => { setOrBalance(newBal); setLastTrackCost(prevBal !== null ? prevBal - newBal : null) }}
         /></ErrorBoundary>}
         {view === 'player' && activeTrack && (
           <ErrorBoundary><Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)}

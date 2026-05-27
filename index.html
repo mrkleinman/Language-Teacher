@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v189"/>
-<meta name="app-version" content="v189"/>
+<meta name="app-version" content="v190"/>
+<meta name="app-version" content="v190"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2700,7 +2700,7 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-      body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
+      body: JSON.stringify({ model: 'qwen/qwen3-32b', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
     })
     if (!res.ok) return {}
     const data = await res.json()
@@ -4200,7 +4200,7 @@ function getScenarioForTarget(target) {
 }
 
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model) {
-  // ── Models: GPT-4o mini generates + rechecks, Haiku escalates ──────────────
+  // ── Models: primary model generates + rechecks, Haiku escalates ──────────────
   const GPT_MODEL   = model || 'qwen/qwen3-32b'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
   console.log('[generator] model:', GPT_MODEL)
@@ -4960,7 +4960,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             const doPhonetics = async () => {
               let map = {}
               // Use selected provider's key for phonetics
-              if (provider === 'gpt4omini' || provider === 'haiku' || (orKey && provider !== 'deepseek')) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey || apiKey)
+              if (orKey) map = await fetchTargetPhoneticsQwen(needsPhonetics, orKey || apiKey)
               else if (provider === 'deepseek') map = await fetchTargetPhoneticsDeepSeek(needsPhonetics, apiKey)
               else map = await fetchTargetPhonetics(needsPhonetics, apiKey)
               if (Object.keys(map).length) {
@@ -4993,7 +4993,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 setCurrentTier(tierName)
               }
             },
-            vocab, provider === "deepseek" ? "deepseek/deepseek-v2" : provider === "haiku" ? "anthropic/claude-haiku-4-5" : "openai/gpt-4o-mini")
+            vocab, provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b')
           }
         // Use pre-call phonetics (phoneticsRef) — reliable, per-word accurate
         // Previous regex pair-matching was buggy and overwrote correct data
@@ -5043,7 +5043,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'GPT-4o mini'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs${currentTier ? ' — ' + currentTier : ''}`}
@@ -5085,7 +5085,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'deepseek' ? 'DeepSeek' : provider === 'haiku' ? 'Claude Haiku' : 'GPT-4o mini'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
         </span>
       </div>
@@ -5101,7 +5101,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={async () => {
             setConvoLoading(true)
             try {
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
+              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
               const convoKey = provider === 'claude' ? apiKey : orKey
               const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
               const trackWithConvo = { ...generatedTrack, convo: convoResult }
@@ -5680,7 +5680,7 @@ function Adder({ onBack, onAdded, orKey }) {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-        body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 200, temperature: 0,
+        body: JSON.stringify({ model: 'qwen/qwen3-32b', max_tokens: 200, temperature: 0,
           messages: [{ role: 'user', content: `For the Thai word/phrase "${thai.trim()}", give me:
 1. English translation (short, common meaning)
 2. Tone-marked romanization (mid=none, low=à, falling=â, high=á, rising=ǎ, hyphens between syllables)
@@ -6107,7 +6107,7 @@ const PROVIDERS = [
 
 function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey }) {
   // Key state per provider
-  const [keys, setKeys] = useState({ claude: apiKey || '', deepseek: dsKey || '', gpt4omini: orKey || '' })
+  const [keys, setKeys] = useState({ claude: apiKey || '', qwen3_14b: orKey || '', haiku: orKey || '' })
   const [saved, setSaved] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
@@ -6139,7 +6139,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-          body: JSON.stringify({ model: 'openai/gpt-4o-mini', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: 'qwen/qwen3-32b', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
       }
       if (res.ok) setTestResult('✅ Key works!')
@@ -6148,7 +6148,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { deepseek: 'openrouter.ai → Keys (used for GPT-4o mini + Claude Haiku)', gpt4omini: 'openrouter.ai → Keys (model: openai/gpt-4o-mini)', haiku: 'openrouter.ai → Keys (model: anthropic/claude-haiku-4-5)' }
+  const keySource = { qwen3_14b: 'openrouter.ai/keys', haiku: 'openrouter.ai/keys' }
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
@@ -6194,9 +6194,9 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
 
         {/* Status */}
         <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: (provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'gpt4omini' || provider === 'haiku') && orKey) ? '#10b981' : '#6b7280', flexShrink: 0 }} />
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: orKey ? '#10b981' : '#6b7280', flexShrink: 0 }} />
           <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-            {(provider === 'claude' && apiKey) || (provider === 'deepseek' && dsKey) || ((provider === 'gpt4omini' || provider === 'haiku') && orKey)
+            {orKey
               ? `${prov.label} ${prov.sub} active — generates tracks, phonetics and translation`
               : `No ${prov.label} key saved — add your key above to enable AI track generation`}
           </p>
@@ -6853,7 +6853,7 @@ function ThaiTeacher() {
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
             onGenerateConvo={async (track) => {
-              const orModel = provider === 'deepseek' ? 'deepseek/deepseek-v2' : provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini'
+              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
               const convoKey = provider === 'claude' ? apiKey : orKey
               if (!convoKey) {
                 alert('No OpenRouter key found. Go to Settings and save your key first.')

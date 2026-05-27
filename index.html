@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v228"/>
-<meta name="app-version" content="v228"/>
+<meta name="app-version" content="v229"/>
+<meta name="app-version" content="v229"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -5024,6 +5024,14 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
   )
 }
 
+// repairPairsForTarget: runs the full 9-check pipeline for a single word
+// by delegating to generateTrack with just that one target
+async function repairPairsForTarget(target, vocab, anchors, key, model) {
+  const pairs = await generateTrack([target], anchors, key, null, vocab, model, { paused: false })
+  return pairs || []
+}
+
+
 function TrackQuality({ track }) {
   const tp = (track.pairs || []).length
   const fb = (track.pairs || []).filter(p => (p.prompt || '').length < 10).length
@@ -5058,6 +5066,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const [convoPct, setConvoPct] = useState(0)
   const [convoSpeed, setConvoSpeed] = useState(() => { try { return parseFloat(localStorage.getItem('tt-speed') || '0.8') } catch { return 0.8 } })
   const [generatedTrack, setGeneratedTrack] = useState(null)
+  const [fixingWords, setFixingWords] = useState({})   // { thai: true } while repairing
+  const [pairOverrides, setPairOverrides] = useState({}) // { thai: [p1,p2,p3] } post-fix
   const phoneticsRef = useRef({})
   const { targets, anchors } = useMemo(() => {
     if (customTargets && customTargets.length) {
@@ -5076,6 +5086,57 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   }, [vocab, mode, customTargets, tracks])
 
   const isWeak = mode === 'weak'
+
+  // Merge overrides into the generated track
+  const activeTrack = useMemo(() => {
+    if (!generatedTrack) return null
+    if (Object.keys(pairOverrides).length === 0) return generatedTrack
+    const newPairs = (generatedTrack.pairs || []).map(p => {
+      const tw = (p._source || '').split(':')[1] || ''
+      if (pairOverrides[tw]) {
+        const idx = (generatedTrack.pairs || []).filter(x => (x._source||'').split(':')[1] === tw).indexOf(p)
+        return pairOverrides[tw][idx] || p
+      }
+      return p
+    })
+    return { ...generatedTrack, pairs: newPairs }
+  }, [generatedTrack, pairOverrides])
+
+  // Which targets ended up with fallback/hardcoded pairs
+  const fallbackTargets = useMemo(() => {
+    if (!activeTrack) return []
+    const fallbackWords = new Set()
+    for (const p of activeTrack.pairs || []) {
+      const src = p._source || ''
+      if (src.startsWith('fallback:') || src.startsWith('hardcoded:')) {
+        fallbackWords.add(src.split(':')[1])
+      }
+    }
+    return targets.filter(t => fallbackWords.has(t.thai))
+  }, [activeTrack, targets])
+
+  // Repair a single target word's pairs
+  async function repairTarget(target) {
+    setFixingWords(prev => ({ ...prev, [target.thai]: true }))
+    try {
+      const mdl = provider === 'haiku' ? 'anthropic/claude-haiku-4-5-20251001' : 'qwen/qwen3.5-flash-02-23'
+      const key = provider === 'claude' ? apiKey : orKey
+      const newPairs = await repairPairsForTarget(target, vocab, anchors, key, mdl)
+      if (newPairs.length > 0) {
+        // newPairs already have _source set by generateTrack — keep them as-is
+        // but mark them so we know they came from a manual fix pass
+        const tagged = newPairs.slice(0, 3).map(p => ({
+          ...p,
+          _source: (p._source || '').replace(/^(gpt|haiku|fallback|hardcoded):/, 'fix:')
+        }))
+        setPairOverrides(prev => ({ ...prev, [target.thai]: tagged }))
+      }
+    } catch(e) {
+      console.error('[repair]', e)
+    }
+    setFixingWords(prev => ({ ...prev, [target.thai]: false }))
+  }
+
   const color = isWeak ? '#ef4444' : '#10b981'
   const pct = Math.min(100, Math.round((pairsDone / 90) * 100))
 
@@ -5151,6 +5212,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                   : lastSrc.startsWith('haiku:') ? '🩷 Haiku check'
                   : lastSrc.startsWith('hardcoded:') ? '⬛ Hardcoded fallback'
                   : lastSrc.startsWith('fallback:') ? '⬛ Template fallback'
+                  : lastSrc.startsWith('fix:') ? '🔧 Manual fix'
                   : '🟡 Unknown'
                 setCurrentTier(tierName)
               }
@@ -5229,6 +5291,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     if (src.startsWith('gpt-recheck7:')) return '#14532d'  // 8th — very dark green
     if (src.startsWith('haiku:')) return '#FA8072'          // Haiku — salmon
     if (src.startsWith('hardcoded:') || src.startsWith('fallback:')) return '#111111'
+    if (src.startsWith('fix:')) return '#10b981'  // repaired — emerald green
     return fallback || 'var(--surface2)'
   }
 
@@ -5321,11 +5384,50 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       )}
 
       {/* Track ready actions */}
-      {phase === 'done' && generatedTrack ? (
+      {phase === 'done' && activeTrack ? (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          <TrackQuality track={generatedTrack} />
+          <TrackQuality track={activeTrack} />
 
-          <Btn onClick={() => { onGenerated(generatedTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
+          {/* Fix broken sentences */}
+          {fallbackTargets.length > 0 && (
+            <div style={{ background:'var(--surface)', border:'1px solid #333', borderRadius:10, padding:'10px 14px' }}>
+              <div style={{ fontSize:12, color:'#ef4444', fontWeight:600, marginBottom:8 }}>
+                ⬛ {fallbackTargets.length} word{fallbackTargets.length > 1 ? 's' : ''} used fallback sentences
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {fallbackTargets.map(t => {
+                  const fixed = pairOverrides[t.thai] && pairOverrides[t.thai].length > 0
+                  const fixing = fixingWords[t.thai]
+                  return (
+                    <div key={t.thai} style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'space-between' }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <span className="thai" style={{ fontSize:14, color: fixed ? '#10b981' : 'var(--text)' }}>{t.thai}</span>
+                        <span style={{ fontSize:11, color:'var(--muted)', marginLeft:6 }}>{t.english}</span>
+                      </div>
+                      <Btn
+                        onClick={() => repairTarget(t)}
+                        disabled={fixing}
+                        style={{ fontSize:11, padding:'4px 10px', minWidth:64, background: fixed ? '#14532d' : 'var(--surface2)', border: '1px solid ' + (fixed ? '#10b981' : '#555'), borderRadius:6, color: fixed ? '#10b981' : 'var(--text)', opacity: fixing ? 0.6 : 1 }}
+                      >
+                        {fixing ? '⏳' : fixed ? '✅ Fixed' : '🔧 Fix'}
+                      </Btn>
+                    </div>
+                  )
+                })}
+              </div>
+              {fallbackTargets.length > 1 && (
+                <Btn
+                  onClick={() => fallbackTargets.forEach(t => { if (!fixingWords[t.thai] && !pairOverrides[t.thai]) repairTarget(t) })}
+                  disabled={fallbackTargets.every(t => fixingWords[t.thai] || pairOverrides[t.thai])}
+                  style={{ width:'100%', justifyContent:'center', marginTop:8, fontSize:12, padding:'6px', background:'var(--surface2)', border:'1px solid #555' }}
+                >
+                  🔧 Fix all
+                </Btn>
+              )}
+            </div>
+          )}
+
+          <Btn onClick={() => { onGenerated(activeTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
             ▶ Start SRS Track
           </Btn>
           <Btn onClick={async () => {
@@ -5334,7 +5436,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3.5-flash-02-23'
               const convoKey = provider === 'claude' ? apiKey : orKey
               const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
-              const trackWithConvo = { ...generatedTrack, convo: convoResult }
+              const trackWithConvo = { ...activeTrack, convo: convoResult }
               setGeneratedTrack(trackWithConvo)
               setConvoLines(convoResult)
               setTimeout(() => setShowConvo(true), 400)
@@ -7157,7 +7259,8 @@ function ThaiTeacher() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
 
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ThaiTeacher))
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
+
 </script>
 </body>
 </html>

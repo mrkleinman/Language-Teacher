@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v200"/>
-<meta name="app-version" content="v200"/>
+<meta name="app-version" content="v202"/>
+<meta name="app-version" content="v202"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2949,42 +2949,53 @@ function parsePartialArray(str) {
 
 async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
   const isQwen = orModel.includes('qwen')
+  const body = {
+    model: orModel,
+    max_tokens: maxTokens || 2000,
+    temperature: isQwen ? 0.7 : 0.35,
+    top_p: isQwen ? 0.8 : 1,
+    stream: false,
+    messages
+  }
+  // OpenRouter Qwen3: disable thinking via provider route
+  // top_k only valid for some providers, remove to avoid 400s
+  // reasoning disabled via provider-specific header instead of body param
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({
-      model: orModel,
-      max_tokens: maxTokens || 2000,
-      temperature: isQwen ? 0.7 : 0.35,
-      top_p: isQwen ? 0.8 : 1,
-      top_k: isQwen ? 20 : undefined,
-      stream: false,
-      // Disable Qwen3 thinking mode — without this, Qwen3 generates thousands of
-      // internal chain-of-thought tokens before answering, making every call 5-10x slower
-      ...(isQwen ? { reasoning: { effort: 'none' } } : {}),
-      messages
-    })
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://magical-druid-656889.netlify.app',
+      'X-Title': 'Thai Teacher',
+    },
+    body: JSON.stringify(body)
   })
-  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `API error ${res.status}`) }
+  if (!res.ok) {
+    const e = await res.json().catch(()=>({}))
+    console.error('[API] error:', res.status, JSON.stringify(e).slice(0,200))
+    throw new Error(e?.error?.message || `API error ${res.status}`)
+  }
   const data = await res.json()
-  let text = (data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
+  let text = (data.choices?.[0]?.message?.content || '')
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .trim()
+    .replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g, '')
+    .trim()
   const j1 = text.indexOf('['), j2 = text.lastIndexOf(']')
-  if (j1 >= 0 && j2 > j1) text = text.slice(j1, j2+1)
+  if (j1 >= 0 && j2 > j1) text = text.slice(j1, j2 + 1)
   return text
 }
 
 async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
+  const isQwen = orModel.includes('qwen')
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
     body: JSON.stringify({
       model: orModel, max_tokens: 8000, stream: true,
-      temperature: orModel.includes('qwen') ? 0.7 : 0.35,
-      top_p: orModel.includes('qwen') ? 0.8 : 1,
-      top_k: orModel.includes('qwen') ? 20 : undefined,
-      ...(orModel.includes('qwen') ? { reasoning: { effort: 'none' } } : {}),
+      temperature: isQwen ? 0.7 : 0.35,
+      top_p: isQwen ? 0.8 : 1,
       messages
     })
   })
@@ -4162,7 +4173,7 @@ function getScenarioForTarget(target) {
   return 'general'
 }
 
-async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model) {
+async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal) {
   // ── Models: primary model generates + rechecks, Haiku escalates ──────────────
   const GPT_MODEL   = model || 'qwen/qwen3-32b'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
@@ -4534,6 +4545,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
 
   // ── Main loop — word by word ───────────────────────────────────────────────
   for (let i = 0; i < targets.length; i++) {
+    // Check if paused before processing next word
+    if (stopSignal && stopSignal.paused) break
     const target = targets[i]
     const wordType = classifyWord(target)
     const risk = getRisk(wordType)
@@ -4634,7 +4647,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
     try {
       // Pass individual sources for each of the 3 pairs so bricks get correct colours
       const pairSources = pairs.slice(0, 3).map(p => p._source || '')
-      onProgress && onProgress(allPairs.length, targets.length * 3, null, pairSources, i)
+      onProgress && onProgress(allPairs.length, targets.length * 3, { allPairs }, pairSources, i)
     } catch(e) {}
   }
 
@@ -4956,7 +4969,10 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const [pairsDone, setPairsDone] = useState(0)
   const [pairsTotal, setPairsTotal] = useState(90)
   const [targetPhonetics, setTargetPhonetics] = useState({})
-  const [phase, setPhase] = useState('starting') // starting | streaming | done | error
+  const [phase, setPhase] = useState('starting') // starting | streaming | paused | done | error
+  const [isPaused, setIsPaused] = useState(false)
+  const stopSignal = useRef({ paused: false })
+  const partialPairsRef = useRef([])
   const [convoLines, setConvoLines] = useState(null)
   const [showConvo, setShowConvo] = useState(false)
   const [convoLoading, setConvoLoading] = useState(false)
@@ -5022,6 +5038,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 for (let si = 0; si < 3; si++) next[base + si] = srcArr[si] || ''
                 return next
               })
+              // Save partial pairs so we can use them if paused
+              partialPairsRef.current = meta && meta.allPairs ? meta.allPairs : partialPairsRef.current
               const lastSrc = Array.isArray(sources) ? (sources[sources.length-1] || '') : (sources || '')
               if (lastSrc) {
                 const tierName = lastSrc.startsWith('gpt-recheck2:') || lastSrc.startsWith('recheck2:') ? '🟢 Qwen second check'
@@ -5034,7 +5052,13 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 setCurrentTier(tierName)
               }
             },
-            vocab, provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b')
+            vocab, provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b', stopSignal.current)
+
+          // If paused mid-generation, use whatever pairs we have so far
+          if (stopSignal.current.paused) {
+            pairs = partialPairsRef.current
+            setPhase('paused')
+          }
           }
         // Use pre-call phonetics (phoneticsRef) — reliable, per-word accurate
         // Previous regex pair-matching was buggy and overwrote correct data
@@ -5072,8 +5096,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         setError(hint)
       }
     }
-    build()
-  }, [])
+    if (phase === 'starting') {
+      stopSignal.current.paused = false
+      build()
+    }
+  }, [phase])
 
   if (phase === 'error') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:20 }}>
@@ -5103,7 +5130,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : apiKey ? `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : phase === 'paused' ? `⏸ Paused — ${pairsDone} of ${pairsTotal} pairs` : apiKey ? `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs${currentTier ? ' — ' + currentTier : ''}`}
@@ -5141,8 +5168,44 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           {phase === 'starting' && 'Connecting...'}
           {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
+          {phase === 'paused' && <span style={{ color: '#f59e0b' }}>Generation paused — {Math.ceil(pairsDone/3)} of {Math.ceil(pairsTotal/3)} words done</span>}
         </span>
       </div>
+
+
+      {/* Pause / Resume button — shown during streaming */}
+      {phase === 'streaming' && pairsDone > 0 && (
+        <Btn onClick={() => { stopSignal.current.paused = true; setIsPaused(true) }}
+          style={{ width:'100%', justifyContent:'center', background:'var(--surface2)', border:'1px solid var(--border)' }}>
+          ⏸ Pause after this word
+        </Btn>
+      )}
+
+      {/* Paused state actions */}
+      {phase === 'paused' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <Btn onClick={() => {
+            const partial = partialPairsRef.current
+            if (!partial.length) return
+            const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '' }))
+            const track = {
+              date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }),
+              mode, pairs: partial, keywords, rated: false, createdAt: new Date().toISOString(),
+              partial: true, totalWords: targets.length, generatedWords: Math.ceil(partial.length / 3)
+            }
+            onGenerated(track)
+          }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>
+            ▶ Start with {Math.ceil(pairsDone/3)} words now
+          </Btn>
+          <Btn onClick={() => {
+            stopSignal.current.paused = false
+            setIsPaused(false)
+            setPhase('starting')
+          }} style={{ width:'100%', justifyContent:'center', background:'var(--surface2)', border:'1px solid var(--border)' }}>
+            ▶▶ Resume generation
+          </Btn>
+        </div>
+      )}
 
       {/* Track ready actions */}
       {phase === 'done' && generatedTrack ? (

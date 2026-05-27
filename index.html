@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v195"/>
-<meta name="app-version" content="v195"/>
+<meta name="app-version" content="v196"/>
+<meta name="app-version" content="v196"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2973,19 +2973,8 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
     })
   })
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || `API error ${res.status}`) }
-  const reader = res.body.getReader(); const decoder = new TextDecoder()
-  let accumulated = '', fullText = ''
-  while (true) {
-    const { done, value } = await reader.read(); if (done) break
-    accumulated += decoder.decode(value, { stream: true })
-    for (const line of accumulated.split('\n')) {
-      if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-        try { const delta = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content; if (delta) fullText += delta } catch {}
-      }
-    }
-    accumulated = accumulated.split('\n').slice(-1)[0]
-  }
-  let text = fullText.replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
+  const data = await res.json()
+  let text = (data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
   const j1 = text.indexOf('['), j2 = text.lastIndexOf(']')
   if (j1 >= 0 && j2 > j1) text = text.slice(j1, j2+1)
   return text
@@ -4287,8 +4276,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
   function buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, failureReason) {
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
-    const floor = lenResult.goalMin || 6
-    const ceil = lenResult.goalMax || 7
+    let floor = lenResult.goalMin || 6
+    let ceil = lenResult.goalMax || 7
     // Colour words: hard floor of 5 to force verb-containing sentences
     if (type === 'colour') floor = Math.max(5, floor)
     // Long compound targets (4+ syllables): lower floor by 1
@@ -4312,6 +4301,14 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       (recheckLine ? '\n' + recheckLine : '') +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
+      '\nQUALITY RULES:' +
+      '\n• ขอ...หน่อย only for concrete requestable nouns/food — NOT activities, animals, places, or abstract' +
+      '\n• NEVER add time words (วันนี้/ตอนนี้), quantities, or objects not in the prompt' +
+      '\n• Sentences must make real-world sense' +
+      '\n• งั้นก็ goes at START of sentence, never end' +
+      '\n• all 3 Thai sentences MUST use DIFFERENT grammar patterns (statement / question / negative)' +
+      (target.thai === 'ยิน' ? '\n• ยิน is used as ยินดี (glad) — always write ยินดี in sentences' : '') +
+      (['พี่ชาย','น้องชาย','พี่สาว','น้องสาว','พี่','น้อง'].includes(target.thai) ? '\n• Always specify OLDER (พี่) or YOUNGER (น้อง) — never just "brother" or "sister"' : '') +
       '\nWRITE 3 sentence pairs each containing "' + target.thai + '". Use 3 different grammar patterns: 1 statement, 1 yes/no question, 1 other. Each "prompt" must be SPECIFIC: tell the student exactly what to say (e.g. "Say the [target] is [adjective]", "Ask if the [target] is [quality]"). ONLY use Thai words from the WHITELIST above.' +
       ' "prompt" = natural English instruction. Mix statement + question + negative/other.' +
       '\nRETURN ONLY: [{"prompt":"...","thai":"...","phonetic":"...","english":"...","words":[{"p":"phǒm","e":"I"},{"p":"mii","e":"have"},...]},...] — include a words array with one entry per phonetic token showing its meaning.'

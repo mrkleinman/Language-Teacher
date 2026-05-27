@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v190"/>
-<meta name="app-version" content="v190"/>
+<meta name="app-version" content="v191"/>
+<meta name="app-version" content="v191"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4762,6 +4762,74 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
 }
 
 
+function buildConvoPrompt(targets, vocab) {
+  // ── Belt level for complexity control ──────────────────────────
+  const known = vocab.filter(w => (w.repCount || 0) >= 5).length
+  const BELTS = [
+    { name:'Mukyu',    sentMin:2,  sentMax:4  },
+    { name:'10th Kyu', sentMin:5,  sentMax:6  },
+    { name:'9th Kyu',  sentMin:6,  sentMax:7  },
+    { name:'8th Kyu',  sentMin:7,  sentMax:8  },
+    { name:'7th Kyu',  sentMin:8,  sentMax:9  },
+    { name:'6th Kyu',  sentMin:9,  sentMax:10 },
+    { name:'5th Kyu',  sentMin:10, sentMax:11 },
+    { name:'4th Kyu',  sentMin:11, sentMax:12 },
+    { name:'3rd Kyu',  sentMin:12, sentMax:13 },
+    { name:'2nd Kyu',  sentMin:13, sentMax:14 },
+    { name:'1st Kyu',  sentMin:14, sentMax:15 },
+    { name:'Shodan',   sentMin:16, sentMax:20 },
+  ]
+  const BELT_THRESHOLDS = [0,100,200,350,500,750,1000,1500,2000,3000,4000,5000]
+  const beltIdx = BELT_THRESHOLDS.reduce((idx, min, i) => known >= min ? i : idx, 0)
+  const belt = BELTS[beltIdx] || BELTS[0]
+  const complexityNote = `${belt.name}: sentences ${belt.sentMin}–${belt.sentMax} Thai words. Keep vocabulary simple and natural for this level.`
+
+  // ── Scenario clustering ──────────────────────────────────────
+  const SCENARIOS = [
+    { id:'market',   keywords:['ตลาด','ร้าน','ซื้อ','ขาย','ราคา','แพง','ถูก','ส่วนลด','ต่อรอง'], scene:'At a market or shop', A:'Customer', B:'Vendor', goal:'Browse, ask prices, maybe buy something' },
+    { id:'food',     keywords:['กิน','ดื่ม','อาหาร','ร้านอาหาร','สั่ง','อร่อย','หิว','อิ่ม','เมนู'], scene:'At a restaurant or food stall', A:'Customer', B:'Server', goal:'Order food, chat about dishes' },
+    { id:'travel',   keywords:['ไป','มา','รถ','เดิน','สถานี','สนามบิน','โรงแรม','ที่พัก','ตั๋ว','เที่ยว'], scene:'Travelling or getting directions', A:'Traveller', B:'Local or transport staff', goal:'Get to a place, ask for help navigating' },
+    { id:'health',   keywords:['เจ็บ','ปวด','หมอ','โรงพยาบาล','ยา','ไข้','อาการ','สุขภาพ'], scene:'At a clinic or pharmacy', A:'Patient', B:'Doctor or pharmacist', goal:'Describe symptoms, get advice' },
+    { id:'social',   keywords:['เพื่อน','ครอบครัว','พบ','คุย','ช่วย','ขอบคุณ','ยินดี','สบาย'], scene:'Casual social conversation', A:'Friend A', B:'Friend B', goal:'Catch up, help each other, small talk' },
+  ]
+  const wordList = targets.map(t => `${t.thai} (${t.english})`).join(', ')
+  const allThai = targets.map(t => t.thai).join(' ')
+  let scenario = SCENARIOS.find(s => s.keywords.some(k => allThai.includes(k))) || SCENARIOS[4]
+
+  // ── Few-shot example ─────────────────────────────────────────
+  const example = '{"lines":[' +
+    '{"speaker":"A","thai":"สวัสดีครับ, มีกาแฟร้อนไหมครับ","phonetic":"sà-wàt-dii khrâp, mii gaa-fae rón mǎi khrâp","english":"Hello, do you have hot coffee?"},' +
+    '{"speaker":"B","thai":"มีค่ะ, ขนาดเล็กหรือใหญ่คะ","phonetic":"mii khâ, khà-nàat lék rǔue yài khá","english":"Yes, small or large?"},' +
+    '{"speaker":"A","thai":"เอาใหญ่ครับ, ไม่ใส่น้ำตาลครับ","phonetic":"ao yài khrâp, mâi sài nám-taan khrâp","english":"Large please, no sugar."}' +
+    ']}'
+
+  const system = 'You are a Thai language teacher writing realistic spoken Thai conversations for learners. ' +
+    'Write natural Thai as a Thai person would actually speak \u2014 not translated English. ' +
+    'GRAMMAR RULES (always apply):\n' +
+    '\u2022 Every Thai sentence ends with \u0e04\u0e23\u0e31\u0e1a (male) or \u0e04\u0e48\u0e30/\u0e04\u0e30 (female) \u2014 no exceptions\n' +
+    '\u2022 \u0e40\u0e0a\u0e37\u0e48\u0e2d/\u0e04\u0e34\u0e14/\u0e23\u0e39\u0e49\u0e2a\u0e36\u0e01/\u0e2b\u0e27\u0e31\u0e07 must be followed by \u0e27\u0e48\u0e32 before a clause\n' +
+    '\u2022 \u0e07\u0e31\u0e49\u0e19\u0e01\u0e47 must sit BETWEEN two clauses, never at the end\n' +
+    '\u2022 \u0e0b\u0e36\u0e48\u0e07 must follow a noun, never start a sentence\n' +
+    '\u2022 No \u0e04\u0e27\u0e32\u0e21 before adjectives (\u0e04\u0e27\u0e32\u0e21\u0e23\u0e27\u0e22 = wrong, \u0e23\u0e27\u0e22\u0e04\u0e23\u0e31\u0e1a = right)\n' +
+    '\u2022 COMMA RULE: If a line has two clauses, separate with a comma. Short single-thought lines need no comma.\n' +
+    'Return ONLY valid JSON \u2014 no markdown, no preamble, no thinking.\n' +
+    'EXAMPLE OUTPUT:\n' + example
+
+  const user = 'NOW write a 15-line conversation with these details:\n' +
+    'SCENE: ' + scenario.scene + '\n' +
+    'SPEAKER A: ' + scenario.A + '\n' +
+    'SPEAKER B: ' + scenario.B + '\n' +
+    'GOAL: ' + scenario.goal + '\n' +
+    'LEVEL: ' + complexityNote + '\n' +
+    'TARGET WORDS \u2014 use ONLY if they fit naturally in the scene (skip any that do not belong): ' + wordList + '\n' +
+    'CRITICAL: NEVER force a word into a sentence where it makes no sense.\n\n' +
+    'Return ONLY this JSON:\n' +
+    '{"lines":[{"speaker":"A","thai":"...","phonetic":"...","english":"..."},{"speaker":"B","thai":"...","phonetic":"...","english":"..."}]}'
+
+  return { system, user }
+}
+
+
 async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const { system, user } = buildConvoPrompt(targets, vocab)
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -4983,10 +5051,10 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 return next
               })
               if (source) {
-                const tierName = source.startsWith('gpt-recheck2:') ? '🟢 GPT second check'
-                  : source.startsWith('gpt-recheck:') ? '🟩 GPT first check'
-                  : source.startsWith('gpt:') ? '⬜ GPT first pass'
-                  : source.startsWith('haiku:') ? '🩷 Haiku'
+                const tierName = source.startsWith('gpt-recheck2:') || source.startsWith('recheck2:') ? '🟢 Qwen second check'
+                  : source.startsWith('gpt-recheck:') || source.startsWith('recheck:') ? '🟩 Qwen recheck'
+                  : source.startsWith('gpt:') ? '⬜ Qwen first pass'
+                  : source.startsWith('haiku:') ? '🩷 Haiku fallback'
                   : source.startsWith('hardcoded:') ? '⬛ Hardcoded (all 4 AI calls failed)'
                   : source.startsWith('fallback:') ? '⬛ Generic fallback (all 4 AI calls failed)'
                   : '🟡 Unknown'

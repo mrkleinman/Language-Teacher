@@ -4188,6 +4188,44 @@ function getScenarioForTarget(target) {
   return 'general'
 }
 
+
+// ── Number injection helpers ─────────────────────────────────────────────────
+function getMaxNumberFromVocab(vocab) {
+  // Scan known vocab for number magnitude words to set ceiling
+  const all = vocab.map(w => (w.t || w.thai || '').toLowerCase() + '|' + (w.e || w.english || '').toLowerCase())
+  if (all.some(s => s.includes('ล้าน') || s.includes('million'))) return 9999999
+  if (all.some(s => s.includes('แสน') || s.includes('hundred thousand'))) return 999999
+  if (all.some(s => s.includes('หมื่น') || s.includes('ten thousand'))) return 99999
+  if (all.some(s => s.includes('พัน') || s.includes('thousand'))) return 9999
+  if (all.some(s => s.includes('ร้อย') || s.includes(' hundred'))) return 999
+  // Check for explicit large numbers in english
+  if (all.some(s => /\bthirty|forty|fifty|sixty|seventy|eighty|ninety\b/.test(s.split('|')[1]))) return 99
+  return 29  // default: up to numbers actually seen
+}
+
+function randomNumberHint(vocab, pairIndex) {
+  // Only inject on even-indexed pairs (0, 2, 4...)
+  if (pairIndex % 2 !== 0) return ''
+  const max = getMaxNumberFromVocab(vocab)
+  const r = n => Math.floor(Math.random() * n) + 1
+
+  const types = [
+    // Cardinal number in context
+    () => { const n = r(Math.min(max, 99)); return 'Include the number ' + n + ' naturally (e.g. as a count, age, price in บาท, or quantity)' },
+    // Time expression
+    () => {
+      const times = ['ตีหนึ่ง','ตีสอง','ตีสาม','ตีสี่','ตีห้า','หกโมงเช้า','เจ็ดโมงเช้า','แปดโมงเช้า','เก้าโมงเช้า','สิบโมงเช้า','สิบเอ็ดโมงเช้า','เที่ยง','บ่ายโมง','บ่ายสองโมง','บ่ายสามโมง','บ่ายสี่โมง','ห้าโมงเย็น','หกโมงเย็น','หนึ่งทุ่ม','สองทุ่ม','สามทุ่ม','สี่ทุ่ม','ห้าทุ่ม']
+      return 'Include a time expression — pick one naturally fitting: e.g. ' + times[r(times.length)-1]
+    },
+    // Ordinal
+    () => { const n = r(10); const ords = ['ที่หนึ่ง','ที่สอง','ที่สาม','ที่สี่','ที่ห้า','ที่หก','ที่เจ็ด','ที่แปด','ที่เก้า','ที่สิบ']; return 'Include an ordinal (ที่+number) naturally — e.g. ' + ords[n-1] },
+    // Classifier + number
+    () => { const n = r(9); const clfs = ['คน','อัน','ชิ้น','แก้ว','จาน','ครั้ง','วัน','ปี','เดือน']; return 'Include a number + classifier naturally — e.g. ' + n + ' ' + clfs[r(clfs.length)-1] },
+  ]
+  const pick = types[r(types.length) - 1]
+  return '\nNUMBER HINT: ' + pick() + '. Weave it into the sentence naturally — do not force it.'
+}
+
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal) {
   // ── Models: primary model generates + rechecks, Haiku escalates ──────────────
   const GPT_MODEL   = model || 'qwen/qwen3.5-flash-02-23'
@@ -4256,7 +4294,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
   }
 
   // ── Build prompt for a target word ────────────────────────────────────────
-  function buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, failureReason) {
+  function buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, failureReason, pairIndex) {
+    const numberHint = randomNumberHint(vocab, pairIndex || 0)
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
     let floor = lenResult.goalMin || 6
@@ -4286,7 +4325,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       '\n' + vocabContext +
       '\nQUALITY RULES:' +
       '\n• ขอ...หน่อย only for concrete requestable nouns/food — NOT activities, animals, places, or abstract' +
-      '\n• NEVER add time words (วันนี้/ตอนนี้), quantities, or objects not in the prompt' +
+      '\n• NEVER add time words (วันนี้/ตอนนี้), quantities, or objects not in the prompt unless specified in NUMBER HINT below' +
       '\n• Sentences must make real-world sense' +
       '\n• งั้นก็ goes at START of sentence, never end' +
       '\n• all 3 Thai sentences MUST use DIFFERENT grammar patterns (statement / question / negative)' +
@@ -4294,6 +4333,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       (['พี่ชาย','น้องชาย','พี่สาว','น้องสาว','พี่','น้อง'].includes(target.thai) ? '\n• Always specify OLDER (พี่) or YOUNGER (น้อง) — never just "brother" or "sister"' : '') +
       '\nWRITE 3 sentence pairs each containing "' + target.thai + '". Use 3 different grammar patterns: 1 statement, 1 yes/no question, 1 other. Each "prompt" must be SPECIFIC: tell the student exactly what to say (e.g. "Say the [target] is [adjective]", "Ask if the [target] is [quality]"). ONLY use Thai words from the WHITELIST above.' +
       ' "prompt" = natural English instruction. Mix statement + question + negative/other.' +
+      numberHint +
       '\nRETURN ONLY: [{"prompt":"...","thai":"...","phonetic":"...","english":"...","words":[{"p":"phǒm","e":"I"},{"p":"mii","e":"have"},...]},...] — include a words array with one entry per phonetic token showing its meaning.'
   }
 
@@ -4593,7 +4633,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const scenario = getScenarioForTarget(target)
 
       // ── Call 1: V2 generates ─────────────────────────────────────────────
-      const prompt1 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, false, '')
+      const prompt1 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, false, '', i)
       let generated = await callModel(GPT_MODEL, prompt1)
       let { valid, failures } = validateSmartPairs(generated, target)
       for (const p of valid) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt:'+ target.thai}) }
@@ -4609,7 +4649,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         const lenRes = getSentenceLengthForVocab(vocab) || {}
         const lenHint = 'REQUIRED: sentences must be ' + (lenRes.goalMin||4) + '-' + (lenRes.hardCeil||8) + ' Thai words long'
         const recheckHint = lenHint + (failures && failures.length > 0 ? '. ALSO FIX: ' + failures.slice(0,3).join('; ') : '. Improve variety and naturalness')
-        const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, recheckHint)
+        const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, recheckHint, i)
         const recheck1 = await callModel(GPT_MODEL, prompt2)
         const { valid: v2, failures: f2 } = validateSmartPairs(recheck1, target)
         for (const p of v2) {
@@ -4628,7 +4668,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         // ── Call 3: Qwen 3rd check ────────────────────────────────────────
         if (pairs.length < 3) {
           const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after 2nd check'
-          const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2)
+          const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2, i)
           const recheck2 = await callModel(GPT_MODEL, prompt3)
           const { valid: v3, failures: f3 } = validateSmartPairs(recheck2, target, false)
           for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck2:'+ target.thai}) }
@@ -4637,7 +4677,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
           // ── Call 4: 4th check (dark blue) ────────────────────────────────
           if (pairs.length < 3) {
             const failReason3 = f3.slice(0, 3).join('; ') || 'still failing after 3rd check'
-            const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3)
+            const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3, i)
             const recheck3 = await callModel(GPT_MODEL, prompt4)
             const { valid: v4, failures: f4 } = validateSmartPairs(recheck3, target, false)
             for (const p of v4) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck3:'+ target.thai}) }
@@ -4646,7 +4686,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
             // ── Call 5: 5th check (bright yellow) ────────────────────────────
             if (pairs.length < 3) {
               const failReason4 = f4.slice(0, 3).join('; ') || 'still failing after 4th check'
-              const prompt5 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason4)
+              const prompt5 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason4, i)
               const recheck4 = await callModel(GPT_MODEL, prompt5)
               const { valid: v5, failures: f5 } = validateSmartPairs(recheck4, target, false)
               for (const p of v5) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck4:'+ target.thai}) }
@@ -4655,7 +4695,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
               // ── Call 6: 6th check (dark yellow) ──────────────────────────────
               if (pairs.length < 3) {
                 const failReason5 = f5.slice(0, 3).join('; ') || 'still failing after 5th check'
-                const prompt6 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason5)
+                const prompt6 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason5, i)
                 const recheck5 = await callModel(GPT_MODEL, prompt6)
                 const { valid: v6, failures: f6 } = validateSmartPairs(recheck5, target, false)
                 for (const p of v6) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck5:'+ target.thai}) }
@@ -4664,7 +4704,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
                 // ── Call 7: 7th check (light green) ─────────────────────────────
                 if (pairs.length < 3) {
                   const failReason6 = f6.slice(0, 3).join('; ') || 'still failing after 6th check'
-                  const prompt7 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason6)
+                  const prompt7 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason6, i)
                   const recheck6 = await callModel(GPT_MODEL, prompt7)
                   const { valid: v7, failures: f7 } = validateSmartPairs(recheck6, target, false)
                   for (const p of v7) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck6:'+ target.thai}) }
@@ -4673,7 +4713,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
                   // ── Call 8: 8th check (dark green) ───────────────────────────
                   if (pairs.length < 3) {
                     const failReason7 = f7.slice(0, 3).join('; ') || 'still failing after 7th check'
-                    const prompt8 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason7)
+                    const prompt8 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason7, i)
                     const recheck7 = await callModel(GPT_MODEL, prompt8)
                     const { valid: v8, failures: f8 } = validateSmartPairs(recheck7, target, false)
                     for (const p of v8) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck7:'+ target.thai}) }
@@ -4682,7 +4722,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
                     // ── Call 9: Haiku final escalation ───────────────────────────
                     if (pairs.length < 3) {
                       const failReason8 = f8.slice(0, 3).join('; ') || 'still failing after 8th check'
-                      const prompt9 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason8)
+                      const prompt9 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason8, i)
                       const recheck8 = await callModel(HAIKU_MODEL, prompt9)
                       const { valid: v9 } = validateSmartPairs(recheck8, target, false)
                       for (const p of v9) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
@@ -4826,26 +4866,11 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
 
 
 function buildConvoPrompt(targets, vocab) {
-  // ── Belt level for complexity control ──────────────────────────
-  const known = vocab.filter(w => (w.repCount || 0) >= 5).length
-  const BELTS = [
-    { name:'Mukyu',    sentMin:2,  sentMax:4  },
-    { name:'10th Kyu', sentMin:5,  sentMax:6  },
-    { name:'9th Kyu',  sentMin:6,  sentMax:7  },
-    { name:'8th Kyu',  sentMin:7,  sentMax:8  },
-    { name:'7th Kyu',  sentMin:8,  sentMax:9  },
-    { name:'6th Kyu',  sentMin:9,  sentMax:10 },
-    { name:'5th Kyu',  sentMin:10, sentMax:11 },
-    { name:'4th Kyu',  sentMin:11, sentMax:12 },
-    { name:'3rd Kyu',  sentMin:12, sentMax:13 },
-    { name:'2nd Kyu',  sentMin:13, sentMax:14 },
-    { name:'1st Kyu',  sentMin:14, sentMax:15 },
-    { name:'Shodan',   sentMin:16, sentMax:20 },
-  ]
-  const BELT_THRESHOLDS = [0,100,200,350,500,750,1000,1500,2000,3000,4000,5000]
-  const beltIdx = BELT_THRESHOLDS.reduce((idx, min, i) => known >= min ? i : idx, 0)
-  const belt = BELTS[beltIdx] || BELTS[0]
-  const complexityNote = `${belt.name}: sentences ${belt.sentMin}–${belt.sentMax} Thai words. Keep vocabulary simple and natural for this level.`
+  // ── Sentence length from shared source (same as daily track) ───
+  const lenRes = getSentenceLengthForVocab(vocab) || {}
+  const sentMin = lenRes.goalMin || 4
+  const sentMax = lenRes.goalMax || 6
+  const complexityNote = `sentences ${sentMin}–${sentMax} Thai words. Keep vocabulary simple and natural for this level.`
 
   // ── Scenario clustering ──────────────────────────────────────
   const SCENARIOS = [
@@ -4893,23 +4918,73 @@ function buildConvoPrompt(targets, vocab) {
 }
 
 
-async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
-  const { system, user } = buildConvoPrompt(targets, vocab)
+function validateConvoLines(lines, vocab) {
+  if (!lines || lines.length < 6) return { ok: false, reason: 'Too few lines (' + (lines||[]).length + ') — need at least 6' }
+  const issues = []
+  const lenRes = getSentenceLengthForVocab(vocab) || {}
+  const sentMin = lenRes.goalMin || 4
+  const sentMax = lenRes.hardCeil || 10
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i]
+    if (!l.thai || !l.english || !l.speaker) { issues.push('Line ' + i + ': missing thai/english/speaker'); continue }
+    const th = l.thai.trim()
+    // Must end with politeness particle
+    if (!/ครับ$|ค่ะ$|คะ$|นะ$|เลย$|ล่ะ$|สิ$/.test(th)) issues.push('Line ' + i + ': missing politeness particle — ' + th.slice(-10))
+    // Check word count (rough: split on spaces, filter empty)
+    const wordCount = th.split(/\s+/).filter(Boolean).length
+    if (wordCount < sentMin) issues.push('Line ' + i + ': too short (' + wordCount + ' words, min ' + sentMin + ')')
+    if (wordCount > sentMax + 3) issues.push('Line ' + i + ': too long (' + wordCount + ' words, max ' + sentMax + ')')
+    // Phonetic present
+    if (!l.phonetic || l.phonetic.trim().length < 3) issues.push('Line ' + i + ': missing phonetic')
+  }
+  // Check speaker alternation (shouldn't be 3+ same speaker in a row)
+  for (let i = 2; i < lines.length; i++) {
+    if (lines[i].speaker === lines[i-1].speaker && lines[i].speaker === lines[i-2].speaker)
+      issues.push('Lines ' + (i-2) + '-' + i + ': same speaker 3 times in a row')
+  }
+  if (issues.length > 3) return { ok: false, reason: issues.slice(0, 3).join(' | ') }
+  return { ok: true, reason: '' }
+}
+
+async function callConvoOnce(apiKey, model, system, user) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: model || 'qwen/qwen3.5-flash-02-23', max_tokens: 4000, temperature: 0.4, stream: false,
+    body: JSON.stringify({ model: model || 'qwen/qwen3.5-flash-02-23', max_tokens: 4000, temperature: 0.5, stream: false,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   })
-  if (!res.ok) throw new Error(`Convo error ${res.status}`)
+  if (!res.ok) throw new Error('Convo error ' + res.status)
   const data = await res.json()
   let text = (data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
-  // Extract JSON even if model added preamble text
-  const jsonStart = text.indexOf('{')
-  const jsonEnd = text.lastIndexOf('}')
-  if (jsonStart >= 0 && jsonEnd > jsonStart) text = text.slice(jsonStart, jsonEnd + 1)
+  const j1 = text.indexOf('{'), j2 = text.lastIndexOf('}')
+  if (j1 >= 0 && j2 > j1) text = text.slice(j1, j2 + 1)
   const parsed = JSON.parse(text)
   return parsed.lines || []
+}
+
+async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
+  const HAIKU = 'anthropic/claude-haiku-4-5-20251001'
+  const { system, user } = buildConvoPrompt(targets, vocab)
+
+  // ── Up to 3 attempts: Qwen x2, then Haiku ────────────────────
+  let best = null
+  const attempts = [model, model, HAIKU]
+  for (let attempt = 0; attempt < attempts.length; attempt++) {
+    try {
+      const recheckHint = attempt === 0 ? '' :
+        attempt === 1 ? '\nPREVIOUS ATTEMPT FAILED. Rewrite completely. Ensure every line ends with ครับ/ค่ะ/คะ and sentences are ' + (getSentenceLengthForVocab(vocab).goalMin||4) + '–' + (getSentenceLengthForVocab(vocab).goalMax||7) + ' words.' :
+        '\nFINAL ATTEMPT. Prioritise natural dialogue over word targets. Every line MUST end with ครับ or ค่ะ/คะ.'
+      const lines = await callConvoOnce(apiKey, attempts[attempt], system, user + recheckHint)
+      const { ok, reason } = validateConvoLines(lines, vocab)
+      console.log('[convo attempt ' + (attempt+1) + '] ' + lines.length + ' lines, valid:' + ok + (ok ? '' : ' — ' + reason))
+      if (ok) return lines
+      if (!best || lines.length > best.length) best = lines  // keep longest even if imperfect
+    } catch(e) {
+      console.warn('[convo attempt ' + (attempt+1) + '] failed:', e.message)
+    }
+  }
+  return best || []
 }
 
 // ── Pre-track Conversation Player ────────────────────────────────────────────
@@ -5430,21 +5505,51 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={() => { onGenerated(activeTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
             ▶ Start SRS Track
           </Btn>
-          <Btn onClick={async () => {
-            setConvoLoading(true)
-            try {
-              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3.5-flash-02-23'
-              const convoKey = provider === 'claude' ? apiKey : orKey
-              const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
-              const trackWithConvo = { ...activeTrack, convo: convoResult }
-              setGeneratedTrack(trackWithConvo)
-              setConvoLines(convoResult)
-              setTimeout(() => setShowConvo(true), 400)
-            } catch(e) { alert('Convo failed: ' + e.message) }
-            setConvoLoading(false)
-          }} variant="secondary" style={{ width:'100%', justifyContent:'center' }} disabled={convoLoading}>
-            {convoLines ? '💬 View Conversation' : '💬 Generate Conversation'}
-          </Btn>
+          <div style={{ display:'flex', gap:8 }}>
+            <Btn onClick={async () => {
+              setConvoLoading(true)
+              try {
+                const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5-20251001' : 'qwen/qwen3.5-flash-02-23'
+                const convoKey = provider === 'claude' ? apiKey : orKey
+                const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
+                const trackWithConvo = { ...activeTrack, convo: convoResult }
+                setGeneratedTrack(trackWithConvo)
+                setConvoLines(convoResult)
+                setTimeout(() => setShowConvo(true), 400)
+              } catch(e) { alert('Convo failed: ' + e.message) }
+              setConvoLoading(false)
+            }} variant="secondary" style={{ flex:1, justifyContent:'center' }} disabled={convoLoading}>
+              {convoLoading ? '⏳ Generating…' : convoLines ? '💬 View Conversation' : '💬 Generate Conversation'}
+            </Btn>
+            {convoLines && (
+              <Btn onClick={() => {
+                const lines = convoLines.map((l,i) => (l.speaker === 'A' ? 'A: ' : 'B: ') + l.thai + '\n   ' + l.phonetic + '\n   ' + l.english).join('\n\n')
+                const blob = new Blob(['THAI TEACHER — CONVERSATION\n' + new Date().toLocaleDateString() + '\n\n' + lines], { type:'text/plain' })
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+                a.download = 'convo-' + new Date().toISOString().slice(0,10) + '.txt'; a.click()
+              }} style={{ padding:'10px 14px', background:'var(--surface2)', border:'1px solid var(--border)' }} title="Download conversation">
+                ⬇️
+              </Btn>
+            )}
+            {convoLines && (
+              <Btn onClick={async () => {
+                setConvoLines(null)
+                setConvoLoading(true)
+                try {
+                  const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5-20251001' : 'qwen/qwen3.5-flash-02-23'
+                  const convoKey = provider === 'claude' ? apiKey : orKey
+                  const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
+                  const trackWithConvo = { ...activeTrack, convo: convoResult }
+                  setGeneratedTrack(trackWithConvo)
+                  setConvoLines(convoResult)
+                  setTimeout(() => setShowConvo(true), 400)
+                } catch(e) { alert('Convo failed: ' + e.message) }
+                setConvoLoading(false)
+              }} style={{ padding:'10px 14px', background:'var(--surface2)', border:'1px solid var(--border)' }} title="Regenerate conversation">
+                🔄
+              </Btn>
+            )}
+          </div>
         </div>
       ) : null}
 

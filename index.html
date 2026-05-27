@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v202"/>
-<meta name="app-version" content="v202"/>
+<meta name="app-version" content="v203"/>
+<meta name="app-version" content="v203"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2701,7 +2701,7 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-      body: JSON.stringify({ model: 'qwen/qwen3-32b', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
+      body: JSON.stringify({ model: 'qwen/qwen2.5-72b-instruct', max_tokens: 800, temperature: 0, messages: [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown, no thinking tags: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }] })
     })
     if (!res.ok) return {}
     const data = await res.json()
@@ -4175,7 +4175,7 @@ function getScenarioForTarget(target) {
 
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal) {
   // ── Models: primary model generates + rechecks, Haiku escalates ──────────────
-  const GPT_MODEL   = model || 'qwen/qwen3-32b'
+  const GPT_MODEL   = model || 'qwen/qwen2.5-72b-instruct'
   const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
   console.log('[generator] model:', GPT_MODEL)
 
@@ -4819,7 +4819,7 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-    body: JSON.stringify({ model: model || 'qwen/qwen3-32b', max_tokens: 4000, temperature: 0.4, stream: false,
+    body: JSON.stringify({ model: model || 'qwen/qwen2.5-72b-instruct', max_tokens: 4000, temperature: 0.4, stream: false,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   })
   if (!res.ok) throw new Error(`Convo error ${res.status}`)
@@ -5052,7 +5052,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 setCurrentTier(tierName)
               }
             },
-            vocab, provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b', stopSignal.current)
+            vocab, provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen2.5-72b-instruct', stopSignal.current)
 
           // If paused mid-generation, use whatever pairs we have so far
           if (stopSignal.current.paused) {
@@ -5130,7 +5130,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Title */}
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : phase === 'paused' ? `⏸ Paused — ${pairsDone} of ${pairsTotal} pairs` : apiKey ? `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
+          {phase === 'done' && generatedTrack ? '✓ Track Ready!' : phase === 'paused' ? `⏸ Paused — ${pairsDone} of ${pairsTotal} pairs` : apiKey ? `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen2.5-72B'} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs${currentTier ? ' — ' + currentTier : ''}`}
@@ -5166,7 +5166,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         {phase !== 'done' && <Spinner size={16} color={color} />}
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
-          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen3-32B'} is thinking...`}
+          {phase === 'streaming' && pairsDone === 0 && `Kru ${provider === 'haiku' ? 'Claude Haiku' : 'Qwen2.5-72B'} is thinking...`}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
           {phase === 'paused' && <span style={{ color: '#f59e0b' }}>Generation paused — {Math.ceil(pairsDone/3)} of {Math.ceil(pairsTotal/3)} words done</span>}
         </span>
@@ -5218,7 +5218,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={async () => {
             setConvoLoading(true)
             try {
-              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
+              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen2.5-72b-instruct'
               const convoKey = provider === 'claude' ? apiKey : orKey
               const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
               const trackWithConvo = { ...generatedTrack, convo: convoResult }
@@ -5799,7 +5799,7 @@ function Adder({ onBack, onAdded, orKey }) {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-        body: JSON.stringify({ model: 'qwen/qwen3-32b', max_tokens: 200, temperature: 0,
+        body: JSON.stringify({ model: 'qwen/qwen2.5-72b-instruct', max_tokens: 200, temperature: 0,
           messages: [{ role: 'user', content: `For the Thai word/phrase "${thai.trim()}", give me:
 1. English translation (short, common meaning)
 2. Tone-marked romanization (mid=none, low=à, falling=â, high=á, rising=ǎ, hyphens between syllables)
@@ -6220,7 +6220,7 @@ function DeepSeekTestBtn({ dsKey }) {
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
-  { id: 'qwen3_14b', label: '⚡ Qwen3-32B', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
+  { id: 'qwen3_14b', label: '⚡ Qwen2.5-72B', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
   { id: 'haiku',     label: '🔶 Haiku 4.5',  sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
 ]
 
@@ -6258,7 +6258,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-          body: JSON.stringify({ model: 'qwen/qwen3-32b', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: 'qwen/qwen2.5-72b-instruct', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
       }
       if (res.ok) setTestResult('✅ Key works!')
@@ -6973,7 +6973,7 @@ function ThaiTeacher() {
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
             onGenerateConvo={async (track) => {
-              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen3-32b'
+              const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5' : 'qwen/qwen2.5-72b-instruct'
               const convoKey = provider === 'claude' ? apiKey : orKey
               if (!convoKey) {
                 alert('No OpenRouter key found. Go to Settings and save your key first.')

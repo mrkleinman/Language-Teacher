@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v196"/>
-<meta name="app-version" content="v196"/>
+<meta name="app-version" content="v197"/>
+<meta name="app-version" content="v197"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4606,8 +4606,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
       if (failures && failures.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((failures||[]).map(f => 'GPT1: ' + f))
       console.log('[GPT] ' + target.thai + ': ' + valid.length + '/3 valid, failures: ' + failures.slice(0,2).join(', '))
 
-      // ── Call 2: GPT recheck — ALWAYS runs to improve quality ─────────────
-      {
+      // ── Call 2: GPT recheck — only if we still need pairs ────────────────
+      if (pairs.length < 3) {
         const lenRes = getSentenceLengthForVocab(vocab) || {}
         const lenHint = 'REQUIRED: sentences must be ' + (lenRes.goalMin||4) + '-' + (lenRes.hardCeil||8) + ' Thai words long'
         const recheckHint = lenHint + (failures && failures.length > 0 ? '. ALSO FIX: ' + failures.slice(0,3).join('; ') : '. Improve variety and naturalness')

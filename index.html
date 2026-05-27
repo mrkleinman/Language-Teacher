@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v199"/>
-<meta name="app-version" content="v199"/>
+<meta name="app-version" content="v200"/>
+<meta name="app-version" content="v200"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2665,10 +2665,6 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
 // ── Claude API Track Generation ───────────────────────────────────────────────
 
 
-async function fetchTargetPhoneticsDeepSeek(targets, apiKey) {
-  // Uses OpenRouter for phonetics
-  return fetchTargetPhoneticsQwen(targets, apiKey)
-}
 async function _deadPhoneticsDeepSeek_UNUSED(targets, apiKey) {
   const wordList = targets.map(w => w.thai).join(', ')
   const res = await fetch('/api/deepseek', {
@@ -2722,10 +2718,6 @@ async function fetchTargetPhoneticsQwen(targets, orKey) {
   } catch { return {} }
 }
 
-async function generateTrackWithDeepSeek(targets, anchors, apiKey, onProgress, vocab) {
-  // Deprecated — DeepSeek now routes via OpenRouter
-  return generateTrack(targets, anchors, apiKey, onProgress, vocab, 'deepseek/deepseek-v2')
-}
 async function _deadDeepSeekFn_UNUSED(targets, anchors, apiKey, onProgress, vocab) {
   const { system, user } = buildGenerationPrompt(targets, anchors, vocab)
   const prompt = system + '\n\n' + user
@@ -2733,7 +2725,7 @@ async function _deadDeepSeekFn_UNUSED(targets, anchors, apiKey, onProgress, voca
   const res = await fetch('/api/deepseek', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 16000, stream: true, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
+    body: JSON.stringify({ model: 'deepseek-chat', max_tokens: 8000, stream: true, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   })
   if (!res.ok) {
     const err = await res.json().catch(()=>({}))
@@ -3012,56 +3004,7 @@ async function callOpenRouterStream(apiKey, orModel, messages, onToken) {
   return fullText.replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^```[\w]*[\r\n]?|[\r\n]?```$/g,'').trim()
 }
 
-function checkBatchQuality(pairs, batchTargets, existingThais) {
-  const issues = []
-  const missing = batchTargets.filter(t => pairs.filter(p => p.thai && p.thai.includes(t.thai)).length < 3)
-  if (missing.length) issues.push({ type:'missing', words: missing })
-  const seen = new Set(); const dupes = []
-  for (const p of pairs) { if (!p.thai) continue; if (seen.has(p.thai) || existingThais.has(p.thai)) dupes.push(p.thai); seen.add(p.thai) }
-  if (dupes.length) issues.push({ type:'dupes', sentences: dupes })
-  return issues
-}
 
-function buildBatchSystem(batchTargets, anchors, vocab, batchNum) {
-  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
-    'หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
-    'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง',
-    'ไหม','ก็ได้']
-  const vocabPhonMap = Object.fromEntries((vocab||[]).map(w=>[w.thai,w.phonetic]).filter(([,p])=>p))
-  const targetLines = batchTargets.map((w,i) =>
-    `${i+1}. ★ ${w.thai} (${w.english})${w.phonetic ? ' phonetic: '+w.phonetic : ''}`).join('\n')
-  const anchorLines = anchors.slice(0,15).map(w =>
-    `${w.thai} = ${w.english}${w.phonetic ? ' ['+w.phonetic+']' : ''}`).join('\n')
-  const allowedParticles = ALWAYS_ALLOWED.join(' ')
-  const slotMap = batchTargets.map((t,wi) => `Pairs ${wi*3+1},${wi*3+2},${wi*3+3} → must use ★${t.thai} (${t.english})`).join('\n')
-  const TYPES = ['Tell someone that [concrete situation]','Ask if [yes/no question]','Say that you [action]',
-    'Ask someone where [location question]','Ask someone when [time question]','Suggest that [recommendation]',
-    'Invite someone to [activity]','Warn someone that [caution]','Confirm that [affirmation]','Deny that [negation]',
-    'Express surprise that [reaction]','Complain that [complaint]','Admit that [confession]','Ask how many [quantity]',
-    'Respond to a friend who mentioned','Ask someone to [request]','Say you want to [desire]',
-    'Explain that [explanation]','Promise that [commitment]','Describe [a scene]']
-  const typeRotation = Array.from({length:30}, (_,i) => `Pair ${i+1}: ${TYPES[i%TYPES.length]}`).join('\n')
-  return `You are a Thai language teacher writing Pimsleur-style audio lesson pairs. Generate EXACTLY 30 pairs for BATCH ${batchNum}/3.
-USER IS 9TH KYU: sentences must be 3–5 Thai words ideally, MAXIMUM 6 words.
-SLOT ASSIGNMENTS: ${slotMap}
-PROMPT TYPES: ${typeRotation}
-VOCABULARY — USE ONLY THESE WORDS:
-TARGET: ${targetLines}
-ANCHORS: ${anchorLines}
-PARTICLES: ${allowedParticles}
-⛔ No other Thai words. If stuck, use simpler sentence.
-CHECKLIST before each pair:
-[1] prompt is a complete concrete English instruction (NOT "Tell someone that...")
-[2] thai contains the ★ target word for this pair number
-[3] every Thai word is in the vocabulary lists
-[4] thai ends with ครับ (odd) or ค่ะ (even)
-[5] thai is 3–6 words
-[6] thai starts differently from previous 2 sentences
-[7] phonetic is space-separated tokens (not brackets)
-[8] words array count matches phonetic token count
-OUTPUT: JSON array of 30 objects only. Example:
-[{"prompt":"Tell someone you want to visit the hill tribe","thai":"คุณอยากไปหมู่บ้านชาวเขาครับ","english":"I want to visit the hill tribe village","phonetic":"khun yàak pai mûu-bâan chaao-khǎo khrâp","words":[{"p":"khun","e":"you"},{"p":"yàak","e":"want"},{"p":"pai","e":"go"},{"p":"mûu-bâan","e":"village"},{"p":"chaao-khǎo","e":"hill tribe"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"chaao-khǎo"}]`
-}
 
 function classifyWord(target) {
   const eng = (target.english || '').toLowerCase().trim()
@@ -3985,6 +3928,18 @@ function makeFallbackPairs(target) {
     {prompt:'Ask if you can '+eng,thai:tw+'ได้ไหมคะ',english:'Can you '+eng+'?',phonetic:ph+' dâi mǎi khá',words:[{p:ph,e:eng},{p:'dâi',e:'can'},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
     {prompt:'Say you already '+eng,thai:tw+'แล้วครับ',english:'I already '+eng+'.',phonetic:ph+' lâeo khrâp',words:[{p:ph,e:eng},{p:'lâeo',e:'already'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
+  // Clothing
+  if (type === 'clothing') return [
+    {prompt:'Say you wear '+eng+' today',thai:'วันนี้ผมใส่'+tw+'ครับ',english:'Today I am wearing '+eng+'.',phonetic:'wan-níi phǒm sài '+ph+' khrâp',words:[{p:'wan-níi',e:'today'},{p:'phǒm',e:'I'},{p:'sài',e:'wear'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they have '+eng,thai:'มี'+tw+'ไหมครับ',english:'Do you have '+eng+'?',phonetic:'mii '+ph+' mǎi khrâp',words:[{p:'mii',e:'have'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you do not have '+eng,thai:'ผมไม่มี'+tw+'ครับ',english:'I do not have '+eng+'.',phonetic:'phǒm mâi mii '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'mâi-mii',e:'do not have'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
+  // Animal
+  if (type === 'animal') return [
+    {prompt:'Say you like '+eng,thai:'ผมชอบ'+tw+'ครับ',english:'I like '+eng+'.',phonetic:'phǒm chôop '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they have a '+eng,thai:'มี'+tw+'ไหมครับ',english:'Do you have a '+eng+'?',phonetic:'mii '+ph+' mǎi khrâp',words:[{p:'mii',e:'have'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you do not have a '+eng,thai:'ผมไม่มี'+tw+'ครับ',english:'I do not have a '+eng+'.',phonetic:'phǒm mâi mii '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'mâi-mii',e:'do not have'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
+  ]
   // Generic fallback — use word type context
   const engUpper = eng.charAt(0).toUpperCase() + eng.slice(1)
   if (type === 'adjective') return [
@@ -4536,7 +4491,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model)
         { role: 'system', content: sysMsg },
         { role: 'user', content: prompt }
       ]
-      const text = await callOpenRouterOnce(apiKey, mdl, messages, 3000)
+      const text = await callOpenRouterOnce(apiKey, mdl, messages, 2000)
       const parsed = parsePartialArray(text)
       console.log('[AI] ' + mdl.split('/').pop().slice(0,10) + ' returned ' + parsed.length + ' pairs')
       return parsed

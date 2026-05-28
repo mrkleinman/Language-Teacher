@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v235"/>
-<meta name="app-version" content="v235"/>
+<meta name="app-version" content="v236"/>
+<meta name="app-version" content="v236"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -3560,6 +3560,26 @@ function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, prom
 
 // Pre-written fallbacks for known problem words
 const HARDCODED_FALLBACKS = {
+  'แน่นท้อง': [
+    {prompt:'Say you are full after eating',thai:'ผมกินข้าวจนแน่นท้องครับ',english:'I ate until I was full.',phonetic:'phǒm gin khâao jon nâen-thóong khrâp',words:[{p:'phǒm',e:'I'},{p:'gin-khâao',e:'eat'},{p:'jon',e:'until'},{p:'nâen-thóong',e:'full'},{p:'khrâp',e:'[polite]'}],target_phonetic:'nâen-thóong'},
+    {prompt:'Ask if she is full yet',thai:'คุณแน่นท้องแล้วหรือยังครับ',english:'Are you full yet?',phonetic:'khun nâen-thóong láew rǔue yang khrâp',words:[{p:'khun',e:'you'},{p:'nâen-thóong',e:'full'},{p:'láew-rǔue-yang',e:'yet?'},{p:'khrâp',e:'[polite]'}],target_phonetic:'nâen-thóong'},
+    {prompt:'Say you are not full after the first dish',thai:'ผมยังไม่แน่นท้องเลยครับหลังมื้อแรก',english:'I am not full at all after the first meal.',phonetic:'phǒm yang mâi nâen-thóong loei khrâp lǎng mûue-râek',words:[{p:'phǒm',e:'I'},{p:'yang-mâi',e:'not yet'},{p:'nâen-thóong',e:'full'},{p:'loei',e:'at all'},{p:'lǎng-mûue-râek',e:'after first meal'},{p:'khrâp',e:'[polite]'}],target_phonetic:'nâen-thóong'},
+  ],
+  'บั้งไฟ': [
+    {prompt:'Say the rocket festival is famous in the northeast',thai:'บั้งไฟเป็นเทศกาลที่มีชื่อเสียงในภาคอีสานครับ',english:'The rocket festival is a famous festival in the northeast.',phonetic:'bâng-fâi pen thêet-sà-gaan thîi mii chûe-sǐang nai phâak-ii-sǎan khrâp',words:[{p:'bâng-fâi',e:'rocket festival'},{p:'pen',e:'is'},{p:'thêet-sà-gaan',e:'festival'},{p:'mii-chûe-sǐang',e:'famous'},{p:'nai',e:'in'},{p:'phâak-ii-sǎan',e:'northeast'},{p:'khrâp',e:'[polite]'}],target_phonetic:'bâng-fâi'},
+    {prompt:'Ask if you have seen the rocket festival before',thai:'คุณเคยดูบั้งไฟมาก่อนไหมครับ',english:'Have you ever seen the rocket festival before?',phonetic:'khun khoei duu bâng-fâi maa gòon mǎi khrâp',words:[{p:'khun',e:'you'},{p:'khoei',e:'ever'},{p:'duu',e:'watch'},{p:'bâng-fâi',e:'rocket festival'},{p:'maa-gòon',e:'before'},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:'bâng-fâi'},
+    {prompt:'Say you want to go watch the rocket festival',thai:'ผมอยากไปดูบั้งไฟครับ',english:'I want to go and watch the rocket festival.',phonetic:'phǒm yàak pai duu bâng-fâi khrâp',words:[{p:'phǒm',e:'I'},{p:'yàak',e:'want'},{p:'pai-duu',e:'go watch'},{p:'bâng-fâi',e:'rocket festival'},{p:'khrâp',e:'[polite]'}],target_phonetic:'bâng-fâi'},
+  ],
+  'บ่อยๆ': [
+    {prompt:'Say you often go to the restaurant',thai:'ผมไปร้านอาหารบ่อยๆครับ',english:'I often go to the restaurant.',phonetic:'phǒm pai rán-aa-hǎan bɔ̀i-bɔ̀i khrâp',words:[{p:'phǒm',e:'I'},{p:'pai',e:'go'},{p:'rán-aa-hǎan',e:'restaurant'},{p:'bɔ̀i-bɔ̀i',e:'often'},{p:'khrâp',e:'[polite]'}],target_phonetic:'bɔ̀i-bɔ̀i'},
+    {prompt:'Ask if she eats here often',thai:'คุณกินที่นี่บ่อยๆไหมครับ',english:'Do you eat here often?',phonetic:'khun gin thîi-nîi bɔ̀i-bɔ̀i mǎi khrâp',words:[{p:'khun',e:'you'},{p:'gin',e:'eat'},{p:'thîi-nîi',e:'here'},{p:'bɔ̀i-bɔ̀i',e:'often'},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:'bɔ̀i-bɔ̀i'},
+    {prompt:'Say you do not come here very often',thai:'ผมไม่ค่อยมาที่นี่บ่อยๆครับ',english:'I do not come here very often.',phonetic:'phǒm mâi khɔ̂i maa thîi-nîi bɔ̀i-bɔ̀i khrâp',words:[{p:'phǒm',e:'I'},{p:'mâi-khɔ̂i',e:'not very'},{p:'maa',e:'come'},{p:'thîi-nîi',e:'here'},{p:'bɔ̀i-bɔ̀i',e:'often'},{p:'khrâp',e:'[polite]'}],target_phonetic:'bɔ̀i-bɔ̀i'},
+  ],
+  'ชวน': [
+    {prompt:'Say you will invite her to eat',thai:'ผมจะชวนเธอไปกินข้าวครับ',english:'I will invite her to eat.',phonetic:'phǒm jà chuan thəə pai gin khâao khrâp',words:[{p:'phǒm',e:'I'},{p:'jà',e:'will'},{p:'chuan',e:'invite'},{p:'thəə',e:'her'},{p:'pai-gin-khâao',e:'to eat'},{p:'khrâp',e:'[polite]'}],target_phonetic:'chuan'},
+    {prompt:'Ask if he wants to invite a friend',thai:'คุณอยากชวนเพื่อนไปไหมครับ',english:'Do you want to invite a friend?',phonetic:'khun yàak chuan phûean pai mǎi khrâp',words:[{p:'khun',e:'you'},{p:'yàak',e:'want'},{p:'chuan',e:'invite'},{p:'phûean',e:'friend'},{p:'pai',e:'go'},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:'chuan'},
+    {prompt:'Say she was not invited',thai:'เธอไม่ได้รับการชวนครับ',english:'She was not invited.',phonetic:'thəə mâi dâi ráp gaan chuan khrâp',words:[{p:'thəə',e:'she'},{p:'mâi-dâi',e:'did not'},{p:'ráp',e:'receive'},{p:'gaan-chuan',e:'invitation'},{p:'khrâp',e:'[polite]'}],target_phonetic:'chuan'},
+  ],
   'เป็นต้น': [
     {prompt:'Say there is coffee tea and so on',thai:'ที่นี่มีกาแฟ ชา น้ำเปล่า เป็นต้นครับ',english:'There is coffee, tea, water, and so on here.',phonetic:'thîi-nîi mii gaa-fae chaa nám-bplào pen-tôn khrâp',words:[{p:'thîi-nîi',e:'here'},{p:'mii',e:'there is'},{p:'gaa-fae',e:'coffee'},{p:'chaa',e:'tea'},{p:'nám-bplào',e:'water'},{p:'pen-tôn',e:'etc.'},{p:'khrâp',e:'[polite]'}],target_phonetic:'pen-tôn'},
     {prompt:'Say you like coffee and tea and so on',thai:'ผมชอบกาแฟ ชา เป็นต้นครับ',english:'I like coffee, tea, and so on.',phonetic:'phǒm chôop gaa-fae chaa pen-tôn khrâp',words:[{p:'phǒm',e:'I'},{p:'chôop',e:'like'},{p:'gaa-fae',e:'coffee'},{p:'chaa',e:'tea'},{p:'pen-tôn',e:'etc.'},{p:'khrâp',e:'[polite]'}],target_phonetic:'pen-tôn'},
@@ -4089,6 +4109,9 @@ function validatePair(pair, target, allAllowed, existingThais, wordType) {
   if (/เอาทุก[ครับค่าคะ]/.test(th) || /มีทุก[ครับค่าคะ]/.test(th)) return false
   // Adjective used as destination/object (expanded)
   const ADJ_TARGETS = ['ใส','ช้า','ดึก','ตื่นเต้น','เผ็ด','แพง','ถูก','เหนื่อย','เบื่อ','สนุก','ดีใจ','เสียใจ','กลัว','พอดี']
+  // Experiencer verbs — subject MUST be a person (ผม/เธอ/เขา/คุณ), never an object/place/event
+  const EXPERIENCER_VERBS = ['ดีใจ','เสียใจ','หิว','กลัว','เหนื่อย','เบื่อ','ตื่นเต้น','กังวล','โกรธ','ตกใจ','ภูมิใจ','สนุก','อิ่ม','แน่นท้อง','อยาก','รู้สึก']
+  const isExperiencer = EXPERIENCER_VERBS.some(v => (target.thai || '').includes(v) || (target.english || '').toLowerCase().match(/hungry|full|happy|sad|afraid|tired|bored|excited|angry|proud|fun|feel/))
   for (const adj of ADJ_TARGETS) {
     if (th === 'ผมไป'+adj+'ครับ' || th === 'ผมอยาก'+adj+'ครับ' || th === adj+'ผมเจ็บครับ') return false
     if (th.startsWith('ขอ'+adj) || th.startsWith('มี'+adj+'ไหม') || th.startsWith('ไม่มี'+adj)) return false
@@ -4295,7 +4318,9 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
   }
 
   // ── Build prompt for a target word ────────────────────────────────────────
-  function buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, failureReason, pairIndex) {
+  function buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, failureReason, pairIndex, opts) {
+    opts = opts || {}
+    const restaurantOverused = opts.restaurantOverused || false
     const numberHint = randomNumberHint(vocab, pairIndex || 0)
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
@@ -4327,6 +4352,10 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       '\nQUALITY RULES:' +
       '\n• ขอ...หน่อย only for concrete requestable nouns/food — NOT activities, animals, places, or abstract' +
       '\n• NEVER add time words (วันนี้/ตอนนี้), quantities, or objects not in the prompt unless specified in NUMBER HINT below' +
+      (isExperiencer ? '\n• CRITICAL: "' + (target.thai||'') + '" is a FEELING/STATE verb — the subject MUST be a person (ผม/เธอ/เขา/คุณ/เรา). NEVER use it with objects, places, events, or animals as subject.' : '') +
+      (restaurantOverused ? '\n• LOCATION BAN: ร้านอาหาร has already appeared many times. Do NOT use it. Use a different location: บ้าน, ตลาด, ชายหาด, ห้อง, โรงเรียน, สวน, ถนน, สถานีรถไฟ, ท่าเรือ.' : '') +
+      (['ชน','ชนกัน'].includes(target.thai) ? '\n• SEMANTIC RULE: ชน means to CRASH INTO or COLLIDE WITH. Subject must be a vehicle, person, or animal. Objects like paper, islands, or buildings cannot ชน — use context like cars on a road, or a boat hitting rocks.' : '') +
+      (['ฉาย','ฉายหนัง'].includes(target.thai) ? '\n• SEMANTIC RULE: ฉาย means to SCREEN/PROJECT (a film). Subject must be a cinema, projector, or film. Always use with หนัง (movie): หนังฉาย = the movie is showing.' : '') +
       '\n• Sentences must make real-world sense' +
       '\n• งั้นก็ goes at START of sentence, never end' +
       '\n• all 3 Thai sentences MUST use DIFFERENT grammar patterns (statement / question / negative)' +
@@ -4399,6 +4428,11 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const minWords = lenCheck.goalMin || 5
       const maxWords = (lenCheck.hardCeil || 8) + 2  // allow 2 over
       const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
+      // Phonetic truncation check: phonetic should have at least 40% of Thai char count as syllables
+      if (phWords > 0 && thaiChars > 8 && phWords < thaiChars * 0.35) {
+        failures.push('phonetic likely truncated (' + phWords + ' syllables for ' + thaiChars + ' Thai chars): ' + p.thai)
+        continue
+      }
       if (effectiveLen < minWords) { failures.push('too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai); continue }
       if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
       // Must not be a duplicate
@@ -4632,9 +4666,11 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     if (pairs.length < 3) {
       const conceptBlock = getConceptBlock(target)
       const scenario = getScenarioForTarget(target)
+      // Count how many times ร้านอาหาร appears in already-generated pairs
+      const restaurantUses = allPairs.filter(p => p && p.thai && p.thai.includes('ร้านอาหาร')).length
 
       // ── Call 1: V2 generates ─────────────────────────────────────────────
-      const prompt1 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, false, '', i)
+      const prompt1 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, false, '', i, { restaurantOverused: restaurantUses >= 3 })
       let generated = await callModel(GPT_MODEL, prompt1)
       let { valid, failures } = validateSmartPairs(generated, target)
       for (const p of valid) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt:'+ target.thai}) }
@@ -4650,7 +4686,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         const lenRes = getSentenceLengthForVocab(vocab) || {}
         const lenHint = 'REQUIRED: sentences must be ' + (lenRes.goalMin||4) + '-' + (lenRes.hardCeil||8) + ' Thai words long'
         const recheckHint = lenHint + (failures && failures.length > 0 ? '. ALSO FIX: ' + failures.slice(0,3).join('; ') : '. Improve variety and naturalness')
-        const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, recheckHint, i)
+        const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, recheckHint, i, { restaurantOverused: restaurantUses >= 3 })
         const recheck1 = await callModel(GPT_MODEL, prompt2)
         const { valid: v2, failures: f2 } = validateSmartPairs(recheck1, target)
         for (const p of v2) {
@@ -4669,7 +4705,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         // ── Call 3: Qwen 3rd check ────────────────────────────────────────
         if (pairs.length < 3) {
           const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after 2nd check'
-          const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2, i)
+          const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2, i, { restaurantOverused: restaurantUses >= 3 })
           const recheck2 = await callModel(GPT_MODEL, prompt3)
           const { valid: v3, failures: f3 } = validateSmartPairs(recheck2, target, false)
           for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck2:'+ target.thai}) }
@@ -4678,7 +4714,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
           // ── Call 4: 4th check (dark blue) ────────────────────────────────
           if (pairs.length < 3) {
             const failReason3 = f3.slice(0, 3).join('; ') || 'still failing after 3rd check'
-            const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3, i)
+            const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3, i, { restaurantOverused: restaurantUses >= 3 })
             const recheck3 = await callModel(GPT_MODEL, prompt4)
             const { valid: v4, failures: f4 } = validateSmartPairs(recheck3, target, false)
             for (const p of v4) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck3:'+ target.thai}) }
@@ -4687,7 +4723,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
             // ── Call 5: 5th check (bright yellow) ────────────────────────────
             if (pairs.length < 3) {
               const failReason4 = f4.slice(0, 3).join('; ') || 'still failing after 4th check'
-              const prompt5 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason4, i)
+              const prompt5 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason4, i, { restaurantOverused: restaurantUses >= 3 })
               const recheck4 = await callModel(GPT_MODEL, prompt5)
               const { valid: v5, failures: f5 } = validateSmartPairs(recheck4, target, false)
               for (const p of v5) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck4:'+ target.thai}) }
@@ -4696,7 +4732,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
               // ── Call 6: 6th check (dark yellow) ──────────────────────────────
               if (pairs.length < 3) {
                 const failReason5 = f5.slice(0, 3).join('; ') || 'still failing after 5th check'
-                const prompt6 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason5, i)
+                const prompt6 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason5, i, { restaurantOverused: restaurantUses >= 3 })
                 const recheck5 = await callModel(GPT_MODEL, prompt6)
                 const { valid: v6, failures: f6 } = validateSmartPairs(recheck5, target, false)
                 for (const p of v6) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck5:'+ target.thai}) }
@@ -4705,7 +4741,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
                 // ── Call 7: 7th check (light green) ─────────────────────────────
                 if (pairs.length < 3) {
                   const failReason6 = f6.slice(0, 3).join('; ') || 'still failing after 6th check'
-                  const prompt7 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason6, i)
+                  const prompt7 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason6, i, { restaurantOverused: restaurantUses >= 3 })
                   const recheck6 = await callModel(GPT_MODEL, prompt7)
                   const { valid: v7, failures: f7 } = validateSmartPairs(recheck6, target, false)
                   for (const p of v7) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck6:'+ target.thai}) }
@@ -4714,7 +4750,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
                   // ── Call 8: 8th check (dark green) ───────────────────────────
                   if (pairs.length < 3) {
                     const failReason7 = f7.slice(0, 3).join('; ') || 'still failing after 7th check'
-                    const prompt8 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason7, i)
+                    const prompt8 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason7, i, { restaurantOverused: restaurantUses >= 3 })
                     const recheck7 = await callModel(GPT_MODEL, prompt8)
                     const { valid: v8, failures: f8 } = validateSmartPairs(recheck7, target, false)
                     for (const p of v8) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck7:'+ target.thai}) }
@@ -4723,7 +4759,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
                     // ── Call 9: Haiku final escalation ───────────────────────────
                     if (pairs.length < 3) {
                       const failReason8 = f8.slice(0, 3).join('; ') || 'still failing after 8th check'
-                      const prompt9 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason8, i)
+                      const prompt9 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason8, i, { restaurantOverused: restaurantUses >= 3 })
                       const recheck8 = await callModel(HAIKU_MODEL, prompt9)
                       const { valid: v9 } = validateSmartPairs(recheck8, target, false)
                       for (const p of v9) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }

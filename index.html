@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v238"/>
-<meta name="app-version" content="v238"/>
+<meta name="app-version" content="v239"/>
+<meta name="app-version" content="v239"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4233,21 +4233,29 @@ function randomNumberHint(vocab, pairIndex) {
   const max = getMaxNumberFromVocab(vocab)
   const r = n => Math.floor(Math.random() * n) + 1
 
+  // Thai number words for safe cardinals (within vocab ceiling)
+  const THAI_NUMS = ['หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า','สิบ',
+    'สิบเอ็ด','สิบสอง','สิบสาม','สิบสี่','สิบห้า','สิบหก','สิบเจ็ด','สิบแปด','สิบเก้า','ยี่สิบ',
+    'ยี่สิบเอ็ด','ยี่สิบสอง','ยี่สิบสาม','ยี่สิบสี่','ยี่สิบห้า','ยี่สิบหก','ยี่สิบเจ็ด','ยี่สิบแปด','ยี่สิบเก้า']
+  const safeCap = Math.min(max, 29)  // hard cap at 29 unless vocab proves higher
+  const safeN = () => r(Math.min(safeCap, THAI_NUMS.length))
+  const safeWord = (n) => THAI_NUMS[n - 1] || String(n)
+
   const types = [
-    // Cardinal number in context
-    () => { const n = r(Math.min(max, 99)); return 'Include the number ' + n + ' naturally (e.g. as a count, age, price in บาท, or quantity)' },
+    // Cardinal number — always expressed in Thai words, never digits or foreign chars
+    () => { const n = safeN(); return 'Include the number ' + safeWord(n) + ' (' + n + ') naturally — write it in Thai script only, NOT Arabic or Chinese digits' },
     // Time expression
     () => {
       const times = ['ตีหนึ่ง','ตีสอง','ตีสาม','ตีสี่','ตีห้า','หกโมงเช้า','เจ็ดโมงเช้า','แปดโมงเช้า','เก้าโมงเช้า','สิบโมงเช้า','สิบเอ็ดโมงเช้า','เที่ยง','บ่ายโมง','บ่ายสองโมง','บ่ายสามโมง','บ่ายสี่โมง','ห้าโมงเย็น','หกโมงเย็น','หนึ่งทุ่ม','สองทุ่ม','สามทุ่ม','สี่ทุ่ม','ห้าทุ่ม']
-      return 'Include a time expression — pick one naturally fitting: e.g. ' + times[r(times.length)-1]
+      return 'Include a time expression — write it in Thai script: ' + times[r(times.length)-1]
     },
-    // Ordinal
-    () => { const n = r(10); const ords = ['ที่หนึ่ง','ที่สอง','ที่สาม','ที่สี่','ที่ห้า','ที่หก','ที่เจ็ด','ที่แปด','ที่เก้า','ที่สิบ']; return 'Include an ordinal (ที่+number) naturally — e.g. ' + ords[n-1] },
-    // Classifier + number
-    () => { const n = r(9); const clfs = ['คน','อัน','ชิ้น','แก้ว','จาน','ครั้ง','วัน','ปี','เดือน']; return 'Include a number + classifier naturally — e.g. ' + n + ' ' + clfs[r(clfs.length)-1] },
+    // Ordinal (1–10 only, always Thai)
+    () => { const n = r(10); const ords = ['ที่หนึ่ง','ที่สอง','ที่สาม','ที่สี่','ที่ห้า','ที่หก','ที่เจ็ด','ที่แปด','ที่เก้า','ที่สิบ']; return 'Include an ordinal written in Thai script: e.g. ' + ords[n-1] },
+    // Classifier + number (1–9, Thai words only)
+    () => { const n = r(9); const clfs = ['คน','อัน','ชิ้น','แก้ว','จาน','ครั้ง','วัน','ปี','เดือน']; return 'Include a number + classifier in Thai script only: ' + safeWord(n) + ' ' + clfs[r(clfs.length)-1] },
   ]
   const pick = types[r(types.length) - 1]
-  return '\nNUMBER HINT: ' + pick() + '. Weave it into the sentence naturally — do not force it.'
+  return '\nNUMBER HINT: ' + pick() + '. Write ALL numbers in Thai script (e.g. สาม not 3, สิบสอง not 12). Do NOT use Arabic digits or Chinese/Japanese characters.'
 }
 
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal) {
@@ -4322,8 +4330,11 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     opts = opts || {}
     const restaurantOverused = opts.restaurantOverused || false
     const numberHint = randomNumberHint(vocab, pairIndex || 0)
-    const _EXPERIENCER_VERBS = ['ดีใจ','เสียใจ','หิว','กลัว','เหนื่อย','เบื่อ','ตื่นเต้น','กังวล','โกรธ','ตกใจ','ภูมิใจ','สนุก','อิ่ม','แน่นท้อง','อยาก','รู้สึก']
-    const isExperiencer = _EXPERIENCER_VERBS.some(v => (target.thai || '').includes(v) || (target.english || '').toLowerCase().match(/hungry|full|happy|sad|afraid|tired|bored|excited|angry|proud|fun|feel/))
+    const _EXPERIENCER_VERBS = ['ดีใจ','เสียใจ','หิว','กลัว','เหนื่อย','เบื่อ','ตื่นเต้น','กังวล','โกรธ','ตกใจ','ภูมิใจ','สนุก','อิ่ม','แน่นท้อง','อยาก','รู้สึก','อร่อย']
+    // Check Thai directly OR via English — explicit list avoids regex miss
+    const _expEnglish = ['hungry','full','happy','sad','afraid','tired','bored','excited','angry','proud','fun','feel','delicious','satisfied','worried','shocked']
+    const isExperiencer = _EXPERIENCER_VERBS.some(v => (target.thai || '').includes(v)) ||
+      _expEnglish.some(e => (target.english || '').toLowerCase().includes(e))
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
     let floor = lenResult.goalMin || 6
@@ -4354,6 +4365,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       '\nQUALITY RULES:' +
       '\n• ขอ...หน่อย only for concrete requestable nouns/food — NOT activities, animals, places, or abstract' +
       '\n• NEVER add time words (วันนี้/ตอนนี้), quantities, or objects not in the prompt unless specified in NUMBER HINT below' +
+      '\n• PHONETIC RULE: The phonetic field must fully transcribe the ENTIRE Thai sentence — never cut off mid-sentence. Every Thai syllable must have a phonetic equivalent.' +
+      '\n• SCRIPT RULE: Thai text must use Thai script only. NEVER use Arabic digits (1,2,3), Chinese characters (二十五), or any non-Thai characters in the Thai field.' +
       (isExperiencer ? '\n• CRITICAL: "' + (target.thai||'') + '" is a FEELING/STATE verb — the subject MUST be a person (ผม/เธอ/เขา/คุณ/เรา). NEVER use it with objects, places, events, or animals as subject.' : '') +
       (restaurantOverused ? '\n• LOCATION BAN: ร้านอาหาร has already appeared many times. Do NOT use it. Use a different location: บ้าน, ตลาด, ชายหาด, ห้อง, โรงเรียน, สวน, ถนน, สถานีรถไฟ, ท่าเรือ.' : '') +
       (['ชน','ชนกัน'].includes(target.thai) ? '\n• SEMANTIC RULE: ชน means to CRASH INTO or COLLIDE WITH. Subject must be a vehicle, person, or animal. Objects like paper, islands, or buildings cannot ชน — use context like cars on a road, or a boat hitting rocks.' : '') +
@@ -4434,6 +4447,16 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       // (Thai chars per phonetic word is naturally 4-7, so char-ratio checks are unreliable)
       if (phWords > 0 && phWords < Math.max(2, minWords - 2) && effectiveLen >= minWords) {
         failures.push('phonetic likely truncated (' + phWords + ' phonetic words for ' + effectiveLen + '-word sentence): ' + p.thai)
+        continue
+      }
+      // Foreign character check: Thai text must not contain Chinese, Japanese, Arabic, or Arabic-Indic digits
+      if (/[一-鿿぀-ヿ؀-ۿ٠-٩０-９]/.test(p.thai || '')) {
+        failures.push('non-Thai characters in sentence (Chinese/Japanese/Arabic digits?): ' + p.thai)
+        continue
+      }
+      // Phonetic must not be a single token when sentence is long
+      if (phWords === 1 && thaiChars > 6) {
+        failures.push('phonetic is single token for multi-char sentence: ' + p.thai)
         continue
       }
       if (effectiveLen < minWords) { failures.push('too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai); continue }
@@ -4662,8 +4685,16 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     // Concept tier disabled - concept cards feed AI as context instead
     // (buildConceptPairs produced unreliable output for most word types)
 
-    // ── TIER 1: Hardcoded bank removed from front — all words go through AI ───
+    // ── TIER 1: Hardcoded bank — skip API entirely for known-good words ────────
     const hasHardcode = !!HARDCODED_FALLBACKS[target.thai]
+    if (hasHardcode) {
+      const hbankEarly = HARDCODED_FALLBACKS[target.thai]
+      for (const p of hbankEarly) {
+        if (pairs.length >= 3) break
+        if (!existingThais.has(p.thai)) pairs.push({...p, _source:'hardcoded:'+target.thai})
+      }
+      console.log('[hardcoded] ' + target.thai + ': served ' + pairs.length + ' pairs from bank, skipping API')
+    }
 
     // ── TIER 2: Smart AI generation (V2 + V2 recheck + GPT escalation) ───
     if (pairs.length < 3) {

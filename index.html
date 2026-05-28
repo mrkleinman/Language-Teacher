@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v240"/>
-<meta name="app-version" content="v240"/>
+<meta name="app-version" content="v241"/>
+<meta name="app-version" content="v241"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4343,17 +4343,10 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       try {
         const useModel = attempt >= 3 ? HAIKU_MODEL : GPT_MODEL
         const { system, user } = buildConvoBatchPrompt(targets, batchTargets, prevLines, vocab, batchIdx)
-        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey,
-            'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-          body: JSON.stringify({ model: useModel, max_tokens: 3000, temperature: 0.6, stream: false,
-            messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
-        })
-        if (!res.ok) throw new Error('HTTP ' + res.status)
-        const data = await res.json()
-        let text = (data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g,'').trim()
-        // Extract JSON array
+        // Use callOpenRouterOnce (same as rest of pipeline, handles auth correctly)
+        const messages = [{ role: 'system', content: system }, { role: 'user', content: user }]
+        const rawText = await callOpenRouterOnce(apiKey, useModel, messages, 3000)
+        let text = rawText.replace(/<think>[\s\S]*?<\/think>/g,'').trim()
         const j1 = text.indexOf('['), j2 = text.lastIndexOf(']')
         if (j1 >= 0 && j2 > j1) text = text.slice(j1, j2 + 1)
         const parsed = JSON.parse(text)

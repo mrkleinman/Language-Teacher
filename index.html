@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v233"/>
-<meta name="app-version" content="v233"/>
+<meta name="app-version" content="v234"/>
+<meta name="app-version" content="v234"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4904,14 +4904,23 @@ function buildConvoPrompt(targets, vocab) {
     'Return ONLY valid JSON \u2014 no markdown, no preamble, no thinking.\n' +
     'EXAMPLE OUTPUT:\n' + example
 
+  // Known vocab whitelist (same as daily track)
+  const knownWhitelist = vocab
+    .filter(w => (w.repCount || w.r || 0) >= 1)
+    .sort((a, b) => ((b.repCount || b.r) || 0) - ((a.repCount || a.r) || 0))
+    .slice(0, 60)
+    .map(w => (w.thai || w.t) + '=' + (w.english || w.e))
+    .join(', ')
+
   const user = 'NOW write a 15-line conversation with these details:\n' +
     'SCENE: ' + scenario.scene + '\n' +
-    'SPEAKER A: ' + scenario.A + '\n' +
-    'SPEAKER B: ' + scenario.B + '\n' +
+    'SPEAKER A: ' + scenario.A + ' (uses ครับ)\n' +
+    'SPEAKER B: ' + scenario.B + ' (uses ค่ะ/คะ)\n' +
     'GOAL: ' + scenario.goal + '\n' +
     'LEVEL: ' + complexityNote + '\n' +
-    'TARGET WORDS \u2014 use ONLY if they fit naturally in the scene (skip any that do not belong): ' + wordList + '\n' +
-    'CRITICAL: NEVER force a word into a sentence where it makes no sense.\n\n' +
+    'REQUIRED TARGET WORDS — you MUST use ALL of these across the 15 lines, woven naturally into the scene: ' + wordList + '\n' +
+    'ALLOWED VOCAB — only use words from this whitelist or the target words above (no other Thai words): ' + knownWhitelist + '\n' +
+    'CRITICAL: Every single line must use only words from the ALLOWED VOCAB or TARGET WORDS. Do not invent vocabulary.\n\n' +
     'Return ONLY this JSON:\n' +
     '{"lines":[{"speaker":"A","thai":"...","phonetic":"...","english":"..."},{"speaker":"B","thai":"...","phonetic":"...","english":"..."}]}'
 
@@ -5021,9 +5030,13 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
       u.rate = speedRef.current || 0.8
       u.pitch = 1
       const anyThai = voices.filter(v => v.lang.startsWith('th'))
-      const googleFemale = anyThai.find(v => /Standard-A|Wavenet-A|Neural2-A|หญิง|female/i.test(v.name))
-      const googleMale = anyThai.find(v => /Standard-B|Standard-C|Wavenet-B|Neural2-B|Neural2-C|ชาย|male/i.test(v.name))
-      // Fallback: if 2+ voices available, first=female second=male (Chrome ordering)
+      // Chrome Android names: "th-TH-language" or "Google ภาษาไทย" — log for debugging
+      if (anyThai.length) console.log('[voices]', anyThai.map(v => v.name + '|' + v.lang))
+      // Female: Standard-A, Wavenet-A, Neural2-A, or index 0
+      // Male:   Standard-B/C, Wavenet-B/C, Neural2-B/C, or index 1
+      // Chrome Android typically has 2 th-TH voices: index 0 = female, index 1 = male
+      const googleFemale = anyThai.find(v => /Standard-A|Wavenet-A|Neural2-A|Neural2-D|Polyglot/i.test(v.name))
+      const googleMale   = anyThai.find(v => /Standard-B|Standard-C|Wavenet-B|Wavenet-C|Neural2-B|Neural2-C/i.test(v.name))
       const byIndex = isMale ? (anyThai[1] || anyThai[0]) : anyThai[0]
       const chosen = isMale ? (googleMale || byIndex) : (googleFemale || anyThai[0])
       if (chosen) u.voice = chosen

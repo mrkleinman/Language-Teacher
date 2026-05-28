@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v237"/>
-<meta name="app-version" content="v237"/>
+<meta name="app-version" content="v238"/>
+<meta name="app-version" content="v238"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4430,9 +4430,10 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const minWords = lenCheck.goalMin || 5
       const maxWords = (lenCheck.hardCeil || 8) + 2  // allow 2 over
       const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
-      // Phonetic truncation check: phonetic should have at least 40% of Thai char count as syllables
-      if (phWords > 0 && thaiChars > 8 && phWords < thaiChars * 0.35) {
-        failures.push('phonetic likely truncated (' + phWords + ' syllables for ' + thaiChars + ' Thai chars): ' + p.thai)
+      // Phonetic truncation check: phonetic word count should be at least minWords-2
+      // (Thai chars per phonetic word is naturally 4-7, so char-ratio checks are unreliable)
+      if (phWords > 0 && phWords < Math.max(2, minWords - 2) && effectiveLen >= minWords) {
+        failures.push('phonetic likely truncated (' + phWords + ' phonetic words for ' + effectiveLen + '-word sentence): ' + p.thai)
         continue
       }
       if (effectiveLen < minWords) { failures.push('too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai); continue }

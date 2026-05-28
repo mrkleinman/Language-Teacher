@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v236"/>
-<meta name="app-version" content="v236"/>
+<meta name="app-version" content="v237"/>
+<meta name="app-version" content="v237"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4322,6 +4322,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     opts = opts || {}
     const restaurantOverused = opts.restaurantOverused || false
     const numberHint = randomNumberHint(vocab, pairIndex || 0)
+    const _EXPERIENCER_VERBS = ['ดีใจ','เสียใจ','หิว','กลัว','เหนื่อย','เบื่อ','ตื่นเต้น','กังวล','โกรธ','ตกใจ','ภูมิใจ','สนุก','อิ่ม','แน่นท้อง','อยาก','รู้สึก']
+    const isExperiencer = _EXPERIENCER_VERBS.some(v => (target.thai || '').includes(v) || (target.english || '').toLowerCase().match(/hungry|full|happy|sad|afraid|tired|bored|excited|angry|proud|fun|feel/))
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
     let floor = lenResult.goalMin || 6

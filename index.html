@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v239"/>
-<meta name="app-version" content="v239"/>
+<meta name="app-version" content="v240"/>
+<meta name="app-version" content="v240"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2390,6 +2390,8 @@ function downloadTrack(track) {
     if (!src) return 'ai:check-1'
     if (src.startsWith('fallback:') || src.startsWith('hardcoded:')) return 'fallback:template'
     if (src.startsWith('repair:')) return 'fallback:slot-repair'
+    if (src.startsWith('gpt-recheck9:')) return 'ai:check-11'
+    if (src.startsWith('gpt-recheck8:')) return 'ai:check-10'
     if (src.startsWith('gpt-recheck7:')) return 'ai:check-8'
     if (src.startsWith('gpt-recheck6:')) return 'ai:check-7'
     if (src.startsWith('gpt-recheck5:')) return 'ai:check-6'
@@ -4241,21 +4243,177 @@ function randomNumberHint(vocab, pairIndex) {
   const safeN = () => r(Math.min(safeCap, THAI_NUMS.length))
   const safeWord = (n) => THAI_NUMS[n - 1] || String(n)
 
+  // Strictly equal weights — pick type by pairIndex mod 4 so every 4 pairs cycles through all types
+  const typeIdx = Math.floor(pairIndex / 2) % 4
   const types = [
-    // Cardinal number — always expressed in Thai words, never digits or foreign chars
-    () => { const n = safeN(); return 'Include the number ' + safeWord(n) + ' (' + n + ') naturally — write it in Thai script only, NOT Arabic or Chinese digits' },
-    // Time expression
+    // 0: Cardinal number — Thai words only
+    () => { const n = safeN(); return 'Include the number ' + safeWord(n) + ' (' + n + ') naturally in Thai script only — NOT Arabic or Chinese digits (e.g. ห้าคน, สิบบาท, สามวัน)' },
+    // 1: Time expression
     () => {
       const times = ['ตีหนึ่ง','ตีสอง','ตีสาม','ตีสี่','ตีห้า','หกโมงเช้า','เจ็ดโมงเช้า','แปดโมงเช้า','เก้าโมงเช้า','สิบโมงเช้า','สิบเอ็ดโมงเช้า','เที่ยง','บ่ายโมง','บ่ายสองโมง','บ่ายสามโมง','บ่ายสี่โมง','ห้าโมงเย็น','หกโมงเย็น','หนึ่งทุ่ม','สองทุ่ม','สามทุ่ม','สี่ทุ่ม','ห้าทุ่ม']
-      return 'Include a time expression — write it in Thai script: ' + times[r(times.length)-1]
+      return 'Include a time expression written in Thai script: ' + times[Math.floor(Math.random() * times.length)]
     },
-    // Ordinal (1–10 only, always Thai)
-    () => { const n = r(10); const ords = ['ที่หนึ่ง','ที่สอง','ที่สาม','ที่สี่','ที่ห้า','ที่หก','ที่เจ็ด','ที่แปด','ที่เก้า','ที่สิบ']; return 'Include an ordinal written in Thai script: e.g. ' + ords[n-1] },
-    // Classifier + number (1–9, Thai words only)
-    () => { const n = r(9); const clfs = ['คน','อัน','ชิ้น','แก้ว','จาน','ครั้ง','วัน','ปี','เดือน']; return 'Include a number + classifier in Thai script only: ' + safeWord(n) + ' ' + clfs[r(clfs.length)-1] },
+    // 2: Ordinal (1–10, Thai words)
+    () => { const n = r(10); const ords = ['ที่หนึ่ง','ที่สอง','ที่สาม','ที่สี่','ที่ห้า','ที่หก','ที่เจ็ด','ที่แปด','ที่เก้า','ที่สิบ']; return 'Include an ordinal in Thai script: e.g. ' + ords[n-1] },
+    // 3: Classifier + number (1–9, Thai words)
+    () => { const n = r(9); const clfs = ['คน','อัน','ชิ้น','แก้ว','จาน','ครั้ง','วัน','ปี','เดือน','ลำ','ตัว']; return 'Include a number + classifier in Thai script: ' + safeWord(n) + ' ' + clfs[Math.floor(Math.random() * clfs.length)] },
   ]
-  const pick = types[r(types.length) - 1]
+  const pick = types[typeIdx]
   return '\nNUMBER HINT: ' + pick() + '. Write ALL numbers in Thai script (e.g. สาม not 3, สิบสอง not 12). Do NOT use Arabic digits or Chinese/Japanese characters.'
+}
+
+
+// ── Conversation-track generation ────────────────────────────────────────────
+// Builds the full 90-pair track as a real M/F dialogue rather than isolated sentences.
+// Generates in batches of ~15 lines (5 target words × 3 lines each), passing
+// conversation context forward so the narrative threads together.
+// Each pair gets _source, speaker ('A'=male/ครับ, 'B'=female/ค่ะ), and all standard fields.
+
+function buildConvoBatchPrompt(targets, batchTargets, prevLines, vocab, batchIdx) {
+  const knownWords = vocab.filter(w => (w.repCount || w.r || 0) >= 1)
+    .sort((a,b) => ((b.repCount||b.r)||0) - ((a.repCount||a.r)||0))
+    .slice(0, 50)
+    .map(w => (w.thai||w.t) + '(' + (w.english||w.e) + ')')
+    .join(', ')
+
+  const lenRes = getSentenceLengthForVocab(vocab) || {}
+  const sentMin = lenRes.goalMin || 4
+  const sentMax = lenRes.goalMax || 7
+
+  const targetList = batchTargets.map(t => t.thai + '[' + (t.phonetic||'') + ']=' + t.english).join(', ')
+  const allTargets = targets.map(t => t.thai).join(', ')
+
+  // Pick scene once (batchIdx 0) or continue existing scene
+  const sceneNote = batchIdx === 0
+    ? 'SCENE: Two friends (A=Thai man, B=Thai woman) in an everyday situation — market, trip, street, restaurant, etc. — having a natural flowing conversation. The scene should naturally accommodate all 30 target words listed below over the full conversation.'
+    : 'CONTINUE the same conversation from the context below. Do NOT change scene or topic abruptly.'
+
+  const contextBlock = prevLines.length > 0
+    ? 'CONVERSATION SO FAR (last ' + Math.min(prevLines.length, 6) + ' lines):\n' +
+      prevLines.slice(-6).map(l => (l.speaker==='A'?'A (ผม/ครับ)':'B (ฉัน/ค่ะ)') + ': ' + l.thai).join('\n')
+    : ''
+
+  const system = sceneNote + '\n' +
+    'A = Thai man: uses ผม, ครับ at end of EVERY sentence. Natural, direct speech.\n' +
+    'B = Thai woman: uses ฉัน/เธอ, ค่ะ or คะ at end of EVERY sentence. Natural, direct speech.\n' +
+    'RULES:\n' +
+    '• EVERY line ends with ครับ (A) or ค่ะ/คะ (B) — no exceptions\n' +
+    '• Each sentence ' + sentMin + '–' + sentMax + ' Thai words\n' +
+    '• EVERY Thai word must come from WHITELIST or TARGET WORDS only\n' +
+    '• WHITELIST: ' + knownWords + '\n' +
+    '• ALL 30 TARGET WORDS must appear across the full conversation: ' + allTargets + '\n' +
+    '• Sentences must feel like real speech — varied, natural, direct. No padding.\n' +
+    '• PHONETIC: transcribe the ENTIRE sentence — never truncate\n' +
+    '• SCRIPT: Thai text only — no Arabic digits, no Chinese characters\n' +
+    'Return ONLY valid JSON array, no preamble:\n' +
+    '[{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"...","target":"thai_word"},...]\n' +
+    '"prompt" = English instruction for what the speaker is saying (used as SRS cue)\n' +
+    '"target" = which target word this line primarily uses'
+
+  const user = contextBlock +
+    (contextBlock ? '\n\n' : '') +
+    'NOW write the next 15 lines of conversation. These 15 lines MUST include all 5 of these target words, each used in at least 2–3 lines:\n' +
+    targetList + '\n' +
+    'Alternate A and B naturally. Vary grammar: statements, questions, negatives, suggestions.'
+
+  return { system, user }
+}
+
+async function generateConversationTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal) {
+  const GPT_MODEL = model || 'qwen/qwen3.5-flash-02-23'
+  const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001'
+  const allPairs = []
+  const prevLines = []
+
+  // Split 30 targets into batches of 5 (= 6 batches × 15 lines = 90 pairs)
+  const BATCH_SIZE = 5
+  const batches = []
+  for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+    batches.push(targets.slice(i, i + BATCH_SIZE))
+  }
+
+  for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+    if (stopSignal && stopSignal.paused) { await new Promise(r => setTimeout(r, 200)); batchIdx--; continue }
+
+    const batchTargets = batches[batchIdx]
+    onProgress && onProgress(batchIdx * BATCH_SIZE, targets.length, null, null, null)
+
+    let batchPairs = []
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const useModel = attempt >= 3 ? HAIKU_MODEL : GPT_MODEL
+        const { system, user } = buildConvoBatchPrompt(targets, batchTargets, prevLines, vocab, batchIdx)
+        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey,
+            'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
+          body: JSON.stringify({ model: useModel, max_tokens: 3000, temperature: 0.6, stream: false,
+            messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
+        })
+        if (!res.ok) throw new Error('HTTP ' + res.status)
+        const data = await res.json()
+        let text = (data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g,'').trim()
+        // Extract JSON array
+        const j1 = text.indexOf('['), j2 = text.lastIndexOf(']')
+        if (j1 >= 0 && j2 > j1) text = text.slice(j1, j2 + 1)
+        const parsed = JSON.parse(text)
+
+        // Validate: filter out broken lines
+        const valid = parsed.filter(l =>
+          l.thai && l.english && l.phonetic && l.prompt && l.speaker &&
+          (l.thai.endsWith('ครับ') || l.thai.endsWith('ค่ะ') || l.thai.endsWith('คะ') || l.thai.endsWith('นะ') || l.thai.endsWith('ล่ะ')) &&
+          l.thai.length > 5 && l.phonetic.length > 5 &&
+          !/[一-鿿0-9]/.test(l.thai)  // no Chinese/digits
+        )
+
+        // Check all batch targets are covered
+        const coveredTargets = new Set(batchTargets.map(t => t.thai).filter(tw =>
+          valid.some(l => l.thai.includes(tw))
+        ))
+
+        if (valid.length >= 12 && coveredTargets.size >= batchTargets.length - 1) {
+          batchPairs = valid.slice(0, 15).map((l, si) => ({
+            prompt: l.prompt,
+            thai: l.thai,
+            phonetic: l.phonetic,
+            english: l.english,
+            speaker: l.speaker,
+            _source: attempt === 0 ? 'gpt:batch' : attempt === 1 ? 'gpt-recheck:batch' : attempt === 2 ? 'gpt-recheck2:batch' : 'haiku:batch',
+            _target: l.target || ''
+          }))
+          prevLines.push(...batchPairs)
+          break
+        }
+        if (attempt < 3) console.warn('[convo-track batch ' + batchIdx + '] attempt ' + attempt + ': only ' + valid.length + ' valid, ' + coveredTargets.size + '/' + batchTargets.length + ' targets covered')
+        if (valid.length > 0 && attempt === 3) {
+          batchPairs = valid.slice(0, 15).map(l => ({
+            prompt: l.prompt, thai: l.thai, phonetic: l.phonetic, english: l.english,
+            speaker: l.speaker, _source: 'haiku:batch', _target: l.target || ''
+          }))
+          prevLines.push(...batchPairs)
+        }
+      } catch(e) {
+        console.error('[convo-track batch ' + batchIdx + '] attempt ' + attempt + ':', e.message)
+      }
+    }
+
+    // Fallback: if batch completely failed, use hardcoded/slot-repair for each target
+    if (batchPairs.length < 10) {
+      for (const t of batchTargets) {
+        const hb = HARDCODED_FALLBACKS[t.thai]
+        const fb = hb || makeFallbackPairs(t)
+        fb.slice(0, 3).forEach((p, si) => {
+          batchPairs.push({ ...p, speaker: (allPairs.length + si) % 2 === 0 ? 'A' : 'B',
+            _source: hb ? 'hardcoded:' + t.thai : 'fallback:' + t.thai })
+        })
+      }
+    }
+
+    allPairs.push(...batchPairs)
+    onProgress && onProgress(Math.min((batchIdx + 1) * BATCH_SIZE, targets.length), targets.length, null, null, null)
+  }
+
+  return allPairs
 }
 
 async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal) {
@@ -4377,7 +4535,11 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       (target.thai === 'ยิน' ? '\n• ยิน is used as ยินดี (glad) — always write ยินดี in sentences' : '') +
       (['พี่ชาย','น้องชาย','พี่สาว','น้องสาว','พี่','น้อง'].includes(target.thai) ? '\n• Always specify OLDER (พี่) or YOUNGER (น้อง) — never just "brother" or "sister"' : '') +
       '\nWRITE 3 sentence pairs each containing "' + target.thai + '". Use 3 different grammar patterns: 1 statement, 1 yes/no question, 1 other. Each "prompt" must be SPECIFIC: tell the student exactly what to say (e.g. "Say the [target] is [adjective]", "Ask if the [target] is [quality]"). ONLY use Thai words from the WHITELIST above.' +
-      ' "prompt" = natural English instruction. Mix statement + question + negative/other.' +
+      ' "prompt" = natural English instruction telling what to SAY, matching the Thai sentence exactly (not a paraphrase).' +
+      '\n"english" = the LITERAL translation of the Thai sentence — word for word. NOT a paraphrase of the prompt.' +
+      '\nSPEAKER RULE: Speaker is male (ผม, ครับ). Vary subjects — sometimes ผม, sometimes เขา/เธอ/คุณ/ทีม/รถ etc. Do NOT make every sentence about ผม.' +
+      '\nCREATIVITY RULE: Write sentences that feel like real everyday speech — varied, interesting, contextually grounded. Do NOT pad with คิดว่า/ทราบว่า/รู้สึกว่า just to add words. Every word must earn its place.' +
+      '\nQUALITY BAR: Think of a sentence a fluent Thai speaker would actually say in real life. Not a textbook example. Not a drill. A real utterance.' +
       numberHint +
       '\nRETURN ONLY: [{"prompt":"...","thai":"...","phonetic":"...","english":"...","words":[{"p":"phǒm","e":"I"},{"p":"mii","e":"have"},...]},...] — include a words array with one entry per phonetic token showing its meaning.'
   }
@@ -4790,14 +4952,34 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
                     for (const p of v8) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck7:'+ target.thai}) }
                     console.log('[8th] ' + target.thai + ': ' + v8.length + ' more valid')
 
-                    // ── Call 9: Haiku final escalation ───────────────────────────
+                    // ── Call 9: 10th check ───────────────────────────────────────
                     if (pairs.length < 3) {
                       const failReason8 = f8.slice(0, 3).join('; ') || 'still failing after 8th check'
                       const prompt9 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason8, i, { restaurantOverused: restaurantUses >= 3 })
-                      const recheck8 = await callModel(HAIKU_MODEL, prompt9)
-                      const { valid: v9 } = validateSmartPairs(recheck8, target, false)
-                      for (const p of v9) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
-                      console.log('[Haiku] ' + target.thai + ': ' + v9.length + ' more valid')
+                      const recheck8 = await callModel(GPT_MODEL, prompt9)
+                      const { valid: v9, failures: f9 } = validateSmartPairs(recheck8, target)
+                      for (const p of v9) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck8:'+ target.thai}) }
+                      console.log('[10th] ' + target.thai + ': ' + v9.length + ' more valid')
+
+                      // ── Call 10: 11th check ─────────────────────────────────────
+                      if (pairs.length < 3) {
+                        const failReason9 = f9.slice(0, 3).join('; ') || 'still failing after 10th check'
+                        const prompt10 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason9, i, { restaurantOverused: restaurantUses >= 3 })
+                        const recheck9 = await callModel(GPT_MODEL, prompt10)
+                        const { valid: v10, failures: f10 } = validateSmartPairs(recheck9, target)
+                        for (const p of v10) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'gpt-recheck9:'+ target.thai}) }
+                        console.log('[11th] ' + target.thai + ': ' + v10.length + ' more valid')
+
+                        // ── Call 11: Haiku final escalation ────────────────────────
+                        if (pairs.length < 3) {
+                          const failReason10 = f10.slice(0, 3).join('; ') || 'still failing after 11th check'
+                          const prompt11 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason10, i, { restaurantOverused: restaurantUses >= 3 })
+                          const recheck10 = await callModel(HAIKU_MODEL, prompt11)
+                          const { valid: v11 } = validateSmartPairs(recheck10, target, false)
+                          for (const p of v11) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
+                          console.log('[Haiku] ' + target.thai + ': ' + v11.length + ' more valid')
+                        }
+                      }
                     }
                   }
                 }
@@ -5346,7 +5528,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             doPhonetics().catch(() => {})
           }
 
-          pairs = await generateTrack(targets, anchors, apiKey,
+          const useConvoTrack = mode === 'daily' || mode === 'weak'
+          pairs = await (useConvoTrack ? generateConversationTrack : generateTrack)(targets, anchors, apiKey,
             (done, total, meta, sources, wordIdx) => {
               if (done >= 0) setPairsDone(done)
               setPairsTotal(targets.length * 3)
@@ -5365,13 +5548,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               if (meta && meta.apiError) setCurrentTier('❌ API: ' + meta.apiError)
               const lastSrc = Array.isArray(sources) ? (sources[sources.length-1] || '') : (sources || '')
               if (lastSrc) {
-                const tierName = lastSrc.startsWith('gpt-recheck7:') ? '🟢 8th check'
+                const tierName = lastSrc.startsWith('gpt-recheck9:') ? '🟫 11th check'
+                  : lastSrc.startsWith('gpt-recheck8:') ? '🪵 10th check'
+                  : lastSrc.startsWith('gpt-recheck7:') ? '🟢 8th check'
                   : lastSrc.startsWith('gpt-recheck6:') ? '🟩 7th check'
                   : lastSrc.startsWith('gpt-recheck5:') ? '🟡 6th check'
                   : lastSrc.startsWith('gpt-recheck4:') ? '🟨 5th check'
-                  : lastSrc.startsWith('gpt-recheck3:') ? '🔵 4th check'
-                  : lastSrc.startsWith('gpt-recheck2:') ? '🔵 3rd check'
-                  : lastSrc.startsWith('gpt-recheck:') ? '🟠 2nd check'
+                  : lastSrc.startsWith('gpt-recheck3:') ? '🟡 4th check'
+                  : lastSrc.startsWith('gpt-recheck2:') ? '🟠 3rd check'
+                  : lastSrc.startsWith('gpt-recheck:') ? '🔶 2nd check'
                   : lastSrc.startsWith('gpt:') ? '🟧 1st check'
                   : lastSrc.startsWith('haiku:') ? '🩷 Haiku check'
                   : lastSrc.startsWith('hardcoded:') ? '⬛ Hardcoded fallback'
@@ -5445,14 +5630,16 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
   const srcToColor = (src, fallback) => {
     if (!src) return fallback || 'var(--surface2)'
-    if (src.startsWith('gpt:')) return '#fb923c'           // 1st — light orange
-    if (src.startsWith('gpt-recheck:')) return '#92400e'   // 2nd — dark orange
-    if (src.startsWith('gpt-recheck2:')) return '#60a5fa'  // 3rd — light blue
-    if (src.startsWith('gpt-recheck3:')) return '#1e3a8a'  // 4th — dark blue
-    if (src.startsWith('gpt-recheck4:')) return '#fbbf24'  // 5th — bright yellow
-    if (src.startsWith('gpt-recheck5:')) return '#78350f'  // 6th — dark yellow
-    if (src.startsWith('gpt-recheck6:')) return '#86efac'  // 7th — light green
-    if (src.startsWith('gpt-recheck7:')) return '#14532d'  // 8th — very dark green
+    if (src.startsWith('gpt:')) return '#f8fafc'           // 1st  — white
+    if (src.startsWith('gpt-recheck:')) return '#f97316'   // 2nd  — bright orange
+    if (src.startsWith('gpt-recheck2:')) return '#ea580c'  // 3rd  — dark orange
+    if (src.startsWith('gpt-recheck3:')) return '#facc15'  // 4th  — yellow
+    if (src.startsWith('gpt-recheck4:')) return '#a3e635'  // 5th  — yellow-green
+    if (src.startsWith('gpt-recheck5:')) return '#4ade80'  // 6th  — light green
+    if (src.startsWith('gpt-recheck6:')) return '#16a34a'  // 7th  — mid green
+    if (src.startsWith('gpt-recheck7:')) return '#14532d'  // 8th  — dark green
+    if (src.startsWith('gpt-recheck8:')) return '#c8956c'  // 10th — light brown
+    if (src.startsWith('gpt-recheck9:')) return '#8b5a2b'  // 11th — dark brown
     if (src.startsWith('haiku:')) return '#FA8072'          // Haiku — salmon
     if (src.startsWith('hardcoded:') || src.startsWith('fallback:')) return '#111111'
     if (src.startsWith('fix:')) return '#10b981'  // repaired — emerald green
@@ -5596,6 +5783,18 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           </Btn>
           <div style={{ display:'flex', gap:8 }}>
             <Btn onClick={async () => {
+              // For daily/weak tracks (conversation-style), use track pairs as convo directly
+              if (useConvoTrack && activeTrack && activeTrack.pairs && activeTrack.pairs.length > 0) {
+                const convoFromTrack = activeTrack.pairs.map(p => ({
+                  speaker: p.speaker || (p.thai && p.thai.endsWith('ครับ') ? 'A' : 'B'),
+                  thai: p.thai,
+                  phonetic: p.phonetic,
+                  english: p.english
+                }))
+                setConvoLines(convoFromTrack)
+                setTimeout(() => setShowConvo(true), 200)
+                return
+              }
               setConvoLoading(true)
               try {
                 const orModel = provider === 'haiku' ? 'anthropic/claude-haiku-4-5-20251001' : 'qwen/qwen3.5-flash-02-23'
@@ -5608,7 +5807,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               } catch(e) { alert('Convo failed: ' + e.message) }
               setConvoLoading(false)
             }} variant="secondary" style={{ flex:1, justifyContent:'center' }} disabled={convoLoading}>
-              {convoLoading ? '⏳ Generating…' : convoLines ? '💬 View Conversation' : '💬 Generate Conversation'}
+              {convoLoading ? '⏳ Generating…' : convoLines ? '💬 View Conversation' : '💬 View as Conversation'}
             </Btn>
             {convoLines && (
               <Btn onClick={() => {
@@ -5777,8 +5976,18 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
     const utter = new SpeechSynthesisUtterance(text)
     utter.lang = lang
     utter.rate = lang.startsWith('th') ? thaiSpeed : 0.88
-    const match = voices.find(v => v.lang.startsWith(lang.slice(0, 2)))
-    if (match) utter.voice = match
+    if (lang.startsWith('th')) {
+      const anyThai = voices.filter(v => v.lang.startsWith('th'))
+      const isMale = /ครับ$/.test(text.trim())
+      const googleFemale = anyThai.find(v => /Standard-A|Wavenet-A|Neural2-A/i.test(v.name))
+      const googleMale   = anyThai.find(v => /Standard-B|Standard-C|Wavenet-B|Neural2-B|Neural2-C/i.test(v.name))
+      const byIndex = isMale ? (anyThai[1] || anyThai[0]) : anyThai[0]
+      const chosen = isMale ? (googleMale || byIndex) : (googleFemale || anyThai[0])
+      if (chosen) utter.voice = chosen
+    } else {
+      const match = voices.find(v => v.lang.startsWith(lang.slice(0, 2)))
+      if (match) utter.voice = match
+    }
     setSpeaking(true); startCountdown(ms)
     utter.onend = () => { setSpeaking(false); stopCountdown(); if (!pausedRef.current && !cancelledRef.current) onDone() }
     utter.onerror = () => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }

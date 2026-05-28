@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v234"/>
-<meta name="app-version" content="v234"/>
+<meta name="app-version" content="v235"/>
+<meta name="app-version" content="v235"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -5789,6 +5789,8 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
     </div>
   )
 
+  const [revealedWords, setRevealedWords] = React.useState({})
+
   if (lessonDone) {
     return (
       <div className="fade-in" style={{ background:'var(--bg)', minHeight:'100vh', padding:'16px 16px 40px', maxWidth:500, margin:'0 auto' }}>
@@ -5803,10 +5805,13 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:24 }}>
           {keywords.map((kw,i) => (
             <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
-              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:12 }}>
+              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:12, cursor:'pointer' }}
+                onClick={() => setRevealedWords(prev => ({ ...prev, [i]: true }))}>
                 <span className="thai" style={{ fontSize:26, color:'var(--gold)' }}>{kw.thai}</span>
                 {kw.phonetic && <span className="phon" style={{ fontSize:13, color:'#7a8aad' }}>{kw.phonetic}</span>}
-                <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
+                {revealedWords[i]
+                  ? <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
+                  : <span style={{ color:'var(--border)', fontSize:11, fontStyle:'italic' }}>tap to reveal</span>}
               </div>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {[['hard','😅','#ef4444','#2d1515'],['ok','👍','#f59e0b','#3d2800'],['easy','⭐','#10b981','#063d2e']].map(([r,e,col,bg]) => (

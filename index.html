@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v316"/>
-<meta name="app-version" content="v316"/>
+<meta name="app-version" content="v332"/>
+<meta name="app-version" content="v332"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4507,7 +4507,12 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• ครับ and ค่ะ/คะ are POLITENESS PARTICLES — do NOT translate them at all in the english field, they are invisible in English\n' +
     '• Do NOT use the other person\'s name in the sentence — real Thai friends rarely address each other by name mid-conversation\n' +
     '• Make sentences that CONTINUE THE CONVERSATION naturally from the previous lines — no random topic jumps\n' +
-    '• GRAMMAR: sentences must be complete and natural Thai — no fragments\n' +
+    '• GRAMMAR: sentences must be complete and natural spoken Thai — the kind real friends say to each other\n' +
+    '• NATURAL SPEECH: use casual registers — เรา/เธอ/เขา, contractions, natural flow. Avoid textbook patterns like ผมต้องการ/ดิฉัน/กระผม unless the character is being formal\n' +
+    '• ACCURACY: the "english" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
+    '• The "prompt" field must accurately describe exactly what is said — not generic, must match the Thai sentence\n' +
+    '• SELF-CHECK: before returning, re-read each line and ask: "Would a real Thai person say this naturally in this scene?" If no, rewrite it\n' +
+    '• Add a "ok": true field to each line object — only set true if the line is natural, accurate, and the target word is used correctly\n' +
     '• EXPERIENCER RULE: feeling/state verbs (หิว เหนื่อย ดีใจ กลัว) need a person as subject — NEVER apply to places or objects\n' +
     '• CREATIVITY: vary locations (ที่บ้าน ตลาด ชายหาด สนามบิน) — do NOT repeat ร้านอาหาร\n' +
     (restaurantUses >= 2 ? '• LOCATION BAN: ร้านอาหาร already used twice — use a different location\n' : '') +
@@ -4515,11 +4520,24 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• "english" = natural fluent English — NOT word-for-word. "ผมไม่รู้ว่าคุณไปไหน" → "I have no idea where you went" not "I not know that you go where"\n' +
     (numberHint ? numberHint + '\n' : '') +
     'Return ONLY JSON array of exactly 3 objects:\n' +
-    '[{"speaker":"A","thai":"...ครับ","phonetic":"...","english":"...","prompt":"..."},' +
-    '{"speaker":"B","thai":"...ค่ะ","phonetic":"...","english":"...","prompt":"..."},' +
-    '{"speaker":"A","thai":"...ครับ","phonetic":"...","english":"...","prompt":"..."}]'
+    '[{"speaker":"A","thai":"...ครับ","phonetic":"...","english":"...","prompt":"...","ok":true,"glosses":["word1-en","word2-en",...]},' +
+    '{"speaker":"B","thai":"...ค่ะ","phonetic":"...","english":"...","prompt":"...","ok":true,"glosses":[...]},' +
+    '{"speaker":"A","thai":"...ครับ","phonetic":"...","english":"...","prompt":"...","ok":true,"glosses":[...]}]\n' +
+    'glosses = one English word per phonetic token (e.g. phonetic "phǒm jà bpai" → glosses ["I","will","go"]). Use "-" for particles like ครับ/ค่ะ.'
 
   // Build natural context hint for how to use the target word
+  // Detect proper nouns (capitalized English or known place names)
+  const _properNouns = {
+    'ปาย':'mention going to Pai or wanting to visit Pai (city in Mae Hong Son)',
+    'เชียงใหม่':'mention Chiang Mai or being in/going to Chiang Mai',
+    'กรุงเทพ':'mention Bangkok or going to Bangkok',
+    'ภูเก็ต':'mention Phuket or a trip to Phuket',
+    'สวิตเซอร์แลนด์':'mention Switzerland or wanting to go to Switzerland',
+    'ญี่ปุ่น':'mention Japan or Japanese things',
+    'เกาหลี':'mention Korea or Korean things',
+    'อเมริกา':'mention America or Americans',
+    'กาดสวนแก้ว':'mention Kad Suan Kaew mall in Chiang Mai',
+  }
   const _usageHint = ({
     'หู':'say something sounds good/bad or mention having earache',
     'ฟัน':'mention brushing teeth or having a toothache',
@@ -4543,7 +4561,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'วิ่ง':'say you go running or someone ran somewhere',
     'ชวน':'invite someone to do something',
     'แพง':'comment that something costs a lot',
-  })[target.thai] || 'naturally bring up "' + target.thai + '" (' + target.english + ') in conversation'
+  })[target.thai] || _properNouns[target.thai] || 'naturally bring up "' + target.thai + '" (' + target.english + ') in conversation'
 
   const baseUser = context + 'Continue the conversation. Write exactly 3 lines:\n' +
     'LINE 1 (A): ' + _usageHint + ' — must end with ครับ — MUST contain the Thai word "' + target.thai + '"\n' +
@@ -4565,11 +4583,30 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     onProgress && onProgress(-1, -1, { apiError: CHECK_EMOJIS[attempt] + ' ' + CHECK_NAMES[attempt] + ' check: ' + target.thai }, null, null)
 
     try {
+      // Translate raw validator failures into actionable rewrite instructions
+      const _translateFail = r => {
+        const _longMatch = r.match(/too long.*?(\d+) words.*?max (\d+)/)
+        if (_longMatch) {
+          return 'Sentence is ' + _longMatch[1] + ' words — MAX is ' + _longMatch[2] + '. Rewrite SHORTER. Cut unnecessary words.'
+        }
+        if (/too short/.test(r)) return 'Sentence is too short. Add more context to make it a complete natural utterance.'
+        if (/phonetic truncated|missing phonetic|short phonetic/.test(r)) return 'Phonetic is incomplete — romanise EVERY syllable of the Thai sentence.'
+        if (/no target/.test(r)) return 'The target word "' + target.thai + '" (' + target.english + ') is missing from the sentence. It MUST appear in the Thai text.'
+        if (/missing.*translation|no English/.test(r)) return 'The English translation field is empty. Provide a natural English translation.'
+        if (/SAY.*question|prompt.*question/.test(r)) return 'Change the prompt to start with "Ask" not "Say" since the sentence is a question.'
+        if (/only the target word/.test(r)) return 'Line cannot be just "' + target.thai + '" alone — write a full sentence that uses it naturally.'
+        if (/spaced Thai/.test(r)) return 'Write Thai script without spaces between characters within a word.'
+        if (/particle error|must end with/.test(r)) return r.includes('A line') ? 'A\'s line must end with ครับ — do not add ? or other punctuation after it.' : 'B\'s line must end with ค่ะ or คะ.'
+        if (/foreign char|chinese/.test(r)) return 'Remove any non-Thai characters from the Thai text field.'
+        return r  // fallback: use raw message
+      }
       const failHint = failureReasons.length > 0
-        ? '\n\nFIX THESE ISSUES FROM LAST ATTEMPT: ' + failureReasons.join('; ')
+        ? '🚫 REWRITE REQUIRED — previous attempt had these problems:\n' +
+          failureReasons.map((r,i) => '  ' + (i+1) + '. ' + _translateFail(r)).join('\n') +
+          '\n\nWrite completely different sentences that fix every issue above.\n\n---\n\n'
         : ''
-      const combinedMsg = baseSystem + failHint + '\n\n---\n\n' + baseUser
-      const tokenBudget = model && model.includes('32b') ? 4000 : 2000
+      const combinedMsg = failHint + baseSystem + '\n\n---\n\n' + baseUser
+      const tokenBudget = model && model.includes('32b') ? 4000 : 2500
       const raw = await callOpenRouterOnce(apiKey, model, [{ role:'user', content:combinedMsg }], tokenBudget)
 
       if (!raw || raw.length < 5) {
@@ -4590,6 +4627,16 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       // Check 1: auto-correct speaker from particle FIRST, then validate
       linesArr.forEach(l => {
         if (!l.thai) return
+        // If thai field has no Thai script (model wrote romanization there), swap with phonetic
+        const thaiCharCount = (l.thai.match(/[ก-๙]/g) || []).length
+        if (thaiCharCount === 0 && l.phonetic && (l.phonetic.match(/[ก-๙]/g) || []).length > 0) {
+          // Swap fields
+          const tmp = l.thai; l.thai = l.phonetic; l.phonetic = tmp
+        } else if (thaiCharCount === 0) {
+          // No Thai script at all — mark as invalid
+          l.thai = ''
+          return
+        }
         l.thai = l.thai.trim().replace(/[?!.…]+$/, '').trim()
         // Strip any Thai chars accidentally included in phonetic field
         if (l.phonetic) l.phonetic = l.phonetic.replace(/[ก-๙฀-๿]/g, '').replace(/\s+/g, ' ').trim()
@@ -4625,13 +4672,43 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         continue
       }
 
-      // Check 2: quality via validateSmartPairs
+      // Check 2: quality via validateSmartPairs — require ALL lines valid
       const qualPairs = genderValid.map(l => ({ thai:l.thai, phonetic:l.phonetic, english:l.english, prompt:l.prompt||'.' }))
       const isGemini = model && model.includes('gemini')
-        const qualRes = validateSmartPairs(qualPairs, target, vocab, false, new Set(), isGemini)
-      if (qualRes.valid.length < 2) {
+      const qualRes = validateSmartPairs(qualPairs, target, vocab, false, new Set(), isGemini)
+      if (qualRes.valid.length < genderValid.length) {
         failureReasons = qualRes.failures.slice(0, 3)
         onProgress && onProgress(-1, -1, { apiError: '⚠️ Quality fail: ' + (failureReasons[0]||'').slice(0,70) }, null, null)
+        continue
+      }
+
+      // Check 3: natural speech checks
+      const naturalFails = []
+      genderValid.forEach((l, li) => {
+        const t = l.thai || ''
+        const withoutParticle = t.replace(/ครับ$|ค่ะ$|คะ$/, '').trim()
+        // Only A's lines (0 and 2) must contain target word — B's response (line 1) doesn't need it
+        if (l.speaker === 'A' && !t.includes(target.thai))
+          naturalFails.push('Line ' + (li+1) + ' (A) missing "' + target.thai + '" — A must use target word')
+        // Phonetic must be present
+        if (!l.phonetic || l.phonetic.trim().length < 4)
+          naturalFails.push('Line ' + (li+1) + ' has no phonetic')
+        // English must be present
+        if (!l.english || l.english.trim().length < 3)
+          naturalFails.push('Line ' + (li+1) + ' has no English translation')
+        // Sentence can't be just the target word alone
+        if (withoutParticle === target.thai)
+          naturalFails.push('Line ' + (li+1) + ' is only the target word — needs a full sentence')
+      })
+      // Also check model's own self-assessment
+      const selfFailed = genderValid.filter(l => l.ok === false)
+      if (selfFailed.length > 0) {
+        naturalFails.push('Model flagged line as unnatural: ' + (selfFailed[0].thai||'').slice(0,50))
+      }
+
+      if (naturalFails.length > 0) {
+        failureReasons = naturalFails.slice(0, 3)
+        onProgress && onProgress(-1, -1, { apiError: '⚠️ Natural fail: ' + failureReasons[0].slice(0,70) }, null, null)
         continue
       }
 
@@ -4645,11 +4722,21 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           const isSpaced = thaiToks.length >= Math.max(2, phonToks.length - 3)
 
           // Thai→English grammar map
-          const TG = {'ผม':'I(m)','ฉัน':'I(f)','เธอ':'you/she','เขา':'he/she','คุณ':'you','เรา':'we',
+          const TG = {
+            'ผม':'I(m)','ฉัน':'I(f)','เธอ':'you/she','เขา':'he/she','คุณ':'you','เรา':'we','พวกเรา':'we',
+            'ภาษา':'language','ไทย':'Thai','อังกฤษ':'English','จีน':'Chinese','ญี่ปุ่น':'Japanese',
+            'ยาก':'difficult','ง่าย':'easy','สนุก':'fun','น่าเบื่อ':'boring','สวย':'beautiful',
+            'ดี':'good','ไม่ดี':'not good','พิเศษ':'special','ธรรมดา':'normal','ปกติ':'normal',
+            'เข้าใจ':'understand','พูด':'speak','อ่าน':'read','เขียน':'write','เรียน':'study',
+            'รู้จัก':'know(person)','คิด':'think','รู้สึก':'feel',
+            'ชื่อ':'name','อายุ':'age','บ้าน':'house','เมือง':'city','ประเทศ':'country',
+            'เวลา':'time','ตอน':'when','ตอนนี้':'now','วันนี้':'today',
+            'พรุ่งนี้':'tomorrow','เมื่อวาน':'yesterday','เสมอ':'always','บ่อยๆ':'often',
+            
             'ไม่':'not','จะ':'will','ได้':'can','อยู่':'(prog)','เป็น':'is/be','มี':'have',
             'ไป':'go','มา':'come','กิน':'eat','รู้':'know','เห็น':'see','ชอบ':'like',
             'ที่':'at','นี้':'this','นั้น':'that','ใน':'in','กับ':'with','และ':'and','หรือ':'or',
-            'แล้ว':'already','ก็':'also','ด้วย':'too','เลย':'at all','มาก':'very',
+            'แล้ว':'already','ก็':'also','ด้วย':'too','มาก':'very',
             'ไหม':'?','เปล่า':'no','ใช่':'yes','วัน':'day','เดือน':'month','ปี':'year',
             'อยาก':'want','ต้อง':'must','น่า':'seems','เพราะ':'because','ถ้า':'if',
             'ครับ':'(m)','ค่ะ':'(f)','คะ':'(f?)','นะ':'right?','สิ':'(emph)','เลย':'at all'}
@@ -4657,7 +4744,14 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           const TV = {}
           vocab.forEach(v => { const t=v.thai||v.t||''; const e=(v.english||v.e||'').split(/[/,]/)[0].trim(); if(t&&e) TV[t]=e })
 
-          let words
+          // Prefer model-provided glosses (most reliable source)
+          let words = []
+          if (l.glosses && Array.isArray(l.glosses) && l.glosses.length >= phonToks.length - 2) {
+            words = phonToks.map((p, i) => ({
+              p,
+              e: l.glosses[i] === '-' ? '' : (l.glosses[i] || '')
+            }))
+          } else
           if (isSpaced) {
             // Gemini spaced Thai: match Thai tokens directly — most reliable
             words = phonToks.map((p, i) => {
@@ -4673,22 +4767,19 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
               .replace(/ɔ/g,'o').replace(/ɯ/g,'u').replace(/ŋ/g,'ng').replace(/[ʔː]/g,'')
             const PV = {}
             vocab.forEach(v => { const ph=np(v.phonetic||v.ph||''); const e=(v.english||v.e||'').split(/[/,]/)[0].trim(); if(ph&&e&&ph.length>1) PV[ph]=e })
-            const PG = {'krap':'(m)','khrap':'(m)','krab':'(m)','ka':'(f)','kha':'(f)','kha':'(f)',
+            const PG = {'krap':'(m)','khrap':'(m)','krab':'(m)','ka':'(f)','kha':'(f)',
               'ja':'will','mai':'not','bpai':'go','pai':'go','maa':'come','dai':'can',
               'laew':'already','duay':'also','gap':'with','nee':'this','nan':'that',
               'pom':'I(m)','chan':'I(f)','chun':'I(f)','kun':'you','khun':'you',
-              'ter':'you/she','kao':'he/she','rao':'we','phuakrao':'we',
+              'ter':'you/she','kao':'he/she','rao':'we',
               'pen':'is','mee':'have','kin':'eat','gin':'eat','roo':'know',
               'hen':'see','chop':'like','yak':'want','yaak':'want','tong':'must',
               'maak':'very','noi':'little','loei':'at all','na':'right?',
-              'wa':'that(conj)','thi':'at/which','ni':'this','nan':'that',
-              'arai':'what','krai':'who','thi-nai':'where','yang':'still',
-              'sam':'for','samrap':'for','baang':'some','duai':'also','gap':'with',
-              'laeo':'already','koei':'ever','mai-koei':'never',
-              'phrung':'tomorrow','meua-wan':'yesterday','wan-ni':'today',
+              'wa':'that(conj)','thi':'at/which','arai':'what','krai':'who','yang':'still',
+              'samrap':'for','baang':'some','laeo':'already','koei':'ever',
+              'phrung':'tomorrow','meuawan':'yesterday','wanni':'today',
               'chao':'morning','yen':'evening','khuen':'night',
-              'dee':'good','mai-dee':'bad','suay':'beautiful','sanuk':'fun',
-              'phiset':'special','thamada':'normal','pok-kati':'normal'}
+              'dee':'good','suay':'beautiful','sanuk':'fun','phiset':'special'}
             words = phonToks.map((p, i) => {
               const key = np(p)
               const isQM = key==='mai' && i===phonToks.length-2 && /^(krap|khrap|ka|kha)/.test(np(phonToks[i+1]||''))
@@ -4730,7 +4821,14 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     const openingPhonetic = sceneData.opening_phonetic || ''
     const _nameA = (charA.split(',')[0] || 'A').trim()
     const _nameB = (charB.split(',')[0] || 'B').trim()
-    const openingPair = { speaker:'A', thai:sceneData.opening, phonetic:openingPhonetic, english:sceneData.opening_english||'Hello.', prompt:_nameA + ' greets ' + _nameB, _source:'qwen:conv', _target:'greeting', words:[] }
+    const _morphPrompt = (p, fromName, toName) => (p||'')
+      .replace(/\bhe\b/gi, fromName).replace(/\bshe\b/gi, toName)
+      .replace(/\bhim\b/gi, toName).replace(/\bher\b/gi, toName)
+      .replace(/\bthey\b/gi, fromName + ' and ' + toName)
+    const _openPrompt = sceneData.opening_prompt
+      ? _morphPrompt(sceneData.opening_prompt, _nameA, _nameB)
+      : _nameA + ' greets ' + _nameB
+    const openingPair = { speaker:'A', thai:sceneData.opening, phonetic:openingPhonetic, english:sceneData.opening_english||'Hello.', prompt:_openPrompt, _source:'qwen:conv', _target:'greeting', words:[] }
     
     // B's response — comes from scene data, no extra API call needed
     const replyThai = (sceneData.reply || 'สวัสดีค่ะ ดีใจที่ได้เจอค่ะ').trim().replace(/[?!.]+$/, '')
@@ -4739,7 +4837,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       thai: replyThai,
       phonetic: sceneData.reply_phonetic || '',
       english: sceneData.reply_english || 'Hello, nice to meet you.',
-      prompt: _nameB + ' greets ' + _nameA + ' back',
+      prompt: sceneData.reply_prompt ? _morphPrompt(sceneData.reply_prompt, _nameB, _nameA) : _nameB + ' greets ' + _nameA + ' back',
       _source: 'qwen:conv', _target: 'greeting', words: []
     }
     prevLines.push(openingPair, replyLine)
@@ -5886,6 +5984,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 <div style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
                   <div style={{ fontSize:10, color:'var(--muted)', marginBottom:4 }}>Opening</div>
                   <div className="thai" style={{ fontSize:15, color:'var(--gold)' }}>{sceneData.opening}</div>
+                  {sceneData.opening_phonetic && <div style={{ fontSize:12, color:'var(--text)', marginTop:3 }}>{sceneData.opening_phonetic}</div>}
+                  {sceneData.opening_english && <div style={{ fontSize:11, color:'var(--muted)', marginTop:2, fontStyle:'italic' }}>{sceneData.opening_english}</div>}
                 </div>
               )}
             </div>
@@ -5984,9 +6084,24 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       </div>
       {(genLog.length > 0 || phase === 'streaming') && (
         <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', marginTop:-8, display:'flex', flexDirection:'column', gap:3 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
+            <span style={{ fontSize:9, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Generation log</span>
+            {genLog.length > 0 && (
+              <button onClick={() => {
+                const txt = genLog.join('\n')
+                const b = new Blob([txt], { type:'text/plain' })
+                const a = document.createElement('a')
+                a.href = URL.createObjectURL(b)
+                a.download = 'gen-log-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.txt'
+                a.click()
+              }} style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>
+                ⬇ log
+              </button>
+            )}
+          </div>
           {genLog.length === 0 && <p style={{ fontSize:10, color:'var(--muted)', margin:0, fontFamily:'monospace' }}>⏳ Initialising...</p>}
           {genLog.map((msg, i) => (
-            <p key={i} style={{ fontSize:10, color: msg.startsWith('❌') ? '#ef4444' : msg.startsWith('─') ? 'var(--border)' : 'var(--muted)', margin:0, fontFamily:'monospace', lineHeight:1.4 }}>
+            <p key={i} style={{ fontSize:10, color: msg.startsWith('❌') ? '#ef4444' : msg.startsWith('⚠') ? '#f97316' : msg.startsWith('✅') ? '#4ade80' : msg.startsWith('━') ? 'var(--border)' : 'var(--muted)', margin:0, fontFamily:'monospace', lineHeight:1.4 }}>
               {msg}
             </p>
           ))}
@@ -7888,7 +8003,6 @@ function ThaiTeacher() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
 
 </script>
 </body>

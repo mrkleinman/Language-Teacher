@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v335"/>
-<meta name="app-version" content="v335"/>
+<meta name="app-version" content="v338"/>
+<meta name="app-version" content="v338"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -5546,10 +5546,62 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     return parts.join(' ')
   }
 
+    // Apply light punctuation — rule-based, max 1 comma per sentence
+    function addThaipunct(thai, phonetic) {
+      if (!thai) return { thai, phonetic }
+      let t = thai.trim(), p = (phonetic||'').trim(), added = false
+      const ins = (tp, pos) => {
+        if (added || pos <= 0) return
+        added = true
+        t = t.slice(0,pos) + ',' + t.slice(pos)
+        // Approximate phonetic insertion — find space near same relative position
+        const ratio = pos / tp.length
+        const pPos = Math.round(ratio * p.length)
+        const pSpace = p.lastIndexOf(' ', pPos)
+        if (pSpace > 2) p = p.slice(0,pSpace) + ',' + p.slice(pSpace)
+      }
+      // Rule 1: time opener comma — เมื่อวาน/วันนี้/พรุ่งนี้/ตอนนี้/เมื่อกี้/เมื่อคืน
+      const r1 = t.match(/^(เมื่อวาน|วันนี้|พรุ่งนี้|ตอนนี้|เมื่อกี้|เมื่อกี๊|เมื่อคืน|เช้านี้|เย็นนี้)(\s)/)
+      if (r1) ins(t, r1[1].length)
+      // Rule 2: exclamation opener — อ้อ/โอ้/ว้าย/อ๋อ/จริงเหรอ/จริงค่ะ/จริงครับ
+      if (!added) {
+        const r2 = t.match(/^(อ้อ|โอ้|ว้าย|อ๋อ|จริงเหรอ|จริงค่ะ|จริงครับ|ว้าว)(\s|!)/)
+        if (r2) ins(t, r2[1].length)
+      }
+      // Rule 3: ถ้า...ก็/จะ — comma before main clause (only short ถ้า clauses)
+      if (!added && t.startsWith('ถ้า')) {
+        const r3 = t.match(/^(ถ้า[^,]{4,18}?)\s(ก็|ผม|ฉัน|เรา|คุณ)/)
+        if (r3) ins(t, r3[1].length)
+      }
+      // Rule 4: mid-sentence conjunctions — แล้วก็/แล้วก็/แต่/เพราะ/แต่ว่า (max 2 commas total)
+      // Only fire if no comma already at this position, and not at start of sentence
+      if (added || !added) { // allow second comma
+        const conjunctions = ['แล้วก็','แต่ว่า','แต่','เพราะว่า','เพราะ','ดังนั้น','งั้นก็']
+        for (const conj of conjunctions) {
+          const pos = t.indexOf(conj, 4) // not at start
+          if (pos > 4 && t[pos-1] !== ',') {
+            // Max 2 commas total
+            const existingCommas = (t.match(/,/g)||[]).length
+            if (existingCommas < 2) {
+              t = t.slice(0,pos) + ',' + t.slice(pos)
+              const ratio = pos / (t.length - 1)
+              const pPos = Math.round(ratio * p.length)
+              const pSpace = p.lastIndexOf(' ', pPos)
+              if (pSpace > 2) p = p.slice(0,pSpace) + ',' + p.slice(pSpace)
+            }
+            break // only one conjunction comma per sentence
+          }
+        }
+      }
+      return { thai: t, phonetic: p }
+    }
+
     return allPairs.map(p => {
     if (!p) return p
     const rebuilt = buildTrackPhonetic(p.thai || '')
-    return rebuilt ? { ...p, phonetic: rebuilt } : p
+    const base = rebuilt ? { ...p, phonetic: rebuilt } : p
+    const { thai, phonetic } = addThaipunct(base.thai, base.phonetic)
+    return { ...base, thai, phonetic }
   })
 }
 
@@ -7970,24 +8022,17 @@ function ThaiTeacher() {
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
-            onGenerateConvo={async (track) => {
-              const orModel = resolveOrModel(provider)
-              const convoKey = provider === 'claude' ? apiKey : orKey
-              if (!convoKey) {
-                alert('No OpenRouter key found. Go to Settings and save your key first.')
-                return
-              }
-              const targets = vocab.filter(w => (track.keywords||[]).some(k => k.wordId === w.id))
-              if (!targets.length) { alert('No matching words found for this track'); return }
-              try {
-                const lines = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
-                if (!lines || !lines.length) throw new Error('No conversation lines returned')
-                // Find and update track by createdAt
-                const updated = tracks.map(t => t.createdAt === track.createdAt ? { ...t, convo: lines } : t)
-                await saveTracks(updated)
-                setActiveTrack({ ...track, convo: lines })
-                setView('convo')
-              } catch(e) { alert('Convo failed: ' + e.message) }
+            onGenerateConvo={(track) => {
+              // Use the track's own pairs directly — no generation needed
+              const pairs = track.pairs || []
+              if (!pairs.length) { alert('No pairs found in this track'); return }
+              const lines = pairs.map(p => ({
+                speaker: p.speaker || (/ครับ$/.test(p.thai||'') ? 'A' : 'B'),
+                thai: p.thai, phonetic: p.phonetic, english: p.english,
+                prompt: p.prompt, words: p.words || []
+              }))
+              setActiveTrack({ ...track, convo: lines })
+              setView('convo')
             }}
             provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasOrKey={!!orKey} />}
         {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}

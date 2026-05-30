@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v333"/>
-<meta name="app-version" content="v333"/>
+<meta name="app-version" content="v335"/>
+<meta name="app-version" content="v335"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4497,7 +4497,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const baseSystem = 'You write Pimsleur-style Thai lessons. Write one exchange in an ongoing conversation.\n' +
     'SCENE: ' + scene + '\n' +
     'A = ' + charA + ' — MUST end every sentence with ครับ\n' +
-    'B = ' + charB + ' — MUST end every sentence with ค่ะ or คะ\n' +
+    'B = ' + charB + ' — MUST end every sentence with ' + (/\bman\b|\bmale\b|\bboy\b|\bold man\b|\bgentleman\b/i.test(charB) ? 'ครับ (B is MALE)' : 'ค่ะ or คะ') + '\n' +
     'RULES:\n' +
     '• A lines end ครับ. B lines end ค่ะ or คะ. NO EXCEPTIONS.\n' +
     '• Sentences ' + sentMin + '–' + sentMax + ' Thai words long\n' +
@@ -4505,12 +4505,16 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• PHONETIC: complete romanisation with tone marks using Paiboon system — e.g. sà-wàt-dii, bpai, maa, phûut, khráp. EVERY syllable must be romanised.\n' +
     '• NO double particles (ครับครับ etc)\n' +
     '• ครับ and ค่ะ/คะ are POLITENESS PARTICLES — do NOT translate them at all in the english field, they are invisible in English\n' +
-    '• Do NOT use the other person\'s name in the sentence — real Thai friends rarely address each other by name mid-conversation\n' +
+    '• Use ' + _nameA + ' and ' + _nameB + ' as names when needed — avoid เธอ/เขา as pronouns mid-sentence; Thai friends use names or drop subject entirely\n' +
+    '• ซึ่ง is WRITTEN Thai — never use ซึ่ง as a relative clause in spoken conversation. Say "รูปปั้นนั้นสวยมาก" not "รูปปั้นซึ่งสวยมาก"\n' +
     '• Make sentences that CONTINUE THE CONVERSATION naturally from the previous lines — no random topic jumps\n' +
     '• GRAMMAR: sentences must be complete and natural spoken Thai — the kind real friends say to each other\n' +
     '• VARIETY: do NOT start every line with ไม่ทราบว่า — use varied responses: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, หรือเปล่า, ไม่รู้สิ\n' +
-    '• NATURAL SPEECH: use casual registers — เรา/เธอ/เขา, contractions, natural flow. Avoid textbook patterns like ผมต้องการ/ดิฉัน/กระผม unless the character is being formal\n' +
+    '• PRONOUNS: when A speaks TO B directly → คุณ or drop subject (never เธอ for direct address). เธอ = referring to B. เขา = absent male third party. เธอ = absent female third party. phûak-khao = group. A always uses ผม for self. B always uses ฉัน for self. We = เรา\n' +
+    '• NATURAL SPEECH: casual spoken Thai only. FORBIDDEN: ซึ่ง (relative clauses), ดิฉัน, กระผม, ท่าน, อันซึ่ง. Use simple direct sentences like real friends talk\n' +
+    '• FORBIDDEN words not in vocab list: อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, เครื่องดื่ม, รถยนต์, โทรศัพท์ (use มือถือ instead). Use ONLY words from the vocabulary list + basic grammar words\n' +
     '• ACCURACY: the "english" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
+    '• PROMPT ACCURACY: the "prompt" field must describe EXACTLY what the Thai sentence says — if Thai is a question, prompt must say Ask. If Thai says X happened, prompt must say X happened. Not a paraphrase, not a summary.\n' +
     '• The "prompt" field must accurately describe exactly what is said — not generic, must match the Thai sentence\n' +
     '• SELF-CHECK: before returning, re-read each line and ask: "Would a real Thai person say this naturally in this scene?" If no, rewrite it\n' +
     '• Add a "ok": true field to each line object — only set true if the line is natural, accurate, and the target word is used correctly\n' +
@@ -4541,6 +4545,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   }
   const _usageHint = ({
     'งั้นก็':"use งั้นก็ as a transition meaning 'in that case...' or 'so then...' — A says something, then B responds with งั้นก็... to connect a consequence, e.g. งั้นก็ไปด้วยกันเลยครับ",
+    'แน่นท้อง':"say someone's stomach feels tight/bloated/stuffed after overeating — แน่นท้อง is uncomfortable fullness, NOT the same as อิ่ม (satisfied full). e.g. กินเยอะไปหน่อย แน่นท้องเลยครับ (ate too much, stomach is stuffed)",
     'หิวน้ำ':"say that a PERSON is thirsty after doing some activity — e.g. ผมหิวน้ำมากเลยครับ (I'm really thirsty) or เธอหิวน้ำไหมครับ (Are you thirsty?). NEVER say a place or thing is thirsty",
     'หิว':"say that a person is hungry after doing some activity",
     'เหนื่อย':"say someone is tired after doing some activity — NEVER apply to objects or places",
@@ -4569,7 +4574,16 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'วิ่ง':'say you go running or someone ran somewhere',
     'ชวน':'invite someone to do something',
     'แพง':'comment that something costs a lot',
-  })[target.thai] || _properNouns[target.thai] || 'naturally bring up "' + target.thai + '" (' + target.english + ') in conversation'
+  })[target.thai] || _properNouns[target.thai] || (() => {
+    const e = (target.english||'').toLowerCase()
+    if (/skin|hair|fur|finger|nail|arm|leg|eye|ear|mouth|nose|tooth|head/.test(e))
+      return 'mention ' + target.english + ' naturally — comment on health or appearance. NEVER compare to objects like seawater or paper.'
+    if (/route|path|curve|bend/.test(e))
+      return 'mention the ' + target.english + ' in context of directions or getting somewhere'
+    if (/lifestyle|culture|tradition/.test(e))
+      return 'share an opinion on the ' + target.english + ' — whether it is good, bad, or changing'
+    return 'naturally use "' + target.thai + '" (' + target.english + ') in a simple sentence that fits the scene'
+  })()
 
   const baseUser = context + 'Continue the conversation. Write exactly 3 lines:\n' +
     'LINE 1 (A): ' + _usageHint + ' — must end with ครับ — MUST contain the Thai word "' + target.thai + '"\n' +
@@ -4654,7 +4668,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       const genderValid = linesArr.filter(l => {
         if (!l.thai || !l.phonetic || !l.speaker) return false
         if (l.speaker === 'A' && !/ครับ$/.test(l.thai)) return false
-        if (l.speaker === 'B' && !/ค่ะ$|คะ$/.test(l.thai)) return false
+        const bIsMale = /\bman\b|\bmale\b|\bold man\b/i.test(charB||'')
+        if (l.speaker === 'B' && !bIsMale && !/ค่ะ$|คะ$/.test(l.thai)) return false
+        if (l.speaker === 'B' && bIsMale && !/ครับ$/.test(l.thai)) return false
         if (/ครับครับ|ค่ะค่ะ|คะคะ/.test(l.thai)) return false
         if (/[一-鿿]/.test(l.thai)) return false
         // Auto-fix Thai/missing prompt instead of rejecting
@@ -6049,7 +6065,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       <div style={{ textAlign:'center' }}>
         <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
           {phase === 'done' && generatedTrack ? '✓ Track Ready!' : phase === 'paused' ? `⏸ Paused — ${pairsDone} of ${pairsTotal} pairs` : apiKey ? `Kru ${resolveOrName(provider)} is writing your track` : customTargets ? 'Building custom track...' : 'Building track...'}
-          {sceneData && phase === 'streaming' && <div style={{ fontSize:11, color:'var(--muted)', marginTop:4, fontStyle:'italic' }}>{sceneData.scene?.slice(0,80)}</div>}
+          {sceneData && phase === 'streaming' && <div style={{ fontSize:11, color:'var(--muted)', marginTop:4, fontStyle:'italic' }}>{sceneData.scene ? (sceneData.scene.length > 80 ? sceneData.scene.slice(0,80).replace(/\s\S*$/, '') + '…' : sceneData.scene) : ''}</div>}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
@@ -6160,23 +6176,19 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             ▶ Start SRS Track
           </Btn>
           <div style={{ display:'flex', gap:8 }}>
-            <Btn onClick={async () => {
-              if (useConvoTrack && generatedTrack && generatedTrack.pairs && generatedTrack.pairs.length > 0) {
-                const cf = generatedTrack.pairs.map(p => ({ speaker:p.speaker||(p.thai&&p.thai.endsWith('ครับ')?'A':'B'), thai:p.thai, phonetic:p.phonetic, english:p.english }))
-                setConvoLines(cf); setTimeout(() => setShowConvo(true), 200); return
+            <Btn onClick={() => {
+              // Always use daily track pairs — no generation needed
+              if (generatedTrack && generatedTrack.pairs && generatedTrack.pairs.length > 0) {
+                const cf = generatedTrack.pairs.map(p => ({
+                  speaker: p.speaker || (/ครับ$/.test(p.thai||'') ? 'A' : 'B'),
+                  thai: p.thai, phonetic: p.phonetic, english: p.english,
+                  prompt: p.prompt, words: p.words || []
+                }))
+                setConvoLines(cf)
+                setTimeout(() => setShowConvo(true), 200)
               }
-              setConvoLoading(true)
-              try {
-                const orModel = resolveOrModel(provider)
-                const convoKey = provider === 'claude' ? apiKey : orKey
-                const convoResult = await generateConvoWithOpenRouter(targets, vocab, convoKey, orModel)
-                const trackWithConvo = { ...generatedTrack, convo: convoResult }
-                setGeneratedTrack(trackWithConvo); setConvoLines(convoResult)
-                setTimeout(() => setShowConvo(true), 400)
-              } catch(e) { alert('Convo failed: ' + e.message) }
-              setConvoLoading(false)
-            }} variant="secondary" style={{ flex:1, justifyContent:'center' }} disabled={convoLoading}>
-              {convoLoading ? '⏳ Generating…' : convoLines ? '💬 View Conversation' : '💬 View as Conversation'}
+            }} variant="secondary" style={{ flex:1, justifyContent:'center' }}>
+              {convoLines ? '💬 View Conversation' : '💬 View as Conversation'}
             </Btn>
             {convoLines && (<Btn onClick={() => { const ls = convoLines.map(l=>(l.speaker==='A'?'A: ':'B: ')+l.thai+'\n   '+l.phonetic+'\n   '+l.english).join('\n\n'); const b=new Blob(['THAI TEACHER CONVO\n\n'+ls],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='convo-'+new Date().toISOString().slice(0,10)+'.txt'; a.click() }} style={{ padding:'10px 14px', background:'var(--surface2)', border:'1px solid var(--border)' }} title="Download">⬇️</Btn>)}
           </div>
@@ -6193,10 +6205,29 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               const phonetic = targetPhonetics[w.thai] || targetPhonetics[w.id] || w.phonetic || ''
               const chipSrc = brickSources[i * 3] || ''
               const chipColor = done ? srcToColor(chipSrc, color) : 'var(--border)'
+              const isFallback = done && (chipSrc.startsWith('fallback:') || chipSrc.startsWith('hardcoded:'))
               return (
-                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : 'transparent', border:'1px solid ' + chipColor, borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0 }}>
+                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : 'transparent', border:'1px solid ' + chipColor, borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0, position:'relative' }}>
                   <span className="thai" style={{ color: done ? chipColor : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
                   {phonetic ? <span className="phon" style={{ color: done ? chipColor : 'var(--muted)', fontSize:10, lineHeight:1.2, opacity:0.7 }}>{phonetic}</span> : null}
+                  {isFallback && phase === 'done' && (
+                    <button onClick={async () => {
+                      if (!apiKey && !orKey) return
+                      const k = orKey || apiKey
+                      const m = resolveOrModel(provider)
+                      setBrickSources(b => ({...b, [i*3]:'streaming', [i*3+1]:'streaming', [i*3+2]:'streaming'}))
+                      try {
+                        const newPairs = await generateWordLines(w, sceneDataRef.current?.scene||'Two friends talking', sceneDataRef.current?.characterA||'Somchai, a Thai man', sceneDataRef.current?.characterB||'Nida, a Thai woman', [], vocab, k, m, i, () => {})
+                        if (newPairs && newPairs.length >= 2) {
+                          const updated = [...(generatedTrack.pairs||[])]
+                          newPairs.forEach((p, pi) => { if (updated[i*3+pi]) updated[i*3+pi] = p })
+                          const newTrack = {...generatedTrack, pairs: updated}
+                          setGeneratedTrack(newTrack)
+                          newPairs.forEach((p, pi) => setBrickSources(b => ({...b, [i*3+pi]: p._source||'repair'})))
+                        }
+                      } catch(e) { console.error(e) }
+                    }} style={{ fontSize:9, marginTop:2, background:'none', border:'1px solid #f97316', borderRadius:3, color:'#f97316', cursor:'pointer', padding:'1px 4px', lineHeight:1 }}>🔧 fix</button>
+                  )}
                 </div>
               )
             })}

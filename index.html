@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v347"/>
-<meta name="app-version" content="v347"/>
+<meta name="app-version" content="v348"/>
+<meta name="app-version" content="v348"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4511,10 +4511,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• ซึ่ง is WRITTEN Thai — never use ซึ่ง as a relative clause in spoken conversation. Say "รูปปั้นนั้นสวยมาก" not "รูปปั้นซึ่งสวยมาก"\n' +
     '• Make sentences that CONTINUE THE CONVERSATION naturally from the previous lines — no random topic jumps\n' +
     '• GRAMMAR: sentences must be complete and natural spoken Thai — the kind real friends say to each other\n' +
-    '• VARIETY: do NOT start every line with ไม่ทราบว่า — use varied responses: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, หรือเปล่า, ไม่รู้สิ\n' +
+    '• VARIETY: NEVER start a line with ไม่ทราบว่า — banned completely. Use: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, จริงๆ เหรอ, ยังไม่รู้เลย\n' +
     '• PRONOUNS: when A speaks TO B directly → คุณ or drop subject (never เธอ for direct address). เธอ = referring to B. เขา = absent male third party. เธอ = absent female third party. phûak-khao = group. A always uses ผม for self. B always uses ฉัน for self. We = เรา\n' +
     '• NATURAL SPEECH: casual spoken Thai only. FORBIDDEN: ซึ่ง (relative clauses), ดิฉัน, กระผม, ท่าน, อันซึ่ง. Use simple direct sentences like real friends talk\n' +
-    '• FORBIDDEN words not in vocab list: อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, เครื่องดื่ม, รถยนต์, โทรศัพท์ (use มือถือ instead). Use ONLY words from the vocabulary list + basic grammar words\n' +
+    '• FORBIDDEN words: อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, เครื่องดื่ม, รถยนต์, โทรศัพท์ (use มือถือ instead)\n' +
+    '• ABSOLUTELY FORBIDDEN — ซึ่ง: NEVER use ซึ่ง as a relative clause. It is written Thai only. Say "ผมชอบของหวานที่คุณมี" NOT "ซึ่งคุณมีอยู่". Replace ALL ซึ่ง with ที่ or restructure the sentence.\n' +
     '• ACCURACY: the "english" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
     '• PROMPT ACCURACY: the "prompt" field must describe EXACTLY what the Thai sentence says — if Thai is a question, prompt must say Ask. If Thai says X happened, prompt must say X happened. Not a paraphrase, not a summary.\n' +
     '• The "prompt" field must accurately describe exactly what is said — not generic, must match the Thai sentence\n' +
@@ -4546,6 +4547,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'กาดสวนแก้ว':'mention Kad Suan Kaew mall in Chiang Mai',
   }
   const _usageHint = ({
+    'ถวาย':"ถวาย is ONLY used when offering something to a monk or royalty — never between ordinary friends. Use it: A mentions he saw a monk and offered food (ผมถวายข้าวพระครับ) or B says she offered flowers at the temple (ฉันถวายดอกไม้ที่วัดค่ะ). NEVER 'offer' things to each other using ถวาย.",
     'งั้นก็':"use งั้นก็ as a transition meaning 'in that case...' or 'so then...' — A says something, then B responds with งั้นก็... to connect a consequence, e.g. งั้นก็ไปด้วยกันเลยครับ",
     'แน่นท้อง':"say someone's stomach feels tight/bloated/stuffed after overeating — แน่นท้อง is uncomfortable fullness, NOT the same as อิ่ม (satisfied full). e.g. กินเยอะไปหน่อย แน่นท้องเลยครับ (ate too much, stomach is stuffed)",
     'หิวน้ำ':"say that a PERSON is thirsty after doing some activity — e.g. ผมหิวน้ำมากเลยครับ (I'm really thirsty) or เธอหิวน้ำไหมครับ (Are you thirsty?). NEVER say a place or thing is thirsty",
@@ -4721,8 +4723,14 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         // Only A's lines (0 and 2) must contain target word — B's response (line 1) doesn't need it
         if (l.speaker === 'A' && !t.includes(target.thai))
           naturalFails.push('Line ' + (li+1) + ' (A) missing "' + target.thai + '" — A must use target word')
-        // Reject character names mid-sentence (except greetings)
+        // Reject ซึ่ง — written register forbidden
         const lThai = l.thai || ''
+        if (lThai.includes('ซึ่ง')) {
+          naturalFails.push('Remove ซึ่ง — use ที่ instead or restructure. ซึ่ง is written Thai only.')
+        }
+        if (lThai.startsWith('ไม่ทราบว่า') || lThai.startsWith('ผมไม่ทราบว่า') || lThai.startsWith('ฉันไม่ทราบว่า')) {
+          naturalFails.push('Do not start with ไม่ทราบว่า — use ไม่รู้ or ไม่แน่ใจ instead')
+        }
         if ((lThai.includes(charA.split(',')[0]) || lThai.includes(charB.split(',')[0])) && li > 0) {
           // Names in non-greeting lines — only allow in very first exchange
           const nameUsed = lThai.includes(charA.split(',')[0]) ? charA.split(',')[0] : charB.split(',')[0]
@@ -5838,7 +5846,7 @@ function TrackQuality({ track }) {
 
 function resolveOrModel(provider) {
   if (provider === 'haiku') return 'anthropic/claude-haiku-4-5'
-  if (provider === 'gemini') return 'google/gemini-2.5-flash'
+  if (provider === 'gemini') return 'google/gemini-2.5-flash-lite'
   if (provider === 'qwen32b') return 'qwen/qwen3-32b:no-thinking'
   return 'qwen/qwen3.5-flash-02-23:no-thinking'
 }
@@ -5919,7 +5927,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             try {
               // Always use Gemini for scene — fast, reliable, no rate limit issues
               const key2 = orKey || apiKey
-              const sd = await establishConvoScene(targets, vocab, key2, 'google/gemini-2.5-flash')
+              const sd = await establishConvoScene(targets, vocab, key2, 'google/gemini-2.5-flash-lite')
               sceneDataRef.current = sd
               setSceneData(sd)
             } catch(e) { sceneDataRef.current = { scene:'Two friends at a market.', characterA:'Somchai', characterB:'Nida', opening:'สวัสดีครับ' } }

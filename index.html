@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v349"/>
-<meta name="app-version" content="v349"/>
+<meta name="app-version" content="v350"/>
+<meta name="app-version" content="v350"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4579,6 +4579,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'ชวน':'invite someone to do something',
     'แพง':'comment that something costs a lot',
   })[target.thai] || _properNouns[target.thai] || (() => {
+    // Grammar particles — appear naturally in any sentence, don't force them
+    const grammarParticles = ['ที่','ก็','แล้ว','ด้วย','อยู่','เลย','นะ','สิ','แต่','เพราะ','ถ้า','หรือ','และ','กับ','จน','พอ','ตอน','เมื่อ','ว่า','ให้','จาก','โดย','ของ','ใน','บน','ใต้']
+    if (grammarParticles.includes(target.thai)) {
+      return 'continue the current conversation naturally — the word "' + target.thai + '" (' + target.english + ') is a common particle that will appear on its own in a natural sentence. Do NOT force sentences about it directly.'
+    }
     const e = (target.english||'').toLowerCase()
     if (/skin|hair|fur|finger|nail|arm|leg|eye|ear|mouth|nose|tooth|head/.test(e))
       return 'mention ' + target.english + ' naturally — comment on health or appearance. NEVER compare to objects like seawater or paper.'

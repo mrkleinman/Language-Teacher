@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v344"/>
-<meta name="app-version" content="v344"/>
+<meta name="app-version" content="v345"/>
+<meta name="app-version" content="v345"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4507,7 +4507,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• PHONETIC: complete romanisation with tone marks using Paiboon system — e.g. sà-wàt-dii, bpai, maa, phûut, khráp. EVERY syllable must be romanised.\n' +
     '• NO double particles (ครับครับ etc)\n' +
     '• ครับ and ค่ะ/คะ are POLITENESS PARTICLES — do NOT translate them at all in the english field, they are invisible in English\n' +
-    '• Use ' + _nameA + ' and ' + _nameB + ' as names when needed — avoid เธอ/เขา as pronouns mid-sentence; Thai friends use names or drop subject entirely\n' +
+    '• SUBJECTS: A uses ผม for self. B uses ฉัน for self. When A addresses B directly use คุณ or drop subject. NEVER use character names (' + _nameA + ', ' + _nameB + ') inside sentences — names only appear in greetings.\n' +
     '• ซึ่ง is WRITTEN Thai — never use ซึ่ง as a relative clause in spoken conversation. Say "รูปปั้นนั้นสวยมาก" not "รูปปั้นซึ่งสวยมาก"\n' +
     '• Make sentences that CONTINUE THE CONVERSATION naturally from the previous lines — no random topic jumps\n' +
     '• GRAMMAR: sentences must be complete and natural spoken Thai — the kind real friends say to each other\n' +
@@ -4630,7 +4630,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           '\n\nWrite completely different sentences that fix every issue above.\n\n---\n\n'
         : ''
       const combinedMsg = failHint + baseSystem + '\n\n---\n\n' + baseUser
-      const tokenBudget = model && model.includes('32b') ? 4000 : 3000
+      const tokenBudget = model && model.includes('32b') ? 4000 : model && model.includes('gemini') ? 3500 : 3000
       const raw = await callOpenRouterOnce(apiKey, model, [{ role:'user', content:combinedMsg }], tokenBudget)
 
       if (!raw || raw.length < 5) {
@@ -4721,6 +4721,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         // Only A's lines (0 and 2) must contain target word — B's response (line 1) doesn't need it
         if (l.speaker === 'A' && !t.includes(target.thai))
           naturalFails.push('Line ' + (li+1) + ' (A) missing "' + target.thai + '" — A must use target word')
+        // Reject character names mid-sentence (except greetings)
+        const lThai = l.thai || ''
+        if ((lThai.includes(charA.split(',')[0]) || lThai.includes(charB.split(',')[0])) && li > 0) {
+          // Names in non-greeting lines — only allow in very first exchange
+          const nameUsed = lThai.includes(charA.split(',')[0]) ? charA.split(',')[0] : charB.split(',')[0]
+          naturalFails.push('Remove "' + nameUsed + '" from sentence — use ผม/ฉัน/คุณ instead')
+        }
         // Phonetic must be present
         if (!l.phonetic || l.phonetic.trim().length < 4)
           naturalFails.push('Line ' + (li+1) + ' has no phonetic')

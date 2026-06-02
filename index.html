@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v346"/>
-<meta name="app-version" content="v346"/>
+<meta name="app-version" content="v347"/>
+<meta name="app-version" content="v347"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4699,7 +4699,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       }
 
       // Check 2: quality via validateSmartPairs — require ALL lines valid
-      const qualPairs = genderValid.map(l => ({ thai:l.thai, phonetic:l.phonetic, english:l.english, prompt:l.prompt||'.' }))
+      const qualPairs = genderValid.map(l => ({ speaker:l.speaker, thai:l.thai, phonetic:l.phonetic, english:l.english, prompt:l.prompt||'.' }))
       const isGemini = model && model.includes('gemini')
       const qualRes = validateSmartPairs(qualPairs, target, vocab, false, new Set(), isGemini)
       if (qualRes.valid.length < genderValid.length) {

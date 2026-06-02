@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v338"/>
-<meta name="app-version" content="v338"/>
+<meta name="app-version" content="v343"/>
+<meta name="app-version" content="v343"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4476,6 +4476,8 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
 
 
 async function generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, model, pairIndex, onProgress) {
+  const _nameA = (charA.split(',')[0] || 'A').trim()
+  const _nameB = (charB.split(',')[0] || 'B').trim()
   const lenRes = getSentenceLengthForVocab(vocab) || {}
   const sentMin = Math.max(4, lenRes.goalMin || 5)
   const sentMax = lenRes.goalMax || 8
@@ -5824,7 +5826,7 @@ function TrackQuality({ track }) {
 
 function resolveOrModel(provider) {
   if (provider === 'haiku') return 'anthropic/claude-haiku-4-5'
-  if (provider === 'gemini') return 'google/gemini-2.0-flash-lite-001'
+  if (provider === 'gemini') return 'google/gemini-2.5-flash'
   if (provider === 'qwen32b') return 'qwen/qwen3-32b:no-thinking'
   return 'qwen/qwen3.5-flash-02-23:no-thinking'
 }
@@ -5905,7 +5907,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             try {
               // Always use Gemini for scene — fast, reliable, no rate limit issues
               const key2 = orKey || apiKey
-              const sd = await establishConvoScene(targets, vocab, key2, 'google/gemini-2.0-flash-lite-001')
+              const sd = await establishConvoScene(targets, vocab, key2, 'google/gemini-2.5-flash')
               sceneDataRef.current = sd
               setSceneData(sd)
             } catch(e) { sceneDataRef.current = { scene:'Two friends at a market.', characterA:'Somchai', characterB:'Nida', opening:'สวัสดีครับ' } }
@@ -6269,7 +6271,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                       const m = resolveOrModel(provider)
                       setBrickSources(b => ({...b, [i*3]:'streaming', [i*3+1]:'streaming', [i*3+2]:'streaming'}))
                       try {
-                        const newPairs = await generateWordLines(w, sceneDataRef.current?.scene||'Two friends talking', sceneDataRef.current?.characterA||'Somchai, a Thai man', sceneDataRef.current?.characterB||'Nida, a Thai woman', [], vocab, k, m, i, () => {})
+                        const _scA = sceneDataRef.current?.characterA || 'Somchai, a Thai man'
+                        const _scB = sceneDataRef.current?.characterB || 'Nida, a Thai woman'
+                        const newPairs = await generateWordLines(w, sceneDataRef.current?.scene||'Two friends talking', _scA, _scB, [], vocab, k, m, i, () => {})
                         if (newPairs && newPairs.length >= 2) {
                           const updated = [...(generatedTrack.pairs||[])]
                           newPairs.forEach((p, pi) => { if (updated[i*3+pi]) updated[i*3+pi] = p })

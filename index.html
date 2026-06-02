@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v345"/>
-<meta name="app-version" content="v345"/>
+<meta name="app-version" content="v346"/>
+<meta name="app-version" content="v346"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4320,8 +4320,8 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
   for (const p of pairs) {
     // Basic field check
     if (!p.thai || !p.english || !p.prompt) { failures.push('missing fields'); continue }
-    // Must contain target word
-    if (!p.thai.includes(target.thai)) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
+    // Must contain target word — only A's lines, B's response doesn't need it
+    if (p.speaker !== 'B' && !p.thai.includes(target.thai)) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
     // Must be a real Thai sentence (at least 5 Thai chars)
     const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
     if (thaiChars < 5) { failures.push('too short: ' + p.thai); continue }
@@ -5075,8 +5075,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     for (const p of pairs) {
       // Basic field check
       if (!p.thai || !p.english || !p.prompt) { failures.push('missing fields'); continue }
-      // Must contain target word
-      if (!p.thai.includes(target.thai)) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
+      // Must contain target word — only A's lines, B's response doesn't need it
+      if (p.speaker !== 'B' && !p.thai.includes(target.thai)) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
       // Must be a real Thai sentence (at least 5 Thai chars)
       const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
       if (thaiChars < 5) { failures.push('too short: ' + p.thai); continue }

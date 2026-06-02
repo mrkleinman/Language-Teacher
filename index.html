@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v343"/>
-<meta name="app-version" content="v343"/>
+<meta name="app-version" content="v344"/>
+<meta name="app-version" content="v344"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4630,7 +4630,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           '\n\nWrite completely different sentences that fix every issue above.\n\n---\n\n'
         : ''
       const combinedMsg = failHint + baseSystem + '\n\n---\n\n' + baseUser
-      const tokenBudget = model && model.includes('32b') ? 4000 : 2500
+      const tokenBudget = model && model.includes('32b') ? 4000 : 3000
       const raw = await callOpenRouterOnce(apiKey, model, [{ role:'user', content:combinedMsg }], tokenBudget)
 
       if (!raw || raw.length < 5) {
@@ -4708,8 +4708,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         continue
       }
 
-      // Check 3: natural speech checks
+      // Check 3: natural speech checks — only if we have all 3 lines
       const naturalFails = []
+      if (genderValid.length < 3) {
+        failureReasons = ['Only ' + genderValid.length + ' valid lines returned — need 3. Write all 3 complete lines.']
+        onProgress && onProgress(-1, -1, { apiError: '⚠️ Incomplete: only ' + genderValid.length + '/3 lines valid' }, null, null)
+        continue
+      }
       genderValid.forEach((l, li) => {
         const t = l.thai || ''
         const withoutParticle = t.replace(/ครับ$|ค่ะ$|คะ$/, '').trim()

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v348"/>
-<meta name="app-version" content="v348"/>
+<meta name="app-version" content="v349"/>
+<meta name="app-version" content="v349"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -5853,7 +5853,7 @@ function resolveOrModel(provider) {
 
 function resolveOrName(provider) {
   if (provider === 'haiku') return 'Claude Haiku'
-  if (provider === 'gemini') return 'Gemini 2.0 Flash'
+  if (provider === 'gemini') return 'Gemini 2.5 Flash Lite'
   if (provider === 'qwen32b') return 'Qwen3 32B'
   return 'Qwen3.5 Flash'
 }
@@ -7294,7 +7294,7 @@ function DeepSeekTestBtn({ dsKey }) {
 const PROVIDERS = [
   { id: 'qwen3_14b', label: '⚡ Qwen3.5 Flash', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
   { id: 'qwen32b', label: '🧠 Qwen3 32B (no thinking)', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
-  { id: 'gemini', label: '✦ Gemini 2.0 Flash', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
+  { id: 'gemini', label: '✦ Gemini 2.5 Flash Lite', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
   { id: 'haiku',     label: '🔶 Haiku 4.5',  sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
 ]
 

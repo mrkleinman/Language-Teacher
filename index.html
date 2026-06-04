@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v352"/>
-<meta name="app-version" content="v352"/>
+<meta name="app-version" content="v353"/>
+<meta name="app-version" content="v353"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4230,7 +4230,7 @@ function getMaxNumberFromVocab(vocab) {
 }
 
 function randomNumberHint(vocab, pairIndex) {
-  if (pairIndex % 2 !== 0) return ''
+  // Fire on ~2/3 of words (skip every 3rd)
   const max = getMaxNumberFromVocab(vocab)
   const r = n => Math.floor(Math.random() * n) + 1
   const THAI_NUMS = ['หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า','สิบ','สิบเอ็ด','สิบสอง','สิบสาม','สิบสี่','สิบห้า','สิบหก','สิบเจ็ด','สิบแปด','สิบเก้า','ยี่สิบ','ยี่สิบเอ็ด','ยี่สิบสอง','ยี่สิบสาม','ยี่สิบสี่','ยี่สิบห้า','ยี่สิบหก','ยี่สิบเจ็ด','ยี่สิบแปด','ยี่สิบเก้า']
@@ -4513,12 +4513,12 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• GRAMMAR: sentences must be complete and natural spoken Thai — the kind real friends say to each other\n' +
     '• COMMAS: add commas where natural speech pauses occur — after topic-setting phrases, before the main comment, e.g. ผมไปตลาดมา, เจอของสวยมากเลยครับ\n' +
     '• VARIETY: NEVER start a line with ไม่ทราบว่า — banned completely. Use: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, จริงๆ เหรอ, ยังไม่รู้เลย\n' +
-    '• PRONOUNS: when A speaks TO B directly → คุณ or drop subject (never เธอ for direct address). เธอ = referring to B. เขา = absent male third party. เธอ = absent female third party. phûak-khao = group. A always uses ผม for self. B always uses ฉัน for self. We = เรา\n' +
+    '• PRONOUNS: when A speaks TO or about B who is present → คุณ. เธอ is ONLY for 3rd party absent females. ผม = A always. ฉัน = B always. เรา = we. พวกเขา = group. NEVER use เธอ when addressing B directly.\n' +
     '• NATURAL SPEECH: casual spoken Thai only. FORBIDDEN: ซึ่ง (relative clauses), ดิฉัน, กระผม, ท่าน, อันซึ่ง. Use simple direct sentences like real friends talk\n' +
-    '• FORBIDDEN: อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, รถยนต์, โทรศัพท์ (use มือถือ). Do NOT use place names, temples, or cultural sites not in the vocab list.\n' +
-    '• ABSOLUTELY FORBIDDEN — ซึ่ง: NEVER use ซึ่ง as a relative clause. It is written Thai only. Say "ผมชอบของหวานที่คุณมี" NOT "ซึ่งคุณมีอยู่". Replace ALL ซึ่ง with ที่ or restructure the sentence.\n' +
+    '• FORBIDDEN: อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, รถยนต์, โทรศัพท์ (use มือถือ), น้ำปานะ, สินค้า, ไปรษณีย์, คำนวณ (use ลองคิด). Do NOT use place names or words not in vocab list.\n' +
+    '• ซึ่ง is formal written Thai — only use it when ซึ่ง is the target word being practised. In all other sentences, use ที่ instead.\n' +
     '• ACCURACY: the "english" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
-    '• PROMPT ACCURACY: the "prompt" field must describe EXACTLY what the Thai sentence says — if Thai is a question, prompt must say Ask. If Thai says X happened, prompt must say X happened. Not a paraphrase, not a summary.\n' +
+    '• PROMPT ACCURACY: the "prompt" field must describe the SPECIFIC CONTENT of the Thai sentence — include the actual numbers, names, and facts. WRONG: "He states his age." RIGHT: "He says he is fifty-six years old." WRONG: "She asks about the shop." RIGHT: "She asks if the shop is near here."\n' +
     '• The "prompt" field must accurately describe exactly what is said — not generic, must match the Thai sentence\n' +
     '• SELF-CHECK: before returning, re-read each line and ask: "Would a real Thai person say this naturally in this scene?" If no, rewrite it\n' +
     '• Add a "ok": true field to each line object — only set true if the line is natural, accurate, and the target word is used correctly\n' +
@@ -4580,6 +4580,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'วิ่ง':'say you go running or someone ran somewhere',
     'ชวน':'invite someone to do something',
     'แพง':'comment that something costs a lot',
+    'สาย':"สาย means line/lane/cable — use in everyday contexts: a phone line (สายโทรศัพท์), a queue/line of people (ต่อสาย), a lane on the road (สายทาง), or a strap. Keep it simple and visual.",
     'ขน':"ขน = animal fur or feathers — use for animals only. e.g. แมวตัวนี้ขนนุ่มมากครับ (this cat has soft fur). NEVER compliment a person's body hair.",
     'ผิว':"mention skin in a natural health context — good air, sunburned, or dry skin. NEVER compare skin to objects.",
     'นิ้ว':"mention a finger in a practical context — cut while cooking, pointing at something. NEVER say someone's fingers are beautiful.",
@@ -4676,8 +4677,14 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           return
         }
         l.thai = l.thai.trim().replace(/[?!.…]+$/, '').trim()
-        // Strip any Thai chars accidentally included in phonetic field
-        if (l.phonetic) l.phonetic = l.phonetic.replace(/[ก-๙฀-๿]/g, '').replace(/\s+/g, ' ').trim()
+        // Strip Thai chars from phonetic, normalise hyphens to spaces for word splitting
+        if (l.phonetic) {
+          l.phonetic = l.phonetic.replace(/[ก-๙฀-๿]/g, '')
+          // Replace word-joining hyphens with spaces (keep tone-mark hyphens like dtôn-níi)
+          // Heuristic: hyphen between long segments = word boundary
+          l.phonetic = l.phonetic.replace(/([a-záéíóúàèìòùâêîôûāēīōū]{3,})-([a-záéíóúàèìòùâêîôûāēīōū]{3,})/gi, '$1 $2')
+          l.phonetic = l.phonetic.replace(/\s+/g, ' ').trim()
+        }
         if (/ครับ$/.test(l.thai)) l.speaker = 'A'
         else if (/ค่ะ$|คะ$/.test(l.thai)) l.speaker = 'B'
       })
@@ -4749,9 +4756,12 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           naturalFails.push('Do not start with ไม่ทราบว่า — use ไม่รู้ or ไม่แน่ใจ instead')
         }
         if ((lThai.includes(charA.split(',')[0]) || lThai.includes(charB.split(',')[0])) && li > 0) {
-          // Names in non-greeting lines — only allow in very first exchange
           const nameUsed = lThai.includes(charA.split(',')[0]) ? charA.split(',')[0] : charB.split(',')[0]
           naturalFails.push('Remove "' + nameUsed + '" from sentence — use ผม/ฉัน/คุณ instead')
+        }
+        // Reject เธอ as direct address — should be คุณ
+        if (l.speaker === 'A' && (lThai.includes('พาเธอ') || lThai.includes('ให้เธอ') || lThai.includes('บอกเธอ') || lThai.includes('ถามเธอ') || lThai.includes('พบเธอ'))) {
+          naturalFails.push('Use คุณ instead of เธอ — เธอ is 3rd person absent female, not direct address')
         }
         // Reject เพิ่งเคย — grammatically odd combination
         if (lThai.includes('เพิ่งเคย')) {
@@ -5607,7 +5617,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     // Apply light punctuation — rule-based, max 1 comma per sentence
     function addThaipunct(thai, phonetic) {
       if (!thai) return { thai, phonetic }
-      let t = thai.trim(), p = (phonetic||'').trim(), added = false
+      let t = thai.trim()
+      // Normalise phonetic: long hyphenated segments → spaces
+      let p = (phonetic||'').trim()
+        .replace(/([a-záéíóúàèìòùâêîôûāēīōū]{3,})-([a-záéíóúàèìòùâêîôûāēīōū]{3,})/gi, '$1 $2')
+        .replace(/\s+/g, ' ').trim()
+      let added = false
       const ins = (tp, pos) => {
         if (added || pos <= 0) return
         added = true

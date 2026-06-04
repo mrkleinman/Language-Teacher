@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v351"/>
-<meta name="app-version" content="v351"/>
+<meta name="app-version" content="v352"/>
+<meta name="app-version" content="v352"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4612,6 +4612,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const CHECK_NAMES  = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th']
 
   let failureReasons = []
+  let bestAttempt = null
+  let bestScore = -1
 
   for (let attempt = 0; attempt < 10; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, attempt === 1 ? 3000 : 1500))
@@ -4867,6 +4869,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       }
       failureReasons = [e.message.slice(0, 60)]
     }
+  }
+  // All checks failed — use best real attempt instead of null
+  if (bestAttempt && bestAttempt.length >= 2) {
+    return bestAttempt.map(l => ({ ...l, _source: 'best-attempt:conv' }))
   }
   return null
 }

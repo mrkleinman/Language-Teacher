@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v350"/>
-<meta name="app-version" content="v350"/>
+<meta name="app-version" content="v351"/>
+<meta name="app-version" content="v351"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4233,14 +4233,14 @@ function randomNumberHint(vocab, pairIndex) {
   if (pairIndex % 2 !== 0) return ''
   const max = getMaxNumberFromVocab(vocab)
   const r = n => Math.floor(Math.random() * n) + 1
-  const THAI_NUMS = ['หนึ่ง','สอง','สาม','สี่','หา','หก','เจ็ด','แปด','เกา','สิบ','สิบเอ็ด','สิบสอง','สิบสาม','สิบสี่','สิบหา','สิบหก','สิบเจ็ด','สิบแปด','สิบเกา','ยี่สิบ','ยี่สิบเอ็ด','ยี่สิบสอง','ยี่สิบสาม','ยี่สิบสี่','ยี่สิบหา','ยี่สิบหก','ยี่สิบเจ็ด','ยี่สิบแปด','ยี่สิบเกา']
+  const THAI_NUMS = ['หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า','สิบ','สิบเอ็ด','สิบสอง','สิบสาม','สิบสี่','สิบห้า','สิบหก','สิบเจ็ด','สิบแปด','สิบเก้า','ยี่สิบ','ยี่สิบเอ็ด','ยี่สิบสอง','ยี่สิบสาม','ยี่สิบสี่','ยี่สิบห้า','ยี่สิบหก','ยี่สิบเจ็ด','ยี่สิบแปด','ยี่สิบเก้า']
   const safeCap = Math.min(max, 29)
   const safeN = () => r(Math.min(safeCap, THAI_NUMS.length))
   const safeWord = n => THAI_NUMS[n-1] || String(n)
   const typeIdx = Math.floor(pairIndex / 2) % 4
   const types = [
     () => { const n = safeN(); return 'Include the number ' + safeWord(n) + ' (' + n + ') naturally in Thai script only' },
-    () => { const times = ['ตีหนึ่ง','ตีสอง','ตีสาม','หกโมงเชา','เจ็ดโมงเชา','แปดโมงเชา','เกาโมงเชา','เที่ยง','บายโมง','บายสองโมง','หาโมงเย็น','หกโมงเย็น','หนึ่งทุ่ม','สองทุ่ม','สามทุ่ม','สี่ทุ่ม','หาทุ่ม']; return 'Include a time expression in Thai script: ' + times[Math.floor(Math.random()*times.length)] },
+    () => { const times = ['ตีหนึ่ง','ตีสอง','ตีสาม','หกโมงเช้า','เจ็ดโมงเช้า','แปดโมงเช้า','เก้าโมงเช้า','เที่ยง','บ่ายโมง','บ่ายสองโมง','ห้าโมงเย็น','หกโมงเย็น','หนึ่งทุ่ม','สองทุ่ม','สามทุ่ม','สี่ทุ่ม','ห้าทุ่ม']; return 'Include a time expression in Thai script: ' + times[Math.floor(Math.random()*times.length)] },
     () => { const n = r(10); const ords = ['ที่หนึ่ง','ที่สอง','ที่สาม','ที่สี่','ที่หา','ที่หก','ที่เจ็ด','ที่แปด','ที่เกา','ที่สิบ']; return 'Include an ordinal in Thai script: ' + ords[n-1] },
     () => { const n = r(9); const clfs = ['คน','อัน','ชิ้น','แกว','จาน','ครั้ง','วัน','ปี','เดือน','ลำ','ตัว']; return 'Include a number + classifier in Thai script: ' + safeWord(n) + ' ' + clfs[Math.floor(Math.random()*clfs.length)] },
   ]
@@ -4485,7 +4485,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     .sort((a,b) => ((b.repCount||b.r)||0) - ((a.repCount||a.r)||0))
     .slice(0, 20).map(w => (w.thai||w.t) + '(' + (w.english||w.e) + ')').join(', ')
   // Skip numbers for words that don't naturally take numbers
-  const _noNumberWords = ['advance','compete','service','etc','normal','some','no','tooth','ear','mouth','castle','office','band','beauty queen','beauty pageant','Khmer','long-neck Karen','clear up','play music','then','raft','such as','special','flower festival']
+  const _noNumberWords = ['advance','compete','beauty queen','beauty pageant','Khmer','long-neck Karen','clear up','then','such as','which','who','where','when','how','jealous','trust','promise','rent']
   const _skipNumber = _noNumberWords.some(w => (target.english||'').toLowerCase().includes(w.toLowerCase()))
   const numberHint = _skipNumber ? '' : randomNumberHint(vocab, pairIndex)
   const context = prevLines.length > 0
@@ -4511,10 +4511,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• ซึ่ง is WRITTEN Thai — never use ซึ่ง as a relative clause in spoken conversation. Say "รูปปั้นนั้นสวยมาก" not "รูปปั้นซึ่งสวยมาก"\n' +
     '• Make sentences that CONTINUE THE CONVERSATION naturally from the previous lines — no random topic jumps\n' +
     '• GRAMMAR: sentences must be complete and natural spoken Thai — the kind real friends say to each other\n' +
+    '• COMMAS: add commas where natural speech pauses occur — after topic-setting phrases, before the main comment, e.g. ผมไปตลาดมา, เจอของสวยมากเลยครับ\n' +
     '• VARIETY: NEVER start a line with ไม่ทราบว่า — banned completely. Use: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, จริงๆ เหรอ, ยังไม่รู้เลย\n' +
     '• PRONOUNS: when A speaks TO B directly → คุณ or drop subject (never เธอ for direct address). เธอ = referring to B. เขา = absent male third party. เธอ = absent female third party. phûak-khao = group. A always uses ผม for self. B always uses ฉัน for self. We = เรา\n' +
     '• NATURAL SPEECH: casual spoken Thai only. FORBIDDEN: ซึ่ง (relative clauses), ดิฉัน, กระผม, ท่าน, อันซึ่ง. Use simple direct sentences like real friends talk\n' +
-    '• FORBIDDEN words: อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, เครื่องดื่ม, รถยนต์, โทรศัพท์ (use มือถือ instead)\n' +
+    '• FORBIDDEN: อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, รถยนต์, โทรศัพท์ (use มือถือ). Do NOT use place names, temples, or cultural sites not in the vocab list.\n' +
     '• ABSOLUTELY FORBIDDEN — ซึ่ง: NEVER use ซึ่ง as a relative clause. It is written Thai only. Say "ผมชอบของหวานที่คุณมี" NOT "ซึ่งคุณมีอยู่". Replace ALL ซึ่ง with ที่ or restructure the sentence.\n' +
     '• ACCURACY: the "english" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
     '• PROMPT ACCURACY: the "prompt" field must describe EXACTLY what the Thai sentence says — if Thai is a question, prompt must say Ask. If Thai says X happened, prompt must say X happened. Not a paraphrase, not a summary.\n' +
@@ -4547,6 +4548,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'กาดสวนแก้ว':'mention Kad Suan Kaew mall in Chiang Mai',
   }
   const _usageHint = ({
+    'ไว้ใจ':"ไว้ใจ is a verb meaning to trust someone — NOT a noun. Use: ผมไว้ใจคุณมากครับ (I trust you a lot), คุณไว้ใจฉันได้ค่ะ (you can trust me), or เธอไว้ใจเขาไหมคะ (do you trust him?). NEVER say 'have a trust' or 'there is no trust'.",
     'ถวาย':"ถวาย is ONLY used when offering something to a monk or royalty — never between ordinary friends. Use it: A mentions he saw a monk and offered food (ผมถวายข้าวพระครับ) or B says she offered flowers at the temple (ฉันถวายดอกไม้ที่วัดค่ะ). NEVER 'offer' things to each other using ถวาย.",
     'งั้นก็':"use งั้นก็ as a transition meaning 'in that case...' or 'so then...' — A says something, then B responds with งั้นก็... to connect a consequence, e.g. งั้นก็ไปด้วยกันเลยครับ",
     'แน่นท้อง':"say someone's stomach feels tight/bloated/stuffed after overeating — แน่นท้อง is uncomfortable fullness, NOT the same as อิ่ม (satisfied full). e.g. กินเยอะไปหน่อย แน่นท้องเลยครับ (ate too much, stomach is stuffed)",
@@ -4578,6 +4580,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'วิ่ง':'say you go running or someone ran somewhere',
     'ชวน':'invite someone to do something',
     'แพง':'comment that something costs a lot',
+    'ขน':"ขน = animal fur or feathers — use for animals only. e.g. แมวตัวนี้ขนนุ่มมากครับ (this cat has soft fur). NEVER compliment a person's body hair.",
+    'ผิว':"mention skin in a natural health context — good air, sunburned, or dry skin. NEVER compare skin to objects.",
+    'นิ้ว':"mention a finger in a practical context — cut while cooking, pointing at something. NEVER say someone's fingers are beautiful.",
   })[target.thai] || _properNouns[target.thai] || (() => {
     // Grammar particles — appear naturally in any sentence, don't force them
     const grammarParticles = ['ที่','ก็','แล้ว','ด้วย','อยู่','เลย','นะ','สิ','แต่','เพราะ','ถ้า','หรือ','และ','กับ','จน','พอ','ตอน','เมื่อ','ว่า','ให้','จาก','โดย','ของ','ใน','บน','ใต้']
@@ -4637,7 +4642,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           '\n\nWrite completely different sentences that fix every issue above.\n\n---\n\n'
         : ''
       const combinedMsg = failHint + baseSystem + '\n\n---\n\n' + baseUser
-      const tokenBudget = model && model.includes('32b') ? 4000 : model && model.includes('gemini') ? 3500 : 3000
+      const tokenBudget = model && model.includes('32b') ? 4000 : model && model.includes('gemini') ? 4000 : 3000
       const raw = await callOpenRouterOnce(apiKey, model, [{ role:'user', content:combinedMsg }], tokenBudget)
 
       if (!raw || raw.length < 5) {
@@ -4705,6 +4710,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         continue
       }
 
+      // Track best real attempt (lines that passed gender check)
+      if (genderValid.length >= 2) {
+        const score = genderValid.length
+        if (score > bestScore) { bestScore = score; bestAttempt = [...genderValid] }
+      }
       // Check 2: quality via validateSmartPairs — require ALL lines valid
       const qualPairs = genderValid.map(l => ({ speaker:l.speaker, thai:l.thai, phonetic:l.phonetic, english:l.english, prompt:l.prompt||'.' }))
       const isGemini = model && model.includes('gemini')
@@ -4730,7 +4740,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           naturalFails.push('Line ' + (li+1) + ' (A) missing "' + target.thai + '" — A must use target word')
         // Reject ซึ่ง — written register forbidden
         const lThai = l.thai || ''
-        if (lThai.includes('ซึ่ง')) {
+        if (lThai.includes('ซึ่ง') && target.thai !== 'ซึ่ง') {
           naturalFails.push('Remove ซึ่ง — use ที่ instead or restructure. ซึ่ง is written Thai only.')
         }
         if (lThai.startsWith('ไม่ทราบว่า') || lThai.startsWith('ผมไม่ทราบว่า') || lThai.startsWith('ฉันไม่ทราบว่า')) {
@@ -4740,6 +4750,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           // Names in non-greeting lines — only allow in very first exchange
           const nameUsed = lThai.includes(charA.split(',')[0]) ? charA.split(',')[0] : charB.split(',')[0]
           naturalFails.push('Remove "' + nameUsed + '" from sentence — use ผม/ฉัน/คุณ instead')
+        }
+        // Reject เพิ่งเคย — grammatically odd combination
+        if (lThai.includes('เพิ่งเคย')) {
+          naturalFails.push('Do not use เพิ่งเคย together — use เพิ่ง alone (just did) or เคย alone (ever did)')
         }
         // Phonetic must be present
         if (!l.phonetic || l.phonetic.trim().length < 4)
@@ -5314,6 +5328,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
 
     // ── CONCEPT TIER: direct frame substitution (no API) ─────────────────
     const compatConcepts = getCompatibleConceptsForTarget(target)
+    let _bestAttemptPairs = []    // best real AI attempt across all checks
+    let _bestAttemptScore = -1
     const conceptFrame = (risk === 'low' || risk === 'medium') && compatConcepts.length > 0
       ? selectConceptFrame(target, compatConcepts) : null
     // Concept tier disabled - concept cards feed AI as context instead
@@ -5337,6 +5353,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       let generated = await callModel(GPT_MODEL, prompt1)
       let { valid, failures } = validateSmartPairs(generated, target)
       for (const p of valid) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'qwen:'+ target.thai}) }
+      if (valid.length > _bestAttemptScore) { _bestAttemptScore = valid.length; _bestAttemptPairs = valid }
 
       if (failures && failures.length > 0) {
         failureLog[target.thai] = (failureLog[target.thai] || []).concat((failures||[]).map(f => 'GPT1: ' + f))
@@ -5463,7 +5480,15 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
             if (!existingThais.has(p.thai)) pairs.push({...p, _source:'hardcoded:'+target.thai})
           }
         }
-        // Generic fallback if still not enough
+        // Use best real attempt before template fallback
+        if (pairs.length < 3 && _bestAttemptPairs.length > 0) {
+          onProgress && onProgress(-1, -1, { apiError: '♻️ Using best attempt (' + _bestAttemptScore + '/3) for ' + target.thai }, null, null)
+          for (const p of _bestAttemptPairs) {
+            if (pairs.length >= 3) break
+            if (!existingThais.has(p.thai)) pairs.push({...p, _source:'best-attempt:'+target.thai})
+          }
+        }
+        // Generic fallback only if nothing else worked
         if (pairs.length < 3) {
           const fb = makeFallbackPairs(target).filter(p => !existingThais.has(p.thai))
           for (const f of fb) { if (pairs.length >= 3) break; pairs.push({...f, _source:'fallback:'+target.thai}) }

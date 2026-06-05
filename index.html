@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v362"/>
-<meta name="app-version" content="v362"/>
+<meta name="app-version" content="v363"/>
+<meta name="app-version" content="v363"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4945,11 +4945,12 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     prevLines.push(openingPair, replyLine)
     allPairs.push(openingPair, replyLine)
   }
+  let runningTopic = ''  // topic threading for conversation flow
   for (let i = 0; i < targets.length; i++) {
     if (stopSignal && stopSignal.paused) break  // pause after this word completes
     const target = targets[i]
     onProgress && onProgress(allPairs.length, targets.length * 3, { wordStatus: '\u{1F4AC} ' + (i+1) + '/30: ' + target.thai + ' [' + target.english + ']' }, null, null)
-    let lines = await generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, GPT_MODEL, i, onProgress, '')
+    let lines = await generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, GPT_MODEL, i, onProgress, runningTopic)
     if (!lines || lines.length < 2) {
       const hb = HARDCODED_FALLBACKS[target.thai]
       const fb = hb || makeFallbackPairs(target)

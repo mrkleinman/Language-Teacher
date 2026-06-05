@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v354"/>
-<meta name="app-version" content="v354"/>
+<meta name="app-version" content="v362"/>
+<meta name="app-version" content="v362"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4772,6 +4772,18 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         if (lThai.startsWith('ซึ่ง') && target.thai !== 'ซึ่ง') {
           naturalFails.push('Sentence starts with ซึ่ง — this is a fragment. Write a complete sentence.')
         }
+        // Check for unknown vocab words (if _knownThai is available)
+        if (typeof _knownThai !== 'undefined' && _knownThai.size > 0) {
+          // Split Thai text into rough word tokens (by spaces, strips particles)
+          const thaiTokens = lThai.replace(/ครับ$|ค่ะ$|คะ$/, '').trim().split(/\s+/).filter(t => t.length > 1 && /[ก-๙]/.test(t))
+          for (const tok of thaiTokens) {
+            const clean = tok.replace(/[^ก-๙]/g, '')
+            if (clean.length > 1 && !_knownThai.has(clean) && !_grammarAlways.has(clean) && clean !== target.thai) {
+              naturalFails.push('Unknown word "' + clean + '" — use only words from your vocabulary list')
+              break // one error per line is enough
+            }
+          }
+        }
         // Phonetic must be present and roughly match Thai length
         if (!l.phonetic || l.phonetic.trim().length < 4)
           naturalFails.push('Line ' + (li+1) + ' has no phonetic')
@@ -4945,10 +4957,11 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     }
     const tagged = lines.slice(0,3).map(l => ({ ...l, _source:l._source||'qwen:conv', _target:target.thai }))
     allPairs.push(...tagged)
-    // Update running topic — use the last English sentence for threading
+    // Update running topic — use middle pair for threading context
     if (tagged.length > 0) {
       const midPair = tagged[Math.floor(tagged.length/2)]
-      runningTopic = (midPair.english || tagged[0].english || '').replace(/[.!?]$/, '').slice(0, 80)
+      const newTopic = (midPair.english || tagged[0].english || '').replace(/[.!?]$/, '').slice(0, 80)
+      if (newTopic) runningTopic = newTopic
     }
     prevLines.push(...tagged)
     const srcs = tagged.map(p=>p._source)
@@ -5788,7 +5801,7 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
 }
 
 // ── Pre-track Conversation Player ────────────────────────────────────────────
-function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
+function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, openaiTtsKey }) {
   const [lineIdx, setLineIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [voices, setVoices] = useState([])
@@ -5813,31 +5826,33 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange }) {
     const speakLine = async () => {
       if (cancelRef.current) return
       const isASpeaker = line.speaker === 'A'
-      const cloudKey = settings?.googleCloudKey || ''
-      // Use Google Cloud TTS for A (male) if key available
-      if (isASpeaker && cloudKey) {
+      const oaiKey = openaiTtsKey || ''  // reusing same field, now holds OpenAI key
+      // Use OpenAI TTS if key available
+      if (oaiKey) {
         try {
-          const resp = await fetch(
-            'https://texttospeech.googleapis.com/v1/text:synthesize?key=' + cloudKey,
-            { method: 'POST', headers: {'Content-Type':'application/json'},
-              body: JSON.stringify({
-                input: { text: line.thai },
-                voice: { languageCode: 'th-TH', name: 'th-TH-Standard-B' },
-                audioConfig: { audioEncoding: 'MP3', speakingRate: speedRef.current || 0.8 }
-              })
-            }
-          )
-          const data = await resp.json()
-          if (data.audioContent) {
-            const audio = new Audio('data:audio/mp3;base64,' + data.audioContent)
-            audio.onended = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 700) }
-            audio.onerror = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 900) }
+          const voice = isASpeaker ? 'onyx' : 'nova'  // onyx=male, nova=female
+          const resp = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + oaiKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'tts-1',
+              input: line.thai,
+              voice,
+              speed: Math.min(Math.max(speedRef.current || 0.8, 0.25), 4.0)
+            })
+          })
+          if (resp.ok) {
+            const blob = await resp.blob()
+            const url = URL.createObjectURL(blob)
+            const audio = new Audio(url)
+            audio.onended = () => { URL.revokeObjectURL(url); if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 700) }
+            audio.onerror = () => { URL.revokeObjectURL(url); if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 900) }
             audio.play()
             return
           }
-        } catch(e) { console.warn('Cloud TTS failed, falling back:', e) }
+        } catch(e) { console.warn('OpenAI TTS failed, falling back:', e) }
       }
-      // Fallback: Chrome TTS (B speaker or no Cloud key)
+      // Fallback: Chrome TTS
       if (!HAS_SPEECH) { setTimeout(() => { if (!cancelRef.current) setLineIdx(i => i + 1) }, 1200); return }
       try { window.speechSynthesis.cancel() } catch(e) {}
       const u = new SpeechSynthesisUtterance(line.thai)
@@ -7389,12 +7404,14 @@ const PROVIDERS = [
   { id: 'haiku',     label: '🔶 Haiku 4.5',  sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
 ]
 
-function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey }) {
+function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey, openaiTtsKey, onSaveOpenaiTtsKey }) {
   // Key state per provider
   const [keys, setKeys] = useState({ claude: apiKey || '', qwen3_14b: orKey || '', haiku: orKey || '', gemini: orKey || '', qwen32b: orKey || '' })
   const [saved, setSaved] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
+  const [ttsKeyDraft, setTtsKeyDraft] = useState(openaiTtsKey || '')
+  const [ttsTestResult, setTtsTestResult] = useState('')
 
   const prov = PROVIDERS.find(p => p.id === provider) || PROVIDERS[0]
   const currentKey = keys[provider] || ''
@@ -7476,14 +7493,38 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
         </div>
         {testResult && <p style={{ fontSize: 13, marginTop: 10, color: testResult.startsWith('✅') ? '#10b981' : '#ef4444' }}>{testResult}</p>}
 
-        {/* Google Cloud TTS for male A voice */}
+        {/* OpenAI TTS for Thai voices */}
         <div style={{ marginTop:16, padding:'12px 14px', borderRadius:10, background:'var(--surface2)' }}>
-          <div style={{ fontSize:12, fontWeight:600, color:'var(--text)', marginBottom:6 }}>🔊 Male Voice (Speaker A)</div>
-          <div style={{ fontSize:11, color:'var(--muted)', marginBottom:6 }}>Google Cloud TTS key for natural male Thai voice. Free tier: 1M chars/month.</div>
-          <input type="password" placeholder="AIzaSy..." defaultValue={googleCloudKey||''}
-            onChange={e => onSaveGoogleCloudKey && onSaveGoogleCloudKey(e.target.value)}
+          <div style={{ fontSize:12, fontWeight:600, color:'var(--text)', marginBottom:6 }}>🔊 Thai Voices (OpenAI TTS)</div>
+          <div style={{ fontSize:11, color:'var(--muted)', marginBottom:6 }}>OpenAI API key for natural Thai voices — Onyx (male) for A, Nova (female) for B.</div>
+          <input type="password" placeholder="sk-..." defaultValue={openaiTtsKey||''}
+            onChange={e => setTtsKeyDraft(e.target.value)}
             style={{ width:'100%', padding:'8px 10px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', fontSize:13, boxSizing:'border-box' }} />
-          <div style={{ fontSize:10, color:'var(--muted)', marginTop:4 }}>console.cloud.google.com → APIs → Text-to-Speech API → Credentials</div>
+          <div style={{ display:'flex', gap:8, marginTop:8 }}>
+            <Btn onClick={async () => {
+              if (!ttsKeyDraft) return
+              setTtsTestResult('⏳ Testing...')
+              try {
+                const r = await fetch('https://api.openai.com/v1/audio/speech', {
+                  method:'POST',
+                  headers:{'Authorization':'Bearer '+ttsKeyDraft,'Content-Type':'application/json'},
+                  body:JSON.stringify({model:'tts-1',input:'สวัสดีครับ',voice:'onyx',speed:1.0})
+                })
+                if (r.ok) {
+                  const blob = await r.blob()
+                  const audio = new Audio(URL.createObjectURL(blob))
+                  audio.play()
+                  setTtsTestResult('✅ Works! Playing test audio...')
+                } else {
+                  const d = await r.json()
+                  setTtsTestResult('❌ ' + (d.error?.message || r.status))
+                }
+              } catch(e) { setTtsTestResult('❌ ' + e.message) }
+            }} variant="secondary" style={{flex:1,justifyContent:'center'}}>Test</Btn>
+            <Btn onClick={() => { onSaveOpenaiTtsKey && onSaveOpenaiTtsKey(ttsKeyDraft); setTtsTestResult('✅ Saved') }} style={{flex:1,justifyContent:'center'}}>Save Key</Btn>
+          </div>
+          {ttsTestResult && <p style={{fontSize:11,marginTop:6,color:ttsTestResult.startsWith('✅')?'#10b981':'#ef4444'}}>{ttsTestResult}</p>}
+          <div style={{ fontSize:10, color:'var(--muted)', marginTop:4 }}>platform.openai.com → API keys. Falls back to Chrome TTS if no key.</div>
         </div>
 
         {/* Status */}
@@ -8003,6 +8044,8 @@ function ThaiTeacher() {
   const [dsKey, setDsKey] = useState('')
   const [orKey, setOrKey] = useState('')
   const [orBalance, setOrBalance] = useState(null)
+  const [settings, setSettings] = useState(() => { try { return JSON.parse(localStorage.getItem('thaiTeacherSettings') || '{}') } catch { return {} } })
+  const openaiTtsKey = (settings && settings.openaiTtsKey) || ''
   const [lastTrackCost, setLastTrackCost] = useState(null)
 
   async function fetchOrBalance(key) {
@@ -8179,13 +8222,14 @@ function ThaiTeacher() {
         )}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
-        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} googleCloudKey={googleCloudKey} onSaveGoogleCloudKey={async k => { const s = {...(settings||{}), googleCloudKey:k}; setSettings(s); localStorage.setItem('thaiTeacherSettings', JSON.stringify(s)) }} />}
+        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} openaiTtsKey={openaiTtsKey} onSaveOpenaiTtsKey={async k => { const s = {...(settings||{}), openaiTtsKey:k}; setSettings(s); localStorage.setItem('thaiTeacherSettings', JSON.stringify(s)) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'lessons' && <LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} />}
         {view === 'convo' && activeTrack?.convo && (
           <ConvoPlayer
             lines={activeTrack.convo}
+            openaiTtsKey={openaiTtsKey}
             speed={parseFloat(localStorage.getItem('tt-speed') || '0.8')}
             onSpeedChange={s => { try { localStorage.setItem('tt-speed', s) } catch {} }}
             onSkip={() => { setView('dashboard') }}

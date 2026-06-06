@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v363"/>
-<meta name="app-version" content="v363"/>
+<meta name="app-version" content="v364"/>
+<meta name="app-version" content="v364"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4244,13 +4244,13 @@ function randomNumberHint(vocab, pairIndex) {
     () => { const n = r(10); const ords = ['ที่หนึ่ง','ที่สอง','ที่สาม','ที่สี่','ที่ห้า','ที่หก','ที่เจ็ด','ที่แปด','ที่เก้า','ที่สิบ']; return 'Include an ordinal in Thai script: ' + ords[n-1] },
     () => { const n = r(9); const clfs = ['คน','อัน','ชิ้น','แก้ว','จาน','ครั้ง','วัน','ปี','เดือน','ลำ','ตัว']; return 'Include a number + classifier in Thai script: ' + safeWord(n) + ' ' + clfs[Math.floor(Math.random()*clfs.length)] },
   ]
-  return '\nMANDATORY: You MUST include this number/time in LINE 1 — ' + types[typeIdx]() + '. Write ALL numbers in Thai script (สาม not 3). Lines without a number will be rejected.'
+  return '\nMANDATORY NUMBER: You MUST naturally include this in LINE 1 — ' + types[typeIdx]() + '. The number must make sense in the sentence. Write ALL numbers in Thai script (สาม not 3). Do NOT force the number in awkwardly — it should feel like a real detail in the conversation.'
 }
 
 // ── Conversation-track generation ────────────────────────────────────────────
 async function establishConvoScene(targets, vocab, apiKey, model) {
   const wordList = targets.slice(0, 15).map(t => t.thai + '=' + t.english).join(', ')
-  const system = 'You design Thai language lesson scenarios. Given vocabulary words, create a vivid realistic scene where two Thai people naturally use these words.'
+  const system = 'You design Thai language lesson scenarios. Given vocabulary words, create a vivid realistic scene where two Thai adult friends (not family members) naturally use these words. Characters A and B are friends or acquaintances — never parent/child, never siblings.'
   const user = 'Vocabulary: ' + wordList + '\n\nReturn ONLY valid JSON (no markdown):\n' +
     '{"scene":"2-sentence scene in English",' +
     '"characterA":"Thai man name and role",' +
@@ -4258,11 +4258,11 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
     '"opening":"Natural Thai greeting A says to B (must end ครับ). VARY the greeting — do NOT always use สวัสดี. Use natural alternatives like: วันนี้เป็นยังไงบ้างครับ, ไปไหนมาครับ, มานานไหมครับ, หิวข้าวไหมครับ, เพิ่งมาถึงเหรอครับ, ว่างไหมครับ, เหนื่อยไหมครับ. Match the greeting to the scene context.",' +
     '"opening_phonetic":"full romanisation of opening",' +
     '"opening_english":"English translation of opening (omit particle)",' +
-    '"opening_prompt":"Use the character names, e.g. Somchai greets Nida and asks how she is",' +
+    '"opening_prompt":"One sentence describing what A says — use he/she not character names for the action, e.g. He greets her and asks how she is, or He asks if she has been waiting long",' +
     '"reply":"B replies ONLY to the greeting — just warmly greet back and say something brief like she\'s happy to be here. Do NOT mention services, products, or topics yet (must end ค่ะ or คะ)",' +
     '"reply_phonetic":"full romanisation of reply",' +
     '"reply_english":"English translation of reply (omit particle)",' +
-    '"reply_prompt":"Use the character names, e.g. Nida greets Somchai back and says she just arrived"}'
+    '"reply_prompt":"Use the character names, describe what B actually says — e.g. Nida greets Somchai back and says she just arrived. NEVER say she calls him Dad or any family name."}'
   try {
     const raw = await callOpenRouterOnce(apiKey, model, [{ role:'user', content: system + '\n\n' + user }], 600)
     const parsed = JSON.parse(raw)
@@ -4513,9 +4513,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• GRAMMAR: sentences must be complete and natural spoken Thai — the kind real friends say to each other\n' +
     '• COMMAS: add commas where natural speech pauses occur — after topic-setting phrases, before the main comment, e.g. ผมไปตลาดมา, เจอของสวยมากเลยครับ\n' +
     '• VARIETY: NEVER start a line with ไม่ทราบว่า — banned completely. Use: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, จริงๆ เหรอ, ยังไม่รู้เลย\n' +
-    '• PRONOUNS: when A speaks TO or about B who is present → คุณ. เธอ is ONLY for 3rd party absent females. ผม = A always. ฉัน = B always. เรา = we. พวกเขา = group. NEVER use เธอ when addressing B directly.\n' +
+    '• PRONOUNS: when A speaks TO or about B who is present → คุณ. เธอ is ONLY for absent 3rd party females NOT in this conversation. ผม = A always. ฉัน = B always. เรา = we. พวกเขา = group. NEVER use เธอ for B.\n' +
+    '• ENGLISH FIELD: if Thai uses คุณ, English must say "you". If Thai uses เขา/เธอ for 3rd party, English says "he/she". NEVER put Thai particles (ครับ ค่ะ คะ) in the English field.\n' +
     '• NATURAL SPEECH: casual spoken Thai only. FORBIDDEN: ซึ่ง (relative clauses), ดิฉัน, กระผม, ท่าน, อันซึ่ง. Use simple direct sentences like real friends talk\n' +
-    '• FORBIDDEN: อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, รถยนต์, โทรศัพท์ (use มือถือ), น้ำปานะ, สินค้า (use ของ), ไปรษณีย์, คำนวณ (use ลองคิด), เครื่องแต่งกาย (use เสื้อผ้า), สวนสาธารณะ (use สวน). Do NOT use place names or words not in vocab.\n' +
+    '• FORBIDDEN (any word containing these): อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, รถยนต์, โทรศัพท์ (use มือถือ even in compounds), น้ำปานะ, สินค้า (use ของ), ไปรษณีย์, คำนวณ (use ลองคิด), เครื่องแต่งกาย (use เสื้อผ้า), สวนสาธารณะ (use สวน), ดิฉัน (use ฉัน), คอลเลคชั่น, บรรยากาศ, ประจำ. Do NOT use place names.\n' +
     '• ซึ่ง is formal written Thai — only use it when ซึ่ง is the target word being practised. In all other sentences, use ที่ instead.\n' +
     '• ACCURACY: the "english" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
     '• PROMPT ACCURACY: the "prompt" field must describe the SPECIFIC CONTENT of the Thai sentence — include the actual numbers, names, and facts. WRONG: "He states his age." RIGHT: "He says he is fifty-six years old." WRONG: "She asks about the shop." RIGHT: "She asks if the shop is near here."\n' +
@@ -4548,7 +4549,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'กาดสวนแก้ว':'mention Kad Suan Kaew mall in Chiang Mai',
   }
   const _usageHint = ({
+    'เลิก':"stop doing something casually — ผมเลิกงานแล้วครับ (I quit my job). ลาออก = formal written resignation. Friends say เลิก not ลาออก.",
+    'ถาม':"ถาม = ask a question directly. e.g. ผมถามว่าราคาเท่าไรครับ (I asked how much it costs). NEVER write 'offer to ask on someone's behalf' — ถามความเห็น, ถามทาง, ถามราคา are all natural.",
     'ไว้ใจ':"ไว้ใจ is a verb meaning to trust someone — NOT a noun. Use: ผมไว้ใจคุณมากครับ (I trust you a lot), คุณไว้ใจฉันได้ค่ะ (you can trust me), or เธอไว้ใจเขาไหมคะ (do you trust him?). NEVER say 'have a trust' or 'there is no trust'.",
+    'อนุญาต':"อนุญาต = give official/formal permission. Use it when: a parent allows a child, a teacher allows a student, someone asks permission to do something. e.g. คุณแม่อนุญาตให้ผมไปครับ (Mum allowed me to go). NEVER use it as one friend telling another what they are or aren't allowed to feel.",
     'ถวาย':"ถวาย is ONLY used when offering something to a monk or royalty — never between ordinary friends. Use it: A mentions he saw a monk and offered food (ผมถวายข้าวพระครับ) or B says she offered flowers at the temple (ฉันถวายดอกไม้ที่วัดค่ะ). NEVER 'offer' things to each other using ถวาย.",
     'งั้นก็':"use งั้นก็ as a transition meaning 'in that case...' or 'so then...' — A says something, then B responds with งั้นก็... to connect a consequence, e.g. งั้นก็ไปด้วยกันเลยครับ",
     'แน่นท้อง':"say someone's stomach feels tight/bloated/stuffed after overeating — แน่นท้อง is uncomfortable fullness, NOT the same as อิ่ม (satisfied full). e.g. กินเยอะไปหน่อย แน่นท้องเลยครับ (ate too much, stomach is stuffed)",
@@ -4580,7 +4584,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'วิ่ง':'say you go running or someone ran somewhere',
     'ชวน':'invite someone to do something',
     'แพง':'comment that something costs a lot',
-    'สาย':"สาย means line/lane/cable — use in everyday contexts: a phone line (สายโทรศัพท์), a queue/line of people (ต่อสาย), a lane on the road (สายทาง), or a strap. Keep it simple and visual.",
+    'ต้นทุน':"ต้นทุน = production/input cost — only use in a BUSINESS or SHOP context. e.g. ต้นทุนวัตถุดิบสูงขึ้นครับ (raw material costs went up). NEVER use casually between friends who aren't discussing a business. ราคา = the price you pay as a customer (everyday usage).",
+    'สาย':"สาย means line/lane/cable — use in everyday contexts: a queue/line of people (ต่อสาย), a lane on the road (สายทาง), or a strap. Keep it simple. Do NOT say สายโทรศัพท์ (โทรศัพท์ is banned — use สายมือถือ or just สาย).",
     'ขน':"ขน = animal fur or feathers — use for animals only. e.g. แมวตัวนี้ขนนุ่มมากครับ (this cat has soft fur). NEVER compliment a person's body hair.",
     'ผิว':"mention skin in a natural health context — good air, sunburned, or dry skin. NEVER compare skin to objects.",
     'นิ้ว':"mention a finger in a practical context — cut while cooking, pointing at something. NEVER say someone's fingers are beautiful.",
@@ -4588,7 +4593,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     // Grammar particles — appear naturally in any sentence, don't force them
     const grammarParticles = ['ที่','ก็','แล้ว','ด้วย','อยู่','เลย','นะ','สิ','แต่','เพราะ','ถ้า','หรือ','และ','กับ','จน','พอ','ตอน','เมื่อ','ว่า','ให้','จาก','โดย','ของ','ใน','บน','ใต้']
     if (grammarParticles.includes(target.thai)) {
-      return 'continue the current conversation naturally — the word "' + target.thai + '" (' + target.english + ') is a common particle that will appear on its own in a natural sentence. Do NOT force sentences about it directly.'
+      return 'CONTINUE the exact same topic the conversation has been about — do NOT change topic. The word "' + target.thai + '" (' + target.english + ') is a grammar particle that will appear naturally in any sentence. Just keep talking about the same thing as the previous lines.'
     }
     const e = (target.english||'').toLowerCase()
     if (/skin|hair|fur|finger|nail|arm|leg|eye|ear|mouth|nose|tooth|head/.test(e))
@@ -4760,18 +4765,29 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           const nameUsed = lThai.includes(charA.split(',')[0]) ? charA.split(',')[0] : charB.split(',')[0]
           naturalFails.push('Remove "' + nameUsed + '" from sentence — use ผม/ฉัน/คุณ instead')
         }
-        // Reject เธอ as direct address — should be คุณ
-        if (l.speaker === 'A' && (lThai.includes('พาเธอ') || lThai.includes('ให้เธอ') || lThai.includes('บอกเธอ') || lThai.includes('ถามเธอ') || lThai.includes('พบเธอ'))) {
-          naturalFails.push('Use คุณ instead of เธอ — เธอ is 3rd person absent female, not direct address')
+        // Reject เธอ in A lines — B is present so must use คุณ
+        if (l.speaker === 'A' && lThai.includes('เธอ')) {
+          naturalFails.push('A must use คุณ not เธอ — B is present in the conversation. เธอ is only for absent females.')
+        }
+        // Reject sentences containing banned words (including in compounds)
+        const _bannedSubstrings = ['อินเทอร์เน็ต','เทศกาล','งานเลี้ยง','รถยนต์','โทรศัพท์','น้ำปานะ','ไปรษณีย์','ดิฉัน','คอลเลคชั่น','บรรยากาศ','ลาออก']
+        for (const banned of _bannedSubstrings) {
+          if (lThai.includes(banned)) {
+            naturalFails.push('Remove "' + banned + '" — this word is not in your vocabulary list')
+            break
+          }
         }
         // Reject เพิ่งเคย — grammatically odd combination
         if (lThai.includes('เพิ่งเคย')) {
           naturalFails.push('Do not use เพิ่งเคย together — use เพิ่ง alone (just did) or เคย alone (ever did)')
         }
-        // Reject ซึ่ง as sentence fragment (starts with ซึ่ง)
-        if (lThai.startsWith('ซึ่ง') && target.thai !== 'ซึ่ง') {
-          naturalFails.push('Sentence starts with ซึ่ง — this is a fragment. Write a complete sentence.')
+        // Reject ซึ่ง sentence fragments — even when ซึ่ง is the target word
+        if (lThai.startsWith('ซึ่ง')) {
+          naturalFails.push('Sentence starts with ซึ่ง — this is a fragment. Write a complete main clause that contains ซึ่ง.')
         }
+        // Reject ลาออก — too formal, use เลิก for casual speech
+        if (lThai.includes('ลาออก'))
+          naturalFails.push('Use เลิก not ลาออก — เลิกงาน is casual, ลาออก is a formal resignation letter')
         // Check for unknown vocab words (if _knownThai is available)
         if (typeof _knownThai !== 'undefined' && _knownThai.size > 0) {
           // Split Thai text into rough word tokens (by spaces, strips particles)
@@ -4789,9 +4805,14 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           naturalFails.push('Line ' + (li+1) + ' has no phonetic')
         else if (l.thai && l.phonetic.trim().split(' ').length < Math.max(2, l.thai.trim().split(' ').length - 3))
           naturalFails.push('Line ' + (li+1) + ' phonetic too short — romanise the complete sentence')
-        // English must be present
+        // Reject ดิฉัน — formal register banned
+        if (lThai.includes('ดิฉัน'))
+          naturalFails.push('Do not use ดิฉัน — use ฉัน instead')
+        // English must be present and must not contain Thai script or particles
         if (!l.english || l.english.trim().length < 3)
           naturalFails.push('Line ' + (li+1) + ' has no English translation')
+        else if (/[ก-๙]/.test(l.english) || /ครับ|ค่ะ|คะ|นะ$/.test(l.english))
+          naturalFails.push('English field contains Thai text — write the English translation only, no Thai particles')
         // Sentence can't be just the target word alone
         if (withoutParticle === target.thai)
           naturalFails.push('Line ' + (li+1) + ' is only the target word — needs a full sentence')
@@ -4928,9 +4949,12 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     // Build greeting prompt showing WHAT was said, not just that they greeted
     const _openPromptBase = sceneData.opening_prompt
       ? _morphPrompt(sceneData.opening_prompt, _nameA, _nameB)
-      : _nameA + ' says: ' + (sceneData.opening_english || 'Hello')
-    const _openPrompt = _openPromptBase
-    const openingPair = { speaker:'A', thai:sceneData.opening, phonetic:openingPhonetic, english:sceneData.opening_english||'Hello.', prompt:_openPrompt, _source:'qwen:conv', _target:'greeting', words:[] }
+      : _nameA + ' says: ' + (sceneData.opening_english || 'Hello.')
+    // Fix: replace character name used as object with she/he to avoid "asks how Somchai is" errors
+    const _openPrompt = _openPromptBase.replace(
+      new RegExp('\\b' + _nameB + '\\b', 'g'), 'her'
+    ).replace(new RegExp('\\b' + _nameA + '\\b', 'g'), 'him')
+    const openingPair = { speaker:'A', thai:sceneData.opening, phonetic:openingPhonetic, english:sceneData.opening_english||'Hello.', prompt:_openPrompt, _source:'ai:check-1', _target:'greeting', words:[] }
     
     // B's response — comes from scene data, no extra API call needed
     const replyThai = (sceneData.reply || 'สวัสดีค่ะ ดีใจที่ได้เจอค่ะ').trim().replace(/[?!.]+$/, '')
@@ -4940,7 +4964,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       phonetic: sceneData.reply_phonetic || '',
       english: sceneData.reply_english || 'Hello, nice to meet you.',
       prompt: sceneData.reply_prompt ? _morphPrompt(sceneData.reply_prompt, _nameB, _nameA) : _nameB + ' greets ' + _nameA + ' back',
-      _source: 'qwen:conv', _target: 'greeting', words: []
+      _source: 'ai:check-1', _target: 'greeting', words: []
     }
     prevLines.push(openingPair, replyLine)
     allPairs.push(openingPair, replyLine)
@@ -5662,11 +5686,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         if (added || pos <= 0) return
         added = true
         t = t.slice(0,pos) + ',' + t.slice(pos)
-        // Approximate phonetic insertion — find space near same relative position
-        const ratio = pos / tp.length
-        const pPos = Math.round(ratio * p.length)
-        const pSpace = p.lastIndexOf(' ', pPos)
-        if (pSpace > 2) p = p.slice(0,pSpace) + ',' + p.slice(pSpace)
+        // Do NOT add commas to phonetics — only to Thai text
       }
       // Rule 1: time opener comma — เมื่อวาน/วันนี้/พรุ่งนี้/ตอนนี้/เมื่อกี้/เมื่อคืน
       const r1 = t.match(/^(เมื่อวาน|วันนี้|พรุ่งนี้|ตอนนี้|เมื่อกี้|เมื่อกี๊|เมื่อคืน|เช้านี้|เย็นนี้)(\s)/)
@@ -5692,10 +5712,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
             const existingCommas = (t.match(/,/g)||[]).length
             if (existingCommas < 2) {
               t = t.slice(0,pos) + ',' + t.slice(pos)
-              const ratio = pos / (t.length - 1)
-              const pPos = Math.round(ratio * p.length)
-              const pSpace = p.lastIndexOf(' ', pPos)
-              if (pSpace > 2) p = p.slice(0,pSpace) + ',' + p.slice(pSpace)
+              // Commas only in Thai text, never in phonetics
             }
             break // only one conjunction comma per sentence
           }

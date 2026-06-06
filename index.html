@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v364"/>
-<meta name="app-version" content="v364"/>
+<meta name="app-version" content="v365"/>
+<meta name="app-version" content="v365"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2390,8 +2390,9 @@ function downloadTrack(track) {
     if (!src) return 'ai:check-1'
     if (src.startsWith('fallback:') || src.startsWith('hardcoded:')) return 'fallback:template'
     if (src.startsWith('repair:')) return 'fallback:slot-repair'
-    if (src.startsWith('qwen-recheck9:')) return 'ai:check-11'
-    if (src.startsWith('qwen-recheck8:')) return 'ai:check-10'
+    if (src.startsWith('qwen-recheck10:')) return 'ai:check-11'
+    if (src.startsWith('qwen-recheck9:')) return 'ai:check-10'
+    if (src.startsWith('qwen-recheck8:')) return 'ai:check-9'
     if (src.startsWith('qwen-recheck7:')) return 'ai:check-8'
     if (src.startsWith('qwen-recheck6:')) return 'ai:check-7'
     if (src.startsWith('qwen-recheck5:')) return 'ai:check-6'
@@ -4271,6 +4272,38 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
   return { scene:'Two friends at a market planning a day trip.', characterA:'Somchai, a Thai man', characterB:'Nida, a Thai woman', opening:'สวัสดีครับ วันนี้เราจะไปไหนกันดีครับ' }
 }
 
+// ── Shared content linter — runs on BOTH daily (validateSmartPairs) and convo (naturalFails) ──
+// Returns an array of human-readable failure reasons. Name-independent checks plus optional name check.
+function lintThaiContent(thai, english, speaker, target, opts) {
+  opts = opts || {}
+  const fails = []
+  const t = thai || ''
+  const tgt = (target && (target.thai || target.t)) || ''
+  // ซึ่ง is written register — only allowed when it IS the target word
+  if (t.includes('ซึ่ง') && tgt !== 'ซึ่ง') fails.push('Remove ซึ่ง — use ที่ instead. ซึ่ง is written Thai only.')
+  if (t.startsWith('ซึ่ง')) fails.push('Sentence starts with ซึ่ง — fragment. Write a complete main clause.')
+  if (t.startsWith('ไม่ทราบว่า') || t.startsWith('ผมไม่ทราบว่า') || t.startsWith('ฉันไม่ทราบว่า'))
+    fails.push('Do not start with ไม่ทราบว่า — use ไม่รู้ or ไม่แน่ใจ instead.')
+  // เธอ to a person who is present (A's own lines) — must use คุณ
+  if (speaker !== 'B' && t.includes('เธอ'))
+    fails.push('Use คุณ not เธอ — the other speaker is present. เธอ is only for an absent 3rd-party female.')
+  // Banned words / wrong register (also catches them inside compounds)
+  const _banned = ['อินเทอร์เน็ต','เทศกาล','งานเลี้ยง','รถยนต์','โทรศัพท์','น้ำปานะ','ไปรษณีย์','ดิฉัน','คอลเลคชั่น','บรรยากาศ','ลาออก']
+  for (const b of _banned) { if (t.includes(b)) { fails.push('Remove "' + b + '" — not in vocabulary / wrong register.'); break } }
+  if (t.includes('เพิ่งเคย')) fails.push('Do not use เพิ่งเคย together — use เพิ่ง alone or เคย alone.')
+  // English field must be clean English — no Thai script or politeness particles
+  const en = english || ''
+  if (en && (/[ก-๙]/.test(en) || /(ครับ|ค่ะ|คะ)/.test(en)))
+    fails.push('English field contains Thai text/particles — write the English translation only.')
+  // Optional: character names must not appear inside spoken sentences
+  if (opts.names && Array.isArray(opts.names)) {
+    for (const nm of opts.names) {
+      if (nm && nm.length > 1 && t.includes(nm)) { fails.push('Remove name "' + nm + '" — use ผม/ฉัน/คุณ instead.'); break }
+    }
+  }
+  return fails
+}
+
 function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new Set(), skipSpacedThai=false) {
   const valid = []
   const failures = []
@@ -4335,8 +4368,8 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
     // Must not be a duplicate
     if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
-    // ── Unknown vocab check (skipped on lenient mode for final AI attempts) ──
-    if (strict && knownThaiWords.size > 0) {
+    // ── Unknown vocab check (runs on every tier; best-attempt fallback keeps the least-bad) ──
+    if (knownThaiWords.size > 0) {
       // Find Thai substrings not covered by known words or always-ok words
       let remaining = p.thai
       // Strip known words WHOLE-WORD only (sort longest first to avoid substring false-positives)
@@ -4386,6 +4419,13 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     const vagueVerbs = /^(describe|discuss|talk about|inquire about|mention|explain|elaborate|explore|consider|reflect|think about|share|express your thoughts|tell me about|speak about|comment on)/i
     if (vagueVerbs.test(pr)) {
       failures.push('vague prompt (not specific): ' + p.prompt); continue
+    }
+    // Reject hollow / empty-referent prompts — no concrete content (the "important matter" class)
+    const hollowPrompt = /\b(this|that|the|a|an|some|a certain) (matter|thing|topic|issue|subject|stuff|situation)\b/i.test(pr) ||
+                         /\b(do|stop doing|keep doing|continue doing|finish) (this|that|it)\b/i.test(pr) ||
+                         /\bimportant matter\b/i.test(pr)
+    if (hollowPrompt) {
+      failures.push('hollow prompt (no concrete content): ' + p.prompt); continue
     }
     // Question check
     const hasAnyQuestion = p.thai.includes('ไหม') || p.thai.includes('หรือ') ||
@@ -4450,6 +4490,11 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
         gramFail = "'just' in prompt but เพิ่ง missing in Thai: " + p.thai
     }
     if (gramFail) { failures.push(gramFail); continue }
+
+    // ── Shared content lint (เธอ-to-present, ดิฉัน, banned words, ซึ่ง, English cleanliness) ──
+    // These previously only ran on the conversation track; now they gate the daily track too.
+    const _lintFails = lintThaiContent(p.thai, p.english, p.speaker, target)
+    if (_lintFails.length > 0) { failures.push(_lintFails[0]); continue }
 
     // Grammar variety — batch check after all 3 valid
     valid.push(p)
@@ -4614,15 +4659,15 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'Make it feel like real speech between two friends.\n' +
     'The "prompt" field = specific description of what is said, e.g. "He says his ear hurts" or "She asks if he cleaned his ears" — precise, not vague'
 
-  const CHECK_SRCS   = ['qwen:','qwen-recheck:','qwen-recheck2:','qwen-recheck3:','qwen-recheck4:','qwen-recheck5:','qwen-recheck6:','qwen-recheck7:','qwen-recheck8:','qwen-recheck9:']
-  const CHECK_EMOJIS = ['✦','🔶','🟠','🔵','🔷','🟡','🟨','🟢','💚','🪵']
-  const CHECK_NAMES  = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th']
+  const CHECK_SRCS   = ['qwen:','qwen-recheck:','qwen-recheck2:','qwen-recheck3:','qwen-recheck4:','qwen-recheck5:','qwen-recheck6:','qwen-recheck7:','qwen-recheck8:','qwen-recheck9:','qwen-recheck10:']
+  const CHECK_EMOJIS = ['✦','🔶','🟠','🔵','🔷','🟡','🟨','🟢','💚','🪵','🟫']
+  const CHECK_NAMES  = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
 
   let failureReasons = []
   let bestAttempt = null
   let bestScore = -1
 
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < CHECK_SRCS.length; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, attempt === 1 ? 3000 : 1500))
 
     onProgress && onProgress(-1, -1, { apiError: CHECK_EMOJIS[attempt] + ' ' + CHECK_NAMES[attempt] + ' check: ' + target.thai }, null, null)
@@ -4817,6 +4862,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         if (withoutParticle === target.thai)
           naturalFails.push('Line ' + (li+1) + ' is only the target word — needs a full sentence')
       })
+      // ── #5 Number enforcement: on every other pair, if a number was requested it MUST appear ──
+      if (numberHint && (pairIndex % 2 === 0)) {
+        const _numWords = ['หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า','สิบ','ยี่สิบ','ร้อย','พัน','โมง','ทุ่ม','เที่ยง','บ่าย','ตีหนึ่ง','ตีสอง','ตีสาม','ตีสี่','ตีห้า','ที่หนึ่ง','ที่สอง','ที่สาม','ครั้ง','นาฬิกา']
+        const _hasNumber = genderValid.some(l => /[๐-๙]/.test(l.thai || '') || _numWords.some(n => (l.thai || '').includes(n)))
+        if (!_hasNumber)
+          naturalFails.push('MANDATORY number missing — LINE 1 must include a number, time, or count in Thai script (e.g. สาม, เก้าโมงเช้า, ครั้งที่สอง).')
+      }
       // Also check model's own self-assessment
       const selfFailed = genderValid.filter(l => l.ok === false)
       if (selfFailed.length > 0) {
@@ -4861,9 +4913,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           const TV = {}
           vocab.forEach(v => { const t=v.thai||v.t||''; const e=(v.english||v.e||'').split(/[/,]/)[0].trim(); if(t&&e) TV[t]=e })
 
-          // Prefer model-provided glosses (most reliable source)
-          let words = []
-          if (l.glosses && Array.isArray(l.glosses) && l.glosses.length >= phonToks.length - 2) {
+          // #1 FIX: require EXACT length match. A short/long glosses array (model dropping a
+          // particle gloss) used to shift every gloss left by one — the "restaurant→some" drift.
+          // On any mismatch we fall through to the Thai-token-aligned lookup below.
+          if (l.glosses && Array.isArray(l.glosses) && l.glosses.length === phonToks.length) {
             words = phonToks.map((p, i) => ({
               p,
               e: l.glosses[i] === '-' ? '' : (l.glosses[i] || '')
@@ -4946,14 +4999,12 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       .replace(/\bhe\b/gi, fromName).replace(/\bshe\b/gi, toName)
       .replace(/\bhim\b/gi, toName).replace(/\bher\b/gi, toName)
       .replace(/\bthey\b/gi, fromName + ' and ' + toName)
-    // Build greeting prompt showing WHAT was said, not just that they greeted
-    const _openPromptBase = sceneData.opening_prompt
-      ? _morphPrompt(sceneData.opening_prompt, _nameA, _nameB)
-      : _nameA + ' says: ' + (sceneData.opening_english || 'Hello.')
-    // Fix: replace character name used as object with she/he to avoid "asks how Somchai is" errors
-    const _openPrompt = _openPromptBase.replace(
-      new RegExp('\\b' + _nameB + '\\b', 'g'), 'her'
-    ).replace(new RegExp('\\b' + _nameA + '\\b', 'g'), 'him')
+    // #7 FIX: the scene's opening_prompt is already written with he/she (per the scene prompt).
+    // The old code morphed he/she→names then names→him/her, producing broken grammar like
+    // "him greets her and asks how her is". Use it verbatim instead.
+    const _openPrompt = (sceneData.opening_prompt && sceneData.opening_prompt.trim())
+      ? sceneData.opening_prompt.trim()
+      : ('He greets ' + _nameB + ' and asks how she is')
     const openingPair = { speaker:'A', thai:sceneData.opening, phonetic:openingPhonetic, english:sceneData.opening_english||'Hello.', prompt:_openPrompt, _source:'ai:check-1', _target:'greeting', words:[] }
     
     // B's response — comes from scene data, no extra API call needed
@@ -5186,8 +5237,8 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
       // Must not be a duplicate
       if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
-      // ── Unknown vocab check (skipped on lenient mode for final AI attempts) ──
-      if (strict && knownThaiWords.size > 0) {
+      // ── Unknown vocab check (runs on every tier; best-attempt fallback keeps the least-bad) ──
+      if (knownThaiWords.size > 0) {
         // Find Thai substrings not covered by known words or always-ok words
         let remaining = p.thai
         // Strip known words WHOLE-WORD only (sort longest first to avoid substring false-positives)
@@ -5237,6 +5288,13 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const vagueVerbs = /^(describe|discuss|talk about|inquire about|mention|explain|elaborate|explore|consider|reflect|think about|share|express your thoughts|tell me about|speak about|comment on)/i
       if (vagueVerbs.test(pr)) {
         failures.push('vague prompt (not specific): ' + p.prompt); continue
+      }
+      // Reject hollow / empty-referent prompts — no concrete content (the "important matter" class)
+      const hollowPrompt = /\b(this|that|the|a|an|some|a certain) (matter|thing|topic|issue|subject|stuff|situation)\b/i.test(pr) ||
+                           /\b(do|stop doing|keep doing|continue doing|finish) (this|that|it)\b/i.test(pr) ||
+                           /\bimportant matter\b/i.test(pr)
+      if (hollowPrompt) {
+        failures.push('hollow prompt (no concrete content): ' + p.prompt); continue
       }
       // Question check
       const hasAnyQuestion = p.thai.includes('ไหม') || p.thai.includes('หรือ') ||
@@ -5301,6 +5359,10 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
           gramFail = "'just' in prompt but เพิ่ง missing in Thai: " + p.thai
       }
       if (gramFail) { failures.push(gramFail); continue }
+
+      // ── Shared content lint — now gates the DAILY track too (was conversation-only) ──
+      const _lintFails = lintThaiContent(p.thai, p.english, p.speaker, target)
+      if (_lintFails.length > 0) { failures.push(_lintFails[0]); continue }
 
       // Grammar variety — batch check after all 3 valid
       valid.push(p)
@@ -5423,126 +5485,46 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const scenario = getScenarioForTarget(target)
       const restaurantUses = allPairs.filter(p => p && p.thai && p.thai.includes('ร้านอาหาร')).length
 
-      // ── Call 1: V2 generates ─────────────────────────────────────────────
-      const prompt1 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, false, '', i, { restaurantOverused: restaurantUses >= 3, runningTopic })
-      let generated = await callModel(GPT_MODEL, prompt1)
-      let { valid, failures } = validateSmartPairs(generated, target)
-      for (const p of valid) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'qwen:'+ target.thai}) }
-      if (valid.length > _bestAttemptScore) { _bestAttemptScore = valid.length; _bestAttemptPairs = valid }
-
-      if (failures && failures.length > 0) {
-        failureLog[target.thai] = (failureLog[target.thai] || []).concat((failures||[]).map(f => 'GPT1: ' + f))
-        onProgress && onProgress(-1, -1, { apiError: '🔍 ' + target.thai + ': ' + failures[0].slice(0,80) }, null, null)
-      }
-      onProgress && onProgress(-1, -1, { apiError: '✓ 1st check: ' + valid.length + '/3 for ' + target.thai + (failures.length ? ' — ' + failures[0].slice(0,60) : '') }, null, null)
-      console.log('[GPT] ' + target.thai + ': ' + valid.length + '/3 valid, failures: ' + failures.slice(0,2).join(', '))
-
-      // ── Call 2: GPT recheck — only if we still need pairs ────────────────
-      if (pairs.length < 3) {
-        const lenRes = getSentenceLengthForVocab(vocab) || {}
-        const lenHint = 'REQUIRED: sentences must be ' + (lenRes.goalMin||4) + '-' + (lenRes.hardCeil||8) + ' Thai words long'
-        onProgress && onProgress(-1, -1, { apiError: '🔶 2nd check: ' + target.thai }, null, null)
-        const recheckHint = lenHint + (failures && failures.length > 0 ? '. ALSO FIX: ' + failures.slice(0,3).join('; ') : '. Improve variety and naturalness')
-        const prompt2 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, recheckHint, i, { restaurantOverused: restaurantUses >= 3, runningTopic })
-        const recheck1 = await callModel(GPT_MODEL, prompt2)
-        const { valid: v2, failures: f2 } = validateSmartPairs(recheck1, target)
-        for (const p of v2) {
-          if (!existingThais.has(p.thai)) {
-            if (pairs.length < 3) {
-              pairs.push({...p, _source:'qwen-recheck:'+ target.thai})
-            } else {
-              const whiteIdx = pairs.findIndex(x => x._source && x._source.startsWith('qwen:' + target.thai))
-              if (whiteIdx >= 0) pairs[whiteIdx] = {...p, _source:'qwen-recheck:'+ target.thai}
-            }
-          }
-        }
-        if (f2 && f2.length > 0) failureLog[target.thai] = (failureLog[target.thai] || []).concat((f2||[]).map(f => 'GPT2: ' + f))
-        onProgress && onProgress(-1, -1, { apiError: '✓ 2nd: ' + v2.length + '/3 for ' + target.thai + (f2.length ? ' — ' + f2[0].slice(0,60) : ' ✅') }, null, null)
-        console.log('[GPT recheck always] ' + target.thai + ': ' + v2.length + ' valid')
-
-        // ── Call 3: Qwen 3rd check ────────────────────────────────────────
-        if (pairs.length < 3) {
-          onProgress && onProgress(-1, -1, { apiError: '🟠 3rd check: ' + target.thai }, null, null)
-          const failReason2 = f2.slice(0, 3).join('; ') || 'still failing after 2nd check'
-          const prompt3 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason2, i, { restaurantOverused: restaurantUses >= 3, runningTopic })
-          const recheck2 = await callModel(GPT_MODEL, prompt3)
-          const { valid: v3, failures: f3 } = validateSmartPairs(recheck2, target, false)
-          for (const p of v3) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'qwen-recheck2:'+ target.thai}) }
-        onProgress && onProgress(-1, -1, { apiError: '✓ 3rd: ' + v3.length + '/3 for ' + target.thai + (f3.length ? ' — ' + f3[0].slice(0,60) : ' ✅') }, null, null)
-          console.log('[Qwen 3rd] ' + target.thai + ': ' + v3.length + ' more valid')
-
-          // ── Call 4: 4th check (dark blue) ────────────────────────────────
+      // ── Unified 11-check Qwen funnel (replaces the old nested Call 1..9 cascade) ──
+      // check 1 (white) → check 11 (dark brown); then best-attempt; then template fallback.
+      const DAILY_SRCS  = ['qwen:','qwen-recheck:','qwen-recheck2:','qwen-recheck3:','qwen-recheck4:','qwen-recheck5:','qwen-recheck6:','qwen-recheck7:','qwen-recheck8:','qwen-recheck9:','qwen-recheck10:']
+      const DAILY_EMOJI = ['✦','🔶','🟠','🔵','🔷','🟡','🟨','🟢','💚','🪵','🟫']
+      const _ord = n => n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th')
+      const _lenRes0 = getSentenceLengthForVocab(vocab) || {}
+      const _lenHint = 'REQUIRED: sentences must be ' + (_lenRes0.goalMin || 4) + '-' + (_lenRes0.hardCeil || 8) + ' Thai words long'
+      let _prevFails = []
+      for (let attempt = 0; attempt < DAILY_SRCS.length && pairs.length < 3; attempt++) {
+        const isRecheck = attempt > 0
+        const checkNo = attempt + 1
+        onProgress && onProgress(-1, -1, { apiError: DAILY_EMOJI[attempt] + ' ' + _ord(checkNo) + ' check: ' + target.thai }, null, null)
+        const hintBody = isRecheck
+          ? _lenHint + (_prevFails.length ? '. ALSO FIX: ' + _prevFails.slice(0, 3).join('; ') : '. Improve variety and naturalness')
+          : ''
+        const promptN = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, hintBody, i, { restaurantOverused: restaurantUses >= 3, runningTopic })
+        let genN = null
+        try { genN = await callModel(GPT_MODEL, promptN) } catch (e) { genN = null }
+        const strictMode = attempt < 2   // strict OOV on the first two passes, lenient after
+        const { valid: vN, failures: fN } = validateSmartPairs(genN || [], target, strictMode)
+        for (const p of vN) {
+          if (existingThais.has(p.thai)) continue
           if (pairs.length < 3) {
-            onProgress && onProgress(-1, -1, { apiError: '🟡 4th check: ' + target.thai }, null, null)
-            const failReason3 = f3.slice(0, 3).join('; ') || 'still failing after 3rd check'
-            const prompt4 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason3, i, { restaurantOverused: restaurantUses >= 3, runningTopic })
-            const recheck3 = await callModel(GPT_MODEL, prompt4)
-            const { valid: v4, failures: f4 } = validateSmartPairs(recheck3, target, false)
-            for (const p of v4) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'qwen-recheck3:'+ target.thai}) }
-        onProgress && onProgress(-1, -1, { apiError: '✓ 4th: ' + v4.length + '/3 for ' + target.thai + (f4.length ? ' — ' + f4[0].slice(0,60) : ' ✅') }, null, null)
-            console.log('[4th] ' + target.thai + ': ' + v4.length + ' more valid')
-
-            // ── Call 5: 5th check (bright yellow) ────────────────────────────
-            if (pairs.length < 3) {
-              onProgress && onProgress(-1, -1, { apiError: '🟨 6th check: ' + target.thai }, null, null)
-              const failReason4 = f4.slice(0, 3).join('; ') || 'still failing after 4th check'
-              const prompt5 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason4, i, { restaurantOverused: restaurantUses >= 3 })
-              const recheck4 = await callModel(GPT_MODEL, prompt5)
-              const { valid: v5, failures: f5 } = validateSmartPairs(recheck4, target, false)
-              for (const p of v5) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'qwen-recheck4:'+ target.thai}) }
-        onProgress && onProgress(-1, -1, { apiError: '✓ 5th: ' + v5.length + '/3 for ' + target.thai + (f5.length ? ' — ' + f5[0].slice(0,60) : ' ✅') }, null, null)
-              console.log('[5th] ' + target.thai + ': ' + v5.length + ' more valid')
-
-              // ── Call 6: 6th check (dark yellow) ──────────────────────────────
-              if (pairs.length < 3) {
-                onProgress && onProgress(-1, -1, { apiError: '🟡 7th check: ' + target.thai }, null, null)
-              const failReason5 = f5.slice(0, 3).join('; ') || 'still failing after 5th check'
-                const prompt6 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason5, i, { restaurantOverused: restaurantUses >= 3 })
-                const recheck5 = await callModel(GPT_MODEL, prompt6)
-                const { valid: v6, failures: f6 } = validateSmartPairs(recheck5, target, false)
-                for (const p of v6) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'qwen-recheck5:'+ target.thai}) }
-        onProgress && onProgress(-1, -1, { apiError: '✓ 6th: ' + v6.length + '/3 for ' + target.thai + (f6.length ? ' — ' + f6[0].slice(0,60) : ' ✅') }, null, null)
-                console.log('[6th] ' + target.thai + ': ' + v6.length + ' more valid')
-
-                // ── Call 7: 7th check (light green) ─────────────────────────────
-                if (pairs.length < 3) {
-                  onProgress && onProgress(-1, -1, { apiError: '🟩 8th check: ' + target.thai }, null, null)
-              const failReason6 = f6.slice(0, 3).join('; ') || 'still failing after 6th check'
-                  const prompt7 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason6, i, { restaurantOverused: restaurantUses >= 3 })
-                  const recheck6 = await callModel(GPT_MODEL, prompt7)
-                  const { valid: v7, failures: f7 } = validateSmartPairs(recheck6, target, false)
-                  for (const p of v7) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'qwen-recheck6:'+ target.thai}) }
-        onProgress && onProgress(-1, -1, { apiError: '✓ 7th: ' + v7.length + '/3 for ' + target.thai + (f7.length ? ' — ' + f7[0].slice(0,60) : ' ✅') }, null, null)
-                  console.log('[7th] ' + target.thai + ': ' + v7.length + ' more valid')
-
-                  // ── Call 8: 8th check (dark green) ───────────────────────────
-                  if (pairs.length < 3) {
-                    onProgress && onProgress(-1, -1, { apiError: '🟢 9th check: ' + target.thai }, null, null)
-              const failReason7 = f7.slice(0, 3).join('; ') || 'still failing after 7th check'
-                    const prompt8 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason7, i, { restaurantOverused: restaurantUses >= 3 })
-                    const recheck7 = await callModel(GPT_MODEL, prompt8)
-                    const { valid: v8, failures: f8 } = validateSmartPairs(recheck7, target, false)
-                    for (const p of v8) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'qwen-recheck7:'+ target.thai}) }
-        onProgress && onProgress(-1, -1, { apiError: '✓ 8th: ' + v8.length + '/3 for ' + target.thai + (f8.length ? ' — ' + f8[0].slice(0,60) : ' ✅') }, null, null)
-                    console.log('[8th] ' + target.thai + ': ' + v8.length + ' more valid')
-
-                    // ── Call 9: Haiku final escalation ───────────────────────────
-                    if (pairs.length < 3) {
-                      onProgress && onProgress(-1, -1, { apiError: '🪵 10th check: ' + target.thai }, null, null)
-                      const failReason8 = f8.slice(0, 3).join('; ') || 'still failing after 8th check'
-                      const prompt9 = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, true, failReason8, i, { restaurantOverused: restaurantUses >= 3 })
-                      const recheck8 = await callModel(HAIKU_MODEL, prompt9)
-                      const { valid: v9 } = validateSmartPairs(recheck8, target, false)
-                      for (const p of v9) { if (pairs.length >= 3) break; if (!existingThais.has(p.thai)) pairs.push({...p, _source:'haiku:'+ target.thai}) }
-                      console.log('[Haiku] ' + target.thai + ': ' + v9.length + ' more valid')
-                    }
-                  }
-                }
-              }
-            }
+            pairs.push({ ...p, _source: DAILY_SRCS[attempt] + target.thai })
+          } else if (attempt <= 1) {
+            // a better early-tier pair can replace a raw 1st-pass pair
+            const worseIdx = pairs.findIndex(x => x._source && x._source.startsWith('qwen:' + target.thai))
+            if (worseIdx >= 0) pairs[worseIdx] = { ...p, _source: DAILY_SRCS[attempt] + target.thai }
           }
         }
+        // #4: track the best real attempt across EVERY tier (previously only check 1)
+        if (vN.length > _bestAttemptScore) { _bestAttemptScore = vN.length; _bestAttemptPairs = vN }
+        if (fN && fN.length > 0) {
+          failureLog[target.thai] = (failureLog[target.thai] || []).concat((fN || []).map(f => 'check' + checkNo + ': ' + f))
+          _prevFails = fN
+        }
+        onProgress && onProgress(-1, -1, { apiError: '✓ ' + checkNo + ': ' + vN.length + '/3 for ' + target.thai + (fN.length ? ' — ' + fN[0].slice(0, 60) : ' ✅') }, null, null)
+        console.log('[check' + checkNo + '] ' + target.thai + ': ' + vN.length + ' valid')
       }
+
 
       // ── Final fallback — only reached after all AI calls failed ──────────────
       if (pairs.length < 3) console.warn('[generateTrack] All AI calls failed for: ' + target.thai + ' | failures: ' + JSON.stringify(failureLog[target.thai]||[]))
@@ -6250,7 +6232,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     if (src.startsWith('qwen-recheck7:')) return '#4ade80'  // 8     — green
     if (src.startsWith('qwen-recheck8:')) return '#16a34a'  // 9     — dark green
     if (src.startsWith('qwen-recheck9:')) return '#c8956c'  // 10    — brown
-    if (src.startsWith('haiku:')) return '#8b5a2b'          // 11    — dark brown
+    if (src.startsWith('qwen-recheck10:')) return '#8b5a2b' // 11    — dark brown (final Qwen pass)
+    if (src.startsWith('haiku:')) return '#8b5a2b'          // 11    — dark brown (legacy final escalation)
     if (src.startsWith('fix:')) return '#10b981'
     if (src.startsWith('hardcoded:') || src.startsWith('fallback:')) return '#111111'
     return fallback || 'var(--surface2)'
@@ -6770,7 +6753,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
                 {pair.words.map((w, i) => (
                   <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
                     <span className="phon" style={{ fontSize:20, color:'var(--gold)', fontWeight:700, whiteSpace:'nowrap' }}>{w.p}</span>
-                    <span style={{ fontSize:13, color:'#94a3b8', whiteSpace:'nowrap' }}>{w.e}</span>
+                    <span style={{ fontSize:13, color: w.e ? '#94a3b8' : '#475569', whiteSpace:'nowrap' }}>{w.e || '·'}</span>
                   </div>
                 ))}
               </div>

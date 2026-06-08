@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v365"/>
-<meta name="app-version" content="v365"/>
+<meta name="app-version" content="v370"/>
+<meta name="app-version" content="v370"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2320,7 +2320,7 @@ const Icon = ({ name, size = 18, color = 'currentColor' }) => {
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
-function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastTrackCost }) {
+function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastTrackCost, provider, geminiKey, geminiSpend, onSetProvider }) {
   const items = [
     { id: 'lessons', icon: 'pencil', label: 'Lessons' },
     { id: 'browse', icon: 'book', label: 'Words' },
@@ -2328,25 +2328,66 @@ function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastT
     { id: 'settings', icon: 'settings', label: 'Settings' },
     { id: 'data', icon: 'bookmark', label: 'Data' },
   ]
+  const PROVS = [
+    { id: 'qwen3_14b', short: 'Qwen', name: 'Qwen3.5 Flash',    icon: '⚡' },
+    { id: 'qwen32b',   short: '32B',  name: 'Qwen3 32B',         icon: '🧠' },
+    { id: 'gemini',    short: 'GM',   name: 'Gemini 2.5 Lite',   icon: '✦' },
+    { id: 'haiku',     short: 'Haiku',name: 'Haiku 4.5',          icon: '🔶' },
+  ]
+  const [dropOpen, setDropOpen] = useState(false)
+  const dropRef = useRef(null)
+  useEffect(() => {
+    if (!dropOpen) return
+    const h = e => { if (dropRef.current && !dropRef.current.contains(e.target)) setDropOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [dropOpen])
+  const isGoogleKey = geminiKey && !geminiKey.startsWith('sk-') && geminiKey.length > 10
   function balColor(b) { return b === null ? 'var(--muted)' : b < 1 ? '#ef4444' : b < 5 ? '#f59e0b' : '#10b981' }
+  function provBal(p) {
+    if (p.id === 'gemini' && isGoogleKey) {
+      if (geminiSpend > 0) return { text: '-$' + geminiSpend.toFixed(4), color: geminiSpend > 1 ? '#ef4444' : geminiSpend > 0.1 ? '#f59e0b' : '#10b981' }
+      return { text: '$0.00', color: '#10b981' }
+    }
+    return orBalance !== null ? { text: '$' + orBalance.toFixed(2), color: balColor(orBalance) } : { text: '…', color: 'var(--muted)' }
+  }
+  const cur = PROVS.find(p => p.id === provider) || PROVS[0]
+  const curBal = provBal(cur)
+  const hasAnyKey = orKey || isGoogleKey
   return (
     <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, background: 'rgba(11,17,32,0.95)', backdropFilter: 'blur(12px)', zIndex: 50 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={onHome || (() => onNav('dashboard'))}>
         <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #d4a94a, #b88a35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🇹🇭</div>
       </div>
-      {orKey && (
-        <button onClick={onRefreshBalance} title="OpenRouter balance — tap to refresh"
-          style={{ background: 'var(--surface2)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>OR</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: balColor(orBalance) }}>
-            {orBalance !== null ? '$' + orBalance.toFixed(2) : '…'}
-          </span>
-          {lastTrackCost !== null && lastTrackCost > 0 && (
-            <span style={{ fontSize: 10, color: '#f59e0b', marginLeft: 2 }}>
-              (-${lastTrackCost < 0.01 ? lastTrackCost.toFixed(4) : lastTrackCost.toFixed(3)})
-            </span>
+      {hasAnyKey && (
+        <div ref={dropRef} style={{ position: 'relative' }}>
+          <button onClick={() => setDropOpen(o => !o)}
+            style={{ background: 'var(--surface2)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{cur.short}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: curBal.color }}>{curBal.text}</span>
+            {lastTrackCost !== null && lastTrackCost > 0 && (
+              <span style={{ fontSize: 10, color: '#f59e0b', marginLeft: 2 }}>
+                (-${lastTrackCost < 0.01 ? lastTrackCost.toFixed(4) : lastTrackCost.toFixed(3)})
+              </span>
+            )}
+            <span style={{ fontSize: 9, color: 'var(--muted)', marginLeft: 1 }}>▾</span>
+          </button>
+          {dropOpen && (
+            <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 4, minWidth: 195, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+              {PROVS.map(p => {
+                const bal = provBal(p)
+                const isActive = p.id === provider
+                return (
+                  <button key={p.id} onClick={() => { onSetProvider(p.id); setDropOpen(false); onRefreshBalance() }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: 7, border: 'none', background: isActive ? 'var(--surface2)' : 'transparent', cursor: 'pointer', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: isActive ? 'var(--gold)' : 'var(--text)', fontFamily: 'Sarabun, sans-serif', textAlign: 'left' }}>{p.icon} {p.name}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: bal.color }}>{bal.text}</span>
+                  </button>
+                )
+              })}
+            </div>
           )}
-        </button>
+        </div>
       )}
       <nav style={{ display: 'flex', gap: 4 }}>
         {items.map(item => (
@@ -2389,6 +2430,7 @@ function downloadTrack(track) {
   function srcLabel(src) {
     if (!src) return 'ai:check-1'
     if (src.startsWith('fallback:') || src.startsWith('hardcoded:')) return 'fallback:template'
+    if (src.startsWith('best-attempt:')) return 'ai:best-attempt'
     if (src.startsWith('repair:')) return 'fallback:slot-repair'
     if (src.startsWith('qwen-recheck10:')) return 'ai:check-11'
     if (src.startsWith('qwen-recheck9:')) return 'ai:check-10'
@@ -2957,6 +2999,42 @@ function parsePartialArray(str) {
 async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
   const controller = new AbortController()
   const tid = setTimeout(() => controller.abort(), 50000)  // 50s hard timeout
+
+  // ── Direct Gemini REST path (Google AI key starts with AIza) ──────────────
+  // Route to Gemini REST if key is NOT an OpenRouter key (OR keys always start with 'sk-')
+  const _isGoogleKey = apiKey && !apiKey.startsWith('sk-') && apiKey.length > 10
+  if (_isGoogleKey) {
+    const gemModel = (orModel || '').replace(/^google\//, '')
+    const contents = messages.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }]
+    }))
+    let gRes
+    try {
+      gRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:generateContent?key=${apiKey}`,
+        { method: 'POST', signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens || 1200, temperature: 0.7, topP: 0.9 } }) }
+      )
+    } catch(fe) { clearTimeout(tid); throw new Error(fe.name === 'AbortError' ? 'Gemini timeout' : fe.message) }
+    clearTimeout(tid)
+    if (!gRes.ok) {
+      const e = await gRes.json().catch(() => ({}))
+      throw new Error([gRes.status, e?.error?.message].filter(Boolean).join(' | ') || `Gemini HTTP ${gRes.status}`)
+    }
+    const gData = await gRes.json()
+    const _gText = gData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    // Track token cost — Gemini 2.5 Flash Lite: $0.10/M input, $0.40/M output (June 2026)
+    const _gUsage = gData?.usageMetadata
+    if (_gUsage && typeof window.__trackGeminiUsage === 'function') {
+      const _gCost = ((_gUsage.promptTokenCount || 0) * 0.10 + (_gUsage.candidatesTokenCount || 0) * 0.40) / 1e6
+      window.__trackGeminiUsage(_gCost)
+    }
+    return _gText
+  }
+
+  // ── OpenRouter path ───────────────────────────────────────────────────────
   let res
   try {
     res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -4285,7 +4363,7 @@ function lintThaiContent(thai, english, speaker, target, opts) {
   if (t.startsWith('ไม่ทราบว่า') || t.startsWith('ผมไม่ทราบว่า') || t.startsWith('ฉันไม่ทราบว่า'))
     fails.push('Do not start with ไม่ทราบว่า — use ไม่รู้ or ไม่แน่ใจ instead.')
   // เธอ to a person who is present (A's own lines) — must use คุณ
-  if (speaker !== 'B' && t.includes('เธอ'))
+  if (speaker !== 'B' && t.includes('เธอ') && tgt !== 'เธอ')
     fails.push('Use คุณ not เธอ — the other speaker is present. เธอ is only for an absent 3rd-party female.')
   // Banned words / wrong register (also catches them inside compounds)
   const _banned = ['อินเทอร์เน็ต','เทศกาล','งานเลี้ยง','รถยนต์','โทรศัพท์','น้ำปานะ','ไปรษณีย์','ดิฉัน','คอลเลคชั่น','บรรยากาศ','ลาออก']
@@ -4368,8 +4446,9 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
     // Must not be a duplicate
     if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
-    // ── Unknown vocab check (runs on every tier; best-attempt fallback keeps the least-bad) ──
-    if (knownThaiWords.size > 0) {
+    // ── Unknown vocab check (strict early passes only — the session vocab set is narrow,
+    //    so running this on every tier false-positives on good sentences) ──
+    if (strict && knownThaiWords.size > 0) {
       // Find Thai substrings not covered by known words or always-ok words
       let remaining = p.thai
       // Strip known words WHOLE-WORD only (sort longest first to avoid substring false-positives)
@@ -4862,8 +4941,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         if (withoutParticle === target.thai)
           naturalFails.push('Line ' + (li+1) + ' is only the target word — needs a full sentence')
       })
-      // ── #5 Number enforcement: on every other pair, if a number was requested it MUST appear ──
-      if (numberHint && (pairIndex % 2 === 0)) {
+      // ── #5 Number enforcement: only on early attempts so a stubborn miss can't burn to fallback ──
+      if (numberHint && (pairIndex % 2 === 0) && attempt < 7) {
         const _numWords = ['หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า','สิบ','ยี่สิบ','ร้อย','พัน','โมง','ทุ่ม','เที่ยง','บ่าย','ตีหนึ่ง','ตีสอง','ตีสาม','ตีสี่','ตีห้า','ที่หนึ่ง','ที่สอง','ที่สาม','ครั้ง','นาฬิกา']
         const _hasNumber = genderValid.some(l => /[๐-๙]/.test(l.thai || '') || _numWords.some(n => (l.thai || '').includes(n)))
         if (!_hasNumber)
@@ -5237,8 +5316,9 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
       // Must not be a duplicate
       if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
-      // ── Unknown vocab check (runs on every tier; best-attempt fallback keeps the least-bad) ──
-      if (knownThaiWords.size > 0) {
+      // ── Unknown vocab check (strict early passes only — the session vocab set is narrow,
+      //    so running this on every tier false-positives on good sentences) ──
+      if (strict && knownThaiWords.size > 0) {
         // Find Thai substrings not covered by known words or always-ok words
         let remaining = p.thai
         // Strip known words WHOLE-WORD only (sort longest first to avoid substring false-positives)
@@ -6235,6 +6315,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     if (src.startsWith('qwen-recheck10:')) return '#8b5a2b' // 11    — dark brown (final Qwen pass)
     if (src.startsWith('haiku:')) return '#8b5a2b'          // 11    — dark brown (legacy final escalation)
     if (src.startsWith('fix:')) return '#10b981'
+    if (src.startsWith('best-attempt:')) return '#64748b' // slate — AI salvage, didn't fully pass
     if (src.startsWith('hardcoded:') || src.startsWith('fallback:')) return '#111111'
     return fallback || 'var(--surface2)'
   }
@@ -7401,13 +7482,13 @@ function DeepSeekTestBtn({ dsKey }) {
 const PROVIDERS = [
   { id: 'qwen3_14b', label: '⚡ Qwen3.5 Flash', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
   { id: 'qwen32b', label: '🧠 Qwen3 32B (no thinking)', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
-  { id: 'gemini', label: '✦ Gemini 2.5 Flash Lite', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
+  { id: 'gemini', label: '✦ Gemini 2.5 Flash Lite', sub: 'via OpenRouter or Google AI', placeholder: 'sk-or-v1-... or AIza...' },
   { id: 'haiku',     label: '🔶 Haiku 4.5',  sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
 ]
 
-function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey, openaiTtsKey, onSaveOpenaiTtsKey }) {
+function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, openaiTtsKey, onSaveOpenaiTtsKey }) {
   // Key state per provider
-  const [keys, setKeys] = useState({ claude: apiKey || '', qwen3_14b: orKey || '', haiku: orKey || '', gemini: orKey || '', qwen32b: orKey || '' })
+  const [keys, setKeys] = useState({ claude: apiKey || '', qwen3_14b: orKey || '', haiku: orKey || '', gemini: geminiKey || orKey || '', qwen32b: orKey || '' })
   const [saved, setSaved] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
@@ -7421,7 +7502,11 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
 
   async function saveKey() {
     const trimmed = currentKey.trim()
-    await stSet('tt-orkey', trimmed); onSaveOrKey(trimmed)
+    if (provider === 'gemini' && !trimmed.startsWith('sk-') && trimmed.length > 10) {
+      await stSet('tt-gemini-key', trimmed); onSaveGeminiKey(trimmed)
+    } else {
+      await stSet('tt-orkey', trimmed); onSaveOrKey(trimmed)
+    }
     setSaved(provider)
     setTimeout(() => setSaved(''), 2000)
   }
@@ -7437,11 +7522,17 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
           headers: { 'Content-Type': 'application/json', 'x-api-key': currentKey.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
           body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
+      } else if (provider === 'gemini' && !currentKey.trim().startsWith('sk-') && currentKey.trim().length > 10) {
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${currentKey.trim()}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'hi' }] }], generationConfig: { maxOutputTokens: 5 } }) }
+        )
       } else {
         res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentKey.trim()}`, 'HTTP-Referer': 'https://magical-druid-656889.netlify.app', 'X-Title': 'Thai Teacher' },
-          body: JSON.stringify({ model: resolveOrModel(id), max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+          body: JSON.stringify({ model: resolveOrModel(provider), max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
         })
       }
       if (res.ok) setTestResult('✅ Key works!')
@@ -7450,7 +7541,7 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     setTesting(false)
   }
 
-  const keySource = { qwen3_14b: 'openrouter.ai/keys', haiku: 'openrouter.ai/keys', gemini: 'openrouter.ai/keys', qwen32b: 'openrouter.ai/keys' }
+  const keySource = { qwen3_14b: 'openrouter.ai/keys', haiku: 'openrouter.ai/keys', gemini: (!currentKey.startsWith('sk-') && currentKey.length > 10) ? 'aistudio.google.com' : 'openrouter.ai/keys', qwen32b: 'openrouter.ai/keys' }
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
@@ -7493,6 +7584,25 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
           </button>
         </div>
         {testResult && <p style={{ fontSize: 13, marginTop: 10, color: testResult.startsWith('✅') ? '#10b981' : '#ef4444' }}>{testResult}</p>}
+
+        {/* Gemini live spend tracker (token-based) */}
+        {provider === 'gemini' && currentKey.length > 10 && !currentKey.startsWith('sk-') && (
+          <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>API spend (USD, token-based)</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: geminiSpend > 0.01 ? '#f59e0b' : '#10b981', fontFamily: 'DM Mono, monospace' }}>
+                {geminiSpend > 0 ? '-$' + geminiSpend.toFixed(5) : '$0.00000'}
+              </p>
+              <p style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>Flash Lite: $0.10/M in · $0.40/M out</p>
+            </div>
+            {geminiSpend > 0 && (
+              <button onClick={onResetGeminiSpend}
+                style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'Sarabun,sans-serif' }}>
+                Reset
+              </button>
+            )}
+          </div>
+        )}
 
         {/* OpenAI TTS for Thai voices */}
         <div style={{ marginTop:16, padding:'12px 14px', borderRadius:10, background:'var(--surface2)' }}>
@@ -8044,6 +8154,8 @@ function ThaiTeacher() {
   const [provider, setProvider] = useState('claude')
   const [dsKey, setDsKey] = useState('')
   const [orKey, setOrKey] = useState('')
+  const [geminiKey, setGeminiKey] = useState('')
+  const [geminiSpend, setGeminiSpend] = useState(0)
   const [orBalance, setOrBalance] = useState(null)
   const [settings, setSettings] = useState(() => { try { return JSON.parse(localStorage.getItem('thaiTeacherSettings') || '{}') } catch { return {} } })
   const openaiTtsKey = (settings && settings.openaiTtsKey) || ''
@@ -8059,6 +8171,18 @@ function ThaiTeacher() {
   }
   const [customTargets, setCustomTargets] = useState(null)
   const [browseFilter, setBrowseFilter] = useState('all')
+
+  // Register Gemini spend tracker — called by callOpenRouterOnce on every Gemini API call
+  useEffect(() => {
+    window.__trackGeminiUsage = (cost) => {
+      setGeminiSpend(prev => {
+        const next = Math.round((prev + cost) * 1e8) / 1e8
+        stSet('tt-gemini-spend', next)
+        return next
+      })
+    }
+    return () => { window.__trackGeminiUsage = null }
+  }, [])
 
   // Init
   useEffect(() => {
@@ -8083,6 +8207,8 @@ function ThaiTeacher() {
       const pv = await stGet('tt-provider'); if (pv) setProvider(pv)
       const dk = await stGet('tt-dskey'); if (dk) setDsKey(dk)
       const ok = await stGet('tt-orkey'); if (ok) { setOrKey(ok); fetchOrBalance(ok) }
+      const gk = await stGet('tt-gemini-key'); if (gk) setGeminiKey(gk)
+      const gsp = await stGet('tt-gemini-spend'); if (gsp != null) setGeminiSpend(parseFloat(gsp) || 0)
       setLoading(false)
     }
     init()
@@ -8187,7 +8313,7 @@ function ThaiTeacher() {
   return (
     <div className="app">
       <FontStyle />
-      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} lastTrackCost={lastTrackCost} />
+      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} lastTrackCost={lastTrackCost} provider={provider} geminiKey={geminiKey} geminiSpend={geminiSpend} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} />
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
@@ -8205,7 +8331,7 @@ function ThaiTeacher() {
             }}
             provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasOrKey={!!orKey} />}
         {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
-          apiKey={orKey}
+          apiKey={provider === 'gemini' && geminiKey ? geminiKey : orKey}
           provider={provider}
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
           orBalance={orBalance} onBalanceRefresh={(newBal, prevBal) => { setOrBalance(newBal); setLastTrackCost(prevBal !== null ? prevBal - newBal : null) }}
@@ -8223,7 +8349,7 @@ function ThaiTeacher() {
         )}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
-        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} openaiTtsKey={openaiTtsKey} onSaveOpenaiTtsKey={async k => { const s = {...(settings||{}), openaiTtsKey:k}; setSettings(s); localStorage.setItem('thaiTeacherSettings', JSON.stringify(s)) }} />}
+        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} openaiTtsKey={openaiTtsKey} onSaveOpenaiTtsKey={async k => { const s = {...(settings||{}), openaiTtsKey:k}; setSettings(s); localStorage.setItem('thaiTeacherSettings', JSON.stringify(s)) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'lessons' && <LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} />}

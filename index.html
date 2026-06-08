@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v370"/>
-<meta name="app-version" content="v370"/>
+<meta name="app-version" content="v378"/>
+<meta name="app-version" content="v378"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -5881,7 +5881,7 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
 }
 
 // ── Pre-track Conversation Player ────────────────────────────────────────────
-function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, openaiTtsKey }) {
+function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey }) {
   const [lineIdx, setLineIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [voices, setVoices] = useState([])
@@ -5906,41 +5906,40 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, openaiTtsKey
     const speakLine = async () => {
       if (cancelRef.current) return
       const isASpeaker = line.speaker === 'A'
-      const oaiKey = openaiTtsKey || ''  // reusing same field, now holds OpenAI key
-      // Use OpenAI TTS if key available
-      if (oaiKey) {
+      // ── Google Cloud TTS (WaveNet: th-TH-Wavenet-B male, th-TH-Wavenet-A female) ──
+      if (gcpTtsKey) {
         try {
-          const voice = isASpeaker ? 'onyx' : 'nova'  // onyx=male, nova=female
-          const resp = await fetch('https://api.openai.com/v1/audio/speech', {
+          const voiceName = isASpeaker ? 'th-TH-Chirp3-HD-Charon' : 'th-TH-Chirp3-HD-Aoede'
+          const resp = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${gcpTtsKey}`, {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + oaiKey, 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              model: 'tts-1',
-              input: line.thai,
-              voice,
-              speed: Math.min(Math.max(speedRef.current || 0.8, 0.25), 4.0)
+              input: { text: line.thai },
+              voice: { languageCode: 'th-TH', name: voiceName },
+              audioConfig: { audioEncoding: 'MP3', speakingRate: Math.min(Math.max(speedRef.current || 0.8, 0.25), 4.0) }  // pace control added May 2025
             })
           })
           if (resp.ok) {
-            const blob = await resp.blob()
-            const url = URL.createObjectURL(blob)
-            const audio = new Audio(url)
-            audio.onended = () => { URL.revokeObjectURL(url); if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 700) }
-            audio.onerror = () => { URL.revokeObjectURL(url); if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 900) }
+            const data = await resp.json()
+            const audio = new Audio('data:audio/mp3;base64,' + data.audioContent)
+            audio.onended = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 700) }
+            audio.onerror = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 900) }
             audio.play()
             return
           }
-        } catch(e) { console.warn('OpenAI TTS failed, falling back:', e) }
+        } catch(e) { console.warn('GCP TTS failed, falling back:', e) }
       }
-      // Fallback: Chrome TTS
+      // ── Browser TTS fallback (Edge: th-TH-NiwatNeural / th-TH-PremwadeeNeural) ──
       if (!HAS_SPEECH) { setTimeout(() => { if (!cancelRef.current) setLineIdx(i => i + 1) }, 1200); return }
       try { window.speechSynthesis.cancel() } catch(e) {}
       const u = new SpeechSynthesisUtterance(line.thai)
       u.lang = 'th-TH'
       u.rate = speedRef.current || 0.8
       u.pitch = 1
-      const anyThai = voices.filter(v => v.lang.startsWith('th'))
-      if (anyThai[0]) u.voice = anyThai[0]
+      const anyThai = voices.filter(v => v.lang && v.lang.startsWith('th'))
+      const maleVoice = anyThai.find(v => /niwat|male/i.test(v.name)) || anyThai.find(v => v.name && v.gender === 'male') || anyThai[0]
+      const femaleVoice = anyThai.find(v => /premwadee|female/i.test(v.name)) || anyThai.find(v => v.name && v.gender === 'female') || anyThai[0]
+      if (isASpeaker ? maleVoice : femaleVoice) u.voice = isASpeaker ? maleVoice : femaleVoice
       u.onend = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 700) }
       u.onerror = () => { if (!cancelRef.current) setTimeout(() => setLineIdx(i => i + 1), 900) }
       window.speechSynthesis.speak(u)
@@ -6531,7 +6530,7 @@ function calcDuration(thai, phase, phonetic) {
   return ttsDur + pauseDur
 }
 
-function Player({ track, onComplete, onBack, onKru, onBookmark }) {
+function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey }) {
   const pairs = track.pairs || []
   const [idx, setIdx] = useState(track.bookmark || 0)
   const [bookmarked, setBookmarked] = useState(false)
@@ -6604,11 +6603,30 @@ function Player({ track, onComplete, onBack, onKru, onBookmark }) {
   }
 
   function speakOrWait(text, lang, ms, onDone) {
-    if (!HAS_SPEECH) {
+    if (!HAS_SPEECH && !gcpTtsKey) {
       setSpeaking(true); startCountdown(ms)
       const t = setTimeout(() => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }, ms)
       return () => clearTimeout(t)
     }
+    // ── GCP TTS path for Thai ─────────────────────────────────────────────
+    if (gcpTtsKey && lang.startsWith('th')) {
+      setSpeaking(true); startCountdown(ms)
+      let cancelled = false; let audioEl = null
+      const isMale = /ครับ$/.test(text.trim())
+      const voiceName = isMale ? 'th-TH-Chirp3-HD-Charon' : 'th-TH-Chirp3-HD-Aoede'
+      fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${gcpTtsKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: { text }, voice: { languageCode: 'th-TH', name: voiceName }, audioConfig: { audioEncoding: 'MP3', speakingRate: thaiSpeed } })
+      }).then(r => r.json()).then(data => {
+        if (cancelled) return
+        audioEl = new Audio('data:audio/mp3;base64,' + data.audioContent)
+        audioEl.onended = () => { setSpeaking(false); stopCountdown(); if (!pausedRef.current && !cancelledRef.current) onDone() }
+        audioEl.onerror = () => { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() }
+        audioEl.play()
+      }).catch(() => { if (!cancelled) { setSpeaking(false); stopCountdown(); if (!cancelledRef.current) onDone() } })
+      return () => { cancelled = true; if (audioEl) { try { audioEl.pause() } catch(e) {} } setSpeaking(false); stopCountdown() }
+    }
+    // ── Browser TTS fallback ──────────────────────────────────────────────
     try { window.speechSynthesis.cancel() } catch(e) {}
     const utter = new SpeechSynthesisUtterance(text)
     utter.lang = lang
@@ -7439,7 +7457,8 @@ function DataManager({ onBack, vocab, tracks, onImport }) {
             ⚠️ This replaces ALL current data with the backup file. Use to restore on a new device.
           </p>
           <label style={{ display:'block', padding:'12px', borderRadius:10, border:'1px dashed #3d1a1a', textAlign:'center', cursor:'pointer', color:'#ef4444', fontSize:14, fontWeight:600 }}>
-            📂 Choose Backup File
+            <input type="file" accept=".json" onChange={handleImport} style={{ display:'none' }} />
+            {importing ? '⏳ Importing...' : '📂 Choose Backup File'}
             <p style={{ fontSize:10, color:'var(--muted)', marginTop:4 }}>Look for: thai-teacher-backup-YYYY-MM-DD.json</p>
           </label>
         </Card>
@@ -7478,6 +7497,53 @@ function DeepSeekTestBtn({ dsKey }) {
   )
 }
 
+function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey }) {
+  const [draft, setDraft] = useState(gcpTtsKey || '')
+  const [saved, setSaved] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState('')
+
+  async function testKey() {
+    if (!draft.trim()) return
+    setTesting(true); setTestResult('')
+    try {
+      const resp = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${draft.trim()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: { text: 'สวัสดีครับ' }, voice: { languageCode: 'th-TH', name: 'th-TH-Chirp3-HD-Charon' }, audioConfig: { audioEncoding: 'MP3' } })
+      })
+      if (resp.ok) {
+        const data = await resp.json()
+        const audio = new Audio('data:audio/mp3;base64,' + data.audioContent)
+        audio.play()
+        setTestResult('✅ Works! Playing test audio...')
+      } else {
+        const d = await resp.json().catch(() => ({}))
+        setTestResult('❌ ' + (d?.error?.message || `Error ${resp.status}`))
+      }
+    } catch(e) { setTestResult('❌ ' + e.message) }
+    setTesting(false)
+  }
+
+  return (
+    <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: 'var(--surface2)' }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>🔊 Thai Voices (Google Cloud TTS)</div>
+      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>Chirp3 HD Thai — Charon (male A) · Aoede (female B). 1M chars/month free.</div>
+      <input placeholder="AIza..." value={draft} onChange={e => { setDraft(e.target.value); setSaved(false); setTestResult('') }}
+        style={{ width: '100%', padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 13, boxSizing: 'border-box', marginBottom: 8, fontFamily: 'DM Mono, monospace' }} />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Btn onClick={testKey} disabled={!draft.trim() || testing} variant="secondary" style={{ flex: 1, justifyContent: 'center' }}>
+          {testing ? 'Testing...' : 'Test'}
+        </Btn>
+        <Btn onClick={async () => { await onSaveGcpTtsKey(draft.trim()); setSaved(true); setTimeout(() => setSaved(false), 2000) }} disabled={!draft.trim()} style={{ flex: 2, justifyContent: 'center' }}>
+          {saved ? '✓ Saved' : 'Save Key'}
+        </Btn>
+      </div>
+      {testResult && <p style={{ fontSize: 11, marginTop: 6, color: testResult.startsWith('✅') ? '#10b981' : '#ef4444' }}>{testResult}</p>}
+    </div>
+  )
+}
+
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
   { id: 'qwen3_14b', label: '⚡ Qwen3.5 Flash', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
@@ -7486,14 +7552,13 @@ const PROVIDERS = [
   { id: 'haiku',     label: '🔶 Haiku 4.5',  sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
 ]
 
-function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, openaiTtsKey, onSaveOpenaiTtsKey }) {
+function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, gcpTtsKey, onSaveGcpTtsKey }) {
   // Key state per provider
   const [keys, setKeys] = useState({ claude: apiKey || '', qwen3_14b: orKey || '', haiku: orKey || '', gemini: geminiKey || orKey || '', qwen32b: orKey || '' })
   const [saved, setSaved] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
-  const [ttsKeyDraft, setTtsKeyDraft] = useState(openaiTtsKey || '')
-  const [ttsTestResult, setTtsTestResult] = useState('')
+
 
   const prov = PROVIDERS.find(p => p.id === provider) || PROVIDERS[0]
   const currentKey = keys[provider] || ''
@@ -7604,39 +7669,9 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
           </div>
         )}
 
-        {/* OpenAI TTS for Thai voices */}
-        <div style={{ marginTop:16, padding:'12px 14px', borderRadius:10, background:'var(--surface2)' }}>
-          <div style={{ fontSize:12, fontWeight:600, color:'var(--text)', marginBottom:6 }}>🔊 Thai Voices (OpenAI TTS)</div>
-          <div style={{ fontSize:11, color:'var(--muted)', marginBottom:6 }}>OpenAI API key for natural Thai voices — Onyx (male) for A, Nova (female) for B.</div>
-          <input type="password" placeholder="sk-..." defaultValue={openaiTtsKey||''}
-            onChange={e => setTtsKeyDraft(e.target.value)}
-            style={{ width:'100%', padding:'8px 10px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:6, color:'var(--text)', fontSize:13, boxSizing:'border-box' }} />
-          <div style={{ display:'flex', gap:8, marginTop:8 }}>
-            <Btn onClick={async () => {
-              if (!ttsKeyDraft) return
-              setTtsTestResult('⏳ Testing...')
-              try {
-                const r = await fetch('https://api.openai.com/v1/audio/speech', {
-                  method:'POST',
-                  headers:{'Authorization':'Bearer '+ttsKeyDraft,'Content-Type':'application/json'},
-                  body:JSON.stringify({model:'tts-1',input:'สวัสดีครับ',voice:'onyx',speed:1.0})
-                })
-                if (r.ok) {
-                  const blob = await r.blob()
-                  const audio = new Audio(URL.createObjectURL(blob))
-                  audio.play()
-                  setTtsTestResult('✅ Works! Playing test audio...')
-                } else {
-                  const d = await r.json()
-                  setTtsTestResult('❌ ' + (d.error?.message || r.status))
-                }
-              } catch(e) { setTtsTestResult('❌ ' + e.message) }
-            }} variant="secondary" style={{flex:1,justifyContent:'center'}}>Test</Btn>
-            <Btn onClick={() => { onSaveOpenaiTtsKey && onSaveOpenaiTtsKey(ttsKeyDraft); setTtsTestResult('✅ Saved') }} style={{flex:1,justifyContent:'center'}}>Save Key</Btn>
-          </div>
-          {ttsTestResult && <p style={{fontSize:11,marginTop:6,color:ttsTestResult.startsWith('✅')?'#10b981':'#ef4444'}}>{ttsTestResult}</p>}
-          <div style={{ fontSize:10, color:'var(--muted)', marginTop:4 }}>platform.openai.com → API keys. Falls back to Chrome TTS if no key.</div>
-        </div>
+
+        {/* Google Cloud TTS */}
+        <GcpTtsSection gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={onSaveGcpTtsKey} />
 
         {/* Status */}
         <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -8156,9 +8191,9 @@ function ThaiTeacher() {
   const [orKey, setOrKey] = useState('')
   const [geminiKey, setGeminiKey] = useState('')
   const [geminiSpend, setGeminiSpend] = useState(0)
+  const [gcpTtsKey, setGcpTtsKey] = useState('')
   const [orBalance, setOrBalance] = useState(null)
   const [settings, setSettings] = useState(() => { try { return JSON.parse(localStorage.getItem('thaiTeacherSettings') || '{}') } catch { return {} } })
-  const openaiTtsKey = (settings && settings.openaiTtsKey) || ''
   const [lastTrackCost, setLastTrackCost] = useState(null)
 
   async function fetchOrBalance(key) {
@@ -8209,6 +8244,7 @@ function ThaiTeacher() {
       const ok = await stGet('tt-orkey'); if (ok) { setOrKey(ok); fetchOrBalance(ok) }
       const gk = await stGet('tt-gemini-key'); if (gk) setGeminiKey(gk)
       const gsp = await stGet('tt-gemini-spend'); if (gsp != null) setGeminiSpend(parseFloat(gsp) || 0)
+      const gtk = await stGet('tt-gcp-tts-key'); if (gtk) setGcpTtsKey(gtk)
       setLoading(false)
     }
     init()
@@ -8338,7 +8374,7 @@ function ThaiTeacher() {
           tracks={tracks}
         /></ErrorBoundary>}
         {view === 'player' && activeTrack && (
-          <ErrorBoundary><Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)}
+          <ErrorBoundary><Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} gcpTtsKey={gcpTtsKey}
             onBookmark={async (pairIdx) => {
               const updated = tracks.map(t => t === activeTrack ? { ...t, bookmark: pairIdx } : t)
               await saveTracks(updated)
@@ -8349,14 +8385,14 @@ function ThaiTeacher() {
         )}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
-        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} openaiTtsKey={openaiTtsKey} onSaveOpenaiTtsKey={async k => { const s = {...(settings||{}), openaiTtsKey:k}; setSettings(s); localStorage.setItem('thaiTeacherSettings', JSON.stringify(s)) }} />}
+        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'lessons' && <LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} />}
         {view === 'convo' && activeTrack?.convo && (
           <ConvoPlayer
             lines={activeTrack.convo}
-            openaiTtsKey={openaiTtsKey}
+            gcpTtsKey={gcpTtsKey}
             speed={parseFloat(localStorage.getItem('tt-speed') || '0.8')}
             onSpeedChange={s => { try { localStorage.setItem('tt-speed', s) } catch {} }}
             onSkip={() => { setView('dashboard') }}

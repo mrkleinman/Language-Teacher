@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v378"/>
-<meta name="app-version" content="v378"/>
+<meta name="app-version" content="v380"/>
+<meta name="app-version" content="v380"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -3015,7 +3015,7 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
         `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:generateContent?key=${apiKey}`,
         { method: 'POST', signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens || 1200, temperature: 0.7, topP: 0.9 } }) }
+          body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens || 1200, temperature: 0.7, topP: 0.9, thinkingConfig: { thinkingBudget: 0 } } }) }
       )
     } catch(fe) { clearTimeout(tid); throw new Error(fe.name === 'AbortError' ? 'Gemini timeout' : fe.message) }
     clearTimeout(tid)
@@ -4440,7 +4440,7 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     const phWords = (p.phonetic || '').trim().split(/\s+/).filter(w => w && !/^[?.!,]$/.test(w)).length
     const lenCheck = getSentenceLengthForVocab(vocab) || {}
     const minWords = Math.floor((lenCheck.goalMin || 5) * 0.9)
-    const maxWords = Math.ceil((lenCheck.hardCeil || 8) * 1.1) + 1  // allow +10%
+    const maxWords = Math.ceil((lenCheck.hardCeil || 8) * 1.2) + 3  // allow extra room for number phrases
     const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
     if (effectiveLen < minWords) { failures.push('too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai); continue }
     if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
@@ -4995,6 +4995,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           // #1 FIX: require EXACT length match. A short/long glosses array (model dropping a
           // particle gloss) used to shift every gloss left by one — the "restaurant→some" drift.
           // On any mismatch we fall through to the Thai-token-aligned lookup below.
+          let words
           if (l.glosses && Array.isArray(l.glosses) && l.glosses.length === phonToks.length) {
             words = phonToks.map((p, i) => ({
               p,
@@ -5310,7 +5311,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const phWords = (p.phonetic || '').trim().split(/\s+/).filter(w => w && !/^[?.!,]$/.test(w)).length
       const lenCheck = getSentenceLengthForVocab(vocab) || {}
       const minWords = Math.floor((lenCheck.goalMin || 5) * 0.9)
-      const maxWords = Math.ceil((lenCheck.hardCeil || 8) * 1.1) + 1  // allow +10%
+      const maxWords = Math.ceil((lenCheck.hardCeil || 8) * 1.2) + 3  // allow extra room for number phrases
       const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
       if (effectiveLen < minWords) { failures.push('too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai); continue }
       if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }

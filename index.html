@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v381"/>
-<meta name="app-version" content="v381"/>
+<meta name="app-version" content="v382"/>
+<meta name="app-version" content="v382"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -79,14 +79,64 @@ const _GLOSS_LOOKUP = (() => {
     .replace(/[əɘ]/g,'a').replace(/ɔ/g,'o').replace(/ɯ/g,'u').replace(/ŋ/g,'ng').replace(/[ʔː]/g,'')
     .trim()
   const m = {}
+  const compounds = []   // [{tokens:[normalized], gloss, len}]
   RAW_VOCAB.forEach(v => {
     const ph = np(v.ph || v.phonetic || '')
     const e = ((v.e || v.english || '').split(/[,/]/)[0]).trim()
-    if (ph && ph.length > 1 && e) m[ph] = e
+    if (!ph || !e) return
+    m[ph] = e
+    // Build compound lookup for multi-syllable words (hyphen-separated)
+    const rawPh = (v.ph || v.phonetic || '')
+    const parts = rawPh.split('-')
+    if (parts.length >= 2) {
+      compounds.push({ tokens: parts.map(p => np(p)), gloss: e, len: parts.length })
+    }
   })
-  return { lookup: m, np }
+  // Sort longest compounds first so we prefer longer matches
+  compounds.sort((a, b) => b.len - a.len)
+  return { lookup: m, np, compounds }
 })()
+
+// Enrich a words array using compound-first matching to avoid wrong single-token glosses
+// (e.g. mái in ดอกไม้ should not be glossed as "question particle")
+function enrichWordsWithCompounds(words) {
+  if (!words || !words.length) return words
+  const result = words.map(w => ({ ...w }))
+  const toks = result.map(w => _GLOSS_LOOKUP.np(w.p || ''))
+
+  // Pass 1: try compound matches (longest first)
+  const claimed = new Array(result.length).fill(false)
+  for (const comp of _GLOSS_LOOKUP.compounds) {
+    for (let i = 0; i <= toks.length - comp.len; i++) {
+      if (claimed[i]) continue
+      let match = true
+      for (let j = 0; j < comp.len; j++) {
+        if (toks[i + j] !== comp.tokens[j]) { match = false; break }
+      }
+      if (match) {
+        // First token of compound gets the gloss, rest get empty (they're part of it)
+        if (!result[i].e) result[i].e = comp.gloss
+        for (let j = 1; j < comp.len; j++) {
+          claimed[i + j] = true
+          if (!result[i + j].e) result[i + j].e = ''  // blank — not wrong, just part of compound
+        }
+        claimed[i] = true
+        break
+      }
+    }
+  }
+
+  // Pass 2: single-token lookup only for unclaimed tokens
+  for (let i = 0; i < result.length; i++) {
+    if (!result[i].e) {
+      result[i].e = _GLOSS_LOOKUP.lookup[toks[i]] || ''
+    }
+  }
+  return result
+}
+
 function enrichGloss(p) { if (!p) return ''; const k = _GLOSS_LOOKUP.np(p); return _GLOSS_LOOKUP.lookup[k] || '' }
+
 
 // Concepts drive both the lesson UI and the daily track generator
 // ══════════════════════════════════════════════════════════════════════════════
@@ -4357,7 +4407,7 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
     '"reply":"B replies ONLY to the greeting — just warmly greet back and say something brief like she\'s happy to be here. Do NOT mention services, products, or topics yet (must end ค่ะ or คะ)",' +
     '"reply_phonetic":"full romanisation of reply",' +
     '"reply_english":"English translation of reply (omit particle)",' +
-    '"reply_prompt":"Use the character names, describe what B actually says — e.g. Nida greets Somchai back and says she just arrived. NEVER say she calls him Dad or any family name."}'
+    '"reply_prompt":"Use the character names, describe what B actually says — e.g. Nida greets Somchai back and says she just arrived. NEVER say she calls him Dad or any family name."}\n\nCRITICAL: whatever Thai name/nickname you use in the opening and reply Thai fields, use the SAME name (romanized) in all English fields. No different English name for the same character.'
   try {
     const raw = await callOpenRouterOnce(apiKey, model, [{ role:'user', content: system + '\n\n' + user }], 600)
     const parsed = JSON.parse(raw)
@@ -4382,7 +4432,13 @@ function lintThaiContent(thai, english, speaker, target, opts) {
   if (speaker !== 'B' && t.includes('เธอ') && tgt !== 'เธอ')
     fails.push('Use คุณ not เธอ — the other speaker is present. เธอ is only for an absent 3rd-party female.')
   // Banned words / wrong register (also catches them inside compounds)
-  const _banned = ['อินเทอร์เน็ต','เทศกาล','งานเลี้ยง','รถยนต์','โทรศัพท์','น้ำปานะ','ไปรษณีย์','ดิฉัน','คอลเลคชั่น','บรรยากาศ','ลาออก']
+  const _banned = ['อินเทอร์เน็ต','เทศกาล','งานเลี้ยง','รถยนต์','โทรศัพท์','น้ำปานะ','ไปรษณีย์','ดิฉัน','คอลเลคชั่น','บรรยากาศ','ลาออก',
+    'เหมาะ','เหมาะสม',  // not in vocab; use เหมาะกับ only via ใช่/พอดี/เข้ากัน instead
+    'แนะนำ',           // not in vocab; use บอก/แนะ instead
+    'แต่งหน้า',         // not in vocab
+    'สดใส',            // not in vocab; use สวย/ใส instead
+    'กว้างขวาง',       // not in vocab (target is กว้าง alone, not the compound)
+  ]
   for (const b of _banned) { if (t.includes(b)) { fails.push('Remove "' + b + '" — not in vocabulary / wrong register.'); break } }
   if (t.includes('เพิ่งเคย')) fails.push('Do not use เพิ่งเคย together — use เพิ่ง alone or เคย alone.')
   // English field must be clean English — no Thai script or politeness particles
@@ -4629,7 +4685,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const _skipNumber = _noNumberWords.some(w => (target.english||'').toLowerCase().includes(w.toLowerCase()))
   const numberHint = _skipNumber ? '' : randomNumberHint(vocab, pairIndex)
   const context = prevLines.length > 0
-    ? 'CONVERSATION SO FAR:\n' + prevLines.slice(-4).map(l =>
+    ? 'CONVERSATION SO FAR (most recent first):\n' + prevLines.slice(-6).map(l =>
         (l.speaker==='A' ? charA.split(',')[0] : charB.split(',')[0]) + ': ' + l.thai + ' (' + l.english + ')'
       ).join('\n') + '\n\n'
     : ''
@@ -4658,6 +4714,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• NATURAL SPEECH: casual spoken Thai only. FORBIDDEN: ซึ่ง (relative clauses), ดิฉัน, กระผม, ท่าน, อันซึ่ง. Use simple direct sentences like real friends talk\n' +
     '• FORBIDDEN (any word containing these): อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, รถยนต์, โทรศัพท์ (use มือถือ even in compounds), น้ำปานะ, สินค้า (use ของ), ไปรษณีย์, คำนวณ (use ลองคิด), เครื่องแต่งกาย (use เสื้อผ้า), สวนสาธารณะ (use สวน), ดิฉัน (use ฉัน), คอลเลคชั่น, บรรยากาศ, ประจำ. Do NOT use place names.\n' +
     '• ซึ่ง is formal written Thai — only use it when ซึ่ง is the target word being practised. In all other sentences, use ที่ instead.\n' +
+    '• PHONETIC ACCURACY: the "phonetic" field must romanise the EXACT Thai words you wrote — never transcribe a different word. If Thai is นักเดินทาง write nák-dəən-thaang, NOT nák-thɔ̂ɔng-thîao.\n' +
     '• ACCURACY: the "english" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
     '• PROMPT ACCURACY: the "prompt" field must describe the SPECIFIC CONTENT of the Thai sentence — include the actual numbers, names, and facts. WRONG: "He states his age." RIGHT: "He says he is fifty-six years old." WRONG: "She asks about the shop." RIGHT: "She asks if the shop is near here."\n' +
     '• The "prompt" field must accurately describe exactly what is said — not generic, must match the Thai sentence\n' +
@@ -4692,7 +4749,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'เลิก':"stop doing something casually — ผมเลิกงานแล้วครับ (I quit my job). ลาออก = formal written resignation. Friends say เลิก not ลาออก.",
     'ถาม':"ถาม = ask a question directly. e.g. ผมถามว่าราคาเท่าไรครับ (I asked how much it costs). NEVER write 'offer to ask on someone's behalf' — ถามความเห็น, ถามทาง, ถามราคา are all natural.",
     'ไว้ใจ':"ไว้ใจ is a verb meaning to trust someone — NOT a noun. Use: ผมไว้ใจคุณมากครับ (I trust you a lot), คุณไว้ใจฉันได้ค่ะ (you can trust me), or เธอไว้ใจเขาไหมคะ (do you trust him?). NEVER say 'have a trust' or 'there is no trust'.",
-    'อนุญาต':"อนุญาต = give official/formal permission. Use it when: a parent allows a child, a teacher allows a student, someone asks permission to do something. e.g. คุณแม่อนุญาตให้ผมไปครับ (Mum allowed me to go). NEVER use it as one friend telling another what they are or aren't allowed to feel.",
+    'อนุญาต':"อนุญาต = give/ask official permission. Natural everyday contexts: ที่นี่อนุญาตให้ถ่ายรูปไหมครับ (is photography allowed here?), อนุญาตให้ผมออกก่อนได้ไหมครับ (may I leave early?). NEVER use as one friend asking another's 'permission' to visit a shop or feel an emotion — bizarre and unnatural.",
     'ถวาย':"ถวาย is ONLY used when offering something to a monk or royalty — never between ordinary friends. Use it: A mentions he saw a monk and offered food (ผมถวายข้าวพระครับ) or B says she offered flowers at the temple (ฉันถวายดอกไม้ที่วัดค่ะ). NEVER 'offer' things to each other using ถวาย.",
     'งั้นก็':"use งั้นก็ as a transition meaning 'in that case...' or 'so then...' — A says something, then B responds with งั้นก็... to connect a consequence, e.g. งั้นก็ไปด้วยกันเลยครับ",
     'แน่นท้อง':"say someone's stomach feels tight/bloated/stuffed after overeating — แน่นท้อง is uncomfortable fullness, NOT the same as อิ่ม (satisfied full). e.g. กินเยอะไปหน่อย แน่นท้องเลยครับ (ate too much, stomach is stuffed)",
@@ -4701,9 +4758,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'เหนื่อย':"say someone is tired after doing some activity — NEVER apply to objects or places",
     'ง่วง':"say someone is sleepy — must have a person as subject",
     'ดีใจ':"say someone is happy about something specific that just happened",
-    'เสียใจ':"say someone is sad about something specific",
+    'เสียใจ':"say someone is genuinely sad/sorry about a SPECIFIC situation that was just mentioned — bad news, something that didn't work out, or empathy for the other person's real situation. NEVER invent a fake situation (e.g. 'sorry you're not feeling well' when she never said she was ill).",
     'หู':'say something sounds good/bad or mention having earache',
-    'ฟัน':'mention brushing teeth or having a toothache',
+    'ฟัน':"mention ฟัน in a DENTAL or FOOD context that connects naturally to the current topic — toothache after eating sweets, saw a dentist, teeth feel sensitive. MUST bridge from what was just discussed. e.g. if they were at a market → saw cheap toothbrush; if discussing food → spicy food made tooth ache.",
     'ปาก':'mention someone talks a lot or comment on food taste',
     'แขน':'mention an arm hurts or gesture with arms',
     'ตา':'mention seeing something or eyes being tired',
@@ -4745,7 +4802,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     return 'naturally use "' + target.thai + '" (' + target.english + ') in a simple sentence that fits the scene'
   })()
 
-  const _topicBridge = runningTopic ? 'They have been talking about: ' + runningTopic + '. Connect the new word naturally to this topic if possible.\n' : ''
+  const _topicBridge = runningTopic
+    ? 'CURRENT TOPIC: they have been talking about "' + runningTopic + '". The new exchange MUST flow naturally from this — find a realistic bridge from what they just discussed to the new word. Do NOT introduce a completely new unrelated topic out of nowhere.\n'
+    : ''
   const baseUser = context + _topicBridge + 'Continue the conversation. Write exactly 3 lines:\n' +
     'LINE 1 (A): ' + _usageHint + ' — must end with ครับ — MUST contain the Thai word "' + target.thai + '"\n' +
     'LINE 2 (B): respond naturally to what A just said — must end with ค่ะ or คะ\n' +
@@ -6864,16 +6923,19 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey }) {
           <div className="fade-in" key={`r-${idx}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
             <div style={{ fontSize:11, letterSpacing:'0.12em', color:'var(--gold)', textTransform:'uppercase', fontWeight:600 }}>Repeat aloud</div>
             {/* Aligned phonetic + gloss or plain phonetic fallback */}
-            {pair.words && pair.words.length > 0 && pair.words.some(w => w.p && w.e) ? (
-              <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
-                {pair.words.map((w, i) => (
-                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
-                    <span className="phon" style={{ fontSize:20, color:'var(--gold)', fontWeight:700, whiteSpace:'nowrap' }}>{w.p}</span>
-                    <span style={{ fontSize:13, color: w.e ? '#94a3b8' : '#475569', whiteSpace:'nowrap' }}>{w.e || enrichGloss(w.p) || '·'}</span>
-                  </div>
-                ))}
-              </div>
-            ) : pair.phonetic ? (
+            {pair.words && pair.words.length > 0 && pair.words.some(w => w.p && w.e) ? (() => {
+              const enriched = enrichWordsWithCompounds(pair.words)
+              return (
+                <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
+                  {enriched.map((w, i) => (
+                    <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+                      <span className="phon" style={{ fontSize:20, color:'var(--gold)', fontWeight:700, whiteSpace:'nowrap' }}>{w.p}</span>
+                      <span style={{ fontSize:13, color: w.e ? '#94a3b8' : '#475569', whiteSpace:'nowrap' }}>{w.e || '·'}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })() : pair.phonetic ? (
               <p className="phon" style={{ fontSize:38, color:'var(--gold)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>{pair.phonetic}</p>
             ) : (
               <p className="phon" style={{ fontSize:22, color:'var(--muted)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>

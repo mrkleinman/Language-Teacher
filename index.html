@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v384"/>
-<meta name="app-version" content="v384"/>
+<meta name="app-version" content="v385"/>
+<meta name="app-version" content="v385"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -157,6 +157,47 @@ function enrichWordsWithCompounds(words) {
 }
 
 function enrichGloss(p) { if (!p) return ''; const k = _GLOSS_LOOKUP.np(p); return _GLOSS_LOOKUP.lookup[k] || '' }
+
+// AI fill — sends batches of pairs with empty glosses to the model for completion
+async function fillMissingGlossesForTrack(pairs, apiKey, model) {
+  if (!apiKey || !model || !pairs || !pairs.length) return pairs
+  const needsFill = pairs.map((p, i) => i).filter(i => pairs[i].words && pairs[i].words.some(w => !w.e))
+  if (!needsFill.length) return pairs
+
+  const result = [...pairs]
+  const BATCH = 5
+
+  for (let b = 0; b < needsFill.length; b += BATCH) {
+    const batchIdxs = needsFill.slice(b, b + BATCH)
+    const input = batchIdxs.map((pairIdx, localIdx) => ({
+      id: localIdx,
+      thai: pairs[pairIdx].thai || '',
+      words: pairs[pairIdx].words
+    }))
+
+    const prompt = `Fill every empty "e" gloss in these Thai phonetic word arrays. Return the same structure with all "e" values filled — concise English, 1–3 words each.
+
+Keep existing non-empty "e" values exactly as-is. Common rules: ครับ→"[m]" ค่ะ/คะ→"[f]" ไม่→"not" ไหม→"?" จะ→"will" ก็→"also" แล้ว→"already" ที่→"at/that" ให้→"to" นะ→"[softener]" เลย→"at all" มาก→"very" แค่→"just". Numbers: หนึ่ง→"one" สอง→"two" สาม→"three" สี่→"four" ห้า→"five" หก→"six" เจ็ด→"seven" แปด→"eight" เก้า→"nine" สิบ→"ten". Time: โมง→"o'clock" เช้า→"morning" เย็น→"evening" ทุ่ม→"p.m." คืน→"night".
+
+Input: ${JSON.stringify(input)}
+
+Return ONLY valid JSON array with no markdown: [{"id":0,"words":[{"p":"...","e":"..."},...]},...]`
+
+    try {
+      const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1000)
+      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          const origPairIdx = batchIdxs[item.id]
+          if (origPairIdx !== undefined && Array.isArray(item.words) && item.words.length === pairs[origPairIdx].words.length) {
+            result[origPairIdx] = { ...result[origPairIdx], words: item.words }
+          }
+        }
+      }
+    } catch(e) { console.warn('[fillGlosses] batch', b, 'failed:', e.message) }
+  }
+  return result
+}
 
 
 // Concepts drive both the lesson UI and the daily track generator
@@ -7476,7 +7517,7 @@ function ImportTrack({ onBack, onImported, vocab }) {
 
 
 // ── Export / Import Data ─────────────────────────────────────────────────────
-function DataManager({ onBack, vocab, tracks, onImport, onSaveTracks }) {
+function DataManager({ onBack, vocab, tracks, onImport, onSaveTracks, fillApiKey, fillModel }) {
   const [importing, setImporting] = useState(false)
   const [msg, setMsg] = useState('')
   const [isFixing, setIsFixing] = useState(false)
@@ -7490,18 +7531,26 @@ function DataManager({ onBack, vocab, tracks, onImport, onSaveTracks }) {
     const fixed = []
     for (let i = 0; i < tracks.length; i++) {
       const track = tracks[i]
-      let pairsFixed = 0
-      const fixedPairs = (track.pairs || []).map(p => {
-        if (!p.words || !p.words.length) return p
-        const enriched = enrichWordsWithCompounds(p.words)
-        const changed = enriched.some((w, j) => w.e !== (p.words[j]||{}).e)
-        if (changed) pairsFixed++
-        return { ...p, words: enriched }
+      // Step 1: compound-aware vocab lookup
+      let pairs = (track.pairs || []).map(p => ({
+        ...p,
+        words: (p.words && p.words.length > 0) ? enrichWordsWithCompounds(p.words) : p.words
+      }))
+      // Step 2: AI fill remaining blanks
+      const hasBlanks = pairs.some(p => p.words && p.words.some(w => !w.e))
+      if (fillApiKey && fillModel && hasBlanks) {
+        setFixStatus(`Track ${i + 1}/${tracks.length}  ·  AI filling blanks…`)
+        pairs = await fillMissingGlossesForTrack(pairs, fillApiKey, fillModel)
+      }
+      let updated = 0
+      pairs.forEach((p, pi) => {
+        const orig = (track.pairs || [])[pi]
+        if (p.words && orig && orig.words && p.words.some((w, wi) => w.e && w.e !== (orig.words[wi] || {}).e)) updated++
       })
-      totalPairs += pairsFixed
-      fixed.push({ ...track, pairs: fixedPairs })
+      totalPairs += updated
+      fixed.push({ ...track, pairs })
       setFixPct(Math.round(((i + 1) / tracks.length) * 100))
-      setFixStatus(`Track ${i + 1}/${tracks.length}  ·  ${pairsFixed} pairs updated`)
+      setFixStatus(`Track ${i + 1}/${tracks.length}  ·  ${updated} pairs updated`)
       await new Promise(r => setTimeout(r, 8))
     }
     await onSaveTracks(fixed)
@@ -8542,7 +8591,7 @@ function ThaiTeacher() {
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
         {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} />}
-        {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} />}
+        {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} fillApiKey={provider === 'gemini' && geminiKey ? geminiKey : orKey} fillModel={resolveOrModel(provider)} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'lessons' && <LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} />}
         {view === 'convo' && activeTrack?.convo && (

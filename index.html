@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v382"/>
-<meta name="app-version" content="v382"/>
+<meta name="app-version" content="v384"/>
+<meta name="app-version" content="v384"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -102,11 +102,20 @@ const _GLOSS_LOOKUP = (() => {
 function enrichWordsWithCompounds(words) {
   if (!words || !words.length) return words
   const result = words.map(w => ({ ...w }))
-  const toks = result.map(w => _GLOSS_LOOKUP.np(w.p || ''))
+  const { np, lookup, compounds } = _GLOSS_LOOKUP
 
-  // Pass 1: try compound matches (longest first)
+  // Pre-pass: for single hyphenated tokens (e.g. "thá-ná-tham"), try full normalized lookup
+  for (let i = 0; i < result.length; i++) {
+    if (!result[i].e && (result[i].p || '').includes('-')) {
+      const fullNorm = np(result[i].p)
+      if (lookup[fullNorm]) result[i].e = lookup[fullNorm]
+    }
+  }
+
+  // Pass 1: compound matching — normalize each token and try longest compounds first
+  const toks = result.map(w => np(w.p || ''))
   const claimed = new Array(result.length).fill(false)
-  for (const comp of _GLOSS_LOOKUP.compounds) {
+  for (const comp of compounds) {
     for (let i = 0; i <= toks.length - comp.len; i++) {
       if (claimed[i]) continue
       let match = true
@@ -114,11 +123,10 @@ function enrichWordsWithCompounds(words) {
         if (toks[i + j] !== comp.tokens[j]) { match = false; break }
       }
       if (match) {
-        // First token of compound gets the gloss, rest get empty (they're part of it)
         if (!result[i].e) result[i].e = comp.gloss
         for (let j = 1; j < comp.len; j++) {
           claimed[i + j] = true
-          if (!result[i + j].e) result[i + j].e = ''  // blank — not wrong, just part of compound
+          if (!result[i + j].e) result[i + j].e = ''
         }
         claimed[i] = true
         break
@@ -126,10 +134,23 @@ function enrichWordsWithCompounds(words) {
     }
   }
 
-  // Pass 2: single-token lookup only for unclaimed tokens
+  // Pass 2: unambiguous common-word lookup for claimed=false, e still empty
+  // Only apply for normalized phonetics ≥5 chars (short ones are too ambiguous:
+  // "mai"=ไม่/ไหม/ใหม่, "kha"=ขา/ค่า, "phak"=ผัก/พัก etc.)
+  const COMMON = { phom:'I (male)',chan:'I (female)',khun:'you',rao:'we',ja:'will',
+    bpai:'go',maa:'come',mai:'not',dai:'can',mii:'have',dtong:'must',yaak:'want',
+    chop:'like',kin:'eat',duu:'look',hen:'see',ruu:'know',kit:'think',
+    jaa:'meet',fang:'listen',phoot:'speak',bok:'tell',tham:'do',
+    laew:'already',ko:'also',thii:'at',nii:'this',nan:'that',loei:'so/indeed',
+    maak:'very',nit:'little',noi:'little',yang:'still',khoei:'ever',
+    phoeng:'just now',gamlang:'currently',yuu:'is/stay',pen:'is/be' }
   for (let i = 0; i < result.length; i++) {
     if (!result[i].e) {
-      result[i].e = _GLOSS_LOOKUP.lookup[toks[i]] || ''
+      const norm = toks[i]
+      // First try common unambiguous words
+      if (COMMON[norm]) { result[i].e = COMMON[norm]; continue }
+      // Then try vocab lookup — but only for longer normalised phonetics (5+ chars)
+      if (norm.length >= 5 && lookup[norm]) result[i].e = lookup[norm]
     }
   }
   return result
@@ -2976,6 +2997,7 @@ CRITICAL RULES:
 4. VARY PROMPT TYPES — use at minimum 15 different prompt starters across 90 pairs
    Never use the same type more than 3 times in a row. Mix: Tell/Ask/Say/Respond/Explain/Warn/Suggest/Invite/Confirm/Deny/Express/Describe/Admit/Promise/Ask how
 5. "words" array must have EXACTLY the same token count as space-separated tokens in "phonetic"
+5b. EVERY "e" field in words MUST be non-empty — use the English from APPROVED VOCABULARY. Common particles: ครับ → "[m]", ค่ะ/คะ → "[f]", ไม่ → "not", ไหม → "?", จะ → "will", กำลัง → "doing", แล้ว → "already", ยัง → "still", เลย → "at all", ที่ → "that/which", ให้ → "to/give", ก็ → "also", นะ → "[softener]". NEVER output an empty string "" for any "e" field — if unsure, use the vocabulary list English.
 6. Use ANCHOR WORDS as supporting vocabulary — don't cluster all target words together
 7. Sentences must stay within ${goalMin}–${goalMax} words, NEVER exceed ${effectiveCeil} words
 
@@ -5710,6 +5732,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       }
     }
 
+    // Enrich words glosses — fill any empty e values using compound-aware vocab lookup
+    pairs = pairs.map(p => ({
+      ...p,
+      words: (p.words && p.words.length > 0) ? enrichWordsWithCompounds(p.words) : p.words
+    }))
+
     // Dedup within this target group
     const seenInGroup = new Set()
     pairs = pairs.filter(p => { if (seenInGroup.has(p.thai)) return false; seenInGroup.add(p.thai); return true })
@@ -6923,14 +6951,14 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey }) {
           <div className="fade-in" key={`r-${idx}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
             <div style={{ fontSize:11, letterSpacing:'0.12em', color:'var(--gold)', textTransform:'uppercase', fontWeight:600 }}>Repeat aloud</div>
             {/* Aligned phonetic + gloss or plain phonetic fallback */}
-            {pair.words && pair.words.length > 0 && pair.words.some(w => w.p && w.e) ? (() => {
+            {pair.words && pair.words.length > 0 ? (() => {
               const enriched = enrichWordsWithCompounds(pair.words)
               return (
                 <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
                   {enriched.map((w, i) => (
                     <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
                       <span className="phon" style={{ fontSize:20, color:'var(--gold)', fontWeight:700, whiteSpace:'nowrap' }}>{w.p}</span>
-                      <span style={{ fontSize:13, color: w.e ? '#94a3b8' : '#475569', whiteSpace:'nowrap' }}>{w.e || '·'}</span>
+                      <span style={{ fontSize:13, color: w.e ? '#94a3b8' : 'transparent', whiteSpace:'nowrap', minHeight:18 }}>{w.e || '.'}</span>
                     </div>
                   ))}
                 </div>
@@ -7448,9 +7476,38 @@ function ImportTrack({ onBack, onImported, vocab }) {
 
 
 // ── Export / Import Data ─────────────────────────────────────────────────────
-function DataManager({ onBack, vocab, tracks, onImport }) {
+function DataManager({ onBack, vocab, tracks, onImport, onSaveTracks }) {
   const [importing, setImporting] = useState(false)
   const [msg, setMsg] = useState('')
+  const [isFixing, setIsFixing] = useState(false)
+  const [fixPct, setFixPct] = useState(0)
+  const [fixStatus, setFixStatus] = useState('')
+
+  async function fixAllGlosses() {
+    if (!tracks.length) { setFixStatus('No tracks to fix.'); return }
+    setIsFixing(true); setFixPct(0); setFixStatus('Starting...')
+    let totalPairs = 0
+    const fixed = []
+    for (let i = 0; i < tracks.length; i++) {
+      const track = tracks[i]
+      let pairsFixed = 0
+      const fixedPairs = (track.pairs || []).map(p => {
+        if (!p.words || !p.words.length) return p
+        const enriched = enrichWordsWithCompounds(p.words)
+        const changed = enriched.some((w, j) => w.e !== (p.words[j]||{}).e)
+        if (changed) pairsFixed++
+        return { ...p, words: enriched }
+      })
+      totalPairs += pairsFixed
+      fixed.push({ ...track, pairs: fixedPairs })
+      setFixPct(Math.round(((i + 1) / tracks.length) * 100))
+      setFixStatus(`Track ${i + 1}/${tracks.length}  ·  ${pairsFixed} pairs updated`)
+      await new Promise(r => setTimeout(r, 8))
+    }
+    await onSaveTracks(fixed)
+    setFixStatus(`✅ Done — ${totalPairs} pairs enriched across ${tracks.length} tracks`)
+    setIsFixing(false)
+  }
 
   function exportData() {
     const data = {
@@ -7540,6 +7597,26 @@ function DataManager({ onBack, vocab, tracks, onImport }) {
             {importing ? '⏳ Importing...' : '📂 Choose Backup File'}
             <p style={{ fontSize:10, color:'var(--muted)', marginTop:4 }}>Look for: thai-teacher-backup-YYYY-MM-DD.json</p>
           </label>
+        </Card>
+
+        <Card style={{ padding:16 }}>
+          <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', marginBottom:6 }}>🔧 Fix Glosses on Old Tracks</p>
+          <p style={{ fontSize:12, color:'var(--muted)', marginBottom:12, lineHeight:1.6 }}>
+            Re-runs the compound-aware gloss lookup on all saved tracks — fixes missing and wrong word translations under phonetics.
+          </p>
+          {fixStatus && (
+            <div style={{ marginBottom:10 }}>
+              {isFixing && (
+                <div style={{ height:6, borderRadius:3, background:'var(--surface2)', marginBottom:6, overflow:'hidden' }}>
+                  <div style={{ height:'100%', borderRadius:3, background:'linear-gradient(90deg,#d4a94a,#b88a35)', width:fixPct+'%', transition:'width 0.15s' }} />
+                </div>
+              )}
+              <p style={{ fontSize:11, color: fixStatus.startsWith('✅') ? '#10b981' : 'var(--muted)' }}>{fixStatus}</p>
+            </div>
+          )}
+          <Btn onClick={fixAllGlosses} disabled={isFixing || !tracks.length} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>
+            {isFixing ? 'Fixing… '+fixPct+'%' : 'Fix Glosses ('+tracks.length+' tracks)'}
+          </Btn>
         </Card>
 
         {msg && <p style={{ textAlign:'center', fontSize:13, color: msg.startsWith('✅') ? '#10b981' : '#ef4444', padding:8 }}>{msg}</p>}
@@ -8465,7 +8542,7 @@ function ThaiTeacher() {
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
         {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} />}
-        {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} />}
+        {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'lessons' && <LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} />}
         {view === 'convo' && activeTrack?.convo && (

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v392"/>
-<meta name="app-version" content="v392"/>
+<meta name="app-version" content="v393"/>
+<meta name="app-version" content="v393"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -2215,6 +2215,15 @@ function pickWords(vocab, mode) {
     const due = vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today).slice(0, 22)
     const newW = vocab.filter(w => w.status === 'new').slice(0, 9)
     targets = [...due, ...newW].slice(0, 30)
+    // Pad to always reach 30 — pull from learning/known words sorted by due date
+    if (targets.length < 30) {
+      const tIds = new Set(targets.map(w => w.id))
+      const padding = vocab
+        .filter(w => !tIds.has(w.id) && w.status !== 'new' && w.thai && w.thai.length >= 2)
+        .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'))
+        .slice(0, 30 - targets.length)
+      targets = [...targets, ...padding]
+    }
   }
   const targetIds = new Set(targets.map(w => w.id))
   const anchors = vocab
@@ -4505,6 +4514,7 @@ function lintThaiContent(thai, english, speaker, target, opts) {
     'เจ๊ง',             // slang for bankrupt, not in vocab
     'นักบัญชี',         // accountant, not in basic vocab
     'ท่าน',           // extremely formal/royal pronoun — wrong register between friends
+    'ฟงจุ้ย','ฟวงจุ้ย', // misspellings of ฮวงจุ้ย (feng shui) — model can't spell this
     // Calendar dates — never natural in casual spoken conversation between friends
     'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม',
@@ -4734,13 +4744,22 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     const _dupPrompt = valid.some(v => (v.prompt||'').toLowerCase().replace(/[^a-zก-๙\s]/g,'').slice(0,40) === _thisPromptKey && _thisPromptKey.length > 10)
     if (_dupPrompt) { failures.push('Duplicate prompt in same cluster — vary the content'); continue }
     // Fix 12+16: Also reject near-duplicate Thai text within same cluster
-    const _thisThai = (p.thai||'').replace(/[ครับค่ะคะๆ\s]/g,'').slice(0,18)
-    const _dupThai = _thisThai.length > 8 && valid.some(v => (v.thai||'').replace(/[ครับค่ะคะๆ\s]/g,'').slice(0,18) === _thisThai)
+    const _thisThai = (p.thai||'').replace(/[ครับค่ะคะๆ\s]/g,'').slice(0,13)
+    const _dupThai = _thisThai.length > 8 && valid.some(v => (v.thai||'').replace(/[ครับค่ะคะๆ\s]/g,'').slice(0,13) === _thisThai)
     if (_dupThai) { failures.push('Thai text too similar to another pair in this cluster — vary the sentence'); continue }
     // Fix 13: Reject word-spacing artifacts (model writing each Thai word separately)
     const _thaiTokens = (p.thai||'').trim().split(/\s+/).filter(t => /[ก-๙]/.test(t))
     if (_thaiTokens.length >= 4 && _thaiTokens.filter(t => t.replace(/[^ก-๙]/g,'').length <= 3).length > _thaiTokens.length * 0.6)
       { failures.push('Thai words individually spaced — write Thai naturally without spaces between each word'); continue }
+    // Fix 8: ขวบ age consistency — same cluster should not state two different ages
+    if (p.thai && p.thai.includes('ขวบ') && p.speaker === 'A') {
+      const _prevKhwap = valid.filter(v => v.speaker === 'A' && v.thai && v.thai.includes('ขวบ'))
+      if (_prevKhwap.length > 0) {
+        const _ageStr = (thai) => { const m = thai.match(/(.{1,6})ขวบ/); return m ? m[1].replace(/\s/g,'') : null }
+        const ca = _ageStr(p.thai), pa = _ageStr(_prevKhwap[0].thai)
+        if (ca && pa && ca !== pa) { failures.push('ขวบ age inconsistency in same cluster: "' + pa + 'ขวบ" vs "' + ca + 'ขวบ"'); continue }
+      }
+    }
 
     // ── Shared content lint (เธอ-to-present, ดิฉัน, banned words, ซึ่ง, English cleanliness) ──
     const _prevA = valid.filter(v => v.speaker === 'A').slice(-1)[0]
@@ -4854,7 +4873,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'ขวบ':"ขวบ = year for counting AGE. Age must come up NATURALLY — someone asked, or it connects to a life experience. e.g. ลูกผมสองขวบแล้วครับ (my son is already 2), คุณรู้ไหมว่าเขาอายุเท่าไหรครับ (do you know how old he is?). NEVER announce your own age unprompted as a standalone statement.",
     'รถตู้':"รถตู้ = van — mention it in a PRACTICAL context showing what it's being used FOR. e.g. ผมจะเอารถตู้ไปขนของวันพรุ่งนี้ครับ (I'll use the van to move things tomorrow), รถตู้ผมจอดอยู่ข้างหน้าครับ (my van is parked out front), จะไปด้วยกันในรถตู้ไหมครับ (want to ride together in the van?). NEVER just declare 'I have a van' as a standalone statement.",
     'ถวาย':"ถวาย is ONLY used when offering something to a monk or royalty — never between ordinary friends. Use it: A mentions he saw a monk and offered food (ผมถวายข้าวพระครับ) or B says she offered flowers at the temple (ฉันถวายดอกไม้ที่วัดค่ะ). NEVER 'offer' things to each other using ถวาย.",
-    'งั้นก็':"use งั้นก็ as a transition meaning 'in that case...' or 'so then...' — A says something, then B responds with งั้นก็... to connect a consequence, e.g. งั้นก็ไปด้วยกันเลยครับ",
+    'งั้นก็':"งั้นก็ = 'in that case' / 'so then'. Must follow B's response as a natural consequence. Does NOT have to be the first word — can appear mid-sentence: โอ้ งั้นก็เอาเลยครับ, แบบนั้นเหรอ งั้นก็ผมช่วยเองครับ. NEVER start two consecutive A-lines with งั้นก็ — vary the opener.",
     'แน่นท้อง':"say someone's stomach feels tight/bloated/stuffed after overeating — แน่นท้อง is uncomfortable fullness, NOT the same as อิ่ม (satisfied full). e.g. กินเยอะไปหน่อย แน่นท้องเลยครับ (ate too much, stomach is stuffed)",
     'หิวน้ำ':"say that a PERSON is thirsty after doing some activity — e.g. ผมหิวน้ำมากเลยครับ (I'm really thirsty) or เธอหิวน้ำไหมครับ (Are you thirsty?). NEVER say a place or thing is thirsty",
     'หิว':"say that a person is hungry after doing some activity",
@@ -5282,6 +5301,10 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       prompt: sceneData.reply_prompt ? _morphPrompt(sceneData.reply_prompt, _nameB, _nameA) : _nameB + ' greets ' + _nameA + ' back',
       _source: 'ai:check-1', _target: 'greeting', words: []
     }
+    // Add word glosses to greeting pairs from phonetic
+    const _greetingWords = (ph) => !ph ? [] : enrichWordsWithCompounds(ph.trim().split(/\s+/).filter(Boolean).map(tok => ({p:tok,e:''})))
+    openingPair.words = _greetingWords(openingPhonetic)
+    replyLine.words = _greetingWords(replyLine.phonetic)
     prevLines.push(openingPair, replyLine)
     allPairs.push(openingPair, replyLine)
   }
@@ -5296,7 +5319,10 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       const fb = hb || makeFallbackPairs(target)
       lines = fb.slice(0,3).map((p,si) => ({ speaker:si%2===0?'A':'B', thai:p.thai, phonetic:p.phonetic, english:p.english, prompt:p.prompt, _source:(hb?'hardcoded:':'fallback:')+target.thai }))
     }
-    const tagged = lines.slice(0,3).map(l => ({ ...l, _source:l._source||'qwen:conv', _target:target.thai }))
+    const tagged = lines.slice(0,3).map(l => {
+      const rawWords = l.words && l.words.length > 0 ? l.words : (l.phonetic ? l.phonetic.trim().split(/\s+/).filter(Boolean).map(tok => ({p:tok,e:''})) : [])
+      return { ...l, _source:l._source||'qwen:conv', _target:target.thai, words: enrichWordsWithCompounds(rawWords) }
+    })
     allPairs.push(...tagged)
     // Update running topic — use middle pair for threading context
     if (tagged.length > 0) {
@@ -5775,7 +5801,14 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
           : ''
         const promptN = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, hintBody, i, { restaurantOverused: restaurantUses >= 3, runningTopic })
         let genN = null
-        try { genN = await callModel(GPT_MODEL, promptN) } catch (e) { genN = null }
+        for (let _r = 0; _r <= 2; _r++) {
+          try { genN = await callModel(GPT_MODEL, promptN); break }
+          catch (e) {
+            const isServer = /(503|502|500|timeout|network|fetch|ECONNRESET)/i.test(e.message || '')
+            if (!isServer || _r >= 2) { genN = null; break }
+            await new Promise(r => setTimeout(r, 1500))
+          }
+        }
         const strictMode = attempt < 2   // strict OOV on the first two passes, lenient after
         const { valid: vN, failures: fN } = validateSmartPairs(genN || [], target, strictMode)
         for (const p of vN) {

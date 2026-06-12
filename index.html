@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v389"/>
-<meta name="app-version" content="v389"/>
+<meta name="app-version" content="v390"/>
+<meta name="app-version" content="v390"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4452,7 +4452,7 @@ function randomNumberHint(vocab, pairIndex) {
     () => { const n = r(10); const ords = ['ที่หนึ่ง','ที่สอง','ที่สาม','ที่สี่','ที่ห้า','ที่หก','ที่เจ็ด','ที่แปด','ที่เก้า','ที่สิบ']; return 'Include an ordinal in Thai script: ' + ords[n-1] },
     () => { const n = r(9); const clfs = ['คน','อัน','ชิ้น','แก้ว','จาน','ครั้ง','วัน','ปี','เดือน','ลำ','ตัว']; return 'Include a number + classifier in Thai script: ' + safeWord(n) + ' ' + clfs[Math.floor(Math.random()*clfs.length)] },
   ]
-  return '\nMANDATORY NUMBER: LINE 1 must include a number — use the one below. It must be a MEANINGFUL detail (quantity of something being discussed, a time, a price, a count). Do NOT use it just to satisfy this rule alongside another forced element. Do NOT use calendar dates or months. Write ALL numbers in Thai script (สาม not 3).\n' + types[typeIdx]()
+  return '\nMANDATORY NUMBER: LINE 1 must include a meaningful number (time, price, count of something being discussed). BANNED: calendar dates, months, inventory counts of household items (e.g. how many forks/chairs/plates someone owns). Number must feel natural, not forced. Write in Thai script (สาม not 3).\n' + types[typeIdx]()
 }
 
 // ── Conversation-track generation ────────────────────────────────────────────
@@ -4467,7 +4467,7 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
     '"opening_phonetic":"full romanisation of opening",' +
     '"opening_english":"English translation of opening (omit particle)",' +
     '"opening_prompt":"One sentence describing what A says — use he/she not character names for the action, e.g. He greets her and asks how she is, or He asks if she has been waiting long",' +
-    '"reply":"B greets A back warmly AND directly responds to what A said. If A asked a question, B must answer it. ONE coherent response — do NOT string two unrelated statements together. Must end ค่ะ or คะ.",' +
+    '"reply":"B greets A back and responds to what A said. ONE simple sentence only — must end with a single ค่ะ or คะ. Do NOT ask if something is wrong, if he has problems, or if he is troubled. Keep it warm and positive.",' +
     '"reply_phonetic":"full romanisation of reply",' +
     '"reply_english":"English translation of reply (omit particle)",' +
     '"reply_prompt":"Use the character names, describe what B actually says — e.g. Nida greets Somchai back and says she just arrived. NEVER say she calls him Dad or any family name."}\n\nCRITICAL: whatever Thai name/nickname you use in the opening and reply Thai fields, use the SAME name (romanized) in all English fields. No different English name for the same character.'
@@ -4504,6 +4504,7 @@ function lintThaiContent(thai, english, speaker, target, opts) {
     'ธุรกิจ',           // not in vocab; use ร้าน/งาน/ขาย instead
     'เจ๊ง',             // slang for bankrupt, not in vocab
     'นักบัญชี',         // accountant, not in basic vocab
+    'ท่าน',           // extremely formal/royal pronoun — wrong register between friends
     // Calendar dates — never natural in casual spoken conversation between friends
     'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม',
@@ -4512,7 +4513,7 @@ function lintThaiContent(thai, english, speaker, target, opts) {
   for (const b of _banned) { if (t.includes(b)) { fails.push('Remove "' + b + '" — not in vocabulary / wrong register.'); break } }
   if (t.includes('เพิ่งเคย')) fails.push('Do not use เพิ่งเคย together — use เพิ่ง alone or เคย alone.')
   // Two sentences in one pair — if ครับ/ค่ะ/คะ appears more than once, two sentences are crammed in
-  const politeCount = (t.match(/ครับ|ค่ะ|คะ/g) || []).length
+  const politeCount = (t.match(/ครับ|ค่ะ|คะ|นะครับ|นะคะ/g) || []).length
   if (politeCount > 1) fails.push('Two sentences in one pair — each pair should have ONE sentence with one polite particle. Split or rewrite.')
   // Phonetic token repeat — if any phonetic token (non-particle) appears 3+ times, likely a mismatch
   if (opts && opts.phonetic) {
@@ -4732,6 +4733,14 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     const _thisPromptKey = (p.prompt||'').toLowerCase().replace(/[^a-zก-๙\s]/g,'').slice(0,40)
     const _dupPrompt = valid.some(v => (v.prompt||'').toLowerCase().replace(/[^a-zก-๙\s]/g,'').slice(0,40) === _thisPromptKey && _thisPromptKey.length > 10)
     if (_dupPrompt) { failures.push('Duplicate prompt in same cluster — vary the content'); continue }
+    // Fix 12+16: Also reject near-duplicate Thai text within same cluster
+    const _thisThai = (p.thai||'').replace(/[ครับค่ะคะๆ\s]/g,'').slice(0,18)
+    const _dupThai = _thisThai.length > 8 && valid.some(v => (v.thai||'').replace(/[ครับค่ะคะๆ\s]/g,'').slice(0,18) === _thisThai)
+    if (_dupThai) { failures.push('Thai text too similar to another pair in this cluster — vary the sentence'); continue }
+    // Fix 13: Reject word-spacing artifacts (model writing each Thai word separately)
+    const _thaiTokens = (p.thai||'').trim().split(/\s+/).filter(t => /[ก-๙]/.test(t))
+    if (_thaiTokens.length >= 4 && _thaiTokens.filter(t => t.replace(/[^ก-๙]/g,'').length <= 3).length > _thaiTokens.length * 0.6)
+      { failures.push('Thai words individually spaced — write Thai naturally without spaces between each word'); continue }
 
     // ── Shared content lint (เธอ-to-present, ดิฉัน, banned words, ซึ่ง, English cleanliness) ──
     const _prevA = valid.filter(v => v.speaker === 'A').slice(-1)[0]
@@ -4880,6 +4889,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'ขน':"ขน = animal fur or feathers — use for animals only. e.g. แมวตัวนี้ขนนุ่มมากครับ (this cat has soft fur). NEVER compliment a person's body hair.",
     'ผิว':"mention skin in a natural health context — good air, sunburned, or dry skin. NEVER compare skin to objects.",
     'นิ้ว':"mention a finger in a practical context — cut while cooking, pointing at something. NEVER say someone's fingers are beautiful.",
+    'ตัดออก':"ตัดออก = cut out/remove/delete something from a list, schedule, or plan. e.g. ตัดรายการนั้นออกจากเมนูได้เลยครับ (cut that item from the menu), ผมตัดงานนี้ออกจากตารางครับ (I removed this task from my schedule). NEVER use for physical removal from the body — you do not 'ตัดออก' acne or skin.",
+    'ชัด':"ชัด = clear/sharp/distinct in perception — for images (รูปชัดมาก), sound (ได้ยินชัดเจน), or understanding (เข้าใจชัดขึ้น). NOT about skin clarity. e.g. พูดชัดๆ หน่อยได้ไหมครับ (can you speak more clearly?), เห็นได้ชัดเลยครับ (it's clearly visible). NEVER use to describe clear skin — use ผิวดี or หน้าใส instead.",
   })[target.thai] || _properNouns[target.thai] || (() => {
     // Grammar particles — appear naturally in any sentence, don't force them
     const grammarParticles = ['ที่','ก็','แล้ว','ด้วย','อยู่','เลย','นะ','สิ','แต่','เพราะ','ถ้า','หรือ','และ','กับ','จน','พอ','ตอน','เมื่อ','ว่า','ให้','จาก','โดย','ของ','ใน','บน','ใต้']
@@ -5289,7 +5300,10 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       if (newTopic) runningTopic = newTopic
     }
     // Reset topic every 3 clusters to prevent one theme dominating the whole track
-    if ((i + 1) % 3 === 0) runningTopic = ''
+    if ((i + 1) % 3 === 0) {
+      const _seeds = ['food and eating out','travel and places visited','family and friends','health and exercise','daily tasks at work or home','shopping and markets','hobbies and free time','transport and getting around']
+      runningTopic = _seeds[Math.floor(Math.random() * _seeds.length)]
+    }
     prevLines.push(...tagged)
     const srcs = tagged.map(p=>p._source)
     while (srcs.length < 3) srcs.push(srcs[0]||'qwen:conv')
@@ -8516,11 +8530,30 @@ async function _qrFixPhonetic(groupPairs, apiKey, model) {
     if (!p.thai) { results.push(p); continue }
     try {
       const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
-        `Provide the correct romanized phonetic transcription for this Thai sentence. Return ONLY the phonetic string, nothing else.\nThai: ${p.thai}` }], 80)
-      results.push({ ...p, phonetic: raw.trim().replace(/```/g, '').trim() })
+        `Provide the correct romanized phonetic for this Thai sentence. Return ONLY romanized phonetic (no Thai characters). Example: สวัสดีครับ → sawasdee krap\nThai: ${p.thai}` }], 80)
+      const cleaned = raw.trim().replace(/```/g, '').trim()
+      // Fix 2: reject if model returned Thai instead of romanisation
+      if (/[ก-๙]/.test(cleaned)) { results.push(p); continue }
+      results.push({ ...p, phonetic: cleaned })
     } catch(e) { results.push(p) }
   }
   return results
+}
+
+function _qrEnrichNewPairs(newPairs, originalPairs) {
+  // Fix 3: enrich words for quality-review-generated pairs
+  return newPairs.map((p, pi) => ({
+    ...p,
+    words: (() => {
+      if (p.words && p.words.length > 0) return enrichWordsWithCompounds(p.words)
+      const phonetic = p.phonetic || (originalPairs[pi] && originalPairs[pi].phonetic) || ''
+      if (phonetic) {
+        const skeleton = phonetic.trim().split(/\s+/).filter(Boolean).map(tok => ({ p: tok, e: '' }))
+        return enrichWordsWithCompounds(skeleton)
+      }
+      return []
+    })()
+  }))
 }
 
 async function _qrImprove(verdict, group, allPairs, apiKey, model) {
@@ -8534,22 +8567,51 @@ async function _qrImprove(verdict, group, allPairs, apiKey, model) {
 Context before:
 ${prevPairs.map(fmt).join('\n') || '  (start)'}
 
-Current pairs (fix the issue only — keep structure and topic where possible):
+Current pairs (fix the issue — keep structure and topic where possible):
 ${groupPairs.map(fmt).join('\n')}
 
 Context after:
 ${nextPairs.map(fmt).join('\n') || '  (end)'}
 
-Fix ONLY the specific issue. Same speaker order: ${groupPairs.map(p => p.speaker||'A').join('-')}. Forbidden: ${_QR_BANNED.join(' ')}.
+Requirements: same speaker order (${groupPairs.map(p => p.speaker||'A').join('-')}). Must include "${targetWord}". Forbidden: ${_QR_BANNED.join(' ')}.
+The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NOT quality notes.
 Return ONLY JSON array of ${groupPairs.length} objects, no markdown:
-[{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"...","words":[{"p":"...","e":"..."}]}]`
+[{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
   const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1200)
   const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
   if (!Array.isArray(parsed) || parsed.length < groupPairs.length) throw new Error('Bad response')
-  return parsed.slice(0, groupPairs.length).map((p, pi) => ({
-    ...groupPairs[pi], ...p,
-    words: p.words && p.words.length ? enrichWordsWithCompounds(p.words) : groupPairs[pi].words
-  }))
+  // Fix 4: verify target word present
+  const targetFound = parsed.some(p => p.thai && p.thai.includes(targetWord))
+  if (!targetFound) throw new Error(`Target "${targetWord}" missing from improved pairs`)
+  return _qrEnrichNewPairs(parsed.slice(0, groupPairs.length), groupPairs)
+}
+
+async function _qrImproveGroup(group, allPairs, apiKey, model) {
+  const { targetWord, indices, pairs: groupPairs } = group
+  const startIdx = indices[0]
+  const prevPairs = allPairs.slice(Math.max(0, startIdx - 3), startIdx)
+  const nextPairs = allPairs.slice(startIdx + groupPairs.length, Math.min(allPairs.length, startIdx + groupPairs.length + 3))
+  const fmt = p => `  ${p.speaker||'A'}: ${p.thai} (${p.english})`
+  const speakerPattern = groupPairs.map(p => p.speaker||'A').join('-')
+  const prompt = `Generate 3 replacement Thai learning pairs. Target word: "${targetWord}".
+
+Context before:
+${prevPairs.map(fmt).join('\n') || '  (start)'}
+
+Context after:
+${nextPairs.map(fmt).join('\n') || '  (end)'}
+
+Requirements: speaker order ${speakerPattern}. Must include "${targetWord}". Flow naturally from before to after. Simple everyday Thai. Forbidden: ${_QR_BANNED.join(' ')}.
+The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NOT quality evaluation notes.
+Return ONLY JSON array of 3 objects, no markdown:
+[{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]},{"speaker":"B","thai":"...","phonetic":"...","english":"...","prompt":"She asks ...","words":[{"p":"...","e":"..."}]},{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
+  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1500)
+  const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
+  if (!Array.isArray(parsed) || parsed.length < 3) throw new Error('Bad response format')
+  // Fix 4: verify target word present
+  const targetFound = parsed.some(p => p.thai && p.thai.includes(targetWord))
+  if (!targetFound) throw new Error(`Target "${targetWord}" missing from replaced pairs`)
+  return _qrEnrichNewPairs(parsed.slice(0, 3).map((p, pi) => ({ ...groupPairs[pi], ...p })), groupPairs)
 }
 
 async function _qrReplace(group, allPairs, apiKey, model) {
@@ -8563,20 +8625,25 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
   const [results, setResults] = useState(null)
   const [updatedPairs, setUpdatedPairs] = useState(null)
   const [quickStats, setQuickStats] = useState(null)
+  const qrCancelRef = useRef(false)
 
   useEffect(() => {
+    qrCancelRef.current = false
     const flagged = _qrScanGroups(track)
     const total = _qrGetAllGroups(track).length
     setQuickStats({ flagged: flagged.length, total })
+    return () => { qrCancelRef.current = true }  // cancel on unmount
   }, [])
 
   async function runCheck() {
+    qrCancelRef.current = false
     setPhase('checking')
     const allPairs = [...(track.pairs || [])]
     const groups = _qrGetAllGroups(track)
     const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, error: 0 }
 
     for (let i = 0; i < groups.length; i++) {
+      if (qrCancelRef.current) break  // Fix 5: stop loop if cancelled
       const group = groups[i]
       setProgress(Math.round(i / groups.length * 100))
       setProgressMsg(`Evaluating ${group.targetWord} (${i + 1}/${groups.length})…`)
@@ -8589,15 +8656,18 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
         if (verdict.action === 'fix_phonetic') newPairs = await _qrFixPhonetic(group.pairs, apiKey, model)
         else if (verdict.action === 'improve') newPairs = await _qrImprove(verdict, group, allPairs, apiKey, model)
         else newPairs = await _qrReplace(group, allPairs, apiKey, model)
+        if (qrCancelRef.current) break  // check again after await
         group.indices.forEach((idx, pi) => { if (newPairs && newPairs[pi]) allPairs[idx] = { ...newPairs[pi], _source: `ai:${verdict.action}:${group.targetWord}` } })
         counts[verdict.action] = (counts[verdict.action] || 0) + 1
       } catch(e) { console.warn('[QR]', group.targetWord, e.message); counts.error++ }
     }
 
-    setProgress(100)
-    setResults(counts)
-    setUpdatedPairs(allPairs)
-    setPhase('done')
+    if (!qrCancelRef.current) {
+      setProgress(100)
+      setResults(counts)
+      setUpdatedPairs(allPairs)
+      setPhase('done')
+    }
   }
 
   const totalGroups = quickStats ? quickStats.total : 0
@@ -8606,7 +8676,7 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
     return (
       <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <button onClick={onSkip} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}><Icon name="arrow_left" size={20} /></button>
+          <button onClick={() => { qrCancelRef.current = true; onSkip() }} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}><Icon name="arrow_left" size={20} /></button>
           <span className="display" style={{ fontSize: 18 }}>Quality Check</span>
         </div>
         <Card style={{ padding: 16, marginBottom: 12 }}>
@@ -8626,7 +8696,7 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
             </div>
           )}
         </Card>
-        <Btn onClick={onSkip} variant="secondary" style={{ width: '100%', justifyContent: 'center', marginBottom: 8 }}>Skip — Study Now</Btn>
+        <Btn onClick={() => { qrCancelRef.current = true; onSkip() }} variant="secondary" style={{ width: '100%', justifyContent: 'center', marginBottom: 8 }}>Skip — Study Now</Btn>
         <Btn onClick={runCheck} style={{ width: '100%', justifyContent: 'center' }}>Run Quality Check ▶</Btn>
       </div>
     )

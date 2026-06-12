@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v391"/>
-<meta name="app-version" content="v391"/>
+<meta name="app-version" content="v392"/>
+<meta name="app-version" content="v392"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4514,7 +4514,7 @@ function lintThaiContent(thai, english, speaker, target, opts) {
   if (t.includes('เพิ่งเคย')) fails.push('Do not use เพิ่งเคย together — use เพิ่ง alone or เคย alone.')
   // Two sentences in one pair — if ครับ/ค่ะ/คะ appears more than once, two sentences are crammed in
   const politeCount = (t.match(/ครับ|ค่ะ|คะ|นะครับ|นะคะ/g) || []).length
-  if (politeCount > 1) fails.push('Two sentences in one pair — each pair should have ONE sentence with one polite particle. Split or rewrite.')
+  if (politeCount > 2) fails.push('Too many sentences in one pair — each pair should have at most ONE or TWO clauses with no more than two polite particles total. Split or simplify.')
   // Phonetic token repeat — if any phonetic token (non-particle) appears 3+ times, likely a mismatch
   if (opts && opts.phonetic) {
     const phToks = (opts.phonetic || '').trim().split(/\s+/).filter(Boolean)

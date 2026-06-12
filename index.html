@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v387"/>
-<meta name="app-version" content="v387"/>
+<meta name="app-version" content="v389"/>
+<meta name="app-version" content="v389"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -8429,9 +8429,9 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// ── Quality Review helpers ────────────────────────────────────────────────────
+// ── Quality Review ─────────────────────────────────────────────────────────────
 
-const _QR_BANNED = ['ธุรกิจ','เจ๊ง','สัญญา','นักบัญชี','เหมาะ','เหมาะสม','แนะนำ','กว้างขวาง','สดใส','แต่งหน้า']
+const _QR_BANNED = ['ธุรกิจ','เจ๊ง','นักบัญชี','เหมาะ','เหมาะสม','แนะนำ','กว้างขวาง','สดใส','แต่งหน้า']
 
 function _qrSourceTarget(src) {
   if (!src) return null
@@ -8439,6 +8439,18 @@ function _qrSourceTarget(src) {
   if (parts.length >= 3) return parts.slice(2).join(':')
   if (parts.length === 2 && /[ก-๙]/.test(parts[1])) return parts[1]
   return null
+}
+
+function _qrGetAllGroups(track) {
+  const pairs = track.pairs || []
+  const groupMap = {}, groupOrder = []
+  pairs.forEach((p, i) => {
+    const tgt = _qrSourceTarget(p._source) || p._target || null
+    if (!tgt || tgt === 'greeting') return
+    if (!groupMap[tgt]) { groupMap[tgt] = []; groupOrder.push(tgt) }
+    groupMap[tgt].push(i)
+  })
+  return groupOrder.map(tgt => ({ targetWord: tgt, indices: groupMap[tgt], pairs: groupMap[tgt].map(i => pairs[i]) }))
 }
 
 function _qrScanGroups(track) {
@@ -8458,10 +8470,7 @@ function _qrScanGroups(track) {
     groupPairs.forEach(p => {
       const src = p._source || ''
       if (src.includes('best-attempt')) { if (!issues.includes('best-attempt')) issues.push('best-attempt') }
-      else {
-        const n = parseInt((src.match(/check-(\d+)/)||['','0'])[1])
-        if (n >= 8) { const tag = `check-${n}`; if (!issues.includes(tag)) issues.push(tag) }
-      }
+      else { const n = parseInt((src.match(/check-(\d+)/)||['','0'])[1]); if (n >= 8) { const tag=`check-${n}`; if (!issues.includes(tag)) issues.push(tag) } }
       _QR_BANNED.forEach(w => { if (p.thai && p.thai.includes(w)) { const tag=`OOV: ${w}`; if (!issues.includes(tag)) issues.push(tag) } })
       if (!p.words || !p.words.length) { if (!issues.includes('no glosses')) issues.push('no glosses') }
     })
@@ -8470,197 +8479,196 @@ function _qrScanGroups(track) {
   return flagged
 }
 
-async function _qrImproveGroup(group, allPairs, apiKey, model) {
+async function _qrEvaluateGroup(group, allPairs, apiKey, model) {
   const { targetWord, indices, pairs: groupPairs } = group
   const startIdx = indices[0]
   const prevPairs = allPairs.slice(Math.max(0, startIdx - 3), startIdx)
   const nextPairs = allPairs.slice(startIdx + groupPairs.length, Math.min(allPairs.length, startIdx + groupPairs.length + 3))
-  const fmt = p => `  ${p.speaker || 'A'}: ${p.thai} (${p.english})`
-  const prompt = `Improve these weak Thai language learning pairs. Target word: "${targetWord}".
+  const fmt = p => `  ${p.speaker||'A'}: ${p.thai} (${p.english})`
+  const prompt = `Evaluate this Thai language learning group. Target word: "${targetWord}"
 
-Context before (keep these unchanged):
-${prevPairs.map(fmt).join('\n') || '  (start of conversation)'}
+Context before:
+${prevPairs.map(fmt).join('\n') || '  (start)'}
 
-Weak pairs to replace (issues: ${group.issues.join(', ')}):
+Group to evaluate:
 ${groupPairs.map(fmt).join('\n')}
 
-Context after (keep these unchanged):
-${nextPairs.map(fmt).join('\n') || '  (end of conversation)'}
+Context after:
+${nextPairs.map(fmt).join('\n') || '  (end)'}
 
-Generate 3 improved replacement pairs using "${targetWord}" naturally. Requirements:
-- Flow naturally FROM the before-context INTO the after-context
-- Simple everyday spoken Thai — not formal, not aristocratic
-- Forbidden words: ${_QR_BANNED.join(' ')}
-- Do NOT randomly announce ages, dates, or numbers unless they flow naturally
-- Speaker pattern must match originals: ${groupPairs.map(p=>p.speaker||'A').join('-')}
+Return JSON: {"action":"clean|fix_phonetic|improve|replace","reason":"one sentence"}
 
-Return ONLY a JSON array of exactly 3 objects, no markdown:
-[{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"...","words":[{"p":"...","e":"..."}]},{"speaker":"B","thai":"...","phonetic":"...","english":"...","prompt":"...","words":[{"p":"...","e":"..."}]},{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"...","words":[{"p":"...","e":"..."}]}]`
-  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1500)
+action:
+- "clean": flows naturally, target word used correctly, connects to context, simple everyday Thai
+- "fix_phonetic": Thai is fine but romanization has errors or doesn't match the Thai words
+- "improve": fixable issue — topic jump, two unrelated sentences crammed together, forced unnatural number, vague prompt — but the sentence is salvageable
+- "replace": too broken — OOV words (${_QR_BANNED.join(' ')}), completely random/aristocratic sentence, no connection to anything
+
+Return ONLY JSON, no markdown.`
+  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 150)
   const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
-  if (!Array.isArray(parsed) || parsed.length < 3) throw new Error('Bad response format')
-  return parsed.slice(0, 3).map((p, pi) => ({
+  return { action: parsed.action || 'clean', reason: parsed.reason || '' }
+}
+
+async function _qrFixPhonetic(groupPairs, apiKey, model) {
+  const results = []
+  for (const p of groupPairs) {
+    if (!p.thai) { results.push(p); continue }
+    try {
+      const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
+        `Provide the correct romanized phonetic transcription for this Thai sentence. Return ONLY the phonetic string, nothing else.\nThai: ${p.thai}` }], 80)
+      results.push({ ...p, phonetic: raw.trim().replace(/```/g, '').trim() })
+    } catch(e) { results.push(p) }
+  }
+  return results
+}
+
+async function _qrImprove(verdict, group, allPairs, apiKey, model) {
+  const { targetWord, indices, pairs: groupPairs } = group
+  const startIdx = indices[0]
+  const prevPairs = allPairs.slice(Math.max(0, startIdx - 3), startIdx)
+  const nextPairs = allPairs.slice(startIdx + groupPairs.length, Math.min(allPairs.length, startIdx + groupPairs.length + 3))
+  const fmt = p => `  ${p.speaker||'A'}: ${p.thai} (${p.english})`
+  const prompt = `Fix this Thai learning group. Issue: "${verdict.reason}". Target word: "${targetWord}".
+
+Context before:
+${prevPairs.map(fmt).join('\n') || '  (start)'}
+
+Current pairs (fix the issue only — keep structure and topic where possible):
+${groupPairs.map(fmt).join('\n')}
+
+Context after:
+${nextPairs.map(fmt).join('\n') || '  (end)'}
+
+Fix ONLY the specific issue. Same speaker order: ${groupPairs.map(p => p.speaker||'A').join('-')}. Forbidden: ${_QR_BANNED.join(' ')}.
+Return ONLY JSON array of ${groupPairs.length} objects, no markdown:
+[{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"...","words":[{"p":"...","e":"..."}]}]`
+  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1200)
+  const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
+  if (!Array.isArray(parsed) || parsed.length < groupPairs.length) throw new Error('Bad response')
+  return parsed.slice(0, groupPairs.length).map((p, pi) => ({
     ...groupPairs[pi], ...p,
-    _source: 'ai:improved:' + targetWord,
-    words: p.words && p.words.length ? enrichWordsWithCompounds(p.words) : (p.words || [])
+    words: p.words && p.words.length ? enrichWordsWithCompounds(p.words) : groupPairs[pi].words
   }))
 }
 
-// ── QualityReview Component ───────────────────────────────────────────────────
+async function _qrReplace(group, allPairs, apiKey, model) {
+  return await _qrImproveGroup(group, allPairs, apiKey, model)
+}
 
 function QualityReview({ track, apiKey, model, onSave, onSkip }) {
   const [phase, setPhase] = useState('summary')
-  const [flagged, setFlagged] = useState([])
-  const [proposals, setProposals] = useState({})
-  const [accepted, setAccepted] = useState({})
-  const [viewMode, setViewMode] = useState({})
   const [progress, setProgress] = useState(0)
   const [progressMsg, setProgressMsg] = useState('')
+  const [results, setResults] = useState(null)
+  const [updatedPairs, setUpdatedPairs] = useState(null)
+  const [quickStats, setQuickStats] = useState(null)
 
   useEffect(() => {
-    const groups = _qrScanGroups(track)
-    setFlagged(groups)
-    const acc = {}; groups.forEach(g => { acc[g.targetWord] = true }); setAccepted(acc)
+    const flagged = _qrScanGroups(track)
+    const total = _qrGetAllGroups(track).length
+    setQuickStats({ flagged: flagged.length, total })
   }, [])
 
-  async function improveAll() {
-    setPhase('improving')
-    const allPairs = track.pairs || []
-    const newProposals = {}
-    for (let i = 0; i < flagged.length; i++) {
-      const group = flagged[i]
-      setProgress(Math.round(i / flagged.length * 100))
-      setProgressMsg(`Improving ${group.targetWord} (${i + 1}/${flagged.length})…`)
+  async function runCheck() {
+    setPhase('checking')
+    const allPairs = [...(track.pairs || [])]
+    const groups = _qrGetAllGroups(track)
+    const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, error: 0 }
+
+    for (let i = 0; i < groups.length; i++) {
+      const group = groups[i]
+      setProgress(Math.round(i / groups.length * 100))
+      setProgressMsg(`Evaluating ${group.targetWord} (${i + 1}/${groups.length})…`)
       try {
-        const improved = await _qrImproveGroup(group, allPairs, apiKey, model)
-        newProposals[group.targetWord] = improved
-      } catch(e) { newProposals[group.targetWord] = 'error' }
-      setProposals({ ...newProposals })
+        const verdict = await _qrEvaluateGroup(group, allPairs, apiKey, model)
+        if (verdict.action === 'clean') { counts.clean++; continue }
+        const labels = { fix_phonetic: 'Fixing phonetic', improve: 'Improving', replace: 'Replacing' }
+        setProgressMsg(`${labels[verdict.action] || 'Fixing'}: ${group.targetWord} — ${verdict.reason}`)
+        let newPairs
+        if (verdict.action === 'fix_phonetic') newPairs = await _qrFixPhonetic(group.pairs, apiKey, model)
+        else if (verdict.action === 'improve') newPairs = await _qrImprove(verdict, group, allPairs, apiKey, model)
+        else newPairs = await _qrReplace(group, allPairs, apiKey, model)
+        group.indices.forEach((idx, pi) => { if (newPairs && newPairs[pi]) allPairs[idx] = { ...newPairs[pi], _source: `ai:${verdict.action}:${group.targetWord}` } })
+        counts[verdict.action] = (counts[verdict.action] || 0) + 1
+      } catch(e) { console.warn('[QR]', group.targetWord, e.message); counts.error++ }
     }
-    setProgress(100); setPhase('review')
+
+    setProgress(100)
+    setResults(counts)
+    setUpdatedPairs(allPairs)
+    setPhase('done')
   }
 
-  function saveAndStudy() {
-    const pairs = [...(track.pairs || [])]
-    flagged.forEach(group => {
-      const prop = proposals[group.targetWord]
-      if (accepted[group.targetWord] && Array.isArray(prop)) {
-        group.indices.forEach((pairIdx, pi) => { if (prop[pi]) pairs[pairIdx] = prop[pi] })
-      }
-    })
-    onSave({ ...track, pairs })
-  }
+  const totalGroups = quickStats ? quickStats.total : 0
 
-  const totalGroups = Object.keys((() => {
-    const m = {}; (track.pairs||[]).forEach(p => { const t=_qrSourceTarget(p._source); if(t) m[t]=1 }); return m
-  })()).length
-
-  // SUMMARY
   if (phase === 'summary') {
-    const issueMap = {}
-    flagged.forEach(g => g.issues.forEach(iss => { issueMap[iss] = (issueMap[iss]||0)+1 }))
     return (
-      <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
-          <button onClick={onSkip} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}><Icon name="arrow_left" size={20} /></button>
-          <span className="display" style={{ fontSize:18 }}>Quality Review</span>
+      <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <button onClick={onSkip} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}><Icon name="arrow_left" size={20} /></button>
+          <span className="display" style={{ fontSize: 18 }}>Quality Check</span>
         </div>
-        <Card style={{ padding:16, marginBottom:12 }}>
-          <div style={{ display:'flex', justifyContent:'space-around', marginBottom:12 }}>
-            <div style={{ textAlign:'center' }}>
-              <p style={{ fontSize:28, fontWeight:700, color:'#10b981', fontFamily:'DM Mono,monospace' }}>{totalGroups - flagged.length}</p>
-              <p style={{ fontSize:11, color:'var(--muted)' }}>clean</p>
-            </div>
-            <div style={{ width:1, background:'var(--border)' }} />
-            <div style={{ textAlign:'center' }}>
-              <p style={{ fontSize:28, fontWeight:700, color: flagged.length > 0 ? '#f59e0b' : '#10b981', fontFamily:'DM Mono,monospace' }}>{flagged.length}</p>
-              <p style={{ fontSize:11, color:'var(--muted)' }}>flagged</p>
-            </div>
-          </div>
-          {Object.entries(issueMap).slice(0,6).map(([k,v]) => (
-            <p key={k} style={{ fontSize:11, color:'var(--muted)', marginBottom:3 }}>• {v}× {k}</p>
-          ))}
-          {flagged.length === 0 && <p style={{ fontSize:12, color:'#10b981', textAlign:'center' }}>✅ All pairs look good!</p>}
-        </Card>
-        <Btn onClick={onSkip} variant="secondary" style={{ width:'100%', justifyContent:'center', marginBottom:8 }}>Skip — Study Now</Btn>
-        {flagged.length > 0 && <Btn onClick={improveAll} style={{ width:'100%', justifyContent:'center' }}>Improve {flagged.length} Groups ▶</Btn>}
-      </div>
-    )
-  }
-
-  // IMPROVING
-  if (phase === 'improving') {
-    return (
-      <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto' }}>
-        <span className="display" style={{ fontSize:18, display:'block', marginBottom:20 }}>Improving Pairs…</span>
-        <Card style={{ padding:16 }}>
-          <div style={{ height:8, borderRadius:4, background:'var(--surface2)', marginBottom:8, overflow:'hidden' }}>
-            <div style={{ height:'100%', borderRadius:4, background:'linear-gradient(90deg,#d4a94a,#b88a35)', width:progress+'%', transition:'width 0.3s' }} />
-          </div>
-          <p style={{ fontSize:12, color:'var(--muted)' }}>{progressMsg}</p>
-        </Card>
-      </div>
-    )
-  }
-
-  // REVIEW
-  const acceptedCount = flagged.filter(g => accepted[g.targetWord] && Array.isArray(proposals[g.targetWord])).length
-  return (
-    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', paddingBottom:80 }}>
-      <div style={{ display:'flex', alignItems:'center', marginBottom:16 }}>
-        <span className="display" style={{ fontSize:18 }}>Review Changes</span>
-        <span style={{ fontSize:11, color:'var(--muted)', marginLeft:'auto' }}>{flagged.filter(g=>Array.isArray(proposals[g.targetWord])).length}/{flagged.length} improved</span>
-      </div>
-      {flagged.map(group => {
-        const prop = proposals[group.targetWord]
-        const isAcc = !!accepted[group.targetWord]
-        const isError = prop === 'error'
-        const mode = viewMode[group.targetWord] || (Array.isArray(prop) ? 'new' : 'old')
-        const displayPairs = (mode === 'new' && Array.isArray(prop)) ? prop : group.pairs
-        return (
-          <Card key={group.targetWord} style={{ padding:12, marginBottom:10, borderColor: isError?'#ef444488': isAcc&&Array.isArray(prop)?'#10b98166':'var(--border)' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
-              <span style={{ fontSize:13, fontWeight:700, color:'var(--gold)' }}>{group.targetWord}</span>
-              <span style={{ fontSize:10, color:'#ef4444', flex:1 }}>{group.issues.slice(0,2).join(' · ')}</span>
-              {Array.isArray(prop) && (
-                <button onClick={() => setViewMode(v => ({...v, [group.targetWord]: mode==='new'?'old':'new'}))}
-                  style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', cursor:'pointer' }}>
-                  {mode==='new'?'see old':'see new'}
-                </button>
-              )}
-            </div>
-            {isError
-              ? <p style={{ fontSize:11, color:'#ef4444' }}>⚠ Couldn't improve — original kept</p>
-              : <div style={{ fontSize:12, lineHeight:1.9 }}>
-                  {displayPairs.map((p,i) => (
-                    <p key={i} style={{ color: mode==='new'?'#94a3b8':'#64748b' }}>
-                      <span style={{ color: (p.speaker||'A')==='A'?'var(--gold)':'#94a3b8', marginRight:6, fontSize:10 }}>{p.speaker||'A'}</span>{p.thai}
-                    </p>
-                  ))}
-                </div>
-            }
-            {Array.isArray(prop) && !isError && (
-              <div style={{ display:'flex', gap:6, marginTop:8 }}>
-                <button onClick={() => setAccepted(a=>({...a,[group.targetWord]:true}))}
-                  style={{ flex:1, padding:'5px 0', borderRadius:7, border:'none', cursor:'pointer', background:isAcc?'#063d2e':'var(--surface2)', color:isAcc?'#10b981':'var(--muted)', fontSize:11 }}>
-                  {isAcc?'✓ use new':'use new'}
-                </button>
-                <button onClick={() => setAccepted(a=>({...a,[group.targetWord]:false}))}
-                  style={{ flex:1, padding:'5px 0', borderRadius:7, border:'none', cursor:'pointer', background:!isAcc?'rgba(239,68,68,0.1)':'var(--surface2)', color:!isAcc?'#ef4444':'var(--muted)', fontSize:11 }}>
-                  keep original
-                </button>
+        <Card style={{ padding: 16, marginBottom: 12 }}>
+          <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, marginBottom: 14 }}>
+            AI evaluates each group, then automatically fixes phonetic errors, improves content issues, or replaces broken pairs. No manual review.
+          </p>
+          {quickStats && (
+            <div style={{ display: 'flex', gap: 20 }}>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--gold)', fontFamily: 'DM Mono,monospace' }}>{quickStats.total}</p>
+                <p style={{ fontSize: 11, color: 'var(--muted)' }}>groups</p>
               </div>
-            )}
-          </Card>
-        )
-      })}
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, padding:16, background:'rgba(11,17,32,0.97)', borderTop:'1px solid var(--border)' }}>
-        <Btn onClick={saveAndStudy} style={{ width:'100%', justifyContent:'center' }}>
-          Save{acceptedCount>0?` (${acceptedCount} improved)`:''} & Study ▶
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 24, fontWeight: 700, color: quickStats.flagged > 0 ? '#f59e0b' : '#10b981', fontFamily: 'DM Mono,monospace' }}>{quickStats.flagged}</p>
+                <p style={{ fontSize: 11, color: 'var(--muted)' }}>obvious issues</p>
+              </div>
+            </div>
+          )}
+        </Card>
+        <Btn onClick={onSkip} variant="secondary" style={{ width: '100%', justifyContent: 'center', marginBottom: 8 }}>Skip — Study Now</Btn>
+        <Btn onClick={runCheck} style={{ width: '100%', justifyContent: 'center' }}>Run Quality Check ▶</Btn>
+      </div>
+    )
+  }
+
+  if (phase === 'checking') {
+    return (
+      <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+        <span className="display" style={{ fontSize: 18, display: 'block', marginBottom: 20 }}>Checking Quality…</span>
+        <Card style={{ padding: 16 }}>
+          <div style={{ height: 8, borderRadius: 4, background: 'var(--surface2)', marginBottom: 10, overflow: 'hidden' }}>
+            <div style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg,#d4a94a,#b88a35)', width: progress + '%', transition: 'width 0.4s' }} />
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, minHeight: 36 }}>{progressMsg}</p>
+          <p style={{ fontSize: 10, color: '#475569', marginTop: 8 }}>{progress}% complete — tap back to cancel and study as-is</p>
+        </Card>
+      </div>
+    )
+  }
+
+  if (phase === 'done' && results) {
+    const changed = (results.fix_phonetic || 0) + (results.improve || 0) + (results.replace || 0)
+    return (
+      <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+        <span className="display" style={{ fontSize: 18, display: 'block', marginBottom: 20 }}>Quality Check Done</span>
+        <Card style={{ padding: 16, marginBottom: 16 }}>
+          {results.fix_phonetic > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔤 {results.fix_phonetic} phonetic{results.fix_phonetic > 1 ? 's' : ''} re-transcribed</p>}
+          {results.improve > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>✏️ {results.improve} group{results.improve > 1 ? 's' : ''} improved</p>}
+          {results.replace > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔄 {results.replace} group{results.replace > 1 ? 's' : ''} replaced</p>}
+          {results.error > 0 && <p style={{ fontSize: 12, color: '#f59e0b', marginBottom: 8 }}>⚠ {results.error} group{results.error > 1 ? 's' : ''} unchanged (error)</p>}
+          {results.clean > 0 && <p style={{ fontSize: 12, color: '#10b981', marginBottom: 8 }}>✅ {results.clean} group{results.clean > 1 ? 's' : ''} already clean</p>}
+          {changed === 0 && results.error === 0 && results.clean > 0 && <p style={{ fontSize: 13, color: '#10b981', fontWeight: 600, marginTop: 4 }}>Track looks great — nothing needed fixing.</p>}
+          {changed === 0 && results.error === 0 && results.clean === 0 && <p style={{ fontSize: 13, color: '#f59e0b', fontWeight: 600, marginTop: 4 }}>⚠ Couldn't read track groups — pairs may be missing target word markers.</p>}
+        </Card>
+        <Btn onClick={() => onSave({ ...track, pairs: updatedPairs || track.pairs })} style={{ width: '100%', justifyContent: 'center' }}>
+          Save & Study ▶
         </Btn>
       </div>
-    </div>
-  )
+    )
+  }
+
+  return null
 }
 
 

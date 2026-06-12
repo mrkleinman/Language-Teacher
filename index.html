@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v390"/>
-<meta name="app-version" content="v390"/>
+<meta name="app-version" content="v391"/>
+<meta name="app-version" content="v391"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4889,7 +4889,12 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'ขน':"ขน = animal fur or feathers — use for animals only. e.g. แมวตัวนี้ขนนุ่มมากครับ (this cat has soft fur). NEVER compliment a person's body hair.",
     'ผิว':"mention skin in a natural health context — good air, sunburned, or dry skin. NEVER compare skin to objects.",
     'นิ้ว':"mention a finger in a practical context — cut while cooking, pointing at something. NEVER say someone's fingers are beautiful.",
-    'ตัดออก':"ตัดออก = cut out/remove/delete something from a list, schedule, or plan. e.g. ตัดรายการนั้นออกจากเมนูได้เลยครับ (cut that item from the menu), ผมตัดงานนี้ออกจากตารางครับ (I removed this task from my schedule). NEVER use for physical removal from the body — you do not 'ตัดออก' acne or skin.",
+    'ข้างล่าง':"ข้างล่าง = downstairs / below / down there. Use for LOCATION: e.g. ของอยู่ข้างล่างครับ (the thing is downstairs), รอผมข้างล่างก่อนได้ไหมครับ (can you wait for me downstairs?), ลงไปข้างล่างกันเลยครับ (let's go down). NEVER use as a clothing descriptor — 'clothes below' makes no sense.",
+    'ผู้โดยสาร':"ผู้โดยสาร = passenger. Use in a TRANSPORT context — on a bus, train, taxi, or plane. e.g. ผู้โดยสารเยอะมากเลยครับวันนี้ (there are so many passengers today), ผมรอรถอยู่ข้างๆ ผู้โดยสารคนอื่นครับ (I'm waiting beside other passengers). Must be in a scene where transport is mentioned — don't drop passengers into a conversation about nicknames.",
+    'เรียก':"เรียก = call/summon/name something. Natural uses: เพื่อนเรียกผมว่า (friends call me...), เรียกแท็กซี่ (call a taxi), เรียกชื่อ (call someone's name). ALWAYS say WHO is calling WHO — 'I don't know if they will call me' with no referent for 'they' is vague and unnatural. Give concrete actors: เพื่อนเรียกผมว่า, พนักงานเรียกชื่อผม.",
+    'พายุ':"พายุ = storm. ONE sentence only — pick one angle: where it hit, how strong it was, or when it happened. e.g. เมื่อคืนมีพายุเข้าครับ (a storm came in last night), พายุแรงมากเลยครับ (the storm was really strong), ทางใต้มีพายุครับ (there's a storm in the south). Do NOT combine two of these into one pair — the validator will reject two-sentence pairs.",
+    'พระอาทิตย์ตก':"พระอาทิตย์ตก = sunset. Mention it in context of WHERE or WHEN you saw it — e.g. เห็นพระอาทิตย์ตกที่หาดครับ (saw the sunset at the beach), พระอาทิตย์ตกสวยมากเมื่อวานครับ (the sunset was beautiful yesterday). Connect it to something being discussed — don't just announce you like sunsets unprompted.",
+    'ตัดออก':"ตัดออก = cut out/remove/delete something from a list, schedule, or plan. e.g. ตัดรายการนั้นออกจากเมนูได้เลยครับ (cut that item from the menu), ผมตัดงานนี้ออกจากตารางครับ (I removed this task from my schedule). NEVER use for physical removal from the body — you do not ตัดออก acne or skin.",
     'ชัด':"ชัด = clear/sharp/distinct in perception — for images (รูปชัดมาก), sound (ได้ยินชัดเจน), or understanding (เข้าใจชัดขึ้น). NOT about skin clarity. e.g. พูดชัดๆ หน่อยได้ไหมครับ (can you speak more clearly?), เห็นได้ชัดเลยครับ (it's clearly visible). NEVER use to describe clear skin — use ผิวดี or หน้าใส instead.",
   })[target.thai] || _properNouns[target.thai] || (() => {
     // Grammar particles — appear naturally in any sentence, don't force them
@@ -5723,9 +5728,10 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
   const CONCURRENCY = 5
   for (let batch = 0; batch < targets.length; batch += CONCURRENCY) {
     if (stopSignal && stopSignal.paused) break
-    await Promise.all(targets.slice(batch, batch + CONCURRENCY).map(async (target, bi) => {
+    await Promise.allSettled(targets.slice(batch, batch + CONCURRENCY).map(async (target, bi) => {
       const i = batch + bi
       if (stopSignal && stopSignal.paused) return
+      try {
     const wordType = classifyWord(target)
     const risk = getRisk(wordType)
     let pairs = []
@@ -5838,6 +5844,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const pairSources = pairs.slice(0, 3).map(p => p._source || '')
       onProgress && onProgress(allPairs.length, targets.length * 3, { allPairs, targetThai: target.thai }, pairSources, i)
     } catch(e) {}
+      } catch(wordErr) {
+        console.error('[generateTrack] word crashed:', target.thai, wordErr.message)
+        const _fb = HARDCODED_FALLBACKS[target.thai] || makeFallbackPairs(target)
+        const _fbPairs = _fb.slice(0, 3).map(p => ({ ...p, _source: 'fallback:' + target.thai }))
+        allPairs.push(..._fbPairs)
+      }
     })) // end parallel word
   }
 

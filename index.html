@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v394"/>
-<meta name="app-version" content="v394"/>
+<meta name="app-version" content="v395"/>
+<meta name="app-version" content="v395"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4530,6 +4530,9 @@ function lintThaiContent(thai, english, speaker, target, opts) {
   const politeCount = (t.match(/ครับ|ค่ะ|คะ|นะครับ|นะคะ/g) || []).length
   if (politeCount > 2) fails.push('Too many sentences in one pair — each pair should have at most ONE or TWO clauses with no more than two polite particles total. Split or simplify.')
   // Phonetic token repeat — if any phonetic token (non-particle) appears 3+ times, likely a mismatch
+  // Phonetic must be romanisation only
+  if (opts && opts.phonetic && /[ก-๙·•。]/.test(opts.phonetic))
+    fails.push('Phonetic contains Thai characters or symbols — re-transcribe in romanisation only')
   if (opts && opts.phonetic) {
     const phToks = (opts.phonetic || '').trim().split(/\s+/).filter(Boolean)
     const particles = new Set(['krap','kha','ka','na','si','la','loei','ja','ko','laeo','yang','mai','dai','thi'])
@@ -4769,9 +4772,6 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
       }
     }
 
-    // Phonetic must be romanisation only — reject if it contains Thai chars or stray symbols
-  if (opts && opts.phonetic && /[ก-๙·•。]/.test(opts.phonetic))
-    fails.push('Phonetic contains non-romanisation characters (Thai script or symbols) — re-transcribe in roman letters only')
     const _prevA = valid.filter(v => v.speaker === 'A').slice(-1)[0]
     const _lintFails = lintThaiContent(p.thai, p.english, p.speaker, target, { phonetic: p.phonetic, prevAThai: _prevA ? _prevA.thai : '' })
     if (_lintFails.length > 0) { failures.push(_lintFails[0]); continue }

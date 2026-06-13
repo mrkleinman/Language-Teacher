@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v393"/>
-<meta name="app-version" content="v393"/>
+<meta name="app-version" content="v394"/>
+<meta name="app-version" content="v394"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4515,6 +4515,10 @@ function lintThaiContent(thai, english, speaker, target, opts) {
     'นักบัญชี',         // accountant, not in basic vocab
     'ท่าน',           // extremely formal/royal pronoun — wrong register between friends
     'ฟงจุ้ย','ฟวงจุ้ย', // misspellings of ฮวงจุ้ย (feng shui) — model can't spell this
+    'เฟรนช์ฟรายส์','เฟรนช์ฟราย', // use มันฝรั่งทอด instead
+    'สุขภาพ',          // health — not in basic vocab
+    'อธิบาย',          // explain — not in basic vocab
+    'กระดาษสีน้ำตาล',  // contrived brown paper — model fallback for สีน้ำตาล
     // Calendar dates — never natural in casual spoken conversation between friends
     'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม',
@@ -4749,8 +4753,12 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     if (_dupThai) { failures.push('Thai text too similar to another pair in this cluster — vary the sentence'); continue }
     // Fix 13: Reject word-spacing artifacts (model writing each Thai word separately)
     const _thaiTokens = (p.thai||'').trim().split(/\s+/).filter(t => /[ก-๙]/.test(t))
+    const _spaceCount = ((p.thai||'').match(/\s+/g)||[]).length
     if (_thaiTokens.length >= 4 && _thaiTokens.filter(t => t.replace(/[^ก-๙]/g,'').length <= 3).length > _thaiTokens.length * 0.6)
       { failures.push('Thai words individually spaced — write Thai naturally without spaces between each word'); continue }
+    // Also catch medium-length token spacing: >3 spaces AND avg token length <6 chars
+    if (_spaceCount > 3 && _thaiTokens.length > 3 && (_thaiTokens.join('').length / _thaiTokens.length) < 6)
+      { failures.push('Thai appears word-spaced — write naturally without spacing each word apart'); continue }
     // Fix 8: ขวบ age consistency — same cluster should not state two different ages
     if (p.thai && p.thai.includes('ขวบ') && p.speaker === 'A') {
       const _prevKhwap = valid.filter(v => v.speaker === 'A' && v.thai && v.thai.includes('ขวบ'))
@@ -4761,7 +4769,9 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
       }
     }
 
-    // ── Shared content lint (เธอ-to-present, ดิฉัน, banned words, ซึ่ง, English cleanliness) ──
+    // Phonetic must be romanisation only — reject if it contains Thai chars or stray symbols
+  if (opts && opts.phonetic && /[ก-๙·•。]/.test(opts.phonetic))
+    fails.push('Phonetic contains non-romanisation characters (Thai script or symbols) — re-transcribe in roman letters only')
     const _prevA = valid.filter(v => v.speaker === 'A').slice(-1)[0]
     const _lintFails = lintThaiContent(p.thai, p.english, p.speaker, target, { phonetic: p.phonetic, prevAThai: _prevA ? _prevA.thai : '' })
     if (_lintFails.length > 0) { failures.push(_lintFails[0]); continue }
@@ -4869,7 +4879,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'ถาม':"ถาม = ask a question directly. e.g. ผมถามว่าราคาเท่าไรครับ (I asked how much it costs). NEVER write 'offer to ask on someone's behalf' — ถามความเห็น, ถามทาง, ถามราคา are all natural.",
     'ไว้ใจ':"ไว้ใจ is a verb meaning to trust someone — NOT a noun. Use: ผมไว้ใจคุณมากครับ (I trust you a lot), คุณไว้ใจฉันได้ค่ะ (you can trust me), or เธอไว้ใจเขาไหมคะ (do you trust him?). NEVER say 'have a trust' or 'there is no trust'.",
     'อนุญาต':"อนุญาต = give/ask official permission. Concrete examples: ที่นี่อนุญาตให้ถ่ายรูปไหมครับ (is photography allowed here?), อนุญาตให้ผมออกก่อนได้ไหมครับ (may I leave early?), ร้านนี้อนุญาตให้เอาสัตว์เลี้ยงมาได้ไหมครับ (is this shop pet-friendly?). NEVER use as one friend asking another's 'permission' to visit a place or feel something.",
-    'สีน้ำตาล':"สีน้ำตาล = brown — describe the colour of a REAL EVERYDAY OBJECT. e.g. กระเป๋าสีน้ำตาลใบนั้นสวยมากครับ (that brown bag looks great), รองเท้าสีน้ำตาลคู่นี้ใส่สบายครับ (these brown shoes are comfortable), ช็อกโกแลตสีน้ำตาลเข้มอร่อยมากครับ (the dark brown chocolate is delicious). NEVER describe a document or contract as brown.",
+    'สีน้ำตาล':"สีน้ำตาล = brown — describe the colour of a REAL EVERYDAY OBJECT: รองเท้าสีน้ำตาล (brown shoes), กระเป๋าสีน้ำตาล (brown bag), เสื้อสีน้ำตาล (brown shirt), ผนังสีน้ำตาล (brown wall), ช็อกโกแลตสีน้ำตาลเข้ม (dark brown chocolate). NEVER use กระดาษสีน้ำตาล (brown paper) — it always sounds contrived. NEVER describe a document, contract, or paper as brown.",
     'ขวบ':"ขวบ = year for counting AGE. Age must come up NATURALLY — someone asked, or it connects to a life experience. e.g. ลูกผมสองขวบแล้วครับ (my son is already 2), คุณรู้ไหมว่าเขาอายุเท่าไหรครับ (do you know how old he is?). NEVER announce your own age unprompted as a standalone statement.",
     'รถตู้':"รถตู้ = van — mention it in a PRACTICAL context showing what it's being used FOR. e.g. ผมจะเอารถตู้ไปขนของวันพรุ่งนี้ครับ (I'll use the van to move things tomorrow), รถตู้ผมจอดอยู่ข้างหน้าครับ (my van is parked out front), จะไปด้วยกันในรถตู้ไหมครับ (want to ride together in the van?). NEVER just declare 'I have a van' as a standalone statement.",
     'ถวาย':"ถวาย is ONLY used when offering something to a monk or royalty — never between ordinary friends. Use it: A mentions he saw a monk and offered food (ผมถวายข้าวพระครับ) or B says she offered flowers at the temple (ฉันถวายดอกไม้ที่วัดค่ะ). NEVER 'offer' things to each other using ถวาย.",
@@ -4913,6 +4923,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'เรียก':"เรียก = call/summon/name something. Natural uses: เพื่อนเรียกผมว่า (friends call me...), เรียกแท็กซี่ (call a taxi), เรียกชื่อ (call someone's name). ALWAYS say WHO is calling WHO — 'I don't know if they will call me' with no referent for 'they' is vague and unnatural. Give concrete actors: เพื่อนเรียกผมว่า, พนักงานเรียกชื่อผม.",
     'พายุ':"พายุ = storm. ONE sentence only — pick one angle: where it hit, how strong it was, or when it happened. e.g. เมื่อคืนมีพายุเข้าครับ (a storm came in last night), พายุแรงมากเลยครับ (the storm was really strong), ทางใต้มีพายุครับ (there's a storm in the south). Do NOT combine two of these into one pair — the validator will reject two-sentence pairs.",
     'พระอาทิตย์ตก':"พระอาทิตย์ตก = sunset. Mention it in context of WHERE or WHEN you saw it — e.g. เห็นพระอาทิตย์ตกที่หาดครับ (saw the sunset at the beach), พระอาทิตย์ตกสวยมากเมื่อวานครับ (the sunset was beautiful yesterday). Connect it to something being discussed — don't just announce you like sunsets unprompted.",
+    'ปลาย':"ปลาย = tip/end of something physical — end of a road (ปลายถนน), tip of a finger (ปลายนิ้ว), end of the month (ปลายเดือน), end of the queue (ปลายคิว). Use it to describe a SPECIFIC physical endpoint. NEVER use vaguely as 'there might be things at the end' — always say end of WHAT.",
+    'พิเศษ':"พิเศษ = special — must say WHAT is special about it, not just label it. e.g. เมนูพิเศษวันนี้คืออะไรครับ (what's today's special?), ราคาพิเศษสำหรับสมาชิกครับ (special price for members), รสชาติพิเศษมากครับ (the taste is really special). NEVER just say 'this has a special X' — describe the special quality.",
+    'โกรธ':"โกรธ = angry/upset. MUST have an established reason — a prior mistake, misunderstanding, or bad event. e.g. after something went wrong: 'please don't be angry, it was an accident.' NEVER introduce anger cold with no prior context — the listener has to know WHY anger is relevant.",
+    'มันฝรั่งทอด':"มันฝรั่งทอด = french fries. This IS the Thai word — NEVER use เฟรนช์ฟรายส์ (English transliteration). Natural usage: ผมจะขายมันฝรั่งทอดที่งานครับ (I'll sell french fries at the event), มันฝรั่งทอดร้านนี้อร่อยมากครับ (the fries here are delicious).",
     'ตัดออก':"ตัดออก = cut out/remove/delete something from a list, schedule, or plan. e.g. ตัดรายการนั้นออกจากเมนูได้เลยครับ (cut that item from the menu), ผมตัดงานนี้ออกจากตารางครับ (I removed this task from my schedule). NEVER use for physical removal from the body — you do not ตัดออก acne or skin.",
     'ชัด':"ชัด = clear/sharp/distinct in perception — for images (รูปชัดมาก), sound (ได้ยินชัดเจน), or understanding (เข้าใจชัดขึ้น). NOT about skin clarity. e.g. พูดชัดๆ หน่อยได้ไหมครับ (can you speak more clearly?), เห็นได้ชัดเลยครับ (it's clearly visible). NEVER use to describe clear skin — use ผิวดี or หน้าใส instead.",
   })[target.thai] || _properNouns[target.thai] || (() => {
@@ -5146,7 +5160,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           naturalFails.push('Line ' + (li+1) + ' is only the target word — needs a full sentence')
       })
       // ── #5 Number enforcement: only on early attempts so a stubborn miss can't burn to fallback ──
-      if (numberHint && (pairIndex % 2 === 0) && attempt < 7) {
+      if (numberHint && (pairIndex % 2 === 0)) {  // no attempt gate — numbers apply at all check tiers
         const _numWords = ['หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า','สิบ','ยี่สิบ','ร้อย','พัน','โมง','ทุ่ม','เที่ยง','บ่าย','ตีหนึ่ง','ตีสอง','ตีสาม','ตีสี่','ตีห้า','ที่หนึ่ง','ที่สอง','ที่สาม','ครั้ง','นาฬิกา']
         const _hasNumber = genderValid.some(l => /[๐-๙]/.test(l.thai || '') || _numWords.some(n => (l.thai || '').includes(n)))
         if (!_hasNumber)
@@ -5298,7 +5312,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       thai: replyThai,
       phonetic: sceneData.reply_phonetic || '',
       english: sceneData.reply_english || 'Hello, nice to meet you.',
-      prompt: sceneData.reply_prompt ? _morphPrompt(sceneData.reply_prompt, _nameB, _nameA) : _nameB + ' greets ' + _nameA + ' back',
+      prompt: sceneData.reply_prompt ? (sceneData.reply_prompt||'').replace(/\bhe\b/gi,_nameA).replace(/\bhim\b/gi,_nameA).replace(/\bshe\b/gi,_nameB).replace(/\bher\b/gi,_nameB) : _nameB + ' greets ' + _nameA + ' back',
       _source: 'ai:check-1', _target: 'greeting', words: []
     }
     // Add word glosses to greeting pairs from phonetic
@@ -5802,12 +5816,14 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         const promptN = buildSmartPrompt(target, conceptBlock, vocabContext, scenario, isRecheck, hintBody, i, { restaurantOverused: restaurantUses >= 3, runningTopic })
         let genN = null
         for (let _r = 0; _r <= 2; _r++) {
-          try { genN = await callModel(GPT_MODEL, promptN); break }
-          catch (e) {
+          try {
+            const _raw = await callModel(GPT_MODEL, promptN)
+            if (_raw && _raw.trim()) { genN = _raw; break }  // retry empty response
+          } catch (e) {
             const isServer = /(503|502|500|timeout|network|fetch|ECONNRESET)/i.test(e.message || '')
-            if (!isServer || _r >= 2) { genN = null; break }
-            await new Promise(r => setTimeout(r, 1500))
+            if (!isServer || _r >= 2) break
           }
+          if (_r < 2) await new Promise(r => setTimeout(r, 1200))
         }
         const strictMode = attempt < 2   // strict OOV on the first two passes, lenient after
         const { valid: vN, failures: fN } = validateSmartPairs(genN || [], target, strictMode)

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v406"/>
-<meta name="app-version" content="v406"/>
+<meta name="app-version" content="v407"/>
+<meta name="app-version" content="v407"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -8934,6 +8934,50 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
 
         {/* Google Cloud TTS */}
         <GcpTtsSection gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={onSaveGcpTtsKey} />
+
+        {/* Restore progress */}
+        {(() => {
+          const [restoreState, setRestoreState] = React.useState('idle') // idle | confirm | done
+          function runRestore() {
+            try {
+              const vocab = JSON.parse(localStorage.getItem('tt-vocab') || '[]')
+              if (!vocab.length) { alert('App vocab not loaded yet — go back to dashboard first, then return to Settings.'); return }
+              let promoted = 0
+              const LIMIT = 231
+              const result = vocab.map(w => {
+                if (w.status === 'known') return w
+                if (w.difficulty === 'ok' && promoted < LIMIT) {
+                  promoted++
+                  return { ...w, status: 'known', interval: 30, dueDate: '2026-07-15', lastSeen: '2026-06-13' }
+                }
+                return w
+              })
+              localStorage.setItem('tt-vocab', JSON.stringify(result))
+              const total = result.filter(w => w.status === 'known').length
+              setRestoreState('done:' + total)
+            } catch(e) { alert('Restore failed: ' + e.message) }
+          }
+          const isDone = restoreState.startsWith('done:')
+          const doneCount = isDone ? restoreState.split(':')[1] : null
+          return (
+            <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: 'rgba(96,165,250,0.07)', border: '1px solid rgba(96,165,250,0.2)' }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#60a5fa', marginBottom: 4 }}>🔄 Restore Lost Progress</p>
+              <p style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5, marginBottom: 10 }}>
+                Promotes ~231 pre-tagged words to "known" — restores your rank to approximately where you were (456 known words, near 7th Kyu).
+              </p>
+              {isDone ? (
+                <p style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>✓ Done — {doneCount} words known. Reload the app to see your rank.</p>
+              ) : restoreState === 'confirm' ? (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={runRestore} style={{ flex:1, padding:'8px', borderRadius:8, background:'#60a5fa', border:'none', color:'#000', fontWeight:700, fontSize:12, cursor:'pointer' }}>Confirm Restore</button>
+                  <button onClick={() => setRestoreState('idle')} style={{ flex:1, padding:'8px', borderRadius:8, background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--muted)', fontSize:12, cursor:'pointer' }}>Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setRestoreState('confirm')} style={{ width:'100%', padding:'8px', borderRadius:8, background:'var(--surface2)', border:'1px solid #60a5fa', color:'#60a5fa', fontWeight:700, fontSize:12, cursor:'pointer' }}>Restore Rank →</button>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Status */}
         <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 10 }}>

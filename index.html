@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v405"/>
-<meta name="app-version" content="v405"/>
+<meta name="app-version" content="v406"/>
+<meta name="app-version" content="v406"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -9538,6 +9538,44 @@ function _qrSourceTarget(src) {
   return null
 }
 
+// ── Prompt-match batch checker ───────────────────────────────────────────────
+async function _qrBatchPromptCheck(pairs, apiKey, model) {
+  // Only check pairs that have both a real prompt and Thai content
+  const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) =>
+    p.prompt && p.prompt.length > 8 && p.thai && p.english &&
+    !p.prompt.startsWith('.') && !/^(greet|greeting)/i.test(p.prompt)
+  )
+  if (!eligible.length) return pairs
+
+  const BATCH = 12
+  const scored = new Map()
+
+  for (let b = 0; b < eligible.length; b += BATCH) {
+    const chunk = eligible.slice(b, b + BATCH)
+    const numbered = chunk.map(({ i, p }, ci) =>
+      `${ci + 1}. Prompt: "${p.prompt}"\n   Thai: ${p.thai}\n   English: ${p.english}`
+    ).join('\n\n')
+
+    const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
+      `Rate how well each Thai sentence matches its prompt description.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says\n4 = very close, minor phrasing difference\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\n${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5},{"i":2,"s":3,"note":"prompt says X but sentence says Y"},...]\nno markdown, no explanation.`
+    }], 600)
+
+    try {
+      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
+      parsed.forEach(({ i: ci, s, note }) => {
+        const orig = chunk[ci - 1]
+        if (orig) scored.set(orig.i, { s: s || 5, note: note || '' })
+      })
+    } catch(e) { /* skip batch on parse fail */ }
+  }
+
+  return pairs.map((p, i) => {
+    const sc = scored.get(i)
+    if (!sc) return p
+    return { ...p, _pm: sc.s, _pmNote: sc.note }
+  })
+}
+
 function _qrGetAllGroups(track) {
   const pairs = track.pairs || []
   const groupMap = {}, groupOrder = []
@@ -9714,16 +9752,33 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
     qrCancelRef.current = false
     const flagged = _qrScanGroups(track)
     const total = _qrGetAllGroups(track).length
-    setQuickStats({ flagged: flagged.length, total })
-    return () => { qrCancelRef.current = true }  // cancel on unmount
+    // Quick pre-scan for prompt mismatches using heuristic (no AI)
+    const pmSuspect = (track.pairs || []).filter(p =>
+      p.prompt && p.english && p.prompt.length > 10 &&
+      !p.prompt.startsWith('.') && !/^(greet|greeting)/i.test(p.prompt) &&
+      p._pm && p._pm < 5
+    ).length
+    setQuickStats({ flagged: flagged.length, total, pmSuspect })
+    return () => { qrCancelRef.current = true }
   }, [])
 
   async function runCheck() {
     qrCancelRef.current = false
     setPhase('checking')
-    const allPairs = [...(track.pairs || [])]
+    let allPairs = [...(track.pairs || [])]
+
+    // ── Phase 1: Prompt-match scoring ────────────────────────────────────────
+    setProgressMsg('Checking prompt alignment…')
+    try {
+      allPairs = await _qrBatchPromptCheck(allPairs, apiKey, model)
+    } catch(e) { console.warn('[QR] prompt check failed', e) }
+    if (qrCancelRef.current) return
+
+    const pmMismatches = allPairs.filter(p => p._pm && p._pm < 5).length
+    if (pmMismatches > 0) setProgressMsg(`Found ${pmMismatches} prompt mismatches — fixing…`)
+
     const groups = _qrGetAllGroups(track)
-    const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, error: 0 }
+    const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, prompt_fix: 0, error: 0 }
 
     for (let i = 0; i < groups.length; i++) {
       if (qrCancelRef.current) break  // Fix 5: stop loop if cancelled
@@ -9731,7 +9786,19 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
       setProgress(Math.round(i / groups.length * 100))
       setProgressMsg(`Evaluating ${group.targetWord} (${i + 1}/${groups.length})…`)
       try {
-        const verdict = await _qrEvaluateGroup(group, allPairs, apiKey, model)
+        // Check if any pair in this group has a prompt mismatch score < 4
+        const pmFails = group.indices.map(i => allPairs[i]).filter(p => p._pm && p._pm <= 3)
+        let verdict
+        if (pmFails.length > 0) {
+          const worst = pmFails.reduce((a, b) => (a._pm < b._pm ? a : b))
+          verdict = {
+            action: worst._pm <= 2 ? 'replace' : 'improve',
+            reason: `Prompt mismatch (score ${worst._pm}/5): "${worst.prompt}" — sentence says "${worst.english}"` + (worst._pmNote ? `. ${worst._pmNote}` : '')
+          }
+          counts.prompt_fix = (counts.prompt_fix || 0) + 1
+        } else {
+          verdict = await _qrEvaluateGroup(group, allPairs, apiKey, model)
+        }
         if (verdict.action === 'clean') { counts.clean++; continue }
         const labels = { fix_phonetic: 'Fixing phonetic', improve: 'Improving', replace: 'Replacing' }
         setProgressMsg(`${labels[verdict.action] || 'Fixing'}: ${group.targetWord} — ${verdict.reason}`)
@@ -9806,6 +9873,7 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
       <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
         <span className="display" style={{ fontSize: 18, display: 'block', marginBottom: 20 }}>Quality Check Done</span>
         <Card style={{ padding: 16, marginBottom: 16 }}>
+          {results.prompt_fix > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🎯 {results.prompt_fix} prompt mismatch{results.prompt_fix > 1 ? 'es' : ''} fixed</p>}
           {results.fix_phonetic > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔤 {results.fix_phonetic} phonetic{results.fix_phonetic > 1 ? 's' : ''} re-transcribed</p>}
           {results.improve > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>✏️ {results.improve} group{results.improve > 1 ? 's' : ''} improved</p>}
           {results.replace > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔄 {results.replace} group{results.replace > 1 ? 's' : ''} replaced</p>}

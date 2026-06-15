@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v407"/>
-<meta name="app-version" content="v407"/>
+<meta name="app-version" content="v408"/>
+<meta name="app-version" content="v408"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -3676,7 +3676,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
         <span style={{ fontSize:12, color:'var(--muted)', whiteSpace:'nowrap' }}>Generate with:</span>
         <select value={provider} onChange={e => onSetProvider(e.target.value)}
           style={{ flex:1, padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text)', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif', cursor:'pointer', outline:'none' }}>
-          {PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.label} — {p.sub}</option>)}
+          {PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
         </select>
       </div>
 
@@ -8808,10 +8808,10 @@ function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey }) {
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 const PROVIDERS = [
-  { id: 'qwen3_14b', label: '⚡ Qwen3.5 Flash', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
-  { id: 'qwen32b', label: '🧠 Qwen3 32B (no thinking)', sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
+  { id: 'qwen3_14b', label: '⚡ Qwen3.5 Flash',    sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
+  { id: 'qwen32b', label: '🧠 Qwen3 32B',          sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
   { id: 'gemini', label: '✦ Gemini 2.5 Flash Lite', sub: 'via OpenRouter or Google AI', placeholder: 'sk-or-v1-... or AIza...' },
-  { id: 'haiku',     label: '🔶 Haiku 4.5',  sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
+  { id: 'haiku',     label: '🔶 Haiku 4.5',          sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
 ]
 
 function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, gcpTtsKey, onSaveGcpTtsKey }) {

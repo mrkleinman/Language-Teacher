@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v408"/>
-<meta name="app-version" content="v408"/>
+<meta name="app-version" content="v411"/>
+<meta name="app-version" content="v411"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -5407,11 +5407,26 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
     '"reply_english":"English translation of reply (omit particle)",' +
     '"reply_prompt":"Use first names only — no job titles or descriptions in parentheses. Describe what B says — e.g. Nida greets Somchai back and says she just arrived. NEVER say she calls him Dad or any family name."}\n\nCRITICAL: whatever Thai name/nickname you use in the opening and reply Thai fields, use the SAME name (romanized) in all English fields. No different English name for the same character.'
   try {
-    const raw = await callOpenRouterOnce(apiKey, model, [{ role:'user', content: system + '\n\n' + user }], 600)
-    const parsed = JSON.parse(raw)
+    let raw = ''
+    const isGeminiKey = apiKey && !apiKey.startsWith('sk-') && apiKey.length > 10
+    if (isGeminiKey) {
+      const modelId = (model || 'gemini-2.5-flash-lite').replace('google/', '')
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: system + '\n\n' + user }] }], generationConfig: { maxOutputTokens: 1200, temperature: 0.9 } }) }
+      )
+      const data = await res.json()
+      raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    } else {
+      raw = await callOpenRouterOnce(apiKey, model, [{ role:'user', content: system + '\n\n' + user }], 1200)
+    }
+    const clean = raw.replace(/```json|```/g,'').trim()
+    const parsed = JSON.parse(clean)
     if (parsed.scene && parsed.characterA) return parsed
-  } catch(e) {}
-  return { scene:'Two friends at a market planning a day trip.', characterA:'Somchai, a Thai man', characterB:'Nida, a Thai woman', opening:'สวัสดีครับ วันนี้เราจะไปไหนกันดีครับ' }
+    console.warn('[scene] parsed ok but missing fields:', Object.keys(parsed))
+  } catch(e) { console.warn('[scene] failed:', e.message) }
+  return { scene:'Two friends catching up at a local café.', characterA:'Somchai, a Thai man', characterB:'Nida, a Thai woman', opening:'สวัสดีครับ มานานแล้วไม่ได้เจอกันเลย', opening_phonetic:'sà-wàt-dii khráp. maa naan láaeo mâi dâai jooe gan looei', opening_english:'Hey, it\'s been so long since we\'ve seen each other', opening_prompt:'He greets her warmly and says it\'s been a long time since they\'ve seen each other', reply:'สวัสดีค่ะ ใช่เลยค่ะ นานมากแล้ว', reply_phonetic:'sà-wàt-dii khâ. châi looei khâ. naan mâak láaeo', reply_english:'Hi! Yes, it\'s been so long', reply_prompt:'Nida greets Somchai back warmly and agrees it\'s been a long time' }
 }
 
 // ── Shared content linter — runs on BOTH daily (validateSmartPairs) and convo (naturalFails) ──
@@ -9142,16 +9157,16 @@ function LessonsView({ vocab, onVocabUpdate, onBack }) {
   const s9Lessons  = allLessons.filter(l => l.season === 9)
   const s10Lessons = allLessons.filter(l => l.season === 10)
   const seasons = [
-    { num: 1,  name: 'Noob Season One',          lessons: s1Lessons,  color: '#d4a94a', bg: 'linear-gradient(135deg, #2a1f00, #3d2d00)' },
-    { num: 2,  name: 'Noob Season Two',           lessons: s2Lessons,  color: '#7dd3fc', bg: 'linear-gradient(135deg, #001f3d, #002d5a)' },
-    { num: 3,  name: 'Newbie Season One',         lessons: s3Lessons,  color: '#86efac', bg: 'linear-gradient(135deg, #00200f, #003018)' },
-    { num: 4,  name: 'Novice Season One',         lessons: s4Lessons,  color: '#c084fc', bg: 'linear-gradient(135deg, #1a0030, #2d0050)' },
-    { num: 5,  name: 'Newbie Season Two',         lessons: s5Lessons,  color: '#6ee7b7', bg: 'linear-gradient(135deg, #00251a, #003a28)' },
-    { num: 6,  name: 'Novice Season Two',         lessons: s6Lessons,  color: '#a78bfa', bg: 'linear-gradient(135deg, #120030, #1e0050)' },
-    { num: 7,  name: 'Intermediate Season One',   lessons: s7Lessons,  color: '#fb923c', bg: 'linear-gradient(135deg, #2a0f00, #3d1800)' },
-    { num: 8,  name: 'Intermediate Season Two',   lessons: s8Lessons,  color: '#f97316', bg: 'linear-gradient(135deg, #1f0800, #2d1000)' },
-    { num: 9,  name: 'Advanced Season One',       lessons: s9Lessons,  color: '#f43f5e', bg: 'linear-gradient(135deg, #2d000f, #45001a)' },
-    { num: 10, name: 'Advanced Season Two',       lessons: s10Lessons, color: '#e11d48', bg: 'linear-gradient(135deg, #1f000a, #2d0010)' },
+    { num: 1,  name: 'Noob Season One',          level: 'ABSOLUTE BEGINNER', lessons: s1Lessons,  color: '#d4a94a', bg: 'linear-gradient(135deg, #2a1f00, #3d2d00)' },
+    { num: 2,  name: 'Noob Season Two',           level: 'ABSOLUTE BEGINNER', lessons: s2Lessons,  color: '#7dd3fc', bg: 'linear-gradient(135deg, #001f3d, #002d5a)' },
+    { num: 3,  name: 'Newbie Season One',         level: 'LOWER BEGINNER',    lessons: s3Lessons,  color: '#86efac', bg: 'linear-gradient(135deg, #00200f, #003018)' },
+    { num: 5,  name: 'Newbie Season Two',         level: 'LOWER BEGINNER',    lessons: s5Lessons,  color: '#6ee7b7', bg: 'linear-gradient(135deg, #00251a, #003a28)' },
+    { num: 4,  name: 'Novice Season One',         level: 'UPPER BEGINNER',    lessons: s4Lessons,  color: '#c084fc', bg: 'linear-gradient(135deg, #1a0030, #2d0050)' },
+    { num: 6,  name: 'Novice Season Two',         level: 'UPPER BEGINNER',    lessons: s6Lessons,  color: '#a78bfa', bg: 'linear-gradient(135deg, #120030, #1e0050)' },
+    { num: 7,  name: 'Intermediate Season One',   level: 'INTERMEDIATE',      lessons: s7Lessons,  color: '#fb923c', bg: 'linear-gradient(135deg, #2a0f00, #3d1800)' },
+    { num: 8,  name: 'Intermediate Season Two',   level: 'INTERMEDIATE',      lessons: s8Lessons,  color: '#f97316', bg: 'linear-gradient(135deg, #1f0800, #2d1000)' },
+    { num: 9,  name: 'Advanced Season One',       level: 'ADVANCED',          lessons: s9Lessons,  color: '#f43f5e', bg: 'linear-gradient(135deg, #2d000f, #45001a)' },
+    { num: 10, name: 'Advanced Season Two',       level: 'ADVANCED',          lessons: s10Lessons, color: '#e11d48', bg: 'linear-gradient(135deg, #1f000a, #2d0010)' },
   ]
 
   function markComplete(id) {
@@ -9512,7 +9527,7 @@ function LessonsView({ vocab, onVocabUpdate, onBack }) {
             style={{ background: season.bg, border:`1px solid ${season.color}33`, borderRadius:14, padding:'20px', marginBottom:14, cursor:'pointer', position:'relative', overflow:'hidden' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
               <div>
-                <div style={{ fontSize:11, color: season.color, fontWeight:700, marginBottom:4, letterSpacing:'0.05em' }}>ABSOLUTE BEGINNER</div>
+                <div style={{ fontSize:11, color: season.color, fontWeight:700, marginBottom:4, letterSpacing:'0.05em' }}>{season.level}</div>
                 <div style={{ fontSize:20, fontWeight:800, color:'#fff' }}>{season.name}</div>
                 <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginTop:4 }}>{season.lessons.length} lessons · {season.lessons.reduce((s,l)=>s+(l.dialogue||[]).length,0)} dialogue lines</div>
               </div>

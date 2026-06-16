@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v414"/>
-<meta name="app-version" content="v414"/>
+<meta name="app-version" content="v415"/>
+<meta name="app-version" content="v415"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -10021,13 +10021,24 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
   if (phase === 'checking') {
     return (
       <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
-        <span className="display" style={{ fontSize: 18, display: 'block', marginBottom: 20 }}>Checking Quality…</span>
+        <span className="display" style={{ fontSize: 18, display: 'block', marginBottom: 16 }}>Checking Quality…</span>
         <Card style={{ padding: 16 }}>
-          <div style={{ height: 8, borderRadius: 4, background: 'var(--surface2)', marginBottom: 10, overflow: 'hidden' }}>
+          <div style={{ height: 6, borderRadius: 4, background: 'var(--surface2)', marginBottom: 10, overflow: 'hidden' }}>
             <div style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg,#d4a94a,#b88a35)', width: progress + '%', transition: 'width 0.4s' }} />
           </div>
-          <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, minHeight: 36 }}>{progressMsg}</p>
-          <p style={{ fontSize: 10, color: '#475569', marginTop: 8 }}>{progress}% complete — tap back to cancel and study as-is</p>
+          <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '10px 12px', maxHeight: 340, overflowY: 'auto', marginBottom: 8 }}
+            ref={el => { if (el) el.scrollTop = el.scrollHeight }}>
+            {qrLog.length === 0
+              ? <p style={{ fontSize: 10, color: '#475569', fontFamily: 'monospace', margin: 0 }}>Starting…</p>
+              : qrLog.map((line, i) => (
+                <p key={i} style={{ fontSize: 10, fontFamily: 'monospace', margin: '2px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                  color: line.startsWith('⚠') ? '#f59e0b' : line.startsWith('✅') ? '#10b981' : line.startsWith('━') ? '#475569' : line.startsWith('  ✓') ? '#10b981' : line.startsWith('  ✏') ? '#7dd3fc' : line.startsWith('  🔄') ? '#a78bfa' : 'var(--muted)' }}>
+                  {line}
+                </p>
+              ))
+            }
+          </div>
+          <p style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>{progress}% — tap ← to cancel and study as-is</p>
         </Card>
       </div>
     )

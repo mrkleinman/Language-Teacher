@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v423"/>
-<meta name="app-version" content="v423"/>
+<meta name="app-version" content="v424"/>
+<meta name="app-version" content="v424"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -30,27 +30,14 @@
     <script>
   (function() {
     function showErr(title, msg, stack, color) {
-      document.body.style.cssText = 'margin:0;background:#0b1120;min-height:100vh;padding:20px;box-sizing:border-box';
-      document.body.innerHTML = '<div style="max-width:480px;font-family:monospace">' +
-        '<div style="color:' + color + ';font-size:16px;font-weight:800;margin-bottom:12px">' + title + '</div>' +
-        '<div style="background:#1a1a2e;border:1px solid ' + color + ';border-radius:10px;padding:14px;margin-bottom:12px">' +
-        '<div style="color:#fca5a5;font-size:13px;word-break:break-all;margin-bottom:10px">' + (msg||'') + '</div>' +
-        (stack ? '<pre style="color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:0;overflow-x:auto">' + (stack+'').slice(0,600) + '</pre>' : '') +
-        '</div><div style="color:#475569;font-size:11px">Reload to try again</div></div>';
+      document.body.style.cssText = "margin:0;background:#0b1120;min-height:100vh;padding:20px;box-sizing:border-box";
+      document.body.innerHTML = "<div style='max-width:480px;font-family:monospace'><div style='color:" + color + ";font-size:16px;font-weight:800;margin-bottom:12px'>" + title + "</div><div style='background:#1a1a2e;border:1px solid " + color + ";border-radius:10px;padding:14px;margin-bottom:12px'><div style='color:#fca5a5;font-size:13px;word-break:break-all;margin-bottom:10px'>" + (msg||"") + "</div>" + (stack ? "<pre style='color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:0'>" + (stack+"").slice(0,600) + "</pre>" : "") + "</div><div style='color:#475569;font-size:11px'>Reload to try again</div></div>";
     }
-    window.addEventListener('error', function(e) {
-      showErr('❌ App crashed', e.message || String(e),
-        (e.error && e.error.stack) || ('at ' + e.filename + ':' + e.lineno + ':' + e.colno), '#f43f5e');
-    });
-    window.addEventListener('unhandledrejection', function(e) {
-      var r = e.reason; var msg = r ? (r.message || String(r)) : 'Unhandled rejection';
-      showErr('⚠️ Async error', msg, r && r.stack, '#f59e0b');
-    });
-    // Note: no console.error patch — would interfere with Babel mid-compile
+    window.addEventListener("error", function(e) { showErr("App crashed", e.message || String(e), (e.error && e.error.stack) || ("at "+e.filename+":"+e.lineno+":"+e.colno), "#f43f5e"); });
+    window.addEventListener("unhandledrejection", function(e) { var r=e.reason; showErr("Async error", r?(r.message||String(r)):"Unhandled rejection", r&&r.stack, "#f59e0b"); });
   })();
   </script>
 <script type="text/babel">
-
 const { useState, useEffect, useCallback, useRef, useMemo } = React
 
 // ── Fonts ────────────────────────────────────────────────────────────────────
@@ -5812,7 +5799,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• A lines end ครับ. B lines end ค่ะ or คะ. NO EXCEPTIONS.\n' +
     '• Sentences ' + sentMin + '–' + sentMax + ' Thai words long\n' +
     '• Use ONLY: ' + knownWords + ' + target word\n' +
-    '• PHONETIC: complete romanisation with tone marks using Paiboon system — e.g. sà-wàt-dii, bpai, maa, phûut, khráp. EVERY syllable must be romanised.\n' +
+    '• PHONETIC: romanise with tone marks — à (low/falling) á (high) â (falling) ǎ (rising). BANNED CHARACTERS: ɛ ɔ ʉ ə ŋ ɪ ʊ ɐ ɯ — these are IPA, never use them. Use instead: ɛ→e or ae, ɔ→o or aw, ʉ→ue or eu, ə→oe, ŋ→ng, ɪ→i, ʊ→oo. Examples: ครับ→khráp ค่ะ→khâ ไม่→mâi อยาก→yàak สวัสดี→sà-wàt-dii เอา→ao เก่า→gào ดี→dii แมว→maaeo ต้อง→dtâwng งาน→ngaan เอง→eeng\n' +
     '• NO double particles (ครับครับ etc)\n' +
     '• ครับ and ค่ะ/คะ are POLITENESS PARTICLES — do NOT translate them at all in the english field, they are invisible in English\n' +
     '• SUBJECTS: A uses ผม for self. B uses ฉัน for self. When A addresses B directly use คุณ or drop subject. NEVER use character names (' + _nameA + ', ' + _nameB + ') inside sentences — names only appear in greetings.\n' +
@@ -5826,8 +5813,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• NATURAL SPEECH: casual spoken Thai only. FORBIDDEN: ซึ่ง (relative clauses), ดิฉัน, กระผม, ท่าน, อันซึ่ง. Use simple direct sentences like real friends talk\n' +
     '• FORBIDDEN (any word containing these): อินเทอร์เน็ต, เทศกาล, งานเลี้ยง, สถาบัน, มื้อเที่ยง, รถยนต์, โทรศัพท์ (use มือถือ even in compounds), น้ำปานะ, สินค้า (use ของ), ไปรษณีย์, คำนวณ (use ลองคิด), เครื่องแต่งกาย (use เสื้อผ้า), สวนสาธารณะ (use สวน), ดิฉัน (use ฉัน), คอลเลคชั่น, บรรยากาศ, ประจำ. Do NOT use place names.\n' +
     '• ซึ่ง is formal written Thai — only use it when ซึ่ง is the target word being practised. In all other sentences, use ที่ instead.\n' +
-    '• PHONETIC ACCURACY: the "phonetic" field must romanise the EXACT Thai words you wrote — never transcribe a different word. If Thai is นักเดินทาง write nák-dəən-thaang, NOT nák-thɔ̂ɔng-thîao.\n' +
-    '• ACCURACY: the "english" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
+    '• PHONETIC ACCURACY: romanise the EXACT Thai words written — ZERO IPA allowed (ɛɔʉəŋɪʊ forbidden). Use e/ae/o/aw/ue/ng instead. Example: ต้อง→dtâwng, งาน→ngaan, เอง→eeng.\n' +
+    '• ACCURACY: the \"english\" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
     '• PROMPT ACCURACY: the "prompt" field must describe the SPECIFIC CONTENT of the Thai sentence — include the actual numbers, names, and facts. WRONG: "He states his age." RIGHT: "He says he is fifty-six years old." WRONG: "She asks about the shop." RIGHT: "She asks if the shop is near here."\n' +
     '• The "prompt" field must accurately describe exactly what is said — not generic, must match the Thai sentence\n' +
     '• SELF-CHECK: before returning, re-read each line and ask: "Would a real Thai person say this naturally in this scene?" If no, rewrite it\n' +

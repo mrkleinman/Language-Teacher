@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v411"/>
-<meta name="app-version" content="v411"/>
+<meta name="app-version" content="v413"/>
+<meta name="app-version" content="v413"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -687,7 +687,9 @@ function enrichGloss(p) { if (!p) return ''; const k = _GLOSS_LOOKUP.np(p); retu
 // AI fill — sends batches of pairs with empty glosses to the model for completion
 async function fillMissingGlossesForTrack(pairs, apiKey, model) {
   if (!apiKey || !model || !pairs || !pairs.length) return pairs
-  const needsFill = pairs.map((p, i) => i).filter(i => pairs[i].words && pairs[i].words.some(w => !w.e))
+  const needsFill = pairs.map((p, i) => i).filter(i =>
+    pairs[i].words && pairs[i].words.some(w => !w.e || !w.ph)
+  )
   if (!needsFill.length) return pairs
 
   const result = [...pairs]
@@ -701,16 +703,20 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model) {
       words: pairs[pairIdx].words
     }))
 
-    const prompt = `Fill every empty "e" gloss in these Thai phonetic word arrays. Return the same structure with all "e" values filled — concise English, 1–3 words each.
+    const prompt = `Fill every empty "e" (English gloss) and "ph" (romanization) in these Thai word arrays.
 
-Keep existing non-empty "e" values exactly as-is. Common rules: ครับ→"[m]" ค่ะ/คะ→"[f]" ไม่→"not" ไหม→"?" จะ→"will" ก็→"also" แล้ว→"already" ที่→"at/that" ให้→"to" นะ→"[softener]" เลย→"at all" มาก→"very" แค่→"just". Numbers: หนึ่ง→"one" สอง→"two" สาม→"three" สี่→"four" ห้า→"five" หก→"six" เจ็ด→"seven" แปด→"eight" เก้า→"nine" สิบ→"ten". Time: โมง→"o'clock" เช้า→"morning" เย็น→"evening" ทุ่ม→"p.m." คืน→"night".
+Rules for "e": 1-3 words. ครับ→"[m]" ค่ะ/คะ→"[f]" ไม่→"not" ไหม→"?" จะ→"will" ก็→"also" แล้ว→"already" ที่→"that/at" ให้→"to" นะ→"[softener]" เลย→"at all" มาก→"very" แค่→"just". Numbers: หนึ่ง→"one" สอง→"two" สาม→"three" สี่→"four" ห้า→"five" หก→"six" เจ็ด→"seven" แปด→"eight" เก้า→"nine" สิบ→"ten". Time: โมง→"o'clock" เช้า→"morning" เย็น→"evening" ทุ่ม→"p.m." คืน→"night".
+
+Rules for "ph": toned RTGS only — NO IPA (no ɛ ɔ ʉ ŋ ə). Use standard Latin with tone marks only (à á â ǎ). Examples: ครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak" มาก→"mâak".
+
+Keep existing non-empty values exactly as-is.
 
 Input: ${JSON.stringify(input)}
 
-Return ONLY valid JSON array with no markdown: [{"id":0,"words":[{"p":"...","e":"..."},...]},...]`
+Return ONLY valid JSON array: [{"id":0,"words":[{"p":"...","e":"...","ph":"..."},...]},...]`
 
     try {
-      const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1000)
+      const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1200)
       const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
@@ -7418,6 +7424,38 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         try { JSON.stringify(track) } catch(e) { throw new Error('Track data invalid: ' + e.message) }
         setGeneratedTrack(track)
         setPhase('done')
+
+        // ── Auto quality check ───────────────────────────────────────────────
+        setGenLog(prev => [...prev, '━━━━━━━━━━━━━━━━━━━━━━━━', '🔍 Auto quality check starting…'])
+        try {
+          const qrCancel = { current: false }
+          const result = await runQualityCheckCore(track, apiKey, model, {
+            onLog: (msg) => setGenLog(prev => [...prev.slice(-80), msg]),
+            onProgress: (pct, word) => {
+              if (word) setGenLog(prev => {
+                const last = prev[prev.length - 1] || ''
+                if (last.startsWith('  Evaluating group')) return [...prev.slice(0, -1), `  Evaluating group ${pct}%  ${word}`]
+                return [...prev, `  Evaluating group ${pct}%  ${word}`]
+              })
+            },
+            cancelRef: qrCancel
+          })
+          if (result) {
+            const c = result.counts
+            const summary = [
+              c.clean > 0 && `✓ ${c.clean} clean`,
+              c.improve > 0 && `✏️ ${c.improve} improved`,
+              c.replace > 0 && `🔄 ${c.replace} replaced`,
+              c.prompt_fix > 0 && `🎯 ${c.prompt_fix} prompt fixes`,
+              c.phonetic_prepass > 0 && `🔤 ${c.phonetic_prepass} phonetics`,
+              c.error > 0 && `⚠️ ${c.error} errors`,
+            ].filter(Boolean).join(' · ')
+            setGenLog(prev => [...prev, '✅ QC done: ' + summary, '━━━━━━━━━━━━━━━━━━━━━━━━'])
+            setGeneratedTrack(prev => prev ? { ...prev, pairs: result.pairs } : prev)
+          }
+        } catch(e) {
+          setGenLog(prev => [...prev, '⚠️ Auto QC failed: ' + e.message])
+        }
         // Refresh balance so user can see what the track cost
         if (orKey) {
           try {
@@ -9597,6 +9635,75 @@ function _qrSourceTarget(src) {
   return null
 }
 
+// ── Standalone QR core — used by both auto-run and manual QualityReview ───────
+async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, cancelRef } = {}) {
+  const cancelled = () => cancelRef && cancelRef.current
+  let allPairs = [...(track.pairs || [])]
+  const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, prompt_fix: 0, phonetic_prepass: 0, error: 0 }
+
+  // Pre-pass 1: Fill missing word glosses + phonetics
+  onLog?.('Filling missing glosses and word phonetics…')
+  try { allPairs = await fillMissingGlossesForTrack(allPairs, apiKey, model) }
+  catch(e) { onLog?.('⚠️ Gloss fill failed: ' + e.message) }
+  if (cancelled()) return null
+
+  // Pre-pass 2: Fix broken sentence phonetics
+  onLog?.('Fixing broken phonetics…')
+  try {
+    const res = await _qrFixBrokenPhonetics(allPairs, apiKey, model)
+    allPairs = res.pairs; counts.phonetic_prepass = res.fixed
+    if (res.fixed > 0) onLog?.(`🔤 ${res.fixed} phonetics re-romanized`)
+  } catch(e) { onLog?.('⚠️ Phonetic fix failed: ' + e.message) }
+  if (cancelled()) return null
+
+  // Pre-pass 3: Prompt-match scoring
+  onLog?.('Checking prompt alignment…')
+  try { allPairs = await _qrBatchPromptCheck(allPairs, apiKey, model) }
+  catch(e) { onLog?.('⚠️ Prompt check failed: ' + e.message) }
+  if (cancelled()) return null
+
+  const pmFails = allPairs.filter(p => p._pm && p._pm < 5)
+  if (pmFails.length > 0) {
+    onLog?.(`⚠️ ${pmFails.length} prompt mismatch${pmFails.length > 1 ? 'es' : ''}:`)
+    pmFails.forEach(p => onLog?.(`  [${(p.prompt || '').slice(0, 55)}] score ${p._pm}/5${p._pmNote ? ' — ' + p._pmNote : ''}`))
+  }
+
+  // Group evaluation
+  const groups = _qrGetAllGroups(track)
+  onLog?.(`Evaluating ${groups.length} groups…`)
+
+  for (let gi = 0; gi < groups.length; gi++) {
+    if (cancelled()) break
+    const group = groups[gi]
+    onProgress?.(Math.round(gi / groups.length * 100), group.targetWord)
+    try {
+      const pmFails = group.indices.map(i => allPairs[i]).filter(p => p._pm && p._pm <= 3)
+      let verdict
+      if (pmFails.length > 0) {
+        const worst = pmFails.reduce((a, b) => a._pm < b._pm ? a : b)
+        verdict = {
+          action: worst._pm <= 2 ? 'replace' : 'improve',
+          reason: `Prompt mismatch (${worst._pm}/5): "${(worst.prompt||'').slice(0,40)}" — "${(worst.english||'').slice(0,40)}"${worst._pmNote ? '. ' + worst._pmNote : ''}`
+        }
+        counts.prompt_fix++
+      } else {
+        verdict = await _qrEvaluateGroup(group, allPairs, apiKey, model)
+      }
+      if (verdict.action === 'clean') { counts.clean++; onLog?.(`  ✓ ${group.targetWord}`); continue }
+      onLog?.(`  ${verdict.action === 'fix_phonetic' ? '🔤' : verdict.action === 'replace' ? '🔄' : '✏️'} ${group.targetWord}: ${verdict.reason}`)
+      let newPairs
+      if (verdict.action === 'fix_phonetic') newPairs = await _qrFixPhonetic(group.pairs, apiKey, model)
+      else if (verdict.action === 'improve') newPairs = await _qrImprove(verdict, group, allPairs, apiKey, model)
+      else newPairs = await _qrReplace(group, allPairs, apiKey, model)
+      if (cancelled()) break
+      if (newPairs) group.indices.forEach((idx, pi) => { if (newPairs[pi]) allPairs[idx] = { ...newPairs[pi], _source: `ai:${verdict.action}:${group.targetWord}` } })
+      counts[verdict.action] = (counts[verdict.action] || 0) + 1
+    } catch(e) { onLog?.(`  ⚠️ ${group.targetWord}: ${e.message}`); counts.error++ }
+  }
+
+  return { pairs: allPairs, counts }
+}
+
 // ── Prompt-match batch checker ───────────────────────────────────────────────
 async function _qrBatchPromptCheck(pairs, apiKey, model) {
   // Only check pairs that have both a real prompt and Thai content
@@ -9633,6 +9740,44 @@ async function _qrBatchPromptCheck(pairs, apiKey, model) {
     if (!sc) return p
     return { ...p, _pm: sc.s, _pmNote: sc.note }
   })
+}
+
+// ── Sentence-level phonetic re-romanizer ─────────────────────────────────────
+async function _qrFixBrokenPhonetics(pairs, apiKey, model) {
+  const IPA_CHARS = /[ɛɔɐʉɯŋəɪʊ]/
+  const THAI_RANGE = /[\u0e00-\u0e7f]/
+  const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) =>
+    p.phonetic && (IPA_CHARS.test(p.phonetic) || THAI_RANGE.test(p.phonetic))
+  )
+  if (!eligible.length) return { pairs, fixed: 0 }
+
+  const BATCH = 20
+  const result = [...pairs]
+  let fixed = 0
+
+  for (let b = 0; b < eligible.length; b += BATCH) {
+    const chunk = eligible.slice(b, b + BATCH)
+    const numbered = chunk.map(({ i, p }, ci) =>
+      `${ci + 1}. Thai: ${p.thai}\n   Current (broken): ${p.phonetic}`
+    ).join('\n\n')
+
+    const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
+      `Re-romanize each Thai sentence using toned RTGS only.\nNO IPA symbols (no ɛ ɔ ʉ ŋ ə). Use only standard Latin letters with tone marks (à á â ǎ).\nExamples: ครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak"\n\n${numbered}\n\nReturn ONLY JSON: [{"n":1,"ph":"romanization"},...]`
+    }], 800)
+
+    try {
+      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
+      parsed.forEach(({ n, ph }) => {
+        const orig = chunk[n - 1]
+        if (orig && ph && ph.trim()) {
+          result[orig.i] = { ...result[orig.i], phonetic: ph.trim() }
+          fixed++
+        }
+      })
+    } catch(e) { console.warn('[fixPhonetics] batch', b, 'failed:', e.message) }
+  }
+
+  return { pairs: result, fixed }
 }
 
 function _qrGetAllGroups(track) {
@@ -9824,57 +9969,15 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
   async function runCheck() {
     qrCancelRef.current = false
     setPhase('checking')
-    let allPairs = [...(track.pairs || [])]
-
-    // ── Phase 1: Prompt-match scoring ────────────────────────────────────────
-    setProgressMsg('Checking prompt alignment…')
-    try {
-      allPairs = await _qrBatchPromptCheck(allPairs, apiKey, model)
-    } catch(e) { console.warn('[QR] prompt check failed', e) }
-    if (qrCancelRef.current) return
-
-    const pmMismatches = allPairs.filter(p => p._pm && p._pm < 5).length
-    if (pmMismatches > 0) setProgressMsg(`Found ${pmMismatches} prompt mismatches — fixing…`)
-
-    const groups = _qrGetAllGroups(track)
-    const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, prompt_fix: 0, error: 0 }
-
-    for (let i = 0; i < groups.length; i++) {
-      if (qrCancelRef.current) break  // Fix 5: stop loop if cancelled
-      const group = groups[i]
-      setProgress(Math.round(i / groups.length * 100))
-      setProgressMsg(`Evaluating ${group.targetWord} (${i + 1}/${groups.length})…`)
-      try {
-        // Check if any pair in this group has a prompt mismatch score < 4
-        const pmFails = group.indices.map(i => allPairs[i]).filter(p => p._pm && p._pm <= 3)
-        let verdict
-        if (pmFails.length > 0) {
-          const worst = pmFails.reduce((a, b) => (a._pm < b._pm ? a : b))
-          verdict = {
-            action: worst._pm <= 2 ? 'replace' : 'improve',
-            reason: `Prompt mismatch (score ${worst._pm}/5): "${worst.prompt}" — sentence says "${worst.english}"` + (worst._pmNote ? `. ${worst._pmNote}` : '')
-          }
-          counts.prompt_fix = (counts.prompt_fix || 0) + 1
-        } else {
-          verdict = await _qrEvaluateGroup(group, allPairs, apiKey, model)
-        }
-        if (verdict.action === 'clean') { counts.clean++; continue }
-        const labels = { fix_phonetic: 'Fixing phonetic', improve: 'Improving', replace: 'Replacing' }
-        setProgressMsg(`${labels[verdict.action] || 'Fixing'}: ${group.targetWord} — ${verdict.reason}`)
-        let newPairs
-        if (verdict.action === 'fix_phonetic') newPairs = await _qrFixPhonetic(group.pairs, apiKey, model)
-        else if (verdict.action === 'improve') newPairs = await _qrImprove(verdict, group, allPairs, apiKey, model)
-        else newPairs = await _qrReplace(group, allPairs, apiKey, model)
-        if (qrCancelRef.current) break  // check again after await
-        group.indices.forEach((idx, pi) => { if (newPairs && newPairs[pi]) allPairs[idx] = { ...newPairs[pi], _source: `ai:${verdict.action}:${group.targetWord}` } })
-        counts[verdict.action] = (counts[verdict.action] || 0) + 1
-      } catch(e) { console.warn('[QR]', group.targetWord, e.message); counts.error++ }
-    }
-
-    if (!qrCancelRef.current) {
+    const result = await runQualityCheckCore(track, apiKey, model, {
+      onLog: (msg) => setProgressMsg(msg),
+      onProgress: (pct) => setProgress(pct),
+      cancelRef: qrCancelRef
+    })
+    if (!qrCancelRef.current && result) {
       setProgress(100)
-      setResults(counts)
-      setUpdatedPairs(allPairs)
+      setResults(result.counts)
+      setUpdatedPairs(result.pairs)
       setPhase('done')
     }
   }
@@ -9933,6 +10036,7 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
         <span className="display" style={{ fontSize: 18, display: 'block', marginBottom: 20 }}>Quality Check Done</span>
         <Card style={{ padding: 16, marginBottom: 16 }}>
           {results.prompt_fix > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🎯 {results.prompt_fix} prompt mismatch{results.prompt_fix > 1 ? 'es' : ''} fixed</p>}
+          {results.phonetic_prepass > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔤 {results.phonetic_prepass} broken phonetic{results.phonetic_prepass > 1 ? 's' : ''} re-romanized</p>}
           {results.fix_phonetic > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔤 {results.fix_phonetic} phonetic{results.fix_phonetic > 1 ? 's' : ''} re-transcribed</p>}
           {results.improve > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>✏️ {results.improve} group{results.improve > 1 ? 's' : ''} improved</p>}
           {results.replace > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔄 {results.replace} group{results.replace > 1 ? 's' : ''} replaced</p>}

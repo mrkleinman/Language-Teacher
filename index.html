@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v413"/>
-<meta name="app-version" content="v413"/>
+<meta name="app-version" content="v414"/>
+<meta name="app-version" content="v414"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -7426,10 +7426,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         setPhase('done')
 
         // ── Auto quality check ───────────────────────────────────────────────
+        const _qcModel = resolveOrModel(provider)
         setGenLog(prev => [...prev, '━━━━━━━━━━━━━━━━━━━━━━━━', '🔍 Auto quality check starting…'])
         try {
           const qrCancel = { current: false }
-          const result = await runQualityCheckCore(track, apiKey, model, {
+          const result = await runQualityCheckCore(track, apiKey, _qcModel, {
             onLog: (msg) => setGenLog(prev => [...prev.slice(-80), msg]),
             onProgress: (pct, word) => {
               if (word) setGenLog(prev => {
@@ -9950,6 +9951,8 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
   const [results, setResults] = useState(null)
   const [updatedPairs, setUpdatedPairs] = useState(null)
   const [quickStats, setQuickStats] = useState(null)
+  const [qrLog, setQrLog] = useState([])
+  const [showLog, setShowLog] = useState(false)
   const qrCancelRef = useRef(false)
 
   useEffect(() => {
@@ -9969,8 +9972,9 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
   async function runCheck() {
     qrCancelRef.current = false
     setPhase('checking')
+    setQrLog([])
     const result = await runQualityCheckCore(track, apiKey, model, {
-      onLog: (msg) => setProgressMsg(msg),
+      onLog: (msg) => { setProgressMsg(msg); setQrLog(prev => [...prev, msg]) },
       onProgress: (pct) => setProgress(pct),
       cancelRef: qrCancelRef
     })
@@ -10048,6 +10052,29 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
         <Btn onClick={() => onSave({ ...track, pairs: updatedPairs || track.pairs })} style={{ width: '100%', justifyContent: 'center' }}>
           Save & Study ▶
         </Btn>
+        {qrLog.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <button onClick={() => setShowLog(v => !v)} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: 0 }}>
+                {showLog ? '▲ Hide log' : '▼ Show QC log'}
+              </button>
+              <button onClick={() => {
+                const txt = qrLog.join('\n')
+                const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }))
+                a.download = 'qc-log-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.txt'; a.click()
+              }} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: 0 }}>
+                ⬇ Download log
+              </button>
+            </div>
+            {showLog && (
+              <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '10px 12px', maxHeight: 280, overflowY: 'auto' }}>
+                {qrLog.map((line, i) => (
+                  <p key={i} style={{ fontSize: 10, fontFamily: 'monospace', color: line.startsWith('⚠') ? '#f59e0b' : line.startsWith('✅') ? '#10b981' : 'var(--muted)', margin: '2px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{line}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     )
   }

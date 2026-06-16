@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v418"/>
-<meta name="app-version" content="v418"/>
+<meta name="app-version" content="v420"/>
+<meta name="app-version" content="v420"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -9653,17 +9653,7 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
   catch(e) { onLog?.('⚠️ Gloss fill failed: ' + e.message) }
   if (cancelled()) return null
 
-  // Pre-pass 2: Fix broken sentence phonetics
-  onLog?.('Fixing broken phonetics…')
-  try {
-    const res = await _qrFixBrokenPhonetics(allPairs, apiKey, model, onLog)
-    allPairs = res.pairs; counts.phonetic_prepass = res.fixed
-    if (res.fixed > 0) onLog?.(`🔤 ${res.fixed} phonetics re-romanized`)
-    else onLog?.('  ✓ All phonetics clean')
-  } catch(e) { onLog?.('⚠️ Phonetic fix failed: ' + e.message) }
-  if (cancelled()) return null
-
-  // Pre-pass 3: Prompt-match scoring
+  // Pre-pass 2: Prompt-match scoring
   onLog?.('Checking prompt alignment…')
   try { allPairs = await _qrBatchPromptCheck(allPairs, apiKey, model, onLog) }
   catch(e) { onLog?.('⚠️ Prompt check failed: ' + e.message) }
@@ -9707,6 +9697,19 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       counts[verdict.action] = (counts[verdict.action] || 0) + 1
     } catch(e) { onLog?.(`  ⚠️ ${group.targetWord}: ${e.message}`); counts.error++ }
   }
+
+  // ── Post-group phonetic fix: catch IPA introduced by improve/replace ─────────
+  onLog?.('Final phonetic check…')
+  try {
+    const res2 = await _qrFixBrokenPhonetics(allPairs, apiKey, model, onLog)
+    allPairs = res2.pairs
+    if (res2.fixed > 0) {
+      onLog?.(`🔤 ${res2.fixed} new phonetics re-romanized after group fixes`)
+      counts.phonetic_prepass += res2.fixed
+    } else {
+      onLog?.('  ✓ All phonetics clean')
+    }
+  } catch(e) { onLog?.('⚠️ Post-group phonetic fix failed: ' + e.message) }
 
   return { pairs: allPairs, counts }
 }

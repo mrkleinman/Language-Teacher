@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v415"/>
-<meta name="app-version" content="v415"/>
+<meta name="app-version" content="v416"/>
+<meta name="app-version" content="v416"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -685,7 +685,7 @@ function enrichWordsWithCompounds(words) {
 function enrichGloss(p) { if (!p) return ''; const k = _GLOSS_LOOKUP.np(p); return _GLOSS_LOOKUP.lookup[k] || '' }
 
 // AI fill — sends batches of pairs with empty glosses to the model for completion
-async function fillMissingGlossesForTrack(pairs, apiKey, model) {
+async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
   if (!apiKey || !model || !pairs || !pairs.length) return pairs
   const needsFill = pairs.map((p, i) => i).filter(i =>
     pairs[i].words && pairs[i].words.some(w => !w.e || !w.ph)
@@ -697,6 +697,10 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model) {
 
   for (let b = 0; b < needsFill.length; b += BATCH) {
     const batchIdxs = needsFill.slice(b, b + BATCH)
+    const batchNum = Math.floor(b/BATCH)+1
+    const totalBatches = Math.ceil(needsFill.length/BATCH)
+    const sample = (pairs[batchIdxs[0]]?.thai || '').slice(0,35)
+    onLog?.(`  Batch ${batchNum}/${totalBatches}: ${sample}…`)
     const input = batchIdxs.map((pairIdx, localIdx) => ({
       id: localIdx,
       thai: pairs[pairIdx].thai || '',
@@ -9644,22 +9648,23 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
 
   // Pre-pass 1: Fill missing word glosses + phonetics
   onLog?.('Filling missing glosses and word phonetics…')
-  try { allPairs = await fillMissingGlossesForTrack(allPairs, apiKey, model) }
+  try { allPairs = await fillMissingGlossesForTrack(allPairs, apiKey, model, onLog) }
   catch(e) { onLog?.('⚠️ Gloss fill failed: ' + e.message) }
   if (cancelled()) return null
 
   // Pre-pass 2: Fix broken sentence phonetics
   onLog?.('Fixing broken phonetics…')
   try {
-    const res = await _qrFixBrokenPhonetics(allPairs, apiKey, model)
+    const res = await _qrFixBrokenPhonetics(allPairs, apiKey, model, onLog)
     allPairs = res.pairs; counts.phonetic_prepass = res.fixed
     if (res.fixed > 0) onLog?.(`🔤 ${res.fixed} phonetics re-romanized`)
+    else onLog?.('  ✓ All phonetics clean')
   } catch(e) { onLog?.('⚠️ Phonetic fix failed: ' + e.message) }
   if (cancelled()) return null
 
   // Pre-pass 3: Prompt-match scoring
   onLog?.('Checking prompt alignment…')
-  try { allPairs = await _qrBatchPromptCheck(allPairs, apiKey, model) }
+  try { allPairs = await _qrBatchPromptCheck(allPairs, apiKey, model, onLog) }
   catch(e) { onLog?.('⚠️ Prompt check failed: ' + e.message) }
   if (cancelled()) return null
 
@@ -9706,7 +9711,7 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
 }
 
 // ── Prompt-match batch checker ───────────────────────────────────────────────
-async function _qrBatchPromptCheck(pairs, apiKey, model) {
+async function _qrBatchPromptCheck(pairs, apiKey, model, onLog) {
   // Only check pairs that have both a real prompt and Thai content
   const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) =>
     p.prompt && p.prompt.length > 8 && p.thai && p.english &&
@@ -9719,6 +9724,9 @@ async function _qrBatchPromptCheck(pairs, apiKey, model) {
 
   for (let b = 0; b < eligible.length; b += BATCH) {
     const chunk = eligible.slice(b, b + BATCH)
+    const batchNum = Math.floor(b/BATCH)+1
+    const totalBatches = Math.ceil(eligible.length/BATCH)
+    onLog?.(`  Batch ${batchNum}/${totalBatches}: checking ${chunk.length} pairs (e.g. "${(chunk[0]?.p?.prompt||'').slice(0,40)}…")`)
     const numbered = chunk.map(({ i, p }, ci) =>
       `${ci + 1}. Prompt: "${p.prompt}"\n   Thai: ${p.thai}\n   English: ${p.english}`
     ).join('\n\n')
@@ -9744,7 +9752,7 @@ async function _qrBatchPromptCheck(pairs, apiKey, model) {
 }
 
 // ── Sentence-level phonetic re-romanizer ─────────────────────────────────────
-async function _qrFixBrokenPhonetics(pairs, apiKey, model) {
+async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
   const IPA_CHARS = /[ɛɔɐʉɯŋəɪʊ]/
   const THAI_RANGE = /[\u0e00-\u0e7f]/
   const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) =>
@@ -9758,6 +9766,9 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model) {
 
   for (let b = 0; b < eligible.length; b += BATCH) {
     const chunk = eligible.slice(b, b + BATCH)
+    const batchNum = Math.floor(b/BATCH)+1
+    const totalBatches = Math.ceil(eligible.length/BATCH)
+    onLog?.(`  Batch ${batchNum}/${totalBatches}: re-romanizing ${chunk.length} pairs (e.g. ${(chunk[0]?.p?.thai||'').slice(0,30)}…)`)
     const numbered = chunk.map(({ i, p }, ci) =>
       `${ci + 1}. Thai: ${p.thai}\n   Current (broken): ${p.phonetic}`
     ).join('\n\n')

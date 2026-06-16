@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v416"/>
-<meta name="app-version" content="v416"/>
+<meta name="app-version" content="v418"/>
+<meta name="app-version" content="v418"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -687,8 +687,9 @@ function enrichGloss(p) { if (!p) return ''; const k = _GLOSS_LOOKUP.np(p); retu
 // AI fill — sends batches of pairs with empty glosses to the model for completion
 async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
   if (!apiKey || !model || !pairs || !pairs.length) return pairs
+  const IPA = /[\u025b\u0254\u0250\u0289\u026f\u014b\u0259\u026a\u028a]/
   const needsFill = pairs.map((p, i) => i).filter(i =>
-    pairs[i].words && pairs[i].words.some(w => !w.e || !w.ph)
+    pairs[i].words && pairs[i].words.some(w => !w.e || !w.ph || IPA.test(w.ph || ''))
   )
   if (!needsFill.length) return pairs
 
@@ -711,9 +712,9 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
 
 Rules for "e": 1-3 words. ครับ→"[m]" ค่ะ/คะ→"[f]" ไม่→"not" ไหม→"?" จะ→"will" ก็→"also" แล้ว→"already" ที่→"that/at" ให้→"to" นะ→"[softener]" เลย→"at all" มาก→"very" แค่→"just". Numbers: หนึ่ง→"one" สอง→"two" สาม→"three" สี่→"four" ห้า→"five" หก→"six" เจ็ด→"seven" แปด→"eight" เก้า→"nine" สิบ→"ten". Time: โมง→"o'clock" เช้า→"morning" เย็น→"evening" ทุ่ม→"p.m." คืน→"night".
 
-Rules for "ph": toned RTGS only — NO IPA (no ɛ ɔ ʉ ŋ ə). Use standard Latin with tone marks only (à á â ǎ). Examples: ครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak" มาก→"mâak".
+Rules for "ph": toned RTGS only — NO IPA (no ɛ ɔ ʉ ŋ ə). Use standard Latin with tone marks only (à á â ǎ). Examples: ครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak" มาก→"mâak". If a word already has a "ph" value but it contains IPA characters (like ɛ ə ʉ ŋ ɔ), REPLACE it with correct toned RTGS.
 
-Keep existing non-empty values exactly as-is.
+Keep existing non-empty "e" values exactly as-is. For "ph": keep existing values ONLY if they contain no IPA characters — if "ph" has ɛ ə ʉ ŋ ɔ ɪ ʊ, replace it with correct toned RTGS.
 
 Input: ${JSON.stringify(input)}
 
@@ -5411,11 +5412,11 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
     '"opening":"Natural Thai greeting A says to B (must end ครับ). MUST warmly acknowledge the person — สวัสดีครับ is fine, or casual: วันนี้เป็นยังไงบ้างครับ, นานไม่ได้เจอกันเลยครับ, มาถึงแล้วเหรอครับ, เพิ่งมาถึงเหรอครับ, ว่างไหมครับ. BANNED: ไปไหนมาครับ (interrogation, not greeting). Make the other person feel welcomed.",' +
     '"opening_phonetic":"full romanisation of opening",' +
     '"opening_english":"English translation of opening (omit particle)",' +
-    '"opening_prompt":"One sentence describing what A says — use he/she not character names for the action, e.g. He greets her and asks how she is, or He asks if she has been waiting long",' +
+    '"opening_prompt":"One sentence — ALWAYS use both character names (e.g. Somchai greets Nida and says it has been a long time). Never use vague he/she without naming the characters.",' +
     '"reply":"B greets A back and responds to what A said. ONE simple sentence only — must end with a single ค่ะ or คะ. Do NOT ask if something is wrong, if he has problems, or if he is troubled. Keep it warm and positive.",' +
     '"reply_phonetic":"full romanisation of reply",' +
     '"reply_english":"English translation of reply (omit particle)",' +
-    '"reply_prompt":"Use first names only — no job titles or descriptions in parentheses. Describe what B says — e.g. Nida greets Somchai back and says she just arrived. NEVER say she calls him Dad or any family name."}\n\nCRITICAL: whatever Thai name/nickname you use in the opening and reply Thai fields, use the SAME name (romanized) in all English fields. No different English name for the same character.'
+    '"reply_prompt":"Use B\'s name ONCE to open, then she/he only — NEVER repeat B\'s own name twice in one sentence. e.g. Nida greets Somchai back and says SHE is doing well (NOT: says Nida is doing well). No job titles."}\n\nCRITICAL: whatever Thai name/nickname you use in the opening and reply Thai fields, use the SAME name (romanized) in all English fields. No different English name for the same character.'
   try {
     let raw = ''
     const isGeminiKey = apiKey && !apiKey.startsWith('sk-') && apiKey.length > 10

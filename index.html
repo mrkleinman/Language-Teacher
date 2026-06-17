@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v426"/>
-<meta name="app-version" content="v426"/>
+<meta name="app-version" content="v427"/>
+<meta name="app-version" content="v427"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -720,7 +720,7 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
 
     const prompt = `Fill every empty "e" (English gloss) and "ph" (romanization) in these Thai word arrays.
 
-Rules for "e": 1-3 words. ครับ→"[m]" ค่ะ/คะ→"[f]" ไม่→"not" ไหม→"?" จะ→"will" ก็→"also" แล้ว→"already" ที่→"that/at" ให้→"to" นะ→"[softener]" เลย→"at all" มาก→"very" แค่→"just". Numbers: หนึ่ง→"one" สอง→"two" สาม→"three" สี่→"four" ห้า→"five" หก→"six" เจ็ด→"seven" แปด→"eight" เก้า→"nine" สิบ→"ten". Time: โมง→"o'clock" เช้า→"morning" เย็น→"evening" ทุ่ม→"p.m." คืน→"night".
+Rules for "e": 1-3 words. PARTICLES: ครับ→"[m]" ค่ะ/คะ→"[f]" ไม่→"not" ไหม/มั้ย→"?" จะ→"will" ก็→"also" แล้ว→"already" ที่→"that/at" ให้→"to" นะ→"[softener]" เลย→"so/then" มาก→"very" แค่→"just" ตอน→"at/when" ก่อน→"first/before" กำลัง→"currently" เหรอ/เหรอะ→"[surprise?]" เกือบ→"almost" อัน→"[item]" ทำไม→"why". NUMBERS: หนึ่ง→"one" สอง→"two" สาม→"three" สี่→"four" ห้า→"five" หก→"six" เจ็ด→"seven" แปด→"eight" เก้า→"nine" สิบ→"ten". Time: โมง→"o'clock" เช้า→"morning" เย็น→"evening" ทุ่ม→"p.m." คืน→"night". CRITICAL HOMOPHONES: หา (hǎa)→"to find" NOT five (five=ห้า=hâa). PROPER NOUNS: if the Thai token is a person's name (romanised capitalised like Nida Somchai), set e="[name]". COMMON WORDS: ห้อง→"room" พื้น→"floor" ช้อน→"spoon" ส้อม→"fork" จาน→"plate" แก้ว→"glass" ถัง→"bucket" ผ้า→"cloth" รีบ→"hurry" ขัด→"scrub" ทำความสะอาด→"clean" นั่งเล่น→"living room" ห้องนั่งเล่น→"living room" เสร็จ→"finished/done" ต้อง→"must" รู้→"know" หา→"look for" เจอ→"find/meet" นาน→"long time" สบาย→"well/comfortable".
 
 Rules for "ph": toned RTGS only — NO IPA (no ɛ ɔ ʉ ŋ ə). Use standard Latin with tone marks only (à á â ǎ). Examples: ครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak" มาก→"mâak". If a word already has a "ph" value but it contains IPA characters (like ɛ ə ʉ ŋ ɔ), REPLACE it with correct toned RTGS.
 

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v424"/>
-<meta name="app-version" content="v424"/>
+<meta name="app-version" content="v425"/>
+<meta name="app-version" content="v425"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -8116,7 +8116,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
                 <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
                   {enriched.map((w, i) => (
                     <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
-                      <span className="phon" style={{ fontSize:20, color:'var(--gold)', fontWeight:700, whiteSpace:'nowrap' }}>{w.p}</span>
+                      <span className="phon" style={{ fontSize:20, color:'var(--gold)', fontWeight:700, whiteSpace:'nowrap' }}>{w.ph || (/[\u0e00-\u0e7f]/.test(w.p||'') ? '' : w.p)}</span>
                       <span style={{ fontSize:13, color: w.e ? '#94a3b8' : 'transparent', whiteSpace:'nowrap', minHeight:18 }}>{w.e || '.'}</span>
                     </div>
                   ))}

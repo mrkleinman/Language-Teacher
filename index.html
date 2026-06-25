@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v427"/>
-<meta name="app-version" content="v427"/>
+<meta name="app-version" content="v428"/>
+<meta name="app-version" content="v428"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -38,6 +38,7 @@
   })();
   </script>
 <script type="text/babel">
+
 const { useState, useEffect, useCallback, useRef, useMemo } = React
 
 // ── Fonts ────────────────────────────────────────────────────────────────────
@@ -7298,10 +7299,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         .slice(0, 25)
       return { targets: customTargets, anchors: anch }
     }
-    // Exclude words already used in today's tracks (deduplication)
-    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-    const todayTracks = (tracks || []).filter(t => t.date === today)
-    const usedWordIds = new Set(todayTracks.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
+    // Exclude words already queued in any unplayed track (not just today's)
+    const pendingTracks = (tracks || []).filter(t => !t.rated)
+    const usedWordIds = new Set(pendingTracks.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
     const filteredVocab = usedWordIds.size > 0 ? vocab.filter(w => !usedWordIds.has(w.id)) : vocab
     return pickWords(filteredVocab, mode)
   }, [vocab, mode, customTargets, tracks])
@@ -9666,13 +9666,7 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
   let allPairs = [...(track.pairs || [])]
   const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, prompt_fix: 0, phonetic_prepass: 0, error: 0 }
 
-  // Pre-pass 1: Fill missing word glosses + phonetics
-  onLog?.('Filling missing glosses and word phonetics…')
-  try { allPairs = await fillMissingGlossesForTrack(allPairs, apiKey, model, onLog) }
-  catch(e) { onLog?.('⚠️ Gloss fill failed: ' + e.message) }
-  if (cancelled()) return null
-
-  // Pre-pass 2: Prompt-match scoring
+  // Step 1: Prompt-match scoring — find content problems before touching anything
   onLog?.('Checking prompt alignment…')
   try { allPairs = await _qrBatchPromptCheck(allPairs, apiKey, model, onLog) }
   catch(e) { onLog?.('⚠️ Prompt check failed: ' + e.message) }
@@ -9684,7 +9678,7 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
     pmFails.forEach(p => onLog?.(`  [${(p.prompt || '').slice(0, 55)}] score ${p._pm}/5${p._pmNote ? ' — ' + p._pmNote : ''}`))
   }
 
-  // Group evaluation
+  // Step 2: Group evaluation — fix content (improve/replace), informed by prompt scores
   const groups = _qrGetAllGroups(track)
   onLog?.(`Evaluating ${groups.length} groups…`)
 
@@ -9717,18 +9711,22 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
     } catch(e) { onLog?.(`  ⚠️ ${group.targetWord}: ${e.message}`); counts.error++ }
   }
 
-  // ── Post-group phonetic fix: catch IPA introduced by improve/replace ─────────
-  onLog?.('Final phonetic check…')
+  // Step 3: Re-romanize — fix IPA on finalized sentences (after replacements, not before)
+  onLog?.('Re-romanizing phonetics…')
   try {
     const res2 = await _qrFixBrokenPhonetics(allPairs, apiKey, model, onLog)
     allPairs = res2.pairs
     if (res2.fixed > 0) {
-      onLog?.(`🔤 ${res2.fixed} new phonetics re-romanized after group fixes`)
+      onLog?.(`🔤 ${res2.fixed} phonetics re-romanized`)
       counts.phonetic_prepass += res2.fixed
-    } else {
-      onLog?.('  ✓ All phonetics clean')
-    }
-  } catch(e) { onLog?.('⚠️ Post-group phonetic fix failed: ' + e.message) }
+    } else { onLog?.('  ✓ All phonetics clean') }
+  } catch(e) { onLog?.('⚠️ Phonetic fix failed: ' + e.message) }
+  if (cancelled()) return null
+
+  // Step 4: Fill word glosses + per-word phonetics — last, once content & phonetics are locked
+  onLog?.('Filling word glosses and per-word phonetics…')
+  try { allPairs = await fillMissingGlossesForTrack(allPairs, apiKey, model, onLog) }
+  catch(e) { onLog?.('⚠️ Gloss fill failed: ' + e.message) }
 
   return { pairs: allPairs, counts }
 }

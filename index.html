@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v428"/>
-<meta name="app-version" content="v428"/>
+<meta name="app-version" content="v429"/>
+<meta name="app-version" content="v429"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -3659,6 +3659,20 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
   const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
 
+  const [genDraft, setGenDraft] = useState(() => {
+    try {
+      const d = localStorage.getItem('tt-gen-draft')
+      if (!d) return null
+      const parsed = JSON.parse(d)
+      if (!parsed.pairs || !parsed.pairs.length) return null
+      // Expire drafts older than 3 days
+      if (parsed.savedAt && (Date.now() - new Date(parsed.savedAt)) > 3 * 86400000) {
+        localStorage.removeItem('tt-gen-draft'); return null
+      }
+      return parsed
+    } catch(e) { return null }
+  })
+
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -3701,6 +3715,36 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
           {PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
         </select>
       </div>
+
+      {/* Resume draft if one exists */}
+      {genDraft && (
+        <div style={{ background: 'linear-gradient(135deg, #1a2a1a, #1e3a1e)', border: '1px solid #3a6b3a', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>⏸ Generation paused</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+              {genDraft.pairs.length} pairs saved · {genDraft.targetsDoneCount}/{genDraft.totalTargets} words done
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => {
+              // Load partial track as-is
+              const track = { date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), mode: genDraft.mode || 'daily', pairs: genDraft.pairs, keywords: (genDraft.targets||[]).map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '' })), rated: false, createdAt: new Date().toISOString(), partial: true }
+              onNav('open-draft-track', track)
+              localStorage.removeItem('tt-gen-draft')
+              setGenDraft(null)
+            }} style={{ fontSize: 11, padding: '6px 10px', borderRadius: 8, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--muted)', cursor: 'pointer' }}>
+              Study now
+            </button>
+            <button onClick={() => {
+              localStorage.removeItem('tt-gen-draft')
+              setGenDraft(null)
+              onNav('generate-daily')
+            }} style={{ fontSize: 11, padding: '6px 10px', borderRadius: 8, background: '#10b981', border: 'none', color: '#000', fontWeight: 700, cursor: 'pointer' }}>
+              Resume →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Generate Buttons */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -7281,6 +7325,17 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const [isPaused, setIsPaused] = useState(false)
   const stopSignal = useRef({ paused: false })
   const partialPairsRef = useRef([])
+
+  // Clear draft when component unmounts mid-stream (save) or after completion (clear)
+  useEffect(() => {
+    return () => {
+      if (partialPairsRef.current.length > 0 && phase !== 'done') {
+        // Unmounting while streaming — draft is already saved in localStorage, keep it
+      } else if (phase === 'done') {
+        try { localStorage.removeItem('tt-gen-draft') } catch(e) {}
+      }
+    }
+  }, [phase])
   const sceneDataRef = useRef(null)
   const [sceneData, setSceneData] = useState(null)
   const [buildingScene, setBuildingScene] = useState(false)
@@ -7385,6 +7440,21 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               })
               // Save partial pairs so we can use them if paused
               partialPairsRef.current = meta && meta.allPairs ? meta.allPairs : partialPairsRef.current
+              // Auto-save draft to localStorage so user can resume if they navigate away
+              if (partialPairsRef.current.length > 0) {
+                try {
+                  localStorage.setItem('tt-gen-draft', JSON.stringify({
+                    pairs: partialPairsRef.current,
+                    targetsDoneCount: meta && meta.wordStatus ? chipIdx + 1 : chipIdx,
+                    targetsRemaining: targets.slice(chipIdx + 1),
+                    targets: targets,
+                    anchors: anchors,
+                    mode: mode,
+                    totalTargets: targets.length,
+                    savedAt: new Date().toISOString()
+                  }))
+                } catch(e) {}
+              }
               if (meta && meta.wordStatus) {
                 setCurrentTier(meta.wordStatus)
                 setGenLog(prev => [...prev.slice(-8), '━━ ' + meta.wordStatus])
@@ -7678,7 +7748,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={() => {
             stopSignal.current.paused = false
             setIsPaused(false)
-            setPhase('starting')
+            setPhase('streaming')  // skip scene re-gen, continue directly
           }} style={{ width:'100%', justifyContent:'center', background:'var(--surface2)', border:'1px solid var(--border)' }}>
             ▶▶ Resume generation
           </Btn>
@@ -10210,10 +10280,11 @@ function ThaiTeacher() {
     await stSet('tt-tracks', capped)
   }, [])
 
-  function navigate(v) {
+  function navigate(v, data) {
     if (v === 'generate-daily') { setGenMode('daily'); setCustomTargets(null); setView('generate') }
     else if (v === 'generate-weak') { setGenMode('weak'); setCustomTargets(null); setView('generate') }
     else if (v.startsWith('browse-')) { setBrowseFilter(v.replace('browse-', '')); setView('browse') }
+    else if (v === 'open-draft-track' && data) { onTrackGenerated(data) }
     else setView(v)
   }
 

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v429"/>
-<meta name="app-version" content="v429"/>
+<meta name="app-version" content="v430"/>
+<meta name="app-version" content="v430"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -3736,9 +3736,10 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
               Study now
             </button>
             <button onClick={() => {
+              const draft = genDraft
               localStorage.removeItem('tt-gen-draft')
               setGenDraft(null)
-              onNav('generate-daily')
+              onNav('generate-resume', draft)
             }} style={{ fontSize: 11, padding: '6px 10px', borderRadius: 8, background: '#10b981', border: 'none', color: '#000', fontWeight: 700, cursor: 'pointer' }}>
               Resume →
             </button>
@@ -7313,7 +7314,7 @@ function resolveOrName(provider) {
 }
 
 
-function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets, orBalance, onBalanceRefresh, tracks }) {
+function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets, orBalance, onBalanceRefresh, tracks, resumeDraft }) {
   const [error, setError] = useState('')
   const [brickSources, setBrickSources] = useState({})
   const [currentTier, setCurrentTier] = useState('')
@@ -7326,16 +7327,17 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const stopSignal = useRef({ paused: false })
   const partialPairsRef = useRef([])
 
-  // Clear draft when component unmounts mid-stream (save) or after completion (clear)
+  // Pre-load draft if resuming
   useEffect(() => {
-    return () => {
-      if (partialPairsRef.current.length > 0 && phase !== 'done') {
-        // Unmounting while streaming — draft is already saved in localStorage, keep it
-      } else if (phase === 'done') {
-        try { localStorage.removeItem('tt-gen-draft') } catch(e) {}
-      }
+    if (resumeDraft && resumeDraft.pairs && resumeDraft.pairs.length > 0) {
+      partialPairsRef.current = resumeDraft.pairs
+      setPairsDone(resumeDraft.pairs.length)
+      setPairsTotal(resumeDraft.totalTargets * 3)
+      setCurrentTier(`▶ Resuming from word ${resumeDraft.targetsDoneCount + 1}/${resumeDraft.totalTargets}…`)
+      setGenLog([`📂 Loaded ${resumeDraft.pairs.length} saved pairs`, `▶ Continuing from word ${resumeDraft.targetsDoneCount + 1}/${resumeDraft.totalTargets}`])
+      setPhase('streaming')
     }
-  }, [phase])
+  }, [])
   const sceneDataRef = useRef(null)
   const [sceneData, setSceneData] = useState(null)
   const [buildingScene, setBuildingScene] = useState(false)
@@ -7347,6 +7349,10 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const [generatedTrack, setGeneratedTrack] = useState(null)
   const phoneticsRef = useRef({})
   const { targets, anchors } = useMemo(() => {
+    // If resuming from a draft, use the remaining targets from the draft
+    if (resumeDraft && resumeDraft.targetsRemaining && resumeDraft.targetsRemaining.length > 0) {
+      return { targets: resumeDraft.targetsRemaining, anchors: resumeDraft.anchors || [] }
+    }
     if (customTargets && customTargets.length) {
       const targetIds = new Set(customTargets.map(w => w.id))
       const anch = vocab.filter(w => (w.status === 'known' || w.status === 'learning') && !targetIds.has(w.id))
@@ -7499,7 +7505,12 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         if (onPhonetics && Object.keys(phoneticsRef.current).length) {
           onPhonetics(phoneticsRef.current)
         }
-        const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: phoneticsRef.current[w.id] || phoneticsRef.current[w.thai] || '' }))
+        // If resuming from draft, merge saved pairs with newly generated ones
+        if (resumeDraft && resumeDraft.pairs && resumeDraft.pairs.length > 0 && !stopSignal.current.paused) {
+          pairs = [...resumeDraft.pairs, ...(pairs || [])]
+        }
+        const allTargets = resumeDraft ? (resumeDraft.targets || targets) : targets
+        const keywords = allTargets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: phoneticsRef.current[w.id] || phoneticsRef.current[w.thai] || '' }))
         const track = {
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
@@ -10204,6 +10215,7 @@ function ThaiTeacher() {
   const [loading, setLoading] = useState(true)
   const [activeTrack, setActiveTrack] = useState(null)
   const [genMode, setGenMode] = useState('daily')
+  const [resumeDraft, setResumeDraft] = useState(null)
   const [pendingReviewTrack, setPendingReviewTrack] = useState(null)
   const [kruOpen, setKruOpen] = useState(false)
   const [kruCtx, setKruCtx] = useState('')
@@ -10281,8 +10293,9 @@ function ThaiTeacher() {
   }, [])
 
   function navigate(v, data) {
-    if (v === 'generate-daily') { setGenMode('daily'); setCustomTargets(null); setView('generate') }
-    else if (v === 'generate-weak') { setGenMode('weak'); setCustomTargets(null); setView('generate') }
+    if (v === 'generate-daily') { setResumeDraft(null); setGenMode('daily'); setCustomTargets(null); setView('generate') }
+    else if (v === 'generate-weak') { setResumeDraft(null); setGenMode('weak'); setCustomTargets(null); setView('generate') }
+    else if (v === 'generate-resume' && data) { setResumeDraft(data); setGenMode(data.mode || 'daily'); setCustomTargets(null); setView('generate') }
     else if (v.startsWith('browse-')) { setBrowseFilter(v.replace('browse-', '')); setView('browse') }
     else if (v === 'open-draft-track' && data) { onTrackGenerated(data) }
     else setView(v)
@@ -10412,6 +10425,7 @@ function ThaiTeacher() {
           apiKey={provider === 'gemini' && geminiKey ? geminiKey : orKey}
           provider={provider}
           orKey={orKey} onPhonetics={onPhonetics} customTargets={customTargets}
+          resumeDraft={resumeDraft}
           orBalance={orBalance} onBalanceRefresh={(newBal, prevBal) => { setOrBalance(newBal); setLastTrackCost(prevBal !== null ? prevBal - newBal : null) }}
           tracks={tracks}
         /></ErrorBoundary>}

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v430"/>
-<meta name="app-version" content="v430"/>
+<meta name="app-version" content="v431"/>
+<meta name="app-version" content="v431"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4135,20 +4135,28 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
   // Route to Gemini REST if key is NOT an OpenRouter key (OR keys always start with 'sk-')
   const _isGoogleKey = apiKey && !apiKey.startsWith('sk-') && apiKey.length > 10
   if (_isGoogleKey) {
-    const gemModel = (orModel || '').replace(/^google\//, '')
+    const GEMINI_FALLBACK = 'gemini-2.0-flash'
+    const gemModel = (orModel || '').replace(/^google\//, '') || 'gemini-2.5-flash-lite'
     const contents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }]
     }))
-    let gRes
-    try {
-      gRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:generateContent?key=${apiKey}`,
-        { method: 'POST', signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens || 1200, temperature: 0.7, topP: 0.9, thinkingConfig: { thinkingBudget: 0 } } }) }
-      )
-    } catch(fe) { clearTimeout(tid); throw new Error(fe.name === 'AbortError' ? 'Gemini timeout' : fe.message) }
+    const _callGeminiModel = async (modelId) => {
+      try {
+        return await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
+          { method: 'POST', signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens || 1200, temperature: 0.7, topP: 0.9, thinkingConfig: { thinkingBudget: 0 } } }) }
+        )
+      } catch(fe) { clearTimeout(tid); throw new Error(fe.name === 'AbortError' ? 'Gemini timeout' : fe.message) }
+    }
+    let gRes = await _callGeminiModel(gemModel)
+    // Auto-fallback on 503 — retry with stable gemini-2.0-flash
+    if (gRes.status === 503 && gemModel !== GEMINI_FALLBACK) {
+      console.warn(`[gemini] 503 on ${gemModel}, retrying with ${GEMINI_FALLBACK}`)
+      gRes = await _callGeminiModel(GEMINI_FALLBACK)
+    }
     clearTimeout(tid)
     if (!gRes.ok) {
       const e = await gRes.json().catch(() => ({}))
@@ -4156,7 +4164,6 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
     }
     const gData = await gRes.json()
     const _gText = gData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    // Track token cost — Gemini 2.5 Flash Lite: $0.10/M input, $0.40/M output (June 2026)
     const _gUsage = gData?.usageMetadata
     if (_gUsage && typeof window.__trackGeminiUsage === 'function') {
       const _gCost = ((_gUsage.promptTokenCount || 0) * 0.10 + (_gUsage.candidatesTokenCount || 0) * 0.40) / 1e6

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v431"/>
-<meta name="app-version" content="v431"/>
+<meta name="app-version" content="v432"/>
+<meta name="app-version" content="v432"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4135,7 +4135,7 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
   // Route to Gemini REST if key is NOT an OpenRouter key (OR keys always start with 'sk-')
   const _isGoogleKey = apiKey && !apiKey.startsWith('sk-') && apiKey.length > 10
   if (_isGoogleKey) {
-    const GEMINI_FALLBACK = 'gemini-2.0-flash'
+    const GEMINI_FALLBACK = 'gemini-1.5-flash'
     const gemModel = (orModel || '').replace(/^google\//, '') || 'gemini-2.5-flash-lite'
     const contents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
@@ -4153,7 +4153,7 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
     }
     let gRes = await _callGeminiModel(gemModel)
     // Auto-fallback on 503 — retry with stable gemini-2.0-flash
-    if (gRes.status === 503 && gemModel !== GEMINI_FALLBACK) {
+    if ((gRes.status === 503 || gRes.status === 404) && gemModel !== GEMINI_FALLBACK) {
       console.warn(`[gemini] 503 on ${gemModel}, retrying with ${GEMINI_FALLBACK}`)
       gRes = await _callGeminiModel(GEMINI_FALLBACK)
     }

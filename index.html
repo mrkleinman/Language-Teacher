@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v433"/>
-<meta name="app-version" content="v433"/>
+<meta name="app-version" content="v436"/>
+<meta name="app-version" content="v436"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -29,12 +29,9 @@
   <div id="ib" onclick="installApp()" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#d4a94a,#b88a35);color:#0b1120;border:none;border-radius:24px;padding:12px 24px;font-family:Sarabun,sans-serif;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 20px rgba(212,169,74,.5);align-items:center;gap:8px;">⬇️ Install Thai Teacher</div>
     <script>
   (function() {
-    function showErr(title, msg, stack, color) {
-      document.body.style.cssText = "margin:0;background:#0b1120;min-height:100vh;padding:20px;box-sizing:border-box";
-      document.body.innerHTML = "<div style='max-width:480px;font-family:monospace'><div style='color:" + color + ";font-size:16px;font-weight:800;margin-bottom:12px'>" + title + "</div><div style='background:#1a1a2e;border:1px solid " + color + ";border-radius:10px;padding:14px;margin-bottom:12px'><div style='color:#fca5a5;font-size:13px;word-break:break-all;margin-bottom:10px'>" + (msg||"") + "</div>" + (stack ? "<pre style='color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:0'>" + (stack+"").slice(0,600) + "</pre>" : "") + "</div><div style='color:#475569;font-size:11px'>Reload to try again</div></div>";
-    }
-    window.addEventListener("error", function(e) { showErr("App crashed", e.message || String(e), (e.error && e.error.stack) || ("at "+e.filename+":"+e.lineno+":"+e.colno), "#f43f5e"); });
-    window.addEventListener("unhandledrejection", function(e) { var r=e.reason; showErr("Async error", r?(r.message||String(r)):"Unhandled rejection", r&&r.stack, "#f59e0b"); });
+    function showErr(t,m,s,c){document.body.style.cssText="margin:0;background:#0b1120;min-height:100vh;padding:20px;box-sizing:border-box";document.body.innerHTML="<div style='max-width:480px;font-family:monospace'><div style='color:"+c+";font-size:16px;font-weight:800;margin-bottom:12px'>"+t+"</div><div style='background:#1a1a2e;border:1px solid "+c+";border-radius:10px;padding:14px'><div style='color:#fca5a5;font-size:13px;word-break:break-all;margin-bottom:10px'>"+(m||"")+"</div>"+(s?"<pre style='color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:0'>"+(""+s).slice(0,800)+"</pre>":"")+"</div></div>";}
+    window.addEventListener("error",function(e){showErr("App crashed",e.message||(e+""),e.error&&e.error.stack||"at "+e.filename+":"+e.lineno+":"+e.colno,"#f43f5e");});
+    window.addEventListener("unhandledrejection",function(e){var r=e.reason;showErr("Async error",r?(r.message||r+""):"Unhandled rejection",r&&r.stack,"#f59e0b");});
   })();
   </script>
 <script type="text/babel">
@@ -4152,10 +4149,16 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
       } catch(fe) { clearTimeout(tid); throw new Error(fe.name === 'AbortError' ? 'Gemini timeout' : fe.message) }
     }
     let gRes = await _callGeminiModel(gemModel)
-    // Auto-fallback on 503 — retry with stable gemini-2.0-flash
+    // Auto-fallback on 503/404 — try gemini-2.5-flash, then wait+retry if that also 503s
     if ((gRes.status === 503 || gRes.status === 404) && gemModel !== GEMINI_FALLBACK) {
-      console.warn(`[gemini] 503 on ${gemModel}, retrying with ${GEMINI_FALLBACK}`)
+      console.warn(`[gemini] ${gRes.status} on ${gemModel}, retrying with ${GEMINI_FALLBACK}`)
       gRes = await _callGeminiModel(GEMINI_FALLBACK)
+      // Both models overloaded — wait 4s and retry primary
+      if (gRes.status === 503) {
+        console.warn(`[gemini] ${GEMINI_FALLBACK} also 503, waiting 4s then retrying ${gemModel}`)
+        await new Promise(r => setTimeout(r, 4000))
+        gRes = await _callGeminiModel(gemModel)
+      }
     }
     clearTimeout(tid)
     if (!gRes.ok) {
@@ -7338,11 +7341,13 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   useEffect(() => {
     if (resumeDraft && resumeDraft.pairs && resumeDraft.pairs.length > 0) {
       partialPairsRef.current = resumeDraft.pairs
+      // Restore scene so build() skips scene generation entirely
+      if (resumeDraft.scene) sceneDataRef.current = resumeDraft.scene
       setPairsDone(resumeDraft.pairs.length)
       setPairsTotal(resumeDraft.totalTargets * 3)
       setCurrentTier(`▶ Resuming from word ${resumeDraft.targetsDoneCount + 1}/${resumeDraft.totalTargets}…`)
       setGenLog([`📂 Loaded ${resumeDraft.pairs.length} saved pairs`, `▶ Continuing from word ${resumeDraft.targetsDoneCount + 1}/${resumeDraft.totalTargets}`])
-      setPhase('streaming')
+      setPhase('starting')  // trigger build() which will now skip scene (sceneDataRef is set)
     }
   }, [])
   const sceneDataRef = useRef(null)
@@ -7462,6 +7467,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                     targetsRemaining: targets.slice(chipIdx + 1),
                     targets: targets,
                     anchors: anchors,
+                    scene: sceneDataRef.current,  // save scene so resume skips regen
                     mode: mode,
                     totalTargets: targets.length,
                     savedAt: new Date().toISOString()
@@ -10481,7 +10487,12 @@ function ThaiTeacher() {
 }
 
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
+try {
+  ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
+} catch(e) {
+  document.body.style.cssText = "margin:0;background:#0b1120;min-height:100vh;padding:20px;box-sizing:border-box"
+  document.body.innerHTML = "<div style='max-width:480px;font-family:monospace'><div style='color:#f43f5e;font-size:16px;font-weight:800;margin-bottom:12px'>❌ Render crashed</div><div style='background:#1a1a2e;border:1px solid #f43f5e;border-radius:10px;padding:14px'><div style='color:#fca5a5;font-size:13px;word-break:break-all;margin-bottom:10px'>" + (e && e.message || String(e)) + "</div><pre style='color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:0'>" + (e && e.stack || "no stack") + "</pre></div></div>"
+}
 
 
 </script>

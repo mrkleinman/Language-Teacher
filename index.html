@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v436"/>
-<meta name="app-version" content="v436"/>
+<meta name="app-version" content="v437"/>
+<meta name="app-version" content="v437"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -9971,9 +9971,21 @@ action:
 - "replace": too broken — OOV words (${_QR_BANNED.join(' ')}), completely random/aristocratic sentence, no connection to anything
 
 Return ONLY JSON, no markdown.`
-  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 150)
-  const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
-  return { action: parsed.action || 'clean', reason: parsed.reason || '' }
+  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 300)
+  try {
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
+    return { action: parsed.action || 'clean', reason: parsed.reason || '' }
+  } catch(e) {
+    // Retry once with a simpler prompt and more tokens
+    try {
+      const raw2 = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
+        `Target word: "${targetWord}". Sentences:\n${groupPairs.map(fmt).join('\n')}\n\nReturn ONLY: {"action":"clean","reason":"ok"} or {"action":"improve","reason":"one sentence"} or {"action":"replace","reason":"one sentence"}` }], 200)
+      const parsed2 = JSON.parse(raw2.replace(/```json|```/g, '').trim())
+      return { action: parsed2.action || 'clean', reason: parsed2.reason || '' }
+    } catch(e2) {
+      return { action: 'clean', reason: 'JSON parse failed twice — skipped' }
+    }
+  }
 }
 
 async function _qrFixPhonetic(groupPairs, apiKey, model) {

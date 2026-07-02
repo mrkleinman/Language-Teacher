@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v437"/>
-<meta name="app-version" content="v437"/>
+<meta name="app-version" content="v438"/>
+<meta name="app-version" content="v438"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -717,6 +717,7 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     }))
 
     const prompt = `Fill every empty "e" (English gloss) and "ph" (romanization) in these Thai word arrays.
+CRITICAL: Use the "thai" field (the full sentence) to determine context-aware meaning — e.g. หา in ผมกำลังหาช้อน means "look for", NOT "five". ทำไม means "why" (not ทำ=do + ไม่=not). กำลัง is always "currently" and never splits.
 
 Rules for "e": 1-3 words. PARTICLES: ครับ→"[m]" ค่ะ/คะ→"[f]" ไม่→"not" ไหม/มั้ย→"?" จะ→"will" ก็→"also" แล้ว→"already" ที่→"that/at" ให้→"to" นะ→"[softener]" เลย→"so/then" มาก→"very" แค่→"just" ตอน→"at/when" ก่อน→"first/before" กำลัง→"currently" เหรอ/เหรอะ→"[surprise?]" เกือบ→"almost" อัน→"[item]" ทำไม→"why". NUMBERS: หนึ่ง→"one" สอง→"two" สาม→"three" สี่→"four" ห้า→"five" หก→"six" เจ็ด→"seven" แปด→"eight" เก้า→"nine" สิบ→"ten". Time: โมง→"o'clock" เช้า→"morning" เย็น→"evening" ทุ่ม→"p.m." คืน→"night". CRITICAL HOMOPHONES: หา (hǎa)→"to find" NOT five (five=ห้า=hâa). PROPER NOUNS: if the Thai token is a person's name (romanised capitalised like Nida Somchai), set e="[name]". COMMON WORDS: ห้อง→"room" พื้น→"floor" ช้อน→"spoon" ส้อม→"fork" จาน→"plate" แก้ว→"glass" ถัง→"bucket" ผ้า→"cloth" รีบ→"hurry" ขัด→"scrub" ทำความสะอาด→"clean" นั่งเล่น→"living room" ห้องนั่งเล่น→"living room" เสร็จ→"finished/done" ต้อง→"must" รู้→"know" หา→"look for" เจอ→"find/meet" นาน→"long time" สบาย→"well/comfortable".
 
@@ -5826,7 +5827,7 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
 }
 
 
-async function generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, model, pairIndex, onProgress, runningTopic) {
+async function generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, model, pairIndex, onProgress, runningTopic, usedSubjects) {
   const _nameA = (charA.split(',')[0] || 'A').replace(/\s*\([^)]*\)/g,'').trim()
   const _nameB = (charB.split(',')[0] || 'B').replace(/\s*\([^)]*\)/g,'').trim()
   const lenRes = getSentenceLengthForVocab(vocab) || {}
@@ -5878,6 +5879,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• EXPERIENCER RULE: feeling/state verbs (หิว เหนื่อย ดีใจ กลัว) need a person as subject — NEVER apply to places or objects\n' +
     '• CREATIVITY: vary locations (ที่บ้าน ตลาด ชายหาด สนามบิน) — do NOT repeat ร้านอาหาร\n' +
     (restaurantUses >= 2 ? '• LOCATION BAN: ร้านอาหาร already used twice — use a different location\n' : '') +
+    (usedSubjects && usedSubjects.size > 0 ? '• SUBJECT BAN: these topics have already appeared — do NOT use them again: ' + [...usedSubjects].join(', ') + '\n' : '') +
+    '• NUMBERS: only include a number if it arises NATURALLY from the topic (e.g. discussing price → mention amount, discussing time → mention hour). NEVER force a random number into an unrelated sentence just to add variety.\n' +
     '• "prompt" = English instruction telling exactly what to SAY (e.g. "Tell her you want to go to the airport" or "Ask if there are three seats") — not a translation\n' +
     '• "english" = natural fluent English — NOT word-for-word. Examples: ผมไม่รู้ → "I have no idea", น่าเห็นใจ → "that\'s unfortunate" (NOT "that\'s very sympathetic"), น่าสนใจ → "that\'s interesting", แย่จัง → "oh no" or "that\'s too bad"\n' +
     (numberHint ? numberHint + '\n' : '') +
@@ -6348,22 +6351,44 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     prevLines.push(openingPair, replyLine)
     allPairs.push(openingPair, replyLine)
   }
+  const usedSubjects = new Set()  // Fix 1: track subjects/topics used to prevent repetition
   let runningTopic = ''  // topic threading for conversation flow
   for (let i = 0; i < targets.length; i++) {
     if (stopSignal && stopSignal.paused) break  // pause after this word completes
     const target = targets[i]
     onProgress && onProgress(allPairs.length, targets.length * 3, { wordStatus: '\u{1F4AC} ' + (i+1) + '/30: ' + target.thai + ' [' + target.english + ']' }, null, null)
-    let lines = await generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, GPT_MODEL, i, onProgress, runningTopic)
+    let lines = await generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, GPT_MODEL, i, onProgress, runningTopic, usedSubjects)
     if (!lines || lines.length < 2) {
       const hb = HARDCODED_FALLBACKS[target.thai]
       const fb = hb || makeFallbackPairs(target)
       lines = fb.slice(0,3).map((p,si) => ({ speaker:si%2===0?'A':'B', thai:p.thai, phonetic:p.phonetic, english:p.english, prompt:p.prompt, _source:(hb?'hardcoded:':'fallback:')+target.thai }))
+    }
+    // Fix 2: detect corrupted pairs immediately after generation
+    lines = lines.filter(l => {
+      if (!l.thai || !l.prompt) return false  // empty thai or no prompt = corrupt
+      if (l.thai.length > 0 && !/[\u0e00-\u0e7f]/.test(l.thai)) return false  // no Thai chars
+      return true
+    })
+    if (!lines || lines.length < 2) {
+      // All lines were corrupt — use fallback
+      const fb = makeFallbackPairs(target)
+      lines = fb.slice(0,3).map((p,si) => ({ speaker:si%2===0?'A':'B', thai:p.thai, phonetic:p.phonetic, english:p.english, prompt:p.prompt, _source:'fallback:'+target.thai }))
     }
     const tagged = lines.slice(0,3).map(l => {
       const rawWords = l.words && l.words.length > 0 ? l.words : (l.phonetic ? l.phonetic.trim().split(/\s+/).filter(Boolean).map(tok => ({p:tok,e:''})) : [])
       return { ...l, _source:l._source||'qwen:conv', _target:target.thai, words: enrichWordsWithCompounds(rawWords) }
     })
     allPairs.push(...tagged)
+    // Fix 1: extract and record used subjects from generated content
+    tagged.forEach(l => {
+      const eng = (l.english || '').toLowerCase()
+      // Extract country/place mentions
+      const places = ['america','united states','cambodia','japan','korea','china','thailand','vietnam','europe','australia']
+      places.forEach(p => { if (eng.includes(p)) usedSubjects.add(p) })
+      // Extract object topics
+      const topics = ['socks','chick','glasses','eyes','sunset','socks','ticket','plane','library','university']
+      topics.forEach(t => { if (eng.includes(t)) usedSubjects.add(t) })
+    })
     // Update running topic — use middle pair for threading context
     if (tagged.length > 0) {
       const midPair = tagged[Math.floor(tagged.length/2)]
@@ -6885,7 +6910,27 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
             if (!existingThais.has(p.thai)) pairs.push({...p, _source:'hardcoded:'+target.thai})
           }
         }
-        // Use best real attempt before template fallback
+        // Use best real attempt before template fallback — but try one more time with a fresh angle
+        if (pairs.length < 3 && _bestAttemptPairs.length > 0) {
+          // Fix 4: try one final attempt with explicit "different angle" instruction before giving up
+          try {
+            const freshPrompt = baseUser.replace(
+              'Continue the conversation. Write exactly 3 lines:',
+              'FRESH ATTEMPT — previous tries failed. Try a completely different scenario or angle. Write exactly 3 lines:'
+            )
+            const freshRaw = await callOpenRouterOnce(apiKey, GPT_MODEL, [
+              { role: 'system', content: baseSystem },
+              { role: 'user', content: freshPrompt }
+            ], 1200)
+            const freshParsed = parsePartialArray(freshRaw.replace(/```json|```/g, '').trim())
+            if (freshParsed && freshParsed.length >= 2) {
+              const freshValid = validateSmartPairs(freshParsed, target, allAllowed, true, existingThais)
+              if (freshValid.length >= 2) {
+                for (const p of freshValid) { if (pairs.length >= 3) break; pairs.push({...p, _source:'qwen:fresh-retry:'+target.thai}) }
+              }
+            }
+          } catch(e) { /* ignore fresh retry failure */ }
+        }
         if (pairs.length < 3 && _bestAttemptPairs.length > 0) {
           onProgress && onProgress(-1, -1, { apiError: '♻️ Using best attempt (' + _bestAttemptScore + '/3) for ' + target.thai }, null, null)
           for (const p of _bestAttemptPairs) {
@@ -8206,15 +8251,33 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
             {/* Aligned phonetic + gloss or plain phonetic fallback */}
             {pair.words && pair.words.length > 0 ? (() => {
               const enriched = enrichWordsWithCompounds(pair.words)
-              // Fallback: split sentence phonetic into per-word tokens
+              // Fix 14: merge consecutive gam+lang into single กำลัง token
+              const merged = []
+              for (let wi = 0; wi < enriched.length; wi++) {
+                const w = enriched[wi], wn = enriched[wi+1]
+                const ph = (w.p||'').toLowerCase(), phn = (wn?.p||'').toLowerCase()
+                if ((ph === 'gam' || ph === 'gam-') && (phn === 'lang' || phn === 'lāng') && wn) {
+                  merged.push({ ...w, p: 'gam-lang', ph: w.ph && wn.ph ? w.ph+'-'+wn.ph : 'gam-lang', e: 'currently' })
+                  wi++
+                } else { merged.push(w) }
+              }
+              // Fix 15: build phonetic token list aligned to Thai word count
               const phToks = (pair.phonetic && !/[\u0e00-\u0e7f]/.test(pair.phonetic))
                 ? pair.phonetic.trim().split(/\s+/) : []
+              // Distribute phToks across merged words proportionally
+              const getPhTok = (i) => {
+                if (!phToks.length) return ''
+                // direct index first, then proportional
+                if (phToks[i]) return phToks[i]
+                const ratio = Math.round((i / merged.length) * phToks.length)
+                return phToks[Math.min(ratio, phToks.length - 1)] || ''
+              }
               return (
                 <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
-                  {enriched.map((w, i) => {
+                  {merged.map((w, i) => {
                     const dispPh = w.ph
                       || (!/[\u0e00-\u0e7f]/.test(w.p||'') && w.p)
-                      || phToks[i]
+                      || getPhTok(i)
                       || ''
                     return (
                       <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
@@ -9760,6 +9823,28 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
   let allPairs = [...(track.pairs || [])]
   const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, prompt_fix: 0, phonetic_prepass: 0, error: 0 }
 
+  // Step 0: Whole-track pre-pass — corruption, best-attempt, topic repetition
+  onLog?.('Scanning track for corruption and topic repetition…')
+  const THAI_RE = /[\u0e00-\u0e7f]/
+  const corruptIds = new Set()
+  const bestAttemptIds = new Set()
+  const topicCounts = {}  // track how many times each topic/country appears
+
+  allPairs.forEach((p, i) => {
+    const src = p._source || ''
+    // Corruption: empty prompt, Thai in phonetic, merged Thai (two sentences), empty Thai
+    const isCorrupt = !p.prompt || !p.thai ||
+      (p.phonetic && THAI_RE.test(p.phonetic)) ||
+      (p.thai && (p.thai.match(/[ก-๙]\s+[ก-๙]/g) || []).length > 8 && p.thai.includes('  '))
+    if (isCorrupt) { corruptIds.add(i); onLog?.(`  ⚠️ Corrupt pair [${String(i+1).padStart(3,'0')}]: ${(p.prompt||'(no prompt)').slice(0,50)}`) }
+    if (src.includes('best-attempt')) { bestAttemptIds.add(i); onLog?.(`  ⚠️ Best-attempt pair [${String(i+1).padStart(3,'0')}]: ${(p.prompt||'').slice(0,50)}`) }
+    // Topic counting — flag countries/subjects used 3+ times
+    const tgt = p._target || ''
+    if (tgt) topicCounts[tgt] = (topicCounts[tgt] || 0) + 1
+  })
+  const repeatedTopics = Object.entries(topicCounts).filter(([,c]) => c > 3).map(([t]) => t)
+  if (repeatedTopics.length) onLog?.(`  ⚠️ Topics appearing 3+ times: ${repeatedTopics.join(', ')} — will be reviewed in group eval`)
+
   // Step 1: Prompt-match scoring — find content problems before touching anything
   onLog?.('Checking prompt alignment…')
   try { allPairs = await _qrBatchPromptCheck(allPairs, apiKey, model, onLog) }
@@ -9781,9 +9866,19 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
     const group = groups[gi]
     onProgress?.(Math.round(gi / groups.length * 100), group.targetWord)
     try {
+      // Check if any pair in this group is corrupt or best-attempt → auto-replace
+      const groupCorrupt = group.indices.some(i => corruptIds.has(i))
+      const groupBestAttempt = group.indices.some(i => bestAttemptIds.has(i))
       const pmFails = group.indices.map(i => allPairs[i]).filter(p => p._pm && p._pm <= 3)
+
       let verdict
-      if (pmFails.length > 0) {
+      if (groupCorrupt) {
+        verdict = { action: 'replace', reason: 'Corrupted pair detected (missing prompt, Thai in phonetic, or merged sentences)' }
+        onLog?.(`  🔄 ${group.targetWord}: auto-replace (corruption)`)
+      } else if (groupBestAttempt) {
+        verdict = { action: 'replace', reason: 'Best-attempt fallback — all generation checks failed, replacing with fresh attempt' }
+        onLog?.(`  🔄 ${group.targetWord}: auto-replace (was best-attempt)`)
+      } else if (pmFails.length > 0) {
         const worst = pmFails.reduce((a, b) => a._pm < b._pm ? a : b)
         verdict = {
           action: worst._pm <= 2 ? 'replace' : 'improve',
@@ -9847,7 +9942,7 @@ async function _qrBatchPromptCheck(pairs, apiKey, model, onLog) {
     ).join('\n\n')
 
     const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
-      `Rate how well each Thai sentence matches its prompt description.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says\n4 = very close, minor phrasing difference\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\n${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5},{"i":2,"s":3,"note":"prompt says X but sentence says Y"},...]\nno markdown, no explanation.`
+      `Rate how well each Thai sentence matches its prompt description.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\n${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5},{"i":2,"s":3,"note":"prompt says X but sentence says Y"},...]\nno markdown, no explanation.`
     }], 600)
 
     try {

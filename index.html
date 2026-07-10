@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v440"/>
-<meta name="app-version" content="v440"/>
+<meta name="app-version" content="v441"/>
+<meta name="app-version" content="v441"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -8268,13 +8268,12 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
                   wi++
                 } else { merged.push(w) }
               }
-              // Fix 15: build phonetic token list aligned to Thai word count
-              const phToks = (pair.phonetic && !/[\u0e00-\u0e7f]/.test(pair.phonetic))
+              // Fix 15: build phonetic token list — only use sentence fallback if it has tone marks
+              const HAS_TONE = /[àáâǎÀÁÂǍ\u0300\u0301\u0302\u030C]/
+              const phToks = (pair.phonetic && !/[\u0e00-\u0e7f]/.test(pair.phonetic) && HAS_TONE.test(pair.phonetic))
                 ? pair.phonetic.trim().split(/\s+/) : []
-              // Distribute phToks across merged words proportionally
               const getPhTok = (i) => {
                 if (!phToks.length) return ''
-                // direct index first, then proportional
                 if (phToks[i]) return phToks[i]
                 const ratio = Math.round((i / merged.length) * phToks.length)
                 return phToks[Math.min(ratio, phToks.length - 1)] || ''
@@ -10194,10 +10193,12 @@ Return ONLY JSON array of ${groupPairs.length} objects, no markdown:
   const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1200)
   const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
   if (!Array.isArray(parsed) || parsed.length < groupPairs.length) throw new Error('Bad response')
-  // Fix 4: verify target word present
   const targetFound = parsed.some(p => p.thai && p.thai.includes(targetWord))
   if (!targetFound) throw new Error(`Target "${targetWord}" missing from improved pairs`)
-  return _qrEnrichNewPairs(parsed.slice(0, groupPairs.length), groupPairs)
+  // Don't use AI-generated words array — it often produces wrong single-word arrays.
+  // Strip words from response and let fill-glosses rebuild them from phonetic tokens.
+  const stripped = parsed.slice(0, groupPairs.length).map(p => ({ ...p, words: [] }))
+  return _qrEnrichNewPairs(stripped, groupPairs)
 }
 
 async function _qrImproveGroup(group, allPairs, apiKey, model, knownWords) {
@@ -10226,7 +10227,8 @@ Return ONLY JSON array of 3 objects, no markdown:
   // Fix 4: verify target word present
   const targetFound = parsed.some(p => p.thai && p.thai.includes(targetWord))
   if (!targetFound) throw new Error(`Target "${targetWord}" missing from replaced pairs`)
-  return _qrEnrichNewPairs(parsed.slice(0, 3).map((p, pi) => ({ ...groupPairs[pi], ...p })), groupPairs)
+  // Strip AI words array — let fill-glosses rebuild correctly from phonetic tokens
+  return _qrEnrichNewPairs(parsed.slice(0, 3).map((p, pi) => ({ ...groupPairs[pi], ...p, words: [] })), groupPairs)
 }
 
 async function _qrReplace(group, allPairs, apiKey, model, knownWords) {

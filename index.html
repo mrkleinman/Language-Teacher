@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v439"/>
-<meta name="app-version" content="v439"/>
+<meta name="app-version" content="v440"/>
+<meta name="app-version" content="v440"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -7599,7 +7599,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 return [...prev, `  Evaluating group ${pct}%  ${word}`]
               })
             },
-            cancelRef: qrCancel
+            cancelRef: qrCancel,
+            vocab
           })
           if (result) {
             const c = result.counts
@@ -9826,10 +9827,17 @@ function _qrSourceTarget(src) {
 }
 
 // ── Standalone QR core — used by both auto-run and manual QualityReview ───────
-async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, cancelRef } = {}) {
+async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, cancelRef, vocab } = {}) {
   const cancelled = () => cancelRef && cancelRef.current
   let allPairs = [...(track.pairs || [])]
   const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, prompt_fix: 0, phonetic_prepass: 0, error: 0 }
+
+  // Build vocab constraint string — same format as generation
+  const knownWords = vocab
+    ? vocab.filter(w => (w.repCount || w.r || 0) >= 1)
+        .sort((a, b) => ((b.repCount||b.r)||0) - ((a.repCount||a.r)||0))
+        .slice(0, 30).map(w => (w.thai||w.t) + '(' + (w.english||w.e) + ')').join(', ')
+    : ''
 
   // Step 0: Whole-track pre-pass — corruption, best-attempt, topic repetition
   onLog?.('Scanning track for corruption and topic repetition…')
@@ -9900,8 +9908,8 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       onLog?.(`  ${verdict.action === 'fix_phonetic' ? '🔤' : verdict.action === 'replace' ? '🔄' : '✏️'} ${group.targetWord}: ${verdict.reason}`)
       let newPairs
       if (verdict.action === 'fix_phonetic') newPairs = await _qrFixPhonetic(group.pairs, apiKey, model)
-      else if (verdict.action === 'improve') newPairs = await _qrImprove(verdict, group, allPairs, apiKey, model)
-      else newPairs = await _qrReplace(group, allPairs, apiKey, model)
+      else if (verdict.action === 'improve') newPairs = await _qrImprove(verdict, group, allPairs, apiKey, model, knownWords)
+      else newPairs = await _qrReplace(group, allPairs, apiKey, model, knownWords)
       if (cancelled()) break
       if (newPairs) group.indices.forEach((idx, pi) => { if (newPairs[pi]) allPairs[idx] = { ...newPairs[pi], _source: `ai:${verdict.action}:${group.targetWord}` } })
       counts[verdict.action] = (counts[verdict.action] || 0) + 1
@@ -10161,12 +10169,13 @@ function _qrEnrichNewPairs(newPairs, originalPairs) {
   }))
 }
 
-async function _qrImprove(verdict, group, allPairs, apiKey, model) {
+async function _qrImprove(verdict, group, allPairs, apiKey, model, knownWords) {
   const { targetWord, indices, pairs: groupPairs } = group
   const startIdx = indices[0]
   const prevPairs = allPairs.slice(Math.max(0, startIdx - 3), startIdx)
   const nextPairs = allPairs.slice(startIdx + groupPairs.length, Math.min(allPairs.length, startIdx + groupPairs.length + 3))
   const fmt = p => `  ${p.speaker||'A'}: ${p.thai} (${p.english})`
+  const vocabLine = knownWords ? `Use ONLY these known words + target word: ${knownWords}\n` : ''
   const prompt = `Fix this Thai learning group. Issue: "${verdict.reason}". Target word: "${targetWord}".
 
 Context before:
@@ -10178,7 +10187,7 @@ ${groupPairs.map(fmt).join('\n')}
 Context after:
 ${nextPairs.map(fmt).join('\n') || '  (end)'}
 
-Requirements: same speaker order (${groupPairs.map(p => p.speaker||'A').join('-')}). Must include "${targetWord}". Forbidden: ${_QR_BANNED.join(' ')}.
+Requirements: same speaker order (${groupPairs.map(p => p.speaker||'A').join('-')}). Must include "${targetWord}". ${vocabLine}Forbidden: ${_QR_BANNED.join(' ')}.
 The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NOT quality notes.
 Return ONLY JSON array of ${groupPairs.length} objects, no markdown:
 [{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
@@ -10191,13 +10200,14 @@ Return ONLY JSON array of ${groupPairs.length} objects, no markdown:
   return _qrEnrichNewPairs(parsed.slice(0, groupPairs.length), groupPairs)
 }
 
-async function _qrImproveGroup(group, allPairs, apiKey, model) {
+async function _qrImproveGroup(group, allPairs, apiKey, model, knownWords) {
   const { targetWord, indices, pairs: groupPairs } = group
   const startIdx = indices[0]
   const prevPairs = allPairs.slice(Math.max(0, startIdx - 3), startIdx)
   const nextPairs = allPairs.slice(startIdx + groupPairs.length, Math.min(allPairs.length, startIdx + groupPairs.length + 3))
   const fmt = p => `  ${p.speaker||'A'}: ${p.thai} (${p.english})`
   const speakerPattern = groupPairs.map(p => p.speaker||'A').join('-')
+  const vocabLine = knownWords ? `Use ONLY these known words + target word: ${knownWords}\n` : ''
   const prompt = `Generate 3 replacement Thai learning pairs. Target word: "${targetWord}".
 
 Context before:
@@ -10206,7 +10216,7 @@ ${prevPairs.map(fmt).join('\n') || '  (start)'}
 Context after:
 ${nextPairs.map(fmt).join('\n') || '  (end)'}
 
-Requirements: speaker order ${speakerPattern}. Must include "${targetWord}". Flow naturally from before to after. Simple everyday Thai. Forbidden: ${_QR_BANNED.join(' ')}.
+Requirements: speaker order ${speakerPattern}. Must include "${targetWord}". Flow naturally from before to after. Simple everyday Thai. ${vocabLine}Forbidden: ${_QR_BANNED.join(' ')}.
 The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NOT quality evaluation notes.
 Return ONLY JSON array of 3 objects, no markdown:
 [{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]},{"speaker":"B","thai":"...","phonetic":"...","english":"...","prompt":"She asks ...","words":[{"p":"...","e":"..."}]},{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
@@ -10219,11 +10229,11 @@ Return ONLY JSON array of 3 objects, no markdown:
   return _qrEnrichNewPairs(parsed.slice(0, 3).map((p, pi) => ({ ...groupPairs[pi], ...p })), groupPairs)
 }
 
-async function _qrReplace(group, allPairs, apiKey, model) {
-  return await _qrImproveGroup(group, allPairs, apiKey, model)
+async function _qrReplace(group, allPairs, apiKey, model, knownWords) {
+  return await _qrImproveGroup(group, allPairs, apiKey, model, knownWords)
 }
 
-function QualityReview({ track, apiKey, model, onSave, onSkip }) {
+function QualityReview({ track, vocab, apiKey, model, onSave, onSkip }) {
   const [phase, setPhase] = useState('summary')
   const [progress, setProgress] = useState(0)
   const [progressMsg, setProgressMsg] = useState('')
@@ -10255,7 +10265,8 @@ function QualityReview({ track, apiKey, model, onSave, onSkip }) {
     const result = await runQualityCheckCore(track, apiKey, model, {
       onLog: (msg) => { setProgressMsg(msg); setQrLog(prev => [...prev, msg]) },
       onProgress: (pct) => setProgress(pct),
-      cancelRef: qrCancelRef
+      cancelRef: qrCancelRef,
+      vocab
     })
     if (!qrCancelRef.current && result) {
       setProgress(100)
@@ -10572,6 +10583,7 @@ function ThaiTeacher() {
         {view === 'quality-review' && pendingReviewTrack && (
           <QualityReview
             track={pendingReviewTrack}
+            vocab={vocab}
             apiKey={provider === 'gemini' && geminiKey ? geminiKey : orKey}
             model={resolveOrModel(provider)}
             onSave={updatedTrack => {

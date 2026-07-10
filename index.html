@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v438"/>
-<meta name="app-version" content="v438"/>
+<meta name="app-version" content="v439"/>
+<meta name="app-version" content="v439"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -35,6 +35,7 @@
   })();
   </script>
 <script type="text/babel">
+
 
 const { useState, useEffect, useCallback, useRef, useMemo } = React
 
@@ -736,7 +737,12 @@ Return ONLY valid JSON array: [{"id":0,"words":[{"p":"...","e":"...","ph":"..."}
         for (const item of parsed) {
           const origPairIdx = batchIdxs[item.id]
           if (origPairIdx !== undefined && Array.isArray(item.words) && item.words.length === pairs[origPairIdx].words.length) {
-            result[origPairIdx] = { ...result[origPairIdx], words: item.words }
+            // Apply local IPA fix to every w.ph returned by the API
+            const cleanedWords = item.words.map(w => ({
+              ...w,
+              ph: w.ph ? fixIPAPhonetic(w.ph) : w.ph
+            }))
+            result[origPairIdx] = { ...result[origPairIdx], words: cleanedWords }
           }
         }
       }
@@ -8275,10 +8281,12 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
               return (
                 <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
                   {merged.map((w, i) => {
-                    const dispPh = w.ph
+                    const dispPh = fixIPAPhonetic(
+                      w.ph
                       || (!/[\u0e00-\u0e7f]/.test(w.p||'') && w.p)
                       || getPhTok(i)
                       || ''
+                    )
                     return (
                       <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
                         <span className="phon" style={{ fontSize:20, color:'var(--gold)', fontWeight:700, whiteSpace:'nowrap' }}>{dispPh}</span>
@@ -9961,12 +9969,40 @@ async function _qrBatchPromptCheck(pairs, apiKey, model, onLog) {
   })
 }
 
+// ── Local IPA → RTGS substitution (runs after every API call as safety net) ──
+// Gemini defaults to HAAS romanization which uses ɔ ə ʉ regardless of prompts.
+// This local pass eliminates any residual IPA without needing another API call.
+function fixIPAPhonetic(ph) {
+  if (!ph) return ph
+  // Replace IPA + following combining tone mark as a unit, then plain IPA
+  // ɔ → aw (open-o sound)
+  return ph
+    .replace(/ɔ\u0302/g,'âw').replace(/ɔ\u0300/g,'àw').replace(/ɔ\u0301/g,'áw').replace(/ɔ\u030C/g,'ǎw')
+    .replace(/ɔɔ/g,'aw').replace(/ɔ/g,'aw')
+    // ə → oe (schwa / mid central)
+    .replace(/ə\u030C/g,'ǒe').replace(/ə\u0302/g,'ôe').replace(/ə\u0300/g,'òe').replace(/ə\u0301/g,'óe')
+    .replace(/əə/g,'oe').replace(/ə/g,'oe')
+    // ʉ → ue (close central unrounded)
+    .replace(/ʉ\u0302/g,'ûe').replace(/ʉ\u0300/g,'ùe').replace(/ʉ\u0301/g,'úe').replace(/ʉ\u030C/g,'ǔe')
+    .replace(/ʉ/g,'ue')
+    // ɛ → ae (front open-mid)
+    .replace(/ɛ\u0302/g,'âe').replace(/ɛ\u0300/g,'àe').replace(/ɛ\u0301/g,'áe').replace(/ɛ\u030C/g,'ǎe')
+    .replace(/ɛ/g,'ae')
+    // simple single-char replacements
+    .replace(/ŋ/g,'ng').replace(/ɪ/g,'i').replace(/ʊ/g,'u').replace(/ɯ/g,'eu').replace(/ɐ/g,'a')
+}
+
 // ── Sentence-level phonetic re-romanizer ─────────────────────────────────────
 async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
   const IPA_CHARS = /[ɛɔɐʉɯŋəɪʊ]/
   const THAI_RANGE = /[\u0e00-\u0e7f]/
+  const NO_TONE = /^[a-zA-Z0-9\s\-\.,'!?]+$/  // no tone marks at all — needs fixing too
   const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) =>
-    p.phonetic && (IPA_CHARS.test(p.phonetic) || THAI_RANGE.test(p.phonetic))
+    p.phonetic && (
+      IPA_CHARS.test(p.phonetic) ||
+      THAI_RANGE.test(p.phonetic) ||
+      (NO_TONE.test(p.phonetic) && p.phonetic.length > 8)  // no tone marks
+    )
   )
   if (!eligible.length) return { pairs, fixed: 0 }
 
@@ -9984,7 +10020,7 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
     ).join('\n\n')
 
     const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
-      `Re-romanize each Thai sentence using toned RTGS only.\nNO IPA symbols (no ɛ ɔ ʉ ŋ ə). Use only standard Latin letters with tone marks (à á â ǎ).\nExamples: ครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak"\n\n${numbered}\n\nReturn ONLY JSON: [{"n":1,"ph":"romanization"},...]`
+      `Re-romanize each Thai sentence using toned RTGS only.\nFORBIDDEN characters: ɛ ɔ ʉ ŋ ə ɪ ʊ ɐ ɯ — these are IPA, never use them.\nFORBIDDEN: romanization without tone marks — every syllable MUST have a tone mark (à á â ǎ).\nSubstitute: ɔ→aw, ə→oe, ʉ→ue, ɛ→ae, ŋ→ng.\nExamples:\nครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak" ชอบ→"châwp" ของ→"khǎwng" เรือ→"ruea" เพื่อน→"phûean" ล่อง→"lâwng"\n\n${numbered}\n\nReturn ONLY JSON: [{"n":1,"ph":"romanization"},...]`
     }], 800)
 
     try {
@@ -9992,11 +10028,21 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
       parsed.forEach(({ n, ph }) => {
         const orig = chunk[n - 1]
         if (orig && ph && ph.trim()) {
-          result[orig.i] = { ...result[orig.i], phonetic: ph.trim() }
+          // Apply local IPA fix AFTER API response — catches any residual IPA the model returned
+          const cleaned = fixIPAPhonetic(ph.trim())
+          result[orig.i] = { ...result[orig.i], phonetic: cleaned }
           fixed++
         }
       })
-    } catch(e) { console.warn('[fixPhonetics] batch', b, 'failed:', e.message) }
+    } catch(e) { 
+      // Even if API parse fails, apply local fix directly on existing phonetics
+      chunk.forEach(({ i, p }) => {
+        if (IPA_CHARS.test(p.phonetic)) {
+          result[i] = { ...result[i], phonetic: fixIPAPhonetic(p.phonetic) }
+          fixed++
+        }
+      })
+    }
   }
 
   return { pairs: result, fixed }

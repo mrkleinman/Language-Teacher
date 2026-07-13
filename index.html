@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v446"/>
-<meta name="app-version" content="v446"/>
+<meta name="app-version" content="v447"/>
+<meta name="app-version" content="v447"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -702,11 +702,11 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     const ws = pairs[i].words
     if (!ws) return false
     const thaiLen = (pairs[i].thai || '').replace(/[^ก-๙]/g, '').length
-    // Include if: any word missing e/ph, has IPA/double-conv artifacts,
-    // OR words array has only 1 entry but Thai is clearly multi-word (>8 Thai chars)
-    return ws.some(w => !w.e || !w.ph || IPA.test(w.ph || '') || DBL.test(w.ph || ''))
-      || (ws.length < 2 && thaiLen > 8)
+    const byWords = ws.some(w => !w.e || !w.ph || IPA.test(w.ph || '') || DBL.test(w.ph || ''))
+    const byLen = ws.length < 2 && thaiLen > 8
+    return byWords || byLen
   })
+  onLog?.(`  🔍 DEBUG fill-glosses: ${needsFill.length}/${pairs.length} pairs need fill. 1-word long-Thai pairs: ${needsFill.filter(i => (pairs[i].words||[]).length < 2 && (pairs[i].thai||'').replace(/[^ก-๙]/g,'').length > 8).length}`)
   if (!needsFill.length) return pairs
 
   const result = [...pairs]
@@ -726,9 +726,12 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
       const thaiLen = (pair.thai || '').replace(/[^ก-๙]/g, '').length
       if (words.length < 2 && thaiLen > 8) {
         const thaiSyls = splitThaiSyllables(pair.thai || '')
+        onLog?.(`  🔍 DEBUG 1-word pair [${pairIdx}]: thai="${(pair.thai||'').slice(0,40)}" thaiLen=${thaiLen} syls=${thaiSyls.length} → [${thaiSyls.slice(0,5).join('|')}...]`)
         if (thaiSyls.length >= 2) {
-          // Real syllable tokens — AI can gloss these properly
           words = thaiSyls.map(syl => ({ p: syl, e: '', ph: '' }))
+          onLog?.(`  🔍 DEBUG expanded to ${words.length} slots`)
+        } else {
+          onLog?.(`  🔍 DEBUG splitThaiSyllables returned only ${thaiSyls.length} syl — NOT expanded`)
         }
       }
       return { id: localIdx, thai: pair.thai || '', words }
@@ -753,6 +756,10 @@ Return ONLY valid JSON array: [{"id":0,"words":[{"p":"...","e":"...","ph":"..."}
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
           const origPairIdx = batchIdxs[item.id]
+          const origWordCount = (pairs[origPairIdx]?.words || []).length
+          if (origWordCount < 2 && (pairs[origPairIdx]?.thai||'').replace(/[^ก-๙]/g,'').length > 8) {
+            onLog?.(`  🔍 DEBUG result for 1-word pair [${origPairIdx}]: API returned ${(item.words||[]).length} words`)
+          }
           if (origPairIdx !== undefined && Array.isArray(item.words) && item.words.length > 0) {
             // Apply local IPA fix to every w.ph returned by the API
             const cleanedWords = item.words.map(w => ({

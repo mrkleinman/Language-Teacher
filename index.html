@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v448"/>
-<meta name="app-version" content="v448"/>
+<meta name="app-version" content="v449"/>
+<meta name="app-version" content="v449"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -729,6 +729,7 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
       try {
         const p = pairs[pairIdx]
         onLog?.(`  🔍 Segmenting 1-word pair [${pairIdx}]: ${(p.thai||'').slice(0,40)}…`)
+        const segTokens = Math.min(1000, Math.max(400, Math.round(thaiLen * 8)))
         const segRaw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
           `Segment this Thai sentence into individual words. For each word provide romanization and English.
 
@@ -736,7 +737,7 @@ Thai: ${p.thai}
 
 RULES: phonetic = toned RTGS only (NO IPA ɔ ə ʉ ŋ — use aw oe ue ng). e = 1-3 word English. Particles: ครับ→"[m]" ค่ะ→"[f]" ไม่→"not" นะ→"[softener]" เลย→"so" มาก→"very" ก็→"also" แล้ว→"already".
 
-Return ONLY JSON array, no markdown: [{"p":"romanization","e":"English","ph":"toned RTGS"},...]` }], 500)
+Return ONLY JSON array, no markdown: [{"p":"romanization","e":"English","ph":"toned RTGS"},...]` }], segTokens)
         const segParsed = JSON.parse(segRaw.replace(/```json|```/g, '').trim())
         if (Array.isArray(segParsed) && segParsed.length >= 2) {
           const cleanedWords = segParsed.map(w => ({ ...w, ph: fixIPAPhonetic(w.ph || w.p || '') }))

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v443"/>
-<meta name="app-version" content="v443"/>
+<meta name="app-version" content="v444"/>
+<meta name="app-version" content="v444"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -697,8 +697,9 @@ function enrichGloss(p) { if (!p) return ''; const k = _GLOSS_LOOKUP.np(p); retu
 async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
   if (!apiKey || !model || !pairs || !pairs.length) return pairs
   const IPA = /[\u025b\u0254\u0250\u0289\u026f\u014b\u0259\u026a\u028a]/
+  const DBL = /awaw|oeoe|ueue|aeae/  // double-conversion artifacts from old fixIPAPhonetic
   const needsFill = pairs.map((p, i) => i).filter(i =>
-    pairs[i].words && pairs[i].words.some(w => !w.e || !w.ph || IPA.test(w.ph || ''))
+    pairs[i].words && pairs[i].words.some(w => !w.e || !w.ph || IPA.test(w.ph || '') || DBL.test(w.ph || ''))
   )
   if (!needsFill.length) return pairs
 
@@ -10148,6 +10149,12 @@ function fixIPAPhonetic(ph) {
     // ── simple replacements ──────────────────────────────────────────────────
     .replace(/ŋ/g, 'ng').replace(/ɪ/g, 'i').replace(/ʊ/g, 'u')
     .replace(/ɯ/g, 'eu').replace(/ɐ/g, 'a')
+    // ── double-conversion artifacts (old code produced awaw instead of aw) ──
+    .replace(/([àáâǎ])waw/g, '$1w')  // âwaw → âw, àwaw → àw, etc.
+    .replace(/awaw/g, 'aw')           // awaw → aw
+    .replace(/oeoe/g, 'oe')           // double schwa artifact
+    .replace(/ueue/g, 'ue')           // double ʉ artifact
+    .replace(/aeae/g, 'ae')           // double ɛ artifact
 }
 
 // ── Sentence-level phonetic re-romanizer ─────────────────────────────────────
@@ -10155,11 +10162,13 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
   const IPA_CHARS = /[ɛɔɐʉɯŋəɪʊ]/
   const THAI_RANGE = /[\u0e00-\u0e7f]/
   const NO_TONE = /^[a-zA-Z0-9\s\-\.,'!?]+$/  // no tone marks at all — needs fixing too
+  const DBL_CONV = /awaw|oeoe|ueue|aeae/  // double-conversion artifacts
   const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) =>
     p.phonetic && (
       IPA_CHARS.test(p.phonetic) ||
       THAI_RANGE.test(p.phonetic) ||
-      (NO_TONE.test(p.phonetic) && p.phonetic.length > 8)  // no tone marks
+      (NO_TONE.test(p.phonetic) && p.phonetic.length > 8) ||
+      DBL_CONV.test(p.phonetic)
     )
   )
   if (!eligible.length) return { pairs, fixed: 0 }

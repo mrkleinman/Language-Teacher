@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v447"/>
-<meta name="app-version" content="v447"/>
+<meta name="app-version" content="v448"/>
+<meta name="app-version" content="v448"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -706,7 +706,6 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     const byLen = ws.length < 2 && thaiLen > 8
     return byWords || byLen
   })
-  onLog?.(`  🔍 DEBUG fill-glosses: ${needsFill.length}/${pairs.length} pairs need fill. 1-word long-Thai pairs: ${needsFill.filter(i => (pairs[i].words||[]).length < 2 && (pairs[i].thai||'').replace(/[^ก-๙]/g,'').length > 8).length}`)
   if (!needsFill.length) return pairs
 
   const result = [...pairs]
@@ -718,24 +717,45 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     const totalBatches = Math.ceil(needsFill.length/BATCH)
     const sample = (pairs[batchIdxs[0]]?.thai || '').slice(0,35)
     onLog?.(`  Batch ${batchNum}/${totalBatches}: ${sample}…`)
-    const input = batchIdxs.map((pairIdx, localIdx) => {
-      const pair = pairs[pairIdx]
-      let words = pair.words || []
-      // If only 1 word but Thai is long → split Thai into syllable tokens
-      // so fill-glosses knows what each word actually is
-      const thaiLen = (pair.thai || '').replace(/[^ก-๙]/g, '').length
-      if (words.length < 2 && thaiLen > 8) {
-        const thaiSyls = splitThaiSyllables(pair.thai || '')
-        onLog?.(`  🔍 DEBUG 1-word pair [${pairIdx}]: thai="${(pair.thai||'').slice(0,40)}" thaiLen=${thaiLen} syls=${thaiSyls.length} → [${thaiSyls.slice(0,5).join('|')}...]`)
-        if (thaiSyls.length >= 2) {
-          words = thaiSyls.map(syl => ({ p: syl, e: '', ph: '' }))
-          onLog?.(`  🔍 DEBUG expanded to ${words.length} slots`)
-        } else {
-          onLog?.(`  🔍 DEBUG splitThaiSyllables returned only ${thaiSyls.length} syl — NOT expanded`)
-        }
-      }
-      return { id: localIdx, thai: pair.thai || '', words }
+    // ── Special handling for 1-word pairs with long Thai ─────────────────────
+    // splitThaiSyllables produces bad splits (no word boundaries), so for
+    // these pairs we do a separate segmentation API call instead
+    const oneWordPairs = batchIdxs.filter(pairIdx => {
+      const ws = pairs[pairIdx].words || []
+      const thaiLen = (pairs[pairIdx].thai || '').replace(/[^ก-๙]/g, '').length
+      return ws.length < 2 && thaiLen > 8
     })
+    for (const pairIdx of oneWordPairs) {
+      try {
+        const p = pairs[pairIdx]
+        onLog?.(`  🔍 Segmenting 1-word pair [${pairIdx}]: ${(p.thai||'').slice(0,40)}…`)
+        const segRaw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
+          `Segment this Thai sentence into individual words. For each word provide romanization and English.
+
+Thai: ${p.thai}
+
+RULES: phonetic = toned RTGS only (NO IPA ɔ ə ʉ ŋ — use aw oe ue ng). e = 1-3 word English. Particles: ครับ→"[m]" ค่ะ→"[f]" ไม่→"not" นะ→"[softener]" เลย→"so" มาก→"very" ก็→"also" แล้ว→"already".
+
+Return ONLY JSON array, no markdown: [{"p":"romanization","e":"English","ph":"toned RTGS"},...]` }], 500)
+        const segParsed = JSON.parse(segRaw.replace(/```json|```/g, '').trim())
+        if (Array.isArray(segParsed) && segParsed.length >= 2) {
+          const cleanedWords = segParsed.map(w => ({ ...w, ph: fixIPAPhonetic(w.ph || w.p || '') }))
+          result[pairIdx] = { ...result[pairIdx], words: cleanedWords }
+          onLog?.(`  ✓ Segmented into ${cleanedWords.length} words`)
+        }
+      } catch(e) { onLog?.(`  ⚠️ Segmentation failed for pair [${pairIdx}]: ${e.message.slice(0,60)}`) }
+    }
+
+    const inputWithIdx = batchIdxs.reduce((acc, pairIdx, localIdx) => {
+      const pair = pairs[pairIdx]
+      const ws = pair.words || []
+      const thaiLen = (pair.thai || '').replace(/[^ก-๙]/g, '').length
+      if (ws.length < 2 && thaiLen > 8) return acc  // handled separately
+      acc.push({ entry: { id: acc.length, thai: pair.thai || '', words: ws }, origPairIdx: pairIdx })
+      return acc
+    }, [])
+    const input = inputWithIdx.map(x => x.entry)
+    const inputPairIdxs = inputWithIdx.map(x => x.origPairIdx)
 
     const prompt = `Fill every empty "e" (English gloss) and "ph" (romanization) in these Thai word arrays.
 CRITICAL: Use the "thai" field (the full sentence) to determine context-aware meaning — e.g. หา in ผมกำลังหาช้อน means "look for", NOT "five". ทำไม means "why" (not ทำ=do + ไม่=not). กำลัง is always "currently" and never splits.
@@ -755,11 +775,7 @@ Return ONLY valid JSON array: [{"id":0,"words":[{"p":"...","e":"...","ph":"..."}
       const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
-          const origPairIdx = batchIdxs[item.id]
-          const origWordCount = (pairs[origPairIdx]?.words || []).length
-          if (origWordCount < 2 && (pairs[origPairIdx]?.thai||'').replace(/[^ก-๙]/g,'').length > 8) {
-            onLog?.(`  🔍 DEBUG result for 1-word pair [${origPairIdx}]: API returned ${(item.words||[]).length} words`)
-          }
+          const origPairIdx = inputPairIdxs[item.id]
           if (origPairIdx !== undefined && Array.isArray(item.words) && item.words.length > 0) {
             // Apply local IPA fix to every w.ph returned by the API
             const cleanedWords = item.words.map(w => ({

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v449"/>
-<meta name="app-version" content="v449"/>
+<meta name="app-version" content="v450"/>
+<meta name="app-version" content="v450"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -728,6 +728,7 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     for (const pairIdx of oneWordPairs) {
       try {
         const p = pairs[pairIdx]
+        const thaiLen = (p.thai || '').replace(/[^ก-๙]/g, '').length
         onLog?.(`  🔍 Segmenting 1-word pair [${pairIdx}]: ${(p.thai||'').slice(0,40)}…`)
         const segTokens = Math.min(1000, Math.max(400, Math.round(thaiLen * 8)))
         const segRaw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
@@ -10001,7 +10002,7 @@ async function _qrBatchPromptCheck(pairs, apiKey, model, onLog) {
     ).join('\n\n')
 
     const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
-      `Rate how well each Thai sentence matches its prompt description.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\n${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5},{"i":2,"s":3,"note":"prompt says X but sentence says Y"},...]\nno markdown, no explanation.`
+      `Rate how well each Thai sentence matches its prompt description.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\nDIALOGUE RULE: These are conversation pairs. Prompts describe what a character says in third person ("He says he likes...", "She asks if...") but the Thai sentence naturally uses first person ("ผม/ฉัน = I"). This is CORRECT and NEVER a mismatch. Score 5 when "She says she agrees" matches "I agree", or "He says he wants" matches "I want". Only penalise if the actual CONTENT or TOPIC differs.\n\n${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5},{"i":2,"s":3,"note":"prompt says X but sentence says Y"},...]\nno markdown, no explanation.`
     }], 600)
 
     try {

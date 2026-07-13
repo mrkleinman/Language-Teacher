@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v451"/>
-<meta name="app-version" content="v451"/>
+<meta name="app-version" content="v452"/>
+<meta name="app-version" content="v452"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -4193,32 +4193,38 @@ async function callOpenRouterOnce(apiKey, orModel, messages, maxTokens) {
   // Route to Gemini REST if key is NOT an OpenRouter key (OR keys always start with 'sk-')
   const _isGoogleKey = apiKey && !apiKey.startsWith('sk-') && apiKey.length > 10
   if (_isGoogleKey) {
-    const GEMINI_FALLBACK = 'gemini-2.5-flash'
+    const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash'
     const gemModel = (orModel || '').replace(/^google\//, '') || 'gemini-2.5-flash-lite'
     const contents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }]
     }))
-    const _callGeminiModel = async (modelId) => {
+    const _callGemini = async (modelId, key) => {
       try {
         return await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${key}`,
           { method: 'POST', signal: controller.signal,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens || 1200, temperature: 0.7, topP: 0.9, thinkingConfig: { thinkingBudget: 0 } } }) }
         )
       } catch(fe) { clearTimeout(tid); throw new Error(fe.name === 'AbortError' ? 'Gemini timeout' : fe.message) }
     }
-    let gRes = await _callGeminiModel(gemModel)
-    // Auto-fallback on 503/404 — try gemini-2.5-flash, then wait+retry if that also 503s
-    if ((gRes.status === 503 || gRes.status === 404) && gemModel !== GEMINI_FALLBACK) {
-      console.warn(`[gemini] ${gRes.status} on ${gemModel}, retrying with ${GEMINI_FALLBACK}`)
-      gRes = await _callGeminiModel(GEMINI_FALLBACK)
-      // Both models overloaded — wait 4s and retry primary
-      if (gRes.status === 503) {
-        console.warn(`[gemini] ${GEMINI_FALLBACK} also 503, waiting 4s then retrying ${gemModel}`)
-        await new Promise(r => setTimeout(r, 4000))
-        gRes = await _callGeminiModel(gemModel)
+    let gRes = await _callGemini(gemModel, apiKey)
+    // On 503/404: try fallback key (if set) with same model, then fallback model, then wait+retry
+    if ((gRes.status === 503 || gRes.status === 404)) {
+      const fbKey = window.__geminiFallbackKey
+      if (fbKey && fbKey !== apiKey) {
+        console.warn(`[gemini] ${gRes.status} on primary key, trying fallback key`)
+        gRes = await _callGemini(gemModel, fbKey)
+      }
+      if (gRes.status === 503 || gRes.status === 404) {
+        console.warn(`[gemini] ${gRes.status}, trying fallback model`)
+        gRes = await _callGemini(GEMINI_FALLBACK_MODEL, apiKey)
+        if (gRes.status === 503) {
+          console.warn(`[gemini] fallback model also 503, waiting 4s then retrying`)
+          await new Promise(r => setTimeout(r, 4000))
+          gRes = await _callGemini(gemModel, fbKey && fbKey !== apiKey ? fbKey : apiKey)
+        }
       }
     }
     clearTimeout(tid)
@@ -8335,10 +8341,13 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
               return (
                 <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
                   {merged.map((w, i) => {
+                    const HAS_TONE = /[àáâǎÀÁÂǍ\u0300\u0301\u0302\u030C]/
                     const dispPh = fixIPAPhonetic(
-                      w.ph
-                      || (!/[\u0e00-\u0e7f]/.test(w.p||'') && w.p)
-                      || getPhTok(i)
+                      (w.ph && HAS_TONE.test(w.ph) ? w.ph : null)
+                      || (w.p && HAS_TONE.test(w.p) && !/[\u0e00-\u0e7f]/.test(w.p) ? w.p : null)
+                      || (HAS_TONE.test(getPhTok(i)) ? getPhTok(i) : null)
+                      || w.ph
+                      || (!/[\u0e00-\u0e7f]/.test(w.p||'') ? w.p : null)
                       || ''
                     )
                     return (
@@ -9111,9 +9120,10 @@ const PROVIDERS = [
   { id: 'haiku',     label: '🔶 Haiku 4.5',          sub: 'via OpenRouter', placeholder: 'sk-or-v1-...' },
 ]
 
-function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, gcpTtsKey, onSaveGcpTtsKey }) {
-  // Key state per provider
+function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, onSaveDsKey, orKey, onSaveOrKey, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, gcpTtsKey, onSaveGcpTtsKey, geminiFallbackKey, onSaveGeminiFallbackKey }) {
   const [keys, setKeys] = useState({ claude: apiKey || '', qwen3_14b: orKey || '', haiku: orKey || '', gemini: geminiKey || orKey || '', qwen32b: orKey || '' })
+  const [fallbackKey, setFallbackKey] = useState(geminiFallbackKey || '')
+  const [fallbackSaved, setFallbackSaved] = useState(false)
   const [saved, setSaved] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
@@ -9133,6 +9143,14 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
     }
     setSaved(provider)
     setTimeout(() => setSaved(''), 2000)
+  }
+
+  async function saveFallbackKey() {
+    const trimmed = fallbackKey.trim()
+    await stSet('tt-gemini-fallback-key', trimmed)
+    onSaveGeminiFallbackKey(trimmed)
+    setFallbackSaved(true)
+    setTimeout(() => setFallbackSaved(false), 2000)
   }
 
   async function testKey() {
@@ -9208,6 +9226,21 @@ function Settings({ onBack, apiKey, onSaveKey, provider, onSaveProvider, dsKey, 
           </button>
         </div>
         {testResult && <p style={{ fontSize: 13, marginTop: 10, color: testResult.startsWith('✅') ? '#10b981' : '#ef4444' }}>{testResult}</p>}
+
+        {/* Fallback key — only shown for Gemini direct key */}
+        {provider === 'gemini' && currentKey.length > 10 && !currentKey.startsWith('sk-') && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 4 }}>Fallback Key <span style={{ fontWeight: 400, fontSize: 11 }}>— used automatically on 503 rate-limit errors</span></p>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>Enter a paid Gemini key here. Free key is tried first; if it gets a 503, this key takes over.</p>
+            <input type="password" value={fallbackKey} onChange={e => { setFallbackKey(e.target.value); setFallbackSaved(false) }}
+              placeholder="AIza... (paid/backup Gemini key)"
+              style={{ width: '100%', padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 14, fontFamily: 'DM Mono, monospace', outline: 'none', marginBottom: 8 }} />
+            <button onClick={saveFallbackKey} disabled={!fallbackKey.trim()}
+              style={{ width: '100%', padding: '10px', borderRadius: 10, border: 'none', background: fallbackSaved ? '#063d2e' : 'var(--surface2)', border: '1px solid var(--border)', color: fallbackSaved ? '#10b981' : 'var(--text)', cursor: fallbackKey.trim() ? 'pointer' : 'not-allowed', fontSize: 13, fontFamily: 'Sarabun,sans-serif', fontWeight: 600 }}>
+              {fallbackSaved ? '✓ Fallback key saved' : 'Save Fallback Key'}
+            </button>
+          </div>
+        )}
 
         {/* Gemini live spend tracker (token-based) */}
         {provider === 'gemini' && currentKey.length > 10 && !currentKey.startsWith('sk-') && (
@@ -10640,6 +10673,10 @@ function ThaiTeacher() {
   const [dsKey, setDsKey] = useState('')
   const [orKey, setOrKey] = useState('')
   const [geminiKey, setGeminiKey] = useState('')
+  const [geminiFallbackKey, setGeminiFallbackKey] = useState('')
+
+  // Expose fallback key globally so callOpenRouterOnce can access it
+  useEffect(() => { window.__geminiFallbackKey = geminiFallbackKey }, [geminiFallbackKey])
   const [geminiSpend, setGeminiSpend] = useState(0)
   const [gcpTtsKey, setGcpTtsKey] = useState('')
   const [orBalance, setOrBalance] = useState(null)
@@ -10698,6 +10735,7 @@ function ThaiTeacher() {
       const dk = await stGet('tt-dskey'); if (dk) setDsKey(dk)
       const ok = await stGet('tt-orkey'); if (ok) { setOrKey(ok); fetchOrBalance(ok) }
       const gk = await stGet('tt-gemini-key'); if (gk) setGeminiKey(gk)
+      const gfk = await stGet('tt-gemini-fallback-key'); if (gfk) setGeminiFallbackKey(gfk)
       const gsp = await stGet('tt-gemini-spend'); if (gsp != null) setGeminiSpend(parseFloat(gsp) || 0)
       const gtk = await stGet('tt-gcp-tts-key'); if (gtk) setGcpTtsKey(gtk)
       setLoading(false)
@@ -10864,7 +10902,7 @@ function ThaiTeacher() {
         )}
         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
-        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} />}
+        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} geminiFallbackKey={geminiFallbackKey} onSaveGeminiFallbackKey={async k => { setGeminiFallbackKey(k); await stSet('tt-gemini-fallback-key', k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} fillApiKey={provider === 'gemini' && geminiKey ? geminiKey : orKey} fillModel={resolveOrModel(provider)} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')} />}
         {view === 'lessons' && <ErrorBoundary><LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} /></ErrorBoundary>}

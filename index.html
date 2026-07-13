@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v444"/>
-<meta name="app-version" content="v444"/>
+<meta name="app-version" content="v445"/>
+<meta name="app-version" content="v445"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -698,9 +698,15 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
   if (!apiKey || !model || !pairs || !pairs.length) return pairs
   const IPA = /[\u025b\u0254\u0250\u0289\u026f\u014b\u0259\u026a\u028a]/
   const DBL = /awaw|oeoe|ueue|aeae/  // double-conversion artifacts from old fixIPAPhonetic
-  const needsFill = pairs.map((p, i) => i).filter(i =>
-    pairs[i].words && pairs[i].words.some(w => !w.e || !w.ph || IPA.test(w.ph || '') || DBL.test(w.ph || ''))
-  )
+  const needsFill = pairs.map((p, i) => i).filter(i => {
+    const ws = pairs[i].words
+    if (!ws) return false
+    const thaiLen = (pairs[i].thai || '').replace(/[^ก-๙]/g, '').length
+    // Include if: any word missing e/ph, has IPA/double-conv artifacts,
+    // OR words array has only 1 entry but Thai is clearly multi-word (>8 Thai chars)
+    return ws.some(w => !w.e || !w.ph || IPA.test(w.ph || '') || DBL.test(w.ph || ''))
+      || (ws.length < 2 && thaiLen > 8)
+  })
   if (!needsFill.length) return pairs
 
   const result = [...pairs]
@@ -712,11 +718,19 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     const totalBatches = Math.ceil(needsFill.length/BATCH)
     const sample = (pairs[batchIdxs[0]]?.thai || '').slice(0,35)
     onLog?.(`  Batch ${batchNum}/${totalBatches}: ${sample}…`)
-    const input = batchIdxs.map((pairIdx, localIdx) => ({
-      id: localIdx,
-      thai: pairs[pairIdx].thai || '',
-      words: pairs[pairIdx].words
-    }))
+    const input = batchIdxs.map((pairIdx, localIdx) => {
+      const pair = pairs[pairIdx]
+      let words = pair.words || []
+      // If only 1 word but Thai is long → create placeholder slots so API fills all words
+      const thaiLen = (pair.thai || '').replace(/[^ก-๙]/g, '').length
+      if (words.length < 2 && thaiLen > 8) {
+        const estWords = Math.max(3, Math.round(thaiLen / 3.5))
+        words = Array.from({ length: estWords }, (_, i) =>
+          (i === 0 && words[0]) ? { ...words[0], ph: '', e: '' } : { p: '', e: '', ph: '' }
+        )
+      }
+      return { id: localIdx, thai: pair.thai || '', words }
+    })
 
     const prompt = `Fill every empty "e" (English gloss) and "ph" (romanization) in these Thai word arrays.
 CRITICAL: Use the "thai" field (the full sentence) to determine context-aware meaning — e.g. หา in ผมกำลังหาช้อน means "look for", NOT "five". ทำไม means "why" (not ทำ=do + ไม่=not). กำลัง is always "currently" and never splits.
@@ -737,7 +751,7 @@ Return ONLY valid JSON array: [{"id":0,"words":[{"p":"...","e":"...","ph":"..."}
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
           const origPairIdx = batchIdxs[item.id]
-          if (origPairIdx !== undefined && Array.isArray(item.words) && item.words.length === pairs[origPairIdx].words.length) {
+          if (origPairIdx !== undefined && Array.isArray(item.words) && item.words.length > 0) {
             // Apply local IPA fix to every w.ph returned by the API
             const cleanedWords = item.words.map(w => ({
               ...w,

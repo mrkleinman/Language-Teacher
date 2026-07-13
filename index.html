@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v445"/>
-<meta name="app-version" content="v445"/>
+<meta name="app-version" content="v446"/>
+<meta name="app-version" content="v446"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -721,13 +721,15 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     const input = batchIdxs.map((pairIdx, localIdx) => {
       const pair = pairs[pairIdx]
       let words = pair.words || []
-      // If only 1 word but Thai is long → create placeholder slots so API fills all words
+      // If only 1 word but Thai is long → split Thai into syllable tokens
+      // so fill-glosses knows what each word actually is
       const thaiLen = (pair.thai || '').replace(/[^ก-๙]/g, '').length
       if (words.length < 2 && thaiLen > 8) {
-        const estWords = Math.max(3, Math.round(thaiLen / 3.5))
-        words = Array.from({ length: estWords }, (_, i) =>
-          (i === 0 && words[0]) ? { ...words[0], ph: '', e: '' } : { p: '', e: '', ph: '' }
-        )
+        const thaiSyls = splitThaiSyllables(pair.thai || '')
+        if (thaiSyls.length >= 2) {
+          // Real syllable tokens — AI can gloss these properly
+          words = thaiSyls.map(syl => ({ p: syl, e: '', ph: '' }))
+        }
       }
       return { id: localIdx, thai: pair.thai || '', words }
     })

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v452"/>
-<meta name="app-version" content="v452"/>
+<meta name="app-version" content="v454"/>
+<meta name="app-version" content="v454"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -744,14 +744,15 @@ Return ONLY JSON array, no markdown: [{"p":"ฉัน","e":"I","ph":"chǎn"},{"p
         if (Array.isArray(segParsed) && segParsed.length >= 2) {
           const cleanedWords = segParsed.map(w => {
             let ph = fixIPAPhonetic(w.ph || '')
-            // Use Thai tone calculator to correct/add tone marks if p is Thai text
             if (w.p && /[\u0e00-\u0e7f]/.test(w.p)) {
               const tone = calcThaiSyllableTone(w.p)
               if (tone) ph = fixRTGSToneMark(ph || (w.ph || ''), tone)
             }
             return { ...w, ph }
           })
-          result[pairIdx] = { ...result[pairIdx], words: cleanedWords }
+          // Update pair.phonetic to full sentence so re-romanization can add tones
+          const fullPh = cleanedWords.map(w => w.ph || w.p || '').filter(x => x && !/[\u0e00-\u0e7f]/.test(x)).join(' ')
+          result[pairIdx] = { ...result[pairIdx], words: cleanedWords, phonetic: fullPh || result[pairIdx].phonetic }
           onLog?.(`  ✓ Segmented into ${cleanedWords.length} words`)
         }
       } catch(e) { onLog?.(`  ⚠️ Segmentation failed for pair [${pairIdx}]: ${e.message.slice(0,60)}`) }
@@ -762,7 +763,11 @@ Return ONLY JSON array, no markdown: [{"p":"ฉัน","e":"I","ph":"chǎn"},{"p
       const ws = pair.words || []
       const thaiLen = (pair.thai || '').replace(/[^ก-๙]/g, '').length
       if (ws.length < 2 && thaiLen > 8) return acc  // handled separately
-      acc.push({ entry: { id: acc.length, thai: pair.thai || '', words: ws }, origPairIdx: pairIdx })
+      acc.push({ entry: { id: acc.length, thai: pair.thai || '', words: ws.map(w => ({
+        ...w,
+        // fill-glosses expects p = romanization — if p is Thai (from segmentation), use ph instead
+        p: /[\u0e00-\u0e7f]/.test(w.p || '') ? (w.ph || '') : (w.p || '')
+      })) }, origPairIdx: pairIdx })
       return acc
     }, [])
     const input = inputWithIdx.map(x => x.entry)
@@ -10246,7 +10251,22 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
   const THAI_RANGE = /[\u0e00-\u0e7f]/
   const NO_TONE = /^[a-zA-Z0-9\s\-\.,'!?]+$/  // no tone marks at all — needs fixing too
   const DBL_CONV = /awaw|oeoe|ueue|aeae/  // double-conversion artifacts
-  const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) =>
+
+  // Detect pairs where phonetic is far shorter than word count (e.g. just the target word)
+  // Rebuild from words so re-romanization can fix the full sentence with tones
+  const workPairs = pairs.map(p => {
+    if (!p.phonetic || !p.words || p.words.length < 3) return p
+    const phToks = p.phonetic.trim().split(/\s+/).filter(Boolean)
+    if (phToks.length < Math.ceil(p.words.length / 2)) {
+      const rebuilt = p.words.map(w => w.ph || w.p || '').filter(x => x && !/[\u0e00-\u0e7f]/.test(x)).join(' ')
+      if (rebuilt && rebuilt.length > phToks.join(' ').length) {
+        return { ...p, phonetic: rebuilt }
+      }
+    }
+    return p
+  })
+
+  const eligible = workPairs.map((p, i) => ({ i, p })).filter(({ p }) =>
     p.phonetic && (
       IPA_CHARS.test(p.phonetic) ||
       THAI_RANGE.test(p.phonetic) ||
@@ -10257,7 +10277,7 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
   if (!eligible.length) return { pairs, fixed: 0 }
 
   const BATCH = 20
-  const result = [...pairs]
+  const result = [...workPairs]
   let fixed = 0
 
   for (let b = 0; b < eligible.length; b += BATCH) {

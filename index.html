@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v455"/>
-<meta name="app-version" content="v455"/>
+<meta name="app-version" content="v456"/>
+<meta name="app-version" content="v456"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -697,18 +697,30 @@ function enrichGloss(p) { if (!p) return ''; const k = _GLOSS_LOOKUP.np(p); retu
 async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
   if (!apiKey || !model || !pairs || !pairs.length) return pairs
   const IPA = /[\u025b\u0254\u0250\u0289\u026f\u014b\u0259\u026a\u028a]/
-  const DBL = /awaw|oeoe|ueue|aeae/  // double-conversion artifacts from old fixIPAPhonetic
-  const needsFill = pairs.map((p, i) => i).filter(i => {
-    const ws = pairs[i].words
+  const DBL = /awaw|oeoe|ueue|aeae/
+
+  // Local pre-fill for common Thai words — reliable, no API needed
+  const THAI_GLOSS = {'ครับ':'[m]','ค่ะ':'[f]','คะ':'[f]','นะครับ':'[m]','นะคะ':'[f]','ไม่':'not','ไหม':'?','มั้ย':'?','จะ':'will','ก็':'also','แล้ว':'already','ที่':'that/at','ให้':'to','นะ':'[softener]','เลย':'so/then','มาก':'very','แค่':'just','ตอน':'at/when','ก่อน':'first/before','กำลัง':'currently','เหรอ':'[surprise?]','เกือบ':'almost','อัน':'[item]','ทำไม':'why','ไป':'go','มา':'come','ดี':'good','เที่ยว':'travel/visit','เกาะ':'island','ใกล้':'near','ๆ':'(repeat)','ผม':'I (male)','ฉัน':'I (female)','คุณ':'you','เขา':'he/she','นั้น':'that','นี้':'this','นั่น':'that','อยาก':'want','ชอบ':'like','รู้':'know','เห็น':'see','ได้':'can/get','อยู่':'be/stay','มี':'have','เป็น':'be','ทำ':'do','พูด':'speak','บอก':'tell','ถาม':'ask','ต้อง':'must','อยาก':'want','ห้อง':'room','พื้น':'floor','ช้อน':'spoon','ส้อม':'fork','ทะเล':'sea','เรือ':'boat','หนึ่ง':'one','สอง':'two','สาม':'three','สี่':'four','ห้า':'five','หก':'six','เจ็ด':'seven','แปด':'eight','เก้า':'nine','สิบ':'ten'}
+  const pairs2 = pairs.map(p => {
+    if (!p.words) return p
+    const ws = p.words.map(w => {
+      if (w.e || !/[\u0e00-\u0e7f]/.test(w.p || '')) return w
+      const gloss = THAI_GLOSS[w.p]
+      return gloss ? { ...w, e: gloss } : w
+    })
+    return ws.some((w, i) => w !== p.words[i]) ? { ...p, words: ws } : p
+  })  // double-conversion artifacts from old fixIPAPhonetic
+  const needsFill = pairs2.map((p, i) => i).filter(i => {
+    const ws = pairs2[i].words
     if (!ws) return false
-    const thaiLen = (pairs[i].thai || '').replace(/[^ก-๙]/g, '').length
+    const thaiLen = (pairs2[i].thai || '').replace(/[^ก-๙]/g, '').length
     const byWords = ws.some(w => !w.e || !w.ph || IPA.test(w.ph || '') || DBL.test(w.ph || ''))
     const byLen = ws.length < 2 && thaiLen > 8
     return byWords || byLen
   })
-  if (!needsFill.length) return pairs
+  if (!needsFill.length) return pairs2
 
-  const result = [...pairs]
+  const result = [...pairs2]
   const BATCH = 5
 
   for (let b = 0; b < needsFill.length; b += BATCH) {
@@ -791,7 +803,7 @@ Return ONLY valid JSON array: [{"id":0,"words":[{"p":"...","e":"...","ph":"..."}
           const origPairIdx = inputPairIdxs[item.id]
           if (origPairIdx !== undefined && Array.isArray(item.words) && item.words.length > 0) {
             const origWords = pairs[origPairIdx]?.words || []
-            const HAS_TONE = /[àáâǎÀÁÂǍ\u0300\u0301\u0302\u030C]/
+            const HAS_TONE = /[àáâǎèéêěìíîǐòóôǒùúûǔÀÁÂǍÈÉÊĚÌÍÎǏÒÓÔǑÙÚÛǓ\u0300\u0301\u0302\u030C]/
             const cleanedWords = item.words.map((w, wi) => {
               const origPh = origWords[wi]?.ph || ''
               let ph = w.ph ? fixIPAPhonetic(w.ph) : w.ph
@@ -8335,7 +8347,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
                 } else { merged.push(w) }
               }
               // Fix 15: build phonetic token list — only use sentence fallback if it has tone marks
-              const HAS_TONE = /[àáâǎÀÁÂǍ\u0300\u0301\u0302\u030C]/
+              const HAS_TONE = /[àáâǎèéêěìíîǐòóôǒùúûǔÀÁÂǍÈÉÊĚÌÍÎǏÒÓÔǑÙÚÛǓ\u0300\u0301\u0302\u030C]/
               const phToks = (pair.phonetic && !/[\u0e00-\u0e7f]/.test(pair.phonetic) && HAS_TONE.test(pair.phonetic))
                 ? pair.phonetic.trim().split(/\s+/) : []
               const getPhTok = (i) => {
@@ -8347,7 +8359,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
               return (
                 <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
                   {merged.map((w, i) => {
-                    const HAS_TONE = /[àáâǎÀÁÂǍ\u0300\u0301\u0302\u030C]/
+                    const HAS_TONE = /[àáâǎèéêěìíîǐòóôǒùúûǔÀÁÂǍÈÉÊĚÌÍÎǏÒÓÔǑÙÚÛǓ\u0300\u0301\u0302\u030C]/
                     const dispPh = fixIPAPhonetic(
                       (w.ph && HAS_TONE.test(w.ph) ? w.ph : null)
                       || (w.p && HAS_TONE.test(w.p) && !/[\u0e00-\u0e7f]/.test(w.p) ? w.p : null)

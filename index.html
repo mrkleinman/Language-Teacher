@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v456"/>
-<meta name="app-version" content="v456"/>
+<meta name="app-version" content="v457"/>
+<meta name="app-version" content="v457"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -700,12 +700,40 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
   const DBL = /awaw|oeoe|ueue|aeae/
 
   // Local pre-fill for common Thai words — reliable, no API needed
-  const THAI_GLOSS = {'ครับ':'[m]','ค่ะ':'[f]','คะ':'[f]','นะครับ':'[m]','นะคะ':'[f]','ไม่':'not','ไหม':'?','มั้ย':'?','จะ':'will','ก็':'also','แล้ว':'already','ที่':'that/at','ให้':'to','นะ':'[softener]','เลย':'so/then','มาก':'very','แค่':'just','ตอน':'at/when','ก่อน':'first/before','กำลัง':'currently','เหรอ':'[surprise?]','เกือบ':'almost','อัน':'[item]','ทำไม':'why','ไป':'go','มา':'come','ดี':'good','เที่ยว':'travel/visit','เกาะ':'island','ใกล้':'near','ๆ':'(repeat)','ผม':'I (male)','ฉัน':'I (female)','คุณ':'you','เขา':'he/she','นั้น':'that','นี้':'this','นั่น':'that','อยาก':'want','ชอบ':'like','รู้':'know','เห็น':'see','ได้':'can/get','อยู่':'be/stay','มี':'have','เป็น':'be','ทำ':'do','พูด':'speak','บอก':'tell','ถาม':'ask','ต้อง':'must','อยาก':'want','ห้อง':'room','พื้น':'floor','ช้อน':'spoon','ส้อม':'fork','ทะเล':'sea','เรือ':'boat','หนึ่ง':'one','สอง':'two','สาม':'three','สี่':'four','ห้า':'five','หก':'six','เจ็ด':'seven','แปด':'eight','เก้า':'nine','สิบ':'ten'}
+  // Covers both Thai text in p (v451+ segmentation) and romanization in p (v450-era segmentation)
+  const THAI_GLOSS = {
+    'ครับ':'[m]','ค่ะ':'[f]','คะ':'[f]','ไม่':'not','ไหม':'?','มั้ย':'?',
+    'จะ':'will','ก็':'also','แล้ว':'already','ที่':'that/at','ให้':'to','นะ':'[softener]',
+    'เลย':'so/then','มาก':'very','แค่':'just','ตอน':'at/when','ก่อน':'first/before',
+    'กำลัง':'currently','เหรอ':'[surprise?]','เกือบ':'almost','อัน':'[item]','ทำไม':'why',
+    'ไป':'go','มา':'come','ดี':'good','เที่ยว':'travel/visit','เกาะ':'island',
+    'ใกล้':'near','ๆ':'(repeat)','ผม':'I (male)','ฉัน':'I (female)','คุณ':'you',
+    'เขา':'he/she','นั้น':'that','นี้':'this','นั่น':'that','อยาก':'want','ชอบ':'like',
+    'รู้':'know','เห็น':'see','ได้':'can/get','อยู่':'be/stay','มี':'have','เป็น':'be',
+    'ทำ':'do','พูด':'speak','บอก':'tell','ถาม':'ask','ต้อง':'must',
+    'ห้อง':'room','พื้น':'floor','ช้อน':'spoon','ส้อม':'fork','ทะเล':'sea','เรือ':'boat',
+    'หนึ่ง':'one','สอง':'two','สาม':'three','สี่':'four','ห้า':'five',
+    'หก':'six','เจ็ด':'seven','แปด':'eight','เก้า':'nine','สิบ':'ten',
+    // Romanized fallbacks for v450-era segmentation (p = romanization not Thai)
+    'khráp':'[m]','kráp':'[m]','krap':'[m]',
+    'khâ':'[f]','khà':'[f]','kha':'[f]','ka':'[f]',
+    'pai':'go','bpai':'go',
+    'tîeow':'travel/visit','tieow':'travel/visit','thîao':'travel/visit','thiaw':'travel/visit',
+    'kàw':'island','gàw':'island','kòr':'island','gor':'island',
+    'glâi':'near','glai':'near','klai':'near','glâi.':'near',
+    'phǒm':'I (male)','phom':'I (male)',
+    'yàak':'want','yaak':'want','yak':'want',
+    'chán':'I (female)','chan':'I (female)','chǎn':'I (female)',
+    'mâi':'not','mai':'not',
+    'dii':'good','dee':'good',
+    'maa':'come','rúu':'know','hěn':'see',
+  }
   const pairs2 = pairs.map(p => {
     if (!p.words) return p
     const ws = p.words.map(w => {
-      if (w.e || !/[\u0e00-\u0e7f]/.test(w.p || '')) return w
-      const gloss = THAI_GLOSS[w.p]
+      if (w.e) return w  // already has gloss
+      // Check Thai text in p, romanization in p, or romanization in ph
+      const gloss = THAI_GLOSS[w.p] || THAI_GLOSS[w.ph] || THAI_GLOSS[(w.ph||'').replace(/[.]/g,'')]
       return gloss ? { ...w, e: gloss } : w
     })
     return ws.some((w, i) => w !== p.words[i]) ? { ...p, words: ws } : p

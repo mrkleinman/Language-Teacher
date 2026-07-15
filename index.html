@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v465"/>
-<meta name="app-version" content="v465"/>
+<meta name="app-version" content="v466"/>
+<meta name="app-version" content="v466"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -10323,16 +10323,26 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
   const NO_TONE = /^[a-zA-Z0-9\s\-\.,'!?]+$/  // no tone marks at all — needs fixing too
   const DBL_CONV = /awaw|oeoe|ueue|aeae/  // double-conversion artifacts
 
-  // Detect pairs where phonetic is far shorter than word count (e.g. just the target word)
-  // Rebuild from words so re-romanization can fix the full sentence with tones
+  // Detect pairs where w.ph is untoned/empty — rebuild pair.phonetic from w.p tokens
+  // so the pair is always eligible (mixed phonetics fool the NO_TONE check)
+  const HAS_TONE_RE = /[àáâǎèéêěìíîǐòóôǒùúûǔ\u0300\u0301\u0302\u030C]/
   const workPairs = pairs.map(p => {
-    if (!p.phonetic || !p.words || p.words.length < 3) return p
-    const phToks = p.phonetic.trim().split(/\s+/).filter(Boolean)
+    if (!p.words || p.words.length < 2) return p
+    // Check if any w.ph is untoned (empty, or set but no tone marks)
+    const hasUntonedWph = p.words.some(w =>
+      !w.ph || (w.ph.length > 1 && !HAS_TONE_RE.test(w.ph) && !/[\u0e00-\u0e7f]/.test(w.ph))
+    )
+    if (hasUntonedWph) {
+      // Rebuild pair.phonetic from original w.p tokens (reliably untoned → triggers NO_TONE check)
+      // Token count matches w.p count → w.ph assignment works perfectly after re-romanization
+      const fromWp = p.words.map(w => w.p || '').filter(x => x && !/[\u0e00-\u0e7f]/.test(x)).join(' ')
+      if (fromWp.trim()) return { ...p, phonetic: fromWp }
+    }
+    // No untoned w.ph — still check if pair.phonetic is too short vs word count
+    const phToks = (p.phonetic || '').trim().split(/\s+/).filter(Boolean)
     if (phToks.length < Math.ceil(p.words.length / 2)) {
       const rebuilt = p.words.map(w => w.ph || w.p || '').filter(x => x && !/[\u0e00-\u0e7f]/.test(x)).join(' ')
-      if (rebuilt && rebuilt.length > phToks.join(' ').length) {
-        return { ...p, phonetic: rebuilt }
-      }
+      if (rebuilt && rebuilt.length > (p.phonetic || '').length) return { ...p, phonetic: rebuilt }
     }
     return p
   })

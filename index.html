@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v468"/>
-<meta name="app-version" content="v468"/>
+<meta name="app-version" content="v469"/>
+<meta name="app-version" content="v469"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -755,6 +755,58 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     'khon':'person','kon':'person',
     'kâo':'rice/enter','khâo':'rice/enter',
     'ao':'take/want','âo':'take/want',
+    // More common missing romanized forms
+    'chai':'yes/correct','châi':'yes/correct','cha':'yes',
+    'man':'it','mán':'it',
+    'kamlang':'currently','kam-lang':'currently','gamlang':'currently',
+    'nang':'sit','nâng':'sit','nâng':'sit',
+    'hin':'stone','hǐn':'stone','hîn':'stone',
+    'thi':'that/at','thii':'that/at','thîi':'that/at','thî':'that/at',
+    'yen':'cool/cold','yěn':'cool/cold',
+    'muean':'like/similar','mǔean':'like/similar','muên':'like/similar',
+    'hen':'see','hěn':'see','hên':'see',
+    'duay':'also/with','dûay':'also/with','duai':'also/with',
+    'ching':'really','jing':'really/true',
+    'rao':'we/us','raw':'we/us',
+    'khao':'he/she/they','khǎo':'he/she/they',
+    'tham':'do/make','tam':'do/make',
+    'wai':'put/keep','wây':'put/keep',
+    'nam':'water/lead','nám':'water',
+    'fan':'dream/tooth','fǎn':'dream',
+    'thong':'gold/bag','thǒng':'gold/bag',
+    'khwan':'smoke/should','khuan':'should',
+    'phra':'holy/monk','phráa':'monk',
+    'rok':'disease/fall','rôk':'disease',
+    'nit':'little','níd':'little',
+    'nit-noi':'a little','nít-nǒoi':'a little',
+    'yang':'still/type','yâng':'still/type','yang-ngai':'how',
+    'yang-ngân':'still like that',
+    'laeo':'already/then','láew':'already',
+    'gap':'with/and','gàp':'with',
+    'jak':'from','jàak':'from',
+    'tang':'set up/from','tâng':'set up',
+    'na':'field/face','nâa':'face/next',
+    'lang':'after/back','lǎng':'after/back',
+    'theung':'arrive/about','thǔeng':'arrive',
+    'an':'item/thing','àn':'item',
+    'pen':'be','bpen':'be','bpên':'be',
+    'yut':'stop','yùt':'stop',
+    'run':'generation','rûn':'generation',
+    'pen-yang-ngai':'how is it',
+    'sabai':'comfortable','sà-baai':'comfortable',
+    'aroy':'delicious','à-rǒi':'delicious',
+    'noi':'a little','nǒi':'a little',
+    'yang':'still','yung':'mosquito',
+    'suay':'beautiful','sǔay':'beautiful',
+    'jai':'heart/mind','jai-dii':'kind',
+    'khit':'think','khîd':'think',
+    'ngaan':'work/event','ngaan':'work',
+    'rong':'cry/factory','ráwng':'cry',
+    'sa-at':'clean','sà-àat':'clean',
+    'farang':'foreign/guava','fa-ràng':'foreigner',
+    'hua-jai':'heart','hǔa-jai':'heart',
+    'tam-mai':'why','tam-mai':'why',
+    'yang-ngai':'how','yang-rai':'how',
   }
   const pairs2 = pairs.map(p => {
     if (!p.words) return p

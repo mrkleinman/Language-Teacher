@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v464"/>
-<meta name="app-version" content="v464"/>
+<meta name="app-version" content="v465"/>
+<meta name="app-version" content="v465"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -698,6 +698,20 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
   if (!apiKey || !model || !pairs || !pairs.length) return pairs
   const IPA = /[\u025b\u0254\u0250\u0289\u026f\u014b\u0259\u026a\u028a]/
   const DBL = /awaw|oeoe|ueue|aeae/
+  const HAS_TONE_PH = /[àáâǎèéêěìíîǐòóôǒùúûǔ\u0300\u0301\u0302\u030C]/
+  // Also clear w.ph that is set but has no tone marks — treat as needing refill
+  // (previous fill-glosses set them to untoned romanization like "man", "nang")
+  const pairs3 = pairs2.map(p => {
+    if (!p.words) return p
+    const ws = p.words.map(w => {
+      if (!w.ph || w.ph.length <= 1) return w  // empty/single char — already flagged by !w.ph
+      if (HAS_TONE_PH.test(w.ph)) return w  // has tone marks — keep
+      if (/[\u0e00-\u0e7f]/.test(w.ph)) return w  // Thai text — keep
+      // Untoned romanization in w.ph — clear it so fill-glosses refills with toned version
+      return { ...w, ph: '' }
+    })
+    return ws.some((w, i) => w !== p.words[i]) ? { ...p, words: ws } : p
+  })
 
   // Local pre-fill for common Thai words — reliable, no API needed
   // Covers both Thai text in p (v451+ segmentation) and romanization in p (v450-era segmentation)
@@ -738,17 +752,17 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     })
     return ws.some((w, i) => w !== p.words[i]) ? { ...p, words: ws } : p
   })  // double-conversion artifacts from old fixIPAPhonetic
-  const needsFill = pairs2.map((p, i) => i).filter(i => {
-    const ws = pairs2[i].words
+  const needsFill = pairs3.map((p, i) => i).filter(i => {
+    const ws = pairs3[i].words
     if (!ws) return false
-    const thaiLen = (pairs2[i].thai || '').replace(/[^ก-๙]/g, '').length
+    const thaiLen = (pairs3[i].thai || '').replace(/[^ก-๙]/g, '').length
     const byWords = ws.some(w => !w.e || !w.ph || IPA.test(w.ph || '') || DBL.test(w.ph || ''))
     const byLen = ws.length < 2 && thaiLen > 8
     return byWords || byLen
   })
-  if (!needsFill.length) return pairs2
+  if (!needsFill.length) return pairs3
 
-  const result = [...pairs2]
+  const result = [...pairs3]
   const BATCH = 5
 
   for (let b = 0; b < needsFill.length; b += BATCH) {
@@ -761,8 +775,8 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     // splitThaiSyllables produces bad splits (no word boundaries), so for
     // these pairs we do a separate segmentation API call instead
     const oneWordPairs = batchIdxs.filter(pairIdx => {
-      const ws = pairs2[pairIdx].words || []
-      const thaiLen = (pairs2[pairIdx].thai || '').replace(/[^ก-๙]/g, '').length
+      const ws = pairs3[pairIdx].words || []
+      const thaiLen = (pairs3[pairIdx].thai || '').replace(/[^ก-๙]/g, '').length
       // 1-word pairs OR pairs where ALL words still have empty e after pre-fill
       const allEmpty = ws.length >= 2 && ws.every(w => !w.e)
       return (ws.length < 2 && thaiLen > 8) || (allEmpty && thaiLen > 8)
@@ -801,7 +815,7 @@ Return ONLY JSON array, no markdown: [{"p":"ฉัน","e":"I","ph":"chǎn"},{"p
     }
 
     const inputWithIdx = batchIdxs.reduce((acc, pairIdx, localIdx) => {
-      const pair = pairs2[pairIdx]
+      const pair = pairs3[pairIdx]
       const ws = pair.words || []
       const thaiLen = (pair.thai || '').replace(/[^ก-๙]/g, '').length
       const allEmpty = ws.length >= 2 && ws.every(w => !w.e)
@@ -10378,7 +10392,21 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
               cleaned = spaced.join(' ')
             }
           }
-          result[orig.i] = { ...result[orig.i], phonetic: cleaned }
+          const prevPair = result[orig.i]
+          // If token count matches word count, also update w.ph for each word
+          const newToks = cleaned.trim().split(/\s+/).filter(Boolean)
+          if (prevPair.words && newToks.length === prevPair.words.length) {
+            const HT = /[àáâǎèéêěìíîǐòóôǒùúûǔ\u0300\u0301\u0302\u030C]/
+            const updatedWords = prevPair.words.map((w, wi) => {
+              const tok = newToks[wi] || ''
+              // Only update w.ph if new token has tone marks (or old ph had no tone marks)
+              const shouldUpdate = HT.test(tok) || (!HT.test(w.ph || '') && tok.length > 0)
+              return shouldUpdate ? { ...w, ph: tok } : w
+            })
+            result[orig.i] = { ...prevPair, phonetic: cleaned, words: updatedWords }
+          } else {
+            result[orig.i] = { ...prevPair, phonetic: cleaned }
+          }
           fixed++
         }
       })

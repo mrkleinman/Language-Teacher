@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v461"/>
-<meta name="app-version" content="v461"/>
+<meta name="app-version" content="v462"/>
+<meta name="app-version" content="v462"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -10330,7 +10330,7 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
   )
   if (!eligible.length) return { pairs, fixed: 0 }
 
-  const BATCH = 20
+  const BATCH = 5  // small batches so Flash model response fits in token budget
   const result = [...workPairs]
   let fixed = 0
 
@@ -10347,7 +10347,7 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
     const reromanModel = (apiKey && !apiKey.startsWith('sk-')) ? 'google/gemini-2.5-flash' : model
     const raw = await callOpenRouterOnce(apiKey, reromanModel, [{ role: 'user', content:
       `Re-romanize each Thai sentence using toned RTGS only.\nFORBIDDEN characters: ɛ ɔ ʉ ŋ ə ɪ ʊ ɐ ɯ — these are IPA, never use them.\nFORBIDDEN: romanization without tone marks — every syllable MUST have a tone mark (à á â ǎ).\nSubstitute: ɔ→aw, ə→oe, ʉ→ue, ɛ→ae, ŋ→ng.\nExamples:\nครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak" ชอบ→"châwp" ของ→"khǎwng" เรือ→"ruea" เพื่อน→"phûean" ล่อง→"lâwng"\n\n${numbered}\n\nReturn ONLY JSON: [{"n":1,"ph":"romanization"},...]`
-    }], 800)
+    }], 1200)
 
     try {
       // Flash model often adds preamble before JSON — extract array directly

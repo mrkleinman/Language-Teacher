@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v460"/>
-<meta name="app-version" content="v460"/>
+<meta name="app-version" content="v461"/>
+<meta name="app-version" content="v461"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -10727,13 +10727,14 @@ function QualityReview({ track, vocab, apiKey, model, onSave, onSkip }) {
         <Card style={{ padding: 16, marginBottom: 16 }}>
           {results.prompt_fix > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🎯 {results.prompt_fix} prompt mismatch{results.prompt_fix > 1 ? 'es' : ''} fixed</p>}
           {results.phonetic_prepass > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔤 {results.phonetic_prepass} broken phonetic{results.phonetic_prepass > 1 ? 's' : ''} re-romanized</p>}
+          {results.phonetic_prepass === 0 && (qcMode === 'phonetics' || qcMode === 'phonetics_translations') && <p style={{ fontSize: 12, color: '#10b981', marginBottom: 8 }}>✅ All phonetics already clean</p>}
           {results.fix_phonetic > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔤 {results.fix_phonetic} phonetic{results.fix_phonetic > 1 ? 's' : ''} re-transcribed</p>}
           {results.improve > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>✏️ {results.improve} group{results.improve > 1 ? 's' : ''} improved</p>}
           {results.replace > 0 && <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>🔄 {results.replace} group{results.replace > 1 ? 's' : ''} replaced</p>}
           {results.error > 0 && <p style={{ fontSize: 12, color: '#f59e0b', marginBottom: 8 }}>⚠ {results.error} group{results.error > 1 ? 's' : ''} unchanged (error)</p>}
           {results.clean > 0 && <p style={{ fontSize: 12, color: '#10b981', marginBottom: 8 }}>✅ {results.clean} group{results.clean > 1 ? 's' : ''} already clean</p>}
           {changed === 0 && results.error === 0 && results.clean > 0 && <p style={{ fontSize: 13, color: '#10b981', fontWeight: 600, marginTop: 4 }}>Track looks great — nothing needed fixing.</p>}
-          {changed === 0 && results.error === 0 && results.clean === 0 && <p style={{ fontSize: 13, color: '#f59e0b', fontWeight: 600, marginTop: 4 }}>⚠ Couldn't read track groups — pairs may be missing target word markers.</p>}
+          {changed === 0 && results.error === 0 && results.clean === 0 && qcMode !== 'phonetics_translations' && qcMode !== 'phonetics' && qcMode !== 'translations' && <p style={{ fontSize: 13, color: '#f59e0b', fontWeight: 600, marginTop: 4 }}>⚠ Couldn't read track groups — pairs may be missing target word markers.</p>}
         </Card>
         <Btn onClick={() => onSave({ ...track, pairs: updatedPairs || track.pairs })} style={{ width: '100%', justifyContent: 'center' }}>
           Save & Study ▶

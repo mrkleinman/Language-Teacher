@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v463"/>
-<meta name="app-version" content="v463"/>
+<meta name="app-version" content="v464"/>
+<meta name="app-version" content="v464"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -8378,13 +8378,15 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
                 } else { merged.push(w) }
               }
               // Fix 15: build phonetic token list — only use sentence fallback if it has tone marks
-              const HAS_TONE = /[àáâǎèéêěìíîǐòóôǒùúûǔÀÁÂǍÈÉÊĚÌÍÎǏÒÓÔǑÙÚÛǓ\u0300\u0301\u0302\u030C]/
-              const phToks = (pair.phonetic && !/[\u0e00-\u0e7f]/.test(pair.phonetic) && HAS_TONE.test(pair.phonetic))
-                ? pair.phonetic.trim().split(/\s+/) : []
+              // AND enough tokens to roughly match the word count (else it would repeat)
+              const HAS_TONE_CHK = /[àáâǎèéêěìíîǐòóôǒùúûǔÀÁÂǍÈÉÊĚÌÍÎǏÒÓÔǑÙÚÛǓ\u0300\u0301\u0302\u030C]/
+              const rawPhToks = (pair.phonetic && !/[\u0e00-\u0e7f]/.test(pair.phonetic) && HAS_TONE_CHK.test(pair.phonetic))
+                ? pair.phonetic.trim().split(/\s+/).filter(Boolean) : []
+              // Require at least half as many tokens as words — otherwise proportional mapping repeats tokens badly
+              const phToks = rawPhToks.length >= Math.ceil(merged.length * 0.5) ? rawPhToks : []
               const getPhTok = (i) => {
                 if (!phToks.length) return ''
                 const tok = phToks[i] || phToks[Math.min(Math.round((i / merged.length) * phToks.length), phToks.length - 1)] || ''
-                // Cap: if token is suspiciously long it's the whole sentence (Flash hyphenated output) — skip it
                 if (tok.length > 25) return ''
                 return tok
               }

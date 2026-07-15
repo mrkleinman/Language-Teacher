@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v462"/>
-<meta name="app-version" content="v462"/>
+<meta name="app-version" content="v463"/>
+<meta name="app-version" content="v463"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -8383,9 +8383,10 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
                 ? pair.phonetic.trim().split(/\s+/) : []
               const getPhTok = (i) => {
                 if (!phToks.length) return ''
-                if (phToks[i]) return phToks[i]
-                const ratio = Math.round((i / merged.length) * phToks.length)
-                return phToks[Math.min(ratio, phToks.length - 1)] || ''
+                const tok = phToks[i] || phToks[Math.min(Math.round((i / merged.length) * phToks.length), phToks.length - 1)] || ''
+                // Cap: if token is suspiciously long it's the whole sentence (Flash hyphenated output) — skip it
+                if (tok.length > 25) return ''
+                return tok
               }
               return (
                 <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'8px 12px', maxWidth:380, padding:'4px 0' }}>
@@ -10346,7 +10347,7 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
     // Use gemini-2.5-flash (not lite) — flash-lite ignores tone mark instructions
     const reromanModel = (apiKey && !apiKey.startsWith('sk-')) ? 'google/gemini-2.5-flash' : model
     const raw = await callOpenRouterOnce(apiKey, reromanModel, [{ role: 'user', content:
-      `Re-romanize each Thai sentence using toned RTGS only.\nFORBIDDEN characters: ɛ ɔ ʉ ŋ ə ɪ ʊ ɐ ɯ — these are IPA, never use them.\nFORBIDDEN: romanization without tone marks — every syllable MUST have a tone mark (à á â ǎ).\nSubstitute: ɔ→aw, ə→oe, ʉ→ue, ɛ→ae, ŋ→ng.\nExamples:\nครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak" ชอบ→"châwp" ของ→"khǎwng" เรือ→"ruea" เพื่อน→"phûean" ล่อง→"lâwng"\n\n${numbered}\n\nReturn ONLY JSON: [{"n":1,"ph":"romanization"},...]`
+      `Re-romanize each Thai sentence using toned RTGS only.\\nFORBIDDEN: IPA ɛ ɔ ʉ ŋ ə ɪ ʊ — use aw oe ue ae ng instead.\\nFORBIDDEN: missing tone marks — EVERY syllable needs à á â or ǎ.\\nCRITICAL FORMAT: separate words with SPACES not hyphens. Hyphens only within single multi-syllable words. Correct: \"phǒm yàak bpai sǐi níi\" — NOT \"phǒm-yàak-bpai-sǐi-níi\".\\nExamples: ครับ→\"khráp\" ค่ะ→\"khâ\" ไม่→\"mâi\" สวัสดี→\"sà-wàt-dii\"\\n\\n${numbered}\n\nReturn ONLY JSON: [{"n":1,"ph":"romanization"},...]`
     }], 1200)
 
     try {
@@ -10357,7 +10358,24 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
         const orig = chunk[n - 1]
         if (orig && ph && ph.trim()) {
           // Apply local IPA fix AFTER API response — catches any residual IPA the model returned
-          const cleaned = fixIPAPhonetic(ph.trim())
+          let cleaned = fixIPAPhonetic(ph.trim())
+          // If Flash returned one long hyphenated string with no spaces, restore spaces
+          // by matching the original token count from the input
+          if (cleaned && !cleaned.includes(' ') && cleaned.includes('-')) {
+            const origPh = orig.p.phonetic || ''
+            const origCount = origPh.trim().split(/\s+/).filter(Boolean).length
+            if (origCount >= 2) {
+              // Split the hyphenated string by major word boundaries (approximately)
+              // Heuristic: split after every 2-3 syllable groups separated by hyphens
+              const parts = cleaned.split('-')
+              // Re-join with spaces every 2 parts (each Thai word = ~2 syllables)
+              const spaced = []
+              for (let pi = 0; pi < parts.length; pi += 2) {
+                spaced.push(parts.slice(pi, Math.min(pi + 2, parts.length)).join('-'))
+              }
+              cleaned = spaced.join(' ')
+            }
+          }
           result[orig.i] = { ...result[orig.i], phonetic: cleaned }
           fixed++
         }

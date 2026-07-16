@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v470"/>
-<meta name="app-version" content="v470"/>
+<meta name="app-version" content="v471"/>
+<meta name="app-version" content="v471"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -819,16 +819,22 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     return ws.some((w, i) => w !== p.words[i]) ? { ...p, words: ws } : p
   })  // double-conversion artifacts from old fixIPAPhonetic
   const HAS_TONE_PH = /[àáâǎèéêěìíîǐòóôǒùúûǔ\u0300\u0301\u0302\u030C]/
-  // Also clear w.ph that is set but has no tone marks — treat as needing refill
-  // (previous fill-glosses set them to untoned romanization like "man", "nang")
+  // Clear untoned w.ph AND w.ph that look like particles/pronouns assigned to wrong words
+  // (re-romanizer token misalignment creates khráp/phǒm assigned to wrong Thai words)
+  const PARTICLES_PH = /^(khr[aá]p|kh[aâ]|ph[oǒ]m|ch[aǎ]n|y[aà]ak|m[aâ]i|n[aá]|lo[eé]i)\.?$/i
   const pairs3 = pairs2.map(p => {
     if (!p.words) return p
-    const ws = p.words.map(w => {
-      if (!w.ph || w.ph.length <= 1) return w  // empty/single char — already flagged by !w.ph
-      if (HAS_TONE_PH.test(w.ph)) return w  // has tone marks — keep
+    const ws = p.words.map((w, wi) => {
+      if (!w.ph || w.ph.length <= 1) return w  // empty/single — already flagged
       if (/[\u0e00-\u0e7f]/.test(w.ph)) return w  // Thai text — keep
-      // Untoned romanization in w.ph — clear it so fill-glosses refills with toned version
-      return { ...w, ph: '' }
+      // Clear if no tone marks
+      if (!HAS_TONE_PH.test(w.ph)) return { ...w, ph: '' }
+      // Clear if ph looks like a particle/pronoun but gloss says something different
+      // (sign of re-romanizer token misalignment)
+      if (PARTICLES_PH.test(w.ph) && w.e && !['[m]','[f]','I (male)','I (female)','not','will','want'].includes(w.e)) {
+        return { ...w, ph: '' }
+      }
+      return w
     })
     return ws.some((w, i) => w !== p.words[i]) ? { ...p, words: ws } : p
   })
@@ -10497,20 +10503,7 @@ async function _qrFixBrokenPhonetics(pairs, apiKey, model, onLog) {
             }
           }
           const prevPair = result[orig.i]
-          // If token count matches word count, also update w.ph for each word
-          const newToks = cleaned.trim().split(/\s+/).filter(Boolean)
-          if (prevPair.words && newToks.length === prevPair.words.length) {
-            const HT = /[àáâǎèéêěìíîǐòóôǒùúûǔ\u0300\u0301\u0302\u030C]/
-            const updatedWords = prevPair.words.map((w, wi) => {
-              const tok = newToks[wi] || ''
-              // Only update w.ph if new token has tone marks (or old ph had no tone marks)
-              const shouldUpdate = HT.test(tok) || (!HT.test(w.ph || '') && tok.length > 0)
-              return shouldUpdate ? { ...w, ph: tok } : w
-            })
-            result[orig.i] = { ...prevPair, phonetic: cleaned, words: updatedWords }
-          } else {
-            result[orig.i] = { ...prevPair, phonetic: cleaned }
-          }
+          result[orig.i] = { ...prevPair, phonetic: cleaned }
           fixed++
         }
       })

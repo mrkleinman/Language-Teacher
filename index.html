@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v469"/>
-<meta name="app-version" content="v469"/>
+<meta name="app-version" content="v470"/>
+<meta name="app-version" content="v470"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -859,9 +859,15 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
     const oneWordPairs = batchIdxs.filter(pairIdx => {
       const ws = pairs3[pairIdx].words || []
       const thaiLen = (pairs3[pairIdx].thai || '').replace(/[^ก-๙]/g, '').length
-      // 1-word pairs OR pairs where ALL words still have empty e after pre-fill
-      const allEmpty = ws.length >= 2 && ws.every(w => !w.e)
-      return (ws.length < 2 && thaiLen > 8) || (allEmpty && thaiLen > 8)
+      if (thaiLen < 5) return false
+      // 1-word pairs
+      if (ws.length < 2) return true
+      // All-empty-e pairs
+      if (ws.every(w => !w.e)) return true
+      // Any word has empty e AND romanization in p (not Thai text) — needs segmentation
+      // because API can't gloss romanized tokens without Thai context
+      const hasRomanizedEmptyE = ws.some(w => !w.e && w.p && !/[\u0e00-\u0e7f]/.test(w.p))
+      return hasRomanizedEmptyE
     })
     for (const pairIdx of oneWordPairs) {
       try {
@@ -900,8 +906,11 @@ Return ONLY JSON array, no markdown: [{"p":"ฉัน","e":"I","ph":"chǎn"},{"p
       const pair = pairs3[pairIdx]
       const ws = pair.words || []
       const thaiLen = (pair.thai || '').replace(/[^ก-๙]/g, '').length
-      const allEmpty = ws.length >= 2 && ws.every(w => !w.e)
-      if ((ws.length < 2 && thaiLen > 8) || (allEmpty && thaiLen > 8)) return acc  // handled by segmentation
+      if (thaiLen < 5) { acc.push({ entry: { id: acc.length, thai: pair.thai || '', words: ws }, origPairIdx: pairIdx }); return acc }
+      const allEmpty = ws.every(w => !w.e)
+      const hasRomanizedEmptyE = ws.some(w => !w.e && w.p && !/[\u0e00-\u0e7f]/.test(w.p))
+      // Skip if handled by segmentation
+      if (ws.length < 2 || allEmpty || hasRomanizedEmptyE) return acc
       acc.push({ entry: { id: acc.length, thai: pair.thai || '', words: ws }, origPairIdx: pairIdx })
       return acc
     }, [])

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v472"/>
-<meta name="app-version" content="v472"/>
+<meta name="app-version" content="v473"/>
+<meta name="app-version" content="v473"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -880,7 +880,7 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
         const p = pairs[pairIdx]
         const thaiLen = (p.thai || '').replace(/[^ก-๙]/g, '').length
         onLog?.(`  🔍 Segmenting 1-word pair [${pairIdx}]: ${(p.thai||'').slice(0,40)}…`)
-        const segTokens = Math.min(1500, Math.max(400, Math.round(thaiLen * 10)))
+        const segTokens = Math.min(2500, Math.max(500, Math.round(thaiLen * 15)))
         const segRaw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
           `Segment this Thai sentence into individual words. For each word provide romanization and English.
 
@@ -10675,7 +10675,7 @@ Requirements: same speaker order (${groupPairs.map(p => p.speaker||'A').join('-'
 The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NOT quality notes.
 Return ONLY JSON array of ${groupPairs.length} objects, no markdown:
 [{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
-  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1200)
+  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 2000)
   const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
   if (!Array.isArray(parsed) || parsed.length < groupPairs.length) throw new Error('Bad response')
   const targetFound = parsed.some(p => p.thai && p.thai.includes(targetWord))
@@ -10714,7 +10714,7 @@ Requirements: speaker order ${speakerPattern}. Must include "${targetWord}". Flo
 The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NOT quality evaluation notes.
 Return ONLY JSON array of 3 objects, no markdown:
 [{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]},{"speaker":"B","thai":"...","phonetic":"...","english":"...","prompt":"She asks ...","words":[{"p":"...","e":"..."}]},{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
-  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 1500)
+  const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 2500)
   const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
   if (!Array.isArray(parsed) || parsed.length < 3) throw new Error('Bad response format')
   // Fix 4: verify target word present

@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v471"/>
-<meta name="app-version" content="v471"/>
+<meta name="app-version" content="v472"/>
+<meta name="app-version" content="v472"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -880,7 +880,7 @@ async function fillMissingGlossesForTrack(pairs, apiKey, model, onLog) {
         const p = pairs[pairIdx]
         const thaiLen = (p.thai || '').replace(/[^ก-๙]/g, '').length
         onLog?.(`  🔍 Segmenting 1-word pair [${pairIdx}]: ${(p.thai||'').slice(0,40)}…`)
-        const segTokens = Math.min(1000, Math.max(400, Math.round(thaiLen * 8)))
+        const segTokens = Math.min(1500, Math.max(400, Math.round(thaiLen * 10)))
         const segRaw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
           `Segment this Thai sentence into individual words. For each word provide romanization and English.
 
@@ -10094,10 +10094,10 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
     : ''
 
   // Step 0: Whole-track pre-pass
-  if (run.corruption) {
-  const THAI_RE = /[\u0e00-\u0e7f]/
   const corruptIds = new Set()
   const bestAttemptIds = new Set()
+  if (run.corruption) {
+  const THAI_RE = /[\u0e00-\u0e7f]/
   const topicCounts = {}  // track how many times each topic/country appears
 
   allPairs.forEach((p, i) => {

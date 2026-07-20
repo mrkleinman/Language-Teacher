@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v473"/>
-<meta name="app-version" content="v473"/>
+<meta name="app-version" content="v474"/>
+<meta name="app-version" content="v474"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -7814,7 +7814,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         try {
           const qrCancel = { current: false }
           const result = await runQualityCheckCore(track, apiKey, _qcModel, {
-            onLog: (msg) => setGenLog(prev => [...prev.slice(-80), msg]),
+            onLog: (msg) => setGenLog(prev => [...prev.slice(-300), msg]),
             onProgress: (pct, word) => {
               if (word) setGenLog(prev => {
                 const last = prev[prev.length - 1] || ''

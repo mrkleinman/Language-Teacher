@@ -962,6 +962,65 @@ Return ONLY valid JSON array: [{"id":0,"words":[{"p":"...","e":"...","ph":"..."}
       }
     } catch(e) { console.warn('[fillGlosses] batch', b, 'failed:', e.message) }
   }
+  // ── Vocab phonetic correction pass ──────────────────────────────────────────
+  // Fix two generation errors:
+  // 1. Wrong tone marks on known words (e.g. AI writes "krung-thèep" instead of "grung-thêep")
+  // 2. English words appearing as phonetic tokens (e.g. "family" instead of "khrôop-khrua")
+  ;(() => {
+    const thaiToPhon = {}
+    const engToPhon = {}
+    const normKey = s => (s||'').toLowerCase().replace(/[-]/g,' ').trim()
+    RAW_VOCAB.forEach(v => {
+      const ph = v.ph || v.phonetic || ''
+      if (!ph) return
+      if (v.t) thaiToPhon[v.t] = ph
+      const eng = normKey(v.e || v.english || '')
+      if (eng && !engToPhon[eng]) engToPhon[eng] = ph
+    })
+    // Hard-coded proper-name overrides (phonetic variants AI commonly hallucinates)
+    const PHON_OVERRIDES = {
+      'krung-theep': 'grung-thêep', 'krung theep': 'grung-thêep',
+      'krung-thèep': 'grung-thêep', 'krung-thêep': 'grung-thêep',
+      'kuman thong': 'ku-maan-thoong', 'kuman': 'ku-maan-thoong',
+      'bangkok': 'grung-thêep',
+    }
+    const IS_LATIN_NO_TONE = s => /^[a-zA-Z][a-zA-Z\s\-]*$/.test(s) && !/[àáâǎèéêěìíîǐòóôǒùúûǔ]/.test(s)
+    for (let i = 0; i < result.length; i++) {
+      const p = result[i]
+      if (!p || !p.words || !p.words.length) continue
+      let changed = false
+      const fixedWords = p.words.map(w => {
+        const tok = w.p || ''
+        // Case 1: Thai token — override ph if vocab has a known phonetic
+        if (/[\u0e00-\u0e7f]/.test(tok) && thaiToPhon[tok]) {
+          const correct = thaiToPhon[tok]
+          if ((w.ph || '') !== correct) { changed = true; return { ...w, ph: correct } }
+          return w
+        }
+        // Case 2: Latin token without tone marks = English gloss leaked into phonetic slot
+        if (IS_LATIN_NO_TONE(tok)) {
+          const key = normKey(tok)
+          const fix = PHON_OVERRIDES[key] || engToPhon[key]
+          if (fix) { changed = true; return { ...w, p: fix, ph: fix, e: w.e || tok } }
+        }
+        // Case 3: ph/p field contains a known-wrong phonetic for a proper noun
+        const phField = normKey(w.ph || w.p || '')
+        if (PHON_OVERRIDES[phField]) {
+          changed = true
+          return { ...w, ph: PHON_OVERRIDES[phField] }
+        }
+        return w
+      })
+      if (changed) {
+        const newPh = fixedWords
+          .map(w => w.ph || w.p || '')
+          .filter(x => x && !/[\u0e00-\u0e7f]/.test(x))
+          .join(' ')
+        result[i] = { ...p, words: fixedWords, phonetic: newPh || p.phonetic }
+      }
+    }
+  })()
+
   return result
 }
 
@@ -4249,6 +4308,8 @@ Generate 90 challenge-response pairs. Each pair must have ALL these fields:
 - "target_phonetic": phonetic of the ★ target word — copy EXACTLY from the bracket shown in the target list
 
 PHONETICS: Use ONLY the romanizations shown in [brackets] in the vocabulary list. Do NOT invent your own.
+CRITICAL: The "phonetic" field and "p" fields in "words" must ALWAYS be Thai romanization — NEVER English words.
+If a word has [brackets] in the vocab list, copy the bracketed phonetic EXACTLY — do not change tone marks.
 For words without brackets, use standard romanization with tone marks:
 mid=no mark | low=grave(à) | falling=circumflex(â) | high=acute(á) | rising=caron(ǎ)
 

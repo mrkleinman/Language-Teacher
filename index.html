@@ -3430,7 +3430,7 @@ function getStats(vocab) {
   }
 }
 
-function pickWords(vocab, mode) {
+function pickWords(vocab, mode, todayNewWords) {
   const today = new Date().toISOString().slice(0, 10)
   let targets
   if (mode === 'weak') {
@@ -3438,8 +3438,8 @@ function pickWords(vocab, mode) {
     if (!targets.length) targets = vocab.filter(w => w.status === 'learning').slice(0, 30)
   } else {
     const due = vocab.filter(w => w.status !== 'new' && w.status !== 'locked' && w.dueDate && w.dueDate <= today).slice(0, 22)
-    const newW = vocab.filter(w => w.status === 'new').slice(0, 9)
-    targets = [...due, ...newW].slice(0, 30)
+    // todayNewWords is passed in — always exactly 5, same across all tracks today
+    targets = [...due, ...(todayNewWords || [])].slice(0, 30)
     // Note: padding to 30 happens AFTER repair/filter below, so filtered words don't reduce count
   }
   const targetIds = new Set(targets.map(w => w.id))
@@ -7659,7 +7659,7 @@ function resolveOrName(provider) {
 }
 
 
-function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets, orBalance, onBalanceRefresh, tracks, resumeDraft }) {
+function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets, orBalance, onBalanceRefresh, tracks, resumeDraft, dailyNewWords, onSaveDailyNewWords }) {
   const [error, setError] = useState('')
   const [brickSources, setBrickSources] = useState({})
   const [currentTier, setCurrentTier] = useState('')
@@ -7710,9 +7710,34 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     // Exclude words already queued in any unplayed track (not just today's)
     const pendingTracks = (tracks || []).filter(t => !t.rated)
     const usedWordIds = new Set(pendingTracks.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
-    const filteredVocab = usedWordIds.size > 0 ? vocab.filter(w => !usedWordIds.has(w.id)) : vocab
-    return pickWords(filteredVocab, mode)
-  }, [vocab, mode, customTargets, tracks])
+
+    // ── Daily new words: exactly 5 per day, same words across all tracks that day ──
+    const today = new Date().toISOString().slice(0, 10)
+    let todayNewIds = null
+    if (dailyNewWords && dailyNewWords.date === today) {
+      todayNewIds = dailyNewWords.wordIds
+    } else {
+      const freshNew = vocab.filter(w => w.status === 'new').slice(0, 5)
+      if (freshNew.length > 0) todayNewIds = freshNew.map(w => w.id)
+    }
+    const todayNewWords = todayNewIds
+      ? todayNewIds.map(id => vocab.find(w => w.id === id)).filter(Boolean)
+      : []
+    const todayNewIdSet = new Set(todayNewIds || [])
+    const filteredVocab = vocab.filter(w => !usedWordIds.has(w.id) || todayNewIdSet.has(w.id))
+    return pickWords(filteredVocab, mode, todayNewWords)
+  }, [vocab, mode, customTargets, tracks, dailyNewWords])
+
+  // Save daily new words when they change (side effect belongs in useEffect, not useMemo)
+  useEffect(() => {
+    if (!targets || !targets.length || mode === 'weak') return
+    const today = new Date().toISOString().slice(0, 10)
+    if (dailyNewWords && dailyNewWords.date === today) return  // already saved today
+    const newTargets = targets.filter(w => w.status === 'new').slice(0, 5)
+    if (newTargets.length > 0) {
+      onSaveDailyNewWords?.({ date: today, wordIds: newTargets.map(w => w.id) })
+    }
+  }, [targets, dailyNewWords, mode])
 
   const isWeak = mode === 'weak'
   const color = isWeak ? '#ef4444' : '#10b981'
@@ -10994,6 +11019,7 @@ function ThaiTeacher() {
   const [orKey, setOrKey] = useState('')
   const [geminiKey, setGeminiKey] = useState('')
   const [geminiFallbackKey, setGeminiFallbackKey] = useState('')
+  const [dailyNewWords, setDailyNewWords] = useState(null) // { date: 'YYYY-MM-DD', wordIds: [...] }
 
   // Expose fallback key globally so callOpenRouterOnce can access it
   useEffect(() => { window.__geminiFallbackKey = geminiFallbackKey }, [geminiFallbackKey])
@@ -11041,8 +11067,24 @@ function ThaiTeacher() {
           }
         })
         const migrated = sv.map(w => phMap[w.id] ? { ...w, phonetic: phMap[w.id] } : w)
-        setVocab(migrated)
-        await stSet('tt-vocab', migrated)
+        // Sync: add any RAW_VOCAB entries that are missing from stored vocab (added after initial save)
+        const storedIds = new Set(migrated.map(w => w.id))
+        const missing = RAW_VOCAB
+          .map((d, idx) => ({ d, id: idx + 1 }))
+          .filter(({ id }) => !storedIds.has(id))
+          .map(({ d, id }) => {
+            const l = d.l
+            let status = 'new', interval = 0, dueDate = null
+            if (l === 'locked') { status = 'locked' }
+            else if (l === 'easy') { status = 'known'; interval = d.i || 24; const dd = new Date(); dd.setDate(dd.getDate() + 7); dueDate = dd.toISOString().slice(0, 10) }
+            else if (l === 'ok') { status = 'learning'; interval = d.i || 4; const dd = new Date(); dd.setDate(dd.getDate() + 2); dueDate = dd.toISOString().slice(0, 10) }
+            const rawPh = d.ph || null
+            const phonetic = rawPh && d.t ? (correctVocabPhonetic(d.t, rawPh) || rawPh) : rawPh
+            return { id, thai: d.t, english: d.e, phonetic, status, difficulty: l, lessonId: d.lid || null, interval, lastSeen: null, dueDate, repCount: d.r || 0, lapses: d.lp || 0 }
+          })
+        const synced = missing.length > 0 ? [...migrated, ...missing] : migrated
+        setVocab(synced)
+        await stSet('tt-vocab', synced)
       } else {
         const v = initVocab()
         setVocab(v)
@@ -11058,12 +11100,14 @@ function ThaiTeacher() {
       const gfk = await stGet('tt-gemini-fallback-key'); if (gfk) setGeminiFallbackKey(gfk)
       const gsp = await stGet('tt-gemini-spend'); if (gsp != null) setGeminiSpend(parseFloat(gsp) || 0)
       const gtk = await stGet('tt-gcp-tts-key'); if (gtk) setGcpTtsKey(gtk)
+      const dnw = await stGet('tt-daily-new'); if (dnw) setDailyNewWords(dnw)
       setLoading(false)
     }
     init()
   }, [])
 
   const saveVocab = useCallback(async v => { setVocab(v); await stSet('tt-vocab', v) }, [])
+  const saveDailyNewWords = useCallback(async dnw => { setDailyNewWords(dnw); await stSet('tt-daily-new', dnw) }, [])
   const saveTracks = useCallback(async t => {
     // Item 41: Cap at 20 tracks, remove oldest
     const capped = t.length > 20 ? t.slice(t.length - 20) : t
@@ -11208,6 +11252,8 @@ function ThaiTeacher() {
           resumeDraft={resumeDraft}
           orBalance={orBalance} onBalanceRefresh={(newBal, prevBal) => { setOrBalance(newBal); setLastTrackCost(prevBal !== null ? prevBal - newBal : null) }}
           tracks={tracks}
+          dailyNewWords={dailyNewWords}
+          onSaveDailyNewWords={saveDailyNewWords}
         /></ErrorBoundary>}
         {view === 'player' && activeTrack && (
           <ErrorBoundary><Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} gcpTtsKey={gcpTtsKey}

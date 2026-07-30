@@ -5995,6 +5995,13 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     if (hollowPrompt) {
       failures.push('hollow prompt (no concrete content): ' + p.prompt); continue
     }
+    // Reject meta-prompts: "uses 'X' to...", "use 'phonetic'" — AI narrating instead of instructing
+    const metaPrompt = /\buses\s+['"][^'"]{1,20}['"]\s+(to|and)/i.test(pr) ||
+                       /\buse\s+['"][^'"]{1,20}['"][\s]/i.test(pr) ||
+                       /\bsays?\s+['"][^'"]{1,20}['"]\s+to\b/i.test(pr)
+    if (metaPrompt) {
+      failures.push('meta-prompt (narrates phonetic instead of instructing): ' + p.prompt); continue
+    }
     // Question check
     const hasAnyQuestion = p.thai.includes('ไหม') || p.thai.includes('หรือ') ||
         p.thai.includes('ที่ไหน') || p.thai.includes('อะไร') || p.thai.includes('ใคร') ||
@@ -6816,7 +6823,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       (target.thai === 'ยิน' ? '\n• ยิน is used as ยินดี (glad) — always write ยินดี in sentences' : '') +
       (['พี่ชาย','น้องชาย','พี่สาว','น้องสาว','พี่','น้อง'].includes(target.thai) ? '\n• Always specify OLDER (พี่) or YOUNGER (น้อง) — never just "brother" or "sister"' : '') +
       '\nWRITE 3 sentence pairs each containing "' + target.thai + '". Use 3 different grammar patterns: 1 statement, 1 yes/no question, 1 other. Each "prompt" must be SPECIFIC: tell the student exactly what to say (e.g. "Say the [target] is [adjective]", "Ask if the [target] is [quality]"). ONLY use Thai words from the WHITELIST above.' +
-      ' "prompt" = natural English instruction telling what to SAY, matching the Thai sentence exactly.' +
+      ' "prompt" = natural English instruction telling what to SAY, matching the Thai sentence exactly. NEVER write "uses X to..." — describe the actual content said.' +
       '\nCREATIVITY RULE: real everyday speech — varied, contextually grounded. No padding.' +
       ' "prompt" = natural English instruction. Mix statement + question + negative/other.' +
       numberHint +
@@ -10758,7 +10765,7 @@ Context after:
 ${nextPairs.map(fmt).join('\n') || '  (end)'}
 
 Requirements: same speaker order (${groupPairs.map(p => p.speaker||'A').join('-')}). Must include "${targetWord}". ${vocabLine}Forbidden: ${_QR_BANNED.join(' ')}.
-The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NOT quality notes.
+The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NEVER write "uses 'X' to..." — describe what is actually said. NOT quality notes.
 Return ONLY JSON array of ${groupPairs.length} objects, no markdown:
 [{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
   const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 2000)
@@ -10797,7 +10804,7 @@ Context after:
 ${nextPairs.map(fmt).join('\n') || '  (end)'}
 
 Requirements: speaker order ${speakerPattern}. Must include "${targetWord}". Flow naturally from before to after. Simple everyday Thai. ${vocabLine}Forbidden: ${_QR_BANNED.join(' ')}.
-The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NOT quality evaluation notes.
+The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — NEVER write "uses 'X' to..." — describe what is actually said. NOT quality evaluation notes.
 Return ONLY JSON array of 3 objects, no markdown:
 [{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]},{"speaker":"B","thai":"...","phonetic":"...","english":"...","prompt":"She asks ...","words":[{"p":"...","e":"..."}]},{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
   const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }], 2500)
@@ -11079,7 +11086,7 @@ function ThaiTeacher() {
             else if (l === 'easy') { status = 'known'; interval = d.i || 24; const dd = new Date(); dd.setDate(dd.getDate() + 7); dueDate = dd.toISOString().slice(0, 10) }
             else if (l === 'ok') { status = 'learning'; interval = d.i || 4; const dd = new Date(); dd.setDate(dd.getDate() + 2); dueDate = dd.toISOString().slice(0, 10) }
             const rawPh = d.ph || null
-            const phonetic = rawPh && d.t ? (correctVocabPhonetic(d.t, rawPh) || rawPh) : rawPh
+            const phonetic = rawPh || null  // skip tone correction for newly-added entries; migration pass handles existing ones
             return { id, thai: d.t, english: d.e, phonetic, status, difficulty: l, lessonId: d.lid || null, interval, lastSeen: null, dueDate, repCount: d.r || 0, lapses: d.lp || 0 }
           })
         const synced = missing.length > 0 ? [...migrated, ...missing] : migrated

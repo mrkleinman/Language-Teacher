@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v481"/>
+<meta name="app-version" content="v484"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -3374,6 +3374,31 @@ function calcInterval(cur, rating) {
 // Consecutive non-fail reviews required to auto-promote a word to 'known'.
 // 7 puts the interval at ~117 days (~8 months of consistent correct recall),
 // well past Anki's 21-day maturity threshold. Lapsed words must re-earn it with 9.
+// Brand-new words carried per track; a slot frees only on 'ok' or better.
+// Scaled by belt: early belts are narrow (100 words) and every word is built from
+// scratch, while later belts are 10x wider and new words are mostly recombinations
+// of known morphemes. Deliberately below the usual 15-25/day Anki advice because a
+// "word" here costs 3 productive-recall sentence pairs, not one recognition card.
+const NEW_SLOTS_BY_KNOWN = [
+  { minWords: 0,    slots: 3  },  // Mukyu
+  { minWords: 100,  slots: 5  },  // 10th Kyu
+  { minWords: 200,  slots: 5  },  // 9th Kyu
+  { minWords: 350,  slots: 7  },  // 8th Kyu
+  { minWords: 500,  slots: 7  },  // 7th Kyu
+  { minWords: 750,  slots: 10 },  // 6th Kyu
+  { minWords: 1000, slots: 10 },  // 5th Kyu
+  { minWords: 1500, slots: 12 },  // 4th Kyu
+  { minWords: 2000, slots: 12 },  // 3rd Kyu
+  { minWords: 3000, slots: 15 },  // 2nd Kyu
+  { minWords: 4000, slots: 15 },  // 1st Kyu
+  { minWords: 5000, slots: 15 },  // Shodan
+]
+function newSlotsFor(vocab) {
+  const known = (vocab || []).filter(w => w.status === 'known').length
+  let slots = NEW_SLOTS_BY_KNOWN[0].slots
+  for (const tier of NEW_SLOTS_BY_KNOWN) if (known >= tier.minWords) slots = tier.slots
+  return slots
+}
 const OK_STREAK_TO_KNOWN = 7
 const OK_STREAK_TO_KNOWN_LAPSED = 9
 
@@ -3392,7 +3417,9 @@ function applyRating(word, rating) {
     const easyFastPath = rating === 'easy' && newInt >= 14
     status = (easyFastPath || okStreak >= gate) ? 'known' : 'learning'
   }
-  if (word.status === 'new') status = 'learning'
+  // A brand-new word rated 'hard' stays 'new' so it keeps its new-word slot and
+  // reappears in the next track. It only graduates to 'learning' on 'ok' or better.
+  if (word.status === 'new') status = (rating === 'hard') ? 'new' : 'learning'
   return { ...word, interval: newInt, lastSeen: today, dueDate: d.toISOString().slice(0, 10), repCount: (word.repCount || 0) + 1, lapses, okStreak, status, difficulty: rating }
 }
 
@@ -3471,8 +3498,9 @@ function pickWords(vocab, mode, todayNewWords) {
     if (!targets.length) targets = vocab.filter(w => w.status === 'learning').slice(0, 30)
   } else {
     const due = vocab.filter(w => w.status !== 'new' && w.status !== 'locked' && w.dueDate && w.dueDate <= today).slice(0, 22)
-    // todayNewWords is passed in — always exactly 5, same across all tracks today
-    targets = [...due, ...(todayNewWords || [])].slice(0, 30)
+    // New-word slots lead the list so they're visible first on the generation screen
+    // and are never squeezed out by the 30-word cap.
+    targets = [...(todayNewWords || []), ...due].slice(0, 30)
     // Note: padding to 30 happens AFTER repair/filter below, so filtered words don't reduce count
   }
   const targetIds = new Set(targets.map(w => w.id))
@@ -3513,11 +3541,16 @@ function pickWords(vocab, mode, todayNewWords) {
     if (isFull && t.thai.split(' ').length > 1) return { ...t, _phraseType: 'full_sentence' }
     return t
   })
-  // Shuffle to avoid same words always first/last
+  // Shuffle to avoid same words always first/last, then float brand-new words back
+  // to the front so they lead the generation screen and are rated first in review.
   for (let i = targets.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [targets[i], targets[j]] = [targets[j], targets[i]]
   }
+  targets = [
+    ...targets.filter(w => w.status === 'new'),
+    ...targets.filter(w => w.status !== 'new')
+  ]
   // Pad to always reach 30 — runs AFTER filter so filtered words don't reduce count
   if (targets.length < 30) {
     const tIds = new Set(targets.map(w => w.id))
@@ -3961,6 +3994,9 @@ function BeltRankCard({ vocab, onNav }) {
       <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
         Vocab rank only · Phrase, grammar & scenario banks coming soon
       </p>
+      <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, lineHeight: 1.5 }}>
+        Introducing <span style={{ color: '#4a90e2', fontWeight: 700 }}>{newSlotsFor(vocab)} new words</span> per track at this rank
+      </p>
     </Card>
   )
 }
@@ -4041,7 +4077,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => {
               // Load partial track as-is
-              const track = { date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), mode: genDraft.mode || 'daily', pairs: genDraft.pairs, keywords: (genDraft.targets||[]).map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '' })), rated: false, createdAt: new Date().toISOString(), partial: true }
+              const track = { date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), mode: genDraft.mode || 'daily', pairs: genDraft.pairs, keywords: (genDraft.targets||[]).map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '', isNew: w.status === 'new' })), rated: false, createdAt: new Date().toISOString(), partial: true }
               onNav('open-draft-track', track)
               localStorage.removeItem('tt-gen-draft')
               setGenDraft(null)
@@ -7761,33 +7797,36 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     const pendingTracks = (tracks || []).filter(t => !t.rated)
     const usedWordIds = new Set(pendingTracks.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
 
-    // ── Daily new words: exactly 5 per day, same words across all tracks that day ──
-    const today = new Date().toISOString().slice(0, 10)
-    let todayNewIds = null
-    if (dailyNewWords && dailyNewWords.date === today) {
-      todayNewIds = dailyNewWords.wordIds
-    } else {
-      const freshNew = vocab.filter(w => w.status === 'new').slice(0, 5)
-      if (freshNew.length > 0) todayNewIds = freshNew.map(w => w.id)
-    }
-    const todayNewWords = todayNewIds
-      ? todayNewIds.map(id => vocab.find(w => w.id === id)).filter(Boolean)
-      : []
-    const todayNewIdSet = new Set(todayNewIds || [])
-    const filteredVocab = vocab.filter(w => !usedWordIds.has(w.id) || todayNewIdSet.has(w.id))
-    return pickWords(filteredVocab, mode, todayNewWords)
+    // ── New-word slots ────────────────────────────────────────────────────────
+    // Belt-scaled new-word slots are carried across tracks. A slot is only released when its
+    // word is rated 'ok' or better (which moves it off status 'new'); rating it
+    // 'hard' leaves it on 'new', so it stays in the slot and reappears next track.
+    // Freed slots refill from the front of the unseen 'new' pool.
+    const held = (dailyNewWords?.wordIds || [])
+      .map(id => vocab.find(w => w.id === id))
+      .filter(w => w && w.status === 'new')          // drops any that graduated
+    const heldIds = new Set(held.map(w => w.id))
+    const refill = vocab.filter(w => w.status === 'new' && !heldIds.has(w.id))
+      .slice(0, Math.max(0, newSlotsFor(vocab) - held.length))
+    const slotWords = [...held, ...refill]
+    const slotIdSet = new Set(slotWords.map(w => w.id))
+
+    // Slot words bypass the pending-track exclusion so they persist across same-day tracks
+    const filteredVocab = vocab.filter(w => !usedWordIds.has(w.id) || slotIdSet.has(w.id))
+    return pickWords(filteredVocab, mode, slotWords)
   }, [vocab, mode, customTargets, tracks, dailyNewWords])
 
-  // Save daily new words when they change (side effect belongs in useEffect, not useMemo)
+  // Persist the current new-word slots whenever they change (side effect, so useEffect).
+  // Not gated on date: slots roll over only when a word is rated 'ok' or better.
   useEffect(() => {
     if (!targets || !targets.length || mode === 'weak') return
-    const today = new Date().toISOString().slice(0, 10)
-    if (dailyNewWords && dailyNewWords.date === today) return  // already saved today
-    const newTargets = targets.filter(w => w.status === 'new').slice(0, 5)
-    if (newTargets.length > 0) {
-      onSaveDailyNewWords?.({ date: today, wordIds: newTargets.map(w => w.id) })
-    }
-  }, [targets, dailyNewWords, mode])
+    const slotIds = targets.filter(w => w.status === 'new').slice(0, newSlotsFor(vocab)).map(w => w.id)
+    if (!slotIds.length) return
+    const prev = dailyNewWords?.wordIds || []
+    const same = prev.length === slotIds.length && prev.every((id, i) => id === slotIds[i])
+    if (same) return
+    onSaveDailyNewWords?.({ date: new Date().toISOString().slice(0, 10), wordIds: slotIds })
+  }, [targets, dailyNewWords, mode, vocab])
 
   const isWeak = mode === 'weak'
   const color = isWeak ? '#ef4444' : '#10b981'
@@ -7933,7 +7972,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           pairs = [...resumeDraft.pairs, ...(pairs || [])]
         }
         const allTargets = resumeDraft ? (resumeDraft.targets || targets) : targets
-        const keywords = allTargets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: phoneticsRef.current[w.id] || phoneticsRef.current[w.thai] || '' }))
+        const keywords = allTargets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: w.status === 'new', phonetic: phoneticsRef.current[w.id] || phoneticsRef.current[w.thai] || '' }))
         const track = {
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
@@ -8170,7 +8209,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={() => {
             const partial = partialPairsRef.current
             if (!partial.length) return
-            const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '' }))
+            const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '', isNew: w.status === 'new' }))
             const track = {
               date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }),
               mode, pairs: partial, keywords, rated: false, createdAt: new Date().toISOString(),
@@ -8221,7 +8260,14 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {/* Target words */}
       {targets.length > 0 && (
         <Card style={{ padding:'12px 14px' }}>
-          <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>Targeting {targets.length} words</p>
+          <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <span>Targeting {targets.length} words</span>
+            {targets.filter(w => w.status === 'new').length > 0 && (
+              <span style={{ color:'#4a90e2', fontWeight:800 }}>
+                ✦ {targets.filter(w => w.status === 'new').length} new
+              </span>
+            )}
+          </p>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
             {targets.map((w,i) => {
               const done = i * 3 < pairsDone
@@ -8230,8 +8276,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               const chipColor = done ? srcToColor(chipSrc, color) : 'var(--border)'
               const isFallback = done && (chipSrc.startsWith('fallback:') || chipSrc.startsWith('hardcoded:'))
               return (
-                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : 'transparent', border:'1px solid ' + chipColor, borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0, position:'relative' }}>
-                  <span className="thai" style={{ color: done ? chipColor : 'var(--text)', fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
+                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : (w.status === 'new' ? 'rgba(74,144,226,0.10)' : 'transparent'), border:'1px solid ' + (done ? chipColor : (w.status === 'new' ? 'rgba(74,144,226,0.65)' : chipColor)), borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0, position:'relative' }}>
+                  {w.status === 'new' && (
+                    <span style={{ position:'absolute', top:-6, right:-5, fontSize:8, fontWeight:800, letterSpacing:0.3, color:'#0b1120', background:'#4a90e2', borderRadius:3, padding:'1px 4px', lineHeight:1.3, pointerEvents:'none' }}>NEW</span>
+                  )}
+                  <span className="thai" style={{ color: done ? chipColor : (w.status === 'new' ? '#8ab8f0' : 'var(--text)'), fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
                   {phonetic ? <span className="phon" style={{ color: done ? chipColor : 'var(--muted)', fontSize:10, lineHeight:1.2, opacity:0.7 }}>{phonetic}</span> : null}
                   {isFallback && phase === 'done' && (
                     <button onClick={async () => {
@@ -8487,6 +8536,38 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
 
   const [revealedWords, setRevealedWords] = React.useState({})
 
+  function renderKeywordCard(kw, i) {
+    return (
+      <div style={{ background: kw.isNew ? 'rgba(74,144,226,0.07)' : 'var(--surface)', border: kw.isNew ? '1px solid rgba(74,144,226,0.55)' : '1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
+                <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:12, cursor:'pointer' }}
+                  onClick={() => setRevealedWords(prev => ({ ...prev, [i]: true }))}>
+                  <span className="thai" style={{ fontSize:26, color:'var(--gold)' }}>{kw.thai}</span>
+                  {kw.isNew && <span style={{ fontSize:9, fontWeight:800, letterSpacing:0.5, color:'#4a90e2', border:'1px solid rgba(74,144,226,0.5)', borderRadius:4, padding:'2px 5px', whiteSpace:'nowrap' }}>NEW</span>}
+                  {kw.phonetic && <span className="phon" style={{ fontSize:13, color:'#7a8aad' }}>{kw.phonetic}</span>}
+                  {revealedWords[i]
+                    ? <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
+                    : <span style={{ color:'var(--border)', fontSize:11, fontStyle:'italic' }}>tap to reveal</span>}
+                </div>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                  {[['hard','😅','#ef4444','#2d1515'],['ok','👍','#f59e0b','#3d2800'],['easy','⭐','#10b981','#063d2e']].map(([r,e,col,bg]) => (
+                    <button key={r} onClick={() => rateKeyword(i,r)}
+                      style={{ flex:1, padding:'9px 4px', borderRadius:8, border:`1px solid ${kw.rating===r?col:'var(--border)'}`, background:kw.rating===r?bg:'transparent', color:kw.rating===r?col:'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                      {e} {r}
+                    </button>
+                  ))}
+                  <button onClick={() => rateKeyword(i,'known')}
+                    style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='known'?'#10b981':'var(--border)'}`, background:kw.rating==='known'?'#063d2e':'transparent', color:kw.rating==='known'?'#10b981':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                    ✓ Mark Known
+                  </button>
+                  <button onClick={() => rateKeyword(i,'skip')}
+                    style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='skip'?'#6b7280':'var(--border)'}`, background:kw.rating==='skip'?'#1a1a2e':'transparent', color:kw.rating==='skip'?'#9ca3af':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
+                    🚫 Didn't appear
+                  </button>
+                </div>
+              </div>
+    )
+  }
+
   if (lessonDone) {
     return (
       <div className="fade-in" style={{ background:'var(--bg)', minHeight:'100vh', padding:'16px 16px 40px', maxWidth:500, margin:'0 auto' }}>
@@ -8499,36 +8580,35 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
         </div>
         <div style={{ height:3, background:'var(--gold)', borderRadius:2, marginBottom:24 }} />
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:24 }}>
-          {keywords.map((kw,i) => (
-            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
-              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:12, cursor:'pointer' }}
-                onClick={() => setRevealedWords(prev => ({ ...prev, [i]: true }))}>
-                <span className="thai" style={{ fontSize:26, color:'var(--gold)' }}>{kw.thai}</span>
-                {kw.phonetic && <span className="phon" style={{ fontSize:13, color:'#7a8aad' }}>{kw.phonetic}</span>}
-                {revealedWords[i]
-                  ? <span style={{ color:'var(--muted)', fontSize:14 }}>{kw.english}</span>
-                  : <span style={{ color:'var(--border)', fontSize:11, fontStyle:'italic' }}>tap to reveal</span>}
-              </div>
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                {[['hard','😅','#ef4444','#2d1515'],['ok','👍','#f59e0b','#3d2800'],['easy','⭐','#10b981','#063d2e']].map(([r,e,col,bg]) => (
-                  <button key={r} onClick={() => rateKeyword(i,r)}
-                    style={{ flex:1, padding:'9px 4px', borderRadius:8, border:`1px solid ${kw.rating===r?col:'var(--border)'}`, background:kw.rating===r?bg:'transparent', color:kw.rating===r?col:'var(--muted)', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
-                    {e} {r}
-                  </button>
-                ))}
-                <button onClick={() => rateKeyword(i,'known')}
-                  style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='known'?'#10b981':'var(--border)'}`, background:kw.rating==='known'?'#063d2e':'transparent', color:kw.rating==='known'?'#10b981':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
-                  ✓ Mark Known
-                </button>
-                <button onClick={() => rateKeyword(i,'skip')}
-                  style={{ flexBasis:'48%', padding:'7px 4px', borderRadius:8, border:`1px solid ${kw.rating==='skip'?'#6b7280':'var(--border)'}`, background:kw.rating==='skip'?'#1a1a2e':'transparent', color:kw.rating==='skip'?'#9ca3af':'var(--muted)', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.15s' }}>
-                  🚫 Didn't appear
-                </button>
-              </div>
-            </div>
-          ))}
+          {(() => {
+            // Brand-new words sort to the top so they get rated first and with full attention.
+            const order = keywords.map((kw, i) => ({ kw, i }))
+              .sort((a, b) => (b.kw.isNew ? 1 : 0) - (a.kw.isNew ? 1 : 0))
+            const newCount = order.filter(o => o.kw.isNew).length
+            return order.map(({ kw, i }, pos) => (
+              <React.Fragment key={i}>
+                {pos === 0 && newCount > 0 && (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, margin:'4px 2px 2px' }}>
+                    <span style={{ fontSize:11, fontWeight:800, letterSpacing:0.8, color:'#4a90e2' }}>
+                      ✦ NEW WORDS ({newCount})
+                    </span>
+                    <div style={{ flex:1, height:1, background:'rgba(74,144,226,0.3)' }} />
+                  </div>
+                )}
+                {pos === newCount && newCount > 0 && (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, margin:'14px 2px 2px' }}>
+                    <span style={{ fontSize:11, fontWeight:800, letterSpacing:0.8, color:'var(--muted)' }}>
+                      REVIEW
+                    </span>
+                    <div style={{ flex:1, height:1, background:'var(--border)' }} />
+                  </div>
+                )}
+                {renderKeywordCard(kw, i)}
+              </React.Fragment>
+            ))
+          })()}
         </div>
-        <button onClick={() => onComplete(keywords)} disabled={!allRated}
+                <button onClick={() => onComplete(keywords)} disabled={!allRated}
           style={{ width:'100%', padding:'15px', borderRadius:12, border:'none', background:allRated?'linear-gradient(135deg,#d4a94a,#b88a35)':'var(--surface2)', color:allRated?'#0b1120':'var(--muted)', fontSize:16, fontWeight:700, cursor:allRated?'pointer':'not-allowed', fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
           Save Progress
         </button>

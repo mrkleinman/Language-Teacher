@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v486"/>
+<meta name="app-version" content="v487"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -7324,21 +7324,28 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     // word is rated 'ok' or better (which moves it off status 'new'); rating it
     // 'hard' leaves it on 'new', so it stays in the slot and reappears next track.
     // Freed slots refill from the front of the unseen 'new' pool.
-    const held = (dailyNewWords?.wordIds || [])
-      .map(id => vocab.find(w => w.id === id))
-      .filter(w => w && w.status === 'new')          // drops any that graduated
-    const heldIds = new Set(held.map(w => w.id))
-    // Refill priority: genuinely unseen words first (no review history at all),
-    // each pool ordered most-useful-first for everyday speech. Words imported as
-    // 'hard' from lesson data have been seen before, so they only fill slots once
-    // the unseen pool is exhausted.
-    const need = Math.max(0, newSlotsFor(vocab) - held.length)
-    const candidates = vocab.filter(w => w.status === 'new' && !heldIds.has(w.id) && isUsableWord(w))
+    const slotCount = newSlotsFor(vocab)
     const byUtility = (a, b) => wordUtility(b) - wordUtility(a)
-    const unseen = candidates.filter(isUnseen).sort(byUtility)
-    const seenBefore = candidates.filter(w => !isUnseen(w)).sort(byUtility)
-    const refill = [...unseen, ...seenBefore].slice(0, need)
-    const slotWords = [...held, ...refill]
+
+    // Carried-over slots. Only genuinely-unseen words hold a slot unconditionally —
+    // a brand-new word you rated 'hard' must come back until you get it. Relearn
+    // fillers (imported as 'hard', already seen) are a fallback and must give up
+    // their slot as soon as real new words are available, or a stale pre-unlock
+    // save would freeze the slots forever.
+    const carried = (dailyNewWords?.wordIds || [])
+      .map(id => vocab.find(w => w.id === id))
+      .filter(w => w && w.status === 'new' && isUsableWord(w))
+    const heldUnseen = carried.filter(isUnseen)
+    const heldRelearn = carried.filter(w => !isUnseen(w))
+
+    const carriedIds = new Set(carried.map(w => w.id))
+    const pool = vocab.filter(w => w.status === 'new' && !carriedIds.has(w.id) && isUsableWord(w))
+    const freshUnseen = pool.filter(isUnseen).sort(byUtility)
+    const freshRelearn = pool.filter(w => !isUnseen(w)).sort(byUtility)
+
+    // Priority: held unseen > fresh unseen > held relearn > fresh relearn
+    const slotWords = [...heldUnseen, ...freshUnseen, ...heldRelearn, ...freshRelearn]
+      .slice(0, slotCount)
     const slotIdSet = new Set(slotWords.map(w => w.id))
 
     // Slot words bypass the pending-track exclusion so they persist across same-day tracks

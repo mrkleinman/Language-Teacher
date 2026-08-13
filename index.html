@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v490"/>
+<meta name="app-version" content="v510"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='thai-v131';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='thai-v131').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v510';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v510').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -42,6 +42,9 @@ const { useState, useEffect, useCallback, useRef, useMemo } = React
 const FontStyle = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Serif+Display:ital@0;1&display=swap');
+    /* §27 — Japanese must render cleanly alongside Thai; Noto Sans JP falls back
+       to platform CJK faces so no glyph boxes appear if the webfont is unavailable. */
+    :lang(ja), .jp { font-family: 'Noto Sans JP','Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0b1120; }
     :root {
@@ -2861,6 +2864,886 @@ function isUsableWord(w) {
   if (!e || /\uFFFD/.test(e)) return false
   return true
 }
+// \u00A724 \u2014 voice configuration per language. Thai keeps its existing WaveNet/Chirp voices
+// untouched; Japanese gets ja-JP voices. Nothing Thai-specific is hardcoded into the
+// Japanese path and no Japanese text is ever sent to a Thai voice.
+const TTS_VOICES = {
+  th: { languageCode:'th-TH', male:'th-TH-Chirp3-HD-Charon', female:'th-TH-Chirp3-HD-Aoede' },
+  ja: { languageCode:'ja-JP', male:'ja-JP-Neural2-C',        female:'ja-JP-Neural2-B' },
+}
+function ttsVoiceFor(langCode, isMale) {
+  const v = TTS_VOICES[langCode] || TTS_VOICES.th
+  return { languageCode: v.languageCode, name: isMale ? v.male : v.female }
+}
+function pickBrowserVoice(langCode) {
+  try {
+    const want = (TTS_VOICES[langCode] || TTS_VOICES.th).languageCode
+    const vs = window.speechSynthesis ? window.speechSynthesis.getVoices() : []
+    return vs.find(v => v.lang === want) || vs.find(v => v.lang && v.lang.startsWith(want.slice(0,2))) || null
+  } catch { return null }
+}
+
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// JAPANESE PROGRAMME — language layer
+// Thai remains the proven implementation and is untouched. Japanese is a parallel
+// programme with its own storage namespace, its own vocabulary bank and its own
+// generation/validation stack. No shared mutable learning state. (Spec §1, §28)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const LANGS = {
+  th: { code:'th', flag:'\u{1F1F9}\u{1F1ED}', name:'Thai',     title:'Thai Teacher',     ttsLang:'th-TH' },
+  ja: { code:'ja', flag:'\u{1F1EF}\u{1F1F5}', name:'Japanese', title:'Japanese Teacher', ttsLang:'ja-JP' },
+}
+const LANG_KEY = 'tt-active-language'
+
+// Japanese storage namespace — never collides with the Thai keys (tt-vocab, tt-tracks…)
+const JA = {
+  vocab:'tt-ja-vocab', tracks:'tt-ja-tracks', dailyNew:'tt-ja-daily-new',
+  register:'tt-ja-register', draft:'tt-ja-gen-draft', phonetics:'tt-ja-readings-cache',
+}
+
+// §4 — the first 100 Japanese targets, in explicit unlock order. Particles and
+// inflection are NOT here: they live in JAPANESE_FUNCTION_WORDS and never occupy
+// an SRS slot. IDs are stable; future vocabulary appends after 100 (§12).
+const RAW_JAPANESE_VOCAB = [
+  {id:1,unlockOrder:1,japanese:'大丈夫',reading:'だいじょうぶ',romaji:'daijoubu',english:'okay / all right',lemma:'大丈夫',partOfSpeech:'na-adjective',conjugationClass:null},
+  {id:2,unlockOrder:2,japanese:'行く',reading:'いく',romaji:'iku',english:'go',lemma:'行く',partOfSpeech:'verb',conjugationClass:'godan-iku'},
+  {id:3,unlockOrder:3,japanese:'今日',reading:'きょう',romaji:'kyou',english:'today',lemma:'今日',partOfSpeech:'noun',conjugationClass:null},
+  {id:4,unlockOrder:6,japanese:'食べる',reading:'たべる',romaji:'taberu',english:'eat',lemma:'食べる',partOfSpeech:'verb',conjugationClass:'ichidan'},
+  {id:5,unlockOrder:9,japanese:'好き',reading:'すき',romaji:'suki',english:'like / liked',lemma:'好き',partOfSpeech:'na-adjective',conjugationClass:null},
+  {id:6,unlockOrder:4,japanese:'何',reading:'なに / なん',romaji:'nani / nan',english:'what',lemma:'何',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:7,unlockOrder:7,japanese:'飲む',reading:'のむ',romaji:'nomu',english:'drink',lemma:'飲む',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:8,unlockOrder:8,japanese:'どこ',reading:'どこ',romaji:'doko',english:'where',lemma:'どこ',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:9,unlockOrder:10,japanese:'一緒',reading:'いっしょ',romaji:'issho',english:'together',lemma:'一緒',partOfSpeech:'noun',conjugationClass:null},
+  {id:10,unlockOrder:5,japanese:'する',reading:'する',romaji:'suru',english:'do',lemma:'する',partOfSpeech:'verb',conjugationClass:'irregular-suru'},
+  {id:11,unlockOrder:12,japanese:'今',reading:'いま',romaji:'ima',english:'now',lemma:'今',partOfSpeech:'noun',conjugationClass:null},
+  {id:12,unlockOrder:28,japanese:'ちょっと',reading:'ちょっと',romaji:'chotto',english:'a little / just',lemma:'ちょっと',partOfSpeech:'adverb',conjugationClass:null},
+  {id:13,unlockOrder:11,japanese:'来る',reading:'くる',romaji:'kuru',english:'come',lemma:'来る',partOfSpeech:'verb',conjugationClass:'irregular-kuru'},
+  {id:14,unlockOrder:31,japanese:'明日',reading:'あした',romaji:'ashita',english:'tomorrow',lemma:'明日',partOfSpeech:'noun',conjugationClass:null},
+  {id:15,unlockOrder:15,japanese:'分かる',reading:'わかる',romaji:'wakaru',english:'understand',lemma:'分かる',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:16,unlockOrder:13,japanese:'ありがとう',reading:'ありがとう',romaji:'arigatou',english:'thanks / thank you',lemma:'ありがとう',partOfSpeech:'expression',conjugationClass:null},
+  {id:17,unlockOrder:14,japanese:'すみません',reading:'すみません',romaji:'sumimasen',english:'excuse me / sorry',lemma:'すみません',partOfSpeech:'expression',conjugationClass:null},
+  {id:18,unlockOrder:16,japanese:'いい',reading:'いい',romaji:'ii',english:'good',lemma:'いい',partOfSpeech:'i-adjective',conjugationClass:'irregular-ii'},
+  {id:19,unlockOrder:27,japanese:'見る',reading:'みる',romaji:'miru',english:'see / watch',lemma:'見る',partOfSpeech:'verb',conjugationClass:'ichidan'},
+  {id:20,unlockOrder:92,japanese:'どう',reading:'どう',romaji:'dou',english:'how',lemma:'どう',partOfSpeech:'adverb',conjugationClass:null},
+  {id:21,unlockOrder:34,japanese:'買う',reading:'かう',romaji:'kau',english:'buy',lemma:'買う',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:22,unlockOrder:35,japanese:'いくら',reading:'いくら',romaji:'ikura',english:'how much',lemma:'いくら',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:23,unlockOrder:36,japanese:'お金',reading:'おかね',romaji:'okane',english:'money',lemma:'お金',partOfSpeech:'noun',conjugationClass:null},
+  {id:24,unlockOrder:19,japanese:'ある',reading:'ある',romaji:'aru',english:'exist / have (thing)',lemma:'ある',partOfSpeech:'verb',conjugationClass:'irregular-aru'},
+  {id:25,unlockOrder:20,japanese:'いる',reading:'いる',romaji:'iru',english:'exist / be / have (person or animal)',lemma:'いる',partOfSpeech:'verb',conjugationClass:'ichidan'},
+  {id:26,unlockOrder:21,japanese:'ここ',reading:'ここ',romaji:'koko',english:'here',lemma:'ここ',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:27,unlockOrder:22,japanese:'そこ',reading:'そこ',romaji:'soko',english:'there',lemma:'そこ',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:28,unlockOrder:17,japanese:'これ',reading:'これ',romaji:'kore',english:'this',lemma:'これ',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:29,unlockOrder:18,japanese:'それ',reading:'それ',romaji:'sore',english:'that',lemma:'それ',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:30,unlockOrder:90,japanese:'たぶん',reading:'たぶん',romaji:'tabun',english:'probably / maybe',lemma:'たぶん',partOfSpeech:'adverb',conjugationClass:null},
+  {id:31,unlockOrder:29,japanese:'もう',reading:'もう',romaji:'mou',english:'already / anymore',lemma:'もう',partOfSpeech:'adverb',conjugationClass:null},
+  {id:32,unlockOrder:30,japanese:'まだ',reading:'まだ',romaji:'mada',english:'still / not yet',lemma:'まだ',partOfSpeech:'adverb',conjugationClass:null},
+  {id:33,unlockOrder:39,japanese:'帰る',reading:'かえる',romaji:'kaeru',english:'return / go home',lemma:'帰る',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:34,unlockOrder:38,japanese:'会う',reading:'あう',romaji:'au',english:'meet',lemma:'会う',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:35,unlockOrder:58,japanese:'友達',reading:'ともだち',romaji:'tomodachi',english:'friend',lemma:'友達',partOfSpeech:'noun',conjugationClass:null},
+  {id:36,unlockOrder:40,japanese:'話す',reading:'はなす',romaji:'hanasu',english:'speak / talk',lemma:'話す',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:37,unlockOrder:41,japanese:'聞く',reading:'きく',romaji:'kiku',english:'listen / ask',lemma:'聞く',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:38,unlockOrder:42,japanese:'言う',reading:'いう',romaji:'iu',english:'say',lemma:'言う',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:39,unlockOrder:89,japanese:'本当',reading:'ほんとう',romaji:'hontou',english:'really / true',lemma:'本当',partOfSpeech:'na-adjective',conjugationClass:null},
+  {id:40,unlockOrder:91,japanese:'なんで',reading:'なんで',romaji:'nande',english:'why',lemma:'なんで',partOfSpeech:'adverb',conjugationClass:null},
+  {id:41,unlockOrder:23,japanese:'誰',reading:'だれ',romaji:'dare',english:'who',lemma:'誰',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:42,unlockOrder:24,japanese:'いつ',reading:'いつ',romaji:'itsu',english:'when',lemma:'いつ',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:43,unlockOrder:93,japanese:'どっち',reading:'どっち',romaji:'docchi',english:'which / which way',lemma:'どっち',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:44,unlockOrder:94,japanese:'どれ',reading:'どれ',romaji:'dore',english:'which one',lemma:'どれ',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:45,unlockOrder:33,japanese:'何時',reading:'なんじ',romaji:'nanji',english:'what time',lemma:'何時',partOfSpeech:'noun',conjugationClass:null},
+  {id:46,unlockOrder:25,japanese:'できる',reading:'できる',romaji:'dekiru',english:'can / be able',lemma:'できる',partOfSpeech:'verb',conjugationClass:'ichidan'},
+  {id:47,unlockOrder:26,japanese:'欲しい',reading:'ほしい',romaji:'hoshii',english:'want',lemma:'欲しい',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:48,unlockOrder:44,japanese:'持つ',reading:'もつ',romaji:'motsu',english:'hold / have',lemma:'持つ',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:49,unlockOrder:43,japanese:'使う',reading:'つかう',romaji:'tsukau',english:'use',lemma:'使う',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:50,unlockOrder:37,japanese:'待つ',reading:'まつ',romaji:'matsu',english:'wait',lemma:'待つ',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:51,unlockOrder:72,japanese:'見せる',reading:'みせる',romaji:'miseru',english:'show',lemma:'見せる',partOfSpeech:'verb',conjugationClass:'ichidan'},
+  {id:52,unlockOrder:73,japanese:'取る',reading:'とる',romaji:'toru',english:'take / get',lemma:'取る',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:53,unlockOrder:45,japanese:'作る',reading:'つくる',romaji:'tsukuru',english:'make',lemma:'作る',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:54,unlockOrder:74,japanese:'入る',reading:'はいる',romaji:'hairu',english:'enter / go in',lemma:'入る',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:55,unlockOrder:75,japanese:'出る',reading:'でる',romaji:'deru',english:'leave / come out',lemma:'出る',partOfSpeech:'verb',conjugationClass:'ichidan'},
+  {id:56,unlockOrder:76,japanese:'乗る',reading:'のる',romaji:'noru',english:'ride / get on',lemma:'乗る',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:57,unlockOrder:77,japanese:'降りる',reading:'おりる',romaji:'oriru',english:'get off',lemma:'降りる',partOfSpeech:'verb',conjugationClass:'ichidan'},
+  {id:58,unlockOrder:78,japanese:'住む',reading:'すむ',romaji:'sumu',english:'live / reside',lemma:'住む',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:59,unlockOrder:79,japanese:'働く',reading:'はたらく',romaji:'hataraku',english:'work',lemma:'働く',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:60,unlockOrder:80,japanese:'休む',reading:'やすむ',romaji:'yasumu',english:'rest / take a break',lemma:'休む',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:61,unlockOrder:81,japanese:'寝る',reading:'ねる',romaji:'neru',english:'sleep',lemma:'寝る',partOfSpeech:'verb',conjugationClass:'ichidan'},
+  {id:62,unlockOrder:82,japanese:'起きる',reading:'おきる',romaji:'okiru',english:'wake up / get up',lemma:'起きる',partOfSpeech:'verb',conjugationClass:'ichidan'},
+  {id:63,unlockOrder:46,japanese:'おいしい',reading:'おいしい',romaji:'oishii',english:'delicious',lemma:'おいしい',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:64,unlockOrder:47,japanese:'高い',reading:'たかい',romaji:'takai',english:'expensive / high',lemma:'高い',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:65,unlockOrder:48,japanese:'安い',reading:'やすい',romaji:'yasui',english:'cheap',lemma:'安い',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:66,unlockOrder:49,japanese:'大きい',reading:'おおきい',romaji:'ookii',english:'big',lemma:'大きい',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:67,unlockOrder:50,japanese:'小さい',reading:'ちいさい',romaji:'chiisai',english:'small',lemma:'小さい',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:68,unlockOrder:51,japanese:'新しい',reading:'あたらしい',romaji:'atarashii',english:'new',lemma:'新しい',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:69,unlockOrder:83,japanese:'古い',reading:'ふるい',romaji:'furui',english:'old',lemma:'古い',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:70,unlockOrder:84,japanese:'早い',reading:'はやい',romaji:'hayai',english:'early / fast',lemma:'早い',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:71,unlockOrder:85,japanese:'遅い',reading:'おそい',romaji:'osoi',english:'late / slow',lemma:'遅い',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:72,unlockOrder:55,japanese:'忙しい',reading:'いそがしい',romaji:'isogashii',english:'busy',lemma:'忙しい',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:73,unlockOrder:56,japanese:'暇',reading:'ひま',romaji:'hima',english:'free / not busy',lemma:'暇',partOfSpeech:'na-adjective',conjugationClass:null},
+  {id:74,unlockOrder:52,japanese:'楽しい',reading:'たのしい',romaji:'tanoshii',english:'fun / enjoyable',lemma:'楽しい',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:75,unlockOrder:53,japanese:'難しい',reading:'むずかしい',romaji:'muzukashii',english:'difficult',lemma:'難しい',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:76,unlockOrder:54,japanese:'簡単',reading:'かんたん',romaji:'kantan',english:'easy / simple',lemma:'簡単',partOfSpeech:'na-adjective',conjugationClass:null},
+  {id:77,unlockOrder:57,japanese:'近い',reading:'ちかい',romaji:'chikai',english:'near',lemma:'近い',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:78,unlockOrder:86,japanese:'遠い',reading:'とおい',romaji:'tooi',english:'far',lemma:'遠い',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:79,unlockOrder:87,japanese:'悪い',reading:'わるい',romaji:'warui',english:'bad',lemma:'悪い',partOfSpeech:'i-adjective',conjugationClass:null},
+  {id:80,unlockOrder:88,japanese:'また',reading:'また',romaji:'mata',english:'again',lemma:'また',partOfSpeech:'adverb',conjugationClass:null},
+  {id:81,unlockOrder:32,japanese:'昨日',reading:'きのう',romaji:'kinou',english:'yesterday',lemma:'昨日',partOfSpeech:'noun',conjugationClass:null},
+  {id:82,unlockOrder:99,japanese:'あそこ',reading:'あそこ',romaji:'asoko',english:'over there',lemma:'あそこ',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:83,unlockOrder:100,japanese:'あれ',reading:'あれ',romaji:'are',english:'that over there',lemma:'あれ',partOfSpeech:'pronoun',conjugationClass:null},
+  {id:84,unlockOrder:95,japanese:'はい',reading:'はい',romaji:'hai',english:'yes',lemma:'はい',partOfSpeech:'expression',conjugationClass:null},
+  {id:85,unlockOrder:96,japanese:'うん',reading:'うん',romaji:'un',english:'yeah',lemma:'うん',partOfSpeech:'expression',conjugationClass:null},
+  {id:86,unlockOrder:97,japanese:'いいえ',reading:'いいえ',romaji:'iie',english:'no',lemma:'いいえ',partOfSpeech:'expression',conjugationClass:null},
+  {id:87,unlockOrder:98,japanese:'ごめん',reading:'ごめん',romaji:'gomen',english:'sorry',lemma:'ごめん',partOfSpeech:'expression',conjugationClass:null},
+  {id:88,unlockOrder:60,japanese:'名前',reading:'なまえ',romaji:'namae',english:'name',lemma:'名前',partOfSpeech:'noun',conjugationClass:null},
+  {id:89,unlockOrder:59,japanese:'人',reading:'ひと',romaji:'hito',english:'person',lemma:'人',partOfSpeech:'noun',conjugationClass:null},
+  {id:90,unlockOrder:64,japanese:'家族',reading:'かぞく',romaji:'kazoku',english:'family',lemma:'家族',partOfSpeech:'noun',conjugationClass:null},
+  {id:91,unlockOrder:61,japanese:'家',reading:'いえ',romaji:'ie',english:'house / home',lemma:'家',partOfSpeech:'noun',conjugationClass:null},
+  {id:92,unlockOrder:65,japanese:'仕事',reading:'しごと',romaji:'shigoto',english:'work / job',lemma:'仕事',partOfSpeech:'noun',conjugationClass:null},
+  {id:93,unlockOrder:62,japanese:'店',reading:'みせ',romaji:'mise',english:'shop / store',lemma:'店',partOfSpeech:'noun',conjugationClass:null},
+  {id:94,unlockOrder:63,japanese:'駅',reading:'えき',romaji:'eki',english:'station',lemma:'駅',partOfSpeech:'noun',conjugationClass:null},
+  {id:95,unlockOrder:68,japanese:'日本語',reading:'にほんご',romaji:'nihongo',english:'Japanese language',lemma:'日本語',partOfSpeech:'noun',conjugationClass:null},
+  {id:96,unlockOrder:66,japanese:'水',reading:'みず',romaji:'mizu',english:'water',lemma:'水',partOfSpeech:'noun',conjugationClass:null},
+  {id:97,unlockOrder:67,japanese:'ご飯',reading:'ごはん',romaji:'gohan',english:'meal / rice',lemma:'ご飯',partOfSpeech:'noun',conjugationClass:null},
+  {id:98,unlockOrder:69,japanese:'トイレ',reading:'トイレ',romaji:'toire',english:'toilet',lemma:'トイレ',partOfSpeech:'noun',conjugationClass:null},
+  {id:99,unlockOrder:70,japanese:'思う',reading:'おもう',romaji:'omou',english:'think',lemma:'思う',partOfSpeech:'verb',conjugationClass:'godan'},
+  {id:100,unlockOrder:71,japanese:'知る',reading:'しる',romaji:'shiru',english:'know / find out',lemma:'知る',partOfSpeech:'verb',conjugationClass:'godan'},
+]
+
+// §10–13 — Speech Style is a hard generation constraint, not a label.
+const JAPANESE_REGISTER_RULES = {
+  polite: {
+    id:'polite', icon:'\u{1F3A9}', label:'Polite', sub:'\u3067\u3059\u30FB\u307E\u3059',
+    contract:
+      'REGISTER: POLITE (\u3067\u3059/\u307E\u3059).\n' +
+      'Write normal everyday polite Japanese as an adult speaks to someone they do not know well.\n' +
+      'PREFER: \u3067\u3059/\u307E\u3059 endings, \u307E\u3059\u304B/\u3067\u3059\u304B questions, \u306D for soft agreement.\n' +
+      'PROHIBITED: heavy keigo (\u5C0A\u656C\u8A9E/\u8B19\u8B72\u8A9E), business-formula Japanese, hotel/customer-service register ' +
+      '(\u3054\u3056\u3044\u307E\u3059, \u3044\u305F\u3057\u307E\u3059, \u304A\u3063\u3057\u3083\u3044\u307E\u3059) unless a target word teaches it.\n' +
+      'Example style: \u4ECA\u65E5\u306F\u4F55\u3092\u3057\u307E\u3059\u304B\uFF1F / \u3053\u308C\u3001\u7F8E\u5473\u3057\u3044\u3067\u3059\u306D\u3002',
+    banned: [/\u3054\u3056\u3044\u307E\u3059/, /\u3044\u305F\u3057\u307E\u3059/, /\u304A\u3063\u3057\u3083\u3044/, /\u62DD\u898B/, /\u5B58\u3058\u307E\u3059/],
+    bannedReason: 'excessive keigo / business formula — use normal everyday polite Japanese',
+  },
+  natural: {
+    id:'natural', icon:'\u{1F4AC}', label:'Natural', sub:'Friendly everyday Japanese',
+    contract:
+      'REGISTER: NATURAL (default).\n' +
+      'Natural adult conversational Japanese: predominantly PLAIN forms, friendly and socially considerate.\n' +
+      'This is NOT textbook Japanese with \u307E\u3059 removed — write it as natural speech from the start.\n' +
+      'PREFER: plain verb forms, subject omission, natural word order, contractions (\u3066\u308B/\u3061\u3083\u3046/\u3093\u306E), ' +
+      'sentence-final particles (\u306D/\u3088/\u306E/\u304B\u306A), softening (\u3068\u601D\u3046/\u304B\u3082), natural fragments.\n' +
+      'AVOID: recurring \u3067\u3059/\u307E\u3059/\u3067\u3059\u304B/\u307E\u3059\u304B where the social context does not demand it. ' +
+      'A little is fine if genuinely warranted; do not drift back into textbook-polite Japanese.\n' +
+      'PROHIBITED: rough speech \u2014 \u304A\u524D, \u3066\u3081\u3048, \u3060\u305C, \u305E (assertive), \u3058\u3083\u306D\u3048, \u3046\u308B\u305B\u3048, \u98DF\u3048 (bare imperative).\n' +
+      'NOT anime caricature, not aggressive male speech, not teenage slang overload.\n' +
+      'Example style: \u4ECA\u65E5\u306F\u4F55\u3059\u308B\uFF1F / \u3053\u308C\u98DF\u3079\u3066\u307F\u308B\uFF1F / \u3061\u3087\u3063\u3068\u9AD8\u3044\u306D\u3002 / \u305F\u3076\u3093\u5927\u4E08\u592B\u3060\u3068\u601D\u3046\u3002',
+    banned: [/\u304A\u524D/, /\u3066\u3081\u3048/, /\u3060\u305C/, /\u3058\u3083\u306D\u3048/, /\u3046\u308B\u305B\u3048/, /\u304B\u3088/],
+    bannedReason: '\u304A\u524D/\u3060\u305C-class rough speech is too rough for Natural mode',
+    politeLimit: 0.25,   // share of lines allowed to use です/ます before it counts as drift
+  },
+  casual: {
+    id:'casual', icon:'\u{1F525}', label:'Very Casual', sub:'Slang & close-friend speech',
+    contract:
+      'REGISTER: VERY CASUAL.\n' +
+      'Believable very-casual spoken Japanese between close friends.\n' +
+      'PREFER: contractions (\u3057\u3066\u3093\u306E/\u3059\u3093\u306E/\u3066\u308B), slang where natural (\u30DE\u30B8\u3067/\u3081\u3063\u3061\u3083/\u3084\u3070\u3044), ' +
+      'casual questions (\u301C\u306A\u3044\uFF1F/\u301C\u3060\u3063\u3051\uFF1F).\n' +
+      'PROHIBITED: \u3067\u3059/\u307E\u3059 endings except where genuinely quoted or ironic.\n' +
+      'Do NOT force slang into every sentence, and do not write delinquent/anime-character Japanese.\n' +
+      'Example style: \u4F55\u3057\u3066\u3093\u306E\uFF1F / \u30DE\u30B8\u3067\uFF1F / \u3081\u3063\u3061\u3083\u3046\u307E\u3044\u3002 / \u3084\u3070\u304F\u306A\u3044\uFF1F',
+    banned: [/\u3066\u3081\u3048/, /\u3046\u308B\u305B\u3048/],
+    bannedReason: 'aggressive/delinquent speech is not the intent of Very Casual',
+  },
+}
+const JA_REGISTER_DEFAULT = 'natural'
+const POLITE_RX = /(\u3067\u3059|\u307E\u3059|\u3067\u3057\u305F|\u307E\u3057\u305F|\u3067\u3059\u304B|\u307E\u3059\u304B)(\u304B|\u306D|\u3088)?[\u3002\uFF1F\uFF01]?$/
+
+// ── Japanese morphology ──────────────────────────────────────────────────────
+// Real conjugation tables, not guesswork. §5 is explicit that a る ending does not
+// imply ichidan (帰る/入る/知る/乗る/取る/作る are godan), and that 行く, する, 来る and いい
+// need special handling. Forms produced here feed the target matcher so that an
+// inflected appearance counts without weakening the matcher into false positives.
+const JA_GODAN_TE = {
+  'く':['いて','いた'], 'ぐ':['いで','いだ'], 'す':['して','した'],
+  'つ':['って','った'], 'る':['って','った'], 'う':['って','った'],
+  'ぬ':['んで','んだ'], 'ぶ':['んで','んだ'], 'む':['んで','んだ'],
+}
+const JA_GODAN_A = { 'く':'か','ぐ':'が','す':'さ','つ':'た','る':'ら','う':'わ','ぬ':'な','ぶ':'ば','む':'ま' }
+const JA_GODAN_I = { 'く':'き','ぐ':'ぎ','す':'し','つ':'ち','る':'り','う':'い','ぬ':'に','ぶ':'び','む':'み' }
+const JA_GODAN_E = { 'く':'け','ぐ':'げ','す':'せ','つ':'て','る':'れ','う':'え','ぬ':'ね','ぶ':'べ','む':'め' }
+const JA_GODAN_O = { 'く':'こ','ぐ':'ご','す':'そ','つ':'と','る':'ろ','う':'お','ぬ':'の','ぶ':'ぼ','む':'も' }
+
+function japaneseConjugate(lemma, cls) {
+  const L = lemma || ''
+  if (!L) return []
+  const out = new Set([L])
+  const add = (...xs) => xs.forEach(x => x && out.add(x))
+  const stem = L.slice(0, -1)
+  const end  = L.slice(-1)
+
+  if (cls === 'ichidan') {
+    add(stem+'た', stem+'て', stem+'ない', stem+'なかった', stem+'ます', stem+'ました',
+        stem+'ません', stem+'たい', stem+'よう', stem+'れば', stem+'られる', stem)
+  } else if (cls === 'godan' || cls === 'godan-iku') {
+    // 行く is the classic exception: 行いて is wrong, it is 行って
+    const te = (cls === 'godan-iku') ? ['って','った'] : (JA_GODAN_TE[end] || ['って','った'])
+    add(stem+te[0], stem+te[1])
+    add(stem+JA_GODAN_A[end]+'ない', stem+JA_GODAN_A[end]+'なかった')
+    add(stem+JA_GODAN_I[end], stem+JA_GODAN_I[end]+'ます', stem+JA_GODAN_I[end]+'ました',
+        stem+JA_GODAN_I[end]+'ません', stem+JA_GODAN_I[end]+'たい')
+    add(stem+JA_GODAN_E[end], stem+JA_GODAN_E[end]+'ば', stem+JA_GODAN_E[end]+'る')
+    add(stem+JA_GODAN_O[end]+'う')
+  } else if (cls === 'irregular-suru') {
+    add('した','して','しない','しなかった','します','しました','しません','したい','しよう','できる','し')
+  } else if (cls === 'irregular-kuru') {
+    add('来た','来て','来ない','来なかった','来ます','来ました','来ません','来たい','来よう','来れば','来')
+  } else if (cls === 'irregular-aru') {
+    add('あった','あって','ない','なかった','あります','ありました','ありません','あれば')
+  } else if (cls === 'i-adjective') {
+    add(stem+'かった', stem+'くない', stem+'くなかった', stem+'くて', stem+'く', stem+'ければ', stem+'すぎる')
+  } else if (cls === 'irregular-ii') {
+    // いい inflects from よい: よかった / よくない / よくて
+    add('よかった','よくない','よくなかった','よくて','よく','よければ','いいです','よい')
+  } else if (cls === 'na-adjective' || cls === 'noun') {
+    add(L+'だ', L+'です', L+'だった', L+'でした', L+'じゃない', L+'ではない',
+        L+'じゃなかった', L+'で', L+'な')
+  }
+  return [...out]
+}
+
+// ── Japanese romaji: deterministic kana → Hepburn ────────────────────────────
+// §6 — romaji must not depend on an LLM when the kana reading already determines it.
+// This also gives Japanese QC a ground truth to repair against, instead of the Thai
+// RTGS re-romanizer which produced sà-wàt-dii for こんにちは.
+const KANA_ROMAJI = {
+  'きゃ':'kya','きゅ':'kyu','きょ':'kyo','しゃ':'sha','しゅ':'shu','しょ':'sho',
+  'ちゃ':'cha','ちゅ':'chu','ちょ':'cho','にゃ':'nya','にゅ':'nyu','にょ':'nyo',
+  'ひゃ':'hya','ひゅ':'hyu','ひょ':'hyo','みゃ':'mya','みゅ':'myu','みょ':'myo',
+  'りゃ':'rya','りゅ':'ryu','りょ':'ryo','ぎゃ':'gya','ぎゅ':'gyu','ぎょ':'gyo',
+  'じゃ':'ja','じゅ':'ju','じょ':'jo','びゃ':'bya','びゅ':'byu','びょ':'byo',
+  'ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
+  'あ':'a','い':'i','う':'u','え':'e','お':'o',
+  'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
+  'が':'ga','ぎ':'gi','ぐ':'gu','げ':'ge','ご':'go',
+  'さ':'sa','し':'shi','す':'su','せ':'se','そ':'so',
+  'ざ':'za','じ':'ji','ず':'zu','ぜ':'ze','ぞ':'zo',
+  'た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to',
+  'だ':'da','ぢ':'ji','づ':'zu','で':'de','ど':'do',
+  'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no',
+  'は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho',
+  'ば':'ba','び':'bi','ぶ':'bu','べ':'be','ぼ':'bo',
+  'ぱ':'pa','ぴ':'pi','ぷ':'pu','ぺ':'pe','ぽ':'po',
+  'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo',
+  'や':'ya','ゆ':'yu','よ':'yo',
+  'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro',
+  'わ':'wa','を':'wo','ん':'n',
+  'ぁ':'a','ぃ':'i','ぅ':'u','ぇ':'e','ぉ':'o','ゃ':'ya','ゅ':'yu','ょ':'yo',
+}
+function kataToHira(s) {
+  return (s || '').replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60))
+}
+// Converts a kana reading to Hepburn romaji. Handles っ (gemination), ん before
+// vowels/y (n'), long vowels and katakana ー.
+function kanaToRomaji(reading) {
+  let s = kataToHira(reading || '')
+  s = s.replace(/[\u3000\s]/g, ' ')
+  let out = ''
+  let i = 0
+  while (i < s.length) {
+    const two = s.slice(i, i + 2)
+    const one = s[i]
+    if (one === 'っ') {                                  // gemination: double next consonant
+      const nx = KANA_ROMAJI[s.slice(i + 1, i + 3)] || KANA_ROMAJI[s[i + 1]] || ''
+      if (nx) out += (nx[0] === 'c' ? 't' : nx[0])
+      i += 1; continue
+    }
+    if (one === 'ー') {                                   // long mark: repeat last vowel
+      const last = out.slice(-1)
+      if (/[aiueo]/.test(last)) out += last
+      i += 1; continue
+    }
+    if (two.length === 2 && KANA_ROMAJI[two]) { out += KANA_ROMAJI[two]; i += 2; continue }
+    // Particle は is read "wa" and へ is read "e". Treat them as particles when they
+    // stand between words or end a clause — this is what makes こんにちは -> konnichiwa.
+    if (one === 'は' || one === 'へ') {
+      const prev = s[i - 1], next = s[i + 1]
+      const boundary = !next || /[、。？！\s]/.test(next)
+      const isParticle = boundary || (prev && !/[ぁ-ゟ]/.test(prev)) ||
+                         (s.slice(0, i + 1) === 'こんにちは') || (s.slice(0, i + 1) === 'こんばんは')
+      if (isParticle) { out += (one === 'は' ? 'wa' : 'e'); i += 1; continue }
+    }
+    if (KANA_ROMAJI[one]) {
+      let r = KANA_ROMAJI[one]
+      if (one === 'ん') {
+        const nxt = s[i + 1]
+        const nr = KANA_ROMAJI[s.slice(i + 1, i + 3)] || KANA_ROMAJI[nxt] || ''
+        if (nr && /^[aiueoy]/.test(nr)) r = "n'"          // ん before vowel/y
+      }
+      out += r; i += 1; continue
+    }
+    if (/[\u3001\u3002\uFF1F\uFF01]/.test(one)) { out += (one === '\u3001' ? ', ' : (one === '\u3002' ? '. ' : one)); i += 1; continue }
+    out += one; i += 1
+  }
+  return out.replace(/\s+/g, ' ').replace(/\s+([.,])/g, '$1').trim()
+}
+// Comparison ignores spacing/apostrophes/punctuation: word-splitting is a style choice.
+function romajiKey(r) { return (r || '').toLowerCase().replace(/[^a-z]/g, '') }
+function romajiMatchesReading(romaji, reading) {
+  if (!reading) return true
+  return romajiKey(romaji) === romajiKey(kanaToRomaji(reading))
+}
+
+// ── Japanese content-vocabulary control ──────────────────────────────────────
+// Productive recall only works if the learner can actually form the answer. The
+// generator must therefore be restricted to a CLOSED lexical set: current targets
+// plus everything genuinely introduced before, plus a controlled grammar scaffold.
+// Prompting alone proved insufficient (Gemini produced 映画/雨/予定 on track one),
+// so this is enforced by the validator, not just requested.
+
+// §5 — grammar scaffold. These are structural, never SRS vocabulary: they take no
+// slot, earn no Known status and do not affect rank. They unlock by rank so the
+// whole grammar system is not opened at Mukyu.
+const JAPANESE_GRAMMAR_SCAFFOLD = [
+  { id:'wa',   form:'\u306F',   romaji:'wa',   meaning:'topic marker',        type:'particle', minKnown:0 },
+  { id:'ka',   form:'\u304B',   romaji:'ka',   meaning:'question marker',     type:'particle', minKnown:0 },
+  { id:'ne',   form:'\u306D',   romaji:'ne',   meaning:'right? / soft agreement', type:'particle', minKnown:0 },
+  { id:'yo',   form:'\u3088',   romaji:'yo',   meaning:'emphasis',            type:'particle', minKnown:0 },
+  { id:'da',   form:'\u3060',   romaji:'da',   meaning:'plain copula (is)',   type:'copula',   minKnown:0 },
+  { id:'ni',   form:'\u306B',   romaji:'ni',   meaning:'to / at (destination or time)', type:'particle', minKnown:0 },
+  { id:'no',   form:'\u306E',   romaji:'no',   meaning:'possessive / explanatory', type:'particle', minKnown:100 },
+  { id:'wo',   form:'\u3092',   romaji:'wo',   meaning:'object marker',       type:'particle', minKnown:100 },
+  { id:'mo',   form:'\u3082',   romaji:'mo',   meaning:'also / too',          type:'particle', minKnown:100 },
+  { id:'to',   form:'\u3068',   romaji:'to',   meaning:'and / with',          type:'particle', minKnown:200 },
+  { id:'de',   form:'\u3067',   romaji:'de',   meaning:'at / by means of',    type:'particle', minKnown:200 },
+  { id:'ga',   form:'\u304C',   romaji:'ga',   meaning:'subject marker',      type:'particle', minKnown:200 },
+  { id:'kara', form:'\u304B\u3089', romaji:'kara', meaning:'from / because',  type:'particle', minKnown:350 },
+  { id:'made', form:'\u307E\u3067', romaji:'made', meaning:'until',           type:'particle', minKnown:350 },
+  { id:'he',   form:'\u3078',   romaji:'e',    meaning:'towards',             type:'particle', minKnown:350 },
+]
+function japaneseScaffoldFor(vocab) {
+  const known = (vocab || []).filter(w => w.status === 'known').length
+  return JAPANESE_GRAMMAR_SCAFFOLD.filter(s => known >= s.minKnown)
+}
+
+// §1 — "introduced" means actually encountered, NOT status !== 'new'. A word rated
+// Hard stays status 'new' because it holds its slot, but the learner HAS seen it and
+// it must remain usable as supporting vocabulary.
+function isJapaneseIntroduced(w, activeTargetIds) {
+  if (!w) return false
+  if (activeTargetIds && activeTargetIds.has(w.id)) return true
+  if ((w.repCount || 0) > 0) return true
+  if (w.lastSeen) return true
+  return false
+}
+
+// §2 — the closed content set for one track.
+function japaneseAllowedContent(vocab, targets) {
+  const ids = new Set((targets || []).map(t => t.id))
+  const prior = (vocab || []).filter(w => !ids.has(w.id) && isJapaneseIntroduced(w, ids))
+  return { targets: targets || [], prior, all: [...(targets || []), ...prior] }
+}
+
+// Kana that is purely grammatical: inflection tails, particles, copula, fillers.
+// These never count as content vocabulary.
+const JA_GRAMMAR_KANA = new Set([
+  '\u306F','\u304C','\u3092','\u306B','\u3067','\u3068','\u3082','\u306E','\u3078','\u304B','\u306D','\u3088','\u306A','\u3055','\u308F',
+  '\u3060','\u3067\u3059','\u307E\u3059','\u3060\u3088','\u3060\u306D','\u3067\u3057\u305F','\u307E\u3057\u305F','\u3060\u3063\u305F',
+  '\u3058\u3083','\u3058\u3083\u306A\u3044','\u306A\u3044','\u306A\u304B\u3063\u305F','\u305F','\u3066','\u305F\u3044','\u3088\u3046','\u305D\u3046',
+  '\u304B\u3089','\u307E\u3067','\u3051\u3069','\u304C','\u306E\u3067','\u3057','\u3082\u3046','\u307E\u3060',
+  '\u3046\u3093','\u306F\u3044','\u3044\u3044\u3048','\u3048','\u3042','\u3093',
+])
+
+// §12/§13 — never split on whitespace. Strip everything that is legitimately
+// allowed (targets in any inflected form, prior content, scaffold, grammar kana,
+// punctuation) and report whatever lexical material is left over.
+function japaneseUnknownContent(sentence, allowed, scaffold) {
+  let s = (sentence || '')
+  if (!s) return []
+  // 1. remove punctuation and spacing
+  s = s.replace(/[\s\u3000\u3001\u3002\uFF1F\uFF01\u30FB\u2026\uFF0C\uFF0E\u300C\u300D~\u301C\-]/g, '')
+  // 2. remove every allowed content word, longest first, in ALL its inflected forms
+  const forms = []
+  for (const w of (allowed || [])) {
+    const lemma = w.lemma || w.japanese
+    if (!lemma) continue
+    forms.push(lemma)
+    if (Array.isArray(w.permittedForms)) forms.push(...w.permittedForms)
+    if (w.conjugationClass) forms.push(...japaneseConjugate(lemma, w.conjugationClass))
+    // a kanji stem lets 高かった / 行った resolve even if a form is missing
+    const stem = japaneseStemOf(w)
+    if (stem && /[\u4E00-\u9FFF]/.test(stem)) forms.push(stem)
+  }
+  // 3. plus scaffold and grammatical kana
+  for (const g of (scaffold || [])) forms.push(g.form)
+  // Only MULTI-character grammar strings are removed here. Stripping single kana as
+  // substrings erodes real words (\u3042 out of \u3084\u3042, \u3082 out of \u3082\u3046) and hides them; single
+  // kana are handled by the whole-run test below instead.
+  JA_GRAMMAR_KANA.forEach(k => { if (k.length > 1) forms.push(k) })
+  forms.sort((a, b) => b.length - a.length)
+  for (const f of forms) { if (f) s = s.split(f).join('') }
+  // 4. Kanji or katakana left over is always untaught content.
+  const leftovers = s.match(/[\u4E00-\u9FFF]+|[\u30A0-\u30FF\u30FC]+/g) || []
+  // Leftover HIRAGANA also matters \u2014 \u3084\u3042 / \u3082\u3046 / \u3061\u3087\u3063\u3068 are real words a beginner has not
+  // been taught. A run is only acceptable if it is ENTIRELY grammatical: stripping
+  // single particles from inside a run would erode \u3082\u3046 to \u3046 and hide it.
+  const kanaRuns = (s.match(/[\u3041-\u309F]+/g) || []).filter(r => {
+    if (r.length < 2) return false                       // stray inflection residue
+    if (JA_GRAMMAR_KANA.has(r)) return false             // a known grammatical string
+    for (const ch of r) if (!JA_GRAMMAR_KANA.has(ch)) return true   // any non-grammar kana -> content
+    return false                                          // wholly particles/copula
+  })
+  return [...new Set([...leftovers, ...kanaRuns])]
+}
+
+// §5/§7C — Conversation Basics. A third category, distinct from SRS vocabulary and
+// from grammar particles: the minimum framing needed for a conversation to exist at
+// all. Never rated, never Known, never a slot. Deliberately tiny.
+const JAPANESE_CONVERSATION_BASICS = [
+  { id:'konnichiwa', form:'\u3053\u3093\u306B\u3061\u306F', romaji:'konnichiwa', english:'hello',          minKnown:0 },
+  { id:'un',         form:'\u3046\u3093',                   romaji:'un',         english:'yeah',           minKnown:0 },
+  { id:'matane',     form:'\u307E\u305F\u306D',             romaji:'mata ne',    english:'see you',        minKnown:0 },
+  { id:'jaa',        form:'\u3058\u3083\u3042',             romaji:'jaa',        english:'well then',      minKnown:0 },
+]
+function japaneseBasicsFor(vocab) {
+  const known = (vocab || []).filter(w => w.status === 'known').length
+  return JAPANESE_CONVERSATION_BASICS.filter(b => known >= b.minKnown)
+}
+
+// §19 — one explicit inventory object. Every generation stage reads from this;
+// no stage is allowed to bypass it.
+function japaneseLearnerInventory(vocab, targets) {
+  const allow = japaneseAllowedContent(vocab, targets)
+  const grammarScaffold = japaneseScaffoldFor(vocab)
+  const conversationBasics = japaneseBasicsFor(vocab)
+  const introducedCount = allow.all.length
+  return {
+    currentTargets: allow.targets,
+    introducedVocabulary: allow.prior,
+    allContent: allow.all,
+    conversationBasics,
+    grammarScaffold,
+    // §20 — zero-beginner mode
+    isZeroBeginner: (vocab || []).filter(w => w.status === 'known').length === 0 && introducedCount <= 3,
+  }
+}
+
+// Everything the learner may legitimately see, as raw surface strings.
+function japaneseInventoryForms(inv) {
+  return [
+    ...inv.conversationBasics.map(b => b.form),
+    ...inv.grammarScaffold.map(g => g.form),
+  ]
+}
+
+// §18/§23 — producibility. Runs on EVERY learner-facing Japanese line, framing
+// included, not just the recall sentences.
+function japaneseCheckLine(jp, inv) {
+  const extra = inv.conversationBasics.map(b => ({ japanese: b.form, lemma: b.form }))
+  const unknown = japaneseUnknownContent(jp, [...inv.allContent, ...extra], inv.grammarScaffold)
+  return { ok: unknown.length === 0, unknown }
+}
+
+// ── Vocabulary scarcity ──────────────────────────────────────────────────────
+// §1 — diversity pressure must scale with how much language the learner actually
+// has. Demanding three distinct grammar patterns and global novelty from a six-word
+// inventory is what produced 1/3 and 0/3 recalls: the search space was empty.
+function japaneseScarcityLevel(inv) {
+  const n = ((inv && inv.allContent) || []).length
+  if (n <= 15) return 'A'
+  if (n <= 50) return 'B'
+  return 'C'
+}
+const SCARCITY_RULES = {
+  A: { requirePatternVariety:false, requireScenarioVariety:false, allowCrossTargetReuse:true,  allowNearDuplicate:true,  maxTiers:4 },
+  B: { requirePatternVariety:false, requireScenarioVariety:true,  allowCrossTargetReuse:false, allowNearDuplicate:true,  maxTiers:6 },
+  C: { requirePatternVariety:true,  requireScenarioVariety:true,  allowCrossTargetReuse:false, allowNearDuplicate:false, maxTiers:11 },
+}
+function scarcityRules(inv) { return SCARCITY_RULES[japaneseScarcityLevel(inv)] }
+
+// §10/§11 — complexity from CONTENT segments, not character runs. A long kana run
+// is not automatically many units; 今日何する？ is three content items, not six.
+function japaneseComplexity(pair) {
+  const segs = Array.isArray(pair && pair.segments) ? pair.segments : null
+  if (segs && segs.length) {
+    const content = segs.filter(s => s && s.type !== 'grammar' && s.type !== 'punct' &&
+      /[\u3040-\u30FF\u4E00-\u9FFF]/.test(s.surface || '')).length
+    const clauses = ((pair.japanese || '').match(/[\u3001\u3066\u304C\u3051\u3069]/g) || []).length
+    return content + Math.floor(clauses / 2)
+  }
+  // No segments: fall back to the older estimate rather than guessing.
+  return japaneseUnitCount((pair && (pair.japanese || pair.thai)) || '')
+}
+
+// §12/§13 — lexical identity comes from the model's own segments, never from
+// slicing kanji/kana. This is what produced nonsense reports like 決 / まった.
+function japaneseUnknownFromSegments(pair, inv) {
+  const segs = Array.isArray(pair && pair.segments) ? pair.segments : []
+  if (!segs.length) return null            // caller falls back to surface scanning
+  const unknown = []
+  for (const s of segs) {
+    const surface = (s && s.surface) || ''
+    if (!surface || !/[\u3040-\u30FF\u4E00-\u9FFF]/.test(surface)) continue
+    if (s.type === 'grammar' || s.type === 'punct') continue
+    const lemma = s.lemma || surface
+    // resolve against current targets + introduced vocabulary + scaffold + basics
+    const hit = (inv.allContent || []).some(w => w.lemma === lemma || w.japanese === lemma || w.japanese === surface)
+      || (inv.grammarScaffold || []).some(g => g.form === surface)
+      || (inv.conversationBasics || []).some(b => b.form === surface)
+    if (!hit) {
+      // §13 — report the LEMMA, so the message is actionable
+      if (!unknown.includes(lemma)) unknown.push(lemma)
+    }
+  }
+  return unknown
+}
+
+// §4 — three dedupe levels instead of one global rejection.
+//   A. same target + same Japanese          -> always reject
+//   B. same Japanese, different target      -> allowed at scarcity A (§3)
+//   C. near-duplicate shape                 -> allowed at scarcity A, tightened later
+function japaneseDuplicateVerdict(jp, targetId, seenMap, rules) {
+  const key = jaDedupeKey(jp)
+  const prev = seenMap.get(key)
+  if (!prev) return { ok: true }
+  if (prev.targetId === targetId) return { ok: false, level: 'A', reason: 'identical sentence already used for this target' }
+  if (rules.allowCrossTargetReuse) return { ok: true, note: 'reused across targets (allowed at low inventory)' }
+  return { ok: false, level: 'B', reason: 'sentence already used for another target' }
+}
+
+// §11 — the enforcement point.
+function validateJapaneseContentVocabulary(sentence, allowed, scaffold) {
+  const unknown = japaneseUnknownContent(sentence, allowed, scaffold)
+  if (!unknown.length) return { ok: true, unknown: [] }
+  return { ok: false, unknown }
+}
+
+// §2/§11 — grammatical glue. Available to the generator from lesson one, but never
+// SRS targets: they take no slot, earn no Known status and do not affect belt rank.
+const JAPANESE_FUNCTION_WORDS = [
+  { w:'は',  r:'wa',    e:'(topic marker)' },
+  { w:'が',  r:'ga',    e:'(subject marker)' },
+  { w:'を',  r:'wo',    e:'(object marker)' },
+  { w:'に',  r:'ni',    e:'(to / at)' },
+  { w:'で',  r:'de',    e:'(at / by means of)' },
+  { w:'と',  r:'to',    e:'(and / with)' },
+  { w:'も',  r:'mo',    e:'(also)' },
+  { w:'の',  r:'no',    e:'(possessive / of)' },
+  { w:'へ',  r:'e',     e:'(towards)' },
+  { w:'から',r:'kara',  e:'(from / because)' },
+  { w:'まで',r:'made',  e:'(until)' },
+  { w:'ね',  r:'ne',    e:'(right? / soft agreement)' },
+  { w:'よ',  r:'yo',    e:'(emphasis)' },
+  { w:'か',  r:'ka',    e:'(question marker)' },
+]
+const JAPANESE_GRAMMAR_NOTE =
+  'GRAMMAR SUPPORT (always available, never counted as new vocabulary):\n' +
+  'Particles: ' + JAPANESE_FUNCTION_WORDS.map(f => f.w).join(' ') + '\n' +
+  'Inflection: negative, past, て-form, question formation, and the copula as the register requires.\n' +
+  'Use these freely to make the target words usable \u2014 they are not new content words.'
+
+// §17 — Japanese inflects, so exact-substring matching is wrong. This is the seam where
+// real morphology goes once the bank carries lemma/conjugationClass metadata.
+function japaneseStemOf(target) {
+  const lemma = (target && (target.lemma || target.japanese)) || ''
+  if (!lemma) return ''
+  // Order matters: \u52C9\u5F37\u3059\u308B also ends in \u308B, so suru-verbs must be tested first.
+  if (/\u3059\u308B$/.test(lemma) && lemma.length > 2) return lemma.slice(0, -2)   // suru-verb
+  if (/\u308B$/.test(lemma) && lemma.length > 1)      return lemma.slice(0, -1)   // ichidan / -ru
+  if (/\u3044$/.test(lemma) && lemma.length > 1)      return lemma.slice(0, -1)   // i-adjective
+  // Godan verbs conjugate on the final mora (\u884C\u304F \u2192 \u884C\u3063\u305F/\u884C\u304B\u306A\u3044); the stem is what precedes it.
+  if (/[\u304F\u3050\u3059\u3064\u306C\u3076\u3080\u3046]$/.test(lemma) && lemma.length > 1) return lemma.slice(0, -1)
+  return lemma
+}
+function matchesJapaneseTarget(sentence, target) {
+  const s = (sentence || '')
+  if (!s || !target) return false
+  const lemma = target.lemma || target.japanese || ''
+  if (!lemma) return false
+  if (s.includes(lemma)) return true                       // exact dictionary form
+
+  // Explicit forms win: either supplied by the bank or generated from the
+  // conjugation class. This is precise, so it cannot produce false positives.
+  const listed = Array.isArray(target.permittedForms) ? target.permittedForms : null
+  if (listed && listed.some(f => f && s.includes(f))) return true
+  if (target.conjugationClass) {
+    const forms = japaneseConjugate(lemma, target.conjugationClass)
+    if (forms.some(f => f && f.length > 1 && s.includes(f))) return true
+    // A known conjugation class means the form list is authoritative; do not fall
+    // through to loose stem matching, which is what lets unrelated words slip in.
+    return false
+  }
+
+  // No morphology metadata: fall back to a stem, guarded so short kana cannot match
+  // spuriously. A single kanji is discriminating; a single kana is not.
+  const stem = japaneseStemOf(target)
+  if (stem) {
+    const kanjiStem = /[\u4E00-\u9FFF]/.test(stem)
+    const longEnough = kanjiStem ? stem.length >= 1 : stem.length >= 2
+    if (longEnough && s.includes(stem)) return true
+  }
+  return false
+}
+
+// §9/§18 — complexity cannot be measured by spaces. Count Japanese content units instead:
+// kanji runs, kana runs and particles each count as roughly one "unit".
+function japaneseUnitCount(sentence) {
+  const s = (sentence || '').replace(/[\s\u3000]/g, '')
+  if (!s) return 0
+  const runs = s.match(/[\u4E00-\u9FFF]+|[\u30A0-\u30FF\u30FC]+|[\u3041-\u309F]+|[A-Za-z0-9]+/g) || []
+  let units = 0
+  for (const r of runs) {
+    if (/[\u4E00-\u9FFF]/.test(r))      units += Math.ceil(r.length / 2)
+    else if (/[\u30A0-\u30FF]/.test(r)) units += 1
+    else                                units += Math.max(1, Math.ceil(r.length / 3))
+  }
+  return units
+}
+
+// §7/§8 — same progression and same slot table as Thai, driven by the Japanese Known count.
+function japaneseBeltFor(vocab) { return calculateBeltRank((vocab||[]).filter(w => w.status === 'known').length) }
+function japaneseSlotsFor(vocab) { return newSlotsFor(vocab) }
+function japaneseUnitRange(vocab) {
+  const known = (vocab||[]).filter(w => w.status === 'known').length
+  const T = [[0,2,4],[100,5,6],[200,6,7],[350,7,8],[500,8,9],[750,9,10],[1000,10,11],
+             [1500,11,12],[2000,12,13],[3000,13,14],[4000,14,15],[5000,16,20]]
+  let r = T[0]
+  for (const t of T) if (known >= t[0]) r = t
+  return { min:r[1], max:r[2] }
+}
+
+
+
+// ── Japanese generation & validation ─────────────────────────────────────────
+// Mirrors the depth of the Thai guardrails (§15). Where a Thai rule is language-
+// independent it is preserved verbatim in intent; where it was Thai-specific
+// (phonetic alignment, ครับ/ค่ะ particles) the Japanese equivalent protects the
+// same class of failure (§29): segment/reading/romaji alignment and register.
+
+function japaneseRegisterContract(registerId) {
+  const r = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
+  return r.contract
+}
+
+function buildJapaneseTrackPrompt(targets, anchors, vocab, registerId) {
+  const range = japaneseUnitRange(vocab)
+  const allow = japaneseAllowedContent(vocab, targets)
+  const scaffold = japaneseScaffoldFor(vocab)
+  const _scar = scarcityRules(japaneseLearnerInventory(vocab, targets))
+  const _inv = japaneseLearnerInventory(vocab, targets)
+  const zeroNote = _inv.isZeroBeginner
+    ? '=== ZERO BEGINNER ===\n' +
+      'This learner knows essentially NO Japanese beyond what is listed below.\n' +
+      'Use extremely short Japanese \u2014 one concept at a time. Fragments are correct and natural.\n' +
+      'Assume NO textbook knowledge, NO greetings that are not listed, NO hidden vocabulary.\n' +
+      'Do NOT use contractions such as \u3066\u305F / \u3093\u3060 / \u3068\u3044\u305F / \u3061\u3083\u3063\u305F / \u3066\u308B / \u306A\u304D\u3083.\n' +
+      'No multi-clause sentences. 1\u20134 content units per line.\n' +
+      'Natural mode at this level means natural SIMPLICITY, not native compression.\n\n'
+    : ''
+  const basicsNote =
+    'CONVERSATION BASICS (free framing, already taught):\n' +
+    (_inv.conversationBasics.length
+      ? _inv.conversationBasics.map(b => '  ' + b.form + ' [' + b.romaji + '] = ' + b.english).join('\n')
+      : '  (none)') + '\n\n'
+  const contract =
+    zeroNote +
+    basicsNote +
+    '=== CONTENT VOCABULARY CONTRACT ===\n' +
+    'The learner is doing PRODUCTIVE RECALL: they must be able to formulate every answer\n' +
+    'from language already introduced to them.\n\n' +
+    'CURRENT TARGET CONTENT WORDS:\n' +
+    allow.targets.map(w => '  ' + w.japanese + ' [' + w.reading + '] ' + w.romaji + ' = ' + w.english).join('\n') + '\n\n' +
+    'PREVIOUSLY INTRODUCED CONTENT WORDS:\n' +
+    (allow.prior.length
+      ? allow.prior.map(w => '  ' + w.japanese + ' [' + w.reading + '] ' + w.romaji + ' = ' + w.english).join('\n')
+      : '  (none \u2014 this is the learner\u2019s first lesson)') + '\n\n' +
+    'These are the ONLY lexical/content concepts you may require the learner to produce.\n\n' +
+    'APPROVED GRAMMAR SCAFFOLD (free to use, not vocabulary):\n' +
+    scaffold.map(s => '  ' + s.form + ' [' + s.romaji + '] \u2014 ' + s.meaning).join('\n') + '\n' +
+    '  plus normal inflection of the target words (past, negative, te-form, volitional).\n\n' +
+    'DO NOT introduce any additional noun, verb, adjective, lexical adverb, time expression,\n' +
+    'place, person, object or other content word \u2014 not even to make the sentence nicer.\n' +
+    'FORBIDDEN examples of the kind of leak that breaks this lesson: \u6620\u753B, \u96E8, \u4E88\u5B9A, \u660E\u65E5, \u53CB\u9054, \u99C5.\n' +
+    'If the idea cannot be said with the allowed content, SIMPLIFY THE IDEA.\n' +
+    'Natural simplicity beats an impressive sentence containing untaught language.\n' +
+    'The English cue must also be answerable with only this inventory (\u00A717).\n'
+  const targetList = (targets||[]).map(t =>
+    '\u2605 ' + t.japanese + (t.reading ? ' [' + t.reading + ']' : '') + ' = ' + t.english).join('\n')
+  const anchorList = (anchors||[]).slice(0, 50).map(t =>
+    t.japanese + (t.reading ? ' [' + t.reading + ']' : '') + ' = ' + t.english).join('\n')
+  const system =
+    'You are a Japanese language teacher writing realistic spoken Japanese for learners. ' +
+    'Write natural Japanese as a Japanese adult would actually speak in the selected register \u2014 not translated English.\n\n' +
+    japaneseRegisterContract(registerId)
+  const user =
+    'TARGET WORDS (each needs exactly 3 sentences):\n' + targetList + '\n\n' +
+    (anchorList ? 'KNOWN VOCABULARY you may reuse:\n' + anchorList + '\n\n' : '') +
+    'LENGTH: ' + range.min + '\u2013' + range.max + ' Japanese content units per sentence ' +
+    '(a kanji compound \u2248 1 unit, a kana word \u2248 1 unit). Do not exceed this \u2014 it is the learner\'s level.\n' +
+    contract + '\n' +
+    'RULES:\n' +
+    '1. Every \u2605 target must appear naturally. Any inflected form counts (\u98DF\u3079\u308B \u2192 \u98DF\u3079\u305F/\u98DF\u3079\u3066/\u98DF\u3079\u306A\u3044).\n' +
+    '2. NEVER force a target into a sentence where it does not fit. A natural sentence matters more.\n' +
+    (_scar.requirePatternVariety
+      ? '3. Use 3 different grammar patterns per target: 1 statement, 1 question, 1 other.\n'
+      : '3. Produce useful retrieval opportunities for this target using the learner\u2019s limited inventory. ' +
+        'Controlled repetition and closely related sentence structures are desirable at this stage.\n') +
+    '4. "prompt" = plain English instruction of what to SAY. Never name or quote a Japanese word, never use romaji in it.\n' +
+    (_scar.requireScenarioVariety
+      ? '5. Vary the scenario. No repeated sentence shapes, no invented statistics, no nonsensical numbers.\n'
+      : '5. Use the simplest natural communicative context supported by the learner\u2019s vocabulary. ' +
+        'Reusing sentence shapes is allowed and expected. No invented numbers.\n') +
+    '6. Provide segments: word-by-word breakdown. Do NOT rely on spaces \u2014 segment explicitly. ' +
+    'Each segment needs surface, reading, romaji, english, lemma (dictionary form) and ' +
+    'type ("content" or "grammar"). e.g. {"surface":"\u6C7A\u307E\u3063\u305F","lemma":"\u6C7A\u307E\u308B","type":"content"}.\n' +
+    '7. reading and romaji MUST match the sentence you actually wrote, not the dictionary form. ' +
+    'e.g. \u4ECA\u65E5\u884C\u304D\u307E\u3059\u304B\uFF1F \u2192 romaji "kyou ikimasu ka?", NOT "kyou iku". Romaji is Hepburn, spaced by word.\n' +
+    '8. Do not introduce unfamiliar CONTENT words beyond the target and known lists. Grammatical glue is free; new nouns/verbs are not.\n' +
+    'Return ONLY JSON, no markdown:\n' +
+    '[{"speaker":"A","japanese":"...","reading":"...","romaji":"...","english":"...","prompt":"...",' +
+    '"segments":[{"surface":"...","reading":"...","romaji":"...","english":"..."}]}]'
+  return { system, user }
+}
+
+function buildJapaneseConvoPrompt(targets, vocab, registerId) {
+  const range = japaneseUnitRange(vocab)
+  const words = (targets||[]).slice(0, 15).map(t => t.japanese + '=' + t.english).join(', ')
+  const reg = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
+  const GREET = {
+    polite:  '\u3053\u3093\u306B\u3061\u306F\u3002 / \u304A\u4E45\u3057\u3076\u308A\u3067\u3059\u3002 / \u4ECA\u65E5\u306F\u3069\u3046\u3067\u3059\u304B\uFF1F',
+    natural: '\u4E45\u3057\u3076\u308A\u3002 / \u5143\u6C17\u3060\u3063\u305F\uFF1F / \u3082\u3046\u6765\u3066\u305F\u3093\u3060\u3002 / \u4ECA\u65E5\u3069\u3046\uFF1F',
+    casual:  '\u4E45\u3057\u3076\u308A\uFF01 / \u5143\u6C17\uFF1F / \u3084\u3063\u3068\u6765\u305F\uFF01 / \u4F55\u3057\u3066\u305F\u306E\uFF1F',
+  }
+  const PART = {
+    polite:  '\u307E\u305F\u4F1A\u3044\u307E\u3057\u3087\u3046\u3002 / \u6C17\u3092\u3064\u3051\u3066\u5E30\u3063\u3066\u304F\u3060\u3055\u3044\u3002 / \u307E\u305F\u4ECA\u5EA6\u3002',
+    natural: '\u307E\u305F\u306D\u3002 / \u3058\u3083\u3042\u3001\u307E\u305F\u3002 / \u6C17\u3092\u3064\u3051\u3066\u306D\u3002 / \u307E\u305F\u4ECA\u5EA6\u884C\u3053\u3046\u3002',
+    casual:  '\u3058\u3083\u3001\u307E\u305F\uFF01 / \u307E\u305F\u306A\u3002 / \u6C17\u3092\u3064\u3051\u3066\uFF01',
+  }
+  const inv = japaneseLearnerInventory(vocab, targets)
+  const system =
+    'You are a Japanese language teacher writing realistic spoken Japanese conversations for learners. ' +
+    'Write natural Japanese as a Japanese adult would actually speak in the selected register \u2014 not translated English.\n\n' +
+    (inv.isZeroBeginner
+      ? '=== ZERO BEGINNER ===\nThis learner knows essentially NO Japanese. Every Japanese line must be extremely short ' +
+        'and use ONLY the words listed below. Fragments are correct. No contractions (\u3066\u305F/\u3093\u3060/\u3068\u3044\u305F/\u3066\u308B). ' +
+        'No multi-clause sentences.\n\n'
+      : '') +
+    japaneseRegisterContract(registerId)
+  const user =
+    '=== THE ONLY JAPANESE YOU MAY USE ===\n' +
+    'CONTENT WORDS:\n' + inv.allContent.map(w => '  ' + w.japanese + ' [' + w.reading + '] ' + w.romaji + ' = ' + w.english).join('\n') + '\n' +
+    'CONVERSATION BASICS:\n' + (inv.conversationBasics.length ? inv.conversationBasics.map(b => '  ' + b.form + ' [' + b.romaji + '] = ' + b.english).join('\n') : '  (none)') + '\n' +
+    'GRAMMAR:\n' + inv.grammarScaffold.map(g => '  ' + g.form + ' [' + g.romaji + '] \u2014 ' + g.meaning).join('\n') + '\n' +
+    'Any other Japanese word is FORBIDDEN in the Japanese lines. \u00A712/\u00A715: character names appear as ' +
+    'speaker labels only \u2014 NEVER inside the Japanese sentences (no \u30E6\u30DF, no \u30B1\u30F3\u30B8).\n' +
+    (scarcityRules(inv).allowNearDuplicate
+      ? 'The learner has very little Japanese. Keep every Japanese line extremely short and build it from the ' +
+        'Conversation Basics above plus the content list. Simple framing is correct \u2014 do not invent native dialogue.\n'
+      : '') +
+    'The ENGLISH scene description may be rich and specific; the JAPANESE must stay within this list.\n\n' +
+    'Write a short coherent scene between two adult friends, A (male) and B (female), with a real ' +
+    'conversational goal and actual progression \u2014 not disconnected lines. Do NOT force every word in.\n' +
+    'Sentence length: ' + range.min + '\u2013' + range.max + ' Japanese content units.\n\n' +
+    'The lesson is framed by a greeting exchange and a parting exchange.\n' +
+    'GREETING must suit the scene, the relationship and the register. Vary it \u2014 do not reuse one stock phrase.\n' +
+    '  ' + reg.label + ' greetings of this TYPE: ' + (GREET[reg.id] || GREET.natural) + '\n' +
+    'PARTING must end the conversation naturally, again matching the register.\n' +
+    '  ' + reg.label + ' partings of this TYPE: ' + (PART[reg.id] || PART.natural) + '\n' +
+    'B\u2019s reply must NOT simply repeat A\u2019s wording \u2014 it should read as a real exchange.\n' +
+    'Every line needs japanese, reading (kana), romaji (Hepburn, spaced by word) and english. ' +
+    'Romaji must match the form actually written, never the dictionary form.\n' +
+    'Each *_prompt is a plain English instruction of what to say \u2014 no Japanese, no romaji in it.\n' +
+    'Return ONLY JSON:\n' +
+    '{"scene":"2-sentence scene in English","characterA":"name and role","characterB":"name and role",' +
+    '"opening":"...","opening_reading":"...","opening_romaji":"...","opening_english":"...","opening_prompt":"...",' +
+    '"reply":"...","reply_reading":"...","reply_romaji":"...","reply_english":"...","reply_prompt":"...",' +
+    '"closing":"...","closing_reading":"...","closing_romaji":"...","closing_english":"...","closing_prompt":"...",' +
+    '"closing_reply":"...","closing_reply_reading":"...","closing_reply_romaji":"...","closing_reply_english":"...","closing_reply_prompt":"..."}'
+  return { system, user }
+}
+
+// §22 — Japanese validator. Same "never silently accept" philosophy as Thai.
+function validateJapanesePairs(pairs, target, vocab, registerId, existing, allowedContent, scaffold) {
+  const failures = []
+  const valid = []
+  const seen = existing instanceof Set ? existing : new Set()
+  const reg = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
+  const range = japaneseUnitRange(vocab)
+  let politeCount = 0
+
+  for (const p of (pairs || [])) {
+    if (!p || !p.japanese || !p.english || !p.prompt) { failures.push('missing fields'); continue }
+    const jp = String(p.japanese).trim()
+
+    if (!/[\u3040-\u30FF\u4E00-\u9FFF]/.test(jp)) { failures.push('no Japanese script: ' + jp.slice(0,30)); continue }
+
+    if (target && !matchesJapaneseTarget(jp, target)) {
+      failures.push('TARGET MISSING: ' + (target.japanese || '') + ' was not used in this sentence family.'); continue
+    }
+    const units = japaneseUnitCount(jp)
+    if (units > range.max + 2) {
+      failures.push('LEVEL VIOLATION: sentence is too complex for this belt (' + units + ' units, max ' + range.max + ').'); continue
+    }
+    if (units < Math.max(1, range.min - 2)) { failures.push('too short: ' + units + ' units'); continue }
+
+    const key = jaDedupeKey(jp)
+    if (seen.has(key)) { failures.push('DUPLICATE: this sentence is substantially the same as an earlier sentence.'); continue }
+
+    // Register enforcement (§14)
+    let bad = null
+    for (const rx of (reg.banned || [])) if (rx.test(jp)) { bad = rx; break }
+    if (bad) {
+      failures.push('REGISTER VIOLATION: ' + reg.label + ' mode selected, but ' + reg.bannedReason + '.'); continue
+    }
+    if (reg.id === 'natural' && POLITE_RX.test(jp)) politeCount++
+    if (reg.id === 'casual' && POLITE_RX.test(jp)) {
+      failures.push('REGISTER VIOLATION: Very Casual mode selected, but this sentence uses \u3067\u3059/\u307E\u3059 phrasing.'); continue
+    }
+    if (reg.id === 'polite' && !POLITE_RX.test(jp) && !/[\uFF1F]$/.test(jp)) {
+      failures.push('REGISTER VIOLATION: Polite mode selected, but this sentence is not in \u3067\u3059/\u307E\u3059 form.'); continue
+    }
+
+    // §18/§29 — segment alignment protects the same class of failure as Thai phonetic alignment
+    if (Array.isArray(p.segments) && p.segments.length) {
+      const joined = p.segments.map(s => (s && s.surface) || '').join('')
+      const strip = x => (x || '').replace(/[\s\u3000\u3002\uFF1F\uFF01\u3001]/g, '')
+      if (strip(joined) !== strip(jp)) { failures.push('segments do not reconstruct the sentence: ' + jp.slice(0,24)); continue }
+      if (p.segments.some(s => !s || !s.surface)) { failures.push('malformed segment'); continue }
+    }
+    // §11/§13 — closed content set. Runs AFTER morphology so an inflected target
+    // (行った for 行く) is never mistaken for a new word (§14).
+    if (allowedContent) {
+      const cv = validateJapaneseContentVocabulary(jp, allowedContent, scaffold)
+      if (!cv.ok) {
+        failures.push('UNTAUGHT CONTENT VOCABULARY: ' + cv.unknown.join(' , ') +
+          ' \u2014 never introduced to this learner. Allowed content: ' +
+          allowedContent.map(w => w.japanese).join(' ') +
+          '. Rewrite using only allowed content plus approved grammar scaffolding, or simplify the idea.')
+        continue
+      }
+    }
+    // English prompt must not leak the answer (mirrors the Thai meta-prompt rule)
+    if (/[\u3040-\u30FF\u4E00-\u9FFF]/.test(p.prompt)) { failures.push('prompt contains Japanese \u2014 it must be plain English.'); continue }
+
+    seen.add(key)
+    valid.push(p)
+  }
+
+  if (reg.id === 'natural' && valid.length >= 4) {
+    const share = politeCount / valid.length
+    if (share > (reg.politeLimit || 0.25)) {
+      failures.push('REGISTER VIOLATION: Natural mode selected, but ' + Math.round(share*100) +
+        '% of sentences unnecessarily use \u3067\u3059/\u307E\u3059-form. Rewrite as friendly adult plain-form conversational Japanese.')
+    }
+  }
+  return { valid, failures }
+}
+
+// §23 — targeted repair instructions, same retry philosophy as Thai.
+function japaneseRepairInstruction(failures) {
+  if (!failures || !failures.length) return ''
+  const uniq = [...new Set(failures)].slice(0, 6)
+  return 'The previous attempt failed these checks. Fix ONLY these and regenerate:\n- ' + uniq.join('\n- ')
+}
 
 // ── Word utility scoring ─────────────────────────────────────────────────────
 // Ranks vocabulary by usefulness for everyday spoken Thai so that brand-new words
@@ -3277,7 +4160,52 @@ const Icon = ({ name, size = 18, color = 'currentColor' }) => {
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
-function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastTrackCost, provider, geminiKey, geminiSpend, onSetProvider }) {
+
+// \u00A72 \u2014 the flag becomes the language control. Tapping the flag/name goes to the
+// current language's home; tapping the chevron opens the picker. Switching language
+// always lands on that language's home rather than trying to map sub-pages across.
+function LanguageSelector({ lang, onSetLang, onHome }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const cur = LANGS[lang] || LANGS.th
+  return (
+    <div ref={ref} style={{ position:'relative', display:'flex', alignItems:'center', gap:2 }}>
+      <div onClick={onHome}
+        style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', padding:'2px 4px', borderRadius:8 }}>
+        <div style={{ width:28, height:28, borderRadius:8, background:'linear-gradient(135deg, #d4a94a, #b88a35)',
+                      display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>{cur.flag}</div>
+        <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{cur.name}</span>
+      </div>
+      <button onClick={() => setOpen(o => !o)} aria-label="Switch language"
+        style={{ background:'transparent', border:'none', color:'var(--muted)', fontSize:10,
+                 cursor:'pointer', padding:'6px 4px', lineHeight:1 }}>▾</button>
+      {open && (
+        <div style={{ position:'absolute', top:42, left:0, background:'var(--surface)', border:'1px solid var(--border)',
+                      borderRadius:10, padding:4, minWidth:150, zIndex:100, boxShadow:'0 8px 24px rgba(0,0,0,0.5)' }}>
+          {Object.values(LANGS).map(L => (
+            <button key={L.code}
+              onClick={() => { setOpen(false); if (L.code !== lang) onSetLang && onSetLang(L.code) }}
+              style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left',
+                       background: L.code === lang ? 'var(--surface2)' : 'transparent',
+                       border:'none', borderRadius:7, padding:'9px 10px', cursor:'pointer',
+                       color:'var(--text)', fontSize:13, fontWeight: L.code === lang ? 700 : 500 }}>
+              <span style={{ fontSize:15 }}>{L.flag}</span>{L.name}
+              {L.code === lang && <span style={{ marginLeft:'auto', color:'var(--gold)' }}>✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastTrackCost, provider, geminiKey, geminiSpend, onSetProvider, lang, onSetLang }) {
   const items = [
     { id: 'lessons', icon: 'pencil', label: 'Lessons' },
     { id: 'browse', icon: 'book', label: 'Words' },
@@ -3300,22 +4228,30 @@ function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastT
     return () => document.removeEventListener('mousedown', h)
   }, [dropOpen])
   const isGoogleKey = geminiKey && !geminiKey.startsWith('sk-') && geminiKey.length > 10
-  function balColor(b) { return b === null ? 'var(--muted)' : b < 1 ? '#ef4444' : b < 5 ? '#f59e0b' : '#10b981' }
+  // Balances may be null (not yet fetched) OR undefined (Header rendered by a programme
+  // that has no provider state). `!== null` was true for undefined, so .toFixed() threw.
+  // Every numeric read here must prove it is a finite number first.
+  const isNum = v => typeof v === 'number' && Number.isFinite(v)
+  function balColor(b) {
+    if (!isNum(b)) return 'var(--muted)'
+    return b < 1 ? '#ef4444' : b < 5 ? '#f59e0b' : '#10b981'
+  }
   function provBal(p) {
     if (p.id === 'gemini' && isGoogleKey) {
-      if (geminiSpend > 0) return { text: '-$' + geminiSpend.toFixed(4), color: geminiSpend > 1 ? '#ef4444' : geminiSpend > 0.1 ? '#f59e0b' : '#10b981' }
+      if (isNum(geminiSpend) && geminiSpend > 0) {
+        return { text: '-$' + geminiSpend.toFixed(4), color: geminiSpend > 1 ? '#ef4444' : geminiSpend > 0.1 ? '#f59e0b' : '#10b981' }
+      }
       return { text: '$0.00', color: '#10b981' }
     }
-    return orBalance !== null ? { text: '$' + orBalance.toFixed(2), color: balColor(orBalance) } : { text: '…', color: 'var(--muted)' }
+    if (isNum(orBalance)) return { text: '$' + orBalance.toFixed(2), color: balColor(orBalance) }
+    return { text: '…', color: 'var(--muted)' }
   }
   const cur = PROVS.find(p => p.id === provider) || PROVS[0]
   const curBal = provBal(cur)
   const hasAnyKey = orKey || isGoogleKey
   return (
     <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, background: 'rgba(11,17,32,0.95)', backdropFilter: 'blur(12px)', zIndex: 50 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={onHome || (() => onNav('dashboard'))}>
-        <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #d4a94a, #b88a35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🇹🇭</div>
-      </div>
+      <LanguageSelector lang={lang || 'th'} onSetLang={onSetLang} onHome={onHome || (() => onNav('dashboard'))} />
       {hasAnyKey && (
         <div ref={dropRef} style={{ position: 'relative' }}>
           <button onClick={() => setDropOpen(o => !o)}
@@ -3324,7 +4260,7 @@ function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastT
             <span style={{ fontSize: 13, fontWeight: 600, color: curBal.color }}>{curBal.text}</span>
             {lastTrackCost !== null && lastTrackCost > 0 && (
               <span style={{ fontSize: 10, color: '#f59e0b', marginLeft: 2 }}>
-                (-${lastTrackCost < 0.01 ? lastTrackCost.toFixed(4) : lastTrackCost.toFixed(3)})
+                (-${!isNum(lastTrackCost) ? '0.000' : lastTrackCost < 0.01 ? lastTrackCost.toFixed(4) : lastTrackCost.toFixed(3)})
               </span>
             )}
             <span style={{ fontSize: 9, color: 'var(--muted)', marginLeft: 1 }}>▾</span>
@@ -3335,7 +4271,7 @@ function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastT
                 const bal = provBal(p)
                 const isActive = p.id === provider
                 return (
-                  <button key={p.id} onClick={() => { onSetProvider(p.id); setDropOpen(false); onRefreshBalance() }}
+                  <button key={p.id} onClick={() => { onSetProvider && onSetProvider(p.id); setDropOpen(false); onRefreshBalance && onRefreshBalance() }}
                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: 7, border: 'none', background: isActive ? 'var(--surface2)' : 'transparent', cursor: 'pointer', gap: 8 }}>
                     <span style={{ fontSize: 12, color: isActive ? 'var(--gold)' : 'var(--text)', fontFamily: 'Sarabun, sans-serif', textAlign: 'left' }}>{p.icon} {p.name}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: bal.color }}>{bal.text}</span>
@@ -3467,7 +4403,7 @@ function calculateBeltRank(known) {
   return { current, next, wordsToNext, progress, known }
 }
 
-function BeltRankCard({ vocab, onNav }) {
+function BeltRankCard({ vocab, onNav, langName }) {
   const known = useMemo(() => vocab.filter(w => w.status === 'known').length, [vocab])
   const { current, next, wordsToNext, progress } = useMemo(() => calculateBeltRank(known), [known])
   const isShodan = !next
@@ -3518,7 +4454,7 @@ function BeltRankCard({ vocab, onNav }) {
 
       {/* Partial grading note */}
       <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
-        Vocab rank only · Phrase, grammar & scenario banks coming soon
+        {(langName || 'Thai')} vocab rank only · Phrase, grammar & scenario banks coming soon
       </p>
       <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, lineHeight: 1.5 }}>
         Introducing <span style={{ color: '#4a90e2', fontWeight: 700 }}>{newSlotsFor(vocab)} new words</span> per track at this rank
@@ -7931,7 +8867,18 @@ function calcDuration(thai, phase, phonetic) {
   return ttsDur + pauseDur
 }
 
-function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onReviewQuality }) {
+function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onReviewQuality, targetLang, startCompleted }) {
+  // §12 — target-language code for TTS. Defaults to Thai so the Thai runtime is
+  // byte-for-byte unchanged; the Japanese runtime passes 'ja'.
+  const _tl = targetLang || 'th'
+  const _tlCode = (TTS_VOICES[_tl] || TTS_VOICES.th).languageCode
+  // §21 — language field adapter. Japanese pairs carry japanese/reading/romaji;
+  // Thai pairs carry thai/phonetic. Reading a pair through these accessors keeps
+  // Thai byte-behaviour identical (it falls straight through to .thai/.phonetic)
+  // without renaming Japanese text into a `thai` field anywhere permanent.
+  const targetTextOf = p => (!p ? '' : (_tl === 'ja' ? (p.japanese || p.thai || '') : (p.thai || '')))
+  const phoneticOf   = p => (!p ? '' : (_tl === 'ja' ? (p.romaji || p.phonetic || '') : (p.phonetic || '')))
+  const readingOf    = p => (!p ? '' : (p.reading || ''))
   const pairs = track.pairs || []
   const [idx, setIdx] = useState(track.bookmark || 0)
   const [bookmarked, setBookmarked] = useState(false)
@@ -7940,7 +8887,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
   const [countdown3, setCountdown3] = useState(3)
   const [speaking, setSpeaking] = useState(false)
   const [countdown, setCountdown] = useState(1)
-  const [lessonDone, setLessonDone] = useState(false)
+  const [lessonDone, setLessonDone] = useState(!!startCompleted)   // §7 resume the rating screen after QC
   const [keywords, setKeywords] = useState((track.keywords || []).map(k => ({ ...k, rating: null })))
   const [allRated, setAllRated] = useState(false)
   const [voices, setVoices] = useState([])
@@ -8010,14 +8957,16 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
       return () => clearTimeout(t)
     }
     // ── GCP TTS path for Thai ─────────────────────────────────────────────
-    if (gcpTtsKey && lang.startsWith('th')) {
+    if (gcpTtsKey && !lang.startsWith('en')) {
       setSpeaking(true); startCountdown(ms)
       let cancelled = false; let audioEl = null
-      const isMale = /ครับ$/.test(text.trim())
-      const voiceName = isMale ? 'th-TH-Chirp3-HD-Charon' : 'th-TH-Chirp3-HD-Aoede'
+      // Thai marks speaker gender with ครับ; Japanese has no such particle, so speaker
+      // role drives the voice instead. Never send Japanese text to a Thai voice.
+      const isMale = _tl === 'th' ? /ครับ$/.test(text.trim()) : (pair && pair.speaker === 'A')
+      const _v = ttsVoiceFor(_tl, isMale)
       fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${gcpTtsKey}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: { text }, voice: { languageCode: 'th-TH', name: voiceName }, audioConfig: { audioEncoding: 'MP3', speakingRate: thaiSpeed } })
+        body: JSON.stringify({ input: { text }, voice: { languageCode: _v.languageCode, name: _v.name }, audioConfig: { audioEncoding: 'MP3', speakingRate: thaiSpeed } })
       }).then(r => r.json()).then(data => {
         if (cancelled) return
         audioEl = new Audio('data:audio/mp3;base64,' + data.audioContent)
@@ -8031,8 +8980,11 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
     try { window.speechSynthesis.cancel() } catch(e) {}
     const utter = new SpeechSynthesisUtterance(text)
     utter.lang = lang
-    utter.rate = lang.startsWith('th') ? thaiSpeed : 0.88
-    if (lang.startsWith('th')) {
+    utter.rate = lang.startsWith('en') ? 0.88 : thaiSpeed
+    if (_tl !== 'th' && !lang.startsWith('en')) {
+      const jv = pickBrowserVoice(_tl)
+      if (jv) utter.voice = jv
+    } else if (lang.startsWith('th')) {
       const anyThai = voices.filter(v => v.lang.startsWith('th'))
       const isMale = /ครับ$/.test(text.trim())
       const googleFemale = anyThai.find(v => /Standard-A|Wavenet-A|Neural2-A/i.test(v.name))
@@ -8055,11 +9007,11 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
     if (!playing || lessonDone) return
     cancelledRef.current = false; pausedRef.current = false
     const promptDur = calcDuration(pair.prompt, 'prompt')
-    const revealDur = calcDuration(pair.thai, 'reveal')
+    const revealDur = calcDuration(targetTextOf(pair), 'reveal')
     let cleanup = () => {}
     if (phase === 'prompt') {
       // Pause after prompt = Pimsleur formula based on Thai answer syllables
-      const n = countSyllables(pair.thai, pair.phonetic)
+      const n = countSyllables(targetTextOf(pair), phoneticOf(pair))
       const thinkMs = Math.round((0.6 * n + 0.4) * 1000)
       cleanup = speakOrWait(pair.prompt, 'en-US', promptDur, () => {
         // This fires from utter.onend — AFTER speech actually finishes
@@ -8068,7 +9020,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
         return () => clearTimeout(t)
       }) || (() => {})
     } else {
-      cleanup = speakOrWait(pair.thai, 'th-TH', revealDur, () => {
+      cleanup = speakOrWait(targetTextOf(pair), _tlCode, revealDur, () => {
         startCountdown(2500)
         const t = setTimeout(() => {
           if (cancelledRef.current) return
@@ -8167,6 +9119,16 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
             <div className="display" style={{ fontSize:18 }}>Lesson complete!</div>
             <div style={{ fontSize:12, color:'var(--muted)' }}>Rate how well you knew each word</div>
           </div>
+          {/* §28/§29 — QC must stay reachable after finishing the track. Only rendered
+              when a handler is supplied, so Thai (which passes none here) is unchanged. */}
+          {onReviewQuality && (
+            <button onClick={() => onReviewQuality('lesson-complete')}
+              style={{ marginLeft:'auto', background:'var(--surface2)', border:'1px solid var(--border)',
+                       borderRadius:8, color:'var(--gold)', cursor:'pointer', fontSize:12,
+                       fontWeight:700, padding:'6px 10px', whiteSpace:'nowrap' }}>
+              {'\u2726'} Review Quality
+            </button>
+          )}
         </div>
         <div style={{ height:3, background:'var(--gold)', borderRadius:2, marginBottom:24 }} />
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:24 }}>
@@ -8276,7 +9238,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
       <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px 32px 32px', textAlign:'center', gap:24 }}>
         {phase === 'prompt' ? (
           <div className="fade-in" key={`p-${idx}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:20 }}>
-            <div style={{ fontSize:11, letterSpacing:'0.12em', color:'#4a90e2', textTransform:'uppercase', fontWeight:600 }}>Say in Thai</div>
+            <div style={{ fontSize:11, letterSpacing:'0.12em', color:'#4a90e2', textTransform:'uppercase', fontWeight:600 }}>{_tl === 'ja' ? 'Say in Japanese' : 'Say in Thai'}</div>
             <p style={{ fontSize:22, fontWeight:600, lineHeight:1.65, color:'var(--text)', maxWidth:340 }}>{pair.prompt}</p>
             <Waveform />
 
@@ -8284,8 +9246,26 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
         ) : (
           <div className="fade-in" key={`r-${idx}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
             <div style={{ fontSize:11, letterSpacing:'0.12em', color:'var(--gold)', textTransform:'uppercase', fontWeight:600 }}>Repeat aloud</div>
-            {/* Aligned phonetic + gloss or plain phonetic fallback */}
-            {pair.words && pair.words.length > 0 ? (() => {
+            {/* §9/§10 — Japanese renders from its OWN segments. The Thai aligned
+                renderer below (enrichWordsWithCompounds, fixIPAPhonetic, tone regexes,
+                gam/lang merges) must never touch Japanese data. */}
+            {_tl === 'ja' ? (
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                {Array.isArray(pair.segments) && pair.segments.length > 0 && (
+                  <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:12, maxWidth:360 }}>
+                    {pair.segments.map((s, si) => (
+                      <div key={si} style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                        <span className="phon" style={{ fontSize:15, color:'var(--text)' }}>{s.romaji || ''}</span>
+                        <span style={{ fontSize:10, color:'var(--muted)' }}>{s.english || ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(!pair.segments || !pair.segments.length) && (
+                  <p className="phon" style={{ fontSize:20, color:'var(--muted)', textAlign:'center', maxWidth:360 }}>{phoneticOf(pair)}</p>
+                )}
+              </div>
+            ) : pair.words && pair.words.length > 0 ? (() => {
               const enriched = enrichWordsWithCompounds(pair.words)
               // Fix 14: merge consecutive gam+lang into single กำลัง token
               const merged = []
@@ -8335,11 +9315,14 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
               <p className="phon" style={{ fontSize:38, color:'var(--gold)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>{pair.phonetic}</p>
             ) : (
               <p className="phon" style={{ fontSize:22, color:'var(--muted)', lineHeight:1.5, maxWidth:360, textAlign:'center' }}>
-                {pair.phonetic || pair.target_phonetic || ''}
+                {phoneticOf(pair) || pair.target_phonetic || ''}
               </p>
             )}
             <Waveform />
-            <p className="thai" style={{ fontSize:28, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center', lineHeight:1.6 }}>{pair.thai}</p>
+            <p className={_tl === 'ja' ? 'jp' : 'thai'} style={{ fontSize:28, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center', lineHeight:1.6 }}>{targetTextOf(pair)}</p>
+            {_tl === 'ja' && readingOf(pair) && (
+              <p className="jp" style={{ fontSize:15, color:'var(--muted)', textAlign:'center', lineHeight:1.4 }}>{readingOf(pair)}</p>
+            )}
             <p style={{ fontSize:20, color:'#e8d5a3', fontWeight:600, textAlign:'center', lineHeight:1.4, maxWidth:340 }}>{pair.english}</p>
           </div>
         )}
@@ -10720,7 +11703,7 @@ function QualityReview({ track, vocab, apiKey, model, onSave, onSkip }) {
 
 
 // ── ThaiTeacher (main app) ────────────────────────────────────────────────────
-function ThaiTeacher() {
+function ThaiTeacher({ lang, onSetLang }) {
   const [vocab, setVocab] = useState([])
   const [tracks, setTracks] = useState([])
   const [view, setView] = useState('dashboard')
@@ -10964,7 +11947,7 @@ function ThaiTeacher() {
   return (
     <div className="app">
       <FontStyle />
-      <Header view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} lastTrackCost={lastTrackCost} provider={provider} geminiKey={geminiKey} geminiSpend={geminiSpend} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} />
+      <Header lang={lang} onSetLang={onSetLang} view={view} onNav={navigate} onHome={() => navigate('dashboard')} orBalance={orBalance} orKey={orKey} onRefreshBalance={() => fetchOrBalance(orKey)} lastTrackCost={lastTrackCost} provider={provider} geminiKey={geminiKey} geminiSpend={geminiSpend} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} />
       <main>
         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
@@ -11055,8 +12038,1997 @@ function ThaiTeacher() {
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// JAPANESE PROGRAMME — UI
+// A parallel programme, not a Thai variant. Own storage, own vocab, own rank.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// \u00A74/\u00A72 (bugfix) \u2014 API/provider credentials are app-level, not learning state, and are
+// already persisted under shared keys (tt-provider, tt-orkey, tt-gemini-key\u2026). Thai owns
+// its own copies inside ThaiTeacher; rather than lifting that state out (a large, risky
+// refactor of working Thai code) any other programme reads the same persisted keys here.
+// Learning progress remains strictly language-scoped.
+function useSharedCredentials() {
+  const [provider, setProviderState] = useState('claude')
+  const [orKey, setOrKey] = useState('')
+  const [geminiKey, setGeminiKey] = useState('')
+  const [geminiSpend, setGeminiSpend] = useState(0)
+  const [gcpTtsKey, setGcpTtsKey] = useState('')
+  const [orBalance, setOrBalance] = useState(null)
+
+  const fetchBalance = useCallback(async key => {
+    if (!key) return
+    try {
+      const r = await fetch('https://openrouter.ai/api/v1/credits', { headers: { 'Authorization': 'Bearer ' + key } })
+      const d = await r.json()
+      if (d && d.data) setOrBalance((d.data.total_credits || 0) - (d.data.total_usage || 0))
+    } catch (e) {}
+  }, [])
+
+  useEffect(() => {
+    let dead = false
+    ;(async () => {
+      const pv = await stGet('tt-provider')
+      const ok = await stGet('tt-orkey')
+      const gk = await stGet('tt-gemini-key')
+      const gs = await stGet('tt-gemini-spend')
+      const gt = await stGet('tt-gcp-tts-key')
+      if (dead) return
+      if (pv) setProviderState(pv)
+      if (gk) setGeminiKey(gk)
+      if (gt) setGcpTtsKey(gt)
+      const spend = parseFloat(gs)
+      setGeminiSpend(Number.isFinite(spend) ? spend : 0)
+      if (ok) { setOrKey(ok); fetchBalance(ok) }
+    })()
+    return () => { dead = true }
+  }, [fetchBalance])
+
+  const setProvider = useCallback(async p => { setProviderState(p); await stSet('tt-provider', p) }, [])
+  const refreshBalance = useCallback(() => fetchBalance(orKey), [fetchBalance, orKey])
+
+  return { provider, setProvider, orKey, geminiKey, geminiSpend, gcpTtsKey, orBalance, refreshBalance }
+}
+
+function JapaneseSpeechStyle({ value, onChange }) {
+  // Styled with the same primitives as every other Thai card: Card surface, gold
+  // selected state, muted secondary copy, 12px radius, matching vertical rhythm.
+  return (
+    <Card style={{ padding: '14px 16px' }}>
+      <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+        Speech Style
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+        {Object.values(JAPANESE_REGISTER_RULES).map(r => {
+          const on = r.id === value
+          return (
+            <button key={r.id} onClick={() => onChange(r.id)}
+              style={{ background: on ? 'var(--surface2)' : 'transparent',
+                       border: '1px solid ' + (on ? 'var(--gold)' : 'var(--border)'),
+                       borderRadius: 12, padding: '12px 6px', cursor: 'pointer',
+                       textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}>
+              <div style={{ fontSize: 18 }}>{r.icon}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, color: on ? 'var(--gold)' : 'var(--text)' }}>{r.label}</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{r.sub}</div>
+            </button>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
+// Mirrors the Thai Dashboard element for element: same 500px max width, 16px padding,
+// 16px gap, same stat grid, Mastery bar, belt card, provider row, action buttons and
+// recent-track list. Only the language, data and Speech Style card differ.
+function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, onStartTrack, notice,
+                             provider, onSetProvider, hasVocab, onOpenTrack, onDeleteTrack }) {
+  const stats = useMemo(() => getStats(vocab), [vocab])
+  const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
+  const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
+  return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+        {[
+          { label: 'Words',    val: stats.total,    icon: 'book',  color: 'var(--text)' },
+          { label: 'Due',      val: stats.due,      icon: 'clock', color: '#f59e0b' },
+          { label: 'Learning', val: stats.learning, icon: 'trend', color: '#4a90e2' },
+          { label: 'Known',    val: stats.known,    icon: 'star',  color: '#10b981' },
+        ].map(s => (
+          <Card key={s.label} style={{ padding: '12px 10px', textAlign: 'center' }}>
+            <Icon name={s.icon} size={14} color={s.color} />
+            <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: s.color }}>{s.val}</div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, fontWeight: 500 }}>{s.label}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Progress */}
+      <Card style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Mastery</span>
+          <span className="phon" style={{ fontSize: 12, color: 'var(--gold)' }}>{pct}%</span>
+        </div>
+        <div style={{ height: 6, background: 'var(--surface2)', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #d4a94a, #10b981)', borderRadius: 3, transition: 'width 0.5s ease' }} />
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>{stats.known} known {'\u00B7'} {stats.learning} learning {'\u00B7'} {stats.newW} new</p>
+      </Card>
+
+      {/* Belt Rank */}
+      <BeltRankCard vocab={vocab} langName="Japanese" />
+
+      {/* Next targets — §1/§9: romaji is the learner phonetic line and is always
+          visible, mirroring where Thai Teacher shows its phonetics. */}
+      {targets && targets.length > 0 && (
+        <Card style={{ padding: '14px 16px' }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+            Next targets ({targets.length})
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {targets.map(t => (
+              <div key={t.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                <span className="jp" style={{ fontSize: 18, fontWeight: 700, color: 'var(--gold)' }}>{t.japanese}</span>
+                <span className="jp" style={{ fontSize: 12, color: 'var(--muted)' }}>{t.reading}</span>
+                <span className="phon" style={{ fontSize: 13, color: 'var(--text)' }}>{t.romaji}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 'auto' }}>{t.english}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Speech Style \u2014 the one Japanese-specific control */}
+      <JapaneseSpeechStyle value={register} onChange={onSetRegister} />
+
+      {/* AI Provider Selector */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
+        <span style={{ fontSize:12, color:'var(--muted)', whiteSpace:'nowrap' }}>Generate with:</span>
+        <select value={provider} onChange={e => onSetProvider && onSetProvider(e.target.value)}
+          style={{ flex:1, padding:'6px 10px', borderRadius:8, background:'var(--surface2)',
+                   color:'var(--text)', border:'1px solid var(--border)', fontSize:13,
+                   fontFamily:'Sarabun, sans-serif' }}>
+          <option value="qwen3_14b">Qwen3.5 Flash</option>
+          <option value="qwen32b">Qwen3 32B</option>
+          <option value="gemini">{'\u2726'} Gemini 2.5 Flash Lite</option>
+          <option value="haiku">Haiku 4.5</option>
+        </select>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <button onClick={onStartTrack} disabled={!hasVocab}
+          style={{ background: hasVocab ? 'linear-gradient(135deg, #0a2d1e, #0d3d28)' : 'var(--surface)',
+                   border: '1px solid ' + (hasVocab ? '#2d6b2d' : 'var(--border)'), borderRadius: 12,
+                   padding: '18px 12px', cursor: hasVocab ? 'pointer' : 'not-allowed', textAlign: 'center',
+                   color: 'var(--text)', opacity: hasVocab ? 1 : 0.55, transition: 'all 0.15s' }}>
+          <Icon name="sparkles" size={22} color="#10b981" />
+          <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Daily Track</div>
+          <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>
+            {hasVocab ? '~45 min \u00B7 ' + stats.due + ' due' : 'No vocabulary yet'}
+          </div>
+        </button>
+        <button disabled
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+                   padding: '18px 12px', cursor: 'not-allowed', textAlign: 'center',
+                   color: 'var(--text)', opacity: 0.55 }}>
+          <Icon name="book" size={22} color="var(--gold)" />
+          <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Lessons</div>
+          <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 2, opacity: 0.7 }}>Coming soon</div>
+        </button>
+      </div>
+
+      {!hasVocab && (
+        <Card style={{ padding: '14px 16px' }}>
+          <p style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+            Japanese vocabulary has not been loaded yet.
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, lineHeight: 1.5 }}>
+            Track generation is unavailable until the Japanese word bank is added.
+          </p>
+        </Card>
+      )}
+      {notice && (
+        <Card style={{ padding: '12px 16px', border: '1px solid #f59e0b' }}>
+          <p style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>{notice}</p>
+        </Card>
+      )}
+
+      {/* Recent Tracks — §5: same affordances as Thai (open / download / delete) */}
+      {recent.length > 0 && (
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Recent Tracks</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {recent.map((track, i) => {
+              const kw = (track.keywords || []).length
+              const np = (track.pairs || []).length
+              return (
+                <div key={i} onClick={() => onOpenTrack && onOpenTrack(track)}
+                  style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', background:'var(--surface)', borderRadius:12, border:'1px solid var(--border)', cursor:'pointer' }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:'#0a2d1e', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Icon name="sparkles" size={12} color="#10b981" />
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:13, fontWeight:600 }}>
+                      {track.date}
+                      {track.rated && <span style={{ color:'#10b981', marginLeft:6, fontSize:11 }}>{'\u2713'}</span>}
+                      {track.bookmark > 0 && <span style={{ color:'var(--gold)', marginLeft:4, fontSize:11 }}>{'\u{1F516}'}</span>}
+                    </p>
+                    <p style={{ fontSize:11, color:'var(--muted)' }}>
+                      {np} pairs {'\u00B7'} {kw} words
+                      {track.speechStyle && JAPANESE_REGISTER_RULES[track.speechStyle]
+                        ? ' \u00B7 ' + JAPANESE_REGISTER_RULES[track.speechStyle].label : ''}
+                    </p>
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); downloadJapaneseTrack(track) }}
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }} title="Download transcript">{'\u2B07\uFE0F'}</button>
+                  <button onClick={e => { e.stopPropagation(); onDeleteTrack && onDeleteTrack(tracks.length - 1 - i) }}
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }} title="Delete track">{'\u{1F5D1}\uFE0F'}</button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <p style={{ textAlign:'center', fontSize:10, color:'var(--muted)', opacity:0.5, paddingBottom:8 }}>
+        Japanese Teacher {APP_VERSION}
+      </p>
+    </div>
+  )
+}
+
+// §6 — Japanese transcript export. Mirrors downloadTrack() but writes Japanese fields
+// and a japanese-track-* filename. UTF-8 Blob so kana/kanji survive the download.
+function downloadJapaneseTrack(track) {
+  const keywords = track.keywords || []
+  const pairs = track.pairs || []
+  const L = []
+  const reg = JAPANESE_REGISTER_RULES[track.speechStyle || track.register || ''] || null
+  L.push('JAPANESE TEACHER \u2014 TRACK EXPORT')
+  L.push('='.repeat(50))
+  L.push('Date: ' + (track.date || ''))
+  L.push('Mode: ' + (track.mode || 'daily'))
+  L.push('Speech Style: ' + (reg ? reg.label + ' (' + reg.sub + ')' : (track.speechStyle || 'unknown')))
+  if (track.provider) L.push('Provider: ' + track.provider)
+  if (track.model) L.push('Model: ' + track.model)
+  L.push('Pairs: ' + pairs.length)
+  L.push('Created: ' + (track.createdAt || ''))
+  L.push('')
+  if (track.scene && track.scene.scene) {
+    L.push('SCENE'); L.push('-'.repeat(30)); L.push(track.scene.scene)
+    if (track.scene.characterA) L.push('A: ' + track.scene.characterA)
+    if (track.scene.characterB) L.push('B: ' + track.scene.characterB)
+    L.push('')
+  }
+  if (track.buildingBlocks && track.buildingBlocks.length) {
+    L.push('BUILDING BLOCKS')
+    L.push('-'.repeat(30))
+    track.buildingBlocks.forEach(b => L.push(b.form + ' [' + b.romaji + '] \u2014 ' + b.meaning))
+    L.push('')
+  }
+  if (track.allowedContent && track.allowedContent.length) {
+    L.push('CONTENT VOCABULARY AVAILABLE THIS TRACK (' + track.allowedContent.length + ')')
+    L.push('-'.repeat(30))
+    L.push(track.allowedContent.map(w => w.japanese + ' (' + w.romaji + ')').join('  \u00B7  '))
+    L.push('')
+  }
+  L.push('TARGET VOCABULARY (' + keywords.length + ')')
+  L.push('-'.repeat(30))
+  keywords.forEach((k, i) => {
+    L.push(String(i+1).padStart(2,'0') + '. ' + (k.japanese || '') +
+           '  [' + (k.reading || '') + ']  ' + (k.romaji || '') + '  \u2014  ' + (k.english || '') +
+           (k.rating ? '   (rated: ' + k.rating + ')' : ''))
+  })
+  L.push('')
+  L.push('TRACK PAIRS (' + pairs.length + ')')
+  L.push('-'.repeat(30))
+  pairs.forEach((p, i) => {
+    L.push('PAIR ' + String(i+1).padStart(2,'0') + (p._framing ? '  [' + (p._target || 'framing') + ']' : ''))
+    if (p.speaker) L.push('  SPEAKER: ' + p.speaker)
+    L.push('  ENGLISH CUE:    ' + (p.prompt || ''))
+    L.push('  JAPANESE:       ' + (p.japanese || p.thai || ''))
+    L.push('  READING:        ' + (p.reading || ''))
+    L.push('  ROMAJI:         ' + (p.romaji || p.phonetic || ''))
+    L.push('  ENGLISH MEANING:' + ' ' + (p.english || ''))
+    if (p._target && !p._framing) L.push('  TARGET:         ' + p._target)
+    L.push('')
+  })
+  const blob = new Blob([L.join('\n')], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'japanese-track-' + String(track.date || '').replace(/ /g,'-') + '-' + (track.mode || 'daily') + '.txt'
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// §17 — generation-log export, Japanese filename.
+function downloadJapaneseGenLog(log, date) {
+  const blob = new Blob([(log || []).join('\n')], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'japanese-gen-log-' + (date || new Date().toISOString().slice(0,10)) + '.txt'
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+
+
+// ── Shared generation presentation ───────────────────────────────────────────
+// Extracted from the live Thai generator's own JSX so both languages render the
+// same way. Presentation only \u2014 no Thai generation or language logic is touched.
+
+// Exactly the Thai live-log colour rule, lifted verbatim from its genLog.map().
+function generationLogColor(msg) {
+  const m = msg || ''
+  return m.startsWith('\u274C') ? '#ef4444'
+       : m.startsWith('\u26A0')  ? '#f97316'
+       : m.startsWith('\u2705')  ? '#4ade80'
+       : m.startsWith('\u2501')  ? 'var(--border)'
+       : 'var(--muted)'
+}
+
+// Thai's log card: 9px header, 10px monospace lines, 3px gap, download button.
+function GenerationLiveLog({ lines, fullLog, onDownload, showHistory, onToggleHistory }) {
+  return (
+    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8,
+                  padding:'8px 10px', display:'flex', flexDirection:'column', gap:3 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
+        <span style={{ fontSize:9, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Generation log</span>
+        <span style={{ display:'flex', gap:4 }}>
+          {(fullLog || []).length > (lines || []).length && (
+            <button onClick={onToggleHistory}
+              style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4,
+                       color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>
+              {showHistory ? '\u25BC Live' : '\u25B2 History'}
+            </button>
+          )}
+          {(fullLog || []).length > 0 && (
+            <button onClick={onDownload}
+              style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4,
+                       color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>{'\u2B07'} log</button>
+          )}
+        </span>
+      </div>
+      {(lines || []).length === 0 && (
+        <p style={{ fontSize:10, color:'var(--muted)', margin:0, fontFamily:'monospace' }}>{'\u23F3'} Initialising...</p>
+      )}
+      <div style={showHistory ? { maxHeight:200, overflowY:'auto', display:'flex', flexDirection:'column', gap:3 } : undefined}>
+        {(lines || []).map((msg, i) => (
+          <p key={i} style={{ fontSize:10, color: generationLogColor(msg), margin:0,
+                              fontFamily:'monospace', lineHeight:1.4 }}>{msg}</p>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Thai's brick grid geometry.
+function GenerationBrickGrid({ total, filled, sources, colorFor }) {
+  return (
+    <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
+      {Array.from({ length: total }, (_, i) => {
+        const src = (sources || {})[i] || ''
+        const lit = i < filled && src
+        return <div key={i} style={{ height:8, borderRadius:2,
+          background: lit ? colorFor(src) : 'var(--surface2)',
+          opacity: lit ? 1 : 0.35, transition:'background 0.3s' }} />
+      })}
+    </div>
+  )
+}
+
+// ── Japanese quality check ───────────────────────────────────────────────────
+// §4/§19 — a genuinely Japanese pipeline. Thai QC (runQualityCheckCore,
+// _qrFixBrokenPhonetics, fillMissingGlossesForTrack, correctVocabPhonetic…) must
+// never see a Japanese track: its NO_TONE heuristic treats untoned Latin as broken,
+// which is precisely how "konnichiwa" was rewritten to Thai RTGS "sà-wàt-dii".
+// §6/§10 — Thai's own tier strings: same emoji, same ordinals, same order.
+// §10 — ONE check-tier presentation map. Brick, log, live status and completed pill
+// all read from here, so the three indicators can never disagree.
+const GENERATION_CHECK_STYLE = {
+  1:  { label:'1st check',  color:'#f8fafc', icon:'\u26AA' },
+  2:  { label:'2nd check',  color:'#f97316', icon:'\u{1F536}' },
+  3:  { label:'3rd check',  color:'#ea580c', icon:'\u{1F7E0}' },
+  4:  { label:'4th check',  color:'#60a5fa', icon:'\u{1F535}' },
+  5:  { label:'5th check',  color:'#2563eb', icon:'\u{1F537}' },
+  6:  { label:'6th check',  color:'#facc15', icon:'\u{1F7E1}' },
+  7:  { label:'7th check',  color:'#ca8a04', icon:'\u{1F7E8}' },
+  8:  { label:'8th check',  color:'#4ade80', icon:'\u{1F7E2}' },
+  9:  { label:'9th check',  color:'#16a34a', icon:'\u{1F7E9}' },
+  10: { label:'10th check', color:'#c8956c', icon:'\u{1FAB5}' },   // §14 exact Thai value
+  11: { label:'11th check', color:'#8b5a2b', icon:'\u{1F7EB}' },   // §14 exact Thai value
+}
+const JA_FRAMING_COLOR = '#d4a94a'
+function checkStyle(tier) { return GENERATION_CHECK_STYLE[Math.max(1, Math.min(11, tier || 1))] }
+function jaTierLabel(n) { const s = checkStyle(n); return s.icon + ' ' + s.label }
+const JA_TIER_SOURCE = n => 'ja-check-' + n
+// §16 — colour means WHICH CHECK TIER produced the accepted line, matching Thai.
+function jaSrcToColor(src, fallback) {
+  if (!src) return fallback || 'var(--surface2)'
+  if (src === 'ja:scene') return JA_FRAMING_COLOR          // §20 framing is not a check tier
+  const m = /^ja-check-(\d+)/.exec(src)
+  if (m) return checkStyle(parseInt(m[1], 10)).color        // §7 tier only, never recall number
+  return fallback || '#888888'
+}
+
+
+// Canonical meanings first: a segment that resolves to bank vocabulary, a grammar
+// scaffold or a conversation basic uses the stored gloss (§8) rather than asking a
+// model to reinvent it.
+function jaCanonicalGloss(surface, inv) {
+  const s = (surface || '').trim()
+  if (!s) return null
+  const v = (inv.allContent || []).find(w => w.japanese === s || w.lemma === s)
+  if (v) return { english: v.english, reading: v.reading, romaji: v.romaji, kind: 'vocab', id: v.id }
+  const g = (inv.grammarScaffold || []).find(x => x.form === s)
+  if (g) return { english: g.meaning, reading: s, romaji: g.romaji, kind: 'grammar', id: g.id }
+  const b = (inv.conversationBasics || []).find(x => x.form === s)
+  if (b) return { english: b.english, reading: s, romaji: b.romaji, kind: 'basic', id: b.id }
+  return null
+}
+
+// §5 — the Japanese checks. Returns issues plus a repaired copy where repair is
+// deterministic (romaji from reading, canonical glosses).
+function runJapaneseQualityCheckCore(pair, target, inv, registerId) {
+  const issues = []      // real problems the generator must fix
+  const repairs = []     // deterministically corrected, no regeneration needed
+  const out = { ...pair }
+  const jp = (pair.japanese || pair.thai || '').trim()
+
+  // A. Japanese script present
+  if (!jp || !/[\u3040-\u30FF\u4E00-\u9FFF]/.test(jp)) { issues.push('no Japanese script'); return { issues, pair: out, fatal: true } }
+  if (/[\u0E00-\u0E7F]/.test(jp)) { issues.push('THAI SCRIPT in Japanese sentence'); return { issues, pair: out, fatal: true } }
+
+  // B. reading present and kana-only
+  const reading = (pair.reading || '').trim()
+  if (!reading) issues.push('missing kana reading')
+  else if (/[\u4E00-\u9FFF]/.test(reading)) issues.push('reading contains kanji \u2014 it must be kana only')
+  else if (/[\u0E00-\u0E7F]/.test(reading)) issues.push('THAI SCRIPT in reading')
+
+  // C. romaji must agree with the reading \u2014 deterministic, never Thai RTGS
+  if (reading) {
+    const derived = kanaToRomaji(reading)
+    if (!pair.romaji || !romajiMatchesReading(pair.romaji, reading)) {
+      (pair.romaji ? issues : repairs).push('romaji did not match reading (was "' + (pair.romaji || '') + '")')
+      out.romaji = derived                      // repair from the reading
+      out.phonetic = derived
+    }
+  }
+  if (/[\u00E0-\u01D4\u0300-\u030C]/.test(pair.romaji || '')) {
+    issues.push('romaji contains Thai tone marks \u2014 Thai phonetic contamination')
+    if (reading) { out.romaji = kanaToRomaji(reading); out.phonetic = out.romaji }
+  }
+
+  // D/E/F/G. segments
+  const segs = Array.isArray(pair.segments) ? pair.segments : []
+  if (segs.length) {
+    const strip = x => (x || '').replace(/[\s\u3000\u3001\u3002\uFF1F\uFF01]/g, '')
+    if (strip(segs.map(s => s.surface || '').join('')) !== strip(jp)) issues.push('segments do not reconstruct the sentence')
+    out.segments = segs.map(s => {
+      const seg = { ...s }
+      const canon = jaCanonicalGloss(seg.surface, inv)
+      if (canon) {                                        // canonical stored meaning wins
+        if (!seg.english || seg.english !== canon.english) seg.english = canon.english
+        if (!seg.reading) seg.reading = canon.reading
+      }
+      if (seg.reading && (!seg.romaji || !romajiMatchesReading(seg.romaji, seg.reading))) {
+        // Derivable from the kana — fix it rather than failing the line.
+        repairs.push('segment romaji derived: ' + seg.surface)
+        seg.romaji = kanaToRomaji(seg.reading)
+      }
+      if (!seg.english) issues.push('segment missing gloss: ' + seg.surface)
+      if (/[\u0E00-\u0E7F]/.test(seg.romaji || '') || /[\u0E00-\u0E7F]/.test(seg.english || '')) {
+        issues.push('THAI CONTAMINATION in segment: ' + seg.surface)
+      }
+      return seg
+    })
+  }
+
+  // H/I. English fields
+  if (!pair.english || !pair.english.trim()) issues.push('missing English translation')
+  if (!pair.prompt || !pair.prompt.trim()) issues.push('missing English cue')
+  else if (/[\u3040-\u30FF\u4E00-\u9FFF]/.test(pair.prompt)) issues.push('English cue contains Japanese')
+
+  // J. target morphology
+  if (target && !matchesJapaneseTarget(jp, target)) issues.push('target ' + target.japanese + ' not used')
+
+  // K. register
+  const reg = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
+  for (const rx of (reg.banned || [])) if (rx.test(jp)) { issues.push('register violation: ' + reg.bannedReason); break }
+  if (reg.id === 'casual' && POLITE_RX.test(jp)) issues.push('register violation: \u3067\u3059/\u307E\u3059 in Very Casual')
+  if (reg.id === 'polite' && !POLITE_RX.test(jp) && !/[\uFF1F]$/.test(jp)) issues.push('register violation: not \u3067\u3059/\u307E\u3059 form')
+
+  // L. closed vocabulary
+  const cv = japaneseCheckLine(jp, inv)
+  if (!cv.ok) issues.push('untaught content vocabulary: ' + cv.unknown.join(' '))
+
+  return { issues, repairs, pair: out, fatal: false }
+}
+
+// §9/§24 — every detected issue becomes an object with a lifecycle. The final
+// summary is derived from this list, never from ad-hoc counters, so nothing that
+// appears in the log can vanish from the report.
+// §13 — critical categories block "corrected"; duplicates at low inventory do not.
+const JA_QC_CRITICAL = new Set(['japanese','reading','romaji','translation','segments',
+  'segmentReading','segmentRomaji','segmentGloss','target','contentVocabulary','grammar',
+  'register','promptMeaning','producibility'])
+
+async function runJapaneseTrackQC(track, vocab, opts, onProgress, onLog) {
+  const pairs = (track.pairs || []).slice()
+  const inv = japaneseLearnerInventory(vocab, (track.keywords || []).map(k =>
+    (vocab || []).find(w => w.id === k.wordId)).filter(Boolean))
+  const rules = scarcityRules(inv)
+  const registerId = track.speechStyle || track.register || JA_REGISTER_DEFAULT
+  const issues = []
+  const out = []
+  const seen = new Map()
+  let n = 0
+  const add = (pairIndex, category, message) => {
+    const iss = { issueId: 'pair' + pairIndex + '-' + category + '-' + (++n), pairIndex, category, message, status: 'found' }
+    issues.push(iss)
+    onLog && onLog('\u26A0 Pair ' + (pairIndex + 1) + ' \u2014 ' + message)
+    return iss
+  }
+  const fix = (iss, note) => { iss.status = 'fixed'; onLog && onLog('\u2713 Pair ' + (iss.pairIndex + 1) + ' \u2014 ' + (note || iss.category + ' repaired')) }
+  const accept = (iss, why) => { iss.status = 'accepted'; onLog && onLog('\u2139 Pair ' + (iss.pairIndex + 1) + ' \u2014 ' + why) }
+  const unresolved = (iss, why) => { iss.status = 'unresolved'; onLog && onLog('\u274C Pair ' + (iss.pairIndex + 1) + ' \u2014 ' + (why || 'could not repair ' + iss.category)) }
+  const strip = x => (x || '').replace(/[\s\u3000\u3001\u3002\uFF1F\uFF01]/g, '')
+
+  for (let i = 0; i < pairs.length; i++) {
+    if (opts.cancelled && opts.cancelled()) break
+    const p = pairs[i]
+    onProgress && onProgress(Math.round((i / pairs.length) * 90), 'Checking pair ' + (i + 1) + '/' + pairs.length)
+    const target = p.wordId ? (vocab || []).find(w => w.id === p.wordId) : null
+    let q = { ...p }
+    const jp = (q.japanese || q.thai || '').trim()
+
+    if (!jp) { add(i, 'japanese', 'missing Japanese sentence').status = 'unresolved'; out.push(q); continue }
+    if (/[\u0E00-\u0E7F]/.test(JSON.stringify(q))) {
+      const iss = add(i, 'japanese', 'Thai data contamination')
+      q = repairJapaneseTrack({ language:'ja', pairs:[q] }, inv).pairs[0]
+      const stillThai = /[\u0E00-\u0E7F]/.test(JSON.stringify(q))
+      if (stillThai) unresolved(iss); else fix(iss, 'Thai contamination removed')
+    }
+
+    // reading (§16)
+    if (opts.romaji || opts.glosses) {
+      if (!q.reading || /[\u4E00-\u9FFF]/.test(q.reading)) {
+        const iss = add(i, 'reading', q.reading ? 'reading contains kanji' : 'missing kana reading')
+        unresolved(iss, 'kana reading cannot be derived from kanji without a reading source')
+      }
+    }
+    // romaji (§17) — deterministic from reading
+    if (opts.romaji && q.reading) {
+      if (!romajiMatchesReading(q.romaji || q.phonetic, q.reading) || /[\u00E0-\u01D4]/.test(q.romaji || '')) {
+        const iss = add(i, 'romaji', 'romaji does not match reading (' + (q.romaji || '(empty)') + ')')
+        const derived = kanaToRomaji(q.reading)
+        q = { ...q, romaji: derived, phonetic: derived }
+        romajiMatchesReading(q.romaji, q.reading) ? fix(iss, 'romaji derived from reading \u2192 ' + derived) : unresolved(iss)
+      }
+    }
+    // segments (§15/§18)
+    if (opts.glosses && Array.isArray(q.segments) && q.segments.length) {
+      if (strip(q.segments.map(s => s.surface || '').join('')) !== strip(jp)) {
+        const iss = add(i, 'segments', 'segments do not reconstruct the sentence')
+        // §27 — rebuild deterministically from the learner's own lexicon before
+        // declaring it unrepairable.
+        const rebuilt = jaRepairPairStructure(q, inv)
+        if (strip((rebuilt.segments || []).map(s => s.surface || '').join('')) === strip(jp)) {
+          q = rebuilt
+          fix(iss, 'segments rebuilt from known vocabulary')
+        } else {
+          unresolved(iss, 'segment boundaries need vocabulary the learner does not have')
+        }
+      }
+      q.segments = q.segments.map(s => {
+        const seg = { ...s }
+        const canon = jaCanonicalGloss(seg.surface, inv)
+        if (canon && seg.english !== canon.english) {
+          const iss = add(i, 'segmentGloss', 'gloss for ' + seg.surface + ' did not match the stored meaning')
+          seg.english = canon.english
+          if (!seg.reading) seg.reading = canon.reading
+          seg.english === canon.english ? fix(iss, 'gloss set to "' + canon.english + '"') : unresolved(iss)
+        } else if (!seg.english) {
+          const iss = add(i, 'segmentGloss', 'missing gloss for ' + seg.surface)
+          unresolved(iss)
+        }
+        if (seg.reading && !romajiMatchesReading(seg.romaji, seg.reading)) {
+          const iss = add(i, 'segmentRomaji', 'segment romaji mismatch: ' + seg.surface)
+          seg.romaji = kanaToRomaji(seg.reading)
+          romajiMatchesReading(seg.romaji, seg.reading) ? fix(iss, 'segment romaji derived') : unresolved(iss)
+        }
+        return seg
+      })
+      q.words = q.segments.map(s => ({ p: s.romaji || s.surface, e: s.english || '' }))
+    }
+    // translation / cue
+    if (opts.translations) {
+      if (!q.english || !q.english.trim()) unresolved(add(i, 'translation', 'missing English translation'))
+      if (!q.prompt || !q.prompt.trim()) unresolved(add(i, 'promptMeaning', 'missing English cue'))
+      else if (/[\u3040-\u30FF\u4E00-\u9FFF]/.test(q.prompt)) unresolved(add(i, 'promptMeaning', 'English cue contains Japanese'))
+    }
+    // target morphology
+    if (opts.content && target && !matchesJapaneseTarget(jp, target)) {
+      unresolved(add(i, 'target', 'target ' + target.japanese + ' not present'))
+    }
+    // closed vocabulary
+    if (opts.content) {
+      const segU = japaneseUnknownFromSegments(q, inv)
+      const unknown = segU !== null ? segU : japaneseCheckLine(jp, inv).unknown
+      if (unknown.length) unresolved(add(i, 'contentVocabulary', 'untaught content: ' + unknown.join(' ')))
+    }
+    // register
+    if (opts.register) {
+      const reg = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
+      for (const rx of (reg.banned || [])) if (rx.test(jp)) { unresolved(add(i, 'register', reg.bannedReason)); break }
+    }
+    // duplicate (§19) — non-critical, and explicitly accepted at low inventory
+    const key = jaDedupeKey(jp)
+    const prev = seen.get(key)
+    if (prev !== undefined) {
+      const iss = add(i, 'duplicate', 'duplicate of pair ' + (prev + 1))
+      if (rules.allowNearDuplicate) accept(iss, 'accepted repetition \u2014 learner inventory \u2264 15 words')
+      else unresolved(iss)
+    }
+    seen.set(key, i)
+    out.push(q)
+  }
+
+  onProgress && onProgress(95, 'Final track audit\u2026')
+  const recalls = out.filter(p => !p._framing)
+  const byWord = {}
+  recalls.forEach(p => { if (p.wordId) byWord[p.wordId] = (byWord[p.wordId] || 0) + 1 })
+  ;(track.keywords || []).forEach(k => {
+    const got = byWord[k.wordId] || 0
+    if (got !== 3) unresolved(add(0, 'target', (k.japanese || '') + ' has ' + got + ' recalls (expected 3)'))
+  })
+
+  const fixed      = issues.filter(x => x.status === 'fixed')
+  const accepted   = issues.filter(x => x.status === 'accepted')
+  const unres      = issues.filter(x => x.status === 'unresolved')
+  const criticalUnresolved = unres.filter(x => JA_QC_CRITICAL.has(x.category))
+  onProgress && onProgress(100, 'Done')
+  onLog && onLog('\u2705 QC complete \u2014 ' + issues.length + ' found, ' + fixed.length + ' fixed, ' +
+                 accepted.length + ' accepted, ' + unres.length + ' unresolved')
+  return { pairs: out, issues, groups: pairs.length,
+           counts: { found: issues.length, fixed: fixed.length, accepted: accepted.length, unresolved: unres.length },
+           criticalUnresolvedCount: criticalUnresolved.length }
+}
+
+// §20 — repair Japanese tracks already corrupted by Thai QC.
+function repairJapaneseTrack(track, inv) {
+  if (!track || (track.language !== 'ja' && !(track.pairs || []).some(p => p.japanese))) return track
+  let fixed = 0
+  const pairs = (track.pairs || []).map(p => {
+    const q = { ...p }
+    const jp = q.japanese || q.thai || ''
+    if (!jp) return q
+    q.japanese = jp
+    // Thai tone marks or Thai script in a Japanese romaji field = contamination
+    const contaminated = /[\u00E0-\u01D4\u0300-\u030C]/.test(q.romaji || q.phonetic || '') ||
+                         /[\u0E00-\u0E7F]/.test((q.romaji || '') + (q.phonetic || ''))
+    if (q.reading && (contaminated || !romajiMatchesReading(q.romaji || q.phonetic, q.reading))) {
+      q.romaji = kanaToRomaji(q.reading); q.phonetic = q.romaji; fixed++
+    }
+    // Thai QC may have written a `words` array from Thai gloss logic \u2014 rebuild from segments
+    if (Array.isArray(q.segments) && q.segments.length) {
+      q.words = q.segments.map(s => ({ p: s.romaji || s.surface, e: s.english || '' }))
+    } else if (Array.isArray(q.words) && q.words.some(w => {
+      const s = (w.p || '') + (w.e || '')
+      // Thai script OR Thai tone diacritics on Latin (sà-wàt-dii) both mean the
+      // array came from Thai gloss/phonetic code and cannot describe Japanese.
+      return /[\u0E00-\u0E7F]/.test(s) || /[\u00E0-\u01D4\u0300-\u030C]/.test(s)
+    })) {
+      q.words = []                                          // Thai residue, unusable
+      fixed++
+    }
+    return q
+  })
+  return fixed ? { ...track, pairs, _repaired: true } : { ...track, pairs }
+}
+
+// §4 — the generator screen. Same shape as the Thai Generator: progress, live log,
+// cancel, error surfacing, then hands the finished track upward.
+// §12 — three explicit visual states. FUTURE keeps its NEW badge but stays dim,
+// ACTIVE glows gold while its three recalls are being generated, DONE takes the
+// §4/§9 — Japanese Quality Review. Top-level function declaration in the same
+// text/babel scope as JapaneseTeacher, so hoisting makes declaration order safe.
+// Signature matches the caller exactly: track, vocab, onSave, onSkip.
+// §5 — calls runJapaneseTrackQC (which calls runJapaneseQualityCheckCore per pair).
+// It never touches runQualityCheckCore or any Thai phonetic/gloss function.
+function JapaneseQualityReview({ track, vocab, onSave, onSkip }) {
+  const [phase, setPhase] = useState('summary')     // summary | checking | done
+  const [progress, setProgress] = useState(0)
+  const [progressMsg, setProgressMsg] = useState('')
+  const [fullLog, setFullLog] = useState([])
+  const [liveLog, setLiveLog] = useState([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [result, setResult] = useState(null)
+  const [qcMode, setQcMode] = useState('all')
+  // §22/§23 — iterative repair operates on the LATEST corrected pairs, never on the
+  // original prop, so a Retry cannot undo a repair from the previous pass.
+  const [workingTrack, setWorkingTrack] = useState(track)
+  const [qcPass, setQcPass] = useState(0)
+  const cancelRef = useRef(false)
+  useEffect(() => { setWorkingTrack(track); setQcPass(0); setResult(null) }, [track])
+
+  const QC_MODES = [
+    { id:'all',          label:'\u2726 Full check',              desc:'Japanese, reading, romaji, translation, segments, target, register, vocabulary' },
+    { id:'romaji',       label:'\u{1F524} Japanese + romaji',     desc:'Japanese text, kana reading and romaji alignment' },
+    { id:'translations', label:'\u{1F4DD} Translation / glosses', desc:'English meaning and per-segment glosses' },
+    { id:'content',      label:'\u270F\uFE0F Content / grammar',  desc:'Grammar, register, target use and learner producibility' },
+  ]
+
+  const pairs = (workingTrack && workingTrack.pairs) || []
+  const quick = useMemo(() => {
+    let suspect = 0
+    pairs.forEach(p => {
+      if (p.reading && !romajiMatchesReading(p.romaji || p.phonetic, p.reading)) suspect++
+      else if (/[\u00E0-\u01D4]/.test(p.romaji || p.phonetic || '')) suspect++
+      else if (/[\u0E00-\u0E7F]/.test(JSON.stringify(p))) suspect++
+      else if (!p.english || !p.prompt) suspect++
+    })
+    return { total: pairs.length, suspect }
+  }, [pairs])   // recomputed as workingTrack is repaired
+
+  const push = m => { setFullLog(l => [...l, m]); setLiveLog(l => [...l.slice(-7), m]) }
+
+  async function runCheck() {
+    cancelRef.current = false
+    setPhase('checking'); setFullLog([]); setLiveLog([]); setProgress(0)
+    const opts = {
+      romaji:       qcMode === 'all' || qcMode === 'romaji',
+      glosses:      qcMode === 'all' || qcMode === 'translations',
+      translations: qcMode === 'all' || qcMode === 'translations',
+      content:      qcMode === 'all' || qcMode === 'content',
+      register:     qcMode === 'all' || qcMode === 'content',
+      cancelled: () => cancelRef.current,
+    }
+    const pass = qcPass + 1
+    setQcPass(pass)
+    push('\u25B6 Pass ' + pass + ' \u00B7 ' + ((QC_MODES.find(m => m.id === qcMode) || {}).label || 'Check'))
+    try {
+      // §23 — run against the working track, which carries every earlier repair.
+      const res = await runJapaneseTrackQC(workingTrack, vocab, opts,
+        (pct, msg) => { setProgress(pct); setProgressMsg(msg) }, push)
+      // §24 — stamp the pass onto each issue for a pass-aware ledger
+      ;(res.issues || []).forEach(is => { is.firstFoundPass = is.firstFoundPass || pass; is.lastCheckedPass = pass })
+      setWorkingTrack(wt => ({ ...wt, pairs: res.pairs }))
+      setResult(res); setPhase('done')
+    } catch (e) {
+      push('\u274C QC failed: ' + (e && e.message ? e.message : ''))
+      setResult({ pairs, fixes: {}, problems: [(e && e.message) || 'QC failed'], groups: pairs.length })
+      setPhase('done')
+    }
+  }
+
+  if (phase === 'summary') return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:12 }}>
+      <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0, fontSize:18 }}>Quality Check</h2>
+      <p style={{ fontSize:12, color:'var(--muted)', textAlign:'center', lineHeight:1.5, margin:0 }}>
+        Quick pre-scan only — the full check may find more.
+      </p>
+      <Card style={{ padding:'12px 14px', display:'flex', justifyContent:'space-around', textAlign:'center' }}>
+        <div><div style={{ fontSize:20, fontWeight:800, color:'var(--gold)' }}>{quick.total}</div>
+             <div style={{ fontSize:10, color:'var(--muted)' }}>pairs</div></div>
+        <div><div style={{ fontSize:20, fontWeight:800, color: quick.suspect ? '#f97316' : '#4ade80' }}>{quick.suspect}</div>
+             <div style={{ fontSize:10, color:'var(--muted)' }}>pre-scan issues</div></div>
+      </Card>
+      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+        {QC_MODES.map(m => (
+          <button key={m.id} onClick={() => setQcMode(m.id)}
+            style={{ textAlign:'left', background: qcMode === m.id ? 'var(--surface2)' : 'transparent',
+                     border:'1px solid ' + (qcMode === m.id ? 'var(--gold)' : 'var(--border)'),
+                     borderRadius:10, padding:'9px 12px', cursor:'pointer', color:'var(--text)' }}>
+            <div style={{ fontSize:13, fontWeight:700, color: qcMode === m.id ? 'var(--gold)' : 'var(--text)' }}>{m.label}</div>
+            <div style={{ fontSize:10, color:'var(--muted)', marginTop:2, lineHeight:1.4 }}>{m.desc}</div>
+          </button>
+        ))}
+      </div>
+      <Btn onClick={runCheck} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>{'\u25B6'} Run check</Btn>
+      <Btn onClick={onSkip} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Skip {'\u2014'} Study Now</Btn>
+    </div>
+  )
+
+  if (phase === 'checking') return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
+      <div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+          <span style={{ fontSize:13, fontWeight:600 }}>Quality check</span>
+          <span className="phon" style={{ fontSize:12, color:'var(--gold)' }}>{progress}%</span>
+        </div>
+        <div style={{ height:6, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:progress + '%', background:'linear-gradient(90deg, #d4a94a, #10b981)', borderRadius:3, transition:'width 0.4s ease' }} />
+        </div>
+      </div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, minHeight:20 }}>
+        <Spinner size={14} color="#10b981" />
+        <span style={{ fontSize:12, color:'var(--text)', fontWeight:600 }}>{progressMsg || 'Starting\u2026'}</span>
+      </div>
+      <GenerationLiveLog lines={showHistory ? fullLog : liveLog} fullLog={fullLog}
+        onDownload={() => downloadJapaneseGenLog(fullLog, 'qc')}
+        showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)} />
+      <Btn onClick={() => { cancelRef.current = true }} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Cancel</Btn>
+    </div>
+  )
+
+  const issues = (result && result.issues) || []
+  const counts = (result && result.counts) || { found:0, fixed:0, accepted:0, unresolved:0 }
+  const critical = (result && result.criticalUnresolvedCount) || 0
+  const probs = issues.filter(x => x.status === 'unresolved').map(x => 'Pair ' + (x.pairIndex + 1) + ': ' + x.message)
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:12 }}>
+      <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0, fontSize:18 }}>{'\u2705'} Check complete</h2>
+      <Card style={{ padding:'12px 16px' }}>
+        <p style={{ fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
+          Pass {qcPass} {'\u00B7'} {(result && result.groups) || 0} pairs checked
+        </p>
+        {/* §11/§24 — every count derives from the issue list, so nothing detected
+            during the run can be missing from this summary. */}
+        {['found','fixed','accepted','unresolved'].map(k => {
+          const list = k === 'found' ? issues : issues.filter(x => x.status === k)
+          if (!list.length) return null
+          const label = { found:'FOUND', fixed:'FIXED', accepted:'ACCEPTED BY POLICY', unresolved:'UNRESOLVED' }[k]
+          const col = { found:'var(--muted)', fixed:'#4ade80', accepted:'#60a5fa', unresolved:'#ef4444' }[k]
+          const byCat = {}
+          list.forEach(x => { byCat[x.category] = (byCat[x.category] || 0) + 1 })
+          return (
+            <div key={k} style={{ marginBottom:8 }}>
+              <div style={{ fontSize:10, fontWeight:800, letterSpacing:'0.06em', color:col }}>{label} ({list.length})</div>
+              {Object.keys(byCat).map(cat => (
+                <div key={cat} style={{ fontSize:12, color:'var(--text)', lineHeight:1.6 }}>{byCat[cat]} {cat}</div>
+              ))}
+            </div>
+          )
+        })}
+        <div style={{ fontSize:10, color:'var(--muted)', borderTop:'1px solid var(--border)', paddingTop:6, marginTop:4 }}>
+          {counts.fixed} fixed + {counts.accepted} accepted + {counts.unresolved} unresolved = {counts.found} found
+        </div>
+      </Card>
+      {probs.length > 0 && (
+        <Card style={{ padding:'10px 14px', maxHeight:150, overflowY:'auto' }}>
+          {probs.slice(0, 20).map((p, i) => (
+            <div key={i} style={{ fontSize:10, color:'#f97316', fontFamily:'monospace', lineHeight:1.5 }}>{'\u26A0'} {p}</div>
+          ))}
+        </Card>
+      )}
+      {/* §12/§22 — do not call it corrected while critical issues remain */}
+      {critical > 0 ? (
+        <>
+          <Card style={{ padding:'10px 14px', border:'1px solid #ef4444' }}>
+            <p style={{ fontSize:12, color:'#ef4444', fontWeight:700 }}>
+              {'\u26A0'} Quality Check incomplete — {critical} critical issue{critical > 1 ? 's' : ''} remain
+            </p>
+          </Card>
+          <Btn onClick={runCheck} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>
+            {'\u21BB'} Retry fixes
+          </Btn>
+          <Btn onClick={() => onSave({ ...workingTrack, pairs: (result && result.pairs) || pairs, _qcDone: true, _qcIssues: issues })}
+            variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Study anyway</Btn>
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize:12, color:'#4ade80', textAlign:'center', margin:0 }}>{'\u2713'} Quality Check complete</p>
+          <Btn onClick={() => onSave({ ...workingTrack, pairs: (result && result.pairs) || pairs, _qcDone: true, _qcIssues: issues })}
+            style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>
+            {'\u25B6'} Study corrected track
+          </Btn>
+        </>
+      )}
+      <Btn onClick={onSkip} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Study original</Btn>
+    </div>
+  )
+}
+
+// aggregate check-tier colour only once all three are accepted.
+// §1–§5 — one pill cannot express three independent recall results, so the pill
+// carries THREE LEDs, each showing the exact check tier that accepted that recall.
+// Gold outline = currently generating (§3, at most one). Aggregate tint = worst
+// accepted tier so far (§4). LEDs are the authoritative detail (§2).
+function JapaneseTargetPill({ w, state, srcColor, recalls }) {
+  const isNew = w.status === 'new'
+  const unseen = (w.repCount || 0) === 0 && !w.lastSeen
+  const active = state === 'active'
+  const done   = state === 'done'
+  const list   = Array.isArray(recalls) ? recalls : []
+  const hasResult = list.length > 0
+  const tint = hasResult ? srcColor : null
+  const border = active ? 'var(--gold)' : (hasResult ? srcColor : (isNew ? 'rgba(74,144,226,0.65)' : 'var(--border)'))
+  const text   = active ? 'var(--gold)' : (hasResult ? srcColor : (isNew ? '#8ab8f0' : 'var(--text)'))
+  // §4 — 15–25% tint of the aggregate tier colour, readable underneath the text.
+  const bg = active ? 'rgba(212,169,74,0.20)'
+           : (tint ? tint + '33' : (isNew ? 'rgba(74,144,226,0.10)' : 'transparent'))
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+      background: bg,
+      // §3 — a strong, unmistakable gold outline for the current target
+      border: (active ? '2px solid var(--gold)' : '1px solid ' + border),
+      borderRadius:8, padding: active ? '3px 9px' : '4px 10px',
+      transition:'all 0.25s', minWidth:0, position:'relative',
+      boxShadow: active ? '0 0 0 3px rgba(212,169,74,0.55), 0 0 10px rgba(212,169,74,0.45)' : 'none' }}>
+      {isNew && (
+        <span style={{ position:'absolute', top:-6, right:-5, fontSize:8, fontWeight:800, letterSpacing:0.3,
+          color:'#0b1120', background: unseen ? '#4a90e2' : '#a78bfa', borderRadius:3, padding:'1px 4px', lineHeight:1.3, pointerEvents:'none' }}>
+          {unseen ? 'NEW' : 'RELEARN'}
+        </span>
+      )}
+      <span className="jp" style={{ color:text, fontSize:13, lineHeight:1.3 }}>{w.japanese}</span>
+      <span className="phon" style={{ color: hasResult ? srcColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{w.romaji}</span>
+      {/* §1/§2 — three recall LEDs; each lights with its own accepted tier colour */}
+      <span style={{ display:'flex', gap:3, marginTop:3 }}>
+        {[1, 2, 3].map(n => {
+          const hit = list.find(r => r.recallIndex === n)
+          return <span key={n} style={{ width:7, height:7, borderRadius:'50%',
+            background: hit ? checkStyle(hit.checkTier).color : 'transparent',
+            border: hit ? 'none' : '1px solid var(--border)',
+            transition:'background 0.25s' }} />
+        })}
+      </span>
+    </div>
+  )
+}
+
+function JapaneseBlockPill({ b, kind }) {
+  return (
+    <div style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)',
+      border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', minWidth:0 }}>
+      <span className="jp" style={{ color:'var(--text)', fontSize:15, fontWeight:700, lineHeight:1.2 }}>{b.form}</span>
+      <span className="phon" style={{ color:'var(--gold)', fontSize:11, lineHeight:1.2 }}>{b.romaji}</span>
+      <span style={{ color:'var(--muted)', fontSize:11, lineHeight:1.3, marginLeft:'auto' }}>{b.meaning || b.english}</span>
+    </div>
+  )
+}
+
+function JapaneseGenerator({ vocab, targets, register, cred, onGenerated, onBack }) {
+  const [phase, setPhase] = useState('scene_building')   // scene_building | scene_preview | generating | done | error
+  const [scene, setScene] = useState(null)
+  const [fullLog, setFullLog] = useState([])      // §19 complete history, always downloadable
+  const [liveLog, setLiveLog] = useState([])      // §3 rolling window, like Thai's slice(-8)
+  const [showHistory, setShowHistory] = useState(false)
+  const [currentTier, setCurrentTier] = useState('')   // §6 Thai-style tier string
+  const [wordStatus, setWordStatus] = useState('')     // §16 "Word 2 of 3 — 行く · Recall 2/3"
+  const [recallDone, setRecallDone] = useState(0)
+  const [framingDone, setFramingDone] = useState(0)
+  // §13/§14 — explicit live generation state. Visual state is never reconstructed
+  // by guessing from array positions.
+  const [currentTargetIdx, setCurrentTargetIdx] = useState(-1)
+  const [currentTargetId, setCurrentTargetId] = useState(null)   // §3/§4 authoritative
+  const [currentRecallIndex, setCurrentRecallIndex] = useState(0)
+  const [currentCheckTier, setCurrentCheckTier] = useState(0)
+  const [targetProgress, setTargetProgress] = useState({})   // wordId -> { recalls:[{recallIndex,checkTier,source}] }
+  const [brickSources, setBrickSources] = useState({})
+  const [error, setError] = useState('')
+  const stopRef = useRef({ cancelled: false })
+
+  const apiKey = cred.geminiKey || cred.orKey
+  const model  = resolveOrModel(cred.provider)
+  const FRAMING_SLOTS = 4
+  const recallTotal = (targets || []).length * 3
+  const totalSlots = FRAMING_SLOTS + recallTotal
+
+  const allowCtx = useMemo(() => japaneseAllowedContent(vocab, targets), [vocab, targets])
+  const scaffold = useMemo(() => japaneseScaffoldFor(vocab), [vocab])
+  const inv = useMemo(() => japaneseLearnerInventory(vocab, targets), [vocab, targets])
+  // §16 — show ONLY what this track actually uses, and §15 cap new grammar at 2.
+  const sceneText = scene ? [scene.opening, scene.reply, scene.closing, scene.closing_reply].join('') : ''
+  const shownBlocks = useMemo(
+    () => scaffold.filter(g => sceneText.includes(g.form)).slice(0, 2), [scaffold, sceneText])
+  const shownBasics = useMemo(
+    () => inv.conversationBasics.filter(b => sceneText.includes(b.form)), [inv, sceneText])
+  // §2/§3 — full history is kept; the visible log is a rolling window so the
+  // newest activity is always on screen without scrolling, matching Thai.
+  const push = (m, live = true) => {
+    setFullLog(l => [...l, m])
+    if (live) setLiveLog(l => [...l.slice(-7), m])
+  }
+
+  // §2 — build the scene first and preview it, exactly as Thai does.
+  async function buildScene() {
+    setPhase('scene_building'); setError('')
+    if (!apiKey) { setError('No API key configured. Japanese uses the same key as Thai \u2014 add one in Settings.'); setPhase('error'); return }
+    if (!targets || !targets.length) { setError('No Japanese targets available.'); setPhase('error'); return }
+    try {
+      const s = await generateJapaneseScene(targets, vocab, register, apiKey, model)
+      if (!s) { setError('Could not build a scene. Try again.'); setPhase('error'); return }
+      setScene(s); setPhase('scene_preview')
+    } catch (e) { setError(e.message || 'Scene generation failed.'); setPhase('error') }
+  }
+  useEffect(() => { buildScene() }, [])
+
+  // §4 — regenerating the scene must not disturb targets or SRS state.
+  function tryAnotherScene() { setScene(null); buildScene() }
+
+  async function runGeneration() {
+    setPhase('generating'); setFullLog([]); setLiveLog([]); setBrickSources({}); setRecallDone(0); setFramingDone(0); setCurrentTier(''); setWordStatus('')
+    setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0); setTargetProgress({})
+    try {
+      push('\u2713 Scene ready')
+      const res = await generateJapaneseTrack(
+        targets, vocab, register, apiKey, model,
+        (done, total, srcs, meta) => {
+          setRecallDone(done)
+          if (meta) {
+            if (meta.targetIdx != null) setCurrentTargetIdx(meta.targetIdx)
+            if (meta.targetId != null && !meta.completed) setCurrentTargetId(meta.targetId)
+            if (meta.checkTier) setCurrentCheckTier(meta.checkTier)
+            // §11/§12 — structured metadata is authoritative for the recall index.
+            if (meta.recallIndex != null) setCurrentRecallIndex(meta.recallIndex)
+            if (meta.starting) { setCurrentRecallIndex(1); setCurrentCheckTier(1) }
+            // §2/§4/§5 — commit THIS recall the moment it is accepted: its brick
+            // lights now and targetProgress grows one recall at a time.
+            if (meta.accepted && meta.source) {
+              const brickIndex = FRAMING_SLOTS + meta.targetIdx * 3 + (meta.recallIndex - 1)
+              setBrickSources(prev => ({ ...prev, [brickIndex]: meta.source }))
+              setTargetProgress(prev => {
+                const cur = prev[meta.targetId] || { recallsCompleted: 0, recalls: [] }
+                const recalls = [...cur.recalls.filter(r => r.recallIndex !== meta.recallIndex),
+                                 { recallIndex: meta.recallIndex, checkTier: meta.checkTier, source: meta.source }]
+                return { ...prev, [meta.targetId]: { recallsCompleted: recalls.length, recalls } }
+              })
+            }
+            // §17 — results are already committed; completion only finalises.
+            if (meta.completed) {
+              setCurrentTargetId(null)     // removes the gold ACTIVE ring
+              setCurrentRecallIndex(0)
+            }
+          }
+        },
+        m => {
+          // §18 — only meaningful operational events reach the live window;
+          // everything still lands in fullLog for download.
+          const TIER = /(1st|2nd|3rd|4th|5th|6th|7th|8th|9th|10th|11th) check/.exec(m)
+          const isNoise = /^\u2139/.test(m)
+          push(m, !isNoise)
+          const wm = m.match(/^(\d+)\/(\d+)\s+(\S+)/)
+          if (wm) {
+            setCurrentTargetIdx(parseInt(wm[1], 10) - 1)
+            setWordStatus('Word ' + wm[1] + ' of ' + wm[2] + ' \u2014 ' + wm[3])
+            setCurrentTier('')
+          }
+          // §12 — log parsing is cosmetic only; core state comes from structured meta.
+          if (TIER) {
+            const n = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th'].indexOf(TIER[1]) + 1
+            setCurrentCheckTier(n)
+            setCurrentTier(jaTierLabel(n) + (/passed/.test(m) ? ' \u2705' : /rewriting|check:/.test(m) ? '\u2026' : ''))
+          }
+          if (/opening validated|opening reply validated|closing generated/.test(m)) {
+            setFramingDone(f => {
+              const nf = Math.min(FRAMING_SLOTS, f + (/closing/.test(m) ? 2 : 1))
+              setBrickSources(prev => { const n = { ...prev }; for (let k = 0; k < nf; k++) n[k] = 'ja:scene'; return n })
+              return nf
+            })
+          }
+        },
+        stopRef.current, scene)
+      if (stopRef.current.cancelled) return
+      const pairs = res.pairs || []
+      if (!pairs.length) { setError('Generation produced no usable lines.'); setPhase('error'); return }
+      setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0); setPhase('done')
+      onGenerated({
+        createdAt: new Date().toISOString(),
+        date: new Date().toISOString().slice(0, 10),
+        mode: 'daily', language: 'ja', speechStyle: register,
+        provider: cred.provider, model,
+        pairs, scene: res.scene || scene,
+        buildingBlocks: res.buildingBlocks || [],
+        allowedContent: res.allowedContent || [],
+        recallCount: res.recallCount, framingCount: res.framingCount,
+        rated: false, bookmark: 0,
+        keywords: targets.map(t => ({
+          japanese: t.japanese, reading: t.reading, romaji: t.romaji, english: t.english,
+          wordId: t.id, rating: null, thai: t.japanese, phonetic: t.romaji,
+          isNew: t.status === 'new', isUnseen: (t.repCount || 0) === 0,
+        })),
+      })
+    } catch (e) { setError(e.message || 'Generation failed.'); setPhase('error') }
+  }
+
+  const newCount = (targets || []).filter(w => w.status === 'new').length
+  const TargetHeader = () => (
+    <div>
+      <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+        <span>Targeting {(targets || []).length} words</span>
+        {newCount > 0 && <span style={{ color:'#4a90e2', fontWeight:800 }}>{'\u2726'} {newCount} new</span>}
+        <span style={{ color:'var(--muted)' }}>{'\u00B7'} {allowCtx.all.length} content words available</span>
+      </p>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+        {(targets || []).map((w, i) => (
+          <JapaneseTargetPill key={w.id} w={w} state={targetState(i, w.id)} srcColor={targetColor(w.id)} recalls={targetRecalls(w.id)} />
+        ))}
+      </div>
+      {shownBasics.length > 0 && (
+        <>
+          <p style={{ fontSize:11, color:'var(--muted)', margin:'12px 0 8px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Conversation basics</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+            {shownBasics.map(b => <JapaneseBlockPill key={b.id} b={b} />)}
+          </div>
+        </>
+      )}
+      {shownBlocks.length > 0 && (
+        <>
+          <p style={{ fontSize:11, color:'var(--muted)', margin:'12px 0 8px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Building blocks</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+            {shownBlocks.map(b => <JapaneseBlockPill key={b.id} b={b} />)}
+          </div>
+        </>
+      )}
+    </div>
+  )
+
+  if (phase === 'error') return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:20 }}>
+      <p style={{ color:'#ef4444', fontSize:14, textAlign:'center', whiteSpace:'pre-wrap' }}>{error}</p>
+      <Btn onClick={buildScene} style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} Try again</Btn>
+      <Btn onClick={onBack} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+    </div>
+  )
+
+  // §2/§15/§16 — Scene Ready. Shows the ACTUAL Japanese opening, never "A greets B".
+  if (phase === 'scene_building' || phase === 'scene_preview') return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, paddingTop:40 }}>
+      <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>
+        {phase === 'scene_building' ? '\u{1F3AC} Setting the scene...' : '\u2705 Scene Ready'}
+      </h2>
+      {scene && phase === 'scene_preview' && (
+        <>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:16, display:'flex', flexDirection:'column', gap:10 }}>
+            <p style={{ color:'var(--text)', fontSize:14, margin:0, lineHeight:1.5 }}>{scene.scene}</p>
+            <div style={{ display:'flex', gap:8 }}>
+              <div style={{ flex:1, background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+                <div style={{ fontSize:10, color:'var(--muted)', marginBottom:2 }}>A (male)</div>
+                <div style={{ fontSize:12, color:'var(--text)' }}>{scene.characterA}</div>
+              </div>
+              <div style={{ flex:1, background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+                <div style={{ fontSize:10, color:'var(--muted)', marginBottom:2 }}>B (female)</div>
+                <div style={{ fontSize:12, color:'var(--text)' }}>{scene.characterB}</div>
+              </div>
+            </div>
+            {scene.opening && (
+              <div style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+                <div style={{ fontSize:10, color:'var(--muted)', marginBottom:4 }}>Opening</div>
+                <div className="jp" style={{ fontSize:15, color:'var(--gold)' }}>{scene.opening}</div>
+                {scene.opening_reading && <div className="jp" style={{ fontSize:11, color:'var(--muted)', marginTop:2 }}>{scene.opening_reading}</div>}
+                {scene.opening_romaji && <div className="phon" style={{ fontSize:12, color:'var(--text)', marginTop:3 }}>{scene.opening_romaji}</div>}
+                {scene.opening_english && <div style={{ fontSize:11, color:'var(--muted)', marginTop:2, fontStyle:'italic' }}>{scene.opening_english}</div>}
+              </div>
+            )}
+            {scene.reply && (
+              <div style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+                <div style={{ fontSize:10, color:'var(--muted)', marginBottom:4 }}>Reply</div>
+                <div className="jp" style={{ fontSize:15, color:'var(--gold)' }}>{scene.reply}</div>
+                {scene.reply_reading && <div className="jp" style={{ fontSize:11, color:'var(--muted)', marginTop:2 }}>{scene.reply_reading}</div>}
+                {scene.reply_romaji && <div className="phon" style={{ fontSize:12, color:'var(--text)', marginTop:3 }}>{scene.reply_romaji}</div>}
+                {scene.reply_english && <div style={{ fontSize:11, color:'var(--muted)', marginTop:2, fontStyle:'italic' }}>{scene.reply_english}</div>}
+              </div>
+            )}
+          </div>
+          <TargetHeader />
+          <Btn onClick={runGeneration} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>
+            {'\u25B6'} Generate Track from this Scene
+          </Btn>
+          <Btn onClick={tryAnotherScene} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>
+            {'\u{1F504}'} Try a different scene
+          </Btn>
+          <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+        </>
+      )}
+      {phase === 'scene_building' && <Spinner size={20} color="var(--gold)" />}
+    </div>
+  )
+
+  const filled = framingDone + recallDone
+  const pct = totalSlots ? Math.min(100, Math.round((filled / totalSlots) * 100)) : 0
+  const downloadFull = () => downloadJapaneseGenLog(fullLog)   // §19 always the COMPLETE log
+  // §2 — a target needs THREE recalls. `i*3 < recallDone` marked it done after one.
+  // §1/§2/§3 — explicit three-state model driven by per-target progress and the
+  // authoritative currentTargetId. Never inferred from brick array positions.
+  // Invariant: at most ONE pill is ever 'active', because only one id can match.
+  function targetState(i, wordId) {
+    const prog = targetProgress[wordId]
+    const completed = prog ? (prog.recallsCompleted != null ? prog.recallsCompleted : (prog.recalls || []).length) : 0
+    if (completed >= 3) return 'done'                       // §2 done only after all 3
+    if (currentTargetId != null) return wordId === currentTargetId ? 'active' : 'future'
+    return i === currentTargetIdx ? 'active' : 'future'     // fallback before first id arrives
+  }
+  // §5 — aggregate rule: the completed pill shows the HARDEST tier any of its three
+  // recalls needed, not whatever recall 1 happened to be.
+  // §8 — worst accepted tier SO FAR, recomputed on every accepted recall.
+  function targetColor(wordId) {
+    const prog = targetProgress[wordId]
+    if (!prog || !(prog.recalls || []).length) return '#888888'
+    const worst = Math.max(...prog.recalls.map(r => r.checkTier || 1))
+    return checkStyle(worst).color
+  }
+  function targetRecalls(wordId) {
+    const prog = targetProgress[wordId]
+    return prog ? (prog.recalls || []) : []
+  }
+
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
+      {/* §23 — compact progress header, Thai proportions */}
+      <div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+          <span style={{ fontSize:13, fontWeight:600 }}>{phase === 'done' ? 'Track ready' : 'Generating'}</span>
+          <span className="phon" style={{ fontSize:12, color:'var(--gold)' }}>{pct}%</span>
+        </div>
+        <div style={{ height:6, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:pct + '%', background:'linear-gradient(90deg, #d4a94a, #10b981)', borderRadius:3, transition:'width 0.5s ease' }} />
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+          <span style={{ fontSize:9, color:'var(--muted)' }}>
+            {(targets || []).length} words {'\u00B7'} {recallTotal} recalls {'\u00B7'} {FRAMING_SLOTS} framing
+          </span>
+          <span style={{ fontSize:9, color:'var(--muted)' }}>{filled} / {totalSlots}</span>
+        </div>
+      </div>
+
+      {/* §14 — Thai brick geometry, sized to the real track */}
+      <GenerationBrickGrid total={totalSlots} filled={filled} sources={brickSources}
+        colorFor={s => jaSrcToColor(s, '#888888')} />
+
+      {/* §5/§16 — current word / recall / tier, always visible, outside the log */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, minHeight:20 }}>
+        {phase !== 'done' && <Spinner size={14} color="#10b981" />}
+        <span style={{ fontSize:12, color:'var(--text)', fontWeight:600 }}>
+          {wordStatus || (phase === 'done' ? 'Finished' : 'Kru ' + resolveOrName(cred.provider) + ' is thinking\u2026')}
+        </span>
+      </div>
+      {/* §11 — live check identity, coloured from the single tier map so it always
+          agrees with the brick and the completed pill. */}
+      {(currentCheckTier > 0 || currentTier) && (
+        <div style={{ textAlign:'center', marginTop:-6, display:'flex', justifyContent:'center', gap:8 }}>
+          {currentRecallIndex > 0 && (
+            <span style={{ fontSize:12, color:'var(--muted)' }}>Recall {currentRecallIndex} of 3</span>
+          )}
+          {currentCheckTier > 0 && (
+            <span style={{ fontSize:12, fontWeight:700, color: checkStyle(currentCheckTier).color }}>
+              {checkStyle(currentCheckTier).icon} {checkStyle(currentCheckTier).label}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* §3/§4 — rolling live log with optional full history */}
+      <GenerationLiveLog lines={showHistory ? fullLog : liveLog} fullLog={fullLog}
+        onDownload={downloadFull} showHistory={showHistory}
+        onToggleHistory={() => setShowHistory(h => !h)} />
+
+      {/* §11/§12 — targets stay close to the process; static curriculum info compressed */}
+      <div>
+        <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em', display:'flex', gap:6, flexWrap:'wrap' }}>
+          <span>Targeting {(targets || []).length} words</span>
+          {newCount > 0 && <span style={{ color:'#4a90e2', fontWeight:800 }}>{'\u2726'} {newCount} new</span>}
+        </p>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+          {(targets || []).map((w, i) => (
+            <JapaneseTargetPill key={w.id} w={w} state={targetState(i, w.id)} srcColor={targetColor(w.id)} recalls={targetRecalls(w.id)} />
+          ))}
+        </div>
+        <p style={{ fontSize:9, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>
+          {shownBasics.length > 0 && <span>Basics: {shownBasics.map(b => b.form).join(' \u00B7 ')}{'  '}</span>}
+          {shownBlocks.length > 0 && <span>Grammar: {shownBlocks.map(b => b.form).join(' \u00B7 ')}{'  '}</span>}
+          <span>{allowCtx.all.length} content words</span>
+        </p>
+      </div>
+
+      <Btn onClick={() => { stopRef.current.cancelled = true; onBack() }} variant="secondary"
+        style={{ width:'100%', justifyContent:'center' }}>
+        {phase === 'done' ? 'Back' : '\u23F8 Cancel'}
+      </Btn>
+    </div>
+  )
+}
+
+function JapaneseTeacher({ lang, onSetLang }) {
+  const cred = useSharedCredentials()
+  const [vocab, setVocab]       = useState([])
+  const [tracks, setTracks]     = useState([])
+  const [register, setRegister] = useState(JA_REGISTER_DEFAULT)
+  const [loading, setLoading]   = useState(true)
+  const [view, setView]         = useState('dashboard')
+  const [notice, setNotice]     = useState('')
+  const [slots, setSlots]       = useState([])
+  const [pendingReviewTrack, setPendingReviewTrack] = useState(null)
+  // §2/§3 — navigation state: where Quality Review was entered from.
+  // 'post-generation' | 'player' | 'lesson-complete' | null
+  const [qcReturnContext, setQcReturnContext] = useState(null)
+  const [playerResumeCompleted, setPlayerResumeCompleted] = useState(false)   // §7 lesson-complete resume
+  const [activeTrack, setActiveTrack]   = useState(null)
+
+  useEffect(() => {
+    let dead = false
+    async function init() {
+      const sv = await stGet(JA.vocab)
+      const st = await stGet(JA.tracks)
+      const rg = await stGet(JA.register)
+      const sl = await stGet(JA.dailyNew)
+      if (dead) return
+      setSlots(sl && Array.isArray(sl.wordIds) ? sl.wordIds : [])
+      // §12 — a stored empty array must not block the bank; merge always runs.
+      const merged = mergeJapaneseVocab(sv)
+      setVocab(merged)
+      if (!Array.isArray(sv) || sv.length !== merged.length) stSet(JA.vocab, merged)
+      // §20 — heal tracks already corrupted by Thai QC before they can be played.
+      const inv0 = japaneseLearnerInventory(merged, [])
+      setTracks(Array.isArray(st) ? st.map(t => repairJapaneseTrack(t, inv0)) : [])
+      if (rg && JAPANESE_REGISTER_RULES[rg]) setRegister(rg)
+      setLoading(false)
+    }
+    init()
+    return () => { dead = true }
+  }, [])
+
+  const saveVocabJa  = useCallback(async v => { setVocab(v); await stSet(JA.vocab, v) }, [])
+  const saveTracksJa = useCallback(async t => {
+    const capped = t.length > 20 ? t.slice(t.length - 20) : t
+    setTracks(capped); await stSet(JA.tracks, capped)
+  }, [])
+  const saveSlots = useCallback(async ids => { setSlots(ids); await stSet(JA.dailyNew, { date: new Date().toISOString().slice(0,10), wordIds: ids }) }, [])
+
+  // §1/§15 — same flow as Thai: save, then Quality Check. NEVER straight to Player.
+  // §4/§9 — the generator only reports onGenerated; routing lives here.
+  function onTrackGenerated(track) {
+    saveTracksJa([...tracks, track])
+    saveSlots((targets || []).map(t => t.id))   // hold these slots until rated
+    setPendingReviewTrack(track)
+    setQcReturnContext('post-generation')
+    setView('quality-review')
+  }
+  // §16 — the corrected track replaces the saved one in tt-ja-tracks.
+  // §7 — persist the corrected track, then branch on where QC was entered from.
+  // §8 — every exit from Quality Review clears qcReturnContext so it cannot go stale.
+  function onQcSave(corrected) {
+    const t = corrected || pendingReviewTrack
+    const exists = tracks.some(x => x.createdAt && x.createdAt === t.createdAt)
+    saveTracksJa(exists ? tracks.map(x => (x.createdAt && x.createdAt === t.createdAt) ? t : x) : [...tracks, t])
+    const from = qcReturnContext
+    setActiveTrack(t)
+    setPendingReviewTrack(null)
+    setQcReturnContext(null)
+    // 'lesson-complete' must resume the rating screen, not restart at pair 1. The
+    // Player is remounted with resumeCompleted so it restores that state directly.
+    setPlayerResumeCompleted(from === 'lesson-complete')
+    setView('player')
+  }
+  // §8 — Skip respects the same contract and clears the context.
+  function onQcSkip() {
+    const t = pendingReviewTrack
+    const from = qcReturnContext
+    setPendingReviewTrack(null)
+    setQcReturnContext(null)
+    setPlayerResumeCompleted(from === 'lesson-complete')
+    if (t) setActiveTrack(t)
+    setView('player')
+  }
+  function openTrack(track) { setActiveTrack(track); setView('player') }
+  function onOpenTrack(track) { setActiveTrack(track); setView('player') }
+  // §7 — index arrives already mapped from the reversed display list, as Thai does.
+  function onDeleteTrack(idx) {
+    if (typeof window !== 'undefined' && window.confirm && !window.confirm('Delete this Japanese track?')) return
+    saveTracksJa(tracks.filter((_, i) => i !== idx))
+  }
+
+  // §13 — ratings touch ONLY tt-ja-vocab. Thai SRS state is never reachable from here.
+  function onTrackComplete(keywords) {
+    const ratedIds = {}, knownIds = new Set()
+    ;(keywords || []).forEach(k => {
+      if (!k.wordId || !k.rating || k.rating === 'skip') return
+      if (k.rating === 'known') knownIds.add(k.wordId); else ratedIds[k.wordId] = k.rating
+    })
+    const next = vocab.map(w => {
+      if (knownIds.has(w.id)) return markWordKnown(w)
+      if (ratedIds[w.id])     return applyRating(w, ratedIds[w.id])
+      return w
+    })
+    saveVocabJa(next)
+    // A word rated 'hard' stays status 'new' and therefore keeps its slot (v495 §13).
+    saveSlots(next.filter(w => (targets || []).some(t => t.id === w.id) && w.status === 'new').map(w => w.id))
+    if (activeTrack) saveTracksJa(tracks.map(t =>
+      (t === activeTrack || (t.createdAt && t.createdAt === activeTrack.createdAt))
+        ? { ...t, rated: true, keywords } : t))
+    setActiveTrack(null)
+    setView('dashboard')
+  }
+
+  const saveRegister = useCallback(async r => { setRegister(r); await stSet(JA.register, r) }, [])
+  const hasVocab = vocab.length > 0
+  // §3 — next targets come from explicit unlockOrder, never Thai wordUtility.
+  const targets = useMemo(() => hasVocab ? japaneseSelectNewSlots(vocab, slots) : [], [vocab, slots, hasVocab])
+
+  function startTrack() {
+    if (!hasVocab) { setNotice('Japanese vocabulary has not been loaded yet.'); return }
+    setNotice(''); setView('generate')
+  }
+
+  // Loading state carries the same styling context as Thai's, so a cold start on
+  // Japanese is never rendered without the design system.
+  if (loading) return (
+    <div className="app" style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', flexDirection:'column', gap:16 }}>
+      <FontStyle />
+      <div className="jp display" style={{ fontSize:36, color:'var(--gold)' }}>{'\u3053\u3093\u306B\u3061\u306F'}</div>
+      <Spinner size={28} />
+      <p style={{ color:'var(--muted)', fontSize:14 }}>Loading Japanese Teacher...</p>
+    </div>
+  )
+
+  return (
+    <div className="app">
+      <FontStyle />
+      <Header lang={lang} onSetLang={onSetLang} view={view} onNav={setView}
+        onHome={() => setView('dashboard')}
+        orBalance={cred.orBalance} orKey={cred.orKey}
+        onRefreshBalance={cred.refreshBalance} lastTrackCost={null}
+        provider={cred.provider} geminiKey={cred.geminiKey} geminiSpend={cred.geminiSpend}
+        onSetProvider={cred.setProvider} />
+      <main>
+        {view === 'dashboard' && (
+          <JapaneseDashboard vocab={vocab} tracks={tracks} register={register} targets={targets}
+            onSetRegister={saveRegister} onStartTrack={startTrack} notice={notice}
+            provider={cred.provider} onSetProvider={cred.setProvider} hasVocab={hasVocab}
+            onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} />
+        )}
+        {view === 'generate' && (
+          <ErrorBoundary>
+            <JapaneseGenerator vocab={vocab} targets={targets} register={register} cred={cred}
+              onGenerated={onTrackGenerated} onBack={() => setView('dashboard')} />
+          </ErrorBoundary>
+        )}
+        {view === 'quality-review' && pendingReviewTrack && (
+          <ErrorBoundary>
+            {/* §6 — Japanese QC only. No Thai QC function is reachable from here. */}
+            <JapaneseQualityReview track={pendingReviewTrack} vocab={vocab}
+              onSave={onQcSave}
+              onSkip={onQcSkip} />
+          </ErrorBoundary>
+        )}
+        {view === 'player' && activeTrack && (
+          <ErrorBoundary>
+            <Player key={(activeTrack.createdAt || '') + (playerResumeCompleted ? ':done' : '')}
+              track={activeTrack} targetLang="ja" gcpTtsKey={cred.gcpTtsKey}
+              startCompleted={playerResumeCompleted}
+              onComplete={onTrackComplete}
+              onReviewQuality={(ctx) => {
+                // §5/§6 — always the LATEST persisted version of this track
+                const latest = tracks.find(t => t.createdAt && activeTrack && t.createdAt === activeTrack.createdAt) || activeTrack
+                setPendingReviewTrack(latest)
+                setQcReturnContext(ctx === 'lesson-complete' ? 'lesson-complete' : 'player')
+                setView('quality-review')
+              }}
+              onBack={() => { setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard') }} />
+          </ErrorBoundary>
+        )}
+      </main>
+    </div>
+  )
+}
+
+// ── Japanese generation runtime ──────────────────────────────────────────────
+// Mirrors the Thai chain (scene -> per-target recall lines -> validation -> retry)
+// but drives it with Japanese prompts, the Japanese validator and the v495
+// morphology matcher. Uses the SAME shared provider helper as Thai
+// (callOpenRouterOnce), so there is no second networking stack and no
+// Japanese-specific API key.
+
+// Same normalisation the validator uses, so dedupe is consistent across the runtime.
+function jaDedupeKey(jp) { return (jp || '').replace(/[\s\u3000\u3002\uFF1F\uFF01\u3001]/g, '') }
+
+function _jaParseJSON(raw) {
+  if (!raw) return null
+  let s = String(raw).trim()
+  s = s.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()
+  const a = s.indexOf('['), o = s.indexOf('{')
+  const start = (a >= 0 && (o < 0 || a < o)) ? a : o
+  if (start < 0) return null
+  const endCh = s[start] === '[' ? ']' : '}'
+  const end = s.lastIndexOf(endCh)
+  if (end <= start) return null
+  try { return JSON.parse(s.slice(start, end + 1)) } catch (e) { return null }
+}
+
+// Scene + conversational envelope, generated as Japanese from the start (§8).
+async function generateJapaneseScene(targets, vocab, registerId, apiKey, model, onLog) {
+  const { system, user } = buildJapaneseConvoPrompt(targets, vocab, registerId)
+  const inv = japaneseLearnerInventory(vocab, targets)
+  let repair = ''
+  let best = null
+  // §18 — the closed-vocabulary rule applies to opening, reply, closing and
+  // closing_reply too. Previously these were only logged, which is exactly how
+  // やあ / 来てた / 席取っといた reached a three-word learner.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const raw = await callOpenRouterOnce(apiKey, model,
+      [{ role: 'system', content: system },
+       { role: 'user', content: user + (repair ? '\n\n' + repair : '') }], 1800)
+    const d = _jaParseJSON(raw)
+    if (!d || !d.opening) { repair = 'The previous reply was not valid JSON. Return ONLY the JSON object.'; continue }
+    best = best || d
+    const bad = []
+    ;['opening','reply','closing','closing_reply'].forEach(k => {
+      const chk = japaneseCheckLine(d[k] || '', inv)
+      if (!chk.ok) bad.push(k + ': ' + chk.unknown.join(' '))
+    })
+    if (!bad.length) return d
+    onLog && onLog('  \u26A0 Conversation used untaught language: ' + bad.join(' | ').slice(0, 70))
+    onLog && onLog('  \u21BB Rewriting the scene')
+    repair =
+      'The previous scene used Japanese this learner has NOT been taught:\n  ' + bad.join('\n  ') + '\n' +
+      'Rewrite ALL four lines (opening, reply, closing, closing_reply) using ONLY:\n' +
+      '  content words: ' + inv.allContent.map(w => w.japanese).join(' ') + '\n' +
+      '  conversation basics: ' + inv.conversationBasics.map(b => b.form).join(' ') + '\n' +
+      '  grammar: ' + inv.grammarScaffold.map(g => g.form).join(' ') + '\n' +
+      'Keep the ENGLISH scene description rich, but make the Japanese extremely short.'
+    best = d
+  }
+  return best
+}
+
+// Framing pair factory. §11 — these are conversation envelope, NOT SRS exposures:
+// they carry no wordId, so a greeting can never satisfy a target's 3 repetitions.
+function jaFramingPair(speaker, jp, reading, romaji, english, prompt, kind) {
+  return {
+    speaker,
+    thai: jp, japanese: jp,
+    reading: reading || '',
+    phonetic: romaji || '', romaji: romaji || '',
+    english: english || '',
+    prompt: prompt || english || '',
+    _source: 'ja:scene', _target: kind, _framing: true,
+    wordId: null, targetId: null, words: [],
+  }
+}
+
+// §19 — pre-acceptance structural gate. No candidate becomes a recall until its
+// data is internally consistent, so final QC never has to clean up defects that
+// generation itself created (§21). Fallback is NOT exempt (§20).
+function structuralValidateJapanesePair(pair) {
+  const problems = []
+  const jp = (pair && (pair.japanese || pair.thai) || '').trim()
+  if (!jp) return { ok:false, problems:['missing Japanese'] }
+  if (/[\u0E00-\u0E7F]/.test(JSON.stringify(pair))) problems.push('Thai contamination')
+  const reading = (pair.reading || '').trim()
+  if (!reading) problems.push('missing kana reading')
+  else if (/[\u4E00-\u9FFF]/.test(reading)) problems.push('reading contains kanji')
+  if (reading && !romajiMatchesReading(pair.romaji, reading)) problems.push('romaji does not match reading')
+  const segs = Array.isArray(pair.segments) ? pair.segments : []
+  if (!segs.length) problems.push('missing segments')
+  else {
+    const strip = x => (x || '').replace(/[\s\u3000\u3001\u3002\uFF1F\uFF01]/g, '')
+    if (strip(segs.map(s => s.surface || '').join('')) !== strip(jp)) problems.push('segments do not reconstruct the sentence')
+    segs.forEach(s => {
+      if (s && s.reading && !romajiMatchesReading(s.romaji, s.reading)) problems.push('segment romaji mismatch: ' + s.surface)
+    })
+  }
+  if (!pair.english || !String(pair.english).trim()) problems.push('missing English translation')
+  if (!pair.prompt || !String(pair.prompt).trim()) problems.push('missing English cue')
+  return { ok: problems.length === 0, problems }
+}
+
+// §15/§16/§18 — deterministic structural repair from the learner's own inventory.
+// Every piece of a fallback sentence is by construction something we already have a
+// canonical reading for, so nothing needs an LLM.
+function jaRepairPairStructure(pair, inv) {
+  const q = { ...pair }
+  const jp = (q.japanese || q.thai || '').trim()
+  if (!jp) return q
+  // Longest-first lexicon of everything the learner has, with canonical readings.
+  const lex = []
+  ;(inv.allContent || []).forEach(w => lex.push({ s:w.japanese, r:w.reading || '', ro:w.romaji || '', e:w.english || '', t:'content', id:w.id }))
+  ;(inv.conversationBasics || []).forEach(b => lex.push({ s:b.form, r:b.form, ro:b.romaji, e:b.english, t:'basic', id:b.id }))
+  ;(inv.grammarScaffold || []).forEach(g => lex.push({ s:g.form, r:g.form, ro:g.romaji, e:g.meaning, t:'grammar', id:g.id }))
+  lex.sort((a, b) => b.s.length - a.s.length)
+
+  // §17/§18 — segment the sentence against that lexicon, longest match first.
+  const segs = []
+  let reading = ''
+  let i = 0, ok = true
+  while (i < jp.length) {
+    const ch = jp[i]
+    if (/[\s\u3000\u3001\u3002\uFF1F\uFF01]/.test(ch)) { reading += ch; i += 1; continue }
+    const hit = lex.find(w => w.s && jp.startsWith(w.s, i))
+    if (hit) {
+      segs.push({ surface:hit.s, lemma:hit.s, reading:hit.r, romaji:hit.ro || kanaToRomaji(hit.r),
+                  english:hit.e, type: hit.t === 'grammar' ? 'grammar' : 'content',
+                  vocabId: hit.t === 'content' ? hit.id : undefined,
+                  scaffoldId: hit.t === 'grammar' ? hit.id : undefined,
+                  basicId: hit.t === 'basic' ? hit.id : undefined })
+      reading += hit.r || hit.s
+      i += hit.s.length
+      continue
+    }
+    if (/[\u3040-\u309F]/.test(ch)) {           // bare kana: it reads as itself
+      segs.push({ surface:ch, lemma:ch, reading:ch, romaji:kanaToRomaji(ch), english:'', type:'grammar' })
+      reading += ch; i += 1; continue
+    }
+    ok = false; break                            // kanji we cannot read \u2014 do not fake it
+  }
+  if (!ok) return q
+  q.segments = segs
+  q.reading = reading                            // §14 complete kana for the whole sentence
+  q.romaji = kanaToRomaji(reading)               // §16 derived, never invented
+  q.phonetic = q.romaji
+  q.words = segs.map(s => ({ p: s.romaji || s.surface, e: s.english || '' }))
+  return q
+}
+
+// §5/§6 — ONE recall at a time. Each recall gets its own 1st–11th escalation and is
+// LOCKED once accepted, so a success is never discarded because a later sibling
+// failed. This is the change that makes 3/3 achievable from a six-word inventory.
+// §20 — the escalation genuinely narrows the search space rather than repeating.
+function jaEscalationInstruction(tier, target, inv, rules) {
+  const content = (inv.allContent || []).map(w => w.japanese).join(' ')
+  switch (tier) {
+    case 1: return ''
+    case 2: return 'The previous attempt failed validation. Fix exactly what was reported.'
+    case 3: return 'Reduce the sentence complexity. Fewer content words, shorter utterance.'
+    case 4: return 'Remove all optional content. Keep only what is needed to use ' + target.japanese + '.'
+    case 5: return 'Use ONLY ' + target.japanese + ' plus at most ONE other known word: ' + content
+    case 6: return 'Reusing a sentence shape already seen in this lesson is fine. Do not chase novelty.'
+    case 7: return 'Ignore scenario variety entirely. Any natural simple context is acceptable.'
+    case 8: return 'Single clause only. No conjunctions, no subordinate clauses.'
+    case 9: return 'Use ' + target.japanese + ' with approved grammar particles only, nothing else.'
+    case 10: return 'FALLBACK: return ONE extremely short natural spoken utterance containing ' +
+                    target.japanese + '. Reuse an existing structure. Do not optimise for novelty.'
+    default: return 'FINAL ATTEMPT: the shortest possible natural utterance containing ' + target.japanese + '.'
+  }
+}
+
+// §8 — deterministic salvage. When the model cannot produce a valid line, build one
+// from language the learner demonstrably has. Never invents vocabulary.
+function jaFallbackRecall(target, inv, recallIndex) {
+  const t = target.japanese
+  const has = w => (inv.allContent || []).some(x => x.japanese === w)
+  const cands = []
+  const pos = target.partOfSpeech || ''
+  if (pos === 'verb') {
+    cands.push({ jp: t + '\uFF1F', en: 'Are you going to ' + (target.english || '') + '?', cue: 'Ask if they will ' + (target.english || '') })
+    if (has('\u4ECA\u65E5')) cands.push({ jp: '\u4ECA\u65E5' + t + '\uFF1F', en: 'Are you going to ' + (target.english||'') + ' today?', cue: 'Ask if they will ' + (target.english||'') + ' today' })
+    if (has('\u4F55')) cands.push({ jp: '\u4F55' + t + '\uFF1F', en: 'What will you ' + (target.english||'') + '?', cue: 'Ask what they will ' + (target.english||'') })
+  } else if (pos === 'na-adjective' || pos === 'i-adjective') {
+    cands.push({ jp: t + '\uFF1F', en: 'Is it ' + (target.english||'') + '?', cue: 'Ask if it is ' + (target.english||'') })
+    cands.push({ jp: t + '\u3060\u3088\u3002', en: "It's " + (target.english||'') + '.', cue: 'Say it is ' + (target.english||'') })
+    if (has('\u4ECA\u65E5')) cands.push({ jp: '\u4ECA\u65E5\u3001' + t + '\uFF1F', en: 'Is it ' + (target.english||'') + ' today?', cue: 'Ask if it is ' + (target.english||'') + ' today' })
+  } else {
+    cands.push({ jp: t + '\uFF1F', en: (target.english||'') + '?', cue: 'Ask about ' + (target.english||'') })
+    cands.push({ jp: t + '\u3060\u3088\u3002', en: "It's " + (target.english||'') + '.', cue: 'Say it is ' + (target.english||'') })
+    if (has('\u884C\u304F')) cands.push({ jp: t + '\u884C\u304F\uFF1F', en: 'Going ' + (target.english||'') + '?', cue: 'Ask if they are going' })
+  }
+  // Always offer at least three DISTINCT shapes, otherwise recall 3 collides with
+  // recall 1 and is rejected as a same-target duplicate.
+  if (has('\u4ECA\u65E5') && !cands.some(c => c.jp.indexOf('\u4ECA\u65E5') === 0))
+    cands.push({ jp: '\u4ECA\u65E5\u3001' + t + '\uFF1F', en: (target.english||'') + ' today?', cue: 'Ask about ' + (target.english||'') + ' today' })
+  cands.push({ jp: t + '\u306D\u3002', en: (target.english||'') + ', right?', cue: 'Comment on ' + (target.english||'') + ' seeking agreement' })
+  cands.push({ jp: t + '\u3060\u3002',  en: "It's " + (target.english||'') + '.', cue: 'State plainly that it is ' + (target.english||'') })
+  const uniq = []
+  cands.forEach(c => { if (c && c.jp && !uniq.some(u => u.jp === c.jp)) uniq.push(c) })
+  const pick = uniq[(recallIndex - 1) % uniq.length] || uniq[0]
+  if (!pick) return null
+  const reading = target.reading && !/[\u4E00-\u9FFF]/.test(pick.jp.replace(t, ''))
+    ? pick.jp.replace(t, target.reading) : ''
+  return {
+    speaker: 'A', japanese: pick.jp, reading,
+    romaji: reading ? kanaToRomaji(reading) : (target.romaji || ''),
+    english: pick.en, prompt: pick.cue,
+    segments: [{ surface: t, reading: target.reading, romaji: target.romaji, english: target.english, lemma: t, type: 'content' }],
+    _fallback: true,
+  }
+}
+
+// Generates ONE validated recall for one target. Returns null only if every tier and
+// the deterministic fallback fail.
+async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId, apiKey, model,
+                                         seenMap, inv, rules, onLog, onTier) {
+  const { system, user } = buildJapaneseTrackPrompt([target], [], vocab, registerId)
+  const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
+  // §7/§8/§9 — the loop depth IS the scarcity depth. A three-word learner never
+  // reaches a "10th check"; its fallback is simply its last tier (§10).
+  const maxTier = rules.maxTiers
+  let lastFailure = ''
+
+  for (let tier = 1; tier <= maxTier; tier++) {
+    const isFallbackTier = tier === maxTier
+    onTier && onTier(tier)
+    onLog && onLog('  ' + checkStyle(tier).icon + ' ' + ORD[tier-1] + ' check: ' + target.japanese + ' \u00B7 recall ' + recallIndex)
+
+    let cand = null
+    if (isFallbackTier) {
+      cand = jaFallbackRecall(target, inv, recallIndex)          // §8 deterministic
+      if (cand) onLog && onLog('  \u2699 deterministic fallback')
+    } else {
+      const extra = jaEscalationInstruction(tier, target, inv, rules)
+      const ask = user + '\n\nProduce exactly ONE sentence for this target (recall ' + recallIndex + ' of 3).' +
+                  (lastFailure ? '\nPrevious attempt failed: ' + lastFailure : '') +
+                  (extra ? '\n' + extra : '')
+      let raw = ''
+      try { raw = await callOpenRouterOnce(apiKey, model, [{ role:'system', content: system }, { role:'user', content: ask }], 700) }
+      catch (e) { lastFailure = (e.message || '').slice(0, 60); continue }
+      const parsed = _jaParseJSON(raw)
+      const arr = Array.isArray(parsed) ? parsed : (parsed && parsed.lines) || (parsed ? [parsed] : [])
+      cand = arr[0]
+    }
+    if (!cand || !cand.japanese) { lastFailure = 'no usable candidate'; continue }
+
+    // §18 — substantive pedagogy first; duplication is checked LAST.
+    const jp = String(cand.japanese).trim()
+    if (!matchesJapaneseTarget(jp, target)) { lastFailure = 'target ' + target.japanese + ' not present'; onLog && onLog('  \u274C ' + lastFailure); continue }
+    const segUnknown = japaneseUnknownFromSegments(cand, inv)
+    const unknown = segUnknown !== null ? segUnknown : japaneseCheckLine(jp, inv).unknown
+    if (unknown.length) { lastFailure = 'untaught content: ' + unknown.join(' '); onLog && onLog('  \u274C ' + lastFailure); continue }
+    const reg = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
+    let regBad = false
+    for (const rx of (reg.banned || [])) if (rx.test(jp)) { regBad = true; break }
+    if (regBad) { lastFailure = 'register violation'; onLog && onLog('  \u274C ' + lastFailure); continue }
+    const range = japaneseUnitRange(vocab)
+    if (japaneseComplexity(cand) > range.max + 2) { lastFailure = 'too complex for this level'; onLog && onLog('  \u26A0 ' + lastFailure); continue }
+
+    // §13/§19/§20 — structural integrity BEFORE acceptance. Repair deterministically
+    // from the inventory first; only reject if it is still malformed.
+    let structOk = structuralValidateJapanesePair(cand)
+    if (!structOk.ok) {
+      cand = jaRepairPairStructure(cand, inv)
+      structOk = structuralValidateJapanesePair(cand)
+    }
+    if (!structOk.ok) { lastFailure = structOk.problems[0]; onLog && onLog('  \u274C ' + lastFailure); continue }
+
+    // §19 — at scarcity A a near-duplicate is ACCEPTED rather than burning tiers.
+    const dup = japaneseDuplicateVerdict(jp, target.id, seenMap, rules)
+    if (!dup.ok) {
+      if (rules.allowNearDuplicate && dup.level === 'B') {
+        onLog && onLog('  \u2139 accepted useful repetition \u2014 limited learner inventory')
+      } else { lastFailure = dup.reason; onLog && onLog('  \u26A0 ' + lastFailure); continue }
+    } else if (dup.note) onLog && onLog('  \u2139 ' + dup.note)
+
+    seenMap.set(jaDedupeKey(jp), { targetId: target.id })
+    onLog && onLog('  \u2705 ' + ORD[tier-1] + ' check passed: ' + jp)
+    return { pair: cand, checkTier: tier }
+  }
+  return null
+}
+
+// Full track: opening exchange, 3 recalls per target (interleaved), closing exchange.
+async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, onProgress, onLog, stopSignal, presetScene) {
+  const seen = new Set()
+  const open = [], close = []
+  let scene = null
+  // §2 — closed content set for this track: current targets + everything actually
+  // introduced before. Computed once and enforced on every generated line.
+  const allowCtx = japaneseAllowedContent(vocab, targets)
+  const allowed = allowCtx.all
+  const scaffold = japaneseScaffoldFor(vocab)
+  onLog && onLog('\u2139 Content available: ' + allowed.map(w => w.japanese).join(' '))
+
+  // The Scene Ready screen has usually already built and previewed a scene; reuse it
+  // so the track the learner approved is the track that gets generated.
+  if (presetScene) { scene = presetScene }
+  else {
+    onLog && onLog('\u25B6 Generating scene\u2026')
+    try { scene = await generateJapaneseScene(targets, vocab, registerId, apiKey, model, onLog) }
+    catch (e) { onLog && onLog('  \u26A0 scene failed: ' + (e.message || '').slice(0, 60)) }
+  }
+
+  if (scene) {
+    onLog && onLog('\u{1F4AC} Opening accepted')
+    // §18 — final gate: any framing line still carrying untaught language is dropped
+    // rather than shown. A missing greeting is better than an unteachable one.
+    const inv0 = japaneseLearnerInventory(vocab, targets)
+    ;['opening','reply','closing','closing_reply'].forEach(k => {
+      const chk = japaneseCheckLine(scene[k] || '', inv0)
+      if (!chk.ok) {
+        onLog && onLog('  \u2716 Dropped ' + k + ' (untaught: ' + chk.unknown.join(' ') + ')')
+        scene[k] = ''
+      }
+    })
+    if (scene.opening) {
+      open.push(jaFramingPair('A', scene.opening, scene.opening_reading, scene.opening_romaji,
+        scene.opening_english, scene.opening_prompt, 'greeting'))
+      onLog && onLog('\u2713 opening validated')
+    }
+    if (scene.reply) {
+      open.push(jaFramingPair('B', scene.reply, scene.reply_reading, scene.reply_romaji,
+        scene.reply_english, scene.reply_prompt, 'greeting'))
+      onLog && onLog('\u2713 opening reply validated')
+    }
+    if (scene.closing) {
+      close.push(jaFramingPair('A', scene.closing, scene.closing_reading, scene.closing_romaji,
+        scene.closing_english, scene.closing_prompt, 'parting'))
+    }
+    if (scene.closing_reply) {
+      close.push(jaFramingPair('B', scene.closing_reply, scene.closing_reply_reading, scene.closing_reply_romaji,
+        scene.closing_reply_english, scene.closing_reply_prompt, 'parting'))
+    }
+    // Framing lines join the dedupe set so recalls never repeat them.
+    ;[...open, ...close].forEach(p => seen.add(jaDedupeKey(p.japanese)))
+  }
+
+  const perTarget = []
+  let doneRecall = 0
+  const totalRecall = targets.length * 3
+  const rules = scarcityRules(allowCtx)
+  const inv = japaneseLearnerInventory(vocab, targets)
+  const seenMap = new Map()
+  ;[...open, ...close].forEach(p => seenMap.set(jaDedupeKey(p.japanese), { targetId: null }))
+  let attemptCount = 0, recallCount = 0
+  onLog && onLog('\u2139 Scarcity level ' + japaneseScarcityLevel(inv) + ' \u2014 ' + inv.allContent.length + ' content words')
+
+  for (let i = 0; i < targets.length; i++) {
+    if (stopSignal && stopSignal.cancelled) break
+    const t = targets[i]
+    onLog && onLog((i + 1) + '/' + targets.length + '  ' + t.japanese + '  ' + t.romaji)
+    onProgress && onProgress(doneRecall, totalRecall, [], { targetIdx: i, targetId: t.id, recallIndex: 1, checkTier: 1, starting: true })
+
+    const mapped = []
+    // §5/§7 — three separate recalls, each locked on success. Never move on with <3.
+    for (let r = 1; r <= 3; r++) {
+      if (stopSignal && stopSignal.cancelled) break
+      const before = attemptCount
+      const got = await generateJapaneseOneRecall(t, r, vocab, registerId, apiKey, model,
+        seenMap, inv, rules, onLog,
+        tier => { attemptCount++; onProgress && onProgress(doneRecall, totalRecall, [], { targetIdx: i, targetId: t.id, recallIndex: r, checkTier: tier, accepted: false }) })
+      if (!got) { onLog && onLog('  \u274C ' + t.japanese + ' recall ' + r + ' could not be generated'); continue }
+      recallCount++
+      const l = got.pair
+      mapped.push({
+        speaker: l.speaker || 'A',
+        thai: l.japanese, japanese: l.japanese,
+        reading: l.reading || '',
+        phonetic: l.romaji || '', romaji: l.romaji || '',
+        english: l.english || '',
+        prompt: l.prompt || l.english || '',
+        segments: Array.isArray(l.segments) ? l.segments : [],
+        words: (Array.isArray(l.segments) ? l.segments : []).map(s => ({ p: s.romaji || s.surface, e: s.english || '' })),
+        wordId: t.id, targetId: t.id, _target: t.japanese,
+        recallIndex: r,                       // §6 pedagogy: which exposure
+        sourceCheck: got.checkTier,           // §6 which tier accepted it
+        _source: JA_TIER_SOURCE(got.checkTier), _framing: false,
+      })
+      doneRecall++
+      // §2/§3 — the accepted recall event IS the source of truth. Emit it the moment
+      // the recall passes so the brick and pill react now, not at target completion.
+      onProgress && onProgress(doneRecall, totalRecall, [JA_TIER_SOURCE(got.checkTier)], {
+        targetIdx: i, targetId: t.id, recallIndex: r, checkTier: got.checkTier,
+        source: JA_TIER_SOURCE(got.checkTier), accepted: true,
+      })
+    }
+    perTarget.push(mapped)
+    // §17 — by now the UI already holds every recall result; this only finalises.
+    onProgress && onProgress(doneRecall, totalRecall, [], {
+      targetIdx: i, targetId: t.id, completed: true, recallsCompleted: mapped.length,
+    })
+  }
+
+  const recalls = []
+  for (let round = 0; round < 3; round++) {
+    for (const set of perTarget) if (set[round]) recalls.push(set[round])
+  }
+  // §22 — never hand an incomplete SRS track downstream.
+  const producedRecalls = perTarget.reduce((a, s) => a + s.length, 0)
+  if (producedRecalls !== totalRecall && !(stopSignal && stopSignal.cancelled)) {
+    onLog && onLog('\u274C Generation incomplete: expected ' + totalRecall + ' target recalls, generated ' + producedRecalls)
+    const err = new Error('Generation incomplete: expected ' + totalRecall + ' target recalls, generated ' + producedRecalls)
+    err.incomplete = { expected: totalRecall, produced: producedRecalls }
+    throw err
+  }
+  onLog && onLog('\u2139 ' + recallCount + ' recalls from ' + attemptCount + ' model attempts (' +
+                 (recallCount ? (attemptCount / recallCount).toFixed(2) : '0') + ' per recall)')
+  if (close.length) onLog && onLog('\u2713 closing generated')
+  onLog && onLog('\u2713 Final validation passed \u2014 ' + recalls.length + ' recalls, ' + (open.length + close.length) + ' conversation lines')
+  // §6/§21 — grammar the learner has not met before is shown BEFORE recall, never
+  // silently tested. Capped per §7 so a Mukyu track cannot dump eight particles.
+  const usedScaffold = scaffold.filter(s => [...open, ...recalls, ...close].some(p => (p.japanese || '').includes(s.form)))
+  const buildingBlocks = usedScaffold.slice(0, 2)
+  return { pairs: [...open, ...recalls, ...close], scene, buildingBlocks,
+           allowedContent: allowed.map(w => ({ japanese: w.japanese, romaji: w.romaji, english: w.english })),
+           recallCount: recalls.length, framingCount: open.length + close.length }
+}
+
+// Builds runtime Japanese word objects from the bank. Schema matches §17 so the
+// morphology metadata is available to the matcher from the first load.
+function initJapaneseVocab() {
+  return (RAW_JAPANESE_VOCAB || []).map((d, idx) => ({
+    id: d.id || idx + 1,
+    unlockOrder: d.unlockOrder || d.id || idx + 1,
+    japanese: d.japanese || '',
+    reading:  d.reading  || '',
+    romaji:   d.romaji   || '',
+    english:  d.english  || '',
+    lemma:    d.lemma    || d.japanese || '',
+    partOfSpeech: d.partOfSpeech || null,
+    conjugationClass: d.conjugationClass || null,
+    permittedForms: d.permittedForms || null,
+    status: 'new', interval: 0, repCount: 0, okStreak: 0, lapses: 0,
+    lastSeen: null, dueDate: null, difficulty: 'hard',
+  }))
+}
+
+// §12 — merge stored progress against the static bank by stable id. Bank text/metadata
+// wins (so corrections propagate); every SRS field is preserved untouched. A saved
+// empty array must not block the bank from loading.
+function mergeJapaneseVocab(saved) {
+  const fresh = initJapaneseVocab()
+  if (!Array.isArray(saved) || !saved.length) return fresh
+  const byId = {}
+  saved.forEach(w => { if (w && w.id != null) byId[w.id] = w })
+  const merged = fresh.map(f => {
+    const s = byId[f.id]
+    if (!s) return f
+    return {
+      ...f,
+      // learning state carried forward verbatim — never reset by a bank update
+      status:   s.status   != null ? s.status   : f.status,
+      interval: s.interval != null ? s.interval : f.interval,
+      repCount: s.repCount != null ? s.repCount : f.repCount,
+      okStreak: s.okStreak != null ? s.okStreak : f.okStreak,
+      lapses:   s.lapses   != null ? s.lapses   : f.lapses,
+      lastSeen: s.lastSeen != null ? s.lastSeen : f.lastSeen,
+      dueDate:  s.dueDate  != null ? s.dueDate  : f.dueDate,
+      difficulty: s.difficulty != null ? s.difficulty : f.difficulty,
+    }
+  })
+  // keep any stored entry whose id is beyond the current bank, so a future
+  // shorter bank can never silently delete earned progress
+  const bankIds = new Set(fresh.map(f => f.id))
+  saved.forEach(w => { if (w && w.id != null && !bankIds.has(w.id)) merged.push(w) })
+  return merged
+}
+
+// §3 — Japanese unlock order is explicit and stable. Thai wordUtility() is Thai-specific
+// (it scores Thai glosses and syllable shapes) and must never reorder Japanese.
+function japaneseSelectNewSlots(vocab, savedSlots) {
+  const slotCount = japaneseSlotsFor(vocab)
+  const byOrder = (a, b) => (a.unlockOrder || a.id || 0) - (b.unlockOrder || b.id || 0)
+
+  // Held slots: a word rated 'hard' stays 'new' and keeps its slot (§13).
+  const carried = (savedSlots || [])
+    .map(id => vocab.find(w => w.id === id))
+    .filter(w => w && w.status === 'new')
+  const carriedIds = new Set(carried.map(w => w.id))
+
+  // Free slots refill from the lowest unseen unlockOrder — never randomised.
+  const pool = vocab
+    .filter(w => w.status === 'new' && !carriedIds.has(w.id) && (w.repCount || 0) === 0 && !w.lastSeen)
+    .sort(byOrder)
+  const need = Math.max(0, slotCount - carried.length)
+  return [...carried.sort(byOrder), ...pool.slice(0, need)]
+}
+
+function AppRoot() {
+  const [lang, setLang] = useState(null)
+  useEffect(() => {
+    (async () => {
+      const saved = await stGet(LANG_KEY)
+      setLang(saved === 'ja' ? 'ja' : 'th')
+    })()
+  }, [])
+  const onSetLang = useCallback(async code => {
+    setLang(code)
+    await stSet(LANG_KEY, code)
+  }, [])
+  // FontStyle is mounted here as well as inside each programme, so the CSS custom
+  // properties (--bg/--text/--surface/--border/--gold…) exist from the very first
+  // paint regardless of which language is active — including a cold start on Japanese.
+  // Duplicate <style> tags are harmless; this guarantees no branch renders unstyled.
+  if (!lang) return (
+    <div className="app" style={{ minHeight:'100vh' }}>
+      <FontStyle />
+    </div>
+  )
+  return (
+    <React.Fragment>
+      <FontStyle />
+      {lang === 'ja'
+        ? <JapaneseTeacher lang={lang} onSetLang={onSetLang} />
+        : <ThaiTeacher lang={lang} onSetLang={onSetLang} />}
+    </React.Fragment>
+  )
+}
+
 try {
-  ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ThaiTeacher))
+  ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(AppRoot))
 } catch(e) {
   document.body.style.cssText = "margin:0;background:#0b1120;min-height:100vh;padding:20px;box-sizing:border-box"
   document.body.innerHTML = "<div style='max-width:480px;font-family:monospace'><div style='color:#f43f5e;font-size:16px;font-weight:800;margin-bottom:12px'>❌ Render crashed</div><div style='background:#1a1a2e;border:1px solid #f43f5e;border-radius:10px;padding:14px'><div style='color:#fca5a5;font-size:13px;word-break:break-all;margin-bottom:10px'>" + (e && e.message || String(e)) + "</div><pre style='color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:0'>" + (e && e.stack || "no stack") + "</pre></div></div>"

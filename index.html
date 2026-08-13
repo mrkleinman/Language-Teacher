@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v510"/>
+<meta name="app-version" content="v513"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v510';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v510').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v513';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v513').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -44,6 +44,7 @@ const FontStyle = () => (
     @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Serif+Display:ital@0;1&display=swap');
     /* §27 — Japanese must render cleanly alongside Thai; Noto Sans JP falls back
        to platform CJK faces so no glyph boxes appear if the webfont is unavailable. */
+    :lang(zh), .zh { font-family: 'Noto Sans SC','PingFang SC','Microsoft YaHei','Heiti SC',sans-serif; }
     :lang(ja), .jp { font-family: 'Noto Sans JP','Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0b1120; }
@@ -2870,6 +2871,7 @@ function isUsableWord(w) {
 const TTS_VOICES = {
   th: { languageCode:'th-TH', male:'th-TH-Chirp3-HD-Charon', female:'th-TH-Chirp3-HD-Aoede' },
   ja: { languageCode:'ja-JP', male:'ja-JP-Neural2-C',        female:'ja-JP-Neural2-B' },
+  zh: { languageCode:'zh-CN', male:'cmn-CN-Wavenet-C',       female:'cmn-CN-Wavenet-A' },
 }
 function ttsVoiceFor(langCode, isMale) {
   const v = TTS_VOICES[langCode] || TTS_VOICES.th
@@ -2886,6 +2888,896 @@ function pickBrowserVoice(langCode) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
+// MANDARIN PROGRAMME — language layer (§2, §3)
+// A third parallel programme. Its own storage, curriculum, segmentation, pinyin,
+// generation, validation and QC. Mandarin data must never pass through Thai
+// phonetic utilities or Japanese romaji/kana logic (§31).
+// ══════════════════════════════════════════════════════════════════════════════
+const ZH = {
+  vocab:'tt-zh-vocab', tracks:'tt-zh-tracks', dailyNew:'tt-zh-daily-new',
+  draft:'tt-zh-gen-draft', pronunciation:'tt-zh-pinyin-cache',
+  grammar:'tt-zh-grammar', settings:'tt-zh-settings',
+}
+
+// §5 — ONE register, locked. No selector.
+const MANDARIN_REGISTER = {
+  id:'casual-polite', icon:'\u{1F4AC}', label:'Casual-Polite Mandarin',
+  contract:
+    'REGISTER: NATURAL CASUAL-POLITE MANDARIN.\n' +
+    'Write contemporary everyday spoken Mandarin between friendly adults. It should feel relaxed,\n' +
+    'spontaneous and normal while remaining respectful and socially considerate.\n' +
+    'Prefer \u4F60 rather than \u60A8 in ordinary conversation.\n' +
+    'Natural softeners such as \u4E0D\u597D\u610F\u601D\u3001\u9EBB\u70E6\u3001\u8BF7\u3001\u8C22\u8C22\u3001\u53EF\u4EE5\u5417\u3001\u597D\u5417 and \u5427 are appropriate WHEN AVAILABLE to the learner.\n' +
+    'Do NOT write formal written Chinese, literary Chinese, business or customer-service language,\n' +
+    'excessive honorifics, internet slang, youth slang, profanity or deliberately rough speech.\n' +
+    'Do NOT make Mandarin sound like English translated word-for-word \u2014 generate natural Mandarin from the start.',
+  // §68 — QC register signals
+  tooFormal: [/\u60A8/, /\u8D35\u59D3/, /\u656C\u8BF7/, /\u4E48\u5E78/, /\u5C0A\u656C/, /\u672C\u4EBA/, /\u60E8\u63E1/],
+  tooRough:  [/\u4ED6\u5988/, /\u50BB\u903C/, /\u6ED A/, /\u8349\u6CE5\u9A6C/, /\u727B\u903C/],
+}
+
+// §14 — the first 100 Mandarin SRS targets in the exact specified unlock order.
+// Ordered for combinatorial usefulness, not raw frequency. IDs are stable and permanent (§39):
+// changing curriculum order later must never reset a word's learning history.
+const RAW_MANDARIN_VOCAB = [
+  {id:1,unlockOrder:1,chinese:'我',pinyin:'wǒ',english:'I / me',partOfSpeech:'pronoun'},
+  {id:2,unlockOrder:2,chinese:'想',pinyin:'xiǎng',english:'want to / feel like',partOfSpeech:'verb'},
+  {id:3,unlockOrder:3,chinese:'吃',pinyin:'chī',english:'eat',partOfSpeech:'verb'},
+  {id:4,unlockOrder:4,chinese:'你',pinyin:'nǐ',english:'you',partOfSpeech:'pronoun'},
+  {id:5,unlockOrder:5,chinese:'什么',pinyin:'shénme',english:'what',partOfSpeech:'question'},
+  {id:6,unlockOrder:6,chinese:'好',pinyin:'hǎo',english:'good / okay',partOfSpeech:'adjective'},
+  {id:7,unlockOrder:7,chinese:'喝',pinyin:'hē',english:'drink',partOfSpeech:'verb'},
+  {id:8,unlockOrder:8,chinese:'这个',pinyin:'zhège',english:'this',partOfSpeech:'pronoun'},
+  {id:9,unlockOrder:9,chinese:'要',pinyin:'yào',english:'want / need',partOfSpeech:'verb'},
+  {id:10,unlockOrder:10,chinese:'不',pinyin:'bù',english:'not',partOfSpeech:'adverb'},
+  {id:11,unlockOrder:11,chinese:'那个',pinyin:'nàge',english:'that',partOfSpeech:'pronoun'},
+  {id:12,unlockOrder:12,chinese:'可以',pinyin:'kěyǐ',english:'can / may / okay',partOfSpeech:'verb'},
+  {id:13,unlockOrder:13,chinese:'喜欢',pinyin:'xǐhuan',english:'like',partOfSpeech:'verb'},
+  {id:14,unlockOrder:14,chinese:'有',pinyin:'yǒu',english:'have / there is',partOfSpeech:'verb'},
+  {id:15,unlockOrder:15,chinese:'没有',pinyin:'méiyǒu',english:'do not have / there is not',partOfSpeech:'verb'},
+  {id:16,unlockOrder:16,chinese:'去',pinyin:'qù',english:'go',partOfSpeech:'verb'},
+  {id:17,unlockOrder:17,chinese:'来',pinyin:'lái',english:'come',partOfSpeech:'verb'},
+  {id:18,unlockOrder:18,chinese:'哪里',pinyin:'nǎlǐ',english:'where',partOfSpeech:'question'},
+  {id:19,unlockOrder:19,chinese:'在',pinyin:'zài',english:'be at / in / on',partOfSpeech:'verb'},
+  {id:20,unlockOrder:20,chinese:'这里',pinyin:'zhèlǐ',english:'here',partOfSpeech:'pronoun'},
+  {id:21,unlockOrder:21,chinese:'那里',pinyin:'nàlǐ',english:'there',partOfSpeech:'pronoun'},
+  {id:22,unlockOrder:22,chinese:'现在',pinyin:'xiànzài',english:'now',partOfSpeech:'noun'},
+  {id:23,unlockOrder:23,chinese:'今天',pinyin:'jīntiān',english:'today',partOfSpeech:'noun'},
+  {id:24,unlockOrder:24,chinese:'明天',pinyin:'míngtiān',english:'tomorrow',partOfSpeech:'noun'},
+  {id:25,unlockOrder:25,chinese:'昨天',pinyin:'zuótiān',english:'yesterday',partOfSpeech:'noun'},
+  {id:26,unlockOrder:26,chinese:'怎么',pinyin:'zěnme',english:'how',partOfSpeech:'question'},
+  {id:27,unlockOrder:27,chinese:'为什么',pinyin:'wèishénme',english:'why',partOfSpeech:'question'},
+  {id:28,unlockOrder:28,chinese:'谁',pinyin:'shéi',english:'who',partOfSpeech:'question'},
+  {id:29,unlockOrder:29,chinese:'多少',pinyin:'duōshao',english:'how much / how many',partOfSpeech:'question'},
+  {id:30,unlockOrder:30,chinese:'钱',pinyin:'qián',english:'money',partOfSpeech:'noun'},
+  {id:31,unlockOrder:31,chinese:'买',pinyin:'mǎi',english:'buy',partOfSpeech:'verb'},
+  {id:32,unlockOrder:32,chinese:'人',pinyin:'rén',english:'person / people',partOfSpeech:'noun'},
+  {id:33,unlockOrder:33,chinese:'东西',pinyin:'dōngxi',english:'thing / stuff',partOfSpeech:'noun'},
+  {id:34,unlockOrder:34,chinese:'地方',pinyin:'dìfang',english:'place',partOfSpeech:'noun'},
+  {id:35,unlockOrder:35,chinese:'家',pinyin:'jiā',english:'home / family',partOfSpeech:'noun'},
+  {id:36,unlockOrder:36,chinese:'朋友',pinyin:'péngyou',english:'friend',partOfSpeech:'noun'},
+  {id:37,unlockOrder:37,chinese:'工作',pinyin:'gōngzuò',english:'work',partOfSpeech:'noun'},
+  {id:38,unlockOrder:38,chinese:'真的',pinyin:'zhēnde',english:'really',partOfSpeech:'adverb'},
+  {id:39,unlockOrder:39,chinese:'觉得',pinyin:'juéde',english:'think / feel',partOfSpeech:'verb'},
+  {id:40,unlockOrder:40,chinese:'知道',pinyin:'zhīdao',english:'know',partOfSpeech:'verb'},
+  {id:41,unlockOrder:41,chinese:'懂',pinyin:'dǒng',english:'understand',partOfSpeech:'verb'},
+  {id:42,unlockOrder:42,chinese:'说',pinyin:'shuō',english:'speak / say',partOfSpeech:'verb'},
+  {id:43,unlockOrder:43,chinese:'听',pinyin:'tīng',english:'listen / hear',partOfSpeech:'verb'},
+  {id:44,unlockOrder:44,chinese:'看',pinyin:'kàn',english:'look / watch',partOfSpeech:'verb'},
+  {id:45,unlockOrder:45,chinese:'给',pinyin:'gěi',english:'give / to / for',partOfSpeech:'verb'},
+  {id:46,unlockOrder:46,chinese:'帮',pinyin:'bāng',english:'help',partOfSpeech:'verb'},
+  {id:47,unlockOrder:47,chinese:'等',pinyin:'děng',english:'wait',partOfSpeech:'verb'},
+  {id:48,unlockOrder:48,chinese:'找',pinyin:'zhǎo',english:'look for / find',partOfSpeech:'verb'},
+  {id:49,unlockOrder:49,chinese:'做',pinyin:'zuò',english:'do / make',partOfSpeech:'verb'},
+  {id:50,unlockOrder:50,chinese:'用',pinyin:'yòng',english:'use',partOfSpeech:'verb'},
+  {id:51,unlockOrder:51,chinese:'拿',pinyin:'ná',english:'take / hold',partOfSpeech:'verb'},
+  {id:52,unlockOrder:52,chinese:'开',pinyin:'kāi',english:'open / drive / turn on',partOfSpeech:'verb'},
+  {id:53,unlockOrder:53,chinese:'回',pinyin:'huí',english:'return / go back',partOfSpeech:'verb'},
+  {id:54,unlockOrder:54,chinese:'到',pinyin:'dào',english:'arrive / reach / to',partOfSpeech:'verb'},
+  {id:55,unlockOrder:55,chinese:'跟',pinyin:'gēn',english:'with',partOfSpeech:'preposition'},
+  {id:56,unlockOrder:56,chinese:'一起',pinyin:'yìqǐ',english:'together',partOfSpeech:'adverb'},
+  {id:57,unlockOrder:57,chinese:'很',pinyin:'hěn',english:'very / adjective linker',partOfSpeech:'adverb'},
+  {id:58,unlockOrder:58,chinese:'太',pinyin:'tài',english:'too / very',partOfSpeech:'adverb'},
+  {id:59,unlockOrder:59,chinese:'一点',pinyin:'yìdiǎn',english:'a little',partOfSpeech:'adverb'},
+  {id:60,unlockOrder:60,chinese:'多',pinyin:'duō',english:'many / much',partOfSpeech:'adjective'},
+  {id:61,unlockOrder:61,chinese:'少',pinyin:'shǎo',english:'few / little',partOfSpeech:'adjective'},
+  {id:62,unlockOrder:62,chinese:'大',pinyin:'dà',english:'big',partOfSpeech:'adjective'},
+  {id:63,unlockOrder:63,chinese:'小',pinyin:'xiǎo',english:'small',partOfSpeech:'adjective'},
+  {id:64,unlockOrder:64,chinese:'快',pinyin:'kuài',english:'fast / quick',partOfSpeech:'adjective'},
+  {id:65,unlockOrder:65,chinese:'慢',pinyin:'màn',english:'slow',partOfSpeech:'adjective'},
+  {id:66,unlockOrder:66,chinese:'热',pinyin:'rè',english:'hot',partOfSpeech:'adjective'},
+  {id:67,unlockOrder:67,chinese:'冷',pinyin:'lěng',english:'cold',partOfSpeech:'adjective'},
+  {id:68,unlockOrder:68,chinese:'累',pinyin:'lèi',english:'tired',partOfSpeech:'adjective'},
+  {id:69,unlockOrder:69,chinese:'忙',pinyin:'máng',english:'busy',partOfSpeech:'adjective'},
+  {id:70,unlockOrder:70,chinese:'开心',pinyin:'kāixīn',english:'happy',partOfSpeech:'adjective'},
+  {id:71,unlockOrder:71,chinese:'好吃',pinyin:'hǎochī',english:'tasty / delicious food',partOfSpeech:'adjective'},
+  {id:72,unlockOrder:72,chinese:'好喝',pinyin:'hǎohē',english:'tastes good / delicious drink',partOfSpeech:'adjective'},
+  {id:73,unlockOrder:73,chinese:'水',pinyin:'shuǐ',english:'water',partOfSpeech:'noun'},
+  {id:74,unlockOrder:74,chinese:'饭',pinyin:'fàn',english:'meal / rice',partOfSpeech:'noun'},
+  {id:75,unlockOrder:75,chinese:'谢谢',pinyin:'xièxie',english:'thank you',partOfSpeech:'expression'},
+  {id:76,unlockOrder:76,chinese:'不好意思',pinyin:'bù hǎoyìsi',english:'excuse me / sorry',partOfSpeech:'expression'},
+  {id:77,unlockOrder:77,chinese:'麻烦',pinyin:'máfan',english:'trouble / could I trouble you',partOfSpeech:'expression'},
+  {id:78,unlockOrder:78,chinese:'请',pinyin:'qǐng',english:'please',partOfSpeech:'expression'},
+  {id:79,unlockOrder:79,chinese:'对不起',pinyin:'duìbuqǐ',english:'sorry',partOfSpeech:'expression'},
+  {id:80,unlockOrder:80,chinese:'没关系',pinyin:'méi guānxi',english:'it is okay / no worries',partOfSpeech:'expression'},
+  {id:81,unlockOrder:81,chinese:'没事',pinyin:'méishì',english:'it is okay / nothing is wrong',partOfSpeech:'expression'},
+  {id:82,unlockOrder:82,chinese:'对',pinyin:'duì',english:'right / correct',partOfSpeech:'adjective'},
+  {id:83,unlockOrder:83,chinese:'行',pinyin:'xíng',english:'okay / works / can do',partOfSpeech:'verb'},
+  {id:84,unlockOrder:84,chinese:'当然',pinyin:'dāngrán',english:'of course',partOfSpeech:'adverb'},
+  {id:85,unlockOrder:85,chinese:'可能',pinyin:'kěnéng',english:'maybe / possible',partOfSpeech:'adverb'},
+  {id:86,unlockOrder:86,chinese:'应该',pinyin:'yīnggāi',english:'should / probably',partOfSpeech:'verb'},
+  {id:87,unlockOrder:87,chinese:'会',pinyin:'huì',english:'can / know how / will',partOfSpeech:'verb'},
+  {id:88,unlockOrder:88,chinese:'能',pinyin:'néng',english:'can / be able to',partOfSpeech:'verb'},
+  {id:89,unlockOrder:89,chinese:'先',pinyin:'xiān',english:'first / beforehand',partOfSpeech:'adverb'},
+  {id:90,unlockOrder:90,chinese:'再',pinyin:'zài',english:'again / then / afterwards',partOfSpeech:'adverb'},
+  {id:91,unlockOrder:91,chinese:'已经',pinyin:'yǐjīng',english:'already',partOfSpeech:'adverb'},
+  {id:92,unlockOrder:92,chinese:'还',pinyin:'hái',english:'still / also',partOfSpeech:'adverb'},
+  {id:93,unlockOrder:93,chinese:'时间',pinyin:'shíjiān',english:'time',partOfSpeech:'noun'},
+  {id:94,unlockOrder:94,chinese:'时候',pinyin:'shíhou',english:'time / when',partOfSpeech:'noun'},
+  {id:95,unlockOrder:95,chinese:'怎么样',pinyin:'zěnmeyàng',english:'how is it / how about',partOfSpeech:'question'},
+  {id:96,unlockOrder:96,chinese:'车',pinyin:'chē',english:'car / vehicle',partOfSpeech:'noun'},
+  {id:97,unlockOrder:97,chinese:'店',pinyin:'diàn',english:'shop / store',partOfSpeech:'noun'},
+  {id:98,unlockOrder:98,chinese:'回家',pinyin:'huíjiā',english:'go home / return home',partOfSpeech:'verb'},
+  {id:99,unlockOrder:99,chinese:'吃饭',pinyin:'chīfàn',english:'eat / have a meal',partOfSpeech:'verb'},
+  {id:100,unlockOrder:100,chinese:'等一下',pinyin:'děng yíxià',english:'wait a moment',partOfSpeech:'expression'},
+]
+
+// §15 — grammar scaffold, SEPARATE from the 100-word SRS bank, unlocking by stage.
+const MANDARIN_GRAMMAR_SCAFFOLD = [
+  { id:'ma',   form:'\u5417', pinyin:'ma',  meaning:'yes/no question particle', minKnown:0 },
+  { id:'bu',   form:'\u4E0D', pinyin:'b\u00F9',  meaning:'negation (non-past)', minKnown:0 },
+  { id:'ge',   form:'\u4E2A', pinyin:'g\u00E8',  meaning:'general classifier',  minKnown:12 },
+  { id:'de',   form:'\u7684', pinyin:'de',  meaning:'possessive / modifier',    minKnown:20 },
+  { id:'ne',   form:'\u5462', pinyin:'ne',  meaning:'and you? / follow-up',     minKnown:20 },
+  { id:'ba',   form:'\u5427', pinyin:'ba',  meaning:'suggestion / softener',    minKnown:30 },
+  { id:'le',   form:'\u4E86', pinyin:'le',  meaning:'completed / changed state',minKnown:40 },
+  { id:'mei',  form:'\u6CA1', pinyin:'m\u00E9i', meaning:'negation (past / \u6709)', minKnown:14 },
+  { id:'guo',  form:'\u8FC7', pinyin:'guo', meaning:'experiential aspect',      minKnown:60 },
+  { id:'zhe',  form:'\u7740', pinyin:'zhe', meaning:'continuous aspect',        minKnown:70 },
+  { id:'bi',   form:'\u6BD4', pinyin:'b\u01D0',  meaning:'comparison',          minKnown:75 },
+]
+function mandarinScaffoldFor(vocab) {
+  const known = (vocab || []).filter(w => w.status === 'known').length
+  return MANDARIN_GRAMMAR_SCAFFOLD.filter(g => known >= g.minKnown)
+}
+
+// §16 — fixed conversation basics. Explicit and tiny; never silently expanded.
+const MANDARIN_CONVERSATION_BASICS = [
+  { id:'nihao',  form:'\u4F60\u597D', pinyin:'n\u01D0 h\u01CEo', english:'hello',   minKnown:0 },
+  { id:'en',     form:'\u55EF',       pinyin:'\u01F9g',         english:'mm / yeah', minKnown:0 },
+  { id:'zaijian',form:'\u518D\u89C1', pinyin:'z\u00E0iji\u00E0n',english:'goodbye', minKnown:0 },
+  { id:'haode',  form:'\u597D\u7684', pinyin:'h\u01CEo de',      english:'okay',    minKnown:0 },
+]
+function mandarinBasicsFor(vocab) {
+  const known = (vocab || []).filter(w => w.status === 'known').length
+  return MANDARIN_CONVERSATION_BASICS.filter(b => known >= b.minKnown)
+}
+
+// ── Mandarin segmentation & pinyin (§7, §8, §9, §10, §48) ────────────────────
+// Chinese has no spaces, and characters are polyphonic, so pronunciation must be
+// resolved at WORD level against a lexicon — never character by character (§8).
+
+// Multi-character lexical items that are NOT in the SRS bank but must still
+// segment as single units, plus polyphonic disambiguation entries.
+const MANDARIN_EXTRA_LEXICON = [
+  { w:'\u4E0D\u9519', p:'b\u00FAcu\u00F2', e:'not bad / pretty good' },
+  { w:'\u4E00\u4E0B', p:'y\u00EDxi\u00E0', e:'a moment / briefly' },
+]
+// NOTE: \u597D\u5417 / \u597D\u5427 / \u53EF\u4EE5\u5417 are deliberately NOT lexical units. They are a content
+// word plus a grammar particle, so segmentation must split them (\u00a710) \u2014 otherwise a
+// target such as \u597D is hidden inside \u597D\u5417 and reported as absent (\u00a721).
+// §8/§46 — polyphonic characters: the reading depends on the WORD it appears in.
+const MANDARIN_POLYPHONIC = {
+  '\u884C': { def:'x\u00EDng', words:{ '\u94F6\u884C':'h\u00E1ng', '\u884C\u4E1A':'h\u00E1ng' } },   // xíng / háng
+  '\u4E50': { def:'l\u00E8',   words:{ '\u97F3\u4E50':'yu\u00E8' } },                                 // lè / yuè
+  '\u8FD8': { def:'h\u00E1i', words:{ '\u8FD8\u94B1':'hu\u00E1n', '\u5F52\u8FD8':'hu\u00E1n' } },     // hái / huán
+  '\u5F97': { def:'d\u00E9',   words:{ '\u89C9\u5F97':'de', '\u8BB0\u5F97':'de', '\u5F97\u5230':'d\u00E9' } },
+  '\u957F': { def:'ch\u00E1ng', words:{ '\u957F\u5927':'zh\u01CEng' } },                              // cháng / zhǎng
+  '\u4E50\u610F': { def:'l\u00E8' },
+}
+
+// Builds the segmentation lexicon for a learner: bank + scaffold + basics + extras.
+// Longest-match-first so \u4ECA\u5929 never splits into \u4ECA + \u5929 (\u00a710/\u00a749).
+function mandarinLexicon(vocab) {
+  const lex = []
+  ;(vocab || RAW_MANDARIN_VOCAB).forEach(w => {
+    const zh = w.chinese || w.w
+    if (zh) lex.push({ w:zh, p:w.pinyin || '', e:w.english || '', type:'vocab', vocabId:w.id })
+  })
+  MANDARIN_GRAMMAR_SCAFFOLD.forEach(g => lex.push({ w:g.form, p:g.pinyin, e:g.meaning, type:'grammar', scaffoldId:g.id }))
+  MANDARIN_CONVERSATION_BASICS.forEach(b => lex.push({ w:b.form, p:b.pinyin, e:b.english, type:'basic', basicId:b.id }))
+  MANDARIN_EXTRA_LEXICON.forEach(x => lex.push({ w:x.w, p:x.p, e:x.e, type:'lexical' }))
+  return lex.filter(x => x.w).sort((a, b) => b.w.length - a.w.length)
+}
+
+const ZH_PUNCT = /[\uFF0C\u3002\uFF1F\uFF01\uFF1B\uFF1A\u3001\u201C\u201D\u2018\u2019\uFF08\uFF09\s]/
+
+// §10 — word-level segmentation. Returns segments that reconstruct the sentence
+// exactly apart from punctuation/spacing.
+function segmentMandarin(sentence, lexicon) {
+  const s = String(sentence || '')
+  const lex = lexicon || mandarinLexicon(null)
+  const out = []
+  let i = 0
+  while (i < s.length) {
+    const ch = s[i]
+    if (ZH_PUNCT.test(ch)) { out.push({ surface:ch, pinyin:'', english:'', type:'punct' }); i += 1; continue }
+    const hit = lex.find(x => s.startsWith(x.w, i))
+    if (hit) {
+      out.push({ surface:hit.w, pinyin:hit.p, english:hit.e, type:hit.type,
+                 vocabId:hit.vocabId, scaffoldId:hit.scaffoldId, basicId:hit.basicId })
+      i += hit.w.length; continue
+    }
+    // §8 — unknown character: record it, resolving a polyphonic default if known.
+    const poly = MANDARIN_POLYPHONIC[ch]
+    out.push({ surface:ch, pinyin: poly ? poly.def : '', english:'', type:'unknown' })
+    i += 1
+  }
+  return out
+}
+
+// §8/§46 — contextual reading: a character inside a known word takes that word's
+// reading, not a per-character dictionary default.
+function mandarinContextualReading(word, lexicon) {
+  const lex = lexicon || mandarinLexicon(null)
+  const hit = lex.find(x => x.w === word)
+  if (hit && hit.p) return hit.p
+  for (const [ch, info] of Object.entries(MANDARIN_POLYPHONIC)) {
+    if (info.words && info.words[word]) return info.words[word]
+  }
+  return ''
+}
+
+// §7 — pinyin validation. Tone MARKS are required for learner-facing display;
+// tone-number pinyin is rejected as a display form.
+const PINYIN_TONE_MARKS = '\u0101\u00E1\u01CE\u00E0\u0113\u00E9\u011B\u00E8\u012B\u00ED\u01D0\u00EC\u014D\u00F3\u01D2\u00F2\u016B\u00FA\u01D4\u00F9\u01D6\u01D8\u01DA\u01DC\u00FC'
+function isToneNumberPinyin(p) { return /[a-z\u00FC]+[1-5]\b/i.test(String(p || '')) }
+function validateMandarinPinyin(p) {
+  const s = String(p || '').trim()
+  if (!s) return { ok:false, reason:'missing pinyin' }
+  if (/[\u4E00-\u9FFF]/.test(s)) return { ok:false, reason:'pinyin contains Chinese characters' }
+  if (/[\u0E00-\u0E7F]/.test(s)) return { ok:false, reason:'Thai script in pinyin' }
+  if (/[\u3040-\u30FF]/.test(s)) return { ok:false, reason:'Japanese kana in pinyin' }
+  if (isToneNumberPinyin(s)) return { ok:false, reason:'tone-number pinyin \u2014 tone marks required' }
+  if (!/^[a-zA-Z\u00FC' \-,.\uFF1F\uFF01?!]*$/.test(s.replace(new RegExp('[' + PINYIN_TONE_MARKS + ']', 'g'), 'a')))
+    return { ok:false, reason:'invalid characters in pinyin' }
+  return { ok:true }
+}
+
+// §9/§48 — tone sandhi produces SPOKEN pinyin. Canonical vocabulary pinyin is never
+// overwritten; the surface form is stored separately as spokenPinyin.
+const TONE3 = new RegExp('[\u01CE\u011B\u01D0\u01D2\u01D4\u01DA]')
+function toneOf(syl) {
+  if (/[\u0101\u0113\u012B\u014D\u016B\u01D6]/.test(syl)) return 1
+  if (/[\u00E1\u00E9\u00ED\u00F3\u00FA\u01D8]/.test(syl)) return 2
+  if (TONE3.test(syl)) return 3
+  if (/[\u00E0\u00E8\u00EC\u00F2\u00F9\u01DC]/.test(syl)) return 4
+  return 0
+}
+const T3_TO_T2 = { '\u01CE':'\u00E1', '\u011B':'\u00E9', '\u01D0':'\u00ED', '\u01D2':'\u00F3', '\u01D4':'\u00FA', '\u01DA':'\u01D8' }
+function mandarinSpokenPinyin(pinyin) {
+  const parts = String(pinyin || '').split(/(\s+)/)
+  const syl = parts.map((p, i) => ({ p, i, isWord: !/^\s*$/.test(p) }))
+  const words = syl.filter(x => x.isWord)
+  // third-tone sandhi: 3+3 -> 2+3, applied left to right across adjacent syllables
+  for (let k = 0; k < words.length - 1; k++) {
+    if (toneOf(words[k].p) === 3 && toneOf(words[k + 1].p) === 3) {
+      words[k].p = words[k].p.replace(TONE3, m => T3_TO_T2[m] || m)
+    }
+  }
+  words.forEach(w => { parts[w.i] = w.p })
+  return parts.join('')
+}
+
+// ── Mandarin learner inventory & validation (§11, §12, §17–21) ───────────────
+
+function initMandarinVocab() {
+  return (RAW_MANDARIN_VOCAB || []).map((d, i) => ({
+    id: d.id || i + 1, unlockOrder: d.unlockOrder || d.id || i + 1,
+    chinese: d.chinese, pinyin: d.pinyin, english: d.english,
+    partOfSpeech: d.partOfSpeech || null,
+    status:'new', interval:0, repCount:0, okStreak:0, lapses:0,
+    lastSeen:null, dueDate:null, introducedDate:null, difficulty:'hard',
+  }))
+}
+// §39 — merge by stable id: bank text wins, SRS history is never reset.
+function mergeMandarinVocab(saved) {
+  const fresh = initMandarinVocab()
+  if (!Array.isArray(saved) || !saved.length) return fresh
+  const byId = {}; saved.forEach(w => { if (w && w.id != null) byId[w.id] = w })
+  const merged = fresh.map(f => {
+    const s = byId[f.id]; if (!s) return f
+    return { ...f,
+      status:s.status!=null?s.status:f.status, interval:s.interval!=null?s.interval:f.interval,
+      repCount:s.repCount!=null?s.repCount:f.repCount, okStreak:s.okStreak!=null?s.okStreak:f.okStreak,
+      lapses:s.lapses!=null?s.lapses:f.lapses, lastSeen:s.lastSeen!=null?s.lastSeen:f.lastSeen,
+      dueDate:s.dueDate!=null?s.dueDate:f.dueDate, introducedDate:s.introducedDate!=null?s.introducedDate:f.introducedDate,
+      difficulty:s.difficulty!=null?s.difficulty:f.difficulty }
+  })
+  const ids = new Set(fresh.map(f => f.id))
+  saved.forEach(w => { if (w && w.id != null && !ids.has(w.id)) merged.push(w) })
+  return merged
+}
+
+// §12 — "introduced" means actually encountered. A word rated Hard stays status
+// 'new' (it holds its slot) but the learner HAS seen it and it stays usable.
+function isMandarinIntroduced(w, activeIds) {
+  if (!w) return false
+  if (activeIds && activeIds.has(w.id)) return true
+  return (w.repCount || 0) > 0 || !!w.lastSeen
+}
+
+// §11 — THE one inventory. Every generation stage reads from this.
+function mandarinLearnerInventory(vocab, targets) {
+  const ids = new Set((targets || []).map(t => t.id))
+  const introducedVocabulary = (vocab || []).filter(w => !ids.has(w.id) && isMandarinIntroduced(w, ids))
+  const currentTargets = targets || []
+  const allContent = [...currentTargets, ...introducedVocabulary]
+  const known = (vocab || []).filter(w => w.status === 'known').length
+  return {
+    currentTargets, introducedVocabulary, allContent,
+    conversationBasics: mandarinBasicsFor(vocab),
+    grammarScaffold: mandarinScaffoldFor(vocab),
+    introducedCount: allContent.length,
+    isZeroBeginner: known === 0 && allContent.length <= 3,
+    lexicon: mandarinLexicon(allContent),
+  }
+}
+
+// §18 — diversity pressure scales with the inventory the learner actually has.
+function mandarinScarcityLevel(inv) {
+  const n = ((inv && inv.allContent) || []).length
+  if (n <= 15) return 'A'
+  if (n <= 50) return 'B'
+  return 'C'
+}
+const MANDARIN_SCARCITY_RULES = {
+  A: { requirePatternVariety:false, requireScenarioVariety:false, allowCrossTargetReuse:true,  allowNearDuplicate:true,  maxTiers:4 },
+  B: { requirePatternVariety:false, requireScenarioVariety:true,  allowCrossTargetReuse:false, allowNearDuplicate:true,  maxTiers:6 },
+  C: { requirePatternVariety:true,  requireScenarioVariety:true,  allowCrossTargetReuse:false, allowNearDuplicate:false, maxTiers:11 },
+}
+function mandarinScarcityRules(inv) { return MANDARIN_SCARCITY_RULES[mandarinScarcityLevel(inv)] }
+
+// §19 — complexity from CONTENT segments, not Hanzi count. Particles cost less.
+function mandarinComplexity(pair, inv) {
+  const segs = Array.isArray(pair && pair.segments) && pair.segments.length
+    ? pair.segments
+    : segmentMandarin((pair && pair.chinese) || '', inv && inv.lexicon)
+  const content = segs.filter(s => s && s.type !== 'punct' && s.type !== 'grammar').length
+  const clauses = ((pair && pair.chinese) || '').split(/[\uFF0C\u3002\uFF1B]/).filter(x => x.trim()).length
+  return content + Math.max(0, clauses - 1)
+}
+function mandarinComplexityCeiling(vocab) {
+  const known = (vocab || []).filter(w => w.status === 'known').length
+  if (known < 10) return 4
+  if (known < 30) return 6
+  if (known < 60) return 8
+  return 11
+}
+
+// §21/§50 — lexical target matching. 吃 must not satisfy a 吃饭 target, and a
+// legitimate grammatical frame around the target must not cause rejection.
+function mandarinTargetPresent(sentence, target, inv) {
+  const zh = (target && (target.chinese || target.w)) || ''
+  if (!zh || !sentence) return false
+  const segs = segmentMandarin(sentence, inv && inv.lexicon)
+  if (segs.some(s => s.surface === zh)) return true
+  // Multi-character targets may be segmented as a longer lexical unit containing
+  // them (e.g. 吃饭 inside 想吃饭 is still segmented as 吃饭), so also allow an exact
+  // surface hit only when no LONGER segment consumed those characters.
+  const idx = sentence.indexOf(zh)
+  if (idx < 0) return false
+  let pos = 0
+  for (const s of segs) {
+    if (pos === idx && s.surface === zh) return true
+    pos += s.surface.length
+  }
+  return false
+}
+
+// §17/§51 — closed vocabulary. Reports untaught LEXICAL items, never characters.
+function mandarinUnknownContent(sentence, inv) {
+  const segs = segmentMandarin(sentence || '', inv.lexicon)
+  const allowed = new Set()
+  ;(inv.allContent || []).forEach(w => allowed.add(w.chinese))
+  ;(inv.grammarScaffold || []).forEach(g => allowed.add(g.form))
+  ;(inv.conversationBasics || []).forEach(b => allowed.add(b.form))
+  const unknown = []
+  segs.forEach(s => {
+    if (!s || s.type === 'punct') return
+    if (!/[\u4E00-\u9FFF]/.test(s.surface)) return
+    if (allowed.has(s.surface)) return
+    if (!unknown.includes(s.surface)) unknown.push(s.surface)
+  })
+  return unknown
+}
+function mandarinCheckLine(sentence, inv) {
+  const unknown = mandarinUnknownContent(sentence, inv)
+  return { ok: unknown.length === 0, unknown }
+}
+
+// ── Mandarin generation (§20, §28, §29, §30, §44, §64-§74) ───────────────────
+
+function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
+  const content = inv.allContent.map(w => '  ' + w.chinese + ' [' + w.pinyin + '] = ' + w.english).join('\n')
+  const basics  = inv.conversationBasics.map(b => '  ' + b.form + ' [' + b.pinyin + '] = ' + b.english).join('\n')
+  const gram    = inv.grammarScaffold.map(g => '  ' + g.form + ' [' + g.pinyin + '] \u2014 ' + g.meaning).join('\n')
+  const ceiling = mandarinComplexityCeiling(vocab)
+  const system =
+    'You are a Mandarin teacher writing natural spoken Chinese for a beginner learner.\n\n' + MANDARIN_REGISTER.contract
+  const user =
+    '=== THE ONLY MANDARIN YOU MAY USE ===\n' +
+    'CONTENT WORDS:\n' + content + '\n' +
+    'CONVERSATION BASICS:\n' + (basics || '  (none)') + '\n' +
+    'GRAMMAR AVAILABLE:\n' + (gram || '  (none)') + '\n' +
+    'Any other Chinese word is FORBIDDEN (\u00a717). If the idea needs a word not listed, SIMPLIFY THE IDEA (\u00a764).\n\n' +
+    'TARGET: \u2605 ' + target.chinese + ' [' + target.pinyin + '] = ' + target.english + '\n' +
+    'Write ONE natural sentence (recall ' + recallIndex + ' of 3) that genuinely uses ' + target.chinese + '.\n' +
+    'Max ' + ceiling + ' content words. Simplified Chinese only. No Traditional characters.\n' +
+    (rules.requirePatternVariety ? 'Vary the grammar pattern from earlier recalls.\n'
+      : 'Controlled repetition and similar structures are DESIRABLE at this stage (\u00a754).\n') +
+    '\u00a770: adjectives take \u5F88 etc., NOT \u662F. \u00a771: use \u4E0D vs \u6CA1 correctly. \u00a769: keep the subject when it aids clarity.\n' +
+    '\u00a766: the English prompt must cue the meaning naturally without revealing the Chinese.\n' +
+    'Return ONLY JSON:\n' +
+    '{"chinese":"...","pinyin":"tone-MARK pinyin, spaced by word","english":"...","prompt":"English cue",' +
+    '"segments":[{"surface":"\u4F60","pinyin":"n\u01D0","english":"you"}]}'
+  return { system, user }
+}
+
+// §70/§71 — deterministic grammaticality checks for the structures a beginner can
+// actually produce. Conservative: only flags patterns that are clearly wrong.
+function mandarinGrammarProblems(zh, segs, inv) {
+  const P = []
+  const words = (segs || []).filter(s => s && s.type !== 'punct')
+  const posOf = surface => {
+    const w = (inv.allContent || []).find(x => x.chinese === surface)
+    return w ? (w.partOfSpeech || '') : (surface === '\u4E0D' || surface === '\u6CA1' ? 'negation' : '')
+  }
+  for (let i = 0; i < words.length - 1; i++) {
+    const a = words[i].surface, b = words[i + 1].surface
+    const pb = posOf(b)
+    // \u4E0D / \u6CA1 negate verbs and adjectives, never a pronoun or a bare noun
+    if ((a === '\u4E0D' || a === '\u6CA1') && (pb === 'pronoun' || pb === 'noun')) {
+      P.push('ungrammatical: ' + a + ' cannot negate ' + b)
+    }
+    // \u6CA1 negates \u6709 / past events, not a plain non-past verb phrase with \u4E0D-semantics
+    if (a === '\u6CA1' && b !== '\u6709' && pb === 'adjective') P.push('ungrammatical: use \u4E0D not \u6CA1 before ' + b)
+    // \u5F88 modifies adjectives, not verbs or nouns (\u00a770)
+    if (a === '\u5F88' && (pb === 'verb' || pb === 'noun' || pb === 'pronoun')) {
+      P.push('ungrammatical: \u5F88 cannot modify ' + b)
+    }
+    // §70 — do not use 是 before an adjective predicate
+    if (a === '\u662F' && pb === 'adjective') P.push('unnatural: adjective predicates do not take \u662F')
+  }
+  // a sentence of only a negation or only particles is not a sentence
+  const content = words.filter(w => w.type !== 'grammar')
+  if (!content.length) P.push('no content word in sentence')
+  return P
+}
+
+// §28 — cheap deterministic checks BEFORE expensive repair, in the specified order.
+function validateMandarinPair(cand, target, inv, vocab, rules, seenMap) {
+  const P = []
+  if (!cand || !cand.chinese) return { ok:false, problems:['missing Chinese'] }
+  const zh = String(cand.chinese).trim()
+  // A. schema
+  if (!cand.english) P.push('missing English')
+  if (!cand.prompt) P.push('missing prompt')
+  if (!cand.pinyin) P.push('missing pinyin')
+  if (/[\u0E00-\u0E7F]/.test(JSON.stringify(cand))) P.push('Thai script residue')
+  if (/[\u3040-\u30FF]/.test(zh + (cand.pinyin || ''))) P.push('Japanese kana residue')
+  if (P.length) return { ok:false, problems:P }
+  // B. reconstruction
+  const segs = Array.isArray(cand.segments) && cand.segments.length
+    ? cand.segments : segmentMandarin(zh, inv.lexicon)
+  const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
+  if (strip(segs.map(s => s.surface || '').join('')) !== strip(zh)) P.push('segments do not reconstruct the sentence')
+  // C. target
+  if (!mandarinTargetPresent(zh, target, inv)) P.push('target ' + target.chinese + ' not present')
+  // D. producibility
+  const unk = mandarinUnknownContent(zh, inv)
+  if (unk.length) P.push('untaught vocabulary: ' + unk.join(' '))
+  // E. pinyin alignment
+  const pv = validateMandarinPinyin(cand.pinyin)
+  if (!pv.ok) P.push('pinyin: ' + pv.reason)
+  // G. register
+  for (const rx of MANDARIN_REGISTER.tooFormal) if (rx.test(zh)) { P.push('register too formal'); break }
+  for (const rx of MANDARIN_REGISTER.tooRough) if (rx.test(zh)) { P.push('register too rough'); break }
+  // H. complexity
+  const cx = mandarinComplexity({ chinese:zh, segments:segs }, inv)
+  if (cx > mandarinComplexityCeiling(vocab) + 2) P.push('too complex for this stage (' + cx + ')')
+  if (P.length) return { ok:false, problems:P }
+  // \u00a770/\u00a771 \u2014 basic Mandarin grammaticality. Broken Chinese is not an acceptable
+  // way to satisfy a closed vocabulary (\u00a764).
+  const gp = mandarinGrammarProblems(zh, segs, inv)
+  if (gp.length) return { ok:false, problems:gp }
+  // I. duplicate \u2014 last, and scarcity-aware (\u00a754)
+  const key = strip(zh)
+  const prev = seenMap.get(key)
+  if (prev !== undefined) {
+    if (prev === target.id) return { ok:false, problems:['identical sentence already used for this target'] }
+    if (!rules.allowCrossTargetReuse) return { ok:false, problems:['sentence already used for another target'] }
+  }
+  return { ok:true, problems:[], segments:segs, complexity:cx }
+}
+
+// §30 — deterministic fallback, built only from the learner's own inventory, and
+// run through the SAME validator. Never trusted merely because it is hardcoded.
+function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
+  const zh = target.chinese, has = w => inv.allContent.some(x => x.chinese === w)
+  const gram = f => inv.grammarScaffold.some(g => g.form === f)
+  // §64 — templates are grammatical by part of speech. Never produce broken
+  // Chinese (不我) or self-duplication (我想想) just to fill a slot.
+  const C = []
+  const pos = target.partOfSpeech || ''
+  const isVerb = pos === 'verb', isAdj = pos === 'adjective'
+  const isPredicate = isVerb || isAdj
+  if (isVerb) {
+    if (has('\u6211')) C.push({ zh:'\u6211' + zh + '\u3002', en:'I ' + target.english + '.', cue:'Say you ' + target.english })
+    if (has('\u4F60') && gram('\u5417')) C.push({ zh:'\u4F60' + zh + '\u5417\uFF1F', en:'Do you ' + target.english + '?', cue:'Ask whether they ' + target.english })
+    if (has('\u6211') && has('\u60F3') && zh !== '\u60F3') C.push({ zh:'\u6211\u60F3' + zh + '\u3002', en:'I want to ' + target.english + '.', cue:'Say you want to ' + target.english })
+    if (has('\u6211') && gram('\u4E0D')) C.push({ zh:'\u6211\u4E0D' + zh + '\u3002', en:'I do not ' + target.english + '.', cue:'Say you do not ' + target.english })
+  } else if (isAdj) {
+    if (has('\u5F88')) C.push({ zh:'\u5F88' + zh + '\u3002', en:'Very ' + target.english + '.', cue:'Say it is very ' + target.english })
+    if (has('\u4F60') && gram('\u5417')) C.push({ zh:'\u4F60' + zh + '\u5417\uFF1F', en:'Are you ' + target.english + '?', cue:'Ask whether they are ' + target.english })
+    if (gram('\u4E0D')) C.push({ zh:'\u4E0D' + zh + '\u3002', en:'Not ' + target.english + '.', cue:'Say it is not ' + target.english })
+  } else {
+    // pronouns, nouns, question words, expressions: no \u4E0D negation, no \u5F88
+    // §69 — pronouns need usable shapes from lesson one, built with any known verb.
+    if (pos === 'pronoun') {
+      const verbs = inv.allContent.filter(w => w.partOfSpeech === 'verb' && w.chinese !== zh)
+      verbs.slice(0, 3).forEach(vb => {
+        C.push({ zh: zh + vb.chinese + '\u3002', en: target.english + ' ' + vb.english + '.', cue:'Say ' + target.english + ' ' + vb.english })
+        if (gram('\u5417')) C.push({ zh: zh + vb.chinese + '\u5417\uFF1F', en:'Do ' + target.english + ' ' + vb.english + '?', cue:'Ask whether ' + target.english + ' ' + vb.english })
+      })
+    }
+    // §74 — question words attach to a known verb, never English inversion.
+    if (pos === 'question') {
+      const verbs = inv.allContent.filter(w => w.partOfSpeech === 'verb')
+      verbs.slice(0, 3).forEach(vb => {
+        C.push({ zh: vb.chinese + zh + '\uFF1F', en: vb.english + ' ' + target.english + '?', cue:'Ask ' + target.english + ' to ' + vb.english })
+        if (has('\u4F60')) C.push({ zh:'\u4F60' + vb.chinese + zh + '\uFF1F', en:'What do you ' + vb.english + '?', cue:'Ask what they ' + vb.english })
+        if (has('\u6211') && has('\u60F3')) C.push({ zh:'\u6211\u60F3' + vb.chinese + zh + '\uFF1F', en:'What should I ' + vb.english + '?', cue:'Wonder aloud what to ' + vb.english })
+      })
+    }
+    if (has('\u6211') && has('\u60F3') && has('\u5403') && pos === 'noun')
+      C.push({ zh:'\u6211\u60F3\u5403' + zh + '\u3002', en:'I want to eat ' + target.english + '.', cue:'Say you want to eat ' + target.english })
+    if (has('\u8981')) C.push({ zh:'\u6211\u8981' + zh + '\u3002', en:'I want ' + target.english + '.', cue:'Say you want ' + target.english })
+    if (has('\u6709')) C.push({ zh:'\u6709' + zh + '\u3002', en:'There is ' + target.english + '.', cue:'Say there is ' + target.english })
+    if (has('\u4F60') && gram('\u5417') && pos === 'noun')
+      C.push({ zh:'\u4F60\u6709' + zh + '\u5417\uFF1F', en:'Do you have ' + target.english + '?', cue:'Ask whether they have ' + target.english })
+    if (gram('\u5417') && pos !== 'question') C.push({ zh: zh + '\u5417\uFF1F', en: target.english + '?', cue:'Ask about ' + target.english })
+    if (has('\u597D')) C.push({ zh: zh + '\u597D\u3002', en: target.english + ' is good.', cue:'Say ' + target.english + ' is good' })
+  }
+  C.push({ zh: zh + '\u3002', en: target.english + '.', cue:'Say ' + target.english })
+  if (isPredicate && gram('\u5417')) C.push({ zh: zh + '\u5417\uFF1F', en: target.english + '?', cue:'Ask about ' + target.english })
+  // §30 — build every candidate, then return the first that actually PASSES the
+  // real validator and has not been used. A template that segments the target away
+  // (你好吗 hides the target 好 inside the basic 你好) is silently skipped.
+  const uniq = []; C.forEach(c => { if (c.zh && !uniq.some(u => u.zh === c.zh)) uniq.push(c) })
+  const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
+  const make = c => {
+    const segs = segmentMandarin(c.zh, inv.lexicon)
+    return { chinese:c.zh,
+      pinyin: segs.filter(s => s.type !== 'punct').map(s => s.pinyin).filter(Boolean).join(' '),
+      english:c.en, prompt:c.cue, segments:segs, _fallback:true }
+  }
+  const usable = []
+  for (const c of uniq) {
+    const p = make(c)
+    // §54 — at scarcity A the same sentence may serve a different target; only a
+    // repeat for the SAME target is rejected.
+    if (seenMap && seenMap.has(strip(p.chinese))) {
+      const owner = seenMap.get(strip(p.chinese))
+      if (owner === target.id || !(rules && rules.allowCrossTargetReuse)) continue
+    }
+    if (vocab && rules) {
+      const v = validateMandarinPair(p, target, inv, vocab, rules, seenMap || new Map())
+      if (!v.ok) continue
+    } else if (!mandarinTargetPresent(p.chinese, target, inv)) continue
+    usable.push(p)
+  }
+  return usable[0] || null
+}
+
+// §20 — ONE recall, escalating tiers, locked once accepted. Never returns partial.
+async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules, apiKey, model, seenMap, onLog, onTier) {
+  const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
+  const maxTier = rules.maxTiers
+  let last = ''
+  for (let tier = 1; tier <= maxTier; tier++) {
+    const isFallback = tier === maxTier
+    onTier && onTier(tier)
+    onLog && onLog('  ' + checkStyle(tier).icon + ' ' + ORD[tier-1] + ' check: ' + target.chinese + ' \u00b7 recall ' + recallIndex)
+    let cand = null
+    if (isFallback) {
+      cand = mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules)
+      if (cand) onLog && onLog('  \u2699 deterministic fallback')
+    } else {
+      const { system, user } = buildMandarinPrompt(target, inv, vocab, recallIndex, rules)
+      const extra = tier === 1 ? '' :
+        tier === 2 ? '\nThe previous attempt failed: ' + last + '. Fix exactly that.' :
+        tier === 3 ? '\nSimplify: fewer content words, shorter sentence. Previous failure: ' + last :
+                     '\nUse ONLY ' + target.chinese + ' plus at most one other known word. Previous failure: ' + last
+      let raw = ''
+      try { raw = await callOpenRouterOnce(apiKey, model, [{role:'system',content:system},{role:'user',content:user + extra}], 700) }
+      catch (e) { last = (e.message || '').slice(0,60); continue }
+      const parsed = _jaParseJSON(raw)
+      cand = Array.isArray(parsed) ? parsed[0] : parsed
+    }
+    if (!cand) { last = 'no candidate'; continue }
+    const v = validateMandarinPair(cand, target, inv, vocab, rules, seenMap)
+    if (!v.ok) { last = v.problems[0]; onLog && onLog('  \u274C ' + last); continue }
+    const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
+    seenMap.set(strip(cand.chinese), target.id)
+    onLog && onLog('  \u2705 ' + ORD[tier-1] + ' check passed: ' + cand.chinese)
+    return {
+      pair: {
+        chinese: cand.chinese, pinyin: cand.pinyin,
+        spokenPinyin: mandarinSpokenPinyin(cand.pinyin),
+        english: cand.english, prompt: cand.prompt,
+        segments: v.segments,
+        targetId: target.id, targetChinese: target.chinese,
+        recallIndex, checkTier: tier, _source: 'zh-check-' + tier,
+        // shared Player/adapters read these; Mandarin fields stay authoritative (\u00a76)
+        thai: cand.chinese, phonetic: cand.pinyin, wordId: target.id,
+        words: v.segments.filter(s => s.type !== 'punct').map(s => ({ p:s.pinyin, e:s.english })),
+      },
+      checkTier: tier,
+    }
+  }
+  return null
+}
+
+// ── Mandarin track assembly (§20, §22, §26, §44, §83) ────────────────────────
+const ZH_TIER_SOURCE = n => 'zh-check-' + n
+
+// §44 — conversational envelope. Built ONLY from conversation basics plus the
+// learner's own inventory, and validated like everything else (§17).
+function mandarinFramingPairs(inv) {
+  const basic = f => inv.conversationBasics.find(b => b.form === f)
+  const mk = (speaker, b, english, prompt, kind) => b ? {
+    speaker, chinese:b.form, pinyin:b.pinyin, spokenPinyin:mandarinSpokenPinyin(b.pinyin),
+    english, prompt, segments:[{ surface:b.form, pinyin:b.pinyin, english:b.english, type:'basic' }],
+    targetId:null, targetChinese:null, recallIndex:null, checkTier:null,
+    _framing:true, _source:'zh:scene', _kind:kind,
+    thai:b.form, phonetic:b.pinyin, wordId:null,
+    words:[{ p:b.pinyin, e:b.english }],
+  } : null
+  const open  = mk('A', basic('\u4F60\u597D'), 'Hello.',   'Greet them',            'greeting')
+  const reply = mk('B', basic('\u55EF'),       'Mm.',      'Acknowledge warmly',    'greeting')
+  const close = mk('A', basic('\u518D\u89C1'), 'Goodbye.', 'Say goodbye',           'parting')
+  const creply= mk('B', basic('\u597D\u7684'), 'Okay.',    'Accept and close off',  'parting')
+  return { open:[open, reply].filter(Boolean), close:[close, creply].filter(Boolean) }
+}
+
+// §20/§83 — three recalls per target, or an explicit recoverable failure.
+async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, onLog, stopSignal) {
+  const inv = mandarinLearnerInventory(vocab, targets)
+  const rules = mandarinScarcityRules(inv)
+  const seenMap = new Map()
+  const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
+
+  onLog && onLog('\u2139 Scarcity ' + mandarinScarcityLevel(inv) + ' \u00b7 ' + inv.allContent.length + ' content words available')
+  onLog && onLog('\u2139 Available: ' + inv.allContent.map(w => w.chinese).join(' '))
+
+  const { open, close } = mandarinFramingPairs(inv)
+  ;[...open, ...close].forEach(p => {
+    const chk = mandarinCheckLine(p.chinese, inv)
+    if (!chk.ok) onLog && onLog('  \u2716 dropped framing (untaught: ' + chk.unknown.join(' ') + ')')
+    seenMap.set(strip(p.chinese), null)
+  })
+  if (open.length) onLog && onLog('\u2713 opening ready')
+
+  const perTarget = []
+  const totalRecall = targets.length * 3
+  let doneRecall = 0, attempts = 0
+  const failures = []
+
+  for (let i = 0; i < targets.length; i++) {
+    if (stopSignal && stopSignal.cancelled) break
+    const t = targets[i]
+    onLog && onLog((i + 1) + '/' + targets.length + '  ' + t.chinese + '  ' + t.pinyin)
+    onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, recallIndex:1, checkTier:1, starting:true })
+    const accepted = []
+    for (let r = 1; r <= 3; r++) {
+      if (stopSignal && stopSignal.cancelled) break
+      const got = await generateMandarinOneRecall(t, r, vocab, inv, rules, apiKey, model, seenMap, onLog,
+        tier => { attempts++; onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, recallIndex:r, checkTier:tier, accepted:false }) })
+      if (!got) {
+        // §83 — visible, recoverable failure. Never silently continue.
+        failures.push({ target:t.chinese, targetId:t.id, recallIndex:r, reason:'no valid candidate after all checks' })
+        onLog && onLog('  \u274C ' + t.chinese + ' recall ' + r + ' could not be generated')
+        continue
+      }
+      accepted.push(got.pair)
+      doneRecall++
+      onProgress && onProgress(doneRecall, totalRecall, {
+        targetIdx:i, targetId:t.id, recallIndex:r, checkTier:got.checkTier,
+        source:ZH_TIER_SOURCE(got.checkTier), accepted:true,
+      })
+    }
+    perTarget.push(accepted)
+    onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, completed:true, recallsCompleted:accepted.length })
+  }
+
+  const produced = perTarget.reduce((a, s) => a + s.length, 0)
+  if (produced !== totalRecall && !(stopSignal && stopSignal.cancelled)) {
+    const err = new Error('Generation incomplete: expected ' + totalRecall + ' recalls, produced ' + produced)
+    err.incomplete = { expected:totalRecall, produced, failures }
+    onLog && onLog('\u274C ' + err.message)
+    throw err
+  }
+
+  // interleave so exposures are spread rather than clustered
+  const recalls = []
+  for (let round = 0; round < 3; round++) for (const set of perTarget) if (set[round]) recalls.push(set[round])
+  onLog && onLog('\u2139 ' + produced + ' recalls from ' + attempts + ' attempts (' + (produced ? (attempts/produced).toFixed(2) : '0') + ' per recall)')
+  onLog && onLog('\u2705 Track complete \u2014 ' + recalls.length + ' recalls, ' + (open.length + close.length) + ' conversation lines')
+  return {
+    pairs: [...open, ...recalls, ...close],
+    recallCount: recalls.length,
+    framingCount: open.length + close.length,
+    allowedContent: inv.allContent.map(w => ({ chinese:w.chinese, pinyin:w.pinyin, english:w.english })),
+    grammarUsed: inv.grammarScaffold.map(g => ({ form:g.form, pinyin:g.pinyin, meaning:g.meaning })),
+    scarcity: mandarinScarcityLevel(inv),
+  }
+}
+
+// §13/§39 — three new targets by explicit unlockOrder; a Hard word keeps its slot.
+function mandarinSelectTargets(vocab, savedSlots) {
+  const byOrder = (a, b) => (a.unlockOrder || a.id) - (b.unlockOrder || b.id)
+  const carried = (savedSlots || []).map(id => vocab.find(w => w.id === id)).filter(w => w && w.status === 'new')
+  const heldIds = new Set(carried.map(w => w.id))
+  const pool = vocab.filter(w => w.status === 'new' && !heldIds.has(w.id) && (w.repCount || 0) === 0 && !w.lastSeen).sort(byOrder)
+  const need = Math.max(0, 3 - carried.length)
+  return [...carried.sort(byOrder), ...pool.slice(0, need)]
+}
+
+// ── Mandarin Quality Check (§32–§35, §62, §63, §68) ──────────────────────────
+// Genuinely Mandarin. Never calls Thai or Japanese language-specific QC (§31).
+const ZH_QC_CRITICAL = new Set(['chinese','segments','pinyin','translation','prompt',
+  'target','vocabulary','grammar','register','contamination'])
+
+// §62 — cheap structural pre-scan before any expensive work.
+function mandarinQuickScan(pairs) {
+  let suspect = 0
+  ;(pairs || []).forEach(p => {
+    const zh = p.chinese || ''
+    if (!zh) { suspect++; return }
+    if (!p.pinyin || !validateMandarinPinyin(p.pinyin).ok) { suspect++; return }
+    if (!p.english || !p.prompt) { suspect++; return }
+    if (!Array.isArray(p.segments) || !p.segments.length) { suspect++; return }
+    if (/[\u0E00-\u0E7F]/.test(JSON.stringify(p))) { suspect++; return }        // Thai residue
+    if (/[\u3040-\u30FF]/.test(zh + (p.pinyin || ''))) { suspect++; return }    // kana residue
+    if (p.romaji) { suspect++; return }                                        // §63 wrong field
+  })
+  return { total:(pairs || []).length, suspect }
+}
+
+function runMandarinQualityCheckCore(pair, target, inv, vocab) {
+  const issues = [], repairs = []
+  const out = { ...pair }
+  const zh = (out.chinese || '').trim()
+  if (!zh) return { fatal:true, issues:['missing Chinese'], repairs, pair:out }
+
+  // §63 — cross-language contamination is a hard failure, not a cosmetic issue
+  if (/[\u0E00-\u0E7F]/.test(JSON.stringify(out))) issues.push('contamination: Thai script')
+  if (/[\u3040-\u30FF]/.test(zh + (out.pinyin || ''))) issues.push('contamination: Japanese kana')
+  if (out.romaji != null) { delete out.romaji; repairs.push('removed stray romaji field') }
+
+  // segmentation (§10) — rebuild deterministically if it does not reconstruct
+  const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
+  let segs = Array.isArray(out.segments) ? out.segments : []
+  if (!segs.length || strip(segs.map(s => s.surface || '').join('')) !== strip(zh)) {
+    const rebuilt = segmentMandarin(zh, inv.lexicon)
+    if (strip(rebuilt.map(s => s.surface).join('')) === strip(zh)) {
+      segs = rebuilt; out.segments = rebuilt; repairs.push('segments rebuilt from the learner lexicon')
+    } else issues.push('segments do not reconstruct the sentence')
+  }
+  // §67 — segment glosses from the canonical lexicon, never invented
+  out.segments = (out.segments || []).map(s => {
+    const seg = { ...s }
+    if (seg.type === 'punct') return seg
+    const hit = (inv.lexicon || []).find(x => x.w === seg.surface)
+    if (hit) {
+      if (hit.p && seg.pinyin !== hit.p) { seg.pinyin = hit.p; repairs.push('segment pinyin corrected: ' + seg.surface) }
+      if (hit.e && seg.english !== hit.e) { seg.english = hit.e; repairs.push('segment gloss corrected: ' + seg.surface) }
+    } else if (!seg.english) issues.push('no gloss available for ' + seg.surface)
+    return seg
+  })
+  // pinyin (§7) — derive from segments when malformed
+  const pv = validateMandarinPinyin(out.pinyin)
+  if (!pv.ok) {
+    const derived = (out.segments || []).filter(s => s.type !== 'punct').map(s => s.pinyin).filter(Boolean).join(' ')
+    if (derived && validateMandarinPinyin(derived).ok) { out.pinyin = derived; repairs.push('pinyin rebuilt from segments') }
+    else issues.push('pinyin: ' + pv.reason)
+  }
+  out.spokenPinyin = mandarinSpokenPinyin(out.pinyin)
+  // translation / prompt (§66)
+  if (!out.english || !String(out.english).trim()) issues.push('translation: missing English')
+  if (!out.prompt || !String(out.prompt).trim()) issues.push('prompt: missing English cue')
+  else if (/[\u4E00-\u9FFF]/.test(out.prompt)) issues.push('prompt: contains Chinese')
+  // target (§21)
+  if (target && !mandarinTargetPresent(zh, target, inv)) issues.push('target ' + target.chinese + ' not present')
+  // producibility (§17)
+  const unk = mandarinUnknownContent(zh, inv)
+  if (unk.length) issues.push('vocabulary: untaught ' + unk.join(' '))
+  // grammar (§70/§71) and register (§68)
+  mandarinGrammarProblems(zh, out.segments, inv).forEach(g => issues.push('grammar: ' + g))
+  for (const rx of MANDARIN_REGISTER.tooFormal) if (rx.test(zh)) { issues.push('register: too formal for casual-polite'); break }
+  for (const rx of MANDARIN_REGISTER.tooRough) if (rx.test(zh)) { issues.push('register: too rough'); break }
+  return { fatal:false, issues, repairs, pair:out }
+}
+
+// §34/§35 — issue ledger with a reconciling lifecycle, run against the CURRENT track.
+async function runMandarinTrackQC(track, vocab, opts, onProgress, onLog) {
+  const pairs = (track.pairs || []).slice()
+  const targets = (track.keywords || []).map(k => (vocab || []).find(w => w.id === k.wordId)).filter(Boolean)
+  const inv = mandarinLearnerInventory(vocab, targets)
+  const rules = mandarinScarcityRules(inv)
+  const issues = []
+  const out = []
+  const seen = new Map()
+  let n = 0
+  const add = (i, category, message) => {
+    const iss = { issueId:'p' + i + '-' + category + '-' + (++n), pairIndex:i, category, message, status:'found' }
+    issues.push(iss); onLog && onLog('\u26A0 Pair ' + (i + 1) + ' \u2014 ' + message); return iss
+  }
+  const fix = (iss, note) => { iss.status = 'fixed'; onLog && onLog('\u2713 Pair ' + (iss.pairIndex + 1) + ' \u2014 ' + (note || iss.category + ' repaired')) }
+  const accept = (iss, why) => { iss.status = 'accepted'; onLog && onLog('\u2139 Pair ' + (iss.pairIndex + 1) + ' \u2014 ' + why) }
+  const unresolved = (iss, why) => { iss.status = 'unresolved'; onLog && onLog('\u274C Pair ' + (iss.pairIndex + 1) + ' \u2014 ' + (why || 'could not repair ' + iss.category)) }
+  const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
+
+  for (let i = 0; i < pairs.length; i++) {
+    if (opts.cancelled && opts.cancelled()) break
+    onProgress && onProgress(Math.round((i / pairs.length) * 90), 'Checking pair ' + (i + 1) + '/' + pairs.length)
+    const p = pairs[i]
+    const target = p.targetId ? (vocab || []).find(w => w.id === p.targetId) : null
+    const r = runMandarinQualityCheckCore(p, target, inv, vocab)
+    if (r.fatal) { unresolved(add(i, 'chinese', r.issues[0] || 'fatal')); out.push(p); continue }
+    // §34 — a repair only counts once it has been revalidated
+    r.repairs.forEach(rep => {
+      const cat = /pinyin/.test(rep) ? 'pinyin' : /gloss/.test(rep) ? 'gloss' : /segment/.test(rep) ? 'segments' : 'contamination'
+      const iss = add(i, cat, rep)
+      const re = runMandarinQualityCheckCore(r.pair, target, inv, vocab)
+      const stillBroken = re.issues.some(x => x.split(':')[0] === cat)
+      if (stillBroken) unresolved(iss); else fix(iss, rep)
+    })
+    r.issues.forEach(msg => {
+      const cat = msg.split(':')[0].trim().split(' ')[0]
+      unresolved(add(i, ZH_QC_CRITICAL.has(cat) ? cat : 'grammar', msg))
+    })
+    // duplicates last, scarcity-aware (§54)
+    const key = strip(r.pair.chinese)
+    if (seen.has(key)) {
+      const iss = add(i, 'duplicate', 'duplicate of pair ' + (seen.get(key) + 1))
+      if (rules.allowNearDuplicate) accept(iss, 'accepted repetition \u2014 small learner inventory')
+      else unresolved(iss)
+    }
+    seen.set(key, i)
+    out.push(r.pair)
+  }
+
+  onProgress && onProgress(95, 'Final track audit\u2026')
+  const byTarget = {}
+  out.filter(p => !p._framing).forEach(p => { if (p.targetId) byTarget[p.targetId] = (byTarget[p.targetId] || 0) + 1 })
+  ;(track.keywords || []).forEach(k => {
+    const got = byTarget[k.wordId] || 0
+    if (got !== 3) unresolved(add(0, 'target', (k.chinese || '') + ' has ' + got + ' recalls (expected 3)'))
+  })
+
+  const fixed = issues.filter(x => x.status === 'fixed')
+  const accepted = issues.filter(x => x.status === 'accepted')
+  const unres = issues.filter(x => x.status === 'unresolved')
+  onProgress && onProgress(100, 'Done')
+  onLog && onLog('\u2705 QC complete \u2014 ' + issues.length + ' found, ' + fixed.length + ' fixed, ' + accepted.length + ' accepted, ' + unres.length + ' unresolved')
+  return { pairs:out, issues, groups:pairs.length,
+    counts:{ found:issues.length, fixed:fixed.length, accepted:accepted.length, unresolved:unres.length },
+    criticalUnresolvedCount: unres.filter(x => ZH_QC_CRITICAL.has(x.category)).length }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // JAPANESE PROGRAMME — language layer
 // Thai remains the proven implementation and is untouched. Japanese is a parallel
 // programme with its own storage namespace, its own vocabulary bank and its own
@@ -2895,6 +3787,7 @@ function pickBrowserVoice(langCode) {
 const LANGS = {
   th: { code:'th', flag:'\u{1F1F9}\u{1F1ED}', name:'Thai',     title:'Thai Teacher',     ttsLang:'th-TH' },
   ja: { code:'ja', flag:'\u{1F1EF}\u{1F1F5}', name:'Japanese', title:'Japanese Teacher', ttsLang:'ja-JP' },
+  zh: { code:'zh', flag:'\u{1F1E8}\u{1F1F3}', name:'Mandarin', title:'Mandarin Teacher', ttsLang:'zh-CN' },
 }
 const LANG_KEY = 'tt-active-language'
 
@@ -8609,6 +9502,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     )
   }
 
+
   if (phase === 'error') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:20 }}>
       <div style={{ fontSize:40 }}>⚠️</div>
@@ -8876,8 +9770,10 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
   // Thai pairs carry thai/phonetic. Reading a pair through these accessors keeps
   // Thai byte-behaviour identical (it falls straight through to .thai/.phonetic)
   // without renaming Japanese text into a `thai` field anywhere permanent.
-  const targetTextOf = p => (!p ? '' : (_tl === 'ja' ? (p.japanese || p.thai || '') : (p.thai || '')))
-  const phoneticOf   = p => (!p ? '' : (_tl === 'ja' ? (p.romaji || p.phonetic || '') : (p.phonetic || '')))
+  const targetTextOf = p => (!p ? '' : (_tl === 'zh' ? (p.chinese || p.thai || '')
+                                      : _tl === 'ja' ? (p.japanese || p.thai || '') : (p.thai || '')))
+  const phoneticOf   = p => (!p ? '' : (_tl === 'zh' ? (p.pinyin || p.phonetic || '')
+                                      : _tl === 'ja' ? (p.romaji || p.phonetic || '') : (p.phonetic || '')))
   const readingOf    = p => (!p ? '' : (p.reading || ''))
   const pairs = track.pairs || []
   const [idx, setIdx] = useState(track.bookmark || 0)
@@ -9238,7 +10134,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
       <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px 32px 32px', textAlign:'center', gap:24 }}>
         {phase === 'prompt' ? (
           <div className="fade-in" key={`p-${idx}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:20 }}>
-            <div style={{ fontSize:11, letterSpacing:'0.12em', color:'#4a90e2', textTransform:'uppercase', fontWeight:600 }}>{_tl === 'ja' ? 'Say in Japanese' : 'Say in Thai'}</div>
+            <div style={{ fontSize:11, letterSpacing:'0.12em', color:'#4a90e2', textTransform:'uppercase', fontWeight:600 }}>{_tl === 'zh' ? 'Say in Mandarin' : _tl === 'ja' ? 'Say in Japanese' : 'Say in Thai'}</div>
             <p style={{ fontSize:22, fontWeight:600, lineHeight:1.65, color:'var(--text)', maxWidth:340 }}>{pair.prompt}</p>
             <Waveform />
 
@@ -9249,7 +10145,23 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
             {/* §9/§10 — Japanese renders from its OWN segments. The Thai aligned
                 renderer below (enrichWordsWithCompounds, fixIPAPhonetic, tone regexes,
                 gam/lang merges) must never touch Japanese data. */}
-            {_tl === 'ja' ? (
+            {_tl === 'zh' ? (
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                {Array.isArray(pair.segments) && pair.segments.length > 0 ? (
+                  <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:12, maxWidth:360 }}>
+                    {pair.segments.filter(s => s.type !== 'punct').map((s, si) => (
+                      <div key={si} style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                        <span className="zh" style={{ fontSize:16, color:'var(--text)' }}>{s.surface}</span>
+                        <span className="phon" style={{ fontSize:13, color:'var(--gold)' }}>{s.pinyin || ''}</span>
+                        <span style={{ fontSize:10, color:'var(--muted)' }}>{s.english || ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="phon" style={{ fontSize:20, color:'var(--muted)', textAlign:'center', maxWidth:360 }}>{phoneticOf(pair)}</p>
+                )}
+              </div>
+            ) : _tl === 'ja' ? (
               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
                 {Array.isArray(pair.segments) && pair.segments.length > 0 && (
                   <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:12, maxWidth:360 }}>
@@ -9319,7 +10231,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
               </p>
             )}
             <Waveform />
-            <p className={_tl === 'ja' ? 'jp' : 'thai'} style={{ fontSize:28, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center', lineHeight:1.6 }}>{targetTextOf(pair)}</p>
+            <p className={_tl === 'zh' ? 'zh' : _tl === 'ja' ? 'jp' : 'thai'} style={{ fontSize:28, color:'#a8b8d8', letterSpacing:'0.03em', textAlign:'center', lineHeight:1.6 }}>{targetTextOf(pair)}</p>
             {_tl === 'ja' && readingOf(pair) && (
               <p className="jp" style={{ fontSize:15, color:'var(--muted)', textAlign:'center', lineHeight:1.4 }}>{readingOf(pair)}</p>
             )}
@@ -12742,6 +13654,407 @@ function repairJapaneseTrack(track, inv) {
 // Signature matches the caller exactly: track, vocab, onSave, onSkip.
 // §5 — calls runJapaneseTrackQC (which calls runJapaneseQualityCheckCore per pair).
 // It never touches runQualityCheckCore or any Thai phonetic/gloss function.
+// ── Mandarin UI (§22–§27, §43, §45, §55, §56) ────────────────────────────────
+
+// §23/§24 — pill with three recall LEDs, keyed on stable targetId (§22).
+function MandarinTargetPill({ w, state, srcColor, recalls }) {
+  const isNew = w.status === 'new'
+  const list = Array.isArray(recalls) ? recalls : []
+  const active = state === 'active', done = state === 'done'
+  const hasResult = list.length > 0
+  const border = active ? 'var(--gold)' : (hasResult ? srcColor : (isNew ? 'rgba(74,144,226,0.65)' : 'var(--border)'))
+  const text = active ? 'var(--gold)' : (hasResult ? srcColor : (isNew ? '#8ab8f0' : 'var(--text)'))
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+      background: active ? 'rgba(212,169,74,0.20)' : (hasResult ? srcColor + '33' : (isNew ? 'rgba(74,144,226,0.10)' : 'transparent')),
+      border: active ? '2px solid var(--gold)' : '1px solid ' + border,
+      borderRadius:8, padding: active ? '3px 9px' : '4px 10px', transition:'all 0.25s',
+      minWidth:0, position:'relative', opacity: state === 'future' ? 0.75 : 1,
+      boxShadow: active ? '0 0 0 3px rgba(212,169,74,0.55), 0 0 10px rgba(212,169,74,0.45)' : 'none' }}>
+      {isNew && (
+        <span style={{ position:'absolute', top:-6, right:-5, fontSize:8, fontWeight:800, letterSpacing:0.3,
+          color:'#0b1120', background:'#4a90e2', borderRadius:3, padding:'1px 4px', lineHeight:1.3 }}>NEW</span>
+      )}
+      <span className="zh" style={{ color:text, fontSize:14, lineHeight:1.3 }}>{w.chinese}</span>
+      <span className="phon" style={{ color: hasResult ? srcColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{w.pinyin}</span>
+      <span style={{ display:'flex', gap:3, marginTop:3 }}>
+        {[1,2,3].map(n => {
+          const hit = list.find(r => r.recallIndex === n)
+          return <span key={n} style={{ width:7, height:7, borderRadius:'50%',
+            background: hit ? checkStyle(hit.checkTier).color : 'transparent',
+            border: hit ? 'none' : '1px solid var(--border)', transition:'background 0.25s' }} />
+        })}
+      </span>
+    </div>
+  )
+}
+
+// §55 — transcript. Chinese, pinyin, English. Never labelled as romaji or Thai phonetics.
+function downloadMandarinTrack(track) {
+  const L = []
+  L.push('MANDARIN TEACHER \u2014 TRACK EXPORT')
+  L.push('='.repeat(50))
+  L.push('Date: ' + (track.date || ''))
+  L.push('Speech style: ' + MANDARIN_REGISTER.label)
+  if (track.provider) L.push('Provider: ' + track.provider)
+  if (track.model) L.push('Model: ' + track.model)
+  L.push('Pairs: ' + (track.pairs || []).length)
+  L.push('')
+  if (track.allowedContent && track.allowedContent.length) {
+    L.push('VOCABULARY AVAILABLE THIS TRACK (' + track.allowedContent.length + ')')
+    L.push('-'.repeat(30))
+    L.push(track.allowedContent.map(w => w.chinese + ' (' + w.pinyin + ')').join('  \u00b7  '))
+    L.push('')
+  }
+  L.push('TARGET VOCABULARY (' + (track.keywords || []).length + ')')
+  L.push('-'.repeat(30))
+  ;(track.keywords || []).forEach((k, i) => {
+    L.push(String(i + 1).padStart(2, '0') + '. ' + k.chinese + '  [' + k.pinyin + ']  \u2014  ' + k.english +
+           (k.rating ? '   (rated: ' + k.rating + ')' : ''))
+  })
+  L.push('')
+  L.push('TRACK PAIRS (' + (track.pairs || []).length + ')')
+  L.push('-'.repeat(30))
+  ;(track.pairs || []).forEach((p, i) => {
+    L.push('PAIR ' + String(i + 1).padStart(2, '0') + (p._framing ? '  [' + (p._kind || 'framing') + ']' : ''))
+    if (p.speaker) L.push('  SPEAKER:        ' + p.speaker)
+    L.push('  ENGLISH CUE:    ' + (p.prompt || ''))
+    L.push('  CHINESE:        ' + (p.chinese || ''))
+    L.push('  PINYIN:         ' + (p.pinyin || ''))
+    if (p.spokenPinyin && p.spokenPinyin !== p.pinyin) L.push('  SPOKEN PINYIN:  ' + p.spokenPinyin)
+    L.push('  ENGLISH:        ' + (p.english || ''))
+    if (p.targetChinese) L.push('  TARGET:         ' + p.targetChinese + '   (recall ' + p.recallIndex + ', check tier ' + p.checkTier + ')')
+    if (Array.isArray(p.segments) && p.segments.length) {
+      L.push('  BREAKDOWN:      ' + p.segments.filter(s => s.type !== 'punct')
+        .map(s => s.surface + ' ' + (s.pinyin || '') + ' ' + (s.english || '')).join('  |  '))
+    }
+    L.push('')
+  })
+  const blob = new Blob([L.join('\n')], { type:'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'mandarin-track-' + String(track.date || '').replace(/ /g, '-') + '.txt'
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+function downloadMandarinGenLog(log, tag) {
+  const blob = new Blob([(log || []).join('\n')], { type:'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'mandarin-' + (tag || 'gen') + '-log-' + new Date().toISOString().slice(0, 10) + '.txt'
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// §27 — generator screen: current activity visible without scrolling, structured
+// state only (§26), stable targetId keying (§22).
+function MandarinGenerator({ vocab, targets, cred, onGenerated, onBack }) {
+  const [phase, setPhase] = useState('idle')
+  const [fullLog, setFullLog] = useState([])
+  const [liveLog, setLiveLog] = useState([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [recallDone, setRecallDone] = useState(0)
+  const [currentTargetId, setCurrentTargetId] = useState(null)
+  const [currentRecall, setCurrentRecall] = useState(0)
+  const [currentTier, setCurrentTier] = useState(0)
+  const [targetProgress, setTargetProgress] = useState({})
+  const [brickSources, setBrickSources] = useState({})
+  const [error, setError] = useState('')
+  const stopRef = useRef({ cancelled:false })
+  const startedRef = useRef(false)
+
+  const apiKey = cred.geminiKey || cred.orKey
+  const model = resolveOrModel(cred.provider)
+  const FRAMING = 4
+  const recallTotal = (targets || []).length * 3
+  const totalSlots = FRAMING + recallTotal
+  const inv = useMemo(() => mandarinLearnerInventory(vocab, targets), [vocab, targets])
+  const push = (m, live = true) => { setFullLog(l => [...l, m]); if (live) setLiveLog(l => [...l.slice(-7), m]) }
+
+  useEffect(() => {
+    if (startedRef.current) return
+    startedRef.current = true
+    ;(async () => {
+      if (!apiKey) { setError('No API key configured. Mandarin uses the same key as Thai and Japanese.'); setPhase('error'); return }
+      if (!targets || !targets.length) { setError('No Mandarin targets available.'); setPhase('error'); return }
+      setPhase('generating')
+      try {
+        const res = await generateMandarinTrack(targets, vocab, apiKey, model,
+          (done, total, meta) => {
+            setRecallDone(done)
+            if (!meta) return
+            if (meta.targetId != null && !meta.completed) setCurrentTargetId(meta.targetId)
+            if (meta.recallIndex != null) setCurrentRecall(meta.recallIndex)
+            if (meta.checkTier) setCurrentTier(meta.checkTier)
+            if (meta.accepted && meta.source) {
+              const bi = FRAMING + meta.targetIdx * 3 + (meta.recallIndex - 1)
+              setBrickSources(prev => ({ ...prev, [bi]:meta.source }))
+              setTargetProgress(prev => {
+                const cur = prev[meta.targetId] || { recalls:[] }
+                const recalls = [...cur.recalls.filter(r => r.recallIndex !== meta.recallIndex),
+                                 { recallIndex:meta.recallIndex, checkTier:meta.checkTier, source:meta.source }]
+                return { ...prev, [meta.targetId]:{ recallsCompleted:recalls.length, recalls } }
+              })
+            }
+            if (meta.completed) { setCurrentTargetId(null); setCurrentRecall(0) }
+          },
+          m => { push(m, !/^\u2139/.test(m)) }, stopRef.current)
+        if (stopRef.current.cancelled) return
+        setPhase('done'); setCurrentTargetId(null)
+        onGenerated({
+          createdAt:new Date().toISOString(), date:new Date().toISOString().slice(0, 10),
+          language:'zh', mode:'daily', speechStyle:MANDARIN_REGISTER.id,
+          provider:cred.provider, model, pairs:res.pairs,
+          allowedContent:res.allowedContent, grammarUsed:res.grammarUsed, scarcity:res.scarcity,
+          recallCount:res.recallCount, framingCount:res.framingCount, rated:false, bookmark:0,
+          keywords:targets.map(t => ({ chinese:t.chinese, pinyin:t.pinyin, english:t.english,
+            wordId:t.id, rating:null, thai:t.chinese, phonetic:t.pinyin, isNew:t.status === 'new' })),
+        })
+      } catch (e) {
+        // §83 — a visible, recoverable failure that names target and recall
+        const inc = e && e.incomplete
+        setError(inc
+          ? ('Generation incomplete: ' + inc.produced + '/' + inc.expected + ' recalls.\n' +
+             (inc.failures || []).map(f => '\u2022 ' + f.target + ' recall ' + f.recallIndex + ': ' + f.reason).join('\n'))
+          : (e && e.message) || 'Generation failed.')
+        setPhase('error')
+      }
+    })()
+  }, [])
+
+  function targetState(w) {
+    const prog = targetProgress[w.id]
+    if (prog && (prog.recallsCompleted || 0) >= 3) return 'done'
+    if (currentTargetId === w.id) return 'active'
+    return 'future'
+  }
+  function targetColor(w) {
+    const prog = targetProgress[w.id]
+    if (!prog || !prog.recalls.length) return '#888888'
+    return checkStyle(Math.max(...prog.recalls.map(r => r.checkTier || 1))).color
+  }
+  const filled = (phase === 'idle' ? 0 : FRAMING) + recallDone
+  const pct = totalSlots ? Math.min(100, Math.round((filled / totalSlots) * 100)) : 0
+
+  if (phase === 'error') return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, alignItems:'center', minHeight:'50vh', justifyContent:'center' }}>
+      <p style={{ color:'#ef4444', fontSize:13, textAlign:'center', whiteSpace:'pre-wrap' }}>{error}</p>
+      <Btn onClick={() => { startedRef.current = false; setError(''); setPhase('idle'); setTargetProgress({}); setBrickSources({}); setRecallDone(0); startedRef.current = false; window.setTimeout(() => { startedRef.current = false }, 0) }}
+        style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} Retry</Btn>
+      <Btn onClick={onBack} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+    </div>
+  )
+
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
+      <div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+          <span style={{ fontSize:13, fontWeight:600 }}>{phase === 'done' ? 'Track ready' : 'Generating Mandarin track'}</span>
+          <span className="phon" style={{ fontSize:12, color:'var(--gold)' }}>{pct}%</span>
+        </div>
+        <div style={{ height:6, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:pct + '%', background:'linear-gradient(90deg,#d4a94a,#10b981)', borderRadius:3, transition:'width 0.5s ease' }} />
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+          <span style={{ fontSize:9, color:'var(--muted)' }}>{(targets || []).length} words {'\u00b7'} {recallTotal} recalls {'\u00b7'} {FRAMING} framing</span>
+          <span style={{ fontSize:9, color:'var(--muted)' }}>{filled} / {totalSlots}</span>
+        </div>
+      </div>
+
+      <GenerationBrickGrid total={totalSlots} filled={filled} sources={brickSources}
+        colorFor={s => (s === 'zh:scene' ? '#d4a94a' : checkStyle(parseInt(String(s).replace('zh-check-', ''), 10) || 1).color)} />
+
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, minHeight:20 }}>
+        {phase !== 'done' && <Spinner size={14} color="#10b981" />}
+        <span style={{ fontSize:12, fontWeight:600, color:'var(--text)' }}>
+          {currentTargetId
+            ? ((targets.find(t => t.id === currentTargetId) || {}).chinese + (currentRecall ? '  \u00b7  Recall ' + currentRecall + ' of 3' : ''))
+            : (phase === 'done' ? 'Finished' : 'Kru ' + resolveOrName(cred.provider) + ' is thinking\u2026')}
+        </span>
+      </div>
+      {currentTier > 0 && (
+        <div style={{ textAlign:'center', marginTop:-6 }}>
+          <span style={{ fontSize:12, fontWeight:700, color:checkStyle(currentTier).color }}>
+            {checkStyle(currentTier).icon} {checkStyle(currentTier).label}
+          </span>
+        </div>
+      )}
+
+      <GenerationLiveLog lines={showHistory ? fullLog : liveLog} fullLog={fullLog}
+        onDownload={() => downloadMandarinGenLog(fullLog)}
+        showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)} />
+
+      <div>
+        <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' }}>
+          Targeting {(targets || []).length} words {'\u00b7'} {inv.allContent.length} available
+        </p>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+          {(targets || []).map(w => (
+            <MandarinTargetPill key={w.id} w={w} state={targetState(w)} srcColor={targetColor(w)}
+              recalls={(targetProgress[w.id] || {}).recalls} />
+          ))}
+        </div>
+        {inv.grammarScaffold.length > 0 && (
+          <p style={{ fontSize:9, color:'var(--muted)', marginTop:6 }}>
+            Grammar: {inv.grammarScaffold.map(g => g.form).join(' \u00b7 ')}
+          </p>
+        )}
+      </div>
+
+      <Btn onClick={() => { stopRef.current.cancelled = true; onBack() }} variant="secondary"
+        style={{ width:'100%', justifyContent:'center' }}>{phase === 'done' ? 'Back' : '\u23F8 Cancel'}</Btn>
+    </div>
+  )
+}
+
+// §33/§34 — Mandarin Quality Review. Mandarin terminology, Mandarin checks only.
+function MandarinQualityReview({ track, vocab, onSave, onSkip }) {
+  const [phase, setPhase] = useState('summary')
+  const [progress, setProgress] = useState(0)
+  const [progressMsg, setProgressMsg] = useState('')
+  const [fullLog, setFullLog] = useState([])
+  const [liveLog, setLiveLog] = useState([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [result, setResult] = useState(null)
+  const [qcMode, setQcMode] = useState('all')
+  const [workingTrack, setWorkingTrack] = useState(track)   // §35
+  const [qcPass, setQcPass] = useState(0)
+  const cancelRef = useRef(false)
+  useEffect(() => { setWorkingTrack(track); setQcPass(0); setResult(null) }, [track])
+
+  const MODES = [
+    { id:'all',    label:'\u2726 Full check',            desc:'Chinese, segmentation, pinyin, translation, glosses, target, register, vocabulary, grammar' },
+    { id:'pinyin', label:'\u{1F524} Chinese + pinyin',    desc:'Chinese text, segmentation, contextual reading, tone marks, alignment' },
+    { id:'trans',  label:'\u{1F4DD} Translation / glosses',desc:'English sentence, learner prompt, per-segment meanings' },
+    { id:'content',label:'\u270F\uFE0F Content / grammar', desc:'Grammaticality, casual-polite register, target use, producibility' },
+  ]
+  const pairs = (workingTrack && workingTrack.pairs) || []
+  const quick = useMemo(() => mandarinQuickScan(pairs), [pairs])
+  const push = m => { setFullLog(l => [...l, m]); setLiveLog(l => [...l.slice(-7), m]) }
+
+  async function runCheck() {
+    cancelRef.current = false
+    setPhase('checking'); setFullLog([]); setLiveLog([]); setProgress(0)
+    const pass = qcPass + 1; setQcPass(pass)
+    push('\u25B6 Pass ' + pass + ' \u00b7 ' + ((MODES.find(m => m.id === qcMode) || {}).label || 'Check'))
+    try {
+      const res = await runMandarinTrackQC(workingTrack, vocab, { cancelled:() => cancelRef.current },
+        (p, msg) => { setProgress(p); setProgressMsg(msg) }, push)
+      ;(res.issues || []).forEach(i => { i.firstFoundPass = i.firstFoundPass || pass; i.lastCheckedPass = pass })
+      setWorkingTrack(wt => ({ ...wt, pairs:res.pairs }))
+      setResult(res); setPhase('done')
+    } catch (e) {
+      push('\u274C QC failed: ' + ((e && e.message) || ''))
+      setResult({ pairs, issues:[], groups:pairs.length, counts:{ found:0, fixed:0, accepted:0, unresolved:0 }, criticalUnresolvedCount:0 })
+      setPhase('done')
+    }
+  }
+
+  if (phase === 'summary') return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:12 }}>
+      <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0, fontSize:18 }}>Quality Check</h2>
+      <p style={{ fontSize:12, color:'var(--muted)', textAlign:'center', margin:0 }}>Quick pre-scan only \u2014 the full check may find more.</p>
+      <Card style={{ padding:'12px 14px', display:'flex', justifyContent:'space-around', textAlign:'center' }}>
+        <div><div style={{ fontSize:20, fontWeight:800, color:'var(--gold)' }}>{quick.total}</div>
+             <div style={{ fontSize:10, color:'var(--muted)' }}>pairs</div></div>
+        <div><div style={{ fontSize:20, fontWeight:800, color:quick.suspect ? '#f97316' : '#4ade80' }}>{quick.suspect}</div>
+             <div style={{ fontSize:10, color:'var(--muted)' }}>pre-scan issues</div></div>
+      </Card>
+      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+        {MODES.map(m => (
+          <button key={m.id} onClick={() => setQcMode(m.id)}
+            style={{ textAlign:'left', background:qcMode === m.id ? 'var(--surface2)' : 'transparent',
+              border:'1px solid ' + (qcMode === m.id ? 'var(--gold)' : 'var(--border)'),
+              borderRadius:10, padding:'9px 12px', cursor:'pointer', color:'var(--text)' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:qcMode === m.id ? 'var(--gold)' : 'var(--text)' }}>{m.label}</div>
+            <div style={{ fontSize:10, color:'var(--muted)', marginTop:2, lineHeight:1.4 }}>{m.desc}</div>
+          </button>
+        ))}
+      </div>
+      <Btn onClick={runCheck} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>{'\u25B6'} Run check</Btn>
+      <Btn onClick={onSkip} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Skip {'\u2014'} Study Now</Btn>
+    </div>
+  )
+
+  if (phase === 'checking') return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
+      <div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+          <span style={{ fontSize:13, fontWeight:600 }}>Quality check</span>
+          <span className="phon" style={{ fontSize:12, color:'var(--gold)' }}>{progress}%</span>
+        </div>
+        <div style={{ height:6, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:progress + '%', background:'linear-gradient(90deg,#d4a94a,#10b981)', borderRadius:3 }} />
+        </div>
+      </div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+        <Spinner size={14} color="#10b981" />
+        <span style={{ fontSize:12, fontWeight:600 }}>{progressMsg || 'Starting\u2026'}</span>
+      </div>
+      <GenerationLiveLog lines={showHistory ? fullLog : liveLog} fullLog={fullLog}
+        onDownload={() => downloadMandarinGenLog(fullLog, 'qc')}
+        showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)} />
+      <Btn onClick={() => { cancelRef.current = true }} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Cancel</Btn>
+    </div>
+  )
+
+  const issues = (result && result.issues) || []
+  const counts = (result && result.counts) || { found:0, fixed:0, accepted:0, unresolved:0 }
+  const critical = (result && result.criticalUnresolvedCount) || 0
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:12 }}>
+      <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0, fontSize:18 }}>{'\u2705'} Check complete</h2>
+      <Card style={{ padding:'12px 16px' }}>
+        <p style={{ fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
+          Pass {qcPass} {'\u00b7'} {(result && result.groups) || 0} pairs checked
+        </p>
+        {['found','fixed','accepted','unresolved'].map(k => {
+          const list = k === 'found' ? issues : issues.filter(x => x.status === k)
+          if (!list.length) return null
+          const label = { found:'FOUND', fixed:'FIXED', accepted:'ACCEPTED BY POLICY', unresolved:'UNRESOLVED' }[k]
+          const col = { found:'var(--muted)', fixed:'#4ade80', accepted:'#60a5fa', unresolved:'#ef4444' }[k]
+          const byCat = {}; list.forEach(x => { byCat[x.category] = (byCat[x.category] || 0) + 1 })
+          return (
+            <div key={k} style={{ marginBottom:8 }}>
+              <div style={{ fontSize:10, fontWeight:800, letterSpacing:'0.06em', color:col }}>{label} ({list.length})</div>
+              {Object.keys(byCat).map(c => <div key={c} style={{ fontSize:12, lineHeight:1.6 }}>{byCat[c]} {c}</div>)}
+            </div>
+          )
+        })}
+        <div style={{ fontSize:10, color:'var(--muted)', borderTop:'1px solid var(--border)', paddingTop:6 }}>
+          {counts.fixed} fixed + {counts.accepted} accepted + {counts.unresolved} unresolved = {counts.found} found
+        </div>
+      </Card>
+      {issues.filter(i => i.status === 'unresolved').length > 0 && (
+        <Card style={{ padding:'10px 14px', maxHeight:150, overflowY:'auto' }}>
+          {issues.filter(i => i.status === 'unresolved').slice(0, 20).map((p, i) => (
+            <div key={i} style={{ fontSize:10, color:'#f97316', fontFamily:'monospace', lineHeight:1.5 }}>{'\u26A0'} Pair {p.pairIndex + 1}: {p.message}</div>
+          ))}
+        </Card>
+      )}
+      {critical > 0 ? (
+        <>
+          <Card style={{ padding:'10px 14px', border:'1px solid #ef4444' }}>
+            <p style={{ fontSize:12, color:'#ef4444', fontWeight:700 }}>{'\u26A0'} Quality Check incomplete \u2014 {critical} critical issue{critical > 1 ? 's' : ''} remain</p>
+          </Card>
+          <Btn onClick={runCheck} style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} Retry fixes</Btn>
+          <Btn onClick={() => onSave({ ...workingTrack, pairs:(result && result.pairs) || pairs, _qcDone:true, _qcIssues:issues })}
+            variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Study anyway</Btn>
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize:12, color:'#4ade80', textAlign:'center', margin:0 }}>{'\u2713'} Quality Check complete</p>
+          <Btn onClick={() => onSave({ ...workingTrack, pairs:(result && result.pairs) || pairs, _qcDone:true, _qcIssues:issues })}
+            style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>{'\u25B6'} Study corrected track</Btn>
+        </>
+      )}
+      <Btn onClick={onSkip} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Study original</Btn>
+    </div>
+  )
+}
+
 function JapaneseQualityReview({ track, vocab, onSave, onSkip }) {
   const [phase, setPhase] = useState('summary')     // summary | checking | done
   const [progress, setProgress] = useState(0)
@@ -13004,6 +14317,11 @@ function JapaneseGenerator({ vocab, targets, register, cred, onGenerated, onBack
   const [targetProgress, setTargetProgress] = useState({})   // wordId -> { recalls:[{recallIndex,checkTier,source}] }
   const [brickSources, setBrickSources] = useState({})
   const [error, setError] = useState('')
+  // §11 — structured recovery state; partial generation stays alive.
+  const [generationError, setGenerationError] = useState(null)
+  const [partial, setPartial] = useState(null)
+  const [recovering, setRecovering] = useState(false)
+  const [recoveryAttempt, setRecoveryAttempt] = useState(0)
   const stopRef = useRef({ cancelled: false })
 
   const apiKey = cred.geminiKey || cred.orKey
@@ -13107,6 +14425,13 @@ function JapaneseGenerator({ vocab, targets, register, cred, onGenerated, onBack
         },
         stopRef.current, scene)
       if (stopRef.current.cancelled) return
+      // §13 — outcome B: incomplete but every accepted recall is valid.
+      if (res && res.complete === false) {
+        setPartial(res)
+        setGenerationError({ type:'incomplete-recalls', expected:res.expectedRecallCount, produced:res.recallCount, missing:res.missingRecalls || [] })
+        setPhase('recover')
+        return
+      }
       const pairs = res.pairs || []
       if (!pairs.length) { setError('Generation produced no usable lines.'); setPhase('error'); return }
       setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0); setPhase('done')
@@ -13160,6 +14485,109 @@ function JapaneseGenerator({ vocab, targets, register, cred, onGenerated, onBack
       )}
     </div>
   )
+
+  // §6/§14 — retry ONLY the missing recall against the preserved state.
+  async function retryMissingRecall() {
+    if (!partial) return
+    setRecovering(true)
+    setRecoveryAttempt(a => a + 1)
+    try {
+      const next = await recoverJapaneseMissingRecall(partial, targets, vocab, register, apiKey, model,
+        push,
+        meta => { if (meta.checkTier) setCurrentCheckTier(meta.checkTier); if (meta.targetId) setCurrentTargetId(meta.targetId) })
+      // §22 — accepted recall state survives; add the recovered one to the display.
+      if (next.recovered) {
+        const p = next.recovered
+        const idx = targets.findIndex(t => t.id === p.targetId)
+        setRecallDone(next.recallCount)
+        setBrickSources(prev => ({ ...prev, [FRAMING_SLOTS + idx * 3 + (p.recallIndex - 1)]: p._source }))
+        setTargetProgress(prev => {
+          const cur = prev[p.targetId] || { recalls: [] }
+          const recalls = [...cur.recalls.filter(r => r.recallIndex !== p.recallIndex),
+                           { recallIndex: p.recallIndex, checkTier: p.sourceCheck, source: p._source }]
+          return { ...prev, [p.targetId]: { recallsCompleted: recalls.length, recalls } }
+        })
+      }
+      setPartial(next)
+      if (next.complete) {
+        // §14 — continue straight into QC; no second Generate press required.
+        setCurrentTargetId(null); setCurrentCheckTier(0); setPhase('done')
+        onGenerated({
+          createdAt: new Date().toISOString(), date: new Date().toISOString().slice(0, 10),
+          mode: 'daily', language: 'ja', speechStyle: register, provider: cred.provider, model,
+          pairs: next.pairs, scene: next.scene || scene,
+          buildingBlocks: next.buildingBlocks || [], allowedContent: next.allowedContent || [],
+          recallCount: next.recallCount, framingCount: next.framingCount, rated: false, bookmark: 0,
+          keywords: targets.map(t => ({
+            japanese: t.japanese, reading: t.reading, romaji: t.romaji, english: t.english,
+            wordId: t.id, rating: null, thai: t.japanese, phonetic: t.romaji,
+            isNew: t.status === 'new', isUnseen: (t.repCount || 0) === 0,
+          })),
+        })
+      } else {
+        // §15 — stay on the recovery screen; the successes are retained.
+        setGenerationError({ type:'incomplete-recalls', expected:next.expectedRecallCount, produced:next.recallCount,
+                             missing:next.missingRecalls || [], lastRecoveryFailure: next.lastRecoveryFailure })
+      }
+    } catch (e) {
+      setGenerationError(g => ({ ...(g || {}), lastRecoveryFailure: (e && e.message) || 'recovery failed' }))
+    } finally { setRecovering(false) }
+  }
+
+  // §5/§21 — recovery screen names exactly what is missing; Retry is the PRIMARY action.
+  if (phase === 'recover' && generationError) {
+    const miss = (generationError.missing || [])[0]
+    return (
+      <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:12 }}>
+        <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0, fontSize:17 }}>
+          Generation needs {generationError.expected - generationError.produced} more recall
+          {generationError.expected - generationError.produced > 1 ? 's' : ''}
+        </h2>
+        <Card style={{ padding:'12px 16px' }}>
+          {miss && (
+            <p style={{ fontSize:14, margin:0 }}>
+              <span className="jp" style={{ color:'var(--gold)', fontWeight:700 }}>{miss.targetJapanese}</span>
+              <span style={{ color:'var(--muted)' }}> {'\u00b7'} Recall {miss.recallIndex}/3 could not be completed</span>
+            </p>
+          )}
+          <p style={{ fontSize:11, color:'var(--muted)', marginTop:6 }}>
+            {generationError.produced} of {generationError.expected} recalls are safely retained.
+          </p>
+          {miss && miss.lastFailure && (
+            <p style={{ fontSize:10, color:'#f97316', marginTop:4, fontFamily:'monospace' }}>last failure: {miss.lastFailure}</p>
+          )}
+          {generationError.lastRecoveryFailure && (
+            <p style={{ fontSize:11, color:'#ef4444', marginTop:6, fontWeight:600 }}>
+              Retry {recoveryAttempt} failed \u2014 still missing. {generationError.produced}/{generationError.expected} retained.
+            </p>
+          )}
+        </Card>
+
+        {/* §22 — accepted recall LEDs stay lit; the missing one stays empty */}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+          {(targets || []).map(w => (
+            <JapaneseTargetPill key={w.id} w={w} state={targetState((targets||[]).indexOf(w), w.id)}
+              srcColor={targetColor(w.id)} recalls={targetRecalls(w.id)} />
+          ))}
+        </div>
+        <GenerationBrickGrid total={totalSlots} filled={framingDone + recallDone} sources={brickSources}
+          colorFor={s => jaSrcToColor(s, '#888888')} />
+        <GenerationLiveLog lines={showHistory ? fullLog : liveLog} fullLog={fullLog}
+          onDownload={() => downloadJapaneseGenLog(fullLog)}
+          showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)} />
+
+        <Btn onClick={retryMissingRecall} disabled={recovering}
+          style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>
+          {recovering ? 'Recovering\u2026' : '\u21BB Retry missing recall'}
+        </Btn>
+        {/* §10 — Start over regenerates the recalls only. The scene is already valid,
+            so it is NOT rebuilt just because one recall failed. */}
+        <Btn onClick={() => { setPartial(null); setGenerationError(null); runGeneration() }}
+          variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Start over</Btn>
+        <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+      </div>
+    )
+  }
 
   if (phase === 'error') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:20 }}>
@@ -13722,7 +15150,13 @@ function jaFallbackRecall(target, inv, recallIndex) {
 // Generates ONE validated recall for one target. Returns null only if every tier and
 // the deterministic fallback fail.
 async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId, apiKey, model,
-                                         seenMap, inv, rules, onLog, onTier) {
+                                         seenMap, inv, rules, onLog, onTier, opts) {
+  // §8/§9 — recovery may relax NOVELTY only. Correctness is never relaxed.
+  const relaxDuplicates = !!(opts && opts.relaxDuplicates)
+  // §19/§20 — remember candidates that failed for a recoverable reason so we can
+  // salvage them without another API call.
+  let dupOnlyCandidate = null      // passed everything except novelty
+  let repairableCandidate = null   // semantically valid, structurally fixable
   const { system, user } = buildJapaneseTrackPrompt([target], [], vocab, registerId)
   const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
   // §7/§8/§9 — the loop depth IS the scarcity depth. A three-word learner never
@@ -13775,19 +15209,32 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     }
     if (!structOk.ok) { lastFailure = structOk.problems[0]; onLog && onLog('  \u274C ' + lastFailure); continue }
 
-    // §19 — at scarcity A a near-duplicate is ACCEPTED rather than burning tiers.
+    // §19 — everything except novelty has now passed. At scarcity A, or during
+    // recovery, useful repetition beats losing the recall entirely.
     const dup = japaneseDuplicateVerdict(jp, target.id, seenMap, rules)
     if (!dup.ok) {
-      if (rules.allowNearDuplicate && dup.level === 'B') {
+      const sameTarget = dup.level === 'A'
+      if ((rules.allowNearDuplicate && dup.level === 'B') || (relaxDuplicates && !sameTarget)) {
         onLog && onLog('  \u2139 accepted useful repetition \u2014 limited learner inventory')
-      } else { lastFailure = dup.reason; onLog && onLog('  \u26A0 ' + lastFailure); continue }
+      } else {
+        // Remember it: if every tier fails, this is recoverable without a new API call.
+        if (!sameTarget && !dupOnlyCandidate) dupOnlyCandidate = cand
+        lastFailure = dup.reason; onLog && onLog('  \u26A0 ' + lastFailure); continue
+      }
     } else if (dup.note) onLog && onLog('  \u2139 ' + dup.note)
 
     seenMap.set(jaDedupeKey(jp), { targetId: target.id })
     onLog && onLog('  \u2705 ' + ORD[tier-1] + ' check passed: ' + jp)
     return { pair: cand, checkTier: tier }
   }
-  return null
+  // §19 — duplication-only failure recovers with NO further API call.
+  if (dupOnlyCandidate) {
+    onLog && onLog('  \u2139 recovered by accepting beginner repetition (no extra API call)')
+    seenMap.set(jaDedupeKey(dupOnlyCandidate.japanese), { targetId: target.id })
+    return { pair: dupOnlyCandidate, checkTier: rules.maxTiers, recovered: 'duplicate-only' }
+  }
+  // §18 — hand the exact reason back so recovery can be intelligent.
+  return { failed: true, lastFailure: lastFailure || 'no valid candidate' }
 }
 
 // Full track: opening exchange, 3 recalls per target (interleaved), closing exchange.
@@ -13853,6 +15300,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   const seenMap = new Map()
   ;[...open, ...close].forEach(p => seenMap.set(jaDedupeKey(p.japanese), { targetId: null }))
   let attemptCount = 0, recallCount = 0
+  const missingRecalls = []            // §4 — what still needs building
   onLog && onLog('\u2139 Scarcity level ' + japaneseScarcityLevel(inv) + ' \u2014 ' + inv.allContent.length + ' content words')
 
   for (let i = 0; i < targets.length; i++) {
@@ -13869,7 +15317,15 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
       const got = await generateJapaneseOneRecall(t, r, vocab, registerId, apiKey, model,
         seenMap, inv, rules, onLog,
         tier => { attemptCount++; onProgress && onProgress(doneRecall, totalRecall, [], { targetIdx: i, targetId: t.id, recallIndex: r, checkTier: tier, accepted: false }) })
-      if (!got) { onLog && onLog('  \u274C ' + t.japanese + ' recall ' + r + ' could not be generated'); continue }
+      if (!got || got.failed) {
+        // §3/§18 — do NOT continue as though this target is complete. Record exactly
+        // which recall is missing and why, then stop generating for this target.
+        const why = (got && got.lastFailure) || 'no valid candidate'
+        onLog && onLog('  \u274C ' + t.japanese + ' recall ' + r + ' could not be generated \u2014 ' + why)
+        missingRecalls.push({ targetId: t.id, targetIdx: i, targetJapanese: t.japanese, recallIndex: r, lastFailure: why })
+        break
+      }
+      if (got.recovered) onLog && onLog('  \u2139 recall ' + r + ' recovered (' + got.recovered + ')')
       recallCount++
       const l = got.pair
       mapped.push({
@@ -13905,13 +15361,20 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   for (let round = 0; round < 3; round++) {
     for (const set of perTarget) if (set[round]) recalls.push(set[round])
   }
-  // §22 — never hand an incomplete SRS track downstream.
+  // §1/§12/§13 — the 3/3 requirement stands, but partial VALID work is never thrown
+  // away. An incomplete run returns resumable state (outcome B); only genuine
+  // technical faults throw (outcome C).
   const producedRecalls = perTarget.reduce((a, s) => a + s.length, 0)
   if (producedRecalls !== totalRecall && !(stopSignal && stopSignal.cancelled)) {
-    onLog && onLog('\u274C Generation incomplete: expected ' + totalRecall + ' target recalls, generated ' + producedRecalls)
-    const err = new Error('Generation incomplete: expected ' + totalRecall + ' target recalls, generated ' + producedRecalls)
-    err.incomplete = { expected: totalRecall, produced: producedRecalls }
-    throw err
+    onLog && onLog('\u26A0 Generation incomplete: ' + producedRecalls + '/' + totalRecall +
+                   ' \u2014 ' + missingRecalls.length + ' recall(s) still needed')
+    return {
+      complete: false,
+      perTarget, open, close, scene, seenMap, missingRecalls,
+      recallCount: producedRecalls, expectedRecallCount: totalRecall,
+      buildingBlocks: [], allowedContent: allowed.map(w => ({ japanese: w.japanese, romaji: w.romaji, english: w.english })),
+      framingCount: open.length + close.length,
+    }
   }
   onLog && onLog('\u2139 ' + recallCount + ' recalls from ' + attemptCount + ' model attempts (' +
                  (recallCount ? (attemptCount / recallCount).toFixed(2) : '0') + ' per recall)')
@@ -13921,9 +15384,68 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   // silently tested. Capped per §7 so a Mukyu track cannot dump eight particles.
   const usedScaffold = scaffold.filter(s => [...open, ...recalls, ...close].some(p => (p.japanese || '').includes(s.form)))
   const buildingBlocks = usedScaffold.slice(0, 2)
-  return { pairs: [...open, ...recalls, ...close], scene, buildingBlocks,
+  return { complete: true, pairs: [...open, ...recalls, ...close], scene, buildingBlocks,
+           perTarget, open, close, seenMap, missingRecalls: [],
            allowedContent: allowed.map(w => ({ japanese: w.japanese, romaji: w.romaji, english: w.english })),
-           recallCount: recalls.length, framingCount: open.length + close.length }
+           recallCount: recalls.length, expectedRecallCount: totalRecall,
+           framingCount: open.length + close.length }
+}
+
+// §6/§14/§26 — repair ONE missing recall against the preserved partial state. The
+// eight already-validated recalls are never regenerated and the scene is reused.
+async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId, apiKey, model, onLog, onProgress) {
+  const missing = (partial.missingRecalls || [])[0]
+  if (!missing) return partial
+  const t = targets.find(x => x.id === missing.targetId)
+  if (!t) return partial
+  // §7 — the SAME learner context: inventory, scarcity rules, seenMap, targets.
+  const allowCtx = japaneseAllowedContent(vocab, targets)
+  const inv = japaneseLearnerInventory(vocab, targets)
+  const rules = scarcityRules(allowCtx)
+  const seenMap = partial.seenMap || new Map()
+  onLog && onLog('\u21BB Recovering ' + t.japanese + ' \u00b7 recall ' + missing.recallIndex +
+                 '  (last failure: ' + missing.lastFailure + ')')
+  // §8/§9 — relax novelty only, never correctness.
+  const got = await generateJapaneseOneRecall(t, missing.recallIndex, vocab, registerId, apiKey, model,
+    seenMap, inv, rules, onLog,
+    tier => onProgress && onProgress({ targetId: t.id, recallIndex: missing.recallIndex, checkTier: tier }),
+    { relaxDuplicates: true })
+  if (!got || got.failed) {
+    onLog && onLog('\u274C Recovery failed \u2014 ' + ((got && got.lastFailure) || 'no candidate'))
+    return { ...partial, lastRecoveryFailure: (got && got.lastFailure) || 'no candidate' }
+  }
+  const l = got.pair
+  const pair = {
+    speaker: l.speaker || 'A', thai: l.japanese, japanese: l.japanese,
+    reading: l.reading || '', phonetic: l.romaji || '', romaji: l.romaji || '',
+    english: l.english || '', prompt: l.prompt || l.english || '',
+    segments: Array.isArray(l.segments) ? l.segments : [],
+    words: (Array.isArray(l.segments) ? l.segments : []).map(s => ({ p: s.romaji || s.surface, e: s.english || '' })),
+    wordId: t.id, targetId: t.id, _target: t.japanese,
+    recallIndex: missing.recallIndex, sourceCheck: got.checkTier,
+    _source: JA_TIER_SOURCE(got.checkTier), _framing: false,
+  }
+  // §25 — targetId + recallIndex must stay unique.
+  const perTarget = partial.perTarget.map(set => set.slice())
+  const set = perTarget[missing.targetIdx] || (perTarget[missing.targetIdx] = [])
+  if (!set.some(p => p.recallIndex === pair.recallIndex)) set.push(pair)
+  set.sort((a, b) => a.recallIndex - b.recallIndex)
+  onLog && onLog('\u2705 Recovered ' + t.japanese + ' recall ' + missing.recallIndex + ': ' + pair.japanese)
+  const stillMissing = []
+  targets.forEach((tg, idx) => {
+    const got2 = (perTarget[idx] || []).length
+    for (let r = got2 + 1; r <= 3; r++) stillMissing.push({ targetId: tg.id, targetIdx: idx, targetJapanese: tg.japanese, recallIndex: r, lastFailure: 'not yet generated' })
+  })
+  const produced = perTarget.reduce((a, s) => a + s.length, 0)
+  if (produced !== partial.expectedRecallCount) {
+    return { ...partial, perTarget, seenMap, missingRecalls: stillMissing, recallCount: produced, complete: false, recovered: pair }
+  }
+  // §26 — rebuild the round order so the recovered recall lands in its logical slot.
+  const recalls = []
+  for (let round = 0; round < 3; round++) for (const s of perTarget) if (s[round]) recalls.push(s[round])
+  onLog && onLog('\u2705 ' + produced + '/' + partial.expectedRecallCount + ' \u2014 track complete')
+  return { ...partial, complete: true, perTarget, seenMap, missingRecalls: [], recallCount: produced,
+           pairs: [...(partial.open || []), ...recalls, ...(partial.close || [])], recovered: pair }
 }
 
 // Builds runtime Japanese word objects from the bank. Schema matches §17 so the
@@ -13996,12 +15518,281 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
   return [...carried.sort(byOrder), ...pool.slice(0, need)]
 }
 
+// §43/§45 — Mandarin dashboard. Same visual language as Thai/Japanese.
+function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice, provider, onSetProvider,
+                             onOpenTrack, onDeleteTrack }) {
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    return {
+      total: vocab.length,
+      due: vocab.filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today).length,
+      learning: vocab.filter(w => w.status === 'learning').length,
+      known: vocab.filter(w => w.status === 'known').length,
+      newW: vocab.filter(w => w.status === 'new').length,
+    }
+  }, [vocab])
+  const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
+  const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:8 }}>
+        {[{ l:'Words', v:stats.total, i:'book', c:'var(--text)' },
+          { l:'Due', v:stats.due, i:'clock', c:'#f59e0b' },
+          { l:'Learning', v:stats.learning, i:'trend', c:'#4a90e2' },
+          { l:'Known', v:stats.known, i:'star', c:'#10b981' }].map(s => (
+          <Card key={s.l} style={{ padding:'12px 10px', textAlign:'center' }}>
+            <Icon name={s.i} size={14} color={s.c} />
+            <div style={{ fontSize:22, fontWeight:700, marginTop:4, color:s.c }}>{s.v}</div>
+            <div style={{ fontSize:10, color:'var(--muted)', marginTop:1 }}>{s.l}</div>
+          </Card>
+        ))}
+      </div>
+
+      <Card style={{ padding:'14px 16px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+          <span style={{ fontSize:13, fontWeight:600 }}>Mastery</span>
+          <span className="phon" style={{ fontSize:12, color:'var(--gold)' }}>{pct}%</span>
+        </div>
+        <div style={{ height:6, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:pct + '%', background:'linear-gradient(90deg,#d4a94a,#10b981)', borderRadius:3 }} />
+        </div>
+        <p style={{ fontSize:11, color:'var(--muted)', marginTop:6 }}>{stats.known} known {'\u00b7'} {stats.learning} learning {'\u00b7'} {stats.newW} new</p>
+      </Card>
+
+      <BeltRankCard vocab={vocab} langName="Mandarin" />
+
+      {/* §5 — one locked register, shown as a badge, not a selector */}
+      <Card style={{ padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}>
+        <span style={{ fontSize:18 }}>{MANDARIN_REGISTER.icon}</span>
+        <span style={{ fontSize:13, fontWeight:700, color:'var(--gold)' }}>{MANDARIN_REGISTER.label}</span>
+        <span style={{ fontSize:10, color:'var(--muted)', marginLeft:'auto' }}>very casual, still polite</span>
+      </Card>
+
+      {targets && targets.length > 0 && (
+        <Card style={{ padding:'14px 16px' }}>
+          <p style={{ fontSize:12, fontWeight:600, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+            Next targets ({targets.length})
+          </p>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {targets.map(t => (
+              <div key={t.id} style={{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap' }}>
+                <span className="zh" style={{ fontSize:20, fontWeight:700, color:'var(--gold)' }}>{t.chinese}</span>
+                <span className="phon" style={{ fontSize:13, color:'var(--text)' }}>{t.pinyin}</span>
+                <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{t.english}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', borderRadius:12, padding:'8px 12px' }}>
+        <span style={{ fontSize:12, color:'var(--muted)', whiteSpace:'nowrap' }}>Generate with:</span>
+        <select value={provider} onChange={e => onSetProvider && onSetProvider(e.target.value)}
+          style={{ flex:1, padding:'6px 10px', borderRadius:8, background:'var(--surface2)', color:'var(--text)',
+                   border:'1px solid var(--border)', fontSize:13, fontFamily:'Sarabun, sans-serif' }}>
+          <option value="qwen3_14b">Qwen3.5 Flash</option>
+          <option value="qwen32b">Qwen3 32B</option>
+          <option value="gemini">{'\u2726'} Gemini 2.5 Flash Lite</option>
+          <option value="haiku">Haiku 4.5</option>
+        </select>
+      </div>
+
+      <button onClick={onStartTrack} disabled={!targets || !targets.length}
+        style={{ background:(targets && targets.length) ? 'linear-gradient(135deg,#0a2d1e,#0d3d28)' : 'var(--surface)',
+                 border:'1px solid ' + ((targets && targets.length) ? '#2d6b2d' : 'var(--border)'), borderRadius:12,
+                 padding:'18px 12px', cursor:(targets && targets.length) ? 'pointer' : 'not-allowed',
+                 textAlign:'center', color:'var(--text)', opacity:(targets && targets.length) ? 1 : 0.55 }}>
+        <Icon name="sparkles" size={22} color="#10b981" />
+        <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Daily Track</div>
+        <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>
+          {(targets && targets.length) ? '3 new words \u00b7 ' + stats.due + ' due' : 'No targets available'}
+        </div>
+      </button>
+
+      {notice && <Card style={{ padding:'12px 16px', border:'1px solid #f59e0b' }}>
+        <p style={{ fontSize:12, color:'#f59e0b', fontWeight:600 }}>{notice}</p></Card>}
+
+      {recent.length > 0 && (
+        <div>
+          <p style={{ fontSize:12, fontWeight:600, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Recent Tracks</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {recent.map((track, i) => (
+              <div key={i} onClick={() => onOpenTrack && onOpenTrack(track)}
+                style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', background:'var(--surface)',
+                         borderRadius:12, border:'1px solid var(--border)', cursor:'pointer' }}>
+                <div style={{ width:28, height:28, borderRadius:'50%', background:'#0a2d1e', display:'flex',
+                              alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <Icon name="sparkles" size={12} color="#10b981" />
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:13, fontWeight:600 }}>{track.date}
+                    {track.rated && <span style={{ color:'#10b981', marginLeft:6, fontSize:11 }}>{'\u2713'}</span>}</p>
+                  <p style={{ fontSize:11, color:'var(--muted)' }}>{(track.pairs || []).length} pairs {'\u00b7'} {(track.keywords || []).length} words</p>
+                </div>
+                <button onClick={e => { e.stopPropagation(); downloadMandarinTrack(track) }}
+                  style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }}
+                  title="Download transcript">{'\u2B07\uFE0F'}</button>
+                <button onClick={e => { e.stopPropagation(); onDeleteTrack && onDeleteTrack(tracks.length - 1 - i) }}
+                  style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }}
+                  title="Delete track">{'\u{1F5D1}\uFE0F'}</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <p style={{ textAlign:'center', fontSize:10, color:'var(--muted)', opacity:0.5, paddingBottom:8 }}>Mandarin Teacher {APP_VERSION}</p>
+    </div>
+  )
+}
+
+// §37 — the parent owns navigation state. Children emit events upward only.
+function MandarinTeacher({ lang, onSetLang }) {
+  const cred = useSharedCredentials()
+  const [vocab, setVocab] = useState([])
+  const [tracks, setTracks] = useState([])
+  const [slots, setSlots] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState('dashboard')
+  const [notice, setNotice] = useState('')
+  const [pendingReviewTrack, setPendingReviewTrack] = useState(null)
+  const [qcReturnContext, setQcReturnContext] = useState(null)
+  const [playerResumeCompleted, setPlayerResumeCompleted] = useState(false)
+  const [activeTrack, setActiveTrack] = useState(null)
+
+  useEffect(() => {
+    let dead = false
+    ;(async () => {
+      const sv = await stGet(ZH.vocab)
+      const st = await stGet(ZH.tracks)
+      const sl = await stGet(ZH.dailyNew)
+      if (dead) return
+      const merged = mergeMandarinVocab(sv)
+      setVocab(merged)
+      if (!Array.isArray(sv) || sv.length !== merged.length) stSet(ZH.vocab, merged)
+      setTracks(Array.isArray(st) ? st : [])
+      setSlots(sl && Array.isArray(sl.wordIds) ? sl.wordIds : [])
+      setLoading(false)
+    })()
+    return () => { dead = true }
+  }, [])
+
+  const saveVocabZh = useCallback(async v => { setVocab(v); await stSet(ZH.vocab, v) }, [])
+  const saveTracksZh = useCallback(async t => {
+    const capped = t.length > 20 ? t.slice(t.length - 20) : t
+    setTracks(capped); await stSet(ZH.tracks, capped)
+  }, [])
+  const saveSlots = useCallback(async ids => {
+    setSlots(ids); await stSet(ZH.dailyNew, { date:new Date().toISOString().slice(0, 10), wordIds:ids })
+  }, [])
+
+  const targets = useMemo(() => (vocab.length ? mandarinSelectTargets(vocab, slots) : []), [vocab, slots])
+
+  function onTrackGenerated(track) {
+    saveTracksZh([...tracks, track])
+    saveSlots((targets || []).map(t => t.id))
+    setPendingReviewTrack(track)
+    setQcReturnContext('post-generation')
+    setView('quality-review')
+  }
+  function onQcSave(corrected) {
+    const t = corrected || pendingReviewTrack
+    const exists = tracks.some(x => x.createdAt && x.createdAt === t.createdAt)
+    saveTracksZh(exists ? tracks.map(x => (x.createdAt && x.createdAt === t.createdAt) ? t : x) : [...tracks, t])
+    const from = qcReturnContext
+    setActiveTrack(t); setPendingReviewTrack(null); setQcReturnContext(null)
+    setPlayerResumeCompleted(from === 'lesson-complete')
+    setView('player')
+  }
+  function onQcSkip() {
+    const t = pendingReviewTrack, from = qcReturnContext
+    setPendingReviewTrack(null); setQcReturnContext(null)
+    setPlayerResumeCompleted(from === 'lesson-complete')
+    if (t) setActiveTrack(t)
+    setView('player')
+  }
+  // §39 — SRS update touches tt-zh-vocab only
+  function onTrackComplete(keywords) {
+    const rated = {}, knownIds = new Set()
+    ;(keywords || []).forEach(k => {
+      if (!k.wordId || !k.rating || k.rating === 'skip') return
+      if (k.rating === 'known') knownIds.add(k.wordId); else rated[k.wordId] = k.rating
+    })
+    const next = vocab.map(w => {
+      if (knownIds.has(w.id)) return markWordKnown(w)
+      if (rated[w.id]) return { ...applyRating(w, rated[w.id]), introducedDate: w.introducedDate || new Date().toISOString().slice(0, 10) }
+      return w
+    })
+    saveVocabZh(next)
+    saveSlots(next.filter(w => (targets || []).some(t => t.id === w.id) && w.status === 'new').map(w => w.id))
+    if (activeTrack) saveTracksZh(tracks.map(t =>
+      (t === activeTrack || (t.createdAt && t.createdAt === activeTrack.createdAt)) ? { ...t, rated:true, keywords } : t))
+    setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard')
+  }
+  function onDeleteTrack(idx) {
+    if (typeof window !== 'undefined' && window.confirm && !window.confirm('Delete this Mandarin track?')) return
+    saveTracksZh(tracks.filter((_, i) => i !== idx))
+  }
+
+  if (loading) return (
+    <div className="app" style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', flexDirection:'column', gap:16 }}>
+      <FontStyle />
+      <div className="zh display" style={{ fontSize:36, color:'var(--gold)' }}>{'\u4F60\u597D'}</div>
+      <Spinner size={28} />
+      <p style={{ color:'var(--muted)', fontSize:14 }}>Loading Mandarin Teacher...</p>
+    </div>
+  )
+
+  return (
+    <div className="app">
+      <FontStyle />
+      <Header lang={lang} onSetLang={onSetLang} view={view} onNav={setView} onHome={() => setView('dashboard')}
+        orBalance={cred.orBalance} orKey={cred.orKey} onRefreshBalance={cred.refreshBalance} lastTrackCost={null}
+        provider={cred.provider} geminiKey={cred.geminiKey} geminiSpend={cred.geminiSpend} onSetProvider={cred.setProvider} />
+      <main>
+        {view === 'dashboard' && (
+          <MandarinDashboard vocab={vocab} tracks={tracks} targets={targets} notice={notice}
+            onStartTrack={() => { setNotice(''); setView('generate') }}
+            provider={cred.provider} onSetProvider={cred.setProvider}
+            onOpenTrack={t => { setActiveTrack(t); setPlayerResumeCompleted(false); setView('player') }}
+            onDeleteTrack={onDeleteTrack} />
+        )}
+        {view === 'generate' && (
+          <ErrorBoundary>
+            <MandarinGenerator vocab={vocab} targets={targets} cred={cred}
+              onGenerated={onTrackGenerated} onBack={() => setView('dashboard')} />
+          </ErrorBoundary>
+        )}
+        {view === 'quality-review' && pendingReviewTrack && (
+          <ErrorBoundary>
+            <MandarinQualityReview track={pendingReviewTrack} vocab={vocab} onSave={onQcSave} onSkip={onQcSkip} />
+          </ErrorBoundary>
+        )}
+        {view === 'player' && activeTrack && (
+          <ErrorBoundary>
+            <Player key={(activeTrack.createdAt || '') + (playerResumeCompleted ? ':done' : '')}
+              track={activeTrack} targetLang="zh" gcpTtsKey={cred.gcpTtsKey}
+              startCompleted={playerResumeCompleted}
+              onComplete={onTrackComplete}
+              onReviewQuality={ctx => {
+                const latest = tracks.find(t => t.createdAt && activeTrack && t.createdAt === activeTrack.createdAt) || activeTrack
+                setPendingReviewTrack(latest)
+                setQcReturnContext(ctx === 'lesson-complete' ? 'lesson-complete' : 'player')
+                setView('quality-review')
+              }}
+              onBack={() => { setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard') }} />
+          </ErrorBoundary>
+        )}
+      </main>
+    </div>
+  )
+}
+
 function AppRoot() {
   const [lang, setLang] = useState(null)
   useEffect(() => {
     (async () => {
       const saved = await stGet(LANG_KEY)
-      setLang(saved === 'ja' ? 'ja' : 'th')
+      setLang(saved === 'ja' ? 'ja' : saved === 'zh' ? 'zh' : 'th')
     })()
   }, [])
   const onSetLang = useCallback(async code => {
@@ -14020,7 +15811,9 @@ function AppRoot() {
   return (
     <React.Fragment>
       <FontStyle />
-      {lang === 'ja'
+      {lang === 'zh'
+        ? <MandarinTeacher lang={lang} onSetLang={onSetLang} />
+        : lang === 'ja'
         ? <JapaneseTeacher lang={lang} onSetLang={onSetLang} />
         : <ThaiTeacher lang={lang} onSetLang={onSetLang} />}
     </React.Fragment>

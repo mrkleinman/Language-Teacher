@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v515"/>
+<meta name="app-version" content="v516"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v515';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v515').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v516';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v516').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -13372,6 +13372,140 @@ function downloadJapaneseGenLog(log, date) {
 
 
 
+// ── Shared generation recovery (§9, §16, §27, §31) ───────────────────────────
+// One recovery orchestration for every language. Language engines supply
+// normalisation, validation and safe construction; this layer owns policy.
+
+// §9 — structured failure categories. Recovery branches on these, never on prose.
+const GEN_FAIL = {
+  TARGET_MISSING:'TARGET_MISSING', UNKNOWN_CONTENT:'UNKNOWN_CONTENT', ILLEGAL_GRAMMAR:'ILLEGAL_GRAMMAR',
+  REGISTER:'REGISTER', STRUCTURAL:'STRUCTURAL', READING:'READING', PRONUNCIATION:'PRONUNCIATION',
+  SEGMENTS:'SEGMENTS', PROMPT_MEANING:'PROMPT_MEANING', TRANSLATION:'TRANSLATION',
+  DUPLICATE_EXACT:'DUPLICATE_EXACT', DUPLICATE_NEAR:'DUPLICATE_NEAR', COMPLEXITY:'COMPLEXITY',
+  API_ERROR:'API_ERROR', NONE:'NONE',
+}
+// §32 — only these can end generation. A repetitive sentence is NOT fatal.
+const GEN_FATAL = new Set([GEN_FAIL.TARGET_MISSING, GEN_FAIL.API_ERROR])
+// §27 — a language engine may add its own message patterns without the shared layer
+// learning any language-specific vocabulary.
+const GEN_FAIL_PATTERNS = []
+function registerFailurePatterns(list) { (list || []).forEach(x => GEN_FAIL_PATTERNS.push(x)) }
+registerFailurePatterns([
+  { rx:/romaji/i,  type:GEN_FAIL.PRONUNCIATION },
+  { rx:/pinyin/i,  type:GEN_FAIL.PRONUNCIATION },
+])
+function classifyGenerationFailure(message) {
+  const m = String(message || '')
+  if (/not used|not present/i.test(m))                       return GEN_FAIL.TARGET_MISSING
+  if (/untaught|unknown vocab|not been taught/i.test(m))     return GEN_FAIL.UNKNOWN_CONTENT
+  if (/ungrammatical|unnatural|grammar/i.test(m))            return GEN_FAIL.ILLEGAL_GRAMMAR
+  if (/register/i.test(m))                                   return GEN_FAIL.REGISTER
+  if (/identical sentence already used/i.test(m))            return GEN_FAIL.DUPLICATE_EXACT
+  if (/duplicate|already used/i.test(m))                     return GEN_FAIL.DUPLICATE_NEAR
+  if (/segment/i.test(m))                                    return GEN_FAIL.SEGMENTS
+  if (/reading/i.test(m))                                    return GEN_FAIL.READING
+  if (/pronunciation|transliteration|phonetic|reading form/i.test(m)) return GEN_FAIL.PRONUNCIATION
+  if (/cue|prompt/i.test(m))                                 return GEN_FAIL.PROMPT_MEANING
+  if (/translation|English/i.test(m))                        return GEN_FAIL.TRANSLATION
+  if (/complex/i.test(m))                                    return GEN_FAIL.COMPLEXITY
+  if (/JSON|no candidate|attempt/i.test(m))                  return GEN_FAIL.API_ERROR
+  if (/missing|structur/i.test(m))                           return GEN_FAIL.STRUCTURAL
+  for (const p of GEN_FAIL_PATTERNS) if (p.rx.test(m)) return p.type
+  return GEN_FAIL.STRUCTURAL
+}
+function isDuplicateFailure(type) {
+  return type === GEN_FAIL.DUPLICATE_EXACT || type === GEN_FAIL.DUPLICATE_NEAR
+}
+
+// §4/§28 — duplicate classification against BOTH histories.
+//   TYPE A same target, same sentence, same cue      \u2014 true duplicate
+//   TYPE B same target, same sentence, different cue \u2014 acceptable in recovery
+//   TYPE C same sentence, different target           \u2014 useful at low inventory
+//   TYPE D near-duplicate shape                      \u2014 not fatal for beginners
+function classifyDuplicate(normalised, cue, targetId, history) {
+  const global = history.globalSeen || new Map()
+  const byTarget = (history.seenByTarget && history.seenByTarget[targetId]) || new Map()
+  if (byTarget.has(normalised)) {
+    const prevCue = byTarget.get(normalised)
+    return (prevCue && cue && prevCue !== cue) ? 'B' : 'A'
+  }
+  if (global.has(normalised)) return 'C'
+  return null
+}
+
+// §7/§23 — escalation ladder. Each step CHANGES the strategy; it never repeats the
+// previous constraints, and the number of paid attempts is bounded.
+const RECOVERY_MAX_AI_CALLS = 3      // §23 — then deterministic/policy only
+function recoveryStrategyFor(step) {
+  switch (step) {
+    case 1: return { label:'normal constrained regeneration', dropScenarioVariety:false, allowUsedPattern:false, allowExactRepeat:false, deterministic:false }
+    case 2: return { label:'scenario-variety requirement removed', dropScenarioVariety:true,  allowUsedPattern:false, allowExactRepeat:false, deterministic:false }
+    case 3: return { label:'previously used sentence pattern allowed', dropScenarioVariety:true, allowUsedPattern:true, allowExactRepeat:false, deterministic:false }
+    case 4: return { label:'exact repetition allowed with a different retrieval cue', dropScenarioVariety:true, allowUsedPattern:true, allowExactRepeat:true, deterministic:false }
+    default: return { label:'deterministic safe recall', dropScenarioVariety:true, allowUsedPattern:true, allowExactRepeat:true, deterministic:true }
+  }
+}
+
+// §16 — THE shared recovery function. languageEngine supplies:
+//   normalizeForDuplicate(sentence)          §27
+//   generateOne({ target, recallIndex, strategy, history })  -> { pair, checkTier } | { failed, lastFailure }
+//   buildSafeRecall({ target, recallIndex, previousRecalls }) §14/§15
+//   validatePair(pair, { target, allowExactRepeat, history })
+//   alternativeCue(target, recallIndex, usedCues)            §13
+async function retryMissingRecall({ languageEngine, missingRecall, history, onLog, onTier }) {
+  const target = missingRecall.target
+  const rIdx = missingRecall.recallIndex
+  const stats = { aiCalls: 0, steps: [], acceptedByPolicy: null }
+  let last = { type: classifyGenerationFailure(missingRecall.lastFailure), message: missingRecall.lastFailure }
+
+  for (let step = 1; step <= 5; step++) {
+    const strat = recoveryStrategyFor(step)
+    // §23/§24 — never spend more than the budget on novelty.
+    if (!strat.deterministic && stats.aiCalls >= RECOVERY_MAX_AI_CALLS) continue
+    // §8 — react to the ACTUAL failure. A duplicate failure skips straight past the
+    // constrained regeneration steps that already produced it.
+    if (isDuplicateFailure(last.type) && step === 1) { stats.steps.push('1 skipped (duplicate failure)'); continue }
+    onLog && onLog('  \u21BB Recovery ' + step + ': ' + strat.label)
+    onTier && onTier(step)
+    stats.steps.push(step + ' ' + strat.label)
+
+    let res = null
+    if (strat.deterministic) {
+      // §14/§15 — the LANGUAGE engine builds it; shared code only validates.
+      const pair = languageEngine.buildSafeRecall({ target, recallIndex: rIdx, previousRecalls: missingRecall.previousRecalls || [] })
+      if (pair) {
+        const v = languageEngine.validatePair(pair, { target, allowExactRepeat: true, history })
+        if (v.ok) res = { pair, checkTier: step, acceptedByPolicy: 'deterministic-safe-recall' }
+        else onLog && onLog('  \u274C safe recall failed validation: ' + (v.problems || [])[0])
+      }
+    } else {
+      stats.aiCalls++
+      res = await languageEngine.generateOne({ target, recallIndex: rIdx, strategy: strat, history })
+      if (res && res.failed) {
+        last = { type: classifyGenerationFailure(res.lastFailure), message: res.lastFailure }
+        onLog && onLog('  \u274C ' + last.type + ': ' + last.message)
+        // §11 — a candidate that failed ONLY on novelty is accepted by policy once
+        // the cheap alternatives are exhausted.
+        if (isDuplicateFailure(last.type) && res.duplicateOnlyCandidate && step >= 3) {
+          const cue = languageEngine.alternativeCue
+            ? languageEngine.alternativeCue(target, rIdx, history.usedCues || [])
+            : null
+          const pair = cue ? { ...res.duplicateOnlyCandidate, prompt: cue } : res.duplicateOnlyCandidate
+          onLog && onLog('  \u2139 Useful repetition accepted \u2014 recovery policy')
+          return { ok:true, pair, checkTier: step, acceptedByPolicy:'useful-repetition', stats }
+        }
+        res = null
+      }
+    }
+    if (res && res.pair) {
+      if (res.acceptedByPolicy) onLog && onLog('  \u2139 ' + res.acceptedByPolicy)
+      return { ok:true, pair: res.pair, checkTier: res.checkTier || step, acceptedByPolicy: res.acceptedByPolicy || null, stats }
+    }
+  }
+  // §32 — reaching here means a genuine fatal problem, not mere repetitiveness.
+  return { ok:false, fatal: GEN_FATAL.has(last.type), lastFailure: last, stats }
+}
+
 // ── Shared track-target selection (§1, §27, §28, §29) ────────────────────────
 // ONE language-agnostic orchestration layer. Japanese, Mandarin and every future
 // language compose their track targets here, so none of them can independently
@@ -14672,7 +14806,7 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
     setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0); setTargetProgress({})
     try {
       push('\u2713 Scene ready')
-      const res = await generateJapaneseTrack(
+      let res = await generateJapaneseTrack(
         targets, vocab, register, apiKey, model,
         (done, total, srcs, meta) => {
           setRecallDone(done)
@@ -14730,13 +14864,39 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
         },
         stopRef.current, scene)
       if (stopRef.current.cancelled) return
-      // §13 — outcome B: incomplete but every accepted recall is valid.
-      if (res && res.complete === false) {
-        setPartial(res)
-        setGenerationError({ type:'incomplete-recalls', expected:res.expectedRecallCount, produced:res.recallCount, missing:res.missingRecalls || [] })
+      // §22 — attempt automatic recovery BEFORE showing any error screen, so the
+      // recovery screen becomes rare rather than routine.
+      let out = res
+      if (out && out.complete === false) {
+        let guard = 0
+        while (out.complete === false && (out.missingRecalls || []).length && guard++ < 3) {
+          push('\u21BB Auto-recovering missing recall ' + guard + '/3\u2026')
+          const next = await recoverJapaneseMissingRecall(out, targets, vocab, register, apiKey, model, push,
+            meta => { if (meta.checkTier) setCurrentCheckTier(meta.checkTier); if (meta.targetId) setCurrentTargetId(meta.targetId) })
+          if (next.recovered) {
+            const p = next.recovered
+            const idx = targets.findIndex(t => t.id === p.targetId)
+            setRecallDone(next.recallCount)
+            setBrickSources(prev => ({ ...prev, [FRAMING_SLOTS + idx * 3 + (p.recallIndex - 1)]: p._source }))
+            setTargetProgress(prev => {
+              const cur = prev[p.targetId] || { recalls: [] }
+              const recalls = [...cur.recalls.filter(r => r.recallIndex !== p.recallIndex),
+                               { recallIndex: p.recallIndex, checkTier: p.sourceCheck, source: p._source }]
+              return { ...prev, [p.targetId]: { recallsCompleted: recalls.length, recalls } }
+            })
+          }
+          if (next === out || (!next.recovered && next.lastRecoveryFailure)) { out = next; break }
+          out = next
+        }
+      }
+      if (out && out.complete === false) {
+        setPartial(out)
+        setGenerationError({ type:'incomplete-recalls', expected:out.expectedRecallCount, produced:out.recallCount,
+                             missing:out.missingRecalls || [], lastRecoveryFailure: out.lastRecoveryFailure })
         setPhase('recover')
         return
       }
+      res = out
       const pairs = res.pairs || []
       if (!pairs.length) { setError('Generation produced no usable lines.'); setPhase('error'); return }
       setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0); setPhase('done')
@@ -15466,6 +15626,8 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
                                          seenMap, inv, rules, onLog, onTier, opts) {
   // §8/§9 — recovery may relax NOVELTY only. Correctness is never relaxed.
   const relaxDuplicates = !!(opts && opts.relaxDuplicates)
+  const allowExactRepeat = !!(opts && opts.allowExactRepeat)   // §4 TYPE A permitted
+  const dropScenarioVariety = !!(opts && opts.dropScenarioVariety)
   // §19/§20 — remember candidates that failed for a recoverable reason so we can
   // salvage them without another API call.
   let dupOnlyCandidate = null      // passed everything except novelty
@@ -15527,11 +15689,13 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     const dup = japaneseDuplicateVerdict(jp, target.id, seenMap, rules)
     if (!dup.ok) {
       const sameTarget = dup.level === 'A'
-      if ((rules.allowNearDuplicate && dup.level === 'B') || (relaxDuplicates && !sameTarget)) {
-        onLog && onLog('  \u2139 accepted useful repetition \u2014 limited learner inventory')
+      // §3/§11 — novelty is SOFT. In recovery with allowExactRepeat, even a
+      // same-target repetition is accepted rather than blocking the lesson.
+      if ((rules.allowNearDuplicate && dup.level === 'B') || (relaxDuplicates && !sameTarget) || allowExactRepeat) {
+        onLog && onLog('  \u2139 Useful repetition accepted \u2014 recovery policy')
       } else {
-        // Remember it: if every tier fails, this is recoverable without a new API call.
-        if (!sameTarget && !dupOnlyCandidate) dupOnlyCandidate = cand
+        // §11 — keep it: a candidate whose ONLY fault is novelty is recoverable.
+        if (!dupOnlyCandidate) dupOnlyCandidate = cand
         lastFailure = dup.reason; onLog && onLog('  \u26A0 ' + lastFailure); continue
       }
     } else if (dup.note) onLog && onLog('  \u2139 ' + dup.note)
@@ -15546,8 +15710,10 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     seenMap.set(jaDedupeKey(dupOnlyCandidate.japanese), { targetId: target.id })
     return { pair: dupOnlyCandidate, checkTier: rules.maxTiers, recovered: 'duplicate-only' }
   }
-  // §18 — hand the exact reason back so recovery can be intelligent.
-  return { failed: true, lastFailure: lastFailure || 'no valid candidate' }
+  // §8/§18 — hand back the exact reason AND any novelty-only candidate so the
+  // shared recovery layer can complete the recall without another API call.
+  return { failed: true, lastFailure: lastFailure || 'no valid candidate',
+           duplicateOnlyCandidate: dupOnlyCandidate || null }
 }
 
 // Full track: opening exchange, 3 recalls per target (interleaved), closing exchange.
@@ -15704,6 +15870,49 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
            framingCount: open.length + close.length }
 }
 
+// §15/§16 — the JAPANESE adapter for the shared recovery engine. Japanese morphology,
+// kana and romaji live HERE, never inside the shared layer.
+function japaneseRecoveryEngine({ vocab, registerId, apiKey, model, inv, rules, seenMap, onLog }) {
+  return {
+    // §27 — language-specific duplicate normalisation
+    normalizeForDuplicate: s => jaDedupeKey(s),
+    async generateOne({ target, recallIndex, strategy }) {
+      return generateJapaneseOneRecall(target, recallIndex, vocab, registerId, apiKey, model,
+        seenMap, inv, rules, onLog, null,
+        { relaxDuplicates:true, allowExactRepeat: !!strategy.allowExactRepeat,
+          dropScenarioVariety: !!strategy.dropScenarioVariety })
+    },
+    // §14 — deterministic safe recall built from the learner's own inventory
+    buildSafeRecall({ target, recallIndex }) {
+      return jaFallbackRecall(target, inv, recallIndex)
+    },
+    validatePair(pair, { target }) {
+      if (!pair || !pair.japanese) return { ok:false, problems:['missing Japanese'] }
+      if (!matchesJapaneseTarget(pair.japanese, target)) return { ok:false, problems:['target not present'] }
+      const chk = japaneseCheckLine(pair.japanese, inv)
+      if (!chk.ok) return { ok:false, problems:['untaught content: ' + chk.unknown.join(' ')] }
+      const st = structuralValidateJapanesePair(pair)
+      if (!st.ok) {
+        const repaired = jaRepairPairStructure(pair, inv)
+        const st2 = structuralValidateJapanesePair(repaired)
+        if (!st2.ok) return { ok:false, problems: st2.problems }
+        Object.assign(pair, repaired)
+      }
+      return { ok:true, problems:[] }
+    },
+    // §13 — a genuinely equivalent alternative English cue, never fabricated meaning
+    alternativeCue(target, recallIndex, usedCues) {
+      const t = target.japanese || ''
+      const opts = [
+        'Say ' + t + ' in a natural everyday moment',
+        'Use ' + t + ' to respond to what the other person just said',
+        'Bring ' + t + ' into the conversation yourself',
+      ].filter(c => !(usedCues || []).includes(c))
+      return opts[(recallIndex - 1) % Math.max(1, opts.length)] || null
+    },
+  }
+}
+
 // §6/§14/§26 — repair ONE missing recall against the preserved partial state. The
 // eight already-validated recalls are never regenerated and the scene is reused.
 async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId, apiKey, model, onLog, onProgress) {
@@ -15718,15 +15927,31 @@ async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId,
   const seenMap = partial.seenMap || new Map()
   onLog && onLog('\u21BB Recovering ' + t.japanese + ' \u00b7 recall ' + missing.recallIndex +
                  '  (last failure: ' + missing.lastFailure + ')')
-  // §8/§9 — relax novelty only, never correctness.
-  const got = await generateJapaneseOneRecall(t, missing.recallIndex, vocab, registerId, apiKey, model,
-    seenMap, inv, rules, onLog,
-    tier => onProgress && onProgress({ targetId: t.id, recallIndex: missing.recallIndex, checkTier: tier }),
-    { relaxDuplicates: true })
-  if (!got || got.failed) {
-    onLog && onLog('\u274C Recovery failed \u2014 ' + ((got && got.lastFailure) || 'no candidate'))
-    return { ...partial, lastRecoveryFailure: (got && got.lastFailure) || 'no candidate' }
+  // §16 — routed through the SHARED recovery engine; Japanese supplies only the
+  // language adapter. Mandarin uses the identical orchestration.
+  const engine = japaneseRecoveryEngine({ vocab, registerId, apiKey, model, inv, rules, seenMap, onLog })
+  // §28 — both histories, because duplicate severity differs by scope.
+  const seenByTarget = {}
+  ;(partial.perTarget || []).forEach(set => set.forEach(p => {
+    if (!p.targetId) return
+    seenByTarget[p.targetId] = seenByTarget[p.targetId] || new Map()
+    seenByTarget[p.targetId].set(engine.normalizeForDuplicate(p.japanese), p.prompt)
+  }))
+  const history = { globalSeen: seenMap, seenByTarget,
+    usedCues: (partial.perTarget || []).flat().map(p => p.prompt).filter(Boolean) }
+  const rec = await retryMissingRecall({
+    languageEngine: engine,
+    missingRecall: { target: t, recallIndex: missing.recallIndex, lastFailure: missing.lastFailure,
+                     previousRecalls: (partial.perTarget || [])[missing.targetIdx] || [] },
+    history, onLog,
+    onTier: step => onProgress && onProgress({ targetId: t.id, recallIndex: missing.recallIndex, checkTier: step }),
+  })
+  if (!rec.ok) {
+    onLog && onLog('\u274C Recovery failed \u2014 ' + rec.lastFailure.type + ': ' + rec.lastFailure.message)
+    return { ...partial, lastRecoveryFailure: rec.lastFailure.message,
+             lastRecoveryFailureType: rec.lastFailure.type, recoveryStats: rec.stats }
   }
+  const got = { pair: rec.pair, checkTier: rec.checkTier }
   const l = got.pair
   const pair = {
     speaker: l.speaker || 'A', thai: l.japanese, japanese: l.japanese,

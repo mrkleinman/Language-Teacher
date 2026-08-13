@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v513"/>
+<meta name="app-version" content="v515"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v513';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v513').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v515';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v515').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3023,32 +3023,53 @@ const RAW_MANDARIN_VOCAB = [
 ]
 
 // §15 — grammar scaffold, SEPARATE from the 100-word SRS bank, unlocking by stage.
+// §1/§6 — INVARIANT: if an item is an SRS vocabulary target, the grammar scaffold
+// must never make it productively available before that vocabulary is introduced.
+// 不 is vocabulary #10 and 没 belongs to 没有 #15, so both carry requiresVocabIds
+// rather than a bare count threshold. Unlock needs stage AND prerequisites.
 const MANDARIN_GRAMMAR_SCAFFOLD = [
-  { id:'ma',   form:'\u5417', pinyin:'ma',  meaning:'yes/no question particle', minKnown:0 },
-  { id:'bu',   form:'\u4E0D', pinyin:'b\u00F9',  meaning:'negation (non-past)', minKnown:0 },
-  { id:'ge',   form:'\u4E2A', pinyin:'g\u00E8',  meaning:'general classifier',  minKnown:12 },
-  { id:'de',   form:'\u7684', pinyin:'de',  meaning:'possessive / modifier',    minKnown:20 },
-  { id:'ne',   form:'\u5462', pinyin:'ne',  meaning:'and you? / follow-up',     minKnown:20 },
-  { id:'ba',   form:'\u5427', pinyin:'ba',  meaning:'suggestion / softener',    minKnown:30 },
-  { id:'le',   form:'\u4E86', pinyin:'le',  meaning:'completed / changed state',minKnown:40 },
-  { id:'mei',  form:'\u6CA1', pinyin:'m\u00E9i', meaning:'negation (past / \u6709)', minKnown:14 },
-  { id:'guo',  form:'\u8FC7', pinyin:'guo', meaning:'experiential aspect',      minKnown:60 },
-  { id:'zhe',  form:'\u7740', pinyin:'zhe', meaning:'continuous aspect',        minKnown:70 },
-  { id:'bi',   form:'\u6BD4', pinyin:'b\u01D0',  meaning:'comparison',          minKnown:75 },
+  { id:'ma',   form:'\u5417', pinyin:'ma',  meaning:'yes/no question particle', minKnown:0,  requiresVocabIds:[] },
+  { id:'bu',   form:'\u4E0D', pinyin:'b\u00F9',  meaning:'negation (non-past)', minKnown:0,  requiresVocabIds:[10], vocabId:10 },
+  { id:'ge',   form:'\u4E2A', pinyin:'g\u00E8',  meaning:'general classifier',  minKnown:12, requiresVocabIds:[] },
+  { id:'de',   form:'\u7684', pinyin:'de',  meaning:'possessive / modifier',    minKnown:20, requiresVocabIds:[] },
+  { id:'ne',   form:'\u5462', pinyin:'ne',  meaning:'and you? / follow-up',     minKnown:20, requiresVocabIds:[] },
+  { id:'ba',   form:'\u5427', pinyin:'ba',  meaning:'suggestion / softener',    minKnown:30, requiresVocabIds:[] },
+  { id:'le',   form:'\u4E86', pinyin:'le',  meaning:'completed / changed state',minKnown:40, requiresVocabIds:[] },
+  { id:'mei',  form:'\u6CA1', pinyin:'m\u00E9i', meaning:'negation (past / \u6709)', minKnown:14, requiresVocabIds:[15] },
+  { id:'guo',  form:'\u8FC7', pinyin:'guo', meaning:'experiential aspect',      minKnown:60, requiresVocabIds:[] },
+  { id:'zhe',  form:'\u7740', pinyin:'zhe', meaning:'continuous aspect',        minKnown:70, requiresVocabIds:[] },
+  { id:'bi',   form:'\u6BD4', pinyin:'b\u01D0',  meaning:'comparison',          minKnown:75, requiresVocabIds:[] },
 ]
+// A grammar item unlocks only when the learner stage is reached AND every required
+// vocabulary item has actually been introduced (§6).
 function mandarinScaffoldFor(vocab) {
-  const known = (vocab || []).filter(w => w.status === 'known').length
-  return MANDARIN_GRAMMAR_SCAFFOLD.filter(g => known >= g.minKnown)
+  const list = vocab || []
+  const known = list.filter(w => w.status === 'known').length
+  const introduced = new Set(list.filter(w => isMandarinIntroduced(w, null)).map(w => w.id))
+  return MANDARIN_GRAMMAR_SCAFFOLD.filter(g =>
+    known >= g.minKnown && (g.requiresVocabIds || []).every(id => introduced.has(id)))
 }
 
 // §16 — fixed conversation basics. Explicit and tiny; never silently expanded.
+// \u00a72/\u00a714 \u2014 FIXED EXPRESSIONS ONLY. productiveVocabulary:false means the whole
+// string is whitelisted as an unanalysed unit: its component characters never become
+// productive vocabulary, never count toward known totals and never unlock grammar.
+// \u597D\u7684 was REMOVED from the early inventory because it cannot be kept safely
+// isolated from productive \u7684 (which is grammar-scaffold gated at 20 known).
 const MANDARIN_CONVERSATION_BASICS = [
-  { id:'nihao',  form:'\u4F60\u597D', pinyin:'n\u01D0 h\u01CEo', english:'hello',   minKnown:0 },
-  { id:'en',     form:'\u55EF',       pinyin:'\u01F9g',         english:'mm / yeah', minKnown:0 },
-  { id:'zaijian',form:'\u518D\u89C1', pinyin:'z\u00E0iji\u00E0n',english:'goodbye', minKnown:0 },
-  { id:'haode',  form:'\u597D\u7684', pinyin:'h\u01CEo de',      english:'okay',    minKnown:0 },
+  { id:'nihao',  form:'\u4F60\u597D', pinyin:'n\u01D0 h\u01CEo', english:'hello',
+    minKnown:0, type:'conversation-basic', productiveVocabulary:false,
+    // \u00a73 \u2014 pronunciation is stored per expression + context, not per character
+    context:'greeting' },
+  { id:'en',     form:'\u55EF',       pinyin:'\u01F9g',         english:'mm / yeah',
+    minKnown:0, type:'conversation-basic', productiveVocabulary:false,
+    context:'acknowledgement', pronunciationNote:'acknowledgement filler; other contexts differ' },
+  { id:'zaijian',form:'\u518D\u89C1', pinyin:'z\u00E0iji\u00E0n',english:'goodbye',
+    minKnown:0, type:'conversation-basic', productiveVocabulary:false, context:'parting' },
 ]
 function mandarinBasicsFor(vocab) {
+  // Counts come from SRS vocabulary only \u2014 basics are excluded by construction,
+  // because they never appear in the vocab array (\u00a72).
   const known = (vocab || []).filter(w => w.status === 'known').length
   return MANDARIN_CONVERSATION_BASICS.filter(b => known >= b.minKnown)
 }
@@ -3067,6 +3088,21 @@ const MANDARIN_EXTRA_LEXICON = [
 // word plus a grammar particle, so segmentation must split them (\u00a710) \u2014 otherwise a
 // target such as \u597D is hidden inside \u597D\u5417 and reported as absent (\u00a721).
 // §8/§46 — polyphonic characters: the reading depends on the WORD it appears in.
+// \u00a73 \u2014 pronunciation is resolved at EXPRESSION + CONTEXT level. \u55EF is not given a
+// universal character reading; each contextual use is stored explicitly.
+const MANDARIN_CONTEXTUAL_READINGS = {
+  '\u55EF': [
+    { context:'acknowledgement', pinyin:'\u01F9g', note:'agreeing / listening filler' },
+    { context:'question',        pinyin:'\u0144g', note:'querying \u201chm?\u201d' },
+    { context:'doubt',           pinyin:'\u01CEng', note:'surprised / doubtful' },
+  ],
+}
+function mandarinReadingInContext(expression, context) {
+  const list = MANDARIN_CONTEXTUAL_READINGS[expression]
+  if (!list) return null
+  const hit = list.find(x => x.context === context)
+  return (hit || list[0]).pinyin
+}
 const MANDARIN_POLYPHONIC = {
   '\u884C': { def:'x\u00EDng', words:{ '\u94F6\u884C':'h\u00E1ng', '\u884C\u4E1A':'h\u00E1ng' } },   // xíng / háng
   '\u4E50': { def:'l\u00E8',   words:{ '\u97F3\u4E50':'yu\u00E8' } },                                 // lè / yuè
@@ -3295,6 +3331,14 @@ function mandarinCheckLine(sentence, inv) {
   const unknown = mandarinUnknownContent(sentence, inv)
   return { ok: unknown.length === 0, unknown }
 }
+// \u00a714 \u2014 explicit provenance for every segment, so a fixed expression can never
+// become a backdoor for untaught vocabulary.
+function mandarinSegmentSource(surface, inv) {
+  if ((inv.allContent || []).some(w => w.chinese === surface)) return 'introduced-vocabulary'
+  if ((inv.grammarScaffold || []).some(g => g.form === surface)) return 'unlocked-grammar'
+  if ((inv.conversationBasics || []).some(b => b.form === surface)) return 'conversation-basic'
+  return 'unknown'
+}
 
 // ── Mandarin generation (§20, §28, §29, §30, §44, §64-§74) ───────────────────
 
@@ -3421,6 +3465,12 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
     if (has('\u5F88')) C.push({ zh:'\u5F88' + zh + '\u3002', en:'Very ' + target.english + '.', cue:'Say it is very ' + target.english })
     if (has('\u4F60') && gram('\u5417')) C.push({ zh:'\u4F60' + zh + '\u5417\uFF1F', en:'Are you ' + target.english + '?', cue:'Ask whether they are ' + target.english })
     if (gram('\u4E0D')) C.push({ zh:'\u4E0D' + zh + '\u3002', en:'Not ' + target.english + '.', cue:'Say it is not ' + target.english })
+    // Shapes that do NOT need \u4E0D, so an adjective still has three options before
+    // negation unlocks at vocabulary #10 (\u00a71/\u00a710).
+    if (has('\u6211')) C.push({ zh:'\u6211' + zh + '\u3002', en:'I am ' + target.english + '.', cue:'Say you are ' + target.english })
+    if (has('\u4ECA\u5929')) C.push({ zh:'\u4ECA\u5929' + zh + '\u3002', en:'Today is ' + target.english + '.', cue:'Say today is ' + target.english })
+    const nouns = inv.allContent.filter(w => w.partOfSpeech === 'noun')
+    nouns.slice(0, 2).forEach(nn => C.push({ zh: nn.chinese + zh + '\u3002', en: nn.english + ' is ' + target.english + '.', cue:'Say the ' + nn.english + ' is ' + target.english }))
   } else {
     // pronouns, nouns, question words, expressions: no \u4E0D negation, no \u5F88
     // §69 — pronouns need usable shapes from lesson one, built with any known verb.
@@ -3481,7 +3531,7 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
 }
 
 // §20 — ONE recall, escalating tiers, locked once accepted. Never returns partial.
-async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules, apiKey, model, seenMap, onLog, onTier) {
+async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules, apiKey, model, seenMap, onLog, onTier, stats) {
   const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
   const maxTier = rules.maxTiers
   let last = ''
@@ -3507,7 +3557,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
     }
     if (!cand) { last = 'no candidate'; continue }
     const v = validateMandarinPair(cand, target, inv, vocab, rules, seenMap)
-    if (!v.ok) { last = v.problems[0]; onLog && onLog('  \u274C ' + last); continue }
+    if (!v.ok) { last = v.problems[0]; recordMandarinRejection(stats, last); onLog && onLog('  \u274C ' + last); continue }
     const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
     seenMap.set(strip(cand.chinese), target.id)
     onLog && onLog('  \u2705 ' + ORD[tier-1] + ' check passed: ' + cand.chinese)
@@ -3518,7 +3568,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
         english: cand.english, prompt: cand.prompt,
         segments: v.segments,
         targetId: target.id, targetChinese: target.chinese,
-        recallIndex, checkTier: tier, _source: 'zh-check-' + tier,
+        recallIndex, checkTier: tier, _source: 'zh-check-' + tier, _fallbackUsed: isFallback,
         // shared Player/adapters read these; Mandarin fields stay authoritative (\u00a76)
         thai: cand.chinese, phonetic: cand.pinyin, wordId: target.id,
         words: v.segments.filter(s => s.type !== 'punct').map(s => ({ p:s.pinyin, e:s.english })),
@@ -3527,6 +3577,48 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
     }
   }
   return null
+}
+
+// §9 — generation telemetry. The SAME matrix can be run against the real configured
+// provider when network access permits. Mock-provider success is NOT evidence that
+// live model quality has been verified; `provider` records which was used.
+function createMandarinGenerationStats(provider, learnerWordCount) {
+  return {
+    provider: provider || 'unknown', live: false, learnerWordCount: learnerWordCount || 0,
+    requiredRecalls: 0, completedRecalls: 0, attempts: 0,
+    highestCheckTier: 0, fallbackUsed: 0,
+    rejections: { unknownVocabulary:0, targetMissing:0, malformedJson:0, duplicate:0, complexity:0, register:0, grammar:0, structural:0 },
+    pinyinRepairs: 0, segmentationRepairs: 0, qcIssuesAfterGeneration: 0,
+    startedAt: new Date().toISOString(), finishedAt: null,
+  }
+}
+function recordMandarinRejection(stats, problem) {
+  if (!stats || !problem) return
+  const p = String(problem)
+  if (/untaught vocabulary/.test(p)) stats.rejections.unknownVocabulary++
+  else if (/not present/.test(p)) stats.rejections.targetMissing++
+  else if (/JSON|no candidate/.test(p)) stats.rejections.malformedJson++
+  else if (/duplicate|already used/.test(p)) stats.rejections.duplicate++
+  else if (/too complex/.test(p)) stats.rejections.complexity++
+  else if (/register/.test(p)) stats.rejections.register++
+  else if (/ungrammatical|unnatural/.test(p)) stats.rejections.grammar++
+  else stats.rejections.structural++
+}
+function summariseMandarinStats(s) {
+  if (!s) return ''
+  const perRecall = s.completedRecalls ? (s.attempts / s.completedRecalls).toFixed(2) : '0'
+  const rej = Object.entries(s.rejections).filter(([, n]) => n > 0).map(([k, n]) => k + '=' + n).join(' ') || 'none'
+  return [
+    'provider=' + s.provider + (s.live ? ' (LIVE)' : ' (MOCK \u2014 not evidence of live quality)'),
+    'learner=' + s.learnerWordCount + ' words',
+    'recalls=' + s.completedRecalls + '/' + s.requiredRecalls,
+    'attempts/recall=' + perRecall,
+    'highestTier=' + s.highestCheckTier,
+    'fallback=' + s.fallbackUsed,
+    'rejections: ' + rej,
+    'pinyinRepairs=' + s.pinyinRepairs,
+    'segmentationRepairs=' + s.segmentationRepairs,
+  ].join('  |  ')
 }
 
 // ── Mandarin track assembly (§20, §22, §26, §44, §83) ────────────────────────
@@ -3547,13 +3639,17 @@ function mandarinFramingPairs(inv) {
   const open  = mk('A', basic('\u4F60\u597D'), 'Hello.',   'Greet them',            'greeting')
   const reply = mk('B', basic('\u55EF'),       'Mm.',      'Acknowledge warmly',    'greeting')
   const close = mk('A', basic('\u518D\u89C1'), 'Goodbye.', 'Say goodbye',           'parting')
-  const creply= mk('B', basic('\u597D\u7684'), 'Okay.',    'Accept and close off',  'parting')
+  // \u597D\u7684 was removed from the basics inventory (\u00a72); \u55EF closes the exchange instead.
+  const creply= mk('B', basic('\u55EF'),       'Mm.',      'Acknowledge and close off','parting')
   return { open:[open, reply].filter(Boolean), close:[close, creply].filter(Boolean) }
 }
 
 // §20/§83 — three recalls per target, or an explicit recoverable failure.
-async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, onLog, stopSignal) {
+async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, onLog, stopSignal, stats) {
   const inv = mandarinLearnerInventory(vocab, targets)
+  const S = stats || createMandarinGenerationStats('unknown', 0)
+  S.requiredRecalls = targets.length * 3
+  S.learnerWordCount = mandarinLearnerInventory(vocab, targets).allContent.length
   const rules = mandarinScarcityRules(inv)
   const seenMap = new Map()
   const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
@@ -3583,7 +3679,8 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
     for (let r = 1; r <= 3; r++) {
       if (stopSignal && stopSignal.cancelled) break
       const got = await generateMandarinOneRecall(t, r, vocab, inv, rules, apiKey, model, seenMap, onLog,
-        tier => { attempts++; onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, recallIndex:r, checkTier:tier, accepted:false }) })
+        tier => { attempts++; S.attempts++; S.highestCheckTier = Math.max(S.highestCheckTier, tier)
+          onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, recallIndex:r, checkTier:tier, accepted:false }) }, S)
       if (!got) {
         // §83 — visible, recoverable failure. Never silently continue.
         failures.push({ target:t.chinese, targetId:t.id, recallIndex:r, reason:'no valid candidate after all checks' })
@@ -3591,6 +3688,8 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
         continue
       }
       accepted.push(got.pair)
+      if (got.pair && got.pair._fallbackUsed) S.fallbackUsed++
+      S.completedRecalls++
       doneRecall++
       onProgress && onProgress(doneRecall, totalRecall, {
         targetIdx:i, targetId:t.id, recallIndex:r, checkTier:got.checkTier,
@@ -3612,7 +3711,9 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
   // interleave so exposures are spread rather than clustered
   const recalls = []
   for (let round = 0; round < 3; round++) for (const set of perTarget) if (set[round]) recalls.push(set[round])
+  S.finishedAt = new Date().toISOString()
   onLog && onLog('\u2139 ' + produced + ' recalls from ' + attempts + ' attempts (' + (produced ? (attempts/produced).toFixed(2) : '0') + ' per recall)')
+  onLog && onLog('\u2139 telemetry: ' + summariseMandarinStats(S))
   onLog && onLog('\u2705 Track complete \u2014 ' + recalls.length + ' recalls, ' + (open.length + close.length) + ' conversation lines')
   return {
     pairs: [...open, ...recalls, ...close],
@@ -13271,6 +13372,106 @@ function downloadJapaneseGenLog(log, date) {
 
 
 
+// ── Shared track-target selection (§1, §27, §28, §29) ────────────────────────
+// ONE language-agnostic orchestration layer. Japanese, Mandarin and every future
+// language compose their track targets here, so none of them can independently
+// repeat the "3 new words means a 3-word track" mistake.
+//
+// §29 — this layer must never touch language-specific fields (word.japanese,
+// word.thai, word.chinese). It reads only: id, status, repCount, lastSeen,
+// dueDate, lapses, okStreak, lastTargetedAt, reinforcedInTracks.
+const TRACK_TARGET_CAP = 30          // §2 — mature full-track capacity
+
+// §8 — introduced means "the learner has actually met this word", NOT status==='known'.
+function isWordIntroduced(w) {
+  if (!w) return false
+  if (w.introduced === true) return true
+  if ((w.repCount || 0) > 0) return true
+  if ((w.exposureCount || 0) > 0) return true
+  if (w.lastSeen) return true
+  return false
+}
+
+// §14/§15 — deterministic pedagogical rotation, never random. Higher score wins.
+function reinforcementScore(w, ctx) {
+  const recentTracks = (ctx && ctx.recentTrackWordIds) || []
+  let score = 0
+  // not targeted recently
+  const lastIdx = recentTracks.findIndex(ids => ids.includes(w.id))
+  if (lastIdx === -1) score += 100                    // never recently targeted
+  else score += Math.min(90, lastIdx * 30)            // longer ago scores higher
+  // weaker knowledge first
+  if (w.status === 'lapsed') score += 40
+  else if (w.status === 'new') score += 30            // exposed but not yet learned
+  else if (w.status === 'learning') score += 20
+  score -= Math.min(20, (w.okStreak || 0) * 4)        // confident words deprioritised
+  score -= Math.min(15, (w.repCount || 0))            // heavily drilled words later
+  score += Math.min(10, (w.lapses || 0) * 5)          // trouble words sooner
+  // stable tie-break so selection is fully deterministic and testable
+  return score
+}
+
+// §12/§26 — resolve the COMPLETE target set before generation begins.
+function selectTrackTargets(opts) {
+  const vocab = opts.vocab || []
+  const cap = opts.targetCap || TRACK_TARGET_CAP
+  const today = opts.today || new Date().toISOString().slice(0, 10)
+  const introducedPredicate = opts.introducedPredicate || isWordIntroduced
+  const recentTrackWordIds = opts.recentTrackWordIds || []
+  const ctx = { recentTrackWordIds }
+
+  // A. DUE — §6, using the language/SRS rule supplied by the caller.
+  const dueSelector = opts.dueSelector || (v => v.filter(w =>
+    w.status !== 'new' && w.dueDate && w.dueDate <= today))
+  const due = dueSelector(vocab).slice(0, cap)
+  const used = new Set(due.map(w => w.id))
+
+  // B. NEW — §5/§13, the language's own new-slot logic, unchanged. If the caller's
+  // SRS suppresses new words under review load it simply returns none.
+  const newSelector = opts.newSelector || (() => [])
+  const fresh = newSelector(vocab).filter(w => !used.has(w.id)).slice(0, Math.max(0, cap - used.size))
+  fresh.forEach(w => used.add(w.id))
+
+  // C. REINFORCE — §7/§3, fill otherwise-empty capacity with already-introduced
+  // words. Never used before genuine due/new targets are accounted for (§12).
+  const scoreFn = opts.reinforcementScore || reinforcementScore
+  const pool = vocab
+    .filter(w => !used.has(w.id) && introducedPredicate(w))
+    .map(w => ({ w, s: scoreFn(w, ctx) }))
+    .sort((a, b) => (b.s - a.s) || (a.w.id - b.w.id))       // deterministic tie-break
+  const reinforce = pool.slice(0, Math.max(0, cap - used.size)).map(x => x.w)
+
+  // §4 — every target carries an explicit role; never inferred from styling.
+  const tag = (list, role) => list.map((w, i) => ({
+    ...w, selectionRole: role, originalSrsStatus: w.status, targetIndex: 0,
+  }))
+  const targets = [...tag(due, 'due'), ...tag(fresh, 'new'), ...tag(reinforce, 'reinforce')]
+    .slice(0, cap)
+    .map((w, i) => ({ ...w, targetIndex: i }))
+
+  return {
+    targets,
+    counts: { total: targets.length, new: fresh.length, due: due.length, reinforce: reinforce.length },
+    expectedRecalls: targets.length * 3,                    // §18
+    cap,
+  }
+}
+
+// §10 — one shared summary string so every language describes a track identically.
+function describeTargetSelection(counts) {
+  if (!counts || !counts.total) return 'No targets available'
+  const parts = []
+  if (counts.new) parts.push(counts.new + ' NEW')
+  if (counts.due) parts.push(counts.due + ' DUE')
+  if (counts.reinforce) parts.push(counts.reinforce + ' REINFORCE')
+  return 'TARGETING ' + counts.total + ' WORD' + (counts.total === 1 ? '' : 'S') + '  \u00b7  ' + parts.join(' \u00b7 ')
+}
+const SELECTION_ROLE_STYLE = {
+  new:       { label:'NEW',       color:'#4a90e2' },
+  due:       { label:'DUE',       color:'#f59e0b' },
+  reinforce: { label:'REINFORCE', color:'#a78bfa' },
+}
+
 // ── Shared generation presentation ───────────────────────────────────────────
 // Extracted from the live Thai generator's own JSX so both languages render the
 // same way. Presentation only \u2014 no Thai generation or language logic is touched.
@@ -13658,6 +13859,8 @@ function repairJapaneseTrack(track, inv) {
 
 // §23/§24 — pill with three recall LEDs, keyed on stable targetId (§22).
 function MandarinTargetPill({ w, state, srcColor, recalls }) {
+  // §11 — role badge is independent of tier colour / active outline / LEDs
+  const role = SELECTION_ROLE_STYLE[w.selectionRole] || null
   const isNew = w.status === 'new'
   const list = Array.isArray(recalls) ? recalls : []
   const active = state === 'active', done = state === 'done'
@@ -13671,9 +13874,9 @@ function MandarinTargetPill({ w, state, srcColor, recalls }) {
       borderRadius:8, padding: active ? '3px 9px' : '4px 10px', transition:'all 0.25s',
       minWidth:0, position:'relative', opacity: state === 'future' ? 0.75 : 1,
       boxShadow: active ? '0 0 0 3px rgba(212,169,74,0.55), 0 0 10px rgba(212,169,74,0.45)' : 'none' }}>
-      {isNew && (
+      {role && (
         <span style={{ position:'absolute', top:-6, right:-5, fontSize:8, fontWeight:800, letterSpacing:0.3,
-          color:'#0b1120', background:'#4a90e2', borderRadius:3, padding:'1px 4px', lineHeight:1.3 }}>NEW</span>
+          color:'#0b1120', background: role.color, borderRadius:3, padding:'1px 4px', lineHeight:1.3 }}>{role.label}</span>
       )}
       <span className="zh" style={{ color:text, fontSize:14, lineHeight:1.3 }}>{w.chinese}</span>
       <span className="phon" style={{ color: hasResult ? srcColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{w.pinyin}</span>
@@ -13750,7 +13953,106 @@ function downloadMandarinGenLog(log, tag) {
 
 // §27 — generator screen: current activity visible without scrolling, structured
 // state only (§26), stable targetId keying (§22).
-function MandarinGenerator({ vocab, targets, cred, onGenerated, onBack }) {
+// §4 — Learn New Words. Integrated with the real SRS vocabulary: same stable IDs
+// used by generation, pills, QC and persistence. Not a disconnected tutorial.
+function MandarinLearnWords({ words, gcpTtsKey, onDone, onBack }) {
+  const [idx, setIdx] = useState(0)
+  const [speaking, setSpeaking] = useState(false)
+  const w = (words || [])[idx]
+  const audioRef = useRef(null)
+
+  // §16 — TTS always speaks the Hanzi. Pinyin is never passed to the engine.
+  function speak() {
+    if (!w) return
+    setSpeaking(true)
+    const done = () => setSpeaking(false)
+    try {
+      if (gcpTtsKey) {
+        const v = ttsVoiceFor('zh', false)
+        fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + gcpTtsKey, {
+          method:'POST', headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ input:{ text:w.chinese },      // Hanzi, never pinyin
+            voice:{ languageCode:v.languageCode, name:v.name },
+            audioConfig:{ audioEncoding:'MP3', speakingRate:0.9 } }),
+        }).then(r => r.json()).then(d => {
+          if (!d || !d.audioContent) { done(); return }
+          const a = new Audio('data:audio/mp3;base64,' + d.audioContent)
+          audioRef.current = a
+          a.onended = done; a.onerror = done
+          a.play().catch(done)
+        }).catch(done)
+        return
+      }
+      if (typeof SpeechSynthesisUtterance === 'undefined' || !window.speechSynthesis) { done(); return }
+      const u = new SpeechSynthesisUtterance(w.chinese)   // Hanzi
+      u.lang = 'zh-CN'
+      u.rate = 0.85
+      const voice = pickBrowserVoice('zh')
+      if (voice) u.voice = voice
+      u.onend = done; u.onerror = done
+      window.speechSynthesis.cancel()
+      window.speechSynthesis.speak(u)
+    } catch (e) { done() }
+  }
+  useEffect(() => { const t = setTimeout(speak, 250); return () => clearTimeout(t) }, [idx])
+
+  if (!w) return (
+    <div style={{ padding:24, textAlign:'center' }}>
+      <p style={{ color:'var(--muted)' }}>No new words to learn right now.</p>
+      <Btn onClick={onBack} variant="secondary" style={{ marginTop:12 }}>Back</Btn>
+    </div>
+  )
+  const last = idx === (words.length - 1)
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4 }}>
+          <Icon name="x" size={20} />
+        </button>
+        <span style={{ fontSize:12, color:'var(--muted)' }}>Word {idx + 1} of {words.length}</span>
+        <span style={{ width:24 }} />
+      </div>
+      <div style={{ height:3, background:'var(--surface2)', borderRadius:2, overflow:'hidden' }}>
+        <div style={{ height:'100%', width:(((idx + 1) / words.length) * 100) + '%', background:'var(--gold)', transition:'width 0.3s' }} />
+      </div>
+
+      <Card style={{ padding:'28px 20px', textAlign:'center', display:'flex', flexDirection:'column', gap:12 }}>
+        <div className="zh" style={{ fontSize:56, lineHeight:1.2, color:'var(--text)' }}>{w.chinese}</div>
+        <div className="phon" style={{ fontSize:22, color:'var(--gold)' }}>{w.pinyin}</div>
+        <div style={{ fontSize:16, color:'var(--muted)' }}>{w.english}</div>
+        <button onClick={speak}
+          style={{ marginTop:8, alignSelf:'center', background:'var(--surface2)', border:'1px solid var(--border)',
+                   borderRadius:24, padding:'10px 22px', cursor:'pointer', color:'var(--gold)', fontSize:14, fontWeight:700 }}>
+          {speaking ? '\u{1F50A} Playing\u2026' : '\u{1F50A} Play audio'}
+        </button>
+        {w.partOfSpeech && <div style={{ fontSize:10, color:'var(--muted)', opacity:0.7 }}>{w.partOfSpeech}</div>}
+      </Card>
+
+      <div style={{ display:'flex', gap:8 }}>
+        <Btn onClick={() => setIdx(i => Math.max(0, i - 1))} variant="secondary"
+          disabled={idx === 0} style={{ flex:1, justifyContent:'center' }}>Previous</Btn>
+        {last
+          ? <Btn onClick={onDone} style={{ flex:2, justifyContent:'center' }}>{'\u2726'} Start track</Btn>
+          : <Btn onClick={() => setIdx(i => i + 1)} style={{ flex:2, justifyContent:'center' }}>Next word</Btn>}
+      </div>
+      <p style={{ fontSize:10, color:'var(--muted)', textAlign:'center' }}>
+        These are the same words the track will practise.
+      </p>
+    </div>
+  )
+}
+
+// §5/§17 — Mandarin SRS/review target selection. Due learned words only; never
+// introduces a new word just because a review track was requested.
+function mandarinSelectSrsTargets(vocab, max) {
+  const today = new Date().toISOString().slice(0, 10)
+  return (vocab || [])
+    .filter(w => w.status !== 'new' && w.dueDate && w.dueDate <= today)
+    .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || '') || (a.unlockOrder - b.unlockOrder))
+    .slice(0, max || 3)
+}
+
+function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGenerated, onBack }) {
   const [phase, setPhase] = useState('idle')
   const [fullLog, setFullLog] = useState([])
   const [liveLog, setLiveLog] = useState([])
@@ -13888,7 +14190,7 @@ function MandarinGenerator({ vocab, targets, cred, onGenerated, onBack }) {
 
       <div>
         <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' }}>
-          Targeting {(targets || []).length} words {'\u00b7'} {inv.allContent.length} available
+          {describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:(targets||[]).length, due:0, reinforce:0 })}
         </p>
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
           {(targets || []).map(w => (
@@ -14245,6 +14547,9 @@ function JapaneseQualityReview({ track, vocab, onSave, onSkip }) {
 // Gold outline = currently generating (§3, at most one). Aggregate tint = worst
 // accepted tier so far (§4). LEDs are the authoritative detail (§2).
 function JapaneseTargetPill({ w, state, srcColor, recalls }) {
+  // §11 — the ROLE badge is its own visual dimension, independent of check-tier
+  // colour, the active generation outline and the recall LEDs.
+  const role = SELECTION_ROLE_STYLE[w.selectionRole] || null
   const isNew = w.status === 'new'
   const unseen = (w.repCount || 0) === 0 && !w.lastSeen
   const active = state === 'active'
@@ -14265,10 +14570,10 @@ function JapaneseTargetPill({ w, state, srcColor, recalls }) {
       borderRadius:8, padding: active ? '3px 9px' : '4px 10px',
       transition:'all 0.25s', minWidth:0, position:'relative',
       boxShadow: active ? '0 0 0 3px rgba(212,169,74,0.55), 0 0 10px rgba(212,169,74,0.45)' : 'none' }}>
-      {isNew && (
+      {role && (
         <span style={{ position:'absolute', top:-6, right:-5, fontSize:8, fontWeight:800, letterSpacing:0.3,
-          color:'#0b1120', background: unseen ? '#4a90e2' : '#a78bfa', borderRadius:3, padding:'1px 4px', lineHeight:1.3, pointerEvents:'none' }}>
-          {unseen ? 'NEW' : 'RELEARN'}
+          color:'#0b1120', background: role.color, borderRadius:3, padding:'1px 4px', lineHeight:1.3, pointerEvents:'none' }}>
+          {role.label}
         </span>
       )}
       <span className="jp" style={{ color:text, fontSize:13, lineHeight:1.3 }}>{w.japanese}</span>
@@ -14298,7 +14603,7 @@ function JapaneseBlockPill({ b, kind }) {
   )
 }
 
-function JapaneseGenerator({ vocab, targets, register, cred, onGenerated, onBack }) {
+function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenerated, onBack }) {
   const [phase, setPhase] = useState('scene_building')   // scene_building | scene_preview | generating | done | error
   const [scene, setScene] = useState(null)
   const [fullLog, setFullLog] = useState([])      // §19 complete history, always downloadable
@@ -14458,8 +14763,8 @@ function JapaneseGenerator({ vocab, targets, register, cred, onGenerated, onBack
   const TargetHeader = () => (
     <div>
       <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-        <span>Targeting {(targets || []).length} words</span>
-        {newCount > 0 && <span style={{ color:'#4a90e2', fontWeight:800 }}>{'\u2726'} {newCount} new</span>}
+        {/* §10 — real role counts, so the learner is never told a 6-target track has 3 words */}
+        <span>{describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:newCount, due:0, reinforce:0 })}</span>
         <span style={{ color:'var(--muted)' }}>{'\u00B7'} {allowCtx.all.length} content words available</span>
       </p>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
@@ -14730,9 +15035,8 @@ function JapaneseGenerator({ vocab, targets, register, cred, onGenerated, onBack
 
       {/* §11/§12 — targets stay close to the process; static curriculum info compressed */}
       <div>
-        <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em', display:'flex', gap:6, flexWrap:'wrap' }}>
-          <span>Targeting {(targets || []).length} words</span>
-          {newCount > 0 && <span style={{ color:'#4a90e2', fontWeight:800 }}>{'\u2726'} {newCount} new</span>}
+        <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' }}>
+          {describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:newCount, due:0, reinforce:0 })}
         </p>
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
           {(targets || []).map((w, i) => (
@@ -14867,8 +15171,17 @@ function JapaneseTeacher({ lang, onSetLang }) {
 
   const saveRegister = useCallback(async r => { setRegister(r); await stSet(JA.register, r) }, [])
   const hasVocab = vocab.length > 0
-  // §3 — next targets come from explicit unlockOrder, never Thai wordUtility.
-  const targets = useMemo(() => hasVocab ? japaneseSelectNewSlots(vocab, slots) : [], [vocab, slots, hasVocab])
+  // §26/§27 — the FULL target set (new + due + reinforce) is resolved here, once,
+  // through the shared language-agnostic selector, and handed to every screen.
+  const recentTrackWordIds = useMemo(
+    () => [...tracks].reverse().slice(0, 3).map(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)),
+    [tracks])
+  const selection = useMemo(() => hasVocab ? selectTrackTargets({
+    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds,
+    newSelector: v => japaneseSelectNewSlots(v, slots),      // §5 unchanged new-slot logic
+  }) : { targets: [], counts: { total:0, new:0, due:0, reinforce:0 }, expectedRecalls: 0 },
+  [vocab, slots, hasVocab, recentTrackWordIds])
+  const targets = selection.targets
 
   function startTrack() {
     if (!hasVocab) { setNotice('Japanese vocabulary has not been loaded yet.'); return }
@@ -14897,14 +15210,14 @@ function JapaneseTeacher({ lang, onSetLang }) {
         onSetProvider={cred.setProvider} />
       <main>
         {view === 'dashboard' && (
-          <JapaneseDashboard vocab={vocab} tracks={tracks} register={register} targets={targets}
+          <JapaneseDashboard vocab={vocab} tracks={tracks} register={register} targets={targets} selection={selection}
             onSetRegister={saveRegister} onStartTrack={startTrack} notice={notice}
             provider={cred.provider} onSetProvider={cred.setProvider} hasVocab={hasVocab}
             onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} />
         )}
         {view === 'generate' && (
           <ErrorBoundary>
-            <JapaneseGenerator vocab={vocab} targets={targets} register={register} cred={cred}
+            <JapaneseGenerator vocab={vocab} targets={targets} selection={selection} register={register} cred={cred}
               onGenerated={onTrackGenerated} onBack={() => setView('dashboard')} />
           </ErrorBoundary>
         )}
@@ -15520,7 +15833,7 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
 
 // §43/§45 — Mandarin dashboard. Same visual language as Thai/Japanese.
 function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice, provider, onSetProvider,
-                             onOpenTrack, onDeleteTrack }) {
+                             onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue }) {
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
     return {
@@ -15597,17 +15910,44 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice, provi
         </select>
       </div>
 
-      <button onClick={onStartTrack} disabled={!targets || !targets.length}
-        style={{ background:(targets && targets.length) ? 'linear-gradient(135deg,#0a2d1e,#0d3d28)' : 'var(--surface)',
-                 border:'1px solid ' + ((targets && targets.length) ? '#2d6b2d' : 'var(--border)'), borderRadius:12,
-                 padding:'18px 12px', cursor:(targets && targets.length) ? 'pointer' : 'not-allowed',
+      {/* §4 — learn the three new words before practising them */}
+      <button onClick={onLearnWords} disabled={!targets || !targets.length}
+        style={{ background:(targets && targets.length) ? 'linear-gradient(135deg,#1a1630,#231d42)' : 'var(--surface)',
+                 border:'1px solid ' + ((targets && targets.length) ? '#4a90e2' : 'var(--border)'), borderRadius:12,
+                 padding:'16px 12px', cursor:(targets && targets.length) ? 'pointer' : 'not-allowed',
                  textAlign:'center', color:'var(--text)', opacity:(targets && targets.length) ? 1 : 0.55 }}>
-        <Icon name="sparkles" size={22} color="#10b981" />
-        <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Daily Track</div>
-        <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>
-          {(targets && targets.length) ? '3 new words \u00b7 ' + stats.due + ' due' : 'No targets available'}
+        <Icon name="book" size={20} color="#4a90e2" />
+        <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Learn New Words</div>
+        <div style={{ fontSize:11, color:'#8ab8f0', marginTop:2 }}>
+          {(targets && targets.length) ? targets.map(t => t.chinese).join(' \u00b7 ') : 'No new words available'}
         </div>
       </button>
+
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+        <button onClick={onStartTrack} disabled={!targets || !targets.length}
+          style={{ background:(targets && targets.length) ? 'linear-gradient(135deg,#0a2d1e,#0d3d28)' : 'var(--surface)',
+                   border:'1px solid ' + ((targets && targets.length) ? '#2d6b2d' : 'var(--border)'), borderRadius:12,
+                   padding:'18px 12px', cursor:(targets && targets.length) ? 'pointer' : 'not-allowed',
+                   textAlign:'center', color:'var(--text)', opacity:(targets && targets.length) ? 1 : 0.55 }}>
+          <Icon name="sparkles" size={22} color="#10b981" />
+          <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Daily Track</div>
+          <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>
+            {(targets && targets.length) ? '3 new words' : 'No targets'}
+          </div>
+        </button>
+        {/* §5 — separate review-track action driven by due SRS words */}
+        <button onClick={onStartSrsTrack} disabled={!srsDue}
+          style={{ background: srsDue ? 'linear-gradient(135deg,#2d1f08,#3d2a0c)' : 'var(--surface)',
+                   border:'1px solid ' + (srsDue ? 'var(--gold)' : 'var(--border)'), borderRadius:12,
+                   padding:'18px 12px', cursor: srsDue ? 'pointer' : 'not-allowed',
+                   textAlign:'center', color:'var(--text)', opacity: srsDue ? 1 : 0.55 }}>
+          <Icon name="clock" size={22} color="var(--gold)" />
+          <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Review Track</div>
+          <div style={{ fontSize:11, color:'var(--gold)', marginTop:2 }}>
+            {srsDue ? srsDue + ' due for review' : 'Nothing due yet'}
+          </div>
+        </button>
+      </div>
 
       {notice && <Card style={{ padding:'12px 16px', border:'1px solid #f59e0b' }}>
         <p style={{ fontSize:12, color:'#f59e0b', fontWeight:600 }}>{notice}</p></Card>}
@@ -15627,7 +15967,10 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice, provi
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:13, fontWeight:600 }}>{track.date}
                     {track.rated && <span style={{ color:'#10b981', marginLeft:6, fontSize:11 }}>{'\u2713'}</span>}</p>
-                  <p style={{ fontSize:11, color:'var(--muted)' }}>{(track.pairs || []).length} pairs {'\u00b7'} {(track.keywords || []).length} words</p>
+                  <p style={{ fontSize:11, color:'var(--muted)' }}>
+                    {(track.pairs || []).length} pairs {'\u00b7'} {(track.keywords || []).length} words
+                    {track.mode === 'srs' && <span style={{ color:'var(--gold)', marginLeft:6 }}>REVIEW</span>}
+                  </p>
                 </div>
                 <button onClick={e => { e.stopPropagation(); downloadMandarinTrack(track) }}
                   style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }}
@@ -15658,6 +16001,7 @@ function MandarinTeacher({ lang, onSetLang }) {
   const [qcReturnContext, setQcReturnContext] = useState(null)
   const [playerResumeCompleted, setPlayerResumeCompleted] = useState(false)
   const [activeTrack, setActiveTrack] = useState(null)
+  const [trackMode, setTrackMode] = useState('daily')   // §5 'daily' | 'srs'
 
   useEffect(() => {
     let dead = false
@@ -15685,11 +16029,32 @@ function MandarinTeacher({ lang, onSetLang }) {
     setSlots(ids); await stSet(ZH.dailyNew, { date:new Date().toISOString().slice(0, 10), wordIds:ids })
   }, [])
 
-  const targets = useMemo(() => (vocab.length ? mandarinSelectTargets(vocab, slots) : []), [vocab, slots])
+  // §27 — Mandarin composes through the SAME shared selector as Japanese. No
+  // language-specific filler logic exists here.
+  const recentTrackWordIds = useMemo(
+    () => [...tracks].reverse().slice(0, 3).map(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)),
+    [tracks])
+  const newSelection = useMemo(() => (vocab.length ? selectTrackTargets({
+    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds,
+    newSelector: v => mandarinSelectTargets(v, slots),
+  }) : { targets: [], counts:{ total:0, new:0, due:0, reinforce:0 }, expectedRecalls:0 }),
+  [vocab, slots, recentTrackWordIds])
+  // §17 — a review track drills due words ONLY: no new-word slot is consumed.
+  const srsSelection = useMemo(() => (vocab.length ? selectTrackTargets({
+    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds,
+    newSelector: () => [],
+    dueSelector: v => mandarinSelectSrsTargets(v, TRACK_TARGET_CAP),
+  }) : { targets: [], counts:{ total:0, new:0, due:0, reinforce:0 }, expectedRecalls:0 }),
+  [vocab, recentTrackWordIds])
+  const selection = trackMode === 'srs' ? srsSelection : newSelection
+  const newTargets = newSelection.targets
+  const srsTargets = srsSelection.targets
+  const targets = selection.targets
 
   function onTrackGenerated(track) {
-    saveTracksZh([...tracks, track])
-    saveSlots((targets || []).map(t => t.id))
+    saveTracksZh([...tracks, { ...track, mode: trackMode }])
+    // §17 — only a new-word track consumes daily-new slots.
+    if (trackMode === 'daily') saveSlots((targets || []).map(t => t.id))
     setPendingReviewTrack(track)
     setQcReturnContext('post-generation')
     setView('quality-review')
@@ -15723,7 +16088,7 @@ function MandarinTeacher({ lang, onSetLang }) {
       return w
     })
     saveVocabZh(next)
-    saveSlots(next.filter(w => (targets || []).some(t => t.id === w.id) && w.status === 'new').map(w => w.id))
+    if (trackMode === 'daily') saveSlots(next.filter(w => (targets || []).some(t => t.id === w.id) && w.status === 'new').map(w => w.id))
     if (activeTrack) saveTracksZh(tracks.map(t =>
       (t === activeTrack || (t.createdAt && t.createdAt === activeTrack.createdAt)) ? { ...t, rated:true, keywords } : t))
     setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard')
@@ -15750,15 +16115,28 @@ function MandarinTeacher({ lang, onSetLang }) {
         provider={cred.provider} geminiKey={cred.geminiKey} geminiSpend={cred.geminiSpend} onSetProvider={cred.setProvider} />
       <main>
         {view === 'dashboard' && (
-          <MandarinDashboard vocab={vocab} tracks={tracks} targets={targets} notice={notice}
-            onStartTrack={() => { setNotice(''); setView('generate') }}
+          <MandarinDashboard vocab={vocab} tracks={tracks} targets={newTargets} notice={notice}
+            srsDue={srsSelection.counts.due} selection={newSelection}
+            onLearnWords={() => { setTrackMode('daily'); setNotice(''); setView('learn') }}
+            onStartSrsTrack={() => {
+              if (!srsTargets.length) { setNotice('No Mandarin words are due for review yet.'); return }
+              setTrackMode('srs'); setNotice(''); setView('generate')
+            }}
+            onStartTrack={() => { setTrackMode('daily'); setNotice(''); setView('generate') }}
             provider={cred.provider} onSetProvider={cred.setProvider}
             onOpenTrack={t => { setActiveTrack(t); setPlayerResumeCompleted(false); setView('player') }}
             onDeleteTrack={onDeleteTrack} />
         )}
+        {view === 'learn' && (
+          <ErrorBoundary>
+            <MandarinLearnWords words={newTargets.filter(w => w.selectionRole === 'new')} gcpTtsKey={cred.gcpTtsKey}
+              onDone={() => { setTrackMode('daily'); setView('generate') }}
+              onBack={() => setView('dashboard')} />
+          </ErrorBoundary>
+        )}
         {view === 'generate' && (
           <ErrorBoundary>
-            <MandarinGenerator vocab={vocab} targets={targets} cred={cred}
+            <MandarinGenerator vocab={vocab} targets={targets} selection={selection} cred={cred} trackMode={trackMode}
               onGenerated={onTrackGenerated} onBack={() => setView('dashboard')} />
           </ErrorBoundary>
         )}

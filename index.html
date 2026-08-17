@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v516"/>
+<meta name="app-version" content="v517"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v516';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v516').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v517';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v517').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3166,7 +3166,8 @@ function mandarinContextualReading(word, lexicon) {
 
 // §7 — pinyin validation. Tone MARKS are required for learner-facing display;
 // tone-number pinyin is rejected as a display form.
-const PINYIN_TONE_MARKS = '\u0101\u00E1\u01CE\u00E0\u0113\u00E9\u011B\u00E8\u012B\u00ED\u01D0\u00EC\u014D\u00F3\u01D2\u00F2\u016B\u00FA\u01D4\u00F9\u01D6\u01D8\u01DA\u01DC\u00FC'
+// Includes \u01F9/\u0144/\u01F8 for syllabic-nasal interjections such as \u55EF, which are real pinyin.
+const PINYIN_TONE_MARKS = '\u0101\u00E1\u01CE\u00E0\u0113\u00E9\u011B\u00E8\u012B\u00ED\u01D0\u00EC\u014D\u00F3\u01D2\u00F2\u016B\u00FA\u01D4\u00F9\u01D6\u01D8\u01DA\u01DC\u00FC\u01F9\u0144\u01F8\u0148\u01CE'
 function isToneNumberPinyin(p) { return /[a-z\u00FC]+[1-5]\b/i.test(String(p || '')) }
 function validateMandarinPinyin(p) {
   const s = String(p || '').trim()
@@ -3175,8 +3176,13 @@ function validateMandarinPinyin(p) {
   if (/[\u0E00-\u0E7F]/.test(s)) return { ok:false, reason:'Thai script in pinyin' }
   if (/[\u3040-\u30FF]/.test(s)) return { ok:false, reason:'Japanese kana in pinyin' }
   if (isToneNumberPinyin(s)) return { ok:false, reason:'tone-number pinyin \u2014 tone marks required' }
-  if (!/^[a-zA-Z\u00FC' \-,.\uFF1F\uFF01?!]*$/.test(s.replace(new RegExp('[' + PINYIN_TONE_MARKS + ']', 'g'), 'a')))
-    return { ok:false, reason:'invalid characters in pinyin' }
+  // Pinyin lines legitimately carry the sentence's own punctuation, including CJK
+  // full-width marks (\u3002\uFF0C\uFF1B\uFF1A\u3001\u2026), and \u01F9/\u0144 for \u55EF-type interjections.
+  const stripped = s.replace(new RegExp('[' + PINYIN_TONE_MARKS + ']', 'g'), 'a')
+  if (!/^[a-zA-Z\u00FC' \-,.?!\u3002\uFF0C\uFF1B\uFF1A\u3001\uFF1F\uFF01\u2026\u201C\u201D\u2018\u2019()\uFF08\uFF09]*$/.test(stripped)) {
+    const bad = [...stripped].filter(ch => !/[a-zA-Z\u00FC' \-,.?!\u3002\uFF0C\uFF1B\uFF1A\u3001\uFF1F\uFF01\u2026\u201C\u201D\u2018\u2019()\uFF08\uFF09]/.test(ch))
+    return { ok:false, reason:'invalid characters in pinyin: ' + [...new Set(bad)].join(' ') }
+  }
   return { ok:true }
 }
 
@@ -13717,6 +13723,10 @@ function jaCanonicalGloss(surface, inv) {
   if (g) return { english: g.meaning, reading: s, romaji: g.romaji, kind: 'grammar', id: g.id }
   const b = (inv.conversationBasics || []).find(x => x.form === s)
   if (b) return { english: b.english, reading: s, romaji: b.romaji, kind: 'basic', id: b.id }
+  // Particles carry canonical glosses in JAPANESE_FUNCTION_WORDS. Without this the
+  // QC reported "missing gloss for \u3092" even though the meaning was already defined.
+  const f = (JAPANESE_FUNCTION_WORDS || []).find(x => x.w === s)
+  if (f) return { english: f.e, reading: s, romaji: f.r, kind: 'particle', id: f.w }
   return null
 }
 
@@ -14391,7 +14401,7 @@ function MandarinQualityReview({ track, vocab, onSave, onSkip }) {
   if (phase === 'summary') return (
     <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:12 }}>
       <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0, fontSize:18 }}>Quality Check</h2>
-      <p style={{ fontSize:12, color:'var(--muted)', textAlign:'center', margin:0 }}>Quick pre-scan only \u2014 the full check may find more.</p>
+      <p style={{ fontSize:12, color:'var(--muted)', textAlign:'center', margin:0 }}>Quick pre-scan only — the full check may find more.</p>
       <Card style={{ padding:'12px 14px', display:'flex', justifyContent:'space-around', textAlign:'center' }}>
         <div><div style={{ fontSize:20, fontWeight:800, color:'var(--gold)' }}>{quick.total}</div>
              <div style={{ fontSize:10, color:'var(--muted)' }}>pairs</div></div>
@@ -14473,7 +14483,7 @@ function MandarinQualityReview({ track, vocab, onSave, onSkip }) {
       {critical > 0 ? (
         <>
           <Card style={{ padding:'10px 14px', border:'1px solid #ef4444' }}>
-            <p style={{ fontSize:12, color:'#ef4444', fontWeight:700 }}>{'\u26A0'} Quality Check incomplete \u2014 {critical} critical issue{critical > 1 ? 's' : ''} remain</p>
+            <p style={{ fontSize:12, color:'#ef4444', fontWeight:700 }}>{'\u26A0'} Quality Check incomplete — {critical} critical issue{critical > 1 ? 's' : ''} remain</p>
           </Card>
           <Btn onClick={runCheck} style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} Retry fixes</Btn>
           <Btn onClick={() => onSave({ ...workingTrack, pairs:(result && result.pairs) || pairs, _qcDone:true, _qcIssues:issues })}

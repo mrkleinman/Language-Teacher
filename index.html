@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v521"/>
+<meta name="app-version" content="v526"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v521';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v521').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v526';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v526').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3740,6 +3740,9 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
     if (!chk.ok) onLog && onLog('  \u2716 dropped framing (untaught: ' + chk.unknown.join(' ') + ')')
     seenMap.set(strip(p.chinese), null)
   })
+  // Framing bricks light only when framing lines are actually accepted, and each
+  // slot is reported independently of recall progress.
+  open.forEach((p, k) => onProgress && onProgress(0, targets.length * 3, { framingAccepted:{ slot:k, source:'zh:scene' } }))
   if (open.length) onLog && onLog('\u2713 opening ready')
 
   const perTarget = []
@@ -7919,6 +7922,22 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   let bestAttempt = null
   let bestScore = -1
 
+  // ── Per-recall acceptance ──
+  // Previously a group of 3 was accepted or discarded as a unit, so all three
+  // recalls were stamped with one attempt-level source and lit together. Lines
+  // that already passed are now KEPT, each remembering the attempt at which IT was
+  // accepted, and only the shortfall is re-requested. Prompts, validators and the
+  // retry ladder are unchanged — the difference is that passing work survives.
+  const accepted = []            // [{ line, attempt }]
+  const acceptLine = (l, att) => {
+    if (accepted.length >= 3) return
+    if (accepted.some(a => (a.line.thai || '') === (l.thai || ''))) return
+    accepted.push({ line: l, attempt: att })
+    // Light this recall's circle immediately, at its own tier.
+    onProgress && onProgress(-1, -1, {
+      recallAccepted: { targetThai: target.thai, recallIndex: accepted.length, source: CHECK_SRCS[att] + 'conv' },
+    }, null, null)
+  }
   for (let attempt = 0; attempt < CHECK_SRCS.length; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, attempt === 1 ? 3000 : 1500))
 
@@ -8032,17 +8051,32 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       const isGemini = model && model.includes('gemini')
       const qualRes = validateSmartPairs(qualPairs, target, vocab, false, new Set(), isGemini)
       if (qualRes.valid.length < genderValid.length) {
-        failureReasons = qualRes.failures.slice(0, 3)
-        onProgress && onProgress(-1, -1, { apiError: '⚠️ Quality fail: ' + (failureReasons[0]||'').slice(0,70) }, null, null)
-        continue
+        // Bank the lines that DID pass before retrying; only the shortfall is re-asked.
+        qualRes.valid.forEach(v => {
+          const orig = genderValid.find(l => (l.thai || '') === (v.thai || ''))
+          if (orig) acceptLine(orig, attempt)
+        })
+        if (accepted.length >= 3) { genderValid.length = 0; accepted.slice(0, 3).forEach(a => genderValid.push(a.line)) }
+        else {
+          failureReasons = qualRes.failures.slice(0, 3)
+          onProgress && onProgress(-1, -1, { apiError: '⚠️ Quality fail: ' + (failureReasons[0]||'').slice(0,70) }, null, null)
+          continue
+        }
       }
 
       // Check 3: natural speech checks — only if we have all 3 lines
       const naturalFails = []
       if (genderValid.length < 3) {
-        failureReasons = ['Only ' + genderValid.length + ' valid lines returned — need 3. Write all 3 complete lines.']
-        onProgress && onProgress(-1, -1, { apiError: '⚠️ Incomplete: only ' + genderValid.length + '/3 lines valid' }, null, null)
-        continue
+        genderValid.forEach(l => acceptLine(l, attempt))
+        if (accepted.length >= 3) {
+          genderValid.length = 0
+          accepted.slice(0, 3).forEach(a => genderValid.push(a.line))
+        } else {
+          failureReasons = ['Only ' + accepted.length + '/3 recalls accepted so far — write ' +
+                            (3 - accepted.length) + ' more complete line(s).']
+          onProgress && onProgress(-1, -1, { apiError: '⚠️ ' + accepted.length + '/3 recalls accepted' }, null, null)
+          continue
+        }
       }
       genderValid.forEach((l, li) => {
         const t = l.thai || ''
@@ -8134,7 +8168,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       }
 
       // Passed all checks
-      const src = CHECK_SRCS[attempt] + 'conv'
+      // Every surviving line was accepted at THIS attempt unless it was banked earlier.
+      genderValid.slice(0, 3).forEach(l => acceptLine(l, attempt))
+      const tierOf = l => {
+        const hit = accepted.find(a => (a.line.thai || '') === (l.thai || ''))
+        return CHECK_SRCS[hit ? hit.attempt : attempt] + 'conv'
+      }
+      const src = CHECK_SRCS[attempt] + 'conv'      // group default, per-line below
       const result = genderValid.slice(0,3).map(l => {
           const phonToks = (l.phonetic || '').trim().split(' ').filter(Boolean)
           // Split Thai text into tokens (Gemini writes spaced Thai)
@@ -8209,7 +8249,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
               return { p, e: isQM ? '?' : (PV[key] || PG[key] || '') }
             })
           }
-          return { ...l, _source: src, words }
+          return { ...l, _source: tierOf(l), words }
         })
       onProgress && onProgress(-1, -1, { apiError: '✅ ' + CHECK_NAMES[attempt] + ' check passed: ' + target.thai }, null, null)
       return result
@@ -8327,8 +8367,12 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       runningTopic = _seeds[Math.floor(Math.random() * _seeds.length)]
     }
     prevLines.push(...tagged)
-    const srcs = tagged.map(p=>p._source)
-    while (srcs.length < 3) srcs.push(srcs[0]||'qwen:conv')
+    // Each recall reports its OWN accepted source. Padding a short array with
+    // srcs[0] made recalls 2 and 3 inherit recall 1's provenance, which is exactly
+    // what painted all three circles the same colour. A missing recall must stay
+    // empty rather than borrow another recall's tier.
+    const srcs = tagged.map(p => p._source || '')
+    while (srcs.length < 3) srcs.push('')
     onProgress && onProgress(allPairs.length, targets.length*3, { targetThai:target.thai, allPairs:[...allPairs] }, srcs, i)
     // Throttle to avoid rate limiting
     if (i < targets.length - 1 && !(stopSignal && stopSignal.paused)) await new Promise(r => setTimeout(r, 5000))
@@ -9349,6 +9393,16 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const [brickSources, setBrickSources] = useState({})
   const [currentTier, setCurrentTier] = useState('')
   const [genLog, setGenLog] = useState([])
+  // Thai kept only the rolling window, so a complete log could never be exported.
+  // fullLog accumulates generation + recovery + QC as one downloadable history.
+  const [fullLog, setFullLog] = useState([])
+  const [qcPhase, setQcPhase] = useState(null)
+  const [qcProgress, setQcProgress] = useState(0)
+  const [qcStatus, setQcStatus] = useState('')
+  const [qcResult, setQcResult] = useState(null)
+  const [finalTrack, setFinalTrack] = useState(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const logAll = m => setFullLog(l => [...l, m])
   const [pairsDone, setPairsDone] = useState(0)
   const [pairsTotal, setPairsTotal] = useState(90)
   const [targetPhonetics, setTargetPhonetics] = useState({})
@@ -9367,7 +9421,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       setPairsTotal(resumeDraft.totalTargets * 3)
       setCurrentTier(`▶ Resuming from word ${resumeDraft.targetsDoneCount + 1}/${resumeDraft.totalTargets}…`)
       setGenLog([`📂 Loaded ${resumeDraft.pairs.length} saved pairs`, `▶ Continuing from word ${resumeDraft.targetsDoneCount + 1}/${resumeDraft.totalTargets}`])
-      setPhase('starting')  // trigger build() which will now skip scene (sceneDataRef is set)
+      freezeSession()
+    setPhase('starting')  // trigger build() which will now skip scene (sceneDataRef is set)
     }
   }, [])
   const sceneDataRef = useRef(null)
@@ -9430,9 +9485,30 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     return pickWords(filteredVocab, mode, slotWords)
   }, [vocab, mode, customTargets, tracks, dailyNewWords])
 
+  // ── Frozen session targets ────────────────────────────────────────────────
+  // The memo above depends on `vocab`, and generation itself writes back into
+  // vocab (onPhonetics saves discovered phonetics mid-run). That re-ran the memo,
+  // producing a NEW targets array — and because pickWords orders by wordUtility
+  // with many equal scores, the order could differ. The pills therefore reordered
+  // mid-generation while brickSources stayed keyed by screen index, so provenance
+  // appeared to jump between words.
+  // Fix: once generation starts the target list is captured and never replaced.
+  const [sessionTargets, setSessionTargets] = useState(null)
+  const [sessionAnchors, setSessionAnchors] = useState(null)
+  const freezeSession = useCallback(() => {
+    setSessionTargets(prev => prev || targets)
+    setSessionAnchors(prev => prev || anchors)
+    return sessionTargets || targets
+  }, [targets, anchors, sessionTargets])
+  // Everything below this line reads the FROZEN list during a session.
+  const activeTargets = sessionTargets || targets
+  const activeAnchors = sessionAnchors || anchors
+
   // Persist the current new-word slots whenever they change (side effect, so useEffect).
   // Not gated on date: slots roll over only when a word is rated 'ok' or better.
   useEffect(() => {
+    // Storage may update, but it must never reshuffle the session in flight.
+    if (sessionTargets) return
     if (!targets || !targets.length || mode === 'weak') return
     const slotIds = targets.filter(w => w.status === 'new').slice(0, newSlotsFor(vocab)).map(w => w.id)
     if (!slotIds.length) return
@@ -9440,10 +9516,58 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     const same = prev.length === slotIds.length && prev.every((id, i) => id === slotIds[i])
     if (same) return
     onSaveDailyNewWords?.({ date: new Date().toISOString().slice(0, 10), wordIds: slotIds })
-  }, [targets, dailyNewWords, mode, vocab])
+  }, [targets, dailyNewWords, mode, vocab, sessionTargets])
 
   const isWeak = mode === 'weak'
   const color = isWeak ? '#ef4444' : '#10b981'
+
+  // Thai QC now runs on the generation screen too, so the brick grid, target
+  // circles and rolling log persist through it exactly as in Japanese/Mandarin.
+  async function buildAndQc(track) {
+    setFinalTrack(track)
+    setQcPhase('running'); setQcProgress(0); setQcStatus('Starting quality check\u2026')
+    logAll('\u2501\u2501 Quality check')
+    setGenLog(prev => [...prev.slice(-8), '\u2501\u2501 Quality check'])
+    const log = m => { logAll(m); setGenLog(prev => [...prev.slice(-8), m]) }
+    try {
+      const res = await runQualityCheckCore(track, apiKey, model, {
+        vocab, onLog: log,
+        onProgress: (pct, msg) => { setQcProgress(pct || 0); if (msg) setQcStatus(msg) },
+      })
+      const pairs = (res && res.pairs) || track.pairs
+      const corrected = { ...track, pairs, _qcDone: true, _qcCounts: res && res.counts }
+      setQcResult(res); setFinalTrack(corrected); setQcPhase('done')
+      log('\u2705 Quality check complete')
+    } catch (e) {
+      log('\u274C Quality check failed: ' + (e.message || ''))
+      setQcResult(null); setQcPhase('done')
+    }
+  }
+  function qcPanel() {
+    if (!qcPhase) return null
+    if (qcPhase === 'running') return (
+      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 12px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:'#60a5fa' }}>{'\u2726'} Quality check</span>
+          <span className="phon" style={{ fontSize:11, color:'var(--muted)' }}>{qcProgress}%</span>
+        </div>
+        <div style={{ height:4, background:'var(--surface2)', borderRadius:2, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:qcProgress + '%', background:'#60a5fa', transition:'width 0.3s' }} />
+        </div>
+        <p style={{ fontSize:10, color:'var(--muted)', marginTop:5 }}>{qcStatus}</p>
+      </div>
+    )
+    const c2 = (qcResult && qcResult.counts) || {}
+    return (
+      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 12px' }}>
+        <p style={{ fontSize:11, fontWeight:700, color:'#4ade80', marginBottom:4 }}>{'\u2713'} Quality check complete</p>
+        <div style={{ fontSize:11, color:'var(--muted)' }}>
+          {Object.keys(c2).filter(k => c2[k]).map(k => c2[k] + ' ' + k).join('  \u00b7  ') || 'no issues found'}
+        </div>
+      </div>
+    )
+  }
+
   const pct = Math.min(100, Math.round((pairsDone / 90) * 100))
 
   // Latest pair preview from stream
@@ -9472,14 +9596,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             try {
               // Always use Gemini for scene — fast, reliable, no rate limit issues
               const key2 = orKey || apiKey
-              const sd = await establishConvoScene(targets, vocab, key2, 'google/gemini-2.5-flash-lite')
+              const sd = await establishConvoScene(activeTargets, vocab, key2, 'google/gemini-2.5-flash-lite')
               sceneDataRef.current = sd
               setSceneData(sd)
             } catch(e) { sceneDataRef.current = { scene:'Two friends at a market.', characterA:'Somchai', characterB:'Nida', opening:'สวัสดีครับ' } }
             setBuildingScene(false)
             return  // stop — wait for user to press Generate
           }
-          setPhase('streaming')
+          freezeSession()
+      setPhase('streaming')
           // Quick API sanity check on first run
           console.log('[Generator] Using apiKey:', apiKey ? apiKey.slice(0,12)+'...' : 'NONE', 'model via provider:', provider)
           // Seed phoneticsRef from vocab words that already have phonetics stored
@@ -9488,7 +9613,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           phoneticsRef.current = vocabPhonetics
           if (Object.keys(vocabPhonetics).length) setTargetPhonetics({ ...vocabPhonetics })
           // Only fetch phonetics for words still missing them
-          const needsPhonetics = targets.filter(t => !t.phonetic)
+          const needsPhonetics = activeTargets.filter(t => !t.phonetic)
           if (needsPhonetics.length > 0) {
             const doPhonetics = async () => {
               let map = {}
@@ -9505,18 +9630,37 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
           const useConvoTrack = mode === 'daily' || mode === 'weak'
           const _sceneForGen = useConvoTrack ? sceneDataRef.current : null
-          pairs = await (useConvoTrack ? (t,a,k,...r) => generateConversationTrack(t,a,k,...r,_sceneForGen) : generateTrack)(targets, anchors, apiKey,
+          pairs = await (useConvoTrack ? (t,a,k,...r) => generateConversationTrack(t,a,k,...r,_sceneForGen) : generateTrack)(activeTargets, activeAnchors, apiKey,
             (done, total, meta, sources, wordIdx) => {
+              // Per-recall acceptance: light exactly one circle, at its own tier,
+              // the moment that recall passes — giving ●○○ → ●●○ → ●●● rather
+              // than a single ○○○ → ●●● jump when the group completes.
+              if (meta && meta.recallAccepted) {
+                const ra = meta.recallAccepted
+                const ti = activeTargets.findIndex(t => t.thai === ra.targetThai)
+                if (ti >= 0 && ra.recallIndex >= 1 && ra.recallIndex <= 3) {
+                  setBrickSources(prev => ({ ...prev, [ti * 3 + (ra.recallIndex - 1)]: ra.source }))
+                  setPairsDone(d => Math.max(d, ti * 3 + ra.recallIndex))
+                }
+                return
+              }
               if (done >= 0) setPairsDone(done)
-              setPairsTotal(targets.length * 3)
+              setPairsTotal(activeTargets.length * 3)
               // Use targetThai to find the correct chip index in DISPLAY order (not sorted generation order)
-              const displayIdx = meta && meta.targetThai ? targets.findIndex(t => t.thai === meta.targetThai) : wordIdx
+              // Index into the FROZEN list, so provenance can never land on the wrong word.
+              const displayIdx = meta && meta.targetThai ? activeTargets.findIndex(t => t.thai === meta.targetThai) : wordIdx
               const chipIdx = displayIdx >= 0 ? displayIdx : wordIdx
               if (sources && chipIdx !== undefined && chipIdx >= 0) setBrickSources(prev => {
                 const next = {...prev}
                 const base = chipIdx * 3
-                const srcArr = Array.isArray(sources) ? sources : [sources, sources, sources]
-                for (let si = 0; si < 3; si++) next[base + si] = srcArr[si] || ''
+                // A scalar source belongs to ONE recall, never to all three. Only
+                // write the indices the runtime actually reported, and never
+                // overwrite an already-lit circle with an empty value.
+                const srcArr = Array.isArray(sources) ? sources : [sources]
+                for (let si = 0; si < srcArr.length && si < 3; si++) {
+                  const v = srcArr[si]
+                  if (v) next[base + si] = v
+                }
                 return next
               })
               // Save partial pairs so we can use them if paused
@@ -9528,18 +9672,19 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                     pairs: partialPairsRef.current,
                     targetsDoneCount: meta && meta.wordStatus ? chipIdx + 1 : chipIdx,
                     targetsRemaining: targets.slice(chipIdx + 1),
-                    targets: targets,
+                    targets: activeTargets,
                     anchors: anchors,
                     scene: sceneDataRef.current,  // save scene so resume skips regen
                     mode: mode,
-                    totalTargets: targets.length,
+                    totalTargets: activeTargets.length,
                     savedAt: new Date().toISOString()
                   }))
                 } catch(e) {}
               }
               if (meta && meta.wordStatus) {
                 setCurrentTier(meta.wordStatus)
-                setGenLog(prev => [...prev.slice(-8), '━━ ' + meta.wordStatus])
+                logAll('━━ ' + meta.wordStatus)
+    setGenLog(prev => [...prev.slice(-8), '━━ ' + meta.wordStatus])
               }
               else if (meta && meta.apiError) {
                 const msg = meta.apiError
@@ -9547,7 +9692,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 const isCheckMsg = /^[✦🔶🟠🟡🟨🟩🟢🪵🟫🩷📥📄🔍⚠️💬🎬]/.test(msg)
                 const displayMsg = isCheckMsg ? msg : '❌ ' + msg
                 setCurrentTier(displayMsg)
-                setGenLog(prev => [...prev.slice(-4), displayMsg])
+                logAll(displayMsg)
+      setGenLog(prev => [...prev.slice(-4), displayMsg])
               }
               const lastSrc = Array.isArray(sources) ? (sources[sources.length-1] || '') : (sources || '')
               if (lastSrc) {
@@ -9603,7 +9749,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         try {
           const qrCancel = { current: false }
           const result = await runQualityCheckCore(track, apiKey, _qcModel, {
-            onLog: (msg) => setGenLog(prev => [...prev.slice(-300), msg]),
+            onLog: (msg) => { logAll(msg); setGenLog(prev => [...prev.slice(-300), msg]) },
             onProgress: (pct, word) => {
               if (word) setGenLog(prev => {
                 const last = prev[prev.length - 1] || ''
@@ -9687,11 +9833,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 </div>
               )}
             </div>
-            <Btn onClick={() => { setGenLog([]); setPairsDone(0); setBrickSources({}); setPhase('starting') }}
+            <Btn onClick={() => { setGenLog([]); setPairsDone(0); setBrickSources({}); setSessionTargets(null); setSessionAnchors(null); setPhase('starting') }}
               style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>
               ▶ Generate Track from this Scene
             </Btn>
-            <Btn onClick={() => { sceneDataRef.current = null; setSceneData(null); setPhase('starting') }}
+            <Btn onClick={() => { sceneDataRef.current = null; setSceneData(null); setSessionTargets(null); setSessionAnchors(null); setPhase('starting') }}
               variant="secondary" style={{ width:'100%', justifyContent:'center' }}>
               🔄 Try a different scene
             </Btn>
@@ -9789,7 +9935,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             <span style={{ fontSize:9, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Generation log</span>
             {genLog.length > 0 && (
               <button onClick={() => {
-                const txt = genLog.join('\n')
+                const txt = (fullLog.length ? fullLog : genLog).join('\n')
                 const b = new Blob([txt], { type:'text/plain' })
                 const a = document.createElement('a')
                 a.href = URL.createObjectURL(b)
@@ -9799,9 +9945,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                 ⬇ log
               </button>
             )}
+            {fullLog.length > genLog.length && (
+              <button onClick={() => setShowHistory(h => !h)}
+                style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>
+                {showHistory ? '▼ Live' : '▲ History'}
+              </button>
+            )}
           </div>
           {genLog.length === 0 && <p style={{ fontSize:10, color:'var(--muted)', margin:0, fontFamily:'monospace' }}>⏳ Initialising...</p>}
-          {genLog.map((msg, i) => (
+          {(showHistory && fullLog.length ? fullLog : genLog).map((msg, i) => (
             <p key={i} style={{ fontSize:10, color: msg.startsWith('❌') ? '#ef4444' : msg.startsWith('⚠') ? '#f97316' : msg.startsWith('✅') ? '#4ade80' : msg.startsWith('━') ? 'var(--border)' : 'var(--muted)', margin:0, fontFamily:'monospace', lineHeight:1.4 }}>
               {msg}
             </p>
@@ -9809,6 +9961,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         </div>
       )}
 
+
+      {qcPanel()}
 
       {/* Pause / Resume button — shown during streaming */}
       {phase === 'streaming' && pairsDone > 0 && (
@@ -9824,11 +9978,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           <Btn onClick={() => {
             const partial = partialPairsRef.current
             if (!partial.length) return
-            const keywords = targets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '', isNew: w.status === 'new', isUnseen: w.status === 'new' && isUnseen(w) }))
+            const keywords = activeTargets.map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '', isNew: w.status === 'new', isUnseen: w.status === 'new' && isUnseen(w) }))
             const track = {
               date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }),
               mode, pairs: partial, keywords, rated: false, createdAt: new Date().toISOString(),
-              partial: true, totalWords: targets.length, generatedWords: Math.ceil(partial.length / 3)
+              partial: true, totalWords: activeTargets.length, generatedWords: Math.ceil(partial.length / 3)
             }
             onGenerated(track)
           }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>
@@ -9873,27 +10027,35 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       ) : null}
 
       {/* Target words */}
-      {targets.length > 0 && (
+      {activeTargets.length > 0 && (
         <Card style={{ padding:'12px 14px' }}>
           <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <span>Targeting {targets.length} words</span>
-            {targets.filter(w => w.status === 'new' && isUnseen(w)).length > 0 && (
+            <span>Targeting {activeTargets.length} words</span>
+            {activeTargets.filter(w => w.status === 'new' && isUnseen(w)).length > 0 && (
               <span style={{ color:'#4a90e2', fontWeight:800 }}>
-                ✦ {targets.filter(w => w.status === 'new' && isUnseen(w)).length} new
+                ✦ {activeTargets.filter(w => w.status === 'new' && isUnseen(w)).length} new
               </span>
             )}
-            {targets.filter(w => w.status === 'new' && !isUnseen(w)).length > 0 && (
+            {activeTargets.filter(w => w.status === 'new' && !isUnseen(w)).length > 0 && (
               <span style={{ color:'#a78bfa', fontWeight:800 }}>
-                ↻ {targets.filter(w => w.status === 'new' && !isUnseen(w)).length} relearn
+                ↻ {activeTargets.filter(w => w.status === 'new' && !isUnseen(w)).length} relearn
               </span>
             )}
           </p>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-            {targets.map((w,i) => {
-              const done = i * 3 < pairsDone
+            {activeTargets.map((w,i) => {
+              // Each of the three recalls carries its OWN accepted tier. Reading only
+              // brickSources[i*3] painted the whole word with recall 1's colour and
+              // hid the other two results.
+              const recalls = [0,1,2]
+                .map(r => ({ recallIndex: r + 1, src: brickSources[i * 3 + r] || '', done: (i * 3 + r) < pairsDone }))
+                .filter(x => x.done && x.src && x.src !== 'streaming')
+                .map(x => ({ recallIndex: x.recallIndex, checkTier: srcToTier(x.src), source: x.src }))
+              const done = recalls.length >= 3
               const phonetic = targetPhonetics[w.thai] || targetPhonetics[w.id] || w.phonetic || ''
               const chipSrc = brickSources[i * 3] || ''
-              const chipColor = done ? srcToColor(chipSrc, color) : 'var(--border)'
+              const worstTier = recalls.length ? Math.max(...recalls.map(r => r.checkTier)) : 0
+              const chipColor = recalls.length ? checkStyle(worstTier).color : 'var(--border)'
               const isFallback = done && (chipSrc.startsWith('fallback:') || chipSrc.startsWith('hardcoded:'))
               return (
                 <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : (w.status === 'new' ? 'rgba(74,144,226,0.10)' : 'transparent'), border:'1px solid ' + (done ? chipColor : (w.status === 'new' ? 'rgba(74,144,226,0.65)' : chipColor)), borderRadius:8, padding:'4px 10px', transition:'all 0.3s', minWidth:0, position:'relative' }}>
@@ -9902,12 +10064,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                   )}
                   <span className="thai" style={{ color: done ? chipColor : (w.status === 'new' ? '#8ab8f0' : 'var(--text)'), fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
                   {phonetic ? <span className="phon" style={{ color: done ? chipColor : 'var(--muted)', fontSize:10, lineHeight:1.2, opacity:0.7 }}>{phonetic}</span> : null}
+                  {/* One circle per recall, each in the tier colour that accepted it */}
+                  <RecallCircles recalls={recalls} />
                   {isFallback && phase === 'done' && (
                     <button onClick={async () => {
                       if (!apiKey && !orKey) return
                       const k = orKey || apiKey
                       const m = resolveOrModel(provider)
-                      setBrickSources(b => ({...b, [i*3]:'streaming', [i*3+1]:'streaming', [i*3+2]:'streaming'}))
+                      // Clear only the circles being regenerated; each is relit from its own pair below.
+              setBrickSources(b => ({...b, [i*3]:'', [i*3+1]:'', [i*3+2]:''}))
                       try {
                         const _scA = sceneDataRef.current?.characterA || 'Somchai, a Thai man'
                         const _scB = sceneDataRef.current?.characterB || 'Nida, a Thai woman'
@@ -9917,7 +10082,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
                           newPairs.forEach((p, pi) => { if (updated[i*3+pi]) updated[i*3+pi] = p })
                           const newTrack = {...generatedTrack, pairs: updated}
                           setGeneratedTrack(newTrack)
-                          newPairs.forEach((p, pi) => setBrickSources(b => ({...b, [i*3+pi]: p._source||'repair'})))
+                          newPairs.forEach((p, pi) => { if (pi < 3) setBrickSources(b => ({...b, [i*3+pi]: p._source || 'repair'})) })
                         }
                       } catch(e) { console.error(e) }
                     }} style={{ fontSize:9, marginTop:2, background:'none', border:'1px solid #f97316', borderRadius:3, color:'#f97316', cursor:'pointer', padding:'1px 4px', lineHeight:1 }}>🔧 fix</button>
@@ -13607,6 +13772,144 @@ function disambiguatingCue(baseCue, entry, collisionsForWord) {
   return note.replace(/\.$/, '') + ', ' + String(baseCue).charAt(0).toLowerCase() + String(baseCue).slice(1)
 }
 
+// Maps a language's own source label onto the shared check-tier number, so Thai,
+// Japanese and Mandarin all colour their circles from GENERATION_CHECK_STYLE.
+function srcToTier(src) {
+  const s = String(src || '')
+  let m = /(?:^|-)check-(\d+)/.exec(s)            // ja-check-3 / zh-check-3
+  if (m) return parseInt(m[1], 10)
+  m = /recheck(\d*)/.exec(s)                       // qwen-recheck2 -> tier 3
+  if (m) return (parseInt(m[1] || '1', 10)) + 1
+  if (/^(fallback|hardcoded)/.test(s)) return 10   // deterministic salvage
+  if (/repair/.test(s)) return 2
+  if (/^(qwen|gemini|haiku|ai|or):?/.test(s)) return 1
+  return 1
+}
+
+// ── Shared generation→QC phase machine ──────────────────────────────────────
+// One workflow for every language: Generation → Recovery (if needed) → QC →
+// Complete, all on the SAME screen. The brick grid, target pills with their
+// per-recall circles, and the rolling log persist across every phase, and the
+// downloadable log accumulates generation + recovery + QC in one history.
+//
+// The shared layer owns: phases, retries, provenance, completeness, logs, the QC
+// shell and the UI. Each language engine owns everything linguistic.
+const GEN_PHASE = {
+  IDLE:'idle', SCENE:'scene', GENERATING:'generating',
+  RECOVERY:'recovery', QC:'qc', COMPLETE:'complete', ERROR:'error',
+}
+const GEN_PHASE_LABEL = {
+  idle:'Preparing', scene:'Scene ready', generating:'Generating',
+  recovery:'Recovering missing recalls', qc:'Quality check', complete:'Track ready', error:'Generation failed',
+}
+
+// Provenance for one accepted recall. Every language stores exactly this, so the
+// circles, bricks and saved track all read the same structure.
+function makeRecallProvenance(targetId, recallIndex, checkTier, source) {
+  return { targetId, recallIndex, checkTier: checkTier || 1, source: source || ('check-' + (checkTier || 1)), acceptedAt: Date.now() }
+}
+
+// §completeness — QC may not start until every recall exists AND carries provenance.
+function assertTrackReadyForQc(targets, targetProgress) {
+  const expected = (targets || []).length * 3
+  let lit = 0
+  const missing = []
+  ;(targets || []).forEach(t => {
+    const recalls = ((targetProgress || {})[t.id] || {}).recalls || []
+    for (let r = 1; r <= 3; r++) {
+      const hit = recalls.find(x => x.recallIndex === r)
+      if (hit && hit.checkTier) lit++
+      else missing.push({ targetId: t.id, recallIndex: r })
+    }
+  })
+  return { ok: lit === expected && !missing.length, expected, lit, missing }
+}
+
+// §circles — three circles per target, each carrying the tier that actually
+// accepted THAT recall. Deliberately NOT one colour for the whole word: the three
+// recalls of a word routinely pass at different tiers and the learner should see it.
+function RecallCircles({ recalls, size }) {
+  const s = size || 7
+  const list = Array.isArray(recalls) ? recalls : []
+  return (
+    <span style={{ display:'flex', gap:3, marginTop:3 }}>
+      {[1, 2, 3].map(n => {
+        const hit = list.find(r => r.recallIndex === n)
+        return <span key={n} title={hit ? 'Recall ' + n + ' \u00b7 ' + checkStyle(hit.checkTier).label : 'Recall ' + n + ' \u00b7 pending'}
+          style={{ width:s, height:s, borderRadius:'50%',
+            background: hit ? checkStyle(hit.checkTier).color : 'transparent',
+            border: hit ? 'none' : '1px solid var(--border)', transition:'background 0.25s' }} />
+      })}
+    </span>
+  )
+}
+
+// §pill — shared shell; the language supplies only its own text.
+function TrackTargetPill({ word, script, phonetic, state, aggregateColor, recalls, roleLabel, roleColor, scriptClass }) {
+  const active = state === 'active', done = state === 'done'
+  const hasResult = (recalls || []).length > 0
+  const border = active ? 'var(--gold)' : (hasResult ? aggregateColor : 'var(--border)')
+  const text   = active ? 'var(--gold)' : (hasResult ? aggregateColor : 'var(--text)')
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+      background: active ? 'rgba(212,169,74,0.20)' : (hasResult ? aggregateColor + '22' : 'transparent'),
+      border: active ? '2px solid var(--gold)' : '1px solid ' + border,
+      borderRadius:8, padding: active ? '3px 9px' : '4px 10px', position:'relative',
+      transition:'all 0.25s', minWidth:0, opacity: state === 'future' ? 0.75 : 1,
+      boxShadow: active ? '0 0 0 3px rgba(212,169,74,0.55), 0 0 10px rgba(212,169,74,0.45)' : 'none' }}>
+      {roleLabel && (
+        <span style={{ position:'absolute', top:-6, right:-5, fontSize:8, fontWeight:800, letterSpacing:0.3,
+          color:'#0b1120', background: roleColor || '#4a90e2', borderRadius:3, padding:'1px 4px', lineHeight:1.3 }}>{roleLabel}</span>
+      )}
+      <span className={scriptClass || ''} style={{ color:text, fontSize:14, lineHeight:1.3 }}>{script}</span>
+      {phonetic && <span className="phon" style={{ color: hasResult ? aggregateColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{phonetic}</span>}
+      <RecallCircles recalls={recalls} />
+    </div>
+  )
+}
+
+// The persistent shell: progress, bricks, pills, status and log stay mounted for
+// every phase, so QC never navigates away and the log is never lost.
+function GenerationWorkspace({
+  phase, phaseLabel, pct, totalSlots, filled, brickSources, colorFor,
+  statusLine, tierLine, targets, renderPill, liveLog, fullLog, showHistory, onToggleHistory,
+  onDownloadLog, footer, extra,
+}) {
+  return (
+    <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
+      <div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+          <span style={{ fontSize:13, fontWeight:600 }}>{phaseLabel || GEN_PHASE_LABEL[phase] || ''}</span>
+          <span className="phon" style={{ fontSize:12, color:'var(--gold)' }}>{pct}%</span>
+        </div>
+        <div style={{ height:6, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:pct + '%', transition:'width 0.5s ease', borderRadius:3,
+            background: phase === GEN_PHASE.QC ? 'linear-gradient(90deg,#60a5fa,#10b981)' : 'linear-gradient(90deg,#d4a94a,#10b981)' }} />
+        </div>
+      </div>
+
+      <GenerationBrickGrid total={totalSlots} sources={brickSources} colorFor={colorFor} />
+
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, minHeight:20 }}>
+        {phase !== GEN_PHASE.COMPLETE && phase !== GEN_PHASE.ERROR && <Spinner size={14} color="#10b981" />}
+        <span style={{ fontSize:12, fontWeight:600, color:'var(--text)' }}>{statusLine}</span>
+      </div>
+      {tierLine && <div style={{ textAlign:'center', marginTop:-6 }}>{tierLine}</div>}
+
+      {targets && targets.length > 0 && (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>{targets.map(renderPill)}</div>
+      )}
+
+      {extra}
+
+      <GenerationLiveLog lines={showHistory ? fullLog : liveLog} fullLog={fullLog}
+        onDownload={onDownloadLog} showHistory={showHistory} onToggleHistory={onToggleHistory} />
+
+      {footer}
+    </div>
+  )
+}
+
 // ── Shared pair acceptance contract (§1, §26, §31, §36, §37, §52) ────────────
 // Four INDEPENDENT layers. A pair is teaching material only if every required
 // layer passes. The shared platform owns the order and the ledger; the language
@@ -14460,12 +14763,26 @@ function GenerationLiveLog({ lines, fullLog, onDownload, showHistory, onToggleHi
 }
 
 // Thai's brick grid geometry.
-function GenerationBrickGrid({ total, filled, sources, colorFor }) {
+// A brick lights when THAT slot has provenance — nothing else.
+//
+// Previously: `const lit = i < filled && src`, where `filled = framingDone +
+// recallDone`. Two compounding faults:
+//   1. Recall bricks are indexed from FRAMING_SLOTS (4) upward, but `filled`
+//      counts from 0, so the first recall wrote brick 4 while filled was 1 — the
+//      brick could not light until four MORE events had happened.
+//   2. Framing and recalls shared one contiguous counter, so unaccepted framing
+//      lines suppressed recall bricks that were already accepted.
+// Result: accepted sentences existed while their bricks stayed dark. Framing and
+// recall completion are now independent, and `filled` is accepted only as an
+// optional legacy hint for grids that genuinely are contiguous.
+function GenerationBrickGrid({ total, filled, sources, colorFor, contiguous }) {
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
       {Array.from({ length: total }, (_, i) => {
         const src = (sources || {})[i] || ''
-        const lit = i < filled && src
+        // Provenance is the single source of truth. `contiguous` is opt-in for
+        // Thai's index-ordered grid; it is never applied to slot-addressed grids.
+        const lit = !!src && (!contiguous || filled == null || i < filled)
         return <div key={i} style={{ height:8, borderRadius:2,
           background: lit ? colorFor(src) : 'var(--surface2)',
           opacity: lit ? 1 : 0.35, transition:'background 0.3s' }} />
@@ -14839,14 +15156,8 @@ function MandarinTargetPill({ w, state, srcColor, recalls }) {
       )}
       <span className="zh" style={{ color:text, fontSize:14, lineHeight:1.3 }}>{w.chinese}</span>
       <span className="phon" style={{ color: hasResult ? srcColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{w.pinyin}</span>
-      <span style={{ display:'flex', gap:3, marginTop:3 }}>
-        {[1,2,3].map(n => {
-          const hit = list.find(r => r.recallIndex === n)
-          return <span key={n} style={{ width:7, height:7, borderRadius:'50%',
-            background: hit ? checkStyle(hit.checkTier).color : 'transparent',
-            border: hit ? 'none' : '1px solid var(--border)', transition:'background 0.25s' }} />
-        })}
-      </span>
+      {/* shared component — identical circle behaviour in every language */}
+      <RecallCircles recalls={list} />
     </div>
   )
 }
@@ -15023,6 +15334,12 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   const [targetProgress, setTargetProgress] = useState({})
   const [brickSources, setBrickSources] = useState({})
   const [error, setError] = useState('')
+  // QC runs on THIS screen so bricks, circles and log persist through it.
+  const [qcPhase, setQcPhase] = useState(null)
+  const [qcProgress, setQcProgress] = useState(0)
+  const [qcStatus, setQcStatus] = useState('')
+  const [qcResult, setQcResult] = useState(null)
+  const [finalTrack, setFinalTrack] = useState(null)
   const stopRef = useRef({ cancelled:false })
   const startedRef = useRef(false)
 
@@ -15046,6 +15363,12 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
           (done, total, meta) => {
             setRecallDone(done)
             if (!meta) return
+            // Framing slots are independent of recall progress.
+            if (meta.framingAccepted) {
+              const fa = meta.framingAccepted
+              setBrickSources(prev => ({ ...prev, [fa.slot]: fa.source }))
+              return
+            }
             if (meta.targetId != null && !meta.completed) setCurrentTargetId(meta.targetId)
             if (meta.recallIndex != null) setCurrentRecall(meta.recallIndex)
             if (meta.checkTier) setCurrentTier(meta.checkTier)
@@ -15063,8 +15386,11 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
           },
           m => { push(m, !/^\u2139/.test(m)) }, stopRef.current)
         if (stopRef.current.cancelled) return
+        // §completeness — QC only after every recall carries provenance.
+        const ready = assertTrackReadyForQc(targets, targetProgress)
+        if (!ready.ok) push('\u26A0 ' + ready.lit + '/' + ready.expected + ' recalls carry provenance')
         setPhase('done'); setCurrentTargetId(null)
-        onGenerated({
+        buildAndQc({
           createdAt:new Date().toISOString(), date:new Date().toISOString().slice(0, 10),
           language:'zh', mode:'daily', speechStyle:MANDARIN_REGISTER.id,
           provider:cred.provider, model, pairs:res.pairs,
@@ -15084,6 +15410,55 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
       }
     })()
   }, [])
+
+
+  // QC on this screen; the workspace never unmounts.
+  async function buildAndQc(track) {
+    setFinalTrack(track)
+    setQcPhase('running'); setQcProgress(0); setQcStatus('Starting quality check\u2026')
+    push('\u2501\u2501 Quality check')
+    try {
+      const res = await runMandarinTrackQC(track, vocab,
+        { cancelled: () => stopRef.current.cancelled, apiKey, model },
+        (pct, msg) => { setQcProgress(pct); if (msg) setQcStatus(msg) },
+        m => push(m))
+      const corrected = { ...track, pairs: res.pairs, _qcDone: true, _qcIssues: res.issues }
+      setQcResult(res); setFinalTrack(corrected); setQcPhase('done')
+      push('\u2705 ' + res.counts.found + ' found \u00b7 ' + res.counts.fixed + ' fixed \u00b7 ' +
+           res.counts.accepted + ' accepted \u00b7 ' + res.counts.unresolved + ' unresolved')
+    } catch (e) {
+      push('\u274C Quality check failed: ' + (e.message || ''))
+      setQcResult(null); setQcPhase('done')
+    }
+  }
+  function qcPanel() {
+    if (!qcPhase) return null
+    if (qcPhase === 'running') return (
+      <Card style={{ padding:'10px 14px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:'#60a5fa' }}>{'\u2726'} Quality check</span>
+          <span className="phon" style={{ fontSize:11, color:'var(--muted)' }}>{qcProgress}%</span>
+        </div>
+        <div style={{ height:4, background:'var(--surface2)', borderRadius:2, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:qcProgress + '%', background:'#60a5fa', transition:'width 0.3s' }} />
+        </div>
+        <p style={{ fontSize:10, color:'var(--muted)', marginTop:5 }}>{qcStatus}</p>
+      </Card>
+    )
+    const c = (qcResult && qcResult.counts) || { found:0, fixed:0, accepted:0, unresolved:0 }
+    const critical = (qcResult && qcResult.criticalUnresolvedCount) || 0
+    return (
+      <Card style={{ padding:'10px 14px' }}>
+        <p style={{ fontSize:11, fontWeight:700, color: critical ? '#ef4444' : '#4ade80', marginBottom:6 }}>
+          {critical ? '\u26A0 Quality check \u2014 ' + critical + ' critical issue' + (critical > 1 ? 's' : '') + ' remain'
+                    : '\u2713 Quality check complete'}
+        </p>
+        <div style={{ fontSize:11, color:'var(--muted)', lineHeight:1.6 }}>
+          {c.found} found {'\u00b7'} {c.fixed} fixed {'\u00b7'} {c.accepted} accepted {'\u00b7'} {c.unresolved} unresolved
+        </div>
+      </Card>
+    )
+  }
 
   function targetState(w) {
     const prog = targetProgress[w.id]
@@ -15124,7 +15499,8 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
         </div>
       </div>
 
-      <GenerationBrickGrid total={totalSlots} filled={filled} sources={brickSources}
+      {/* Slot-addressed: provenance alone decides whether a brick is lit. */}
+      <GenerationBrickGrid total={totalSlots} sources={brickSources}
         colorFor={s => (s === 'zh:scene' ? '#d4a94a' : checkStyle(parseInt(String(s).replace('zh-check-', ''), 10) || 1).color)} />
 
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, minHeight:20 }}>
@@ -15164,8 +15540,20 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
         )}
       </div>
 
-      <Btn onClick={() => { stopRef.current.cancelled = true; onBack() }} variant="secondary"
-        style={{ width:'100%', justifyContent:'center' }}>{phase === 'done' ? 'Back' : '\u23F8 Cancel'}</Btn>
+      {qcPanel()}
+
+      {qcPhase === 'done' ? (
+        <>
+          <Btn onClick={() => onGenerated(finalTrack)}
+            style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>{'\u25B6'} Study track</Btn>
+          <Btn onClick={() => buildAndQc(finalTrack)} variant="secondary"
+            style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} Run quality check again</Btn>
+          <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+        </>
+      ) : (
+        <Btn onClick={() => { stopRef.current.cancelled = true; onBack() }} variant="secondary"
+          style={{ width:'100%', justifyContent:'center' }}>{phase === 'done' ? 'Back' : '\u23F8 Cancel'}</Btn>
+      )}
     </div>
   )
 }
@@ -15538,15 +15926,8 @@ function JapaneseTargetPill({ w, state, srcColor, recalls }) {
       <span className="jp" style={{ color:text, fontSize:13, lineHeight:1.3 }}>{w.japanese}</span>
       <span className="phon" style={{ color: hasResult ? srcColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{w.romaji}</span>
       {/* §1/§2 — three recall LEDs; each lights with its own accepted tier colour */}
-      <span style={{ display:'flex', gap:3, marginTop:3 }}>
-        {[1, 2, 3].map(n => {
-          const hit = list.find(r => r.recallIndex === n)
-          return <span key={n} style={{ width:7, height:7, borderRadius:'50%',
-            background: hit ? checkStyle(hit.checkTier).color : 'transparent',
-            border: hit ? 'none' : '1px solid var(--border)',
-            transition:'background 0.25s' }} />
-        })}
-      </span>
+      {/* shared component — identical circle behaviour in every language */}
+      <RecallCircles recalls={list} />
     </div>
   )
 }
@@ -15586,6 +15967,13 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
   const [partial, setPartial] = useState(null)
   const [recovering, setRecovering] = useState(false)
   const [recoveryAttempt, setRecoveryAttempt] = useState(0)
+  // QC now runs on THIS screen: the brick grid, pills, circles and log all stay
+  // mounted, and the exported log covers generation + recovery + QC as one history.
+  const [qcPhase, setQcPhase] = useState(null)        // null | 'running' | 'done'
+  const [qcProgress, setQcProgress] = useState(0)
+  const [qcStatus, setQcStatus] = useState('')
+  const [qcResult, setQcResult] = useState(null)
+  const [finalTrack, setFinalTrack] = useState(null)
   const stopRef = useRef({ cancelled: false })
 
   const apiKey = cred.geminiKey || cred.orKey
@@ -15724,8 +16112,12 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
       res = out
       const pairs = res.pairs || []
       if (!pairs.length) { setError('Generation produced no usable lines.'); setPhase('error'); return }
-      setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0); setPhase('done')
-      onGenerated({
+      // §completeness — QC may not begin until every recall exists WITH provenance.
+      const ready = assertTrackReadyForQc(targets, targetProgress)
+      if (!ready.ok) push('\u26A0 ' + ready.lit + '/' + ready.expected + ' recalls carry provenance')
+      setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0)
+      setPhase('done')
+      buildAndQc({
         createdAt: new Date().toISOString(),
         date: new Date().toISOString().slice(0, 10),
         mode: 'daily', language: 'ja', speechStyle: register,
@@ -15775,6 +16167,64 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
       )}
     </div>
   )
+
+
+  // Runs QC on THIS screen. The workspace stays mounted throughout, so the brick
+  // grid, target circles and rolling log survive into and past the check.
+
+  // QC result, rendered INSIDE the generation workspace \u2014 no navigation away.
+  function qcPanel() {
+    if (!qcPhase) return null
+    if (qcPhase === 'running') return (
+      <Card style={{ padding:'10px 14px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:'#60a5fa' }}>{'\u2726'} Quality check</span>
+          <span className="phon" style={{ fontSize:11, color:'var(--muted)' }}>{qcProgress}%</span>
+        </div>
+        <div style={{ height:4, background:'var(--surface2)', borderRadius:2, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:qcProgress + '%', background:'#60a5fa', transition:'width 0.3s' }} />
+        </div>
+        <p style={{ fontSize:10, color:'var(--muted)', marginTop:5 }}>{qcStatus}</p>
+      </Card>
+    )
+    const c = (qcResult && qcResult.counts) || { found:0, fixed:0, accepted:0, unresolved:0 }
+    const critical = (qcResult && qcResult.criticalUnresolvedCount) || 0
+    return (
+      <Card style={{ padding:'10px 14px' }}>
+        <p style={{ fontSize:11, fontWeight:700, color: critical ? '#ef4444' : '#4ade80', marginBottom:6 }}>
+          {critical ? '\u26A0 Quality check \u2014 ' + critical + ' critical issue' + (critical > 1 ? 's' : '') + ' remain'
+                    : '\u2713 Quality check complete'}
+        </p>
+        <div style={{ fontSize:11, color:'var(--muted)', lineHeight:1.6 }}>
+          {c.found} found {'\u00b7'} {c.fixed} fixed {'\u00b7'} {c.accepted} accepted {'\u00b7'} {c.unresolved} unresolved
+        </div>
+        {(qcResult && qcResult.issues || []).filter(i => i.status === 'unresolved').slice(0, 5).map((i, k) => (
+          <div key={k} style={{ fontSize:9, color:'#f97316', fontFamily:'monospace', lineHeight:1.5 }}>
+            {'\u26A0'} Pair {i.pairIndex + 1}: {i.message}
+          </div>
+        ))}
+      </Card>
+    )
+  }
+
+  async function buildAndQc(track) {
+    setFinalTrack(track)
+    setQcPhase('running'); setQcProgress(0); setQcStatus('Starting quality check\u2026')
+    push('\u2501\u2501 Quality check')
+    try {
+      const res = await runJapaneseTrackQC(track, vocab,
+        { cancelled: () => stopRef.current.cancelled, apiKey, model },
+        (pct, msg) => { setQcProgress(pct); if (msg) setQcStatus(msg) },
+        m => push(m))
+      const corrected = { ...track, pairs: res.pairs, _qcDone: true, _qcIssues: res.issues }
+      setQcResult(res); setFinalTrack(corrected); setQcPhase('done')
+      push('\u2705 ' + res.counts.found + ' found \u00b7 ' + res.counts.fixed + ' fixed \u00b7 ' +
+           res.counts.accepted + ' accepted \u00b7 ' + res.counts.unresolved + ' unresolved')
+    } catch (e) {
+      push('\u274C Quality check failed: ' + (e.message || ''))
+      setQcResult(null); setQcPhase('done')
+    }
+  }
 
   // §6/§14 — retry ONLY the missing recall against the preserved state.
   async function retryMissingRecall() {
@@ -15860,7 +16310,7 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
               srcColor={targetColor(w.id)} recalls={targetRecalls(w.id)} />
           ))}
         </div>
-        <GenerationBrickGrid total={totalSlots} filled={framingDone + recallDone} sources={brickSources}
+        <GenerationBrickGrid total={totalSlots} sources={brickSources}
           colorFor={s => jaSrcToColor(s, '#888888')} />
         <GenerationLiveLog lines={showHistory ? fullLog : liveLog} fullLog={fullLog}
           onDownload={() => downloadJapaneseGenLog(fullLog)}
@@ -16035,10 +16485,25 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
         </p>
       </div>
 
-      <Btn onClick={() => { stopRef.current.cancelled = true; onBack() }} variant="secondary"
-        style={{ width:'100%', justifyContent:'center' }}>
-        {phase === 'done' ? 'Back' : '\u23F8 Cancel'}
-      </Btn>
+      {/* QC lives here, on the generation screen. Bricks, circles and log persist. */}
+      {qcPanel()}
+
+      {qcPhase === 'done' ? (
+        <>
+          <Btn onClick={() => onGenerated(finalTrack)}
+            style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>
+            {'\u25B6'} Study track
+          </Btn>
+          <Btn onClick={() => buildAndQc(finalTrack)} variant="secondary"
+            style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} Run quality check again</Btn>
+          <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+        </>
+      ) : (
+        <Btn onClick={() => { stopRef.current.cancelled = true; onBack() }} variant="secondary"
+          style={{ width:'100%', justifyContent:'center' }}>
+          {phase === 'done' ? 'Back' : '\u23F8 Cancel'}
+        </Btn>
+      )}
     </div>
   )
 }
@@ -16091,9 +16556,14 @@ function JapaneseTeacher({ lang, onSetLang }) {
 
   // §1/§15 — same flow as Thai: save, then Quality Check. NEVER straight to Player.
   // §4/§9 — the generator only reports onGenerated; routing lives here.
+  // QC already ran on the generation screen, so a generated track goes straight to
+  // the player. Quality Review remains reachable later from the player.
   function onTrackGenerated(track) {
     saveTracksJa([...tracks, track])
     saveSlots((targets || []).map(t => t.id))   // hold these slots until rated
+    if (track && track._qcDone) {
+      setActiveTrack(track); setPlayerResumeCompleted(false); setView('player'); return
+    }
     setPendingReviewTrack(track)
     setQcReturnContext('post-generation')
     setView('quality-review')
@@ -16607,6 +17077,8 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
       open.push(jaFramingPair('A', scene.opening, scene.opening_reading, scene.opening_romaji,
         scene.opening_english, scene.opening_prompt, 'greeting'))
       onLog && onLog('\u2713 opening validated')
+      // Framing bricks light on ACCEPTANCE, independently of recalls.
+      onProgress && onProgress(0, 0, { framingAccepted: { slot: 0, source: 'ja:scene' } })
     }
     if (scene.reply) {
       open.push(jaFramingPair('B', scene.reply, scene.reply_reading, scene.reply_romaji,
@@ -17133,6 +17605,9 @@ function MandarinTeacher({ lang, onSetLang }) {
 
   function onTrackGenerated(track) {
     saveTracksZh([...tracks, { ...track, mode: trackMode }])
+    if (track && track._qcDone) {
+      setActiveTrack({ ...track, mode: trackMode }); setPlayerResumeCompleted(false); setView('player'); return
+    }
     // §17 — only a new-word track consumes daily-new slots.
     if (trackMode === 'daily') saveSlots((targets || []).map(t => t.id))
     setPendingReviewTrack(track)

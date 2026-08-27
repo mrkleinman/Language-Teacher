@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v540"/>
+<meta name="app-version" content="v541"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v540';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v540').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v541';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v541').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -10828,25 +10828,47 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
 }
 
 // ── Browse Vocab ──────────────────────────────────────────────────────────────
-function Browser({ vocab, onBack, initialFilter, initialQuery, phonetics, onCustomTrack, orKey, onVocabUpdate }) {
+function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phonetics, onCustomTrack, orKey, onVocabUpdate }) {
   const [q, setQ] = useState(initialQuery || '')
   const [filter, setFilter] = useState(initialFilter || 'all')
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState(new Set())
+  // Manual management: an independent mode from the 30-word custom-track picker.
+  const [managing, setManaging] = useState(false)
+  const [managed, setManaged] = useState(new Set())
+  const [beltFilter, setBeltFilter] = useState(initialBelt || 'all')
+  const [askPractised, setAskPractised] = useState(false)
+  const [practisedInput, setPractisedInput] = useState('')
+  const [askReset, setAskReset] = useState(false)
   const today = new Date().toISOString().slice(0, 10)
 
   const filtered = useMemo(() => {
+    const range = beltFilter === 'all' || beltFilter === 'extended' ? null : curriculumRangeFor(beltFilter)
     return vocab.filter(w => {
-      const matchQ = !q || w.thai.includes(q) || w.english.toLowerCase().includes(q.toLowerCase())
+      const text = canonicalScript(w) || ''
+      const matchQ = !q || text.includes(q) || (w.english || '').toLowerCase().includes(q.toLowerCase())
       let matchF
       if (filter === 'all') matchF = true
       else if (filter === 'due') matchF = w.status !== 'new' && w.dueDate && w.dueDate <= today
       else matchF = w.status === filter
-      return matchQ && matchF
+      // Belt membership is DERIVED from curriculumIndex \u2014 no separate belt dataset.
+      let matchB = true
+      const ci = w.curriculumIndex || 0
+      if (beltFilter === 'extended') matchB = !(ci >= 1 && ci <= SHODAN_CURRICULUM_TOTAL)
+      else if (range) matchB = ci >= range.from && ci <= range.to
+      return matchQ && matchF && matchB
     })
-  }, [vocab, q, filter, today])
+  }, [vocab, q, filter, beltFilter, today])
 
   function toggleSelect(w) {
+    if (managing) {
+      setManaged(prev => {
+        const next = new Set(prev)
+        if (next.has(w.id)) next.delete(w.id); else next.add(w.id)
+        return next
+      })
+      return
+    }
     if (!selecting) return
     setSelected(prev => {
       const next = new Set(prev)
@@ -10854,6 +10876,53 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, phonetics, onCust
       else if (next.size < 30) next.add(w.id)
       return next
     })
+  }
+  // Select All applies to the CURRENT filtered result only.
+  function selectAllFiltered() { setManaged(new Set(filtered.map(w => w.id))) }
+  function exitManage() { setManaging(false); setManaged(new Set()); setAskPractised(false); setAskReset(false) }
+
+  // Every manual change writes to the SAME canonical record used by lessons,
+  // Kyu\u2013Dan, SRS and review. There is no display-only override anywhere.
+  function applyToManaged(fn) {
+    if (!onVocabUpdate) return
+    const ids = managed
+    onVocabUpdate(vocab.map(w => ids.has(w.id) ? fn(w) : w))
+  }
+  function setStatusManual(status) {
+    const todayStr = new Date().toISOString().slice(0, 10)
+    applyToManaged(w => {
+      // Keep SRS fields internally consistent so a stale interval cannot promote
+      // the word straight back after a manual downgrade.
+      if (status === 'new') {
+        return { ...w, status:'new', interval:0, dueDate:null, lastSeen:null,
+                 okStreak:0, manualKnown:false, difficulty:'hard' }
+      }
+      if (status === 'learning') {
+        const d = new Date(); d.setDate(d.getDate() + 1)
+        return { ...w, status:'learning', interval:1, dueDate:d.toISOString().slice(0, 10),
+                 okStreak: Math.min(safeOkStreak(w), OK_STREAK_TO_KNOWN - 1),
+                 manualKnown:false, difficulty:'ok', lastSeen: w.lastSeen || todayStr }
+      }
+      return markWordKnown(w)
+    })
+  }
+  function setPractisedManual(n) {
+    const v = Math.max(0, Math.min(9999, parseInt(n, 10) || 0))
+    applyToManaged(w => {
+      // Reuses the canonical repCount. Lowering it must not leave a streak that
+      // exceeds the exposures it was supposedly earned from.
+      const okStreak = Math.min(safeOkStreak(w), v)
+      const demoted = w.status === 'known' && okStreak < (w.lapses > 0 ? OK_STREAK_TO_KNOWN_LAPSED : OK_STREAK_TO_KNOWN) && !w.manualKnown
+      return { ...w, repCount: v, okStreak,
+               status: demoted ? 'learning' : w.status,
+               interval: demoted ? Math.min(w.interval || 1, 1) : w.interval }
+    })
+  }
+  function resetProgressManual() {
+    // Resets ONLY learning state. Word text, phonetics, gloss, note, curriculum
+    // assignment and belt are never touched.
+    applyToManaged(w => ({ ...w, status:'new', interval:0, dueDate:null, lastSeen:null,
+      repCount:0, okStreak:0, lapses:0, manualKnown:false, difficulty:'hard' }))
   }
 
   const [fetchingPhonetics, setFetchingPhonetics] = useState(false)
@@ -10906,6 +10975,8 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, phonetics, onCust
   }
 
   const filters = [['all','All'],['due','Due'],['new','New'],['learning','Learning'],['known','Known'],['lapsed','Lapsed']]
+  // Belt options come from the canonical ranges \u2014 nothing belt-specific is stored.
+  const beltOptions = [['all','All belts'], ...CURRICULUM_BELTS.map(b => [b.name, b.rank]), ['extended','Extended']]
 
   return (
     <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
@@ -10973,16 +11044,48 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, phonetics, onCust
         )}
       </div>
 
+      {/* Belt / rank filter \u2014 combines with the status filter above */}
+      <div style={{ display:'flex', gap:6, overflowX:'auto', paddingBottom:6, marginBottom:8 }}>
+        {beltOptions.map(([id, label]) => (
+          <button key={id} onClick={() => setBeltFilter(id)}
+            style={{ padding:'5px 11px', borderRadius:20, whiteSpace:'nowrap', cursor:'pointer', fontSize:11, fontWeight:700,
+              border:'1px solid ' + (beltFilter === id ? 'var(--gold)' : 'var(--border)'),
+              background: beltFilter === id ? 'var(--surface2)' : 'transparent',
+              color: beltFilter === id ? 'var(--gold)' : 'var(--muted)' }}>{label}</button>
+        ))}
+      </div>
+
+      {/* Manual management \u2014 a visible button, never a long-press */}
+      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:10 }}>
+        <button onClick={() => { if (managing) exitManage(); else { setManaging(true); setSelecting(false) } }}
+          style={{ padding:'6px 14px', borderRadius:20, cursor:'pointer', fontSize:12, fontWeight:700,
+            border:'1px solid ' + (managing ? 'var(--gold)' : 'var(--border)'),
+            background: managing ? 'var(--surface2)' : 'transparent',
+            color: managing ? 'var(--gold)' : 'var(--muted)' }}>
+          {managing ? 'Cancel' : '\u2611 Select'}
+        </button>
+        {managing && (
+          <>
+            <button onClick={selectAllFiltered}
+              style={{ padding:'6px 12px', borderRadius:20, cursor:'pointer', fontSize:12, fontWeight:700,
+                border:'1px solid var(--border)', background:'transparent', color:'var(--muted)' }}>
+              Select all ({filtered.length})
+            </button>
+            <span style={{ marginLeft:'auto', fontSize:12, color:'var(--gold)', fontWeight:700 }}>{managed.size} selected</span>
+          </>
+        )}
+      </div>
+
       {/* List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 'calc(100vh - 300px)' }}>
         {filtered.map(w => {
-          const isSelected = selected.has(w.id)
+          const isSelected = managing ? managed.has(w.id) : selected.has(w.id)
           const phonetic = w.phonetic || (phonetics || {})[w.id] || (phonetics || {})[w.thai] || ''
           return (
-            <Card key={w.id} onClick={selecting ? () => toggleSelect(w) : undefined}
+            <Card key={w.id} onClick={(selecting || managing) ? () => toggleSelect(w) : undefined}
               style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, ...(isSelected ? { borderColor: 'var(--gold)', background: '#1a1200' } : {}) }}
-              hover={selecting}>
-              {selecting && (
+              hover={selecting || managing}>
+              {(selecting || managing) && (
                 <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${isSelected ? 'var(--gold)' : 'var(--border)'}`, background: isSelected ? 'var(--gold)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 11, color: '#0b1120', fontWeight: 700 }}>
                   {isSelected && '✓'}
                 </div>
@@ -11002,7 +11105,7 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, phonetics, onCust
                 <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>{w.english}</p>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <p className="phon" style={{ fontSize: 11, color: 'var(--muted)' }}>×{w.repCount}</p>
+                <p className="phon" style={{ fontSize: 11, color: 'var(--muted)' }}>Practised {practiceCountOf(w)}×</p>
                 {w.lapses > 0 && <p style={{ fontSize: 10, color: '#ef4444' }}>{w.lapses} lapse</p>}
               </div>
             </Card>
@@ -11010,6 +11113,76 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, phonetics, onCust
         })}
         {filtered.length === 0 && <p style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>No words found</p>}
       </div>
+
+      {/* Persistent action bar \u2014 all actions write to the canonical record */}
+      {managing && managed.size > 0 && (
+        <div style={{ position:'sticky', bottom:0, marginTop:10, padding:'10px 12px',
+          background:'var(--surface)', border:'1px solid var(--gold)', borderRadius:12,
+          display:'flex', flexDirection:'column', gap:8, boxShadow:'0 -4px 16px rgba(0,0,0,0.45)' }}>
+          <div style={{ fontSize:11, color:'var(--gold)', fontWeight:800 }}>{managed.size} word{managed.size === 1 ? '' : 's'} selected</div>
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            {[['new','Mark New'],['learning','Mark Learning'],['known','Mark Known']].map(([s, label]) => (
+              <button key={s} onClick={() => { setStatusManual(s); exitManage() }}
+                style={{ flex:1, minWidth:96, padding:'8px 6px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700,
+                  border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text)' }}>{label}</button>
+            ))}
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            <button onClick={() => { setPractisedInput(''); setAskPractised(true) }}
+              style={{ flex:1, padding:'8px 6px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700,
+                border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text)' }}>Set Practised count</button>
+            <button onClick={() => setAskReset(true)}
+              style={{ flex:1, padding:'8px 6px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700,
+                border:'1px solid #ef4444', background:'transparent', color:'#ef4444' }}>Reset Progress</button>
+          </div>
+          <button onClick={exitManage}
+            style={{ padding:'6px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700,
+              border:'none', background:'transparent', color:'var(--muted)' }}>Done</button>
+        </div>
+      )}
+
+      {askPractised && (
+        <div style={{ position:'sticky', bottom:0, marginTop:8, padding:'12px 14px',
+          background:'var(--surface)', border:'1px solid var(--gold)', borderRadius:12 }}>
+          <p style={{ fontSize:12, fontWeight:700, marginBottom:6 }}>Set practised count for {managed.size} word{managed.size === 1 ? '' : 's'}</p>
+          <p style={{ fontSize:10, color:'var(--muted)', marginBottom:8 }}>
+            The number of genuine exposures you believe is accurate. This updates the same count shown everywhere.
+          </p>
+          <input type="number" min="0" value={practisedInput} onChange={e => setPractisedInput(e.target.value)}
+            placeholder="e.g. 3"
+            style={{ width:'100%', padding:'9px 11px', borderRadius:8, background:'var(--surface2)',
+              border:'1px solid var(--border)', color:'var(--text)', fontSize:14, marginBottom:8 }} />
+          <div style={{ display:'flex', gap:6 }}>
+            <button onClick={() => setAskPractised(false)}
+              style={{ flex:1, padding:'8px', borderRadius:8, cursor:'pointer', fontSize:12,
+                border:'1px solid var(--border)', background:'transparent', color:'var(--muted)' }}>Cancel</button>
+            <button onClick={() => { setPractisedManual(practisedInput); setAskPractised(false); exitManage() }}
+              style={{ flex:1, padding:'8px', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:700,
+                border:'1px solid var(--gold)', background:'var(--surface2)', color:'var(--gold)' }}>Apply</button>
+          </div>
+        </div>
+      )}
+
+      {askReset && (
+        <div style={{ position:'sticky', bottom:0, marginTop:8, padding:'12px 14px',
+          background:'var(--surface)', border:'1px solid #ef4444', borderRadius:12 }}>
+          <p style={{ fontSize:12, fontWeight:700, color:'#ef4444', marginBottom:6 }}>
+            Reset progress for {managed.size} word{managed.size === 1 ? '' : 's'}?
+          </p>
+          <p style={{ fontSize:10, color:'var(--muted)', marginBottom:10 }}>
+            Clears status, practised count, streak, lapses and review dates. The word,
+            translation, phonetics, notes and curriculum position are not changed.
+          </p>
+          <div style={{ display:'flex', gap:6 }}>
+            <button onClick={() => setAskReset(false)}
+              style={{ flex:1, padding:'8px', borderRadius:8, cursor:'pointer', fontSize:12,
+                border:'1px solid var(--border)', background:'transparent', color:'var(--muted)' }}>Cancel</button>
+            <button onClick={() => { resetProgressManual(); setAskReset(false); exitManage() }}
+              style={{ flex:1, padding:'8px', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:700,
+                border:'1px solid #ef4444', background:'#ef4444', color:'#0b1120' }}>Reset progress</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -11843,8 +12016,12 @@ function learnStateOf(w) {
   return { key:'unseen', label:'New', color:'var(--muted)' }
 }
 
-function BeltVocabView({ vocab, beltLabel, beltName, displayName, beltColor, onBack, onOpenWord }) {
-  const [filter, setFilter] = useState('all')
+function BeltVocabView({ vocab, beltLabel, beltName, displayName, beltColor, onBack, onOpenWord, onOpenInVocabulary, filter: filterProp, onFilterChange }) {
+  // Filter is lifted when a parent supplies it, so returning from Browse restores
+  // the exact belt page state rather than resetting to All.
+  const [localFilter, setLocalFilter] = useState('all')
+  const filter = filterProp !== undefined ? filterProp : localFilter
+  const setFilter = f => { setLocalFilter(f); if (onFilterChange) onFilterChange(f) }
   const words = useMemo(
     () => (beltLabel === 'Beyond curriculum' ? extendedVocabWords(vocab) : wordsForBeltLabel(vocab, beltLabel)),
     [vocab, beltLabel])
@@ -11907,6 +12084,14 @@ function BeltVocabView({ vocab, beltLabel, beltName, displayName, beltColor, onB
         ))}
       </div>
 
+      {onOpenInVocabulary && (
+        <button onClick={() => onOpenInVocabulary({ belt: beltLabel, filter })}
+          style={{ padding:'9px 12px', borderRadius:10, cursor:'pointer', fontSize:12, fontWeight:700,
+            border:'1px solid var(--border)', background:'var(--surface)', color:'var(--gold)' }}>
+          Open in Vocabulary {'\u203A'}
+        </button>
+      )}
+
       {shown.length === 0 && (
         <p style={{ fontSize:12, color:'var(--muted)', textAlign:'center', padding:'20px 0' }}>
           No words in this filter.
@@ -11955,9 +12140,16 @@ function BeltVocabView({ vocab, beltLabel, beltName, displayName, beltColor, onB
   )
 }
 
-function BeltRankView({ vocab, onBack, onOpenWord }) {
+function BeltRankView({ vocab, onBack, onOpenWord, onOpenInVocabulary, initialBelt, initialBeltFilter }) {
   const known = (vocab||[]).filter(w => w.status === 'known').length
+  // Restored when returning from Browse Vocabulary, so Back lands on the same belt.
   const [openBelt, setOpenBelt] = useState(null)
+  const [beltFilter, setBeltFilter] = useState(initialBeltFilter || 'all')
+  useEffect(() => {
+    if (!initialBelt) return
+    const hit = BELTS.find(b => curriculumBeltKey(b.belt) === initialBelt)
+    if (hit) setOpenBelt(hit)
+  }, [initialBelt])
 
   const BELTS = CURRICULUM_BELTS.map(b => {
     // min/max are DERIVED from the canonical curriculum ranges, so this table can
@@ -11977,8 +12169,9 @@ function BeltRankView({ vocab, onBack, onOpenWord }) {
   // Tapping a belt opens its vocabulary, read from canonical curriculum metadata.
   if (openBelt) {
     return <BeltVocabView vocab={vocab} beltLabel={curriculumBeltKey(openBelt.belt)} beltName={openBelt.name}
-      displayName={openBelt.belt}
-      beltColor={openBelt.color} onBack={() => setOpenBelt(null)} onOpenWord={onOpenWord} />
+      displayName={openBelt.belt} filter={beltFilter} onFilterChange={setBeltFilter}
+      beltColor={openBelt.color} onBack={() => setOpenBelt(null)} onOpenWord={onOpenWord}
+      onOpenInVocabulary={onOpenInVocabulary} />
   }
   const wordsToNext = nextBelt ? nextBelt.min - known : 0
   const progress = nextBelt ? Math.round(((known - currentBelt.min) / (nextBelt.min - currentBelt.min)) * 100) : 100
@@ -13427,6 +13620,10 @@ function ThaiTeacher({ lang, onSetLang }) {
   const [browseFilter, setBrowseFilter] = useState('all')
   // Search term used when a word is opened from the belt vocabulary list.
   const [beltWordQuery, setBeltWordQuery] = useState('')
+  // Round-trip context: which belt page Browse was opened from, and its filter.
+  const [browseBelt, setBrowseBelt] = useState('all')
+  const [returnBelt, setReturnBelt] = useState(null)
+  const [returnBeltFilter, setReturnBeltFilter] = useState('all')
 
   // Register Gemini spend tracker — called by callOpenRouterOnce on every Gemini API call
   useEffect(() => {
@@ -13714,12 +13911,19 @@ function ThaiTeacher({ lang, onSetLang }) {
           />
           </ErrorBoundary>
         )}
-        {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate('dashboard')} initialFilter={browseFilter} initialQuery={beltWordQuery} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
+        {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate(returnBelt ? 'belt-rank' : 'dashboard')} initialFilter={browseFilter} initialQuery={beltWordQuery} initialBelt={browseBelt} phonetics={{}} onCustomTrack={onCustomTrack} orKey={orKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} orKey={orKey} />}
         {view === 'settings' && <Settings onBack={() => navigate('dashboard')} apiKey={apiKey} onSaveKey={k => setApiKey(k)} provider={provider} onSaveProvider={async p => { setProvider(p); await stSet('tt-provider',p) }} dsKey={dsKey} onSaveDsKey={async k => { setDsKey(k); await stSet('tt-dskey',k) }} orKey={orKey} onSaveOrKey={async k => { setOrKey(k); await stSet('tt-orkey',k); fetchOrBalance(k) }} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} geminiFallbackKey={geminiFallbackKey} onSaveGeminiFallbackKey={async k => { setGeminiFallbackKey(k); await stSet('tt-gemini-fallback-key', k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} fillApiKey={provider === 'gemini' && geminiKey ? geminiKey : orKey} fillModel={resolveOrModel(provider)} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} onBack={() => navigate('dashboard')}
-          onOpenWord={w => { setBrowseFilter('all'); setBeltWordQuery(w.thai); navigate('browse') }} />}
+          initialBelt={returnBelt} initialBeltFilter={returnBeltFilter}
+          onOpenWord={w => { setBrowseFilter('all'); setBrowseBelt('all'); setBeltWordQuery(w.thai); setReturnBelt(null); navigate('browse') }}
+          onOpenInVocabulary={ctx => {
+            // Browse opens already filtered to this belt; Back returns here.
+            setBrowseBelt(ctx.belt); setBrowseFilter('all'); setBeltWordQuery('')
+            setReturnBelt(ctx.belt); setReturnBeltFilter(ctx.filter)
+            navigate('browse')
+          }} />}
         {view === 'lessons' && <ErrorBoundary><LessonsView vocab={vocab} onVocabUpdate={onWordsAdded} onBack={() => navigate('dashboard')} /></ErrorBoundary>}
         {view === 'convo' && activeTrack?.convo && (
           <ConvoPlayer

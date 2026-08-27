@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v541"/>
+<meta name="app-version" content="v542"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v541';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v541').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v542';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v542').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3231,7 +3231,7 @@ function initMandarinVocab() {
     partOfSpeech: d.partOfSpeech || null,
     note: d.note || null,          // collision distinction, carried into prompts
     // Curriculum position — the 100-word bank is the White belt.
-    belt: d.belt || beltForCurriculumIndex(d.unlockOrder || d.id || idx + 1),
+    belt: beltForCurriculumIndex(d.unlockOrder || d.id || idx + 1),
     beltOrder: d.beltOrder || d.unlockOrder || d.id || idx + 1,
     curriculumIndex: d.curriculumIndex || d.unlockOrder || d.id || idx + 1,
     okStreak: 0, manualKnown: false,
@@ -5090,7 +5090,9 @@ function initVocab() {
       repCount: d.r || 0, lapses: d.lp || 0,
       okStreak: 0, manualKnown: false,
       // Curriculum position — fixed by the syllabus, never altered by SRS status.
-      belt: d.belt || beltForCurriculumIndex(d.curriculumIndex),
+      // Derived from curriculumIndex, never read from the stored field, which was
+      // written under the previous ranges and is now stale.
+      belt: beltForCurriculumIndex(d.curriculumIndex),
       beltOrder: d.beltOrder || 0,
       curriculumIndex: d.curriculumIndex || 0,
       note: d.note || null }
@@ -5600,13 +5602,26 @@ function nextRankAfter(rank) {
   return i >= 0 && i < RANK_ORDER.length - 1 ? RANK_ORDER[i + 1] : null
 }
 function wordsForRank(vocab, rank) {
-  // Only curated curriculum words can be REQUIRED by a rank. Post-2000 vocabulary
-  // is fully learnable but sits outside every pre-Shodan rank test.
-  return (vocab || []).filter(w => w && w.belt === rank && !w.duplicateOf && isCurriculumWord(w))
+  // Membership is DERIVED from the canonical curriculum range. Thai stored a `belt`
+  // field written under the OLD ranges (curriculumIndex 1 said "Orange"), so a
+  // stored-field match returned zero words and the whole rank test fell back to
+  // legacy behaviour. Deriving it makes all three languages identical.
+  const range = curriculumRangeFor(rank)
+  if (!range) return []
+  return (vocab || []).filter(w => w && !w.duplicateOf &&
+    (w.curriculumIndex || 0) >= range.from && (w.curriculumIndex || 0) <= range.to)
 }
 // A word counts as SEEN once it has appeared in any track.
+// SEEN means the word genuinely appeared in a track. A bank entry that ships
+// pre-marked `known` with no exposures has NOT been seen, so it cannot silently
+// unlock a rank test. Migrated history (repCount / lastSeen) still counts.
 function isWordSeen(w) {
-  return !!w && ((w.repCount || 0) > 0 || !!w.lastSeen || w.status === 'known')
+  if (!w) return false
+  if ((w.repCount || 0) > 0) return true
+  if (w.lastSeen) return true
+  // Legacy profiles: a Known word carrying real SRS evidence is genuine history.
+  if (w.status === 'known' && ((w.okStreak || 0) > 0 || (w.interval || 0) > 0)) return true
+  return false
 }
 // A word counts as PASSED once it has ever produced an OK/mastery result. Known
 // words keep their credit and are never reset or retested.
@@ -13686,7 +13701,7 @@ function ThaiTeacher({ lang, onSetLang }) {
             if (src.dup) m.duplicateOf = src.dup
             // Curriculum position comes from the syllabus, not from stored state, so
             // re-curating a belt updates existing learners without touching SRS.
-            m.belt = src.belt || beltForCurriculumIndex(src.curriculumIndex)
+            m.belt = beltForCurriculumIndex(src.curriculumIndex)
             m.beltOrder = src.beltOrder || 0
             m.curriculumIndex = src.curriculumIndex || 0
             if (src.note && !m.note) m.note = src.note
@@ -18052,7 +18067,7 @@ function initJapaneseVocab() {
     note:     d.note     || null,       // collision distinction, carried into prompts
     // Curriculum position: the 100-word bank is the White belt, ordered by
     // unlockOrder. Fixed by the syllabus, never altered by SRS status.
-    belt:     d.belt || beltForCurriculumIndex(d.unlockOrder || d.id || idx + 1),
+    belt:     beltForCurriculumIndex(d.unlockOrder || d.id || idx + 1),
     beltOrder: d.beltOrder || d.unlockOrder || d.id || idx + 1,
     curriculumIndex: d.curriculumIndex || d.unlockOrder || d.id || idx + 1,
     okStreak: 0, manualKnown: false,

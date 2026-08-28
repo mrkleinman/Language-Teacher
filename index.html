@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v542"/>
+<meta name="app-version" content="v544"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v542';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v542').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v544';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v544').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5721,6 +5721,20 @@ function currentRankName(vocab) {
   return 'Shodan'
 }
 
+// Shared rank progress. One definition of "current rank" for every surface:
+// the first belt whose curriculum is not yet fully proven. Progress is measured
+// in that belt's own words, not in total known words.
+function rankProgressFor(vocab) {
+  const name = currentRankName(vocab)
+  const idx = Math.max(0, BELT_RANKS.findIndex(b => b.label === name))
+  const current = BELT_RANKS[idx] || BELT_RANKS[0]
+  const next = BELT_RANKS[idx + 1] || null
+  const st = rankTestStatus(vocab, name)
+  const wordsToNext = Math.max(0, st.total - st.passedCount)
+  const progress = st.total ? Math.round((st.passedCount / st.total) * 100) : 0
+  return { current, next, wordsToNext, progress, rankState: st }
+}
+
 function RankTestButton({ vocab, rank, onStart }) {
   const st = useMemo(() => rankTestStatus(vocab, rank), [vocab, rank])
   if (!st.total) return null
@@ -5758,7 +5772,12 @@ function RankTestButton({ vocab, rank, onStart }) {
 
 function BeltRankCard({ vocab, onNav, langName }) {
   const known = useMemo(() => vocab.filter(w => w.status === 'known').length, [vocab])
-  const { current, next, wordsToNext, progress } = useMemo(() => calculateBeltRank(known), [known])
+  // Current rank now comes from CURRICULUM COMPLETION, the same state the rank test
+  // uses — not from a raw known-word count against cumulative thresholds. Those two
+  // disagreed: 185 known put the dashboard at 10th Kyu while White was still unproven,
+  // so the card said "10th Kyu" and the test said "White Belt".
+  const rankState = useMemo(() => rankProgressFor(vocab), [vocab])
+  const { current, next, wordsToNext, progress } = rankState
   const isShodan = !next
 
   return (
@@ -5790,10 +5809,11 @@ function BeltRankCard({ vocab, onNav, langName }) {
         )}
       </div>
 
-      {/* Known words count */}
+      {/* Progress through the current belt's curriculum */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, color: 'var(--muted)' }}>Known words</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#10b981' }}>{known}{next ? ` / ${next.minWords}` : ''}</span>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{current.label} words proven</span>
+        {/* Progress WITHIN the current belt — the same numbers the rank test uses. */}
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#10b981' }}>{rankState.rankState.passedCount} / {rankState.rankState.total}</span>
       </div>
 
       {/* Progress bar */}
@@ -9663,9 +9683,6 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   //     drives each word's three circles.
   // Both are written from the same event and carry the same check-tier source, so
   // a pill and its word-circle can never disagree.
-  const [acceptanceHistory, setAcceptanceHistory] = useState([])
-  const appendAcceptance = (source, meta) =>
-    setAcceptanceHistory(h => [...h, { source, ...(meta || {}), at: h.length }])
   const [currentTier, setCurrentTier] = useState('')
   const [genLog, setGenLog] = useState([])
   // Thai kept only the rolling window, so a complete log could never be exported.
@@ -16688,6 +16705,13 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
   const [currentCheckTier, setCurrentCheckTier] = useState(0)
   const [targetProgress, setTargetProgress] = useState({})   // wordId -> { recalls:[{recallIndex,checkTier,source}] }
   const [brickSources, setBrickSources] = useState({})
+  // TWO views of the same acceptance events: acceptanceHistory drives the TOP grid
+  // chronologically (nth acceptance -> nth pill, no reserved holes), while
+  // brickSources/targetProgress keep the canonical targetId+recallIndex mapping for
+  // each word's three circles. Both written from the same event, same source.
+  const [acceptanceHistory, setAcceptanceHistory] = useState([])
+  const appendAcceptance = (source, meta) =>
+    setAcceptanceHistory(h => [...h, { source, ...(meta || {}), at: h.length }])
   const [error, setError] = useState('')
   // §11 — structured recovery state; partial generation stays alive.
   const [generationError, setGenerationError] = useState(null)

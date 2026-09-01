@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v550"/>
+<meta name="app-version" content="v551"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v550';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v550').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v551';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v551').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5271,6 +5271,10 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
     diag.unfinishedInBelt = unfinished.length
     const unseenInBelt = beltCandidateOrder(unfinished.filter(w => !isWordIntroducedForRole(w)), today)
     diag.newAvailableInBelt = unseenInBelt.length
+    // RESERVE the NEW allowance FIRST. Previously the candidate list was capped at
+    // the track size, so once enough due words existed to fill it no unseen word
+    // ever reached the pool and the allowance was silently lost — a learner with
+    // 57 unseen words could still be offered only 1.
     const newPicks = unseenInBelt.slice(0, allowance)
     diag.selectedNew = newPicks.map(w => ({ thai: w.thai, belt: w.belt }))
     take(newPicks, 'belt-new')
@@ -15946,7 +15950,13 @@ function beltPriorityCandidates(vocab, cap, today) {
   const push = list => list.forEach(w => { if (!seen.has(w.id) && out.length < cap) { seen.add(w.id); out.push(w) } })
   if (first) {
     const belt = wordsForRank(vocab, first)
-    push(beltCandidateOrder(belt.filter(w => !isWordCompleteForBelt(w)), today))
+    const unfinished = belt.filter(w => !isWordCompleteForBelt(w))
+    // RESERVE the belt's NEW allowance before due words claim the candidate cap.
+    // Without this, a due-heavy belt filled every slot and the unseen words never
+    // reached the pool — so the NEW allowance was silently lost.
+    const unseen = beltCandidateOrder(unfinished.filter(w => isGenuinelyNew(w)), today)
+    push(unseen.slice(0, getNewWordLimitForBelt(first)))
+    push(beltCandidateOrder(unfinished.filter(w => !seen.has(w.id)), today))
   }
   // Spillover: later belts, in curriculum order, still unfinished-first.
   if (out.length < cap) {
@@ -15971,7 +15981,9 @@ function selectTrackTargets(opts) {
   // BEFORE any SRS ordering runs. Opt out with beltPriority:false (used by SRS-only
   // review tracks, which are deliberately global).
   const beltPriority = opts.beltPriority !== false
-  const belt = beltPriority ? beltPriorityCandidates(vocab, cap, today) : { first: null, candidates: null }
+  // Build a candidate pool LARGER than the track so the reserved NEW slots are not
+  // crowded out by due words competing for the same cap.
+  const belt = beltPriority ? beltPriorityCandidates(vocab, cap * 3, today) : { first: null, candidates: null }
   // Everything below draws from this scope, so SRS ranks WITHIN the belt rather
   // than across the whole bank.
   const scope = belt.candidates && belt.candidates.length ? belt.candidates : vocab
@@ -15981,15 +15993,23 @@ function selectTrackTargets(opts) {
   // A. DUE — §6, using the language/SRS rule supplied by the caller.
   const dueSelector = opts.dueSelector || (v => v.filter(w =>
     w.status !== 'new' && w.dueDate && w.dueDate <= today))
-  const due = inScope(dueSelector(vocab)).slice(0, cap)
+  // Reserve the NEW allowance BEFORE due words claim the cap. Taking `cap` due
+  // words first left zero room for new ones, so a learner with plenty of unseen
+  // vocabulary could still be offered none.
+  const newSelector = opts.newSelector || (() => [])
+  const newAllowance = beltPriority ? getNewWordLimitForBelt(belt.first) : cap
+  const availableNew = inScope(newSelector(vocab)).filter(w => isGenuinelyNew(w) || w._occupiesNewSlot).length
+  const reserve = Math.min(newAllowance, availableNew)
+  const due = inScope(dueSelector(vocab)).slice(0, Math.max(0, cap - reserve))
   const used = new Set(due.map(w => w.id))
 
-  // B. NEW — §5/§13, the language's own new-slot logic, unchanged. If the caller's
-  // SRS suppresses new words under review load it simply returns none.
-  const newSelector = opts.newSelector || (() => [])
+  // B. NEW — §5/§13, the language's own new-slot logic (declared above so the DUE
+  // step can reserve room for it).
   // "5 NEW" means five new words FROM THE EARLIEST INCOMPLETE BELT, not five from
   // anywhere in the bank.
-  const fresh = inScope(newSelector(vocab)).filter(w => !used.has(w.id)).slice(0, Math.max(0, cap - used.size))
+  // NEW draws from the language's own selector, scoped to the active belt. The
+  // reserve above guarantees there is room for it.
+  const fresh = inScope(newSelector(vocab)).filter(w => !used.has(w.id)).slice(0, newAllowance)
   fresh.forEach(w => used.add(w.id))
 
   // C. REINFORCE — §7/§3, fill otherwise-empty capacity with already-introduced

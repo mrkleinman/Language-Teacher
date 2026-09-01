@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v548"/>
+<meta name="app-version" content="v549"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v548';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v548').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v549';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v549').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5162,6 +5162,76 @@ function getStats(vocab) {
   }
 }
 
+// Belt-gated candidate construction for Thai. The POOL is gated, not the final sort.
+function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
+  const usable = (vocab || []).filter(w => isUsableWord(w) && w.status !== 'locked')
+  const activeBelt = earliestIncompleteBelt(usable)
+  const diag = { activeBelt, unfinishedInBelt: 0, newAvailableInBelt: 0,
+                 selectedNew: [], selectedReinforce: [], spilloverReason: null, beyondAdmitted: [] }
+  const out = []
+  const seen = new Set()
+  const take = list => list.forEach(w => {
+    if (!seen.has(w.id) && out.length < cap) { seen.add(w.id); out.push(w) }
+  })
+  // Belts in curriculum order; Beyond curriculum is always LAST.
+  const order = CURRICULUM_BELTS.map(b => b.name)
+  const startAt = activeBelt ? order.indexOf(activeBelt) : 0
+
+  // NEW allowance, drawn from the ACTIVE belt only. An injected global new list is
+  // filtered to the belt rather than trusted.
+  const allowance = (todayNewWords || []).length || newSlotsFor(usable)
+  if (activeBelt) {
+    const beltWords = wordsForRank(usable, activeBelt)
+    const unfinished = beltWords.filter(w => !isWordCompleteForBelt(w))
+    diag.unfinishedInBelt = unfinished.length
+    const unseenInBelt = beltCandidateOrder(unfinished.filter(w => !isWordIntroducedForRole(w)), today)
+    diag.newAvailableInBelt = unseenInBelt.length
+    const newPicks = unseenInBelt.slice(0, allowance)
+    diag.selectedNew = newPicks.map(w => ({ thai: w.thai, belt: w.belt }))
+    take(newPicks)
+    // Then every other unfinished word of this belt, ranked by SRS urgency WITHIN it.
+    const rest = beltCandidateOrder(unfinished.filter(w => !seen.has(w.id)), today)
+    take(rest)
+    diag.selectedReinforce = out.filter(w => !newPicks.includes(w)).map(w => ({ thai: w.thai, belt: w.belt }))
+  }
+  // Spillover: later curriculum belts, in order, unfinished first.
+  if (out.length < cap) {
+    diag.spilloverReason = activeBelt
+      ? 'active belt "' + activeBelt + '" supplied only ' + out.length + ' of ' + cap
+      : 'no incomplete curriculum belt'
+    for (let i = Math.max(0, startAt + 1); i < order.length && out.length < cap; i++) {
+      const belt = wordsForRank(usable, order[i])
+      take(beltCandidateOrder(belt.filter(w => !isWordCompleteForBelt(w)), today))
+    }
+  }
+  // Completed curriculum words next \u2014 retention material, never progression slots.
+  if (out.length < cap) {
+    for (let i = Math.max(0, startAt); i < order.length && out.length < cap; i++) {
+      take(beltCandidateOrder(wordsForRank(usable, order[i]).filter(w => !seen.has(w.id)), today))
+    }
+  }
+  // Beyond curriculum LAST, and only once every curriculum word is exhausted.
+  if (out.length < cap) {
+    const beyond = usable.filter(w => !seen.has(w.id) && !isCurriculumWord(w))
+    const picks = beltCandidateOrder(beyond, today).slice(0, cap - out.length)
+    diag.beyondAdmitted = picks.map(w => w.thai)
+    take(picks)
+  }
+  // Assertion: no later-belt word may displace an eligible active-belt word.
+  if (activeBelt) {
+    const eligible = wordsForRank(usable, activeBelt).filter(w => !isWordCompleteForBelt(w))
+    const chosenIds = new Set(out.map(w => w.id))
+    const excluded = eligible.filter(w => !chosenIds.has(w.id))
+    const laterAdmitted = out.filter(w => w.belt !== activeBelt)
+    if (excluded.length && laterAdmitted.length) {
+      console.warn('[belt-priority] ' + laterAdmitted.length + ' later-belt words admitted while ' +
+        excluded.length + ' eligible ' + activeBelt + ' words were excluded')
+    }
+  }
+  if (typeof window !== 'undefined') window.__lastBeltSelection = diag
+  return out.slice(0, cap)
+}
+
 function pickWords(vocab, mode, todayNewWords) {
   const today = new Date().toISOString().slice(0, 10)
   let targets
@@ -5169,11 +5239,13 @@ function pickWords(vocab, mode, todayNewWords) {
     targets = vocab.filter(w => w.difficulty === 'hard' || w.status === 'lapsed' || w.lapses >= 2).slice(0, 30)
     if (!targets.length) targets = vocab.filter(w => w.status === 'learning').slice(0, 30)
   } else {
-    const due = vocab.filter(w => w.status !== 'new' && w.status !== 'locked' && isUsableWord(w) && w.dueDate && w.dueDate <= today).slice(0, 22)
-    // New-word slots lead the list so they're visible first on the generation screen
-    // and are never squeezed out by the 30-word cap.
-    targets = [...(todayNewWords || []), ...due].slice(0, 30)
-    // Note: padding to 30 happens AFTER repair/filter below, so filtered words don't reduce count
+    // ── BELT-GATED SELECTION ────────────────────────────────────────────────
+    // This function previously built THREE global pools — injected new words, a
+    // global due filter, and a global dueDate-sorted pad — none of which knew about
+    // curriculum belts. That is why later-belt and Beyond-curriculum words kept
+    // displacing unfinished White words: the belt fix lived in selectTrackTargets,
+    // which the Thai generator never calls.
+    targets = pickBeltPriorityTargets(vocab, todayNewWords, today, 30)
   }
   const targetIds = new Set(targets.map(w => w.id))
   const anchors = vocab
@@ -5223,14 +5295,14 @@ function pickWords(vocab, mode, todayNewWords) {
     ...targets.filter(w => w.status === 'new'),
     ...targets.filter(w => w.status !== 'new')
   ]
-  // Pad to always reach 30 — runs AFTER filter so filtered words don't reduce count
+  // Pad to 30 after filtering — but through the SAME belt-gated path, so repair and
+  // filtering cannot reintroduce later-belt or Beyond-curriculum words.
   if (targets.length < 30) {
     const tIds = new Set(targets.map(w => w.id))
-    const padding = vocab
-      .filter(w => !tIds.has(w.id) && w.status !== 'new' && isUsableWord(w) && w.thai.length >= 2
-        && !['ก็','ที่','ของ','กับ','ว่า','แต่','หรือ','และ','เพราะ','แล้ว','ด้วย','นะ'].includes(w.thai)
-        && !['มี','ไป','มา','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ไม่','ได้','จะ','เป็น','ทำ','รู้'].includes(w.thai))
-      .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'))
+    const BANNED = new Set(['ก็','ที่','ของ','กับ','ว่า','แต่','หรือ','และ','เพราะ','แล้ว','ด้วย','นะ',
+                            'มี','ไป','มา','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ไม่','ได้','จะ','เป็น','ทำ','รู้'])
+    const padding = pickBeltPriorityTargets(vocab, [], today, 60)
+      .filter(w => !tIds.has(w.id) && w.thai && w.thai.length >= 2 && !BANNED.has(w.thai))
       .slice(0, 30 - targets.length)
     targets = [...targets, ...padding]
   }
@@ -15722,6 +15794,18 @@ function reinforcementScore(w, ctx) {
 // One definition of "done for progression", shared with the belt page, belt test
 // and rank-up logic. A word is complete when it has reached the OK threshold or
 // the learner marked it Known.
+// A word is INTRODUCED once it has genuinely been taught, regardless of SRS status.
+// A Hard rating leaves status 'new', so status alone under-reports introduction —
+// which is why filler words were being counted as NEW.
+function isWordIntroducedForRole(w) {
+  if (!w) return false
+  if (w.introduced) return true
+  if ((w.repCount || 0) > 0) return true
+  if (w.lastSeen) return true
+  if ((w.exposureCount || 0) > 0) return true
+  if ((w.okStreak || 0) > 0) return true
+  return w.status === 'learning' || w.status === 'known' || w.status === 'lapsed'
+}
 function isWordCompleteForBelt(w) {
   if (!w) return false
   if (w.status === 'known') return true
@@ -15835,9 +15919,15 @@ function selectTrackTargets(opts) {
   const topUp = (belt.candidates || [])
     .filter(w => !already.has(w.id))
     .slice(0, Math.max(0, cap - chosen.length))
-    .map(w => ({ ...w, selectionRole: w.status === 'new' ? 'new' : 'reinforce',
+    // Fillers are REINFORCE unless the word has genuinely never been introduced.
+    // Keying on status alone made every Hard-rated word count as NEW, producing
+    // "30 NEW" when the allowance was 3.
+    .map(w => ({ ...w, selectionRole: isWordIntroducedForRole(w) ? 'reinforce' : 'newFill',
                  originalSrsStatus: w.status, targetIndex: 0 }))
-  const targets = [...chosen, ...topUp]
+  // Uncounted fillers that happen to be unseen are still REINFORCE for reporting:
+  // the NEW allowance is whatever newSelector returned, and nothing may inflate it.
+  const capped = topUp.map(w => ({ ...w, selectionRole: 'reinforce' }))
+  const targets = [...chosen, ...capped]
     .slice(0, cap)
     .map((w, i) => ({ ...w, targetIndex: i }))
 

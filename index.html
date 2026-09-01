@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v549"/>
+<meta name="app-version" content="v550"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v549';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v549').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v550';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v550').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4607,7 +4607,14 @@ function japaneseUnitCount(sentence) {
 
 // §7/§8 — same progression and same slot table as Thai, driven by the Japanese Known count.
 function japaneseBeltFor(vocab) { return calculateBeltRank((vocab||[]).filter(w => w.status === 'known').length) }
-function japaneseSlotsFor(vocab) { return newSlotsFor(vocab) }
+// Per-TRACK allowance for the learner's active rank. Starting a second track the
+// same day grants the full allowance again — the limit is per track, not per day.
+function beltNewAllowanceFor(vocab) {
+  return getNewWordLimitForBelt(earliestIncompleteBelt(vocab) || 'White')
+}
+// Per-track, rank-configured. Previously newSlotsFor(vocab), which keys on total
+// known count and so drifted away from the learner's actual belt.
+function japaneseSlotsFor(vocab) { return beltNewAllowanceFor(vocab) }
 function japaneseUnitRange(vocab) {
   const known = (vocab||[]).filter(w => w.status === 'known').length
   const T = [[0,2,4],[100,5,6],[200,6,7],[350,7,8],[500,8,9],[750,9,10],[1000,10,11],
@@ -5163,6 +5170,70 @@ function getStats(vocab) {
 }
 
 // Belt-gated candidate construction for Thai. The POOL is gated, not the final sort.
+// ── Belt-specific NEW allowance ─────────────────────────────────────────────
+// The allowance is a property of the RANK, not of the learner's total known count.
+// newSlotsFor() keyed on known-count, so a learner sitting on White with many known
+// words elsewhere drew a higher-belt allowance.
+const BELT_NEW_ALLOWANCE = {
+  'White': 3, 'Orange': 5, 'Orange + Stripe': 5, 'Blue': 7, 'Blue + Stripe': 7,
+  'Yellow': 10, 'Yellow + Stripe': 10, 'Green': 12, 'Green + Stripe': 12,
+  'Brown': 15, 'Brown + Stripe': 15, 'Shodan': 15,
+}
+function getNewWordLimitForBelt(beltName) {
+  if (beltName && BELT_NEW_ALLOWANCE[beltName] != null) return BELT_NEW_ALLOWANCE[beltName]
+  return BELT_NEW_ALLOWANCE['White']
+}
+
+// ── One classification source of truth ──────────────────────────────────────
+// The header count and the card badges previously used different rules, so a track
+// could report "14 RELEARN" while the cards said NEW. Everything now derives here.
+const TARGET_CLASS = {
+  NEW:       { id:'new',       label:'NEW',       color:'#4a90e2' },
+  OVERDUE:   { id:'overdue',   label:'OVERDUE',   color:'#ef4444' },
+  DUE:       { id:'due',       label:'DUE',       color:'#f59e0b' },
+  RELEARN:   { id:'relearn',   label:'RELEARN',   color:'#a78bfa' },
+  REINFORCE: { id:'reinforce', label:'REINFORCE', color:'#8b5cf6' },
+}
+// A word is genuinely NEW only if the learner has never been shown it. Zero OKs,
+// weakness, or belonging to the active belt do NOT make a word new.
+function isGenuinelyNew(w) { return !isWordIntroducedForRole(w) }
+// Occupying a NEW slot (a hard-rated word being re-introduced) counts as NEW for
+// display and for the allowance, even though the word has prior exposure.
+function occupiesNewSlot(w) { return !!(w && (w._occupiesNewSlot || isGenuinelyNew(w))) }
+function classifyTarget(w, today) {
+  const t = today || new Date().toISOString().slice(0, 10)
+  if (!w) return TARGET_CLASS.REINFORCE
+  if (occupiesNewSlot(w)) return TARGET_CLASS.NEW
+  if (w.dueDate && w.dueDate < t) return TARGET_CLASS.OVERDUE
+  if (w.dueDate && w.dueDate <= t) return TARGET_CLASS.DUE
+  if (w.status === 'lapsed' || (w.lapses || 0) > 0) return TARGET_CLASS.RELEARN
+  return TARGET_CLASS.REINFORCE
+}
+function countGenuinelyNew(targets) { return (targets || []).filter(isGenuinelyNew).length }
+function summariseTargets(targets, today) {
+  const counts = {}
+  ;(targets || []).forEach(w => { const c = classifyTarget(w, today); counts[c.id] = (counts[c.id] || 0) + 1 })
+  return counts
+}
+// Hard pre-generation validation. Fails loudly in development rather than shipping
+// a track that silently over-introduces.
+function assertTrackComposition(targets, activeBelt, trackSize, onLog) {
+  const limit = getNewWordLimitForBelt(activeBelt)
+  const actualNew = countGenuinelyNew(targets)
+  const problems = []
+  if (actualNew > limit) problems.push('NEW ' + actualNew + ' exceeds ' + activeBelt + ' allowance ' + limit)
+  if (trackSize && targets.length !== trackSize) problems.push('track size ' + targets.length + ' != ' + trackSize)
+  if (problems.length) {
+    const detail = targets.filter(isGenuinelyNew).map(w =>
+      '  ' + (w.thai || w.japanese || w.chinese) + ' [' + (w.belt || '?') + '] history=' +
+      ((w.repCount || 0) > 0 || w.lastSeen ? 'yes' : 'none'))
+    console.warn('[track composition] activeBelt=' + activeBelt + ' limit=' + limit +
+      ' actualNew=' + actualNew + '\n' + problems.join('\n') + '\n' + detail.join('\n'))
+    if (onLog) onLog('\u26A0 ' + problems.join('; '))
+  }
+  return { ok: problems.length === 0, problems, limit, actualNew }
+}
+
 function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
   const usable = (vocab || []).filter(w => isUsableWord(w) && w.status !== 'locked')
   const activeBelt = earliestIncompleteBelt(usable)
@@ -5170,16 +5241,30 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
                  selectedNew: [], selectedReinforce: [], spilloverReason: null, beyondAdmitted: [] }
   const out = []
   const seen = new Set()
-  const take = list => list.forEach(w => {
-    if (!seen.has(w.id) && out.length < cap) { seen.add(w.id); out.push(w) }
+  // The NEW budget is enforced at ADMISSION, not by sorting afterwards. Once it is
+  // spent, every later stage — belt rest, spillover, completed words, beyond
+  // curriculum, padding — must reject genuinely unseen words.
+  const newLimit = getNewWordLimitForBelt(activeBelt)
+  let newAdmitted = 0
+  const take = (list, stage) => list.forEach(w => {
+    if (seen.has(w.id) || out.length >= cap) return
+    if (isGenuinelyNew(w)) {
+      if (newAdmitted >= newLimit) return          // gate closed
+      newAdmitted++
+    }
+    seen.add(w.id); out.push(w)
+    if (stage) w._selectorStage = stage
   })
+  diag.newLimit = newLimit
   // Belts in curriculum order; Beyond curriculum is always LAST.
   const order = CURRICULUM_BELTS.map(b => b.name)
   const startAt = activeBelt ? order.indexOf(activeBelt) : 0
 
   // NEW allowance, drawn from the ACTIVE belt only. An injected global new list is
   // filtered to the belt rather than trusted.
-  const allowance = (todayNewWords || []).length || newSlotsFor(usable)
+  // Per-track allowance from the ACTIVE BELT. Not derived from known-count, and not
+  // from however many words an injected daily list happened to contain.
+  const allowance = getNewWordLimitForBelt(activeBelt)
   if (activeBelt) {
     const beltWords = wordsForRank(usable, activeBelt)
     const unfinished = beltWords.filter(w => !isWordCompleteForBelt(w))
@@ -5188,10 +5273,12 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
     diag.newAvailableInBelt = unseenInBelt.length
     const newPicks = unseenInBelt.slice(0, allowance)
     diag.selectedNew = newPicks.map(w => ({ thai: w.thai, belt: w.belt }))
-    take(newPicks)
+    take(newPicks, 'belt-new')
     // Then every other unfinished word of this belt, ranked by SRS urgency WITHIN it.
+    // Introduced review words of the active belt. Unseen words here are refused by
+    // the gate above once the allowance is spent.
     const rest = beltCandidateOrder(unfinished.filter(w => !seen.has(w.id)), today)
-    take(rest)
+    take(rest, 'belt-review')
     diag.selectedReinforce = out.filter(w => !newPicks.includes(w)).map(w => ({ thai: w.thai, belt: w.belt }))
   }
   // Spillover: later curriculum belts, in order, unfinished first.
@@ -5201,25 +5288,31 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
       : 'no incomplete curriculum belt'
     for (let i = Math.max(0, startAt + 1); i < order.length && out.length < cap; i++) {
       const belt = wordsForRank(usable, order[i])
-      take(beltCandidateOrder(belt.filter(w => !isWordCompleteForBelt(w)), today))
+      // Spillover admits later-belt REVIEW words only; later-belt NEW words can
+      // never fill a review shortage.
+      take(beltCandidateOrder(belt.filter(w => !isWordCompleteForBelt(w) && !isGenuinelyNew(w)), today), 'spill-review')
     }
   }
   // Completed curriculum words next \u2014 retention material, never progression slots.
   if (out.length < cap) {
     for (let i = Math.max(0, startAt); i < order.length && out.length < cap; i++) {
-      take(beltCandidateOrder(wordsForRank(usable, order[i]).filter(w => !seen.has(w.id)), today))
+      take(beltCandidateOrder(wordsForRank(usable, order[i]).filter(w => !seen.has(w.id) && !isGenuinelyNew(w)), today), 'retention')
     }
   }
   // Beyond curriculum LAST, and only once every curriculum word is exhausted.
   if (out.length < cap) {
-    const beyond = usable.filter(w => !seen.has(w.id) && !isCurriculumWord(w))
+    // Beyond curriculum, review words only — never unseen filler.
+    const beyond = usable.filter(w => !seen.has(w.id) && !isCurriculumWord(w) && !isGenuinelyNew(w))
     const picks = beltCandidateOrder(beyond, today).slice(0, cap - out.length)
     diag.beyondAdmitted = picks.map(w => w.thai)
-    take(picks)
+    take(picks, 'beyond-review')
   }
   // Assertion: no later-belt word may displace an eligible active-belt word.
   if (activeBelt) {
-    const eligible = wordsForRank(usable, activeBelt).filter(w => !isWordCompleteForBelt(w))
+    // Words held back by the NEW allowance were not "displaced" — the gate is
+    // working as designed. Only introduced active-belt words count as displaced.
+    const eligible = wordsForRank(usable, activeBelt)
+      .filter(w => !isWordCompleteForBelt(w) && !isGenuinelyNew(w))
     const chosenIds = new Set(out.map(w => w.id))
     const excluded = eligible.filter(w => !chosenIds.has(w.id))
     const laterAdmitted = out.filter(w => w.belt !== activeBelt)
@@ -5228,7 +5321,10 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
         excluded.length + ' eligible ' + activeBelt + ' words were excluded')
     }
   }
+  diag.actualNew = countGenuinelyNew(out)
+  diag.composition = summariseTargets(out, today)
   if (typeof window !== 'undefined') window.__lastBeltSelection = diag
+  assertTrackComposition(out, activeBelt, null)
   return out.slice(0, cap)
 }
 
@@ -15916,13 +16012,17 @@ function selectTrackTargets(opts) {
   // current belt still has unfinished material.
   const chosen = [...tag(due, 'due'), ...tag(fresh, 'new'), ...tag(reinforce, 'reinforce')]
   const already = new Set(chosen.map(w => w.id))
-  const topUp = (belt.candidates || [])
-    .filter(w => !already.has(w.id))
+  // Belt candidates first; if the belt cannot fill the track, top up with any
+  // INTRODUCED word so the track still reaches its size. Genuinely unseen words are
+  // excluded here — they may only enter through the NEW allowance.
+  const beltPool = (belt.candidates || []).filter(w => !already.has(w.id))
+  const widerPool = vocab.filter(w => !already.has(w.id) && !beltPool.some(b => b.id === w.id))
+  // FILTER BEFORE SLICE. Slicing first filled the quota with unseen words that were
+  // then discarded, leaving the track short (11 of 30 instead of 8 DUE + 3 NEW + 19).
+  const topUp = [...beltPool, ...widerPool]
+    .filter(w => !already.has(w.id) && !isGenuinelyNew(w))
     .slice(0, Math.max(0, cap - chosen.length))
-    // Fillers are REINFORCE unless the word has genuinely never been introduced.
-    // Keying on status alone made every Hard-rated word count as NEW, producing
-    // "30 NEW" when the allowance was 3.
-    .map(w => ({ ...w, selectionRole: isWordIntroducedForRole(w) ? 'reinforce' : 'newFill',
+    .map(w => ({ ...w, selectionRole: 'reinforce',
                  originalSrsStatus: w.status, targetIndex: 0 }))
   // Uncounted fillers that happen to be unseen are still REINFORCE for reporting:
   // the NEW allowance is whatever newSelector returned, and nothing may inflate it.
@@ -18666,9 +18766,13 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
   const byOrder = (a, b) => (a.unlockOrder || a.id || 0) - (b.unlockOrder || b.id || 0)
 
   // Held slots: a word rated 'hard' stays 'new' and keeps its slot (§13).
+  // A word rated 'hard' keeps its NEW slot and is re-offered. It occupies the slot,
+  // so it must be reported as NEW too — classifying it as REINFORCE is what made a
+  // 3-slot rank display "1 NEW · 29 REINFORCE".
   const carried = (savedSlots || [])
     .map(id => vocab.find(w => w.id === id))
     .filter(w => w && w.status === 'new')
+  carried.forEach(w => { w._occupiesNewSlot = true })
   const carriedIds = new Set(carried.map(w => w.id))
 
   // Free slots refill from the lowest unseen unlockOrder — never randomised.

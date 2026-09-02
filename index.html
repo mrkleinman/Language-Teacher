@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v553"/>
+<meta name="app-version" content="v554"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v553';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v553').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v554';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v554').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4905,11 +4905,10 @@ function isUnseen(w) { return (w.repCount || 0) === 0 && !w.lastSeen }
 // of known morphemes. Deliberately below the usual 15-25/day Anki advice because a
 // "word" here costs 3 productive-recall sentence pairs, not one recognition card.
 
+// The belt page's "Introducing N new words per track" now comes from the SAME
+// config the selector uses, so the two can never disagree again.
 function newSlotsFor(vocab) {
-  const known = (vocab || []).filter(w => w.status === 'known').length
-  let slots = NEW_SLOTS_BY_KNOWN[0].slots
-  for (const tier of NEW_SLOTS_BY_KNOWN) if (known >= tier.minWords) slots = tier.slots
-  return slots
+  return getNewWordLimitForBelt(earliestIncompleteBelt(vocab) || 'White')
 }
 const OK_STREAK_TO_KNOWN = 7
 const OK_STREAK_TO_KNOWN_LAPSED = 9
@@ -5078,7 +5077,9 @@ function applyRating(word, rating) {
   // (belt / beltOrder / curriculumIndex) are carried through untouched, so a word
   // never loses its belt because its SRS status changed.
   const manualKnown = status === 'known' ? (word.manualKnown || false) : false
-  return { ...word, interval: newInt, lastSeen: today, dueDate: d.toISOString().slice(0, 10),
+  // Rating a word IS learner exposure — the only place introduction is recorded.
+  return { ...word, introducedAt: word.introducedAt || today,
+           interval: newInt, lastSeen: today, dueDate: d.toISOString().slice(0, 10),
            repCount: (word.repCount || 0) + 1, lapses, okStreak, status, difficulty: rating, manualKnown }
 }
 
@@ -5088,7 +5089,8 @@ function markWordKnown(word) {
   // Manual Known keeps the streak the learner actually earned. Inflating it to 7
   // destroyed that record; the word is flagged instead, and the badge renders the
   // existing number in green because the word IS known.
-  return { ...word, status: 'known', interval: 30, dueDate: d.toISOString().slice(0, 10),
+  return { ...word, status: 'known', introducedAt: word.introducedAt || today,
+           interval: 30, dueDate: d.toISOString().slice(0, 10),
            lastSeen: today, difficulty: 'easy',
            okStreak: word.okStreak || 0, manualKnown: true }
 }
@@ -5147,7 +5149,9 @@ function initVocab() {
     const phonetic = cleanPh && d.t ? (correctVocabPhonetic(d.t, cleanPh) || cleanPh) : cleanPh
     return { id: d.id || (idx + 1), duplicateOf: d.dup || null, thai: d.t, english: d.e, phonetic, status,
       difficulty: l, lessonId: d.lid || null, interval, lastSeen: null, dueDate,
-      repCount: d.r || 0, lapses: d.lp || 0,
+      // `d.r` is bank metadata, NOT learner history. It must not seed repCount, or
+      // 263 never-shown words look introduced and suppress all NEW selection.
+      repCount: 0, introducedAt: null, lapses: d.lp || 0,
       okStreak: 0, manualKnown: false,
       // Curriculum position — fixed by the syllabus, never altered by SRS status.
       // Derived from curriculumIndex, never read from the stored field, which was
@@ -5175,15 +5179,28 @@ function getStats(vocab) {
 // The allowance is a property of the RANK, not of the learner's total known count.
 // newSlotsFor() keyed on known-count, so a learner sitting on White with many known
 // words elsewhere drew a higher-belt allowance.
-const BELT_NEW_ALLOWANCE = {
-  'White': 3, 'Orange': 5, 'Orange + Stripe': 5, 'Blue': 7, 'Blue + Stripe': 7,
-  'Yellow': 10, 'Yellow + Stripe': 10, 'Green': 12, 'Green + Stripe': 12,
-  'Brown': 15, 'Brown + Stripe': 15, 'Shodan': 15,
+// THE canonical belt configuration. Two tables previously disagreed: the belt page
+// read newSlotsFor() (keyed on total known count, giving White = 5) while the
+// selector read its own map (White = 3). Everything now reads this one object.
+const BELT_CONFIG = {
+  'White':           { newWordLimit: 5 },
+  'Orange':          { newWordLimit: 5 },
+  'Orange + Stripe': { newWordLimit: 5 },
+  'Blue':            { newWordLimit: 7 },
+  'Blue + Stripe':   { newWordLimit: 7 },
+  'Yellow':          { newWordLimit: 10 },
+  'Yellow + Stripe': { newWordLimit: 10 },
+  'Green':           { newWordLimit: 12 },
+  'Green + Stripe':  { newWordLimit: 12 },
+  'Brown':           { newWordLimit: 15 },
+  'Brown + Stripe':  { newWordLimit: 15 },
+  'Shodan':          { newWordLimit: 15 },
 }
-function getNewWordLimitForBelt(beltName) {
-  if (beltName && BELT_NEW_ALLOWANCE[beltName] != null) return BELT_NEW_ALLOWANCE[beltName]
-  return BELT_NEW_ALLOWANCE['White']
-}
+function getBeltConfig(beltName) { return BELT_CONFIG[beltName] || BELT_CONFIG['White'] }
+function getNewWordLimitForBelt(beltName) { return getBeltConfig(beltName).newWordLimit }
+// Kept for compatibility; both now resolve to the same number.
+const BELT_NEW_ALLOWANCE = Object.fromEntries(
+  Object.entries(BELT_CONFIG).map(([k, v]) => [k, v.newWordLimit]))
 
 // ── One classification source of truth ──────────────────────────────────────
 // The header count and the card badges previously used different rules, so a track
@@ -5276,7 +5293,13 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
     const beltWords = wordsForRank(usable, activeBelt)
     const unfinished = beltWords.filter(w => !isWordCompleteForBelt(w))
     diag.unfinishedInBelt = unfinished.length
-    const unseenInBelt = beltCandidateOrder(unfinished.filter(w => !isWordIntroducedForRole(w)), today)
+    // Exclude words the downstream filter will reject anyway (pronouns, particles).
+    // Picking them here wasted NEW slots: they were chosen, then filtered out, and
+    // the track ended up one or two NEW words short of the allowance.
+    const NEW_UNSUITABLE = new Set(['\u0e01\u0e47','\u0e17\u0e35\u0e48','\u0e02\u0e2d\u0e07','\u0e01\u0e31\u0e1a','\u0e27\u0e48\u0e32','\u0e41\u0e15\u0e48','\u0e2b\u0e23\u0e37\u0e2d','\u0e41\u0e25\u0e30','\u0e40\u0e1e\u0e23\u0e32\u0e30','\u0e41\u0e25\u0e49\u0e27','\u0e14\u0e49\u0e27\u0e22','\u0e19\u0e30',
+      '\u0e21\u0e35','\u0e44\u0e1b','\u0e21\u0e32','\u0e1c\u0e21','\u0e09\u0e31\u0e19','\u0e04\u0e38\u0e13','\u0e40\u0e23\u0e32','\u0e40\u0e02\u0e32','\u0e40\u0e18\u0e2d','\u0e44\u0e21\u0e48','\u0e44\u0e14\u0e49','\u0e08\u0e30','\u0e40\u0e1b\u0e47\u0e19','\u0e17\u0e33','\u0e23\u0e39\u0e49'])
+    const unseenInBelt = beltCandidateOrder(
+      unfinished.filter(w => !isWordIntroducedForRole(w) && !NEW_UNSUITABLE.has(w.thai)), today)
     diag.newAvailableInBelt = unseenInBelt.length
     // RESERVE the NEW allowance FIRST. Previously the candidate list was capped at
     // the track size, so once enough due words existed to fill it no unseen word
@@ -14140,6 +14163,18 @@ function ThaiTeacher({ lang, onSetLang }) {
             if (src.note && !m.note) m.note = src.note
           }
           if (m.manualKnown == null) m.manualKnown = false
+          // Backfill learner exposure from the strongest available evidence.
+          // repCount is deliberately excluded: the bank seeds it as metadata.
+          if (!m.introducedAt) {
+            if (m.lastSeen) m.introducedAt = m.lastSeen
+            else if (m.status === 'known' || m.status === 'learning' || m.status === 'lapsed') m.introducedAt = 'legacy'
+            else if ((m.okStreak || 0) > 0) m.introducedAt = 'legacy'
+            else if (m.manualKnown) m.introducedAt = 'legacy'
+            else if (m.dueDate) m.introducedAt = 'legacy'
+            // otherwise it stays unintroduced, whatever repCount claims
+          }
+          // A word with no genuine exposure must not carry phantom practice history.
+          if (!m.introducedAt && (m.repCount || 0) > 0) m.repCount = 0
           // Grandfather existing known words so a single 'ok' doesn't demote them
           if (m.okStreak == null) m.okStreak = m.status === 'known' ? OK_STREAK_TO_KNOWN : 0
           return m
@@ -15952,15 +15987,33 @@ function reinforcementScore(w, ctx) {
 // A word is INTRODUCED once it has genuinely been taught, regardless of SRS status.
 // A Hard rating leaves status 'new', so status alone under-reports introduction —
 // which is why filler words were being counted as NEW.
-function isWordIntroducedForRole(w) {
-  if (!w) return false
-  if (w.introduced) return true
-  if ((w.repCount || 0) > 0) return true
-  if (w.lastSeen) return true
-  if ((w.exposureCount || 0) > 0) return true
-  if ((w.okStreak || 0) > 0) return true
-  return w.status === 'learning' || w.status === 'known' || w.status === 'lapsed'
+// ── Learner exposure: one explicit source of truth ──────────────────────────
+// repCount is NOT evidence of exposure. The shipped bank seeds `r` values as
+// frequency/priority metadata, so 263 words carried repCount 7 while having
+// lastSeen:null, dueDate:null and okStreak:0 — they had never been shown to
+// anyone. Treating that as "introduced" made almost the whole bank ineligible for
+// NEW and produced tracks with 0 NEW words.
+//
+// `introducedAt` is set ONLY when a word is actually presented in a learner-facing
+// flow. Nothing in generation, QC or candidate selection may set it.
+function markWordIntroduced(w, when) {
+  if (!w) return w
+  if (w.introducedAt) return w
+  return { ...w, introducedAt: when || new Date().toISOString().slice(0, 10) }
 }
+function hasBeenIntroduced(w) {
+  if (!w) return false
+  if (w.introducedAt) return true
+  // Legacy backfill, in descending order of evidence quality. repCount alone is
+  // deliberately absent from this list.
+  if (w.lastSeen) return true                                   // 3. reliable lastSeen
+  if (w.status === 'known' || w.status === 'learning' || w.status === 'lapsed') return true  // 2. SRS history
+  if ((w.okStreak || 0) > 0) return true                        // 2. review history
+  if (w.manualKnown) return true                                // 5. manual Known
+  if (w.dueDate) return true                                    // 4. scheduled by interaction
+  return false
+}
+function isWordIntroducedForRole(w) { return hasBeenIntroduced(w) }
 function isWordCompleteForBelt(w) {
   if (!w) return false
   if (w.status === 'known') return true
@@ -16184,6 +16237,9 @@ function selectTrackTargets(opts) {
 // Header totals derive from the SAME classifier as the card badges, so the two can
 // never disagree. Pass targets when available; counts is kept for legacy callers.
 function describeTargetSelection(counts, targets) {
+  // Header ALWAYS derives from the targets themselves via the shared classifier.
+  // Falling back to a counts object computed elsewhere is what let the header say
+  // RELEARN while the cards said REINFORCE.
   if (Array.isArray(targets) && targets.length) {
     const s = summariseTargets(targets)
     const parts = []

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v551"/>
+<meta name="app-version" content="v552"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v551';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v551').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v552';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v552').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5279,10 +5279,15 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
     diag.selectedNew = newPicks.map(w => ({ thai: w.thai, belt: w.belt }))
     take(newPicks, 'belt-new')
     // Then every other unfinished word of this belt, ranked by SRS urgency WITHIN it.
-    // Introduced review words of the active belt. Unseen words here are refused by
-    // the gate above once the allowance is spent.
-    const rest = beltCandidateOrder(unfinished.filter(w => !seen.has(w.id)), today)
-    take(rest, 'belt-review')
+    // Introduced review words of the active belt, ELIGIBLE ones first. A word
+    // practised in the previous track is scheduled ahead and falls into the
+    // not-yet-due tier, so it is only reached if nothing else can fill the track.
+    const remaining = unfinished.filter(w => !seen.has(w.id))
+    const tiers = reinforcementTiers(remaining, today)
+    take(beltCandidateOrder(tiers.relearn, today), 'belt-relearn')
+    take(beltCandidateOrder(tiers.due, today), 'belt-due')
+    take(beltCandidateOrder(tiers.eligible, today), 'belt-review')
+    diag.heldBackForSpacing = tiers.notYetDue.length
     diag.selectedReinforce = out.filter(w => !newPicks.includes(w)).map(w => ({ thai: w.thai, belt: w.belt }))
   }
   // Spillover: later curriculum belts, in order, unfinished first.
@@ -5294,29 +5299,44 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
       const belt = wordsForRank(usable, order[i])
       // Spillover admits later-belt REVIEW words only; later-belt NEW words can
       // never fill a review shortage.
-      take(beltCandidateOrder(belt.filter(w => !isWordCompleteForBelt(w) && !isGenuinelyNew(w)), today), 'spill-review')
+      const spill = belt.filter(w => !isWordCompleteForBelt(w) && !isGenuinelyNew(w))
+      const st = reinforcementTiers(spill, today)
+      take(beltCandidateOrder([...st.relearn, ...st.due, ...st.eligible], today), 'spill-review')
     }
   }
   // Completed curriculum words next \u2014 retention material, never progression slots.
   if (out.length < cap) {
     for (let i = Math.max(0, startAt); i < order.length && out.length < cap; i++) {
-      take(beltCandidateOrder(wordsForRank(usable, order[i]).filter(w => !seen.has(w.id) && !isGenuinelyNew(w)), today), 'retention')
+      const ret = wordsForRank(usable, order[i]).filter(w => !seen.has(w.id) && !isGenuinelyNew(w) && isEligibleForReinforce(w, today))
+      take(beltCandidateOrder(ret, today), 'retention')
     }
   }
   // Beyond curriculum LAST, and only once every curriculum word is exhausted.
   if (out.length < cap) {
     // Beyond curriculum, review words only — never unseen filler.
-    const beyond = usable.filter(w => !seen.has(w.id) && !isCurriculumWord(w) && !isGenuinelyNew(w))
+    const beyond = usable.filter(w => !seen.has(w.id) && !isCurriculumWord(w) && !isGenuinelyNew(w) && isEligibleForReinforce(w, today))
     const picks = beltCandidateOrder(beyond, today).slice(0, cap - out.length)
     diag.beyondAdmitted = picks.map(w => w.thai)
     take(picks, 'beyond-review')
+  }
+  // FINAL fallback only: not-yet-due words, least recently practised first. This is
+  // the only path that may admit a word from the previous track, and only when the
+  // track cannot otherwise be filled.
+  if (out.length < cap) {
+    const rest = usable.filter(w => !seen.has(w.id) && !isGenuinelyNew(w))
+    const tiers = reinforcementTiers(rest, today)
+    diag.usedNotYetDueFallback = Math.min(tiers.notYetDue.length, cap - out.length)
+    take(tiers.notYetDue, 'not-yet-due-fallback')
   }
   // Assertion: no later-belt word may displace an eligible active-belt word.
   if (activeBelt) {
     // Words held back by the NEW allowance were not "displaced" — the gate is
     // working as designed. Only introduced active-belt words count as displaced.
+    // Words held back by the NEW allowance or by SRS spacing were not "displaced" —
+    // both gates are working as designed. Only words that were ready to appear and
+    // did not count as displaced.
     const eligible = wordsForRank(usable, activeBelt)
-      .filter(w => !isWordCompleteForBelt(w) && !isGenuinelyNew(w))
+      .filter(w => !isWordCompleteForBelt(w) && !isGenuinelyNew(w) && isEligibleForReinforce(w, today))
     const chosenIds = new Set(out.map(w => w.id))
     const excluded = eligible.filter(w => !chosenIds.has(w.id))
     const laterAdmitted = out.filter(w => w.belt !== activeBelt)
@@ -15923,11 +15943,73 @@ function earliestIncompleteBelt(vocab) {
 }
 // Rank unfinished words WITHIN a belt: overdue first, then weakest, then stalest,
 // then unseen. This is SRS urgency applied inside the belt, not across the bank.
+// ── Reinforcement eligibility (recency / spacing gate) ──────────────────────
+// beltCandidateOrder SORTS by due-ness but never FILTERED on it, and its second
+// criterion is "lowest OK count". A word practised in the previous track has a low
+// OK count and a future due date, so it outranked older words that were genuinely
+// ready — and came straight back as REINFORCE filler.
+//
+// Belt priority decides which eligible words matter most. SRS decides whether a
+// word is eligible at all. These are separate questions.
+function daysBetween(a, b) { return Math.round((new Date(a) - new Date(b)) / 86400000) }
+
+// A word scheduled for immediate relearn after a failure. These bypass the
+// cooldown deliberately \u2014 failing a word is exactly when you want it back.
+function isRelearnDue(w, today) {
+  if (!w) return false
+  const t = today || new Date().toISOString().slice(0, 10)
+  if (w.status === 'lapsed') return true
+  if (w.difficulty === 'hard' && (!w.dueDate || w.dueDate <= t)) return true
+  // A brand-new word rated hard keeps its slot and should reappear.
+  if (w.status === 'new' && (w.repCount || 0) > 0 && w.difficulty === 'hard') return true
+  return false
+}
+function isDueNow(w, today) {
+  const t = today || new Date().toISOString().slice(0, 10)
+  return !!(w && w.dueDate && w.dueDate <= t && w.status !== 'new')
+}
+// Generic REINFORCE eligibility. A successfully practised word is held back until
+// its scheduled review comes round; it is not pulled back merely because it is
+// weak, unfinished, or because the selector needed filler.
+function isEligibleForReinforce(w, today) {
+  if (!w) return false
+  const t = today || new Date().toISOString().slice(0, 10)
+  if (isRelearnDue(w, t)) return true          // failures may repeat immediately
+  if (isDueNow(w, t)) return true              // genuinely due
+  if (w.dueDate && w.dueDate > t) return false // scheduled ahead: not eligible yet
+  return true                                  // no schedule recorded: eligible
+}
+// Tiered pools. Everything downstream draws from these in order, so no filler path
+// can reach past the gate.
+function reinforcementTiers(words, today) {
+  const t = today || new Date().toISOString().slice(0, 10)
+  const relearn = [], due = [], eligible = [], notYetDue = []
+  ;(words || []).forEach(w => {
+    if (isRelearnDue(w, t)) relearn.push(w)
+    else if (isDueNow(w, t)) due.push(w)
+    else if (isEligibleForReinforce(w, t)) eligible.push(w)
+    else notYetDue.push(w)
+  })
+  // Within the not-yet-due fallback, the LEAST recently practised comes first, so
+  // a word from the previous track is the last thing considered.
+  notYetDue.sort((a, b) => String(a.lastSeen || '').localeCompare(String(b.lastSeen || '')))
+  return { relearn, due, eligible, notYetDue }
+}
+
 function beltCandidateOrder(words, today) {
   const t = today || new Date().toISOString().slice(0, 10)
   const dueDays = w => (w.dueDate && w.dueDate <= t)
     ? Math.max(0, (new Date(t) - new Date(w.dueDate)) / 86400000) : -1
+  // Eligibility tier dominates every other criterion. A not-yet-due word can never
+  // outrank an eligible one, however weak or unfinished it is.
+  const tier = w => isGenuinelyNew(w) ? 0
+    : isRelearnDue(w, t) ? 1
+    : isDueNow(w, t) ? 2
+    : isEligibleForReinforce(w, t) ? 3
+    : 4
   return [...words].sort((a, b) => {
+    const at = tier(a), bt = tier(b)
+    if (at !== bt) return at - bt
     const ad = dueDays(a), bd = dueDays(b)
     if ((ad >= 0) !== (bd >= 0)) return ad >= 0 ? -1 : 1     // a. due before not-due
     if (ad >= 0 && bd >= 0 && ad !== bd) return bd - ad      //    most overdue first

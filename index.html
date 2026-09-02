@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v552"/>
+<meta name="app-version" content="v553"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v552';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v552').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v553';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v553').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5045,12 +5045,13 @@ function okStreakColor(word) {
   return '#e5e7eb'
 }
 // Bottom-right role badge: what this word is doing in THIS track.
+// Badges come from ONE classifier. This used to return NEW for any status:'new'
+// word — including hard-rated words with real learner history — so cards could say
+// NEW while the header counted the same words as RELEARN.
 function wordRoleBadge(word, today) {
   if (!word) return null
-  if (word.status === 'new') return { label:'NEW', color:'#4a90e2' }
-  const d = today || new Date().toISOString().slice(0, 10)
-  if (word.dueDate && word.dueDate <= d) return { label:'DUE', color:'#f59e0b' }
-  return { label:'REINFORCE', color:'#a78bfa' }
+  const c = classifyTarget(word, today)
+  return { label: c.label, color: c.color }
 }
 
 function applyRating(word, rating) {
@@ -5220,8 +5221,14 @@ function summariseTargets(targets, today) {
 function assertTrackComposition(targets, activeBelt, trackSize, onLog) {
   const limit = getNewWordLimitForBelt(activeBelt)
   const actualNew = countGenuinelyNew(targets)
+  const summary = summariseTargets(targets)
+  const displayedNew = summary.new || 0
+  const categoryTotal = Object.values(summary).reduce((a, b) => a + b, 0)
   const problems = []
   if (actualNew > limit) problems.push('NEW ' + actualNew + ' exceeds ' + activeBelt + ' allowance ' + limit)
+  // Header and cards must agree, and every target must fall into exactly one class.
+  if (displayedNew !== actualNew) problems.push('displayed NEW ' + displayedNew + ' != genuine ' + actualNew)
+  if (categoryTotal !== targets.length) problems.push('category totals ' + categoryTotal + ' != track ' + targets.length)
   if (trackSize && targets.length !== trackSize) problems.push('track size ' + targets.length + ' != ' + trackSize)
   if (problems.length) {
     const detail = targets.filter(isGenuinelyNew).map(w =>
@@ -5345,6 +5352,29 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap) {
         excluded.length + ' eligible ' + activeBelt + ' words were excluded')
     }
   }
+  // FINAL ENFORCEMENT. Whatever any path did, the returned set cannot exceed the
+  // allowance: excess unseen words are dropped and replaced with review material.
+  const limit = getNewWordLimitForBelt(activeBelt)
+  let kept = 0
+  const enforced = out.filter(w => {
+    if (!isGenuinelyNew(w)) return true
+    kept++
+    if (kept > limit) {
+      console.warn('[new-limit] dropped ' + (w.thai || w.japanese || w.chinese) +
+        ' [' + (w.belt || '?') + '] stage=' + (w._selectorStage || '?') +
+        ' history=' + ((w.repCount || 0) > 0 || w.lastSeen ? 'yes' : 'none') +
+        ' belt=' + activeBelt + ' limit=' + limit + ' newBefore=' + (kept - 1) + ' newAfter=' + kept)
+      return false
+    }
+    return true
+  })
+  if (enforced.length < out.length) {
+    const have = new Set(enforced.map(w => w.id))
+    const replacements = usable.filter(w => !have.has(w.id) && !isGenuinelyNew(w))
+    enforced.push(...beltCandidateOrder(replacements, today).slice(0, out.length - enforced.length))
+  }
+  out.length = 0
+  enforced.forEach(w => out.push(w))
   diag.actualNew = countGenuinelyNew(out)
   diag.composition = summariseTargets(out, today)
   if (typeof window !== 'undefined') window.__lastBeltSelection = diag
@@ -5421,8 +5451,13 @@ function pickWords(vocab, mode, todayNewWords) {
     const tIds = new Set(targets.map(w => w.id))
     const BANNED = new Set(['ก็','ที่','ของ','กับ','ว่า','แต่','หรือ','และ','เพราะ','แล้ว','ด้วย','นะ',
                             'มี','ไป','มา','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ไม่','ได้','จะ','เป็น','ทำ','รู้'])
-    const padding = pickBeltPriorityTargets(vocab, [], today, 60)
+    // Ask for a much larger belt-ordered pool so that after the common-word filter
+    // there is still enough material to reach 30. Requesting only 60 left the track
+    // short whenever the filter removed a lot of it.
+    const padding = pickBeltPriorityTargets(vocab, [], today, 400)
       .filter(w => !tIds.has(w.id) && w.thai && w.thai.length >= 2 && !BANNED.has(w.thai))
+      // Never top up with unseen words: the NEW allowance is already spent.
+      .filter(w => !isGenuinelyNew(w))
       .slice(0, 30 - targets.length)
     targets = [...targets, ...padding]
   }
@@ -14907,10 +14942,10 @@ function RoleBadge({ word, role }) {
       whiteSpace:'nowrap' }}>{r.label}</span>
   )
 }
+// A word's badge is always derived from its own history, never from the selection
+// role that happened to admit it. A selector labelled something 'new' as a filler
+// role; that must not override the fact that the learner has seen it before.
 function roleFromSelection(word) {
-  const s = word && word.selectionRole
-  if (s) return { NEW:{label:'NEW',color:'#4a90e2'}, DUE:{label:'DUE',color:'#f59e0b'},
-                  REINFORCE:{label:'REINFORCE',color:'#a78bfa'} }[String(s).toUpperCase()] || wordRoleBadge(word)
   return wordRoleBadge(word)
 }
 
@@ -16146,7 +16181,16 @@ function selectTrackTargets(opts) {
 }
 
 // §10 — one shared summary string so every language describes a track identically.
-function describeTargetSelection(counts) {
+// Header totals derive from the SAME classifier as the card badges, so the two can
+// never disagree. Pass targets when available; counts is kept for legacy callers.
+function describeTargetSelection(counts, targets) {
+  if (Array.isArray(targets) && targets.length) {
+    const s = summariseTargets(targets)
+    const parts = []
+    ;[['new','NEW'],['overdue','OVERDUE'],['due','DUE'],['relearn','RELEARN'],['reinforce','REINFORCE']]
+      .forEach(([k, label]) => { if (s[k]) parts.push(s[k] + ' ' + label) })
+    return 'TARGETING ' + targets.length + ' WORD' + (targets.length === 1 ? '' : 'S') + '  \u00b7  ' + parts.join(' \u00b7 ')
+  }
   if (!counts || !counts.total) return 'No targets available'
   const parts = []
   if (counts.new) parts.push(counts.new + ' NEW')

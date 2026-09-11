@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v561"/>
+<meta name="app-version" content="v562"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v561';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v561').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v562';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v562').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -8687,6 +8687,16 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   // Prompt examples must come from words the learner has ACTUALLY been introduced
   // to. repCount is bank metadata and was listing never-taught words as "known".
   const knownWords = vocab.filter(w => hasBeenIntroduced(w))
+  // The complete allowed space: introduced vocabulary + every target in this track +
+  // the current target. Built once, passed into the prompt.
+  const _siblings = Array.isArray(target && target._trackTargets) ? target._trackTargets : []
+  const _allowedWords = [
+    ...knownWords.map(w => w.thai || w.t),
+    ..._siblings.map(w => (w && (w.thai || w.t)) || w),
+    target.thai,
+  ].filter(Boolean)
+  const _uniqAllowed = [...new Set(_allowedWords)]
+  const allowedVocabLine = _uniqAllowed.slice(0, 400).join(' ')
     .sort((a,b) => ((b.repCount||b.r)||0) - ((a.repCount||a.r)||0))
     .slice(0, 20).map(w => (w.thai||w.t) + '(' + (w.english||w.e) + ')').join(', ')
   // Skip numbers for words that don't naturally take numbers
@@ -8708,7 +8718,14 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'RULES:\n' +
     '• A lines end ครับ. B lines end ค่ะ or คะ. NO EXCEPTIONS.\n' +
     '• Sentences ' + sentMin + '–' + sentMax + ' Thai words long\n' +
-    '• Use ONLY: ' + knownWords + ' + target word\n' +
+    // ALLOWED VOCABULARY, stated explicitly BEFORE generation. The model previously
+    // got a bare list without the other track targets, so it kept reaching for words
+    // like เรื่อง and อาจจะ and being rejected 8–11 times. Constrain first,
+    // do not generate freely and clean up afterwards.
+    '• ALLOWED WORDS — use ONLY these, plus the target:\n' + allowedVocabLine + '\n' +
+    '• The target word for this exchange is: ' + target.thai + '\n' +
+    '• Any Thai word not in that list is FORBIDDEN. If an idea needs a word that is\n' +
+    '  not listed, express a SIMPLER idea instead. Do not invent vocabulary.\n' +
     '• PHONETIC: romanise with tone marks — à (low/falling) á (high) â (falling) ǎ (rising). BANNED CHARACTERS: ɛ ɔ ʉ ə ŋ ɪ ʊ ɐ ɯ — these are IPA, never use them. Use instead: ɛ→e or ae, ɔ→o or aw, ʉ→ue or eu, ə→oe, ŋ→ng, ɪ→i, ʊ→oo. Examples: ครับ→khráp ค่ะ→khâ ไม่→mâi อยาก→yàak สวัสดี→sà-wàt-dii เอา→ao เก่า→gào ดี→dii แมว→maaeo ต้อง→dtâwng งาน→ngaan เอง→eeng\n' +
     '• NO double particles (ครับครับ etc)\n' +
     '• ครับ and ค่ะ/คะ are POLITENESS PARTICLES — do NOT translate them at all in the english field, they are invisible in English\n' +
@@ -8838,9 +8855,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'Make it feel like real speech between two friends.\n' +
     'The "prompt" field = specific description of what is said, e.g. "He says his ear hurts" or "She asks if he cleaned his ears" — precise, not vague'
 
-  const CHECK_SRCS   = ['qwen:','qwen-recheck:','qwen-recheck2:','qwen-recheck3:','qwen-recheck4:','qwen-recheck5:','qwen-recheck6:','qwen-recheck7:','qwen-recheck8:','qwen-recheck9:','qwen-recheck10:']
+  // Bounded ladder: attempt 1 normal, 2–3 targeted repair, 4–5 simple fallback.
+  // Eleven near-identical rewrites helped nobody and cost 11 API calls per word.
+  const CHECK_SRCS   = ['qwen:','qwen-recheck:','qwen-recheck2:','qwen-recheck3:','qwen-recheck4:']
   const CHECK_EMOJIS = ['✦','🔶','🟠','🔵','🔷','🟡','🟨','🟢','💚','🪵','🟫']
-  const CHECK_NAMES  = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
+  const CHECK_NAMES  = ['1st','2nd','3rd','4th','5th']
 
   let failureReasons = []
   let bestAttempt = null
@@ -8885,10 +8904,31 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         if (/foreign char|chinese/.test(r)) return 'Remove any non-Thai characters from the Thai text field.'
         return r  // fallback: use raw message
       }
+      // Name the EXACT banned words. "Fix the sentence" produced near-identical
+      // rewrites containing the same word (เรื่อง came back across 11 retries).
+      const _bannedWords = [...new Set(
+        failureReasons.flatMap(r => {
+          const mm = /untaught vocabulary: ([^:]+?)(?: in:|$)/.exec(r)
+          return mm ? mm[1].trim().split(/\s+/) : []
+        }).filter(Boolean))]
+      const _banLine = _bannedWords.length
+        ? 'FORBIDDEN WORDS — these were rejected and must NOT appear again:\n' +
+          _bannedWords.map(w => '  - remove "' + w + '"').join('\n') +
+          '\n  Use a different ALLOWED word, or express a simpler idea.\n'
+        : ''
+      // After 3 failed attempts stop rewriting variations of a bad sentence.
+      const _simpleMode = attempt >= 3
+      const _simpleLine = _simpleMode
+        ? 'SIMPLE MODE — previous attempts all failed. Write the SHORTEST natural\n' +
+          '  Thai that uses "' + target.thai + '". Subject + target + one known word\n' +
+          '  is enough. No descriptive or contextual vocabulary. No new words.\n'
+        : ''
       const failHint = failureReasons.length > 0
-        ? '🚫 REWRITE REQUIRED — previous attempt had these problems:\n' +
+        ? 'REWRITE REQUIRED — previous attempt had these problems:\n' +
           failureReasons.map((r,i) => '  ' + (i+1) + '. ' + _translateFail(r)).join('\n') +
-          '\n\nWrite completely different sentences that fix every issue above.\n\n---\n\n'
+          '\n' + _banLine + _simpleLine +
+          '\nKeep the same target word and meaning. Change as little as possible —\n' +
+          'prefer a SHORTER, simpler sentence.\n\n---\n\n'
         : ''
       const combinedMsg = failHint + baseSystem + '\n\n---\n\n' + baseUser
       const tokenBudget = model && model.includes('32b') ? 4500 : model && model.includes('gemini') ? 4500 : 3800

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v563"/>
+<meta name="app-version" content="v569"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v563';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v563').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v569';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v569').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -7976,6 +7976,25 @@ function getMaxNumberFromVocab(vocab) {
   return 29
 }
 
+// Only exercises that actually PRACTISE numbers, time, dates or counting may demand
+// one. Previously randomNumberHint fired on ~2/3 of all words and the validator
+// enforced it on every even pairIndex, so ordinary targets like นอน were rejected
+// with "MANDATORY number missing" for writing perfectly natural Thai.
+const THAI_NUMBER_TARGETS = new Set([
+  '\u0e28\u0e39\u0e19\u0e22\u0e4c','\u0e2b\u0e19\u0e36\u0e48\u0e07','\u0e2a\u0e2d\u0e07','\u0e2a\u0e32\u0e21','\u0e2a\u0e35\u0e48','\u0e2b\u0e49\u0e32','\u0e2b\u0e01','\u0e40\u0e08\u0e47\u0e14','\u0e41\u0e1b\u0e14','\u0e40\u0e01\u0e49\u0e32','\u0e2a\u0e34\u0e1a',
+  '\u0e22\u0e35\u0e48\u0e2a\u0e34\u0e1a','\u0e23\u0e49\u0e2d\u0e22','\u0e1e\u0e31\u0e19','\u0e2b\u0e21\u0e37\u0e48\u0e19','\u0e41\u0e2a\u0e19','\u0e25\u0e49\u0e32\u0e19','\u0e04\u0e23\u0e36\u0e48\u0e07','\u0e01\u0e35\u0e48','\u0e40\u0e17\u0e48\u0e32\u0e44\u0e2b\u0e23\u0e48',
+  '\u0e42\u0e21\u0e07','\u0e17\u0e38\u0e48\u0e21','\u0e15\u0e35','\u0e40\u0e17\u0e35\u0e48\u0e22\u0e07','\u0e40\u0e17\u0e35\u0e48\u0e22\u0e07\u0e04\u0e37\u0e19','\u0e19\u0e32\u0e17\u0e35','\u0e0a\u0e31\u0e48\u0e27\u0e42\u0e21\u0e07','\u0e19\u0e32\u0e2c\u0e34\u0e01\u0e32','\u0e01\u0e35\u0e48\u0e42\u0e21\u0e07',
+  '\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48','\u0e04\u0e23\u0e31\u0e49\u0e07','\u0e0a\u0e34\u0e49\u0e19','\u0e04\u0e39\u0e48','\u0e01\u0e34\u0e42\u0e25','\u0e23\u0e32\u0e04\u0e32','\u0e1a\u0e32\u0e17','\u0e2d\u0e32\u0e22\u0e38','\u0e40\u0e14\u0e37\u0e2d\u0e19','\u0e1b\u0e35','\u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c',
+])
+function exerciseRequiresNumber(target) {
+  if (!target) return false
+  const th = target.thai || target.t || ''
+  if (THAI_NUMBER_TARGETS.has(th)) return true
+  // A target whose own gloss is about number/time/counting also qualifies.
+  const en = String(target.english || target.e || '').toLowerCase()
+  return /\b(number|o'clock|hour|minute|time of day|date|day of the month|month|year|week|count|classifier|price|age|kilogram|half|hundred|thousand|million|twenty|ten)\b/.test(en)
+}
+
 function randomNumberHint(vocab, pairIndex) {
   // Fire on ~2/3 of words (skip every 3rd)
   const max = getMaxNumberFromVocab(vocab)
@@ -8257,10 +8276,22 @@ function composeThaiPhonetic(thai, lex) {
   return { phonetic: out.join(' ').replace(/\s+/g, ' ').trim(), unresolved }
 }
 // Rejects a phonetic line that disagrees with the Thai it claims to describe.
+// Strips tone marks and separators for MATCHING only. Learner-facing output is
+// never changed — châwp and cháwp differ only in tone, so reporting one as
+// "missing" when the other is present is a false failure, not a real one.
+function thaiPhoneticMatchKey(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // drop tone diacritics
+    .replace(/[^a-z]/g, '')                              // drop hyphens, spaces, punctuation
+}
 function validateThaiPhoneticAlignment(thai, phonetic, lex) {
   const problems = []
+  const diagnostics = []
   const s = String(thai || '')
-  const ph = String(phonetic || '').toLowerCase()
+  const phKey = thaiPhoneticMatchKey(phonetic)
+  // Longest match first, so a compound in the lexicon (โรงเรียน, วันที่,
+  // ตอนเช้า) is never split into its parts.
   const words = [...lex.keys()].filter(k => k && k.length >= 2).sort((a, b) => b.length - a.length)
   let i = 0
   const present = []
@@ -8269,14 +8300,23 @@ function validateThaiPhoneticAlignment(thai, phonetic, lex) {
     if (hit) { present.push(hit); i += hit.length } else i++
   }
   present.forEach(w => {
-    const canon = (lex.get(w) || '').toLowerCase()
+    const canon = lex.get(w) || ''
     if (!canon) return
-    const core = canon.replace(/[^a-z\u00c0-\u024f\u0250-\u02af\- ]/g, '').trim()
-    if (core && !ph.includes(core.split(' ')[0].slice(0, Math.max(2, core.length - 1)))) {
+    const want = thaiPhoneticMatchKey(canon)
+    if (!want) return
+    const found = phKey.includes(want)
+    diagnostics.push({ token: w, canonical: canon, matched: found })
+    if (found) return
+    // Present but spelled differently — that is a data conflict, not a missing word.
+    const loose = want.length > 3 && phKey.includes(want.slice(0, want.length - 1))
+    if (loose) {
+      problems.push('CANONICAL PHONETIC DATA CONFLICT: "' + w + '" canonical "' + canon +
+                    '" does not match the phonetic line exactly')
+    } else {
       problems.push('phonetic is missing "' + w + '" (' + canon + ')')
     }
   })
-  return { ok: problems.length === 0, problems }
+  return { ok: problems.length === 0, problems, diagnostics }
 }
 
 // ── Thai QC checks (§1-5) ───────────────────────────────────────────────────
@@ -8297,6 +8337,11 @@ function thaiQcCheckVocabulary(pair, allowedSet, vocab) {
     : { ok: true, problems: [] }
 }
 function thaiQcCheckPhonetic(pair, lex) {
+  // Phonetics are derived AFTER Thai passes. If they have not been built yet there
+  // is nothing to align against — running this stage early reported every word as
+  // "phonetic is missing X" on sentences that were perfectly fine.
+  if (pair.phonetic == null || String(pair.phonetic).trim() === '')
+    return { ok: true, problems: [], skipped: 'phonetics not yet derived' }
   const r = validateThaiPhoneticAlignment(pair.thai, pair.phonetic, lex)
   if (!r.ok) return { ok: false, code: 'PHONETIC', problems: r.problems }
   // Extra lexical token in the phonetic line that no Thai token accounts for.
@@ -8355,6 +8400,73 @@ function finaliseThaiPair(pair, ctx) {
   return { pair: p, ...res }
 }
 
+// ── THE authoritative Thai allowed-vocabulary gate ──────────────────────────
+// One function answers "may this word appear?". Several builders previously
+// disagreed: one used the whole dictionary, one used only introduced words, one
+// hardcoded content words as always-legal, and none knew about the other 29
+// targets in the current track \u2014 which is why เอา was called untaught while ให้
+// was being generated, even though both are targets in the same 30-word track.
+function buildThaiAllowedSet(ctx) {
+  const c = ctx || {}
+  const vocab = c.vocab || []
+  const set = new Set()
+  // 1 + 2. previously introduced, and manually known
+  vocab.forEach(w => {
+    const th = w.thai || w.t
+    if (!th) return
+    if (hasBeenIntroduced(w) || w.manualKnown) set.add(th)
+  })
+  // 3. EVERY approved target in the current track (not just the current one)
+  ;(c.trackTargets || []).forEach(w => {
+    const th = (w && (w.thai || w.t)) || w
+    if (th) set.add(th)
+  })
+  if (c.target) set.add(c.target.thai || c.target.t)
+  // 4. approved grammar / function / framing words
+  ;(c.grammarWords || []).forEach(w => w && set.add(w))
+  return set
+}
+function isAllowedThaiWord(word, ctx) {
+  if (!word) return true
+  const c = ctx || {}
+  const set = c.allowedSet || buildThaiAllowedSet(c)
+  return set.has(word)
+}
+// Per-token diagnostics for a rejection, in the exact shape requested.
+function explainThaiToken(word, ctx) {
+  const c = ctx || {}
+  const rec = (c.vocab || []).find(w => (w.thai || w.t) === word) || {}
+  const inTrack = (c.trackTargets || []).some(w => ((w && (w.thai || w.t)) || w) === word)
+    || (c.target && (c.target.thai || c.target.t) === word)
+  const grammarAllowed = (c.grammarWords || []).includes(word)
+  const introduced = hasBeenIntroduced(rec)
+  const finalAllowed = isAllowedThaiWord(word, c)
+  return 'token=' + word +
+    ' introduced=' + introduced +
+    ' manualKnown=' + !!rec.manualKnown +
+    ' currentTrackTarget=' + !!inTrack +
+    ' grammarAllowed=' + grammarAllowed +
+    ' finalAllowed=' + finalAllowed +
+    ' reason=' + (finalAllowed ? 'allowed'
+      : introduced ? 'introduced but not in allowed set (BUG)'
+      : inTrack ? 'track target missing from allowed set (BUG)'
+      : 'never introduced and not a track target')
+}
+// Longest-match tokenizer. Thai is written continuously; the validator segments
+// internally so the MODEL never has to insert spaces to satisfy it.
+function tokenizeThaiAgainstVocab(thai, vocab) {
+  const words = (vocab || []).map(w => w.thai || w.t).filter(w => w && w.length >= 2)
+    .sort((a, b) => b.length - a.length)
+  const s = String(thai || '').replace(/\s+/g, '')
+  const out = []
+  let i = 0
+  while (i < s.length) {
+    const hit = words.find(w => s.startsWith(w, i))
+    if (hit) { out.push(hit); i += hit.length } else i++
+  }
+  return out
+}
+
 function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new Set(), skipSpacedThai=false) {
   const valid = []
   const failures = []
@@ -8369,17 +8481,12 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
   //   B. this track's deliberately selected targets (which may still be unseen)
   //   C. the current target word itself
   //   D. approved grammar/function words (alwaysOk, below)
-  const trackTargets = new Set()
-  if (target) trackTargets.add(target.thai || target.t)
-  ;(Array.isArray(target && target._trackTargets) ? target._trackTargets : [])
-    .forEach(w => trackTargets.add((w && (w.thai || w.t)) || w))
-  const knownThaiWords = new Set(
-    vocab
-      .filter(w => hasBeenIntroduced(w) || trackTargets.has(w.t || w.thai))
-      .map(w => w.t || w.thai)
-      .filter(Boolean)
-  )
-  trackTargets.forEach(t => { if (t) knownThaiWords.add(t) })
+  // Delegates to the ONE authoritative builder. No local pool.
+  const knownThaiWords = buildThaiAllowedSet({
+    vocab,
+    target,
+    trackTargets: Array.isArray(target && target._trackTargets) ? target._trackTargets : [],
+  })
   // Always allow basic grammar/particles (these are universal Thai building blocks)
   // Function words and particles ONLY. Content words (ตลาด, กิน, บ้าน …) were
   // listed here as universally legal, which defeated the closed-vocabulary gate
@@ -8678,6 +8785,47 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
 }
 
 
+// ── Speaker-gender particle validation ──────────────────────────────────────
+// The particle is judged by the SPEAKER's own gender. Never the listener, never a
+// named person in the sentence, never the grammatical subject.
+//   "คุณพลอยอยากซื้ออะไรครับ"  \u2014 Ploy is female, the SPEAKER is male, ครับ is correct.
+function thaiSpeakerGender(speaker, charA, charB) {
+  const desc = speaker === 'B' ? (charB || '') : (charA || '')
+  if (/\bman\b|\bmale\b|\bboy\b|\bold man\b|\bgentleman\b|\bhusband\b|\bfather\b|\bson\b/i.test(desc)) return 'male'
+  if (/\bwoman\b|\bfemale\b|\bgirl\b|\bold woman\b|\blady\b|\bwife\b|\bmother\b|\bdaughter\b/i.test(desc)) return 'female'
+  // Speaker A defaults male in this app's convention; B defaults female.
+  return speaker === 'B' ? 'female' : 'male'
+}
+// Returns the trailing politeness particle, ignoring trailing whitespace and any
+// punctuation the model may append. Comparing an UNTRIMMED string against /ครับ$/
+// is what rejected perfectly correct lines like "ผมเอาอันนี้ครับ".
+function thaiTrailingParticle(thai) {
+  const t = String(thai || '').trim().replace(/[\s.!?\u2026\uFF1F\uFF01\u0E46]+$/g, '')
+  if (/\u0e04\u0e23\u0e31\u0e1a$/.test(t)) return '\u0e04\u0e23\u0e31\u0e1a'
+  if (/\u0e04\u0e48\u0e30$/.test(t))      return '\u0e04\u0e48\u0e30'
+  if (/\u0e04\u0e30$/.test(t))            return '\u0e04\u0e30'
+  return null
+}
+// A male speaker uses ครับ for statements AND questions. A female speaker uses
+// ค่ะ for statements and คะ for questions; both are accepted either way, since the
+// distinction is softer in real speech than the old rule assumed.
+function validateThaiSpeakerParticle(thai, gender) {
+  const t = String(thai || '').trim()
+  const p = thaiTrailingParticle(t)
+  const detected = p || '(none)'
+  if (/\u0e04\u0e23\u0e31\u0e1a\u0e04\u0e23\u0e31\u0e1a|\u0e04\u0e48\u0e30\u0e04\u0e48\u0e30|\u0e04\u0e30\u0e04\u0e30/.test(t))
+    return { ok: false, detected, reason: 'doubled politeness particle' }
+  if (!p)
+    return { ok: false, detected, reason: 'no politeness particle at the end' }
+  if (gender === 'male')
+    return p === '\u0e04\u0e23\u0e31\u0e1a'
+      ? { ok: true, detected }
+      : { ok: false, detected, reason: 'male speaker must use \u0e04\u0e23\u0e31\u0e1a, found ' + p }
+  return (p === '\u0e04\u0e48\u0e30' || p === '\u0e04\u0e30')
+    ? { ok: true, detected }
+    : { ok: false, detected, reason: 'female speaker must use \u0e04\u0e48\u0e30 or \u0e04\u0e30, found ' + p }
+}
+
 async function generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, model, pairIndex, onProgress, runningTopic, usedSubjects) {
   const _nameA = (charA.split(',')[0] || 'A').replace(/\s*\([^)]*\)/g,'').trim()
   const _nameB = (charB.split(',')[0] || 'B').replace(/\s*\([^)]*\)/g,'').trim()
@@ -8707,7 +8855,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   // Skip numbers for words that don't naturally take numbers
   const _noNumberWords = ['advance','compete','beauty queen','beauty pageant','Khmer','long-neck Karen','clear up','then','such as','which','who','where','when','how','jealous','trust','promise','rent']
   const _skipNumber = _noNumberWords.some(w => (target.english||'').toLowerCase().includes(w.toLowerCase()))
-  const numberHint = _skipNumber ? '' : randomNumberHint(vocab, pairIndex)
+  // Only ask the model for a number when the exercise actually practises numbers.
+  const numberHint = (_skipNumber || !exerciseRequiresNumber(target)) ? '' : randomNumberHint(vocab, pairIndex)
   const context = prevLines.length > 0
     ? 'CONVERSATION SO FAR (most recent first):\n' + prevLines.slice(-6).map(l =>
         (l.speaker==='A' ? charA.split(',')[0] : charB.split(',')[0]) + ': ' + l.thai + ' (' + l.english + ')'
@@ -8729,6 +8878,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     // do not generate freely and clean up afterwards.
     '• ALLOWED WORDS — use ONLY these, plus the target:\n' + allowedVocabLine + '\n' +
     '• The target word for this exchange is: ' + target.thai + '\n' +
+    '• THAI ORTHOGRAPHY: write normal continuous Thai. Thai does not put spaces\n' +
+    '  between words. Do NOT space words apart, do NOT put spaces around the target,\n' +
+    '  and do NOT add English-style commas. Write หาไม่ได้ครับ, never หา ไม่ได้ ครับ.\n' +
     '• Any Thai word not in that list is FORBIDDEN. If an idea needs a word that is\n' +
     '  not listed, express a SIMPLER idea instead. Do not invent vocabulary.\n' +
     '• PHONETIC: romanise with tone marks — à (low/falling) á (high) â (falling) ǎ (rising). BANNED CHARACTERS: ɛ ɔ ʉ ə ŋ ɪ ʊ ɐ ɯ — these are IPA, never use them. Use instead: ɛ→e or ae, ɔ→o or aw, ʉ→ue or eu, ə→oe, ŋ→ng, ɪ→i, ʊ→oo. Examples: ครับ→khráp ค่ะ→khâ ไม่→mâi อยาก→yàak สวัสดี→sà-wàt-dii เอา→ao เก่า→gào ดี→dii แมว→maaeo ต้อง→dtâwng งาน→ngaan เอง→eeng\n' +
@@ -8760,10 +8912,15 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• "english" = natural fluent English — NOT word-for-word. Examples: ผมไม่รู้ → "I have no idea", น่าเห็นใจ → "that\'s unfortunate" (NOT "that\'s very sympathetic"), น่าสนใจ → "that\'s interesting", แย่จัง → "oh no" or "that\'s too bad"\n' +
     (numberHint ? numberHint + '\n' : '') +
     'Return ONLY JSON array of exactly 3 objects:\n' +
-    '[{"speaker":"A","thai":"...ครับ","phonetic":"...","english":"...","prompt":"...","ok":true,"glosses":["word1-en","word2-en",...]},' +
-    '{"speaker":"B","thai":"...ค่ะ","phonetic":"...","english":"...","prompt":"...","ok":true,"glosses":[...]},' +
-    '{"speaker":"A","thai":"...ครับ","phonetic":"...","english":"...","prompt":"...","ok":true,"glosses":[...]}]\n' +
-    'glosses = one English word per phonetic token (e.g. phonetic "phǒm jà bpai" → glosses ["I","will","go"]). Use "-" for particles like ครับ/ค่ะ.'
+    // The model writes THAI ONLY. Learner-facing phonetics are composed afterwards
+    // from the canonical dictionary (see composeThaiPhonetic), so asking for them
+    // here wasted tokens and produced lines that disagreed with the Thai.
+    '[{"speaker":"A","thai":"...ครับ","english":"...","prompt":"...","ok":true,"glosses":["word1-en","word2-en",...]},' +
+    '{"speaker":"B","thai":"...ค่ะ","english":"...","prompt":"...","ok":true,"glosses":[...]},' +
+    '{"speaker":"A","thai":"...ครับ","english":"...","prompt":"...","ok":true,"glosses":[...]}]\n' +
+    'Do NOT include a "phonetic" field. Write Thai script only — romanisation is\n' +
+    'generated by the app from its own dictionary.\n' +
+    'glosses = one English word per Thai word, in order (e.g. ผมจะไป → ["I","will","go"]). Use "-" for particles like ครับ/ค่ะ.'
 
   // Build natural context hint for how to use the target word
   // Detect proper nouns (capitalized English or known place names)
@@ -8862,11 +9019,16 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
 
   // Bounded ladder: attempt 1 normal, 2–3 targeted repair, 4–5 simple fallback.
   // Eleven near-identical rewrites helped nobody and cost 11 API calls per word.
-  const CHECK_SRCS   = ['qwen:','qwen-recheck:','qwen-recheck2:','qwen-recheck3:','qwen-recheck4:']
+  // 11 checks. v562 truncated this to 5 while adding simple-fallback mode, and the
+  // loop is `attempt < CHECK_SRCS.length` — so the target was abandoned at check 5.
+  // Fallback is a repair MODE from check 4 onward, NOT the retry ceiling.
+  const CHECK_SRCS   = ['qwen:','qwen-recheck:','qwen-recheck2:','qwen-recheck3:','qwen-recheck4:','qwen-recheck5:','qwen-recheck6:','qwen-recheck7:','qwen-recheck8:','qwen-recheck9:','qwen-recheck10:']
   const CHECK_EMOJIS = ['✦','🔶','🟠','🔵','🔷','🟡','🟨','🟢','💚','🪵','🟫']
-  const CHECK_NAMES  = ['1st','2nd','3rd','4th','5th']
+  const CHECK_NAMES  = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
 
   let failureReasons = []
+  // Survives every retry for this target — never reset mid-target.
+  const _bannedEver = new Set()
   let bestAttempt = null
   let bestScore = -1
 
@@ -8911,11 +9073,17 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       }
       // Name the EXACT banned words. "Fix the sentence" produced near-identical
       // rewrites containing the same word (เรื่อง came back across 11 retries).
-      const _bannedWords = [...new Set(
-        failureReasons.flatMap(r => {
-          const mm = /untaught vocabulary: ([^:]+?)(?: in:|$)/.exec(r)
-          return mm ? mm[1].trim().split(/\s+/) : []
-        }).filter(Boolean))]
+      // CUMULATIVE ban list. Clearing it between retries is why แล้ว / ดู / เจอ came
+      // back attempt after attempt. Tokens accumulate for the whole target.
+      failureReasons.forEach(r => {
+        const mm = /untaught vocabulary: (.+?)(?: in:|$)/.exec(r)
+        if (!mm) return
+        mm[1].split('|').forEach(part => {
+          const tok = part.trim().split(/[\s\[]/)[0]
+          if (tok && /[\u0e00-\u0e7f]/.test(tok)) _bannedEver.add(tok)
+        })
+      })
+      const _bannedWords = [..._bannedEver]
       const _banLine = _bannedWords.length
         ? 'FORBIDDEN WORDS — these were rejected and must NOT appear again:\n' +
           _bannedWords.map(w => '  - remove "' + w + '"').join('\n') +
@@ -8980,12 +9148,22 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         else if (/ค่ะ$|คะ$/.test(l.thai)) l.speaker = 'B'
       })
       const genderValid = linesArr.filter(l => {
-        if (!l.thai || !l.phonetic || !l.speaker) return false
-        if (l.speaker === 'A' && !/ครับ$/.test(l.thai)) return false
-        const bIsMale = /\bman\b|\bmale\b|\bold man\b/i.test(charB||'')
-        if (l.speaker === 'B' && !bIsMale && !/ค่ะ$|คะ$/.test(l.thai)) return false
-        if (l.speaker === 'B' && bIsMale && !/ครับ$/.test(l.thai)) return false
-        if (/ครับครับ|ค่ะค่ะ|คะคะ/.test(l.thai)) return false
+        // Phonetics are composed by the app now, so their absence is not a defect.
+        if (!l.thai || !l.speaker) return false
+        // SPEAKER-based particle check. Metadata is never inferred from pronouns,
+        // names, the addressee or sentence content — if speaker is missing the line
+        // is rejected as a pipeline bug rather than guessed at.
+        const _g = thaiSpeakerGender(l.speaker, charA, charB)
+        const _pr = validateThaiSpeakerParticle(l.thai, _g)
+        l._speakerGender = _g
+        l._detectedParticle = _pr.detected
+        // This function logs through onProgress (its apiError channel); it has no
+        // onLog parameter. Referencing an undeclared `onLog` threw a ReferenceError
+        // after every otherwise-valid sentence.
+        if (!_pr.ok && onProgress)
+          onProgress(-1, -1, { apiError: 'speaker=' + l.speaker + ' gender=' + _g +
+            ' particle=' + _pr.detected + ' result=FAIL (' + _pr.reason + ')' }, null, null)
+        if (!_pr.ok) { l._genderFail = _pr.reason; return false }
         if (/[一-鿿]/.test(l.thai)) return false
         // Auto-fix Thai/missing prompt instead of rejecting
         if (!l.prompt || l.prompt.length < 5 || /[ก-๙]/.test(l.prompt)) {
@@ -9000,10 +9178,14 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       const hasB = genderValid.some(l=>l.speaker==='B')
       if (genderValid.length < 2 || !hasA || !hasB) {
         const gFail = linesArr.find(l => !genderValid.includes(l))
+        // Report the SAME reason the filter computed, so the repair prompt is told
+        // what actually failed instead of a generic "particle error".
         const gFailReason = gFail
-          ? (gFail.speaker === 'A' && !/ครับ$/.test((gFail.thai||'').trim()) ? 'A line must end with ครับ — missing in: ' + gFail.thai
-            : gFail.speaker === 'B' && !/ค่ะ$|คะ$/.test((gFail.thai||'').trim()) ? 'B line must end with ค่ะ or คะ — missing in: ' + gFail.thai
-            : 'particle error in: ' + gFail.thai)
+          ? (gFail._genderFail
+              ? gFail._genderFail + ' (speaker ' + gFail.speaker + ', ' +
+                (gFail._speakerGender || '?') + ') in: ' + gFail.thai
+              : !gFail.speaker ? 'PIPELINE BUG: line has no speaker metadata: ' + gFail.thai
+              : 'line rejected in: ' + gFail.thai)
           : 'missing A or B speaker'
         failureReasons = [gFailReason]
         onProgress && onProgress(-1, -1, { apiError: '⚠️ Gender fail: ' + gFailReason.slice(0,80) }, null, null)
@@ -9100,11 +9282,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
             }
           }
         }
-        // Phonetic must be present and roughly match Thai length
-        if (!l.phonetic || l.phonetic.trim().length < 4)
-          naturalFails.push('Line ' + (li+1) + ' has no phonetic')
-        else if (l.thai && l.phonetic.trim().split(' ').length < Math.max(2, l.thai.trim().split(' ').length - 3))
-          naturalFails.push('Line ' + (li+1) + ' phonetic too short — romanise the complete sentence')
+          // REMOVED (stale pre-phonetic check). Phonetics are derived later from the
+          // canonical dictionary, so l.phonetic is legitimately absent here. Demanding
+          // it produced "Line 1 has no phonetic" on perfectly valid Thai. Phonetic
+          // existence and alignment are POST-phonetic checks only.
         // Reject ดิฉัน — formal register banned
         if (lThai.includes('ดิฉัน'))
           naturalFails.push('Do not use ดิฉัน — use ฉัน instead')
@@ -9118,7 +9299,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           naturalFails.push('Line ' + (li+1) + ' is only the target word — needs a full sentence')
       })
       // ── #5 Number enforcement: only on early attempts so a stubborn miss can't burn to fallback ──
-      if (numberHint && (pairIndex % 2 === 0) && attempt < 5) {  // numbers on first 5 attempts only — prevents endless fallback for words that don't suit numbers
+      // Number practice is now TARGET-DRIVEN. Ordinary vocabulary is never required
+      // to contain a number, time or count.
+      if (numberHint && exerciseRequiresNumber(target) && attempt < 3) {
         const _numWords = ['หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า','สิบ','ยี่สิบ','ร้อย','พัน','โมง','ทุ่ม','เที่ยง','บ่าย','ตีหนึ่ง','ตีสอง','ตีสาม','ตีสี่','ตีห้า','ที่หนึ่ง','ที่สอง','ที่สาม','ครั้ง','นาฬิกา']
         const _hasNumber = genderValid.some(l => /[๐-๙]/.test(l.thai || '') || _numWords.some(n => (l.thai || '').includes(n)))
         if (!_hasNumber)
@@ -9220,12 +9403,14 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           }
           // Canonical phonetics win. The model's romanisation is only kept where no
           // dictionary/function mapping exists for that token.
-          let phon = l.phonetic
+          // The model no longer returns phonetics, so composition is the primary
+          // source, not an override. Partial composition is still better than none.
+          let phon = l.phonetic || ''
           try {
             const lex = buildThaiPhoneticLexicon(vocab)
             const comp = composeThaiPhonetic(l.thai, lex)
-            if (comp.phonetic && comp.unresolved === 0) phon = comp.phonetic
-          } catch (e) { /* fall back to the model's line */ }
+            if (comp.phonetic) phon = comp.phonetic
+          } catch (e) { /* keep whatever we had */ }
           return { ...l, phonetic: phon, _source: tierOf(l), words }
         })
       onProgress && onProgress(-1, -1, { apiError: '✅ ' + CHECK_NAMES[attempt] + ' check passed: ' + target.thai }, null, null)
@@ -9296,6 +9481,11 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   }
   const usedSubjects = new Set()  // Fix 1: track subjects/topics used to prevent repetition
   let runningTopic = ''  // topic threading for conversation flow
+  // EVERY target must know the whole track, so a sibling target is legal vocabulary
+  // while generating any other one. This was previously set only in a UI branch that
+  // runs when the scene is not yet established — so on most runs ให้ was invisible
+  // while generating ไม่มี and got rejected as untaught.
+  targets.forEach(t => { if (t) t._trackTargets = targets })
   for (let i = 0; i < targets.length; i++) {
     const target = targets[i]
     onProgress && onProgress(allPairs.length, targets.length * 3, { wordStatus: '\u{1F4AC} ' + (i+1) + '/30: ' + target.thai + ' [' + target.english + ']' }, null, null)
@@ -9465,7 +9655,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     opts = opts || {}
     const restaurantOverused = opts.restaurantOverused || false
     const topicContext = opts.runningTopic ? '\n[CONVERSATION THREAD: They have been talking about: ' + opts.runningTopic + '. Connect the new word to this topic naturally.]\n' : ''
-    const numberHint = randomNumberHint(vocab, pairIndex || 0)
+    const numberHint = exerciseRequiresNumber(target) ? randomNumberHint(vocab, pairIndex || 0) : ''
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
     let floor = lenResult.goalMin || 6
@@ -9524,17 +9714,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     // the one generation actually runs. It admitted the ENTIRE dictionary, and its
     // alwaysOk list additionally hardcoded content words (ตลาด, โรงเรียน, กิน …)
     // as universally legal. Between them, nothing was ever gated.
-    const _trackTargets = new Set()
-    if (target) _trackTargets.add(target.thai || target.t)
-    ;(Array.isArray(target && target._trackTargets) ? target._trackTargets : [])
-      .forEach(w => _trackTargets.add((w && (w.thai || w.t)) || w))
-    const knownThaiWords = new Set(
-      vocab
-        .filter(w => hasBeenIntroduced(w) || _trackTargets.has(w.t || w.thai))
-        .map(w => w.t || w.thai)
-        .filter(Boolean)
-    )
-    _trackTargets.forEach(t => { if (t) knownThaiWords.add(t) })
+    // Delegates to the ONE authoritative builder. No local pool.
+    const knownThaiWords = buildThaiAllowedSet({
+      vocab,
+      target,
+      trackTargets: Array.isArray(target && target._trackTargets) ? target._trackTargets : [],
+    })
     // Always allow basic grammar/particles (these are universal Thai building blocks)
     const alwaysOk = new Set([
       'ผม','คุณ','เขา','เรา','พวกเรา','มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ',
@@ -9612,7 +9797,19 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
             else scan++
           }
           if (offenders.length) {
-            failures.push('untaught vocabulary: ' + [...new Set(offenders)].join(' ') + ' in: ' + p.thai)
+            // Per-word diagnostics so a wrong pool is obvious instead of silent.
+            const _tt = Array.isArray(target && target._trackTargets) ? target._trackTargets : []
+            const detail = [...new Set(offenders)].map(w => {
+              const rec = vocab.find(x => (x.t || x.thai) === w) || {}
+              const inTrack = _tt.some(x => ((x && (x.thai || x.t)) || x) === w)
+              return w + ' [currentTarget=' + (target && (target.thai || target.t)) +
+                ' trackTargetCount=' + _tt.length +
+                ' introduced=' + hasBeenIntroduced(rec) +
+                ' manualKnown=' + !!rec.manualKnown +
+                ' currentTrackTarget=' + inTrack +
+                ' allowedBecause=' + (inTrack ? 'should-be-track-target(BUG)' : 'none') + ']'
+            })
+            failures.push('untaught vocabulary: ' + detail.join(' | ') + ' in: ' + p.thai)
             continue
           }
         }

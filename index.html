@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v558"/>
+<meta name="app-version" content="v561"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v558';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v558').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v561';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v561').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6581,8 +6581,13 @@ function validatePairs(pairs, vocab) {
     'แม้','ทั้ง','ทำให้','ทำให้','ต้องการ','สามารถ','เพื่อ','โดย','ระหว่าง','หลังจาก','ก่อนที่','เวลา',
     'ผม','ฉัน','คุณ','เขา','เธอ','เรา','พวกเขา','มัน','ท่าน'
   ])
-  const vocabSet = new Set(vocab.map(w => w.thai))
-  const allAllowed = new Set([...ALWAYS_ALLOWED, ...vocabSet])
+  // CLOSED VOCABULARY. A word existing in the dictionary does NOT make it legal in
+  // a generated sentence — that let 26 never-taught words into 28 of 94 pairs.
+  // Allowed = genuinely introduced + this track's deliberate targets + approved
+  // grammar/function words. Nothing else.
+  const introducedSet = new Set(vocab.filter(w => hasBeenIntroduced(w)).map(w => w.thai))
+  const targetSet = new Set((allowedTargets || []).map(w => (w && (w.thai || w.t)) || w).filter(Boolean))
+  const allAllowed = new Set([...ALWAYS_ALLOWED, ...introducedSet, ...targetSet])
   // Sort by length descending for greedy matching
   const allAllowedArr = [...allAllowed].sort((a, b) => b.length - a.length)
 
@@ -8215,37 +8220,190 @@ function isThaiTimeRange(thai) {
 // ตั้งแต่ never REQUIRES a closing ถึง.
 function thaiTangTaeNeedsThueng() { return false }
 
+// ── Canonical Thai phonetics ────────────────────────────────────────────────
+// The model invented romanisation per call, so one track showed เดิน as
+// doern/dəən/dern, ไป as pai/bpai, ตอน as dtawn/dɔɔn. The dictionary is the source
+// of truth: any token that IS a dictionary word must use that entry's phonetic.
+function buildThaiPhoneticLexicon(vocab, extra) {
+  const lex = new Map()
+  ;(vocab || []).forEach(w => {
+    const th = w.thai || w.t, ph = w.phonetic || w.ph
+    if (th && ph && !lex.has(th)) lex.set(th, ph)
+  })
+  Object.entries(extra || THAI_FUNCTION_PHONETICS).forEach(([k, v]) => { if (!lex.has(k)) lex.set(k, v) })
+  return lex
+}
+// Grammar/function words that may not carry a dictionary entry.
+const THAI_FUNCTION_PHONETICS = {
+  'ครับ':'khráp','ค่ะ':'khâ','คะ':'khá','นะ':'ná','เลย':'looei','ๆ':'',
+  'ก็':'gâaw','ที่':'thîi','ของ':'khǎawng','กับ':'gàp','ใน':'nai','ไม่':'mâi',
+  'ได้':'dâi','จะ':'jà','และ':'láe','แต่':'dtàae','หรือ':'rǔue','ว่า':'wâa',
+  'อยู่':'yùu','แล้ว':'láaeo','ด้วย':'dûuai','มาก':'mâak','ไหม':'mǎi','นี้':'níi',
+}
+// Recomposes the phonetic line from canonical pieces, longest match first.
+function composeThaiPhonetic(thai, lex) {
+  const s = String(thai || '')
+  const words = [...lex.keys()].filter(k => k).sort((a, b) => b.length - a.length)
+  const out = []
+  let i = 0, unresolved = 0
+  while (i < s.length) {
+    const ch = s[i]
+    if (/[\s]/.test(ch)) { i++; continue }
+    if (/[^\u0e00-\u0e7f]/.test(ch)) { out.push(ch); i++; continue }
+    const hit = words.find(w => s.startsWith(w, i))
+    if (hit) { const p = lex.get(hit); if (p) out.push(p); i += hit.length }
+    else { unresolved++; i++ }
+  }
+  return { phonetic: out.join(' ').replace(/\s+/g, ' ').trim(), unresolved }
+}
+// Rejects a phonetic line that disagrees with the Thai it claims to describe.
+function validateThaiPhoneticAlignment(thai, phonetic, lex) {
+  const problems = []
+  const s = String(thai || '')
+  const ph = String(phonetic || '').toLowerCase()
+  const words = [...lex.keys()].filter(k => k && k.length >= 2).sort((a, b) => b.length - a.length)
+  let i = 0
+  const present = []
+  while (i < s.length) {
+    const hit = words.find(w => s.startsWith(w, i))
+    if (hit) { present.push(hit); i += hit.length } else i++
+  }
+  present.forEach(w => {
+    const canon = (lex.get(w) || '').toLowerCase()
+    if (!canon) return
+    const core = canon.replace(/[^a-z\u00c0-\u024f\u0250-\u02af\- ]/g, '').trim()
+    if (core && !ph.includes(core.split(' ')[0].slice(0, Math.max(2, core.length - 1)))) {
+      problems.push('phonetic is missing "' + w + '" (' + canon + ')')
+    }
+  })
+  return { ok: problems.length === 0, problems }
+}
+
+// ── Thai QC checks (§1-5) ───────────────────────────────────────────────────
+// Separate, named checks so a failure can be reported precisely to the repair
+// prompt rather than as a vague "bad sentence".
+function thaiQcCheckVocabulary(pair, allowedSet, vocab) {
+  const dict = (vocab || []).map(w => w.thai || w.t).filter(w => w && w.length >= 2)
+    .sort((a, b) => b.length - a.length)
+  const th = pair.thai || ''
+  const offenders = []
+  let i = 0
+  while (i < th.length) {
+    const hit = dict.find(w => th.startsWith(w, i))
+    if (hit) { if (!allowedSet.has(hit)) offenders.push(hit); i += hit.length } else i++
+  }
+  return offenders.length
+    ? { ok: false, code: 'VOCAB', problems: ['untaught vocabulary: ' + [...new Set(offenders)].join(' ')] }
+    : { ok: true, problems: [] }
+}
+function thaiQcCheckPhonetic(pair, lex) {
+  const r = validateThaiPhoneticAlignment(pair.thai, pair.phonetic, lex)
+  if (!r.ok) return { ok: false, code: 'PHONETIC', problems: r.problems }
+  // Extra lexical token in the phonetic line that no Thai token accounts for.
+  const composed = composeThaiPhonetic(pair.thai, lex)
+  if (composed.unresolved === 0 && composed.phonetic) {
+    const want = composed.phonetic.split(/\s+/).filter(Boolean).length
+    const got = String(pair.phonetic || '').split(/\s+/).filter(Boolean).length
+    if (got > want + 2) return { ok: false, code: 'PHONETIC',
+      problems: ['phonetic has ' + (got - want) + ' extra tokens the Thai does not contain'] }
+    if (got + 2 < want) return { ok: false, code: 'PHONETIC',
+      problems: ['phonetic is missing ' + (want - got) + ' tokens present in the Thai'] }
+  }
+  return { ok: true, problems: [] }
+}
+function thaiQcCheckMeaning(pair) {
+  const en = (pair.english || '').trim()
+  if (!en) return { ok: false, code: 'MEANING', problems: ['no English meaning'] }
+  if (en.length < 3) return { ok: false, code: 'MEANING', problems: ['English meaning too short to verify'] }
+  return { ok: true, problems: [] }
+}
+function thaiQcCheckTargetUsage(pair, target) {
+  if (!target) return { ok: true, problems: [] }
+  const tw = target.thai || target.t
+  if (!tw) return { ok: true, problems: [] }
+  if (!thaiContainsLexeme(pair.thai || '', tw))
+    return { ok: false, code: 'TARGET', problems: ['target "' + tw + '" is not used as its own word'] }
+  return { ok: true, problems: [] }
+}
+// Runs every check and returns ALL failures, so repair sees the full picture.
+function runThaiQcChecks(pair, ctx) {
+  const out = []
+  const c = ctx || {}
+  ;[
+    () => c.allowedSet ? thaiQcCheckVocabulary(pair, c.allowedSet, c.vocab) : { ok: true },
+    () => c.lex ? thaiQcCheckPhonetic(pair, c.lex) : { ok: true },
+    () => thaiQcCheckMeaning(pair),
+    () => thaiQcCheckTargetUsage(pair, c.target),
+  ].forEach(fn => {
+    try { const r = fn(); if (r && !r.ok) out.push({ code: r.code, problems: r.problems }) }
+    catch (e) { out.push({ code: 'ERROR', problems: ['check errored: ' + (e.message || e)] }) }
+  })
+  return { ok: out.length === 0, failures: out,
+           summary: out.map(f => f.code + ': ' + f.problems.join('; ')).join(' | ') }
+}
+// Atomic Thai repair: fix the sentence, recompose phonetics from canon, re-run ALL
+// checks. Constraints never loosen across retries.
+function finaliseThaiPair(pair, ctx) {
+  let p = { ...pair }
+  try {
+    if (ctx && ctx.lex) {
+      const comp = composeThaiPhonetic(p.thai, ctx.lex)
+      if (comp.phonetic && comp.unresolved === 0) p.phonetic = comp.phonetic
+    }
+  } catch (e) { /* keep the original line */ }
+  const res = runThaiQcChecks(p, ctx)
+  return { pair: p, ...res }
+}
+
 function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new Set(), skipSpacedThai=false) {
   const valid = []
   const failures = []
 
-  // Build known vocab set - include ALL vocab words (target words may not have repCount yet)
+  // CLOSED VOCABULARY GATE.
+  // This previously admitted the ENTIRE dictionary, so any word that merely existed
+  // could appear in a sentence. Against the 11 Sept export that let 26 never-taught
+  // words into 28 of 94 pairs (ตลาด, ทะเล, เด็ก, ซ่อม …).
+  //
+  // Allowed content vocabulary is now:
+  //   A. words the learner has genuinely been introduced to
+  //   B. this track's deliberately selected targets (which may still be unseen)
+  //   C. the current target word itself
+  //   D. approved grammar/function words (alwaysOk, below)
+  const trackTargets = new Set()
+  if (target) trackTargets.add(target.thai || target.t)
+  ;(Array.isArray(target && target._trackTargets) ? target._trackTargets : [])
+    .forEach(w => trackTargets.add((w && (w.thai || w.t)) || w))
   const knownThaiWords = new Set(
     vocab
+      .filter(w => hasBeenIntroduced(w) || trackTargets.has(w.t || w.thai))
       .map(w => w.t || w.thai)
       .filter(Boolean)
   )
+  trackTargets.forEach(t => { if (t) knownThaiWords.add(t) })
   // Always allow basic grammar/particles (these are universal Thai building blocks)
+  // Function words and particles ONLY. Content words (ตลาด, กิน, บ้าน …) were
+  // listed here as universally legal, which defeated the closed-vocabulary gate
+  // entirely — they must be earned through introduction or chosen as targets.
   const alwaysOk = new Set([
     'ผม','คุณ','เขา','เรา','พวกเรา','มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ',
     'ให้','กัน','อยู่','เป็น','ครับ','คะ','ค่ะ','แล้ว','ก็','จะ','และ','หรือ','ใน',
-    'มาก','น้อย','ดี','ใหญ่','เล็ก','นี่','นั่น','อยาก','ต้อง','ช่วย','หน่อย','บาง',
+    'นี่','นั่น','ต้อง','หน่อย','บาง',
     'หลาย','กำลัง','ยัง','เคย','เพิ่ง','เพิ่งจะ','ทุก','ทั้ง','แค่','เลย','สิ','นะ',
     'ด้วย','ก็ได้','เท่า','กี่','เมื่อ','เมื่อไหร่','เท่าไหร่','อะไร','ใคร','ทำไม',
-    'ยังไง','อย่างไร','ที่ไหน','ไหน','อย่าง','แบบ','ราคา','ของผม','ของคุณ',
-    'ตอน','วัน','เวลา','ตอนนี้','วันนี้','ที่นี่','ตรงนี้','ข้างๆ','ใกล้','ไกล',
-    'ไป','มา','กลับ','ออก','เข้า','ขึ้น','ลง','เดิน','นาน','เร็ว','ช้า',
-    'กิน','ดื่ม','นอน','พูด','ฟัง','ดู','รู้','รู้สึก','คิด','เห็น','เจอ',
-    'บ้าน','รถ','ถนน','น้ำ','ข้าว','ร้าน','วิธี','แบบ','สี','ขนาด',
-    'ขอ','โปรด','สวัสดี','ขอบคุณ','ไม่เป็นไร','โอเค','ใช่','เปล่า','ได้เลย',
+    'ยังไง','อย่างไร','ที่ไหน','ไหน','อย่าง','แบบ','ของผม','ของคุณ',
+    'ตอน','วัน','เวลา','ตอนนี้','วันนี้','ที่นี่','ตรงนี้','ข้างๆ',
+    'ไป','มา','กลับ','ออก','เข้า','ขึ้น','ลง',
+    
+    'แบบ',
+    'ใช่','เปล่า','ได้เลย',
     // Extended ALWAYS_OK (v180-v182)
-    'ตลาด','โรงเรียน','ถนน','สนาม','ห้อง','ชาย','หญิง','ทั้งหมด','ทั้งนั้น','อีก',
-    'ยก','ยืด','วาง','นั่ง','ยืน','วิ่ง','ขับ','ขี่','ตัด','แก้','ซ่อม','ล้าง',
+    'ทั้งหมด','ทั้งนั้น','อีก',
+    'ขี่','ตัด','แก้','ซ่อม','ล้าง',
     'พบ','หา','เอา','ส่ง','รับ','โทร','เปิด','ปิด','ใส่',
     'จริง','จริงๆ','จริงจัง','สามารถ','ทันที','ง่าย','ยาก',
     'ทุกคน','ทุกอย่าง','ทุกที่','บางคน','บางอย่าง','บางที','บางส่วน',
     'สิ่ง','สิ่งของ','แบบ','ชนิด','ประเภท',
-    'เรื่อง','ปัญหา','วิธี','กฎ','กติกา','คำ','ภาษา','บท','บทเรียน',
+    'เรื่อง','ปัญหา','กฎ','กติกา','คำ','ภาษา','บท','บทเรียน',
     'เหตุการณ์','สถานการณ์','ข่าว','ข้อมูล','ข้อเสนอ','โอกาส',
     'สถานที่','สถานี','โรงพยาบาล','ร้านอาหาร','ห้างสรรพสินค้า',
     'งาน','รายงาน','เอกสาร','รายการ','ผล','ผลลัพธ์','ความ','การ',
@@ -8281,7 +8439,33 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
     // ── Unknown vocab check (strict early passes only — the session vocab set is narrow,
     //    so running this on every tier false-positives on good sentences) ──
-    if (strict && knownThaiWords.size > 0) {
+    // The closed-vocabulary check must ALWAYS run. It was behind `strict`, and
+  // generation calls validateSmartPairs with strict=false — so in practice the gate
+  // never ran during generation at all. That is how 26 untaught words reached the
+  // 11 Sept track.
+  // PRECISE CLOSED-VOCABULARY CHECK. Requiring full character coverage was too
+  // blunt once the allowed set shrank from the whole dictionary — it rejected legal
+  // sentences over uncoverable fragments. Instead: find DICTIONARY WORDS present in
+  // the sentence that the learner has not been taught, and name them.
+  if (knownThaiWords.size > 0) {
+      const dictWords = vocab.map(w => w.t || w.thai).filter(w => w && w.length >= 2)
+        .sort((a, b) => b.length - a.length)
+      const allowedNow = new Set([...knownThaiWords, ...alwaysOk])
+      if (target && (target.thai || target.t)) allowedNow.add(target.thai || target.t)
+      const offenders = []
+      let scan = 0
+      while (scan < p.thai.length) {
+        const hit = dictWords.find(w => p.thai.startsWith(w, scan))
+        if (hit) { if (!allowedNow.has(hit)) offenders.push(hit); scan += hit.length }
+        else scan++
+      }
+      if (offenders.length) {
+        failures.push('untaught vocabulary: ' + [...new Set(offenders)].join(' ') + ' in: ' + p.thai)
+        continue
+      }
+  }
+  if (false) {
+      // legacy full-coverage path, disabled
       // Find Thai substrings not covered by known words or always-ok words
       let remaining = p.thai
       // Strip known words WHOLE-WORD only (sort longest first to avoid substring false-positives)
@@ -8406,6 +8590,18 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
       if (suan.applies && !suan.satisfied)
         gramFail = 'ส่วน+person needs a preceding contrast clause: ' + p.thai
     }
+      // Named QC checks (§1-5). The precise failure code goes to the repair prompt,
+      // so it fixes the real problem instead of polishing the surface. Fail-closed:
+      // a check that throws rejects the pair.
+      if (!gramFail) {
+        try {
+          const _lex = buildThaiPhoneticLexicon(vocab)
+          const _allowed = new Set(vocab.filter(w => hasBeenIntroduced(w)).map(w => w.thai || w.t))
+          if (target && (target.thai || target.t)) _allowed.add(target.thai || target.t)
+          const _res = runThaiQcChecks(p, { allowedSet: _allowed, lex: _lex, vocab, target })
+          if (!_res.ok) gramFail = _res.summary + ': ' + p.thai
+        } catch (e) { gramFail = 'QC check errored: ' + (e.message || e) }
+      }
     // 10. สะสาง wrong domain
     if (!gramFail && p.thai.includes('สะสาง') && /ผิว|สิว|หน้า/.test(p.thai))
       gramFail = 'สะสาง wrong domain (admin/tasks only, not skin): ' + p.thai
@@ -8488,7 +8684,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const lenRes = getSentenceLengthForVocab(vocab) || {}
   const sentMin = Math.max(4, lenRes.goalMin || 5)
   const sentMax = lenRes.goalMax || 8
-  const knownWords = vocab.filter(w => (w.repCount || w.r || 0) >= 1)
+  // Prompt examples must come from words the learner has ACTUALLY been introduced
+  // to. repCount is bank metadata and was listing never-taught words as "known".
+  const knownWords = vocab.filter(w => hasBeenIntroduced(w))
     .sort((a,b) => ((b.repCount||b.r)||0) - ((a.repCount||a.r)||0))
     .slice(0, 20).map(w => (w.thai||w.t) + '(' + (w.english||w.e) + ')').join(', ')
   // Skip numbers for words that don't naturally take numbers
@@ -8975,7 +9173,15 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
               return { p, e: isQM ? '?' : (PV[key] || PG[key] || '') }
             })
           }
-          return { ...l, _source: tierOf(l), words }
+          // Canonical phonetics win. The model's romanisation is only kept where no
+          // dictionary/function mapping exists for that token.
+          let phon = l.phonetic
+          try {
+            const lex = buildThaiPhoneticLexicon(vocab)
+            const comp = composeThaiPhonetic(l.thai, lex)
+            if (comp.phonetic && comp.unresolved === 0) phon = comp.phonetic
+          } catch (e) { /* fall back to the model's line */ }
+          return { ...l, phonetic: phon, _source: tierOf(l), words }
         })
       onProgress && onProgress(-1, -1, { apiError: '✅ ' + CHECK_NAMES[attempt] + ' check passed: ' + target.thai }, null, null)
       return result
@@ -9269,12 +9475,21 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     const valid = []
     const failures = []
 
-    // Build known vocab set - include ALL vocab words (target words may not have repCount yet)
+    // CLOSED VOCABULARY. This inner copy shadows the outer validateSmartPairs and is
+    // the one generation actually runs. It admitted the ENTIRE dictionary, and its
+    // alwaysOk list additionally hardcoded content words (ตลาด, โรงเรียน, กิน …)
+    // as universally legal. Between them, nothing was ever gated.
+    const _trackTargets = new Set()
+    if (target) _trackTargets.add(target.thai || target.t)
+    ;(Array.isArray(target && target._trackTargets) ? target._trackTargets : [])
+      .forEach(w => _trackTargets.add((w && (w.thai || w.t)) || w))
     const knownThaiWords = new Set(
       vocab
+        .filter(w => hasBeenIntroduced(w) || _trackTargets.has(w.t || w.thai))
         .map(w => w.t || w.thai)
         .filter(Boolean)
     )
+    _trackTargets.forEach(t => { if (t) knownThaiWords.add(t) })
     // Always allow basic grammar/particles (these are universal Thai building blocks)
     const alwaysOk = new Set([
       'ผม','คุณ','เขา','เรา','พวกเรา','มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ',
@@ -9282,20 +9497,21 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       'มาก','น้อย','ดี','ใหญ่','เล็ก','นี่','นั่น','อยาก','ต้อง','ช่วย','หน่อย','บาง',
       'หลาย','กำลัง','ยัง','เคย','เพิ่ง','เพิ่งจะ','ทุก','ทั้ง','แค่','เลย','สิ','นะ',
       'ด้วย','ก็ได้','เท่า','กี่','เมื่อ','เมื่อไหร่','เท่าไหร่','อะไร','ใคร','ทำไม',
-      'ยังไง','อย่างไร','ที่ไหน','ไหน','อย่าง','แบบ','ราคา','ของผม','ของคุณ',
-      'ตอน','วัน','เวลา','ตอนนี้','วันนี้','ที่นี่','ตรงนี้','ข้างๆ','ใกล้','ไกล',
-      'ไป','มา','กลับ','ออก','เข้า','ขึ้น','ลง','เดิน','นาน','เร็ว','ช้า',
-      'กิน','ดื่ม','นอน','พูด','ฟัง','ดู','รู้','รู้สึก','คิด','เห็น','เจอ',
-      'บ้าน','รถ','ถนน','น้ำ','ข้าว','ร้าน','วิธี','แบบ','สี','ขนาด',
+      'ยังไง','อย่างไร','ที่ไหน','ไหน','อย่าง','แบบ','ของผม','ของคุณ',
+      'ตอน','วัน','เวลา','ตอนนี้','วันนี้','ที่นี่','ตรงนี้','ข้างๆ',
+      'ไป','มา','กลับ','ออก','เข้า','ขึ้น','ลง','เร็ว','ช้า',
+      'รู้','คิด','เห็น',
+      'แบบ',
       'ขอ','โปรด','สวัสดี','ขอบคุณ','ไม่เป็นไร','โอเค','ใช่','เปล่า','ได้เลย',
-      // Extended ALWAYS_OK (v180-v182)
-      'ตลาด','โรงเรียน','ถนน','สนาม','ห้อง','ชาย','หญิง','ทั้งหมด','ทั้งนั้น','อีก',
-      'ยก','ยืด','วาง','นั่ง','ยืน','วิ่ง','ขับ','ขี่','ตัด','แก้','ซ่อม','ล้าง',
+      // Content words were removed from this list — they must be earned through
+      // introduction or selected as track targets, not granted universally.
+      'ทั้งหมด','ทั้งนั้น','อีก',
+      'ขี่','ตัด','แก้','ซ่อม','ล้าง',
       'พบ','หา','เอา','ส่ง','รับ','โทร','เปิด','ปิด','ใส่',
       'จริง','จริงๆ','จริงจัง','สามารถ','ทันที','ง่าย','ยาก',
       'ทุกคน','ทุกอย่าง','ทุกที่','บางคน','บางอย่าง','บางที','บางส่วน',
       'สิ่ง','สิ่งของ','แบบ','ชนิด','ประเภท',
-      'เรื่อง','ปัญหา','วิธี','กฎ','กติกา','คำ','ภาษา','บท','บทเรียน',
+      'เรื่อง','ปัญหา','กฎ','กติกา','คำ','ภาษา','บท','บทเรียน',
       'เหตุการณ์','สถานการณ์','ข่าว','ข้อมูล','ข้อเสนอ','โอกาส',
       'สถานที่','สถานี','โรงพยาบาล','ร้านอาหาร','ห้างสรรพสินค้า',
       'งาน','รายงาน','เอกสาร','รายการ','ผล','ผลลัพธ์','ความ','การ',
@@ -9331,7 +9547,30 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
       // ── Unknown vocab check (strict early passes only — the session vocab set is narrow,
       //    so running this on every tier false-positives on good sentences) ──
-      if (strict && knownThaiWords.size > 0) {
+      // The closed-vocabulary check must ALWAYS run. It was behind `strict`, and
+  // generation calls validateSmartPairs with strict=false — so in practice the gate
+  // never ran during generation at all. That is how 26 untaught words reached the
+  // 11 Sept track.
+  if (knownThaiWords.size > 0) {
+        // PRECISE GATE: name any dictionary word in the sentence the learner has
+        // not been taught, rather than demanding full character coverage.
+        {
+          const dictWords = vocab.map(w => w.t || w.thai).filter(w => w && w.length >= 2)
+            .sort((a, b) => b.length - a.length)
+          const allowedNow = new Set([...knownThaiWords, ...alwaysOk])
+          if (target && (target.thai || target.t)) allowedNow.add(target.thai || target.t)
+          const offenders = []
+          let scan = 0
+          while (scan < p.thai.length) {
+            const hit = dictWords.find(w => p.thai.startsWith(w, scan))
+            if (hit) { if (!allowedNow.has(hit)) offenders.push(hit); scan += hit.length }
+            else scan++
+          }
+          if (offenders.length) {
+            failures.push('untaught vocabulary: ' + [...new Set(offenders)].join(' ') + ' in: ' + p.thai)
+            continue
+          }
+        }
         // Find Thai substrings not covered by known words or always-ok words
         let remaining = p.thai
         // Strip known words WHOLE-WORD only (sort longest first to avoid substring false-positives)
@@ -9456,6 +9695,18 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         if (suan.applies && !suan.satisfied)
           gramFail = 'ส่วน+person needs a preceding contrast clause: ' + p.thai
       }
+        // Named QC checks (§1-5). The precise failure code goes to the repair prompt,
+        // so it fixes the real problem instead of polishing the surface. Fail-closed:
+        // a check that throws rejects the pair.
+        if (!gramFail) {
+          try {
+            const _lex = buildThaiPhoneticLexicon(vocab)
+            const _allowed = new Set(vocab.filter(w => hasBeenIntroduced(w)).map(w => w.thai || w.t))
+            if (target && (target.thai || target.t)) _allowed.add(target.thai || target.t)
+            const _res = runThaiQcChecks(p, { allowedSet: _allowed, lex: _lex, vocab, target })
+            if (!_res.ok) gramFail = _res.summary + ': ' + p.thai
+          } catch (e) { gramFail = 'QC check errored: ' + (e.message || e) }
+        }
       // 10. สะสาง wrong domain
       if (!gramFail && p.thai.includes('สะสาง') && /ผิว|สิว|หน้า/.test(p.thai))
         gramFail = 'สะสาง wrong domain (admin/tasks only, not skin): ' + p.thai
@@ -9961,6 +10212,33 @@ async function generateConvoWithOpenRouter(targets, vocab, apiKey, model) {
 }
 
 // ── Pre-track Conversation Player ────────────────────────────────────────────
+// ── TTS text resolution ─────────────────────────────────────────────────────
+// TTS was handed the raw script (line.thai / w.thai). For Japanese that means the
+// engine re-interprets kanji and guesses a reading: standalone 家 (house, stored as
+// いえ) can be voiced か. The engine must never guess \u2014 speak the RESOLVED reading
+// the learner is shown.
+function ttsTextForPair(pair) {
+  if (!pair) return ''
+  // Japanese: the kana reading is authoritative.
+  if (pair.japanese) {
+    const rd = (pair.reading || '').trim()
+    if (rd && !/[\u4E00-\u9FFF]/.test(rd) && !/[\/\uFF5C|]/.test(rd)) return rd
+    return pair.japanese
+  }
+  // Mandarin and Thai are read from their own script.
+  return pair.chinese || pair.thai || ''
+}
+// Word-level TTS. A vocabulary entry carries its own reading; use it.
+function ttsTextForWord(w) {
+  if (!w) return ''
+  if (w.japanese) {
+    const rd = (w.reading || '').trim()
+    if (rd && !/[\u4E00-\u9FFF]/.test(rd) && !/[\/\uFF5C|]/.test(rd)) return rd
+    return w.japanese
+  }
+  return w.chinese || w.thai || ''
+}
+
 function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey }) {
   const [lineIdx, setLineIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -10012,7 +10290,7 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey })
       // ── Browser TTS fallback (Edge: th-TH-NiwatNeural / th-TH-PremwadeeNeural) ──
       if (!HAS_SPEECH) { setTimeout(() => { if (!cancelRef.current) setLineIdx(i => i + 1) }, 1200); return }
       try { window.speechSynthesis.cancel() } catch(e) {}
-      const u = new SpeechSynthesisUtterance(line.thai)
+      const u = new SpeechSynthesisUtterance(ttsTextForPair(line))
       u.lang = 'th-TH'
       u.rate = speedRef.current || 0.8
       u.pitch = 1
@@ -10340,7 +10618,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             try {
               // Always use Gemini for scene — fast, reliable, no rate limit issues
               const key2 = orKey || apiKey
-              const sd = await establishConvoScene(activeTargets, vocab, key2, 'google/gemini-2.5-flash-lite')
+              activeTargets.forEach(t => { t._trackTargets = activeTargets })
+    const sd = await establishConvoScene(activeTargets, vocab, key2, 'google/gemini-2.5-flash-lite')
               sceneDataRef.current = sd
               setSceneData(sd)
             } catch(e) { sceneDataRef.current = { scene:'Two friends at a market.', characterA:'Somchai', characterB:'Nida', opening:'สวัสดีครับ' } }
@@ -11578,7 +11857,7 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phon
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className="thai" style={{ fontSize: 20, color: 'var(--text)' }}>{w.thai}</span>
                   <Badge status={w.status} />
-                  <button onClick={e => { e.stopPropagation(); const u = new SpeechSynthesisUtterance(w.thai); u.lang='th-TH'; u.rate=0.8; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u) }}
+                  <button onClick={e => { e.stopPropagation(); const u = new SpeechSynthesisUtterance(ttsTextForWord(w)); u.lang='th-TH'; u.rate=0.8; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u) }}
                     style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, padding:'0 2px', color:'var(--muted)', lineHeight:1 }} title="Speak">🔊</button>
                   {w.status !== 'known' && (
                     <button onClick={e => { e.stopPropagation(); onVocabUpdate && onVocabUpdate(vocab.map(v => v.id===w.id ? markWordKnown(v) : v)) }}
@@ -13245,7 +13524,7 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
 
   // Build vocab constraint string
   const knownWords = vocab
-    ? vocab.filter(w => (w.repCount || w.r || 0) >= 1)
+    ? vocab.filter(w => hasBeenIntroduced(w))
         .sort((a, b) => ((b.repCount||b.r)||0) - ((a.repCount||a.r)||0))
         .slice(0, 30).map(w => (w.thai||w.t) + '(' + (w.english||w.e) + ')').join(', ')
     : ''
@@ -15218,6 +15497,9 @@ const JA_SEMANTIC_CLASS = {
   '\u51FA\u308B':{ cls:'motion', takes:['destination','time'], rejects:['what'] },
   // transitive verbs take a THING
   // \u4F1A\u3046 takes a PERSON marked with \u306B (\u8AB0\u306B\u4F1A\u3046), never a bare \u4F55.
+  // 住む / 働く take a LOCATION marked with に: 東京に住む, never 何住む.
+  '\u4F4F\u3080':{ cls:'locative', takes:['destination'], rejects:['what','who','thing'] },
+  '\u50CD\u304F':{ cls:'locative', takes:['destination','time'], rejects:['what','thing'] },
   '\u4F1A\u3046':{ cls:'meet',      takes:['who','time'], rejects:['what'] },
   // \u5F85\u3064 takes a person or thing marked with \u3092; \u4F55\u5F85\u3064 without a particle is not Japanese.
   '\u5F85\u3064':{ cls:'await',     takes:['who','time'], rejects:['what'] },
@@ -15243,6 +15525,11 @@ const JA_SEMANTIC_CLASS = {
 }
 // Interrogative words. They cannot be asserted with \u3060\u3088, and cannot sit bare
 // before a verb \u2014 \u8AB0\u884C\u304F\uFF1F is not Japanese (\u8AB0\u304C\u884C\u304F\uFF1F / \u8AB0\u3068\u884C\u304F\uFF1F are).
+// Nouns that can precede a motion verb without a particle in casual speech.
+// Anything else (日本語, 水, 名前, 仕事 …) cannot: 日本語行く is not Japanese.
+const JA_PLACE_NOUNS = ['\u3069\u3053','\u5bb6','\u99c5','\u5e97','\u5b66\u6821','\u4f1a\u793e','\u30c8\u30a4\u30ec','\u75c5\u9662','\u516c\u5712','\u6771\u4eac','\u65e5\u672c','\u3053\u3053','\u305d\u3053','\u3042\u305d\u3053','\u5916','\u4e0a','\u4e0b','\u4e2d']
+// i-adjectives never take \u3060: \u304a\u3044\u3057\u3044\u3060\u3088 is wrong, \u304a\u3044\u3057\u3044\u3088 is right.
+const JA_I_ADJECTIVES = ['\u304a\u3044\u3057\u3044','\u9ad8\u3044','\u5b89\u3044','\u5927\u304d\u3044','\u5c0f\u3055\u3044','\u8fd1\u3044','\u9060\u3044','\u3044\u3044','\u697d\u3057\u3044','\u65b0\u3057\u3044','\u6b32\u3057\u3044','\u591a\u3044','\u5c11\u306a\u3044','\u65e9\u3044','\u9045\u3044']
 const JA_INTERROGATIVES = ['\u4F55','\u8AB0','\u3044\u3064','\u3069\u3053','\u4F55\u6642','\u3044\u304F\u3089','\u3069\u3046','\u306A\u305C','\u3069\u308C','\u3069\u3061\u3089']
 function jaIsInterrogative(w) { return JA_INTERROGATIVES.includes(w) }
 const JA_ROLE = {
@@ -15297,7 +15584,20 @@ function validateJapaneseUsage(pair, inv) {
   // adjacent argument+head licensing
   for (let i = 0; i < words.length - 1; i++) {
     const a = words[i], b = words[i + 1]
-    if (jaSemanticClass(b) && jaRoleOf(a) && !jaFrameAllows(b, a)) {
+    // FAIL CLOSED. This used to require BOTH lookups to succeed before checking
+    // anything, so any verb outside the 25-entry table or noun outside the 19-entry
+    // table skipped the check entirely — which is how 日本語行く？ and 水行く？ passed.
+    // A motion verb now rejects ANY preceding bare noun that is not a place.
+    // A motion verb after a bare non-place noun is wrong regardless of whether the
+    // noun is in JA_ROLE. Deferring to jaFrameAllows here was the fail-open path:
+    // it returns true for unknown roles, so 日本語行く？ and 水行く？ sailed through.
+    if ((jaSemanticClass(b) || {}).cls === 'motion' && !JA_PLACE_NOUNS.includes(a) && !/[\u3040-\u309F]$/.test(a)) {
+      problems.push('"' + a + '" is not a destination \u2014 "' + a + b + '" needs a particle or a place')
+    } else if (jaSemanticClass(b) && jaRoleOf(a) && !jaFrameAllows(b, a)) {
+    // Locative verbs need a place with に. 何住む？/ 日本語働く？ are not Japanese.
+    if ((jaSemanticClass(b) || {}).cls === 'locative' && !JA_PLACE_NOUNS.includes(a) && !/[\u3040-\u309F]$/.test(a)) {
+      problems.push('"' + b + '" needs a place with \u306B (\u6771\u4EAC\u306B' + b + '), not a bare "' + a + '"')
+    }
       problems.push('"' + a + '" cannot be the argument of "' + b + '" \u2014 ' +
         (jaSemanticClass(b).cls === 'motion' ? 'a motion verb needs a destination, not "what"' : 'invalid combination'))
     }
@@ -15313,6 +15613,12 @@ function validateJapaneseUsage(pair, inv) {
     if (nonPast && !hasPast)
       problems.push('past time reference needs a past-tense verb (\u6628\u65E5\u5E30\u3063\u305F, not \u6628\u65E5\u5E30\u308B)')
   }
+  // い-adjectives never take だ. おいしいだよ。/ 高いだよ。 are not Japanese;
+  // おいしいよ。 / 高いよ。 are. No rule covered this at all before.
+  JA_I_ADJECTIVES.forEach(adj => {
+    if (new RegExp(adj + '\\u3060').test(pair.japanese || ''))
+      problems.push('"' + adj + '" is an i-adjective and cannot take \u3060 \u2014 use "' + adj + '\u3088"')
+  })
   // An interrogative cannot be ASSERTED. 誰だよ。/ いつだよ。/ 何時だよ。are not
   // statements — they are question words being declared as facts.
   const jp0 = pair.japanese || ''
@@ -15750,6 +16056,13 @@ function japaneseQcEngine(inv, vocab, registerId) {
       if (!cv.ok) return { ok:false, problems:['untaught vocabulary: ' + cv.unknown.join(' ')] }
       const st = structuralValidateJapanesePair(pair)
       if (!st.ok) return { ok:false, problems: st.problems }
+      // FULL GATE, fail-closed. Target + allowed vocab + structure is NOT enough:
+      // that combination accepted 日本語行く？, 水行く？ and おいしいだよ。 Repair is
+      // atomic — reading, romaji and segments are rebuilt from the final Japanese
+      // and the whole gate re-runs. A validator that throws rejects the pair.
+      const fin = finaliseJapanesePair(pair, inv, { allowedGrammarIds: inv.allowedGrammarIds })
+      if (!fin.ok) return { ok:false, problems: fin.problems }
+      Object.assign(pair, fin.pair)
       return { ok:true, problems:[] }
     },
   }
@@ -16827,7 +17140,7 @@ function MandarinLearnWords({ words, gcpTtsKey, onDone, onBack }) {
         return
       }
       if (typeof SpeechSynthesisUtterance === 'undefined' || !window.speechSynthesis) { done(); return }
-      const u = new SpeechSynthesisUtterance(w.chinese)   // Hanzi
+      const u = new SpeechSynthesisUtterance(ttsTextForWord(w))   // Hanzi
       u.lang = 'zh-CN'
       u.rate = 0.85
       const voice = pickBrowserVoice('zh')
@@ -18474,6 +18787,97 @@ function jaEscalationInstruction(tier, target, inv, rules) {
 
 // §8 — deterministic salvage. When the model cannot produce a valid line, build one
 // from language the learner demonstrably has. Never invents vocabulary.
+// ── Japanese full acceptance gate ───────────────────────────────────────────
+// Every path that produces or repairs a Japanese pair must clear this. Previously
+// only generateJapaneseOneRecall and jaFallbackRecall called the usage validator,
+// so QC, retryMissingRecall and aiQcRegenerateGroup accepted repaired pairs on
+// structure alone. It is also FAIL-CLOSED: a validator that throws rejects.
+// ── Declared grammar inventory gate ─────────────────────────────────────────
+// A track declares its Building Blocks (e.g. は, か). The 11 Sept export declared
+// exactly those two and then used だ in 18 pairs, よ in 18, ね in 3, に, から and も.
+// Nothing enforced the declaration, so fallback and QC repair introduced grammar
+// the learner had never been taught.
+const JA_GRAMMAR_MARKERS = [
+  { form:'\u3060\u3088', id:'da-yo' }, { form:'\u3093\u3060', id:'nda' },
+  { form:'\u3060', id:'da' },   { form:'\u3067\u3059', id:'desu' },
+  { form:'\u3088', id:'yo' },   { form:'\u306d', id:'ne' },
+  { form:'\u306b', id:'ni' },   { form:'\u3067', id:'de' },
+  { form:'\u3092', id:'wo' },   { form:'\u304c', id:'ga' },
+  { form:'\u304b\u3089', id:'kara' }, { form:'\u307e\u3067', id:'made' },
+  { form:'\u3082', id:'mo' },   { form:'\u306f', id:'wa' },
+  { form:'\u304b', id:'ka' },   { form:'\u306e', id:'no' },
+  { form:'\u3068', id:'to' },
+]
+// Returns the grammar ids a sentence actually uses.
+function japaneseGrammarUsed(japanese) {
+  const s = String(japanese || '')
+  const used = new Set()
+  let rest = s
+  JA_GRAMMAR_MARKERS.forEach(m => {
+    if (rest.includes(m.form)) { used.add(m.id); rest = rest.split(m.form).join('') }
+  })
+  if (/[\u3066\u3067](\u308b|\u305f|\u308b\u3088)?/.test(s) && /[\u4e00-\u9fff\u3040-\u309f]\u3066/.test(s)) used.add('te-form')
+  if (/\u305f[\uff1f\u3002]?$/.test(s)) used.add('past')
+  return [...used]
+}
+// Every grammar element must resolve to something the track declared.
+function validateJapaneseGrammarInventory(pair, allowedIds) {
+  const allowed = new Set(allowedIds || [])
+  if (!allowed.size) return { ok: true, problems: [] }   // nothing declared: no gate
+  const used = japaneseGrammarUsed(pair && pair.japanese)
+  const bad = used.filter(id => !allowed.has(id))
+  return bad.length
+    ? { ok: false, problems: bad.map(id => 'grammar "' + id + '" is not in this track\u2019s declared Building Blocks') }
+    : { ok: true, problems: [] }
+}
+
+function japaneseAcceptanceGate(pair, inv, opts) {
+  const o = opts || {}
+  const problems = []
+  try {
+    if (!pair || !(pair.japanese || '').trim()) return { ok: false, problems: ['no Japanese'] }
+    // 1. grammar/morphology + declared inventory
+    try {
+      const g = validateJapaneseGrammarClosure(pair, inv, o.allowedGrammarIds)
+      if (g && !g.ok) problems.push(...(g.problems || ['grammar closure failed']))
+    } catch (e) { problems.push('grammar check errored: ' + (e.message || e)) }
+    // 1b. declared grammar inventory — fallback and QC may not introduce new grammar
+    try {
+      const gi = validateJapaneseGrammarInventory(pair, o.declaredGrammarIds)
+      if (gi && !gi.ok) problems.push(...gi.problems)
+    } catch (e) { problems.push('grammar inventory check errored: ' + (e.message || e)) }
+    // 2. usage / valency / semantic sense
+    try {
+      const u = validateJapaneseUsage(pair, inv)
+      if (u && !u.ok) problems.push(...(u.problems || ['usage failed']))
+    } catch (e) { problems.push('usage check errored: ' + (e.message || e)) }
+    // 3. contextual reading \u2014 no dictionary alternatives
+    try {
+      const c = validateJapaneseContextualReading(pair)
+      if (c && !c.ok) problems.push(...(c.problems || ['reading failed']))
+    } catch (e) { problems.push('reading check errored: ' + (e.message || e)) }
+    // 4. reading/romaji script purity
+    try {
+      const r = validateJapaneseReadingOutput(pair)
+      if (r && !r.ok) problems.push(...(r.problems || ['reading output failed']))
+    } catch (e) { problems.push('reading output check errored: ' + (e.message || e)) }
+    // 5. meaning present and cue aligned
+    if (!(pair.english || '').trim()) problems.push('no English meaning')
+    if (!(pair.prompt || '').trim()) problems.push('no cue')
+  } catch (e) {
+    return { ok: false, problems: ['acceptance gate errored: ' + (e.message || e)] }
+  }
+  return { ok: problems.length === 0, problems }
+}
+// Atomic repair: fix the Japanese FIRST, then rebuild everything derived from it,
+// then re-run the whole gate. Never polish a bad sentence's surface.
+function finaliseJapanesePair(pair, inv, opts) {
+  let p = { ...pair }
+  try { p = rebuildJapaneseReadingPipeline(p, inv) } catch (e) { /* keep original */ }
+  const gate = japaneseAcceptanceGate(p, inv, opts)
+  return { pair: p, ...gate }
+}
+
 function jaFallbackRecall(target, inv, recallIndex) {
   const t = target.japanese
   // §10 — a cue must read as English, not as a dictionary line. "like / liked"

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v571"/>
+<meta name="app-version" content="v575"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v571';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v571').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v575';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v575').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6585,6 +6585,7 @@ function validatePairs(pairs, vocab) {
   // a generated sentence — that let 26 never-taught words into 28 of 94 pairs.
   // Allowed = genuinely introduced + this track's deliberate targets + approved
   // grammar/function words. Nothing else.
+  // Track-wide: introduced + ALL track targets + approved function words.
   const introducedSet = new Set(vocab.filter(w => hasBeenIntroduced(w)).map(w => w.thai))
   const targetSet = new Set((allowedTargets || []).map(w => (w && (w.thai || w.t)) || w).filter(Boolean))
   const allAllowed = new Set([...ALWAYS_ALLOWED, ...introducedSet, ...targetSet])
@@ -7986,6 +7987,53 @@ const THAI_NUMBER_TARGETS = new Set([
   '\u0e42\u0e21\u0e07','\u0e17\u0e38\u0e48\u0e21','\u0e15\u0e35','\u0e40\u0e17\u0e35\u0e48\u0e22\u0e07','\u0e40\u0e17\u0e35\u0e48\u0e22\u0e07\u0e04\u0e37\u0e19','\u0e19\u0e32\u0e17\u0e35','\u0e0a\u0e31\u0e48\u0e27\u0e42\u0e21\u0e07','\u0e19\u0e32\u0e2c\u0e34\u0e01\u0e32','\u0e01\u0e35\u0e48\u0e42\u0e21\u0e07',
   '\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48','\u0e04\u0e23\u0e31\u0e49\u0e07','\u0e0a\u0e34\u0e49\u0e19','\u0e04\u0e39\u0e48','\u0e01\u0e34\u0e42\u0e25','\u0e23\u0e32\u0e04\u0e32','\u0e1a\u0e32\u0e17','\u0e2d\u0e32\u0e22\u0e38','\u0e40\u0e14\u0e37\u0e2d\u0e19','\u0e1b\u0e35','\u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c',
 ])
+// ── Lightweight usage frames ────────────────────────────────────────────────
+// GUIDANCE for generation, not another validator. Gives the model the intended
+// sense plus 2-4 natural patterns so attempt 1 succeeds more often.
+const THAI_USAGE_FRAMES = {
+  '\u0e43\u0e2b\u0e49': { sense:'give / let / for',
+    frames:['\u0e43\u0e2b\u0e49 + thing + recipient','\u0e43\u0e2b\u0e49 + person + verb','\u0e02\u0e2d\u0e07\u0e43\u0e2b\u0e49 + person'],
+    avoid:'incomplete "\u0e43\u0e2b\u0e49 + person" when the English requires an object being given' },
+  '\u0e44\u0e21\u0e48\u0e44\u0e14\u0e49': { sense:"can't / didn't",
+    frames:['verb + \u0e44\u0e21\u0e48\u0e44\u0e14\u0e49','\u0e44\u0e21\u0e48\u0e44\u0e14\u0e49 + verb where natural'],
+    avoid:'mixing the two senses \u2014 make sure the sense matches the English' },
+  '\u0e43\u0e19': { sense:'in / inside',
+    frames:['physical location','inside a place or object'],
+    avoid:'using it for "for my birthday" \u2014 that needs a different structure' },
+  '\u0e40\u0e2d\u0e32': { sense:'take / choose / get',
+    frames:['\u0e40\u0e2d\u0e32 + thing','\u0e40\u0e2d\u0e32 + thing + \u0e44\u0e1b/\u0e21\u0e32'],
+    avoid:'forcing a "give" meaning unless the context supports it' },
+  '\u0e1e\u0e31\u0e19': { sense:'thousand (number)',
+    frames:['quantity + \u0e1e\u0e31\u0e19 + classifier','\u0e2b\u0e25\u0e32\u0e22\u0e1e\u0e31\u0e19\u0e04\u0e19','\u0e1e\u0e31\u0e19\u0e1a\u0e32\u0e17'],
+    avoid:'absurd durations such as sleeping for a thousand hours' },
+  '\u0e40\u0e02\u0e49\u0e32': { sense:'enter / go in',
+    frames:['person + \u0e40\u0e02\u0e49\u0e32 + place','\u0e40\u0e02\u0e49\u0e32\u0e07\u0e32\u0e19','\u0e40\u0e02\u0e49\u0e32\u0e1a\u0e49\u0e32\u0e19'],
+    avoid:'an inanimate event itself "entering" something' },
+  '\u0e1a\u0e32\u0e07\u0e17\u0e35': { sense:'sometimes / maybe',
+    frames:['sentence-initial adverb','\u0e1a\u0e32\u0e07\u0e17\u0e35 + clause'],
+    avoid:'awkward placement mid-clause' },
+  '\u0e28\u0e39\u0e19\u0e22\u0e4c': { sense:'zero (the number)',
+    frames:['\u0e28\u0e39\u0e19\u0e22\u0e4c\u0e1a\u0e32\u0e17','number reading: \u0e28\u0e39\u0e19\u0e22\u0e4c'],
+    avoid:'compounds like \u0e28\u0e39\u0e19\u0e22\u0e4c\u0e40\u0e21\u0e37\u0e2d\u0e07 \u2014 this is the digit, not "centre"' },
+  '\u0e42\u0e21\u0e07': { sense:"o'clock marker",
+    frames:['number + \u0e42\u0e21\u0e07','\u0e2a\u0e32\u0e21\u0e42\u0e21\u0e07'],
+    avoid:'using it without a number' },
+  '\u0e17\u0e31\u0e19': { sense:'in time / catch up',
+    frames:['\u0e44\u0e1b\u0e17\u0e31\u0e19','\u0e21\u0e32\u0e17\u0e31\u0e19','\u0e17\u0e33\u0e17\u0e31\u0e19'],
+    avoid:'standalone use without a verb' },
+  '\u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c': { sense:'week',
+    frames:['\u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c\u0e19\u0e35\u0e49','\u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c\u0e2b\u0e19\u0e49\u0e32'],
+    avoid:'forcing a number where none is natural' },
+}
+function thaiUsageFrameLine(target) {
+  const th = target && (target.thai || target.t)
+  const f = THAI_USAGE_FRAMES[th]
+  if (!f) return ''
+  return '\n\u2022 USAGE OF "' + th + '" \u2014 sense: ' + f.sense + '\n' +
+         '  natural patterns: ' + f.frames.join(' / ') + '\n' +
+         (f.avoid ? '  avoid: ' + f.avoid + '\n' : '')
+}
+
 function exerciseRequiresNumber(target) {
   if (!target) return false
   const th = target.thai || target.t || ''
@@ -8392,16 +8440,105 @@ function thaiQcCheckMeaning(pair) {
 // line, so a natural exchange — A: ผมอยากหาของให้คุณแม่ครับ / B: ดีเลยค่ะ — failed
 // because B's reply does not repeat ให้. The target must appear ONCE in the
 // exchange, not in every utterance.
+// ── THE authoritative target-presence detector ──────────────────────────────
+// One function, used by every stage. Naturalness QC previously re-checked raw
+// presence with `l.speaker === 'A' && !t.includes(target.thai)`, which (a) bypassed
+// the lexeme matcher and (b) demanded the target in EVERY A line rather than once
+// in the exchange \u2014 so ผมจะให้คุณเห็นของที่นี่นะครับ was reported as missing ให้
+// because the track's other A line did not also contain it.
+// Final learner-facing Thai always uses normal orthography. Tokenizer output is
+// internal only \u2014 one generation path was still emitting token-spaced Thai such as
+// คุณนิดา อยาก ซื้อ อะไร พิเศษ ไหม ครับ.
+function normaliseThaiSpacing(thai) {
+  let s = String(thai || '').trim()
+  // Collapse spaces that sit between two Thai characters; keep spaces around
+  // latin text, digits and punctuation where they are meaningful.
+  s = s.replace(/([\u0e00-\u0e7f])\s+(?=[\u0e00-\u0e7f])/g, '$1')
+  return s.replace(/\s{2,}/g, ' ').trim()
+}
+
+// ── THE authoritative Thai vocabulary validator ─────────────────────────────
+// Same function, same immutable context, for checks 1-11 and every mode. The check
+// number may change generation STRATEGY; it may never change what is allowed.
+function validateThaiVocabulary(candidate, trackAllowedContext) {
+  const ctx = trackAllowedContext || {}
+  const set = ctx.allowedThaiWords || ctx.allowedSet || buildThaiAllowedSet(ctx)
+  const vocab = ctx.vocab || []
+  const lines = Array.isArray(candidate) ? candidate : [candidate]
+  const blocked = []
+  const diagnostics = []
+  lines.forEach(l => {
+    const th = (l && (l.thai || l)) || ''
+    segmentThaiWithDiagnostics(th, vocab, set).forEach(s => {
+      const tok = s.matchedSpan
+      if (isThaiOrphanFragment(tok)) return
+      const isTrackTarget = (ctx.currentTrackTargets || []).some(x => ((x && (x.thai || x.t)) || x) === tok)
+      const allowed = set.has(tok)
+      diagnostics.push({ trackAllowedSetId: ctx.trackAllowedSetId, token: tok,
+                         isCurrentTrackTarget: isTrackTarget, allowedByTrackSet: allowed,
+                         finalAllowed: allowed })
+      if (!allowed) blocked.push(tok)
+    })
+  })
+  const uniq = [...new Set(blocked)]
+  return { ok: uniq.length === 0, blocked: uniq, diagnostics,
+           trackAllowedSetId: ctx.trackAllowedSetId }
+}
+// Builds the immutable context once. assertTrackTargetsAllowed guarantees the
+// invariant the log violated.
+function buildTrackAllowedContext(vocab, trackTargets, grammarWords) {
+  const allowedThaiWords = buildThaiAllowedSet({ vocab, trackTargets, grammarWords })
+  ;(trackTargets || []).forEach(t => {
+    const th = t && (t.thai || t.t)
+    if (th && !allowedThaiWords.has(th)) {
+      allowedThaiWords.add(th)
+      console.warn('[vocab-context] track target "' + th + '" was missing \u2014 added')
+    }
+  })
+  return Object.freeze({
+    trackAllowedSetId: 'trk-' + (trackTargets || []).length + '-' + allowedThaiWords.size,
+    currentTrackTargets: trackTargets || [],
+    introducedWords: (vocab || []).filter(hasBeenIntroduced).map(w => w.thai || w.t),
+    manuallyKnownWords: (vocab || []).filter(w => w.manualKnown).map(w => w.thai || w.t),
+    grammarFunctionWords: grammarWords || [],
+    allowedThaiWords, vocab,
+  })
+}
+
+function detectTargetPresence(candidate, target) {
+  const tw = (target && (target.thai || target.t)) || ''
+  const lines = Array.isArray(candidate) ? candidate : [candidate]
+  const matchedLineIds = []
+  const matchedSpans = []
+  if (!tw) return { target: tw, found: true, matchedLineIds, matchedSpans }
+  lines.forEach((l, i) => {
+    const th = (l && (l.thai || l)) || ''
+    if (thaiContainsLexeme(th, tw)) {
+      matchedLineIds.push((l && l.speaker) ? (l.speaker + i) : String(i))
+      matchedSpans.push(tw)
+    }
+  })
+  return { target: tw, found: matchedSpans.length > 0, matchedLineIds, matchedSpans }
+}
+
 function thaiQcCheckTargetUsage(pair, target, ctx) {
   if (!target) return { ok: true, problems: [] }
   const tw = target.thai || target.t
   if (!tw) return { ok: true, problems: [] }
   // Prefer the whole exchange when the caller supplies it.
   const group = (ctx && Array.isArray(ctx.pairGroup) && ctx.pairGroup.length) ? ctx.pairGroup : [pair]
+  // Same authority as every other stage.
+  const _tp = detectTargetPresence(group, target)
   const perLine = group.map(l => ({
     speaker: l.speaker, contains: thaiContainsLexeme(l.thai || '', tw), thai: l.thai,
   }))
-  const pairContains = perLine.some(x => x.contains)
+  const pairContains = _tp.found
+  const matchedSpan = (perLine.find(x => x.contains) || {}).thai || null
+  if (ctx && ctx.onDiag) ctx.onDiag(
+    'candidateId=' + (ctx.candidateId || '?') + ' target=' + tw +
+    ' thaiBeingChecked=' + (pair.thai || '') +
+    ' matchedTargetSpan=' + (matchedSpan ? tw : 'none') +
+    ' targetPresent=' + pairContains)
   if (!pairContains) {
     const diag = perLine.map(x => 'line' + (x.speaker || '?') + 'ContainsTarget=' + x.contains).join(' ')
     return { ok: false, code: 'TARGET',
@@ -8622,7 +8759,12 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     // Basic field check
     if (!p.thai || !p.english || !p.prompt) { failures.push('missing fields'); continue }
     // Must contain target word — only A's lines, B's response doesn't need it
-    if (p.speaker !== 'B' && !thaiContainsLexeme(p.thai, target.thai)) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
+    // PAIR-LEVEL. A reply line need not repeat the target; the exchange as a whole
+    // must use it. Checking each line separately produced "target missing" on
+    // perfectly good A lines whose B reply lacked the word.
+    const _grp = Array.isArray(pairs) ? pairs : [p]
+    const _pairHasTarget = _grp.some(l => thaiContainsLexeme(l.thai || '', target.thai))
+    if (!_pairHasTarget) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
     // Must be a real Thai sentence (at least 5 Thai chars)
     const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
     if (thaiChars < 4) { failures.push('too short: ' + p.thai); continue }
@@ -8801,9 +8943,21 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
       if (!gramFail) {
         try {
           const _lex = buildThaiPhoneticLexicon(vocab)
-          const _allowed = new Set(vocab.filter(w => hasBeenIntroduced(w)).map(w => w.thai || w.t))
-          if (target && (target.thai || target.t)) _allowed.add(target.thai || target.t)
-          const _res = runThaiQcChecks(p, { allowedSet: _allowed, lex: _lex, vocab, target })
+          // Use the TRACK-WIDE frozen set. Building a local set of "introduced +
+          // current target" omitted the other 29 track targets, so ซื้อ and ให้ were
+          // untaught here but allowed in validateSmartPairs — identical Thai failed
+          // at check 5 and passed at check 6 purely by which validator ran.
+          const _allowed = (target && target._allowedSet) ||
+            buildThaiAllowedSet({ vocab, target,
+              trackTargets: Array.isArray(target && target._trackTargets) ? target._trackTargets : [] })
+          // Pass the WHOLE candidate exchange plus stable identity. Without pairGroup
+          // the target check saw only the single line it was handed, so a B reply that
+          // does not repeat the target was reported as "target missing" even though
+          // the A line visibly contained it.
+          const _res = runThaiQcChecks(p, { allowedSet: _allowed, lex: _lex, vocab, target,
+            pairGroup: Array.isArray(pairs) ? pairs : [p],
+            candidateId: (p && (p.candidateId || p.id)) || ('cand' + (pairs || []).indexOf(p)),
+            lineId: (p && p.speaker) || '?' })
           if (!_res.ok) gramFail = _res.summary + ': ' + p.thai
         } catch (e) { gramFail = 'QC check errored: ' + (e.message || e) }
       }
@@ -8924,6 +9078,158 @@ function validateThaiSpeakerParticle(thai, gender) {
     : { ok: false, detected, reason: 'female speaker must use \u0e04\u0e48\u0e30 or \u0e04\u0e30, found ' + p }
 }
 
+// ── FINAL_TRACK_QC ──────────────────────────────────────────────────────────
+// Runs after ALL generation and repair, including prompt-alignment fixes,
+// re-romanisation, segmentation and gloss filling. A pair that passed a
+// generation-stage check may have been modified since, so nothing is accepted on
+// the strength of an earlier pass. Read-only first; if a pair is repaired this
+// stage re-runs on that pair.
+//
+// It does NOT invent vocabulary restrictions \u2014 vocabulary authority stays with the
+// deterministic gate.
+// ── Final Thai language quality check ───────────────────────────────────────
+// Runs ONLY after deterministic QC has already passed. It answers exactly two
+// questions and nothing else:
+//   1. Would a native Thai speaker naturally say this?
+//   2. Does the English meaning match the Thai exactly?
+// It has NO authority over vocabulary, target presence or curriculum. Those stay
+// deterministic. It may only ask for a rewrite within the SAME allowed vocabulary.
+function buildThaiLanguageQcPrompt(pairs, allowedWords) {
+  const lines = pairs.map((p, i) =>
+    (i + 1) + '. THAI: ' + p.thai + '\n   ENGLISH: ' + (p.english || ''))
+    .join('\n')
+  return 'You are a native Thai speaker reviewing sentences for a learner app.\n\n' +
+    'For EACH numbered pair answer ONLY these two questions:\n' +
+    '  A. Would a native Thai speaker naturally say this sentence? (yes/no)\n' +
+    '  B. Does the English match the Thai exactly in meaning? (yes/no)\n\n' +
+    'Do NOT comment on which words a learner has studied. Do NOT suggest words\n' +
+    'outside this list:\n' + (allowedWords || []).slice(0, 300).join(' ') + '\n\n' +
+    'If a sentence is awkward, incomplete, or the English does not match, give a\n' +
+    'corrected Thai sentence using ONLY the words above. Prefer the smallest change.\n\n' +
+    lines + '\n\n' +
+    'Return ONLY JSON:\n' +
+    '[{"n":1,"nativeNaturalness":"pass|fail","meaningAlignment":"pass|fail",' +
+    '"reason":"short reason or empty","repairNeeded":true|false,"repairedThai":"...","repairedEnglish":"..."}]'
+}
+// Parses the reviewer's verdict into the requested diagnostic shape.
+function parseThaiLanguageQc(raw, pairs) {
+  let arr = null
+  try {
+    const m = String(raw || '').match(/\[[\s\S]*\]/)
+    arr = m ? JSON.parse(m[0]) : null
+  } catch (e) { arr = null }
+  // FAIL CLOSED. An unreadable reviewer response must not be treated as "everything
+  // is fine" — that would silently pass awkward Thai.
+  if (!Array.isArray(arr))
+    return { ok: false, verdicts: [], parseFailed: true,
+             reason: 'language QC response could not be read — treating as unreviewed' }
+  const verdicts = (pairs || []).map((p, i) => {
+    const v = arr.find(x => Number(x.n) === i + 1) || {}
+    return {
+      index: i,
+      thai: p.thai,
+      nativeNaturalness: v.nativeNaturalness === 'fail' ? 'fail' : 'pass',
+      meaningAlignment: v.meaningAlignment === 'fail' ? 'fail' : 'pass',
+      reason: v.reason || '',
+      repairNeeded: !!v.repairNeeded,
+      repairedThai: v.repairedThai || '',
+      repairedEnglish: v.repairedEnglish || '',
+    }
+  })
+  return { ok: verdicts.every(v => !v.repairNeeded), verdicts }
+}
+// A repair is only accepted if it uses the SAME allowed vocabulary. Naturalness
+// must never be bought with untaught words.
+function acceptThaiLanguageRepair(verdict, ctx) {
+  if (!verdict || !verdict.repairedThai) return { accepted: false, reason: 'no repair offered' }
+  const res = validateThaiVocabulary([{ thai: verdict.repairedThai }], ctx)
+  if (!res.ok) return { accepted: false, reason: 'repair introduced untaught words: ' + res.blocked.join(' ') }
+  return { accepted: true, thai: normaliseThaiSpacing(verdict.repairedThai),
+           english: verdict.repairedEnglish || '' }
+}
+
+function finalTrackQc(pairs, ctx) {
+  const c = ctx || {}
+  const report = []
+  ;(pairs || []).forEach((p, i) => {
+    const problems = []
+    const group = (p._group && p._group.length) ? p._group : [p]
+    try {
+      // 1. target present in the exchange
+      if (c.targetFor) {
+        const tgt = c.targetFor(p)
+        if (tgt) {
+          const r = thaiQcCheckTargetUsage(p, tgt, { pairGroup: group })
+          if (!r.ok) problems.push(...r.problems)
+        }
+      }
+      // 2. vocabulary \u2014 same authoritative set, no new restrictions
+      if (c.allowedSet) {
+        segmentThaiWithDiagnostics(p.thai || '', c.vocab, c.allowedSet).forEach(s => {
+          if (isThaiOrphanFragment(s.matchedSpan)) return
+          if (!c.allowedSet.has(s.matchedSpan)) problems.push('vocab: ' + s.matchedSpan)
+        })
+      }
+      // 5. speaker particle
+      if (p.speaker && c.genderFor) {
+        const g = c.genderFor(p.speaker)
+        const r = validateThaiSpeakerParticle(p.thai, g)
+        if (!r.ok) problems.push('particle: ' + r.reason)
+      }
+      // 6/7. cue and meaning present
+      if (!(p.english || '').trim()) problems.push('no English meaning')
+      if (!(p.prompt || '').trim()) problems.push('no cue')
+      // 9. phonetic aligns with the FINAL Thai
+      if (c.lex && (p.phonetic || '').trim()) {
+        const r = validateThaiPhoneticAlignment(p.thai, p.phonetic, c.lex)
+        if (!r.ok) problems.push(...r.problems)
+      }
+      // 10. spacing / tokenisation artifacts
+      if (/\s{2,}/.test(p.thai || '')) problems.push('double spacing in Thai')
+      if (/[\u0e00-\u0e7f]\s+[\u0e00-\u0e7f]/.test((p.thai || '').trim()))
+        problems.push('artificial word spacing in Thai')
+    } catch (e) {
+      problems.push('FINAL_TRACK_QC errored: ' + (e.message || e))   // fail closed
+    }
+    if (problems.length) report.push({ index: i, thai: p.thai, problems })
+  })
+  return { ok: report.length === 0, report }
+}
+
+// ── Generation-quality metrics ──────────────────────────────────────────────
+// Recording only. Does not change behaviour.
+function newTrackMetrics() {
+  return { firstAttemptPass: 0, passByCheck3: 0, passByCheck5: 0, neededChecks6to11: 0,
+           failedAfter11: 0, vocabFalsePositive: 0, targetFalsePositive: 0,
+           genderFalsePositive: 0, semanticRepairs: 0, promptAlignRepairs: 0, totalTargets: 0 }
+}
+function recordTargetOutcome(m, attemptsUsed, succeeded) {
+  if (!m) return
+  m.totalTargets++
+  if (!succeeded) { m.failedAfter11++; return }
+  if (attemptsUsed <= 1) m.firstAttemptPass++
+  if (attemptsUsed <= 3) m.passByCheck3++
+  if (attemptsUsed <= 5) m.passByCheck5++
+  else m.neededChecks6to11++
+}
+function formatTrackMetrics(m) {
+  if (!m || !m.totalTargets) return 'no metrics recorded'
+  const pct = n => Math.round((n / m.totalTargets) * 100) + '%'
+  return [
+    'targets            ' + m.totalTargets,
+    'passed attempt 1   ' + m.firstAttemptPass + '  (' + pct(m.firstAttemptPass) + ')',
+    'passed by check 3  ' + m.passByCheck3 + '  (' + pct(m.passByCheck3) + ')',
+    'passed by check 5  ' + m.passByCheck5 + '  (' + pct(m.passByCheck5) + ')',
+    'needed checks 6-11 ' + m.neededChecks6to11,
+    'failed after 11    ' + m.failedAfter11,
+    'vocab false-pos    ' + m.vocabFalsePositive,
+    'target false-pos   ' + m.targetFalsePositive,
+    'gender false-pos   ' + m.genderFalsePositive,
+    'semantic repairs   ' + m.semanticRepairs,
+    'prompt-align fixes ' + m.promptAlignRepairs,
+  ].join('\n  ')
+}
+
 async function generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, model, pairIndex, onProgress, runningTopic, usedSubjects) {
   const _nameA = (charA.split(',')[0] || 'A').replace(/\s*\([^)]*\)/g,'').trim()
   const _nameB = (charB.split(',')[0] || 'B').replace(/\s*\([^)]*\)/g,'').trim()
@@ -8976,6 +9282,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     // do not generate freely and clean up afterwards.
     '• ALLOWED WORDS — use ONLY these, plus the target:\n' + allowedVocabLine + '\n' +
     '• The target word for this exchange is: ' + target.thai + '\n' +
+    thaiUsageFrameLine(target) +
     '• THAI ORTHOGRAPHY: write normal continuous Thai. Thai does not put spaces\n' +
     '  between words. Do NOT space words apart, do NOT put spaces around the target,\n' +
     '  and do NOT add English-style commas. Write หาไม่ได้ครับ, never หา ไม่ได้ ครับ.\n' +
@@ -9018,6 +9325,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '{"speaker":"A","thai":"...ครับ","english":"...","prompt":"...","ok":true,"glosses":[...]}]\n' +
     'Do NOT include a "phonetic" field. Write Thai script only — romanisation is\n' +
     'generated by the app from its own dictionary.\n' +
+    'Write Thai in NORMAL CONTINUOUS ORTHOGRAPHY. Thai does not separate words with\n' +
+    'spaces. Never output token-spaced Thai such as คุณ อยาก ซื้อ อะไร ครับ — write\n' +
+    'คุณอยากซื้ออะไรครับ. This applies to normal, repair, fallback and survival modes.\n' +
     'glosses = one English word per Thai word, in order (e.g. ผมจะไป → ["I","will","go"]). Use "-" for particles like ครับ/ค่ะ.'
 
   // Build natural context hint for how to use the target word
@@ -9189,10 +9499,15 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         })
       })
       const _bannedWords = [..._bannedEver]
+      // Blocked words plus permitted alternatives, so repair converges by
+      // substitution rather than guessing new synonyms.
+      const _altPool = uniqAllowed.filter(w => w && w.length >= 2 && !_bannedEver.has(w)).slice(0, 60)
       const _banLine = _bannedWords.length
-        ? 'FORBIDDEN WORDS — these were rejected and must NOT appear again:\n' +
-          _bannedWords.map(w => '  - remove "' + w + '"').join('\n') +
-          '\n  Use a different ALLOWED word, or express a simpler idea.\n'
+        ? 'BLOCKED WORDS - rejected by the vocabulary gate, never use again:\n' +
+          _bannedWords.map(w => '  - ' + w).join('\n') +
+          '\nPERMITTED ALTERNATIVES:\n  ' + _altPool.join(' ') + '\n' +
+          'Rewrite using ONLY allowed vocabulary. Substitute or simplify - do not\n' +
+          'reach for a new synonym. Prefer a shorter sentence.\n'
         : ''
       // After 3 failed attempts stop rewriting variations of a bad sentence.
       // ESCALATION TIERS. Checks 6-11 exist to SIMPLIFY, not to produce creative
@@ -9275,7 +9590,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         // onLog parameter. Referencing an undeclared `onLog` threw a ReferenceError
         // after every otherwise-valid sentence.
         if (!_pr.ok && onProgress)
-          onProgress(-1, -1, { apiError: 'speaker=' + l.speaker + ' gender=' + _g +
+          onProgress(-1, -1, { apiError: '\u26A0\uFE0F speaker=' + l.speaker + ' gender=' + _g +
             ' particle=' + _pr.detected + ' result=FAIL (' + _pr.reason + ')' }, null, null)
         if (!_pr.ok) { l._genderFail = _pr.reason; return false }
         if (/[一-鿿]/.test(l.thai)) return false
@@ -9343,12 +9658,18 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           continue
         }
       }
+      // Authoritative, pair-level target presence — evaluated ONCE per candidate.
+      {
+        const _tp = detectTargetPresence(genderValid, target)
+        if (!_tp.found)
+          naturalFails.push('target "' + target.thai + '" does not appear anywhere in the exchange')
+      }
       genderValid.forEach((l, li) => {
         const t = l.thai || ''
         const withoutParticle = t.replace(/ครับ$|ค่ะ$|คะ$/, '').trim()
-        // Only A's lines (0 and 2) must contain target word — B's response (line 1) doesn't need it
-        if (l.speaker === 'A' && !t.includes(target.thai))
-          naturalFails.push('Line ' + (li+1) + ' (A) missing "' + target.thai + '" — A must use target word')
+        // Target PRESENCE is decided once, by detectTargetPresence, over the whole
+        // exchange. Naturalness QC may judge whether the usage is natural, but must
+        // not re-decide whether the word is there.
         // Reject ซึ่ง — written register forbidden
         const lThai = l.thai || ''
         if (lThai.includes('ซึ่ง') && target.thai !== 'ซึ่ง') {
@@ -9415,7 +9736,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       // ── #5 Number enforcement: only on early attempts so a stubborn miss can't burn to fallback ──
       // Number practice is now TARGET-DRIVEN. Ordinary vocabulary is never required
       // to contain a number, time or count.
-      if (numberHint && exerciseRequiresNumber(target) && attempt < 3) {
+      // Only when this exercise explicitly practises numbers. Never inferred from
+      // scene content.
+      const _needsNum = !!(target && target.requiresNumber) || exerciseRequiresNumber(target)
+      if (numberHint && _needsNum && attempt < 3) {
         const _numWords = ['หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า','สิบ','ยี่สิบ','ร้อย','พัน','โมง','ทุ่ม','เที่ยง','บ่าย','ตีหนึ่ง','ตีสอง','ตีสาม','ตีสี่','ตีห้า','ที่หนึ่ง','ที่สอง','ที่สาม','ครั้ง','นาฬิกา']
         const _hasNumber = genderValid.some(l => /[๐-๙]/.test(l.thai || '') || _numWords.some(n => (l.thai || '').includes(n)))
         if (!_hasNumber)
@@ -9525,7 +9849,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
             const comp = composeThaiPhonetic(l.thai, lex)
             if (comp.phonetic) phon = comp.phonetic
           } catch (e) { /* keep whatever we had */ }
-          return { ...l, phonetic: phon, _source: tierOf(l), words }
+          return { ...l, thai: normaliseThaiSpacing(l.thai), phonetic: phon, _source: tierOf(l), words }
         })
       onProgress && onProgress(-1, -1, { apiError: '✅ ' + CHECK_NAMES[attempt] + ' check passed: ' + target.thai }, null, null)
       return result
@@ -9607,10 +9931,20 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     vocab, trackTargets: targets,
     grammarWords: ['\u0e04\u0e23\u0e31\u0e1a','\u0e04\u0e48\u0e30','\u0e04\u0e30','\u0e19\u0e30','\u0e01\u0e47','\u0e17\u0e35\u0e48','\u0e02\u0e2d\u0e07','\u0e01\u0e31\u0e1a','\u0e43\u0e19','\u0e44\u0e21\u0e48','\u0e44\u0e14\u0e49','\u0e08\u0e30'],
   })
+  // HARD ASSERTION — every one of the 30 track targets must be allowed. If this
+  // fires, the allowed set was built wrong and ให้ would be rejected while
+  // generating เอา, which is exactly the reported symptom.
+  targets.forEach(t => {
+    const th = t && (t.thai || t.t)
+    if (th && !_trackAllowed.has(th)) {
+      _trackAllowed.add(th)
+      console.warn('[track-allowed] target "' + th + '" was MISSING from the allowed set — added')
+    }
+  })
   const _trackAllowedSetId = 'trk-' + targets.length + '-' + _trackAllowed.size
   targets.forEach(t => { if (t) { t._allowedSet = _trackAllowed; t._allowedSetId = _trackAllowedSetId } })
   onProgress && onProgress(0, targets.length * 3, { apiError:
-    'trackAllowedSetId=' + _trackAllowedSetId +
+    '\uD83D\uDCDA trackAllowedSetId=' + _trackAllowedSetId +
     ' trackTargetCount=' + targets.length +
     ' allowedCount=' + _trackAllowed.size }, null, null)
   for (let i = 0; i < targets.length; i++) {
@@ -9888,7 +10222,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       // Basic field check
       if (!p.thai || !p.english || !p.prompt) { failures.push('missing fields'); continue }
       // Must contain target word — only A's lines, B's response doesn't need it
-      if (p.speaker !== 'B' && !thaiContainsLexeme(p.thai, target.thai)) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
+      // PAIR-LEVEL. A reply line need not repeat the target; the exchange as a whole
+    // must use it. Checking each line separately produced "target missing" on
+    // perfectly good A lines whose B reply lacked the word.
+    const _grp = Array.isArray(pairs) ? pairs : [p]
+    const _pairHasTarget = _grp.some(l => thaiContainsLexeme(l.thai || '', target.thai))
+    if (!_pairHasTarget) { failures.push('no target: ' + target.thai + ' in: ' + p.thai.slice(0,30)); continue }
       // Must be a real Thai sentence (at least 5 Thai chars)
       const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
       if (thaiChars < 5) { failures.push('too short: ' + p.thai); continue }
@@ -10073,9 +10412,18 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         if (!gramFail) {
           try {
             const _lex = buildThaiPhoneticLexicon(vocab)
-            const _allowed = new Set(vocab.filter(w => hasBeenIntroduced(w)).map(w => w.thai || w.t))
-            if (target && (target.thai || target.t)) _allowed.add(target.thai || target.t)
-            const _res = runThaiQcChecks(p, { allowedSet: _allowed, lex: _lex, vocab, target })
+            // Track-wide frozen set — see note at the other QC copy.
+            const _allowed = (target && target._allowedSet) ||
+              buildThaiAllowedSet({ vocab, target,
+                trackTargets: Array.isArray(target && target._trackTargets) ? target._trackTargets : [] })
+            // Pass the WHOLE candidate exchange plus stable identity. Without pairGroup
+          // the target check saw only the single line it was handed, so a B reply that
+          // does not repeat the target was reported as "target missing" even though
+          // the A line visibly contained it.
+          const _res = runThaiQcChecks(p, { allowedSet: _allowed, lex: _lex, vocab, target,
+            pairGroup: Array.isArray(pairs) ? pairs : [p],
+            candidateId: (p && (p.candidateId || p.id)) || ('cand' + (pairs || []).indexOf(p)),
+            lineId: (p && p.speaker) || '?' })
             if (!_res.ok) gramFail = _res.summary + ': ' + p.thai
           } catch (e) { gramFail = 'QC check errored: ' + (e.message || e) }
         }
@@ -11084,7 +11432,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               else if (meta && meta.apiError) {
                 const msg = meta.apiError
                 // Check-level messages (have emoji prefix) show without ❌
-                const isCheckMsg = /^[✦🔶🟠🟡🟨🟩🟢🪵🟫🩷📥📄🔍⚠️💬🎬]/.test(msg)
+                const isCheckMsg = /^[\u2726\u2705\u2139\u26A0\uD83D\uDD36\uD83D\uDFE0\uD83D\uDFE1\uD83D\uDFE8\uD83D\uDFE9\uD83D\uDFE2\uD83E\uDEB5\uD83D\uDFEB\uD83E\uDD77\uD83D\uDCE5\uD83D\uDCC4\uD83D\uDD0D\uD83D\uDCAC\uD83C\uDFAC\uD83D\uDCDA\uD83D\uDD12]/.test(msg)
                 const displayMsg = isCheckMsg ? msg : '❌ ' + msg
                 setCurrentTier(displayMsg)
                 logAll(displayMsg)

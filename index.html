@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v575"/>
+<meta name="app-version" content="v576"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v575';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v575').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v576';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v576').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -8460,6 +8460,51 @@ function normaliseThaiSpacing(thai) {
 // ── THE authoritative Thai vocabulary validator ─────────────────────────────
 // Same function, same immutable context, for checks 1-11 and every mode. The check
 // number may change generation STRATEGY; it may never change what is allowed.
+// ── Compositional span resolution ───────────────────────────────────────────
+// The longest dictionary match is not automatically the verdict. โทรหาพ่อ matched
+// the compound โทรหา, which the learner has not been taught, and the whole target
+// โทร then failed all 11 checks \u2014 even though โทร + หา are both allowed and
+// combine normally. If the span can be covered completely by allowed units, in
+// order, with no orphan characters, it is allowed.
+function resolveThaiSpan(span, allowedSet, lexUnits) {
+  const s = String(span || '')
+  if (!s) return { covered: true, parts: [] }
+  const units = [...(lexUnits || [])].filter(u => u && u.length >= 1).sort((a, b) => b.length - a.length)
+  const memo = new Map()
+  function walk(i) {
+    if (i >= s.length) return []
+    if (memo.has(i)) return memo.get(i)
+    let best = null
+    for (const u of units) {
+      if (!s.startsWith(u, i)) continue
+      if (!allowedSet.has(u)) continue          // only ALLOWED units may compose
+      const rest = walk(i + u.length)
+      if (rest !== null) { best = [u, ...rest]; break }
+    }
+    memo.set(i, best)
+    return best
+  }
+  const parts = walk(0)
+  return { covered: parts !== null, parts: parts || [] }
+}
+// Full diagnostic for one Thai span.
+function explainThaiSpan(span, allowedSet, vocab) {
+  const units = new Set(THAI_EXTRA_UNITS)
+  ;(vocab || []).forEach(w => { const th = w.thai || w.t; if (th) units.add(th) })
+  const sorted = [...units].sort((a, b) => b.length - a.length)
+  const longest = sorted.find(u => u === span) || null
+  const longestAllowed = longest ? allowedSet.has(longest) : false
+  const alt = longestAllowed ? { covered: true, parts: [longest] } : resolveThaiSpan(span, allowedSet, units)
+  return {
+    rawSpan: span,
+    longestDictionaryMatch: longest || '(none)',
+    longestMatchAllowed: longestAllowed,
+    alternativeSegmentation: alt.parts.join(' + ') || '(none)',
+    allComponentsAllowed: alt.covered,
+    finalVocabResult: (longestAllowed || alt.covered) ? 'ALLOWED' : 'BLOCKED',
+  }
+}
+
 function validateThaiVocabulary(candidate, trackAllowedContext) {
   const ctx = trackAllowedContext || {}
   const set = ctx.allowedThaiWords || ctx.allowedSet || buildThaiAllowedSet(ctx)
@@ -8473,9 +8518,20 @@ function validateThaiVocabulary(candidate, trackAllowedContext) {
       const tok = s.matchedSpan
       if (isThaiOrphanFragment(tok)) return
       const isTrackTarget = (ctx.currentTrackTargets || []).some(x => ((x && (x.thai || x.t)) || x) === tok)
-      const allowed = set.has(tok)
+      const direct = set.has(tok)
+      // If the longest match is not allowed, try to cover the span with allowed
+      // units before rejecting it: โทรหา = โทร + หา, both allowed.
+      let composed = null
+      if (!direct) {
+        const units = new Set(THAI_EXTRA_UNITS)
+        vocab.forEach(w => { const t2 = w.thai || w.t; if (t2) units.add(t2) })
+        composed = resolveThaiSpan(tok, set, units)
+      }
+      const allowed = direct || (composed && composed.covered)
       diagnostics.push({ trackAllowedSetId: ctx.trackAllowedSetId, token: tok,
-                         isCurrentTrackTarget: isTrackTarget, allowedByTrackSet: allowed,
+                         isCurrentTrackTarget: isTrackTarget, allowedByTrackSet: direct,
+                         alternativeSegmentation: composed ? composed.parts.join(' + ') : '',
+                         allComponentsAllowed: !!(composed && composed.covered),
                          finalAllowed: allowed })
       if (!allowed) blocked.push(tok)
     })
@@ -8803,8 +8859,12 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
       segmentThaiWithDiagnostics(p.thai, vocab, allowedNow).forEach(s => {
         const tok = s.matchedSpan
         if (isThaiOrphanFragment(tok)) return
-        if (isThaiOrphanFragment(tok)) return
-        if (!allowedNow.has(tok)) offenders.push(tok)
+        if (allowedNow.has(tok)) return
+        // Compositional fallback: a blocked compound is fine when allowed units
+        // cover it completely (โทรหา = โทร + หา).
+        const _u = new Set(THAI_EXTRA_UNITS)
+        vocab.forEach(w => { const t2 = w.thai || w.t; if (t2) _u.add(t2) })
+        if (!resolveThaiSpan(tok, allowedNow, _u).covered) offenders.push(tok)
       })
       if (offenders.length) {
         failures.push('untaught vocabulary: ' + [...new Set(offenders)].join(' ') + ' in: ' + p.thai)
@@ -9094,14 +9154,134 @@ function validateThaiSpeakerParticle(thai, gender) {
 //   2. Does the English meaning match the Thai exactly?
 // It has NO authority over vocabulary, target presence or curriculum. Those stay
 // deterministic. It may only ask for a rewrite within the SAME allowed vocabulary.
+// ── Speaker persona consistency ─────────────────────────────────────────────
+// A particle alone is not enough: a female speaker can end correctly with คะ and
+// still self-reference as ผม. Persona must be consistent across first-person
+// pronouns AND particles, driven ONLY by explicit speaker metadata.
+const THAI_FIRST_PERSON = {
+  male:   ['\u0e1c\u0e21'],
+  female: ['\u0e09\u0e31\u0e19','\u0e14\u0e34\u0e09\u0e31\u0e19','\u0e2b\u0e19\u0e39'],
+  neutral:['\u0e40\u0e23\u0e32'],
+}
+// A pronoun only counts as SELF-reference when it is not the object of the other
+// speaker's action \u2014 "\u0e04\u0e38\u0e13\u0e08\u0e30\u0e44\u0e1b\u0e40\u0e08\u0e2d\u0e1c\u0e21" has \u0e1c\u0e21 as the speaker referring to
+// themself, but a sentence ABOUT someone else using \u0e1c\u0e21 should not be flagged.
+function detectThaiFirstPerson(thai) {
+  const s = String(thai || '')
+  const found = []
+  Object.entries(THAI_FIRST_PERSON).forEach(([g, list]) => {
+    list.forEach(p => { if (s.includes(p)) found.push({ pronoun: p, gender: g }) })
+  })
+  return found
+}
+function validateThaiPersona(thai, gender, opts) {
+  const o = opts || {}
+  const particle = validateThaiSpeakerParticle(thai, gender)
+  const forms = detectThaiFirstPerson(thai)
+  const problems = []
+  if (!particle.ok) problems.push(particle.reason)
+  // Any first-person form belonging to the OTHER gender is a persona break.
+  const wrong = forms.filter(f => f.gender !== 'neutral' && f.gender !== gender)
+  wrong.forEach(f => problems.push(
+    gender + ' speaker self-references with "' + f.pronoun + '" (' + f.gender + ' form)'))
+  return {
+    ok: problems.length === 0,
+    speaker: o.speaker || '?',
+    gender,
+    detectedFirstPersonForms: forms.map(f => f.pronoun),
+    detectedParticle: particle.detected,
+    personaResult: problems.length === 0 ? 'PASS' : 'FAIL',
+    problems,
+  }
+}
+
+// ── Validator severity + single aggregated verdict ──────────────────────────
+// A candidate could log "gender validator = FAIL" and then "check passed", because
+// results were reported piecemeal with no single authority. Every validator now
+// declares BLOCKING or ADVISORY, and a candidate PASSES only with zero blocking
+// failures.
+const QC_SEVERITY = { BLOCKING: 'BLOCKING', ADVISORY: 'ADVISORY' }
+function aggregateQcResult(results) {
+  const blockingFailures = []
+  const advisories = []
+  ;(results || []).forEach(r => {
+    if (!r || r.ok) return
+    const msgs = r.problems || [r.reason || 'failed']
+    if (r.severity === QC_SEVERITY.ADVISORY) advisories.push(...msgs)
+    else blockingFailures.push(...msgs)
+  })
+  return {
+    blockingFailures, advisories,
+    finalResult: blockingFailures.length === 0 ? 'PASS' : 'FAIL',
+  }
+}
+function formatQcVerdict(agg) {
+  return 'blockingFailures=[' + agg.blockingFailures.join('; ') + ']' +
+         ' advisories=[' + agg.advisories.join('; ') + ']' +
+         ' finalResult=' + agg.finalResult
+}
+
+// ── Prompt alignment with perspective normalisation ─────────────────────────
+// A narrative cue ("She asks when he will call his father") legitimately becomes
+// direct speech ("When will you call your father?"). Comparing pronouns literally
+// flagged that as a mismatch. Normalise perspective first, then compare the
+// proposition \u2014 real factual changes must still fail.
+function normalisePromptPerspective(promptText) {
+  let s = String(promptText || '').toLowerCase()
+  s = s.replace(/\b(he|she|they)\s+(asks?|says?|tells?|wants? to know|wonders?)\b/g, '')
+  s = s.replace(/\bhis\b|\bher\b|\btheir\b/g, 'your')
+  s = s.replace(/\bhe\b|\bshe\b/g, 'you')
+  s = s.replace(/\bhim\b|\bher\b/g, 'you')
+  return s.replace(/\s+/g, ' ').trim()
+}
+// Facts that must survive the perspective change.
+function extractPromptFacts(text) {
+  const s = String(text || '').toLowerCase()
+  return {
+    negation: /\bnot\b|\bn't\b|\bnever\b|\bcan't\b|\bcannot\b|\bdidn't\b/.test(s),
+    early: /\bearly\b/.test(s), late: /\blate\b/.test(s),
+    times: (s.match(/\b\d{1,2}([:.]\d{2})?\b/g) || []).sort(),
+    question: /\?|\bwhen\b|\bwhat\b|\bwhere\b|\bwho\b|\bhow\b|\bwhy\b/.test(s),
+  }
+}
+function evaluatePromptAlignment(promptText, english) {
+  const normalized = normalisePromptPerspective(promptText)
+  const a = extractPromptFacts(normalized), b = extractPromptFacts(english)
+  const mismatches = []
+  if (a.negation !== b.negation) mismatches.push('negation differs')
+  if (a.early !== b.early || a.late !== b.late) mismatches.push('early/late differs')
+  if (a.times.join(',') !== b.times.join(',')) mismatches.push('times differ (' + a.times.join('/') + ' vs ' + b.times.join('/') + ')')
+  const factualMismatch = mismatches.length > 0
+  return {
+    perspectiveNormalized: normalized,
+    coreMeaningMatch: !factualMismatch,
+    factualMismatch,
+    score: factualMismatch ? 0 : 1,
+    reason: mismatches.join('; ') || 'proposition matches after perspective normalisation',
+    severity: QC_SEVERITY.BLOCKING,
+    ok: !factualMismatch,
+    problems: mismatches,
+  }
+}
+
 function buildThaiLanguageQcPrompt(pairs, allowedWords) {
   const lines = pairs.map((p, i) =>
     (i + 1) + '. THAI: ' + p.thai + '\n   ENGLISH: ' + (p.english || ''))
     .join('\n')
   return 'You are a native Thai speaker reviewing sentences for a learner app.\n\n' +
-    'For EACH numbered pair answer ONLY these two questions:\n' +
-    '  A. Would a native Thai speaker naturally say this sentence? (yes/no)\n' +
-    '  B. Does the English match the Thai exactly in meaning? (yes/no)\n\n' +
+    'For EACH numbered pair judge ONLY these things:\n' +
+    '  A. Would a native Thai speaker naturally say this sentence?\n' +
+    '  B. Is it semantically plausible (not absurd without reason)?\n' +
+    '  C. Is it a useful example for a learner \u2014 something a teacher would model?\n' +
+    '  D. Is the target word used in its intended sense?\n' +
+    '  E. Does the English match the Thai exactly in meaning?\n\n' +
+    'Reject: absurd claims, awkward collocations, unnatural time expressions, and\n' +
+    'sentences that are grammatical but not worth teaching. Examples of the kind to\n' +
+    'reject: "I want to eat a thousand plates of fried rice", "How did I wake up\n' +
+    'early?", "I want to meet my father one day" (vague/odd), odd time phrases like\n' +
+    '"\u0e15\u0e2d\u0e19\u0e40\u0e27\u0e25\u0e32\u0e2a\u0e32\u0e21". Do NOT reject playful or large numbers when the context\n' +
+    'genuinely supports them. Prefer a simple plausible sentence over a creative\n' +
+    'strange one.\n\n' +
     'Do NOT comment on which words a learner has studied. Do NOT suggest words\n' +
     'outside this list:\n' + (allowedWords || []).slice(0, 300).join(' ') + '\n\n' +
     'If a sentence is awkward, incomplete, or the English does not match, give a\n' +
@@ -10262,8 +10442,12 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
           segmentThaiWithDiagnostics(p.thai, vocab, allowedNow).forEach(s => {
             const tok = s.matchedSpan
             if (isThaiOrphanFragment(tok)) return
-            if (isThaiOrphanFragment(tok)) return
-            if (!allowedNow.has(tok)) offenders.push(tok)
+            if (allowedNow.has(tok)) return
+            // Compositional fallback: a blocked compound is fine when allowed units
+            // cover it completely (โทรหา = โทร + หา).
+            const _u = new Set(THAI_EXTRA_UNITS)
+            vocab.forEach(w => { const t2 = w.thai || w.t; if (t2) _u.add(t2) })
+            if (!resolveThaiSpan(tok, allowedNow, _u).covered) offenders.push(tok)
           })
           if (offenders.length) {
             // Per-word diagnostics so a wrong pool is obvious instead of silent.

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v576"/>
+<meta name="app-version" content="v578"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v576';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v576').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v578';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v578').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -8505,6 +8505,112 @@ function explainThaiSpan(span, allowedSet, vocab) {
   }
 }
 
+// ── Thai token classification (closed vocabulary) ───────────────────────────
+// Five outcomes, one authority. A word does NOT pass merely because it exists in
+// the master dictionary \u2014 that is precisely how เรื่อง, เดินเล่น, ประมาณ, ทุ่ม and
+// คุย reached a track without ever having been taught.
+const THAI_CLASS = {
+  INTRODUCED: 'PREVIOUSLY_INTRODUCED',
+  TRACK_NEW: 'CURRENT_TRACK_NEW',
+  TRACK_REVIEW: 'CURRENT_TRACK_REVIEW',
+  GRAMMAR: 'APPROVED_GRAMMAR',
+  COMPOSITION: 'APPROVED_COMPOSITION',
+  BLOCKED: 'BLOCKED_UNSEEN',
+}
+// Grammar/time units that may act as compositional components even before they are
+// taught as standalone vocabulary. Deliberately tiny \u2014 this is the one place a
+// compound can legitimately outrun the learner's word list, so it must not become a
+// backdoor for content vocabulary.
+const THAI_APPROVED_COMPOSITION_UNITS = new Set([
+  '\u0e42\u0e21\u0e07','\u0e17\u0e38\u0e48\u0e21','\u0e15\u0e35','\u0e04\u0e23\u0e36\u0e48\u0e07','\u0e19\u0e32\u0e17\u0e35','\u0e0a\u0e31\u0e48\u0e27\u0e42\u0e21\u0e07','\u0e40\u0e0a\u0e49\u0e32','\u0e40\u0e22\u0e47\u0e19','\u0e1a\u0e48\u0e32\u0e22','\u0e04\u0e37\u0e19',
+])
+function classifyThaiToken(token, ctx) {
+  const c = ctx || {}
+  const vocab = c.vocab || []
+  const rec = vocab.find(w => (w.thai || w.t) === token)
+  const dictionaryExists = !!rec
+  const introduced = rec ? hasBeenIntroduced(rec) : false
+  const manualKnown = rec ? !!rec.manualKnown : false
+  const targets = c.currentTrackTargets || []
+  const targetRec = targets.find(x => ((x && (x.thai || x.t)) || x) === token)
+  const currentTrackTarget = !!targetRec
+  const grammarAllowed = (c.grammarWords || []).includes(token) ||
+                         THAI_APPROVED_COMPOSITION_UNITS.has(token)
+  let cls = THAI_CLASS.BLOCKED
+  let reason = 'never introduced and not a current-track target'
+  if (currentTrackTarget) {
+    const tIntro = targetRec && targetRec.thai ? hasBeenIntroduced(targetRec) : introduced
+    cls = tIntro ? THAI_CLASS.TRACK_REVIEW : THAI_CLASS.TRACK_NEW
+    reason = tIntro ? 'target already introduced' : 'deliberate NEW target for this track'
+  } else if (introduced || manualKnown) {
+    cls = THAI_CLASS.INTRODUCED
+    reason = manualKnown ? 'manually known' : 'previously introduced'
+  } else if (grammarAllowed) {
+    cls = THAI_CLASS.GRAMMAR
+    reason = 'approved grammar/function word'
+  }
+  return { token, dictionaryExists, introduced, manualKnown, currentTrackTarget,
+           grammarAllowed, compositionAllowed: false,
+           finalAllowed: cls !== THAI_CLASS.BLOCKED, classification: cls, reason }
+}
+// A span may pass compositionally ONLY if the whole of it is covered by allowed
+// units. สองทุ่ม passes when สอง is known and ทุ่ม is an approved time unit;
+// น้ำเปล่า does NOT pass on the strength of น้ำ alone, because เปล่า is neither
+// taught nor an approved unit.
+function classifyThaiSpan(span, ctx) {
+  const c = ctx || {}
+  const full = classifyThaiToken(span, c)
+  if (full.finalAllowed)
+    return { rawSpan: span, fullEntry: span, fullEntryAllowed: true,
+             segmentation: [span], allSegmentsAllowed: true,
+             finalResult: full.classification, blocked: [] }
+  // Try a segmentation into allowed parts.
+  const units = new Set([...(c.allowedThaiWords || []), ...THAI_APPROVED_COMPOSITION_UNITS])
+  ;(c.vocab || []).forEach(w => { const t = w.thai || w.t; if (t) units.add(t) })
+  // The full span is known to be disallowed, so it must not be re-matched as one
+  // unit — otherwise หกโมงเช้า is grabbed whole and never decomposed into
+  // หก + โมง + เช้า.
+  units.delete(span)
+  const words = [...units].filter(u => u && u.length >= 1 && u !== span)
+    .sort((a, b) => b.length - a.length)
+  const segs = []
+  let i = 0, orphan = false
+  while (i < span.length) {
+    const hit = words.find(w => span.startsWith(w, i))
+    if (hit) { segs.push(hit); i += hit.length } else { orphan = true; break }
+  }
+  if (orphan || !segs.length)
+    return { rawSpan: span, fullEntry: span, fullEntryAllowed: false,
+             segmentation: segs, allSegmentsAllowed: false,
+             finalResult: THAI_CLASS.BLOCKED, blocked: [span],
+             reason: 'span cannot be fully covered by allowed units' }
+  const parts = segs.map(s => classifyThaiToken(s, c))
+  const blocked = parts.filter(p => !p.finalAllowed).map(p => p.token)
+  const allOk = blocked.length === 0
+  return { rawSpan: span, fullEntry: span, fullEntryAllowed: false,
+           segmentation: segs, allSegmentsAllowed: allOk,
+           finalResult: allOk ? THAI_CLASS.COMPOSITION : THAI_CLASS.BLOCKED,
+           blocked,
+           reason: allOk ? 'composed entirely of allowed units'
+                         : 'contains unseen component(s): ' + blocked.join(' ') }
+}
+// Audits a finished track. BLOCKED_UNSEEN must be zero.
+function auditThaiTrackVocabulary(pairs, ctx) {
+  const counts = {}
+  const blocked = []
+  const seen = new Set()
+  ;(pairs || []).forEach(p => {
+    tokenizeThaiAgainstVocab(p.thai || '', ctx.vocab).forEach(tok => {
+      if (isThaiOrphanFragment(tok) || seen.has(tok)) return
+      seen.add(tok)
+      const r = classifyThaiSpan(tok, ctx)
+      counts[r.finalResult] = (counts[r.finalResult] || 0) + 1
+      if (r.finalResult === THAI_CLASS.BLOCKED) blocked.push(tok)
+    })
+  })
+  return { counts, blocked, ok: blocked.length === 0, uniqueWords: seen.size }
+}
+
 function validateThaiVocabulary(candidate, trackAllowedContext) {
   const ctx = trackAllowedContext || {}
   const set = ctx.allowedThaiWords || ctx.allowedSet || buildThaiAllowedSet(ctx)
@@ -8517,6 +8623,20 @@ function validateThaiVocabulary(candidate, trackAllowedContext) {
     segmentThaiWithDiagnostics(th, vocab, set).forEach(s => {
       const tok = s.matchedSpan
       if (isThaiOrphanFragment(tok)) return
+      // Five-way classification. Dictionary presence alone is NOT a pass.
+      const _cls = classifyThaiToken(tok, { ...ctx, vocab })
+      const _span = classifyThaiSpan(tok, { ...ctx, allowedThaiWords: set, vocab })
+      diagnostics.push({ trackAllowedSetId: ctx.trackAllowedSetId, token: tok,
+        dictionaryExists: _cls.dictionaryExists, introduced: _cls.introduced,
+        manualKnown: _cls.manualKnown, currentTrackTarget: _cls.currentTrackTarget,
+        grammarAllowed: _cls.grammarAllowed,
+        compositionAllowed: _span.finalResult === THAI_CLASS.COMPOSITION,
+        classification: _span.finalResult,
+        finalAllowed: _span.finalResult !== THAI_CLASS.BLOCKED,
+        reason: _span.reason || _cls.reason })
+      if (_span.finalResult === THAI_CLASS.BLOCKED) blocked.push(tok)
+      return
+      /* legacy path below, retained for reference */
       const isTrackTarget = (ctx.currentTrackTargets || []).some(x => ((x && (x.thai || x.t)) || x) === tok)
       const direct = set.has(tok)
       // If the longest match is not allowed, try to cover the span with allowed
@@ -16433,7 +16553,7 @@ const JA_SEMANTIC_CLASS = {
 // Anything else (日本語, 水, 名前, 仕事 …) cannot: 日本語行く is not Japanese.
 const JA_PLACE_NOUNS = ['\u3069\u3053','\u5bb6','\u99c5','\u5e97','\u5b66\u6821','\u4f1a\u793e','\u30c8\u30a4\u30ec','\u75c5\u9662','\u516c\u5712','\u6771\u4eac','\u65e5\u672c','\u3053\u3053','\u305d\u3053','\u3042\u305d\u3053','\u5916','\u4e0a','\u4e0b','\u4e2d']
 // i-adjectives never take \u3060: \u304a\u3044\u3057\u3044\u3060\u3088 is wrong, \u304a\u3044\u3057\u3044\u3088 is right.
-const JA_I_ADJECTIVES = ['\u304a\u3044\u3057\u3044','\u9ad8\u3044','\u5b89\u3044','\u5927\u304d\u3044','\u5c0f\u3055\u3044','\u8fd1\u3044','\u9060\u3044','\u3044\u3044','\u697d\u3057\u3044','\u65b0\u3057\u3044','\u6b32\u3057\u3044','\u591a\u3044','\u5c11\u306a\u3044','\u65e9\u3044','\u9045\u3044']
+const JA_I_ADJECTIVES = ['\u5fd9\u3057\u3044','\u5bd2\u3044','\u6691\u3044','\u75db\u3044','\u5f37\u3044','\u5f31\u3044','\u9577\u3044','\u77ed\u3044','\u91cd\u3044','\u8efd\u3044','\u82e5\u3044','\u60aa\u3044','\u9ad8\u3044','\u5b89\u3044','\u304a\u3044\u3057\u3044','\u9ad8\u3044','\u5b89\u3044','\u5927\u304d\u3044','\u5c0f\u3055\u3044','\u8fd1\u3044','\u9060\u3044','\u3044\u3044','\u697d\u3057\u3044','\u65b0\u3057\u3044','\u6b32\u3057\u3044','\u591a\u3044','\u5c11\u306a\u3044','\u65e9\u3044','\u9045\u3044']
 const JA_INTERROGATIVES = ['\u4F55','\u8AB0','\u3044\u3064','\u3069\u3053','\u4F55\u6642','\u3044\u304F\u3089','\u3069\u3046','\u306A\u305C','\u3069\u308C','\u3069\u3061\u3089']
 function jaIsInterrogative(w) { return JA_INTERROGATIVES.includes(w) }
 const JA_ROLE = {
@@ -16459,6 +16579,52 @@ function jaFrameAllows(headWord, argWord) {
 }
 
 // §6/§24 — validate every adjacent content pairing in a sentence, plus formulae.
+// ── Default-deny noun+verb juxtaposition ────────────────────────────────────
+// The frame checks were an ALLOWLIST OF KNOWN-BAD combinations: a verb absent from
+// JA_SEMANTIC_CLASS (降りる, 休む, 乗る …) got no rule at all, so 何降りる？ and
+// 何休む？ passed. Japanese does not allow a bare noun to sit against a verb
+// without a particle except in a few licensed patterns, so the default is now DENY
+// and the licences are enumerated instead.
+const JA_TIME_ADVERBS = ['\u4eca\u65e5','\u660e\u65e5','\u6628\u65e5','\u4eca','\u6bce\u65e5','\u4eca\u5e74','\u6765\u5e74','\u53bb\u5e74','\u4eca\u9031','\u6765\u9031','\u5148\u9031','\u4eca\u6708','\u6765\u6708','\u5148\u6708','\u3044\u3064','\u671d','\u591c','\u5348\u5f8c']
+// Verbs that genuinely take a bare direct object in casual speech (を dropped).
+const JA_WO_DROPPING = ['\u98df\u3079\u308b','\u98f2\u3080','\u898b\u308b','\u805e\u304f','\u8aad\u3080','\u66f8\u304f','\u3059\u308b','\u8cb7\u3046','\u4f7f\u3046','\u4f5c\u308b','\u63a2\u3059','\u6301\u3064','\u899a\u3048\u308b','\u5fd8\u308c\u308b']
+// Existential and stative verbs take a bare subject in casual speech: \u304a\u91d1\u3042\u308b\uff1f
+const JA_BARE_SUBJECT_VERBS = ['\u3042\u308b','\u3044\u308b','\u3067\u304d\u308b','\u5206\u304b\u308b','\u8981\u308b','\u8db3\u308a\u308b']
+function jaIsVerbSurface(w) {
+  if (!w) return false
+  if (jaSemanticClass(w)) return true
+  return /(\u308b|\u3046|\u304f|\u3050|\u3059|\u3064|\u306c|\u3076|\u3080)$/.test(w) && w.length >= 2
+}
+// Returns null when the pairing is licensed, or a reason string when it is not.
+function jaNounVerbProblem(noun, verb, sentence) {
+  if (!noun || !verb) return null
+  if (!jaIsVerbSurface(verb)) return null
+  // A particle between them licenses everything \u2014 handled by the caller.
+  const cls = (jaSemanticClass(verb) || {}).cls
+  // LICENCE 1: time adverbs modify any verb without a particle.
+  if (JA_TIME_ADVERBS.includes(noun)) {
+    // A time adverb modifies a verb freely — 明日行く？ 今日休む？ 今日来る？ are all
+    // natural. It is only wrong where the verb needs a concrete argument a time
+    // word cannot supply: boarding, alighting, entering, residing, knowing.
+    if (['\u4e57\u308b','\u964d\u308a\u308b','\u5165\u308b','\u77e5\u308b','\u4f4f\u3080','\u50cd\u304f'].includes(verb))
+      return '"' + noun + '" is a time word — "' + verb + '" needs a place or thing, '
+             + 'so "' + noun + verb + '" is not Japanese'
+    return null
+  }
+  // LICENCE 1b: existential/stative verbs take a bare subject (\u304a\u91d1\u3042\u308b\uff1f).
+  if (JA_BARE_SUBJECT_VERBS.includes(verb)) return null
+  // LICENCE 2: place nouns before motion verbs.
+  if (JA_PLACE_NOUNS.includes(noun) && (cls === 'motion' || cls === 'locative')) return null
+  // LICENCE 3: \u3092-dropping transitive verbs may take a bare object.
+  if (JA_WO_DROPPING.includes(verb) || cls === 'transitive') {
+    // \u4f55 is a fine object for these; a time word is not.
+    return null
+  }
+  // Everything else is unlicensed.
+  return '"' + noun + verb + '" needs a particle \u2014 a bare noun cannot sit directly ' +
+         'against "' + verb + '"'
+}
+
 function validateJapaneseUsage(pair, inv) {
   const problems = []
   const segs = (Array.isArray(pair.segments) ? pair.segments : [])
@@ -16488,6 +16654,13 @@ function validateJapaneseUsage(pair, inv) {
   // adjacent argument+head licensing
   for (let i = 0; i < words.length - 1; i++) {
     const a = words[i], b = words[i + 1]
+    // DEFAULT DENY for bare noun + verb. The checks below are an allowlist of
+    // known-bad pairings and therefore miss any verb absent from the tables
+    // (降りる, 休む, 乗る …). This runs first and denies unless licensed.
+    if (!jaIsVerbSurface(a) && jaIsVerbSurface(b)) {
+      const _np = jaNounVerbProblem(a, b, pair.japanese)
+      if (_np) problems.push(_np)
+    }
     // FAIL CLOSED. This used to require BOTH lookups to succeed before checking
     // anything, so any verb outside the 25-entry table or noun outside the 19-entry
     // table skipped the check entirely — which is how 日本語行く？ and 水行く？ passed.
@@ -16495,7 +16668,8 @@ function validateJapaneseUsage(pair, inv) {
     // A motion verb after a bare non-place noun is wrong regardless of whether the
     // noun is in JA_ROLE. Deferring to jaFrameAllows here was the fail-open path:
     // it returns true for unknown roles, so 日本語行く？ and 水行く？ sailed through.
-    if ((jaSemanticClass(b) || {}).cls === 'motion' && !JA_PLACE_NOUNS.includes(a) && !/[\u3040-\u309F]$/.test(a)) {
+    if ((jaSemanticClass(b) || {}).cls === 'motion' && !JA_PLACE_NOUNS.includes(a)
+        && !JA_TIME_ADVERBS.includes(a) && !/[\u3040-\u309F]$/.test(a)) {
       problems.push('"' + a + '" is not a destination \u2014 "' + a + b + '" needs a particle or a place')
     } else if (jaSemanticClass(b) && jaRoleOf(a) && !jaFrameAllows(b, a)) {
     // Locative verbs need a place with に. 何住む？/ 日本語働く？ are not Japanese.
@@ -16752,6 +16926,13 @@ async function aiQcPromptMatch(pairs, engine, apiKey, model, onLog) {
         '2 = loosely related, significant mismatch\n' +
         '1 = does not match\n\n' +
         'CRITICAL: if cue and translation convey the SAME meaning in different words, score 5.\n' +
+        'WHAT A CUE IS: the cue is an INSTRUCTION to the learner ("Say it is busy"), not a\n' +
+        'translation. Do NOT compare it word-for-word with the sentence. Ask only: if a learner\n' +
+        'followed this instruction, would they produce this sentence? If yes, score 5.\n' +
+        'SYNONYMS: "live" vs "reside", "buy" vs "get", "a lot" vs "many" are the SAME meaning.\n' +
+        'Score 4 or 5. Never score a natural synonym below 4.\n' +
+        'Slightly broader or narrower wording that still leads to the same learner answer is 4.\n' +
+        'Reserve 1-2 ONLY for a cue that would lead the learner to a genuinely DIFFERENT sentence.\n' +
         'DIALOGUE RULE: cues are written in the third person ("Ask whether they...") while the sentence is ' +
         'naturally first/second person. That is CORRECT and never a mismatch. Only penalise a real ' +
         'difference of CONTENT — for example a translation that adds a word the sentence does not contain.\n\n' +
@@ -16848,16 +17029,44 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
 
   // Step 1 — prompt/translation alignment
   onLog && onLog('\u25B6 Checking cue and translation alignment\u2026')
+  // § ORDER: validate the JAPANESE ITSELF before scoring cue wording. Cue scoring
+  // used to run first and at equal severity, so 忙しいだよ was reported as a
+  // "cue/translation mismatch" while its actual grammar error went unmentioned.
+  const _jaBroken = new Map()
+  all.forEach((p, i) => {
+    if (!p || !engine.sentenceOf(p) || p._framing) return
+    try {
+      const u = (typeof validateJapaneseUsage === 'function' && p.japanese)
+        ? validateJapaneseUsage(p, inv) : { ok: true }
+      if (!u.ok) _jaBroken.set(i, u.problems[0])
+    } catch (e) { _jaBroken.set(i, 'validator error: ' + (e.message || e)) }
+  })
+  _jaBroken.forEach((why, i) => {
+    onLog && onLog('  \u26A0 Japanese invalid (pair ' + (i + 1) + '): ' + why)
+    addIssue(i, 'japanese', why, 'found')
+  })
   const scores = await aiQcPromptMatch(all, engine, apiKey, model, onLog)
   const weak = new Set()
   const weakScore = new Map()
   const weakIssues = new Map()          // pairIndex -> issue, so repair can close them
   scores.forEach((v, i) => {
+    // 4-5 = fine. A harmless paraphrase or synonym ("live" vs "reside") belongs here.
     if (v.score >= 4) return
+    // If the Japanese itself is broken, THAT is the issue — do not also raise a
+    // weaker cue complaint about the same pair.
+    if (_jaBroken.has(i)) return
+    // 3 = worth improving but the intended learner response is still clear.
+    //     Recorded as advisory, not blocking.
+    if (v.score === 3) {
+      addIssue(i, 'promptStyle',
+        'cue could be clearer (' + v.score + '/5)' + (v.note ? ' \u2014 ' + v.note : ''), 'found')
+      return
+    }
+    // 1-2 = the cue genuinely does not map to the answer. Blocking.
     weak.add(i)
     weakScore.set(i, v.score)
     weakIssues.set(i, addIssue(i, 'promptMeaning',
-      'cue/translation mismatch (' + v.score + '/5)' + (v.note ? ' \u2014 ' + v.note : ''), 'found'))
+      'cue does not map to the answer (' + v.score + '/5)' + (v.note ? ' \u2014 ' + v.note : ''), 'found'))
   })
   if (cancelled && cancelled()) return { pairs: all, ran:true }
 
@@ -16937,7 +17146,16 @@ function japaneseQcEngine(inv, vocab, registerId) {
       'Use ONLY these words: ' + inv.allContent.map(w => w.japanese).join(' ') +
       '  plus these fixed expressions: ' + inv.conversationBasics.map(b => b.form).join(' ') +
       '  and these particles: ' + inv.grammarScaffold.map(g => g.form).join(' ') +
-      '\nAny other Japanese word is FORBIDDEN. If an idea needs a word not listed, simplify the idea.',
+      '\nAny other Japanese word is FORBIDDEN. If an idea needs a word not listed, simplify the idea.' +
+      '\n\nGENERATION METHOD:' +
+      '\n1. Decide a real communicative INTENT first (asking about plans, checking a price,' +
+      '\n   declining politely, and so on).' +
+      '\n2. Express that intent in natural Japanese using only the allowed words.' +
+      '\n3. Do NOT slot the target into a pattern such as TIME+target, NANI+target,' +
+      '\n   target+DAYO or target+IKU. Legal words do not make a sentence Japanese.' +
+      '\n4. If the target cannot support three DIFFERENT natural sentences with the words' +
+      '\n   available, repeat a correct one or use a simpler valid frame. Correct' +
+      '\n   repetition beats invented nonsense.',
     responseShape: () =>
       '[{"speaker":"A","japanese":"\u2026","reading":"kana only","romaji":"\u2026","english":"\u2026","prompt":"\u2026",' +
       '"segments":[{"surface":"\u2026","reading":"\u2026","romaji":"\u2026","english":"\u2026","lemma":"\u2026","type":"content"}]}]',
@@ -17719,6 +17937,8 @@ function runJapaneseQualityCheckCore(pair, target, inv, registerId) {
 // summary is derived from this list, never from ad-hoc counters, so nothing that
 // appears in the log can vanish from the report.
 // §13 — critical categories block "corrected"; duplicates at low inventory do not.
+// promptStyle is deliberately ABSENT — a cue that could be phrased better does not
+// block a pair whose Japanese is correct and whose answer is clear.
 const JA_QC_CRITICAL = new Set(['japanese','reading','romaji','translation','segments',
   'segmentReading','segmentRomaji','segmentGloss','target','contentVocabulary','grammar',
   'register','promptMeaning','producibility'])

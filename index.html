@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v578"/>
+<meta name="app-version" content="v582"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v578';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v578').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v582';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v582').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -8522,7 +8522,10 @@ const THAI_CLASS = {
 // compound can legitimately outrun the learner's word list, so it must not become a
 // backdoor for content vocabulary.
 const THAI_APPROVED_COMPOSITION_UNITS = new Set([
-  '\u0e42\u0e21\u0e07','\u0e17\u0e38\u0e48\u0e21','\u0e15\u0e35','\u0e04\u0e23\u0e36\u0e48\u0e07','\u0e19\u0e32\u0e17\u0e35','\u0e0a\u0e31\u0e48\u0e27\u0e42\u0e21\u0e07','\u0e40\u0e0a\u0e49\u0e32','\u0e40\u0e22\u0e47\u0e19','\u0e1a\u0e48\u0e32\u0e22','\u0e04\u0e37\u0e19',
+  // ตี is deliberately ABSENT: it is the verb "to hit" first and only a pre-dawn
+  // hour marker beside a number, so granting it blanket approval let it through as
+  // ordinary content vocabulary.
+  '\u0e42\u0e21\u0e07','\u0e17\u0e38\u0e48\u0e21','\u0e04\u0e23\u0e36\u0e48\u0e07','\u0e19\u0e32\u0e17\u0e35','\u0e0a\u0e31\u0e48\u0e27\u0e42\u0e21\u0e07','\u0e40\u0e0a\u0e49\u0e32','\u0e40\u0e22\u0e47\u0e19','\u0e1a\u0e48\u0e32\u0e22','\u0e04\u0e37\u0e19',
 ])
 function classifyThaiToken(token, ctx) {
   const c = ctx || {}
@@ -8584,9 +8587,14 @@ function classifyThaiSpan(span, ctx) {
              segmentation: segs, allSegmentsAllowed: false,
              finalResult: THAI_CLASS.BLOCKED, blocked: [span],
              reason: 'span cannot be fully covered by allowed units' }
+  // Every component must be INDEPENDENTLY allowed AND a real dictionary entry.
+  // Without the second test, ได้ยิน decomposes to ได้ + ยิน and passes because ได้
+  // is a particle — exactly the substring inheritance this must not permit.
   const parts = segs.map(s => classifyThaiToken(s, c))
-  const blocked = parts.filter(p => !p.finalAllowed).map(p => p.token)
-  const allOk = blocked.length === 0
+  const blocked = parts
+    .filter(p => !p.finalAllowed || (!p.dictionaryExists && !p.grammarAllowed))
+    .map(p => p.token)
+  const allOk = blocked.length === 0 && segs.length >= 2
   return { rawSpan: span, fullEntry: span, fullEntryAllowed: false,
            segmentation: segs, allSegmentsAllowed: allOk,
            finalResult: allOk ? THAI_CLASS.COMPOSITION : THAI_CLASS.BLOCKED,
@@ -8609,6 +8617,57 @@ function auditThaiTrackVocabulary(pairs, ctx) {
     })
   })
   return { counts, blocked, ok: blocked.length === 0, uniqueWords: seen.size }
+}
+
+// ── Post-generation rewrite gate ────────────────────────────────────────────
+// ANY stage that changes Thai is a SECONDARY GENERATOR, not "just QC". Rewrites
+// from ai:improve / ai:replace / qwen-recheck* / fallback / alignment repair were
+// spliced straight into the track with no vocabulary check, which is how เรื่อง,
+// ได้ยิน, จริง, ตี, ผัด and friends reached the saved track after the original
+// candidate had already passed.
+function acceptThaiRewrite(stageName, pairId, oldThai, newThai, ctx, onLog) {
+  if (!newThai || newThai === oldThai)
+    return { accepted: true, unchanged: true, blockedTokens: [] }
+  let res
+  try {
+    res = validateThaiVocabulary([{ thai: newThai }], ctx)
+  } catch (e) {
+    // FAIL CLOSED \u2014 a validator error must never admit a rewrite.
+    res = { ok: false, blocked: ['<validator error: ' + (e.message || e) + '>'] }
+  }
+  const accepted = !!res.ok
+  const line = 'mutationStage=' + stageName + ' pairId=' + pairId +
+    ' oldThai=' + (oldThai || '') + ' newThai=' + newThai +
+    ' trackAllowedSetId=' + (ctx && ctx.trackAllowedSetId) +
+    ' blockedTokens=' + ((res.blocked || []).join(' ') || 'none') +
+    ' rewriteAccepted=' + accepted
+  onLog && onLog('  ' + (accepted ? '\u2705' : '\u26A0\uFE0F') + ' ' + line)
+  return { accepted, blockedTokens: res.blocked || [], diagnostic: line }
+}
+
+// ── FINAL learner-facing audit ──────────────────────────────────────────────
+// Runs on the exact words[] the learner will see, after every rewrite,
+// re-romanisation, segmentation and gloss fill. Last gate before saving.
+function finalThaiVocabAudit(pairs, ctx, onLog) {
+  const failures = []
+  ;(pairs || []).forEach((p, i) => {
+    const words = Array.isArray(p.words) && p.words.length
+      ? p.words.map(w => (w && (w.th || w.thai || w.p)) || '').filter(Boolean)
+      : tokenizeThaiAgainstVocab(p.thai || '', ctx.vocab)
+    const blocked = []
+    words.forEach(tok => {
+      if (!tok || isThaiOrphanFragment(tok)) return
+      const r = classifyThaiSpan(tok, ctx)
+      if (r.finalResult === THAI_CLASS.BLOCKED) blocked.push(tok)
+    })
+    const pass = blocked.length === 0
+    onLog && onLog('  FINAL_VOCAB_AUDIT pairId=' + i + ' thai=' + (p.thai || '') +
+      ' words=' + words.join('|') + ' blockedUnseen=' + (blocked.join(' ') || '0') +
+      ' result=' + (pass ? 'PASS' : 'FAIL'))
+    if (!pass) failures.push({ pairId: i, thai: p.thai, blocked })
+  })
+  return { ok: failures.length === 0, failures, blockedUnseenCount:
+           failures.reduce((n, f) => n + f.blocked.length, 0) }
 }
 
 function validateThaiVocabulary(candidate, trackAllowedContext) {
@@ -12148,7 +12207,10 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
   const readingOf    = p => (!p ? '' : (p.reading || ''))
   const pairs = track.pairs || []
   const [idx, setIdx] = useState(track.bookmark || 0)
-  const [bookmarked, setBookmarked] = useState(false)
+  // The icon used to be a 2-second local flash that reverted regardless of whether
+  // anything was saved. It now reflects the PERSISTED bookmark for the pair being
+  // viewed, so navigating between pairs shows the correct state for each.
+  const bookmarked = (track.bookmark || 0) === idx && (track.bookmark || 0) > 0
   const [phase, setPhase] = useState('prompt')
   const [playing, setPlaying] = useState(false)
   const [countdown3, setCountdown3] = useState(3)
@@ -12467,9 +12529,9 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
           style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:'6px 8px', fontSize:18 }}>⏭</button>
         <button onClick={() => { cancelledRef.current = true; try { if (HAS_SPEECH) window.speechSynthesis.cancel() } catch(e) {} setSpeaking(false); stopCountdown(); setLessonDone(true) }}
           style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'#f59e0b', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>☑ Review</button>
-        <button onClick={() => { onBookmark && onBookmark(idx); setBookmarked(true); setTimeout(() => setBookmarked(false), 2000) }}
+        <button onClick={() => { onBookmark && onBookmark(bookmarked ? 0 : idx) }}
           style={{ background: bookmarked ? '#1a2a00' : 'var(--surface)', border:`1px solid ${bookmarked ? '#4a7a00' : 'var(--border)'}`, borderRadius:20, padding:'5px 10px', cursor:'pointer', color: bookmarked ? '#86c900' : 'var(--muted)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
-          {bookmarked ? '✓ Saved' : '🔖 Pair ' + (idx + 1)}</button>
+          {bookmarked ? '🔖 Saved · Pair ' + (idx + 1) : '🔖 Pair ' + (idx + 1)}</button>
         <button onClick={() => { togglePlay(); onKru(pair.prompt) }}
           style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 10px', cursor:'pointer', color:'var(--gold)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>ครู</button>
       </div>
@@ -15709,7 +15771,10 @@ function ThaiTeacher({ lang, onSetLang }) {
           <ErrorBoundary><Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} gcpTtsKey={gcpTtsKey}
             onReviewQuality={() => { setPendingReviewTrack(activeTrack); navigate('quality-review') }}
             onBookmark={async (pairIdx) => {
-              const updated = tracks.map(t => t === activeTrack ? { ...t, bookmark: pairIdx } : t)
+              // Match on the track's own id. `t === activeTrack` relies on object
+              // identity, which breaks after any state update replaces the array.
+              const _tid = activeTrack.createdAt || activeTrack.id
+              const updated = tracks.map(t => ((t.createdAt || t.id) === _tid) ? { ...t, bookmark: pairIdx } : t)
               await saveTracks(updated)
               setActiveTrack(prev => ({ ...prev, bookmark: pairIdx }))
             }}
@@ -16815,6 +16880,42 @@ function rebuildJapaneseReadingPipeline(pair, inv) {
   return p
 }
 // A rebuilt pair must contain no dictionary alternatives and no mixed script.
+// ── Reading / romaji audit ──────────────────────────────────────────────────
+// A completed utterance carries exactly ONE contextual reading. Slash alternatives
+// (なに / なん) are dictionary entries, not speech, and romaji must faithfully
+// transcribe the final kana \u2014 はやい must never surface as `wayai`.
+function auditJapaneseReading(pair) {
+  const problems = []
+  const jp = pair.japanese || '', rd = pair.reading || '', ro = pair.romaji || ''
+  if (!rd.trim()) problems.push('no reading')
+  if (/[\/\uFF5C|]/.test(rd)) problems.push('reading offers alternatives: ' + rd)
+  if (/[\/\uFF5C|]/.test(ro)) problems.push('romaji offers alternatives: ' + ro)
+  if (/[\u4E00-\u9FFF]/.test(rd)) problems.push('reading still contains kanji: ' + rd)
+  if (/[\u3040-\u30FF\u4E00-\u9FFF]/.test(ro)) problems.push('romaji contains kana or kanji: ' + ro)
+  // Romaji must be derivable from the reading: transcribe the kana and compare
+  // letter-for-letter, ignoring spacing and apostrophes.
+  if (rd && ro && !/[\u4E00-\u9FFF]/.test(rd)) {
+    const want = kanaToRomaji(rd).replace(/[^a-z]/gi, '').toLowerCase()
+    const got = ro.replace(/[^a-z]/gi, '').toLowerCase()
+    if (want && got && want !== got) {
+      // allow long-vowel and n-apostrophe variants
+      const norm = s => s.replace(/ou/g, 'o').replace(/uu/g, 'u').replace(/nn/g, 'n')
+      if (norm(want) !== norm(got))
+        problems.push('romaji does not transcribe the reading: "' + ro + '" vs expected "' + kanaToRomaji(rd) + '"')
+    }
+  }
+  return { ok: problems.length === 0, problems }
+}
+function auditJapaneseTrackReadings(pairs) {
+  const failures = []
+  ;(pairs || []).forEach((p, i) => {
+    const r = auditJapaneseReading(p)
+    if (!r.ok) failures.push({ index: i, japanese: p.japanese, reading: p.reading,
+                               romaji: p.romaji, problems: r.problems })
+  })
+  return { ok: failures.length === 0, failures, checked: (pairs || []).length }
+}
+
 function validateJapaneseReadingOutput(pair) {
   const problems = []
   const rd = pair.reading || '', ro = pair.romaji || ''
@@ -17107,7 +17208,27 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
         : verdict.reason + ' \u2014 previous repair rejected: ' + lastErr
       try {
         const fresh = await aiQcRegenerateGroup(g, all, engine, apiKey, model, reason, mode)
-        g.indices.forEach((idx, pi) => { if (fresh[pi]) all[idx] = { ...fresh[pi], _source: all[idx]._source, _qcAction: mode } })
+              // SECONDARY GENERATOR — every rewrite re-runs the SAME authoritative
+      // closed-vocabulary validator. An unvalidated splice here is how untaught
+      // words reached the saved track after the candidate had already passed.
+      g.indices.forEach((idx, pi) => {
+        if (!fresh[pi]) return
+        // The authoritative context: prefer the one frozen at track creation, else
+        // rebuild from the same inputs. Never a wider dictionary-based set.
+        const _tgt = all[idx] && all[idx]._target
+        const _ctx = (engine && engine.trackAllowedContext) ||
+          (_tgt && _tgt._allowedSet
+            ? { allowedThaiWords: _tgt._allowedSet, vocab,
+                currentTrackTargets: _tgt._trackTargets || [],
+                trackAllowedSetId: _tgt._allowedSetId || 'derived' }
+            : null)
+        if (_ctx && fresh[pi].thai) {
+          const _gate = acceptThaiRewrite('ai:qc-regenerate', idx, all[idx] && all[idx].thai,
+                                          fresh[pi].thai, _ctx, onLog)
+          if (!_gate.accepted) return              // keep the original, do not splice
+        }
+        all[idx] = { ...fresh[pi], _source: all[idx]._source, _qcAction: mode }
+      })
         repaired = true
         onLog && onLog('  \u2713 ' + g.targetWord + ' ' + mode + 'd and revalidated' +
                        (attempt ? ' (attempt ' + (attempt + 1) + ')' : ''))
@@ -19723,6 +19844,18 @@ function JapaneseTeacher({ lang, onSetLang }) {
           <ErrorBoundary>
             <Player key={(activeTrack.createdAt || '') + (playerResumeCompleted ? ':done' : '')}
               track={activeTrack} targetLang="ja" gcpTtsKey={cred.gcpTtsKey}
+              onBookmark={async (pairIdx) => {
+                // Identity is language + track + pair. The JA store is separate from
+                // the other languages, and the track is matched on its own id rather
+                // than object identity, which does not survive a state update.
+                const _tid = activeTrack.createdAt || activeTrack.id
+                const updated = tracks.map(t => ((t.createdAt || t.id) === _tid)
+                  ? { ...t, bookmark: pairIdx } : t)
+                // Use the app's own save helper so the 20-track cap and any future
+                // save-side logic apply here too.
+                await saveTracksJa(updated)
+                setActiveTrack(prev => ({ ...prev, bookmark: pairIdx }))
+              }}
               startCompleted={playerResumeCompleted}
               onComplete={onTrackComplete}
               onReviewQuality={(ctx) => {
@@ -19955,6 +20088,78 @@ function validateJapaneseGrammarInventory(pair, allowedIds) {
     : { ok: true, problems: [] }
 }
 
+// ── Final Japanese QC: five questions, in order ─────────────────────────────
+// Asked for EVERY pair, and asked in this order. Stylistic English differences are
+// judged LAST and only once the Japanese is known to be sound, so QC can never
+// "fix" broken Japanese by rewriting the English to match it.
+function buildJapaneseFinalQcPrompt(pairs) {
+  const lines = pairs.map((p, i) =>
+    (i + 1) + '. JAPANESE: ' + (p.japanese || '') +
+    '\n   READING: ' + (p.reading || '') +
+    '\n   ENGLISH: ' + (p.english || '') +
+    '\n   CUE: ' + (p.prompt || '')).join('\n')
+  return 'You are a native Japanese speaker reviewing a learner exercise.\n\n' +
+    'For EACH numbered item answer these five questions IN THIS ORDER:\n' +
+    '  1. Is the Japanese itself grammatically correct?\n' +
+    '  2. Is it natural for the intended situation?\n' +
+    '  3. Is the target word used in its intended sense?\n' +
+    '  4. Does the English accurately represent the Japanese?\n' +
+    '  5. Does the cue clearly elicit that Japanese from a learner?\n\n' +
+    'RULES:\n' +
+    '- If 1, 2 or 3 fails, the pair is BROKEN. Say so and give corrected JAPANESE.\n' +
+    '  Never rewrite only the English to make broken Japanese look correct.\n' +
+    '- Judge 4 and 5 only when 1-3 pass.\n' +
+    '- A harmless synonym or paraphrase in the English is NOT a failure.\n\n' +
+    lines + '\n\n' +
+    'Return ONLY JSON:\n' +
+    '[{"n":1,"grammar":"pass|fail","natural":"pass|fail","targetSense":"pass|fail",' +
+    '"englishAccurate":"pass|fail","cueElicits":"pass|fail","japaneseIsBroken":true|false,' +
+    '"correctedJapanese":"...","reason":"short"}]'
+}
+// Fail closed, and classify what must be repaired FIRST.
+function parseJapaneseFinalQc(raw, pairs) {
+  let arr = null
+  try {
+    const m = String(raw || '').match(/\[[\s\S]*\]/)
+    arr = m ? JSON.parse(m[0]) : null
+  } catch (e) { arr = null }
+  if (!Array.isArray(arr))
+    return { ok: false, parseFailed: true, verdicts: [],
+             reason: 'final QC response unreadable \u2014 treating as unreviewed' }
+  const verdicts = (pairs || []).map((p, i) => {
+    const v = arr.find(x => Number(x.n) === i + 1) || {}
+    const fail = k => v[k] === 'fail'
+    const japaneseBroken = fail('grammar') || fail('natural') || fail('targetSense') || !!v.japaneseIsBroken
+    return {
+      index: i, japanese: p.japanese,
+      grammar: fail('grammar') ? 'fail' : 'pass',
+      natural: fail('natural') ? 'fail' : 'pass',
+      targetSense: fail('targetSense') ? 'fail' : 'pass',
+      englishAccurate: fail('englishAccurate') ? 'fail' : 'pass',
+      cueElicits: fail('cueElicits') ? 'fail' : 'pass',
+      japaneseBroken,
+      // Repair the JAPANESE first whenever it is at fault; only touch the English
+      // or cue when the Japanese is already sound.
+      repairKind: japaneseBroken ? 'japanese'
+        : (fail('englishAccurate') ? 'english'
+        : (fail('cueElicits') ? 'cue' : null)),
+      correctedJapanese: v.correctedJapanese || '',
+      reason: v.reason || '',
+    }
+  })
+  return { ok: verdicts.every(v => !v.repairKind), verdicts }
+}
+// A Japanese repair must clear the full gate, with reading/romaji/segments rebuilt
+// from the corrected sentence before revalidation.
+function applyJapaneseFinalRepair(verdict, pair, inv, opts) {
+  if (!verdict || verdict.repairKind !== 'japanese' || !verdict.correctedJapanese)
+    return { applied: false, reason: 'no Japanese repair offered' }
+  const next = { ...pair, japanese: verdict.correctedJapanese }
+  const fin = finaliseJapanesePair(next, inv, opts)
+  if (!fin.ok) return { applied: false, reason: 'repair still invalid: ' + (fin.problems[0] || '') }
+  return { applied: true, pair: fin.pair }
+}
+
 function japaneseAcceptanceGate(pair, inv, opts) {
   const o = opts || {}
   const problems = []
@@ -20002,6 +20207,76 @@ function finaliseJapanesePair(pair, inv, opts) {
   return { pair: p, ...gate }
 }
 
+// ── Intent-driven Japanese recall frames ────────────────────────────────────
+// The old fallback held 12 string-concatenation templates (t+'？', '今日'+t+'？',
+// '何'+t+'？', t+'だよ。', t+'行く？', t+'ね。', t+'だ。') and built the cue from the
+// same template with the target's gloss slotted in. That single function produced
+// 75 of the 90 pairs in the 11 Sept track, and every cue family you listed
+// ("Ask if they are going", "Ask about water", "Ask what they will rest") is one of
+// its literal strings.
+//
+// Frames now carry an INTENT and the semantic roles they require. A frame is only
+// offered when the target can actually fill its role, and the cue is written from
+// the resulting meaning rather than from the template.
+const JA_INTENT_FRAMES = [
+  { id:'go-place', intent:'ask whether the listener is heading to a place',
+    needs:{ role:'place' },
+    build:(t,g)=>({ jp: t + '\u884C\u304F\uFF1F', en: 'Are you going to the ' + g + '?',
+                    cue: 'Ask if they are going to the ' + g }) },
+  { id:'do-what-today', intent:'ask what the listener is doing today',
+    needs:{ role:'activity' },
+    build:(t,g)=>({ jp: '\u4ECA\u65E5\u4F55\u3059\u308B\uFF1F', en: 'What are you doing today?',
+                    cue: 'Ask what they are doing today' }) },
+  { id:'obj-question', intent:'ask what the listener will consume or use',
+    needs:{ role:'transitive-verb' },
+    build:(t,g)=>({ jp: '\u4F55' + t + '\uFF1F', en: 'What will you ' + g + '?',
+                    cue: 'Ask what they will ' + g }) },
+  { id:'adj-statement', intent:'comment on how something is',
+    needs:{ role:'i-adjective' },
+    build:(t,g)=>({ jp: t + '\u3088\u3002', en: "It's " + g + '.', cue: 'Say that it is ' + g }) },
+  { id:'na-adj-statement', intent:'comment on how something is',
+    needs:{ role:'na-adjective' },
+    build:(t,g)=>({ jp: t + '\u3060\u3088\u3002', en: "It's " + g + '.', cue: 'Say that it is ' + g }) },
+  { id:'have-it', intent:'ask whether the listener has something',
+    needs:{ role:'possessable' },
+    build:(t,g)=>({ jp: t + '\u3042\u308B\uFF1F', en: 'Do you have any ' + g + '?',
+                    cue: 'Ask if they have any ' + g }) },
+  { id:'about-topic', intent:'turn the conversation to a topic',
+    needs:{ role:'abstract' },
+    build:(t,g)=>({ jp: t + '\u306F\uFF1F', en: 'What about your ' + g + '?',
+                    cue: 'Turn the question back and ask about their ' + g }) },
+  { id:'verb-plain-q', intent:'ask whether the listener will do something',
+    needs:{ role:'intransitive-verb' },
+    build:(t,g)=>({ jp: t + '\uFF1F', en: 'Are you going to ' + g + '?',
+                    cue: 'Ask if they are going to ' + g }) },
+]
+// Which semantic role can this target fill? Nothing is offered a frame it cannot
+// fill, so 水 is never handed the go-place frame and 住む never the 何+verb frame.
+function jaTargetRoles(target) {
+  const t = target.japanese || ''
+  const pos = target.partOfSpeech || ''
+  const roles = new Set()
+  if (JA_PLACE_NOUNS.includes(t)) roles.add('place')
+  if (JA_I_ADJECTIVES.includes(t)) roles.add('i-adjective')
+  else if (pos === 'adjective') roles.add('na-adjective')
+  if (pos === 'verb') {
+    const cls = (jaSemanticClass(t) || {}).cls
+    if (cls === 'transitive' || JA_WO_DROPPING.includes(t)) roles.add('transitive-verb')
+    else if (cls !== 'locative') roles.add('intransitive-verb')
+  }
+  // `thing` was too coarse: it handed 日本語 and 名前 the "do you have any X?"
+  // frame, producing 日本語ある？ and 名前ある？ — grammatical but not things anyone
+  // possesses. Only concrete, countable or consumable nouns take that frame.
+  if (pos === 'noun' && !roles.has('place')) {
+    if (JA_ABSTRACT_NOUNS.includes(t)) roles.add('abstract')
+    else roles.add('possessable')
+  }
+  return roles
+}
+// Nouns that are not possessed or counted in the "ある？" sense. Languages,
+// names, weather, personal attributes and abstract states belong here.
+const JA_ABSTRACT_NOUNS = ['\u65E5\u672C\u8A9E','\u82F1\u8A9E','\u540D\u524D','\u5929\u6C17','\u5143\u6C17','\u4EBA\u6C17','\u5BB6\u65CF','\u53CB\u9054','\u4EBA','\u4ECA\u65E5','\u660E\u65E5','\u6628\u65E5','\u671D','\u591C','\u4ED5\u4E8B','\u5B66\u6821']
+
 function jaFallbackRecall(target, inv, recallIndex) {
   const t = target.japanese
   // §10 — a cue must read as English, not as a dictionary line. "like / liked"
@@ -20011,37 +20286,44 @@ function jaFallbackRecall(target, inv, recallIndex) {
   const has = w => (inv.allContent || []).some(x => x.japanese === w)
   const cands = []
   const pos = target.partOfSpeech || ''
-  if (pos === 'verb') {
-    cands.push({ jp: t + '\uFF1F', en: 'Are you going to ' + vsense + '?', cue: 'Ask if they will ' + vsense })
-    if (has('\u4ECA\u65E5')) cands.push({ jp: '\u4ECA\u65E5' + t + '\uFF1F', en: 'Are you going to ' + vsense + ' today?', cue: 'Ask if they will ' + vsense + ' today' })
-    if (has('\u4F55')) cands.push({ jp: '\u4F55' + t + '\uFF1F', en: 'What will you ' + vsense + '?', cue: 'Ask what they will ' + vsense })
-  } else if (pos === 'na-adjective' || pos === 'i-adjective') {
-    cands.push({ jp: t + '\uFF1F', en: 'Is it ' + sense + '?', cue: 'Ask if it is ' + sense })
-    cands.push({ jp: t + '\u3060\u3088\u3002', en: "It's " + sense + '.', cue: 'Say it is ' + sense })
-    if (has('\u4ECA\u65E5')) cands.push({ jp: '\u4ECA\u65E5\u3001' + t + '\uFF1F', en: 'Is it ' + vsense + ' today?', cue: 'Ask if it is ' + vsense + ' today' })
-  } else {
-    cands.push({ jp: t + '\uFF1F', en: sense + '?', cue: 'Ask about ' + sense })
-    cands.push({ jp: t + '\u3060\u3088\u3002', en: "It's " + sense + '.', cue: 'Say it is ' + sense })
-    if (has('\u884C\u304F')) cands.push({ jp: t + '\u884C\u304F\uFF1F', en: 'Going ' + vsense + '?', cue: 'Ask if they are going' })
-  }
+  // INTENT FIRST. Offer only frames whose semantic role this target can fill,
+  // then let the acceptance gate reject anything that is still not Japanese.
+  const _roles = jaTargetRoles(target)
+  JA_INTENT_FRAMES.forEach(fr => {
+    if (!_roles.has(fr.needs.role)) return
+    const g = fr.needs.role.includes('verb') ? vsense : sense
+    try { cands.push(fr.build(t, g)) } catch (e) { /* skip */ }
+  })
+
   // §15/§16 — NO BLIND CONCATENATION. Every candidate frame must be licensed by the
   // language engine before it can become teaching material. This is what previously
   // produced 何行く？ and ありがとう行く？ from individually-allowed words.
+  // Every fallback candidate must clear the FULL acceptance gate, not just the
+  // usage check. This path produced most of the track, so a partial gate here left
+  // reading purity, declared grammar, meaning and cue unverified.
   const licensed = c => {
     const segs = [...new Set([t, ...inv.allContent.map(w => w.japanese)])]
       .filter(w => c.jp.includes(w))
       .sort((a, b) => c.jp.indexOf(a) - c.jp.indexOf(b))
       .map(w => ({ surface:w, lemma:w, type:'content' }))
-    const u = validateJapaneseUsage({ japanese:c.jp, segments:segs }, inv)
-    return u.ok
+    const cand = { japanese: c.jp, english: c.en, prompt: c.cue, segments: segs }
+    try {
+      const g = japaneseAcceptanceGate(cand, inv, {
+        declaredGrammarIds: (inv.grammarScaffold || []).map(x => x.id),
+        allowedGrammarIds: (inv.grammarScaffold || []).map(x => x.id),
+      })
+      return g.ok
+    } catch (e) { return false }     // fail closed
   }
   // Offer extra DISTINCT shapes so recall 3 does not collide with recall 1 — then
   // license the WHOLE set. Filtering before these were added is what let
   // 今日、ありがとう？ through: the top-up ran after the gate.
   if (has('\u4ECA\u65E5') && !cands.some(c => c.jp.indexOf('\u4ECA\u65E5') === 0))
-    cands.push({ jp: '\u4ECA\u65E5\u3001' + t + '\uFF1F', en: vsense + ' today?', cue: 'Ask about ' + vsense + ' today' })
-  cands.push({ jp: t + '\u306D\u3002', en: vsense + ', right?', cue: 'Comment on ' + vsense + ' seeking agreement' })
-  cands.push({ jp: t + '\u3060\u3002',  en: "It's " + vsense + '.', cue: 'State plainly that it is ' + vsense })
+    // REMOVED: '今日、'+t+'？' produced 今日、水？ and 今日、名前？ — a bare topic
+    // with no predicate is not a question.
+    // REMOVED: t+'ね。' produced 住むね。 — a dictionary-form verb cannot take ね
+    // as a bare comment.
+    // REMOVED: t+'だ。' produced 住むだ。 — a verb never takes the copula.
   for (let k = cands.length - 1; k >= 0; k--) if (!licensed(cands[k])) cands.splice(k, 1)
   const uniq = []
   cands.forEach(c => { if (c && c.jp && !uniq.some(u => u.jp === c.jp)) uniq.push(c) })
@@ -20115,15 +20397,16 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     const range = japaneseUnitRange(vocab)
     if (japaneseComplexity(cand) > range.max + 2) { lastFailure = 'too complex for this level'; onLog && onLog('  \u26A0 ' + lastFailure); continue }
 
-    // §5/§6 — allowed words are not a licence to concatenate. Usage frames first.
-    const usage = validateJapaneseUsage(cand, inv)
-    if (!usage.ok) { lastFailure = usage.problems[0]; onLog && onLog('  \u274C ' + lastFailure); continue }
-    // §18 — one resolved reading per utterance, no dictionary alternatives
-    const rd = validateJapaneseContextualReading(cand)
-    if (!rd.ok) { lastFailure = rd.problems[0]; onLog && onLog('  \u274C ' + lastFailure); continue }
-    // §4/§24 — grammar is closed too
-    const gc = validateJapaneseGrammarClosure(cand, inv, (inv.grammarScaffold || []).map(g => g.id))
-    if (!gc.ok) { lastFailure = gc.problems[0]; onLog && onLog('  \u274C ' + lastFailure); continue }
+    // FULL ACCEPTANCE GATE. These three checks ran here individually, which left
+    // reading-output purity, English meaning and cue presence unverified on the
+    // fallback path — the one path that produced most of the track. One gate now
+    // covers grammar, declared inventory, usage/valency, contextual reading,
+    // reading/romaji purity, meaning and cue, and it fails closed on error.
+    const _gate = japaneseAcceptanceGate(cand, inv, {
+      declaredGrammarIds: (inv.grammarScaffold || []).map(g => g.id),
+      allowedGrammarIds: (inv.grammarScaffold || []).map(g => g.id),
+    })
+    if (!_gate.ok) { lastFailure = _gate.problems[0]; onLog && onLog('  \u274C ' + lastFailure); continue }
 
     // §13/§19/§20 — structural integrity BEFORE acceptance. Repair deterministically
     // from the inventory first; only reject if it is still malformed.
@@ -20858,6 +21141,16 @@ function MandarinTeacher({ lang, onSetLang }) {
           <ErrorBoundary>
             <Player key={(activeTrack.createdAt || '') + (playerResumeCompleted ? ':done' : '')}
               track={activeTrack} targetLang="zh" gcpTtsKey={cred.gcpTtsKey}
+              onBookmark={async (pairIdx) => {
+                // Identity is language + track + pair. The ZH store is separate from
+                // the other languages, and the track is matched on its own id rather
+                // than object identity, which does not survive a state update.
+                const _tid = activeTrack.createdAt || activeTrack.id
+                const updated = tracks.map(t => ((t.createdAt || t.id) === _tid)
+                  ? { ...t, bookmark: pairIdx } : t)
+                await saveTracksZh(updated)
+                setActiveTrack(prev => ({ ...prev, bookmark: pairIdx }))
+              }}
               startCompleted={playerResumeCompleted}
               onComplete={onTrackComplete}
               onReviewQuality={ctx => {

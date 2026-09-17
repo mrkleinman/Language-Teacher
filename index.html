@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v587"/>
+<meta name="app-version" content="v588"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v587';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v587').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v588';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v588').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -16725,6 +16725,9 @@ function jaNounVerbProblem(noun, verb, sentence) {
 const JA_DISCOURSE_OPENERS = ['\u3059\u307F\u307E\u305B\u3093','\u3042\u306E','\u3042\u306E\u3046','\u3048\u3063\u3068','\u3058\u3083\u3042','\u305D\u308C\u3067','\u3067\u306F','\u3067','\u307E\u3042','\u3048\u30FC','\u3088\u3057','\u3055\u3042','\u3068\u3053\u308D\u3067']
 const JA_SENTENCE_PARTICLES = ['\u306D','\u3088','\u304B','\u306A','\u308F','\u305C','\u305E','\u304B\u306A','\u306E']
 const JA_DETERMINERS = ['\u3053\u306E','\u305D\u306E','\u3042\u306E','\u3069\u306E']
+// Common adverbs. もう ends in \u3046 so the morphological verb test claimed it as a
+// verb, which then failed the noun+verb adjacency rule in "\u306F\u3082\u3046".
+const JA_COMMON_ADVERBS = ['\u3082\u3046','\u307E\u3060','\u3061\u3087\u3063\u3068','\u3059\u3054\u304F','\u3068\u3066\u3082','\u3088\u304F','\u3042\u307E\u308A','\u305C\u3093\u3076','\u3044\u3064\u3082','\u5C11\u3057','\u4ECA','\u307E\u305F']
 const JA_NOMINALISERS = ['\u3093','\u306E','\u3053\u3068','\u3082\u306E','\u3064\u3082\u308A','\u306F\u305A','\u3088\u3046']
 function jaTokenClass(tok) {
   const t = String(tok || '')
@@ -16735,6 +16738,7 @@ function jaTokenClass(tok) {
   if (JA_SENTENCE_PARTICLES.includes(t)) return 'sentence-particle'
   if (JA_NOMINALISERS.includes(t)) return 'nominaliser'
   if (jaIsInterrogative(t)) return 'interrogative'
+  if (JA_COMMON_ADVERBS.includes(t)) return 'adverb'
   if (jaIsVerbSurface(t)) return 'verb'
   if (JA_I_ADJECTIVES.includes(t)) return 'i-adjective'
   return 'content'
@@ -16745,7 +16749,7 @@ function jaTokenClass(tok) {
 function jaMayPrecedeVerbFreely(tok) {
   const c = jaTokenClass(tok)
   return c === 'discourse' || c === 'determiner' || c === 'sentence-particle' ||
-         c === 'nominaliser' || c === 'punctuation'
+         c === 'nominaliser' || c === 'punctuation' || c === 'adverb'
 }
 
 function validateJapaneseUsage(pair, inv) {
@@ -17045,6 +17049,12 @@ function validateJapaneseGrammarClosure(pair, inv, allowedGrammarIds) {
     // Punctuation is punctuation, whatever type a segmenter gave it.
     if (s.type === 'punct' || isJapanesePunctuation(s.surface)) return
     if (s.type !== 'grammar') return
+    // Use the SAME taxonomy as the usage check. この/あの are determiners and もう is
+    // an adverb; calling them "untaught grammar particles" rejected valid Japanese
+    // 13 times in one run. Only a real particle is judged against the declared list.
+    const _c = jaTokenClass(s.surface)
+    if (_c === 'determiner' || _c === 'discourse' || _c === 'adverb' || _c === 'verb' ||
+        _c === 'content' || _c === 'i-adjective' || _c === 'interrogative') return
     if (!allowedForms.has(s.surface)) problems.push('untaught grammar particle: ' + s.surface)
   })
   // particles present in the sentence but never declared
@@ -17052,6 +17062,9 @@ function validateJapaneseGrammarClosure(pair, inv, allowedGrammarIds) {
   const segSurfaces = new Set((pair.segments || []).map(s => s.surface))
   KNOWN_PARTICLES.forEach(p => {
     if (isJapanesePunctuation(p)) return
+    // Determiners, discourse markers and adverbs are not particles.
+    const _pc = jaTokenClass(p)
+    if (_pc === 'determiner' || _pc === 'discourse' || _pc === 'adverb' || _pc === 'verb') return
     if (!jp.includes(p)) return
     if (allowedForms.has(p)) return
     // only flag when it appears as a standalone particle segment or a clear suffix

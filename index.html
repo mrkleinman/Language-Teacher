@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v588"/>
+<meta name="app-version" content="v589"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v588';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v588').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v589';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v589').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -20169,10 +20169,19 @@ const JA_GRAMMAR_MARKERS = [
   { form:'\u3068', id:'to' },
 ]
 // Returns the grammar ids a sentence actually uses.
-function japaneseGrammarUsed(japanese) {
+function japaneseGrammarUsed(japanese, inv) {
   const s = String(japanese || '')
   const used = new Set()
+  // Mask content words FIRST. Naive substring matching read 分からない as containing
+  // から and 何 as containing か, so a sentence was charged with particles it never
+  // used — the same substring-inheritance fault fixed on the Thai side.
   let rest = s
+  const content = ((inv && inv.allContent) || []).map(w => w.japanese)
+    .filter(Boolean).sort((a, b) => b.length - a.length)
+  content.forEach(w => { if (rest.includes(w)) rest = rest.split(w).join('\u0000') })
+  // Common inflected forms whose stems hide particles.
+  ;['\u5206\u304b\u3089\u306a\u3044','\u5206\u304b\u308b','\u304b\u306a','\u3053\u3068','\u3082\u306e','\u306a\u3044','\u307e\u3059','\u307e\u3057\u305f']
+    .forEach(w => { if (rest.includes(w)) rest = rest.split(w).join('\u0000') })
   JA_GRAMMAR_MARKERS.forEach(m => {
     if (rest.includes(m.form)) { used.add(m.id); rest = rest.split(m.form).join('') }
   })
@@ -20181,11 +20190,27 @@ function japaneseGrammarUsed(japanese) {
   return [...used]
 }
 // Every grammar element must resolve to something the track declared.
+// japaneseGrammarUsed emits 'te-form', 'da-yo' and 'nda', but the scaffold declares
+// 'te', 'da'/'yo' and 'da'. Those three could therefore NEVER be declared: 知る
+// failed all nine of its checks in one run for a te-form the learner had already
+// unlocked. The two vocabularies are reconciled here.
+const JA_GRAMMAR_ID_ALIASES = {
+  'te-form': ['te'],
+  'da-yo':   ['da', 'yo'],
+  'nda':     ['da', 'no'],
+  'masu':    ['masu'],
+  'ta':      ['past'],
+}
+function jaGrammarIdSatisfied(id, allowed) {
+  if (allowed.has(id)) return true
+  const alias = JA_GRAMMAR_ID_ALIASES[id]
+  return !!(alias && alias.every(a => allowed.has(a)))
+}
 function validateJapaneseGrammarInventory(pair, allowedIds) {
   const allowed = new Set(allowedIds || [])
   if (!allowed.size) return { ok: true, problems: [] }   // nothing declared: no gate
-  const used = japaneseGrammarUsed(pair && pair.japanese)
-  const bad = used.filter(id => !allowed.has(id))
+  const used = japaneseGrammarUsed(pair && pair.japanese, (pair && pair._inv) || null)
+  const bad = used.filter(id => !jaGrammarIdSatisfied(id, allowed))
   return bad.length
     ? { ok: false, problems: bad.map(id => 'grammar "' + id + '" is not in this track\u2019s declared Building Blocks') }
     : { ok: true, problems: [] }
@@ -20280,7 +20305,7 @@ function checkJapaneseGrammarPolicy(pair, inv) {
   const allowed = japaneseAllowedGrammar(inv)
   try {
     const closure = validateJapaneseGrammarClosure(pair, inv, allowed.ids)
-    const inventory = validateJapaneseGrammarInventory(pair, allowed.ids)
+    const inventory = validateJapaneseGrammarInventory({ ...pair, _inv: inv }, allowed.ids)
     const problems = [...(closure.problems || []), ...(inventory.problems || [])]
     return { ok: problems.length === 0, problems, allowedIds: allowed.ids }
   } catch (e) {
@@ -20414,7 +20439,7 @@ function japaneseAcceptanceGate(pair, inv, opts) {
     } catch (e) { problems.push('grammar check errored: ' + (e.message || e)) }
     // 1b. declared grammar inventory — fallback and QC may not introduce new grammar
     try {
-      const gi = validateJapaneseGrammarInventory(pair, o.declaredGrammarIds)
+      const gi = validateJapaneseGrammarInventory({ ...pair, _inv: inv }, o.declaredGrammarIds)
       if (gi && !gi.ok) problems.push(...gi.problems)
     } catch (e) { problems.push('grammar inventory check errored: ' + (e.message || e)) }
     // 2. usage / valency / semantic sense

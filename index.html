@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v582"/>
+<meta name="app-version" content="v585"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v582';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v582').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v585';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v585').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4310,25 +4310,52 @@ function romajiMatchesReading(romaji, reading) {
 // slot, earn no Known status and do not affect rank. They unlock by rank so the
 // whole grammar system is not opened at Mukyu.
 const JAPANESE_GRAMMAR_SCAFFOLD = [
-  { id:'wa',   form:'\u306F',   romaji:'wa',   meaning:'topic marker',        type:'particle', minKnown:0 },
-  { id:'ka',   form:'\u304B',   romaji:'ka',   meaning:'question marker',     type:'particle', minKnown:0 },
-  { id:'ne',   form:'\u306D',   romaji:'ne',   meaning:'right? / soft agreement', type:'particle', minKnown:0 },
-  { id:'yo',   form:'\u3088',   romaji:'yo',   meaning:'emphasis',            type:'particle', minKnown:0 },
-  { id:'da',   form:'\u3060',   romaji:'da',   meaning:'plain copula (is)',   type:'copula',   minKnown:0 },
-  { id:'ni',   form:'\u306B',   romaji:'ni',   meaning:'to / at (destination or time)', type:'particle', minKnown:0 },
-  { id:'no',   form:'\u306E',   romaji:'no',   meaning:'possessive / explanatory', type:'particle', minKnown:100 },
-  { id:'wo',   form:'\u3092',   romaji:'wo',   meaning:'object marker',       type:'particle', minKnown:100 },
-  { id:'mo',   form:'\u3082',   romaji:'mo',   meaning:'also / too',          type:'particle', minKnown:100 },
-  { id:'to',   form:'\u3068',   romaji:'to',   meaning:'and / with',          type:'particle', minKnown:200 },
-  { id:'de',   form:'\u3067',   romaji:'de',   meaning:'at / by means of',    type:'particle', minKnown:200 },
-  { id:'ga',   form:'\u304C',   romaji:'ga',   meaning:'subject marker',      type:'particle', minKnown:200 },
-  { id:'kara', form:'\u304B\u3089', romaji:'kara', meaning:'from / because',  type:'particle', minKnown:350 },
-  { id:'made', form:'\u307E\u3067', romaji:'made', meaning:'until',           type:'particle', minKnown:350 },
-  { id:'he',   form:'\u3078',   romaji:'e',    meaning:'towards',             type:'particle', minKnown:350 },
+  { id:'wa',   form:'\u306F',   romaji:'wa',   meaning:'topic marker',        type:'particle', minKnown:0, minIntroduced:0 },
+  { id:'ka',   form:'\u304B',   romaji:'ka',   meaning:'question marker',     type:'particle', minKnown:0, minIntroduced:0 },
+  { id:'ne',   form:'\u306D',   romaji:'ne',   meaning:'right? / soft agreement', type:'particle', minKnown:0, minIntroduced:0 },
+  { id:'yo',   form:'\u3088',   romaji:'yo',   meaning:'emphasis',            type:'particle', minKnown:0, minIntroduced:0 },
+  { id:'da',   form:'\u3060',   romaji:'da',   meaning:'plain copula (is)',   type:'copula',   minKnown:0, minIntroduced:0 },
+  { id:'ni',   form:'\u306B',   romaji:'ni',   meaning:'to / at (destination or time)', type:'particle', minKnown:0, minIntroduced:0 },
+  { id:'no',   form:'\u306E',   romaji:'no',   meaning:'possessive / explanatory', type:'particle', minKnown:100, minIntroduced:20 },
+  { id:'wo',   form:'\u3092',   romaji:'wo',   meaning:'object marker',       type:'particle', minKnown:100, minIntroduced:15 },
+  { id:'mo',   form:'\u3082',   romaji:'mo',   meaning:'also / too',          type:'particle', minKnown:100, minIntroduced:30 },
+  { id:'to',   form:'\u3068',   romaji:'to',   meaning:'and / with',          type:'particle', minKnown:200, minIntroduced:25 },
+  { id:'de',   form:'\u3067',   romaji:'de',   meaning:'at / by means of',    type:'particle', minKnown:200, minIntroduced:35 },
+  { id:'ga',   form:'\u304C',   romaji:'ga',   meaning:'subject marker',      type:'particle', minKnown:200, minIntroduced:45 },
+  { id:'kara', form:'\u304B\u3089', romaji:'kara', meaning:'from / because',  type:'particle', minKnown:350, minIntroduced:55 },
+  { id:'made', form:'\u307E\u3067', romaji:'made', meaning:'until',           type:'particle', minKnown:350, minIntroduced:70 },
+  { id:'he',   form:'\u3078',   romaji:'e',    meaning:'towards',             type:'particle', minKnown:350, minIntroduced:80 },
 ]
+// ── Morphology as declarable grammar ────────────────────────────────────────
+// JA_MORPHOLOGY_MARKERS blocks たい/ない/ます/ている/たら/けど when undeclared, but
+// nothing could ever declare them: the scaffold held particles only. These entries
+// give each form an unlock point so natural Japanese becomes buildable.
+const JAPANESE_MORPHOLOGY_SCAFFOLD = [
+  { form:'\u307E\u3059', id:'masu',  meaning:'polite verb ending',        minKnown:0,  minIntroduced:25 },
+  { form:'\u306A\u3044', id:'nai',   meaning:'plain negative',            minKnown:0,  minIntroduced:35 },
+  { form:'\u305F',       id:'past',  meaning:'plain past',                minKnown:0,  minIntroduced:40 },
+  { form:'\u3066',       id:'te',    meaning:'te-form (linking)',         minKnown:0,  minIntroduced:55 },
+  { form:'\u3066\u3044\u308B', id:'teiru', meaning:'progressive',         minKnown:0,  minIntroduced:65 },
+  { form:'\u305F\u3044', id:'tai',   meaning:'want to (desire)',          minKnown:0,  minIntroduced:70 },
+  { form:'\u3051\u3069', id:'kedo',  meaning:'but / though',              minKnown:0,  minIntroduced:80 },
+  { form:'\u305F\u3089', id:'tara',  meaning:'if / when (conditional)',   minKnown:0,  minIntroduced:95 },
+]
+
+// Grammar availability tracks INTRODUCED vocabulary, not the much smaller 'known'
+// count. A learner with 100 introduced words was being given 6 particles and zero
+// morphology — no を, no past tense, no ます, no ない — which makes ordinary Japanese
+// impossible to build and sends every candidate to fallback.
 function japaneseScaffoldFor(vocab) {
+  const introduced = (vocab || []).filter(w => hasBeenIntroduced(w)).length
   const known = (vocab || []).filter(w => w.status === 'known').length
-  return JAPANESE_GRAMMAR_SCAFFOLD.filter(s => known >= s.minKnown)
+  // Either measure may unlock a block; introduced is the primary one.
+  // When a block declares minIntroduced that value is AUTHORITATIVE. Treating it as
+  // an alternative to minKnown meant `minKnown: 0` satisfied the OR for every
+  // morphology block, unlocking たら and ている at ten words.
+  return [...JAPANESE_GRAMMAR_SCAFFOLD, ...JAPANESE_MORPHOLOGY_SCAFFOLD]
+    .filter(s => s.minIntroduced !== undefined
+      ? introduced >= s.minIntroduced
+      : known >= s.minKnown)
 }
 
 // §1 — "introduced" means actually encountered, NOT status !== 'new'. A word rated
@@ -16952,6 +16979,20 @@ const JA_MORPHOLOGY_MARKERS = [
   { rx:/\u305F\u3089/,                                         id:'tara', label:'\u305F\u3089 (conditional)' },
   { rx:/\u3051\u3069/,                                         id:'kedo', label:'\u3051\u3069 (but)' },
 ]
+// ── Punctuation is never vocabulary or grammar ──────────────────────────────
+// The grammar gate flags any segment typed 'grammar' whose surface is not a
+// declared form. Punctuation reaching it as a grammar segment therefore produced
+// "untaught grammar particle: 。". Several segmenters skip only the FULLWIDTH forms,
+// so an ASCII '?' or '.' from the model fell through as an unclassified character.
+const JA_PUNCT_RX = /^[\s\u3000\u3001\u3002\u30FB\uFF1F\uFF01\uFF0C\uFF0E\u2026\u2015\u301C.,!?;:'"()\[\]\-\u2018\u2019\u201C\u201D]+$/
+function isJapanesePunctuation(s) { return JA_PUNCT_RX.test(String(s || '')) }
+// One normalised form, so ASCII and fullwidth are treated identically everywhere.
+function normaliseJapanesePunctuation(s) {
+  return String(s || '')
+    .replace(/\?/g, '\uFF1F').replace(/!/g, '\uFF01')
+    .replace(/,/g, '\u3001').replace(/\.(?=\s|$)/g, '\u3002')
+}
+
 function validateJapaneseGrammarClosure(pair, inv, allowedGrammarIds) {
   const problems = []
   const allowed = new Set(allowedGrammarIds || (inv.grammarScaffold || []).map(g => g.id))
@@ -16963,13 +17004,17 @@ function validateJapaneseGrammarClosure(pair, inv, allowedGrammarIds) {
   })
   // §22 — every grammar segment must resolve to an allowed block
   ;(pair.segments || []).forEach(s => {
-    if (!s || s.type !== 'grammar') return
+    if (!s) return
+    // Punctuation is punctuation, whatever type a segmenter gave it.
+    if (s.type === 'punct' || isJapanesePunctuation(s.surface)) return
+    if (s.type !== 'grammar') return
     if (!allowedForms.has(s.surface)) problems.push('untaught grammar particle: ' + s.surface)
   })
   // particles present in the sentence but never declared
   const KNOWN_PARTICLES = ['\u306F','\u304C','\u3092','\u306B','\u3067','\u3068','\u3082','\u306E','\u304B','\u306D','\u3088','\u3060','\u3078','\u304B\u3089','\u307E\u3067']
   const segSurfaces = new Set((pair.segments || []).map(s => s.surface))
   KNOWN_PARTICLES.forEach(p => {
+    if (isJapanesePunctuation(p)) return
     if (!jp.includes(p)) return
     if (allowedForms.has(p)) return
     // only flag when it appears as a standalone particle segment or a clear suffix
@@ -19234,9 +19279,15 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
       // recovery screen becomes rare rather than routine.
       let out = res
       if (out && out.complete === false) {
+        // One pass per MISSING SLOT, not three passes total. With 15 missing recalls
+        // a cap of 3 could only ever restore 3 of them, so the track stayed
+        // incomplete however well recovery worked.
         let guard = 0
-        while (out.complete === false && (out.missingRecalls || []).length && guard++ < 3) {
-          push('\u21BB Auto-recovering missing recall ' + guard + '/3\u2026')
+        const _slots = (out.missingRecalls || []).length
+        const _cap = Math.min(Math.max(_slots, 3), 45)
+        while (out.complete === false && (out.missingRecalls || []).length && guard++ < _cap) {
+          push('\u21BB Auto-recovering missing recall ' + guard + '/' + _cap + ' \u2014 ' +
+               (out.missingRecalls || []).length + ' slot(s) outstanding\u2026')
           const next = await recoverJapaneseMissingRecall(out, targets, vocab, register, apiKey, model, push,
             meta => { if (meta.checkTier) setCurrentCheckTier(meta.checkTier); if (meta.targetId) setCurrentTargetId(meta.targetId) })
           if (next.recovered) {
@@ -19993,7 +20044,9 @@ function jaRepairPairStructure(pair, inv) {
   let i = 0, ok = true
   while (i < jp.length) {
     const ch = jp[i]
-    if (/[\s\u3000\u3001\u3002\uFF1F\uFF01]/.test(ch)) { reading += ch; i += 1; continue }
+    // ASCII punctuation from the model must be skipped as well, or it falls through
+    // to the kana branch / structural failure.
+    if (isJapanesePunctuation(ch)) { reading += ch; i += 1; continue }
     const hit = lex.find(w => w.s && jp.startsWith(w.s, i))
     if (hit) {
       segs.push({ surface:hit.s, lemma:hit.s, reading:hit.r, romaji:hit.ro || kanaToRomaji(hit.r),
@@ -20160,15 +20213,72 @@ function applyJapaneseFinalRepair(verdict, pair, inv, opts) {
   return { applied: true, pair: fin.pair }
 }
 
+// ── ONE authoritative allowed-grammar policy ────────────────────────────────
+// Normal generation, fallback, recovery and QC each derived their own list, so a
+// form rejected on one path could pass on another \u2014 fallback admitted よ while
+// normal generation refused it. This is now the single source.
+function japaneseAllowedGrammar(inv) {
+  const blocks = (inv && inv.grammarScaffold) || []
+  return {
+    ids: blocks.map(g => g.id),
+    forms: new Set(blocks.map(g => g.form)),
+    blocks,
+  }
+}
+// Every path calls this. No path may substitute its own policy.
+function checkJapaneseGrammarPolicy(pair, inv) {
+  const allowed = japaneseAllowedGrammar(inv)
+  try {
+    const closure = validateJapaneseGrammarClosure(pair, inv, allowed.ids)
+    const inventory = validateJapaneseGrammarInventory(pair, allowed.ids)
+    const problems = [...(closure.problems || []), ...(inventory.problems || [])]
+    return { ok: problems.length === 0, problems, allowedIds: allowed.ids }
+  } catch (e) {
+    // Fail closed: an errored policy check never admits a pair.
+    return { ok: false, problems: ['grammar policy check errored: ' + (e.message || e)] }
+  }
+}
+
+// ── Framing acceptance contract ─────────────────────────────────────────────
+// The log said "Opening accepted" and then dropped the opening for untaught
+// content. A line is accepted only once it has passed the SAME curriculum gate as
+// a recall; nothing is announced as accepted before that.
+function acceptJapaneseFraming(line, inv, kind, onLog) {
+  const label = kind || 'framing'
+  if (!line || !(line.japanese || '').trim())
+    return { accepted: false, reason: label + ': empty' }
+  let res
+  try {
+    res = japaneseAcceptanceGate(line, inv, {
+      declaredGrammarIds: japaneseAllowedGrammar(inv).ids,
+      allowedGrammarIds: japaneseAllowedGrammar(inv).ids,
+    })
+  } catch (e) { res = { ok: false, problems: ['gate errored: ' + (e.message || e)] } }
+  // Content must also be taught \u2014 the same check a recall faces.
+  if (res.ok && typeof japaneseCheckLine === 'function') {
+    try {
+      const cv = japaneseCheckLine(line.japanese, inv)
+      if (!cv.ok) res = { ok: false, problems: ['untaught vocabulary: ' + cv.unknown.join(' ')] }
+    } catch (e) { res = { ok: false, problems: ['vocabulary check errored'] } }
+  }
+  if (!res.ok) {
+    onLog && onLog('  \u26A0 ' + label + ' REJECTED \u2014 ' + (res.problems[0] || ''))
+    return { accepted: false, reason: res.problems[0] }
+  }
+  onLog && onLog('  \u2705 ' + label + ' accepted')
+  return { accepted: true, line }
+}
+
 function japaneseAcceptanceGate(pair, inv, opts) {
   const o = opts || {}
   const problems = []
   try {
     if (!pair || !(pair.japanese || '').trim()) return { ok: false, problems: ['no Japanese'] }
     // 1. grammar/morphology + declared inventory
+    // ONE policy for every path.
     try {
-      const g = validateJapaneseGrammarClosure(pair, inv, o.allowedGrammarIds)
-      if (g && !g.ok) problems.push(...(g.problems || ['grammar closure failed']))
+      const g = checkJapaneseGrammarPolicy(pair, inv)
+      if (g && !g.ok) problems.push(...(g.problems || ['grammar policy failed']))
     } catch (e) { problems.push('grammar check errored: ' + (e.message || e)) }
     // 1b. declared grammar inventory — fallback and QC may not introduce new grammar
     try {
@@ -20277,7 +20387,7 @@ function jaTargetRoles(target) {
 // names, weather, personal attributes and abstract states belong here.
 const JA_ABSTRACT_NOUNS = ['\u65E5\u672C\u8A9E','\u82F1\u8A9E','\u540D\u524D','\u5929\u6C17','\u5143\u6C17','\u4EBA\u6C17','\u5BB6\u65CF','\u53CB\u9054','\u4EBA','\u4ECA\u65E5','\u660E\u65E5','\u6628\u65E5','\u671D','\u591C','\u4ED5\u4E8B','\u5B66\u6821']
 
-function jaFallbackRecall(target, inv, recallIndex) {
+function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
   const t = target.japanese
   // §10 — a cue must read as English, not as a dictionary line. "like / liked"
   // belongs in a wordlist; a productive cue needs one sense.
@@ -20318,16 +20428,52 @@ function jaFallbackRecall(target, inv, recallIndex) {
   // Offer extra DISTINCT shapes so recall 3 does not collide with recall 1 — then
   // license the WHOLE set. Filtering before these were added is what let
   // 今日、ありがとう？ through: the top-up ran after the gate.
-  if (has('\u4ECA\u65E5') && !cands.some(c => c.jp.indexOf('\u4ECA\u65E5') === 0))
-    // REMOVED: '今日、'+t+'？' produced 今日、水？ and 今日、名前？ — a bare topic
-    // with no predicate is not a question.
-    // REMOVED: t+'ね。' produced 住むね。 — a dictionary-form verb cannot take ね
-    // as a bare comment.
-    // REMOVED: t+'だ。' produced 住むだ。 — a verb never takes the copula.
+  // Three blind templates were removed here ('今日、'+t+'？', t+'ね。', t+'だ。').
+  // Removing their bodies left a dangling `if`, which silently captured the
+  // licensing loop below as its body — so candidates were only filtered when 今日
+  // happened to be available. The guard is gone; filtering is unconditional.
+
+  // VARIETY: offer extra distinct shapes using allowed supporting words, so three
+  // recalls do not collapse onto one sentence.
+  const supp = w => has(w)
+  if (supp('\u4ECA\u65E5') && pos === 'verb' && !cands.some(c => c.jp.startsWith('\u4ECA\u65E5')))
+    cands.push({ jp: '\u4ECA\u65E5' + t + '\uFF1F', en: 'Are you going to ' + vsense + ' today?',
+                 cue: 'Ask if they are going to ' + vsense + ' today' })
+  if (supp('\u660E\u65E5') && pos === 'verb' && !cands.some(c => c.jp.startsWith('\u660E\u65E5')))
+    cands.push({ jp: '\u660E\u65E5' + t + '\uFF1F', en: 'Are you going to ' + vsense + ' tomorrow?',
+                 cue: 'Ask if they are going to ' + vsense + ' tomorrow' })
+  if (supp('\u4E00\u7DD2\u306B') && pos === 'verb')
+    cands.push({ jp: '\u4E00\u7DD2\u306B' + t + '\uFF1F', en: 'Shall we ' + vsense + ' together?',
+                 cue: 'Suggest doing it together' })
+  // NOUN variants, so a noun target does not collapse onto one frame either.
+  if (pos === 'noun') {
+    const roles = jaTargetRoles(target)
+    if (roles.has('place')) {
+      if (supp('\u4ECA\u65E5')) cands.push({ jp: '\u4ECA\u65E5' + t + '\u884C\u304F\uFF1F',
+        en: 'Are you going to the ' + sense + ' today?', cue: 'Ask if they are going to the ' + sense + ' today' })
+      if (supp('\u3069\u3053')) cands.push({ jp: t + '\u306F\u3069\u3053\uFF1F',
+        en: 'Where is the ' + sense + '?', cue: 'Ask where the ' + sense + ' is' })
+    }
+    if (roles.has('possessable')) {
+      if (supp('\u4F55')) cands.push({ jp: t + '\u306F\u4F55\uFF1F',
+        en: 'What ' + sense + ' is it?', cue: 'Ask which ' + sense + ' it is' })
+      if (supp('\u3053\u308C')) cands.push({ jp: '\u3053\u308C' + t + '\uFF1F',
+        en: 'Is this the ' + sense + '?', cue: 'Ask if this is the ' + sense })
+    }
+    if (roles.has('abstract') && supp('\u4ECA\u65E5'))
+      cands.push({ jp: '\u4ECA\u65E5\u306E' + t + '\u306F\uFF1F',
+        en: "How about today's " + sense + '?', cue: "Ask about today's " + sense })
+  }
+
   for (let k = cands.length - 1; k >= 0; k--) if (!licensed(cands[k])) cands.splice(k, 1)
   const uniq = []
   cands.forEach(c => { if (c && c.jp && !uniq.some(u => u.jp === c.jp)) uniq.push(c) })
-  const pick = uniq[(recallIndex - 1) % uniq.length] || uniq[0]
+  // Prefer a shape this target has NOT used yet. Identical recalls are a genuine
+  // last resort, not the default when more than one valid frame exists.
+  const used = new Set((Array.isArray(previousRecalls) ? previousRecalls : []).filter(Boolean))
+  const unused = uniq.filter(c => !used.has(c.jp))
+  const pool = unused.length ? unused : uniq
+  const pick = pool[(recallIndex - 1) % pool.length] || pool[0]
   if (!pick) return null
   // §18 — never paste a dictionary alternative ("なに / なん") into an utterance.
   const resolved = resolveJapaneseReading(t, target.reading || '', pick.jp.slice(pick.jp.indexOf(t) + t.length))
@@ -20368,7 +20514,10 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
 
     let cand = null
     if (isFallbackTier) {
-      cand = jaFallbackRecall(target, inv, recallIndex)          // §8 deterministic
+      // Pass what this target has already produced so the fallback can pick a
+    // DIFFERENT valid frame instead of repeating recall 1 three times.
+    cand = jaFallbackRecall(target, inv, recallIndex,
+      (opts && opts.previousRecalls) || [])                     // §8 deterministic
       if (cand) onLog && onLog('  \u2699 deterministic fallback')
     } else {
       const extra = jaEscalationInstruction(tier, target, inv, rules)
@@ -20532,13 +20681,22 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
       const before = attemptCount
       const got = await generateJapaneseOneRecall(t, r, vocab, registerId, apiKey, model,
         seenMap, inv, rules, onLog,
-        tier => { attemptCount++; onProgress && onProgress(doneRecall, totalRecall, [], { targetIdx: i, targetId: t.id, recallIndex: r, checkTier: tier, accepted: false }) })
+        tier => { attemptCount++; onProgress && onProgress(doneRecall, totalRecall, [], { targetIdx: i, targetId: t.id, recallIndex: r, checkTier: tier, accepted: false }),
+        { previousRecalls: mapped.map(x => x.japanese) } })
       if (!got || got.failed) {
         // §3/§18 — do NOT continue as though this target is complete. Record exactly
         // which recall is missing and why, then stop generating for this target.
         const why = (got && got.lastFailure) || 'no valid candidate'
         onLog && onLog('  \u274C ' + t.japanese + ' recall ' + r + ' could not be generated \u2014 ' + why)
-        missingRecalls.push({ targetId: t.id, targetIdx: i, targetJapanese: t.japanese, recallIndex: r, lastFailure: why })
+        // Record EVERY remaining slot for this target, not just the one that failed.
+        // Pushing a single entry and breaking is why the log read "5 recall(s) still
+        // needed" when 5 targets had failed at recall 1 — 15 recalls were actually
+        // missing. Invariant: missingRecalls.length === expected - accepted.
+        for (let miss = r; miss <= 3; miss++) {
+          missingRecalls.push({ targetId: t.id, targetIdx: i, targetJapanese: t.japanese,
+                                recallIndex: miss, lastFailure: why,
+                                previousRecalls: mapped.map(m => m.japanese) })
+        }
         break
       }
       if (got.recovered) onLog && onLog('  \u2139 recall ' + r + ' recovered (' + got.recovered + ')')
@@ -20582,6 +20740,23 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   // technical faults throw (outcome C).
   const producedRecalls = perTarget.reduce((a, s) => a + s.length, 0)
   if (producedRecalls !== totalRecall && !(stopSignal && stopSignal.cancelled)) {
+    // HARD INVARIANT: every unbuilt slot must be enumerated, so the count the log
+    // reports equals the arithmetic gap. A mismatch means slots were dropped.
+    const _gap = totalRecall - producedRecalls
+    if (missingRecalls.length !== _gap) {
+      onLog && onLog('\u26A0 missingRecalls (' + missingRecalls.length + ') != expected gap (' + _gap +
+                     ') \u2014 enumerating the remainder')
+      const have = new Set(missingRecalls.map(m => m.targetId + ':' + m.recallIndex))
+      targets.forEach((t, ti) => {
+        const built = (perTarget[ti] || []).length
+        for (let r = built + 1; r <= 3; r++) {
+          const k = t.id + ':' + r
+          if (!have.has(k)) { have.add(k)
+            missingRecalls.push({ targetId: t.id, targetIdx: ti, targetJapanese: t.japanese,
+                                  recallIndex: r, lastFailure: 'not attempted' }) }
+        }
+      })
+    }
     onLog && onLog('\u26A0 Generation incomplete: ' + producedRecalls + '/' + totalRecall +
                    ' \u2014 ' + missingRecalls.length + ' recall(s) still needed')
     return {

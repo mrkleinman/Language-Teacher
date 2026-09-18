@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v592"/>
+<meta name="app-version" content="v594"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v592';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v592').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v594';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v594').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4260,7 +4260,10 @@ function kanaToRomaji(reading) {
     const one = s[i]
     if (one === 'っ') {                                  // gemination: double next consonant
       const nx = KANA_ROMAJI[s.slice(i + 1, i + 3)] || KANA_ROMAJI[s[i + 1]] || ''
-      if (nx) out += (nx[0] === 'c' ? 't' : nx[0])
+      // っ before ch doubles the c (どっち = docchi), matching the dictionary. Mapping
+      // it to 't' gave "dotchi", the only romaji disagreement in the whole bank — and
+      // it made どっち unbuildable: "segment romaji mismatch" killed every recall.
+      if (nx) out += nx[0]
       i += 1; continue
     }
     if (one === 'ー') {                                   // long mark: repeat last vowel
@@ -16693,6 +16696,11 @@ const JA_WO_DROPPING = ['\u98df\u3079\u308b','\u98f2\u3080','\u898b\u308b','\u80
 const JA_BARE_SUBJECT_VERBS = ['\u3042\u308b','\u3044\u308b','\u3067\u304d\u308b','\u5206\u304b\u308b','\u8981\u308b','\u8db3\u308a\u308b']
 function jaIsVerbSurface(w) {
   if (!w) return false
+  // どう / こう / そう / ああ end in う but are adverbs or interrogatives, never verbs.
+  // "店どう" was rejected as a noun+verb pair missing a particle, which cost どう
+  // every natural recall in a track.
+  if (typeof jaIsInterrogative === 'function' && jaIsInterrogative(w)) return false
+  if (['\u3069\u3046','\u3053\u3046','\u305D\u3046','\u3042\u3042','\u3069\u3063\u3061','\u3053\u3063\u3061','\u305D\u3063\u3061','\u3082\u3046','\u307E\u3060'].includes(w)) return false
   // \u3059\u3054\u304F / \u65E9\u304F / \u9045\u304F are adverbs, not verbs: the \u304F ending made the
   // morphological test claim them, so "\u5E97\u3059\u3054\u304F" fired the noun+verb rule.
   if (/[\u3044\u3057\u304D\u3054\u304F\u3088]\u304F$/.test(w) && w.length >= 3 && !jaSemanticClass(w)) return false
@@ -16741,6 +16749,8 @@ const JA_SENTENCE_PARTICLES = ['\u306D','\u3088','\u304B','\u306A','\u308F','\u3
 // a particle — when \u306B IS the particle. They may always precede a verb.
 const JA_CASE_PARTICLES = ['\u306B','\u3092','\u304C','\u3067','\u3068','\u304B\u3089','\u307E\u3067','\u3078','\u3088\u308A','\u3060\u3051','\u3063\u3066','\u306F','\u3082','\u306E','\u3084','\u306A\u3069']
 const JA_DETERMINERS = ['\u3053\u306E','\u305D\u306E','\u3042\u306E','\u3069\u306E']
+// Interrogatives the main table misses. \u3069\u3063\u3061 was classed 'content'.
+const JA_EXTRA_INTERROGATIVES = ['\u3069\u3063\u3061','\u3069\u3061\u3089','\u3069\u308C','\u3069\u3093\u306A','\u3069\u3046\u3084\u3063\u3066','\u306A\u3093\u3067','\u306A\u305C','\u3044\u304F\u3089','\u4F55\u6642']
 // Common adverbs. もう ends in \u3046 so the morphological verb test claimed it as a
 // verb, which then failed the noun+verb adjacency rule in "\u306F\u3082\u3046".
 const JA_COMMON_ADVERBS = ['\u3069\u3046\u3084\u3063\u3066','\u3069\u3046\u3057\u3066','\u306A\u305C','\u3082\u3046','\u307E\u3060','\u3061\u3087\u3063\u3068','\u3059\u3054\u304F','\u3059\u3054\u3044','\u3068\u3066\u3082','\u3088\u304F','\u3042\u307E\u308A','\u305C\u3093\u3076','\u3044\u3064\u3082','\u5C11\u3057','\u4ECA','\u307E\u305F','\u305D\u308D\u305D\u308D','\u3082\u3046\u3059\u3050','\u305D\u3093\u306A\u306B','\u5168\u7136','\u7D50\u69CB','\u3086\u3063\u304F\u308A','\u521D\u3081\u3066']
@@ -16760,7 +16770,7 @@ function jaTokenClass(tok) {
   if (JA_CASE_PARTICLES.includes(t)) return 'case-particle'
   if (JA_SENTENCE_PARTICLES.includes(t)) return 'sentence-particle'
   if (JA_NOMINALISERS.includes(t)) return 'nominaliser'
-  if (jaIsInterrogative(t)) return 'interrogative'
+  if (jaIsInterrogative(t) || JA_EXTRA_INTERROGATIVES.includes(t)) return 'interrogative'
   if (JA_COMMON_ADVERBS.includes(t)) return 'adverb'
   if (jaIsVerbSurface(t)) return 'verb'
   if (jaIsIAdjective(t)) return 'i-adjective'
@@ -17261,8 +17271,9 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
   all.forEach((p, i) => {
     if (!p || !engine.sentenceOf(p) || p._framing) return
     try {
-      const u = (typeof validateJapaneseUsage === 'function' && p.japanese)
-        ? validateJapaneseUsage(p, inv) : { ok: true }
+      const _inv = engine && engine.inv
+      const u = (_inv && typeof validateJapaneseUsage === 'function' && p.japanese)
+        ? validateJapaneseUsage(p, _inv) : { ok: true }
       if (!u.ok) _jaBroken.set(i, u.problems[0])
     } catch (e) { _jaBroken.set(i, 'validator error: ' + (e.message || e)) }
   })
@@ -17381,6 +17392,10 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
 // Japanese adapter for the shared AI QC. All Japanese knowledge lives here.
 function japaneseQcEngine(inv, vocab, registerId) {
   return {
+    // The QC runner needs the inventory to validate the Japanese itself; it closes
+    // over `inv` but never exposed it, so the check threw "inv is not defined" on
+    // all 90 pairs and the whole Japanese-first stage was silently dead.
+    inv,
     labelSentence: 'Japanese',
     labelPronunciation: 'romaji',
     sentenceOf: p => (p && (p.japanese || p.thai)) || '',
@@ -18302,7 +18317,14 @@ async function runJapaneseTrackQC(track, vocab, opts, onProgress, onLog) {
     const prev = seen.get(key)
     if (prev !== undefined) {
       const iss = add(i, 'duplicate', 'duplicate of pair ' + (prev + 1))
-      if (rules.allowNearDuplicate) accept(iss, 'accepted repetition \u2014 learner inventory \u2264 15 words')
+      // Generation ALREADY decided these: when no other licensed frame exists it
+      // accepts correct repetition on purpose and logs it. QC then re-flagged the
+      // same pairs as unresolved, which is why a completed track still reported 16
+      // failures it had deliberately allowed. Honour that decision.
+      if (q._acceptedRepetition || q._duplicateOnly)
+        accept(iss, 'correct repetition \u2014 no other licensed frame for this target')
+      else if (rules.allowNearDuplicate)
+        accept(iss, 'accepted repetition \u2014 learner inventory \u2264 15 words')
       else unresolved(iss)
     }
     seen.set(key, i)
@@ -20601,7 +20623,7 @@ function jaTargetRoles(target) {
   if (pos === 'expression' || pos === 'interjection') roles.add('expression')
   // An interrogative is an interrogative whatever its part of speech: どう is
   // tagged 'adverb' but takes the question frame, not どういい？
-  if (jaIsInterrogative(t)) roles.add('interrogative')
+  if (jaIsInterrogative(t) || JA_EXTRA_INTERROGATIVES.includes(t)) roles.add('interrogative')
   else if (pos === 'adverb') roles.add('adverb')
   if (pos === 'pronoun' && !roles.has('interrogative')) roles.add('demonstrative')
   return roles
@@ -20813,7 +20835,10 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
   if (dupOnlyCandidate) {
     onLog && onLog('  \u2139 recovered by accepting beginner repetition (no extra API call)')
     seenMap.set(jaDedupeKey(dupOnlyCandidate.japanese), { targetId: target.id })
-    return { pair: dupOnlyCandidate, checkTier: rules.maxTiers, recovered: 'duplicate-only' }
+    // Mark the pair so final QC honours this decision instead of re-reporting it
+    // as an unrepairable duplicate.
+    return { pair: { ...dupOnlyCandidate, _acceptedRepetition: true },
+             checkTier: rules.maxTiers, recovered: 'duplicate-only' }
   }
   // §8/§18 — hand back the exact reason AND any novelty-only candidate so the
   // shared recovery layer can complete the recall without another API call.

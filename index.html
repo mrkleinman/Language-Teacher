@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v595"/>
+<meta name="app-version" content="v596"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v595';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v595').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v596';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v596').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3459,7 +3459,10 @@ function validateMandarinPair(cand, target, inv, vocab, rules, seenMap) {
   if (!mandarinTargetPresent(zh, target, inv)) P.push('target ' + target.chinese + ' not present')
   // D. producibility
   const unk = mandarinUnknownContent(zh, inv)
-  if (unk.length) P.push('untaught vocabulary: ' + unk.join(' '))
+  // Particles are structure, not vocabulary. 吗/呢 already appear in accepted
+  // sentences; flagging 了/的/一下 as untaught drove 123 rejections in one run.
+  const unkReal = unk.filter(w => !zhIsParticle(w))
+  if (unkReal.length) P.push('untaught vocabulary: ' + unkReal.join(' '))
   // E. pinyin alignment
   const pv = validateMandarinPinyin(cand.pinyin)
   if (!pv.ok) P.push('pinyin: ' + pv.reason)
@@ -3513,7 +3516,34 @@ function thirdPerson(v) {
   return v + 's'
 }
 
+// Mandarin verbs that require an object. The fallback emitted bare subject+verb
+// (我拿。我到。我开。我等。我觉得。这个想拿。), which is malformed Chinese \u2014 worse for a
+// learner than a dull but correct sentence.
+const ZH_NEEDS_OBJECT = ['\u62FF','\u5230','\u5F00','\u7B49','\u89C9\u5F97','\u627E','\u5E2E','\u7ED9','\u4E70','\u505A','\u7528','\u5403','\u559D','\u770B','\u542C','\u8BF4','\u77E5\u9053','\u61C2','\u56DE']
+// Objects a beginner inventory can supply, in preference order.
+const ZH_DEFAULT_OBJECTS = ['\u8FD9\u4E2A','\u90A3\u4E2A','\u4E1C\u897F','\u94B1','\u5BB6','\u4F60','\u6211']
+function zhVerbNeedsObject(v) { return ZH_NEEDS_OBJECT.includes(String(v || '')) }
+// Rejects a candidate whose transitive verb has nothing after it.
+function zhFallbackIsWellFormed(zh, target) {
+  const s = String(zh || '').replace(/[\u3002\uFF1F\uFF01\uFF0C]/g, '')
+  const v = target && target.chinese
+  if (!v || !zhVerbNeedsObject(v)) return true
+  const at = s.indexOf(v)
+  if (at < 0) return true
+  const after = s.slice(at + v.length)
+  // Something contentful must follow: an object, not just a particle.
+  return /[\u4E00-\u9FFF]/.test(after.replace(/[\u5417\u5462\u4E86\u5427\u554A]/g, ''))
+}
+
+// Mandarin grammatical particles and aspect markers. These are STRUCTURE, not
+// content vocabulary: 吗/呢 already appear in accepted sentences while 了/的/一下
+// were reported as "untaught vocabulary" and cost 123 rejections in one run.
+const ZH_PARTICLES = ['\u5417','\u5462','\u5427','\u554A','\u7684','\u4E86','\u7740','\u8FC7','\u5417','\u4E00\u4E0B','\u5730','\u5F97','\u5462']
+function zhIsParticle(w) { return ZH_PARTICLES.includes(String(w || '')) }
+
 function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
+  // Declared here so every C.push below can be filtered before returning.
+  const _needsObj = zhVerbNeedsObject(target && target.chinese)
   const zh = target.chinese, has = w => inv.allContent.some(x => x.chinese === w)
   const gram = f => inv.grammarScaffold.some(g => g.form === f)
   // §64 — templates are grammatical by part of speech. Never produce broken
@@ -3597,7 +3627,11 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
   // §30 — build every candidate, then return the first that actually PASSES the
   // real validator and has not been used. A template that segments the target away
   // (你好吗 hides the target 好 inside the basic 你好) is silently skipped.
-  const uniq = []; C.forEach(c => { if (c.zh && !uniq.some(u => u.zh === c.zh)) uniq.push(c) })
+  // Drop malformed candidates BEFORE deduping. 我拿。 我到。 我开。 我等。 我觉得。
+  // are not Chinese: these verbs require an object.
+  const wellFormed = C.filter(c => zhFallbackIsWellFormed(c.zh, target))
+  const pool = wellFormed.length ? wellFormed : C.filter(c => !_needsObj)
+  const uniq = []; pool.forEach(c => { if (c.zh && !uniq.some(u => u.zh === c.zh)) uniq.push(c) })
   const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
   const make = c => {
     const segs = segmentMandarin(c.zh, inv.lexicon)
@@ -3662,6 +3696,8 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
         segments: v.segments,
         targetId: target.id, targetChinese: target.chinese,
         recallIndex, checkTier: tier, _source: 'zh-check-' + tier, _fallbackUsed: isFallback,
+        // Provenance: 0/90 carried this before, so the metrics stayed empty.
+        _provenance: { lang:'zh', tier, fallback: !!isFallback, recallIndex, targetId: target.id },
         // shared Player/adapters read these; Mandarin fields stay authoritative (\u00a76)
         thai: cand.chinese, phonetic: cand.pinyin, wordId: target.id,
         words: v.segments.filter(s => s.type !== 'punct').map(s => ({ p:s.pinyin, e:s.english })),
@@ -11354,6 +11390,20 @@ function ttsTextForPair(pair) {
 // A dictionary entry may list alternatives (何 = なに / なん). A learner-facing
 // segment must carry ONE. 何 blocked its own generation entirely because the
 // unresolved form reached the segment check.
+// Kanji that survive reading conversion. 今日、なにたべる？ kept 今日 unconverted and
+// cost 何 two recalls.
+const JA_READING_FIXUPS = {
+  '\u4ECA\u65E5':'\u304D\u3087\u3046', '\u660E\u65E5':'\u3042\u3057\u305F', '\u6628\u65E5':'\u304D\u306E\u3046',
+  '\u4ECA':'\u3044\u307E', '\u4F55':'\u306A\u306B', '\u4EBA':'\u3072\u3068', '\u5BB6':'\u3044\u3048', '\u99C5':'\u3048\u304D',
+  '\u5E97':'\u307F\u305B', '\u6C34':'\u307F\u305A', '\u4ED5\u4E8B':'\u3057\u3054\u3068', '\u53CB\u9054':'\u3068\u3082\u3060\u3061',
+  '\u5BB6\u65CF':'\u304B\u305E\u304F', '\u540D\u524D':'\u306A\u307E\u3048', '\u65E5\u672C\u8A9E':'\u306B\u307B\u3093\u3054',
+}
+function jaFixupReading(reading) {
+  let s = String(reading || '')
+  Object.keys(JA_READING_FIXUPS).sort((a,b)=>b.length-a.length)
+    .forEach(k => { if (s.includes(k)) s = s.split(k).join(JA_READING_FIXUPS[k]) })
+  return s
+}
 function jaResolveReading(reading, surface, following) {
   const r = String(reading || '')
   if (!/[\/\uFF5C|]/.test(r)) return r
@@ -17013,7 +17063,12 @@ function auditJapaneseReading(pair) {
   if (!rd.trim()) problems.push('no reading')
   if (/[\/\uFF5C|]/.test(rd)) problems.push('reading offers alternatives: ' + rd)
   if (/[\/\uFF5C|]/.test(ro)) problems.push('romaji offers alternatives: ' + ro)
-  if (/[\u4E00-\u9FFF]/.test(rd)) problems.push('reading still contains kanji: ' + rd)
+  // Repair before rejecting: a leftover 今日 is a conversion gap, not a bad pair.
+  if (/[\u4E00-\u9FFF]/.test(rd)) {
+    const fixed = jaFixupReading(rd)
+    if (!/[\u4E00-\u9FFF]/.test(fixed)) { rd = fixed; if (pair) pair.reading = fixed }
+    else problems.push('reading still contains kanji: ' + rd)
+  }
   if (/[\u3040-\u30FF\u4E00-\u9FFF]/.test(ro)) problems.push('romaji contains kana or kanji: ' + ro)
   // Romaji must be derivable from the reading: transcribe the kana and compare
   // letter-for-letter, ignoring spacing and apostrophes.
@@ -17041,10 +17096,15 @@ function auditJapaneseTrackReadings(pairs) {
 
 function validateJapaneseReadingOutput(pair) {
   const problems = []
-  const rd = pair.reading || '', ro = pair.romaji || ''
+  let rd = pair.reading || '', ro = pair.romaji || ''
   if (/[\/｜|]/.test(rd)) problems.push('reading contains dictionary alternatives: ' + rd)
   if (/[\/｜|]/.test(ro)) problems.push('romaji contains dictionary alternatives: ' + ro)
-  if (/[\u4E00-\u9FFF]/.test(rd)) problems.push('reading still contains kanji: ' + rd)
+  // Repair before rejecting: a leftover 今日 is a conversion gap, not a bad pair.
+  if (/[\u4E00-\u9FFF]/.test(rd)) {
+    const fixed = jaFixupReading(rd)
+    if (!/[\u4E00-\u9FFF]/.test(fixed)) { rd = fixed; if (pair) pair.reading = fixed }
+    else problems.push('reading still contains kanji: ' + rd)
+  }
   if (/[\u3040-\u30FF\u4E00-\u9FFF]/.test(ro)) problems.push('romaji still contains kana or kanji: ' + ro)
   return { ok: problems.length === 0, problems }
 }
@@ -17065,7 +17125,7 @@ function validateJapaneseContextualReading(pair) {
   })
   // A kana reading must be kana (plus sentence punctuation). Stray Latin dots or
   // letters such as "どこかい.く" are corruption, not a reading.
-  const rd = pair.reading || ''
+  let rd = pair.reading || ''
   if (rd && /[A-Za-z.]/.test(rd)) problems.push('reading contains corrupted characters: ' + rd)
   if (rd && /[\u4E00-\u9FFF]/.test(rd)) problems.push('reading still contains kanji: ' + rd)
   return { ok: problems.length === 0, problems }
@@ -19970,7 +20030,23 @@ function JapaneseTeacher({ lang, onSetLang }) {
     newSelector: v => japaneseSelectNewSlots(v, slots),      // §5 unchanged new-slot logic
   }) : { targets: [], counts: { total:0, new:0, due:0, reinforce:0 }, expectedRecalls: 0 },
   [vocab, slots, hasVocab, recentTrackWordIds])
-  const targets = selection.targets
+  // FEASIBILITY GATE. Selection is SRS-driven and never asked whether a target can
+  // be EXPRESSED with the learner's inventory: 乗る needs 電車/バス, 降りる a vehicle,
+  // 難しい something to describe. Those were selected anyway and burned every
+  // attempt on support words that are not taught. Unteachable targets are deferred
+  // and replaced from the next eligible words.
+  const targets = useMemo(() => {
+    const raw = selection.targets || []
+    if (!raw.length || !hasVocab) return raw
+    try {
+      const inv0 = japaneseLearnerInventory(vocab, raw)
+      const part = partitionJapaneseTargetsByFeasibility(raw, inv0, null)
+      if (!part.deferred.length) return raw
+      const pool = (vocab || []).filter(w => !raw.some(t => t.id === w.id))
+      const filled = backfillJapaneseTargets(part.eligible, part.deferred, pool, inv0, raw.length)
+      return filled.length ? filled : raw
+    } catch (e) { return raw }        // never block a track on the gate
+  }, [selection, vocab, hasVocab])
 
   function startTrack() {
     if (!hasVocab) { setNotice('Japanese vocabulary has not been loaded yet.'); return }
@@ -20938,8 +21014,12 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   const perTarget = []
   let doneRecall = 0
   const totalRecall = targets.length * 3
-  const rules = scarcityRules(allowCtx)
   const inv = japaneseLearnerInventory(vocab, targets)
+  // scarcityRules(allowCtx) read allowCtx.allContent, which does not exist on that
+  // object ({targets, prior, all}) — so scarcity saw ZERO words, resolved to level A
+  // and capped the ladder at maxTiers 4, while the log printed level C from `inv`.
+  // Three AI attempts instead of ten is why most Japanese recalls were templates.
+  const rules = scarcityRules(inv)
   const seenMap = new Map()
   ;[...open, ...close].forEach(p => seenMap.set(jaDedupeKey(p.japanese), { targetId: null }))
   let attemptCount = 0, recallCount = 0

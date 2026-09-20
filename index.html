@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v594"/>
+<meta name="app-version" content="v595"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v594';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v594').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v595';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v595').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -11351,6 +11351,25 @@ function ttsTextForPair(pair) {
   return pair.chinese || pair.thai || ''
 }
 // Word-level TTS. A vocabulary entry carries its own reading; use it.
+// A dictionary entry may list alternatives (何 = なに / なん). A learner-facing
+// segment must carry ONE. 何 blocked its own generation entirely because the
+// unresolved form reached the segment check.
+function jaResolveReading(reading, surface, following) {
+  const r = String(reading || '')
+  if (!/[\/\uFF5C|]/.test(r)) return r
+  const alts = r.split(/[\/\uFF5C|]/).map(s => s.trim()).filter(Boolean)
+  if (!alts.length) return r
+  // 何 reads なん before t/d/n sounds (何時, 何で), なに elsewhere.
+  if (surface === '\u4F55') {
+    const nx = String(following || '')
+    // なん before t/d/n sounds and before the counter 時/人/回/個, なに elsewhere.
+    const nan = /^[\u305F-\u3069\u306A-\u306E\u3058]/.test(nx) ||
+                /^[\u6642\u4EBA\u56DE\u500B\u5E74\u6708\u65E5\u3067]/.test(nx)
+    return nan ? (alts.find(a => a === '\u306A\u3093') || alts[0])
+               : (alts.find(a => a === '\u306A\u306B') || alts[0])
+  }
+  return alts[0]
+}
 function ttsTextForWord(w) {
   if (!w) return ''
   if (w.japanese) {
@@ -16781,9 +16800,11 @@ function jaTokenClass(tok) {
 // ordinary Japanese, not a missing particle.
 function jaMayPrecedeVerbFreely(tok) {
   const c = jaTokenClass(tok)
+  // どう思う / どうする / なんで来る are correct Japanese — an interrogative adverb
+  // modifies the verb directly and needs no particle.
   return c === 'discourse' || c === 'determiner' || c === 'sentence-particle' ||
          c === 'case-particle' || c === 'nominaliser' || c === 'punctuation' ||
-         c === 'adverb'
+         c === 'adverb' || c === 'interrogative'
 }
 
 function validateJapaneseUsage(pair, inv) {
@@ -17033,7 +17054,14 @@ function validateJapaneseContextualReading(pair) {
   if (DICT_ALT.test(pair.reading || '')) problems.push('sentence reading contains dictionary alternatives: ' + pair.reading)
   if (DICT_ALT.test(pair.romaji || '')) problems.push('romaji contains dictionary alternatives: ' + pair.romaji)
   ;(pair.segments || []).forEach(s => {
-    if (DICT_ALT.test(s.reading || '')) problems.push('segment "' + s.surface + '" carries an unresolved reading: ' + s.reading)
+    // Resolve rather than reject. 何 legitimately has two readings; the segment
+    // builder should pick the contextual one, not fail the whole recall.
+    if (DICT_ALT.test(s.reading || '')) {
+      const nxt = (pair.segments || [])[(pair.segments || []).indexOf(s) + 1]
+      const fixed = jaResolveReading(s.reading, s.surface, nxt && (nxt.reading || nxt.surface))
+      if (fixed && !DICT_ALT.test(fixed)) { s.reading = fixed; s.romaji = kanaToRomaji(fixed) }
+      else problems.push('segment "' + s.surface + '" carries an unresolved reading: ' + s.reading)
+    }
   })
   // A kana reading must be kana (plus sentence punctuation). Stray Latin dots or
   // letters such as "どこかい.く" are corruption, not a reading.
@@ -20581,8 +20609,10 @@ const JA_INTENT_FRAMES = [
                     cue: 'Ask whether ' + g + ' is okay' }) },
   { id:'locative-where', intent:'ask where someone lives or works',
     needs:{ role:'locative-verb' },
-    build:(t,g)=>({ jp: '\u3069\u3053\u306B' + t + '\uFF1F', en: 'Where do you ' + g + '?',
-                    cue: 'Ask where they ' + g }) },
+    // 住む takes に (residence); 働く and other activity verbs take で (location of
+    // action). どこに働く？ is wrong Japanese.
+    build:(t,g)=>({ jp: (t === '\u4F4F\u3080' ? '\u3069\u3053\u306B' : '\u3069\u3053\u3067') + t + '\uFF1F',
+                    en: 'Where do you ' + g + '?', cue: 'Ask where they ' + g }) },
   { id:'verb-plain-q', intent:'ask whether the listener will do something',
     needs:{ role:'intransitive-verb' },
     build:(t,g)=>({ jp: t + '\uFF1F', en: 'Are you going to ' + g + '?',

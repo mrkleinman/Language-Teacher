@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v603"/>
+<meta name="app-version" content="v604"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v603';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v603').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v604';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v604').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3606,6 +3606,31 @@ const ZH_VERB_FRAMES = {
              ['\u4F60\u627E\u8C01\uFF1F','Who are you looking for?','Ask who they are looking for',['\u4F60','\u8C01']]],
 }
 
+// ── Mandarin target feasibility ─────────────────────────────────────────────
+// Japanese defers targets its inventory cannot express; Mandarin never had this,
+// so 开 (needs 门 or 车, neither taught) was selected, failed all 33 attempts and
+// left the track three recalls short. A target is teachable if the SAME validated
+// fallback builder can produce at least one recall from the current inventory.
+function mandarinTargetTeachable(target, inv, vocab, rules) {
+  try {
+    for (let r = 1; r <= 3; r++) if (mandarinFallbackPair(target, inv, r, new Map(), vocab, rules)) return true
+  } catch (e) { return true }          // never defer on an internal error
+  return false
+}
+// Replaces each unteachable target with a teachable one OF THE SAME KIND, so the
+// Daily NEW count cannot change: a new word is only ever replaced by a new word.
+function gateTargetsByFeasibility(targets, pool, isTeachable, isNew) {
+  const out = [], deferred = [], used = new Set((targets || []).map(t => t.id))
+  for (const t of (targets || [])) {
+    if (isTeachable(t)) { out.push(t); continue }
+    const want = isNew(t)
+    const sub = (pool || []).find(w => !used.has(w.id) && isNew(w) === want && isTeachable(w))
+    deferred.push({ target: t, replacedBy: sub || null })
+    if (sub) { used.add(sub.id); out.push(sub) }
+  }
+  return { targets: out, deferred }
+}
+
 function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
   // Declared here so every C.push below can be filtered before returning.
   const _needsObj = zhVerbNeedsObject(target && target.chinese)
@@ -3753,6 +3778,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
   const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
   const maxTier = rules.maxTiers
   let last = ''
+  const _zhRejected = new Set()
   for (let tier = 1; tier <= maxTier; tier++) {
     const isFallback = tier === maxTier
     onTier && onTier(tier)
@@ -3763,10 +3789,20 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
       if (cand) onLog && onLog('  \u2699 deterministic fallback')
     } else {
       const { system, user } = buildMandarinPrompt(target, inv, vocab, recallIndex, rules)
-      const extra = tier === 1 ? '' :
+      // Retries used to say only THAT the last attempt failed, never what it wrote or
+      // which words were rejected — so 到 repeated 我明天到家 for nine tiers and 开 asked
+      // for 门 thirty-three times. Carry both forward, as the Japanese generator does.
+      const _um = /untaught vocabulary: (.+)/.exec(last || '')
+      if (_um) _um[1].split(/\s+/).forEach(w => w && _zhRejected.add(w))
+      const _mine = [...(seenMap || new Map()).entries()].filter(([, id]) => id === target.id).map(([k]) => k)
+      const memory =
+        (_mine.length ? '\nYou ALREADY wrote these for ' + target.chinese + ' — write a DIFFERENT sentence: ' + _mine.join('／') : '') +
+        (_zhRejected.size ? '\nDO NOT USE (not taught yet): ' + [..._zhRejected].join(' ') +
+          '. Pick a different, simpler idea rather than rephrasing the same one.' : '')
+      const extra = (tier === 1 ? '' :
         tier === 2 ? '\nThe previous attempt failed: ' + last + '. Fix exactly that.' :
         tier === 3 ? '\nSimplify: fewer content words, shorter sentence. Previous failure: ' + last :
-                     '\nUse ONLY ' + target.chinese + ' plus at most one other known word. Previous failure: ' + last
+                     '\nUse ONLY ' + target.chinese + ' plus at most one other known word. Previous failure: ' + last) + memory
       let raw = ''
       try { raw = await callOpenRouterOnce(apiKey, model, [{role:'system',content:system},{role:'user',content:user + extra}], 700) }
       catch (e) { last = (e.message || '').slice(0,60); continue }
@@ -20643,7 +20679,9 @@ function _jaParseJSON(raw) {
   if (start < 0) return null
   const endCh = s[start] === '[' ? ']' : '}'
   const end = s.lastIndexOf(endCh)
-  if (end <= start) return null
+  // A reply cut off before its closing bracket has no end to find — salvage the
+  // first complete object rather than returning nothing.
+  if (end <= start) { const sv = _salvageFirstJSONObject(s); return sv ? [sv] : null }
   const body = s.slice(start, end + 1)
   try { return JSON.parse(body) } catch (e) { /* try the repairs below */ }
   // Recoverable shapes that were being thrown away as "unparseable":
@@ -20652,6 +20690,34 @@ function _jaParseJSON(raw) {
   try { return JSON.parse(noTrail) } catch (e) { /* next */ }
   if (body[0] === '{') {
     try { return JSON.parse('[' + noTrail.replace(/}\s*{/g, '},{') + ']') } catch (e) { /* next */ }
+  }
+  const salvaged = _salvageFirstJSONObject(s)
+  return salvaged ? [salvaged] : null
+}
+
+// A reply cut off by the token limit (… "japanese": "うん、ま) used to be discarded
+// whole, even when its FIRST object was complete and usable. The per-recall prompt
+// shows the model an array of lines, so it writes a conversation and runs out of
+// tokens: most "empty or unparseable" failures were real sentences thrown away.
+// Walk the text, respecting strings and escapes, and return the first complete
+// object that has a sentence in it.
+function _salvageFirstJSONObject(text) {
+  const s = String(text || '')
+  for (let start = s.indexOf('{'); start >= 0; start = s.indexOf('{', start + 1)) {
+    let depth = 0, inStr = false, esc = false
+    for (let i = start; i < s.length; i++) {
+      const ch = s[i]
+      if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false; continue }
+      if (ch === '"') inStr = true
+      else if (ch === '{') depth++
+      else if (ch === '}' && --depth === 0) {
+        try {
+          const o = JSON.parse(s.slice(start, i + 1).replace(/,\s*}/g, '}'))
+          if (o && (o.japanese || o.chinese || o.thai)) return o
+        } catch (e) { /* not a complete object — try the next opening brace */ }
+        break
+      }
+    }
   }
   return null
 }
@@ -22107,7 +22173,28 @@ function MandarinTeacher({ lang, onSetLang }) {
   const selection = (trackMode === 'revision' || trackMode === 'srs') ? revisionSelection : newSelection
   const newTargets = newSelection.targets
   const srsTargets = revisionSelection.targets
-  const targets = selection.targets
+  // FEASIBILITY GATE (Mandarin had none). Unteachable targets are swapped for the
+  // next teachable word OF THE SAME KIND — new for new, reviewed for reviewed — so
+  // neither the Daily NEW count nor the revision zero-new rule can change. Revision
+  // substitutes come from the revision selector's own ranked list, so its priority
+  // order is kept.
+  const targets = useMemo(() => {
+    const raw = selection.targets || []
+    if (!raw.length || !vocab.length) return raw
+    try {
+      const inv0 = mandarinLearnerInventory(vocab, raw), rules0 = scarcityRules(inv0)
+      const isRev = trackMode === 'revision' || trackMode === 'srs'
+      const pool = isRev
+        ? selectRevisionTrackTargets({ vocab, maxTargets: 100000, language: 'zh' }).targets
+        : [...vocab].sort((a, b) => (a.unlockOrder || 0) - (b.unlockOrder || 0))
+      const g = gateTargetsByFeasibility(raw, pool,
+        w => mandarinTargetTeachable(w, inv0, vocab, rules0),
+        w => !hasBeenIntroduced(w))
+      g.deferred.forEach(d => console.info('[zh] deferred ' + d.target.chinese +
+        ' (not expressible with current vocabulary)' + (d.replacedBy ? ' → ' + d.replacedBy.chinese : '')))
+      return g.targets
+    } catch (e) { return raw }        // the gate can never block a track
+  }, [selection, vocab, trackMode])
 
   function onTrackGenerated(rawTrack) {
     const track = stampTrackMode(rawTrack, trackMode, targets)

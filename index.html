@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v600"/>
+<meta name="app-version" content="v602"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v600';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v600').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v602';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v602').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3246,12 +3246,16 @@ function mergeMandarinVocab(saved) {
   const byId = {}; saved.forEach(w => { if (w && w.id != null) byId[w.id] = w })
   const merged = fresh.map(f => {
     const s = byId[f.id]; if (!s) return f
-    return { ...f,
-      status:s.status!=null?s.status:f.status, interval:s.interval!=null?s.interval:f.interval,
-      repCount:s.repCount!=null?s.repCount:f.repCount, okStreak:s.okStreak!=null?s.okStreak:f.okStreak,
-      lapses:s.lapses!=null?s.lapses:f.lapses, lastSeen:s.lastSeen!=null?s.lastSeen:f.lastSeen,
-      dueDate:s.dueDate!=null?s.dueDate:f.dueDate, introducedDate:s.introducedDate!=null?s.introducedDate:f.introducedDate,
-      difficulty:s.difficulty!=null?s.difficulty:f.difficulty }
+    // Learner state is carried by EXCLUSION, not a whitelist (same fix as the
+    // Japanese merge). The whitelist named `introducedDate` — a typo for the real
+    // field `introducedAt` — so introduction dates were never preserved, and it
+    // omitted manualKnown entirely, which the tail then reset to false. This merge
+    // runs on EVERY load, and the result is persisted at the next rating.
+    const CONTENT = ['id','unlockOrder','chinese','pinyin','english','partOfSpeech','note',
+                     'belt','beltOrder','curriculumIndex']
+    const out = { ...f }
+    Object.keys(s).forEach(k => { if (!CONTENT.includes(k) && s[k] != null) out[k] = s[k] })
+    return out
   })
   const ids = new Set(fresh.map(f => f.id))
   saved.forEach(w => { if (w && w.id != null && !ids.has(w.id)) merged.push(w) })
@@ -3344,6 +3348,13 @@ function mandarinTargetPresent(sentence, target, inv) {
     if (pos === idx && s.surface === zh) return true
     pos += s.surface.length
   }
+  // Verb-object compounds. The segmenter keeps 回家 whole, which is right — it is
+  // a word — but that made 回 "absent" from 我回家。 and killed every 回 recall.
+  // A segment that STARTS with the target and whose remainder is itself a taught
+  // word (回+家, 开+车, 吃+饭) contains the target.
+  const taught = new Set(((inv && inv.allContent) || []).map(w => w.chinese || w.w).filter(Boolean))
+  if (segs.some(s => s.surface.length > zh.length && s.surface.startsWith(zh) &&
+                     taught.has(s.surface.slice(zh.length)))) return true
   return false
 }
 
@@ -3519,7 +3530,10 @@ function thirdPerson(v) {
 // Mandarin verbs that require an object. The fallback emitted bare subject+verb
 // (我拿。我到。我开。我等。我觉得。这个想拿。), which is malformed Chinese \u2014 worse for a
 // learner than a dull but correct sentence.
-const ZH_NEEDS_OBJECT = ['\u62FF','\u5230','\u5F00','\u7B49','\u89C9\u5F97','\u627E','\u5E2E','\u7ED9','\u4E70','\u505A','\u7528','\u5403','\u559D','\u770B','\u542C','\u8BF4','\u77E5\u9053','\u61C2','\u56DE']
+// \u77E5\u9053 and \u61C2 were wrongly listed here: \u6211\u77E5\u9053\u3002 and \u4F60\u61C2\u5417\uFF1F are complete
+// sentences, so the valency filter was rejecting correct Chinese and leaving both
+// verbs with no fallback at all.
+const ZH_NEEDS_OBJECT = ['\u62FF','\u5230','\u5F00','\u7B49','\u89C9\u5F97','\u627E','\u5E2E','\u7ED9','\u4E70','\u505A','\u7528','\u5403','\u559D','\u770B','\u542C','\u8BF4','\u56DE']
 // Objects a beginner inventory can supply, in preference order.
 const ZH_DEFAULT_OBJECTS = ['\u8FD9\u4E2A','\u90A3\u4E2A','\u4E1C\u897F','\u94B1','\u5BB6','\u4F60','\u6211']
 function zhVerbNeedsObject(v) { return ZH_NEEDS_OBJECT.includes(String(v || '')) }
@@ -3552,6 +3566,45 @@ function zhFallbackIsWellFormed(zh, target) {
 // was rejected for \u4EEC — 33 times in one run.
 const ZH_PARTICLES = ['\u5417','\u5462','\u5427','\u554A','\u7684','\u4E86','\u7740','\u8FC7','\u4E00\u4E0B','\u5730','\u5F97','\u4EEC']
 function zhIsParticle(w) { return ZH_PARTICLES.includes(String(w || '')) }
+
+// Verb + object frames for the fallback. v596 correctly rejected bare 我开。 我等。
+// but left these verbs with NO valid template, so every one of them returned null
+// and a failed model run became a failed recall. Each frame uses the verb's natural
+// collocate (回家, 开车, 等你) and is offered only if every word in it is taught.
+const ZH_VERB_FRAMES = {
+  '\u5403': [['\u4f60\u5403\u4ec0\u4e48\uff1f','What are you eating?','Ask what they are eating',['\u4f60','\u4ec0\u4e48']], ['\u6211\u60f3\u5403\u996d\u3002','I want to eat.','Say you want to eat',['\u6211','\u60f3','\u996d']], ['\u6211\u4eec\u5403\u996d\u5427\u3002','Let\u2019s eat.','Suggest eating',['\u6211','\u996d']]],
+  '\u559d': [['\u4f60\u559d\u4ec0\u4e48\uff1f','What are you drinking?','Ask what they are drinking',['\u4f60','\u4ec0\u4e48']], ['\u6211\u559d\u6c34\u3002','I\u2019ll have water.','Say you will drink water',['\u6211','\u6c34']], ['\u4f60\u60f3\u559d\u6c34\u5417\uff1f','Do you want some water?','Offer them water',['\u4f60','\u60f3','\u6c34']]],
+  '\u770b': [['\u4f60\u770b\u4ec0\u4e48\uff1f','What are you looking at?','Ask what they are looking at',['\u4f60','\u4ec0\u4e48']], ['\u4f60\u770b\u8fd9\u4e2a\u3002','Look at this.','Tell them to look at this',['\u4f60','\u8fd9\u4e2a']], ['\u6211\u770b\u4e00\u4e0b\u3002','Let me take a look.','Say you will take a look',['\u6211']]],
+  '\u542c': [['\u4f60\u542c\u6211\u8bf4\u3002','Listen to me.','Ask them to listen to you',['\u4f60','\u6211','\u8bf4']], ['\u6211\u542c\u4f60\u7684\u3002','I\u2019ll do as you say.','Say you will go along with them',['\u6211','\u4f60']]],
+  '\u8bf4': [['\u4f60\u8bf4\u4ec0\u4e48\uff1f','What did you say?','Ask what they said',['\u4f60','\u4ec0\u4e48']], ['\u4f60\u8bf4\u5427\u3002','Go ahead, say it.','Invite them to speak',['\u4f60']]],
+  '\u4e70': [['\u4f60\u4e70\u4ec0\u4e48\uff1f','What are you buying?','Ask what they are buying',['\u4f60','\u4ec0\u4e48']], ['\u6211\u60f3\u4e70\u8fd9\u4e2a\u3002','I want to buy this.','Say you want to buy this',['\u6211','\u60f3','\u8fd9\u4e2a']], ['\u8fd9\u4e2a\u591a\u5c11\u94b1\uff1f\u6211\u4e70\u3002','How much is this? I\u2019ll buy it.','Ask the price and say you will buy it',['\u8fd9\u4e2a','\u591a\u5c11','\u94b1','\u6211']]],
+  '\u505a': [['\u4f60\u505a\u4ec0\u4e48\uff1f','What are you doing?','Ask what they are doing',['\u4f60','\u4ec0\u4e48']], ['\u4f60\u73b0\u5728\u505a\u4ec0\u4e48\uff1f','What are you doing now?','Ask what they are doing now',['\u4f60','\u73b0\u5728','\u4ec0\u4e48']], ['\u6211\u505a\u996d\u3002','I\u2019ll cook.','Say you will cook',['\u6211','\u996d']]],
+  '\u7528': [['\u6211\u7528\u8fd9\u4e2a\u3002','I\u2019ll use this one.','Say you will use this one',['\u6211','\u8fd9\u4e2a']], ['\u4f60\u7528\u4ec0\u4e48\uff1f','What do you use?','Ask what they use',['\u4f60','\u4ec0\u4e48']]],
+  '\u7ed9': [['\u6211\u7ed9\u4f60\u3002','Here, for you.','Say you are giving it to them',['\u6211','\u4f60']], ['\u6211\u7ed9\u4f60\u8fd9\u4e2a\u3002','I\u2019ll give you this.','Say you will give them this',['\u6211','\u4f60','\u8fd9\u4e2a']], ['\u4f60\u7ed9\u6211\u90a3\u4e2a\u3002','Give me that one.','Ask them to give you that one',['\u4f60','\u6211','\u90a3\u4e2a']]],
+  '\u5e2e': [['\u6211\u5e2e\u4f60\u3002','I\u2019ll help you.','Offer to help them',['\u6211','\u4f60']], ['\u4f60\u5e2e\u6211\u5417\uff1f','Will you help me?','Ask if they will help you',['\u4f60','\u6211']]],
+  '\u77e5\u9053': [['\u6211\u77e5\u9053\u3002','I know.','Say you know',['\u6211']], ['\u4f60\u77e5\u9053\u5417\uff1f','Do you know?','Ask if they know',['\u4f60']], ['\u6211\u4e0d\u77e5\u9053\u3002','I don\u2019t know.','Say you don\u2019t know',['\u6211']]],
+  '\u61c2': [['\u6211\u61c2\u4e86\u3002','I understand now.','Say you understand',['\u6211']], ['\u4f60\u61c2\u5417\uff1f','Do you understand?','Ask if they understand',['\u4f60']]],
+  '\u56DE':   [['\u6211\u56DE\u5BB6\u3002','I\u2019m going home.','Say you are going home',['\u6211','\u5BB6']],
+             ['\u4F60\u56DE\u5BB6\u5417\uFF1F','Are you going home?','Ask if they are going home',['\u4F60','\u5BB6']],
+             ['\u6211\u4EEC\u56DE\u5BB6\u5427\u3002','Let\u2019s go home.','Suggest going home',['\u6211','\u5BB6']]],
+  '\u5F00':   [['\u6211\u5F00\u8F66\u3002','I\u2019ll drive.','Say you will drive',['\u6211','\u8F66']],
+             ['\u4F60\u5F00\u8F66\u5417\uFF1F','Are you driving?','Ask if they are driving',['\u4F60','\u8F66']],
+             ['\u6211\u5F00\u8F66\u53BB\u3002','I\u2019ll drive there.','Say you will drive there',['\u6211','\u8F66','\u53BB']]],
+  '\u7B49':   [['\u6211\u7B49\u4F60\u3002','I\u2019ll wait for you.','Say you will wait for them',['\u6211','\u4F60']],
+             ['\u4F60\u7B49\u6211\u5427\u3002','Wait for me.','Ask them to wait for you',['\u4F60','\u6211']],
+             ['\u4F60\u7B49\u8C01\uFF1F','Who are you waiting for?','Ask who they are waiting for',['\u4F60','\u8C01']]],
+  '\u62FF':   [['\u6211\u62FF\u8FD9\u4E2A\u3002','I\u2019ll take this one.','Say you will take this one',['\u6211','\u8FD9\u4E2A']],
+             ['\u4F60\u62FF\u90A3\u4E2A\u5417\uFF1F','Are you taking that one?','Ask if they are taking that one',['\u4F60','\u90A3\u4E2A']],
+             ['\u6211\u62FF\u4E1C\u897F\u3002','I\u2019ll get the things.','Say you will get the things',['\u6211','\u4E1C\u897F']]],
+  '\u5230':   [['\u6211\u5230\u5BB6\u4E86\u3002','I\u2019m home.','Say you have got home',['\u6211','\u5BB6']],
+             ['\u4F60\u5230\u5BB6\u4E86\u5417\uFF1F','Are you home yet?','Ask if they have got home',['\u4F60','\u5BB6']]],
+  '\u89C9\u5F97': [['\u6211\u89C9\u5F97\u5F88\u597D\u3002','I think it\u2019s good.','Say you think it is good',['\u6211','\u5F88','\u597D']],
+             ['\u4F60\u89C9\u5F97\u597D\u5417\uFF1F','Do you think it\u2019s good?','Ask if they think it is good',['\u4F60','\u597D']],
+             ['\u6211\u89C9\u5F97\u8FD9\u4E2A\u5F88\u597D\u3002','I think this one is good.','Say you think this one is good',['\u6211','\u8FD9\u4E2A','\u5F88','\u597D']]],
+  '\u627E':   [['\u6211\u627E\u4F60\u3002','I\u2019m looking for you.','Say you are looking for them',['\u6211','\u4F60']],
+             ['\u4F60\u627E\u4EC0\u4E48\uFF1F','What are you looking for?','Ask what they are looking for',['\u4F60','\u4EC0\u4E48']],
+             ['\u4F60\u627E\u8C01\uFF1F','Who are you looking for?','Ask who they are looking for',['\u4F60','\u8C01']]],
+}
 
 function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
   // Declared here so every C.push below can be filtered before returning.
@@ -3639,6 +3692,14 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
   // §30 — build every candidate, then return the first that actually PASSES the
   // real validator and has not been used. A template that segments the target away
   // (你好吗 hides the target 好 inside the basic 你好) is silently skipped.
+  // Transitive verbs get collocation-correct verb+object frames, gated on every
+  // word being taught. Without these, rejecting 我开。 left the verb with nothing.
+  if (ZH_VERB_FRAMES[zh]) {
+    const hasV = w => (inv.allContent || []).some(x => x.chinese === w)
+    ZH_VERB_FRAMES[zh].forEach(([s, en, cue, needs]) => {
+      if (needs.every(hasV)) C.push({ zh: s, en, cue })
+    })
+  }
   // An adverb target (一起, 也, 都…) needs a verb to modify. Offer real frames using
   // 去/来/吃, which every beginner inventory has, so rejecting 我要一起。 does not
   // leave the target with nothing.
@@ -3681,7 +3742,10 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
     } else if (!mandarinTargetPresent(p.chinese, target, inv)) continue
     usable.push(p)
   }
-  return usable[0] || null
+  // Rotate by recall index so three recalls do not all get the same sentence when
+  // several valid frames exist; a repeat is only used when nothing else passes.
+  if (!usable.length) return null
+  return usable[((recallIndex || 1) - 1) % usable.length]
 }
 
 // §20 — ONE recall, escalating tiers, locked once accepted. Never returns partial.
@@ -5879,6 +5943,7 @@ const Icon = ({ name, size = 18, color = 'currentColor' }) => {
     target: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 18a6 6 0 100-12 6 6 0 000 12z M12 14a2 2 0 100-4 2 2 0 000 4z',
     star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
     clock: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2',
+    refresh: 'M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0114.85-3.36L23 10 M1 14l4.64 4.36A9 9 0 0020.49 15',
     trend: 'M23 6l-9.5 9.5-5-5L1 18',
     check: 'M20 6L9 17l-5-5',
     x: 'M18 6L6 18M6 6l12 12',
@@ -6040,6 +6105,7 @@ function downloadTrack(track) {
   // Build readable text file
   const lines = []
   lines.push('THAI TEACHER — TRACK EXPORT')
+  trackModeTranscriptLines(track).forEach(x => lines.push(x))
   lines.push('=' .repeat(50))
   lines.push(`Date: ${track.date}`)
   lines.push(`Mode: ${track.mode || 'daily'}`)
@@ -6261,6 +6327,90 @@ function rankProgressFor(vocab) {
   return { current, next, wordsToNext, progress, rankState: st }
 }
 
+// ── Shared Revision Track UI ────────────────────────────────────────────────
+// One component for every language, so the presentation and the zero-new promise
+// cannot drift between Thai, Japanese and Mandarin.
+// Stamps the mode onto the TRACK OBJECT (not just the saved copy), so it survives
+// QC — the QC save writes back a corrected track, and a mode attached only at the
+// first save was lost there. For a revision track this is also the pre-save gate:
+// if any target was never introduced, or any is new, the track is NOT saved.
+// Transcript header describing the track type, shared by every language export.
+function trackModeTranscriptLines(track) {
+  const out = ['Track type: ' + trackModeLabel(track)]
+  if (trackModeOf(track) === 'revision') {
+    const t = (track && track.revisionTargets) || []
+    const c = { hard:0, overdue:0, due:0, reinforce:0 }
+    t.forEach(x => { if (c[x.revisionTier] != null) c[x.revisionTier]++ })
+    out.push('Revision targets: ' + t.length + ' (hard ' + c.hard + ', overdue ' + c.overdue +
+             ', due ' + c.due + ', review ' + c.reinforce + ')')
+    out.push('New words: 0')
+  }
+  return out
+}
+
+function stampTrackMode(track, mode, targets, onLog) {
+  if (!track) return null
+  const m = mode === 'revision' ? 'revision' : 'daily'
+  // Only trackMode is written for daily tracks: Thai uses `mode: 'weak'` for its
+  // own badge and overwriting `mode` here would have erased it.
+  const out = { ...track, trackMode: m }
+  if (m === 'revision') out.mode = 'revision'
+  if (m === 'revision') {
+    const snap = (targets || []).map(t => ({
+      id: t.id, status: t.status, lastSeen: t.lastSeen || null, introducedAt: t.introducedAt || null,
+      okStreak: t.okStreak || 0, manualKnown: !!t.manualKnown, dueDate: t.dueDate || null,
+      difficulty: t.difficulty || null, revisionTier: t.revisionTier || null, isNew: false,
+    }))
+    out.revisionTargets = snap
+    out.newTargetCount = 0
+    const gate = revisionTrackIsSaveable(out)
+    if (!gate.ok) {
+      const msg = '[revision] refusing to save: allIntroduced=' + gate.allIntroduced +
+                  ' newTargetCount=' + gate.newTargetCount
+      if (onLog) onLog('  \u274C ' + msg); else console.error(msg)
+      return null
+    }
+  }
+  return out
+}
+
+function trackModeOf(track) {
+  const m = track && (track.trackMode || track.mode)
+  return (m === 'revision' || m === 'srs') ? 'revision' : 'daily'   // 'srs' = legacy Mandarin
+}
+function trackModeLabel(track) { return trackModeOf(track) === 'revision' ? 'Revision Track' : 'Daily Track' }
+
+function RevisionTrackButton({ selection, onStart }) {
+  const c = (selection && selection.counts) || { total: 0 }
+  const n = c.total || 0
+  const on = n > 0
+  const parts = []
+  if (c.hard) parts.push(c.hard + ' hard')
+  if (c.overdue) parts.push(c.overdue + ' overdue')
+  if (c.due) parts.push(c.due + ' due')
+  if (c.reinforce) parts.push(c.reinforce + ' review')
+  return (
+    <button onClick={() => on && onStart && onStart()} disabled={!on}
+      style={{ background: on ? 'linear-gradient(135deg,#2d1f08,#3d2a0c)' : 'var(--surface)',
+               border:'1px solid ' + (on ? 'var(--gold)' : 'var(--border)'), borderRadius:12,
+               padding:'18px 12px', cursor: on ? 'pointer' : 'not-allowed',
+               textAlign:'center', color:'var(--text)', opacity: on ? 1 : 0.55 }}>
+      <Icon name="refresh" size={22} color="var(--gold)" />
+      <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Revision Track</div>
+      <div style={{ fontSize:11, color:'var(--gold)', marginTop:2 }}>
+        {on ? 'Hard \u00B7 overdue \u00B7 due' : 'Nothing learned yet'}
+      </div>
+      <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>
+        {on ? n + (n === 1 ? ' word' : ' words') + ' \u00B7 ' : ''}
+        <span style={{ color:'var(--gold)', fontWeight:700 }}>0 NEW</span>
+      </div>
+      {on && parts.length > 0 && (
+        <div style={{ fontSize:10, color:'var(--text-3)', marginTop:3 }}>{parts.join(' \u00B7 ')}</div>
+      )}
+    </button>
+  )
+}
+
 function RankTestButton({ vocab, rank, onStart }) {
   const st = useMemo(() => rankTestStatus(vocab, rank), [vocab, rank])
   if (!st.total) return null
@@ -6364,6 +6514,8 @@ function BeltRankCard({ vocab, onNav, langName }) {
 }
 
 function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenConvo, onGenerateConvo, provider, onSetProvider, hasClaudeKey, hasOrKey }) {
+  const revisionSelection = useMemo(() => selectRevisionTrackTargets({
+    vocab, maxTargets: REVISION_TRACK_MAX, language: 'th' }), [vocab])
   const [convoLoadingId, setConvoLoadingId] = useState(null)
   const [convoProgress, setConvoProgress] = useState(0)
   const stats = useMemo(() => getStats(vocab), [vocab])
@@ -6468,6 +6620,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
           <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Daily Track</div>
           <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>~45 min · {stats.due} due</div>
         </button>
+        {/* Revision Track — shared component, identical in every language */}
+        <RevisionTrackButton selection={revisionSelection} onStart={() => onNav('generate-revision')} />
         <button onClick={() => onNav('lessons')}
           style={{ background: 'linear-gradient(135deg, #1a1e3a, #1e2a5a)', border: '1px solid #2d3a6b', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
@@ -6497,7 +6651,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                     <Icon name={track.mode==='weak'?'target':'sparkles'} size={12} color={track.mode==='weak'?'#ef4444':'#10b981'} />
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:13, fontWeight:600 }}>{track.date}</p>
+                    <p style={{ fontSize:13, fontWeight:600 }}>{track.date}
+                      {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6, fontSize:10, fontWeight:700 }}>REVISION</span>}</p>
                     <p style={{ fontSize:11, color:'var(--muted)' }}>
                       {track.pairs?.length||0} pairs · {track.keywords?.length||0} words
                       {track.bookmark > 0 && <span style={{ color:'#86c900', marginLeft:6 }}>🔖 {track.bookmark+1}</span>}
@@ -11852,7 +12007,10 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   useEffect(() => {
     // Storage may update, but it must never reshuffle the session in flight.
     if (sessionTargets) return
-    if (!targets || !targets.length || mode === 'weak') return
+    // A revision track never holds Daily slots. This matters: a word rated Hard on
+    // first sight keeps status 'new' although it IS introduced, so without this
+    // guard a revision track would write its words into the Daily new-word slots.
+    if (!targets || !targets.length || mode === 'weak' || mode === 'revision') return
     const slotIds = targets.filter(w => w.status === 'new').slice(0, newSlotsFor(vocab)).map(w => w.id)
     if (!slotIds.length) return
     const prev = dailyNewWords?.wordIds || []
@@ -15867,6 +16025,12 @@ function ThaiTeacher({ lang, onSetLang }) {
 
   function navigate(v, data) {
     if (v === 'generate-daily') { setResumeDraft(null); setGenMode('daily'); setCustomTargets(null); setView('generate') }
+    else if (v === 'generate-revision') {
+      // Shared, language-neutral selector: previously introduced words only.
+      const rev = selectRevisionTrackTargets({ vocab, maxTargets: REVISION_TRACK_MAX, language: 'th' })
+      if (!rev.targets.length) return
+      setResumeDraft(null); setGenMode('revision'); setCustomTargets(rev.targets); setView('generate')
+    }
     else if (v === 'generate-weak') { setResumeDraft(null); setGenMode('weak'); setCustomTargets(null); setView('generate') }
     else if (v === 'generate-resume' && data) { setResumeDraft(data); setGenMode(data.mode || 'daily'); setCustomTargets(null); setView('generate') }
     else if (v.startsWith('browse-')) { setBrowseFilter(v.replace('browse-', '')); setView('browse') }
@@ -15878,7 +16042,9 @@ function ThaiTeacher({ lang, onSetLang }) {
     setCustomTargets(targets); setGenMode('custom'); setView('generate')
   }
 
-  function onTrackGenerated(track) {
+  function onTrackGenerated(rawTrack) {
+    const track = stampTrackMode(rawTrack, genMode === 'revision' ? 'revision' : 'daily', customTargets || [])
+    if (!track) { navigate('dashboard'); return }
     const newTracks = [...tracks, track]
     saveTracks(newTracks)
     setTracks(newTracks)
@@ -16146,7 +16312,8 @@ function JapaneseSpeechStyle({ value, onChange }) {
 // 16px gap, same stat grid, Mastery bar, belt card, provider row, action buttons and
 // recent-track list. Only the language, data and Speech Style card differ.
 function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, onStartTrack, notice,
-                             provider, onSetProvider, hasVocab, onOpenTrack, onDeleteTrack, onNav, selection }) {
+                             provider, onSetProvider, hasVocab, onOpenTrack, onDeleteTrack, onNav, selection,
+                             revisionSelection, onStartRevision }) {
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
   const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
@@ -16234,14 +16401,8 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
             {hasVocab ? '~45 min \u00B7 ' + stats.due + ' due' : 'No vocabulary yet'}
           </div>
         </button>
-        <button disabled
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
-                   padding: '18px 12px', cursor: 'not-allowed', textAlign: 'center',
-                   color: 'var(--text)', opacity: 0.55 }}>
-          <Icon name="book" size={22} color="var(--gold)" />
-          <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Lessons</div>
-          <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 2, opacity: 0.7 }}>Coming soon</div>
-        </button>
+        {/* Revision Track — shared component, identical in every language */}
+        <RevisionTrackButton selection={revisionSelection} onStart={onStartRevision} />
       </div>
 
       {/* Rank Test — same component and behaviour in every language */}
@@ -16281,6 +16442,7 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, fontWeight:600 }}>
                       {track.date}
+                      {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6, fontSize:10, fontWeight:700 }}>REVISION</span>}
                       {track.rated && <span style={{ color:'#10b981', marginLeft:6, fontSize:11 }}>{'\u2713'}</span>}
                       {track.bookmark > 0 && <span style={{ color:'var(--gold)', marginLeft:4, fontSize:11 }}>{'\u{1F516}'}</span>}
                     </p>
@@ -16316,9 +16478,9 @@ function downloadJapaneseTrack(track) {
   const L = []
   const reg = JAPANESE_REGISTER_RULES[track.speechStyle || track.register || ''] || null
   L.push('JAPANESE TEACHER \u2014 TRACK EXPORT')
+  trackModeTranscriptLines(track).forEach(x => L.push(x))
   L.push('='.repeat(50))
   L.push('Date: ' + (track.date || ''))
-  L.push('Mode: ' + (track.mode || 'daily'))
   L.push('Speech Style: ' + (reg ? reg.label + ' (' + reg.sub + ')' : (track.speechStyle || 'unknown')))
   if (track.provider) L.push('Provider: ' + track.provider)
   if (track.model) L.push('Model: ' + track.model)
@@ -18077,6 +18239,130 @@ function beltPriorityCandidates(vocab, cap, today) {
   return { first, candidates: out }
 }
 
+// ══ REVISION TRACK ══════════════════════════════════════════════════════════
+// One selector for every language. Vocabulary records share the SRS schema
+// (status, difficulty, dueDate, lastSeen, okStreak, lapses, introducedAt), so the
+// surface field (thai / japanese / chinese) is irrelevant to selection.
+//
+// HARD INVARIANT: a revision target must have been introduced to the learner.
+// Existing in the dictionary is not enough. Fewer than maxTargets eligible words
+// makes a SHORTER track; missing slots are never filled with new vocabulary.
+const REVISION_TRACK_MAX = 30
+const REVISION_TIER = { HARD:'hard', OVERDUE:'overdue', DUE:'due', REINFORCE:'reinforce' }
+const _REV_TIER_RANK = { hard:0, overdue:1, due:2, reinforce:3 }
+
+function revisionSurface(w) { return (w && (w.thai || w.japanese || w.chinese || w.t)) || '?' }
+
+// Eligibility = the canonical learner-state test AND a real learner event.
+// The canonical test also accepts status/dueDate, but the Thai bank SEEDS those:
+// a brand-new Thai learner has 606 words that look "introduced" from seed data
+// alone (ผม known, เรา learning…). Only real events write introducedAt/lastSeen —
+// applyRating and markWordKnown set both, and no bank in any language seeds them.
+function revisionEligible(w) {
+  if (!w || typeof hasBeenIntroduced !== 'function' || !hasBeenIntroduced(w)) return false
+  // A real learner event: only applyRating / markWordKnown write these. The Thai
+  // load migration stamps introducedAt:'legacy' onto SEEDED words too, so 'legacy'
+  // alone is not proof — but okStreak/manualKnown are, and they cover genuinely
+  // studied words from before lastSeen was tracked (125 of 160 in a real backup).
+  const realDate = w.introducedAt && w.introducedAt !== 'legacy'
+  return !!(w.lastSeen || realDate || (w.okStreak || 0) > 0 || w.manualKnown)
+}
+
+// Hard is the learner's CURRENT rating, written by applyRating as `difficulty`.
+// It is live SRS state, not a separate list: re-rating a word OK/Easy overwrites
+// it, so the word stops being forced to the top of future revision tracks.
+function revisionTierOf(w, today) {
+  // The Thai bank SEEDS difficulty:'hard' on ~490 words as default metadata, so
+  // 'hard' alone is not proof the learner struggled. Every real rating (applyRating,
+  // markWordKnown) sets introducedAt and overwrites difficulty, so a Hard that
+  // carries introducedAt is the learner's own result; a bare seed is not.
+  if ((w.difficulty === 'hard' && revisionEligible(w)) || w.status === 'lapsed') return REVISION_TIER.HARD
+  const due = w.dueDate || null
+  if (due && due < today) return REVISION_TIER.OVERDUE
+  if (due && due === today) return REVISION_TIER.DUE
+  return REVISION_TIER.REINFORCE
+}
+
+function _revDays(a, b) {
+  if (!a || !b) return 0
+  return Math.round((new Date(b) - new Date(a)) / 86400000)
+}
+
+// Ordering inside a tier, reusing the existing SRS fields:
+//   hard      more overdue \u2192 more recent hard result \u2192 weaker \u2192 older review
+//   overdue   more overdue \u2192 weaker \u2192 older review
+//   due       weaker \u2192 older review
+//   reinforce soonest due \u2192 weaker \u2192 older review
+function _revCompare(a, b, today) {
+  const ta = revisionTierOf(a, today), tb = revisionTierOf(b, today)
+  if (ta !== tb) return _REV_TIER_RANK[ta] - _REV_TIER_RANK[tb]
+  const odA = a.dueDate ? _revDays(a.dueDate, today) : 0
+  const odB = b.dueDate ? _revDays(b.dueDate, today) : 0
+  const weaker = (x, y) => ((x.okStreak || 0) - (y.okStreak || 0)) || ((y.lapses || 0) - (x.lapses || 0))
+  const older = (x, y) => String(x.lastSeen || '').localeCompare(String(y.lastSeen || ''))
+  if (ta === REVISION_TIER.HARD) {
+    if (odA !== odB) return odB - odA
+    const recent = String(b.lastSeen || '').localeCompare(String(a.lastSeen || ''))
+    if (recent) return recent
+    return weaker(a, b) || older(a, b) || ((a.id || 0) - (b.id || 0))
+  }
+  if (ta === REVISION_TIER.OVERDUE) {
+    if (odA !== odB) return odB - odA
+    return weaker(a, b) || older(a, b) || ((a.id || 0) - (b.id || 0))
+  }
+  if (ta === REVISION_TIER.DUE) return weaker(a, b) || older(a, b) || ((a.id || 0) - (b.id || 0))
+  return String(a.dueDate || '9999').localeCompare(String(b.dueDate || '9999')) ||
+         weaker(a, b) || older(a, b) || ((a.id || 0) - (b.id || 0))
+}
+
+// Removes anything not previously introduced. Logs it as a bug. NEVER replaces it.
+function assertRevisionTargets(targets, onLog) {
+  const kept = [], dropped = []
+  ;(targets || []).forEach(t => (revisionEligible(t) ? kept : dropped).push(t))
+  dropped.forEach(t => {
+    const msg = '[revision] BUG: un-introduced word reached revision targets and was removed: ' + revisionSurface(t)
+    if (onLog) onLog('  \u26A0 ' + msg); else console.warn(msg)
+  })
+  return { targets: kept, removed: dropped.length }
+}
+
+function selectRevisionTrackTargets({ vocab, maxTargets = REVISION_TRACK_MAX, today, language } = {}) {
+  const day = today || new Date().toISOString().slice(0, 10)
+  const seen = new Set()
+  const pool = (vocab || []).filter(w => {
+    if (!w || w.id == null || seen.has(w.id)) return false
+    seen.add(w.id)
+    return revisionEligible(w)
+  })
+  const ranked = pool.slice().sort((a, b) => _revCompare(a, b, day))
+  const picked = ranked.slice(0, Math.max(0, maxTargets)).map(w => ({
+    ...w,
+    revisionTier: revisionTierOf(w, day),
+    wasPreviouslyIntroduced: true,
+    isNew: false,
+  }))
+  const checked = assertRevisionTargets(picked)
+  const counts = { total: checked.targets.length, hard: 0, overdue: 0, due: 0, reinforce: 0, new: 0 }
+  checked.targets.forEach(t => { counts[t.revisionTier]++ })
+  return {
+    language: language || null,
+    trackMode: 'revision',
+    targets: checked.targets,
+    counts,
+    eligibleCount: pool.length,
+    shortBy: Math.max(0, maxTargets - checked.targets.length),
+    expectedRecalls: checked.targets.length * 3,
+  }
+}
+
+// Final gate before a revision track may be persisted.
+function revisionTrackIsSaveable(track) {
+  const targets = (track && (track.revisionTargets || track.targets)) || []
+  const allIntroduced = targets.every(revisionEligible)
+  const newTargetCount = targets.filter(t => !revisionEligible(t) || t.isNew === true).length
+  return { ok: allIntroduced && newTargetCount === 0, allIntroduced, newTargetCount }
+}
+
 function selectTrackTargets(opts) {
   const vocab = opts.vocab || []
   const cap = opts.targetCap || TRACK_TARGET_CAP
@@ -18667,6 +18953,7 @@ function MandarinTargetPill({ w, state, srcColor, recalls }) {
 function downloadMandarinTrack(track) {
   const L = []
   L.push('MANDARIN TEACHER \u2014 TRACK EXPORT')
+  trackModeTranscriptLines(track).forEach(x => L.push(x))
   L.push('='.repeat(50))
   L.push('Date: ' + (track.date || ''))
   L.push('Speech style: ' + MANDARIN_REGISTER.label)
@@ -20088,9 +20375,13 @@ function JapaneseTeacher({ lang, onSetLang }) {
   // §4/§9 — the generator only reports onGenerated; routing lives here.
   // QC already ran on the generation screen, so a generated track goes straight to
   // the player. Quality Review remains reachable later from the player.
-  function onTrackGenerated(track) {
+  function onTrackGenerated(rawTrack) {
+    const track = stampTrackMode(rawTrack, trackMode, targets)
+    if (!track) { setNotice('Revision track was not saved: it contained a word you have not learned yet.'); setView('dashboard'); return }
     saveTracksJa([...tracks, track])
-    saveSlots((targets || []).map(t => t.id))   // hold these slots until rated
+    // Only a Daily Track holds new-word slots. A revision track must neither use
+    // nor add to the Daily allowance.
+    if (trackMode !== 'revision') saveSlots((targets || []).map(t => t.id))
     if (track && track._qcDone) {
       setActiveTrack(track); setPlayerResumeCompleted(false); setView('player'); return
     }
@@ -20102,7 +20393,14 @@ function JapaneseTeacher({ lang, onSetLang }) {
   // §7 — persist the corrected track, then branch on where QC was entered from.
   // §8 — every exit from Quality Review clears qcReturnContext so it cannot go stale.
   function onQcSave(corrected) {
-    const t = corrected || pendingReviewTrack
+    // QC hands back a corrected copy; carry the track mode across explicitly so a
+    // revision track can never be saved back as an unlabelled one.
+    const _p = pendingReviewTrack || {}
+    const t = corrected ? { ...corrected, trackMode: corrected.trackMode || _p.trackMode,
+                            mode: corrected.mode || _p.mode,
+                            revisionTargets: corrected.revisionTargets || _p.revisionTargets,
+                            newTargetCount: corrected.newTargetCount != null ? corrected.newTargetCount : _p.newTargetCount }
+                        : pendingReviewTrack
     const exists = tracks.some(x => x.createdAt && x.createdAt === t.createdAt)
     saveTracksJa(exists ? tracks.map(x => (x.createdAt && x.createdAt === t.createdAt) ? t : x) : [...tracks, t])
     const from = qcReturnContext
@@ -20146,7 +20444,10 @@ function JapaneseTeacher({ lang, onSetLang }) {
     })
     saveVocabJa(next)
     // A word rated 'hard' stays status 'new' and therefore keeps its slot (v495 §13).
-    saveSlots(next.filter(w => (targets || []).some(t => t.id === w.id) && w.status === 'new').map(w => w.id))
+    // Rewriting the daily slots from a REVISION track's words would overwrite the
+    // held Daily words. Ratings still update SRS below for both modes.
+    if (trackModeOf(activeTrack) !== 'revision')
+      saveSlots(next.filter(w => (dailyTargets || []).some(t => t.id === w.id) && w.status === 'new').map(w => w.id))
     if (activeTrack) saveTracksJa(tracks.map(t =>
       (t === activeTrack || (t.createdAt && t.createdAt === activeTrack.createdAt))
         ? { ...t, rated: true, keywords } : t))
@@ -20171,7 +20472,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
   // 難しい something to describe. Those were selected anyway and burned every
   // attempt on support words that are not taught. Unteachable targets are deferred
   // and replaced from the next eligible words.
-  const targets = useMemo(() => {
+  const dailyTargets = useMemo(() => {
     const raw = selection.targets || []
     if (!raw.length || !hasVocab) return raw
     try {
@@ -20183,6 +20484,12 @@ function JapaneseTeacher({ lang, onSetLang }) {
       return filled.length ? filled : raw
     } catch (e) { return raw }        // never block a track on the gate
   }, [selection, vocab, hasVocab])
+  // REVISION TRACK — same shared selector as Thai and Mandarin. It never
+  // consumes or accumulates the Daily Track's new-word allowance.
+  const [trackMode, setTrackMode] = useState('daily')
+  const revisionSelection = useMemo(() => selectRevisionTrackTargets({
+    vocab, maxTargets: REVISION_TRACK_MAX, language: 'ja' }), [vocab])
+  const targets = trackMode === 'revision' ? revisionSelection.targets : dailyTargets
 
   function startTrack() {
     if (!hasVocab) { setNotice('Japanese vocabulary has not been loaded yet.'); return }
@@ -20211,16 +20518,19 @@ function JapaneseTeacher({ lang, onSetLang }) {
         onSetProvider={cred.setProvider} />
       <main>
         {view === 'dashboard' && (
-          <JapaneseDashboard vocab={vocab} tracks={tracks} register={register} targets={targets} selection={selection}
+          <JapaneseDashboard vocab={vocab} tracks={tracks} register={register} targets={dailyTargets} selection={selection}
+              revisionSelection={revisionSelection}
+              onStartRevision={() => { if (!revisionSelection.targets.length) { setNotice('You have not learned any Japanese words yet.'); return }
+                                      setTrackMode('revision'); setNotice(''); setView('generate') }}
             onNav={setView}
-            onSetRegister={saveRegister} onStartTrack={startTrack} notice={notice}
+            onSetRegister={saveRegister} onStartTrack={() => { setTrackMode('daily'); startTrack() }} notice={notice}
             provider={cred.provider} onSetProvider={cred.setProvider} hasVocab={hasVocab}
             onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} />
         )}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'generate' && (
           <ErrorBoundary>
-            <JapaneseGenerator vocab={vocab} targets={targets} selection={selection} register={register} cred={cred}
+            <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} register={register} cred={cred}
               onGenerated={onTrackGenerated} onBack={() => setView('dashboard')} />
           </ErrorBoundary>
         )}
@@ -21539,7 +21849,7 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
 
 // §43/§45 — Mandarin dashboard. Same visual language as Thai/Japanese.
 function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice, provider, onSetProvider,
-                             onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection }) {
+                             onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection }) {
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
     return {
@@ -21641,18 +21951,8 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice, provi
             {(targets && targets.length) ? '3 new words' : 'No targets'}
           </div>
         </button>
-        {/* §5 — separate review-track action driven by due SRS words */}
-        <button onClick={onStartSrsTrack} disabled={!srsDue}
-          style={{ background: srsDue ? 'linear-gradient(135deg,#2d1f08,#3d2a0c)' : 'var(--surface)',
-                   border:'1px solid ' + (srsDue ? 'var(--gold)' : 'var(--border)'), borderRadius:12,
-                   padding:'18px 12px', cursor: srsDue ? 'pointer' : 'not-allowed',
-                   textAlign:'center', color:'var(--text)', opacity: srsDue ? 1 : 0.55 }}>
-          <Icon name="clock" size={22} color="var(--gold)" />
-          <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Review Track</div>
-          <div style={{ fontSize:11, color:'var(--gold)', marginTop:2 }}>
-            {srsDue ? srsDue + ' due for review' : 'Nothing due yet'}
-          </div>
-        </button>
+        {/* Revision Track — shared component, identical in every language */}
+        <RevisionTrackButton selection={revisionSelection} onStart={onStartSrsTrack} />
       </div>
 
       {/* Rank Test — same component and behaviour in every language */}
@@ -21679,7 +21979,7 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice, provi
                     {track.rated && <span style={{ color:'#10b981', marginLeft:6, fontSize:11 }}>{'\u2713'}</span>}</p>
                   <p style={{ fontSize:11, color:'var(--muted)' }}>
                     {(track.pairs || []).length} pairs {'\u00b7'} {(track.keywords || []).length} words
-                    {track.mode === 'srs' && <span style={{ color:'var(--gold)', marginLeft:6 }}>REVIEW</span>}
+                    {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6 }}>REVISION</span>}
                   </p>
                 </div>
                 <button onClick={e => { e.stopPropagation(); downloadMandarinTrack(track) }}
@@ -21750,21 +22050,22 @@ function MandarinTeacher({ lang, onSetLang }) {
   }) : { targets: [], counts:{ total:0, new:0, due:0, reinforce:0 }, expectedRecalls:0 }),
   [vocab, slots, recentTrackWordIds])
   // §17 — a review track drills due words ONLY: no new-word slot is consumed.
-  const srsSelection = useMemo(() => (vocab.length ? selectTrackTargets({
-    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds,
-    newSelector: () => [],
-    dueSelector: v => mandarinSelectSrsTargets(v, TRACK_TARGET_CAP),
-  }) : { targets: [], counts:{ total:0, new:0, due:0, reinforce:0 }, expectedRecalls:0 }),
-  [vocab, recentTrackWordIds])
-  const selection = trackMode === 'srs' ? srsSelection : newSelection
+  // REVISION TRACK — the shared, language-neutral selector. Hard → overdue → due →
+  // reinforce, previously-introduced words only, never any new vocabulary.
+  const revisionSelection = useMemo(() => selectRevisionTrackTargets({
+    vocab, maxTargets: REVISION_TRACK_MAX, language: 'zh' }), [vocab])
+  const srsSelection = revisionSelection
+  const selection = (trackMode === 'revision' || trackMode === 'srs') ? revisionSelection : newSelection
   const newTargets = newSelection.targets
-  const srsTargets = srsSelection.targets
+  const srsTargets = revisionSelection.targets
   const targets = selection.targets
 
-  function onTrackGenerated(track) {
-    saveTracksZh([...tracks, { ...track, mode: trackMode }])
+  function onTrackGenerated(rawTrack) {
+    const track = stampTrackMode(rawTrack, trackMode, targets)
+    if (!track) { setNotice('Revision track was not saved: it contained a word you have not learned yet.'); setView('dashboard'); return }
+    saveTracksZh([...tracks, track])
     if (track && track._qcDone) {
-      setActiveTrack({ ...track, mode: trackMode }); setPlayerResumeCompleted(false); setView('player'); return
+      setActiveTrack(track); setPlayerResumeCompleted(false); setView('player'); return
     }
     // §17 — only a new-word track consumes daily-new slots.
     if (trackMode === 'daily') saveSlots((targets || []).map(t => t.id))
@@ -21773,7 +22074,14 @@ function MandarinTeacher({ lang, onSetLang }) {
     setView('quality-review')
   }
   function onQcSave(corrected) {
-    const t = corrected || pendingReviewTrack
+    // QC hands back a corrected copy; carry the track mode across explicitly so a
+    // revision track can never be saved back as an unlabelled one.
+    const _p = pendingReviewTrack || {}
+    const t = corrected ? { ...corrected, trackMode: corrected.trackMode || _p.trackMode,
+                            mode: corrected.mode || _p.mode,
+                            revisionTargets: corrected.revisionTargets || _p.revisionTargets,
+                            newTargetCount: corrected.newTargetCount != null ? corrected.newTargetCount : _p.newTargetCount }
+                        : pendingReviewTrack
     const exists = tracks.some(x => x.createdAt && x.createdAt === t.createdAt)
     saveTracksZh(exists ? tracks.map(x => (x.createdAt && x.createdAt === t.createdAt) ? t : x) : [...tracks, t])
     const from = qcReturnContext
@@ -21801,7 +22109,8 @@ function MandarinTeacher({ lang, onSetLang }) {
       return w
     })
     saveVocabZh(next)
-    if (trackMode === 'daily') saveSlots(next.filter(w => (targets || []).some(t => t.id === w.id) && w.status === 'new').map(w => w.id))
+    // Key off the track being PLAYED, not the current mode setting.
+    if (trackModeOf(activeTrack) !== 'revision') saveSlots(next.filter(w => (newTargets || []).some(t => t.id === w.id) && w.status === 'new').map(w => w.id))
     if (activeTrack) saveTracksZh(tracks.map(t =>
       (t === activeTrack || (t.createdAt && t.createdAt === activeTrack.createdAt)) ? { ...t, rated:true, keywords } : t))
     setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard')
@@ -21831,9 +22140,10 @@ function MandarinTeacher({ lang, onSetLang }) {
           <MandarinDashboard vocab={vocab} tracks={tracks} targets={newTargets} notice={notice}
             srsDue={srsSelection.counts.due} selection={newSelection} onNav={setView}
             onLearnWords={() => { setTrackMode('daily'); setNotice(''); setView('learn') }}
+            revisionSelection={revisionSelection}
             onStartSrsTrack={() => {
-              if (!srsTargets.length) { setNotice('No Mandarin words are due for review yet.'); return }
-              setTrackMode('srs'); setNotice(''); setView('generate')
+              if (!srsTargets.length) { setNotice('You have not learned any Mandarin words yet.'); return }
+              setTrackMode('revision'); setNotice(''); setView('generate')
             }}
             onStartTrack={() => { setTrackMode('daily'); setNotice(''); setView('generate') }}
             provider={cred.provider} onSetProvider={cred.setProvider}

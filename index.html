@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v606"/>
+<meta name="app-version" content="v607"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v606';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v606').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v607';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v607').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -11795,9 +11795,14 @@ function jaResolveReading(reading, surface, following) {
   // 何 reads なん before t/d/n sounds (何時, 何で), なに elsewhere.
   if (surface === '\u4F55') {
     const nx = String(following || '')
-    // なん before t/d/n sounds and before the counter 時/人/回/個, なに elsewhere.
-    const nan = /^[\u305F-\u3069\u306A-\u306E\u3058]/.test(nx) ||
-                /^[\u6642\u4EBA\u56DE\u500B\u5E74\u6708\u65E5\u3067]/.test(nx)
+    // なん only before specific particles/copula (で の と だ です) and counters
+    // (時 人 回 個 年 月 日 歳 分, or their kana じ にん かい こ ねん). The old rule used
+    // "any t/d/n sound", which read 何食べる as なんたべる — wrong: it is なにたべる.
+    // Particles and kana counters must be the WHOLE next word (の, not のむ); only the
+    // kanji counters match as a prefix (時間, 人).
+    const nxw = nx.replace(/[\u3001\u3002\uFF1F\uFF01\s]+$/, '')
+    const nan = ['\u3067','\u306E','\u3068','\u3060','\u3067\u3059','\u3058','\u306B\u3093','\u304B\u3044','\u3053','\u306D\u3093','\u3055\u3044','\u3077\u3093','\u3075\u3093'].includes(nxw) ||
+                /^[\u6642\u4EBA\u56DE\u500B\u5E74\u6708\u65E5\u6B73\u5206]/.test(nxw)
     return nan ? (alts.find(a => a === '\u306A\u3093') || alts[0])
                : (alts.find(a => a === '\u306A\u306B') || alts[0])
   }
@@ -17224,7 +17229,9 @@ const JA_DETERMINERS = ['\u3053\u306E','\u305D\u306E','\u3042\u306E','\u3069\u30
 const JA_EXTRA_INTERROGATIVES = ['\u3069\u3063\u3061','\u3069\u3061\u3089','\u3069\u308C','\u3069\u3093\u306A','\u3069\u3046\u3084\u3063\u3066','\u306A\u3093\u3067','\u306A\u305C','\u3044\u304F\u3089','\u4F55\u6642']
 // Common adverbs. もう ends in \u3046 so the morphological verb test claimed it as a
 // verb, which then failed the noun+verb adjacency rule in "\u306F\u3082\u3046".
-const JA_COMMON_ADVERBS = ['\u3069\u3046\u3084\u3063\u3066','\u3069\u3046\u3057\u3066','\u306A\u305C','\u3082\u3046','\u307E\u3060','\u3061\u3087\u3063\u3068','\u3059\u3054\u304F','\u3059\u3054\u3044','\u3068\u3066\u3082','\u3088\u304F','\u3042\u307E\u308A','\u305C\u3093\u3076','\u3044\u3064\u3082','\u5C11\u3057','\u4ECA','\u307E\u305F','\u305D\u308D\u305D\u308D','\u3082\u3046\u3059\u3050','\u305D\u3093\u306A\u306B','\u5168\u7136','\u7D50\u69CB','\u3086\u3063\u304F\u308A','\u521D\u3081\u3066']
+// たぶん was missing, so たぶん行く。 ("I'll probably go") was rejected as a bare noun
+// against a verb — for the model's sentences as well as the fallback's.
+const JA_COMMON_ADVERBS = ['\u305F\u3076\u3093','\u304D\u3063\u3068','\u305C\u3072','\u3059\u3050','\u305A\u3063\u3068','\u672C\u5F53\u306B','\u4E00\u7DD2\u306B','\u307E\u305A','\u3084\u3063\u3071\u308A','\u3069\u3046\u3084\u3063\u3066','\u3069\u3046\u3057\u3066','\u306A\u305C','\u3082\u3046','\u307E\u3060','\u3061\u3087\u3063\u3068','\u3059\u3054\u304F','\u3059\u3054\u3044','\u3068\u3066\u3082','\u3088\u304F','\u3042\u307E\u308A','\u305C\u3093\u3076','\u3044\u3064\u3082','\u5C11\u3057','\u4ECA','\u307E\u305F','\u305D\u308D\u305D\u308D','\u3082\u3046\u3059\u3050','\u305D\u3093\u306A\u306B','\u5168\u7136','\u7D50\u69CB','\u3086\u3063\u304F\u308A','\u521D\u3081\u3066']
 const JA_NOMINALISERS = ['\u3093','\u306E','\u3053\u3068','\u3082\u306E','\u3064\u3082\u308A','\u306F\u305A','\u3088\u3046','\u308F\u3051','\u305D\u3046']
 // An i-adjective by morphology, not just by list membership.
 function jaIsIAdjective(t) {
@@ -21343,6 +21350,30 @@ function jaTargetRoles(target) {
 // names, weather, personal attributes and abstract states belong here.
 const JA_ABSTRACT_NOUNS = ['\u65E5\u672C\u8A9E','\u82F1\u8A9E','\u540D\u524D','\u5929\u6C17','\u5143\u6C17','\u4EBA\u6C17','\u5BB6\u65CF','\u53CB\u9054','\u4EBA','\u4ECA\u65E5','\u660E\u65E5','\u6628\u65E5','\u671D','\u591C','\u4ED5\u4E8B','\u5B66\u6821']
 
+// Reads a whole sentence from the learner's own vocabulary. The fallback used to
+// replace ONLY the target word and give up if any other kanji remained, returning an
+// empty reading \u2014 so また明日。, 今日は行けない。, 駅はどっち？ were all rejected with
+// "missing kana reading". Full taught words are replaced first (longest first), then
+// kanji stems of okurigana words cover conjugations (行けない \u2192 い+けない). Returns ''
+// if anything cannot be read, so an unreadable sentence is never produced.
+function jaReadingFromInventory(jp, inv) {
+  let s = String(jp || '')
+  const pairs = []
+  const add = (surf, rd) => { if (surf && rd && /[\u4E00-\u9FFF]/.test(surf)) pairs.push([surf, rd]) }
+  ;((inv && inv.allContent) || []).forEach(w => {
+    const surf = w.japanese || '', rd = String(w.reading || '').split(/\s*[\/\uFF0F|]\s*/)[0]
+    add(surf, rd)
+    // okurigana stem: 行く/いく \u2192 行/い ; 忙しい/いそがしい \u2192 忙/いそが. 来る is irregular
+    // (こない, きた), so its stem is never guessed.
+    const m = /^([\u4E00-\u9FFF]+)([\u3041-\u309F]+)$/.exec(surf)
+    if (m && surf !== '\u6765\u308B' && rd.endsWith(m[2])) add(m[1], rd.slice(0, rd.length - m[2].length))
+  })
+  Object.keys(typeof JA_READING_FIXUPS !== 'undefined' ? JA_READING_FIXUPS : {}).forEach(k => add(k, JA_READING_FIXUPS[k]))
+  pairs.sort((a, b) => b[0].length - a[0].length)
+  for (const [surf, rd] of pairs) if (s.includes(surf)) s = s.split(surf).join(rd)
+  return /[\u4E00-\u9FFF]/.test(s) ? '' : s
+}
+
 function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
   const t = target.japanese
   // §10 — a cue must read as English, not as a dictionary line. "like / liked"
@@ -21434,19 +21465,67 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
   // Prefer a shape this target has NOT used yet. Identical recalls are a genuine
   // last resort, not the default when more than one valid frame exists.
   const used = new Set((Array.isArray(previousRecalls) ? previousRecalls : []).filter(Boolean))
+  // Drop anything that cannot be fully read BEFORE choosing, so the fallback never
+  // returns a sentence that fails the reading check.
+  // Each candidate is built COMPLETELY — full reading, segments rebuilt with the same
+  // jaRepairPairStructure QC uses, romaji derived from that reading — and kept only if
+  // its segments reconstruct the sentence. The fallback used to emit ONE segment (the
+  // target), so every multi-word fallback failed "segments do not reconstruct".
+  const _strip = x => String(x || '').replace(/[\s\u3001\u3002\uFF1F\uFF01,.?!]/g, '')
+  for (let k = uniq.length - 1; k >= 0; k--) {
+    const c = uniq[k]
+    const rs = resolveJapaneseReading(t, target.reading || '', c.jp.slice(c.jp.indexOf(t) + t.length))
+    const reading = rs ? jaReadingFromInventory(c.jp.replace(t, rs), inv) : ''
+    let segs = null
+    if (reading) {
+      try {
+        const rb = jaRepairPairStructure({ japanese: c.jp, reading, english: c.en, prompt: c.cue }, inv)
+        if (rb && _strip((rb.segments || []).map(s => s.surface).join('')) === _strip(c.jp)) segs = rb.segments
+      } catch (e) { segs = null }
+    }
+    if (!reading || !segs) { uniq.splice(k, 1); continue }
+    // 何 segments carry the same contextual reading as the sentence (何食べる → なに).
+    segs = segs.map((s, i) => {
+      if (!s || s.surface !== '\u4F55') return s
+      const nx = segs[i + 1]
+      const r = jaResolveReading('\u306A\u306B / \u306A\u3093', '\u4F55', nx && (nx.reading || nx.surface))
+      return { ...s, reading: r, romaji: kanaToRomaji(r) }
+    })
+    // Spaced romaji built from the segments, as model-written romaji is; kept only if
+    // it still matches the reading, otherwise the unspaced derivation is used.
+    const first = x => String(x || '').split(/\s*[\/\uFF0F|]\s*/)[0]
+    let romaji = segs.map(s => (s.type === 'punct' || /^[\u3001\u3002\uFF1F\uFF01]$/.test(s.surface))
+                  ? s.surface : kanaToRomaji(first(s.reading) || s.surface)).join(' ')
+                  .replace(/\s+([\u3001\u3002\uFF1F\uFF01,.?!])/g, '$1').replace(/\s+/g, ' ').trim()
+    // Rebuilt segments can omit the final ？/。 — carry it over so the spaced romaji
+    // still matches the reading.
+    const _tail = (/[\u3001\u3002\uFF1F\uFF01]+$/.exec(c.jp) || [''])[0]
+    if (_tail && !romaji.endsWith(_tail)) romaji += _tail
+    if (typeof romajiMatchesReading === 'function' && !romajiMatchesReading(romaji, reading)) romaji = kanaToRomaji(reading)
+    // The same usage check as the acceptance gate: the fallback must never offer a
+    // sentence the gate will reject (今日乗る？ — 乗る needs a vehicle, not a time word).
+    try {
+      const u = validateJapaneseUsage({ japanese: c.jp, reading, segments: segs, english: c.en, prompt: c.cue }, inv)
+      if (u && u.ok === false) { uniq.splice(k, 1); continue }
+    } catch (e) { /* usage check unavailable — the call-site gate still applies */ }
+    c._built = { reading, romaji, segments: segs }
+  }
   const unused = uniq.filter(c => !used.has(c.jp))
   const pool = unused.length ? unused : uniq
   const pick = pool[(recallIndex - 1) % pool.length] || pool[0]
   if (!pick) return null
   // §18 — never paste a dictionary alternative ("なに / なん") into an utterance.
   const resolved = resolveJapaneseReading(t, target.reading || '', pick.jp.slice(pick.jp.indexOf(t) + t.length))
-  const reading = resolved && !/[\u4E00-\u9FFF]/.test(pick.jp.replace(t, ''))
-    ? pick.jp.replace(t, resolved) : ''
+  // Target first (so 何 resolves in context), then the rest of the sentence from the
+  // learner's own vocabulary. Empty only if something genuinely cannot be read.
+  const b = pick._built
   return {
-    speaker: 'A', japanese: pick.jp, reading,
-    romaji: reading ? kanaToRomaji(reading) : (target.romaji || ''),
+    speaker: 'A', japanese: pick.jp,
+    reading: b ? b.reading : (resolved ? jaReadingFromInventory(pick.jp.replace(t, resolved), inv) : ''),
+    romaji: b ? b.romaji : (target.romaji || ''),
     english: pick.en, prompt: pick.cue,
-    segments: [{ surface: t, reading: target.reading, romaji: target.romaji, english: target.english, lemma: t, type: 'content' }],
+    segments: b ? b.segments
+                : [{ surface: t, reading: target.reading, romaji: target.romaji, english: target.english, lemma: t, type: 'content' }],
     _fallback: true,
   }
 }
@@ -21509,6 +21588,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
   const maxTier = rules.maxTiers
   let lastFailure = ''
   const _rejected = new Set()
+  const _jaUsedHere = new Set()
 
   for (let tier = 1; tier <= maxTier; tier++) {
     const isFallbackTier = tier === maxTier
@@ -21541,7 +21621,16 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
       const task =
         'THIS REPLY: write exactly ONE Japanese sentence that uses 「' + target.japanese + '」' +
         ' (recall ' + recallIndex + ' of 3). Return ONE JSON object — not an array, not a conversation:\n' +
-        '{"japanese":"…","reading":"…","romaji":"…","english":"…","prompt":"…"}' +
+        // segments restored: v605 left them out of this example, so replies that
+        // followed it exactly were rejected with "missing segments".
+        '{"japanese":"…","reading":"…","romaji":"…","english":"…","prompt":"…",' +
+        '"segments":[{"surface":"…","reading":"…","romaji":"…","english":"…"}]}' +
+        // Sentences this target already has. Mandarin got this in v604; Japanese never
+        // did, so また resubmitted また明日ね for ~14 tiers.
+        ((opts && opts.previousRecalls && opts.previousRecalls.length) || _jaUsedHere.size
+          ? '\nYou ALREADY have these for 「' + target.japanese + '」 — write a DIFFERENT sentence: ' +
+            [...new Set([...((opts && opts.previousRecalls) || []), ..._jaUsedHere])].filter(Boolean).join('／')
+          : '') +
         japaneseUsageHintLine(target) +
         (_rejected.size ? '\nDO NOT USE (not taught yet): ' + [..._rejected].join(' ') +
           '. Choose a different, simpler idea rather than rephrasing the same one.' : '') +
@@ -21620,7 +21709,10 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
       } else {
         // §11 — keep it: a candidate whose ONLY fault is novelty is recoverable.
         if (!dupOnlyCandidate) dupOnlyCandidate = cand
-        lastFailure = dup.reason; onLog && onLog('  \u26A0 ' + lastFailure); continue
+        lastFailure = dup.reason; onLog && onLog('  \u26A0 ' + lastFailure)
+      // Name the duplicate in later retries instead of only saying one happened.
+      if (cand && cand.japanese) _jaUsedHere.add(String(cand.japanese).trim())
+      continue
       }
     } else if (dup.note) onLog && onLog('  \u2139 ' + dup.note)
 

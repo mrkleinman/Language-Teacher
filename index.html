@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v599"/>
+<meta name="app-version" content="v600"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v599';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v599').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v600';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v600').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -21033,6 +21033,10 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     onLog && onLog('  ' + checkStyle(tier).icon + ' ' + ORD[tier-1] + ' check: ' + target.japanese + ' \u00B7 recall ' + recallIndex)
 
     let cand = null
+    // Declared at tier scope: the fallback branch never assigns it, and the
+    // empty-reply check below runs after both branches. Declaring it with `let`
+    // inside the model-call branch made that check throw "raw is not defined".
+    let raw = ''
     if (isFallbackTier) {
       // Pass what this target has already produced so the fallback can pick a
     // DIFFERENT valid frame instead of repeating recall 1 three times.
@@ -21051,7 +21055,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
                     '. Choose a different, simpler idea rather than rephrasing the same one.' : '') +
                   (lastFailure ? '\nPrevious attempt failed: ' + lastFailure : '') +
                   (extra ? '\n' + extra : '')
-      let raw = ''
+      raw = ''
       try { raw = await callOpenRouterOnce(apiKey, model, [{ role:'system', content: system }, { role:'user', content: ask }], 700) }
       // These two exits used to set lastFailure WITHOUT logging it, which is why so
     // many tiers in the log were blank: an API error and an empty/unparseable reply

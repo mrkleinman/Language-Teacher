@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v602"/>
+<meta name="app-version" content="v603"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v602';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v602').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v603';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v603').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6348,6 +6348,37 @@ function trackModeTranscriptLines(track) {
   return out
 }
 
+// ── Shared generation-progress model ────────────────────────────────────────
+// One source for the percentage, the scale and the tile grid, so they can never
+// contradict each other. Two separate concepts:
+//   coreExpectedPairs   = targets \u00D7 3 \u2014 the teaching work being generated
+//   finalGeneratedPairs = what the finished track actually contains (core recalls
+//                         plus greeting/parting/framing lines)
+// During generation the scale is the expected workload; once complete the UI shows
+// the ACTUAL final count, never 90 presented as the total.
+function trackProgressModel({ targetCount, coreDone, phase, finalPairs }) {
+  const coreExpected = Math.max(0, (targetCount || 0) * 3)
+  const complete = phase === 'done'
+  const done = complete ? coreExpected : Math.min(coreDone || 0, coreExpected)
+  const finalGeneratedPairs = complete ? (finalPairs != null ? finalPairs : done) : null
+  return {
+    coreExpectedPairs: coreExpected,
+    finalGeneratedPairs,
+    complete,
+    pct: coreExpected ? Math.min(100, Math.round((done / coreExpected) * 100)) : 0,
+    scaleMax: complete ? finalGeneratedPairs : coreExpected,
+    tileCount: coreExpected,
+    // A tile is complete when its core pair is: at completion that is every tile,
+    // so the grid can never sit dark under a 100% bar.
+    tileDone: i => complete || i < done,
+    statusLine: complete
+      ? finalGeneratedPairs + ' pairs generated' +
+        (finalGeneratedPairs > coreExpected ? ' (' + coreExpected + ' teaching + ' +
+          (finalGeneratedPairs - coreExpected) + ' conversation)' : '')
+      : done + ' of ' + coreExpected + ' pairs',
+  }
+}
+
 function stampTrackMode(track, mode, targets, onLog) {
   if (!track) return null
   const m = mode === 'revision' ? 'revision' : 'daily'
@@ -12069,7 +12100,13 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
     )
   }
 
-  const pct = Math.min(100, Math.round((pairsDone / 90) * 100))
+  // Shared progress model: bar, scale, grid and status line all read from this, so
+  // they cannot disagree (previously pairsDone/90 — 92 pairs showed 102%, clamped).
+  const _progTargets = (typeof sessionTargets !== 'undefined' && sessionTargets) || targets || []
+  const progress = trackProgressModel({
+    targetCount: _progTargets.length, coreDone: pairsDone, phase,
+    finalPairs: generatedTrack && generatedTrack.pairs ? generatedTrack.pairs.length : null })
+  const pct = progress.pct
 
   // Latest pair preview from stream
   const [latestPair, setLatestPair] = useState(null)
@@ -12083,14 +12120,16 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         if (apiKey) {
           // Block if 3 tracks already generated today
           const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-          const todayCount = (tracks || []).filter(t => t.date === today).length
+          // Only DAILY tracks count toward the daily cap. Counting revision tracks
+          // meant three revision sessions blocked that day's Daily Track outright.
+          const todayCount = (tracks || []).filter(t => t.date === today && trackModeOf(t) !== 'revision').length
           if (todayCount >= 3 && !customTargets) {
             setPhase('error')
             setError('You already have 3 tracks for today. Come back tomorrow! 🎉')
             return
           }
           // For daily/weak tracks: establish scene first, then pause for user confirmation
-          const useConvoTrackBuild = mode === 'daily' || mode === 'weak'
+          const useConvoTrackBuild = mode === 'daily' || mode === 'weak' || mode === 'revision'  // Revision = same pipeline as Daily; only targets differ
           if (useConvoTrackBuild && !sceneDataRef.current) {
             setPhase('scene_preview')
             setBuildingScene(true)
@@ -12130,7 +12169,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             doPhonetics().catch(() => {})
           }
 
-          const useConvoTrack = mode === 'daily' || mode === 'weak'
+          const useConvoTrack = mode === 'daily' || mode === 'weak' || mode === 'revision'
           const _sceneForGen = useConvoTrack ? sceneDataRef.current : null
           pairs = await (useConvoTrack ? (t,a,k,...r) => generateConversationTrack(t,a,k,...r,_sceneForGen) : generateTrack)(activeTargets, activeAnchors, apiKey,
             (done, total, meta, sources, wordIdx) => {
@@ -12387,7 +12426,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           {sceneData && phase === 'streaming' && <div style={{ fontSize:11, color:'var(--muted)', marginTop:4, fontStyle:'italic' }}>{sceneData.scene ? (sceneData.scene.length > 80 ? sceneData.scene.slice(0,80).replace(/\s\S*$/, '') + '…' : sceneData.scene) : ''}</div>}
         </div>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
-          {phase === 'done' ? `${pairsDone} pairs generated` : `${pairsDone} of ${pairsTotal} pairs`}
+          {progress.statusLine}
         </p>
       </div>
 
@@ -12402,17 +12441,20 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         </div>
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
           <span style={{ fontSize:10, color:'var(--muted)' }}>0</span>
-          <span style={{ fontSize:10, color:'var(--muted)' }}>90</span>
+          <span style={{ fontSize:10, color:'var(--muted)' }}>{progress.scaleMax}</span>
         </div>
       </div>
 
       {/* Live pair counter tiles */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
-        {Array.from({length: 90}, (_, i) => {
-          const src = brickSources[i] || ''
-          const bg = (!src || i >= pairsDone) ? 'var(--surface2)' : srcToColor(src, '#888888')
-          return <div key={i} style={{ height:8, borderRadius:3, background:bg, transition:'background 0.2s', opacity:i < pairsDone ? 1 : 0.4 }} />
-        })}
+        {Array.from({length: progress.tileCount}, (_, i) => {
+            const src = brickSources[i] || ''
+            const done = progress.tileDone(i)
+            // A finished tile is filled whether or not a source event reached it, so the
+            // grid always agrees with the percentage.
+            const bg = !done ? 'var(--surface2)' : (src ? srcToColor(src, color) : color)
+            return <div key={i} style={{ height:8, borderRadius:3, background:bg, transition:'background 0.2s', opacity:done ? 1 : 0.4 }} />
+          })}
       </div>
 
       {/* Status / Action buttons */}
@@ -12421,7 +12463,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           {phase === 'starting' && 'Connecting...'}
           {phase === 'streaming' && pairsDone === 0 && `Kru ${resolveOrName(provider)} is thinking...`}
-          {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${Math.ceil(pairsTotal/3)} — pair ${pairsDone}...`}
+          {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${_progTargets.length} — pair ${pairsDone}...`}
         </span>
       </div>
       {(genLog.length > 0 || phase === 'streaming') && (
@@ -19188,7 +19230,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
         setPhase('done'); setCurrentTargetId(null)
         buildAndQc({
           createdAt:new Date().toISOString(), date:new Date().toISOString().slice(0, 10),
-          language:'zh', mode:'daily', speechStyle:MANDARIN_REGISTER.id,
+          language:'zh', mode:(trackMode === 'revision' || trackMode === 'srs' ? 'revision' : 'daily'), trackMode:(trackMode === 'revision' || trackMode === 'srs' ? 'revision' : 'daily'), speechStyle:MANDARIN_REGISTER.id,
           provider:cred.provider, model, pairs:res.pairs,
           allowedContent:res.allowedContent, grammarUsed:res.grammarUsed, scarcity:res.scarcity,
           recallCount:res.recallCount, framingCount:res.framingCount, rated:false, bookmark:0,
@@ -19257,6 +19299,9 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   }
 
   function targetState(w) {
+    // At completion every target is complete — same rule as the shared progress
+    // model — so the grid can never sit unlit under a 100% bar.
+    if (phase === 'done') return 'done'
     const prog = targetProgress[w.id]
     if (prog && (prog.recallsCompleted || 0) >= 3) return 'done'
     if (currentTargetId === w.id) return 'active'
@@ -19737,7 +19782,7 @@ function JapaneseBlockPill({ b, kind }) {
   )
 }
 
-function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenerated, onBack }) {
+function JapaneseGenerator({ vocab, targets, selection, register, cred, trackMode, onGenerated, onBack }) {
   const [phase, setPhase] = useState('scene_building')   // scene_building | scene_preview | generating | done | error
   const [scene, setScene] = useState(null)
   const [fullLog, setFullLog] = useState([])      // §19 complete history, always downloadable
@@ -19936,7 +19981,7 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
       buildAndQc({
         createdAt: new Date().toISOString(),
         date: new Date().toISOString().slice(0, 10),
-        mode: 'daily', language: 'ja', speechStyle: register,
+        mode: (trackMode === 'revision' ? 'revision' : 'daily'), trackMode: (trackMode === 'revision' ? 'revision' : 'daily'), language: 'ja', speechStyle: register,
         provider: cred.provider, model,
         pairs, scene: res.scene || scene,
         buildingBlocks: res.buildingBlocks || [],
@@ -20070,7 +20115,7 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
         setCurrentTargetId(null); setCurrentCheckTier(0); setPhase('done')
         onGenerated({
           createdAt: new Date().toISOString(), date: new Date().toISOString().slice(0, 10),
-          mode: 'daily', language: 'ja', speechStyle: register, provider: cred.provider, model,
+          mode: (trackMode === 'revision' ? 'revision' : 'daily'), trackMode: (trackMode === 'revision' ? 'revision' : 'daily'), language: 'ja', speechStyle: register, provider: cred.provider, model,
           pairs: next.pairs, scene: next.scene || scene,
           buildingBlocks: next.buildingBlocks || [], allowedContent: next.allowedContent || [],
           recallCount: next.recallCount, framingCount: next.framingCount, rated: false, bookmark: 0,
@@ -20214,6 +20259,10 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, onGenera
   // authoritative currentTargetId. Never inferred from brick array positions.
   // Invariant: at most ONE pill is ever 'active', because only one id can match.
   function targetState(i, wordId) {
+    // At completion every target is complete — the same rule as the shared
+    // progress model — so a recall filled in by recovery can never leave a pill
+    // unlit under a 100% bar.
+    if (phase === 'done') return 'done'
     const prog = targetProgress[wordId]
     const completed = prog ? (prog.recallsCompleted != null ? prog.recallsCompleted : (prog.recalls || []).length) : 0
     if (completed >= 3) return 'done'                       // §2 done only after all 3
@@ -20530,7 +20579,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'generate' && (
           <ErrorBoundary>
-            <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} register={register} cred={cred}
+            <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} trackMode={trackMode} register={register} cred={cred}
               onGenerated={onTrackGenerated} onBack={() => setView('dashboard')} />
           </ErrorBoundary>
         )}

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v597"/>
+<meta name="app-version" content="v598"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v597';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v597').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v598';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v598').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4177,6 +4177,109 @@ const RAW_JAPANESE_VOCAB = [
   {id:98,unlockOrder:69,japanese:'トイレ',reading:'トイレ',romaji:'toire',english:'toilet',lemma:'トイレ',partOfSpeech:'noun',conjugationClass:null},
   {id:99,unlockOrder:70,japanese:'思う',reading:'おもう',romaji:'omou',english:'think',lemma:'思う',partOfSpeech:'verb',conjugationClass:'godan'},
   {id:100,unlockOrder:71,japanese:'知る',reading:'しる',romaji:'shiru',english:'know / find out',lemma:'知る',partOfSpeech:'verb',conjugationClass:'godan'},
+  // ── 10th Kyu: unlockOrder 101–200 ── content vocabulary only; particles,
+  // conjugations and building blocks live in the grammar curriculum. Chosen to give
+  // 1–100 the support nouns their verbs need (乗る→電車, 開ける, どれ→三つ).
+  {"id": 101, "unlockOrder": 101, "japanese": "電車", "reading": "でんしゃ", "romaji": "densha", "english": "train", "lemma": "電車", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 102, "unlockOrder": 102, "japanese": "バス", "reading": "バス", "romaji": "basu", "english": "bus", "lemma": "バス", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 103, "unlockOrder": 103, "japanese": "車", "reading": "くるま", "romaji": "kuruma", "english": "car", "lemma": "車", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 104, "unlockOrder": 104, "japanese": "本", "reading": "ほん", "romaji": "hon", "english": "book", "lemma": "本", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 105, "unlockOrder": 105, "japanese": "映画", "reading": "えいが", "romaji": "eiga", "english": "movie", "lemma": "映画", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 106, "unlockOrder": 106, "japanese": "写真", "reading": "しゃしん", "romaji": "shashin", "english": "photo", "lemma": "写真", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 107, "unlockOrder": 107, "japanese": "電話", "reading": "でんわ", "romaji": "denwa", "english": "phone / call", "lemma": "電話", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 108, "unlockOrder": 108, "japanese": "物", "reading": "もの", "romaji": "mono", "english": "thing", "lemma": "物", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 109, "unlockOrder": 109, "japanese": "場所", "reading": "ばしょ", "romaji": "basho", "english": "place", "lemma": "場所", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 110, "unlockOrder": 110, "japanese": "時間", "reading": "じかん", "romaji": "jikan", "english": "time / hours", "lemma": "時間", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 111, "unlockOrder": 111, "japanese": "朝", "reading": "あさ", "romaji": "asa", "english": "morning", "lemma": "朝", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 112, "unlockOrder": 112, "japanese": "昼", "reading": "ひる", "romaji": "hiru", "english": "daytime / noon", "lemma": "昼", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 113, "unlockOrder": 113, "japanese": "夜", "reading": "よる", "romaji": "yoru", "english": "night", "lemma": "夜", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 114, "unlockOrder": 114, "japanese": "部屋", "reading": "へや", "romaji": "heya", "english": "room", "lemma": "部屋", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 115, "unlockOrder": 115, "japanese": "学校", "reading": "がっこう", "romaji": "gakkou", "english": "school", "lemma": "学校", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 116, "unlockOrder": 116, "japanese": "会社", "reading": "かいしゃ", "romaji": "kaisha", "english": "company / office", "lemma": "会社", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 117, "unlockOrder": 117, "japanese": "道", "reading": "みち", "romaji": "michi", "english": "road / way", "lemma": "道", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 118, "unlockOrder": 118, "japanese": "問題", "reading": "もんだい", "romaji": "mondai", "english": "problem / question", "lemma": "問題", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 119, "unlockOrder": 119, "japanese": "レストラン", "reading": "レストラン", "romaji": "resutoran", "english": "restaurant", "lemma": "レストラン", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 120, "unlockOrder": 120, "japanese": "コーヒー", "reading": "コーヒー", "romaji": "koohii", "english": "coffee", "lemma": "コーヒー", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 121, "unlockOrder": 121, "japanese": "お茶", "reading": "おちゃ", "romaji": "ocha", "english": "tea", "lemma": "お茶", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 122, "unlockOrder": 122, "japanese": "メニュー", "reading": "メニュー", "romaji": "menyuu", "english": "menu", "lemma": "メニュー", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 123, "unlockOrder": 123, "japanese": "注文", "reading": "ちゅうもん", "romaji": "chuumon", "english": "order", "lemma": "注文", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 124, "unlockOrder": 124, "japanese": "ホテル", "reading": "ホテル", "romaji": "hoteru", "english": "hotel", "lemma": "ホテル", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 125, "unlockOrder": 125, "japanese": "空港", "reading": "くうこう", "romaji": "kuukou", "english": "airport", "lemma": "空港", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 126, "unlockOrder": 126, "japanese": "読む", "reading": "よむ", "romaji": "yomu", "english": "read", "lemma": "読む", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 127, "unlockOrder": 127, "japanese": "書く", "reading": "かく", "romaji": "kaku", "english": "write", "lemma": "書く", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 128, "unlockOrder": 128, "japanese": "教える", "reading": "おしえる", "romaji": "oshieru", "english": "teach / tell", "lemma": "教える", "partOfSpeech": "verb", "conjugationClass": "ichidan"},
+  {"id": 129, "unlockOrder": 129, "japanese": "覚える", "reading": "おぼえる", "romaji": "oboeru", "english": "remember / learn", "lemma": "覚える", "partOfSpeech": "verb", "conjugationClass": "ichidan"},
+  {"id": 130, "unlockOrder": 130, "japanese": "忘れる", "reading": "わすれる", "romaji": "wasureru", "english": "forget", "lemma": "忘れる", "partOfSpeech": "verb", "conjugationClass": "ichidan"},
+  {"id": 131, "unlockOrder": 131, "japanese": "歩く", "reading": "あるく", "romaji": "aruku", "english": "walk", "lemma": "歩く", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 132, "unlockOrder": 132, "japanese": "走る", "reading": "はしる", "romaji": "hashiru", "english": "run", "lemma": "走る", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 133, "unlockOrder": 133, "japanese": "座る", "reading": "すわる", "romaji": "suwaru", "english": "sit", "lemma": "座る", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 134, "unlockOrder": 134, "japanese": "立つ", "reading": "たつ", "romaji": "tatsu", "english": "stand", "lemma": "立つ", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 135, "unlockOrder": 135, "japanese": "開ける", "reading": "あける", "romaji": "akeru", "english": "open", "lemma": "開ける", "partOfSpeech": "verb", "conjugationClass": "ichidan"},
+  {"id": 136, "unlockOrder": 136, "japanese": "閉める", "reading": "しめる", "romaji": "shimeru", "english": "close", "lemma": "閉める", "partOfSpeech": "verb", "conjugationClass": "ichidan"},
+  {"id": 137, "unlockOrder": 137, "japanese": "止まる", "reading": "とまる", "romaji": "tomaru", "english": "stop", "lemma": "止まる", "partOfSpeech": "verb", "conjugationClass": "godan", "note": "stop moving — not 泊まる (stay overnight)"},
+  {"id": 138, "unlockOrder": 138, "japanese": "曲がる", "reading": "まがる", "romaji": "magaru", "english": "turn", "lemma": "曲がる", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 139, "unlockOrder": 139, "japanese": "手伝う", "reading": "てつだう", "romaji": "tetsudau", "english": "help", "lemma": "手伝う", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 140, "unlockOrder": 140, "japanese": "選ぶ", "reading": "えらぶ", "romaji": "erabu", "english": "choose", "lemma": "選ぶ", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 141, "unlockOrder": 141, "japanese": "払う", "reading": "はらう", "romaji": "harau", "english": "pay", "lemma": "払う", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 142, "unlockOrder": 142, "japanese": "送る", "reading": "おくる", "romaji": "okuru", "english": "send", "lemma": "送る", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 143, "unlockOrder": 143, "japanese": "呼ぶ", "reading": "よぶ", "romaji": "yobu", "english": "call", "lemma": "呼ぶ", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 144, "unlockOrder": 144, "japanese": "借りる", "reading": "かりる", "romaji": "kariru", "english": "borrow", "lemma": "借りる", "partOfSpeech": "verb", "conjugationClass": "ichidan"},
+  {"id": 145, "unlockOrder": 145, "japanese": "始める", "reading": "はじめる", "romaji": "hajimeru", "english": "start", "lemma": "始める", "partOfSpeech": "verb", "conjugationClass": "ichidan"},
+  {"id": 146, "unlockOrder": 146, "japanese": "終わる", "reading": "おわる", "romaji": "owaru", "english": "finish", "lemma": "終わる", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 147, "unlockOrder": 147, "japanese": "違う", "reading": "ちがう", "romaji": "chigau", "english": "different / wrong", "lemma": "違う", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 148, "unlockOrder": 148, "japanese": "予約", "reading": "よやく", "romaji": "yoyaku", "english": "reservation / booking", "lemma": "予約", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 149, "unlockOrder": 149, "japanese": "着く", "reading": "つく", "romaji": "tsuku", "english": "arrive", "lemma": "着く", "partOfSpeech": "verb", "conjugationClass": "godan"},
+  {"id": 150, "unlockOrder": 150, "japanese": "泊まる", "reading": "とまる", "romaji": "tomaru", "english": "stay overnight", "lemma": "泊まる", "partOfSpeech": "verb", "conjugationClass": "godan", "note": "stay the night — not 止まる (stop)"},
+  {"id": 151, "unlockOrder": 151, "japanese": "同じ", "reading": "おなじ", "romaji": "onaji", "english": "same", "lemma": "同じ", "partOfSpeech": "na-adjective", "conjugationClass": null},
+  {"id": 152, "unlockOrder": 152, "japanese": "多い", "reading": "おおい", "romaji": "ooi", "english": "many / a lot", "lemma": "多い", "partOfSpeech": "i-adjective", "conjugationClass": null},
+  {"id": 153, "unlockOrder": 153, "japanese": "少ない", "reading": "すくない", "romaji": "sukunai", "english": "few / not many", "lemma": "少ない", "partOfSpeech": "i-adjective", "conjugationClass": null},
+  {"id": 154, "unlockOrder": 154, "japanese": "長い", "reading": "ながい", "romaji": "nagai", "english": "long", "lemma": "長い", "partOfSpeech": "i-adjective", "conjugationClass": null},
+  {"id": 155, "unlockOrder": 155, "japanese": "短い", "reading": "みじかい", "romaji": "mijikai", "english": "short", "lemma": "短い", "partOfSpeech": "i-adjective", "conjugationClass": null},
+  {"id": 156, "unlockOrder": 156, "japanese": "速い", "reading": "はやい", "romaji": "hayai", "english": "fast", "lemma": "速い", "partOfSpeech": "i-adjective", "conjugationClass": null, "note": "speed — not 早い (early)"},
+  {"id": 157, "unlockOrder": 157, "japanese": "暑い", "reading": "あつい", "romaji": "atsui", "english": "hot (weather)", "lemma": "暑い", "partOfSpeech": "i-adjective", "conjugationClass": null, "note": "hot weather — not 熱い (hot to touch)"},
+  {"id": 158, "unlockOrder": 158, "japanese": "寒い", "reading": "さむい", "romaji": "samui", "english": "cold (weather)", "lemma": "寒い", "partOfSpeech": "i-adjective", "conjugationClass": null},
+  {"id": 159, "unlockOrder": 159, "japanese": "熱い", "reading": "あつい", "romaji": "atsui", "english": "hot (object/food)", "lemma": "熱い", "partOfSpeech": "i-adjective", "conjugationClass": null, "note": "hot to touch — not 暑い (hot weather)"},
+  {"id": 160, "unlockOrder": 160, "japanese": "冷たい", "reading": "つめたい", "romaji": "tsumetai", "english": "cold (object/drink)", "lemma": "冷たい", "partOfSpeech": "i-adjective", "conjugationClass": null},
+  {"id": 161, "unlockOrder": 161, "japanese": "甘い", "reading": "あまい", "romaji": "amai", "english": "sweet", "lemma": "甘い", "partOfSpeech": "i-adjective", "conjugationClass": null},
+  {"id": 162, "unlockOrder": 162, "japanese": "辛い", "reading": "からい", "romaji": "karai", "english": "spicy", "lemma": "辛い", "partOfSpeech": "i-adjective", "conjugationClass": null},
+  {"id": 163, "unlockOrder": 163, "japanese": "きれい", "reading": "きれい", "romaji": "kirei", "english": "clean / pretty", "lemma": "きれい", "partOfSpeech": "na-adjective", "conjugationClass": null},
+  {"id": 164, "unlockOrder": 164, "japanese": "便利", "reading": "べんり", "romaji": "benri", "english": "convenient", "lemma": "便利", "partOfSpeech": "na-adjective", "conjugationClass": null},
+  {"id": 165, "unlockOrder": 165, "japanese": "必要", "reading": "ひつよう", "romaji": "hitsuyou", "english": "necessary / need", "lemma": "必要", "partOfSpeech": "na-adjective", "conjugationClass": null},
+  {"id": 166, "unlockOrder": 166, "japanese": "スーパー", "reading": "スーパー", "romaji": "suupaa", "english": "supermarket", "lemma": "スーパー", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 167, "unlockOrder": 167, "japanese": "病院", "reading": "びょういん", "romaji": "byouin", "english": "hospital", "lemma": "病院", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 168, "unlockOrder": 168, "japanese": "銀行", "reading": "ぎんこう", "romaji": "ginkou", "english": "bank", "lemma": "銀行", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 169, "unlockOrder": 169, "japanese": "切符", "reading": "きっぷ", "romaji": "kippu", "english": "ticket", "lemma": "切符", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 170, "unlockOrder": 170, "japanese": "改札", "reading": "かいさつ", "romaji": "kaisatsu", "english": "ticket gate", "lemma": "改札", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 171, "unlockOrder": 171, "japanese": "一", "reading": "いち", "romaji": "ichi", "english": "one", "lemma": "一", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 172, "unlockOrder": 172, "japanese": "二", "reading": "に", "romaji": "ni", "english": "two", "lemma": "二", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 173, "unlockOrder": 173, "japanese": "三", "reading": "さん", "romaji": "san", "english": "three", "lemma": "三", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 174, "unlockOrder": 174, "japanese": "四", "reading": "よん", "romaji": "yon", "english": "four", "lemma": "四", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 175, "unlockOrder": 175, "japanese": "五", "reading": "ご", "romaji": "go", "english": "five", "lemma": "五", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 176, "unlockOrder": 176, "japanese": "六", "reading": "ろく", "romaji": "roku", "english": "six", "lemma": "六", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 177, "unlockOrder": 177, "japanese": "七", "reading": "なな", "romaji": "nana", "english": "seven", "lemma": "七", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 178, "unlockOrder": 178, "japanese": "八", "reading": "はち", "romaji": "hachi", "english": "eight", "lemma": "八", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 179, "unlockOrder": 179, "japanese": "九", "reading": "きゅう", "romaji": "kyuu", "english": "nine", "lemma": "九", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 180, "unlockOrder": 180, "japanese": "十", "reading": "じゅう", "romaji": "juu", "english": "ten", "lemma": "十", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 181, "unlockOrder": 181, "japanese": "百", "reading": "ひゃく", "romaji": "hyaku", "english": "hundred", "lemma": "百", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 182, "unlockOrder": 182, "japanese": "千", "reading": "せん", "romaji": "sen", "english": "thousand", "lemma": "千", "partOfSpeech": "numeral", "conjugationClass": null},
+  {"id": 183, "unlockOrder": 183, "japanese": "円", "reading": "えん", "romaji": "en", "english": "yen", "lemma": "円", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 184, "unlockOrder": 184, "japanese": "月曜日", "reading": "げつようび", "romaji": "getsuyoubi", "english": "Monday", "lemma": "月曜日", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 185, "unlockOrder": 185, "japanese": "火曜日", "reading": "かようび", "romaji": "kayoubi", "english": "Tuesday", "lemma": "火曜日", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 186, "unlockOrder": 186, "japanese": "水曜日", "reading": "すいようび", "romaji": "suiyoubi", "english": "Wednesday", "lemma": "水曜日", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 187, "unlockOrder": 187, "japanese": "木曜日", "reading": "もくようび", "romaji": "mokuyoubi", "english": "Thursday", "lemma": "木曜日", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 188, "unlockOrder": 188, "japanese": "金曜日", "reading": "きんようび", "romaji": "kin'youbi", "english": "Friday", "lemma": "金曜日", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 189, "unlockOrder": 189, "japanese": "土曜日", "reading": "どようび", "romaji": "doyoubi", "english": "Saturday", "lemma": "土曜日", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 190, "unlockOrder": 190, "japanese": "日曜日", "reading": "にちようび", "romaji": "nichiyoubi", "english": "Sunday", "lemma": "日曜日", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 191, "unlockOrder": 191, "japanese": "午前", "reading": "ごぜん", "romaji": "gozen", "english": "a.m. / morning", "lemma": "午前", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 192, "unlockOrder": 192, "japanese": "午後", "reading": "ごご", "romaji": "gogo", "english": "p.m. / afternoon", "lemma": "午後", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 193, "unlockOrder": 193, "japanese": "毎日", "reading": "まいにち", "romaji": "mainichi", "english": "every day", "lemma": "毎日", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 194, "unlockOrder": 194, "japanese": "週末", "reading": "しゅうまつ", "romaji": "shuumatsu", "english": "weekend", "lemma": "週末", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 195, "unlockOrder": 195, "japanese": "来週", "reading": "らいしゅう", "romaji": "raishuu", "english": "next week", "lemma": "来週", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 196, "unlockOrder": 196, "japanese": "右", "reading": "みぎ", "romaji": "migi", "english": "right", "lemma": "右", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 197, "unlockOrder": 197, "japanese": "左", "reading": "ひだり", "romaji": "hidari", "english": "left", "lemma": "左", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 198, "unlockOrder": 198, "japanese": "入口", "reading": "いりぐち", "romaji": "iriguchi", "english": "entrance", "lemma": "入口", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 199, "unlockOrder": 199, "japanese": "出口", "reading": "でぐち", "romaji": "deguchi", "english": "exit", "lemma": "出口", "partOfSpeech": "noun", "conjugationClass": null},
+  {"id": 200, "unlockOrder": 200, "japanese": "コンビニ", "reading": "コンビニ", "romaji": "konbini", "english": "convenience store", "lemma": "コンビニ", "partOfSpeech": "noun", "conjugationClass": null},
 ]
 
 // §10–13 — Speech Style is a hard generation constraint, not a label.
@@ -20868,6 +20971,29 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
 
 // Generates ONE validated recall for one target. Returns null only if every tier and
 // the deterministic fallback fail.
+// ── Japanese usage hints ────────────────────────────────────────────────────
+// The retry prompt only ever said "Previous attempt failed: untaught content: 中".
+// It told the model what was forbidden, never what would WORK, so どれ reached for
+// 中/一番/三つ on all 33 attempts while どれがいい？ — fully buildable — was never tried.
+// These are guidance for generation, not validators.
+const JA_USAGE_HINTS = {
+  '\u3069\u308C':   ['\u3069\u308C\u304C\u3044\u3044\uFF1F', '\u3069\u308C\u306B\u3059\u308B\uFF1F', '\u3069\u308C\u304C\u597D\u304D\uFF1F'],
+  '\u3054\u3081\u3093': ['\u3054\u3081\u3093\u3001\u4ECA\u65E5\u306F\u884C\u3051\u306A\u3044\u3002', '\u3054\u3081\u3093\u3001\u5206\u304B\u3089\u306A\u3044\u3002', '\u3054\u3081\u3093\u306D\u3002'],
+  '\u307E\u305F':   ['\u307E\u305F\u660E\u65E5\u3002', '\u307E\u305F\u6765\u308B\uFF1F', '\u307E\u305F\u884C\u3053\u3046\u3002'],
+  '\u3069\u3046':   ['\u3053\u308C\u3001\u3069\u3046\uFF1F', '\u3069\u3046\u601D\u3046\uFF1F', '\u4ECA\u65E5\u306F\u3069\u3046\uFF1F'],
+  '\u3069\u3063\u3061': ['\u3069\u3063\u3061\u304C\u3044\u3044\uFF1F', '\u3069\u3063\u3061\u306B\u3059\u308B\uFF1F', '\u99C5\u306F\u3069\u3063\u3061\uFF1F'],
+  '\u3042\u308C':   ['\u3042\u308C\u306F\u4F55\uFF1F', '\u3042\u308C\u304C\u3044\u3044\u3002', '\u3042\u308C\u3001\u9AD8\u3044\uFF1F'],
+  '\u3042\u305D\u3053': ['\u3042\u305D\u3053\u306B\u3042\u308B\u3002', '\u3042\u305D\u3053\u306B\u884C\u3053\u3046\u3002', '\u3042\u305D\u3053\u306F\u4F55\uFF1F'],
+  '\u306A\u3093\u3067': ['\u306A\u3093\u3067\uFF1F', '\u306A\u3093\u3067\u884C\u304B\u306A\u3044\u306E\uFF1F', '\u306A\u3093\u3067\u5FD9\u3057\u3044\u306E\uFF1F'],
+  '\u305F\u3076\u3093': ['\u305F\u3076\u3093\u5927\u4E08\u592B\u3002', '\u305F\u3076\u3093\u884C\u304F\u3002', '\u305F\u3076\u3093\u660E\u65E5\u3002'],
+}
+function japaneseUsageHintLine(target) {
+  const h = JA_USAGE_HINTS[target && target.japanese]
+  if (!h) return ''
+  return '\nNATURAL PATTERNS for "' + target.japanese + '" that fit this learner\u2019s vocabulary \u2014 ' +
+         'use one of these shapes (vary the other words):\n  ' + h.join('   ')
+}
+
 async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId, apiKey, model,
                                          seenMap, inv, rules, onLog, onTier, opts) {
   // §8/§9 — recovery may relax NOVELTY only. Correctness is never relaxed.
@@ -20884,6 +21010,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
   // reaches a "10th check"; its fallback is simply its last tier (§10).
   const maxTier = rules.maxTiers
   let lastFailure = ''
+  const _rejected = new Set()
 
   for (let tier = 1; tier <= maxTier; tier++) {
     const isFallbackTier = tier === maxTier
@@ -20899,17 +21026,30 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
       if (cand) onLog && onLog('  \u2699 deterministic fallback')
     } else {
       const extra = jaEscalationInstruction(tier, target, inv, rules)
+      // Accumulate every word rejected as untaught for THIS recall, so the model
+      // stops reaching for the same one — どれ tried 中 on all 33 attempts.
+      const _um = /untaught content: (.+)/.exec(lastFailure || '')
+      if (_um) _um[1].split(/\s+/).forEach(w => w && _rejected.add(w))
       const ask = user + '\n\nProduce exactly ONE sentence for this target (recall ' + recallIndex + ' of 3).' +
+                  japaneseUsageHintLine(target) +
+                  (_rejected.size ? '\nDO NOT USE (not taught yet): ' + [..._rejected].join(' ') +
+                    '. Choose a different, simpler idea rather than rephrasing the same one.' : '') +
                   (lastFailure ? '\nPrevious attempt failed: ' + lastFailure : '') +
                   (extra ? '\n' + extra : '')
       let raw = ''
       try { raw = await callOpenRouterOnce(apiKey, model, [{ role:'system', content: system }, { role:'user', content: ask }], 700) }
-      catch (e) { lastFailure = (e.message || '').slice(0, 60); continue }
+      // These two exits used to set lastFailure WITHOUT logging it, which is why so
+    // many tiers in the log were blank: an API error and an empty/unparseable reply
+    // were indistinguishable from each other and from silence.
+    catch (e) { lastFailure = 'model call failed: ' + (e.message || 'unknown error').slice(0, 60)
+                onLog && onLog('  \u274C ' + lastFailure); continue }
       const parsed = _jaParseJSON(raw)
       const arr = Array.isArray(parsed) ? parsed : (parsed && parsed.lines) || (parsed ? [parsed] : [])
       cand = arr[0]
     }
-    if (!cand || !cand.japanese) { lastFailure = 'no usable candidate'; continue }
+    if (!cand || !cand.japanese) {
+      lastFailure = cand ? 'model reply had no Japanese sentence' : 'model reply was empty or unparseable'
+      onLog && onLog('  \u274C ' + lastFailure); continue }
 
     // §18 — substantive pedagogy first; duplication is checked LAST.
     const jp = String(cand.japanese).trim()
@@ -21320,18 +21460,17 @@ function mergeJapaneseVocab(saved) {
   const merged = fresh.map(f => {
     const s = byId[f.id]
     if (!s) return f
-    return {
-      ...f,
-      // learning state carried forward verbatim — never reset by a bank update
-      status:   s.status   != null ? s.status   : f.status,
-      interval: s.interval != null ? s.interval : f.interval,
-      repCount: s.repCount != null ? s.repCount : f.repCount,
-      okStreak: s.okStreak != null ? s.okStreak : f.okStreak,
-      lapses:   s.lapses   != null ? s.lapses   : f.lapses,
-      lastSeen: s.lastSeen != null ? s.lastSeen : f.lastSeen,
-      dueDate:  s.dueDate  != null ? s.dueDate  : f.dueDate,
-      difficulty: s.difficulty != null ? s.difficulty : f.difficulty,
-    }
+    // Learner state is carried forward by EXCLUSION, not a whitelist. The old
+    // whitelist named eight fields and silently dropped everything else — including
+    // introducedAt and manualKnown (which the tail then reset to false, demoting
+    // every manually-known word). Any bank-size change triggers this merge, so it
+    // fired for every existing learner. Now: CONTENT comes from the bank, so
+    // corrections still apply; EVERY other field comes from the saved record.
+    const CONTENT = ['id','unlockOrder','japanese','reading','romaji','english','lemma',
+                     'partOfSpeech','conjugationClass','note','belt','beltOrder','curriculumIndex']
+    const out = { ...f }
+    Object.keys(s).forEach(k => { if (!CONTENT.includes(k) && s[k] != null) out[k] = s[k] })
+    return out
   })
   // keep any stored entry whose id is beyond the current bank, so a future
   // shorter bank can never silently delete earned progress

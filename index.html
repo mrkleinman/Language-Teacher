@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v598"/>
+<meta name="app-version" content="v599"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v598';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v598').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v599';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v599').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -16942,7 +16942,8 @@ function jaNounVerbProblem(noun, verb, sentence) {
 // bucket and then run through a noun+verb adjacency heuristic, which produced
 // nonsense like "ね帰る needs a particle" and rejected すみません、… as a fixed
 // expression that "cannot take a verb". Each class needs its own treatment.
-const JA_DISCOURSE_OPENERS = ['\u3060\u304B\u3089','\u3067\u3082','\u305D\u308C\u3067','\u305D\u3057\u3066','\u3060\u3063\u3066','\u3059\u307F\u307E\u305B\u3093','\u3042\u306E','\u3042\u306E\u3046','\u3048\u3063\u3068','\u3058\u3083\u3042','\u305D\u308C\u3067','\u3067\u306F','\u3067','\u307E\u3042','\u3048\u30FC','\u3088\u3057','\u3055\u3042','\u3068\u3053\u308D\u3067']
+// \u3054\u3081\u3093 / \u3054\u3081\u3093\u306D open a clause exactly as \u3059\u307F\u307E\u305B\u3093 does.
+const JA_DISCOURSE_OPENERS = ['\u3054\u3081\u3093','\u3054\u3081\u3093\u306D','\u3054\u3081\u3093\u306A\u3055\u3044','\u3060\u304B\u3089','\u3067\u3082','\u305D\u308C\u3067','\u305D\u3057\u3066','\u3060\u3063\u3066','\u3059\u307F\u307E\u305B\u3093','\u3042\u306E','\u3042\u306E\u3046','\u3048\u3063\u3068','\u3058\u3083\u3042','\u305D\u308C\u3067','\u3067\u306F','\u3067','\u307E\u3042','\u3048\u30FC','\u3088\u3057','\u3055\u3042','\u3068\u3053\u308D\u3067']
 const JA_SENTENCE_PARTICLES = ['\u306D','\u3088','\u304B','\u306A','\u308F','\u305C','\u305E','\u304B\u306A','\u306E']
 // CASE particles. These were classified 'content', so "\u306B\u4F4F\u3080" fired a rule demanding
 // a particle — when \u306B IS the particle. They may always precede a verb.
@@ -17012,8 +17013,13 @@ function validateJapaneseUsage(pair, inv) {
       const onlyTimeAround = otherContent.every(x => jaRoleOf(x) === 'time')
       if (/[\uFF1F?]/.test(pair.japanese || '') && onlyTimeAround)
         problems.push('"' + w + '" is a fixed expression and cannot be used as a question')
-      // だ/です after a formula is not Japanese
-      if (/(\u3060\u3088|\u3060\u3002|\u3067\u3059)/.test(pair.japanese || ''))
+      // だ/です DIRECTLY after a formula is not Japanese (ごめんだ). This used to test
+      // the whole sentence, so ごめん、今日行けないんだ。 failed on the だ of んだ at the
+      // far end, which has nothing to do with the formula.
+      const _jp = pair.japanese || ''
+      const _at = _jp.indexOf(w)
+      const _tail = _at >= 0 ? _jp.slice(_at + w.length, _at + w.length + 3) : ''
+      if (/^(\u3060\u3088|\u3060\u3002|\u3060$|\u3067\u3059)/.test(_tail))
         problems.push('"' + w + '" is a fixed expression and cannot take the copula')
     }
   }
@@ -20279,7 +20285,16 @@ function _jaParseJSON(raw) {
   const endCh = s[start] === '[' ? ']' : '}'
   const end = s.lastIndexOf(endCh)
   if (end <= start) return null
-  try { return JSON.parse(s.slice(start, end + 1)) } catch (e) { return null }
+  const body = s.slice(start, end + 1)
+  try { return JSON.parse(body) } catch (e) { /* try the repairs below */ }
+  // Recoverable shapes that were being thrown away as "unparseable":
+  // a trailing comma, and several objects emitted without an enclosing array.
+  const noTrail = body.replace(/,\s*([\]}])/g, '$1')
+  try { return JSON.parse(noTrail) } catch (e) { /* next */ }
+  if (body[0] === '{') {
+    try { return JSON.parse('[' + noTrail.replace(/}\s*{/g, '},{') + ']') } catch (e) { /* next */ }
+  }
+  return null
 }
 
 // Scene + conversational envelope, generated as Japanese from the start (§8).
@@ -21049,7 +21064,11 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     }
     if (!cand || !cand.japanese) {
       lastFailure = cand ? 'model reply had no Japanese sentence' : 'model reply was empty or unparseable'
-      onLog && onLog('  \u274C ' + lastFailure); continue }
+      // Show WHAT came back, so an empty reply, a refusal, prose instead of JSON and a
+      // truncated reply can be told apart. The snippet is not fed back to the model.
+      const _snip = String(raw || '').replace(/\s+/g, ' ').trim().slice(0, 90)
+      onLog && onLog('  \u274C ' + lastFailure + (_snip ? ' \u2014 got: "' + _snip + '"' : ' \u2014 got: (nothing)'))
+      continue }
 
     // §18 — substantive pedagogy first; duplication is checked LAST.
     const jp = String(cand.japanese).trim()

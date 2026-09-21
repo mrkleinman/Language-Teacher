@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v596"/>
+<meta name="app-version" content="v597"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v596';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v596').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v597';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v597').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3523,10 +3523,19 @@ const ZH_NEEDS_OBJECT = ['\u62FF','\u5230','\u5F00','\u7B49','\u89C9\u5F97','\u6
 // Objects a beginner inventory can supply, in preference order.
 const ZH_DEFAULT_OBJECTS = ['\u8FD9\u4E2A','\u90A3\u4E2A','\u4E1C\u897F','\u94B1','\u5BB6','\u4F60','\u6211']
 function zhVerbNeedsObject(v) { return ZH_NEEDS_OBJECT.includes(String(v || '')) }
+// Adverbs that must be followed by a verb. 我要一起。 有一起。 一起吗？ are malformed.
+const ZH_ADVERB_NEEDS_VERB = ['\u4E00\u8D77','\u4E5F','\u90FD','\u8FD8','\u5C31','\u624D','\u518D','\u53C8','\u5E38\u5E38']
 // Rejects a candidate whose transitive verb has nothing after it.
 function zhFallbackIsWellFormed(zh, target) {
   const s = String(zh || '').replace(/[\u3002\uFF1F\uFF01\uFF0C]/g, '')
   const v = target && target.chinese
+  // An adverb target must be followed by a verb it modifies.
+  if (v && ZH_ADVERB_NEEDS_VERB.includes(v)) {
+    const at = s.indexOf(v)
+    if (at < 0) return true
+    const after = s.slice(at + v.length).replace(/[\u5417\u5462\u4E86\u5427\u554A]/g, '')
+    return /[\u53BB\u6765\u5403\u559D\u770B\u505A\u4E70\u8BF4\u542C\u627E\u7B49\u5DE5\u4F5C\u56DE\u73A9\u8D70]/.test(after)
+  }
   if (!v || !zhVerbNeedsObject(v)) return true
   const at = s.indexOf(v)
   if (at < 0) return true
@@ -3538,7 +3547,10 @@ function zhFallbackIsWellFormed(zh, target) {
 // Mandarin grammatical particles and aspect markers. These are STRUCTURE, not
 // content vocabulary: 吗/呢 already appear in accepted sentences while 了/的/一下
 // were reported as "untaught vocabulary" and cost 123 rejections in one run.
-const ZH_PARTICLES = ['\u5417','\u5462','\u5427','\u554A','\u7684','\u4E86','\u7740','\u8FC7','\u5417','\u4E00\u4E0B','\u5730','\u5F97','\u5462']
+// \u4EEC is the plural suffix (\u6211\u4EEC / \u4F60\u4EEC / \u4ED6\u4EEC). Omitting it made \u4E00\u8D77 unteachable: the
+// word means "together" and naturally needs a plural subject, so every attempt
+// was rejected for \u4EEC — 33 times in one run.
+const ZH_PARTICLES = ['\u5417','\u5462','\u5427','\u554A','\u7684','\u4E86','\u7740','\u8FC7','\u4E00\u4E0B','\u5730','\u5F97','\u4EEC']
 function zhIsParticle(w) { return ZH_PARTICLES.includes(String(w || '')) }
 
 function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
@@ -3627,6 +3639,21 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
   // §30 — build every candidate, then return the first that actually PASSES the
   // real validator and has not been used. A template that segments the target away
   // (你好吗 hides the target 好 inside the basic 你好) is silently skipped.
+  // An adverb target (一起, 也, 都…) needs a verb to modify. Offer real frames using
+  // 去/来/吃, which every beginner inventory has, so rejecting 我要一起。 does not
+  // leave the target with nothing.
+  if (ZH_ADVERB_NEEDS_VERB.includes(zh)) {
+    const hasW = w => (inv.allContent || []).some(x => x.chinese === w)
+    const pro = hasW('\u6211') ? '\u6211' : ''
+    if (hasW('\u53BB')) C.push({ zh: '\u6211\u4EEC' + zh + '\u53BB\u5427\u3002', en: "Let's go together.",
+      cue: 'Suggest going together' })
+    if (hasW('\u8DDF') && hasW('\u4F60') && hasW('\u53BB')) C.push({ zh: pro + '\u8DDF\u4F60' + zh + '\u53BB\u3002',
+      en: "I'll go with you.", cue: 'Say you will go with them' })
+    if (hasW('\u5403')) C.push({ zh: '\u6211\u4EEC' + zh + '\u5403\u5427\u3002', en: "Let's eat together.",
+      cue: 'Suggest eating together' })
+    if (hasW('\u6765')) C.push({ zh: '\u4F60\u4EEC' + zh + '\u6765\u5417\uFF1F', en: 'Are you coming together?',
+      cue: 'Ask if they are coming together' })
+  }
   // Drop malformed candidates BEFORE deduping. 我拿。 我到。 我开。 我等。 我觉得。
   // are not Chinese: these verbs require an object.
   const wellFormed = C.filter(c => zhFallbackIsWellFormed(c.zh, target))

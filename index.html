@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v604"/>
+<meta name="app-version" content="v606"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v604';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v604').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v606';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v606').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3355,6 +3355,9 @@ function mandarinTargetPresent(sentence, target, inv) {
   const taught = new Set(((inv && inv.allContent) || []).map(w => w.chinese || w.w).filter(Boolean))
   if (segs.some(s => s.surface.length > zh.length && s.surface.startsWith(zh) &&
                      taught.has(s.surface.slice(zh.length)))) return true
+  // Negated forms. 没有 is segmented as one word, which hid 有 from its own recall
+  // and cost it nine attempts; a negator in front of the target still contains it.
+  if (segs.some(s => (s.surface === '\u6CA1' + zh || s.surface === '\u4E0D' + zh))) return true
   return false
 }
 
@@ -3370,6 +3373,12 @@ function mandarinUnknownContent(sentence, inv) {
     if (!s || s.type === 'punct') return
     if (!/[\u4E00-\u9FFF]/.test(s.surface)) return
     if (allowed.has(s.surface)) return
+    // Particles are grammar, not vocabulary — decided HERE so every caller
+    // (generation, validation, QC, repair) applies one rule. Two of four callers
+    // filtered them and two did not, so QC rejected what generation accepted.
+    if (typeof zhIsParticle === 'function' && zhIsParticle(s.surface)) return
+    // A pronoun + 们 plural (我们 / 你们) is its taught pronoun plus the particle.
+    if (/们$/.test(s.surface) && allowed.has(s.surface.slice(0, -1))) return
     if (!unknown.includes(s.surface)) unknown.push(s.surface)
   })
   return unknown
@@ -3533,7 +3542,7 @@ function thirdPerson(v) {
 // \u77E5\u9053 and \u61C2 were wrongly listed here: \u6211\u77E5\u9053\u3002 and \u4F60\u61C2\u5417\uFF1F are complete
 // sentences, so the valency filter was rejecting correct Chinese and leaving both
 // verbs with no fallback at all.
-const ZH_NEEDS_OBJECT = ['\u62FF','\u5230','\u5F00','\u7B49','\u89C9\u5F97','\u627E','\u5E2E','\u7ED9','\u4E70','\u505A','\u7528','\u5403','\u559D','\u770B','\u542C','\u8BF4','\u56DE']
+const ZH_NEEDS_OBJECT = ['\u6709','\u62FF','\u5230','\u5F00','\u7B49','\u89C9\u5F97','\u627E','\u5E2E','\u7ED9','\u4E70','\u505A','\u7528','\u5403','\u559D','\u770B','\u542C','\u8BF4','\u56DE']
 // Objects a beginner inventory can supply, in preference order.
 const ZH_DEFAULT_OBJECTS = ['\u8FD9\u4E2A','\u90A3\u4E2A','\u4E1C\u897F','\u94B1','\u5BB6','\u4F60','\u6211']
 function zhVerbNeedsObject(v) { return ZH_NEEDS_OBJECT.includes(String(v || '')) }
@@ -3572,6 +3581,10 @@ function zhIsParticle(w) { return ZH_PARTICLES.includes(String(w || '')) }
 // and a failed model run became a failed recall. Each frame uses the verb's natural
 // collocate (回家, 开车, 等你) and is offered only if every word in it is taught.
 const ZH_VERB_FRAMES = {
+  // 有 needs an object: the fallback produced 我想有。 ("I want to have.").
+  '\u6709': [['\u4F60\u6709\u94B1\u5417\uFF1F','Do you have money?','Ask if they have money',['\u4F60','\u94B1']],
+           ['\u6211\u6709\u670B\u53CB\u3002','I have friends.','Say you have friends',['\u6211','\u670B\u53CB']],
+           ['\u8FD9\u91CC\u6709\u4EC0\u4E48\uFF1F','What is there here?','Ask what there is here',['\u8FD9\u91CC','\u4EC0\u4E48']]],
   '\u5403': [['\u4f60\u5403\u4ec0\u4e48\uff1f','What are you eating?','Ask what they are eating',['\u4f60','\u4ec0\u4e48']], ['\u6211\u60f3\u5403\u996d\u3002','I want to eat.','Say you want to eat',['\u6211','\u60f3','\u996d']], ['\u6211\u4eec\u5403\u996d\u5427\u3002','Let\u2019s eat.','Suggest eating',['\u6211','\u996d']]],
   '\u559d': [['\u4f60\u559d\u4ec0\u4e48\uff1f','What are you drinking?','Ask what they are drinking',['\u4f60','\u4ec0\u4e48']], ['\u6211\u559d\u6c34\u3002','I\u2019ll have water.','Say you will drink water',['\u6211','\u6c34']], ['\u4f60\u60f3\u559d\u6c34\u5417\uff1f','Do you want some water?','Offer them water',['\u4f60','\u60f3','\u6c34']]],
   '\u770b': [['\u4f60\u770b\u4ec0\u4e48\uff1f','What are you looking at?','Ask what they are looking at',['\u4f60','\u4ec0\u4e48']], ['\u4f60\u770b\u8fd9\u4e2a\u3002','Look at this.','Tell them to look at this',['\u4f60','\u8fd9\u4e2a']], ['\u6211\u770b\u4e00\u4e0b\u3002','Let me take a look.','Say you will take a look',['\u6211']]],
@@ -3779,6 +3792,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
   const maxTier = rules.maxTiers
   let last = ''
   const _zhRejected = new Set()
+  const _zhUsedElsewhere = new Set()
   for (let tier = 1; tier <= maxTier; tier++) {
     const isFallback = tier === maxTier
     onTier && onTier(tier)
@@ -3796,6 +3810,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
       if (_um) _um[1].split(/\s+/).forEach(w => w && _zhRejected.add(w))
       const _mine = [...(seenMap || new Map()).entries()].filter(([, id]) => id === target.id).map(([k]) => k)
       const memory =
+        (_zhUsedElsewhere.size ? '\nThese sentences are ALREADY USED in this track — do not submit them again: ' + [..._zhUsedElsewhere].join('／') : '') +
         (_mine.length ? '\nYou ALREADY wrote these for ' + target.chinese + ' — write a DIFFERENT sentence: ' + _mine.join('／') : '') +
         (_zhRejected.size ? '\nDO NOT USE (not taught yet): ' + [..._zhRejected].join(' ') +
           '. Pick a different, simpler idea rather than rephrasing the same one.' : '')
@@ -3811,7 +3826,13 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
     }
     if (!cand) { last = 'no candidate'; continue }
     const v = validateMandarinPair(cand, target, inv, vocab, rules, seenMap)
-    if (!v.ok) { last = v.problems[0]; recordMandarinRejection(stats, last); onLog && onLog('  \u274C ' + last); continue }
+    if (!v.ok) {
+      last = v.problems[0]; recordMandarinRejection(stats, last); onLog && onLog('  \u274C ' + last)
+      // A sentence already used by ANOTHER target was never named in the retry,
+      // so 喜欢 resubmitted 我喜欢这个 for eight tiers. Remember it.
+      if (/already used/.test(last) && cand.chinese) _zhUsedElsewhere.add(cand.chinese)
+      continue
+    }
     const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
     seenMap.set(strip(cand.chinese), target.id)
     onLog && onLog('  \u2705 ' + ORD[tier-1] + ' check passed: ' + cand.chinese)
@@ -3820,7 +3841,14 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
         chinese: cand.chinese, pinyin: tidyPinyin(cand.pinyin),
         spokenPinyin: tidyPinyin(mandarinSpokenPinyin(cand.pinyin)),
         english: cand.english, prompt: cand.prompt,
-        segments: v.segments,
+        // Canonical lexicon gloss/pinyin applied NOW, with the same lookup QC uses.
+        // Otherwise QC 'corrects' 我/想/家 in nearly every pair (~150 lines a run),
+        // burying the issues that actually matter.
+        segments: (v.segments || []).map(s => {
+          if (!s || s.type === 'punct') return s
+          const hit = (inv.lexicon || []).find(x => x.w === s.surface)
+          return hit ? { ...s, pinyin: hit.p || s.pinyin, english: hit.e || s.english } : s
+        }),
         targetId: target.id, targetChinese: target.chinese,
         recallIndex, checkTier: tier, _source: 'zh-check-' + tier, _fallbackUsed: isFallback,
         // Provenance: 0/90 carried this before, so the metrics stayed empty.
@@ -4062,7 +4090,10 @@ function runMandarinQualityCheckCore(pair, target, inv, vocab) {
   // target (§21)
   if (target && !mandarinTargetPresent(zh, target, inv)) issues.push('target ' + target.chinese + ' not present')
   // producibility (§17)
-  const unk = mandarinUnknownContent(zh, inv)
+  // Same particle rule as generation. Generation accepted 我们/一下/了/得 as grammar,
+  // then this QC check flagged them as untaught vocabulary it could never repair —
+  // 10 of 12 unresolved issues in one run were exactly that disagreement.
+  const unk = mandarinUnknownContent(zh, inv).filter(w => !zhIsParticle(w))
   if (unk.length) issues.push('vocabulary: untaught ' + unk.join(' '))
   // grammar (§70/§71) and register (§68)
   mandarinGrammarProblems(zh, out.segments, inv).forEach(g => issues.push('grammar: ' + g))
@@ -21249,10 +21280,14 @@ const JA_INTENT_FRAMES = [
   { id:'demonstrative-q', intent:'point something out',
     needs:{ role:'demonstrative' },
     build:(t,g)=>({ jp: t + '\uFF1F', en: g + '?', cue: 'Ask about ' + g }) },
-  { id:'adverb-with-verb', intent:'modify a request or action',
+  // Only ちょっと works in this frame (ちょっといい？ = "Got a moment?"). Applied to
+  // other adverbs it produced たぶんいい？ "Is probably okay?" — odd Japanese AND
+  // ungrammatical English.
+  { id:'adverb-with-verb', intent:'ask for a moment',
     needs:{ role:'adverb' },
-    build:(t,g)=>({ jp: t + '\u3044\u3044\uFF1F', en: 'Is ' + g + ' okay?',
-                    cue: 'Ask whether ' + g + ' is okay' }) },
+    build:(t,g)=>(t === '\u3061\u3087\u3063\u3068'
+      ? { jp: t + '\u3044\u3044\uFF1F', en: 'Got a moment?', cue: 'Ask if they have a moment' }
+      : null) },
   { id:'locative-where', intent:'ask where someone lives or works',
     needs:{ role:'locative-verb' },
     // 住む takes に (residence); 働く and other activity verbs take で (location of
@@ -21323,7 +21358,7 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
   JA_INTENT_FRAMES.forEach(fr => {
     if (!_roles.has(fr.needs.role)) return
     const g = fr.needs.role.includes('verb') ? vsense : sense
-    try { cands.push(fr.build(t, g)) } catch (e) { /* skip */ }
+    try { const _c = fr.build(t, g); if (_c && _c.jp) cands.push(_c) } catch (e) { /* skip */ }   // a frame may decline (return null)
   })
 
   // §15/§16 — NO BLIND CONCATENATION. Every candidate frame must be licensed by the
@@ -21387,6 +21422,13 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
   }
 
   for (let k = cands.length - 1; k >= 0; k--) if (!licensed(cands[k])) cands.splice(k, 1)
+  // Vetted natural patterns first. They passed the full gate, but still go through
+  // the same licensing filter below like every other candidate.
+  // They skip this function's own licensing heuristic, which is stricter than the
+  // real gate in places (it rejected たぶん行く。 and あそこに行こう。): every one of
+  // them passed the FULL acceptance gate, and the fallback result is run through
+  // that gate again at the call site before it can be accepted.
+  ;(JA_HINT_PAIRS[t] || []).slice().reverse().forEach(([jp, en, cue]) => cands.unshift({ jp, en, cue }))
   const uniq = []
   cands.forEach(c => { if (c && c.jp && !uniq.some(u => u.jp === c.jp)) uniq.push(c) })
   // Prefer a shape this target has NOT used yet. Identical recalls are a genuine
@@ -21416,6 +21458,22 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
 // It told the model what was forbidden, never what would WORK, so どれ reached for
 // 中/一番/三つ on all 33 attempts while どれがいい？ — fully buildable — was never tried.
 // These are guidance for generation, not validators.
+// Natural recall patterns WITH meanings, checked against the full acceptance
+// gate at a 100-word inventory (27/27 pass). Used two ways: as prompt guidance,
+// and as the deterministic fallback's FIRST choice — so when the model will not
+// cooperate, どれ gets どれがいい？/どれにする？/どれが好き？ instead of どれ？ three times.
+const JA_HINT_PAIRS = {
+  '\u3069\u308c': [['\u3069\u308c\u304c\u3044\u3044\uff1f', 'Which one is good?', 'Ask which one is good'], ['\u3069\u308c\u306b\u3059\u308b\uff1f', 'Which one will you have?', 'Ask which one they will choose'], ['\u3069\u308c\u304c\u597d\u304d\uff1f', 'Which one do you like?', 'Ask which one they like']],
+  '\u3054\u3081\u3093': [['\u3054\u3081\u3093\u3001\u4eca\u65e5\u306f\u884c\u3051\u306a\u3044\u3002', 'Sorry, I can\'t go today.', 'Apologise and say you can\'t go today'], ['\u3054\u3081\u3093\u3001\u5206\u304b\u3089\u306a\u3044\u3002', 'Sorry, I don\'t understand.', 'Apologise and say you don\'t understand'], ['\u3054\u3081\u3093\u306d\u3002', 'Sorry.', 'Apologise casually']],
+  '\u307e\u305f': [['\u307e\u305f\u660e\u65e5\u3002', 'See you tomorrow.', 'Say see you tomorrow'], ['\u307e\u305f\u6765\u308b\uff1f', 'Will you come again?', 'Ask if they will come again'], ['\u307e\u305f\u884c\u3053\u3046\u3002', 'Let\'s go again.', 'Suggest going again']],
+  '\u3069\u3046': [['\u3053\u308c\u3001\u3069\u3046\uff1f', 'How about this?', 'Ask what they think of this'], ['\u3069\u3046\u601d\u3046\uff1f', 'What do you think?', 'Ask what they think'], ['\u4eca\u65e5\u306f\u3069\u3046\uff1f', 'How about today?', 'Ask how today works for them']],
+  '\u3069\u3063\u3061': [['\u3069\u3063\u3061\u304c\u3044\u3044\uff1f', 'Which is better?', 'Ask which of the two is better'], ['\u3069\u3063\u3061\u306b\u3059\u308b\uff1f', 'Which will you pick?', 'Ask which of the two they will pick'], ['\u99c5\u306f\u3069\u3063\u3061\uff1f', 'Which way is the station?', 'Ask which way the station is']],
+  '\u3042\u308c': [['\u3042\u308c\u306f\u4f55\uff1f', 'What is that over there?', 'Ask what that thing over there is'], ['\u3042\u308c\u304c\u3044\u3044\u3002', 'That one over there is good.', 'Say you like that one over there'], ['\u3042\u308c\u3001\u9ad8\u3044\uff1f', 'Is that one expensive?', 'Ask if that one over there is expensive']],
+  '\u3042\u305d\u3053': [['\u3042\u305d\u3053\u306b\u3042\u308b\u3002', 'It\'s over there.', 'Say it is over there'], ['\u3042\u305d\u3053\u306b\u884c\u3053\u3046\u3002', 'Let\'s go over there.', 'Suggest going over there'], ['\u3042\u305d\u3053\u306f\u4f55\uff1f', 'What is over there?', 'Ask what is over there']],
+  '\u306a\u3093\u3067': [['\u306a\u3093\u3067\uff1f', 'Why?', 'Ask why'], ['\u306a\u3093\u3067\u884c\u304b\u306a\u3044\u306e\uff1f', 'Why aren\'t you going?', 'Ask why they are not going'], ['\u306a\u3093\u3067\u5fd9\u3057\u3044\u306e\uff1f', 'Why are you busy?', 'Ask why they are busy']],
+  '\u305f\u3076\u3093': [['\u305f\u3076\u3093\u5927\u4e08\u592b\u3002', 'It\'s probably fine.', 'Say it is probably fine'], ['\u305f\u3076\u3093\u884c\u304f\u3002', 'I\'ll probably go.', 'Say you will probably go'], ['\u305f\u3076\u3093\u660e\u65e5\u3002', 'Probably tomorrow.', 'Say probably tomorrow']],
+}
+
 const JA_USAGE_HINTS = {
   '\u3069\u308C':   ['\u3069\u308C\u304C\u3044\u3044\uFF1F', '\u3069\u308C\u306B\u3059\u308B\uFF1F', '\u3069\u308C\u304C\u597D\u304D\uFF1F'],
   '\u3054\u3081\u3093': ['\u3054\u3081\u3093\u3001\u4ECA\u65E5\u306F\u884C\u3051\u306A\u3044\u3002', '\u3054\u3081\u3093\u3001\u5206\u304B\u3089\u306A\u3044\u3002', '\u3054\u3081\u3093\u306D\u3002'],
@@ -21474,12 +21532,23 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
       // stops reaching for the same one — どれ tried 中 on all 33 attempts.
       const _um = /untaught content: (.+)/.exec(lastFailure || '')
       if (_um) _um[1].split(/\s+/).forEach(w => w && _rejected.add(w))
-      const ask = user + '\n\nProduce exactly ONE sentence for this target (recall ' + recallIndex + ' of 3).' +
-                  japaneseUsageHintLine(target) +
-                  (_rejected.size ? '\nDO NOT USE (not taught yet): ' + [..._rejected].join(' ') +
-                    '. Choose a different, simpler idea rather than rephrasing the same one.' : '') +
-                  (lastFailure ? '\nPrevious attempt failed: ' + lastFailure : '') +
-                  (extra ? '\n' + extra : '')
+      // The per-recall instructions used to be appended to the END of a ~7,000-char
+      // prompt written for building a whole track, which ends with a multi-line
+      // conversation example. The model followed that dominant shape — writing whole
+      // conversations, running out of tokens, and ignoring the hints and the
+      // DO NOT USE list at 94–96% of the way down. The task now comes FIRST, with an
+      // explicit one-object format; the long prompt follows as reference material.
+      const task =
+        'THIS REPLY: write exactly ONE Japanese sentence that uses 「' + target.japanese + '」' +
+        ' (recall ' + recallIndex + ' of 3). Return ONE JSON object — not an array, not a conversation:\n' +
+        '{"japanese":"…","reading":"…","romaji":"…","english":"…","prompt":"…"}' +
+        japaneseUsageHintLine(target) +
+        (_rejected.size ? '\nDO NOT USE (not taught yet): ' + [..._rejected].join(' ') +
+          '. Choose a different, simpler idea rather than rephrasing the same one.' : '') +
+        (lastFailure ? '\nPrevious attempt failed: ' + lastFailure : '') +
+        (extra ? '\n' + extra : '')
+      const ask = task + '\n\n── REFERENCE (vocabulary and rules) ──\n' + user +
+                  '\n\nReminder: ONE sentence, ONE JSON object, for 「' + target.japanese + '」.'
       raw = ''
       try { raw = await callOpenRouterOnce(apiKey, model, [{ role:'system', content: system }, { role:'user', content: ask }], 700) }
       // These two exits used to set lastFailure WITHOUT logging it, which is why so
@@ -21503,7 +21572,14 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     const jp = String(cand.japanese).trim()
     if (!matchesJapaneseTarget(jp, target)) { lastFailure = 'target ' + target.japanese + ' not present'; onLog && onLog('  \u274C ' + lastFailure); continue }
     const segUnknown = japaneseUnknownFromSegments(cand, inv)
-    const unknown = segUnknown !== null ? segUnknown : japaneseCheckLine(jp, inv).unknown
+    // The segment path bypassed the determiner/particle/adverb filter that
+    // japaneseCheckLine applies, so この was still reported as "untaught content"
+    // whenever the model supplied segments. Both paths now share one taxonomy.
+    const _structural = w => { const c = jaTokenClass(w)
+      return c === 'determiner' || c === 'case-particle' || c === 'sentence-particle' ||
+             c === 'discourse' || c === 'nominaliser' || c === 'punctuation' ||
+             c === 'adverb' || c === 'interrogative' }
+    const unknown = (segUnknown !== null ? segUnknown : japaneseCheckLine(jp, inv).unknown).filter(w => !_structural(w))
     if (unknown.length) { lastFailure = 'untaught content: ' + unknown.join(' '); onLog && onLog('  \u274C ' + lastFailure); continue }
     const reg = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
     let regBad = false

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v611"/>
+<meta name="app-version" content="v612"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v611';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v611').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v612';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v612').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -17523,6 +17523,9 @@ function jaTokenClass(tok) {
   const t = String(tok || '')
   if (!t) return 'empty'
   if (isJapanesePunctuation(t)) return 'punctuation'
+  // question word + \u304B (\u3069\u3053\u304B, \u4F55\u304B, \u8AB0\u304B, \u3044\u3064\u304B) behaves like an adverb:
+  // \u3069\u3053\u304B\u884C\u304B\u306A\u3044\uFF1F is natural speech, so it may sit directly before a verb.
+  if (/^(\u3069\u3053|\u4F55|\u306A\u306B|\u306A\u3093|\u8AB0|\u3060\u308C|\u3044\u3064)\u304B$/.test(t)) return 'adverb'
   if (JA_DISCOURSE_OPENERS.includes(t)) return 'discourse'
   if (JA_DETERMINERS.includes(t)) return 'determiner'
   if (JA_CASE_PARTICLES.includes(t)) return 'case-particle'
@@ -21844,6 +21847,22 @@ const JA_USAGE_HINTS = {
   '\u306A\u3093\u3067': ['\u306A\u3093\u3067\uFF1F', '\u306A\u3093\u3067\u884C\u304B\u306A\u3044\u306E\uFF1F', '\u306A\u3093\u3067\u5FD9\u3057\u3044\u306E\uFF1F'],
   '\u305F\u3076\u3093': ['\u305F\u3076\u3093\u5927\u4E08\u592B\u3002', '\u305F\u3076\u3093\u884C\u304F\u3002', '\u305F\u3076\u3093\u660E\u65E5\u3002'],
 }
+// Content-wall words (C6): their natural collocations need vocabulary a 100-word
+// learner has not met yet (\u9045\u3044\u2192\u96FB\u8ECA/\u4F1A\u8B70, \u60AA\u3044\u2192\u5473, \u5BDD\u308B\u2192\u6642\u9593, \u4E57\u308B\u2192\u30D0\u30B9). These taught-only
+// patterns steer the model AND feed the fallback, so a fallback gives three
+// different sentences instead of the same one three times. Entries that do not
+// pass the full gate at runtime are filtered out by the fallback's own checks.
+const JA_WALL_HINT_PAIRS = {
+  '遅い': [['もう遅いね。', 'It\'s already late.', 'Say it is already late'], ['もう遅いから、帰る。', 'It\'s late, so I\'m going home.', 'Say you are going home because it is late'], ['今日は遅い？', 'Are you late today?', 'Ask if they will be late today'], ['遅いよ。', 'You\'re late!', 'Tell them they are late']],
+  '悪い': [['悪いね。', 'Sorry about that.', 'Apologise casually'], ['それは悪い？', 'Is that bad?', 'Ask if that is bad'], ['悪くないよ。', 'It\'s not bad.', 'Say it is not bad'], ['悪いけど、今日は行けない。', 'Sorry, but I can\'t go today.', 'Apologise and say you can\'t go today']],
+  '寝る': [['もう寝る？', 'Are you going to bed already?', 'Ask if they are going to sleep already'], ['何時に寝る？', 'What time do you go to bed?', 'Ask what time they go to bed'], ['明日は早いから、もう寝る。', 'I have an early start tomorrow, so I\'m going to bed.', 'Say you are going to bed because tomorrow is early']],
+  '乗る': [['どれに乗る？', 'Which one are you taking?', 'Ask which one they will ride'], ['一緒に乗る？', 'Shall we ride together?', 'Ask if they want to ride together'], ['何時に乗る？', 'What time are you getting on?', 'Ask what time they will get on']],
+  '早い': [['早いね。', 'That\'s early!', 'Say that it is early'], ['明日は早い？', 'Is it an early start tomorrow?', 'Ask if tomorrow starts early'], ['今日は早いね。', 'You\'re early today.', 'Say they are early today']],
+  '起きる': [['何時に起きる？', 'What time do you get up?', 'Ask what time they get up'], ['もう起きた？', 'Are you up already?', 'Ask if they are up yet'], ['明日は何時に起きる？', 'What time will you get up tomorrow?', 'Ask what time they will get up tomorrow']],
+  '大丈夫': [['大丈夫？', 'Are you okay?', 'Ask if they are okay'], ['大丈夫だよ。', 'It\'s fine.', 'Say it is fine'], ['明日は大丈夫？', 'Is tomorrow okay?', 'Ask if tomorrow works']],
+}
+Object.keys(JA_WALL_HINT_PAIRS).forEach(k => { if (!JA_HINT_PAIRS[k]) JA_HINT_PAIRS[k] = JA_WALL_HINT_PAIRS[k] })
+Object.keys(JA_HINT_PAIRS).forEach(k => { if (!JA_USAGE_HINTS[k]) JA_USAGE_HINTS[k] = JA_HINT_PAIRS[k].map(p => p[0]) })
 function japaneseUsageHintLine(target) {
   const h = JA_USAGE_HINTS[target && target.japanese]
   if (!h) return ''
@@ -21904,7 +21923,9 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
         // segments restored: v605 left them out of this example, so replies that
         // followed it exactly were rejected with "missing segments".
         '{"japanese":"…","reading":"…","romaji":"…","english":"…","prompt":"…",' +
-        '"segments":[{"surface":"…","reading":"…","romaji":"…","english":"…"}]}' +
+        // lemma (dictionary form) added: the vocabulary check resolves conjugated words
+        // (行かない, 行って) through it; without it they were reported as untaught.
+        '"segments":[{"surface":"…","lemma":"(dictionary form)","reading":"…","romaji":"…","english":"…"}]}' +
         // Sentences this target already has. Mandarin got this in v604; Japanese never
         // did, so また resubmitted また明日ね for ~14 tiers.
         ((opts && opts.previousRecalls && opts.previousRecalls.length) || _jaUsedHere.size
@@ -21948,7 +21969,18 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
       return c === 'determiner' || c === 'case-particle' || c === 'sentence-particle' ||
              c === 'discourse' || c === 'nominaliser' || c === 'punctuation' ||
              c === 'adverb' || c === 'interrogative' }
-    const unknown = (segUnknown !== null ? segUnknown : japaneseCheckLine(jp, inv).unknown).filter(w => !_structural(w))
+    // Compositional forms built from taught pieces are not new vocabulary:
+    //  \u2022 question word + \u304B (\u3069\u3053\u304B, \u4F55\u304B, \u8AB0\u304B, \u3044\u3064\u304B) = taught interrogative + taught particle
+    //  \u2022 \u3066/\u3067 + \u307F\u308B/\u304F\u308C\u308B/\u3042\u3052\u308B (\u898B\u3066\u307F\u308B, \u898B\u305B\u3066\u304F\u308C\u308B) = grammar helper, not the verb \u898B\u308B/\u304F\u308C\u308B
+    const _jpS = String(jp || '')
+    const _taughtJa = s => (inv.allContent || []).some(x => x && x.japanese === s)
+    const _compositional = w => {
+      const m = /^(\u3069\u3053|\u4F55|\u306A\u306B|\u306A\u3093|\u8AB0|\u3060\u308C|\u3044\u3064)\u304B$/.exec(w)
+      if (m) { const b = m[1]; return _taughtJa(b) || ((b === '\u306A\u306B' || b === '\u306A\u3093') && _taughtJa('\u4F55')) || (b === '\u3060\u308C' && _taughtJa('\u8AB0')) }
+      if (/^(\u307F|\u304F\u308C|\u3042\u3052)(\u308B|\u305F|\u3066|\u306A\u3044|\u307E\u3059)?$/.test(w)) return /[\u3066\u3067](\u307F|\u304F\u308C|\u3042\u3052)/.test(_jpS)
+      return false
+    }
+    const unknown = (segUnknown !== null ? segUnknown : japaneseCheckLine(jp, inv).unknown).filter(w => !_structural(w) && !_compositional(w))
     if (unknown.length) { lastFailure = 'untaught content: ' + unknown.join(' '); onLog && onLog('  \u274C ' + lastFailure); continue }
     const reg = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
     let regBad = false

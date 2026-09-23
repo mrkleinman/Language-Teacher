@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v620"/>
+<meta name="app-version" content="v625"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v620';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v620').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v625';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v625').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6186,7 +6186,7 @@ function downloadTrack(track) {
   lines.push('TARGET WORDS (' + keywords.length + ')')
   lines.push('-'.repeat(30))
   keywords.forEach((k, i) => {
-    lines.push(`${String(i+1).padStart(2,'0')}. ${k.thai}  [${k.phonetic || ''}]  —  ${currentThaiTargetGloss(k)}`)
+    lines.push(`${String(i+1).padStart(2,'0')}. ${k.thai}  [${k.phonetic || ''}]  —  ${currentTargetGloss(k)}`)
   })
   lines.push('')
   
@@ -12250,6 +12250,145 @@ function listeningCandidates(track, lang, vocab, elig, log) {
   try { console.info('[listening] retrofit ' + (track.createdAt || '') + ' ' + JSON.stringify(stats).slice(0, 700)) } catch (e) {}
   return { byTarget, stats }
 }
+// ══ BLOCK-BASED LISTENING ASSEMBLY ══════════════════════════════════════════════
+// Selection unit is a CONVERSATIONAL BLOCK, not an individual target sentence. Every
+// line is an immutable Main Track pair; a line may be included as a SUPPORTING line
+// because it is the natural response to another line, even if it teaches no target.
+// Safety is unchanged: no current-track NEW word anywhere, no unexposed content,
+// no malformed sentence.
+function listeningSafeScan(track, lang, vocab, elig, log) {
+  const stats = { pairCount: (track.pairs || []).length, considered: 0,
+    rejectedMissingTargetId: 0, rejectedMissingKeywordLink: 0, rejectedCurrentUnexposedTarget: 0,
+    rejectedContainsUnexposedContent: 0, rejectedCurrentTrackNew: 0, rejectedTargetAlignment: 0,
+    rejectedMalformedSentence: 0, rejectedNotStandalone: 0, rejectedOther: 0, reasons: {} }
+  const note = r => { stats.reasons[r] = (stats.reasons[r] || 0) + 1 }
+  const exposed = (vocab || []).filter(w => typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w))
+  const eligTargets = elig.eligible.map(e => e.word)
+  const allKeywords = (track.keywords || [])
+  const entries = []
+  ;(track.pairs || []).forEach((p, idx) => {
+    const text = listeningSentence(p)
+    if (!text) { stats.rejectedOther++; note('empty sentence'); return }
+    // 1. absolute rule: no current-track NEW word, anywhere, in any line
+    const bad = elig.forbidden.filter(f => listeningContainsTarget(lang, p, listeningTargetSurface(f), vocab))
+    if (bad.length) { stats.rejectedCurrentTrackNew++; note('contains an unexposed target: ' + bad.map(listeningTargetSurface).join(' ')); return }
+    // 2. no genuinely unexposed content vocabulary
+    const unexposed = listeningUnexposedWords(lang, p, exposed, eligTargets)
+    if (unexposed.length) { stats.rejectedContainsUnexposedContent++; note('unexposed content: ' + unexposed.slice(0, 3).join(' ')); return }
+    // 3. which target (if any) this line teaches
+    const res = listeningResolveTargetForPair(p, allKeywords, lang, vocab)
+    const k = res.key ? elig.eligible.find(e => e.wordId === res.key.wordId) : null
+    let designated = null
+    if (k) {
+      if (!listeningContainsTarget(lang, p, listeningTargetSurface(k), vocab)) { stats.rejectedTargetAlignment++; note('target not present in its own sentence') }
+      else {
+        const suit = listeningSuitability(p, k.word || k, lang)
+        if (!suit.ok) {
+          if (/translation|placeholder|empty/.test(suit.reason)) stats.rejectedNotStandalone++; else stats.rejectedMalformedSentence++
+          note(suit.reason); return                       // a malformed line is never usable, even as support
+        }
+        designated = k; stats.considered++
+      }
+    } else if (res.key) { stats.rejectedCurrentUnexposedTarget++; note('target not currently exposed: ' + listeningTargetSurface(res.key)) }
+    else if (/framing/.test(res.how)) { stats.rejectedMissingTargetId++; note('framing line (no target)') }
+    else { stats.rejectedMissingKeywordLink++; note(res.how) }
+    // supporting lines must still be natural standalone utterances
+    if (!designated) {
+      // sentence-level checks only: a supporting line teaches no target, so no frame rule applies
+      const en = String(p.english || '').trim()
+      if (en.length < 2) { stats.rejectedNotStandalone++; note('supporting line without a translation'); return }
+      if (/\.{3}|…|\uFFFD/.test(text) || /\.{3}|…|\uFFFD/.test(en)) { stats.rejectedNotStandalone++; note('supporting line with placeholder text'); return }
+    }
+    entries.push({ idx, pair: p, designated, speaker: listeningSpeakerOf(p, lang) })
+  })
+  stats.safeCandidates = entries.length
+  stats.safeTargetLines = entries.filter(e => e.designated).length
+  stats.targetsWithSafeCandidate = new Set(entries.filter(e => e.designated).map(e => e.designated.wordId)).size
+  const top = Object.entries(stats.reasons).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([r, n]) => r + ' ×' + n)
+  log && log('  🎧 pairs ' + stats.pairCount + ' · safe lines ' + entries.length + ' (' + stats.safeTargetLines +
+    ' teach a target, covering ' + stats.targetsWithSafeCandidate + ')')
+  log && log('  🎧 top rejections: ' + (top.join(' | ') || 'none'))
+  try { console.info('[listening] scan ' + (track.createdAt || '') + ' ' + JSON.stringify(stats).slice(0, 700)) } catch (e) {}
+  return { entries, stats }
+}
+// Speaker is display metadata: the sentence itself is the evidence (ผม/ครับ vs ฉัน/ค่ะ).
+function listeningSpeakerOf(p, lang) {
+  const s = listeningSentence(p)
+  if (lang === 'th') {
+    if (/(ครับ|ผม)/.test(s)) return 'A'
+    if (/(ค่ะ|คะ|ฉัน|ดิฉัน)/.test(s)) return 'B'
+  }
+  return p.speaker || 'A'
+}
+const _isQuestion = p => /[?？]|ไหม|เหรอ|หรือ|ทำไม|อะไร|ที่ไหน|กี่|เมื่อไหร่|ยังไง|か$|吗|呢/.test(listeningSentence(p) + ' ' + (p.english || ''))
+function _topicWords(p) {
+  return new Set(String(p.english || '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/)
+    .filter(w => w.length > 2 && !['have','will','they','that','this','with','your','what','when','where','there','here','from','want','know','like','going','about','then','very','really','the','and','you','are','for','was','not','but','its','our','can','did','how','why','who','yes','not'].includes(w))
+    .map(w => w.replace(/(ing|ed|es|s)$/, '')))
+}
+// Discover conversational blocks: runs of safe lines that were generated as neighbours,
+// scored on the signals that actually make a conversation.
+function listeningBlocks(entries, maxLines) {
+  const blocks = []
+  let run = []
+  const flush = () => {
+    while (run.length) {
+      const take = run.slice(0, Math.min(6, run.length))
+      if (take.length >= 1) blocks.push(take)
+      run = run.slice(take.length)
+    }
+  }
+  entries.forEach((e, i) => {
+    const prev = entries[i - 1]
+    if (prev && e.idx - prev.idx <= 1) run.push(e)
+    else { flush(); run = [e] }
+  })
+  flush()
+  return blocks.map((lines, i) => {
+    let score = 0
+    const adjacency = lines.every((l, j) => j === 0 || l.idx - lines[j - 1].idx === 1)
+    if (adjacency) score += 2
+    const alternation = lines.some((l, j) => j > 0 && l.speaker !== lines[j - 1].speaker)
+    if (alternation) score += 2
+    const qa = lines.some((l, j) => j > 0 && _isQuestion(lines[j - 1].pair) && !_isQuestion(l.pair))
+    if (qa) score += 3
+    let shared = 0
+    for (let j = 1; j < lines.length; j++) {
+      const a = _topicWords(lines[j - 1].pair), b = _topicWords(lines[j].pair)
+      if ([...a].some(w => b.has(w))) shared++
+    }
+    score += Math.min(3, shared)
+    if (lines.length >= 2) score += 1
+    const designated = [...new Set(lines.filter(l => l.designated).map(l => l.designated.wordId))]
+    return { blockId: i + 1, lines, score, adjacency, alternation, qa, designated,
+             coherence: Math.max(1, Math.min(5, 1 + Math.round(score / 2.2))) }
+  }).filter(b => b.lines.length >= 2 || b.designated.length)   // singletons only if they teach a target
+}
+// Deterministic, BLOCK-AWARE selection: strongest blocks first, one designated line per
+// target, coherence ≥ 4 per scene, ≤ maxLines lines overall. Coverage never outranks coherence.
+function listeningSelectBlocks(blocks, maxLines) {
+  const chosen = []; const usedTargets = new Set(); let total = 0
+  const ranked = blocks.slice().sort((a, b) => (b.coherence - a.coherence) || (b.score - a.score) || (b.designated.length - a.designated.length))
+  for (const b of ranked) {
+    if (total + b.lines.length > maxLines) continue
+    if (b.coherence < 4 && b.lines.length > 1) continue                   // weak scene: skip it
+    // A target's recalls are often generated as consecutive lines. The FIRST teaches the
+    // target; the rest stay as natural supporting responses rather than being dropped.
+    const seenHere = new Set()
+    const lines = b.lines.map(l => {
+      if (!l.designated) return l
+      const id = l.designated.wordId
+      if (usedTargets.has(id) || seenHere.has(id)) return { ...l, designated: null }
+      seenHere.add(id); return l
+    })
+    if (!lines.length) continue
+    if (lines.length < 2 && !lines.some(l => l.designated)) continue
+    lines.forEach(l => { if (l.designated) usedTargets.add(l.designated.wordId) })
+    chosen.push({ ...b, lines }); total += lines.length
+  }
+  return chosen
+}
+
 // GLOBAL solver: largest set with each target covered exactly once (never greedy per target).
 function listeningSolve(byTarget) {
   // The rule is about SELECTED targets: each one must occur exactly once across the
@@ -12366,49 +12505,295 @@ function listeningFinalQc(track, lang, vocab, elig, chosen) {
     elig.forbidden.forEach(f => { if (listeningContainsTarget(lang, src, listeningTargetSurface(f), vocab)) { q.currentMainTrackNewWordsPresent++; q.problems.push('new word ' + listeningTargetSurface(f)) } })
     const un = listeningUnexposedWords(lang, src, exposed, eligTargets)
     if (un.length) { q.unauthorisedUnexposedContentWords += un.length; q.problems.push('unexposed: ' + un.join(' ')) }
-    // count occurrences of SELECTED targets only: an eligible word that was never
-    // selected (a ubiquitous particle) may appear incidentally without breaking the rule
-    sel.forEach(e => { if (listeningContainsTarget(lang, src, listeningTargetSurface(e), vocab)) occ.set(e.wordId, (occ.get(e.wordId) || 0) + 1) })
+    // One DESIGNATED line per target. Incidental appearances of an already-exposed target
+    // in another line are natural speech and are explicitly allowed.
+    occ.set(c.targetId, (occ.get(c.targetId) || 0) + 1)
   })
-  occ.forEach((n, id) => { if (n > 1) { q.duplicateTargetOccurrences += n - 1; q.problems.push('target ' + id + ' occurs ' + n + '×') } })
+  occ.forEach((n, id) => { if (n > 1) { q.duplicateTargetOccurrences += n - 1; q.problems.push('target ' + id + ' is taught by ' + n + ' lines') } })
   q.ok = q.currentMainTrackNewWordsPresent === 0 && q.unauthorisedUnexposedContentWords === 0 && q.duplicateTargetOccurrences === 0 &&
          q.rewrittenTargetLanguageSentences === 0 && q.inventedTargetLanguageSentences === 0 && q.invalidSourcePairReferences === 0 &&
          q.selectedTargetCount === q.uniqueSelectedTargetCount
   return q
 }
+// ══ COHERENCE VALIDATION (independent of the block-discovery signals) ═══════════
+// Discovery used adjacency, shared words and speaker alternation. Those are evidence
+// that lines MIGHT belong together — never proof. This validator judges the resulting
+// SEQUENCE on different evidence: timeline, contradiction, and whether each turn
+// actually responds to the one before it.
+const _TIME_RE = [
+  { re: /\b(\d{1,2})\s*(?:o'clock|am|a\.m\.)\b/i, h: m => parseInt(m[1], 10) % 12 },
+  { re: /\b(\d{1,2})\s*(?:pm|p\.m\.)\b/i, h: m => (parseInt(m[1], 10) % 12) + 12 },
+  { re: /\bnoon\b/i, h: () => 12 }, { re: /\bmidnight\b/i, h: () => 0 },
+  { re: /\bin the morning\b/i, h: () => 9 }, { re: /\bin the afternoon\b/i, h: () => 15 },
+  { re: /\bin the evening\b/i, h: () => 18 }, { re: /\bat night\b/i, h: () => 21 },
+  { re: /\bbreakfast\b/i, h: () => 8 }, { re: /\blunch\b/i, h: () => 12 }, { re: /\bdinner\b/i, h: () => 19 },
+]
+function _clockOf(text) {
+  const s = String(text || '')
+  for (const t of _TIME_RE) { const m = s.match(t.re); if (m) return t.h(m) }
+  return null
+}
+const _NUM = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 }
+function _quantities(text) {
+  const out = new Map()
+  String(text || '').toLowerCase().replace(/\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+([a-z]+s?)\b/g,
+    (_, n, noun) => { out.set(noun.replace(/s$/, ''), _NUM[n] || parseInt(n, 10)); return '' })
+  return out
+}
+// Genuine answer openers only: a bare "That clock is beautiful." is a new statement,
+// not an answer, so "that "/"it " must not count.
+const _isAnswerish = t => /^(yes|yeah|no\b|not |sure|okay|ok|maybe|i think|i don't know|it's|that's|around|about|probably|right)/i.test(String(t || '').trim())
+function _sharesReferent(a, b) {
+  const A = _topicWords({ english: a }), B = _topicWords({ english: b })
+  return [...A].some(w => B.has(w))
+}
+// Does this line actually answer THAT question? A statement after a question is not
+// automatically its answer ("May I have another plate?" → "I have two children.").
+function _answersQuestion(questionEn, replyEn) {
+  const q = String(questionEn || '').toLowerCase(), a = String(replyEn || '')
+  if (_isAnswerish(a)) return true
+  if (/\bwhy\b/.test(q)) return /because|so that|want|need|to \w+|for /i.test(a)
+  if (/\bwhen\b|what time|how long|how many hours/.test(q)) return _clockOf(a) != null || /tomorrow|today|tonight|later|now|soon|morning|afternoon|evening|night|minute|hour|day|week|month/i.test(a)
+  if (/\bwhere\b/.test(q)) return /here|there|\bat\b|\bin\b|\bto\b|home|house|shop|market|station|airport|room|center|centre/i.test(a)
+  if (/how many|how much|how old/.test(q)) return /\d|one|two|three|four|five|six|seven|eight|nine|ten|baht|many|few|a lot/i.test(a)
+  if (/\bwho\b/.test(q)) return /\bi\b|he |she |they |we |friend|mother|father|brother|sister|teacher|you/i.test(a)
+  return _sharesReferent(q, a)          // yes/no question: must stay on the same thing
+}
+// Deterministic sequence check → { coherent, score 1-5, brokenAtPair, reason }
+function listeningCoherenceCheck(lines) {
+  if (!lines || lines.length < 2) return { coherent: !!(lines || []).length, score: lines && lines.length ? 3 : 1, brokenAtPair: null, reason: 'single line' }
+  let score = 5, reason = '', brokenAt = null
+  const flag = (s, why, idx) => { if (s < score) { score = s; reason = why; brokenAt = lines[idx] ? lines[idx].idx : null } }
+  let lastClock = null, lastClockIdx = -1
+  for (let i = 0; i < lines.length; i++) {
+    const cur = lines[i].pair, prev = i ? lines[i - 1].pair : null
+    const en = String(cur.english || ''), pen = prev ? String(prev.english || '') : ''
+    // 1. chronology: an unexplained jump backwards in the day breaks the situation
+    const clk = _clockOf(en)
+    if (clk != null) {
+      if (lastClock != null && clk < lastClock - 1 && !/yesterday|last |earlier|before|was |had /i.test(en)) {
+        flag(2, 'time jumps backwards (' + lastClock + ':00 → ' + clk + ':00) with no explanation', i)
+      }
+      lastClock = clk; lastClockIdx = i
+    }
+    if (!prev) continue
+    // 2a. contradiction by negation: the same action asserted and denied
+    //     ("Let me help." → "I can't help.") — these are alternative candidates, not dialogue
+    const neg = t => /\b(can't|cannot|don't|doesn't|didn't|isn't|aren't|won't|not|no longer|never)\b/i.test(t)
+    if (neg(en) !== neg(pen) && _sharesReferent(pen, en) && !_isQuestion(cur) && !_isQuestion(prev) &&
+        !/actually|sorry|but |i mean|instead/i.test(en))
+      flag(2, 'one line asserts what the other denies', i)
+    // 2b. contradiction: same noun, different quantity, no correction marker
+    const q1 = _quantities(pen), q2 = _quantities(en)
+    q2.forEach((v, noun) => { if (q1.has(noun) && q1.get(noun) !== v && !/actually|sorry|no,|i mean|not /i.test(en))
+      flag(2, 'contradicts the previous line (' + q1.get(noun) + ' vs ' + v + ' ' + noun + ')', i) })
+    // 3. a question must be followed by something that plausibly answers it
+    const continues = /^(and|so|then|but|okay|ok|well|yes|yeah|no|right|sure)\b/i.test(en.trim())
+    if (_isQuestion(prev)) {
+      if (_isQuestion(cur)) {
+        if (!continues && !_sharesReferent(pen, en) && !_isAnswerish(en))
+          flag(3, 'question is followed by an unrelated question', i)
+      } else if (!_answersQuestion(pen, en)) {
+        flag(3, 'the reply does not answer the question', i)
+      }
+    } else {
+      // 4. statement → response: needs a shared referent or a genuine reaction
+      // a question IS a natural response to a statement ("I ran here." -> "Why did you run?")
+      const reactive = _isAnswerish(en) || continues || _isQuestion(cur) || /!|wow|really|that's|nice|great|sorry/i.test(en)
+      if (!reactive && !_sharesReferent(pen, en)) flag(3, 'turn does not follow from the previous line', i)
+    }
+  }
+  return { coherent: score >= 4, score, brokenAtPair: brokenAt, reason: reason || 'continuous interaction' }
+}
+// Gemini 2.5 Lite conversation test. Judgement only — it never sees or returns dialogue
+// it could rewrite. Its score is combined with the deterministic one by taking the MINIMUM,
+// so the model can never rescue a sequence the checks above proved broken.
+async function listeningCoherenceWithModel(lines, apiKey, model, log) {
+  if (!apiKey || !lines || lines.length < 2) return null
+  const rows = lines.map(l => '[' + l.idx + '] ' + (l.speaker || '?') + ': ' + String(l.pair.english || ''))
+  const prompt = 'Could two real people say these exact lines IN THIS ORDER as ONE continuous interaction, without an unstated ' +
+    'topic change, time jump, location jump or missing explanation?\n' + rows.join('\n') +
+    '\nReply ONLY with JSON: {"coherent":true/false,"score":1-5,"brokenAtPair":<pair id or null>,"reason":"..."}'
+  try {
+    const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }])
+    const m = String(raw || '').replace(/```json|```/g, '').match(/\{[\s\S]*\}/)
+    if (!m) return null
+    const o = JSON.parse(m[0])
+    return { coherent: !!o.coherent, score: Math.max(1, Math.min(5, Number(o.score) || 1)),
+             brokenAtPair: o.brokenAtPair != null ? Number(o.brokenAtPair) : null, reason: String(o.reason || '') }
+  } catch (e) { log && log('  🎧 coherence check unavailable (' + e.message + ') — using the deterministic result'); return null }
+}
+// Judge a scene, then repair it WITHOUT rewriting: split at the break, or drop the
+// weakest line. Returns the accepted line sets (0, 1 or 2 scenes).
+async function listeningJudgeScene(lines, apiKey, model, log) {
+  const det = listeningCoherenceCheck(lines)
+  const mod = await listeningCoherenceWithModel(lines, apiKey, model, log)
+  const score = mod ? Math.min(det.score, mod.score) : det.score
+  const broken = (mod && mod.brokenAtPair != null) ? mod.brokenAtPair : det.brokenAtPair
+  const reason = (mod && mod.score <= det.score && mod.reason) ? mod.reason : det.reason
+  if (score >= 4) return { accepted: [{ lines, score, reason }] }
+  if (broken != null && lines.length >= 3) {
+    const at = lines.findIndex(l => l.idx === broken)
+    if (at > 0) {
+      const a = lines.slice(0, at), b = lines.slice(at)
+      log && log('  🎧 scene split at [' + broken + ']: ' + reason)
+      const ra = a.length >= 2 ? listeningCoherenceCheck(a) : { score: 1 }
+      const rb = b.length >= 2 ? listeningCoherenceCheck(b) : { score: 1 }
+      const out = []
+      if (ra.score >= 4) out.push({ lines: a, score: ra.score, reason: ra.reason })
+      if (rb.score >= 4) out.push({ lines: b, score: rb.score, reason: rb.reason })
+      if (out.length) return { accepted: out }
+    }
+  }
+  if (lines.length > 2) {                      // drop the last line and retry once
+    const shorter = lines.slice(0, -1)
+    const r = listeningCoherenceCheck(shorter)
+    if (r.score >= 4) { log && log('  🎧 dropped a weak trailing line: ' + reason); return { accepted: [{ lines: shorter, score: r.score, reason: r.reason }] } }
+  }
+  log && log('  🎧 scene rejected (' + score + '/5): ' + reason)
+  return { accepted: [] }
+}
+// A supporting line must do a conversational job, not merely sit next to a target line.
+function listeningSupportingFunction(line, prevLine) {
+  if (!prevLine) return null
+  const en = String(line.pair.english || ''), pen = String(prevLine.pair.english || '')
+  if (_isQuestion(prevLine.pair) && (_isAnswerish(en) || _sharesReferent(pen, en))) return 'answer'
+  if (/^(wow|really|that's|so |nice|great|oh |yes|yeah|no\b)/i.test(en.trim()) || /!$/.test(en.trim())) return 'reaction'
+  if (_isQuestion(line.pair) && _sharesReferent(pen, en)) return 'follow-up question'
+  if (_sharesReferent(pen, en)) return 'clarification'
+  return null
+}
+
+// Gemini 2.5 Lite: SELECTOR ONLY, now over BLOCKS. It sees rich context (prompt, speaker,
+// sentence, meaning, block membership, adjacency) and returns scenes of pairIndices.
+// Any text it returns is ignored; every index resolves back to an immutable source pair.
+async function listeningSelectScenesWithModel(track, lang, entries, blocks, apiKey, model, maxLines, log) {
+  if (!apiKey || !entries.length) return null
+  const byIdx = new Map(entries.map(e => [e.idx, e]))
+  const rows = entries.map(e => 'pairIndex=' + e.idx + ' block=' + (blocks.find(b => b.lines.some(l => l.idx === e.idx)) || {}).blockId +
+    ' speaker=' + e.speaker + (e.designated ? ' targetId=' + e.designated.wordId + ' target="' + listeningTargetSurface(e.designated) + '"' : ' target=none(support)') +
+    ' cue="' + String(e.pair.prompt || '').slice(0, 60) + '" means="' + String(e.pair.english || '').slice(0, 80) + '"')
+  const prompt = 'You are assembling natural listening practice from immutable existing dialogue lines.\n' +
+    'Do NOT write any dialogue. Do not invent, bridge, translate or alter anything. Return pair IDs only.\n' +
+    'Identify groups of lines that could plausibly occur in the SAME conversation. Prefer existing question/answer and\n' +
+    'statement/reaction relationships, shared topic, speaker turn-taking and lines generated next to each other (same block).\n' +
+    'It is fine to omit otherwise valid lines if including them would make the conversation random.\n' +
+    'A line with target=none may be included as a supporting response. Each targetId may be taught by at most ONE line.\n' +
+    'Prefer ONE coherent conversation; otherwise 2-4 mini-scenes. Max ' + maxLines + ' lines in total.\n' +
+    'LINES:\n' + rows.join('\n') +
+    '\nReply ONLY with JSON: {"scenes":[{"sceneId":1,"pairIndices":[..],"coveredTargetIds":[..],"coherenceScore":0-100}],"overallCoherenceScore":0-100}'
+  try {
+    const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }])
+    const m = String(raw || '').replace(/```json|```/g, '').match(/\{[\s\S]*\}/)
+    if (!m) { log && log('  🎧 Gemini 2.5 Lite returned no usable JSON — block fallback'); return null }
+    const out = JSON.parse(m[0])
+    const scenes = []; const usedTargets = new Set(); const usedIdx = new Set(); let total = 0
+    for (const s of (out.scenes || [])) {
+      const lines = []
+      for (const idx of (s.pairIndices || [])) {
+        const e = byIdx.get(idx)
+        if (!e) { log && log('  🎧 Gemini returned an unsafe/unknown pairIndex — block fallback'); return null }
+        if (usedIdx.has(idx)) continue
+        // one DESIGNATED line per target; a repeat of the same target becomes a supporting line
+        const ent = (e.designated && usedTargets.has(e.designated.wordId)) ? { ...e, designated: null } : e
+        usedIdx.add(idx); if (ent.designated) usedTargets.add(ent.designated.wordId)
+        lines.push(ent); total++
+        if (total > maxLines) { log && log('  🎧 Gemini exceeded the line limit — block fallback'); return null }
+      }
+      if (lines.length) scenes.push({ sceneId: scenes.length + 1, lines, coherence: Math.max(1, Math.min(5, Math.round((Number(s.coherenceScore) || 80) / 20))) })
+    }
+    if (!scenes.length) return null
+    log && log('  🎧 Gemini 2.5 Lite: ' + scenes.length + ' scene(s), ' + total + ' lines, overall coherence ' + (out.overallCoherenceScore != null ? out.overallCoherenceScore : '?'))
+    return { scenes, source: 'gemini-2.5-lite', overall: out.overallCoherenceScore != null ? Number(out.overallCoherenceScore) : null }
+  } catch (e) { log && log('  🎧 Gemini 2.5 Lite selection failed (' + e.message + ') — block fallback'); return null }
+}
+
 // Shared lifecycle: build a Listening Track from a FINAL Main Track. Never mutates it.
+// Conversation first, coverage second.
 async function buildListeningTrack(mainTrack, vocab, opts) {
   const o = opts || {}, lang = o.lang || 'th', log = o.onLog || null
+  const MAX_LINES = 30
   const elig = listeningEligibility(mainTrack, vocab)
-  const cands = listeningCandidates(mainTrack, lang, vocab, elig, log)
+  const scan = listeningSafeScan(mainTrack, lang, vocab, elig, log)
   log && log('  🎧 targets ' + (mainTrack.keywords || []).length + ' · eligible ' + elig.eligible.length +
     ' · excluded NEW ' + elig.excludedNew.length + ' · excluded unexposed ' + elig.excludedUnexposed.length)
-  const safe = listeningSolve(cands.byTarget)
-  if (!safe.length) return { ok: false, empty: true, stats: { ...cands.stats, eligible: elig.eligible.length, excludedNew: elig.excludedNew.length } }
-  let sel = await listeningSelectWithModel(mainTrack, lang, { byTarget: new Map([...cands.byTarget].map(([t, l]) => [t, l.filter(c => safe.some(s => s.targetId === t))])) }, o.apiKey, o.model, log)
-  if (sel) { const ids = new Set(sel.picked.map(p => p.targetId)); if (sel.picked.length < safe.length * 0.6) { log && log('  🎧 Gemini 2.5 Lite covered too few targets — fallback'); sel = null } }
-  if (!sel) sel = listeningSelectDeterministic(safe, log)
-  let qc = listeningFinalQc(mainTrack, lang, vocab, elig, sel.picked)
-  if (!qc.ok && sel.source === 'gemini-2.5-lite') { log && log('  🎧 QC failed on the model set — rebuilding deterministically'); sel = listeningSelectDeterministic(safe, log); qc = listeningFinalQc(mainTrack, lang, vocab, elig, sel.picked) }
-  if (!qc.ok) { log && log('  ⛔ listening QC failed: ' + qc.problems.slice(0, 4).join(' | ')); return { ok: false, qc, stats: cands.stats } }
-  const scenes = [...new Set(sel.picked.map(c => c.scene || 1))]
+  if (!scan.entries.length) return { ok: false, empty: true, stats: scan.stats }
+  const blocks = listeningBlocks(scan.entries, MAX_LINES)
+  log && log('  🎧 conversational blocks found: ' + blocks.length +
+    ' (' + blocks.filter(b => b.qa).length + ' with question→answer, ' + blocks.filter(b => b.alternation).length + ' with turn-taking)')
+  let sel = await listeningSelectScenesWithModel(mainTrack, lang, scan.entries, blocks, o.apiKey, o.model, MAX_LINES, log)
+  if (!sel) {
+    const picked = listeningSelectBlocks(blocks, MAX_LINES)
+    if (!picked.length) return { ok: false, empty: true, stats: scan.stats }
+    sel = { scenes: picked.map((b, i) => ({ sceneId: i + 1, lines: b.lines, coherence: b.coherence })), source: 'deterministic', overall: null }
+    log && log('  🎧 block fallback: ' + sel.scenes.length + ' scene(s)')
+  }
+  // ── COHERENCE ACCEPTANCE ──────────────────────────────────────────────────────
+  // Judged independently of the discovery signals. A scene that fails is split at the
+  // break or loses its weakest line; it is never rewritten. Max 4 scenes; 30 lines is a
+  // ceiling, never a target — lines stop as soon as they stop helping.
+  const judged = []
+  for (const s of sel.scenes) {
+    // a supporting line must do a conversational job, not merely sit next to a target
+    const kept = s.lines.filter((l, i) => {
+      if (l.designated) return true
+      const fn = listeningSupportingFunction(l, s.lines[i - 1])
+      if (!fn) { log && log('  🎧 dropped supporting line [' + l.idx + ']: no conversational function'); return false }
+      l.supportFunction = fn; return true
+    })
+    // Removing a supporting line leaves a GAP: the survivors are no longer consecutive
+    // turns, so the scene is re-split at every gap before it is judged.
+    const runs = []
+    kept.forEach(l => {
+      const last = runs[runs.length - 1]
+      if (last && l.idx - last[last.length - 1].idx <= 1) last.push(l); else runs.push([l])
+    })
+    for (const run of runs) {
+      if (run.length < 2) continue                      // a lone line is not a conversation
+      const res = await listeningJudgeScene(run, o.apiKey, o.model, log)
+      res.accepted.forEach(a => { if (a.lines.length >= 2) judged.push(a) })
+    }
+  }
+  judged.sort((a, b) => (b.score - a.score) || (b.lines.filter(l => l.designated).length - a.lines.filter(l => l.designated).length))
+  sel.scenes = judged.slice(0, 4).map((s, i) => ({ sceneId: i + 1, lines: s.lines, coherence: s.score, reason: s.reason }))
+  log && log('  🎧 coherence: ' + judged.length + ' candidate scene(s) judged, ' + sel.scenes.length + ' kept (max 4)')
+  const chosen = []
+  sel.scenes.forEach((s, si) => s.lines.forEach(l => chosen.push({ ...l, scene: si + 1 })))
+  if (!chosen.length) return { ok: false, empty: true, stats: scan.stats }
+  const asPicked = chosen.filter(c => c.designated).map(c => ({ targetId: c.designated.wordId, pairIndex: c.idx, pair: c.pair, covers: [], scene: c.scene }))
+  let qc = listeningFinalQc(mainTrack, lang, vocab, elig, asPicked)
+  if (!qc.ok && sel.source !== 'deterministic') {
+    log && log('  🎧 QC failed on the model set — rebuilding with deterministic blocks')
+    const picked = listeningSelectBlocks(blocks, MAX_LINES)
+    chosen.length = 0
+    picked.forEach((b, si) => b.lines.forEach(l => chosen.push({ ...l, scene: si + 1 })))
+    sel = { scenes: picked.map((b, i) => ({ sceneId: i + 1, lines: b.lines, coherence: b.coherence })), source: 'deterministic', overall: null }
+    qc = listeningFinalQc(mainTrack, lang, vocab, elig, chosen.filter(c => c.designated).map(c => ({ targetId: c.designated.wordId, pairIndex: c.idx, pair: c.pair, covers: [], scene: c.scene })))
+  }
+  if (!qc.ok) { log && log('  ⛔ listening QC failed: ' + qc.problems.slice(0, 4).join(' | ')); return { ok: false, qc, stats: scan.stats } }
+  const scenes = [...new Set(chosen.map(c => c.scene))]
+  const designatedIds = chosen.filter(c => c.designated).map(c => c.designated.wordId)
   const lt = {
     listeningTrackId: 'lt-' + Date.now() + '-' + Math.floor(Math.random() * 1e4),
     sourceMainTrackId: listeningTrackId(mainTrack), language: lang, listeningVersion: o.version || 1,
     creationMode: o.creationMode || 'AUTO_PRETRACK', createdAt: new Date().toISOString(), status: 'not_started',
     eligibleTargetIds: elig.eligible.map(e => e.wordId), excludedNewTargetIds: elig.excludedNew,
-    omittedTargetIds: elig.eligible.map(e => e.wordId).filter(id => !sel.picked.some(c => c.targetId === id)),
-    sceneGroups: scenes, coherenceScore: sel.coherenceScore, selectionSource: sel.source,
-    // snapshot: byte-copies of the source sentences so old versions stay playable
-    lines: sel.picked.map(c => ({ pairIndex: c.pairIndex, targetId: c.targetId, scene: c.scene || 1,
-      speaker: c.pair.speaker || 'A', thai: c.pair.thai, japanese: c.pair.japanese, chinese: c.pair.chinese,
+    omittedTargetIds: elig.eligible.map(e => e.wordId).filter(id => !designatedIds.includes(id)),
+    sceneGroups: scenes, coherenceScore: sel.overall, selectionSource: sel.source,
+    sceneCoherence: sel.scenes.map(s => s.coherence), sceneReasons: sel.scenes.map(s => s.reason || ''),
+    supportingLineCount: chosen.filter(c => !c.designated).length,
+    designatedLineCount: designatedIds.length,
+    lines: chosen.map(c => ({ pairIndex: c.idx, targetId: c.designated ? c.designated.wordId : null, supporting: !c.designated,
+      scene: c.scene, speaker: c.speaker,
+      thai: c.pair.thai, japanese: c.pair.japanese, chinese: c.pair.chinese,
       phonetic: c.pair.phonetic, reading: c.pair.reading, pinyin: c.pair.pinyin, romaji: c.pair.romaji,
-      english: c.pair.english, wordId: c.targetId })),
+      english: c.pair.english, wordId: c.designated ? c.designated.wordId : null })),
     qc
   }
-  log && log('  🎧 listening track: ' + lt.lines.length + ' sentences, ' + scenes.length + ' scene(s), ' +
-    lt.omittedTargetIds.length + ' eligible target(s) omitted, source ' + sel.source)
-  return { ok: true, listeningTrack: lt, stats: cands.stats, qc }
+  log && log('  🎧 listening track: ' + lt.lines.length + ' lines (' + lt.designatedLineCount + ' teach a target, ' +
+    lt.supportingLineCount + ' supporting) in ' + scenes.length + ' scene(s), source ' + sel.source +
+    ', scene coherence ' + lt.sceneCoherence.join('/'))
+  return { ok: true, listeningTrack: lt, stats: scan.stats, qc }
 }
 // Persistence — separate store; Main Tracks are never mutated.
 async function listeningLoadAll() { try { return (await stGet(LISTENING_STORE_KEY)) || {} } catch (e) { return {} } }
@@ -13637,7 +14022,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
                   {kw.isNew && <span style={{ fontSize:9, fontWeight:800, letterSpacing:0.5, color: kw.isUnseen ? '#4a90e2' : '#a78bfa', border:'1px solid ' + (kw.isUnseen ? 'rgba(74,144,226,0.5)' : 'rgba(167,139,250,0.5)'), borderRadius:4, padding:'2px 5px', whiteSpace:'nowrap' }}>{kw.isUnseen ? 'NEW' : 'RELEARN'}</span>}
                   {kw.phonetic && <span className="phon" style={{ fontSize:13, color:'#7a8aad' }}>{kw.phonetic}</span>}
                   {revealedWords[i]
-                    ? <span style={{ color:'var(--muted)', fontSize:14 }}>{currentThaiTargetGloss(kw)}</span>
+                    ? <span style={{ color:'var(--muted)', fontSize:14 }}>{currentTargetGloss(kw, _tl)}</span>
                     : <span style={{ color:'var(--border)', fontSize:11, fontStyle:'italic' }}>tap to reveal</span>}
                 </div>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
@@ -16194,12 +16579,49 @@ function resolveThaiTargetSet(targets, anchors) {
   log.forEach(l => console.info('[thai-target] ' + l))
   return out
 }
-// Current meaning for a target LABEL (rating screen, transcript target list). Old
-// dialogue is history and is never rewritten; the label shows today's verified meaning.
-function currentThaiTargetGloss(kw) {
-  const c = kw && kw.wordId != null ? thaiCanonicalById().get(kw.wordId) : null
-  return (c && isVerifiedTeachingSense(c) && c.e) ? c.e : ((kw && kw.english) || '')
+// Lexical identity is (language, wordId) — NEVER a bare numeric id. Thai id 65 is บาท
+// "baht" while Japanese id 65 is 安い "cheap", so a Thai-only lookup applied to a
+// Japanese keyword shows the Thai gloss beside the Japanese word.
+// PRIMARY assertion: provenance. Every learner-facing lexical field must come from the
+// ONE record identified by (language, wordId). Script detection is only a diagnostic —
+// Japanese and Mandarin share Han characters, Japanese mixes kana and kanji, and loanwords
+// cross scripts, so script can never establish identity.
+function lexicalSourceRecord(language, wordId) {
+  try {
+    if (language === 'th') { const d = thaiCanonicalById().get(wordId); return d ? { surface: d.t, reading: d.ph, gloss: d.e } : null }
+    if (language === 'ja') { const w = (typeof initJapaneseVocab === 'function' ? initJapaneseVocab() : []).find(x => x.id === wordId); return w ? { surface: w.japanese, reading: w.reading || w.romaji, gloss: w.english } : null }
+    if (language === 'zh') { const w = (typeof initMandarinVocab === 'function' ? initMandarinVocab() : []).find(x => x.id === wordId); return w ? { surface: w.chinese, reading: w.pinyin, gloss: w.english } : null }
+  } catch (e) {}
+  return null
 }
+function assertLexicalIdentityIntegrity(o) {
+  if (!o || !o.language || o.wordId == null) return true
+  const src = lexicalSourceRecord(o.language, o.wordId)
+  if (!src) return true                                   // custom/not-in-bank word: nothing to prove against
+  const norm = s => String(s == null ? '' : s).trim()
+  const problems = []
+  if (o.surface != null && norm(o.surface) && norm(o.surface) !== norm(src.surface))
+    problems.push('surface "' + o.surface + '" is not ' + o.language + ':' + o.wordId + ' ("' + src.surface + '")')
+  if (o.gloss != null && norm(o.gloss) && norm(o.gloss) !== norm(src.gloss) && !norm(src.gloss).includes(norm(o.gloss)) && !norm(o.gloss).includes(norm(src.gloss)))
+    problems.push('gloss "' + o.gloss + '" is not the gloss of ' + o.language + ':' + o.wordId + ' ("' + src.gloss + '")')
+  if (problems.length) { console.error('[lexical-identity] mixed-source lexeme: ' + problems.join(' | ')); return false }
+  // optional diagnostic only
+  if (o.surface && o.language === 'th' && !/[\u0E00-\u0E7F]/.test(o.surface))
+    console.warn('[lexical-identity] diagnostic: Thai record ' + o.wordId + ' has a non-Thai surface')
+  return true
+}
+// Current meaning for a target LABEL (rating screen, transcript target list). Old dialogue
+// is history and is never rewritten; the label shows today's verified meaning — resolved
+// ONLY within the keyword's own language.
+function currentTargetGloss(kw, lang) {
+  if (!kw) return ''
+  const l = lang || (kw.japanese ? 'ja' : kw.chinese ? 'zh' : kw.thai ? 'th' : null)
+  if (l !== 'th' || kw.japanese || kw.chinese) return kw.english || ''   // only Thai has a canonical gloss store
+  const c = kw.wordId != null ? thaiCanonicalById().get(kw.wordId) : null
+  if (c && !assertLexicalIdentityIntegrity({ language: 'th', wordId: kw.wordId, surface: c.t, gloss: c.e })) return kw.english || ''
+  return (c && isVerifiedTeachingSense(c) && c.e) ? c.e : (kw.english || '')
+}
+function currentThaiTargetGloss(kw) { return currentTargetGloss(kw, 'th') }
 
 // ══ STEP E1: one-time lexical metadata migration of saved Thai vocabulary ═══════
 // Copies VERIFIED canonical lexical fields into saved records, matched by stable id.

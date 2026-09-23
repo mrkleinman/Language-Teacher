@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v618"/>
+<meta name="app-version" content="v620"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v618';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v618').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v620';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v620').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -11074,11 +11074,19 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   }
   // CLOSED-VOCABULARY GATE on the final generated Thai (greeting/parting included),
   // BEFORE phonetic enrichment. Nothing changes Thai after this point.
-  { const _cvCtx = buildThaiTrackVocabContext(vocab, targets)
+  // allPairs is a const shared array: build a NEW local list instead of reassigning it,
+  // and never let this downstream gate fail an already-generated Main Track.
+  let gatedPairs = allPairs
+  try {
+    const _cvCtx = buildThaiTrackVocabContext(vocab, targets)
     const _cv = enforceThaiClosedVocabulary(allPairs, _cvCtx, { targetsById: new Map(targets.map(t => [t.id, t])), stage: 'generation',
       onLog: m => onProgress && onProgress(allPairs.length, targets.length * 3, { apiError: m }, null, null) })
-    allPairs = _cv.pairs }
-  return finaliseThaiTrackPhonetics(allPairs, buildThaiPhoneticLexicon(vocab))
+    if (_cv && Array.isArray(_cv.pairs)) gatedPairs = _cv.pairs
+  } catch (e) {
+    console.error('[closed-vocab] generation gate failed — Main Track kept as generated', e)
+  }
+  try { return finaliseThaiTrackPhonetics(gatedPairs, buildThaiPhoneticLexicon(vocab)) }
+  catch (e) { console.error('[phonetics] final stage failed — Main Track kept as generated', e); return gatedPairs }
 }
 
 
@@ -12163,31 +12171,83 @@ function listeningEligibility(track, vocab) {
   return { eligible, excludedNew, excludedUnexposed,
            forbidden: (track.keywords || []).filter(k => !eligible.some(e => e.wordId === k.wordId)) }
 }
+// Legacy pairs predate wordId: they identify their target through _target (the target's
+// surface) or a _source suffix such as "ai:improve:กังวล". The link is RECONSTRUCTED from
+// stable references only — never invented. A framing line (greeting/parting) has no target.
+function listeningResolveTargetForPair(pair, keywords, lang, vocab) {
+  if (!pair) return { key: null, how: 'no pair' }
+  if (pair.wordId != null) {
+    const k = keywords.find(e => e.wordId === pair.wordId)
+    return k ? { key: k, how: 'wordId' } : { key: null, how: 'wordId not in this track' }
+  }
+  const surf = k => listeningTargetSurface(k)
+  if (pair._target) {
+    const k = keywords.find(e => surf(e) === pair._target)
+    if (k) return { key: k, how: '_target' }
+    if (/^(greeting|parting|opening|closing|reply|scene)/i.test(String(pair._target))) return { key: null, how: 'framing line (no target)' }
+  }
+  const src = String(pair._source || '')
+  if (src.includes(':')) {
+    const tail = src.slice(src.lastIndexOf(':') + 1)
+    const k = keywords.find(e => surf(e) === tail)
+    if (k) return { key: k, how: '_source' }
+  }
+  // last resort: the sentence contains exactly ONE of this track's target surfaces
+  const hits = keywords.filter(e => surf(e) && listeningContainsTarget(lang, pair, surf(e), vocab))
+  if (hits.length === 1) return { key: hits[0], how: 'unique lexical match' }
+  return { key: null, how: hits.length ? 'ambiguous (' + hits.length + ' targets in sentence)' : 'no resolvable target' }
+}
+
 // Safe candidates: final Main Track pairs only, hard-filtered BEFORE any model sees them.
 function listeningCandidates(track, lang, vocab, elig, log) {
-  const stats = { considered: 0, rejectedNewWord: 0, rejectedClosedVocab: 0, rejectedAlignment: 0, rejectedUnsuitable: 0 }
+  const stats = { pairCount: (track.pairs || []).length, considered: 0,
+    rejectedMissingTargetId: 0, rejectedMissingKeywordLink: 0, rejectedCurrentUnexposedTarget: 0,
+    rejectedContainsUnexposedContent: 0, rejectedCurrentTrackNew: 0, rejectedTargetAlignment: 0,
+    rejectedMalformedSentence: 0, rejectedNotStandalone: 0, rejectedOther: 0, reasons: {} }
+  const note = r => { stats.reasons[r] = (stats.reasons[r] || 0) + 1 }
   const exposed = (vocab || []).filter(w => typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w))
   const eligTargets = elig.eligible.map(e => e.word)
+  const allKeywords = (track.keywords || [])
   const byTarget = new Map()
   ;(track.pairs || []).forEach((p, idx) => {
-    const k = elig.eligible.find(e => e.wordId === p.wordId)
-    if (!k || !listeningSentence(p)) return
+    if (!listeningSentence(p)) { stats.rejectedOther++; note('empty sentence'); return }
+    const res = listeningResolveTargetForPair(p, allKeywords, lang, vocab)
+    if (!res.key) {
+      if (/framing/.test(res.how)) { stats.rejectedMissingTargetId++; note('framing line (no target)') }
+      else { stats.rejectedMissingKeywordLink++; note(res.how) }
+      return
+    }
+    const k = elig.eligible.find(e => e.wordId === res.key.wordId)
+    if (!k) { stats.rejectedCurrentUnexposedTarget++; note('target not currently exposed: ' + listeningTargetSurface(res.key)); return }
     stats.considered++
-    if (!listeningContainsTarget(lang, p, listeningTargetSurface(k), vocab)) { stats.rejectedAlignment++; return }
+    if (!listeningContainsTarget(lang, p, listeningTargetSurface(k), vocab)) { stats.rejectedTargetAlignment++; note('target not present in its own sentence'); return }
     const suit = listeningSuitability(p, k.word || k, lang)
-    if (!suit.ok) { stats.rejectedUnsuitable++; log && log('    ⛔ unsuitable: "' + listeningSentence(p) + '" — ' + suit.reason); return }
+    if (!suit.ok) {
+      if (/translation|placeholder|empty/.test(suit.reason)) { stats.rejectedNotStandalone++ } else { stats.rejectedMalformedSentence++ }
+      note(suit.reason); log && log('    ⛔ unsuitable: "' + listeningSentence(p) + '" — ' + suit.reason); return
+    }
     const bad = elig.forbidden.filter(f => listeningContainsTarget(lang, p, listeningTargetSurface(f), vocab))
-    if (bad.length) { stats.rejectedNewWord++; return }
+    if (bad.length) { stats.rejectedCurrentTrackNew++; note('contains an unexposed target: ' + bad.map(listeningTargetSurface).join(' ')); return }
     const unexposed = listeningUnexposedWords(lang, p, exposed, eligTargets)
-    if (unexposed.length) { stats.rejectedClosedVocab++; return }
+    if (unexposed.length) { stats.rejectedContainsUnexposedContent++; note('unexposed content: ' + unexposed.slice(0, 3).join(' ')); return }
     // which OTHER current-track targets this sentence also covers (duplicate risk)
-    const covers = elig.eligible.filter(e => e.wordId !== p.wordId && listeningContainsTarget(lang, p, listeningTargetSurface(e), vocab)).map(e => e.wordId)
-    if (!byTarget.has(p.wordId)) byTarget.set(p.wordId, [])
-    byTarget.get(p.wordId).push({ targetId: p.wordId, pairIndex: idx, covers, pair: p })
+    // key by the RESOLVED target (legacy pairs have no wordId of their own)
+    const tid = k.wordId
+    const covers = elig.eligible.filter(e => e.wordId !== tid && listeningContainsTarget(lang, p, listeningTargetSurface(e), vocab)).map(e => e.wordId)
+    if (!byTarget.has(tid)) byTarget.set(tid, [])
+    byTarget.get(tid).push({ targetId: tid, pairIndex: idx, covers, pair: p })
   })
-  log && log('  🎧 candidates: ' + stats.considered + ' considered, ' + stats.rejectedNewWord + ' rejected (new word), ' +
-    stats.rejectedClosedVocab + ' rejected (unexposed word), ' + stats.rejectedAlignment + ' rejected (alignment), ' +
-    stats.rejectedUnsuitable + ' rejected (not a usable sentence)')
+  stats.safeCandidates = [...byTarget.values()].reduce((n, l) => n + l.length, 0)
+  stats.targetsWithSafeCandidate = byTarget.size
+  const top = Object.entries(stats.reasons).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([r, n]) => r + ' ×' + n)
+  log && log('  🎧 pairs ' + stats.pairCount + ' · linked+exposed ' + stats.considered + ' · safe candidates ' + stats.safeCandidates +
+    ' covering ' + stats.targetsWithSafeCandidate + ' target(s)')
+  log && log('  🎧 rejections — noTargetLink ' + stats.rejectedMissingKeywordLink + ', framing ' + stats.rejectedMissingTargetId +
+    ', targetUnexposed ' + stats.rejectedCurrentUnexposedTarget + ', unexposedContent ' + stats.rejectedContainsUnexposedContent +
+    ', containsNewTarget ' + stats.rejectedCurrentTrackNew + ', alignment ' + stats.rejectedTargetAlignment +
+    ', malformed ' + stats.rejectedMalformedSentence + ', notStandalone ' + stats.rejectedNotStandalone + ', other ' + stats.rejectedOther)
+  log && log('  🎧 top reasons: ' + (top.join(' | ') || 'none'))
+  try { console.info('[listening] retrofit ' + (track.createdAt || '') + ' ' + JSON.stringify(stats).slice(0, 700)) } catch (e) {}
   return { byTarget, stats }
 }
 // GLOBAL solver: largest set with each target covered exactly once (never greedy per target).
@@ -12299,7 +12359,8 @@ function listeningFinalQc(track, lang, vocab, elig, chosen) {
   const sel = elig.eligible.filter(e => selIds.has(e.wordId))
   chosen.forEach(c => {
     const src = (track.pairs || [])[c.pairIndex]
-    if (!src || src.wordId !== c.targetId) { q.invalidSourcePairReferences++; q.problems.push('bad source ref @' + c.pairIndex); return }
+    // legacy pairs carry no wordId; their identity is proved by the byte-match below
+    if (!src || (src.wordId != null && src.wordId !== c.targetId)) { q.invalidSourcePairReferences++; q.problems.push('bad source ref @' + c.pairIndex); return }
     if (listeningSentence(src) !== listeningSentence(c.pair)) { q.rewrittenTargetLanguageSentences++; q.problems.push('sentence differs from source @' + c.pairIndex) }
     if (!listeningSentence(src)) { q.inventedTargetLanguageSentences++; return }
     elig.forbidden.forEach(f => { if (listeningContainsTarget(lang, src, listeningTargetSurface(f), vocab)) { q.currentMainTrackNewWordsPresent++; q.problems.push('new word ' + listeningTargetSurface(f)) } })
@@ -12376,9 +12437,17 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
   const mainId = listeningTrackId(track)
   const build = useCallback(async (mode) => {
     setPhase(mode === 'MANUAL_PRACTICE' ? 'creating' : 'loading'); const lines = []
-    const prev = await listeningVersionsFor(lang, mainId)
-    const res = await buildListeningTrack(track, vocab, { lang, apiKey, model, creationMode: mode,
-      version: prev.length + 1, onLog: m => lines.push(m) })
+    let prev = [], res = null
+    // LISTENING_TRACK_BUILD_ERROR is contained here: it must never surface as a Main
+    // Track failure, and the learner can always continue or retry.
+    try {
+      prev = await listeningVersionsFor(lang, mainId)
+      res = await buildListeningTrack(track, vocab, { lang, apiKey, model, creationMode: mode,
+        version: prev.length + 1, onLog: m => lines.push(m) })
+    } catch (e) {
+      console.error('[listening] build failed — Main Track unaffected', e)
+      setLog(lines.concat(['⛔ ' + (e && e.message ? e.message : 'listening build error')])); setPhase('failed'); return
+    }
     setLog(lines)
     // Nothing safe to build ⇒ never save an empty Listening Track; the learner is never trapped.
     if (!res.ok || !res.listeningTrack || !res.listeningTrack.lines.length) { setPhase('failed'); return }
@@ -12420,9 +12489,12 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
       <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={onProceed}>Continue to Main Track</button>
     </div></div></div>
   if (phase === 'failed') return <div style={S.wrap}><div style={S.card}>🎧
-    <div style={{ marginTop:10 }}>No safe listening practice could be created from this track.</div>
-    <div style={{ color:'var(--muted)', fontSize:12, marginTop:6 }}>Its sentences use words you have not met yet, or none of them work as standalone lines.</div>
-    <button style={{ ...S.btn, marginTop:16, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue to Main Track</button></div></div>
+    <div style={{ marginTop:10 }}>Listening track could not be created.</div>
+    <div style={{ color:'var(--muted)', fontSize:12, marginTop:6 }}>Its sentences use words you have not met yet, or none of them work as standalone lines. Your Main Track is unaffected.</div>
+    <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap', marginTop:16 }}>
+      <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={() => build('MANUAL_PRACTICE')}>Try Listening Again</button>
+      <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue to Main Track</button>
+    </div></div></div>
   if (phase === 'playing' && lt) {
     const lines = lt.lines.map(l => ({ ...l, _scene: l.scene }))
     return <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>

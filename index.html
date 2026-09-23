@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v617"/>
+<meta name="app-version" content="v618"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v617';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v617').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v618';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v618').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -12367,7 +12367,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // ══ LISTEN FIRST (shared, all languages) ════════════════════════════════════════
 // Soft gate: it appears before the Main Track player, offers Start or Skip, and never
 // touches SRS, belts, ratings or the Main Track itself.
-function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProceed }) {
+function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProceed, autoCreate }) {
   const [phase, setPhase] = useState('loading')      // loading | offer | playing | none
   const [lt, setLt] = useState(null)
   const [versions, setVersions] = useState([])
@@ -12375,14 +12375,17 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
   const [log, setLog] = useState([])
   const mainId = listeningTrackId(track)
   const build = useCallback(async (mode) => {
-    setPhase('loading'); const lines = []
+    setPhase(mode === 'MANUAL_PRACTICE' ? 'creating' : 'loading'); const lines = []
     const prev = await listeningVersionsFor(lang, mainId)
     const res = await buildListeningTrack(track, vocab, { lang, apiKey, model, creationMode: mode,
       version: prev.length + 1, onLog: m => lines.push(m) })
     setLog(lines)
-    if (!res.ok || !res.listeningTrack || !res.listeningTrack.lines.length) { setPhase('none'); return }
+    // Nothing safe to build ⇒ never save an empty Listening Track; the learner is never trapped.
+    if (!res.ok || !res.listeningTrack || !res.listeningTrack.lines.length) { setPhase('failed'); return }
     const saved = await listeningSave(res.listeningTrack)
-    setVersions([...prev, saved]); setLt(saved); setPhase('offer')
+    setVersions([...prev, saved]); setLt(saved)
+    setPhase(mode === 'MANUAL_PRACTICE' ? 'playing' : 'offer')   // manual creation opens it straight away
+    if (mode === 'MANUAL_PRACTICE') listeningSetStatus(saved, 'in_progress')
   }, [track, lang, vocab, apiKey, model, mainId])
   useEffect(() => { let go = true
     ;(async () => {
@@ -12392,24 +12395,41 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
       const fresh = prev.find(v => v.status === 'not_started' || v.status === 'in_progress')
       if (fresh) { setLt(fresh); setPhase('offer'); return }
       if (prev.length) { setLt(prev[prev.length - 1]); setPhase('offer'); return }
-      build('AUTO_PRETRACK')
+      // No Listening version yet. A track that was just generated builds one automatically;
+      // a SAVED track (including every track from before this feature existed) is offered
+      // the choice instead of a dead end.
+      if (autoCreate) build('AUTO_PRETRACK'); else setPhase('create')
     })()
     return () => { go = false }
   }, [mainId])
-  useEffect(() => { if (phase === 'none') { const t = setTimeout(onProceed, 1400); return () => clearTimeout(t) } }, [phase])
+
   const finish = async (status) => { if (lt) await listeningSetStatus(lt, status); onProceed() }
   const S = { wrap:{ maxWidth:640, margin:'0 auto', padding:'24px 16px' },
     card:{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:20, textAlign:'center' },
     btn:{ padding:'14px 22px', borderRadius:10, border:'none', fontSize:16, fontWeight:700, cursor:'pointer' } }
-  if (phase === 'loading') return <div style={S.wrap}><div style={S.card}>🎧<div style={{ marginTop:10, color:'var(--muted)' }}>Preparing listening practice…</div></div></div>
-  if (phase === 'none') return <div style={S.wrap}><div style={S.card}>🎧<div style={{ marginTop:10 }}>No listening review available for this track yet.</div>
-    <button style={{ ...S.btn, marginTop:16, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue</button></div></div>
+  if (phase === 'loading' || phase === 'creating') return <div style={S.wrap}><div style={S.card}>🎧
+    <div style={{ marginTop:10, color:'var(--muted)' }}>{phase === 'creating' ? 'Creating listening track…' : 'Preparing listening practice…'}</div>
+    <button style={{ ...S.btn, marginTop:16, background:'transparent', color:'var(--muted)', fontSize:13 }} onClick={onProceed}>Continue to Main Track</button></div></div>
+  // A saved Main Track with no Listening version yet (every pre-feature track lands here).
+  if (phase === 'create') return <div style={S.wrap}><div style={S.card}>
+    <div style={{ fontSize:34 }}>🎧</div>
+    <h2 style={{ margin:'8px 0 4px' }}>No listening track yet</h2>
+    <div style={{ color:'var(--muted)', fontSize:13, marginBottom:16 }}>Build one from the sentences this track already contains, using the words you know today.</div>
+    <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+      <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={() => build('MANUAL_PRACTICE')}>🎧 Create Listening Track</button>
+      <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={onProceed}>Continue to Main Track</button>
+    </div></div></div>
+  if (phase === 'failed') return <div style={S.wrap}><div style={S.card}>🎧
+    <div style={{ marginTop:10 }}>No safe listening practice could be created from this track.</div>
+    <div style={{ color:'var(--muted)', fontSize:12, marginTop:6 }}>Its sentences use words you have not met yet, or none of them work as standalone lines.</div>
+    <button style={{ ...S.btn, marginTop:16, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue to Main Track</button></div></div>
   if (phase === 'playing' && lt) {
     const lines = lt.lines.map(l => ({ ...l, _scene: l.scene }))
     return <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>
       <div style={{ textAlign:'center', color:'var(--muted)', fontSize:13, marginBottom:8 }}>
         🎧 Listening · {lt.lines.length} sentences · {lt.sceneGroups.length} scene{lt.sceneGroups.length > 1 ? 's' : ''} · audio first</div>
       <ConvoPlayer lines={lines} speed={speed} onSpeedChange={setSpeed} gcpTtsKey={gcpTtsKey}
+        title={(LISTENING_LANGS[lang] ? LISTENING_LANGS[lang].charAt(0).toUpperCase() + LISTENING_LANGS[lang].slice(1) : 'Thai') + ' Conversation'}
         onSkip={() => finish('skipped')} onDone={() => finish('completed')} />
     </div>
   }
@@ -12430,7 +12450,7 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
   </div></div>
 }
 
-function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey }) {
+function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, title }) {
   const [lineIdx, setLineIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [voices, setVoices] = useState([])
@@ -12506,7 +12526,7 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey })
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
         <div>
-          <div className="display" style={{ fontSize:17, color:'var(--gold)' }}>Thai Conversation</div>
+          <div className="display" style={{ fontSize:17, color:'var(--gold)' }}>{title || 'Thai Conversation'}</div>
           <div style={{ fontSize:11, color:'var(--muted)' }}>{lines.length} lines · all track words covered</div>
         </div>
         <button onClick={() => { cancelRef.current = true; try { window.speechSynthesis.cancel() } catch(e) {} onSkip() }}
@@ -16748,6 +16768,7 @@ function ThaiTeacher({ lang, onSetLang }) {
 
   // Listen First soft gate (shared): which track has already been listened to or skipped.
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_th
+  const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
 
   const [genMode, setGenMode] = useState('daily')
   const [resumeDraft, setResumeDraft] = useState(null)
@@ -16999,6 +17020,8 @@ function ThaiTeacher({ lang, onSetLang }) {
   }
 
   function onTrackGenerated(rawTrack) {
+    // A newly generated Main Track builds its Listening Track automatically.
+    try { setListenAutoFor(listeningTrackId(rawTrack)) } catch (e) {}
     const track = stampTrackMode(rawTrack, genMode === 'revision' ? 'revision' : 'daily', customTargets || [])
     if (!track) { navigate('dashboard'); return }
     // CLOSED-VOCABULARY GATE at the point a new Thai track leaves the generator,
@@ -17140,6 +17163,7 @@ function ThaiTeacher({ lang, onSetLang }) {
         {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="th" vocab={vocab}
             apiKey={orKey} model={resolveOrModel(provider)} gcpTtsKey={gcpTtsKey}
+            autoCreate={listenAutoFor === listeningTrackId(activeTrack)}
             onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (
@@ -21325,6 +21349,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
   const [activeTrack, setActiveTrack]   = useState(null)
   // Listen First soft gate (shared): which track has already been listened to or skipped.
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_ja
+  const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
 
 
   useEffect(() => {
@@ -21362,6 +21387,8 @@ function JapaneseTeacher({ lang, onSetLang }) {
   // QC already ran on the generation screen, so a generated track goes straight to
   // the player. Quality Review remains reachable later from the player.
   function onTrackGenerated(rawTrack) {
+    // A newly generated Main Track builds its Listening Track automatically.
+    try { setListenAutoFor(listeningTrackId(rawTrack)) } catch (e) {}
     const track = stampTrackMode(rawTrack, trackMode, targets)
     if (!track) { setNotice('Revision track was not saved: it contained a word you have not learned yet.'); setView('dashboard'); return }
     saveTracksJa([...tracks, track])
@@ -21531,6 +21558,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
         {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="ja" vocab={vocab}
             apiKey={cred.orKey} model={resolveOrModel(cred.provider)} gcpTtsKey={cred.gcpTtsKey}
+            autoCreate={listenAutoFor === listeningTrackId(activeTrack)}
             onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (
@@ -23193,6 +23221,7 @@ function MandarinTeacher({ lang, onSetLang }) {
   const [activeTrack, setActiveTrack] = useState(null)
   // Listen First soft gate (shared).
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_zh
+  const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
   const [trackMode, setTrackMode] = useState('daily')   // §5 'daily' | 'srs'
 
   useEffect(() => {
@@ -23264,6 +23293,8 @@ function MandarinTeacher({ lang, onSetLang }) {
   }, [selection, vocab, trackMode])
 
   function onTrackGenerated(rawTrack) {
+    // A newly generated Main Track builds its Listening Track automatically.
+    try { setListenAutoFor(listeningTrackId(rawTrack)) } catch (e) {}
     const track = stampTrackMode(rawTrack, trackMode, targets)
     if (!track) { setNotice('Revision track was not saved: it contained a word you have not learned yet.'); setView('dashboard'); return }
     saveTracksZh([...tracks, track])
@@ -23375,6 +23406,7 @@ function MandarinTeacher({ lang, onSetLang }) {
         {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="zh" vocab={vocab}
             apiKey={cred.orKey} model={resolveOrModel(cred.provider)} gcpTtsKey={cred.gcpTtsKey}
+            autoCreate={listenAutoFor === listeningTrackId(activeTrack)}
             onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (

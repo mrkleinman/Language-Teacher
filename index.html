@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v614"/>
+<meta name="app-version" content="v617"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v614';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v614').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v617';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v617').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -8008,6 +8008,19 @@ const HARDCODED_FALLBACKS = {
 
 
 function makeFallbackPairs(target) {
+  // Frames are chosen by classifyWord(), which guesses from the English gloss and used to
+  // fall through to VERB templates for anything unrecognised (ผมจะอินเทอร์เน็ตแล้วครับ).
+  // Every generated frame is now checked against the target's lexical function.
+  const _raw = makeFallbackPairsRaw(target)
+  const _kept = (_raw || []).filter(p => listeningSuitability({ ...p, english: p.english || 'x' }, target, 'th').ok)
+  if (_kept.length) return _kept
+  const _tw = target.thai, _fn = lexicalFunctionFromGloss(target.english), _e = target.english || ''
+  if (_fn === 'verb') return [{ prompt: 'Say you will ' + _e, thai: 'ผมจะ' + _tw + 'ครับ', english: 'I will ' + _e + '.', phonetic: '', words: [] }]
+  if (_fn === 'noun') return [{ prompt: 'Ask if they have ' + _e, thai: 'มี' + _tw + 'ไหมครับ', english: 'Do you have ' + _e + '?', phonetic: '', words: [] }]
+  if (_fn === 'adjective') return [{ prompt: 'Say it is very ' + _e, thai: _tw + 'มากครับ', english: 'Very ' + _e + '.', phonetic: '', words: [] }]
+  return _raw || []
+}
+function makeFallbackPairsRaw(target) {
   const ph = target.phonetic || target.thai
   const eng = target.english
   const tw = target.thai
@@ -12026,6 +12039,397 @@ function ttsTextForWord(w) {
   return w.chinese || w.thai || ''
 }
 
+// ══ LEXICAL SUITABILITY — is this sentence a usable standalone utterance? ════════
+// Root cause of ผมจะอินเทอร์เน็ตแล้วครับ / ผมต้องชาวเขาก่อนครับ: the fallback builder picks a
+// template from classifyWord(), which guesses part of speech from the English gloss and
+// falls through to VERB frames for anything it doesn't recognise. Main Track QC checked
+// vocabulary, phonetics, target presence and duplicates — never whether the target can
+// grammatically occupy the slot it was dropped into. This gate does exactly that.
+const LEX_ADJECTIVES = new Set(['convenient','comfortable','easy','difficult','hard','beautiful','pretty','handsome','hot','cold','warm','cool','cheap','expensive','delicious','tasty','tired','sleepy','busy','free','happy','sad','angry','big','large','small','little','fast','quick','slow','good','bad','new','old','full','hungry','thirsty','safe','dangerous','quiet','noisy','loud','clean','dirty','sweet','spicy','salty','sour','bitter','heavy','light','long','short','tall','near','far','early','late','ready','sick','ill','healthy','strong','weak','rich','poor','young','boring','interesting','fun','funny','important','correct','wrong','same','different','similar','lucky','careful','polite','rude','lazy','smart','clever','stupid','crazy','strange','quiet'])
+// Thai glosses write verbs bare ("go", "eat", "work"), not "to go", so a verb lexicon
+// is needed or every verb reads as a noun.
+const LEX_VERBS = new Set(['go','come','eat','drink','sleep','work','study','learn','read','write','speak','talk','say','tell','ask','answer','know','think','want','need','like','love','hate','see','look','watch','listen','hear','help','wait','take','give','make','do','buy','sell','pay','open','close','start','stop','use','find','meet','play','call','send','drive','ride','walk','run','swim','cook','clean','wash','wear','sit','stand','turn','bring','carry','forget','remember','understand','rest','stay','live','die','born','arrive','leave','return','travel','visit','book','order','choose','try','practise','practice','teach','show','send','borrow','lend','lose','win','fix','repair','build','cut','wear','hold','put','get','become','feel','enter','exit','climb','jump','fall','push','pull','throw','catch','wake','shower','brush','change','move','rent','share','follow','wait','worry','relax','enjoy','decide','agree','promise','invite','introduce','explain','recommend','check','book'])
+const LEX_ABSTRACT = new Set(['lifestyle','way of life','culture','education','experience','opinion','reason','situation','tradition','religion','knowledge','freedom','safety','health','happiness','information','news','history','nature','future','past','life','love','luck','truth','beauty','quality','advice','ability','progress','peace','respect','trust','feeling','idea','memory','dream','hope','language','weather','time','age','music'])
+function lexicalFunctionFromGloss(gloss) {
+  const g = String(gloss || '').toLowerCase().split(/[;/(]/)[0].trim()
+  if (!g) return 'unknown'
+  if (/^to\s+\w/.test(g)) return 'verb'
+  if (/^(be|feel|become)\b/.test(g)) return 'verb'
+  const head = g.replace(/^(a|an|the)\s+/, '').split(/\s+/)[0]
+  if (LEX_VERBS.has(head) || LEX_VERBS.has(g)) return 'verb'
+  if (LEX_ABSTRACT.has(g) || LEX_ABSTRACT.has(head)) return 'abstract-noun'
+  if (LEX_ADJECTIVES.has(head) || LEX_ADJECTIVES.has(g)) return 'adjective'
+  if (/^(i|you|he|she|we|they|this|that|here|there|who|what|when|where|why|how)$/.test(g)) return 'function'
+  if (/^(and|or|but|because|so|with|for|from|at|in|on|by|about|if|although)$/.test(g)) return 'function'
+  if (/\b(place|shop|store|market|food|drink|water|room|house|car|bus|train|road|street|person|people|friend|family|money|phone|book|bag|time|day|week|month|year|name|word|language|work|job|school|hotel|hospital|station|airport|beach|mountain|tribe|lifestyle|internet|way of life)\b/.test(g)) return 'noun'
+  if (/^[a-z-]+(s)?$/.test(g)) return 'noun'
+  return 'unknown'
+}
+// Frames that demand a particular lexical function. Only CONFIDENT mismatches are
+// rejected: an 'unknown' gloss is never used to reject a sentence.
+const LEX_FRAMES = {
+  th: [
+    { re: t => new RegExp('(?:จะ|ต้อง|กำลัง|อยาก|ช่วย|เพิ่ง|เคย|ลอง|ไป|มา)\\s*' + t), need: 'verb', why: 'noun/other in a verb slot (จะ/ต้อง/กำลัง…)' },
+    { re: t => new RegExp(t + '\\s*(?:อยู่ครับ|อยู่ค่ะ|แล้วครับ|แล้วค่ะ|ก่อนครับ|ก่อนค่ะ)$'), need: 'verb', why: 'non-verb before an aspect ending (อยู่/แล้ว/ก่อน)' },
+    { re: t => new RegExp('(?:ไม่มี|มี|ซื้อ|กิน|ดื่ม|ขาย)\\s*' + t), need: 'noun', why: 'non-noun after มี/ไม่มี/ซื้อ…' },
+    { re: t => new RegExp(t + '(?:นี้|นั้น)?\\s*ราคาเท่าไหร่'), need: 'noun', why: 'not a buyable thing in a price question' },
+    { re: t => new RegExp('(?:ซื้อ|ขาย|กิน|ดื่ม)\\s*' + t), need: 'noun', why: 'abstract/non-object after ซื้อ/ขาย/กิน/ดื่ม' },
+  ],
+  ja: [
+    { re: t => new RegExp('(?:を|が)\\s*' + t + '(?:ます|たい|る)'), need: 'verb', why: 'non-verb inflected as a verb' },
+  ],
+  zh: [
+    { re: t => new RegExp('(?:在|想|要|会)' + t), need: 'verb', why: 'non-verb in a verb slot (在/想/要/会)' },
+    { re: t => new RegExp('(?:有|没有|买|吃)' + t), need: 'noun', why: 'non-noun after 有/没有/买/吃' },
+  ]
+}
+const _lexEsc = s => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// Returns { ok, reason }. Conservative: unknown lexical function ⇒ pass.
+function listeningSuitability(pair, target, lang) {
+  const text = listeningSentence(pair), surface = (target && (target.thai || target.japanese || target.chinese)) || ''
+  const english = String(pair && pair.english || '').trim()
+  if (!text || !surface) return { ok: false, reason: 'empty sentence or target' }
+  if (english.length < 2) return { ok: false, reason: 'missing English translation' }   // a valid translation can be as short as 'No'
+  if (/\.{3}|…|\uFFFD/.test(text) || /\.{3}|…|\uFFFD/.test(english)) return { ok: false, reason: 'placeholder/corrupt text' }
+  const fn = lexicalFunctionFromGloss(target.english)
+  if (fn === 'unknown') return { ok: true, reason: 'lexical function unknown — not judged' }
+  const t = _lexEsc(surface)
+  for (const f of (LEX_FRAMES[lang] || [])) {
+    if (f.re(t).test(text) && fn !== f.need && !(f.need === 'noun' && fn === 'function')) {
+      return { ok: false, reason: f.why + ' (' + surface + ' is a ' + fn + ')' }
+    }
+  }
+  return { ok: true, reason: '' }
+}
+
+// ══ LISTENING TRACKS — shared core (all languages) ═══════════════════════════════
+// A Listening Track is assembled ONLY from sentences that already exist in a final
+// Main Track. Sentence text is copied byte-for-byte; nothing is generated, rewritten
+// or bridged. Safety comes from learner exposure, never from bank membership,
+// phonetics, glosses, segmentation or the new classification metadata.
+const LISTENING_STORE_KEY = 'tt-listening-v1'
+const LISTENING_LANGS = { th: 'thai', ja: 'japanese', zh: 'chinese' }
+function listeningSentence(p) { return p ? (p.thai || p.japanese || p.chinese || '') : '' }
+function listeningPhonetic(p) { return p ? (p.phonetic || p.reading || p.pinyin || '') : '' }
+function listeningTargetSurface(k) { return k ? (k.thai || k.japanese || k.chinese || k.surface || '') : '' }
+function listeningTrackId(t) { return t ? (t.id || t.createdAt || t.date || '') : '' }
+
+// Language adapter: does this sentence contain this target as a LEXICAL unit?
+function listeningContainsTarget(lang, pair, surface, vocab) {
+  const text = listeningSentence(pair)
+  if (!text || !surface) return false
+  const segs = (pair.words || pair.segments || []).map(w => (w && (w.lemma || w.p || w.surface || w.th || w.japanese || w.chinese)) || '').filter(Boolean)
+  if (lang === 'th') {
+    try {
+      const toks = segmentThaiWithDiagnostics(text, vocab || [], null, null, true).map(s => s.matchedSpan)
+      if (toks.length) return toks.includes(surface)
+    } catch (e) {}
+    return text.includes(surface)
+  }
+  if (segs.length && segs.includes(surface)) return true
+  return text.includes(surface)   // kana/kanji or hanzi surface fallback
+}
+// Language adapter: content words in this sentence the learner has NOT been exposed to.
+function listeningUnexposedWords(lang, pair, exposedVocab, eligibleTargets) {
+  const text = listeningSentence(pair)
+  try {
+    if (lang === 'th') {
+      const ctx = buildThaiTrackVocabContext(exposedVocab, eligibleTargets)
+      const r = validateThaiVocabulary([{ thai: text }], ctx)
+      return r.ok ? [] : r.blocked
+    }
+    if (lang === 'ja') {
+      const inv = japaneseLearnerInventory(exposedVocab, eligibleTargets)
+      return (japaneseCheckLine(text, inv).unknown || [])
+    }
+    if (lang === 'zh') {
+      const inv = mandarinLearnerInventory(exposedVocab, eligibleTargets)
+      return (mandarinUnknownContent(text, inv) || [])
+    }
+  } catch (e) { console.warn('[listening] exposure check unavailable for ' + lang + ': ' + e.message) }
+  return []
+}
+// Eligibility: CURRENT authoritative learner exposure, evaluated at build time — so a
+// word that was NEW this morning becomes eligible later only once it is truly exposed.
+function listeningEligibility(track, vocab) {
+  const byId = new Map((vocab || []).map(w => [w.id, w]))
+  const eligible = [], excludedNew = [], excludedUnexposed = []
+  ;(track.keywords || []).forEach(k => {
+    const w = byId.get(k.wordId)
+    if (!w) { excludedUnexposed.push(k.wordId); return }
+    if (typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w)) eligible.push({ ...k, word: w })
+    else (k.isNew ? excludedNew : excludedUnexposed).push(k.wordId)
+  })
+  return { eligible, excludedNew, excludedUnexposed,
+           forbidden: (track.keywords || []).filter(k => !eligible.some(e => e.wordId === k.wordId)) }
+}
+// Safe candidates: final Main Track pairs only, hard-filtered BEFORE any model sees them.
+function listeningCandidates(track, lang, vocab, elig, log) {
+  const stats = { considered: 0, rejectedNewWord: 0, rejectedClosedVocab: 0, rejectedAlignment: 0, rejectedUnsuitable: 0 }
+  const exposed = (vocab || []).filter(w => typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w))
+  const eligTargets = elig.eligible.map(e => e.word)
+  const byTarget = new Map()
+  ;(track.pairs || []).forEach((p, idx) => {
+    const k = elig.eligible.find(e => e.wordId === p.wordId)
+    if (!k || !listeningSentence(p)) return
+    stats.considered++
+    if (!listeningContainsTarget(lang, p, listeningTargetSurface(k), vocab)) { stats.rejectedAlignment++; return }
+    const suit = listeningSuitability(p, k.word || k, lang)
+    if (!suit.ok) { stats.rejectedUnsuitable++; log && log('    ⛔ unsuitable: "' + listeningSentence(p) + '" — ' + suit.reason); return }
+    const bad = elig.forbidden.filter(f => listeningContainsTarget(lang, p, listeningTargetSurface(f), vocab))
+    if (bad.length) { stats.rejectedNewWord++; return }
+    const unexposed = listeningUnexposedWords(lang, p, exposed, eligTargets)
+    if (unexposed.length) { stats.rejectedClosedVocab++; return }
+    // which OTHER current-track targets this sentence also covers (duplicate risk)
+    const covers = elig.eligible.filter(e => e.wordId !== p.wordId && listeningContainsTarget(lang, p, listeningTargetSurface(e), vocab)).map(e => e.wordId)
+    if (!byTarget.has(p.wordId)) byTarget.set(p.wordId, [])
+    byTarget.get(p.wordId).push({ targetId: p.wordId, pairIndex: idx, covers, pair: p })
+  })
+  log && log('  🎧 candidates: ' + stats.considered + ' considered, ' + stats.rejectedNewWord + ' rejected (new word), ' +
+    stats.rejectedClosedVocab + ' rejected (unexposed word), ' + stats.rejectedAlignment + ' rejected (alignment), ' +
+    stats.rejectedUnsuitable + ' rejected (not a usable sentence)')
+  return { byTarget, stats }
+}
+// GLOBAL solver: largest set with each target covered exactly once (never greedy per target).
+function listeningSolve(byTarget) {
+  // The rule is about SELECTED targets: each one must occur exactly once across the
+  // chosen sentences. A word that appears incidentally everywhere (ครับ, a particle
+  // that is itself a track target) is simply not selected — it must not block coverage.
+  const targets = [...byTarget.keys()].sort((a, b) => byTarget.get(a).length - byTarget.get(b).length)
+  // Greedy seed first (always available, O(n)), then a BOUNDED exhaustive improvement:
+  // the full search is exponential (4^25) and must never hang the app.
+  let best = (() => {
+    const out = [], ids = new Set(), cov = new Set()
+    for (const t of targets) {
+      if (cov.has(t)) continue
+      const c = byTarget.get(t).find(x => !x.covers.some(y => ids.has(y)))
+      if (!c) continue
+      out.push(c); ids.add(t); cov.add(t); c.covers.forEach(x => cov.add(x))
+    }
+    return out
+  })()
+  let budget = 20000
+  const search = (i, chosen, chosenIds, covered) => {
+    if (budget-- <= 0) return                                             // bounded work
+    if (chosen.length + (targets.length - i) <= best.length) return       // cannot beat best
+    if (i >= targets.length) { if (chosen.length > best.length) best = chosen.slice(); return }
+    const t = targets[i]
+    if (!covered.has(t)) {                                                // t not already spoken elsewhere
+      for (const c of byTarget.get(t)) {
+        if (c.covers.some(x => chosenIds.has(x))) continue                // would repeat a SELECTED target
+        const nid = new Set(chosenIds); nid.add(t)
+        const nc = new Set(covered); nc.add(t); c.covers.forEach(x => nc.add(x))
+        search(i + 1, chosen.concat([c]), nid, nc)
+        if (best.length === targets.length) return
+      }
+    }
+    search(i + 1, chosen, chosenIds, covered)                             // omit this target
+  }
+  search(0, [], new Set(), new Set())
+  return best
+}
+
+// Gemini 2.5 Lite: SELECTOR ONLY. It sees safe candidates as metadata and returns ids/indices.
+// Any sentence text it returns is ignored; every id is resolved against the immutable
+// source track. Unknown, duplicate or unsafe ids ⇒ the whole result is rejected.
+async function listeningSelectWithModel(track, lang, cands, apiKey, model, log) {
+  const rows = []
+  cands.byTarget.forEach((list, tid) => list.forEach(c => rows.push({
+    targetId: tid, pairIndex: c.pairIndex, speaker: c.pair.speaker || '',
+    english: (c.pair.english || '').slice(0, 90), cue: (c.pair.prompt || '').slice(0, 70) })))
+  if (!rows.length || !apiKey) return null
+  const prompt = 'You ARRANGE an existing listening lesson. You never write sentences.\n' +
+    'Below are pre-approved candidate lines (English meaning only). Choose EXACTLY ONE pairIndex per targetId,\n' +
+    'covering as many targets as possible, ordered to sound like a real conversation.\n' +
+    'Prefer ONE coherent conversation; if that would be forced, use 2-4 coherent scenes (e.g. home, transport, shop, goodbye).\n' +
+    'Consider: same setting, speaker turn-taking, question then answer, topic and pronoun continuity, greeting first, parting last.\n' +
+    'CANDIDATES:\n' + rows.map(r => 'targetId=' + r.targetId + ' pairIndex=' + r.pairIndex + ' speaker=' + r.speaker + ' means="' + r.english + '" cue="' + r.cue + '"').join('\n') +
+    '\nReply ONLY with JSON: {"selected":[{"targetId":N,"pairIndex":N,"scene":1}],"sceneOrder":[1,2],"coherenceScore":0-100}\n' +
+    'No sentence text. No new lines. Only ids already listed above.'
+  try {
+    const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }])
+    const m = String(raw || '').replace(/```json|```/g, '').match(/\{[\s\S]*\}/)
+    if (!m) { log && log('  🎧 Gemini 2.5 Lite returned no usable JSON — deterministic fallback'); return null }
+    const out = JSON.parse(m[0])
+    const picked = [], seenT = new Set(), seenP = new Set()
+    for (const s of (out.selected || [])) {
+      const list = cands.byTarget.get(s.targetId)
+      if (!list) return log && log('  🎧 Gemini 2.5 Lite returned an unknown targetId — fallback'), null
+      const c = list.find(x => x.pairIndex === s.pairIndex)
+      if (!c) return log && log('  🎧 Gemini 2.5 Lite returned an unsafe/unknown pairIndex — fallback'), null
+      if (seenT.has(s.targetId) || seenP.has(s.pairIndex)) return log && log('  🎧 Gemini 2.5 Lite duplicated a target — fallback'), null
+      seenT.add(s.targetId); seenP.add(s.pairIndex)
+      picked.push({ ...c, scene: Number(s.scene) || 1 })
+    }
+    // the duplicate rule applies to SELECTED targets (same rule as the solver): a target
+    // may not be selected if another chosen sentence already contains it, and a chosen
+    // sentence may not contain a target selected elsewhere.
+    const selIds = new Set(picked.map(c => c.targetId))
+    const covered = new Set()
+    for (const c of picked) {
+      if (covered.has(c.targetId)) { log && log('  🎧 Gemini 2.5 Lite set repeats a selected target — fallback'); return null }
+      if (c.covers.some(x => selIds.has(x))) { log && log('  🎧 Gemini 2.5 Lite set breaks one-occurrence — fallback'); return null }
+      covered.add(c.targetId); c.covers.forEach(x => covered.add(x))
+    }
+    if (!picked.length) return null
+    log && log('  🎧 Gemini 2.5 Lite selected ' + picked.length + ' lines, coherence ' + (out.coherenceScore != null ? out.coherenceScore : '?'))
+    return { picked, coherenceScore: out.coherenceScore != null ? Number(out.coherenceScore) : null, source: 'gemini-2.5-lite' }
+  } catch (e) { log && log('  🎧 Gemini 2.5 Lite selection failed (' + e.message + ') — deterministic fallback'); return null }
+}
+// Deterministic fallback: greeting first, parting last, speaker alternation, source order.
+function listeningSelectDeterministic(picked, log) {
+  const isGreet = c => /greet|hello|hi\b/i.test((c.pair.english || '') + (c.pair._target || ''))
+  const isPart = c => /bye|goodbye|see you|parting/i.test((c.pair.english || '') + (c.pair._target || ''))
+  const rest = picked.filter(c => !isGreet(c) && !isPart(c)).sort((a, b) => a.pairIndex - b.pairIndex)
+  const ordered = [...picked.filter(isGreet), ...rest, ...picked.filter(isPart)]
+  const perScene = Math.max(6, Math.ceil(ordered.length / 4))
+  ordered.forEach((c, i) => { c.scene = Math.floor(i / perScene) + 1 })
+  log && log('  🎧 deterministic order: ' + ordered.length + ' lines in ' + new Set(ordered.map(c => c.scene)).size + ' scene(s)')
+  return { picked: ordered, coherenceScore: null, source: 'deterministic' }
+}
+// FINAL HARD GATE — every invariant proved against the immutable source track.
+function listeningFinalQc(track, lang, vocab, elig, chosen) {
+  const exposed = (vocab || []).filter(w => typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w))
+  const eligTargets = elig.eligible.map(e => e.word)
+  const q = { currentMainTrackNewWordsPresent: 0, unauthorisedUnexposedContentWords: 0, duplicateTargetOccurrences: 0,
+              rewrittenTargetLanguageSentences: 0, inventedTargetLanguageSentences: 0, invalidSourcePairReferences: 0,
+              selectedTargetCount: chosen.length, uniqueSelectedTargetCount: new Set(chosen.map(c => c.targetId)).size, problems: [] }
+  const occ = new Map()
+  const selIds = new Set(chosen.map(c => c.targetId))
+  const sel = elig.eligible.filter(e => selIds.has(e.wordId))
+  chosen.forEach(c => {
+    const src = (track.pairs || [])[c.pairIndex]
+    if (!src || src.wordId !== c.targetId) { q.invalidSourcePairReferences++; q.problems.push('bad source ref @' + c.pairIndex); return }
+    if (listeningSentence(src) !== listeningSentence(c.pair)) { q.rewrittenTargetLanguageSentences++; q.problems.push('sentence differs from source @' + c.pairIndex) }
+    if (!listeningSentence(src)) { q.inventedTargetLanguageSentences++; return }
+    elig.forbidden.forEach(f => { if (listeningContainsTarget(lang, src, listeningTargetSurface(f), vocab)) { q.currentMainTrackNewWordsPresent++; q.problems.push('new word ' + listeningTargetSurface(f)) } })
+    const un = listeningUnexposedWords(lang, src, exposed, eligTargets)
+    if (un.length) { q.unauthorisedUnexposedContentWords += un.length; q.problems.push('unexposed: ' + un.join(' ')) }
+    // count occurrences of SELECTED targets only: an eligible word that was never
+    // selected (a ubiquitous particle) may appear incidentally without breaking the rule
+    sel.forEach(e => { if (listeningContainsTarget(lang, src, listeningTargetSurface(e), vocab)) occ.set(e.wordId, (occ.get(e.wordId) || 0) + 1) })
+  })
+  occ.forEach((n, id) => { if (n > 1) { q.duplicateTargetOccurrences += n - 1; q.problems.push('target ' + id + ' occurs ' + n + '×') } })
+  q.ok = q.currentMainTrackNewWordsPresent === 0 && q.unauthorisedUnexposedContentWords === 0 && q.duplicateTargetOccurrences === 0 &&
+         q.rewrittenTargetLanguageSentences === 0 && q.inventedTargetLanguageSentences === 0 && q.invalidSourcePairReferences === 0 &&
+         q.selectedTargetCount === q.uniqueSelectedTargetCount
+  return q
+}
+// Shared lifecycle: build a Listening Track from a FINAL Main Track. Never mutates it.
+async function buildListeningTrack(mainTrack, vocab, opts) {
+  const o = opts || {}, lang = o.lang || 'th', log = o.onLog || null
+  const elig = listeningEligibility(mainTrack, vocab)
+  const cands = listeningCandidates(mainTrack, lang, vocab, elig, log)
+  log && log('  🎧 targets ' + (mainTrack.keywords || []).length + ' · eligible ' + elig.eligible.length +
+    ' · excluded NEW ' + elig.excludedNew.length + ' · excluded unexposed ' + elig.excludedUnexposed.length)
+  const safe = listeningSolve(cands.byTarget)
+  if (!safe.length) return { ok: false, empty: true, stats: { ...cands.stats, eligible: elig.eligible.length, excludedNew: elig.excludedNew.length } }
+  let sel = await listeningSelectWithModel(mainTrack, lang, { byTarget: new Map([...cands.byTarget].map(([t, l]) => [t, l.filter(c => safe.some(s => s.targetId === t))])) }, o.apiKey, o.model, log)
+  if (sel) { const ids = new Set(sel.picked.map(p => p.targetId)); if (sel.picked.length < safe.length * 0.6) { log && log('  🎧 Gemini 2.5 Lite covered too few targets — fallback'); sel = null } }
+  if (!sel) sel = listeningSelectDeterministic(safe, log)
+  let qc = listeningFinalQc(mainTrack, lang, vocab, elig, sel.picked)
+  if (!qc.ok && sel.source === 'gemini-2.5-lite') { log && log('  🎧 QC failed on the model set — rebuilding deterministically'); sel = listeningSelectDeterministic(safe, log); qc = listeningFinalQc(mainTrack, lang, vocab, elig, sel.picked) }
+  if (!qc.ok) { log && log('  ⛔ listening QC failed: ' + qc.problems.slice(0, 4).join(' | ')); return { ok: false, qc, stats: cands.stats } }
+  const scenes = [...new Set(sel.picked.map(c => c.scene || 1))]
+  const lt = {
+    listeningTrackId: 'lt-' + Date.now() + '-' + Math.floor(Math.random() * 1e4),
+    sourceMainTrackId: listeningTrackId(mainTrack), language: lang, listeningVersion: o.version || 1,
+    creationMode: o.creationMode || 'AUTO_PRETRACK', createdAt: new Date().toISOString(), status: 'not_started',
+    eligibleTargetIds: elig.eligible.map(e => e.wordId), excludedNewTargetIds: elig.excludedNew,
+    omittedTargetIds: elig.eligible.map(e => e.wordId).filter(id => !sel.picked.some(c => c.targetId === id)),
+    sceneGroups: scenes, coherenceScore: sel.coherenceScore, selectionSource: sel.source,
+    // snapshot: byte-copies of the source sentences so old versions stay playable
+    lines: sel.picked.map(c => ({ pairIndex: c.pairIndex, targetId: c.targetId, scene: c.scene || 1,
+      speaker: c.pair.speaker || 'A', thai: c.pair.thai, japanese: c.pair.japanese, chinese: c.pair.chinese,
+      phonetic: c.pair.phonetic, reading: c.pair.reading, pinyin: c.pair.pinyin, romaji: c.pair.romaji,
+      english: c.pair.english, wordId: c.targetId })),
+    qc
+  }
+  log && log('  🎧 listening track: ' + lt.lines.length + ' sentences, ' + scenes.length + ' scene(s), ' +
+    lt.omittedTargetIds.length + ' eligible target(s) omitted, source ' + sel.source)
+  return { ok: true, listeningTrack: lt, stats: cands.stats, qc }
+}
+// Persistence — separate store; Main Tracks are never mutated.
+async function listeningLoadAll() { try { return (await stGet(LISTENING_STORE_KEY)) || {} } catch (e) { return {} } }
+async function listeningVersionsFor(lang, mainTrackId) { const all = await listeningLoadAll(); return ((all[lang] || {})[mainTrackId]) || [] }
+async function listeningSave(lt) {
+  const all = await listeningLoadAll()
+  all[lt.language] = all[lt.language] || {}
+  const list = all[lt.language][lt.sourceMainTrackId] || []
+  const i = list.findIndex(x => x.listeningTrackId === lt.listeningTrackId)
+  if (i >= 0) list[i] = lt; else list.push(lt)
+  all[lt.language][lt.sourceMainTrackId] = list.slice(-5)
+  await stSet(LISTENING_STORE_KEY, all)
+  return lt
+}
+async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, status }) }
+
+// ══ LISTEN FIRST (shared, all languages) ════════════════════════════════════════
+// Soft gate: it appears before the Main Track player, offers Start or Skip, and never
+// touches SRS, belts, ratings or the Main Track itself.
+function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProceed }) {
+  const [phase, setPhase] = useState('loading')      // loading | offer | playing | none
+  const [lt, setLt] = useState(null)
+  const [versions, setVersions] = useState([])
+  const [speed, setSpeed] = useState(1)
+  const [log, setLog] = useState([])
+  const mainId = listeningTrackId(track)
+  const build = useCallback(async (mode) => {
+    setPhase('loading'); const lines = []
+    const prev = await listeningVersionsFor(lang, mainId)
+    const res = await buildListeningTrack(track, vocab, { lang, apiKey, model, creationMode: mode,
+      version: prev.length + 1, onLog: m => lines.push(m) })
+    setLog(lines)
+    if (!res.ok || !res.listeningTrack || !res.listeningTrack.lines.length) { setPhase('none'); return }
+    const saved = await listeningSave(res.listeningTrack)
+    setVersions([...prev, saved]); setLt(saved); setPhase('offer')
+  }, [track, lang, vocab, apiKey, model, mainId])
+  useEffect(() => { let go = true
+    ;(async () => {
+      const prev = await listeningVersionsFor(lang, mainId)
+      if (!go) return
+      setVersions(prev)
+      const fresh = prev.find(v => v.status === 'not_started' || v.status === 'in_progress')
+      if (fresh) { setLt(fresh); setPhase('offer'); return }
+      if (prev.length) { setLt(prev[prev.length - 1]); setPhase('offer'); return }
+      build('AUTO_PRETRACK')
+    })()
+    return () => { go = false }
+  }, [mainId])
+  useEffect(() => { if (phase === 'none') { const t = setTimeout(onProceed, 1400); return () => clearTimeout(t) } }, [phase])
+  const finish = async (status) => { if (lt) await listeningSetStatus(lt, status); onProceed() }
+  const S = { wrap:{ maxWidth:640, margin:'0 auto', padding:'24px 16px' },
+    card:{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:20, textAlign:'center' },
+    btn:{ padding:'14px 22px', borderRadius:10, border:'none', fontSize:16, fontWeight:700, cursor:'pointer' } }
+  if (phase === 'loading') return <div style={S.wrap}><div style={S.card}>🎧<div style={{ marginTop:10, color:'var(--muted)' }}>Preparing listening practice…</div></div></div>
+  if (phase === 'none') return <div style={S.wrap}><div style={S.card}>🎧<div style={{ marginTop:10 }}>No listening review available for this track yet.</div>
+    <button style={{ ...S.btn, marginTop:16, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue</button></div></div>
+  if (phase === 'playing' && lt) {
+    const lines = lt.lines.map(l => ({ ...l, _scene: l.scene }))
+    return <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>
+      <div style={{ textAlign:'center', color:'var(--muted)', fontSize:13, marginBottom:8 }}>
+        🎧 Listening · {lt.lines.length} sentences · {lt.sceneGroups.length} scene{lt.sceneGroups.length > 1 ? 's' : ''} · audio first</div>
+      <ConvoPlayer lines={lines} speed={speed} onSpeedChange={setSpeed} gcpTtsKey={gcpTtsKey}
+        onSkip={() => finish('skipped')} onDone={() => finish('completed')} />
+    </div>
+  }
+  return <div style={S.wrap}><div style={S.card}>
+    <div style={{ fontSize:34 }}>🎧</div>
+    <h2 style={{ margin:'8px 0 4px' }}>Listen first</h2>
+    <div style={{ color:'var(--muted)', fontSize:14, marginBottom:6 }}>
+      {lt ? lt.lines.length + ' sentences you already know, arranged as ' + (lt.sceneGroups.length > 1 ? lt.sceneGroups.length + ' short scenes' : 'a conversation') : ''}
+      {lt && lt.excludedNewTargetIds.length ? ' · today’s ' + lt.excludedNewTargetIds.length + ' new word(s) left out' : ''}
+    </div>
+    <div style={{ color:'var(--muted)', fontSize:12, marginBottom:16 }}>Passive comprehension first — nothing here affects your scores.</div>
+    <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+      <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={() => { setPhase('playing'); if (lt) listeningSetStatus(lt, 'in_progress') }}>▶ Start Listening</button>
+      <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={() => finish('skipped')}>Skip</button>
+    </div>
+    {versions.length > 0 && <button style={{ ...S.btn, marginTop:12, background:'transparent', color:'var(--muted)', fontSize:13, fontWeight:600 }}
+      onClick={() => build('MANUAL_PRACTICE')}>🎧 New listening version ({versions.length} so far)</button>}
+  </div></div>
+}
+
 function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey }) {
   const [lineIdx, setLineIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -12916,7 +13320,7 @@ function calcDuration(thai, phase, phonetic) {
   return ttsDur + pauseDur
 }
 
-function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onReviewQuality, targetLang, startCompleted }) {
+function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onReviewQuality, targetLang, startCompleted, onListening }) {
   // §12 — target-language code for TTS. Defaults to Thai so the Thai runtime is
   // byte-for-byte unchanged; the Japanese runtime passes 'ja'.
   const _tl = targetLang || 'th'
@@ -13173,6 +13577,15 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
             <div className="display" style={{ fontSize:18 }}>Lesson complete!</div>
             <div style={{ fontSize:12, color:'var(--muted)' }}>Rate how well you knew each word</div>
           </div>
+          {/* Listening practice from a FINISHED Main Track: builds another listening
+              version from the sentences this track already contains. */}
+          {onListening && (
+            <button onClick={onListening} title="Listening practice"
+              style={{ marginLeft:'auto', background:'none', border:'1px solid var(--border)', borderRadius:8,
+                       color:'var(--muted)', cursor:'pointer', padding:'6px 10px', fontSize:13, fontWeight:600 }}>
+              🎧 Listening
+            </button>
+          )}
           {/* §28/§29 — QC must stay reachable after finishing the track. Only rendered
               when a handler is supplied, so Thai (which passes none here) is unchanged. */}
           {onReviewQuality && (
@@ -16331,6 +16744,11 @@ function ThaiTeacher({ lang, onSetLang }) {
   const [view, setView] = useState('dashboard')
   const [loading, setLoading] = useState(true)
   const [activeTrack, setActiveTrack] = useState(null)
+  // Listen First soft gate (shared): which track has already been listened to or skipped.
+
+  // Listen First soft gate (shared): which track has already been listened to or skipped.
+  const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_th
+
   const [genMode, setGenMode] = useState('daily')
   const [resumeDraft, setResumeDraft] = useState(null)
   const [pendingReviewTrack, setPendingReviewTrack] = useState(null)
@@ -16719,8 +17137,13 @@ function ThaiTeacher({ lang, onSetLang }) {
           dailyNewWords={dailyNewWords}
           onSaveDailyNewWords={saveDailyNewWords}
         /></ErrorBoundary>}
-        {view === 'player' && activeTrack && (
-          <ErrorBoundary><Player track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} gcpTtsKey={gcpTtsKey}
+        {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
+          <ErrorBoundary><ListenFirstGate track={activeTrack} lang="th" vocab={vocab}
+            apiKey={orKey} model={resolveOrModel(provider)} gcpTtsKey={gcpTtsKey}
+            onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
+        )}
+        {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (
+          <ErrorBoundary><Player onListening={() => setListenDoneFor(null)} track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} gcpTtsKey={gcpTtsKey}
             onReviewQuality={() => { setPendingReviewTrack(activeTrack); navigate('quality-review') }}
             onBookmark={async (pairIdx) => {
               // Match on the track's own id. `t === activeTrack` relies on object
@@ -20900,6 +21323,9 @@ function JapaneseTeacher({ lang, onSetLang }) {
   const [qcReturnContext, setQcReturnContext] = useState(null)
   const [playerResumeCompleted, setPlayerResumeCompleted] = useState(false)   // §7 lesson-complete resume
   const [activeTrack, setActiveTrack]   = useState(null)
+  // Listen First soft gate (shared): which track has already been listened to or skipped.
+  const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_ja
+
 
   useEffect(() => {
     let dead = false
@@ -21102,10 +21528,15 @@ function JapaneseTeacher({ lang, onSetLang }) {
               onSkip={onQcSkip} />
           </ErrorBoundary>
         )}
-        {view === 'player' && activeTrack && (
+        {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
+          <ErrorBoundary><ListenFirstGate track={activeTrack} lang="ja" vocab={vocab}
+            apiKey={cred.orKey} model={resolveOrModel(cred.provider)} gcpTtsKey={cred.gcpTtsKey}
+            onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
+        )}
+        {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (
           <ErrorBoundary>
             <Player key={(activeTrack.createdAt || '') + (playerResumeCompleted ? ':done' : '')}
-              track={activeTrack} targetLang="ja" gcpTtsKey={cred.gcpTtsKey}
+              onListening={() => setListenDoneFor(null)} track={activeTrack} targetLang="ja" gcpTtsKey={cred.gcpTtsKey}
               onBookmark={async (pairIdx) => {
                 // Identity is language + track + pair. The JA store is separate from
                 // the other languages, and the track is matched on its own id rather
@@ -22760,6 +23191,8 @@ function MandarinTeacher({ lang, onSetLang }) {
   const [qcReturnContext, setQcReturnContext] = useState(null)
   const [playerResumeCompleted, setPlayerResumeCompleted] = useState(false)
   const [activeTrack, setActiveTrack] = useState(null)
+  // Listen First soft gate (shared).
+  const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_zh
   const [trackMode, setTrackMode] = useState('daily')   // §5 'daily' | 'srs'
 
   useEffect(() => {
@@ -22939,10 +23372,15 @@ function MandarinTeacher({ lang, onSetLang }) {
             <MandarinQualityReview track={pendingReviewTrack} vocab={vocab} cred={cred} onSave={onQcSave} onSkip={onQcSkip} />
           </ErrorBoundary>
         )}
-        {view === 'player' && activeTrack && (
+        {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
+          <ErrorBoundary><ListenFirstGate track={activeTrack} lang="zh" vocab={vocab}
+            apiKey={cred.orKey} model={resolveOrModel(cred.provider)} gcpTtsKey={cred.gcpTtsKey}
+            onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
+        )}
+        {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (
           <ErrorBoundary>
             <Player key={(activeTrack.createdAt || '') + (playerResumeCompleted ? ':done' : '')}
-              track={activeTrack} targetLang="zh" gcpTtsKey={cred.gcpTtsKey}
+              onListening={() => setListenDoneFor(null)} track={activeTrack} targetLang="zh" gcpTtsKey={cred.gcpTtsKey}
               onBookmark={async (pairIdx) => {
                 // Identity is language + track + pair. The ZH store is separate from
                 // the other languages, and the track is matched on its own id rather

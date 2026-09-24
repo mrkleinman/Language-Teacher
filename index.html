@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v625"/>
+<meta name="app-version" content="v634"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v625';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v625').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v634';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v634').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4735,6 +4735,160 @@ function japaneseUnknownContent(sentence, allowed, scaffold) {
 // §5/§7C — Conversation Basics. A third category, distinct from SRS vocabulary and
 // from grammar particles: the minimum framing needed for a conversation to exist at
 // all. Never rated, never Known, never a slot. Deliberately tiny.
+// ══ JAPANESE LEARNING INVENTORY — Building Blocks & Conversation Basics (Phase 2) ══
+// Three separate streams: content vocabulary (belt totals), Conversation Basics (fixed
+// chunks) and Building Blocks (grammatical CONCEPTS). A Building Block is a concept with
+// register realisations — 食べています / 食べてます / 食べてる are ONE mastery item, not three.
+// Static curriculum here; learner progress lives in its own store (JA_GRAMMAR_KEY) so
+// vocabulary belt totals and word scheduling can never be affected.
+const JA_GRAMMAR_KEY = 'tt-ja-grammar-srs'
+const JA_GRAMMAR_MIGRATION = 'ja-grammar-curriculum-v1'
+// realisations: { polite, politeCasual, natural } — surface only, never separate mastery.
+const JA_BUILDING_BLOCKS = [
+  // core particles (ids reused from JAPANESE_GRAMMAR_SCAFFOLD so declared metadata stays valid)
+  { id:'wa', label:'は', romaji:'wa', meaning:'topic marker', explain:'Marks what the sentence is about.', order:10, prereq:[], kind:'particle', minKnown:0 },
+  { id:'wo', label:'を', romaji:'wo', meaning:'direct object', explain:'Marks the thing the verb acts on.', order:20, prereq:[], kind:'particle', minKnown:8 },
+  { id:'ni', label:'に', romaji:'ni', meaning:'destination / time / recipient', explain:'Where you go, when it happens, who receives.', order:30, prereq:[], kind:'particle', minKnown:10 },
+  { id:'de', label:'で', romaji:'de', meaning:'place of action / means', explain:'Where something happens, or what you do it with.', order:40, prereq:[], kind:'particle', minKnown:16 },
+  { id:'to', label:'と', romaji:'to', meaning:'with / and', explain:'Joins nouns, or says who you are with.', order:50, prereq:[], kind:'particle', minKnown:20 },
+  { id:'mo', label:'も', romaji:'mo', meaning:'also / too', explain:'Replaces は or を to mean "also".', order:60, prereq:['wa'], kind:'particle', minKnown:24 },
+  { id:'no', label:'の', romaji:'no', meaning:'possessive / linking', explain:'Links two nouns: 友達の本 = my friend\u2019s book.', order:70, prereq:[], kind:'particle', minKnown:12 },
+  { id:'ka', label:'か', romaji:'ka', meaning:'question marker', explain:'Makes a polite question.', order:80, prereq:[], kind:'particle', minKnown:0 },
+  // conversational endings
+  { id:'ne', label:'ね', romaji:'ne', meaning:'soft agreement', explain:'Invites agreement: "…right?"', order:90, prereq:[], kind:'ending', minKnown:0 },
+  { id:'yo', label:'よ', romaji:'yo', meaning:'informing / emphasis', explain:'Tells the listener something new.', order:100, prereq:[], kind:'ending', minKnown:0 },
+  { id:'yone', label:'よね', romaji:'yo ne', meaning:'shared confirmation', explain:'"…isn\u2019t it?" — you both know this.', order:110, prereq:['ne','yo'], kind:'ending', minKnown:30 },
+  // basic forms
+  { id:'plain-present', label:'plain present', romaji:'', meaning:'plain present / future', explain:'The dictionary form: 行く = go / will go.', order:120, prereq:[], kind:'form', minKnown:0,
+    realisations:{ natural:'行く', politeCasual:'行きます', polite:'行きます' } },
+  { id:'past', label:'〜た', romaji:'-ta', meaning:'plain past', explain:'食べた = ate.', order:130, prereq:['plain-present'], kind:'form', minKnown:40,
+    realisations:{ natural:'食べた', politeCasual:'食べました', polite:'食べました' } },
+  { id:'nai', label:'〜ない', romaji:'-nai', meaning:'plain negative', explain:'食べない = don\u2019t eat.', order:140, prereq:['plain-present'], kind:'form', minKnown:35,
+    realisations:{ natural:'食べない', politeCasual:'食べません', polite:'食べません' } },
+  { id:'past-nai', label:'〜なかった', romaji:'-nakatta', meaning:'plain past negative', explain:'食べなかった = didn\u2019t eat.', order:150, prereq:['past','nai'], kind:'form', minKnown:55 },
+  { id:'masu', label:'〜ます', romaji:'-masu', meaning:'polite verb ending', explain:'The polite verb ending.', order:160, prereq:['plain-present'], kind:'form', minKnown:25 },
+  { id:'te', label:'て-form', romaji:'-te', meaning:'connecting form', explain:'The form that links verbs and builds many constructions.', order:170, prereq:['plain-present'], kind:'form', minKnown:45 },
+  // constructions
+  { id:'teru', label:'〜てる', romaji:'-teru', meaning:'ongoing / current state', explain:'What is happening now. Friendly form of 〜ている.', order:180, prereq:['te'], kind:'construction', minKnown:50,
+    realisations:{ natural:'食べてる', politeCasual:'食べてます', polite:'食べています' } },
+  { id:'tai', label:'〜たい', romaji:'-tai', meaning:'want to', explain:'食べたい = I want to eat.', order:190, prereq:['plain-present'], kind:'construction', minKnown:55,
+    realisations:{ natural:'食べたい', politeCasual:'食べたいです', polite:'食べたいです' } },
+  { id:'nai-invite', label:'〜ない？', romaji:'-nai?', meaning:'friendly invitation', explain:'行かない？ = want to go?', order:200, prereq:['nai'], kind:'construction', minKnown:60 },
+  { id:'volitional', label:'〜よう / 〜こう', romaji:'-ou', meaning:'let\u2019s …', explain:'行こう = let\u2019s go.', order:210, prereq:['plain-present'], kind:'construction', minKnown:65,
+    realisations:{ natural:'行こう', politeCasual:'行きましょう', polite:'行きましょう' } },
+  { id:'no-question', label:'〜の？', romaji:'-no?', meaning:'friendly explanatory question', explain:'行くの？ = are you going (then)?', order:220, prereq:['no'], kind:'construction', minKnown:70 },
+  { id:'nda', label:'〜んだ', romaji:'-nda', meaning:'explanation / background', explain:'Gives the reason behind what you said.', order:230, prereq:['no-question'], kind:'construction', minKnown:80 },
+  { id:'kara', label:'〜から', romaji:'kara', meaning:'because', explain:'Reason first, then result.', order:240, prereq:['plain-present'], kind:'construction', minKnown:75 },
+  { id:'kedo', label:'〜けど', romaji:'kedo', meaning:'but / soft setup', explain:'Softens or sets up what follows.', order:250, prereq:['plain-present'], kind:'construction', minKnown:78 },
+  { id:'kana', label:'〜かな', romaji:'kana', meaning:'I wonder / maybe', explain:'Thinking aloud.', order:260, prereq:['ka'], kind:'construction', minKnown:82 },
+  { id:'toomou', label:'〜と思う', romaji:'to omou', meaning:'I think that…', explain:'Quotes your own thought.', order:270, prereq:['plain-present'], kind:'construction', minKnown:88 },
+  { id:'tekureru', label:'〜てくれる？', romaji:'-te kureru?', meaning:'friendly request', explain:'Asks someone to do something for you.', order:280, prereq:['te'], kind:'construction', minKnown:92 },
+  { id:'temoii', label:'〜てもいい？', romaji:'-te mo ii?', meaning:'permission', explain:'May I …?', order:290, prereq:['te'], kind:'construction', minKnown:95 },
+  { id:'nakya', label:'〜なきゃ', romaji:'-nakya', meaning:'have to', explain:'行かなきゃ = I have to go.', order:300, prereq:['nai'], kind:'construction', minKnown:100 },
+  { id:'takotoaru', label:'〜たことある', romaji:'-ta koto aru', meaning:'have done before', explain:'Experience.', order:310, prereq:['past'], kind:'construction', minKnown:110 },
+  { id:'tara', label:'〜たら', romaji:'-tara', meaning:'if / when', explain:'Condition.', order:320, prereq:['past'], kind:'construction', minKnown:120 },
+  { id:'houga', label:'〜ほうが', romaji:'hou ga', meaning:'comparison / better to', explain:'Compares two options.', order:330, prereq:['no'], kind:'construction', minKnown:125 },
+  { id:'tte', label:'〜って', romaji:'-tte', meaning:'casual quotation / topic', explain:'Casual "…said" or "as for…".', order:340, prereq:['plain-present'], kind:'construction', minKnown:130 },
+  { id:'noun-modify', label:'noun-modifying clause', romaji:'', meaning:'clause describing a noun', explain:'昨日買った本 = the book I bought yesterday.', order:350, prereq:['past'], kind:'construction', minKnown:140 },
+]
+// Conversation Basics: fixed/semi-fixed chunks with their own mastery (never belt slots).
+const JA_CONVERSATION_BASICS = [
+  { id:'konnichiwa', form:'こんにちは', romaji:'konnichiwa', english:'hello', order:10, minKnown:0 },
+  { id:'un', form:'うん', romaji:'un', english:'yeah', order:20, minKnown:0 },
+  { id:'matane', form:'またね', romaji:'mata ne', english:'see you', order:30, minKnown:0 },
+  { id:'jaa', form:'じゃあ', romaji:'jaa', english:'well then', order:40, minKnown:0 },
+  { id:'soudane', form:'そうだね', romaji:'sou da ne', english:"yeah / that's true", order:50, minKnown:20 },
+  { id:'iine', form:'いいね', romaji:'ii ne', english:'sounds good', order:60, minKnown:25 },
+  { id:'honto', form:'ほんと？', romaji:'honto?', english:'really?', order:70, minKnown:30 },
+  { id:'sokka', form:'そっか', romaji:'sokka', english:'I see', order:80, minKnown:35 },
+  { id:'naruhodo', form:'なるほど', romaji:'naruhodo', english:'I see / makes sense', order:90, minKnown:45 },
+  { id:'doushiyou', form:'どうしよう', romaji:'dou shiyou', english:'what should I do?', order:100, minKnown:60 },
+]
+const jaBlockById = id => JA_BUILDING_BLOCKS.find(b => b.id === id) || null
+const jaBasicById = id => JA_CONVERSATION_BASICS.find(b => b.id === id) || null
+// Surface form for the learner's current register — realisation only, never mastery.
+function jaBlockRealisation(block, register) {
+  if (!block) return ''
+  const r = block.realisations
+  if (!r) return block.label
+  const reg = register === 'polite' ? 'polite' : register === 'polite-casual' ? 'politeCasual' : 'natural'
+  return r[reg] || r.natural || block.label
+}
+
+// ── learner progress store (separate from tt-ja-vocab: belt totals cannot be affected) ──
+// Records are SRS-shaped so the existing applyRating/calcInterval engine is reused as-is.
+function jaProgressKeyOf(type, id) { return type + ':' + id }
+function jaNewProgressRecord(type, id) {
+  return { key: jaProgressKeyOf(type, id), type, itemId: id, status: 'new', interval: 0, dueDate: null,
+           lastSeen: null, introducedAt: null, okStreak: 0, lapses: 0, exposures: 0, productiveExposures: 0 }
+}
+async function jaGrammarLoad() { try { return (await stGet(JA_GRAMMAR_KEY)) || {} } catch (e) { return {} } }
+async function jaGrammarSave(store) { await stSet(JA_GRAMMAR_KEY, store); return store }
+function jaGrammarGet(store, type, id) { return (store || {})[jaProgressKeyOf(type, id)] || jaNewProgressRecord(type, id) }
+// Introduction is an explicit event: nothing is "due" before the learner has met it.
+function jaGrammarIntroduce(store, type, id, when) {
+  const k = jaProgressKeyOf(type, id)
+  const rec = store[k] || jaNewProgressRecord(type, id)
+  if (!rec.introducedAt) { rec.introducedAt = when || new Date().toISOString().slice(0, 10); rec.status = 'learning' }
+  store[k] = rec; return rec
+}
+function jaGrammarRecordExposure(store, type, id, productive) {
+  const k = jaProgressKeyOf(type, id)
+  const rec = store[k] || jaNewProgressRecord(type, id)
+  rec.exposures = (rec.exposures || 0) + 1
+  if (productive) rec.productiveExposures = (rec.productiveExposures || 0) + 1
+  rec.lastSeen = new Date().toISOString().slice(0, 10)
+  store[k] = rec; return rec
+}
+// Same Hard/OK/Easy meaning and the same scheduling engine as vocabulary — separate data.
+function jaGrammarApplyRating(store, type, id, rating) {
+  const k = jaProgressKeyOf(type, id)
+  const rec = store[k] || jaNewProgressRecord(type, id)
+  const rated = applyRating({ ...rec, thai: rec.key }, rating)     // engine is record-shaped and language-neutral
+  const out = { ...rec, status: rated.status, interval: rated.interval, dueDate: rated.dueDate,
+                lastSeen: rated.lastSeen, okStreak: rated.okStreak, lapses: rated.lapses,
+                introducedAt: rec.introducedAt || rated.introducedAt || new Date().toISOString().slice(0, 10) }
+  store[k] = out; return out
+}
+function jaGrammarDue(store, type, today) {
+  const t = today || new Date().toISOString().slice(0, 10)
+  return Object.values(store || {}).filter(r => r && r.type === type && r.introducedAt && r.dueDate && r.dueDate <= t)
+}
+// Curriculum unlock: available when its word gate is met AND every prerequisite is introduced.
+function jaBlocksAvailable(vocab, store) {
+  const known = (vocab || []).filter(w => w.status === 'known' || w.status === 'learning').length
+  return JA_BUILDING_BLOCKS.filter(b => known >= (b.minKnown || 0) &&
+    (b.prereq || []).every(p => (jaGrammarGet(store, 'buildingBlock', p).introducedAt)))
+}
+function jaBasicsAvailable(vocab) {
+  const known = (vocab || []).filter(w => w.status === 'known' || w.status === 'learning').length
+  return JA_CONVERSATION_BASICS.filter(b => known >= (b.minKnown || 0))
+}
+// One-time, idempotent, additive: seeds progress records for anything the learner has
+// already been exposed to through the legacy scaffolds. No learner data is overwritten.
+async function jaGrammarMigrateV1(vocab) {
+  const mig = (await stGet('tt-migrations')) || {}
+  const store = await jaGrammarLoad()
+  if (mig[JA_GRAMMAR_MIGRATION] && mig[JA_GRAMMAR_MIGRATION].status === 'done') return { store, changes: 0, already: true }
+  const known = (vocab || []).filter(w => w.status === 'known' || w.status === 'learning').length
+  let changes = 0
+  const legacy = (typeof JAPANESE_GRAMMAR_SCAFFOLD !== 'undefined' ? JAPANESE_GRAMMAR_SCAFFOLD : [])
+    .concat(typeof JAPANESE_MORPHOLOGY_SCAFFOLD !== 'undefined' ? JAPANESE_MORPHOLOGY_SCAFFOLD : [])
+  legacy.forEach(g => {
+    if (!jaBlockById(g.id)) return                                  // unknown legacy id: leave it alone
+    const gate = Math.max(g.minKnown || 0, g.minIntroduced || 0)
+    if (known >= gate) { const k = jaProgressKeyOf('buildingBlock', g.id); if (!store[k] || !store[k].introducedAt) { jaGrammarIntroduce(store, 'buildingBlock', g.id); changes++ } }
+  })
+  ;(typeof JAPANESE_CONVERSATION_BASICS !== 'undefined' ? JAPANESE_CONVERSATION_BASICS : []).forEach(b => {
+    if (!jaBasicById(b.id)) return
+    if (known >= (b.minKnown || 0)) { const k = jaProgressKeyOf('conversationBasic', b.id); if (!store[k] || !store[k].introducedAt) { jaGrammarIntroduce(store, 'conversationBasic', b.id); changes++ } }
+  })
+  await jaGrammarSave(store)
+  mig[JA_GRAMMAR_MIGRATION] = { status: 'done', at: new Date().toISOString(), seeded: changes }
+  await stSet('tt-migrations', mig)
+  return { store, changes, already: false }
+}
+
 const JAPANESE_CONVERSATION_BASICS = [
   { id:'konnichiwa', form:'\u3053\u3093\u306B\u3061\u306F', romaji:'konnichiwa', english:'hello',          minKnown:0 },
   { id:'un',         form:'\u3046\u3093',                   romaji:'un',         english:'yeah',           minKnown:0 },
@@ -9446,13 +9600,22 @@ function enforceThaiClosedVocabulary(pairs, ctx, opts) {
                    words: [], _source: 'closed-vocab-fallback:' + (tgt.thai || ''), _closedVocabRepaired: true }); return }
     }
     // 3. greeting / parting: a framing line built only from authorised words, else drop it
-    if (!tgt && (THAI_FRAMING_TARGETS.has(p._target) || p.wordId == null)) {
+    // A framing slot must be EXPLICITLY marked. Treating "no wordId" as framing replaced
+    // real content pairs with a generic parting line (23-Sept [003][056][062][075-077]):
+    // the cue still described the content while the sentence said "See you later".
+    // A content pair that cannot be repaired is DROPPED, never misrepresented as covered.
+    const _isFraming = THAI_FRAMING_TARGETS.has(p._target) ||
+      (p.wordId == null && !p.prompt && !(o.targetsById && o.targetsById.size))
+    if (!tgt && _isFraming) {
       const polite = /\u0E04\u0E48\u0E30/.test(p.thai) ? '\u0E04\u0E48\u0E30' : '\u0E04\u0E23\u0E31\u0E1A'
       const opts2 = /greet|open/.test(String(p._target)) ?
         [['\u0E2A\u0E27\u0E31\u0E2A\u0E14\u0E35' + polite, 'Hello.'], ['\u0E2A\u0E27\u0E31\u0E2A\u0E14\u0E35', 'Hi.']] :
         [['\u0E41\u0E25\u0E49\u0E27\u0E40\u0E08\u0E2D\u0E01\u0E31\u0E19' + polite, 'See you later.'], ['\u0E02\u0E2D\u0E1A\u0E04\u0E38\u0E13' + polite, 'Thank you.'], ['\u0E2A\u0E27\u0E31\u0E2A\u0E14\u0E35' + polite, 'Goodbye.']]
       const f = opts2.find(([th]) => check(th).ok)
-      if (f) { stats.framingReplaced++; out.push({ ...p, thai: f[0], english: f[1], phonetic: '', words: [], _source: 'closed-vocab-framing', _closedVocabRepaired: true }); return }
+      // cue must describe what the sentence now says, or the pair is internally inconsistent
+      if (f) { stats.framingReplaced++; out.push({ ...p, thai: f[0], english: f[1], phonetic: '', words: [],
+        prompt: /greet|open/.test(String(p._target)) ? 'Greet the other person' : 'Say goodbye',
+        _source: 'closed-vocab-framing', _closedVocabRepaired: true }); return }
     }
     // 4. nothing legal available: DROP rather than save an illegal sentence
     stats.dropped++
@@ -12885,7 +13048,7 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
     return <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>
       <div style={{ textAlign:'center', color:'var(--muted)', fontSize:13, marginBottom:8 }}>
         🎧 Listening · {lt.lines.length} sentences · {lt.sceneGroups.length} scene{lt.sceneGroups.length > 1 ? 's' : ''} · audio first</div>
-      <ConvoPlayer lines={lines} speed={speed} onSpeedChange={setSpeed} gcpTtsKey={gcpTtsKey}
+      <ConvoPlayer lines={lines} speed={speed} onSpeedChange={setSpeed} gcpTtsKey={gcpTtsKey} lang={lang}
         title={(LISTENING_LANGS[lang] ? LISTENING_LANGS[lang].charAt(0).toUpperCase() + LISTENING_LANGS[lang].slice(1) : 'Thai') + ' Conversation'}
         onSkip={() => finish('skipped')} onDone={() => finish('completed')} />
     </div>
@@ -12907,7 +13070,15 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
   </div></div>
 }
 
-function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, title }) {
+// lang (Phase B): Listening reuses this player for every language. It used to hardcode
+// Thai voices and th-TH, so Japanese and Mandarin listening spoke with a Thai voice.
+const CONVO_TTS = {
+  th: { code:'th-TH', a:'th-TH-Chirp3-HD-Charon', b:'th-TH-Chirp3-HD-Aoede', prefix:'th' },
+  ja: { code:'ja-JP', a:'ja-JP-Neural2-C',        b:'ja-JP-Neural2-B',       prefix:'ja' },
+  zh: { code:'cmn-CN', a:'cmn-CN-Wavenet-C',      b:'cmn-CN-Wavenet-A',      prefix:'zh' },
+}
+function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, title, lang }) {
+  const _tts = CONVO_TTS[lang] || CONVO_TTS.th
   const [lineIdx, setLineIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [voices, setVoices] = useState([])
@@ -12935,13 +13106,13 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, t
       // ── Google Cloud TTS (WaveNet: th-TH-Wavenet-B male, th-TH-Wavenet-A female) ──
       if (gcpTtsKey) {
         try {
-          const voiceName = isASpeaker ? 'th-TH-Chirp3-HD-Charon' : 'th-TH-Chirp3-HD-Aoede'
+          const voiceName = isASpeaker ? _tts.a : _tts.b          // both voices stay in the track language
           const resp = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${gcpTtsKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               input: { text: line.thai },
-              voice: { languageCode: 'th-TH', name: voiceName },
+              voice: { languageCode: _tts.code, name: voiceName },
               audioConfig: { audioEncoding: 'MP3', speakingRate: Math.min(Math.max(speedRef.current || 0.8, 0.25), 4.0) }  // pace control added May 2025
             })
           })
@@ -12959,10 +13130,10 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, t
       if (!HAS_SPEECH) { setTimeout(() => { if (!cancelRef.current) setLineIdx(i => i + 1) }, 1200); return }
       try { window.speechSynthesis.cancel() } catch(e) {}
       const u = new SpeechSynthesisUtterance(ttsTextForPair(line))
-      u.lang = 'th-TH'
+      u.lang = _tts.code
       u.rate = speedRef.current || 0.8
       u.pitch = 1
-      const anyThai = voices.filter(v => v.lang && v.lang.startsWith('th'))
+      const anyThai = voices.filter(v => v.lang && v.lang.startsWith(_tts.prefix))   // never a different language
       const maleVoice = anyThai.find(v => /niwat|male/i.test(v.name)) || anyThai.find(v => v.name && v.gender === 'male') || anyThai[0]
       const femaleVoice = anyThai.find(v => /premwadee|female/i.test(v.name)) || anyThai.find(v => v.name && v.gender === 'female') || anyThai[0]
       if (isASpeaker ? maleVoice : femaleVoice) u.voice = isASpeaker ? maleVoice : femaleVoice
@@ -13797,6 +13968,181 @@ function calcDuration(thai, phase, phonetic) {
   return ttsDur + pauseDur
 }
 
+// ══ PHASE 8 — REGISTER REALISATION & FIT ═════════════════════════════════════════
+// Register decides how an already-chosen construction is SURFACED. Mastery stays with the
+// concept: 食べています / 食べてます / 食べてる are all the ongoing/teiru block.
+// This is a validator plus realisation helpers — no generation behaviour is tuned here.
+const JA_REGISTERS = {
+  polite:          { id:'polite',        label:'Polite',        politeMorph:true,  allowPlain:false, requireKa:true },
+  'polite-casual': { id:'polite-casual', label:'Polite-casual', politeMorph:true,  allowPlain:false, requireKa:false },
+  natural:         { id:'natural',       label:'Natural',       politeMorph:false, allowPlain:true,  requireKa:false },
+  'very-casual':   { id:'very-casual',   label:'Very casual',   politeMorph:false, allowPlain:true,  requireKa:false },
+}
+const jaRegisterOf = id => JA_REGISTERS[id] || JA_REGISTERS.natural
+const JA_POLITE_MORPH = /ます|ません|ました|ませんでした|です|でした|でしょう/
+const JA_KEIGO = /いただけます|いただき|ございます|申し|おっしゃ|なさいま|くださいませ/
+const JA_ROUGH = /(ぞ|ぜ|だろ|やがる|てめえ|うぜ)[。！？!?]?$/
+// Register fit. Grammatically valid Japanese can still be wrong for the chosen register.
+// Deliberately narrow: it catches malformed mixes and clear register violations, not
+// harmless variation.
+function jaValidateRegisterFit(pair, registerId, inv) {
+  const jp = String((pair && pair.japanese) || '')
+  const reg = jaRegisterOf(registerId)
+  const problems = []
+  if (!jp) return { ok: true, problems }
+  // 1. MALFORMED across every register: です bolted onto a plain verb (行くです).
+  //    Driven by the learner's own verb inventory rather than a guessed pattern.
+  const verbs = ((inv && inv.allContent) || []).filter(w => /^to\s|^(go|eat|come|see|do|drink|read|write|sleep|run|buy|show|wake|ride|rest)\b/i.test(String(w.english || '')))
+  const badVerb = verbs.find(w => w.japanese && jp.includes(w.japanese + 'です'))
+  if (badVerb) problems.push('malformed: です cannot follow the plain verb ' + badVerb.japanese)
+  if (/(?:う|く|ぐ|す|つ|ぬ|ぶ|む|る)です/.test(jp) && !/(の|ん|こと|そう|よう|はず|つもり)です/.test(jp))
+    problems.push('malformed: plain verb + です')
+  // 2. polite registers need polite morphology somewhere in a verbal sentence
+  if (reg.politeMorph && !JA_POLITE_MORPH.test(jp) && /[うくぐすつぬぶむる][？?]?$|[たない][。？!?]?$/.test(jp))
+    problems.push('register: ' + reg.label + ' selected but the sentence is in plain form')
+  // 3. plain registers should not carry polite endings (a fixed expression is fine)
+  if (!reg.politeMorph && JA_POLITE_MORPH.test(jp) && !/です[かね]?[。！？!?]?$/.test('') && !/(ありがとうございます|すみません|おはようございます)/.test(jp))
+    problems.push('register: ' + reg.label + ' selected but the sentence uses です／ます')
+  // 4. keigo in a friendly register, rough endings in a polite one
+  if (!reg.politeMorph && JA_KEIGO.test(jp)) problems.push('register: keigo in a ' + reg.label + ' sentence')
+  if (reg.politeMorph && JA_ROUGH.test(jp)) problems.push('register: rough ending in a ' + reg.label + ' sentence')
+  return { ok: problems.length === 0, problems }
+}
+// Surface a concept for a register (realisation only — never a new mastery item).
+function jaRealiseConcept(blockId, registerId) { return jaBlockRealisation(jaBlockById(blockId), registerId) }
+// Every register realisation of a concept resolves back to the SAME block id.
+function jaConceptIdsForSentence(jp, vocab, store) {
+  const avail = jaBlocksAvailable(vocab || [], store || {})
+  return avail.filter(b => JA_BLOCK_DETECT[b.id] && JA_BLOCK_DETECT[b.id](String(jp || ''))).map(b => b.id)
+}
+
+// ══ PHASE 9 — QC rebuilds grammar provenance from the FINAL Japanese ═══════════════
+// If a repair changes the sentence, the stored buildingBlockIds/conversationBasicIds
+// become stale. Metadata is therefore RECOMPUTED from the final text — never used to
+// justify the sentence. Japanese is validated first; only then is metadata rebuilt.
+function jaRebuildGrammarMetadata(pair, vocab, store, register) {
+  const jp = (pair && pair.japanese) || ''
+  if (!jp) return { pair, changed: false, added: [], removed: [] }
+  const avail = jaBlocksAvailable(vocab || [], store || {})
+  const basicsAvail = jaBasicsAvailable(vocab || [])
+  // buildingBlockIds is PEDAGOGICAL provenance, not linguistic annotation: a construction
+  // is recorded only if it is present AND already introduced for this learner (a NEW block
+  // introduced for the current track counts). Gate-free grammar that was never introduced
+  // stays out of SRS entirely — it is reported separately as _grammarDetected.
+  const introduced = id => !!jaGrammarGet(store || {}, 'buildingBlock', id).introducedAt
+  const introducedBasic = id => !!jaGrammarGet(store || {}, 'conversationBasic', id).introducedAt
+  const detected = avail.filter(b => JA_BLOCK_DETECT[b.id] && JA_BLOCK_DETECT[b.id](jp)).map(b => b.id)
+  const found = detected.filter(introduced)
+  const basicsDetected = basicsAvail.filter(b => jp.includes(b.form)).map(b => b.id)
+  const basics = basicsDetected.filter(introducedBasic)
+  const was = new Set(pair.buildingBlockIds || []), now = new Set(found)
+  const added = found.filter(id => !was.has(id))
+  const removed = [...was].filter(id => !now.has(id))
+  const basicsWas = new Set(pair.conversationBasicIds || [])
+  const basicsChanged = basics.length !== basicsWas.size || basics.some(id => !basicsWas.has(id))
+  const changed = added.length > 0 || removed.length > 0 || basicsChanged
+  return { pair: { ...pair, buildingBlockIds: found, conversationBasicIds: basics,
+                   register: register || pair.register || 'natural',
+                   _grammarDetected: detected,            // diagnostic only: never drives SRS
+                   _grammarRebuiltAt: changed ? new Date().toISOString() : pair._grammarRebuiltAt },
+           changed, added, removed, detected }
+}
+// Detects metadata that disagrees with the sentence (stale declaration or undeclared use).
+function jaGrammarMetadataAudit(pair, vocab, store) {
+  const r = jaRebuildGrammarMetadata(pair, vocab, store, pair && pair.register)
+  return { ok: !r.changed, stale: r.removed, undeclared: r.added,
+           problems: r.changed
+             ? [...(r.removed.length ? ['declared but absent: ' + r.removed.join(' ')] : []),
+                ...(r.added.length ? ['used but undeclared: ' + r.added.join(' ')] : [])]
+             : [] }
+}
+
+// ══ PHASE 6 — end-of-track review for Building Blocks & Conversation Basics ═══════
+// Aggregation uses the provenance stored on ACCEPTED pairs (buildingBlockIds /
+// conversationBasicIds). Grammar is never re-inferred from Japanese strings here, and
+// objectives that were requested but skipped or dropped get zero credit.
+function jaAggregatePractice(track) {
+  const blocks = new Map(), basics = new Map()
+  const bump = (map, id, productive) => {
+    const e = map.get(id) || { id, productive: 0, incidental: 0 }
+    if (productive) e.productive++; else e.incidental++
+    map.set(id, e)
+  }
+  ;(track && track.pairs || []).forEach(p => {
+    if (!p) return
+    // a recall the learner had to PRODUCE (it teaches a target) counts productively;
+    // framing/opening/closing lines are incidental exposure only
+    const productive = p.wordId != null || (p._target && !/greeting|parting|opening|closing/i.test(String(p._target)))
+    ;(p.buildingBlockIds || []).forEach(id => bump(blocks, id, productive))
+    ;(p.conversationBasicIds || []).forEach(id => bump(basics, id, productive))
+  })
+  return { blocks: [...blocks.values()], basics: [...basics.values()] }
+}
+// Eligibility: productive use is the qualifying signal. One incidental appearance in
+// framing never forces a rating; three or more exposures do.
+function jaRatingEligible(e) { return !!e && (e.productive >= 1 || (e.productive + e.incidental) >= 3) }
+
+function JaGrammarReview({ track }) {
+  const [store, setStore] = useState(null)
+  const [rated, setRated] = useState({})
+  const agg = useMemo(() => jaAggregatePractice(track), [track])
+  useEffect(() => { let go = true
+    ;(async () => { try { const s = await jaGrammarLoad(); if (go) setStore(s) } catch (e) {} })()
+    return () => { go = false } }, [])
+  const rows = [
+    { key: 'buildingBlock', title: 'BUILDING BLOCKS PRACTISED', items: agg.blocks.filter(jaRatingEligible)
+        .map(e => ({ ...e, def: jaBlockById(e.id) })).filter(x => x.def)
+        .map(x => ({ ...x, label: x.def.label, meaning: x.def.meaning })) },
+    { key: 'conversationBasic', title: 'CONVERSATION BASICS PRACTISED', items: agg.basics.filter(jaRatingEligible)
+        .map(e => ({ ...e, def: jaBasicById(e.id) })).filter(x => x.def)
+        .map(x => ({ ...x, label: x.def.form, meaning: x.def.english })) },
+  ].filter(s => s.items.length)
+  if (!rows.length || !store) return null
+  // Rating persists immediately, so it survives navigation, exit and reload without
+  // depending on the Save Progress button.
+  const rate = async (type, id, rating) => {
+    const s = { ...(store || {}) }
+    jaGrammarApplyRating(s, type, id, rating)
+    await jaGrammarSave(s)
+    setStore(s); setRated(r => ({ ...r, [type + ':' + id]: rating }))
+  }
+  const btn = (type, it, rating, label, bg) => (
+    <button key={rating} onClick={() => rate(type, it.id, rating)}
+      style={{ flex:1, padding:'7px 0', borderRadius:8, border:'1px solid var(--border)', cursor:'pointer',
+        fontSize:12, fontWeight:700,
+        background: rated[type + ':' + it.id] === rating ? bg : 'var(--surface2)',
+        color: rated[type + ':' + it.id] === rating ? '#fff' : 'var(--muted)' }}>{label}</button>
+  )
+  return (
+    <div style={{ marginTop:14 }}>
+      {rows.map(sec => (
+        <div key={sec.key} style={{ marginBottom:12 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, margin:'14px 2px 6px' }}>
+            <span style={{ fontSize:11, fontWeight:800, letterSpacing:0.8, color:'var(--muted)' }}>{sec.title}</span>
+            <div style={{ flex:1, height:1, background:'var(--border)' }} />
+          </div>
+          {sec.items.map(it => (
+            <div key={it.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'8px 10px', marginBottom:6 }}>
+              <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
+                <span className="jp" style={{ fontSize:15, fontWeight:700, color:'var(--text)' }}>{it.label}</span>
+                <span style={{ fontSize:11, color:'var(--muted)' }}>{it.meaning}</span>
+                <span style={{ marginLeft:'auto', fontSize:11, color:'var(--gold)' }}>
+                  {'\u25CF'.repeat(Math.min(3, it.productive)) + '\u25CB'.repeat(Math.min(3, it.incidental))}
+                </span>
+              </div>
+              <div style={{ display:'flex', gap:6, marginTop:6 }}>
+                {btn(sec.key, it, 'hard', 'HARD', '#ef4444')}
+                {btn(sec.key, it, 'ok', 'OK', 'var(--accent)')}
+                {btn(sec.key, it, 'easy', 'EASY', '#10b981')}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onReviewQuality, targetLang, startCompleted, onListening }) {
   // §12 — target-language code for TTS. Defaults to Thai so the Thai runtime is
   // byte-for-byte unchanged; the Japanese runtime passes 'ja'.
@@ -14104,6 +14450,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
             ))
           })()}
         </div>
+        {_tl === 'ja' && <ErrorBoundary><JaGrammarReview track={track} /></ErrorBoundary>}
                 <button onClick={() => onComplete(keywords)} disabled={!allRated}
           style={{ width:'100%', padding:'15px', borderRadius:12, border:'none', background:allRated?'linear-gradient(135deg,#d4a94a,#b88a35)':'var(--surface2)', color:allRated?'#0b1120':'var(--muted)', fontSize:16, fontWeight:700, cursor:allRated?'pointer':'not-allowed', fontFamily:'Sarabun,sans-serif', transition:'all 0.2s' }}>
           Save Progress
@@ -18948,9 +19295,29 @@ function normaliseJapanesePunctuation(s) {
     .replace(/,/g, '\u3001').replace(/\.(?=\s|$)/g, '\u3002')
 }
 
+// ── Phase 4: the NEW curriculum becomes authoritative for what counts as taught ──────
+// The legacy morphology gate rejected ている even when the curriculum had unlocked 〜てる.
+// Introduced curriculum blocks are mapped onto the legacy marker ids the validator uses.
+// Empty until the generator sets it, so default behaviour is unchanged.
+const JA_BLOCK_TO_MARKER = { teru:['teiru','te'], te:['te'], past:['past'], nai:['nai'], 'past-nai':['past','nai'],
+  masu:['masu'], tai:['tai'], volitional:['volitional'], nakya:['nai'], tara:['past'], takotoaru:['past'],
+  'nai-invite':['nai'], 'no-question':['no'], nda:['no'], toomou:['toomou'], tekureru:['te'], temoii:['te'] }
+let JA_CURRICULUM_ALLOWED = new Set()
+function jaSetCurriculumAllowed(store) {
+  const s = new Set()
+  Object.values(store || {}).forEach(r => {
+    if (!r || r.type !== 'buildingBlock' || !r.introducedAt) return
+    s.add(r.itemId)
+    ;(JA_BLOCK_TO_MARKER[r.itemId] || []).forEach(m => s.add(m))
+  })
+  JA_CURRICULUM_ALLOWED = s
+  return s
+}
+
 function validateJapaneseGrammarClosure(pair, inv, allowedGrammarIds) {
   const problems = []
-  const allowed = new Set(allowedGrammarIds || (inv.grammarScaffold || []).map(g => g.id))
+  // legacy scaffold ∪ curriculum blocks the learner has actually been introduced to
+  const allowed = new Set([...(allowedGrammarIds || (inv.grammarScaffold || []).map(g => g.id)), ...JA_CURRICULUM_ALLOWED])
   const allowedForms = new Set((inv.grammarScaffold || []).filter(g => allowed.has(g.id)).map(g => g.form))
   const jp = pair.japanese || ''
   // §24 — untaught inflectional morphology
@@ -21223,13 +21590,101 @@ function JapaneseTargetPill({ w, state, srcColor, recalls }) {
   )
 }
 
-function JapaneseBlockPill({ b, kind }) {
+// Verify DECLARED Building Blocks against the actual Japanese (meaning-first step 4).
+// Detection is per concept: particles by presence, forms/constructions by their written
+// shape in any register realisation. Unknown ids are rejected; declared-but-absent blocks
+// are dropped so stored metadata can never disagree with the sentence.
+const JA_BLOCK_DETECT = {
+  wa: s => /は/.test(s), wo: s => /を/.test(s), ni: s => /に/.test(s), de: s => /で/.test(s),
+  to: s => /と/.test(s), mo: s => /も/.test(s), no: s => /の/.test(s), ka: s => /か[？?]?$|か[、 ]/.test(s),
+  ne: s => /ね[。！？!?]?$|ねえ?[、 ]/.test(s), yo: s => /よ[。！？!?]?$/.test(s), yone: s => /よね/.test(s),
+  masu: s => /ます|ました|ません/.test(s), nai: s => /ない|ません/.test(s), past: s => /った|た[。？!?]?$|ました/.test(s),
+  'past-nai': s => /なかった|ませんでした/.test(s), te: s => /て[いてくもみ]|で[いすも]|てる|てます/.test(s),
+  teru: s => /てる|でる|ています|てます|でます/.test(s), tai: s => /たい/.test(s),
+  'nai-invite': s => /ない[？?]/.test(s), volitional: s => /(こう|ろう|よう|ましょう)[。？!?]?$/.test(s),
+  'no-question': s => /の[？?]$/.test(s), nda: s => /んだ|んです/.test(s), kara: s => /から/.test(s),
+  kedo: s => /けど|けれど/.test(s), kana: s => /かな/.test(s), toomou: s => /と思う|と思います/.test(s),
+  tekureru: s => /てくれ/.test(s), temoii: s => /てもいい/.test(s), nakya: s => /なきゃ|なければ/.test(s),
+  takotoaru: s => /たことある|たことがあ/.test(s), tara: s => /たら/.test(s), houga: s => /ほうが/.test(s),
+  tte: s => /って/.test(s), 'plain-present': s => /[うくぐすつぬぶむる][。？!?]?$|[るく][？?]$/.test(s),
+}
+function jaVerifyDeclaredBlocks(sentence, declaredBlocks, declaredBasics, available, basicsAvailable, store) {
+  const s = String(sentence || '')
+  const availIds = new Set((available || []).map(b => b.id))
+  const basicIds = new Set((basicsAvailable || []).map(b => b.id))
+  const unknown = [], confirmed = [], dropped = []
+  ;(declaredBlocks || []).forEach(id => {
+    if (!availIds.has(id)) { unknown.push(id); return }
+    const det = JA_BLOCK_DETECT[id]
+    if (!(!det || det(s))) { dropped.push(id); return }
+    // present, but only pedagogically recorded once introduced for this learner
+    if (store && !jaGrammarGet(store, 'buildingBlock', id).introducedAt) { dropped.push(id); return }
+    confirmed.push(id)
+  })
+  const basics = (declaredBasics || []).filter(id => basicIds.has(id) &&
+    (jaBasicById(id) ? s.includes(jaBasicById(id).form) : false) &&
+    (!store || !!jaGrammarGet(store, 'conversationBasic', id).introducedAt))
+  const basicsUnknown = (declaredBasics || []).filter(id => !basicIds.has(id))
+  // undeclared grammar actually present (diagnostic for QC, never a silent pass)
+  const undeclared = (available || []).filter(b => !confirmed.includes(b.id) && JA_BLOCK_DETECT[b.id] && JA_BLOCK_DETECT[b.id](s)).map(b => b.id)
+  return { ok: unknown.length === 0 && basicsUnknown.length === 0, unknown: unknown.concat(basicsUnknown),
+           blocks: confirmed, basics, dropped, undeclared }
+}
+
+// Scene-screen status for a Building Block / Conversation Basic (Phase 3, display only).
+function jaItemStatus(rec, today) {
+  const t = today || new Date().toISOString().slice(0, 10)
+  if (!rec || !rec.introducedAt) return 'NEW'
+  if (rec.status === 'known') return 'LEARNED'
+  if (rec.dueDate && rec.dueDate <= t) return 'DUE'
+  return 'REINFORCE'
+}
+// Rows to show before generation: what is due, what is new this session, and anything the
+// scene already uses. Display only — generation selection arrives in Phase 4.
+function jaSceneRows(vocab, store, sceneText, register) {
+  const today = new Date().toISOString().slice(0, 10)
+  const rank = s => ({ NEW: 0, DUE: 1, REINFORCE: 2, LEARNED: 3 })[s]
+  const build = (items, type, formOf) => items.map(it => {
+    const rec = jaGrammarGet(store || {}, type, it.id)
+    return { item: it, id: it.id, type, status: jaItemStatus(rec, today), rec,
+             form: formOf(it), romaji: it.romaji || '', meaning: it.meaning || it.english || '',
+             explain: it.explain || '', inScene: !!(sceneText && formOf(it) && sceneText.includes(formOf(it))) }
+  })
+  const blocks = build(jaBlocksAvailable(vocab, store || {}), 'buildingBlock', b => jaBlockRealisation(b, register) || b.label)
+  const basics = build(jaBasicsAvailable(vocab), 'conversationBasic', b => b.form)
+  // Due work comes first; at most 2 genuinely NEW items are surfaced per scene, so new
+  // grammar can never crowd out what is actually due for review.
+  const ord = (a, b) => (a.item.order || 0) - (b.item.order || 0)
+  const pick = rows => {
+    const due = rows.filter(r => r.status === 'DUE').sort(ord)
+    const reinforce = rows.filter(r => r.status === 'REINFORCE').sort(ord)
+    const fresh = rows.filter(r => r.status === 'NEW').sort(ord).slice(0, 2)
+    const learnedInScene = rows.filter(r => r.status === 'LEARNED' && r.inScene).sort(ord)
+    return [...due, ...reinforce, ...fresh, ...learnedInScene].slice(0, 5)
+  }
+  return { blocks: pick(blocks), basics: pick(basics) }
+}
+
+function JapaneseBlockPill({ b, kind, row }) {
+  // row (Phase 3) carries curriculum status; without it the pill renders exactly as before.
+  const S = { NEW:{ bg:'var(--accent)', fg:'#fff' }, DUE:{ bg:'#f59e0b', fg:'#1a1a1a' },
+              REINFORCE:{ bg:'var(--surface)', fg:'var(--muted)' }, LEARNED:{ bg:'transparent', fg:'var(--muted)' } }[row ? row.status : ''] || null
   return (
     <div style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)',
-      border:'1px solid var(--border)', borderRadius:8, padding:'6px 10px', minWidth:0 }}>
-      <span className="jp" style={{ color:'var(--text)', fontSize:15, fontWeight:700, lineHeight:1.2 }}>{b.form}</span>
-      <span className="phon" style={{ color:'var(--gold)', fontSize:11, lineHeight:1.2 }}>{b.romaji}</span>
-      <span style={{ color:'var(--muted)', fontSize:11, lineHeight:1.3, marginLeft:'auto' }}>{b.meaning || b.english}</span>
+      border:'1px solid ' + (row && row.status === 'NEW' ? 'var(--accent)' : 'var(--border)'), borderRadius:8, padding:'6px 10px', minWidth:0 }}>
+      <span className="jp" style={{ color:'var(--text)', fontSize:15, fontWeight:700, lineHeight:1.2 }}>{(row && row.form) || b.form || b.label}</span>
+      <span className="phon" style={{ color:'var(--gold)', fontSize:11, lineHeight:1.2 }}>{(row && row.romaji) || b.romaji}</span>
+      <span style={{ color:'var(--muted)', fontSize:11, lineHeight:1.3 }}>{(row && row.meaning) || b.meaning || b.english}</span>
+      {row && row.status === 'NEW' && row.explain && (
+        <span style={{ color:'var(--muted)', fontSize:10, lineHeight:1.3, fontStyle:'italic', flex:'1 1 100%' }}>{row.explain}</span>
+      )}
+      {S && (
+        <span style={{ marginLeft:'auto', background:S.bg, color:S.fg, borderRadius:5, padding:'1px 6px',
+          fontSize:9, fontWeight:700, letterSpacing:'0.05em' }}>{row.status}</span>
+      )}
+      {row && row.rec && row.rec.exposures > 0 && (
+        <span style={{ color:'var(--muted)', fontSize:10, marginLeft:6 }}>{'\u25CF'.repeat(Math.min(3, row.rec.productiveExposures || 0)) + '\u25CB'.repeat(Math.max(0, Math.min(3, (row.rec.exposures || 0)) - Math.min(3, row.rec.productiveExposures || 0)))}</span>
+      )}
     </div>
   )
 }
@@ -21285,10 +21740,15 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, trackMod
   const inv = useMemo(() => japaneseLearnerInventory(vocab, targets), [vocab, targets])
   // §16 — show ONLY what this track actually uses, and §15 cap new grammar at 2.
   const sceneText = scene ? [scene.opening, scene.reply, scene.closing, scene.closing_reply].join('') : ''
-  const shownBlocks = useMemo(
-    () => scaffold.filter(g => sceneText.includes(g.form)).slice(0, 2), [scaffold, sceneText])
-  const shownBasics = useMemo(
-    () => inv.conversationBasics.filter(b => sceneText.includes(b.form)), [inv, sceneText])
+  // Phase 3 — curriculum rows with NEW / DUE / REINFORCE / LEARNED status. Generation
+  // selection is unchanged (Phase 4); this is the learner-facing view only.
+  const [jaProgress, setJaProgress] = useState({})
+  useEffect(() => { let go = true
+    ;(async () => { try { await jaGrammarMigrateV1(vocab); const s = await jaGrammarLoad(); if (go) setJaProgress(s) } catch (e) {} })()
+    return () => { go = false } }, [])
+  const sceneRows = useMemo(() => jaSceneRows(vocab, jaProgress, sceneText, register), [vocab, jaProgress, sceneText, register])
+  const shownBlocks = sceneRows.blocks
+  const shownBasics = sceneRows.basics
   // §2/§3 — full history is kept; the visible log is a rolling window so the
   // newest activity is always on screen without scrolling, matching Thai.
   const push = (m, live = true) => {
@@ -21466,7 +21926,7 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, trackMod
         <>
           <p style={{ fontSize:11, color:'var(--muted)', margin:'12px 0 8px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Conversation basics</p>
           <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-            {shownBasics.map(b => <JapaneseBlockPill key={b.id} b={b} />)}
+            {shownBasics.map(r => <JapaneseBlockPill key={r.id} b={r.item} row={r} kind="basic" />)}
           </div>
         </>
       )}
@@ -21474,7 +21934,7 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, trackMod
         <>
           <p style={{ fontSize:11, color:'var(--muted)', margin:'12px 0 8px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Building blocks</p>
           <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-            {shownBlocks.map(b => <JapaneseBlockPill key={b.id} b={b} />)}
+            {shownBlocks.map(r => <JapaneseBlockPill key={r.id} b={r.item} row={r} kind="block" />)}
           </div>
         </>
       )}
@@ -22595,6 +23055,20 @@ function japaneseAcceptanceGate(pair, inv, opts) {
       const gi = validateJapaneseGrammarInventory({ ...pair, _inv: inv }, o.declaredGrammarIds)
       if (gi && !gi.ok) problems.push(...gi.problems)
     } catch (e) { problems.push('grammar inventory check errored: ' + (e.message || e)) }
+    // 1d. PHASE 8 — register fit: valid Japanese can still be wrong for the chosen style.
+    try {
+      const rf = jaValidateRegisterFit(pair, (o && o.registerId) || pair.register, inv)
+      if (rf && !rf.ok) problems.push(...rf.problems)
+    } catch (e) {}
+    // 1c. PHASE 9 — provenance audit: stored blocks must match the FINAL Japanese. This
+    // never excuses bad Japanese (the checks above run first); it only reports metadata
+    // that has gone stale, so the caller can rebuild it.
+    try {
+      const ga = jaGrammarMetadataAudit(pair, (o && o.vocab) || (inv && inv.allContent) || [], (o && o.grammarProgress) || {})
+      if (ga && !ga.ok && (pair.buildingBlockIds || pair.conversationBasicIds)) {
+        problems.push(...ga.problems.map(p => 'grammar metadata stale — ' + p))
+      }
+    } catch (e) {}
     // 2. usage / valency / semantic sense
     try {
       const u = validateJapaneseUsage(pair, inv)
@@ -23024,12 +23498,35 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
       // conversations, running out of tokens, and ignoring the hints and the
       // DO NOT USE list at 94–96% of the way down. The task now comes FIRST, with an
       // explicit one-object format; the long prompt follows as reference material.
+      // ── MEANING-FIRST ────────────────────────────────────────────────────────────
+      // The old prompt was token-first: "write a sentence using 「X」", which produced
+      // forced combinations and long retry chains (また burned 11 attempts). The model now
+      // starts from a communicative INTENT — something a real person would want to say —
+      // then writes the Japanese that realises it, and declares the grammar it used.
+      // objectives (Phase 4 interface) are optional practice goals; when absent nothing
+      // about generation changes beyond the intent-first framing.
+      const _obj = (opts && opts.objectives) || {}
+      const _objBlocks = (_obj.buildingBlocks || []).map(b => jaBlockById(b.id || b) ).filter(Boolean)
+      const _objBasics = (_obj.conversationBasics || []).map(b => jaBasicById(b.id || b)).filter(Boolean)
+      const _objLine = (_objBlocks.length || _objBasics.length)
+        ? '\nPRACTICE OBJECTIVES (use ONLY where a natural intent genuinely calls for them — never force them):' +
+          (_objBlocks.length ? '\n  grammar: ' + _objBlocks.map(b => b.label + ' (' + b.meaning + ')').join(', ') : '') +
+          (_objBasics.length ? '\n  expressions: ' + _objBasics.map(b => b.form + ' (' + b.english + ')').join(', ') : '') +
+          '\nIf no natural sentence exercises them together with the target, IGNORE them and write natural Japanese.'
+        : ''
       const task =
-        'THIS REPLY: write exactly ONE Japanese sentence that uses 「' + target.japanese + '」' +
-        ' (recall ' + recallIndex + ' of 3). Return ONE JSON object — not an array, not a conversation:\n' +
+        'THIS REPLY: think of ONE real thing a person would actually say in conversation — a request, a question, ' +
+        'a reaction, a plan — that naturally needs 「' + target.japanese + '」 (' + (target.english || '') + '). ' +
+        'Start from that intent, then write the Japanese that a native speaker would really use for it. ' +
+        'Do NOT build a sentence around the word for its own sake; if the intent does not need it, choose a different intent. ' +
+        '(recall ' + recallIndex + ' of 3). Return ONE JSON object — not an array, not a conversation:\n' +
         // segments restored: v605 left them out of this example, so replies that
         // followed it exactly were rejected with "missing segments".
-        '{"japanese":"…","reading":"…","romaji":"…","english":"…","prompt":"…",' +
+        // intent first, then its realisation; blocks/basics are DECLARED so QC can verify
+        // the metadata against the final Japanese instead of guessing by string matching.
+        '{"intent":"(what the speaker wants to achieve, in English)",' +
+        '"japanese":"…","reading":"…","romaji":"…","english":"…","prompt":"…",' +
+        '"blocks":["grammar ids you used, from the list below"],"basics":["expression ids you used"],' +
         // lemma (dictionary form) added: the vocabulary check resolves conjugated words
         // (行かない, 行って) through it; without it they were reported as untaught.
         '"segments":[{"surface":"…","lemma":"(dictionary form)","reading":"…","romaji":"…","english":"…"}]}' +
@@ -23044,8 +23541,16 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
           '. Choose a different, simpler idea rather than rephrasing the same one.' : '') +
         (lastFailure ? '\nPrevious attempt failed: ' + lastFailure : '') +
         (extra ? '\n' + extra : '')
-      const ask = task + '\n\n── REFERENCE (vocabulary and rules) ──\n' + user +
-                  '\n\nReminder: ONE sentence, ONE JSON object, for 「' + target.japanese + '」.'
+      const _blockRef = (() => {
+        try {
+          const avail = jaBlocksAvailable(vocab, (opts && opts.grammarProgress) || {})
+          return avail.length ? '\n\n── GRAMMAR YOU MAY USE (ids for "blocks") ──\n' +
+            avail.map(b => '  ' + b.id + ' = ' + jaBlockRealisation(b, registerId) + ' — ' + b.meaning).join('\n') : ''
+        } catch (e) { return '' }
+      })()
+      const ask = task + _objLine + '\n\n── REFERENCE (vocabulary and rules) ──\n' + user + _blockRef +
+                  '\n\nReminder: ONE real communicative intent, ONE sentence, ONE JSON object, for 「' + target.japanese + '」. ' +
+                  'The English must state what the sentence MEANS, and the prompt must be a cue a learner can act on without seeing the Japanese.'
       raw = ''
       try { raw = await callOpenRouterOnce(apiKey, model, [{ role:'system', content: system }, { role:'user', content: ask }], 700) }
       // These two exits used to set lastFailure WITHOUT logging it, which is why so
@@ -23115,6 +23620,20 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
       structOk = structuralValidateJapanesePair(cand)
     }
     if (!structOk.ok) { lastFailure = structOk.problems[0]; onLog && onLog('  \u274C ' + lastFailure); continue }
+
+    // Meaning-first step 4: verify the grammar the model DECLARED against the sentence it
+    // actually wrote. Unknown grammar is rejected; declared-but-absent blocks are dropped
+    // so the stored metadata always matches the Japanese.
+    try {
+      const _avail = jaBlocksAvailable(vocab, (opts && opts.grammarProgress) || {})
+      const _basicsAvail = jaBasicsAvailable(vocab)
+      const _v = jaVerifyDeclaredBlocks(cand.japanese, cand.blocks || [], cand.basics || [], _avail, _basicsAvail, (opts && opts.grammarProgress) || {})
+      if (!_v.ok) { lastFailure = 'declared grammar not in this curriculum: ' + _v.unknown.join(' '); onLog && onLog('  \u274C ' + lastFailure); continue }
+      cand = { ...cand, buildingBlockIds: _v.blocks, conversationBasicIds: _v.basics,
+               intent: cand.intent || '', register: registerId,
+               _grammarDropped: _v.dropped, _grammarUndeclared: _v.undeclared }
+      if (_v.dropped.length) onLog && onLog('  \u2139 declared but not present, dropped: ' + _v.dropped.join(' '))
+    } catch (e) { onLog && onLog('  \u2139 grammar verification unavailable: ' + e.message) }
 
     // §19 — everything except novelty has now passed. At scarcity A, or during
     // recovery, useful repetition beats losing the recall entirely.
@@ -23222,6 +23741,33 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   // and capped the ladder at maxTiers 4, while the log printed level C from `inv`.
   // Three AI attempts instead of ten is why most Japanese recalls were templates.
   const rules = scarcityRules(inv)
+  // ── Phase 4: grammar/basics practice objectives ──────────────────────────────────
+  // Due and newly introduced Building Blocks / Conversation Basics shape generation but
+  // NEVER consume one of the 30 vocabulary target slots: they are a separate list.
+  let _grammarStore = {}, _objectives = { buildingBlocks: [], conversationBasics: [] }
+  try {
+    await jaGrammarMigrateV1(vocab)
+    _grammarStore = await jaGrammarLoad()
+    const today = new Date().toISOString().slice(0, 10)
+    const dueBlocks = jaGrammarDue(_grammarStore, 'buildingBlock', today).map(r => jaBlockById(r.itemId)).filter(Boolean)
+    const dueBasics = jaGrammarDue(_grammarStore, 'conversationBasic', today).map(r => jaBasicById(r.itemId)).filter(Boolean)
+    // at most 1 genuinely NEW block per track at this level, introduced BEFORE it is used
+    const fresh = jaBlocksAvailable(vocab, _grammarStore)
+      .filter(b => !jaGrammarGet(_grammarStore, 'buildingBlock', b.id).introducedAt)
+      .sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 1)
+    fresh.forEach(b => jaGrammarIntroduce(_grammarStore, 'buildingBlock', b.id))
+    const freshBasics = jaBasicsAvailable(vocab)
+      .filter(b => !jaGrammarGet(_grammarStore, 'conversationBasic', b.id).introducedAt)
+      .sort((a, b) => (a.order || 0) - (b.order || 0)).slice(0, 1)
+    freshBasics.forEach(b => jaGrammarIntroduce(_grammarStore, 'conversationBasic', b.id))
+    if (fresh.length || freshBasics.length) await jaGrammarSave(_grammarStore)
+    jaSetCurriculumAllowed(_grammarStore)          // curriculum is now authoritative for the gate
+    _objectives = { buildingBlocks: [...dueBlocks, ...fresh].slice(0, 3), conversationBasics: [...dueBasics, ...freshBasics].slice(0, 2) }
+    onProgress && onProgress(0, totalRecall, { apiError:
+      'Content targets: ' + targets.length + ' · Building Blocks due: ' + dueBlocks.length +
+      ' · new: ' + fresh.map(b => b.label).join(' ') + ' · Conversation Basics due: ' + dueBasics.length +
+      ' · new: ' + freshBasics.map(b => b.form).join(' ') }, null, null)
+  } catch (e) { console.error('[ja-grammar] objectives unavailable — generation continues unchanged', e) }
   const seenMap = new Map()
   ;[...open, ...close].forEach(p => seenMap.set(jaDedupeKey(p.japanese), { targetId: null }))
   let attemptCount = 0, recallCount = 0
@@ -23242,7 +23788,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
       const got = await generateJapaneseOneRecall(t, r, vocab, registerId, apiKey, model,
         seenMap, inv, rules, onLog,
         tier => { attemptCount++; onProgress && onProgress(doneRecall, totalRecall, [], { targetIdx: i, targetId: t.id, recallIndex: r, checkTier: tier, accepted: false }),
-        { previousRecalls: mapped.map(x => x.japanese) } })
+        { objectives: _objectives, grammarProgress: _grammarStore, previousRecalls: mapped.map(x => x.japanese) } })
       if (!got || got.failed) {
         // §3/§18 — do NOT continue as though this target is complete. Record exactly
         // which recall is missing and why, then stop generating for this target.

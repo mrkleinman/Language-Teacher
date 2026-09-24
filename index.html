@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v636"/>
+<meta name="app-version" content="v637"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v636';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v636').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v637';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v637').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -13259,10 +13259,18 @@ function TrackQuality({ track }) {
       <span style={{ fontSize:22, fontWeight:800, color:cc }}>{sc}%</span>
       <div style={{ flex:1, fontSize:12, color:'var(--muted)' }}>
         <div style={{ color:'var(--text)', fontWeight:600, marginBottom:2 }}>Track Quality</div>
-        <div>{tp} pairs · {fb > 0 ? '⚠️ ' + fb + ' fallbacks'
-          : !track._closedVocab ? '\u2139\uFE0F vocabulary not audited'
-          : track._closedVocab.remainingIllegalPairs > 0 ? '\u26D4 untaught vocabulary'
-          : '\u2705 all clean'}{track._closedVocab && track._closedVocab.repairAttempts > 0 ? ' \u00B7 ' + track._closedVocab.repairAttempts + ' vocab repair(s)' : ''}</div>
+        {/* Each dimension is reported separately: closed vocabulary can pass while semantic
+            alignment fails, which is exactly what happened in the live v635 run. */}
+        <div>{tp} pairs{fb > 0 ? ' · \u26A0\uFE0F ' + fb + ' fallbacks' : ''}</div>
+        <div style={{ marginTop:2 }}>
+          {!track._closedVocab ? '\u2139\uFE0F vocabulary not audited'
+            : track._closedVocab.remainingIllegalPairs > 0 ? '\u26D4 untaught vocabulary'
+            : '\u2705 vocabulary audited'}
+          {track._semanticAudit ? (track._semanticAudit.cueMismatch > 0
+            ? ' \u00B7 \u26A0\uFE0F ' + track._semanticAudit.cueMismatch + ' cue mismatch dropped'
+            : ' \u00B7 \u2705 meaning audited') : ' \u00B7 \u2139\uFE0F meaning not audited'}
+          {track._coverage && track._coverage.with0 > 0 ? ' \u00B7 \u26D4 ' + track._coverage.with0 + ' target(s) uncovered' : ''}
+        </div>
       </div>
     </div>
   )
@@ -16732,6 +16740,24 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
   // is repaired here, so no illegal pair can leave QC.
   { const _cv2 = enforceThaiClosedVocabulary(allPairs, _cvCtx, { originals: _cvOriginals, targetsById: _cvT.byId, onLog, stage: 'qc-final' })
     allPairs = _cv2.pairs; counts.closedVocabFinal = _cv2.stats }
+  // FINAL_PAIR_SEMANTIC_AUDIT — after every mutation, before save.
+  try {
+    const _fa = await finalPairSemanticAudit(allPairs, apiKey, model, onLog)
+    allPairs = _fa.pairs; counts.finalSemanticAudit = _fa.stats
+    if (_fa.stats.dropped) {
+      const _cv3 = enforceThaiClosedVocabulary(allPairs, _cvCtx, { originals: _cvOriginals, targetsById: _cvT.byId, onLog, stage: 'post-audit' })
+      allPairs = _cv3.pairs; counts.closedVocabPostAudit = _cv3.stats
+    }
+    const _cov = thaiTargetCoverage(allPairs, track.keywords || [])
+    counts.coverage = _cov
+    onLog?.('  📊 coverage: 3+ candidates ' + _cov.with3 + ' · 2 ' + _cov.with2 + ' · 1 ' + _cov.with1 + ' · 0 ' + _cov.with0)
+    if (_cov.with0) onLog?.('  ⛔ TARGET_UNCOVERED: ' + _cov.uncovered.join(' ') + ' — track is NOT fully covered')
+  } catch (e) { onLog?.('⚠️ final audit stage failed: ' + e.message) }
+  try {
+    track._closedVocab = counts.closedVocabFinal || counts.closedVocab || null
+    track._semanticAudit = counts.finalSemanticAudit || null
+    track._coverage = counts.coverage || null
+  } catch (e) {}
   // FINAL phonetic stage \u2014 always last; nothing may change phonetics after this.
   try { allPairs = finaliseThaiTrackPhonetics(allPairs, buildThaiPhoneticLexicon(vocab), onLog) }
   catch (e) { onLog?.('\u26A0\uFE0F Final phonetic stage failed: ' + e.message) }
@@ -16739,6 +16765,43 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
 }
 
 // ── Prompt-match batch checker ───────────────────────────────────────────────
+// ══ FINAL_PAIR_SEMANTIC_AUDIT ════════════════════════════════════════════════════
+// Prompt alignment runs as Step 1, BEFORE improve/replace/repair/closed-vocab/drop, so a
+// pair can be mutated afterwards and ship with a stale cue (live v635: cue "his father",
+// sentence พ่อคุณ = "your father"). This audit re-checks alignment on the FINAL text, after
+// every mutation and immediately before save. A failure is repaired or dropped, never saved.
+async function finalPairSemanticAudit(pairs, apiKey, model, onLog) {
+  const content = (pairs || []).filter(p => p && p.pairType !== 'framing' && p.thai)
+  const stats = { checked: content.length, cueMismatch: 0, dropped: 0, failures: [] }
+  if (!content.length) return { pairs, stats }
+  let scored = content
+  try { scored = await _qrBatchPromptCheck(content.map(p => ({ ...p, _pm: null, _pmNote: '' })), apiKey, model, onLog) }
+  catch (e) { onLog?.('⚠️ final semantic audit unavailable: ' + e.message); return { pairs, stats } }
+  const verdict = new Map(scored.map(p => [p.thai + '|' + (p.prompt || ''), p]))
+  const out = (pairs || []).filter(p => {
+    if (!p || p.pairType === 'framing' || !p.thai) return true
+    const v = verdict.get(p.thai + '|' + (p.prompt || ''))
+    const score = v && v._pm != null ? v._pm : 5
+    if (score >= 4) return true
+    stats.cueMismatch++; stats.dropped++
+    stats.failures.push({ targetId: p.targetId, target: p._target, cue: (p.prompt || '').slice(0, 50),
+                          thai: p.thai, score, reason: (v && v._pmNote) || 'cue does not match the final sentence' })
+    onLog?.('  ⛔ final audit: [' + (p._target || '?') + '] ' + score + '/5 — ' + ((v && v._pmNote) || 'cue mismatch') + ' → dropped')
+    return false
+  })
+  onLog?.('  🧭 FINAL_PAIR_SEMANTIC_AUDIT: checked=' + stats.checked + ' cueMismatch=' + stats.cueMismatch + ' dropped=' + stats.dropped)
+  return { pairs: out, stats }
+}
+// Coverage accounting: a dropped candidate must never look like successful practice.
+function thaiTargetCoverage(pairs, keywords) {
+  const per = new Map((keywords || []).map(k => [k.wordId, { targetId: k.wordId, target: k.thai, valid: 0 }]))
+  ;(pairs || []).forEach(p => { if (p && p.pairType !== 'framing' && p.targetId != null && per.has(p.targetId)) per.get(p.targetId).valid++ })
+  const rows = [...per.values()]
+  const bucket = n => rows.filter(r => r.valid === n).length
+  return { rows, with3: rows.filter(r => r.valid >= 3).length, with2: bucket(2), with1: bucket(1), with0: bucket(0),
+           uncovered: rows.filter(r => r.valid === 0).map(r => r.target) }
+}
+
 async function _qrBatchPromptCheck(pairs, apiKey, model, onLog) {
   // Only check pairs that have both a real prompt and Thai content
   const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) =>
@@ -17289,6 +17352,14 @@ async function _qrEvaluateGroup(group, allPairs, apiKey, model) {
   const nextPairs = allPairs.slice(startIdx + groupPairs.length, Math.min(allPairs.length, startIdx + groupPairs.length + 3))
   const fmt = p => `  ${p.speaker||'A'}: ${p.thai} (${p.english})`
   const prompt = `Evaluate this Thai language learning group. Target word: "${targetWord}"
+
+IMPORTANT: the lines in "Group to evaluate" are ALTERNATIVE practice candidates for the same
+target, not consecutive turns of one conversation. Judge EACH line on its own: does it use the
+target naturally, does it match its own cue, is it natural Thai? Do NOT penalise the group because
+two alternatives state different facts (e.g. "three days" vs "two days") or because one does not
+answer another — they are never spoken together.
+Do flag a line that is unnatural, forced or redundant Thai (e.g. padded repetition for emphasis);
+such a line must be improved, not merely noted.
 
 Context before:
 ${prevPairs.map(fmt).join('\n') || '  (start)'}

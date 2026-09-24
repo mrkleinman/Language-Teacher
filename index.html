@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v635"/>
+<meta name="app-version" content="v636"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v635';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v635').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v636';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v636').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -21654,6 +21654,10 @@ function jaVerifyDeclaredBlocks(sentence, declaredBlocks, declaredBasics, availa
   const basicIds = new Set((basicsAvailable || []).map(b => b.id))
   const unknown = [], confirmed = [], dropped = []
   ;(declaredBlocks || []).forEach(id => {
+    // Unknown declaration = metadata noise (the model often returns romaji words like
+    // "mata ne" or "ga"). It is IGNORED, never a rejection: the grammar-closure and
+    // vocabulary gates judge the sentence itself. Rejecting here burned 11 attempts per
+    // recall in the live v635 log and pushed almost every target to fallback.
     if (!availIds.has(id)) { unknown.push(id); return }
     const det = JA_BLOCK_DETECT[id]
     if (!(!det || det(s))) { dropped.push(id); return }
@@ -21667,7 +21671,8 @@ function jaVerifyDeclaredBlocks(sentence, declaredBlocks, declaredBasics, availa
   const basicsUnknown = (declaredBasics || []).filter(id => !basicIds.has(id))
   // undeclared grammar actually present (diagnostic for QC, never a silent pass)
   const undeclared = (available || []).filter(b => !confirmed.includes(b.id) && JA_BLOCK_DETECT[b.id] && JA_BLOCK_DETECT[b.id](s)).map(b => b.id)
-  return { ok: unknown.length === 0 && basicsUnknown.length === 0, unknown: unknown.concat(basicsUnknown),
+  // ok is always true: declarations never gate acceptance, they only build provenance.
+  return { ok: true, unknown: unknown.concat(basicsUnknown),
            blocks: confirmed, basics, dropped, undeclared }
 }
 
@@ -22863,7 +22868,10 @@ function validateJapaneseGrammarInventory(pair, allowedIds) {
   const allowed = new Set(allowedIds || [])
   if (!allowed.size) return { ok: true, problems: [] }   // nothing declared: no gate
   const used = japaneseGrammarUsed(pair && pair.japanese, (pair && pair._inv) || null)
-  const bad = used.filter(id => !jaGrammarIdSatisfied(id, allowed))
+  const _alias = { desu: ['da', 'masu'], da: ['da', 'desu'], teiru: ['te', 'teru'], teru: ['te', 'teiru'] }
+  const bad = used.filter(id => !jaGrammarIdSatisfied(id, allowed) &&
+    !(_alias[id] || []).some(a => allowed.has(a) || JA_CURRICULUM_ALLOWED.has(a)) &&
+    !JA_CURRICULUM_ALLOWED.has(id))
   return bad.length
     ? { ok: false, problems: bad.map(id => 'grammar "' + id + '" is not in this track\u2019s declared Building Blocks') }
     : { ok: true, problems: [] }
@@ -23668,7 +23676,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
       const _avail = jaBlocksAvailable(vocab, (opts && opts.grammarProgress) || {})
       const _basicsAvail = jaBasicsAvailable(vocab)
       const _v = jaVerifyDeclaredBlocks(cand.japanese, cand.blocks || [], cand.basics || [], _avail, _basicsAvail, (opts && opts.grammarProgress) || {})
-      if (!_v.ok) { lastFailure = 'declared grammar not in this curriculum: ' + _v.unknown.join(' '); onLog && onLog('  \u274C ' + lastFailure); continue }
+      if (_v.unknown.length) onLog && onLog('  \u2139 ignored unknown grammar labels: ' + _v.unknown.slice(0, 4).join(' '))
       cand = { ...cand, buildingBlockIds: _v.blocks, conversationBasicIds: _v.basics,
                intent: cand.intent || '', register: registerId,
                _grammarDropped: _v.dropped, _grammarUndeclared: _v.undeclared }

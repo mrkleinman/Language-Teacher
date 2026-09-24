@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v634"/>
+<meta name="app-version" content="v635"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v634';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v634').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v635';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v635').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6365,7 +6365,13 @@ function downloadTrack(track) {
     return 'ai:check-1'
   }
   pairs.forEach((p, i) => {
+    // Identity is exported so a track can be certified from the export alone: the old
+    // text export lost the binding and made certification impossible.
     lines.push(`\n[${String(i+1).padStart(3,'0')}] ${p.prompt || ''}`)
+    lines.push(`  TYPE: ${p.pairType || (p.targetId != null ? 'content' : 'unknown')}` +
+               `  TARGET_ID: ${p.targetId != null ? p.targetId : '-'}` +
+               `  TARGET: ${p._target || '-'}` +
+               (p.recallGroupId ? `  GROUP: ${p.recallGroupId} (${p.recallRole || 'alternative'} ${p.recallIndex || ''})` : ''))
     lines.push(`  TH: ${p.thai || ''}`)
     lines.push(`  PH: ${p.phonetic || ''}`)
     lines.push(`  EN: ${p.english || ''}`)
@@ -11069,6 +11075,30 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
 }
 
 
+// Identity contract for Thai pairs. A content pair MUST carry targetId; a framing pair
+// MUST NOT. pairType is explicit — never inferred from a missing id.
+function assertThaiPairIdentity(p) {
+  if (!p) return true
+  if (p.pairType === 'content' && (p.targetId == null)) {
+    console.error('[pair-identity] content pair without targetId: ' + (p.thai || '').slice(0, 30)); return false
+  }
+  if (p.pairType === 'framing' && p.targetId != null) {
+    console.error('[pair-identity] framing pair carrying targetId ' + p.targetId); return false
+  }
+  return true
+}
+// Identity survives every mutation stage: repairs copy the pair, so this re-stamps any
+// stage that rebuilt an object from parts.
+function preserveThaiPairIdentity(next, prev) {
+  if (!next || !prev) return next
+  return { ...next, language: next.language || prev.language || 'th',
+           pairType: next.pairType || prev.pairType,
+           targetId: next.targetId != null ? next.targetId : (prev.targetId != null ? prev.targetId : null),
+           _target: next._target || prev._target,
+           recallGroupId: next.recallGroupId || prev.recallGroupId,
+           recallRole: next.recallRole || prev.recallRole }
+}
+
 async function generateConversationTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal, preScene) {
   const GPT_MODEL = model || 'qwen/qwen3.5-flash-02-23'
   const allPairs = []
@@ -11110,6 +11140,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     openingPair.words = _greetingWords(openingPhonetic)
     replyLine.words = _greetingWords(replyLine.phonetic)
     prevLines.push(openingPair, replyLine)
+    ;[openingPair, replyLine].forEach(p => { if (p) { p.language = 'th'; p.pairType = 'framing'; p.targetId = null; assertThaiPairIdentity(p) } })
     allPairs.push(openingPair, replyLine)
   }
   const usedSubjects = new Set()  // Fix 1: track subjects/topics used to prevent repetition
@@ -11162,10 +11193,17 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       const fb = makeFallbackPairs(target)
       lines = fb.slice(0,3).map((p,si) => ({ speaker:si%2===0?'A':'B', thai:p.thai, phonetic:p.phonetic, english:p.english, prompt:p.prompt, _source:'fallback:'+target.thai }))
     }
-    const tagged = lines.slice(0,3).map(l => {
+    // STABLE IDENTITY: (language, targetId) binds a content pair to its target. _target is
+    // display/debug only; array position, cue text and surface strings are never identity.
+    // The three recalls of one target are ALTERNATIVES, not a dialogue sequence.
+    const _recallGroupId = 'rg-' + target.id
+    const tagged = lines.slice(0,3).map((l, _ri) => {
       const rawWords = l.words && l.words.length > 0 ? l.words : (l.phonetic ? l.phonetic.trim().split(/\s+/).filter(Boolean).map(tok => ({p:tok,e:''})) : [])
-      return { ...l, _source:l._source||'qwen:conv', _target:target.thai, words: enrichWordsWithCompounds(rawWords) }
+      return { ...l, language:'th', pairType:'content', targetId: target.id, wordId: target.id,
+               _target:target.thai, recallGroupId:_recallGroupId, recallRole:'alternative', recallIndex:_ri + 1,
+               _source:l._source||'qwen:conv', words: enrichWordsWithCompounds(rawWords) }
     })
+    tagged.forEach(p => assertThaiPairIdentity(p))
     allPairs.push(...tagged)
     // Fix 1: extract and record used subjects from generated content
     tagged.forEach(l => {
@@ -11218,6 +11256,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       _source:'ai:check-1', _target:'parting', words:[]
     }
     closeA.words = _cw(closeA.phonetic)
+    if (closeA) { closeA.language = 'th'; closeA.pairType = 'framing'; closeA.targetId = null; assertThaiPairIdentity(closeA) }
     allPairs.push(closeA)
     if (sceneData.closing_reply) {
       const closeB = {
@@ -11231,6 +11270,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
         _source:'ai:check-1', _target:'parting', words:[]
       }
       closeB.words = _cw(closeB.phonetic)
+      if (closeB) { closeB.language = 'th'; closeB.pairType = 'framing'; closeB.targetId = null; assertThaiPairIdentity(closeB) }
       allPairs.push(closeB)
     }
     onProgress && onProgress(allPairs.length, targets.length*3, { targetThai:'parting', allPairs:[...allPairs] }, ['ai:check-1'], targets.length)

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v638"/>
+<meta name="app-version" content="v639"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v638';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v638').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v639';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v639').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -34,6 +34,7 @@
   })();
   </script>
 <script type="text/babel">
+
 
 
 const { useState, useEffect, useCallback, useRef, useMemo } = React
@@ -5695,6 +5696,22 @@ function getNewWordLimitForBelt(beltName) { return getBeltConfig(beltName).newWo
 const BELT_NEW_ALLOWANCE = Object.fromEntries(
   Object.entries(BELT_CONFIG).map(([k, v]) => [k, v.newWordLimit]))
 
+// End-of-lesson sections. Category comes from the keyword's own flags (the same ones the
+// card badge reads), so a heading can never disagree with the cards beneath it.
+function endScreenSections(keywords) {
+  const items = (keywords || []).map((kw, i) => ({ kw, i }))
+  // isUnseen is recorded by Thai and Japanese; Mandarin keywords carry only isNew, so an
+  // absent flag keeps the previous behaviour (INTRODUCING) instead of guessing RELEARN.
+  const introducing = items.filter(o => o.kw.isNew && o.kw.isUnseen !== false)
+  const relearning  = items.filter(o => o.kw.isNew && o.kw.isUnseen === false)
+  const reviewed    = items.filter(o => !o.kw.isNew)
+  const out = []
+  if (introducing.length) out.push({ id: 'introducing', heading: '\u2726 INTRODUCING (' + introducing.length + ')', color: '#4a90e2', rule: 'rgba(74,144,226,0.3)', items: introducing })
+  if (relearning.length)  out.push({ id: 'relearning',  heading: 'RELEARNING (' + relearning.length + ')', color: '#a78bfa', rule: 'rgba(167,139,250,0.3)', items: relearning })
+  if (reviewed.length)    out.push({ id: 'reviewed',    heading: 'REVIEWED (' + reviewed.length + ')', color: 'var(--muted)', rule: 'var(--border)', items: reviewed })
+  if (out.length) out[0].first = true
+  return out
+}
 // ── One classification source of truth ──────────────────────────────────────
 // The header count and the card badges previously used different rules, so a track
 // could report "14 RELEARN" while the cards said NEW. Everything now derives here.
@@ -6335,6 +6352,20 @@ function downloadTrack(track) {
   lines.push(`Mode: ${track.mode || 'daily'}`)
   lines.push(`Pairs: ${pairs.length}`)
   lines.push(`Created: ${track.createdAt || ''}`)
+  // Final audit summary, so a track can be certified from its export alone.
+  const _fa = track._finalAudit
+  if (_fa && _fa.invariants) {
+    lines.push('Final audit (' + (_fa.stage || '') + '): ' + (_fa.ok ? 'PASS' : 'FAIL') + ' · ' + Object.entries(_fa.invariants).map(([k, v]) => k + '=' + v).join(' · '))
+    lines.push('Types: content ' + _fa.types.content + ' · bridge ' + _fa.types.bridge + ' · framing ' + _fa.types.framing + ' · unknown ' + _fa.types.unknown +
+      ' · Main Track coverage ' + _fa.coverage.covered + '/' + _fa.coverage.selected +
+      (_fa.coverage.missing.length ? ' (missing: ' + _fa.coverage.missing.map(m => m.target).join(' ') + ')' : ''))
+    lines.push('Speakers: male ' + _fa.speaker.male + ' · female ' + _fa.speaker.female + ' · ambiguous ' + _fa.speaker.ambiguous +
+      ' · metadata corrected ' + _fa.speaker.metadataConflictsCorrected + ' · rejected by audit ' + (_fa.rejected || []).length)
+    ;(_fa.recovery || []).forEach(r => lines.push('Recovery ' + r.target + ': ' + (r.resolved ? 'RESOLVED' : 'UNRESOLVED') + ' after ' + r.attempts.length + ' attempt(s)' +
+      r.attempts.map(a => ' | ' + a.attempt + ': ' + a.result + (a.reasons && a.reasons.length ? ' (' + a.reasons.slice(0, 3).join('; ') + ')' : '')).join('')))
+  } else {
+    lines.push('Final audit: not recorded (track made before v639)')
+  }
   lines.push('')
   
   lines.push('TARGET WORDS (' + keywords.length + ')')
@@ -6362,16 +6393,24 @@ function downloadTrack(track) {
     if (src.startsWith('qwen-recheck2:')) return 'ai:check-3'
     if (src.startsWith('qwen-recheck:')) return 'ai:check-2'
     if (src.startsWith('haiku:')) return 'ai:haiku'
+    // QC rewrites were previously masked as ai:check-1, hiding where lines came from
+    const qc = src.match(/^ai:(improve|replace|fix_phonetic):/)
+    if (qc) return 'qc:' + qc[1]
     return 'ai:check-1'
   }
   pairs.forEach((p, i) => {
     // Identity is exported so a track can be certified from the export alone: the old
     // text export lost the binding and made certification impossible.
     lines.push(`\n[${String(i+1).padStart(3,'0')}] ${p.prompt || ''}`)
-    lines.push(`  TYPE: ${p.pairType || (p.targetId != null ? 'content' : 'unknown')}` +
+    // TYPE is exported as stored; it is never inferred from a present/missing id.
+    lines.push(`  TYPE: ${p.pairType || 'unknown'}` +
                `  TARGET_ID: ${p.targetId != null ? p.targetId : '-'}` +
                `  TARGET: ${p._target || '-'}` +
-               (p.recallGroupId ? `  GROUP: ${p.recallGroupId} (${p.recallRole || 'alternative'} ${p.recallIndex || ''})` : ''))
+               (p.pairType === 'bridge' ? `  SUPPORTS: ${p.supportsTargetId != null ? p.supportsTargetId : '?'}` +
+                 (() => { const j = p.respondsToPairKey ? pairs.findIndex(x => x && x._pairKey === p.respondsToPairKey) : -1
+                          return j >= 0 ? `  RESPONDS_TO: [${String(j + 1).padStart(3, '0')}]` : '' })() : '') +
+               (p.recallGroupId ? `  GROUP: ${p.recallGroupId} (${p.recallRole || 'alternative'} ${p.recallIndex || ''})` : '') +
+               `  SPEAKER: ${p.speaker || '-'}/${speakerGenderOf(p, 'th') || '?'}`)
     lines.push(`  TH: ${p.thai || ''}`)
     lines.push(`  PH: ${p.phonetic || ''}`)
     lines.push(`  EN: ${p.english || ''}`)
@@ -9953,7 +9992,7 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     }
     // Reject meta-prompts: "uses 'X' to...", "use 'phonetic'" — AI narrating instead of instructing
     const metaPrompt = /\buses\s+['"][^'"]{1,20}['"]\s+(to|and)/i.test(pr) ||
-                       /\buse\s+['"][^'"]{1,20}['"][\s]/i.test(pr) ||
+                       /\buse\s+['"][^'"]{1,20}['"]/i.test(pr) ||
                        /\bsays?\s+['"][^'"]{1,20}['"]\s+to\b/i.test(pr)
     if (metaPrompt) {
       failures.push('meta-prompt (narrates phonetic instead of instructing): ' + p.prompt); continue
@@ -10745,7 +10784,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
 
       // Use parsePartialArray so truncated responses still yield complete lines
       const parsed = (() => { try { return JSON.parse(raw) } catch { return parsePartialArray(raw) } })()
-      const linesArr = Array.isArray(parsed) ? parsed : (parsed.lines || parsed.pairs || [])
+      // PARSE BOUNDARY: model emphasis markup (__น้ำปลา__) is removed here, before any
+      // validator sees the line, and the raw text is kept on the pair for diagnostics.
+      const linesArr = (Array.isArray(parsed) ? parsed : (parsed.lines || parsed.pairs || [])).map(l => {
+        const c = sanitizeModelPair(l, 'generation')
+        if (c !== l) onProgress && onProgress(-1, -1, { apiError: '🧹 model markup removed: ' + String((c._rawModelText || {}).thai || '').slice(0, 60) }, null, null)
+        return c
+      })
       if (linesArr.length < 2) {
         failureReasons = ['returned too few lines']
         onProgress && onProgress(-1, -1, { apiError: '❌ Too few lines (' + linesArr.length + ')' }, null, null)
@@ -11085,6 +11130,12 @@ function assertThaiPairIdentity(p) {
   if (p.pairType === 'framing' && p.targetId != null) {
     console.error('[pair-identity] framing pair carrying targetId ' + p.targetId); return false
   }
+  if (p.pairType === 'bridge' && p.targetId != null) {
+    console.error('[pair-identity] bridge pair carrying targetId ' + p.targetId); return false
+  }
+  if (p.pairType && !THAI_PAIR_TYPES.includes(p.pairType)) {
+    console.error('[pair-identity] unsupported pair type "' + p.pairType + '"'); return false
+  }
   return true
 }
 // Identity survives every mutation stage: repairs copy the pair, so this re-stamps any
@@ -11108,6 +11159,11 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   const scene = sceneData.scene || 'Two friends at a market.'
   const charA = sceneData.characterA || 'Somchai, a Thai man'
   const charB = sceneData.characterB || 'Nida, a Thai woman'
+  // Speaker identity is stamped at creation from the scene's characters (the Thai
+  // contract: A speaks with ครับ, B with ค่ะ/คะ), then confirmed against each sentence.
+  const _genderOf = (c, dflt) => /\b(woman|female|girl|lady|mother|aunt)\b|ผู้หญิง/i.test(c) ? 'female' : /\b(man|male|boy|father|uncle)\b|ผู้ชาย/i.test(c) ? 'male' : dflt
+  const _gA = _genderOf(charA, 'male'), _gB = _genderOf(charB, 'female')
+  const _stampFraming = (p, key) => { if (!p) return; p.language = 'th'; p.pairType = 'framing'; p.targetId = null; p._typedAt = 'creation'; p._pairKey = key; p.speakerGender = p.speaker === 'B' ? _gB : _gA; assertThaiPairIdentity(p) }
   if (sceneData.opening) {
     // A's opening line — get phonetic from scene or generate it
     const openingPhonetic = sceneData.opening_phonetic || ''
@@ -11140,7 +11196,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     openingPair.words = _greetingWords(openingPhonetic)
     replyLine.words = _greetingWords(replyLine.phonetic)
     prevLines.push(openingPair, replyLine)
-    ;[openingPair, replyLine].forEach(p => { if (p) { p.language = 'th'; p.pairType = 'framing'; p.targetId = null; assertThaiPairIdentity(p) } })
+    _stampFraming(openingPair, 'th-open-A'); _stampFraming(replyLine, 'th-open-B')
     allPairs.push(openingPair, replyLine)
   }
   const usedSubjects = new Set()  // Fix 1: track subjects/topics used to prevent repetition
@@ -11197,11 +11253,31 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     // display/debug only; array position, cue text and surface strings are never identity.
     // The three recalls of one target are ALTERNATIVES, not a dialogue sequence.
     const _recallGroupId = 'rg-' + target.id
-    const tagged = lines.slice(0,3).map((l, _ri) => {
+    // TYPE IS STAMPED HERE, AT CREATION, from the sentence itself. The exchange contract
+    // needs the target once, not in every line (B's reply usually has none), so a line
+    // WITH the target is a content pair and a line WITHOUT it is an explicit bridge that
+    // supports this target. Nothing later infers type from a missing id.
+    // Role comes from the generation CONTRACT, not from whether the target happened to
+    // appear: A lines (1 and 3) MUST carry the target; B's line 2 is the response. A line
+    // is a bridge only when its contract role is "response". An A line without its target
+    // is a FAILED target line — typed content, so the final audit rejects it; it can never
+    // become a bridge to escape target presence.
+    const _lineKeys = lines.slice(0,3).map((_, _ri) => 'th-' + target.id + '-' + (_ri + 1))
+    // a response that opens its exchange answers the last line of the previous exchange
+    const _prevKey = allPairs.length ? allPairs[allPairs.length - 1]._pairKey || null : null
+    const tagged = lines.slice(0,3).map((l0, _ri) => {
+      const l = sanitizeModelPair(l0, 'generation')
       const rawWords = l.words && l.words.length > 0 ? l.words : (l.phonetic ? l.phonetic.trim().split(/\s+/).filter(Boolean).map(tok => ({p:tok,e:''})) : [])
-      return { ...l, language:'th', pairType:'content', targetId: target.id, wordId: target.id,
-               _target:target.thai, recallGroupId:_recallGroupId, recallRole:'alternative', recallIndex:_ri + 1,
-               _source:l._source||'qwen:conv', words: enrichWordsWithCompounds(rawWords) }
+      const base = { ...l, language:'th', _target:target.thai, recallGroupId:_recallGroupId, recallIndex:_ri + 1,
+               _source:l._source||'qwen:conv', words: enrichWordsWithCompounds(rawWords),
+               _typedAt:'creation', _pairKey:_lineKeys[_ri],
+               speakerGender: l.speaker === 'B' ? _gB : _gA }
+      const role = thaiContractRole(l)
+      const has = thaiContainsLexeme(l.thai || '', target.thai)
+      if (has || role === 'target')
+        return { ...base, pairType:'content', targetId: target.id, wordId: target.id, recallRole: role === 'target' ? 'alternative' : 'response-with-target', targetRequired: true }
+      return { ...base, pairType:'bridge', targetId: null, wordId: null, supportsTargetId: target.id, recallRole:'response', targetRequired: false,
+               respondsToPairKey: _ri > 0 ? _lineKeys[_ri - 1] : _prevKey }
     })
     tagged.forEach(p => assertThaiPairIdentity(p))
     allPairs.push(...tagged)
@@ -11256,7 +11332,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       _source:'ai:check-1', _target:'parting', words:[]
     }
     closeA.words = _cw(closeA.phonetic)
-    if (closeA) { closeA.language = 'th'; closeA.pairType = 'framing'; closeA.targetId = null; assertThaiPairIdentity(closeA) }
+    _stampFraming(closeA, 'th-close-A')
     allPairs.push(closeA)
     if (sceneData.closing_reply) {
       const closeB = {
@@ -11270,7 +11346,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
         _source:'ai:check-1', _target:'parting', words:[]
       }
       closeB.words = _cw(closeB.phonetic)
-      if (closeB) { closeB.language = 'th'; closeB.pairType = 'framing'; closeB.targetId = null; assertThaiPairIdentity(closeB) }
+      _stampFraming(closeB, 'th-close-B')
       allPairs.push(closeB)
     }
     onProgress && onProgress(allPairs.length, targets.length*3, { targetThai:'parting', allPairs:[...allPairs] }, ['ai:check-1'], targets.length)
@@ -11288,8 +11364,18 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   } catch (e) {
     console.error('[closed-vocab] generation gate failed — Main Track kept as generated', e)
   }
-  try { return finaliseThaiTrackPhonetics(gatedPairs, buildThaiPhoneticLexicon(vocab)) }
-  catch (e) { console.error('[phonetics] final stage failed — Main Track kept as generated', e); return gatedPairs }
+  let finalPairs = gatedPairs
+  try { finalPairs = finaliseThaiTrackPhonetics(gatedPairs, buildThaiPhoneticLexicon(vocab)) }
+  catch (e) { console.error('[phonetics] final stage failed — Main Track kept as generated', e) }
+  // FINAL_TRACK_AUDIT — the last step of generation; QC runs it again after its own
+  // mutations. It never throws: a failure is reported, the generated track is kept.
+  try {
+    const _fa = thaiFinalTrackAudit(finalPairs, { keywords: thaiAuditKeywords(null, targets), vocab, stage: 'generation',
+      onLog: m => onProgress && onProgress(allPairs.length, targets.length * 3, { apiError: m }, null, null) })
+    const res = _fa.pairs
+    Object.defineProperty(res, '_finalAudit', { value: _fa.report, enumerable: false })
+    return res
+  } catch (e) { console.error('[final-audit] generation audit failed — Main Track kept as generated', e); return finalPairs }
 }
 
 
@@ -12195,11 +12281,11 @@ function ttsTextForPair(pair) {
   // Japanese: the kana reading is authoritative.
   if (pair.japanese) {
     const rd = (pair.reading || '').trim()
-    if (rd && !/[\u4E00-\u9FFF]/.test(rd) && !/[\/\uFF5C|]/.test(rd)) return rd
-    return pair.japanese
+    if (rd && !/[\u4E00-\u9FFF]/.test(rd) && !/[\/\uFF5C|]/.test(rd)) return stripModelMarkup(rd)
+    return stripModelMarkup(pair.japanese)
   }
   // Mandarin and Thai are read from their own script.
-  return pair.chinese || pair.thai || ''
+  return stripModelMarkup(pair.chinese || pair.thai || '')
 }
 // Word-level TTS. A vocabulary entry carries its own reading; use it.
 // A dictionary entry may list alternatives (何 = なに / なん). A learner-facing
@@ -12379,6 +12465,8 @@ function listeningEligibility(track, vocab) {
 // stable references only — never invented. A framing line (greeting/parting) has no target.
 function listeningResolveTargetForPair(pair, keywords, lang, vocab) {
   if (!pair) return { key: null, how: 'no pair' }
+  if (pair.pairType === 'bridge') return { key: null, how: 'bridge line (no target)' }
+  if (pair.pairType === 'framing') return { key: null, how: 'framing line (no target)' }
   if (pair.wordId != null) {
     const k = keywords.find(e => e.wordId === pair.wordId)
     return k ? { key: k, how: 'wordId' } : { key: null, how: 'wordId not in this track' }
@@ -12469,9 +12557,18 @@ function listeningSafeScan(track, lang, vocab, elig, log) {
   const eligTargets = elig.eligible.map(e => e.word)
   const allKeywords = (track.keywords || [])
   const entries = []
+  stats.rejectedGate = 0; stats.gateRejections = []
   ;(track.pairs || []).forEach((p, idx) => {
     const text = listeningSentence(p)
     if (!text) { stats.rejectedOther++; note('empty sentence'); return }
+    // 0. SUITABILITY GATE on the FINAL pair Listening will display and play — the same
+    //    per-line rules as the final Main Track audit (markup, type, target presence,
+    //    speaker conflict, naturalness). A failing line is never used, not even as support.
+    const gateProblems = listeningLineGate(p, lang, track, vocab)
+    if (gateProblems.length) {
+      stats.rejectedGate++; stats.gateRejections.push({ pairIndex: idx, thai: text, reasons: gateProblems })
+      gateProblems.forEach(r => note(r.split(':')[0])); log && log('    ⛔ [' + String(idx + 1).padStart(3, '0') + '] ' + text + ' — ' + gateProblems.join('; ')); return
+    }
     // 1. absolute rule: no current-track NEW word, anywhere, in any line
     const bad = elig.forbidden.filter(f => listeningContainsTarget(lang, p, listeningTargetSurface(f), vocab))
     if (bad.length) { stats.rejectedCurrentTrackNew++; note('contains an unexposed target: ' + bad.map(listeningTargetSurface).join(' ')); return }
@@ -12514,14 +12611,18 @@ function listeningSafeScan(track, lang, vocab, elig, log) {
   try { console.info('[listening] scan ' + (track.createdAt || '') + ' ' + JSON.stringify(stats).slice(0, 700)) } catch (e) {}
   return { entries, stats }
 }
-// Speaker is display metadata: the sentence itself is the evidence (ผม/ครับ vs ฉัน/ค่ะ).
+// Speaker comes from ONE authority (speakerGenderOf): sentence evidence when it is
+// unambiguous, else creation metadata. Letter and gender always agree.
 function listeningSpeakerOf(p, lang) {
-  const s = listeningSentence(p)
-  if (lang === 'th') {
-    if (/(ครับ|ผม)/.test(s)) return 'A'
-    if (/(ค่ะ|คะ|ฉัน|ดิฉัน)/.test(s)) return 'B'
-  }
-  return p.speaker || 'A'
+  const g = speakerGenderOf(p, lang)
+  return g === 'female' ? 'B' : g === 'male' ? 'A' : (p.speaker || 'A')
+}
+// Listening line gate → list of "CODE: reason". Thai uses the shared final-audit gate;
+// other languages keep their own pipelines and are only checked for markup here.
+function listeningLineGate(p, lang, track, vocab) {
+  if (lang !== 'th') return pairMarkupLeaks(p).map(x => 'MARKUP: ' + x)
+  const g = thaiLineGate(p, thaiAuditKeywords(track), vocab)
+  return g.problems.map(x => x.code + ': ' + x.why)
 }
 const _isQuestion = p => /[?？]|ไหม|เหรอ|หรือ|ทำไม|อะไร|ที่ไหน|กี่|เมื่อไหร่|ยังไง|か$|吗|呢/.test(listeningSentence(p) + ' ' + (p.english || ''))
 function _topicWords(p) {
@@ -12752,8 +12853,25 @@ function _sharesReferent(a, b) {
 }
 // Does this line actually answer THAT question? A statement after a question is not
 // automatically its answer ("May I have another plate?" → "I have two children.").
+const _YESNO_OPENER = /^(yes|yeah|no\b|right|sure|okay|ok)\b/i
+const _WH_Q = /\b(what|where|when|who|whom|whose|why|which|how)\b/i
+function _wordCount(t) { return String(t || '').trim().split(/\s+/).filter(Boolean).length }
+// Confirmation topic test: ANY shared content word, short verbs included ("go", "eat").
+// _topicWords drops words of <= 2 letters, which is right for topic discovery but made
+// "Shall we go together?" → "Yeah, I will go." look off-topic.
+const _CONFIRM_STOP = new Set(['i','you','we','he','she','it','they','me','him','her','us','them','a','an','the','to','of','in','on','at',
+  'is','am','are','was','be','do','does','did','will','shall','can','would','should','could','yes','yeah','no','right','sure','okay','ok',
+  'and','so','too','also','my','your','our','its','that','this','there','not','have','has','with','for'])
+function _confirmStaysOnTopic(q, a) {
+  const words = t => String(t || '').toLowerCase().replace(/[^a-z' ]/g, ' ').split(/\s+/).filter(w => w && !_CONFIRM_STOP.has(w)).map(w => w.replace(/(ing|ed|es|s)$/, ''))
+  const Q = new Set(words(q)); return words(a).some(w => Q.has(w))
+}
 function _answersQuestion(questionEn, replyEn) {
   const q = String(questionEn || '').toLowerCase(), a = String(replyEn || '')
+  // "What should I answer?" → "Yes, almost fifteen thousand." is not an answer (v639)
+  if (_WH_Q.test(q) && _YESNO_OPENER.test(a.trim())) return false
+  // a confirmation longer than "Yes, I do." must be about the thing that was asked
+  if (_YESNO_OPENER.test(a.trim()) && _wordCount(a) > 3 && !_confirmStaysOnTopic(q, a)) return false
   if (_isAnswerish(a)) return true
   if (/\bwhy\b/.test(q)) return /because|so that|want|need|to \w+|for /i.test(a)
   if (/\bwhen\b|what time|how long|how many hours/.test(q)) return _clockOf(a) != null || /tomorrow|today|tonight|later|now|soon|morning|afternoon|evening|night|minute|hour|day|week|month/i.test(a)
@@ -12761,6 +12879,59 @@ function _answersQuestion(questionEn, replyEn) {
   if (/how many|how much|how old/.test(q)) return /\d|one|two|three|four|five|six|seven|eight|nine|ten|baht|many|few|a lot/i.test(a)
   if (/\bwho\b/.test(q)) return /\bi\b|he |she |they |we |friend|mother|father|brother|sister|teacher|you/i.test(a)
   return _sharesReferent(q, a)          // yes/no question: must stay on the same thing
+}
+// ── World plausibility (v639) ──────────────────────────────────────────────────────
+// The old check only measured structure (turn-taking, shared words, Q→A), so a restaurant
+// "costing" 10,000 → 100,000 → a million baht scored 5/5. Amounts are now read from the
+// English meaning and judged against the everyday situation they describe.
+const _NUMW = { a:1, an:1, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12,
+  thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40,
+  fifty:50, sixty:60, seventy:70, eighty:80, ninety:90 }
+const _SCALE = { hundred:100, thousand:1e3, million:1e6, billion:1e9 }
+function _amountsIn(text) {
+  const out = []
+  const s = String(text || '').toLowerCase().replace(/(\d),(\d{3})/g, '$1$2')
+  s.replace(/\b(\d+(?:\.\d+)?)\s*(hundred|thousand|million|billion)?\b/g, (_, n, sc) => { out.push(parseFloat(n) * (sc ? _SCALE[sc] : 1)); return '' })
+  const toks = s.replace(/[^a-z\- ]/g, ' ').split(/[\s-]+/).filter(Boolean)
+  let total = 0, cur = 0, inNum = false, sawScale = false
+  const flush = () => { if (inNum && sawScale) out.push(total + cur); total = 0; cur = 0; inNum = false; sawScale = false }
+  toks.forEach((w, i) => {
+    if ((w === 'a' || w === 'an') && !_SCALE[toks[i + 1]]) { flush(); return }
+    if (_NUMW[w] != null) { cur += _NUMW[w]; inNum = true }
+    else if (_SCALE[w]) { if (!inNum) { cur = 1; inNum = true } if (w === 'hundred') cur *= 100; else { total += cur * _SCALE[w]; cur = 0 } sawScale = true }
+    else if (w === 'and' && inNum) { /* one hundred and fifty */ }
+    else flush()
+  })
+  flush()
+  return out
+}
+const _EVERYDAY_PRICE_CTX = /\b(restaurant|food|meal|lunch|dinner|breakfast|snack|dessert|coffee|tea|drink|noodle|rice|shirt|clothes|market|street|stall|taxi|bus|ticket|massage|fruit|squid|meat)\b/i
+const _PRICE_CTX = /\b(price|prices|cost|costs|baht|expensive|cheap|pay|paid|charge)\b/i
+const EVERYDAY_PRICE_CEILING_BAHT = 5000
+function listeningPlausibilityProblems(lines) {
+  const out = []
+  const en = lines.map(l => String(l.pair.english || ''))
+  const sceneEveryday = en.some(t => _EVERYDAY_PRICE_CTX.test(t))
+  const scenePrice = en.some(t => _PRICE_CTX.test(t))
+  en.forEach((t, i) => {
+    const amts = _amountsIn(t)
+    if (!amts.length) return
+    const max = Math.max(...amts)
+    // B. world plausibility: an everyday purchase does not cost tens of thousands of baht
+    if (scenePrice && sceneEveryday && max > EVERYDAY_PRICE_CEILING_BAHT)
+      out.push({ at: i, score: 2, why: 'implausible everyday price (' + max.toLocaleString('en-US') + ') for this scene' })
+    // E. a confirmation must not silently change the amount ("Ten thousand?" → "Yes, almost fifteen thousand")
+    if (i > 0) {
+      const prev = _amountsIn(en[i - 1])
+      if (prev.length && /^(yes|yeah|right|correct|that's right)\b/i.test(t.trim()) && !amts.some(a => prev.includes(a)))
+        out.push({ at: i, score: 3, why: 'confirms, then states a different amount (' + prev.join('/') + ' → ' + amts.join('/') + ')' })
+      // E. random escalation between turns
+      const pm = prev.length ? Math.max(...prev) : 0
+      if (pm && (max / pm >= 5 || pm / max >= 5) && !/actually|sorry|no,|i mean|not /i.test(t))
+        out.push({ at: i, score: 2, why: 'amount jumps ' + pm.toLocaleString('en-US') + ' → ' + max.toLocaleString('en-US') + ' with no reason' })
+    }
+  })
+  return out
 }
 // Deterministic sequence check → { coherent, score 1-5, brokenAtPair, reason }
 function listeningCoherenceCheck(lines) {
@@ -12804,8 +12975,20 @@ function listeningCoherenceCheck(lines) {
       // a question IS a natural response to a statement ("I ran here." -> "Why did you run?")
       const reactive = _isAnswerish(en) || continues || _isQuestion(cur) || /!|wow|really|that's|nice|great|sorry/i.test(en)
       if (!reactive && !_sharesReferent(pen, en)) flag(3, 'turn does not follow from the previous line', i)
+      // an off-topic "Yes, …" is not a reaction just because it starts with yes (v639)
+      else if (_YESNO_OPENER.test(en.trim()) && _wordCount(en) > 3 && !_confirmStaysOnTopic(pen, en)) flag(3, 'confirmation is about something else', i)
     }
+    // a speaker does not thank / answer / react to their own previous line
+    if (lines[i].speaker && lines[i].speaker === lines[i - 1].speaker &&
+        /^(thank you|thanks|yes|yeah|no\b|wow|really|oh|me too|you too)\b/i.test(en.trim()))
+      flag(3, 'speaker replies to their own line', i)
   }
+  // a scene cannot open with a reply to something that is not in it ("Squid? That sounds delicious!")
+  const _open = String(lines[0].pair.english || '').trim()
+  if (/^(yes|yeah|no|wow|really|oh|so|then|right|sure|okay|ok|that's|me too|you too|thank you|thanks)\b/i.test(_open) || /^[A-Za-z' ]{1,20}\?\s/.test(_open))
+    flag(3, 'scene opens with a reply to something not in the scene', 0)
+  // B / E: world plausibility and amount sanity — structure alone never earns a 5
+  listeningPlausibilityProblems(lines).forEach(pb => flag(pb.score, pb.why, pb.at))
   return { coherent: score >= 4, score, brokenAtPair: brokenAt, reason: reason || 'continuous interaction' }
 }
 // Gemini 2.5 Lite conversation test. Judgement only — it never sees or returns dialogue
@@ -12813,18 +12996,36 @@ function listeningCoherenceCheck(lines) {
 // so the model can never rescue a sequence the checks above proved broken.
 async function listeningCoherenceWithModel(lines, apiKey, model, log) {
   if (!apiKey || !lines || lines.length < 2) return null
-  const rows = lines.map(l => '[' + l.idx + '] ' + (l.speaker || '?') + ': ' + String(l.pair.english || ''))
-  const prompt = 'Could two real people say these exact lines IN THIS ORDER as ONE continuous interaction, without an unstated ' +
-    'topic change, time jump, location jump or missing explanation?\n' + rows.join('\n') +
-    '\nReply ONLY with JSON: {"coherent":true/false,"score":1-5,"brokenAtPair":<pair id or null>,"reason":"..."}'
+  const rows = lines.map(l => '[' + l.idx + '] ' + (l.speaker || '?') + ': ' + (l.pair.thai ? l.pair.thai + ' — ' : '') + String(l.pair.english || ''))
+  const prompt = 'Judge this short scene of existing dialogue lines, in this order. Score EACH dimension 1-5:\n' +
+    'A continuity: does each line logically respond to or follow the previous one?\n' +
+    'B plausibility: are the quantities, prices, times, places and actions believable for this everyday situation? ' +
+    '(e.g. a restaurant meal costing 10,000 / 100,000 / a million baht is NOT plausible)\n' +
+    'C naturalness: would two real speakers say these lines in this order?\n' +
+    'D speaker consistency: does each speaker keep compatible pronouns/particles (ผม/ครับ vs ฉัน/ค่ะ/คะ)?\n' +
+    'E sanity: do amounts/values change for a reason, or only to squeeze in vocabulary?\n' +
+    'Do NOT give 5 by default. A scene that fails any dimension must score low.\n' + rows.join('\n') +
+    '\nReply ONLY with JSON: {"A":1-5,"B":1-5,"C":1-5,"D":1-5,"E":1-5,"brokenAtPair":<pair id or null>,"reason":"..."}'
   try {
     const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: prompt }])
     const m = String(raw || '').replace(/```json|```/g, '').match(/\{[\s\S]*\}/)
     if (!m) return null
     const o = JSON.parse(m[0])
-    return { coherent: !!o.coherent, score: Math.max(1, Math.min(5, Number(o.score) || 1)),
-             brokenAtPair: o.brokenAtPair != null ? Number(o.brokenAtPair) : null, reason: String(o.reason || '') }
+    const dims = ['A', 'B', 'C', 'D', 'E'].map(k => Number(o[k])).filter(n => n >= 1 && n <= 5)
+    const sc = dims.length === 5 ? Math.min(...dims) : Math.max(1, Math.min(5, Number(o.score) || 1))
+    return { coherent: sc >= 4, score: sc, dims: o, brokenAtPair: o.brokenAtPair != null ? Number(o.brokenAtPair) : null, reason: String(o.reason || '') }
   } catch (e) { log && log('  🎧 coherence check unavailable (' + e.message + ') — using the deterministic result'); return null }
+}
+// ONE scene score used for every scene that can reach the player: deterministic
+// continuity + plausibility, and (when available) the model's five-dimension judgement.
+// The minimum wins, so the model can never rescue a scene the checks proved broken.
+async function listeningSceneScore(lines, apiKey, model, log) {
+  const det = listeningCoherenceCheck(lines)
+  const mod = await listeningCoherenceWithModel(lines, apiKey, model, log)
+  const score = mod ? Math.min(det.score, mod.score) : det.score
+  const reason = (mod && mod.score < det.score) ? ('model: ' + mod.reason) : det.reason
+  return { score, reason, deterministic: det.score, model: mod ? mod.score : null,
+           plausibility: listeningPlausibilityProblems(lines).map(p => p.why) }
 }
 // Judge a scene, then repair it WITHOUT rewriting: split at the break, or drop the
 // weakest line. Returns the accepted line sets (0, 1 or 2 scenes).
@@ -12967,7 +13168,7 @@ async function buildListeningTrack(mainTrack, vocab, opts) {
   sel.scenes.forEach((s, si) => s.lines.forEach(l => chosen.push({ ...l, scene: si + 1 })))
   if (!chosen.length) return { ok: false, empty: true, stats: scan.stats }
   const asPicked = chosen.filter(c => c.designated).map(c => ({ targetId: c.designated.wordId, pairIndex: c.idx, pair: c.pair, covers: [], scene: c.scene }))
-  let qc = listeningFinalQc(mainTrack, lang, vocab, elig, asPicked)
+  let qc = listeningFinalQc(mainTrack, lang, vocab, elig, asPicked)   // re-run on the final set below
   if (!qc.ok && sel.source !== 'deterministic') {
     log && log('  🎧 QC failed on the model set — rebuilding with deterministic blocks')
     const picked = listeningSelectBlocks(blocks, MAX_LINES)
@@ -12997,23 +13198,65 @@ async function buildListeningTrack(mainTrack, vocab, opts) {
       for (const sc of [...new Set(chosen.map(x => x.scene))]) {
         const seq = chosen.filter(x => x.scene === sc).concat([line])
         if (seq.length > 6) continue
-        if (listeningCoherenceCheck(seq).score >= 4) { chosen.push({ ...line, scene: sc }); placed = true; break }
+        const j = await listeningSceneScore(seq, o.apiKey, o.model, log)
+        // Without a model judgement, word overlap is too weak to prove two lines belong
+        // together ("What should I answer?" → "I should go now." shares "should"), so a line
+        // may only join a scene it was actually generated next to.
+        const nb = seq.find(x => x !== line && Math.abs(x.idx - line.idx) === 1) || null
+        if (j.score >= 4 && (j.model != null || nb)) { chosen.push({ ...line, scene: sc, _nb: nb }); placed = true; break }
       }
       if (placed) break
       if (sceneNo < MAX_SCENES) {
+        // J: two alternatives of ONE target are not automatically a conversation — the
+        // pair must pass the same continuity + plausibility + model judgement as any scene.
         const partner = cands.find(x => x !== c) || null
         const seq = partner ? [c, partner].map(x => ({ ...x, designated: e })) : [line]
-        if (seq.length >= 2 && listeningCoherenceCheck(seq).score >= 4) {
-          sceneNo++; seq.forEach((l, i) => chosen.push({ ...l, designated: i === 0 ? e : null, scene: sceneNo }))
-          placed = true; break
+        if (seq.length >= 2) {
+          const j = await listeningSceneScore(seq, o.apiKey, o.model, log)
+          const adjacent = Math.abs(seq[0].idx - seq[1].idx) === 1
+          if (j.score >= 4 && (j.model != null || adjacent)) {
+            sceneNo++; seq.forEach((l, i) => chosen.push({ ...l, designated: i === 0 ? e : null, scene: sceneNo }))
+            placed = true; break
+          }
         }
       }
     }
     if (placed) covered.add(e.wordId)
     else omission.set(e.wordId, sceneNo >= MAX_SCENES ? 'SCENE_INCOMPATIBLE' : 'UNNATURAL_CANDIDATES')
   }
+  // PLAY ORDER = SCENE ORDER. The sweep appended its lines after every scene, so they
+  // played at the end of the track, detached from the scene they were judged in.
+  chosen.forEach((c, i) => { c._ord = i })
+  // a line attached next to its source neighbour plays beside it, in source order
+  chosen.forEach(c => { if (c._nb) { const nb = chosen.find(x => x.idx === c._nb.idx && x.scene === c.scene); if (nb) c._ord = nb._ord + (c.idx > nb.idx ? 0.5 : -0.5) } })
+  chosen.sort((a, b) => (a.scene - b.scene) || (a._ord - b._ord))
+  // ── FINAL SCENE JUDGEMENT — every scene that will be played, including sweep scenes,
+  //    is re-scored as a whole. A scene below 4 is removed, never repaired by rewriting.
+  const sceneReport = []
+  for (const sc of [...new Set(chosen.map(c => c.scene))]) {
+    const seq = chosen.filter(c => c.scene === sc)
+    const j = await listeningSceneScore(seq, o.apiKey, o.model, log)
+    sceneReport.push({ scene: sc, score: j.score, reason: j.reason, plausibility: j.plausibility, lines: seq.map(l => l.idx) })
+    if (j.score < 4) {
+      log && log('  🎧 scene ' + sc + ' removed (' + j.score + '/5): ' + j.reason)
+      for (let i = chosen.length - 1; i >= 0; i--) if (chosen[i].scene === sc) {
+        if (chosen[i].designated) { covered.delete(chosen[i].designated.wordId); omission.set(chosen[i].designated.wordId, 'SCENE_INCOHERENT') }
+        chosen.splice(i, 1)
+      }
+    }
+  }
+  if (!chosen.length) return { ok: false, empty: true, stats: scan.stats, sceneReport }
+  // renumber surviving scenes 1..n in play order
+  const _ren = new Map(); chosen.forEach(c => { if (!_ren.has(c.scene)) _ren.set(c.scene, _ren.size + 1) })
+  chosen.forEach(c => { c.scene = _ren.get(c.scene) })
+  const keptReport = sceneReport.filter(r => r.score >= 4).map(r => ({ ...r, scene: _ren.get(r.scene) }))
+  // QC runs on the FINAL set (it used to run before the sweep added lines)
+  qc = listeningFinalQc(mainTrack, lang, vocab, elig,
+    chosen.filter(c => c.designated).map(c => ({ targetId: c.designated.wordId, pairIndex: c.idx, pair: c.pair, covers: [], scene: c.scene })))
+  if (!qc.ok) { log && log('  ⛔ listening QC failed after sweep: ' + qc.problems.slice(0, 4).join(' | ')); return { ok: false, qc, stats: scan.stats } }
   const scenes = [...new Set(chosen.map(c => c.scene))]
   const designatedIds = chosen.filter(c => c.designated).map(c => c.designated.wordId)
+  const trackTargetCount = (mainTrack.keywords || []).length
   const lt = {
     listeningTrackId: 'lt-' + Date.now() + '-' + Math.floor(Math.random() * 1e4),
     sourceMainTrackId: listeningTrackId(mainTrack), language: lang, listeningVersion: o.version || 1,
@@ -13025,15 +13268,20 @@ async function buildListeningTrack(mainTrack, vocab, opts) {
       eligibleTargetCount: elig.eligible.length, coveredTargetCount: covered.size,
       uncoveredTargetCount: elig.eligible.length - covered.size,
       coveragePercent: elig.eligible.length ? Math.round(covered.size / elig.eligible.length * 100) : 0,
+      // truthful label denominators: ALL track targets, not just the eligible ones
+      trackTargetCount, allTrackWordsCovered: trackTargetCount > 0 && covered.size === trackTargetCount,
       omissionReasons: [...omission.entries()].map(([id, reason]) => ({ targetId: id, reason })) },
     sceneGroups: scenes, coherenceScore: sel.overall, selectionSource: sel.source,
-    sceneCoherence: sel.scenes.map(s => s.coherence), sceneReasons: sel.scenes.map(s => s.reason || ''),
+    // one entry per PLAYED scene (sweep scenes included), with the real reason
+    sceneCoherence: keptReport.map(r => r.score), sceneReasons: keptReport.map(r => r.reason || ''),
+    sceneReport: keptReport, removedScenes: sceneReport.filter(r => r.score < 4),
+    gateRejections: (scan.stats.gateRejections || []).map(g => ({ pairIndex: g.pairIndex, reasons: g.reasons })),
     supportingLineCount: chosen.filter(c => !c.designated).length,
     designatedLineCount: designatedIds.length,
     // speaker is derived from the sentence (ผม/ครับ vs ฉัน/ค่ะ), never from position, so the
     // marker, the text and the TTS voice always agree.
     lines: chosen.map(c => ({ pairIndex: c.idx, targetId: c.designated ? c.designated.wordId : null, supporting: !c.designated,
-      scene: c.scene, speaker: listeningSpeakerOf(c.pair, lang),
+      scene: c.scene, speaker: listeningSpeakerOf(c.pair, lang), gender: speakerGenderOf(c.pair, lang),
       thai: c.pair.thai, japanese: c.pair.japanese, chinese: c.pair.chinese,
       phonetic: c.pair.phonetic, reading: c.pair.reading, pinyin: c.pair.pinyin, romaji: c.pair.romaji,
       english: c.pair.english, wordId: c.designated ? c.designated.wordId : null })),
@@ -13043,6 +13291,15 @@ async function buildListeningTrack(mainTrack, vocab, opts) {
     lt.supportingLineCount + ' supporting) in ' + scenes.length + ' scene(s), source ' + sel.source +
     ', scene coherence ' + lt.sceneCoherence.join('/'))
   return { ok: true, listeningTrack: lt, stats: scan.stats, qc }
+}
+// Coverage label from what the Listening Track ACTUALLY teaches. Never claims "all"
+// unless every track target has a designated line here.
+function listeningCoverageLabel(lt, mainTrack) {
+  if (!lt) return ''
+  const total = (lt.coverage && lt.coverage.trackTargetCount) || ((mainTrack && mainTrack.keywords) || []).length
+  const covered = new Set((lt.lines || []).filter(l => l.targetId != null && !l.supporting).map(l => l.targetId)).size
+  if (!total) return ''
+  return covered === total ? 'all ' + total + ' track words covered' : covered + '/' + total + ' targets covered'
 }
 // Persistence — separate store; Main Tracks are never mutated.
 async function listeningLoadAll() { try { return (await stGet(LISTENING_STORE_KEY)) || {} } catch (e) { return {} } }
@@ -13135,6 +13392,7 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
       <div style={{ textAlign:'center', color:'var(--muted)', fontSize:13, marginBottom:8 }}>
         🎧 Listening · {lt.lines.length} sentences · {lt.sceneGroups.length} scene{lt.sceneGroups.length > 1 ? 's' : ''} · audio first</div>
       <ConvoPlayer lines={lines} speed={speed} onSpeedChange={setSpeed} gcpTtsKey={gcpTtsKey} lang={lang}
+        coverageLabel={listeningCoverageLabel(lt, track)}
         title={(LISTENING_LANGS[lang] ? LISTENING_LANGS[lang].charAt(0).toUpperCase() + LISTENING_LANGS[lang].slice(1) : 'Thai') + ' Conversation'}
         onSkip={() => finish('skipped')} onDone={() => finish('completed')} />
     </div>
@@ -13163,7 +13421,11 @@ const CONVO_TTS = {
   ja: { code:'ja-JP', a:'ja-JP-Neural2-C',        b:'ja-JP-Neural2-B',       prefix:'ja' },
   zh: { code:'cmn-CN', a:'cmn-CN-Wavenet-C',      b:'cmn-CN-Wavenet-A',      prefix:'zh' },
 }
-function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, title, lang }) {
+// Speaker for display AND voice: the line's authoritative gender (written by Listening
+// from speakerGenderOf); legacy lines fall back to their letter. v638 rendered the icon
+// from `speaker === 'M'`, a value no line ever has — so every line showed 👩.
+function convoLineIsMale(l) { return l && (l.gender ? l.gender === 'male' : l.speaker === 'A') }
+function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, title, lang, coverageLabel }) {
   const _tts = CONVO_TTS[lang] || CONVO_TTS.th
   const [lineIdx, setLineIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -13188,7 +13450,7 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, t
     const line = lines[lineIdx]
     const speakLine = async () => {
       if (cancelRef.current) return
-      const isASpeaker = line.speaker === 'A'
+      const isASpeaker = convoLineIsMale(line)
       // ── Google Cloud TTS (WaveNet: th-TH-Wavenet-B male, th-TH-Wavenet-A female) ──
       if (gcpTtsKey) {
         try {
@@ -13197,7 +13459,7 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, t
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              input: { text: line.thai },
+              input: { text: ttsTextForPair(line) },   // sanitised, correct field for every language
               voice: { languageCode: _tts.code, name: voiceName },
               audioConfig: { audioEncoding: 'MP3', speakingRate: Math.min(Math.max(speedRef.current || 0.8, 0.25), 4.0) }  // pace control added May 2025
             })
@@ -13241,7 +13503,7 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, t
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
         <div>
           <div className="display" style={{ fontSize:17, color:'var(--gold)' }}>{title || 'Thai Conversation'}</div>
-          <div style={{ fontSize:11, color:'var(--muted)' }}>{lines.length} lines · all track words covered</div>
+          <div style={{ fontSize:11, color:'var(--muted)' }}>{lines.length} lines{coverageLabel ? ' · ' + coverageLabel : ''}</div>
         </div>
         <button onClick={() => { cancelRef.current = true; try { window.speechSynthesis.cancel() } catch(e) {} onSkip() }}
           style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'7px 14px', cursor:'pointer', color:'var(--muted)', fontSize:12, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
@@ -13274,7 +13536,7 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, t
       {/* Conversation lines */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8, overflowY:'auto' }}>
         {lines.map((l, i) => {
-          const isA = l.speaker === 'M'
+          const isA = convoLineIsMale(l)
           const isCurrent = i === lineIdx && playing
           const isPast = i < lineIdx
           return (
@@ -13283,9 +13545,9 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, t
                 {isA ? '👨' : '👩'}
               </div>
               <div style={{ maxWidth:'78%', background: isCurrent ? (isA ? '#0a1a2e' : '#1a0a2e') : 'var(--surface)', border:`1px solid ${isCurrent ? (isA ? '#4a90e2' : '#c084fc') : 'var(--border)'}`, borderRadius:12, padding:'10px 12px', transition:'all 0.2s' }}>
-                <p className="thai" style={{ fontSize:20, color: isCurrent ? 'var(--text)' : '#8899aa', marginBottom:3 }}>{l.thai}</p>
-                <p className="phon" style={{ fontSize:13, color:'var(--gold)', marginBottom:2 }}>{l.phonetic}</p>
-                <p style={{ fontSize:12, color:'#c8d8f0', fontStyle:'italic' }}>{l.english}</p>
+                <p className="thai" style={{ fontSize:20, color: isCurrent ? 'var(--text)' : '#8899aa', marginBottom:3 }}>{learnerDisplayText(listeningSentence(l))}</p>
+                <p className="phon" style={{ fontSize:13, color:'var(--gold)', marginBottom:2 }}>{learnerDisplayText(listeningPhonetic(l))}</p>
+                <p style={{ fontSize:12, color:'#c8d8f0', fontStyle:'italic' }}>{learnerDisplayText(l.english)}</p>
               </div>
             </div>
           )
@@ -13706,6 +13968,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
           costBefore: balanceBefore,
+          _finalAudit: (pairs && pairs._finalAudit) || null,
         }
         // Item 42: Verify track can be serialized before showing ready
         try { JSON.stringify(track) } catch(e) { throw new Error('Track data invalid: ' + e.message) }
@@ -13740,7 +14003,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
               c.error > 0 && `⚠️ ${c.error} errors`,
             ].filter(Boolean).join(' · ')
             setGenLog(prev => [...prev, '✅ QC done: ' + summary, '━━━━━━━━━━━━━━━━━━━━━━━━'])
-            setGeneratedTrack(prev => prev ? { ...prev, pairs: result.pairs } : prev)
+            setGeneratedTrack(prev => prev ? { ...prev, pairs: result.pairs, _finalAudit: result.counts.finalAudit || prev._finalAudit || null,
+              _coverage: result.counts.coverage || prev._coverage || null } : prev)
           }
         } catch(e) {
           setGenLog(prev => [...prev, '⚠️ Auto QC failed: ' + e.message])
@@ -14246,7 +14510,9 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
   // Thai pairs carry thai/phonetic. Reading a pair through these accessors keeps
   // Thai byte-behaviour identical (it falls straight through to .thai/.phonetic)
   // without renaming Japanese text into a `thai` field anywhere permanent.
-  const targetTextOf = p => (!p ? '' : (_tl === 'zh' ? (p.chinese || p.thai || '')
+  // Legacy tracks may hold model markup in stored text; it is stripped for display and
+  // speech here (history itself is not rewritten).
+  const targetTextOf = p => (!p ? '' : stripModelMarkup(_tl === 'zh' ? (p.chinese || p.thai || '')
                                       : _tl === 'ja' ? (p.japanese || p.thai || '') : (p.thai || '')))
   const phoneticOf   = p => (!p ? '' : (_tl === 'zh' ? (p.pinyin || p.phonetic || '')
                                       : _tl === 'ja' ? (p.romaji || p.phonetic || '') : (p.phonetic || '')))
@@ -14517,29 +14783,17 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
         <div style={{ height:3, background:'var(--gold)', borderRadius:2, marginBottom:24 }} />
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:24 }}>
           {(() => {
-            // Brand-new words sort to the top so they get rated first and with full attention.
-            const order = keywords.map((kw, i) => ({ kw, i }))
-              .sort((a, b) => (b.kw.isNew ? 1 : 0) - (a.kw.isNew ? 1 : 0))
-            const newCount = order.filter(o => o.kw.isNew).length
-            return order.map(({ kw, i }, pos) => (
-              <React.Fragment key={i}>
-                {pos === 0 && newCount > 0 && (
-                  <div style={{ display:'flex', alignItems:'center', gap:8, margin:'4px 2px 2px' }}>
-                    <span style={{ fontSize:11, fontWeight:800, letterSpacing:0.8, color:'#4a90e2' }}>
-                      ✦ INTRODUCING ({newCount})
-                    </span>
-                    <div style={{ flex:1, height:1, background:'rgba(74,144,226,0.3)' }} />
-                  </div>
-                )}
-                {pos === newCount && newCount > 0 && (
-                  <div style={{ display:'flex', alignItems:'center', gap:8, margin:'14px 2px 2px' }}>
-                    <span style={{ fontSize:11, fontWeight:800, letterSpacing:0.8, color:'var(--muted)' }}>
-                      REVIEW
-                    </span>
-                    <div style={{ flex:1, height:1, background:'var(--border)' }} />
-                  </div>
-                )}
-                {renderKeywordCard(kw, i)}
+            // Headings follow the SAME category the card badge shows: genuinely new words
+            // are INTRODUCING, previously-seen words re-entering as new are RELEARNING, the
+            // rest REVIEWED. v638 put RELEARN cards under INTRODUCING (Revision, 0 new).
+            const sections = endScreenSections(keywords)
+            return sections.map(sec => (
+              <React.Fragment key={sec.id}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, margin: sec.first ? '4px 2px 2px' : '14px 2px 2px' }}>
+                  <span style={{ fontSize:11, fontWeight:800, letterSpacing:0.8, color: sec.color }}>{sec.heading}</span>
+                  <div style={{ flex:1, height:1, background: sec.rule }} />
+                </div>
+                {sec.items.map(({ kw, i }) => <React.Fragment key={i}>{renderKeywordCard(kw, i)}</React.Fragment>)}
               </React.Fragment>
             ))
           })()}
@@ -16659,13 +16913,16 @@ function _qrSourceTarget(src) {
 // ── Standalone QR core — used by both auto-run and manual QualityReview ───────
 async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, cancelRef, vocab, steps } = {}) {
   const cancelled = () => cancelRef && cancelRef.current
-  let allPairs = [...(track.pairs || [])]
+  // Every pair gets a stable key BEFORE any mutation, so the final audit can find the
+  // pre-mutation candidate of any line (legacy pairs predate _pairKey).
+  let allPairs = (track.pairs || []).map((p, i) => (p && !p._pairKey) ? { ...p, _pairKey: 'q' + (i + 1) } : p)
+  const _auditOriginals = new Map(allPairs.filter(Boolean).map(p => [p._pairKey, { ...p }]))
   const counts = { clean: 0, fix_phonetic: 0, improve: 0, replace: 0, prompt_fix: 0, phonetic_prepass: 0, error: 0 }
   // Default: run everything unless steps explicitly restricts
   const run = { corruption: true, promptMatch: true, groupEval: true, phonetics: true, glosses: true, ...steps }
   // Closed-vocab: the pre-QC pairs (already validated at generation) are the legal
   // versions a later rewrite may be rolled back to.
-  const _cvOriginals = (track.pairs || []).map(p => p ? { ...p } : p)
+  const _cvOriginals = allPairs.map(p => p ? { ...p } : p)
   const _cvT = thaiTargetsFromTrack(track, vocab)
   const _cvCtx = buildThaiTrackVocabContext(vocab, _cvT.list)
 
@@ -16751,7 +17008,10 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       else if (verdict.action === 'improve') newPairs = await _qrImprove(verdict, group, allPairs, apiKey, model, knownWords)
       else newPairs = await _qrReplace(group, allPairs, apiKey, model, knownWords)
       if (cancelled()) break
-      if (newPairs) group.indices.forEach((idx, pi) => { if (newPairs[pi]) allPairs[idx] = { ...newPairs[pi], _source: `ai:${verdict.action}:${group.targetWord}` } })
+      // A rewrite returns bare model objects. Replacing the pair wholesale dropped pairType,
+      // targetId, _target and recallGroupId — the 9 "TYPE unknown" lines of 25 Sept. Identity
+      // now comes from the pair being replaced; the new TEXT is marked for re-validation.
+      if (newPairs) group.indices.forEach((idx, pi) => { if (newPairs[pi]) allPairs[idx] = reconcileMutatedThaiPair(newPairs[pi], allPairs[idx], `ai:${verdict.action}:${group.targetWord}`, verdict.action) })
       counts[verdict.action] = (counts[verdict.action] || 0) + 1
     } catch(e) { onLog?.(`  ⚠️ ${group.targetWord}: ${e.message}`); counts.error++ }
   }
@@ -16794,19 +17054,48 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       const _cv3 = enforceThaiClosedVocabulary(allPairs, _cvCtx, { originals: _cvOriginals, targetsById: _cvT.byId, onLog, stage: 'post-audit' })
       allPairs = _cv3.pairs; counts.closedVocabPostAudit = _cv3.stats
     }
+  } catch (e) { onLog?.('⚠️ final audit stage failed: ' + e.message) }
+  // FINAL phonetic stage — changes phonetics only, never Thai.
+  try { allPairs = finaliseThaiTrackPhonetics(allPairs, buildThaiPhoneticLexicon(vocab), onLog) }
+  catch (e) { onLog?.('\u26A0\uFE0F Final phonetic stage failed: ' + e.message) }
+  // FINAL_TRACK_AUDIT — the LAST step. Identity, target presence, speaker, markup and
+  // naturalness are judged on the exact objects that will be saved and played.
+  try {
+    const _fin = thaiFinalTrackAudit(allPairs, { keywords: thaiAuditKeywords(track, _cvT.list), vocab, stage: 'qc',
+      originals: _auditOriginals, onLog,
+      barredThai: ((counts.finalSemanticAudit && counts.finalSemanticAudit.failures) || []).map(f => f.thai) })
+    allPairs = _fin.pairs; counts.finalAudit = _fin.report
+    // BOUNDED MAIN TRACK RECOVERY — a target left with no valid target-bearing line gets
+    // fresh candidates through the existing QC replace path, validated by EVERY final
+    // check. Only if all attempts fail is it reported as unresolved.
+    if (_fin.report.coverage.missing.length) {
+      const rec = await recoverUncoveredThaiTargets(allPairs, _fin.report.coverage.missing, {
+        track, keywords: thaiAuditKeywords(track, _cvT.list), vocab, apiKey, model, knownWords, cvCtx: _cvCtx, originals: _auditOriginals, onLog })
+      allPairs = rec.pairs
+      if (rec.changed) {
+        const _fin2 = thaiFinalTrackAudit(allPairs, { keywords: thaiAuditKeywords(track, _cvT.list), vocab, stage: 'qc+recovery',
+          originals: _auditOriginals, onLog, barredThai: ((counts.finalSemanticAudit && counts.finalSemanticAudit.failures) || []).map(f => f.thai) })
+        allPairs = _fin2.pairs; counts.finalAudit = _fin2.report
+      }
+      counts.finalAudit.recovery = rec.recovery
+      counts.finalAudit.unresolved = rec.recovery.filter(r => !r.resolved).map(r => ({ targetId: r.targetId, target: r.target, attempts: r.attempts.length,
+        reasons: r.attempts.map(a => a.attempt + ': ' + a.result + (a.reasons && a.reasons.length ? ' — ' + a.reasons.join('; ') : '')) }))
+      counts.finalAudit.unresolved.forEach(u => onLog?.('  ⛔ TARGET_UNRESOLVED: ' + u.target + ' after ' + u.attempts + ' recovery attempt(s) — ' + u.reasons.join(' | ')))
+    } else { counts.finalAudit.recovery = []; counts.finalAudit.unresolved = [] }
+  } catch (e) { onLog?.('⚠️ final track audit failed: ' + e.message) }
+  // Coverage is counted ONLY from final accepted target-bearing pairs.
+  try {
     const _cov = thaiTargetCoverage(allPairs, track.keywords || [])
     counts.coverage = _cov
     onLog?.('  📊 coverage: 3+ candidates ' + _cov.with3 + ' · 2 ' + _cov.with2 + ' · 1 ' + _cov.with1 + ' · 0 ' + _cov.with0)
     if (_cov.with0) onLog?.('  ⛔ TARGET_UNCOVERED: ' + _cov.uncovered.join(' ') + ' — track is NOT fully covered')
-  } catch (e) { onLog?.('⚠️ final audit stage failed: ' + e.message) }
+  } catch (e) {}
   try {
     track._closedVocab = counts.closedVocabFinal || counts.closedVocab || null
     track._semanticAudit = counts.finalSemanticAudit || null
     track._coverage = counts.coverage || null
+    track._finalAudit = counts.finalAudit || null
   } catch (e) {}
-  // FINAL phonetic stage \u2014 always last; nothing may change phonetics after this.
-  try { allPairs = finaliseThaiTrackPhonetics(allPairs, buildThaiPhoneticLexicon(vocab), onLog) }
-  catch (e) { onLog?.('\u26A0\uFE0F Final phonetic stage failed: ' + e.message) }
   return { pairs: allPairs, counts }
 }
 
@@ -16818,24 +17107,34 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
 // every mutation and immediately before save. A failure is repaired or dropped, never saved.
 async function finalPairSemanticAudit(pairs, apiKey, model, onLog) {
   const content = (pairs || []).filter(p => p && p.pairType !== 'framing' && p.thai)
-  const stats = { checked: content.length, cueMismatch: 0, dropped: 0, failures: [] }
+  const stats = { checked: content.length, cueMismatch: 0, unnatural: 0, dropped: 0, failures: [] }
   if (!content.length) return { pairs, stats }
   let scored = content
   try { scored = await _qrBatchPromptCheck(content.map(p => ({ ...p, _pm: null, _pmNote: '' })), apiKey, model, onLog) }
   catch (e) { onLog?.('⚠️ final semantic audit unavailable: ' + e.message); return { pairs, stats } }
   const verdict = new Map(scored.map(p => [p.thai + '|' + (p.prompt || ''), p]))
+  // Naturalness on the same final text (the "would a native speaker say this?" gate).
+  stats.unnatural = 0
+  let nat = new Map()
+  try { nat = await _qrBatchNaturalnessCheck(content, apiKey, model, onLog) }
+  catch (e) { onLog?.('⚠️ naturalness check unavailable: ' + e.message) }
+  const natByKey = new Map([...nat.entries()].map(([ci, v]) => [content[ci].thai + '|' + (content[ci].prompt || ''), v]))
   const out = (pairs || []).filter(p => {
     if (!p || p.pairType === 'framing' || !p.thai) return true
-    const v = verdict.get(p.thai + '|' + (p.prompt || ''))
+    const key = p.thai + '|' + (p.prompt || '')
+    const v = verdict.get(key)
     const score = v && v._pm != null ? v._pm : 5
-    if (score >= 4) return true
-    stats.cueMismatch++; stats.dropped++
+    const n = natByKey.get(key)
+    if (score >= 4 && (!n || n.s >= 4)) return true
+    const why = score < 4 ? ((v && v._pmNote) || 'cue does not match the final sentence') : ('unnatural ' + n.s + '/5' + (n.note ? ' — ' + n.note : ''))
+    if (score < 4) stats.cueMismatch++; else stats.unnatural++
+    stats.dropped++
     stats.failures.push({ targetId: p.targetId, target: p._target, cue: (p.prompt || '').slice(0, 50),
-                          thai: p.thai, score, reason: (v && v._pmNote) || 'cue does not match the final sentence' })
-    onLog?.('  ⛔ final audit: [' + (p._target || '?') + '] ' + score + '/5 — ' + ((v && v._pmNote) || 'cue mismatch') + ' → dropped')
+                          thai: p.thai, score: score < 4 ? score : n.s, reason: why })
+    onLog?.('  ⛔ final audit: [' + (p._target || '?') + '] ' + why + ' → dropped')
     return false
   })
-  onLog?.('  🧭 FINAL_PAIR_SEMANTIC_AUDIT: checked=' + stats.checked + ' cueMismatch=' + stats.cueMismatch + ' dropped=' + stats.dropped)
+  onLog?.('  🧭 FINAL_PAIR_SEMANTIC_AUDIT: checked=' + stats.checked + ' cueMismatch=' + stats.cueMismatch + ' unnatural=' + stats.unnatural + ' dropped=' + stats.dropped)
   return { pairs: out, stats }
 }
 // Coverage accounting: a dropped candidate must never look like successful practice.
@@ -16846,6 +17145,427 @@ function thaiTargetCoverage(pairs, keywords) {
   const bucket = n => rows.filter(r => r.valid === n).length
   return { rows, with3: rows.filter(r => r.valid >= 3).length, with2: bucket(2), with1: bucket(1), with0: bucket(0),
            uncovered: rows.filter(r => r.valid === 0).map(r => r.target) }
+}
+
+
+// ══ v639 FINAL TRACK INTEGRITY ════════════════════════════════════════════════════
+// A real Thai Revision track generated after the v638 report (25 Sept 2026) contradicted
+// that report: pairs without their own target, TYPE unknown lines, ฉัน…ครับ, literal
+// __น้ำปลา__ in stored Thai, every Listening icon 👩, absurd restaurant prices scored 5/5.
+// This block is the ONE implementation of the per-line rules. The final Main Track audit
+// and the Listening line gate both call it, so the two can no longer disagree.
+
+// ── Model-formatting artifacts ───────────────────────────────────────────────────
+// Nothing in this file writes __target__: the markers arrive in model replies and were
+// never removed. Only wrapper syntax a model uses for emphasis is matched — never Thai,
+// kana/kanji, hanzi, tone marks, spaces, digits or real punctuation. A single "_" is left
+// alone because no observed artifact uses it.
+const MODEL_MARKUP_PATTERNS = [
+  { id: 'double-underscore', re: /_{2,}/g },
+  { id: 'double-asterisk',   re: /\*{2,}/g },
+  { id: 'backtick',          re: /`+/g },
+  { id: 'html-emphasis',     re: /<\/?(?:b|u|i|em|strong|mark|span|font|ins)\b[^>]*>/gi },
+]
+function modelMarkupFound(s) {
+  const str = String(s == null ? '' : s)
+  return MODEL_MARKUP_PATTERNS.filter(m => { m.re.lastIndex = 0; const hit = m.re.test(str); m.re.lastIndex = 0; return hit }).map(m => m.id)
+}
+function stripModelMarkup(s) {
+  if (s == null) return s
+  let out = String(s)
+  MODEL_MARKUP_PATTERNS.forEach(m => { m.re.lastIndex = 0; out = out.replace(m.re, '') })
+  return out
+}
+// Learner-facing display of legacy text. Stored history is never rewritten.
+function learnerDisplayText(s) { return stripModelMarkup(s == null ? '' : s) }
+const LEARNER_TEXT_FIELDS = ['thai', 'japanese', 'chinese', 'phonetic', 'reading', 'romaji', 'pinyin', 'english', 'prompt']
+// Parse-boundary sanitiser: raw model reply → parsed candidate → THIS → validation.
+// The raw text is kept on the pair (diagnostics only) and never displayed or spoken.
+function sanitizeModelPair(p, stage) {
+  if (!p || typeof p !== 'object') return p
+  let changed = null
+  const next = { ...p }
+  LEARNER_TEXT_FIELDS.forEach(f => {
+    if (typeof next[f] !== 'string' || !modelMarkupFound(next[f]).length) return
+    changed = changed || {}
+    changed[f] = next[f]
+    next[f] = stripModelMarkup(next[f])
+  })
+  if (!changed) return p
+  next._rawModelText = { ...(p._rawModelText || {}), ...changed }
+  next._markupStripped = stage || 'parse'
+  return next
+}
+function pairMarkupLeaks(p) {
+  const out = []
+  LEARNER_TEXT_FIELDS.forEach(f => { if (p && typeof p[f] === 'string') modelMarkupFound(p[f]).forEach(id => out.push(f + ':' + id)) })
+  return out
+}
+
+// ── Thai speaker identity ─────────────────────────────────────────────────────────
+// ONE authoritative speaker per line, written as `speakerGender` and read by the
+// Listening renderer and its TTS voice. Sentence evidence wins when it is unambiguous;
+// otherwise the creation metadata stands. The sentence is never rewritten to match.
+const _TH_HAIR_RE = /(?:ตัด|สระ|ย้อม|หวี|ดัด|เส้น|ทรง)ผม|ผม(?:ยาว|สั้น|ร่วง|หงอก|หยิก|เปียก)/g
+function thaiSpeakerEvidence(thai) {
+  const s = String(thai || '')
+  const noHair = s.replace(_TH_HAIR_RE, ' ')
+  const male = [], female = []
+  if (/ครับ/.test(s)) male.push('ครับ')
+  if (/ผม/.test(noHair)) male.push('ผม')
+  if (/ค่ะ/.test(s)) female.push('ค่ะ')
+  if (/คะ(?!แนน|น้า)/.test(s)) female.push('คะ')
+  if (/ดิฉัน/.test(s)) female.push('ดิฉัน')
+  else if (/ฉัน/.test(s)) female.push('ฉัน')      // weak: men also say ฉัน casually
+  return { male, female }
+}
+function thaiMetadataGender(p) {
+  if (!p) return null
+  if (p.speakerGender === 'male' || p.speakerGender === 'female') return p.speakerGender
+  // Thai generation contract: A lines end in ครับ, B lines in ค่ะ/คะ.
+  return p.speaker === 'A' ? 'male' : p.speaker === 'B' ? 'female' : null
+}
+// → { status: ok | linguistic-conflict | metadata-conflict | ambiguous, gender, source, reason }
+function thaiSpeakerIdentity(p) {
+  const ev = thaiSpeakerEvidence(p && p.thai)
+  const strongMale = ev.male.includes('ครับ'), anyMale = ev.male.length > 0
+  const strongFemale = ev.female.some(x => x !== 'ฉัน'), anyFemale = ev.female.length > 0
+  const meta = thaiMetadataGender(p)
+  if ((strongMale && anyFemale) || (anyMale && strongFemale)) {
+    return { status: 'linguistic-conflict', gender: null, source: 'none', evidence: ev,
+             reason: 'male and female markers in one sentence (' + ev.male.concat(ev.female).join(' + ') + ')' }
+  }
+  const fromText = anyMale ? 'male' : strongFemale ? 'female' : null
+  if (fromText && meta && fromText !== meta) {
+    return { status: 'metadata-conflict', gender: fromText, source: 'sentence', evidence: ev,
+             reason: 'metadata says ' + meta + ', sentence is ' + fromText }
+  }
+  if (fromText) return { status: 'ok', gender: fromText, source: 'sentence', evidence: ev, reason: '' }
+  return { status: meta ? 'ok' : 'ambiguous', gender: meta, source: meta ? 'metadata' : 'none', evidence: ev, reason: meta ? '' : 'no speaker evidence' }
+}
+// Speaker for any language's Listening line / renderer.
+function speakerGenderOf(p, lang) {
+  if (!p) return null
+  if ((lang || 'th') === 'th' && p.thai) { const id = thaiSpeakerIdentity(p); if (id.gender) return id.gender }
+  if (p.speakerGender === 'male' || p.speakerGender === 'female') return p.speakerGender
+  return p.speaker === 'B' ? 'female' : p.speaker === 'A' ? 'male' : null
+}
+
+// ── Thai line naturalness (deterministic floor) ──────────────────────────────────
+// These catch the observed failure CLASSES without a model. The model naturalness
+// check in finalPairSemanticAudit judges everything else.
+const _escRe = s => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function thaiLineNaturalnessProblems(p, target, vocab) {
+  const s = String(p && p.thai || ''), out = []
+  const norm = x => String(x || '').toLowerCase().replace(/[^a-z;, ]/g, '').replace(/\s+/g, ' ').trim()
+  const gloss = target && (target.english || target.e)
+  // fallback residue: a template cue, or the raw dictionary gloss as the translation
+  if (/^\s*say\s*:/i.test(p && p.prompt || '')) out.push('fallback cue ("Say: …")')
+  if (gloss && norm(p && p.english) && norm(p.english) === norm(gloss)) out.push('translation is the raw dictionary gloss')
+  if (target && target.thai && /^(fallback|hardcoded):/.test(String(p && p._source || '')) &&
+      s.replace(/(ครับ|ค่ะ|คะ|นะ|\s)/g, '') === target.thai) out.push('template fallback: bare target word')
+  // a fixed phrase whose head is duplicated right before it (ผมขอให้คุณขอให้สนุกกับวันนี้ครับ)
+  if (target && target.thai && target.thai.length >= 6) {
+    // the phrase's own opening repeated just before it (ขอให้คุณขอให้…). Checked on the
+    // literal text, longest prefix first, so it does not depend on the head being a vocab entry.
+    for (let k = Math.min(8, target.thai.length - 1); k >= 3; k--) {
+      const head = target.thai.slice(0, k)
+      if (new RegExp(_escRe(head) + '[\\u0e00-\\u0e7f]{0,6}' + _escRe(target.thai)).test(s)) {
+        out.push('"' + head + '" duplicated in front of the fixed phrase "' + target.thai + '"'); break
+      }
+    }
+  }
+  // ซึ่ง is a relative pronoun: it must follow the noun it describes, never a verb or particle
+  if (/(รู้|ครับ|ค่ะ|คะ|นะ|แล้ว|เลย)ซึ่ง/.test(s)) out.push('ซึ่ง does not follow a noun (malformed relative clause)')
+  return out
+}
+
+// ── Pair identity ─────────────────────────────────────────────────────────────────
+// content = teaches its target (target MUST be present) · bridge = response/support line
+// in a target's exchange (no targetId, supportsTargetId instead) · framing = greeting /
+// parting. Type is stamped at CREATION; later stages never infer it from a missing id.
+const THAI_PAIR_TYPES = ['content', 'bridge', 'framing']
+// Thai exchange contract (generateWordLines): LINE 1 (A) and LINE 3 (A) must contain the
+// target; LINE 2 (B) is the response. Speaker is corrected from the particle before
+// acceptance, so the speaker letter IS the contract role.
+function thaiContractRole(p) { return p && p.speaker === 'B' ? 'response' : 'target' }
+function _thaiGroupTarget(p, keywords) {
+  const kws = keywords || []
+  const bySurf = t => kws.find(k => (k.thai || k.surface) === t)
+  if (p.targetId != null) { const k = kws.find(k => k.wordId === p.targetId); if (k) return k }
+  if (p.wordId != null) { const k = kws.find(k => k.wordId === p.wordId); if (k) return k }
+  if (p.supportsTargetId != null) { const k = kws.find(k => k.wordId === p.supportsTargetId); if (k) return k }
+  if (p.recallGroupId) { const id = Number(String(p.recallGroupId).replace(/^rg-/, '')); const k = kws.find(k => k.wordId === id); if (k) return k }
+  if (p._target) { const k = bySurf(p._target); if (k) return k }
+  const src = String(p._source || '')
+  if (src.includes(':')) { const k = bySurf(src.slice(src.lastIndexOf(':') + 1)); if (k) return k }
+  return null
+}
+// Legacy pairs (made before types were stamped at creation, or whose identity a QC
+// rewrite dropped) are resolved from stable references only. Never invented.
+function resolveThaiPairIdentity(p, keywords) {
+  if (!p) return { type: 'unknown', how: 'no pair' }
+  if (p.pairType === 'framing') return { type: 'framing', how: 'stamped' }
+  const k = _thaiGroupTarget(p, keywords)
+  if (THAI_PAIR_TYPES.includes(p.pairType) && p._typedAt === 'creation') return { type: p.pairType, target: k, how: 'stamped' }
+  if (/^(greeting|parting|opening|closing)$/i.test(String(p._target || ''))) return { type: 'framing', how: 'legacy framing' }
+  if (k) {
+    const has = thaiContainsLexeme(p.thai || '', k.thai)
+    // Only a RESPONSE line (contract line 2, speaker B) may legitimately lack the target.
+    // A target-role line without its target stays content and fails TARGET_MISSING.
+    const response = thaiContractRole(p) === 'response'
+    if (has) return { type: 'content', target: k, how: p.pairType === 'content' ? 'legacy content' : 'restored from group reference' }
+    if (response && !p._mutatedBy) return { type: 'bridge', target: k, how: p.pairType === 'content' ? 'legacy response line (contract line 2) stamped content → bridge' : 'restored from group reference: response line' }
+    return { type: 'content', target: k, how: 'target-role line without its target (failed recall)' }
+  }
+  // unique lexical match against this track's targets
+  const hits = (keywords || []).filter(kk => kk.thai && thaiContainsLexeme(p.thai || '', kk.thai))
+  if (hits.length === 1) return { type: 'content', target: hits[0], how: 'restored by unique lexical match' }
+  return { type: 'unknown', how: hits.length ? 'ambiguous: ' + hits.length + ' targets in sentence' : 'no stable reference' }
+}
+function stampThaiIdentity(p, id) {
+  const base = { ...p, language: 'th', pairType: id.type }
+  if (id.type === 'content') return { ...base, targetId: id.target.wordId, wordId: id.target.wordId, _target: id.target.thai, supportsTargetId: undefined, targetRequired: true }
+  if (id.type === 'bridge') return { ...base, targetId: null, wordId: null, supportsTargetId: id.target ? id.target.wordId : (p.supportsTargetId != null ? p.supportsTargetId : null), _target: id.target ? id.target.thai : p._target, targetRequired: false, recallRole: 'response' }
+  return { ...base, targetId: null, wordId: null }
+}
+// A QC rewrite returns bare model objects. Identity, speaker and group come from the
+// pair being replaced; the TEXT is new, so it is flagged for full re-validation.
+function reconcileMutatedThaiPair(next, prev, source, action) {
+  if (!next) return prev
+  const clean = sanitizeModelPair(next, 'qc:' + (action || 'rewrite'))
+  const out = { ...clean, _source: source || clean._source }
+  if (prev) {
+    ;['language', 'pairType', 'targetId', 'wordId', 'supportsTargetId', '_target', 'recallGroupId', 'recallRole',
+      'recallIndex', '_typedAt', '_pairKey', 'speaker', 'speakerGender'].forEach(f => { if (prev[f] !== undefined) out[f] = prev[f] })
+    if (String(prev.thai || '') !== String(clean.thai || '')) out._mutatedBy = action || 'rewrite'
+  }
+  return out
+}
+
+// ── The shared per-line gate ─────────────────────────────────────────────────────
+// Used by the final Main Track audit AND by Listening, on the exact object each keeps.
+function thaiLineGate(p, keywords, vocab) {
+  const problems = []
+  const leaks = pairMarkupLeaks(p)
+  if (leaks.length) problems.push({ code: 'MARKUP', why: 'presentation markup in learner text (' + leaks.join(', ') + ')' })
+  const id = resolveThaiPairIdentity(p, keywords)
+  if (id.type === 'unknown') problems.push({ code: 'TYPE_UNKNOWN', why: 'pair type cannot be established (' + id.how + ')' })
+  if (id.type === 'content' && id.target && !thaiContainsLexeme(p.thai || '', id.target.thai))
+    problems.push({ code: 'TARGET_MISSING', why: 'target "' + id.target.thai + '" is not in its own sentence' })
+  if (id.type === 'bridge') {
+    if (thaiContractRole(p) !== 'response') problems.push({ code: 'BRIDGE_NOT_RESPONSE', why: 'a target-role line cannot be a bridge' })
+    const sup = id.target ? id.target.wordId : p.supportsTargetId
+    if (sup == null) problems.push({ code: 'BRIDGE_UNANCHORED', why: 'bridge does not say which target it supports' })
+  }
+  const sp = thaiSpeakerIdentity(p)
+  if (sp.status === 'linguistic-conflict') problems.push({ code: 'SPEAKER_CONFLICT', why: sp.reason })
+  if (id.type !== 'framing') thaiLineNaturalnessProblems(p, id.target, vocab).forEach(w => problems.push({ code: 'UNNATURAL', why: w }))
+  return { ok: problems.length === 0, problems, identity: id, speaker: sp }
+}
+
+// ── FINAL THAI TRACK AUDIT — the last step before pairs become player input ─────────
+// Order: identity/type → target identity → target presence → cue (model audit, already
+// run) → naturalness → speaker → closed vocabulary (enforced just before) → phonetics →
+// markup/TTS safety → duplicates. Nothing may change target-language text after this;
+// anything that does must call it again.
+function thaiFinalTrackAudit(pairs, opts) {
+  const o = opts || {}, keywords = o.keywords || [], vocab = o.vocab || [], log = o.onLog || null
+  const originals = o.originals || new Map()
+  // sentences a model check already failed (cue mismatch / unnatural) can never be rescued
+  const barred = new Set(o.barredThai || [])
+  const R = { stage: o.stage || 'final', pairsIn: (pairs || []).length, accepted: 0,
+    types: { content: 0, bridge: 0, framing: 0, unknown: 0 },
+    targetBearing: { total: 0, present: 0, missing: 0 },
+    speaker: { male: 0, female: 0, ambiguous: 0, linguisticConflicts: 0, metadataConflictsCorrected: 0 },
+    markup: { strippedLegacy: 0, leaks: 0 },
+    identityRestored: [], retypedToBridge: [], rejected: [], rescued: [], phoneticWarnings: 0, duplicates: 0, failedTargetLines: 0 }
+  const reject = (p, i, problems) => {
+    if (problems.some(x => x.code === 'TARGET_MISSING')) R.failedTargetLines++
+    R.rejected.push({ index: i + 1, key: p._pairKey || null, thai: p.thai, targetId: p.targetId != null ? p.targetId : null,
+      reasons: problems.map(x => x.code + ': ' + x.why) })
+    log && log('  ⛔ final audit rejected [' + String(i + 1).padStart(3, '0') + '] ' + (p.thai || '') + ' — ' + problems.map(x => x.why).join('; '))
+  }
+  const seen = new Set()
+  const out = []
+  ;(pairs || []).forEach((p0, i) => {
+    if (!p0) return
+    // markup: legacy text is cleaned once here; anything left is a leak and is rejected
+    let p = sanitizeModelPair(p0, 'final-audit')
+    if (p !== p0) R.markup.strippedLegacy++
+    const gate = thaiLineGate(p, keywords, vocab)
+    // identity: stamp the resolved identity so nothing downstream has to infer it
+    const id = gate.identity
+    if (id.type !== 'unknown' && (p.pairType !== id.type || (id.type === 'content' && p.targetId !== (id.target && id.target.wordId)))) {
+      if (id.type === 'bridge' && p.pairType === 'content') R.retypedToBridge.push({ index: i + 1, thai: p.thai, how: id.how })
+      else R.identityRestored.push({ index: i + 1, thai: p.thai, type: id.type, how: id.how })
+      p = stampThaiIdentity(p, id)
+    }
+    if (!gate.ok) { reject(p, i, gate.problems); return }
+    // speaker: one authoritative value
+    const sp = gate.speaker
+    if (sp.status === 'metadata-conflict') { R.speaker.metadataConflictsCorrected++ }
+    p = { ...p, speakerGender: sp.gender || p.speakerGender || null }
+    if (p.speakerGender === 'male') R.speaker.male++; else if (p.speakerGender === 'female') R.speaker.female++; else R.speaker.ambiguous++
+    // phonetics: must exist and be romanised
+    if (id.type !== 'framing' && (!p.phonetic || /[\u0e00-\u0e7f]/.test(p.phonetic))) R.phoneticWarnings++
+    // exact duplicate sentence inside one group adds nothing
+    const dk = (p.recallGroupId || p.supportsTargetId || p.targetId || '') + '|' + p.thai
+    if (seen.has(dk) && id.type !== 'framing') { R.duplicates++; reject(p, i, [{ code: 'DUPLICATE', why: 'identical sentence already in this group' }]); return }
+    seen.add(dk)
+    out.push(p)
+  })
+  // coverage rescue: a target that lost every target-bearing line may take back an
+  // already-generated pre-mutation candidate — only if that candidate passes every check.
+  const covered = new Set(out.filter(p => p.pairType === 'content').map(p => p.targetId))
+  keywords.forEach(k => {
+    if (covered.has(k.wordId)) return
+    const pool = [...originals.values()].filter(op => op && _thaiGroupTarget(op, keywords) === k)
+    for (const op0 of pool) {
+      const op = sanitizeModelPair(op0, 'final-audit')
+      if (barred.has(op.thai)) continue
+      const g = thaiLineGate(op, keywords, vocab)
+      if (!g.ok || g.identity.type !== 'content') continue
+      const fixed = { ...stampThaiIdentity(op, g.identity), speakerGender: g.speaker.gender || op.speakerGender || null, _rescued: true }
+      const at = out.findIndex(x => x.recallGroupId && x.recallGroupId === fixed.recallGroupId)
+      if (at >= 0) out.splice(at, 0, fixed); else out.push(fixed)
+      R.rescued.push({ targetId: k.wordId, thai: fixed.thai }); covered.add(k.wordId)
+      if (fixed.speakerGender === 'male') R.speaker.male++; else if (fixed.speakerGender === 'female') R.speaker.female++; else R.speaker.ambiguous++
+      log && log('  ♻️ final audit: restored pre-mutation candidate for ' + k.thai + ': ' + fixed.thai)
+      break
+    }
+  })
+  // invariants re-measured on the OUTPUT, not assumed
+  out.forEach(p => {
+    R.types[THAI_PAIR_TYPES.includes(p.pairType) ? p.pairType : 'unknown']++
+    if (p.pairType === 'content') {
+      R.targetBearing.total++
+      const k = keywords.find(kk => kk.wordId === p.targetId)
+      if (k && thaiContainsLexeme(p.thai || '', k.thai)) R.targetBearing.present++; else R.targetBearing.missing++
+    }
+    if (thaiSpeakerIdentity(p).status === 'linguistic-conflict') R.speaker.linguisticConflicts++
+    R.markup.leaks += pairMarkupLeaks(p).length
+  })
+  R.accepted = out.length
+  const cov = keywords.map(k => ({ targetId: k.wordId, target: k.thai, lines: out.filter(p => p.pairType === 'content' && p.targetId === k.wordId).length }))
+  R.coverage = { selected: keywords.length, covered: cov.filter(c => c.lines > 0).length,
+                 missing: cov.filter(c => !c.lines).map(c => ({ targetId: c.targetId, target: c.target })) }
+  R.invariants = {
+    TARGET_BEARING_PAIR_TARGET_MISSING: R.targetBearing.missing,
+    TYPE_UNKNOWN: R.types.unknown,
+    THAI_FINAL_SPEAKER_CONFLICTS: R.speaker.linguisticConflicts,
+    FINAL_SENTENCE_MARKUP_COUNT: R.markup.leaks,
+  }
+  R.ok = Object.values(R.invariants).every(v => v === 0)
+  log && log('  🧾 FINAL_TRACK_AUDIT (' + R.stage + '): accepted ' + R.accepted + '/' + R.pairsIn +
+    ' · content ' + R.types.content + ' · bridge ' + R.types.bridge + ' · framing ' + R.types.framing +
+    ' · rejected ' + R.rejected.length + ' · coverage ' + R.coverage.covered + '/' + R.coverage.selected +
+    ' · invariants ' + (R.ok ? 'OK' : JSON.stringify(R.invariants)))
+  if (!R.ok) console.error('[final-audit] invariant violated', R.invariants)
+  return { pairs: out, report: R }
+}
+// ── Bounded Main Track recovery ─────────────────────────────────────────────────────
+// For each target with no valid target-bearing line: up to MAX attempts through the
+// existing QC replace path (_qrReplace). Each candidate exchange passes, in order:
+// markup strip → contract-role typing → closed vocabulary (no template fallback) →
+// cue + naturalness (model) → final phonetics → the deterministic final gate. It is
+// accepted only if it yields a valid target-bearing line; otherwise the next attempt runs.
+const THAI_RECOVERY_MAX_ATTEMPTS = 2
+async function recoverUncoveredThaiTargets(pairs, missing, ctx) {
+  const c = ctx || {}, log = c.onLog || null
+  let all = pairs.slice(); let changed = false
+  const recovery = []
+  const origOrder = [...(c.originals || new Map()).values()]
+  for (const m of missing) {
+    const kw = (c.keywords || []).find(k => k.wordId === m.targetId) || { wordId: m.targetId, thai: m.target }
+    const rec = { targetId: kw.wordId, target: kw.thai, attempts: [], resolved: false }
+    log && log('  ♻️ recovery: ' + kw.thai + ' has no valid target-bearing line — up to ' + THAI_RECOVERY_MAX_ATTEMPTS + ' attempt(s)')
+    // where the exchange belongs: next to what is left of its group, else where it was
+    const at = () => {
+      const i = all.findIndex(p => p && (p.recallGroupId === 'rg-' + kw.wordId || p.supportsTargetId === kw.wordId))
+      if (i >= 0) return i
+      const oi = origOrder.findIndex(p => p && (p.recallGroupId === 'rg-' + kw.wordId || p.targetId === kw.wordId || p._target === kw.thai))
+      for (let j = oi + 1; oi >= 0 && j < origOrder.length; j++) { const k = all.findIndex(p => p && p._pairKey === origOrder[j]._pairKey); if (k >= 0) return k }
+      const close = all.findIndex(p => p && p.pairType === 'framing' && /parting|closing/.test(String(p._target || p._pairKey || '')))
+      return close >= 0 ? close : all.length
+    }
+    for (let a = 1; a <= THAI_RECOVERY_MAX_ATTEMPTS; a++) {
+      if (!c.apiKey) { rec.attempts.push({ attempt: a, result: 'not attempted', reasons: ['no model credentials'] }); break }
+      const pos = at()
+      const group = { targetWord: kw.thai, indices: [pos], pairs: [{ speaker: 'A' }, { speaker: 'B' }, { speaker: 'A' }] }
+      let raw
+      try { raw = await _qrReplace(group, all, c.apiKey, c.model, c.knownWords) }
+      catch (e) { rec.attempts.push({ attempt: a, result: 'rejected', reasons: ['generation: ' + e.message] }); continue }
+      const keys = [0, 1, 2].map(ri => 'th-' + kw.wordId + '-r' + a + '-' + (ri + 1))
+      let cands = (raw || []).slice(0, 3).map((l0, ri) => {
+        const l = sanitizeModelPair({ ...l0, speaker: l0.speaker || (ri === 1 ? 'B' : 'A') }, 'qc:recover')
+        const role = thaiContractRole(l), has = thaiContainsLexeme(l.thai || '', kw.thai)
+        const base = { ...l, language: 'th', _target: kw.thai, recallGroupId: 'rg-' + kw.wordId, recallIndex: ri + 1, _typedAt: 'creation',
+                       _pairKey: keys[ri], _source: 'qc:recover:' + kw.thai, speakerGender: l.speaker === 'B' ? 'female' : 'male', _recoveryAttempt: a }
+        return (has || role === 'target')
+          ? { ...base, pairType: 'content', targetId: kw.wordId, wordId: kw.wordId, recallRole: role === 'target' ? 'alternative' : 'response-with-target', targetRequired: true }
+          : { ...base, pairType: 'bridge', targetId: null, wordId: null, supportsTargetId: kw.wordId, recallRole: 'response', targetRequired: false, respondsToPairKey: ri > 0 ? keys[ri - 1] : null }
+      })
+      const reasons = []
+      // closed vocabulary WITHOUT template fallback: an illegal line is simply dropped
+      try {
+        const cv = enforceThaiClosedVocabulary(cands, c.cvCtx, { stage: 'recovery', onLog: log })
+        const kept = new Set(cv.pairs.filter(Boolean).map(p => p.thai))
+        cands.filter(p => !kept.has(p.thai)).forEach(p => reasons.push('closed vocabulary: ' + p.thai))
+        cands = cands.filter(p => kept.has(p.thai) && !/^\s*say\s*:/i.test(p.prompt || ''))
+      } catch (e) { reasons.push('closed vocabulary check failed: ' + e.message); cands = [] }
+      try {
+        const sem = await finalPairSemanticAudit(cands, c.apiKey, c.model, log)
+        sem.stats.failures.forEach(f => reasons.push(f.reason + ': ' + f.thai)); cands = sem.pairs
+      } catch (e) { reasons.push('model audit failed: ' + e.message); cands = [] }
+      try { cands = finaliseThaiTrackPhonetics(cands, buildThaiPhoneticLexicon(c.vocab)) } catch (e) {}
+      const g = thaiFinalTrackAudit(cands, { keywords: c.keywords, vocab: c.vocab, stage: 'recovery' })
+      g.report.rejected.forEach(r => reasons.push(r.reasons.join('; ') + ': ' + r.thai))
+      const good = g.pairs.filter(p => p.pairType === 'content' && p.targetId === kw.wordId)
+      if (good.length) {
+        const pos2 = at()
+        all.splice(pos2, 0, ...g.pairs); changed = true; rec.resolved = true
+        rec.attempts.push({ attempt: a, result: 'accepted', reasons, lines: g.pairs.map(p => (p.pairType === 'bridge' ? '[bridge] ' : '') + p.thai) })
+        log && log('  ✅ recovery: ' + kw.thai + ' resolved on attempt ' + a + ' — ' + good.map(p => p.thai).join(' / '))
+        break
+      }
+      rec.attempts.push({ attempt: a, result: 'rejected', reasons: reasons.length ? reasons : ['no target-bearing line survived'] })
+      log && log('  ⛔ recovery attempt ' + a + ' for ' + kw.thai + ' rejected — ' + (reasons.join(' | ') || 'no target-bearing line survived'))
+    }
+    recovery.push(rec)
+  }
+  return { pairs: all, recovery, changed }
+}
+// Keywords for the audit from a track (wordId + surface + gloss).
+function thaiAuditKeywords(track, targets) {
+  if (track && Array.isArray(track.keywords) && track.keywords.length) return track.keywords.map(k => ({ wordId: k.wordId, thai: k.thai, english: k.english }))
+  return (targets || []).map(t => ({ wordId: t.id, thai: t.thai, english: t.english }))
+}
+
+// ── Model naturalness gate ──────────────────────────────────────────────────────
+// "Would a native speaker plausibly say this exact sentence in ordinary conversation,
+// with this intended meaning?" Scored on the FINAL text; < 4 fails.
+async function _qrBatchNaturalnessCheck(pairs, apiKey, model, onLog) {
+  const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) => p && p.thai && p.pairType !== 'framing')
+  const scored = new Map()
+  const BATCH = 12
+  for (let b = 0; b < eligible.length; b += BATCH) {
+    const chunk = eligible.slice(b, b + BATCH)
+    const numbered = chunk.map(({ p }, ci) => (ci + 1) + '. Thai: ' + p.thai + '\n   Intended meaning: ' + (p.english || '') +
+      '\n   Speaker: ' + (p.speakerGender || (p.speaker === 'B' ? 'female' : 'male'))).join('\n\n')
+    const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
+      'You are a native Thai speaker checking learner material. For EACH sentence answer: would a native speaker plausibly ' +
+      'say this exact sentence in ordinary conversation, with this intended meaning, as this speaker?\n' +
+      'Penalise: malformed grammar, target-word stuffing, duplicated words, English-shaped Thai, wrong sense of a word, ' +
+      'mixed male/female particles (ผม/ครับ vs ฉัน/ค่ะ/คะ), absurd everyday claims, meaningless fragments.\n' +
+      'Scale: 5 natural · 4 natural with a small quirk · 3 understandable but unnatural · 2 wrong/awkward · 1 broken.\n\n' +
+      numbered + '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."}]' }], 700)
+    try {
+      const parsed = JSON.parse(String(raw || '').replace(/```json|```/g, '').trim())
+      parsed.forEach(({ i: ci, s, note }) => { const orig = chunk[ci - 1]; if (orig && s != null) scored.set(orig.i, { s: Number(s), note: note || '' }) })
+    } catch (e) { onLog && onLog('  ⚠️ naturalness batch ' + (Math.floor(b / BATCH) + 1) + ' unparseable — not judged') }
+  }
+  return scored
 }
 
 async function _qrBatchPromptCheck(pairs, apiKey, model, onLog) {
@@ -24683,6 +25403,9 @@ try {
   document.body.style.cssText = "margin:0;background:#0b1120;min-height:100vh;padding:20px;box-sizing:border-box"
   document.body.innerHTML = "<div style='max-width:480px;font-family:monospace'><div style='color:#f43f5e;font-size:16px;font-weight:800;margin-bottom:12px'>❌ Render crashed</div><div style='background:#1a1a2e;border:1px solid #f43f5e;border-radius:10px;padding:14px'><div style='color:#fca5a5;font-size:13px;word-break:break-all;margin-bottom:10px'>" + (e && e.message || String(e)) + "</div><pre style='color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:0'>" + (e && e.stack || "no stack") + "</pre></div></div>"
 }
+
+
+
 
 
 </script>

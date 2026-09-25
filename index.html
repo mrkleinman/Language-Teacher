@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v637"/>
+<meta name="app-version" content="v638"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v637';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v637').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v638';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v638').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -12921,6 +12921,9 @@ async function buildListeningTrack(mainTrack, vocab, opts) {
   log && log('  🎧 targets ' + (mainTrack.keywords || []).length + ' · eligible ' + elig.eligible.length +
     ' · excluded NEW ' + elig.excludedNew.length + ' · excluded unexposed ' + elig.excludedUnexposed.length)
   if (!scan.entries.length) return { ok: false, empty: true, stats: scan.stats }
+  const cands_byTarget = new Map()
+  scan.entries.forEach(e => { if (e.designated) { const id = e.designated.wordId
+    if (!cands_byTarget.has(id)) cands_byTarget.set(id, []); cands_byTarget.get(id).push(e) } })
   const blocks = listeningBlocks(scan.entries, MAX_LINES)
   log && log('  🎧 conversational blocks found: ' + blocks.length +
     ' (' + blocks.filter(b => b.qa).length + ' with question→answer, ' + blocks.filter(b => b.alternation).length + ' with turn-taking)')
@@ -12974,6 +12977,41 @@ async function buildListeningTrack(mainTrack, vocab, opts) {
     qc = listeningFinalQc(mainTrack, lang, vocab, elig, chosen.filter(c => c.designated).map(c => ({ targetId: c.designated.wordId, pairIndex: c.idx, pair: c.pair, covers: [], scene: c.scene })))
   }
   if (!qc.ok) { log && log('  ⛔ listening QC failed: ' + qc.problems.slice(0, 4).join(' | ')); return { ok: false, qc, stats: scan.stats } }
+  // ── COVERAGE SWEEP (K) ─────────────────────────────────────────────────────────
+  // The selector used to stop at the first coherent subset, leaving most eligible targets
+  // silently uncovered (live Thai: 6 of 24). Every uncovered eligible target is now
+  // retried as its own mini-scene, and anything still omitted records a REASON.
+  const MAX_SCENES = 4
+  const covered = new Set(chosen.filter(c => c.designated).map(c => c.designated.wordId))
+  const omission = new Map()
+  let sceneNo = Math.max(0, ...chosen.map(c => c.scene || 1))
+  for (const e of elig.eligible) {
+    if (covered.has(e.wordId)) continue
+    if (chosen.length >= MAX_LINES) { omission.set(e.wordId, 'LINE_BUDGET'); continue }
+    const cands = (cands_byTarget.get(e.wordId) || [])
+    if (!cands.length) { omission.set(e.wordId, 'NO_SAFE_CANDIDATE'); continue }
+    // try to attach to an existing scene, else open a new mini-scene (max 4)
+    let placed = false
+    for (const c of cands) {
+      const line = { ...c, designated: e }
+      for (const sc of [...new Set(chosen.map(x => x.scene))]) {
+        const seq = chosen.filter(x => x.scene === sc).concat([line])
+        if (seq.length > 6) continue
+        if (listeningCoherenceCheck(seq).score >= 4) { chosen.push({ ...line, scene: sc }); placed = true; break }
+      }
+      if (placed) break
+      if (sceneNo < MAX_SCENES) {
+        const partner = cands.find(x => x !== c) || null
+        const seq = partner ? [c, partner].map(x => ({ ...x, designated: e })) : [line]
+        if (seq.length >= 2 && listeningCoherenceCheck(seq).score >= 4) {
+          sceneNo++; seq.forEach((l, i) => chosen.push({ ...l, designated: i === 0 ? e : null, scene: sceneNo }))
+          placed = true; break
+        }
+      }
+    }
+    if (placed) covered.add(e.wordId)
+    else omission.set(e.wordId, sceneNo >= MAX_SCENES ? 'SCENE_INCOMPATIBLE' : 'UNNATURAL_CANDIDATES')
+  }
   const scenes = [...new Set(chosen.map(c => c.scene))]
   const designatedIds = chosen.filter(c => c.designated).map(c => c.designated.wordId)
   const lt = {
@@ -12982,12 +13020,20 @@ async function buildListeningTrack(mainTrack, vocab, opts) {
     creationMode: o.creationMode || 'AUTO_PRETRACK', createdAt: new Date().toISOString(), status: 'not_started',
     eligibleTargetIds: elig.eligible.map(e => e.wordId), excludedNewTargetIds: elig.excludedNew,
     omittedTargetIds: elig.eligible.map(e => e.wordId).filter(id => !designatedIds.includes(id)),
+    coverage: { language: lang, eligibleTargetIds: elig.eligible.map(e => e.wordId),
+      coveredTargetIds: [...covered], uncoveredTargetIds: elig.eligible.filter(e => !covered.has(e.wordId)).map(e => e.wordId),
+      eligibleTargetCount: elig.eligible.length, coveredTargetCount: covered.size,
+      uncoveredTargetCount: elig.eligible.length - covered.size,
+      coveragePercent: elig.eligible.length ? Math.round(covered.size / elig.eligible.length * 100) : 0,
+      omissionReasons: [...omission.entries()].map(([id, reason]) => ({ targetId: id, reason })) },
     sceneGroups: scenes, coherenceScore: sel.overall, selectionSource: sel.source,
     sceneCoherence: sel.scenes.map(s => s.coherence), sceneReasons: sel.scenes.map(s => s.reason || ''),
     supportingLineCount: chosen.filter(c => !c.designated).length,
     designatedLineCount: designatedIds.length,
+    // speaker is derived from the sentence (ผม/ครับ vs ฉัน/ค่ะ), never from position, so the
+    // marker, the text and the TTS voice always agree.
     lines: chosen.map(c => ({ pairIndex: c.idx, targetId: c.designated ? c.designated.wordId : null, supporting: !c.designated,
-      scene: c.scene, speaker: c.speaker,
+      scene: c.scene, speaker: listeningSpeakerOf(c.pair, lang),
       thai: c.pair.thai, japanese: c.pair.japanese, chinese: c.pair.chinese,
       phonetic: c.pair.phonetic, reading: c.pair.reading, pinyin: c.pair.pinyin, romaji: c.pair.romaji,
       english: c.pair.english, wordId: c.designated ? c.designated.wordId : null })),

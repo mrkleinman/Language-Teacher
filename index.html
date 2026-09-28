@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v641"/>
+<meta name="app-version" content="v642"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v641';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v641').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v642';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v642').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6012,7 +6012,10 @@ function pickWords(vocab, mode, todayNewWords) {
       .slice(0, 30 - targets.length)
     targets = [...targets, ...padding]
   }
-  return { targets, anchors }
+  // v642: a short selection is REPORTED, never silent (e.g. words locked in unrated tracks)
+  const shortfall = targets.length < 30 ? { requested: 30, selected: targets.length,
+    reason: 'eligible review pool exhausted after filtering (padding never adds new words)' } : null
+  return { targets, anchors, shortfall }
 }
 
 // ── Pimsleur Track Generator (local, no API) ──────────────────────────────────
@@ -6356,6 +6359,7 @@ async function downloadTrack(track) {
   const _sa = track._semanticAudit
   lines.push('Model checks: cue ' + (_sa ? _sa.cueCheck || 'not recorded' : 'not recorded') + ' · naturalness ' + (_sa ? _sa.naturalnessCheck || 'not recorded' : 'not recorded') +
     (_sa && (/UNAVAILABLE/.test(_sa.cueCheck || '') || /UNAVAILABLE/.test(_sa.naturalnessCheck || '')) ? '  ⚠️ quality gates did not fully run — lines were NOT model-checked' : ''))
+  if (track.targetCounts) lines.push('Target counts: ' + thaiTargetCountsLine(track.targetCounts))
   // Selection accounting: the lesson total is the ORIGINAL selection, always.
   const _unres = keywords.filter(k => k.unresolved)
   lines.push('Selected targets: ' + ((track.selectedTargetIds && track.selectedTargetIds.length) || keywords.length) +
@@ -8771,8 +8775,8 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
   const system = 'You design Thai language lesson scenarios. Given vocabulary words, create a vivid realistic scene where two Thai adult friends (not family members) naturally use these words. Characters A and B are friends or acquaintances — never parent/child, never siblings.'
   const user = 'Vocabulary: ' + wordList + '\n\nReturn ONLY valid JSON (no markdown):\n' +
     '{"scene":"2-sentence scene in English",' +
-    '"characterA":"Thai man name and role",' +
-    '"characterB":"Thai woman name and role",' +
+    '"characterA":"' + THAI_SPEAKER_MAP.A.role + ' name and role",' +
+    '"characterB":"' + THAI_SPEAKER_MAP.B.role + ' name and role",' +
     '"opening":"Natural Thai greeting A says to B (must end ครับ). MUST warmly acknowledge the person — สวัสดีครับ is fine, or casual: วันนี้เป็นยังไงบ้างครับ, นานไม่ได้เจอกันเลยครับ, มาถึงแล้วเหรอครับ, เพิ่งมาถึงเหรอครับ, ว่างไหมครับ. BANNED: ไปไหนมาครับ (interrogation, not greeting). Make the other person feel welcomed.",' +
     '"opening_phonetic":"full romanisation of opening",' +
     '"opening_english":"English translation of opening (omit particle)",' +
@@ -10178,12 +10182,47 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
 // The particle is judged by the SPEAKER's own gender. Never the listener, never a
 // named person in the sentence, never the grammatical subject.
 //   "คุณพลอยอยากซื้ออะไรครับ"  \u2014 Ploy is female, the SPEAKER is male, ครับ is correct.
-function thaiSpeakerGender(speaker, charA, charB) {
-  const desc = speaker === 'B' ? (charB || '') : (charA || '')
-  if (/\bman\b|\bmale\b|\bboy\b|\bold man\b|\bgentleman\b|\bhusband\b|\bfather\b|\bson\b/i.test(desc)) return 'male'
-  if (/\bwoman\b|\bfemale\b|\bgirl\b|\bold woman\b|\blady\b|\bwife\b|\bmother\b|\bdaughter\b/i.test(desc)) return 'female'
-  // Speaker A defaults male in this app's convention; B defaults female.
-  return speaker === 'B' ? 'female' : 'male'
+// ══ v642 AUTHORITATIVE THAI SPEAKER MAP ═════════════════════════════════════════════
+// The ONLY source of Thai speaker identity. The generation prompt (LINE 1/3 = A with
+// ครับ, LINE 2 = B with ค่ะ/คะ), the scene prompt (A = Thai man, B = Thai woman), QC,
+// persistence, recovery and Listening all derive from it.
+// v641 and earlier guessed gender by searching the scene's free-text role descriptions
+// for words like "wife" / "son" / "woman" — a man "who cooks with his wife" read as
+// female, a woman "shopping for her son" as male — and then rejected every correct ครับ
+// (A) and ค่ะ/คะ (B) line through all 11 checks. Descriptions are now a diagnostic only.
+const THAI_SPEAKER_MAP = Object.freeze({
+  A: Object.freeze({ gender: 'male',   particles: Object.freeze(['\u0e04\u0e23\u0e31\u0e1a']),              role: 'Thai man' }),
+  B: Object.freeze({ gender: 'female', particles: Object.freeze(['\u0e04\u0e48\u0e30', '\u0e04\u0e30']), role: 'Thai woman' }),
+})
+function thaiSpeakerMapGender(letter) { const m = THAI_SPEAKER_MAP[letter]; return m ? m.gender : null }
+// Prompt text for a speaker's required ending, built from the map ("ครับ" / "ค่ะ or คะ").
+function thaiContractParticleText(letter) { return (THAI_SPEAKER_MAP[letter] || THAI_SPEAKER_MAP.A).particles.join(' or ') }
+// Kept for its call sites; charA/charB are ignored on purpose (see above).
+function thaiSpeakerGender(speaker /*, charA, charB */) { return thaiSpeakerMapGender(speaker === 'B' ? 'B' : 'A') }
+// Diagnostic only: does the scene's character text contradict the map? Reads the HEAD of
+// the description ("Nida, a Thai woman …"), never relatives mentioned later in it.
+function thaiSceneCharacterCheck(charA, charB) {
+  const headGender = d => {
+    const head = String(d || '').split(/\b(?:who|whose|with|and|that|for|from|at|in)\b|[.;(]/i)[0]
+    if (/\b(woman|female|girl|lady)\b|ผู้หญิง/i.test(head)) return 'female'
+    if (/\b(man|male|boy|gentleman)\b|ผู้ชาย/i.test(head)) return 'male'
+    return null
+  }
+  const out = []
+  ;[['A', charA], ['B', charB]].forEach(([k, d]) => { const g = headGender(d); if (g && g !== thaiSpeakerMapGender(k))
+    out.push('SCENE_CHARACTER_MISMATCH: character ' + k + ' is described as ' + g + ' ("' + String(d).slice(0, 60) + '") but speaker ' + k + ' is ' + thaiSpeakerMapGender(k) + ' — lines follow the speaker map') })
+  return out
+}
+// Fail fast on an impossible internal map rather than burning the retry ladder.
+function assertThaiSpeakerMapIntegrity() {
+  const problems = []
+  if (thaiSpeakerMapGender('A') === thaiSpeakerMapGender('B')) problems.push('A and B map to the same gender')
+  ;['A', 'B'].forEach(k => {
+    if (thaiSpeakerGender(k) !== thaiSpeakerMapGender(k)) problems.push('thaiSpeakerGender(' + k + ') = ' + thaiSpeakerGender(k) + ' but the map says ' + thaiSpeakerMapGender(k))
+    const probe = 'x' + THAI_SPEAKER_MAP[k].particles[0]
+    if (!validateThaiSpeakerParticle(probe, thaiSpeakerMapGender(k)).ok) problems.push('the validator rejects ' + k + '\'s own contract particle')
+  })
+  return { ok: !problems.length, problems }
 }
 // Returns the trailing politeness particle, ignoring trailing whitespace and any
 // punctuation the model may append. Comparing an UNTRIMMED string against /ครับ$/
@@ -10675,9 +10714,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     ? 'CURRENT TOPIC: they have been talking about "' + runningTopic + '". The new exchange MUST flow naturally from this — find a realistic bridge from what they just discussed to the new word. Do NOT introduce a completely new unrelated topic out of nowhere.\n'
     : ''
   const baseUser = _topicBridge + context + 'Continue the conversation. Write exactly 3 lines:\n' +
-    'LINE 1 (A): ' + _usageHint + ' — must end with ครับ — MUST contain the Thai word "' + target.thai + '"\n' +
-    'LINE 2 (B): respond naturally to what A just said — must end with ค่ะ or คะ\n' +
-    'LINE 3 (A): must contain "' + target.thai + '" again — must end with ครับ\n' +
+    'LINE 1 (A): ' + _usageHint + ' — must end with ' + thaiContractParticleText('A') + ' — MUST contain the Thai word "' + target.thai + '"\n' +
+    'LINE 2 (B): respond naturally to what A just said — must end with ' + thaiContractParticleText('B') + '\n' +
+    'LINE 3 (A): must contain "' + target.thai + '" again — must end with ' + thaiContractParticleText('A') + '\n' +
     '\nCRITICAL: Lines 1 and 3 MUST physically contain the characters "' + target.thai + '" — not a synonym, not a related word — the exact word.\n' +
     'Make it feel like real speech between two friends.\n' +
     'The "prompt" field = specific description of what is said, e.g. "He says his ear hurts" or "She asks if he cleaned his ears" — precise, not vague'
@@ -10836,8 +10875,15 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           l.phonetic = l.phonetic.replace(/([a-záéíóúàèìòùâêîôûāēīōū]{3,})-([a-záéíóúàèìòùâêîôûāēīōū]{3,})/gi, '$1 $2')
           l.phonetic = l.phonetic.replace(/\s+/g, ' ').trim()
         }
-        if (/ครับ$/.test(l.thai)) l.speaker = 'A'
-        else if (/ค่ะ$|คะ$/.test(l.thai)) l.speaker = 'B'
+        // v642: the generated speaker letter is METADATA and is kept. It used to be
+        // overwritten from the particle, which let a female line in A's slot pass as B.
+        // Only a missing/invalid letter is filled from the particle, and that is logged.
+        if (l.speaker !== 'A' && l.speaker !== 'B') {
+          const _pt = thaiTrailingParticle(l.thai)
+          const _fill = _pt && THAI_SPEAKER_MAP.A.particles.includes(_pt) ? 'A' : _pt && THAI_SPEAKER_MAP.B.particles.includes(_pt) ? 'B' : null
+          if (_fill) { l.speaker = _fill; l._speakerFromParticle = true
+            onProgress && onProgress(-1, -1, { apiError: 'ℹ speaker missing — filled as ' + _fill + ' from particle ' + _pt }, null, null) }
+        }
       })
       const genderValid = linesArr.filter(l => {
         // Phonetics are composed by the app now, so their absence is not a defect.
@@ -10855,6 +10901,12 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         if (!_pr.ok && onProgress)
           onProgress(-1, -1, { apiError: '\u26A0\uFE0F speaker=' + l.speaker + ' gender=' + _g +
             ' particle=' + _pr.detected + ' result=FAIL (' + _pr.reason + ')' }, null, null)
+        // INVARIANT: a line ending in its OWN contract particle can only fail here if the
+        // internal speaker map is broken. That is a pipeline bug, not a model failure.
+        if (!_pr.ok && THAI_SPEAKER_MAP[l.speaker] && THAI_SPEAKER_MAP[l.speaker].particles.includes(_pr.detected)) {
+          const _err = new Error('INTERNAL_SPEAKER_MAP_CONFLICT: speaker ' + l.speaker + ' validated as ' + _g + ' but its contract particle is ' + _pr.detected)
+          _err.code = 'INTERNAL_SPEAKER_MAP_CONFLICT'; throw _err
+        }
         if (!_pr.ok) { l._genderFail = _pr.reason; return false }
         if (/[一-鿿]/.test(l.thai)) return false
         // Auto-fix Thai/missing prompt instead of rejecting
@@ -11118,6 +11170,12 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       return result
 
     } catch(e) {
+      // An internal invariant failure is not a model failure: stop immediately instead of
+      // spending the remaining checks regenerating around a broken speaker map.
+      if (e && e.code === 'INTERNAL_SPEAKER_MAP_CONFLICT') {
+        onProgress && onProgress(-1, -1, { apiError: '⛔ INTERNAL_SPEAKER_MAP_CONFLICT — ' + e.message + ' — retries stopped for ' + target.thai }, null, null)
+        throw e
+      }
       const is429 = e.message.includes('429')
       onProgress && onProgress(-1, -1, { apiError: '❌ ' + e.message.slice(0,100) }, null, null)
       if (is429) {
@@ -11178,8 +11236,14 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   const charB = sceneData.characterB || 'Nida, a Thai woman'
   // Speaker identity is stamped at creation from the scene's characters (the Thai
   // contract: A speaks with ครับ, B with ค่ะ/คะ), then confirmed against each sentence.
-  const _genderOf = (c, dflt) => /\b(woman|female|girl|lady|mother|aunt)\b|ผู้หญิง/i.test(c) ? 'female' : /\b(man|male|boy|father|uncle)\b|ผู้ชาย/i.test(c) ? 'male' : dflt
-  const _gA = _genderOf(charA, 'male'), _gB = _genderOf(charB, 'female')
+  // v642: genders come from the ONE speaker map (never from the character text).
+  const _gA = thaiSpeakerMapGender('A'), _gB = thaiSpeakerMapGender('B')
+  const _mapCheck = assertThaiSpeakerMapIntegrity()
+  if (!_mapCheck.ok) {
+    const _err = new Error('INTERNAL_SPEAKER_MAP_CONFLICT: ' + _mapCheck.problems.join('; '))
+    _err.code = 'INTERNAL_SPEAKER_MAP_CONFLICT'; throw _err
+  }
+  thaiSceneCharacterCheck(charA, charB).forEach(m => onProgress && onProgress(0, targets.length * 3, { apiError: 'ℹ ' + m }, null, null))
   const _stampFraming = (p, key) => { if (!p) return; p.language = 'th'; p.pairType = 'framing'; p.targetId = null; p._typedAt = 'creation'; p._pairKey = key; p.speakerGender = p.speaker === 'B' ? _gB : _gA; assertThaiPairIdentity(p) }
   if (sceneData.opening) {
     // A's opening line — get phonetic from scene or generate it
@@ -11242,13 +11306,16 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   })
   const _trackAllowedSetId = 'trk-' + targets.length + '-' + _trackAllowed.size
   targets.forEach(t => { if (t) { t._allowedSet = _trackAllowed; t._allowedSetId = _trackAllowedSetId } })
+  // v642: explicit, named counts — "trackTargetCount" meant generation targets only.
+  const _cnt = targets._targetCounts || null
+  if (_cnt && _cnt.generationTargetCount !== targets.length) _cnt.generationTargetCount = targets.length
   onProgress && onProgress(0, targets.length * 3, { apiError:
-    '\uD83D\uDCDA trackAllowedSetId=' + _trackAllowedSetId +
-    ' trackTargetCount=' + targets.length +
-    ' allowedCount=' + _trackAllowed.size }, null, null)
+    '\uD83D\uDCDA ' + (_cnt ? thaiTargetCountsLine(_cnt) : 'GENERATION_TARGETS=' + targets.length) +
+    ' · trackAllowedSetId=' + _trackAllowedSetId + ' allowedCount=' + _trackAllowed.size }, null, null)
   for (let i = 0; i < targets.length; i++) {
     const target = targets[i]
-    onProgress && onProgress(allPairs.length, targets.length * 3, { wordStatus: '\u{1F4AC} ' + (i+1) + '/30: ' + target.thai + ' [' + target.english + ']' }, null, null)
+    // progress denominator = generationTargetCount (was a hard-coded "/30")
+    onProgress && onProgress(allPairs.length, targets.length * 3, { wordStatus: '\u{1F4AC} ' + (i+1) + '/' + targets.length + ': ' + target.thai + ' [' + target.english + ']' }, null, null)
     let lines = await generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, GPT_MODEL, i, onProgress, runningTopic, usedSubjects)
     if (!lines || lines.length < 2) {
       const hb = HARDCODED_FALLBACKS[target.thai]
@@ -13462,7 +13529,7 @@ async function _listeningRecoverAnchor(kw, ctx, attempt) {
   const known = ctx.knownWords.slice(0, 90).join(' ')
   const prompt = 'You are writing ONE line of Thai listening practice for a learner.\n' +
     'Write ONE natural spoken Thai sentence that contains the exact word "' + kw.thai + '" meaning "' + (kw.english || '') + '".\n' +
-    'Speaker: a man — use ผม for "I" and end with ครับ. Everyday situation' + (ctx.topic ? ', ideally fitting this conversation: ' + ctx.topic : '') + '.\n' +
+    'Speaker: ' + (thaiSpeakerMapGender('A') === 'male' ? 'a man — use ผม for "I"' : 'a woman — use ฉัน for "I"') + ' and end with ' + thaiContractParticleText('A') + '. Everyday situation' + (ctx.topic ? ', ideally fitting this conversation: ' + ctx.topic : '') + '.\n' +
     'Use ONLY these words the learner knows, plus "' + kw.thai + '": ' + known + '\n' +
     'Rules: 4–12 words; something a person would really say; no invented large numbers or prices; no markup, quotes or explanations.' +
     (attempt > 1 ? '\nThe previous attempt was rejected: ' + ctx.lastReasons.join('; ') + '. Write a simpler, more natural sentence.' : '') +
@@ -13578,7 +13645,7 @@ async function buildThaiListeningByAnchors(mainTrack, vocab, o) {
       let pair
       try {
         const g = await _listeningRecoverAnchor(kw, ctx, a)
-        pair = sanitizeModelPair({ speaker: 'A', speakerGender: 'male', thai: normaliseThaiSpacing(g.thai || ''), phonetic: g.phonetic || '', english: g.english || '',
+        pair = sanitizeModelPair({ speaker: 'A', speakerGender: thaiSpeakerMapGender('A'), thai: normaliseThaiSpacing(g.thai || ''), phonetic: g.phonetic || '', english: g.english || '',
           prompt: g.prompt || '', language: 'th', pairType: 'content', targetId: kw.wordId, wordId: kw.wordId, _target: kw.thai,
           _typedAt: 'creation', _source: 'listening-recovery', _pairKey: 'lr-' + kw.wordId + '-' + a }, 'listening-recovery')
       } catch (e) {
@@ -13878,7 +13945,7 @@ const CONVO_TTS = {
 // Speaker for display AND voice: the line's authoritative gender (written by Listening
 // from speakerGenderOf); legacy lines fall back to their letter. v638 rendered the icon
 // from `speaker === 'M'`, a value no line ever has — so every line showed 👩.
-function convoLineIsMale(l) { return l && (l.gender ? l.gender === 'male' : l.speaker === 'A') }
+function convoLineIsMale(l) { return !!l && (l.gender ? l.gender === 'male' : thaiSpeakerMapGender(l.speaker) === 'male') }
 function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, title, lang, coverageLabel }) {
   const _tts = CONVO_TTS[lang] || CONVO_TTS.th
   const [lineIdx, setLineIdx] = useState(0)
@@ -14113,7 +14180,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
   const [convoSpeed, setConvoSpeed] = useState(() => { try { return parseFloat(localStorage.getItem('tt-speed') || '0.8') } catch { return 0.8 } })
   const [generatedTrack, setGeneratedTrack] = useState(null)
   const phoneticsRef = useRef({})
-  const { targets: _rawTargets, anchors: _rawAnchors } = useMemo(() => {
+  const { targets: _rawTargets, anchors: _rawAnchors, shortfall: _selShortfall, lockedByUnratedTracks: _lockedByUnrated } = useMemo(() => {
     // If resuming from a draft, use the remaining targets from the draft
     if (resumeDraft && resumeDraft.targetsRemaining && resumeDraft.targetsRemaining.length > 0) {
       return { targets: resumeDraft.targetsRemaining, anchors: resumeDraft.anchors || [] }
@@ -14160,12 +14227,18 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
     // Slot words bypass the pending-track exclusion so they persist across same-day tracks
     const filteredVocab = vocab.filter(w => !usedWordIds.has(w.id) || slotIdSet.has(w.id))
-    return pickWords(filteredVocab, mode, slotWords)
+    return { ...pickWords(filteredVocab, mode, slotWords), lockedByUnratedTracks: usedWordIds.size }
   }, [vocab, mode, customTargets, tracks, dailyNewWords])
   // Every Thai target — Daily and Revision alike — passes through the shared canonical
   // resolver BEFORE any prompt is built: learner state from saved vocab, lexical
   // metadata from the canonical bank by id. Nothing here is written back.
   const { targets, anchors, skipped: _skippedTargets } = useMemo(() => resolveThaiTargetSet(_rawTargets, _rawAnchors), [_rawTargets, _rawAnchors])
+  // v642: one named-count record for this lesson (log, UI, track, export)
+  const targetCounts = useMemo(() => thaiTargetCounts({
+    requested: customTargets && customTargets.length ? customTargets.length : 30,
+    selectedTargets: _rawTargets || [],
+    generationTargets: targets, unresolved: _skippedTargets, mode, shortfall: _selShortfall, lockedByUnratedTracks: _lockedByUnrated,
+  }), [_rawTargets, targets, _skippedTargets, mode, _selShortfall, _lockedByUnrated, customTargets])
 
   // ── Frozen session targets ────────────────────────────────────────────────
   // The memo above depends on `vocab`, and generation itself writes back into
@@ -14324,6 +14397,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
           const useConvoTrack = mode === 'daily' || mode === 'weak' || mode === 'revision'
           const _sceneForGen = useConvoTrack ? sceneDataRef.current : null
+          // named counts travel with the target list (non-enumerable, never persisted in it)
+          try { Object.defineProperty(activeTargets, '_targetCounts', { value: targetCounts, configurable: true }) } catch (e) {}
           pairs = await (useConvoTrack ? (t,a,k,...r) => generateConversationTrack(t,a,k,...r,_sceneForGen) : generateTrack)(activeTargets, activeAnchors, apiKey,
             (done, total, meta, sources, wordIdx) => {
               // Per-recall acceptance: light exactly one circle, at its own tier,
@@ -14430,6 +14505,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
           costBefore: balanceBefore,
           _finalAudit: (pairs && pairs._finalAudit) || null,
+          targetCounts,
           selectedTargetIds: keywords.map(k => k.wordId),
           unresolvedTargets: keywords.filter(k => k.unresolved).map(k => ({ wordId: k.wordId, thai: k.thai, reason: k.unresolvedReason })),
         }
@@ -14694,7 +14770,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
       {activeTargets.length > 0 && (
         <Card style={{ padding:'12px 14px' }}>
           <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <span>Targeting {activeTargets.length} words</span>
+            <span>Targeting {activeTargets.length}{targetCounts.selectedTargetCount !== activeTargets.length ? ' of ' + targetCounts.selectedTargetCount : ''} words
+              {targetCounts.unresolvedTargets.length > 0 && <span style={{ color:'#ef4444' }}> · {targetCounts.unresolvedTargets.length} unresolved: {targetCounts.unresolvedTargets.map(u => u.thai).join(', ')}</span>}
+              {targetCounts.shortfall && <span style={{ color:'#f59e0b' }}> · only {targetCounts.shortfall.selected}/{targetCounts.shortfall.requested} could be selected</span>}</span>
             {activeTargets.filter(w => w.status === 'new' && isUnseen(w)).length > 0 && (
               <span style={{ color:'#4a90e2', fontWeight:800 }}>
                 ✦ {activeTargets.filter(w => w.status === 'new' && isUnseen(w)).length} new
@@ -15066,7 +15144,8 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
       let cancelled = false; let audioEl = null
       // Thai marks speaker gender with ครับ; Japanese has no such particle, so speaker
       // role drives the voice instead. Never send Japanese text to a Thai voice.
-      const isMale = _tl === 'th' ? /ครับ$/.test(text.trim()) : (pair && pair.speaker === 'A')
+      // v642: the speaker map decides the voice; the particle only for letter-less legacy lines
+      const isMale = _tl === 'th' ? (pair && thaiSpeakerMapGender(pair.speaker) ? thaiSpeakerMapGender(pair.speaker) === 'male' : /ครับ$/.test(text.trim())) : (pair && pair.speaker === 'A')
       const _v = ttsVoiceFor(_tl, isMale)
       fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${gcpTtsKey}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -15090,7 +15169,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
       if (jv) utter.voice = jv
     } else if (lang.startsWith('th')) {
       const anyThai = voices.filter(v => v.lang.startsWith('th'))
-      const isMale = /ครับ$/.test(text.trim())
+      const isMale = pair && thaiSpeakerMapGender(pair.speaker) ? thaiSpeakerMapGender(pair.speaker) === 'male' : /ครับ$/.test(text.trim())
       const googleFemale = anyThai.find(v => /Standard-A|Wavenet-A|Neural2-A/i.test(v.name))
       const googleMale = anyThai.find(v => /Standard-B|Standard-C|Wavenet-B|Neural2-B/i.test(v.name))
       const byIndex = isMale ? (anyThai[1] || anyThai[0]) : anyThai[0]
@@ -17685,9 +17764,11 @@ function thaiSpeakerEvidence(thai) {
 }
 function thaiMetadataGender(p) {
   if (!p) return null
+  // A stamped gender must agree with the map for its letter; the map wins if not.
+  const byMap = thaiSpeakerMapGender(p.speaker)
+  if (byMap) return byMap
   if (p.speakerGender === 'male' || p.speakerGender === 'female') return p.speakerGender
-  // Thai generation contract: A lines end in ครับ, B lines in ค่ะ/คะ.
-  return p.speaker === 'A' ? 'male' : p.speaker === 'B' ? 'female' : null
+  return null
 }
 // → { status: ok | linguistic-conflict | metadata-conflict | ambiguous, gender, source, reason }
 function thaiSpeakerIdentity(p) {
@@ -17700,19 +17781,23 @@ function thaiSpeakerIdentity(p) {
              reason: 'male and female markers in one sentence (' + ev.male.concat(ev.female).join(' + ') + ')' }
   }
   const fromText = anyMale ? 'male' : strongFemale ? 'female' : null
+  // v642: METADATA is the identity; Thai evidence only validates it. A contradiction is a
+  // failure to reject/repair — the sentence never re-assigns the speaker.
   if (fromText && meta && fromText !== meta) {
-    return { status: 'metadata-conflict', gender: fromText, source: 'sentence', evidence: ev,
-             reason: 'metadata says ' + meta + ', sentence is ' + fromText }
+    return { status: 'metadata-conflict', gender: meta, source: 'metadata', evidence: ev,
+             reason: 'speaker ' + (p && p.speaker || '?') + ' is ' + meta + ' but the sentence is ' + fromText + ' (' + (fromText === 'male' ? ev.male : ev.female).join(' + ') + ')' }
   }
-  if (fromText) return { status: 'ok', gender: fromText, source: 'sentence', evidence: ev, reason: '' }
-  return { status: meta ? 'ok' : 'ambiguous', gender: meta, source: meta ? 'metadata' : 'none', evidence: ev, reason: meta ? '' : 'no speaker evidence' }
+  if (meta) return { status: 'ok', gender: meta, source: 'metadata', evidence: ev, reason: '' }
+  // no speaker letter at all (legacy line): the sentence may describe, never override
+  if (fromText) return { status: 'ok', gender: fromText, source: 'sentence (no metadata)', evidence: ev, reason: '' }
+  return { status: 'ambiguous', gender: null, source: 'none', evidence: ev, reason: 'no speaker evidence' }
 }
 // Speaker for any language's Listening line / renderer.
 function speakerGenderOf(p, lang) {
   if (!p) return null
-  if ((lang || 'th') === 'th' && p.thai) { const id = thaiSpeakerIdentity(p); if (id.gender) return id.gender }
+  if ((lang || 'th') === 'th') { const id = thaiSpeakerIdentity(p); if (id.gender) return id.gender }
   if (p.speakerGender === 'male' || p.speakerGender === 'female') return p.speakerGender
-  return p.speaker === 'B' ? 'female' : p.speaker === 'A' ? 'male' : null
+  return thaiSpeakerMapGender(p.speaker)
 }
 
 // ── Thai line naturalness (deterministic floor) ──────────────────────────────────
@@ -17824,6 +17909,7 @@ function thaiLineGate(p, keywords, vocab) {
   }
   const sp = thaiSpeakerIdentity(p)
   if (sp.status === 'linguistic-conflict') problems.push({ code: 'SPEAKER_CONFLICT', why: sp.reason })
+  if (sp.status === 'metadata-conflict') problems.push({ code: 'SPEAKER_CONFLICT', why: sp.reason })
   if (id.type !== 'framing') thaiLineNaturalnessProblems(p, id.target, vocab).forEach(w => problems.push({ code: 'UNNATURAL', why: w }))
   return { ok: problems.length === 0, problems, identity: id, speaker: sp }
 }
@@ -17841,7 +17927,7 @@ function thaiFinalTrackAudit(pairs, opts) {
   const R = { stage: o.stage || 'final', pairsIn: (pairs || []).length, accepted: 0,
     types: { content: 0, bridge: 0, framing: 0, unknown: 0 },
     targetBearing: { total: 0, present: 0, missing: 0 },
-    speaker: { male: 0, female: 0, ambiguous: 0, linguisticConflicts: 0, metadataConflictsCorrected: 0 },
+    speaker: { male: 0, female: 0, ambiguous: 0, linguisticConflicts: 0, metadataConflictsCorrected: 0, metadataConflicts: 0 },
     markup: { strippedLegacy: 0, leaks: 0 },
     identityRestored: [], retypedToBridge: [], rejected: [], rescued: [], phoneticWarnings: 0, duplicates: 0, failedTargetLines: 0 }
   const reject = (p, i, problems) => {
@@ -17868,7 +17954,7 @@ function thaiFinalTrackAudit(pairs, opts) {
     if (!gate.ok) { reject(p, i, gate.problems); return }
     // speaker: one authoritative value
     const sp = gate.speaker
-    if (sp.status === 'metadata-conflict') { R.speaker.metadataConflictsCorrected++ }
+    // (metadata conflicts are now rejected by the gate above, never corrected)
     p = { ...p, speakerGender: sp.gender || p.speakerGender || null }
     if (p.speakerGender === 'male') R.speaker.male++; else if (p.speakerGender === 'female') R.speaker.female++; else R.speaker.ambiguous++
     // phonetics: must exist and be romanised
@@ -17907,7 +17993,7 @@ function thaiFinalTrackAudit(pairs, opts) {
       const k = keywords.find(kk => kk.wordId === p.targetId)
       if (k && thaiContainsLexeme(p.thai || '', k.thai)) R.targetBearing.present++; else R.targetBearing.missing++
     }
-    if (thaiSpeakerIdentity(p).status === 'linguistic-conflict') R.speaker.linguisticConflicts++
+    { const _st = thaiSpeakerIdentity(p).status; if (_st === 'linguistic-conflict') R.speaker.linguisticConflicts++; if (_st === 'metadata-conflict') R.speaker.metadataConflicts++ }
     R.markup.leaks += pairMarkupLeaks(p).length
   })
   R.accepted = out.length
@@ -17917,7 +18003,7 @@ function thaiFinalTrackAudit(pairs, opts) {
   R.invariants = {
     TARGET_BEARING_PAIR_TARGET_MISSING: R.targetBearing.missing,
     TYPE_UNKNOWN: R.types.unknown,
-    THAI_FINAL_SPEAKER_CONFLICTS: R.speaker.linguisticConflicts,
+    THAI_FINAL_SPEAKER_CONFLICTS: R.speaker.linguisticConflicts + R.speaker.metadataConflicts,
     FINAL_SENTENCE_MARKUP_COUNT: R.markup.leaks,
   }
   R.ok = Object.values(R.invariants).every(v => v === 0)
@@ -17969,7 +18055,7 @@ async function recoverUncoveredThaiTargets(pairs, missing, ctx) {
         const l = sanitizeModelPair({ ...l0, speaker: l0.speaker || (ri === 1 ? 'B' : 'A') }, 'qc:recover')
         const role = thaiContractRole(l), has = thaiContainsLexeme(l.thai || '', kw.thai)
         const base = { ...l, language: 'th', _target: kw.thai, recallGroupId: 'rg-' + kw.wordId, recallIndex: ri + 1, _typedAt: 'creation',
-                       _pairKey: keys[ri], _source: 'qc:recover:' + kw.thai, speakerGender: l.speaker === 'B' ? 'female' : 'male', _recoveryAttempt: a }
+                       _pairKey: keys[ri], _source: 'qc:recover:' + kw.thai, speakerGender: thaiSpeakerMapGender(l.speaker === 'B' ? 'B' : 'A'), _recoveryAttempt: a }
         return (has || role === 'target')
           ? { ...base, pairType: 'content', targetId: kw.wordId, wordId: kw.wordId, recallRole: role === 'target' ? 'alternative' : 'response-with-target', targetRequired: true }
           : { ...base, pairType: 'bridge', targetId: null, wordId: null, supportsTargetId: kw.wordId, recallRole: 'response', targetRequired: false, respondsToPairKey: ri > 0 ? keys[ri - 1] : null }
@@ -18020,7 +18106,7 @@ async function _qrBatchNaturalnessCheck(pairs, apiKey, model, onLog) {
   for (let b = 0; b < eligible.length; b += BATCH) {
     const chunk = eligible.slice(b, b + BATCH)
     const numbered = chunk.map(({ p }, ci) => (ci + 1) + '. Thai: ' + p.thai + '\n   Intended meaning: ' + (p.english || '') +
-      '\n   Speaker: ' + (p.speakerGender || (p.speaker === 'B' ? 'female' : 'male'))).join('\n\n')
+      '\n   Speaker: ' + (thaiSpeakerMapGender(p.speaker) || p.speakerGender || 'unknown')).join('\n\n')
     const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
       'You are a native Thai speaker checking learner material. For EACH sentence answer: would a native speaker plausibly ' +
       'say this exact sentence in ordinary conversation, with this intended meaning, as this speaker?\n' +
@@ -18323,6 +18409,31 @@ function auditThaiCanonicalLexicon(bank) {
   out.ok = !out.malformedPlaceholder.length && !out.unresolvedDuplicates.some(g => g.entries.every(e => e.sameGloss))
   return out
 }
+// v642 — named target counts. Each number means exactly one thing:
+//   requested    how many the selector was asked for
+//   selected     the lesson: every target chosen, including any unresolved one
+//   generation   targets actually sent to generation (selected − unresolved)
+//   new          genuinely unseen words among the selected (0 for Revision)
+//   listening    required Listening coverage = selected − new
+function thaiTargetCounts({ requested, selectedTargets, generationTargets, unresolved, mode, shortfall, lockedByUnratedTracks }) {
+  const sel = selectedTargets || [], gen = generationTargets || []
+  const isRev = mode === 'revision'
+  const newIds = isRev ? [] : sel.filter(w => w && w.status === 'new' && isUnseen(w)).map(w => w.id)
+  const c = { requestedTargetCount: requested != null ? requested : sel.length, selectedTargetCount: sel.length,
+    generationTargetCount: gen.length, newTargetCount: newIds.length, requiredListeningTargetCount: sel.length - newIds.length,
+    unresolvedTargets: (unresolved || []).map(u => ({ id: u.wordId, thai: u.thai, reason: u.reason })),
+    shortfall: shortfall || null, lockedByUnratedTracks: lockedByUnratedTracks || 0, mode: mode || 'daily' }
+  c.consistent = c.generationTargetCount + c.unresolvedTargets.length === c.selectedTargetCount
+  return c
+}
+function thaiTargetCountsLine(c) {
+  return 'SELECTED_TARGETS=' + c.selectedTargetCount + ' GENERATION_TARGETS=' + c.generationTargetCount +
+    ' NEW_TARGETS=' + c.newTargetCount + ' LISTENING_REQUIRED_TARGETS=' + c.requiredListeningTargetCount +
+    (c.unresolvedTargets.length ? ' UNRESOLVED=' + c.unresolvedTargets.map(u => u.id + ':' + u.thai + ' (' + u.reason + ')').join(', ') : '') +
+    (c.shortfall ? ' SHORTFALL=' + c.shortfall.selected + '/' + c.shortfall.requested + ' (' + c.shortfall.reason +
+      (c.lockedByUnratedTracks ? '; ' + c.lockedByUnratedTracks + ' words locked in unrated tracks' : '') + ')' : '') +
+    (c.consistent ? '' : ' ⛔ COUNT_MISMATCH')
+}
 // Keywords in the ORIGINAL selection order. Resolved targets use the normal keyword;
 // a selected target that could not be generated keeps its identity with unresolved:true
 // so the lesson total, end screen, coverage denominators and exports never shrink.
@@ -18349,8 +18460,16 @@ function buildTrackKeywords(selection, resolved, skipped, kwOf) {
 function resolveThaiTargetSet(targets, anchors) {
   const log = []
   const skipped = []
+  const seenIds = new Set()
   const res = (list, keep) => (list || []).map(w => {
     const r = resolveCanonicalTarget(w)
+    // a retired alias whose canonical word is ALREADY selected is accounted for, not generated twice
+    if (keep && r.target && seenIds.has(r.target.id)) {
+      const sk = { wordId: w.id, thai: w.thai, savedGloss: w.english || '', learnerStatus: w.status, saved: w,
+                   reason: 'ALIAS_DUPLICATE (' + w.id + ' is retired into ' + r.target.id + ', which is already in this lesson)' }
+      skipped.push(sk); log.push(sk.reason); return null
+    }
+    if (keep && r.target) seenIds.add(r.target.id)
     if (r.skipped) { if (keep) skipped.push(r.skipped); log.push(r.skipped.reason + ' wordId=' + r.skipped.wordId + ' thai=' + r.skipped.thai + ' savedGloss=' + r.skipped.savedGloss + ' learnerStatus=' + r.skipped.learnerStatus); return null }
     const t = r.target
     log.push('wordId=' + t.id + ' savedGloss=' + JSON.stringify(t._savedGloss || t.english) + ' canonicalGloss=' + JSON.stringify(t.english) +

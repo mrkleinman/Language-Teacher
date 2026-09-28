@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v643"/>
+<meta name="app-version" content="v644"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v643';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v643').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v644';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v644').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6342,6 +6342,73 @@ function Header({ view, onNav, onHome, orBalance, orKey, onRefreshBalance, lastT
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 
+// ── v644 export + UI helpers for the semantic audit ────────────────────────────────
+function recoveryAttemptCount(r) { return ((r && r.attempts) || []).filter(a => a.result !== 'not attempted').length }
+// One truthful reading of a track's audit record: structured v644 status when present,
+// otherwise the legacy strings. "ran (61/73 judged)" is PARTIAL, never "audited".
+function semanticAuditSummary(track) {
+  const sa = track && track._semanticAudit
+  const parse = str => {
+    const t = String(str || '')
+    let m = t.match(/^(COMPLETE|PARTIAL|FAILED) \((\d+)\/(\d+) judged/)
+    if (m) return { state: m[1], judged: +m[2], total: +m[3] }
+    m = t.match(/^ran \((\d+)\/(\d+) judged\)/)
+    if (m) return { state: +m[1] === +m[2] ? 'COMPLETE' : +m[1] ? 'PARTIAL' : 'FAILED', judged: +m[1], total: +m[2] }
+    if (/^ran$/.test(t)) return { state: 'LEGACY', judged: null, total: null }
+    if (/^UNAVAILABLE/.test(t)) return { state: 'FAILED', judged: 0, total: null, reason: t.replace(/^UNAVAILABLE:\s*/, '') }
+    return { state: 'NOT_RUN', judged: null, total: null }
+  }
+  if (!sa) return { recorded: false, cue: { state: 'NOT_RUN' }, naturalness: { state: 'NOT_RUN' }, final: null }
+  const st = sa.final || null
+  const nat = st ? { state: st.status, judged: st.naturalnessJudged, total: st.auditedLines, unverified: st.unverified.length } : parse(sa.naturalnessCheck)
+  if (!st && nat.total != null && nat.judged != null) nat.unverified = nat.total - nat.judged
+  return { recorded: true, cue: parse(sa.cueCheck), naturalness: nat, final: st }
+}
+function semanticAuditExportLines(track) {
+  const sa = track && track._semanticAudit
+  const out = ['FINAL SEMANTIC AUDIT', '-'.repeat(30)]
+  if (!sa) return out.concat(['not recorded (no semantic audit ran for this track)'])
+  const st = sa.final || thaiSemanticAuditStatus(track.pairs || [])
+  const ra = sa.recoveryAudit || null, rs = sa.rescueAudit || null
+  out.push('Final pairs: ' + st.finalPairs + ' (audited lines, framing excluded: ' + st.auditedLines + ')')
+  out.push('Cue judged: ' + st.cueJudged + '/' + st.cueTotal)
+  out.push('Naturalness judged: ' + st.naturalnessJudged + '/' + st.auditedLines)
+  out.push('Unverified: ' + st.unverified.length)
+  out.push('Cue mismatches dropped: ' + (sa.cueMismatch || 0))
+  out.push('Unnatural pairs dropped: ' + (sa.unnatural || 0))
+  out.push('Template-garbage cue/English dropped: ' + (sa.templateGarbage || 0) + ' · invalid Thai time expressions dropped: ' + (sa.invalidTime || 0))
+  out.push('Recovery pairs audited: ' + (ra ? ra.audited + '/' + ra.candidates + ' (accepted ' + ra.accepted + ' · rejected ' + ra.rejected + ' · unverified ' + ra.unverified + ' — fail closed)' : '0/0') +
+    (rs ? ' · rescued pairs audited: ' + rs.audited + ' (accepted ' + rs.accepted + ' · rejected ' + rs.rejected + ')' : ''))
+  out.push('Status: ' + st.status + '  (' + thaiNaturalnessStatusLine(st) + ' · CUE_AUDIT ' + (sa.cueCheck || 'not recorded') + ')')
+  const retried = sa.trace ? ((sa.trace.cue && sa.trace.cue.retries) || 0) + ((sa.trace.naturalness && sa.trace.naturalness.retries) || 0) : 0
+  if (sa.trace) out.push('Batches: cue ' + ((sa.trace.cue && sa.trace.cue.calls) || 0) + ' call(s) · naturalness ' + ((sa.trace.naturalness && sa.trace.naturalness.calls) || 0) + ' call(s) · retries ' + retried)
+  out.push('Track quality: ' + st.trackQuality + (st.unverified.length ? ' — ' + st.unverified.length + ' pair(s) not fully model-judged' : ''))
+  ;(sa.failures || []).forEach(f => out.push('  DROPPED ' + (f.code || '') + '  TARGET: ' + (f.target || '-') + '  TH: ' + f.thai + '  REASON: ' + f.reason))
+  if (st.unverified.length) {
+    out.push('UNVERIFIED PAIRS')
+    st.unverified.forEach(u => out.push('  PAIR_ID: ' + u.pairId + '  [' + String(u.index).padStart(3, '0') + ']  TARGET: ' + (u.target || '-') + '  FAILURE_STAGE: ' + u.stage + '  REASON: ' + u.reason))
+  }
+  return out
+}
+function recoveryDiagnosticsExportLines(track) {
+  const fa = track && track._finalAudit
+  const out = ['RECOVERY DIAGNOSTICS', '-'.repeat(30)]
+  const d = fa && fa.recoveryDiagnostics
+  if (!d) return out.concat([fa && fa.recovery && fa.recovery.length ? 'not recorded (track made before v644)' : 'no recovery needed'])
+  if (!d.length) return out.concat(['no recovery needed'])
+  d.forEach(x => {
+    out.push('TARGET: ' + x.target + '  ATTEMPT: ' + x.attempt)
+    if (!x.attempt) { out.push('  FINAL_STATUS: ' + x.finalStatus); return }
+    const rej = /^REJECTED \((.*)\)$/.exec(x.finalStatus || '')
+    out.push('  TH: ' + (x.thai || '-'))
+    out.push('  EN: ' + (x.english || '-') + '  CUE: ' + (x.cue || '-'))
+    out.push('  TARGET_PRESENT: ' + (x.targetPresent ? 'PASS' : (x.pairType === 'bridge' ? 'n/a (bridge)' : 'FAIL')) + '  NATURALNESS: ' + (x.naturalness || '-') + '  CUE_ALIGNMENT: ' + (x.cueAlignment || '-'))
+    if (rej) out.push('  REASON: ' + rej[1])
+    out.push('  FINAL_STATUS: ' + (rej ? 'REJECTED' : x.finalStatus))
+  })
+  return out
+}
+
 async function downloadTrack(track) {
   const keywords = track.keywords || []
   const pairs = track.pairs || []
@@ -6357,8 +6424,9 @@ async function downloadTrack(track) {
   lines.push(`Created: ${track.createdAt || ''}`)
   // Model checks: a PASS below is only as strong as the checks that actually ran.
   const _sa = track._semanticAudit
+  const _sum = semanticAuditSummary(track)
   lines.push('Model checks: cue ' + (_sa ? _sa.cueCheck || 'not recorded' : 'not recorded') + ' · naturalness ' + (_sa ? _sa.naturalnessCheck || 'not recorded' : 'not recorded') +
-    (_sa && (/UNAVAILABLE/.test(_sa.cueCheck || '') || /UNAVAILABLE/.test(_sa.naturalnessCheck || '')) ? '  ⚠️ quality gates did not fully run — lines were NOT model-checked' : ''))
+    (_sum.naturalness.state !== 'COMPLETE' && _sa ? '  ⚠️ ' + (_sum.naturalness.state === 'FAILED' ? 'quality gates did not run — lines were NOT model-checked' : 'not every line was model-checked') : ''))
   if (track.targetCounts) lines.push('Target counts: ' + thaiTargetCountsLine(track.targetCounts))
   // Selection accounting: the lesson total is the ORIGINAL selection, always.
   const _unres = keywords.filter(k => k.unresolved)
@@ -6377,13 +6445,21 @@ async function downloadTrack(track) {
       (_fa.coverage.missing.length ? ' (missing: ' + _fa.coverage.missing.map(m => m.target).join(' ') + ')' : ''))
     lines.push('Speakers: male ' + _fa.speaker.male + ' · female ' + _fa.speaker.female + ' · ambiguous ' + _fa.speaker.ambiguous +
       ' · metadata corrected ' + _fa.speaker.metadataConflictsCorrected + ' · rejected by audit ' + (_fa.rejected || []).length)
-    ;(_fa.recovery || []).forEach(r => lines.push('Recovery ' + r.target + ': ' + (r.resolved ? 'RESOLVED' : 'UNRESOLVED') + ' after ' + r.attempts.length + ' attempt(s)' +
-      r.attempts.map(a => ' | ' + a.attempt + ': ' + a.result + (a.reasons && a.reasons.length ? ' (' + a.reasons.slice(0, 3).join('; ') + ')' : '')).join('')))
+    ;(_fa.recovery || []).forEach(r => { const n = recoveryAttemptCount(r)
+      lines.push('Recovery ' + r.target + ': ' + (r.resolved ? 'RESOLVED' : 'UNRESOLVED') + ' after ' + n + ' attempt' + (n === 1 ? '' : 's') +
+      r.attempts.map(a => ' | ' + a.attempt + ': ' + a.result + (a.reasons && a.reasons.length ? ' (' + a.reasons.slice(0, 3).join('; ') + ')' : '') +
+        (a.rejectedSiblings && a.rejectedSiblings.length ? ' [rejected in same attempt: ' + a.rejectedSiblings.slice(0, 3).join('; ') + ']' : '')).join('')) })
   } else {
     lines.push('Final audit: not recorded (track made before v639)')
   }
   lines.push('')
-  
+  semanticAuditExportLines(track).forEach(x => lines.push(x))
+  lines.push('')
+  recoveryDiagnosticsExportLines(track).forEach(x => lines.push(x))
+  lines.push('')
+  listeningBuildExportLines(track).forEach(x => lines.push(x))
+  lines.push('')
+
   lines.push('TARGET WORDS (' + keywords.length + ')')
   lines.push('-'.repeat(30))
   keywords.forEach((k, i) => {
@@ -6398,6 +6474,10 @@ async function downloadTrack(track) {
     if (src.startsWith('fallback:') || src.startsWith('hardcoded:')) return 'fallback:template'
     if (src.startsWith('best-attempt:')) return 'ai:best-attempt'
     if (src.startsWith('repair:')) return 'fallback:slot-repair'
+    // v644: closed-vocabulary template repairs and QC recovery were exported as ai:check-1
+    if (src.startsWith('closed-vocab-fallback:')) return 'fallback:closed-vocab-template'
+    if (src.startsWith('qc:recover')) return 'qc:recovery'
+    if (src.startsWith('qc:')) return src.split(':').slice(0, 2).join(':')
     if (src.startsWith('qwen-recheck10:')) return 'ai:check-11'
     if (src.startsWith('qwen-recheck9:')) return 'ai:check-10'
     if (src.startsWith('qwen-recheck8:')) return 'ai:check-9'
@@ -8231,14 +8311,29 @@ function makeFallbackPairs(target) {
   // Frames are chosen by classifyWord(), which guesses from the English gloss and used to
   // fall through to VERB templates for anything unrecognised (ผมจะอินเทอร์เน็ตแล้วครับ).
   // Every generated frame is now checked against the target's lexical function.
+  // v644 SOURCE FIX: classifyWord() files a verb gloss ("to enter") under 'object', and the
+  // object request frame then produced "Ask if you can have a to enter" / "Can I have a to
+  // enter, please?". Every frame is now also checked for template garbage in its cue and
+  // English, and number targets get count/price frames instead of "Can I have a twenty".
+  const _clean = arr => (arr || []).filter(p => p && !thaiTemplateGarbageProblems(p).length && !thaiTimeExpressionProblems(p.thai).length)
+  const _tw = target.thai, _fn = lexicalFunctionFromGloss(target.english)
+  if (thaiIsNumberTarget(target)) {
+    const n = String(target.english || '').replace(/\(.*?\)/g, '').split(/[;,/]/)[0].trim()
+    const nf = _clean([
+      { prompt: 'Say it costs ' + n + ' baht', thai: 'ราคา' + _tw + 'บาทครับ', english: 'It costs ' + n + ' baht.', phonetic: '', words: [] },
+      { prompt: 'Say there are ' + n + ' people', thai: 'มี' + _tw + 'คนครับ', english: 'There are ' + n + ' people.', phonetic: '', words: [] },
+    ])
+    if (nf.length) return nf
+  }
   const _raw = makeFallbackPairsRaw(target)
-  const _kept = (_raw || []).filter(p => listeningSuitability({ ...p, english: p.english || 'x' }, target, 'th').ok)
+  const _kept = _clean(_raw).filter(p => listeningSuitability({ ...p, english: p.english || 'x' }, target, 'th').ok)
   if (_kept.length) return _kept
-  const _tw = target.thai, _fn = lexicalFunctionFromGloss(target.english), _e = target.english || ''
-  if (_fn === 'verb') return [{ prompt: 'Say you will ' + _e, thai: 'ผมจะ' + _tw + 'ครับ', english: 'I will ' + _e + '.', phonetic: '', words: [] }]
-  if (_fn === 'noun') return [{ prompt: 'Ask if they have ' + _e, thai: 'มี' + _tw + 'ไหมครับ', english: 'Do you have ' + _e + '?', phonetic: '', words: [] }]
-  if (_fn === 'adjective') return [{ prompt: 'Say it is very ' + _e, thai: _tw + 'มากครับ', english: 'Very ' + _e + '.', phonetic: '', words: [] }]
-  return _raw || []
+  // a verb gloss is stored as "to X": the frame supplies its own "will"
+  const _e = _fn === 'verb' ? String(target.english || '').replace(/^\s*to\s+/i, '') : (target.english || '')
+  if (_fn === 'verb') return _clean([{ prompt: 'Say you will ' + _e, thai: 'ผมจะ' + _tw + 'ครับ', english: 'I will ' + _e + '.', phonetic: '', words: [] }])
+  if (_fn === 'noun') return _clean([{ prompt: 'Ask if they have ' + _e, thai: 'มี' + _tw + 'ไหมครับ', english: 'Do you have ' + _e + '?', phonetic: '', words: [] }])
+  if (_fn === 'adjective') return _clean([{ prompt: 'Say it is very ' + _e, thai: _tw + 'มากครับ', english: 'Very ' + _e + '.', phonetic: '', words: [] }])
+  return _clean(_raw)
 }
 function makeFallbackPairsRaw(target) {
   const ph = target.phonetic || target.thai
@@ -9672,10 +9767,16 @@ function enforceThaiClosedVocabulary(pairs, ctx, opts) {
         cands = [{ thai: base + pol, english: tgt.english, prompt: 'Say: ' + (tgt.english || '') },
                  { thai: base + '\u0E19\u0E30' + pol, english: tgt.english, prompt: 'Say: ' + (tgt.english || '') }]
       }
+      // v644: a template whose cue/English is garbage ("Ask if you can have a to enter")
+      // is never a repair candidate.
+      cands = cands.filter(c => c && !thaiTemplateGarbageProblems(c).length && !thaiTimeExpressionProblems(c.thai).length)
       const ok = cands.find(c => c && c.thai && !usedThai.has(c.thai) && check(c.thai).ok) || cands.find(c => c && c.thai && check(c.thai).ok)
       if (ok) { stats.fallback++; usedThai.add(ok.thai)
         out.push({ ...p, thai: ok.thai, phonetic: ok.phonetic || '', english: ok.english || p.english, prompt: ok.prompt || p.prompt,
-                   words: [], _source: 'closed-vocab-fallback:' + (tgt.thai || ''), _closedVocabRepaired: true }); return }
+                   words: [], _source: 'closed-vocab-fallback:' + (tgt.thai || ''), _closedVocabRepaired: true,
+                   // new text: any earlier audit verdict no longer applies
+                   _semanticState: undefined, _semCue: undefined, _semNat: undefined,
+                   _semanticUnverified: { stage: 'NOT_AUDITED', reason: 'text replaced by closed-vocabulary repair after the audit' } }); return }
     }
     // 3. greeting / parting: a framing line built only from authorised words, else drop it
     // A framing slot must be EXPLICITLY marked. Treating "no wordId" as framing replaced
@@ -13863,10 +13964,150 @@ async function listeningSave(lt) {
 }
 async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, status }) }
 
+// ══ v644 THAI LISTENING BUILD LIFECYCLE ═══════════════════════════════════════════
+// Live 28 Sept 2026: a fresh Daily track reached the Listening screen with "No listening
+// track yet". Root cause (A): the builder was never invoked. The only automatic trigger
+// was the Listening SCREEN MOUNT, gated on an in-memory flag (listenAutoFor) that exists
+// only on the uninterrupted Generator → Quality Review → player path. Any other way in —
+// reopening the track from Recent Tracks (where the export button lives), a reload or a
+// PWA resume — mounted with autoCreate=false and fell into the manual "create" phase.
+// Nothing about Listening was stored on the track, so nothing could tell the screen that
+// a build was due. Now Listening is built at the generation-complete boundary, persisted
+// (and read back) BEFORE navigation, and its state lives on the track itself.
+const LISTENING_BUILD_VERSION = 'v644'
+const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY']
+function listeningBuildStateOf(track) {
+  const b = track && track.listeningBuild
+  if (!b || !LISTENING_BUILD_STATES.includes(b.status)) return { status: 'NOT_STARTED_LEGACY' }
+  return b
+}
+// Fingerprint of the Main Track text a Listening build was made from.
+function thaiPairsFingerprint(pairs) {
+  let h = 5381; const s = (pairs || []).map(p => p ? (p.thai || '') : '').join('|')
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0
+  return (pairs || []).length + ':' + h.toString(36)
+}
+function listeningRequiredCountOf(track) {
+  const c = track && track.targetCounts
+  return c && c.requiredListeningTargetCount != null ? c.requiredListeningTargetCount : null
+}
+// "Listening · 25/25 review targets covered" / "Listening · 22/25 review targets covered · 3 unresolved"
+function listeningBuildLabel(b) {
+  if (!b || b.coveredTargetCount == null || b.requiredTargetCount == null) return ''
+  const u = (b.unresolvedTargetIds || []).length
+  return 'Listening · ' + b.coveredTargetCount + '/' + b.requiredTargetCount + ' review targets covered' + (u ? ' · ' + u + ' unresolved' : '')
+}
+async function buildAndPersistThaiListening(track, vocab, opts) {
+  const o = opts || {}, trail = []
+  const log = m => { trail.push(m); try { o.onLog && o.onLog(m) } catch (e) {} ; try { console.info('[listening] ' + m) } catch (e) {} }
+  const mainId = listeningTrackId(track), fp = thaiPairsFingerprint(track && track.pairs)
+  const base = { buildVersion: LISTENING_BUILD_VERSION, mainTrackId: mainId, pairsFingerprint: fp, creationMode: o.creationMode || 'AUTO_PRETRACK' }
+  const _tc = (track && track.targetCounts) || {}
+  log('🎧 LISTENING_BUILD_START trackId=' + mainId + ' mode=' + (typeof trackModeOf === 'function' ? trackModeOf(track) : (track && track.trackMode) || 'daily') +
+    ' selected=' + (_tc.selectedTargetCount != null ? _tc.selectedTargetCount : ((track && track.keywords) || []).length) + ' new=' + (_tc.newTargetCount != null ? _tc.newTargetCount : '?') +
+    ' required=' + (listeningRequiredCountOf(track) != null ? listeningRequiredCountOf(track) : '?') + ' creation=' + base.creationMode)
+  const fail = (reason, extra) => {
+    const b = { ...base, status: 'FAILED', requiredTargetCount: (extra && extra.required != null) ? extra.required : listeningRequiredCountOf(track), coveredTargetCount: 0,
+      unresolvedTargetIds: (extra && extra.unresolved) || [], builtAt: new Date().toISOString(), failureReason: reason, listeningTrackId: null }
+    log('🎧 LISTENING_BUILD_RESULT trackId=' + mainId + ' status=FAILED covered=0 required=' + (b.requiredTargetCount != null ? b.requiredTargetCount : '?') + ' unresolved=[' + b.unresolvedTargetIds.join(',') + '] reason=' + reason)
+    b.log = trail.slice(-12)
+    return { listeningBuild: b, listeningTrack: null }
+  }
+  let prev = [], res = null
+  try {
+    prev = (await listeningVersionsFor('th', mainId)).filter(v => v && v.sourceMainTrackId === mainId)
+    res = await buildListeningTrack(track, vocab, { lang: 'th', apiKey: o.apiKey, model: o.model, creationMode: base.creationMode,
+      version: prev.length + 1, onLog: m => trail.push(m) })
+  } catch (e) { return fail('LISTENING_BUILD_ERROR: ' + (e && e.message || e)) }
+  const lt = res && res.listeningTrack
+  const cov = lt && lt.coverage
+  const rows = (cov && cov.rows) || (res && res.rows) || []
+  log('🎧 LISTENING_ANCHORS trackId=' + mainId + ' required=' + (cov ? cov.requiredTargetIds.length : (listeningRequiredCountOf(track) != null ? listeningRequiredCountOf(track) : '?')) +
+    ' candidateAnchors=' + rows.filter(r => r.anchorPairIndex != null || r.anchorSource || (r.candidates || []).length).length +
+    ' verified=' + (cov ? cov.coveredRequiredIds.length : 0) + (res && res.listeningQuality ? ' quality=' + res.listeningQuality : lt ? ' quality=' + lt.listeningQuality : ''))
+  if (!res || !res.ok || !lt || !lt.lines || !lt.lines.length) {
+    const reason = res && res.reason ? 'NO_VERIFIED_LINES: ' + res.reason
+      : res && res.qc && !res.qc.ok ? 'LISTENING_QC_FAILED: ' + ((res.qc.problems || [])[0] || 'final Listening QC failed')
+      : 'NO_VERIFIED_LINES: no Listening line passed the quality gates'
+    return fail(reason, { required: cov ? cov.requiredTargetIds.length : null })
+  }
+  if (lt.sourceMainTrackId !== mainId) return fail('IDENTITY_MISMATCH: built for ' + lt.sourceMainTrackId + ', expected ' + mainId)
+  const required = cov.requiredTargetIds.length, covered = cov.coveredRequiredIds.length
+  const unresolvedIds = cov.unresolved.map(u => u.targetId)
+  const status = covered >= required ? 'READY' : 'PARTIAL'
+  log('🎧 LISTENING_BUILD_RESULT trackId=' + mainId + ' status=' + status + ' covered=' + covered + ' required=' + required +
+    ' unresolved=[' + cov.unresolved.map(u => u.target).join(',') + '] LISTENING_TRACK_ID=' + lt.listeningTrackId + ' lines=' + lt.lines.length)
+  // persist, then READ BACK: stSet swallows storage errors, so a write is only trusted once seen
+  let saved = null
+  try {
+    saved = await listeningSave({ ...lt, buildVersion: LISTENING_BUILD_VERSION })
+    const back = (await listeningVersionsFor('th', mainId)).find(v => v.listeningTrackId === lt.listeningTrackId)
+    if (!back) return fail('LISTENING_PERSIST_FAILED: Listening track was built but could not be read back from storage', { required, unresolved: unresolvedIds })
+    log('🎧 LISTENING_PERSISTED trackId=' + mainId + ' MAIN_TRACK_ID=' + mainId + ' LISTENING_TRACK_ID=' + back.listeningTrackId + ' PERSISTED_TRACK_ID=' + back.sourceMainTrackId +
+      ' sceneCount=' + (back.sceneGroups || []).length + ' covered=' + covered + ' verified=read-back')
+  } catch (e) { return fail('LISTENING_PERSIST_FAILED: ' + (e && e.message || e), { required, unresolved: unresolvedIds }) }
+  const b = { ...base, status, requiredTargetCount: required, coveredTargetCount: covered, unresolvedTargetIds: unresolvedIds,
+    builtAt: new Date().toISOString(), failureReason: null, listeningTrackId: saved.listeningTrackId, listeningQuality: lt.listeningQuality || null }
+  b.log = trail.filter(m => /LISTENING_/.test(m)).slice(-12)
+  return { listeningBuild: b, listeningTrack: saved }
+}
+// The generation-complete boundary (Thai). Resolves only after the Listening build has
+// finished AND both the Listening track and the Main Track (with listeningBuild) are
+// persisted; the caller navigates after it resolves.
+async function completeThaiTrackHandoff(track, rawTrack, o) {
+  const mainId = listeningTrackId(track), fp = thaiPairsFingerprint(track.pairs)
+  const pre = rawTrack && rawTrack.listeningBuild
+  const reusable = !!(pre && (pre.status === 'READY' || pre.status === 'PARTIAL' || pre.status === 'FAILED') && pre.mainTrackId === mainId && pre.pairsFingerprint === fp)
+  let lb = reusable ? pre : null
+  if (!lb) {
+    // saved first with BUILDING, so an interrupted build is visible as such after a reload
+    const building = { ...track, listeningBuild: { status: 'BUILDING', buildVersion: LISTENING_BUILD_VERSION, mainTrackId: mainId, pairsFingerprint: fp, startedAt: new Date().toISOString() } }
+    await o.saveTracks([...(o.tracks || []), building])
+    try { o.onBuilding && o.onBuilding(mainId) } catch (e) {}
+    const r = await ensureThaiListeningBuilt(track, o.vocab, { apiKey: o.apiKey, model: o.model, creationMode: 'AUTO_PRETRACK', onLog: o.onLog })
+    lb = r.listeningBuild
+  }
+  const finalTrack = { ...track, listeningBuild: lb }
+  const msg = '🎧 HANDOFF MAIN_TRACK_ID=' + mainId + ' LISTENING_TRACK_ID=' + (lb.listeningTrackId || '-') + ' PERSISTED_TRACK_ID=' + (lb.mainTrackId || '-') +
+    ' status=' + lb.status + (reusable ? ' (built when generation completed)' : ' (built at save)')
+  try { console.info('[listening] ' + msg); o.onLog && o.onLog(msg) } catch (e) {}
+  await o.saveTracks([...(o.tracks || []), finalTrack])            // persisted BEFORE the caller navigates
+  return finalTrack
+}
+// One build per Main Track text: the Generator starts it when QC finishes and the save
+// boundary awaits the SAME promise, so a click on "Start" never races a second build.
+const _thaiListeningBuilds = new Map()
+function ensureThaiListeningBuilt(track, vocab, opts) {
+  const o = opts || {}, id = listeningTrackId(track), fp = thaiPairsFingerprint(track && track.pairs)
+  const cur = _thaiListeningBuilds.get(id)
+  if (cur && cur.fp === fp && !o.force) return cur.promise
+  const promise = buildAndPersistThaiListening(track, vocab, o).catch(e => ({ listeningBuild: { status: 'FAILED', buildVersion: LISTENING_BUILD_VERSION, mainTrackId: id,
+    pairsFingerprint: fp, failureReason: 'LISTENING_BUILD_ERROR: ' + (e && e.message || e), builtAt: new Date().toISOString(), unresolvedTargetIds: [] }, listeningTrack: null }))
+  _thaiListeningBuilds.set(id, { fp, promise })
+  return promise
+}
+function thaiListeningBuildInFlight(id) { return _thaiListeningBuilds.get(id) || null }
+// Export block: the lifecycle of this track's Listening build.
+function listeningBuildExportLines(track) {
+  const b = listeningBuildStateOf(track)
+  const out = ['LISTENING BUILD', '-'.repeat(30), 'Status: ' + b.status + (b.status === 'NOT_STARTED_LEGACY' ? ' (track made before v644 — Listening is created on request)' : '')]
+  if (b.status !== 'NOT_STARTED_LEGACY') {
+    out.push('MAIN_TRACK_ID: ' + (b.mainTrackId || listeningTrackId(track)) + ' · LISTENING_TRACK_ID: ' + (b.listeningTrackId || '-') + ' · build ' + (b.buildVersion || '-') + ' · built ' + (b.builtAt || '-'))
+    if (b.requiredTargetCount != null) out.push(listeningBuildLabel(b) || ('Required review targets: ' + b.requiredTargetCount))
+    if (b.failureReason) out.push('Failure reason: ' + b.failureReason)
+    ;(b.log || []).forEach(m => out.push('  ' + m))
+  }
+  return out
+}
+
 // ══ LISTEN FIRST (shared, all languages) ════════════════════════════════════════
 // Soft gate: it appears before the Main Track player, offers Start or Skip, and never
 // touches SRS, belts, ratings or the Main Track itself.
-function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProceed, autoCreate }) {
+function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProceed, autoCreate, onBuildState }) {
+  // v644: Thai reads the build state persisted ON the track; it never starts an automatic
+  // build on mount. JA/ZH keep the v640 behaviour unchanged.
+  const isTh = lang === 'th'
+  const [bstate, setBstate] = useState(() => isTh ? listeningBuildStateOf(track) : null)
   const [failReason, setFailReason] = useState('')
   const [phase, setPhase] = useState('loading')      // loading | offer | playing | none
   const [lt, setLt] = useState(null)
@@ -13874,7 +14115,18 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
   const [speed, setSpeed] = useState(1)
   const [log, setLog] = useState([])
   const mainId = listeningTrackId(track)
+  const buildTh = useCallback(async (mode) => {
+    setPhase('creating'); setBstate(b => ({ ...(b || {}), status: 'BUILDING' }))
+    const lines = []
+    const r = await ensureThaiListeningBuilt(track, vocab, { apiKey, model, creationMode: mode, force: true, onLog: m => lines.push(m) })
+    setLog(lines); setBstate(r.listeningBuild)
+    try { onBuildState && onBuildState(r.listeningBuild) } catch (e) { console.error('[listening] could not store build state', e) }
+    if (r.listeningBuild.status === 'FAILED' || !r.listeningTrack) { setFailReason(r.listeningBuild.failureReason || ''); setPhase('failed'); return }
+    const prev = (await listeningVersionsFor(lang, mainId)).filter(v => v.sourceMainTrackId === mainId)
+    setVersions(prev); setLt(r.listeningTrack); setPhase('offer')
+  }, [track, lang, vocab, apiKey, model, mainId, onBuildState])
   const build = useCallback(async (mode) => {
+    if (isTh) return buildTh(mode)
     setPhase(mode === 'MANUAL_PRACTICE' ? 'creating' : 'loading'); const lines = []
     let prev = [], res = null
     // LISTENING_TRACK_BUILD_ERROR is contained here: it must never surface as a Main
@@ -13897,6 +14149,37 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
   }, [track, lang, vocab, apiKey, model, mainId])
   useEffect(() => { let go = true
     ;(async () => {
+      if (isTh) {
+        // LISTENING_SCREEN_LOAD — loads what the generation boundary persisted for THIS track
+        const bs = listeningBuildStateOf(track)
+        const prev = (await listeningVersionsFor(lang, mainId)).filter(v => v && v.sourceMainTrackId === mainId)
+        if (!go) return
+        const pick = (bs.listeningTrackId && prev.find(v => v.listeningTrackId === bs.listeningTrackId)) || prev[prev.length - 1] || null
+        const _sl = '🎧 LISTENING_SCREEN_LOAD trackId=' + mainId + ' MAIN_TRACK_ID=' + (bs.mainTrackId || mainId) + ' SCREEN_LOADED_TRACK_ID=' + mainId +
+          ' LISTENING_TRACK_ID=' + (pick ? pick.listeningTrackId : '-') + ' PERSISTED_TRACK_ID=' + (pick ? pick.sourceMainTrackId : '-') + ' status=' + bs.status +
+          ' sceneCount=' + (pick ? (pick.sceneGroups || []).length : 0)
+        console.info('[listening] ' + _sl); setLog(l => [...l, _sl])
+        setVersions(prev); setBstate(bs)
+        if (bs.mainTrackId && bs.mainTrackId !== mainId) { setFailReason('IDENTITY_MISMATCH: build state belongs to track ' + bs.mainTrackId); setPhase('failed'); return }
+        if (bs.status === 'FAILED') { setFailReason(bs.failureReason || ''); setPhase('failed'); return }
+        if (bs.status === 'BUILDING') {
+          const inflight = thaiListeningBuildInFlight(mainId)
+          if (inflight) {                      // the generation boundary is still building it
+            setPhase('creating')
+            const r = await inflight.promise
+            if (!go) return
+            setBstate(r.listeningBuild)
+            if (r.listeningTrack) { setLt(r.listeningTrack); setVersions([...prev, r.listeningTrack]); setPhase('offer') }
+            else { setFailReason(r.listeningBuild.failureReason || ''); setPhase('failed') }
+            return
+          }
+          setFailReason('BUILD_INTERRUPTED: the Listening build did not finish (the app was closed or reloaded while it ran).'); setPhase('failed'); return
+        }
+        if (pick) { setLt(pick); setPhase('offer'); return }
+        if (bs.status === 'READY' || bs.status === 'PARTIAL') { setFailReason('LISTENING_NOT_FOUND: the saved Listening track for this lesson is missing from storage.'); setPhase('failed'); return }
+        setPhase('create')                     // NOT_STARTED / legacy track: no build was ever attempted
+        return
+      }
       const prev = await listeningVersionsFor(lang, mainId)
       if (!go) return
       setVersions(prev)
@@ -13916,7 +14199,7 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
     card:{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:20, textAlign:'center' },
     btn:{ padding:'14px 22px', borderRadius:10, border:'none', fontSize:16, fontWeight:700, cursor:'pointer' } }
   if (phase === 'loading' || phase === 'creating') return <div style={S.wrap}><div style={S.card}>🎧
-    <div style={{ marginTop:10, color:'var(--muted)' }}>{phase === 'creating' ? 'Creating listening track…' : 'Preparing listening practice…'}</div>
+    <div style={{ marginTop:10, color:'var(--muted)' }}>{isTh && phase === 'creating' ? 'Listening · BUILDING — building your listening track…' : phase === 'creating' ? 'Creating listening track…' : 'Preparing listening practice…'}</div>
     <button style={{ ...S.btn, marginTop:16, background:'transparent', color:'var(--muted)', fontSize:13 }} onClick={onProceed}>Continue to Main Track</button></div></div>
   // A saved Main Track with no Listening version yet (every pre-feature track lands here).
   if (phase === 'create') return <div style={S.wrap}><div style={S.card}>
@@ -13926,6 +14209,14 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
       <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={() => build('MANUAL_PRACTICE')}>🎧 Create Listening Track</button>
       <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={onProceed}>Continue to Main Track</button>
+    </div></div></div>
+  if (phase === 'failed' && isTh) return <div style={S.wrap}><div style={S.card}>
+    <div style={{ fontSize:34 }}>🎧</div>
+    <h2 style={{ margin:'8px 0 4px' }}>Listening build failed</h2>
+    <div style={{ color:'var(--muted)', fontSize:12, marginTop:6 }}>{failReason || 'No reason was recorded.'} Your Main Track is unaffected.</div>
+    <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap', marginTop:16 }}>
+      <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={() => build('MANUAL_RETRY')}>🔁 Retry Listening Track</button>
+      <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue to Main Track</button>
     </div></div></div>
   if (phase === 'failed') return <div style={S.wrap}><div style={S.card}>🎧
     <div style={{ marginTop:10 }}>Listening track could not be created.</div>
@@ -13952,12 +14243,20 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
       {lt ? lt.lines.length + ' sentences you already know, arranged as ' + (lt.sceneGroups.length > 1 ? lt.sceneGroups.length + ' short scenes' : 'a conversation') : ''}
       {lt && lt.excludedNewTargetIds.length ? ' · today’s ' + lt.excludedNewTargetIds.length + ' new word(s) left out' : ''}
     </div>
+    {isTh && lt && <div style={{ fontSize:13, fontWeight:600, marginBottom:6 }} data-listening-status={bstate ? bstate.status : ''}>
+      {listeningBuildLabel(bstate && bstate.coveredTargetCount != null ? bstate : { coveredTargetCount: lt.coverage ? lt.coverage.coveredRequiredIds.length : null,
+        requiredTargetCount: lt.coverage ? lt.coverage.requiredTargetIds.length : null, unresolvedTargetIds: lt.coverage ? lt.coverage.unresolved.map(u => u.targetId) : [] })}
+      {bstate && (bstate.status === 'READY' || bstate.status === 'PARTIAL') ? ' · ' + bstate.status : ''}</div>}
+    {isTh && bstate && bstate.pairsFingerprint && bstate.pairsFingerprint !== thaiPairsFingerprint(track.pairs) &&
+      <div style={{ color:'#f59e0b', fontSize:12, marginBottom:6 }}>The Main Track changed after this Listening track was built — Rebuild to match it.</div>}
     <div style={{ color:'var(--muted)', fontSize:12, marginBottom:16 }}>Passive comprehension first — nothing here affects your scores.</div>
     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
       <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={() => { setPhase('playing'); if (lt) listeningSetStatus(lt, 'in_progress') }}>▶ Start Listening</button>
       <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={() => finish('skipped')}>Skip</button>
     </div>
-    {versions.length > 0 && <button style={{ ...S.btn, marginTop:12, background:'transparent', color:'var(--muted)', fontSize:13, fontWeight:600 }}
+    {isTh ? <button style={{ ...S.btn, marginTop:12, background:'transparent', color:'var(--muted)', fontSize:13, fontWeight:600 }}
+      onClick={() => build('MANUAL_REBUILD')}>🔁 Rebuild Listening Track</button>
+    : versions.length > 0 && <button style={{ ...S.btn, marginTop:12, background:'transparent', color:'var(--muted)', fontSize:13, fontWeight:600 }}
       onClick={() => build('MANUAL_PRACTICE')}>🎧 New listening version ({versions.length} so far)</button>}
   </div></div>
 }
@@ -14110,6 +14409,7 @@ function TrackQuality({ track }) {
   const fb = (track.pairs || []).filter(p => (p.prompt || '').length < 10).length
   const sc = Math.max(0, Math.round(((tp - fb * 2) / Math.max(tp, 1)) * 100))
   const cc = sc >= 85 ? '#10b981' : sc >= 65 ? '#f59e0b' : '#ef4444'
+  const _sum = semanticAuditSummary(track)
   return (
     <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 14px', display:'flex', gap:12, alignItems:'center' }}>
       <span style={{ fontSize:22, fontWeight:800, color:cc }}>{sc}%</span>
@@ -14123,12 +14423,16 @@ function TrackQuality({ track }) {
             : track._closedVocab.remainingIllegalPairs > 0 ? '\u26D4 untaught vocabulary'
             : '\u2705 vocabulary audited'}
           {/* v641: a check that could not run is never shown as passed */}
+          {/* v644: "audited" only when EVERY line was judged; otherwise PARTIAL with counts */}
           {!track._semanticAudit ? ' \u00B7 \u2139\uFE0F meaning not audited'
-            : !/^ran/.test(track._semanticAudit.cueCheck || 'ran') ? ' \u00B7 \u26A0\uFE0F meaning NOT audited (model unavailable)'
+            : _sum.cue.state === 'FAILED' || _sum.cue.state === 'NOT_RUN' ? ' \u00B7 \u26A0\uFE0F meaning NOT audited (model unavailable)'
+            : _sum.cue.state === 'PARTIAL' ? ' \u00B7 \u26A0\uFE0F meaning PARTIAL (' + _sum.cue.judged + '/' + _sum.cue.total + ' judged)'
             : track._semanticAudit.cueMismatch > 0 ? ' \u00B7 \u26A0\uFE0F ' + track._semanticAudit.cueMismatch + ' cue mismatch dropped'
             : ' \u00B7 \u2705 meaning audited'}
           {track._semanticAudit && track._semanticAudit.naturalnessCheck
-            ? (/^ran/.test(track._semanticAudit.naturalnessCheck) ? ' \u00B7 \u2705 naturalness audited' : ' \u00B7 \u26A0\uFE0F naturalness NOT audited (model unavailable)') : ''}
+            ? (_sum.naturalness.state === 'COMPLETE' ? ' \u00B7 \u2705 naturalness audited (COMPLETE)'
+              : _sum.naturalness.state === 'PARTIAL' ? ' \u00B7 \u26A0\uFE0F naturalness PARTIAL (' + _sum.naturalness.judged + '/' + _sum.naturalness.total + ' judged, ' + _sum.naturalness.unverified + ' unverified)'
+              : ' \u00B7 \u26A0\uFE0F naturalness NOT audited (model unavailable)') : ''}
           {track._coverage && track._coverage.with0 > 0 ? ' \u00B7 \u26D4 ' + track._coverage.with0 + ' target(s) uncovered' : ''}
         </div>
       </div>
@@ -14154,6 +14458,7 @@ function resolveOrName(provider) {
 
 function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, onPhonetics, customTargets, orBalance, onBalanceRefresh, tracks, resumeDraft, dailyNewWords, onSaveDailyNewWords }) {
   const [error, setError] = useState('')
+  const [listenPhase, setListenPhase] = useState(null)   // v644: Listening build at generation complete
   const [brickSources, setBrickSources] = useState({})
   // TWO separate representations of the same acceptance events:
   //   acceptanceHistory — append-only chronological order, drives the TOP grid.
@@ -14543,6 +14848,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
 
         // ── Auto quality check ───────────────────────────────────────────────
         const _qcModel = resolveOrModel(provider)
+        let _finalTrack = track
         setGenLog(prev => [...prev, '━━━━━━━━━━━━━━━━━━━━━━━━', '🔍 Auto quality check starting…'])
         try {
           const qrCancel = { current: false }
@@ -14571,10 +14877,23 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
             setGenLog(prev => [...prev, '✅ QC done: ' + summary, '━━━━━━━━━━━━━━━━━━━━━━━━'])
             setGeneratedTrack(prev => prev ? { ...prev, pairs: result.pairs, _finalAudit: result.counts.finalAudit || prev._finalAudit || null,
               _coverage: result.counts.coverage || prev._coverage || null } : prev)
+            _finalTrack = { ...track, pairs: result.pairs, _finalAudit: result.counts.finalAudit || track._finalAudit || null, _coverage: result.counts.coverage || track._coverage || null }
           }
         } catch(e) {
           setGenLog(prev => [...prev, '⚠️ Auto QC failed: ' + e.message])
         }
+        // ── v644 AUTOMATIC LISTENING HANDOFF ── the Main Track is final here, so its
+        // Listening track is built and persisted now (the save boundary awaits this same
+        // build). "Start" stays disabled until it has finished.
+        try {
+          setListenPhase('BUILDING')
+          setGeneratedTrack(prev => prev ? { ...prev, listeningBuild: { status: 'BUILDING', buildVersion: LISTENING_BUILD_VERSION, mainTrackId: listeningTrackId(_finalTrack) } } : prev)
+          const _lr = await ensureThaiListeningBuilt(_finalTrack, vocab, { apiKey, model: _qcModel, creationMode: 'AUTO_PRETRACK',
+            onLog: m => { if (/LISTENING_/.test(m)) { logAll(m); setGenLog(prev => [...prev.slice(-300), m]) } } })
+          setGeneratedTrack(prev => prev ? { ...prev, listeningBuild: _lr.listeningBuild } : prev)
+          setListenPhase(_lr.listeningBuild.status)
+          setGenLog(prev => [...prev, _lr.listeningBuild.status === 'FAILED' ? '⚠️ Listening build FAILED: ' + (_lr.listeningBuild.failureReason || '') : '🎧 ' + listeningBuildLabel(_lr.listeningBuild) + ' · ' + _lr.listeningBuild.status])
+        } catch (e) { setListenPhase('FAILED'); setGenLog(prev => [...prev, '⚠️ Listening build failed: ' + e.message]) }
         // Refresh balance so user can see what the track cost
         if (orKey) {
           try {
@@ -14770,9 +15089,14 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, provider, orKey, 
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           <TrackQuality track={generatedTrack} />
 
-          <Btn onClick={() => { onGenerated(generatedTrack) }} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
-            ▶ Start SRS Track
+          <Btn onClick={() => { onGenerated(generatedTrack) }} disabled={listenPhase === 'BUILDING'} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
+            {listenPhase === 'BUILDING' ? '🎧 Building listening track…' : '▶ Start SRS Track'}
           </Btn>
+          {generatedTrack.listeningBuild && generatedTrack.listeningBuild.status !== 'BUILDING' && (
+            <div style={{ fontSize:12, color: generatedTrack.listeningBuild.status === 'FAILED' ? '#f97316' : 'var(--muted)', textAlign:'center' }}>
+              {generatedTrack.listeningBuild.status === 'FAILED' ? '🎧 Listening build failed — ' + (generatedTrack.listeningBuild.failureReason || 'no reason recorded') + ' (retry from the Listening screen)'
+                : '🎧 ' + listeningBuildLabel(generatedTrack.listeningBuild) + ' · ' + generatedTrack.listeningBuild.status}
+            </div>)}
           <div style={{ display:'flex', gap:8 }}>
             <Btn onClick={() => {
               // Always use daily track pairs — no generation needed
@@ -17618,7 +17942,7 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
     allPairs = _cv2.pairs; counts.closedVocabFinal = _cv2.stats }
   // FINAL_PAIR_SEMANTIC_AUDIT — after every mutation, before save.
   try {
-    const _fa = await finalPairSemanticAudit(allPairs, apiKey, model, onLog)
+    const _fa = await finalPairSemanticAudit(allPairs, apiKey, model, onLog, { label: 'main' })
     allPairs = _fa.pairs; counts.finalSemanticAudit = _fa.stats
     if (_fa.stats.dropped) {
       const _cv3 = enforceThaiClosedVocabulary(allPairs, _cvCtx, { originals: _cvOriginals, targetsById: _cvT.byId, onLog, stage: 'post-audit' })
@@ -17631,9 +17955,25 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
   // FINAL_TRACK_AUDIT — the LAST step. Identity, target presence, speaker, markup and
   // naturalness are judged on the exact objects that will be saved and played.
   try {
-    const _fin = thaiFinalTrackAudit(allPairs, { keywords: thaiAuditKeywords(track, _cvT.list), vocab, stage: 'qc',
-      originals: _auditOriginals, onLog,
-      barredThai: ((counts.finalSemanticAudit && counts.finalSemanticAudit.failures) || []).map(f => f.thai) })
+    const _barred = ((counts.finalSemanticAudit && counts.finalSemanticAudit.failures) || []).map(f => f.thai)
+    const _preFin = allPairs
+    let _fin = thaiFinalTrackAudit(_preFin, { keywords: thaiAuditKeywords(track, _cvT.list), vocab, stage: 'qc',
+      originals: _auditOriginals, onLog, barredThai: _barred })
+    // v644: a pre-mutation candidate restored by the coverage rescue never went through the
+    // model audit. It must pass the SAME semantic gates (fail closed) or it is not restored.
+    const _resc = _fin.pairs.filter(p => p && p._rescued)
+    if (_resc.length) {
+      const _ra = await finalPairSemanticAudit(_resc, apiKey, model, onLog, { label: 'rescue', failClosed: true })
+      const _ok = new Set(_ra.pairs.map(p => p.thai))
+      const _bad = _resc.filter(p => !_ok.has(p.thai)).map(p => p.thai)
+      const _st = new Map(_ra.pairs.map(p => [p.thai, p]))
+      if (counts.finalSemanticAudit) counts.finalSemanticAudit.rescueAudit = { audited: _resc.length, accepted: _resc.length - _bad.length, rejected: _bad.length, unverified: _ra.stats.droppedUnverified }
+      if (_bad.length) {
+        _barred.push(..._bad)
+        _fin = thaiFinalTrackAudit(_preFin, { keywords: thaiAuditKeywords(track, _cvT.list), vocab, stage: 'qc', originals: _auditOriginals, onLog, barredThai: _barred })
+      }
+      _fin.pairs = _fin.pairs.map(p => p && p._rescued && _st.has(p.thai) ? { ...p, _semCue: _st.get(p.thai)._semCue, _semNat: _st.get(p.thai)._semNat, _semanticState: 'VERIFIED' } : p)
+    }
     allPairs = _fin.pairs; counts.finalAudit = _fin.report
     // BOUNDED MAIN TRACK RECOVERY — a target left with no valid target-bearing line gets
     // fresh candidates through the existing QC replace path, validated by EVERY final
@@ -17644,10 +17984,12 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       allPairs = rec.pairs
       if (rec.changed) {
         const _fin2 = thaiFinalTrackAudit(allPairs, { keywords: thaiAuditKeywords(track, _cvT.list), vocab, stage: 'qc+recovery',
-          originals: _auditOriginals, onLog, barredThai: ((counts.finalSemanticAudit && counts.finalSemanticAudit.failures) || []).map(f => f.thai) })
+          originals: _auditOriginals, onLog, barredThai: _barred })
         allPairs = _fin2.pairs; counts.finalAudit = _fin2.report
       }
       counts.finalAudit.recovery = rec.recovery
+      counts.finalAudit.recoveryDiagnostics = rec.diagnostics
+      if (counts.finalSemanticAudit) counts.finalSemanticAudit.recoveryAudit = rec.audit
       counts.finalAudit.unresolved = rec.recovery.filter(r => !r.resolved).map(r => ({ targetId: r.targetId, target: r.target, attempts: r.attempts.length,
         reasons: r.attempts.map(a => a.attempt + ': ' + a.result + (a.reasons && a.reasons.length ? ' — ' + a.reasons.join('; ') : '')) }))
       counts.finalAudit.unresolved.forEach(u => onLog?.('  ⛔ TARGET_UNRESOLVED: ' + u.target + ' after ' + u.attempts + ' recovery attempt(s) — ' + u.reasons.join(' | ')))
@@ -17660,6 +18002,16 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
     onLog?.('  📊 coverage: 3+ candidates ' + _cov.with3 + ' · 2 ' + _cov.with2 + ' · 1 ' + _cov.with1 + ' · 0 ' + _cov.with0)
     if (_cov.with0) onLog?.('  ⛔ TARGET_UNCOVERED: ' + _cov.uncovered.join(' ') + ' — track is NOT fully covered')
   } catch (e) {}
+  // v644: the audit status reported for the track is measured on the FINAL pairs.
+  try {
+    if (counts.finalSemanticAudit) {
+      const _st = thaiSemanticAuditStatus(allPairs)
+      counts.finalSemanticAudit.final = _st
+      counts.finalSemanticAudit.naturalnessCheck = _st.status + ' (' + _st.naturalnessJudged + '/' + _st.auditedLines + ' judged' + (_st.unverified.length ? ', ' + _st.unverified.length + ' unverified' : '') + ')'
+      onLog?.('  🧭 ' + thaiNaturalnessStatusLine(_st) + ' · track quality ' + _st.trackQuality)
+      _st.unverified.forEach(u => onLog?.('    NATURALNESS_UNVERIFIED PAIR_ID=' + u.pairId + ' TARGET=' + (u.target || '-') + ' FAILURE_STAGE=' + u.stage + ' REASON=' + u.reason))
+    }
+  } catch (e) { onLog?.('⚠️ semantic status failed: ' + e.message) }
   try {
     track._closedVocab = counts.closedVocabFinal || counts.closedVocab || null
     track._semanticAudit = counts.finalSemanticAudit || null
@@ -17675,37 +18027,178 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
 // pair can be mutated afterwards and ship with a stale cue (live v635: cue "his father",
 // sentence พ่อคุณ = "your father"). This audit re-checks alignment on the FINAL text, after
 // every mutation and immediately before save. A failure is repaired or dropped, never saved.
-async function finalPairSemanticAudit(pairs, apiKey, model, onLog) {
-  const content = (pairs || []).filter(p => p && p.pairType !== 'framing' && p.thai)
-  const stats = { checked: content.length, cueMismatch: 0, unnatural: 0, dropped: 0, failures: [], cueCheck: 'not run', naturalnessCheck: 'not run' }
-  if (!content.length) return { pairs, stats }
-  let scored = content
-  try { scored = await _qrBatchPromptCheck(content.map(p => ({ ...p, _pm: null, _pmNote: '' })), apiKey, model, onLog); stats.cueCheck = 'ran' }
-  catch (e) { onLog?.('⚠️ final semantic audit unavailable: ' + e.message); stats.cueCheck = 'UNAVAILABLE: ' + e.message; return { pairs, stats } }
-  const verdict = new Map(scored.map(p => [p.thai + '|' + (p.prompt || ''), p]))
-  // Naturalness on the same final text (the "would a native speaker say this?" gate).
-  stats.unnatural = 0
-  let nat = new Map()
-  try { nat = await _qrBatchNaturalnessCheck(content, apiKey, model, onLog); stats.naturalnessCheck = nat.size ? 'ran (' + nat.size + '/' + content.length + ' judged)' : 'UNAVAILABLE: no judgements returned' }
-  catch (e) { onLog?.('⚠️ naturalness check unavailable: ' + e.message); stats.naturalnessCheck = 'UNAVAILABLE: ' + e.message }
-  const natByKey = new Map([...nat.entries()].map(([ci, v]) => [content[ci].thai + '|' + (content[ci].prompt || ''), v]))
-  const out = (pairs || []).filter(p => {
-    if (!p || p.pairType === 'framing' || !p.thai) return true
-    const key = p.thai + '|' + (p.prompt || '')
-    const v = verdict.get(key)
-    const score = v && v._pm != null ? v._pm : 5
-    const n = natByKey.get(key)
-    if (score >= 4 && (!n || n.s >= 4)) return true
-    const why = score < 4 ? ((v && v._pmNote) || 'cue does not match the final sentence') : ('unnatural ' + n.s + '/5' + (n.note ? ' — ' + n.note : ''))
-    if (score < 4) stats.cueMismatch++; else stats.unnatural++
-    stats.dropped++
-    stats.failures.push({ targetId: p.targetId, target: p._target, cue: (p.prompt || '').slice(0, 50),
-                          thai: p.thai, score: score < 4 ? score : n.s, reason: why })
-    onLog?.('  ⛔ final audit: [' + (p._target || '?') + '] ' + why + ' → dropped')
-    return false
+// v644: the audit FAILS CLOSED. v643 let an unjudged pair pass (a missing cue verdict
+// defaulted to 5, a missing naturalness verdict to "no objection"), so a batch the model
+// answered with garbage made its 12 pairs look audited ("naturalness batch 6 unparseable —
+// not judged" while the UI said "✅ naturalness audited"). Now:
+//   0. deterministic template-garbage + clock-time guards (cue + Thai + English)
+//   1. cue check  (cue, Thai AND English judged together, well-formedness included)
+//   2. naturalness check
+// A batch that throws, is unparseable or omits verdicts is retried in halves (12 → 6 → 3);
+// whatever is still unjudged is UNVERIFIED with its stage and reason. opts.failClosed
+// (recovery, rescue) drops unverified candidates; the Main Track keeps them marked and
+// its status becomes PARTIAL — never "audited".
+const SEMANTIC_BATCH_SIZES = [12, 6, 3]
+function _semanticReplyArray(raw) {
+  const a = JSON.parse(String(raw || '').replace(/```json|```/g, '').trim())
+  if (!Array.isArray(a)) throw Object.assign(new Error('reply is not a JSON array'), { parse: true })
+  return a
+}
+async function _judgeWithBoundedRetry(items, judge, label, onLog) {
+  const verdicts = new Map(), failed = new Map(), trace = { calls: 0, failedBatches: 0, retries: 0, levels: [] }
+  let consecutiveErrors = 0, circuitOpen = null
+  const run = async (idxs, level) => {
+    if (circuitOpen) { idxs.forEach(ix => failed.set(ix, circuitOpen)); return }
+    trace.calls++; if (level > 0) trace.retries++
+    let got = null, err = null
+    try { got = await judge(idxs.map(ix => items[ix])); consecutiveErrors = 0 }
+    catch (e) {
+      const parse = e && (e.parse || e instanceof SyntaxError)
+      err = (parse ? 'reply unparseable: ' : 'model call failed: ') + (e && e.message || e)
+      if (!parse && ++consecutiveErrors >= 3) circuitOpen = 'model unavailable (' + consecutiveErrors + ' consecutive failed calls): ' + (e && e.message || e)
+    }
+    const missing = []
+    idxs.forEach((ix, ci) => {
+      const v = got && got.find(x => x && Number(x.i) === ci + 1)
+      const sc = v ? Number(v.s) : NaN
+      if (v && sc >= 1 && sc <= 5) verdicts.set(ix, { s: sc, note: v.note || '' })
+      else missing.push(ix)
+    })
+    if (!missing.length) return
+    trace.failedBatches++
+    const reason = err || (got && got.length ? 'no valid verdict returned for this item' : 'empty reply')
+    const next = SEMANTIC_BATCH_SIZES[level + 1]
+    trace.levels.push({ level: level + 1, size: idxs.length, missing: missing.length, reason })
+    onLog && onLog('  ⚠️ ' + label + ' batch of ' + idxs.length + ': ' + missing.length + ' not judged — ' + reason +
+      (next && !circuitOpen ? ' → retry in batches of ' + next : ' → UNVERIFIED'))
+    if (!next || circuitOpen) { missing.forEach(ix => failed.set(ix, circuitOpen || reason)); return }
+    for (let b = 0; b < missing.length; b += next) await run(missing.slice(b, b + next), level + 1)
+  }
+  const all = items.map((_, i) => i), first = SEMANTIC_BATCH_SIZES[0]
+  for (let b = 0; b < all.length; b += first) await run(all.slice(b, b + first), 0)
+  return { verdicts, failed, trace }
+}
+function _naturalnessPromptText(chunk) {
+  const numbered = chunk.map((p, ci) => (ci + 1) + '. Thai: ' + p.thai + '\n   Intended meaning: ' + (p.english || '') +
+    '\n   Speaker: ' + (thaiSpeakerMapGender(p.speaker) || p.speakerGender || 'unknown')).join('\n\n')
+  return 'You are a native Thai speaker checking learner material. For EACH sentence answer: would a native speaker plausibly ' +
+    'say this exact sentence in ordinary conversation, with this intended meaning, as this speaker?\n' +
+    'Penalise: malformed grammar, target-word stuffing, duplicated words, English-shaped Thai, wrong sense of a word, ' +
+    'mixed male/female particles (ผม/ครับ vs ฉัน/ค่ะ/คะ), absurd everyday claims, meaningless fragments.\n' +
+    'Scale: 5 natural · 4 natural with a small quirk · 3 understandable but unnatural · 2 wrong/awkward · 1 broken.\n\n' +
+    numbered + '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."}]'
+}
+async function _finalNaturalnessJudge(chunk, apiKey, model) {
+  return _semanticReplyArray(await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: _naturalnessPromptText(chunk) }], 700))
+}
+// Cue + Thai + English judged TOGETHER: a broken cue and a broken translation that
+// merely agree with each other must fail.
+async function _finalCueJudge(chunk, apiKey, model) {
+  const numbered = chunk.map((p, ci) => `${ci + 1}. Prompt: "${p.prompt}"\n   Thai: ${p.thai}\n   English: ${p.english}`).join('\n\n')
+  const q = `Rate how well each Thai sentence matches its prompt description, judging the PROMPT (cue), the THAI and the ENGLISH translation together.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\nDIALOGUE RULE: These are conversation pairs. Prompts describe what a character says in third person ("He says he likes...", "She asks if...") but the Thai sentence naturally uses first person ("ผม/ฉัน = I"). This is CORRECT and NEVER a mismatch.\n\nWELL-FORMEDNESS RULE: the prompt and the English must themselves be grammatical, meaningful English. If either is garbled or has a dictionary gloss pasted into a template (e.g. "Ask if you can have a to enter", "Can I have a to enter, please?") score 1 — even when they agree with each other and with the Thai.\n\n${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5},{"i":2,"s":3,"note":"prompt says X but sentence says Y"},...]\nno markdown, no explanation.`
+  return _semanticReplyArray(await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: q }], 600))
+}
+function _cueCheckEligible(p) {
+  return !!(p && p.prompt && p.prompt.length > 8 && p.thai && p.english && !p.prompt.startsWith('.') && !/^(greet|greeting)/i.test(p.prompt))
+}
+function _semanticPairId(p, i) { return (p && p._pairKey) || ('#' + String(i + 1).padStart(3, '0')) }
+async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
+  const o = opts || {}, label = o.label || 'main', all = pairs || []
+  const content = []
+  all.forEach((p, i) => { if (p && p.pairType !== 'framing' && p.thai) content.push({ p, i }) })
+  const stats = { label, failClosed: !!o.failClosed, checked: content.length, cueEligible: 0, cueJudged: 0, cueNotApplicable: 0,
+    naturalnessJudged: 0, cueMismatch: 0, unnatural: 0, templateGarbage: 0, invalidTime: 0, dropped: 0, droppedUnverified: 0,
+    unverified: [], failures: [], perPair: [], trace: {}, cueCheck: 'not run', naturalnessCheck: 'not run', status: 'NOT_RUN' }
+  if (!content.length) { stats.status = 'COMPLETE'; stats.cueCheck = stats.naturalnessCheck = 'COMPLETE (0/0 judged)'; return { pairs, stats } }
+  // 0. deterministic guards
+  const det = new Map()
+  content.forEach(({ p, i }) => {
+    const g = thaiTemplateGarbageProblems(p)
+    if (g.length) { det.set(i, { code: 'TEMPLATE_GARBAGE', why: g.map(x => x.why).join('; ') }); return }
+    const t = thaiTimeExpressionProblems(p.thai)
+    if (t.length) det.set(i, { code: 'INVALID_TIME_EXPRESSION', why: t[0].why })
   })
-  onLog?.('  🧭 FINAL_PAIR_SEMANTIC_AUDIT: checked=' + stats.checked + ' cueMismatch=' + stats.cueMismatch + ' unnatural=' + stats.unnatural + ' dropped=' + stats.dropped)
+  const live = content.filter(x => !det.has(x.i))
+  const noKey = arr => ({ verdicts: new Map(), failed: new Map(arr.map((_, k) => [k, 'no model credentials'])), trace: { calls: 0 } })
+  // 1. cue + Thai + English
+  const cueEl = live.filter(x => _cueCheckEligible(x.p))
+  stats.cueEligible = cueEl.length; stats.cueNotApplicable = live.length - cueEl.length
+  const cue = !cueEl.length ? { verdicts: new Map(), failed: new Map(), trace: { calls: 0 } }
+    : apiKey ? await _judgeWithBoundedRetry(cueEl.map(x => x.p), ch => _finalCueJudge(ch, apiKey, model), label + ' cue check', onLog) : noKey(cueEl)
+  const cueBy = new Map()
+  cueEl.forEach((x, k) => cueBy.set(x.i, cue.verdicts.has(k) ? cue.verdicts.get(k) : { s: null, reason: cue.failed.get(k) || 'not judged' }))
+  // 2. naturalness
+  const nat = !live.length ? { verdicts: new Map(), failed: new Map(), trace: { calls: 0 } }
+    : apiKey ? await _judgeWithBoundedRetry(live.map(x => x.p), ch => _finalNaturalnessJudge(ch, apiKey, model), label + ' naturalness', onLog) : noKey(live)
+  const natBy = new Map()
+  live.forEach((x, k) => natBy.set(x.i, nat.verdicts.has(k) ? nat.verdicts.get(k) : { s: null, reason: nat.failed.get(k) || 'not judged' }))
+  stats.trace = { cue: cue.trace, naturalness: nat.trace }
+  stats.cueJudged = [...cueBy.values()].filter(v => v.s != null).length
+  stats.naturalnessJudged = [...natBy.values()].filter(v => v.s != null).length
+  const out = []
+  all.forEach((p, i) => {
+    if (!p || p.pairType === 'framing' || !p.thai) { out.push(p); return }
+    const pid = _semanticPairId(p, i), d = det.get(i), cv = cueBy.get(i), nv = natBy.get(i)
+    const row = { pairId: pid, targetId: p.targetId != null ? p.targetId : null, target: p._target || null, thai: p.thai, english: p.english || '', cue: p.prompt || '',
+      cueScore: d ? null : cv ? cv.s : 'n/a', naturalness: d ? null : nv ? nv.s : null, code: null, reason: '' }
+    const drop = (code, why, score) => {
+      row.code = code; row.reason = why; stats.dropped++
+      if (code === 'CUE_MISMATCH') stats.cueMismatch++; else if (code === 'UNNATURAL') stats.unnatural++
+      else if (code === 'TEMPLATE_GARBAGE') stats.templateGarbage++; else if (code === 'INVALID_TIME_EXPRESSION') stats.invalidTime++
+      stats.failures.push({ targetId: p.targetId, target: p._target, cue: (p.prompt || '').slice(0, 50), thai: p.thai, score, reason: why, code })
+      onLog && onLog('  ⛔ final audit: [' + (p._target || '?') + '] ' + code + ' — ' + why + ' → dropped')
+      stats.perPair.push(row)
+    }
+    if (d) return drop(d.code, d.why, null)
+    if (cv && cv.s != null && cv.s < 4) return drop('CUE_MISMATCH', cv.note || 'cue does not match the final sentence', cv.s)
+    if (nv && nv.s != null && nv.s < 4) return drop('UNNATURAL', 'unnatural ' + nv.s + '/5' + (nv.note ? ' — ' + nv.note : ''), nv.s)
+    const unv = []
+    if (cv && cv.s == null) unv.push({ stage: 'CUE_CHECK', reason: cv.reason })
+    if (!nv || nv.s == null) unv.push({ stage: 'NATURALNESS_CHECK', reason: nv ? nv.reason : 'not judged' })
+    const { _semanticUnverified, _semanticState, ...rest } = p
+    const base = { ...rest, _semCue: cv ? cv.s : 'n/a', _semNat: nv ? nv.s : null }
+    if (unv.length) {
+      const state = unv.length === 2 ? 'CUE_AND_NATURALNESS_UNVERIFIED' : unv[0].stage === 'CUE_CHECK' ? 'CUE_UNVERIFIED' : 'NATURALNESS_UNVERIFIED'
+      const u = { pairId: pid, targetId: row.targetId, target: row.target, thai: p.thai, stage: unv.map(x => x.stage).join('+'), reason: unv.map(x => x.reason).join('; '), state }
+      stats.unverified.push(u); row.code = state; row.reason = u.reason; stats.perPair.push(row)
+      if (o.failClosed) {
+        stats.dropped++; stats.droppedUnverified++
+        onLog && onLog('  ⛔ ' + label + ' audit: [' + (p._target || '?') + '] ' + state + ' (' + u.reason + ') → not accepted (fail closed)')
+        return
+      }
+      out.push({ ...base, _semanticState: state, _semanticUnverified: { stage: u.stage, reason: u.reason } }); return
+    }
+    row.code = 'VERIFIED'; stats.perPair.push(row)
+    out.push({ ...base, _semanticState: 'VERIFIED' })
+  })
+  const nUnv = stats.unverified.filter(u => /NATURALNESS/.test(u.stage)).length, cUnv = stats.unverified.filter(u => /CUE/.test(u.stage)).length
+  const fmt = (judged, total, unv) => (total && !judged ? 'FAILED' : unv ? 'PARTIAL' : 'COMPLETE') + ' (' + judged + '/' + total + ' judged' + (unv ? ', ' + unv + ' unverified' : '') + ')'
+  stats.cueCheck = fmt(stats.cueJudged, cueEl.length, cUnv)
+  stats.naturalnessCheck = fmt(stats.naturalnessJudged, live.length, nUnv)
+  stats.status = stats.unverified.length === 0 ? 'COMPLETE' : (live.length && !stats.naturalnessJudged ? 'FAILED' : 'PARTIAL')
+  onLog && onLog('  🧭 FINAL_PAIR_SEMANTIC_AUDIT (' + label + '): checked=' + stats.checked + ' cue=' + stats.cueCheck + ' naturalness=' + stats.naturalnessCheck +
+    ' templateGarbage=' + stats.templateGarbage + ' invalidTime=' + stats.invalidTime + ' cueMismatch=' + stats.cueMismatch + ' unnatural=' + stats.unnatural +
+    ' unverified=' + stats.unverified.length + (o.failClosed ? ' (dropped: fail closed)' : ' (kept, marked)') + ' dropped=' + stats.dropped + ' status=' + stats.status)
   return { pairs: out, stats }
+}
+// Final status is measured on the pairs that are actually saved — never on an earlier
+// stage's stats. A pair without a recorded state (made before v644) counts as unverified.
+function thaiSemanticAuditStatus(pairs) {
+  const lines = (pairs || []).map((p, i) => ({ p, i })).filter(x => x.p && x.p.pairType !== 'framing' && x.p.thai)
+  const nat = lines.filter(x => typeof x.p._semNat === 'number').length
+  const cueTotal = lines.filter(x => x.p._semCue !== 'n/a').length
+  const cue = lines.filter(x => typeof x.p._semCue === 'number').length
+  const unverified = lines.filter(x => x.p._semanticState !== 'VERIFIED').map(x => ({ pairId: _semanticPairId(x.p, x.i), index: x.i + 1,
+    targetId: x.p.targetId != null ? x.p.targetId : (x.p.supportsTargetId != null ? x.p.supportsTargetId : null), target: x.p._target || null, thai: x.p.thai,
+    stage: x.p._semanticUnverified ? x.p._semanticUnverified.stage : 'NOT_AUDITED', reason: x.p._semanticUnverified ? x.p._semanticUnverified.reason : 'no audit verdict recorded for this pair' }))
+  const total = lines.length
+  const status = !total ? 'COMPLETE' : !nat ? 'FAILED' : unverified.length ? 'PARTIAL' : 'COMPLETE'
+  return { finalPairs: (pairs || []).length, auditedLines: total, naturalnessJudged: nat, cueJudged: cue, cueTotal, unverified, status,
+    trackQuality: status === 'COMPLETE' ? 'COMPLETE' : 'PARTIAL' }
+}
+function thaiNaturalnessStatusLine(st) {
+  if (!st) return 'NATURALNESS_AUDIT NOT RECORDED'
+  return 'NATURALNESS_AUDIT ' + st.status + ' (' + st.naturalnessJudged + '/' + st.auditedLines + ' judged' + (st.unverified.length ? ', ' + st.unverified.length + ' unverified' : '') + ')'
 }
 // Coverage accounting: a dropped candidate must never look like successful practice.
 function thaiTargetCoverage(pairs, keywords) {
@@ -17831,6 +18324,56 @@ function speakerGenderOf(p, lang) {
 // These catch the observed failure CLASSES without a model. The model naturalness
 // check in finalPairSemanticAudit judges everything else.
 const _escRe = s => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// ══ v644 DETERMINISTIC TEMPLATE-GARBAGE + CLOCK-TIME GUARDS ═══════════════════════════
+// Live 28 Sept 2026 [049]: cue "Ask if you can have a to enter" / EN "Can I have a to
+// enter, please?" shipped. It was the object-noun request template of makeFallbackPairs
+// filled with a VERB gloss ("to enter") by the closed-vocabulary repair. The model cue
+// check scored it aligned (cue and English were equally broken) and naturalness judges
+// only the Thai (ขอเข้าหน่อยครับ is fine Thai), so nothing caught it. These rules are
+// deterministic and only flag forms that are never valid English in a cue/translation.
+const THAI_TEMPLATE_GARBAGE_RULES = [
+  { id: 'ARTICLE_BEFORE_INFINITIVE', re: /\b(a|an|the)\s+to\s+[a-z]/i, why: 'article before an infinitive gloss ("a to …")' },
+  { id: 'MODAL_BEFORE_INFINITIVE',   re: /\b(will|can|could|should|would|must|might|shall)\s+to\s+[a-z]/i, why: 'modal before an infinitive gloss ("will to …")' },
+  { id: 'DOUBLED_FUNCTION_WORD',     re: /\b(a|an|the|to|of|in|on|at|for)\s+\1\b/i, why: 'doubled function word' },
+  { id: 'ARTICLE_THEN_ARTICLE',      re: /\b(a|an)\s+(a|an|the)\b/i, why: 'two articles in a row' },
+  { id: 'EMPTY_SLOT',                re: /\b(a|an|the)\s*[,?!]|\b(a|an|the)\.\s*$/, why: 'template slot left empty' },
+  { id: 'PLACEHOLDER',               re: /\b(undefined|null|NaN)\b|\[object Object\]|\$\{|\{\{|\}\}/, why: 'unfilled template placeholder' },
+  { id: 'RAW_GLOSS',                 re: /\((n|v|adj|adv|clf|classifier|sb|sth)\.?\)|\b(sb|sth)\b/i, why: 'raw dictionary gloss inserted' },
+]
+// Cue AND English are checked; each problem names the field it was found in.
+function thaiTemplateGarbageProblems(p) {
+  const out = []
+  ;[['cue', p && p.prompt], ['english', p && p.english]].forEach(([field, s]) => {
+    const t = String(s || '')
+    if (!t) return
+    THAI_TEMPLATE_GARBAGE_RULES.forEach(r => { if (r.re.test(t)) out.push({ field, id: r.id, why: field + ': ' + r.why + ' — "' + t.slice(0, 70) + '"' }) })
+  })
+  return out
+}
+// Thai clock: 1–5 โมงเช้า, บ่าย N โมง, N โมงเย็น, N ทุ่ม, or N นาฬิกา (24-hour). 13–24 + โมง
+// is never Thai (live recovery: ตอนยี่สิบโมง). ยี่สิบนาฬิกา / สองทุ่ม / ยี่สิบนาที stay legal;
+// ชั่วโมง ("hour") is not matched because ชั่ว sits between the number and โมง.
+const THAI_INVALID_OMONG_RE = /(สิบ(?:สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า)|ยี่สิบ(?:เอ็ด|สอง|สาม|สี่)?)\s*โมง/
+const THAI_INVALID_OMONG_DIGIT_RE = /(?:^|[^0-9])(1[3-9]|2[0-4])\s*โมง/
+function thaiTimeExpressionProblems(thai) {
+  const s = String(thai || ''), out = []
+  const m = s.match(THAI_INVALID_OMONG_RE) || s.match(THAI_INVALID_OMONG_DIGIT_RE)
+  if (m) out.push({ id: 'INVALID_TIME_EXPRESSION', why: '"' + m[0].replace(/^[^฀-๿0-9]/, '') + '" is not a Thai clock time (13–24 + โมง) — use N ทุ่ม / บ่าย N โมง / N นาฬิกา' })
+  return out
+}
+// Number targets (ยี่สิบ …) are practised as counts, prices, dates or quantities.
+const THAI_NUMBER_GLOSS_RE = /^(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|(a |one )?hundred|(a |one )?thousand|ten thousand|(a |one )?hundred thousand|(a |one )?million|\d+)$/i
+function thaiIsNumberTarget(t) {
+  const g = String(t && (t.english || t.e) || '').toLowerCase().replace(/\(.*?\)/g, '').split(/[;,/]/)[0].trim()
+  return THAI_NUMBER_GLOSS_RE.test(g)
+}
+function thaiNumberTargetHint(t) {
+  const w = t && t.thai || ''
+  return 'NUMBER TARGET: use "' + w + '" as a count, price, date or quantity in a natural context — e.g. ' +
+    w + 'บาท (price), ' + w + 'คน (people), ' + w + 'วัน (days), วันที่' + w + ' (date), ' + w + 'อัน (items). ' +
+    'Never use it as a clock hour with โมง (13–24 + โมง is not Thai).'
+}
+
 function thaiLineNaturalnessProblems(p, target, vocab) {
   const s = String(p && p.thai || ''), out = []
   const norm = x => String(x || '').toLowerCase().replace(/[^a-z;, ]/g, '').replace(/\s+/g, ' ').trim()
@@ -17938,6 +18481,9 @@ function thaiLineGate(p, keywords, vocab) {
   if (sp.status === 'linguistic-conflict') problems.push({ code: 'SPEAKER_CONFLICT', why: sp.reason })
   if (sp.status === 'metadata-conflict') problems.push({ code: 'SPEAKER_CONFLICT', why: sp.reason })
   if (id.type !== 'framing') thaiLineNaturalnessProblems(p, id.target, vocab).forEach(w => problems.push({ code: 'UNNATURAL', why: w }))
+  // v644: deterministic guards — shared by every path, including recovery and rescue
+  if (id.type !== 'framing') thaiTemplateGarbageProblems(p).forEach(g => problems.push({ code: 'TEMPLATE_GARBAGE', why: g.why }))
+  thaiTimeExpressionProblems(p.thai).forEach(g => problems.push({ code: 'INVALID_TIME_EXPRESSION', why: g.why }))
   return { ok: problems.length === 0, problems, identity: id, speaker: sp }
 }
 
@@ -18032,6 +18578,8 @@ function thaiFinalTrackAudit(pairs, opts) {
     TYPE_UNKNOWN: R.types.unknown,
     THAI_FINAL_SPEAKER_CONFLICTS: R.speaker.linguisticConflicts + R.speaker.metadataConflicts,
     FINAL_SENTENCE_MARKUP_COUNT: R.markup.leaks,
+    TEMPLATE_GARBAGE_COUNT: out.filter(p => p.pairType !== 'framing' && thaiTemplateGarbageProblems(p).length).length,
+    INVALID_TIME_EXPRESSION_COUNT: out.filter(p => thaiTimeExpressionProblems(p.thai).length).length,
   }
   R.ok = Object.values(R.invariants).every(v => v === 0)
   log && log('  🧾 FINAL_TRACK_AUDIT (' + R.stage + '): accepted ' + R.accepted + '/' + R.pairsIn +
@@ -18051,7 +18599,9 @@ const THAI_RECOVERY_MAX_ATTEMPTS = 2
 async function recoverUncoveredThaiTargets(pairs, missing, ctx) {
   const c = ctx || {}, log = c.onLog || null
   let all = pairs.slice(); let changed = false
-  const recovery = []
+  const recovery = [], diagnostics = []
+  // v644: recovery candidates pass the SAME gates as the Main Track, fail closed.
+  const audit = { candidates: 0, audited: 0, accepted: 0, rejected: 0, unverified: 0 }
   const origOrder = [...(c.originals || new Map()).values()]
   for (const m of missing) {
     const kw = (c.keywords || []).find(k => k.wordId === m.targetId) || { wordId: m.targetId, thai: m.target }
@@ -18068,15 +18618,22 @@ async function recoverUncoveredThaiTargets(pairs, missing, ctx) {
     }
     if (kw.unresolved) {
       rec.attempts.push({ attempt: 0, result: 'not attempted', reasons: ['unresolved at selection: ' + (kw.unresolvedReason || 'not generatable')] })
+      diagnostics.push({ target: kw.thai, targetId: kw.wordId, attempt: 0, finalStatus: 'NOT_ATTEMPTED (' + (kw.unresolvedReason || 'unresolved at selection') + ')' })
       recovery.push(rec); continue
     }
+    const isNumber = thaiIsNumberTarget(kw)
     for (let a = 1; a <= THAI_RECOVERY_MAX_ATTEMPTS; a++) {
       if (!c.apiKey) { rec.attempts.push({ attempt: a, result: 'not attempted', reasons: ['no model credentials'] }); break }
       const pos = at()
-      const group = { targetWord: kw.thai, indices: [pos], pairs: [{ speaker: 'A' }, { speaker: 'B' }, { speaker: 'A' }] }
+      const group = { targetWord: kw.thai, indices: [pos], pairs: [{ speaker: 'A' }, { speaker: 'B' }, { speaker: 'A' }],
+                      hint: isNumber ? thaiNumberTargetHint(kw) : '' }
       let raw
       try { raw = await _qrReplace(group, all, c.apiKey, c.model, c.knownWords) }
-      catch (e) { rec.attempts.push({ attempt: a, result: 'rejected', reasons: ['generation: ' + e.message] }); continue }
+      catch (e) {
+        rec.attempts.push({ attempt: a, result: 'rejected', reasons: ['generation: ' + e.message] })
+        diagnostics.push({ target: kw.thai, targetId: kw.wordId, attempt: a, thai: '', english: '', cue: '', finalStatus: 'REJECTED (generation failed: ' + e.message + ')' })
+        continue
+      }
       const keys = [0, 1, 2].map(ri => 'th-' + kw.wordId + '-r' + a + '-' + (ri + 1))
       let cands = (raw || []).slice(0, 3).map((l0, ri) => {
         const l = sanitizeModelPair({ ...l0, speaker: l0.speaker || (ri === 1 ? 'B' : 'A') }, 'qc:recover')
@@ -18088,34 +18645,59 @@ async function recoverUncoveredThaiTargets(pairs, missing, ctx) {
           : { ...base, pairType: 'bridge', targetId: null, wordId: null, supportsTargetId: kw.wordId, recallRole: 'response', targetRequired: false, respondsToPairKey: ri > 0 ? keys[ri - 1] : null }
       })
       const reasons = []
+      // per-candidate diagnostics (RECOVERY DIAGNOSTICS export block)
+      const diag = new Map(cands.map(p => [p.thai, { target: kw.thai, targetId: kw.wordId, attempt: a, thai: p.thai || '', english: p.english || '', cue: p.prompt || '',
+        targetPresent: thaiContainsLexeme(p.thai || '', kw.thai), pairType: p.pairType, naturalness: 'not reached', cueAlignment: 'not reached', finalStatus: '' }]))
+      const rejectDiag = (thai, why) => { const d = diag.get(thai); if (d && !d.finalStatus) d.finalStatus = 'REJECTED (' + why + ')' }
+      audit.candidates += cands.length
       // closed vocabulary WITHOUT template fallback: an illegal line is simply dropped
       try {
         const cv = enforceThaiClosedVocabulary(cands, c.cvCtx, { stage: 'recovery', onLog: log })
         const kept = new Set(cv.pairs.filter(Boolean).map(p => p.thai))
-        cands.filter(p => !kept.has(p.thai)).forEach(p => reasons.push('closed vocabulary: ' + p.thai))
+        cands.filter(p => !kept.has(p.thai)).forEach(p => { reasons.push('closed vocabulary: ' + p.thai); rejectDiag(p.thai, 'CLOSED_VOCABULARY') })
+        cands.filter(p => kept.has(p.thai) && /^\s*say\s*:/i.test(p.prompt || '')).forEach(p => rejectDiag(p.thai, 'FALLBACK_CUE'))
         cands = cands.filter(p => kept.has(p.thai) && !/^\s*say\s*:/i.test(p.prompt || ''))
-      } catch (e) { reasons.push('closed vocabulary check failed: ' + e.message); cands = [] }
+      } catch (e) { reasons.push('closed vocabulary check failed: ' + e.message); cands.forEach(p => rejectDiag(p.thai, 'closed vocabulary check failed')); cands = [] }
       try {
-        const sem = await finalPairSemanticAudit(cands, c.apiKey, c.model, log)
-        sem.stats.failures.forEach(f => reasons.push(f.reason + ': ' + f.thai)); cands = sem.pairs
-      } catch (e) { reasons.push('model audit failed: ' + e.message); cands = [] }
+        audit.audited += cands.length
+        const sem = await finalPairSemanticAudit(cands, c.apiKey, c.model, log, { label: 'recovery', failClosed: true })
+        sem.stats.perPair.forEach(r => {
+          const d = diag.get(r.thai); if (!d) return
+          const sc = (v, fail) => v >= 4 ? 'PASS (' + v + '/5)' : 'FAIL (' + v + '/5)'
+          d.naturalness = r.code === 'INVALID_TIME_EXPRESSION' ? 'FAIL (invalid Thai time expression)' : r.code === 'TEMPLATE_GARBAGE' ? 'not reached'
+            : r.naturalness == null ? 'UNVERIFIED' : sc(r.naturalness)
+          d.cueAlignment = r.code === 'TEMPLATE_GARBAGE' ? 'FAIL (template garbage in cue/English)' : r.code === 'INVALID_TIME_EXPRESSION' ? 'not reached'
+            : r.cueScore === 'n/a' ? 'n/a (no cue)' : r.cueScore == null ? 'UNVERIFIED' : sc(r.cueScore)
+          if (r.code !== 'VERIFIED') rejectDiag(r.thai, r.code + (r.reason ? ': ' + r.reason : ''))
+        })
+        sem.stats.failures.forEach(f => reasons.push(f.code + ': ' + f.reason + ': ' + f.thai))
+        sem.stats.unverified.forEach(u => reasons.push(u.state + ' (' + u.reason + '): ' + u.thai))
+        audit.unverified += sem.stats.droppedUnverified
+        cands = sem.pairs
+      } catch (e) { reasons.push('model audit failed: ' + e.message); cands.forEach(p => rejectDiag(p.thai, 'model audit failed')); cands = [] }
       try { cands = finaliseThaiTrackPhonetics(cands, buildThaiPhoneticLexicon(c.vocab)) } catch (e) {}
       const g = thaiFinalTrackAudit(cands, { keywords: c.keywords, vocab: c.vocab, stage: 'recovery' })
-      g.report.rejected.forEach(r => reasons.push(r.reasons.join('; ') + ': ' + r.thai))
+      g.report.rejected.forEach(r => { reasons.push(r.reasons.join('; ') + ': ' + r.thai); rejectDiag(r.thai, r.reasons.map(x => x.split(':')[0]).join('+')) })
       const good = g.pairs.filter(p => p.pairType === 'content' && p.targetId === kw.wordId)
       if (good.length) {
         const pos2 = at()
         all.splice(pos2, 0, ...g.pairs); changed = true; rec.resolved = true
-        rec.attempts.push({ attempt: a, result: 'accepted', reasons, lines: g.pairs.map(p => (p.pairType === 'bridge' ? '[bridge] ' : '') + p.thai) })
+        g.pairs.forEach(p => { const d = diag.get(p.thai); if (d) d.finalStatus = 'ACCEPTED' + (p.pairType === 'bridge' ? ' (bridge)' : '') })
+        audit.accepted += g.pairs.length
+        // accepted lines and the siblings rejected in the same attempt are reported apart
+        rec.attempts.push({ attempt: a, result: 'accepted', reasons: [], rejectedSiblings: reasons, lines: g.pairs.map(p => (p.pairType === 'bridge' ? '[bridge] ' : '') + p.thai) })
         log && log('  ✅ recovery: ' + kw.thai + ' resolved on attempt ' + a + ' — ' + good.map(p => p.thai).join(' / '))
+        diagnostics.push(...diag.values())
         break
       }
+      diagnostics.push(...[...diag.values()].map(d => d.finalStatus ? d : { ...d, finalStatus: 'REJECTED (no target-bearing line survived)' }))
       rec.attempts.push({ attempt: a, result: 'rejected', reasons: reasons.length ? reasons : ['no target-bearing line survived'] })
       log && log('  ⛔ recovery attempt ' + a + ' for ' + kw.thai + ' rejected — ' + (reasons.join(' | ') || 'no target-bearing line survived'))
     }
     recovery.push(rec)
   }
-  return { pairs: all, recovery, changed }
+  audit.rejected = audit.candidates - audit.accepted
+  return { pairs: all, recovery, changed, diagnostics, audit }
 }
 // Keywords for the audit from a track (wordId + surface + gloss).
 function thaiAuditKeywords(track, targets) {
@@ -18132,15 +18714,7 @@ async function _qrBatchNaturalnessCheck(pairs, apiKey, model, onLog) {
   const BATCH = 12
   for (let b = 0; b < eligible.length; b += BATCH) {
     const chunk = eligible.slice(b, b + BATCH)
-    const numbered = chunk.map(({ p }, ci) => (ci + 1) + '. Thai: ' + p.thai + '\n   Intended meaning: ' + (p.english || '') +
-      '\n   Speaker: ' + (thaiSpeakerMapGender(p.speaker) || p.speakerGender || 'unknown')).join('\n\n')
-    const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content:
-      'You are a native Thai speaker checking learner material. For EACH sentence answer: would a native speaker plausibly ' +
-      'say this exact sentence in ordinary conversation, with this intended meaning, as this speaker?\n' +
-      'Penalise: malformed grammar, target-word stuffing, duplicated words, English-shaped Thai, wrong sense of a word, ' +
-      'mixed male/female particles (ผม/ครับ vs ฉัน/ค่ะ/คะ), absurd everyday claims, meaningless fragments.\n' +
-      'Scale: 5 natural · 4 natural with a small quirk · 3 understandable but unnatural · 2 wrong/awkward · 1 broken.\n\n' +
-      numbered + '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."}]' }], 700)
+    const raw = await callOpenRouterOnce(apiKey, model, [{ role: 'user', content: _naturalnessPromptText(chunk.map(x => x.p)) }], 700)
     try {
       const parsed = JSON.parse(String(raw || '').replace(/```json|```/g, '').trim())
       parsed.forEach(({ i: ci, s, note }) => { const orig = chunk[ci - 1]; if (orig && s != null) scored.set(orig.i, { s: Number(s), note: note || '' }) })
@@ -18986,7 +19560,7 @@ ${prevPairs.map(fmt).join('\n') || '  (start)'}
 Context after:
 ${nextPairs.map(fmt).join('\n') || '  (end)'}
 
-Requirements: speaker order ${speakerPattern}. Must include "${targetWord}". Flow naturally from before to after. Simple everyday Thai. ${vocabLine}Forbidden: ${_QR_BANNED.join(' ')}.
+Requirements: speaker order ${speakerPattern}. Must include "${targetWord}".${group.hint ? ' ' + group.hint : ''} Flow naturally from before to after. Simple everyday Thai. ${vocabLine}Forbidden: ${_QR_BANNED.join(' ')}.
 The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — Write it in plain English MEANING only — never name or quote a romanized Thai word, and never use tone marks. e.g. "He asks, in that case, what she wants to eat" NOT "He uses ngan to ask what she wants to eat". NOT quality evaluation notes.
 Return ONLY JSON array of 3 objects, no markdown:
 [{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]},{"speaker":"B","thai":"...","phonetic":"...","english":"...","prompt":"She asks ...","words":[{"p":"...","e":"..."}]},{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
@@ -19203,6 +19777,7 @@ function ThaiTeacher({ lang, onSetLang }) {
   // Listen First soft gate (shared): which track has already been listened to or skipped.
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_th
   const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
+  const [listenBuildInfo, setListenBuildInfo] = useState(null)   // v644: Listening BUILDING at the save boundary
 
   const [genMode, setGenMode] = useState('daily')
   const [resumeDraft, setResumeDraft] = useState(null)
@@ -19461,9 +20036,10 @@ function ThaiTeacher({ lang, onSetLang }) {
     setCustomTargets(targets); setGenMode('custom'); setView('generate')
   }
 
-  function onTrackGenerated(rawTrack) {
-    // A newly generated Main Track builds its Listening Track automatically.
-    try { setListenAutoFor(listeningTrackId(rawTrack)) } catch (e) {}
+  async function onTrackGenerated(rawTrack) {
+    // v644: Listening is no longer triggered by the Listening screen mounting (listenAutoFor
+    // is kept for reference only; the Thai gate ignores it). It is built HERE, at the
+    // generation-complete boundary, and persisted before any navigation.
     const track = stampTrackMode(rawTrack, genMode === 'revision' ? 'revision' : 'daily', customTargets || [])
     if (!track) { navigate('dashboard'); return }
     // CLOSED-VOCABULARY GATE at the point a new Thai track leaves the generator,
@@ -19476,11 +20052,20 @@ function ThaiTeacher({ lang, onSetLang }) {
       if (_cv.stats.repairAttempts) track.pairs = finaliseThaiTrackPhonetics(_cv.pairs, buildThaiPhoneticLexicon(vocab))
       track._closedVocab = _cv.stats
     } catch (e) { console.error('[closed-vocab] save gate failed', e) }
-    const newTracks = [...tracks, track]
-    saveTracks(newTracks)
-    setTracks(newTracks)
-    setPendingReviewTrack(track)
+    // ── AUTOMATIC LISTENING HANDOFF: finish Main Track → build → persist → navigate ──
+    const finalTrack = await completeThaiTrackHandoff(track, rawTrack, { tracks, vocab, apiKey: orKey, model: resolveOrModel(provider), saveTracks,
+      onBuilding: mainId => { setListenBuildInfo({ mainId, status: 'BUILDING' }); setView('listening-build') } })
+    setListenBuildInfo(null)
+    setPendingReviewTrack(finalTrack)
     setView('quality-review')
+  }
+  // Retry / Rebuild from the Listening screen store the new state on the SAME track.
+  async function onListeningBuildState(lb) {
+    if (!activeTrack || !lb) return
+    const id = listeningTrackId(activeTrack)
+    const upd = { ...activeTrack, listeningBuild: lb }
+    const nt = tracks.map(t => listeningTrackId(t) === id ? { ...t, listeningBuild: lb } : t)
+    await saveTracks(nt); setTracks(nt); setActiveTrack(upd)
   }
 
   function onTrackComplete(keywords) {
@@ -19574,6 +20159,13 @@ function ThaiTeacher({ lang, onSetLang }) {
               setView('convo')
             }}
             provider={provider} onSetProvider={async p => { setProvider(p); await stSet('tt-provider', p) }} hasClaudeKey={!!apiKey} hasOrKey={!!orKey} />}
+        {view === 'listening-build' && (
+          <div style={{ maxWidth:640, margin:'0 auto', padding:'24px 16px' }}><div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:20, textAlign:'center' }}>
+            <div style={{ fontSize:34 }}>🎧</div>
+            <h2 style={{ margin:'8px 0 4px' }}>Listening · BUILDING</h2>
+            <div style={{ color:'var(--muted)', fontSize:13 }}>Your track is saved. Building its listening track from the review words — this takes a moment.</div>
+          </div></div>
+        )}
         {view === 'quality-review' && pendingReviewTrack && (
           <QualityReview
             track={pendingReviewTrack}
@@ -19606,7 +20198,7 @@ function ThaiTeacher({ lang, onSetLang }) {
         {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="th" vocab={vocab}
             apiKey={orKey} model={resolveOrModel(provider)} gcpTtsKey={gcpTtsKey}
-            autoCreate={listenAutoFor === listeningTrackId(activeTrack)}
+            autoCreate={false} onBuildState={onListeningBuildState}
             onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (

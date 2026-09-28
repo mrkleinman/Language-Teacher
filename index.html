@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v642"/>
+<meta name="app-version" content="v643"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v642';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v642').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v643';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v643').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -9219,6 +9219,18 @@ function thaiQcCheckMeaning(pair) {
 // Final learner-facing Thai always uses normal orthography. Tokenizer output is
 // internal only \u2014 one generation path was still emitting token-spaced Thai such as
 // คุณนิดา อยาก ซื้อ อะไร พิเศษ ไหม ครับ.
+// v643: ONE spaced-Thai detector (was two identical copies). A space after a
+// sentence-final particle is a normal Thai sentence break (ดีเลยค่ะ ฉันอยากกิน…), not
+// tokenizer spacing; it is removed before the check. Token-spaced output such as
+// คุณ อยาก ซื้อ อะไร ครับ is still caught.
+const THAI_SENTENCE_BREAK_RE = /(\u0e04\u0e23\u0e31\u0e1a|\u0e04\u0e48\u0e30|\u0e04\u0e30|\u0e19\u0e30|\u0e08\u0e49\u0e30|\u0e08\u0e49\u0e32)\s+(?=[\u0e00-\u0e7f])/g
+function thaiIsTokenSpaced(thai) {
+  const t = String(thai || '').replace(THAI_SENTENCE_BREAK_RE, '$1')
+  const thaiToks = t.split(' ').filter(x => /[ก-๙]/.test(x))
+  const shortRatio = thaiToks.length > 0 ? thaiToks.filter(x => x.length <= 3).length / thaiToks.length : 0
+  const avgLen = thaiToks.length > 0 ? thaiToks.reduce((n, x) => n + x.length, 0) / thaiToks.length : 0
+  return /[ก-๙] [ก-๙]/.test(t) || (thaiToks.length >= 4 && (shortRatio > 0.5 || avgLen <= 4.5))
+}
 function normaliseThaiSpacing(thai) {
   let s = String(thai || '').trim()
   // Collapse spaces that sit between two Thai characters; keep spaces around
@@ -10032,14 +10044,7 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     // ── Grammar validators (v179-v182) ──────────────────────────────────
     let gramFail = null
     // 1. Spaced Thai detector — catches Gemini/Qwen spacing and compound word spaces
-    if (!skipSpacedThai) {
-      const thaiToks = p.thai.split(' ').filter(t => /[ก-๙]/.test(t))
-      const shortRatio = thaiToks.length > 0 ? thaiToks.filter(t => t.length <= 3).length / thaiToks.length : 0
-      const avgLen = thaiToks.length > 0 ? thaiToks.reduce((s,t) => s+t.length, 0) / thaiToks.length : 0
-      const hasInlineSpace = /[ก-๙] [ก-๙]/.test(p.thai)
-      if (hasInlineSpace || (thaiToks.length >= 4 && (shortRatio > 0.5 || avgLen <= 4.5)))
-        gramFail = 'spaced Thai: ' + p.thai
-    }
+    if (!skipSpacedThai && thaiIsTokenSpaced(p.thai)) gramFail = 'spaced Thai: ' + p.thai
     // 2. เดี๋ยว between จะ+verb
     if (!gramFail && /จะเดี๋ยว[ก-๙]/.test(p.thai)) gramFail = 'เดี๋ยว between จะ+verb: ' + p.thai
     // 3. ไม่ at end
@@ -10237,21 +10242,39 @@ function thaiTrailingParticle(thai) {
 // A male speaker uses ครับ for statements AND questions. A female speaker uses
 // ค่ะ for statements and คะ for questions; both are accepted either way, since the
 // distinction is softer in real speech than the old rule assumed.
+// v643: THREE separate results. v642 and earlier returned ok:false for "no politeness
+// particle at the end", and callers logged it as a GENDER failure — so a correct female
+// line such as ดีเลยค่ะ ฉันอยากกินข้าวเหนียว burned all 11 checks.
+//   gender      — `ok` / SPEAKER_GENDER_CONFLICT: an opposite-gender particle ANYWHERE
+//                 in the utterance. Absence of a particle is neutral, never a conflict.
+//   naturalness — NATURALNESS_ISSUE (blocking): doubled particle (ครับครับ).
+//   politeness  — POLITENESS_ISSUE (advisory, never blocking): no particle at all, a
+//                 particle only in an earlier clause, or คะ/ค่ะ vs question mismatch.
+// Pronouns (ผม/ฉัน/ดิฉัน) are judged by the persona/identity checks, not here.
+const THAI_PARTICLE_SCAN_RE = /\u0e04\u0e23\u0e31\u0e1a|\u0e04\u0e48\u0e30|\u0e04\u0e30(?!\u0e41\u0e19\u0e19|\u0e19\u0e49\u0e32)/g
+function thaiParticlesIn(thai) { return (String(thai || '').match(THAI_PARTICLE_SCAN_RE) || []) }
 function validateThaiSpeakerParticle(thai, gender) {
   const t = String(thai || '').trim()
-  const p = thaiTrailingParticle(t)
-  const detected = p || '(none)'
+  const finalP = thaiTrailingParticle(t)
+  const all = thaiParticlesIn(t)
+  const detected = finalP || (all.length ? all.join('+') + ' (earlier clause)' : '(none)')
+  const own = gender === 'male' ? ['\u0e04\u0e23\u0e31\u0e1a'] : ['\u0e04\u0e48\u0e30', '\u0e04\u0e30']
+  const opposite = all.filter(p => !own.includes(p))
+  const politeness = [], naturalness = []
   if (/\u0e04\u0e23\u0e31\u0e1a\u0e04\u0e23\u0e31\u0e1a|\u0e04\u0e48\u0e30\u0e04\u0e48\u0e30|\u0e04\u0e30\u0e04\u0e30/.test(t))
-    return { ok: false, detected, reason: 'doubled politeness particle' }
-  if (!p)
-    return { ok: false, detected, reason: 'no politeness particle at the end' }
-  if (gender === 'male')
-    return p === '\u0e04\u0e23\u0e31\u0e1a'
-      ? { ok: true, detected }
-      : { ok: false, detected, reason: 'male speaker must use \u0e04\u0e23\u0e31\u0e1a, found ' + p }
-  return (p === '\u0e04\u0e48\u0e30' || p === '\u0e04\u0e30')
-    ? { ok: true, detected }
-    : { ok: false, detected, reason: 'female speaker must use \u0e04\u0e48\u0e30 or \u0e04\u0e30, found ' + p }
+    naturalness.push({ code: 'NATURALNESS_ISSUE', blocking: true, reason: 'doubled politeness particle' })
+  if (!all.length) politeness.push({ code: 'POLITENESS_ISSUE', blocking: false, reason: 'no politeness particle (plain register)' })
+  else if (!finalP) politeness.push({ code: 'POLITENESS_ISSUE', blocking: false, reason: 'politeness particle only in an earlier clause (' + all.join('+') + ')' })
+  if (finalP && gender !== 'male') {
+    const isQ = /\?|\uFF1F|\u0e44\u0e2b\u0e21|\u0e2b\u0e23\u0e37\u0e2d|\u0e40\u0e2b\u0e23\u0e2d|\u0e2d\u0e30\u0e44\u0e23|\u0e17\u0e35\u0e48\u0e44\u0e2b\u0e19|\u0e17\u0e33\u0e44\u0e21|\u0e22\u0e31\u0e07\u0e44\u0e07|\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e44\u0e2b\u0e23\u0e48|\u0e01\u0e35\u0e48|\u0e43\u0e04\u0e23/.test(t)
+    if (finalP === '\u0e04\u0e30' && !isQ) politeness.push({ code: 'POLITENESS_ISSUE', blocking: false, reason: '\u0e04\u0e30 on a statement (\u0e04\u0e48\u0e30 is usual)' })
+    if (finalP === '\u0e04\u0e48\u0e30' && isQ) politeness.push({ code: 'POLITENESS_ISSUE', blocking: false, reason: '\u0e04\u0e48\u0e30 on a question (\u0e04\u0e30 is usual)' })
+  }
+  const res = { detected, particles: all, politeness, naturalness,
+    blockingNaturalness: naturalness.some(n => n.blocking) }
+  if (opposite.length) return { ...res, ok: false, code: 'SPEAKER_GENDER_CONFLICT',
+    reason: gender + ' speaker uses ' + [...new Set(opposite)].join('+') + ' (' + (gender === 'male' ? 'female' : 'male') + ' particle)' }
+  return { ...res, ok: true, code: null, reason: '' }
 }
 
 // ── FINAL_TRACK_QC ──────────────────────────────────────────────────────────
@@ -10470,7 +10493,8 @@ function finalTrackQc(pairs, ctx) {
       if (p.speaker && c.genderFor) {
         const g = c.genderFor(p.speaker)
         const r = validateThaiSpeakerParticle(p.thai, g)
-        if (!r.ok) problems.push('particle: ' + r.reason)
+        if (!r.ok) problems.push('SPEAKER_GENDER_CONFLICT: ' + r.reason)
+        if (r.blockingNaturalness) problems.push('NATURALNESS_ISSUE: ' + r.naturalness.map(n => n.reason).join('; '))
       }
       // 6/7. cue and meaning present
       if (!(p.english || '').trim()) problems.push('no English meaning')
@@ -10899,15 +10923,24 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         // onLog parameter. Referencing an undeclared `onLog` threw a ReferenceError
         // after every otherwise-valid sentence.
         if (!_pr.ok && onProgress)
-          onProgress(-1, -1, { apiError: '\u26A0\uFE0F speaker=' + l.speaker + ' gender=' + _g +
-            ' particle=' + _pr.detected + ' result=FAIL (' + _pr.reason + ')' }, null, null)
-        // INVARIANT: a line ending in its OWN contract particle can only fail here if the
-        // internal speaker map is broken. That is a pipeline bug, not a model failure.
-        if (!_pr.ok && THAI_SPEAKER_MAP[l.speaker] && THAI_SPEAKER_MAP[l.speaker].particles.includes(_pr.detected)) {
-          const _err = new Error('INTERNAL_SPEAKER_MAP_CONFLICT: speaker ' + l.speaker + ' validated as ' + _g + ' but its contract particle is ' + _pr.detected)
+          onProgress(-1, -1, { apiError: '\u26A0\uFE0F SPEAKER_GENDER_CONFLICT speaker=' + l.speaker + ' gender=' + _g +
+            ' particles=' + (_pr.particles.join('+') || '(none)') + ' result=FAIL (' + _pr.reason + ')' }, null, null)
+        // INVARIANT: a conflict when the line holds ONLY its own contract particles can only
+        // come from a broken internal speaker map — a pipeline bug, not a model failure.
+        if (!_pr.ok && THAI_SPEAKER_MAP[l.speaker] && _pr.particles.length &&
+            _pr.particles.every(x => THAI_SPEAKER_MAP[l.speaker].particles.includes(x))) {
+          const _err = new Error('INTERNAL_SPEAKER_MAP_CONFLICT: speaker ' + l.speaker + ' validated as ' + _g + ' but it uses only its own contract particle(s) ' + _pr.particles.join('+'))
           _err.code = 'INTERNAL_SPEAKER_MAP_CONFLICT'; throw _err
         }
-        if (!_pr.ok) { l._genderFail = _pr.reason; return false }
+        if (!_pr.ok) { l._genderFail = _pr.reason; l._failCode = 'SPEAKER_GENDER_CONFLICT'; return false }
+        if (_pr.blockingNaturalness) {
+          const _nr = _pr.naturalness.map(n => n.reason).join('; ')
+          onProgress && onProgress(-1, -1, { apiError: '\u26A0\uFE0F NATURALNESS_ISSUE speaker=' + l.speaker + ': ' + _nr }, null, null)
+          l._naturalnessFail = _nr; l._failCode = 'NATURALNESS_ISSUE'; return false
+        }
+        // advisory only: never rejects, never logged as a gender failure
+        if (_pr.politeness.length) { l._politeness = _pr.politeness.map(x => x.reason)
+          onProgress && onProgress(-1, -1, { apiError: 'ℹ POLITENESS_ISSUE (advisory) speaker=' + l.speaker + ': ' + l._politeness.join('; ') }, null, null) }
         if (/[一-鿿]/.test(l.thai)) return false
         // Auto-fix Thai/missing prompt instead of rejecting
         if (!l.prompt || l.prompt.length < 5 || /[ก-๙]/.test(l.prompt)) {
@@ -10926,13 +10959,14 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         // what actually failed instead of a generic "particle error".
         const gFailReason = gFail
           ? (gFail._genderFail
-              ? gFail._genderFail + ' (speaker ' + gFail.speaker + ', ' +
+              ? 'SPEAKER_GENDER_CONFLICT: ' + gFail._genderFail + ' (speaker ' + gFail.speaker + ', ' +
                 (gFail._speakerGender || '?') + ') in: ' + gFail.thai
+              : gFail._naturalnessFail ? 'NATURALNESS_ISSUE: ' + gFail._naturalnessFail + ' in: ' + gFail.thai
               : !gFail.speaker ? 'PIPELINE BUG: line has no speaker metadata: ' + gFail.thai
               : 'line rejected in: ' + gFail.thai)
           : 'missing A or B speaker'
         failureReasons = [gFailReason]
-        onProgress && onProgress(-1, -1, { apiError: '⚠️ Gender fail: ' + gFailReason.slice(0,80) }, null, null)
+        onProgress && onProgress(-1, -1, { apiError: '⚠️ Speaker/particle fail: ' + gFailReason.slice(0,100) }, null, null)
         continue
       }
 
@@ -11786,14 +11820,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       // ── Grammar validators (v179-v182) ──────────────────────────────────
       let gramFail = null
       // 1. Spaced Thai detector — catches Gemini/Qwen spacing and compound word spaces
-      {
-        const thaiToks = p.thai.split(' ').filter(t => /[ก-๙]/.test(t))
-        const shortRatio = thaiToks.length > 0 ? thaiToks.filter(t => t.length <= 3).length / thaiToks.length : 0
-        const avgLen = thaiToks.length > 0 ? thaiToks.reduce((s,t) => s+t.length, 0) / thaiToks.length : 0
-        const hasInlineSpace = /[ก-๙] [ก-๙]/.test(p.thai)
-        if (hasInlineSpace || (thaiToks.length >= 4 && (shortRatio > 0.5 || avgLen <= 4.5)))
-          gramFail = 'spaced Thai: ' + p.thai
-      }
+      if (thaiIsTokenSpaced(p.thai)) gramFail = 'spaced Thai: ' + p.thai
       // 2. เดี๋ยว between จะ+verb
       if (!gramFail && /จะเดี๋ยว[ก-๙]/.test(p.thai)) gramFail = 'เดี๋ยว between จะ+verb: ' + p.thai
       // 3. ไม่ at end

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v653"/>
+<meta name="app-version" content="v654"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v653';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v653').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v654';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v654').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -5195,7 +5195,8 @@ function beltNewAllowanceFor(vocab) {
 }
 // Per-track, rank-configured. Previously newSlotsFor(vocab), which keys on total
 // known count and so drifted away from the learner's actual belt.
-function japaneseSlotsFor(vocab) { return beltNewAllowanceFor(vocab) }
+// v654 §12 — Japanese Daily introduces exactly JA_DAILY_NEW_WORDS (3); the belt allowance is Thai's
+function japaneseSlotsFor(vocab) { return newWordsPerTrack('ja', 'daily', vocab) }
 function japaneseUnitRange(vocab) {
   const known = (vocab||[]).filter(w => w.status === 'known').length
   const T = [[0,2,4],[100,5,6],[200,6,7],[350,7,8],[500,8,9],[750,9,10],[1000,10,11],
@@ -6538,7 +6539,9 @@ function semanticAuditExportLines(track) {
   out.push('Status: ' + st.status + '  (' + thaiNaturalnessStatusLine(st) + ' · CUE_AUDIT ' + (sa.cueCheck || 'not recorded') + ')')
   const retried = sa.trace ? ((sa.trace.cue && sa.trace.cue.retries) || 0) + ((sa.trace.naturalness && sa.trace.naturalness.retries) || 0) : 0
   if (sa.trace) out.push('Batches: cue ' + ((sa.trace.cue && sa.trace.cue.calls) || 0) + ' call(s) · naturalness ' + ((sa.trace.naturalness && sa.trace.naturalness.calls) || 0) + ' call(s) · retries ' + retried)
-  out.push('SEMANTIC AUDIT: ' + st.trackQuality + (st.unverified.length ? ' — ' + st.unverified.length + ' pair(s) not fully model-judged' : '') + ' (pair-level judgement only)')
+  out.push('SEMANTIC_AUDIT: ' + st.trackQuality + (st.unverified.length ? ' — ' + st.unverified.length + ' pair(s) not fully model-judged' : '') + ' (pair-level judgement only)')
+  out.push('NATURALNESS_AUDIT: ' + st.status + ' (pair-level judgement only)')
+  out.push('MAIN_TRACK: ' + (integ ? integ.status + ' · coherence ' + mainCoherenceLabel(integ.mainCoherence) : 'not finalised'))
   out.push('TRACK INTEGRITY: ' + (integ ? integ.status + (integ.reasons && integ.reasons.length ? ' — ' + integ.reasons.join(' · ') : '') : 'not finalised'))
   ;(sa.failures || []).forEach(f => out.push('  DROPPED ' + (f.code || '') + '  TARGET: ' + (f.target || '-') + '  TH: ' + f.thai + '  REASON: ' + f.reason))
   if (st.unverified.length) {
@@ -7835,7 +7838,7 @@ function aiRequestFingerprint(o) {
 // Structured output (v649): judge stages ask Gemini for application/json with a schema, so
 // a reply can no longer arrive as prose, a numbered list or a truncated note.
 const GEMINI_SCHEMAS = {
-  verdicts: { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: { type: 'INTEGER' }, s: { type: 'INTEGER' }, note: { type: 'STRING' }, wrongSense: { type: 'BOOLEAN', nullable: true }, thaiEnglishMatch: { type: 'BOOLEAN', nullable: true }, cueRepair: { type: 'STRING', nullable: true } }, required: ['i', 's'] } },
+  verdicts: { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: { type: 'INTEGER' }, s: { type: 'INTEGER' }, note: { type: 'STRING' }, wrongSense: { type: 'BOOLEAN', nullable: true }, thaiEnglishMatch: { type: 'BOOLEAN', nullable: true }, cueRepair: { type: 'STRING', nullable: true }, issue: { type: 'STRING', nullable: true } }, required: ['i', 's'] } },
   scene: { type: 'OBJECT', properties: { A: { type: 'INTEGER' }, B: { type: 'INTEGER' }, C: { type: 'INTEGER' }, D: { type: 'INTEGER' }, E: { type: 'INTEGER' },
     brokenAtPair: { type: 'INTEGER', nullable: true }, reason: { type: 'STRING' } }, required: ['A', 'B', 'C', 'D', 'E'] },
   coherence: { type: 'OBJECT', properties: { scenes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { scene: { type: 'INTEGER' }, pass: { type: 'BOOLEAN' },
@@ -10086,8 +10089,15 @@ function validateThaiVocabulary(candidate, trackAllowedContext) {
     // วิท+ยา+ศาสต → วิทยาศาสต(ร์), ผัก|บุ้ง → the blocked span, not a meaningless syllable. A merged
     // report feeds the recovery prompt the real word to avoid. Blocking itself is unchanged.
     const pieces = []
-    segmentThaiWithDiagnostics(th, vocab, set, null, true).forEach(s => {
+    const _vsegs = segmentThaiWithDiagnostics(th, vocab, set, null, true), _vtoks = _vsegs.map(x => x.matchedSpan)
+    _vsegs.forEach((s, si) => {
       const tok = s.matchedSpan
+      if (s.repetitionMark) { pieces.push({ tok, st: 'allowed' }); return }
+      if (!set.has(tok)) {
+        const sup = thaiSupportBlockCategory(_vtoks, si)
+        if (sup) { diagnostics.push({ trackAllowedSetId: ctx.trackAllowedSetId, token: tok, classification: sup, finalAllowed: true,
+          reason: 'authorised support item in its support position — not vocabulary, not an SRS target' }); pieces.push({ tok, st: 'allowed' }); return }
+      }
       if (sceneNames.has(tok)) {
         diagnostics.push({ trackAllowedSetId: ctx.trackAllowedSetId, token: tok, classification: 'SCENE_PROPER_NAME', finalAllowed: true,
           reason: 'scene proper name — authorised for this lesson only, never vocabulary' })
@@ -10146,7 +10156,9 @@ function validateThaiVocabulary(candidate, trackAllowedContext) {
       let j = k, run = []
       while (j < pieces.length && pieces[j].st !== 'allowed') { run.push(pieces[j]); j++ }
       const hasBlocked = run.some(x => x.st === 'blocked')
-      const hasFragment = run.some(x => x.unknown || x.st === 'orphan' || x.st === 'glue')
+      // v654 §8 — only an ACCIDENTAL fragment (orphan mark, lone consonant, dependent-vowel start …) glues a run into
+      // one word; two well-formed unknown words side by side (โห + ตั้ง) are reported as two words, never "โหตั้ง"
+      const hasFragment = run.some(x => x.st === 'orphan' || x.st === 'glue' || (x.unknown && classifyThaiSegmentToken(x.tok, { vocab }) === 'ACCIDENTAL_FRAGMENT'))
       if (hasBlocked) {
         if (run.length > 1 && hasFragment) {
           const merged = run.map(x => x.tok).join('')
@@ -10500,8 +10512,52 @@ function tokenizeThaiAgainstVocab(thai, vocab, extraUnits) {
   return out
 }
 // Same segmentation, with the per-span diagnostics requested.
+// v654 §7 — SUPPORT LANGUAGE is not vocabulary. Explicitly authorised support items may appear in a
+// sentence ONLY in their support position; they never become SRS targets, never count as coverage and
+// never become "known". Everything else still has to be taught (เรื่อง, แค่, ต่อ, มัน … stay blocked).
+//   CLASSIFIER_BUILDING_BLOCK — a classifier next to a number / demonstrative / question word (รถคันนี้, สองเล่ม, กี่คน)
+//   DISCOURSE_BUILDING_BLOCK  — a sentence-initial interjection (โห, อ้อ, อืม …) or a sentence-final discourse particle (หรอก, แหละ, เนอะ …)
+const THAI_CLASSIFIER_BLOCKS = new Set(['อัน','ตัว','ชิ้น','เล่ม','คัน','ใบ','ขวด','แก้ว','จาน','ชาม','หลัง','ลูก','ห้อง','แผ่น','กล่อง','ถุง','ดอก','เม็ด','ซอง','ชุด','ด้าม','คู่','เครื่อง','แห่ง','ครั้ง','คน','ลำ','เส้น'])
+const THAI_DISCOURSE_INITIAL = new Set(['โห','อ้าว','อ๋อ','อ้อ','เอ่อ','อืม','ว้าว','แหม','โอ้โห','อุ๊ย','เย้'])
+const THAI_DISCOURSE_FINAL = new Set(['หรอก','แหละ','เนอะ','ล่ะ','จัง','ซิ'])
+const _THAI_CLF_LEFT = new Set(['กี่','หลาย','ทุก','แต่ละ','สัก'])
+const _THAI_CLF_RIGHT = new Set(['นี้','นั้น','โน้น','ไหน','เดียว','แรก','สุดท้าย','ละ'])
+const _THAI_PARTICLE_TAIL = new Set(['ครับ','ค่ะ','คะ','นะ','จ้ะ','จ้า'])
+// toks: the segmented tokens of one sentence; k: index of the token being judged → category | null
+function thaiSupportBlockCategory(toks, k) {
+  const t = toks[k], prev = toks[k - 1], next = toks[k + 1]
+  const isNum = x => !!x && (/^[0-9\u0e50-\u0e59]+$/.test(x) || (typeof THAI_NUMBER_WORDS !== 'undefined' && THAI_NUMBER_WORDS.some(n => x === n || x.endsWith(n))))
+  if (THAI_CLASSIFIER_BLOCKS.has(t) && (isNum(prev) || isNum(next) || _THAI_CLF_LEFT.has(prev) || _THAI_CLF_RIGHT.has(next))) return 'CLASSIFIER_BUILDING_BLOCK'
+  if (THAI_DISCOURSE_INITIAL.has(t) && (k === 0 || _THAI_PARTICLE_TAIL.has(prev))) return 'DISCOURSE_BUILDING_BLOCK'
+  if (THAI_DISCOURSE_FINAL.has(t) && (k === toks.length - 1 || toks.slice(k + 1).every(x => _THAI_PARTICLE_TAIL.has(x)))) return 'DISCOURSE_BUILDING_BLOCK'
+  return null
+}
+// v654 §7 — SUPPORT-LANGUAGE AUTHORITY. Every Thai token in a learner sentence must belong to exactly one
+// explicitly authorised category; anything else is UNAUTHORISED (closed vocabulary blocks it). A token is
+// never authorised merely because it exists in a dictionary or in the segmentation lexicon.
+const THAI_SUPPORT_CATEGORIES = Object.freeze(['LEARNER_TARGET', 'LEARNED_VOCAB', 'GRAMMAR', 'DISCOURSE_BUILDING_BLOCK', 'CLASSIFIER_BUILDING_BLOCK', 'SCENE_PROPER_NAME', 'APPROVED_COMPOSITION'])
+function thaiSupportLanguageCategory(toks, k, ctx) {
+  const c = ctx || {}, t = toks[k]
+  if ((c.targets || []).some(x => ((x && (x.thai || x.t)) || x) === t)) return 'LEARNER_TARGET'
+  if ((c.sceneEntities || []).some(e => (e && e.surface || e) === t)) return 'SCENE_PROPER_NAME'
+  const blk = thaiSupportBlockCategory(toks, k)
+  if (blk) return blk
+  const rec = (c.vocab || []).find(w => (w.thai || w.t) === t)
+  if (rec && (hasBeenIntroduced(rec) || rec.manualKnown)) return 'LEARNED_VOCAB'
+  if (THAI_ALWAYS_OK_WORDS.includes(t) || (c.grammarWords || []).includes(t)) return 'GRAMMAR'
+  if (THAI_APPROVED_COMPOSITION_UNITS.has(t)) return 'APPROVED_COMPOSITION'
+  return 'UNAUTHORISED'
+}
+// A target whose sentences keep needing UNAUTHORISED support words is TARGET_UNSUITABLE_FOR_CURRENT_LEXICON
+// (recorded by quota recovery; it expires as the lexicon grows) — the gate is never loosened for it.
+// v654 §8 — SEGMENTATION-ONLY lexicon: frequent Thai words, interjections and place names that may be
+// absent from the learner bank. They exist so an untaught word is reported WHOLE (สมาชิก, เชียงใหม่,
+// โห|ตั้ง) instead of as syllable fragments. Membership here authorises NOTHING: a hit that is not in
+// the allowed set is still blocked by the closed-vocabulary gate.
+const THAI_SEGMENTATION_LEXICON = Object.freeze('โห อ้าว อ๋อ อ้อ เอ่อ อืม ว้าว เฮ้ย แหม โอ้โห โอ๊ย อุ๊ย เย้ ฮะ จ้า จ้ะ จ๊ะ ล่ะ เหรอ หรอ หรอก แหละ เนอะ ซิ ตั้ง ตั้งใจ ตั้งแต่ ตาม สั่ง ย้าย หัก คม มัน เล่ม ต่อ แค่ เรื่อง สมาชิก บัญชี อื่น คัน ผัด เดียว ภู ธุระ ชายหาด ทะเล ก๋วยเตี๋ยว ข้าวกลางวัน เสียดาย เอง อาจจะ เช่นกัน ค่อย หลับ คืน เปล่า กลิ่น ลูกค้า ย่าง พิเศษ สัก ไหน ใคร อะไร ทำไม ยังไง เมื่อไหร่ เท่าไหร่ เชียงใหม่ เชียงราย กรุงเทพ กรุงเทพฯ ภูเก็ต พัทยา หัวหิน อยุธยา ขอนแก่น โคราช สุโขทัย กระบี่ เกาะสมุย ปาย ลำปาง อุดร อุบล หาดใหญ่ สงขลา ระยอง ชลบุรี ประเทศ จังหวัด อำเภอ ถนน ซอย สะพาน แม่น้ำ ภูเขา ป่า เกาะ วัด โรงแรม สนามบิน สถานีรถไฟ ห้าง ตลาดนัด ทำงาน เรียนหนังสือ อ่านหนังสือ ดูหนัง ฟังเพลง ร้องเพลง เล่นเกม ออกกำลังกาย วิ่ง ว่ายน้ำ เดินเล่น นอนหลับ ตื่นนอน อาบน้ำ แปรงฟัน แต่งตัว หิว อิ่ม ง่วง เหนื่อย เบื่อ สนุก เศร้า ดีใจ เสียใจ ตกใจ กลัว โกรธ รัก ชอบ เกลียด คิดถึง ใหญ่ เล็ก ยาว สั้น สูง เตี้ย อ้วน ผอม ร้อน หนาว เย็น อุ่น แพง ถูก ใหม่ เก่า สะอาด สกปรก เร็ว ช้า ใกล้ ไกล ง่าย ยาก เพื่อน แฟน พ่อ แม่ พี่ น้อง ลูก ป้า ลุง น้า อา ปู่ ย่า ตา ยาย ครู นักเรียน หมอ พยาบาล ตำรวจ คนขับ กาแฟ ชา น้ำ นม น้ำแข็ง ขนมปัง ข้าวผัด ผัดไทย ต้มยำ แกง ไก่ หมู เนื้อ ปลา กุ้ง ไข่ ผลไม้ มะม่วง กล้วย โทรศัพท์ มือถือ คอมพิวเตอร์ หนังสือ ปากกา กระเป๋า รองเท้า เสื้อ กางเกง หมวก แว่นตา นาฬิกา กุญแจ ร่ม วันนี้ พรุ่งนี้ เมื่อวาน ตอนเช้า ตอนเย็น ตอนกลางคืน สัปดาห์ เดือน ปี เสาร์อาทิตย์ วันหยุด ขึ้นรถ ลงรถ ขับรถ จอดรถ รถไฟ รถเมล์ แท็กซี่ เครื่องบิน เรือ มอเตอร์ไซค์ จักรยาน'.split(' '))
 function segmentThaiWithDiagnostics(thai, vocab, allowedSet, extraUnits, reportUnknown) {
   const units = new Set(THAI_EXTRA_UNITS)
+  THAI_SEGMENTATION_LEXICON.forEach(u => units.add(u))
   // Authorised words must be recognisable even when they are not bank entries.
   if (reportUnknown && allowedSet) allowedSet.forEach(u => { if (u && u.length >= 2) units.add(u) })
   ;(vocab || []).forEach(w => { const th = w.thai || w.t; if (th && th.length >= 2) units.add(th) })
@@ -10516,19 +10572,21 @@ function segmentThaiWithDiagnostics(thai, vocab, allowedSet, extraUnits, reportU
   const hitAt = k => words.find(w => s.startsWith(w, k) && thaiClusterBoundaryOk(s, k + w.length))
   let i = 0
   while (i < s.length) {
+    // v654 §8 — ๆ (mai yamok) repeats the word before it: its own token, never glued into the next word ("ๆสัก")
+    if (s[i] === '\u0E46') { spans.push({ rawThai: s, matchedSpan: '\u0E46', matchedEntry: '\u0E46', matchLength: 1, allowed: true, repetitionMark: true, remainingText: s.slice(i + 1) }); i++; continue }
     const hit = hitAt(i)
     if (hit) {
       spans.push({ rawThai: s, matchedSpan: hit, matchedEntry: hit, matchLength: hit.length,
                    allowed: allowedSet ? allowedSet.has(hit) : true, remainingText: s.slice(i + hit.length) })
       i += hit.length
-    } else if (reportUnknown && /[\u0E01-\u0E4E]/.test(s[i])) {
+    } else if (reportUnknown && /[\u0E01-\u0E45\u0E47-\u0E4E]/.test(s[i])) {
       // Text matching NO known unit used to be skipped silently (else i++), so a word
       // the bank has never heard of (\u0E21\u0E38\u0E21, \u0E28\u0E34\u0E25\u0E1B\u0E30, \u0E27\u0E34\u0E27) was invisible to the gate and
       // therefore "allowed". Collect the uncovered run as its own token: unknown = unseen.
       // v652: the run starts on ANY Thai character (leading vowels included) and only stops at a
       // dictionary hit that begins on a valid cluster boundary.
       let j = i + 1
-      while (j < s.length && /[\u0E01-\u0E4E]/.test(s[j]) && !(thaiClusterBoundaryOk(s, j) && hitAt(j))) j++
+      while (j < s.length && /[\u0E01-\u0E45\u0E47-\u0E4E]/.test(s[j]) && !(thaiClusterBoundaryOk(s, j) && hitAt(j))) j++
       const run = s.slice(i, j)
       spans.push({ rawThai: s, matchedSpan: run, matchedEntry: null, matchLength: run.length, allowed: false, unknown: true, remainingText: s.slice(j) })
       i = j
@@ -10544,10 +10602,17 @@ function segmentThaiWithDiagnostics(thai, vocab, allowedSet, extraUnits, reportU
       const intoPrev = prev && /[\u0E30-\u0E39\u0E47-\u0E4E]$/.test(prev.matchedSpan)
       const other = intoPrev ? prev : next
       if (!other || other.matchedSpan === '\u0E46') continue
-      const merged = intoPrev ? other.matchedSpan + sp.matchedSpan : sp.matchedSpan + other.matchedSpan
-      const at = intoPrev ? k - 1 : k
-      spans.splice(at, 2, { rawThai: s, matchedSpan: merged, matchedEntry: null, matchLength: merged.length, allowed: false, unknown: true,
-        remainingText: (intoPrev ? sp : other).remainingText, fragmentRepair: 'LONE_CONSONANT_MERGED' })
+      let merged = intoPrev ? other.matchedSpan + sp.matchedSpan : sp.matchedSpan + other.matchedSpan
+      let at = intoPrev ? k - 1 : k, n = 2, rem = (intoPrev ? sp : other).remainingText
+      // v654 §8 — the lone consonant proves the dictionary hit it joined was a cut through an unknown word
+      // (ส|มา|ชิก → สมาชิก): an unknown run on the far side of that hit belongs to the same word
+      const far = intoPrev ? spans[at - 1] : spans[at + 2]
+      if (far && far.unknown && far.matchedSpan !== '\u0E46') {
+        if (intoPrev) { merged = far.matchedSpan + merged; at -= 1 } else { merged = merged + far.matchedSpan; rem = far.remainingText }
+        n = 3
+      }
+      spans.splice(at, n, { rawThai: s, matchedSpan: merged, matchedEntry: null, matchLength: merged.length, allowed: false, unknown: true,
+        remainingText: rem, fragmentRepair: 'LONE_CONSONANT_MERGED' })
       k = at
     }
   }
@@ -10685,10 +10750,12 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
       // the bare tone mark ร์ was reported as "untaught vocabulary". A leftover that
       // is not a standalone lexical item is a TOKENIZER issue, not a vocab violation.
       const offenders = []
-      segmentThaiWithDiagnostics(p.thai, vocab, allowedNow).forEach(s => {
+      const _segs = segmentThaiWithDiagnostics(p.thai, vocab, allowedNow), _toks = _segs.map(x => x.matchedSpan)
+      _segs.forEach((s, si) => {
         const tok = s.matchedSpan
         if (isThaiOrphanFragment(tok)) return
         if (allowedNow.has(tok)) return
+        if (thaiSupportBlockCategory(_toks, si)) return            // v654 §7: authorised support item in its support position
         // Compositional fallback: a blocked compound is fine when allowed units
         // cover it completely (โทรหา = โทร + หา).
         const _u = new Set(THAI_EXTRA_UNITS)
@@ -12134,7 +12201,8 @@ async function planTargetScenes(targets, contract, o) {
     const groups = planDomainGroups(targets)
     const scenes = [...groups.entries()].map(([d, tids]) => ({ purpose: d === 'general conversation' ? ((contract && contract.premise) || 'everyday conversation') : d, targetIds: tids.slice() }))
     log && log('🗺 SCENE_PLAN deterministic (' + reason + '): ' + scenes.length + ' semantic cluster(s) · ' + ids.length + ' targets')
-    return { source: 'deterministic', reason, scenes: scenes.length ? scenes : [{ purpose: (contract && contract.premise) || 'everyday conversation', targetIds: ids.slice() }] } }
+    const fin = finaliseScenePlan(scenes.length ? scenes : [{ purpose: (contract && contract.premise) || 'everyday conversation', targetIds: ids.slice() }], targets, { contract, log, lang: c.lang })
+    return { source: 'deterministic', reason, scenes: fin.scenes, sceneAudit: fin.audit } }
   if (!c.apiKey || targets.length < 4) return fallback(!c.apiKey ? 'no model credentials' : 'too few targets')
   const surf = t => t.thai || t.japanese || t.chinese || ''
   const prompt = 'Plan a language lesson conversation. PREMISE: ' + ((contract && contract.premise) || 'two friends in everyday life') + '\n' +
@@ -12160,7 +12228,8 @@ async function planTargetScenes(targets, contract, o) {
   })
   if (!scenes.length) return fallback('planner placed no target')
   const missing = ids.filter(id => !used.has(id))
-  if (missing.length) scenes[scenes.length - 1].targetIds.push(...missing)
+  // v654 §9: the "unplaced → last scene" behaviour is deleted. Unplaced targets are re-clustered
+  // into the scene of the same semantic domain, or into their own coherent mini-scene.
   // v652 §11 — advisory: report a semantic domain the model scattered over several mini-scenes
   try {
     const byId = new Map(targets.map(t => [t.id, t]))
@@ -12168,14 +12237,103 @@ async function planTargetScenes(targets, contract, o) {
     scenes.forEach((sc, k) => sc.targetIds.forEach(id => { const d = targetSemanticDomain(byId.get(id)); if (d === 'general conversation') return; (spread[d] = spread[d] || new Set()).add(k) }))
     Object.entries(spread).filter(([, ks]) => ks.size > 1).forEach(([d, ks]) => log && log('🗺 SCENE_PLAN_DOMAIN_SPLIT "' + d + '" spread over ' + ks.size + ' mini-scenes (advisory)'))
   } catch (e) {}
-  log && log('🗺 SCENE_PLAN ' + scenes.length + ' mini-scene(s): ' + scenes.map((x, k) => (k + 1) + '. ' + x.purpose + ' [' + x.targetIds.length + ']').join(' · ') + (missing.length ? ' · ' + missing.length + ' unplaced → last scene' : ''))
-  return { source: 'model', scenes }
+  const fin = finaliseScenePlan(scenes, targets, { contract, log, lang: c.lang, unplaced: missing })
+  log && log('🗺 SCENE_PLAN ' + fin.scenes.length + ' mini-scene(s): ' + fin.scenes.map(x => x.sceneId + '. ' + x.purpose + ' [' + x.targetIds.length + ']').join(' · '))
+  return { source: 'model', scenes: fin.scenes, sceneAudit: fin.audit }
+}
+// v654 §9 — SCENE PLAN FINALISER (deterministic, no paid calls).
+//  • unplaced targets → the existing scene whose dominant domain matches, else a NEW mini-scene
+//    per domain (never appended to the last scene);
+//  • an oversized scene that mixes several semantic domains is split by domain;
+//  • every scene carries SCENE_ID / SCENE_PURPOSE / TARGET_IDS / TARGET_ROLES.
+const SCENE_PLAN_MAX_TARGETS = 10
+function sceneDominantDomain(sc, byId) {
+  const n = {}
+  sc.targetIds.forEach(id => { const d = targetSemanticDomain(byId.get(id)); if (d !== 'general conversation') n[d] = (n[d] || 0) + 1 })
+  const top = Object.entries(n).sort((a, b) => b[1] - a[1])[0]
+  return top ? top[0] : null
+}
+function finaliseScenePlan(scenesIn, targets, o) {
+  const c = o || {}, log = c.onLog || c.log || null, lang = c.lang || 'th'
+  const byId = new Map(targets.map(t => [t.id, t]))
+  const premise = (c.contract && c.contract.premise) || 'everyday conversation'
+  let scenes = (scenesIn || []).map(sc => ({ purpose: sc.purpose || premise, targetIds: sc.targetIds.filter(id => byId.has(id)) })).filter(sc => sc.targetIds.length)
+  const placed = new Set(scenes.flatMap(sc => sc.targetIds))
+  const unplaced = targets.map(t => t.id).filter(id => !placed.has(id))
+  const audit = { unplaced: unplaced.length, reclustered: 0, newScenes: 0, splitScenes: 0 }
+  // 1. re-cluster unplaced targets
+  const newByDomain = new Map()
+  unplaced.forEach(id => {
+    const d = targetSemanticDomain(byId.get(id))
+    const home = d !== 'general conversation' && scenes.find(sc => sceneDominantDomain(sc, byId) === d && sc.targetIds.length < SCENE_PLAN_MAX_TARGETS)
+    if (home) { home.targetIds.push(id); audit.reclustered++; log && log('🗺 SCENE_PLAN_RECLUSTER target=' + id + ' domain="' + d + '" → "' + home.purpose + '"') }
+    else { if (!newByDomain.has(d)) newByDomain.set(d, []); newByDomain.get(d).push(id) }
+  })
+  // a lone leftover of a domain joins the other leftovers; a leftover group of ≥2 is its own mini-scene;
+  // one single leftover goes to the SMALLEST scene (least forced — never automatically the last one)
+  const leftovers = []
+  newByDomain.forEach((tids, d) => {
+    if (tids.length < 2 || d === 'general conversation') { leftovers.push(...tids); return }
+    scenes.push({ purpose: d, targetIds: tids }); audit.newScenes++
+    log && log('🗺 SCENE_PLAN_ADDED_MINI_SCENE "' + d + '" [' + tids.length + '] for target(s) the planner did not place')
+  })
+  if (leftovers.length >= 2) {
+    scenes.push({ purpose: premise + ' — small talk', targetIds: leftovers }); audit.newScenes++
+    log && log('🗺 SCENE_PLAN_ADDED_MINI_SCENE "small talk" [' + leftovers.length + '] for target(s) the planner did not place')
+  } else if (leftovers.length === 1) {
+    const home = scenes.slice().sort((a, b) => a.targetIds.length - b.targetIds.length)[0]
+    if (home) { home.targetIds.push(leftovers[0]); audit.reclustered++; log && log('🗺 SCENE_PLAN_RECLUSTER target=' + leftovers[0] + ' → smallest scene "' + home.purpose + '" (least forced)') }
+    else scenes.push({ purpose: premise, targetIds: leftovers })
+  }
+  // 2. split oversized mixed-domain scenes
+  const out = []
+  scenes.forEach(sc => {
+    if (sc.targetIds.length <= SCENE_PLAN_MAX_TARGETS) { out.push(sc); return }
+    const groups = new Map()
+    sc.targetIds.forEach(id => { const d = targetSemanticDomain(byId.get(id)); if (!groups.has(d)) groups.set(d, []); groups.get(d).push(id) })
+    // a domain with ≥3 targets becomes its own mini-scene; smaller domains stay with the scene's own purpose
+    const real = [...groups.entries()].filter(([d, tids]) => d !== 'general conversation' && tids.length >= 3)
+    const rest = sc.targetIds.filter(id => !real.some(([, tids]) => tids.includes(id)))
+    const parts = real.map(([d, tids]) => ({ purpose: sc.purpose + ' — ' + d, targetIds: tids }))
+    if (rest.length) {
+      const n = Math.ceil(rest.length / SCENE_PLAN_MAX_TARGETS), size = Math.ceil(rest.length / n)
+      parts.unshift(...Array.from({ length: n }, (_, k) => ({ purpose: sc.purpose + (n > 1 && k ? ' (continued)' : ''), targetIds: rest.slice(k * size, (k + 1) * size) })))
+    }
+    const kept = parts.filter(x => x.targetIds.length)
+    if (kept.length < 2) { out.push(sc); return }
+    audit.splitScenes++
+    kept.forEach(x => out.push(x))
+    log && log('🗺 SCENE_PLAN_SPLIT_OVERSIZED "' + sc.purpose + '" [' + sc.targetIds.length + '] → ' + kept.length + ' mini-scene(s): ' + kept.map(x => x.purpose + ' [' + x.targetIds.length + ']').join(' · '))
+  })
+  scenes = out.map((sc, k) => ({ sceneId: 'S' + (k + 1), purpose: String(sc.purpose).slice(0, 120), targetIds: sc.targetIds,
+    targetRoles: Object.fromEntries(sc.targetIds.map(id => [id, targetConversationRole(byId.get(id), lang)])) }))
+  scenes.forEach(sc => log && log('🗺 SCENE_ID=' + sc.sceneId + ' SCENE_PURPOSE="' + sc.purpose + '" TARGET_IDS=' + sc.targetIds.join(',') +
+    ' TARGET_ROLES=' + sc.targetIds.map(id => id + ':' + sc.targetRoles[id]).join(',')))
+  return { scenes, audit }
 }
 function orderTargetsByPlan(targets, plan) {
   const byId = new Map(targets.map(t => [t.id, t]))
   const out = []
-  ;((plan && plan.scenes) || []).forEach((sc, k) => sc.targetIds.forEach(id => { const t = byId.get(id); if (t && !out.includes(t)) { t._scenePurpose = sc.purpose; t._sceneIndex = k + 1; out.push(t) } }))
+  ;((plan && plan.scenes) || []).forEach((sc, k) => sc.targetIds.forEach(id => { const t = byId.get(id); if (t && !out.includes(t)) { t._scenePurpose = sc.purpose; t._sceneIndex = k + 1; t._sceneId = sc.sceneId || ('S' + (k + 1)); t._sceneRole = sc.targetRoles && sc.targetRoles[id]; out.push(t) } }))
   targets.forEach(t => { if (!out.includes(t)) out.push(t) })
+  return out
+}
+// v654 §9/§10 — Main Track is a sequence of SEMANTIC SCENES, not one 90-line conversation and not a
+// 30-topic jump repeated three times. Recalls are assembled scene by scene (spaced rounds WITHIN a
+// scene); every pair carries its sceneId / scenePurpose, and a two-speaker language alternates A/B.
+function assembleRecallsByScene(perTarget, targets, plan, o) {
+  const c = o || {}
+  const idx = new Map((targets || []).map((t, i) => [t.id, i]))
+  const scenes = plan && plan.scenes && plan.scenes.length ? plan.scenes : [{ sceneId: 'S1', purpose: c.premise || 'lesson', targetIds: (targets || []).map(t => t.id) }]
+  const out = [], placed = new Set()
+  const emit = (sc, ids) => {
+    const inScene = []
+    for (let round = 0; round < 3; round++) for (const id of ids) { const set = perTarget[idx.get(id)]; if (set && set[round]) inScene.push(set[round]) }
+    inScene.forEach((p, k) => { p.sceneId = sc.sceneId; p.scenePurpose = sc.purpose; if (c.alternateSpeakers) p.speaker = k % 2 === 0 ? 'A' : 'B'; out.push(p) })
+  }
+  scenes.forEach(sc => { const ids = sc.targetIds.filter(id => idx.has(id) && !placed.has(id)); ids.forEach(id => placed.add(id)); emit(sc, ids) })
+  const rest = (targets || []).map(t => t.id).filter(id => !placed.has(id))
+  if (rest.length) emit({ sceneId: 'S' + (scenes.length + 1), purpose: c.premise || 'lesson' }, rest)
   return out
 }
 async function generateConversationTrack(targets, anchors, apiKey, onProgress, vocab, model, stopSignal, preScene) {
@@ -14539,7 +14697,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v650'
+const LISTENING_BUILD_VERSION = 'v654'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -14640,8 +14798,10 @@ async function buildAndPersistListening(track, vocab, opts) {
   // §29 — READY needs full review coverage AND a whole-conversation coherence pass
   const cohOk = (!lt.coherenceAudit || (lt.coherenceAudit.state === 'QUALITY_VERIFIED' && lt.coherenceAudit.passed)) && !lt.compositionFailure   // v650: a playlist is not READY
   const status = covered >= required && cohOk ? 'READY' : 'PARTIAL'
-  log('🎧 LISTENING_BUILD_RESULT trackId=' + mainId + ' status=' + status + ' covered=' + covered + ' required=' + required +
-    ' unresolved=[' + cov.unresolved.map(u => u.target).join(',') + '] LISTENING_TRACK_ID=' + lt.listeningTrackId + ' lines=' + lt.lines.length)
+  log('🎧 LISTENING_BUILD_RESULT trackId=' + mainId + ' status=' + status + (status === 'READY' ? '' : ' (PARTIAL_INTERNAL / NOT_READY — "Listening track needs repair")') + ' covered=' + covered + ' required=' + required +
+    ' unresolved=[' + cov.unresolved.map(u => u.target).join(',') + '] LISTENING_TRACK_ID=' + lt.listeningTrackId + ' lines=' + lt.lines.length + ' scenes=' + (lt.sceneGroups || []).length +
+    ' speakers=A' + ((lt.dialogueStats || {}).speakers || {}).A + '/B' + ((lt.dialogueStats || {}).speakers || {}).B)
+  if (lt.telemetry) log('🎧 LISTENING_COST ' + Object.entries(lt.telemetry).map(([k, v]) => k + '=' + v).join(' '))
   // persist, then READ BACK: stSet swallows storage errors, so a write is only trusted once seen
   let saved = null
   try {
@@ -14653,6 +14813,7 @@ async function buildAndPersistListening(track, vocab, opts) {
   } catch (e) { return fail('LISTENING_PERSIST_FAILED: ' + (e && e.message || e), { required, unresolved: unresolvedIds }) }
   const b = { ...base, status, requiredTargetCount: required, coveredTargetCount: covered, unresolvedTargetIds: unresolvedIds,
     builtAt: new Date().toISOString(), failureReason: null, listeningTrackId: saved.listeningTrackId, listeningQuality: lt.listeningQuality || null,
+    readiness: status === 'READY' ? 'READY' : 'PARTIAL_INTERNAL', uiMessage: status === 'READY' ? null : 'Listening track needs repair', telemetry: lt.telemetry || null,
     sceneCount: (lt.sceneGroups || []).length, lineCount: lt.lines.length, bridgeLineCount: lt.bridgeLineCount || 0,
     coherence: lt.coherenceAudit ? { state: lt.coherenceAudit.state, passed: lt.coherenceAudit.passed } : null,
     dialogue: lt.dialogueStats ? { scenes: lt.dialogueStats.scenes, singleLineScenes: lt.dialogueStats.singleLineScenes, monologueScenes: lt.dialogueStats.monologueScenes, speakers: lt.dialogueStats.speakers,
@@ -14731,7 +14892,7 @@ function listeningBuildExportLines(track) {
 //   FRAMING      greeting / parting lines (never count)
 //   SCENE        one continuous Listening conversation
 const TRACK_CONTRACT = Object.freeze({ TARGETS: 30, PAIRS_PER_TARGET: 3, QUOTA_ROUNDS: 3 })
-const TRACK_INTEGRITY_VERSION = 'v650'
+const TRACK_INTEGRITY_VERSION = 'v654'
 
 function trackLanguageOf(track) {
   if (!track) return 'th'
@@ -14820,8 +14981,10 @@ function _thaiNameAfterKhun(text, vocab) {
   while (i >= 0) {
     const rest = s.slice(i + 3)
     let span = null
-    try { span = segmentThaiWithDiagnostics(rest, vocab || [], null, null, true)[0] } catch (e) {}
-    if (span && span.unknown && span.matchedSpan.length >= 2 && span.matchedSpan.length <= 12) out.push(span.matchedSpan)
+    // v654: known Thai given names are segmentation units, so "คุณสมชาย" yields สมชาย — never the fragment สม (ชาย is a word)
+    const _names = Object.values(THAI_NAME_TRANSLIT)
+    try { span = segmentThaiWithDiagnostics(rest, vocab || [], null, _names, true)[0] } catch (e) {}
+    if (span && (span.unknown || _names.includes(span.matchedSpan)) && span.matchedSpan.length >= 2 && span.matchedSpan.length <= 12) out.push(span.matchedSpan)
     i = s.indexOf('คุณ', i + 3)
   }
   return out
@@ -15100,7 +15263,7 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
   for (let round = 1; round <= TRACK_CONTRACT.QUOTA_ROUNDS; round++) {
     if (c.cancelled && c.cancelled()) break
     const rep = trackQuotaReport(pairs, kws, adapter, c)
-    const todo = rep.rows.filter(r => r.deficit > 0 && !r.unresolvedAtSelection)
+    const todo = rep.rows.filter(r => r.deficit > 0 && !r.unresolvedAtSelection && !((history.get(r.targetId) || {}).escalated))
     if (!todo.length) break
     log && log('♻️ QUOTA RECOVERY round ' + round + ': ' + todo.length + ' TARGET WORD(S) below 3 valid TARGET PAIRS · deficit ' + todo.reduce((n, r) => n + r.deficit, 0) + ' · TARGET PAIRS ' + rep.quotaMet + '/' + rep.required)
     for (const r of todo) {
@@ -15111,6 +15274,20 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
       if (!states.has(r.targetId)) states.set(r.targetId, createRecoveryState(kw, { surface: r.target, sense: adapter.senseOf ? adapter.senseOf(kw, c) : kw.english }))
       const st = states.get(r.targetId)
       st.validPairCount = r.valid; st.deficit = r.deficit
+      // v654 §27/§28 — a target the QC keeps rejecting FOR ITSELF (register / suspect entry) is not a
+      // sentence problem: more recovery cannot fix it. Stop, escalate, and count the calls avoided.
+      const ti = targetIssueCounts(adapter.lang, r.targetId)
+      const tiKind = ti && (ti.TARGET_USAGE_UNSUITABLE_FOR_REGISTER >= 2 ? 'TARGET_USAGE_UNSUITABLE_FOR_REGISTER' : ti.TARGET_CANONICAL_ENTRY_SUSPECT >= 2 ? 'TARGET_CANONICAL_ENTRY_SUSPECT' : null)
+      if (tiKind) {
+        const avoided = TRACK_CONTRACT.QUOTA_ROUNDS - round + 1
+        h.attempts.push({ round, need: r.deficit, accepted: 0, reasons: [tiKind + ' (escalated; no further recovery)'], escalated: tiKind })
+        h.escalated = tiKind; h.avoided = (h.avoided || 0) + avoided
+        c.recoveryCallsAvoided = (c.recoveryCallsAvoided || 0) + avoided
+        log && log('  ⛔ ' + tiKind + ' ' + r.target + ': ' + (ti[tiKind]) + ' corroborating QC verdict(s) blame the target itself — recovery stopped, RECOVERY_CALLS_AVOIDED+=' + avoided +
+          ' (evidence stored for the next preflight)' + (ti.notes[0] ? ' — ' + ti.notes[0] : ''))
+        todo.length && (r._escalated = true)
+        continue
+      }
       const strategyBefore = st.strategyIndex
       let res = null
       try { res = await adapter.recoverTargetPairs(kw, r.deficit, { ...c, track: { ...track, pairs }, existing: pairs, round, recoveryState: st }) }
@@ -15136,9 +15313,21 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
   }
   const after = trackQuotaReport(pairs, kws, adapter, c)
   const unresolved = after.rows.filter(r => r.deficit > 0).map(r => ({ targetId: r.targetId, target: r.target, valid: r.valid, deficit: r.deficit,
-    attempts: (history.get(r.targetId) || { attempts: [] }).attempts, reason: r.unresolvedAtSelection ? 'unresolved at selection' : 'QUOTA_RECOVERY_EXHAUSTED' }))
+    attempts: (history.get(r.targetId) || { attempts: [] }).attempts, reason: r.unresolvedAtSelection ? 'unresolved at selection' : (history.get(r.targetId) || {}).escalated || 'QUOTA_RECOVERY_EXHAUSTED' }))
   unresolved.forEach(u => log && log('  ⛔ TARGET_PAIR_QUOTA_UNMET ' + u.target + ' (' + u.targetId + '): ' + u.valid + '/3 valid TARGET PAIRS after ' + u.attempts.length + ' recovery request(s) — ' + u.reason))
-  return { pairs, before, after, removed, recovered, unresolved, recoveryStates: [...states.values()].map(recoveryStateSummary) }
+  // v654 §7 — a target that stayed short because every recovery candidate needed support words the learner
+  // does not have is evidence of TARGET_UNSUITABLE_FOR_CURRENT_LEXICON (expires as the lexicon grows)
+  unresolved.forEach(u => {
+    const rs = u.attempts.flatMap(a => a.reasons || [])
+    if (rs.length >= 2 && rs.filter(x => /CLOSED_VOCABULARY|untaught|not taught|BLOCKED/i.test(x)).length / rs.length >= 0.5) {
+      const lex = (c.vocab || []).filter(w => typeof hasBeenIntroduced === 'function' ? hasBeenIntroduced(w) : true).length
+      recordTargetSuitabilityEvidence(adapter.lang, u.targetId, 'TARGET_UNSUITABLE_FOR_CURRENT_LEXICON', { lexiconSize: lex, note: rs.find(x => /CLOSED_VOCABULARY|untaught/i.test(x)) })
+      log && log('  📒 TARGET_UNSUITABLE_FOR_CURRENT_LEXICON evidence recorded for ' + u.target + ' (lexicon ' + lex + ' words)')
+    }
+  })
+  const recoveryCallsAvoided = [...history.values()].reduce((n, h) => n + (h.avoided || 0), 0)
+  if (recoveryCallsAvoided) log && log('  💰 RECOVERY_CALLS_AVOIDED=' + recoveryCallsAvoided + ' (targets escalated as unsuitable instead of re-generated)')
+  return { pairs, before, after, removed, recovered, unresolved, recoveryCallsAvoided, recoveryStates: [...states.values()].map(recoveryStateSummary) }
 }
 
 // ── FINAL_TRACK ─────────────────────────────────────────────────────────────────────
@@ -15162,6 +15351,20 @@ async function finaliseMainTrack(track, adapter, ctx) {
   c.track = t                                   // adapters see the track's targets (e.g. the Mandarin inventory)
   const q = await enforceTrackPairQuota(t, adapter, c)
   t = { ...t, pairs: q.pairs }
+  // v654 §10/§11 — Main coherence is judged (and failing scenes repaired) BEFORE pronunciation, so
+  // repaired lines get the same final metadata as every other pair
+  let _coh = null, _cohRepair = null
+  try {
+    _coh = await mainTrackCoherenceAudit(t, adapter, c)
+    if (_coh.state === 'VERIFIED' && !_coh.passed) {
+      _cohRepair = await mainTrackCoherenceRepair(t, adapter, c, _coh)
+      if (_cohRepair.replaced) {
+        t = { ...t, pairs: _cohRepair.pairs }
+        const again = await mainTrackCoherenceAudit(t, adapter, c)
+        _coh = { ...again, before: { overall: _coh.overall, sectionScores: _coh.sectionScores }, repair: { calls: _cohRepair.calls, replaced: _cohRepair.replaced, scenes: _cohRepair.repairedScenes } }
+      } else _coh = { ..._coh, repair: { calls: _cohRepair.calls, replaced: 0, scenes: _cohRepair.repairedScenes } }
+    }
+  } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; _coh = { state: 'UNVERIFIED', reason: String(e && e.message || e).slice(0, 120) } }
   const _idViol = []
   if (adapter.lang === 'th') { try { _idViol.push(...thaiTargetIdentityViolations(t.pairs, adapter.keywordsOf(t), 'after quota recovery')) } catch (e) {} }
   // pronunciation / segmentation / gloss run LAST, over every pair including recovered ones
@@ -15215,6 +15418,11 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (inv.TARGET_IDENTITY_VIOLATIONS) reasons.push('TARGET_IDENTITY_VIOLATIONS=' + inv.TARGET_IDENTITY_VIOLATIONS)
   if (inv.UNVERIFIED_FINAL_PAIRS) reasons.push('UNVERIFIED_FINAL_PAIRS=' + inv.UNVERIFIED_FINAL_PAIRS)
   if (!inv.EVERY_TARGET_3_OF_3 && !reasons.some(r => /^TARGET_PAIR_QUOTA/.test(r))) reasons.push('EVERY_TARGET_3_OF_3=false')
+  // v654 §10 — coherence is an invariant: a Main Track with a scene ≤2/5 or overall below the threshold
+  // is never READY (offline runs without model credentials report n/a)
+  inv.MAIN_TRACK_COHERENCE = !_coh ? 'n/a' : _coh.offline ? 'n/a' : _coh.state !== 'VERIFIED' ? 'UNVERIFIED' : _coh.passed ? 'PASS' : 'FAIL'
+  if (inv.MAIN_TRACK_COHERENCE === 'FAIL') reasons.push('MAIN_TRACK_COHERENCE=FAIL (overall ' + _coh.overall + '/5 · ' + (_coh.incoherent || []).map(x => x.sceneId + '=' + x.score).join(' ') + (_coh.repair ? ' · after repair of ' + _coh.repair.replaced + ' line(s)' : '') + ')')
+  if (inv.MAIN_TRACK_COHERENCE === 'UNVERIFIED') reasons.push('MAIN_TRACK_COHERENCE=UNVERIFIED (' + (_coh.reason || '') + ')')
   const rej = (c.qcRejections || {})
   // a sentence QC already rejected (and counted in qcRejections) is removed here, not counted twice;
   // only removals the QC tally does not know about (presence, script, markup, duplicate) are added
@@ -15236,37 +15444,119 @@ async function finaliseMainTrack(track, adapter, ctx) {
   }
   // v650 §3 — the approved scene must survive generation and repair (advisory, reported)
   try { integrity.sceneContract = sceneContractDriftAudit(t); if (integrity.sceneContract.drift) integrity.sceneContract.reasons.forEach(r => log && log('  ⚠️ SCENE_CONTRACT_DRIFT ' + r)) } catch (e) {}
-  // v650 §4 — whole-Main-Track coherence (distinct from pair naturalness; advisory)
-  try { integrity.mainCoherence = await mainTrackCoherenceAudit(t, adapter, c) } catch (e) { if (e && e.cancelled) throw e; integrity.mainCoherence = { state: 'UNVERIFIED', reason: String(e && e.message || e).slice(0, 120) } }
+  integrity.mainCoherence = _coh || { state: 'UNVERIFIED', reason: 'not run' }
+  integrity.costGuard = { MAIN_COHERENCE_REPAIR_CALLS: (_coh && _coh.repair && _coh.repair.calls) || 0, RECOVERY_CALLS_AVOIDED: q.recoveryCallsAvoided || 0 }
   t = { ...t, integrity }
   t.finalTrack = { version: TRACK_INTEGRITY_VERSION, finalisedAt: integrity.finalisedAt, fingerprint: trackPairsFingerprint(t.pairs), pairCount: t.pairs.length }
   trackIntegrityLines(t).forEach(l => log && log(l))
   return t
 }
-// v650 §4 — MAIN TRACK COHERENCE: one judgement of the lesson as a sequence of mini-scenes
-// (English of the TARGET PAIRS, in order). Advisory: reported in integrity, never a READY gate.
+// v654 §10/§11 — MAIN TRACK COHERENCE is a READY invariant. The Main Track is judged as GROUPED
+// PRACTICE: a sequence of short semantic scenes (not one 90-line conversation). Each scene gets a
+// 1–5 score; READY requires no scene ≤ 2 and overall ≥ MAIN_COHERENCE_THRESHOLD. A failing scene is
+// repaired alone (MAIN_TRACK_COHERENCE_REPAIR: only its off-topic lines are rewritten, through the
+// same recovery QC); if it still fails, the track is NOT_READY.
+const MAIN_COHERENCE_THRESHOLD = 3
+const MAIN_COHERENCE_SCENE_FAIL_AT = 2
+const MAIN_COHERENCE_REPAIR_MAX_PAIRS = 9
 const MAIN_COHERENCE_SCHEMA = { type: 'OBJECT', properties: { sections: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
-  section: { type: 'INTEGER' }, coherent: { type: 'BOOLEAN' }, reason: { type: 'STRING' } }, required: ['section', 'coherent'] } }, overall: { type: 'INTEGER' }, reason: { type: 'STRING' } }, required: ['sections'] }
-async function mainTrackCoherenceAudit(track, adapter, ctx) {
-  const c = ctx || {}, log = c.onLog || null
+  section: { type: 'INTEGER' }, score: { type: 'INTEGER' }, coherent: { type: 'BOOLEAN' }, reason: { type: 'STRING' },
+  offTopicLines: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['section', 'coherent'] } }, overall: { type: 'INTEGER' }, reason: { type: 'STRING' } }, required: ['sections'] }
+function mainCoherenceSections(track) {
   const plan = track.scenePlan && track.scenePlan.scenes && track.scenePlan.scenes.length ? track.scenePlan.scenes : null
   const byTarget = new Map()
   ;(track.pairs || []).forEach(p => { if (p && classifyTrackPair(p) === 'TARGET') { if (!byTarget.has(p.targetId)) byTarget.set(p.targetId, []); byTarget.get(p.targetId).push(p) } })
-  const sections = plan ? plan.map(sc => ({ purpose: sc.purpose, ids: sc.targetIds })) : [{ purpose: (track.sceneContract && track.sceneContract.premise) || 'lesson', ids: [...byTarget.keys()] }]
-  if (!c.apiKey) return { state: 'UNVERIFIED', reason: 'no model credentials', sections: sections.length }
-  const body = sections.map((sc, k) => 'Section ' + (k + 1) + ' — ' + sc.purpose + '\n' + sc.ids.map(id => (byTarget.get(id) || []).map(p => '  ' + (p.speaker || '?') + ': ' + (p.english || '')).join('\n')).filter(Boolean).join('\n')).join('\n\n')
-  const prompt = 'A language lesson is a sequence of short exchanges inside one scene' + (track.sceneContract && track.sceneContract.premise ? ' (' + track.sceneContract.premise + ')' : '') + '.\n' +
-    'Judge each SECTION: do its lines belong to one believable situation (topic continuity, no random subject jumps, consistent characters)? ' +
-    'Individual lines may be simple drills; judge only whether the section hangs together.\n\n' + body +
-    '\n\nReply ONLY with JSON: {"sections":[{"section":1,"coherent":true,"reason":"..."}],"overall":1-5,"reason":"..."} — reasons under 15 words.'
-  const raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: prompt }], maxTokens: 1500, temperature: 0.2, json: MAIN_COHERENCE_SCHEMA, stage: 'F_main_coherence' })
+  const premise = (track.sceneContract && track.sceneContract.premise) || 'lesson'
+  const sections = plan ? plan.map((sc, k) => ({ sceneId: sc.sceneId || ('S' + (k + 1)), purpose: sc.purpose, ids: sc.targetIds.slice() }))
+                        : [{ sceneId: 'S1', purpose: premise, ids: [...byTarget.keys()] }]
+  const inPlan = new Set(sections.flatMap(x => x.ids))
+  const extra = [...byTarget.keys()].filter(id => !inPlan.has(id))
+  if (extra.length) sections.push({ sceneId: 'S' + (sections.length + 1), purpose: premise, ids: extra })
+  // lines numbered across the lesson so the judge can name the off-topic ones
+  let n = 0
+  sections.forEach(sc => { sc.lines = []; for (let round = 0; round < 3; round++) sc.ids.forEach(id => { const p = (byTarget.get(id) || [])[round]; if (p) sc.lines.push({ n: ++n, pair: p }) }) })
+  return sections.filter(sc => sc.lines.length)
+}
+async function mainTrackCoherenceAudit(track, adapter, ctx) {
+  const c = ctx || {}, log = c.onLog || null
+  const sections = mainCoherenceSections(track)
+  if (!c.apiKey) return { state: 'UNVERIFIED', reason: 'no model credentials', sections: sections.length, offline: true }
+  const body = sections.map((sc, k) => 'Section ' + (k + 1) + ' — ' + sc.purpose + '\n' + sc.lines.map(l => '  L' + l.n + ' ' + (l.pair.speaker || '?') + ': ' + (l.pair.english || '')).join('\n')).join('\n\n')
+  const prompt = 'A language lesson is GROUPED PRACTICE: short semantic scenes' + (track.sceneContract && track.sceneContract.premise ? ' inside one premise (' + track.sceneContract.premise + ')' : '') +
+    ', each practising a few target words. It is NOT one continuous 90-line conversation; lines may be simple drills.\n' +
+    'Score each SECTION 1–5: do its lines make sense together in the stated situation (same topic, plausible people, no random subject jumps)? ' +
+    '5 = clearly one situation · 3 = mostly fits, one or two odd lines · 1 = unrelated lines. List the line numbers that do NOT fit the section as offTopicLines.\n\n' + body +
+    '\n\nReply ONLY with JSON: {"sections":[{"section":1,"score":4,"coherent":true,"offTopicLines":[],"reason":"..."}],"overall":1-5,"reason":"..."} — reasons under 15 words.'
+  let raw = null
+  try { raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: prompt }], maxTokens: 1800, temperature: 0.2, json: MAIN_COHERENCE_SCHEMA, stage: 'F_main_coherence' }) }
+  catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; return { state: 'UNVERIFIED', reason: 'judge unavailable: ' + String(e && e.message || e).slice(0, 80), sections: sections.length } }
   let obj = null
   try { obj = JSON.parse(String(raw || '').replace(/```json|```/g, '').trim()) } catch (e) { obj = null }
   if (!obj || !Array.isArray(obj.sections)) return { state: 'UNVERIFIED', reason: 'reply unparseable', sections: sections.length }
-  const bad = obj.sections.filter(x => x && x.coherent === false)
-  const res = { state: 'VERIFIED', overall: obj.overall != null ? Number(obj.overall) : null, sections: sections.length, incoherent: bad.map(x => ({ section: x.section, purpose: (sections[x.section - 1] || {}).purpose, reason: x.reason || '' })), reason: obj.reason || '' }
-  log && log('  🧩 MAIN_TRACK_COHERENCE ' + (sections.length - bad.length) + '/' + sections.length + ' section(s) coherent · overall ' + (res.overall != null ? res.overall + '/5' : '-') + (bad.length ? ' · ' + res.incoherent.map(x => 'section ' + x.section + ': ' + x.reason).join(' · ') : ''))
+  const lineMap = new Map(sections.flatMap(sc => sc.lines.map(l => [l.n, { sceneId: sc.sceneId, pair: l.pair }])))
+  const detail = sections.map((sc, k) => {
+    const v = obj.sections.find(x => x && Number(x.section) === k + 1) || null
+    const score = v && v.score != null ? Math.max(1, Math.min(5, Number(v.score))) : (v ? (v.coherent === false ? MAIN_COHERENCE_SCENE_FAIL_AT : 4) : null)
+    const off = ((v && v.offTopicLines) || []).map(Number).filter(nn => lineMap.has(nn) && lineMap.get(nn).sceneId === sc.sceneId)
+    return { section: k + 1, sceneId: sc.sceneId, purpose: sc.purpose, score, coherent: score != null && score > MAIN_COHERENCE_SCENE_FAIL_AT && !(v && v.coherent === false && score <= MAIN_COHERENCE_SCENE_FAIL_AT),
+      reason: (v && v.reason) || (v ? '' : 'not judged'), offTopicPairIds: off.map(nn => lineMap.get(nn).pair.pairId).filter(Boolean) }
+  })
+  const scored = detail.filter(d => d.score != null)
+  const overall = obj.overall != null ? Math.max(1, Math.min(5, Number(obj.overall))) : (scored.length ? Math.round(scored.reduce((a, d) => a + d.score, 0) / scored.length) : null)
+  const failing = detail.filter(d => d.score == null || d.score <= MAIN_COHERENCE_SCENE_FAIL_AT)
+  const passed = !failing.length && overall != null && overall >= MAIN_COHERENCE_THRESHOLD
+  const res = { state: 'VERIFIED', passed, overall, threshold: MAIN_COHERENCE_THRESHOLD, sections: sections.length, sectionScores: detail,
+    incoherent: failing.map(d => ({ section: d.section, sceneId: d.sceneId, purpose: d.purpose, score: d.score, reason: d.reason })), reason: obj.reason || '' }
+  log && log('  🧩 MAIN_TRACK_COHERENCE ' + (sections.length - failing.length) + '/' + sections.length + ' scene(s) coherent · overall ' + (overall != null ? overall + '/5' : '-') +
+    ' (threshold ' + MAIN_COHERENCE_THRESHOLD + ') · ' + detail.map(d => d.sceneId + '=' + (d.score != null ? d.score : '?')).join(' ') +
+    (failing.length ? ' · ' + failing.map(d => d.sceneId + ': ' + d.reason).join(' · ') : '') + ' → ' + (passed ? 'PASS' : 'FAIL'))
   return res
+}
+async function mainTrackCoherenceRepair(track, adapter, ctx, audit) {
+  const c = ctx || {}, log = c.onLog || null
+  const bad = (audit.sectionScores || []).filter(d => d.score == null || d.score <= MAIN_COHERENCE_SCENE_FAIL_AT || audit.overall < MAIN_COHERENCE_THRESHOLD && d.offTopicPairIds.length)
+  const sections = mainCoherenceSections(track)
+  let pairs = (track.pairs || []).slice()
+  const kws = adapter.keywordsOf(track)
+  let calls = 0, replaced = 0, budget = MAIN_COHERENCE_REPAIR_MAX_PAIRS
+  const repairedScenes = []
+  for (const d of bad) {
+    if (c.cancelled && c.cancelled()) break
+    const sc = sections.find(x => x.sceneId === d.sceneId)
+    if (!sc) continue
+    // only the lines the judge named; a scene judged incoherent with no named lines rewrites its first round
+    let target = d.offTopicPairIds.length ? sc.lines.filter(l => d.offTopicPairIds.includes(l.pair.pairId)) : sc.lines.slice(0, Math.min(3, sc.lines.length))
+    target = target.slice(0, budget)
+    if (!target.length) continue
+    budget -= target.length
+    const keep = sc.lines.filter(l => !target.includes(l)).map(l => (l.pair.speaker || 'A') + ': ' + (l.pair.english || ''))
+    log && log('  🔧 MAIN_TRACK_COHERENCE_REPAIR ' + d.sceneId + ' "' + d.purpose + '" (score ' + d.score + '): rewriting ' + target.length + ' line(s) — ' + target.map(l => 'L' + l.n).join(','))
+    const byT = new Map()
+    target.forEach(l => { if (!byT.has(l.pair.targetId)) byT.set(l.pair.targetId, []); byT.get(l.pair.targetId).push(l.pair) })
+    for (const [tid, olds] of byT) {
+      const kw = kws.find(k => k.wordId === tid)
+      if (!kw) continue
+      const without = pairs.filter(p => !olds.includes(p))
+      let res = null
+      calls++
+      try { res = await adapter.recoverTargetPairs(kw, olds.length, { ...c, track: { ...track, pairs: without }, existing: without, round: 'coherence',
+        coherenceRepair: { sceneId: d.sceneId, purpose: d.purpose, sectionLines: keep.slice(0, 12), replacing: olds.map(p => adapter.sentenceOf(p)) } }) }
+      catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; res = { accepted: [], reasons: ['repair error: ' + (e && e.message || e)] } }
+      const acc = ((res && res.accepted) || []).slice(0, olds.length)
+      acc.forEach((np, k) => {
+        const old = olds[k], at = pairs.indexOf(old)
+        if (at < 0) return
+        const nn = stampPairIdentity({ ...np, speaker: old.speaker || np.speaker, sceneId: old.sceneId || d.sceneId, scenePurpose: old.scenePurpose || d.purpose, sourceStage: 'coherence-repair',
+          language: adapter.lang, isTargetPair: true, targetSurface: np.targetSurface || adapter.surfaceOf(kw), recallIndex: old.recallIndex != null ? old.recallIndex : np.recallIndex, generationRunId: np.generationRunId || AI_CTX.runId || null },
+          { trackId: listeningTrackId(track), lang: adapter.lang, adapter, index: 'coh-' + d.sceneId + '-' + tid + '-' + k, surfaceOf: () => adapter.surfaceOf(kw) })
+        pairs[at] = nn; replaced++
+        log && log('    ✅ ' + adapter.surfaceOf(kw) + ': "' + adapter.sentenceOf(old) + '" → "' + adapter.sentenceOf(nn) + '"')
+      })
+      if (acc.length < olds.length) log && log('    ⛔ ' + adapter.surfaceOf(kw) + ': ' + (olds.length - acc.length) + ' line(s) kept (no replacement passed QC) — ' + (((res && res.reasons) || []).slice(0, 2).join(' | ') || 'no candidate'))
+    }
+    repairedScenes.push(d.sceneId)
+  }
+  return { pairs, calls, replaced, repairedScenes }
 }
 // Thai QC counts → the rejection tally the integrity block reports (sentences, not words).
 function thaiQcRejections(counts) {
@@ -15320,11 +15610,11 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v653'
+const APP_BUILD_VERSION = 'v654'
 const PIPELINE_VERSION = 'v651-canonical'
-const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v652-repair', ja: 'ja-gen-v653-target-group', zh: 'zh-gen-v650' })
-const QC_VERSION = 'qc-v652-cue-perspective'
-const FINALIZER_VERSION = 'final-v652-pronunciation-audit'
+const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v654-suitability', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
+const QC_VERSION = 'qc-v654-target-issue'
+const FINALIZER_VERSION = 'final-v654-coherence-invariant'
 const TRACK_LANGUAGES = Object.freeze(['th', 'ja', 'zh'])
 const LANGUAGE_NAMES = Object.freeze({ th: 'Thai', ja: 'Japanese', zh: 'Mandarin' })
 function pipelineInternalError(code, detail) {
@@ -15597,12 +15887,21 @@ function trackReadyHeadline(track, o) {
 // §6 — Listening may only be built from a READY FINAL_TRACK.
 function listeningAllowed(track) { return trackReadiness(track).ready }
 // §20 — reporting separates WORDS from SENTENCES; "dropped" never appears without its object.
+function mainCoherenceLabel(mc) {
+  if (!mc) return 'not recorded'
+  if (mc.offline) return 'n/a (offline)'
+  if (mc.state !== 'VERIFIED') return 'UNVERIFIED' + (mc.reason ? ' (' + mc.reason + ')' : '')
+  return (mc.passed ? 'PASS' : 'FAIL') + ' overall ' + mc.overall + '/5 (threshold ' + (mc.threshold || MAIN_COHERENCE_THRESHOLD) + ')' +
+    (mc.sectionScores ? ' · ' + mc.sectionScores.map(d => d.sceneId + '=' + (d.score != null ? d.score : '?')).join(' ') : '') +
+    (mc.before ? ' · before repair ' + mc.before.overall + '/5' : '') + (mc.repair ? ' · repair ' + mc.repair.replaced + ' line(s) / ' + mc.repair.calls + ' call(s)' : '')
+}
 function trackIntegrityLines(track) {
   const g = track && track.integrity
   if (!g) return ['TRACK INTEGRITY: not recorded (track finalised before v649)']
   const c = g.counts, rs = c.rejectedSentences
   return [
     '🧾 TRACK INTEGRITY (' + g.language + '): ' + g.status + (g.reasons.length ? ' — ' + g.reasons.join(' · ') : ''),
+    '  MAIN_TRACK: ' + g.status + ' · TARGET PAIRS ' + c.targetPairs + '/' + c.targetPairsRequired + ' · COHERENCE ' + mainCoherenceLabel(g.mainCoherence),
     '  TARGET WORDS: ' + c.targetWordsCovered + '/' + c.targetWords + ' covered',
     '  TARGET PAIRS: ' + c.targetPairs + '/' + c.targetPairsRequired + ' valid target-practice sentences (3 per target word)',
     '  QC: ' + rs.total + ' candidate sentence(s) rejected (' + rs.cueMismatch + ' cue mismatch · ' + rs.unnatural + ' unnatural · ' + rs.other + ' other) · ' +
@@ -15623,7 +15922,7 @@ function trackIntegrityExportLines(track) {
     if (g.sceneContract && g.sceneContract.checked) out.push('SCENE CONTRACT: ' + (g.sceneContract.drift ? 'SCENE_CONTRACT_DRIFT — ' + g.sceneContract.reasons.join(' · ') : 'approved opening preserved'))
     if (track.sceneContract) out.push('SCENE: ' + track.sceneContract.premise + ' · A=' + (track.sceneContract.characters[0].nativeName || track.sceneContract.characters[0].name) + ' · B=' + (track.sceneContract.characters[1].nativeName || track.sceneContract.characters[1].name) +
       ' · SCENE_PROPER_NAME: ' + ((track.sceneContract.allowedSceneEntities || []).map(e => e.surface).join(' ') || 'none') + (track.scenePlan ? ' · plan (' + track.scenePlan.source + '): ' + track.scenePlan.scenes.map(x => x.purpose + ' [' + x.targetIds.length + ']').join(' → ') : ''))
-    if (g.mainCoherence) out.push('MAIN TRACK COHERENCE: ' + g.mainCoherence.state + (g.mainCoherence.overall != null ? ' · overall ' + g.mainCoherence.overall + '/5' : '') +
+    if (g.mainCoherence) out.push('MAIN TRACK COHERENCE: ' + mainCoherenceLabel(g.mainCoherence) +
       ((g.mainCoherence.incoherent || []).length ? ' · incoherent: ' + g.mainCoherence.incoherent.map(x => 'section ' + x.section + ' (' + (x.purpose || '') + '): ' + x.reason).join(' · ') : '') + (g.mainCoherence.reason && g.mainCoherence.state !== 'VERIFIED' ? ' · ' + g.mainCoherence.reason : ''))
     ;(g.recoveryStates || []).forEach(r => out.push('RECOVERY STATE [' + r.target + '] sense="' + String(r.targetSense || '').slice(0, 40) + '" attempts=' + r.attempts + ' accepted=' + r.successful +
       ' forbidden=[' + r.forbiddenTokens.join(' ') + '] strategyChanges=' + r.strategyChanges.map(x => x.to + ' (' + x.why + ')').join('; ')))
@@ -15799,6 +16098,15 @@ function _thaiFailCode(r) {
   if (/DUPLICATE/.test(t)) return 'DUPLICATE_MEANING'
   return 'OTHER'
 }
+// v654 §11 — MAIN_TRACK_COHERENCE_REPAIR context for a recovery request: the scene the new lines must
+// fit, the lines around them, and the off-topic lines being replaced
+function coherenceRepairPromptLines(cr) {
+  if (!cr) return ''
+  return 'COHERENCE REPAIR — THIS PART OF THE CONVERSATION: ' + cr.purpose + '\n' +
+    (cr.sectionLines && cr.sectionLines.length ? 'The other lines of this part (English):\n' + cr.sectionLines.map(x => '  ' + x).join('\n') + '\n' : '') +
+    (cr.replacing && cr.replacing.length ? 'These lines did NOT fit this part and are being replaced (do not reuse them): ' + cr.replacing.join(' / ') + '\n' : '') +
+    'Every new sentence MUST belong to this part of the conversation (same situation, same people, no new topic).\n'
+}
 async function _thRecoverTargetPairs(kw, need, ctx) {
   const c = ctx || {}, log = c.onLog || null
   const track = c.track || {}, all = c.existing || track.pairs || []
@@ -15820,6 +16128,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     (sc && sc.characters && sc.characters.length ? 'Characters: ' + sc.characters.map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') + '\n' : '') +
     'A = a man: says ผม for "I" and ends every sentence with ครับ. B = a woman: says ฉัน for "I" and ends with ค่ะ (statements) or คะ (questions).\n' +
     'TARGET WORD: "' + kw.thai + '" = ' + (kw.english || '') + '\n' + targetRoleLine(role, kw, 'th') +
+    coherenceRepairPromptLines(c.coherenceRepair) +
     (have.length ? 'This word already has these lines — do NOT repeat or paraphrase them:\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai).join('\n') + '\n' : '') +
     recoveryStrategyPromptLines(st, { supportWords }) +
     'Write ' + ask + ' NEW natural spoken Thai sentences. EVERY sentence MUST contain "' + kw.thai + '" as a word, used in its normal meaning.\n' +
@@ -15991,9 +16300,13 @@ async function _jaRecoverTargetPairs(kw, need, ctx) {
   // slots of this target (not one per slot), the canonical duplicate context, slot-only regeneration.
   const missingSlots = _missingRecallSlots(all, kw.wordId, need)
   const trackUsed = all.filter(p => p && p.japanese).map(p => String(p.japanese).trim())
-  const adapter = japaneseTargetGroupAdapter({ vocab: c.vocab, registerId, inv, rules, seenMap, trackUsed, apiKey: c.apiKey, model: c.model, onLog: log, opts: { previousRecalls: prev } })
-  aiTagNextCall('quota recovery ' + t.japanese + ' recall ' + missingSlots.join('+'))
-  const grp = await generateTargetGroup({ language: 'ja', target: t, recallCount: missingSlots.length, recallIndices: missingSlots, adapter,
+  const _sc = track.sceneContract || (track.scene && typeof track.scene === 'object' ? { premise: track.scene.scene } : null)
+  const _planSc = ((track.scenePlan && track.scenePlan.scenes) || []).find(x => x.targetIds.includes(t.id))
+  const _purpose = (c.coherenceRepair && c.coherenceRepair.purpose) || (_planSc && _planSc.purpose) || null
+  const adapter = japaneseTargetGroupAdapter({ vocab: c.vocab, registerId, inv, rules, seenMap, trackUsed, apiKey: c.apiKey, model: c.model, onLog: log,
+    opts: { previousRecalls: prev.concat((c.coherenceRepair && c.coherenceRepair.replacing) || []), scenePremise: _sc && _sc.premise } })
+  aiTagNextCall((c.coherenceRepair ? 'coherence repair ' : 'quota recovery ') + t.japanese + ' recall ' + missingSlots.join('+'))
+  const grp = await generateTargetGroup({ language: 'ja', target: _purpose ? { ...t, _scenePurpose: _purpose } : t, recallCount: missingSlots.length, recallIndices: missingSlots, adapter,
     paidMaxPerRecall: Math.max(1, Math.min(JA_GENERATION_BUDGET.maxPaidAttemptsPerRecall, (rules.maxTiers || 4) - 1)),
     apiKey: c.apiKey, model: c.model, onLog: log, stage: 'H_recovery', phase: 'quota-recovery' })
   for (const sl of grp.slots) {
@@ -16231,7 +16544,10 @@ const TRACK_ADAPTERS = {
 function jazhTargetEligible(w, lang) {
   if (!w || w.id == null || w.duplicateOf || w.status === 'locked') return false
   const s = lang === 'ja' ? w.japanese : w.chinese
-  return !!(s && String(s).trim() && (w.english || '').trim())
+  if (!(s && String(s).trim() && (w.english || '').trim())) return false
+  // v654 §4 — the same activity preflight as Thai (metadata + corroborated evidence), before generation
+  try { if (!targetActivityPreflight(w, lang, { activity: 'spokenConversation', register: 'natural' }).suitable) return false } catch (e) {}
+  return true
 }
 // UI helper: contract the list; the gate never blocks a track (a failure keeps the input list).
 function jazhContractTargets(list, lang, vocab, mode) {
@@ -16463,8 +16779,10 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
   }
   const verdicts = scenes.map((sc, si) => {
     const m = model ? model.scenes.find(x => Number(x.scene) === si + 1) : null
-    const detOk = det[si].score >= 4
-    const pass = sc.lines.length < 2 ? listeningStandaloneOk(sc.lines[0].pair) || !!sc.lines[0].anchor
+    // v654: a 3/5 lexical-overlap heuristic ("reply does not answer", "unrelated question") is advisory
+    // when the whole-conversation judge explicitly PASSES the scene; 2/5 (contradiction, time jump) vetoes
+    const detOk = det[si].score >= 4 || (det[si].score === 3 && !!m && m.pass !== false)
+    const pass = sc.lines.length < 2 ? !!sc.lines[0] && (listeningStandaloneOk(sc.lines[0].pair) || !!sc.lines[0].anchor)
       : detOk && (m ? m.pass !== false : state !== QUALITY.VERIFIED ? false : true)
     const brk = m && m.breakAfterLine != null ? Number(m.breakAfterLine) : (det[si].brokenAtPair != null ? det[si].brokenAtPair : null)
     return { scene: si + 1, pass, deterministic: det[si].score, model: m ? (m.pass !== false ? 'pass' : 'fail') : (sc.lines.length < 2 ? 'n/a' : 'unverified'),
@@ -16476,12 +16794,18 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
 }
 // §13/§14 — semantic clustering + bridge generation. ONE model call groups the anchors into
 // a few realistic scenes and writes the (closed-vocabulary) bridge lines each scene needs.
-async function listeningComposeScenes(anchors, la, ctx, o, log, retryNote) {
+async function listeningComposeScenes(anchors, la, ctx, o, log, retryNote, plan) {
   if (!o.apiKey || anchors.length < 2) return null
   const ids = anchors.map((a, i) => 'a' + (i + 1))
   const sc0 = ctx.sceneContract || null
   const tgtOf = a => [...(a.covers || [])].map(id => { const k = (ctx.kwById && ctx.kwById.get(id)) || {}; return (k.thai || k.japanese || k.chinese || '') + (k.english ? ' (' + k.english + ')' : '') }).filter(Boolean).join(', ')
-  const rows = anchors.map((a, i) => ids[i] + ' [' + a.speaker + '] ' + la.text(a.pair) + ' — ' + String(a.pair.english || '') + (tgtOf(a) ? '   · target: ' + tgtOf(a) : ''))
+  // v654 §14/§21 — anchors are CONSTRAINTS, not output: a response token (はい / うん / いいえ / ครับ…) or a
+  // line that cannot stand alone is marked NEEDS_COMPOSED_USAGE and must be written as a reply turn
+  const rows = anchors.map((a, i) => ids[i] + ' [' + a.speaker + '] ' + la.text(a.pair) + ' — ' + String(a.pair.english || '') + (tgtOf(a) ? '   · target: ' + tgtOf(a) : '') +
+    (a.needsComposedUsage ? ' · NEEDS_COMPOSED_USAGE: ' + (a.targetRole === 'RESPONSE_TOKEN' ? 'use the target as a natural REPLY to a question in the previous turn' : 'give it a turn before it that makes it make sense') : ''))
+  // v654 §14 — the scene PLAN (from the Main Track scene plan) fixes which anchors share a scene
+  const _pk = new Map(anchors.map((a, i) => [a, ids[i]]))
+  const planLines = (plan || []).filter(sc => sc.anchors && sc.anchors.length).map(sc => sc.sceneId + ' — ' + sc.purpose + ': ' + sc.anchors.map(a => _pk.get(a)).filter(Boolean).join(', '))
   const extra = la.lang === 'ja' ? ' Give reading (kana) and romaji for every new or adapted line.' : la.lang === 'zh' ? ' Give tone-mark pinyin for every new or adapted line.' : ''
   const names = (ctx.sceneEntities || []).map(e => e.surface || e).filter(Boolean)
   const scenesHint = Math.max(2, Math.min(6, Math.round(anchors.length / 5)))
@@ -16489,17 +16813,20 @@ async function listeningComposeScenes(anchors, la, ctx, o, log, retryNote) {
   const prompt = 'Compose a ' + la.label + ' LISTENING track: a real conversation between two people, built around the ANCHOR sentences below (each teaches a word the learner is reviewing).\n' +
     (sc0 ? 'SCENE: ' + (sc0.premise || '') + '\nCHARACTERS: ' + sc0.characters.map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') +
       (sc0.relationship ? ' · ' + sc0.relationship : '') + '\n' : '') +
-    'STEP 1 — group the anchors into a FEW scenes (about ' + scenesHint + '; one place, time and activity each). Several anchors per scene — a one-line scene is a failure.\n' +
+    (planLines.length ? 'SCENE PLAN (fixed — write exactly these ' + planLines.length + ' scenes, in this order, each with the anchors listed):\n' + planLines.join('\n') + '\n' +
+      'STEP 1 — follow the scene plan: one place, time and activity per scene. EVERY scene is a MULTI-TURN dialogue of at least 4 turns with BOTH speakers.\n'
+    : 'STEP 1 — group the anchors into a FEW scenes (about ' + scenesHint + '; one place, time and activity each). Several anchors per scene — a one-line scene is a failure.\n') +
     'STEP 2 — write each scene as a DIALOGUE: scene 1 opens with a short contextual greeting between the characters' + (names.length ? ' (they may use each other\'s names: ' + names.join(', ') + ')' : '') +
     '; speakers ALTERNATE (A, B, A, B… never more than 2 lines in a row by one speaker); questions get answers; every topic change is motivated; nothing reads like unrelated sentences.\n' +
     'YOU MAY: reorder anchors; LIGHTLY ADAPT an anchor so it fits the dialogue — give it to the other speaker (with that speaker\'s own pronoun and particles) or add a few words — ' +
     'but an adapted anchor MUST still contain its target word(s) in the same meaning: {"anchor":"a3","speaker":"B","text":"…","english":"…"}; add short BRIDGE lines (3–9 words, at most ' + LISTENING_MAX_BRIDGES_PER_GAP + ' in a row): {"speaker":"B","text":"…","english":"…"}.\n' +
-    'RULES: use every anchor EXACTLY ONCE by its id; bridges and adaptations use ONLY the known words below' + (names.length ? ' plus the character names' : '') + '; ' + la.speakerContract + extra + '\n' +
+    'RULES: use every anchor EXACTLY ONCE by its id; never repeat a sentence; bridges and adaptations use ONLY the known words below' + (names.length ? ' plus the character names' : '') + '; ' + la.speakerContract + extra + '\n' +
     (retryNote ? 'YOUR PREVIOUS ANSWER WAS REJECTED: ' + retryNote + '\n' : '') +
     '\nANCHORS:\n' + rows.join('\n') + '\n\nKNOWN WORDS (bridges and adaptations may use ONLY these): ' + ctx.knownWords.slice(0, 220).join(' ') +
     '\n\nReply ONLY with JSON: {"scenes":[{"title":"...","setting":"...","lines":[{"anchor":"a1"},{"speaker":"B","text":"...","english":"..."},{"anchor":"a2","speaker":"A","text":"...","english":"..."}]}]}'
   let raw
-  try { raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt }], maxTokens: 6000, temperature: 0.6, json: LISTENING_SCHEMAS.compose, stage: 'O_listening_scene', attempt: retryNote ? 'compose-retry' : undefined }) }
+  if (o._tel) o._tel[o._composeMode === 'repair' ? 'LISTENING_SCENE_REPAIR_CALLS' : 'LISTENING_SCENE_GENERATION_CALLS']++
+  try { raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt }], maxTokens: 6000, temperature: 0.6, json: LISTENING_SCHEMAS.compose, stage: 'O_listening_scene', attempt: o._composeMode === 'repair' ? 'scene-repair' : retryNote ? 'compose-retry' : undefined }) }
   catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  🎬 scene composer unavailable: ' + (e && e.message || e)); return null }
   let obj = null
   try { obj = JSON.parse(String(raw || '').replace(/```json|```/g, '').trim()) } catch (e) { obj = null }
@@ -16530,11 +16857,14 @@ async function listeningComposeScenes(anchors, la, ctx, o, log, retryNote) {
     while (lines.length && lines[lines.length - 1].kind === 'bridge' && lines.filter(x => x.kind === 'anchor').length === 0) lines.pop()
     if (lines.some(x => x.kind === 'anchor')) scenes.push({ title: String(sc.title || '').slice(0, 60), setting: String(sc.setting || '').slice(0, 80), lines })
   })
-  // an anchor the composer forgot is never lost: it joins the scene of its main-track neighbour
+  // an anchor the composer forgot is never lost: it joins the scene of its PLANNED scene-mates,
+  // else the scene of its main-track neighbour
   anchors.forEach((a, k) => {
     if (used.has(k)) return
     let best = null, bestGap = 1e9
-    scenes.forEach(sc => sc.lines.forEach(l => { if (l.kind === 'anchor' && l.idx != null && a.idx != null && Math.abs(l.idx - a.idx) < bestGap) { bestGap = Math.abs(l.idx - a.idx); best = sc } }))
+    const mates = ((plan || []).find(sc => (sc.anchors || []).includes(a)) || { anchors: [] }).anchors
+    best = scenes.find(sc => sc.lines.some(l => l.kind === 'anchor' && mates.some(m => m.pair === l.pair || m.pair === l.origPair))) || null
+    if (!best) scenes.forEach(sc => sc.lines.forEach(l => { if (l.kind === 'anchor' && l.idx != null && a.idx != null && Math.abs(l.idx - a.idx) < bestGap) { bestGap = Math.abs(l.idx - a.idx); best = sc } }))
     if (best) best.lines.push({ ...a, kind: 'anchor' }); else scenes.push({ title: '', setting: '', lines: [{ ...a, kind: 'anchor' }] })
     log && log('  🎬 composer omitted anchor ' + ids[k] + ' — placed with its neighbour')
   })
@@ -16544,7 +16874,7 @@ async function listeningComposeScenes(anchors, la, ctx, o, log, retryNote) {
   if (!retryNote && scenes.length >= 3 && (singles / scenes.length > 0.5 || monologue > 0)) {
     const why = (singles ? singles + ' of ' + scenes.length + ' scenes had a single line' : '') + (singles && monologue ? '; ' : '') + (monologue ? monologue + ' scene(s) had only one speaker' : '')
     log && log('  🎬 COMPOSITION_FAILURE (' + why + ') — composing again')
-    const again = await listeningComposeScenes(anchors, la, ctx, o, log, why + '. Combine the anchors into a few multi-turn scenes with both speakers.')
+    const again = await listeningComposeScenes(anchors, la, ctx, o, log, why + '. Combine the anchors into a few multi-turn scenes with both speakers.', plan)
     if (again) return again
   }
   log && log('  🎬 composer: ' + scenes.length + ' scene(s) · ' + scenes.reduce((n, x) => n + x.lines.length, 0) + ' line(s) · ' + scenes.reduce((n, x) => n + x.lines.filter(l => l.kind === 'bridge').length, 0) + ' bridge(s) · ' +
@@ -16553,7 +16883,7 @@ async function listeningComposeScenes(anchors, la, ctx, o, log, retryNote) {
 }
 // Deterministic fallback when the composer is unavailable: main-track order, verified
 // neighbours as context, consecutive units merged while the merged run stays coherent.
-function listeningDeterministicScenes(anchors, byIdx, la) {
+function listeningDeterministicScenes(anchors, byIdx, la, plan) {
   const ent = (idx, e) => ({ idx, pair: e.pair, speaker: e.speaker, kind: 'context' })
   const units = anchors.slice().sort((a, b) => (a.idx == null) - (b.idx == null) || (a.idx - b.idx)).map(a => {
     if (a.idx == null) return { lines: [{ ...a, kind: 'anchor' }] }
@@ -16561,8 +16891,19 @@ function listeningDeterministicScenes(anchors, byIdx, la) {
     const self = { ...a, kind: 'anchor' }
     const tries = [[prev && ent(a.idx - 1, prev), self, next && ent(a.idx + 1, next)], [prev && ent(a.idx - 1, prev), self], [self, next && ent(a.idx + 1, next)], [self]].filter(t => t.every(Boolean))
     const pick = tries.find(t => t.length === 1 ? true : listeningCoherenceCheck(t.map(x => ({ idx: x.idx, pair: x.pair, speaker: x.speaker }))).score >= 4)
-    return { lines: pick || [self] }
+    return { lines: pick || [self], anchor: a }
   })
+  // v654 §14 — with a scene plan the deterministic path keeps the PLANNED scenes (anchors + their verified
+  // neighbours, in Main Track order) instead of one small scene per anchor
+  if (plan && plan.length) {
+    const out = plan.map(sc => {
+      const lines = []
+      units.filter(u => sc.anchors.includes(u.anchor)).forEach(u => u.lines.forEach(l => { if (!(l.idx != null && lines.some(x => x.idx === l.idx && x.kind === l.kind))) lines.push(l) }))
+      lines.sort((a, b) => (a.idx == null) - (b.idx == null) || (a.idx - b.idx))
+      return { title: sc.purpose || '', setting: '', lines }
+    }).filter(sc => sc.lines.some(l => l.kind === 'anchor'))
+    if (out.length) return out
+  }
   const scenes = []
   units.forEach(u => {
     const last = scenes[scenes.length - 1]
@@ -16585,6 +16926,76 @@ function _lnSplitScene(sc, at) {
   return [trim(a), trim(b)].filter(s => s.lines.some(l => l.kind === 'anchor'))
 }
 
+// v654 §14 — LISTENING SCENE PLAN (deterministic, 0 paid calls): anchors follow the Main Track's
+// semantic scene plan; a scene with a single anchor joins its neighbour (no 1-line scenes); an
+// oversized scene is split. Listening inherits the sceneContract and the Main scene purposes.
+const LISTENING_SCENE_MAX_ANCHORS = 7
+function listeningScenePlan(anchors, mainTrack, kwById) {
+  const plan = (mainTrack && mainTrack.scenePlan && mainTrack.scenePlan.scenes) || []
+  const premise = (mainTrack && mainTrack.sceneContract && mainTrack.sceneContract.premise) || 'everyday conversation'
+  const groups = new Map()
+  const keyOf = a => {
+    const ids = [...(a.covers || [])]
+    const sc = plan.find(x => ids.some(id => x.targetIds.includes(id)))
+    if (sc) return { key: sc.sceneId || sc.purpose, purpose: sc.purpose }
+    if (a.pair && a.pair.sceneId) return { key: a.pair.sceneId, purpose: a.pair.scenePurpose || premise }
+    // a track without a scene plan (pre-v654): the Main Track's own order, in groups of five
+    return { key: 'order:' + Math.floor(ordered.indexOf(a) / 5), purpose: premise }
+  }
+  const ordered = anchors.slice().sort((a, b) => (a.idx == null) - (b.idx == null) || (a.idx - b.idx))
+  ordered.forEach(a => { const k = keyOf(a); if (!groups.has(k.key)) groups.set(k.key, { purpose: k.purpose, anchors: [] }); groups.get(k.key).anchors.push(a) })
+  let out = [...groups.values()]
+  // no single-anchor scene: merge into the previous (or next) scene
+  for (let i = 0; i < out.length; i++) {
+    if (out.length < 2 || out[i].anchors.length >= 2) continue
+    const into = i > 0 ? out[i - 1] : out[i + 1]
+    into.anchors.push(...out[i].anchors)
+    out.splice(i, 1); i--
+  }
+  // split an oversized scene into balanced parts
+  out = out.flatMap(g => {
+    if (g.anchors.length <= LISTENING_SCENE_MAX_ANCHORS) return [g]
+    const parts = Math.ceil(g.anchors.length / 5), size = Math.ceil(g.anchors.length / parts)
+    return Array.from({ length: parts }, (_, k) => ({ purpose: g.purpose + (k ? ' (continued)' : ''), anchors: g.anchors.slice(k * size, (k + 1) * size) })).filter(x => x.anchors.length)
+  })
+  return out.map((g, k) => ({ sceneId: 'L' + (k + 1), purpose: g.purpose, anchors: g.anchors }))
+}
+// v654 §17/§18/§19 — STRUCTURAL validators (deterministic, free): fragmentation, speaker balance,
+// duplicates. A scene with a structural failure is repaired at scene level, never split apart.
+function listeningSceneStructure(sc, la) {
+  const lines = sc.lines || []
+  const codes = []
+  if (lines.length < 2) codes.push('LISTENING_SCENE_FRAGMENTATION: ' + lines.length + ' line(s)')
+  const sp = lines.map(l => l.speaker || 'A')
+  if (lines.length >= 2 && new Set(sp).size < 2) codes.push('LISTENING_SPEAKER_BALANCE: one speaker only')
+  let run = 1, maxRun = lines.length ? 1 : 0
+  for (let i = 1; i < sp.length; i++) { run = sp[i] === sp[i - 1] ? run + 1 : 1; maxRun = Math.max(maxRun, run) }
+  if (maxRun > 3) codes.push('LISTENING_SPEAKER_BALANCE: ' + maxRun + ' turns in a row by one speaker')
+  const seen = new Set()
+  lines.forEach(l => { const t = String(la.text(l.pair) || '').replace(/\s+/g, ''); if (seen.has(t) && !l.intentionalRepetition) codes.push('LISTENING_DUPLICATE_LINE: ' + la.text(l.pair)); seen.add(t) })
+  return codes
+}
+function listeningTrackStructure(scenes, la) {
+  const all = scenes.flatMap(sc => sc.lines || [])
+  const per = scenes.map(sc => listeningSceneStructure(sc, la))
+  const a = all.filter(l => (l.speaker || 'A') === 'A').length, b = all.length - a
+  const minority = all.length ? Math.min(a, b) / all.length : 0
+  const codes = []
+  if (scenes.length > 1 && scenes.length > Math.ceil(all.length / 3)) codes.push('LISTENING_SCENE_FRAGMENTATION: ' + scenes.length + ' scenes for ' + all.length + ' lines')
+  if (all.length >= 6 && minority < 0.25) codes.push('LISTENING_SPEAKER_BALANCE: speaker share ' + Math.round(minority * 100) + '% (A ' + a + ' · B ' + b + ')')
+  return { perScene: per, codes, speakers: { A: a, B: b }, failingScenes: per.map((c, i) => c.length ? i : -1).filter(i => i >= 0) }
+}
+// JA / ZH lines carry no linguistic speaker marking in the Main Track, so a one-speaker scene can be
+// re-voiced as alternating turns deterministically. Thai speakers are marked (ครับ / ค่ะ) and are not.
+function listeningRebalanceSpeakers(sc, lang) {
+  if (lang === 'th') return false
+  const sp = sc.lines.map(l => l.speaker || 'A')
+  let run = 1, maxRun = 1
+  for (let i = 1; i < sp.length; i++) { run = sp[i] === sp[i - 1] ? run + 1 : 1; maxRun = Math.max(maxRun, run) }
+  if (sc.lines.length < 2 || (new Set(sp).size >= 2 && maxRun <= 3)) return false
+  sc.lines.forEach((l, i) => { l.speaker = i % 2 === 0 ? 'A' : 'B'; if (l.pair) l.pair = { ...l.pair, speaker: l.speaker } })
+  return true
+}
 async function buildListeningByAnchors(mainTrack, vocab, o) {
   const lang = o.lang || (mainTrack && mainTrack.language) || trackLanguageOf(mainTrack), log = o.onLog || null
   const la = listeningAdapterFor(lang)          // v651 §11: no Thai fallback — an unknown language is an INTERNAL_ERROR
@@ -16657,26 +17068,49 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
     if (kw && kw.unresolved) { r.status = 'LISTENING_UNRESOLVED'; r.codes.add(LISTENING_FAILURE.UNRESOLVED_AT_SELECTION); r.reasons.push('unresolved at selection: ' + (kw.unresolvedReason || '')); continue }
     if (!eligibleIds.has(r.targetId)) { r.status = 'LISTENING_UNRESOLVED'; r.codes.add(LISTENING_FAILURE.NOT_EXPOSED); r.reasons.push('not yet exposed to the learner'); continue }
     const shared = [...anchorsByIdx.values()].find(a => hasOwnWord(la.text(a.e.pair), r.targetId))
-    if (shared) { shared.covers.add(r.targetId); r.anchor = shared.e; r.source = 'main-track (shared line)'; r.status = 'COVERED'; continue }
+    if (shared) { shared.covers.add(r.targetId); r.anchor = shared.e; r.source = 'main-track (shared line)'; r.status = 'COVERED'
+      const _role0 = targetConversationRole(vById.get(r.targetId) || kwById.get(r.targetId) || {}, lang)
+      if (_role0 === 'RESPONSE_TOKEN') { shared.needsComposedUsage = true; shared.targetRole = _role0; r.needsComposedUsage = true
+        log && log('  🧩 LISTENING_ANCHOR ' + r.target + ' → NEEDS_COMPOSED_USAGE (' + _role0 + ') on a shared verified line') }
+      continue }
+    const _roleR = targetConversationRole(vById.get(r.targetId) || kwById.get(r.targetId) || {}, lang)
+    const _replyRole = _roleR === 'RESPONSE_TOKEN' || _roleR === 'DISCOURSE_MARKER'
+    // a line about amounts / prices depends on its scene for plausibility: it is never re-used out of context
+    const _amountLine = p => /[0-9\u0E50-\u0E59]/.test(la.text(p)) || /\b(baht|yen|yuan|dollars?|price|cost|thousand|hundred|million)\b/i.test(String(p.english || '')) ||
+      targetSemanticDomain(vById.get(r.targetId) || kwById.get(r.targetId) || {}) === 'numbers & prices'
     const ranked = r.candidates.map(cnd => {
       const q = qOf(cnd.e), probs = cnd.probs.slice()
       let code = probs.length ? LISTENING_FAILURE.QUALITY_REJECTED : null
       if (!probs.length && q.state === QUALITY.REJECTED) { probs.push('AI quality rejected ' + q.score + '/5' + (q.note ? ' — ' + q.note : '')); code = LISTENING_FAILURE.QUALITY_REJECTED }
       if (!probs.length && q.state === QUALITY.UNVERIFIED) { probs.push('QUALITY_UNVERIFIED (' + (q.error || '') + ')'); code = LISTENING_FAILURE.QUALITY_GATE_UNAVAILABLE }
-      if (!probs.length && !unitFor(cnd.e)) { probs.push('cannot stand alone and has no coherent verified neighbouring exchange'); code = LISTENING_FAILURE.COHERENCE_FAILED }
-      return { ...cnd, q, probs, code, score: probs.length ? -1 : listeningAnchorScore(cnd.e.pair, r.target, q.score) }
+      // v654 §21/§22 — a verified line that cannot stand alone is an anchor with NEEDS_COMPOSED_USAGE (the
+      // composer writes the turn that makes it make sense) when the target is a reply-type word (はい / うん /
+      // いいえ / discourse markers); for a content word it is the fallback after Listening recovery fails
+      let composed = false, composedOk = false
+      if (!probs.length && !unitFor(cnd.e)) {
+        if (_replyRole && listeningPlausibilityProblems([{ pair: cnd.e.pair }]).length === 0) composed = true
+        else if (_replyRole) { probs.push('implausible in context'); code = LISTENING_FAILURE.COHERENCE_FAILED }
+        // composed usage fixes a MISSING PRECEDING TURN only — never an implausible line (a 10,000-baht coffee)
+        else { probs.push('cannot stand alone and has no coherent verified neighbouring exchange'); code = LISTENING_FAILURE.COHERENCE_FAILED; composedOk = listeningPlausibilityProblems([{ pair: cnd.e.pair }]).length === 0 && !_amountLine(cnd.e.pair) }
+      }
+      return { ...cnd, q, probs, code, composed, composedOk, score: probs.length ? -1 : listeningAnchorScore(cnd.e.pair, r.target, q.score) - (composed ? 2 : 0) }
     }).sort((a, b) => b.score - a.score)
     r.log = ranked.map(x => '[' + String(x.e.idx + 1).padStart(3, '0') + '] deterministic: ' + (x.probs.length && x.code === LISTENING_FAILURE.QUALITY_REJECTED && x.q.state === QUALITY.VERIFIED ? 'FAIL (' + x.probs.join('; ') + ')' : 'PASS') +
       ' · AI quality: ' + (x.q.state === QUALITY.VERIFIED ? 'verified ' + x.q.score + '/5' + (la.preVerified(x.e.pair, ctx) ? ' (FINAL_TRACK audit)' : '') : x.q.state === QUALITY.REJECTED ? 'rejected ' + x.q.score + '/5' + (x.q.note ? ' — ' + x.q.note : '') : 'UNVERIFIED (' + (x.q.error || '') + ')') +
       (x.probs.length ? ' → not usable' : ' → score ' + x.score))
     r.chain.push(...r.log); ranked.forEach(x => { if (x.code) r.codes.add(x.code) })
+    r.composedFallback = ranked.filter(x => x.composedOk && x.probs.length === 1).sort((a, b) => (b.q.score || 0) - (a.q.score || 0))[0] || null
     const best = ranked.find(x => !x.probs.length)
     if (best) { const a = anchorsByIdx.get(best.e.idx) || { e: best.e, covers: new Set() }; a.covers.add(r.targetId); anchorsByIdx.set(best.e.idx, a); r.anchor = best.e; r.source = 'main-track'; r.status = 'COVERED'
+      const _role = _roleR
+      if (best.composed || _role === 'RESPONSE_TOKEN') { a.needsComposedUsage = true; a.targetRole = _role; r.needsComposedUsage = true
+        log && log('  🧩 LISTENING_ANCHOR ' + r.target + ' → NEEDS_COMPOSED_USAGE (' + _role + ') from ' + ranked.filter(x => !x.probs.length).length + '/' + r.candidates.length + ' verified candidate(s) across its target pairs') }
       r.qualitySource = la.preVerified(best.e.pair, ctx) ? 'FINAL_TRACK semantic audit (model:naturalness)' : 'model:naturalness' }
     else r.reasons.push(ranked.length ? 'no verified FINAL_TRACK line (' + ranked.length + ' not usable)' : 'no FINAL_TRACK line contains the target')
   }
   // ── 3. §11 bounded Listening-specific recovery (generation + full Listening QC) ──
   const recovered = []
+  let recoveryCalls = 0, recoveryQcCalls = 0
   for (const r of rows.values()) {
     if (r.status !== 'PENDING') continue
     const kw = kwById.get(r.targetId) || { wordId: r.targetId, thai: r.target, japanese: r.target, chinese: r.target, english: '' }
@@ -16685,6 +17119,7 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
     for (let a = 1; a <= LISTENING_RECOVERY_MAX_ATTEMPTS && r.status === 'PENDING'; a++) {
       r.recoveryAttempts = a
       let got
+      recoveryCalls++
       try { got = await la.recoverLine(kw, rctx, a) }
       catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; const code = e.code || LISTENING_FAILURE.GENERATION_FAILED; r.codes.add(code); rctx.lastReasons = [code + ': ' + e.message]; r.reasons.push('attempt ' + a + ': ' + code + ' (' + e.message + ')'); continue }
       let pair = got.pair
@@ -16695,6 +17130,7 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
       const bad = elig.forbidden.filter(f => la.present(la.text(pair), listeningTargetSurface(f), ctx)); if (bad.length) why.push(LISTENING_FAILURE.VOCABULARY_FAILED + ': contains a word not yet taught: ' + bad.map(listeningTargetSurface).join(' '))
       const un = listeningUnexposedWords(lang, pair, exposed, eligTargets); if (un.length) why.push(LISTENING_FAILURE.VOCABULARY_FAILED + ': unknown words: ' + un.slice(0, 4).join(' '))
       if (!why.length) {
+        recoveryQcCalls++
         const qv = (await la.verdicts([pair], o, log)).get(la.text(pair))
         if (!qv || qv.state === QUALITY.UNVERIFIED) why.push(LISTENING_FAILURE.QUALITY_GATE_UNAVAILABLE + ': ' + ((qv && qv.error) || 'no verdict'))
         else if (qv.state === QUALITY.REJECTED) why.push(LISTENING_FAILURE.QUALITY_REJECTED + ': naturalness ' + qv.score + '/5' + (qv.note ? ' — ' + qv.note : ''))
@@ -16707,18 +17143,44 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
       log && log('  ✅ Listening recovery ' + a + ' for ' + r.target + ': ' + la.text(pair))
     }
     if (r.status === 'PENDING') r.status = 'LISTENING_UNRESOLVED'
+    // v654 §22 — recovery could not write a standalone line: a verified FINAL_TRACK line that only needs a
+    // preceding turn is used as a NEEDS_COMPOSED_USAGE anchor (the composer writes that turn; coverage is
+    // still counted only from the final lines)
+    if (r.status === 'LISTENING_UNRESOLVED' && r.composedFallback && o.apiKey && eligibleIds.has(r.targetId) && !(kwById.get(r.targetId) || {}).unresolved) {
+      const cf = r.composedFallback
+      const a = anchorsByIdx.get(cf.e.idx) || { e: cf.e, covers: new Set() }
+      a.covers.add(r.targetId); a.needsComposedUsage = true; a.targetRole = a.targetRole || targetConversationRole(vById.get(r.targetId) || {}, lang); anchorsByIdx.set(cf.e.idx, a)
+      r.anchor = cf.e; r.source = 'main-track (composed usage)'; r.status = 'COVERED'; r.needsComposedUsage = true; r.qualitySource = 'FINAL_TRACK semantic audit (model:naturalness)'
+      log && log('  🧩 LISTENING_ANCHOR ' + r.target + ' → NEEDS_COMPOSED_USAGE (recovery failed; verified FINAL_TRACK line [' + String(cf.e.idx + 1).padStart(3, '0') + '] needs a preceding turn)')
+    }
   }
   // ── 4. scenes: semantic clustering + bridges (composer), deterministic fallback ──
-  const anchors = [...anchorsByIdx.values()].map(a => ({ idx: a.e.idx, pair: a.e.pair, speaker: listeningSpeakerOf(a.e.pair, lang), covers: a.covers, anchor: true }))
+  const anchors = [...anchorsByIdx.values()].map(a => ({ idx: a.e.idx, pair: a.e.pair, speaker: listeningSpeakerOf(a.e.pair, lang), covers: a.covers, anchor: true, needsComposedUsage: !!a.needsComposedUsage, targetRole: a.targetRole }))
     .concat(recovered.map(x => ({ idx: null, pair: x.e.pair, speaker: 'A', covers: x.covers, anchor: true, recovered: true })))
     .sort((a, b) => (a.idx == null) - (b.idx == null) || (a.idx - b.idx))
-  let scenes = await listeningComposeScenes(anchors, la, ctx, o, log)
+  const tel = o._tel = { LISTENING_PLAN_CALLS: 0, LISTENING_SCENE_GENERATION_CALLS: 0, LISTENING_SCENE_REPAIR_CALLS: 0,
+    LISTENING_QC_CALLS: (o.apiKey && toJudge.length ? Math.ceil(toJudge.length / 12) : 0) + recoveryQcCalls, LISTENING_ANCHOR_RECOVERY_CALLS: o.apiKey ? recoveryCalls : 0, LISTENING_TOTAL_PAID_CALLS: 0 }
+  const lnPlan = listeningScenePlan(anchors, mainTrack, kwById)
+  log && log('  🗺 LISTENING_SCENE_PLAN (deterministic, from the Main Track scene plan; LISTENING_PLAN_CALLS=0): ' + lnPlan.map(x => x.sceneId + ' "' + x.purpose + '" [' + x.anchors.length + ']').join(' · '))
+  let scenes = await listeningComposeScenes(anchors, la, ctx, o, log, null, lnPlan)
   let composer = 'model'
-  if (!scenes) { scenes = listeningDeterministicScenes(anchors, byIdx, la); composer = 'deterministic' }
+  if (!scenes) {
+    // without a composer nobody can write the turn a NEEDS_COMPOSED_USAGE anchor needs: it is not played
+    // alone (a bare "はい。" is not Listening) — its target stays unresolved with that reason
+    const cu = anchors.filter(a => a.needsComposedUsage)
+    cu.forEach(a => [...(a.covers || [])].forEach(id => { const r = rows.get(id); if (r) { r.status = 'LISTENING_UNRESOLVED'; r.anchor = null; r.codes.add(LISTENING_FAILURE.GENERATION_UNAVAILABLE); r.reasons.push('NEEDS_COMPOSED_USAGE but the scene composer was unavailable') } }))
+    const keep = anchors.filter(a => !a.needsComposedUsage)
+    if (cu.length) log && log('  🧩 ' + cu.length + ' NEEDS_COMPOSED_USAGE anchor(s) left out: no scene composer to write their preceding turn')
+    scenes = listeningDeterministicScenes(keep, byIdx, la, lnPlan.map(sc => ({ ...sc, anchors: sc.anchors.filter(a => !a.needsComposedUsage) })).filter(sc => sc.anchors.length)); composer = 'deterministic'
+    anchors.splice(0, anchors.length, ...keep)
+  }
+  const _planOf = sc => { const ks = lnPlan.map(p => sc.lines.filter(l => l.kind === 'anchor' && p.anchors.some(a => a.pair === l.pair || a.pair === l.origPair)).length); const m = Math.max(0, ...ks); return m ? lnPlan[ks.indexOf(m)] : null }
   // a lost anchor (composer or optimiser) is restored before anything else is decided
   const _anchorInScenes = a => scenes.some(sc => sc.lines.some(l => l.kind === 'anchor' && l.pair === a.pair))
   anchors.forEach(a => { if (!_anchorInScenes(a)) scenes.push({ title: '', setting: '', lines: [{ ...a, kind: 'anchor' }] }) })
   // v650: one QC pass for composed scenes (initial composition AND scene recomposition during repair)
+  const _verdicts = async (pairs) => { if (pairs.length) tel.LISTENING_QC_CALLS += Math.ceil(pairs.length / 12); return la.verdicts(pairs, o, log) }
+  const _cohAudit = async (scs) => { if (o.apiKey && scs.some(sc => sc.lines.length > 1)) tel.LISTENING_QC_CALLS++; return listeningWholeCoherenceAudit(scs, la, o, log) }
   const qcComposedScenes = async (scs) => {
     // v650 §5 — ADAPTED ANCHORS are re-verified like any new line (target present in the same
     // sense, speaker particles, vocabulary, naturalness). One that fails reverts to its verified
@@ -16737,7 +17199,7 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
         if (why.length) revert(l, why.join('; ')); else live.push(l)
       })
       if (live.length) {
-        const vv = await la.verdicts(live.map(l => l.pair), o, log)
+        const vv = await _verdicts(live.map(l => l.pair))
         live.forEach(l => { const v = vv.get(la.text(l.pair)); if (!v || v.state !== QUALITY.VERIFIED) revert(l, v ? (v.state === QUALITY.REJECTED ? 'naturalness ' + v.score + '/5' : 'unverified') : 'no verdict'); else { l.pair = la.finaliseLine(l.pair, ctx); adaptStats.kept++ } })
       }
       log && log('  ✍️ ADAPTED ANCHORS: ' + adaptStats.kept + ' kept (re-verified) · ' + adaptStats.reverted + ' reverted to the FINAL_TRACK sentence')
@@ -16754,7 +17216,7 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
         const nw = elig.forbidden.filter(f => la.present(la.text(b.pair), listeningTargetSurface(f), ctx)); if (nw.length) why.push('VOCABULARY_FAILED: contains a NEW word: ' + nw.map(listeningTargetSurface).join(' '))
         if (why.length) { drop.add(b); log && log('    ⛔ BRIDGE "' + la.text(b.pair) + '" — ' + why.join('; ')) }
       })
-      const vv = await la.verdicts(bridges.filter(b => !drop.has(b)).map(b => b.pair), o, log)
+      const vv = await _verdicts(bridges.filter(b => !drop.has(b)).map(b => b.pair))
       bridges.forEach(b => { if (drop.has(b)) return; const v = vv.get(la.text(b.pair)); if (!v || v.state !== QUALITY.VERIFIED) { drop.add(b); log && log('    ⛔ BRIDGE "' + la.text(b.pair) + '" — ' + (v ? (v.state === QUALITY.REJECTED ? 'naturalness ' + v.score + '/5' : 'QUALITY_UNVERIFIED') : 'no verdict')) } })
       scs.forEach(sc => { sc.lines = sc.lines.filter(l => !drop.has(l)) })
       bridgeStats = { generated: bridges.length, kept: bridges.length - drop.size, rejected: drop.size }
@@ -16764,68 +17226,70 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
   }
   const _qc0 = await qcComposedScenes(scenes)
   let adaptStats = _qc0.adaptStats, bridgeStats = _qc0.bridgeStats
-  // ── 5. whole-listening coherence audit + bounded repair ──
-  let audit = await listeningWholeCoherenceAudit(scenes, la, o, log)
+  // v654 §17/§18 — deterministic structure fixes first (free): duplicate lines removed (their target
+  // claims move to the kept occurrence), one-speaker JA/ZH scenes re-voiced as alternating turns
+  // a short back-channel bridge (うん。/ ใช่ครับ / 好。) may recur: it is marked LISTENING_INTENTIONAL_REPETITION;
+  // a repeated CONTENT sentence (anchor, main-track line, long bridge) is a duplicate and is removed
+  const _backchannel = (l, t) => l.kind === 'bridge' && t.length <= (lang === 'th' ? 12 : 6)
+  const _dedupe = scs => {
+    const seen = new Map(); let n = 0
+    scs.forEach(sc => { sc.lines = sc.lines.filter(l => {
+      const t = String(la.text(l.pair) || '').replace(/\s+/g, '')
+      if (t && _backchannel(l, t) && seen.has(t)) { l.intentionalRepetition = true; return true }
+      if (!t || l.intentionalRepetition) return true
+      const first = seen.get(t)
+      if (!first) { seen.set(t, l); return true }
+      if (l.kind === 'anchor') { first.covers = new Set([...(first.covers || []), ...(l.covers || [])]); if (first.kind !== 'anchor') first.kind = 'anchor' }
+      n++; log && log('    ♻️ LISTENING_DUPLICATE_LINE removed: "' + la.text(l.pair) + '"'); return false
+    }) })
+    return n
+  }
+  const _restructure = scs => { let d = _dedupe(scs), v = 0; scs.forEach(sc => { if (listeningRebalanceSpeakers(sc, lang)) { v++; log && log('    🔁 SPEAKER_TURNS_REASSIGNED scene "' + (sc.title || '') + '" (one-speaker ' + la.label + ' scene → alternating A/B turns)') } }); return { duplicatesRemoved: d, scenesRevoiced: v } }
+  let structureFixes = _restructure(scenes)
+  scenes = scenes.filter(sc => sc.lines.length)
+  // ── 5. whole-listening coherence audit + SCENE-LEVEL repair (never split into standalone lines) ──
+  let audit = await _cohAudit(scenes)
   let repairs = 0
-  for (let round = 1; round <= 2 && audit.verdicts.some(v => !v.pass) && audit.state === QUALITY.VERIFIED; round++) {
-    // v650 §5 — fix the COMPOSER, not the detector: round 1 re-composes the failing scenes as
-    // dialogue (with the audit's reasons); only round 2 splits a scene that still fails
-    if (round === 1 && composer === 'model') {
-      const failing = scenes.map((sc, si) => ({ sc, v: audit.verdicts[si] })).filter(x => !x.v.pass && x.sc.lines.length >= 2)
-      const fAnchors = []
-      failing.forEach(x => x.sc.lines.forEach(l => { if (l.kind === 'anchor') fAnchors.push({ ...l, pair: l.adapted ? l.origPair : l.pair, speaker: l.adapted ? l.origSpeaker : l.speaker, adapted: false, kind: undefined }) }))
-      if (fAnchors.length >= 2) {
-        const re = await listeningComposeScenes(fAnchors, la, ctx, o, log, 'these scenes failed the coherence audit: ' + failing.map(x => x.v.reason).filter(Boolean).slice(0, 4).join(' | '))
-        if (re && re.length) {
-          const q = await qcComposedScenes(re)
-          adaptStats = { adapted: adaptStats.adapted + q.adaptStats.adapted, kept: adaptStats.kept + q.adaptStats.kept, reverted: adaptStats.reverted + q.adaptStats.reverted }
-          bridgeStats = { generated: bridgeStats.generated + q.bridgeStats.generated, kept: bridgeStats.kept + q.bridgeStats.kept, rejected: bridgeStats.rejected + q.bridgeStats.rejected }
-          const failSet = new Set(failing.map(x => x.sc))
-          scenes = scenes.filter(sc => !failSet.has(sc)).concat(re)
-          repairs += failing.length
-          log && log('  🎬 COHERENCE REPAIR round 1: ' + failing.length + ' failing scene(s) re-composed as dialogue → ' + re.length + ' scene(s)')
-          audit = await listeningWholeCoherenceAudit(scenes, la, o, log)
-          continue
-        }
-      }
-    }
-    const next = []
-    scenes.forEach((sc, si) => {
-      const v = audit.verdicts[si]
-      if (v.pass || sc.lines.length < 2) { next.push(sc); return }
-      repairs++
-      const at = v.breakAfterLine != null && v.breakAfterLine >= 1 && v.breakAfterLine < sc.lines.length ? v.breakAfterLine
-        : Math.max(1, Math.floor(sc.lines.length / 2))
-      _lnSplitScene(sc, at).forEach(x => next.push(x))
-    })
-    scenes = next
-    audit = await listeningWholeCoherenceAudit(scenes, la, o, log)
+  const _failing = () => {
+    const st = listeningTrackStructure(scenes, la)
+    return scenes.map((sc, si) => ({ sc, si, v: audit.verdicts[si], struct: st.perScene[si] }))
+      .filter(x => (audit.state === QUALITY.VERIFIED && x.v && !x.v.pass) || x.struct.length)
   }
-  // last resort for a scene the audit REJECTED after repair: its anchors stand alone (never
-  // dropped). An audit that could not run leaves the scenes as built and the status PARTIAL.
-  let rejectedAfterRepair = 0
-  if (audit.state === QUALITY.VERIFIED && audit.verdicts.some(v => !v.pass)) {
-    const next = []
-    scenes.forEach((sc, si) => {
-      if (audit.verdicts[si].pass) { next.push(sc); return }
-      rejectedAfterRepair++
-      sc.lines.filter(l => l.kind === 'anchor').forEach(l => next.push({ title: sc.title, setting: sc.setting, lines: [l], standalone: true }))
-    })
-    if (next.length !== scenes.length) { scenes = next; audit = await listeningWholeCoherenceAudit(scenes, la, { ...o, apiKey: o.apiKey }, log) }
+  for (let round = 1; round <= 2 && composer === 'model' && o.apiKey; round++) {
+    const failing = _failing()
+    if (!failing.length) break
+    const fAnchors = []
+    failing.forEach(x => x.sc.lines.forEach(l => { if (l.kind === 'anchor') fAnchors.push({ ...l, pair: l.adapted ? l.origPair : l.pair, speaker: l.adapted ? l.origSpeaker : l.speaker, adapted: false, kind: undefined }) }))
+    if (fAnchors.length < 2) break
+    // the failing scenes keep their plan: their anchors are re-planned among themselves (no 1-line scene)
+    const rePlan = listeningScenePlan(fAnchors, mainTrack, kwById)
+    const why = failing.map(x => (x.v && !x.v.pass ? x.v.reason : '') + (x.struct.length ? ' ' + x.struct.map(c => c.split(':')[0]).join('/') : '')).filter(Boolean).slice(0, 4).join(' | ')
+    log && log('  🔧 LISTENING_SCENE_REPAIR round ' + round + ': ' + failing.length + ' scene(s) — ' + why)
+    const re = await listeningComposeScenes(fAnchors, la, ctx, { ...o, _composeMode: 'repair' }, log, 'these scenes failed: ' + why + '. Write each as ONE continuous multi-turn A/B dialogue.', rePlan)
+    if (!re || !re.length) break
+    const q = await qcComposedScenes(re)
+    adaptStats = { adapted: adaptStats.adapted + q.adaptStats.adapted, kept: adaptStats.kept + q.adaptStats.kept, reverted: adaptStats.reverted + q.adaptStats.reverted }
+    bridgeStats = { generated: bridgeStats.generated + q.bridgeStats.generated, kept: bridgeStats.kept + q.bridgeStats.kept, rejected: bridgeStats.rejected + q.bridgeStats.rejected }
+    const failSet = new Set(failing.map(x => x.sc))
+    // repaired scenes take the place of the first failing scene (the lesson order is kept)
+    const at = scenes.findIndex(sc => failSet.has(sc))
+    const keep = scenes.filter(sc => !failSet.has(sc))
+    scenes = keep.slice(0, at).concat(re, keep.slice(at))
+    repairs += failing.length
+    const f2 = _restructure(scenes); scenes = scenes.filter(sc => sc.lines.length); structureFixes = { duplicatesRemoved: structureFixes.duplicatesRemoved + f2.duplicatesRemoved, scenesRevoiced: structureFixes.scenesRevoiced + f2.scenesRevoiced }
+    audit = await _cohAudit(scenes)
   }
-  // fail closed: when the coherence audit could not run, no unverified sequence is played —
-  // context and bridge lines are removed, anchors (individually verified) stay
-  let coherenceUnverifiedScenes = 0
-  if (audit.state !== QUALITY.VERIFIED) {
-    scenes.forEach(sc => { if (sc.lines.length > 1) { coherenceUnverifiedScenes++; sc.lines = sc.lines.filter(l => l.kind === 'anchor') } })
-    const split = []
-    scenes.forEach(sc => { if (sc.lines.length > 1) sc.lines.forEach(l => split.push({ title: sc.title, setting: sc.setting, lines: [l], standalone: true })); else split.push(sc) })
-    scenes = split
-    log && log('  🎬 COHERENCE UNVERIFIED (' + (audit.reason || 'no verdict') + '): context/bridge lines removed from ' + coherenceUnverifiedScenes + ' scene(s); anchors kept')
-  }
+  const rejectedAfterRepair = audit.state === QUALITY.VERIFIED ? audit.verdicts.filter(v => !v.pass).length : 0
+  if (rejectedAfterRepair) log && log('  ⛔ LISTENING_COHERENCE_FAIL after scene repair: ' + rejectedAfterRepair + ' scene(s) — Listening is PARTIAL_INTERNAL (NOT_READY), scenes are NOT split into standalone lines')
+  // an audit that could not run leaves the scenes as built; the track is NOT_READY (never shown as passed)
+  const coherenceUnverifiedScenes = audit.state !== QUALITY.VERIFIED ? scenes.filter(sc => sc.lines.length > 1).length : 0
+  if (coherenceUnverifiedScenes) log && log('  🎬 COHERENCE UNVERIFIED (' + (audit.reason || 'no verdict') + '): ' + coherenceUnverifiedScenes + ' scene(s) — Listening is PARTIAL_INTERNAL (NOT_READY)')
   // ── 6. lines + §10 deterministic coverage recomputation ──
   let lines = []
-  scenes.forEach((sc, si) => sc.lines.forEach(l => {
+  const _chars = (mainTrack.sceneContract && mainTrack.sceneContract.characters) || []
+  const _roleOf = sp => { const c0 = _chars.find(x => x.speaker === sp); return c0 ? (c0.nativeName || c0.name || sp) + (c0.role ? ' (' + c0.role + ')' : '') : (sp === 'B' ? 'Speaker B' : 'Speaker A') }
+  scenes.forEach((sc, si) => { const p0 = _planOf(sc); sc.sceneId = 'L' + (si + 1); sc.purpose = sc.purpose || (p0 && p0.purpose) || sc.title || '' })
+  scenes.forEach((sc, si) => sc.lines.forEach((l, li) => {
     const isAnchor = l.kind === 'anchor'
     // one main-track line is played once: a context line already present is skipped, and an
     // anchor that is already present as context upgrades that line instead of repeating it
@@ -16835,7 +17299,11 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
     }
     const covers = isAnchor ? [...(l.covers || [])] : []
     const src = isAnchor ? (l.recovered ? 'listening-recovery' : l.adapted ? 'listening-adapted' : 'main-track') : l.kind === 'bridge' ? 'listening-bridge' : 'main-track'
-    lines.push({ pairIndex: l.idx != null && !l.adapted ? l.idx : null, anchorIdx: l.idx != null ? l.idx : null, adaptedFrom: l.adapted ? la.text(l.origPair) : undefined, pairId: l.pair.pairId || null, targetId: covers[0] != null ? covers[0] : null, coversTargetIds: covers, supporting: !covers.length,
+    const _sp = l.speaker || listeningSpeakerOf(l.pair, lang)
+    // v654 §23 — every turn carries its speaker identity, voice, turn index and scene
+    lines.push({ sceneId: sc.sceneId, scenePurpose: sc.purpose, turnIndex: sc.lines.indexOf(l), speakerId: _sp, speakerRole: _roleOf(_sp), voice: _sp === 'B' ? 'b' : 'a',
+      intentionalRepetition: l.intentionalRepetition ? 'LISTENING_INTENTIONAL_REPETITION' : undefined, needsComposedUsage: l.needsComposedUsage || undefined,
+      pairIndex: l.idx != null && !l.adapted ? l.idx : null, anchorIdx: l.idx != null ? l.idx : null, adaptedFrom: l.adapted ? la.text(l.origPair) : undefined, pairId: l.pair.pairId || null, targetId: covers[0] != null ? covers[0] : null, coversTargetIds: covers, supporting: !covers.length,
       qualityState: QUALITY.VERIFIED, scene: si + 1, sceneTitle: sc.title || '', speaker: l.speaker || listeningSpeakerOf(l.pair, lang), gender: speakerGenderOf(l.pair, lang),
       thai: la.text(l.pair), japanese: l.pair.japanese, chinese: l.pair.chinese, phonetic: l.pair.phonetic, reading: l.pair.reading, pinyin: l.pair.pinyin, romaji: l.pair.romaji,
       english: l.pair.english, wordId: covers[0] != null ? covers[0] : null, source: src })
@@ -16872,7 +17340,8 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
     const txt = la.text(r.anchor.pair)
     if (lines.some(l => (r.anchor.idx != null ? (l.pairIndex === r.anchor.idx || l.anchorIdx === r.anchor.idx) : l.thai === txt))) return
     lines.push({ pairIndex: r.anchor.idx, pairId: r.anchor.pair.pairId || null, targetId: id, coversTargetIds: [id], supporting: false, qualityState: QUALITY.VERIFIED,
-      scene: (lines.length ? lines[lines.length - 1].scene : 0) + 1, sceneTitle: '', speaker: listeningSpeakerOf(r.anchor.pair, lang), gender: speakerGenderOf(r.anchor.pair, lang),
+      scene: (lines.length ? lines[lines.length - 1].scene : 0) + 1, sceneId: 'L' + ((lines.length ? lines[lines.length - 1].scene : 0) + 1), turnIndex: 0, speakerId: listeningSpeakerOf(r.anchor.pair, lang), voice: listeningSpeakerOf(r.anchor.pair, lang) === 'B' ? 'b' : 'a',
+      sceneTitle: '', speaker: listeningSpeakerOf(r.anchor.pair, lang), gender: speakerGenderOf(r.anchor.pair, lang),
       thai: txt, japanese: r.anchor.pair.japanese, chinese: r.anchor.pair.chinese, phonetic: r.anchor.pair.phonetic, english: r.anchor.pair.english,
       wordId: id, source: r.anchor.recovered ? 'listening-recovery' : 'main-track' })
     restored.push(id); log && log('  ♻️ coverage audit restored the anchor for ' + r.target)
@@ -16901,9 +17370,10 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
   }))
   if (!qc.ok) { log && log('  ⛔ listening QC failed: ' + qc.problems.slice(0, 4).join(' | ')); return { ok: false, qc, stats: scan.stats } }
   const sceneIds = [...new Set(lines.map(l => l.scene))]
-  // a scene that still failed after repair and was broken into standalone anchors is NOT a
-  // passed conversation: the build reports it (PARTIAL), it never claims coherence
+  // v654 §20 — whole-conversation QC is a HARD gate: a scene that still fails after scene repair makes
+  // the Listening track PARTIAL_INTERNAL / NOT_READY (the UI says "Listening track needs repair")
   const coherencePassed = audit.verdicts.every(v => v.pass) && !coherenceUnverifiedScenes && !rejectedAfterRepair
+  const structure = listeningTrackStructure(scenes, la)
   const coherenceVerified = audit.state === QUALITY.VERIFIED
   // v650 §5 — dialogue shape: scenes of one line, or one speaker only, are not a conversation
   const _sceneSizes = sceneIds.map(id => lines.filter(l => l.scene === id))
@@ -16911,20 +17381,26 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
     monologueScenes: _sceneSizes.filter(x => x.length >= 3 && new Set(x.map(l => l.speaker)).size < 2).length,
     speakers: { A: lines.filter(l => l.speaker === 'A').length, B: lines.filter(l => l.speaker === 'B').length },
     adaptedAnchors: adaptStats, bridges: bridgeStats }
-  const compositionFailure = lines.length >= 6 && (dialogueStats.singleLineScenes / Math.max(1, dialogueStats.scenes) > 0.5 || dialogueStats.monologueScenes > 0)
+  dialogueStats.structure = { codes: structure.codes, failingScenes: structure.failingScenes.length, perScene: structure.perScene.map((c, i) => c.length ? 'L' + (i + 1) + ': ' + c.join('; ') : null).filter(Boolean) }
+  dialogueStats.structureFixes = structureFixes
+  const compositionFailure = (lines.length >= 6 && (dialogueStats.singleLineScenes / Math.max(1, dialogueStats.scenes) > 0.5 || dialogueStats.monologueScenes > 0)) ||
+    structure.codes.length > 0 || (lines.length >= 6 && structure.failingScenes.length > 0)
+  const _structWhy = [...structure.codes, ...dialogueStats.structure.perScene].slice(0, 3).join(' · ')
   const quality = gateDown ? 'VALIDATION UNAVAILABLE'
-    : unresolvedRows.length ? 'PARTIAL — ' + unresolvedRows.length + ' target' + (unresolvedRows.length > 1 ? 's' : '') + ' unresolved'
-    : !coherenceVerified ? 'PARTIAL — conversation coherence could not be verified'
-    : compositionFailure ? 'PARTIAL — composition failure: ' + (dialogueStats.singleLineScenes ? dialogueStats.singleLineScenes + ' of ' + dialogueStats.scenes + ' scenes have a single line' : '') + (dialogueStats.monologueScenes ? (dialogueStats.singleLineScenes ? '; ' : '') + dialogueStats.monologueScenes + ' scene(s) have one speaker only' : '')
-    : !coherencePassed ? 'PARTIAL — ' + (rejectedAfterRepair || audit.verdicts.filter(v => !v.pass).length) + ' scene(s) failed the coherence audit' + (rejectedAfterRepair ? ' after repair (their anchors play as standalone lines)' : '')
+    : unresolvedRows.length ? 'PARTIAL_INTERNAL — ' + unresolvedRows.length + ' target' + (unresolvedRows.length > 1 ? 's' : '') + ' unresolved'
+    : !coherenceVerified ? 'PARTIAL_INTERNAL — conversation coherence could not be verified'
+    : compositionFailure ? 'PARTIAL_INTERNAL — composition failure: ' + ([dialogueStats.singleLineScenes ? dialogueStats.singleLineScenes + ' of ' + dialogueStats.scenes + ' scenes have a single line' : '', dialogueStats.monologueScenes ? dialogueStats.monologueScenes + ' scene(s) have one speaker only' : '', _structWhy].filter(Boolean).join('; '))
+    : !coherencePassed ? 'PARTIAL_INTERNAL — ' + (rejectedAfterRepair || audit.verdicts.filter(v => !v.pass).length) + ' scene(s) failed the coherence audit' + (rejectedAfterRepair ? ' after scene repair' : '')
     : 'VERIFIED'
+  tel.LISTENING_TOTAL_PAID_CALLS = tel.LISTENING_PLAN_CALLS + tel.LISTENING_SCENE_GENERATION_CALLS + tel.LISTENING_SCENE_REPAIR_CALLS + tel.LISTENING_QC_CALLS + tel.LISTENING_ANCHOR_RECOVERY_CALLS
+  log && log('  💰 ' + Object.entries(tel).map(([k, v]) => k + '=' + v).join(' '))
   const _primary = r => { const c = [...(r.codes || [])]; const un = c.filter(x => /UNAVAILABLE/.test(x)); return un.length ? un.join(' / ') : (c[0] || (r.status === 'COVERED' ? '' : 'NO_CANDIDATE')) }
   const unresolved = unresolvedRows.map(r => ({ targetId: r.targetId, target: r.target, reason: _primary(r), reasons: r.reasons, chain: r.chain || [], missingLog: r.missingLog }))
   const lt = {
     listeningTrackId: 'lt-' + Date.now() + '-' + Math.floor(Math.random() * 1e4),
     sourceMainTrackId: listeningTrackId(mainTrack), sourceFingerprint: trackPairsFingerprint(mainTrack.pairs), sourceFinal: trackFinal,
     language: lang, listeningVersion: o.version || 1, creationMode: o.creationMode || 'AUTO_PRETRACK', createdAt: new Date().toISOString(),
-    status: 'not_started', architecture: 'anchors-scenes-v649', composer,
+    status: 'not_started', architecture: 'planned-scenes-v654', composer,
     eligibleTargetIds: elig.eligible.map(e => e.wordId), excludedNewTargetIds: elig.excludedNew, omittedTargetIds: unresolved.map(u => u.targetId),
     coverage: { language: lang, selectedTargetIds: selected, newTargetIds: newIds, requiredTargetIds: requiredIds, coveredRequiredIds: cov.covered, unresolved,
       newHeardIds: newIds.filter(id => lines.some(l => has(l.thai, id))), claimFixes: cov.claimFixes, restoredAnchors: restored,
@@ -16940,7 +17416,9 @@ async function buildListeningByAnchors(mainTrack, vocab, o) {
       omissionReasons: unresolved.map(u => ({ targetId: u.targetId, reason: u.reasons.join(' | ') })) },
     sceneGroups: sceneIds, sceneTitles: scenes.map(s => s.title || ''), coherenceScore: audit.overall, selectionSource: composer === 'model' ? 'composer' : 'anchors',
     coherenceAudit: { state: coherenceUnverifiedScenes ? QUALITY.UNVERIFIED : audit.state, passed: coherencePassed, repairs, verdicts: audit.verdicts, reason: audit.reason, unverifiedScenes: coherenceUnverifiedScenes, rejectedAfterRepair },
-    dialogueStats, compositionFailure,
+    dialogueStats, compositionFailure, telemetry: { ...tel },
+    readiness: quality === 'VERIFIED' ? 'READY' : 'NOT_READY', uiMessage: quality === 'VERIFIED' ? null : 'Listening track needs repair',
+    scenes: scenes.map(sc => ({ sceneId: sc.sceneId, purpose: sc.purpose, title: sc.title || '', lines: sc.lines.length })),
     sceneCoherence: audit.verdicts.map(v => v.deterministic), sceneReasons: audit.verdicts.map(v => v.reason || ''),
     listeningQuality: quality, qualityStats: { ...qStats, bridges: bridgeStats, verifiedAnchors: cov.covered.length, gateFailures: [...rows.values()].filter(r => [...(r.codes || [])].some(c => /UNAVAILABLE/.test(c))).length,
       scenes: { total: sceneIds.length, verified: audit.verdicts.filter(v => v.pass).length, rejected: audit.verdicts.filter(v => !v.pass).length, unverified: coherenceUnverifiedScenes, passed: audit.verdicts.filter(v => v.pass).length } },
@@ -17137,6 +17615,10 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
       {listeningBuildLabel(bstate && bstate.coveredTargetCount != null ? bstate : { coveredTargetCount: lt.coverage ? lt.coverage.coveredRequiredIds.length : null,
         requiredTargetCount: lt.coverage ? lt.coverage.requiredTargetIds.length : null, unresolvedTargetIds: lt.coverage ? lt.coverage.unresolved.map(u => u.targetId) : [] })}
       {bstate && (bstate.status === 'READY' || bstate.status === 'PARTIAL') ? ' · ' + bstate.status : ''}</div>}
+    {((bstate && bstate.status === 'PARTIAL') || (lt && lt.readiness === 'NOT_READY')) &&
+      <div data-listening-needs-repair="1" style={{ color:'#b45309', background:'rgba(245,158,11,0.12)', borderRadius:8, padding:'6px 10px', fontSize:13, fontWeight:700, marginBottom:8 }}>
+        ⚠️ Listening track needs repair
+        <div style={{ fontWeight:400, fontSize:12 }}>{(bstate && (bstate.partialReasons || []).join(' · ')) || (lt && lt.listeningQuality) || ''}</div></div>}
     {isTh && bstate && bstate.pairsFingerprint && bstate.pairsFingerprint !== thaiPairsFingerprint(track.pairs) &&
       <div style={{ color:'#f59e0b', fontSize:12, marginBottom:6 }}>The Main Track changed after this Listening track was built — Rebuild to match it.</div>}
     <div style={{ color:'var(--muted)', fontSize:12, marginBottom:16 }}>Passive comprehension first — nothing here affects your scores.</div>
@@ -20803,7 +21285,9 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       const _st = thaiSemanticAuditStatus(allPairs)
       counts.finalSemanticAudit.final = _st
       counts.finalSemanticAudit.naturalnessCheck = _st.status + ' (' + _st.naturalnessJudged + '/' + _st.auditedLines + ' judged' + (_st.unverified.length ? ', ' + _st.unverified.length + ' unverified' : '') + ')'
-      onLog?.('  🧭 ' + thaiNaturalnessStatusLine(_st) + ' · track quality ' + _st.trackQuality)
+      // v654 §29 — this is the PAIR-LEVEL audit only; it never speaks for the Main Track, whose status is
+      // decided later by TRACK INTEGRITY (quota, coherence, …)
+      onLog?.('  🧭 SEMANTIC_AUDIT ' + _st.trackQuality + ' · ' + thaiNaturalnessStatusLine(_st) + ' (pair-level only — MAIN_TRACK status is decided by TRACK INTEGRITY)')
       _st.unverified.forEach(u => onLog?.('    NATURALNESS_UNVERIFIED PAIR_ID=' + u.pairId + ' TARGET=' + (u.target || '-') + ' FAILURE_STAGE=' + u.stage + ' REASON=' + u.reason))
     }
   } catch (e) { onLog?.('⚠️ semantic status failed: ' + e.message) }
@@ -20861,7 +21345,8 @@ async function _judgeWithBoundedRetry(items, judge, label, onLog) {
       const v = got && got.find(x => x && Number(x.i) === ci + 1)
       const sc = v ? Number(v.s) : NaN
       if (v && sc >= 1 && sc <= 5) verdicts.set(ix, { s: sc, note: v.note || '', wrongSense: v.wrongSense === true,
-        thaiEnglishMatch: typeof v.thaiEnglishMatch === 'boolean' ? v.thaiEnglishMatch : null, cueRepair: typeof v.cueRepair === 'string' ? v.cueRepair : null })
+        thaiEnglishMatch: typeof v.thaiEnglishMatch === 'boolean' ? v.thaiEnglishMatch : null, cueRepair: typeof v.cueRepair === 'string' ? v.cueRepair : null,
+        issue: /^(SENTENCE_UNNATURAL|TARGET_USAGE_UNSUITABLE_FOR_REGISTER|TARGET_CANONICAL_ENTRY_SUSPECT)$/.test(String(v.issue || '')) ? v.issue : null })
       else missing.push(ix)
     })
     if (!missing.length) return
@@ -20894,7 +21379,11 @@ function _naturalnessPromptText(chunk) {
     'Scale: 5 natural · 4 natural with a small quirk · 3 understandable but unnatural · 2 wrong/awkward · 1 broken.\n\n' +
     (anySense ? 'When a target word and its intended sense are given, set "wrongSense": true if the sentence uses the target in a DIFFERENT sense ' +
       '(e.g. เบา "light in weight" used for money or weather).\n' : '') +
-    numbered + '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."' + (anySense ? ',"wrongSense":false' : '') + '}]'
+    // v654 §28 — tell a SENTENCE problem from a TARGET problem, so a target that cannot be natural here stops costing recovery
+    'When s < 4 also give "issue": "SENTENCE_UNNATURAL" (this sentence is badly built — another sentence could use the target naturally), ' +
+    '"TARGET_USAGE_UNSUITABLE_FOR_REGISTER" (the TARGET WORD ITSELF is wrong for casual spoken conversation: formal, written, archaic), or ' +
+    '"TARGET_CANONICAL_ENTRY_SUSPECT" (the target expression itself is not a normal expression for its meaning).\n' +
+    numbered + '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."' + (anySense ? ',"wrongSense":false' : '') + ',"issue":null}]'
 }
 async function _finalNaturalnessJudge(chunk, apiKey, model) {
   return _semanticReplyArray(await geminiJudge(apiKey, model, _naturalnessPromptText(chunk), 1400))
@@ -21011,7 +21500,12 @@ async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
       onLog && onLog('  🔧 CUE_REPAIRED_KEEP_PAIR [' + (p._target || '?') + '] "' + String(p.prompt || '').slice(0, 60) + '" → "' + _rep.cue + '" (' + _rep.method + '; cue ' + cv.s + '/5' + (cv.note ? ' — ' + cv.note : '') + ')')
     }
     if (nv && nv.wrongSense) return drop('WRONG_SENSE', 'target used in the wrong sense (intended: ' + (p._targetSense || '?') + ')' + (nv.note ? ' — ' + nv.note : ''), nv.s)
-    if (nv && nv.s != null && nv.s < 4) return drop('UNNATURAL', 'unnatural ' + nv.s + '/5' + (nv.note ? ' — ' + nv.note : ''), nv.s)
+    if (nv && nv.s != null && nv.s < 4) {
+      // v654 §28 — the judge blamed the TARGET, not the sentence: corroborating evidence for preflight
+      if (nv.issue && /^TARGET_/.test(nv.issue) && p.targetId != null) { const n = noteTargetIssue(p.language || 'th', p.targetId, nv.issue, nv.note); row.targetIssue = nv.issue
+        onLog && onLog('  ⚠️ ' + nv.issue + ' [' + (p._target || '?') + '] (' + n + ' verdict(s) this run)' + (nv.note ? ' — ' + nv.note : '')) }
+      return drop('UNNATURAL', 'unnatural ' + nv.s + '/5' + (nv.issue && nv.issue !== 'SENTENCE_UNNATURAL' ? ' [' + nv.issue + ']' : '') + (nv.note ? ' — ' + nv.note : ''), nv.s)
+    }
     const unv = []
     if (cv && cv.s == null) unv.push({ stage: 'CUE_CHECK', reason: cv.reason })
     if (!nv || nv.s == null) unv.push({ stage: 'NATURALNESS_CHECK', reason: nv ? nv.reason : 'not judged' })
@@ -21783,6 +22277,139 @@ function isVerifiedTeachingSense(c) {
 // Daily and Revision use this ONE layer. Reasons are mode-neutral (the track mode is logged
 // separately). A word that fails here is a skipped CANDIDATE; it is never selected, so it
 // can never become "selected but unresolved".
+// ══ v654 TARGET ACTIVITY SUITABILITY (shared) ═════════════════════════════════════════
+// Vocabulary membership is not activity suitability. A valid entry can be wrong for THIS activity
+// (ซึ่ง is written/formal Thai: fine for reading, not for a casual spoken lesson) or its canonical
+// entry itself can be suspect (ขอให้สนุกกับวันนี้ is marked EXCLUDE / NEEDS_REVIEW in the bank).
+// Metadata = EXPLICIT (bank fields: register, lexiconDisposition, conversationNote, qcStatus …)
+//          + DERIVED (gloss / notes: "formal", "written", "lit.", "rude" …)
+//          + EVIDENCE (repeated corroborating QC verdicts across runs — never one judgement).
+// The verdict only removes a target from THIS activity; the SRS obligation stays for a later one.
+const TARGET_SUITABILITY = Object.freeze({ SUITABLE: 'SUITABLE', NEEDS_REVIEW: 'NEEDS_REVIEW',
+  UNSUITABLE_FOR_ACTIVITY: 'TARGET_UNSUITABLE_FOR_ACTIVITY', UNSUITABLE_FOR_CURRENT_LEXICON: 'TARGET_UNSUITABLE_FOR_CURRENT_LEXICON',
+  CURRICULUM_QUALITY_REVIEW_REQUIRED: 'CURRICULUM_QUALITY_REVIEW_REQUIRED' })
+// conversational role of a target (§18) — used by generation prompts and the Listening composer
+function targetConversationRole(t, lang) {
+  if (!t) return 'CONTENT'
+  const eng = String(t.english || t.e || '').toLowerCase().trim(), pos = String(t.partOfSpeech || t.pos || '').toLowerCase()
+  const g = eng.split(/[;,/(]/)[0].trim()
+  if (/^(yes|no|yeah|yep|nope|uh-huh|mm|right|okay|ok|sure|agree\/okay|agree|not really|that's right|correct)$/.test(g) || /^(yes|no|yeah)\b/.test(eng) && /expression|interjection/.test(pos)) return 'RESPONSE_TOKEN'
+  if (/^(hello|hi|good morning|good afternoon|good evening|welcome|how are you|nice to meet you|long time no see)\b/.test(g)) return 'GREETING'
+  if (/^(goodbye|bye|see you|good night|take care|have a nice day|have a good|enjoy your day|see you tomorrow)\b/.test(g)) return 'PARTING'
+  if (/^(sorry|excuse me|well|so|um|uh|oh|ah|wow|really\??|i see|by the way|anyway)$/.test(g)) return 'DISCOURSE_MARKER'
+  if (/^(thank|thanks|please|you're welcome|no problem|cheers|congratulations|good luck)\b/.test(g)) return 'FUNCTIONAL_PHRASE'
+  if (/^(what|where|who|when|why|how|which|how much|how many|what time)\b/.test(g) && !/relative/.test(eng) && (/pronoun|interrog|adverb/.test(pos) || g.split(' ').length <= 3)) return 'QUESTION_WORD'
+  if (/^(and|but|or|because|so that|besides|then|if|although|also|however)\b/.test(g) && (/conj/.test(pos) || g.split(' ').length <= 2)) return 'CONNECTOR'
+  return 'CONTENT'
+}
+function _suitCanonical(w, lang) {
+  if (lang === 'th' && typeof thaiCanonicalById === 'function') { try { return thaiCanonicalById().get(w.id) || null } catch (e) { return null } }
+  return null
+}
+// full metadata record (explicit + derived), conceptually { canonicalId, modality, registerSuitability, activitySuitability, … }
+function targetActivityMetadata(w, lang) {
+  const c = _suitCanonical(w, lang) || {}
+  const src = { ...c, ...w }
+  const text = [src.e, src.english, src.usageNote, src.note, src.conversationNote].filter(Boolean).join(' · ')
+  const sources = []
+  const modality = new Set(['spoken'])
+  const reg = String(src.register || '').toLowerCase()
+  // formal/written only when the entry ITSELF is marked so — a note that names a formal ALTERNATIVE
+  // ("formal 'know' is ทราบ") says nothing about this word, and a register field contradicted by the
+  // gloss ("thanks (casual …)") is not trusted
+  const gloss = String(src.e || src.english || '')
+  const glossFormal = /\([^)]*\b(formal|written|literary|on signs)\b[^)]*\)/i.test(gloss) || /,\s*(formal|written)\b/i.test(String(src.note || '')) || /^More formal\b/i.test(String(src.conversationNote || ''))
+  const regFormal = reg === 'formal' && !/\b(casual|informal)\b/i.test(gloss + ' ' + (src.usageNote || ''))
+  const formal = glossFormal || regFormal
+  if (formal) { modality.add('formal'); modality.add('written'); modality.delete('spoken'); sources.push(regFormal ? 'explicit:register=formal' : 'explicit:gloss/notes mark the entry formal/written') }
+  const rude = reg === 'vulgar' || /\b(rude|insult|vulgar|don't use|do not use)\b/i.test(text)
+  if (rude) sources.push(reg === 'vulgar' ? 'explicit:register=vulgar' : 'derived:notes say rude/insult')
+  if (reg === 'casual' || /\b(very informal|colloquial|slang)\b/i.test(text)) { modality.add('colloquial'); sources.push('explicit/derived:colloquial') }
+  const disp = src.lexiconDisposition || null
+  const qcIssues = (src.qcIssues || []).filter(x => !/^PHONETIC:/.test(x))           // a phonetic QC note is not a usage problem
+  // an EXCLUDE entry whose own notes say it is a literal calque, or that carries a non-phonetic QC issue, is suspect as an entry
+  const suspectEntry = disp === 'EXCLUDE' && (/\blit\.|literally/i.test(text) || qcIssues.length > 0)
+  if (disp) sources.push('explicit:lexiconDisposition=' + disp)
+  const registerSuitability = { casual: !formal && !rude, natural: !formal && !rude, polite: !rude, formal: !rude }
+  const activitySuitability = {
+    spokenConversation: rude ? false : disp === 'RECOGNITION' ? false : formal ? false : suspectEntry ? false : disp === 'EXCLUDE' ? 'conditional' : true,
+    listening: rude ? 'conditional' : formal ? 'conditional' : true,
+    sentenceDrill: !rude && !suspectEntry, reading: true, writing: !rude,
+  }
+  return { canonicalId: src.canonicalId != null ? src.canonicalId : w.id, language: lang, canonicalForm: src.t || src.thai || src.japanese || src.chinese || '',
+    canonicalSense: src.e || src.english || '', modality: [...modality], registerSuitability, activitySuitability,
+    targetRole: targetConversationRole(w, lang), naturalUsagePatterns: src.spokenAlternativeText ? ['spoken alternative: ' + src.spokenAlternativeText] : [],
+    knownUsageConstraints: [src.conversationNote, src.usageNote].filter(Boolean),
+    curriculumQualityState: suspectEntry ? 'REVIEW_REQUIRED' : (src.qcStatus === 'NEEDS_REVIEW' && qcIssues.length ? 'NEEDS_REVIEW' : 'OK'),
+    lexiconDisposition: disp, formal, rude, sources }
+}
+// ── evidence cache (§28): repeated corroborating QC verdicts, per language + target ──
+const TARGET_SUITABILITY_EVIDENCE_KEY = 'tt-target-suitability-evidence-v654'
+const TARGET_EVIDENCE_THRESHOLD = { verdicts: 3, runs: 2 }
+function _readSuitEvidence() { try { const r = localStorage.getItem(TARGET_SUITABILITY_EVIDENCE_KEY); return r ? JSON.parse(r) : {} } catch (e) { return {} } }
+function _writeSuitEvidence(ev) { try { localStorage.setItem(TARGET_SUITABILITY_EVIDENCE_KEY, JSON.stringify(ev)) } catch (e) {} }
+// kind: TARGET_USAGE_UNSUITABLE_FOR_REGISTER | TARGET_CANONICAL_ENTRY_SUSPECT | TARGET_UNSUITABLE_FOR_CURRENT_LEXICON
+function recordTargetSuitabilityEvidence(lang, targetId, kind, o) {
+  if (targetId == null || !kind) return null
+  const ev = _readSuitEvidence(), k = lang + ':' + targetId
+  const row = ev[k] || (ev[k] = { lang, targetId, kinds: {} })
+  const r = row.kinds[kind] || (row.kinds[kind] = { verdicts: 0, runs: [], lexiconSize: null, notes: [] })
+  r.verdicts++
+  const run = (o && o.runId) || AI_CTX.runId || 'run'
+  if (!r.runs.includes(run)) r.runs.push(run)
+  if (o && o.lexiconSize != null) r.lexiconSize = o.lexiconSize
+  if (o && o.note && r.notes.length < 6) r.notes.push(String(o.note).slice(0, 120))
+  _writeSuitEvidence(ev)
+  return r
+}
+// per-run corroboration: how often THIS run's QC blamed the TARGET (not the sentence)
+const TARGET_ISSUE_COUNTS = new Map()
+function noteTargetIssue(lang, targetId, issue, note) {
+  if (targetId == null || !/^TARGET_/.test(String(issue || ''))) return 0
+  const k = (AI_CTX.runId || 'run') + ':' + lang + ':' + targetId
+  const r = TARGET_ISSUE_COUNTS.get(k) || { TARGET_USAGE_UNSUITABLE_FOR_REGISTER: 0, TARGET_CANONICAL_ENTRY_SUSPECT: 0, notes: [] }
+  r[issue] = (r[issue] || 0) + 1; if (note && r.notes.length < 4) r.notes.push(String(note).slice(0, 120)); TARGET_ISSUE_COUNTS.set(k, r)
+  recordTargetSuitabilityEvidence(lang, targetId, issue, { note })
+  return r[issue]
+}
+function targetIssueCounts(lang, targetId) { return TARGET_ISSUE_COUNTS.get((AI_CTX.runId || 'run') + ':' + lang + ':' + targetId) || null }
+function targetSuitabilityEvidence(lang, targetId) { const ev = _readSuitEvidence(); return (ev[lang + ':' + targetId] || {}).kinds || {} }
+// THE preflight verdict for one target in one activity
+function targetActivityPreflight(w, lang, ctx) {
+  const c = ctx || {}, activity = c.activity || 'spokenConversation', register = c.register || 'natural'
+  const md = targetActivityMetadata(w, lang)
+  const out = (status, reason, detail) => ({ status, reason: reason || '', detail: detail || '', metadata: md, suitable: status === TARGET_SUITABILITY.SUITABLE || status === TARGET_SUITABILITY.NEEDS_REVIEW })
+  if (md.curriculumQualityState === 'REVIEW_REQUIRED')
+    return out(TARGET_SUITABILITY.CURRICULUM_QUALITY_REVIEW_REQUIRED, 'TARGET_CANONICAL_ENTRY_SUSPECT', 'lexiconDisposition=' + md.lexiconDisposition + '; ' + (md.knownUsageConstraints[0] || md.canonicalSense))
+  const a = md.activitySuitability[activity]
+  if (a === false) {
+    const reason = md.rude ? 'VULGAR_OR_RUDE_REGISTER' : md.formal ? 'FORMAL_WRITTEN_REGISTER' : md.lexiconDisposition === 'RECOGNITION' ? 'RECOGNITION_ONLY_ENTRY' : 'NOT_FOR_' + activity.toUpperCase()
+    return out(TARGET_SUITABILITY.UNSUITABLE_FOR_ACTIVITY, reason, (md.knownUsageConstraints[0] || '') + (md.naturalUsagePatterns[0] ? ' (' + md.naturalUsagePatterns[0] + ')' : ''))
+  }
+  if (md.registerSuitability[register] === false)
+    return out(TARGET_SUITABILITY.UNSUITABLE_FOR_ACTIVITY, md.formal ? 'FORMAL_WRITTEN_REGISTER' : 'REGISTER_MISMATCH', 'register ' + register)
+  // evidence from earlier runs (corroborated, never a single judgement)
+  const ev = c.evidence || targetSuitabilityEvidence(lang, w.id)
+  const hit = k => ev[k] && ev[k].verdicts >= TARGET_EVIDENCE_THRESHOLD.verdicts && (ev[k].runs || []).length >= TARGET_EVIDENCE_THRESHOLD.runs
+  if (hit('TARGET_CANONICAL_ENTRY_SUSPECT')) return out(TARGET_SUITABILITY.CURRICULUM_QUALITY_REVIEW_REQUIRED, 'TARGET_CANONICAL_ENTRY_SUSPECT', 'evidence: ' + (ev.TARGET_CANONICAL_ENTRY_SUSPECT.notes[0] || ''))
+  if (hit('TARGET_USAGE_UNSUITABLE_FOR_REGISTER')) return out(TARGET_SUITABILITY.UNSUITABLE_FOR_ACTIVITY, 'TARGET_USAGE_UNSUITABLE_FOR_REGISTER', 'evidence: ' + (ev.TARGET_USAGE_UNSUITABLE_FOR_REGISTER.notes[0] || ''))
+  if (hit('TARGET_UNSUITABLE_FOR_CURRENT_LEXICON')) {
+    const e = ev.TARGET_UNSUITABLE_FOR_CURRENT_LEXICON
+    // the lexicon grows: the verdict expires once the learner has 15% more words than when it was recorded
+    if (!(c.lexiconSize != null && e.lexiconSize != null && c.lexiconSize > e.lexiconSize * 1.15))
+      return out(TARGET_SUITABILITY.UNSUITABLE_FOR_CURRENT_LEXICON, 'TARGET_UNSUITABLE_FOR_CURRENT_LEXICON', 'evidence: ' + (e.notes[0] || '') + (e.lexiconSize != null ? ' (lexicon ' + e.lexiconSize + ')' : ''))
+  }
+  if (a === 'conditional' || md.curriculumQualityState === 'NEEDS_REVIEW') return out(TARGET_SUITABILITY.NEEDS_REVIEW, 'AMBIGUOUS_METADATA', md.sources.join(', '))
+  return out(TARGET_SUITABILITY.SUITABLE, '', md.sources.join(', '))
+}
+// §12 — the ONE authoritative NEW-words-per-track configuration
+const JA_DAILY_NEW_WORDS = 3
+function newWordsPerTrack(language, mode, vocab) {
+  if (mode === 'revision') return 0
+  if (language === 'ja') return JA_DAILY_NEW_WORDS
+  return beltNewAllowanceFor(vocab || [])            // Thai / Mandarin: the belt-configured allowance (unchanged)
+}
+
 const VOCAB_INELIGIBLE = Object.freeze({
   UNVERIFIED: 'VOCAB_UNVERIFIED', AMBIGUOUS_SENSE: 'VOCAB_AMBIGUOUS_SENSE',
   RETIRED_NO_REPLACEMENT: 'VOCAB_RETIRED_NO_REPLACEMENT', CANONICALISATION_FAILED: 'VOCAB_CANONICALISATION_FAILED',
@@ -21838,6 +22465,12 @@ function thaiEligibleCandidatePool(vocab, today) {
       return
     }
     if (!e.ok) { skipped.push({ id: w.id, thai: w.thai, reason: e.reason, detail: e.detail || '' }); return }
+    // v654 §4/§6 — TARGET_ACTIVITY_PREFLIGHT is part of eligibility: a target that cannot serve a spoken
+    // conversation lesson (formal/written, recognition-only, suspect entry, lexicon evidence) is skipped
+    // HERE, before scene planning and paid generation, and the next eligible candidate takes the slot.
+    // Its SRS obligation is untouched.
+    const pf = targetActivityPreflight(w, 'th', { activity: 'spokenConversation', register: 'natural' })
+    if (!pf.suitable) { skipped.push({ id: w.id, thai: w.thai, reason: pf.status, detail: pf.reason + (pf.detail ? ' — ' + pf.detail : ''), preflight: true }); return }
     if (seen.has(w.id)) return
     seen.add(w.id); eligible.push(w)
   })
@@ -21990,6 +22623,11 @@ function thaiSelectionLogLines(c) {
     c.skippedCandidates.forEach(x => out.push('  ' + x.id + ' ' + x.thai + ' ' + x.reason + (x.detail ? ' (' + x.detail + ')' : '') + ' bucket=' + x.bucket))
   }
   ;(c.backfills || []).forEach(b => out.push(thaiBackfillLine(b)))
+  // v654 §4/§5 — activity preflight verdicts that reached a slot, and entries flagged for curriculum review
+  const pf = (c.skippedCandidates || []).filter(x => /^TARGET_UNSUITABLE|^CURRICULUM_QUALITY/.test(x.reason || ''))
+  pf.forEach(x => out.push((/^CURRICULUM_QUALITY/.test(x.reason) ? 'TARGET_METADATA_QUALITY_FAIL target=' + x.thai + ' id=' + x.id + ' reason=' + x.detail + ' suggestedReview=check the canonical entry (gloss, naturalness, disposition)'
+    : 'TARGET_PREFLIGHT_REJECT target=' + x.thai + ' id=' + x.id + ' status=' + x.reason + ' reason=' + x.detail) + ' → backfilled before generation (SRS obligation kept)'))
+  if (pf.length) out.push('TARGET_PREFLIGHT_REJECTIONS=' + pf.length + ' TARGETS_BACKFILLED_FOR_ACTIVITY=' + pf.length)
   return out
 }
 // Keywords in the ORIGINAL selection order. Resolved targets use the normal keyword;
@@ -27096,7 +27734,7 @@ function jaTrackObject(tc, g, targets, register, model, trackMode) {
     mode: tc.mode, trackMode: tc.mode, language: 'ja', speechStyle: register,
     provider: 'gemini', model, pipelineVersion: PIPELINE_VERSION, generatorVersion: GENERATOR_VERSIONS.ja,
     trackContext: tc, selectedTargetIds: tc.selectedTargetIds.slice(), selectedNewTargetIds: tc.selectedNewTargetIds.slice(),
-    pairs: g.pairs, scene: g.scene, buildingBlocks: g.buildingBlocks || [], allowedContent: g.allowedContent || [],
+    pairs: g.pairs, scene: g.scene, scenePlan: g.scenePlan || null, buildingBlocks: g.buildingBlocks || [], allowedContent: g.allowedContent || [],
     recallCount: g.recallCount, framingCount: g.framingCount, generationStats: g.generationStats || null,
     rated: false, bookmark: 0,
     keywords: (targets || []).map(t => ({
@@ -28078,6 +28716,36 @@ async function generateJapaneseScene(targets, vocab, registerId, apiKey, model, 
 
 // Framing pair factory. §11 — these are conversation envelope, NOT SRS exposures:
 // they carry no wordId, so a greeting can never satisfy a target's 3 repetitions.
+// v654 §26 — CONTEXTUAL_OPENING_REPAIR. One batched Flash-Lite call rewrites every framing line that
+// used untaught words, keeping its function (greeting / reply / parting) and the scene; each rewrite
+// must pass the same closed-vocabulary gate. Returns { opening: {japanese,…}, … } for accepted lines.
+const JA_OPENING_REPAIR_SCHEMA = { type: 'OBJECT', properties: { lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+  key: { type: 'STRING' }, japanese: { type: 'STRING' }, reading: { type: 'STRING' }, romaji: { type: 'STRING' }, english: { type: 'STRING' } }, required: ['key', 'japanese'] } } }, required: ['lines'] }
+async function jaContextualOpeningRepair(scene, bad, inv, o) {
+  const c = o || {}
+  if (!c.apiKey || !bad || !bad.length) return {}
+  const fn = { opening: 'A opens the conversation (a greeting that fits the scene)', reply: 'B answers the opening', closing: 'A closes the conversation', closing_reply: 'B answers the closing' }
+  const gloss = w => String(w.english || '').split(/[;,/(]/)[0].trim()
+  const prompt = 'Rewrite these Japanese conversation-framing lines for a learner. SCENE: ' + (scene.scene || '') + '\n' +
+    'Keep each line\'s FUNCTION and the scene; use ONLY the allowed words, conversation basics, particles and normal inflection. Short and natural.\n' +
+    japaneseRegisterContract(c.registerId || JA_REGISTER_DEFAULT) + '\n' +
+    bad.map(x => '- key=' + x.k + ' (' + fn[x.k] + '): "' + scene[x.k] + '" — untaught: ' + x.chk.unknown.join(' ')).join('\n') + '\n' +
+    'ALLOWED CONTENT: ' + (inv.allContent || []).map(w => w.japanese + '=' + gloss(w)).join(' · ') + '\n' +
+    'CONVERSATION BASICS: ' + (inv.conversationBasics || []).map(b => b.form + '=' + b.english).join(' · ') + '\n' +
+    'Reply ONLY with JSON: {"lines":[{"key":"opening","japanese":"...","reading":"kana","romaji":"...","english":"..."}]}'
+  aiTagNextCall('contextual opening repair ×' + bad.length)
+  const raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: prompt }], maxTokens: 900, temperature: 0.3, json: JA_OPENING_REPAIR_SCHEMA, stage: 'B_opening_repair' })
+  const obj = _jaParseJSON(raw)
+  const out = {}
+  ;((obj && obj.lines) || []).forEach(l => {
+    if (!l || !bad.some(x => x.k === l.key) || !l.japanese) return
+    const jp = normaliseJaCandidatePunctuation({ japanese: String(l.japanese).trim() }).japanese || String(l.japanese).trim()
+    const chk = japaneseCheckLine(stripSceneEntities(jp, c.entities || []), inv)
+    if (!chk.ok) { c.onLog && c.onLog('  \u26A0 CONTEXTUAL_OPENING_REPAIR ' + l.key + ' rewrite still untaught: ' + chk.unknown.join(' ')); return }
+    out[l.key] = { japanese: jp, reading: l.reading || '', romaji: l.romaji || '', english: l.english || '', prompt: l.english || '' }
+  })
+  return out
+}
 function jaFramingPair(speaker, jp, reading, romaji, english, prompt, kind) {
   return {
     speaker,
@@ -29453,6 +30121,8 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
                : 'REPLACEMENT ONLY: write ' + n + ' new sentence(s) for the recall slot(s) below. The accepted recalls stay as they are.\n') +
       slots.map(s => '  • ' + (JA_RECALL_VARIATION[s.recallIndex] || ('recall ' + s.recallIndex + ' of 3 — another natural use'))).join('\n') + '\n' +
       'Do not force unnatural variation just to be different. LENGTH ' + range.min + '–' + range.max + ' content units each.\n' +
+    ((c.scenePremise || target._scenePurpose) ? 'LESSON SCENE: ' + (c.scenePremise || '') + (target._scenePurpose ? '\nTHIS PART OF THE CONVERSATION: ' + target._scenePurpose +
+      ' — every recall must make sense in this part of the scene (same situation, same people).' : '') + '\n' : '') +
     jaDuplicateContextBlock({ acceptedForTarget: c.acceptedForTarget, usedInTrack: c.usedInTrack }) + '\n' +
     (failures.length ? 'PREVIOUS FAILURES (exact reasons) — fix these:\n' + failures.map(s => '  recall ' + s.recallIndex + ': ' + s.lastFailure +
       (s.failedSentences && s.failedSentences.length ? ' — rejected: ' + s.failedSentences.join('／') : '')).join('\n') + '\n' : '') +
@@ -29497,7 +30167,7 @@ function japaneseTargetGroupAdapter(ctx) {
     buildRequest({ target, slots, accepted, initial }) {
       const { system, user } = buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, {
         initial, acceptedForTarget: accepted.map(a => a.text).concat(opts.previousRecalls || []), usedInTrack: trackUsed.slice(),
-        rejected: [...rejected], objectives, grammarProgress: opts.grammarProgress })
+        rejected: [...rejected], objectives, grammarProgress: opts.grammarProgress, scenePremise: opts.scenePremise })
       const one = slots.length === 1
       return { messages: [{ role: 'system', content: system }, { role: 'user', content: user }], json: JA_GROUP_SCHEMA,
         maxTokens: one ? JA_GENERATION_BUDGET.maxOutputTokens : JA_GROUP_MAX_OUTPUT_TOKENS, temperature: JA_GENERATION_BUDGET.temperature }
@@ -29685,13 +30355,24 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
     // rather than shown. A missing greeting is better than an unteachable one.
     const inv0 = japaneseLearnerInventory(vocab, targets)
     const _jaEnts = extractSceneEntities(scene, 'ja', vocab)          // v650 §3: names are not vocabulary
-    ;['opening','reply','closing','closing_reply'].forEach(k => {
-      const chk = japaneseCheckLine(stripSceneEntities(scene[k] || '', _jaEnts), inv0)
-      if (!chk.ok) {
-        onLog && onLog('  \u2716 Dropped ' + k + ' (untaught: ' + chk.unknown.join(' ') + ')')
-        scene[k] = ''
-      }
-    })
+    // v654 §26 — CONTEXTUAL_OPENING_REPAIR: a framing line with untaught words is REWRITTEN in context
+    // (one batched call for all failing lines), never silently dropped. Only if the rewrite also
+    // fails the closed-vocabulary gate is the line dropped — and the drop is reported.
+    const _badFraming = ['opening','reply','closing','closing_reply'].map(k => ({ k, chk: scene[k] ? japaneseCheckLine(stripSceneEntities(scene[k] || '', _jaEnts), inv0) : { ok: true } })).filter(x => !x.chk.ok)
+    if (_badFraming.length) {
+      let fixed = {}
+      try { fixed = await jaContextualOpeningRepair(scene, _badFraming, inv0, { apiKey, model, registerId, onLog, entities: _jaEnts }) } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e }
+      _badFraming.forEach(({ k, chk }) => {
+        const f = fixed[k]
+        if (f) {
+          onLog && onLog('  \u{1F527} CONTEXTUAL_OPENING_REPAIR ' + k + ': "' + scene[k] + '" (untaught: ' + chk.unknown.join(' ') + ') \u2192 "' + f.japanese + '"')
+          scene[k] = f.japanese; scene[k + '_reading'] = f.reading || ''; scene[k + '_romaji'] = f.romaji || ''; scene[k + '_english'] = f.english || ''; scene[k + '_prompt'] = f.prompt || f.english || ''
+        } else {
+          onLog && onLog('  \u2716 CONTEXTUAL_OPENING_REPAIR failed \u2014 dropped ' + k + ' (untaught: ' + chk.unknown.join(' ') + ')')
+          scene[k] = ''
+        }
+      })
+    }
     if (scene.opening) {
       open.push(stampPairProvenance(jaFramingPair('A', scene.opening, scene.opening_reading, scene.opening_romaji,
         scene.opening_english, scene.opening_prompt, 'greeting'), { language: 'ja', trackId: _tc.trackId, generationRunId: _tc.generationRunId, isTargetPair: false, kind: 'opening', slot: 0, sourceStage: 'scene' }))
@@ -29763,8 +30444,18 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   // v653 §2 — the generation UNIT is the TARGET GROUP (Thai parity): one structured request per
   // target asks for all three recalls; only a failed slot is ever regenerated, alone.
   const trackUsed = [...open, ...close].map(p => String(p.japanese || '').trim()).filter(Boolean)
+  // v654 §9 — Japanese gets the same mini-scene plan as Thai (one Flash-Lite call, deterministic
+  // fallback); every target group is written for its scene, and the track is assembled by scene.
+  let scenePlan = _go.scenePlan || null
+  const _jaContract = scene ? buildSceneContract(scene, 'ja', { vocab }) : null
+  ;(targets || []).forEach(t => { if (t) { delete t._scenePurpose; delete t._sceneIndex; delete t._sceneId; delete t._sceneRole } })
+  if (!scenePlan) {
+    try { scenePlan = await planTargetScenes(targets, _jaContract, { apiKey, model, lang: 'ja', onLog }) }
+    catch (e) { if (e && e.cancelled) throw e; scenePlan = null }
+  }
+  orderTargetsByPlan(targets, scenePlan)
   const groupAdapter = japaneseTargetGroupAdapter({ vocab, registerId, inv, rules, seenMap, trackUsed, apiKey, model, onLog,
-    opts: { objectives: _objectives, grammarProgress: _grammarStore } })
+    opts: { objectives: _objectives, grammarProgress: _grammarStore, scenePremise: _jaContract && _jaContract.premise } })
   let groupCalls = 0, groupChecks = 0
   onLog && onLog('\u2139 QUALITY CHECKS (up to 11 per target group; a check is not a paid call): ' + JA_QUALITY_CHECK_MAP.map((c, k) => (k + 1) + '. ' + c[0]).join(' · '))
   for (let i = 0; i < targets.length; i++) {
@@ -29817,10 +30508,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   onLog && onLog('\u2139 TARGET-GROUP GENERATION: ' + perTarget.length + ' target group(s) · ' + groupCalls + ' paid generation call(s) · ' + groupChecks + ' quality check(s) · ' +
     recallCount + '/' + totalRecall + ' recalls accepted')
 
-  const recalls = []
-  for (let round = 0; round < 3; round++) {
-    for (const set of perTarget) if (set[round]) recalls.push(set[round])
-  }
+  const recalls = assembleRecallsByScene(perTarget, targets, scenePlan, { alternateSpeakers: true, premise: _jaContract && _jaContract.premise })
   // §1/§12/§13 — the 3/3 requirement stands, but partial VALID work is never thrown
   // away. An incomplete run returns resumable state (outcome B); only genuine
   // technical faults throw (outcome C).
@@ -29853,7 +30541,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
                    ' \u2014 ' + missingRecalls.length + ' recall(s) still needed')
     return {
       complete: false, trackContext: _tc, costGuard: costGuard.triggered ? costGuard.summary() : null, generationStats,
-      perTarget, open, close, scene, seenMap, missingRecalls,
+      perTarget, open, close, scene, scenePlan, seenMap, missingRecalls,
       recallCount: producedRecalls, expectedRecallCount: totalRecall,
       buildingBlocks: [], allowedContent: allowed.map(w => ({ japanese: w.japanese, romaji: w.romaji, english: w.english })),
       framingCount: open.length + close.length,
@@ -29867,7 +30555,7 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   // silently tested. Capped per §7 so a Mukyu track cannot dump eight particles.
   const usedScaffold = scaffold.filter(s => [...open, ...recalls, ...close].some(p => (p.japanese || '').includes(s.form)))
   const buildingBlocks = usedScaffold.slice(0, 2)
-  return { complete: true, pairs: [...open, ...recalls, ...close], scene, buildingBlocks, trackContext: _tc, generationStats, costGuard: null,
+  return { complete: true, pairs: [...open, ...recalls, ...close], scene, scenePlan, buildingBlocks, trackContext: _tc, generationStats, costGuard: null,
            perTarget, open, close, seenMap, missingRecalls: [],
            allowedContent: allowed.map(w => ({ japanese: w.japanese, romaji: w.romaji, english: w.english })),
            recallCount: recalls.length, expectedRecallCount: totalRecall,
@@ -29992,8 +30680,7 @@ async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId,
     return { ...partial, trackContext: _tc || partial.trackContext, perTarget, seenMap, missingRecalls: stillMissing, recallCount: produced, complete: false, recovered: pair }
   }
   // §26 — rebuild the round order so the recovered recall lands in its logical slot.
-  const recalls = []
-  for (let round = 0; round < 3; round++) for (const s of perTarget) if (s[round]) recalls.push(s[round])
+  const recalls = assembleRecallsByScene(perTarget, targets, partial.scenePlan || null, { alternateSpeakers: true })
   onLog && onLog('\u2705 ' + produced + '/' + partial.expectedRecallCount + ' \u2014 track complete')
   return { ...partial, trackContext: _tc || partial.trackContext, complete: true, perTarget, seenMap, missingRecalls: [], recallCount: produced,
            pairs: [...(partial.open || []), ...recalls, ...(partial.close || [])], recovered: pair }
@@ -30076,9 +30763,12 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
   // A word rated 'hard' keeps its NEW slot and is re-offered. It occupies the slot,
   // so it must be reported as NEW too — classifying it as REINFORCE is what made a
   // 3-slot rank display "1 NEW · 29 REINFORCE".
+  // v654 §12 — the NEW count is exactly newWordsPerTrack('ja','daily') = 3: slots saved under the old
+  // 5-slot belt allowance never carry more than 3 words into one track
   const carried = (savedSlots || [])
     .map(id => vocab.find(w => w.id === id))
     .filter(w => w && w.status === 'new')
+    .sort(byOrder).slice(0, slotCount)
   carried.forEach(w => { w._occupiesNewSlot = true })
   const carriedIds = new Set(carried.map(w => w.id))
 

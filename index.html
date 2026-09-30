@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v652"/>
+<meta name="app-version" content="v653"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v652';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v652').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v653';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v653').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -7675,7 +7675,7 @@ function aiUsageSummary(runId) {
   return { runId: runId || null, trackId: (rows[0] && rows[0].trackId) || AI_CTX.trackId, byModel, total: sent.length, latchedNotSent: rows.filter(r => r.latched && !r.cancelled).length, dedupedRequests,
     cancelledNotSent: rows.filter(r => r.cancelled).length,
     successful: sent.filter(r => r.ok).length, failed: sent.filter(r => !r.ok).length, retried, providerErrors: providerErr, duplicates: dup,
-    providerRetries, generation: gen, thaiGeneration: (typeof thaiGenerationTelemetry === 'function') ? thaiGenerationTelemetry(runId, sent) : null, generationWaste: { firstAttemptTokens: firstTok, regenerationTokens: regenTok, regenerationShare: (firstTok + regenTok) ? regenTok / (firstTok + regenTok) : 0,
+    providerRetries, generation: gen, thaiGeneration: (typeof thaiGenerationTelemetry === 'function') ? thaiGenerationTelemetry(runId, sent) : null, japaneseGeneration: (typeof japaneseGenerationTelemetry === 'function') ? japaneseGenerationTelemetry(runId, sent) : null, generationWaste: { firstAttemptTokens: firstTok, regenerationTokens: regenTok, regenerationShare: (firstTok + regenTok) ? regenTok / (firstTok + regenTok) : 0,
       regenerationCostUsd: regenCost, fallbackAfterPaidRetries: gen ? gen.fallbackAfterPaidRetries : 0 },
     duplicateCandidates: dedupedRequests + dup, duplicatesPrevented: dedupedRequests, duplicateRequestsActuallySent: dup, duplicatesSentByStage: dupByStage,
     categories: cats, inputTokens: inTok, outputTokens: outTok, costUsd: cost, tokenSource: usageRows === sent.length && sent.length ? 'provider usage metadata' : usageRows ? 'mixed (provider usage where returned, estimates otherwise)' : 'ESTIMATED from characters',
@@ -7782,6 +7782,7 @@ function aiUsageSummaryLines(sum) {
       ' · regeneration share ' + Math.round(sum.generationWaste.regenerationShare * 100) + '% · regeneration cost USD ' + sum.generationWaste.regenerationCostUsd.toFixed(4) +
       ' · fallback-after-paid-retries ' + sum.generationWaste.fallbackAfterPaidRetries] : []),
     ...thaiGenerationTelemetryLines(sum.thaiGeneration),
+    ...(typeof japaneseGenerationTelemetryLines === 'function' ? japaneseGenerationTelemetryLines(sum.japaneseGeneration) : []),
     'Estimated Gemini cost: USD ' + sum.costUsd.toFixed(4) + ' (≈ SGD ' + (sum.costUsd * AI_USD_TO_SGD).toFixed(4) + ' at ' + AI_USD_TO_SGD + ' — assumed rate)',
     'TOP GEMINI COST SOURCES']
   sum.ranked.slice(0, 5).forEach((s, i) => L.push('  ' + (i + 1) + '. ' + s.stage + ' — ' + s.requests + ' requests / ' + (s.inTok + s.outTok) + ' tokens / ~' + s.pct + '%'))
@@ -15319,9 +15320,9 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v652'
+const APP_BUILD_VERSION = 'v653'
 const PIPELINE_VERSION = 'v651-canonical'
-const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v652-repair', ja: 'ja-gen-v651-budget', zh: 'zh-gen-v650' })
+const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v652-repair', ja: 'ja-gen-v653-target-group', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v652-cue-perspective'
 const FINALIZER_VERSION = 'final-v652-pronunciation-audit'
 const TRACK_LANGUAGES = Object.freeze(['th', 'ja', 'zh'])
@@ -15986,17 +15987,25 @@ async function _jaRecoverTargetPairs(kw, need, ctx) {
   // is told not to write them again (Japanese keeps its own tiered, token-aware retries)
   const prev = all.filter(p => p && p.targetId === kw.wordId).map(p => p.japanese).concat(st ? st.failedConstructions.slice(-6) : [])
   const cands = [], reasons = []
-  for (const slot of _missingRecallSlots(all, kw.wordId, need)) {
-    aiTagNextCall('quota recovery ' + t.japanese + ' recall ' + slot)
-    const got = await generateJapaneseOneRecall(t, slot, c.vocab, registerId, c.apiKey, c.model, seenMap, inv, rules, log, null, { previousRecalls: prev.concat(cands.map(x => x.japanese)), stage: 'H_recovery', phase: 'quota-recovery' })
-    if (!got || got.failed || !got.pair) { const why = (got && got.lastFailure) || 'no valid candidate'; reasons.push('recall ' + slot + ': ' + why)
+  // v653 §7 — quota recovery uses the SAME target-group core as generation: ONE request for all missing
+  // slots of this target (not one per slot), the canonical duplicate context, slot-only regeneration.
+  const missingSlots = _missingRecallSlots(all, kw.wordId, need)
+  const trackUsed = all.filter(p => p && p.japanese).map(p => String(p.japanese).trim())
+  const adapter = japaneseTargetGroupAdapter({ vocab: c.vocab, registerId, inv, rules, seenMap, trackUsed, apiKey: c.apiKey, model: c.model, onLog: log, opts: { previousRecalls: prev } })
+  aiTagNextCall('quota recovery ' + t.japanese + ' recall ' + missingSlots.join('+'))
+  const grp = await generateTargetGroup({ language: 'ja', target: t, recallCount: missingSlots.length, recallIndices: missingSlots, adapter,
+    paidMaxPerRecall: Math.max(1, Math.min(JA_GENERATION_BUDGET.maxPaidAttemptsPerRecall, (rules.maxTiers || 4) - 1)),
+    apiKey: c.apiKey, model: c.model, onLog: log, stage: 'H_recovery', phase: 'quota-recovery' })
+  for (const sl of grp.slots) {
+    const slot = sl.recallIndex
+    if (sl.state !== 'accepted' || !sl.pair) { const why = sl.lastFailure || 'no valid candidate'; reasons.push('recall ' + slot + ': ' + why)
       if (st) recordRecoveryFailure(st, { code: /untaught/.test(why) ? 'CLOSED_VOCABULARY' : /not present/.test(why) ? 'TARGET_MISSING' : 'OTHER', tokens: ((why.match(/untaught content: (.+)$/) || [])[1] || '').split(/\s+/).filter(Boolean), reason: why }); continue }
-    const l = got.pair
+    const l = sl.pair
     cands.push({ speaker: l.speaker || 'A', thai: l.japanese, japanese: l.japanese, reading: l.reading || '', phonetic: l.romaji || '', romaji: l.romaji || '',
       english: l.english || '', prompt: l.prompt || l.english || '', segments: Array.isArray(l.segments) ? l.segments : [],
       words: (Array.isArray(l.segments) ? l.segments : []).map(s => ({ p: s.romaji || s.surface, e: s.english || '' })),
-      wordId: t.id, targetId: t.id, _target: t.japanese, recallIndex: slot, sourceCheck: got.checkTier, language: 'ja',
-      _source: JA_TIER_SOURCE(got.checkTier), _framing: false })
+      wordId: t.id, targetId: t.id, _target: t.japanese, recallIndex: slot, sourceCheck: sl.checkTier, language: 'ja',
+      _source: JA_TIER_SOURCE(sl.checkTier), _framing: false })
   }
   if (!cands.length) return { accepted: [], reasons }
   // recovery QC = the SAME Japanese QC (deterministic + AI cue/naturalness/group) as the track
@@ -29023,7 +29032,7 @@ function buildJapaneseRecallPrompt(target, recallIndex, inv, vocab, registerId, 
     'THIS REPLY (recall ' + recallIndex + ' of 3): start from ONE real communicative intent (a request, question, reaction or plan) that naturally needs ' +
       '「' + target.japanese + '」, then write the Japanese a native speaker would use. Any inflected form of the target counts. ' +
       'LENGTH ' + range.min + '–' + range.max + ' content units.' +
-    ((c.previousRecalls && c.previousRecalls.length) ? '\nALREADY USED for this target — write a DIFFERENT sentence: ' + c.previousRecalls.join('／') : '') +
+    '\n' + jaDuplicateContextBlock({ acceptedForTarget: c.previousRecalls, usedInTrack: c.usedInTrack }) +
     japaneseUsageHintLine(target) +
     (c.rejected && c.rejected.length ? '\nDO NOT USE (not taught yet): ' + c.rejected.join(' ') + '. Choose a different, simpler idea.' : '') +
     (c.failedSentences && c.failedSentences.length ? '\nREJECTED already — do not return these again: ' + c.failedSentences.join('／') : '') +
@@ -29044,7 +29053,7 @@ function jaPairProvenance(tc, t, recallIndex, stage) {
 const AI_GEN_LEDGER = []
 function aiRecordGenerationRecall(row) {
   AI_GEN_LEDGER.push({ runId: row.runId || AI_CTX.runId, lang: row.lang || null, phase: row.phase || 'generation', targetId: row.targetId, recallIndex: row.recallIndex,
-    target: row.target || null, paidAttempts: row.paidAttempts || 0, qualityChecks: row.qualityChecks || row.paidAttempts || 0, outcome: row.outcome, deterministicRepairs: row.deterministicRepairs || 0, lastFailure: row.lastFailure || '', at: Date.now() })
+    target: row.target || null, mode: row.mode || null, slots: Array.isArray(row.slots) ? row.slots : undefined, derivedRepairCalls: row.derivedRepairCalls || 0, paidAttempts: row.paidAttempts || 0, qualityChecks: row.qualityChecks || row.paidAttempts || 0, outcome: row.outcome, deterministicRepairs: row.deterministicRepairs || 0, lastFailure: row.lastFailure || '', at: Date.now() })
   if (AI_GEN_LEDGER.length > 4000) AI_GEN_LEDGER.splice(0, AI_GEN_LEDGER.length - 4000)
 }
 function aiGenerationStats(runId) {
@@ -29052,20 +29061,24 @@ function aiGenerationStats(runId) {
   const rows = all.filter(r => r.phase === 'generation')
   if (!all.length) return null
   const rec = all.filter(r => r.phase !== 'generation')
+  // v653 — a target-group row carries its recall slots; its paid calls belong to the group (never 3× per recall)
+  const slotsOf = r => Array.isArray(r.slots) ? r.slots : [{ outcome: r.outcome, paidRequests: r.paidAttempts, acceptedOnCall: r.outcome === 'accepted' ? r.paidAttempts : null }]
+  const slots = rows.flatMap(slotsOf)
   const paid = rows.reduce((a, r) => a + r.paidAttempts, 0)
   const first = rows.filter(r => r.paidAttempts >= 1).length
-  const n = rows.length
-  return { recallsRequested: n, firstAttempts: first, regenerationAttempts: paid - first, totalAttempts: paid,
+  const n = slots.length
+  const on = k => slots.filter(x => x.outcome === 'accepted' && (k === 3 ? x.acceptedOnCall >= 3 : x.acceptedOnCall === k)).length
+  return { recallsRequested: n, targetGroups: rows.filter(r => r.mode === 'group').length, firstAttempts: first, regenerationAttempts: paid - first, totalAttempts: paid,
     avgAttemptsPerRecall: n ? paid / n : 0,
-    resolvedFirstAttempt: rows.filter(r => r.outcome === 'accepted' && r.paidAttempts === 1).length,
-    requiring2: rows.filter(r => r.outcome === 'accepted' && r.paidAttempts === 2).length,
-    requiring3: rows.filter(r => r.outcome === 'accepted' && r.paidAttempts >= 3).length,
-    fallback: rows.filter(r => r.outcome === 'fallback').length,
-    duplicateAccepted: rows.filter(r => r.outcome === 'duplicate-accepted').length,
-    unresolved: rows.filter(r => r.outcome === 'unresolved' || r.outcome === 'cost-guard').length,
-    fallbackAfterPaidRetries: rows.filter(r => r.outcome === 'fallback' && r.paidAttempts >= 2).length,
+    resolvedFirstAttempt: on(1), requiring2: on(2), requiring3: on(3),
+    fallback: slots.filter(x => x.outcome === 'fallback').length,
+    duplicateAccepted: slots.filter(x => x.outcome === 'duplicate-accepted').length,
+    unresolved: slots.filter(x => x.outcome === 'unresolved' || x.outcome === 'cost-guard').length,
+    fallbackAfterPaidRetries: slots.filter(x => x.outcome === 'fallback' && x.paidRequests >= 2).length,
     deterministicRepairs: rows.reduce((a, r) => a + (r.deterministicRepairs || 0), 0),
-    recoveryRecalls: rec.length, recoveryPaidAttempts: rec.reduce((a, r) => a + r.paidAttempts, 0) }
+    qualityChecks: rows.reduce((a, r) => a + (r.qualityChecks || r.paidAttempts || 0), 0),
+    readingRepairCalls: rows.reduce((a, r) => a + (r.derivedRepairCalls || 0), 0),
+    recoveryRecalls: rec.reduce((a, r) => a + slotsOf(r).length, 0), recoveryPaidAttempts: rec.reduce((a, r) => a + r.paidAttempts, 0) }
 }
 // v652 §13 — Thai telemetry: QUALITY CHECKS vs PAID GENERATION ATTEMPTS, plus the paid QC /
 // recovery calls, so "11 checks" is never read as "11 requests".
@@ -29082,6 +29095,32 @@ function thaiGenerationTelemetry(runId, sentRows) {
     quotaRecoveryGenerationCalls: st(/^H_recovery/), cueQcCalls: st(/^(E_cue_check|L_final_cue_audit)/), naturalnessQcCalls: st(/^F_naturalness/),
     firstPass: rows.filter(r => r.outcome === 'accepted' && r.paidAttempts === 1).length, unresolved: rows.filter(r => r.outcome !== 'accepted').length,
     perTarget: rows.map(r => ({ target: r.target || String(r.targetId), checks: r.qualityChecks || r.paidAttempts || 0, paid: r.paidAttempts || 0, localRepairs: r.deterministicRepairs || 0, outcome: r.outcome })) }
+}
+// v653 §4/§13 — Japanese target-group telemetry: groups, recalls, paid group calls vs slot
+// regenerations, quality checks, local and reading repairs — the Thai-parity view of the run.
+function japaneseGenerationTelemetry(runId, sentRows) {
+  const rows = AI_GEN_LEDGER.filter(r => (!runId || r.runId === runId) && r.lang === 'ja' && r.phase === 'generation' && r.mode === 'group')
+  if (!rows.length) return null
+  const slots = rows.flatMap(r => r.slots || [])
+  const paid = rows.reduce((a, r) => a + (r.paidAttempts || 0), 0), initial = rows.filter(r => r.paidAttempts >= 1).length
+  const st = re => (sentRows || []).filter(r => re.test(r.stage || '')).length
+  return { targetGroups: rows.length, recalls: slots.length, initialGroupCalls: initial, slotRegenerationCalls: paid - initial, paidGenerationCalls: paid,
+    qualityChecks: rows.reduce((a, r) => a + (r.qualityChecks || 0), 0), maxChecksPerGroup: TARGET_GROUP_MAX_CHECKS,
+    localRepairs: rows.reduce((a, r) => a + (r.deterministicRepairs || 0), 0), readingRepairCalls: rows.reduce((a, r) => a + (r.derivedRepairCalls || 0), 0),
+    acceptedFirstCall: slots.filter(x => x.outcome === 'accepted' && x.acceptedOnCall === 1).length, fallback: slots.filter(x => x.outcome === 'fallback').length,
+    unresolved: slots.filter(x => x.outcome === 'unresolved' || x.outcome === 'cost-guard').length, quotaRecoveryGenerationCalls: st(/^H_recovery/),
+    perTarget: rows.map(r => ({ target: r.target || String(r.targetId), checks: r.qualityChecks || 0, paid: r.paidAttempts || 0, localRepairs: r.deterministicRepairs || 0,
+      readingCalls: r.derivedRepairCalls || 0, slots: (r.slots || []).map(x => x.recallIndex + ':' + x.outcome).join(',') })) }
+}
+function japaneseGenerationTelemetryLines(t) {
+  if (!t) return []
+  const L = ['JAPANESE GENERATION (target groups): target groups ' + t.targetGroups + ' · recalls ' + t.recalls + ' · initial paid group calls ' + t.initialGroupCalls +
+    ' · slot regeneration calls ' + t.slotRegenerationCalls + ' · quality checks used ' + t.qualityChecks + ' (max ' + t.maxChecksPerGroup + ' per target group)' +
+    ' · local repairs ' + t.localRepairs + ' · reading repair calls (Flash-Lite) ' + t.readingRepairCalls + ' · accepted from the first call ' + t.acceptedFirstCall + '/' + t.recalls +
+    ' · fallback ' + t.fallback + ' · unresolved ' + t.unresolved + ' · quota-recovery generation calls ' + t.quotaRecoveryGenerationCalls]
+  ;(t.perTarget || []).forEach(r => L.push('  JA_GENERATION_BUDGET ' + r.target + ' QUALITY_CHECKS_USED=' + r.checks + '/' + t.maxChecksPerGroup + ' PAID_GENERATION_ATTEMPTS=' + r.paid +
+    ' LOCAL_REPAIRS=' + r.localRepairs + (r.readingCalls ? ' READING_REPAIR_CALLS=' + r.readingCalls : '') + ' recalls=' + r.slots))
+  return L
 }
 function thaiGenerationTelemetryLines(t) {
   if (!t) return []
@@ -29155,8 +29194,10 @@ function jaEvaluateRecallCandidate(cand, ctx) {
     if (structOk.ok) onLog && onLog('  ⚙ deterministic repair: ' + 'reading/romaji/segments rebuilt locally (no model request)')
   }
   const _gate = japaneseAcceptanceGate(c2, inv, { declaredGrammarIds: (inv.grammarScaffold || []).map(g => g.id), allowedGrammarIds: (inv.grammarScaffold || []).map(g => g.id) })
-  if (!_gate.ok) return { ...fail(_gate.problems[0]), cand: c2 }
-  if (!structOk.ok) return { ...fail(structOk.problems[0]), cand: c2 }
+  // v653 §10: a gate failure that is only about derived fields (reading/romaji/segments) is not a content failure
+  if (!_gate.ok) return { ...fail(_gate.problems[0]), cand: c2, structuralOnly: _gate.problems.every(p => classifyJaGenerationFailure(p) === GEN_FAILURE_CLASS.DETERMINISTIC_REPAIRABLE) }
+  // v653 §10: content passed every content gate — only a DERIVED field (reading/romaji/segments) is wrong
+  if (!structOk.ok) return { ...fail(structOk.problems[0]), cand: c2, structuralOnly: true }
   try {
     const _avail = jaBlocksAvailable(vocab, (opts && opts.grammarProgress) || {})
     const _basicsAvail = jaBasicsAvailable(vocab)
@@ -29177,6 +29218,313 @@ function normaliseJaCandidatePunctuation(cand) {
     return { ...s, reading: s.surface, romaji: s.surface, type: 'punct', lemma: s.surface, english: '' }
   })
   return { ...cand, segments: out }
+}
+
+// ══ v653 TARGET-GROUP GENERATION (Thai-style parity) ════════════════════════════════════
+// The generation UNIT is the target group: ONE structured request asks for all 3 recalls of a
+// target (≈30 first-pass calls per track, not 90). A slot that fails is repaired locally when it
+// can be; only a slot whose CONTENT is wrong is regenerated — alone, with the accepted recalls,
+// the duplicate context and its exact failure reason. Up to 11 QUALITY CHECKS per group; a check
+// is not a paid call. The core below is language-neutral: it owns slots, the check lifecycle,
+// attempt accounting, duplicate tracking, bounded regeneration, the cost guard and telemetry.
+// Every linguistic decision (morphology, register, readings, romaji, closed vocabulary,
+// naturalness) belongs to the language ADAPTER.
+const TARGET_GROUP_MAX_CHECKS = 11
+const TARGET_GROUP_CHECK_NAMES = Object.freeze(['structured output parse', 'target concept presence', 'morphology / grammar', 'register fit', 'closed vocabulary',
+  'duplicate sentence', 'reading alignment', 'romaji alignment', 'cue / meaning consistency', 'local repair / fallback', 'final accept / unresolved decision'])
+// v653 §4 — the spec's illustrative checks mapped onto the EXISTING Japanese validators (no duplicate logic).
+// Checks 2–9 run on every candidate inside one lifecycle step; 10 and 11 are lifecycle steps of their own.
+const JA_QUALITY_CHECK_MAP = Object.freeze([
+  ['structured output parse', 'parseJaGroupReply (JA_GROUP_SCHEMA; fences / arrays / truncation salvaged)'],
+  ['target concept presence', 'matchesJapaneseTarget (concept identity: any taught inflection counts)'],
+  ['morphology / grammar', 'japaneseAcceptanceGate + jaVerifyDeclaredBlocks + japaneseComplexity'],
+  ['register fit', 'JAPANESE_REGISTER_RULES[register].banned + the acceptance gate (plain + です etc.)'],
+  ['closed vocabulary', 'japaneseUnknownFromSegments / japaneseCheckLine against the learner inventory'],
+  ['duplicate sentence', 'japaneseDuplicateVerdict (this target / this track)'],
+  ['reading alignment', 'structuralValidateJapanesePair → jaRepairPairStructure / rebuildJapaneseReadingPipeline → Flash-Lite (derived fields only)'],
+  ['romaji alignment', 'the same derived-field chain (romaji rebuilt from the reading)'],
+  ['cue / meaning consistency', 'English meaning required; a cue quoting Japanese is rebuilt from the meaning'],
+  ['local repair / fallback', 'jaFallbackRecall + accepted beginner repetition (no request)'],
+  ['final accept / unresolved decision', 'slot outcome: accepted · fallback · duplicate-accepted · unresolved'],
+])
+// adapter: { language, surfaceOf(target), buildRequest(ctx) → {messages, json, maxTokens, temperature}, parse(raw) → {cands, error},
+//   evaluate(cand, {target, recallIndex, acceptedInGroup}) → {ok, cand, failure, cls, repairs, dup, structuralOnly, untaught},
+//   repairDerived?(cand, ev) → Promise<{ok, cand, paid}>, fallback?({target, recallIndex, used}) → cand|null,
+//   dedupeKey(text), textOf(cand), onAccept(cand, recallIndex), allowDuplicate?(ev) → bool }
+async function generateTargetGroup(o) {
+  const { language, target, adapter } = o
+  const recallCount = o.recallCount || 3
+  const budget = o.budget || JA_GENERATION_BUDGET
+  const paidMaxPerRecall = Math.max(1, o.paidMaxPerRecall || budget.maxPaidAttemptsPerRecall || 3)
+  const guard = o.costGuard || null, log = o.onLog || null
+  const surf = adapter.surfaceOf(target)
+  const slots = Array.from({ length: recallCount }, (_, k) => ({ recallIndex: (o.recallIndices && o.recallIndices[k]) || k + 1, state: 'pending', pair: null,
+    paidRequests: 0, failures: [], failedSentences: [], lastFailure: '', lastCls: null, dupOnly: null, acceptedOnCall: null, checkTier: null, outcome: null, repairs: 0 }))
+  const tel = { checks: 0, paid: 0, localRepairs: 0, derivedRepairCalls: 0, stopReason: '' }
+  const check = (name, detail) => {
+    tel.checks = Math.min(TARGET_GROUP_MAX_CHECKS, tel.checks + 1)
+    log && log('  ' + checkStyle(tel.checks).icon + ' check ' + tel.checks + '/' + TARGET_GROUP_MAX_CHECKS + ' ' + name + ': ' + surf + (detail ? ' · ' + detail : ''))
+  }
+  const pending = () => slots.filter(s => s.state === 'pending')
+  const accepted = () => slots.filter(s => s.state === 'accepted')
+  const acceptSlot = (s, cand, how, extra) => {
+    s.state = 'accepted'; s.pair = cand; s.checkTier = tel.checks || 1; s.outcome = (extra && extra.outcome) || 'accepted'
+    if (s.acceptedOnCall == null && (!extra || extra.onCall !== false)) s.acceptedOnCall = tel.paid || null
+    adapter.onAccept && adapter.onAccept(cand, s.recallIndex, target)
+    log && log('  ✅ recall ' + s.recallIndex + ' ' + (how || 'accepted') + ': ' + adapter.textOf(cand))
+  }
+  const failSlot = (s, msg, cls, cand) => {
+    s.lastFailure = msg; s.lastCls = cls || GEN_FAILURE_CLASS.PROMPT_REGEN_REQUIRED
+    s.failures.push(msg); if (cand && adapter.textOf(cand)) s.failedSentences.push(adapter.textOf(cand))
+    guard && guard.noteFailure(msg)
+    log && log('  ❌ recall ' + s.recallIndex + ': ' + msg + ' [' + s.lastCls + ']')
+  }
+  // one candidate against one slot: the adapter's gates, then (if only a derived field is wrong)
+  // a derived-field repair that never regenerates the sentence
+  const tryCandidate = async (s, cand) => {
+    const ev = adapter.evaluate(cand, { target, recallIndex: s.recallIndex, acceptedInGroup: accepted().map(x => adapter.textOf(x.pair)) })
+    s.repairs += ev.repairs || 0; tel.localRepairs += ev.repairs || 0
+    if (ev.ok && (!ev.dup || ev.dup.ok)) { acceptSlot(s, ev.cand, 'passed'); return true }
+    if (ev.ok && ev.dup && !ev.dup.ok) {
+      if (adapter.allowDuplicate && adapter.allowDuplicate(ev)) { acceptSlot(s, ev.cand, 'passed (repetition accepted by policy)'); return true }
+      if (!s.dupOnly) s.dupOnly = ev.cand
+      failSlot(s, ev.dup.reason, GEN_FAILURE_CLASS.PROMPT_REGEN_REQUIRED, ev.cand); return false
+    }
+    if (ev.structuralOnly && adapter.repairDerived) {
+      // §10 — the content passed every content gate; only DERIVED fields are wrong. The adapter repairs
+      // them (its own dictionary → deterministic rules → Flash-Lite); the sentence itself is never regenerated.
+      check('derived-field repair (content kept)', 'recall ' + s.recallIndex)
+      let rr = null
+      try { rr = await adapter.repairDerived(ev.cand, ev) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+      if (rr && rr.paid) tel.derivedRepairCalls += rr.paid
+      if (rr && rr.ok) {
+        const ev2 = adapter.evaluate(rr.cand, { target, recallIndex: s.recallIndex, acceptedInGroup: accepted().map(x => adapter.textOf(x.pair)) })
+        if (ev2.ok && (!ev2.dup || ev2.dup.ok)) { s.repairs++; tel.localRepairs++; acceptSlot(s, ev2.cand, 'passed after a derived-field repair (content unchanged)'); return true }
+      }
+      failSlot(s, ev.failure + ' (derived-field repair did not resolve it)', GEN_FAILURE_CLASS.DETERMINISTIC_REPAIRABLE, ev.cand); return false
+    }
+    if (ev.untaught && adapter.noteUntaught) adapter.noteUntaught(ev.untaught)
+    failSlot(s, ev.failure, ev.cls, ev.cand); return false
+  }
+  // ── paid rounds: the group request, then slot-only regeneration ──
+  while (pending().length) {
+    if (guard && guard.triggered) { tel.stopReason = 'COST_GUARD_TRIGGERED'; break }
+    if (o.stopSignal && o.stopSignal.cancelled) { tel.stopReason = 'CANCELLED'; break }
+    if (tel.checks >= TARGET_GROUP_MAX_CHECKS - 2) { tel.stopReason = 'CHECK_BUDGET'; break }       // keep checks 10/11 for fallback + decision
+    // only a slot whose CONTENT failed may cost a paid regeneration; a slot whose derived fields could not be
+    // repaired goes to the local fallback instead (§10: content is never regenerated for a derived-field defect)
+    const need = pending().filter(s => s.paidRequests < paidMaxPerRecall && s.lastCls !== GEN_FAILURE_CLASS.NON_RECOVERABLE && s.lastCls !== GEN_FAILURE_CLASS.DETERMINISTIC_REPAIRABLE)
+    if (!need.length) { tel.stopReason = tel.stopReason || 'PAID_BUDGET_REACHED'; break }
+    const initial = tel.paid === 0
+    const req = adapter.buildRequest({ target, slots: need.map(s => ({ recallIndex: s.recallIndex, lastFailure: s.lastFailure, failedSentences: s.failedSentences.slice(-4) })),
+      accepted: accepted().map(s => ({ recallIndex: s.recallIndex, text: adapter.textOf(s.pair) })), initial, round: tel.paid + 1 })
+    check(initial ? 'target-group request (' + need.length + ' recalls in one paid call)' : 'slot regeneration (paid) for recall ' + need.map(s => s.recallIndex).join('+'),
+      initial ? '' : 'accepted recalls kept: ' + (accepted().map(s => s.recallIndex).join(',') || 'none'))
+    tel.paid++; need.forEach(s => s.paidRequests++)
+    let raw = ''
+    try {
+      raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: req.messages, maxTokens: req.maxTokens, temperature: req.temperature, json: req.json,
+        stage: o.stage || (initial ? 'A_generation' : 'B_generation_retry') })
+    } catch (e) {
+      if (e && (e.fatalProvider || e.cancelled)) throw e
+      need.forEach(s => failSlot(s, 'model call failed: ' + String((e && e.message) || 'unknown error').slice(0, 60), GEN_FAILURE_CLASS.NON_RECOVERABLE))
+      tel.stopReason = 'NON_RECOVERABLE'; break
+    }
+    // check: structured output parse (a fenced but complete reply is never a reason to pay again)
+    const parsed = adapter.parse(raw)
+    if (!parsed.cands.length) { need.forEach(s => failSlot(s, 'model reply was empty or unparseable (' + parsed.error + ')', GEN_FAILURE_CLASS.PROMPT_REGEN_REQUIRED)); continue }
+    // one candidate per requested slot, in order; spare candidates fill a slot whose own candidate failed
+    const spare = parsed.cands.slice(need.length)
+    const missed = []
+    for (let k = 0; k < need.length; k++) {
+      const c = parsed.cands[k]
+      if (!c) { missed.push(need[k]); continue }
+      if (!(await tryCandidate(need[k], c))) missed.push(need[k])
+    }
+    for (const s of missed) { while (s.state === 'pending' && spare.length) await tryCandidate(s, spare.shift()) }
+    for (const s of missed) if (s.state === 'pending' && !parsed.cands[need.indexOf(s)] && !s.lastFailure) failSlot(s, 'reply had no candidate for this recall', GEN_FAILURE_CLASS.PROMPT_REGEN_REQUIRED)
+    // a sentence the model has now returned twice for the same slot is a known-bad answer
+    need.forEach(s => {
+      if (s.state !== 'pending') return
+      const keys = s.failedSentences.map(x => adapter.dedupeKey(x))
+      if (keys.length >= 2 && keys[keys.length - 1] === keys[keys.length - 2]) { s.lastCls = GEN_FAILURE_CLASS.NON_RECOVERABLE; log && log('  ⚠ recall ' + s.recallIndex + ': the same rejected sentence came back — no further paid attempt') }
+    })
+  }
+  // ── check 10: local repair / approved deterministic fallback (no request) ──
+  if (pending().length && !(guard && guard.triggered)) {
+    check('local repair / deterministic fallback (no request)', 'recall ' + pending().map(s => s.recallIndex).join('+'))
+    for (const s of pending()) {
+      const fb = adapter.fallback ? adapter.fallback({ target, recallIndex: s.recallIndex, used: [...accepted().map(x => adapter.textOf(x.pair)), ...s.failedSentences] }) : null
+      if (fb) {
+        const ev = adapter.evaluate(fb, { target, recallIndex: s.recallIndex, acceptedInGroup: accepted().map(x => adapter.textOf(x.pair)) })
+        s.repairs += ev.repairs || 0; tel.localRepairs += ev.repairs || 0
+        if (ev.ok && (!ev.dup || ev.dup.ok || (adapter.allowDuplicate && adapter.allowDuplicate(ev)))) { acceptSlot(s, { ...ev.cand, _fallback: true }, 'deterministic fallback (no model request)', { outcome: 'fallback', onCall: false }); s.checkTier = TARGET_GROUP_MAX_CHECKS; continue }
+        if (ev.ok && ev.dup && !ev.dup.ok && !s.dupOnly) s.dupOnly = { ...ev.cand, _fallback: true }
+        if (!ev.ok) log && log('  ❌ fallback rejected for recall ' + s.recallIndex + ': ' + ev.failure)
+      }
+      if (s.state === 'pending' && s.dupOnly) { acceptSlot(s, { ...s.dupOnly, _acceptedRepetition: true }, 'recovered by accepting beginner repetition (no request)', { outcome: 'duplicate-accepted', onCall: false }); s.checkTier = TARGET_GROUP_MAX_CHECKS }
+    }
+  }
+  // ── check 11: final accept / unresolved decision ──
+  pending().forEach(s => { s.state = 'unresolved'; s.outcome = guard && guard.triggered ? 'cost-guard' : 'unresolved' })
+  check('final accept / unresolved decision', slots.map(s => 'r' + s.recallIndex + '=' + s.outcome).join(' '))
+  const line = '  📊 ' + String(language).toUpperCase() + '_GENERATION_BUDGET target=' + surf + ' QUALITY_CHECKS_USED=' + tel.checks + '/' + TARGET_GROUP_MAX_CHECKS +
+    ' PAID_GENERATION_ATTEMPTS=' + tel.paid + ' LOCAL_REPAIRS=' + tel.localRepairs + (tel.derivedRepairCalls ? ' DERIVED_REPAIR_CALLS=' + tel.derivedRepairCalls : '') +
+    ' recalls=' + slots.map(s => s.recallIndex + ':' + s.outcome + (s.paidRequests ? '/' + s.paidRequests + 'paid' : '')).join(',') + (tel.stopReason && pending().length ? ' stop=' + tel.stopReason : '')
+  log && log(line)
+  // telemetry: ONE row per target group (the paid calls are the group's, not 3× per recall)
+  aiRecordGenerationRecall({ runId: o.runId, lang: language, phase: o.phase || 'generation', mode: 'group', targetId: target.id, target: surf, recallIndex: 0,
+    paidAttempts: tel.paid, qualityChecks: tel.checks, deterministicRepairs: tel.localRepairs, derivedRepairCalls: tel.derivedRepairCalls,
+    outcome: slots.every(s => s.outcome === 'accepted') ? 'accepted' : slots.some(s => s.state === 'unresolved') ? 'partial' : 'accepted-with-fallback',
+    slots: slots.map(s => ({ recallIndex: s.recallIndex, outcome: s.outcome, paidRequests: s.paidRequests, acceptedOnCall: s.acceptedOnCall, lastFailure: String(s.lastFailure || '').slice(0, 80) })),
+    lastFailure: (slots.find(s => s.state === 'unresolved') || {}).lastFailure || '' })
+  // the cost guard sees every recall (paid requests attributed per slot: the group call counts once for each slot it asked for)
+  slots.forEach(s => guard && guard.noteRecall(s.paidRequests, s.paidRequests >= paidMaxPerRecall && s.outcome !== 'accepted', s.outcome === 'accepted' ? 'accepted' : s.outcome))
+  return { slots, paidCalls: tel.paid, qualityChecks: tel.checks, localRepairs: tel.localRepairs, derivedRepairCalls: tel.derivedRepairCalls, stopReason: tel.stopReason }
+}
+
+// ── Japanese adapter for the target-group core ─────────────────────────────────────────
+// Structured output for the whole group. IDs are never asked of the model (injected locally).
+const JA_GROUP_SCHEMA = { type: 'OBJECT', properties: { targetConcept: { type: 'STRING' }, recalls: { type: 'ARRAY', items: JA_RECALL_SCHEMA } }, required: ['recalls'] }
+const JA_GROUP_MAX_OUTPUT_TOKENS = 3200            // 3 recall objects × ≈350–650 tokens + margin (1 recall keeps 1400)
+// Robust parse of a group reply: ```json fences, a bare array, {recalls:[…]}, {lines:[…]}, a single
+// object, a truncated reply (complete objects are salvaged). Model identity is always discarded.
+function parseJaGroupReply(raw) {
+  const txt = String(raw || '').trim()
+  if (!txt) return { cands: [], error: 'empty reply' }
+  let obj = null
+  const m = /```(?:json|JSON)?\s*([\s\S]*?)(?:```|$)/.exec(txt)
+  const body = (m ? m[1] : txt).trim()
+  try { obj = JSON.parse(body) } catch (e) { obj = _jaParseJSON(body) || _jaParseJSON(txt) }
+  let list = Array.isArray(obj) ? obj : obj && Array.isArray(obj.recalls) ? obj.recalls : obj && Array.isArray(obj.lines) ? obj.lines : obj && typeof obj === 'object' ? [obj] : []
+  if (list.length === 1 && list[0] && Array.isArray(list[0].recalls)) list = list[0].recalls
+  const cands = list.filter(x => x && typeof x === 'object' && x.japanese).map(x => {
+    const c = { ...x }
+    if (c.englishMeaning && !c.english) c.english = c.englishMeaning
+    if (c.englishCue && !c.prompt) c.prompt = c.englishCue
+    delete c.targetId; delete c.canonicalTargetId; delete c.language; delete c.recallIndex; delete c.wordId; delete c.pairId; delete c.targetConcept
+    return c
+  })
+  if (!cands.length) return { cands: [], error: /^\s*```|^\s*[\[{]/.test(txt) && !/[\]}]\s*(```)?\s*$/.test(txt) ? 'reply truncated before the JSON closed' : 'reply is not JSON with "japanese" recalls' }
+  return { cands, error: null }
+}
+// §6 — ONE canonical duplicate context, built from explicit state (never from optional scope that
+// can disappear). Present in EVERY Japanese generation / regeneration request.
+function jaDuplicateContextBlock(ctx) {
+  const c = ctx || {}
+  const uniq = xs => [...new Set((xs || []).map(x => String(x || '').trim()).filter(Boolean))]
+  const forTarget = uniq(c.acceptedForTarget), inTrack = uniq(c.usedInTrack).filter(x => !forTarget.includes(x))
+  return 'ALREADY ACCEPTED FOR THIS TARGET:\n' + (forTarget.length ? forTarget.map(x => '  - ' + x).join('\n') : '  (none yet)') + '\n' +
+    'ALREADY USED IN THIS TRACK:\n' + (inTrack.length ? '  ' + inTrack.join(' ／ ') : '  (none yet)') + '\n' +
+    'DO NOT repeat or trivially paraphrase these.'
+}
+// the variation plan for three recalls of one concept (natural variation only)
+const JA_RECALL_VARIATION = {
+  1: 'recall 1 of 3 — a simple declarative that shows the core meaning',
+  2: 'recall 2 of 3 — use in interaction: a question, a request or a response to the other person',
+  3: 'recall 3 of 3 — a different everyday context, or another natural form of the word',
+}
+function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
+  const c = o || {}
+  const range = japaneseUnitRange(vocab)
+  const gloss = w => String(w.english || '').split(/[;,/(]/)[0].trim()
+  const allowed = (inv.allContent || []).map(w => w.japanese + '=' + gloss(w)).join(' · ')
+  const basics = (inv.conversationBasics || []).map(b => b.form + '=' + b.english).join(' · ')
+  let blocks = ''
+  try { const av = jaBlocksAvailable(vocab, c.grammarProgress || {}); blocks = av.map(b => b.id + '=' + jaBlockRealisation(b, registerId)).join(' · ') } catch (e) {}
+  const role = (() => { try { return targetRoleLine(targetLinguisticRole(target, 'ja'), target, 'ja').trim() } catch (e) { return '' } })()
+  const n = slots.length
+  const system = 'You are a Japanese teacher writing natural spoken Japanese for a learner.\n' +
+    'LANGUAGE: Japanese. Write ' + (n === 1 ? 'ONE sentence' : n + ' DIFFERENT sentences') + ' a real person would say, for a learner doing productive recall. Each sentence is one recall.\n' +
+    'CLOSED VOCABULARY: content words (nouns, verbs, adjectives, lexical adverbs, times, places) MUST come from ALLOWED CONTENT. ' +
+    'Particles, the copula and normal inflection of allowed words are free. If an idea needs another word, choose a simpler idea.\n' +
+    'Fields per recall: englishMeaning = what the sentence means; englishCue = an instruction a learner can act on without seeing the Japanese ' +
+    '(never quote Japanese or romaji); reading = kana for the sentence as written; romaji = Hepburn, spaced by word, matching the reading; ' +
+    'segments = every word in order with surface, lemma (dictionary form), reading, romaji, english, type ("content" or "grammar").\n' +
+    japaneseRegisterContract(registerId) + '\n' +
+    'REGISTER CHECK before you answer: every sentence must fit the register above (for example no plain form + です, and no です/ます where the register forbids them).'
+  const failures = slots.filter(s => s.lastFailure)
+  const user =
+    'JAPANESE TARGET: ★ ' + target.japanese + (target.reading ? ' [' + target.reading + ']' : '') + ' = ' + (target.english || '') +
+      (target.note ? ' — use when ' + target.note : '') + (role ? '\n  ' + role : '') + '\n' +
+    'TARGET CONCEPT: ' + target.japanese + ' — any natural inflected form counts (e.g. polite, past, て-form, negative, volitional) when the register allows it; ' +
+      'do NOT force the dictionary form. Every recall must use this same concept.\n' +
+    (c.initial ? (n === 1 ? 'TARGET GROUP: write 1 recall sentence:\n' : 'TARGET GROUP: write ' + n + ' distinct recall sentences in ONE reply — useful variants, not copies:\n')
+               : 'REPLACEMENT ONLY: write ' + n + ' new sentence(s) for the recall slot(s) below. The accepted recalls stay as they are.\n') +
+      slots.map(s => '  • ' + (JA_RECALL_VARIATION[s.recallIndex] || ('recall ' + s.recallIndex + ' of 3 — another natural use'))).join('\n') + '\n' +
+      'Do not force unnatural variation just to be different. LENGTH ' + range.min + '–' + range.max + ' content units each.\n' +
+    jaDuplicateContextBlock({ acceptedForTarget: c.acceptedForTarget, usedInTrack: c.usedInTrack }) + '\n' +
+    (failures.length ? 'PREVIOUS FAILURES (exact reasons) — fix these:\n' + failures.map(s => '  recall ' + s.recallIndex + ': ' + s.lastFailure +
+      (s.failedSentences && s.failedSentences.length ? ' — rejected: ' + s.failedSentences.join('／') : '')).join('\n') + '\n' : '') +
+    japaneseUsageHintLine(target).replace(/^\n/, '') + (japaneseUsageHintLine(target) ? '\n' : '') +
+    (c.rejected && c.rejected.length ? 'DO NOT USE (not taught yet): ' + c.rejected.join(' ') + '. Choose a different, simpler idea.\n' : '') +
+    (c.objectives || '').replace(/^\n/, '') + (c.objectives ? '\n' : '') +
+    'ALLOWED CONTENT (' + (inv.allContent || []).length + '): ' + allowed +
+    (basics ? '\nCONVERSATION BASICS: ' + basics : '') +
+    (blocks ? '\nGRAMMAR ids for "blocks": ' + blocks : '') +
+    '\nReturn EXACTLY ' + n + ' recall(s) as ONE JSON object: {"targetConcept":"' + target.japanese + '","recalls":[{"intent","japanese","reading","romaji","englishCue","englishMeaning","blocks":[ids],"basics":[ids],"segments":[{"surface","lemma","reading","romaji","english","type"}]}]}'
+  return { system, user }
+}
+// §10 — derived-field repair with Flash-Lite, used ONLY when the canonical dictionary and the
+// deterministic morphology could not align reading / romaji / segments. The Japanese is never changed.
+const JA_READING_REPAIR_SCHEMA = { type: 'OBJECT', properties: { reading: { type: 'STRING' }, romaji: { type: 'STRING' },
+  segments: JA_RECALL_SCHEMA.properties.segments }, required: ['reading', 'romaji', 'segments'] }
+async function jaModelReadingRepair(cand, apiKey, model) {
+  const q = 'Give the kana reading, Hepburn romaji (spaced by word) and word segments for this EXACT Japanese sentence. Do not change, correct or rewrite the sentence.\n' +
+    'SENTENCE: ' + cand.japanese + '\nMeaning: ' + (cand.english || cand.englishMeaning || '') + '\n' +
+    'segments = every word in order with surface (exactly as written), lemma, reading, romaji, english, type ("content" or "grammar"). The surfaces joined must equal the sentence.\n' +
+    'Return ONLY JSON: {"reading":"...","romaji":"...","segments":[...]}'
+  const raw = await geminiRequest({ apiKey, model, messages: [{ role: 'user', content: q }], maxTokens: 1200, temperature: 0.1, json: JA_READING_REPAIR_SCHEMA, stage: 'J_romanisation' })
+  const p = _jaParseJSON(raw); const obj = Array.isArray(p) ? p[0] : p
+  if (!obj || !obj.reading) return null
+  return { ...cand, reading: obj.reading, romaji: obj.romaji || cand.romaji, segments: Array.isArray(obj.segments) ? obj.segments : cand.segments }
+}
+function japaneseTargetGroupAdapter(ctx) {
+  const { vocab, registerId, inv, rules, seenMap, trackUsed, apiKey, model, onLog } = ctx
+  const opts = ctx.opts || {}
+  const rejected = new Set()
+  const _obj = opts.objectives || {}
+  const _objBlocks = (_obj.buildingBlocks || []).map(b => jaBlockById(b.id || b)).filter(Boolean)
+  const _objBasics = (_obj.conversationBasics || []).map(b => jaBasicById(b.id || b)).filter(Boolean)
+  const objectives = (_objBlocks.length || _objBasics.length)
+    ? 'PRACTICE OBJECTIVES (only where the intent genuinely calls for them): ' + [..._objBlocks.map(b => b.label + ' (' + b.meaning + ')'), ..._objBasics.map(b => b.form + ' (' + b.english + ')')].join(', ')
+    : ''
+  return {
+    language: 'ja',
+    surfaceOf: t => t.japanese,
+    textOf: c => String((c && c.japanese) || '').trim(),
+    dedupeKey: s => jaDedupeKey(s),
+    buildRequest({ target, slots, accepted, initial }) {
+      const { system, user } = buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, {
+        initial, acceptedForTarget: accepted.map(a => a.text).concat(opts.previousRecalls || []), usedInTrack: trackUsed.slice(),
+        rejected: [...rejected], objectives, grammarProgress: opts.grammarProgress })
+      const one = slots.length === 1
+      return { messages: [{ role: 'system', content: system }, { role: 'user', content: user }], json: JA_GROUP_SCHEMA,
+        maxTokens: one ? JA_GENERATION_BUDGET.maxOutputTokens : JA_GROUP_MAX_OUTPUT_TOKENS, temperature: JA_GENERATION_BUDGET.temperature }
+    },
+    parse: raw => parseJaGroupReply(raw),
+    evaluate(cand, { target }) {
+      // cue / meaning consistency (deterministic): a cue that quotes Japanese is rebuilt from the meaning
+      let c0 = cand
+      if (!c0.english && !c0.englishMeaning) return { ok: false, cand: c0, failure: 'recall has no English meaning', cls: GEN_FAILURE_CLASS.PROMPT_REGEN_REQUIRED, repairs: 0 }
+      let cueFix = 0
+      if (!c0.prompt || /[぀-ヿ一-鿿]/.test(c0.prompt)) { c0 = { ...c0, prompt: 'Say: ' + String(c0.english || c0.englishMeaning).replace(/[.!]+$/, '') }; cueFix = 1 }
+      const ev = jaEvaluateRecallCandidate(c0, { target, inv, vocab, registerId, seenMap, rules, opts, onLog })
+      return { ...ev, repairs: (ev.repairs || 0) + cueFix }
+    },
+    noteUntaught(ws) { (ws || []).forEach(w => w && rejected.add(w)) },
+    async repairDerived(cand) {
+      if (!apiKey) return { ok: false, paid: 0 }
+      const r = await jaModelReadingRepair(cand, apiKey, model)
+      if (!r) return { ok: false, paid: 1 }
+      let c2 = normaliseJaCandidatePunctuation(r)
+      if (!structuralValidateJapanesePair(c2).ok) { try { const r1 = jaRepairPairStructure(c2, inv); if (structuralValidateJapanesePair(r1).ok) c2 = r1 } catch (e) {} }
+      return { ok: structuralValidateJapanesePair(c2).ok, cand: c2, paid: 1 }
+    },
+    fallback: ({ target, recallIndex, used }) => jaFallbackRecall(target, inv, recallIndex, [...(opts.previousRecalls || []), ...(used || [])]),
+    allowDuplicate: ev => !!(ev.dup && ((rules.allowNearDuplicate && ev.dup.level === 'B') || (opts.relaxDuplicates && ev.dup.level !== 'A') || opts.allowExactRepeat)),
+    onAccept(cand, recallIndex, target) { seenMap.set(jaDedupeKey(cand.japanese), { targetId: target ? target.id : null, text: cand.japanese }); trackUsed.push(String(cand.japanese).trim()) },
+  }
 }
 
 // Generates ONE validated recall for one target, within the canonical budget.
@@ -29211,7 +29559,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
   }
   const evalCtx = { target, inv, vocab, registerId, seenMap, rules, opts: o, onLog }
   const accept = (cand, tier, how) => {
-    seenMap.set(jaDedupeKey(cand.japanese), { targetId: target.id })
+    seenMap.set(jaDedupeKey(cand.japanese), { targetId: target.id, text: cand.japanese })
     onLog && onLog('  ✅ ' + (how || ORD[tier - 1] + ' check') + ' passed: ' + cand.japanese)
     return { pair: cand, checkTier: tier }
   }
@@ -29221,6 +29569,7 @@ async function generateJapaneseOneRecall(target, recallIndex, vocab, registerId,
     onLog && onLog('  ' + checkStyle(tier).icon + ' ' + ORD[tier - 1] + ' check: ' + target.japanese + ' · recall ' + recallIndex)
     const { system, user } = buildJapaneseRecallPrompt(target, recallIndex, inv, vocab, registerId, {
       previousRecalls: [...new Set([...(o.previousRecalls || []), ...usedHere])].filter(Boolean),
+      usedInTrack: [...seenMap.entries()].map(([k, v]) => (v && v.text) || k),
       rejected: [...rejected], failedSentences: failedSentences.slice(-4), lastFailure,
       extra: tier > 1 ? jaEscalationInstruction(tier, target, inv, rules) : '', objectives: _objLine, grammarProgress: o.grammarProgress })
     let raw = ''
@@ -29411,46 +29760,36 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
   const missingRecalls = []            // §4 — what still needs building
   onLog && onLog('\u2139 Scarcity level ' + japaneseScarcityLevel(inv) + ' \u2014 ' + inv.allContent.length + ' content words')
 
+  // v653 §2 — the generation UNIT is the TARGET GROUP (Thai parity): one structured request per
+  // target asks for all three recalls; only a failed slot is ever regenerated, alone.
+  const trackUsed = [...open, ...close].map(p => String(p.japanese || '').trim()).filter(Boolean)
+  const groupAdapter = japaneseTargetGroupAdapter({ vocab, registerId, inv, rules, seenMap, trackUsed, apiKey, model, onLog,
+    opts: { objectives: _objectives, grammarProgress: _grammarStore } })
+  let groupCalls = 0, groupChecks = 0
+  onLog && onLog('\u2139 QUALITY CHECKS (up to 11 per target group; a check is not a paid call): ' + JA_QUALITY_CHECK_MAP.map((c, k) => (k + 1) + '. ' + c[0]).join(' · '))
   for (let i = 0; i < targets.length; i++) {
     if (stopSignal && stopSignal.cancelled) break
     if (costGuard.triggered) break
     const t = targets[i]
     onLog && onLog((i + 1) + '/' + targets.length + '  ' + t.japanese + '  ' + t.romaji)
     onProgress && onProgress(doneRecall, totalRecall, [], { targetIdx: i, targetId: t.id, recallIndex: 1, checkTier: 1, starting: true })
-
+    const grp = await generateTargetGroup({ language: 'ja', target: t, recallCount: 3, adapter: groupAdapter, trackContext: _tc,
+      paidMaxPerRecall: Math.max(1, Math.min(JA_GENERATION_BUDGET.maxPaidAttemptsPerRecall, rules && rules.maxTiers ? rules.maxTiers - 1 : JA_GENERATION_BUDGET.maxPaidAttemptsPerRecall)),
+      apiKey, model, costGuard, runId: _runId, onLog, stopSignal })
+    groupCalls += grp.paidCalls; groupChecks += grp.qualityChecks; attemptCount += grp.paidCalls
     const mapped = []
-    // §5/§7 — three separate recalls, each locked on success. Never move on with <3.
-    for (let r = 1; r <= 3; r++) {
-      if (stopSignal && stopSignal.cancelled) break
-      const before = attemptCount
-      const got = await generateJapaneseOneRecall(t, r, vocab, registerId, apiKey, model,
-        seenMap, inv, rules, onLog,
-        // v651 root cause: the options object used to sit INSIDE this arrow's braces (a comma
-        // expression), so generateJapaneseOneRecall never received previousRecalls / objectives —
-        // the model was never told which sentences the target already had, and re-sent the same
-        // sentence up to 10 times ("identical sentence already used for this target").
-        tier => { attemptCount++; onProgress && onProgress(doneRecall, totalRecall, [], { targetIdx: i, targetId: t.id, recallIndex: r, checkTier: tier, accepted: false }) },
-        { objectives: _objectives, grammarProgress: _grammarStore, previousRecalls: mapped.map(x => x.japanese), runId: _runId, costGuard })
-      if (!got || got.failed) {
-        // §3/§18 — do NOT continue as though this target is complete. Record exactly
-        // which recall is missing and why, then stop generating for this target.
-        const why = (got && got.lastFailure) || 'no valid candidate'
+    for (const sl of grp.slots) {
+      const r = sl.recallIndex
+      if (sl.state !== 'accepted' || !sl.pair) {
+        // §3/§18 — never continue as though this target were complete: record exactly which recall is missing
+        const why = sl.lastFailure || 'no valid candidate'
         onLog && onLog('  \u274C ' + t.japanese + ' recall ' + r + ' could not be generated \u2014 ' + why)
-        // Record EVERY remaining slot for this target, not just the one that failed.
-        // Pushing a single entry and breaking is why the log read "5 recall(s) still
-        // needed" when 5 targets had failed at recall 1 — 15 recalls were actually
-        // missing. Invariant: missingRecalls.length === expected - accepted.
-        for (let miss = r; miss <= 3; miss++) {
-          missingRecalls.push({ targetId: t.id, targetIdx: i, targetJapanese: t.japanese,
-                                recallIndex: miss, lastFailure: why,
-                                previousRecalls: mapped.map(m => m.japanese) })
-        }
-        break
+        missingRecalls.push({ targetId: t.id, targetIdx: i, targetJapanese: t.japanese, recallIndex: r, lastFailure: why, previousRecalls: [] })
+        continue
       }
-      if (got.recovered) onLog && onLog('  \u2139 recall ' + r + ' recovered (' + got.recovered + ')')
       recallCount++
-      const l = got.pair
-      mapped.push({
+      const l = sl.pair
+      const pair = {
         speaker: l.speaker || 'A',
         thai: l.japanese, japanese: l.japanese,
         reading: l.reading || '',
@@ -29461,26 +29800,22 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
         words: (Array.isArray(l.segments) ? l.segments : []).map(s => ({ p: s.romaji || s.surface, e: s.english || '' })),
         wordId: t.id, targetId: t.id, _target: t.japanese,
         recallIndex: r,                       // §6 pedagogy: which exposure
-        sourceCheck: got.checkTier,           // §6 which tier accepted it
-        _source: JA_TIER_SOURCE(got.checkTier), _framing: false,
-      })
-      // v651 §6 — provenance from birth: language, trackId, pairId, targetId, canonicalTargetId,
-      // targetSurface, recallIndex, isTargetPair, sourceStage, generationRunId
-      mapped[mapped.length - 1] = stampPairProvenance(mapped[mapped.length - 1], jaPairProvenance(_tc, t, r, got.pair && got.pair._fallback ? 'generation-fallback' : 'generation'))
+        sourceCheck: sl.checkTier,            // §6 which check accepted it
+        _source: JA_TIER_SOURCE(sl.checkTier), _framing: false,
+        ...(l._fallback ? { _fallback: true } : {}), ...(l._acceptedRepetition ? { _acceptedRepetition: true } : {}),
+      }
+      // v651 §6 — provenance from birth; the IDs are injected here, never taken from the model
+      mapped.push(stampPairProvenance(pair, jaPairProvenance(_tc, t, r, l._fallback ? 'generation-fallback' : 'generation')))
       doneRecall++
-      // §2/§3 — the accepted recall event IS the source of truth. Emit it the moment
-      // the recall passes so the brick and pill react now, not at target completion.
-      onProgress && onProgress(doneRecall, totalRecall, [JA_TIER_SOURCE(got.checkTier)], {
-        targetIdx: i, targetId: t.id, recallIndex: r, checkTier: got.checkTier,
-        source: JA_TIER_SOURCE(got.checkTier), accepted: true,
-      })
+      onProgress && onProgress(doneRecall, totalRecall, [JA_TIER_SOURCE(sl.checkTier)], {
+        targetIdx: i, targetId: t.id, recallIndex: r, checkTier: sl.checkTier, source: JA_TIER_SOURCE(sl.checkTier), accepted: true })
     }
+    missingRecalls.filter(m => m.targetId === t.id).forEach(m => { m.previousRecalls = mapped.map(x => x.japanese) })
     perTarget.push(mapped)
-    // §17 — by now the UI already holds every recall result; this only finalises.
-    onProgress && onProgress(doneRecall, totalRecall, [], {
-      targetIdx: i, targetId: t.id, completed: true, recallsCompleted: mapped.length,
-    })
+    onProgress && onProgress(doneRecall, totalRecall, [], { targetIdx: i, targetId: t.id, completed: true, recallsCompleted: mapped.length })
   }
+  onLog && onLog('\u2139 TARGET-GROUP GENERATION: ' + perTarget.length + ' target group(s) · ' + groupCalls + ' paid generation call(s) · ' + groupChecks + ' quality check(s) · ' +
+    recallCount + '/' + totalRecall + ' recalls accepted')
 
   const recalls = []
   for (let round = 0; round < 3; round++) {
@@ -29504,8 +29839,9 @@ async function generateJapaneseTrack(targets, vocab, registerId, apiKey, model, 
                      ') \u2014 enumerating the remainder')
       const have = new Set(missingRecalls.map(m => m.targetId + ':' + m.recallIndex))
       targets.forEach((t, ti) => {
-        const built = (perTarget[ti] || []).length
-        for (let r = built + 1; r <= 3; r++) {
+        const builtIdx = new Set((perTarget[ti] || []).map(p => p.recallIndex))
+        for (let r = 1; r <= 3; r++) {
+          if (builtIdx.has(r)) continue
           const k = t.id + ':' + r
           if (!have.has(k)) { have.add(k)
             missingRecalls.push({ targetId: t.id, targetIdx: ti, targetJapanese: t.japanese,
@@ -29648,8 +29984,8 @@ async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId,
   onLog && onLog('\u2705 Recovered ' + t.japanese + ' recall ' + missing.recallIndex + ': ' + pair.japanese)
   const stillMissing = []
   targets.forEach((tg, idx) => {
-    const got2 = (perTarget[idx] || []).length
-    for (let r = got2 + 1; r <= 3; r++) stillMissing.push({ targetId: tg.id, targetIdx: idx, targetJapanese: tg.japanese, recallIndex: r, lastFailure: 'not yet generated' })
+    const have2 = new Set((perTarget[idx] || []).map(p => p.recallIndex))       // v653: slots are independent, gaps are possible
+    for (let r = 1; r <= 3; r++) if (!have2.has(r)) stillMissing.push({ targetId: tg.id, targetIdx: idx, targetJapanese: tg.japanese, recallIndex: r, lastFailure: 'not yet generated' })
   })
   const produced = perTarget.reduce((a, s) => a + s.length, 0)
   if (produced !== partial.expectedRecallCount) {

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v662"/>
+<meta name="app-version" content="v663"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v662';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v662').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v663';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v663').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -14468,7 +14468,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v662'
+const LISTENING_BUILD_VERSION = 'v663'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -15505,7 +15505,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v662'
+const APP_BUILD_VERSION = 'v663'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -16981,11 +16981,43 @@ function _lnPlanExchanges(sc, byId) {
 }
 function _lnScenePurpose(sc, byId, k, n) {
   const doms = {}
-  sc.requiredTargetIds.forEach(id => { const d = (byId.get(id) || {}).domain; if (d && d !== 'general conversation') doms[d] = (doms[d] || 0) + 1 })
-  const top = Object.entries(doms).sort((a, b) => b[1] - a[1]).slice(0, 2).map(x => x[0])
-  const topic = top.length ? 'talking about ' + top.join(' and ') : 'chatting about everyday things'
-  return (k === 0 ? 'they meet and greet, then start ' : 'the conversation moves on — ') + topic + (k === n - 1 ? ', then they wrap up and say goodbye' : '')
+  sc.requiredTargetIds.forEach(id => { const t = byId.get(id); const d = t ? _lnPlanDomain(t) : null; if (d && !LISTENING_FLEXIBLE_DOMAINS.has(d)) doms[d] = (doms[d] || 0) + 1 })
+  const top = Object.entries(doms).sort((a, b) => b[1] - a[1]).map(x => x[0])
+  let situation = top.length ? (LISTENING_SITUATION[top[0]] || (LOCAL_PREMISE_BY_DOMAIN[top[0]] || [])[0] || 'A and B talk about ' + top[0]) : LISTENING_EVERYDAY_SITUATIONS[k % LISTENING_EVERYDAY_SITUATIONS.length]
+  if (top[1]) situation += ' (it also involves ' + String(SCENE_DOMAIN_PURPOSE[top[1]] || top[1]).toLowerCase() + ')'
+  return (k === 0 ? 'They meet and say hello; then ' + situation.charAt(0).toLowerCase() + situation.slice(1) : situation) + (k === n - 1 ? '; then they wrap up and say goodbye' : '')
 }
+// v663 §14–§16 — scenes are HUMAN SITUATIONS, not metadata buckets. Big amounts (ten thousand, hundred thousand,
+// million …) belong to high-value contexts (an apartment, a car, a salary, a trip budget) — never to cheap market food.
+const LISTENING_BIG_AMOUNT = /\b(ten thousand|hundred thousand|thousand|million|billion|lakh)\b/i
+function _lnPlanDomain(t) {
+  if (t.role === 'NUMBER' && LISTENING_BIG_AMOUNT.test(String(t.gloss || ''))) return 'big amounts'
+  return t.domain || 'general conversation'
+}
+const LISTENING_FLEXIBLE_DOMAINS = new Set(['general conversation', 'discourse & logic', 'feelings', 'parting & greetings'])
+const LISTENING_SCENE_COMPATIBLE = SCENE_COMPATIBLE_DOMAINS.concat([
+  ['big amounts', 'shopping & payment', 'home', 'numbers & prices'],
+  ['big amounts', 'places & travel', 'plans & schedule'],
+])
+function _lnScenePlausible(domains) {
+  const concrete = [...new Set(domains.filter(d => !LISTENING_FLEXIBLE_DOMAINS.has(d)))]
+  if (concrete.length <= 1) return true
+  return LISTENING_SCENE_COMPATIBLE.some(g => concrete.every(d => g.includes(d)))
+}
+const LISTENING_SITUATION = {
+  'big amounts': 'A and B compare what big things cost — an apartment, a car, a salary — amounts in the tens of thousands to millions',
+  'numbers & prices': 'A and B work out how much something costs and agree on an amount',
+  'shopping & payment': 'A is paying at a shop counter: the price, a discount, card or cash, the receipt',
+  'food & cooking': 'A and B cook a simple meal together at home and talk about what goes in it',
+  'home': 'A and B are at home and sort out the rooms and things in it',
+  'household actions': 'after the meal A and B clean up the kitchen and put things away',
+  'places & travel': 'A and B plan a trip: where to go, how to get there, where to stay',
+  'plans & schedule': 'A and B arrange when to meet and what to do',
+  'colours & things': 'A and B look for a particular thing and describe it',
+  'identity & names': 'A and B meet someone new and introduce themselves',
+}
+const LISTENING_EVERYDAY_SITUATIONS = ['A and B have a coffee and catch up on their week', 'A and B chat on the way home about their day',
+  'A and B talk over lunch about what is new', 'A and B make plans for the weekend', 'A and B help each other with a small problem']
 // §2–§5 — the LISTENING_COVERAGE_PLAN. Every selected target gets exactly one required home (scene + exchange).
 function planListeningCoverage(targets, o) {
   const opt = o || {}, T = (targets || []).length, seed = String(opt.seed || '')
@@ -16995,32 +17027,42 @@ function planListeningCoverage(targets, o) {
   const byId = new Map(targets.map(t => [t.id, t]))
   const scenes = Array.from({ length: nScenes }, (_, k) => ({ sceneId: 'LS' + (k + 1), index: k, requiredTargetIds: [], optionalTargetIds: [], domains: {} }))
   const load = sc => sc.requiredTargetIds.length
-  const put = (sc, t) => { sc.requiredTargetIds.push(t.id); const k = t.domain && t.domain !== 'general conversation' ? t.domain : 'role:' + (t.role || 'CONTENT'); sc.domains[k] = (sc.domains[k] || 0) + 1 }
+  const put = (sc, t) => { sc.requiredTargetIds.push(t.id); const k = _lnPlanDomain(t) !== 'general conversation' ? _lnPlanDomain(t) : 'role:' + (t.role || 'CONTENT'); sc.domains[k] = (sc.domains[k] || 0) + 1 }
   const rank = x => _lnSeedHash(seed + '|' + x)
   const openers = targets.filter(t => t.role === 'GREETING'), closers = targets.filter(t => t.role === 'PARTING')
   // question words, response words and discourse markers pair with content, so they are spread over the scenes
-  const floaters = targets.filter(t => t.role === 'RESPONSE_TOKEN' || t.role === 'DISCOURSE_MARKER' || t.role === 'QUESTION_WORD')
+  const floaters = targets.filter(t => t.role === 'RESPONSE_TOKEN' || t.role === 'DISCOURSE_MARKER' || t.role === 'QUESTION_WORD' ||
+    (t.role !== 'GREETING' && t.role !== 'PARTING' && t.role !== 'NUMBER' && LISTENING_FLEXIBLE_DOMAINS.has(t.domain || 'general conversation')))
   const core = targets.filter(t => !openers.includes(t) && !closers.includes(t) && !floaters.includes(t))
   if (nScenes) { openers.forEach(t => put(scenes[0], t)); closers.forEach(t => put(scenes[nScenes - 1], t)) }
   // §4 semantic grouping: one domain stays in one scene when it fits (numbers with numbers, time with time …)
   const groups = new Map()
   // the semantic domain when the bank has one; otherwise the conversational role (NUMBER with NUMBER, TIME with TIME …)
-  const gkey = t => t.domain && t.domain !== 'general conversation' ? t.domain : 'role:' + (t.role || 'CONTENT')
+  const gkey = t => _lnPlanDomain(t) !== 'general conversation' ? _lnPlanDomain(t) : 'role:' + (t.role || 'CONTENT')
   core.forEach(t => { const k = gkey(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t) })
   const chunks = []
   ;[...groups.entries()].sort((a, b) => b[1].length - a[1].length || rank(a[0]) - rank(b[0]))
     .forEach(([k, ts]) => { const ord = ts.slice().sort((a, b) => rank(a.id) - rank(b.id)); for (let i = 0; i < ord.length; i += cap) chunks.push({ domain: k, ts: ord.slice(i, i + cap) }) })
   chunks.sort((a, b) => b.ts.length - a.ts.length || rank(a.domain) - rank(b.domain))
+  // §16 — a chunk only joins a scene whose situation stays plausible (validated BEFORE any line is written)
+  const plausibleWith = (sc, d) => _lnScenePlausible(Object.keys(sc.domains).filter(k => !/^role:/.test(k)).concat([d]))
+  const newScene = () => { const sc = { sceneId: 'LS' + (scenes.length + 1), index: scenes.length, requiredTargetIds: [], optionalTargetIds: [], domains: {} }; scenes.splice(scenes.length - (closers.length ? 1 : 0), 0, sc); scenes.forEach((x, k) => { x.index = k; x.sceneId = 'LS' + (k + 1) }); return sc }
   chunks.forEach(ch => {
-    const fit = scenes.filter(sc => load(sc) + ch.ts.length <= cap).sort((a, b) => (b.domains[ch.domain] || 0) - (a.domains[ch.domain] || 0) || load(a) - load(b) || rank(a.sceneId + ch.domain) - rank(b.sceneId + ch.domain))[0]
-    if (fit) ch.ts.forEach(t => put(fit, t))
-    else ch.ts.forEach(t => put(scenes.slice().sort((a, b) => load(a) - load(b) || (b.domains[ch.domain] || 0) - (a.domains[ch.domain] || 0) || a.index - b.index)[0], t))
+    const fit = scenes.filter(sc => load(sc) + ch.ts.length <= cap && plausibleWith(sc, ch.domain)).sort((a, b) => (b.domains[ch.domain] || 0) - (a.domains[ch.domain] || 0) || load(a) - load(b) || rank(a.sceneId + ch.domain) - rank(b.sceneId + ch.domain))[0]
+    if (fit) { ch.ts.forEach(t => put(fit, t)); return }
+    if (scenes.length < LISTENING_SCENES_MAX) { const sc = newScene(); ch.ts.forEach(t => put(sc, t)); return }
+    ch.ts.forEach(t => {
+      const sc = scenes.filter(x => plausibleWith(x, ch.domain)).sort((a, b) => load(a) - load(b) || a.index - b.index)[0] || scenes.slice().sort((a, b) => load(a) - load(b) || a.index - b.index)[0]
+      put(sc, t) })
   })
   floaters.forEach(t => put(scenes.slice().sort((a, b) => load(a) - load(b) || a.index - b.index)[0], t))
-  scenes.forEach((sc, k) => { _lnPlanExchanges(sc, byId); sc.purpose = _lnScenePurpose(sc, byId, k, nScenes); sc.premise = sc.purpose })
+  for (let k = scenes.length - 1; k >= 0; k--) if (!scenes[k].requiredTargetIds.length) scenes.splice(k, 1)
+  scenes.forEach((x, k) => { x.index = k; x.sceneId = 'LS' + (k + 1) })
+  scenes.forEach((sc, k) => { _lnPlanExchanges(sc, byId); sc.purpose = _lnScenePurpose(sc, byId, k, scenes.length); sc.premise = sc.purpose
+    sc.plausible = _lnScenePlausible(Object.keys(sc.domains).filter(d => !/^role:/.test(d))) })
   // §14 turn budget planned up front: expected scene lengths + an even share of the slack, total ≤ turnsMax
   const totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0)
-  const slack = Math.max(0, turnsMax - totalExpected), share = nScenes ? Math.floor(slack / nScenes) : 0
+  const slack = Math.max(0, turnsMax - totalExpected), share = scenes.length ? Math.floor(slack / scenes.length) : 0
   scenes.forEach(sc => { sc.maxTurns = sc.expectedTurns + Math.max(1, share) })
   const assignments = []
   scenes.forEach(sc => sc.exchanges.forEach(ex => ex.turns.forEach(tu => tu.targetIds.forEach(id => {
@@ -17033,7 +17075,8 @@ function planListeningCoverage(targets, o) {
   if (dup.length) problems.push('targets allocated twice: ' + [...new Set(dup)].join(', '))
   if (assignments.length !== T) problems.push('assignments ' + assignments.length + ' ≠ targets ' + T)
   if (scenes.some(sc => sc.exchanges.some(ex => ex.turns.some(tu => tu.targetIds.length > LISTENING_MAX_TARGETS_PER_TURN)))) problems.push('a planned turn exceeds ' + LISTENING_MAX_TARGETS_PER_TURN + ' targets')
-  return { scenes, assignments, valid: !problems.length && T > 0, problems: T ? problems : ['no targets'], nScenes, cap, totalExpectedTurns: totalExpected, turnsMax, seed }
+  const warnings = scenes.filter(sc => !sc.plausible).map(sc => sc.sceneId + ': no single everyday situation holds ' + Object.keys(sc.domains).filter(d => !/^role:/.test(d)).join(' + '))
+  return { scenes, assignments, valid: !problems.length && T > 0, problems: T ? problems : ['no targets'], warnings, nScenes: scenes.length, cap, totalExpectedTurns: totalExpected, turnsMax, seed }
 }
 function _lnSceneCoverage(sc, reqIds, byId, la, ctx) {
   const heard = reqIds.filter(id => { const t = byId.get(id); return t && sc.turns.some(tn => la.present(la.text(tn.pair), t.surface, ctx)) })
@@ -17131,6 +17174,259 @@ async function _lnRepairScene(env, sc, spec) {
 }
 // §21 steps 2–18: plan → scene loop (generate, verify, local repair, reassign) → assemble → quality (scene-local repair,
 // coverage re-checked after EVERY mutation, protected targets never lost) → returns the assembled scenes
+// ══ v663 — LISTENING ATOMIC REPAIR: fix ONE issue at the smallest unit, validate the patch, commit only if strictly
+// better. The v662 quality layer rewrote whole scenes ("LISTENING_REPAIR round=1 issues=37 scenes=[LS1…LS5]"),
+// protected targets disappeared, scenes were rolled back and re-asked — 21 repair calls on a 30/30 track that still
+// ended NOT_READY. Now every issue is mapped to a line (or one A/B exchange), a batch of INDEPENDENT patches comes back
+// as isolated objects, and each patch is validated on its own: protected targets kept, no category regresses, the
+// issue strictly improves. A rejected patch leaves the original line byte-for-byte intact.
+const LISTENING_ATOMIC_ATTEMPTS = 2           // paid attempts per issue (line → exchange escalation), then EXHAUSTED
+const LISTENING_ATOMIC_BATCH = 6              // independent units per paid call
+const LISTENING_ATOMIC_PASSES = 4             // queue passes per stage
+// P0 foundational → P1 vocabulary / duplicates → P2 naturalness / local coherence → P3 structure polish
+const LISTENING_ATOMIC_PRIORITY = { TARGET_MISSING: 0, MAX_TARGETS_PER_TURN: 0, SPEAKER_IDENTITY: 0, LINE_QUALITY: 0, MERGED_SPEAKERS: 0,
+  CLOSED_VOCAB: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, UNNATURAL: 2, COHERENCE_LINE: 2 }
+// level 1 = the line · 2 = the line + its A/B partner · 3 = a small section (previous, line, next)
+const LISTENING_ATOMIC_BASE_LEVEL = { TARGET_MISSING: 2, MAX_TARGETS_PER_TURN: 2, MERGED_SPEAKERS: 2 }
+const LISTENING_ATOMIC_SCHEMA = { type: 'OBJECT', properties: { repairs: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+  issueId: { type: 'STRING' }, lineId: { type: 'STRING', nullable: true }, replacementText: { type: 'STRING', nullable: true }, english: { type: 'STRING', nullable: true },
+  reading: { type: 'STRING', nullable: true }, romaji: { type: 'STRING', nullable: true }, pinyin: { type: 'STRING', nullable: true },
+  lines: { type: 'ARRAY', nullable: true, items: { type: 'OBJECT', properties: { lineId: { type: 'STRING' }, text: { type: 'STRING' }, english: { type: 'STRING', nullable: true },
+    reading: { type: 'STRING', nullable: true }, romaji: { type: 'STRING', nullable: true }, pinyin: { type: 'STRING', nullable: true } }, required: ['lineId', 'text'] } } },
+  required: ['issueId'] } } }, required: ['repairs'] }
+// the deterministic state of ONE line (everything a patch must not make worse)
+function _lnLineState(env, pair, others) {
+  const { la, targets, ctx } = env
+  const text = la.text(pair)
+  const ids = targets.filter(t => t.surface && la.present(text, t.surface, ctx)).map(t => t.id)
+  const unknown = listeningUnexposedWords(la.lang, pair, ctx.exposed || [], ctx.eligTargets || [])
+  const quality = la.bridgeProblems ? la.bridgeProblems(pair, ctx) : []
+  const merged = listeningMergedSpeakerProblem(text, pair.english, la.lang) ? 1 : 0
+  const nt = _lnNorm(text)
+  const dup = (others || []).some(o => { const no = _lnNorm(o.text); return no && nt && (no === nt || (Math.min(no.length, nt.length) >= 6 && _lnDice(no, nt) >= 0.9 && o.ids.join() === ids.join())) }) ? 1 : 0
+  return { text, ids, unknown, quality, max3: ids.length > LISTENING_MAX_TARGETS_PER_TURN ? 1 : 0, vocab: unknown.length, qual: quality.length, merged, dup }
+}
+function _lnFlat(scenes) { const f = []; scenes.forEach((sc, si) => sc.turns.forEach((tn, ti) => f.push({ sc, si, ti, tn, n: f.length + 1 }))); return f }
+// the lines a unit may rewrite at a given level
+function _lnUnitScope(flat, n, level) {
+  const at = flat[n - 1]; if (!at) return []
+  const same = k => flat[k - 1] && flat[k - 1].sc === at.sc
+  if (level <= 1) return [n]
+  if (level === 2) {
+    const nxt = same(n + 1) && flat[n].tn.speaker !== at.tn.speaker ? n + 1 : null
+    const prv = same(n - 1) && flat[n - 2].tn.speaker !== at.tn.speaker ? n - 1 : null
+    return nxt ? [n, nxt] : prv ? [prv, n] : same(n + 1) ? [n, n + 1] : same(n - 1) ? [n - 1, n] : [n]
+  }
+  return [n - 1, n, n + 1].filter(k => same(k))
+}
+// the best exchanges to carry a MISSING target: adjacent A/B lines in the scene, fewest current targets, same topic first
+function _lnPlacementCandidates(env, flat, sceneObj, t) {
+  const { byId } = env
+  const lines = flat.filter(f => f.sc === sceneObj)
+  const out = []
+  for (let k = 0; k + 1 < lines.length; k++) {
+    const a = _lnLineState(env, lines[k].tn.pair), b = _lnLineState(env, lines[k + 1].tn.pair)
+    if (Math.min(a.ids.length, b.ids.length) >= LISTENING_MAX_TARGETS_PER_TURN) continue
+    const dom = a.ids.concat(b.ids).filter(id => (byId.get(id) || {}).domain === t.domain).length
+    out.push({ n: lines[k].n, load: a.ids.length + b.ids.length, dom })
+  }
+  return out.sort((x, y) => y.dom - x.dom || x.load - y.load || x.n - y.n)
+}
+// a compact POSITIVE palette (§7): protected targets, authorised words already near the line, the learner's most recent words
+function _lnPalette(env, flat, scope, protectedIds) {
+  const { la, known, byId } = env
+  const near = new Set()
+  const ctxText = [scope[0] - 1, ...scope, scope[scope.length - 1] + 1].map(k => flat[k - 1] ? la.text(flat[k - 1].tn.pair) : '').join(' ')
+  known.slice(0, 900).forEach(w => { if (w && String(w).length >= (la.lang === 'th' ? 2 : 1) && ctxText.includes(w)) near.add(w) })
+  const recent = known.slice(0, 60)
+  return [...new Set(protectedIds.map(id => (byId.get(id) || {}).surface).filter(Boolean).concat([...near], recent))].slice(0, 110)
+}
+// ONE paid call for a batch of independent units; each repair object is validated and committed on its own
+async function _lnAtomicCall(env, flat, units) {
+  const { la, log, tel, extra, o, byId } = env
+  const rowOf = k => flat[k - 1] ? 'L' + k + ' ' + flat[k - 1].tn.speaker + ': ' + la.text(flat[k - 1].tn.pair) + ' (' + (flat[k - 1].tn.pair.english || '') + ')' : null
+  const blocks = units.map(u => {
+    const ctxRows = [u.scope[0] - 1, ...u.scope, u.scope[u.scope.length - 1] + 1].map(k => (u.scope.includes(k) ? '  >>> ' : '      ') + (rowOf(k) || '')).filter(r => r.trim() && !/^\s+$/.test(r))
+    return '[' + u.issueId + '] ' + u.codes.join('+') + ' · scene ' + u.sceneId + ' · ' + (u.scope.length === 1 ? 'line L' + u.scope[0] + ' only' : 'lines ' + u.scope.map(k => 'L' + k).join('+') + ' (return each)') + '\n' +
+      ctxRows.join('\n') + '\n  PROBLEM: ' + u.problems.join(' · ') + '\n' +
+      (u.forbidden.length ? '  DO NOT USE: ' + u.forbidden.join(', ') + '\n' : '') +
+      (u.place ? '  MUST NOW ALSO CONTAIN the lesson word ' + u.place.surface + ' (' + u.place.gloss + ')\n' : '') +
+      '  PROTECTED lesson words (must stay in the new text): ' + (u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') || '(none)') + '\n' +
+      '  USE THESE WORDS (plus normal grammar words and speaker particles): ' + u.palette.join(' ')
+  })
+  const prompt = 'ATOMIC REPAIR of ' + la.label + ' LISTENING lines. Fix ONLY the lines marked >>> for each issue. Return one ISOLATED repair object per issue — never a whole scene, never the whole conversation.\n' +
+    la.speakerContract + extra + '\nEach new line keeps its speaker and its job in the conversation (a question stays a question, a reply stays a reply), at most ' + LISTENING_MAX_TARGETS_PER_TURN + ' lesson words per line, natural spoken ' + la.label + '.\n\n' +
+    blocks.join('\n\n') + '\n\nReply ONLY with compact JSON: {"repairs":[{"issueId":"i1","lines":[{"lineId":"L17","text":"...","english":"..."}]}]}'
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    tel.LISTENING_REPAIR_CALLS++; tel.LISTENING_LOCAL_REPAIR_CALLS++; tel.LISTENING_ATOMIC_REPAIR_CALLS = (tel.LISTENING_ATOMIC_REPAIR_CALLS || 0) + 1
+    try {
+      const obj = _lnParseJson(await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt + (attempt > 1 ? '\nYour previous reply was not valid JSON. Return ONLY the compact JSON object.' : '') }], maxTokens: 1800, temperature: 0.4, json: LISTENING_ATOMIC_SCHEMA, stage: 'O_listening_repair', attempt: 'listening-atomic-' + units.map(u => u.issueId).join('-') + '-' + attempt }))
+      return (obj && Array.isArray(obj.repairs)) ? obj.repairs : []
+    } catch (e) {
+      if (e && (e.fatalProvider || e.cancelled)) throw e
+      log && log('⚠ LISTENING_REPAIR_JSON_PARSE_FAIL atomic [' + units.map(u => u.issueId + '@' + u.sceneId).join(',') + '] attempt=' + attempt + ' — ' + String(e && e.message || e).slice(0, 60) + (attempt < 2 ? ' · retrying this batch only' : ''))
+    }
+  }
+  return []
+}
+// validate ONE patch against the current text — protected targets, every deterministic category, strict improvement
+function _lnValidatePatch(env, flat, u, newByLine) {
+  const others = n => flat.filter(f => f.n !== n && !u.scope.includes(f.n)).map(f => { const s = _lnLineState(env, f.tn.pair); return { text: s.text, ids: s.ids } })
+  const before = u.scope.map(n => _lnLineState(env, flat[n - 1].tn.pair, others(n)))
+  const after = u.scope.map(n => _lnLineState(env, newByLine.get(n) ? newByLine.get(n).pair : flat[n - 1].tn.pair, others(n)))
+  const sum = (arr, k) => arr.reduce((a, s) => a + s[k], 0)
+  const heardAfter = new Set(after.flatMap(s => s.ids))
+  const lost = u.protectedIds.filter(id => !heardAfter.has(id))
+  if (lost.length) return { ok: false, reason: 'PROTECTED_TARGET_LOST: ' + lost.map(id => (env.byId.get(id) || {}).surface).join(', ') }
+  if (u.place && !heardAfter.has(u.place.id)) return { ok: false, reason: 'TARGET_NOT_PLACED: ' + u.place.surface }
+  const cats = ['max3', 'vocab', 'qual', 'merged', 'dup']
+  const worse = cats.filter(k => sum(after, k) > sum(before, k))
+  if (worse.length) return { ok: false, reason: 'REGRESSION: ' + worse.map(k => k + ' ' + sum(before, k) + '→' + sum(after, k)).join(', ') }
+  if (after.every((s, i) => s.text === before[i].text)) return { ok: false, reason: 'NO_CHANGE' }
+  const own = { CLOSED_VOCAB: 'vocab', MAX_TARGETS_PER_TURN: 'max3', SPEAKER_IDENTITY: 'qual', LINE_QUALITY: 'qual', MERGED_SPEAKERS: 'merged', EXACT_DUPLICATE: 'dup', NEAR_DUPLICATE: 'dup' }
+  const improved = u.place ? heardAfter.has(u.place.id) : u.codes.some(c => own[c] ? sum(after, own[c]) < sum(before, own[c]) : true)
+  if (!improved) return { ok: false, reason: 'NOT_IMPROVED: ' + u.codes.join('+') + ' still present' }
+  return { ok: true, pending: u.codes.some(c => !own[c] && c !== 'TARGET_MISSING') }   // UNNATURAL / COHERENCE: confirmed by the next verdict
+}
+// the queue (§10): issues → units (one per line) → independent batches → validate → commit → re-derive issues
+async function _lnAtomicQueue(env, scenes, issueSource, opts) {
+  const { la, log, tel, byId, naturalness } = env
+  const attempts = opts.attempts || new Map(), stats = opts.stats || { accepted: 0, rejected: 0, exhausted: 0 }
+  const exhaustedLogged = opts.exhaustedLogged || new Set()
+  for (let pass = 1; pass <= LISTENING_ATOMIC_PASSES; pass++) {
+    const flat = _lnFlat(scenes)
+    const issues = await issueSource(flat)
+    // one unit per line; foundational problems first
+    const byLine = new Map()
+    issues.forEach(x => { if (!x.line || !flat[x.line - 1]) return
+      const u = byLine.get(x.line) || { line: x.line, codes: [], problems: [], forbidden: [], place: null, priority: 9 }
+      if (!u.codes.includes(x.code)) u.codes.push(x.code)
+      u.problems.push(x.code + (x.detail ? ': ' + String(x.detail).slice(0, 140) : ''))
+      ;(x.forbidden || []).forEach(f => { if (!u.forbidden.includes(f)) u.forbidden.push(f) })
+      if (x.place) u.place = x.place
+      u.priority = Math.min(u.priority, LISTENING_ATOMIC_PRIORITY[x.code] != null ? LISTENING_ATOMIC_PRIORITY[x.code] : 3)
+      byLine.set(x.line, u) })
+    const units = [...byLine.values()].map(u => {
+      const key = u.place ? 'place:' + u.place.id : 'L' + u.line + '|' + u.codes.slice().sort().join('+') + '|' + la.text(flat[u.line - 1].tn.pair)
+      const tried = attempts.get(key) || 0
+      return { ...u, key, tried }
+    }).filter(u => {
+      if (u.tried < LISTENING_ATOMIC_ATTEMPTS) return true
+      if (!exhaustedLogged.has(u.key)) { exhaustedLogged.add(u.key); stats.exhausted++; log && log('⛔ LISTENING_ATOMIC_REPAIR_EXHAUSTED line=L' + u.line + ' issue=' + u.codes.join('+') + ' after ' + u.tried + ' attempts — the rest of the track stays intact') }
+      return false
+    }).sort((a, b) => a.priority - b.priority || a.line - b.line)
+    if (!units.length) break
+    // independent batch: scopes (with one line of context) never touch
+    const batch = [], used = new Set()
+    for (const u of units) {
+      const base = LISTENING_ATOMIC_BASE_LEVEL[u.codes.find(c => LISTENING_ATOMIC_BASE_LEVEL[c])] || 1
+      u.level = Math.min(3, base + u.tried)
+      if (u.place) { u.scope = _lnUnitScope(flat, u.line, 2) } else u.scope = _lnUnitScope(flat, u.line, u.level)
+      const span = [u.scope[0] - 1, ...u.scope, u.scope[u.scope.length - 1] + 1]
+      if (span.some(k => used.has(k))) continue
+      span.forEach(k => used.add(k))
+      const at = flat[u.line - 1]
+      u.sceneId = at.sc.sceneId
+      // the forbidden tokens come from the line itself (the authoritative closed-vocabulary check), not from log text
+      if (u.codes.includes('CLOSED_VOCAB')) u.forbidden = [...new Set(u.scope.flatMap(k => _lnLineState(env, flat[k - 1].tn.pair).unknown))]
+      u.protectedIds = [...new Set(u.scope.flatMap(k => _lnLineState(env, flat[k - 1].tn.pair).ids))]
+      u.palette = _lnPalette(env, flat, u.scope, u.protectedIds.concat(u.place ? [u.place.id] : []))
+      u.issueId = 'i' + (batch.length + 1)
+      batch.push(u)
+      if (batch.length >= LISTENING_ATOMIC_BATCH) break
+    }
+    batch.forEach(u => { attempts.set(u.key, (attempts.get(u.key) || 0) + 1)
+      log && log('🔧 LISTENING_ATOMIC_REPAIR issue=' + u.codes.join('+') + ' scene=' + u.sceneId + ' line=L' + u.line + (u.scope.length > 1 ? ' scope=' + u.scope.map(k => 'L' + k).join('+') : '') +
+        (u.forbidden.length ? ' forbidden=[' + u.forbidden.join(', ') + ']' : '') + (u.place ? ' place=' + u.place.surface : '') + ' protected=[' + u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') + '] attempt=' + (u.tried + 1) + ' level=' + (u.place ? 2 : u.level)) })
+    const repairs = await _lnAtomicCall(env, flat, batch)
+    const committed = []
+    for (const u of batch) {
+      const r = repairs.find(x => x && x.issueId === u.issueId)
+      const rows = !r ? [] : Array.isArray(r.lines) && r.lines.length ? r.lines : (r.replacementText ? [{ lineId: r.lineId || 'L' + u.line, text: r.replacementText, english: r.english, reading: r.reading, romaji: r.romaji, pinyin: r.pinyin }] : [])
+      const newByLine = new Map()
+      rows.forEach(x => { const k = Number(String(x.lineId || '').replace(/^L/i, '')); if (!u.scope.includes(k) || !String(x.text || '').trim()) return
+        const orig = flat[k - 1].tn
+        newByLine.set(k, _lnMakeTurn(la, { text: x.text, english: x.english || orig.pair.english, reading: x.reading, romaji: x.romaji, pinyin: x.pinyin }, orig.speaker)) })
+      if (!newByLine.size) { stats.rejected++; log && log('⛔ PATCH_REJECTED issue=' + u.issueId + ' line=L' + u.line + ' reason=NO_PATCH_RETURNED'); continue }
+      const v = _lnValidatePatch(env, flat, u, newByLine)
+      if (!v.ok) { stats.rejected++; log && log('⛔ PATCH_REJECTED issue=' + u.issueId + ' line=L' + u.line + ' reason=' + v.reason + ' · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)'); continue }
+      const prev = new Map()
+      newByLine.forEach((tn, k) => { const f = flat[k - 1]; prev.set(k, f.sc.turns[f.ti]); f.sc.turns[f.ti] = { ...tn, speaker: f.tn.speaker } })
+      committed.push({ u, prev, pending: v.pending })
+      stats.accepted++
+      log && log('✅ PATCH_ACCEPTED issue=' + u.issueId + ' line=L' + u.line + ' candidate="' + [...newByLine.values()].map(tn => la.text(tn.pair)).join(' / ').slice(0, 120) + '" · LISTENING_ATOMIC_REPAIR_ACCEPTED')
+    }
+    // a new line must not be judged worse by the naturalness verdict (monotonic): revert if it is
+    if (committed.length && naturalness) {
+      const nat = await naturalness(scenes)
+      const flat2 = _lnFlat(scenes)
+      committed.forEach(c => {
+        const bad = [...c.prev.keys()].filter(k => nat.some(x => x.line === k && x.code === 'UNNATURAL'))
+        if (!bad.length) return
+        c.prev.forEach((tn, k) => { const f = flat2[k - 1]; f.sc.turns[f.ti] = tn })
+        stats.accepted--; stats.rejected++
+        log && log('⛔ PATCH_REVERTED issue=' + c.u.issueId + ' line=L' + c.u.line + ' reason=NEW_LINE_UNNATURAL (' + bad.map(k => 'L' + k).join(',') + ') · original restored')
+      })
+    }
+  }
+  tel.LISTENING_ATOMIC_PATCHES_ACCEPTED = stats.accepted; tel.LISTENING_ATOMIC_PATCHES_REJECTED = stats.rejected; tel.LISTENING_ATOMIC_EXHAUSTED = stats.exhausted
+  return stats
+}
+// issues of the assembled conversation as atomic units (closed vocab, speaker / line quality, max3, duplicates, naturalness)
+function _lnAtomicIssuesOf(audit, natIssues) {
+  const out = []
+  audit.issues.forEach(x => {
+    if (!(x.line > 0) || LISTENING_ATOMIC_PRIORITY[x.code] == null || x.code === 'TARGET_MISSING') return
+    const forbidden = x.code === 'CLOSED_VOCAB' ? String(x.detail || '').replace(/^.*unknown words:\s*/, '').split(/\s+/).filter(Boolean) : []
+    out.push({ code: x.code, line: x.line, detail: x.detail, forbidden })
+  })
+  ;(natIssues || []).filter(x => x.code === 'UNNATURAL' && x.line > 0).forEach(x => out.push({ code: 'UNNATURAL', line: x.line, detail: x.detail }))
+  return out
+}
+// §17/§18 — coherence: SCENE-level verdicts are authoritative (a whole-track score cannot override a failed scene);
+// a failed scene is turned into exact-line COHERENCE_LINE issues
+function _lnCoherenceLineIssues(coh, scenes) {
+  const out = []
+  let off = 0
+  scenes.forEach((sc, si) => {
+    const v = (coh.verdicts || [])[si]
+    if (v && !v.pass && sc.turns.length) {
+      const local = v.breakAfterLine != null && v.deterministic < 4 && Number.isFinite(Number(v.breakAfterLine)) ? Number(v.breakAfterLine) + 1 : v.breakAfterLine != null ? Number(v.breakAfterLine) + 1 : 1
+      const k = Math.max(1, Math.min(sc.turns.length, local))
+      out.push({ code: 'COHERENCE_LINE', line: off + k, detail: 'scene ' + sc.sceneId + ' — ' + (v.reason || 'breaks the conversation') + ' · rewrite this line so it fits the situation' })
+    }
+    off += sc.turns.length
+  })
+  return out
+}
+// v663 — place missing targets ATOMICALLY: the best A/B exchange of the scene is rewritten to carry the word, its own
+// protected targets kept (attempt 2 tries the next-best exchange). Only a scene with no usable exchange falls back to
+// a small local insertion.
+async function _lnAtomicPlace(env, scenes, sceneObj, reqIds, extraIssues) {
+  const { la, ctx, byId } = env
+  const attempts = new Map()
+  await _lnAtomicQueue(env, scenes, async flat => {
+    const issues = []
+    const cov = _lnSceneCoverage(sceneObj, reqIds, byId, la, ctx)
+    cov.missing.forEach(id => { const t = byId.get(id); const cands = _lnPlacementCandidates(env, flat, sceneObj, t)
+      const c = cands[Math.min(attempts.get('place:' + id) || 0, cands.length - 1)]
+      if (c) issues.push({ code: 'TARGET_MISSING', line: c.n, place: t, detail: 'the lesson word ' + t.surface + ' (' + t.gloss + ') must be heard in this exchange' }) })
+    ;(extraIssues ? extraIssues(flat) : []).forEach(x => issues.push(x))
+    return issues
+  }, { attempts })
+  let cov = _lnSceneCoverage(sceneObj, reqIds, byId, la, ctx)
+  // a scene too short / too full for any exchange: one small local insertion (protected targets checked, rolled back on loss)
+  if (cov.missing.length && sceneObj.turns.length) {
+    const before = _lnCloneTurns(sceneObj.turns)
+    const noCand = cov.missing.filter(id => !_lnPlacementCandidates(env, _lnFlat([sceneObj]), sceneObj, byId.get(id)).length)
+    if (noCand.length) {
+      await _lnRepairScene(env, sceneObj, { missing: noCand.map(id => byId.get(id)), protectedIds: cov.heard, allowedMax: sceneObj.turns.length + noCand.length })
+      const c2 = _lnSceneCoverage(sceneObj, reqIds, byId, la, ctx)
+      if (cov.heard.some(id => !c2.heard.includes(id))) sceneObj.turns = before; else cov = c2
+    }
+  }
+  return cov
+}
 async function _lnComposeByScenes(env) {
   const { la, log, tel, targets, ctx, o, progress, naturalness } = env
   const byId = new Map(targets.map(t => [t.id, t])); env.byId = byId
@@ -17139,6 +17435,7 @@ async function _lnComposeByScenes(env) {
   if (o.rebuild) log && log('🎧 LISTENING_COVERAGE_PLAN=REGENERATED (rebuild — same targets, fresh scene distribution)')
   log && log('🎧 LISTENING_COVERAGE_PLAN ' + plan.assignments.length + '/' + targets.length + ' assigned · ' + plan.nScenes + ' scenes · ≤' + plan.cap + ' targets per scene · planned ' + plan.totalExpectedTurns + ' turns (max ' + plan.turnsMax + ')')
   plan.scenes.forEach(sc => log && log('  LISTENING_SCENE_PLAN ' + sc.sceneId + ' required=[' + sc.requiredTargetIds.map(id => byId.get(id).surface).join(', ') + '] expectedTurns=' + sc.expectedTurns + ' max=' + sc.maxTurns + ' · ' + sc.purpose))
+  log && log('🎧 LISTENING_SCENE_PLAUSIBILITY ' + (plan.warnings.length ? 'WARN — ' + plan.warnings.join(' · ') : 'PASS — every scene is one plausible everyday situation (checked before writing)'))
   plan.assignments.forEach(a => log && log('    LISTENING_TARGET_ASSIGNMENT target=' + a.targetId + ' ' + a.surface + ' → ' + a.sceneId + ' exchange ' + a.exchangeIndex + ' (' + a.speaker + ') role=' + a.role))
   if (!plan.valid) { log && log('⛔ LISTENING_COVERAGE_PLAN_INVALID — ' + plan.problems.join('; ') + ' · generation NOT started'); return { ok: false, reason: 'LISTENING_COVERAGE_PLAN_INVALID: ' + plan.problems.join('; '), plan } }
   const queue = plan.scenes.map(sc => ({ ...sc, requiredTargetIds: sc.requiredTargetIds.slice(), originalTargetIds: sc.requiredTargetIds.slice() }))
@@ -17179,17 +17476,10 @@ async function _lnComposeByScenes(env) {
     // §8 — verify this scene's REQUIRED targets now, deterministically; the model's intendedTargetIds are ignored
     let cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
     log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' required=' + sp.requiredTargetIds.length + ' heard=' + cov.heard.length + (cov.missing.length ? ' missing=[' + cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS') + ' · turns ' + sc.turns.length + '/' + allowedMax)
-    for (let rep = 1; sc.turns.length && rep <= LISTENING_SCENE_REPAIRS && (cov.missing.length || max3Local(sc).length); rep++) {
-      const before = _lnCloneTurns(sc.turns)
-      await _lnRepairScene(env, sc, { missing: cov.missing.map(id => byId.get(id)), issues: max3Local(sc), protectedIds: cov.heard, allowedMax })
-      const cov2 = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
-      const lost = cov.heard.filter(id => !cov2.heard.includes(id))
-      if (lost.length || sc.turns.length > allowedMax) {
-        log && log('⚠ LISTENING_REPAIR_ROLLBACK ' + sp.sceneId + (lost.length ? ' — the edit removed protected target(s) ' + lost.map(id => byId.get(id).surface).join(', ') : ' — the edit broke the turn budget') + ' · restored the verified text')
-        sc.turns = before; continue
-      }
-      cov = cov2
-      log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' (after local repair ' + rep + ') required=' + sp.requiredTargetIds.length + ' heard=' + cov.heard.length + (cov.missing.length ? ' missing=[' + cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS'))
+    if (sc.turns.length && (cov.missing.length || max3Local(sc).length)) {
+      // v663 §9 — atomic: the missing word goes into the best exchange; a 4-target line is split over its A/B exchange
+      cov = await _lnAtomicPlace(env, [sc], sc, sp.requiredTargetIds, flat => listeningConversationAudit([sc], targets, la, ctx).issues.filter(x => x.code === 'MAX_TARGETS_PER_TURN').map(x => ({ code: x.code, line: x.line, detail: x.detail })))
+      log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' (after atomic repair) required=' + sp.requiredTargetIds.length + ' heard=' + cov.heard.length + (cov.missing.length ? ' missing=[' + cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS'))
     }
     // §10 — still missing: the target does not fit this scene → reassign it (never drop it)
     if (cov.missing.length) {
@@ -17213,7 +17503,7 @@ async function _lnComposeByScenes(env) {
           const hq = queue.find(s => s.sceneId === host.sceneId) || { verifiedTargetIds: [] }
           const before = _lnCloneTurns(host.turns)
           log && log('🔁 LISTENING_REASSIGN target=' + id + ' ' + t.surface + ' ' + sp.sceneId + ' → ' + host.sceneId + ' (an earlier verified scene, local exchange)')
-          await _lnRepairScene(env, host, { missing: [t], protectedIds: hq.verifiedTargetIds || [], allowedMax: host.turns.length + 2 })
+          await _lnAtomicPlace(env, [host], host, [id])
           const hc = _lnSceneCoverage(host, (hq.verifiedTargetIds || []).concat([id]), byId, la, ctx)
           if (hc.missing.some(x => x !== id)) { host.turns = before; log && log('⚠ LISTENING_REPAIR_ROLLBACK ' + host.sceneId + ' — the edit removed a protected target · restored') ; continue }
           if (hc.missing.includes(id)) { host.turns = before; continue }
@@ -17236,45 +17526,54 @@ async function _lnComposeByScenes(env) {
   let audit = listeningConversationAudit(accepted, targets, la, ctx)
   log && log('🎧 LISTENING_SCENE_COVERAGE_UNION ' + verifiedUnion.length + '/' + targets.length + ' · assembled ' + accepted.length + ' scenes · ' + audit.lines.length + ' turns (max ' + env.turnsMax + ')')
   if (verifiedUnion.length === targets.length && audit.covered.length < targets.length) log && log('⛔ LISTENING_COVERAGE_INVARIANT_BROKEN — scenes verified ' + verifiedUnion.length + ' but the assembled text has ' + audit.covered.length)
-  // §12/§13/§20 — quality stage (closed vocab, structure, duplicates, naturalness); every edit is scene-local and is
-  // followed by a coverage re-check of that scene — a repair that loses a protected target is rolled back
+  // v663 §1–§13/§20 — ATOMIC quality repair: closed vocabulary → speaker/register → max3 → duplicates → naturalness, each
+  // issue patched at its line (or one A/B exchange), validated, committed only if strictly better; the coverage plan is locked
   let natIssues = await naturalness(accepted)
   _lnLogAuditLines(log, audit, natIssues, targets, 'assembled')
-  const stuck = new Set()   // a scene whose repair came back with no usable edit is not asked again (cost bound)
-  const sceneOfLine = n => { let k = 0; for (const sc of accepted) { if (n <= k + sc.turns.length) return { sc, line: n - k }; k += sc.turns.length } return null }
-  for (let round = 1; round <= LISTENING_REPAIR_ROUNDS; round++) {
-    const issues = audit.issues.concat(natIssues).filter(x => x.line > 0 && x.code !== 'NATURALNESS_UNVERIFIED' && x.code !== 'TARGET_MISSING')
-    // a scene written for one speaker only is a scene-local structure issue (the whole-track ONE_SPEAKER has no line)
-    accepted.forEach(sc => { const sps = new Set(sc.turns.map(tn => tn.speaker)); if (sc.turns.length >= 2 && sps.size < 2) issues.push({ code: 'ONE_SPEAKER_SCENE', line: -1, sc, detail: 'every turn in this scene is speaker ' + [...sps][0] + ' — give roughly half of the turns to the other speaker, as replies (keep every lesson word)' }) })
-    if (!issues.length) break
-    const byScene = new Map()
-    issues.forEach(x => { const r = x.sc ? { sc: x.sc, line: 1 } : sceneOfLine(x.line); if (!r) return; if (!byScene.has(r.sc)) byScene.set(r.sc, []); const { sc: _s, ...rest } = x; byScene.get(r.sc).push({ ...rest, line: r.line }) })
-    log && log('🔧 LISTENING_REPAIR round=' + round + ' issues=' + issues.length + ' scenes=[' + [...byScene.keys()].map(sc => sc.sceneId).join(',') + '] (scene-local, protected targets)')
-    for (const [sc, list] of byScene) {
-      if (stuck.has(sc)) continue
-      const sp = queue.find(s => s.sceneId === sc.sceneId) || { verifiedTargetIds: [] }
-      const protectedIds = sp.verifiedTargetIds || []
-      const before = _lnCloneTurns(sc.turns)
-      const applied = await _lnRepairScene(env, sc, { issues: list, protectedIds, allowedMax: Math.max(sc.turns.length, before.length) })
-      if (!applied) { stuck.add(sc); continue }
-      let cov = _lnSceneCoverage(sc, protectedIds, byId, la, ctx)
-      if (cov.missing.length) {
-        log && log('⚠ LISTENING_COVERAGE_RECHECK ' + sc.sceneId + ' — the quality edit removed ' + cov.missing.map(id => byId.get(id).surface).join(', ') + ' · back to local repair')
-        await _lnRepairScene(env, sc, { missing: cov.missing.map(id => byId.get(id)), protectedIds: cov.heard, allowedMax: before.length + 1 })
-        cov = _lnSceneCoverage(sc, protectedIds, byId, la, ctx)
-        if (cov.missing.length) { sc.turns = before; log && log('⚠ LISTENING_REPAIR_ROLLBACK ' + sc.sceneId + ' — protected target still missing · restored the verified text') }
-      }
-    }
+  // structure (level 4): only a scene written for ONE speaker is rewritten as a whole — protected targets checked
+  for (const sc of accepted) {
+    const sps = new Set(sc.turns.map(tn => tn.speaker))
+    if (sc.turns.length < 2 || sps.size > 1) continue
+    const sp = queue.find(s2 => s2.sceneId === sc.sceneId) || { verifiedTargetIds: [] }
+    const before = _lnCloneTurns(sc.turns)
+    log && log('🔧 LISTENING_STRUCTURE_REPAIR ' + sc.sceneId + ' — every turn is speaker ' + [...sps][0] + ' (level 4: the scene structure itself is broken)')
+    await _lnRepairScene(env, sc, { issues: [{ code: 'ONE_SPEAKER_SCENE', line: 1, detail: 'every turn in this scene is speaker ' + [...sps][0] + ' — give roughly half of the turns to the other speaker, as replies (keep every lesson word)' }], protectedIds: sp.verifiedTargetIds || [], allowedMax: before.length })
+    if (_lnSceneCoverage(sc, sp.verifiedTargetIds || [], byId, la, ctx).missing.length) { sc.turns = before; log && log('⛔ PATCH_REJECTED structure ' + sc.sceneId + ' reason=PROTECTED_TARGET_LOST · original kept') }
+  }
+  const qAttempts = new Map(), qStats = { accepted: 0, rejected: 0, exhausted: 0 }, qLogged = new Set()
+  await _lnAtomicQueue(env, accepted, async flat => {
     audit = listeningConversationAudit(accepted, targets, la, ctx)
     natIssues = await naturalness(accepted)
-    _lnLogAuditLines(log, audit, natIssues, targets, 'after quality repair ' + round)
-    emit('repaired', queue.length, { round })
+    return _lnAtomicIssuesOf(audit, natIssues)
+  }, { attempts: qAttempts, stats: qStats, exhaustedLogged: qLogged })
+  audit = listeningConversationAudit(accepted, targets, la, ctx)
+  natIssues = await naturalness(accepted)
+  _lnLogAuditLines(log, audit, natIssues, targets, 'after atomic repair')
+  emit('repaired', queue.length, {})
+  // §17/§18 — coherence: scene-level verdicts are authoritative; a failed scene becomes exact-line COHERENCE_LINE issues
+  const cohScenesOf = scs => scs.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair })) }))
+  tel.LISTENING_QC_CALLS++
+  let coh = await listeningWholeCoherenceAudit(cohScenesOf(accepted), la, o, log)
+  let cohIssues = _lnCoherenceLineIssues(coh, accepted)
+  if (cohIssues.length) {
+    log && log('🎧 LISTENING_COHERENCE_AUTHORITY scene-level verdicts are authoritative — overall ' + (coh.overall != null ? coh.overall + '/5' : '-') + ' cannot override ' + cohIssues.length + ' failed scene(s); exact lines: ' + cohIssues.map(x => 'L' + x.line).join(', '))
+    const texts = new Map(cohIssues.map(x => [x.line, la.text(_lnFlat(accepted)[x.line - 1].tn.pair)]))
+    const before = qStats.accepted
+    await _lnAtomicQueue(env, accepted, async flat => cohIssues.filter(x => flat[x.line - 1] && la.text(flat[x.line - 1].tn.pair) === texts.get(x.line))
+      .map(x => ({ ...x, code: 'COHERENCE_LINE' })), { attempts: qAttempts, stats: qStats, exhaustedLogged: qLogged })
+    if (qStats.accepted > before) {
+      tel.LISTENING_QC_CALLS++
+      coh = await listeningWholeCoherenceAudit(cohScenesOf(accepted), la, o, log)
+      audit = listeningConversationAudit(accepted, targets, la, ctx)
+      natIssues = await naturalness(accepted)
+    }
   }
+  log && log('🎧 LISTENING_ATOMIC_SUMMARY accepted=' + qStats.accepted + ' rejected=' + qStats.rejected + ' exhausted=' + qStats.exhausted + ' · atomic calls ' + (tel.LISTENING_ATOMIC_REPAIR_CALLS || 0))
   const total = audit.lines.length
   const allScenesPass = !unplaceable.size && queue.every(s => !s.requiredTargetIds.length || (s.verifiedTargetIds || []).length === s.requiredTargetIds.length)
   tel.LISTENING_VERIFIED_TARGETS = audit.covered.length
   log && log('🎧 LISTENING_TURN_BUDGET ' + total + ' turns (allowed ' + env.turnsMin + '–' + env.turnsMax + ') ' + (total <= env.turnsMax && !budgetExceeded ? 'PASS' : 'FAIL'))
-  return { ok: true, scenes: accepted, audit, natIssues, plan, report,
+  return { ok: true, scenes: accepted, audit, natIssues, plan, report, coh,
     gates: { SCENE_REQUIRED_COVERAGE: allScenesPass ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total <= env.turnsMax && !budgetExceeded } }
 }
 async function buildListeningConversation(mainTrack, vocab, o) {
@@ -17358,7 +17657,7 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
     const r = await _lnComposeByScenes({ lang, la, log, tel, targets, ctx, known, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax })
     if (!r.ok || !r.scenes.length) return { ok: false, empty: true, listeningQuality: 'NEEDS_REPAIR — ' + (r.reason || 'composition failed'), reason: r.reason || 'the conversation could not be composed', stats: {}, telemetry: tel, plan: r.plan }
-    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report }
+    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh }
   } else {
     if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
     tel.LISTENING_GENERATION_CALLS++
@@ -17439,10 +17738,14 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   }
   // ── 3. whole-conversation coherence (scene + whole) — a HARD gate ──
   const cohScenes = scenes.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair })) }))
-  if (o.apiKey) tel.LISTENING_QC_CALLS++
-  const coh = await listeningWholeCoherenceAudit(cohScenes, la, o, log)
+  // v663: the scene-by-scene path already audited (and atomically repaired) coherence — reuse that verdict, no second call
+  let coh
+  if (sceneGates && sceneGates.coh) coh = sceneGates.coh
+  else { if (o.apiKey) tel.LISTENING_QC_CALLS++; coh = await listeningWholeCoherenceAudit(cohScenes, la, o, log) }
   const cohPassed = coh.state === QUALITY.VERIFIED && coh.verdicts.every(v => v.pass) && (coh.overall == null || coh.overall >= 3)
-  log && log('🎧 LISTENING_COHERENCE ' + (cohPassed ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (coh.overall != null ? ' · overall ' + coh.overall + '/5' : '') + (coh.reason ? ' · ' + String(coh.reason).slice(0, 80) : ''))
+  const cohFailed = (coh.verdicts || []).filter(v => !v.pass)
+  log && log('🎧 LISTENING_COHERENCE ' + (cohPassed ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (coh.overall != null ? ' · overall ' + coh.overall + '/5' : '') +
+    (cohFailed.length ? ' · scene-level verdicts are authoritative: ' + cohFailed.map(v => 'scene ' + v.scene + ' FAIL (' + String(v.reason || '').slice(0, 60) + ')').join('; ') : coh.reason ? ' · ' + String(coh.reason).slice(0, 80) : ''))
   progress('coherence', audit)
   // ── 4. final line metadata — the SAME authoritative pipeline as the Main Track (segmentation, glosses,
   //    pronunciation build, targeted batched repair, final audit), then each line's own check ──

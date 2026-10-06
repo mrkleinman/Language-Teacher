@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v663"/>
+<meta name="app-version" content="v664"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v663';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v663').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v664';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v664').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -14213,11 +14213,13 @@ function _amountsIn(text) {
 const _EVERYDAY_PRICE_CTX = /\b(restaurant|food|meal|lunch|dinner|breakfast|snack|dessert|coffee|tea|drink|noodle|rice|shirt|clothes|market|street|stall|taxi|bus|ticket|massage|fruit|squid|meat)\b/i
 const _PRICE_CTX = /\b(price|prices|cost|costs|baht|expensive|cheap|pay|paid|charge)\b/i
 const EVERYDAY_PRICE_CEILING_BAHT = 5000
+const _COMPARE_CTX = /\b(than|compar\w*|differen\w*|whereas|versus|vs|instead|bigger|smaller|cheaper|richer|million|millions|billion|salary|rent|save|saving|savings|budget|total|altogether)\b/i
 function listeningPlausibilityProblems(lines) {
   const out = []
   const en = lines.map(l => String(l.pair.english || ''))
   const sceneEveryday = en.some(t => _EVERYDAY_PRICE_CTX.test(t))
   const scenePrice = en.some(t => _PRICE_CTX.test(t))
+  const sceneCompare = en.some(t => _COMPARE_CTX.test(t)) || new Set(en.flatMap(t => _amountsIn(t))).size >= 3
   en.forEach((t, i) => {
     const amts = _amountsIn(t)
     if (!amts.length) return
@@ -14232,7 +14234,9 @@ function listeningPlausibilityProblems(lines) {
         out.push({ at: i, score: 3, why: 'confirms, then states a different amount (' + prev.join('/') + ' → ' + amts.join('/') + ')' })
       // E. random escalation between turns
       const pm = prev.length ? Math.max(...prev) : 0
-      if (pm && (max / pm >= 5 || pm / max >= 5) && !/actually|sorry|no,|i mean|not /i.test(t))
+      // v664: a scene that COMPARES amounts (salary vs. a house, "a million is much more than…") jumps on purpose —
+      // live false positive: "amount jumps 20,000 → 1,000,000" in the big-amounts comparison scene
+      if (pm && (max / pm >= 5 || pm / max >= 5) && !/actually|sorry|no,|i mean|not /i.test(t) && !sceneCompare)
         out.push({ at: i, score: 2, why: 'amount jumps ' + pm.toLocaleString('en-US') + ' → ' + max.toLocaleString('en-US') + ' with no reason' })
     }
   })
@@ -14332,7 +14336,7 @@ function listeningCoverageLabel(lt, mainTrack) {
     let s = 'TARGET COVERAGE ' + cv.coveredTargetIds.length + '/' + cv.selectedTargetIds.length +
       ' · NEW ' + cv.newHeardIds.length + '/' + cv.newTargetIds.length + ' · REVIEW ' + cv.reviewHeardIds.length + '/' + cv.reviewTargetIds.length
     if (cv.uncoveredTargetIds.length) s += ' · Missing: ' + cv.uncoveredTargetIds.map(surf).join(', ')
-    s += lt.readiness === 'READY' ? ' · READY' : ' · LISTENING TRACK NEEDS REPAIR'
+    s += lt.readiness === 'READY' ? ' · READY' + ((lt.qualityNotes || []).length ? ' · ' + lt.qualityNotes.length + ' quality note' + (lt.qualityNotes.length === 1 ? '' : 's') : '') : mainTrack && mainTrack.playable ? ' · PLAYING WITH ISSUES' : ' · LISTENING TRACK NEEDS REPAIR'
     return s
   }
   if (cv && cv.requiredTargetIds) {
@@ -14468,7 +14472,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v663'
+const LISTENING_BUILD_VERSION = 'v664'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -15505,7 +15509,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v663'
+const APP_BUILD_VERSION = 'v664'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -17183,6 +17187,9 @@ async function _lnRepairScene(env, sc, spec) {
 const LISTENING_ATOMIC_ATTEMPTS = 2           // paid attempts per issue (line → exchange escalation), then EXHAUSTED
 const LISTENING_ATOMIC_BATCH = 6              // independent units per paid call
 const LISTENING_ATOMIC_PASSES = 4             // queue passes per stage
+// v664: quality notes (vocab / naturalness / coherence) no longer block playback, so polishing them is capped — the
+// live v663 run spent 16 atomic calls (21 rejections, mostly NO_CHANGE) on a 30/30 track
+const LISTENING_QUALITY_ATOMIC_CALLS = 4
 // P0 foundational → P1 vocabulary / duplicates → P2 naturalness / local coherence → P3 structure polish
 const LISTENING_ATOMIC_PRIORITY = { TARGET_MISSING: 0, MAX_TARGETS_PER_TURN: 0, SPEAKER_IDENTITY: 0, LINE_QUALITY: 0, MERGED_SPEAKERS: 0,
   CLOSED_VOCAB: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, UNNATURAL: 2, COHERENCE_LINE: 2 }
@@ -17316,6 +17323,11 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
       return false
     }).sort((a, b) => a.priority - b.priority || a.line - b.line)
     if (!units.length) break
+    if (opts.budget && opts.budget.calls >= opts.budget.max) {
+      log && log('⏹ LISTENING_ATOMIC_CALL_CAP ' + opts.budget.calls + '/' + opts.budget.max + ' quality-repair calls used — ' + units.length + ' remaining issue(s) kept as quality notes (they do not block playback)')
+      tel.LISTENING_ATOMIC_CAPPED = (tel.LISTENING_ATOMIC_CAPPED || 0) + 1
+      break
+    }
     // independent batch: scopes (with one line of context) never touch
     const batch = [], used = new Set()
     for (const u of units) {
@@ -17338,6 +17350,7 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
     batch.forEach(u => { attempts.set(u.key, (attempts.get(u.key) || 0) + 1)
       log && log('🔧 LISTENING_ATOMIC_REPAIR issue=' + u.codes.join('+') + ' scene=' + u.sceneId + ' line=L' + u.line + (u.scope.length > 1 ? ' scope=' + u.scope.map(k => 'L' + k).join('+') : '') +
         (u.forbidden.length ? ' forbidden=[' + u.forbidden.join(', ') + ']' : '') + (u.place ? ' place=' + u.place.surface : '') + ' protected=[' + u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') + '] attempt=' + (u.tried + 1) + ' level=' + (u.place ? 2 : u.level)) })
+    if (opts.budget) opts.budget.calls++
     const repairs = await _lnAtomicCall(env, flat, batch)
     const committed = []
     for (const u of batch) {
@@ -17349,7 +17362,11 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
         newByLine.set(k, _lnMakeTurn(la, { text: x.text, english: x.english || orig.pair.english, reading: x.reading, romaji: x.romaji, pinyin: x.pinyin }, orig.speaker)) })
       if (!newByLine.size) { stats.rejected++; log && log('⛔ PATCH_REJECTED issue=' + u.issueId + ' line=L' + u.line + ' reason=NO_PATCH_RETURNED'); continue }
       const v = _lnValidatePatch(env, flat, u, newByLine)
-      if (!v.ok) { stats.rejected++; log && log('⛔ PATCH_REJECTED issue=' + u.issueId + ' line=L' + u.line + ' reason=' + v.reason + ' · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)'); continue }
+      if (!v.ok) { stats.rejected++
+        // v664: the model returned the same line — asking again with the same instructions just burns a call
+        const stop = v.reason === 'NO_CHANGE' && !u.place
+        if (stop) attempts.set(u.key, LISTENING_ATOMIC_ATTEMPTS)
+        log && log('⛔ PATCH_REJECTED issue=' + u.issueId + ' line=L' + u.line + ' reason=' + v.reason + ' · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)' + (stop ? ' · no retry (unchanged text) → kept as a quality note' : '')); continue }
       const prev = new Map()
       newByLine.forEach((tn, k) => { const f = flat[k - 1]; prev.set(k, f.sc.turns[f.ti]); f.sc.turns[f.ti] = { ...tn, speaker: f.tn.speaker } })
       committed.push({ u, prev, pending: v.pending })
@@ -17453,7 +17470,8 @@ async function _lnComposeByScenes(env) {
     const requiredAtStart = sp.requiredTargetIds.length
     _lnPlanExchanges(sp, byId)
     const minLater = queue.slice(qi + 1).reduce((a, s) => a + (s.requiredTargetIds.length ? Math.max(2, 2 * Math.ceil(s.requiredTargetIds.length / 2)) : 0), 0)
-    const allowedMax = Math.max(Math.max(2, 2 * Math.ceil(sp.requiredTargetIds.length / 2)), Math.min(sp.maxTurns || sp.expectedTurns + 1, env.turnsMax - usedTurns - minLater))
+    // v664: a scene that received reassigned words gets room for them (live: "9–8 turns" for a scene with 8 required words)
+    const allowedMax = Math.max(sp.expectedTurns, Math.min(Math.max(sp.maxTurns || 0, sp.expectedTurns + 1), env.turnsMax - usedTurns - minLater))
     const prev = accepted[accepted.length - 1]
     const context = accepted.length ? 'earlier: ' + accepted.map(s => s.setting).filter(Boolean).join(' → ') + '. The previous scene ended with: ' +
       prev.turns.slice(-2).map(tn => tn.speaker + ': ' + la.text(tn.pair) + ' (' + (tn.pair.english || '') + ')').join(' / ') + ' — continue naturally from there.' : ''
@@ -17540,12 +17558,12 @@ async function _lnComposeByScenes(env) {
     await _lnRepairScene(env, sc, { issues: [{ code: 'ONE_SPEAKER_SCENE', line: 1, detail: 'every turn in this scene is speaker ' + [...sps][0] + ' — give roughly half of the turns to the other speaker, as replies (keep every lesson word)' }], protectedIds: sp.verifiedTargetIds || [], allowedMax: before.length })
     if (_lnSceneCoverage(sc, sp.verifiedTargetIds || [], byId, la, ctx).missing.length) { sc.turns = before; log && log('⛔ PATCH_REJECTED structure ' + sc.sceneId + ' reason=PROTECTED_TARGET_LOST · original kept') }
   }
-  const qAttempts = new Map(), qStats = { accepted: 0, rejected: 0, exhausted: 0 }, qLogged = new Set()
+  const qAttempts = new Map(), qStats = { accepted: 0, rejected: 0, exhausted: 0 }, qLogged = new Set(), qBudget = { calls: 0, max: LISTENING_QUALITY_ATOMIC_CALLS }
   await _lnAtomicQueue(env, accepted, async flat => {
     audit = listeningConversationAudit(accepted, targets, la, ctx)
     natIssues = await naturalness(accepted)
     return _lnAtomicIssuesOf(audit, natIssues)
-  }, { attempts: qAttempts, stats: qStats, exhaustedLogged: qLogged })
+  }, { attempts: qAttempts, stats: qStats, exhaustedLogged: qLogged, budget: qBudget })
   audit = listeningConversationAudit(accepted, targets, la, ctx)
   natIssues = await naturalness(accepted)
   _lnLogAuditLines(log, audit, natIssues, targets, 'after atomic repair')
@@ -17560,7 +17578,7 @@ async function _lnComposeByScenes(env) {
     const texts = new Map(cohIssues.map(x => [x.line, la.text(_lnFlat(accepted)[x.line - 1].tn.pair)]))
     const before = qStats.accepted
     await _lnAtomicQueue(env, accepted, async flat => cohIssues.filter(x => flat[x.line - 1] && la.text(flat[x.line - 1].tn.pair) === texts.get(x.line))
-      .map(x => ({ ...x, code: 'COHERENCE_LINE' })), { attempts: qAttempts, stats: qStats, exhaustedLogged: qLogged })
+      .map(x => ({ ...x, code: 'COHERENCE_LINE' })), { attempts: qAttempts, stats: qStats, exhaustedLogged: qLogged, budget: { calls: Math.max(0, qBudget.calls - 2), max: LISTENING_QUALITY_ATOMIC_CALLS } })
     if (qStats.accepted > before) {
       tel.LISTENING_QC_CALLS++
       coh = await listeningWholeCoherenceAudit(cohScenesOf(accepted), la, o, log)
@@ -17785,9 +17803,19 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     CLOSED_VOCAB: !audit.issues.some(x => x.code === 'CLOSED_VOCAB'), LINE_QUALITY: !audit.issues.some(x => x.code === 'SPEAKER_IDENTITY' || x.code === 'LINE_QUALITY'),
     NATURALNESS: !natIssues.length, WHOLE_CONVERSATION_COHERENCE: cohPassed ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED', PRONUNCIATION: !pronIssues.length,
     // v662 — the standalone track also needs every scene's required coverage and the turn budget
-    ...(sceneGates ? { SCENE_REQUIRED_COVERAGE: sceneGates.SCENE_REQUIRED_COVERAGE, TURN_COUNT: sceneGates.TURN_COUNT, TURN_BUDGET: sceneGates.TURN_BUDGET } : {}),
+    // v664: a word that ended up heard somewhere else in the final text satisfies its scene requirement (coverage is the text)
+    ...(sceneGates ? { SCENE_REQUIRED_COVERAGE: audit.covered.length === targets.length ? 'PASS' : sceneGates.SCENE_REQUIRED_COVERAGE, TURN_COUNT: sceneGates.TURN_COUNT, TURN_BUDGET: sceneGates.TURN_BUDGET } : {}),
   }
-  const failed = Object.entries(gates).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k]) => k)
+  const failedAll = Object.entries(gates).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k]) => k)
+  // v664 — PLAYABILITY vs QUALITY. A standalone Listening Track is playable when the things that make it a Listening
+  // Track hold: every one of the 30 words is heard (30/30), at most 3 per turn, two speakers, inside the turn budget.
+  // Unknown support words, a line the judge finds slightly unnatural, an amount-jump heuristic, a phonetic gap are
+  // QUALITY NOTES — shown to the learner, never a reason to withhold a 30/30 conversation. (The retired Main-Track child
+  // path keeps every gate hard.)
+  const LISTENING_PLAYABILITY_GATES = ['COVERAGE_PASS', 'MAX3_PASS', 'BOTH_SPEAKERS', 'TURN_BUDGET']
+  const failed = sceneGates ? failedAll.filter(k => LISTENING_PLAYABILITY_GATES.includes(k)) : failedAll
+  // SCENE_REQUIRED_COVERAGE can only fail when the final text is short of 30/30 — COVERAGE_PASS already says so
+  const qualityGates = sceneGates ? failedAll.filter(k => !LISTENING_PLAYABILITY_GATES.includes(k) && k !== 'SCENE_REQUIRED_COVERAGE') : []
   const ready = !failed.length
   tel.LISTENING_TOTAL_PAID_CALLS = tel.LISTENING_GENERATION_CALLS + tel.LISTENING_REPAIR_CALLS + tel.LISTENING_QC_CALLS
   // ── 6. the Listening track object ──
@@ -17809,9 +17837,23 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     surfaceEvidence: audit.occ.get(t.id).map(k => lines[k - 1] && lines[k - 1].thai), status: audit.occ.get(t.id).length ? 'COVERED' : 'MISSING', reason: audit.occ.get(t.id).length ? '' : (t.unresolved ? 'unresolved at selection' : 'not present in the final conversation') }))
   const covered = audit.covered
   const reasons = failed.map(k => k + '=' + (gates[k] === false ? 'FAIL' : gates[k]))
-  const quality = ready ? 'VERIFIED' : 'NEEDS_REPAIR — ' + reasons.slice(0, 4).join(' · ')
+  // the notes the learner sees next to a playable track (what still is not perfect, in plain words)
+  const qualityNotes = qualityGates.map(k => {
+    const ls = codes => [...new Set(hard.filter(x => codes.test(x.code)).map(x => x.line).filter(Boolean))]
+    if (k === 'CLOSED_VOCAB') { const words = [...new Set(scenes.flatMap(sc => sc.turns).flatMap(tn => { try { return listeningUnexposedWords(lang, tn.pair, ctx.exposed || [], ctx.eligTargets || []) } catch (e) { return [] } }))]
+      return { gate: k, lines: ls(/^CLOSED_VOCAB$/), words, text: words.length + ' word' + (words.length === 1 ? '' : 's') + ' you have not learned yet: ' + words.slice(0, 12).join(', ') } }
+    if (k === 'NATURALNESS') { const L = [...new Set(natIssues.map(x => x.line))]; return { gate: k, lines: L, text: L.length + ' line' + (L.length === 1 ? '' : 's') + ' may sound a little unnatural (' + L.map(x => 'L' + x).join(', ') + ')' } }
+    if (k === 'WHOLE_CONVERSATION_COHERENCE') { const f = (coh.verdicts || []).filter(v => !v.pass); return { gate: k, lines: [], text: f.length ? 'scene ' + f.map(v => v.scene + ': ' + String(v.reason || '').slice(0, 70)).join(' · ') : 'coherence could not be verified' } }
+    if (k === 'PRONUNCIATION') return { gate: k, lines: ls(/^PRONUNCIATION$/), text: 'phonetics may be incomplete on ' + ls(/^PRONUNCIATION$/).map(x => 'L' + x).join(', ') }
+    if (k === 'LINE_QUALITY') return { gate: k, lines: ls(/^(SPEAKER_IDENTITY|LINE_QUALITY)$/), text: 'speaker / politeness detail on ' + ls(/^(SPEAKER_IDENTITY|LINE_QUALITY)$/).map(x => 'L' + x).join(', ') }
+    if (k === 'NO_DUPLICATES') return { gate: k, lines: ls(/DUPLICATE/), text: 'a repeated line (' + ls(/DUPLICATE/).map(x => 'L' + x).join(', ') + ')' }
+    if (k === 'NO_MERGED_SPEAKER_LINES') return { gate: k, lines: ls(/^MERGED_SPEAKERS$/), text: 'a question and its answer in one line (' + ls(/^MERGED_SPEAKERS$/).map(x => 'L' + x).join(', ') + ')' }
+    return { gate: k, lines: [], text: k.replace(/_/g, ' ').toLowerCase() }
+  })
+  const quality = ready ? (qualityNotes.length ? 'PLAYABLE — ' + qualityNotes.length + ' quality note(s)' : 'VERIFIED') : 'NEEDS_REPAIR — ' + reasons.slice(0, 4).join(' · ')
   audit.lines.forEach(r => log && log('    LISTENING_LINE L' + r.n + ' speaker=' + r.speaker + ' actualTargetIds=[' + r.actualTargetIds.join(',') + '] targetCount=' + r.targetCount))
-  log && log('🎧 LISTENING_FINAL_INTEGRITY ' + (ready ? 'READY' : 'NOT_READY') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length + (failed.length ? ' · failed: ' + failed.join(', ') : ' · every gate passed'))
+  if (qualityNotes.length) log && log('📝 LISTENING_QUALITY_NOTES (shown to the learner, do NOT block playback): ' + qualityNotes.map(q => q.gate + ' — ' + q.text).join(' · '))
+  log && log('🎧 LISTENING_FINAL_INTEGRITY ' + (ready ? 'READY' + (qualityNotes.length ? ' (playable · ' + qualityNotes.length + ' quality note(s))' : '') : 'NOT_READY') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length + (failed.length ? ' · failed: ' + failed.join(', ') : ' · every gate passed'))
   progress('final', audit, { ready, failedChecks: reasons })
   log && log('  🎧 LISTENING_GATES ' + Object.entries(gates).map(([k, v]) => k + '=' + v).join(' · '))
   log && log('  🎧 LISTENING ' + (ready ? 'READY' : 'NOT_READY — Listening track needs repair (' + reasons.join(', ') + ')') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length +
@@ -17830,7 +17872,7 @@ async function buildListeningConversation(mainTrack, vocab, o) {
       omissionReasons: audit.missing.map(t => ({ targetId: t.id, reason: 'not present in the final conversation' })) },
     sceneGroups: scenes.map((sc, k) => k + 1), sceneTitles: scenes.map(sc => sc.setting || ''), scenes: scenes.map(sc => ({ sceneId: sc.sceneId, setting: sc.setting, turns: sc.turns.length })),
     coherenceScore: coh.overall, coherenceAudit: { state: coh.state, passed: cohPassed, verdicts: coh.verdicts, reason: coh.reason, overall: coh.overall },
-    gates, issues: hard.map(x => ({ code: x.code, line: x.line, detail: x.detail })), telemetry: { ...tel },
+    gates, issues: hard.map(x => ({ code: x.code, line: x.line, detail: x.detail })), telemetry: { ...tel }, qualityNotes, playabilityGates: sceneGates ? LISTENING_PLAYABILITY_GATES : null,
     coveragePlan: sceneGates ? { scenes: sceneGates.plan.scenes.map(sc => ({ sceneId: sc.sceneId, purpose: sc.purpose, requiredTargetIds: sc.requiredTargetIds.slice(), optionalTargetIds: [], expectedTurns: sc.expectedTurns, maxTurns: sc.maxTurns })),
       assignments: sceneGates.plan.assignments, seed: sceneGates.plan.seed } : null, sceneReport: sceneGates ? sceneGates.report : null,
     dialogueStats: { scenes: scenes.length, lines: lines.length, speakers: { A: lines.filter(l => l.speaker === 'A').length, B: lines.filter(l => l.speaker === 'B').length },
@@ -17969,12 +18011,14 @@ async function buildStandaloneListeningTrack(o) {
   const ready = lt.readiness === 'READY' && lt.coverage.coveredTargetIds.length === keywords.length
   const track = { ...source, listening: { ...lt, telemetry: tel }, status: ready ? 'READY' : 'NOT_READY', ready, usage: ut.usage,
     coverage: { covered: lt.coverage.coveredTargetIds.length, required: keywords.length, missing: lt.coverage.uncoveredTargetIds.slice() },
-    failedChecks: Object.entries(lt.gates || {}).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k, v]) => k + '=' + (v === false ? 'FAIL' : v)), telemetry: tel }
+    // v664: failedChecks = what blocks PLAYBACK only; quality notes travel separately and are shown, not enforced
+    failedChecks: Object.entries(lt.gates || {}).filter(([k, v]) => (v === false || v === 'FAIL' || v === 'UNVERIFIED') && (!lt.playabilityGates || lt.playabilityGates.includes(k))).map(([k, v]) => k + '=' + (v === false ? 'FAIL' : v)),
+    qualityNotes: (lt.qualityNotes || []).slice(), playable: ready, telemetry: tel }
   // §9 invariant: what the track carries IS the frozen snapshot
   const inv = JSON.stringify(track.selectedTargetIds) === JSON.stringify(frozenIds) && JSON.stringify(lt.coverage.selectedTargetIds) === JSON.stringify(frozenIds)
   log && log('🎧 LISTENING_SNAPSHOT_INVARIANT ' + (inv ? 'PASS' : 'FAIL') + ' — track / coverage target ids === the frozen snapshot (' + frozenIds.length + ')')
   log && log('🎧 LISTENING_TRACK_RESULT status=' + track.status + ' · TARGET COVERAGE ' + track.coverage.covered + '/' + track.coverage.required +
-    (track.failedChecks.length ? ' · failed: ' + track.failedChecks.join(', ') : '') + ' · ' + Object.entries(tel).map(([k, v]) => k + '=' + v).join(' '))
+    (track.failedChecks.length ? ' · failed: ' + track.failedChecks.join(', ') : '') + (track.qualityNotes.length ? ' · quality notes: ' + track.qualityNotes.map(q => q.gate).join(', ') : '') + ' · ' + Object.entries(tel).map(([k, v]) => k + '=' + v).join(' '))
   return { track, result: res }
 }
 function listeningTrackSummary(t) {
@@ -18009,7 +18053,7 @@ function ListenTrackRowButton({ onClick, compact }) {
 // v661 — the learner's LATEST Listening Track, right under the Daily / Revision / Listening buttons, so it can be
 // played (or, after a NOT_READY attempt, rebuilt with the same 30 words) without scrolling to Recent Tracks.
 function ListeningLatestBar({ lang, tracks, onListen, onRebuild }) {
-  const latest = useMemo(() => [...(tracks || [])].reverse().find(t => isListeningTrack(t) && t.ready && t.listening) || null, [tracks])
+  const latest = useMemo(() => [...(tracks || [])].reverse().find(t => isListeningTrack(t) && (t.ready || t.playable) && t.listening) || null, [tracks])
   const [attempt, setAttempt] = useState(null)
   useEffect(() => { let live = true
     loadListeningAttempts(lang).then(a => { if (live) setAttempt((a || [])[0] || null) })
@@ -18086,7 +18130,10 @@ function listeningAttemptRecord(o) {
   return { attemptId: o.attemptId, createdAt: o.createdAt, finishedAt: o.finishedAt || null, language: o.lang, trackType: 'listening',
     selectedTargetIds: (o.ids || []).slice(), state: o.state, coverage: t.coverage || { covered: o.covered || 0, required: (o.ids || []).length, missing: o.missing || [] },
     failedChecks: t.failedChecks || [], failureReason: t.failureReason || null, telemetry: t.telemetry || null, usage: o.usage || t.usage || null,
-    model: o.model || null, rebuildOf: o.rebuildOf || null, trackId: t.ready ? t.id : null, log: (o.log || []).slice(-600) }
+    model: o.model || null, rebuildOf: o.rebuildOf || null, trackId: t.ready || t.playable ? t.id : null, log: (o.log || []).slice(-600),
+    // v664: the conversation itself, so any attempt that produced lines can be listened to from History
+    qualityNotes: t.qualityNotes || [], lines: t.listening && Array.isArray(t.listening.lines) && t.listening.lines.length ? t.listening.lines : null,
+    coverageLabel: t.listening ? listeningCoverageLabel(t.listening, t) : '' }
 }
 function listeningCoverageCounts(cov, ids) {
   const st = id => (cov && cov[id]) || 'pending'
@@ -18105,7 +18152,7 @@ function ListeningUsageLine({ usage, label }) {
     </div>
   )
 }
-function ListeningAttemptHistory({ attempts, currentId, words, onRebuildIds, building }) {
+function ListeningAttemptHistory({ attempts, currentId, words, onRebuildIds, building, onPlay }) {
   const [open, setOpen] = useState(false)
   const [expanded, setExpanded] = useState(null)
   const list = attempts || []
@@ -18139,12 +18186,17 @@ function ListeningAttemptHistory({ attempts, currentId, words, onRebuildIds, bui
                 <div style={{ fontSize:10, color:'var(--muted)' }}>Targets: {(a.selectedTargetIds || []).map(wordOf).join(' · ')}</div>
                 {a.coverage && (a.coverage.missing || []).length > 0 && <div style={{ fontSize:10, color:'#f97316' }}>Missing: {a.coverage.missing.map(wordOf).join(', ')}</div>}
                 {(a.failedChecks || []).length > 0 && <div style={{ fontSize:10, color:'#f97316' }}>Failed: {a.failedChecks.join(' · ')}</div>}
+                {(a.qualityNotes || []).length > 0 && <div style={{ fontSize:10, color:'#b45309' }}>Quality notes: {a.qualityNotes.map(q => q.text).join(' · ')}</div>}
                 {a.failureReason && <div style={{ fontSize:10, color:'#f97316' }}>{a.failureReason}</div>}
                 {a.telemetry && <div style={{ fontSize:9, color:'var(--muted)', fontFamily:'monospace' }}>{Object.entries(a.telemetry).map(([k, v]) => k + '=' + v).join(' ')}</div>}
                 <div style={{ maxHeight:160, overflowY:'auto', background:'var(--surface2)', borderRadius:4, padding:'4px 6px' }}>
                   {(a.log || []).map((m, i) => <p key={i} style={{ fontSize:9, margin:0, fontFamily:'monospace', color: generationLogColor(m), overflowWrap:'anywhere' }}>{m}</p>)}
                 </div>
                 <div style={{ display:'flex', gap:6 }}>
+                  {onPlay && !building && (a.lines || []).length > 0 && (
+                    <button data-listening-history-play={a.attemptId} onClick={() => onPlay(a)}
+                      style={{ fontSize:9, background:'#10b981', border:'none', borderRadius:4, color:'#fff', fontWeight:700, cursor:'pointer', padding:'1px 8px' }}>▶ Play</button>
+                  )}
                   <button onClick={() => downloadGeneratorLog(['LISTENING GENERATION ' + a.attemptId, 'language=' + a.language + ' trackType=listening state=' + st + ' coverage=' + ((a.coverage && a.coverage.covered) || 0) + '/' + ((a.coverage && a.coverage.required) || 0),
                     'selectedTargetIds=[' + (a.selectedTargetIds || []).join(',') + ']', a.usage ? 'usage: ' + JSON.stringify(a.usage) : '', ''].concat(a.log || []), 'listening-log')}
                     style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>⬇ log</button>
@@ -18162,13 +18214,19 @@ function ListeningAttemptHistory({ attempts, currentId, words, onRebuildIds, bui
   )
 }
 // The status of a finished attempt, shown INSIDE the generator (never instead of it).
-function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onStart, onCancel }) {
+function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onStart, onCancel, onPlayAnyway }) {
   if (building) return <Btn onClick={onCancel} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>{'⏸'} Cancel</Btn>
   if (!track) return <Btn onClick={onBack} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
   const cov = track.coverage || { covered: 0, required: LISTENING_TRACK_TARGETS, missing: [] }
   if (track.ready) return (
     <div data-listening-track-ready="1" style={{ display:'flex', flexDirection:'column', gap:10 }}>
       <div style={{ textAlign:'center', fontSize:13, fontWeight:600 }}>{track.listening ? listeningCoverageLabel(track.listening, track) : 'TARGET COVERAGE ' + cov.covered + '/' + cov.required}</div>
+      {(track.qualityNotes || []).length > 0 && (
+        <div data-listening-quality-notes={track.qualityNotes.map(q => q.gate).join(',')} style={{ background:'rgba(212,169,74,0.08)', border:'1px solid #d4a94a', borderRadius:10, padding:'8px 12px', display:'flex', flexDirection:'column', gap:3 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#d4a94a', letterSpacing:'0.04em' }}>QUALITY NOTES · these do not stop you listening</div>
+          {track.qualityNotes.map((q, i) => <div key={i} style={{ fontSize:12, color:'var(--text)' }}>• {q.text}</div>)}
+        </div>
+      )}
       <Btn onClick={onStart} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>▶ Start Listening</Btn>
       <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
     </div>
@@ -18181,7 +18239,11 @@ function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onSt
       {missing.length > 0 && <div style={{ fontSize:12, color:'var(--text)' }}>Missing: {missing.join(', ')}</div>}
       {(track.failedChecks || []).length > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Failed: {track.failedChecks.map(x => x.replace(/=FAIL$/, '')).join(' · ')}</div>}
       {track.failureReason && <div style={{ fontSize:12, color:'#b45309' }}>{track.failureReason}</div>}
-      <div style={{ fontSize:11, color:'var(--muted)' }}>Not played or saved as a lesson. Rebuild writes a completely new conversation from the same {(track.selectedTargetIds || []).length} words.</div>
+      {(track.qualityNotes || []).length > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Quality notes: {track.qualityNotes.map(q => q.text).join(' · ')}</div>}
+      <div style={{ fontSize:11, color:'var(--muted)' }}>Rebuild writes a completely new conversation from the same {(track.selectedTargetIds || []).length} words.{onPlayAnyway && track.listening && (track.listening.lines || []).length ? ' Or play this one as it is — it is saved and marked as having issues.' : ''}</div>
+      {onPlayAnyway && track.listening && (track.listening.lines || []).length > 0 && (
+        <div data-listening-play-anyway="1"><Btn onClick={onPlayAnyway} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'12px' }}>▶ Play anyway ({track.listening.lines.length} lines)</Btn></div>
+      )}
       <div style={{ display:'flex', gap:8 }}>
         <Btn onClick={onRebuild} variant="primary" disabled={!(track.selectedTargetIds || []).length} style={{ flex:1, justifyContent:'center' }}>🔁 Rebuild</Btn>
         <Btn onClick={onBack} variant="secondary" style={{ flex:1, justifyContent:'center' }}>Continue</Btn>
@@ -18215,7 +18277,7 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   const [usage, setUsage] = useState(saved ? saved.usage || null : null)
   const [currentAttempt, setCurrentAttempt] = useState(saved ? saved.attemptId || null : null)
   // v659.1 — opening a saved READY track (Recent Tracks / ▶ Listen) goes straight to the player
-  const [playing, setPlaying] = useState(() => !!(autoPlay && saved && saved.ready && saved.listening))
+  const [playing, setPlaying] = useState(() => !!(autoPlay && saved && (saved.ready || saved.playable) && saved.listening))
   const [speed, setSpeed] = useState(() => listeningPlaybackSpeed())
   const runRef = useRef(null), startedRef = useRef(false), liveRef = useRef(true), logRef = useRef([])
   useEffect(() => { liveRef.current = true; return () => { liveRef.current = false; if (runRef.current) { try { aiCancelRun(runRef.current.runId, 'listening generator closed') } catch (e) {} } } }, [])
@@ -18260,11 +18322,29 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   }
   useEffect(() => { if (!saved && !startedRef.current) { startedRef.current = true; rebuildStart ? run(rebuildStart, startRebuildOf || null) : run(null, null) } }, [])
   const cancel = () => { if (runRef.current) { try { aiCancelRun(runRef.current.runId, 'cancelled by the learner') } catch (e) {} } onBack && onBack() }
+  // v664 — a NOT_READY conversation that HAS lines is still a conversation: the learner may listen to it. It is saved
+  // (so it shows in Recent / the dashboard bar) with playable:true and its failed checks, never disguised as READY.
+  const playAnyway = async () => {
+    if (!result || !result.listening || !(result.listening.lines || []).length) return
+    const already = !!result.playable
+    const t = { ...result, playable: true, playedAnyway: true }
+    if (!already) { try { onSave && await onSave(t) } catch (e) {} }
+    try { const a = await loadListeningAttempts(lang); const rec = a.find(x => x.attemptId === (t.attemptId || currentAttempt))
+      if (rec) { const n = await saveListeningAttempt(lang, { ...rec, trackId: t.id || null, playedAnyway: true }); if (liveRef.current) setAttempts(n) } } catch (e) {}
+    setResult(t); setPlaying(true)
+  }
+  // any History row with lines can be played (the conversation is stored on the attempt)
+  const playAttempt = a => {
+    if (!a || !(a.lines || []).length) return
+    setResult({ trackType: 'listening', language: lang, attemptId: a.attemptId, selectedTargetIds: a.selectedTargetIds || [], coverage: a.coverage, failedChecks: a.failedChecks || [],
+      qualityNotes: a.qualityNotes || [], ready: a.state === 'READY', playable: true, listening: { lines: a.lines, readiness: a.state === 'READY' ? 'READY' : 'NOT_READY', coverage: null }, _coverageLabel: a.coverageLabel || '' })
+    setPhase('done'); setPlaying(true)
+  }
   const lt = result && result.listening
   if (playing && lt) return (
     <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>
       <ConvoPlayer lines={lt.lines.map(l => ({ ...l, _scene: l.scene }))} speed={speed} onSpeedChange={v => { setSpeed(v); saveListeningPlaybackSpeed(v) }} speedPresets={LISTENING_SPEED_PRESETS}
-        gcpTtsKey={gcpTtsKey} lang={lang} coverageLabel={listeningCoverageLabel(lt, result)} title="Listening Track" onSkip={() => setPlaying(false)} onDone={() => { setPlaying(false); onBack && onBack() }} />
+        gcpTtsKey={gcpTtsKey} lang={lang} coverageLabel={result._coverageLabel || listeningCoverageLabel(lt, result)} title="Listening Track" onSkip={() => setPlaying(false)} onDone={() => { setPlaying(false); onBack && onBack() }} />
     </div>
   )
   // ── derived from the ONE coverage map ──
@@ -18279,8 +18359,8 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   const title = building ? 'Kru Gemini is writing your listening track' : ready ? '✓ Listening Track Ready!' : '⚠ Listening track needs repair'
   const chipColor = id => LISTENING_COVERAGE_STYLE[coverage[id] || 'pending'].color
   const statusPanel = <ListeningStatusPanel track={building ? null : result} wordOf={wordOf} building={building} onCancel={cancel} onBack={onBack}
-    onStart={() => setPlaying(true)} onRebuild={() => run(ids, (result && (result.attemptId || result.id)) || currentAttempt)} />
-  const history = <ListeningAttemptHistory attempts={attempts} currentId={currentAttempt} words={words} building={building} onRebuildIds={(tids, from) => run(tids, from)} />
+    onStart={() => setPlaying(true)} onRebuild={() => run(ids, (result && (result.attemptId || result.id)) || currentAttempt)} onPlayAnyway={playAnyway} />
+  const history = <ListeningAttemptHistory attempts={attempts} currentId={currentAttempt} words={words} building={building} onRebuildIds={(tids, from) => run(tids, from)} onPlay={playAttempt} />
   const chipsGrid = lang === 'th'
     ? <GeneratorTileGrid count={ids.length} ids={ids} idAttr="data-listening-chip" tileDone={i => (coverage[ids[i]] || 'pending') !== 'pending'} tileColor={i => chipColor(ids[i])} />
     : <GenerationBrickGrid total={ids.length} ids={ids} idAttr="data-listening-chip"

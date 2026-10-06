@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v664"/>
+<meta name="app-version" content="v666"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v664';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v664').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v666';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v666').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3323,7 +3323,7 @@ function mergeMandarinVocab(saved) {
 function isMandarinIntroduced(w, activeIds) {
   if (!w) return false
   if (activeIds && activeIds.has(w.id)) return true
-  return (w.repCount || 0) > 0 || !!w.lastSeen
+  return isLearnerTaught(w)                       // v665: the ONE definition of taught
 }
 
 // §11 — THE one inventory. Every generation stage reads from this.
@@ -3368,13 +3368,8 @@ function mandarinComplexity(pair, inv) {
   const clauses = ((pair && pair.chinese) || '').split(/[\uFF0C\u3002\uFF1B]/).filter(x => x.trim()).length
   return content + Math.max(0, clauses - 1)
 }
-function mandarinComplexityCeiling(vocab) {
-  const known = (vocab || []).filter(w => w.status === 'known').length
-  if (known < 10) return 4
-  if (known < 30) return 6
-  if (known < 60) return 8
-  return 11
-}
+// v665: the Mandarin ceiling is the ONE belt contract's hardMax (no known-count table)
+function mandarinComplexityCeiling(vocab) { return getLearnerComplexityContract({ lang: 'zh', vocab }).hardMax }
 
 // §21/§50 — lexical target matching. 吃 must not satisfy a 吃饭 target, and a
 // legitimate grammatical frame around the target must not cause rejection.
@@ -3448,7 +3443,7 @@ function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
     (w.note ? '  \u2014 use when ' + w.note : '')).join('\n')
   const basics  = inv.conversationBasics.map(b => '  ' + b.form + ' [' + b.pinyin + '] = ' + b.english).join('\n')
   const gram    = inv.grammarScaffold.map(g => '  ' + g.form + ' [' + g.pinyin + '] \u2014 ' + g.meaning).join('\n')
-  const ceiling = mandarinComplexityCeiling(vocab)
+  const _cc = getLearnerComplexityContract({ lang: 'zh', vocab, lexicon: inv && inv.lexicon })
   const system =
     'You are a Mandarin teacher writing natural spoken Chinese for a beginner learner.\n\n' + MANDARIN_REGISTER.contract
   const user =
@@ -3462,7 +3457,7 @@ function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
       'minimum context that makes ' + target.chinese + ' the obvious answer: ' + target.note + '.' : '') + '\n' +
     'Write ONE natural sentence (recall ' + recallIndex + ' of 3) that genuinely uses ' + target.chinese + '.\n' +
     targetRoleLine(targetLinguisticRole(target, 'zh'), target, 'zh') +      // v649 §27 role metadata
-    'Max ' + ceiling + ' content words. Simplified Chinese only. No Traditional characters.\n' +
+    _cc.promptRule + ' Simplified Chinese only. No Traditional characters.\n' +
     (rules.requirePatternVariety ? 'Vary the grammar pattern from earlier recalls.\n'
       : 'Controlled repetition and similar structures are DESIRABLE at this stage (\u00a754).\n') +
     '\u00a770: adjectives take \u5F88 etc., NOT \u662F. \u00a771: use \u4E0D vs \u6CA1 correctly. \u00a769: keep the subject when it aids clarity.\n' +
@@ -3537,7 +3532,9 @@ function validateMandarinPair(cand, target, inv, vocab, rules, seenMap) {
   for (const rx of MANDARIN_REGISTER.tooRough) if (rx.test(zh)) { P.push('register too rough'); break }
   // H. complexity
   const cx = mandarinComplexity({ chinese:zh, segments:segs }, inv)
-  if (cx > mandarinComplexityCeiling(vocab) + 2) P.push('too complex for this stage (' + cx + ')')
+  // v665 — belt hardMax, no +2 tolerance, counted on the canonical segmentation's lexical units
+  { const _cc = getLearnerComplexityContract({ lang: 'zh', vocab, lexicon: inv && inv.lexicon }), _an = _cc.analyse({ chinese: zh, segments: segs })
+    if (_an.overHardMax) P.push('LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' words > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')') }
   if (P.length) return { ok:false, problems:P }
   // \u00a770/\u00a771 \u2014 basic Mandarin grammaticality. Broken Chinese is not an acceptable
   // way to satisfy a closed vocabulary (\u00a764).
@@ -4695,7 +4692,7 @@ const JAPANESE_MORPHOLOGY_SCAFFOLD = [
 // morphology — no を, no past tense, no ます, no ない — which makes ordinary Japanese
 // impossible to build and sends every candidate to fallback.
 function japaneseScaffoldFor(vocab) {
-  const introduced = (vocab || []).filter(w => hasBeenIntroduced(w)).length
+  const introduced = (vocab || []).filter(w => isLearnerTaught(w)).length
   const known = (vocab || []).filter(w => w.status === 'known').length
   // Either measure may unlock a block; introduced is the primary one.
   // When a block declares minIntroduced that value is AUTHORITATIVE. Treating it as
@@ -4713,9 +4710,7 @@ function japaneseScaffoldFor(vocab) {
 function isJapaneseIntroduced(w, activeTargetIds) {
   if (!w) return false
   if (activeTargetIds && activeTargetIds.has(w.id)) return true
-  if ((w.repCount || 0) > 0) return true
-  if (w.lastSeen) return true
-  return false
+  return isLearnerTaught(w)                       // v665: the ONE definition of taught
 }
 
 // §2 — the closed content set for one track.
@@ -5045,17 +5040,7 @@ function scarcityRules(inv) { return SCARCITY_RULES[japaneseScarcityLevel(inv)] 
 
 // §10/§11 — complexity from CONTENT segments, not character runs. A long kana run
 // is not automatically many units; 今日何する？ is three content items, not six.
-function japaneseComplexity(pair) {
-  const segs = Array.isArray(pair && pair.segments) ? pair.segments : null
-  if (segs && segs.length) {
-    const content = segs.filter(s => s && s.type !== 'grammar' && s.type !== 'punct' &&
-      /[\u3040-\u30FF\u4E00-\u9FFF]/.test(s.surface || '')).length
-    const clauses = ((pair.japanese || '').match(/[\u3001\u3066\u304C\u3051\u3069]/g) || []).length
-    return content + Math.floor(clauses / 2)
-  }
-  // No segments: fall back to the older estimate rather than guessing.
-  return japaneseUnitCount((pair && (pair.japanese || pair.thai)) || '')
-}
+// v665: japaneseComplexity removed — an unreferenced second Japanese length counter (complexityUnits is the one)
 
 // §12/§13 — lexical identity comes from the model's own segments, never from
 // slicing kanji/kana. This is what produced nonsense reports like 決 / まった.
@@ -5173,18 +5158,7 @@ function matchesJapaneseTarget(sentence, target) {
 
 // §9/§18 — complexity cannot be measured by spaces. Count Japanese content units instead:
 // kanji runs, kana runs and particles each count as roughly one "unit".
-function japaneseUnitCount(sentence) {
-  const s = (sentence || '').replace(/[\s\u3000]/g, '')
-  if (!s) return 0
-  const runs = s.match(/[\u4E00-\u9FFF]+|[\u30A0-\u30FF\u30FC]+|[\u3041-\u309F]+|[A-Za-z0-9]+/g) || []
-  let units = 0
-  for (const r of runs) {
-    if (/[\u4E00-\u9FFF]/.test(r))      units += Math.ceil(r.length / 2)
-    else if (/[\u30A0-\u30FF]/.test(r)) units += 1
-    else                                units += Math.max(1, Math.ceil(r.length / 3))
-  }
-  return units
-}
+// v665: japaneseUnitCount removed — an unreferenced second Japanese length counter (complexityUnits is the one)
 
 // §7/§8 — same progression and same slot table as Thai, driven by the Japanese Known count.
 function japaneseBeltFor(vocab) { return calculateBeltRank((vocab||[]).filter(w => w.status === 'known').length) }
@@ -5197,13 +5171,10 @@ function beltNewAllowanceFor(vocab) {
 // known count and so drifted away from the learner's actual belt.
 // v654 §12 — Japanese Daily introduces exactly JA_DAILY_NEW_WORDS (3); the belt allowance is Thai's
 function japaneseSlotsFor(vocab) { return newWordsPerTrack('ja', 'daily', vocab) }
+// v665: the Japanese length numbers come from the ONE belt contract (no known-count table)
 function japaneseUnitRange(vocab) {
-  const known = (vocab||[]).filter(w => w.status === 'known').length
-  const T = [[0,2,4],[100,5,6],[200,6,7],[350,7,8],[500,8,9],[750,9,10],[1000,10,11],
-             [1200,11,12],[1400,12,13],[1600,13,14],[1800,14,15],[2000,16,20]]
-  let r = T[0]
-  for (const t of T) if (known >= t[0]) r = t
-  return { min:r[1], max:r[2] }
+  const cc = getLearnerComplexityContract({ lang: 'ja', vocab })
+  return { min: cc.preferredMin, max: cc.preferredMax, hardMax: cc.hardMax, contract: cc }
 }
 
 
@@ -5219,88 +5190,7 @@ function japaneseRegisterContract(registerId) {
   return r.contract
 }
 
-function buildJapaneseTrackPrompt(targets, anchors, vocab, registerId) {
-  const range = japaneseUnitRange(vocab)
-  const allow = japaneseAllowedContent(vocab, targets)
-  const scaffold = japaneseScaffoldFor(vocab)
-  const _scar = scarcityRules(japaneseLearnerInventory(vocab, targets))
-  const _inv = japaneseLearnerInventory(vocab, targets)
-  const zeroNote = _inv.isZeroBeginner
-    ? '=== ZERO BEGINNER ===\n' +
-      'This learner knows essentially NO Japanese beyond what is listed below.\n' +
-      'Use extremely short Japanese \u2014 one concept at a time. Fragments are correct and natural.\n' +
-      'Assume NO textbook knowledge, NO greetings that are not listed, NO hidden vocabulary.\n' +
-      'Do NOT use contractions such as \u3066\u305F / \u3093\u3060 / \u3068\u3044\u305F / \u3061\u3083\u3063\u305F / \u3066\u308B / \u306A\u304D\u3083.\n' +
-      'No multi-clause sentences. 1\u20134 content units per line.\n' +
-      'Natural mode at this level means natural SIMPLICITY, not native compression.\n\n'
-    : ''
-  const basicsNote =
-    'CONVERSATION BASICS (free framing, already taught):\n' +
-    (_inv.conversationBasics.length
-      ? _inv.conversationBasics.map(b => '  ' + b.form + ' [' + b.romaji + '] = ' + b.english).join('\n')
-      : '  (none)') + '\n\n'
-  const contract =
-    zeroNote +
-    basicsNote +
-    '=== CONTENT VOCABULARY CONTRACT ===\n' +
-    'The learner is doing PRODUCTIVE RECALL: they must be able to formulate every answer\n' +
-    'from language already introduced to them.\n\n' +
-    'CURRENT TARGET CONTENT WORDS:\n' +
-    allow.targets.map(w => '  ' + w.japanese + ' [' + w.reading + '] ' + w.romaji + ' = ' + w.english +
-      (w.note ? '  \u2014 use when ' + w.note + ' (its English cue MUST make this the obvious choice)' : '')).join('\n') + '\n\n' +
-    'PREVIOUSLY INTRODUCED CONTENT WORDS:\n' +
-    (allow.prior.length
-      ? allow.prior.map(w => '  ' + w.japanese + ' [' + w.reading + '] ' + w.romaji + ' = ' + w.english +
-          (w.note ? '  \u2014 use when ' + w.note : '')).join('\n')
-      : '  (none \u2014 this is the learner\u2019s first lesson)') + '\n\n' +
-    'These are the ONLY lexical/content concepts you may require the learner to produce.\n\n' +
-    'APPROVED GRAMMAR SCAFFOLD (free to use, not vocabulary):\n' +
-    scaffold.map(s => '  ' + s.form + ' [' + s.romaji + '] \u2014 ' + s.meaning).join('\n') + '\n' +
-    '  plus normal inflection of the target words (past, negative, te-form, volitional).\n\n' +
-    'DO NOT introduce any additional noun, verb, adjective, lexical adverb, time expression,\n' +
-    'place, person, object or other content word \u2014 not even to make the sentence nicer.\n' +
-    'FORBIDDEN examples of the kind of leak that breaks this lesson: \u6620\u753B, \u96E8, \u4E88\u5B9A, \u660E\u65E5, \u53CB\u9054, \u99C5.\n' +
-    'If the idea cannot be said with the allowed content, SIMPLIFY THE IDEA.\n' +
-    'Natural simplicity beats an impressive sentence containing untaught language.\n' +
-    'The English cue must also be answerable with only this inventory (\u00A717).\n'
-  const targetList = (targets||[]).map(t =>
-    '\u2605 ' + t.japanese + (t.reading ? ' [' + t.reading + ']' : '') + ' = ' + t.english +
-    '\n  ' + targetRoleLine(targetLinguisticRole(t, 'ja'), t, 'ja').trim()).join('\n')   // v649 §27 role metadata
-  const anchorList = (anchors||[]).slice(0, 50).map(t =>
-    t.japanese + (t.reading ? ' [' + t.reading + ']' : '') + ' = ' + t.english).join('\n')
-  const system =
-    'You are a Japanese language teacher writing realistic spoken Japanese for learners. ' +
-    'Write natural Japanese as a Japanese adult would actually speak in the selected register \u2014 not translated English.\n\n' +
-    japaneseRegisterContract(registerId)
-  const user =
-    'TARGET WORDS (each needs exactly 3 sentences):\n' + targetList + '\n\n' +
-    (anchorList ? 'KNOWN VOCABULARY you may reuse:\n' + anchorList + '\n\n' : '') +
-    'LENGTH: ' + range.min + '\u2013' + range.max + ' Japanese content units per sentence ' +
-    '(a kanji compound \u2248 1 unit, a kana word \u2248 1 unit). Do not exceed this \u2014 it is the learner\'s level.\n' +
-    contract + '\n' +
-    'RULES:\n' +
-    '1. Every \u2605 target must appear naturally. Any inflected form counts (\u98DF\u3079\u308B \u2192 \u98DF\u3079\u305F/\u98DF\u3079\u3066/\u98DF\u3079\u306A\u3044).\n' +
-    '2. NEVER force a target into a sentence where it does not fit. A natural sentence matters more.\n' +
-    (_scar.requirePatternVariety
-      ? '3. Use 3 different grammar patterns per target: 1 statement, 1 question, 1 other.\n'
-      : '3. Produce useful retrieval opportunities for this target using the learner\u2019s limited inventory. ' +
-        'Controlled repetition and closely related sentence structures are desirable at this stage.\n') +
-    '4. "prompt" = plain English instruction of what to SAY. Never name or quote a Japanese word, never use romaji in it.\n' +
-    (_scar.requireScenarioVariety
-      ? '5. Vary the scenario. No repeated sentence shapes, no invented statistics, no nonsensical numbers.\n'
-      : '5. Use the simplest natural communicative context supported by the learner\u2019s vocabulary. ' +
-        'Reusing sentence shapes is allowed and expected. No invented numbers.\n') +
-    '6. Provide segments: word-by-word breakdown. Do NOT rely on spaces \u2014 segment explicitly. ' +
-    'Each segment needs surface, reading, romaji, english, lemma (dictionary form) and ' +
-    'type ("content" or "grammar"). e.g. {"surface":"\u6C7A\u307E\u3063\u305F","lemma":"\u6C7A\u307E\u308B","type":"content"}.\n' +
-    '7. reading and romaji MUST match the sentence you actually wrote, not the dictionary form. ' +
-    'e.g. \u4ECA\u65E5\u884C\u304D\u307E\u3059\u304B\uFF1F \u2192 romaji "kyou ikimasu ka?", NOT "kyou iku". Romaji is Hepburn, spaced by word.\n' +
-    '8. Do not introduce unfamiliar CONTENT words beyond the target and known lists. Grammatical glue is free; new nouns/verbs are not.\n' +
-    'Return ONLY JSON, no markdown:\n' +
-    '[{"speaker":"A","japanese":"...","reading":"...","romaji":"...","english":"...","prompt":"...",' +
-    '"segments":[{"surface":"...","reading":"...","romaji":"...","english":"..."}]}]'
-  return { system, user }
-}
+// v665: buildJapaneseTrackPrompt removed — unreferenced dead copy that carried its own length ladder (one source of truth: BELT_COMPLEXITY)
 
 function buildJapaneseConvoPrompt(targets, vocab, registerId) {
   const range = japaneseUnitRange(vocab)
@@ -5341,7 +5231,7 @@ function buildJapaneseConvoPrompt(targets, vocab, registerId) {
     'The ENGLISH scene description may be rich and specific; the JAPANESE must stay within this list.\n\n' +
     'Write a short coherent scene between two adult friends, A (male) and B (female), with a real ' +
     'conversational goal and actual progression \u2014 not disconnected lines. Do NOT force every word in.\n' +
-    'Sentence length: ' + range.min + '\u2013' + range.max + ' Japanese content units.\n\n' +
+    range.contract.promptRule + '\n\n' +
     'The lesson is framed by a greeting exchange and a parting exchange.\n' +
     'GREETING must suit the scene, the relationship and the register. Vary it \u2014 do not reuse one stock phrase.\n' +
     '  ' + reg.label + ' greetings of this TYPE: ' + (GREET[reg.id] || GREET.natural) + '\n' +
@@ -5361,81 +5251,7 @@ function buildJapaneseConvoPrompt(targets, vocab, registerId) {
 }
 
 // §22 — Japanese validator. Same "never silently accept" philosophy as Thai.
-function validateJapanesePairs(pairs, target, vocab, registerId, existing, allowedContent, scaffold) {
-  const failures = []
-  const valid = []
-  const seen = existing instanceof Set ? existing : new Set()
-  const reg = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
-  const range = japaneseUnitRange(vocab)
-  let politeCount = 0
-
-  for (const p of (pairs || [])) {
-    if (!p || !p.japanese || !p.english || !p.prompt) { failures.push('missing fields'); continue }
-    const jp = String(p.japanese).trim()
-
-    if (!/[\u3040-\u30FF\u4E00-\u9FFF]/.test(jp)) { failures.push('no Japanese script: ' + jp.slice(0,30)); continue }
-
-    if (target && !matchesJapaneseTarget(jp, target)) {
-      failures.push('TARGET MISSING: ' + (target.japanese || '') + ' was not used in this sentence family.'); continue
-    }
-    const units = japaneseUnitCount(jp)
-    if (units > range.max + 2) {
-      failures.push('LEVEL VIOLATION: sentence is too complex for this belt (' + units + ' units, max ' + range.max + ').'); continue
-    }
-    if (units < Math.max(1, range.min - 2)) { failures.push('too short: ' + units + ' units'); continue }
-
-    const key = jaDedupeKey(jp)
-    if (seen.has(key)) { failures.push('DUPLICATE: this sentence is substantially the same as an earlier sentence.'); continue }
-
-    // Register enforcement (§14)
-    let bad = null
-    for (const rx of (reg.banned || [])) if (rx.test(jp)) { bad = rx; break }
-    if (bad) {
-      failures.push('REGISTER VIOLATION: ' + reg.label + ' mode selected, but ' + reg.bannedReason + '.'); continue
-    }
-    if (reg.id === 'natural' && POLITE_RX.test(jp)) politeCount++
-    if (reg.id === 'casual' && POLITE_RX.test(jp)) {
-      failures.push('REGISTER VIOLATION: Very Casual mode selected, but this sentence uses \u3067\u3059/\u307E\u3059 phrasing.'); continue
-    }
-    if (reg.id === 'polite' && !POLITE_RX.test(jp) && !/[\uFF1F]$/.test(jp)) {
-      failures.push('REGISTER VIOLATION: Polite mode selected, but this sentence is not in \u3067\u3059/\u307E\u3059 form.'); continue
-    }
-
-    // §18/§29 — segment alignment protects the same class of failure as Thai phonetic alignment
-    if (Array.isArray(p.segments) && p.segments.length) {
-      const joined = p.segments.map(s => (s && s.surface) || '').join('')
-      const strip = x => (x || '').replace(/[\s\u3000\u3002\uFF1F\uFF01\u3001]/g, '')
-      if (strip(joined) !== strip(jp)) { failures.push('segments do not reconstruct the sentence: ' + jp.slice(0,24)); continue }
-      if (p.segments.some(s => !s || !s.surface)) { failures.push('malformed segment'); continue }
-    }
-    // §11/§13 — closed content set. Runs AFTER morphology so an inflected target
-    // (行った for 行く) is never mistaken for a new word (§14).
-    if (allowedContent) {
-      const cv = validateJapaneseContentVocabulary(jp, allowedContent, scaffold)
-      if (!cv.ok) {
-        failures.push('UNTAUGHT CONTENT VOCABULARY: ' + cv.unknown.join(' , ') +
-          ' \u2014 never introduced to this learner. Allowed content: ' +
-          allowedContent.map(w => w.japanese).join(' ') +
-          '. Rewrite using only allowed content plus approved grammar scaffolding, or simplify the idea.')
-        continue
-      }
-    }
-    // English prompt must not leak the answer (mirrors the Thai meta-prompt rule)
-    if (/[\u3040-\u30FF\u4E00-\u9FFF]/.test(p.prompt)) { failures.push('prompt contains Japanese \u2014 it must be plain English.'); continue }
-
-    seen.add(key)
-    valid.push(p)
-  }
-
-  if (reg.id === 'natural' && valid.length >= 4) {
-    const share = politeCount / valid.length
-    if (share > (reg.politeLimit || 0.25)) {
-      failures.push('REGISTER VIOLATION: Natural mode selected, but ' + Math.round(share*100) +
-        '% of sentences unnecessarily use \u3067\u3059/\u307E\u3059-form. Rewrite as friendly adult plain-form conversational Japanese.')
-    }
-  }
-  return { valid, failures }
-}
+// v665: validateJapanesePairs removed — unreferenced dead copy that carried its own length ladder (one source of truth: BELT_COMPLEXITY)
 
 // §23 — targeted repair instructions, same retry philosophy as Thai.
 function japaneseRepairInstruction(failures) {
@@ -5557,18 +5373,18 @@ function beltAbilityFor(langCode, beltName) {
 }
 
 const BELT_VIEW_META = {
-  'White':           { label:'White Belt',     color:'#9ca3af', sentMin:2,  sentMax:4,  desc:'First steps. Short survival phrases.' },
-  'Orange':          { label:'Orange Belt',    color:'#f97316', sentMin:5,  sentMax:6,  desc:'Basic greetings, food, directions.' },
-  'Orange + Stripe': { label:'Orange + Stripe',color:'#fb923c', sentMin:6,  sentMax:7,  desc:'Simple present. Ordering, asking questions.' },
-  'Blue':            { label:'Blue Belt',      color:'#3b82f6', sentMin:7,  sentMax:8,  desc:'Short conversations. Tense markers.' },
-  'Blue + Stripe':   { label:'Blue + Stripe',  color:'#60a5fa', sentMin:8,  sentMax:9,  desc:'Expanded topics. Past, future, negation.' },
-  'Yellow':          { label:'Yellow Belt',    color:'#eab308', sentMin:9,  sentMax:10, desc:'Connectors, comparisons, opinions.' },
-  'Yellow + Stripe': { label:'Yellow + Stripe',color:'#facc15', sentMin:10, sentMax:11, desc:'Natural dialogue. Hypotheticals, nuance.' },
-  'Green':           { label:'Green Belt',     color:'#22c55e', sentMin:11, sentMax:12, desc:'Fluid conversation. Idioms, culture.' },
-  'Green + Stripe':  { label:'Green + Stripe', color:'#4ade80', sentMin:12, sentMax:13, desc:'Complex topics. Abstract, formal register.' },
-  'Brown':           { label:'Brown Belt',     color:'#92400e', sentMin:13, sentMax:14, desc:'Near-fluent. Long discourse, multiple clauses.' },
-  'Brown + Stripe':  { label:'Brown + Stripe', color:'#b45309', sentMin:14, sentMax:15, desc:'Advanced fluency. Rare words, register switching.' },
-  'Shodan':          { label:'Shodan',         color:'#111827', sentMin:16, sentMax:20, desc:'Master level. Natural unrestricted Thai.' },
+  'White':           { label:'White Belt',     color:'#9ca3af',  desc:'First steps. Short survival phrases.' },
+  'Orange':          { label:'Orange Belt',    color:'#f97316',  desc:'Basic greetings, food, directions.' },
+  'Orange + Stripe': { label:'Orange + Stripe',color:'#fb923c',  desc:'Simple present. Ordering, asking questions.' },
+  'Blue':            { label:'Blue Belt',      color:'#3b82f6',  desc:'Short conversations. Tense markers.' },
+  'Blue + Stripe':   { label:'Blue + Stripe',  color:'#60a5fa',  desc:'Expanded topics. Past, future, negation.' },
+  'Yellow':          { label:'Yellow Belt',    color:'#eab308', desc:'Connectors, comparisons, opinions.' },
+  'Yellow + Stripe': { label:'Yellow + Stripe',color:'#facc15', desc:'Natural dialogue. Hypotheticals, nuance.' },
+  'Green':           { label:'Green Belt',     color:'#22c55e', desc:'Fluid conversation. Idioms, culture.' },
+  'Green + Stripe':  { label:'Green + Stripe', color:'#4ade80', desc:'Complex topics. Abstract, formal register.' },
+  'Brown':           { label:'Brown Belt',     color:'#92400e', desc:'Near-fluent. Long discourse, multiple clauses.' },
+  'Brown + Stripe':  { label:'Brown + Stripe', color:'#b45309', desc:'Advanced fluency. Rare words, register switching.' },
+  'Shodan':          { label:'Shodan',         color:'#111827', desc:'Master level. Natural unrestricted Thai.' },
 }
 const CURRICULUM_BELTS = [
   { name:'White',           rank:'Mukyu',    from:1,    to:100  },
@@ -6871,6 +6687,183 @@ function rankProgressFor(vocab) {
   return { current, next, wordsToNext, progress, rankState: st }
 }
 
+// ══ v665 — ONE LEARNER LEVEL: canonical belt complexity + learner-authorised inventory ═══════════════════
+// Daily, Revision and Listening (Thai / Japanese / Mandarin) all read sentence complexity from THIS table,
+// keyed by the learner's CURRENT curriculum belt (rankProgressFor — the same resolver as the belt card and
+// the rank test). preferredMin is guidance (a short natural reply is fine), preferredMax is the normal target,
+// hardMax is the acceptance ceiling (a line above it is rejected / repaired, never READY).
+const BELT_COMPLEXITY = Object.freeze({
+  // v666 — TWO TIERS. preferred = what generation normally aims for; hardMax = absolute safety ceiling (headroom for a
+  // natural line or a target that needs it). v665 had hardMax = preferredMax, which rejected natural 5-unit Mukyu lines.
+  'Mukyu':    Object.freeze({ preferredMin: 2, preferredMax: 4,  hardMax: 6 }),
+  '10th Kyu': Object.freeze({ preferredMin: 3, preferredMax: 5,  hardMax: 7 }),
+  '9th Kyu':  Object.freeze({ preferredMin: 4, preferredMax: 6,  hardMax: 8 }),
+  '8th Kyu':  Object.freeze({ preferredMin: 5, preferredMax: 7,  hardMax: 9 }),
+  '7th Kyu':  Object.freeze({ preferredMin: 5, preferredMax: 8,  hardMax: 10 }),
+  '6th Kyu':  Object.freeze({ preferredMin: 6, preferredMax: 9,  hardMax: 11 }),
+  '5th Kyu':  Object.freeze({ preferredMin: 6, preferredMax: 10, hardMax: 12 }),
+  '4th Kyu':  Object.freeze({ preferredMin: 7, preferredMax: 11, hardMax: 13 }),
+  '3rd Kyu':  Object.freeze({ preferredMin: 7, preferredMax: 12, hardMax: 14 }),
+  '2nd Kyu':  Object.freeze({ preferredMin: 8, preferredMax: 13, hardMax: 15 }),
+  '1st Kyu':  Object.freeze({ preferredMin: 8, preferredMax: 14, hardMax: 16 }),
+  'Shodan':   Object.freeze({ preferredMin: 4, preferredMax: 16, hardMax: 20 }),   // natural, usually 4–16
+})
+function getBeltComplexity(rank) { return BELT_COMPLEXITY[rank] || BELT_COMPLEXITY['Mukyu'] }
+// the learner's CURRENT belt — never the target's curriculum belt, the track type or the bank size.
+// A vocabulary with no curriculum metadata at all (a fresh JA/ZH bank) has no proven belt: Mukyu.
+const _learnerBeltCache = new WeakMap()
+// an explicit learner state (e.g. a test harness pinning a belt, or a future settings override) wins over the resolver
+let LEARNER_STATE_OVERRIDE = null
+function setLearnerStateOverride(st) { LEARNER_STATE_OVERRIDE = st && st.rank && BELT_COMPLEXITY[st.rank] ? { label: st.label || st.rank, source: st.source || 'override', rank: st.rank } : null; return LEARNER_STATE_OVERRIDE }
+function currentLearnerBelt(vocab) {
+  if (LEARNER_STATE_OVERRIDE) return LEARNER_STATE_OVERRIDE
+  const key = Array.isArray(vocab) ? vocab : null
+  if (key && _learnerBeltCache.has(key)) return _learnerBeltCache.get(key)
+  let out = { rank: 'Mukyu', label: 'White', source: 'default' }
+  try {
+    const hasCurriculum = (vocab || []).some(w => w && w.curriculumIndex > 0)
+    if (hasCurriculum) { const r = rankProgressFor(vocab || []); if (r && r.current) out = { rank: r.current.rank, label: r.current.label, source: 'rankProgressFor' } }
+  } catch (e) {}
+  if (key) _learnerBeltCache.set(key, out)
+  return out
+}
+// Counting is language-specific; difficulty is shared.
+//   Thai     — canonical segmentation (bank + segmentation lexicon), sentence-final politeness / mood particles
+//              (ครับ ค่ะ คะ นะ จ้ะ …) are grammar and do not count
+//   Japanese — content units: kanji runs and katakana words count; okurigana / particles / copula attached to
+//              them do not; a free-standing kana word counts by length
+//   Mandarin — canonical segmentMandarin lexical units; grammar particles and punctuation do not count
+const THAI_COMPLEXITY_FREE = new Set(['ครับ','ค่ะ','คะ','ค่า','คับ','จ้ะ','จ้า','จ๊ะ','นะ','น่ะ','นะคะ','นะครับ','ครับผม','ขา','จ๋า','สิ','ซิ','เถอะ','หรอก','แหละ','เนอะ','ล่ะ','ละ','จัง',
+  'ไหม','มั้ย','เหรอ','หรอ','หรือเปล่า','ไหมคะ','ไหมครับ'])   // v666 §10: question particles are grammar too
+function _complexityThaiUnits(text, vocab) {
+  const s = String(text || '').replace(/[\s.,!?…"'“”‘’()\-–—:;]+/g, '')
+  if (!s) return 0
+  let toks = []
+  try { toks = segmentThaiWithDiagnostics(s, vocab || [], null, null, true).map(x => x.matchedSpan) } catch (e) { toks = [] }
+  if (!toks.length) return Math.max(1, Math.round(s.length / 4))
+  return toks.filter(t => t && t !== '\u0E46' && !THAI_COMPLEXITY_FREE.has(t) && /[\u0E00-\u0E7F0-9A-Za-z]/.test(t)).length
+}
+const JA_COMPLEXITY_FREE = /^(は|が|を|に|で|と|も|の|へ|か|ね|よ|な|や|から|まで|より|だ|です|ます|でした|ました|だった|じゃない|ではない|ません|ませんか|ましょう|ですか|ですね|ですよ|だよ|だね|かな|けど|よね|って|ね。?)$/
+function _complexityJapaneseUnits(text) {
+  const s = String(text || '').replace(/[\s　。、！？!?「」『』（）()・…〜~ー]+$/g, '').replace(/[\s　。、！？!?「」『』（）()・…〜~]/g, '')
+  if (!s) return 0
+  const runs = s.match(/[一-鿿々]+|[゠-ヿー]+|[ぁ-ゟ]+|[A-Za-z0-9０-９]+/g) || []
+  let units = 0, prev = null
+  for (const r of runs) {
+    if (/[一-鿿々]/.test(r)) units += Math.ceil(r.length / 2)
+    else if (/[゠-ヿ]/.test(r)) units += 1
+    else if (/[ぁ-ゟ]/.test(r)) {
+      if (JA_COMPLEXITY_FREE.test(r)) {}
+      else if (prev === 'kanji' || prev === 'kata') units += r.length > 5 ? 1 : 0      // okurigana / particle / copula tail
+      else units += Math.max(1, Math.ceil(r.length / 4))                                   // a free-standing kana word
+    } else units += 1
+    prev = /[一-鿿々]/.test(r) ? 'kanji' : /[゠-ヿ]/.test(r) ? 'kata' : 'kana'
+  }
+  return units
+}
+const _zhLexCache = new WeakMap()
+function _complexityMandarinUnits(text, vocab, lexicon) {
+  let lex = lexicon
+  if (!lex) { const key = Array.isArray(vocab) && vocab.length ? vocab : null
+    lex = key && _zhLexCache.get(key); if (!lex) { lex = mandarinLexicon(key || null); if (key) _zhLexCache.set(key, lex) } }
+  const segs = segmentMandarin(String(text || ''), lex)
+  return segs.filter(x => x && x.type !== 'punct' && x.type !== 'grammar' && String(x.surface || '').trim()).length
+}
+// `x` is a sentence or a pair; a JA / ZH pair that carries its canonical segments is counted from them
+// (content segments only — grammar and punctuation segments never count)
+function complexityUnits(lang, x, o) {
+  const c = o || {}
+  const text = x && typeof x === 'object' ? (lang === 'ja' ? (x.japanese || x.thai) : lang === 'zh' ? (x.chinese || x.thai) : (x.thai || x.text)) || x.text || '' : x
+  const segs = x && typeof x === 'object' && Array.isArray(x.segments) && x.segments.length ? x.segments : null
+  if (segs && (lang === 'ja' || lang === 'zh')) return segs.filter(s => s && s.type !== 'grammar' && s.type !== 'punct' && s.type !== 'particle' && /[\u3040-\u30FF\u4E00-\u9FFF]/.test(s.surface || '')).length
+  if (lang === 'th') return _complexityThaiUnits(text, c.vocab)
+  if (lang === 'ja') return _complexityJapaneseUnits(text)
+  if (lang === 'zh') return _complexityMandarinUnits(text, c.vocab, c.lexicon)
+  return String(text || '').trim().split(/\s+/).filter(Boolean).length
+}
+// THE complexity API. Every generator prompt, candidate acceptance, repair, QC audit and the UI read this.
+function getLearnerComplexityContract(o) {
+  const c = o || {}
+  const lang = c.lang || 'th'
+  const belt = (c.learnerState && c.learnerState.rank) ? c.learnerState : currentLearnerBelt(c.vocab)
+  const b = getBeltComplexity(belt.rank)
+  const unitName = lang === 'th' ? 'Thai words' : lang === 'ja' ? 'Japanese content units' : lang === 'zh' ? 'Mandarin words' : 'words'
+  const countUnits = text => complexityUnits(lang, text, { vocab: c.vocab, lexicon: c.lexicon })
+  // v666 — four states; ONLY HARD_FAIL_TOO_COMPLEX is rejected. A natural 5–6 unit line at Mukyu is valid (no repair).
+  const analyse = text => { const units = countUnits(text)
+    const state = units > b.hardMax ? COMPLEXITY_STATE.HARD_FAIL : units > b.preferredMax ? COMPLEXITY_STATE.ABOVE_PREFERRED : units < b.preferredMin ? COMPLEXITY_STATE.SHORT_NATURAL : COMPLEXITY_STATE.WITHIN
+    return { units, state, preferredMin: b.preferredMin, preferredMax: b.preferredMax, hardMax: b.hardMax, overHardMax: state === COMPLEXITY_STATE.HARD_FAIL,
+      withinPreferredRange: state === COMPLEXITY_STATE.WITHIN, tooShortButAllowed: state === COMPLEXITY_STATE.SHORT_NATURAL, abovePreferredButAllowed: state === COMPLEXITY_STATE.ABOVE_PREFERRED } }
+  return { lang, belt: belt.rank, beltLabel: belt.label, beltSource: belt.source || 'learnerState', preferredMin: b.preferredMin, preferredMax: b.preferredMax, hardMax: b.hardMax, unitName,
+    countUnits, analyse,
+    summary: belt.rank + ' · target ' + b.preferredMin + '–' + b.preferredMax + ' · max ' + b.hardMax + ' ' + unitName,
+    // v666 §11 — the prompt keeps the two tiers apart: the preferred range is the target, the ceiling is only headroom
+    promptRule: 'CURRENT LEVEL: ' + belt.rank + ' · PREFERRED LENGTH: ' + b.preferredMin + '–' + b.preferredMax + ' ' + unitName + ' · ABSOLUTE MAXIMUM: ' + b.hardMax + ' ' + unitName +
+      ' (polite / question / sentence-final particles do not count). Prefer ' + b.preferredMin + '–' + b.preferredMax + ' — the shortest natural way to say it. Use ' + (b.preferredMax + 1) + '–' + b.hardMax +
+      ' only when the idea or the lesson word cannot be said naturally more simply. Never exceed ' + b.hardMax + '. A short natural reply ("yes", "okay", "really?") is fine — never pad a line. If a speaker needs to say more, split it into another turn.',
+    repairRule: 'prefer ' + b.preferredMin + '–' + b.preferredMax + ' ' + unitName + ', absolute maximum ' + b.hardMax + ' (particles do not count)' }
+}
+// one-line log of the contract (Daily / Revision / Listening print the same line)
+const COMPLEXITY_STATE = Object.freeze({ WITHIN: 'WITHIN_PREFERRED', SHORT_NATURAL: 'SHORT_NATURAL_ALLOWED', ABOVE_PREFERRED: 'ABOVE_PREFERRED_BUT_ALLOWED', HARD_FAIL: 'HARD_FAIL_TOO_COMPLEX' })
+// v666 §13/§14/§24 — the complexity audit over a set of lines (Daily / Revision / Listening share it). READY needs
+// overHardMax=0; the preferred ratio (≥ 80% of substantive target-bearing lines WITHIN_PREFERRED) is ADVISORY drift telemetry.
+const COMPLEXITY_PREFERRED_RATIO_TARGET = 0.8
+function complexityAudit(cc, rows) {
+  const r = (rows || []).map(x => ({ ...x, a: x.a || cc.analyse(x.text) }))
+  const by = st => r.filter(x => x.a.state === st)
+  const substantive = r.filter(x => x.targetBearing && x.a.state !== COMPLEXITY_STATE.SHORT_NATURAL)
+  const ratio = substantive.length ? substantive.filter(x => x.a.state === COMPLEXITY_STATE.WITHIN).length / substantive.length : 1
+  return { belt: cc.belt, preferredMin: cc.preferredMin, preferredMax: cc.preferredMax, hardMax: cc.hardMax, unit: cc.unitName, lines: r.length,
+    withinPreferred: by(COMPLEXITY_STATE.WITHIN).length, shortNatural: by(COMPLEXITY_STATE.SHORT_NATURAL).length, abovePreferredAllowed: by(COMPLEXITY_STATE.ABOVE_PREFERRED).length,
+    overHardMax: by(COMPLEXITY_STATE.HARD_FAIL).length, maxObserved: r.reduce((m, x) => Math.max(m, x.a.units), 0),
+    preferredRatio: Math.round(ratio * 100), preferredRatioTarget: Math.round(COMPLEXITY_PREFERRED_RATIO_TARGET * 100), drift: ratio < COMPLEXITY_PREFERRED_RATIO_TARGET,
+    above: by(COMPLEXITY_STATE.ABOVE_PREFERRED).slice(0, 20).map(x => ({ line: x.line, units: x.a.units, text: x.text })),
+    over: by(COMPLEXITY_STATE.HARD_FAIL).slice(0, 20).map(x => ({ line: x.line, pairId: x.pairId || null, units: x.a.units, text: x.text })) }
+}
+function complexityAuditLog(name, au) {
+  return '📏 ' + name + ' belt=' + au.belt + ' preferred=' + au.preferredMin + '–' + au.preferredMax + ' hardMax=' + au.hardMax + ' lines=' + au.lines + ' withinPreferred=' + au.withinPreferred +
+    ' shortNatural=' + au.shortNatural + ' abovePreferredAllowed=' + au.abovePreferredAllowed + ' overHardMax=' + au.overHardMax + ' maxObserved=' + au.maxObserved +
+    ' · preferredRatio=' + au.preferredRatio + '% (advisory ≥' + au.preferredRatioTarget + '%' + (au.drift ? ' — DRIFT: the prompt or scene plan is too complex for this learner' : '') + ') ' +
+    (au.overHardMax ? 'FAIL — ' + au.over.slice(0, 4).map(o => (o.line ? 'L' + o.line + ' ' : '') + o.units + 'u').join(' · ') : 'PASS')
+}
+function complexityTelemetry(au) {
+  return { COMPLEXITY_PREFERRED_RANGE: au.preferredMin + '–' + au.preferredMax, COMPLEXITY_HARD_MAX: au.hardMax, COMPLEXITY_WITHIN_PREFERRED: au.withinPreferred,
+    COMPLEXITY_SHORT_NATURAL: au.shortNatural, COMPLEXITY_ABOVE_PREFERRED_ALLOWED: au.abovePreferredAllowed, COMPLEXITY_HARD_FAIL: au.overHardMax, COMPLEXITY_PREFERRED_RATIO: au.preferredRatio + '%' }
+}
+function complexityContractLog(cc) { return 'LEVEL belt=' + cc.belt + ' preferred=' + cc.preferredMin + '–' + cc.preferredMax + ' hardMax=' + cc.hardMax + ' · LEVEL ' + cc.belt + ' · target ' + cc.preferredMin + '–' + cc.preferredMax + ' · max ' + cc.hardMax + ' (' + cc.unitName + ', ' + cc.beltSource + ')' }
+
+// What counts as TAUGHT — the single definition every closed-vocabulary check uses. Evidence of a real
+// introduction: SRS status learning / known / lapsed, manual Known, a real review (lastSeen / okStreak /
+// repCount), or a real introducedAt date. NOT taught: locked, status=new with no history — a dictionary entry,
+// a seeded difficulty, a schedule-only dueDate or the load migration's introducedAt:'legacy' stamp on a new word.
+function isLearnerTaught(w) {
+  if (!w) return false
+  if (w.status === 'locked') return false
+  if (w.manualKnown) return true
+  if (w.status === 'known' || w.status === 'learning' || w.status === 'lapsed') return true
+  if (w.lastSeen || (w.okStreak || 0) > 0 || (w.repCount || 0) > 0) return true
+  if (w.introducedAt && w.introducedAt !== 'legacy') return true
+  return false
+}
+// The learner-authorised lexical inventory for ONE track: taught vocabulary + this track's targets (Daily: its
+// explicit NEW targets are authorised for that track only; Revision / Listening: NEW=0, their selected review
+// targets) + the language adapter's narrow grammar/function scaffold (applied by the language checkers).
+function buildLearnerAuthorizedInventory(lang, vocab, selectedTargets, trackType) {
+  const v = vocab || []
+  const targets = (selectedTargets || []).map(t => (t && t.word) || t).filter(Boolean)
+  const tIds = new Set(targets.map(t => t.id))
+  const taught = v.filter(w => isLearnerTaught(w) && !tIds.has(w.id))
+  const newTargets = targets.filter(t => !isLearnerTaught(v.find(w => w.id === t.id) || t))
+  const type = trackType || 'revision'
+  const allowedTargets = type === 'daily' ? targets : targets.filter(t => !newTargets.includes(t))
+  const surf = w => lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : (w.thai || w.t)
+  return { lang, trackType: type, taught, targets: allowedTargets, newTargets: type === 'daily' ? newTargets : [], rejectedNewTargets: type === 'daily' ? [] : newTargets,
+    all: taught.concat(allowedTargets), words: new Set(taught.concat(allowedTargets).map(surf).filter(Boolean)),
+    counts: { introducedContent: taught.length, selectedTargets: targets.length, newAuthorised: type === 'daily' ? newTargets.length : 0 },
+    log: 'VOCAB INVENTORY introducedContent=' + taught.length + ' selectedTargets=' + targets.length + (type === 'daily' ? ' newTargets=' + newTargets.length : ' NEW=0') + ' (' + type + ')' }
+}
+
+
 // ── Shared Revision Track UI ────────────────────────────────────────────────
 // One component for every language, so the presentation and the zero-new promise
 // cannot drift between Thai, Japanese and Mandarin.
@@ -7307,98 +7300,15 @@ async function fetchTargetPhonetics(targets, apiKey) {
 
 // ── Shared prompt builder for Thai generation ────────────────────────────────────
 
+// v665: the Thai generators' length numbers come from the ONE belt contract (no known-count ladder, no
+// learning-word penalty). goalMin/goalMax = preferred range, hardCeil/effectiveCeil = hardMax.
 function getSentenceLengthForVocab(vocab) {
-  const known = (vocab||[]).filter(w => w.l === 'known' || w.status === 'known').length
-  const learning = (vocab||[]).filter(w => w.l === 'learning' || w.status === 'learning').length
-  // Sentence length targets per belt rank
-  let goalMin = 2, goalMax = 4, hardCeil = 4
-  if      (known < 100)  { goalMin=2;  goalMax=4;  hardCeil=4  }  // Mukyu
-  else if (known < 200)  { goalMin=5;  goalMax=6;  hardCeil=6  }  // 10th Kyu
-  else if (known < 350)  { goalMin=6;  goalMax=7;  hardCeil=7  }  // 9th Kyu
-  else if (known < 500)  { goalMin=7;  goalMax=8;  hardCeil=8  }  // 8th Kyu
-  else if (known < 750)  { goalMin=8;  goalMax=9;  hardCeil=9  }  // 7th Kyu
-  else if (known < 1000) { goalMin=9;  goalMax=10; hardCeil=10 }  // 6th Kyu
-  else if (known < 1200) { goalMin=10; goalMax=11; hardCeil=11 }  // 5th Kyu
-  else if (known < 1400) { goalMin=11; goalMax=12; hardCeil=12 }  // 4th Kyu
-  else if (known < 1600) { goalMin=12; goalMax=13; hardCeil=13 }  // 3rd Kyu
-  else if (known < 1800) { goalMin=13; goalMax=14; hardCeil=14 }  // 2nd Kyu
-  else if (known < 2000) { goalMin=14; goalMax=15; hardCeil=15 }  // 1st Kyu
-  else                   { goalMin=16; goalMax=20; hardCeil=25 }  // Shodan
-  const learningPenalty = Math.min(learning, 3)
-  const effectiveCeil = Math.max(goalMin + 1, hardCeil - learningPenalty)
-  return { goalMin, goalMax, hardCeil, effectiveCeil, known }
+  const cc = getLearnerComplexityContract({ lang: 'th', vocab })
+  return { goalMin: cc.preferredMin, goalMax: cc.preferredMax, hardCeil: cc.hardMax, effectiveCeil: cc.hardMax, belt: cc.belt, contract: cc,
+    known: (vocab || []).filter(w => w.status === 'known').length }
 }
 
-function buildGenerationPrompt(targets, anchors, vocab) {
-  // Include stored phonetics so AI uses correct romanization, not its own
-  const targetList = targets.map(w => `★ ${w.thai}${w.phonetic ? ` [${w.phonetic}]` : ''} = ${w.english}`).join('\n')
-  const anchorList = anchors.slice(0, 50).map(w => `${w.thai}${w.phonetic ? ` [${w.phonetic}]` : ''} = ${w.english}`).join('\n')
-  const ALWAYS_ALLOWED = ['ครับ','ค่ะ','คะ','นะ','เลย','มาก','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่','หรือ','ว่า','ถ้า','ก่อน','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก']
-  const allThai = new Set([...ALWAYS_ALLOWED, ...(vocab||[]).map(w=>w.thai)])
-  // approvedList with phonetics for words that have them
-  const vocabPhonMap = Object.fromEntries((vocab||[]).map(w => [w.thai, w.phonetic]).filter(([,p]) => p))
-  const approvedList = [...allThai].map(t => vocabPhonMap[t] ? `${t}[${vocabPhonMap[t]}]` : t).join('  ')
-
-  // Sentence length by learner rank
-  const known = (vocab||[]).filter(w => w.status === 'known').length
-  const learning = (vocab||[]).filter(w => w.status === 'learning').length
-  let goalMin = 6, goalMax = 12, hardCeil = 12
-  if (known < 100)       { goalMin=1;  goalMax=2;  hardCeil=2  }
-  else if (known < 200)  { goalMin=2;  goalMax=3;  hardCeil=4  }
-  else if (known < 350)  { goalMin=3;  goalMax=4;  hardCeil=6  }
-  else if (known < 500)  { goalMin=4;  goalMax=5;  hardCeil=8  }
-  else if (known < 750)  { goalMin=5;  goalMax=6;  hardCeil=10 }
-  else if (known < 1000) { goalMin=6;  goalMax=7;  hardCeil=11 }
-  else if (known < 1200) { goalMin=7;  goalMax=8;  hardCeil=12 }
-  else if (known < 1400) { goalMin=8;  goalMax=10; hardCeil=14 }
-  else if (known < 1600) { goalMin=10; goalMax=12; hardCeil=16 }
-  else if (known < 1800) { goalMin=12; goalMax=14; hardCeil=18 }
-  else if (known < 2000) { goalMin=14; goalMax=16; hardCeil=20 }
-  else                   { goalMin=15; goalMax=20; hardCeil=25 }
-  // Each learning word costs 2 words of headroom
-  const learningPenalty = Math.min(learning, 3) * 2
-  const effectiveCeil = Math.max(goalMin + 1, hardCeil - learningPenalty)
-
-  const system = `You are a Thai language teaching assistant creating Pimsleur-style audio lessons.
-Generate 90 challenge-response pairs. Each pair must have ALL these fields:
-- "prompt": English instruction (VARY the types: "Tell someone...", "Ask if...", "Say that...", "Respond to...", "How would you say...", "Ask someone...", "Explain that..."). Do NOT repeat the same type consecutively.
-- "thai": natural Thai sentence, TARGET LENGTH ${goalMin}–${goalMax} Thai words, HARD MAX ${effectiveCeil} words. ALWAYS end with a polite particle (ครับ for male, ค่ะ/นะคะ for female, alternate throughout)
-- "english": natural English translation
-- "phonetic": romanization using the EXACT phonetics from APPROVED VOCABULARY (shown in [brackets]). Copy them verbatim, space-separated.
-- "words": array of {"p": phonetic_token, "e": English_gloss} — one per Thai word, copy phonetics from approved list
-- "target_phonetic": phonetic of the ★ target word — copy EXACTLY from the bracket shown in the target list
-
-PHONETICS: Use ONLY the romanizations shown in [brackets] in the vocabulary list. Do NOT invent your own.
-CRITICAL: The "phonetic" field and "p" fields in "words" must ALWAYS be Thai romanization — NEVER English words.
-If a word has [brackets] in the vocab list, copy the bracketed phonetic EXACTLY — do not change tone marks.
-For words without brackets, use standard romanization with tone marks:
-mid=no mark | low=grave(à) | falling=circumflex(â) | high=acute(á) | rising=caron(ǎ)
-
-CRITICAL RULES:
-1. ONLY use Thai words from the APPROVED VOCABULARY LIST — no exceptions, no invented words
-2. EVERY ★ TARGET WORD MUST APPEAR EXACTLY 3 TIMES — if any target word appears 0, 1, or 2 times you have FAILED
-   After every 30 pairs, check: has each target word appeared the right number of times?
-   Spread evenly: first appearance in pairs 1-30, second in 31-60, third in 61-90
-3. Polite particles (ครับ/ค่ะ) are REQUIRED in every sentence — alternate male/female
-4. VARY PROMPT TYPES — use at minimum 15 different prompt starters across 90 pairs
-   Never use the same type more than 3 times in a row. Mix: Tell/Ask/Say/Respond/Explain/Warn/Suggest/Invite/Confirm/Deny/Express/Describe/Admit/Promise/Ask how
-5. "words" array must have EXACTLY the same token count as space-separated tokens in "phonetic"
-5b. EVERY "e" field in words MUST be non-empty — use the English from APPROVED VOCABULARY. Common particles: ครับ → "[m]", ค่ะ/คะ → "[f]", ไม่ → "not", ไหม → "?", จะ → "will", กำลัง → "doing", แล้ว → "already", ยัง → "still", เลย → "at all", ที่ → "that/which", ให้ → "to/give", ก็ → "also", นะ → "[softener]". NEVER output an empty string "" for any "e" field — if unsure, use the vocabulary list English.
-6. Use ANCHOR WORDS as supporting vocabulary — don't cluster all target words together
-7. Sentences must stay within ${goalMin}–${goalMax} words, NEVER exceed ${effectiveCeil} words
-
-APPROVED VOCABULARY: \${approvedList}
-
-Example pair (correct tone marks on every word):
-{"prompt":"Ask if your friend wants to go eat rice","thai":"คุณอยากไปกินข้าวไหมครับ","english":"Do you want to go eat rice?","phonetic":"khun yàak pai gin khâo mǎi khrâp","words":[{"p":"khun","e":"you"},{"p":"yàak","e":"want"},{"p":"pai","e":"go"},{"p":"gin","e":"eat"},{"p":"khâo","e":"rice"},{"p":"mǎi","e":"?"},{"p":"khrâp","e":"[polite]"}],"target_phonetic":"gin"}
-
-Respond ONLY with valid JSON array, no markdown:
-[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[...],"target_phonetic":"..."}] (90 pairs total)`
-
-  const user = `TARGET WORDS (each must appear 3x):\n${targetList}\n\nANCHOR WORDS (review, 1-2x each):\n${anchorList}`
-
-  return { system, user, approvedList }
-}
+// v665: buildGenerationPrompt removed — unreferenced dead copy that carried its own length ladder (one source of truth: BELT_COMPLEXITY)
 
 
 // ── Vocab validator ───────────────────────────────────────────────────────────
@@ -7417,7 +7327,7 @@ function validatePairs(pairs, vocab) {
   // Allowed = genuinely introduced + this track's deliberate targets + approved
   // grammar/function words. Nothing else.
   // Track-wide: introduced + ALL track targets + approved function words.
-  const introducedSet = new Set(vocab.filter(w => hasBeenIntroduced(w)).map(w => w.thai))
+  const introducedSet = new Set(vocab.filter(w => isLearnerTaught(w)).map(w => w.thai))
   const targetSet = new Set((allowedTargets || []).map(w => (w && (w.thai || w.t)) || w).filter(Boolean))
   const allAllowed = new Set([...ALWAYS_ALLOWED, ...introducedSet, ...targetSet])
   // Sort by length descending for greedy matching
@@ -8422,133 +8332,7 @@ function getWordTypeHint(target) {
 }
 
 
-function buildMicroPrompt(target, anchors, vocab, promptType1, promptType2, promptType3, existingThais, pairOffset, wordType) {
-  const PARTICLES = ['ครับ','ค่ะ','คะ','นะ','ด้วย','แล้ว','ก็','ที่','ของ','กับ','ใน','ไม่','ได้','จะ','และ','แต่',
-    'หรือ','ว่า','ถ้า','อีก','ยัง','เป็น','มี','ไป','มา','อยู่','ทำ','รู้','เห็น','บอก','คิด','รู้สึก',
-    'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง','ไหม','ก็ได้']
-  const anchorLines = anchors.slice(0,8).map(w => w.thai + '=' + w.english).join(' | ')
-  const existingList = [...existingThais].slice(-4).join(' | ')
-  const { goalMin: gMin, goalMax: gMax, effectiveCeil: eCeil } = getSentenceLengthForVocab(vocab)
-  const promptCap = Math.max(6, eCeil + 3)
-
-  const tw = target.thai
-  const eng = target.english
-  const ph = target.phonetic || ''
-  const wType = wordType || classifyWord(target)
-  const risk = getRisk(wType)
-  const { hint } = getWordTypeHint(target)
-
-  // ── TIER 2: Medium-risk — locked frame, AI fills content ─────────────────
-  if (risk === 'medium') {
-    const FRAMES = {
-      adjective: [
-        'น้ำ'+tw+'ครับ (water is '+eng+')',
-        'อาหาร'+tw+'ครับ (food is '+eng+')',
-        'อากาศ'+tw+'ครับ (weather is '+eng+')',
-        'มัน'+tw+'ครับ (it is '+eng+')',
-      ],
-      emotion: [
-        'ผม'+tw+'ครับ (I am '+eng+')',
-        'คุณ'+tw+'ไหมคะ (are you '+eng+'?)',
-        'ผม'+tw+'มากครับ (I am very '+eng+')',
-      ],
-      body: [
-        tw+'ผมเจ็บครับ (my '+eng+' hurts)',
-        tw+'เจ็บไหมคะ (does your '+eng+' hurt?)',
-        tw+'ผมดีขึ้นแล้วครับ (my '+eng+' is better)',
-      ],
-      nature: [
-        tw+'แรงครับ (the '+eng+' is strong)',
-        'วันนี้'+tw+'แรงไหมคะ (is the '+eng+' strong today?)',
-        tw+'สวยครับ (the '+eng+' is beautiful)',
-      ],
-      abstract: [
-        'ผมชอบ'+tw+'ครับ (I like '+eng+')',
-        tw+'ดีไหมคะ (is the '+eng+' good?)',
-        'ผมมี'+tw+'ครับ (I have '+eng+')',
-      ],
-      personality: [
-        'ผมเป็นคน'+tw+'ครับ (I am a '+eng+' person)',
-        'คุณเป็นคน'+tw+'ไหมคะ (are you '+eng+'?)',
-        'ช่วงนี้ผม'+tw+'ครับ (lately I am '+eng+')',
-      ],
-      verb_transitive: [
-        tw+'อะไรดีคะ (what should I '+eng+'?)',
-        tw+'ได้ไหมคะ (can I '+eng+' it?)',
-        tw+'แล้วครับ (I already '+eng+'d it)',
-      ],
-      verb_intrans: [
-        'ผมจะ'+tw+'ครับ (I will '+eng+')',
-        tw+'ได้ไหมคะ (can you '+eng+'?)',
-        'ผม'+tw+'แล้วครับ (I already '+eng+'d)',
-      ],
-    }
-    const frames = FRAMES[wType] || FRAMES.abstract
-    return [
-      'Complete these 3 Thai sentences. Each frame is fixed — only fill the blank if needed.',
-      'Target: '+tw+' ('+eng+')'+( ph ? ', phonetic: '+ph : ''),
-      '',
-      'Frame 1 ('+promptType1+'): '+frames[0],
-      'Frame 2 ('+promptType2+'): '+frames[1 % frames.length],
-      'Frame 3 ('+promptType3+'): '+frames[2 % frames.length],
-      '',
-      'WORD CLASS: '+wType,
-      hint,
-      '',
-      'RULES:',
-      '- Write the complete Thai sentence based on the frame above',
-      '- '+gMin+'–'+gMax+' Thai words (not counting ครับ/ค่ะ)',
-      '- ONLY use: '+tw+' | '+anchorLines+' | grammar particles',
-      '- Frame 1 ends ครับ, Frame 2 ends ค่ะ, Frame 3 ends ครับ',
-      '- QUESTIONS end คะ not ค่ะ',
-      '- Prompt must name the target concept in natural English (max '+promptCap+' words)',
-      '- Thai must match English exactly',
-      'Avoid repeating: '+(existingList || 'none yet'),
-      '',
-      'Return ONLY JSON array of 3:',
-      '[{"prompt":"...","thai":"...","english":"...","phonetic":"tokens","words":[{"p":"...","e":"..."}],"target_phonetic":"'+ph+'"}]',
-    ].join('\n')
-  }
-
-  // ── TIER 3: Low-risk — AI generates with class guidance ───────────────────
-  return [
-    'Write 3 Thai Pimsleur pairs. Target: '+tw+' ('+eng+')'+( ph ? ', phonetic: '+ph : ''),
-    '',
-    'WORD CLASS: '+wType+' ('+risk+' risk)',
-    hint,
-    (getCompatibleConceptsForTarget(target).length > 0 ? 'APPROVED LESSON FRAMES: ' + getCompatibleConceptsForTarget(target).slice(0,2).map(c=>c.id+': '+c.generatorFrames[0]).join(' | ') : ''),
-    '',
-    'ABSOLUTE BANS (these produce nonsense — never generate):',
-    '✗ ขอ+[word]+หน่อย unless word is a physical object, food, ticket, or document',
-    '✗ ไม่มี+[word] unless word is a physical thing that can be absent',
-    '✗ สบายดี for non-people/animals',
-    '✗ [place/field]+ผมเจ็บ (only body parts can hurt)',
-    '✗ ใคร+verb+ไหม — use ใคร+verb+คะ or มีใคร+verb+ไหมคะ',
-    '✗ questions ending ค่ะ — questions use คะ, statements use ค่ะ',
-    '✗ รู้+place/person — use รู้จัก',
-    '✗ ไม่+verb translated as "never" — never uses ไม่เคย',
-    '',
-    'GENDER (no exceptions):',
-    '- Learner = MALE: ผม+ครับ',
-    '- Teacher question = FEMALE: ไหมคะ',
-    '- Teacher statement = FEMALE: ค่ะ',
-    '',
-    'ALIGNMENT RULE: Write Thai first → derive prompt and English from it. All 3 must match exactly.',
-    'Prompt must name the target word in natural English. Max '+promptCap+' words. No Thai script in prompt.',
-    '',
-    'Pair 1: '+promptType1+' using '+tw,
-    'Pair 2: '+promptType2+' using '+tw+' differently',
-    'Pair 3: '+promptType3+' using '+tw+' differently again',
-    '',
-    '- Sentence: '+gMin+'–'+gMax+' words (not counting ครับ/ค่ะ). Max '+eCeil+'.',
-    '- ONLY: '+tw+' | '+anchorLines+' | particles',
-    '- Pair 1 ends ครับ, Pair 2 ends ค่ะ, Pair 3 ends ครับ',
-    'Avoid: '+(existingList || 'none'),
-    '',
-    'Return ONLY JSON array of 3:',
-    '[{"prompt":"...","thai":"...","english":"...","phonetic":"...","words":[{"p":"...","e":"..."}],"target_phonetic":"'+ph+'"}]',
-  ].join('\n')
-}
+// v665: buildMicroPrompt removed — unreferenced dead copy that carried its own length ladder (one source of truth: BELT_COMPLEXITY)
 
 // Pre-written fallbacks for known problem words
 const HARDCODED_FALLBACKS = {
@@ -10105,7 +9889,7 @@ function classifyThaiToken(token, ctx) {
   const vocab = c.vocab || []
   const rec = vocab.find(w => (w.thai || w.t) === token)
   const dictionaryExists = !!rec
-  const introduced = rec ? hasBeenIntroduced(rec) : false
+  const introduced = rec ? isLearnerTaught(rec) : false
   const manualKnown = rec ? !!rec.manualKnown : false
   const targets = c.currentTrackTargets || []
   const targetRec = targets.find(x => ((x && (x.thai || x.t)) || x) === token)
@@ -10115,7 +9899,7 @@ function classifyThaiToken(token, ctx) {
   let cls = THAI_CLASS.BLOCKED
   let reason = 'never introduced and not a current-track target'
   if (currentTrackTarget) {
-    const tIntro = targetRec && targetRec.thai ? hasBeenIntroduced(targetRec) : introduced
+    const tIntro = targetRec && targetRec.thai ? isLearnerTaught(targetRec) : introduced
     cls = tIntro ? THAI_CLASS.TRACK_REVIEW : THAI_CLASS.TRACK_NEW
     reason = tIntro ? 'target already introduced' : 'deliberate NEW target for this track'
   } else if (introduced || manualKnown) {
@@ -10597,7 +10381,7 @@ function buildThaiAllowedSet(ctx) {
   vocab.forEach(w => {
     const th = w.thai || w.t
     if (!th) return
-    if (hasBeenIntroduced(w) || w.manualKnown) set.add(th)
+    if (isLearnerTaught(w)) set.add(th)            // v665: the ONE definition of taught (buildLearnerAuthorizedInventory)
   })
   // 3. EVERY approved target in the current track (not just the current one)
   ;(c.trackTargets || []).forEach(w => {
@@ -10632,7 +10416,7 @@ function explainThaiToken(word, ctx) {
   const inTrack = (c.trackTargets || []).some(w => ((w && (w.thai || w.t)) || w) === word)
     || (c.target && (c.target.thai || c.target.t) === word)
   const grammarAllowed = (c.grammarWords || []).includes(word)
-  const introduced = hasBeenIntroduced(rec)
+  const introduced = isLearnerTaught(rec)
   const finalAllowed = isAllowedThaiWord(word, c)
   return 'token=' + word +
     ' introduced=' + introduced +
@@ -10712,7 +10496,7 @@ function thaiSupportLanguageCategory(toks, k, ctx) {
   const blk = thaiSupportBlockCategory(toks, k)
   if (blk) return blk
   const rec = (c.vocab || []).find(w => (w.thai || w.t) === t)
-  if (rec && (hasBeenIntroduced(rec) || rec.manualKnown)) return 'LEARNED_VOCAB'
+  if (rec && isLearnerTaught(rec)) return 'LEARNED_VOCAB'
   if (THAI_ALWAYS_OK_WORDS.includes(t) || (c.grammarWords || []).includes(t)) return 'GRAMMAR'
   if (THAI_APPROVED_COMPOSITION_UNITS.has(t)) return 'APPROVED_COMPOSITION'
   return 'UNAUTHORISED'
@@ -10888,16 +10672,13 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
     if (thaiChars < 4) { failures.push('too short: ' + p.thai); continue }
     // Length check via phonetic word count (spaces = word boundaries, reliable)
-    const phWords = (p.phonetic || '').trim().split(/\s+/).filter(w => w && !/^[?.!,]$/.test(w)).length
-    const lenCheck = getSentenceLengthForVocab(vocab) || {}
-    const minWords = Math.floor((lenCheck.goalMin || 5) * 0.9)
-    const maxWords = Math.ceil((lenCheck.hardCeil || 8) * 1.2) + 3  // allow extra room for number phrases
-    const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
-    // Short natural Thai is valid — ถามอะไรคะ is a complete utterance. A hard
-    // minimum pushed the model to pad with untaught vocabulary to clear the bar.
-    const _floor = Math.min(minWords, 2)
-    if (effectiveLen < _floor) { failures.push('too short: ' + effectiveLen + ' units — not a usable sentence: ' + p.thai); continue }
-    if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
+    // v665 — length is the ONE belt contract, counted on the canonical Thai segmentation (not phonetic spaces,
+    // no ×1.2+3 tolerance). Short natural Thai is valid (ถามอะไรคะ is a complete utterance; preferredMin is
+    // guidance, never padded); above hardMax the candidate is rejected before it becomes track state.
+    const _cc = getLearnerComplexityContract({ lang: 'th', vocab })
+    const _an = _cc.analyse(p.thai)
+    if (_an.units < 1) { failures.push('too short: 0 units — not a usable sentence: ' + p.thai); continue }
+    if (_an.overHardMax) { failures.push('LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' Thai words > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + '): ' + p.thai); continue }
     // Must not be a duplicate
     if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
     // ── Unknown vocab check (strict early passes only — the session vocab set is narrow,
@@ -11542,11 +11323,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const _nameA = (charA.split(',')[0] || 'A').replace(/\s*\([^)]*\)/g,'').trim()
   const _nameB = (charB.split(',')[0] || 'B').replace(/\s*\([^)]*\)/g,'').trim()
   const lenRes = getSentenceLengthForVocab(vocab) || {}
-  const sentMin = Math.max(4, lenRes.goalMin || 5)
-  const sentMax = lenRes.goalMax || 8
+  const _cc = lenRes.contract
   // Prompt examples must come from words the learner has ACTUALLY been introduced
   // to. repCount is bank metadata and was listing never-taught words as "known".
-  const knownWords = vocab.filter(w => hasBeenIntroduced(w))
+  const knownWords = vocab.filter(w => isLearnerTaught(w))
   // The complete allowed space: introduced vocabulary + every target in this track +
   // the current target. Built once, passed into the prompt.
   const _siblings = Array.isArray(target && target._trackTargets) ? target._trackTargets : []
@@ -11583,7 +11363,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'B = ' + charB + ' — MUST end every sentence with ' + (/\bman\b|\bmale\b|\bboy\b|\bold man\b|\bgentleman\b/i.test(charB) ? 'ครับ (B is MALE)' : 'ค่ะ or คะ') + '\n' +
     'RULES:\n' +
     '• A lines end ครับ. B lines end ค่ะ or คะ. NO EXCEPTIONS.\n' +
-    '• Sentences ' + sentMin + '–' + sentMax + ' Thai words long\n' +
+    '• ' + _cc.promptRule + '\n' +
     // ALLOWED VOCABULARY, stated explicitly BEFORE generation. The model previously
     // got a bare list without the other track targets, so it kept reaching for words
     // like เรื่อง and อาจจะ and being rejected 8–11 times. Constrain first,
@@ -11825,11 +11605,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     try {
       // Translate raw validator failures into actionable rewrite instructions
       const _translateFail = r => {
-        const _longMatch = r.match(/too long.*?(\d+) words.*?max (\d+)/)
+        const _longMatch = r.match(/LEVEL_COMPLEXITY_FAIL: (\d+) Thai words > hardMax (\d+)/)
         if (_longMatch) {
-          return 'Sentence is ' + _longMatch[1] + ' words — MAX is ' + _longMatch[2] + '. Rewrite SHORTER. Cut unnecessary words.'
+          return 'Sentence is ' + _longMatch[1] + ' Thai words — the learner\'s MAX is ' + _longMatch[2] + ' (particles do not count). Rewrite SHORTER: one simple idea, drop extra detail.'
         }
-        if (/too short/.test(r)) return 'Sentence is too short. Add more context to make it a complete natural utterance.'
+        if (/too short/.test(r)) return 'That is not a usable sentence. Write one complete natural utterance (short is fine — do not pad).'
         if (/phonetic truncated|missing phonetic|short phonetic/.test(r)) return 'Phonetic is incomplete — romanise EVERY syllable of the Thai sentence.'
         if (/no target/.test(r)) return 'The target word "' + target.thai + '" (' + target.english + ') is missing from the sentence. It MUST appear in the Thai text.'
         if (/missing.*translation|no English/.test(r)) return 'The English translation field is empty. Provide a natural English translation.'
@@ -13075,8 +12855,6 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     'ผม','ฉัน','คุณ','เรา','เขา','เธอ','ที่นี่','ตอนนี้','วันนี้','นี้','นั้น','เพราะ','ให้','กัน','เอง',
     'ไหม','ก็ได้','เคย','อยาก','ต้อง','อาจจะ','กำลัง','เพิ่ง','อย่า']
   const allAllowed = new Set([...ALWAYS_ALLOWED_V, ...vocab.map(w=>w.thai)])
-  const _lenRes = getSentenceLengthForVocab(vocab) || {}
-  const effectiveCeil = _lenRes.effectiveCeil || 7
 
   // ── Get 30 most relevant concept cards for a target word ──────────────────
   function getConceptBlock(target) {
@@ -13116,7 +12894,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
   function getVocabContext() {
     // Top 40 most-reviewed words — model uses these as sentence building blocks
     const seen = vocab
-      .filter(w => w.repCount && w.repCount >= 1)
+      .filter(w => isLearnerTaught(w))              // v665: the ONE definition of taught
       .sort((a, b) => (b.repCount || 0) - (a.repCount || 0))
       .slice(0, 40)
     const basics = ['ผม','คุณ','เขา','เรา','มี','ไม่','ได้','ไหม','ที่','นี้','นั้น','ของ','ให้','กัน','อยู่','เป็น','ครับ','คะ','แล้ว','ก็','จะ','และ','หรือ','ใน','มาก','น้อย','ดี','ใหญ่','เล็ก']
@@ -13133,15 +12911,6 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     const numberHint = exerciseRequiresNumber(target) ? randomNumberHint(vocab, pairIndex || 0) : ''
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
-    let floor = lenResult.goalMin || 6
-    let ceil = lenResult.goalMax || 7
-    // Colour words: hard floor of 5 to force verb-containing sentences
-    if (type === 'colour') floor = Math.max(5, floor)
-    // Long compound targets (4+ syllables): lower floor by 1
-    if (['food','food_dish','event','clothing'].includes(type)) {
-      const targetSyllables = (target.phonetic || '').split('-').filter(Boolean).length
-      if (targetSyllables >= 4) floor = Math.max(3, floor - 1)
-    }
     const scenarioCtx = scenario ? (SCENARIO_CONTEXTS[scenario] || SCENARIO_CONTEXTS.general) : SCENARIO_CONTEXTS.general
     const conceptLines = (conceptBlock || []).slice(0,15).map(c =>
       (c.pattern||'') + '=' + (c.meaning||'') + ((c.frames && c.frames.length) ? '[' + c.frames[0] + ']' : '')
@@ -13154,7 +12923,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     return 'SCENARIO: ' + scenarioCtx.setting +
       '\nTARGET WORD: ' + target.thai + ' (' + (target.phonetic||target.thai) + ') = "' + (target.english||'') + '"' +
       '\n⚠ CRITICAL: Every Thai sentence MUST contain the EXACT word "' + target.thai + '". Do NOT replace it with synonyms.' +
-      '\nCLASS: ' + type + ' | SENTENCE LENGTH: MUST be ' + floor + '-' + ceil + ' Thai words. Sentences shorter than ' + floor + ' words will be rejected.' +
+      '\nCLASS: ' + type + ' | ' + lenResult.contract.promptRule +
       (recheckLine ? '\n' + recheckLine : '') +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
@@ -13245,14 +13014,9 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       // Must be a real Thai sentence (at least 5 Thai chars)
       const thaiChars = (p.thai || '').split('').filter(c => c >= '\u0E00' && c <= '\u0E7F').length
       if (thaiChars < 5) { failures.push('too short: ' + p.thai); continue }
-      // Length check via phonetic word count (spaces = word boundaries, reliable)
-      const phWords = (p.phonetic || '').trim().split(/\s+/).filter(w => w && !/^[?.!,]$/.test(w)).length
-      const lenCheck = getSentenceLengthForVocab(vocab) || {}
-      const minWords = Math.floor((lenCheck.goalMin || 5) * 0.9)
-      const maxWords = Math.ceil((lenCheck.hardCeil || 8) * 1.2) + 3  // allow extra room for number phrases
-      const effectiveLen = phWords <= 2 ? Math.round(thaiChars / 3) : phWords
-      if (effectiveLen < minWords) { failures.push('too short: ' + effectiveLen + ' words (need ' + minWords + '+): ' + p.thai); continue }
-      if (phWords > 2 && phWords > maxWords) { failures.push('too long: ' + phWords + ' words (max ' + maxWords + '): ' + p.thai); continue }
+      // v665 — the ONE belt contract (canonical Thai segmentation; short natural lines allowed; > hardMax rejected)
+      const _cc = getLearnerComplexityContract({ lang: 'th', vocab }), _an = _cc.analyse(p.thai)
+      if (_an.overHardMax) { failures.push('LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' Thai words > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + '): ' + p.thai); continue }
       // Must not be a duplicate
       if (existingThais.has(p.thai)) { failures.push('duplicate'); continue }
       // ── Unknown vocab check (strict early passes only — the session vocab set is narrow,
@@ -13267,7 +13031,10 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
         {
           const dictWords = vocab.map(w => w.t || w.thai).filter(w => w && w.length >= 2)
             .sort((a, b) => b.length - a.length)
-          const allowedNow = new Set([...knownThaiWords, ...alwaysOk])
+          // v665: an alwaysOk entry that is itself a BANK word is authorised only when the learner was taught it
+          // (isLearnerTaught via buildThaiAllowedSet) — the list is grammar scaffolding, not free support vocabulary
+          const _bank = new Set(vocab.map(w => w.t || w.thai).filter(Boolean))
+          const allowedNow = new Set([...knownThaiWords, ...[...alwaysOk].filter(w => !_bank.has(w))])
           if (target && (target.thai || target.t)) allowedNow.add(target.thai || target.t)
           // Longest-match, orphan-safe. เสาร์นี้ previously yielded เสาร์ + ร์ + นี้ and
           // the bare tone mark ร์ was reported as "untaught vocabulary". A leftover that
@@ -13587,7 +13354,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       const DAILY_EMOJI = ['✦','🔶','🟠','🔵','🔷','🟡','🟨','🟢','💚','🪵','🟫']
       const _ord = n => n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th')
       const _lenRes0 = getSentenceLengthForVocab(vocab) || {}
-      const _lenHint = 'REQUIRED: sentences must be ' + (_lenRes0.goalMin || 4) + '-' + (_lenRes0.hardCeil || 8) + ' Thai words long'
+      const _lenHint = _lenRes0.contract.promptRule
       let _prevFails = []
       for (let attempt = 0; attempt < DAILY_SRCS.length && pairs.length < 3; attempt++) {
         const isRecheck = attempt > 0
@@ -13850,77 +13617,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
 }
 
 
-function buildConvoPrompt(targets, vocab) {
-  // ── Belt level for complexity control ──────────────────────────
-  const known = vocab.filter(w => (w.repCount || 0) >= 5).length
-  const BELTS = [
-    { name:'Mukyu',    sentMin:2,  sentMax:4  },
-    { name:'10th Kyu', sentMin:5,  sentMax:6  },
-    { name:'9th Kyu',  sentMin:6,  sentMax:7  },
-    { name:'8th Kyu',  sentMin:7,  sentMax:8  },
-    { name:'7th Kyu',  sentMin:8,  sentMax:9  },
-    { name:'6th Kyu',  sentMin:9,  sentMax:10 },
-    { name:'5th Kyu',  sentMin:10, sentMax:11 },
-    { name:'4th Kyu',  sentMin:11, sentMax:12 },
-    { name:'3rd Kyu',  sentMin:12, sentMax:13 },
-    { name:'2nd Kyu',  sentMin:13, sentMax:14 },
-    { name:'1st Kyu',  sentMin:14, sentMax:15 },
-    { name:'Shodan',   sentMin:16, sentMax:20 },
-  ]
-  // Single source of truth: BELT_RANKS. This array previously held the old
-  // 5000-word ladder, so the belt-levels screen still showed 1500/2000/3000/4000/5000.
-  const BELT_THRESHOLDS = BELT_RANKS.map(b => b.minWords)
-  const beltIdx = BELT_THRESHOLDS.reduce((idx, min, i) => known >= min ? i : idx, 0)
-  const belt = BELTS[beltIdx] || BELTS[0]
-  const complexityNote = `${belt.name}: sentences ${belt.sentMin}–${belt.sentMax} Thai words. Keep vocabulary simple and natural for this level.`
-
-  // ── Scenario clustering ──────────────────────────────────────
-  const SCENARIOS = [
-    { id:'market',   keywords:['ตลาด','ร้าน','ซื้อ','ขาย','ราคา','แพง','ถูก','ส่วนลด','ต่อรอง'], scene:'At a market or shop', A:'Customer', B:'Vendor', goal:'Browse, ask prices, maybe buy something' },
-    { id:'food',     keywords:['กิน','ดื่ม','อาหาร','ร้านอาหาร','สั่ง','อร่อย','หิว','อิ่ม','เมนู'], scene:'At a restaurant or food stall', A:'Customer', B:'Server', goal:'Order food, chat about dishes' },
-    { id:'travel',   keywords:['ไป','มา','รถ','เดิน','สถานี','สนามบิน','โรงแรม','ที่พัก','ตั๋ว','เที่ยว'], scene:'Travelling or getting directions', A:'Traveller', B:'Local or transport staff', goal:'Get to a place, ask for help navigating' },
-    { id:'health',   keywords:['เจ็บ','ปวด','หมอ','โรงพยาบาล','ยา','ไข้','อาการ','สุขภาพ'], scene:'At a clinic or pharmacy', A:'Patient', B:'Doctor or pharmacist', goal:'Describe symptoms, get advice' },
-    { id:'social',   keywords:['เพื่อน','ครอบครัว','พบ','คุย','ช่วย','ขอบคุณ','ยินดี','สบาย'], scene:'Casual social conversation', A:'Friend A', B:'Friend B', goal:'Catch up, help each other, small talk' },
-  ]
-  // A collided word carries the minimum distinction it needs; others stay simple.
-  const wordList = targets.map(t => t.note
-    ? `${t.thai} (${t.english}) \u2014 use when ${t.note}`
-    : `${t.thai} (${t.english})`).join(', ')
-  const allThai = targets.map(t => t.thai).join(' ')
-  let scenario = SCENARIOS.find(s => s.keywords.some(k => allThai.includes(k))) || SCENARIOS[4]
-
-  // ── Few-shot example ─────────────────────────────────────────
-  const example = '{"lines":[' +
-    '{"speaker":"A","thai":"สวัสดีครับ, มีกาแฟร้อนไหมครับ","phonetic":"sà-wàt-dii khrâp, mii gaa-fae rón mǎi khrâp","english":"Hello, do you have hot coffee?"},' +
-    '{"speaker":"B","thai":"มีค่ะ, ขนาดเล็กหรือใหญ่คะ","phonetic":"mii khâ, khà-nàat lék rǔue yài khá","english":"Yes, small or large?"},' +
-    '{"speaker":"A","thai":"เอาใหญ่ครับ, ไม่ใส่น้ำตาลครับ","phonetic":"ao yài khrâp, mâi sài nám-taan khrâp","english":"Large please, no sugar."}' +
-    ']}'
-
-  const system = 'You are a Thai language teacher writing realistic spoken Thai conversations for learners. ' +
-    'Write natural Thai as a Thai person would actually speak \u2014 not translated English. ' +
-    'GRAMMAR RULES (always apply):\n' +
-    '\u2022 Every Thai sentence ends with \u0e04\u0e23\u0e31\u0e1a (male) or \u0e04\u0e48\u0e30/\u0e04\u0e30 (female) \u2014 no exceptions\n' +
-    '\u2022 \u0e40\u0e0a\u0e37\u0e48\u0e2d/\u0e04\u0e34\u0e14/\u0e23\u0e39\u0e49\u0e2a\u0e36\u0e01/\u0e2b\u0e27\u0e31\u0e07 must be followed by \u0e27\u0e48\u0e32 before a clause\n' +
-    '\u2022 \u0e07\u0e31\u0e49\u0e19\u0e01\u0e47 must sit BETWEEN two clauses, never at the end\n' +
-    '\u2022 \u0e0b\u0e36\u0e48\u0e07 must follow a noun, never start a sentence\n' +
-    '\u2022 No \u0e04\u0e27\u0e32\u0e21 before adjectives (\u0e04\u0e27\u0e32\u0e21\u0e23\u0e27\u0e22 = wrong, \u0e23\u0e27\u0e22\u0e04\u0e23\u0e31\u0e1a = right)\n' +
-    '\u2022 COMMA RULE: If a line has two clauses, separate with a comma. Short single-thought lines need no comma.\n' +
-    'Return ONLY valid JSON \u2014 no markdown, no preamble, no thinking.\n' +
-    'EXAMPLE OUTPUT:\n' + example
-
-  const user = 'NOW write a 15-line conversation with these details:\n' +
-    'SCENE: ' + scenario.scene + '\n' + topicContext +
-    'SPEAKER A: ' + scenario.A + '\n' +
-    'SPEAKER B: ' + scenario.B + '\n' +
-    'GOAL: ' + scenario.goal + '\n' +
-    'LEVEL: ' + complexityNote + '\n' +
-    'TARGET WORDS \u2014 use ONLY if they fit naturally in the scene (skip any that do not belong): ' + wordList + '\n' +
-    'CRITICAL: NEVER force a word into a sentence where it makes no sense.\n\n' +
-    'Return ONLY this JSON:\n' +
-    '{"lines":[{"speaker":"A","thai":"...","phonetic":"...","english":"..."},{"speaker":"B","thai":"...","phonetic":"...","english":"..."}]}'
-
-  return { system, user }
-}
+// v665: buildConvoPrompt removed — unreferenced dead copy that carried its own length ladder (one source of truth: BELT_COMPLEXITY)
 
 
 // ── Pre-track Conversation Player ────────────────────────────────────────────
@@ -14065,8 +13762,12 @@ function listeningSentence(p) { return p ? (p.thai || p.japanese || p.chinese ||
 function listeningPhonetic(p) { return p ? (p.phonetic || p.reading || p.pinyin || '') : '' }
 function listeningTrackId(t) { return t ? (t.id || t.createdAt || t.date || '') : '' }
 // Language adapter: content words in this sentence the learner has NOT been exposed to.
-function listeningUnexposedWords(lang, pair, exposedVocab, eligibleTargets) {
+// v665: `bank` = the learner's FULL vocabulary. The authorised set is still only what isLearnerTaught admits (+ targets),
+// but grammar/support lists are filtered against the whole bank — a bank word that was never taught can no longer slip in
+// as "grammar" just because the exposure list did not contain it (the free-support-vocabulary loophole, §15).
+function listeningUnexposedWords(lang, pair, exposedVocab, eligibleTargets, bank) {
   const text = listeningSentence(pair)
+  if (Array.isArray(bank) && bank.length) exposedVocab = bank
   const _ents = (eligibleTargets && eligibleTargets._sceneEntities) || []     // v650: scene names are not unexposed words
   try {
     if (lang === 'th') {
@@ -14472,7 +14173,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v664'
+const LISTENING_BUILD_VERSION = 'v666'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -14968,7 +14669,7 @@ function recoveryStateSummary(st) {
 //   9 NOT_DUPLICATE    not the same sentence as another pair of the track
 //  10 SCENE_COMPATIBLE the line belongs to its target's scene (when a plan exists)
 // "PASS" = every dimension PASS or N/A. A generation group is never called PASSED while a dimension is PENDING.
-const THAI_PAIR_DIMENSIONS = ['TARGET_PRESENT', 'TARGET_SENSE', 'CLOSED_VOCAB', 'NATURAL', 'CUE_CONSISTENT', 'SPEAKER_REGISTER', 'COMPOSITION', 'PROVENANCE', 'NOT_DUPLICATE', 'SCENE_COMPATIBLE']
+const THAI_PAIR_DIMENSIONS = ['TARGET_PRESENT', 'TARGET_SENSE', 'CLOSED_VOCAB', 'LENGTH', 'NATURAL', 'CUE_CONSISTENT', 'SPEAKER_REGISTER', 'COMPOSITION', 'PROVENANCE', 'NOT_DUPLICATE', 'SCENE_COMPATIBLE']
 function validateThaiTargetPair(pair, target, ctx, stage) {
   const c = ctx || {}, p = pair || {}, tw = (target && (target.thai || target.surface)) || ''
   const tid = target && (target.wordId != null ? target.wordId : target.id)
@@ -14991,6 +14692,9 @@ function validateThaiTargetPair(pair, target, ctx, stage) {
   if (c.cvCtx) { let bl = []; try { bl = validateThaiVocabulary([{ thai: p.thai }], c.cvCtx).blocked } catch (e) {} ; if (bl.length) fail('CLOSED_VOCAB', 'untaught ' + bl.join(' ')); else d.CLOSED_VOCAB = 'PASS' }
   else if (c.allowedSet) { const r = thaiQcCheckVocabulary(p, c.allowedSet, c.vocab); if (!r.ok) fail('CLOSED_VOCAB', r.problems.join('; ')); else d.CLOSED_VOCAB = 'PASS' }
   else d.CLOSED_VOCAB = p._closedVocabBlocked ? (fail('CLOSED_VOCAB', 'blocked by the closed-vocabulary gate'), 'FAIL') : 'N/A'
+  // v665 — LENGTH: the learner's belt hardMax (one contract for generation, recovery, quota and the final audit)
+  { const _cc = getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }), _an = _cc.analyse(p.thai)
+    if (_an.overHardMax) fail('LENGTH', 'LEVEL_COMPLEXITY_FAIL ' + _an.units + ' Thai words > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')'); else d.LENGTH = 'PASS' }
   const sp = thaiSpeakerIdentity(p)
   if (sp.status === 'linguistic-conflict' || sp.status === 'metadata-conflict') fail('SPEAKER_REGISTER', sp.reason); else d.SPEAKER_REGISTER = 'PASS'
   const comp = TRACK_ADAPTERS.th.hardProblems(p).concat(thaiTemplateGarbageProblems(p).map(g => g.why), thaiTimeExpressionProblems(p.thai).map(g => g.why))
@@ -15023,6 +14727,9 @@ function trackPairValidity(p, kw, adapter, ctx) {
   const inv = adapter.invalidReason(p, ctx)
   if (inv) reasons.push(inv)
   adapter.hardProblems(p, ctx).forEach(h => reasons.push(h))
+  // v665 — the same belt LENGTH contract as Thai (canonical content units / segmentation)
+  { const _cc = getLearnerComplexityContract({ lang: adapter.lang, vocab: ctx && ctx.vocab }), _an = _cc.analyse(p)
+    if (_an.overHardMax) reasons.push('LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' ' + _cc.unitName + ' > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')') }
   return { valid: reasons.length === 0, reasons }
 }
 function trackQuotaReport(pairs, keywords, adapter, ctx) {
@@ -15188,6 +14895,16 @@ async function finaliseMainTrack(track, adapter, ctx) {
   c.track = t                                   // adapters see the track's targets (e.g. the Mandarin inventory)
   const q = await enforceTrackPairQuota(t, adapter, c)
   t = { ...t, pairs: q.pairs }
+  // v665 — ONE learner level: the belt contract + the learner-authorised inventory (same as Listening)
+  const _cc = getLearnerComplexityContract({ lang: adapter.lang, vocab: c.vocab })
+  log && log('📏 ' + complexityContractLog(_cc))
+  try { const _mode = (t.trackContext && t.trackContext.mode) || t.mode || 'daily'
+    const _inv = buildLearnerAuthorizedInventory(adapter.lang, c.vocab, (adapter.keywordsOf(t) || []).map(k => c.vocabById.get(k.wordId) || { id: k.wordId }), _mode === 'revision' ? 'revision' : 'daily')
+    log && log('📚 ' + _inv.log) } catch (e) {}
+  // a BRIDGE line is optional connective speech: one above the learner's hardMax is removed, not repaired
+  const _bridgeDrop = (t.pairs || []).filter(p => p && classifyTrackPair(p) === 'BRIDGE' && _cc.analyse(p).overHardMax)
+  if (_bridgeDrop.length) { t = { ...t, pairs: t.pairs.filter(p => !_bridgeDrop.includes(p)) }
+    log && log('  📏 MAIN_LENGTH bridge line(s) above hardMax ' + _cc.hardMax + ' removed: ' + _bridgeDrop.map(p => adapter.sentenceOf(p)).join(' | ').slice(0, 200)) }
   // v654 §10/§11 — Main coherence is judged (and failing scenes repaired) BEFORE pronunciation, so
   // repaired lines get the same final metadata as every other pair
   let _coh = null, _cohRepair = null
@@ -15282,6 +14999,13 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (inv.PRONUNCIATION_STALE_LINES) reasons.push('PRONUNCIATION_STALE_LINES=' + inv.PRONUNCIATION_STALE_LINES)
   if (inv.UNVERIFIED_FINAL_PAIRS) reasons.push('UNVERIFIED_FINAL_PAIRS=' + inv.UNVERIFIED_FINAL_PAIRS)
   if (!inv.EVERY_TARGET_3_OF_3 && !reasons.some(r => /^TARGET_PAIR_QUOTA/.test(r))) reasons.push('EVERY_TARGET_3_OF_3=false')
+  // v665 §23 / v666 §24 — MAIN_COMPLEXITY_AUDIT: every learner line ≤ the belt hardMax; preferred / short / above-preferred
+  // are reported (above-preferred is allowed — advisory drift only)
+  const lengthAudit = complexityAudit(_cc, (t.pairs || []).filter(p => p && classifyTrackPair(p)).map((p, k) => ({ line: k + 1, pairId: p.pairId || p._pairKey || null, text: adapter.sentenceOf(p), a: _cc.analyse(p), targetBearing: classifyTrackPair(p) === 'TARGET' })))
+  const _lenOver = lengthAudit.over
+  log && log(complexityAuditLog('MAIN_COMPLEXITY_AUDIT', lengthAudit))
+  inv.LENGTH_PASS = !_lenOver.length
+  if (!inv.LENGTH_PASS) reasons.push('LENGTH_PASS=false (' + lengthAudit.overHardMax + ' line(s) above hardMax ' + _cc.hardMax + ' for ' + _cc.belt + ')')
   // v654 §10 — coherence is an invariant: a Main Track with a scene ≤2/5 or overall below the threshold
   // is never READY (offline runs without model credentials report n/a)
   inv.MAIN_TRACK_COHERENCE = !_coh ? 'n/a' : _coh.offline ? 'n/a' : _coh.state !== 'VERIFIED' ? 'UNVERIFIED' : _coh.passed ? 'PASS' : 'FAIL'
@@ -15309,6 +15033,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
   // v650 §3 — the approved scene must survive generation and repair (advisory, reported)
   try { integrity.sceneContract = sceneContractDriftAudit(t); if (integrity.sceneContract.drift) integrity.sceneContract.reasons.forEach(r => log && log('  ⚠️ SCENE_CONTRACT_DRIFT ' + r)) } catch (e) {}
   integrity.mainCoherence = _coh || { state: 'UNVERIFIED', reason: 'not run' }
+  integrity.lengthAudit = lengthAudit
+  integrity.complexity = complexityTelemetry(lengthAudit)
   integrity.costGuard = { MAIN_COHERENCE_REPAIR_CALLS: (_coh && _coh.repair && _coh.repair.calls) || 0, RECOVERY_CALLS_AVOIDED: q.recoveryCallsAvoided || 0 }
   t = { ...t, integrity }
   t.finalTrack = { version: TRACK_INTEGRITY_VERSION, finalisedAt: integrity.finalisedAt, fingerprint: trackPairsFingerprint(t.pairs), pairCount: t.pairs.length }
@@ -15509,7 +15235,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v664'
+const APP_BUILD_VERSION = 'v666'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -16014,7 +15740,7 @@ function _thaiAllowedLine(vocab, keywords, kw, sceneEntities) {
   // first 400 introduced words — a truncated list pushed the model toward unlisted words.
   let set
   try { set = buildThaiTrackVocabContext(vocab, (keywords || []).map(k => ({ thai: k.thai, id: k.wordId })), sceneEntities).allowedThaiWords } catch (e) { set = null }
-  const known = set ? [...set] : (vocab || []).filter(w => hasBeenIntroduced(w)).map(w => w.thai || w.t)
+  const known = set ? [...set] : (vocab || []).filter(w => isLearnerTaught(w)).map(w => w.thai || w.t)
   return [...new Set([...known, ...(keywords || []).map(k => k.thai), kw.thai].filter(Boolean))].slice(0, 1400).join(' ')
 }
 // v657 §11 — a SMALL POSITIVE VOCABULARY PALETTE for a recovery request, built from the learner's authorised
@@ -16119,7 +15845,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     (have.length ? 'This word already has these lines — do NOT repeat or paraphrase them:\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai).join('\n') + '\n' : '') +
     recoveryStrategyPromptLines(st, { supportWords }) + recoveryFailureMemoryLines(st) +
     'Write ' + ask + ' NEW natural spoken Thai sentences. EVERY sentence MUST contain "' + kw.thai + '" as a word, used in its normal meaning.\n' +
-    'Alternate speakers A and B. 4–10 Thai words each. Continuous Thai (no spaces between words), no English in the Thai field.\n' +
+    'Alternate speakers A and B. ' + getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }).promptRule + ' Continuous Thai (no spaces between words), no English in the Thai field.\n' +
     'USE ONLY THESE CONTENT WORDS (all taught to this learner) plus the target "' + kw.thai + '":\n  ' + palette.words.join(' ') + '\n' +
     'and these speaker words / particles: ' + palette.particles.join(' ') + (sceneEntities.length ? ' · names: ' + sceneEntities.map(e => e.surface || e).join(' ') : '') + '\n' +
     'Any other content word will be rejected. english = a faithful natural translation. prompt = a third-person cue that says exactly what is said ("He asks if…", "She says…").\n' +
@@ -16658,7 +16384,7 @@ async function _lnGenericVerdicts(lang, pairs, o, log) {
   for (let b = 0; b < uniq.length; b += 12) {
     const chunk = uniq.slice(b, b + 12)
     const prompt = 'LANGUAGE: ' + label + '\nYou are a native ' + label + ' speaker checking learner material. For EACH sentence answer: would a native speaker plausibly say this exact ' +
-      'sentence in ordinary conversation, with this intended meaning?\nPenalise malformed grammar, target-word stuffing, English-shaped ' + label + ', wrong register, absurd claims, fragments.\n' +
+      'sentence in ordinary conversation, with this intended meaning?\nPenalise malformed grammar, target-word stuffing, English-shaped ' + label + ', wrong register, absurd claims, fragments.\n' + NATURALNESS_SIMPLICITY_RULE +
       'Scale: 5 natural · 4 natural with a small quirk · 3 understandable but unnatural · 2 wrong/awkward · 1 broken.\n\n' +
       chunk.map((p, i) => (i + 1) + '. ' + label + ': ' + text(p) + '\n   Intended meaning: ' + (p.english || '')).join('\n\n') +
       '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."}]'
@@ -16898,8 +16624,13 @@ function listeningConversationAudit(scenes, targets, la, ctx) {
     // v657 §27 — the SAME canonical matcher as generation / QC / recovery / final audit (Thai:
     // thaiTargetConceptPresent — บัตร is heard in บัตรเครดิต, น้ำ is not heard in ห้องน้ำ)
     const ids = targets.filter(t => t.surface && la.present(text, t.surface, c)).map(t => t.id)
-    return { n: n + 1, sceneId: l.sceneId, speaker: l.tn.speaker, text, actualTargetIds: ids, targetCount: ids.length }
+    // Listening counts the TEXT the same way at generation, repair and final audit (segments only exist after finalisation)
+    const units = c.complexity ? c.complexity.countUnits(text) : null
+    return { n: n + 1, sceneId: l.sceneId, speaker: l.tn.speaker, text, actualTargetIds: ids, targetCount: ids.length, units }
   })
+  // v665 — every Listening turn ≤ the learner's belt hardMax (no minimum: short replies are natural)
+  // v666: only HARD_FAIL_TOO_COMPLEX is an issue — a natural line above the preferred range but ≤ hardMax is valid and is NOT repaired
+  if (c.complexity) per.forEach(r => { if (r.units > c.complexity.hardMax) issues.push({ code: 'TOO_COMPLEX', line: r.n, detail: r.units + ' ' + c.complexity.unitName + ' > hardMax ' + c.complexity.hardMax + ' (belt ' + c.complexity.belt + ') — rewrite it shorter (' + c.complexity.repairRule + '), or split the idea across the A/B exchange' }) })
   per.forEach(r => { if (r.targetCount > LISTENING_MAX_TARGETS_PER_TURN) issues.push({ code: 'MAX_TARGETS_PER_TURN', line: r.n, detail: r.targetCount + ' current targets (' + r.actualTargetIds.join(',') + ')' }) })
   lines.forEach((l, n) => { const m = listeningMergedSpeakerProblem(la.text(l.tn.pair), l.tn.pair.english, la.lang); if (m) issues.push({ code: 'MERGED_SPEAKERS', line: n + 1, detail: m }) })
   // duplicates — exact and near (near = ≥ 0.9 character similarity AND the same current targets)
@@ -16918,7 +16649,7 @@ function listeningConversationAudit(scenes, targets, la, ctx) {
   // closed vocabulary + language-specific line checks (speaker particles, markup, …)
   lines.forEach((l, n) => {
     const why = (la.bridgeProblems ? la.bridgeProblems(l.tn.pair, c) : []).slice()
-    const un = listeningUnexposedWords(la.lang, l.tn.pair, c.exposed || [], c.eligTargets || []); if (un.length) why.push('VOCABULARY_FAILED: unknown words: ' + un.slice(0, 4).join(' '))
+    const un = listeningUnexposedWords(la.lang, l.tn.pair, c.exposed || [], c.eligTargets || [], c.vocab); if (un.length) why.push('VOCABULARY_FAILED: unknown words: ' + un.slice(0, 4).join(' '))
     why.forEach(w => issues.push({ code: /^VOCABULARY/.test(w) ? 'CLOSED_VOCAB' : /^SPEAKER/.test(w) ? 'SPEAKER_IDENTITY' : 'LINE_QUALITY', line: n + 1, detail: w }))
   })
   // coverage from the finished lines only
@@ -16983,11 +16714,12 @@ function _lnPlanExchanges(sc, byId) {
   sc.expectedTurns = Math.max(4, 2 * ex.length + 1)
   return sc
 }
-function _lnScenePurpose(sc, byId, k, n) {
+function _lnScenePurpose(sc, byId, k, n, hardMax) {
   const doms = {}
   sc.requiredTargetIds.forEach(id => { const t = byId.get(id); const d = t ? _lnPlanDomain(t) : null; if (d && !LISTENING_FLEXIBLE_DOMAINS.has(d)) doms[d] = (doms[d] || 0) + 1 })
   const top = Object.entries(doms).sort((a, b) => b[1] - a[1]).map(x => x[0])
-  let situation = top.length ? (LISTENING_SITUATION[top[0]] || (LOCAL_PREMISE_BY_DOMAIN[top[0]] || [])[0] || 'A and B talk about ' + top[0]) : LISTENING_EVERYDAY_SITUATIONS[k % LISTENING_EVERYDAY_SITUATIONS.length]
+  // v665 §31/§32 — a low belt (preferred max ≤ 6) gets the SIMPLE version of the situation: short questions and answers, no explanations
+  let situation = top.length ? ((hardMax && hardMax <= 6 && LISTENING_SITUATION_SIMPLE[top[0]]) || LISTENING_SITUATION[top[0]] || (LOCAL_PREMISE_BY_DOMAIN[top[0]] || [])[0] || 'A and B talk about ' + top[0]) : LISTENING_EVERYDAY_SITUATIONS[k % LISTENING_EVERYDAY_SITUATIONS.length]
   if (top[1]) situation += ' (it also involves ' + String(SCENE_DOMAIN_PURPOSE[top[1]] || top[1]).toLowerCase() + ')'
   return (k === 0 ? 'They meet and say hello; then ' + situation.charAt(0).toLowerCase() + situation.slice(1) : situation) + (k === n - 1 ? '; then they wrap up and say goodbye' : '')
 }
@@ -17019,6 +16751,19 @@ const LISTENING_SITUATION = {
   'plans & schedule': 'A and B arrange when to meet and what to do',
   'colours & things': 'A and B look for a particular thing and describe it',
   'identity & names': 'A and B meet someone new and introduce themselves',
+}
+// the same situations, said the way a beginner can: one short idea per turn
+const LISTENING_SITUATION_SIMPLE = {
+  'big amounts': 'A and B look at prices of big things (a room, a car): "How much?" — "A million baht." — "Expensive!"',
+  'numbers & prices': 'A asks how much something is; B says the price; they agree',
+  'shopping & payment': 'A pays at a shop: the price, a discount, card or cash, the receipt — short questions and answers',
+  'food & cooking': 'A and B cook a simple meal at home: what to put in, short questions and answers',
+  'home': 'A and B are at home and say where things are',
+  'household actions': 'A and B tidy the kitchen: short requests and replies',
+  'places & travel': 'A and B pick a place to go and how to get there',
+  'plans & schedule': 'A and B pick a time and a place to meet',
+  'colours & things': 'A looks for a thing; B asks what it looks like',
+  'identity & names': 'A and B meet and say who they are',
 }
 const LISTENING_EVERYDAY_SITUATIONS = ['A and B have a coffee and catch up on their week', 'A and B chat on the way home about their day',
   'A and B talk over lunch about what is new', 'A and B make plans for the weekend', 'A and B help each other with a small problem']
@@ -17062,7 +16807,7 @@ function planListeningCoverage(targets, o) {
   floaters.forEach(t => put(scenes.slice().sort((a, b) => load(a) - load(b) || a.index - b.index)[0], t))
   for (let k = scenes.length - 1; k >= 0; k--) if (!scenes[k].requiredTargetIds.length) scenes.splice(k, 1)
   scenes.forEach((x, k) => { x.index = k; x.sceneId = 'LS' + (k + 1) })
-  scenes.forEach((sc, k) => { _lnPlanExchanges(sc, byId); sc.purpose = _lnScenePurpose(sc, byId, k, scenes.length); sc.premise = sc.purpose
+  scenes.forEach((sc, k) => { _lnPlanExchanges(sc, byId); sc.purpose = _lnScenePurpose(sc, byId, k, scenes.length, opt.hardMax); sc.premise = sc.purpose
     sc.plausible = _lnScenePlausible(Object.keys(sc.domains).filter(d => !/^role:/.test(d))) })
   // §14 turn budget planned up front: expected scene lengths + an even share of the slack, total ≤ turnsMax
   const totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0)
@@ -17113,11 +16858,13 @@ async function _lnGenerateScene(env, sp, info) {
     'PLAN: ' + sp.exchanges.map(ex => 'exchange ' + ex.exchangeIndex + ': ' + ex.turns.map(tu => tu.speaker + (tu.targetIds.length ? ' uses ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).join('+') : ' replies')).join(', then ')).join(' · ') + '\n' +
     'ROLE GUIDE: ' + [...new Set(req.map(t => t.role))].map(r => r + ' = ' + (LISTENING_ROLE_HINT[r] || 'fits naturally')).join(' · ') + '\n' +
     'LENGTH: ' + sp.expectedTurns + '–' + info.allowedMax + ' turns. HARD MAXIMUM ' + info.allowedMax + ' turns.' + (info.budgetNote ? ' ' + info.budgetNote : '') + '\n' +
+    (env.ctx && env.ctx.complexity ? 'EACH TURN: ' + env.ctx.complexity.promptRule + ' Keep the situation simple enough to say at this level — one idea per turn ' +
+      '(e.g. "How much is it?" / "Ten thousand baht." / "That is expensive."), never explanations in one long turn.\n' : '') +
     'RULES:\n- Each turn is ONE speaker; questions get answers; never put a question and its answer in the same turn; A and B both speak.\n' +
     '- At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' lesson words per turn (the required words above AND these other lesson words count: ' + others.join(', ') + ').\n' +
     '- Response words (yes / no / yeah …) are used as REPLIES. No repeated sentences. No filler turns that do nothing.\n' +
     (info.last ? '- This is the LAST scene: close the conversation naturally.\n' : '- Do not say goodbye yet; the conversation continues in the next scene.\n') +
-    '- Use ONLY the lesson words, these KNOWN WORDS, normal grammar/particles. No personal names. No other content words.' + extra + '\n' +
+    '- Use ONLY the lesson words, these KNOWN WORDS (taught to this learner), normal grammar/particles. No personal names. No other content words — if an idea needs a word that is not listed, choose a simpler idea.' + extra + '\n' +
     'KNOWN WORDS: ' + known.slice(0, 900).join(' ') + '\n\n' +
     'Reply ONLY with compact JSON: {"sceneId":"' + sp.sceneId + '","setting":"...","turns":[{"speaker":"A","text":"...","english":"...","intendedTargetIds":[12]}]}'
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -17144,8 +16891,11 @@ const _lnCloneTurns = turns => turns.map(tn => ({ ...tn, pair: { ...tn.pair } })
 async function _lnRepairScene(env, sc, spec) {
   const { la, log, tel, targets, known, extra, o, byId, ctx } = env
   const aud = listeningConversationAudit([sc], targets, la, ctx)
-  const asks = (spec.missing || []).map(t => '- MISSING TARGET T' + t.id + ' ' + t.surface + ' (' + t.gloss + '): ' + listeningPlacementHint(t, aud, targets))
+  const asks = (spec.missing || []).map(t => '- MISSING TARGET T' + t.id + ' ' + t.surface + ' (' + t.gloss + '): ' + (spec.insertShort && ctx.complexity
+      ? 'INSERT a new short A/B exchange that uses it ({"op":"insert_after","line":N,"turns":[A, B]}) — each new turn: ' + ctx.complexity.repairRule + ', only known words; do not touch other lines'
+      : listeningPlacementHint(t, aud, targets)))
     .concat((spec.issues || []).map(x => x.code === 'MAX_TARGETS_PER_TURN' ? '- line ' + x.line + ' has ' + x.detail + ': move one target into an adjacent turn or split the thought between the speakers'
+      : x.code === 'TOO_COMPLEX' ? '- line ' + x.line + ': TOO_COMPLEX — ' + x.detail + '. SPLIT it into two or three short turns ({"op":"replace","line":' + x.line + ',"span":1,"turns":[...]}), each within the limit; keep its lesson words'
       : x.code === 'MERGED_SPEAKERS' ? '- line ' + x.line + ': ' + x.detail + ' — split it into two turns (A asks, B answers)'
       : /DUPLICATE/.test(x.code) ? '- line ' + x.line + ' ' + x.detail + ': rewrite this local exchange (this line and its neighbour, span 2) so it moves the conversation on'
       : '- line ' + x.line + ': ' + x.code + ' — ' + x.detail))
@@ -17189,10 +16939,10 @@ const LISTENING_ATOMIC_BATCH = 6              // independent units per paid call
 const LISTENING_ATOMIC_PASSES = 4             // queue passes per stage
 // v664: quality notes (vocab / naturalness / coherence) no longer block playback, so polishing them is capped — the
 // live v663 run spent 16 atomic calls (21 rejections, mostly NO_CHANGE) on a 30/30 track
-const LISTENING_QUALITY_ATOMIC_CALLS = 4
+const LISTENING_QUALITY_ATOMIC_CALLS = 6     // v665: quality gates are hard again, but most issues are now fixed per scene at generation time
 // P0 foundational → P1 vocabulary / duplicates → P2 naturalness / local coherence → P3 structure polish
 const LISTENING_ATOMIC_PRIORITY = { TARGET_MISSING: 0, MAX_TARGETS_PER_TURN: 0, SPEAKER_IDENTITY: 0, LINE_QUALITY: 0, MERGED_SPEAKERS: 0,
-  CLOSED_VOCAB: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, UNNATURAL: 2, COHERENCE_LINE: 2 }
+  CLOSED_VOCAB: 1, TOO_COMPLEX: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, UNNATURAL: 2, COHERENCE_LINE: 2 }
 // level 1 = the line · 2 = the line + its A/B partner · 3 = a small section (previous, line, next)
 const LISTENING_ATOMIC_BASE_LEVEL = { TARGET_MISSING: 2, MAX_TARGETS_PER_TURN: 2, MERGED_SPEAKERS: 2 }
 const LISTENING_ATOMIC_SCHEMA = { type: 'OBJECT', properties: { repairs: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
@@ -17206,12 +16956,14 @@ function _lnLineState(env, pair, others) {
   const { la, targets, ctx } = env
   const text = la.text(pair)
   const ids = targets.filter(t => t.surface && la.present(text, t.surface, ctx)).map(t => t.id)
-  const unknown = listeningUnexposedWords(la.lang, pair, ctx.exposed || [], ctx.eligTargets || [])
+  const unknown = listeningUnexposedWords(la.lang, pair, ctx.exposed || [], ctx.eligTargets || [], ctx.vocab)
   const quality = la.bridgeProblems ? la.bridgeProblems(pair, ctx) : []
   const merged = listeningMergedSpeakerProblem(text, pair.english, la.lang) ? 1 : 0
   const nt = _lnNorm(text)
   const dup = (others || []).some(o => { const no = _lnNorm(o.text); return no && nt && (no === nt || (Math.min(no.length, nt.length) >= 6 && _lnDice(no, nt) >= 0.9 && o.ids.join() === ids.join())) }) ? 1 : 0
-  return { text, ids, unknown, quality, max3: ids.length > LISTENING_MAX_TARGETS_PER_TURN ? 1 : 0, vocab: unknown.length, qual: quality.length, merged, dup }
+  const units = ctx.complexity ? ctx.complexity.countUnits(text) : 0
+  const len = ctx.complexity && units > ctx.complexity.hardMax ? 1 : 0
+  return { text, ids, unknown, quality, max3: ids.length > LISTENING_MAX_TARGETS_PER_TURN ? 1 : 0, vocab: unknown.length, qual: quality.length, merged, dup, len, units }
 }
 function _lnFlat(scenes) { const f = []; scenes.forEach((sc, si) => sc.turns.forEach((tn, ti) => f.push({ sc, si, ti, tn, n: f.length + 1 }))); return f }
 // the lines a unit may rewrite at a given level
@@ -17235,9 +16987,16 @@ function _lnPlacementCandidates(env, flat, sceneObj, t) {
     const a = _lnLineState(env, lines[k].tn.pair), b = _lnLineState(env, lines[k + 1].tn.pair)
     if (Math.min(a.ids.length, b.ids.length) >= LISTENING_MAX_TARGETS_PER_TURN) continue
     const dom = a.ids.concat(b.ids).filter(id => (byId.get(id) || {}).domain === t.domain).length
-    out.push({ n: lines[k].n, load: a.ids.length + b.ids.length, dom })
+    // v665 §30 / v666 — room: an exchange whose shorter line still has space under the PREFERRED max can take the word
+    // in a short sentence (the hard ceiling is only headroom); exchanges with unknown words are poor hosts
+    const hm = env.ctx && env.ctx.complexity ? env.ctx.complexity.preferredMax : 99
+    const room = Math.max(hm - a.units, hm - b.units) > 0 ? 1 : 0
+    out.push({ n: lines[k].n, load: a.ids.length + b.ids.length, dom, room, clean: a.vocab + b.vocab === 0 ? 1 : 0 })
   }
-  return out.sort((x, y) => y.dom - x.dom || x.load - y.load || x.n - y.n)
+  // at a low belt (preferred max ≤ 6) a short line cannot take a second lesson word naturally: prefer the exchange with the
+  // fewest lesson words already in it (a plain reply line has room), then topic fit
+  const low = env.ctx && env.ctx.complexity && env.ctx.complexity.preferredMax <= 6
+  return out.sort((x, y) => y.room - x.room || (low ? x.load - y.load : 0) || y.dom - x.dom || y.clean - x.clean || x.load - y.load || x.n - y.n)
 }
 // a compact POSITIVE palette (§7): protected targets, authorised words already near the line, the learner's most recent words
 function _lnPalette(env, flat, scope, protectedIds) {
@@ -17262,7 +17021,9 @@ async function _lnAtomicCall(env, flat, units) {
       '  USE THESE WORDS (plus normal grammar words and speaker particles): ' + u.palette.join(' ')
   })
   const prompt = 'ATOMIC REPAIR of ' + la.label + ' LISTENING lines. Fix ONLY the lines marked >>> for each issue. Return one ISOLATED repair object per issue — never a whole scene, never the whole conversation.\n' +
-    la.speakerContract + extra + '\nEach new line keeps its speaker and its job in the conversation (a question stays a question, a reply stays a reply), at most ' + LISTENING_MAX_TARGETS_PER_TURN + ' lesson words per line, natural spoken ' + la.label + '.\n\n' +
+    la.speakerContract + extra + '\nEach new line keeps its speaker and its job in the conversation (a question stays a question, a reply stays a reply), at most ' + LISTENING_MAX_TARGETS_PER_TURN + ' lesson words per line, natural spoken ' + la.label + '.\n' +
+    (env.ctx && env.ctx.complexity ? 'EVERY returned line (learner belt ' + env.ctx.complexity.belt + '): ' + env.ctx.complexity.repairRule + '. Shorter is fine. If meaning does not fit, DROP detail or simplify the idea — never cram it in. ' +
+      'Use ONLY the listed words (plus grammar words / particles); when a word is not allowed, replace it with a listed one or a simpler idea.\n' : '') + '\n' +
     blocks.join('\n\n') + '\n\nReply ONLY with compact JSON: {"repairs":[{"issueId":"i1","lines":[{"lineId":"L17","text":"...","english":"..."}]}]}'
   for (let attempt = 1; attempt <= 2; attempt++) {
     tel.LISTENING_REPAIR_CALLS++; tel.LISTENING_LOCAL_REPAIR_CALLS++; tel.LISTENING_ATOMIC_REPAIR_CALLS = (tel.LISTENING_ATOMIC_REPAIR_CALLS || 0) + 1
@@ -17286,11 +17047,20 @@ function _lnValidatePatch(env, flat, u, newByLine) {
   const lost = u.protectedIds.filter(id => !heardAfter.has(id))
   if (lost.length) return { ok: false, reason: 'PROTECTED_TARGET_LOST: ' + lost.map(id => (env.byId.get(id) || {}).surface).join(', ') }
   if (u.place && !heardAfter.has(u.place.id)) return { ok: false, reason: 'TARGET_NOT_PLACED: ' + u.place.surface }
-  const cats = ['max3', 'vocab', 'qual', 'merged', 'dup']
+  if (after.every((s, i) => s.text === before[i].text)) return { ok: false, reason: 'NO_CHANGE' }
+  // v665 §27 — EVERY rewritten line must itself pass the belt LENGTH and the learner-authorised vocabulary (and max3):
+  // a patch that fixes one rule by breaking another is never committed
+  const changed = u.scope.map((n, i) => ({ n, s: after[i] })).filter((x, i) => x.s.text !== before[i].text)
+  const tooLong = changed.filter(x => x.s.len), unk = changed.filter(x => x.s.vocab), m3 = changed.filter(x => x.s.max3)
+  const why = []
+  if (unk.length) why.push('CLOSED_VOCAB: ' + unk.map(x => 'L' + x.n + ' unknown ' + x.s.unknown.join(' ')).join(', '))
+  if (tooLong.length) why.push('LENGTH: ' + tooLong.map(x => 'L' + x.n + ' ' + x.s.units + ' > hardMax ' + env.ctx.complexity.hardMax).join(', '))
+  if (m3.length) why.push('MAX3: ' + m3.map(x => 'L' + x.n).join(', '))
+  if (why.length) return { ok: false, reason: why.join(' + ') }
+  const cats = ['max3', 'vocab', 'len', 'qual', 'merged', 'dup']
   const worse = cats.filter(k => sum(after, k) > sum(before, k))
   if (worse.length) return { ok: false, reason: 'REGRESSION: ' + worse.map(k => k + ' ' + sum(before, k) + '→' + sum(after, k)).join(', ') }
-  if (after.every((s, i) => s.text === before[i].text)) return { ok: false, reason: 'NO_CHANGE' }
-  const own = { CLOSED_VOCAB: 'vocab', MAX_TARGETS_PER_TURN: 'max3', SPEAKER_IDENTITY: 'qual', LINE_QUALITY: 'qual', MERGED_SPEAKERS: 'merged', EXACT_DUPLICATE: 'dup', NEAR_DUPLICATE: 'dup' }
+  const own = { CLOSED_VOCAB: 'vocab', TOO_COMPLEX: 'len', MAX_TARGETS_PER_TURN: 'max3', SPEAKER_IDENTITY: 'qual', LINE_QUALITY: 'qual', MERGED_SPEAKERS: 'merged', EXACT_DUPLICATE: 'dup', NEAR_DUPLICATE: 'dup' }
   const improved = u.place ? heardAfter.has(u.place.id) : u.codes.some(c => own[c] ? sum(after, own[c]) < sum(before, own[c]) : true)
   if (!improved) return { ok: false, reason: 'NOT_IMPROVED: ' + u.codes.join('+') + ' still present' }
   return { ok: true, pending: u.codes.some(c => !own[c] && c !== 'TARGET_MISSING') }   // UNNATURAL / COHERENCE: confirmed by the next verdict
@@ -17299,7 +17069,12 @@ function _lnValidatePatch(env, flat, u, newByLine) {
 async function _lnAtomicQueue(env, scenes, issueSource, opts) {
   const { la, log, tel, byId, naturalness } = env
   const attempts = opts.attempts || new Map(), stats = opts.stats || { accepted: 0, rejected: 0, exhausted: 0 }
+  const shared = env.lineAttempts || attempts
+  const AT = k => String(k).startsWith('place:') ? attempts : shared
   const exhaustedLogged = opts.exhaustedLogged || new Set()
+  // log lines are numbered in the WHOLE conversation (a scene checked at generation time passes its offset)
+  const off = opts.lineOffset || 0, G = k => 'L' + (k + off)
+  const s0 = { accepted: stats.accepted, rejected: stats.rejected, exhausted: stats.exhausted }
   for (let pass = 1; pass <= LISTENING_ATOMIC_PASSES; pass++) {
     const flat = _lnFlat(scenes)
     const issues = await issueSource(flat)
@@ -17314,12 +17089,15 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
       u.priority = Math.min(u.priority, LISTENING_ATOMIC_PRIORITY[x.code] != null ? LISTENING_ATOMIC_PRIORITY[x.code] : 3)
       byLine.set(x.line, u) })
     const units = [...byLine.values()].map(u => {
-      const key = u.place ? 'place:' + u.place.id : 'L' + u.line + '|' + u.codes.slice().sort().join('+') + '|' + la.text(flat[u.line - 1].tn.pair)
-      const tried = attempts.get(key) || 0
+      // v665: a line issue is identified by its codes + exact text (not its position), and its attempts are SHARED by
+      // every stage (scene-time acceptance → assembled quality → coherence): an issue exhausted at generation time
+      // is not paid for again later
+      const key = u.place ? 'place:' + u.place.id : u.codes.slice().sort().join('+') + '|' + la.text(flat[u.line - 1].tn.pair)
+      const tried = AT(key).get(key) || 0
       return { ...u, key, tried }
     }).filter(u => {
       if (u.tried < LISTENING_ATOMIC_ATTEMPTS) return true
-      if (!exhaustedLogged.has(u.key)) { exhaustedLogged.add(u.key); stats.exhausted++; log && log('⛔ LISTENING_ATOMIC_REPAIR_EXHAUSTED line=L' + u.line + ' issue=' + u.codes.join('+') + ' after ' + u.tried + ' attempts — the rest of the track stays intact') }
+      if (!exhaustedLogged.has(u.key)) { exhaustedLogged.add(u.key); stats.exhausted++; log && log('⛔ LISTENING_ATOMIC_REPAIR_EXHAUSTED line=' + G(u.line) + ' issue=' + u.codes.join('+') + ' after ' + u.tried + ' attempts — the rest of the track stays intact') }
       return false
     }).sort((a, b) => a.priority - b.priority || a.line - b.line)
     if (!units.length) break
@@ -17347,8 +17125,8 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
       batch.push(u)
       if (batch.length >= LISTENING_ATOMIC_BATCH) break
     }
-    batch.forEach(u => { attempts.set(u.key, (attempts.get(u.key) || 0) + 1)
-      log && log('🔧 LISTENING_ATOMIC_REPAIR issue=' + u.codes.join('+') + ' scene=' + u.sceneId + ' line=L' + u.line + (u.scope.length > 1 ? ' scope=' + u.scope.map(k => 'L' + k).join('+') : '') +
+    batch.forEach(u => { AT(u.key).set(u.key, (AT(u.key).get(u.key) || 0) + 1)
+      log && log('🔧 LISTENING_ATOMIC_REPAIR issue=' + u.codes.join('+') + ' scene=' + u.sceneId + ' line=' + G(u.line) + (u.scope.length > 1 ? ' scope=' + u.scope.map(G).join('+') : '') +
         (u.forbidden.length ? ' forbidden=[' + u.forbidden.join(', ') + ']' : '') + (u.place ? ' place=' + u.place.surface : '') + ' protected=[' + u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') + '] attempt=' + (u.tried + 1) + ' level=' + (u.place ? 2 : u.level)) })
     if (opts.budget) opts.budget.calls++
     const repairs = await _lnAtomicCall(env, flat, batch)
@@ -17360,18 +17138,18 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
       rows.forEach(x => { const k = Number(String(x.lineId || '').replace(/^L/i, '')); if (!u.scope.includes(k) || !String(x.text || '').trim()) return
         const orig = flat[k - 1].tn
         newByLine.set(k, _lnMakeTurn(la, { text: x.text, english: x.english || orig.pair.english, reading: x.reading, romaji: x.romaji, pinyin: x.pinyin }, orig.speaker)) })
-      if (!newByLine.size) { stats.rejected++; log && log('⛔ PATCH_REJECTED issue=' + u.issueId + ' line=L' + u.line + ' reason=NO_PATCH_RETURNED'); continue }
+      if (!newByLine.size) { stats.rejected++; log && log('⛔ PATCH_REJECTED issue=' + u.issueId + ' line=' + G(u.line) + ' reason=NO_PATCH_RETURNED'); continue }
       const v = _lnValidatePatch(env, flat, u, newByLine)
       if (!v.ok) { stats.rejected++
         // v664: the model returned the same line — asking again with the same instructions just burns a call
         const stop = v.reason === 'NO_CHANGE' && !u.place
-        if (stop) attempts.set(u.key, LISTENING_ATOMIC_ATTEMPTS)
-        log && log('⛔ PATCH_REJECTED issue=' + u.issueId + ' line=L' + u.line + ' reason=' + v.reason + ' · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)' + (stop ? ' · no retry (unchanged text) → kept as a quality note' : '')); continue }
+        if (stop) AT(u.key).set(u.key, LISTENING_ATOMIC_ATTEMPTS)
+        log && log('⛔ PATCH_REJECTED issue=' + u.issueId + ' line=' + G(u.line) + ' reason=' + String(v.reason).replace(/\bL(\d+)\b/g, (m, k) => G(+k)) + ' · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)' + (stop ? ' · no retry (unchanged text) → kept as a quality note' : '')); continue }
       const prev = new Map()
       newByLine.forEach((tn, k) => { const f = flat[k - 1]; prev.set(k, f.sc.turns[f.ti]); f.sc.turns[f.ti] = { ...tn, speaker: f.tn.speaker } })
       committed.push({ u, prev, pending: v.pending })
       stats.accepted++
-      log && log('✅ PATCH_ACCEPTED issue=' + u.issueId + ' line=L' + u.line + ' candidate="' + [...newByLine.values()].map(tn => la.text(tn.pair)).join(' / ').slice(0, 120) + '" · LISTENING_ATOMIC_REPAIR_ACCEPTED')
+      log && log('✅ PATCH_ACCEPTED issue=' + u.issueId + ' line=' + G(u.line) + ' candidate="' + [...newByLine.values()].map(tn => la.text(tn.pair)).join(' / ').slice(0, 120) + '" · LISTENING_ATOMIC_REPAIR_ACCEPTED')
     }
     // a new line must not be judged worse by the naturalness verdict (monotonic): revert if it is
     if (committed.length && naturalness) {
@@ -17382,11 +17160,14 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
         if (!bad.length) return
         c.prev.forEach((tn, k) => { const f = flat2[k - 1]; f.sc.turns[f.ti] = tn })
         stats.accepted--; stats.rejected++
-        log && log('⛔ PATCH_REVERTED issue=' + c.u.issueId + ' line=L' + c.u.line + ' reason=NEW_LINE_UNNATURAL (' + bad.map(k => 'L' + k).join(',') + ') · original restored')
+        log && log('⛔ PATCH_REVERTED issue=' + c.u.issueId + ' line=' + G(c.u.line) + ' reason=NEW_LINE_UNNATURAL (' + bad.map(G).join(',') + ') · original restored')
       })
     }
   }
-  tel.LISTENING_ATOMIC_PATCHES_ACCEPTED = stats.accepted; tel.LISTENING_ATOMIC_PATCHES_REJECTED = stats.rejected; tel.LISTENING_ATOMIC_EXHAUSTED = stats.exhausted
+  // v665: cumulative over every atomic stage (scene-time acceptance + assembled quality + coherence)
+  tel.LISTENING_ATOMIC_PATCHES_ACCEPTED = (tel.LISTENING_ATOMIC_PATCHES_ACCEPTED || 0) + stats.accepted - s0.accepted
+  tel.LISTENING_ATOMIC_PATCHES_REJECTED = (tel.LISTENING_ATOMIC_PATCHES_REJECTED || 0) + stats.rejected - s0.rejected
+  tel.LISTENING_ATOMIC_EXHAUSTED = (tel.LISTENING_ATOMIC_EXHAUSTED || 0) + stats.exhausted - s0.exhausted
   return stats
 }
 // issues of the assembled conversation as atomic units (closed vocab, speaker / line quality, max3, duplicates, naturalness)
@@ -17419,7 +17200,7 @@ function _lnCoherenceLineIssues(coh, scenes) {
 // v663 — place missing targets ATOMICALLY: the best A/B exchange of the scene is rewritten to carry the word, its own
 // protected targets kept (attempt 2 tries the next-best exchange). Only a scene with no usable exchange falls back to
 // a small local insertion.
-async function _lnAtomicPlace(env, scenes, sceneObj, reqIds, extraIssues) {
+async function _lnAtomicPlace(env, scenes, sceneObj, reqIds, extraIssues, lineOffset) {
   const { la, ctx, byId } = env
   const attempts = new Map()
   await _lnAtomicQueue(env, scenes, async flat => {
@@ -17430,16 +17211,24 @@ async function _lnAtomicPlace(env, scenes, sceneObj, reqIds, extraIssues) {
       if (c) issues.push({ code: 'TARGET_MISSING', line: c.n, place: t, detail: 'the lesson word ' + t.surface + ' (' + t.gloss + ') must be heard in this exchange' }) })
     ;(extraIssues ? extraIssues(flat) : []).forEach(x => issues.push(x))
     return issues
-  }, { attempts })
+  }, { attempts, lineOffset: lineOffset || 0 })
   let cov = _lnSceneCoverage(sceneObj, reqIds, byId, la, ctx)
   // a scene too short / too full for any exchange: one small local insertion (protected targets checked, rolled back on loss)
+  // v665 §30 / v666 §17 — at a low belt (preferred max ≤ 6) a word that no exchange could absorb (simpler wording first, up to hardMax)
+  // take gets its OWN short A/B exchange inserted; the new turns must pass LENGTH, CLOSED_VOCAB and max3 or it is rolled back
   if (cov.missing.length && sceneObj.turns.length) {
     const before = _lnCloneTurns(sceneObj.turns)
-    const noCand = cov.missing.filter(id => !_lnPlacementCandidates(env, _lnFlat([sceneObj]), sceneObj, byId.get(id)).length)
+    const low = !!(ctx.complexity && ctx.complexity.preferredMax <= 6)
+    const noCand = low ? cov.missing.slice() : cov.missing.filter(id => !_lnPlacementCandidates(env, _lnFlat([sceneObj]), sceneObj, byId.get(id)).length)
     if (noCand.length) {
-      await _lnRepairScene(env, sceneObj, { missing: noCand.map(id => byId.get(id)), protectedIds: cov.heard, allowedMax: sceneObj.turns.length + noCand.length })
+      await _lnRepairScene(env, sceneObj, { missing: noCand.map(id => byId.get(id)), protectedIds: cov.heard, allowedMax: sceneObj.turns.length + (low ? 2 : 1) * noCand.length, insertShort: low })
       const c2 = _lnSceneCoverage(sceneObj, reqIds, byId, la, ctx)
-      if (cov.heard.some(id => !c2.heard.includes(id))) sceneObj.turns = before; else cov = c2
+      const old = new Set(before.map(tn => la.text(tn.pair)))
+      const bad = sceneObj.turns.filter(tn => !old.has(la.text(tn.pair))).map(tn => _lnLineState(env, tn.pair)).filter(st2 => st2.len || st2.vocab || st2.max3)
+      if (cov.heard.some(id => !c2.heard.includes(id)) || bad.length) {
+        sceneObj.turns = before
+        env.log && env.log('⛔ PATCH_REJECTED insertion ' + sceneObj.sceneId + ' reason=' + (bad.length ? 'NEW_TURN_FAILS_' + (bad[0].len ? 'LENGTH' : bad[0].vocab ? 'CLOSED_VOCAB' : 'MAX3') : 'PROTECTED_TARGET_LOST') + ' · original kept')
+      } else cov = c2
     }
   }
   return cov
@@ -17447,7 +17236,8 @@ async function _lnAtomicPlace(env, scenes, sceneObj, reqIds, extraIssues) {
 async function _lnComposeByScenes(env) {
   const { la, log, tel, targets, ctx, o, progress, naturalness } = env
   const byId = new Map(targets.map(t => [t.id, t])); env.byId = byId
-  const plan = planListeningCoverage(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax })
+  env.lineAttempts = new Map()
+  const plan = planListeningCoverage(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, hardMax: ctx.complexity ? ctx.complexity.preferredMax : null })   // v666: the PREFERRED range decides "low belt"
   Object.assign(tel, { LISTENING_SCENE_GENERATION_CALLS: 0, LISTENING_LOCAL_REPAIR_CALLS: 0, LISTENING_REASSIGNMENTS: 0, LISTENING_COVERAGE_PLAN_TARGETS: plan.assignments.length, LISTENING_VERIFIED_TARGETS: 0 })
   if (o.rebuild) log && log('🎧 LISTENING_COVERAGE_PLAN=REGENERATED (rebuild — same targets, fresh scene distribution)')
   log && log('🎧 LISTENING_COVERAGE_PLAN ' + plan.assignments.length + '/' + targets.length + ' assigned · ' + plan.nScenes + ' scenes · ≤' + plan.cap + ' targets per scene · planned ' + plan.totalExpectedTurns + ' turns (max ' + plan.turnsMax + ')')
@@ -17463,7 +17253,14 @@ async function _lnComposeByScenes(env) {
     const pendingIds = new Set(queue.slice(qi).flatMap(s => s.requiredTargetIds).filter(id => !unplaceable.has(id)))
     progress(stage, aud, { pendingIds, ...(extraEv || {}) })
   }
-  const max3Local = sc => listeningConversationAudit([sc], targets, la, ctx).issues.filter(x => x.code === 'MAX_TARGETS_PER_TURN')
+  // v665 §19–§21/§33 — CANDIDATE ACCEPTANCE per scene, before the next scene is written: max3, belt LENGTH and the
+  // learner-authorised vocabulary are checked on every new line and repaired atomically right here — never carried to final QC
+  const LOCAL_GATE_CODES = ['MAX_TARGETS_PER_TURN', 'TOO_COMPLEX', 'CLOSED_VOCAB']
+  // whole-conversation line offset of a scene (accepted scenes first; the scene being written comes next)
+  const offsetOf = sc => { let n = 0; for (const a of accepted) { if (a === sc) return n; n += a.turns.length } return n }
+  const localHard = sc => listeningConversationAudit([sc], targets, la, ctx).issues.filter(x => LOCAL_GATE_CODES.includes(x.code))
+  const logLocal = (sc, label) => localHard(sc).filter((x, i, a) => a.findIndex(y => y.code === x.code && y.line === x.line) === i).forEach(x => log && log((x.code === 'TOO_COMPLEX' ? '⛔ LEVEL_COMPLEXITY_FAIL' : x.code === 'CLOSED_VOCAB' ? '⛔ CLOSED_VOCAB_FAIL' : '⛔ MAX3_FAIL') +
+    ' scene=' + sc.sceneId + ' line=L' + (x.line + offsetOf(sc)) + ' ' + (x.code === 'TOO_COMPLEX' ? 'belt=' + ctx.complexity.belt + ' units=' + String(x.detail).split(' ')[0] + ' hardMax=' + ctx.complexity.hardMax : x.code === 'CLOSED_VOCAB' ? 'unknown=[' + String(x.detail).replace(/^.*unknown words:\s*/, '') + ']' : x.detail) + (label ? ' (' + label + ')' : '')))
   for (let qi = 0; qi < queue.length; qi++) {
     const sp = queue[qi]
     if (!sp.requiredTargetIds.length) { log && log('  LISTENING_SCENE ' + sp.sceneId + ' has no required targets left — skipped'); continue }
@@ -17494,9 +17291,30 @@ async function _lnComposeByScenes(env) {
     // §8 — verify this scene's REQUIRED targets now, deterministically; the model's intendedTargetIds are ignored
     let cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
     log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' required=' + sp.requiredTargetIds.length + ' heard=' + cov.heard.length + (cov.missing.length ? ' missing=[' + cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS') + ' · turns ' + sc.turns.length + '/' + allowedMax)
-    if (sc.turns.length && (cov.missing.length || max3Local(sc).length)) {
+    if (sc.turns.length) logLocal(sc, 'as generated')
+    // v666 §12/§16 — a line above the preferred range but ≤ hardMax is VALID: logged, never repaired just to hit preferredMax
+    if (sc.turns.length && ctx.complexity) { const ab = sc.turns.map((tn, k) => ({ k, a: ctx.complexity.analyse(la.text(tn.pair)) })).filter(x => x.a.abovePreferredButAllowed)
+      if (ab.length) log && log('ℹ ABOVE_PREFERRED_BUT_ALLOWED scene=' + sp.sceneId + ' ' + ab.map(x => 'L' + (x.k + 1 + offsetOf(sc)) + ' ' + x.a.units + 'u').join(' · ') + ' (preferred ' + ctx.complexity.preferredMin + '–' + ctx.complexity.preferredMax + ', max ' + ctx.complexity.hardMax + ') — valid, no repair') }
+    if (sc.turns.length && (cov.missing.length || localHard(sc).length)) {
       // v663 §9 — atomic: the missing word goes into the best exchange; a 4-target line is split over its A/B exchange
-      cov = await _lnAtomicPlace(env, [sc], sc, sp.requiredTargetIds, flat => listeningConversationAudit([sc], targets, la, ctx).issues.filter(x => x.code === 'MAX_TARGETS_PER_TURN').map(x => ({ code: x.code, line: x.line, detail: x.detail })))
+      // v665 — the same atomic stage fixes an over-long line (TOO_COMPLEX) and an unknown word (CLOSED_VOCAB) in this scene
+      cov = await _lnAtomicPlace(env, [sc], sc, sp.requiredTargetIds, flat => localHard(sc).map(x => ({ code: x.code, line: x.line, detail: x.detail,
+        forbidden: x.code === 'CLOSED_VOCAB' ? String(x.detail || '').replace(/^.*unknown words:\s*/, '').split(/\s+/).filter(Boolean) : [] })), offsetOf(sc))
+      // v665 §5/§24 — a turn that still says too much (or carries 4 lesson words) is SPLIT into short turns (one scene-local
+      // edit); every new turn must pass LENGTH / CLOSED_VOCAB / max3 and keep the protected words, else it is rolled back
+      const stuck = localHard(sc).filter(x => x.code === 'TOO_COMPLEX' || x.code === 'MAX_TARGETS_PER_TURN')
+      if (stuck.length) {
+        const before = _lnCloneTurns(sc.turns), nBefore = localHard(sc).length
+        log && log('🔧 LISTENING_SPLIT_TURNS ' + sp.sceneId + ' — ' + stuck.map(x => 'L' + (x.line + offsetOf(sc)) + ' ' + x.code).join(', ') + ' (short turns for belt ' + ctx.complexity.belt + ')')
+        await _lnRepairScene(env, sc, { issues: stuck, protectedIds: cov.heard, allowedMax: sc.turns.length + 2 * stuck.length })
+        const c2 = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
+        const old = new Set(before.map(tn => la.text(tn.pair)))
+        const badNew = sc.turns.filter(tn => !old.has(la.text(tn.pair))).map(tn => _lnLineState(env, tn.pair)).filter(st2 => st2.len || st2.vocab || st2.max3)
+        if (cov.heard.some(id => !c2.heard.includes(id)) || badNew.length || localHard(sc).length >= nBefore) {
+          sc.turns = before; log && log('⛔ PATCH_REJECTED split ' + sp.sceneId + ' reason=' + (badNew.length ? 'NEW_TURN_FAILS' : cov.heard.some(id => !c2.heard.includes(id)) ? 'PROTECTED_TARGET_LOST' : 'NOT_IMPROVED') + ' · original kept')
+        } else { cov = c2; log && log('✅ PATCH_ACCEPTED split ' + sp.sceneId + ' · ' + before.length + ' → ' + sc.turns.length + ' turns') }
+      }
+      if (localHard(sc).length) logLocal(sc, 'still failing after atomic repair — the final gates will block READY')
       log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' (after atomic repair) required=' + sp.requiredTargetIds.length + ' heard=' + cov.heard.length + (cov.missing.length ? ' missing=[' + cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS'))
     }
     // §10 — still missing: the target does not fit this scene → reassign it (never drop it)
@@ -17521,7 +17339,7 @@ async function _lnComposeByScenes(env) {
           const hq = queue.find(s => s.sceneId === host.sceneId) || { verifiedTargetIds: [] }
           const before = _lnCloneTurns(host.turns)
           log && log('🔁 LISTENING_REASSIGN target=' + id + ' ' + t.surface + ' ' + sp.sceneId + ' → ' + host.sceneId + ' (an earlier verified scene, local exchange)')
-          await _lnAtomicPlace(env, [host], host, [id])
+          await _lnAtomicPlace(env, [host], host, [id], null, offsetOf(host))
           const hc = _lnSceneCoverage(host, (hq.verifiedTargetIds || []).concat([id]), byId, la, ctx)
           if (hc.missing.some(x => x !== id)) { host.turns = before; log && log('⚠ LISTENING_REPAIR_ROLLBACK ' + host.sceneId + ' — the edit removed a protected target · restored') ; continue }
           if (hc.missing.includes(id)) { host.turns = before; continue }
@@ -17621,12 +17439,18 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   progress('composing', null)
   const { newIds } = listeningRequiredTargetIds(mainTrack)
   log && log('  🎧 LISTENING (fresh conversation) · SOURCE ' + (o.standalone ? 'STANDALONE LISTENING TRACK (Revision selection, no Main Track)' : trackFinal ? 'FINAL_TRACK ' + mainTrack.finalTrack.fingerprint : 'legacy track') + ' · TARGETS ' + targets.length + ' (NEW ' + newIds.length + ' · REVIEW ' + (targets.length - newIds.length) + ') — every selected target must be heard')
-  // authorised vocabulary: everything the learner has met + ALL 30 current targets (NEW included)
-  const exposed = (vocab || []).filter(w => typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w))
+  // v665 — ONE learner level. Authorised vocabulary = the canonical learner-authorised inventory (isLearnerTaught:
+  // learning / known / lapsed / manual Known / real review history) + this track's targets. v664 used revisionEligible
+  // here, which dropped status=learning words without a review date — the live false CLOSED_VOCAB on taught words.
   const vById = new Map((vocab || []).map(w => [w.id, w]))
   const eligTargets = targets.map(t => t.word && t.word.id != null ? t.word : vById.get(t.id)).filter(Boolean); eligTargets._sceneEntities = sceneEntitiesOf(mainTrack)
+  const inventory = buildLearnerAuthorizedInventory(lang, vocab, eligTargets, o.standalone ? 'listening' : 'daily')
+  const exposed = inventory.taught
+  const cc = getLearnerComplexityContract({ lang, vocab })
+  log && log('📏 ' + complexityContractLog(cc) + ' · Listening: no minimum, aim ' + cc.preferredMin + '–' + cc.preferredMax + ', no turn above ' + cc.hardMax)
+  log && log('📚 ' + inventory.log + ' · grammar/function scaffold: ' + (lang === 'th' ? 'Thai particles + structural markers' : lang === 'ja' ? 'Japanese particles / inflection / copula' : 'Mandarin grammar particles'))
   const known = _lnKnownWords(lang, vocab, exposed.concat(eligTargets.filter(w => !exposed.includes(w))))
-  const ctx = { vocab, track: mainTrack, exposed, eligTargets, sceneContract: mainTrack.sceneContract || null, sceneEntities: sceneEntitiesOf(mainTrack),
+  const ctx = { vocab, track: mainTrack, exposed, eligTargets, complexity: cc, inventory, sceneContract: mainTrack.sceneContract || null, sceneEntities: sceneEntitiesOf(mainTrack),
     jaInv: lang === 'ja' ? japaneseLearnerInventory(vocab, eligTargets) : null, zhInv: lang === 'zh' ? mandarinLearnerInventory(vocab, eligTargets) : null }
   const alloc = listeningTargetAllocation(targets, mainTrack)
   const sc0 = mainTrack.sceneContract || {}
@@ -17646,6 +17470,7 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     'THE ' + targets.length + ' TARGET WORDS (id | word [reading] | meaning | role) — use EVERY one at least once (more is fine when natural):\n' + targets.map(tRow).join('\n') + '\n' +
     'ROLE GUIDE: ' + [...new Set(targets.map(t => t.role))].map(r => r + ' = ' + (LISTENING_ROLE_HINT[r] || 'fits naturally')).join(' · ') + '\n' +
     'LENGTH: about ' + turnsMin + '–' + turnsMax + ' turns, so every target fits with at most 3 per turn (most turns carry 1–2) — enough room, not padding.\n' +
+    'EACH TURN: ' + cc.promptRule + '\n' +
     'ALLOCATION SUGGESTIONS (not mandatory): ' + alloc.map(g => '[' + g.ids.map(id => 'T' + id).join('+') + ' → ' + g.hint + (g.topic && g.topic !== 'reply' ? ' about ' + g.topic : '') + ']').join(' ') + '\n' +
     'RULES:\n- ONE conversation (1–3 scenes only if the place genuinely changes; every scene has many turns). It opens naturally (greeting) and closes naturally.\n' +
     '- A and B BOTH speak; questions get answers; reactions; later turns refer to earlier ones. Not mechanical A/B/A/B, but never one speaker only.\n' +
@@ -17800,22 +17625,19 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     MAX_TARGETS_PER_TURN: audit.lines.reduce((m, r) => Math.max(m, r.targetCount), 0), MAX3_PASS: !audit.issues.some(x => x.code === 'MAX_TARGETS_PER_TURN'),
     BOTH_SPEAKERS: audit.speakers.length >= 2, NO_MERGED_SPEAKER_LINES: !audit.issues.some(x => x.code === 'MERGED_SPEAKERS'),
     NO_DUPLICATES: !audit.issues.some(x => /DUPLICATE/.test(x.code)), NO_SINGLETON_SCENES: !audit.issues.some(x => x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION'),
-    CLOSED_VOCAB: !audit.issues.some(x => x.code === 'CLOSED_VOCAB'), LINE_QUALITY: !audit.issues.some(x => x.code === 'SPEAKER_IDENTITY' || x.code === 'LINE_QUALITY'),
+    CLOSED_VOCAB: !audit.issues.some(x => x.code === 'CLOSED_VOCAB'),
+    // v665 — LENGTH is a hard gate: every turn within the learner's belt hardMax (ctx.complexity, the ONE contract)
+    LENGTH_PASS: !audit.issues.some(x => x.code === 'TOO_COMPLEX'), LINE_QUALITY: !audit.issues.some(x => x.code === 'SPEAKER_IDENTITY' || x.code === 'LINE_QUALITY'),
     NATURALNESS: !natIssues.length, WHOLE_CONVERSATION_COHERENCE: cohPassed ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED', PRONUNCIATION: !pronIssues.length,
     // v662 — the standalone track also needs every scene's required coverage and the turn budget
     // v664: a word that ended up heard somewhere else in the final text satisfies its scene requirement (coverage is the text)
     ...(sceneGates ? { SCENE_REQUIRED_COVERAGE: audit.covered.length === targets.length ? 'PASS' : sceneGates.SCENE_REQUIRED_COVERAGE, TURN_COUNT: sceneGates.TURN_COUNT, TURN_BUDGET: sceneGates.TURN_BUDGET } : {}),
   }
-  const failedAll = Object.entries(gates).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k]) => k)
-  // v664 — PLAYABILITY vs QUALITY. A standalone Listening Track is playable when the things that make it a Listening
-  // Track hold: every one of the 30 words is heard (30/30), at most 3 per turn, two speakers, inside the turn budget.
-  // Unknown support words, a line the judge finds slightly unnatural, an amount-jump heuristic, a phonetic gap are
-  // QUALITY NOTES — shown to the learner, never a reason to withhold a 30/30 conversation. (The retired Main-Track child
-  // path keeps every gate hard.)
-  const LISTENING_PLAYABILITY_GATES = ['COVERAGE_PASS', 'MAX3_PASS', 'BOTH_SPEAKERS', 'TURN_BUDGET']
-  const failed = sceneGates ? failedAll.filter(k => LISTENING_PLAYABILITY_GATES.includes(k)) : failedAll
-  // SCENE_REQUIRED_COVERAGE can only fail when the final text is short of 30/30 — COVERAGE_PASS already says so
-  const qualityGates = sceneGates ? failedAll.filter(k => !LISTENING_PLAYABILITY_GATES.includes(k) && k !== 'SCENE_REQUIRED_COVERAGE') : []
+  // v665 §47 — the Listening READY contract: EVERY gate is hard (coverage 30/30, max3, LENGTH, CLOSED_VOCAB, speakers,
+  // merged lines, duplicates, singleton scenes, line quality, naturalness, coherence, pronunciation, turn budget).
+  // v664's "quality notes do not block playback" is removed: unknown words and over-long lines break the learning
+  // contract. A NOT_READY conversation can still be listened to through ▶ Play anyway — never as READY.
+  const failed = Object.entries(gates).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k]) => k)
   const ready = !failed.length
   tel.LISTENING_TOTAL_PAID_CALLS = tel.LISTENING_GENERATION_CALLS + tel.LISTENING_REPAIR_CALLS + tel.LISTENING_QC_CALLS
   // ── 6. the Listening track object ──
@@ -17837,23 +17659,16 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     surfaceEvidence: audit.occ.get(t.id).map(k => lines[k - 1] && lines[k - 1].thai), status: audit.occ.get(t.id).length ? 'COVERED' : 'MISSING', reason: audit.occ.get(t.id).length ? '' : (t.unresolved ? 'unresolved at selection' : 'not present in the final conversation') }))
   const covered = audit.covered
   const reasons = failed.map(k => k + '=' + (gates[k] === false ? 'FAIL' : gates[k]))
-  // the notes the learner sees next to a playable track (what still is not perfect, in plain words)
-  const qualityNotes = qualityGates.map(k => {
-    const ls = codes => [...new Set(hard.filter(x => codes.test(x.code)).map(x => x.line).filter(Boolean))]
-    if (k === 'CLOSED_VOCAB') { const words = [...new Set(scenes.flatMap(sc => sc.turns).flatMap(tn => { try { return listeningUnexposedWords(lang, tn.pair, ctx.exposed || [], ctx.eligTargets || []) } catch (e) { return [] } }))]
-      return { gate: k, lines: ls(/^CLOSED_VOCAB$/), words, text: words.length + ' word' + (words.length === 1 ? '' : 's') + ' you have not learned yet: ' + words.slice(0, 12).join(', ') } }
-    if (k === 'NATURALNESS') { const L = [...new Set(natIssues.map(x => x.line))]; return { gate: k, lines: L, text: L.length + ' line' + (L.length === 1 ? '' : 's') + ' may sound a little unnatural (' + L.map(x => 'L' + x).join(', ') + ')' } }
-    if (k === 'WHOLE_CONVERSATION_COHERENCE') { const f = (coh.verdicts || []).filter(v => !v.pass); return { gate: k, lines: [], text: f.length ? 'scene ' + f.map(v => v.scene + ': ' + String(v.reason || '').slice(0, 70)).join(' · ') : 'coherence could not be verified' } }
-    if (k === 'PRONUNCIATION') return { gate: k, lines: ls(/^PRONUNCIATION$/), text: 'phonetics may be incomplete on ' + ls(/^PRONUNCIATION$/).map(x => 'L' + x).join(', ') }
-    if (k === 'LINE_QUALITY') return { gate: k, lines: ls(/^(SPEAKER_IDENTITY|LINE_QUALITY)$/), text: 'speaker / politeness detail on ' + ls(/^(SPEAKER_IDENTITY|LINE_QUALITY)$/).map(x => 'L' + x).join(', ') }
-    if (k === 'NO_DUPLICATES') return { gate: k, lines: ls(/DUPLICATE/), text: 'a repeated line (' + ls(/DUPLICATE/).map(x => 'L' + x).join(', ') + ')' }
-    if (k === 'NO_MERGED_SPEAKER_LINES') return { gate: k, lines: ls(/^MERGED_SPEAKERS$/), text: 'a question and its answer in one line (' + ls(/^MERGED_SPEAKERS$/).map(x => 'L' + x).join(', ') + ')' }
-    return { gate: k, lines: [], text: k.replace(/_/g, ' ').toLowerCase() }
-  })
-  const quality = ready ? (qualityNotes.length ? 'PLAYABLE — ' + qualityNotes.length + ' quality note(s)' : 'VERIFIED') : 'NEEDS_REPAIR — ' + reasons.slice(0, 4).join(' · ')
+  // v665 §22 — LISTENING_LENGTH_AUDIT + the unknown lexical words, recorded on the track and in History
+  // v666 §24 — LISTENING_COMPLEXITY_AUDIT (same audit as Daily / Revision): READY needs overHardMax=0
+  const lengthAudit = ctx.complexity ? complexityAudit(ctx.complexity, audit.lines.map(r => ({ line: r.n, text: r.text, targetBearing: r.actualTargetIds.length > 0 }))) : null
+  const unknownWords = [...new Set(scenes.flatMap(sc => sc.turns).flatMap(tn => { try { return listeningUnexposedWords(lang, tn.pair, ctx.exposed || [], ctx.eligTargets || [], ctx.vocab) } catch (e) { return [] } }))]
+  if (lengthAudit) { log && log(complexityAuditLog('LISTENING_COMPLEXITY_AUDIT', lengthAudit)); Object.assign(tel, complexityTelemetry(lengthAudit)) }
+  log && log('📚 LISTENING_CLOSED_VOCAB unknown=' + unknownWords.length + (unknownWords.length ? ' [' + unknownWords.slice(0, 12).join(', ') + '] FAIL' : ' PASS'))
+  const qualityNotes = []
+  const quality = ready ? 'VERIFIED' : 'NEEDS_REPAIR — ' + reasons.slice(0, 4).join(' · ')
   audit.lines.forEach(r => log && log('    LISTENING_LINE L' + r.n + ' speaker=' + r.speaker + ' actualTargetIds=[' + r.actualTargetIds.join(',') + '] targetCount=' + r.targetCount))
-  if (qualityNotes.length) log && log('📝 LISTENING_QUALITY_NOTES (shown to the learner, do NOT block playback): ' + qualityNotes.map(q => q.gate + ' — ' + q.text).join(' · '))
-  log && log('🎧 LISTENING_FINAL_INTEGRITY ' + (ready ? 'READY' + (qualityNotes.length ? ' (playable · ' + qualityNotes.length + ' quality note(s))' : '') : 'NOT_READY') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length + (failed.length ? ' · failed: ' + failed.join(', ') : ' · every gate passed'))
+  log && log('🎧 LISTENING_FINAL_INTEGRITY ' + (ready ? 'READY' : 'NOT_READY') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length + (failed.length ? ' · failed: ' + failed.join(', ') : ' · every gate passed'))
   progress('final', audit, { ready, failedChecks: reasons })
   log && log('  🎧 LISTENING_GATES ' + Object.entries(gates).map(([k, v]) => k + '=' + v).join(' · '))
   log && log('  🎧 LISTENING ' + (ready ? 'READY' : 'NOT_READY — Listening track needs repair (' + reasons.join(', ') + ')') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length +
@@ -17872,7 +17687,9 @@ async function buildListeningConversation(mainTrack, vocab, o) {
       omissionReasons: audit.missing.map(t => ({ targetId: t.id, reason: 'not present in the final conversation' })) },
     sceneGroups: scenes.map((sc, k) => k + 1), sceneTitles: scenes.map(sc => sc.setting || ''), scenes: scenes.map(sc => ({ sceneId: sc.sceneId, setting: sc.setting, turns: sc.turns.length })),
     coherenceScore: coh.overall, coherenceAudit: { state: coh.state, passed: cohPassed, verdicts: coh.verdicts, reason: coh.reason, overall: coh.overall },
-    gates, issues: hard.map(x => ({ code: x.code, line: x.line, detail: x.detail })), telemetry: { ...tel }, qualityNotes, playabilityGates: sceneGates ? LISTENING_PLAYABILITY_GATES : null,
+    gates, issues: hard.map(x => ({ code: x.code, line: x.line, detail: x.detail })), telemetry: { ...tel }, qualityNotes, lengthAudit, unknownWords,
+    level: ctx.complexity ? { belt: ctx.complexity.belt, preferredMin: ctx.complexity.preferredMin, preferredMax: ctx.complexity.preferredMax, hardMax: ctx.complexity.hardMax, unit: ctx.complexity.unitName } : null,
+    inventory: ctx.inventory ? ctx.inventory.counts : null,
     coveragePlan: sceneGates ? { scenes: sceneGates.plan.scenes.map(sc => ({ sceneId: sc.sceneId, purpose: sc.purpose, requiredTargetIds: sc.requiredTargetIds.slice(), optionalTargetIds: [], expectedTurns: sc.expectedTurns, maxTurns: sc.maxTurns })),
       assignments: sceneGates.plan.assignments, seed: sceneGates.plan.seed } : null, sceneReport: sceneGates ? sceneGates.report : null,
     dialogueStats: { scenes: scenes.length, lines: lines.length, speakers: { A: lines.filter(l => l.speaker === 'A').length, B: lines.filter(l => l.speaker === 'B').length },
@@ -18011,14 +17828,14 @@ async function buildStandaloneListeningTrack(o) {
   const ready = lt.readiness === 'READY' && lt.coverage.coveredTargetIds.length === keywords.length
   const track = { ...source, listening: { ...lt, telemetry: tel }, status: ready ? 'READY' : 'NOT_READY', ready, usage: ut.usage,
     coverage: { covered: lt.coverage.coveredTargetIds.length, required: keywords.length, missing: lt.coverage.uncoveredTargetIds.slice() },
-    // v664: failedChecks = what blocks PLAYBACK only; quality notes travel separately and are shown, not enforced
-    failedChecks: Object.entries(lt.gates || {}).filter(([k, v]) => (v === false || v === 'FAIL' || v === 'UNVERIFIED') && (!lt.playabilityGates || lt.playabilityGates.includes(k))).map(([k, v]) => k + '=' + (v === false ? 'FAIL' : v)),
-    qualityNotes: (lt.qualityNotes || []).slice(), playable: ready, telemetry: tel }
+    // v665: every failed gate blocks READY (§47); the level contract, length audit and unknown words travel with the track
+    failedChecks: Object.entries(lt.gates || {}).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k, v]) => k + '=' + (v === false ? 'FAIL' : v)),
+    qualityNotes: [], level: lt.level || null, lengthAudit: lt.lengthAudit || null, unknownWords: (lt.unknownWords || []).slice(), playable: ready, telemetry: tel }
   // §9 invariant: what the track carries IS the frozen snapshot
   const inv = JSON.stringify(track.selectedTargetIds) === JSON.stringify(frozenIds) && JSON.stringify(lt.coverage.selectedTargetIds) === JSON.stringify(frozenIds)
   log && log('🎧 LISTENING_SNAPSHOT_INVARIANT ' + (inv ? 'PASS' : 'FAIL') + ' — track / coverage target ids === the frozen snapshot (' + frozenIds.length + ')')
   log && log('🎧 LISTENING_TRACK_RESULT status=' + track.status + ' · TARGET COVERAGE ' + track.coverage.covered + '/' + track.coverage.required +
-    (track.failedChecks.length ? ' · failed: ' + track.failedChecks.join(', ') : '') + (track.qualityNotes.length ? ' · quality notes: ' + track.qualityNotes.map(q => q.gate).join(', ') : '') + ' · ' + Object.entries(tel).map(([k, v]) => k + '=' + v).join(' '))
+    (track.failedChecks.length ? ' · failed: ' + track.failedChecks.join(', ') : '') + (track.level ? ' · level ' + track.level.belt + ' hardMax ' + track.level.hardMax : '') + ' · ' + Object.entries(tel).map(([k, v]) => k + '=' + v).join(' '))
   return { track, result: res }
 }
 function listeningTrackSummary(t) {
@@ -18133,6 +17950,9 @@ function listeningAttemptRecord(o) {
     model: o.model || null, rebuildOf: o.rebuildOf || null, trackId: t.ready || t.playable ? t.id : null, log: (o.log || []).slice(-600),
     // v664: the conversation itself, so any attempt that produced lines can be listened to from History
     qualityNotes: t.qualityNotes || [], lines: t.listening && Array.isArray(t.listening.lines) && t.listening.lines.length ? t.listening.lines : null,
+    // v665 §50 — the learner level and what failed against it (belt, preferred range, hardMax, length failures, unknown words, atomic fixes)
+    level: t.level || null, lengthFailures: t.lengthAudit ? t.lengthAudit.over || [] : [], unknownWords: t.unknownWords || [],
+    atomicFixes: t.telemetry ? { accepted: t.telemetry.LISTENING_ATOMIC_PATCHES_ACCEPTED || 0, rejected: t.telemetry.LISTENING_ATOMIC_PATCHES_REJECTED || 0 } : null,
     coverageLabel: t.listening ? listeningCoverageLabel(t.listening, t) : '' }
 }
 function listeningCoverageCounts(cov, ids) {
@@ -18186,7 +18006,9 @@ function ListeningAttemptHistory({ attempts, currentId, words, onRebuildIds, bui
                 <div style={{ fontSize:10, color:'var(--muted)' }}>Targets: {(a.selectedTargetIds || []).map(wordOf).join(' · ')}</div>
                 {a.coverage && (a.coverage.missing || []).length > 0 && <div style={{ fontSize:10, color:'#f97316' }}>Missing: {a.coverage.missing.map(wordOf).join(', ')}</div>}
                 {(a.failedChecks || []).length > 0 && <div style={{ fontSize:10, color:'#f97316' }}>Failed: {a.failedChecks.join(' · ')}</div>}
-                {(a.qualityNotes || []).length > 0 && <div style={{ fontSize:10, color:'#b45309' }}>Quality notes: {a.qualityNotes.map(q => q.text).join(' · ')}</div>}
+                {a.level && <div data-listening-history-level="1" style={{ fontSize:10, color:'var(--muted)' }}>Level: {a.level.belt} · target {a.level.preferredMin}–{a.level.preferredMax} · max {a.level.hardMax} {a.level.unit}{a.atomicFixes ? ' · atomic fixes ' + a.atomicFixes.accepted + ' accepted / ' + a.atomicFixes.rejected + ' rejected' : ''}</div>}
+                {(a.lengthFailures || []).length > 0 && <div style={{ fontSize:10, color:'#f97316' }}>Too long: {a.lengthFailures.slice(0, 8).map(x => 'L' + x.line + ' (' + x.units + ')').join(' · ')}</div>}
+                {(a.unknownWords || []).length > 0 && <div style={{ fontSize:10, color:'#f97316' }}>Not taught yet: {a.unknownWords.slice(0, 16).join(', ')}</div>}
                 {a.failureReason && <div style={{ fontSize:10, color:'#f97316' }}>{a.failureReason}</div>}
                 {a.telemetry && <div style={{ fontSize:9, color:'var(--muted)', fontFamily:'monospace' }}>{Object.entries(a.telemetry).map(([k, v]) => k + '=' + v).join(' ')}</div>}
                 <div style={{ maxHeight:160, overflowY:'auto', background:'var(--surface2)', borderRadius:4, padding:'4px 6px' }}>
@@ -18239,7 +18061,8 @@ function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onSt
       {missing.length > 0 && <div style={{ fontSize:12, color:'var(--text)' }}>Missing: {missing.join(', ')}</div>}
       {(track.failedChecks || []).length > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Failed: {track.failedChecks.map(x => x.replace(/=FAIL$/, '')).join(' · ')}</div>}
       {track.failureReason && <div style={{ fontSize:12, color:'#b45309' }}>{track.failureReason}</div>}
-      {(track.qualityNotes || []).length > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Quality notes: {track.qualityNotes.map(q => q.text).join(' · ')}</div>}
+      {track.lengthAudit && track.lengthAudit.overHardMax > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Too long for {track.lengthAudit.belt} (target {track.lengthAudit.preferredMin}–{track.lengthAudit.preferredMax} · hard max {track.lengthAudit.hardMax} {track.lengthAudit.unit}): {track.lengthAudit.over.slice(0, 6).map(x => 'L' + x.line + ' (' + x.units + ')').join(' · ')}</div>}
+      {(track.unknownWords || []).length > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Words not taught yet: {track.unknownWords.slice(0, 12).join(', ')}</div>}
       <div style={{ fontSize:11, color:'var(--muted)' }}>Rebuild writes a completely new conversation from the same {(track.selectedTargetIds || []).length} words.{onPlayAnyway && track.listening && (track.listening.lines || []).length ? ' Or play this one as it is — it is saved and marked as having issues.' : ''}</div>
       {onPlayAnyway && track.listening && (track.listening.lines || []).length > 0 && (
         <div data-listening-play-anyway="1"><Btn onClick={onPlayAnyway} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'12px' }}>▶ Play anyway ({track.listening.lines.length} lines)</Btn></div>
@@ -21533,7 +21356,8 @@ function BeltRankView({ vocab, onBack, onOpenWord, onOpenInVocabulary, initialBe
     const meta = BELT_VIEW_META[b.name] || {}
     return { name: b.rank, belt: meta.label || b.name, color: meta.color || 'var(--gold)',
              min: b.from - 1, max: b.name === 'Shodan' ? 99999 : b.to - 1,
-             sentMin: meta.sentMin || 2, sentMax: meta.sentMax || 4,
+             // v665: the sentence range shown is the ONE belt contract (preferredMin–preferredMax, hardMax)
+             sentMin: getBeltComplexity(b.rank).preferredMin, sentMax: getBeltComplexity(b.rank).preferredMax, sentHardMax: getBeltComplexity(b.rank).hardMax,
              // Belt page only — the language's own ability milestone.
              desc: beltAbilityFor(lang || 'th', b.name) || meta.desc || '' }
   })
@@ -21575,7 +21399,7 @@ function BeltRankView({ vocab, onBack, onOpenWord, onOpenInVocabulary, initialBe
         </div>
         <div style={{ fontSize:12, color:'var(--muted)', margin:'10px 0 8px' }}>{currentBelt.desc}</div>
         <div style={{ display:'flex', gap:16, fontSize:12 }}>
-          <div style={{ color:'var(--gold)', fontWeight:700 }}>📏 {currentBelt.sentMin}–{currentBelt.sentMax} words per sentence</div>
+          <div style={{ color:'var(--gold)', fontWeight:700 }}>📏 Preferred {currentBelt.sentMin}–{currentBelt.sentMax} words · hard max {currentBelt.sentHardMax}</div>
           {nextBelt && <div style={{ color:'var(--muted)' }}>{wordsToNext} to {nextBelt.name}</div>}
         </div>
         {nextBelt && (
@@ -21616,7 +21440,7 @@ function BeltRankView({ vocab, onBack, onOpenWord, onOpenInVocabulary, initialBe
                 <div style={{ textAlign:'right', flexShrink:0, display:'flex', alignItems:'center', gap:8 }}>
                   <div>
                   <div style={{ fontSize:11, color:'var(--muted)' }}>{b.min === 0 ? '0' : b.min}–{b.max === 99999 ? '∞' : b.max}</div>
-                  <div style={{ fontSize:12, color:'var(--gold)', fontWeight:700 }}>{b.sentMin}–{b.sentMax}w</div>
+                  <div style={{ fontSize:12, color:'var(--gold)', fontWeight:700 }}>{b.sentMin}–{b.sentMax}w · max {b.sentHardMax}</div>
                   </div>
                   {/* affordance: this row opens the belt's vocabulary */}
                   <span style={{ fontSize:16, color:'var(--muted)', opacity:0.6, lineHeight:1 }}>{'›'}</span>
@@ -22149,7 +21973,7 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
 
   // Build vocab constraint string
   const knownWords = vocab
-    ? vocab.filter(w => hasBeenIntroduced(w))
+    ? vocab.filter(w => isLearnerTaught(w))
         .sort((a, b) => ((b.repCount||b.r)||0) - ((a.repCount||a.r)||0))
         .slice(0, 30).map(w => (w.thai||w.t) + '(' + (w.english||w.e) + ')').join(', ')
     : ''
@@ -22421,6 +22245,9 @@ async function _judgeWithBoundedRetry(items, judge, label, onLog) {
   for (let b = 0; b < all.length; b += first) await run(all.slice(b, b + first), 0)
   return { verdicts, failed, trace }
 }
+// v665 §34 — "natural" does NOT mean "complex": shared by every naturalness judge (Main Thai, Listening TH/JA/ZH)
+const NATURALNESS_SIMPLICITY_RULE = 'For a learner, short, ordinary, native-sounding speech is BETTER than elaborate native-like phrasing: do NOT reward conjunction chains, repeated subjects, ' +
+  'several ideas in one sentence, verbose explanations, or formal wording where simpler speech exists. A short complete reply ("yes", "okay, let\'s go", "really?") is fully natural.\n'
 function _naturalnessPromptText(chunk) {
   const numbered = chunk.map((p, ci) => (ci + 1) + '. Thai: ' + p.thai + '\n   Intended meaning: ' + (p.english || '') +
     '\n   Speaker: ' + (thaiSpeakerMapGender(p.speaker) || p.speakerGender || 'unknown') +
@@ -22429,7 +22256,7 @@ function _naturalnessPromptText(chunk) {
   return 'You are a native Thai speaker checking learner material. For EACH sentence answer: would a native speaker plausibly ' +
     'say this exact sentence in ordinary conversation, with this intended meaning, as this speaker?\n' +
     'Penalise: malformed grammar, target-word stuffing, duplicated words, English-shaped Thai, wrong sense of a word, ' +
-    'mixed male/female particles (ผม/ครับ vs ฉัน/ค่ะ/คะ), absurd everyday claims, meaningless fragments.\n' +
+    'mixed male/female particles (ผม/ครับ vs ฉัน/ค่ะ/คะ), absurd everyday claims, meaningless fragments.\n' + NATURALNESS_SIMPLICITY_RULE +
     'Scale: 5 natural · 4 natural with a small quirk · 3 understandable but unnatural · 2 wrong/awkward · 1 broken.\n\n' +
     (anySense ? 'When a target word and its intended sense are given, set "wrongSense": true if the sentence uses the target in a DIFFERENT sense ' +
       '(e.g. เบา "light in weight" used for money or weather).\n' : '') +
@@ -30885,7 +30712,7 @@ function buildJapaneseRecallPrompt(target, recallIndex, inv, vocab, registerId, 
       (target.note ? ' — use when ' + target.note : '') + (role ? '\n  ' + role : '') + '\n' +
     'THIS REPLY (recall ' + recallIndex + ' of 3): start from ONE real communicative intent (a request, question, reaction or plan) that naturally needs ' +
       '「' + target.japanese + '」, then write the Japanese a native speaker would use. Any inflected form of the target counts. ' +
-      'LENGTH ' + range.min + '–' + range.max + ' content units.' +
+      ' ' + range.contract.promptRule +
     '\n' + jaDuplicateContextBlock({ acceptedForTarget: c.previousRecalls, usedInTrack: c.usedInTrack }) +
     japaneseUsageHintLine(target) +
     (c.rejected && c.rejected.length ? '\nDO NOT USE (not taught yet): ' + c.rejected.join(' ') + '. Choose a different, simpler idea.' : '') +
@@ -31037,7 +30864,8 @@ function jaEvaluateRecallCandidate(cand, ctx) {
   const reg = JAPANESE_REGISTER_RULES[registerId] || JAPANESE_REGISTER_RULES[JA_REGISTER_DEFAULT]
   for (const rx of (reg.banned || [])) if (rx.test(jp)) return fail('register violation')
   const range = japaneseUnitRange(vocab)
-  if (japaneseComplexity(cand) > range.max + 2) return fail('too complex for this level')
+  // v665 — the belt hardMax is the acceptance ceiling (no +2 tolerance); counted on the canonical content units
+  { const _an = range.contract.analyse(cand); if (_an.overHardMax) return fail('LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' content units > hardMax ' + range.hardMax + ' (belt ' + range.contract.belt + ')') }
   // C. deterministic structural repair BEFORE the gate (punctuation, reading, segments, romaji)
   let c2 = normaliseJaCandidatePunctuation(cand)
   let structOk = structuralValidateJapanesePair(c2)
@@ -31091,7 +30919,7 @@ const TARGET_GROUP_CHECK_NAMES = Object.freeze(['structured output parse', 'targ
 const JA_QUALITY_CHECK_MAP = Object.freeze([
   ['structured output parse', 'parseJaGroupReply (JA_GROUP_SCHEMA; fences / arrays / truncation salvaged)'],
   ['target concept presence', 'matchesJapaneseTarget (concept identity: any taught inflection counts)'],
-  ['morphology / grammar', 'japaneseAcceptanceGate + jaVerifyDeclaredBlocks + japaneseComplexity'],
+  ['morphology / grammar', 'japaneseAcceptanceGate + jaVerifyDeclaredBlocks + getLearnerComplexityContract'],
   ['register fit', 'JAPANESE_REGISTER_RULES[register].banned + the acceptance gate (plain + です etc.)'],
   ['closed vocabulary', 'japaneseUnknownFromSegments / japaneseCheckLine against the learner inventory'],
   ['duplicate sentence', 'japaneseDuplicateVerdict (this target / this track)'],
@@ -31306,7 +31134,7 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
     (c.initial ? (n === 1 ? 'TARGET GROUP: write 1 recall sentence:\n' : 'TARGET GROUP: write ' + n + ' distinct recall sentences in ONE reply — useful variants, not copies:\n')
                : 'REPLACEMENT ONLY: write ' + n + ' new sentence(s) for the recall slot(s) below. The accepted recalls stay as they are.\n') +
       slots.map(s => '  • ' + (JA_RECALL_VARIATION[s.recallIndex] || ('recall ' + s.recallIndex + ' of 3 — another natural use'))).join('\n') + '\n' +
-      'Do not force unnatural variation just to be different. LENGTH ' + range.min + '–' + range.max + ' content units each.\n' +
+      'Do not force unnatural variation just to be different. ' + range.contract.promptRule + '\n' +
     ((c.scenePremise || target._scenePurpose || target._sceneLocalPremise) ? (c.scenePremise ? 'LESSON THEME (broad): ' + c.scenePremise + '\n' : '') +
       (target._sceneLocalPremise || target._scenePurpose ? 'THIS SCENE: ' + (target._sceneLocalPremise || '') + (target._scenePurpose ? (target._sceneLocalPremise ? ' (' + target._scenePurpose + ')' : target._scenePurpose) : '') +
       ' — every recall must make sense in THIS scene (same situation, same people).\n' : '') : '') +

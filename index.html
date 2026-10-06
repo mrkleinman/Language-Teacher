@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v657"/>
+<meta name="app-version" content="v658"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v657';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v657').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v658';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v658').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6950,10 +6950,11 @@ function stampTrackMode(track, mode, targets, onLog) {
 }
 
 function trackModeOf(track) {
+  if (track && track.trackType === 'listening') return 'listening'        // v658: its own track type, never "daily"
   const m = track && (track.trackMode || track.mode)
   return (m === 'revision' || m === 'srs') ? 'revision' : 'daily'   // 'srs' = legacy Mandarin
 }
-function trackModeLabel(track) { return trackModeOf(track) === 'revision' ? 'Revision Track' : 'Daily Track' }
+function trackModeLabel(track) { const m = trackModeOf(track); return m === 'listening' ? 'Listening Track' : m === 'revision' ? 'Revision Track' : 'Daily Track' }
 
 function RevisionTrackButton({ selection, onStart }) {
   const c = (selection && selection.counts) || { total: 0 }
@@ -6973,7 +6974,7 @@ function RevisionTrackButton({ selection, onStart }) {
       <Icon name="refresh" size={22} color="var(--gold)" />
       <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Revision Track</div>
       <div style={{ fontSize:11, color:'var(--gold)', marginTop:2 }}>
-        {on ? 'Hard \u00B7 overdue \u00B7 due' : 'Nothing learned yet'}
+        {on ? 'Practice learned words' : 'Nothing learned yet'}
       </div>
       <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>
         {on ? n + (n === 1 ? ' word' : ' words') + ' \u00B7 ' : ''}
@@ -7090,6 +7091,7 @@ function BeltRankCard({ vocab, onNav, langName }) {
 
 function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenConvo, onGenerateConvo }) {
   const revisionSelection = useMemo(() => selectThaiRevisionTargets(vocab, REVISION_TRACK_MAX), [vocab])
+  const listeningSelection = useMemo(() => selectListeningTrackTargets('th', vocab), [vocab])
   const [convoLoadingId, setConvoLoadingId] = useState(null)
   const [convoProgress, setConvoProgress] = useState(0)
   const stats = useMemo(() => getStats(vocab), [vocab])
@@ -7175,20 +7177,22 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
         </div>
       )}
 
-      {/* Generate Buttons */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      {/* Generate Buttons — Daily | Revision | Listening (v658: Listening is its own track) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
         <button onClick={() => onNav('generate-daily')}
           style={{ background: 'linear-gradient(135deg, #1a3a2a, #2a5a3a)', border: '1px solid #2d6b2d', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
           onMouseEnter={e => e.currentTarget.style.borderColor = '#10b981'}
           onMouseLeave={e => e.currentTarget.style.borderColor = '#2d6b2d'}>
           <Icon name="sparkles" size={22} color="#10b981" />
           <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Daily Track</div>
-          <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>~45 min · {stats.due} due</div>
+          <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>Learn + review</div>
+          <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>~45 min · {stats.due} due</div>
         </button>
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={() => onNav('generate-revision')} />
+        <ListeningTrackButton selection={listeningSelection} onStart={() => onNav('listening-track')} />
         <button onClick={() => onNav('lessons')}
-          style={{ background: 'linear-gradient(135deg, #1a1e3a, #1e2a5a)', border: '1px solid #2d3a6b', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
+          style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, #1a1e3a, #1e2a5a)', border: '1px solid #2d3a6b', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
           onMouseLeave={e => e.currentTarget.style.borderColor = '#2d3a6b'}>
           <Icon name="book" size={22} color="var(--gold)" />
@@ -7217,15 +7221,16 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, fontWeight:600 }}>{track.date}
-                      {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6, fontSize:10, fontWeight:700 }}>REVISION</span>}</p>
+                      {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6, fontSize:10, fontWeight:700 }}>REVISION</span>}
+                      {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}</p>
                     <p style={{ fontSize:11, color:'var(--muted)' }}>
-                      {track.pairs?.length||0} pairs · {track.keywords?.length||0} words
+                      {isListeningTrack(track) ? listeningTrackSummary(track) : (track.pairs?.length||0) + ' pairs · ' + (track.keywords?.length||0) + ' words'}
                       {track.bookmark > 0 && <span style={{ color:'#86c900', marginLeft:6 }}>🔖 {track.bookmark+1}</span>}
                       {track.convo && <span style={{ color:'#4a90e2', marginLeft:6 }}>💬</span>}
                     </p>
                   </div>
                   {track.rated && <Icon name="check" size={14} color="#10b981" />}
-                  <button onClick={e => { e.stopPropagation(); downloadTrack(track) }}
+                  <button onClick={e => { e.stopPropagation(); isListeningTrack(track) ? downloadListeningTrack(track) : downloadTrack(track) }}
                     style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }} title="Download track">⬇️</button>
                   <button onClick={e => { e.stopPropagation(); onDeleteTrack(tracks.length-1-i) }}
                     style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:14, padding:'4px 6px' }}>🗑</button>
@@ -14457,7 +14462,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v656'
+const LISTENING_BUILD_VERSION = 'v658'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -14586,22 +14591,11 @@ async function buildAndPersistListening(track, vocab, opts) {
 // The generation-complete boundary (Thai). Resolves only after the Listening build has
 // finished AND both the Listening track and the Main Track (with listeningBuild) are
 // persisted; the caller navigates after it resolves.
+// v658 §3/§21 — a Daily / Revision track ends when its Main Track is done: it is saved, and NO Listening is
+// built, queued or persisted for it (0 Listening calls). Listening is its own track (Listening Track button).
 async function completeThaiTrackHandoff(track, rawTrack, o) {
-  const mainId = listeningTrackId(track), fp = thaiPairsFingerprint(track.pairs)
-  const pre = rawTrack && rawTrack.listeningBuild
-  const reusable = !!(pre && (pre.status === 'READY' || pre.status === 'PARTIAL' || pre.status === 'FAILED') && pre.mainTrackId === mainId && pre.pairsFingerprint === fp)
-  let lb = reusable ? pre : null
-  if (!lb) {
-    // saved first with BUILDING, so an interrupted build is visible as such after a reload
-    const building = { ...track, listeningBuild: { status: 'BUILDING', buildVersion: LISTENING_BUILD_VERSION, mainTrackId: mainId, pairsFingerprint: fp, startedAt: new Date().toISOString() } }
-    await o.saveTracks([...(o.tracks || []), building])
-    try { o.onBuilding && o.onBuilding(mainId) } catch (e) {}
-    const r = await ensureThaiListeningBuilt(track, o.vocab, { apiKey: o.apiKey, model: o.model, creationMode: 'AUTO_PRETRACK', onLog: o.onLog })
-    lb = r.listeningBuild
-  }
-  const finalTrack = { ...track, listeningBuild: lb }
-  const msg = '🎧 HANDOFF MAIN_TRACK_ID=' + mainId + ' LISTENING_TRACK_ID=' + (lb.listeningTrackId || '-') + ' PERSISTED_TRACK_ID=' + (lb.mainTrackId || '-') +
-    ' status=' + lb.status + (reusable ? ' (built when generation completed)' : ' (built at save)')
+  const { listeningBuild: _drop, ...finalTrack } = { ...track }
+  const msg = '🎧 MAIN_TRACK_SAVED trackId=' + listeningTrackId(track) + ' trackType=' + trackModeOf(track) + ' · LISTENING_CALLS=0 (Listening is a separate track — use the Listening Track button)'
   try { console.info('[listening] ' + msg); o.onLog && o.onLog(msg) } catch (e) {}
   await o.saveTracks([...(o.tracks || []), finalTrack])            // persisted BEFORE the caller navigates
   return finalTrack
@@ -15505,7 +15499,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v657'
+const APP_BUILD_VERSION = 'v658'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -15641,9 +15635,8 @@ async function jazhQcFinaliseAndListen(track, lang, o) {
     const code = (langChk && langChk.code) || tcChk.code, detail = (langChk && langChk.detail) || (tcChk.missing || []).join(',') || tcChk.detail || ''
     push('⛔ PIPELINE INTERNAL_ERROR ' + code + (detail ? ' — ' + detail : '') + ' · FINAL_TRACK status=FAILED_INTERNAL · no QC, no Listening')
     const failed = withPipelineFailure(track, code, detail, 'track-context')
-    const gate = canBuildListening(failed)
-    const out = { ...failed, listeningBuild: listeningSkippedBuild(failed, gate, lang) }
-    push('🎧 LISTENING_BUILD_SKIPPED reason=MAIN_NOT_READY state=' + gate.state)
+    const out = failed                                    // v658: no Listening state on a Main Track
+    push('🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button)')
     o.onFinal && o.onFinal(out)
     return { track: out, res: null }
   }
@@ -15659,7 +15652,8 @@ async function jazhQcFinaliseAndListen(track, lang, o) {
       const detail = pv.bad.length + ' target pair(s) · first ' + (b0.pairId || '#' + (b0.index + 1)) + (b0.wrongLanguage ? ' language=' + b0.language : '') + ' missing=[' + b0.missing.join(',') + ']'
       push('⛔ PIPELINE INTERNAL_ERROR MISSING_PAIR_PROVENANCE — ' + detail + ' · QC not run · no Listening')
       const failed = withPipelineFailure(track, 'MISSING_PAIR_PROVENANCE', detail, 'pre-qc')
-      const out = { ...failed, listeningBuild: listeningSkippedBuild(failed, canBuildListening(failed), lang) }
+      const out = failed                                  // v658: no Listening state on a Main Track
+      push('🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button)')
       o.onFinal && o.onFinal(out)
       return { track: out, res: null }
     }
@@ -15668,7 +15662,8 @@ async function jazhQcFinaliseAndListen(track, lang, o) {
   try { runQc = qcRunnerFor(lang) } catch (e) {
     push('⛔ PIPELINE INTERNAL_ERROR ' + e.code + ' — ' + e.message)
     const failed = withPipelineFailure(track, e.code, e.message, 'qc-dispatch')
-    return { track: { ...failed, listeningBuild: listeningSkippedBuild(failed, canBuildListening(failed), lang) }, res: null }
+    push('🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button)')
+    return { track: failed, res: null }   // v658: no Listening state on a Main Track
   }
   let res = null
   try {
@@ -15691,22 +15686,10 @@ async function jazhQcFinaliseAndListen(track, lang, o) {
   }
   o.onFinal && o.onFinal(fin)
   if (o.cancelled && o.cancelled()) return { track: fin, res }
-  // v651 \u00A710 \u2014 Listening starts ONLY from a MAIN_READY track. A failed / not-ready main track costs
-  // zero Listening requests.
-  const gate = canBuildListening(fin)
-  if (!gate.ok || gate.legacy) {
-    const g = gate.legacy ? { ok: false, state: 'NOT_FINALISED', reason: 'the generator tail never builds Listening from a non-final track' } : gate
-    push('\uD83C\uDFA7 LISTENING_BUILD_SKIPPED reason=MAIN_NOT_READY state=' + g.state + (g.reason ? ' \u2014 ' + g.reason : ''))
-    fin = { ...fin, listeningBuild: listeningSkippedBuild(fin, g, lang) }
-    o.onListening && o.onListening('BLOCKED_MAIN_NOT_READY')
-  } else try {
-    o.onListening && o.onListening('BUILDING')
-    const lr = await ensureListeningBuilt(fin, o.vocab, { lang, apiKey: o.apiKey, model: o.model, creationMode: 'AUTO_PRETRACK',
-      onLog: m => { if (/LISTENING_/.test(m)) push(m) } })
-    fin = { ...fin, listeningBuild: lr.listeningBuild }
-    push(lr.listeningBuild.status === 'FAILED' ? '\u26A0 Listening build FAILED: ' + (lr.listeningBuild.failureReason || '') : '\uD83C\uDFA7 ' + listeningBuildLabel(lr.listeningBuild) + ' \u00b7 ' + lr.listeningBuild.status)
-    o.onListening && o.onListening(lr.listeningBuild.status)
-  } catch (e) { push('\u26A0 Listening build failed: ' + (e && e.message || e)); o.onListening && o.onListening('FAILED') }
+  // v658 §3 — a Daily / Revision track ENDS with its Main Track: no Listening is built after it (0 Listening
+  // calls). Listening is its own track type, started from the Listening Track button.
+  push('\uD83C\uDFA7 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a ' + (trackModeOf(fin) === 'revision' ? 'Revision' : 'Daily') + ' Track')
+  o.onListening && o.onListening('NONE')
   if (o.runId) {
     try {
       const sum = aiUsageSummary(o.runId)
@@ -16812,7 +16795,7 @@ const LISTENING_CONVERSATION_SCHEMA = { type: 'OBJECT', properties: { scenes: { 
     reading: { type: 'STRING', nullable: true }, romaji: { type: 'STRING', nullable: true }, pinyin: { type: 'STRING', nullable: true },
     intendedTargetIds: { type: 'ARRAY', items: { type: 'INTEGER' }, nullable: true } }, required: ['speaker', 'text'] } } }, required: ['turns'] } } }, required: ['scenes'] }
 const LISTENING_EDIT_SCHEMA = { type: 'OBJECT', properties: { edits: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
-  op: { type: 'STRING' }, line: { type: 'INTEGER' },
+  op: { type: 'STRING' }, line: { type: 'INTEGER' }, span: { type: 'INTEGER', nullable: true },
   turns: { type: 'ARRAY', nullable: true, items: { type: 'OBJECT', properties: { speaker: { type: 'STRING' }, text: { type: 'STRING' }, english: { type: 'STRING', nullable: true },
     reading: { type: 'STRING', nullable: true }, romaji: { type: 'STRING', nullable: true }, pinyin: { type: 'STRING', nullable: true },
     intendedTargetIds: { type: 'ARRAY', items: { type: 'INTEGER' }, nullable: true } }, required: ['speaker', 'text'] } } }, required: ['op', 'line'] } } }, required: ['edits'] }
@@ -16826,10 +16809,29 @@ function listeningConversationTargets(mainTrack, vocab, lang) {
     const surface = (lang === 'ja' ? (k.japanese || w.japanese) : lang === 'zh' ? (k.chinese || w.chinese) : (k.thai || w.thai)) || ''
     const src = { ...w, ...k, thai: w.thai || k.thai, english: w.english || k.english }
     let role = 'CONTENT'
-    try { role = targetConversationRole(src, lang) } catch (e) {}
-    return { id, surface, gloss: String(src.english || '').split(/[;/]/)[0].trim(), role, domain: targetSemanticDomain(src), isNew: newIds.includes(id), unresolved: !!k.unresolved, word: w }
+    try { role = listeningTargetRole(src, lang) } catch (e) {}
+    const reading = lang === 'ja' ? [k.reading || w.reading, k.romaji || w.romaji].filter(Boolean).join(' / ') : lang === 'zh' ? (k.pinyin || w.pinyin || '') : (w.phonetic || k.phonetic || '')
+    return { id, surface, reading, gloss: String(src.english || '').split(/[;/]/)[0].trim(), role, domain: targetSemanticDomain(src), isNew: newIds.includes(id), unresolved: !!k.unresolved, word: w }
   })
 }
+// v658 §11 — the conversational role of each target (deterministic, local): the shared roles plus TIME / PLACE /
+// ACTION / DESCRIPTION / NUMBER, so the allocation plan can suggest where a word naturally sits in a dialogue
+const LISTENING_TARGET_ROLES = ['CONTENT', 'QUESTION_WORD', 'RESPONSE_TOKEN', 'DISCOURSE_MARKER', 'TIME', 'PLACE', 'ACTION', 'DESCRIPTION', 'NUMBER', 'GREETING', 'PARTING', 'FUNCTIONAL_PHRASE', 'CONNECTOR']
+function listeningTargetRole(src, lang) {
+  const base = targetConversationRole(src, lang)
+  if (base !== 'CONTENT') return base
+  const eng = String(src.english || '').toLowerCase().trim(), g = eng.split(/[;,/(]/)[0].trim(), pos = String(src.partOfSpeech || src.pos || '').toLowerCase()
+  const dom = targetSemanticDomain(src)
+  if (dom === 'numbers & prices' && /\b(number|hundred|thousand|million|zero|one|two|three|four|five|six|seven|eight|nine|ten)\b/.test(g)) return 'NUMBER'
+  if (/\b(today|tomorrow|yesterday|now|later|soon|morning|evening|night|tonight|week|month|year|already|still|yet|again|next|last|early|late|monday|tuesday|wednesday|thursday|friday|saturday|sunday|o'clock|time)\b/.test(g)) return 'TIME'
+  if (/\b(here|there|over there|place|where|home|house|station|shop|store|restaurant|school|office|market|room|city)\b/.test(g) || dom === 'places & travel') return 'PLACE'
+  if (/^to\s/.test(eng) || /verb/.test(pos) || /^(go|come|eat|drink|see|look|buy|sell|do|make|take|ride|get on|return|go home|meet|use|wait|know|understand|think|like|want|have|exist|be)\b/.test(g)) return 'ACTION'
+  if (/adj/.test(pos) || /^(good|bad|big|small|hot|cold|delicious|expensive|cheap|fine|okay|busy|free|fun|easy|difficult|new|old|kind|tired|happy|pretty|beautiful)\b/.test(g)) return 'DESCRIPTION'
+  return 'CONTENT'
+}
+const LISTENING_ROLE_HINT = { TIME: 'when something happens (plans, "today / tomorrow …")', PLACE: 'where to go / where something is', ACTION: 'what someone does or will do',
+  DESCRIPTION: 'a reaction or comment on something', NUMBER: 'a price, count or time', QUESTION_WORD: 'a question the other speaker answers', GREETING: 'the opening', PARTING: 'the closing',
+  FUNCTIONAL_PHRASE: 'a polite set phrase where it fits (thanks, sorry, please)', DISCOURSE_MARKER: 'a reaction at the start of a turn', CONNECTOR: 'linking two ideas', CONTENT: 'the topic of a turn' }
 // §6 — deterministic allocation plan: which targets naturally share a turn, which must be replies
 function listeningTargetAllocation(targets, mainTrack) {
   const plan = (mainTrack && mainTrack.scenePlan && mainTrack.scenePlan.scenes) || []
@@ -16953,7 +16955,7 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   const trackFinal = isFinalTrack(mainTrack)
   const targets = listeningConversationTargets(mainTrack, vocab, lang)
   const { newIds } = listeningRequiredTargetIds(mainTrack)
-  log && log('  🎧 LISTENING (v656 fresh conversation) · SOURCE ' + (trackFinal ? 'FINAL_TRACK ' + mainTrack.finalTrack.fingerprint : 'legacy track') + ' · TARGETS ' + targets.length + ' (NEW ' + newIds.length + ' · REVIEW ' + (targets.length - newIds.length) + ') — every selected target must be heard')
+  log && log('  🎧 LISTENING (fresh conversation) · SOURCE ' + (o.standalone ? 'STANDALONE LISTENING TRACK (Revision selection, no Main Track)' : trackFinal ? 'FINAL_TRACK ' + mainTrack.finalTrack.fingerprint : 'legacy track') + ' · TARGETS ' + targets.length + ' (NEW ' + newIds.length + ' · REVIEW ' + (targets.length - newIds.length) + ') — every selected target must be heard')
   // authorised vocabulary: everything the learner has met + ALL 30 current targets (NEW included)
   const exposed = (vocab || []).filter(w => typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w))
   const vById = new Map((vocab || []).map(w => [w.id, w]))
@@ -16966,13 +16968,19 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   const lessonCtx = mainTrack.lessonContext || buildLessonContext(sc0, lang)
   const names = (ctx.sceneEntities || []).map(e => e.surface || e).filter(Boolean)
   const extra = lang === 'ja' ? ' Give "reading" (kana) and "romaji" for every turn.' : lang === 'zh' ? ' Give tone-mark "pinyin" for every turn.' : ''
-  const tRow = t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + ' | ' + t.role + (t.isNew ? ' | NEW' : '')
+  // v658 §12 — every target row carries the linguistic data the model needs (written form, reading, gloss / sense, role)
+  const tRow = t => 'T' + t.id + ' | ' + t.surface + (t.reading ? ' [' + t.reading + ']' : '') + ' | ' + t.gloss + ' | ' + t.role + (t.isNew ? ' | NEW' : '')
+  // v658 §13 — a turn RANGE derived from the number of targets (≤ 3 per turn, most turns 1–2): the live JA run wrote 17 turns
+  // for 30 targets, crammed 4 into one line and dropped 4 targets
+  const turnsMin = Math.max(12, Math.ceil(targets.length / 1.5) + 4), turnsMax = targets.length + 14
   // ── 1. ONE batched composition call ──
   const prompt = 'Write ONE natural ' + la.label + ' LISTENING conversation between two people for a learner.\n' +
     'PREMISE: ' + (lessonCtx.broadTheme || sc0.premise || 'two friends talking about their day') + '\n' +
     'SPEAKERS: ' + ((sc0.characters || []).map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') || 'A and B, friends') + ' · ' + la.speakerContract + '\n' +
     'REGISTER: ' + (lessonCtx.register || 'natural spoken') + (lessonCtx.politeness ? ' · ' + lessonCtx.politeness : '') + '\n' +
-    'THE ' + targets.length + ' TARGET WORDS (id | word | meaning | role) — use EVERY one at least once (more is fine when natural):\n' + targets.map(tRow).join('\n') + '\n' +
+    'THE ' + targets.length + ' TARGET WORDS (id | word [reading] | meaning | role) — use EVERY one at least once (more is fine when natural):\n' + targets.map(tRow).join('\n') + '\n' +
+    'ROLE GUIDE: ' + [...new Set(targets.map(t => t.role))].map(r => r + ' = ' + (LISTENING_ROLE_HINT[r] || 'fits naturally')).join(' · ') + '\n' +
+    'LENGTH: about ' + turnsMin + '–' + turnsMax + ' turns, so every target fits with at most 3 per turn (most turns carry 1–2) — enough room, not padding.\n' +
     'ALLOCATION SUGGESTIONS (not mandatory): ' + alloc.map(g => '[' + g.ids.map(id => 'T' + id).join('+') + ' → ' + g.hint + (g.topic && g.topic !== 'reply' ? ' about ' + g.topic : '') + ']').join(' ') + '\n' +
     'RULES:\n- ONE conversation (1–3 scenes only if the place genuinely changes; every scene has many turns). It opens naturally (greeting) and closes naturally.\n' +
     '- A and B BOTH speak; questions get answers; reactions; later turns refer to earlier ones. Not mechanical A/B/A/B, but never one speaker only.\n' +
@@ -16980,8 +16988,8 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     '- At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' of the target words in any single turn (other known words are unlimited).\n' +
     '- Response words (yes / no / yeah …) are used as REPLIES to questions, never as drills.\n' +
     '- No repeated sentences. Natural length for the story — do not pad and do not squeeze.\n' +
-    '- Use ONLY the target words, these KNOWN WORDS, normal grammar/particles' + (names.length ? ' and the names ' + names.join(', ') : '') + '. No other content words.' + extra + '\n' +
-    'KNOWN WORDS: ' + known.slice(0, 260).join(' ') + '\n\n' +
+    '- Use ONLY the target words, these KNOWN WORDS (the learner\'s whole authorised bank — use them freely), normal grammar/particles' + (names.length ? ' and the names ' + names.join(', ') : '. No personal names') + '. No other content words.' + extra + '\n' +
+    'KNOWN WORDS: ' + known.slice(0, 900).join(' ') + '\n\n' +
     'Reply ONLY with JSON: {"scenes":[{"sceneId":"L1","setting":"...","turns":[{"speaker":"A","text":"...","english":"...","intendedTargetIds":[12,40]}]}]}'
   let scenes = null
   if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
@@ -17020,17 +17028,19 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     const asks = issues.map(x => x.code === 'TARGET_MISSING' ? '- MISSING TARGET T' + x.targetId + ' ' + x.detail + ': ' + listeningPlacementHint(byTarget.get(x.targetId), audit, targets)
       : x.code === 'MAX_TARGETS_PER_TURN' ? '- line ' + x.line + ' has ' + x.detail + ': move one target into an adjacent turn or split the thought between the speakers'
       : x.code === 'MERGED_SPEAKERS' ? '- line ' + x.line + ': ' + x.detail + ' — split it into two turns (A asks, B answers)'
-      : /DUPLICATE/.test(x.code) ? '- line ' + x.line + ' ' + x.detail + ': replace it with a new turn that moves the conversation on'
+      : /DUPLICATE/.test(x.code) ? '- line ' + x.line + ' ' + x.detail + ': rewrite this local exchange (this line and its neighbour, span 2) so it moves the conversation on'
       : x.code === 'ONE_SPEAKER' ? '- the whole conversation is one speaker: give roughly half of the turns to the other speaker, as replies'
       : x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION' ? '- ' + x.detail + ': merge scenes so each has several turns (use op "merge_scenes")'
       : '- line ' + x.line + ': ' + x.code + ' — ' + x.detail)
     log && log('  🔧 LISTENING_REPAIR round ' + round + ': ' + issues.length + ' issue(s) — ' + [...new Set(issues.map(x => x.code))].join(', '))
     const rp = 'REVISE this ' + la.label + ' LISTENING conversation locally. Keep every line that has no issue exactly as it is.\n' + la.speakerContract + extra + '\n' +
       'TARGET WORDS: ' + targets.map(t => 'T' + t.id + ' ' + t.surface + ' (' + t.gloss + ')').join(' · ') + '\n' +
-      'At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' target words per turn; each turn one speaker; use ONLY target words and these KNOWN WORDS: ' + known.slice(0, 220).join(' ') + '\n\n' +
+      'At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' target words per turn; each turn one speaker; use ONLY target words and these KNOWN WORDS: ' + known.slice(0, 900).join(' ') + '\n' +
+      'Repair LOCAL EXCHANGES, not isolated lines: when a missing target belongs in an answer, rewrite the question AND its answer together ' +
+      '({"op":"replace","line":N,"span":2,"turns":[question, answer]}); spread 4+ targets over adjacent turns; keep everything else unchanged.\n\n' +
       'CONVERSATION:\n' + _lnConversationRows(scenes, la, targets, audit) + '\n\nFIX THESE ISSUES:\n' + asks.join('\n') + '\n\n' +
-      'Reply ONLY with JSON: {"edits":[{"op":"replace","line":5,"turns":[{"speaker":"B","text":"...","english":"..."}]},{"op":"insert_after","line":7,"turns":[...]},{"op":"delete","line":9},{"op":"merge_scenes","line":0}]} — ' +
-      '"replace" swaps line N for the given turn(s); "insert_after" adds turns after line N; line numbers refer to the conversation above.'
+      'Reply ONLY with JSON: {"edits":[{"op":"replace","line":5,"span":1,"turns":[{"speaker":"B","text":"...","english":"..."}]},{"op":"insert_after","line":7,"turns":[...]},{"op":"delete","line":9},{"op":"merge_scenes","line":0}]} — ' +
+      '"replace" swaps line N (and the next span−1 lines of the same scene) for the given turn(s); "insert_after" adds turns after line N; line numbers refer to the conversation above.'
     let edits = null
     tel.LISTENING_REPAIR_CALLS++
     try { edits = JSON.parse(String(await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: rp }], maxTokens: 3000, temperature: 0.5, json: LISTENING_EDIT_SCHEMA, stage: 'O_listening_repair', attempt: 'listening-repair-' + round }) || '').replace(/```json|```/g, '').trim()) }
@@ -17050,7 +17060,7 @@ async function buildListeningConversation(mainTrack, vocab, o) {
       const nt = (x.turns || []).filter(t => t && String(t.text || '').trim()).map((t, j) => _lnMakeTurn(la, t, f.tn.speaker))
       if (x.op === 'delete') sc.turns.splice(at, 1)
       else if (x.op === 'insert_after') sc.turns.splice(at + 1, 0, ...nt)
-      else if (nt.length) sc.turns.splice(at, 1, ...nt)
+      else if (nt.length) sc.turns.splice(at, Math.max(1, Math.min(3, Number(x.span) || 1, sc.turns.length - at)), ...nt)
     })
     scenes = scenes.filter(sc => sc.turns.length).map((sc, k) => ({ ...sc, sceneId: 'L' + (k + 1) }))
     audit = listeningConversationAudit(scenes, targets, la, ctx)
@@ -17154,6 +17164,169 @@ function listeningPlaybackSpeed() {
   return LISTENING_SPEED_DEFAULT
 }
 function saveListeningPlaybackSpeed(v) { try { if (Number.isFinite(v)) localStorage.setItem(LISTENING_SPEED_KEY, String(v)) } catch (e) {} }
+// ══ v658 — STANDALONE LISTENING TRACK ══════════════════════════════════════════════════════
+// Listening is its OWN track type (trackType = "listening"), started from its own dashboard button. It is
+// not a child of a Daily / Revision Main Track and is never built automatically after one. It selects its
+// 30 targets with the SAME rules as the Revision Track (previously learned words only: NEW 0 · REVIEW 30)
+// and writes ONE fresh conversation from them directly — no 90-pair Main generation, no Main scene plan,
+// no Main READY gate. It has its own readiness contract (30/30 coverage + every Listening gate) and only a
+// READY track is persisted and playable. Rebuild keeps the same 30 target ids.
+const LISTENING_TRACK_TARGETS = 30
+function selectListeningTrackTargets(lang, vocab) {
+  // the Revision selector, unchanged — only previously learned words, never a new word
+  if (lang === 'th') { const r = selectThaiRevisionTargets(vocab, REVISION_TRACK_MAX); return { targets: r.targets.slice(0, LISTENING_TRACK_TARGETS), counts: r.counts, rule: 'revision' } }
+  const r = selectRevisionTrackTargets({ vocab, maxTargets: REVISION_TRACK_MAX, language: lang })
+  const t = jazhContractTargets(r.targets, lang, vocab, 'revision').filter(w => typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w))
+  return { targets: t.slice(0, LISTENING_TRACK_TARGETS), counts: r.counts, rule: 'revision' }
+}
+function listeningTrackKeyword(lang, w) {
+  const base = { wordId: w.id, english: w.english, rating: null, isNew: false, isUnseen: false }
+  if (lang === 'ja') return { ...base, japanese: w.japanese, reading: w.reading, romaji: w.romaji, thai: w.japanese, phonetic: w.romaji }
+  if (lang === 'zh') return { ...base, chinese: w.chinese, pinyin: w.pinyin, thai: w.chinese, phonetic: w.pinyin }
+  return { ...base, thai: w.thai, phonetic: w.phonetic || '' }
+}
+// a neutral lesson context: two friends, no proper names (a name the learner was never taught is untaught vocabulary)
+function listeningTrackContract(lang, targets) {
+  const doms = {}
+  targets.forEach(w => { const d = targetSemanticDomain(w); if (d !== 'general conversation') doms[d] = (doms[d] || 0) + 1 })
+  const top = Object.entries(doms).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0])
+  return { language: lang, premise: 'two friends meet, catch up and talk about everyday things' + (top.length ? ' (' + top.join(', ') + ')' : ''),
+    characters: [{ speaker: 'A', name: 'Speaker A', role: 'friend' }, { speaker: 'B', name: 'Speaker B', role: 'friend' }], allowedSceneEntities: [] }
+}
+function isListeningTrack(t) { return !!(t && t.trackType === 'listening') }
+async function buildStandaloneListeningTrack(o) {
+  const lang = o.lang, vocab = o.vocab || [], log = o.onLog || null
+  if (!TRACK_LANGUAGES.includes(lang)) throw pipelineInternalError('INVALID_TRACK_LANGUAGE', 'Listening Track requested for "' + lang + '"')
+  const byId = new Map(vocab.map(w => [w.id, w]))
+  // Rebuild keeps the SAME target ids; a fresh start uses the Revision selector
+  const words = o.targetIds && o.targetIds.length ? o.targetIds.map(id => byId.get(id)).filter(Boolean) : selectListeningTrackTargets(lang, vocab).targets
+  const createdAt = new Date().toISOString()
+  const keywords = words.map(w => listeningTrackKeyword(lang, w))
+  const contract = listeningTrackContract(lang, words)
+  const source = { trackType: 'listening', language: lang, mode: 'listening', trackMode: 'listening', createdAt, id: 'listen-' + createdAt,
+    date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    keywords, selectedTargetIds: keywords.map(k => k.wordId), pairs: [], sceneContract: contract, lessonContext: buildLessonContext(contract, lang),
+    targetCounts: { selectedTargetCount: keywords.length, newTargetCount: 0, reviewTargetCount: keywords.length, requiredListeningTargetCount: keywords.length, mode: 'listening' },
+    rebuildOf: o.rebuildOf || null }
+  log && log('🎧 LISTENING_TRACK_START language=' + lang + ' trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=' + keywords.length + ' NEW=0 REVIEW=' + keywords.length +
+    ' LISTENING_MAIN_GENERATION_CALLS=0' + (o.targetIds ? ' · REBUILD with the same ' + keywords.length + ' target ids' : ''))
+  const fail = (reason) => ({ track: { ...source, status: 'NOT_READY', ready: false, failureReason: reason, listening: null,
+    coverage: { covered: 0, required: Math.max(LISTENING_TRACK_TARGETS, keywords.length), missing: keywords.map(k => k.wordId) }, failedChecks: ['TARGET_COVERAGE=FAIL'],
+    telemetry: { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, LISTENING_GENERATION_CALLS: 0, LISTENING_REPAIR_CALLS: 0, LISTENING_QC_CALLS: 0, LISTENING_TOTAL_PAID_CALLS: 0 } }, result: null })
+  if (keywords.length < LISTENING_TRACK_TARGETS) { log && log('⛔ LISTENING_TRACK_NOT_READY — only ' + keywords.length + ' learned word(s) are eligible (needs ' + LISTENING_TRACK_TARGETS + ')'); return fail('only ' + keywords.length + ' learned words available (needs ' + LISTENING_TRACK_TARGETS + ')') }
+  if (!o.apiKey) return fail('Listening composition needs a model key')
+  let res = null
+  try { res = await buildListeningConversation(source, vocab, { lang, apiKey: o.apiKey, model: o.model, onLog: log, creationMode: 'LISTENING_TRACK', standalone: true }) }
+  catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return fail('LISTENING_BUILD_ERROR: ' + (e && e.message || e)) }
+  const lt = res && res.listeningTrack
+  if (!lt) return fail((res && res.reason) || 'the conversation could not be composed')
+  const tel = { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, ...(lt.telemetry || {}) }
+  const ready = lt.readiness === 'READY' && lt.coverage.coveredTargetIds.length === keywords.length
+  const track = { ...source, listening: { ...lt, telemetry: tel }, status: ready ? 'READY' : 'NOT_READY', ready,
+    coverage: { covered: lt.coverage.coveredTargetIds.length, required: keywords.length, missing: lt.coverage.uncoveredTargetIds.slice() },
+    failedChecks: Object.entries(lt.gates || {}).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k, v]) => k + '=' + (v === false ? 'FAIL' : v)), telemetry: tel }
+  log && log('🎧 LISTENING_TRACK_RESULT status=' + track.status + ' · TARGET COVERAGE ' + track.coverage.covered + '/' + track.coverage.required +
+    (track.failedChecks.length ? ' · failed: ' + track.failedChecks.join(', ') : '') + ' · ' + Object.entries(tel).map(([k, v]) => k + '=' + v).join(' '))
+  return { track, result: res }
+}
+function listeningTrackSummary(t) {
+  if (!isListeningTrack(t)) return ''
+  const n = (t.listening && t.listening.lines || []).length
+  return n + ' lines · TARGET COVERAGE ' + ((t.coverage && t.coverage.covered) || 0) + '/' + ((t.coverage && t.coverage.required) || LISTENING_TRACK_TARGETS) + ' · NEW 0 · REVIEW ' + ((t.keywords || []).length)
+}
+function listeningTrackExportLines(t) {
+  const lt = t.listening
+  return ['LISTENING TRACK EXPORT', '='.repeat(50), 'trackType=listening · language=' + t.language + ' · selected=' + (t.keywords || []).length + ' · new=0 · review=' + (t.keywords || []).length +
+    ' · coverage=' + ((t.coverage && t.coverage.covered) || 0) + '/' + ((t.coverage && t.coverage.required) || 0) + ' · ready=' + !!t.ready + ' · createdAt=' + t.createdAt,
+    'Selection: Revision Track rules (previously learned words only) · Main generation calls: 0',
+    'Telemetry: ' + Object.entries(t.telemetry || {}).map(([k, v]) => k + '=' + v).join(' '), '']
+    .concat(lt ? listeningCoverageExportLines(lt, t) : ['(no conversation)'], [''],
+      (lt ? lt.lines : []).map((l, i) => 'L' + (i + 1) + ' [' + (l.sceneId || '') + '] ' + l.speaker + ': ' + (l.thai || l.japanese || l.chinese || '') + (l.phonetic ? '  /' + l.phonetic + '/' : '') + '  — ' + (l.english || '')))
+}
+async function downloadListeningTrack(t) {
+  const blob = new Blob([listeningTrackExportLines(t).join('\n')], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = (t.language || 'th') + '-listening-track-' + String(t.date || '').replace(/ /g, '-') + '.txt'
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url)
+}
+function ListeningTrackButton({ selection, onStart }) {
+  const n = ((selection && selection.targets) || []).length
+  const on = n >= LISTENING_TRACK_TARGETS
+  return (
+    <button onClick={() => on && onStart && onStart()} disabled={!on} data-listening-track-button="1"
+      style={{ background: on ? 'linear-gradient(135deg,#0d1f33,#132c4a)' : 'var(--surface)', border: '1px solid ' + (on ? '#3b82f6' : 'var(--border)'), borderRadius: 12,
+               padding: '18px 12px', cursor: on ? 'pointer' : 'not-allowed', textAlign: 'center', color: 'var(--text)', opacity: on ? 1 : 0.55 }}>
+      <div style={{ fontSize: 20, lineHeight: '22px' }}>🎧</div>
+      <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Listening Track</div>
+      <div style={{ fontSize: 11, color: '#8ab8f0', marginTop: 2 }}>{on ? 'Listen using learned words' : 'Needs ' + LISTENING_TRACK_TARGETS + ' learned words'}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>{on ? LISTENING_TRACK_TARGETS + ' words · ' : n + ' so far · '}<span style={{ color: '#8ab8f0', fontWeight: 700 }}>0 NEW</span></div>
+    </button>
+  )
+}
+// The Listening Track screen: build (or open a saved READY track) → play. NOT_READY is never playable and never
+// saved as a lesson: it shows coverage, missing targets and failed checks with Rebuild (same 30 ids) / Continue.
+function ListeningTrackScreen({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack }) {
+  const [state, setState] = useState(saved ? { phase: 'ready', track: saved } : { phase: 'building', track: null })
+  const [log, setLog] = useState([])
+  const [speed, setSpeed] = useState(() => listeningPlaybackSpeed())
+  const [playing, setPlaying] = useState(false)
+  const started = useRef(false)
+  const build = async (targetIds, rebuildOf) => {
+    setState({ phase: 'building', track: null }); setLog([])
+    try {
+      const r = await buildStandaloneListeningTrack({ lang, vocab, apiKey, model, targetIds, rebuildOf, onLog: m => setLog(l => [...l.slice(-60), generationLogFormat(m)]) })
+      if (r.track.ready) { try { onSave && await onSave(r.track) } catch (e) {} setState({ phase: 'ready', track: r.track }) }
+      else setState({ phase: 'repair', track: r.track })
+    } catch (e) { setState({ phase: 'repair', track: { status: 'NOT_READY', failureReason: String(e && e.message || e), keywords: [], coverage: { covered: 0, required: LISTENING_TRACK_TARGETS, missing: [] }, failedChecks: [] } }) }
+  }
+  useEffect(() => { if (!saved && !started.current) { started.current = true; build(null) } }, [])
+  const t = state.track, lt = t && t.listening
+  const wrap = { maxWidth: 720, margin: '0 auto', padding: '16px' }
+  const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, textAlign: 'center' }
+  const btn = { padding: '10px 16px', borderRadius: 10, border: 'none', fontWeight: 700, cursor: 'pointer' }
+  if (state.phase === 'building') return <div style={wrap}><div style={card} data-listening-track-building="1">
+    <div style={{ fontSize: 34 }}>🎧</div><h2 style={{ margin: '8px 0 4px' }}>Listening Track</h2>
+    <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 10 }}>Writing a new conversation from 30 words you have already learned (0 new). This takes a moment.</div>
+    <Spinner size={22} />
+    <div style={{ textAlign: 'left', fontSize: 11, color: 'var(--muted)', marginTop: 12, maxHeight: 160, overflow: 'auto', fontFamily: 'monospace' }}>{log.slice(-8).map((l, i) => <div key={i}>{l}</div>)}</div>
+  </div></div>
+  if (state.phase === 'repair') {
+    const kw = new Map(((t && t.keywords) || []).map(k => [k.wordId, k]))
+    const missing = ((t && t.coverage && t.coverage.missing) || []).map(id => { const k = kw.get(id) || {}; return k.japanese || k.chinese || k.thai || id })
+    return <div style={wrap}><div style={card} data-listening-needs-repair="1">
+      <div style={{ fontSize: 34 }}>🎧</div><h2 style={{ margin: '8px 0 4px' }}>Listening track needs repair</h2>
+      <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 6 }}>TARGET COVERAGE {(t && t.coverage && t.coverage.covered) || 0}/{(t && t.coverage && t.coverage.required) || LISTENING_TRACK_TARGETS}{missing.length ? ' · Missing: ' + missing.join(', ') : ''}</div>
+      <div style={{ color: '#b45309', fontSize: 12, marginBottom: 12 }}>{((t && t.failedChecks) || []).join(' · ') || (t && t.failureReason) || ''}</div>
+      <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 16 }}>This conversation did not pass every Listening check, so it is not played or saved. Rebuild writes a new conversation from the same 30 words.</div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button style={{ ...btn, background: 'var(--surface2, #eee)', color: 'var(--text)' }} disabled={!(t && t.selectedTargetIds && t.selectedTargetIds.length)}
+          onClick={() => build(t.selectedTargetIds, t.id || t.createdAt)}>🔁 Rebuild</button>
+        <button style={{ ...btn, background: 'var(--accent)', color: '#fff' }} onClick={onBack}>Continue</button>
+      </div></div></div>
+  }
+  if (playing && lt) return <div style={{ maxWidth: 720, margin: '0 auto', padding: '12px 10px' }}>
+    <ConvoPlayer lines={lt.lines.map(l => ({ ...l, _scene: l.scene }))} speed={speed} onSpeedChange={v => { setSpeed(v); saveListeningPlaybackSpeed(v) }} speedPresets={LISTENING_SPEED_PRESETS}
+      gcpTtsKey={gcpTtsKey} lang={lang} coverageLabel={listeningCoverageLabel(lt, t)} title="Listening Track" onSkip={() => setPlaying(false)} onDone={() => { setPlaying(false); onBack && onBack() }} />
+  </div>
+  return <div style={wrap}><div style={card} data-listening-track-ready="1">
+    <div style={{ fontSize: 34 }}>🎧</div><h2 style={{ margin: '8px 0 4px' }}>Listening Track</h2>
+    <div style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 6 }}>A {lt ? lt.lines.length : 0}-turn conversation using {(t.keywords || []).length} words you have learned · 0 new</div>
+    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{lt ? listeningCoverageLabel(lt, t) : ''}</div>
+    <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+      <button style={{ ...btn, background: 'var(--accent)', color: '#fff' }} onClick={() => setPlaying(true)}>▶ Start Listening</button>
+      <button style={{ ...btn, background: 'var(--surface2, #eee)', color: 'var(--text)' }} onClick={onBack}>Back</button>
+    </div></div></div>
+}
+
+// v658 §3/§25 — Listening is no longer built from (or after) a Daily / Revision Main Track. Stored Listening of
+// older tracks still loads, plays (READY only) and exports through this gate.
+const LISTENING_CHILD_TRACK_BUILDS = false
+const LISTENING_CHILD_RETIRED_MSG = 'Listening is now its own track — start one with the Listening Track button on the dashboard.'
+function trackHasLegacyListening(track) {
+  const b = track && track.listeningBuild
+  return !!(b && (b.status === 'READY' || b.status === 'PARTIAL') && b.listeningTrackId)
+}
 function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProceed, autoCreate, onBuildState }) {
   // v644: Thai reads the build state persisted ON the track; it never starts an automatic
   // build on mount. JA/ZH keep the v640 behaviour unchanged.
@@ -17169,7 +17342,11 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
   const setSpeed = v => { setSpeedState(v); saveListeningPlaybackSpeed(v) }
   const [log, setLog] = useState([])
   const mainId = listeningTrackId(track)
+  // v658 §25 — the gate is READ-ONLY history now: a Listening build is never started from a Main Track
+  // (no auto build, no "create", no rebuild, no stale rebuild). New Listening = the Listening Track button.
+  const retired = () => { setFailReason(LISTENING_CHILD_RETIRED_MSG); setPhase('retired') }
   const buildTh = useCallback(async (mode) => {
+    if (!LISTENING_CHILD_TRACK_BUILDS) { retired(); return }
     aiBeginRun('listening-' + String(mode || 'manual').toLowerCase(), listeningTrackId(track))   // v647 telemetry
     setPhase('creating'); setBstate(b => ({ ...(b || {}), status: 'BUILDING' }))
     const lines = []
@@ -17181,6 +17358,7 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
     setVersions(prev); setLt(r.listeningTrack); setPhase('offer')
   }, [track, lang, vocab, apiKey, model, mainId, onBuildState])
   const build = useCallback(async (mode) => {
+    if (!LISTENING_CHILD_TRACK_BUILDS) { retired(); return }
     if (isTh) return buildTh(mode)
     setPhase(mode === 'MANUAL_PRACTICE' ? 'creating' : 'loading'); const lines = []
     let prev = [], res = null
@@ -17223,14 +17401,14 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
           setFailReason('Main Track ' + rd.mainTrackState + ' — TARGET PAIRS ' + rd.validTargetPairs + '/' + rd.expectedTargetPairs + (rd.reasons.length ? ' · ' + rd.reasons.slice(0, 2).join(' · ') : ''))
           setPhase('blocked'); return
         }
-        if (bs.status === 'BLOCKED_MAIN_NOT_READY') { buildTh('AUTO_PRETRACK'); return }   // the track has since become READY
+        if (bs.status === 'BLOCKED_MAIN_NOT_READY') { setPhase('retired'); return }   // v658: never built from a Main Track
         // v649 STALE CHECK: the persisted build must belong to the CURRENT pairs. A Main Track changed
         // after its Listening build (Quality Review, save gate) rebuilds instead of serving old lines.
         const _fpNow = thaiPairsFingerprint(track.pairs)
         if ((bs.status === 'READY' || bs.status === 'PARTIAL') && bs.pairsFingerprint && bs.pairsFingerprint !== _fpNow && !thaiListeningBuildInFlight(mainId)) {
           const _st = '⛔ LISTENING_SOURCE_STALE trackId=' + mainId + ' built=' + bs.pairsFingerprint + ' current=' + _fpNow + ' — rebuilding from the current FINAL_TRACK'
           console.info('[listening] ' + _st); setLog(l => [...l, _st])
-          buildTh('STALE_REBUILD'); return
+          // v658: a stale stored Listening is shown as stored (read-only history), never rebuilt from the Main Track
         }
         if (bs.status === 'BUILDING') {
           const inflight = thaiListeningBuildInFlight(mainId)
@@ -17246,7 +17424,7 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
           setFailReason('BUILD_INTERRUPTED: the Listening build did not finish (the app was closed or reloaded while it ran).'); setPhase('failed'); return
         }
         if (pick) { setLt(pick); setPhase('offer'); return }
-        if (lang !== 'th' && bs.status === 'NOT_STARTED_LEGACY' && autoCreate) { buildTh('AUTO_PRETRACK'); return }
+
         if (bs.status === 'READY' || bs.status === 'PARTIAL') { setFailReason('LISTENING_NOT_FOUND: the saved Listening track for this lesson is missing from storage.'); setPhase('failed'); return }
         setPhase('create')                     // NOT_STARTED / legacy track: no build was ever attempted
         return
@@ -17260,7 +17438,7 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
       // No Listening version yet. A track that was just generated builds one automatically;
       // a SAVED track (including every track from before this feature existed) is offered
       // the choice instead of a dead end.
-      if (autoCreate) build('AUTO_PRETRACK'); else setPhase('create')
+      setPhase('create')                       // v658: no automatic child build
     })()
     return () => { go = false }
   }, [mainId])
@@ -17272,14 +17450,13 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
   if (phase === 'loading' || phase === 'creating') return <div style={S.wrap}><div style={S.card}>🎧
     <div style={{ marginTop:10, color:'var(--muted)' }}>{isTh && phase === 'creating' ? 'Listening · BUILDING — building your listening track…' : phase === 'creating' ? 'Creating listening track…' : 'Preparing listening practice…'}</div>
     <button style={{ ...S.btn, marginTop:16, background:'transparent', color:'var(--muted)', fontSize:13 }} onClick={onProceed}>Continue to Main Track</button></div></div>
-  // A saved Main Track with no Listening version yet (every pre-feature track lands here).
-  if (phase === 'create') return <div style={S.wrap}><div style={S.card}>
+  // A saved Main Track with no stored Listening: Listening is its own track now (no child creation)
+  if (phase === 'create' || phase === 'retired') return <div style={S.wrap}><div style={S.card} data-listening-retired="1">
     <div style={{ fontSize:34 }}>🎧</div>
-    <h2 style={{ margin:'8px 0 4px' }}>No listening track yet</h2>
-    <div style={{ color:'var(--muted)', fontSize:13, marginBottom:16 }}>Build one from the sentences this track already contains, using the words you know today.</div>
+    <h2 style={{ margin:'8px 0 4px' }}>No listening track for this lesson</h2>
+    <div style={{ color:'var(--muted)', fontSize:13, marginBottom:16 }}>{LISTENING_CHILD_RETIRED_MSG}</div>
     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
-      <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={() => build('MANUAL_PRACTICE')}>🎧 Create Listening Track</button>
-      <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={onProceed}>Continue to Main Track</button>
+      <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue to Main Track</button>
     </div></div></div>
   if (phase === 'blocked') return <div style={S.wrap}><div style={S.card}>
     <div style={{ fontSize:34 }}>🎧</div>
@@ -17293,14 +17470,12 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
     <h2 style={{ margin:'8px 0 4px' }}>Listening build failed</h2>
     <div style={{ color:'var(--muted)', fontSize:12, marginTop:6 }}>{failReason || 'No reason was recorded.'} Your Main Track is unaffected.</div>
     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap', marginTop:16 }}>
-      <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={() => build('MANUAL_RETRY')}>🔁 Retry Listening Track</button>
       <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue to Main Track</button>
     </div></div></div>
   if (phase === 'failed') return <div style={S.wrap}><div style={S.card}>🎧
     <div style={{ marginTop:10 }}>Listening track could not be created.</div>
     <div style={{ color:'var(--muted)', fontSize:12, marginTop:6 }}>{failReason || 'Its sentences use words you have not met yet, or none of them work as standalone lines.'} Your Main Track is unaffected.</div>
     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap', marginTop:16 }}>
-      <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={() => build('MANUAL_PRACTICE')}>Try Listening Again</button>
       <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue to Main Track</button>
     </div></div></div>
   // v656 §20 — only a READY Listening track (30/30 + every gate PASS) is playable; anything else shows
@@ -17311,9 +17486,8 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
     <h2 style={{ margin:'8px 0 4px' }}>Listening track needs repair</h2>
     <div style={{ color:'var(--muted)', fontSize:13, marginBottom:6 }}>{listeningCoverageLabel(lt, track)}</div>
     <div style={{ color:'#b45309', fontSize:12, marginBottom:12 }}>{((bstate && bstate.partialReasons) || []).join(' · ') || lt.listeningQuality || ''}</div>
-    <div style={{ color:'var(--muted)', fontSize:12, marginBottom:16 }}>This conversation did not pass every Listening check, so it is not played. Your Main Track is unaffected.</div>
+    <div style={{ color:'var(--muted)', fontSize:12, marginBottom:16 }}>This stored conversation did not pass every Listening check, so it is not played. Use the Listening Track button for a new one. Your Main Track is unaffected.</div>
     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
-      <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={() => isTh ? build('MANUAL_REBUILD') : build('MANUAL_PRACTICE')}>🔁 Rebuild Listening Track</button>
       <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={onProceed}>Continue to Main Track</button>
     </div></div></div>
   if (phase === 'playing' && lt) {
@@ -17346,16 +17520,12 @@ function ListenFirstGate({ track, lang, vocab, apiKey, model, gcpTtsKey, onProce
         ⚠️ Listening track needs repair
         <div style={{ fontWeight:400, fontSize:12 }}>{(bstate && (bstate.partialReasons || []).join(' · ')) || (lt && lt.listeningQuality) || ''}</div></div>}
     {isTh && bstate && bstate.pairsFingerprint && bstate.pairsFingerprint !== thaiPairsFingerprint(track.pairs) &&
-      <div style={{ color:'#f59e0b', fontSize:12, marginBottom:6 }}>The Main Track changed after this Listening track was built — Rebuild to match it.</div>}
+      <div style={{ color:'#f59e0b', fontSize:12, marginBottom:6 }}>The Main Track changed after this Listening track was built.</div>}
     <div style={{ color:'var(--muted)', fontSize:12, marginBottom:16 }}>Passive comprehension first — nothing here affects your scores.</div>
     <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
       <button style={{ ...S.btn, background:'var(--accent)', color:'#fff' }} onClick={() => { setPhase('playing'); if (lt) listeningSetStatus(lt, 'in_progress') }}>▶ Start Listening</button>
       <button style={{ ...S.btn, background:'var(--surface2, #eee)', color:'var(--text)' }} onClick={() => finish('skipped')}>Skip</button>
     </div>
-    {isTh ? <button style={{ ...S.btn, marginTop:12, background:'transparent', color:'var(--muted)', fontSize:13, fontWeight:600 }}
-      onClick={() => build('MANUAL_REBUILD')}>🔁 Rebuild Listening Track</button>
-    : versions.length > 0 && <button style={{ ...S.btn, marginTop:12, background:'transparent', color:'var(--muted)', fontSize:13, fontWeight:600 }}
-      onClick={() => build('MANUAL_PRACTICE')}>🎧 New listening version ({versions.length} so far)</button>}
   </div></div>
 }
 
@@ -17655,7 +17825,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
       return { targets: customTargets, anchors: anch }
     }
     // Exclude words already queued in any unplayed track (not just today's)
-    const pendingTracks = (tracks || []).filter(t => !t.rated)
+    const pendingTracks = (tracks || []).filter(t => !t.rated && !isListeningTrack(t))   // v658: a Listening Track queues no words
     const usedWordIds = new Set(pendingTracks.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
 
     // ── New-word slots ────────────────────────────────────────────────────────
@@ -17820,7 +17990,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
           // Only DAILY tracks count toward the daily cap. Counting revision tracks
           // meant three revision sessions blocked that day's Daily Track outright.
-          const todayCount = (tracks || []).filter(t => t.date === today && trackModeOf(t) !== 'revision').length
+          const todayCount = (tracks || []).filter(t => t.date === today && trackModeOf(t) === 'daily').length
           if (todayCount >= 3 && !customTargets) {
             setPhase('error')
             setError('You already have 3 tracks for today. Come back tomorrow! 🎉')
@@ -18052,18 +18222,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
             setGeneratedTrack(prev => prev ? { ...prev, pairs: _ft.pairs, integrity: _ft.integrity, finalTrack: _ft.finalTrack } : prev)
           } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; setGenLog(prev => [...prev, '⚠️ FINAL_TRACK failed: ' + e.message]) }
         }
-        // ── v644 AUTOMATIC LISTENING HANDOFF ── the Main Track is final here, so its
-        // Listening track is built and persisted now (the save boundary awaits this same
-        // build). "Start" stays disabled until it has finished.
-        try {
-          setListenPhase('BUILDING')
-          setGeneratedTrack(prev => prev ? { ...prev, listeningBuild: { status: 'BUILDING', buildVersion: LISTENING_BUILD_VERSION, mainTrackId: listeningTrackId(_finalTrack) } } : prev)
-          const _lr = await ensureThaiListeningBuilt(_finalTrack, vocab, { apiKey, model: _qcModel, creationMode: 'AUTO_PRETRACK',
-            onLog: m => { if (/LISTENING_/.test(m)) { logAll(m); setGenLog(prev => [...prev.slice(-300), m]) } } })
-          setGeneratedTrack(prev => prev ? { ...prev, listeningBuild: _lr.listeningBuild } : prev)
-          setListenPhase(_lr.listeningBuild.status)
-          setGenLog(prev => [...prev, _lr.listeningBuild.status === 'FAILED' ? '⚠️ Listening build FAILED: ' + (_lr.listeningBuild.failureReason || '') : '🎧 ' + listeningBuildLabel(_lr.listeningBuild) + ' · ' + _lr.listeningBuild.status])
-        } catch (e) { setListenPhase('FAILED'); setGenLog(prev => [...prev, '⚠️ Listening build failed: ' + e.message]) }
+        // v658 §3 — the Daily / Revision track ENDS with its Main Track: no Listening is built here (0 calls).
+        setListenPhase('DONE')
+        logAll('🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a ' + (mode === 'revision' ? 'Revision' : 'Daily') + ' Track')
         // ── v647 GEMINI USAGE SUMMARY for this track's creation run ──
         try {
           const _sum = aiUsageSummary(aiRunRef.current)
@@ -23259,6 +23420,8 @@ function ThaiTeacher({ lang, onSetLang }) {
 
   // Listen First soft gate (shared): which track has already been listened to or skipped.
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_th
+  const [listeningOpen, setListeningOpen] = useState(null)   // v658 standalone Listening Track (saved one to replay, or null = new)
+  const [listeningKey, setListeningKey] = useState(0)
   const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
   const [listenBuildInfo, setListenBuildInfo] = useState(null)   // v644: Listening BUILDING at the save boundary
 
@@ -23513,6 +23676,7 @@ function ThaiTeacher({ lang, onSetLang }) {
   }, [])
 
   function navigate(v, data) {
+    if (v === 'listening-track') { setListeningOpen(data && isListeningTrack(data) ? data : null); setListeningKey(k => k + 1); setView('listening-track'); return }
     if (v === 'generate-daily') { setResumeDraft(null); setGenMode('daily'); setCustomTargets(null); setView('generate') }
     else if (v === 'generate-revision') {
       // Shared, language-neutral selector: previously introduced words only.
@@ -23602,6 +23766,7 @@ function ThaiTeacher({ lang, onSetLang }) {
   }
 
   function onOpenTrack(track) {
+    if (isListeningTrack(track)) { navigate('listening-track', track); return }   // v658: a saved Listening Track replays on its own screen
     setActiveTrack(track)
     setView('player')
   }
@@ -23703,14 +23868,18 @@ function ThaiTeacher({ lang, onSetLang }) {
           dailyNewWords={dailyNewWords}
           onSaveDailyNewWords={saveDailyNewWords}
         /></ErrorBoundary>}
-        {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
+        {view === 'listening-track' && (
+          <ErrorBoundary><ListeningTrackScreen key={'lt' + listeningKey} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
+            track={listeningOpen} onSave={async t => { await saveTracks([...tracks, t]) }} onBack={() => { setListeningOpen(null); navigate('dashboard') }} /></ErrorBoundary>
+        )}
+        {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="th" vocab={vocab}
             apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
             autoCreate={false} onBuildState={onListeningBuildState}
             onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
         )}
-        {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (
-          <ErrorBoundary><Player onListening={() => setListenDoneFor(null)} track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} gcpTtsKey={gcpTtsKey}
+        {view === 'player' && activeTrack && (!trackHasLegacyListening(activeTrack) || listenDoneFor === listeningTrackId(activeTrack)) && (
+          <ErrorBoundary><Player onListening={trackHasLegacyListening(activeTrack) ? () => setListenDoneFor(null) : null} track={activeTrack} onComplete={onTrackComplete} onBack={() => { setActiveTrack(null); navigate('dashboard') }} onKru={ctx => openKru(ctx)} gcpTtsKey={gcpTtsKey}
             onReviewQuality={() => { setPendingReviewTrack(activeTrack); navigate('quality-review') }}
             onBookmark={async (pairIdx) => {
               // Match on the track's own id. `t === activeTrack` relies on object
@@ -23950,7 +24119,7 @@ function JapaneseSpeechStyle({ value, onChange }) {
 // 16px gap, same stat grid, Mastery bar, belt card, action buttons and
 // recent-track list. Only the language, data and Speech Style card differ.
 function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, onStartTrack, notice,
-                             hasVocab, onOpenTrack, onDeleteTrack, onNav, selection,
+                             hasVocab, onOpenTrack, onDeleteTrack, onNav, selection, listeningSelection, onStartListening,
                              revisionSelection, onStartRevision }) {
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
@@ -24012,8 +24181,8 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
       {/* Speech Style \u2014 the one Japanese-specific control */}
       <JapaneseSpeechStyle value={register} onChange={onSetRegister} />
 
-      {/* Actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      {/* Actions — Daily | Revision | Listening (v658: Listening is its own track) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
         <button onClick={onStartTrack} disabled={!hasVocab}
           style={{ background: hasVocab ? 'linear-gradient(135deg, #0a2d1e, #0d3d28)' : 'var(--surface)',
                    border: '1px solid ' + (hasVocab ? '#2d6b2d' : 'var(--border)'), borderRadius: 12,
@@ -24021,12 +24190,12 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
                    color: 'var(--text)', opacity: hasVocab ? 1 : 0.55, transition: 'all 0.15s' }}>
           <Icon name="sparkles" size={22} color="#10b981" />
           <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Daily Track</div>
-          <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>
-            {hasVocab ? '~45 min \u00B7 ' + stats.due + ' due' : 'No vocabulary yet'}
-          </div>
+          <div style={{ fontSize: 11, color: '#4a9960', marginTop: 2 }}>{hasVocab ? 'Learn + review' : 'No vocabulary yet'}</div>
+          {hasVocab && <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>{'~45 min \u00B7 ' + stats.due + ' due'}</div>}
         </button>
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartRevision} />
+        <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
       </div>
 
       {/* Rank Test — same component and behaviour in every language */}
@@ -24067,16 +24236,17 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
                     <p style={{ fontSize:13, fontWeight:600 }}>
                       {track.date}
                       {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6, fontSize:10, fontWeight:700 }}>REVISION</span>}
+                      {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}
                       {track.rated && <span style={{ color:'#10b981', marginLeft:6, fontSize:11 }}>{'\u2713'}</span>}
                       {track.bookmark > 0 && <span style={{ color:'var(--gold)', marginLeft:4, fontSize:11 }}>{'\u{1F516}'}</span>}
                     </p>
                     <p style={{ fontSize:11, color:'var(--muted)' }}>
-                      {np} pairs {'\u00B7'} {kw} words
-                      {track.speechStyle && JAPANESE_REGISTER_RULES[track.speechStyle]
+                      {isListeningTrack(track) ? listeningTrackSummary(track) : np + ' pairs \u00B7 ' + kw + ' words'}
+                      {!isListeningTrack(track) && track.speechStyle && JAPANESE_REGISTER_RULES[track.speechStyle]
                         ? ' \u00B7 ' + JAPANESE_REGISTER_RULES[track.speechStyle].label : ''}
                     </p>
                   </div>
-                  <button onClick={e => { e.stopPropagation(); downloadJapaneseTrack(track) }}
+                  <button onClick={e => { e.stopPropagation(); isListeningTrack(track) ? downloadListeningTrack(track) : downloadJapaneseTrack(track) }}
                     style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }} title="Download transcript">{'\u2B07\uFE0F'}</button>
                   <button onClick={e => { e.stopPropagation(); onDeleteTrack && onDeleteTrack(tracks.length - 1 - i) }}
                     style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }} title="Delete track">{'\u{1F5D1}\uFE0F'}</button>
@@ -26950,7 +27120,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
         push: m => push(m),
         onQcResult: r => setQcResult(r),
         onFinal: t => { setFinalTrack(t); setQcStatus('FINAL_TRACK ' + ((t.integrity && t.integrity.status) || '')) },
-        onListening: st => setQcStatus(st === 'BUILDING' ? 'Building listening track\u2026' : 'Listening ' + st) })
+        onListening: st => setQcStatus(st === 'NONE' ? 'Track ready' : 'Listening ' + st) })
       setFinalTrack(out.track); setQcPhase('done')
     } catch (e) {
       push('\u274C Quality check failed: ' + (e.message || ''))
@@ -27909,7 +28079,7 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, trackMod
         push: m => push(m),
         onQcResult: r => setQcResult(r),
         onFinal: t => { setFinalTrack(t); setQcStatus('FINAL_TRACK ' + ((t.integrity && t.integrity.status) || '')) },
-        onListening: st => setQcStatus(st === 'BUILDING' ? 'Building listening track\u2026' : 'Listening ' + st) })
+        onListening: st => setQcStatus(st === 'NONE' ? 'Track ready' : 'Listening ' + st) })
       setFinalTrack(out.track); setQcPhase('done')
     } catch (e) {
       push('\u274C Quality check failed: ' + (e.message || ''))
@@ -28219,6 +28389,8 @@ function JapaneseTeacher({ lang, onSetLang }) {
   const [activeTrack, setActiveTrack]   = useState(null)
   // Listen First soft gate (shared): which track has already been listened to or skipped.
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_ja
+  const [listeningOpen, setListeningOpen] = useState(null)   // v658 standalone Listening Track (saved one to replay, or null = new)
+  const [listeningKey, setListeningKey] = useState(0)
   const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
 
 
@@ -28307,7 +28479,9 @@ function JapaneseTeacher({ lang, onSetLang }) {
     setView('player')
   }
   function openTrack(track) { setActiveTrack(track); setView('player') }
-  function onOpenTrack(track) { setActiveTrack(track); setView('player') }
+  function onOpenTrack(track) {
+    if (isListeningTrack(track)) { setListeningOpen(track); setListeningKey(k => k + 1); setView('listening-track'); return }   // v658
+    setActiveTrack(track); setView('player') }
   // §7 — index arrives already mapped from the reversed display list, as Thai does.
   function onDeleteTrack(idx) {
     if (typeof window !== 'undefined' && window.confirm && !window.confirm('Delete this Japanese track?')) return
@@ -28376,6 +28550,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
   const [trackMode, setTrackMode] = useState('daily')
   const revisionSelection = useMemo(() => selectRevisionTrackTargets({
     vocab, maxTargets: REVISION_TRACK_MAX, language: 'ja' }), [vocab])
+  const listeningSelection = useMemo(() => selectListeningTrackTargets('ja', vocab), [vocab])
   // v649 §2: the frozen 30-target contract (same core as Thai and Mandarin)
   const targets = useMemo(() => trackMode === 'revision' ? jazhContractTargets(revisionSelection.targets, 'ja', vocab, 'revision')
     : jazhContractTargets(dailyTargets, 'ja', vocab, 'daily'), [trackMode, revisionSelection, dailyTargets, vocab])
@@ -28405,6 +28580,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
       <main>
         {view === 'dashboard' && (
           <JapaneseDashboard vocab={vocab} tracks={tracks} register={register} targets={dailyTargets} selection={selection}
+              listeningSelection={listeningSelection} onStartListening={() => { setListeningOpen(null); setListeningKey(k => k + 1); setView('listening-track') }}
               revisionSelection={revisionSelection}
               onStartRevision={() => { if (!revisionSelection.targets.length) { setNotice('You have not learned any Japanese words yet.'); return }
                                       setTrackMode('revision'); setNotice(''); setView('generate') }}
@@ -28428,16 +28604,20 @@ function JapaneseTeacher({ lang, onSetLang }) {
               onSkip={onQcSkip} />
           </ErrorBoundary>
         )}
-        {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
+        {view === 'listening-track' && (
+          <ErrorBoundary><ListeningTrackScreen key={'lt' + listeningKey} lang="ja" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+            track={listeningOpen} onSave={async t => { await saveTracksJa([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
+        )}
+        {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="ja" vocab={vocab}
             apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             autoCreate={listenAutoFor === listeningTrackId(activeTrack)}
             onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
         )}
-        {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (
+        {view === 'player' && activeTrack && (!trackHasLegacyListening(activeTrack) || listenDoneFor === listeningTrackId(activeTrack)) && (
           <ErrorBoundary>
             <Player key={(activeTrack.createdAt || '') + (playerResumeCompleted ? ':done' : '')}
-              onListening={() => setListenDoneFor(null)} track={activeTrack} targetLang="ja" gcpTtsKey={cred.gcpTtsKey}
+              onListening={trackHasLegacyListening(activeTrack) ? () => setListenDoneFor(null) : null} track={activeTrack} targetLang="ja" gcpTtsKey={cred.gcpTtsKey}
               onBookmark={async (pairIdx) => {
                 // Identity is language + track + pair. The JA store is separate from
                 // the other languages, and the track is matched on its own id rather
@@ -30635,7 +30815,7 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
 
 // §43/§45 — Mandarin dashboard. Same visual language as Thai/Japanese.
 function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
-                             onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection }) {
+                             onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection, listeningSelection, onStartListening }) {
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
     return {
@@ -30713,7 +30893,8 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
         </div>
       </button>
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+      {/* Daily | Revision | Listening (v658: Listening is its own track) */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:10 }}>
         <button onClick={onStartTrack} disabled={!targets || !targets.length}
           style={{ background:(targets && targets.length) ? 'linear-gradient(135deg,#0a2d1e,#0d3d28)' : 'var(--surface)',
                    border:'1px solid ' + ((targets && targets.length) ? '#2d6b2d' : 'var(--border)'), borderRadius:12,
@@ -30721,12 +30902,12 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
                    textAlign:'center', color:'var(--text)', opacity:(targets && targets.length) ? 1 : 0.55 }}>
           <Icon name="sparkles" size={22} color="#10b981" />
           <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Daily Track</div>
-          <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>
-            {(targets && targets.length) ? '3 new words' : 'No targets'}
-          </div>
+          <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>{(targets && targets.length) ? 'Learn + review' : 'No targets'}</div>
+          {(targets && targets.length) ? <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>3 new words</div> : null}
         </button>
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartSrsTrack} />
+        <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
       </div>
 
       {/* Rank Test — same component and behaviour in every language */}
@@ -30752,11 +30933,12 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
                   <p style={{ fontSize:13, fontWeight:600 }}>{track.date}
                     {track.rated && <span style={{ color:'#10b981', marginLeft:6, fontSize:11 }}>{'\u2713'}</span>}</p>
                   <p style={{ fontSize:11, color:'var(--muted)' }}>
-                    {(track.pairs || []).length} pairs {'\u00b7'} {(track.keywords || []).length} words
+                    {isListeningTrack(track) ? listeningTrackSummary(track) : (track.pairs || []).length + ' pairs \u00b7 ' + (track.keywords || []).length + ' words'}
                     {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6 }}>REVISION</span>}
+                    {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}
                   </p>
                 </div>
-                <button onClick={e => { e.stopPropagation(); downloadMandarinTrack(track) }}
+                <button onClick={e => { e.stopPropagation(); isListeningTrack(track) ? downloadListeningTrack(track) : downloadMandarinTrack(track) }}
                   style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }}
                   title="Download transcript">{'\u2B07\uFE0F'}</button>
                 <button onClick={e => { e.stopPropagation(); onDeleteTrack && onDeleteTrack(tracks.length - 1 - i) }}
@@ -30787,6 +30969,8 @@ function MandarinTeacher({ lang, onSetLang }) {
   const [activeTrack, setActiveTrack] = useState(null)
   // Listen First soft gate (shared).
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_zh
+  const [listeningOpen, setListeningOpen] = useState(null)   // v658 standalone Listening Track (saved one to replay, or null = new)
+  const [listeningKey, setListeningKey] = useState(0)
   const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
   const [trackMode, setTrackMode] = useState('daily')   // §5 'daily' | 'srs'
 
@@ -30832,6 +31016,7 @@ function MandarinTeacher({ lang, onSetLang }) {
   // reinforce, previously-introduced words only, never any new vocabulary.
   const revisionSelection = useMemo(() => selectRevisionTrackTargets({
     vocab, maxTargets: REVISION_TRACK_MAX, language: 'zh' }), [vocab])
+  const listeningSelection = useMemo(() => selectListeningTrackTargets('zh', vocab), [vocab])
   const srsSelection = revisionSelection
   const selection = (trackMode === 'revision' || trackMode === 'srs') ? revisionSelection : newSelection
   const newTargets = newSelection.targets
@@ -30941,12 +31126,14 @@ function MandarinTeacher({ lang, onSetLang }) {
             srsDue={srsSelection.counts.due} selection={newSelection} onNav={setView}
             onLearnWords={() => { setTrackMode('daily'); setNotice(''); setView('learn') }}
             revisionSelection={revisionSelection}
+            listeningSelection={listeningSelection} onStartListening={() => { setListeningOpen(null); setListeningKey(k => k + 1); setView('listening-track') }}
             onStartSrsTrack={() => {
               if (!srsTargets.length) { setNotice('You have not learned any Mandarin words yet.'); return }
               setTrackMode('revision'); setNotice(''); setView('generate')
             }}
             onStartTrack={() => { setTrackMode('daily'); setNotice(''); setView('generate') }}
-            onOpenTrack={t => { setActiveTrack(t); setPlayerResumeCompleted(false); setView('player') }}
+            onOpenTrack={t => { if (isListeningTrack(t)) { setListeningOpen(t); setListeningKey(k => k + 1); setView('listening-track'); return }
+              setActiveTrack(t); setPlayerResumeCompleted(false); setView('player') }}
             onDeleteTrack={onDeleteTrack} />
         )}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
@@ -30968,16 +31155,20 @@ function MandarinTeacher({ lang, onSetLang }) {
             <MandarinQualityReview track={pendingReviewTrack} vocab={vocab} cred={cred} onSave={onQcSave} onSkip={onQcSkip} />
           </ErrorBoundary>
         )}
-        {view === 'player' && activeTrack && listenDoneFor !== listeningTrackId(activeTrack) && (
+        {view === 'listening-track' && (
+          <ErrorBoundary><ListeningTrackScreen key={'lt' + listeningKey} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+            track={listeningOpen} onSave={async t => { await saveTracksZh([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
+        )}
+        {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
           <ErrorBoundary><ListenFirstGate track={activeTrack} lang="zh" vocab={vocab}
             apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             autoCreate={listenAutoFor === listeningTrackId(activeTrack)}
             onProceed={() => setListenDoneFor(listeningTrackId(activeTrack))} /></ErrorBoundary>
         )}
-        {view === 'player' && activeTrack && listenDoneFor === listeningTrackId(activeTrack) && (
+        {view === 'player' && activeTrack && (!trackHasLegacyListening(activeTrack) || listenDoneFor === listeningTrackId(activeTrack)) && (
           <ErrorBoundary>
             <Player key={(activeTrack.createdAt || '') + (playerResumeCompleted ? ':done' : '')}
-              onListening={() => setListenDoneFor(null)} track={activeTrack} targetLang="zh" gcpTtsKey={cred.gcpTtsKey}
+              onListening={trackHasLegacyListening(activeTrack) ? () => setListenDoneFor(null) : null} track={activeTrack} targetLang="zh" gcpTtsKey={cred.gcpTtsKey}
               onBookmark={async (pairIdx) => {
                 // Identity is language + track + pair. The ZH store is separate from
                 // the other languages, and the track is matched on its own id rather

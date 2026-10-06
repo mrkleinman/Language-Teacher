@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v660"/>
+<meta name="app-version" content="v661"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v660';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v660').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v661';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v661').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -7193,6 +7193,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={() => onNav('generate-revision')} />
         <ListeningTrackButton selection={listeningSelection} onStart={() => onNav('listening-track')} />
+        <ListeningLatestBar lang="th" tracks={tracks} onListen={t => onOpenTrack(t)} onRebuild={(ids, from) => onNav('listening-track', { rebuildIds: ids, rebuildOf: from })} />
         <button onClick={() => onNav('lessons')}
           style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, #1a1e3a, #1e2a5a)', border: '1px solid #2d3a6b', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
@@ -15503,7 +15504,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v660'
+const APP_BUILD_VERSION = 'v661'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -17350,6 +17351,43 @@ function ListenTrackRowButton({ onClick, compact }) {
                color: '#8ab8f0', cursor: 'pointer', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>🎧 ▶ Listen</button>
   )
 }
+// v661 — the learner's LATEST Listening Track, right under the Daily / Revision / Listening buttons, so it can be
+// played (or, after a NOT_READY attempt, rebuilt with the same 30 words) without scrolling to Recent Tracks.
+function ListeningLatestBar({ lang, tracks, onListen, onRebuild }) {
+  const latest = useMemo(() => [...(tracks || [])].reverse().find(t => isListeningTrack(t) && t.ready && t.listening) || null, [tracks])
+  const [attempt, setAttempt] = useState(null)
+  useEffect(() => { let live = true
+    loadListeningAttempts(lang).then(a => { if (live) setAttempt((a || [])[0] || null) })
+    return () => { live = false } }, [lang, tracks])
+  // a failed / interrupted attempt that is NEWER than the latest playable track is what the learner just made
+  const failed = attempt && attempt.state !== 'READY' && (!latest || String(attempt.createdAt || '') > String(latest.createdAt || '')) ? attempt : null
+  if (!latest && !failed) return null
+  const box = { gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: '#0d1f33', border: '1px solid #3b82f6' }
+  const btn = { padding: '8px 14px', borderRadius: 10, border: 'none', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
+  if (failed) {
+    const cov = failed.coverage || {}
+    return (
+      <div data-listening-latest="needs-repair" style={{ ...box, border: '1px solid #f97316', background: 'rgba(249,115,22,0.08)' }}>
+        <div style={{ fontSize: 20 }}>🎧</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#f97316' }}>Your last Listening Track needs repair</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>TARGET COVERAGE {cov.covered || 0}/{cov.required || (failed.selectedTargetIds || []).length} · not playable yet{latest ? ' · an older one is in Recent Tracks' : ''}</div>
+        </div>
+        <button data-listening-latest-rebuild="1" onClick={() => onRebuild && onRebuild(failed.selectedTargetIds || [], failed.attemptId)} style={{ ...btn, background: '#f97316', color: '#0b1120' }}>🔁 Rebuild</button>
+      </div>
+    )
+  }
+  return (
+    <div data-listening-latest="ready" style={box}>
+      <div style={{ fontSize: 20 }}>🎧</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Your Listening Track is ready</div>
+        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{latest.date} · {listeningTrackSummary(latest)}</div>
+      </div>
+      <ListenTrackRowButton compact onClick={() => onListen && onListen(latest)} />
+    </div>
+  )
+}
 function ListeningTrackButton({ selection, onStart }) {
   const n = ((selection && selection.targets) || []).length
   const on = n >= LISTENING_TRACK_TARGETS
@@ -17496,10 +17534,12 @@ function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onSt
     </div>
   )
 }
-function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack, autoPlay }) {
+function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack, autoPlay, startIds, startRebuildOf }) {
   // §4 — the target SNAPSHOT: taken once, when this generator opens (a saved track keeps its own ids)
-  const [snap] = useState(() => saved ? null : selectRevisionTargets(lang, vocab))
-  const [ids, setIds] = useState(() => (saved ? (saved.listeningSelectedTargetIds || saved.selectedTargetIds || []) : snap.targetIds).slice())
+  // v661: `startIds` = a Rebuild of a failed attempt started from the dashboard — the frozen ids, selector NOT re-run
+  const rebuildStart = !saved && startIds && startIds.length ? startIds.slice() : null
+  const [snap] = useState(() => saved || rebuildStart ? null : selectRevisionTargets(lang, vocab))
+  const [ids, setIds] = useState(() => (saved ? (saved.listeningSelectedTargetIds || saved.selectedTargetIds || []) : rebuildStart || snap.targetIds).slice())
   const words = useMemo(() => {
     const byId = new Map((vocab || []).map(w => [w.id, w]))
     const sn = new Map(((snap && snap.targets) || []).map(w => [w.id, w]))
@@ -17562,7 +17602,7 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
     setUsage(t.usage); setResult(t); setStage('final'); setPhase('done')
     if (!t.listening) setCoverage(Object.fromEntries(useIds.map(id => [id, 'repair'])))
   }
-  useEffect(() => { if (!saved && !startedRef.current) { startedRef.current = true; run(null, null) } }, [])
+  useEffect(() => { if (!saved && !startedRef.current) { startedRef.current = true; rebuildStart ? run(rebuildStart, startRebuildOf || null) : run(null, null) } }, [])
   const cancel = () => { if (runRef.current) { try { aiCancelRun(runRef.current.runId, 'cancelled by the learner') } catch (e) {} } onBack && onBack() }
   const lt = result && result.listening
   if (playing && lt) return (
@@ -23808,6 +23848,7 @@ function ThaiTeacher({ lang, onSetLang }) {
   // Listen First soft gate (shared): which track has already been listened to or skipped.
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_th
   const [listeningOpen, setListeningOpen] = useState(null)   // v658 standalone Listening Track (saved one to replay, or null = new)
+  const [listeningRebuild, setListeningRebuild] = useState(null)   // v661: {rebuildIds, rebuildOf} — rebuild a failed attempt from the dashboard
   const [listeningKey, setListeningKey] = useState(0)
   const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
   const [listenBuildInfo, setListenBuildInfo] = useState(null)   // v644: Listening BUILDING at the save boundary
@@ -24063,7 +24104,7 @@ function ThaiTeacher({ lang, onSetLang }) {
   }, [])
 
   function navigate(v, data) {
-    if (v === 'listening-track') { setListeningOpen(data && isListeningTrack(data) ? data : null); setListeningKey(k => k + 1); setView('listening-track'); return }
+    if (v === 'listening-track') { setListeningOpen(data && isListeningTrack(data) ? data : null); setListeningRebuild(data && data.rebuildIds ? data : null); setListeningKey(k => k + 1); setView('listening-track'); return }
     if (v === 'generate-daily') { setResumeDraft(null); setGenMode('daily'); setCustomTargets(null); setView('generate') }
     else if (v === 'generate-revision') {
       // Shared, language-neutral selector: previously introduced words only.
@@ -24256,7 +24297,7 @@ function ThaiTeacher({ lang, onSetLang }) {
           onSaveDailyNewWords={saveDailyNewWords}
         /></ErrorBoundary>}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracks([...tracks, t]) }} onBack={() => { setListeningOpen(null); navigate('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -24506,7 +24547,7 @@ function JapaneseSpeechStyle({ value, onChange }) {
 // 16px gap, same stat grid, Mastery bar, belt card, action buttons and
 // recent-track list. Only the language, data and Speech Style card differ.
 function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, onStartTrack, notice,
-                             hasVocab, onOpenTrack, onDeleteTrack, onNav, selection, listeningSelection, onStartListening,
+                             hasVocab, onOpenTrack, onDeleteTrack, onNav, selection, listeningSelection, onStartListening, onRebuildListening,
                              revisionSelection, onStartRevision }) {
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
@@ -24583,6 +24624,7 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartRevision} />
         <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
+        <ListeningLatestBar lang={"ja"} tracks={tracks} onListen={t => onOpenTrack && onOpenTrack(t)} onRebuild={onRebuildListening} />
       </div>
 
       {/* Rank Test — same component and behaviour in every language */}
@@ -28763,6 +28805,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
   // Listen First soft gate (shared): which track has already been listened to or skipped.
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_ja
   const [listeningOpen, setListeningOpen] = useState(null)   // v658 standalone Listening Track (saved one to replay, or null = new)
+  const [listeningRebuild, setListeningRebuild] = useState(null)   // v661: {rebuildIds, rebuildOf} — rebuild a failed attempt from the dashboard
   const [listeningKey, setListeningKey] = useState(0)
   const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
 
@@ -28954,7 +28997,8 @@ function JapaneseTeacher({ lang, onSetLang }) {
       <main>
         {view === 'dashboard' && (
           <JapaneseDashboard vocab={vocab} tracks={tracks} register={register} targets={dailyTargets} selection={selection}
-              listeningSelection={listeningSelection} onStartListening={() => { setListeningOpen(null); setListeningKey(k => k + 1); setView('listening-track') }}
+              listeningSelection={listeningSelection} onStartListening={() => { setListeningOpen(null); setListeningRebuild(null); setListeningKey(k => k + 1); setView('listening-track') }}
+              onRebuildListening={(ids, from) => { setListeningOpen(null); setListeningRebuild({ rebuildIds: ids, rebuildOf: from }); setListeningKey(k => k + 1); setView('listening-track') }}
               revisionSelection={revisionSelection}
               onStartRevision={() => { if (!revisionSelection.targets.length) { setNotice('You have not learned any Japanese words yet.'); return }
                                       setTrackMode('revision'); setNotice(''); setView('generate') }}
@@ -28979,7 +29023,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} lang="ja" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="ja" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksJa([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -31189,7 +31233,7 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
 
 // §43/§45 — Mandarin dashboard. Same visual language as Thai/Japanese.
 function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
-                             onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection, listeningSelection, onStartListening }) {
+                             onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection, listeningSelection, onStartListening, onRebuildListening }) {
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
     return {
@@ -31282,6 +31326,7 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartSrsTrack} />
         <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
+        <ListeningLatestBar lang={"zh"} tracks={tracks} onListen={t => onOpenTrack && onOpenTrack(t)} onRebuild={onRebuildListening} />
       </div>
 
       {/* Rank Test — same component and behaviour in every language */}
@@ -31345,6 +31390,7 @@ function MandarinTeacher({ lang, onSetLang }) {
   // Listen First soft gate (shared).
   const [listenDoneFor, setListenDoneFor] = useState(null)   // listenDoneFor_zh
   const [listeningOpen, setListeningOpen] = useState(null)   // v658 standalone Listening Track (saved one to replay, or null = new)
+  const [listeningRebuild, setListeningRebuild] = useState(null)   // v661: {rebuildIds, rebuildOf} — rebuild a failed attempt from the dashboard
   const [listeningKey, setListeningKey] = useState(0)
   const [listenAutoFor, setListenAutoFor] = useState(null)   // just-generated track ⇒ automatic Listening
   const [trackMode, setTrackMode] = useState('daily')   // §5 'daily' | 'srs'
@@ -31503,7 +31549,8 @@ function MandarinTeacher({ lang, onSetLang }) {
             srsDue={srsSelection.counts.due} selection={newSelection} onNav={setView}
             onLearnWords={() => { setTrackMode('daily'); setNotice(''); setView('learn') }}
             revisionSelection={revisionSelection}
-            listeningSelection={listeningSelection} onStartListening={() => { setListeningOpen(null); setListeningKey(k => k + 1); setView('listening-track') }}
+            listeningSelection={listeningSelection} onStartListening={() => { setListeningOpen(null); setListeningRebuild(null); setListeningKey(k => k + 1); setView('listening-track') }}
+              onRebuildListening={(ids, from) => { setListeningOpen(null); setListeningRebuild({ rebuildIds: ids, rebuildOf: from }); setListeningKey(k => k + 1); setView('listening-track') }}
             onStartSrsTrack={() => {
               if (!srsTargets.length) { setNotice('You have not learned any Mandarin words yet.'); return }
               setTrackMode('revision'); setNotice(''); setView('generate')
@@ -31533,7 +31580,7 @@ function MandarinTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksZh([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (

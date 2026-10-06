@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v666"/>
+<meta name="app-version" content="v667"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v666';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v666').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v667';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v667').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4505,6 +4505,72 @@ const JAPANESE_REGISTER_RULES = {
   },
 }
 const JA_REGISTER_DEFAULT = 'natural'
+
+// ══ v667 — ONE CANONICAL JAPANESE SPEECH STYLE ═════════════════════════════════════════════════
+// The three dashboard choices map deterministically to the three JAPANESE_REGISTER_RULES ids:
+//   POLITE (です・ます) → 'polite' · NATURAL (Friendly everyday Japanese) → 'natural' · VERY CASUAL (Slang & close-friend
+//   speech) → 'casual' (shown as very_casual in logs). Every other spelling (very_casual, friendly, default, normal …)
+//   is an explicit alias — never a separate interpretation.
+const JA_SPEECH_STYLES = Object.freeze(['polite', 'natural', 'casual'])
+const JA_SPEECH_STYLE_ALIASES = Object.freeze({ polite: 'polite', 'です・ます': 'polite', desu_masu: 'polite', formal: 'polite',
+  natural: 'natural', friendly: 'natural', 'friendly everyday japanese': 'natural', default: 'natural', normal: 'natural', everyday: 'natural',
+  casual: 'casual', very_casual: 'casual', 'very casual': 'casual', 'very-casual': 'casual', slang: 'casual', 'slang & close-friend speech': 'casual' })
+function canonicalJapaneseSpeechStyle(x) { return JA_SPEECH_STYLE_ALIASES[String(x == null ? '' : x).trim().toLowerCase()] || JA_REGISTER_DEFAULT }
+function japaneseSpeechStyleName(id) { return { polite: 'polite', natural: 'natural', casual: 'very_casual' }[canonicalJapaneseSpeechStyle(id)] }
+
+// ══ v667 — DETERMINISTIC JAPANESE REGISTER ANALYSER ═══════════════════════════════════════════
+// Each sentence of a line is classified by its FINAL predicate (morphology, not one suffix): polite (です/ます family,
+// ください, でしょう, ましょう), plain (plain verb / adjective / だ, て-requests, sentence-final よ/ね/の/かな/じゃん …),
+// very casual (じゃん, マジ, めっちゃ, やばい, contractions), or neutral (greetings / thanks / bare nouns / はい・うん alone).
+const JA_FIXED_NEUTRAL = /^(こんにちは|こんばんは|おはよう|さようなら|いただきます|ごちそうさま(でした)?|おやすみ(なさい)?|はじめまして|はい|いいえ|うん|ううん|ええ|へえ|あ|ああ|えっ?|そう|ほんと|本当|お疲れ様(です)?|ありがとう(ございます)?|すみません|ごめん(なさい)?|どうも|よろしく(お願いします)?)$/
+const JA_POLITE_END = /(です|ます|ません|ました|でした|ましょう|ませんか|ましょうか|ください|でしょう|でしょうか|ございます)(か|ね|よ|よね|けど|が)?$/
+const JA_VERY_CASUAL = /(じゃん|っしょ|マジ|めっちゃ|やばい|ヤバい|ってか|てか|すげ|ウケる|だろ|かよ|んだよ|ちゃう|てる|てん|すんの|てんの|じゃね)/
+const JA_PLAIN_END = /(だ|だよ|だね|だよね|だな|だっけ|じゃない|じゃん|よ|ね|よね|の|のね|かな|かも|けど|って|な|さ|わ|ぞ|ぜ|ん|る|う|く|す|つ|ぬ|ぶ|む|ぐ|た|だった|い|ない|なかった|て|で|ろ|か|っけ|かい)$/
+// `exempt`: lesson-word surfaces (e.g. すみません, ください) — a sentence whose politeness IS the lesson word is neutral
+function analyseJapaneseRegister(line, exempt) {
+  const text = String((line && (line.japanese || line.text)) || line || '').trim()
+  const sentences = text.split(/[。！？!?\n]+/).map(x => x.replace(/[、，,\s「」『』（）()…〜~ー]+$/g, '').replace(/^[、，,\s「」]+/, '').trim()).filter(Boolean)
+  const sig = { politeMarkers: 0, plainMarkers: 0, casualMarkers: 0, veryCasualMarkers: 0, fixedExpressionExceptions: 0, sentences: [] }
+  sentences.forEach(s => {
+    const core = s.replace(/^(うん|ううん|ええ|はい|いや|あ|ああ|えっと|そう|じゃあ|でも)[、,\s]*/, '')
+    let kind = 'neutral'
+    const ex = (exempt || []).find(w => w && JA_POLITE_END.test(w) && new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(か|ね|よ|よね|けど|が)?$').test(core))
+    if (JA_FIXED_NEUTRAL.test(s) || JA_FIXED_NEUTRAL.test(core) || !core || ex) { kind = 'neutral'; sig.fixedExpressionExceptions++ }
+    else if (JA_POLITE_END.test(core)) { kind = 'polite'; sig.politeMarkers++ }
+    else if (JA_VERY_CASUAL.test(core)) { kind = 'very_casual'; sig.veryCasualMarkers++; sig.plainMarkers++ }
+    else if (/[぀-ゟ]$/.test(core) && JA_PLAIN_END.test(core)) { kind = 'plain'; sig.plainMarkers++; if (/(よ|ね|よね|の|かな|じゃん|って|な|さ)$/.test(core)) sig.casualMarkers++ }
+    else if (/[一-鿿゠-ヿ]$/.test(core) && s.length <= 6) { kind = 'neutral'; sig.fixedExpressionExceptions++ }   // a bare noun ("ここ", "駅")
+    else if (/[一-鿿゠-ヿ]$/.test(core)) { kind = 'plain'; sig.plainMarkers++ }                                     // noun-ending statement without だ/です (casual ellipsis)
+    sig.sentences.push({ text: s, kind })
+  })
+  const register = sig.politeMarkers && (sig.plainMarkers) ? 'mixed' : sig.politeMarkers ? 'polite' : sig.plainMarkers ? (sig.veryCasualMarkers ? 'very_casual' : 'plain') : 'neutral'
+  return { ...sig, register }
+}
+// what a scene is expected to sound like: track speech style × the scene's relationship
+const JA_SERVICE_RELATIONSHIP = /customer|shop staff|staff|clerk|waiter|stranger|service|reception|teacher|boss/i
+function japaneseRegisterExpectation(style, relationship) {
+  const st = canonicalJapaneseSpeechStyle(style), service = JA_SERVICE_RELATIONSHIP.test(String(relationship || ''))
+  if (st === 'polite') return { style: st, expected: 'polite', label: 'polite です/ます Japanese', offRegister: 'plain', limit: 0.25 }
+  if (service) return { style: st, expected: 'service', label: 'contextually polite service interaction', offRegister: null, limit: 1 }
+  if (st === 'casual') return { style: st, expected: 'plain', label: 'close-friend casual Japanese', offRegister: 'polite', limit: 0.15 }
+  return { style: st, expected: 'plain', label: 'plain / friendly everyday Japanese', offRegister: 'polite', limit: (JAPANESE_REGISTER_RULES.natural && JAPANESE_REGISTER_RULES.natural.politeLimit) || 0.25 }
+}
+// one scene: {verdict, politeLines, plainLines, offLines[], mismatch(whole scene), reason}
+function japaneseSceneRegisterAudit(lines, style, relationship, exempt) {
+  const ex = japaneseRegisterExpectation(style, relationship)
+  const rows = (lines || []).map((t, k) => ({ k, a: analyseJapaneseRegister(t, exempt) }))
+  const isPolite = r => r.a.register === 'polite' || (r.a.register === 'mixed' && r.a.politeMarkers >= r.a.plainMarkers)
+  const isPlain = r => r.a.register === 'plain' || r.a.register === 'very_casual' || (r.a.register === 'mixed' && r.a.plainMarkers > r.a.politeMarkers)
+  const politeLines = rows.filter(isPolite).length, plainLines = rows.filter(isPlain).length, classified = politeLines + plainLines
+  if (!ex.offRegister) return { ...ex, relationship: relationship || '', politeLines, plainLines, offLines: [], verdict: 'PASS', mismatch: false, reason: 'service context: politeness is appropriate' }
+  const off = rows.filter(ex.offRegister === 'polite' ? isPolite : isPlain)
+  const allowed = Math.max(ex.expected === 'polite' ? 1 : (ex.style === 'casual' ? 0 : 1), Math.floor(ex.limit * classified))
+  const fail = off.length > allowed
+  const mismatch = fail && classified > 0 && off.length / classified >= 0.5
+  const what = ex.offRegister === 'polite' ? 'sustained です/ます' : 'plain/casual drift'
+  return { ...ex, relationship: relationship || '', politeLines, plainLines, offLines: off.map(r => r.k), verdict: fail ? 'FAIL' : 'PASS', mismatch,
+    reason: fail ? what + ' (' + off.length + '/' + classified + ' lines) despite ' + (relationship || 'the relationship') + ' in ' + japaneseSpeechStyleName(ex.style) + ' mode' : 'consistent ' + ex.label }
+}
 const POLITE_RX = /(\u3067\u3059|\u307E\u3059|\u3067\u3057\u305F|\u307E\u3057\u305F|\u3067\u3059\u304B|\u307E\u3059\u304B)(\u304B|\u306D|\u3088)?[\u3002\uFF1F\uFF01]?$/
 
 // ── Japanese morphology ──────────────────────────────────────────────────────
@@ -14173,7 +14239,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v666'
+const LISTENING_BUILD_VERSION = 'v667'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -15235,7 +15301,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v666'
+const APP_BUILD_VERSION = 'v667'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -16385,6 +16451,10 @@ async function _lnGenericVerdicts(lang, pairs, o, log) {
     const chunk = uniq.slice(b, b + 12)
     const prompt = 'LANGUAGE: ' + label + '\nYou are a native ' + label + ' speaker checking learner material. For EACH sentence answer: would a native speaker plausibly say this exact ' +
       'sentence in ordinary conversation, with this intended meaning?\nPenalise malformed grammar, target-word stuffing, English-shaped ' + label + ', wrong register, absurd claims, fragments.\n' + NATURALNESS_SIMPLICITY_RULE +
+      // v667 §23 — Japanese naturalness is judged FOR the selected speech style and the speakers' relationship
+      (lang === 'ja' && o.speechStyle ? 'SPEECH STYLE: ' + japaneseSpeechStyleName(o.speechStyle).toUpperCase() + ' — ' + JAPANESE_REGISTER_RULES[canonicalJapaneseSpeechStyle(o.speechStyle)].sub +
+        (canonicalJapaneseSpeechStyle(o.speechStyle) === 'polite' ? '; the speakers are adults who are not close: です/ます is expected.' : '; the speakers are friends: plain forms are expected, sustained です/ます between them is WRONG for this style.') +
+        ' Judge: is this natural Japanese FOR THIS RELATIONSHIP AND STYLE? A grammatical sentence in the wrong register scores at most 3.\n' : '') +
       'Scale: 5 natural · 4 natural with a small quirk · 3 understandable but unnatural · 2 wrong/awkward · 1 broken.\n\n' +
       chunk.map((p, i) => (i + 1) + '. ' + label + ': ' + text(p) + '\n   Intended meaning: ' + (p.english || '')).join('\n\n') +
       '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."}]'
@@ -16652,12 +16722,26 @@ function listeningConversationAudit(scenes, targets, la, ctx) {
     const un = listeningUnexposedWords(la.lang, l.tn.pair, c.exposed || [], c.eligTargets || [], c.vocab); if (un.length) why.push('VOCABULARY_FAILED: unknown words: ' + un.slice(0, 4).join(' '))
     why.forEach(w => issues.push({ code: /^VOCABULARY/.test(w) ? 'CLOSED_VOCAB' : /^SPEAKER/.test(w) ? 'SPEAKER_IDENTITY' : 'LINE_QUALITY', line: n + 1, detail: w }))
   })
+  // v667 §13/§14 — Japanese register, judged PER SCENE against the track's frozen speech style × the scene relationship
+  const registerAudit = []
+  if (c.jaStyle) { let off0 = 0
+    scenes.forEach(sc => {
+      const plan = c.scenePlanById && c.scenePlanById.get(sc.sceneId)
+      const rel = (plan && plan.relationship) || (c.jaStyle === 'polite' ? 'acquaintances (adults who are not close)' : 'adult friends')
+      const ra = japaneseSceneRegisterAudit(sc.turns.map(tn => la.text(tn.pair)), c.jaStyle, rel, targets.map(t => t.surface))
+      registerAudit.push({ sceneId: sc.sceneId, ...ra, offLines: ra.offLines.map(k => off0 + k + 1) })
+      if (ra.verdict === 'FAIL') {
+        ra.offLines.forEach(k => issues.push({ code: 'REGISTER', line: off0 + k + 1, sceneId: sc.sceneId, detail: 'REGISTER — scene ' + sc.sceneId + ' (' + rel + ') expects ' + ra.label + '; rewrite THIS line in that register, same meaning and lesson words' }))
+        if (ra.mismatch) issues.push({ code: 'SCENE_REGISTER_MISMATCH', line: 0, sceneId: sc.sceneId, detail: 'scene ' + sc.sceneId + ': ' + ra.reason })
+      }
+      off0 += sc.turns.length
+    }) }
   // coverage from the finished lines only
   const occ = new Map(targets.map(t => [t.id, []]))
   per.forEach(r => r.actualTargetIds.forEach(id => occ.get(id).push(r.n)))
   const missing = targets.filter(t => !occ.get(t.id).length)
   missing.forEach(t => issues.push({ code: 'TARGET_MISSING', line: 0, targetId: t.id, detail: t.surface + ' (' + t.gloss + ')' }))
-  return { lines: per, issues, occ, missing, covered: targets.filter(t => occ.get(t.id).length).map(t => t.id), speakers: [...sp] }
+  return { lines: per, issues, occ, missing, covered: targets.filter(t => occ.get(t.id).length).map(t => t.id), speakers: [...sp], registerAudit }
 }
 function _lnConversationRows(scenes, la, targets, audit) {
   const out = []
@@ -16714,12 +16798,12 @@ function _lnPlanExchanges(sc, byId) {
   sc.expectedTurns = Math.max(4, 2 * ex.length + 1)
   return sc
 }
-function _lnScenePurpose(sc, byId, k, n, hardMax) {
+function _lnScenePurpose(sc, byId, k, n, hardMax, friends) {
   const doms = {}
   sc.requiredTargetIds.forEach(id => { const t = byId.get(id); const d = t ? _lnPlanDomain(t) : null; if (d && !LISTENING_FLEXIBLE_DOMAINS.has(d)) doms[d] = (doms[d] || 0) + 1 })
   const top = Object.entries(doms).sort((a, b) => b[1] - a[1]).map(x => x[0])
   // v665 §31/§32 — a low belt (preferred max ≤ 6) gets the SIMPLE version of the situation: short questions and answers, no explanations
-  let situation = top.length ? ((hardMax && hardMax <= 6 && LISTENING_SITUATION_SIMPLE[top[0]]) || LISTENING_SITUATION[top[0]] || (LOCAL_PREMISE_BY_DOMAIN[top[0]] || [])[0] || 'A and B talk about ' + top[0]) : LISTENING_EVERYDAY_SITUATIONS[k % LISTENING_EVERYDAY_SITUATIONS.length]
+  let situation = top.length ? ((friends && LISTENING_SITUATION_FRIENDS[top[0]]) || (hardMax && hardMax <= 6 && LISTENING_SITUATION_SIMPLE[top[0]]) || LISTENING_SITUATION[top[0]] || (LOCAL_PREMISE_BY_DOMAIN[top[0]] || [])[0] || 'A and B talk about ' + top[0]) : LISTENING_EVERYDAY_SITUATIONS[k % LISTENING_EVERYDAY_SITUATIONS.length]
   if (top[1]) situation += ' (it also involves ' + String(SCENE_DOMAIN_PURPOSE[top[1]] || top[1]).toLowerCase() + ')'
   return (k === 0 ? 'They meet and say hello; then ' + situation.charAt(0).toLowerCase() + situation.slice(1) : situation) + (k === n - 1 ? '; then they wrap up and say goodbye' : '')
 }
@@ -16751,6 +16835,15 @@ const LISTENING_SITUATION = {
   'plans & schedule': 'A and B arrange when to meet and what to do',
   'colours & things': 'A and B look for a particular thing and describe it',
   'identity & names': 'A and B meet someone new and introduce themselves',
+}
+// v667 §10 — Japanese NATURAL / VERY CASUAL: the planner keeps the two speakers FRIENDS (shopping together, not a
+// customer at a counter; introducing a friend, not meeting a stranger), so friendly plain Japanese is plausible
+const LISTENING_SITUATION_FRIENDS = {
+  'shopping & payment': 'A and B (friends) shop together: the price, a discount, paying by card or cash, the receipt',
+  'numbers & prices': 'A and B (friends) work out how much something costs and agree on an amount',
+  'big amounts': 'A and B (friends) chat about what big things cost — a flat, a car, a salary',
+  'identity & names': 'A introduces B to the name of a friend of theirs; they chat about who is who',
+  'places & travel': 'A and B (friends) plan a trip together: where to go, how to get there, where to stay',
 }
 // the same situations, said the way a beginner can: one short idea per turn
 const LISTENING_SITUATION_SIMPLE = {
@@ -16807,7 +16900,7 @@ function planListeningCoverage(targets, o) {
   floaters.forEach(t => put(scenes.slice().sort((a, b) => load(a) - load(b) || a.index - b.index)[0], t))
   for (let k = scenes.length - 1; k >= 0; k--) if (!scenes[k].requiredTargetIds.length) scenes.splice(k, 1)
   scenes.forEach((x, k) => { x.index = k; x.sceneId = 'LS' + (k + 1) })
-  scenes.forEach((sc, k) => { _lnPlanExchanges(sc, byId); sc.purpose = _lnScenePurpose(sc, byId, k, scenes.length, opt.hardMax); sc.premise = sc.purpose
+  scenes.forEach((sc, k) => { _lnPlanExchanges(sc, byId); sc.purpose = _lnScenePurpose(sc, byId, k, scenes.length, opt.hardMax, opt.friends); sc.premise = sc.purpose
     sc.plausible = _lnScenePlausible(Object.keys(sc.domains).filter(d => !/^role:/.test(d))) })
   // §14 turn budget planned up front: expected scene lengths + an even share of the slack, total ≤ turnsMax
   const totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0)
@@ -16853,6 +16946,7 @@ async function _lnGenerateScene(env, sp, info) {
     'SPEAKERS: ' + ((sc0.characters || []).map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') || 'A and B, friends') + ' · ' + la.speakerContract + '\n' +
     'REGISTER: ' + (lessonCtx.register || 'natural spoken') + (lessonCtx.politeness ? ' · ' + lessonCtx.politeness : '') + '\n' +
     'THIS SCENE: ' + sp.purpose + '\n' +
+    (sp.relationship ? 'SCENE RELATIONSHIP: ' + sp.relationship + ' · EXPECTED REGISTER: ' + sp.registerExpectation + ' (track speech style ' + japaneseSpeechStyleName(env.ctx.jaStyle).toUpperCase() + ')\n' : '') +
     'CONTEXT SO FAR: ' + (info.context || 'this is the opening scene — start with a natural greeting') + '\n' +
     'THIS SCENE MUST USE ALL OF THESE ' + req.length + ' REQUIRED TARGET WORDS (id | word [reading] | meaning | role) — every one must appear in the actual text of a turn:\n' + req.map(tRow).join('\n') + '\n' +
     'PLAN: ' + sp.exchanges.map(ex => 'exchange ' + ex.exchangeIndex + ': ' + ex.turns.map(tu => tu.speaker + (tu.targetIds.length ? ' uses ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).join('+') : ' replies')).join(', then ')).join(' · ') + '\n' +
@@ -16895,6 +16989,7 @@ async function _lnRepairScene(env, sc, spec) {
       ? 'INSERT a new short A/B exchange that uses it ({"op":"insert_after","line":N,"turns":[A, B]}) — each new turn: ' + ctx.complexity.repairRule + ', only known words; do not touch other lines'
       : listeningPlacementHint(t, aud, targets)))
     .concat((spec.issues || []).map(x => x.code === 'MAX_TARGETS_PER_TURN' ? '- line ' + x.line + ' has ' + x.detail + ': move one target into an adjacent turn or split the thought between the speakers'
+      : x.code === 'SCENE_REGISTER_MISMATCH' ? '- SCENE_REGISTER_MISMATCH — ' + x.detail
       : x.code === 'TOO_COMPLEX' ? '- line ' + x.line + ': TOO_COMPLEX — ' + x.detail + '. SPLIT it into two or three short turns ({"op":"replace","line":' + x.line + ',"span":1,"turns":[...]}), each within the limit; keep its lesson words'
       : x.code === 'MERGED_SPEAKERS' ? '- line ' + x.line + ': ' + x.detail + ' — split it into two turns (A asks, B answers)'
       : /DUPLICATE/.test(x.code) ? '- line ' + x.line + ' ' + x.detail + ': rewrite this local exchange (this line and its neighbour, span 2) so it moves the conversation on'
@@ -16942,7 +17037,7 @@ const LISTENING_ATOMIC_PASSES = 4             // queue passes per stage
 const LISTENING_QUALITY_ATOMIC_CALLS = 6     // v665: quality gates are hard again, but most issues are now fixed per scene at generation time
 // P0 foundational → P1 vocabulary / duplicates → P2 naturalness / local coherence → P3 structure polish
 const LISTENING_ATOMIC_PRIORITY = { TARGET_MISSING: 0, MAX_TARGETS_PER_TURN: 0, SPEAKER_IDENTITY: 0, LINE_QUALITY: 0, MERGED_SPEAKERS: 0,
-  CLOSED_VOCAB: 1, TOO_COMPLEX: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, UNNATURAL: 2, COHERENCE_LINE: 2 }
+  CLOSED_VOCAB: 1, TOO_COMPLEX: 1, REGISTER: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, UNNATURAL: 2, COHERENCE_LINE: 2 }
 // level 1 = the line · 2 = the line + its A/B partner · 3 = a small section (previous, line, next)
 const LISTENING_ATOMIC_BASE_LEVEL = { TARGET_MISSING: 2, MAX_TARGETS_PER_TURN: 2, MERGED_SPEAKERS: 2 }
 const LISTENING_ATOMIC_SCHEMA = { type: 'OBJECT', properties: { repairs: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
@@ -17017,6 +17112,8 @@ async function _lnAtomicCall(env, flat, units) {
       ctxRows.join('\n') + '\n  PROBLEM: ' + u.problems.join(' · ') + '\n' +
       (u.forbidden.length ? '  DO NOT USE: ' + u.forbidden.join(', ') + '\n' : '') +
       (u.place ? '  MUST NOW ALSO CONTAIN the lesson word ' + u.place.surface + ' (' + u.place.gloss + ')\n' : '') +
+      (env.ctx && env.ctx.jaStyle ? (pl => '  TRACK SPEECH STYLE: ' + japaneseSpeechStyleName(env.ctx.jaStyle).toUpperCase() + ' · SCENE RELATIONSHIP: ' + ((pl && pl.relationship) || 'adult friends') +
+        ' · EXPECTED REGISTER: ' + japaneseRegisterExpectation(env.ctx.jaStyle, pl && pl.relationship).label + ' — keep it\n')(env.scenePlanById && env.scenePlanById.get(u.sceneId)) : '') +
       '  PROTECTED lesson words (must stay in the new text): ' + (u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') || '(none)') + '\n' +
       '  USE THESE WORDS (plus normal grammar words and speaker particles): ' + u.palette.join(' ')
   })
@@ -17056,6 +17153,18 @@ function _lnValidatePatch(env, flat, u, newByLine) {
   if (unk.length) why.push('CLOSED_VOCAB: ' + unk.map(x => 'L' + x.n + ' unknown ' + x.s.unknown.join(' ')).join(', '))
   if (tooLong.length) why.push('LENGTH: ' + tooLong.map(x => 'L' + x.n + ' ' + x.s.units + ' > hardMax ' + env.ctx.complexity.hardMax).join(', '))
   if (m3.length) why.push('MAX3: ' + m3.map(x => 'L' + x.n).join(', '))
+  // v667 §21/§22 — Japanese: a repaired line must keep the scene's register. A patch that fixes vocabulary / length /
+  // placement but turns a Natural friend line into です/ます (or a Polite line into plain speech) is REGISTER_REGRESSION
+  if (env.ctx && env.ctx.jaStyle) {
+    const plan = env.scenePlanById && env.scenePlanById.get(u.sceneId)
+    const ex = japaneseRegisterExpectation(env.ctx.jaStyle, plan && plan.relationship)
+    if (ex.offRegister) {
+      const offOf = t => { const a = analyseJapaneseRegister(t, (env.targets || []).map(x => x.surface)); return ex.offRegister === 'polite' ? (a.register === 'polite' || (a.register === 'mixed' && a.politeMarkers >= a.plainMarkers)) : (a.register === 'plain' || a.register === 'very_casual' || (a.register === 'mixed' && a.plainMarkers > a.politeMarkers)) }
+      const reg = changed.filter(x => offOf(x.s.text) && !offOf(before[u.scope.indexOf(x.n)].text))
+      if (reg.length) why.push('REGISTER_REGRESSION: ' + reg.map(x => 'L' + x.n + ' is ' + (ex.offRegister === 'polite' ? 'です/ます' : 'plain') + ' but the scene expects ' + ex.label).join(', '))
+      if (u.codes.includes('REGISTER') && changed.some(x => offOf(x.s.text))) why.push('NOT_IMPROVED: REGISTER still ' + ex.offRegister)
+    }
+  }
   if (why.length) return { ok: false, reason: why.join(' + ') }
   const cats = ['max3', 'vocab', 'len', 'qual', 'merged', 'dup']
   const worse = cats.filter(k => sum(after, k) > sum(before, k))
@@ -17237,11 +17346,20 @@ async function _lnComposeByScenes(env) {
   const { la, log, tel, targets, ctx, o, progress, naturalness } = env
   const byId = new Map(targets.map(t => [t.id, t])); env.byId = byId
   env.lineAttempts = new Map()
-  const plan = planListeningCoverage(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, hardMax: ctx.complexity ? ctx.complexity.preferredMax : null })   // v666: the PREFERRED range decides "low belt"
+  const plan = planListeningCoverage(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, hardMax: ctx.complexity ? ctx.complexity.preferredMax : null,   // v666: the PREFERRED range decides "low belt"
+    friends: !!(ctx.jaStyle && ctx.jaStyle !== 'polite') })
+  // v667 §11 — every Japanese scene carries an explicit relationship + register expectation (the generator never guesses)
+  if (ctx.jaStyle) plan.scenes.forEach(sc => {
+    sc.relationship = ctx.jaStyle === 'polite' ? 'acquaintances (adults who are not close)' : ctx.jaStyle === 'casual' ? 'close friends' : 'adult friends'
+    const ex = japaneseRegisterExpectation(ctx.jaStyle, sc.relationship)
+    sc.registerExpectation = ex.label
+  })
   Object.assign(tel, { LISTENING_SCENE_GENERATION_CALLS: 0, LISTENING_LOCAL_REPAIR_CALLS: 0, LISTENING_REASSIGNMENTS: 0, LISTENING_COVERAGE_PLAN_TARGETS: plan.assignments.length, LISTENING_VERIFIED_TARGETS: 0 })
   if (o.rebuild) log && log('🎧 LISTENING_COVERAGE_PLAN=REGENERATED (rebuild — same targets, fresh scene distribution)')
   log && log('🎧 LISTENING_COVERAGE_PLAN ' + plan.assignments.length + '/' + targets.length + ' assigned · ' + plan.nScenes + ' scenes · ≤' + plan.cap + ' targets per scene · planned ' + plan.totalExpectedTurns + ' turns (max ' + plan.turnsMax + ')')
   plan.scenes.forEach(sc => log && log('  LISTENING_SCENE_PLAN ' + sc.sceneId + ' required=[' + sc.requiredTargetIds.map(id => byId.get(id).surface).join(', ') + '] expectedTurns=' + sc.expectedTurns + ' max=' + sc.maxTurns + ' · ' + sc.purpose))
+  if (ctx.jaStyle) plan.scenes.forEach(sc => log && log('🗣 JA_SCENE_REGISTER scene=' + sc.sceneId + ' relationship=' + sc.relationship + ' speechStyle=' + japaneseSpeechStyleName(ctx.jaStyle) + ' expected=' + sc.registerExpectation))
+  env.scenePlanById = new Map(plan.scenes.map(sc => [sc.sceneId, sc])); ctx.scenePlanById = env.scenePlanById
   log && log('🎧 LISTENING_SCENE_PLAUSIBILITY ' + (plan.warnings.length ? 'WARN — ' + plan.warnings.join(' · ') : 'PASS — every scene is one plausible everyday situation (checked before writing)'))
   plan.assignments.forEach(a => log && log('    LISTENING_TARGET_ASSIGNMENT target=' + a.targetId + ' ' + a.surface + ' → ' + a.sceneId + ' exchange ' + a.exchangeIndex + ' (' + a.speaker + ') role=' + a.role))
   if (!plan.valid) { log && log('⛔ LISTENING_COVERAGE_PLAN_INVALID — ' + plan.problems.join('; ') + ' · generation NOT started'); return { ok: false, reason: 'LISTENING_COVERAGE_PLAN_INVALID: ' + plan.problems.join('; '), plan } }
@@ -17255,11 +17373,11 @@ async function _lnComposeByScenes(env) {
   }
   // v665 §19–§21/§33 — CANDIDATE ACCEPTANCE per scene, before the next scene is written: max3, belt LENGTH and the
   // learner-authorised vocabulary are checked on every new line and repaired atomically right here — never carried to final QC
-  const LOCAL_GATE_CODES = ['MAX_TARGETS_PER_TURN', 'TOO_COMPLEX', 'CLOSED_VOCAB']
+  const LOCAL_GATE_CODES = ['MAX_TARGETS_PER_TURN', 'TOO_COMPLEX', 'CLOSED_VOCAB', 'REGISTER']   // v667: + Japanese register
   // whole-conversation line offset of a scene (accepted scenes first; the scene being written comes next)
   const offsetOf = sc => { let n = 0; for (const a of accepted) { if (a === sc) return n; n += a.turns.length } return n }
   const localHard = sc => listeningConversationAudit([sc], targets, la, ctx).issues.filter(x => LOCAL_GATE_CODES.includes(x.code))
-  const logLocal = (sc, label) => localHard(sc).filter((x, i, a) => a.findIndex(y => y.code === x.code && y.line === x.line) === i).forEach(x => log && log((x.code === 'TOO_COMPLEX' ? '⛔ LEVEL_COMPLEXITY_FAIL' : x.code === 'CLOSED_VOCAB' ? '⛔ CLOSED_VOCAB_FAIL' : '⛔ MAX3_FAIL') +
+  const logLocal = (sc, label) => localHard(sc).filter((x, i, a) => a.findIndex(y => y.code === x.code && y.line === x.line) === i).forEach(x => log && log((x.code === 'TOO_COMPLEX' ? '⛔ LEVEL_COMPLEXITY_FAIL' : x.code === 'CLOSED_VOCAB' ? '⛔ CLOSED_VOCAB_FAIL' : x.code === 'REGISTER' ? '⛔ JA_REGISTER_FAIL' : '⛔ MAX3_FAIL') +
     ' scene=' + sc.sceneId + ' line=L' + (x.line + offsetOf(sc)) + ' ' + (x.code === 'TOO_COMPLEX' ? 'belt=' + ctx.complexity.belt + ' units=' + String(x.detail).split(' ')[0] + ' hardMax=' + ctx.complexity.hardMax : x.code === 'CLOSED_VOCAB' ? 'unknown=[' + String(x.detail).replace(/^.*unknown words:\s*/, '') + ']' : x.detail) + (label ? ' (' + label + ')' : '')))
   for (let qi = 0; qi < queue.length; qi++) {
     const sp = queue[qi]
@@ -17291,6 +17409,27 @@ async function _lnComposeByScenes(env) {
     // §8 — verify this scene's REQUIRED targets now, deterministically; the model's intendedTargetIds are ignored
     let cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
     log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' required=' + sp.requiredTargetIds.length + ' heard=' + cov.heard.length + (cov.missing.length ? ' missing=[' + cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS') + ' · turns ' + sc.turns.length + '/' + allowedMax)
+    // v667 §17/§19 — Japanese: a scene written in the WRONG register is one scene-generation failure, not N line defects:
+    // ONE controlled scene-level register transformation (meaning, speakers, lesson words kept), every line re-validated
+    if (sc.turns.length && ctx.jaStyle) {
+      const rel = sp.relationship || 'adult friends'
+      const exm = targets.map(t => t.surface)
+      const ra = japaneseSceneRegisterAudit(sc.turns.map(tn => la.text(tn.pair)), ctx.jaStyle, rel, exm)
+      log && log('🗣 JA_SCENE_REGISTER scene=' + sp.sceneId + ' relationship=' + rel + ' expected=' + ra.label + ' politeLines=' + ra.politeLines + ' plainLines=' + ra.plainLines + ' verdict=' + ra.verdict + (ra.verdict === 'FAIL' ? ' reason=' + ra.reason : '') + ' (as generated)')
+      if (ra.mismatch) {
+        const before = _lnCloneTurns(sc.turns)
+        log && log('🔧 SCENE_REGISTER_MISMATCH ' + sp.sceneId + ' — ' + ra.reason + ' · scene-level register transformation (lines, speakers, lesson words kept)')
+        await _lnRepairScene(env, sc, { issues: [{ code: 'SCENE_REGISTER_MISMATCH', line: 1, detail: 'the whole scene is in the wrong register: ' + ra.reason + '. Rewrite EVERY line into ' + ra.label + ' (' + rel + ', track speech style ' + japaneseSpeechStyleName(ctx.jaStyle).toUpperCase() +
+          ') — same meaning, same speaker, same lesson words, same number of lines; one {"op":"replace","line":N,"span":1,"turns":[...]} per line' }], protectedIds: cov.heard, allowedMax: sc.turns.length })
+        const c2 = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
+        const ra2 = japaneseSceneRegisterAudit(sc.turns.map(tn => la.text(tn.pair)), ctx.jaStyle, rel, exm)
+        const old = new Set(before.map(tn => la.text(tn.pair)))
+        const badNew = sc.turns.filter(tn => !old.has(la.text(tn.pair))).map(tn => _lnLineState(env, tn.pair)).filter(st2 => st2.len || st2.vocab || st2.max3)
+        if (cov.heard.some(id => !c2.heard.includes(id)) || badNew.length || ra2.offLines.length >= ra.offLines.length) {
+          sc.turns = before; log && log('⛔ PATCH_REJECTED register-transform ' + sp.sceneId + ' reason=' + (cov.heard.some(id => !c2.heard.includes(id)) ? 'PROTECTED_TARGET_LOST' : badNew.length ? 'NEW_TURN_FAILS_' + (badNew[0].len ? 'LENGTH' : badNew[0].vocab ? 'CLOSED_VOCAB' : 'MAX3') : 'NOT_IMPROVED') + ' · original kept (lines repaired one by one next)')
+        } else { cov = c2; log && log('✅ PATCH_ACCEPTED register-transform ' + sp.sceneId + ' · politeLines ' + ra.politeLines + '→' + ra2.politeLines + ' plainLines ' + ra.plainLines + '→' + ra2.plainLines + ' · ' + ra2.verdict) }
+      }
+    }
     if (sc.turns.length) logLocal(sc, 'as generated')
     // v666 §12/§16 — a line above the preferred range but ≤ hardMax is VALID: logged, never repaired just to hit preferredMax
     if (sc.turns.length && ctx.complexity) { const ab = sc.turns.map((tn, k) => ({ k, a: ctx.complexity.analyse(la.text(tn.pair)) })).filter(x => x.a.abovePreferredButAllowed)
@@ -17456,7 +17595,13 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   const sc0 = mainTrack.sceneContract || {}
   const lessonCtx = mainTrack.lessonContext || buildLessonContext(sc0, lang)
   const names = (ctx.sceneEntities || []).map(e => e.surface || e).filter(Boolean)
-  const extra = lang === 'ja' ? ' Give "reading" (kana) and "romaji" for every turn.' : lang === 'zh' ? ' Give tone-mark "pinyin" for every turn.' : ''
+  // v667 §6/§20 — Japanese: the FROZEN speech style travels in `extra`, which every scene / placement / atomic / max3 /
+  // length / coherence repair prompt carries (explicitly — no global); scene relationships are added per scene
+  const jaStyle = lang === 'ja' ? canonicalJapaneseSpeechStyle(o.speechStyle || (mainTrack && mainTrack.speechStyle)) : null
+  ctx.jaStyle = jaStyle
+  const extra = lang === 'ja' ? ' Give "reading" (kana) and "romaji" for every turn.\nTRACK SPEECH STYLE: ' + japaneseSpeechStyleName(jaStyle).toUpperCase() + ' (' + JAPANESE_REGISTER_RULES[jaStyle].label + ' — ' + JAPANESE_REGISTER_RULES[jaStyle].sub + ').\n' +
+      japaneseRegisterContract(jaStyle) + '\nEach scene states its RELATIONSHIP and EXPECTED REGISTER — follow them: same relationship ⇒ same register all the way through (no drifting between です/ます and plain forms).'
+    : lang === 'zh' ? ' Give tone-mark "pinyin" for every turn.' : ''
   // v658 §12 — every target row carries the linguistic data the model needs (written form, reading, gloss / sense, role)
   const tRow = t => 'T' + t.id + ' | ' + t.surface + (t.reading ? ' [' + t.reading + ']' : '') + ' | ' + t.gloss + ' | ' + t.role + (t.isNew ? ' | NEW' : '')
   // v658 §13 — a turn RANGE derived from the number of targets (≤ 3 per turn, most turns 1–2): the live JA run wrote 17 turns
@@ -17487,7 +17632,7 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     const cur = scs || scenes
     const all = cur.flatMap(sc => sc.turns.map(tn => tn.pair))
     const todo = all.filter(p => !verdictsCache.has(la.text(p)))
-    if (todo.length) { tel.LISTENING_QC_CALLS += Math.ceil(todo.length / 12); const vv = await la.verdicts(todo, o, log); vv.forEach((v, k) => verdictsCache.set(k, v)) }
+    if (todo.length) { tel.LISTENING_QC_CALLS += Math.ceil(todo.length / 12); const vv = await la.verdicts(todo, jaStyle ? { ...o, speechStyle: jaStyle } : o, log); vv.forEach((v, k) => verdictsCache.set(k, v)) }
     const issues = []
     let n = 0
     cur.forEach(sc => sc.turns.forEach(tn => { n++; const v = verdictsCache.get(la.text(tn.pair))
@@ -17618,6 +17763,13 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     log && log('🎧 LISTENING_TARGET_AUDIT (final) covered=' + audit.covered.length + '/' + targets.length + (audit.missing.length ? ' missing=[' + audit.missing.map(t => t.surface).join(', ') + ']' : ''))
     tel.LISTENING_VERIFIED_TARGETS = audit.covered.length
   }
+  // v667 §26 — JA_REGISTER_AUDIT: one line per scene + the summary the READY gate reads
+  if (ctx.jaStyle) {
+    const ra = audit.registerAudit || []
+    ra.forEach(r => log && log('🗣 JA_REGISTER_AUDIT speechStyle=' + japaneseSpeechStyleName(ctx.jaStyle) + ' scene=' + r.sceneId + ' relationship=' + r.relationship + ' expected=' + r.label +
+      ' politeLines=' + r.politeLines + ' plainLines=' + r.plainLines + ' verdict=' + r.verdict + (r.verdict === 'FAIL' ? ' reason=' + r.reason + ' lines=' + r.offLines.map(k => 'L' + k).join(',') : '')))
+    log && log('🗣 JA_REGISTER_AUDIT scenes=' + ra.length + ' pass=' + ra.filter(r => r.verdict === 'PASS').length + ' fail=' + ra.filter(r => r.verdict === 'FAIL').length + ' REGISTER_PASS=' + !ra.some(r => r.verdict === 'FAIL'))
+  }
   // ── 5. gates ──
   const hard = audit.issues.concat(natIssues, pronIssues)
   const gates = {
@@ -17627,7 +17779,9 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     NO_DUPLICATES: !audit.issues.some(x => /DUPLICATE/.test(x.code)), NO_SINGLETON_SCENES: !audit.issues.some(x => x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION'),
     CLOSED_VOCAB: !audit.issues.some(x => x.code === 'CLOSED_VOCAB'),
     // v665 — LENGTH is a hard gate: every turn within the learner's belt hardMax (ctx.complexity, the ONE contract)
-    LENGTH_PASS: !audit.issues.some(x => x.code === 'TOO_COMPLEX'), LINE_QUALITY: !audit.issues.some(x => x.code === 'SPEAKER_IDENTITY' || x.code === 'LINE_QUALITY'),
+    LENGTH_PASS: !audit.issues.some(x => x.code === 'TOO_COMPLEX'),
+    // v667 §15/§16 — Japanese register consistency per scene (track speech style × scene relationship) is a hard gate
+    ...(ctx.jaStyle ? { JA_REGISTER_PASS: !(audit.registerAudit || []).some(r => r.verdict === 'FAIL') } : {}), LINE_QUALITY: !audit.issues.some(x => x.code === 'SPEAKER_IDENTITY' || x.code === 'LINE_QUALITY'),
     NATURALNESS: !natIssues.length, WHOLE_CONVERSATION_COHERENCE: cohPassed ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED', PRONUNCIATION: !pronIssues.length,
     // v662 — the standalone track also needs every scene's required coverage and the turn budget
     // v664: a word that ended up heard somewhere else in the final text satisfies its scene requirement (coverage is the text)
@@ -17796,7 +17950,10 @@ async function buildStandaloneListeningTrack(o) {
   const createdAt = new Date().toISOString()
   const keywords = words.map(w => listeningTrackKeyword(lang, w))
   const contract = listeningTrackContract(lang, words)
-  const source = { trackType: 'listening', language: lang, mode: 'listening', trackMode: 'listening', createdAt, id: 'listen-' + createdAt,
+  // v667 §4/§5 — Japanese: the selected speech style is FROZEN into the track snapshot here (like the 30 targets) and
+  // saved with the track; generation never re-reads the dashboard selector
+  const speechStyle = lang === 'ja' ? canonicalJapaneseSpeechStyle(o.speechStyle) : null
+  const source = { trackType: 'listening', language: lang, mode: 'listening', trackMode: 'listening', createdAt, id: 'listen-' + createdAt, ...(speechStyle ? { speechStyle, speechStyleSnapshot: speechStyle } : {}),
     attemptId: o.attemptId || ('lattempt-' + createdAt), date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
     keywords, selectedTargetIds: keywords.map(k => k.wordId), listeningSelectedTargetIds: frozenIds.slice(), selector: snap ? snap.selector : 'snapshot (rebuild)',
     pairs: [], sceneContract: contract, lessonContext: buildLessonContext(contract, lang),
@@ -17805,7 +17962,8 @@ async function buildStandaloneListeningTrack(o) {
   const isNew = words.filter(w => typeof isGenuinelyNew === 'function' && isGenuinelyNew(w)).length
   log && log('🎧 LISTENING_TARGET_SELECTION selected=' + keywords.length + ' new=' + isNew + ' review=' + (keywords.length - isNew) + ' · ' + (snap ? 'selector=' + snap.selector : 'REBUILD — the frozen snapshot, selector NOT re-run'))
   log && log('🎧 LISTENING_SELECTED_TARGET_IDS=[' + frozenIds.join(',') + ']')
-  log && log('🎧 LISTENING_TRACK_START language=' + lang + ' trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=' + keywords.length + ' NEW=0 REVIEW=' + keywords.length +
+  if (speechStyle) log && log('🗣 JA_SPEECH_STYLE selected=' + japaneseSpeechStyleName(o.speechStyle) + ' snapshot=' + japaneseSpeechStyleName(speechStyle) + ' (' + JAPANESE_REGISTER_RULES[speechStyle].label + ' · ' + JAPANESE_REGISTER_RULES[speechStyle].sub + ')')
+  log && log('🎧 LISTENING_TRACK_START language=' + lang + (speechStyle ? ' speechStyle=' + japaneseSpeechStyleName(speechStyle) : '') + ' trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=' + keywords.length + ' NEW=0 REVIEW=' + keywords.length +
     ' LISTENING_MAIN_GENERATION_CALLS=0' + (o.targetIds ? ' · REBUILD with the same ' + keywords.length + ' target ids' : ''))
   const usageTel = () => { const u = listeningUsageSince(led0); return { LISTENING_TOKEN_USAGE: u.totalTokens, LISTENING_COST: Number(u.costUsd.toFixed(6)), usage: u } }
   const fail = (reason) => { const ut = usageTel()
@@ -17819,7 +17977,7 @@ async function buildStandaloneListeningTrack(o) {
   let res = null
   if (o.targetIds && o.targetIds.length) log && log('🎧 LISTENING_REBUILD_TARGET_SET=UNCHANGED (' + frozenIds.length + ' frozen ids)')
   try { res = await buildListeningConversation(source, vocab, { lang, apiKey: o.apiKey, model: o.model, onLog: log, onProgress: o.onProgress, creationMode: 'LISTENING_TRACK', standalone: true,
-    planSeed: source.attemptId, rebuild: !!(o.targetIds && o.targetIds.length) }) }
+    planSeed: source.attemptId, rebuild: !!(o.targetIds && o.targetIds.length), speechStyle }) }
   catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return fail('LISTENING_BUILD_ERROR: ' + (e && e.message || e)) }
   const lt = res && res.listeningTrack
   if (!lt) return fail((res && res.reason) || 'the conversation could not be composed')
@@ -17848,6 +18006,7 @@ function listeningTrackExportLines(t) {
   return ['LISTENING TRACK EXPORT', '='.repeat(50), 'trackType=listening · language=' + t.language + ' · selected=' + (t.keywords || []).length + ' · new=0 · review=' + (t.keywords || []).length +
     ' · coverage=' + ((t.coverage && t.coverage.covered) || 0) + '/' + ((t.coverage && t.coverage.required) || 0) + ' · ready=' + !!t.ready + ' · createdAt=' + t.createdAt,
     'Selection: Revision Track rules (previously learned words only) · Main generation calls: 0',
+    ...(t.speechStyle ? ['speechStyle=' + japaneseSpeechStyleName(t.speechStyle) + ' (' + ((JAPANESE_REGISTER_RULES[t.speechStyle] || {}).label || t.speechStyle) + ') · JA_REGISTER_PASS=' + ((t.listening && t.listening.gates && t.listening.gates.JA_REGISTER_PASS) != null ? t.listening.gates.JA_REGISTER_PASS : 'n/a')] : []),
     'Telemetry: ' + Object.entries(t.telemetry || {}).map(([k, v]) => k + '=' + v).join(' '), '']
     .concat(lt ? listeningCoverageExportLines(lt, t) : ['(no conversation)'], [''],
       (lt ? lt.lines : []).map((l, i) => 'L' + (i + 1) + ' [' + (l.sceneId || '') + '] ' + l.speaker + ': ' + (l.thai || l.japanese || l.chinese || '') + (l.phonetic ? '  /' + l.phonetic + '/' : '') + '  — ' + (l.english || '')))
@@ -17948,6 +18107,7 @@ function listeningAttemptRecord(o) {
     selectedTargetIds: (o.ids || []).slice(), state: o.state, coverage: t.coverage || { covered: o.covered || 0, required: (o.ids || []).length, missing: o.missing || [] },
     failedChecks: t.failedChecks || [], failureReason: t.failureReason || null, telemetry: t.telemetry || null, usage: o.usage || t.usage || null,
     model: o.model || null, rebuildOf: o.rebuildOf || null, trackId: t.ready || t.playable ? t.id : null, log: (o.log || []).slice(-600),
+    speechStyle: t.speechStyle || o.speechStyle || null,
     // v664: the conversation itself, so any attempt that produced lines can be listened to from History
     qualityNotes: t.qualityNotes || [], lines: t.listening && Array.isArray(t.listening.lines) && t.listening.lines.length ? t.listening.lines : null,
     // v665 §50 — the learner level and what failed against it (belt, preferred range, hardMax, length failures, unknown words, atomic fixes)
@@ -18074,7 +18234,10 @@ function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onSt
     </div>
   )
 }
-function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack, autoPlay, startIds, startRebuildOf }) {
+function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack, autoPlay, startIds, startRebuildOf, speechStyle: speechStyleProp }) {
+  // v667 §4/§34/§35 — Japanese speech style: a saved track keeps ITS OWN style; a new attempt freezes the dashboard
+  // selection when the generator opens. A later change of the selector never reaches this generator.
+  const [speechStyle] = useState(() => lang !== 'ja' ? null : canonicalJapaneseSpeechStyle((saved && saved.speechStyle) || speechStyleProp))
   // §4 — the target SNAPSHOT: taken once, when this generator opens (a saved track keeps its own ids)
   // v661: `startIds` = a Rebuild of a failed attempt started from the dashboard — the frozen ids, selector NOT re-run
   const rebuildStart = !saved && startIds && startIds.length ? startIds.slice() : null
@@ -18117,11 +18280,11 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
     setIds(useIds); setCurrentAttempt(attemptId); setResult(null); setPhase('building'); setStage('selection'); setPlaying(false)
     setCoverage(Object.fromEntries(useIds.map(id => [id, 'pending']))); setLiveLog([]); setFullLog([]); setUsage(null)
     const push = m => { const f = generationLogFormat(m); logRef.current.push(f); if (!liveRef.current) return; setFullLog(l => [...l, f]); setLiveLog(l => [...l.slice(-7), f]); setUsage(listeningUsageSince(led0)) }
-    const base = { attemptId, createdAt, lang, ids: useIds, model, rebuildOf: rebuildOf || null }
+    const base = { attemptId, createdAt, lang, ids: useIds, model, rebuildOf: rebuildOf || null, speechStyle }
     try { const a = await saveListeningAttempt(lang, listeningAttemptRecord({ ...base, state: 'BUILDING' })); if (liveRef.current) setAttempts(a) } catch (e) {}
     let r = null
     try {
-      r = await buildStandaloneListeningTrack({ lang, vocab, apiKey, model, attemptId, rebuildOf: rebuildOf || null,
+      r = await buildStandaloneListeningTrack({ lang, vocab, apiKey, model, attemptId, rebuildOf: rebuildOf || null, speechStyle,
         ...(targetIds ? { targetIds: useIds } : { snapshot: snap }),
         onLog: push,
         onProgress: ev => { if (!liveRef.current || !ev || !ev.coverage) return; setCoverage(ev.coverage); setStage(ev.stage); if (ev.sceneId) setSceneDone(ev.sceneId); setUsage(listeningUsageSince(led0)) } })
@@ -28754,7 +28917,10 @@ function jaTrackObject(tc, g, targets, register, model, trackMode) {
     })),
   }
 }
-function JapaneseGenerator({ vocab, targets, selection, register, cred, trackMode, onGenerated, onBack }) {
+function JapaneseGenerator({ vocab, targets, selection, register: registerProp, cred, trackMode, onGenerated, onBack }) {
+  // v667 §4 — the speech style is FROZEN when the generator opens: a later change of the dashboard selector never
+  // reaches an in-progress track (the TrackContext, every prompt, recovery and the saved track read this snapshot)
+  const [register] = useState(() => canonicalJapaneseSpeechStyle(registerProp))
   const [phase, setPhase] = useState('scene_building')   // scene_building | scene_preview | generating | done | error
   const [scene, setScene] = useState(null)
   const [fullLog, setFullLog] = useState([])      // §19 complete history, always downloadable
@@ -29586,7 +29752,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="ja" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="ja" speechStyle={register} vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksJa([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (

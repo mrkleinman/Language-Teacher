@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v658"/>
+<meta name="app-version" content="v659"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v658';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v658').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v659';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v659').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -7090,8 +7090,10 @@ function BeltRankCard({ vocab, onNav, langName }) {
 }
 
 function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenConvo, onGenerateConvo }) {
-  const revisionSelection = useMemo(() => selectThaiRevisionTargets(vocab, REVISION_TRACK_MAX), [vocab])
-  const listeningSelection = useMemo(() => selectListeningTrackTargets('th', vocab), [vocab])
+  // v659 §1 — ONE canonical Revision selection feeds both the Revision and the Listening button
+  const revisionCanon = useMemo(() => selectRevisionTargets('th', vocab), [vocab])
+  const revisionSelection = revisionCanon.selection
+  const listeningSelection = revisionCanon
   const [convoLoadingId, setConvoLoadingId] = useState(null)
   const [convoProgress, setConvoProgress] = useState(0)
   const stats = useMemo(() => getStats(vocab), [vocab])
@@ -14462,7 +14464,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v658'
+const LISTENING_BUILD_VERSION = 'v659'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -15499,7 +15501,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v658'
+const APP_BUILD_VERSION = 'v659'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -16954,6 +16956,20 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   const tel = { LISTENING_GENERATION_CALLS: 0, LISTENING_REPAIR_CALLS: 0, LISTENING_QC_CALLS: 0, LISTENING_TOTAL_PAID_CALLS: 0 }
   const trackFinal = isFinalTrack(mainTrack)
   const targets = listeningConversationTargets(mainTrack, vocab, lang)
+  // v659 §12 — ONE canonical coverage map, keyed by stable target id, streamed to the generator UI (chips, word tiles
+  // and the progress count all derive from it). A target is lit only by the deterministic text audit — never because
+  // the model CLAIMED it: pending (not placed) → generated (present, checks pending) → verified (present in the
+  // final accepted conversation) · repair (absent / currently needs repair).
+  const progress = (stage, aud, extra) => {
+    if (!o.onProgress) return
+    const cov = {}
+    targets.forEach(t => { cov[t.id] = 'pending' })
+    if (aud) targets.forEach(t => { const hit = (aud.occ.get(t.id) || []).length > 0
+      cov[t.id] = hit ? (stage === 'final' ? 'verified' : 'generated') : 'repair' })
+    try { o.onProgress({ stage, coverage: cov, targetIds: targets.map(t => t.id), covered: aud ? aud.covered.length : 0, required: targets.length,
+      missing: aud ? aud.missing.map(t => t.id) : [], telemetry: { ...tel }, ...(extra || {}) }) } catch (e) {}
+  }
+  progress('composing', null)
   const { newIds } = listeningRequiredTargetIds(mainTrack)
   log && log('  🎧 LISTENING (fresh conversation) · SOURCE ' + (o.standalone ? 'STANDALONE LISTENING TRACK (Revision selection, no Main Track)' : trackFinal ? 'FINAL_TRACK ' + mainTrack.finalTrack.fingerprint : 'legacy track') + ' · TARGETS ' + targets.length + ' (NEW ' + newIds.length + ' · REVIEW ' + (targets.length - newIds.length) + ') — every selected target must be heard')
   // authorised vocabulary: everything the learner has met + ALL 30 current targets (NEW included)
@@ -16994,6 +17010,7 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   let scenes = null
   if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
   tel.LISTENING_GENERATION_CALLS++
+  log && log('🎧 LISTENING_COMPOSITION generation call ' + tel.LISTENING_GENERATION_CALLS + ' · ' + targets.length + ' targets · ' + turnsMin + '–' + turnsMax + ' turns requested')
   try {
     const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt }], maxTokens: 7000, temperature: 0.7, json: LISTENING_CONVERSATION_SCHEMA, stage: 'O_listening_scene' })
     const obj = JSON.parse(String(raw || '').replace(/```json|```/g, '').trim())
@@ -17019,8 +17036,17 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   const logAudit = label => {
     log && log('  🎧 LISTENING_TARGET_COVERAGE ' + audit.covered.length + '/' + targets.length + ' (' + label + ')' + (audit.missing.length ? ' · missing: ' + audit.missing.map(t => t.surface).join(', ') : '') +
       ' · turns ' + audit.lines.length + ' · scenes ' + scenes.length + ' · speakers ' + audit.speakers.join('/') + ' · issues ' + (audit.issues.length + natIssues.length))
+    // v659 §13 — one log line per check, so a failure is never just one final message
+    const codes = c => audit.issues.filter(x => c.test(x.code))
+    const m3 = codes(/^MAX_TARGETS_PER_TURN$/), cv = codes(/^CLOSED_VOCAB$/), dup = codes(/DUPLICATE/), mg = codes(/^MERGED_SPEAKERS$/)
+    log && log('🎧 LISTENING_TARGET_AUDIT (' + label + ') covered=' + audit.covered.length + '/' + targets.length + ' missing=[' + audit.missing.map(t => t.surface).join(', ') + ']')
+    log && log('🎧 LISTENING_MAX3_AUDIT ' + (m3.length ? 'FAIL lines ' + m3.map(x => x.line).join(',') : 'PASS') + ' · max ' + audit.lines.reduce((m, r) => Math.max(m, r.targetCount), 0) + ' targets/turn')
+    log && log('🎧 LISTENING_CLOSED_VOCAB ' + (cv.length ? 'FAIL — ' + cv.slice(0, 4).map(x => 'L' + x.line + ' ' + x.detail).join(' · ') : 'PASS'))
+    log && log('🎧 LISTENING_DIALOGUE speakers=' + audit.speakers.join('/') + ' · duplicates ' + (dup.length ? 'FAIL lines ' + dup.map(x => x.line).join(',') : 'PASS') + ' · merged Q+A ' + (mg.length ? 'FAIL lines ' + mg.map(x => x.line).join(',') : 'PASS'))
+    log && log('🎧 LISTENING_NATURALNESS ' + (natIssues.length ? natIssues.length + ' issue(s) — ' + natIssues.slice(0, 3).map(x => 'L' + x.line + ' ' + x.code).join(' · ') : 'PASS'))
   }
   logAudit('composed')
+  progress('composed', audit)
   for (let round = 1; round <= LISTENING_REPAIR_ROUNDS; round++) {
     const issues = audit.issues.concat(natIssues).filter(x => x.code !== 'NATURALNESS_UNVERIFIED')
     if (!issues.length) break
@@ -17033,6 +17059,8 @@ async function buildListeningConversation(mainTrack, vocab, o) {
       : x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION' ? '- ' + x.detail + ': merge scenes so each has several turns (use op "merge_scenes")'
       : '- line ' + x.line + ': ' + x.code + ' — ' + x.detail)
     log && log('  🔧 LISTENING_REPAIR round ' + round + ': ' + issues.length + ' issue(s) — ' + [...new Set(issues.map(x => x.code))].join(', '))
+    log && log('🔧 LISTENING_REPAIR round=' + round + ' issues=' + issues.length + ' (local exchanges)')
+    progress('repair', audit, { round })
     const rp = 'REVISE this ' + la.label + ' LISTENING conversation locally. Keep every line that has no issue exactly as it is.\n' + la.speakerContract + extra + '\n' +
       'TARGET WORDS: ' + targets.map(t => 'T' + t.id + ' ' + t.surface + ' (' + t.gloss + ')').join(' · ') + '\n' +
       'At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' target words per turn; each turn one speaker; use ONLY target words and these KNOWN WORDS: ' + known.slice(0, 900).join(' ') + '\n' +
@@ -17066,12 +17094,15 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     audit = listeningConversationAudit(scenes, targets, la, ctx)
     natIssues = await naturalness()
     logAudit('after repair ' + round)
+    progress('repaired', audit, { round })
   }
   // ── 3. whole-conversation coherence (scene + whole) — a HARD gate ──
   const cohScenes = scenes.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair })) }))
   if (o.apiKey) tel.LISTENING_QC_CALLS++
   const coh = await listeningWholeCoherenceAudit(cohScenes, la, o, log)
   const cohPassed = coh.state === QUALITY.VERIFIED && coh.verdicts.every(v => v.pass) && (coh.overall == null || coh.overall >= 3)
+  log && log('🎧 LISTENING_COHERENCE ' + (cohPassed ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (coh.overall != null ? ' · overall ' + coh.overall + '/5' : '') + (coh.reason ? ' · ' + String(coh.reason).slice(0, 80) : ''))
+  progress('coherence', audit)
   // ── 4. final line metadata — the SAME authoritative pipeline as the Main Track (segmentation, glosses,
   //    pronunciation build, targeted batched repair, final audit), then each line's own check ──
   const pronIssues = []
@@ -17091,6 +17122,7 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     const pr = la.pronunciationProblems ? la.pronunciationProblems(tn.pair, ctx) : []
     pr.forEach(x => pronIssues.push({ code: 'PRONUNCIATION', line: n, detail: x }))
   }))
+  log && log('🎧 LISTENING_PRONUNCIATION ' + (pronIssues.length ? pronIssues.length + ' issue(s) — ' + pronIssues.slice(0, 3).map(x => 'L' + x.line + ' ' + String(x.detail).slice(0, 60)).join(' · ') : 'PASS'))
   // ── 5. gates ──
   const hard = audit.issues.concat(natIssues, pronIssues)
   const gates = {
@@ -17125,6 +17157,8 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   const reasons = failed.map(k => k + '=' + (gates[k] === false ? 'FAIL' : gates[k]))
   const quality = ready ? 'VERIFIED' : 'NEEDS_REPAIR — ' + reasons.slice(0, 4).join(' · ')
   audit.lines.forEach(r => log && log('    LISTENING_LINE L' + r.n + ' speaker=' + r.speaker + ' actualTargetIds=[' + r.actualTargetIds.join(',') + '] targetCount=' + r.targetCount))
+  log && log('🎧 LISTENING_FINAL_INTEGRITY ' + (ready ? 'READY' : 'NOT_READY') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length + (failed.length ? ' · failed: ' + failed.join(', ') : ' · every gate passed'))
+  progress('final', audit, { ready, failedChecks: reasons })
   log && log('  🎧 LISTENING_GATES ' + Object.entries(gates).map(([k, v]) => k + '=' + v).join(' · '))
   log && log('  🎧 LISTENING ' + (ready ? 'READY' : 'NOT_READY — Listening track needs repair (' + reasons.join(', ') + ')') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length +
     ' · ' + lines.length + ' turns · ' + scenes.length + ' scene(s) · 💰 ' + Object.entries(tel).map(([k, v]) => k + '=' + v).join(' '))
@@ -17172,12 +17206,40 @@ function saveListeningPlaybackSpeed(v) { try { if (Number.isFinite(v)) localStor
 // no Main READY gate. It has its own readiness contract (30/30 coverage + every Listening gate) and only a
 // READY track is persisted and playable. Rebuild keeps the same 30 target ids.
 const LISTENING_TRACK_TARGETS = 30
-function selectListeningTrackTargets(lang, vocab) {
-  // the Revision selector, unchanged — only previously learned words, never a new word
-  if (lang === 'th') { const r = selectThaiRevisionTargets(vocab, REVISION_TRACK_MAX); return { targets: r.targets.slice(0, LISTENING_TRACK_TARGETS), counts: r.counts, rule: 'revision' } }
-  const r = selectRevisionTrackTargets({ vocab, maxTargets: REVISION_TRACK_MAX, language: lang })
-  const t = jazhContractTargets(r.targets, lang, vocab, 'revision').filter(w => typeof revisionEligible === 'function' ? revisionEligible(w) : hasBeenIntroduced(w))
-  return { targets: t.slice(0, LISTENING_TRACK_TARGETS), counts: r.counts, rule: 'revision' }
+// v659 §1 — THE canonical Revision target selector. It is the ONE source of truth for "the 30 words a Revision
+// Track would get right now": the Thai / Japanese / Mandarin Revision Track generators call it, and the
+// Listening Track calls the SAME function (no copy, no approximation). Same learner state ⇒ same ordered 30 ids.
+//   TH: selectThaiRevisionTargets (Thai eligibility pool + selection backfill) → freezeThaiTargetSelection
+//       (canonical resolution, same-bucket backfill, no NEW overflow) — exactly the Thai Revision generator's freeze
+//   JA: selectRevisionTrackTargets → jazhContractTargets(…, 'revision')
+//   ZH: selectRevisionTrackTargets → feasibility gate (teachable with the learner's bank) → jazhContractTargets(…, 'revision')
+function selectRevisionTargets(lang, vocab) {
+  const V = vocab || []
+  if (lang === 'th') {
+    const rv30 = selectThaiRevisionTargets(V, REVISION_TRACK_MAX)
+    const rvAll = selectThaiRevisionTargets(V, 100000)
+    const ids30 = new Set(rv30.targets.map(w => w.id))
+    const frozen = freezeThaiTargetSelection({ selected: rv30.targets, reserve: rvAll.targets.filter(w => !ids30.has(w.id)), required: THAI_TRACK_TARGET_COUNT, mode: 'revision', noNewOverflow: true })
+    const skippedCandidates = (rvAll.skippedCandidates || []).filter(x => x.position < THAI_TRACK_TARGET_COUNT)
+    return { language: 'th', rule: 'revision', selector: 'selectRevisionTargets(th) = selectThaiRevisionTargets → freezeThaiTargetSelection',
+      selection: rv30, raw: rv30.targets, targets: frozen.targets, targetIds: frozen.targets.map(w => w.id), counts: rv30.counts, blocked: frozen.blocked || null,
+      reserve: rvAll.targets.filter(w => !ids30.has(w.id)), skippedCandidates, selectionBackfills: (rv30.selectionBackfills || []).concat(frozen.backfills || []),
+      candidateStats: rvAll.candidateStats ? { ...rvAll.candidateStats, skippedBeforeSelection: skippedCandidates.length } : null, frozen }
+  }
+  const sel = selectRevisionTrackTargets({ vocab: V, maxTargets: REVISION_TRACK_MAX, language: lang })
+  let gated = sel.targets
+  if (lang === 'zh' && gated.length && V.length) {
+    try {
+      const inv0 = mandarinLearnerInventory(V, gated), rules0 = scarcityRules(inv0)
+      const pool = selectRevisionTrackTargets({ vocab: V, maxTargets: 100000, language: 'zh' }).targets
+      const g = gateTargetsByFeasibility(gated, pool, w => mandarinTargetTeachable(w, inv0, V, rules0), w => !hasBeenIntroduced(w))
+      g.deferred.forEach(d => { try { console.info('[zh] deferred ' + d.target.chinese + ' (not expressible with current vocabulary)' + (d.replacedBy ? ' → ' + d.replacedBy.chinese : '')) } catch (e) {} })
+      gated = g.targets
+    } catch (e) { gated = sel.targets }          // the gate can never block a track
+  }
+  const targets = gated.length ? jazhContractTargets(gated, lang, V, 'revision') : gated
+  return { language: lang, rule: 'revision', selector: 'selectRevisionTargets(' + lang + ') = selectRevisionTrackTargets' + (lang === 'zh' ? ' → feasibility gate' : '') + ' → jazhContractTargets(revision)',
+    selection: sel, raw: sel.targets, targets, targetIds: targets.map(w => w.id), counts: sel.counts, blocked: null }
 }
 function listeningTrackKeyword(lang, w) {
   const base = { wordId: w.id, english: w.english, rating: null, isNew: false, isUnseen: false }
@@ -17194,37 +17256,65 @@ function listeningTrackContract(lang, targets) {
     characters: [{ speaker: 'A', name: 'Speaker A', role: 'friend' }, { speaker: 'B', name: 'Speaker B', role: 'friend' }], allowedSceneEntities: [] }
 }
 function isListeningTrack(t) { return !!(t && t.trackType === 'listening') }
+// v659 §4 — usage of ONE Listening attempt, from the AI ledger rows written while it ran (tokens and cost accumulate
+// independently of any Daily / Revision run).
+function listeningUsageSince(led0) {
+  const rows = typeof AI_LEDGER !== 'undefined' ? AI_LEDGER.slice(led0).filter(r => !r.latched && !r.deduped && !r.cancelled) : []
+  let inTok = 0, outTok = 0, cost = 0; const byModel = {}
+  rows.forEach(r => { inTok += r.usage && r.usage.prompt != null ? r.usage.prompt : (r.inputTokensEst || 0)
+    outTok += r.usage && r.usage.candidates != null ? r.usage.candidates + (r.usage.thoughts || 0) : (r.outputTokensEst || 0)
+    cost += r.costUsd || 0; byModel[r.model] = (byModel[r.model] || 0) + 1 })
+  return { requests: rows.length, inputTokens: inTok, outputTokens: outTok, totalTokens: inTok + outTok, costUsd: cost, costSgd: cost * (typeof AI_USD_TO_SGD !== 'undefined' ? AI_USD_TO_SGD : 1.3), byModel }
+}
 async function buildStandaloneListeningTrack(o) {
   const lang = o.lang, vocab = o.vocab || [], log = o.onLog || null
   if (!TRACK_LANGUAGES.includes(lang)) throw pipelineInternalError('INVALID_TRACK_LANGUAGE', 'Listening Track requested for "' + lang + '"')
+  const led0 = typeof AI_LEDGER !== 'undefined' ? AI_LEDGER.length : 0
   const byId = new Map(vocab.map(w => [w.id, w]))
-  // Rebuild keeps the SAME target ids; a fresh start uses the Revision selector
-  const words = o.targetIds && o.targetIds.length ? o.targetIds.map(id => byId.get(id)).filter(Boolean) : selectListeningTrackTargets(lang, vocab).targets
+  // v659 §4/§18/§19 — the 30 targets are a SNAPSHOT taken when the attempt starts. A new Listening Track runs the
+  // canonical Revision selector (selectRevisionTargets — the very call the Revision Track makes); a Rebuild passes
+  // the frozen ids and never runs the selector again. Nothing is substituted mid-generation.
+  const snap = o.targetIds && o.targetIds.length ? null : (o.snapshot || selectRevisionTargets(lang, vocab))
+  const frozenIds = Object.freeze((o.targetIds && o.targetIds.length ? o.targetIds : snap.targetIds).slice())
+  const snapWord = new Map(((snap && snap.targets) || []).map(w => [w.id, w]))
+  const words = frozenIds.map(id => snapWord.get(id) || byId.get(id)).filter(Boolean)
   const createdAt = new Date().toISOString()
   const keywords = words.map(w => listeningTrackKeyword(lang, w))
   const contract = listeningTrackContract(lang, words)
   const source = { trackType: 'listening', language: lang, mode: 'listening', trackMode: 'listening', createdAt, id: 'listen-' + createdAt,
-    date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-    keywords, selectedTargetIds: keywords.map(k => k.wordId), pairs: [], sceneContract: contract, lessonContext: buildLessonContext(contract, lang),
+    attemptId: o.attemptId || ('lattempt-' + createdAt), date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    keywords, selectedTargetIds: keywords.map(k => k.wordId), listeningSelectedTargetIds: frozenIds.slice(), selector: snap ? snap.selector : 'snapshot (rebuild)',
+    pairs: [], sceneContract: contract, lessonContext: buildLessonContext(contract, lang),
     targetCounts: { selectedTargetCount: keywords.length, newTargetCount: 0, reviewTargetCount: keywords.length, requiredListeningTargetCount: keywords.length, mode: 'listening' },
     rebuildOf: o.rebuildOf || null }
+  const isNew = words.filter(w => typeof isGenuinelyNew === 'function' && isGenuinelyNew(w)).length
+  log && log('🎧 LISTENING_TARGET_SELECTION selected=' + keywords.length + ' new=' + isNew + ' review=' + (keywords.length - isNew) + ' · ' + (snap ? 'selector=' + snap.selector : 'REBUILD — the frozen snapshot, selector NOT re-run'))
+  log && log('🎧 LISTENING_SELECTED_TARGET_IDS=[' + frozenIds.join(',') + ']')
   log && log('🎧 LISTENING_TRACK_START language=' + lang + ' trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=' + keywords.length + ' NEW=0 REVIEW=' + keywords.length +
     ' LISTENING_MAIN_GENERATION_CALLS=0' + (o.targetIds ? ' · REBUILD with the same ' + keywords.length + ' target ids' : ''))
-  const fail = (reason) => ({ track: { ...source, status: 'NOT_READY', ready: false, failureReason: reason, listening: null,
-    coverage: { covered: 0, required: Math.max(LISTENING_TRACK_TARGETS, keywords.length), missing: keywords.map(k => k.wordId) }, failedChecks: ['TARGET_COVERAGE=FAIL'],
-    telemetry: { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, LISTENING_GENERATION_CALLS: 0, LISTENING_REPAIR_CALLS: 0, LISTENING_QC_CALLS: 0, LISTENING_TOTAL_PAID_CALLS: 0 } }, result: null })
+  const usageTel = () => { const u = listeningUsageSince(led0); return { LISTENING_TOKEN_USAGE: u.totalTokens, LISTENING_COST: Number(u.costUsd.toFixed(6)), usage: u } }
+  const fail = (reason) => { const ut = usageTel()
+    try { o.onProgress && o.onProgress({ stage: 'final', coverage: Object.fromEntries(frozenIds.map(id => [id, 'repair'])), targetIds: frozenIds.slice(), covered: 0, required: frozenIds.length, missing: frozenIds.slice(), ready: false, failedChecks: ['TARGET_COVERAGE=FAIL'] }) } catch (e) {}
+    return { track: { ...source, status: 'NOT_READY', ready: false, failureReason: reason, listening: null,
+      coverage: { covered: 0, required: Math.max(LISTENING_TRACK_TARGETS, keywords.length), missing: keywords.map(k => k.wordId) }, failedChecks: ['TARGET_COVERAGE=FAIL'], usage: ut.usage,
+      telemetry: { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, LISTENING_GENERATION_CALLS: 0, LISTENING_REPAIR_CALLS: 0, LISTENING_QC_CALLS: 0, LISTENING_TOTAL_PAID_CALLS: 0,
+        LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST } }, result: null } }
   if (keywords.length < LISTENING_TRACK_TARGETS) { log && log('⛔ LISTENING_TRACK_NOT_READY — only ' + keywords.length + ' learned word(s) are eligible (needs ' + LISTENING_TRACK_TARGETS + ')'); return fail('only ' + keywords.length + ' learned words available (needs ' + LISTENING_TRACK_TARGETS + ')') }
   if (!o.apiKey) return fail('Listening composition needs a model key')
   let res = null
-  try { res = await buildListeningConversation(source, vocab, { lang, apiKey: o.apiKey, model: o.model, onLog: log, creationMode: 'LISTENING_TRACK', standalone: true }) }
+  try { res = await buildListeningConversation(source, vocab, { lang, apiKey: o.apiKey, model: o.model, onLog: log, onProgress: o.onProgress, creationMode: 'LISTENING_TRACK', standalone: true }) }
   catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return fail('LISTENING_BUILD_ERROR: ' + (e && e.message || e)) }
   const lt = res && res.listeningTrack
   if (!lt) return fail((res && res.reason) || 'the conversation could not be composed')
-  const tel = { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, ...(lt.telemetry || {}) }
+  const ut = usageTel()
+  const tel = { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, ...(lt.telemetry || {}), LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST }
   const ready = lt.readiness === 'READY' && lt.coverage.coveredTargetIds.length === keywords.length
-  const track = { ...source, listening: { ...lt, telemetry: tel }, status: ready ? 'READY' : 'NOT_READY', ready,
+  const track = { ...source, listening: { ...lt, telemetry: tel }, status: ready ? 'READY' : 'NOT_READY', ready, usage: ut.usage,
     coverage: { covered: lt.coverage.coveredTargetIds.length, required: keywords.length, missing: lt.coverage.uncoveredTargetIds.slice() },
     failedChecks: Object.entries(lt.gates || {}).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k, v]) => k + '=' + (v === false ? 'FAIL' : v)), telemetry: tel }
+  // §9 invariant: what the track carries IS the frozen snapshot
+  const inv = JSON.stringify(track.selectedTargetIds) === JSON.stringify(frozenIds) && JSON.stringify(lt.coverage.selectedTargetIds) === JSON.stringify(frozenIds)
+  log && log('🎧 LISTENING_SNAPSHOT_INVARIANT ' + (inv ? 'PASS' : 'FAIL') + ' — track / coverage target ids === the frozen snapshot (' + frozenIds.length + ')')
   log && log('🎧 LISTENING_TRACK_RESULT status=' + track.status + ' · TARGET COVERAGE ' + track.coverage.covered + '/' + track.coverage.required +
     (track.failedChecks.length ? ' · failed: ' + track.failedChecks.join(', ') : '') + ' · ' + Object.entries(tel).map(([k, v]) => k + '=' + v).join(' '))
   return { track, result: res }
@@ -17264,59 +17354,281 @@ function ListeningTrackButton({ selection, onStart }) {
     </button>
   )
 }
-// The Listening Track screen: build (or open a saved READY track) → play. NOT_READY is never playable and never
-// saved as a lesson: it shows coverage, missing targets and failed checks with Rebuild (same 30 ids) / Continue.
-function ListeningTrackScreen({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack }) {
-  const [state, setState] = useState(saved ? { phase: 'ready', track: saved } : { phase: 'building', track: null })
-  const [log, setLog] = useState([])
-  const [speed, setSpeed] = useState(() => listeningPlaybackSpeed())
+// ══ v659 — LISTENING GENERATOR (one shared component for TH / JA / ZH) ═══════════════════════════════════
+// The Listening Track is generated on the SAME generator shell as Daily / Revision: header, progress bar, chips,
+// status line, Generation log (⬇ log / ▲ History), cost, the 30 selected word tiles, attempt History. The only
+// pedagogical difference is the denominator: 30 TARGET COVERAGE slots (≥1 verified occurrence each) instead of
+// 90 TARGET PAIRS. Chips, word tiles and the progress count are all derived from ONE coverage map keyed by stable
+// target id. A failure is a STATUS inside the shell — the generator stays visible.
+const LISTENING_COVERAGE_STYLE = {
+  pending:   { color: 'var(--surface2)', label: 'not yet placed' },
+  generated: { color: '#f8fafc', label: 'generated · checks pending' },
+  verified:  { color: '#10b981', label: 'verified in the final conversation' },
+  repair:    { color: '#f97316', label: 'needs repair' },
+}
+const LISTENING_ATTEMPTS_MAX = 20
+function listeningAttemptsKey(lang) { return 'tt-listening-attempts-' + lang }
+async function loadListeningAttempts(lang) {
+  try { const v = await stGet(listeningAttemptsKey(lang)); return Array.isArray(v) ? v : [] } catch (e) { return [] }
+}
+async function saveListeningAttempt(lang, rec) {
+  const all = await loadListeningAttempts(lang)
+  const next = [rec].concat(all.filter(a => a && a.attemptId !== rec.attemptId)).slice(0, LISTENING_ATTEMPTS_MAX)
+  await stSet(listeningAttemptsKey(lang), next)
+  return next
+}
+// One History row per generation attempt (READY, NOT_READY, building, cancelled) — same facts as a track export.
+function listeningAttemptRecord(o) {
+  const t = o.track || {}
+  return { attemptId: o.attemptId, createdAt: o.createdAt, finishedAt: o.finishedAt || null, language: o.lang, trackType: 'listening',
+    selectedTargetIds: (o.ids || []).slice(), state: o.state, coverage: t.coverage || { covered: o.covered || 0, required: (o.ids || []).length, missing: o.missing || [] },
+    failedChecks: t.failedChecks || [], failureReason: t.failureReason || null, telemetry: t.telemetry || null, usage: o.usage || t.usage || null,
+    model: o.model || null, rebuildOf: o.rebuildOf || null, trackId: t.ready ? t.id : null, log: (o.log || []).slice(-600) }
+}
+function listeningCoverageCounts(cov, ids) {
+  const st = id => (cov && cov[id]) || 'pending'
+  return { present: ids.filter(id => st(id) === 'generated' || st(id) === 'verified').length, verified: ids.filter(id => st(id) === 'verified').length,
+    repair: ids.filter(id => st(id) === 'repair').length, total: ids.length }
+}
+function listeningRecallsFor(state) {
+  const s = LISTENING_COVERAGE_STYLE[state]
+  return state && state !== 'pending' && s ? [{ recallIndex: 1, color: s.color, label: s.label }] : []
+}
+function ListeningUsageLine({ usage, label }) {
+  const u = usage || { requests: 0, totalTokens: 0, costSgd: 0 }
+  return (
+    <div data-listening-usage="1" style={{ fontSize:10, color:'var(--muted)', textAlign:'center', fontFamily:'monospace' }}>
+      <GeminiMark size={10} /> {label || 'This Listening run'}: {u.requests} request{u.requests === 1 ? '' : 's'} · {formatTokensShort(u.totalTokens || 0)} tokens · {formatSgdChip(u.costSgd || 0)}
+    </div>
+  )
+}
+function ListeningAttemptHistory({ attempts, currentId, words, onRebuildIds, building }) {
+  const [open, setOpen] = useState(false)
+  const [expanded, setExpanded] = useState(null)
+  const list = attempts || []
+  if (!list.length) return null
+  const wordOf = id => { const w = (words || []).find(x => x.id === id); return w ? (w.thai && !w.japanese && !w.chinese ? w.thai : w.japanese || w.chinese || w.thai) : String(id) }
+  const stColor = st => st === 'READY' ? '#10b981' : st === 'NOT_READY' ? '#f97316' : st === 'BUILDING' ? '#60a5fa' : 'var(--muted)'
+  return (
+    <div data-listening-history="1" style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <span style={{ fontSize:9, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Listening generations ({list.length})</span>
+        <button onClick={() => setOpen(v => !v)} style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>
+          {open ? '▼ Hide' : '▲ History'}
+        </button>
+      </div>
+      {open && list.map(a => {
+        const st = a.state === 'BUILDING' && a.attemptId !== currentId ? 'INTERRUPTED' : a.state
+        const isOpen = expanded === a.attemptId
+        return (
+          <div key={a.attemptId} data-listening-history-row={a.attemptId} data-target-ids={(a.selectedTargetIds || []).join(',')}
+            style={{ borderTop:'1px solid var(--border)', marginTop:6, paddingTop:6, fontSize:11 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', gap:6, cursor:'pointer' }} onClick={() => setExpanded(isOpen ? null : a.attemptId)}>
+              <span style={{ color:'var(--text)' }}>{String(a.createdAt || '').replace('T', ' ').slice(0, 16)} · {String(a.language || '').toUpperCase()} · listening{a.rebuildOf ? ' · rebuild' : ''}{a.attemptId === currentId ? ' · this run' : ''}</span>
+              <span style={{ color: stColor(st), fontWeight:700 }}>{st}</span>
+            </div>
+            <div style={{ color:'var(--muted)', fontSize:10 }}>
+              TARGET COVERAGE {(a.coverage && a.coverage.covered) || 0}/{(a.coverage && a.coverage.required) || (a.selectedTargetIds || []).length} · {(a.selectedTargetIds || []).length} selected · NEW 0
+              {a.usage ? ' · ' + a.usage.requests + ' requests · ' + formatTokensShort(a.usage.totalTokens || 0) + ' tokens · ' + formatSgdChip(a.usage.costSgd || 0) : ''}{a.model ? ' · ' + a.model : ''}
+            </div>
+            {isOpen && (
+              <div style={{ marginTop:4, display:'flex', flexDirection:'column', gap:3 }}>
+                <div style={{ fontSize:10, color:'var(--muted)' }}>Targets: {(a.selectedTargetIds || []).map(wordOf).join(' · ')}</div>
+                {a.coverage && (a.coverage.missing || []).length > 0 && <div style={{ fontSize:10, color:'#f97316' }}>Missing: {a.coverage.missing.map(wordOf).join(', ')}</div>}
+                {(a.failedChecks || []).length > 0 && <div style={{ fontSize:10, color:'#f97316' }}>Failed: {a.failedChecks.join(' · ')}</div>}
+                {a.failureReason && <div style={{ fontSize:10, color:'#f97316' }}>{a.failureReason}</div>}
+                {a.telemetry && <div style={{ fontSize:9, color:'var(--muted)', fontFamily:'monospace' }}>{Object.entries(a.telemetry).map(([k, v]) => k + '=' + v).join(' ')}</div>}
+                <div style={{ maxHeight:160, overflowY:'auto', background:'var(--surface2)', borderRadius:4, padding:'4px 6px' }}>
+                  {(a.log || []).map((m, i) => <p key={i} style={{ fontSize:9, margin:0, fontFamily:'monospace', color: generationLogColor(m), overflowWrap:'anywhere' }}>{m}</p>)}
+                </div>
+                <div style={{ display:'flex', gap:6 }}>
+                  <button onClick={() => downloadGeneratorLog(['LISTENING GENERATION ' + a.attemptId, 'language=' + a.language + ' trackType=listening state=' + st + ' coverage=' + ((a.coverage && a.coverage.covered) || 0) + '/' + ((a.coverage && a.coverage.required) || 0),
+                    'selectedTargetIds=[' + (a.selectedTargetIds || []).join(',') + ']', a.usage ? 'usage: ' + JSON.stringify(a.usage) : '', ''].concat(a.log || []), 'listening-log')}
+                    style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>⬇ log</button>
+                  {st !== 'READY' && onRebuildIds && !building && (a.selectedTargetIds || []).length > 0 && (
+                    <button onClick={() => onRebuildIds(a.selectedTargetIds, a.attemptId)}
+                      style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>🔁 Rebuild these {(a.selectedTargetIds || []).length}</button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+// The status of a finished attempt, shown INSIDE the generator (never instead of it).
+function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onStart, onCancel }) {
+  if (building) return <Btn onClick={onCancel} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>{'⏸'} Cancel</Btn>
+  if (!track) return <Btn onClick={onBack} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+  const cov = track.coverage || { covered: 0, required: LISTENING_TRACK_TARGETS, missing: [] }
+  if (track.ready) return (
+    <div data-listening-track-ready="1" style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{ textAlign:'center', fontSize:13, fontWeight:600 }}>{track.listening ? listeningCoverageLabel(track.listening, track) : 'TARGET COVERAGE ' + cov.covered + '/' + cov.required}</div>
+      <Btn onClick={onStart} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>▶ Start Listening</Btn>
+      <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+    </div>
+  )
+  const missing = (cov.missing || []).map(wordOf)
+  return (
+    <div data-listening-needs-repair="1" style={{ background:'rgba(249,115,22,0.08)', border:'1px solid #f97316', borderRadius:10, padding:'12px 14px', display:'flex', flexDirection:'column', gap:6 }}>
+      <div style={{ fontWeight:800, color:'#f97316', letterSpacing:'0.04em' }}>LISTENING TRACK NEEDS REPAIR</div>
+      <div style={{ fontSize:13, color:'var(--text)' }}>TARGET COVERAGE {cov.covered}/{cov.required}</div>
+      {missing.length > 0 && <div style={{ fontSize:12, color:'var(--text)' }}>Missing: {missing.join(', ')}</div>}
+      {(track.failedChecks || []).length > 0 && <div style={{ fontSize:12, color:'#b45309' }}>Failed: {track.failedChecks.map(x => x.replace(/=FAIL$/, '')).join(' · ')}</div>}
+      {track.failureReason && <div style={{ fontSize:12, color:'#b45309' }}>{track.failureReason}</div>}
+      <div style={{ fontSize:11, color:'var(--muted)' }}>Not played or saved as a lesson. Rebuild writes a completely new conversation from the same {(track.selectedTargetIds || []).length} words.</div>
+      <div style={{ display:'flex', gap:8 }}>
+        <Btn onClick={onRebuild} variant="primary" disabled={!(track.selectedTargetIds || []).length} style={{ flex:1, justifyContent:'center' }}>🔁 Rebuild</Btn>
+        <Btn onClick={onBack} variant="secondary" style={{ flex:1, justifyContent:'center' }}>Continue</Btn>
+      </div>
+    </div>
+  )
+}
+function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack }) {
+  // §4 — the target SNAPSHOT: taken once, when this generator opens (a saved track keeps its own ids)
+  const [snap] = useState(() => saved ? null : selectRevisionTargets(lang, vocab))
+  const [ids, setIds] = useState(() => (saved ? (saved.listeningSelectedTargetIds || saved.selectedTargetIds || []) : snap.targetIds).slice())
+  const words = useMemo(() => {
+    const byId = new Map((vocab || []).map(w => [w.id, w]))
+    const sn = new Map(((snap && snap.targets) || []).map(w => [w.id, w]))
+    const kw = new Map(((saved && saved.keywords) || []).map(k => [k.wordId, k]))
+    return ids.map(id => sn.get(id) || byId.get(id) || (kw.get(id) ? { id, ...kw.get(id), status: 'learning' } : { id, thai: String(id), status: 'learning' }))
+  }, [ids, vocab, snap, saved])
+  const wordOf = id => { const w = words.find(x => x.id === id); return w ? (lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : w.thai) || String(id) : String(id) }
+  const initialCov = () => saved ? Object.fromEntries(ids.map(id => [id, ((saved.coverage && saved.coverage.missing) || []).includes(id) ? 'repair' : 'verified'])) : Object.fromEntries(ids.map(id => [id, 'pending']))
+  const [coverage, setCoverage] = useState(initialCov)
+  const [phase, setPhase] = useState(saved ? 'done' : 'building')
+  const [stage, setStage] = useState(saved ? 'final' : 'selection')
+  const [result, setResult] = useState(saved || null)
+  const [liveLog, setLiveLog] = useState([])
+  const [fullLog, setFullLog] = useState([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [attempts, setAttempts] = useState([])
+  const [usage, setUsage] = useState(saved ? saved.usage || null : null)
+  const [currentAttempt, setCurrentAttempt] = useState(saved ? saved.attemptId || null : null)
   const [playing, setPlaying] = useState(false)
-  const started = useRef(false)
-  const build = async (targetIds, rebuildOf) => {
-    setState({ phase: 'building', track: null }); setLog([])
+  const [speed, setSpeed] = useState(() => listeningPlaybackSpeed())
+  const runRef = useRef(null), startedRef = useRef(false), liveRef = useRef(true), logRef = useRef([])
+  useEffect(() => { liveRef.current = true; return () => { liveRef.current = false; if (runRef.current) { try { aiCancelRun(runRef.current.runId, 'listening generator closed') } catch (e) {} } } }, [])
+  useEffect(() => { loadListeningAttempts(lang).then(a => { if (liveRef.current) { setAttempts(a)
+    if (saved && saved.attemptId) { const r = a.find(x => x.attemptId === saved.attemptId); if (r && r.log) { setFullLog(r.log); setLiveLog(r.log.slice(-8)) } } } }) }, [])
+  const run = async (targetIds, rebuildOf) => {
+    const useIds = (targetIds || ids).slice()
+    const attemptId = 'lattempt-' + new Date().toISOString() + '-' + Math.floor(Math.random() * 1e4)
+    const createdAt = new Date().toISOString()
+    const runId = aiBeginRun('listening-track', attemptId)
+    const led0 = typeof AI_LEDGER !== 'undefined' ? AI_LEDGER.length : 0
+    runRef.current = { runId, attemptId }
+    logRef.current = []
+    setIds(useIds); setCurrentAttempt(attemptId); setResult(null); setPhase('building'); setStage('selection'); setPlaying(false)
+    setCoverage(Object.fromEntries(useIds.map(id => [id, 'pending']))); setLiveLog([]); setFullLog([]); setUsage(null)
+    const push = m => { const f = generationLogFormat(m); logRef.current.push(f); if (!liveRef.current) return; setFullLog(l => [...l, f]); setLiveLog(l => [...l.slice(-7), f]); setUsage(listeningUsageSince(led0)) }
+    const base = { attemptId, createdAt, lang, ids: useIds, model, rebuildOf: rebuildOf || null }
+    try { const a = await saveListeningAttempt(lang, listeningAttemptRecord({ ...base, state: 'BUILDING' })); if (liveRef.current) setAttempts(a) } catch (e) {}
+    let r = null
     try {
-      const r = await buildStandaloneListeningTrack({ lang, vocab, apiKey, model, targetIds, rebuildOf, onLog: m => setLog(l => [...l.slice(-60), generationLogFormat(m)]) })
-      if (r.track.ready) { try { onSave && await onSave(r.track) } catch (e) {} setState({ phase: 'ready', track: r.track }) }
-      else setState({ phase: 'repair', track: r.track })
-    } catch (e) { setState({ phase: 'repair', track: { status: 'NOT_READY', failureReason: String(e && e.message || e), keywords: [], coverage: { covered: 0, required: LISTENING_TRACK_TARGETS, missing: [] }, failedChecks: [] } }) }
+      r = await buildStandaloneListeningTrack({ lang, vocab, apiKey, model, attemptId, rebuildOf: rebuildOf || null,
+        ...(targetIds ? { targetIds: useIds } : { snapshot: snap }),
+        onLog: push,
+        onProgress: ev => { if (!liveRef.current || !ev || !ev.coverage) return; setCoverage(ev.coverage); setStage(ev.stage); setUsage(listeningUsageSince(led0)) } })
+    } catch (e) {
+      push('❌ Listening generation stopped: ' + String(e && e.message || e))
+      r = { track: { trackType: 'listening', language: lang, selectedTargetIds: useIds, status: 'NOT_READY', ready: false, failureReason: String(e && e.message || e),
+        coverage: { covered: 0, required: useIds.length, missing: useIds.slice() }, failedChecks: [], telemetry: null } }
+    }
+    const t = r.track
+    let sum = null
+    try { sum = aiUsageSummary(runId); if (t.ready || sum.total) { t.aiUsage = sum; recordLastTrackAiUsage(sum, t.id || attemptId, lang) } } catch (e) {}
+    const u = listeningUsageSince(led0)
+    t.usage = t.usage || u
+    const rec = listeningAttemptRecord({ ...base, finishedAt: new Date().toISOString(), state: t.ready ? 'READY' : 'NOT_READY', track: t, usage: t.usage, log: logRef.current })
+    try { const a = await saveListeningAttempt(lang, rec); if (liveRef.current) setAttempts(a) } catch (e) {}
+    if (t.ready) { try { onSave && await onSave(t) } catch (e) {} }
+    runRef.current = null
+    if (!liveRef.current) return
+    setUsage(t.usage); setResult(t); setStage('final'); setPhase('done')
+    if (!t.listening) setCoverage(Object.fromEntries(useIds.map(id => [id, 'repair'])))
   }
-  useEffect(() => { if (!saved && !started.current) { started.current = true; build(null) } }, [])
-  const t = state.track, lt = t && t.listening
-  const wrap = { maxWidth: 720, margin: '0 auto', padding: '16px' }
-  const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, textAlign: 'center' }
-  const btn = { padding: '10px 16px', borderRadius: 10, border: 'none', fontWeight: 700, cursor: 'pointer' }
-  if (state.phase === 'building') return <div style={wrap}><div style={card} data-listening-track-building="1">
-    <div style={{ fontSize: 34 }}>🎧</div><h2 style={{ margin: '8px 0 4px' }}>Listening Track</h2>
-    <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 10 }}>Writing a new conversation from 30 words you have already learned (0 new). This takes a moment.</div>
-    <Spinner size={22} />
-    <div style={{ textAlign: 'left', fontSize: 11, color: 'var(--muted)', marginTop: 12, maxHeight: 160, overflow: 'auto', fontFamily: 'monospace' }}>{log.slice(-8).map((l, i) => <div key={i}>{l}</div>)}</div>
-  </div></div>
-  if (state.phase === 'repair') {
-    const kw = new Map(((t && t.keywords) || []).map(k => [k.wordId, k]))
-    const missing = ((t && t.coverage && t.coverage.missing) || []).map(id => { const k = kw.get(id) || {}; return k.japanese || k.chinese || k.thai || id })
-    return <div style={wrap}><div style={card} data-listening-needs-repair="1">
-      <div style={{ fontSize: 34 }}>🎧</div><h2 style={{ margin: '8px 0 4px' }}>Listening track needs repair</h2>
-      <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 6 }}>TARGET COVERAGE {(t && t.coverage && t.coverage.covered) || 0}/{(t && t.coverage && t.coverage.required) || LISTENING_TRACK_TARGETS}{missing.length ? ' · Missing: ' + missing.join(', ') : ''}</div>
-      <div style={{ color: '#b45309', fontSize: 12, marginBottom: 12 }}>{((t && t.failedChecks) || []).join(' · ') || (t && t.failureReason) || ''}</div>
-      <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 16 }}>This conversation did not pass every Listening check, so it is not played or saved. Rebuild writes a new conversation from the same 30 words.</div>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button style={{ ...btn, background: 'var(--surface2, #eee)', color: 'var(--text)' }} disabled={!(t && t.selectedTargetIds && t.selectedTargetIds.length)}
-          onClick={() => build(t.selectedTargetIds, t.id || t.createdAt)}>🔁 Rebuild</button>
-        <button style={{ ...btn, background: 'var(--accent)', color: '#fff' }} onClick={onBack}>Continue</button>
-      </div></div></div>
-  }
-  if (playing && lt) return <div style={{ maxWidth: 720, margin: '0 auto', padding: '12px 10px' }}>
-    <ConvoPlayer lines={lt.lines.map(l => ({ ...l, _scene: l.scene }))} speed={speed} onSpeedChange={v => { setSpeed(v); saveListeningPlaybackSpeed(v) }} speedPresets={LISTENING_SPEED_PRESETS}
-      gcpTtsKey={gcpTtsKey} lang={lang} coverageLabel={listeningCoverageLabel(lt, t)} title="Listening Track" onSkip={() => setPlaying(false)} onDone={() => { setPlaying(false); onBack && onBack() }} />
-  </div>
-  return <div style={wrap}><div style={card} data-listening-track-ready="1">
-    <div style={{ fontSize: 34 }}>🎧</div><h2 style={{ margin: '8px 0 4px' }}>Listening Track</h2>
-    <div style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 6 }}>A {lt ? lt.lines.length : 0}-turn conversation using {(t.keywords || []).length} words you have learned · 0 new</div>
-    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{lt ? listeningCoverageLabel(lt, t) : ''}</div>
-    <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-      <button style={{ ...btn, background: 'var(--accent)', color: '#fff' }} onClick={() => setPlaying(true)}>▶ Start Listening</button>
-      <button style={{ ...btn, background: 'var(--surface2, #eee)', color: 'var(--text)' }} onClick={onBack}>Back</button>
-    </div></div></div>
+  useEffect(() => { if (!saved && !startedRef.current) { startedRef.current = true; run(null, null) } }, [])
+  const cancel = () => { if (runRef.current) { try { aiCancelRun(runRef.current.runId, 'cancelled by the learner') } catch (e) {} } onBack && onBack() }
+  const lt = result && result.listening
+  if (playing && lt) return (
+    <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>
+      <ConvoPlayer lines={lt.lines.map(l => ({ ...l, _scene: l.scene }))} speed={speed} onSpeedChange={v => { setSpeed(v); saveListeningPlaybackSpeed(v) }} speedPresets={LISTENING_SPEED_PRESETS}
+        gcpTtsKey={gcpTtsKey} lang={lang} coverageLabel={listeningCoverageLabel(lt, result)} title="Listening Track" onSkip={() => setPlaying(false)} onDone={() => { setPlaying(false); onBack && onBack() }} />
+    </div>
+  )
+  // ── derived from the ONE coverage map ──
+  const counts = listeningCoverageCounts(coverage, ids)
+  const building = phase === 'building'
+  const ready = !!(result && result.ready)
+  const pct = ready ? 100 : (ids.length ? Math.round((counts.present / ids.length) * 100) : 0)
+  const stageText = { selection: 'Selecting the 30 Revision words…', composing: 'Kru Gemini is writing the conversation…', composed: 'Checking target coverage, max 3 per turn, vocabulary, naturalness…',
+    repair: 'Repairing local exchanges…', repaired: 'Re-checking after repair…', coherence: 'Checking whole-conversation coherence and pronunciation…', final: 'Final integrity check' }[stage] || 'Working…'
+  const statusText = building ? counts.present + ' of ' + ids.length + ' targets · ' + stageText : ready ? 'Finished · ' + counts.verified + ' of ' + ids.length + ' targets verified' : 'Finished · ' + counts.present + ' of ' + ids.length + ' targets'
+  const subtitle = 'TARGET COVERAGE ' + counts.present + '/' + ids.length + ' · NEW 0 · REVIEW ' + ids.length
+  const title = building ? 'Kru Gemini is writing your listening track' : ready ? '✓ Listening Track Ready!' : '⚠ Listening track needs repair'
+  const chipColor = id => LISTENING_COVERAGE_STYLE[coverage[id] || 'pending'].color
+  const statusPanel = <ListeningStatusPanel track={building ? null : result} wordOf={wordOf} building={building} onCancel={cancel} onBack={onBack}
+    onStart={() => setPlaying(true)} onRebuild={() => run(ids, (result && (result.attemptId || result.id)) || currentAttempt)} />
+  const history = <ListeningAttemptHistory attempts={attempts} currentId={currentAttempt} words={words} building={building} onRebuildIds={(tids, from) => run(tids, from)} />
+  const chipsGrid = lang === 'th'
+    ? <GeneratorTileGrid count={ids.length} ids={ids} idAttr="data-listening-chip" tileDone={i => (coverage[ids[i]] || 'pending') !== 'pending'} tileColor={i => chipColor(ids[i])} />
+    : <GenerationBrickGrid total={ids.length} ids={ids} idAttr="data-listening-chip"
+        sources={Object.fromEntries(ids.map((id, i) => [i, coverage[id] && coverage[id] !== 'pending' ? 'ln:' + coverage[id] : '']))}
+        colorFor={s => LISTENING_COVERAGE_STYLE[String(s).replace(/^ln:/, '')] ? LISTENING_COVERAGE_STYLE[String(s).replace(/^ln:/, '')].color : '#888888'} />
+  const selectionLine = describeTargetSelection(null, words) + '  ·  REVISION SELECTION · 0 NEW · 1+ OCCURRENCE EACH'
+  if (lang === 'th') return (
+    <div className="fade-in" data-listening-generator="th" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:24, paddingTop:40 }}>
+      <GeneratorTitle title={title} subtitle={subtitle} subtitleColor={!building && !ready ? '#ef4444' : 'var(--muted)'} note="Listening Track · same 30 words a Revision Track would get" />
+      <GeneratorProgressBar pct={pct} color="#10b981" color2="#d4a94a" scaleMax={ids.length} />
+      {chipsGrid}
+      <GeneratorStatusLine spinning={building} color="#10b981">{statusText}</GeneratorStatusLine>
+      <GeneratorLogPanel genLog={liveLog} fullLog={fullLog} showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)} visible={true} logPrefix="listening-log" />
+      <ListeningUsageLine usage={usage} />
+      {statusPanel}
+      <Card style={{ padding:'12px 14px' }}>
+        <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>{selectionLine}</p>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+          {words.map(w => {
+            const st = coverage[w.id] || 'pending'
+            return <ThaiTargetTile key={w.id} w={w} phonetic={w.phonetic || ''} done={st === 'verified'} chipColor={st === 'pending' ? 'var(--border)' : LISTENING_COVERAGE_STYLE[st].color}
+              recalls={listeningRecallsFor(st)} slots={1} attrs={{ 'data-listening-tile': String(w.id), 'data-coverage-state': st }} />
+          })}
+        </div>
+      </Card>
+      {history}
+    </div>
+  )
+  const Pill = lang === 'ja' ? JapaneseTargetPill : MandarinTargetPill
+  return (
+    <div className="fade-in" data-listening-generator={lang} style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
+      <CompactGeneratorHeader pct={pct} labelColor={!building && !ready ? '#ef4444' : undefined} label={title + ' · ' + subtitle}
+        leftNote={<>{ids.length} words {'·'} {ids.length} coverage slots {'·'} 1+ occurrence each</>} rightNote={<>{counts.present} / {ids.length}</>} />
+      {chipsGrid}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, minHeight:20 }}>
+        {building && <Spinner size={14} color="#10b981" />}
+        <span style={{ fontSize:12, fontWeight:600, color:'var(--text)' }}>{statusText}</span>
+      </div>
+      <GenerationLiveLog lines={showHistory ? fullLog : liveLog} fullLog={fullLog} onDownload={() => downloadGeneratorLog(fullLog, 'listening-log')}
+        showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)} />
+      <div>
+        <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' }}>{selectionLine}</p>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+          {words.map(w => {
+            const st = coverage[w.id] || 'pending'
+            return <Pill key={w.id} w={w} state={st === 'verified' ? 'done' : 'future'} srcColor={st === 'pending' ? '#888888' : LISTENING_COVERAGE_STYLE[st].color}
+              recalls={listeningRecallsFor(st)} slots={1} attrs={{ 'data-listening-tile': String(w.id), 'data-coverage-state': st }} />
+          })}
+        </div>
+      </div>
+      <ListeningUsageLine usage={usage} />
+      {statusPanel}
+      {history}
+    </div>
+  )
 }
 
 // v658 §3/§25 — Listening is no longer built from (or after) a Daily / Revision Main Track. Stored Listening of
@@ -17741,6 +18053,126 @@ function TrackQuality({ track }) {
 }
 
 
+// ══ v659 — THE GENERATOR SHELL (shared components) ═══════════════════════════════════════════════════════
+// Extracted from the Thai Daily / Revision Generator so that the Generator itself AND the Listening Track
+// generator render the SAME components (no Listening-only look-alikes). Japanese / Mandarin generators share
+// CompactGeneratorHeader + GenerationBrickGrid + GenerationLiveLog + their target pills the same way.
+function GeneratorTitle({ title, subtitle, subtitleColor, note }) {
+  return (
+    <div style={{ textAlign:'center' }}>
+      <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
+        {title}
+        {note ? <div style={{ fontSize:11, color:'var(--muted)', marginTop:4, fontStyle:'italic' }}>{note}</div> : null}
+      </div>
+      <p style={{ color: subtitleColor || 'var(--muted)', fontSize:13 }} data-generator-subtitle="1">{subtitle}</p>
+    </div>
+  )
+}
+function GeneratorProgressBar({ pct, color, color2, scaleMax, label }) {
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+        <span style={{ fontSize:12, color:'var(--muted)' }}>{label || 'Generation'}</span>
+        <span className="phon" style={{ fontSize:13, color:color, fontWeight:700 }} data-generator-pct="1">{pct}%</span>
+      </div>
+      <div style={{ height:10, background:'var(--surface2)', borderRadius:6, overflow:'hidden' }}>
+        <div style={{ height:'100%', width:`${pct}%`, background:`linear-gradient(90deg, ${color}, ${color2 || '#d4a94a'})`, borderRadius:6, transition:'width 0.4s ease' }} />
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
+        <span style={{ fontSize:10, color:'var(--muted)' }}>0</span>
+        <span style={{ fontSize:10, color:'var(--muted)' }}>{scaleMax}</span>
+      </div>
+    </div>
+  )
+}
+// The live tile grid. `ids` (optional) tags each tile with the stable target id it represents.
+function GeneratorTileGrid({ count, tileDone, tileColor, ids, idAttr }) {
+  return (
+    <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
+      {Array.from({ length: count }, (_, i) => {
+        const done = tileDone(i)
+        const extra = ids && idAttr ? { [idAttr]: String(ids[i]) } : {}
+        return <div key={ids ? ids[i] : i} {...extra} style={{ height:8, borderRadius:3, background: tileColor(i, done), transition:'background 0.2s', opacity:done ? 1 : 0.4 }} />
+      })}
+    </div>
+  )
+}
+function GeneratorStatusLine({ spinning, color, children }) {
+  return (
+    <div style={{ textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+      {spinning && <Spinner size={16} color={color} />}
+      <span style={{ fontSize:13, color:'var(--muted)' }}>{children}</span>
+    </div>
+  )
+}
+function downloadGeneratorLog(lines, prefix) {
+  const b = new Blob([(lines || []).join('\n')], { type:'text/plain' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(b)
+  a.download = (prefix || 'gen-log') + '-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.txt'
+  a.click()
+}
+// The Thai generator's Generation log: rolling live window, ⬇ log (the full log) and ▲ History (the full log inline).
+function GeneratorLogPanel({ genLog, fullLog, showHistory, onToggleHistory, visible, logPrefix }) {
+  if (!visible) return null
+  return (
+    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', marginTop:-8, display:'flex', flexDirection:'column', gap:3 }} data-generation-log="1">
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
+        <span style={{ fontSize:9, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Generation log</span>
+        {genLog.length > 0 && (
+          <button onClick={() => downloadGeneratorLog(fullLog.length ? fullLog : genLog, logPrefix)} style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>
+            ⬇ log
+          </button>
+        )}
+        {fullLog.length > genLog.length && (
+          <button onClick={onToggleHistory}
+            style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>
+            {showHistory ? '▼ Live' : '▲ History'}
+          </button>
+        )}
+      </div>
+      {genLog.length === 0 && <p style={{ fontSize:10, color:'var(--muted)', margin:0, fontFamily:'monospace' }}>⏳ Initialising...</p>}
+      {(showHistory && fullLog.length ? fullLog : genLog).map((msg, i) => (
+        <p key={i} style={{ fontSize:10, color: msg.startsWith('❌') || msg.startsWith('⛔') ? '#ef4444' : msg.startsWith('⚠') ? '#f97316' : msg.startsWith('✅') ? '#4ade80' : msg.startsWith('━') ? 'var(--border)' : 'var(--muted)', margin:0, fontFamily:'monospace', lineHeight:1.4, overflowWrap:'anywhere' }}>
+          {msg}
+        </p>
+      ))}
+    </div>
+  )
+}
+// The Thai word tile (SRS mastery badge, role badge, script, phonetic, per-recall circles). `slots` is the number
+// of circles: 3 for a Main Track (3 practice pairs), 1 for Listening (≥1 verified occurrence).
+function ThaiTargetTile({ w, phonetic, done, chipColor, recalls, slots, children, attrs }) {
+  return (
+    <div {...(attrs || {})} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : (w.status === 'new' ? 'rgba(74,144,226,0.10)' : 'transparent'), border:'1px solid ' + (done ? chipColor : (w.status === 'new' ? 'rgba(74,144,226,0.65)' : chipColor)), borderRadius:8, ...BRICK_PAD, transition:'all 0.3s', minWidth:0, position:'relative', overflow:'visible' }}>
+      <MasteryBadge word={w} />
+      <RoleBadge word={w} role={roleFromSelection(w)} />
+      <span className="thai" style={{ color: done ? chipColor : (w.status === 'new' ? '#8ab8f0' : 'var(--text)'), fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
+      {phonetic ? <span className="phon" style={{ color: done ? chipColor : 'var(--muted)', fontSize:10, lineHeight:1.2, opacity:0.7 }}>{phonetic}</span> : null}
+      <RecallCircles recalls={recalls} slots={slots} />
+      {children}
+    </div>
+  )
+}
+// The Japanese / Mandarin compact progress header.
+function CompactGeneratorHeader({ label, labelColor, pct, leftNote, rightNote }) {
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+        <span style={{ fontSize:13, fontWeight:600, color: labelColor }} data-generator-subtitle="1">{label}</span>
+        <span className="phon" style={{ fontSize:12, color:'var(--gold)' }} data-generator-pct="1">{pct}%</span>
+      </div>
+      <div style={{ height:6, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
+        <div style={{ height:'100%', width:pct + '%', background:'linear-gradient(90deg,#d4a94a,#10b981)', borderRadius:3, transition:'width 0.5s ease' }} />
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+        <span style={{ fontSize:9, color:'var(--muted)' }}>{leftNote}</span>
+        <span style={{ fontSize:9, color:'var(--muted)' }}>{rightNote}</span>
+      </div>
+    </div>
+  )
+}
+
 function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, customTargets, onTrackCost, tracks, resumeDraft, dailyNewWords, onSaveDailyNewWords }) {
   const genModel = GEMINI_DEFAULT_MODEL                    // v648: Gemini Flash-Lite for every Generator stage
   const [error, setError] = useState('')
@@ -17803,7 +18235,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   const [generatedTrack, setGeneratedTrack] = useState(null)
   const phoneticsRef = useRef({})
   const { targets: _rawTargets, anchors: _rawAnchors, shortfall: _selShortfall, lockedByUnratedTracks: _lockedByUnrated,
-          reserve: _reserve, skippedCandidates: _skippedCandidates, candidateStats: _candidateStats, contract: _contract, selectionBackfills: _selBackfills } = useMemo(() => {
+          reserve: _reserve, skippedCandidates: _skippedCandidates, candidateStats: _candidateStats, contract: _contract, selectionBackfills: _selBackfills, canon: _revCanon } = useMemo(() => {
     // If resuming from a draft, use the remaining targets from the draft
     if (resumeDraft && resumeDraft.targetsRemaining && resumeDraft.targetsRemaining.length > 0) {
       return { targets: resumeDraft.targetsRemaining, anchors: resumeDraft.anchors || [] }
@@ -17816,11 +18248,13 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
       // v645: Revision is under the 30-target contract; its reserve is the same ranked,
       // eligibility-filtered order beyond the selection (used only for backfill).
       if (mode === 'revision') {
-        const rv = selectThaiRevisionTargets(vocab, 100000)
-        const rv30 = selectThaiRevisionTargets(vocab, THAI_TRACK_TARGET_COUNT)
-        return { targets: customTargets, anchors: anch, contract: true, reserve: rv.targets.filter(w => !targetIds.has(w.id)), selectionBackfills: rv30.selectionBackfills || [],
-          skippedCandidates: (rv.skippedCandidates || []).filter(x => x.position < THAI_TRACK_TARGET_COUNT),
-          candidateStats: rv.candidateStats ? { ...rv.candidateStats, skippedBeforeSelection: (rv.skippedCandidates || []).filter(x => x.position < THAI_TRACK_TARGET_COUNT).length } : null }
+        // v659 §1 — the canonical Revision selector decides the 30 (the same call the Listening Track makes)
+        const cs = selectRevisionTargets('th', vocab)
+        const csIds = new Set(cs.raw.map(w => w.id))
+        const anchR = vocab.filter(w => (w.status === 'known' || w.status === 'learning') && !csIds.has(w.id))
+          .sort((a, b) => (!a.lastSeen ? -1 : !b.lastSeen ? 1 : a.lastSeen.localeCompare(b.lastSeen))).slice(0, 25)
+        return { targets: cs.raw, anchors: anchR, contract: true, reserve: cs.reserve, selectionBackfills: cs.selectionBackfills,
+          skippedCandidates: cs.skippedCandidates, candidateStats: cs.candidateStats, canon: cs }
       }
       return { targets: customTargets, anchors: anch }
     }
@@ -17869,10 +18303,14 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   // Custom lists and resumed drafts keep the per-target resolver.
   const _selection = useMemo(() => {
     if (!_contract) { const r = resolveThaiTargetSet(_rawTargets, _rawAnchors); return { ...r, backfills: [], blocked: null } }
+    if (_revCanon) {   // v659: Revision uses the canonical selection AS IS (its freeze already ran inside selectRevisionTargets)
+      const a = resolveThaiTargetSet([], _rawAnchors)
+      return { targets: _revCanon.targets, anchors: a.anchors, skipped: [], backfills: _revCanon.selectionBackfills, blocked: _revCanon.blocked, selectedTargetIds: _revCanon.targetIds }
+    }
     const f = freezeThaiTargetSelection({ selected: _rawTargets, reserve: _reserve, required: THAI_TRACK_TARGET_COUNT, mode, noNewOverflow: mode === 'revision' })
     const a = resolveThaiTargetSet([], _rawAnchors)
     return { targets: f.targets, anchors: a.anchors, skipped: [], backfills: (_selBackfills || []).concat(f.backfills), blocked: f.blocked, selectedTargetIds: f.selectedTargetIds }
-  }, [_rawTargets, _rawAnchors, _reserve, _contract, mode, _selBackfills])
+  }, [_rawTargets, _rawAnchors, _reserve, _contract, mode, _selBackfills, _revCanon])
   const { targets, anchors, skipped: _skippedTargets } = _selection
   // v642: one named-count record for this lesson (log, UI, track, export)
   const targetCounts = useMemo(() => thaiTargetCounts({
@@ -18328,91 +18766,35 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:24, paddingTop:40 }}>
 
       {/* Title */}
-      <div style={{ textAlign:'center' }}>
-        <div className="display" style={{ fontSize:22, color:'var(--text)', marginBottom:6 }}>
-          {phase === 'done' && generatedTrack
+      <GeneratorTitle
+        title={phase === 'done' && generatedTrack
             ? (listenPhase === 'FINALISING' || _readiness.mainTrackState === 'NOT_FINALISED' ? '🔍 Checking your track…'
               : trackReadyHeadline(generatedTrack).state === 'READY' ? '✓ Track Ready!' : '⚠ Track not ready')
             : apiKey ? 'Kru Gemini is writing your track' : customTargets ? 'Building custom track...' : 'Building track...'}
-          {sceneData && phase === 'streaming' && <div style={{ fontSize:11, color:'var(--muted)', marginTop:4, fontStyle:'italic' }}>{sceneData.scene ? (sceneData.scene.length > 80 ? sceneData.scene.slice(0,80).replace(/\s\S*$/, '') + '…' : sceneData.scene) : ''}</div>}
-        </div>
-        <p style={{ color: phase === 'done' && _readiness.mainTrackState === 'NOT_READY' ? '#ef4444' : 'var(--muted)', fontSize:13 }}>
-          {/* v650 §1: at completion the line reports TARGET PAIRS from the authoritative readiness
-              object — never the playable-line count, which includes framing */}
-          {phase === 'done' && (_readiness.mainTrackState === 'READY' || _readiness.mainTrackState === 'NOT_READY')
+        note={sceneData && phase === 'streaming' && sceneData.scene ? (sceneData.scene.length > 80 ? sceneData.scene.slice(0,80).replace(/\s\S*$/, '') + '…' : sceneData.scene) : null}
+        subtitleColor={phase === 'done' && _readiness.mainTrackState === 'NOT_READY' ? '#ef4444' : 'var(--muted)'}
+        subtitle={phase === 'done' && (_readiness.mainTrackState === 'READY' || _readiness.mainTrackState === 'NOT_READY')
             ? 'TARGET PAIRS ' + _readiness.validTargetPairs + '/' + _readiness.expectedTargetPairs + ' · ' + _readiness.playableLines + ' playable lines'
             : phase === 'done' ? (generatedTrack ? (generatedTrack.pairs || []).length : 0) + ' lines generated — quality check running'
-            : progress.statusLine}
-        </p>
-      </div>
+            : progress.statusLine} />
 
       {/* Big progress bar */}
-      <div>
-        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
-          <span style={{ fontSize:12, color:'var(--muted)' }}>Generation</span>
-          <span className="phon" style={{ fontSize:13, color:color, fontWeight:700 }}>{pct}%</span>
-        </div>
-        <div style={{ height:10, background:'var(--surface2)', borderRadius:6, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:`${pct}%`, background:`linear-gradient(90deg, ${color}, ${isWeak ? '#f59e0b' : '#d4a94a'})`, borderRadius:6, transition:'width 0.4s ease' }} />
-        </div>
-        <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
-          <span style={{ fontSize:10, color:'var(--muted)' }}>0</span>
-          <span style={{ fontSize:10, color:'var(--muted)' }}>{progress.scaleMax}</span>
-        </div>
-      </div>
+      <GeneratorProgressBar pct={pct} color={color} color2={isWeak ? '#f59e0b' : '#d4a94a'} scaleMax={progress.scaleMax} />
 
       {/* Live pair counter tiles */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
-        {Array.from({length: progress.tileCount}, (_, i) => {
-            const src = brickSources[i] || ''
-            const done = progress.tileDone(i)
-            // A finished tile is filled whether or not a source event reached it, so the
-            // grid always agrees with the percentage.
-            const bg = !done ? 'var(--surface2)' : (src ? srcToColor(src, color) : color)
-            return <div key={i} style={{ height:8, borderRadius:3, background:bg, transition:'background 0.2s', opacity:done ? 1 : 0.4 }} />
-          })}
-      </div>
+      <GeneratorTileGrid count={progress.tileCount} tileDone={i => progress.tileDone(i)}
+        tileColor={(i, done) => { const src = brickSources[i] || ''
+          // A finished tile is filled whether or not a source event reached it, so the grid always agrees with the percentage.
+          return !done ? 'var(--surface2)' : (src ? srcToColor(src, color) : color) }} />
 
       {/* Status / Action buttons */}
-      <div style={{ textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-        {phase !== 'done' && <Spinner size={16} color={color} />}
-        <span style={{ fontSize:13, color:'var(--muted)' }}>
+      <GeneratorStatusLine spinning={phase !== 'done'} color={color}>
           {phase === 'starting' && 'Connecting...'}
           {phase === 'streaming' && pairsDone === 0 && 'Kru Gemini is thinking...'}
           {phase === 'streaming' && pairsDone > 0 && `Word ${Math.ceil(pairsDone/3)} of ${_progTargets.length} — pair ${pairsDone}...`}
-        </span>
-      </div>
-      {(genLog.length > 0 || phase === 'streaming') && (
-        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', marginTop:-8, display:'flex', flexDirection:'column', gap:3 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
-            <span style={{ fontSize:9, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Generation log</span>
-            {genLog.length > 0 && (
-              <button onClick={() => {
-                const txt = (fullLog.length ? fullLog : genLog).join('\n')
-                const b = new Blob([txt], { type:'text/plain' })
-                const a = document.createElement('a')
-                a.href = URL.createObjectURL(b)
-                a.download = 'gen-log-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.txt'
-                a.click()
-              }} style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>
-                ⬇ log
-              </button>
-            )}
-            {fullLog.length > genLog.length && (
-              <button onClick={() => setShowHistory(h => !h)}
-                style={{ fontSize:9, background:'none', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', cursor:'pointer', padding:'1px 6px' }}>
-                {showHistory ? '▼ Live' : '▲ History'}
-              </button>
-            )}
-          </div>
-          {genLog.length === 0 && <p style={{ fontSize:10, color:'var(--muted)', margin:0, fontFamily:'monospace' }}>⏳ Initialising...</p>}
-          {(showHistory && fullLog.length ? fullLog : genLog).map((msg, i) => (
-            <p key={i} style={{ fontSize:10, color: msg.startsWith('❌') ? '#ef4444' : msg.startsWith('⚠') ? '#f97316' : msg.startsWith('✅') ? '#4ade80' : msg.startsWith('━') ? 'var(--border)' : 'var(--muted)', margin:0, fontFamily:'monospace', lineHeight:1.4 }}>
-              {msg}
-            </p>
-          ))}
-        </div>
-      )}
+      </GeneratorStatusLine>
+      <GeneratorLogPanel genLog={genLog} fullLog={fullLog} showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)}
+        visible={genLog.length > 0 || phase === 'streaming'} />
 
 
       {qcPanel()}
@@ -18489,13 +18871,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
               const chipColor = recalls.length ? checkStyle(worstTier).color : 'var(--border)'
               const isFallback = done && (chipSrc.startsWith('fallback:') || chipSrc.startsWith('hardcoded:'))
               return (
-                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', background: done ? 'var(--surface2)' : (w.status === 'new' ? 'rgba(74,144,226,0.10)' : 'transparent'), border:'1px solid ' + (done ? chipColor : (w.status === 'new' ? 'rgba(74,144,226,0.65)' : chipColor)), borderRadius:8, ...BRICK_PAD, transition:'all 0.3s', minWidth:0, position:'relative', overflow:'visible' }}>
-                  <MasteryBadge word={w} />
-                  <RoleBadge word={w} role={roleFromSelection(w)} />
-                  <span className="thai" style={{ color: done ? chipColor : (w.status === 'new' ? '#8ab8f0' : 'var(--text)'), fontSize:13, lineHeight:1.3 }}>{w.thai}</span>
-                  {phonetic ? <span className="phon" style={{ color: done ? chipColor : 'var(--muted)', fontSize:10, lineHeight:1.2, opacity:0.7 }}>{phonetic}</span> : null}
-                  {/* One circle per recall, each in the tier colour that accepted it */}
-                  <RecallCircles recalls={recalls} />
+                <ThaiTargetTile key={i} w={w} phonetic={phonetic} done={done} chipColor={chipColor} recalls={recalls} slots={3}>
                   {isFallback && phase === 'done' && (
                     <button onClick={async () => {
                       if (!apiKey) return
@@ -18517,7 +18893,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
                       } catch(e) { console.error(e) }
                     }} style={{ fontSize:9, marginTop:2, background:'none', border:'1px solid #f97316', borderRadius:3, color:'#f97316', cursor:'pointer', padding:'1px 4px', lineHeight:1 }}>🔧 fix</button>
                   )}
-                </div>
+                </ThaiTargetTile>
               )
             })}
           </div>
@@ -23680,7 +24056,7 @@ function ThaiTeacher({ lang, onSetLang }) {
     if (v === 'generate-daily') { setResumeDraft(null); setGenMode('daily'); setCustomTargets(null); setView('generate') }
     else if (v === 'generate-revision') {
       // Shared, language-neutral selector: previously introduced words only.
-      const rev = selectThaiRevisionTargets(vocab, REVISION_TRACK_MAX)   // v645: shared vocab eligibility before selection
+      const rev = selectRevisionTargets('th', vocab)   // v659 §1: THE canonical Revision selector (shared with Listening)
       if (!rev.targets.length) return
       setResumeDraft(null); setGenMode('revision'); setCustomTargets(rev.targets); setView('generate')
     }
@@ -23869,7 +24245,7 @@ function ThaiTeacher({ lang, onSetLang }) {
           onSaveDailyNewWords={saveDailyNewWords}
         /></ErrorBoundary>}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningTrackScreen key={'lt' + listeningKey} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracks([...tracks, t]) }} onBack={() => { setListeningOpen(null); navigate('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -24569,16 +24945,19 @@ function roleFromSelection(word) {
   return wordRoleBadge(word)
 }
 
-function RecallCircles({ recalls, size }) {
+function RecallCircles({ recalls, size, slots }) {
   const s = size || 7
   const list = Array.isArray(recalls) ? recalls : []
+  // v659: `slots` circles — 3 for a Main Track word (3 practice pairs), 1 for a Listening target (≥1 occurrence).
+  // A recall may carry its own `color` / `label` (Listening coverage states); otherwise the check-tier colour.
+  const n0 = slots || 3
   return (
     <span style={{ display:'flex', gap:3, marginTop:3 }}>
-      {[1, 2, 3].map(n => {
+      {Array.from({ length: n0 }, (_, k) => k + 1).map(n => {
         const hit = list.find(r => r.recallIndex === n)
-        return <span key={n} title={hit ? 'Recall ' + n + ' \u00b7 ' + checkStyle(hit.checkTier).label : 'Recall ' + n + ' \u00b7 pending'}
+        return <span key={n} title={hit ? (n0 === 1 ? 'Coverage' : 'Recall ' + n) + ' \u00b7 ' + (hit.label || checkStyle(hit.checkTier).label) : (n0 === 1 ? 'Coverage' : 'Recall ' + n) + ' \u00b7 pending'}
           style={{ width:s, height:s, borderRadius:'50%',
-            background: hit ? checkStyle(hit.checkTier).color : 'transparent',
+            background: hit ? (hit.color || checkStyle(hit.checkTier).color) : 'transparent',
             border: hit ? 'none' : '1px solid var(--border)', transition:'background 0.25s' }} />
       })}
     </span>
@@ -26411,7 +26790,7 @@ function GenerationLiveLog({ lines, fullLog, onDownload, showHistory, onToggleHi
       <div style={showHistory ? { maxHeight:200, overflowY:'auto', display:'flex', flexDirection:'column', gap:3 } : undefined}>
         {(lines || []).map((msg, i) => (
           <p key={i} style={{ fontSize:10, color: generationLogColor(msg), margin:0,
-                              fontFamily:'monospace', lineHeight:1.4 }}>{msg}</p>
+                              fontFamily:'monospace', lineHeight:1.4, overflowWrap:'anywhere' }}>{msg}</p>
         ))}
       </div>
     </div>
@@ -26440,7 +26819,7 @@ function historySources(history) {
   return out
 }
 
-function GenerationBrickGrid({ total, filled, sources, colorFor, contiguous }) {
+function GenerationBrickGrid({ total, filled, sources, colorFor, contiguous, ids, idAttr }) {
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:4 }}>
       {Array.from({ length: total }, (_, i) => {
@@ -26448,7 +26827,7 @@ function GenerationBrickGrid({ total, filled, sources, colorFor, contiguous }) {
         // Provenance is the single source of truth. `contiguous` is opt-in for
         // Thai's index-ordered grid; it is never applied to slot-addressed grids.
         const lit = !!src && (!contiguous || filled == null || i < filled)
-        return <div key={i} style={{ height:8, borderRadius:2,
+        return <div key={i} {...(ids && idAttr ? { [idAttr]: String(ids[i]) } : {})} style={{ height:8, borderRadius:2,
           background: lit ? colorFor(src) : 'var(--surface2)',
           opacity: lit ? 1 : 0.35, transition:'background 0.3s' }} />
       })}
@@ -26810,7 +27189,7 @@ function repairJapaneseTrack(track, inv) {
 // ── Mandarin UI (§22–§27, §43, §45, §55, §56) ────────────────────────────────
 
 // §23/§24 — pill with three recall LEDs, keyed on stable targetId (§22).
-function MandarinTargetPill({ w, state, srcColor, recalls }) {
+function MandarinTargetPill({ w, state, srcColor, recalls, slots, attrs }) {
   // §11 — role badge is independent of tier colour / active outline / LEDs
   const role = SELECTION_ROLE_STYLE[w.selectionRole] || null
   const isNew = w.status === 'new'
@@ -26820,7 +27199,7 @@ function MandarinTargetPill({ w, state, srcColor, recalls }) {
   const border = active ? 'var(--gold)' : (hasResult ? srcColor : (isNew ? 'rgba(74,144,226,0.65)' : 'var(--border)'))
   const text = active ? 'var(--gold)' : (hasResult ? srcColor : (isNew ? '#8ab8f0' : 'var(--text)'))
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+    <div {...(attrs || {})} style={{ display:'flex', flexDirection:'column', alignItems:'center',
       background: active ? 'rgba(212,169,74,0.20)' : (hasResult ? srcColor + '33' : (isNew ? 'rgba(74,144,226,0.10)' : 'transparent')),
       border: active ? '2px solid var(--gold)' : '1px solid ' + border,
       borderRadius:8, ...BRICK_PAD, transition:'all 0.25s',
@@ -26831,7 +27210,7 @@ function MandarinTargetPill({ w, state, srcColor, recalls }) {
       <span className="zh" style={{ color:text, fontSize:14, lineHeight:1.3 }}>{w.chinese}</span>
       <span className="phon" style={{ color: hasResult ? srcColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{w.pinyin}</span>
       {/* shared component — identical circle behaviour in every language */}
-      <RecallCircles recalls={list} />
+      <RecallCircles recalls={list} slots={slots} />
     </div>
   )
 }
@@ -27185,19 +27564,11 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
 
   return (
     <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
-      <div>
-        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-          <span style={{ fontSize:13, fontWeight:600, color: phase === 'done' && /NOT_READY|STALE|FAILED/.test(trackReadyHeadline(finalTrack, { finalising: qcPhase === 'running' }).state) ? '#ef4444' : undefined }}>{phase === 'done' ? trackReadyHeadline(finalTrack, { finalising: qcPhase === 'running' }).text : 'Generating Mandarin track'}</span>
-          <span className="phon" style={{ fontSize:12, color:'var(--gold)' }}>{pct}%</span>
-        </div>
-        <div style={{ height:6, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:pct + '%', background:'linear-gradient(90deg,#d4a94a,#10b981)', borderRadius:3, transition:'width 0.5s ease' }} />
-        </div>
-        <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
-          <span style={{ fontSize:9, color:'var(--muted)' }}>{(targets || []).length} words {'\u00b7'} {recallTotal} recalls {'\u00b7'} {FRAMING} framing</span>
-          <span style={{ fontSize:9, color:'var(--muted)' }}>{filled} / {totalSlots}</span>
-        </div>
-      </div>
+      <CompactGeneratorHeader pct={pct}
+        labelColor={phase === 'done' && /NOT_READY|STALE|FAILED/.test(trackReadyHeadline(finalTrack, { finalising: qcPhase === 'running' }).state) ? '#ef4444' : undefined}
+        label={phase === 'done' ? trackReadyHeadline(finalTrack, { finalising: qcPhase === 'running' }).text : 'Generating Mandarin track'}
+        leftNote={<>{(targets || []).length} words {'\u00b7'} {recallTotal} recalls {'\u00b7'} {FRAMING} framing</>}
+        rightNote={<>{filled} / {totalSlots}</>} />
 
       {/* Slot-addressed: provenance alone decides whether a brick is lit. */}
       {/* Chronological acceptance history — nth acceptance lights the nth pill. */}
@@ -27594,7 +27965,7 @@ function JapaneseQualityReview({ track, vocab, cred = {}, onSave, onSkip }) {
 // carries THREE LEDs, each showing the exact check tier that accepted that recall.
 // Gold outline = currently generating (§3, at most one). Aggregate tint = worst
 // accepted tier so far (§4). LEDs are the authoritative detail (§2).
-function JapaneseTargetPill({ w, state, srcColor, recalls }) {
+function JapaneseTargetPill({ w, state, srcColor, recalls, slots, attrs }) {
   // §11 — the ROLE badge is its own visual dimension, independent of check-tier
   // colour, the active generation outline and the recall LEDs.
   const role = SELECTION_ROLE_STYLE[w.selectionRole] || null
@@ -27611,7 +27982,7 @@ function JapaneseTargetPill({ w, state, srcColor, recalls }) {
   const bg = active ? 'rgba(212,169,74,0.20)'
            : (tint ? tint + '33' : (isNew ? 'rgba(74,144,226,0.10)' : 'transparent'))
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+    <div {...(attrs || {})} style={{ display:'flex', flexDirection:'column', alignItems:'center',
       background: bg,
       // §3 — a strong, unmistakable gold outline for the current target
       border: (active ? '2px solid var(--gold)' : '1px solid ' + border),
@@ -27625,7 +27996,7 @@ function JapaneseTargetPill({ w, state, srcColor, recalls }) {
       <span className="phon" style={{ color: hasResult ? srcColor : 'var(--muted)', fontSize:10, lineHeight:1.2 }}>{w.romaji}</span>
       {/* §1/§2 — three recall LEDs; each lights with its own accepted tier colour */}
       {/* shared component — identical circle behaviour in every language */}
-      <RecallCircles recalls={list} />
+      <RecallCircles recalls={list} slots={slots} />
     </div>
   )
 }
@@ -28283,22 +28654,12 @@ function JapaneseGenerator({ vocab, targets, selection, register, cred, trackMod
 
   return (
     <div className="fade-in" style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
-      {/* §23 — compact progress header, Thai proportions */}
-      <div>
-        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-          <span style={{ fontSize:13, fontWeight:600, color: phase === 'done' && /NOT_READY|STALE|FAILED/.test(trackReadyHeadline(finalTrack, { finalising: qcPhase === 'running' }).state) ? '#ef4444' : undefined }}>{phase === 'done' ? trackReadyHeadline(finalTrack, { finalising: qcPhase === 'running' }).text : 'Generating'}</span>
-          <span className="phon" style={{ fontSize:12, color:'var(--gold)' }}>{pct}%</span>
-        </div>
-        <div style={{ height:6, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:pct + '%', background:'linear-gradient(90deg, #d4a94a, #10b981)', borderRadius:3, transition:'width 0.5s ease' }} />
-        </div>
-        <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
-          <span style={{ fontSize:9, color:'var(--muted)' }}>
-            {(targets || []).length} words {'\u00B7'} {recallTotal} recalls {'\u00B7'} {FRAMING_SLOTS} framing
-          </span>
-          <span style={{ fontSize:9, color:'var(--muted)' }}>{filled} / {totalSlots}</span>
-        </div>
-      </div>
+      {/* §23 — compact progress header, Thai proportions (v659: the shared CompactGeneratorHeader) */}
+      <CompactGeneratorHeader pct={pct}
+        labelColor={phase === 'done' && /NOT_READY|STALE|FAILED/.test(trackReadyHeadline(finalTrack, { finalising: qcPhase === 'running' }).state) ? '#ef4444' : undefined}
+        label={phase === 'done' ? trackReadyHeadline(finalTrack, { finalising: qcPhase === 'running' }).text : 'Generating'}
+        leftNote={<>{(targets || []).length} words {'\u00B7'} {recallTotal} recalls {'\u00B7'} {FRAMING_SLOTS} framing</>}
+        rightNote={<>{filled} / {totalSlots}</>} />
 
       {/* §14 — Thai brick geometry, sized to the real track */}
       {/* Chronological acceptance history — nth acceptance lights the nth pill. */}
@@ -28548,12 +28909,13 @@ function JapaneseTeacher({ lang, onSetLang }) {
   // REVISION TRACK — same shared selector as Thai and Mandarin. It never
   // consumes or accumulates the Daily Track's new-word allowance.
   const [trackMode, setTrackMode] = useState('daily')
-  const revisionSelection = useMemo(() => selectRevisionTrackTargets({
-    vocab, maxTargets: REVISION_TRACK_MAX, language: 'ja' }), [vocab])
-  const listeningSelection = useMemo(() => selectListeningTrackTargets('ja', vocab), [vocab])
+  // v659 §1 — the canonical Revision selector (shared with the Listening Track)
+  const revisionCanon = useMemo(() => selectRevisionTargets('ja', vocab), [vocab])
+  const revisionSelection = revisionCanon.selection
+  const listeningSelection = revisionCanon
   // v649 §2: the frozen 30-target contract (same core as Thai and Mandarin)
-  const targets = useMemo(() => trackMode === 'revision' ? jazhContractTargets(revisionSelection.targets, 'ja', vocab, 'revision')
-    : jazhContractTargets(dailyTargets, 'ja', vocab, 'daily'), [trackMode, revisionSelection, dailyTargets, vocab])
+  const targets = useMemo(() => trackMode === 'revision' ? revisionCanon.targets
+    : jazhContractTargets(dailyTargets, 'ja', vocab, 'daily'), [trackMode, revisionCanon, dailyTargets, vocab])
 
   function startTrack() {
     if (!hasVocab) { setNotice('Japanese vocabulary has not been loaded yet.'); return }
@@ -28605,7 +28967,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningTrackScreen key={'lt' + listeningKey} lang="ja" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} lang="ja" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksJa([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -31014,9 +31376,10 @@ function MandarinTeacher({ lang, onSetLang }) {
   // §17 — a review track drills due words ONLY: no new-word slot is consumed.
   // REVISION TRACK — the shared, language-neutral selector. Hard → overdue → due →
   // reinforce, previously-introduced words only, never any new vocabulary.
-  const revisionSelection = useMemo(() => selectRevisionTrackTargets({
-    vocab, maxTargets: REVISION_TRACK_MAX, language: 'zh' }), [vocab])
-  const listeningSelection = useMemo(() => selectListeningTrackTargets('zh', vocab), [vocab])
+  // v659 §1 — the canonical Revision selector (shared with the Listening Track)
+  const revisionCanon = useMemo(() => selectRevisionTargets('zh', vocab), [vocab])
+  const revisionSelection = revisionCanon.selection
+  const listeningSelection = revisionCanon
   const srsSelection = revisionSelection
   const selection = (trackMode === 'revision' || trackMode === 'srs') ? revisionSelection : newSelection
   const newTargets = newSelection.targets
@@ -31027,6 +31390,7 @@ function MandarinTeacher({ lang, onSetLang }) {
   // substitutes come from the revision selector's own ranked list, so its priority
   // order is kept.
   const targets = useMemo(() => {
+    if (trackMode === 'revision' || trackMode === 'srs') return revisionCanon.targets   // v659: the canonical Revision selection
     const raw = selection.targets || []
     if (!raw.length || !vocab.length) return raw
     try {
@@ -31042,7 +31406,7 @@ function MandarinTeacher({ lang, onSetLang }) {
         ' (not expressible with current vocabulary)' + (d.replacedBy ? ' → ' + d.replacedBy.chinese : '')))
       return jazhContractTargets(g.targets, 'zh', vocab, isRev ? 'revision' : 'daily')
     } catch (e) { return raw }        // the gate can never block a track
-  }, [selection, vocab, trackMode])
+  }, [selection, vocab, trackMode, revisionCanon])
 
   function onTrackGenerated(rawTrack) {
     // A newly generated Main Track builds its Listening Track automatically.
@@ -31156,7 +31520,7 @@ function MandarinTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningTrackScreen key={'lt' + listeningKey} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksZh([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (

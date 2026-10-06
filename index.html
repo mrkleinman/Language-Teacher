@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v659"/>
+<meta name="app-version" content="v660"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v659';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v659').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v660';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v660').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -7239,6 +7239,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                 </div>
                 {/* Action buttons */}
                 <div style={{ display:'flex', gap:6 }}>
+                  {isListeningTrack(track) ? <ListenTrackRowButton onClick={() => onOpenTrack(track)} /> : <>
                   {track.convo && (
                     <button onClick={() => onOpenConvo(track)}
                       style={{ flex:1, padding:'9px', borderRadius:10, border:'1px solid #1e3a5f', background:'#0a1a2e', color:'#4a90e2', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Sarabun,sans-serif' }}>
@@ -7272,6 +7273,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                       )}
                     </div>
                   )}
+                  </>}
                 </div>
               </div>
             ))}
@@ -15501,7 +15503,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v659'
+const APP_BUILD_VERSION = 'v660'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -17340,6 +17342,14 @@ async function downloadListeningTrack(t) {
   a.href = url; a.download = (t.language || 'th') + '-listening-track-' + String(t.date || '').replace(/ /g, '-') + '.txt'
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url)
 }
+// v659.1 — the explicit ▶ Listen action on a saved Listening Track (Recent Tracks, every language)
+function ListenTrackRowButton({ onClick, compact }) {
+  return (
+    <button data-listen-button="1" onClick={e => { e.stopPropagation(); onClick && onClick() }}
+      style={{ flex: compact ? 'none' : 1, padding: compact ? '6px 12px' : '9px', borderRadius: 10, border: '1px solid #3b82f6', background: '#0d1f33',
+               color: '#8ab8f0', cursor: 'pointer', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>🎧 ▶ Listen</button>
+  )
+}
 function ListeningTrackButton({ selection, onStart }) {
   const n = ((selection && selection.targets) || []).length
   const on = n >= LISTENING_TRACK_TARGETS
@@ -17486,7 +17496,7 @@ function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onSt
     </div>
   )
 }
-function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack }) {
+function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack, autoPlay }) {
   // §4 — the target SNAPSHOT: taken once, when this generator opens (a saved track keeps its own ids)
   const [snap] = useState(() => saved ? null : selectRevisionTargets(lang, vocab))
   const [ids, setIds] = useState(() => (saved ? (saved.listeningSelectedTargetIds || saved.selectedTargetIds || []) : snap.targetIds).slice())
@@ -17508,7 +17518,8 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   const [attempts, setAttempts] = useState([])
   const [usage, setUsage] = useState(saved ? saved.usage || null : null)
   const [currentAttempt, setCurrentAttempt] = useState(saved ? saved.attemptId || null : null)
-  const [playing, setPlaying] = useState(false)
+  // v659.1 — opening a saved READY track (Recent Tracks / ▶ Listen) goes straight to the player
+  const [playing, setPlaying] = useState(() => !!(autoPlay && saved && saved.ready && saved.listening))
   const [speed, setSpeed] = useState(() => listeningPlaybackSpeed())
   const runRef = useRef(null), startedRef = useRef(false), liveRef = useRef(true), logRef = useRef([])
   useEffect(() => { liveRef.current = true; return () => { liveRef.current = false; if (runRef.current) { try { aiCancelRun(runRef.current.runId, 'listening generator closed') } catch (e) {} } } }, [])
@@ -17586,9 +17597,9 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
       <GeneratorProgressBar pct={pct} color="#10b981" color2="#d4a94a" scaleMax={ids.length} />
       {chipsGrid}
       <GeneratorStatusLine spinning={building} color="#10b981">{statusText}</GeneratorStatusLine>
+      {statusPanel}
       <GeneratorLogPanel genLog={liveLog} fullLog={fullLog} showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)} visible={true} logPrefix="listening-log" />
       <ListeningUsageLine usage={usage} />
-      {statusPanel}
       <Card style={{ padding:'12px 14px' }}>
         <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>{selectionLine}</p>
         <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
@@ -17612,6 +17623,7 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
         {building && <Spinner size={14} color="#10b981" />}
         <span style={{ fontSize:12, fontWeight:600, color:'var(--text)' }}>{statusText}</span>
       </div>
+      {statusPanel}
       <GenerationLiveLog lines={showHistory ? fullLog : liveLog} fullLog={fullLog} onDownload={() => downloadGeneratorLog(fullLog, 'listening-log')}
         showHistory={showHistory} onToggleHistory={() => setShowHistory(h => !h)} />
       <div>
@@ -17625,7 +17637,6 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
         </div>
       </div>
       <ListeningUsageLine usage={usage} />
-      {statusPanel}
       {history}
     </div>
   )
@@ -24245,7 +24256,7 @@ function ThaiTeacher({ lang, onSetLang }) {
           onSaveDailyNewWords={saveDailyNewWords}
         /></ErrorBoundary>}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracks([...tracks, t]) }} onBack={() => { setListeningOpen(null); navigate('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -24622,6 +24633,7 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
                         ? ' \u00B7 ' + JAPANESE_REGISTER_RULES[track.speechStyle].label : ''}
                     </p>
                   </div>
+                  {isListeningTrack(track) && <ListenTrackRowButton compact onClick={() => onOpenTrack && onOpenTrack(track)} />}
                   <button onClick={e => { e.stopPropagation(); isListeningTrack(track) ? downloadListeningTrack(track) : downloadJapaneseTrack(track) }}
                     style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }} title="Download transcript">{'\u2B07\uFE0F'}</button>
                   <button onClick={e => { e.stopPropagation(); onDeleteTrack && onDeleteTrack(tracks.length - 1 - i) }}
@@ -28967,7 +28979,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} lang="ja" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} lang="ja" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksJa([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -31300,6 +31312,7 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
                     {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}
                   </p>
                 </div>
+                {isListeningTrack(track) && <ListenTrackRowButton compact onClick={() => onOpenTrack && onOpenTrack(track)} />}
                 <button onClick={e => { e.stopPropagation(); isListeningTrack(track) ? downloadListeningTrack(track) : downloadMandarinTrack(track) }}
                   style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, padding:'4px 6px' }}
                   title="Download transcript">{'\u2B07\uFE0F'}</button>
@@ -31520,7 +31533,7 @@ function MandarinTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksZh([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (

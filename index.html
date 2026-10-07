@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v667"/>
+<meta name="app-version" content="v668"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v667';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v667').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v668';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v668').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6914,7 +6914,9 @@ function isLearnerTaught(w) {
 // The learner-authorised lexical inventory for ONE track: taught vocabulary + this track's targets (Daily: its
 // explicit NEW targets are authorised for that track only; Revision / Listening: NEW=0, their selected review
 // targets) + the language adapter's narrow grammar/function scaffold (applied by the language checkers).
+// v668 §72 — also callable as buildLearnerAuthorizedInventory(lang, snapshot): a frozen snapshotLearnerInventory() result
 function buildLearnerAuthorizedInventory(lang, vocab, selectedTargets, trackType) {
+  if (vocab && vocab.frozen && vocab.inventory && !Array.isArray(vocab)) return vocab.inventory
   const v = vocab || []
   const targets = (selectedTargets || []).map(t => (t && t.word) || t).filter(Boolean)
   const tIds = new Set(targets.map(t => t.id))
@@ -13841,17 +13843,445 @@ function listeningUnexposedWords(lang, pair, exposedVocab, eligibleTargets, bank
       const r = validateThaiVocabulary([{ thai: text }], ctx)
       return r.ok ? [] : r.blocked
     }
-    if (lang === 'ja') {
-      const inv = japaneseLearnerInventory(exposedVocab, eligibleTargets)
-      return (japaneseCheckLine(text, inv).unknown || [])
-    }
-    if (lang === 'zh') {
-      const inv = mandarinLearnerInventory(exposedVocab, eligibleTargets)
-      return (mandarinUnknownContent(text, inv) || [])
+    // v668 §2–§4 — Layer A segmentation (canonical lexemes, morphology) → Layer B authorisation. Never substrings:
+    // the v667 path stripped allowed strings and reported the leftovers (周 + 末, 僕図書館, まあまあなく).
+    if (lang === 'ja' || lang === 'zh') {
+      const r = validateClosedWorldCandidate(lang, text, exposedVocab, eligibleTargets)
+      return r.unknown.concat(r.malformed)
     }
   } catch (e) { console.warn('[listening] exposure check unavailable for ' + lang + ': ' + e.message) }
   return []
 }
+// ══ v668 — CLOSED-WORLD GENERATION: three layers that are never conflated ═══════════════════════
+//   LAYER A  LANGUAGE LEXICON — recognises lexical / morphological units (segmentation, lemma, inflection,
+//            reading). It is NOT permission: a word being in Layer A says only "this is a word".
+//   LAYER B  LEARNER AUTHORISED INVENTORY — which recognised lexemes THIS learner was taught (isLearnerTaught +
+//            this track's authorised targets), frozen as a snapshot when generation starts.
+//   LAYER C  SCENE PALETTE — a small positive whitelist for ONE scene: its required targets + 10–30 relevant
+//            taught support words + the narrow grammar / function scaffold.
+// Generation reads C · validation reads B · segmentation reads A. The live v667 runs validated raw substrings
+// against B (周 + 末, 公 + 园, 僕図書館, まあまあなく) and generated from "KNOWN WORDS: <900 words>" with no palette.
+//
+// Layer A entries that are NOT in the SRS bank. Segmentation and readings only — never learner permission.
+const ZH_LANGUAGE_LEXICON_SRC = '是:shì:be|他:tā:he|她:tā:she|它:tā:it|我们:wǒmen:we|你们:nǐmen:you (plural)|他们:tāmen:they|她们:tāmen:they|' +
+  '这:zhè:this|那:nà:that|哪:nǎ:which|哪个:nǎge:which one|这些:zhèxiē:these|那些:nàxiē:those|这样:zhèyàng:like this|那样:nàyàng:like that|' +
+  '这么:zhème:so (this)|那么:nàme:so (that)|这儿:zhèr:here|那儿:nàr:there|哪儿:nǎr:where|就:jiù:then / just|都:dōu:all|也:yě:also|' +
+  '还是:háishi:or / still|或者:huòzhě:or|但是:dànshì:but|可是:kěshì:but|不过:búguò:however|因为:yīnwèi:because|所以:suǒyǐ:so|' +
+  '如果:rúguǒ:if|然后:ránhòu:then|和:hé:and|只:zhǐ:only|只是:zhǐshì:only|又:yòu:again|才:cái:only then|最:zuì:most|更:gèng:more|' +
+  '非常:fēicháng:very|真:zhēn:really|挺:tǐng:quite|有点:yǒudiǎn:a bit|有点儿:yǒudiǎnr:a bit|一点儿:yìdiǎnr:a little|马上:mǎshàng:right away|' +
+  '刚才:gāngcái:just now|刚:gāng:just|刚刚:gānggāng:just now|以后:yǐhòu:later|以前:yǐqián:before|后来:hòulái:afterwards|最近:zuìjìn:recently|' +
+  '经常:jīngcháng:often|常常:chángcháng:often|总是:zǒngshì:always|一直:yìzhí:all along|正在:zhèngzài:in the middle of|周末:zhōumò:weekend|' +
+  '星期:xīngqī:week|星期天:xīngqītiān:Sunday|星期六:xīngqīliù:Saturday|早上:zǎoshang:morning|上午:shàngwǔ:morning|中午:zhōngwǔ:noon|' +
+  '下午:xiàwǔ:afternoon|晚上:wǎnshang:evening|今年:jīnnián:this year|明年:míngnián:next year|去年:qùnián:last year|天:tiān:day|年:nián:year|' +
+  '月:yuè:month|号:hào:date / number|点:diǎn:o\'clock|分钟:fēnzhōng:minute|小时:xiǎoshí:hour|半:bàn:half|一:yī:one|二:èr:two|两:liǎng:two|' +
+  '三:sān:three|四:sì:four|五:wǔ:five|六:liù:six|七:qī:seven|八:bā:eight|九:jiǔ:nine|十:shí:ten|百:bǎi:hundred|千:qiān:thousand|万:wàn:ten thousand|' +
+  '块:kuài:yuan (money)|元:yuán:yuan|毛:máo:ten cents|公园:gōngyuán:park|天气:tiānqì:weather|问题:wèntí:problem|学校:xuéxiào:school|' +
+  '医院:yīyuàn:hospital|银行:yínháng:bank|超市:chāoshì:supermarket|商店:shāngdiàn:shop|饭店:fàndiàn:restaurant|餐厅:cāntīng:restaurant|' +
+  '咖啡:kāfēi:coffee|咖啡店:kāfēidiàn:café|茶:chá:tea|酒:jiǔ:alcohol|啤酒:píjiǔ:beer|菜:cài:dish / vegetables|米饭:mǐfàn:rice|面条:miàntiáo:noodles|' +
+  '水果:shuǐguǒ:fruit|苹果:píngguǒ:apple|鸡蛋:jīdàn:egg|肉:ròu:meat|鱼:yú:fish|早饭:zǎofàn:breakfast|午饭:wǔfàn:lunch|晚饭:wǎnfàn:dinner|' +
+  '酒店:jiǔdiàn:hotel|宾馆:bīnguǎn:hotel|旅行:lǚxíng:travel|旅游:lǚyóu:trip|机场:jīchǎng:airport|火车:huǒchē:train|火车站:huǒchēzhàn:train station|' +
+  '车站:chēzhàn:station|地铁:dìtiě:subway|出租车:chūzūchē:taxi|飞机:fēijī:plane|票:piào:ticket|卡:kǎ:card|信用卡:xìnyòngkǎ:credit card|' +
+  '现金:xiànjīn:cash|发票:fāpiào:receipt|收据:shōujù:receipt|打折:dǎzhé:discount|便宜:piányi:cheap|贵:guì:expensive|付:fù:pay|付钱:fùqián:pay|' +
+  '卖:mài:sell|手机:shǒujī:phone|电话:diànhuà:telephone|电脑:diànnǎo:computer|电视:diànshì:TV|电影:diànyǐng:film|书:shū:book|衣服:yīfu:clothes|' +
+  '鞋:xié:shoes|房间:fángjiān:room|房子:fángzi:house|门:mén:door|桌子:zhuōzi:table|椅子:yǐzi:chair|老师:lǎoshī:teacher|学生:xuésheng:student|' +
+  '同事:tóngshì:colleague|老板:lǎobǎn:boss|妈妈:māma:mum|爸爸:bàba:dad|孩子:háizi:child|先生:xiānsheng:Mr|小姐:xiǎojiě:Miss|名字:míngzi:name|' +
+  '身体:shēntǐ:body / health|学习:xuéxí:study|学:xué:learn|上班:shàngbān:go to work|下班:xiàbān:finish work|睡觉:shuìjiào:sleep|起床:qǐchuáng:get up|' +
+  '休息:xiūxi:rest|玩:wán:play|走:zǒu:walk|跑:pǎo:run|坐:zuò:sit|站:zhàn:stand|住:zhù:live|写:xiě:write|读:dú:read|问:wèn:ask|告诉:gàosu:tell|' +
+  '叫:jiào:be called|认识:rènshi:know (a person)|见:jiàn:see|见面:jiànmiàn:meet|看见:kànjiàn:see|听说:tīngshuō:hear that|记得:jìde:remember|' +
+  '忘:wàng:forget|希望:xīwàng:hope|需要:xūyào:need|打算:dǎsuàn:plan to|准备:zhǔnbèi:prepare|开始:kāishǐ:start|结束:jiéshù:end|完:wán:finish|' +
+  '出去:chūqù:go out|进来:jìnlái:come in|出来:chūlái:come out|回来:huílái:come back|过来:guòlái:come over|上:shàng:on / up|下:xià:under / down|' +
+  '里:lǐ:inside|外:wài:outside|前:qián:front|后:hòu:back|左:zuǒ:left|右:yòu:right|旁边:pángbiān:beside|附近:fùjìn:nearby|中间:zhōngjiān:middle|' +
+  '对面:duìmiàn:opposite|外面:wàimiàn:outside|里面:lǐmiàn:inside|上面:shàngmiàn:above|下面:xiàmiàn:below|前面:qiánmiàn:in front|后面:hòumiàn:behind|' +
+  '约:yuē:arrange|约会:yuēhuì:date|安排:ānpái:arrange|计划:jìhuà:plan|事:shì:matter|事情:shìqing:thing / matter|意思:yìsi:meaning|办法:bànfǎ:way|' +
+  '高兴:gāoxìng:happy|舒服:shūfu:comfortable|漂亮:piàoliang:pretty|好看:hǎokàn:good-looking|难:nán:difficult|容易:róngyì:easy|远:yuǎn:far|' +
+  '近:jìn:near|早:zǎo:early|晚:wǎn:late|新:xīn:new|旧:jiù:old|长:cháng:long|短:duǎn:short|高:gāo:tall|重要:zhòngyào:important|有意思:yǒuyìsi:interesting|' +
+  '还行:háixíng:not bad|一样:yíyàng:the same|别:bié:don\'t|别的:biéde:other|每:měi:every|每天:měitiān:every day|几:jǐ:how many|' +
+  '怎么办:zěnmebàn:what to do|为了:wèile:in order to|让:ràng:let|被:bèi:by|把:bǎ:(object marker)|从:cóng:from|往:wǎng:towards|离:lí:from (distance)|' +
+  '好的:hǎode:okay|喂:wéi:hello (phone)|哎:āi:hey|欢迎:huānyíng:welcome|生日:shēngrì:birthday|快乐:kuàilè:happy|加油:jiāyóu:go for it|' +
+  '小心:xiǎoxīn:careful|辛苦:xīnkǔ:hard work|一定:yídìng:definitely|也许:yěxǔ:maybe|大概:dàgài:probably|差不多:chàbuduō:about the same|' +
+  '其实:qíshí:actually|而且:érqiě:and also|虽然:suīrán:although|干:gàn:do|带:dài:bring|送:sòng:give / send|换:huàn:change|试:shì:try|' +
+  '穿:chuān:wear|洗:xǐ:wash|做饭:zuòfàn:cook|打电话:dǎ diànhuà:make a call|下雨:xiàyǔ:rain|雨:yǔ:rain|雪:xuě:snow|风:fēng:wind|狗:gǒu:dog|' +
+  '猫:māo:cat|爱:ài:love|想要:xiǎngyào:want|公司:gōngsī:company|办公室:bàngōngshì:office|中国:Zhōngguó:China|中文:Zhōngwén:Chinese|' +
+  '英语:Yīngyǔ:English|次:cì:time (occurrence)|下次:xiàcì:next time|上次:shàngcì:last time|这次:zhècì:this time|好久:hǎojiǔ:a long time|' +
+  '好久不见:hǎojiǔ bújiàn:long time no see|一会儿:yíhuìr:a moment|有时候:yǒushíhou:sometimes|什么时候:shénme shíhou:when|时:shí:time|周:zhōu:week|' +
+  '东:dōng:east|西:xī:west|南:nán:south|北:běi:north|呀:ya:(particle)|哦:ò:oh|嘛:ma:(particle)'
+const ZH_LANGUAGE_LEXICON = ZH_LANGUAGE_LEXICON_SRC.split('|').map(x => { const [w, p, e] = x.split(':'); return { w, p, e } })
+// Japanese Layer A supplement: surface:reading:pos:conjugation class:gloss (classes as japaneseConjugate)
+const JA_LANGUAGE_LEXICON_SRC = '僕:ぼく:pronoun::I (male)|私:わたし:pronoun::I|俺:おれ:pronoun::I (casual male)|君:きみ:pronoun::you|あなた:あなた:pronoun::you|' +
+  '彼:かれ:pronoun::he|彼女:かのじょ:pronoun::she|みんな:みんな:pronoun::everyone|自分:じぶん:pronoun::oneself|こっち:こっち:pronoun::this way|' +
+  'そっち:そっち:pronoun::that way / you|あっち:あっち:pronoun::over there|こちら:こちら:pronoun::this way|そちら:そちら:pronoun::that way|' +
+  'あちら:あちら:pronoun::over there|どちら:どちら:pronoun::which|こんな:こんな:adnominal::this kind of|そんな:そんな:adnominal::that kind of|' +
+  'あんな:あんな:adnominal::that kind of|どんな:どんな:adnominal::what kind of|こう:こう:adverb::like this|最近:さいきん:noun::recently|' +
+  '久しぶり:ひさしぶり:na-adjective::long time no see|毎週:まいしゅう:noun::every week|今週:こんしゅう:noun::this week|先週:せんしゅう:noun::last week|' +
+  '来月:らいげつ:noun::next month|今月:こんげつ:noun::this month|先月:せんげつ:noun::last month|今年:ことし:noun::this year|去年:きょねん:noun::last year|' +
+  '来年:らいねん:noun::next year|今晩:こんばん:noun::this evening|今夜:こんや:noun::tonight|後で:あとで:adverb::later|前:まえ:noun::before / front|' +
+  '後:あと:noun::after|次:つぎ:noun::next|最初:さいしょ:noun::first|最後:さいご:noun::last|時々:ときどき:adverb::sometimes|いつも:いつも:adverb::always|' +
+  '毎朝:まいあさ:noun::every morning|時:とき:noun::time / when|頃:ころ:noun::around (time)|全然:ぜんぜん:adverb::not at all|結構:けっこう:adverb::quite|' +
+  'すごく:すごく:adverb::very|とても:とても:adverb::very|よく:よく:adverb::often / well|あまり:あまり:adverb::not much|少し:すこし:adverb::a little|' +
+  'たくさん:たくさん:adverb::a lot|ゆっくり:ゆっくり:adverb::slowly|すぐ:すぐ:adverb::soon|ずっと:ずっと:adverb::all along|きっと:きっと:adverb::surely|' +
+  'ぜひ:ぜひ:adverb::by all means|やっぱり:やっぱり:adverb::as expected|一番:いちばん:adverb::the most|本当に:ほんとうに:adverb::really|' +
+  'まあまあ:まあまあ:adverb::so-so|初めて:はじめて:adverb::for the first time|一人:ひとり:noun::one person / alone|二人:ふたり:noun::two people|' +
+  'もっと:もっと:adverb::more|特に:とくに:adverb::especially|元気:げんき:na-adjective::well / energetic|図書館:としょかん:noun::library|公園:こうえん:noun::park|' +
+  '天気:てんき:noun::weather|雨:あめ:noun::rain|雪:ゆき:noun::snow|旅行:りょこう:noun::trip|休み:やすみ:noun::holiday / break|誕生日:たんじょうび:noun::birthday|' +
+  'パーティー:パーティー:noun::party|料理:りょうり:noun::cooking|買い物:かいもの:noun::shopping|散歩:さんぽ:noun::walk|勉強:べんきょう:noun::study|' +
+  '宿題:しゅくだい:noun::homework|試験:しけん:noun::exam|先生:せんせい:noun::teacher|学生:がくせい:noun::student|子供:こども:noun::child|母:はは:noun::mother|' +
+  '父:ちち:noun::father|お母さん:おかあさん:noun::mother|お父さん:おとうさん:noun::father|兄:あに:noun::older brother|姉:あね:noun::older sister|' +
+  '弟:おとうと:noun::younger brother|妹:いもうと:noun::younger sister|犬:いぬ:noun::dog|猫:ねこ:noun::cat|服:ふく:noun::clothes|靴:くつ:noun::shoes|' +
+  'かばん:かばん:noun::bag|傘:かさ:noun::umbrella|机:つくえ:noun::desk|椅子:いす:noun::chair|窓:まど:noun::window|ドア:ドア:noun::door|テレビ:テレビ:noun::TV|' +
+  'パソコン:パソコン:noun::computer|スマホ:スマホ:noun::smartphone|携帯:けいたい:noun::mobile phone|音楽:おんがく:noun::music|歌:うた:noun::song|' +
+  '映画館:えいがかん:noun::cinema|喫茶店:きっさてん:noun::café|カフェ:カフェ:noun::café|ケーキ:ケーキ:noun::cake|パン:パン:noun::bread|肉:にく:noun::meat|' +
+  '魚:さかな:noun::fish|野菜:やさい:noun::vegetables|果物:くだもの:noun::fruit|卵:たまご:noun::egg|お酒:おさけ:noun::alcohol|ビール:ビール:noun::beer|' +
+  'ジュース:ジュース:noun::juice|牛乳:ぎゅうにゅう:noun::milk|朝ご飯:あさごはん:noun::breakfast|昼ご飯:ひるごはん:noun::lunch|晩ご飯:ばんごはん:noun::dinner|' +
+  '弁当:べんとう:noun::boxed lunch|店員:てんいん:noun::shop staff|客:きゃく:noun::customer|カード:カード:noun::card|現金:げんきん:noun::cash|' +
+  'レシート:レシート:noun::receipt|割引:わりびき:noun::discount|値段:ねだん:noun::price|旅館:りょかん:noun::inn|海:うみ:noun::sea|山:やま:noun::mountain|' +
+  '川:かわ:noun::river|町:まち:noun::town|国:くに:noun::country|東京:とうきょう:noun::Tokyo|日本:にほん:noun::Japan|英語:えいご:noun::English|' +
+  '言葉:ことば:noun::word|意味:いみ:noun::meaning|話:はなし:noun::talk / story|用事:ようじ:noun::errand|予定:よてい:noun::plan|約束:やくそく:noun::promise|' +
+  '体:からだ:noun::body|頭:あたま:noun::head|手:て:noun::hand|目:め:noun::eye|声:こえ:noun::voice|何か:なにか:pronoun::something|誰か:だれか:pronoun::someone|' +
+  'どこか:どこか:pronoun::somewhere|全部:ぜんぶ:noun::all|一つ:ひとつ:noun::one (thing)|二つ:ふたつ:noun::two (things)|三つ:みっつ:noun::three (things)|' +
+  '気持ち:きもち:noun::feeling|楽しみ:たのしみ:noun::looking forward|大変:たいへん:na-adjective::tough|嫌い:きらい:na-adjective::dislike|' +
+  '上手:じょうず:na-adjective::good at|下手:へた:na-adjective::bad at|静か:しずか:na-adjective::quiet|有名:ゆうめい:na-adjective::famous|' +
+  '親切:しんせつ:na-adjective::kind|残念:ざんねん:na-adjective::too bad|心配:しんぱい:noun::worry|素敵:すてき:na-adjective::lovely|変:へん:na-adjective::strange|' +
+  '嬉しい:うれしい:i-adjective:i-adjective:glad|悲しい:かなしい:i-adjective:i-adjective:sad|面白い:おもしろい:i-adjective:i-adjective:interesting|' +
+  'つまらない:つまらない:i-adjective:i-adjective:boring|可愛い:かわいい:i-adjective:i-adjective:cute|かわいい:かわいい:i-adjective:i-adjective:cute|' +
+  '優しい:やさしい:i-adjective:i-adjective:kind|広い:ひろい:i-adjective:i-adjective:wide|狭い:せまい:i-adjective:i-adjective:narrow|' +
+  '明るい:あかるい:i-adjective:i-adjective:bright|暗い:くらい:i-adjective:i-adjective:dark|若い:わかい:i-adjective:i-adjective:young|' +
+  '強い:つよい:i-adjective:i-adjective:strong|弱い:よわい:i-adjective:i-adjective:weak|痛い:いたい:i-adjective:i-adjective:painful|' +
+  '眠い:ねむい:i-adjective:i-adjective:sleepy|怖い:こわい:i-adjective:i-adjective:scary|美味しい:おいしい:i-adjective:i-adjective:delicious|' +
+  'すごい:すごい:i-adjective:i-adjective:amazing|白い:しろい:i-adjective:i-adjective:white|黒い:くろい:i-adjective:i-adjective:black|' +
+  '赤い:あかい:i-adjective:i-adjective:red|青い:あおい:i-adjective:i-adjective:blue|暖かい:あたたかい:i-adjective:i-adjective:warm|' +
+  '涼しい:すずしい:i-adjective:i-adjective:cool|重い:おもい:i-adjective:i-adjective:heavy|軽い:かるい:i-adjective:i-adjective:light|' +
+  '危ない:あぶない:i-adjective:i-adjective:dangerous|探す:さがす:verb:godan:look for|置く:おく:verb:godan:put|遊ぶ:あそぶ:verb:godan:play|' +
+  '泳ぐ:およぐ:verb:godan:swim|戻る:もどる:verb:godan:go back|出かける:でかける:verb:ichidan:go out|見つける:みつける:verb:ichidan:find|' +
+  '決める:きめる:verb:ichidan:decide|考える:かんがえる:verb:ichidan:think about|答える:こたえる:verb:ichidan:answer|調べる:しらべる:verb:ichidan:look up|' +
+  '着る:きる:verb:ichidan:wear|洗う:あらう:verb:godan:wash|掃除:そうじ:noun::cleaning|歌う:うたう:verb:godan:sing|習う:ならう:verb:godan:learn|' +
+  '練習:れんしゅう:noun::practice|頑張る:がんばる:verb:godan:do one\'s best|疲れる:つかれる:verb:ichidan:get tired|困る:こまる:verb:godan:be in trouble|' +
+  '慣れる:なれる:verb:ichidan:get used to|笑う:わらう:verb:godan:laugh|貸す:かす:verb:godan:lend|返す:かえす:verb:godan:return (a thing)|' +
+  '頼む:たのむ:verb:godan:ask a favour|誘う:さそう:verb:godan:invite|急ぐ:いそぐ:verb:godan:hurry|遅れる:おくれる:verb:ichidan:be late|' +
+  '続ける:つづける:verb:ichidan:continue|止める:やめる:verb:ichidan:stop|変わる:かわる:verb:godan:change|売る:うる:verb:godan:sell|' +
+  '消す:けす:verb:godan:turn off|撮る:とる:verb:godan:take (a photo)|足りる:たりる:verb:ichidan:be enough|なる:なる:verb:godan:become|' +
+  'やあ:やあ:interjection::hi|わあ:わあ:interjection::wow|よし:よし:interjection::right then|さあ:さあ:interjection::come on|' +
+  'おはよう:おはよう:interjection::good morning|こんばんは:こんばんは:interjection::good evening|おやすみ:おやすみ:interjection::good night|' +
+  'さようなら:さようなら:interjection::goodbye|バイバイ:バイバイ:interjection::bye|よろしく:よろしく:interjection::nice to meet you|' +
+  'お願い:おねがい:noun::request|お疲れ様:おつかれさま:interjection::good work|どうも:どうも:interjection::thanks|お腹:おなか:noun::stomach|' +
+  '方:ほう:noun::direction / side|ため:ため:noun::for the sake of'
+const JA_LANGUAGE_LEXICON = JA_LANGUAGE_LEXICON_SRC.split('|').map(x => { const [japanese, reading, pos, cls, english] = x.split(':'); return { japanese, reading, lemma: japanese, partOfSpeech: pos, conjugationClass: cls || null, english } })
+// §48 — the explicit, NARROW grammar / function scaffold per language. Ordinary lexical words (weekend, hotel,
+// receipt, weather, park, busy …) are never here: lexical content always needs learner authorisation.
+const JA_FUNCTION_SCAFFOLD = {
+  particle: 'は が を に で と も の へ か ね よ な や から まで より だけ しか って ので のに けど けれど し とか ばかり くらい ぐらい ごろ など',
+  copula: 'だ です だった でした じゃ じゃない じゃなかった ではない ではありません じゃありません でしょう でしょ だろう だろ',
+  inflection: 'ます ました ません ませんでした ましょう ない なかった たい たかった た て てる ている ています ていた てた ちゃう ちゃった れる られる そう よう らしい みたい ん んだ んです ください',
+  sentenceFinal: 'かな かね よね だよ だね よな わ さ ぞ ぜ っけ',
+  connector: 'でも だから それで そして それから では',
+  determiner: 'この その あの どの',
+  filler: 'あの えっと えーと うーん ええ ああ あっ えっ へえ ほら',
+}
+const JA_FUNCTION_FORMS = [...new Set(Object.values(JA_FUNCTION_SCAFFOLD).join(' ').split(/\s+/).filter(Boolean))]
+const ZH_FUNCTION_FORMS = [...new Set(['的', '了', '吗', '呢', '吧', '啊', '着', '过', '得', '地', '们', '呀', '哦', '嘛'])]
+function thaiFunctionForms() {
+  return [...new Set([...(typeof THAI_TRACK_GRAMMAR_WORDS !== 'undefined' ? THAI_TRACK_GRAMMAR_WORDS : []), ...(typeof THAI_DISCOURSE_INTERJECTIONS !== 'undefined' ? THAI_DISCOURSE_INTERJECTIONS : []),
+    ...(typeof THAI_COMPLEXITY_FREE !== 'undefined' ? [...THAI_COMPLEXITY_FREE] : [])])]
+}
+function languageFunctionScaffold(lang) {
+  if (lang === 'ja') return { lang, forms: JA_FUNCTION_FORMS, classes: JA_FUNCTION_SCAFFOLD }
+  if (lang === 'zh') return { lang, forms: ZH_FUNCTION_FORMS, classes: { particle: ZH_FUNCTION_FORMS.join(' ') } }
+  return { lang, forms: thaiFunctionForms(), classes: { particle: thaiFunctionForms().join(' ') } }
+}
+
+// ── Japanese morphology: every inflected form of a lexeme, paired with its reading ──
+// [surface, reading] for the dictionary form and its inflections (so 行った → 行く, 借りました → 借りる,
+// 覚えてる → 覚える). The reading form is built in parallel, which gives the pronunciation pipeline its kana.
+function jaInflectionPairs(lemma, reading, cls) {
+  const L = String(lemma || ''), R = String(reading || '').split(/\s*[\/／|]\s*/)[0] || L
+  if (!L) return []
+  const out = [[L, R]]
+  const add = (s, r) => { if (s) out.push([s, r]) }
+  const tails = (sStem, rStem, list) => list.forEach(t => add(sStem + t, rStem + t))
+  const TE_AUX = te => [te, te + 'る', te + 'いる', te + 'います', te + 'いた', te + 'た', te.replace(/て$/, 'た').replace(/で$/, 'だ')]
+  if (cls === 'ichidan') {
+    const s = L.slice(0, -1), r = R.slice(0, -1)
+    tails(s, r, ['た', 'て', 'ない', 'なかった', 'ます', 'ました', 'ません', 'ませんでした', 'ましょう', 'たい', 'たかった', 'よう', 'れば', 'られる', 'れる', 'させる', 'ろ', 'てる', 'ている', 'ています', 'てた', 'ちゃう', 'ちゃった', 'なきゃ', 'ないで', ''])
+  } else if (cls === 'godan' || cls === 'godan-iku') {
+    const e = L.slice(-1), s = L.slice(0, -1), r = R.slice(0, -1)
+    const te = cls === 'godan-iku' ? ['って', 'った'] : (JA_GODAN_TE[e] || ['って', 'った'])
+    const A = JA_GODAN_A[e], I = JA_GODAN_I[e], E = JA_GODAN_E[e], O = JA_GODAN_O[e]
+    TE_AUX(te[0]).concat([te[1], te[1] + 'ら']).forEach(t => add(s + t, r + t))
+    if (A) tails(s, r, [A + 'ない', A + 'なかった', A + 'れる', A + 'せる', A + 'ないで', A + 'なきゃ'])
+    if (I) tails(s, r, [I, I + 'ます', I + 'ました', I + 'ません', I + 'ませんでした', I + 'ましょう', I + 'たい', I + 'たかった'])
+    if (E) tails(s, r, [E, E + 'ば', E + 'る', E + 'ない', E + 'ます'])
+    if (O) tails(s, r, [O + 'う'])
+  } else if (cls === 'irregular-suru') {
+    const s = L.replace(/する$/, ''), r = R.replace(/する$/, '')
+    tails(s, r, ['する', 'した', 'して', 'しない', 'しなかった', 'します', 'しました', 'しません', 'しませんでした', 'しましょう', 'したい', 'しよう', 'すれば', 'される', 'させる', 'してる', 'している', 'しています', 'してた', 'したら', 'しちゃう', 'しちゃった'])
+  } else if (cls === 'irregular-kuru') {
+    const k = /^来/.test(L) ? '来' : ''
+    ;[['る', 'くる'], ['た', 'きた'], ['て', 'きて'], ['ない', 'こない'], ['なかった', 'こなかった'], ['ます', 'きます'], ['ました', 'きました'], ['ません', 'きません'], ['ましょう', 'きましょう'],
+      ['たい', 'きたい'], ['よう', 'こよう'], ['れば', 'くれば'], ['られる', 'こられる'], ['れる', 'これる'], ['てる', 'きてる'], ['ている', 'きている'], ['てた', 'きてた'], ['たら', 'きたら']]
+      .forEach(([t, rd]) => { if (k) add(k + t, rd); add(rd, rd) })
+  } else if (cls === 'irregular-aru') {
+    ;['ある', 'あった', 'あって', 'あります', 'ありました', 'ありません', 'あれば', 'あったら'].forEach(f => add(f, f))
+  } else if (cls === 'i-adjective') {
+    const s = L.slice(0, -1), r = R.slice(0, -1)
+    tails(s, r, ['かった', 'くない', 'くなかった', 'くて', 'く', 'ければ', 'そう', 'すぎる', 'さ', 'かったら'])
+  } else if (cls === 'irregular-ii') {
+    ;['よい', 'よかった', 'よくない', 'よくなかった', 'よくて', 'よく', 'よければ', 'よさそう', 'よかったら'].forEach(f => add(f, f))
+  }
+  return out
+}
+const _jaIsKanji = ch => /[\u4E00-\u9FFF\u3005]/.test(ch)
+// the conjugation class of a lexeme (bank adjectives carry only partOfSpeech: 忙しい → 忙しくて must still resolve)
+function jaConjClassOf(w) {
+  if (!w) return null
+  if (w.conjugationClass) return w.conjugationClass
+  const pos = String(w.partOfSpeech || '').toLowerCase(), j = String(w.lemma || w.japanese || '')
+  if (/i-adj/.test(pos) || (/adjective/.test(pos) && !/na-/.test(pos) && /い$/.test(j))) return j === 'いい' ? 'irregular-ii' : 'i-adjective'
+  if (/verb/.test(pos)) {
+    if (/する$/.test(j)) return 'irregular-suru'
+    const r = String(w.reading || j).split(/\s*[\/\uFF0F|]\s*/)[0]
+    return /[いきぎしじちにひびみりえけげせぜてねべめれ]る$/.test(r) ? 'ichidan' : 'godan'
+  }
+  return null
+}
+// counters read with the number before them (三人, 八分, 千円, 三日); grammatical classifiers, not content words
+const JA_COUNTER_FORMS = ['人', '時', '分', '円', '回', '個', '歳', '本', '枚', '年', '月', '階', '日', 'つ']
+const _JA_PUNCT_CH = /[\s　、。？！・…，．「」〜~!?,.\-「」『』（）()"'“”‘’]/
+// LAYER A — buildLanguageLexiconAdapter(lang, vocab): segmentation / morphology / function grammar / readings.
+// Cached per vocabulary array (a frozen snapshot keeps it stable for the whole track).
+const _LEXICON_ADAPTER_CACHE = new WeakMap()
+function buildLanguageLexiconAdapter(lang, vocab) {
+  const key = Array.isArray(vocab) ? vocab : _LEXICON_ADAPTER_CACHE
+  let byLang = _LEXICON_ADAPTER_CACHE.get(key)
+  if (!byLang) { byLang = {}; _LEXICON_ADAPTER_CACHE.set(key, byLang) }
+  if (byLang[lang]) return byLang[lang]
+  const a = lang === 'ja' ? _jaLexiconAdapter(vocab) : lang === 'zh' ? _zhLexiconAdapter(vocab) : _thLexiconAdapter(vocab)
+  byLang[lang] = a
+  return a
+}
+function _jaLexiconAdapter(vocab) {
+  const bank = [], seen = new Set()
+  ;[...(vocab || []), ...(typeof RAW_JAPANESE_VOCAB !== 'undefined' ? RAW_JAPANESE_VOCAB : []), ...JA_LANGUAGE_LEXICON].forEach(w => {
+    if (!w || !w.japanese || seen.has(w.japanese)) return; seen.add(w.japanese); bank.push(w) })
+  const index = new Map()
+  const put = e => { if (!e.s) return; const k = e.s[0]; if (!index.has(k)) index.set(k, []); index.get(k).push(e) }
+  bank.forEach(w => {
+    const lemma = w.lemma || w.japanese
+    const readings = String(w.reading || '').split(/\s*[\/／|]\s*/).filter(Boolean)
+    const pairs = jaInflectionPairs(lemma, readings[0] || lemma, jaConjClassOf(w))
+    pairs.forEach(([s, r]) => {
+      if (!s) return
+      // a single kana is never a lexeme form (it would swallow particles); a single kanji is
+      if (s.length < 2 && !_jaIsKanji(s) && !/[゠-ヿ]/.test(s)) return
+      put({ s, r, lemma, kind: 'lexeme', word: w })
+      // the kana spelling of the same lexeme (すき = 好き, いく = 行く)
+      if (r && r !== s && r.length >= 2 && /^[ぁ-ゟー]+$/.test(r)) put({ s: r, r, lemma, kind: 'lexeme', word: w, kanaSpelling: true })
+    })
+    // every listed reading of the dictionary form is a kana spelling too (何 = なに / なん)
+    readings.slice(1).forEach(r => { if (r.length >= 2 && /^[ぁ-ゟー]+$/.test(r)) put({ s: r, r, lemma, kind: 'lexeme', word: w, kanaSpelling: true }) })
+  })
+  JA_FUNCTION_FORMS.forEach(f => put({ s: f, r: f, lemma: f, kind: 'function' }))
+  ;(typeof JAPANESE_CONVERSATION_BASICS !== 'undefined' ? JAPANESE_CONVERSATION_BASICS : []).forEach(b => put({ s: b.form, r: b.form, lemma: b.form, kind: 'lexeme', basic: true, word: { japanese: b.form, reading: b.form, english: b.english } }))
+  index.forEach(list => list.sort((x, y) => y.s.length - x.s.length))
+  const COST = { lexeme: 1, fnMulti: 1.05, fnSingle: 1.4, counter: 0.9, unknownBase: 4, unknownPer: 0.6, unknownKana: 1.6 }
+  const runsAt = (t, i) => {
+    const out = []
+    const m1 = /^[一-鿿々]+[ぁ-ん]{0,3}/.exec(t.slice(i)), m2 = /^[゠-ヿー]+/.exec(t.slice(i)), m3 = /^[ぁ-ゟー]+/.exec(t.slice(i))
+    ;[m1, m2, m3].forEach(m => { if (m) for (let L = 1; L <= Math.min(m[0].length, 10); L++) out.push(L) })
+    if (!out.length) out.push(1)
+    return [...new Set(out)]
+  }
+  // minimum-cost segmentation (dictionary lexemes and inflections, function grammar, punctuation, unknown runs)
+  function segment(text) {
+    const t = String(text || '')
+    const n = t.length
+    const best = new Array(n + 1).fill(Infinity), back = new Array(n + 1).fill(null)
+    best[0] = 0
+    for (let i = 0; i < n; i++) {
+      if (best[i] === Infinity) continue
+      const ch = t[i]
+      const relax = (j, cost, tok) => { if (best[i] + cost < best[j] - 1e-9) { best[j] = best[i] + cost; back[j] = { i, tok } } }
+      if (_JA_PUNCT_CH.test(ch)) { relax(i + 1, 0, { kind: 'punct', surface: ch }); continue }
+      if (/[0-9A-Za-z０-９]/.test(ch)) { relax(i + 1, 0.5, { kind: 'other', surface: ch }); continue }
+      ;(index.get(ch) || []).forEach(e => { if (t.startsWith(e.s, i)) relax(i + e.s.length, e.kind === 'function' ? (e.s.length > 1 ? COST.fnMulti : COST.fnSingle) : COST.lexeme, { kind: e.kind, surface: e.s, lemma: e.lemma, reading: e.r, entry: e }) })
+      // a counter directly after a numeral (三人 / 八分 / 千円) is one grammatical classifier, read with the number
+      if (i > 0 && /[〇一二三四五六七八九十百千万0-9\uFF10-\uFF19]/.test(t[i - 1]) && JA_COUNTER_FORMS.includes(ch)) relax(i + 1, COST.counter, { kind: 'counter', surface: ch, lemma: ch, reading: '' })
+      // an unknown run's kana tail is costly, so a particle after an unknown word stays a particle (宇宙 + に, not 宇宙に)
+      runsAt(t, i).forEach(L => { const sp = t.slice(i, i + L), kanaTail = /[\u4E00-\u9FFF\u3005]/.test(sp[0]) ? (sp.match(/[\u3041-\u3093]+$/) || [''])[0].length : 0
+        relax(i + L, COST.unknownBase + COST.unknownPer * (L - kanaTail) + COST.unknownKana * kanaTail, { kind: 'unknown', surface: sp }) })
+    }
+    const toks = []
+    for (let j = n; j > 0 && back[j]; j = back[j].i) toks.unshift({ ...back[j].tok, start: back[j].i, end: j })
+    // adjacent unknown runs are one unknown span (never two half-words)
+    const merged = []
+    toks.forEach(x => { const p = merged[merged.length - 1]; if (p && p.kind === 'unknown' && x.kind === 'unknown') { p.surface += x.surface; p.end = x.end } else merged.push({ ...x }) })
+    merged.forEach(x => { if (x.kind === 'unknown') x.code = classifyUnknown(x.surface) })
+    return merged
+  }
+  // §44/§45 — UNKNOWN_LEXEME (a real word the learner was not taught) vs TOKENIZATION_ERROR (a fragment the
+  // morphology cannot parse: an orphan inflection, a small kana / っ in an impossible place, an unsegmentable kanji run)
+  function classifyUnknown(u) {
+    if (/^[ぁ-ゟ]$/.test(u)) return 'RESIDUE'
+    if (/^[ぁぃぅぇぉっゃゅょゎんーッ]/.test(u)) return 'TOKENIZATION_ERROR'
+    if (/[っッ](?=[あいうえおな-のま-もや-ろわんっ]|$)/.test(u)) return 'TOKENIZATION_ERROR'
+    if (/^(える|れる|る|った|って|ます|ました|ません|ない|なく|た|て|いる|かった|くて|じゃ)$/.test(u)) return 'TOKENIZATION_ERROR'
+    const kanji = (u.match(/[一-鿿々]+/) || [''])[0]
+    if (kanji.length >= 4) return 'TOKENIZATION_ERROR'
+    if (/[一-鿿][ぁ-ゟ]+[一-鿿]/.test(u)) return 'TOKENIZATION_ERROR'
+    return 'UNKNOWN_LEXEME'
+  }
+  return { lang: 'ja', layer: 'A', size: bank.length, segment, classifyUnknown, functionForms: JA_FUNCTION_FORMS, index }
+}
+function _zhLexiconAdapter(vocab) {
+  const seen = new Set(), lex = []
+  const push = (w, p, e, kind, extra) => { if (!w || seen.has(w)) return; seen.add(w); lex.push({ w, p: p || '', e: e || '', kind, ...(extra || {}) }) }
+  ;[...(vocab || []), ...(typeof RAW_MANDARIN_VOCAB !== 'undefined' ? RAW_MANDARIN_VOCAB : [])].forEach(w => push(w.chinese || w.w, w.pinyin, w.english, 'lexeme', { vocabId: w.id }))
+  ;(typeof MANDARIN_GRAMMAR_SCAFFOLD !== 'undefined' ? MANDARIN_GRAMMAR_SCAFFOLD : []).forEach(g => push(g.form, g.pinyin, g.meaning, 'grammar', { scaffoldId: g.id }))
+  ;(typeof MANDARIN_CONVERSATION_BASICS !== 'undefined' ? MANDARIN_CONVERSATION_BASICS : []).forEach(b => push(b.form, b.pinyin, b.english, 'basic', { basicId: b.id }))
+  ;(typeof MANDARIN_EXTRA_LEXICON !== 'undefined' ? MANDARIN_EXTRA_LEXICON : []).forEach(x => push(x.w, x.p, x.e, 'lexeme'))
+  ZH_LANGUAGE_LEXICON.forEach(x => push(x.w, x.p, x.e, 'lexeme', { layerA: true }))
+  ZH_FUNCTION_FORMS.forEach(f => push(f, '', '', 'function'))
+  const index = new Map()
+  lex.forEach(e => { const k = e.w[0]; if (!index.has(k)) index.set(k, []); index.get(k).push(e) })
+  index.forEach(list => list.sort((x, y) => y.w.length - x.w.length))
+  // the segmentation lexicon in the shape segmentMandarin / pinyin building expect (longest first)
+  const lexicon = lex.map(e => ({ w: e.w, p: e.p, e: e.e, type: e.kind === 'function' ? 'grammar' : e.kind === 'lexeme' ? (e.vocabId != null ? 'vocab' : 'lexical') : e.kind, vocabId: e.vocabId, scaffoldId: e.scaffoldId, basicId: e.basicId }))
+    .sort((a, b) => b.w.length - a.w.length)
+  function segment(text) {
+    const s = String(text || ''), toks = []
+    let i = 0
+    while (i < s.length) {
+      const ch = s[i]
+      if (ZH_PUNCT.test(ch) || /[!?,.;:\-…]/.test(ch)) { toks.push({ kind: 'punct', surface: ch, start: i, end: i + 1 }); i++; continue }
+      const hit = (index.get(ch) || []).find(e => s.startsWith(e.w, i))
+      if (hit) { toks.push({ kind: hit.kind === 'function' ? 'function' : hit.kind === 'grammar' ? 'grammar' : 'lexeme', surface: hit.w, lemma: hit.w, reading: hit.p, entry: hit, start: i, end: i + hit.w.length }); i += hit.w.length; continue }
+      const p = toks[toks.length - 1]
+      if (p && p.kind === 'unknown' && p.end === i && /[一-鿿]/.test(ch)) { p.surface += ch; p.end = i + 1 }
+      else toks.push({ kind: /[一-鿿]/.test(ch) ? 'unknown' : 'other', surface: ch, start: i, end: i + 1 })
+      i++
+    }
+    toks.forEach(x => { if (x.kind === 'unknown') x.code = classifyUnknown(x.surface) })
+    return toks
+  }
+  // an unknown Hanzi run is ONE candidate lexical unit (宇宙, never 宇 + 宇); a run of five or more that the Layer A
+  // lexicon cannot segment at all has no recoverable word boundaries → TOKENIZATION_ERROR
+  function classifyUnknown(u) { return [...u].length >= 5 ? 'TOKENIZATION_ERROR' : 'UNKNOWN_LEXEME' }
+  return { lang: 'zh', layer: 'A', size: lex.length, segment, classifyUnknown, functionForms: ZH_FUNCTION_FORMS, lexicon, index }
+}
+function _thLexiconAdapter(vocab) {
+  return { lang: 'th', layer: 'A', size: (typeof THAI_SEGMENTATION_LEXICON !== 'undefined' ? THAI_SEGMENTATION_LEXICON.length : 0) + (vocab || []).length,
+    segment(text) { try { return segmentThaiWithDiagnostics(text, vocab, null, [], true).map(sp => ({ kind: sp.allowed === false ? 'unknown' : 'lexeme', surface: sp.matchedSpan || sp.matchedEntry || '', code: sp.allowed === false ? 'UNKNOWN_LEXEME' : undefined })) } catch (e) { return [] } },
+    classifyUnknown: () => 'UNKNOWN_LEXEME', functionForms: thaiFunctionForms() }
+}
+
+// LAYER B — the learner-authorised inventory as a FROZEN SNAPSHOT (§42). The vocabulary is cloned and frozen when
+// generation starts; every later stage (palette, validation, repair, final audit) reads the snapshot, so a rating
+// made in another tab half-way through cannot change what this track may use. Never expanded to make a track pass.
+function snapshotLearnerInventory(lang, vocab, targets, trackType) {
+  const snap = Object.freeze((vocab || []).map(w => Object.freeze({ ...w })))
+  const tIds = new Set((targets || []).map(t => t && t.id).filter(x => x != null))
+  const tSnap = snap.filter(w => tIds.has(w.id))
+  const inv = buildLearnerAuthorizedInventory(lang, snap, tSnap.length ? tSnap : (targets || []), trackType)
+  const ids = Object.freeze(inv.all.map(w => w.id).filter(x => x != null).sort((a, b) => (a > b ? 1 : a < b ? -1 : 0)))
+  const hash = _lnSeedHash(ids.join(',')).toString(36)
+  return Object.freeze({ lang, frozen: true, vocab: snap, targets: tSnap.length ? tSnap : (targets || []), learnerInventorySnapshotIds: ids, hash, inventory: inv,
+    log: 'LEARNER_INVENTORY language=' + lang + ' introducedContent=' + inv.taught.length + ' targets=' + inv.targets.length + ' authorised=' + ids.length + ' snapshot=' + hash + ' (frozen at generation start)' })
+}
+// the Layer B authority for closed-world validation: which canonical lexemes (Layer A lemmas) are authorised
+const _AUTHORITY_CACHE = new WeakMap()
+function closedWorldAuthority(lang, bank, targets) {
+  // cached only against a FROZEN snapshot (a live, mutable vocabulary is re-read every time)
+  const k1 = Array.isArray(targets) && Object.isFrozen(bank) ? targets : null
+  let byBank = k1 ? _AUTHORITY_CACHE.get(k1) : null
+  if (byBank && byBank.bank === bank && byBank.lang === lang) return byBank.auth
+  const tIds = new Set((targets || []).map(t => t && t.id).filter(x => x != null))
+  const authorised = (bank || []).filter(w => tIds.has(w.id) || isLearnerTaught(w)).concat((targets || []).filter(t => t && !(bank || []).some(w => w.id === t.id)))
+  const ents = ((targets && targets._sceneEntities) || []).map(e => (e && (e.surface || e)) || '').filter(Boolean)
+  const surf = new Set(), readings = new Set()
+  let extraForms = []
+  if (lang === 'ja') {
+    authorised.forEach(w => { [w.japanese, w.lemma].filter(Boolean).forEach(x => surf.add(x))
+      String(w.reading || '').split(/\s*[\/／|]\s*/).filter(Boolean).forEach(r => readings.add(r))
+      jaKanaSpellingsOf(w).forEach(x => surf.add(x)) })
+    const inv = japaneseLearnerInventory(bank || [], (targets || []).filter(t => t && t.japanese))
+    ;(inv.conversationBasics || []).forEach(b => surf.add(b.form))
+    ;(inv.grammarScaffold || []).forEach(g => surf.add(g.form))
+    extraForms = authorised
+  } else if (lang === 'zh') {
+    authorised.forEach(w => { if (w.chinese) surf.add(w.chinese) })
+    const inv = mandarinLearnerInventory(bank || [], (targets || []).filter(t => t && t.chinese))
+    ;(inv.grammarScaffold || []).forEach(g => surf.add(g.form))
+    ;(inv.conversationBasics || []).forEach(b => surf.add(b.form))
+  }
+  ents.forEach(e => surf.add(e))
+  const kanaWords = new Set(lang === 'ja' ? authorised.map(w => w.japanese).filter(j => j && /^[\u3041-\u309F\u30A0-\u30FF\u30FC]+$/.test(j)) : [])
+  const auth = { lang, authorised, surfaces: surf, readings, kanaWords, entities: ents, extraForms, _restricted: null }
+  if (k1) _AUTHORITY_CACHE.set(k1, { bank, lang, auth })
+  return auth
+}
+// a token is authorised when its canonical lemma (or its kana spelling) is a taught lexeme
+function _tokenAuthorised(tok, auth) {
+  if (auth.surfaces.has(tok.lemma) || auth.surfaces.has(tok.surface)) return true
+  if (auth.lang === 'ja' && tok.entry) {
+    const r = tok.entry.word && String(tok.entry.word.reading || '').split(/\s*[\/／|]\s*/)[0]
+    // 美味しい is the kanji spelling of a taught KANA-WRITTEN word おいしい (same lexeme, same reading). A homophone
+    // of a taught kanji word is a different lexeme: 泊まる (とまる, stay) is not 止まる (とまる, stop)
+    if (r && auth.kanaWords && auth.kanaWords.has(r)) return true
+  }
+  if (auth.lang === 'zh' && /们$/.test(tok.surface) && auth.surfaces.has(tok.surface.slice(0, -1))) return true
+  return false
+}
+// ambiguity resolution in the learner's favour: a Layer A compound that splits COMPLETELY into authorised lexemes +
+// function words (何か = 何 + か, 好的 = 好 + 的) is not an unknown word. Nothing is added to the inventory.
+function _authorisedCover(surface, auth, adapter) {
+  if (!auth._restricted) {
+    const idx = new Map(), put = (s, kind) => { if (!s) return; const k = s[0]; if (!idx.has(k)) idx.set(k, []); idx.get(k).push(s) }
+    if (auth.lang === 'ja') auth.authorised.forEach(w => jaInflectionPairs(w.lemma || w.japanese, String(w.reading || '').split(/\s*[\/／|]\s*/)[0], jaConjClassOf(w)).forEach(([s, r]) => { put(s); if (r !== s && r && r.length >= 2) put(r) }))
+    auth.surfaces.forEach(s => put(s))
+    ;(adapter.functionForms || []).forEach(f => put(f))
+    idx.forEach(l => l.sort((a, b) => b.length - a.length))
+    auth._restricted = idx
+  }
+  const idx = auth._restricted, n = surface.length, ok = new Array(n + 1).fill(false)
+  ok[0] = true
+  for (let i = 0; i < n; i++) if (ok[i]) (idx.get(surface[i]) || []).forEach(s => { if (surface.startsWith(s, i)) ok[i + s.length] = true })
+  return ok[n]
+}
+// validateClosedWorldCandidate — Layer A segmentation → canonical lexemes → Layer B authorisation.
+// Returns UNKNOWN_LEXEME (whole canonical units, lemma-reported) and TOKENIZATION_ERROR fragments separately.
+function validateClosedWorldCandidate(lang, text, bank, targets) {
+  const adapter = buildLanguageLexiconAdapter(lang, bank)
+  if (lang === 'th') {
+    try { const ctx = buildThaiTrackVocabContext(bank, targets, (targets && targets._sceneEntities) || []); const r = validateThaiVocabulary([{ thai: text }], ctx)
+      return { ok: r.ok, unknown: r.ok ? [] : r.blocked, malformed: [], tokens: [] } } catch (e) { return { ok: true, unknown: [], malformed: [], tokens: [] } }
+  }
+  const auth = closedWorldAuthority(lang, bank, targets)
+  const stripped = (auth.entities || []).reduce((s, e) => s.split(e).join(' '), String(text || ''))
+  const toks = adapter.segment(stripped)
+  const unknown = [], malformed = []
+  toks.forEach(tok => {
+    if (tok.kind === 'punct' || tok.kind === 'other' || tok.kind === 'function' || tok.kind === 'counter') return
+    if (tok.kind === 'unknown') {
+      if (tok.code === 'RESIDUE') return
+      if (tok.code === 'TOKENIZATION_ERROR') { if (!malformed.includes(tok.surface)) malformed.push(tok.surface); return }
+      if (lang === 'zh' && typeof zhIsParticle === 'function' && zhIsParticle(tok.surface)) return
+      if (auth.surfaces.has(tok.surface)) return
+      if (!unknown.includes(tok.surface)) unknown.push(tok.surface)
+      return
+    }
+    if (_tokenAuthorised(tok, auth)) return
+    if (lang === 'zh' && tok.kind === 'grammar') {
+      // a scaffold grammar item that is not unlocked yet is still grammar (the old checker's particle rule)
+      if (typeof zhIsParticle === 'function' && zhIsParticle(tok.surface)) return
+    }
+    if (_authorisedCover(tok.surface, auth, adapter)) return
+    const lemma = tok.lemma || tok.surface
+    if (!unknown.includes(lemma)) unknown.push(lemma)
+  })
+  return { ok: !unknown.length && !malformed.length, unknown, malformed, tokens: toks }
+}
+function listeningClosedWorldLine(lang, pair, bank, targets) {
+  return validateClosedWorldCandidate(lang, listeningSentence(pair), bank, targets)
+}
+
 // Eligibility: CURRENT authoritative learner exposure, evaluated at build time — so a
 // word that was NEW this morning becomes eligible later only once it is truly exposed.
 // Legacy pairs predate wordId: they identify their target through _target (the target's
@@ -14239,7 +14669,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v667'
+const LISTENING_BUILD_VERSION = 'v668'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -15301,7 +15731,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v667'
+const APP_BUILD_VERSION = 'v668'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -16435,10 +16865,6 @@ function enforceTrackTargetContract(selection, o) {
 // v656: every language builds Listening the same way — ONE fresh conversation (see
 // buildListeningConversation below); the language adapter supplies target presence, line gates,
 // the naturalness verdict prompt, speaker marking and pronunciation checks.
-function _lnKnownWords(lang, vocab, exposed) {
-  const surf = w => lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : (w.thai || w.t)
-  return exposed.slice().sort((a, b) => String(b.lastSeen || '').localeCompare(String(a.lastSeen || ''))).map(surf).filter(Boolean)
-}
 async function _lnGenericVerdicts(lang, pairs, o, log) {
   const out = new Map()
   // v651 §16 — explicit: never call a Japanese sentence "Mandarin" (and never fall through)
@@ -16469,6 +16895,149 @@ async function _lnGenericVerdicts(lang, pairs, o, log) {
   }
   return out
 }
+// ══ v668 §30–§34 — JAPANESE PRONUNCIATION AFTER THE FINAL TEXT FREEZE ══════════════════════════════
+// Text generation and repair finish first; the Japanese text is then FROZEN and only then are readings and romaji
+// derived: Layer A segmentation → dictionary reading of each lemma → morphology-derived reading of each inflection →
+// deterministic kana assembly → deterministic romaji → ONE batched provider request for the spans nothing could
+// resolve → alignment validation. Only reading / romaji / segments are ever written; the Japanese text is never touched.
+const JA_NUM_UNITS = { 1: 'いち', 2: 'に', 3: 'さん', 4: 'よん', 5: 'ご', 6: 'ろく', 7: 'なな', 8: 'はち', 9: 'きゅう' }
+const JA_KANJI_DIGIT = { '〇': 0, '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 }
+function jaParseNumber(s) {
+  const t = String(s || '').replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xFEE0))
+  if (/^\d+$/.test(t)) return Number(t)
+  if (!/^[〇零一二三四五六七八九十百千万]+$/.test(t)) return null
+  let total = 0, section = 0, digit = 0
+  for (const ch of t) {
+    if (ch in JA_KANJI_DIGIT) { digit = JA_KANJI_DIGIT[ch]; continue }
+    const mult = ch === '十' ? 10 : ch === '百' ? 100 : ch === '千' ? 1000 : 10000
+    if (mult === 10000) { total += (section + digit || 1) * 10000; section = 0; digit = 0; continue }
+    section += (digit || 1) * mult; digit = 0
+  }
+  return total + section + digit
+}
+function jaNumberReading(n) {
+  if (n == null || !Number.isFinite(n)) return null
+  if (n === 0) return 'ゼロ'
+  let out = ''
+  const man = Math.floor(n / 10000); if (man) { out += jaNumberReading(man) + 'まん'; n %= 10000 }
+  const th = Math.floor(n / 1000); if (th) { out += th === 1 ? 'せん' : th === 3 ? 'さんぜん' : th === 8 ? 'はっせん' : JA_NUM_UNITS[th] + 'せん'; n %= 1000 }
+  const hu = Math.floor(n / 100); if (hu) { out += hu === 1 ? 'ひゃく' : hu === 3 ? 'さんびゃく' : hu === 6 ? 'ろっぴゃく' : hu === 8 ? 'はっぴゃく' : JA_NUM_UNITS[hu] + 'ひゃく'; n %= 100 }
+  const te = Math.floor(n / 10); if (te) { out += (te === 1 ? '' : JA_NUM_UNITS[te]) + 'じゅう'; n %= 10 }
+  if (n) out += JA_NUM_UNITS[n]
+  return out
+}
+// counters after a number: [base reading, {n: whole reading for 1–10 exceptions}]
+const JA_COUNTERS = {
+  '人': ['にん', { 1: 'ひとり', 2: 'ふたり', 4: 'よにん' }], '時': ['じ', { 4: 'よじ', 7: 'しちじ', 9: 'くじ' }],
+  '分': ['ふん', { 1: 'いっぷん', 3: 'さんぷん', 4: 'よんぷん', 6: 'ろっぷん', 8: 'はっぷん', 10: 'じゅっぷん' }], '円': ['えん', { 4: 'よえん' }],
+  '回': ['かい', { 1: 'いっかい', 6: 'ろっかい', 8: 'はっかい', 10: 'じゅっかい' }], '個': ['こ', { 1: 'いっこ', 6: 'ろっこ', 8: 'はっこ', 10: 'じゅっこ' }],
+  '歳': ['さい', { 1: 'いっさい', 8: 'はっさい', 10: 'じゅっさい' }], '本': ['ほん', { 1: 'いっぽん', 3: 'さんぼん', 6: 'ろっぽん', 8: 'はっぽん', 10: 'じゅっぽん' }],
+  '枚': ['まい', {}], '年': ['ねん', { 4: 'よねん' }], '月': ['がつ', { 4: 'しがつ', 7: 'しちがつ', 9: 'くがつ' }], '階': ['かい', { 1: 'いっかい', 3: 'さんがい', 6: 'ろっかい', 8: 'はっかい', 10: 'じゅっかい' }],
+  '日': ['にち', { 1: 'ついたち', 2: 'ふつか', 3: 'みっか', 4: 'よっか', 5: 'いつか', 6: 'むいか', 7: 'なのか', 8: 'ようか', 9: 'ここのか', 10: 'とおか' }],
+}
+function jaCounterReading(n, counter) {
+  const c = JA_COUNTERS[counter]; if (!c || n == null) return null
+  if (n >= 1 && n <= 10 && c[1][n]) return c[1][n]
+  if (n > 10) {
+    const d = n % 10
+    if (d && c[1][d] && counter !== '人' && counter !== '日') return jaNumberReading(n - d) + c[1][d]
+    if (!d && n % 100 && c[1][10]) { const t = Math.floor(n / 10) % 10, base = n - 10 * t; return (base ? jaNumberReading(base) : '') + (t > 1 ? JA_NUM_UNITS[t] : '') + c[1][10] }
+  }
+  return jaNumberReading(n) + c[0]
+}
+const _jaIsNumeral = s => /^[〇零一二三四五六七八九十百千万0-9０-９]+$/.test(String(s || ''))
+function jaDeterministicReading(text, bank) {
+  const adapter = buildLanguageLexiconAdapter('ja', bank)
+  const raw = adapter.segment(String(text || ''))
+  // merge numeral runs (三 + 十 + 円 → 30 円) so counters read as numbers, not as words
+  const toks = []
+  raw.forEach(t => { const p = toks[toks.length - 1]
+    if (p && p.numeral && _jaIsNumeral(t.surface) && t.kind !== 'punct') { p.surface += t.surface; p.end = t.end } else toks.push({ ...t, numeral: _jaIsNumeral(t.surface) && t.kind !== 'punct' }) })
+  const segs = [], unresolved = []
+  toks.forEach((t, i) => {
+    const following = toks.slice(i + 1).map(x => x.surface).join('')
+    let reading = null, how = ''
+    if (t.kind === 'punct') { segs.push({ surface: t.surface, reading: /\s/.test(t.surface) ? '' : t.surface, type: 'punct' }); return }
+    if (t.numeral) {
+      const n = jaParseNumber(t.surface), nx = toks[i + 1]
+      if (nx && JA_COUNTERS[nx.surface]) { nx._counterOf = n; reading = jaNumberReading(n); how = 'number' }
+      else { reading = jaNumberReading(n); how = 'number' }
+    } else if (t._counterOf != null) {
+      const whole = jaCounterReading(t._counterOf, t.surface), prev = segs[segs.length - 1]
+      // number + counter is ONE unit with ONE reading (三人 さんにん, 八分 はっぷん, 三日 みっか)
+      if (whole && prev) { prev.surface += t.surface; prev.reading = whole; prev.how = 'counter'; return }
+    } else if (t.kind === 'lexeme' || t.kind === 'function') {
+      reading = t.reading || t.surface; how = t.kind === 'lexeme' ? (t.lemma && t.lemma !== t.surface ? 'morphology' : 'dictionary') : 'function'
+      const w = t.entry && t.entry.word
+      if (w && /[\/／|]/.test(String(w.reading || '')) && t.surface === (w.japanese || '')) reading = resolveJapaneseReading(t.surface, w.reading, following)
+    } else if (t.kind === 'unknown' && /^[ぁ-ゟ゠-ヿー]+$/.test(t.surface)) { reading = t.surface; how = 'kana' }
+    if (!reading || /[一-鿿々]/.test(reading)) { unresolved.push({ surface: t.surface, index: segs.length }); segs.push({ surface: t.surface, reading: null, type: 'unresolved' }); return }
+    segs.push({ surface: t.surface, reading, type: t.kind === 'function' ? 'grammar' : 'content', lemma: t.lemma || t.surface, how })
+  })
+  return { segs, unresolved }
+}
+function _jaAssemble(segs) {
+  const reading = segs.map(s => s.reading == null ? s.surface : s.reading).join('')
+  const parts = []
+  segs.forEach(s => {
+    if (s.type === 'punct') { if (s.reading) parts.push(s.surface === '、' ? ',' : s.surface === '。' ? '.' : s.surface === '？' ? '?' : s.surface === '！' ? '!' : s.surface); return }
+    if (!s.reading) return
+    const ro = s.type === 'grammar' && s.surface === 'は' ? 'wa' : s.type === 'grammar' && s.surface === 'へ' ? 'e' : kanaToRomaji(s.reading)
+    if (ro) parts.push(ro)
+  })
+  const romaji = parts.join(' ').replace(/\s+([,.?!])/g, '$1').replace(/\s{2,}/g, ' ').trim()
+  return { reading, romaji }
+}
+// §32/§33 — the alignment contract: kana-only reading, clean romaji that transcribes it, every unit resolved
+function japanesePronunciationAlignment(pair) {
+  const problems = []
+  const rd = String(pair.reading || ''), ro = String(pair.romaji || '')
+  if (!rd.trim()) problems.push('no reading')
+  if (/[一-鿿々]/.test(rd)) problems.push('reading still contains kanji: ' + rd)
+  if (/[A-Za-z]/.test(rd)) problems.push('reading contains latin characters: ' + rd)
+  if (/[぀-ヿ一-鿿]/.test(ro)) problems.push('romaji contains kana or kanji: ' + ro)
+  if (/[\/｜|]/.test(rd + ro)) problems.push('reading / romaji offer dictionary alternatives')
+  ;(pair.readingUnresolved || []).forEach(u => problems.push('reading unresolved for "' + u + '" (alignment)'))
+  if (!problems.length) { const a = auditJapaneseReading({ ...pair }); a.problems.forEach(p => problems.push(p)) }
+  return problems
+}
+const JA_READING_FALLBACK_SCHEMA = { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, reading: { type: 'STRING' } }, required: ['id', 'reading'] } }
+// the frozen Listening lines → readings / romaji / segments; ONE batched provider call for every unresolved span (§34)
+async function japaneseListeningPronunciation(turns, bank, o, log, tel) {
+  const frozen = turns.map(tn => tn.pair.japanese || tn.pair.thai || '')
+  const built = frozen.map(t => jaDeterministicReading(t, bank))
+  const pending = []
+  built.forEach((b, li) => b.unresolved.forEach(u => pending.push({ id: 'L' + (li + 1) + '#' + u.index, li, index: u.index, span: u.surface, sentence: frozen[li] })))
+  const det = built.reduce((a, b) => a + b.segs.filter(s => s.type !== 'punct' && s.reading != null).length, 0)
+  log && log('🔤 JA_READING_PIPELINE deterministic units=' + det + ' unresolved=' + pending.length + (pending.length ? ' [' + [...new Set(pending.map(p => p.span))].slice(0, 10).join(', ') + ']' : '') + ' · segmentation → dictionary → morphology → kana → romaji')
+  if (pending.length && o && o.apiKey) {
+    const prompt = 'JAPANESE READINGS for a learner track. For each item give the hiragana reading of SPAN exactly as it is pronounced inside SENTENCE. ' +
+      'Hiragana (or katakana for loanwords) only — no kanji, no romaji, no alternatives. Do not change or comment on the sentence.\n' +
+      'ITEMS (JSON): ' + JSON.stringify(pending.map(p => ({ id: p.id, span: p.span, sentence: p.sentence }))) + '\n' +
+      'Reply ONLY with a JSON array: [{"id":"L3#2","reading":"ひさしぶり"}]'
+    tel.LISTENING_QC_CALLS = (tel.LISTENING_QC_CALLS || 0) + 1; tel.LISTENING_READING_FALLBACK_CALLS = (tel.LISTENING_READING_FALLBACK_CALLS || 0) + 1
+    try {
+      const arr = JSON.parse(String(await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt }], maxTokens: 1200, temperature: 0, json: JA_READING_FALLBACK_SCHEMA, stage: 'O_listening_reading' })).replace(/```json|```/g, '').trim())
+      let ok = 0
+      ;(Array.isArray(arr) ? arr : []).forEach(x => { const p = pending.find(q => q.id === (x && x.id)); const r = String((x && x.reading) || '').trim()
+        if (p && r && /^[ぁ-ゟ゠-ヿー]+$/.test(r)) { const s = built[p.li].segs[p.index]; s.reading = r; s.type = 'content'; s.how = 'provider'; ok++ } })
+      log && log('🔤 JA_READING_FALLBACK one batched request · ' + ok + '/' + pending.length + ' span(s) resolved (kana-validated)')
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('⚠ JA_READING_FALLBACK unavailable: ' + String(e && e.message || e).slice(0, 80)) }
+  }
+  let issues = 0
+  turns.forEach((tn, li) => {
+    const b = built[li], a = _jaAssemble(b.segs)
+    const unresolved = b.segs.filter(s => s.reading == null).map(s => s.surface)
+    // §33/§65 — only the reading fields change; the frozen Japanese text stays byte-for-byte
+    tn.pair = { ...tn.pair, reading: a.reading, romaji: a.romaji, phonetic: a.romaji, segments: b.segs.filter(s => s.type !== 'punct').map(s => ({ surface: s.surface, reading: s.reading || '', romaji: s.reading ? kanaToRomaji(s.reading) : '', type: s.type, lemma: s.lemma || s.surface })),
+      readingUnresolved: unresolved }
+    if ((tn.pair.japanese || tn.pair.thai || '') !== frozen[li]) throw pipelineInternalError('JA_TEXT_FREEZE_BROKEN', 'pronunciation changed the frozen Japanese text of line ' + (li + 1))
+    if (japanesePronunciationAlignment(tn.pair).length) issues++
+  })
+  log && log('🔤 JA_READING_ALIGNMENT lines=' + turns.length + ' issues=' + issues + (issues ? ' FAIL' : ' PASS') + ' · JA_TEXT_FREEZE intact (' + turns.length + ' lines byte-identical)')
+  return { issues }
+}
+
 // Listening adapters (per language). All share the v656 conversation builder below.
 const LISTENING_ADAPTERS = {
   th: {
@@ -16506,12 +17075,14 @@ const LISTENING_ADAPTERS = {
     verdicts: (pairs, o, log) => _lnGenericVerdicts('ja', pairs, o, log),
     bridgeProblems(p, ctx) {
       const out = []
-      const cv = japaneseCheckLine(stripSceneEntities(p.japanese || '', ctx.sceneEntities), ctx.jaInv); if (!cv.ok) out.push('VOCABULARY_FAILED: untaught ' + cv.unknown.join(' '))
+      // v668: closed vocabulary is judged ONCE, by the Layer A → Layer B validator in listeningConversationAudit
       TRACK_ADAPTERS.ja.hardProblems(p).forEach(h => out.push('MARKUP_FAILED: ' + h))
       return out
     },
-    finaliseLine(p, ctx) { try { const f = finaliseJapanesePair(p, ctx.jaInv, { allowedGrammarIds: ctx.jaInv && ctx.jaInv.allowedGrammarIds }); return { ...f.pair, thai: f.pair.japanese, phonetic: f.pair.romaji || f.pair.phonetic } } catch (e) { return p } },
-    pronunciationProblems(p, ctx) { try { const f = finaliseJapanesePair(p, ctx.jaInv, { allowedGrammarIds: ctx.jaInv && ctx.jaInv.allowedGrammarIds }); return (f.problems || []).filter(x => /reading|romaji|kana|segment/i.test(String(x))) } catch (e) { return [] } },
+    // v668 §30 — Japanese readings are derived ONCE, after the text freeze, by japaneseListeningPronunciation (batched);
+    // the per-line finaliser no longer rebuilds them while text can still change
+    finaliseLine(p, ctx) { return { ...p, thai: p.japanese || p.thai } },
+    pronunciationProblems(p, ctx) { return japanesePronunciationAlignment(p) },
     makeLine: (x, sp) => ({ speaker: sp, japanese: String(x.text || ''), thai: String(x.text || ''), reading: String(x.reading || ''), romaji: String(x.romaji || ''), phonetic: String(x.romaji || ''), english: String(x.english || ''), prompt: '', language: 'ja' }),
   },
   zh: {
@@ -16522,7 +17093,7 @@ const LISTENING_ADAPTERS = {
     verdicts: (pairs, o, log) => _lnGenericVerdicts('zh', pairs, o, log),
     bridgeProblems(p, ctx) {
       const out = []
-      const cv = mandarinCheckLine(stripSceneEntities(p.chinese || '', ctx.sceneEntities), ctx.zhInv); if (cv && cv.ok === false) out.push('VOCABULARY_FAILED: untaught ' + (cv.unknown || []).join(' '))
+      // v668: closed vocabulary is judged ONCE, by the Layer A → Layer B validator in listeningConversationAudit
       TRACK_ADAPTERS.zh.hardProblems(p).forEach(h => out.push('MARKUP_FAILED: ' + h))
       return out
     },
@@ -16594,7 +17165,6 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
 // NOT_READY ("Listening track needs repair") and is never playable.
 const LISTENING_ARCHITECTURE = 'fresh-conversation-v656'
 const LISTENING_MAX_TARGETS_PER_TURN = 3
-const LISTENING_REPAIR_ROUNDS = 2
 const LISTENING_CONVERSATION_SCHEMA = { type: 'OBJECT', properties: { scenes: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
   sceneId: { type: 'STRING', nullable: true }, setting: { type: 'STRING', nullable: true },
   turns: { type: 'ARRAY', items: { type: 'OBJECT', properties: { speaker: { type: 'STRING' }, text: { type: 'STRING' }, english: { type: 'STRING', nullable: true },
@@ -16719,8 +17289,14 @@ function listeningConversationAudit(scenes, targets, la, ctx) {
   // closed vocabulary + language-specific line checks (speaker particles, markup, …)
   lines.forEach((l, n) => {
     const why = (la.bridgeProblems ? la.bridgeProblems(l.tn.pair, c) : []).slice()
-    const un = listeningUnexposedWords(la.lang, l.tn.pair, c.exposed || [], c.eligTargets || [], c.vocab); if (un.length) why.push('VOCABULARY_FAILED: unknown words: ' + un.slice(0, 4).join(' '))
-    why.forEach(w => issues.push({ code: /^VOCABULARY/.test(w) ? 'CLOSED_VOCAB' : /^SPEAKER/.test(w) ? 'SPEAKER_IDENTITY' : 'LINE_QUALITY', line: n + 1, detail: w }))
+    // v668 — ONE closed-vocabulary authority: Layer A canonical lexemes → Layer B (frozen snapshot). An unknown LEXEME
+    // and a TOKENIZATION_ERROR (a fragment the morphology cannot parse) are reported separately (§44/§45)
+    if (la.lang === 'ja' || la.lang === 'zh') {
+      const cw = validateClosedWorldCandidate(la.lang, la.text(l.tn.pair), c.vocab || c.exposed || [], c.eligTargets || [])
+      if (cw.unknown.length) why.push('VOCABULARY_FAILED: unknown words: ' + cw.unknown.slice(0, 4).join(' '))
+      if (cw.malformed.length) why.push('TOKENIZATION_ERROR: unparseable fragments: ' + cw.malformed.slice(0, 4).join(' '))
+    } else { const un = listeningUnexposedWords(la.lang, l.tn.pair, c.exposed || [], c.eligTargets || [], c.vocab); if (un.length) why.push('VOCABULARY_FAILED: unknown words: ' + un.slice(0, 4).join(' ')) }
+    why.forEach(w => issues.push({ code: /^VOCABULARY/.test(w) ? 'CLOSED_VOCAB' : /^TOKENIZATION/.test(w) ? 'TOKENIZATION_ERROR' : /^SPEAKER/.test(w) ? 'SPEAKER_IDENTITY' : 'LINE_QUALITY', line: n + 1, detail: w }))
   })
   // v667 §13/§14 — Japanese register, judged PER SCENE against the track's frozen speech style × the scene relationship
   const registerAudit = []
@@ -16743,6 +17319,236 @@ function listeningConversationAudit(scenes, targets, la, ctx) {
   missing.forEach(t => issues.push({ code: 'TARGET_MISSING', line: 0, targetId: t.id, detail: t.surface + ' (' + t.gloss + ')' }))
   return { lines: per, issues, occ, missing, covered: targets.filter(t => occ.get(t.id).length).map(t => t.id), speakers: [...sp], registerAudit }
 }
+// ══ v668 — LAYER C: THE SCENE PALETTE (§9/§10) ══════════════════════════════════════════════════
+// A small POSITIVE whitelist for one scene: its required targets + 10–30 relevant taught support lexemes + the narrow
+// grammar scaffold (+ established scene entities). Generation, atomic repair, coherence / register / length repair
+// of that scene all use the SAME frozen palette (§41) — no stage silently regains the whole inventory or dictionary.
+const PALETTE_MIN_SUPPORT = 10, PALETTE_MAX_SUPPORT = 30
+const PALETTE_CORE_GLOSS = /\b(i|me|you|we|this|that|it|yes|no|good|okay|ok|go|come|eat|drink|want|like|have|there is|exist|do|make|what|where|when|who|how|why|today|now|tomorrow|together|very|a little|really|thank|sorry|see|look|know|think)\b/i
+function _paletteSurface(lang, w) { return lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : (w.thai || w.t) }
+function buildScenePalette(o) {
+  const lang = o.lang, required = o.required || [], seed = String(o.seed || '') + '|' + (o.sceneId || '')
+  const reqSurf = new Set(required.map(t => t.surface)), otherIds = o.otherTargetIds || new Set()
+  const doms = new Set(required.map(t => t.domain).filter(Boolean))
+  const needs = (o.needs || []).map(n => new RegExp('\\b(' + n + ')\\b', 'i'))
+  const premiseWords = String(o.premise || '').toLowerCase().split(/[^a-z']+/).filter(w => w.length >= 4)
+  const seen = new Set()
+  const cands = (o.authorised || []).filter(w => { const s = _paletteSurface(lang, w); if (!s || reqSurf.has(s) || otherIds.has(w.id) || seen.has(s)) return false; seen.add(s); return true })
+  const scored = cands.map(w => {
+    const g = String(w.english || '').toLowerCase()
+    let score = 0
+    if (doms.size && doms.has(targetSemanticDomain(w))) score += 5
+    if (needs.some(rx => rx.test(g))) score += 8
+    if (premiseWords.some(p => g.includes(p))) score += 3
+    if (PALETTE_CORE_GLOSS.test(g)) score += 3
+    if (w.status === 'known' || w.manualKnown) score += 1
+    return { w, score, tie: _lnSeedHash(seed + '|' + w.id) }
+  }).sort((a, b) => b.score - a.score || a.tie - b.tie)
+  const want = Math.max(PALETTE_MIN_SUPPORT, Math.min(PALETTE_MAX_SUPPORT, PALETTE_MIN_SUPPORT + 2 * required.length))
+  const support = scored.slice(0, Math.min(want, scored.length)).map(x => ({ id: x.w.id, surface: _paletteSurface(lang, x.w), gloss: String(x.w.english || '').split(/[;/]/)[0].trim(),
+    reading: lang === 'ja' ? (x.w.reading || '') : lang === 'zh' ? (x.w.pinyin || '') : '' }))
+  const fn = languageFunctionScaffold(lang).forms
+  const unlocked = lang === 'ja' ? japaneseScaffoldFor(o.bank || []).map(g => g.form).concat(japaneseBasicsFor(o.bank || []).map(b => b.form))
+    : lang === 'zh' ? mandarinScaffoldFor(o.bank || []).map(g => g.form).concat(mandarinBasicsFor(o.bank || []).map(b => b.form)) : []
+  const grammar = [...new Set(fn.concat(unlocked))]
+  const entities = (o.entities || []).filter(Boolean)
+  const content = new Set(required.map(t => t.surface).concat(support.map(x => x.surface), entities))
+  return { sceneId: o.sceneId, required: required.map(t => ({ id: t.id, surface: t.surface, gloss: t.gloss })), support, grammar, entities, content, size: content.size, frozen: true }
+}
+function scenePaletteBlock(pal) {
+  return 'ALLOWED SUPPORT VOCABULARY (already taught — the ONLY other content words you may use; any inflected form of them is fine): ' +
+    (pal.support.map(x => x.surface + ' (' + x.gloss + ')').join(' · ') || '(none — use only the required words)') + '\n' +
+    'ALLOWED GRAMMAR / FUNCTION WORDS (particles, copula, inflection, sentence endings): ' + pal.grammar.join(' ') +
+    (pal.entities.length ? '\nALLOWED NAMES: ' + pal.entities.join(', ') : '')
+}
+function scenePaletteLog(pal) {
+  return 'SCENE_PALETTE scene=' + pal.sceneId + ' requiredTargets=[' + pal.required.map(t => t.surface).join(', ') + '] supportVocabulary=[' + pal.support.map(x => x.surface).join(', ') + '] (' + pal.support.length + ' taught) grammar=' + pal.grammar.length + ' forms'
+}
+
+// ══ v668 §6–§9 — SCENE_LANGUAGE_FEASIBILITY: a plausible situation is only chosen when it can be SAID with the
+// learner's taught vocabulary. Each situation lists the concepts it needs (matched against the English glosses of
+// the authorised inventory + the scene's own targets); the planner walks from the richest to the simplest version.
+const LISTENING_SITUATION_NEEDS = {
+  'shopping & payment': ['price|cost|how much|expensive|cheap', 'discount', 'card', 'receipt'],
+  'numbers & prices': ['how much|price|cost|money|yen|baht|yuan|dollar'],
+  'big amounts': ['apartment|flat|room|house|car|salary', 'expensive|price|cost|how much'],
+  'food & cooking': ['cook|cooking|make', 'eat|food|meal|rice|dish'],
+  'home': ['home|house|room'],
+  'household actions': ['clean|wash|put', 'kitchen|room|home'],
+  'places & travel': ['trip|travel', 'go', 'stay|hotel|inn'],
+  'plans & schedule': ['meet|see', 'when|time|today|tomorrow'],
+  'colours & things': ['look for|find|search', 'colou?r|red|blue|white|black'],
+  'identity & names': ['name'],
+}
+const LISTENING_SITUATION_FALLBACKS = {
+  'shopping & payment': [{ text: 'A and B buy something and talk about the price', needs: ['buy', 'price|cost|how much|expensive|cheap|money|yen|baht|yuan'] },
+    { text: 'A and B look at things in a shop and say what they like', needs: ['like|good|nice'] }],
+  'numbers & prices': [{ text: 'A and B count things together', needs: [] }],
+  'big amounts': [{ text: 'A and B talk about how much money something is', needs: ['money|price|how much|expensive'] }],
+  'food & cooking': [{ text: 'A and B eat together and say what they like', needs: ['eat|food|delicious|tasty|like'] }],
+  'home': [{ text: 'A and B are at home and say where things are', needs: [] }],
+  'household actions': [{ text: 'A and B tidy up at home with short requests', needs: ['home|room|house'] }],
+  'places & travel': [{ text: 'A and B pick a place to go and how to get there', needs: ['go', 'where|place|station|train|bus|car|walk'] },
+    { text: 'A and B decide where to go', needs: ['go|where'] }],
+  'plans & schedule': [{ text: 'A and B decide when to meet', needs: ['today|tomorrow|now|time|when'] }],
+  'colours & things': [{ text: 'A and B talk about a thing one of them has', needs: [] }],
+  'identity & names': [{ text: 'A and B meet and say hello', needs: [] }],
+}
+const LISTENING_EVERYDAY_NEEDS = { 'A and B have a coffee and catch up on their week': ['coffee|tea|drink', 'week'], 'A and B chat on the way home about their day': ['home|go home|return'],
+  'A and B talk over lunch about what is new': ['lunch|eat|meal'], 'A and B make plans for the weekend': ['weekend'], 'A and B help each other with a small problem': ['problem|help'] }
+const LISTENING_SIMPLE_EVERYDAY = { text: 'A and B have a short everyday chat', needs: [] }
+function _lnConceptCovered(need, glosses) { const rx = new RegExp('\\b(' + need + ')\\b', 'i'); return glosses.some(g => rx.test(g)) }
+function sceneLanguageFeasibility(candidate, glosses) {
+  const missing = (candidate.needs || []).filter(n => !_lnConceptCovered(n, glosses)).map(n => n.split('|')[0])
+  return { feasible: !missing.length, missing }
+}
+// the situation ladder of one scene (richest first) — the existing v663/v665/v667 situation texts stay first
+function _lnSituationCandidates(top, k, hardMax, friends) {
+  const out = []
+  if (!top) {
+    const order = LISTENING_EVERYDAY_SITUATIONS.slice(k % LISTENING_EVERYDAY_SITUATIONS.length).concat(LISTENING_EVERYDAY_SITUATIONS.slice(0, k % LISTENING_EVERYDAY_SITUATIONS.length))
+    order.forEach(t => out.push({ text: t, needs: LISTENING_EVERYDAY_NEEDS[t] || [] }))
+    out.push(LISTENING_SIMPLE_EVERYDAY)
+    return out
+  }
+  const needs = LISTENING_SITUATION_NEEDS[top] || []
+  if (friends && LISTENING_SITUATION_FRIENDS[top]) out.push({ text: LISTENING_SITUATION_FRIENDS[top], needs })
+  else if (hardMax && hardMax <= 6 && LISTENING_SITUATION_SIMPLE[top]) out.push({ text: LISTENING_SITUATION_SIMPLE[top], needs })
+  else if (LISTENING_SITUATION[top]) out.push({ text: LISTENING_SITUATION[top], needs })
+  ;(LISTENING_SITUATION_FALLBACKS[top] || []).forEach(x => out.push({ ...x, text: friends ? x.text.replace(/^A and B /, 'A and B (friends) ') : x.text }))
+  if (LOCAL_PREMISE_BY_DOMAIN[top] && LOCAL_PREMISE_BY_DOMAIN[top][0]) out.push({ text: LOCAL_PREMISE_BY_DOMAIN[top][0], needs: [] })
+  out.push({ text: 'A and B talk about ' + top, needs: [] })
+  return out
+}
+
+// ══ v668 §13–§16 — THE INTENT SKELETON: turn intents planned (and validated) BEFORE any surface language ══
+// QUESTION → ANSWER · PROPOSAL → ACCEPT / REJECT / COUNTERPROPOSAL · STATEMENT → REACTION · REQUEST → RESPONSE ·
+// CHOICE → SELECTION · GREETING → GREETING · FAREWELL → FAREWELL. Targets are planned 1 per turn (never 4).
+const LISTENING_ADJACENCY = { QUESTION: ['ANSWER'], PROPOSAL: ['ACCEPT', 'REJECT', 'COUNTERPROPOSAL'], STATEMENT: ['REACTION'], REQUEST: ['RESPONSE', 'ACCEPT', 'REJECT'],
+  CHOICE: ['SELECTION'], GREETING: ['GREETING'], FAREWELL: ['FAREWELL'] }
+const LISTENING_SECOND_PART = { QUESTION: 'ANSWER', PROPOSAL: 'ACCEPT', STATEMENT: 'REACTION', REQUEST: 'RESPONSE', CHOICE: 'SELECTION', GREETING: 'GREETING', FAREWELL: 'FAREWELL' }
+// the shortest natural realisation of each intent, in learner units (complexity is PLANNED, not only checked — §16)
+const LISTENING_INTENT_UNITS = { QUESTION: 2, ANSWER: 2, PROPOSAL: 2, ACCEPT: 1, REJECT: 1, COUNTERPROPOSAL: 2, STATEMENT: 2, REACTION: 1, REQUEST: 2, RESPONSE: 1, CHOICE: 3, SELECTION: 1, GREETING: 1, FAREWELL: 1 }
+function _lnFirstIntent(ta, tb, k, purpose) {
+  if (ta.some(t => t.role === 'GREETING')) return 'GREETING'
+  if (ta.some(t => t.role === 'PARTING') || tb.some(t => t.role === 'PARTING')) return 'FAREWELL'
+  if (ta.some(t => t.role === 'QUESTION_WORD') || tb.some(t => t.role === 'RESPONSE_TOKEN')) return 'QUESTION'
+  if (ta.some(t => t.role === 'FUNCTIONAL_PHRASE')) return 'REQUEST'
+  if (ta.some(t => t.role === 'ACTION') && /plan|meet|go|trip|decide|arrange/i.test(String(purpose || ''))) return 'PROPOSAL'
+  return k % 2 === 0 ? 'QUESTION' : 'STATEMENT'
+}
+function validateIntentSkeleton(skeleton, cc) {
+  const problems = []
+  ;(skeleton || []).forEach(t => {
+    if ((t.targetIds || []).length > LISTENING_MAX_TARGETS_PER_TURN) problems.push('turn ' + t.turn + ' plans ' + t.targetIds.length + ' targets (max ' + LISTENING_MAX_TARGETS_PER_TURN + ')')
+    if (t.respondsTo != null) {
+      const first = skeleton.find(x => x.turn === t.respondsTo)
+      if (!first) problems.push('turn ' + t.turn + ' answers a turn that does not exist')
+      else {
+        if (first.speaker === t.speaker) problems.push('turn ' + t.turn + ' answers its own speaker')
+        if (!(LISTENING_ADJACENCY[first.intent] || []).includes(t.intent)) problems.push(first.intent + ' (turn ' + first.turn + ') → ' + t.intent + ' (turn ' + t.turn + '): expected ' + (LISTENING_ADJACENCY[first.intent] || ['?']).join('/'))
+      }
+    } else if (!LISTENING_ADJACENCY[t.intent]) problems.push('turn ' + t.turn + ' (' + t.intent + ') answers nothing')
+    const est = (LISTENING_INTENT_UNITS[t.intent] || 2) + (t.targetIds || []).length
+    if (cc && est > cc.hardMax) problems.push('turn ' + t.turn + ' cannot be said within hardMax ' + cc.hardMax + ' (estimated ' + est + ' units)')
+  })
+  return { valid: !problems.length, problems }
+}
+function _lnPlanSkeleton(sc, byId, cc) {
+  const build = safe => {
+    const sk = []
+    ;(sc.exchanges || []).forEach((ex, k) => {
+      const a = ex.turns[0], b = ex.turns[1]
+      const ta = a.targetIds.map(id => byId.get(id)).filter(Boolean), tb = b.targetIds.map(id => byId.get(id)).filter(Boolean)
+      const first = safe ? 'QUESTION' : _lnFirstIntent(ta, tb, k, sc.purpose)
+      sk.push({ turn: 2 * k + 1, speaker: a.speaker, intent: first, targetIds: a.targetIds.slice() })
+      sk.push({ turn: 2 * k + 2, speaker: b.speaker, intent: LISTENING_SECOND_PART[first], respondsTo: 2 * k + 1, targetIds: b.targetIds.slice() })
+    })
+    return sk
+  }
+  let sk = build(false), check = validateIntentSkeleton(sk, cc)
+  sc.skeletonReplanned = false
+  // a bad skeleton is never realised as text: re-plan it as plain question → answer exchanges
+  if (!check.valid) { sc.skeletonProblems = check.problems; sk = build(true); check = validateIntentSkeleton(sk, cc); sc.skeletonReplanned = true }
+  sc.skeleton = sk; sc.skeletonCheck = check
+  return sc
+}
+function _lnSkeletonText(sc, byId) {
+  return (sc.skeleton || []).map(t => t.turn + '. ' + t.speaker + ' ' + t.intent + (t.respondsTo ? ' (to ' + t.respondsTo + ')' : '') +
+    (t.targetIds.length ? ' — uses ' + t.targetIds.map(id => (byId.get(id) || {}).surface).join('+') : '')).join(' · ')
+}
+// §37 — deterministic response-type check of a written scene against its skeleton's adjacency rules
+function _lnResponseType(text, english) {
+  const t = String(text || '').trim(), e = String(english || '').trim()
+  if (/[？?]$|か[。]?$|吗[？?]?$|ไหม(ครับ|คะ)?$|หรือเปล่า|呢[？?]$/.test(t) || /\?$/.test(e)) return 'QUESTION'
+  return 'NON_QUESTION'
+}
+function skeletonAdjacencyIssues(turns, sc) {
+  const out = []
+  const firstParts = new Set((sc && sc.skeleton || []).filter(t => t.respondsTo == null).map(t => t.intent))
+  if (!firstParts.size) return out
+  for (let i = 0; i + 1 < turns.length; i++) {
+    const a = turns[i], b = turns[i + 1]
+    if (a.speaker === b.speaker || !a.pair || !b.pair) continue
+    // a QUESTION expects an ANSWER: an UNRELATED question in reply breaks the adjacency the skeleton planned (the same
+    // test the deterministic coherence check applies — a follow-up on the same referent is a valid response)
+    const en = String(b.pair.english || '').trim(), pen = String(a.pair.english || '')
+    if (_isQuestion(a.pair) && _isQuestion(b.pair) && !/^(and|so|then|but|okay|ok|well|yes|yeah|no|really|what about)\b/i.test(en) && !_sharesReferent(pen, en) && !_isAnswerish(en))
+      out.push({ line: i + 2, detail: 'QUESTION expects ANSWER, got an unrelated QUESTION' })
+  }
+  return out
+}
+
+// ══ v668 §17–§26/§38 — SCENE PREFLIGHT: the candidate stays a CANDIDATE until this deterministic check decides
+// COMMIT (clean), REPAIR (isolated residual defects → positive-palette atomic repair) or REGENERATE (fundamentally
+// invalid → the SAME scene again: same targets, premise, skeleton and palette, stronger constraints).
+const LISTENING_REPAIR_CALL_TARGET = 10       // v668 §50: health telemetry target, never a gate
+const LISTENING_REASSIGN_CALLS = 4            // v668: paid placement calls for reassigned targets, per track
+const LISTENING_PREFLIGHT = { CLOSED_VOCAB_LINES: 3, HARD_FAILURES: 3, MALFORMED_LINES: 2, MALFORMED_RATE: 0.25 }
+function validateScenePreflight(env, cand, sp, o) {
+  const { la, targets, ctx, byId } = env
+  const opt = o || {}
+  const aud = listeningConversationAudit([cand], targets, la, ctx)
+  const cov = _lnSceneCoverage(cand, sp.requiredTargetIds, byId, la, ctx)
+  const lines = c => new Set(aud.issues.filter(x => (c instanceof RegExp ? c.test(x.code) : x.code === c) && x.line > 0).map(x => x.line))
+  const cv = lines('CLOSED_VOCAB'), tok = lines('TOKENIZATION_ERROR'), len = lines('TOO_COMPLEX'), m3 = lines('MAX_TARGETS_PER_TURN'), merged = lines('MERGED_SPEAKERS')
+  const dup = lines(/DUPLICATE/)
+  const prevTexts = new Set((opt.accepted || []).flatMap(s => s.turns.map(tn => _lnNorm(la.text(tn.pair)))).filter(Boolean))
+  cand.turns.forEach((tn, k) => { const nt = _lnNorm(la.text(tn.pair)); if (nt && prevTexts.has(nt) && !tn.intentionalRepetition) dup.add(k + 1) })
+  const speakers = new Set(cand.turns.map(t => t.speaker))
+  const oneSpeaker = cand.turns.length >= 2 && speakers.size < 2
+  const det = cand.turns.length > 1 ? listeningCoherenceCheck(cand.turns.map((tn, i) => ({ idx: i, pair: tn.pair, speaker: tn.speaker }))) : { score: 5, reason: '' }
+  const adj = skeletonAdjacencyIssues(cand.turns, sp)
+  const reg = (aud.registerAudit || [])[0]
+  const regOff = reg && reg.verdict === 'FAIL' ? reg.offLines.length : 0, regMajor = !!(reg && reg.mismatch)
+  const overBudget = !!(opt.allowedMax && cand.turns.length > opt.allowedMax)
+  const counts = { coverage: cov.missing.length, closedVocab: cv.size, tokenization: tok.size, length: len.size, max3: m3.size, duplicates: dup.size, merged: merged.size,
+    register: regOff, structure: (oneSpeaker ? 1 : 0) + (det.score <= 2 ? 1 : 0), adjacency: adj.length }
+  const totalHard = Object.values(counts).reduce((a, b) => a + b, 0)
+  const reasons = []
+  if (!cand.turns.length) reasons.push('EMPTY candidate')
+  if (cv.size >= LISTENING_PREFLIGHT.CLOSED_VOCAB_LINES) reasons.push('CLOSED_VOCAB ' + cv.size + ' lines')
+  if (tok.size >= LISTENING_PREFLIGHT.MALFORMED_LINES || (cand.turns.length && tok.size / cand.turns.length > LISTENING_PREFLIGHT.MALFORMED_RATE)) reasons.push('TOKENIZATION_ERROR ' + tok.size + ' lines (malformed output)')
+  if (oneSpeaker) reasons.push('STRUCTURE every turn is speaker ' + [...speakers][0])
+  if (regMajor) reasons.push('REGISTER scene in the wrong register (' + (reg.reason || '') + ')')
+  if (overBudget) reasons.push('TURN_BUDGET ' + cand.turns.length + ' > ' + opt.allowedMax)
+  if (sp.skeletonCheck && !sp.skeletonCheck.valid) reasons.push('SKELETON_INVALID')
+  if (!reasons.length && totalHard >= LISTENING_PREFLIGHT.HARD_FAILURES) reasons.push('HARD_FAILURES ' + totalHard + ' (' + Object.entries(counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ') + ')')
+  const fundamental = reasons.length > 0
+  const decision = !fundamental && totalHard === 0 ? 'COMMIT' : fundamental ? 'REGENERATE' : 'REPAIR'
+  const unknownWords = [...new Set(aud.issues.filter(x => x.code === 'CLOSED_VOCAB' || x.code === 'TOKENIZATION_ERROR').map(x => String(x.detail || '').replace(/^.*?:\s*(unknown words|unparseable fragments):\s*/, '')).join(' ').split(/\s+/).filter(Boolean))]
+  return { decision, fundamental, reasons, counts, totalHard, coverage: cov, audit: aud, lines: { cv, tok, len, m3, merged, dup }, adjacency: adj, detScore: det.score, detReason: det.reason,
+    register: reg ? reg.verdict : 'n/a', regMajor, overBudget, unknownWords }
+}
+function scenePreflightLog(sp, p, label) {
+  const f = (n, ok) => ok ? 'PASS' : 'FAIL(' + n + ')'
+  return 'SCENE_PREFLIGHT ' + sp.sceneId + ' coverage=' + (p.counts.coverage ? 'FAIL(missing ' + p.counts.coverage + ')' : 'PASS') + ' closedVocab=' + f(p.counts.closedVocab + p.counts.tokenization + ' lines', !p.counts.closedVocab && !p.counts.tokenization) +
+    ' length=' + f(p.counts.length, !p.counts.length) + ' max3=' + f(p.counts.max3, !p.counts.max3) + ' register=' + (p.register === 'n/a' ? 'n/a' : p.register === 'FAIL' ? 'FAIL(' + p.counts.register + ')' : 'PASS') +
+    ' structure=' + f(p.counts.structure + p.counts.merged + p.counts.adjacency, !p.counts.structure && !p.counts.merged && !p.counts.adjacency) + ' duplicates=' + f(p.counts.duplicates, !p.counts.duplicates) +
+    ' decision=' + p.decision + (p.decision !== 'COMMIT' ? ' reason=' + (p.reasons.join('; ') || Object.entries(p.counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ')) : '') +
+    (p.unknownWords.length ? ' unknown=[' + p.unknownWords.slice(0, 8).join(', ') + ']' : '') + (label ? ' (' + label + ')' : '')
+}
+
 function _lnConversationRows(scenes, la, targets, audit) {
   const out = []
   let n = 0
@@ -16798,13 +17604,25 @@ function _lnPlanExchanges(sc, byId) {
   sc.expectedTurns = Math.max(4, 2 * ex.length + 1)
   return sc
 }
-function _lnScenePurpose(sc, byId, k, n, hardMax, friends) {
+function _lnScenePurpose(sc, byId, k, n, hardMax, friends, glosses) {
   const doms = {}
   sc.requiredTargetIds.forEach(id => { const t = byId.get(id); const d = t ? _lnPlanDomain(t) : null; if (d && !LISTENING_FLEXIBLE_DOMAINS.has(d)) doms[d] = (doms[d] || 0) + 1 })
   const top = Object.entries(doms).sort((a, b) => b[1] - a[1]).map(x => x[0])
   // v665 §31/§32 — a low belt (preferred max ≤ 6) gets the SIMPLE version of the situation: short questions and answers, no explanations
-  let situation = top.length ? ((friends && LISTENING_SITUATION_FRIENDS[top[0]]) || (hardMax && hardMax <= 6 && LISTENING_SITUATION_SIMPLE[top[0]]) || LISTENING_SITUATION[top[0]] || (LOCAL_PREMISE_BY_DOMAIN[top[0]] || [])[0] || 'A and B talk about ' + top[0]) : LISTENING_EVERYDAY_SITUATIONS[k % LISTENING_EVERYDAY_SITUATIONS.length]
-  if (top[1]) situation += ' (it also involves ' + String(SCENE_DOMAIN_PURPOSE[top[1]] || top[1]).toLowerCase() + ')'
+  // v668 §6–§9 — SCENE_LANGUAGE_FEASIBILITY: walk the situation ladder (richest → simplest) and take the first one the
+  // learner's taught vocabulary + this scene's targets can actually express ("card / receipt / discount" needs those words)
+  const cands = _lnSituationCandidates(top[0], k, hardMax, friends)
+  let chosen = cands[0]
+  const rejected = []
+  if (Array.isArray(glosses)) {
+    const pool = glosses.concat(sc.requiredTargetIds.map(id => String((byId.get(id) || {}).gloss || '')))
+    chosen = null
+    for (const c of cands) { const f = sceneLanguageFeasibility(c, pool); if (f.feasible) { chosen = c; break } rejected.push({ text: c.text, missing: f.missing }) }
+    chosen = chosen || cands[cands.length - 1]
+  }
+  sc.feasibility = { checked: Array.isArray(glosses), situation: chosen.text, needs: chosen.needs || [], rejected }
+  let situation = chosen.text
+  if (top[1] && !rejected.length) situation += ' (it also involves ' + String(SCENE_DOMAIN_PURPOSE[top[1]] || top[1]).toLowerCase() + ')'
   return (k === 0 ? 'They meet and say hello; then ' + situation.charAt(0).toLowerCase() + situation.slice(1) : situation) + (k === n - 1 ? '; then they wrap up and say goodbye' : '')
 }
 // v663 §14–§16 — scenes are HUMAN SITUATIONS, not metadata buckets. Big amounts (ten thousand, hundred thousand,
@@ -16900,7 +17718,8 @@ function planListeningCoverage(targets, o) {
   floaters.forEach(t => put(scenes.slice().sort((a, b) => load(a) - load(b) || a.index - b.index)[0], t))
   for (let k = scenes.length - 1; k >= 0; k--) if (!scenes[k].requiredTargetIds.length) scenes.splice(k, 1)
   scenes.forEach((x, k) => { x.index = k; x.sceneId = 'LS' + (k + 1) })
-  scenes.forEach((sc, k) => { _lnPlanExchanges(sc, byId); sc.purpose = _lnScenePurpose(sc, byId, k, scenes.length, opt.hardMax, opt.friends); sc.premise = sc.purpose
+  scenes.forEach((sc, k) => { _lnPlanExchanges(sc, byId); sc.purpose = _lnScenePurpose(sc, byId, k, scenes.length, opt.hardMax, opt.friends, opt.inventoryGlosses); sc.premise = sc.purpose
+    _lnPlanSkeleton(sc, byId, opt.complexity || null); sc.requiredTargets = sc.requiredTargetIds.map(id => (byId.get(id) || {}).surface); sc.plannedExchanges = sc.exchanges
     sc.plausible = _lnScenePlausible(Object.keys(sc.domains).filter(d => !/^role:/.test(d))) })
   // §14 turn budget planned up front: expected scene lengths + an even share of the slack, total ≤ turnsMax
   const totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0)
@@ -16938,9 +17757,11 @@ function _lnLogAuditLines(log, audit, natIssues, targets, label) {
 function _lnParseJson(raw) { return JSON.parse(String(raw || '').replace(/```json|```/g, '').trim()) }
 // one scene call — small structured output; one bounded retry on a JSON parse failure (§17)
 async function _lnGenerateScene(env, sp, info) {
-  const { la, log, tel, targets, known, extra, sc0, lessonCtx, o, tRow, byId } = env
+  const { la, log, tel, targets, extra, sc0, lessonCtx, o, tRow, byId } = env
   const req = sp.requiredTargetIds.map(id => byId.get(id)).filter(Boolean)
   const others = targets.filter(t => !sp.requiredTargetIds.includes(t.id)).map(t => t.surface)
+  const pal = _lnScenePaletteFor(env, sp)
+  const rj = info.regenerate
   const prompt = 'Write SCENE ' + sp.sceneId + ' (' + info.position + ') of a natural ' + la.label + ' LISTENING conversation between two people for a learner.\n' +
     'WHOLE CONVERSATION: ' + (lessonCtx.broadTheme || sc0.premise || 'two friends talking about their day') + '\n' +
     'SPEAKERS: ' + ((sc0.characters || []).map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') || 'A and B, friends') + ' · ' + la.speakerContract + '\n' +
@@ -16948,7 +17769,13 @@ async function _lnGenerateScene(env, sp, info) {
     'THIS SCENE: ' + sp.purpose + '\n' +
     (sp.relationship ? 'SCENE RELATIONSHIP: ' + sp.relationship + ' · EXPECTED REGISTER: ' + sp.registerExpectation + ' (track speech style ' + japaneseSpeechStyleName(env.ctx.jaStyle).toUpperCase() + ')\n' : '') +
     'CONTEXT SO FAR: ' + (info.context || 'this is the opening scene — start with a natural greeting') + '\n' +
+    // v668 §11/§12 — CLOSED WORLD, in priority order; naturalness never overrides the vocabulary
+    'CLOSED WORLD — PRIORITY ORDER: 1. use ONLY the vocabulary listed here · 2. use every required target · 3. correct grammar · 4. the learner level · 5. be natural WITHIN those limits. Naturalness never justifies a word that is not listed.\n' +
     'THIS SCENE MUST USE ALL OF THESE ' + req.length + ' REQUIRED TARGET WORDS (id | word [reading] | meaning | role) — every one must appear in the actual text of a turn:\n' + req.map(tRow).join('\n') + '\n' +
+    scenePaletteBlock(pal) + '\n' +
+    'You may use ONLY: 1. the required target words · 2. the allowed support vocabulary · 3. the grammar / function words. Do NOT introduce any other lexical content (no other noun, verb, adjective, adverb, interjection or name). If an idea cannot be said with these words, SIMPLIFY THE IDEA — never improvise a new word.\n' +
+    // v668 §13/§14 — the intent skeleton (validated before this call) fixes the adjacency: questions are answered
+    'INTENT SKELETON (follow it in order; each second turn answers the turn before it; at most one extra short reaction per exchange): ' + _lnSkeletonText(sp, byId) + '\n' +
     'PLAN: ' + sp.exchanges.map(ex => 'exchange ' + ex.exchangeIndex + ': ' + ex.turns.map(tu => tu.speaker + (tu.targetIds.length ? ' uses ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).join('+') : ' replies')).join(', then ')).join(' · ') + '\n' +
     'ROLE GUIDE: ' + [...new Set(req.map(t => t.role))].map(r => r + ' = ' + (LISTENING_ROLE_HINT[r] || 'fits naturally')).join(' · ') + '\n' +
     'LENGTH: ' + sp.expectedTurns + '–' + info.allowedMax + ' turns. HARD MAXIMUM ' + info.allowedMax + ' turns.' + (info.budgetNote ? ' ' + info.budgetNote : '') + '\n' +
@@ -16958,15 +17785,16 @@ async function _lnGenerateScene(env, sp, info) {
     '- At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' lesson words per turn (the required words above AND these other lesson words count: ' + others.join(', ') + ').\n' +
     '- Response words (yes / no / yeah …) are used as REPLIES. No repeated sentences. No filler turns that do nothing.\n' +
     (info.last ? '- This is the LAST scene: close the conversation naturally.\n' : '- Do not say goodbye yet; the conversation continues in the next scene.\n') +
-    '- Use ONLY the lesson words, these KNOWN WORDS (taught to this learner), normal grammar/particles. No personal names. No other content words — if an idea needs a word that is not listed, choose a simpler idea.' + extra + '\n' +
-    'KNOWN WORDS: ' + known.slice(0, 900).join(' ') + '\n\n' +
+    '- Content words ONLY from the required targets and the ALLOWED SUPPORT VOCABULARY above. No personal names.' + extra + '\n' +
+    // v668 §19 — a regeneration keeps the SAME targets, premise, skeleton and palette, with stronger constraints
+    (rj ? 'YOUR PREVIOUS DRAFT OF THIS SCENE WAS REJECTED BEFORE COMMIT: ' + (rj.reasons && rj.reasons.length ? rj.reasons.join('; ') : 'hard failures') + '. STRONGER CONSTRAINTS: every content word must come from the lists above (any word not listed is a failure, even if it sounds more natural); keep each turn short (' + (env.ctx && env.ctx.complexity ? env.ctx.complexity.preferredMin + '–' + env.ctx.complexity.preferredMax + ' ' + env.ctx.complexity.unitName : 'short') + '); follow the intent skeleton exactly; at most ' + LISTENING_MAX_TARGETS_PER_TURN + ' lesson words per turn; no repeated lines' + (rj.regMajor ? '; keep EVERY line in the expected register' : '') + '.\n' : '') + '\n' +
     'Reply ONLY with compact JSON: {"sceneId":"' + sp.sceneId + '","setting":"...","turns":[{"speaker":"A","text":"...","english":"...","intendedTargetIds":[12]}]}'
   for (let attempt = 1; attempt <= 2; attempt++) {
     tel.LISTENING_GENERATION_CALLS++; tel.LISTENING_SCENE_GENERATION_CALLS++
     log && log('🎧 LISTENING_COMPOSITION scene ' + sp.sceneId + ' (' + info.position + ') generation call ' + tel.LISTENING_SCENE_GENERATION_CALLS + ' · required ' + req.length + ' · ' + sp.expectedTurns + '–' + info.allowedMax + ' turns' + (attempt > 1 ? ' · retry ' + attempt : ''))
     let obj = null
     try {
-      const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt + (attempt > 1 ? '\nYour previous reply was not valid JSON. Return ONLY the compact JSON object.' : '') }], maxTokens: 3000, temperature: 0.7, json: LISTENING_SCENE_SCHEMA, stage: 'O_listening_scene', attempt: 'listening-scene-' + sp.sceneId + '-' + attempt })
+      const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt + (attempt > 1 ? '\nYour previous reply was not valid JSON. Return ONLY the compact JSON object.' : '') }], maxTokens: 3000, temperature: rj ? 0.4 : 0.7, json: LISTENING_SCENE_SCHEMA, stage: 'O_listening_scene', attempt: 'listening-scene-' + sp.sceneId + (rj ? '-regen' : '') + '-' + attempt })
       obj = _lnParseJson(raw)
     } catch (e) {
       if (e && (e.fatalProvider || e.cancelled)) throw e
@@ -16983,8 +17811,9 @@ async function _lnGenerateScene(env, sp, info) {
 const _lnCloneTurns = turns => turns.map(tn => ({ ...tn, pair: { ...tn.pair } }))
 // one LOCAL scene repair — only this scene's numbered lines go to the model, a small edit object comes back (§9, §16)
 async function _lnRepairScene(env, sc, spec) {
-  const { la, log, tel, targets, known, extra, o, byId, ctx } = env
+  const { la, log, tel, targets, extra, o, byId, ctx } = env
   const aud = listeningConversationAudit([sc], targets, la, ctx)
+  const pal = _lnScenePaletteFor(env, sc)
   const asks = (spec.missing || []).map(t => '- MISSING TARGET T' + t.id + ' ' + t.surface + ' (' + t.gloss + '): ' + (spec.insertShort && ctx.complexity
       ? 'INSERT a new short A/B exchange that uses it ({"op":"insert_after","line":N,"turns":[A, B]}) — each new turn: ' + ctx.complexity.repairRule + ', only known words; do not touch other lines'
       : listeningPlacementHint(t, aud, targets)))
@@ -16998,7 +17827,7 @@ async function _lnRepairScene(env, sc, spec) {
   const protectedRows = (spec.protectedIds || []).map(id => byId.get(id)).filter(Boolean).map(t => t.surface)
   const prompt = 'REPAIR SCENE ' + sc.sceneId + ' of a ' + la.label + ' LISTENING conversation. Change ONLY what the issues need; keep every other line exactly as it is.\n' + la.speakerContract + extra + '\n' +
     'PROTECTED lesson words — they must still be heard in this scene after your edit: ' + (protectedRows.join(', ') || '(none)') + '\n' +
-    'At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' lesson words (' + targets.map(t => t.surface).join(', ') + ') per turn; each turn one speaker; keep the scene at most ' + (spec.allowedMax || sc.turns.length + 2) + ' turns; use ONLY lesson words and these KNOWN WORDS: ' + known.slice(0, 900).join(' ') + '\n' +
+    'At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' lesson words (' + targets.map(t => t.surface).join(', ') + ') per turn; each turn one speaker; keep the scene at most ' + (spec.allowedMax || sc.turns.length + 2) + ' turns; use ONLY the lesson words and the scene palette below (v668: the same palette as the scene generation)\n' + scenePaletteBlock(pal) + '\n' +
     'Repair LOCAL EXCHANGES: when a missing word belongs in an answer, rewrite the question AND its answer together ({"op":"replace","line":N,"span":2,"turns":[question, answer]}).\n\n' +
     'SCENE:\n' + _lnConversationRows([sc], la, targets, aud) + '\n\nFIX THESE ISSUES:\n' + asks.join('\n') + '\n\n' +
     'Reply ONLY with compact JSON: {"sceneId":"' + sc.sceneId + '","edits":[{"op":"replace","line":2,"span":1,"turns":[{"speaker":"B","text":"...","english":"..."}]},{"op":"insert_after","line":3,"turns":[...]},{"op":"delete","line":5}]} — line numbers refer to this scene only.'
@@ -17037,7 +17866,7 @@ const LISTENING_ATOMIC_PASSES = 4             // queue passes per stage
 const LISTENING_QUALITY_ATOMIC_CALLS = 6     // v665: quality gates are hard again, but most issues are now fixed per scene at generation time
 // P0 foundational → P1 vocabulary / duplicates → P2 naturalness / local coherence → P3 structure polish
 const LISTENING_ATOMIC_PRIORITY = { TARGET_MISSING: 0, MAX_TARGETS_PER_TURN: 0, SPEAKER_IDENTITY: 0, LINE_QUALITY: 0, MERGED_SPEAKERS: 0,
-  CLOSED_VOCAB: 1, TOO_COMPLEX: 1, REGISTER: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, UNNATURAL: 2, COHERENCE_LINE: 2 }
+  CLOSED_VOCAB: 1, TOKENIZATION_ERROR: 1, TOO_COMPLEX: 1, REGISTER: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, UNNATURAL: 2, COHERENCE_LINE: 2, ADJACENCY: 2 }
 // level 1 = the line · 2 = the line + its A/B partner · 3 = a small section (previous, line, next)
 const LISTENING_ATOMIC_BASE_LEVEL = { TARGET_MISSING: 2, MAX_TARGETS_PER_TURN: 2, MERGED_SPEAKERS: 2 }
 const LISTENING_ATOMIC_SCHEMA = { type: 'OBJECT', properties: { repairs: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
@@ -17094,13 +17923,33 @@ function _lnPlacementCandidates(env, flat, sceneObj, t) {
   return out.sort((x, y) => y.room - x.room || (low ? x.load - y.load : 0) || y.dom - x.dom || y.clean - x.clean || x.load - y.load || x.n - y.n)
 }
 // a compact POSITIVE palette (§7): protected targets, authorised words already near the line, the learner's most recent words
+// v668 §28/§41 — the palette of an atomic repair IS the frozen scene palette (+ the protected / placed targets):
+// a positive whitelist, never the whole inventory and never a forbidden list
 function _lnPalette(env, flat, scope, protectedIds) {
-  const { la, known, byId } = env
-  const near = new Set()
-  const ctxText = [scope[0] - 1, ...scope, scope[scope.length - 1] + 1].map(k => flat[k - 1] ? la.text(flat[k - 1].tn.pair) : '').join(' ')
-  known.slice(0, 900).forEach(w => { if (w && String(w).length >= (la.lang === 'th' ? 2 : 1) && ctxText.includes(w)) near.add(w) })
-  const recent = known.slice(0, 60)
-  return [...new Set(protectedIds.map(id => (byId.get(id) || {}).surface).filter(Boolean).concat([...near], recent))].slice(0, 110)
+  const { byId } = env
+  const at = flat[scope[0] - 1]
+  const pal = at ? _lnScenePaletteFor(env, at.sc) : null
+  const words = protectedIds.map(id => (byId.get(id) || {}).surface).filter(Boolean)
+  if (pal) { pal.required.forEach(t => words.push(t.surface)); pal.support.forEach(x => words.push(x.surface)); pal.entities.forEach(e => words.push(e)) }
+  return [...new Set(words)]
+}
+// the frozen palette of a scene (built once from the Layer B snapshot; a reassigned target joins its new scene's palette)
+function _lnScenePaletteFor(env, sc) {
+  const id = sc.sceneId
+  env.palettes = env.palettes || new Map()
+  const old = env.palettes.get(id)
+  const plan = env.scenePlanById && env.scenePlanById.get(id)
+  const reqIds = [...new Set(((plan && plan.requiredTargetIds) || sc.requiredTargetIds || []).concat(old ? old.required.map(t => t.id) : []))]
+  if (old && reqIds.every(x => old.required.some(t => t.id === x))) return old
+  const byId = env.byId || new Map(env.targets.map(t => [t.id, t]))
+  const pal = buildScenePalette({ lang: env.la.lang, sceneId: id, required: reqIds.map(x => byId.get(x)).filter(Boolean),
+    authorised: (env.ctx.inventory && env.ctx.inventory.taught) || env.ctx.exposed || [], otherTargetIds: new Set(env.targets.map(t => t.id)),
+    entities: (env.ctx.sceneEntities || []).map(e => e.surface || e), needs: plan && plan.feasibility ? plan.feasibility.needs : [], premise: plan ? plan.purpose : '',
+    bank: env.ctx.vocab, seed: (env.o && env.o.planSeed) || '' })
+  // a frozen palette keeps its support words; a reassigned target only JOINS it (§41)
+  if (old) { pal.support = old.support; pal.content = new Set(pal.required.map(t => t.surface).concat(old.support.map(x => x.surface), pal.entities)); pal.size = pal.content.size }
+  env.palettes.set(id, pal)
+  return pal
 }
 // ONE paid call for a batch of independent units; each repair object is validated and committed on its own
 async function _lnAtomicCall(env, flat, units) {
@@ -17110,17 +17959,18 @@ async function _lnAtomicCall(env, flat, units) {
     const ctxRows = [u.scope[0] - 1, ...u.scope, u.scope[u.scope.length - 1] + 1].map(k => (u.scope.includes(k) ? '  >>> ' : '      ') + (rowOf(k) || '')).filter(r => r.trim() && !/^\s+$/.test(r))
     return '[' + u.issueId + '] ' + u.codes.join('+') + ' · scene ' + u.sceneId + ' · ' + (u.scope.length === 1 ? 'line L' + u.scope[0] + ' only' : 'lines ' + u.scope.map(k => 'L' + k).join('+') + ' (return each)') + '\n' +
       ctxRows.join('\n') + '\n  PROBLEM: ' + u.problems.join(' · ') + '\n' +
-      (u.forbidden.length ? '  DO NOT USE: ' + u.forbidden.join(', ') + '\n' : '') +
+      (u.unknownWords && u.unknownWords.length ? '  (the marked line uses words outside the palette — rewrite it with the palette words only)\n' : '') +
       (u.place ? '  MUST NOW ALSO CONTAIN the lesson word ' + u.place.surface + ' (' + u.place.gloss + ')\n' : '') +
       (env.ctx && env.ctx.jaStyle ? (pl => '  TRACK SPEECH STYLE: ' + japaneseSpeechStyleName(env.ctx.jaStyle).toUpperCase() + ' · SCENE RELATIONSHIP: ' + ((pl && pl.relationship) || 'adult friends') +
         ' · EXPECTED REGISTER: ' + japaneseRegisterExpectation(env.ctx.jaStyle, pl && pl.relationship).label + ' — keep it\n')(env.scenePlanById && env.scenePlanById.get(u.sceneId)) : '') +
       '  PROTECTED lesson words (must stay in the new text): ' + (u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') || '(none)') + '\n' +
-      '  USE THESE WORDS (plus normal grammar words and speaker particles): ' + u.palette.join(' ')
+      '  ALLOWED CONTENT (the ONLY content words — scene palette, v668 positive whitelist): ' + u.palette.join(' ') + '\n' +
+      '  ALLOWED GRAMMAR / FUNCTION WORDS: ' + ((_lnScenePaletteFor(env, (flat[u.line - 1] || {}).sc || { sceneId: u.sceneId }) || {}).grammar || []).join(' ')
   })
   const prompt = 'ATOMIC REPAIR of ' + la.label + ' LISTENING lines. Fix ONLY the lines marked >>> for each issue. Return one ISOLATED repair object per issue — never a whole scene, never the whole conversation.\n' +
     la.speakerContract + extra + '\nEach new line keeps its speaker and its job in the conversation (a question stays a question, a reply stays a reply), at most ' + LISTENING_MAX_TARGETS_PER_TURN + ' lesson words per line, natural spoken ' + la.label + '.\n' +
     (env.ctx && env.ctx.complexity ? 'EVERY returned line (learner belt ' + env.ctx.complexity.belt + '): ' + env.ctx.complexity.repairRule + '. Shorter is fine. If meaning does not fit, DROP detail or simplify the idea — never cram it in. ' +
-      'Use ONLY the listed words (plus grammar words / particles); when a word is not allowed, replace it with a listed one or a simpler idea.\n' : '') + '\n' +
+      'Rewrite using ONLY the ALLOWED CONTENT words (plus the grammar / function words); if the meaning does not fit those words, choose a simpler idea that does. A more natural line with an unlisted word is still rejected.\n' : '') + '\n' +
     blocks.join('\n\n') + '\n\nReply ONLY with compact JSON: {"repairs":[{"issueId":"i1","lines":[{"lineId":"L17","text":"...","english":"..."}]}]}'
   for (let attempt = 1; attempt <= 2; attempt++) {
     tel.LISTENING_REPAIR_CALLS++; tel.LISTENING_LOCAL_REPAIR_CALLS++; tel.LISTENING_ATOMIC_REPAIR_CALLS = (tel.LISTENING_ATOMIC_REPAIR_CALLS || 0) + 1
@@ -17136,7 +17986,9 @@ async function _lnAtomicCall(env, flat, units) {
 }
 // validate ONE patch against the current text — protected targets, every deterministic category, strict improvement
 function _lnValidatePatch(env, flat, u, newByLine) {
+  // v668 §38 — a patch may not duplicate a line of an already committed scene either
   const others = n => flat.filter(f => f.n !== n && !u.scope.includes(f.n)).map(f => { const s = _lnLineState(env, f.tn.pair); return { text: s.text, ids: s.ids } })
+    .concat((env.acceptedOthers || []).map(t => ({ text: t, ids: ['committed'] })))
   const before = u.scope.map(n => _lnLineState(env, flat[n - 1].tn.pair, others(n)))
   const after = u.scope.map(n => _lnLineState(env, newByLine.get(n) ? newByLine.get(n).pair : flat[n - 1].tn.pair, others(n)))
   const sum = (arr, k) => arr.reduce((a, s) => a + s[k], 0)
@@ -17165,11 +18017,21 @@ function _lnValidatePatch(env, flat, u, newByLine) {
       if (u.codes.includes('REGISTER') && changed.some(x => offOf(x.s.text))) why.push('NOT_IMPROVED: REGISTER still ' + ex.offRegister)
     }
   }
+  // v668 §14/§37 — adjacency is checked deterministically against the skeleton's rule: an ADJACENCY repair must remove
+  // its violation, and no other patch (placement, vocabulary, length …) may create a new one
+  {
+    const sc = flat[u.scope[0] - 1].sc, plan = env.scenePlanById && env.scenePlanById.get(sc.sceneId)
+    const turns = sc.turns.map((tn, ti) => { const f = flat.find(x => x.sc === sc && x.ti === ti); return f && newByLine.get(f.n) ? { ...tn, pair: newByLine.get(f.n).pair } : tn })
+    const lineOf = k => { const f = flat.find(y => y.sc === sc && y.ti === k - 1); return f ? f.n : -1 }
+    const adjBefore = skeletonAdjacencyIssues(sc.turns, plan), adjAfter = skeletonAdjacencyIssues(turns, plan)
+    if (u.codes.includes('ADJACENCY') && adjAfter.some(x => u.scope.includes(lineOf(x.line)) || lineOf(x.line) === u.line)) why.push('NOT_IMPROVED: ADJACENCY — still an unrelated question after a question')
+    else if (adjAfter.length > adjBefore.length) why.push('ADJACENCY_REGRESSION: the new text puts an unrelated question after a question')
+  }
   if (why.length) return { ok: false, reason: why.join(' + ') }
   const cats = ['max3', 'vocab', 'len', 'qual', 'merged', 'dup']
   const worse = cats.filter(k => sum(after, k) > sum(before, k))
   if (worse.length) return { ok: false, reason: 'REGRESSION: ' + worse.map(k => k + ' ' + sum(before, k) + '→' + sum(after, k)).join(', ') }
-  const own = { CLOSED_VOCAB: 'vocab', TOO_COMPLEX: 'len', MAX_TARGETS_PER_TURN: 'max3', SPEAKER_IDENTITY: 'qual', LINE_QUALITY: 'qual', MERGED_SPEAKERS: 'merged', EXACT_DUPLICATE: 'dup', NEAR_DUPLICATE: 'dup' }
+  const own = { CLOSED_VOCAB: 'vocab', TOKENIZATION_ERROR: 'vocab', TOO_COMPLEX: 'len', MAX_TARGETS_PER_TURN: 'max3', SPEAKER_IDENTITY: 'qual', LINE_QUALITY: 'qual', MERGED_SPEAKERS: 'merged', EXACT_DUPLICATE: 'dup', NEAR_DUPLICATE: 'dup' }
   const improved = u.place ? heardAfter.has(u.place.id) : u.codes.some(c => own[c] ? sum(after, own[c]) < sum(before, own[c]) : true)
   if (!improved) return { ok: false, reason: 'NOT_IMPROVED: ' + u.codes.join('+') + ' still present' }
   return { ok: true, pending: u.codes.some(c => !own[c] && c !== 'TARGET_MISSING') }   // UNNATURAL / COHERENCE: confirmed by the next verdict
@@ -17190,10 +18052,10 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
     // one unit per line; foundational problems first
     const byLine = new Map()
     issues.forEach(x => { if (!x.line || !flat[x.line - 1]) return
-      const u = byLine.get(x.line) || { line: x.line, codes: [], problems: [], forbidden: [], place: null, priority: 9 }
+      const u = byLine.get(x.line) || { line: x.line, codes: [], problems: [], unknownWords: [], place: null, priority: 9 }
       if (!u.codes.includes(x.code)) u.codes.push(x.code)
       u.problems.push(x.code + (x.detail ? ': ' + String(x.detail).slice(0, 140) : ''))
-      ;(x.forbidden || []).forEach(f => { if (!u.forbidden.includes(f)) u.forbidden.push(f) })
+      ;(x.unknownWords || x.forbidden || []).forEach(f => { if (!u.unknownWords.includes(f)) u.unknownWords.push(f) })
       if (x.place) u.place = x.place
       u.priority = Math.min(u.priority, LISTENING_ATOMIC_PRIORITY[x.code] != null ? LISTENING_ATOMIC_PRIORITY[x.code] : 3)
       byLine.set(x.line, u) })
@@ -17211,7 +18073,7 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
     }).sort((a, b) => a.priority - b.priority || a.line - b.line)
     if (!units.length) break
     if (opts.budget && opts.budget.calls >= opts.budget.max) {
-      log && log('⏹ LISTENING_ATOMIC_CALL_CAP ' + opts.budget.calls + '/' + opts.budget.max + ' quality-repair calls used — ' + units.length + ' remaining issue(s) kept as quality notes (they do not block playback)')
+      log && log('⏹ LISTENING_ATOMIC_CALL_CAP ' + opts.budget.calls + '/' + opts.budget.max + ' repair calls used for this stage — ' + units.length + ' remaining issue(s) are left to the final gates')
       tel.LISTENING_ATOMIC_CAPPED = (tel.LISTENING_ATOMIC_CAPPED || 0) + 1
       break
     }
@@ -17226,8 +18088,8 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
       span.forEach(k => used.add(k))
       const at = flat[u.line - 1]
       u.sceneId = at.sc.sceneId
-      // the forbidden tokens come from the line itself (the authoritative closed-vocabulary check), not from log text
-      if (u.codes.includes('CLOSED_VOCAB')) u.forbidden = [...new Set(u.scope.flatMap(k => _lnLineState(env, flat[k - 1].tn.pair).unknown))]
+      // the unknown lexemes come from the line itself (Layer A → B) — logged for diagnosis, NEVER sent as a forbidden list (§29)
+      if (u.codes.includes('CLOSED_VOCAB') || u.codes.includes('TOKENIZATION_ERROR')) u.unknownWords = [...new Set(u.scope.flatMap(k => _lnLineState(env, flat[k - 1].tn.pair).unknown))]
       u.protectedIds = [...new Set(u.scope.flatMap(k => _lnLineState(env, flat[k - 1].tn.pair).ids))]
       u.palette = _lnPalette(env, flat, u.scope, u.protectedIds.concat(u.place ? [u.place.id] : []))
       u.issueId = 'i' + (batch.length + 1)
@@ -17236,7 +18098,7 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
     }
     batch.forEach(u => { AT(u.key).set(u.key, (AT(u.key).get(u.key) || 0) + 1)
       log && log('🔧 LISTENING_ATOMIC_REPAIR issue=' + u.codes.join('+') + ' scene=' + u.sceneId + ' line=' + G(u.line) + (u.scope.length > 1 ? ' scope=' + u.scope.map(G).join('+') : '') +
-        (u.forbidden.length ? ' forbidden=[' + u.forbidden.join(', ') + ']' : '') + (u.place ? ' place=' + u.place.surface : '') + ' protected=[' + u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') + '] attempt=' + (u.tried + 1) + ' level=' + (u.place ? 2 : u.level)) })
+        (u.unknownWords.length ? ' unknown=[' + u.unknownWords.join(', ') + '] palette=' + u.palette.length : '') + (u.place ? ' place=' + u.place.surface : '') + ' protected=[' + u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') + '] attempt=' + (u.tried + 1) + ' level=' + (u.place ? 2 : u.level)) })
     if (opts.budget) opts.budget.calls++
     const repairs = await _lnAtomicCall(env, flat, batch)
     const committed = []
@@ -17284,8 +18146,8 @@ function _lnAtomicIssuesOf(audit, natIssues) {
   const out = []
   audit.issues.forEach(x => {
     if (!(x.line > 0) || LISTENING_ATOMIC_PRIORITY[x.code] == null || x.code === 'TARGET_MISSING') return
-    const forbidden = x.code === 'CLOSED_VOCAB' ? String(x.detail || '').replace(/^.*unknown words:\s*/, '').split(/\s+/).filter(Boolean) : []
-    out.push({ code: x.code, line: x.line, detail: x.detail, forbidden })
+    const unknownWords = x.code === 'CLOSED_VOCAB' || x.code === 'TOKENIZATION_ERROR' ? String(x.detail || '').replace(/^.*(unknown words|unparseable fragments):\s*/, '').split(/\s+/).filter(Boolean) : []
+    out.push({ code: x.code, line: x.line, detail: x.detail, unknownWords })
   })
   ;(natIssues || []).filter(x => x.code === 'UNNATURAL' && x.line > 0).forEach(x => out.push({ code: 'UNNATURAL', line: x.line, detail: x.detail }))
   return out
@@ -17309,7 +18171,7 @@ function _lnCoherenceLineIssues(coh, scenes) {
 // v663 — place missing targets ATOMICALLY: the best A/B exchange of the scene is rewritten to carry the word, its own
 // protected targets kept (attempt 2 tries the next-best exchange). Only a scene with no usable exchange falls back to
 // a small local insertion.
-async function _lnAtomicPlace(env, scenes, sceneObj, reqIds, extraIssues, lineOffset) {
+async function _lnAtomicPlace(env, scenes, sceneObj, reqIds, extraIssues, lineOffset, budget) {
   const { la, ctx, byId } = env
   const attempts = new Map()
   await _lnAtomicQueue(env, scenes, async flat => {
@@ -17320,12 +18182,13 @@ async function _lnAtomicPlace(env, scenes, sceneObj, reqIds, extraIssues, lineOf
       if (c) issues.push({ code: 'TARGET_MISSING', line: c.n, place: t, detail: 'the lesson word ' + t.surface + ' (' + t.gloss + ') must be heard in this exchange' }) })
     ;(extraIssues ? extraIssues(flat) : []).forEach(x => issues.push(x))
     return issues
-  }, { attempts, lineOffset: lineOffset || 0 })
+  }, { attempts, lineOffset: lineOffset || 0, budget: budget || null })
   let cov = _lnSceneCoverage(sceneObj, reqIds, byId, la, ctx)
   // a scene too short / too full for any exchange: one small local insertion (protected targets checked, rolled back on loss)
   // v665 §30 / v666 §17 — at a low belt (preferred max ≤ 6) a word that no exchange could absorb (simpler wording first, up to hardMax)
   // take gets its OWN short A/B exchange inserted; the new turns must pass LENGTH, CLOSED_VOCAB and max3 or it is rolled back
-  if (cov.missing.length && sceneObj.turns.length) {
+  if (cov.missing.length && sceneObj.turns.length && !(budget && budget.calls >= budget.max)) {
+    if (budget) budget.calls++
     const before = _lnCloneTurns(sceneObj.turns)
     const low = !!(ctx.complexity && ctx.complexity.preferredMax <= 6)
     const noCand = low ? cov.missing.slice() : cov.missing.filter(id => !_lnPlacementCandidates(env, _lnFlat([sceneObj]), sceneObj, byId.get(id)).length)
@@ -17346,99 +18209,90 @@ async function _lnComposeByScenes(env) {
   const { la, log, tel, targets, ctx, o, progress, naturalness } = env
   const byId = new Map(targets.map(t => [t.id, t])); env.byId = byId
   env.lineAttempts = new Map()
+  // v668 §8 — the planner SEES the learner: language, belt, preferred range / hardMax, the selected targets, the frozen
+  // learner-authorised inventory (for SCENE_LANGUAGE_FEASIBILITY) and, for Japanese, the speech style
+  const authorisedWords = (ctx.inventory && ctx.inventory.taught) || ctx.exposed || []
+  const inventoryGlosses = authorisedWords.map(w => String(w.english || '')).filter(Boolean)
+  log && log('🧭 LISTENING_PLANNER_INPUT language=' + la.lang + ' belt=' + (ctx.complexity ? ctx.complexity.belt : '-') + ' preferredRange=' + (ctx.complexity ? ctx.complexity.preferredMin + '–' + ctx.complexity.preferredMax : '-') +
+    ' hardMax=' + (ctx.complexity ? ctx.complexity.hardMax : '-') + ' selectedTargets=' + targets.length + ' learnerAuthorizedInventory=' + authorisedWords.length + (ctx.jaStyle ? ' speechStyle=' + japaneseSpeechStyleName(ctx.jaStyle) : ''))
   const plan = planListeningCoverage(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, hardMax: ctx.complexity ? ctx.complexity.preferredMax : null,   // v666: the PREFERRED range decides "low belt"
-    friends: !!(ctx.jaStyle && ctx.jaStyle !== 'polite') })
+    friends: !!(ctx.jaStyle && ctx.jaStyle !== 'polite'), inventoryGlosses, complexity: ctx.complexity || null })
   // v667 §11 — every Japanese scene carries an explicit relationship + register expectation (the generator never guesses)
   if (ctx.jaStyle) plan.scenes.forEach(sc => {
     sc.relationship = ctx.jaStyle === 'polite' ? 'acquaintances (adults who are not close)' : ctx.jaStyle === 'casual' ? 'close friends' : 'adult friends'
     const ex = japaneseRegisterExpectation(ctx.jaStyle, sc.relationship)
     sc.registerExpectation = ex.label
   })
-  Object.assign(tel, { LISTENING_SCENE_GENERATION_CALLS: 0, LISTENING_LOCAL_REPAIR_CALLS: 0, LISTENING_REASSIGNMENTS: 0, LISTENING_COVERAGE_PLAN_TARGETS: plan.assignments.length, LISTENING_VERIFIED_TARGETS: 0 })
+  Object.assign(tel, { LISTENING_SCENE_GENERATION_CALLS: 0, LISTENING_LOCAL_REPAIR_CALLS: 0, LISTENING_REASSIGNMENTS: 0, LISTENING_COVERAGE_PLAN_TARGETS: plan.assignments.length, LISTENING_VERIFIED_TARGETS: 0,
+    LISTENING_SCENE_REGENERATIONS: 0, LISTENING_SCENES_COMMITTED_FIRST_PASS: 0, LISTENING_SCENES_COMMITTED_AFTER_REPAIR: 0, LISTENING_SCENES_COMMITTED_WITH_DEFECTS: 0, LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES: 0 })
   if (o.rebuild) log && log('🎧 LISTENING_COVERAGE_PLAN=REGENERATED (rebuild — same targets, fresh scene distribution)')
   log && log('🎧 LISTENING_COVERAGE_PLAN ' + plan.assignments.length + '/' + targets.length + ' assigned · ' + plan.nScenes + ' scenes · ≤' + plan.cap + ' targets per scene · planned ' + plan.totalExpectedTurns + ' turns (max ' + plan.turnsMax + ')')
   plan.scenes.forEach(sc => log && log('  LISTENING_SCENE_PLAN ' + sc.sceneId + ' required=[' + sc.requiredTargetIds.map(id => byId.get(id).surface).join(', ') + '] expectedTurns=' + sc.expectedTurns + ' max=' + sc.maxTurns + ' · ' + sc.purpose))
+  // v668 §6/§7 — SCENE_LANGUAGE_FEASIBILITY per scene: the situation was chosen because the taught vocabulary can say it
+  plan.scenes.forEach(sc => { const f = sc.feasibility || {}
+    log && log('🧭 SCENE_LANGUAGE_FEASIBILITY ' + sc.sceneId + ' ' + (f.checked ? 'PASS' : 'NOT_CHECKED') + ' situation="' + f.situation + '"' + (f.needs && f.needs.length ? ' needs=[' + f.needs.map(n => n.split('|')[0]).join(', ') + ']' : '') +
+      (f.rejected && f.rejected.length ? ' · rejected (FAIL): ' + f.rejected.map(x => '"' + x.text.slice(0, 60) + '" missing [' + x.missing.join(', ') + ']').join(' ; ') : '')) })
+  // v668 §13/§14 — the intent skeleton, validated BEFORE any language is written
+  plan.scenes.forEach(sc => log && log('🧭 SCENE_INTENT_SKELETON ' + sc.sceneId + ' ' + (sc.skeletonCheck && sc.skeletonCheck.valid ? 'VALID' : 'INVALID') + (sc.skeletonReplanned ? ' (re-planned: ' + (sc.skeletonProblems || []).join('; ') + ')' : '') + ' · ' + _lnSkeletonText(sc, byId)))
   if (ctx.jaStyle) plan.scenes.forEach(sc => log && log('🗣 JA_SCENE_REGISTER scene=' + sc.sceneId + ' relationship=' + sc.relationship + ' speechStyle=' + japaneseSpeechStyleName(ctx.jaStyle) + ' expected=' + sc.registerExpectation))
-  env.scenePlanById = new Map(plan.scenes.map(sc => [sc.sceneId, sc])); ctx.scenePlanById = env.scenePlanById
   log && log('🎧 LISTENING_SCENE_PLAUSIBILITY ' + (plan.warnings.length ? 'WARN — ' + plan.warnings.join(' · ') : 'PASS — every scene is one plausible everyday situation (checked before writing)'))
   plan.assignments.forEach(a => log && log('    LISTENING_TARGET_ASSIGNMENT target=' + a.targetId + ' ' + a.surface + ' → ' + a.sceneId + ' exchange ' + a.exchangeIndex + ' (' + a.speaker + ') role=' + a.role))
   if (!plan.valid) { log && log('⛔ LISTENING_COVERAGE_PLAN_INVALID — ' + plan.problems.join('; ') + ' · generation NOT started'); return { ok: false, reason: 'LISTENING_COVERAGE_PLAN_INVALID: ' + plan.problems.join('; '), plan } }
   const queue = plan.scenes.map(sc => ({ ...sc, requiredTargetIds: sc.requiredTargetIds.slice(), originalTargetIds: sc.requiredTargetIds.slice() }))
+  // the queue entries are the live scene plans (reassignment adds targets to them; palettes follow)
+  env.scenePlanById = new Map(queue.map(sc => [sc.sceneId, sc])); ctx.scenePlanById = env.scenePlanById
+  // v668 §9/§10/§43 — LAYER C: one small positive palette per scene, frozen before generation
+  queue.forEach(sc => { const pal = _lnScenePaletteFor(env, sc); sc.sceneSupportVocabulary = pal.support.map(x => x.surface); sc.grammarSupport = pal.grammar
+    const ps = plan.scenes.find(x => x.sceneId === sc.sceneId); if (ps) { ps.sceneSupportVocabulary = sc.sceneSupportVocabulary; ps.grammarSupport = sc.grammarSupport }
+    log && log('🎨 ' + scenePaletteLog(pal)) })
   const accepted = [], report = [], reassignedOnce = new Set(), unplaceable = new Set()
+  env.reassignBudget = { calls: 0, max: LISTENING_REASSIGN_CALLS }
   let usedTurns = 0, budgetExceeded = false
   const emit = (stage, qi, extraEv) => {
     const aud = accepted.length ? listeningConversationAudit(accepted, targets, la, ctx) : null
     const pendingIds = new Set(queue.slice(qi).flatMap(s => s.requiredTargetIds).filter(id => !unplaceable.has(id)))
     progress(stage, aud, { pendingIds, ...(extraEv || {}) })
   }
-  // v665 §19–§21/§33 — CANDIDATE ACCEPTANCE per scene, before the next scene is written: max3, belt LENGTH and the
-  // learner-authorised vocabulary are checked on every new line and repaired atomically right here — never carried to final QC
-  const LOCAL_GATE_CODES = ['MAX_TARGETS_PER_TURN', 'TOO_COMPLEX', 'CLOSED_VOCAB', 'REGISTER']   // v667: + Japanese register
+  // v665 §19–§21/§33 → v668 §17–§26: every scene is a TRANSACTION. The candidate is checked by the deterministic
+  // preflight (coverage, closed vocab, tokenisation, length, max3, duplicates, structure, register) BEFORE it can
+  // become canonical: COMMIT · REPAIR (isolated residual defects, positive palette) · REGENERATE (fundamentally invalid)
+  const LOCAL_GATE_CODES = ['MAX_TARGETS_PER_TURN', 'TOO_COMPLEX', 'CLOSED_VOCAB', 'TOKENIZATION_ERROR', 'REGISTER', 'EXACT_DUPLICATE', 'NEAR_DUPLICATE', 'MERGED_SPEAKERS']
   // whole-conversation line offset of a scene (accepted scenes first; the scene being written comes next)
   const offsetOf = sc => { let n = 0; for (const a of accepted) { if (a === sc) return n; n += a.turns.length } return n }
-  const localHard = sc => listeningConversationAudit([sc], targets, la, ctx).issues.filter(x => LOCAL_GATE_CODES.includes(x.code))
-  const logLocal = (sc, label) => localHard(sc).filter((x, i, a) => a.findIndex(y => y.code === x.code && y.line === x.line) === i).forEach(x => log && log((x.code === 'TOO_COMPLEX' ? '⛔ LEVEL_COMPLEXITY_FAIL' : x.code === 'CLOSED_VOCAB' ? '⛔ CLOSED_VOCAB_FAIL' : x.code === 'REGISTER' ? '⛔ JA_REGISTER_FAIL' : '⛔ MAX3_FAIL') +
-    ' scene=' + sc.sceneId + ' line=L' + (x.line + offsetOf(sc)) + ' ' + (x.code === 'TOO_COMPLEX' ? 'belt=' + ctx.complexity.belt + ' units=' + String(x.detail).split(' ')[0] + ' hardMax=' + ctx.complexity.hardMax : x.code === 'CLOSED_VOCAB' ? 'unknown=[' + String(x.detail).replace(/^.*unknown words:\s*/, '') + ']' : x.detail) + (label ? ' (' + label + ')' : '')))
-  for (let qi = 0; qi < queue.length; qi++) {
-    const sp = queue[qi]
-    if (!sp.requiredTargetIds.length) { log && log('  LISTENING_SCENE ' + sp.sceneId + ' has no required targets left — skipped'); continue }
-    const requiredAtStart = sp.requiredTargetIds.length
-    _lnPlanExchanges(sp, byId)
-    const minLater = queue.slice(qi + 1).reduce((a, s) => a + (s.requiredTargetIds.length ? Math.max(2, 2 * Math.ceil(s.requiredTargetIds.length / 2)) : 0), 0)
-    // v664: a scene that received reassigned words gets room for them (live: "9–8 turns" for a scene with 8 required words)
-    const allowedMax = Math.max(sp.expectedTurns, Math.min(Math.max(sp.maxTurns || 0, sp.expectedTurns + 1), env.turnsMax - usedTurns - minLater))
-    const prev = accepted[accepted.length - 1]
-    const context = accepted.length ? 'earlier: ' + accepted.map(s => s.setting).filter(Boolean).join(' → ') + '. The previous scene ended with: ' +
-      prev.turns.slice(-2).map(tn => tn.speaker + ': ' + la.text(tn.pair) + ' (' + (tn.pair.english || '') + ')').join(' / ') + ' — continue naturally from there.' : ''
-    let sc = null, budgetNote = ''
-    for (let attempt = 1; attempt <= LISTENING_SCENE_ATTEMPTS; attempt++) {
-      const r = await _lnGenerateScene(env, sp, { position: (qi + 1) + ' of ' + queue.length, context, allowedMax, budgetNote, last: qi === queue.length - 1, firstSpeaker: prev ? (prev.turns[prev.turns.length - 1].speaker === 'A' ? 'B' : 'A') : 'A' })
-      if (!r) continue
-      if (r.turns.length > allowedMax) {
-        log && log('⚠ LISTENING_TURN_BUDGET ' + sp.sceneId + ' returned ' + r.turns.length + ' turns > hard max ' + allowedMax + (attempt < LISTENING_SCENE_ATTEMPTS ? ' — rejected, regenerating within budget' : ' — over budget after ' + attempt + ' attempts'))
-        budgetNote = 'Your previous draft had ' + r.turns.length + ' turns — that is too long.'
-        if (attempt < LISTENING_SCENE_ATTEMPTS) continue
-        budgetExceeded = true
-      }
-      sc = r; break
-    }
-    if (!sc) {
-      log && log('⛔ LISTENING_SCENE_FAILED ' + sp.sceneId + ' — no usable scene after ' + LISTENING_SCENE_ATTEMPTS + ' attempts')
-      sc = { sceneId: sp.sceneId, setting: sp.purpose, turns: [] }
-    }
-    // §8 — verify this scene's REQUIRED targets now, deterministically; the model's intendedTargetIds are ignored
-    let cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
-    log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' required=' + sp.requiredTargetIds.length + ' heard=' + cov.heard.length + (cov.missing.length ? ' missing=[' + cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS') + ' · turns ' + sc.turns.length + '/' + allowedMax)
-    // v667 §17/§19 — Japanese: a scene written in the WRONG register is one scene-generation failure, not N line defects:
-    // ONE controlled scene-level register transformation (meaning, speakers, lesson words kept), every line re-validated
-    if (sc.turns.length && ctx.jaStyle) {
+  // duplicates of an ALREADY COMMITTED line are a preflight defect of the candidate (§38)
+  const crossDup = sc => { const prevT = new Set(accepted.filter(a => a !== sc).flatMap(a => a.turns.map(tn => _lnNorm(la.text(tn.pair)))).filter(Boolean))
+    return sc.turns.map((tn, k) => ({ k, nt: _lnNorm(la.text(tn.pair)) })).filter(x => x.nt && prevT.has(x.nt)).map(x => ({ code: 'EXACT_DUPLICATE', line: x.k + 1, detail: 'repeats a line of an earlier scene' })) }
+  const localHard = sc => listeningConversationAudit([sc], targets, la, ctx).issues.filter(x => LOCAL_GATE_CODES.includes(x.code)).concat(crossDup(sc))
+    .concat(skeletonAdjacencyIssues(sc.turns, env.scenePlanById.get(sc.sceneId)).map(x => ({ code: 'ADJACENCY', line: x.line, detail: x.detail + ' — rewrite this reply so it answers the question before it' })))
+  const logLocal = (sc, label) => localHard(sc).filter((x, i, a) => a.findIndex(y => y.code === x.code && y.line === x.line) === i).forEach(x => log && log((x.code === 'TOO_COMPLEX' ? '⛔ LEVEL_COMPLEXITY_FAIL' : x.code === 'CLOSED_VOCAB' ? '⛔ CLOSED_VOCAB_FAIL' : x.code === 'TOKENIZATION_ERROR' ? '⛔ TOKENIZATION_ERROR' : x.code === 'REGISTER' ? '⛔ JA_REGISTER_FAIL' : /DUPLICATE/.test(x.code) ? '⛔ DUPLICATE_FAIL' : x.code === 'MERGED_SPEAKERS' ? '⛔ MERGED_SPEAKERS_FAIL' : x.code === 'ADJACENCY' ? '⛔ ADJACENCY_FAIL' : '⛔ MAX3_FAIL') +
+    ' scene=' + sc.sceneId + ' line=L' + (x.line + offsetOf(sc)) + ' ' + (x.code === 'TOO_COMPLEX' ? 'belt=' + ctx.complexity.belt + ' units=' + String(x.detail).split(' ')[0] + ' hardMax=' + ctx.complexity.hardMax : x.code === 'CLOSED_VOCAB' ? 'unknown=[' + String(x.detail).replace(/^.*unknown words:\s*/, '') + '] UNKNOWN_LEXEME' : x.code === 'TOKENIZATION_ERROR' ? 'fragments=[' + String(x.detail).replace(/^.*unparseable fragments:\s*/, '') + '] (morphology could not parse — not a learner word)' : x.detail) + (label ? ' (' + label + ')' : '')))
+  // ONE local repair pass for a candidate's isolated residual defects — the positive scene palette only (§20/§28)
+  const repairCandidate = async (sc, sp, pf, salvage) => {
+    let cov = pf.coverage
+    // v667 §17/§19 — a scene in the WRONG register: ONE controlled scene-level register transformation (only when the
+    // regenerated scene is still wrong — a register mismatch is first a reason to REGENERATE)
+    if (sc.turns.length && ctx.jaStyle && pf.regMajor) {
       const rel = sp.relationship || 'adult friends'
       const exm = targets.map(t => t.surface)
       const ra = japaneseSceneRegisterAudit(sc.turns.map(tn => la.text(tn.pair)), ctx.jaStyle, rel, exm)
-      log && log('🗣 JA_SCENE_REGISTER scene=' + sp.sceneId + ' relationship=' + rel + ' expected=' + ra.label + ' politeLines=' + ra.politeLines + ' plainLines=' + ra.plainLines + ' verdict=' + ra.verdict + (ra.verdict === 'FAIL' ? ' reason=' + ra.reason : '') + ' (as generated)')
-      if (ra.mismatch) {
-        const before = _lnCloneTurns(sc.turns)
-        log && log('🔧 SCENE_REGISTER_MISMATCH ' + sp.sceneId + ' — ' + ra.reason + ' · scene-level register transformation (lines, speakers, lesson words kept)')
-        await _lnRepairScene(env, sc, { issues: [{ code: 'SCENE_REGISTER_MISMATCH', line: 1, detail: 'the whole scene is in the wrong register: ' + ra.reason + '. Rewrite EVERY line into ' + ra.label + ' (' + rel + ', track speech style ' + japaneseSpeechStyleName(ctx.jaStyle).toUpperCase() +
-          ') — same meaning, same speaker, same lesson words, same number of lines; one {"op":"replace","line":N,"span":1,"turns":[...]} per line' }], protectedIds: cov.heard, allowedMax: sc.turns.length })
-        const c2 = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
-        const ra2 = japaneseSceneRegisterAudit(sc.turns.map(tn => la.text(tn.pair)), ctx.jaStyle, rel, exm)
-        const old = new Set(before.map(tn => la.text(tn.pair)))
-        const badNew = sc.turns.filter(tn => !old.has(la.text(tn.pair))).map(tn => _lnLineState(env, tn.pair)).filter(st2 => st2.len || st2.vocab || st2.max3)
-        if (cov.heard.some(id => !c2.heard.includes(id)) || badNew.length || ra2.offLines.length >= ra.offLines.length) {
-          sc.turns = before; log && log('⛔ PATCH_REJECTED register-transform ' + sp.sceneId + ' reason=' + (cov.heard.some(id => !c2.heard.includes(id)) ? 'PROTECTED_TARGET_LOST' : badNew.length ? 'NEW_TURN_FAILS_' + (badNew[0].len ? 'LENGTH' : badNew[0].vocab ? 'CLOSED_VOCAB' : 'MAX3') : 'NOT_IMPROVED') + ' · original kept (lines repaired one by one next)')
-        } else { cov = c2; log && log('✅ PATCH_ACCEPTED register-transform ' + sp.sceneId + ' · politeLines ' + ra.politeLines + '→' + ra2.politeLines + ' plainLines ' + ra.plainLines + '→' + ra2.plainLines + ' · ' + ra2.verdict) }
-      }
+      const before = _lnCloneTurns(sc.turns)
+      log && log('🔧 SCENE_REGISTER_MISMATCH ' + sp.sceneId + ' — ' + ra.reason + ' · scene-level register transformation (lines, speakers, lesson words kept)')
+      await _lnRepairScene(env, sc, { issues: [{ code: 'SCENE_REGISTER_MISMATCH', line: 1, detail: 'the whole scene is in the wrong register: ' + ra.reason + '. Rewrite EVERY line into ' + ra.label + ' (' + rel + ', track speech style ' + japaneseSpeechStyleName(ctx.jaStyle).toUpperCase() +
+        ') — same meaning, same speaker, same lesson words, same number of lines; one {"op":"replace","line":N,"span":1,"turns":[...]} per line' }], protectedIds: cov.heard, allowedMax: sc.turns.length })
+      const c2 = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
+      const ra2 = japaneseSceneRegisterAudit(sc.turns.map(tn => la.text(tn.pair)), ctx.jaStyle, rel, exm)
+      const old = new Set(before.map(tn => la.text(tn.pair)))
+      const badNew = sc.turns.filter(tn => !old.has(la.text(tn.pair))).map(tn => _lnLineState(env, tn.pair)).filter(st2 => st2.len || st2.vocab || st2.max3)
+      if (cov.heard.some(id => !c2.heard.includes(id)) || badNew.length || ra2.offLines.length >= ra.offLines.length) {
+        sc.turns = before; log && log('⛔ PATCH_REJECTED register-transform ' + sp.sceneId + ' reason=' + (cov.heard.some(id => !c2.heard.includes(id)) ? 'PROTECTED_TARGET_LOST' : badNew.length ? 'NEW_TURN_FAILS_' + (badNew[0].len ? 'LENGTH' : badNew[0].vocab ? 'CLOSED_VOCAB' : 'MAX3') : 'NOT_IMPROVED') + ' · original kept (lines repaired one by one next)')
+      } else { cov = c2; log && log('✅ PATCH_ACCEPTED register-transform ' + sp.sceneId + ' · politeLines ' + ra.politeLines + '→' + ra2.politeLines + ' plainLines ' + ra.plainLines + '→' + ra2.plainLines + ' · ' + ra2.verdict) }
     }
-    if (sc.turns.length) logLocal(sc, 'as generated')
-    // v666 §12/§16 — a line above the preferred range but ≤ hardMax is VALID: logged, never repaired just to hit preferredMax
-    if (sc.turns.length && ctx.complexity) { const ab = sc.turns.map((tn, k) => ({ k, a: ctx.complexity.analyse(la.text(tn.pair)) })).filter(x => x.a.abovePreferredButAllowed)
-      if (ab.length) log && log('ℹ ABOVE_PREFERRED_BUT_ALLOWED scene=' + sp.sceneId + ' ' + ab.map(x => 'L' + (x.k + 1 + offsetOf(sc)) + ' ' + x.a.units + 'u').join(' · ') + ' (preferred ' + ctx.complexity.preferredMin + '–' + ctx.complexity.preferredMax + ', max ' + ctx.complexity.hardMax + ') — valid, no repair') }
     if (sc.turns.length && (cov.missing.length || localHard(sc).length)) {
       // v663 §9 — atomic: the missing word goes into the best exchange; a 4-target line is split over its A/B exchange
       // v665 — the same atomic stage fixes an over-long line (TOO_COMPLEX) and an unknown word (CLOSED_VOCAB) in this scene
+      env.acceptedOthers = accepted.flatMap(a => a.turns.map(tn => la.text(tn.pair)))
       cov = await _lnAtomicPlace(env, [sc], sc, sp.requiredTargetIds, flat => localHard(sc).map(x => ({ code: x.code, line: x.line, detail: x.detail,
-        forbidden: x.code === 'CLOSED_VOCAB' ? String(x.detail || '').replace(/^.*unknown words:\s*/, '').split(/\s+/).filter(Boolean) : [] })), offsetOf(sc))
+        unknownWords: x.code === 'CLOSED_VOCAB' || x.code === 'TOKENIZATION_ERROR' ? String(x.detail || '').replace(/^.*(unknown words|unparseable fragments):\s*/, '').split(/\s+/).filter(Boolean) : [] })), offsetOf(sc), salvage ? { calls: 0, max: 2 } : null)
       // v665 §5/§24 — a turn that still says too much (or carries 4 lesson words) is SPLIT into short turns (one scene-local
       // edit); every new turn must pass LENGTH / CLOSED_VOCAB / max3 and keep the protected words, else it is rolled back
       const stuck = localHard(sc).filter(x => x.code === 'TOO_COMPLEX' || x.code === 'MAX_TARGETS_PER_TURN')
@@ -17453,9 +18307,74 @@ async function _lnComposeByScenes(env) {
           sc.turns = before; log && log('⛔ PATCH_REJECTED split ' + sp.sceneId + ' reason=' + (badNew.length ? 'NEW_TURN_FAILS' : cov.heard.some(id => !c2.heard.includes(id)) ? 'PROTECTED_TARGET_LOST' : 'NOT_IMPROVED') + ' · original kept')
         } else { cov = c2; log && log('✅ PATCH_ACCEPTED split ' + sp.sceneId + ' · ' + before.length + ' → ' + sc.turns.length + ' turns') }
       }
-      if (localHard(sc).length) logLocal(sc, 'still failing after atomic repair — the final gates will block READY')
+      if (localHard(sc).length) logLocal(sc, 'still failing after atomic repair')
       log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' (after atomic repair) required=' + sp.requiredTargetIds.length + ' heard=' + cov.heard.length + (cov.missing.length ? ' missing=[' + cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS'))
     }
+  }
+  const better = (a, b) => !a ? b : !b ? a : (b.pf.totalHard + (b.pf.fundamental ? 100 : 0) <= a.pf.totalHard + (a.pf.fundamental ? 100 : 0) ? b : a)
+  for (let qi = 0; qi < queue.length; qi++) {
+    const sp = queue[qi]
+    if (!sp.requiredTargetIds.length) { log && log('  LISTENING_SCENE ' + sp.sceneId + ' has no required targets left — skipped'); continue }
+    const requiredAtStart = sp.requiredTargetIds.length
+    _lnPlanExchanges(sp, byId)
+    _lnPlanSkeleton(sp, byId, ctx.complexity || null)      // re-validated: a reassigned target may have joined this scene
+    const pal = _lnScenePaletteFor(env, sp)
+    if (sp.originalTargetIds && sp.requiredTargetIds.some(id => !sp.originalTargetIds.includes(id))) log && log('🎨 ' + scenePaletteLog(pal) + ' (reassigned targets joined)')
+    const minLater = queue.slice(qi + 1).reduce((a, s) => a + (s.requiredTargetIds.length ? Math.max(2, 2 * Math.ceil(s.requiredTargetIds.length / 2)) : 0), 0)
+    // v664: a scene that received reassigned words gets room for them (live: "9–8 turns" for a scene with 8 required words)
+    const allowedMax = Math.max(sp.expectedTurns, Math.min(Math.max(sp.maxTurns || 0, sp.expectedTurns + 1), env.turnsMax - usedTurns - minLater))
+    const prev = accepted[accepted.length - 1]
+    const context = accepted.length ? 'earlier: ' + accepted.map(s => s.setting).filter(Boolean).join(' → ') + '. The previous scene ended with: ' +
+      prev.turns.slice(-2).map(tn => tn.speaker + ': ' + la.text(tn.pair) + ' (' + (tn.pair.english || '') + ')').join(' / ') + ' — continue naturally from there.' : ''
+    let best = null, reject = null, budgetNote = '', lastPf = null
+    for (let attempt = 1; attempt <= LISTENING_SCENE_ATTEMPTS; attempt++) {
+      const cand = await _lnGenerateScene(env, sp, { position: (qi + 1) + ' of ' + queue.length, context, allowedMax, budgetNote, last: qi === queue.length - 1, firstSpeaker: prev ? (prev.turns[prev.turns.length - 1].speaker === 'A' ? 'B' : 'A') : 'A', regenerate: reject })
+      if (!cand) continue
+      const lastAttempt = attempt >= LISTENING_SCENE_ATTEMPTS
+      if (cand.turns.length > allowedMax) {
+        log && log('⚠ LISTENING_TURN_BUDGET ' + sp.sceneId + ' returned ' + cand.turns.length + ' turns > hard max ' + allowedMax + (!lastAttempt ? ' — rejected, regenerating within budget' : ' — over budget after ' + attempt + ' attempts'))
+        budgetNote = 'Your previous draft had ' + cand.turns.length + ' turns — that is too long.'
+        if (!lastAttempt) { reject = { reasons: ['TURN_BUDGET ' + cand.turns.length + ' > ' + allowedMax] }; tel.LISTENING_SCENE_REGENERATIONS++; log && log('SCENE_PREFLIGHT ' + sp.sceneId + ' decision=REGENERATE reason=TURN_BUDGET ' + cand.turns.length + ' > ' + allowedMax); continue }
+        budgetExceeded = true
+      }
+      let pf = validateScenePreflight(env, cand, sp, { accepted })
+      if (attempt === 1) tel.LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES += pf.counts.closedVocab
+      // v666 §12/§16 — a line above the preferred range but ≤ hardMax is VALID: logged, never repaired just to hit preferredMax
+      if (cand.turns.length && ctx.complexity) { const ab = cand.turns.map((tn, k) => ({ k, a: ctx.complexity.analyse(la.text(tn.pair)) })).filter(x => x.a.abovePreferredButAllowed)
+        if (ab.length) log && log('ℹ ABOVE_PREFERRED_BUT_ALLOWED scene=' + sp.sceneId + ' ' + ab.map(x => 'L' + (x.k + 1 + offsetOf(cand)) + ' ' + x.a.units + 'u').join(' · ') + ' (preferred ' + ctx.complexity.preferredMin + '–' + ctx.complexity.preferredMax + ', max ' + ctx.complexity.hardMax + ') — valid, no repair') }
+      log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' required=' + sp.requiredTargetIds.length + ' heard=' + pf.coverage.heard.length + (pf.coverage.missing.length ? ' missing=[' + pf.coverage.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS') + ' · turns ' + cand.turns.length + '/' + allowedMax + (attempt > 1 ? ' (regenerated)' : ''))
+      if (ctx.jaStyle && cand.turns.length) { const r0 = (pf.audit.registerAudit || [])[0] || {}
+        log && log('🗣 JA_SCENE_REGISTER scene=' + sp.sceneId + ' relationship=' + (sp.relationship || 'adult friends') + ' expected=' + r0.label + ' politeLines=' + r0.politeLines + ' plainLines=' + r0.plainLines + ' verdict=' + r0.verdict + (r0.verdict === 'FAIL' ? ' reason=' + r0.reason : '') + ' (as generated)') }
+      if (cand.turns.length) logLocal(cand, 'as generated')
+      log && log('🛂 ' + scenePreflightLog(sp, pf, attempt > 1 ? 'regenerated candidate' : 'candidate'))
+      if (pf.decision === 'REGENERATE' && !lastAttempt) { reject = pf; best = better(best, { cand, pf }); tel.LISTENING_SCENE_REGENERATIONS++; continue }
+      if (pf.decision === 'COMMIT') { best = { cand, pf }; tel.LISTENING_SCENES_COMMITTED_FIRST_PASS++; break }
+      // REPAIR (isolated residual defects) — or the last attempt is still fundamentally invalid: ESCALATION, a bounded
+      // salvage repair (≤ 2 atomic calls) on the better candidate; the final gates decide READY (§19)
+      let work = { cand, pf }
+      if (pf.fundamental) { work = better(best, work); log && log('⏫ SCENE_ESCALATION ' + sp.sceneId + ' — ' + attempt + ' generation attempt(s) fundamentally invalid (' + work.pf.reasons.join('; ') + ') · bounded salvage repair on the better candidate, then commit; the final gates decide READY') }
+      await repairCandidate(work.cand, sp, work.pf, pf.fundamental)
+      const pf2 = validateScenePreflight(env, work.cand, sp, { accepted })
+      log && log('🛂 ' + scenePreflightLog(sp, pf2, 'after atomic repair'))
+      if (pf2.decision === 'REGENERATE' && !lastAttempt) { reject = pf2; best = better(best, { cand: work.cand, pf: pf2 }); tel.LISTENING_SCENE_REGENERATIONS++; continue }
+      best = { cand: work.cand, pf: pf2 }
+      if (pf2.decision === 'COMMIT') tel.LISTENING_SCENES_COMMITTED_AFTER_REPAIR++
+      break
+    }
+    let sc = best ? best.cand : null
+    lastPf = best ? best.pf : null
+    if (!sc) {
+      log && log('⛔ LISTENING_SCENE_FAILED ' + sp.sceneId + ' — no usable scene after ' + LISTENING_SCENE_ATTEMPTS + ' attempts')
+      sc = { sceneId: sp.sceneId, setting: sp.purpose, turns: [] }
+    }
+    // §22 — COMMIT: only now does the candidate become canonical state
+    let cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
+    if (lastPf && lastPf.decision !== 'COMMIT') { tel.LISTENING_SCENES_COMMITTED_WITH_DEFECTS++
+      const resid = Object.entries(lastPf.counts).filter(([, v]) => v)
+      const soft = resid.every(([k]) => k === 'coverage' || k === 'adjacency')
+      log && log((soft ? '⚠' : '⛔') + ' SCENE_COMMIT ' + sp.sceneId + ' decision=COMMIT_WITH_DEFECTS residual=' + (resid.map(([k, v]) => k + ' ' + v).join(', ') || '-') +
+        (soft ? ' — a missing target is reassigned next; an adjacency note is judged by the coherence gate' : ' — the scene is kept so coverage continues; the final gates block READY unless the defect is fixed later')) }
+    else if (sc.turns.length) log && log('✅ SCENE_COMMIT ' + sp.sceneId + ' decision=COMMIT · ' + sc.turns.length + ' turns · heard ' + cov.heard.length + '/' + sp.requiredTargetIds.length)
     // §10 — still missing: the target does not fit this scene → reassign it (never drop it)
     if (cov.missing.length) {
       log && log('⚠ TARGET_ALLOCATION_MISMATCH ' + sp.sceneId + ' missing=[' + cov.missing.map(id => byId.get(id).surface).join(', ') + '] after local repair')
@@ -17478,7 +18397,9 @@ async function _lnComposeByScenes(env) {
           const hq = queue.find(s => s.sceneId === host.sceneId) || { verifiedTargetIds: [] }
           const before = _lnCloneTurns(host.turns)
           log && log('🔁 LISTENING_REASSIGN target=' + id + ' ' + t.surface + ' ' + sp.sceneId + ' → ' + host.sceneId + ' (an earlier verified scene, local exchange)')
-          await _lnAtomicPlace(env, [host], host, [id], null, offsetOf(host))
+          // v668 §40/§50 — reassignment placement draws on ONE bounded track-wide budget (repair calls are telemetry targets < 10)
+          if (env.reassignBudget.calls >= env.reassignBudget.max) { log && log('⏹ LISTENING_REASSIGN_CALL_CAP ' + env.reassignBudget.max + ' placement calls used — ' + t.surface + ' is not placed by another paid call'); break }
+          await _lnAtomicPlace(env, [host], host, [id], null, offsetOf(host), env.reassignBudget)
           const hc = _lnSceneCoverage(host, (hq.verifiedTargetIds || []).concat([id]), byId, la, ctx)
           if (hc.missing.some(x => x !== id)) { host.turns = before; log && log('⚠ LISTENING_REPAIR_ROLLBACK ' + host.sceneId + ' — the edit removed a protected target · restored') ; continue }
           if (hc.missing.includes(id)) { host.turns = before; continue }
@@ -17496,6 +18417,7 @@ async function _lnComposeByScenes(env) {
     report.push({ sceneId: sp.sceneId, required: requiredAtStart, heard: cov.heard.length, turns: sc.turns.length, allowedMax, reassignedOut: cov.missing.length })
     emit('scene', qi + 1, { sceneId: sp.sceneId })
   }
+  env.acceptedOthers = []
   // §11 — assembly: the final audit CONFIRMS what the scenes verified
   const verifiedUnion = [...new Set(queue.flatMap(s => s.verifiedTargetIds || []))]
   let audit = listeningConversationAudit(accepted, targets, la, ctx)
@@ -17551,8 +18473,11 @@ async function _lnComposeByScenes(env) {
   return { ok: true, scenes: accepted, audit, natIssues, plan, report, coh,
     gates: { SCENE_REQUIRED_COVERAGE: allScenesPass ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total <= env.turnsMax && !budgetExceeded } }
 }
-async function buildListeningConversation(mainTrack, vocab, o) {
+async function buildListeningConversation(mainTrack, vocab0, o) {
   const lang = o.lang || (mainTrack && mainTrack.language) || trackLanguageOf(mainTrack), log = o.onLog || null
+  // v668 §42 — LAYER B is FROZEN at generation start: the vocabulary is cloned and frozen once, and every stage of this
+  // track (planner, palettes, validation, repair, final audit) reads the snapshot — never the live, mutable state
+  const vocab = Object.isFrozen(vocab0) ? vocab0 : Object.freeze((vocab0 || []).map(w => Object.freeze({ ...w })))
   const la = listeningAdapterFor(lang)
   if (mainTrack && mainTrack.language && mainTrack.language !== lang) throw pipelineInternalError('LISTENING_LANGUAGE_MISMATCH', 'track is ' + mainTrack.language + ', Listening requested ' + lang)
   { const foreign = ((mainTrack && mainTrack.pairs) || []).find(p => p && p.language && p.language !== lang)
@@ -17583,23 +18508,25 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   // here, which dropped status=learning words without a review date — the live false CLOSED_VOCAB on taught words.
   const vById = new Map((vocab || []).map(w => [w.id, w]))
   const eligTargets = targets.map(t => t.word && t.word.id != null ? t.word : vById.get(t.id)).filter(Boolean); eligTargets._sceneEntities = sceneEntitiesOf(mainTrack)
-  const inventory = buildLearnerAuthorizedInventory(lang, vocab, eligTargets, o.standalone ? 'listening' : 'daily')
+  const snapshot = snapshotLearnerInventory(lang, vocab, eligTargets, o.standalone ? 'listening' : 'daily')
+  const inventory = snapshot.inventory
   const exposed = inventory.taught
+  log && log('📚 ' + snapshot.log + ' · Layer A lexicon ' + buildLanguageLexiconAdapter(lang, vocab).size + ' entries (segmentation only — not permission)')
   const cc = getLearnerComplexityContract({ lang, vocab })
   log && log('📏 ' + complexityContractLog(cc) + ' · Listening: no minimum, aim ' + cc.preferredMin + '–' + cc.preferredMax + ', no turn above ' + cc.hardMax)
   log && log('📚 ' + inventory.log + ' · grammar/function scaffold: ' + (lang === 'th' ? 'Thai particles + structural markers' : lang === 'ja' ? 'Japanese particles / inflection / copula' : 'Mandarin grammar particles'))
-  const known = _lnKnownWords(lang, vocab, exposed.concat(eligTargets.filter(w => !exposed.includes(w))))
-  const ctx = { vocab, track: mainTrack, exposed, eligTargets, complexity: cc, inventory, sceneContract: mainTrack.sceneContract || null, sceneEntities: sceneEntitiesOf(mainTrack),
+  const ctx = { vocab, track: mainTrack, exposed, eligTargets, complexity: cc, inventory, snapshot, sceneContract: mainTrack.sceneContract || null, sceneEntities: sceneEntitiesOf(mainTrack),
     jaInv: lang === 'ja' ? japaneseLearnerInventory(vocab, eligTargets) : null, zhInv: lang === 'zh' ? mandarinLearnerInventory(vocab, eligTargets) : null }
-  const alloc = listeningTargetAllocation(targets, mainTrack)
+  // v668 §35 — Mandarin segmentation for target matching and pinyin comes from the Layer A lexicon (周末 / 公园 / 天气
+  // are units); permission still comes only from Layer B
+  if (ctx.zhInv) ctx.zhInv = { ...ctx.zhInv, lexicon: buildLanguageLexiconAdapter('zh', vocab).lexicon }
   const sc0 = mainTrack.sceneContract || {}
   const lessonCtx = mainTrack.lessonContext || buildLessonContext(sc0, lang)
-  const names = (ctx.sceneEntities || []).map(e => e.surface || e).filter(Boolean)
   // v667 §6/§20 — Japanese: the FROZEN speech style travels in `extra`, which every scene / placement / atomic / max3 /
   // length / coherence repair prompt carries (explicitly — no global); scene relationships are added per scene
   const jaStyle = lang === 'ja' ? canonicalJapaneseSpeechStyle(o.speechStyle || (mainTrack && mainTrack.speechStyle)) : null
   ctx.jaStyle = jaStyle
-  const extra = lang === 'ja' ? ' Give "reading" (kana) and "romaji" for every turn.\nTRACK SPEECH STYLE: ' + japaneseSpeechStyleName(jaStyle).toUpperCase() + ' (' + JAPANESE_REGISTER_RULES[jaStyle].label + ' — ' + JAPANESE_REGISTER_RULES[jaStyle].sub + ').\n' +
+  const extra = lang === 'ja' ? '\nTRACK SPEECH STYLE: ' + japaneseSpeechStyleName(jaStyle).toUpperCase() + ' (' + JAPANESE_REGISTER_RULES[jaStyle].label + ' — ' + JAPANESE_REGISTER_RULES[jaStyle].sub + ').\n' +
       japaneseRegisterContract(jaStyle) + '\nEach scene states its RELATIONSHIP and EXPECTED REGISTER — follow them: same relationship ⇒ same register all the way through (no drifting between です/ます and plain forms).'
     : lang === 'zh' ? ' Give tone-mark "pinyin" for every turn.' : ''
   // v658 §12 — every target row carries the linguistic data the model needs (written form, reading, gloss / sense, role)
@@ -17607,25 +18534,6 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   // v658 §13 — a turn RANGE derived from the number of targets (≤ 3 per turn, most turns 1–2): the live JA run wrote 17 turns
   // for 30 targets, crammed 4 into one line and dropped 4 targets
   const turnsMin = Math.max(12, Math.ceil(targets.length / 1.5) + 4), turnsMax = targets.length + 14
-  // ── 1. ONE batched composition call ──
-  const prompt = 'Write ONE natural ' + la.label + ' LISTENING conversation between two people for a learner.\n' +
-    'PREMISE: ' + (lessonCtx.broadTheme || sc0.premise || 'two friends talking about their day') + '\n' +
-    'SPEAKERS: ' + ((sc0.characters || []).map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') || 'A and B, friends') + ' · ' + la.speakerContract + '\n' +
-    'REGISTER: ' + (lessonCtx.register || 'natural spoken') + (lessonCtx.politeness ? ' · ' + lessonCtx.politeness : '') + '\n' +
-    'THE ' + targets.length + ' TARGET WORDS (id | word [reading] | meaning | role) — use EVERY one at least once (more is fine when natural):\n' + targets.map(tRow).join('\n') + '\n' +
-    'ROLE GUIDE: ' + [...new Set(targets.map(t => t.role))].map(r => r + ' = ' + (LISTENING_ROLE_HINT[r] || 'fits naturally')).join(' · ') + '\n' +
-    'LENGTH: about ' + turnsMin + '–' + turnsMax + ' turns, so every target fits with at most 3 per turn (most turns carry 1–2) — enough room, not padding.\n' +
-    'EACH TURN: ' + cc.promptRule + '\n' +
-    'ALLOCATION SUGGESTIONS (not mandatory): ' + alloc.map(g => '[' + g.ids.map(id => 'T' + id).join('+') + ' → ' + g.hint + (g.topic && g.topic !== 'reply' ? ' about ' + g.topic : '') + ']').join(' ') + '\n' +
-    'RULES:\n- ONE conversation (1–3 scenes only if the place genuinely changes; every scene has many turns). It opens naturally (greeting) and closes naturally.\n' +
-    '- A and B BOTH speak; questions get answers; reactions; later turns refer to earlier ones. Not mechanical A/B/A/B, but never one speaker only.\n' +
-    '- Each turn is ONE speaker. Never put a question and its answer in the same turn.\n' +
-    '- At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' of the target words in any single turn (other known words are unlimited).\n' +
-    '- Response words (yes / no / yeah …) are used as REPLIES to questions, never as drills.\n' +
-    '- No repeated sentences. Natural length for the story — do not pad and do not squeeze.\n' +
-    '- Use ONLY the target words, these KNOWN WORDS (the learner\'s whole authorised bank — use them freely), normal grammar/particles' + (names.length ? ' and the names ' + names.join(', ') : '. No personal names') + '. No other content words.' + extra + '\n' +
-    'KNOWN WORDS: ' + known.slice(0, 900).join(' ') + '\n\n' +
-    'Reply ONLY with JSON: {"scenes":[{"sceneId":"L1","setting":"...","turns":[{"speaker":"A","text":"...","english":"...","intendedTargetIds":[12,40]}]}]}'
   let scenes = null, audit = null, natIssues = [], sceneGates = null
   let verdictsCache = new Map()
   const naturalness = async (scs) => {
@@ -17640,89 +18548,14 @@ async function buildListeningConversation(mainTrack, vocab, o) {
       else if (v.state === QUALITY.REJECTED) issues.push({ code: 'UNNATURAL', line: n, detail: 'naturalness ' + v.score + '/5' + (v.note ? ' — ' + v.note : '') }) }))
     return issues
   }
-  if (o.standalone && !o.wholeComposer) {
-    // v662 — the standalone Listening Track: coverage BY CONSTRUCTION (plan → scene-by-scene → verify → local repair)
+  // v668 §53/§74 — ONE flow. The v656 whole-conversation composer (one call with "KNOWN WORDS: <900 words>", then
+  // whole-track REVISE rounds) is removed: every Listening conversation — standalone or from a Main Track — is built
+  // scene by scene as closed-world transactions (plan → feasibility → skeleton → palette → candidate → preflight → commit)
+  {
     if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
-    const r = await _lnComposeByScenes({ lang, la, log, tel, targets, ctx, known, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax })
+    const r = await _lnComposeByScenes({ lang, la, log, tel, targets, ctx, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax })
     if (!r.ok || !r.scenes.length) return { ok: false, empty: true, listeningQuality: 'NEEDS_REPAIR — ' + (r.reason || 'composition failed'), reason: r.reason || 'the conversation could not be composed', stats: {}, telemetry: tel, plan: r.plan }
     scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh }
-  } else {
-    if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
-    tel.LISTENING_GENERATION_CALLS++
-    log && log('🎧 LISTENING_COMPOSITION generation call ' + tel.LISTENING_GENERATION_CALLS + ' · ' + targets.length + ' targets · ' + turnsMin + '–' + turnsMax + ' turns requested')
-    try {
-      const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt }], maxTokens: 7000, temperature: 0.7, json: LISTENING_CONVERSATION_SCHEMA, stage: 'O_listening_scene' })
-      const obj = JSON.parse(String(raw || '').replace(/```json|```/g, '').trim())
-      scenes = (obj && Array.isArray(obj.scenes) ? obj.scenes : []).map((sc, k) => ({ sceneId: 'L' + (k + 1), setting: String((sc && sc.setting) || '').slice(0, 80),
-        turns: ((sc && sc.turns) || []).filter(x => x && String(x.text || '').trim()).map((x, j) => _lnMakeTurn(la, x, j % 2 ? 'B' : 'A')) })).filter(sc => sc.turns.length)
-    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  🎧 composition failed: ' + String(e && e.message || e).slice(0, 80)); scenes = null }
-    if (!scenes || !scenes.length) return { ok: false, empty: true, listeningQuality: 'NEEDS_REPAIR — composition failed', reason: 'the conversation could not be composed', stats: {}, telemetry: tel }
-    // ── 2. deterministic audit → bounded local repair (batched) → re-audit ──
-    audit = listeningConversationAudit(scenes, targets, la, ctx)
-    natIssues = await naturalness()
-    const logAudit = label => {
-      log && log('  🎧 LISTENING_TARGET_COVERAGE ' + audit.covered.length + '/' + targets.length + ' (' + label + ')' + (audit.missing.length ? ' · missing: ' + audit.missing.map(t => t.surface).join(', ') : '') +
-        ' · turns ' + audit.lines.length + ' · scenes ' + scenes.length + ' · speakers ' + audit.speakers.join('/') + ' · issues ' + (audit.issues.length + natIssues.length))
-      // v659 §13 — one log line per check, so a failure is never just one final message
-      const codes = c => audit.issues.filter(x => c.test(x.code))
-      const m3 = codes(/^MAX_TARGETS_PER_TURN$/), cv = codes(/^CLOSED_VOCAB$/), dup = codes(/DUPLICATE/), mg = codes(/^MERGED_SPEAKERS$/)
-      log && log('🎧 LISTENING_TARGET_AUDIT (' + label + ') covered=' + audit.covered.length + '/' + targets.length + ' missing=[' + audit.missing.map(t => t.surface).join(', ') + ']')
-      log && log('🎧 LISTENING_MAX3_AUDIT ' + (m3.length ? 'FAIL lines ' + m3.map(x => x.line).join(',') : 'PASS') + ' · max ' + audit.lines.reduce((m, r) => Math.max(m, r.targetCount), 0) + ' targets/turn')
-      log && log('🎧 LISTENING_CLOSED_VOCAB ' + (cv.length ? 'FAIL — ' + cv.slice(0, 4).map(x => 'L' + x.line + ' ' + x.detail).join(' · ') : 'PASS'))
-      log && log('🎧 LISTENING_DIALOGUE speakers=' + audit.speakers.join('/') + ' · duplicates ' + (dup.length ? 'FAIL lines ' + dup.map(x => x.line).join(',') : 'PASS') + ' · merged Q+A ' + (mg.length ? 'FAIL lines ' + mg.map(x => x.line).join(',') : 'PASS'))
-      log && log('🎧 LISTENING_NATURALNESS ' + (natIssues.length ? natIssues.length + ' issue(s) — ' + natIssues.slice(0, 3).map(x => 'L' + x.line + ' ' + x.code).join(' · ') : 'PASS'))
-    }
-    logAudit('composed')
-    progress('composed', audit)
-    for (let round = 1; round <= LISTENING_REPAIR_ROUNDS; round++) {
-      const issues = audit.issues.concat(natIssues).filter(x => x.code !== 'NATURALNESS_UNVERIFIED')
-      if (!issues.length) break
-      const byTarget = new Map(targets.map(t => [t.id, t]))
-      const asks = issues.map(x => x.code === 'TARGET_MISSING' ? '- MISSING TARGET T' + x.targetId + ' ' + x.detail + ': ' + listeningPlacementHint(byTarget.get(x.targetId), audit, targets)
-        : x.code === 'MAX_TARGETS_PER_TURN' ? '- line ' + x.line + ' has ' + x.detail + ': move one target into an adjacent turn or split the thought between the speakers'
-        : x.code === 'MERGED_SPEAKERS' ? '- line ' + x.line + ': ' + x.detail + ' — split it into two turns (A asks, B answers)'
-        : /DUPLICATE/.test(x.code) ? '- line ' + x.line + ' ' + x.detail + ': rewrite this local exchange (this line and its neighbour, span 2) so it moves the conversation on'
-        : x.code === 'ONE_SPEAKER' ? '- the whole conversation is one speaker: give roughly half of the turns to the other speaker, as replies'
-        : x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION' ? '- ' + x.detail + ': merge scenes so each has several turns (use op "merge_scenes")'
-        : '- line ' + x.line + ': ' + x.code + ' — ' + x.detail)
-      log && log('  🔧 LISTENING_REPAIR round ' + round + ': ' + issues.length + ' issue(s) — ' + [...new Set(issues.map(x => x.code))].join(', '))
-      log && log('🔧 LISTENING_REPAIR round=' + round + ' issues=' + issues.length + ' (local exchanges)')
-      progress('repair', audit, { round })
-      const rp = 'REVISE this ' + la.label + ' LISTENING conversation locally. Keep every line that has no issue exactly as it is.\n' + la.speakerContract + extra + '\n' +
-        'TARGET WORDS: ' + targets.map(t => 'T' + t.id + ' ' + t.surface + ' (' + t.gloss + ')').join(' · ') + '\n' +
-        'At most ' + LISTENING_MAX_TARGETS_PER_TURN + ' target words per turn; each turn one speaker; use ONLY target words and these KNOWN WORDS: ' + known.slice(0, 900).join(' ') + '\n' +
-        'Repair LOCAL EXCHANGES, not isolated lines: when a missing target belongs in an answer, rewrite the question AND its answer together ' +
-        '({"op":"replace","line":N,"span":2,"turns":[question, answer]}); spread 4+ targets over adjacent turns; keep everything else unchanged.\n\n' +
-        'CONVERSATION:\n' + _lnConversationRows(scenes, la, targets, audit) + '\n\nFIX THESE ISSUES:\n' + asks.join('\n') + '\n\n' +
-        'Reply ONLY with JSON: {"edits":[{"op":"replace","line":5,"span":1,"turns":[{"speaker":"B","text":"...","english":"..."}]},{"op":"insert_after","line":7,"turns":[...]},{"op":"delete","line":9},{"op":"merge_scenes","line":0}]} — ' +
-        '"replace" swaps line N (and the next span−1 lines of the same scene) for the given turn(s); "insert_after" adds turns after line N; line numbers refer to the conversation above.'
-      let edits = null
-      tel.LISTENING_REPAIR_CALLS++
-      try { edits = JSON.parse(String(await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: rp }], maxTokens: 3000, temperature: 0.5, json: LISTENING_EDIT_SCHEMA, stage: 'O_listening_repair', attempt: 'listening-repair-' + round }) || '').replace(/```json|```/g, '').trim()) }
-      catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠️ listening repair unavailable: ' + String(e && e.message || e).slice(0, 80)); break }
-      const flat = []
-      scenes.forEach((sc, si) => sc.turns.forEach(tn => flat.push({ si, tn })))
-      const ed = ((edits && edits.edits) || []).filter(x => x && (x.op === 'merge_scenes' || (x.line >= 1 && x.line <= flat.length)))
-      if (!ed.length) { log && log('  ⚠️ listening repair returned no usable edit'); break }
-      if (ed.some(x => x.op === 'merge_scenes')) { const all = scenes.flatMap(sc => sc.turns); scenes = [{ sceneId: 'L1', setting: scenes[0].setting, turns: all }]; flat.forEach(f => { f.si = 0 }) }
-      // apply from the bottom so line numbers stay valid
-      ed.filter(x => x.op !== 'merge_scenes').sort((a, b) => b.line - a.line).forEach(x => {
-        const f = flat[x.line - 1]
-        if (!f) return
-        const sc = scenes[Math.min(f.si, scenes.length - 1)]
-        const at = sc.turns.indexOf(f.tn)
-        if (at < 0) return
-        const nt = (x.turns || []).filter(t => t && String(t.text || '').trim()).map((t, j) => _lnMakeTurn(la, t, f.tn.speaker))
-        if (x.op === 'delete') sc.turns.splice(at, 1)
-        else if (x.op === 'insert_after') sc.turns.splice(at + 1, 0, ...nt)
-        else if (nt.length) sc.turns.splice(at, Math.max(1, Math.min(3, Number(x.span) || 1, sc.turns.length - at)), ...nt)
-      })
-      scenes = scenes.filter(sc => sc.turns.length).map((sc, k) => ({ ...sc, sceneId: 'L' + (k + 1) }))
-      audit = listeningConversationAudit(scenes, targets, la, ctx)
-      natIssues = await naturalness()
-      logAudit('after repair ' + round)
-      progress('repaired', audit, { round })
-    }
   }
   // ── 3. whole-conversation coherence (scene + whole) — a HARD gate ──
   const cohScenes = scenes.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair })) }))
@@ -17740,7 +18573,12 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   const pronIssues = []
   let n = 0
   scenes.forEach(sc => sc.turns.forEach(tn => { try { tn.pair = la.finaliseLine(tn.pair, ctx) } catch (e) {} }))
-  try {
+  // v668 §30–§34 — Japanese: FINAL TEXT FREEZE, then deterministic readings / romaji, one batched fallback, alignment
+  if (lang === 'ja') {
+    log && log('🧊 LISTENING_TEXT_FREEZE ja lines=' + scenes.reduce((a, sc) => a + sc.turns.length, 0) + ' — the Japanese text is final; readings / romaji are derived only now')
+    try { await japaneseListeningPronunciation(scenes.flatMap(sc => sc.turns), vocab, o, log, tel) }
+    catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; if (e && e.code === 'JA_TEXT_FREEZE_BROKEN') throw e; log && log('  ⚠️ Japanese reading pipeline failed: ' + String(e && e.message || e).slice(0, 80)) }
+  } else try {
     const flatT = scenes.flatMap(sc => sc.turns)
     const pairs0 = flatT.map((tn, k) => ({ ...tn.pair, _pairKey: 'ln-' + (k + 1), pairType: 'content', language: lang }))
     const led0 = typeof AI_LEDGER !== 'undefined' ? AI_LEDGER.length : 0
@@ -17777,7 +18615,7 @@ async function buildListeningConversation(mainTrack, vocab, o) {
     MAX_TARGETS_PER_TURN: audit.lines.reduce((m, r) => Math.max(m, r.targetCount), 0), MAX3_PASS: !audit.issues.some(x => x.code === 'MAX_TARGETS_PER_TURN'),
     BOTH_SPEAKERS: audit.speakers.length >= 2, NO_MERGED_SPEAKER_LINES: !audit.issues.some(x => x.code === 'MERGED_SPEAKERS'),
     NO_DUPLICATES: !audit.issues.some(x => /DUPLICATE/.test(x.code)), NO_SINGLETON_SCENES: !audit.issues.some(x => x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION'),
-    CLOSED_VOCAB: !audit.issues.some(x => x.code === 'CLOSED_VOCAB'),
+    CLOSED_VOCAB: !audit.issues.some(x => x.code === 'CLOSED_VOCAB' || x.code === 'TOKENIZATION_ERROR'),   // v668: a malformed fragment blocks READY too
     // v665 — LENGTH is a hard gate: every turn within the learner's belt hardMax (ctx.complexity, the ONE contract)
     LENGTH_PASS: !audit.issues.some(x => x.code === 'TOO_COMPLEX'),
     // v667 §15/§16 — Japanese register consistency per scene (track speech style × scene relationship) is a hard gate
@@ -17794,6 +18632,11 @@ async function buildListeningConversation(mainTrack, vocab, o) {
   const failed = Object.entries(gates).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k]) => k)
   const ready = !failed.length
   tel.LISTENING_TOTAL_PAID_CALLS = tel.LISTENING_GENERATION_CALLS + tel.LISTENING_REPAIR_CALLS + tel.LISTENING_QC_CALLS
+  // v668 §50 — architecture-health telemetry (NOT a READY gate): a normal closed-world track needs < 10 repair calls
+  tel.LISTENING_REPAIR_CALL_TARGET = LISTENING_REPAIR_CALL_TARGET
+  log && log('🩺 LISTENING_REPAIR_HEALTH repairCalls=' + tel.LISTENING_REPAIR_CALLS + ' (target < ' + LISTENING_REPAIR_CALL_TARGET + ') ' + (tel.LISTENING_REPAIR_CALLS < LISTENING_REPAIR_CALL_TARGET ? 'OK' : 'HIGH') +
+    ' · sceneRegenerations=' + (tel.LISTENING_SCENE_REGENERATIONS || 0) + ' · scenesCommittedFirstPass=' + (tel.LISTENING_SCENES_COMMITTED_FIRST_PASS || 0) + ' · afterRepair=' + (tel.LISTENING_SCENES_COMMITTED_AFTER_REPAIR || 0) +
+    ' · withDefects=' + (tel.LISTENING_SCENES_COMMITTED_WITH_DEFECTS || 0) + ' · firstGenerationUnknownLexemeLines=' + (tel.LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES || 0) + ' — telemetry only, not a gate')
   // ── 6. the Listening track object ──
   const ltId = 'lt-' + Date.now() + '-' + Math.floor(Math.random() * 1e4)
   const chars = sc0.characters || []

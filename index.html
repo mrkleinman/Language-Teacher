@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v668"/>
+<meta name="app-version" content="v669"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v668';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v668').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v669';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v669').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -9874,11 +9874,17 @@ function thaiIsTokenSpaced(thai) {
   const avgLen = thaiToks.length > 0 ? thaiToks.reduce((n, x) => n + x.length, 0) / thaiToks.length : 0
   return /[ก-๙] [ก-๙]/.test(t) || (thaiToks.length >= 4 && (shortRatio > 0.5 || avgLen <= 4.5))
 }
+// v669 §7 — CLAUSE-AWARE spacing. Thai has no spaces between words, but a space after a sentence-final particle is a
+// real utterance boundary (ใช่ครับ ไม่ต้องจ่ายครับ · ฟรีจริงๆเหรอคะ ไม่ต้องจ่ายเลยค่ะ): it is kept as ONE space. Spaces inside
+// a clause (token spacing from the model) are still removed. No underscores / markers are ever introduced.
+const THAI_CLAUSE_END_RE = /(ครับ|ค่ะ|คะ|จ้ะ|จ้า|นะ|เหรอ|หรอ|ไหม|มั้ย|เถอะ|ล่ะ)$/
+const THAI_CLAUSE_FOLLOW_RE = /^(ครับ|ค่ะ|คะ|จ้ะ|จ้า|จ๊ะ|นะ|ล่ะ|เหรอ|หรอ|ไหม|มั้ย)/   // v669: a particle that continues the same clause
 function normaliseThaiSpacing(thai) {
-  let s = String(thai || '').trim()
-  // Collapse spaces that sit between two Thai characters; keep spaces around
+  let s = String(thai || '').trim().replace(/[_]+/g, ' ')
+  // Collapse spaces that sit between two Thai characters — unless the left side ends a clause; keep spaces around
   // latin text, digits and punctuation where they are meaningful.
-  s = s.replace(/([\u0e00-\u0e7f])\s+(?=[\u0e00-\u0e7f])/g, '$1')
+  // (a particle that FOLLOWS — ไหม ครับ, ได้ไหม คะ — still belongs to the same clause: no space before it)
+  s = s.replace(/([\u0e00-\u0e7f]+)\s+(?=([\u0e00-\u0e7f]+))/g, (m, left, right) => THAI_CLAUSE_END_RE.test(left) && !THAI_CLAUSE_FOLLOW_RE.test(right) ? left + ' ' : left)
   return s.replace(/\s{2,}/g, ' ').trim()
 }
 
@@ -11086,6 +11092,16 @@ function thaiNormalisePoliteParticle(thai, english, gender) {
     return { thai: t.replace(/คะ$/, 'ค่ะ'), changed: true, why: 'คะ → ค่ะ on a statement' }
   return { thai: t, changed: false }
 }
+// v669 §6 — speaker/particle consistency, repaired deterministically where the fix is unambiguous (the final particle of the
+// WRONG gender for this speaker), then the ค่ะ/คะ statement-question rule. Pronouns are never rewritten blindly (ผม = also "hair").
+function thaiSpeakerParticleLocalRepair(thai, english, gender) {
+  let t = String(thai || ''), why = []
+  const isQ = THAI_QUESTION_RE.test(t) || /\?\s*$/.test(String(english || ''))
+  if (gender === 'male' && /(ค่ะ|คะ)$/.test(t) && !/(นะ|ล่ะ|สิ)คะ$/.test(t)) { t = t.replace(/(ค่ะ|คะ)$/, 'ครับ'); why.push('female particle on a male line → ครับ') }
+  if (gender === 'female' && /ครับ$/.test(t)) { t = t.replace(/ครับ$/, isQ ? 'คะ' : 'ค่ะ'); why.push('male particle on a female line → ' + (isQ ? 'คะ' : 'ค่ะ')) }
+  if (gender === 'female') { const r = thaiNormalisePoliteParticle(t, english, 'female'); if (r.changed) { t = r.thai; why.push(r.why) } }
+  return { thai: t, changed: t !== String(thai || ''), why: why.join('; ') }
+}
 const THAI_PARTICLE_SCAN_RE = /\u0e04\u0e23\u0e31\u0e1a|\u0e04\u0e48\u0e30|\u0e04\u0e30(?!\u0e41\u0e19\u0e19|\u0e19\u0e49\u0e32)/g
 function thaiParticlesIn(thai) { return (String(thai || '').match(THAI_PARTICLE_SCAN_RE) || []) }
 function validateThaiSpeakerParticle(thai, gender) {
@@ -11593,6 +11609,12 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'LINE 3 (A): must contain "' + target.thai + '" again — must end with ' + thaiContractParticleText('A') + '\n' +
     '\nCRITICAL: ALL THREE lines MUST physically contain the characters "' + target.thai + '" — not a synonym, not a related word — the exact word. ' +
     'Each line is one TARGET PAIR; the lesson needs 3 per target word.\n' +
+    // v669 §5 — the ONE intended sense of the target, which the cue and the English must express too
+    (s0 => 'INTENDED SENSE of "' + target.thai + '": ' + s0.targetSense + (s0.targetUsageNote ? ' — ' + s0.targetUsageNote : '') + (s0.targetNotSense ? '. NOT: ' + s0.targetNotSense : '') + '. The "prompt" and "english" must express this same sense.\n')(thaiTargetSenseInfo({ wordId: target.id, thai: target.thai, english: target.english }, vocab)) +
+    // v669 §9 — three DIFFERENT communicative uses where the word allows it, never three near-identical templates
+    'PRACTICE FUNCTIONS: make the three uses genuinely different where the word naturally allows it — e.g. LINE 1 an ordinary statement or question that introduces it, ' +
+    'LINE 2 a reply that uses it in another way (a question back, a contrast, a detail), LINE 3 a contextual response or conclusion. Do NOT write three near-copies ' +
+    '(ไม่ต้องจ่ายครับ / ไม่ต้องจ่ายเลยครับ / เราไม่ต้องจ่ายครับ). Do not force artificial variety where the word has only one natural use.\n' +
     targetRoleLine(targetLinguisticRole(target, 'th'), target, 'th') +
     'Make it feel like real speech between two friends.\n' +
     'The "prompt" field = specific description of what is said, e.g. "He says his ear hurts" or "She asks if he cleaned his ears" — precise, not vague'
@@ -12199,13 +12221,41 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   }
   return null
 }
+// v669 §10 — OBJECTIVE cue FORM alignment. A cue may not turn the Thai question into a statement (or a statement into a
+// question). Only unambiguous evidence counts: the Thai ends in a question particle AND the English is a question (or neither);
+// the cue explicitly says "says / tells …" or "asks …". Everything subtler stays with the cue judge.
+const THAI_Q_END_RE = /(ไหม|มั้ย|หรือเปล่า|หรือยัง|เหรอ|หรอ|ใช่ไหม|ไม่ใช่เหรอ)(ครับ|คะ|ค่ะ|นะ|จ๊ะ|จ้ะ|ล่ะ)*\s*[?？]?$/
+const THAI_Q_WORD_RE = /(อะไร|ที่ไหน|ไหน|ใคร|ทำไม|ยังไง|อย่างไร|เมื่อไหร่|เมื่อไร|เท่าไหร่|เท่าไร|กี่)(ครับ|คะ|ค่ะ|นะ|จ๊ะ|จ้ะ|ล่ะ|ดี)*\s*[?？]?$/
+const CUE_ASKS_RE = /[?？]\s*$|^\s*ask\b|\b(asks?|asking|wonders?|wants to know|inquires?|enquires?|checks? (whether|if))\b/i
+const CUE_SAYS_RE = /^\s*(say|tell|state|explain|announce)\b|\b(says|tells|states|explains|announces|mentions|replies|answers)\b/i
+function thaiCueFormProblems(p) {
+  const th = String(p && p.thai || '').trim(), en = String(p && p.english || '').trim(), cue = String(p && p.prompt || '').trim()
+  if (!th || !en || !cue) return []
+  const enQ = /[?？]\s*$/.test(en), thQ = THAI_Q_END_RE.test(th) || (enQ && THAI_Q_WORD_RE.test(th))
+  const out = []
+  if (thQ && enQ && CUE_SAYS_RE.test(cue) && !CUE_ASKS_RE.test(cue)) out.push('CUE_FORM_MISMATCH: the Thai is a question ("' + en + '") but the cue asks for a statement ("' + cue.slice(0, 80) + '")')
+  if (!thQ && !enQ && !THAI_Q_WORD_RE.test(th) && /^\s*ask\b|\basks\b|\bwants to know\b/i.test(cue) && !CUE_SAYS_RE.test(cue))
+    out.push('CUE_FORM_MISMATCH: the Thai is a statement ("' + en + '") but the cue asks a question ("' + cue.slice(0, 80) + '")')
+  return out
+}
+// the deterministic fix: rebuild the cue from the line's own English in the right form (never a "Say: …" template)
+function thaiCueFormRepair(p) {
+  if (!thaiCueFormProblems(p).length) return null
+  const en = String(p.english || '').trim().replace(/[.!]+$/, '')
+  if (en.length < 4 || /[\u0e00-\u0e7f]/.test(en)) return null
+  const q = /[?？]\s*$/.test(en)
+  const cue = q ? 'Ask: ' + en.replace(/[?？]\s*$/, '') + '?' : 'Tell the other person: ' + en + '.'
+  return thaiCueFormProblems({ ...p, prompt: cue }).length ? null : cue
+}
 // v652 §2 — deterministic cue rebuild for a valid Thai line whose English prompt is the only defect.
 // Returns the new prompt, or null when there is nothing safe to build it from.
 function thaiLocalCueRepair(l) {
   const en = String((l && l.english) || '').trim().replace(/[.!]+$/, '')
   if (en.length < 8 || /[\u0e00-\u0e7f]/.test(en)) return null
   const isQ = /\?$/.test(en) || /ไหม|มั้ย|หรือเปล่า|หรือยัง|อะไร|ที่ไหน|ใคร|ทำไม|ยังไง|เมื่อไหร่|เท่าไหร่|กี่/.test(String(l.thai || ''))
-  const cue = (isQ ? 'Ask: ' : 'Say: ') + en.replace(/\?$/, '') + (isQ ? '?' : '')
+  // v669 §10: never the generic "Say: …" template (the final audit rejects it as a fallback cue — v668 lost a valid จ่าย pair
+  // that way); a statement is cued as what to tell the other person
+  const cue = isQ ? 'Ask: ' + en.replace(/\?$/, '') + '?' : 'Tell the other person: ' + en + '.'
   return cue !== l.prompt ? cue : null
 }
 
@@ -14590,10 +14640,12 @@ async function listeningQualityVerdicts(pairs, apiKey, model, log) {
     try {
       scored = await _qrBatchNaturalnessCheck(chunk, apiKey, model, log)
       if (!scored.size) error = 'verdict unparseable'
+      // v669 §3 — a borderline rejection without a quoted construction goes to one batched controlled adjudication
+      else { const it = chunk; const sub = new Map([...scored.entries()]); await thaiControlledAdjudication(it, sub, async q => _semanticReplyArray(await geminiJudge(apiKey, model, q, 1200)), log); sub.forEach((v, k) => scored.set(k, v)) }
     } catch (e) { error = 'unavailable: ' + (e && e.message || e) }
     chunk.forEach((p, i) => {
       const v = scored && scored.get(i)
-      if (v && v.s != null) out.set(p.thai, { state: v.s >= 4 ? QUALITY.VERIFIED : QUALITY.REJECTED, score: v.s, note: v.note || '' })
+      if (v && v.s != null) out.set(p.thai, { state: v.s >= 4 ? QUALITY.VERIFIED : QUALITY.REJECTED, score: v.s, note: v.note || '', construction: v.construction || '', alternative: v.alternative || '', adjudicated: v.adjudicated || null })
       else out.set(p.thai, { state: QUALITY.UNVERIFIED, error: error || 'no verdict returned for this line' })
     })
   }
@@ -14669,7 +14721,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v668'
+const LISTENING_BUILD_VERSION = 'v669'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -15182,7 +15234,9 @@ function validateThaiTargetPair(pair, target, ctx, stage) {
   else if (nat) { d.NATURAL = nat.s >= 4 ? 'PASS' : (fail('NATURAL', 'naturalness ' + nat.s + '/5'), 'FAIL'); d.TARGET_SENSE = nat.wrongSense ? (fail('TARGET_SENSE', 'wrong sense'), 'FAIL') : 'PASS' }
   else if (legacyOk) { d.NATURAL = 'PASS'; d.TARGET_SENSE = 'PASS' }
   else { d.NATURAL = 'PENDING'; d.TARGET_SENSE = 'PENDING' }
+  const cueForm = _cueCheckEligible(p) ? thaiCueFormProblems(p) : []
   if (!_cueCheckEligible(p)) d.CUE_CONSISTENT = 'N/A'
+  else if (cueForm.length) fail('CUE_CONSISTENT', cueForm[0])                       // v669 §10 — objective, never overruled by a judge
   else if (cue) d.CUE_CONSISTENT = cue.s >= 4 || p._cueRepaired ? 'PASS' : (fail('CUE_CONSISTENT', 'cue ' + cue.s + '/5'), 'FAIL')
   else d.CUE_CONSISTENT = legacyOk || p._cueRepaired ? 'PASS' : 'PENDING'
   if (c.cvCtx) { let bl = []; try { bl = validateThaiVocabulary([{ thai: p.thai }], c.cvCtx).blocked } catch (e) {} ; if (bl.length) fail('CLOSED_VOCAB', 'untaught ' + bl.join(' ')); else d.CLOSED_VOCAB = 'PASS' }
@@ -15193,7 +15247,7 @@ function validateThaiTargetPair(pair, target, ctx, stage) {
     if (_an.overHardMax) fail('LENGTH', 'LEVEL_COMPLEXITY_FAIL ' + _an.units + ' Thai words > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')'); else d.LENGTH = 'PASS' }
   const sp = thaiSpeakerIdentity(p)
   if (sp.status === 'linguistic-conflict' || sp.status === 'metadata-conflict') fail('SPEAKER_REGISTER', sp.reason); else d.SPEAKER_REGISTER = 'PASS'
-  const comp = TRACK_ADAPTERS.th.hardProblems(p).concat(thaiTemplateGarbageProblems(p).map(g => g.why), thaiTimeExpressionProblems(p.thai).map(g => g.why))
+  const comp = TRACK_ADAPTERS.th.hardProblems(p).concat(thaiTemplateGarbageProblems(p).map(g => g.why), thaiTimeExpressionProblems(p.thai).map(g => g.why), thaiNumberExpressionProblems(p.thai).map(g => g.why))
   if (comp.length) fail('COMPOSITION', comp[0]); else d.COMPOSITION = 'PASS'
   if (p.pairType === 'framing' || p.pairType === 'bridge') fail('PROVENANCE', 'a ' + p.pairType + ' line is not a target pair')
   else if (tid != null && p.targetId != null && p.targetId !== tid) fail('PROVENANCE', 'typed for target ' + p.targetId)
@@ -15731,7 +15785,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v668'
+const APP_BUILD_VERSION = 'v669'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -16134,6 +16188,24 @@ function thaiGlossWords(surface, vocab) {
   if (key && !m) { m = new Map(); key.forEach(w => { const th = w && (w.thai || w.t), e = w && (w.english || w.e); if (th && e) m.set(th, (m.get(th) || '') + ' / ' + e) }); _thaiGlossCache.set(key, m) }
   return _thaiGlossWordsOf(((m && m.get(surface)) || '') + ' / ' + (_thaiRawGloss.get(surface) || ''))
 }
+// v669 §4 — PRODUCTIVE HEADS: a target that heads a productive noun phrase is heard in it when the phrase's own gloss
+// belongs to the head's semantic field (สี in สีส้ม "orange", สีดำ "black"; ภาษา in ภาษาญี่ปุ่น). Never a bare substring:
+// the head must come FIRST and the phrase must be a dictionary unit whose gloss is in that field. The phrase's other
+// lexical content is still checked independently by CLOSED_VOCAB.
+const THAI_PRODUCTIVE_HEADS = {
+  'สี': /\b(colou?r|red|blue|green|yellow|black|white|orange|pink|purple|brown|gr[ae]y|gold(en)?|silver|navy|beige|cream)\b/i,
+  'ภาษา': /\b(language|thai|english|chinese|japanese|korean|french|german|spanish|lao|burmese|vietnamese)\b/i,
+  'วัน': /\b(day|monday|tuesday|wednesday|thursday|friday|saturday|sunday|weekend|holiday|birthday)\b/i,
+  'เดือน': /\b(month|january|february|march|april|may|june|july|august|september|october|november|december)\b/i,
+  'ร้าน': /\b(shop|store|restaurant|stall|cafe|café|pharmacy|bakery|bar|salon)\b/i,
+  'ห้อง': /\b(room|bathroom|toilet|kitchen|bedroom|office|classroom)\b/i,
+  'รถ': /\b(car|bus|train|vehicle|taxi|truck|van|bike|bicycle|motorcycle|motorbike|tuk)\b/i,
+}
+function thaiRawGlossOf(surface, vocab) {
+  const a = (vocab || []).filter(w => w && (w.thai || w.t) === surface).map(w => w.english || w.e || '')
+  const b = (typeof RAW_VOCAB !== 'undefined' ? RAW_VOCAB : []).filter(d => d && d.t === surface && !d.dup).map(d => d.e || '')
+  return a.concat(b).join(' / ')
+}
 function thaiTargetConceptPresent(target, sentence, vocab) {
   const s = String(sentence || '').replace(/\s+/g, ''), t = String((target && (target.thai || target.t || target.surface)) || target || '').replace(/\s+/g, '')
   if (!t) return { present: false, form: 'NO_TARGET', reason: 'no target surface' }
@@ -16148,6 +16220,7 @@ function thaiTargetConceptPresent(target, sentence, vocab) {
     if (tok === t || tok.length <= t.length || !tok.includes(t)) continue
     const cg = thaiGlossWords(tok, vocab)
     if (tg.size && cg.size && [...tg].some(w => cg.has(w))) return { present: true, form: 'COMPOUND_SENSE', token: tok }
+    if (tok.startsWith(t) && THAI_PRODUCTIVE_HEADS[t] && THAI_PRODUCTIVE_HEADS[t].test(thaiRawGlossOf(tok, vocab))) return { present: true, form: 'COMPOUND_PRODUCTIVE_HEAD', token: tok }
     if (tok.startsWith(t)) {
       const rest = tok.slice(t.length)
       // a rest that starts with a dependent vowel / tone mark is not a word boundary (ขา|ว, มี|ด)
@@ -16281,13 +16354,31 @@ function recoveryFailureMemoryLines(st) {
   L.push('  → use a DIFFERENT construction built only from the palette below')
   return L.join('\n') + '\n'
 }
+// v669 §5 — POLYSEMOUS targets: ONE intended sense per practice item, named explicitly (and the other sense named as
+// NOT this one), so generation, cue, translation and QC all practise the same meaning. Reviewed entries only; every
+// other target keeps its gloss + usage note.
+const THAI_SENSE_POLICY = {
+  'ศูนย์': { sense: 'zero — the number 0 (phone numbers ศูนย์แปด…, scores, temperatures)', not: 'the "centre" sense (ศูนย์การค้า) is a different meaning; never an implausible zero price', usage: 'use it where a 0 genuinely occurs: a phone number, a score, a temperature' },
+  'พอดี': { sense: 'just right / fits exactly (size, amount, timing)', not: 'the "happen to" use (พอดีเจอ) is a different meaning', usage: 'a size that fits, an amount that is exactly enough, arriving at just the right time' },
+  'พี่': { sense: 'older sibling, or a friendly way to address / refer to someone a little older', not: 'never a younger person', usage: 'between friends it addresses an older friend; the English must say which (brother / sister, or the person\'s role)' },
+  'สี': { sense: 'colour', not: 'not สี "to rub / to play (a string instrument)"', usage: 'colour expressions such as สีแดง / สีส้ม / สีดำ count — สี is the head of the colour word' },
+  'จ่าย': { sense: 'to pay (money)', not: '', usage: 'จ่าย is ordinary everyday spoken Thai (จ่ายเงิน, จ่ายเท่าไหร่, จ่ายแล้ว, ใครจ่าย) — it is not formal' },
+}
+// { targetGloss, targetSense, targetUsageNote, targetNotSense } — propagated through generation, repair and QC
+function thaiTargetSenseInfo(kw, vocab) {
+  const w = (vocab || []).find(v => v.id === (kw.wordId != null ? kw.wordId : kw.id)) || {}
+  const surface = kw.thai || w.thai || ''
+  const gloss = String(kw.english || w.english || '').trim()
+  const note = String(w.note || w.usage || '').trim()
+  const pol = THAI_SENSE_POLICY[surface]
+  return { targetId: w.id != null ? w.id : (kw.wordId != null ? kw.wordId : kw.id), target: surface, targetGloss: gloss,
+    targetSense: pol ? pol.sense : gloss, targetUsageNote: pol ? pol.usage : note.slice(0, 120), targetNotSense: pol ? pol.not : '' }
+}
 // v650 §2/§27 — the intended lexical sense of a Thai target (gloss + usage note), carried by
 // every generated / recovered pair so the naturalness judge can flag WRONG_SENSE.
 function thaiTargetSense(kw, vocab) {
-  const w = (vocab || []).find(v => v.id === (kw.wordId != null ? kw.wordId : kw.id)) || {}
-  const gloss = String(kw.english || w.english || '').trim()
-  const note = String(w.note || w.usage || '').trim()
-  return gloss + (note ? ' — ' + note.slice(0, 120) : '')
+  const i = thaiTargetSenseInfo(kw, vocab)
+  return i.targetSense + (i.targetUsageNote ? ' — ' + i.targetUsageNote : '') + (i.targetNotSense ? ' (NOT: ' + i.targetNotSense + ')' : '')
 }
 function _thaiFailCode(r) {
   const t = String(r || '')
@@ -16308,6 +16399,22 @@ function coherenceRepairPromptLines(cr) {
     (cr.sectionLines && cr.sectionLines.length ? 'The other lines of this part (English):\n' + cr.sectionLines.map(x => '  ' + x).join('\n') + '\n' : '') +
     (cr.replacing && cr.replacing.length ? 'These lines did NOT fit this part and are being replaced (do not reuse them): ' + cr.replacing.join(' / ') + '\n' : '') +
     'Every new sentence MUST belong to this part of the conversation (same situation, same people, no new topic).\n'
+}
+// v669 §9/§11 — which communicative uses the target's valid lines already cover (statement / question / negative …), so a
+// replacement fills a DIFFERENT use instead of producing a near-copy (ไม่ต้องจ่ายครับ → ไม่ต้องจ่ายเลยครับ)
+function thaiPracticeFunctionOf(p) {
+  const th = String(p && p.thai || '').trim(), en = String(p && p.english || '').trim()
+  if (THAI_Q_END_RE.test(th) || /[?？]\s*$/.test(en)) return 'question'
+  if (/(ไม่|ไม่ได้|ไม่ต้อง|อย่า)/.test(th)) return 'negative statement'
+  if (/(ช่วย|ขอ|กันเถอะ|ไหม|ดีกว่า|เถอะ)/.test(th)) return 'request / proposal'
+  return 'statement'
+}
+function thaiMissingFunctionLine(have) {
+  if (!have || !have.length) return ''
+  const used = [...new Set(have.map(thaiPracticeFunctionOf))]
+  const want = ['question', 'statement', 'request / proposal', 'negative statement'].filter(f => !used.includes(f))
+  return 'The existing lines already practise: ' + used.join(', ') + '. Write a DIFFERENT communicative use' + (want.length ? ' (preferably: ' + want.slice(0, 2).join(' or ') + ')' : '') +
+    ' — not a paraphrase of an existing line with a particle or ' + 'one word added.\n'
 }
 async function _thRecoverTargetPairs(kw, need, ctx) {
   const c = ctx || {}, log = c.onLog || null
@@ -16339,6 +16446,8 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     'TARGET WORD: "' + kw.thai + '" = ' + (kw.english || '') + '\n' + targetRoleLine(role, kw, 'th') +
     coherenceRepairPromptLines(c.coherenceRepair) +
     (have.length ? 'This word already has these lines — do NOT repeat or paraphrase them:\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai).join('\n') + '\n' : '') +
+    // v669 §5/§9/§11 — the missing SLOT is repaired: the intended sense, and a communicative use the existing lines do not cover yet
+    'INTENDED SENSE: ' + thaiTargetSense(kw, c.vocab) + '\n' + thaiMissingFunctionLine(have) +
     recoveryStrategyPromptLines(st, { supportWords }) + recoveryFailureMemoryLines(st) +
     'Write ' + ask + ' NEW natural spoken Thai sentences. EVERY sentence MUST contain "' + kw.thai + '" as a word, used in its normal meaning.\n' +
     'Alternate speakers A and B. ' + getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }).promptRule + ' Continuous Thai (no spaces between words), no English in the Thai field.\n' +
@@ -17054,6 +17163,7 @@ const LISTENING_ADAPTERS = {
       if (!want.some(x => String(p.thai || '').endsWith(x))) out.push('SPEAKER_FAILED: line must end with ' + want.join('/'))
       thaiTemplateGarbageProblems(p).forEach(g => out.push('QUALITY_REJECTED: ' + g.why))
       thaiTimeExpressionProblems(p.thai).forEach(g => out.push('QUALITY_REJECTED: ' + g.why))
+      thaiNumberExpressionProblems(p.thai).forEach(g => out.push('QUALITY_REJECTED: ' + g.why))   // v669 objective
       TRACK_ADAPTERS.th.hardProblems(p).forEach(h => out.push('MARKUP_FAILED: ' + h))
       return out
     },
@@ -17065,7 +17175,11 @@ const LISTENING_ADAPTERS = {
     },
     // v656 — the SAME Thai line validator as the Main Track final audit
     pronunciationProblems(p, ctx) { try { const lex = withThaiSceneNamePhonetics(buildThaiPhoneticLexicon(ctx.vocab), thaiSceneNameEntries(ctx.track, ctx.vocab)); return thaiPronunciationLineAudit(p, lex).problems } catch (e) { return [] } },
-    makeLine: (x, sp) => ({ speaker: sp, thai: normaliseThaiSpacing(String(x.text || '')), english: String(x.english || ''), prompt: '', language: 'th', speakerGender: thaiSpeakerMapGender(sp) }),
+    // v669 §6 — the speaker's own particle is restored locally (no paid call): a man's line ends with ครับ, a woman's with
+    // ค่ะ (statement) / คะ (question); softened endings (นะคะ, ล่ะคะ) are left alone
+    makeLine: (x, sp) => { const g = thaiSpeakerMapGender(sp), t0 = normaliseThaiSpacing(String(x.text || '')), en = String(x.english || '')
+      const t1 = thaiSpeakerParticleLocalRepair(t0, en, g)
+      return { speaker: sp, thai: t1.thai, english: en, prompt: '', language: 'th', speakerGender: g, ...(t1.changed ? { _localParticleRepair: t1.why } : {}) } },
   },
   ja: {
     lang: 'ja', label: 'Japanese',
@@ -17175,6 +17289,24 @@ const LISTENING_EDIT_SCHEMA = { type: 'OBJECT', properties: { edits: { type: 'AR
   turns: { type: 'ARRAY', nullable: true, items: { type: 'OBJECT', properties: { speaker: { type: 'STRING' }, text: { type: 'STRING' }, english: { type: 'STRING', nullable: true },
     reading: { type: 'STRING', nullable: true }, romaji: { type: 'STRING', nullable: true }, pinyin: { type: 'STRING', nullable: true },
     intendedTargetIds: { type: 'ARRAY', items: { type: 'INTEGER' }, nullable: true } }, required: ['speaker', 'text'] } } }, required: ['op', 'line'] } } }, required: ['edits'] }
+// v669 §12/§13 — the COMMUNICATIVE topic of a target. Most Thai bank entries carry the flexible domain "general
+// conversation", which made the planner load-balance them into scenes at random (คุณอายุเท่าไหร่ + ผัดไทย + สิบเอ็ดโมงเช้า
+// in "tidy the kitchen"). A concrete bank domain wins; otherwise the gloss decides; genuinely topic-neutral words
+// (คือ, หมายถึง, พยายาม, ไม่เชิง …) stay flexible and may join any scene.
+const LISTENING_GLOSS_TOPICS = [
+  ['identity & names', /\b(how old|age|years old|old \(people|name|phone number|you all|friend|family|brother|sister|mother|father|introduc)/],
+  ['plans & schedule', /\b(\d+\s*(am|pm)|o'clock|noon|midnight|what time|how long|appointment|schedule|meet up|in advance|minutes?|hours?)\b/],
+  ['food & cooking', /\b(eat|food|rice|noodle|pad thai|soup|curry|drink|coffee|tea|restaurant|delicious|spicy|sweet|sour|menu|dish|breakfast|lunch|dinner|hungry|cook|fruit|let's eat)\b/],
+  ['shopping & payment', /\b(price|cost|how much|baht|money|pay|buy|sell|card|receipt|discount|cheap|expensive|shop|store|change)\b/],
+  ['places & travel', /\b(tourist|taxi|bus|train|museum|temple|palace|sanam luang|airport|station|hotel|trip|travel|visit|way|road|go to|there|here|map|ticket|worth seeing|sightseeing|far|near|street)\b/],
+  ['home', /\b(keep|put away|clean|wash|room|kitchen|house|home|tidy)\b/],
+]
+function listeningTopicDomain(src, domain) {
+  if (domain && !LISTENING_FLEXIBLE_DOMAINS.has(domain) && domain !== 'parting & greetings') return domain
+  const eng = String(src.english || '').toLowerCase()
+  const hit = LISTENING_GLOSS_TOPICS.find(([, rx]) => rx.test(eng))
+  return hit ? hit[0] : domain || 'general conversation'
+}
 // the 30 selected targets (NEW + REVIEW) with role / domain for the allocation plan
 function listeningConversationTargets(mainTrack, vocab, lang) {
   const { selected, newIds } = listeningRequiredTargetIds(mainTrack)
@@ -17187,19 +17319,37 @@ function listeningConversationTargets(mainTrack, vocab, lang) {
     let role = 'CONTENT'
     try { role = listeningTargetRole(src, lang) } catch (e) {}
     const reading = lang === 'ja' ? [k.reading || w.reading, k.romaji || w.romaji].filter(Boolean).join(' / ') : lang === 'zh' ? (k.pinyin || w.pinyin || '') : (w.phonetic || k.phonetic || '')
-    return { id, surface, reading, gloss: String(src.english || '').split(/[;/]/)[0].trim(), role, domain: targetSemanticDomain(src), isNew: newIds.includes(id), unresolved: !!k.unresolved, word: w }
+    const bankDomain = targetSemanticDomain(src)
+    // v669 §5 — the intended sense travels with the Listening target too (Thai sense policy; gloss + usage elsewhere)
+    const senseInfo = lang === 'th' ? thaiTargetSenseInfo({ wordId: id, thai: surface, english: src.english }, vocab) : null
+    return { id, surface, reading, gloss: String(src.english || '').split(/[;/]/)[0].trim(), role, domain: listeningTopicDomain(src, bankDomain), bankDomain,
+      sense: senseInfo && senseInfo.targetSense !== senseInfo.targetGloss ? senseInfo.targetSense + (senseInfo.targetNotSense ? ' (NOT: ' + senseInfo.targetNotSense + ')' : '') : null,
+      isNew: newIds.includes(id), unresolved: !!k.unresolved, word: w }
   })
 }
 // v658 §11 — the conversational role of each target (deterministic, local): the shared roles plus TIME / PLACE /
 // ACTION / DESCRIPTION / NUMBER, so the allocation plan can suggest where a word naturally sits in a dialogue
 const LISTENING_TARGET_ROLES = ['CONTENT', 'QUESTION_WORD', 'RESPONSE_TOKEN', 'DISCOURSE_MARKER', 'TIME', 'PLACE', 'ACTION', 'DESCRIPTION', 'NUMBER', 'GREETING', 'PARTING', 'FUNCTIONAL_PHRASE', 'CONNECTOR']
+// v669 §15 — function-specific roles from the target's own gloss: a question phrase (คุณอายุเท่าไหร่ "how old are you?") can
+// only be asked; a qualified reply (ไม่เชิง "not exactly") can only answer; a wish (โชคดี "good luck") closes; a polite
+// opener (ไม่ทราบว่า "may I ask…?") starts a question. They are never "CONTENT" to be dropped anywhere.
+function listeningFunctionRole(src) {
+  const eng = String(src.english || '').toLowerCase().trim()
+  if (/\?\s*(\)|$)|\?…|…\?/.test(eng) || /^(how (old|long|much|many|far|is|are|was|do|did)|what time|what|where|when|why|who|which|may i ask|do you know)\b/.test(eng)) return 'QUESTION_WORD'
+  if (/^(not (exactly|really|quite)|no way|of course|sure|exactly|that's right|yes|no)\b/.test(eng)) return 'RESPONSE_TOKEN'
+  if (/^(good luck|take care|have a (good|nice)|see you|bye|goodbye|safe travels?|good night)\b/.test(eng)) return 'PARTING'
+  if (/^(oh no|wow|oh|really|great|nice|too bad)\b/.test(eng)) return 'DISCOURSE_MARKER'
+  return null
+}
 function listeningTargetRole(src, lang) {
   const base = targetConversationRole(src, lang)
+  const fr = listeningFunctionRole(src)
+  if (fr && (base === 'CONTENT' || base === 'FUNCTIONAL_PHRASE')) return fr
   if (base !== 'CONTENT') return base
   const eng = String(src.english || '').toLowerCase().trim(), g = eng.split(/[;,/(]/)[0].trim(), pos = String(src.partOfSpeech || src.pos || '').toLowerCase()
   const dom = targetSemanticDomain(src)
   if (dom === 'numbers & prices' && /\b(number|hundred|thousand|million|zero|one|two|three|four|five|six|seven|eight|nine|ten)\b/.test(g)) return 'NUMBER'
-  if (/\b(today|tomorrow|yesterday|now|later|soon|morning|evening|night|tonight|week|month|year|already|still|yet|again|next|last|early|late|monday|tuesday|wednesday|thursday|friday|saturday|sunday|o'clock|time)\b/.test(g)) return 'TIME'
+  if (/\b(today|tomorrow|yesterday|now|later|soon|morning|evening|night|tonight|week|month|year|already|still|yet|again|next|last|early|late|monday|tuesday|wednesday|thursday|friday|saturday|sunday|o'clock|time|noon|midnight)\b|\b\d+\s*(am|pm)\b/.test(g)) return 'TIME'
   if (/\b(here|there|over there|place|where|home|house|station|shop|store|restaurant|school|office|market|room|city)\b/.test(g) || dom === 'places & travel') return 'PLACE'
   if (/^to\s/.test(eng) || /verb/.test(pos) || /^(go|come|eat|drink|see|look|buy|sell|do|make|take|ride|get on|return|go home|meet|use|wait|know|understand|think|like|want|have|exist|be)\b/.test(g)) return 'ACTION'
   if (/adj/.test(pos) || /^(good|bad|big|small|hot|cold|delicious|expensive|cheap|fine|okay|busy|free|fun|easy|difficult|new|old|kind|tired|happy|pretty|beautiful)\b/.test(g)) return 'DESCRIPTION'
@@ -17380,6 +17530,36 @@ const LISTENING_SITUATION_NEEDS = {
   'colours & things': ['look for|find|search', 'colou?r|red|blue|white|black'],
   'identity & names': ['name'],
 }
+const LISTENING_SITUATION_TEXT_NEEDS = {
+  'A and B pick a place to go and how to get there': ['go', 'where|place|station|train|bus|car|walk|taxi|way'],
+  'A and B cook a simple meal at home: what to put in, short questions and answers': ['cook|cooking|make', 'eat|food|meal|rice|dish'],
+  'A and B pick a time and a place to meet': ['time|today|tomorrow|when|am|pm|o\'clock', 'meet|see|go'],
+  'A and B tidy the kitchen: short requests and replies': ['clean|wash|tidy|put|keep', 'kitchen|room|home'],
+  'A asks how much something is; B says the price; they agree': ['how much|price|cost|baht|money'],
+  'A and B meet and say who they are': [],
+  'A and B are at home and say where things are': ['home|house|room'],
+  'A looks for a thing; B asks what it looks like': ['look for|find|search'],
+}
+// v669 §13 — every planned scene states WHO is speaking, WHERE, WHY and WHAT they want to achieve
+// v669 §13 — WHO is talking, WHERE they are and WHY they are talking, per topic (WHAT = the objective below)
+const LISTENING_SCENE_SETTING = {
+  'food & cooking': { who: 'two friends', where: 'at a food stall or at home at mealtime', why: 'they are hungry and choosing food' },
+  'shopping & payment': { who: 'a customer (A) and a shop assistant (B)', where: 'at a shop counter', why: 'A wants to buy something' },
+  'numbers & prices': { who: 'a customer and a seller', where: 'at a market stall', why: 'they need to agree on a number' },
+  'big amounts': { who: 'two friends', where: 'talking about a big purchase', why: 'one of them is saving for something expensive' },
+  'places & travel': { who: 'two friends', where: 'on the street, planning an outing', why: 'they have free time and want to go somewhere' },
+  'plans & schedule': { who: 'two friends', where: 'on the phone', why: 'they want to meet up' },
+  'identity & names': { who: 'two people meeting for the first time', where: 'at a friend\'s party', why: 'they want to get to know each other' },
+  'home': { who: 'two flatmates', where: 'at home', why: 'something at home needs sorting out' },
+  'household actions': { who: 'two flatmates', where: 'in the kitchen at home', why: 'the housework needs doing' },
+  'colours & things': { who: 'two friends', where: 'looking at things in a shop', why: 'one of them is choosing something' },
+  _: { who: 'two friends', where: 'out together', why: 'they are catching up' },
+}
+const LISTENING_SCENE_OBJECTIVE = {
+  'food & cooking': 'decide what to eat and enjoy it', 'shopping & payment': 'buy something and settle the price', 'numbers & prices': 'agree on an amount',
+  'big amounts': 'compare what big things cost', 'places & travel': 'decide where to go and how to get there', 'plans & schedule': 'agree when and where to meet',
+  'identity & names': 'get to know each other', 'home': 'get something done at home', 'household actions': 'finish a household task together', 'colours & things': 'find the right thing',
+}
 const LISTENING_SITUATION_FALLBACKS = {
   'shopping & payment': [{ text: 'A and B buy something and talk about the price', needs: ['buy', 'price|cost|how much|expensive|cheap|money|yen|baht|yuan'] },
     { text: 'A and B look at things in a shop and say what they like', needs: ['like|good|nice'] }],
@@ -17412,9 +17592,12 @@ function _lnSituationCandidates(top, k, hardMax, friends) {
     return out
   }
   const needs = LISTENING_SITUATION_NEEDS[top] || []
+  const nd = t => LISTENING_SITUATION_TEXT_NEEDS[t] || needs
   if (friends && LISTENING_SITUATION_FRIENDS[top]) out.push({ text: LISTENING_SITUATION_FRIENDS[top], needs })
-  else if (hardMax && hardMax <= 6 && LISTENING_SITUATION_SIMPLE[top]) out.push({ text: LISTENING_SITUATION_SIMPLE[top], needs })
+  else if (hardMax && hardMax <= 6 && LISTENING_SITUATION_SIMPLE[top]) out.push({ text: LISTENING_SITUATION_SIMPLE[top], needs: nd(LISTENING_SITUATION_SIMPLE[top]) })
   else if (LISTENING_SITUATION[top]) out.push({ text: LISTENING_SITUATION[top], needs })
+  // the SIMPLE version is also a rung of the ladder below the full one
+  if (LISTENING_SITUATION_SIMPLE[top] && !out.some(x => x.text === LISTENING_SITUATION_SIMPLE[top])) out.push({ text: LISTENING_SITUATION_SIMPLE[top], needs: nd(LISTENING_SITUATION_SIMPLE[top]) })
   ;(LISTENING_SITUATION_FALLBACKS[top] || []).forEach(x => out.push({ ...x, text: friends ? x.text.replace(/^A and B /, 'A and B (friends) ') : x.text }))
   if (LOCAL_PREMISE_BY_DOMAIN[top] && LOCAL_PREMISE_BY_DOMAIN[top][0]) out.push({ text: LOCAL_PREMISE_BY_DOMAIN[top][0], needs: [] })
   out.push({ text: 'A and B talk about ' + top, needs: [] })
@@ -17447,8 +17630,16 @@ function validateIntentSkeleton(skeleton, cc) {
       else {
         if (first.speaker === t.speaker) problems.push('turn ' + t.turn + ' answers its own speaker')
         if (!(LISTENING_ADJACENCY[first.intent] || []).includes(t.intent)) problems.push(first.intent + ' (turn ' + first.turn + ') → ' + t.intent + ' (turn ' + t.turn + '): expected ' + (LISTENING_ADJACENCY[first.intent] || ['?']).join('/'))
+        // v669 §14 — SEMANTIC adjacency: the answer's planned content must fill the question's slot
+        if (first.intent === 'QUESTION' && first.slot && t.intent === 'ANSWER') (t.fillers || []).forEach((f, i) => {
+          if (!listeningSlotAccepts(first.slot, f)) problems.push('ANSWER(' + (_LN_SLOT_LABEL[first.slot] || first.slot) + ') (turn ' + t.turn + ') cannot be filled by ' + ((t.surfaces || [])[i] || 'its target') + ' (' + f.toLowerCase() + ')') })
       }
     } else if (!LISTENING_ADJACENCY[t.intent]) problems.push('turn ' + t.turn + ' (' + t.intent + ') answers nothing')
+    // v669 §15 — function roles: a question phrase is only ASKED; a reply word only ANSWERS / reacts
+    ;(t.roles || []).forEach((rl, i) => {
+      if (rl === 'QUESTION_WORD' && t.intent !== 'QUESTION') problems.push('turn ' + t.turn + ' (' + t.intent + ') carries the question phrase ' + ((t.surfaces || [])[i] || '') + ' — it can only be asked')
+      if (rl === 'RESPONSE_TOKEN' && t.respondsTo == null) problems.push('turn ' + t.turn + ' (' + t.intent + ') carries the reply word ' + ((t.surfaces || [])[i] || '') + ' — it can only answer')
+    })
     const est = (LISTENING_INTENT_UNITS[t.intent] || 2) + (t.targetIds || []).length
     if (cc && est > cc.hardMax) problems.push('turn ' + t.turn + ' cannot be said within hardMax ' + cc.hardMax + ' (estimated ' + est + ' units)')
   })
@@ -17460,21 +17651,24 @@ function _lnPlanSkeleton(sc, byId, cc) {
     ;(sc.exchanges || []).forEach((ex, k) => {
       const a = ex.turns[0], b = ex.turns[1]
       const ta = a.targetIds.map(id => byId.get(id)).filter(Boolean), tb = b.targetIds.map(id => byId.get(id)).filter(Boolean)
-      const first = safe ? 'QUESTION' : _lnFirstIntent(ta, tb, k, sc.purpose)
-      sk.push({ turn: 2 * k + 1, speaker: a.speaker, intent: first, targetIds: a.targetIds.slice() })
-      sk.push({ turn: 2 * k + 2, speaker: b.speaker, intent: LISTENING_SECOND_PART[first], respondsTo: 2 * k + 1, targetIds: b.targetIds.slice() })
+      const first = safe ? 'QUESTION' : (ex.kind && LISTENING_SECOND_PART[ex.kind] ? ex.kind : _lnFirstIntent(ta, tb, k, sc.purpose))
+      const slot = first === 'QUESTION' ? (ex.slot || (ta[0] ? _lnQuestionSlot(ta[0]) : 'YESNO')) : null
+      sk.push({ turn: 2 * k + 1, speaker: a.speaker, intent: first, slot, targetIds: a.targetIds.slice(), roles: ta.map(t => t.role), surfaces: ta.map(t => t.surface) })
+      sk.push({ turn: 2 * k + 2, speaker: b.speaker, intent: LISTENING_SECOND_PART[first], respondsTo: 2 * k + 1, slot, targetIds: b.targetIds.slice(),
+        roles: tb.map(t => t.role), surfaces: tb.map(t => t.surface), fillers: tb.map(_lnFillerType) })
     })
     return sk
   }
   let sk = build(false), check = validateIntentSkeleton(sk, cc)
   sc.skeletonReplanned = false
-  // a bad skeleton is never realised as text: re-plan it as plain question → answer exchanges
-  if (!check.valid) { sc.skeletonProblems = check.problems; sk = build(true); check = validateIntentSkeleton(sk, cc); sc.skeletonReplanned = true }
+  // a bad skeleton is never realised as text: re-plan the exchanges semantically, then (last resort) question → answer
+  if (!check.valid) { sc.skeletonProblems = check.problems; _lnPlanExchanges(sc, byId); sk = build(false); check = validateIntentSkeleton(sk, cc); sc.skeletonReplanned = true
+    if (!check.valid) { sk = build(true); sk.forEach(t => { if (t.intent === 'ANSWER') t.fillers = [] }); check = validateIntentSkeleton(sk, cc) } }
   sc.skeleton = sk; sc.skeletonCheck = check
   return sc
 }
 function _lnSkeletonText(sc, byId) {
-  return (sc.skeleton || []).map(t => t.turn + '. ' + t.speaker + ' ' + t.intent + (t.respondsTo ? ' (to ' + t.respondsTo + ')' : '') +
+  return (sc.skeleton || []).map(t => t.turn + '. ' + t.speaker + ' ' + t.intent + (t.slot ? '(' + (_LN_SLOT_LABEL[t.slot] || t.slot) + ')' : '') + (t.respondsTo ? ' (to ' + t.respondsTo + ')' : '') +
     (t.targetIds.length ? ' — uses ' + t.targetIds.map(id => (byId.get(id) || {}).surface).join('+') : '')).join(' · ')
 }
 // §37 — deterministic response-type check of a written scene against its skeleton's adjacency rules
@@ -17504,6 +17698,8 @@ function skeletonAdjacencyIssues(turns, sc) {
 // invalid → the SAME scene again: same targets, premise, skeleton and palette, stronger constraints).
 const LISTENING_REPAIR_CALL_TARGET = 10       // v668 §50: health telemetry target, never a gate
 const LISTENING_REASSIGN_CALLS = 4            // v668: paid placement calls for reassigned targets, per track
+const LISTENING_SALVAGE_CALLS = 3             // v669: bounded salvage of an escalated / re-planned candidate — 3 independent batches cover
+                                              // every line of a scene (context lines may not overlap), so salvage can finish before commit
 const LISTENING_PREFLIGHT = { CLOSED_VOCAB_LINES: 3, HARD_FAILURES: 3, MALFORMED_LINES: 2, MALFORMED_RATE: 0.25 }
 function validateScenePreflight(env, cand, sp, o) {
   const { la, targets, ctx, byId } = env
@@ -17513,17 +17709,21 @@ function validateScenePreflight(env, cand, sp, o) {
   const lines = c => new Set(aud.issues.filter(x => (c instanceof RegExp ? c.test(x.code) : x.code === c) && x.line > 0).map(x => x.line))
   const cv = lines('CLOSED_VOCAB'), tok = lines('TOKENIZATION_ERROR'), len = lines('TOO_COMPLEX'), m3 = lines('MAX_TARGETS_PER_TURN'), merged = lines('MERGED_SPEAKERS')
   const dup = lines(/DUPLICATE/)
+  const qual = lines(/^(SPEAKER_IDENTITY|LINE_QUALITY)$/)   // v669 §6
   const prevTexts = new Set((opt.accepted || []).flatMap(s => s.turns.map(tn => _lnNorm(la.text(tn.pair)))).filter(Boolean))
   cand.turns.forEach((tn, k) => { const nt = _lnNorm(la.text(tn.pair)); if (nt && prevTexts.has(nt) && !tn.intentionalRepetition) dup.add(k + 1) })
   const speakers = new Set(cand.turns.map(t => t.speaker))
   const oneSpeaker = cand.turns.length >= 2 && speakers.size < 2
   const det = cand.turns.length > 1 ? listeningCoherenceCheck(cand.turns.map((tn, i) => ({ idx: i, pair: tn.pair, speaker: tn.speaker }))) : { score: 5, reason: '' }
   const adj = skeletonAdjacencyIssues(cand.turns, sp)
+  // v669 §20: a deterministic coherence break that names its line (implausible price, time jumping back …) is a
+  // LINE defect — the atomic repair targets that line and a re-plan moves the targets it carries
+  const coh = new Set(det.score <= 2 && det.brokenAtPair != null && cand.turns[det.brokenAtPair] ? [det.brokenAtPair + 1] : [])
   const reg = (aud.registerAudit || [])[0]
   const regOff = reg && reg.verdict === 'FAIL' ? reg.offLines.length : 0, regMajor = !!(reg && reg.mismatch)
   const overBudget = !!(opt.allowedMax && cand.turns.length > opt.allowedMax)
-  const counts = { coverage: cov.missing.length, closedVocab: cv.size, tokenization: tok.size, length: len.size, max3: m3.size, duplicates: dup.size, merged: merged.size,
-    register: regOff, structure: (oneSpeaker ? 1 : 0) + (det.score <= 2 ? 1 : 0), adjacency: adj.length }
+  const counts = { coverage: cov.missing.length, closedVocab: cv.size, tokenization: tok.size, length: len.size, max3: m3.size, duplicates: dup.size, merged: merged.size, quality: qual.size,
+    register: regOff, structure: (oneSpeaker ? 1 : 0) + (det.score <= 2 ? 1 : 0), adjacency: adj.length, budget: overBudget ? 1 : 0 }
   const totalHard = Object.values(counts).reduce((a, b) => a + b, 0)
   const reasons = []
   if (!cand.turns.length) reasons.push('EMPTY candidate')
@@ -17533,18 +17733,22 @@ function validateScenePreflight(env, cand, sp, o) {
   if (regMajor) reasons.push('REGISTER scene in the wrong register (' + (reg.reason || '') + ')')
   if (overBudget) reasons.push('TURN_BUDGET ' + cand.turns.length + ' > ' + opt.allowedMax)
   if (sp.skeletonCheck && !sp.skeletonCheck.valid) reasons.push('SKELETON_INVALID')
-  if (!reasons.length && totalHard >= LISTENING_PREFLIGHT.HARD_FAILURES) reasons.push('HARD_FAILURES ' + totalHard + ' (' + Object.entries(counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ') + ')')
+  // v669: "fundamentally invalid" counts DEFECTIVE UNITS (distinct lines + missing targets + line-less structure faults) —
+  // one merged 4-target line that is also a max3 and a speaker fault is ONE isolated defect to repair, not three
+  const defLines = new Set([cv, tok, len, m3, merged, dup, qual, coh].flatMap(x => [...x]).concat(adj.map(x => x.line), reg && reg.verdict === 'FAIL' ? reg.offLines : []))
+  const defectUnits = defLines.size + cov.missing.length + (oneSpeaker ? 1 : 0) + (det.score <= 2 && !coh.size ? 1 : 0)
+  if (!reasons.length && defectUnits >= LISTENING_PREFLIGHT.HARD_FAILURES) reasons.push('HARD_FAILURES ' + totalHard + ' in ' + defectUnits + ' defective unit(s) (' + Object.entries(counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ') + ')')
   const fundamental = reasons.length > 0
   const decision = !fundamental && totalHard === 0 ? 'COMMIT' : fundamental ? 'REGENERATE' : 'REPAIR'
   const unknownWords = [...new Set(aud.issues.filter(x => x.code === 'CLOSED_VOCAB' || x.code === 'TOKENIZATION_ERROR').map(x => String(x.detail || '').replace(/^.*?:\s*(unknown words|unparseable fragments):\s*/, '')).join(' ').split(/\s+/).filter(Boolean))]
-  return { decision, fundamental, reasons, counts, totalHard, coverage: cov, audit: aud, lines: { cv, tok, len, m3, merged, dup }, adjacency: adj, detScore: det.score, detReason: det.reason,
+  return { decision, fundamental, reasons, counts, totalHard, coverage: cov, audit: aud, lines: { cv, tok, len, m3, merged, dup, qual, coh }, adjacency: adj, detScore: det.score, detReason: det.reason,
     register: reg ? reg.verdict : 'n/a', regMajor, overBudget, unknownWords }
 }
 function scenePreflightLog(sp, p, label) {
   const f = (n, ok) => ok ? 'PASS' : 'FAIL(' + n + ')'
   return 'SCENE_PREFLIGHT ' + sp.sceneId + ' coverage=' + (p.counts.coverage ? 'FAIL(missing ' + p.counts.coverage + ')' : 'PASS') + ' closedVocab=' + f(p.counts.closedVocab + p.counts.tokenization + ' lines', !p.counts.closedVocab && !p.counts.tokenization) +
     ' length=' + f(p.counts.length, !p.counts.length) + ' max3=' + f(p.counts.max3, !p.counts.max3) + ' register=' + (p.register === 'n/a' ? 'n/a' : p.register === 'FAIL' ? 'FAIL(' + p.counts.register + ')' : 'PASS') +
-    ' structure=' + f(p.counts.structure + p.counts.merged + p.counts.adjacency, !p.counts.structure && !p.counts.merged && !p.counts.adjacency) + ' duplicates=' + f(p.counts.duplicates, !p.counts.duplicates) +
+    ' structure=' + f(p.counts.structure + p.counts.merged + p.counts.adjacency, !p.counts.structure && !p.counts.merged && !p.counts.adjacency) + ' duplicates=' + f(p.counts.duplicates, !p.counts.duplicates) + (p.counts.quality ? ' speaker/lineQuality=FAIL(' + p.counts.quality + ')' : '') + (p.detScore <= 2 ? ' coherence="' + String(p.detReason || '').slice(0, 140) + '"' : '') +
     ' decision=' + p.decision + (p.decision !== 'COMMIT' ? ' reason=' + (p.reasons.join('; ') || Object.entries(p.counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ')) : '') +
     (p.unknownWords.length ? ' unknown=[' + p.unknownWords.slice(0, 8).join(', ') + ']' : '') + (label ? ' (' + label + ')' : '')
 }
@@ -17590,16 +17794,71 @@ const LISTENING_SCENE_EDIT_SCHEMA = { type: 'OBJECT', properties: { sceneId: { t
 function _lnSeedHash(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) } return h >>> 0 }
 // exchanges inside one scene: A speaks (question word / content), B replies (response token / content) — one current
 // target per planned turn, so no planned turn can ever exceed the 3-per-turn limit
+// v669 §13/§14 — SEMANTIC exchanges. A question target is paired with an answer target that can actually FILL its slot
+// (กี่โมง ↔ สิบเอ็ดโมงเช้า, how old ↔ an age); a reply word (ไม่เชิง, yes/no) answers a yes/no question; a wish closes;
+// anything else is a statement with a reaction. A question with no fitting filler gets a FREE answer, and the unpaired
+// target gets its own exchange — never "B answers the age question with pad thai".
+function _lnQuestionSlot(t) {
+  const g = (String(t.gloss || '') + ' ' + String((t.word && t.word.english) || '')).toLowerCase()
+  if (/how old|\bage\b/.test(g)) return 'AGE'
+  if (/how long/.test(g)) return 'DURATION'
+  if (/how much|how many|price|cost/.test(g)) return 'AMOUNT'
+  if (/what time|\bwhen\b/.test(g)) return 'TIME'
+  if (/\bwhere\b/.test(g)) return 'PLACE'
+  if (/\bwho\b/.test(g)) return 'PERSON'
+  if (/\bwhy\b/.test(g)) return 'REASON'
+  if (/\bhow\b/.test(g)) return 'STATE'
+  if (/\b(what|which)\b/.test(g)) return 'THING'
+  return 'YESNO'
+}
+function _lnFillerType(t) {
+  const g = String(t.gloss || '').toLowerCase()
+  if (t.role === 'RESPONSE_TOKEN') return 'YESNO'
+  if (t.role === 'TIME' || /\b\d+\s*(am|pm)\b|o'clock|today|tomorrow|tonight|morning|evening|noon/.test(g)) return 'TIME'
+  if (/years? old/.test(g)) return 'AGE'
+  if (/\b(minutes?|hours?)\b/.test(g)) return 'DURATION'
+  if (t.role === 'NUMBER' || /\b(baht|price|money|cost)\b/.test(g)) return 'AMOUNT'
+  if (t.role === 'PLACE') return 'PLACE'
+  if (t.role === 'ACTION') return 'ACTION'
+  if (t.role === 'DESCRIPTION' || /\b(good|bad|fun|funny|delicious|worth|nice|great|hot|cold|expensive|cheap|easy|difficult|old|tired|busy)\b/.test(g)) return 'STATE'
+  if (/\b(you all|friend|brother|sister|mother|father|people|person|tourist)\b/.test(g)) return 'PERSON'
+  return 'THING'
+}
+const LISTENING_SLOT_FILLERS = { AGE: ['AGE', 'AMOUNT'], DURATION: ['DURATION'], AMOUNT: ['AMOUNT'], TIME: ['TIME'], PLACE: ['PLACE'], PERSON: ['PERSON'],
+  REASON: ['STATE', 'ACTION', 'THING'], STATE: ['STATE'], THING: ['THING', 'PLACE', 'PERSON', 'ACTION'], YESNO: ['YESNO', 'ACTION', 'STATE'] }
+function listeningSlotAccepts(slot, filler) { return (LISTENING_SLOT_FILLERS[slot] || []).includes(filler) }
+const _LN_SLOT_LABEL = { AGE: 'age', DURATION: 'how long', AMOUNT: 'amount', TIME: 'time', PLACE: 'place', PERSON: 'person', REASON: 'reason', STATE: 'how it is', THING: 'what', YESNO: 'yes/no' }
 function _lnPlanExchanges(sc, byId) {
   const ts = sc.requiredTargetIds.map(id => byId.get(id)).filter(Boolean)
-  const q = ts.filter(t => t.role === 'QUESTION_WORD'), r = ts.filter(t => t.role === 'RESPONSE_TOKEN'), rest = ts.filter(t => !q.includes(t) && !r.includes(t))
+  const greet = ts.filter(t => t.role === 'GREETING'), part = ts.filter(t => t.role === 'PARTING')
+  const q = ts.filter(t => t.role === 'QUESTION_WORD'), r = ts.filter(t => t.role === 'RESPONSE_TOKEN')
+  const dm = ts.filter(t => t.role === 'DISCOURSE_MARKER')
+  let rest = ts.filter(t => ![greet, part, q, r, dm].some(g => g.includes(t)))
   const ex = []
-  while (q.length || r.length || rest.length) {
-    const a = q.length ? q.shift() : rest.shift() || null
-    const b = r.length ? r.shift() : rest.length ? rest.shift() : q.shift() || null
-    if (!a && !b) break
-    ex.push({ exchangeIndex: ex.length + 1, turns: [{ speaker: 'A', targetIds: a ? [a.id] : [] }, { speaker: 'B', targetIds: b ? [b.id] : [] }] })
+  const push = (kind, slot, a, b, first) => ex.push({ exchangeIndex: ex.length + 1, kind, slot: slot || null,
+    turns: [{ speaker: first || 'A', targetIds: a ? [a.id] : [] }, { speaker: first === 'B' ? 'A' : 'B', targetIds: b ? [b.id] : [] }] })
+  if (greet.length) push('GREETING', null, greet[0], greet[1] || null)
+  greet.slice(2).forEach(g => push('GREETING', null, g, null))
+  q.forEach(qt => {
+    const slot = _lnQuestionSlot(qt)
+    // the best filler: a target whose type fills this slot (a time for "what time", an age for "how old")
+    let k = rest.findIndex(t => _lnFillerType(t) === slot)
+    if (k < 0) k = rest.findIndex(t => listeningSlotAccepts(slot, _lnFillerType(t)))
+    let b = k >= 0 ? rest.splice(k, 1)[0] : null
+    if (!b && slot === 'YESNO' && r.length) b = r.shift()
+    push('QUESTION', slot, qt, b)
+  })
+  // a reply word answers a yes/no question; a free-standing target can carry that question
+  r.forEach(rt => { const k = rest.findIndex(t => t.role !== 'QUESTION_WORD'); const a = k >= 0 ? rest.splice(k, 1)[0] : null; push('QUESTION', 'YESNO', a, rt) })
+  // statements with a reaction (a discourse marker such as "oh no!" is a natural reaction)
+  while (rest.length) {
+    const a = rest.shift()
+    const b = dm.length ? dm.shift() : rest.length ? rest.shift() : null
+    push(a.role === 'ACTION' && /plan|meet|go|trip|decide|arrange|eat/i.test(String(sc.purpose || '')) ? 'PROPOSAL' : a.role === 'FUNCTIONAL_PHRASE' ? 'REQUEST' : 'STATEMENT', null, a, b)
   }
+  dm.forEach(d => push('STATEMENT', null, null, d))
+  if (part.length) push('FAREWELL', null, part[0], part[1] || null)
+  part.slice(2).forEach(p => push('FAREWELL', null, p, null))
   sc.exchanges = ex
   sc.expectedTurns = Math.max(4, 2 * ex.length + 1)
   return sc
@@ -17621,6 +17880,10 @@ function _lnScenePurpose(sc, byId, k, n, hardMax, friends, glosses) {
     chosen = chosen || cands[cands.length - 1]
   }
   sc.feasibility = { checked: Array.isArray(glosses), situation: chosen.text, needs: chosen.needs || [], rejected }
+  // v669 §13 — WHO / WHERE / WHY / WHAT (objective) of the scene, planned before targets are realised as text
+  const set0 = LISTENING_SCENE_SETTING[top[0]] || LISTENING_SCENE_SETTING._
+  sc.intent = { who: friends ? 'two friends' : set0.who, where: set0.where, why: set0.why,
+    what: top[0] ? (LISTENING_SCENE_OBJECTIVE[top[0]] || 'talk about ' + top[0]) : 'have a short everyday chat', situation: chosen.text.replace(/^They meet and say hello; then /, '') }
   let situation = chosen.text
   if (top[1] && !rejected.length) situation += ' (it also involves ' + String(SCENE_DOMAIN_PURPOSE[top[1]] || top[1]).toLowerCase() + ')'
   return (k === 0 ? 'They meet and say hello; then ' + situation.charAt(0).toLowerCase() + situation.slice(1) : situation) + (k === n - 1 ? '; then they wrap up and say goodbye' : '')
@@ -17636,6 +17899,11 @@ const LISTENING_FLEXIBLE_DOMAINS = new Set(['general conversation', 'discourse &
 const LISTENING_SCENE_COMPATIBLE = SCENE_COMPATIBLE_DOMAINS.concat([
   ['big amounts', 'shopping & payment', 'home', 'numbers & prices'],
   ['big amounts', 'places & travel', 'plans & schedule'],
+  // v669 §13 — situations that genuinely combine these topics
+  ['food & cooking', 'plans & schedule'],                       // two friends arranging lunch at eleven
+  ['identity & names', 'plans & schedule'],                     // meeting someone and swapping phone numbers to meet again
+  ['food & cooking', 'places & travel'],                        // tourists choosing where to eat
+  ['places & travel', 'plans & schedule', 'identity & names'],  // meeting a fellow traveller
 ])
 function _lnScenePlausible(domains) {
   const concrete = [...new Set(domains.filter(d => !LISTENING_FLEXIBLE_DOMAINS.has(d)))]
@@ -17691,7 +17959,7 @@ function planListeningCoverage(targets, o) {
   const rank = x => _lnSeedHash(seed + '|' + x)
   const openers = targets.filter(t => t.role === 'GREETING'), closers = targets.filter(t => t.role === 'PARTING')
   // question words, response words and discourse markers pair with content, so they are spread over the scenes
-  const floaters = targets.filter(t => t.role === 'RESPONSE_TOKEN' || t.role === 'DISCOURSE_MARKER' || t.role === 'QUESTION_WORD' ||
+  const floaters = targets.filter(t => t.role === 'RESPONSE_TOKEN' || t.role === 'DISCOURSE_MARKER' || (t.role === 'QUESTION_WORD' && LISTENING_FLEXIBLE_DOMAINS.has(t.domain || 'general conversation')) ||
     (t.role !== 'GREETING' && t.role !== 'PARTING' && t.role !== 'NUMBER' && LISTENING_FLEXIBLE_DOMAINS.has(t.domain || 'general conversation')))
   const core = targets.filter(t => !openers.includes(t) && !closers.includes(t) && !floaters.includes(t))
   if (nScenes) { openers.forEach(t => put(scenes[0], t)); closers.forEach(t => put(scenes[nScenes - 1], t)) }
@@ -17767,15 +18035,21 @@ async function _lnGenerateScene(env, sp, info) {
     'SPEAKERS: ' + ((sc0.characters || []).map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') || 'A and B, friends') + ' · ' + la.speakerContract + '\n' +
     'REGISTER: ' + (lessonCtx.register || 'natural spoken') + (lessonCtx.politeness ? ' · ' + lessonCtx.politeness : '') + '\n' +
     'THIS SCENE: ' + sp.purpose + '\n' +
+    // v669 §13 — the scene's communicative intent comes first; the targets serve it
+    (sp.intent ? 'SCENE INTENT: WHO ' + sp.intent.who + ' · WHERE ' + sp.intent.where + (sp.intent.situation ? ' · SITUATION ' + sp.intent.situation : '') + ' · WHY they talk: ' + sp.intent.why + ' · WHAT they want to achieve: ' + sp.intent.what + '. Every turn moves this goal on; a target that does not fit the goal is used in a short natural aside, never a random topic jump.\n' : '') +
     (sp.relationship ? 'SCENE RELATIONSHIP: ' + sp.relationship + ' · EXPECTED REGISTER: ' + sp.registerExpectation + ' (track speech style ' + japaneseSpeechStyleName(env.ctx.jaStyle).toUpperCase() + ')\n' : '') +
     'CONTEXT SO FAR: ' + (info.context || 'this is the opening scene — start with a natural greeting') + '\n' +
+    // v669 §22/§23 — Listening is ONE conversation, not 30 drills: a short natural move into this situation (no filler),
+    // a local objective and a plausible RESOLUTION before the scene ends
+    'SCENE SHAPE: ' + (info.context ? 'move into this situation with at most ONE short natural line (no filler, no narration); ' : '') +
+      'the exchanges pursue the scene goal; the scene ENDS with that goal resolved (they decide, agree, pay, or say goodbye). Lesson words are heard inside real talk — never a list of sentences about each word.\n' +
     // v668 §11/§12 — CLOSED WORLD, in priority order; naturalness never overrides the vocabulary
     'CLOSED WORLD — PRIORITY ORDER: 1. use ONLY the vocabulary listed here · 2. use every required target · 3. correct grammar · 4. the learner level · 5. be natural WITHIN those limits. Naturalness never justifies a word that is not listed.\n' +
     'THIS SCENE MUST USE ALL OF THESE ' + req.length + ' REQUIRED TARGET WORDS (id | word [reading] | meaning | role) — every one must appear in the actual text of a turn:\n' + req.map(tRow).join('\n') + '\n' +
     scenePaletteBlock(pal) + '\n' +
     'You may use ONLY: 1. the required target words · 2. the allowed support vocabulary · 3. the grammar / function words. Do NOT introduce any other lexical content (no other noun, verb, adjective, adverb, interjection or name). If an idea cannot be said with these words, SIMPLIFY THE IDEA — never improvise a new word.\n' +
     // v668 §13/§14 — the intent skeleton (validated before this call) fixes the adjacency: questions are answered
-    'INTENT SKELETON (follow it in order; each second turn answers the turn before it; at most one extra short reaction per exchange): ' + _lnSkeletonText(sp, byId) + '\n' +
+    'INTENT SKELETON (follow it in order; each second turn answers the turn before it — an ANSWER(time) gives the time, an ANSWER(age) gives the age, ACCEPT agrees with that proposal; at most one extra short reaction per exchange): ' + _lnSkeletonText(sp, byId) + '\n' +
     'PLAN: ' + sp.exchanges.map(ex => 'exchange ' + ex.exchangeIndex + ': ' + ex.turns.map(tu => tu.speaker + (tu.targetIds.length ? ' uses ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).join('+') : ' replies')).join(', then ')).join(' · ') + '\n' +
     'ROLE GUIDE: ' + [...new Set(req.map(t => t.role))].map(r => r + ' = ' + (LISTENING_ROLE_HINT[r] || 'fits naturally')).join(' · ') + '\n' +
     'LENGTH: ' + sp.expectedTurns + '–' + info.allowedMax + ' turns. HARD MAXIMUM ' + info.allowedMax + ' turns.' + (info.budgetNote ? ' ' + info.budgetNote : '') + '\n' +
@@ -17961,6 +18235,7 @@ async function _lnAtomicCall(env, flat, units) {
       ctxRows.join('\n') + '\n  PROBLEM: ' + u.problems.join(' · ') + '\n' +
       (u.unknownWords && u.unknownWords.length ? '  (the marked line uses words outside the palette — rewrite it with the palette words only)\n' : '') +
       (u.place ? '  MUST NOW ALSO CONTAIN the lesson word ' + u.place.surface + ' (' + u.place.gloss + ')\n' : '') +
+      (u.exchange ? '  COORDINATED EXCHANGE: rewrite BOTH marked lines together — the first is a question (keep its speaker and its intended meaning), the second must ANSWER exactly that question (the information it asks for), then it may add one short follow-up. The protected words may move between the two lines.\n' : '') +
       (env.ctx && env.ctx.jaStyle ? (pl => '  TRACK SPEECH STYLE: ' + japaneseSpeechStyleName(env.ctx.jaStyle).toUpperCase() + ' · SCENE RELATIONSHIP: ' + ((pl && pl.relationship) || 'adult friends') +
         ' · EXPECTED REGISTER: ' + japaneseRegisterExpectation(env.ctx.jaStyle, pl && pl.relationship).label + ' — keep it\n')(env.scenePlanById && env.scenePlanById.get(u.sceneId)) : '') +
       '  PROTECTED lesson words (must stay in the new text): ' + (u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') || '(none)') + '\n' +
@@ -17993,7 +18268,10 @@ function _lnValidatePatch(env, flat, u, newByLine) {
   const after = u.scope.map(n => _lnLineState(env, newByLine.get(n) ? newByLine.get(n).pair : flat[n - 1].tn.pair, others(n)))
   const sum = (arr, k) => arr.reduce((a, s) => a + s[k], 0)
   const heardAfter = new Set(after.flatMap(s => s.ids))
-  const lost = u.protectedIds.filter(id => !heardAfter.has(id))
+  // v669 §20 — a protected target may move or be dropped from these lines when it is still heard elsewhere in the same
+  // conversation scope (coverage, not the exact original placement, is what must be preserved)
+  const heardElsewhere = new Set(flat.filter(f => !u.scope.includes(f.n)).flatMap(f => _lnLineState(env, f.tn.pair).ids))
+  const lost = u.protectedIds.filter(id => !heardAfter.has(id) && !heardElsewhere.has(id))
   if (lost.length) return { ok: false, reason: 'PROTECTED_TARGET_LOST: ' + lost.map(id => (env.byId.get(id) || {}).surface).join(', ') }
   if (u.place && !heardAfter.has(u.place.id)) return { ok: false, reason: 'TARGET_NOT_PLACED: ' + u.place.surface }
   if (after.every((s, i) => s.text === before[i].text)) return { ok: false, reason: 'NO_CHANGE' }
@@ -18026,6 +18304,12 @@ function _lnValidatePatch(env, flat, u, newByLine) {
     const adjBefore = skeletonAdjacencyIssues(sc.turns, plan), adjAfter = skeletonAdjacencyIssues(turns, plan)
     if (u.codes.includes('ADJACENCY') && adjAfter.some(x => u.scope.includes(lineOf(x.line)) || lineOf(x.line) === u.line)) why.push('NOT_IMPROVED: ADJACENCY — still an unrelated question after a question')
     else if (adjAfter.length > adjBefore.length) why.push('ADJACENCY_REGRESSION: the new text puts an unrelated question after a question')
+    // v669 §21 — the deterministic scene coherence (implausible price, time running backwards …) is re-checked: a repair of
+    // that line must remove the break, and no patch may introduce one
+    const dc = ts => ts.length > 1 ? listeningCoherenceCheck(ts.map((tn, i) => ({ idx: i, pair: tn.pair, speaker: tn.speaker }))) : { score: 5 }
+    const cB = dc(sc.turns), cA = dc(turns)
+    if (cA.score <= 2 && (cB.score > 2 || (u.codes.includes('COHERENCE_LINE') && cA.brokenAtPair != null && u.scope.includes(lineOf(cA.brokenAtPair + 1)))))
+      why.push((cB.score > 2 ? 'COHERENCE_REGRESSION: ' : 'NOT_IMPROVED: COHERENCE_LINE — ') + cA.reason)
   }
   if (why.length) return { ok: false, reason: why.join(' + ') }
   const cats = ['max3', 'vocab', 'len', 'qual', 'merged', 'dup']
@@ -18083,6 +18367,9 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
       const base = LISTENING_ATOMIC_BASE_LEVEL[u.codes.find(c => LISTENING_ATOMIC_BASE_LEVEL[c])] || 1
       u.level = Math.min(3, base + u.tried)
       if (u.place) { u.scope = _lnUnitScope(flat, u.line, 2) } else u.scope = _lnUnitScope(flat, u.line, u.level)
+      // v669 §19 — QUESTION → UNRELATED REPLY: the repair unit is the exchange itself (the question AND its reply)
+      if ((u.codes.includes('ADJACENCY') || (u.codes.includes('COHERENCE_LINE') && /question/i.test(u.problems.join(' ')))) && flat[u.line - 2] && flat[u.line - 2].sc === flat[u.line - 1].sc &&
+          flat[u.line - 2].tn.speaker !== flat[u.line - 1].tn.speaker) { u.scope = [u.line - 1, u.line]; u.exchange = true }
       const span = [u.scope[0] - 1, ...u.scope, u.scope[u.scope.length - 1] + 1]
       if (span.some(k => used.has(k))) continue
       span.forEach(k => used.add(k))
@@ -18247,6 +18534,7 @@ async function _lnComposeByScenes(env) {
     log && log('🎨 ' + scenePaletteLog(pal)) })
   const accepted = [], report = [], reassignedOnce = new Set(), unplaceable = new Set()
   env.reassignBudget = { calls: 0, max: LISTENING_REASSIGN_CALLS }
+  env.uncommitted = []
   let usedTurns = 0, budgetExceeded = false
   const emit = (stage, qi, extraEv) => {
     const aud = accepted.length ? listeningConversationAudit(accepted, targets, la, ctx) : null
@@ -18256,7 +18544,9 @@ async function _lnComposeByScenes(env) {
   // v665 §19–§21/§33 → v668 §17–§26: every scene is a TRANSACTION. The candidate is checked by the deterministic
   // preflight (coverage, closed vocab, tokenisation, length, max3, duplicates, structure, register) BEFORE it can
   // become canonical: COMMIT · REPAIR (isolated residual defects, positive palette) · REGENERATE (fundamentally invalid)
-  const LOCAL_GATE_CODES = ['MAX_TARGETS_PER_TURN', 'TOO_COMPLEX', 'CLOSED_VOCAB', 'TOKENIZATION_ERROR', 'REGISTER', 'EXACT_DUPLICATE', 'NEAR_DUPLICATE', 'MERGED_SPEAKERS']
+  // v669 §6: a clear speaker/line-quality failure (male ending on a female speaker…) is a preflight defect too —
+  // it is repaired BEFORE the scene commits, never committed and left for the final gate
+  const LOCAL_GATE_CODES = ['MAX_TARGETS_PER_TURN', 'TOO_COMPLEX', 'CLOSED_VOCAB', 'TOKENIZATION_ERROR', 'REGISTER', 'EXACT_DUPLICATE', 'NEAR_DUPLICATE', 'MERGED_SPEAKERS', 'SPEAKER_IDENTITY', 'LINE_QUALITY']
   // whole-conversation line offset of a scene (accepted scenes first; the scene being written comes next)
   const offsetOf = sc => { let n = 0; for (const a of accepted) { if (a === sc) return n; n += a.turns.length } return n }
   // duplicates of an ALREADY COMMITTED line are a preflight defect of the candidate (§38)
@@ -18264,6 +18554,8 @@ async function _lnComposeByScenes(env) {
     return sc.turns.map((tn, k) => ({ k, nt: _lnNorm(la.text(tn.pair)) })).filter(x => x.nt && prevT.has(x.nt)).map(x => ({ code: 'EXACT_DUPLICATE', line: x.k + 1, detail: 'repeats a line of an earlier scene' })) }
   const localHard = sc => listeningConversationAudit([sc], targets, la, ctx).issues.filter(x => LOCAL_GATE_CODES.includes(x.code)).concat(crossDup(sc))
     .concat(skeletonAdjacencyIssues(sc.turns, env.scenePlanById.get(sc.sceneId)).map(x => ({ code: 'ADJACENCY', line: x.line, detail: x.detail + ' — rewrite this reply so it answers the question before it' })))
+    .concat((() => { const d = sc.turns.length > 1 ? listeningCoherenceCheck(sc.turns.map((tn, i) => ({ idx: i, pair: tn.pair, speaker: tn.speaker }))) : null
+      return d && d.score <= 2 && d.brokenAtPair != null && sc.turns[d.brokenAtPair] ? [{ code: 'COHERENCE_LINE', line: d.brokenAtPair + 1, detail: d.reason + ' — rewrite this line so the scene makes sense' }] : [] })())
   const logLocal = (sc, label) => localHard(sc).filter((x, i, a) => a.findIndex(y => y.code === x.code && y.line === x.line) === i).forEach(x => log && log((x.code === 'TOO_COMPLEX' ? '⛔ LEVEL_COMPLEXITY_FAIL' : x.code === 'CLOSED_VOCAB' ? '⛔ CLOSED_VOCAB_FAIL' : x.code === 'TOKENIZATION_ERROR' ? '⛔ TOKENIZATION_ERROR' : x.code === 'REGISTER' ? '⛔ JA_REGISTER_FAIL' : /DUPLICATE/.test(x.code) ? '⛔ DUPLICATE_FAIL' : x.code === 'MERGED_SPEAKERS' ? '⛔ MERGED_SPEAKERS_FAIL' : x.code === 'ADJACENCY' ? '⛔ ADJACENCY_FAIL' : '⛔ MAX3_FAIL') +
     ' scene=' + sc.sceneId + ' line=L' + (x.line + offsetOf(sc)) + ' ' + (x.code === 'TOO_COMPLEX' ? 'belt=' + ctx.complexity.belt + ' units=' + String(x.detail).split(' ')[0] + ' hardMax=' + ctx.complexity.hardMax : x.code === 'CLOSED_VOCAB' ? 'unknown=[' + String(x.detail).replace(/^.*unknown words:\s*/, '') + '] UNKNOWN_LEXEME' : x.code === 'TOKENIZATION_ERROR' ? 'fragments=[' + String(x.detail).replace(/^.*unparseable fragments:\s*/, '') + '] (morphology could not parse — not a learner word)' : x.detail) + (label ? ' (' + label + ')' : '')))
   // ONE local repair pass for a candidate's isolated residual defects — the positive scene palette only (§20/§28)
@@ -18292,7 +18584,7 @@ async function _lnComposeByScenes(env) {
       // v665 — the same atomic stage fixes an over-long line (TOO_COMPLEX) and an unknown word (CLOSED_VOCAB) in this scene
       env.acceptedOthers = accepted.flatMap(a => a.turns.map(tn => la.text(tn.pair)))
       cov = await _lnAtomicPlace(env, [sc], sc, sp.requiredTargetIds, flat => localHard(sc).map(x => ({ code: x.code, line: x.line, detail: x.detail,
-        unknownWords: x.code === 'CLOSED_VOCAB' || x.code === 'TOKENIZATION_ERROR' ? String(x.detail || '').replace(/^.*(unknown words|unparseable fragments):\s*/, '').split(/\s+/).filter(Boolean) : [] })), offsetOf(sc), salvage ? { calls: 0, max: 2 } : null)
+        unknownWords: x.code === 'CLOSED_VOCAB' || x.code === 'TOKENIZATION_ERROR' ? String(x.detail || '').replace(/^.*(unknown words|unparseable fragments):\s*/, '').split(/\s+/).filter(Boolean) : [] })), offsetOf(sc), salvage ? { calls: 0, max: LISTENING_SALVAGE_CALLS } : null)
       // v665 §5/§24 — a turn that still says too much (or carries 4 lesson words) is SPLIT into short turns (one scene-local
       // edit); every new turn must pass LENGTH / CLOSED_VOCAB / max3 and keep the protected words, else it is rolled back
       const stuck = localHard(sc).filter(x => x.code === 'TOO_COMPLEX' || x.code === 'MAX_TARGETS_PER_TURN')
@@ -18335,9 +18627,9 @@ async function _lnComposeByScenes(env) {
         log && log('⚠ LISTENING_TURN_BUDGET ' + sp.sceneId + ' returned ' + cand.turns.length + ' turns > hard max ' + allowedMax + (!lastAttempt ? ' — rejected, regenerating within budget' : ' — over budget after ' + attempt + ' attempts'))
         budgetNote = 'Your previous draft had ' + cand.turns.length + ' turns — that is too long.'
         if (!lastAttempt) { reject = { reasons: ['TURN_BUDGET ' + cand.turns.length + ' > ' + allowedMax] }; tel.LISTENING_SCENE_REGENERATIONS++; log && log('SCENE_PREFLIGHT ' + sp.sceneId + ' decision=REGENERATE reason=TURN_BUDGET ' + cand.turns.length + ' > ' + allowedMax); continue }
-        budgetExceeded = true
+        // v669 §17: an over-budget last attempt is NOT committed as it is — the preflight counts the budget as a defect
       }
-      let pf = validateScenePreflight(env, cand, sp, { accepted })
+      let pf = validateScenePreflight(env, cand, sp, { accepted, allowedMax })
       if (attempt === 1) tel.LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES += pf.counts.closedVocab
       // v666 §12/§16 — a line above the preferred range but ≤ hardMax is VALID: logged, never repaired just to hit preferredMax
       if (cand.turns.length && ctx.complexity) { const ab = cand.turns.map((tn, k) => ({ k, a: ctx.complexity.analyse(la.text(tn.pair)) })).filter(x => x.a.abovePreferredButAllowed)
@@ -18354,7 +18646,7 @@ async function _lnComposeByScenes(env) {
       let work = { cand, pf }
       if (pf.fundamental) { work = better(best, work); log && log('⏫ SCENE_ESCALATION ' + sp.sceneId + ' — ' + attempt + ' generation attempt(s) fundamentally invalid (' + work.pf.reasons.join('; ') + ') · bounded salvage repair on the better candidate, then commit; the final gates decide READY') }
       await repairCandidate(work.cand, sp, work.pf, pf.fundamental)
-      const pf2 = validateScenePreflight(env, work.cand, sp, { accepted })
+      const pf2 = validateScenePreflight(env, work.cand, sp, { accepted, allowedMax })
       log && log('🛂 ' + scenePreflightLog(sp, pf2, 'after atomic repair'))
       if (pf2.decision === 'REGENERATE' && !lastAttempt) { reject = pf2; best = better(best, { cand: work.cand, pf: pf2 }); tel.LISTENING_SCENE_REGENERATIONS++; continue }
       best = { cand: work.cand, pf: pf2 }
@@ -18367,13 +18659,50 @@ async function _lnComposeByScenes(env) {
       log && log('⛔ LISTENING_SCENE_FAILED ' + sp.sceneId + ' — no usable scene after ' + LISTENING_SCENE_ATTEMPTS + ' attempts')
       sc = { sceneId: sp.sceneId, setting: sp.purpose, turns: [] }
     }
-    // §22 — COMMIT: only now does the candidate become canonical state
+    // v669 §17 — VALIDATED_SCENE vs INVALID_CANDIDATE: only a validated scene enters the canonical track. A scene whose only
+    // residual is a missing target is valid for the targets it carries (the missing one is reassigned). Any other residual
+    // defect (structure, adjacency, vocabulary, length, register, duplicates …) is NEVER committed: the scene's target
+    // allocation is re-planned once (targets in the defective lines move to a compatible scene, the rest is generated
+    // again); if that still fails the scene stays UNCOMMITTED and the track cannot be READY.
     let cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
-    if (lastPf && lastPf.decision !== 'COMMIT') { tel.LISTENING_SCENES_COMMITTED_WITH_DEFECTS++
-      const resid = Object.entries(lastPf.counts).filter(([, v]) => v)
-      const soft = resid.every(([k]) => k === 'coverage' || k === 'adjacency')
-      log && log((soft ? '⚠' : '⛔') + ' SCENE_COMMIT ' + sp.sceneId + ' decision=COMMIT_WITH_DEFECTS residual=' + (resid.map(([k, v]) => k + ' ' + v).join(', ') || '-') +
-        (soft ? ' — a missing target is reassigned next; an adjacency note is judged by the coherence gate' : ' — the scene is kept so coverage continues; the final gates block READY unless the defect is fixed later')) }
+    const residOf = pf => pf ? Object.entries(pf.counts).filter(([k, v]) => v && k !== 'coverage') : []
+    const residText = pf => residOf(pf).map(([k, v]) => k + ' ' + v).join(', ')
+    if (lastPf && lastPf.decision !== 'COMMIT' && residOf(lastPf).length && sc.turns.length) {
+      const badLines = new Set(Object.values(lastPf.lines || {}).flatMap(x => [...x]).concat((lastPf.adjacency || []).map(x => x.line), (lastPf.audit.registerAudit || []).flatMap(r => r.verdict === 'FAIL' ? r.offLines : [])))
+      const offending = [...new Set([...badLines].flatMap(n => { const tn = sc.turns[n - 1]; return tn ? sp.requiredTargetIds.filter(id => { const t = byId.get(id); return t && la.present(la.text(tn.pair), t.surface, ctx) }) : [] }))]
+      const keep = sp.requiredTargetIds.filter(id => !offending.includes(id))
+      let replanned = null, replanFail = null
+      if (keep.length && (offending.length || lastPf.regMajor || lastPf.counts.structure)) {
+        log && log('🧭 SCENE_REPLAN ' + sp.sceneId + ' — residual ' + residText(lastPf) + ' after repair · ' + (offending.length ? 'targets in the defective lines [' + offending.map(id => byId.get(id).surface).join(', ') + '] leave this scene (reassigned to a compatible scene) · ' : '') + 'one regeneration for [' + keep.map(id => byId.get(id).surface).join(', ') + ']')
+        const sp2 = { ...sp, requiredTargetIds: keep }
+        _lnPlanExchanges(sp2, byId); _lnPlanSkeleton(sp2, byId, ctx.complexity || null)
+        const cand = await _lnGenerateScene(env, sp2, { position: (qi + 1) + ' of ' + queue.length + ', re-planned', context, allowedMax, budgetNote, last: qi === queue.length - 1, firstSpeaker: prev ? (prev.turns[prev.turns.length - 1].speaker === 'A' ? 'B' : 'A') : 'A', regenerate: lastPf })
+        if (cand) {
+          let pf = validateScenePreflight(env, cand, sp2, { accepted, allowedMax })
+          log && log('🛂 ' + scenePreflightLog(sp2, pf, 're-planned candidate'))
+          // the re-planned candidate gets the same bounded salvage repair (also when it is fundamentally invalid)
+          if (pf.decision !== 'COMMIT' && cand.turns.length) { await repairCandidate(cand, sp2, pf, true); pf = validateScenePreflight(env, cand, sp2, { accepted, allowedMax }); log && log('🛂 ' + scenePreflightLog(sp2, pf, 're-planned, after atomic repair')) }
+          if (!residOf(pf).length) replanned = { cand, pf }
+          else replanFail = pf
+        }
+        tel.LISTENING_SCENES_REPLANNED = (tel.LISTENING_SCENES_REPLANNED || 0) + 1
+      }
+      if (replanned) {
+        sc = replanned.cand; lastPf = replanned.pf
+        cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)          // the moved targets are now "missing" → reassigned below
+        log && log('✅ SCENE_COMMIT ' + sp.sceneId + ' decision=COMMIT (re-planned) · ' + sc.turns.length + ' turns · heard ' + cov.heard.length + '/' + sp.requiredTargetIds.length)
+      } else {
+        const finalPf = replanFail || lastPf
+        env.uncommitted.push({ sceneId: sp.sceneId, residual: residText(finalPf), targets: sp.requiredTargetIds.slice() })
+        tel.LISTENING_UNCOMMITTED_SCENES = (tel.LISTENING_UNCOMMITTED_SCENES || 0) + 1
+        log && log('⛔ SCENE_NOT_COMMITTED ' + sp.sceneId + ' INVALID_CANDIDATE residual=' + residText(finalPf) + ' — UNCOMMITTED_SCENE: nothing from this candidate enters the track; its targets are reassigned to compatible scenes where possible (the track cannot be READY)')
+        sc = { sceneId: sp.sceneId, setting: sp.purpose, turns: [] }
+        cov = { heard: [], missing: sp.requiredTargetIds.slice() }
+      }
+    } else if (lastPf && lastPf.decision !== 'COMMIT' && sc.turns.length) {
+      tel.LISTENING_SCENES_COMMITTED_PARTIAL_COVERAGE = (tel.LISTENING_SCENES_COMMITTED_PARTIAL_COVERAGE || 0) + 1
+      log && log('✅ SCENE_COMMIT ' + sp.sceneId + ' decision=COMMIT (validated for its ' + cov.heard.length + ' heard target(s); missing [' + cov.missing.map(id => byId.get(id).surface).join(', ') + '] is reassigned to a compatible scene)')
+    }
     else if (sc.turns.length) log && log('✅ SCENE_COMMIT ' + sp.sceneId + ' decision=COMMIT · ' + sc.turns.length + ' turns · heard ' + cov.heard.length + '/' + sp.requiredTargetIds.length)
     // §10 — still missing: the target does not fit this scene → reassign it (never drop it)
     if (cov.missing.length) {
@@ -18383,15 +18712,19 @@ async function _lnComposeByScenes(env) {
         if (reassignedOnce.has(id)) { unplaceable.add(id); log && log('⛔ LISTENING_TARGET_UNPLACED ' + id + ' ' + t.surface + ' — already reassigned once; it stays missing (NOT_READY)'); continue }
         reassignedOnce.add(id); tel.LISTENING_REASSIGNMENTS++
         const domOf = x => (byId.get(x) || {}).domain
+        // v669 §18 — a target moves ONLY to a scene whose situation can carry it (topic-compatible, or the target is topic-neutral)
+        const fits = ids => LISTENING_FLEXIBLE_DOMAINS.has(t.domain || 'general conversation') || _lnScenePlausible(ids.map(domOf).filter(Boolean).concat([t.domain]))
         // 1) a LATER scene (not written yet) with the most compatible topic — the target becomes required there
-        const later = queue.slice(qi + 1).filter(s => s.requiredTargetIds.length < plan.cap + 2)
+        const later = queue.slice(qi + 1).filter(s => s.requiredTargetIds.length < plan.cap + 2 && fits(s.requiredTargetIds))
           .sort((a, b) => (b.requiredTargetIds.filter(x => domOf(x) === t.domain).length - a.requiredTargetIds.filter(x => domOf(x) === t.domain).length) || a.requiredTargetIds.length - b.requiredTargetIds.length)[0]
         if (later) { later.requiredTargetIds.push(id); log && log('🔁 LISTENING_REASSIGN target=' + id + ' ' + t.surface + ' ' + sp.sceneId + ' → ' + later.sceneId); continue }
         // 2) no later scene: an EARLIER, already verified scene with a compatible topic gets one local exchange for it
         //    (its protected targets must survive — otherwise the edit is rolled back)
         const hosts = accepted.slice().sort((a, b) => {
           const qa = queue.find(s => s.sceneId === a.sceneId) || {}, qb = queue.find(s => s.sceneId === b.sceneId) || {}
-          return ((qb.verifiedTargetIds || []).filter(x => domOf(x) === t.domain).length - (qa.verifiedTargetIds || []).filter(x => domOf(x) === t.domain).length) || a.turns.length - b.turns.length }).slice(0, 2)
+          return ((qb.verifiedTargetIds || []).filter(x => domOf(x) === t.domain).length - (qa.verifiedTargetIds || []).filter(x => domOf(x) === t.domain).length) || a.turns.length - b.turns.length })
+          .filter(h => fits(((queue.find(s => s.sceneId === h.sceneId) || {}).verifiedTargetIds) || [])).slice(0, 2)
+        if (!hosts.length) log && log('⛔ LISTENING_REASSIGN_REJECTED target=' + id + ' ' + t.surface + ' — no remaining scene\'s situation can carry it naturally (no forced placement)')
         let placed = false
         for (const host of hosts) {
           const hq = queue.find(s => s.sceneId === host.sceneId) || { verifiedTargetIds: [] }
@@ -18470,8 +18803,16 @@ async function _lnComposeByScenes(env) {
   const allScenesPass = !unplaceable.size && queue.every(s => !s.requiredTargetIds.length || (s.verifiedTargetIds || []).length === s.requiredTargetIds.length)
   tel.LISTENING_VERIFIED_TARGETS = audit.covered.length
   log && log('🎧 LISTENING_TURN_BUDGET ' + total + ' turns (allowed ' + env.turnsMin + '–' + env.turnsMax + ') ' + (total <= env.turnsMax && !budgetExceeded ? 'PASS' : 'FAIL'))
+  // v669 §17 step 3 — an INVALID candidate never enters the track. When EVERY target of that scene was re-allocated to a
+  // VALIDATED scene (and verified there, from the final lines), the re-plan succeeded: the track holds only validated
+  // scenes. A target of an uncommitted scene that is still unheard keeps SCENES_VALIDATED=FAIL (NOT_READY).
+  const coveredNow = new Set(audit.covered)
+  env.uncommitted.forEach(u => { u.stranded = (u.targets || []).filter(id => !coveredNow.has(id)); u.reallocated = !u.stranded.length
+    log && log(u.reallocated ? '🧭 SCENE_REALLOCATED ' + u.sceneId + ' — its INVALID candidate (' + u.residual + ') was never committed; all ' + u.targets.length + ' of its targets are verified in validated scenes'
+      : '⛔ SCENE_UNRESOLVED ' + u.sceneId + ' — INVALID candidate (' + u.residual + ') not committed; still unheard: [' + u.stranded.map(id => (byId.get(id) || {}).surface).join(', ') + ']') })
+  tel.LISTENING_SCENES_REALLOCATED = env.uncommitted.filter(u => u.reallocated).length
   return { ok: true, scenes: accepted, audit, natIssues, plan, report, coh,
-    gates: { SCENE_REQUIRED_COVERAGE: allScenesPass ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total <= env.turnsMax && !budgetExceeded } }
+    gates: { SCENE_REQUIRED_COVERAGE: allScenesPass ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total <= env.turnsMax && !budgetExceeded, SCENES_VALIDATED: env.uncommitted.every(u => u.reallocated) }, uncommitted: env.uncommitted.slice() }
 }
 async function buildListeningConversation(mainTrack, vocab0, o) {
   const lang = o.lang || (mainTrack && mainTrack.language) || trackLanguageOf(mainTrack), log = o.onLog || null
@@ -18530,7 +18871,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
       japaneseRegisterContract(jaStyle) + '\nEach scene states its RELATIONSHIP and EXPECTED REGISTER — follow them: same relationship ⇒ same register all the way through (no drifting between です/ます and plain forms).'
     : lang === 'zh' ? ' Give tone-mark "pinyin" for every turn.' : ''
   // v658 §12 — every target row carries the linguistic data the model needs (written form, reading, gloss / sense, role)
-  const tRow = t => 'T' + t.id + ' | ' + t.surface + (t.reading ? ' [' + t.reading + ']' : '') + ' | ' + t.gloss + ' | ' + t.role + (t.isNew ? ' | NEW' : '')
+  const tRow = t => 'T' + t.id + ' | ' + t.surface + (t.reading ? ' [' + t.reading + ']' : '') + ' | ' + t.gloss + (t.sense ? ' (intended sense: ' + t.sense + ')' : '') + ' | ' + t.role + (t.isNew ? ' | NEW' : '')
   // v658 §13 — a turn RANGE derived from the number of targets (≤ 3 per turn, most turns 1–2): the live JA run wrote 17 turns
   // for 30 targets, crammed 4 into one line and dropped 4 targets
   const turnsMin = Math.max(12, Math.ceil(targets.length / 1.5) + 4), turnsMax = targets.length + 14
@@ -18538,7 +18879,8 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   let verdictsCache = new Map()
   const naturalness = async (scs) => {
     const cur = scs || scenes
-    const all = cur.flatMap(sc => sc.turns.map(tn => tn.pair))
+    // v669 §2 — each line is judged IN CONTEXT (the previous line of its scene travels with it)
+    const all = cur.flatMap(sc => sc.turns.map((tn, k) => k > 0 ? { ...tn.pair, _context: la.text(sc.turns[k - 1].pair) + (sc.turns[k - 1].pair.english ? ' (' + sc.turns[k - 1].pair.english + ')' : '') } : tn.pair))
     const todo = all.filter(p => !verdictsCache.has(la.text(p)))
     if (todo.length) { tel.LISTENING_QC_CALLS += Math.ceil(todo.length / 12); const vv = await la.verdicts(todo, jaStyle ? { ...o, speechStyle: jaStyle } : o, log); vv.forEach((v, k) => verdictsCache.set(k, v)) }
     const issues = []
@@ -18554,8 +18896,11 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   {
     if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
     const r = await _lnComposeByScenes({ lang, la, log, tel, targets, ctx, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax })
-    if (!r.ok || !r.scenes.length) return { ok: false, empty: true, listeningQuality: 'NEEDS_REPAIR — ' + (r.reason || 'composition failed'), reason: r.reason || 'the conversation could not be composed', stats: {}, telemetry: tel, plan: r.plan }
-    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh }
+    // v669 §17: no scene validated → nothing enters the track; the reason names the uncommitted INVALID candidates
+    const unc = (r.uncommitted || []).map(u => (u.sceneId || u.id || '?') + (u.residual ? ' (' + u.residual + ')' : '')).join(', ')
+    const why = r.reason || (unc ? 'UNCOMMITTED_SCENE: no scene candidate validated — INVALID_CANDIDATE ' + unc : 'the conversation could not be composed')
+    if (!r.ok || !r.scenes.length) return { ok: false, empty: true, listeningQuality: 'NEEDS_REPAIR — ' + why, reason: why, stats: {}, telemetry: tel, plan: r.plan, uncommitted: r.uncommitted || [] }
+    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh, uncommitted: r.uncommitted || [] }
   }
   // ── 3. whole-conversation coherence (scene + whole) — a HARD gate ──
   const cohScenes = scenes.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair })) }))
@@ -18623,7 +18968,10 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     NATURALNESS: !natIssues.length, WHOLE_CONVERSATION_COHERENCE: cohPassed ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED', PRONUNCIATION: !pronIssues.length,
     // v662 — the standalone track also needs every scene's required coverage and the turn budget
     // v664: a word that ended up heard somewhere else in the final text satisfies its scene requirement (coverage is the text)
-    ...(sceneGates ? { SCENE_REQUIRED_COVERAGE: audit.covered.length === targets.length ? 'PASS' : sceneGates.SCENE_REQUIRED_COVERAGE, TURN_COUNT: sceneGates.TURN_COUNT, TURN_BUDGET: sceneGates.TURN_BUDGET } : {}),
+    ...(sceneGates ? { SCENE_REQUIRED_COVERAGE: audit.covered.length === targets.length ? 'PASS' : sceneGates.SCENE_REQUIRED_COVERAGE, TURN_COUNT: sceneGates.TURN_COUNT, TURN_BUDGET: sceneGates.TURN_BUDGET,
+      // v669 §17 — no INVALID_CANDIDATE was committed, and every target of an uncommitted scene is verified (from the
+      // final lines) in a validated scene — else the uncommitted scene is unresolved and the track cannot be READY
+      SCENES_VALIDATED: (sceneGates.uncommitted || []).every(u => (u.targets || []).every(id => audit.covered.includes(id))) } : {}),
   }
   // v665 §47 — the Listening READY contract: EVERY gate is hard (coverage 30/30, max3, LENGTH, CLOSED_VOCAB, speakers,
   // merged lines, duplicates, singleton scenes, line quality, naturalness, coherence, pronunciation, turn budget).
@@ -18665,6 +19013,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   const qualityNotes = []
   const quality = ready ? 'VERIFIED' : 'NEEDS_REPAIR — ' + reasons.slice(0, 4).join(' · ')
   audit.lines.forEach(r => log && log('    LISTENING_LINE L' + r.n + ' speaker=' + r.speaker + ' actualTargetIds=[' + r.actualTargetIds.join(',') + '] targetCount=' + r.targetCount))
+  if (sceneGates && (sceneGates.uncommitted || []).length) log && log((gates.SCENES_VALIDATED ? '🧭 LISTENING_UNCOMMITTED_SCENES ' : '⛔ LISTENING_UNCOMMITTED_SCENES ') + sceneGates.uncommitted.map(u => { const st = (u.targets || []).filter(id => !audit.covered.includes(id)); return u.sceneId + ' (' + u.residual + (st.length ? ' — unheard ' + st.length : ' — all targets re-allocated to validated scenes') + ')' }).join(' · ') + ' — SCENES_VALIDATED=' + !!gates.SCENES_VALIDATED)
   log && log('🎧 LISTENING_FINAL_INTEGRITY ' + (ready ? 'READY' : 'NOT_READY') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length + (failed.length ? ' · failed: ' + failed.join(', ') : ' · every gate passed'))
   progress('final', audit, { ready, failedChecks: reasons })
   log && log('  🎧 LISTENING_GATES ' + Object.entries(gates).map(([k, v]) => k + '=' + v).join(' · '))
@@ -18689,6 +19038,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     inventory: ctx.inventory ? ctx.inventory.counts : null,
     coveragePlan: sceneGates ? { scenes: sceneGates.plan.scenes.map(sc => ({ sceneId: sc.sceneId, purpose: sc.purpose, requiredTargetIds: sc.requiredTargetIds.slice(), optionalTargetIds: [], expectedTurns: sc.expectedTurns, maxTurns: sc.maxTurns })),
       assignments: sceneGates.plan.assignments, seed: sceneGates.plan.seed } : null, sceneReport: sceneGates ? sceneGates.report : null,
+    uncommittedScenes: sceneGates ? (sceneGates.uncommitted || []) : [],      // v669 §17 — explicit diagnostic
     dialogueStats: { scenes: scenes.length, lines: lines.length, speakers: { A: lines.filter(l => l.speaker === 'A').length, B: lines.filter(l => l.speaker === 'B').length },
       maxTargetsPerTurn: gates.MAX_TARGETS_PER_TURN, singleLineScenes: scenes.filter(sc => sc.turns.length < 2).length, monologueScenes: scenes.filter(sc => sc.turns.length >= 3 && new Set(sc.turns.map(t => t.speaker)).size < 2).length },
     compositionFailure: !gates.BOTH_SPEAKERS || !gates.NO_SINGLETON_SCENES || !gates.NO_MERGED_SPEAKER_LINES,
@@ -18809,10 +19159,12 @@ async function buildStandaloneListeningTrack(o) {
   log && log('🎧 LISTENING_TRACK_START language=' + lang + (speechStyle ? ' speechStyle=' + japaneseSpeechStyleName(speechStyle) : '') + ' trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=' + keywords.length + ' NEW=0 REVIEW=' + keywords.length +
     ' LISTENING_MAIN_GENERATION_CALLS=0' + (o.targetIds ? ' · REBUILD with the same ' + keywords.length + ' target ids' : ''))
   const usageTel = () => { const u = listeningUsageSince(led0); return { LISTENING_TOKEN_USAGE: u.totalTokens, LISTENING_COST: Number(u.costUsd.toFixed(6)), usage: u } }
-  const fail = (reason) => { const ut = usageTel()
-    try { o.onProgress && o.onProgress({ stage: 'final', coverage: Object.fromEntries(frozenIds.map(id => [id, 'repair'])), targetIds: frozenIds.slice(), covered: 0, required: frozenIds.length, missing: frozenIds.slice(), ready: false, failedChecks: ['TARGET_COVERAGE=FAIL'] }) } catch (e) {}
+  const fail = (reason, uncommitted) => { const ut = usageTel()
+    // v669 §17: when every scene candidate was INVALID the failure says so (SCENES_VALIDATED=FAIL + the uncommitted scenes)
+    const fc = ['TARGET_COVERAGE=FAIL'].concat(uncommitted && uncommitted.length ? ['SCENES_VALIDATED=FAIL'] : [])
+    try { o.onProgress && o.onProgress({ stage: 'final', coverage: Object.fromEntries(frozenIds.map(id => [id, 'repair'])), targetIds: frozenIds.slice(), covered: 0, required: frozenIds.length, missing: frozenIds.slice(), ready: false, failedChecks: fc }) } catch (e) {}
     return { track: { ...source, status: 'NOT_READY', ready: false, failureReason: reason, listening: null,
-      coverage: { covered: 0, required: Math.max(LISTENING_TRACK_TARGETS, keywords.length), missing: keywords.map(k => k.wordId) }, failedChecks: ['TARGET_COVERAGE=FAIL'], usage: ut.usage,
+      coverage: { covered: 0, required: Math.max(LISTENING_TRACK_TARGETS, keywords.length), missing: keywords.map(k => k.wordId) }, failedChecks: fc, uncommittedScenes: uncommitted || [], usage: ut.usage,
       telemetry: { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, LISTENING_GENERATION_CALLS: 0, LISTENING_REPAIR_CALLS: 0, LISTENING_QC_CALLS: 0, LISTENING_TOTAL_PAID_CALLS: 0,
         LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST } }, result: null } }
   if (keywords.length < LISTENING_TRACK_TARGETS) { log && log('⛔ LISTENING_TRACK_NOT_READY — only ' + keywords.length + ' learned word(s) are eligible (needs ' + LISTENING_TRACK_TARGETS + ')'); return fail('only ' + keywords.length + ' learned words available (needs ' + LISTENING_TRACK_TARGETS + ')') }
@@ -18823,7 +19175,7 @@ async function buildStandaloneListeningTrack(o) {
     planSeed: source.attemptId, rebuild: !!(o.targetIds && o.targetIds.length), speechStyle }) }
   catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return fail('LISTENING_BUILD_ERROR: ' + (e && e.message || e)) }
   const lt = res && res.listeningTrack
-  if (!lt) return fail((res && res.reason) || 'the conversation could not be composed')
+  if (!lt) return fail((res && res.reason) || 'the conversation could not be composed', res && res.uncommitted)
   const ut = usageTel()
   const tel = { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, ...(lt.telemetry || {}), LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST }
   const ready = lt.readiness === 'READY' && lt.coverage.coveredTargetIds.length === keywords.length
@@ -23230,7 +23582,8 @@ async function _judgeWithBoundedRetry(items, judge, label, onLog) {
       const sc = v ? Number(v.s) : NaN
       if (v && sc >= 1 && sc <= 5) verdicts.set(ix, { s: sc, note: v.note || '', wrongSense: v.wrongSense === true,
         thaiEnglishMatch: typeof v.thaiEnglishMatch === 'boolean' ? v.thaiEnglishMatch : null, cueRepair: typeof v.cueRepair === 'string' ? v.cueRepair : null,
-        issue: /^(SENTENCE_UNNATURAL|TARGET_USAGE_UNSUITABLE_FOR_REGISTER|TARGET_CANONICAL_ENTRY_SUSPECT)$/.test(String(v.issue || '')) ? v.issue : null })
+        issue: /^(SENTENCE_UNNATURAL|TARGET_USAGE_UNSUITABLE_FOR_REGISTER|TARGET_CANONICAL_ENTRY_SUSPECT)$/.test(String(v.issue || '')) ? v.issue : null,
+        construction: typeof v.construction === 'string' ? v.construction : '', alternative: typeof v.alternative === 'string' ? v.alternative : '' })
       else missing.push(ix)
     })
     if (!missing.length) return
@@ -23254,15 +23607,24 @@ async function _judgeWithBoundedRetry(items, judge, label, onLog) {
 // v665 §34 — "natural" does NOT mean "complex": shared by every naturalness judge (Main Thai, Listening TH/JA/ZH)
 const NATURALNESS_SIMPLICITY_RULE = 'For a learner, short, ordinary, native-sounding speech is BETTER than elaborate native-like phrasing: do NOT reward conjunction chains, repeated subjects, ' +
   'several ideas in one sentence, verbose explanations, or formal wording where simpler speech exists. A short complete reply ("yes", "okay, let\'s go", "really?") is fully natural.\n'
+// v669 §2/§3 — the Thai semantic judge must justify a rejection: the exact construction, a specific contextual linguistic
+// reason, and an idiomatic alternative that still uses the target. Blanket register opinions about a common word are
+// not a reason ("จ่าย is too formal" is wrong: จ่าย is everyday spoken Thai).
+const THAI_SEMANTIC_JUDGE_RULES = 'JUDGE IN CONTEXT. Grammatical possibility is not enough (an everyday hotel price of zero baht, สิบพัน instead of หนึ่งหมื่น, ' +
+  '"let\'s stand" with no reason to stand are not useful Thai), but a common everyday word is NOT unnatural just because a more colloquial ' +
+  'alternative exists: never reject a sentence for a word being "formal" unless that word is genuinely written / literary Thai. ' +
+  'When s < 4 you MUST give "construction" (the exact Thai span that is wrong, copied from the sentence), "reason" (the specific linguistic problem) ' +
+  'and "alternative" (an idiomatic Thai sentence for the same meaning that still uses the target word). Stylistic preference is s=4, not a rejection.\n'
 function _naturalnessPromptText(chunk) {
   const numbered = chunk.map((p, ci) => (ci + 1) + '. Thai: ' + p.thai + '\n   Intended meaning: ' + (p.english || '') +
+    (p._context ? '\n   Previous line in the conversation: ' + p._context : '') +
     '\n   Speaker: ' + (thaiSpeakerMapGender(p.speaker) || p.speakerGender || 'unknown') +
     (p._target && p._targetSense ? '\n   Target word: ' + p._target + ' — intended sense: ' + p._targetSense : '')).join('\n\n')
   const anySense = chunk.some(p => p._target && p._targetSense)
   return 'You are a native Thai speaker checking learner material. For EACH sentence answer: would a native speaker plausibly ' +
     'say this exact sentence in ordinary conversation, with this intended meaning, as this speaker?\n' +
     'Penalise: malformed grammar, target-word stuffing, duplicated words, English-shaped Thai, wrong sense of a word, ' +
-    'mixed male/female particles (ผม/ครับ vs ฉัน/ค่ะ/คะ), absurd everyday claims, meaningless fragments.\n' + NATURALNESS_SIMPLICITY_RULE +
+    'mixed male/female particles (ผม/ครับ vs ฉัน/ค่ะ/คะ), absurd everyday claims, meaningless fragments.\n' + NATURALNESS_SIMPLICITY_RULE + THAI_SEMANTIC_JUDGE_RULES +
     'Scale: 5 natural · 4 natural with a small quirk · 3 understandable but unnatural · 2 wrong/awkward · 1 broken.\n\n' +
     (anySense ? 'When a target word and its intended sense are given, set "wrongSense": true if the sentence uses the target in a DIFFERENT sense ' +
       '(e.g. เบา "light in weight" used for money or weather).\n' : '') +
@@ -23270,7 +23632,7 @@ function _naturalnessPromptText(chunk) {
     'When s < 4 also give "issue": "SENTENCE_UNNATURAL" (this sentence is badly built — another sentence could use the target naturally), ' +
     '"TARGET_USAGE_UNSUITABLE_FOR_REGISTER" (the TARGET WORD ITSELF is wrong for casual spoken conversation: formal, written, archaic), or ' +
     '"TARGET_CANONICAL_ENTRY_SUSPECT" (the target expression itself is not a normal expression for its meaning).\n' +
-    numbered + '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."' + (anySense ? ',"wrongSense":false' : '') + ',"issue":null}]'
+    numbered + '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."' + (anySense ? ',"wrongSense":false' : '') + ',"issue":null,"construction":"","alternative":""}]'
 }
 async function _finalNaturalnessJudge(chunk, apiKey, model) {
   return _semanticReplyArray(await geminiJudge(apiKey, model, _naturalnessPromptText(chunk), 1400))
@@ -23329,7 +23691,53 @@ function _semanticPairId(p, i) { return (p && p._pairKey) || ('#' + String(i + 1
 // again. So judging EARLY costs almost nothing extra, and a sentence can never PASS early and FAIL later on the
 // same text. Any edit of the Thai, the English, the cue or the speaker changes the key, so it is judged again.
 function _semCacheKey(kind, p) { return kind + '\u0001' + [p.thai || '', p.english || '', p.speaker || '', kind === 'cue' ? (p.prompt || '') : ((p._target || '') + '|' + (p._targetSense || ''))].join('\u0001') }
-async function _judgeCached(kind, items, judge, label, onLog) {
+// v669 §2/§3 — OBJECTIVE errors stay deterministic hard gates. A SEMANTIC rejection is never one unsubstantiated opinion:
+//   1. a blanket register claim about the TARGET WORD that the reviewed register metadata contradicts (spoken COMMON /
+//      NATURAL / CONTEXTUAL, or a reviewed sense-policy entry) is OVERRULED (REGISTER_CLAIM_OVERRULED);
+//   2. a borderline rejection (3/5) that does not quote a construction actually present in the sentence goes to ONE
+//      batched controlled adjudication, which must quote the wrong span; an unquoted / absent span is not an error.
+const THAI_REGISTER_CLAIM_RE = /\b(too formal|formal|written|literary|stiff|bookish|old-fashioned)\b/i
+function thaiAdjudicateRegisterClaim(p, v) {
+  if (!v || v.s == null || v.s >= 4 || !p || !p._target || v.wrongSense) return v
+  const note = String(v.note || '') + ' ' + String(v.reason || '')
+  const aboutTarget = v.issue === 'TARGET_USAGE_UNSUITABLE_FOR_REGISTER' || (THAI_REGISTER_CLAIM_RE.test(note) && (note.includes(p._target) || /\btarget\b|\bthe word\b/i.test(note)))
+  if (!aboutTarget || /\b(grammar|ungrammatical|wrong sense|meaning|particle|absurd|nonsense|doesn't make sense|mistranslat)/i.test(note)) return v
+  let sp = null
+  try { sp = targetActivityMetadata({ id: p.wordId != null ? p.wordId : p.targetId, thai: p._target, t: p._target }, 'th').spokenSuitability } catch (e) {}
+  const pol = THAI_SENSE_POLICY[p._target]
+  if (!(['COMMON', 'NATURAL', 'CONTEXTUAL'].includes(sp) || (pol && /everyday spoken|not formal/.test(pol.usage)))) return v
+  return { ...v, s: 4, adjudicated: 'REGISTER_CLAIM_OVERRULED', originalScore: v.s, originalNote: v.note, issue: null,
+    note: 'register claim overruled — "' + p._target + '" is reviewed as everyday spoken Thai (' + (sp || 'sense policy') + '); original: ' + String(v.note || '').slice(0, 80) }
+}
+function _thaiNeedsAdjudication(p, v) {
+  return !!(v && v.s === 3 && !v.wrongSense && !v.adjudicated && p && p.thai && !(v.construction && String(p.thai).includes(String(v.construction).trim()) && String(v.construction).trim().length >= 2))
+}
+async function thaiControlledAdjudication(items, verdicts, judgeFn, onLog) {
+  const todo = [...verdicts.entries()].filter(([k, v]) => _thaiNeedsAdjudication(items[k], v))
+  if (!todo.length || !judgeFn) return 0
+  const prompt = 'CONTROLLED ADJUDICATION of Thai learner sentences. A first reviewer rated each sentence 3/5 but did not identify a specific error.\n' +
+    'For EACH sentence decide whether there is a SPECIFIC, verifiable linguistic error. If there is, copy the exact wrong Thai span into "construction" ' +
+    '(it must appear in the sentence), explain it in "reason" and give an idiomatic "alternative" that still uses the target. If you cannot point to a ' +
+    'span that is actually wrong (only a stylistic preference), the sentence PASSES with s=4.\n' + THAI_SEMANTIC_JUDGE_RULES + '\n' +
+    todo.map(([k, v], j) => (j + 1) + '. Thai: ' + items[k].thai + '\n   Intended meaning: ' + (items[k].english || '') + (items[k]._target ? '\n   Target word: ' + items[k]._target + (items[k]._targetSense ? ' (' + items[k]._targetSense + ')' : '') : '') +
+      '\n   First reviewer: ' + String(v.note || '').slice(0, 140)).join('\n\n') +
+    '\n\nReply ONLY with a JSON array: [{"i":1,"s":4,"construction":"","reason":"","alternative":""}]'
+  let arr = null
+  try { arr = await judgeFn(prompt) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return 0 }
+  let changed = 0
+  todo.forEach(([k, v], j) => {
+    const a = Array.isArray(arr) ? arr.find(x => x && Number(x.i) === j + 1) : null
+    if (!a || a.s == null) return
+    const span = String(a.construction || '').trim()
+    const substantiated = Number(a.s) < 4 && span.length >= 2 && String(items[k].thai).includes(span)
+    verdicts.set(k, substantiated ? { ...v, s: Math.min(3, Number(a.s)), construction: span, alternative: a.alternative || '', note: 'adjudicated: ' + (a.reason || v.note), adjudicated: 'CONFIRMED' }
+      : { ...v, s: 4, adjudicated: 'UNSUBSTANTIATED_OVERRULED', originalScore: v.s, originalNote: v.note, note: 'adjudication found no specific error (first reviewer: ' + String(v.note || '').slice(0, 60) + ')' })
+    changed++
+  })
+  onLog && onLog('  ⚖ THAI_SEMANTIC_ADJUDICATION ' + todo.length + ' borderline rejection(s) without a quoted construction → one batched adjudication · ' + changed + ' decided')
+  return changed
+}
+async function _judgeCached(kind, items, judge, label, onLog, adjudicate) {
   const verdicts = new Map(), failed = new Map(), todo = []
   items.forEach((p, k) => { const c0 = p && p._semVerdicts && p._semVerdicts[kind]; if (c0 && c0.key === _semCacheKey(kind, p) && c0.v && c0.v.s != null) verdicts.set(k, c0.v); else todo.push(k) })
   let trace = { calls: 0, cached: items.length - todo.length }
@@ -23338,11 +23746,26 @@ async function _judgeCached(kind, items, judge, label, onLog) {
     r.verdicts.forEach((v, j) => verdicts.set(todo[j], v))
     r.failed.forEach((why, j) => failed.set(todo[j], why))
     trace = { ...r.trace, cached: trace.cached }
+    if (kind === 'nat') {
+      // v669 — semantic rejections must be substantiated (register claims vs reviewed metadata; quoted constructions)
+      let over = 0
+      todo.forEach(k => { const v = verdicts.get(k); if (!v) return; const a = thaiAdjudicateRegisterClaim(items[k], v); if (a !== v) { verdicts.set(k, a); over++ } })
+      if (over && onLog) onLog('  ⚖ THAI_REGISTER_CLAIM_OVERRULED ' + over + ' rejection(s): the target is reviewed everyday spoken Thai — a blanket "too formal" opinion is not a reason')
+      const sub = new Map(todo.filter(k => verdicts.has(k)).map(k => [k, verdicts.get(k)]))
+      if (adjudicate) { await thaiControlledAdjudication(items, sub, adjudicate, onLog); sub.forEach((v, k) => verdicts.set(k, v)); trace.adjudicated = [...sub.values()].filter(v => v.adjudicated).length }
+    }
   }
   return { verdicts, failed, trace }
 }
 async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
-  const o = opts || {}, label = o.label || 'main', all = pairs || []
+  const o = opts || {}, label = o.label || 'main'
+  // v669 §10 — cue FORM alignment AFTER all text repairs: a cue that turns the Thai question into a statement (or the reverse)
+  // is rebuilt deterministically from the line's own English; one that cannot be rebuilt fails CUE_FORM_MISMATCH below
+  let cueFormFixed = 0
+  const all = (pairs || []).map(p => { if (!p || p.pairType === 'framing' || !p.thai || !_cueCheckEligible(p)) return p
+    const fx = thaiCueFormRepair(p); if (!fx) return p
+    cueFormFixed++; return { ...p, prompt: fx, _cueFormRepairedFrom: p.prompt } })
+  if (cueFormFixed && onLog) onLog('  🎯 THAI_CUE_FORM_REPAIRED ' + cueFormFixed + ' cue(s) rebuilt from the line\'s own English (question ↔ statement form) — no paid call')
   const content = []
   all.forEach((p, i) => { if (p && p.pairType !== 'framing' && p.thai) content.push({ p, i }) })
   const stats = { label, failClosed: !!o.failClosed, checked: content.length, cueEligible: 0, cueJudged: 0, cueNotApplicable: 0,
@@ -23355,7 +23778,11 @@ async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
     const g = thaiTemplateGarbageProblems(p)
     if (g.length) { det.set(i, { code: 'TEMPLATE_GARBAGE', why: g.map(x => x.why).join('; ') }); return }
     const t = thaiTimeExpressionProblems(p.thai)
-    if (t.length) det.set(i, { code: 'INVALID_TIME_EXPRESSION', why: t[0].why })
+    if (t.length) { det.set(i, { code: 'INVALID_TIME_EXPRESSION', why: t[0].why }); return }
+    const nx = thaiNumberExpressionProblems(p.thai)
+    if (nx.length) { det.set(i, { code: 'INVALID_NUMBER_EXPRESSION', why: nx[0].why }); return }
+    const cf = _cueCheckEligible(p) ? thaiCueFormProblems(p) : []
+    if (cf.length) det.set(i, { code: 'CUE_FORM_MISMATCH', why: cf[0] })
   })
   const live = content.filter(x => !det.has(x.i))
   const noKey = arr => ({ verdicts: new Map(), failed: new Map(arr.map((_, k) => [k, 'no model credentials'])), trace: { calls: 0 } })
@@ -23368,7 +23795,8 @@ async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
   cueEl.forEach((x, k) => cueBy.set(x.i, cue.verdicts.has(k) ? cue.verdicts.get(k) : { s: null, reason: cue.failed.get(k) || 'not judged' }))
   // 2. naturalness
   const nat = !live.length ? { verdicts: new Map(), failed: new Map(), trace: { calls: 0 } }
-    : apiKey ? await _judgeCached('nat', live.map(x => x.p), ch => _finalNaturalnessJudge(ch, apiKey, model), label + ' naturalness', onLog) : noKey(live)
+    : apiKey ? await _judgeCached('nat', live.map(x => x.p), ch => _finalNaturalnessJudge(ch, apiKey, model), label + ' naturalness', onLog,
+        async q => _semanticReplyArray(await geminiJudge(apiKey, model, q, 1200))) : noKey(live)
   const natBy = new Map()
   live.forEach((x, k) => natBy.set(x.i, nat.verdicts.has(k) ? nat.verdicts.get(k) : { s: null, reason: nat.failed.get(k) || 'not judged' }))
   stats.trace = { cue: cue.trace, naturalness: nat.trace }
@@ -23617,6 +24045,18 @@ function thaiTemplateGarbageProblems(p) {
 // ชั่วโมง ("hour") is not matched because ชั่ว sits between the number and โมง.
 const THAI_INVALID_OMONG_RE = /(สิบ(?:สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า)|ยี่สิบ(?:เอ็ด|สอง|สาม|สี่)?)\s*โมง/
 const THAI_INVALID_OMONG_DIGIT_RE = /(?:^|[^0-9])(1[3-9]|2[0-4])\s*โมง/
+// v669 §2/§3 — OBJECTIVE: a malformed Thai number composition (สิบพัน for 10,000 is หนึ่งหมื่น / หมื่น). Only the
+// combinations that a single Thai unit word replaces are flagged; สิบล้าน / ร้อยล้าน are correct Thai.
+const THAI_NUMBER_COMPOSITION = { 'สิบพัน': 'หมื่น', 'สิบหมื่น': 'แสน', 'สิบแสน': 'ล้าน', 'ร้อยพัน': 'แสน', 'ร้อยหมื่น': 'ล้าน', 'พันพัน': 'ล้าน', 'พันหมื่น': 'สิบล้าน' }
+function thaiNumberExpressionProblems(thai) {
+  const s = String(thai || ''), out = []
+  Object.keys(THAI_NUMBER_COMPOSITION).forEach(k => {
+    const at = s.indexOf(k)
+    if (at < 0 || /^ธ/.test(s.slice(at + k.length))) return             // พันธุ์ / พันธมิตร are not numbers
+    out.push({ id: 'INVALID_NUMBER_EXPRESSION', why: '"' + k + '" is not how Thai composes this number — use ' + THAI_NUMBER_COMPOSITION[k] + ' (e.g. สิบพันบาท → หนึ่งหมื่นบาท)' })
+  })
+  return out
+}
 function thaiTimeExpressionProblems(thai) {
   const s = String(thai || ''), out = []
   const m = s.match(THAI_INVALID_OMONG_RE) || s.match(THAI_INVALID_OMONG_DIGIT_RE)
@@ -23786,7 +24226,17 @@ function thaiFinalTrackAudit(pairs, opts) {
       else R.identityRestored.push({ index: i + 1, thai: p.thai, type: id.type, how: id.how })
       p = stampThaiIdentity(p, id)
     }
-    if (!gate.ok) { reject(p, i, gate.problems); return }
+    // v669 §10/§11 — a valid line whose ONLY defect is the generic "Say: …" cue keeps its slot: the cue is rebuilt
+    // deterministically from the line's own English (question → "Ask: …?", statement → "Tell the other person: …")
+    if (!gate.ok && id.type === 'content' && gate.problems.every(x => x.code === 'UNNATURAL' && /^fallback cue/.test(x.why))) {
+      const cue2 = thaiLocalCueRepair({ ...p, prompt: '' })
+      if (cue2 && !/^\s*say\s*:/i.test(cue2)) {
+        const p2 = { ...p, prompt: cue2, _cueRebuiltFrom: p.prompt }
+        const g2 = thaiLineGate(p2, keywords, vocab)
+        if (g2.ok) { log && log('  🎯 FINAL_CUE_REBUILT [' + String(i + 1).padStart(3, '0') + '] ' + p.thai + ' — "' + String(p.prompt).slice(0, 50) + '" → "' + cue2.slice(0, 60) + '" (no paid call; the slot is kept)'); p = p2; R.cueRebuilt = (R.cueRebuilt || 0) + 1 }
+        else { reject(p, i, gate.problems); return }
+      } else { reject(p, i, gate.problems); return }
+    } else if (!gate.ok) { reject(p, i, gate.problems); return }
     // speaker: one authoritative value
     const sp = gate.speaker
     // (metadata conflicts are now rejected by the gate above, never corrected)
@@ -23979,7 +24429,7 @@ async function _qrBatchNaturalnessCheck(pairs, apiKey, model, onLog) {
     const raw = await geminiJudge(apiKey, model, _naturalnessPromptText(chunk.map(x => x.p)), 1400)
     try {
       const parsed = JSON.parse(String(raw || '').replace(/```json|```/g, '').trim())
-      parsed.forEach(({ i: ci, s, note }) => { const orig = chunk[ci - 1]; if (orig && s != null) scored.set(orig.i, { s: Number(s), note: note || '' }) })
+      parsed.forEach(({ i: ci, s, note, construction, alternative, issue }) => { const orig = chunk[ci - 1]; if (orig && s != null) scored.set(orig.i, { s: Number(s), note: note || '', construction: construction || '', alternative: alternative || '', issue: issue || null }) })
     } catch (e) { onLog && onLog('  ⚠️ naturalness batch ' + (Math.floor(b / BATCH) + 1) + ' unparseable — not judged') }
   }
   return scored
@@ -27182,7 +27632,7 @@ function auditJapaneseReading(pair) {
       const segs = Array.isArray(pair.segments) ? pair.segments.filter(Boolean) : []
       const PART = { 'は': 'wa', 'へ': 'e', 'を': 'o' }
       const wantP = segs.length && segs.every(x => x.reading || x.surface) &&
-        segs.map(x => x.reading || x.surface).join('').replace(/[。、？！?!.,\s]/g, '') === rd.replace(/[。、？！?!.,\s]/g, '')
+        segs.map(x => x.reading || x.surface).join('').replace(/[。、，．？！：；「」『』?!.,:;\s]/g, '') === rd.replace(/[。、，．？！：；「」『』?!.,:;\s]/g, '')   // v669: full-width ，． too
         ? segs.map(x => PART[x.surface] && (x.reading || x.surface) === x.surface ? PART[x.surface] : kanaToRomaji(x.reading || x.surface)).join('').replace(/[^a-z]/gi, '').toLowerCase() : null
       if (norm(want) !== norm(got) && !(wantP && norm(wantP) === norm(got)))
         problems.push('romaji does not transcribe the reading: "' + ro + '" vs expected "' + kanaToRomaji(rd) + '"')

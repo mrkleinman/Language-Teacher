@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v676"/>
+<meta name="app-version" content="v677"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v676';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v676').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v677';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v677').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3611,6 +3611,63 @@ function mandarinSurfaceGrammarProblems(zh, inv) {
   if (/(吃|喝|买|要)多[吗呢吧]?[。？！?!]?$/.test(s) && !/很多|太多|不多|多少/.test(s)) P.push('unnatural: ' + s.match(/(吃|喝|买|要)多/)[0] + ' — say 吃很多 / 多吃一点 (' + s + ')')
   if (/^(这个|那个|这里|那里|这儿|那儿|这|那)(大|小|好|贵|远|近|新|旧|快|慢|长|短|高|热|冷|难|容易)[。！!]?$/.test(s)) P.push('unnatural: a bare adjective predicate (' + s.replace(/[。！!]$/, '') + ') — use 很 / 太…了 / 不 (这个很' + s.match(/(大|小|好|贵|远|近|新|旧|快|慢|长|短|高|热|冷|难|容易)/)[0] + ')')
   if (/没(?!有)[\u4e00-\u9fff]{1,2}了[。！？?!]?$/.test(s)) P.push('ungrammatical: 没 + verb + 了 (say 没' + (s.match(/没([\u4e00-\u9fff]{1,2})了/) || [])[1] + ' or ' + (s.match(/没([\u4e00-\u9fff]{1,2})了/) || [])[1] + '了)')
+  P.push(...mandarinDemonstrativeSubjectProblems(s, inv))
+  return P
+}
+// v677 §1 — DEMONSTRATIVE SUBJECT. A demonstrative (这个/那个/这里/那里) can front as a topic or
+// object (这个给我。 这个我想喝。) but cannot be the AGENT of a volitional verb. The v676
+// deterministic fallback built exactly that shape for demonstrative targets, because
+// mandarinFallbackPair files 这个/那个 as partOfSpeech 'pronoun' and hands them the
+// personal-pronoun frames at §69 (那个 + 想 + VERB, 那个 + VERB). The shipped results were
+// 那个想可以。 ("that want can" — zh-daily-run2, accepted at its 11th check, and the reason that
+// run ended one recall short), 这个想喝。 (shipped in the only READY run of the v676 benchmark)
+// and 这个想吃。.
+//
+// These were NOT accepted through a fallback bypass. They went through the same
+// validateMandarinPair that every model candidate goes through, and it had no rule for them.
+// So the rule goes HERE, in the shared surface-grammar checks, where both origins meet it.
+//
+// Deliberately narrow, to catch the proven malformations without rejecting correct Chinese:
+//   (a) demonstrative + 想/要 + verb     — stacked volitional with an inanimate agent
+//   (b) demonstrative + verb + nothing   — no object and no following content at all
+// A demonstrative followed by a noun (这个东西…), an adjective (这个很大), a question word
+// (这个怎么做？), a stative/modal predicate (这个可以。) or a pronoun subject (这个我想喝。) is
+// untouched. General verb valency is deliberately NOT promoted here: 你拿吧 elides its object
+// and is natural Chinese, so a blanket object requirement would false-reject it.
+const ZH_DEMONSTRATIVES = ['这个', '那个', '这里', '那里', '这儿', '那儿']
+const ZH_STATIVE_PREDICATES = ['可以', '有', '是', '在', '行', '好']
+function mandarinDemonstrativeSubjectProblems(zh, inv) {
+  const s = String(zh || '').replace(/\s+/g, '').replace(/[。？！，；]/g, '')
+  const P = []
+  const dem = ZH_DEMONSTRATIVES.find(d => s.startsWith(d))
+  if (!dem) return P
+  const rest = s.slice(dem.length)
+  if (!rest) return P
+  // longest surface first, so 知道 / 觉得 are matched before any shorter verb
+  const verbs = ((inv && inv.allContent) || [])
+    .filter(x => x && x.chinese && /verb/.test(String(x.partOfSpeech || '')))
+    .map(x => x.chinese)
+    .filter(v => !ZH_STATIVE_PREDICATES.includes(v))
+    .sort((a, b) => b.length - a.length)
+  const verbAt = str => verbs.find(v => str.startsWith(v)) || null
+  const strip = str => String(str || '').replace(/[吗呢了吧啊下]/g, '')
+  // (a) demonstrative + 想/要 + verb (or + stative predicate: 那个想可以)
+  const vol = ['想', '要'].find(v => rest.startsWith(v))
+  if (vol) {
+    const after = rest.slice(vol.length)
+    const v2 = verbAt(after)
+    // v2 → stacked volitional (那个想可以 / 这个想喝); stative → 那个想可以;
+    // nothing at all → the bare volitional predicate 那个要。 / 那个要吗？ ("That want.")
+    if (v2 || ZH_STATIVE_PREDICATES.includes(strip(after)) || !/[一-鿿]/.test(strip(after)))
+      P.push('ungrammatical: ' + dem + ' cannot be the subject of ' + vol
+        + ' — a demonstrative is not an agent (topicalise it: ' + dem + '我' + vol + (v2 || '') + ')')
+    return P
+  }
+  // (b) demonstrative + verb with nothing after it
+  const v1 = verbAt(rest)
+  if (v1 && !/[一-鿿]/.test(strip(rest.slice(v1.length))))
+    P.push('ungrammatical: ' + dem + ' cannot be the subject of ' + v1
+      + ' with nothing after it — a demonstrative is not an agent (' + s + ')')
   return P
 }
 // v672 §4 — THE CUE IS DERIVED FROM THE ACCEPTED MANDARIN PROPOSITION (its faithful English), then verified: a question is cued
@@ -3683,6 +3740,58 @@ function validateMandarinPair(cand, target, inv, vocab, rules, seenMap) {
   return { ok:true, problems:[], segments:segs, complexity:cx }
 }
 
+// v677 §4 — REJECTED-CANDIDATE RECORD (shared, bounded, context-scoped).
+// In the v676 benchmark the generator repeatedly re-proposed a candidate it had already been
+// told was wrong, and was rejected again for the identical reason — a paid call that could not
+// succeed. Mandarin had no guard at all (这个很小 / 这个好 / 那个慢 resubmitted across all three
+// runs; zh-daily-run2 burned 11 checks on 那个 and ended a recall short), Thai stopped only on
+// the THIRD identical return, and Japanese only when two IDENTICAL returns were consecutive.
+// Regeneration was 52–64% of generation tokens in every Thai run and 59–62% in every Mandarin
+// run.
+//
+// The record is scoped to (language, targetId, recallIndex, validation contract, context), so:
+//   · a repeat is only a repeat under UNCHANGED conditions — changing the construction, the
+//     context or the strategy changes the scope and the sentence may legitimately be tried;
+//   · nothing is blacklisted across unrelated contexts, and nothing persists beyond the run;
+//   · it is bounded (REJECTED_CANDIDATE_CAP entries per scope) so it cannot grow unboundedly.
+// It never relaxes a check and never accepts anything: it only stops a KNOWN-FAILING proposal
+// from being paid for twice, and forces recovery to change something instead.
+const REJECTED_CANDIDATE_CAP = 48
+function makeRejectedCandidateRecord(lang) {
+  const byScope = new Map()
+  const stats = { lang, recorded: 0, distinct: 0, repeatsSeen: 0, avoidedPaidCalls: 0, avoidedPromptChars: 0, scopes: 0 }
+  const norm = s => String(s || '').replace(/[\s　.,!?;:，。？！；：、ๆ]/g, '')
+  const reasonKey = r => String(r || '').toLowerCase().replace(/["'“”「」]/g, '').replace(/\s+/g, ' ').trim().slice(0, 90)
+  const scopeKey = sc => [lang, (sc && sc.targetId), (sc && sc.recallIndex), (sc && sc.contract) || 'default', (sc && sc.context) || ''].join('|')
+  return {
+    stats,
+    // Has this exact candidate already failed for this exact reason, in this exact scope?
+    isKnownFailure(sc, text, reason) {
+      const m = byScope.get(scopeKey(sc)); if (!m) return false
+      const e = m.get(norm(text))
+      return !!e && e.reasons.has(reasonKey(reason))
+    },
+    // Returns how many times this (candidate, reason) has now failed in this scope.
+    record(sc, text, reason) {
+      const t = norm(text); if (!t) return 0
+      const k = scopeKey(sc)
+      if (!byScope.has(k)) { byScope.set(k, new Map()); stats.scopes++ }
+      const m = byScope.get(k)
+      if (!m.has(t)) { if (m.size >= REJECTED_CANDIDATE_CAP) return 1; m.set(t, { reasons: new Set(), n: 0 }); stats.distinct++ }
+      const e = m.get(t)
+      const already = e.reasons.has(reasonKey(reason))
+      e.reasons.add(reasonKey(reason)); e.n++; stats.recorded++
+      if (already) stats.repeatsSeen++
+      return e.n
+    },
+    noteAvoided(promptChars) { stats.avoidedPaidCalls++; stats.avoidedPromptChars += (promptChars || 0) },
+    summaryLine() {
+      return 'REJECTED_CANDIDATE_RECORD ' + lang + ' · scopes ' + stats.scopes + ' · distinct rejected candidates ' + stats.distinct
+        + ' · identical re-proposals seen ' + stats.repeatsSeen + ' · paid calls avoided ' + stats.avoidedPaidCalls
+        + ' · prompt chars avoided ' + stats.avoidedPromptChars
+    },
+  }
+}
 // v673 §4 — THE Mandarin acceptance function. Generation, the deterministic fallback, quota recovery and QC replacement
 // all accept a candidate through it: segmentation → target presence / sense → closed vocabulary → grammar → HARD
 // complexity (canonical count) → cue alignment (naturalness is the semantic QC that follows). Nothing that fails it can
@@ -3972,11 +4081,14 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
       const owner = seenMap.get(strip(p.chinese))
       if (owner === target.id || !(rules && rules.allowCrossTargetReuse)) continue
     }
-    if (vocab) {
-      // v673 §4 — the fallback is accepted by THE acceptance function too (rules default when the caller has none)
-      const v = mandarinAcceptCandidate(p, target, inv, vocab, { rules: rules || { allowCrossTargetReuse: true }, seenMap: seenMap || new Map() })
-      if (!v.ok) continue
-    } else if (!mandarinTargetPresent(p.chinese, target, inv)) continue
+    // v677 §1 — NO ACCEPTANCE BYPASS. v676 ran the acceptance function only when a caller
+    // happened to pass `vocab`, and fell back to a target-presence test alone otherwise —
+    // skipping closed vocabulary, grammar, complexity, cue form and duplicates. The live
+    // generation path did pass vocab, so this was latent rather than shipped, but it is still
+    // a second, weaker acceptance door for fallbacks only. There is now one door.
+    const v = mandarinAcceptCandidate(p, target, inv, vocab || [],
+      { rules: rules || { allowCrossTargetReuse: true }, seenMap: seenMap || new Map() })
+    if (!v.ok) continue
     usable.push(p)
   }
   // Rotate by recall index so three recalls do not all get the same sentence when
@@ -3997,6 +4109,10 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
   let last = ''
   const _zhRejected = new Set()
   const _zhUsedElsewhere = new Set()
+  // v677 §4 — one record per recall attempt-ladder; the caller may supply a shared one so the
+  // whole track's budget benefits, otherwise this recall gets its own.
+  const _rej = (o && o.rejectedRecord) || makeRejectedCandidateRecord('zh')
+  const _rejScope = { targetId: tid, recallIndex, contract: 'validateMandarinPair' }
   const ord = n => CHECK_ORDINALS[Math.max(1, Math.min(11, n)) - 1]
   for (let k = 1; k <= maxTier; k++) {
     const left = L.remaining(tid, recallIndex)
@@ -4047,6 +4163,20 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
       // A sentence already used by ANOTHER target was never named in the retry,
       // so 喜欢 resubmitted 我喜欢这个 for eight tiers. Remember it.
       if (/already used/.test(last) && cand.chinese) _zhUsedElsewhere.add(cand.chinese)
+      // v677 §4 — the same candidate rejected for the same reason under unchanged conditions.
+      // The strategy is not productive: stop paying for it and go straight to the deterministic
+      // fallback tier (which faces the identical validator). Nothing is relaxed and nothing is
+      // blacklisted beyond this (target, recall, contract) scope.
+      if (!isFallback) {
+        const times = _rej.record(_rejScope, cand.chinese, last)
+        if (times >= 2) {
+          _rej.noteAvoided(0)
+          onLog && onLog('  🧠 REJECTED_CANDIDATE_REPEAT ' + target.chinese + ' recall ' + recallIndex + ': "' + String(cand.chinese).slice(0, 40)
+            + '" was already rejected for the same reason (' + String(last).slice(0, 48) + ') — no further paid attempt on this construction; going to the deterministic fallback')
+          if (k < maxTier - 1) k = maxTier - 1
+          continue
+        }
+      }
       continue
     }
     const strip = x => String(x || '').replace(/[\s，。？！；、]/g, '')
@@ -8380,21 +8510,87 @@ function ttBenchApplyFixture(vocab, fx) {
 }
 const TT_BENCH_FIELD = { th: 'thai', ja: 'japanese', zh: 'chinese' }
 // what the learner would get (content + verdicts) — compared exactly between record and replay (= run.js contentOutcome)
-function ttBenchContentOutcome(lang, trackType, track) {
+// v677 §3 — BENCHMARK TARGET INSTRUMENTATION. The v676 export carried targetId only, so no
+// consumer could check whether a shipped pair actually CONTAINS its target — the audit could
+// confirm an id was assigned and nothing more (and Mandarin did not even record
+// selectedTargetIds). Each target pair now also carries the canonical surface form, the
+// intended meaning, the part of speech, the accepted surface realisations (inflection), and
+// the language matcher's own presence verdict with the method that produced it. This is
+// instrumentation: it reads learner data and vocabulary, and changes neither.
+function ttBenchTargetIndex(lang, track, vocab) {
+  const f = TT_BENCH_FIELD[lang]
+  const m = new Map()
+  // The canonical bank is the authority for part of speech and lemma; a track's keywords do
+  // not all carry them, and matchesJapaneseTarget needs partOfSpeech to decide whether a kana
+  // spelling counts. Looked up by id only — (language, wordId) is the lexical identity, and
+  // this never writes.
+  const byId = new Map()
+  ;(vocab || []).forEach(w => { if (w && w.id != null) byId.set(w.id, w) })
+  ;(track.keywords || []).forEach(k => {
+    if (!k || k.wordId == null) return
+    const w = byId.get(k.wordId) || null
+    m.set(k.wordId, { id: k.wordId,
+      surface: (w && (w[f] || w.thai || w.chinese || w.japanese)) || k[f] || k.thai || k.chinese || k.japanese || null,
+      english: (w && w.english) || k.english || null,
+      partOfSpeech: (w && w.partOfSpeech) || k.partOfSpeech || null,
+      lemma: (w && w.lemma) || k.lemma || null })
+  })
+  return m
+}
+// Surface realisations that legitimately count as the target: a Japanese dictionary form is
+// inflected in real sentences (食べる → 食べた / 食べて), so a substring test on the lemma alone
+// under-reports presence. Exported so an offline audit can apply the same rule.
+function ttBenchTargetForms(lang, t) {
+  const out = []
+  if (!t || !t.surface) return out
+  out.push(t.surface)
+  if (lang === 'ja') {
+    try { (jaKanaSpellingsOf({ japanese: t.surface, lemma: t.lemma || t.surface, partOfSpeech: t.partOfSpeech }) || []).forEach(k => { if (k && !out.includes(k)) out.push(k) }) } catch (e) {}
+  }
+  return out
+}
+function ttBenchTargetPresence(lang, text, t, vocab) {
+  const s = String(text || '')
+  if (!s || !t || !t.surface) return { present: null, by: 'no-target-or-text' }
+  try {
+    if (lang === 'ja') return { present: !!matchesJapaneseTarget(s, { japanese: t.surface, lemma: t.lemma || t.surface, partOfSpeech: t.partOfSpeech }), by: 'matchesJapaneseTarget' }
+    if (lang === 'th') return { present: !!thaiTargetPresent(s, t.surface, vocab), by: 'thaiTargetPresent' }
+  } catch (e) { /* fall through to the surface test, and say so */ }
+  // Mandarin has no inflection, so a surface test is the authoritative check; it is also the
+  // honest fallback when a language matcher is unavailable here.
+  return { present: ttBenchTargetForms(lang, t).some(x => x && s.includes(x)), by: 'surface-forms' }
+}
+function ttBenchContentOutcome(lang, trackType, track, vocab) {
   const f = TT_BENCH_FIELD[lang]
   const pron = p => p.phonetic || p.romaji || p.pinyin || null
   const hist = p => (p._checkHistory || []).map(e => e.index + ':' + e.outcome + ':' + (e.kind || ''))
+  const tix = ttBenchTargetIndex(lang, track, vocab)
+  const targetFields = (p, text) => {
+    if (!p || p.targetId == null) return { targetSurface: null, targetEnglish: null, targetPartOfSpeech: null, targetForms: null, targetPresent: null, targetPresentBy: null }
+    const t = tix.get(p.targetId) || null
+    if (!t) return { targetSurface: null, targetEnglish: null, targetPartOfSpeech: null, targetForms: null, targetPresent: null, targetPresentBy: 'target-id-not-in-keywords' }
+    const pr = ttBenchTargetPresence(lang, text, t, vocab)
+    return { targetSurface: t.surface, targetEnglish: t.english, targetPartOfSpeech: t.partOfSpeech,
+      targetForms: ttBenchTargetForms(lang, t), targetPresent: pr.present, targetPresentBy: pr.by }
+  }
+  const targetsBlock = [...tix.values()].map(t => ({ id: t.id, surface: t.surface, english: t.english,
+    partOfSpeech: t.partOfSpeech, forms: ttBenchTargetForms(lang, t) }))
   if (trackType === 'daily') return {
     status: track.integrity ? track.integrity.status : null, reasons: track.integrity ? track.integrity.reasons : null,
     selectedTargetIds: track.selectedTargetIds || null,
+    targets: targetsBlock,
     pairs: (track.pairs || []).map(p => p && ({ targetId: p.targetId != null ? p.targetId : null, recallIndex: p.recallIndex != null ? p.recallIndex : null, speaker: p.speaker || null,
-      text: p[f] || null, english: p.english || null, cue: p.prompt || null, pron: pron(p), source: p._source || p.sourceStage || null, checks: hist(p) })),
+      text: p[f] || null, english: p.english || null, cue: p.prompt || null, pron: pron(p), source: p._source || p.sourceStage || null, checks: hist(p),
+      ...targetFields(p, p[f]) })),
     unresolved: track.integrity && track.integrity.checkModel ? track.integrity.checkModel.unresolvedRecalls : null,
   }
   const lt = track.listening || {}
   return { status: track.status || null, failedChecks: track.failedChecks || null, selectedTargetIds: track.selectedTargetIds || null,
     coverage: track.coverage ? { covered: track.coverage.covered, required: track.coverage.required } : null,
-    lines: (lt.lines || []).map(l => ({ scene: l.scene, speaker: l.speaker, text: l[f] || l.thai || null, english: l.english || null, pron: pron(l), covers: l.coversTargetIds || [] })) }
+    targets: targetsBlock,
+    lines: (lt.lines || []).map(l => ({ scene: l.scene, speaker: l.speaker, text: l[f] || l.thai || null, english: l.english || null, pron: pron(l), covers: l.coversTargetIds || [],
+      coversPresent: (l.coversTargetIds || []).map(id => { const t = tix.get(id); if (!t) return { id, surface: null, present: null, by: 'target-id-not-in-keywords' }
+        const pr = ttBenchTargetPresence(lang, l[f] || l.thai, t, vocab); return { id, surface: t.surface, present: pr.present, by: pr.by } }) })) }
 }
 function ttBenchBank(lang) { return lang === 'th' ? initVocab() : lang === 'ja' ? initJapaneseVocab() : initMandarinVocab() }
 
@@ -8554,7 +8750,11 @@ async function ttBenchMandarinDaily(fx, vocab, apiKey, model, L, runId) {
     language: 'zh', mode: 'daily', trackMode: 'daily', speechStyle: MANDARIN_REGISTER.id,
     provider: 'gemini', model, pairs: res.pairs, allowedContent: res.allowedContent, grammarUsed: res.grammarUsed, scarcity: res.scarcity,
     recallCount: res.recallCount, framingCount: res.framingCount, rated: false, bookmark: 0,
-    keywords: targets.map(t => ({ chinese: t.chinese, pinyin: t.pinyin, english: t.english, wordId: t.id, rating: null, thai: t.chinese, phonetic: t.pinyin,
+    // v677 §3 — Mandarin never recorded its own target selection, so every zh benchmark run
+    // exported selectedTargetIds: null while th and ja exported 30 ids. Instrumentation only:
+    // the ids are the ones already selected above, not a new selection.
+    selectedTargetIds: Object.freeze(targets.map(t => t.id)),
+    keywords: targets.map(t => ({ chinese: t.chinese, pinyin: t.pinyin, english: t.english, wordId: t.id, rating: null, thai: t.chinese, phonetic: t.pinyin, partOfSpeech: t.partOfSpeech || null,
       isNew: t.selectionRole ? t.selectionRole === 'new' : t.status === 'new', selectionRole: t.selectionRole || (t.status === 'new' ? 'new' : 'review') })) }
   L('━━ Quality check')
   let final = null
@@ -8608,7 +8808,7 @@ async function ttBenchRunFixture(fx, o) {
   try { integrityLines = track && track.integrity ? trackIntegrityLines(track) : null } catch (e) {}
   return { fixtureId: fx.id, language: lang, trackType: fx.trackType, path: TT_BENCH_PATH_VERSION, appBuild: APP_BUILD_VERSION, listeningBuild: LISTENING_BUILD_VERSION, model,
     stop: (out && out.stop) || null, error,
-    content: track ? ttBenchContentOutcome(lang, fx.trackType, track) : null,
+    content: track ? ttBenchContentOutcome(lang, fx.trackType, track, vocab) : null,
     telemetry: { usageSummary: usageLines, integrity: integrityLines, costUsd: usage ? usage.costUsd : null, requests: usage ? usage.total : null },
     aiCalls: (() => { try { return aiCompactRows(AI_LEDGER.filter(r => r.runId === runId)) } catch (e) { return null } })(),
     log }
@@ -15982,7 +16182,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v676'
+const LISTENING_BUILD_VERSION = 'v677'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -16527,9 +16727,19 @@ function trackPairValidity(p, kw, adapter, ctx) {
   // v657 §3 — Thai counts a pair with the ONE acceptance contract (same dimensions as every earlier stage)
   if (adapter && adapter.lang === 'th') {
     const v = validateThaiTargetPair(p, { thai: adapter.surfaceOf(kw), wordId: kw.wordId }, { vocab: ctx && ctx.vocab, track: ctx && ctx.track }, 'quota')
-    // an unjudged dimension of a pre-v657 pair is left to the semantic invariant (SEMANTIC_QC / UNVERIFIED_FINAL_PAIRS)
     const hard = v.failed.map(k => v.reasons.find(r => r.startsWith(k + ':')) || k).map(r => r.replace(/^TARGET_PRESENT: TARGET_MISSING — /, 'TARGET_MISSING: '))
     hard.forEach(r => reasons.push(r))
+    // v677 §2 — UNVERIFIED IS NOT A PASS. validateThaiTargetPair already computes
+    // `valid: !failed.length && !pending.length`, but this function consumed only `v.failed`
+    // and dropped `v.pending`. The comment it replaced claimed an unjudged dimension was
+    // "left to the semantic invariant" — but TRACK_ADAPTERS.th.invalidReason only fires when
+    // `_semanticState` is SET and not VERIFIED, and a template fallback from _thFallbackLines
+    // carries neither `_semanticState` nor `_semVerdicts`. So a pair whose naturalness, target
+    // sense and cue were NEVER judged was indistinguishable at the quota gate from one that was
+    // judged and passed. An unjudged blocking dimension now blocks, named as UNVERIFIED.
+    // In a run where the semantic audit completes (th-daily-run1 judged 68/68) `pending` is
+    // empty and this changes nothing; it bites only when judging genuinely did not happen.
+    if (v.pending && v.pending.length) reasons.push('UNVERIFIED: ' + v.pending.join(', ') + ' never judged — an unjudged blocking check is not a pass')
     const inv = adapter.invalidReason(p, ctx)
     if (inv && !reasons.some(r => r.includes(inv))) reasons.push(inv)
     return { valid: reasons.length === 0, reasons, dimensions: v.dimensions }
@@ -16957,6 +17167,18 @@ const MAIN_COHERENCE_SCHEMA = { type: 'OBJECT', properties: { sections: { type: 
   section: { type: 'INTEGER' }, score: { type: 'INTEGER' }, coherent: { type: 'BOOLEAN' }, reason: { type: 'STRING' },
   premiseFitsTargets: { type: 'BOOLEAN', nullable: true }, suggestedPremise: { type: 'STRING', nullable: true },
   offTopicLines: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['section', 'coherent'] } }, overall: { type: 'INTEGER' }, reason: { type: 'STRING' } }, required: ['sections'] }
+// v677 §2 — the GATING contract: scores and line numbers only, no free text. Identical to
+// MAIN_COHERENCE_SCHEMA minus the two unbounded `reason` strings, which is where the v676 judge
+// spent its output budget before hitting MAX_TOKENS (3587/3600 tokens on th-daily-run1, with the
+// tail repeating itself verbatim). Everything the READY gate consumes — section, score,
+// coherent, premiseFitsTargets, offTopicLines, overall — is still here, so no check is weakened.
+// `suggestedPremise` is kept too: it is one sentence and it drives MAIN_TRACK_PREMISE_REPLAN.
+// Only the prose the gate never read is gone; section `reason` now logs as empty, and the full
+// schema above is retained for diagnostic use.
+const MAIN_COHERENCE_SCORES_SCHEMA = { type: 'OBJECT', properties: { sections: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+  section: { type: 'INTEGER' }, score: { type: 'INTEGER' }, coherent: { type: 'BOOLEAN' },
+  premiseFitsTargets: { type: 'BOOLEAN', nullable: true }, suggestedPremise: { type: 'STRING', nullable: true },
+  offTopicLines: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['section', 'coherent'] } }, overall: { type: 'INTEGER' } }, required: ['sections'] }
 function mainCoherenceSections(track) {
   const plan = track.scenePlan && track.scenePlan.scenes && track.scenePlan.scenes.length ? track.scenePlan.scenes : null
   const byTarget = new Map()
@@ -17011,37 +17233,80 @@ async function mainTrackCoherenceAudit(track, adapter, ctx) {
     'Score each SECTION 1–5 against ITS OWN LOCAL PREMISE and purpose only: do its lines make sense together in that situation (same topic, plausible people, no random subject jumps)? ' +
     '5 = clearly one situation · 3 = mostly fits, one or two odd lines · 1 = unrelated lines. List the line numbers that do NOT fit the section as offTopicLines. ' +
     'Also say whether the LOCAL PREMISE fits the section\'s TARGET WORDS (premiseFitsTargets); if it does not, give a better one-sentence suggestedPremise.\n\n' + bodyOf(idx) +
-    '\n\nReply ONLY with JSON: {"sections":[{"section":1,"score":4,"coherent":true,"premiseFitsTargets":true,"suggestedPremise":null,"offTopicLines":[],"reason":"..."}],"overall":1-5,"reason":"..."} — reasons under 15 words.'
+    // v677 §2 — the gating pass asks for NO free-text reason. Asking for one is what filled the
+    // output budget in v676 (the model repeated itself until MAX_TOKENS and the reply truncated).
+    '\n\nReply ONLY with JSON: {"sections":[{"section":1,"score":4,"coherent":true,"premiseFitsTargets":true,"suggestedPremise":null,"offTopicLines":[]}],"overall":1-5} — no prose, no "reason" field; scores and line numbers only. suggestedPremise is one short sentence, or null.'
   // v671 §B2 — an unparseable judge reply is never silently skipped: the reply is parsed robustly (fences, prose around
   // the JSON, trailing commas, a truncated tail), and on failure the audit is retried ONCE in two smaller chunks
   // (more room per section). Still unparseable → UNVERIFIED (which blocks READY) with the precise reason.
-  const judge = async (idx, maxTokens) => {
-    const raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: promptOf(idx) }], maxTokens, temperature: 0.2, json: MAIN_COHERENCE_SCHEMA, stage: 'F_main_coherence' })
+  // v677 §2 — WHY THIS WAS REWRITTEN. In the v676 live benchmark this judge produced no verdict
+  // in 2 of 9 Daily runs, and both were recorded as "reply unparseable". The cassettes say
+  // otherwise: every failing call came back HTTP 200 with finishReason MAX_TOKENS and a
+  // well-formed JSON prefix — th-daily-run1 seq 212 used 3587 of 3600 output tokens, ja-daily-run1
+  // seq 97 used 3588 of 3600. The replies were TRUNCATED, not malformed, and the budget went on
+  // the free-text `reason` fields, which the model padded with degenerate repetition ("The lines
+  // are about transport, not food. The target words are eat and drink… The lines are about
+  // transport, not food.").
+  //
+  // Worse, the recovery threw away good verdicts. In th-daily-run1 the first chunk parsed
+  // cleanly (seq 213, finishReason STOP, 439 tokens, sections 1–5 all present) and the second
+  // chunk truncated — and `got.length = 0; break` discarded BOTH, so a track with five known
+  // section scores was reported as having none.
+  //
+  // Three changes, all inside "bounded recovery":
+  //   1. The gating pass asks for SCORES ONLY (MAIN_COHERENCE_SCORES_SCHEMA). Scores are what
+  //      gate READY; prose is diagnostic. This is what removes the truncation pressure.
+  //   2. Verdicts ACCUMULATE across attempts instead of being all-or-nothing. A partial reply
+  //      contributes the sections it did parse (coherenceJudgeParse already recovers complete
+  //      {"section":…} objects from a truncated tail), and only the still-missing sections are
+  //      re-asked.
+  //   3. A section that never gets a verdict is UNVERIFIED and NAMED, and any unverified section
+  //      keeps the whole audit UNVERIFIED, which still blocks READY. UNVERIFIED is never a pass.
+  const judge = async (idx, maxTokens, schema) => {
+    const raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: promptOf(idx) }], maxTokens, temperature: 0.2, json: schema || MAIN_COHERENCE_SCORES_SCHEMA, stage: 'F_main_coherence' })
     const o2 = coherenceJudgeParse(raw)
-    // a truncated reply that lost section verdicts is not a verdict on those sections → treated as unparseable
-    return o2 && Array.isArray(o2.sections) && !(o2.partial && idx.some(k => !o2.sections.some(x => x && Number(x.section) === k + 1))) ? o2 : null
+    // Return whatever parsed. A partial reply is a verdict on the sections it DID answer.
+    return o2 && Array.isArray(o2.sections) ? o2 : null
   }
   const all = sections.map((_, k) => k)
-  let obj = null, attempts = 0
-  try { attempts++; obj = await judge(all, 3600) }
-  catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; return { state: 'UNVERIFIED', reason: 'judge unavailable: ' + String(e && e.message || e).slice(0, 80), sections: sections.length } }
-  if (!obj && sections.length) {
-    log && log('  ⚠ MAIN_TRACK_COHERENCE_UNPARSEABLE — the judge reply could not be parsed · bounded recovery: ONE retry in 2 chunks')
-    const half = Math.ceil(sections.length / 2), parts = [all.slice(0, half), all.slice(half)].filter(x => x.length)
-    const got = []
-    for (const part of parts) {
-      try { attempts++; const o2 = await judge(part, 2400); if (!o2) { got.length = 0; break } got.push(o2) }
-      catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; got.length = 0; break }
-    }
-    if (got.length === parts.length) {
-      const secs = got.flatMap(o2 => o2.sections || []), ov = got.map(o2 => Number(o2.overall)).filter(x => x >= 1)
-      obj = { sections: secs, overall: ov.length ? Math.min(...ov) : null, reason: got.map(o2 => o2.reason || '').filter(Boolean).join(' · ') }
-      log && log('  ✅ MAIN_TRACK_COHERENCE_RECOVERED — chunked audit parsed (' + secs.length + ' section verdicts, ' + attempts + ' judge calls)')
-    }
+  const verdicts = new Map()               // section number (1-based) -> verdict object
+  const overalls = []
+  const reasons = []
+  let attempts = 0
+  const absorb = o2 => {
+    if (!o2) return
+    ;(o2.sections || []).forEach(x => { const n = Number(x && x.section); if (n >= 1 && !verdicts.has(n)) verdicts.set(n, x) })
+    if (Number(o2.overall) >= 1) overalls.push(Number(o2.overall))
+    if (o2.reason) reasons.push(String(o2.reason))
   }
-  if (!obj || !Array.isArray(obj.sections)) {
-    log && log('  ⛔ MAIN_TRACK_COHERENCE UNVERIFIED — judge reply unparseable after ' + attempts + ' call(s) (incl. one chunked retry) · the track cannot be READY until coherence is verified')
-    return { state: 'UNVERIFIED', reason: 'reply unparseable after ' + attempts + ' judge call(s) incl. a chunked retry', sections: sections.length, attempts }
+  const missing = () => all.filter(k => !verdicts.has(k + 1))
+  try { attempts++; absorb(await judge(all, 3600)) }
+  catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; return { state: 'UNVERIFIED', reason: 'judge unavailable: ' + String(e && e.message || e).slice(0, 80), sections: sections.length } }
+  if (missing().length) {
+    log && log('  ⚠ MAIN_TRACK_COHERENCE_PARTIAL — ' + verdicts.size + '/' + sections.length + ' section verdict(s) recovered from the first reply · bounded recovery: up to 2 more calls for the remaining ' + missing().length)
+    // Up to two further calls, each asking ONLY for the sections still missing, in halves.
+    for (let round = 0; round < 2 && missing().length; round++) {
+      const need = missing()
+      const half = Math.ceil(need.length / 2)
+      const parts = round === 0 && need.length > 1 ? [need.slice(0, half), need.slice(half)] : [need]
+      for (const part of parts) {
+        if (!part.length) continue
+        try { attempts++; absorb(await judge(part, 3600)) }
+        catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; /* a failed chunk costs only its own sections */ }
+      }
+    }
+    if (!missing().length) log && log('  ✅ MAIN_TRACK_COHERENCE_RECOVERED — every section has a verdict (' + attempts + ' judge calls)')
+  }
+  const unverifiedSections = missing().map(k => k + 1)
+  if (verdicts.size === 0) {
+    log && log('  ⛔ MAIN_TRACK_COHERENCE UNVERIFIED — no section verdict could be parsed after ' + attempts + ' call(s) · the track cannot be READY until coherence is verified')
+    return { state: 'UNVERIFIED', reason: 'no section verdict parsed after ' + attempts + ' judge call(s)', sections: sections.length, attempts }
+  }
+  const obj = { sections: [...verdicts.values()], overall: overalls.length ? Math.min(...overalls) : null, reason: reasons.filter(Boolean).join(' · ') }
+  if (unverifiedSections.length) {
+    log && log('  ⛔ MAIN_TRACK_COHERENCE UNVERIFIED — section(s) ' + unverifiedSections.join(', ') + ' never received a verdict after ' + attempts + ' call(s) (' + verdicts.size + '/' + sections.length + ' judged) · an unjudged section is not a pass, so the track cannot be READY')
+    return { state: 'UNVERIFIED', reason: unverifiedSections.length + ' of ' + sections.length + ' section(s) never judged (sections ' + unverifiedSections.join(', ') + ') after ' + attempts + ' judge call(s)',
+      sections: sections.length, attempts, judged: verdicts.size, unverifiedSections }
   }
   const lineMap = new Map(sections.flatMap(sc => sc.lines.map(l => [l.n, { sceneId: sc.sceneId, pair: l.pair }])))
   const detail = sections.map((sc, k) => {
@@ -17187,7 +17452,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v676'
+const APP_BUILD_VERSION = 'v677'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -36462,6 +36727,14 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
   // real gate in places (it rejected たぶん行く。 and あそこに行こう。): every one of
   // them passed the FULL acceptance gate, and the fallback result is run through
   // that gate again at the call site before it can be accepted.
+  // v677 §1 — that last clause was only true of two of the four call sites. The
+  // recovery engine's validatePair had its own weaker checks (it accepted あそこは何？
+  // and 場所は何？, which jaEvaluateRecallCandidate rejects) and now delegates to
+  // jaEvaluateRecallCandidate, so the claim holds for every path that can SHIP a
+  // recall. It is still not true of listeningTurnPalettes, which filters with
+  // japaneseCheckLine alone — those candidates are prompt examples, never shipped
+  // lines, and the Listening path is out of scope for v677 §1. Do not read the
+  // comment at listeningTurnPalettes as a guarantee.
   ;(JA_HINT_PAIRS[t] || []).slice().reverse().forEach(([jp, en, cue]) => cands.unshift({ jp, en, cue }))
   const uniq = []
   cands.forEach(c => { if (c && c.jp && !uniq.some(u => u.jp === c.jp)) uniq.push(c) })
@@ -37749,7 +38022,23 @@ function japaneseRecoveryEngine({ vocab, registerId, apiKey, model, inv, rules, 
     buildSafeRecall({ target, recallIndex }) {
       return jaFallbackRecall(target, inv, recallIndex)
     },
+    // v677 §1 — ONE acceptance contract. This was a second, weaker validator used ONLY by
+    // recovery step 5 (the deterministic `buildSafeRecall` branch of retryMissingRecall) and it
+    // was missing jaPragmaticProblems, jaCueFormProblems, japaneseAcceptanceGate,
+    // japaneseDuplicateVerdict and jaGrammarMetadataAudit. It also used japaneseCheckLine
+    // (surface-level, exempts adverbs / interrogatives / determiners) where the model path uses
+    // japaneseUnknownFromSegments. Five of the app's own documented defects passed here and were
+    // rejected by the model path — あそこは何？ · 場所は何？ · 今日する？ · この物、何？ · 今日は？
+    // Every fallback now goes through the SAME jaEvaluateRecallCandidate the model path uses.
     validatePair(pair, { target }) {
+      if (!pair || !pair.japanese) return { ok:false, problems:['missing Japanese'] }
+      const ev = jaEvaluateRecallCandidate(pair, { target, inv, vocab, registerId, seenMap, rules, opts: {}, onLog })
+      if (!ev.ok) return { ok:false, problems:[String(ev.failure || 'rejected by the shared recall evaluator')] }
+      // the evaluator repairs structure in place on its own copy; carry that back
+      if (ev.cand && ev.cand !== pair) Object.assign(pair, ev.cand)
+      return { ok:true, problems:[] }
+    },
+    _retiredValidatePair(pair, { target }) {
       if (!pair || !pair.japanese) return { ok:false, problems:['missing Japanese'] }
       if (!matchesJapaneseTarget(pair.japanese, target)) return { ok:false, problems:['target not present'] }
       const chk = japaneseCheckLine(pair.japanese, inv)

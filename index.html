@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v673"/>
+<meta name="app-version" content="v674"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v673';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v673').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v674';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v674').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -4392,6 +4392,11 @@ async function runMandarinTrackQC(track, vocab, opts, onProgress, onLog) {
     if (seen.has(key)) {
       const iss = add(i, 'duplicate', 'duplicate of pair ' + (seen.get(key) + 1))
       if (rules.allowNearDuplicate) accept(iss, 'accepted repetition \u2014 small learner inventory')
+      // v674 — a repeated FRAMING line (greeting / farewell) is not a lesson sentence: accepted explicitly (it used to stay
+      // "unresolved" while FINAL_TRACK said READY — the 8-Oct "Pair 94 duplicate of pair 2" contradiction)
+      else if (p && p._framing) accept(iss, 'framing line repetition (not a lesson sentence) \u2014 kept, does not affect the 90 target pairs')
+      // a repeated TARGET pair is a hard defect: it is invalidated here and REPLACED by quota recovery (logged), or the track
+      // stays NOT_READY — never READY next to an unresolved duplicate
       else unresolved(iss)
     }
     seen.set(key, i)
@@ -7064,6 +7069,13 @@ function complexityUnits(lang, x, o) {
   return String(text || '').trim().split(/\s+/).filter(Boolean).length
 }
 // THE complexity API. Every generator prompt, candidate acceptance, repair, QC audit and the UI read this.
+// v674 — Thai Daily (READY, 76% preferred vs the 80% advisory): draft at the preferred length FIRST; 6–7 words only when the
+// short version would be unnatural. hardMax is unchanged and a natural sentence is never cut just to hit the advisory.
+function thaiPreferredLengthNudge(cc) {
+  if (!cc || cc.lang !== 'th') return ''
+  return ' · LENGTH FIRST: write the ' + cc.preferredMin + '–' + cc.preferredMax + '-word version of the idea first (subject + verb + one detail is enough); ' +
+    'use ' + (cc.preferredMax + 1) + '–' + cc.hardMax + ' words ONLY if the ' + cc.preferredMin + '–' + cc.preferredMax + '-word version would sound unnatural or lose the lesson word\'s meaning. Never cut a natural sentence just to be shorter.'
+}
 function getLearnerComplexityContract(o) {
   const c = o || {}
   const lang = c.lang || 'th'
@@ -8277,6 +8289,8 @@ function createRecallCheckLedger(lang) {
     history: (t, r) => get(t, r).entries.map(e => ({ ...e })),
     count: (t, r) => get(t, r).entries.length,
     remaining: (t, r) => RECALL_MAX_CHECKS - get(t, r).entries.length,
+    // v674 — a recall that used all 11 checks is TERMINAL (EXHAUSTED_AT_11): never enqueued again in this track run
+    terminal: (t, r) => get(t, r).entries.length >= RECALL_MAX_CHECKS,
     // opens the next check of THIS recall (returns its index, or 0 when all 11 attempts are used)
     attempt(t, r, meta) {
       const rec = get(t, r)
@@ -13549,7 +13563,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     return 'SCENARIO: ' + scenarioCtx.setting +
       '\nTARGET WORD: ' + target.thai + ' (' + (target.phonetic||target.thai) + ') = "' + (target.english||'') + '"' +
       '\n⚠ CRITICAL: Every Thai sentence MUST contain the EXACT word "' + target.thai + '". Do NOT replace it with synonyms.' +
-      '\nCLASS: ' + type + ' | ' + lenResult.contract.promptRule +
+      '\nCLASS: ' + type + ' | ' + lenResult.contract.promptRule + thaiPreferredLengthNudge(lenResult.contract) +
       (recheckLine ? '\n' + recheckLine : '') +
       '\nGRAMMAR PATTERNS: ' + conceptLines +
       '\n' + vocabContext +
@@ -15232,7 +15246,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v673'
+const LISTENING_BUILD_VERSION = 'v674'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -15962,12 +15976,44 @@ function trackPairsFingerprint(pairs) {
 function isFinalTrack(track) {
   return !!(track && track.finalTrack && track.finalTrack.fingerprint === trackPairsFingerprint(track.pairs))
 }
+// v674 — ONE authoritative final pair set: the duplicate audit runs on the FINAL persisted pairs (not the QC-time list), and
+// every unresolved QC issue is reconciled against it — resolved (its pair was replaced / is no longer in the set) or still
+// present (a hard defect ⇒ NOT_READY). No stale QC defect may coexist with READY.
+function finalDuplicateAudit(pairs, adapter) {
+  const norm = x => String(x || '').toLowerCase().replace(/[\s\u3000.,!?、。？！，；;:：…"'“”「」()（）\-~]/g, '')
+  const seen = new Map(), hard = [], accepted = []
+  ;(pairs || []).forEach((p, i) => {
+    if (!p || classifyTrackPair(p) !== 'TARGET' || p._qcInvalid) return
+    const k = norm(adapter.sentenceOf(p)); if (!k) return
+    if (seen.has(k)) { const row = { line: i + 1, firstLine: seen.get(k) + 1, text: adapter.sentenceOf(p), pairId: p.pairId || null }
+      if (p._acceptedRepetition || p._duplicateOnly) accepted.push(row); else hard.push(row) }
+    else seen.set(k, i)
+  })
+  return { targetPairs: (pairs || []).filter(p => p && classifyTrackPair(p) === 'TARGET' && !p._qcInvalid).length, hard, accepted }
+}
+function reconcileQcIssues(qcIssues, qcPairs, finalPairs, adapter) {
+  const live = (finalPairs || []).filter(p => p && !p._qcInvalid)
+  const cnt = new Map(); live.forEach(p => { const k = adapter.sentenceOf(p); cnt.set(k, (cnt.get(k) || 0) + 1) })
+  const rows = []
+  ;(qcIssues || []).filter(x => x && x.status === 'unresolved' && !x.groupIssue && x.pairIndex != null && !/has \d+ recalls \(expected 3\)/.test(x.message || '')).forEach(x => {
+    const p = (qcPairs || [])[x.pairIndex]; if (!p) return
+    const text = adapter.sentenceOf(p)
+    // a duplicate is still present only while the sentence occurs TWICE in the final set; any other defect while that very
+    // pair (same pairId, else same text) is still live
+    const present = x.category === 'duplicate' ? (cnt.get(text) || 0) >= 2
+      : p.pairId ? live.some(f => f.pairId === p.pairId && adapter.sentenceOf(f) === text) : (cnt.get(text) || 0) >= 1
+    rows.push({ pair: x.pairIndex + 1, category: x.category, message: String(x.message || '').slice(0, 80), text, framing: !!p._framing,
+      state: !present ? 'RESOLVED (pair replaced / no longer in the final set)' : p._framing ? 'FRAMING (not a lesson sentence)' : 'STILL_PRESENT' })
+  })
+  return rows
+}
 async function finaliseMainTrack(track, adapter, ctx) {
   const c = { ...(ctx || {}) }, log = c.onLog || null
   if (!adapter || !TRACK_LANGUAGES.includes(adapter.lang)) throw pipelineInternalError('MISSING_TRACK_LANGUAGE', 'finaliseMainTrack called without a language adapter')
   c.vocabById = c.vocabById || new Map((c.vocab || []).map(w => [w.id, w]))
   log && log('━━ FINAL_TRACK (' + adapter.lang + '): quota → recovery → coherence → freeze text → pronunciation → final audit → invariants')
   let t = ensureTrackIdentity(track, adapter)
+  const _qcPairsAtEntry = (track && track.pairs) || []      // v674 — QC issue indices refer to THIS list
   c.track = t                                   // adapters see the track's targets (e.g. the Mandarin inventory)
   // v672 §1 — the run's per-recall check ledger: the generation ledger when this track was just generated, otherwise the
   // persisted snapshot + the pairs' own histories (reload / QC rerun). QC and recovery continue each recall's history.
@@ -16108,6 +16154,17 @@ async function finaliseMainTrack(track, adapter, ctx) {
   inv.MAIN_TRACK_COHERENCE = !_coh ? 'n/a' : _coh.offline ? 'n/a' : _coh.state !== 'VERIFIED' ? 'UNVERIFIED' : _coh.passed ? 'PASS' : 'FAIL'
   if (inv.MAIN_TRACK_COHERENCE === 'FAIL') reasons.push('MAIN_TRACK_COHERENCE=FAIL (overall ' + _coh.overall + '/5 · ' + (_coh.incoherent || []).map(x => x.sceneId + '=' + x.score).join(' ') + (_coh.repair ? ' · after repair of ' + _coh.repair.replaced + ' line(s)' : '') + ')')
   if (inv.MAIN_TRACK_COHERENCE === 'UNVERIFIED') reasons.push('MAIN_TRACK_COHERENCE=UNVERIFIED (' + (_coh.reason || '') + ')')
+  // v674 — final duplicate audit on the persisted canonical pairs + QC reconciliation (no stale QC defect next to READY)
+  const _dupAudit = finalDuplicateAudit(t.pairs, adapter)
+  inv.FINAL_DUPLICATE_AUDIT = _dupAudit.hard.length ? 'FAIL' : 'PASS'
+  log && log('  🔁 FINAL_DUPLICATE_AUDIT target pairs=' + _dupAudit.targetPairs + ' duplicates=' + _dupAudit.hard.length + (_dupAudit.accepted.length ? ' acceptedRepetition=' + _dupAudit.accepted.length : '') +
+    (_dupAudit.hard.length ? ' — ' + _dupAudit.hard.slice(0, 3).map(d => 'L' + d.line + ' = L' + d.firstLine + ' "' + d.text + '"').join(' · ') + ' → NOT_READY' : ' PASS') + ' (run on the FINAL persisted pairs)')
+  if (_dupAudit.hard.length) reasons.push('FINAL_DUPLICATE_AUDIT=FAIL (' + _dupAudit.hard.length + ' duplicate target pair(s))')
+  const _qcRec = reconcileQcIssues(t._qcIssues || track._qcIssues || [], _qcPairsAtEntry, t.pairs, adapter)
+  _qcRec.forEach(r => log && log('  🧾 QC_RECONCILE pair ' + r.pair + ' ' + r.category + ' (' + r.message + ') → ' + r.state))
+  const _qcStale = _qcRec.filter(r => r.state === 'STILL_PRESENT' && (r.category === 'duplicate' || JAZH_INVALIDATING.has(r.category)))
+  inv.QC_RECONCILED = !_qcStale.length
+  if (_qcStale.length) reasons.push('QC_UNRESOLVED_STILL_PRESENT=' + _qcStale.length + ' (' + _qcStale.slice(0, 2).map(r => 'pair ' + r.pair + ' ' + r.category).join('; ') + ')')
   const rej = (c.qcRejections || {})
   // a sentence QC already rejected (and counted in qcRejections) is removed here, not counted twice;
   // only removals the QC tally does not know about (presence, script, markup, duplicate) are added
@@ -16391,7 +16448,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v673'
+const APP_BUILD_VERSION = 'v674'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -17454,7 +17511,8 @@ async function _thFinaliseMetadata(pairs, ctx) {
 }
 // ── Japanese / Mandarin shared helpers ──
 const JAZH_INVALIDATING = new Set(['japanese', 'chinese', 'reading', 'romaji', 'pinyin', 'translation', 'segments', 'promptMeaning', 'naturalness',
-  'target', 'contentVocabulary', 'vocabulary', 'grammar', 'register', 'contamination', 'prompt'])
+  'target', 'contentVocabulary', 'vocabulary', 'grammar', 'register', 'contamination', 'prompt',
+  'duplicate'])   // v674 — an UNRESOLVED duplicate target pair is invalidated → replaced by quota recovery (or NOT_READY)
 // QC issues (by pairIndex) → the pair is marked rejected, so the quota never counts it.
 function markQcInvalidPairs(pairs, issues) {
   const out = (pairs || []).slice()
@@ -18123,6 +18181,7 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
 const LISTENING_ARCHITECTURE = 'fresh-conversation-v656'
 const LISTENING_ARCHITECTURE_V672 = 'one-conversation-v672'
 const LISTENING_ARCHITECTURE_V673 = 'planning-first-v673'   // v673 — feasibility + meaning plan before generation, failure-class repair
+const LISTENING_ARCHITECTURE_V674 = 'verbalizability-first-v674'   // v674 — every planned turn proven sayable before it enters the meaning plan
 // v672 §2 — continuity over the FINAL text: a greeting after the first part or a goodbye before the last part breaks ONE conversation
 function conversationContinuityAudit(scenes, la, targets) {
   const out = [], n = (scenes || []).length
@@ -18375,6 +18434,7 @@ function buildScenePalette(o) {
   const doms = new Set(required.map(t => t.domain).filter(Boolean))
   const needs = (o.needs || []).map(n => new RegExp('\\b(' + n + ')\\b', 'i'))
   const premiseWords = String(o.premise || '').toLowerCase().split(/[^a-z']+/).filter(w => w.length >= 4)
+  const frameSet = new Set(o.frameSupport || [])
   const seen = new Set()
   const cands = (o.authorised || []).filter(w => { const s = _paletteSurface(lang, w); if (!s || reqSurf.has(s) || otherIds.has(w.id) || seen.has(s)) return false; seen.add(s); return true })
   const scored = cands.map(w => {
@@ -18384,6 +18444,7 @@ function buildScenePalette(o) {
     if (needs.some(rx => rx.test(g))) score += 8
     if (premiseWords.some(p => g.includes(p))) score += 3
     if (PALETTE_CORE_GLOSS.test(g)) score += 3
+    if (frameSet.has(_paletteSurface(lang, w))) score += 20      // v674 — the words of the proven frames come first
     if (w.status === 'known' || w.manualKnown) score += 1
     return { w, score, tie: _lnSeedHash(seed + '|' + w.id) }
   }).sort((a, b) => b.score - a.score || a.tie - b.tie)
@@ -18540,7 +18601,7 @@ function validateIntentSkeleton(skeleton, cc) {
       if (rl === 'RESPONSE_TOKEN' && t.respondsTo == null) problems.push('turn ' + t.turn + ' (' + t.intent + ') carries the reply word ' + ((t.surfaces || [])[i] || '') + ' — it can only answer')
       if (rl === 'APOLOGY' && !/^(APOLOGY|REQUEST|ANSWER|REJECT|RESPONSE)$/.test(t.intent)) problems.push('turn ' + t.turn + ' (' + t.intent + ') carries the apology ' + ((t.surfaces || [])[i] || '') + ' — an apology is its own act (or softens a request / refusal)')
     })
-    const est = (LISTENING_INTENT_UNITS[t.intent] || 2) + (t.targetIds || []).length
+    const est = t.frame && cc ? _lnUnits(cc, t.frame) : (LISTENING_INTENT_UNITS[t.intent] || 2) + (t.targetIds || []).length
     if (cc && est > cc.hardMax) problems.push('turn ' + t.turn + ' cannot be said within hardMax ' + cc.hardMax + ' (estimated ' + est + ' units)')
   })
   return { valid: !problems.length, problems }
@@ -18560,15 +18621,15 @@ function _lnPlanSkeleton(sc, byId, cc) {
       const _common = { topic: sc.purpose || null, relationship: sc.relationship || null, register: sc.registerExpectation || null, exchangeIndex: ex.exchangeIndex || k + 1 }
       const t1 = ++n
       sk.push({ turn: t1, speaker: a.speaker, intent: first, act: first, slot, requests: first === 'QUESTION' ? (_LN_SLOT_LABEL[slot] || slot) : null, expects: _exp,
-        targetIds: a.targetIds.slice(), senses: ta.map(t => t.sense || t.gloss || ''), roles: ta.map(t => t.role), surfaces: ta.map(t => t.surface), ..._common, meaning: a.meaning || null })
+        targetIds: a.targetIds.slice(), senses: ta.map(t => t.sense || t.gloss || ''), roles: ta.map(t => t.role), surfaces: ta.map(t => t.surface), ..._common, meaning: a.meaning || null, frame: a.frame || null })
       const _second = (!safe && ex.second && (LISTENING_ADJACENCY[first] || []).includes(ex.second)) ? ex.second : LISTENING_SECOND_PART[first]
       const t2 = ++n
       sk.push({ turn: t2, speaker: b.speaker, intent: _second, act: _second, respondsTo: t1, slot, means: _second === 'COUNTERPROPOSAL' ? 'a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)' : _exp, targetIds: b.targetIds.slice(),
-        senses: tb.map(t => t.sense || t.gloss || ''), roles: tb.map(t => t.role), surfaces: tb.map(t => t.surface), fillers: tb.map(sc.phase ? _lnFillerTypeOfMeta : _lnFillerType), ..._common, meaning: b.meaning || null })
+        senses: tb.map(t => t.sense || t.gloss || ''), roles: tb.map(t => t.role), surfaces: tb.map(t => t.surface), fillers: tb.map(sc.phase ? _lnFillerTypeOfMeta : _lnFillerType), ..._common, meaning: b.meaning || null, frame: b.frame || null })
       // v673 — a planned third turn (the first speaker accepts the counter-proposal)
       if (c3 && !safe) { const tc = c3.targetIds.map(id => byId.get(id)).filter(Boolean)
         sk.push({ turn: ++n, speaker: c3.speaker, intent: 'ACCEPT', act: 'ACCEPT', respondsTo: t2, slot: null, means: 'agreement with the counter-proposal — that value is now agreed', targetIds: c3.targetIds.slice(),
-          senses: tc.map(t => t.sense || t.gloss || ''), roles: tc.map(t => t.role), surfaces: tc.map(t => t.surface), fillers: [], ..._common, meaning: c3.meaning || null }) }
+          senses: tc.map(t => t.sense || t.gloss || ''), roles: tc.map(t => t.role), surfaces: tc.map(t => t.surface), fillers: [], ..._common, meaning: c3.meaning || null, frame: c3.frame || null }) }
     })
     return sk
   }
@@ -18905,6 +18966,9 @@ function listeningTargetMetadata(t) {
   } else if (role === 'APOLOGY') Object.assign(m, { functions: ['APOLOGISE'], standaloneResponse: true, incompatibleRoles: ['QUESTION', 'ANSWER'], requiredComplements: ['an acknowledgement ("it\'s okay")'] })
   else if (role === 'GREETING') Object.assign(m, { functions: ['GREET'], standaloneResponse: true, naturalContexts: ['OPEN'] })
   else if (role === 'PARTING') Object.assign(m, { functions: ['FAREWELL'], standaloneResponse: true, naturalContexts: ['CLOSE'] })
+  // v674 — "excuse me" gets someone's attention BEFORE a question / request ("すみません、これ、いくら？"): it opens a
+  // question turn, it is never a reaction to a statement
+  else if (/^(excuse me|pardon)\b/.test(g)) Object.assign(m, { functions: ['ATTENTION'], standaloneResponse: false, incompatibleRoles: ['ANSWER', 'REACTION', 'ACCEPT'], naturalContexts: ['PAY', 'OPEN'] })
   else if (role === 'DISCOURSE_MARKER') Object.assign(m, { functions: ['REACT'], standaloneResponse: true, incompatibleRoles: ['QUESTION'] })
   // v673 — a polite set phrase is a speech ACT, never a "thing" to ask a yes / no question about (live-style plan: "A asks a
   // yes / no question using ありがとう"): thanks answers an offer / something given · please makes a request · you're welcome /
@@ -19238,7 +19302,9 @@ function planListeningCoverage(targets, o) {
 // back into an earlier, already coherent part.
 const LISTENING_PHASE_SHORT = { OPEN: 'meet', DECIDE: 'decide where to go', ARRANGE: 'agree the time', MOVE: 'go there', DO: 'do / eat / buy', PAY: 'pay', CLOSE: 'say goodbye' }
 const LISTENING_STORY_PHASES = Object.freeze([
-  { key: 'OPEN', goal: 'A and B meet and greet each other, catch up briefly (how they are, who they are) and A brings up the plan for today', where: 'where they meet', domains: ['identity & names', 'feelings', 'parting & greetings'] },
+  // v674 — the opening no longer asks for "how they are / who they are" (it invited 元気 / 私 / あなた / 考える, words the
+  // learner was never taught): the opening says only what its PROVEN frames say
+  { key: 'OPEN', goal: 'A and B meet and start talking about today', where: 'where they meet', domains: ['identity & names', 'feelings', 'parting & greetings'] },
   { key: 'DECIDE', goal: 'they decide what to do and where to go together', where: 'where they meet', domains: ['places & travel', 'colours & things'] },
   { key: 'ARRANGE', goal: 'they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed', where: 'where they meet', domains: ['plans & schedule'] },
   { key: 'MOVE', goal: 'they set off and get there (the way, the transport) and arrive', where: 'on the way', domains: ['places & travel'] },
@@ -19250,6 +19316,7 @@ const LISTENING_PHASE_MAX_TARGETS = 7
 // each story moment's goal ladder (richest first): the first goal the learner's taught vocabulary + this part's targets can
 // actually express is used (SCENE_LANGUAGE_FEASIBILITY, checked before any language is written)
 const LISTENING_PHASE_GOALS = {
+  OPEN: [{ text: 'A and B meet, greet each other and start talking about today', needs: ['hello|hi|good morning|good afternoon|good evening'] }, { text: 'A and B meet and start talking about today', needs: [] }],
   DECIDE: [{ text: 'they decide what to do and where to go together', needs: ['go|went|going|visit'] }, { text: 'they decide what to do next together', needs: [] }],
   ARRANGE: [{ text: 'they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed', needs: ["time|o'clock|when|hour|morning", 'go|meet|leave|start'] },
     { text: 'they agree WHEN to go — one time is agreed and then stays agreed', needs: ["time|o'clock|when|hour|morning"] }, { text: 'they agree what to do first', needs: [] }],
@@ -19314,7 +19381,7 @@ function buildListeningMeaningPlan(scenes, byId, metaOf, o) {
         referents: tg.map(t => t.gloss).concat(prev ? (prev.targetIds || []).map(id => (byId.get(id) || {}).gloss) : []).filter(Boolean),
         temporalContext: (LISTENING_PHASE_TIME[sc.phase] || 'during the conversation') + ' · part ' + (si + 1) + ' of ' + scenes.length,
         targetIds: (sk.targetIds || []).slice(), requiredSense: tg.map(t => t.sense || t.gloss || ''), allowedSupportConcepts: allowedSupportConceptsFor(sk, metaOf),
-        respondsTo: prev ? prev.turnId : null }
+        respondsTo: prev ? prev.turnId : null, provenFrame: sk.frame || null }
       sk.meaning = m
       turns.push(m)
     })
@@ -19345,6 +19412,8 @@ function validateListeningMeaningPlan(turns, scenes, byId, metaOf, o) {
     })
     if (t.actType === 'ANSWER' && t.slot === 'REASON' && t.targetIds.some(id => (metaOf.get(id) || {}).valueType === 'STATE')) bad(t.turnId + ': a bare state word is not a reason', t.targetIds)
     if (t.targetIds.length > LISTENING_MAX_TARGETS_PER_TURN) bad(t.turnId + ': ' + t.targetIds.length + ' targets in one turn', t.targetIds)
+    // v674 — the core contract: no target-bearing turn enters the meaning plan without a proven natural realisation
+    if (c.verbal && t.targetIds.length && !t.provenFrame) bad(t.turnId + ': NOT_VERBALIZED — no authorised realisation proven for ' + t.targetIds.map(id => (byId.get(id) || {}).surface).join('+'), t.targetIds)
   })
   seen.forEach((k, id) => { if (k > 1) bad('target ' + ((byId.get(id) || {}).surface || id) + ' placed ' + k + ' times', [id]) })
   if (c.turnsMax && (turns || []).length > c.turnsMax) bad('TURN_BUDGET ' + turns.length + ' planned turns > ' + c.turnsMax, [])
@@ -19354,8 +19423,1088 @@ function listeningMeaningPlanLog(mp, story) {
   const out = ['🧠 LISTENING_MEANING_PLAN ' + (mp.valid ? 'VALID' : 'INVALID') + ' · ' + mp.turnCount + ' planned turns (aim ' + LISTENING_CONVERSATION_TURNS.min + '–' + LISTENING_CONVERSATION_TURNS.max + ') · story ' + (story || []).join(' → ') +
     (mp.merges ? ' · ' + mp.merges + ' statement merge(s) for the turn budget' : '') + ' — validated BEFORE any language is generated' + (mp.valid ? '' : ' · problems: ' + mp.problems.slice(0, 6).map(p => p.text).join('; '))]
   mp.turns.forEach(t => out.push('   ' + t.turnId + ' ' + t.speaker + ' ' + t.actType + (t.asksFor ? '(' + t.asksFor + ')' : '') + (t.respondsTo ? ' ↩' + t.respondsTo : '') + ' — ' + t.proposition +
-    (t.answerType ? ' ⟨must give ' + t.answerType + '⟩' : '') + ' · ' + t.temporalContext.split(' · ')[0]))
+    (t.answerType ? ' ⟨must give ' + t.answerType + '⟩' : '') + ' · ' + t.temporalContext.split(' · ')[0] + (t.provenFrame ? ' ⟦proven: ' + t.provenFrame + '⟧' : '')))
   return out
+}
+// ══ v674 — VERBALIZABILITY-FIRST LISTENING ═══════════════════════════════════════════════════════════════════════════
+// v673 asked "is this meaning theoretically expressible?" (needs=[go] → PASS) and Gemini then had to invent the language
+// (元気 / 私 / あなた / 考える …, rejected as untaught → targets lost). v674 PROVES each planned exchange before it may enter the
+// meaning plan: a language adapter builds an actual natural sentence for BOTH sides of the exchange (question AND answer,
+// proposal AND response …) from the learner's authorised words, and every frame passes the SAME closed-vocabulary check,
+// the belt hardMax and the target-presence matcher that judge the generated lines. A target with no proven frame is not
+// planned: it is DEFERRED before the freeze (its SRS obligation kept) or, after the freeze, named — never improvised.
+// Shared SEMANTICS (what can be eaten, bought, asked "where?" about …) produce abstract sentence operations; the three
+// language adapters (buildThaiListeningBlueprints / buildJapaneseListeningBlueprints / buildMandarinListeningBlueprints)
+// only RENDER them — they feed the ONE shared planner; there is no per-language Listening engine.
+const LN_MAX_REMAINING_PLAN_REBUILDS = 3
+const LN_VERBAL_UNKNOWN_CACHE = new Map(), LN_VERBAL_UNITS_CACHE = new Map(), LN_VERBAL_PRESENT_CACHE = new Map()
+// unit counts / target presence of a frame text are pure functions of (language, belt, text[, surface]) — memoised
+function _lnUnits(cc, text) { if (!cc) return 0; const k = (cc.lang || '') + '|' + (cc.belt || '') + '|' + text; if (LN_VERBAL_UNITS_CACHE.has(k)) return LN_VERBAL_UNITS_CACHE.get(k)
+  const v = cc.countUnits(text); if (LN_VERBAL_UNITS_CACHE.size > 80000) LN_VERBAL_UNITS_CACHE.clear(); LN_VERBAL_UNITS_CACHE.set(k, v); return v }
+const LN_BP_FOOD_RX = /\b(rice|bread|food|meal|sushi|ramen|noodles?|cake|meat|fish|fruit|apples?|eggs?|pad thai|soup|snacks?|dish|curry|dumplings?|vegetables?|lunch|dinner|breakfast|chicken|pork|beef|banana|mango|sandwich|pizza|dessert|candy|chocolate|salt|sugar|ice|sauce|pepper|chil(l)?i|garlic|onion|squid|shrimp|prawns?|crab|tofu|salad|ice cream|cookies?|sweets?|duck|seafood|papaya|coconut|watermelon|orange|lemon|lime|durian|cheese|butter)\b/
+const LN_BP_DRINK_RX = /\b(water|tea|coffee|beer|juice|milk|sake|drink|wine|soda|whisk(e)?y|liquor|alcohol|cocktail)\b/
+const LN_BP_VIEW_RX = /\b(movie|film|photo|picture|photograph|tv|television|show|video)\b/
+const LN_BP_RIDE_RX = /\b(bus|train|car|taxi|bike|bicycle|motorbike|plane|airplane|aeroplane|boat|subway|metro|raft)\b/
+const LN_BP_READ_RX = /\b(book|magazine|newspaper|letter|menu)\b/
+const LN_BP_MUSIC_RX = /\b(music|song|songs|radio)\b/
+const LN_BP_BODY_RX = /\b(nose|finger|fingers|skin|neck|hand|hands|eye|eyes|ear|ears|mouth|head|leg|legs|foot|feet|arm|arms|hair|face|tooth|teeth|stomach|belly|back|body|knee|shoulder)\b/
+const LN_BP_LANG_RX = /^(the )?(thai|english|japanese|chinese|mandarin|french|korean)( language)?$|\blanguage\b/
+const LN_BP_MONEY_RX = /\b(money|cash|change|coins?|banknotes?)\b/
+const LN_BP_UNIT_RX = /^(baht|yen|yuan|kuai|dollars?|currency unit|unit of currency)\b|\b(classifier|counter)\b/
+const LN_BP_CLOTHES_RX = /\b(shirt|socks?|shoes?|uniform|swimsuit|swimwear|clothes|dress|hat|jacket|trousers|pants|skirt|bag|glasses|watch)\b/
+const LN_BP_ABSTRACT_RX = /\b(love|nature|work|job|time|life|lifestyle|way of life|culture|idea|problem|trouble|bother|story|weather|news|history|plan|meaning|question|answer|matter|way|reason|experience|dream|hobby|homework|housework|shopping|thing to do)\b/
+const LN_BP_GENERIC_RX = /^(thing|things|stuff|something|anything|item|goods)\b/
+const LN_BP_ACTIVITY_RX = /\b(work|homework|housework|shopping|exercise|sport|sports|yoga|cooking|business|laundry|cleaning|boxing|swimming|running|football|soccer|tennis|massage)\b/
+const LN_BP_OBJECT_RX = /\b(ticket|tickets|phone|smartphone|key|keys|umbrella|box|pen|pencil|paper|card|camera|computer|laptop|cup|glass|bottle|plate|chair|table|bed|door|window|clock|map|gift|present|toy|ball|souvenir|medicine|towel|soap|bill|receipt|ring|wallet|passport|luggage|suitcase|flower|flowers|bag|watch|car key|notebook|bicycle|shopping)\b/
+const LN_BP_GENERIC_PLACE_RX = /^(place|location|area|spot|somewhere|anywhere)\b|\b(first|second|third|last) place\b/
+const LN_BP_PERSON_RX = /\b(friend|friends|mother|mom|mum|father|dad|teacher|person|people|family|brother|sister|child|children|kid|husband|wife|boss|colleague|boyfriend|girlfriend|doctor|student|everyone|someone)\b/
+const LN_BP_PLACE_RX = /\b(here|there|home|house|station|shop|store|restaurant|school|office|market|museum|temple|park|city|town|downtown|place|airport|hotel|room|beach|hospital|bank|toilet|bathroom|restroom|kitchen|centre|center|country|village|street|road|building|cafe|café|bar|library|university|company|mall|cinema|theatre|theater|zoo|garden|sea|mountain|river|island|province|japan|china|thailand|bangkok|tokyo|kyoto|osaka|beijing|shanghai|toilet|gym|pool|apartment|condo|department store|supermarket|convenience store|canteen|cafeteria|stall)\b/
+const LN_BP_NUM_RX = /^(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|a hundred|one hundred|thousand|a thousand|one thousand|ten thousand)\s*(\(|$|;|,)/
+const LN_BP_DIGIT_RX = /^(zero|one|two|three|four|five|six|seven|eight|nine)\s*(\(|$|;|,)/
+const LN_BP_DEM_RX = /^(this|that|that over there|this one|that one|it|these|those)\s*(\(|$|;|,|\/)/
+const LN_BP_PRONOUN_RX = /^(i|me|you|he|she|we|they|you all|you \(.*\)|i \(.*\))\s*(\(|$|;|,|\/)/
+const LN_BP_FUNCTION_GLOSS_RX = /^(besides|except|which|that|who|whom|whose|than|because|although|if|when|while|until|since|so|but|and|or|also|even|only|just|still|already|almost|maybe|perhaps|sometimes|often|always|never|usually|mean|means|about|around|like|as|for|from|with|without|by|of|than|then|there|here|very|too|really|quite|rather|enough|again|together)\b/
+const LN_BP_PERSON_STATE_RX = /^(to )?(be )?(in |on )?(tired|busy|happy|sad|late|sick|ill|hungry|full|free|ready|fine|okay|ok|sleepy|bored|worried|excited|time|careful|trouble|hurry|angry|glad|lonely|alone|nervous|scared|afraid|surprised|cold|hot|thirsty|well)\b/
+const LN_BP_MAYBE_RX = /^(maybe|probably|perhaps|possibly|i think so)\b/
+const LN_BP_EXCUSE_RX = /^(excuse me|pardon)\b/
+// the semantic class of an authorised content word (shared by every language)
+const LN_BP_CATS = [['GENERIC', LN_BP_GENERIC_RX], ['ACTIVITY', LN_BP_ACTIVITY_RX], ['PERSON', LN_BP_PERSON_RX], ['BODY', LN_BP_BODY_RX], ['LANG', LN_BP_LANG_RX], ['MONEY', LN_BP_MONEY_RX], ['FOOD', LN_BP_FOOD_RX], ['DRINK', LN_BP_DRINK_RX],
+  ['VIEW', LN_BP_VIEW_RX], ['RIDE', LN_BP_RIDE_RX], ['READ', LN_BP_READ_RX], ['MUSIC', LN_BP_MUSIC_RX], ['CLOTHES', LN_BP_CLOTHES_RX], ['OBJECT', LN_BP_OBJECT_RX], ['ABSTRACT', LN_BP_ABSTRACT_RX]]
+// the part of speech of an authorised word: the bank's partOfSpeech when it has one, else the metadata / gloss shape
+function _lnBpPosOf(g, word, meta) {
+  const pos = String((word && (word.partOfSpeech || word.pos)) || '').toLowerCase(), m = meta || {}, x = String(g || '').toLowerCase().trim()
+  if (pos) { if (/adverb|expression|particle|interjection|pronoun|number|counter|conjunction|phrase|greeting/.test(pos)) return 'OTHER'
+    if (/\bverb\b/.test(pos)) return 'VERB'; if (/adj/.test(pos)) return 'ADJ'; if (/noun/.test(pos)) return 'NOUN' }
+  if (/^(to )?be (in |on |a bit |very )?[a-z]+/.test(x) && !/^(to )?be (at|in) (the|a|home|school|work)\b/.test(x) && !/\b(couple|located)\b/.test(x)) return 'ADJ'
+  if (/^(in time|on time|in a hurry|free|busy|tired|ready)\b/.test(x)) return 'ADJ'
+  if (/^(should|must|can|could|may|might|will|would|have to|need to|ought to|many|much|few|some|all|every|several|a lot|more|most|less|least)\b/.test(x)) return 'OTHER'
+  if (m.valueType === 'ACTION' || /^to\s/.test(x)) return 'VERB'
+  if (m.valueType === 'STATE') return 'ADJ'
+  if (/^(time|times|the time|free time|spare time)\s*([,;(]|$)/.test(x)) return 'NOUN'
+  if (m.valueType === 'MODIFIER' || m.asks || m.valueType === 'TIME' || m.valueType === 'YESNO' || (m.functions || []).length && !m.valueType) return 'OTHER'
+  const one = x.replace(/\(.*?\)/g, '').split(/[,;]/)[0].trim()
+  if (_lnBpCatOfGloss(one) !== 'OTHER' && !/^(answer|reply|love|work|plan|dream|study)$/.test(one)) return 'NOUN'
+  if (/^[a-z]+$/.test(one) && LN_BP_VERB_CATS.some(([, rx]) => rx.test(one))) return 'VERB'
+  if (/^[a-z]+(ful|ous|ive|able|ible|ent|ant|ic|y|ed)$/.test(one)) return 'ADJ'
+  return 'NOUN'
+}
+// the HEAD noun of a gloss decides its class ("school uniform" is clothing, "food stall" a place, "plane ticket" an object)
+function _lnBpHead(g) { const w = String(g || '').toLowerCase().replace(/\(.*?\)/g, ' ').replace(/^(the|a|an|to)\s+/, '').trim().split(/\s+/).filter(Boolean); return w.length ? w[w.length - 1] : '' }
+function _lnBpCatOfGloss(g) {
+  const x = String(g || '').toLowerCase(), h = _lnBpHead(x)
+  if (LN_BP_GENERIC_PLACE_RX.test(x)) return 'GENERIC_PLACE'
+  if (LN_BP_DEM_RX.test(x)) return 'DEM'
+  if (/^(time|times|the time|free time|spare time)\s*([,;(]|$)/.test(x)) return 'TIMENOUN'
+  if (LN_BP_GENERIC_RX.test(x)) return 'GENERIC'
+  if (LN_BP_LANG_RX.test(x.replace(/\(.*?\)/g, '').trim())) return 'LANG'
+  const byHead = LN_BP_CATS.find(([c, rx]) => c !== 'LANG' && rx.test(h))
+  if (byHead) return byHead[0]
+  if (LN_BP_PLACE_RX.test(h)) return 'PLACE'
+  if (/^(time|times|the time|free time|spare time)\s*([,;(]|$)/.test(x)) return 'TIMENOUN'
+  const any = LN_BP_CATS.find(([c, rx]) => c !== 'LANG' && rx.test(x))
+  if (any) return any[0]
+  if (LN_BP_PLACE_RX.test(x)) return 'PLACE'
+  return 'OTHER'
+}
+// the verb classes and the object classes each one takes (eat → food, buy → buyable things, help → a person …)
+const LN_BP_VERB_CATS = [['exist', /\b(be|exist|there is|there are|be located|be at|be in|stay)(?=\s*([,;(/]|$))/], ['find', /\b(look for|find|search)\b/], ['personObj', /\b(help|wait|meet|call|visit|teach|see a friend)\b/], ['eat', /\beat\b/], ['drink', /\bdrink\b/],
+  ['view', /\b(see|look at|look|watch)\b/], ['read', /\bread\b/], ['ride', /\b(ride|get on|board|go up|get in|climb)\b/], ['wear', /\b(wear|put on)\b/], ['speak', /\b(speak|talk|chat)\b/], ['say', /\b(say|tell|ask|answer|reply)\b/],
+  ['listen', /\b(listen|hear)\b/], ['buy', /\b(buy|order|purchase|shop)\b/], ['sell', /\bsell\b/], ['study', /\b(study|learn|practi[cs]e)\b/], ['think', /\b(think|feel)\b/], ['know', /\bknow\b/], ['understand', /\b(understand|get it)\b/], ['mean', /\b(mean|means)\b/],
+  ['like', /\b(like|love)\b/], ['come', /\b(come|come back|come over)\b/], ['arrive', /\b(arrive|reach|get to)\b/], ['return', /\b(return|go home|go back|get home)\b/],
+  ['depart', /\b(leave|come out|depart|get out|set off)\b/], ['start', /\b(start|begin)\b/], ['stop', /\b(stop|park)\b/], ['motion', /\b(go|walk|go out|travel|enter|go in|get in)\b/], ['cook', /\b(cook|make food)\b/], ['give', /\b(give|send|lend)\b/],
+  ['wantTo', /\b(want to|would like to|feel like|hope to|plan to|intend to)\b/], ['want', /\b(want|have|need|would like)\b/], ['use', /\buse\b/], ['carry', /\b(take|bring|carry|get|hold|pick up)\b/], ['do', /\bdo\b/], ['make', /\bmake\b/],
+  ['open', /\b(open|close|turn on|turn off)\b/], ['write', /\bwrite\b/], ['wash', /\b(clean|wash)\b/], ['pay', /\bpay\b/]]
+// a few high-frequency verbs whose English gloss is ambiguous ("want (to)") are classed by their surface
+const LN_BP_VERB_OVERRIDE = { 'いる': 'exist', 'ある': 'existThing', 'できる': 'able', '会': 'able', 'เป็น': 'copula', 'อยาก': 'wantTo', 'อยากได้': 'want', 'ต้องการ': 'want', '想': 'wantTo', '要': 'want', 'ほしい': 'want', '欲しい': 'want', 'ไป': 'motion', '去': 'motion', '行く': 'motion' }
+const LN_BP_MOTION = new Set(['motion', 'come', 'return', 'exist'])   // "where?" verbs (exist: どこにいる？ · 你在哪里？ · อยู่ที่ไหน)          // take a destination
+const LN_BP_BARE_OK = new Set(['motion', 'come', 'return', 'eat', 'drink', 'cook', 'study', 'able', 'depart', 'start', 'stop'])   // natural without an object
+const LN_BP_OBJ_OK = { start: ['ACTIVITY'], exist: ['OBJECT', 'CLOTHES', 'READ', 'FOOD', 'DRINK', 'MONEY', 'RIDE', 'TIMENOUN'], want: ['OBJECT', 'CLOTHES', 'FOOD', 'DRINK', 'READ', 'MONEY', 'RIDE'], able: ['LANG', 'ACTIVITY'], use: ['OBJECT', 'MONEY', 'RIDE'], carry: ['OBJECT', 'CLOTHES', 'READ', 'MONEY'],
+  do: ['ACTIVITY'], make: ['FOOD', 'OBJECT'], open: ['OBJECT'], write: ['READ'], wash: ['CLOTHES', 'OBJECT'], pay: ['MONEY'], ride2: [], eat: ['FOOD'], drink: ['DRINK'], view: ['VIEW', 'OBJECT', 'CLOTHES', 'RIDE', 'READ', 'FOOD'], read: ['READ'], ride: ['RIDE'], wear: ['CLOTHES'], speak: ['LANG'], listen: ['MUSIC'],
+  buy: ['FOOD', 'DRINK', 'READ', 'CLOTHES', 'OBJECT', 'VIEW', 'GENERIC'], sell: ['FOOD', 'DRINK', 'CLOTHES', 'OBJECT', 'GENERIC'], study: ['LANG'], personObj: ['PERSON'], know: ['PERSON', 'LANG', 'PLACE'], understand: ['LANG'],
+  cook: ['FOOD'], find: ['OBJECT', 'CLOTHES', 'READ', 'MONEY', 'GENERIC'],
+  like: ['FOOD', 'DRINK', 'VIEW', 'READ', 'CLOTHES', 'OBJECT', 'LANG', 'ABSTRACT', 'PERSON', 'RIDE', 'PLACE', 'MUSIC', 'OTHER', 'ACTIVITY'], handle: ['OBJECT', 'CLOTHES', 'FOOD', 'DRINK', 'READ', 'MONEY', 'RIDE'] }
+// verbs that naturally take "this / that" as their object ("これ、食べる？" · "这个你要吗？")
+const LN_BP_DEM_OK = new Set(['eat', 'drink', 'view', 'read', 'buy', 'like', 'want', 'use', 'carry', 'find', 'wear'])
+const LN_BP_WITH_OK = new Set(['motion', 'come', 'eat', 'drink', 'view', 'study', 'speak', 'cook'])   // "with whom?" verbs
+const LN_BP_GENERIC_PERSON_RX = /^(person|people|someone|everyone|somebody|human)\b/
+// a learner-authorised verbal context: the snapshot inventory, the belt, the closed-vocabulary checker and the
+// authorised words classified by the same communicative metadata as the targets + the shared semantic classes
+function listeningVerbalContext(lang, vocab, targets0, o) {
+  let targets = targets0
+  const opt = o || {}
+  const la = listeningAdapterFor(lang)
+  const vById = new Map((vocab || []).map(w => [w.id, w]))
+  const eligTargets = opt.eligTargets || (targets || []).map(t => t.word && t.word.id != null ? t.word : vById.get(t.id)).filter(Boolean)
+  let snapshot = null
+  if (!opt.exposed) { try { snapshot = snapshotLearnerInventory(lang, vocab, eligTargets, 'listening') } catch (e) {} }
+  const exposed = opt.exposed || (snapshot ? snapshot.inventory.taught : [])
+  const cc = opt.complexity || getLearnerComplexityContract({ lang, vocab })
+  const ctx = opt.ctx || { vocab, exposed, eligTargets, complexity: cc, inventory: snapshot ? snapshot.inventory : null,
+    jaInv: lang === 'ja' ? japaneseLearnerInventory(vocab, eligTargets) : null, zhInv: lang === 'zh' ? mandarinLearnerInventory(vocab, eligTargets) : null }
+  const surf = w => lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : w.thai
+  let tIds = new Set((targets || []).map(t => t.id))
+  const words = [], seen = new Map()
+  const addWord = w => {
+    const s = w && surf(w); if (!s || seen.has(s)) return
+    const gloss = String(w.english || '').split(/[;/]/)[0].trim()
+    let role = 'CONTENT'; try { role = listeningTargetRole(w, lang) } catch (e) {}
+    const row = { id: w.id, surface: s, gloss, g: gloss.toLowerCase(), role, word: w, target: tIds.has(w.id) }
+    try { row.meta = listeningTargetMetadata({ id: w.id, surface: s, gloss, english: w.english, role, word: w }) } catch (e) { row.meta = { valueType: null, functions: [] } }
+    words.push(row); seen.set(s, row)
+  }
+  ;(exposed || []).concat(eligTargets || []).forEach(addWord)
+  const cache = new Map()
+  const unkFp = lang + ':' + (ctx.exposed || []).length + ':' + (ctx.exposed || []).reduce((a, w) => a + (Number(w && w.id) || 0), 0) + ':' + (ctx.vocab || []).length
+  const check = (text, must, speaker, question) => {
+    const k = speaker + '|' + text + '|' + (must || []).join(',')
+    if (cache.has(k)) return cache.get(k)
+    let res
+    try {
+      const pair = la.makeLine({ text, english: question ? 'Q?' : 'S.' }, speaker || 'A')
+      const t2 = la.text(pair)
+      // cheapest gates first (presence, length); the closed-vocabulary segmentation runs only on a viable frame
+      // (Japanese: the lemma's own first character must be there — ない alone is not ある)
+      const pres = s0 => { const k = lang + '|' + t2 + '|' + s0; if (LN_VERBAL_PRESENT_CACHE.has(k)) return LN_VERBAL_PRESENT_CACHE.get(k); const v = la.present(t2, s0, ctx); if (LN_VERBAL_PRESENT_CACHE.size > 80000) LN_VERBAL_PRESENT_CACHE.clear(); LN_VERBAL_PRESENT_CACHE.set(k, v); return v }
+      const present = (must || []).every(s => pres(s) && (lang !== 'ja' || t2.includes(s[0]) || /^(する|来る|くる|いい)$/.test(s)))
+      const units = cc ? _lnUnits(cc, t2) : 0
+      if (!present || (cc && units > cc.hardMax)) res = { ok: false, text: t2, unknown: [], units, present }
+      else {
+        const nT = opt.countTargets === false ? 0 : (targets || []).filter(t => t.surface && t2.includes(t.surface.slice(0, 1)) && pres(t.surface)).length
+        // the closed-vocabulary verdict of a text depends only on the text and the authorised words it contains: cached
+        // across contexts (feasibility rounds + composition) — the Thai segmenter is the planning hot spot
+        let unknown = []
+        if (nT <= LISTENING_MAX_TARGETS_PER_TURN) {
+          const ek = (ctx.eligTargets || []).map(w => w && surf(w)).filter(x => x && t2.includes(x)).sort().join(','), uk = unkFp + '|' + t2 + '|' + ek
+          if (LN_VERBAL_UNKNOWN_CACHE.has(uk)) unknown = LN_VERBAL_UNKNOWN_CACHE.get(uk)
+          else { unknown = listeningUnexposedWords(lang, pair, ctx.exposed, ctx.eligTargets, ctx.vocab); if (LN_VERBAL_UNKNOWN_CACHE.size > 60000) LN_VERBAL_UNKNOWN_CACHE.clear(); LN_VERBAL_UNKNOWN_CACHE.set(uk, unknown) }
+        }
+        res = { ok: !unknown.length && nT <= LISTENING_MAX_TARGETS_PER_TURN, text: t2, unknown, units, present }
+      }
+    } catch (e) { res = { ok: false, text, unknown: [], units: 0, present: false, error: String(e && e.message || e) } }
+    cache.set(k, res); return res
+  }
+  const row = s => seen.get(s) || null
+  const g = s => (row(s) || {}).g || ''
+  const isDem = s => { const r0 = row(s); if (r0 && r0._dem !== undefined) return r0._dem; const v = isDem0(s); if (r0) r0._dem = v; return v }
+  const isDem0 = s => LN_BP_DEM_RX.test(g(s)) && !/^(here|there|over there)\b|\b(after|conjunction|relative|which)\b/.test(((row(s) || {}).word && (row(s).word.english || '')).toLowerCase() || g(s))
+  const isPron = s => LN_BP_PRONOUN_RX.test(g(s))
+  const posOf = s => { const r = row(s); if (!r) return 'OTHER'; if (r.pos === undefined) r.pos = _lnBpPosOf(r.g, r.word, r.meta); return r.pos }
+  const isVerbish = s => posOf(s) === 'VERB'
+  const placeOk = s => { const r = row(s); return !!r && !isDem(s) && !isVerbish(s) && r.meta.role !== 'QUESTION_WORD' && !r.meta.asks && r.meta.valueType !== 'TIME' && _lnBpCatOfGloss(r.g) === 'PLACE' }
+  const coordMap = new Map(), coordMembers = new Map()
+  const cat = s => { if (coordMap.has(s)) return coordMap.get(s); const r0 = row(s); if (r0 && r0._cat !== undefined) return r0._cat; const v = cat0(s); if (r0) r0._cat = v; return v }
+  // two nouns joined by the language's own "and" (と / 和 · 跟 / กับ) — the pair keeps the class of its members
+  const coord = list => { const l = _lnU(list); if (l.length < 2) return l[0] || null
+    const j = lang === 'ja' ? 'と' : lang === 'th' ? 'กับ' : lex(['和', '跟']); if (!j) return null
+    if (cat(l[0]) !== cat(l[1]) || ['OTHER', 'NONNOUN', 'VERB', 'GENERIC', 'GENERIC_PLACE', 'TIMENOUN', 'ABSTRACT'].includes(cat(l[0]))) return null   // only like with like: "rice and noodles", never "socks and time"
+    const str = l.slice(0, 2).join(j), c0 = cat(l[0]), c1 = cat(l[1]); coordMap.set(str, c0 === c1 ? c0 : 'MIXED'); coordMembers.set(str, l.slice(0, 2)); return str }
+  const members = s => coordMembers.get(s) || [s]
+  const cat0 = s => { if (isDem(s)) return 'DEM'; if (isPron(s)) return 'PRON'; if (isVerbish(s)) return 'VERB'; const r = row(s); if (!r) return 'OTHER'
+    if (_lnBpCatOfGloss(r.g) === 'TIMENOUN') return 'TIMENOUN'
+    if (r.meta.valueType === 'STATE' || r.meta.valueType === 'TIME' || r.meta.valueType === 'MODIFIER' || r.meta.asks || posOf(s) === 'ADJ' || posOf(s) === 'OTHER' || LN_BP_FUNCTION_GLOSS_RX.test(r.g)) return 'NONNOUN'
+    const c = _lnBpCatOfGloss(r.g); return c === 'PERSON' && LN_BP_GENERIC_PERSON_RX.test(r.g) ? 'PERSON_GENERIC' : c }
+  const vcat = s => { const r0 = row(s); if (r0 && r0._vcat !== undefined) return r0._vcat; const v = vcat0(s); if (r0) r0._vcat = v; return v }
+  // the HEAD verb decides (the class must match at the start of the gloss: "see through" is not "see"; "go out with" is not "go")
+  const vcat0 = s => { if (LN_BP_VERB_OVERRIDE[s]) return LN_BP_VERB_OVERRIDE[s]
+    if (/\b(identity|role|copula|defining|identifying)\b/.test(String(((row(s) || {}).word || {}).english || '').toLowerCase())) return 'copula'
+    const x = g(s).replace(/^to\s+/, '').replace(/\(.*?\)/g, '').trim(); if (/\bwith\b\s*$/.test(x) && !/^(go|come) with/.test(x)) return 'other'
+    const hit = LN_BP_VERB_CATS.find(([, rx]) => { const m = rx.exec(x); return m && m.index === 0 && !/^\s+(through|up|out|off|over|after|into|away|down|around|about|on|care|leave|part|place|turns|a break|time)\b/.test(x.slice(m[0].length)) }); return hit ? hit[0] : 'other' }
+  const objOk = (v, o) => { if (!v || !o) return false; if (coordMembers.has(o)) return coordMembers.get(o).every(x => objOk(v, x)); const vc = vcat(v), oc = cat(o); if (oc === 'DEM') return LN_BP_DEM_OK.has(vc); return (LN_BP_OBJ_OK[vc] || []).includes(oc) }
+  const thingRow = r => ['THING', 'PLACE', 'PERSON'].includes(r.meta.valueType) || (!r.meta.valueType && r.meta.role === 'CONTENT' && !r.meta.functions.length)
+  // fillers: authorised SUPPORT words first (they never steal a lesson word), then the other targets
+  const by = (pred, avoid, n) => { const a = words.filter(w => !w.target && pred(w)), b = words.filter(w => w.target && pred(w) && !(avoid || []).includes(w.surface)); return a.concat(b).map(w => w.surface).slice(0, n || 5) }
+  const M = w => w.meta || {}
+  const NUM_PREF = x => /hundred|thousand/.test(x) ? 0 : /^(ten|twenty|thirty|fifty)/.test(x) ? 1 : /^(one|zero)\b/.test(x) ? 3 : 2
+  const fill = {
+    place: av => by(w => placeOk(w.surface), av, 8).sort((a, b) => (/\b(here|there)\b/.test(g(a)) ? 1 : 0) - (/\b(here|there)\b/.test(g(b)) ? 1 : 0)).slice(0, 5),
+    timeFuture: av => by(w => M(w).valueType === 'TIME' && !M(w).past && !M(w).asks && /\b(today|tomorrow|tonight|now|later|soon|morning|evening|afternoon|weekend|o'clock|noon)\b/.test(w.g), av),
+    timePast: av => by(w => M(w).valueType === 'TIME' && M(w).past, av),
+    cat: (c, av) => by(w => thingRow(w) && cat(w.surface) === c, av),
+    dem: av => by(w => isDem(w.surface) && w.role !== 'QUESTION_WORD', av, 3),
+    person: av => by(w => cat(w.surface) === 'PERSON', av),
+    adj: (rx, av) => by(w => M(w).valueType === 'STATE' && !/^(okay|ok|fine|alright|yes|no)\b/.test(w.g) && !LN_BP_MAYBE_RX.test(w.g) && (!rx || rx.test(w.g)), av),
+    num: av => words.filter(w => LN_BP_NUM_RX.test(w.g) && !(av || []).includes(w.surface)).sort((a, b) => NUM_PREF(a.g) - NUM_PREF(b.g) || (a.target ? 1 : 0) - (b.target ? 1 : 0)).map(w => w.surface).slice(0, 4),
+    digits: av => words.filter(w => LN_BP_DIGIT_RX.test(w.g) && !(av || []).includes(w.surface)).map(w => w.surface).slice(0, 4),
+    // the most basic verb of each class first (the shortest gloss: "go" before "go on business")
+    verb: (vcs, av) => { const ok = w => isVerbish(w.surface) && !/^let'?s\b/.test(w.g) && !/\b(later|again|together)\b/.test(w.g)
+      const pick = pred => { const a = words.filter(w => !w.target && pred(w)), b = words.filter(w => w.target && pred(w) && !(av || []).includes(w.surface))
+        const byLen = x => x.slice().sort((p, q) => p.g.length - q.g.length); return byLen(a).concat(byLen(b)).map(w => w.surface) }
+      return vcs ? _lnU(vcs.flatMap(c => pick(w => ok(w) && vcat(w.surface) === c).slice(0, 2))).slice(0, 20) : pick(ok).slice(0, 6) },
+    objFor: (v, av) => { const cs = LN_BP_OBJ_OK[vcat(v)] || []; return _lnU([...cs.flatMap(c => fill.cat(c, av).slice(0, 2)), ...(LN_BP_DEM_OK.has(vcat(v)) ? fill.dem(av) : [])]).slice(0, 5) },
+  }
+  function lex(list) { return (list || []).find(s => seen.has(s)) || null }
+  const bareOk = v => LN_BP_BARE_OK.has(vcat(v)) || ['know', 'understand', 'think'].includes(vcat(v))
+  // every filler list is computed once per context (the authorised inventory is frozen)
+  const memo = new Map()
+  Object.keys(fill).forEach(k => { const f0 = fill[k]; fill[k] = (...args) => { const key = k + '|' + args.map(a => a instanceof RegExp ? String(a) : JSON.stringify(a)).join('|'); if (!memo.has(key)) memo.set(key, f0(...args)); return memo.get(key).slice() } })
+  const vx = { lang, la, ctx, cc, words, seen, has: s => seen.has(s), lex, fill, check, targets: targets || [], cache, row, g, cat, vcat, objOk, placeOk, isDem, isPron, bareOk, coord, members }
+  // v674 — the SAME verbal context as the composition: the planned target set decides the closed vocabulary (eligible
+  // targets), the per-turn target ceiling and which words fillers avoid. A feasibility round re-targets the context so the
+  // plan proven before the freeze is exactly the plan the composition proves again.
+  vx.setTargets = list => {
+    const nt = (list || []).slice(); targets = nt; vx.targets = nt; tIds = new Set(nt.map(t => t.id))
+    const ws = nt.map(t => t.word && t.word.id != null ? t.word : vById.get(t.id)).filter(Boolean)
+    ws.forEach(addWord); words.forEach(r => { r.target = tIds.has(r.id) })
+    ctx.eligTargets = ws; cache.clear(); memo.clear(); vx.exCache = new Map(); vx.bpCache = new Map()
+    return vx
+  }
+  return vx
+}
+// the targets of ONE planned turn, sorted into the roles a frame needs (shared semantics)
+function _lnBpRoles(ts) {
+  const r = { qw: null, slot: null, verb: null, verbM: null, place: null, time: null, timePast: false, thing: null, person: null, state: null, mods: [], yes: null, no: null, qual: null,
+    react: null, apology: null, thanks: null, ack: null, request: null, greet: null, part: null, digits: [], phone: null, amount: null, dem: null, pronoun: null, excuse: null, rest: [], all: [], places: [], things: [] }
+  ;(ts || []).forEach(t => {
+    const m = listeningTargetMetadata(t), g = String(t.gloss || '').toLowerCase()
+    r.all.push(t.surface)
+    if (m.asks) { r.qw = t.surface; r.slot = m.asks; return }
+    if (m.valueType === 'PHONE' && /\bnumber\b/.test(String(t.english || (t.word && t.word.english) || g).toLowerCase())) { r.phone = t.surface; return }
+    if (m.valueType === 'PHONE') { r.things.push(t.surface); r.thing = r.thing || t.surface; return }
+    if (m.valueType === 'DIGITS') { r.digits.push(t.surface); if (/^zero\b/.test(g)) r.digitZero = true; return }
+    if (m.valueType === 'AMOUNT') { r.amount = t.surface; return }
+    if (LN_BP_EXCUSE_RX.test(g)) { r.excuse = t.surface; return }
+    if (/^(is not|isn't|no)\b/.test(g) && m.valueType !== 'MODIFIER' && m.valueType !== 'STATE') { r.no = t.surface; return }
+    if (/^(not|don't|doesn't|do not)\s*([,;(/]|$)/.test(g)) { r.neg = t.surface; return }
+    // a reply word stays a reply word (the meaning validator places it as the ANSWER to a yes/no question)
+    if (m.valueType === 'YESNO') { if (m.functions.includes('CORRECT')) r.qual = t.surface; else if (/^(no|nope|not)\b/.test(g)) r.no = t.surface; else r.yes = t.surface; return }
+    const pos = _lnBpPosOf(g, t.word, m)
+    if (pos === 'ADJ' && m.valueType !== 'MODIFIER') { r.state = t.surface; return }
+    if (pos === 'OTHER' && /^(should|must|can|could|may|might|will|would|have to|need to|ought to|many|much|few|some|several|a lot|more|less)\b/.test(g)) { r.rest.push(t.surface); return }
+    if (pos === 'VERB' && m.valueType !== 'ACTION' && !m.functions.includes('MODIFY')) { if (!r.verb) { r.verb = t.surface; r.verbM = { ...m, g, valueType: 'ACTION', stative: /\b(know|understand|like|love|want|think|be|exist)\b/.test(g) } } else r.rest.push(t.surface); return }
+    if (/^(but|however|though)\b/.test(g)) { r.but = t.surface; return }
+    if (/^(and)\s*([,;(/]|$)/.test(g)) { r.and = t.surface; return }
+    if (/^(or)\s*([,;(/]|$)/.test(g)) { r.or = t.surface; return }
+    if (/^(also|then|so)\b.*\bconnector|^also \/ then/.test(String(t.english || (t.word && t.word.english) || g).toLowerCase())) { r.also = t.surface; return }
+    if (LN_BP_MAYBE_RX.test(g)) { r.qual = t.surface; return }
+    if (LN_BP_UNIT_RX.test(g)) { r.unit = t.surface; return }
+    if (/^(is|are|am|namely|to be \(identity|be \(identity|is \(identifying)/.test(g)) { r.cop = t.surface; return }
+    if (/^let'?s\b/.test(g)) { r.lets = t.surface; return }
+    if (/^(already|still|not yet|yet|again|a little|a bit|a few|together|also|too|very|so|really|in|inside|at|on)\b/.test(g) && !/^(at|on) (the|a)\b/.test(g) && m.role !== 'QUESTION_WORD') { r.mods.push({ s: t.surface, g, modifies: m.modifies || (/^(very|so|too|really|a little|a bit)\b/.test(g) ? 'STATE' : 'ACTION') }); return }
+    if (LN_BP_PRONOUN_RX.test(g)) { r.pronoun = t.surface; return }
+    if (m.valueType === 'PHONE') { r.phone = t.surface; return }
+    if (m.valueType === 'DIGITS') { r.digits.push(t.surface); return }
+    if (m.valueType === 'AMOUNT') { r.amount = t.surface; return }
+    if (m.valueType === 'YESNO') { if (m.functions.includes('CORRECT')) r.qual = t.surface; else if (/^(no|nope|not)\b/.test(g)) r.no = t.surface; else r.yes = t.surface; return }
+    if (m.functions.includes('APOLOGISE') || /^(sorry|i'm sorry|i am sorry)\b/.test(g)) { r.apology = t.surface; return }
+    if (m.functions.includes('THANK')) { r.thanks = t.surface; return }
+    if (m.functions.includes('ACKNOWLEDGE')) { r.ack = t.surface; return }
+    if (m.functions.includes('REQUEST')) { r.request = t.surface; return }
+    if (m.functions.includes('GREET')) { r.greet = t.surface; return }
+    if (m.functions.includes('FAREWELL')) { r.part = t.surface; return }
+    if (m.valueType === 'MODIFIER') { r.mods.push({ s: t.surface, g, modifies: m.modifies }); return }
+    if (m.valueType === 'ACTION') { if (!r.verb) { r.verb = t.surface; r.verbM = { ...m, g } } else r.rest.push(t.surface); return }
+    if (m.valueType === 'PLACE' && _lnBpCatOfGloss(g) === 'PLACE') { r.places.push(t.surface); if (!r.place) r.place = t.surface; return }
+    if (m.valueType === 'TIME' && !/^(time|times|the time|hour|period|moment)\s*([,;(/]|$)/.test(g)) { r.time = t.surface; r.timePast = !!m.past; return }
+    if (m.valueType === 'PERSON' || _lnBpCatOfGloss(g) === 'PERSON') { r.person = t.surface; return }
+    if (_lnBpCatOfGloss(g) === 'PLACE' && !m.valueType) { r.places.push(t.surface); if (!r.place) r.place = t.surface; return }
+    if (m.valueType === 'STATE') { if (/^(okay|ok|fine|alright|all right|no problem)\b/.test(g)) r.ack = r.ack || t.surface; r.state = t.surface; return }
+    if (m.functions.includes('REACT') && !m.valueType) { r.react = t.surface; return }
+    if (LN_BP_DEM_RX.test(g)) { r.dem = t.surface; return }
+    if ((m.valueType === 'THING' || m.valueType === 'PLACE') && _lnBpCatOfGloss(g) === 'PLACE') { r.places.push(t.surface); if (!r.place) r.place = t.surface; return }
+    if (LN_BP_DEM_RX.test(g)) { r.dem = r.dem || t.surface; return }
+    // a THING is a real noun: a function-word gloss ("besides", "which", "mean") is never something to eat, buy or point at
+    if (LN_BP_FUNCTION_GLOSS_RX.test(g) || pos === 'OTHER') { r.rest.push(t.surface); return }
+    if (m.valueType === 'THING' || m.valueType === 'PLACE' || m.valueType === 'TIME') { r.things.push(t.surface); if (r.thing) r.rest.push(t.surface); else r.thing = t.surface; return }
+    r.rest.push(t.surface)
+  })
+  return r
+}
+const _lnU = a => [...new Set((a || []).filter(Boolean))]
+// ── the SHARED semantic generator: abstract sentence operations for one planned exchange ──
+// every op is { k: <operation>, …args }; a language renderer turns it into a sentence (or null when it cannot)
+function _lnAbstractExchanges(vx, ex, R0, R1, R2) {
+  const F = vx.fill, out = []
+  const goV = vx.lex(['行く', '去', 'ไป'])
+  const alreadyW = vx.lex(['もう', '已经']), identity = R => (R.no && /^(is not|isn't|not)\b/.test(vx.g(R.no))) || (R.yes && /\b(that'?s right|correct|right|it is)\b/.test(vx.g(R.yes)))
+  const followV = () => F.verb(['eat', 'drink', 'motion', 'buy', 'view']).filter(v => !['like', 'know', 'understand', 'think', 'want', 'wantTo'].includes(vx.vcat(v)))
+  const pair = (a, b) => { if (a && b) out.push([a, b]) }
+  const triple = (a, b, c) => { if (a && b && c) out.push([a, b, c]) }
+  const nonStat = v => v && !(vx.row(v) && vx.row(v).meta.stative) && !['like', 'know', 'understand', 'think', 'want', 'wantTo', 'exist', 'existThing', 'able'].includes(vx.vcat(v))
+  const vc = v => vx.vcat(v)
+  const motion = v => LN_BP_MOTION.has(vc(v))
+  const objsFor = (v, prefer) => _lnU((prefer || []).filter(o => vx.objOk(v, o)).concat(F.objFor(v))).slice(0, 4)
+  const HOME_RX = /\b(home|house|hotel|office|country|room|apartment)\b/
+  const compsFor = (v, R) => motion(v) ? _lnU([R.place, ...F.place([])]).filter(p => vc(v) !== 'return' || HOME_RX.test(vx.g(p))).map(p => ({ p })) : objsFor(v, [R.thing, R.dem, R.person]).map(o => ({ o }))
+  const withBare = (v, cs) => cs.concat(vx.bareOk(v) ? [{}] : [])
+  const HAVE_CATS = ['OBJECT', 'CLOTHES', 'READ', 'FOOD', 'DRINK', 'MONEY', 'RIDE', 'DEM', 'TIMENOUN'], LIKE_BAD = ['BODY', 'MONEY', 'GENERIC', 'GENERIC_PLACE', 'PERSON_GENERIC', 'VERB', 'NONNOUN', 'PRON']
+  const mods0 = R0.mods.map(m => m.s), mods1 = R1.mods.filter(m => !/^(in|inside|at|on)\b/.test(m.g))
+  const together = R => R.mods.find(m => /together|with/.test(m.g))
+  const already = R => R.mods.find(m => /^already/.test(m.g)), stillNot = R => R.mods.find(m => /^(still|not yet|yet)/.test(m.g))
+  const again = R => R.mods.find(m => /^again/.test(m.g)), aLittle = R => R.mods.find(m => /^(a little|a bit|a few)/.test(m.g))
+  const degree = R => R.mods.find(m => m.modifies === 'STATE')
+  const reply = (R, echo0) => { const echo = echo0 && echo0.v && vc(echo0.v) === 'come' && goV ? { ...echo0, v: goV } : echo0; return _lnU([
+    R.yes ? { k: 'YES', y: R.yes, echo } : null, R.no ? { k: 'NO', n: R.no, echo } : null, R.qual ? { k: 'QUAL', q: R.qual, echo } : null,
+    R.state && !(echo && (echo.v || echo.have || echo.like)) ? { k: 'STATE', a: R.state, mod: degree(R) } : null, R.pronoun && echo && echo.v ? { k: 'ECHO', echo, subj: R.pronoun } : null,
+    stillNot(R) && echo && echo.past ? { k: 'NOT_YET', m: stillNot(R).s, echo } : null, R.neg && echo && echo.v ? { k: 'NEG', n: R.neg, echo } : null,
+    !R.all.length ? { k: 'YES', echo } : null, !R.all.length ? { k: 'ECHO', echo } : null]) }
+  const pre = R0.excuse ? R0.excuse : null
+  if (ex.kind === 'QUESTION') {
+    const slot = ex.slot || R0.slot || 'YESNO'
+    if (R0.qw && R0.slot && R0.slot !== slot) return out      // a question word asks its OWN slot (never "where … how much")
+    const qw = R0.qw || vx.lex(({ PLACE: ['どこ', '哪里', '哪儿', 'ที่ไหน', 'ไหน'], TIME: ['いつ', '什么时候', 'เมื่อไหร่', 'กี่โมง'], THING: ['何', '什么', 'อะไร'], AMOUNT: ['いくら', '多少', 'เท่าไหร่', 'กี่'],
+      PERSON: ['誰', '谁', 'ใคร'], STATE: ['どう', '怎么样', 'อย่างไร', 'ยังไง'], REASON: ['なんで', 'どうして', '为什么', 'ทำไม'] })[slot] || [])
+    if (slot === 'PLACE') {
+      const places = _lnU([R1.place, ...F.place([qw])]).slice(0, 4)
+      const subj = _lnU([R0.thing, R0.person, R0.dem]).filter(x => ['OBJECT', 'CLOTHES', 'READ', 'MONEY', 'FOOD', 'DRINK', 'PERSON', 'RIDE', 'DEM'].includes(vx.cat(x)))
+      const prep = R1.mods.find(m => /^(in|inside|at|on)\b/.test(m.g))
+      const subjs = subj.length ? subj : prep ? _lnU([...F.dem([]), ...F.cat('OBJECT'), ...F.cat('FOOD')]).slice(0, 3) : []
+      subjs.forEach(x => places.filter(p => vx.cat(x) !== 'RIDE' || /\b(here|there|over there|station|street|road|parking)\b/.test(vx.g(p))).forEach(p => pair({ k: 'Q_WHERE_IS', qw, x, pre }, { k: 'A_AT', p, x, prep: prep ? prep.s : null })))
+      const vs = _lnU([R0.verb, goV, ...F.verb(['motion', 'return', 'exist'])])
+      vs.forEach(v => places.filter(p => vc(v) !== 'return' || /\b(home|house|hotel|office|country|room|apartment)\b/.test(vx.g(p))).forEach(p => {
+        if (vc(v) === 'existThing') { pair({ k: 'Q_WHERE_GO', qw, v, pre, o: _lnU([R0.thing, R0.dem, ...F.dem([])])[0] }, { k: 'A_GO', v, p }); return }
+        if (motion(v) && vc(v) !== 'come') { if (vc(v) === 'motion' && /^here\b/.test(vx.g(p))) return    // "I go here" — never
+          pair({ k: 'Q_WHERE_GO', qw, v, mod: together(R0), pre }, { k: 'A_GO', v, p, mod: together(R1) }); pair({ k: 'Q_WHERE_GO', qw, v, mod: together(R0), pre }, { k: 'A_SHORT', x: p }) }
+        else if (nonStat(v) && ['buy', 'eat', 'drink', 'view', 'study', 'sell', 'find', 'want', 'use', 'make', 'wash', 'cook'].includes(vc(v))) { const o = objsFor(v, [R0.thing, R0.dem])[0]
+          if (o || vx.bareOk(v)) pair({ k: 'Q_WHERE_DO', qw, v, o, pre }, { k: 'A_DO_AT', v, p, o }) }
+      }))
+    } else if (slot === 'TIME') {
+      const past = R1.timePast || R0.timePast
+      const times = _lnU([R1.time, ...(past ? F.timePast([]) : F.timeFuture([]))]).slice(0, 4)
+      _lnU([R0.verb, goV, ...F.verb(['motion', 'come', 'return', 'arrive', 'depart', 'start', 'personObj'])]).filter(nonStat).forEach(v => times.forEach(t => {
+        const o = motion(v) || ['arrive', 'depart', 'stop'].includes(vc(v)) ? null : objsFor(v, [R0.thing, R0.person, R0.dem])[0] || null
+        if (!o && !vx.bareOk(v)) return
+        pair({ k: 'Q_WHEN', qw, v, o, past, pre }, { k: 'A_WHEN', t, v, o, past }); pair({ k: 'Q_WHEN', qw, v, o, past, pre }, { k: 'A_SHORT', x: t }) }))
+    } else if (slot === 'THING') {
+      _lnU([R0.verb, ...F.verb(['eat', 'drink', 'view', 'buy', 'read', 'want', 'make', 'do', 'wear', 'speak', 'study'])]).filter(v => nonStat(v) || vc(v) === 'want').filter(v => !R1.thing || vx.objOk(v, R1.thing) || R0.verb === v).forEach(v =>
+        objsFor(v, [R1.things.length >= 2 ? vx.coord(R1.things) : null, R1.thing, R1.dem]).forEach(o => { pair({ k: 'Q_WHAT_V', qw, v, pre }, { k: 'A_OBJ_V', v, o, mods: mods1 }); pair({ k: 'Q_WHAT_V', qw, v, pre }, { k: 'A_SHORT', x: o }) }))
+      if (R1.cop) _lnU([R0.dem, ...F.dem([])]).forEach(d => _lnU([R1.thing, ...F.cat('FOOD'), ...F.cat('OBJECT')]).slice(0, 3).forEach(x => pair({ k: 'Q_WHAT_IS', qw, d, pre }, { k: 'A_COP', d, cop: R1.cop, x })))
+      // "what is this?" — "it's X" (a thing pointed at: the natural question for a concrete noun)
+      const what = _lnU([R1.things.length >= 2 ? vx.coord(R1.things) : null, R1.thing, R1.dem, R1.person]).filter(x => ['OBJECT', 'CLOTHES', 'READ', 'FOOD', 'DRINK', 'MONEY', 'RIDE', 'VIEW', 'BODY', 'PERSON', 'MUSIC'].includes(vx.cat(x)))
+      _lnU([R0.dem, ...F.dem([])]).forEach(d => what.forEach(x => { if (x !== d) { pair({ k: 'Q_WHAT_IS', qw, d, pre }, { k: 'A_IS', x }); pair({ k: 'Q_WHAT_IS', qw, d, pre }, { k: 'A_SHORT', x }) } }))
+    } else if (slot === 'STATE' && R1.but) {
+      const neg = F.adj(/\b(expensive|far|busy|small|old|difficult|hot|cold|tired)\b/), pos = F.adj(/\b(delicious|tasty|good|fun|beautiful|cheap|interesting|nice)\b/)
+      _lnU([R0.thing, ...F.dem([])]).filter(x => !['PRON', 'NONNOUN', 'VERB'].includes(vx.cat(x))).slice(0, 2).forEach(sx => neg.slice(0, 2).forEach(a1 => pos.slice(0, 2).forEach(a2 => pair({ k: 'Q_HOW', qw: qw, s: sx, pre }, { k: 'S_BUT', a1, a2, but: R1.but }))))
+    } else if (slot === 'STATE') {
+      const subj = _lnU([R0.thing, R0.place, R0.dem, R0.person, ...F.dem([])]).filter(x => !['BODY', 'PRON', 'ABSTRACT', 'MONEY', 'NONNOUN', 'VERB'].includes(vx.cat(x)) || (x === R0.thing && !['MONEY', 'NONNOUN', 'VERB'].includes(vx.cat(x))))
+      const st = _lnU([R1.state, ...F.adj(/\b(good|nice|delicious|tasty|fun|beautiful|pretty|cheap|expensive|big|small|interesting|cute|hot|cold|great|busy|far|near|new|old)\b/)]).slice(0, 4)
+      if (vx.lang === 'zh' && qw && /^怎么$/.test(qw)) {
+        _lnU([R0.verb, ...F.verb(['use', 'make', 'open', 'cook', 'motion'])]).filter(nonStat).forEach(v => subj.forEach(s => pair({ k: 'Q_HOW_DO', qw, v, s, pre }, { k: 'DONT_KNOW' })))
+      } else subj.forEach(s => st.filter(a => !LN_BP_PERSON_STATE_RX.test(vx.g(a)) || R1.state === a).forEach(a => pair({ k: 'Q_HOW', qw, s, pre }, { k: 'STATE', a, mod: degree(R1) || degree(R0) })))
+    } else if (slot === 'REASON') {
+      const vs = _lnU([R0.verb, ...F.verb(['motion', 'buy', 'eat'])]).filter(nonStat)
+      const adjs = F.adj(/\b(busy|tired|expensive|cheap|delicious|tasty|good|far|near|cold|hot|fun|interesting|late|sleepy|sick|full|hungry)\b/)
+      vs.forEach(v => {
+        const o = motion(v) ? null : objsFor(v, [R0.thing, R0.dem])[0] || null
+        const NEG_RX = /\b(busy|tired|expensive|far|cold|hot|late|sleepy|sick|full)\b/, POS_RX = /\b(cheap|delicious|tasty|good|near|fun|interesting|hungry)\b/
+        if (motion(v) || vc(v) === 'buy' || vc(v) === 'eat') adjs.forEach(a => { const ga = vx.g(a)
+          if (NEG_RX.test(ga)) pair({ k: 'Q_WHY', qw, v, o, neg: true, pre }, { k: 'BECAUSE', a })
+          if (POS_RX.test(ga) && !(vc(v) === 'eat' && /hungry/.test(ga) === false && /near/.test(ga))) pair({ k: 'Q_WHY', qw, v, o, neg: false, pre }, { k: 'BECAUSE', a }) })
+        if (o && !LIKE_BAD.includes(vx.cat(o)) && vx.cat(o) !== 'DEM') pair({ k: 'Q_WHY', qw, v, o, neg: false, pre }, { k: 'BECAUSE_LIKE', o })
+        pair({ k: 'Q_WHY', qw, v, o, neg: true, pre }, { k: 'DONT_WANT', v })
+      })
+    } else if (slot === 'PERSON') {
+      const ps = _lnU([R1.person, R1.pronoun, ...F.person([])]).filter(x => ['PERSON', 'PRON'].includes(vx.cat(x))).slice(0, 4)
+      _lnU([R0.verb, ...F.verb(['motion', 'eat'])]).filter(v => nonStat(v) && LN_BP_WITH_OK.has(vc(v))).forEach(v => ps.forEach(p => { pair({ k: 'Q_WHO_WITH', qw, v, pre }, { k: 'A_WITH', p, v }); pair({ k: 'Q_WHO_WITH', qw, v, pre }, { k: 'A_WITH', p }) }))
+      _lnU([R0.verb, ...F.verb(['personObj'])]).filter(v => vc(v) === 'personObj').forEach(v => ps.forEach(p => pair({ k: 'Q_WHO_OBJ', qw, v, pre }, { k: 'A_OBJ_V', v, o: p })))
+      _lnU([R0.dem, ...F.dem([])]).forEach(d => ps.forEach(p => pair({ k: 'Q_WHO_IS', qw, d, pre }, { k: 'A_IS', x: p })))
+    } else if (slot === 'AGE' || slot === 'DURATION') {
+      const unit = slot === 'AGE' ? vx.lex(['ปี', '歳', '岁']) : vx.lex(['นาที', 'ชั่วโมง', '分', '時間', '分钟', '小时'])
+      const ns = _lnU([R1.amount, ...F.num([]).sort((a, b) => (/^(ten|twenty|thirty|five|two|three)\b/.test(vx.g(b)) ? 1 : 0) - (/^(ten|twenty|thirty|five|two|three)\b/.test(vx.g(a)) ? 1 : 0))]).filter(n => !/thousand|hundred/.test(vx.g(n))).slice(0, 3)
+      const whole = qw && /\byou\b/.test(vx.g(qw))     // a complete question phrase ("how old are you?")
+      if (unit) ns.forEach(n => { if (whole || slot === 'AGE') pair({ k: 'Q_PHRASE', qw, s: whole ? null : (R0.person || null), pre }, { k: 'A_NUM_UNIT', n, unit })
+        else _lnU([R0.thing, ...F.cat('RIDE')]).slice(0, 2).forEach(o => pair({ k: 'Q_PHRASE', qw, s: o, pre }, { k: 'A_NUM_UNIT', n, unit })) })
+    } else if (slot === 'AMOUNT') {
+      const subj = _lnU([R0.thing, R0.dem, ...F.dem([]), ...F.cat('FOOD'), ...F.cat('CLOTHES')]).filter(x => ['DEM', 'FOOD', 'DRINK', 'CLOTHES', 'OBJECT', 'READ', 'RIDE', 'VIEW'].includes(vx.cat(x))).slice(0, 4)
+      const ns = _lnU([R1.amount, ...(R1.digitZero ? [] : R1.digits), ...F.num([])]).slice(0, 4)   // "zero" is never a price
+      subj.forEach(s => { ns.forEach(n => pair({ k: 'Q_PRICE', qw, s, pre }, { k: 'A_PRICE', n }))
+        F.adj(/\b(expensive|cheap)\b/).forEach(a => pair({ k: 'Q_PRICE', qw, s, pre }, { k: 'STATE', a, mod: degree(R1) }))
+        vx.words.filter(w => /^(many|much|a lot|lots)\b/.test(w.g) && !w.target).slice(0, 1).forEach(w => pair({ k: 'Q_PRICE', qw, s, pre }, { k: 'STATE', a: w.surface, mod: degree(R1) })) })
+    } else if (slot === 'PHONE') {
+      const ph = R0.phone || (vx.words.find(w => /\b(phone|telephone) number\b/.test(String((w.word && w.word.english) || w.g).toLowerCase())) || {}).surface
+      const ds = _lnU([...R1.digits, ...F.digits([])])
+      if (ph && ds.length >= 2) { const hm = vx.cc ? vx.cc.hardMax : 6, need = Math.max(3, Math.min(6, hm - 1)), seq = []
+        for (let i = 0; seq.length < need; i++) seq.push(ds[(i * 3 + (i >> 1)) % ds.length])
+        if (R1.digits.length && !R1.digits.every(d => seq.includes(d))) R1.digits.forEach((d, i) => { seq[i % seq.length] = d })
+        pair({ k: 'Q_PHONE', ph, pre }, { k: 'A_DIGITS', ds: seq }) }
+    } else {   // YESNO — a carrier for the question, a reply word / echo for the answer
+      const v = R0.verb, q = R0
+      if (v && vc(v) === 'wantTo') {
+        followV().forEach(v2 => withBare(v2, compsFor(v2, R0).slice(0, 2)).forEach(c => reply(R1, { v: v2, wantTo: v }).forEach(b => pair({ k: 'Q_WANT_TO', w: v, v: v2, ...c, pre }, b))))
+      } else if (v) {
+        const vcl = vc(v)
+        const st = vx.row(v) && vx.row(v).meta.stative || !nonStat(v)
+        if (vcl === 'mean') _lnU([...F.dem([])]).forEach(d => _lnU([...F.cat('FOOD'), ...F.cat('OBJECT')]).slice(0, 2).forEach(x => pair({ k: 'Q_MEAN', v, d, pre }, { k: 'A_MEAN', v, x })))
+        else if (vcl === 'think') F.adj(/\b(good|nice|delicious|fun|interesting|cheap|expensive)\b/).forEach(a => reply(R1, { v, think: a }).forEach(b => pair({ k: 'Q_THINK', v, a, pre }, b)))
+        else if (vcl === 'existThing') _lnU([R0.thing, R0.dem, ...F.cat('TIMENOUN'), ...F.dem([]), ...F.cat('FOOD')]).filter(o => ['OBJECT', 'CLOTHES', 'READ', 'FOOD', 'DRINK', 'MONEY', 'RIDE', 'TIMENOUN', 'DEM'].includes(vx.cat(o))).slice(0, 4)
+          .forEach(o => reply(R1, { v }).forEach(b => pair({ k: 'Q_YN_V', v, o, pre }, b)))
+        else if (vcl === 'exist') _lnU([R0.place, ...F.place([])]).slice(0, 3).forEach(p => reply(R1, { v }).forEach(b => pair({ k: 'Q_YN_V', v, p, pre }, b)))
+        else if (st) _lnU([R0.thing || R0.dem || R0.person || null, ...(vcl === 'able' ? F.objFor(v) : [])]).concat(vx.bareOk(v) ? [''] : []).forEach(o => {
+          if (o && !vx.objOk(v, o)) return
+          reply(R1, { v }).forEach(b => pair({ k: 'Q_YN_V', v, o, pre }, b)) })
+        else {
+          const comps = compsFor(v, R0)
+          const withTime = R0.time ? [{ t: R0.time, past: R0.timePast }] : [{}]
+          if (!comps.length && !vx.bareOk(v) && ['say', 'speak', 'listen', 'give', 'open', 'use', 'view', 'read', 'write', 'carry', 'wash', 'pay', 'sell', 'study'].includes(vcl)) reply(R1, { can: true }).forEach(b => pair({ k: 'Q_CAN', v, pre }, b))
+          if (vcl === 'personObj') _lnU([R0.person, ...F.person([])]).forEach(o => reply(R1, { v }).forEach(b => pair({ k: 'Q_YN_V', v, o, pre }, b)))
+          withBare(v, comps.slice(0, 3)).forEach(c => withTime.forEach(tt => {
+            if (already(R0)) { const echo = { v, ...c, past: true }; reply(R1, echo).forEach(b => pair({ k: 'Q_YN_V', v, ...c, past: true, already: already(R0).s, pre }, b)) }
+            else { const echo = { v, ...c, ...tt, mod: together(R0) }; reply(R1, { v, past: tt.past }).forEach(b => pair({ k: 'Q_YN_V', v, ...c, ...tt, mod: together(R0), again: again(R0) && again(R0).s, pre }, b)) }
+          }))
+        }
+      } else if (R0.place && R1.place && goV) {
+        pair({ k: 'Q_YN_V', v: goV, p: R0.place, pre }, { k: 'NO_GO', v: goV, p: R1.place })
+      } else if (R0.or) {
+        const pl = F.place([]), fo = F.cat('FOOD'), dr = F.cat('DRINK')
+        ;[[pl[0], pl[1], goV], [fo[0], fo[1], null], [dr[0], dr[1], null]].filter(([a, b]) => a && b).forEach(([a, b, v]) => pair({ k: 'Q_OR', v, a, b, or: R0.or, pre }, v ? { k: 'A_GO', v, p: b } : { k: 'A_SHORT', x: b }))
+      } else if (R0.places.length >= 2 && goV) {
+        const [a, b] = R0.places
+        pair({ k: 'Q_OR', v: goV, a, b, pre }, { k: 'A_GO', v: goV, p: b }); pair({ k: 'Q_OR', v: goV, a, b, pre }, { k: 'A_SHORT', x: b })
+      } else if (R0.things.length >= 2) {
+        const [a, b] = R0.things
+        F.verb(null).filter(v => nonStat(v) && vx.objOk(v, a) && vx.objOk(v, b)).slice(0, 2).forEach(v => { pair({ k: 'Q_OR', v, a, b, pre }, { k: 'A_OBJ_V', v, o: b }); pair({ k: 'Q_OR', v, a, b, pre }, { k: 'A_SHORT', x: b }) })
+        if (vx.cat(a) === vx.cat(b) && !['OTHER', 'NONNOUN', 'VERB', 'ABSTRACT', 'GENERIC', 'GENERIC_PLACE', 'TIMENOUN', 'PRON'].includes(vx.cat(a))) pair({ k: 'Q_OR', v: null, a, b, pre }, { k: 'A_SHORT', x: b })
+        const both = vx.coord([a, b])
+        if (both && [a, b].every(x => HAVE_CATS.includes(vx.cat(x)))) reply(R1, { have: true }).forEach(r => pair({ k: 'Q_HAVE', x: both, pre }, r))
+        if (both && [a, b].every(x => !LIKE_BAD.includes(vx.cat(x)) && vx.cat(x) !== 'DEM')) reply(R1, { like: true }).forEach(r => pair({ k: 'Q_LIKE', x: both, pre }, r))
+      } else if (R0.state && LN_BP_PERSON_STATE_RX.test(vx.g(R0.state))) {
+        reply(R1, { a: R0.state }).forEach(b => pair({ k: 'Q_YN_STATE', s: null, a: R0.state, mod: degree(R0), pre }, b))
+        if (!R1.all.length) pair({ k: 'Q_YN_STATE', s: null, a: R0.state, pre }, { k: 'NO', n: null, echo: { a: R0.state } })
+      } else if (R0.state) {
+        _lnU([R0.thing, R0.dem, R0.place, ...F.dem([])]).filter(s => vx.cat(s) !== 'PRON').forEach(s => reply(R1, { a: R0.state }).forEach(b => pair({ k: 'Q_YN_STATE', s, a: R0.state, mod: degree(R0), pre }, b)))
+      } else if (R0.thing || R0.dem) {
+        const t = R0.thing || R0.dem, c = vx.cat(t)
+        if (identity(R1)) F.dem([]).filter(d => d !== t).forEach(d => reply(R1, {}).forEach(b => pair({ k: 'Q_IS_IT', d, x: t, pre }, b)))
+        if (HAVE_CATS.includes(c)) reply(R1, { have: true }).forEach(b => pair({ k: 'Q_HAVE', x: t, pre }, b))
+        if (!LIKE_BAD.includes(c) && c !== 'DEM') reply(R1, { like: true }).forEach(b => pair({ k: 'Q_LIKE', x: t, pre }, b))
+        F.verb(null).filter(v => nonStat(v) && vx.objOk(v, t)).slice(0, 2).forEach(v => reply(R1, { v }).forEach(b => pair({ k: 'Q_YN_V', v, o: t, pre }, b)))
+      } else if (R0.place) {
+        _lnU([R0.verb, goV]).filter(Boolean).forEach(v => reply(R1, { v }).forEach(b => pair({ k: 'Q_YN_V', v, p: R0.place, pre }, b)))
+      } else if (R0.person) {
+        if (goV && vx.cat(R0.person) === 'PERSON') reply(R1, { v: goV }).forEach(b => pair({ k: 'Q_YN_WITH', p: R0.person, v: goV, pre }, b))
+        F.verb(['personObj']).forEach(v => reply(R1, { v }).forEach(b => pair({ k: 'Q_YN_V', v, o: R0.person, pre }, b)))
+      } else if (R0.time) {
+        if (goV) reply(R1, { v: goV, past: R0.timePast }).forEach(b => pair({ k: 'Q_YN_V', v: goV, t: R0.time, past: R0.timePast, pre }, b))
+      } else if (R0.pronoun && /^you\b/.test(vx.g(R0.pronoun))) {
+        if (goV) reply(R1, { v: goV }).forEach(b => pair({ k: 'Q_YN_V', v: goV, subj: R0.pronoun, pre }, b))
+      } else if (mods0.length) {
+        const m = R0.mods[0]
+        if (/^already/.test(m.g)) F.verb(['eat', 'motion']).forEach(v => reply(R1, { v, past: true }).forEach(b => pair({ k: 'Q_YN_V', v, past: true, already: m.s, pre }, b)))
+        if (/together|with/.test(m.g)) F.verb(['motion', 'eat']).forEach(v => reply(R1, { v }).forEach(b => pair({ k: 'Q_YN_V', v, mod: m, pre }, b)))
+        if (/^(still|also)/.test(m.g)) _lnU([goV, ...F.verb(['eat', 'motion'])]).forEach(v => { const c = motion(v) ? {} : { o: objsFor(v, [])[0] }; if (!c.o && !vx.bareOk(v)) return; reply(R1, { v }).forEach(b => pair({ k: 'Q_YN_V', v, ...c, adv: m.s, pre }, b)) })
+      } else if (identity(R1)) {
+        F.dem([]).forEach(d => _lnU([...F.cat('FOOD'), ...F.cat('OBJECT'), ...F.cat('DRINK')]).slice(0, 3).forEach(x => reply(R1, {}).forEach(b => pair({ k: 'Q_IS_IT', d, x, pre }, b))))
+      } else if (R1.neg) {
+        _lnU([goV, ...F.verb(['eat', 'drink', 'buy'])]).forEach(v => { const o = motion(v) ? null : objsFor(v, [])[0]; if (!o && !vx.bareOk(v)) return
+          pair({ k: 'Q_YN_V', v, o, pre }, { k: 'NEG', n: R1.neg, echo: { v } }) })
+      } else if (stillNot(R1) || (R1.no && !R1.all.slice(1).length)) {
+        F.verb(['eat', 'motion']).forEach(v => { const c = motion(v) ? { p: F.place([])[0] } : { o: objsFor(v, [])[0] }
+          if (alreadyW || vx.lang === 'th') reply(R1, { v, past: true }).forEach(b => pair({ k: 'Q_YN_V', v, ...c, past: true, already: alreadyW || 'แล้ว', pre }, b)) })
+      } else {
+        // a free carrier: "going?" / "eating?" / "this one, OK?" — answered with the planned reply word
+        _lnU([goV, ...F.verb(['eat', 'buy', 'view'])]).forEach(v => { const o = motion(v) ? null : objsFor(v, [])[0]
+          if (!o && !vx.bareOk(v)) return
+          reply(R1, { v, o }).forEach(b => pair({ k: 'Q_YN_V', v, o, pre }, b)) })
+        F.dem([]).forEach(d => F.adj(/\b(good|nice|okay|delicious|expensive|cheap)\b/).forEach(a => reply(R1, { a }).forEach(b => pair({ k: 'Q_YN_STATE', s: d, a, pre }, b))))
+      }
+    }
+  } else if (ex.kind === 'PROPOSAL' && R1.also && !R0.all.length) {
+    _lnU([goV, ...F.verb(['eat'])]).forEach(v => compsFor(v, R0).slice(0, 2).forEach(c => pair({ k: 'P_LETS', v, ...c }, { k: 'ALSO_OK', m: R1.also, v })))
+  } else if (ex.kind === 'PROPOSAL' && R0.lets) {
+    _lnU([R1.ack, R1.yes, vx.lex(['ได้', 'いい', '好'])]).forEach(k => pair({ k: 'SHORT', x: R0.lets }, { k: 'SHORT_ACK', x: k }))
+  } else if (ex.kind === 'PROPOSAL') {
+    const accepts = R => _lnU([R.state && /^(good|nice|great|fine|ok|okay|sure|fun|interesting|perfect|wonderful|all right|alright|no problem)\b/.test(vx.g(R.state)) ? { k: 'STATE', a: R.state, mod: degree(R) } : null, R.yes ? { k: 'YES', y: R.yes } : null, R.ack ? { k: 'SHORT_ACK', x: R.ack } : null, R.qual ? { k: 'QUAL', q: R.qual } : null,
+      !R.all.length ? { k: 'ACCEPT' } : null])
+    if (R2) {   // proposal → counter-proposal → acceptance (two values of the same kind; the LAST is agreed)
+      const v = (R0.verb && nonStat(R0.verb)) ? R0.verb : goV
+      const t1 = R0.time || R0.place || R0.amount || R0.thing, t2 = R1.time || R1.place || R1.amount || R1.thing
+      if (R0.amount && R1.amount) {
+        triple({ k: 'P_PRICE', n: R0.amount }, { k: 'COUNTER', x: R1.amount, unit: true }, { k: 'AGREE', x: R1.amount, unit: true })
+      } else if (v && t1 && t2) {
+        const kind = R0.time ? 't' : R0.place ? 'p' : R0.amount ? 'n' : 'o'
+        triple({ k: 'P_LETS', v, [kind]: t1 }, { k: 'COUNTER', x: t2 }, { k: 'AGREE', x: t2 })
+        triple({ k: 'P_LETS', v, [kind]: t1 }, { k: 'COUNTER_Q', x: t2 }, { k: 'AGREE', x: t2 })
+      }
+    } else {
+      const vs = _lnU([R0.verb, ...F.verb(['motion', 'eat', 'view', 'buy'])]).filter(v => nonStat(v) && !['come', 'arrive', 'say', 'give'].includes(vc(v)))
+      vs.forEach(v => {
+        const comps = compsFor(v, R0)
+        ;(comps.length ? comps.slice(0, 3) : vx.bareOk(v) ? [{}] : []).forEach(c => accepts(R1).forEach(b => {
+          pair({ k: 'P_LETS', v, ...c, t: R0.time || null, mod: together(R0) || again(R0) || aLittle(R0) || null }, b)
+          if (R0.time) pair({ k: 'P_LETS', v, ...c, t: R0.time, mod: together(R0) || null }, b) }))
+      })
+    }
+  } else if (ex.kind === 'APOLOGY') {
+    const ap = R0.apology || vx.lex(['ごめん', 'すみません', '对不起', 'ขอโทษ'])
+    _lnU([R1.ack, R1.state, vx.lex(['大丈夫', '没关系', 'ไม่เป็นไร'])]).forEach(k => pair({ k: 'SHORT', x: ap }, { k: 'SHORT_ACK', x: k }))
+  } else if (ex.kind === 'THANKS') {
+    const th = R0.thanks || vx.lex(['ありがとう', '谢谢', 'ขอบคุณ'])
+    _lnU([R1.ack, vx.lex(['どういたしまして', '不客气', 'ไม่เป็นไร'])]).forEach(k => pair({ k: 'SHORT', x: th }, { k: 'SHORT_ACK', x: k }))
+    if (!R1.all.length) pair({ k: 'SHORT', x: th }, { k: 'ACCEPT' })
+    // a thanks AFTER an offer: "here — thanks!"
+    if (!R0.all.length && R1.thanks) F.dem([]).forEach(d => pair({ k: 'OFFER', x: d }, { k: 'SHORT', x: R1.thanks }))
+  } else if (ex.kind === 'REQUEST') {
+    _lnU([R0.thing, ...F.dem([])]).filter(x => !['BODY', 'ABSTRACT', 'PRON'].includes(vx.cat(x))).forEach(t => pair({ k: 'REQ', x: t, please: R0.request }, { k: 'ACCEPT' }))
+  } else if (ex.kind === 'GREETING' || ex.kind === 'FAREWELL') {
+    const a = R0.greet || R0.part, b = R1.greet || R1.part || a
+    if (a) pair({ k: 'SHORT', x: a }, { k: 'SHORT', x: b })
+  } else {   // STATEMENT → REACTION
+    const EVAL_RX = /\b(good|nice|great|fun|interesting|delicious|tasty|beautiful|pretty|cute|cool|wow|expensive|cheap|bad|terrible|amazing|lucky)\b/
+    const reacts = _lnU([R1.react ? { k: 'REACT', r: R1.react } : null, R1.state && EVAL_RX.test(vx.g(R1.state)) ? { k: 'STATE', a: R1.state, mod: degree(R1) } : null, R1.yes ? { k: 'SHORT', x: R1.yes } : null,
+      R1.qual ? { k: 'SHORT', x: R1.qual } : null,
+      !R1.all.length ? { k: 'REALLY' } : null, !R1.all.length ? { k: 'NICE' } : null])
+    const st = []
+    const t = (R0.things.length >= 2 ? vx.coord(R0.things) : null) || R0.thing || R0.dem
+    if (R0.person && vx.cat(R0.person) === 'PERSON') F.verb(['personObj']).forEach(v => { st.push({ k: 'S_WILL', v, o: R0.person, subj: R0.pronoun }); st.push({ k: 'S_DID', v, o: R0.person, subj: R0.pronoun }) })
+    if (R0.verb && vc(R0.verb) === 'wantTo') followV().forEach(v2 => withBare(v2, compsFor(v2, R0).slice(0, 2)).forEach(c => st.push({ k: 'S_WANT_TO', w: R0.verb, v: v2, ...c, subj: R0.pronoun })))
+    if (t) { const c = vx.cat(t), cs = vx.members(t).map(x => vx.cat(x))
+      if (cs.every(c1 => !LIKE_BAD.includes(c1) && c1 !== 'DEM')) st.push({ k: 'S_LIKE', x: t, subj: R0.pronoun })
+      if (cs.every(c1 => HAVE_CATS.includes(c1))) st.push({ k: 'S_HAVE', x: t, subj: R0.pronoun })
+      if (c === 'BODY') vx.words.filter(w => /\b(hurt|hurts|painful|sore)\b/.test(w.g) && !LN_BP_BODY_RX.test(w.g)).slice(0, 2).forEach(w => st.push({ k: 'S_STATE', s: t, a: w.surface }))
+      F.verb(null).filter(v => nonStat(v) && vx.objOk(v, t)).slice(0, 2).forEach(v => { st.push({ k: 'S_DID', v, o: t, t: R0.time, subj: R0.pronoun }); st.push({ k: 'S_WANT', v, o: t, subj: R0.pronoun }) }) }
+    if (R0.verb && vc(R0.verb) !== 'wantTo') { const v = R0.verb
+      const comps = compsFor(v, R0)
+      ;(comps.length ? comps.slice(0, 3) : vx.bareOk(v) || vc(v) === 'arrive' ? [{}] : []).forEach(c => { if (nonStat(v)) { st.push({ k: 'S_DID', v, ...c, t: R0.timePast ? R0.time : null, subj: R0.pronoun, mod: together(R0) })
+        st.push({ k: 'S_WILL', v, ...c, t: R0.time && !R0.timePast ? R0.time : null, subj: R0.pronoun, mod: together(R0) || again(R0) }) }
+        else if (vc(v) === 'think') F.adj(/\b(good|nice|delicious|fun|interesting|cheap|expensive)\b/).forEach(a => st.push({ k: 'S_THINK', v, a, subj: R0.pronoun }))
+        else if (c.o || c.p || vx.bareOk(v)) st.push({ k: 'S_STATIVE', v, ...c, subj: R0.pronoun }) }) }
+    if (R0.state) _lnU([R0.thing, R0.place, ...F.dem([])]).forEach(s => st.push({ k: 'S_STATE', s, a: R0.state, mod: degree(R0) }))
+    if (!R0.state && degree(R0)) _lnU([...F.dem([])]).forEach(s => F.adj(/\b(good|nice|delicious|expensive|cheap|big|small|fun|beautiful|hot|cold)\b/).forEach(a => st.push({ k: 'S_STATE', s, a, mod: degree(R0) })))
+    if (R0.time && !R0.verb && goV) st.push(R0.timePast ? { k: 'S_DID', v: goV, t: R0.time, p: F.place([])[0] } : { k: 'S_WILL', v: goV, t: R0.time, p: F.place([])[0] })
+    if (R0.place && !R0.verb && goV) { st.push({ k: 'S_DID', v: goV, p: R0.place }); st.push({ k: 'S_WILL', v: goV, p: R0.place }) }
+    if (R0.person && !R0.verb && goV && vx.cat(R0.person) === 'PERSON') st.push({ k: 'S_WITH', v: goV, p: R0.person })
+    if (R0.pronoun && !R0.verb && !t && goV) st.push({ k: 'S_WILL', v: goV, subj: R0.pronoun, p: F.place([])[0] })
+    if (!R0.verb && aLittle(R0)) st.push({ k: 'WAIT', m: aLittle(R0).s })
+    if (!R0.verb && again(R0) && goV) st.push({ k: 'P_LETS', v: goV, mod: again(R0) })
+    if (!R0.verb && (already(R0) || stillNot(R0)) ) F.verb(['eat', 'motion']).forEach(v => st.push(already(R0) ? { k: 'S_DID', v, already: already(R0).s } : { k: 'S_NOT_YET', v, m: stillNot(R0).s }))
+    if (R0.react) st.push({ k: 'REACT', r: R0.react })
+    if (R0.but) { const neg = F.adj(/\b(expensive|far|busy|small|old|difficult|hot|cold|tired)\b/), pos = F.adj(/\b(delicious|tasty|good|fun|beautiful|cheap|interesting|nice)\b/)
+      _lnU([R0.thing, ...F.dem([])]).filter(x => !['PRON', 'NONNOUN', 'VERB'].includes(vx.cat(x))).slice(0, 2).forEach(sx => neg.slice(0, 2).forEach(a1 => pos.slice(0, 2).forEach(a2 => st.push({ k: 'S_BUT', s: sx, a1, a2, but: R0.but })))) }
+    if (R0.and) { const fo = F.cat('FOOD'); if (fo.length >= 2) st.push({ k: 'S_LIKE', x: fo[0] + R0.and + fo[1] }) }
+    if (R1.also && !R1.all.slice(1).length) F.verb(['motion', 'eat']).slice(0, 2).forEach(v => compsFor(v, R0).slice(0, 1).forEach(c => pair({ k: 'S_WILL', v, ...c }, { k: 'ALSO_OK', m: R1.also, v })))
+    if (!R0.all.length) { F.dem([]).forEach(d => F.adj(/\b(good|nice|delicious|fun|beautiful)\b/).forEach(a => st.push({ k: 'S_STATE', s: d, a }))) }
+    st.forEach(a => reacts.forEach(b => pair(a, b)))
+  }
+  return out
+}
+// ── JAPANESE renderer (plain, friendly everyday register; the scene prompt converts register for a polite track) ──
+function _jaBpClass(vx, surface) {
+  const row = vx.seen.get(surface), w = row && row.word
+  if (w && w.conjugationClass) return w.conjugationClass
+  if (/する$/.test(surface)) return 'irregular-suru'
+  if (surface === '来る' || surface === 'くる') return 'irregular-kuru'
+  if (surface === '行く' || surface === 'いく') return 'godan-iku'
+  if (surface === 'ある') return 'irregular-aru'
+  const rd = (w && w.reading) || surface
+  return /[えけげせぜてでねべぺめれいきぎしじちにびぴみり]る$/.test(rd) && !/^(帰る|入る|走る|知る|切る|要る|かえる|はいる|はしる|しる|きる|いる)$/.test(surface) ? 'ichidan' : 'godan'
+}
+function _jaBpVerbForm(vx, surface, form) {
+  if (!surface || form === 'dict' || !form) return surface || null
+  const cls = _jaBpClass(vx, surface)
+  if (cls === 'irregular-suru') { const pre = surface.replace(/する$/, ''); return pre + ({ past: 'した', vol: 'しよう', neg: 'しない', te: 'して' })[form] }
+  if (cls === 'irregular-kuru') return ({ past: '来た', vol: '来よう', neg: '来ない', te: '来て' })[form]
+  if (cls === 'irregular-aru') return ({ past: 'あった', vol: null, neg: 'ない', te: 'あって' })[form]
+  const stem = surface.slice(0, -1), end = surface.slice(-1)
+  if (cls === 'ichidan') return stem + ({ past: 'た', vol: 'よう', neg: 'ない', te: 'て' })[form]
+  if (cls === 'godan' || cls === 'godan-iku') {
+    const te = cls === 'godan-iku' ? ['って', 'った'] : (JA_GODAN_TE[end] || null)
+    if (form === 'past') return te ? stem + te[1] : null
+    if (form === 'te') return te ? stem + te[0] : null
+    if (form === 'vol') return JA_GODAN_O[end] ? stem + JA_GODAN_O[end] + 'う' : null
+    if (form === 'neg') return JA_GODAN_A[end] ? stem + JA_GODAN_A[end] + 'ない' : null
+  }
+  return null
+}
+function _jaBpIAdj(vx, a) { const row = vx.seen.get(a); const cls = row && row.word && row.word.conjugationClass
+  return cls === 'i-adjective' || cls === 'irregular-ii' || (!cls && /い$/.test(a) && !/^(きれい|嫌い|きらい|有名|ゆうめい|大丈夫)$/.test(a)) }
+function _jaBpPred(vx, a) { return _jaBpIAdj(vx, a) ? a : a + 'だ' }
+function _jaBpRender(vx, op) {
+  const L = l => vx.lex(l), vf = (v, f) => _jaBpVerbForm(vx, v, f)
+  const yes = L(['うん', 'はい']), no = L(['ううん', 'いいえ']), good = L(['いい']), like = L(['好き']), have = L(['ある']), real = L(['本当']), yen = L(['円'])
+  const P = op.pre ? op.pre + '、' : ''
+  const mod = m => m ? (/together|with/.test(m.g) ? m.s + 'に' : m.s) : ''
+  const obj = (o, v) => o ? o + (vx.cat(o) === 'PERSON' ? (vx.vcat(v) === 'personObj' ? 'に' : 'と') : '、') : ''
+  const comp = (x, v) => x.p ? x.p + 'に' : obj(x.o, v)
+  const echoV = e => !e ? null : e.can ? (good ? good + 'よ' : null) : e.wantTo ? null : e.think ? e.think + 'と' + vf(e.v) : e.have ? have : e.like ? (like ? like : null) : e.a ? _jaBpPred(vx, e.a) : e.v ? (e.past ? vf(e.v, 'past') : vf(e.v)) : null
+  switch (op.k) {
+    case 'Q_WHERE_IS': return P + op.x + '、' + op.qw + '？'
+    case 'A_AT': return op.prep ? null : op.p + (vx.cat(op.x) === 'PERSON' ? 'にいる。' : have ? 'に' + have + '。' : 'だよ。')
+    case 'Q_WANT_TO': case 'S_WANT_TO': return null
+    case 'A_COP': case 'Q_MEAN': case 'A_MEAN': return null
+    case 'S_BUT': return (op.s ? op.s + '、' : '') + _jaBpPred(vx, op.a1).replace(/だ$/, '') + '。' + op.but + '、' + _jaBpPred(vx, op.a2).replace(/だ$/, '') + '。'
+    case 'ALSO_OK': return null
+    case 'Q_PHRASE': return P + (op.s ? op.s + '、' : '') + op.qw + '？'
+    case 'A_NUM_UNIT': return op.n + op.unit + 'だよ。'
+    case 'Q_OR': return P + op.a + '？' + op.b + '？'
+    case 'NO_GO': return no ? no + '、' + op.p + 'に' + vf(op.v) + '。' : null
+    case 'Q_CAN': { const te = vf(op.v, 'te'); return te && good ? P + te + good + '？' : null }
+    case 'Q_IS_IT': return P + op.d + '、' + op.x + '？'
+    case 'Q_WHERE_GO': return P + (op.o ? op.o + '、' : '') + mod(op.mod) + op.qw + 'に' + vf(op.v) + '？'
+    case 'A_GO': return mod(op.mod) + op.p + 'に' + vf(op.v) + '。'
+    case 'Q_WHERE_DO': return P + (op.o ? op.o + '、' : '') + op.qw + 'で' + vf(op.v) + '？'
+    case 'A_DO_AT': return op.p + 'で' + vf(op.v) + '。'
+    case 'A_SHORT': return op.x + '。'
+    case 'Q_WHEN': { const v = op.past ? vf(op.v, 'past') : vf(op.v); return v && (P + (op.o ? obj(op.o, op.v) : '') + op.qw + (op.qw === '何時' ? 'に' : '') + v + '？') }
+    case 'A_WHEN': { const v = op.past ? vf(op.v, 'past') : vf(op.v); return v && (op.t + '、' + v + '。') }
+    case 'Q_WHAT_V': return P + op.qw + (/する$/.test(op.v) ? '' : 'を') + vf(op.v) + '？'
+    case 'A_OBJ_V': return (op.mods || []).map(mod).join('') + op.o + (vx.cat(op.o) === 'PERSON' ? (vx.vcat(op.v) === 'personObj' ? 'に' : 'と') : 'を') + vf(op.v) + '。'
+    case 'Q_WHAT_IS': return P + op.d + '、' + op.qw + '？'
+    case 'A_IS': return op.x + 'だよ。'
+    case 'Q_HOW': return P + (vx.cat(op.s) === 'GENERIC_PLACE' ? 'この' : '') + op.s + '、' + op.qw + '？'
+    case 'STATE': return (op.mod ? op.mod.s : '') + _jaBpPred(vx, op.a) + (_jaBpIAdj(vx, op.a) ? 'ね。' : 'ね。')
+    case 'Q_WHY': { const v = op.neg ? vf(op.v, 'neg') : vf(op.v); return v && (P + (op.o ? op.o + '、' : '') + op.qw + v + 'の？') }
+    case 'BECAUSE': return _jaBpPred(vx, op.a) + 'から。'
+    case 'BECAUSE_LIKE': return like ? like + 'だから。' : null
+    case 'DONT_WANT': return null
+    case 'DONT_KNOW': return null
+    case 'Q_WHO_WITH': return P + op.qw + 'と' + vf(op.v) + '？'
+    case 'A_WITH': return op.p + 'と' + (op.v ? vf(op.v) : '') + '。'
+    case 'Q_WHO_OBJ': return P + op.qw + (vx.vcat(op.v) === 'personObj' ? 'に' : 'を') + vf(op.v) + '？'
+    case 'Q_WHO_IS': return P + op.d + '、' + op.qw + '？'
+    case 'Q_PRICE': return P + op.s + '、' + op.qw + '？'
+    case 'A_PRICE': return yen ? op.n + yen + '。' : null
+    case 'Q_PHONE': return null
+    case 'A_DIGITS': return null
+    case 'Q_THINK': return good || op.a ? P + op.a + 'と' + vf(op.v) + '？' : null
+    case 'Q_YN_V': { let v = op.past ? vf(op.v, 'past') : vf(op.v); if (!v) return null
+      return P + (op.already || '') + (op.again || '') + (op.t ? op.t + '、' : '') + mod(op.mod) + comp(op, op.v) + (op.adv || '') + v + '？' }
+    case 'Q_YN_STATE': return P + (op.s ? op.s + '、' : '') + (op.mod ? op.mod.s : '') + op.a + '？'
+    case 'P_PRICE': return yen ? op.n + yen + 'でいい？' : null
+    case 'Q_HAVE': return have ? P + op.x + '、' + have + '？' : null
+    case 'Q_LIKE': return like ? P + op.x + '、' + like + '？' : null
+    case 'Q_YN_WITH': return P + op.p + 'と' + vf(op.v) + '？'
+    case 'YES': { const e = echoV(op.echo); return (op.y || yes) ? (op.y || yes) + (e ? '、' + e : '') + '。' : (e ? e + '。' : null) }
+    case 'NO': { const e = op.echo && op.echo.v ? (op.echo.past ? (vf(op.echo.v, 'neg') || '').replace(/ない$/, 'なかった') : vf(op.echo.v, 'neg')) : op.echo && op.echo.a ? _jaBpAdjNeg(op.echo.a) : null
+      const nn = op.n || no; if (!nn && !e) return null; return (nn || '') + (nn && e ? '、' : '') + (e || '') + '。' }
+    case 'QUAL': { const e = echoV(op.echo); return op.q + (e ? e : '') + '。' }
+    case 'ECHO': { const e = echoV(op.echo); return e ? (op.subj ? op.subj + 'も' : '') + e + '。' : null }
+    case 'NOT_YET': return op.m + '。'
+    case 'NEG': return null
+    case 'P_LETS': { const vol = vf(op.v, 'vol'); if (!vol) return null
+      return (op.t ? op.t + '、' : '') + mod(op.mod) + (op.p ? op.p + 'に' : op.o ? obj(op.o, op.v) : op.n ? op.n + yen + 'で' : '') + vol + 'か？' }
+    case 'COUNTER': return op.unit ? (yen ? op.x + yen + 'がいい。' : null) : op.x + 'がいい。'
+    case 'COUNTER_Q': return op.x + 'は？'
+    case 'AGREE': return (good ? good + 'よ、' : yes ? yes + '、' : '') + op.x + (op.unit ? yen || '' : '') + 'ね。'
+    case 'ACCEPT': return good ? good + 'ね。' : yes ? yes + '。' : null
+    case 'SHORT': return op.x + '。'
+    case 'SHORT_ACK': return /い$/.test(op.x) && _jaBpIAdj(vx, op.x) ? op.x + 'よ。' : op.x + '。'
+    case 'OFFER': return op.x + '、どうぞ。'
+    case 'REQ': return op.x + '、' + (op.please || 'ください') + '。'
+    case 'REACT': return op.r + '！'
+    case 'REALLY': return real ? real + '？' : null
+    case 'NICE': return good ? good + 'ね。' : null
+    case 'S_LIKE': return like ? (op.subj ? op.subj + 'は' : '') + op.x + 'が' + like + '。' : null
+    case 'S_HAVE': return have ? op.x + '、' + have + 'よ。' : null
+    case 'S_STATE': return op.s + '、' + (op.mod ? op.mod.s : '') + _jaBpPred(vx, op.a) + 'ね。'
+    case 'S_DID': { const v = vf(op.v, 'past'); return v && ((op.subj ? op.subj + 'は' : '') + (op.t ? op.t + '、' : '') + (op.already || '') + mod(op.mod) + comp(op, op.v) + v + 'よ。') }
+    case 'S_WILL': return (op.subj ? op.subj + 'は' : '') + (op.t ? op.t + '、' : '') + mod(op.mod) + comp(op, op.v) + vf(op.v) + 'よ。'
+    case 'S_WANT': return null
+    case 'S_THINK': return op.a + 'と' + vf(op.v) + '。'
+    case 'S_STATIVE': return (op.subj ? op.subj + 'は' : '') + comp(op, op.v) + vf(op.v) + 'よ。'
+    case 'S_WITH': return op.p + 'と' + vf(op.v, 'past') + 'よ。'
+    case 'S_NOT_YET': { const n = vf(op.v, 'neg'); return n ? op.m + vf(op.v, 'te') + 'ない。' : null }
+    case 'WAIT': return L(['待つ']) ? op.m + '待って。' : null
+  }
+  return null
+}
+// ── MANDARIN renderer ──
+function _zhBpRender(vx, op) {
+  const L = l => vx.lex(l)
+  if (op.v === '去' && op.p === '家') { if (!L(['回'])) return null; op = { ...op, v: '回' } }
+  const wo = L(['我']) || '', ni = L(['你']) || '', hao = L(['好']), xh = L(['喜欢']), you = L(['有']), mei = L(['没有']), real = L(['真的']), keyi = L(['可以'])
+  const zai = L(['在']), gen = L(['跟']), kuai = L(['块']), qian = L(['钱']), shi = L(['是']), xiang = L(['想']), zhidao = L(['知道']), hen = L(['很']) || '很'
+  const P = op.pre ? op.pre + '，' : ''
+  const pm = m => m && /together|with/.test(m.g) ? m.s : ''
+  const degPre = m => m && !/a little|a bit/.test(m.g) ? m.s : '', degPost = m => m && /a little|a bit/.test(m.g) ? m.s : ''
+  const adj = (a, m) => (m ? degPre(m) : hen) + a + (m ? degPost(m) : '') + (m && /^too/.test(m.g) ? '了' : '')
+  const comp = x => (x.p || x.o || '')
+  const subj = s => s || wo
+  const echoV = e => !e ? null : e.can ? keyi : e.wantTo ? e.wantTo + e.v : e.think ? wo + e.v + hen + e.think : e.have ? you : e.like ? xh : e.a ? adj(e.a) : e.v ? e.v + (e.past ? '了' : '') : null
+  switch (op.k) {
+    case 'Q_WHERE_IS': return zai ? P + op.x + zai + op.qw + '？' : null
+    case 'A_AT': return zai && (!op.prep || op.prep === zai) ? zai + op.p + '。' : null
+    case 'Q_WANT_TO': return P + ni + op.w + op.v + comp(op) + '吗？'
+    case 'A_COP': return op.d + op.cop + op.x + '。'
+    case 'S_BUT': return (op.s || '') + hen + op.a1 + '，' + op.but + hen + op.a2 + '。'
+    case 'ALSO_OK': return wo + op.m + op.v + '。'
+    case 'Q_MEAN': case 'A_MEAN': return null
+    case 'Q_PHRASE': return P + (op.s || '') + op.qw + '？'
+    case 'A_NUM_UNIT': return op.n + op.unit + '。'
+    case 'NO_GO': return '不，' + (op.p === '家' && L(['回']) ? wo + '回家' : wo + op.v + op.p) + '。'
+    case 'Q_OR': return L(['还是']) ? P + ni + (op.v || '') + op.a + L(['还是']) + op.b + '？' : null
+    case 'S_WANT_TO': return subj(op.subj) + op.w + op.v + comp(op) + '。'
+    case 'Q_CAN': return keyi ? P + wo + keyi + op.v + '吗？' : null
+    case 'Q_IS_IT': return shi ? P + op.d + shi + op.x + '吗？' : null
+    case 'Q_WHERE_GO': return P + (pm(op.mod) ? '我们' + pm(op.mod) : ni) + op.v + op.qw + '？'
+    case 'A_GO': return op.p === '家' && op.v === '去' ? (L(['回']) ? wo + pm(op.mod) + '回家。' : null) : wo + pm(op.mod) + op.v + op.p + '。'
+    case 'Q_WHERE_DO': return zai ? P + ni + zai + op.qw + op.v + (op.o || '') + '？' : null
+    case 'A_DO_AT': return zai ? wo + zai + op.p + op.v + (op.o || '') + '。' : null
+    case 'A_SHORT': return op.x + '。'
+    case 'Q_WHEN': return P + ni + op.qw + op.v + (op.o || '') + (op.past ? '的' : '') + '？'
+    case 'A_WHEN': return wo + op.t + op.v + (op.o || '') + (op.past ? '了' : '') + '。'
+    case 'Q_WHAT_V': return P + ni + op.v + op.qw + '？'
+    case 'A_OBJ_V': return wo + (op.mods || []).map(m => m.s).join('') + op.v + op.o + '。'
+    case 'Q_WHAT_IS': return shi ? P + op.d + shi + op.qw + '？' : null
+    case 'A_IS': return shi ? shi + op.x + '。' : null
+    case 'Q_HOW': return /^(怎么样|怎样)$/.test(op.qw) ? P + (vx.cat(op.s) === 'GENERIC_PLACE' ? (L(['这个']) || '这') : '') + op.s + op.qw + '？' : null
+    case 'Q_HOW_DO': return P + op.s + op.qw + op.v + '？'
+    case 'DONT_KNOW': return zhidao ? wo + '不' + zhidao + '。' : null
+    case 'STATE': return adj(op.a, op.mod) + '。'
+    case 'Q_WHY': return P + ni + op.qw + (op.neg ? '不' : '') + op.v + (op.o || '') + '？'
+    case 'BECAUSE': return '太' + op.a + '了。'
+    case 'BECAUSE_LIKE': return xh ? wo + xh + op.o + '。' : null
+    case 'DONT_WANT': return xiang ? wo + '不' + xiang + op.v + '。' : null
+    case 'Q_WHO_WITH': return gen ? P + ni + gen + op.qw + op.v + '？' : null
+    case 'A_WITH': return gen ? (op.v ? wo + gen + op.p + op.v : gen + op.p) + '。' : null
+    case 'Q_WHO_OBJ': return P + ni + op.v + op.qw + '？'
+    case 'Q_WHO_IS': return shi ? P + op.d + shi + op.qw + '？' : null
+    case 'Q_PRICE': return op.qw === '多少' ? (qian ? P + op.s + op.qw + qian + '？' : null) : P + op.s + op.qw + '？'
+    case 'A_PRICE': return kuai ? op.n + kuai + (qian && op.qw !== '几' ? qian : '') + '。' : null
+    case 'Q_PHONE': return null
+    case 'A_DIGITS': return null
+    case 'Q_THINK': return P + ni + op.v + op.a + '吗？'
+    case 'Q_YN_V': return (op.p === '家' && op.v === '去') ? null : P + (pm(op.mod) ? '' : (op.subj || ni)) + (op.t || '') + pm(op.mod) + (op.adv || '') + (op.again || '') + (op.already || '') + op.v + comp(op) + (op.past || op.already ? '了' : '') + '吗？'
+    case 'Q_YN_STATE': return P + (op.s || ni) + (op.mod ? degPre(op.mod) : '') + op.a + '吗？'
+    case 'P_PRICE': return kuai ? op.n + kuai + (keyi || '') + '吗？' : null
+    case 'Q_HAVE': return you ? P + ni + you + op.x + '吗？' : null
+    case 'Q_LIKE': return xh ? P + ni + xh + op.x + '吗？' : null
+    case 'Q_YN_WITH': return gen ? P + ni + gen + op.p + op.v + '吗？' : null
+    case 'YES': { const e = echoV(op.echo); return op.y ? op.y + (e ? '，' + e : '') + '。' : e ? e + '。' : null }
+    case 'NO': { const e = op.echo && op.echo.v ? (op.echo.v === you ? '' : '不' + op.echo.v) : op.echo && op.echo.a ? '不' + op.echo.a : ''; if (!op.n && !e) return null; return (op.n || '') + (op.n && e ? '，' : '') + e + '。' }
+    case 'QUAL': { const e = echoV(op.echo); return op.q + (e || '') + '。' }
+    case 'ECHO': { const e = echoV(op.echo); return e ? (op.subj ? op.subj + '也' : '') + e + '。' : null }
+    case 'NOT_YET': return op.m + '。'
+    case 'NEG': return op.echo.v === you ? null : op.n + op.echo.v + '。'
+    case 'P_LETS': return (op.p === '家' && op.v === '去') ? (L(['回']) ? '我们' + (op.t || '') + '回家吧。' : null) : '我们' + (op.t || '') + pm(op.mod) + (op.mod && /again/.test(op.mod.g) ? op.mod.s : '') + op.v + (op.p || op.o || op.n || '') + (op.mod && /a little|a bit/.test(op.mod.g) ? op.mod.s : '') + '吧。'
+    case 'COUNTER': return op.unit ? (kuai ? op.x + kuai + '吧。' : null) : op.x + (hao ? hao : '') + '。'
+    case 'COUNTER_Q': return op.x + '呢？'
+    case 'AGREE': return hao ? hao + '，' + op.x + (op.unit ? kuai || '' : '') + '。' : keyi ? keyi + '。' : null
+    case 'ACCEPT': return hao ? hao + '啊。' : keyi ? keyi + '。' : null
+    case 'SHORT': return op.x + '。'
+    case 'SHORT_ACK': return op.x + '。'
+    case 'OFFER': return op.x + '，给你。'
+    case 'REQ': return op.please ? op.please + '给我' + op.x + '。' : null
+    case 'REACT': return op.r + '！'
+    case 'REALLY': return real ? real + '吗？' : null
+    case 'NICE': return hao ? hen + hao + '。' : null
+    case 'S_LIKE': return xh ? subj(op.subj) + xh + op.x + '。' : null
+    case 'S_HAVE': return you ? subj(op.subj) + you + op.x + '。' : null
+    case 'S_STATE': return op.s + adj(op.a, op.mod) + '。'
+    case 'S_DID': return subj(op.subj) + (op.t || '') + (op.already || '') + pm(op.mod) + op.v + comp(op) + '了。'
+    case 'S_WILL': return subj(op.subj) + (op.t || '') + pm(op.mod) + (op.mod && /again/.test(op.mod.g) ? op.mod.s : '') + op.v + comp(op) + '。'
+    case 'S_WANT': return xiang ? subj(op.subj) + xiang + op.v + op.o + '。' : null
+    case 'S_THINK': return subj(op.subj) + op.v + hen + op.a + '。'
+    case 'S_STATIVE': return subj(op.subj) + op.v + comp(op) + '。'
+    case 'S_WITH': return gen ? wo + gen + op.p + op.v + '。' : null
+    case 'S_NOT_YET': return null
+    case 'WAIT': return L(['等']) ? '等' + op.m + '。' : null
+  }
+  return null
+}
+// ── THAI renderer (the speaker's particle ครับ / ค่ะ / คะ is added by the adapter; Thai drops the subject) ──
+function _thBpRender(vx, op) {
+  const L = l => vx.lex(l)
+  const dai = L(['ได้']), dee = L(['ดี']), chop = L(['ชอบ']), mee = L(['มี']), yak = L(['อยาก']), real = L(['จริง']), baht = L(['บาท']), raka = L(['ราคา']), yuu = L(['อยู่']), kan = L(['กัน'])
+  const because = L(['เพราะ']), kao = L(['เข้าใจ']), ruu = L(['รู้']), mak = L(['มาก']) || ''
+  const P0 = op.pre ? op.pre + ' ' : ''
+  const ann = L(['อัน'])
+  const det = x => x && /^(นี้|นั้น|โน้น)$/.test(x) ? (ann ? ann + x : '\u0000') : x
+  ;['x', 'o', 's', 'd'].forEach(k => { if (op[k]) op = { ...op, [k]: det(op[k]) } })
+  if (Object.values(op).some(v => v === '\u0000')) return null
+  const P = P0
+  const q = s => s + (/(ไหม|อะไร|ที่ไหน|ไหน|เมื่อไหร่|กี่โมง|ทำไม|ใคร|เท่าไหร่|ยังไง|อย่างไร|หรือเปล่า|เหรอ|กี่บาท)$/.test(s) ? '' : 'ไหม')
+  const md = m => m ? m.s : ''
+  const comp = x => x.p || x.o || ''
+  const echoV = e => !e ? null : e.can ? dai : e.wantTo ? e.wantTo + e.v : e.think ? e.v + 'ว่า' + e.think : e.have ? mee : e.like ? chop : e.a ? e.a : e.v ? e.v + (e.past ? 'แล้ว' : '') : null
+  switch (op.k) {
+    case 'Q_WHERE_IS': return yuu ? P + op.x + yuu + op.qw : null
+    case 'A_AT': return yuu ? yuu + (op.prep || '') + op.p : null
+    case 'Q_WANT_TO': return P + q(op.w + op.v + comp(op))
+    case 'A_COP': return op.d + op.cop + op.x
+    case 'S_BUT': return (op.s || '') + op.a1 + op.but + op.a2
+    case 'ALSO_OK': return op.m + (dai || '')
+    case 'Q_MEAN': return P + op.d + op.v + 'อะไร'
+    case 'A_MEAN': return op.v + op.x
+    case 'Q_PHRASE': return P + (op.s || '') + op.qw
+    case 'A_NUM_UNIT': return op.n + op.unit
+    case 'Q_OR': return P + (op.v || '') + op.a + (op.or || 'หรือ') + op.b
+    case 'NO_GO': return 'ไม่ ' + op.v + op.p
+    case 'S_WANT_TO': return (op.subj || '') + op.w + op.v + comp(op)
+    case 'Q_CAN': return dai ? P + q(op.v + dai) : null
+    case 'Q_IS_IT': return P + op.d + op.x + (L(['ใช่']) ? ' ' + L(['ใช่']) + 'ไหม' : 'เหรอ')
+    case 'Q_WHERE_GO': return P + op.v + op.qw + (op.mod ? md(op.mod) : '')
+    case 'A_GO': return op.v + op.p + (op.mod ? md(op.mod) : '')
+    case 'Q_WHERE_DO': return P + op.v + (op.o || '') + (/^ที่/.test(op.qw) ? op.qw : 'ที่' + op.qw)
+    case 'A_DO_AT': return op.v + (op.o || '') + 'ที่' + op.p
+    case 'A_SHORT': return op.x
+    case 'Q_WHEN': return P + op.v + (op.o || '') + op.qw
+    case 'A_WHEN': return op.v + (op.o || '') + op.t + (op.past ? '' : '')
+    case 'Q_WHAT_V': return P + op.v + op.qw
+    case 'A_OBJ_V': return op.v + op.o + (op.mods || []).map(m => m.s).join('')
+    case 'Q_WHAT_IS': return P + op.d + op.qw
+    case 'A_IS': return op.x
+    case 'Q_HOW': return P + op.s + (vx.cat(op.s) === 'GENERIC_PLACE' ? 'นี้' : '') + (/^(อย่างไร|ยังไง)$/.test(op.qw) ? 'เป็น' : '') + op.qw
+    case 'STATE': return op.a + (op.mod ? md(op.mod) : mak)
+    case 'Q_WHY': return P + op.qw + (op.neg ? 'ไม่' : '') + op.v + (op.o || '')
+    case 'BECAUSE': return (because || '') + op.a + mak
+    case 'BECAUSE_LIKE': return chop ? (because || '') + chop + op.o : null
+    case 'DONT_WANT': return yak ? 'ไม่' + yak + op.v : null
+    case 'DONT_KNOW': return ruu ? 'ไม่' + ruu : null
+    case 'Q_WHO_WITH': return P + op.v + 'กับ' + op.qw
+    case 'A_WITH': return (op.v ? op.v : '') + 'กับ' + op.p
+    case 'Q_WHO_OBJ': return P + op.v + op.qw
+    case 'Q_WHO_IS': return P + op.d + 'คือ' + op.qw
+    case 'Q_PRICE': return /^กี่$/.test(op.qw) ? (baht ? P + op.s + op.qw + baht : null) : P + op.s + (raka ? raka : '') + op.qw
+    case 'A_PRICE': return baht ? op.n + baht : null
+    case 'Q_PHONE': return P + op.ph + 'อะไร'
+    case 'A_DIGITS': return op.ds.join(' ')
+    case 'Q_THINK': return P + q(op.v + 'ว่า' + op.a)
+    case 'Q_YN_V': return P + q((op.t || '') + (op.subj || '') + (op.adv || '') + op.v + comp(op) + (op.mod ? md(op.mod) : '') + (op.again || '') + (op.already ? 'แล้ว' : ''))
+      .replace(/แล้วไหม$/, 'แล้วหรือยัง')
+    case 'Q_YN_STATE': return P + q((op.s || '') + op.a + (op.mod ? md(op.mod) : ''))
+    case 'P_PRICE': return baht ? op.n + baht + (dai || '') + 'ไหม' : null
+    case 'Q_HAVE': return mee ? P + q(mee + op.x) : null
+    case 'Q_LIKE': return chop ? P + q(chop + op.x) : null
+    case 'Q_YN_WITH': return P + q(op.v + 'กับ' + op.p)
+    case 'YES': { const e = echoV(op.echo); return op.y ? op.y + (e ? ' ' + e : '') : e }
+    case 'NO': { const e = op.echo && op.echo.v ? 'ไม่' + op.echo.v : op.echo && op.echo.a ? 'ไม่' + op.echo.a : ''; if (!op.n && !e) return null; return (op.n || '') + (op.n && e ? ' ' : '') + e }
+    case 'QUAL': { const e = echoV(op.echo); return op.q + (e ? ' ' + e : '') }
+    case 'ECHO': { const e = echoV(op.echo); return e ? (op.subj ? op.subj + 'ก็' : '') + e : null }
+    case 'NOT_YET': return op.m
+    case 'NEG': return op.n + op.echo.v
+    case 'P_LETS': return (op.t || '') + op.v + (op.p || op.o || op.n || '') + (op.mod ? md(op.mod) : '') + (kan ? kan + 'ไหม' : 'ไหม')
+    case 'COUNTER': return op.x + (op.unit ? baht || '' : '') + (dee ? dee + 'กว่า' : '')
+    case 'COUNTER_Q': return op.x + (dai ? dai + 'ไหม' : 'ไหม')
+    case 'AGREE': return (dai ? dai + ' ' : '') + op.x + (op.unit ? baht || '' : '') + 'นะ'
+    case 'ACCEPT': return dai || dee || null
+    case 'SHORT': return op.x
+    case 'SHORT_ACK': return op.x
+    case 'OFFER': return null
+    case 'REQ': return op.please ? op.please + op.x : null
+    case 'REACT': return op.r
+    case 'REALLY': return real ? real + 'เหรอ' : null
+    case 'NICE': return dee ? dee + 'จัง' : null
+    case 'S_LIKE': return chop ? (op.subj || '') + chop + op.x : null
+    case 'S_HAVE': return mee ? (op.subj || '') + mee + op.x : null
+    case 'S_STATE': return op.s + op.a + (op.mod ? md(op.mod) : mak)
+    case 'S_DID': return (op.subj || '') + (op.t || '') + op.v + comp(op) + (op.already ? 'แล้ว' : '') + (op.mod ? md(op.mod) : '')
+    case 'S_WILL': return (op.subj || '') + (op.t || '') + 'จะ' + op.v + comp(op) + (op.mod ? md(op.mod) : '')
+    case 'S_WANT': return yak ? (op.subj || '') + yak + op.v + op.o : null
+    case 'S_THINK': return (op.subj || '') + op.v + 'ว่า' + op.a
+    case 'S_STATIVE': return (op.subj || '') + op.v + comp(op)
+    case 'S_WITH': return op.v + 'กับ' + op.p
+    case 'S_NOT_YET': return null
+    case 'WAIT': return L(['รอ']) ? 'รอ' + op.m : null
+  }
+  return null
+}
+// the three language adapters: shared semantics → language rendering (candidate frames for one exchange)
+function _lnBlueprintsVia(render, vx, ex, A, B, C) {
+  const R0 = _lnBpRoles(A), R1 = _lnBpRoles(B), R2 = C && C.length ? _lnBpRoles(C) : (ex.turns && ex.turns[2] ? _lnBpRoles([]) : null)
+  const out = [], seen = new Set()
+  const raw = _lnAbstractExchanges(vx, ex, R0, R1, R2), groups = new Map()
+  raw.forEach(ops => { const k = ops.map(o => o.k).join('>'); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(ops) })
+  const G = [...groups.values()], inter = []
+  for (let i = 0; inter.length < raw.length; i++) G.forEach(gr => { if (gr[i]) inter.push(gr[i]) })
+  inter.forEach(ops => {
+    let txt
+    try { txt = ops.map(op => render(vx, op)).map(x => x && vx.lang === 'th' ? x.replace(/ที่ที่(?!สุด)/g, 'ที่') : x) } catch (e) { return }
+    if (txt.some(x => !x || /undefined|null/.test(x))) return
+    const k = txt.join(' / ')
+    if (!seen.has(k)) { seen.add(k); out.push(txt) }
+  })
+  return out
+}
+function buildJapaneseListeningBlueprints(vx, ex, A, B, C) { return _lnBlueprintsVia(_jaBpRender, vx, ex, A, B, C) }
+function buildMandarinListeningBlueprints(vx, ex, A, B, C) { return _lnBlueprintsVia(_zhBpRender, vx, ex, A, B, C) }
+function buildThaiListeningBlueprints(vx, ex, A, B, C) { return _lnBlueprintsVia(_thBpRender, vx, ex, A, B, C) }
+const LN_BLUEPRINT_ADAPTERS = { ja: buildJapaneseListeningBlueprints, zh: buildMandarinListeningBlueprints, th: buildThaiListeningBlueprints }
+// realise ONE planned exchange: the first candidate whose EVERY turn passes closed vocabulary + hardMax + target presence
+function realiseListeningExchange(vx, ex, byId, avoidKeys) {
+  const T = i => ((ex.turns[i] && ex.turns[i].targetIds) || []).map(id => byId.get(id)).filter(Boolean)
+  const sig = ex.kind + '|' + (ex.slot || '') + '|' + ex.turns.map(tu => tu.speaker + ':' + tu.targetIds.join('+')).join('/') + '|' + (avoidKeys && avoidKeys.size ? [...avoidKeys].sort().join('§') : '')
+  vx.exCache = vx.exCache || new Map()
+  if (vx.exCache.has(sig)) return vx.exCache.get(sig)
+  const A = T(0), B = T(1), C = ex.turns[2] ? T(2) : null
+  let cands = []
+  try { cands = (LN_BLUEPRINT_ADAPTERS[vx.lang] || (() => []))(vx, ex, A, B, C) } catch (e) { cands = [] }
+  let best = null
+  const alts = []
+  for (const c of cands.slice(0, 60)) {
+    if (avoidKeys && avoidKeys.size && avoidKeys.has(c.join(' / '))) continue
+    const res = []
+    for (let i = 0; i < c.length; i++) {      // early exit: a failing turn ends the candidate
+      const r = vx.check(c[i], T(i).map(t => t.surface), ex.turns[i] ? ex.turns[i].speaker : (i % 2 ? 'B' : 'A'), i === 0 && ex.kind === 'QUESTION')
+      res.push(r); if (!r.ok) break
+    }
+    if (res.length === c.length && res.every(r => r.ok) && !(avoidKeys && avoidKeys.has(res.map(r => r.text).join(' / ')))) {
+      alts.push(res.map(r => r.text)); if (alts.length >= 4) break; continue
+    }
+    const bad = res.filter(r => !r.ok).length + (c.length - res.length)
+    if (!best || bad < best.bad) best = { bad, res }
+  }
+  let out
+  if (alts.length) out = { ok: true, frames: alts[0], alts, tried: cands.length }
+  else out = { ok: false, tried: cands.length, why: !cands.length ? 'no authorised construction for this act with these words'
+    : best ? best.res.filter(r => !r.ok).map(r => (r.unknown && r.unknown.length ? 'needs untaught ' + r.unknown.slice(0, 3).join(' ') : !r.present ? 'target not realisable in the frame' : 'over hardMax ' + r.units)).slice(0, 2).join('; ') : 'no frame' }
+  vx.exCache.set(sig, out)
+  return out
+}
+// a realised shape must ALSO pass the meaning-level validators the plan is judged by (adjacency, slot filling,
+// incompatible roles) — the blueprint is proven at both levels
+function _lnShapeValid(vx, sh, byId) {
+  const ids = [...new Set(sh.turns.flatMap(tu => tu.targetIds))]
+  const sc = { sceneId: 'BP', phase: 'DO', exchanges: [sh], requiredTargetIds: ids, purpose: '' }
+  try {
+    _lnPlanSkeleton(sc, byId, vx.cc || null)
+    if (!sc.skeletonCheck || !sc.skeletonCheck.valid) return false
+    const metaOf = new Map(ids.map(id => [id, listeningTargetMetadata(byId.get(id))]))
+    return buildListeningMeaningPlan([sc], byId, metaOf, {}).valid
+  } catch (e) { return false }
+}
+// every single-target use of a word, in the order a conversation most naturally carries it
+function _lnSoloShapes(t) {
+  const m = listeningTargetMetadata(t), R = _lnBpRoles([t])
+  const one = (kind, slot, a, b, extra) => ({ kind, slot, turns: [{ speaker: 'A', targetIds: a ? [t.id] : [] }, { speaker: 'B', targetIds: b ? [t.id] : [] }], ...(extra || {}) })
+  if (R.qw) return [one('QUESTION', R.slot, true, false)]
+  if (R.excuse) return [one('QUESTION', 'YESNO', true, false), one('QUESTION', 'PLACE', true, false), one('QUESTION', 'AMOUNT', true, false)]
+  if (R.apology) return [one('APOLOGY', null, true, false)]
+  if (R.thanks) return [one('THANKS', null, true, false), one('THANKS', null, false, true)]
+  if (R.ack) return [one('THANKS', null, false, true), one('APOLOGY', null, false, true), one('PROPOSAL', null, false, true)]
+  if (R.request) return [one('REQUEST', null, true, false)]
+  if (R.greet) return [one('GREETING', null, true, false)]
+  if (R.part) return [one('FAREWELL', null, true, false)]
+  if (R.yes || R.no || R.qual || R.neg) return [one('QUESTION', 'YESNO', false, true), one('PROPOSAL', null, false, true)]
+  if (R.phone) return [one('QUESTION', 'PHONE', true, false)]
+  if (R.digits.length) return [one('QUESTION', 'PHONE', false, true), one('QUESTION', 'AMOUNT', false, true)]     // a digit is part of a number GIVEN
+  if (R.amount) return [one('QUESTION', 'AMOUNT', false, true), one('QUESTION', 'PHONE', false, true)]
+  if (R.unit) return [one('QUESTION', 'AMOUNT', false, true), one('QUESTION', 'AMOUNT', true, false)]
+  if (R.cop) return [one('QUESTION', 'THING', false, true)]
+  if (R.but) return [one('STATEMENT', null, true, false), one('QUESTION', 'STATE', false, true)]
+  if (R.and) return [one('STATEMENT', null, true, false), one('QUESTION', 'THING', false, true)]
+  if (R.or) return [one('QUESTION', 'YESNO', true, false)]
+  if (R.also) return [one('PROPOSAL', null, false, true), one('STATEMENT', null, false, true)]
+  if (R.lets) return [one('PROPOSAL', null, true, false)]
+  if (R.mods.length) return [one('QUESTION', 'YESNO', true, false), one('PROPOSAL', null, true, false), one('STATEMENT', null, true, false), one('QUESTION', 'YESNO', false, true),
+    one('QUESTION', 'PLACE', false, true), one('QUESTION', 'STATE', false, true)]
+  if (R.time) return R.timePast ? [one('QUESTION', 'TIME', false, true), one('STATEMENT', null, true, false), one('QUESTION', 'YESNO', true, false)]
+    : [one('PROPOSAL', null, true, false), one('QUESTION', 'TIME', false, true), one('QUESTION', 'YESNO', true, false), one('STATEMENT', null, true, false)]
+  if (R.place) return [one('QUESTION', 'PLACE', false, true), one('PROPOSAL', null, true, false), one('QUESTION', 'YESNO', true, false), one('STATEMENT', null, true, false)]
+  if (R.person) return [one('QUESTION', 'PERSON', false, true), one('STATEMENT', null, true, false), one('QUESTION', 'YESNO', true, false), one('PROPOSAL', null, true, false)]
+  if (R.state) return [one('QUESTION', 'STATE', false, true), one('STATEMENT', null, true, false), one('QUESTION', 'YESNO', true, false), one('PROPOSAL', null, false, true), one('STATEMENT', null, false, true)]
+  if (R.verb) return [one('PROPOSAL', null, true, false), one('QUESTION', 'YESNO', true, false), one('QUESTION', 'THING', true, false), one('STATEMENT', null, true, false),
+    one('QUESTION', 'PLACE', true, false), one('QUESTION', 'TIME', true, false), one('QUESTION', 'REASON', true, false)]
+  if (R.react) return [one('STATEMENT', null, false, true)]
+  if (R.pronoun) return [one('STATEMENT', null, true, false), one('QUESTION', 'YESNO', true, false), one('QUESTION', 'PERSON', false, true)]
+  return [one('QUESTION', 'THING', false, true), one('QUESTION', 'YESNO', true, false), one('STATEMENT', null, true, false), one('QUESTION', 'STATE', true, false), one('PROPOSAL', null, true, false),
+    one('QUESTION', 'PLACE', true, false), one('QUESTION', 'AMOUNT', true, false), one('QUESTION', 'YESNO', false, true)]
+}
+// the PROVEN blueprints of one target (each = a realised single-target exchange), excluding runtime-failed frames
+function listeningTargetBlueprints(vx, t, byId, avoidFrames) {
+  const key0 = t.id + '|' + (avoidFrames && avoidFrames.size ? [...avoidFrames].sort().join('§') : '')
+  vx.bpCache = vx.bpCache || new Map()
+  if (vx.bpCache.has(key0)) return vx.bpCache.get(key0)
+  const out = []
+  let lastWhy = null
+  _lnSoloShapes(t).forEach(sh => {
+    const r = realiseListeningExchange(vx, sh, byId, avoidFrames)
+    if (!r.ok) { lastWhy = lastWhy || r.why; return }
+    const alt = (r.alts || [r.frames]).find(fr => { const sh2 = JSON.parse(JSON.stringify(sh)); sh2.turns.forEach((tu, i) => { tu.frame = fr[i] }); return _lnShapeValid(vx, sh2, byId) })
+    if (!alt) { lastWhy = lastWhy || 'the only frames break the meaning plan (' + sh.kind + (sh.slot ? '(' + sh.slot + ')' : '') + ')'; return }
+    const m = listeningTargetMetadata(t), atA = sh.turns[0].targetIds.includes(t.id)
+    out.push({ targetId: t.id, targetSurface: t.surface, intendedSense: t.sense || t.gloss, communicativeAct: atA ? sh.kind : (LISTENING_SECOND_PART[sh.kind] || 'RESPONSE'), propositionType: sh.slot || sh.kind,
+      canonicalFrame: atA ? alt[0] : alt[1], responseFrame: atA ? alt[1] : null, promptFrame: atA ? null : alt[0], frames: alt, alts: r.alts || [alt], key: alt.join(' / '), shape: sh,
+      requiredLexemes: [t.surface], optionalLexemes: [], allowedGrammar: languageFunctionScaffold(vx.lang).forms.slice(0, 12), canonicalFrameText: alt.join(' / '), alternateFrames: (r.alts || []).filter(x => x !== alt).map(x => x.join(' / ')),
+      expectedResponseType: sh.kind === 'QUESTION' ? (LISTENING_SLOT_EXPECTS[sh.slot] || 'an answer') : (LISTENING_ACT_EXPECTS[sh.kind] || 'a reply'),
+      naturalContexts: m.naturalContexts, complexityEstimate: Math.max(...alt.map(f => vx.cc ? _lnUnits(vx.cc, f) : 0)),
+      closedVocabPass: true, grammarPass: true, targetSensePass: true, naturalnessConfidence: 'template' })
+  })
+  out.why = lastWhy
+  vx.bpCache.set(key0, out)
+  return out
+}
+// the language-specific blueprint builders by name (spec §B): each realises a target's single-target exchanges
+function buildListeningBlueprints(vx, targets, byId, avoid) {
+  const map = new Map()
+  ;(targets || []).forEach(t => map.set(t.id, listeningTargetBlueprints(vx, t, byId, avoid && avoid.get(t.id))))
+  return map
+}
+// pick the proven alternative whose turns are not already used elsewhere in this plan (variety: never five "what is this?")
+function _lnPickAlt(alts, used) {
+  const fresh = (alts || []).find(fr => !fr.some((f, i) => used.has(i + '|' + f)))
+  const pick = fresh || (alts || [])[0]
+  ;(pick || []).forEach((f, i) => used.add(i + '|' + f))
+  return pick
+}
+// realise every exchange of a planned phase; an exchange that cannot be said is SPLIT into the targets' own proven
+// blueprints; a target with no blueprint is UNVERBALIZABLE (never improvised)
+function realisePhaseExchanges(vx, sc, byId, o) {
+  const opt = o || {}
+  const used = opt.used || new Set()
+  const out = [], unverbal = []
+  ;(sc.exchanges || []).forEach(ex => {
+    const ids = [...new Set(ex.turns.flatMap(tu => tu.targetIds))]
+    const avoidKeys = new Set(ids.flatMap(id => [...((opt.avoid && opt.avoid.get(id)) || [])]))
+    const r = realiseListeningExchange(vx, ex, byId, avoidKeys)
+    if (r.ok) {
+      const valid = (r.alts || [r.frames]).filter(fr => { const e2 = JSON.parse(JSON.stringify(ex)); e2.turns.forEach((tu, i) => { tu.frame = fr[i] }); return _lnShapeValid(vx, e2, byId) })
+      if (valid.length || !ids.length) { const fr = _lnPickAlt(valid.length ? valid : r.alts, used); ex.turns.forEach((tu, i) => { tu.frame = fr[i] }); ex.verbalized = true; out.push(ex); return }
+    }
+    if (!ids.length) { ex.verbalized = false; ex.why = r.why; return }    // a free exchange that cannot be said is dropped
+    // a Daily-derived (frozen) plan is never made LONGER by the proof: an unproven multi-word exchange keeps its v673 shape
+    if (opt.strict === false && ids.length > 1) { ex.verbalized = false; ex.unproven = true; ids.forEach(id => unverbal.push({ id, surface: (byId.get(id) || {}).surface, why: r.why })); out.push(ex); return }
+    const unproven = []
+    ids.forEach(id => { const t = byId.get(id); if (!t) return
+      const bps = listeningTargetBlueprints(vx, t, byId, opt.avoid && opt.avoid.get(id))
+      if (!bps.length) { unverbal.push({ id, surface: t.surface, why: bps.why || r.why }); unproven.push(id); return }
+      // the blueprint whose frames are freshest for this conversation
+      const bp = bps.find(b => !b.frames.some((f, i) => used.has(i + '|' + f))) || bps[0]
+      const sh = JSON.parse(JSON.stringify(bp.shape)), fr = _lnPickAlt(bp.alts.filter(x => x.length === bp.frames.length), used) || bp.frames
+      sh.turns.forEach((tu, i) => { tu.frame = fr[i] }); sh.verbalized = true; sh.blueprint = fr.join(' / '); sh.splitFrom = ex.exchangeIndex
+      out.push(sh) })
+    // a Daily-derived (frozen, non-standalone) Listening keeps the v673 plan for a word no template can voice: the turn is
+    // marked UNPROVEN (the model realises it; every gate + the final audit still judge it) — never silently dropped
+    if (unproven.length && opt.strict === false) { const e2 = JSON.parse(JSON.stringify(ex)); e2.turns.forEach(tu => { tu.targetIds = tu.targetIds.filter(id => unproven.includes(id)); delete tu.frame })
+      e2.verbalized = false; e2.unproven = true; out.push(e2) }
+  })
+  out.forEach((ex, i) => { ex.exchangeIndex = i + 1 })
+  sc.exchanges = out
+  sc.unverbalizable = opt.strict === false ? [] : unverbal
+  sc.unprovenTargets = opt.strict === false ? unverbal : []
+  sc.expectedTurns = Math.max(2, out.reduce((a, e) => a + e.turns.length, 0))
+  return sc
+}
+// v674 — the turn budget is met AFTER the proof: a one-target exchange is folded into another exchange of the same
+// moment only when the language adapter proves the merged exchange (both sides) and it passes the meaning validators
+function _lnVerbalBudgetMerge(vx, scenes, byId, cap, o) {
+  const opt = o || {}, used = opt.used || new Set()
+  const nT = e => e.turns.reduce((a, tu) => a + tu.targetIds.length, 0)
+  let total = scenes.reduce((a, sc) => a + sc.expectedTurns, 0), merges = 0
+  for (let guard = 0; total > cap && guard < 40; guard++) {
+    let done = false
+    for (const sc of scenes) {
+      const singles = sc.exchanges.filter(e => nT(e) === 1 && e.turns.length === 2)
+      for (const d of singles) {
+        const id = d.turns.flatMap(tu => tu.targetIds)[0]
+        const avoidKeys = new Set([...((opt.avoid && opt.avoid.get(id)) || [])])
+        for (const h of sc.exchanges) {
+          if (h === d || h.turns.length !== 2 || nT(h) >= 4) continue
+          // the host keeps its act with the word added to one side · or two one-word exchanges are RESHAPED into one
+          // two-word exchange (X where? → at Y · X or Y? · X and Y …) — every shape is proven before it is used
+          const shapes = [1, 0].filter(pos => h.turns[pos].targetIds.length < (total - cap > 4 ? LISTENING_MAX_TARGETS_PER_TURN : 2)).map(pos => { const c0 = JSON.parse(JSON.stringify(h)); c0.turns[pos].targetIds.push(id); return c0 })
+          if (nT(h) === 1) { const x = h.turns.flatMap(tu => tu.targetIds)[0], mk = (kind, slot, a, b) => ({ kind, slot, turns: [{ speaker: 'A', targetIds: a }, { speaker: 'B', targetIds: b }] })
+            shapes.push(mk('QUESTION', 'PLACE', [x], [id]), mk('QUESTION', 'PLACE', [id], [x]), mk('QUESTION', 'YESNO', [x, id], []), mk('QUESTION', 'YESNO', [x], [id]), mk('QUESTION', 'YESNO', [id], [x]),
+              mk('STATEMENT', null, [x, id], []), mk('QUESTION', 'THING', [], [x, id]), mk('PROPOSAL', null, [x, id], []), mk('QUESTION', 'THING', [x], [id]), mk('QUESTION', 'STATE', [x], [id])) }
+          for (const cand of shapes) {
+            cand.turns.forEach(tu => { delete tu.frame })
+            const r = realiseListeningExchange(vx, cand, byId, avoidKeys)
+            if (!r.ok) continue
+            const fr = (r.alts || [r.frames]).find(x => { const e2 = JSON.parse(JSON.stringify(cand)); e2.turns.forEach((tu, i) => { tu.frame = x[i] }); return _lnShapeValid(vx, e2, byId) })
+            if (!fr) continue
+            h.kind = cand.kind; h.slot = cand.slot; delete h.second; delete h.agreedTargetId
+            h.turns = cand.turns; h.turns.forEach((tu, i) => { tu.frame = fr[i] }); h.mergedFrom = (h.mergedFrom || []).concat([id])
+            fr.forEach((f, i) => used.add(i + '|' + f))
+            sc.exchanges.splice(sc.exchanges.indexOf(d), 1); done = true; merges++; break
+          }
+          if (done) break
+        }
+        if (done) break
+      }
+      if (done) { sc.exchanges.forEach((e, i) => { e.exchangeIndex = i + 1 }); sc.expectedTurns = Math.max(2, sc.exchanges.reduce((a, e) => a + e.turns.length, 0)); break }
+    }
+    if (!done) break
+    total = scenes.reduce((a, sc) => a + sc.expectedTurns, 0)
+  }
+  return merges
 }
 function planListeningConversation(targets, o) {
   const opt = o || {}, T = (targets || []).length, seed = String(opt.seed || '')
@@ -19444,7 +20593,8 @@ function planListeningConversation(targets, o) {
     if (Array.isArray(opt.inventoryGlosses)) { for (const g of ladder) { const f = sceneLanguageFeasibility(g, pool); if (f.feasible) { goal = g; break } rejected.push({ text: g.text, missing: f.missing }) } }
     else goal = ladder[0]
     sc.feasibility = { checked: true, situation: goal.text, needs: goal.needs || [], rejected }
-    sc.purpose = (k === 0 && sc.phase !== 'OPEN' && !opt.continuation ? 'A and B meet and greet; then ' : '') + goal.text + (sc === last && sc.phase !== 'CLOSE' ? '; then they wrap up and say goodbye' : '')
+    const _canGreet = (opt.inventoryGlosses || []).some(x => /\b(hello|hi|good morning|good afternoon|good evening)\b/i.test(String(x || '')))
+    sc.purpose = (k === 0 && sc.phase !== 'OPEN' && !opt.continuation ? (_canGreet ? 'A and B meet and greet; then ' : 'A and B meet; then ') : '') + goal.text + (sc === last && sc.phase !== 'CLOSE' ? '; then they wrap up and say goodbye' : '')
     sc.premise = sc.purpose
     sc.intent = { who: opt.friends === false ? 'two acquaintances' : 'the same two friends throughout', where: P.where, why: objective, what: goal.text, situation: goal.text }
     _lnPlanSkeleton(sc, byId, opt.complexity || null)
@@ -19503,6 +20653,27 @@ function planListeningConversation(targets, o) {
     if (!done) break
     totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0)
   }
+  // v674 — VERBALIZABILITY PROOF: every planned exchange is realised by the language adapter from the learner's authorised
+  // words (BOTH sides). An exchange that cannot be said is split into its targets' own proven blueprints; a target with no
+  // proven blueprint never enters the meaning plan (it is reported, and deferred / replaced before the freeze)
+  const unverbalizable = []
+  let verbalMerges = 0
+  if (opt.verbal) {
+    const used = new Set()
+    scenes.forEach(sc => {
+      realisePhaseExchanges(opt.verbal, sc, byId, { avoid: opt.avoidFrames, used, strict: opt.verbalStrict !== false })
+      ;(sc.unverbalizable || []).forEach(u => { unverbalizable.push({ ...u, sceneId: sc.sceneId, phase: sc.phase }); sc.requiredTargetIds = sc.requiredTargetIds.filter(id => id !== u.id) })
+    })
+    verbalMerges = _lnVerbalBudgetMerge(opt.verbal, scenes, byId, cap, { avoid: opt.avoidFrames, used })
+    merges += verbalMerges
+    scenes.forEach(sc => {
+      _lnPlanSkeleton(sc, byId, opt.complexity || null)
+      sc.requiredTargets = sc.requiredTargetIds.map(id => (byId.get(id) || {}).surface); sc.plannedExchanges = sc.exchanges
+      const fr = sc.exchanges.flatMap(e => e.turns.map(tu => tu.frame).filter(Boolean))
+      sc.frameSupport = opt.verbal.words.filter(w => !w.target && w.surface && fr.some(f => f.includes(w.surface))).map(w => w.surface)
+    })
+    totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0)
+  }
   const slack = Math.max(0, turnsMax - totalExpected), share = scenes.length ? Math.floor(slack / scenes.length) : 0
   scenes.forEach(sc => { sc.maxTurns = sc.expectedTurns + Math.max(1, Math.min(3, share)) })
   const assignments = []
@@ -19511,7 +20682,9 @@ function planListeningConversation(targets, o) {
   const req = scenes.flatMap(sc => sc.requiredTargetIds)
   const problems = []
   const missing = targets.filter(t => !req.includes(t.id)), dup = req.filter((id, i) => req.indexOf(id) !== i)
-  if (missing.length) problems.push('unallocated targets: ' + missing.map(t => t.id + ' ' + t.surface).join(', '))
+  unverbalizable.forEach(u => problems.push('UNVERBALIZABLE ' + u.id + ' ' + u.surface + ' — ' + u.why))
+  const _unalloc = missing.filter(t => !unverbalizable.some(u => u.id === t.id))
+  if (_unalloc.length) problems.push('unallocated targets: ' + _unalloc.map(t => t.id + ' ' + t.surface).join(', '))
   if (dup.length) problems.push('targets allocated twice: ' + [...new Set(dup)].join(', '))
   if (assignments.length !== T) problems.push('assignments ' + assignments.length + ' ≠ targets ' + T)
   if (scenes.some(sc => sc.exchanges.some(ex => ex.turns.some(tu => tu.targetIds.length > LISTENING_MAX_TARGETS_PER_TURN)))) problems.push('a planned turn exceeds ' + LISTENING_MAX_TARGETS_PER_TURN + ' targets')
@@ -19519,11 +20692,14 @@ function planListeningConversation(targets, o) {
   // v673 §2C — the ABSTRACT, meaning-level conversation (every turn: turnId, speaker, actType, proposition, topic, asksFor,
   // answerType, referents, temporalContext, targetIds, requiredSense, allowedSupportConcepts), validated BEFORE any
   // Thai / Japanese / Mandarin is written
-  const meaningPlan = buildListeningMeaningPlan(scenes, byId, metaOf, { complexity: opt.complexity || null, turnsMax, merges })
+  const meaningPlan = buildListeningMeaningPlan(scenes, byId, metaOf, { complexity: opt.complexity || null, turnsMax, merges, verbal: !!opt.verbal && opt.verbalStrict !== false })
+  unverbalizable.forEach(u => { const txt = 'UNVERBALIZABLE ' + u.surface + ' — ' + u.why; meaningPlan.problems.push({ text: txt, targetIds: [u.id] }); meaningPlan.byTarget.set(u.id, (meaningPlan.byTarget.get(u.id) || []).concat([txt])); meaningPlan.valid = false })
   meaningPlan.problems.forEach(pb => { if (!problems.includes(pb.text)) problems.push(pb.text) })
   return { scenes, assignments, valid: !problems.length && T > 0, problems: T ? problems : ['no targets'], warnings: [], nScenes: scenes.length, cap: LISTENING_PHASE_MAX_TARGETS,
     totalExpectedTurns: totalExpected, turnsMax, headroomCap: cap, compact: scenes.some(sc => sc.compact), seed, oneConversation: true, contract,
-    story: scenes.map(sc => sc.phase), meaningPlan, targetMetadata: metaOf }
+    story: scenes.map(sc => sc.phase), meaningPlan, targetMetadata: metaOf, unverbalizable, verbalized: !!opt.verbal, verbalStrict: opt.verbalStrict !== false,
+    unprovenTargets: scenes.flatMap(sc => sc.unprovenTargets || []),
+    provenTurns: opt.verbal ? scenes.reduce((a, sc) => a + (sc.skeleton || []).filter(k => k.frame).length, 0) : 0 }
 }
 // the conversation contract: created at planning time, updated after every committed phase
 function createConversationContract(o) {
@@ -19565,6 +20741,83 @@ function updateConversationContract(contract, sc, la, byId, phaseKey) {
   const dedupe = a => [...new Set(a)].slice(-8)
   contract.knownFacts = dedupe(contract.knownFacts); contract.placesVisited = dedupe(contract.placesVisited); contract.commitmentsMade = dedupe(contract.commitmentsMade)
   return contract
+}
+// ══ v674 §3 — CONVERSATION STATE: recomputed from the COMMITTED text after every commit (never from the plan) ════════
+const LN_PAY_EN = /\b(i'?ll pay|let me pay|i paid|we paid|paid (by|with|in)|pay (by|with|in) (card|cash)|here'?s the money|by card|in cash|the bill, please|check, please)\b/i
+const LN_EAT_START_EN = /\b(let'?s eat|shall we eat|let'?s order|shall we order|let'?s have (lunch|dinner|breakfast))\b/i
+const LN_EAT_DONE_EN = /\b(i'?m full|we ate|i ate|finished eating|that was (delicious|good|tasty)|it was (delicious|tasty))\b/i
+const LN_CLOCK_EN = /\b((\d{1,2})(:\d\d)?\s*(am|pm|o'clock)|(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) o'clock|noon|midnight)\b/i
+function recomputeListeningConversationState(accepted, la, contract, o) {
+  const opt = o || {}
+  const turns = (accepted || []).flatMap(sc => (sc.turns || []).map(tn => ({ speaker: tn.speaker, text: la.text(tn.pair), english: String(tn.pair.english || '').trim(), sceneId: sc.sceneId })))
+  const st = { speakers: [...new Set(turns.map(t => t.speaker))], relationship: (contract && contract.relationship) || null, currentLocation: null, previousLocation: null,
+    currentActivity: null, completedActivities: (contract && contract.timeline || []).slice(), topic: (contract && contract.topicState) || '', currentTime: null, agreedTimes: [], objects: [], referents: [],
+    promises: [], decisions: ((contract && contract.commitmentsMade) || []).slice(), unresolvedQuestions: [], purchases: [], foodOrdered: false, eatingDone: false, paymentsCompleted: 0, facts: ((contract && contract.knownFacts) || []).slice(),
+    previousTurn: turns[turns.length - 1] || null, previousExchange: turns.slice(-2), remainingTargets: opt.remainingTargets || [] }
+  turns.forEach((t, i) => {
+    const en = t.english
+    if (LN_PAY_EN.test(en)) st.paymentsCompleted++
+    if (LN_EAT_START_EN.test(en) || /\b(order(ed)?|eat(ing)?)\b/i.test(en) && !/\?$/.test(en)) st.foodOrdered = true
+    if (LN_EAT_DONE_EN.test(en)) st.eatingDone = true
+    const ck = LN_CLOCK_EN.exec(en)
+    const next = turns[i + 1]
+    if (ck && next && next.speaker !== t.speaker && _LN_ACCEPT_EN.test(next.english)) st.agreedTimes.push(ck[0].toLowerCase())
+    if (/\b(we'?re (at|in)|here we are|we arrived|arrived)\b/i.test(en)) { st.previousLocation = st.currentLocation; st.currentLocation = en }
+  })
+  const last = turns[turns.length - 1]
+  if (last && /\?$/.test(last.english)) st.unresolvedQuestions.push({ speaker: last.speaker, english: last.english })
+  st.currentActivity = st.completedActivities[st.completedActivities.length - 1] || null
+  return st
+}
+// deterministic transition checks of a candidate phase against the committed state (exact lines, no paid call)
+function listeningTransitionStateIssues(state, cand, sp) {
+  const out = []
+  if (!state || !cand || !cand.turns || !cand.turns.length) return out
+  const en = cand.turns.map(tn => String((tn.pair && tn.pair.english) || '').trim())
+  // an OPEN question (not a tag question — "…, right?") must be answered by the other speaker, with the kind of
+  // information it asks for (why → a reason, where → a place …; the same Q-type rule as the final audit)
+  if (state.unresolvedQuestions.length) {
+    const q = state.unresolvedQuestions[0]
+    const tag = /\b(right|isn'?t it|aren'?t you|don'?t you|won'?t you|okay|ok|yeah|huh|no)\?$/i.test(q.english)
+    const qt = !tag && cand.turns[0].speaker !== q.speaker ? listeningQtypeIssue(q.english, en[0], true, /\?$/.test(en[0])) : null
+    if (!tag && (cand.turns[0].speaker === q.speaker || qt)) out.push({ code: 'TRANSITION', line: 1, detail: 'the previous part ended with the question "' + q.english.slice(0, 50) + '" — the first turn must ANSWER it' + (qt ? ' (' + qt.slice(0, 60) + ')' : ' (the other speaker)') })
+  }
+  en.forEach((e, k) => {
+    if (state.paymentsCompleted > 0 && LN_PAY_EN.test(e)) out.push({ code: 'STATE_CONFLICT', line: k + 1, detail: 'they already paid — no second payment' })
+    if (state.eatingDone && LN_EAT_START_EN.test(e)) out.push({ code: 'STATE_CONFLICT', line: k + 1, detail: 'they already ate — eating does not start again' })
+    const ck = LN_CLOCK_EN.exec(e)
+    if (ck && state.agreedTimes.length && sp.phase !== 'ARRANGE' && !state.agreedTimes.includes(ck[0].toLowerCase()) && !/\b(instead|actually|change|rather)\b/i.test(e))
+      out.push({ code: 'STATE_CONFLICT', line: k + 1, detail: 'the agreed time is ' + state.agreedTimes[state.agreedTimes.length - 1] + ' — it stays agreed (no silent change to ' + ck[0] + ')' })
+  })
+  return out
+}
+// PHASE_TRANSITION_VALIDATION: a phase commits only with LOCAL_PHASE_PASS (every local gate) AND TRANSITION_PASS — the
+// SAME coherence judge the final audit uses (deterministic + model, det 3 needs a model PASS) runs on the window "end of
+// the committed conversation + this phase", plus the deterministic state checks. Cached per window text.
+async function phaseTransitionValidation(env, cand, sp, accepted) {
+  const { la, log, tel, o } = env
+  const tail = accepted.length ? accepted[accepted.length - 1].turns.slice(-3) : []
+  const lines = tail.concat(cand.turns).map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair }))
+  const key = lines.map(l => l.speaker + ':' + la.text(l.pair)).join('|')
+  env.transitionCache = env.transitionCache || new Map()
+  env.convState = env.convState || recomputeListeningConversationState(accepted, la, env.contract)
+  const stIssues = listeningTransitionStateIssues(env.convState, cand, sp)
+  let v = env.transitionCache.get(key)
+  if (!v) {
+    tel.LISTENING_QC_CALLS++; tel.LISTENING_TRANSITION_CALLS = (tel.LISTENING_TRANSITION_CALLS || 0) + 1
+    let coh = null
+    try { coh = await listeningWholeCoherenceAudit([{ title: sp.purpose || sp.phase, lines }], la, { ...o, oneConversation: true }, null) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+    const vd = coh && coh.verdicts && coh.verdicts[0]
+    v = { pass: !!vd && vd.pass, verified: !!coh && coh.state === QUALITY.VERIFIED, reason: vd ? vd.reason : 'transition judge unavailable', det: vd ? vd.deterministic : null,
+      line: vd && !vd.pass ? Math.max(1, Math.min(cand.turns.length, (vd.breakAfterLine != null ? Number(vd.breakAfterLine) + 1 : tail.length + 1) - tail.length)) : null }
+    if (!coh || coh.state !== QUALITY.VERIFIED) v.pass = true      // an unavailable judge never blocks a commit: the final audit still judges
+    env.transitionCache.set(key, v)
+  }
+  const issues = stIssues.concat(v.pass ? [] : [{ code: 'TRANSITION', line: v.line || 1, detail: 'the part does not follow naturally from the conversation so far (' + String(v.reason || '').slice(0, 80) + ')' }])
+  const out = { pass: !issues.length, issues, judge: v, stateIssues: stIssues }
+  log && log('🔗 PHASE_TRANSITION_VALIDATION ' + sp.sceneId + ' (' + (sp.phase || '-') + ') LOCAL_PHASE_PASS · ' + (out.pass ? 'TRANSITION_PASS' : 'TRANSITION_FAIL — ' + issues.map(x => 'L' + x.line + ' ' + x.code + ': ' + String(x.detail).slice(0, 70)).join(' · ')) +
+    ' · window=' + tail.length + '+' + cand.turns.length + ' turns · judge=' + (v.verified ? (v.pass ? 'pass' : 'fail') + (v.det != null ? ' (det ' + v.det + '/5)' : '') : 'unverified'))
+  return out
 }
 // the contract block every phase request carries (the chunk boundary is invisible to the learner)
 function conversationContractBlock(contract, sp, la, laterTargets) {
@@ -19654,7 +20907,7 @@ async function _lnGenerateScene(env, sp, info) {
     // v668 §13/§14 — the intent skeleton (validated before this call) fixes the adjacency: questions are answered
     // v673 §2F — a meaning-planned phase carries its TURN PLAN with a positive palette per turn (proposition · required
     // target · relevant support words · authorised forms); the legacy multi-scene path keeps the intent skeleton line
-    ((sp.skeleton || []).some(x => x.meaning) ? listeningTurnPlanBlock(listeningTurnPalettes(env, sp, pal)) :
+    ((sp.skeleton || []).some(x => x.meaning) ? listeningTurnPlanBlock(listeningTurnPalettes(env, sp, pal), { noExtra: !!(sp._allowedMax && sp._allowedMax <= (sp.skeleton || []).length) }) :
     'INTENT SKELETON (follow it in order; each second turn answers the turn before it — an ANSWER(time) gives the time, an ANSWER(age) gives the age, ACCEPT agrees with that proposal; at most one extra short reaction per exchange): ' + _lnSkeletonText(sp, byId) + '\n') +
     'PLAN: ' + sp.exchanges.map(ex => 'exchange ' + ex.exchangeIndex + ': ' + ex.turns.map(tu => tu.speaker + (tu.targetIds.length ? ' uses ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).join('+') : ' replies')).join(', then ')).join(' · ') + '\n' +
     'ROLE GUIDE: ' + [...new Set(req.map(t => t.role))].map(r => r + ' = ' + (LISTENING_ROLE_HINT[r] || 'fits naturally')).join(' · ') + '\n' +
@@ -19852,14 +21105,17 @@ function listeningTurnPalettes(env, sp, pal) {
     const rel = rx ? sup.filter(x => rx.test(String(x.gloss || '').toLowerCase())) : []
     const support = [...new Set(rel.concat(sup))].slice(0, 6).map(x => x.surface)
     return { turnId: m.turnId || ('t' + sk.turn), speaker: sk.speaker, act: sk.intent + (sk.slot && sk.intent === 'QUESTION' ? '(' + (_LN_SLOT_LABEL[sk.slot] || sk.slot) + ')' : ''), proposition: m.proposition || _lnTurnProposition(sk, byId),
-      answerType: m.answerType || null, targets: tg.map(t => t.surface + ' "' + t.gloss + '"'), support, forms: tg.flatMap(formsOf).slice(0, 2) }
+      answerType: m.answerType || null, targets: tg.map(t => t.surface + ' "' + t.gloss + '"'), support, forms: sk.frame ? [] : tg.flatMap(formsOf).slice(0, 2), frame: sk.frame || null }
   })
 }
-function listeningTurnPlanBlock(rows) {
+function listeningTurnPlanBlock(rows, o) {
   if (!rows || !rows.length) return ''
-  return 'TURN PLAN — MEANING FIRST (validated before this call; say each planned turn in this order, with exactly this meaning; at most ONE extra short reaction may be added between planned turns):\n' +
+  // v674 — when the conversation's turn budget is fully planned, the part may add NO extra turn (an extra one would be rejected)
+  return 'TURN PLAN — MEANING FIRST, VERBALIZABILITY PROVEN (validated before this call; say each planned turn in this order, with exactly this meaning; ' + (o && o.noExtra ? 'add NO extra turn — exactly these ' + rows.length + ' turns' : 'at most ONE extra short reaction may be added between planned turns') + '):\n' +
+    (rows.some(r => r.frame) ? 'PROVEN FRAME = a sentence already checked for this learner (every word authorised, within the length limit, the lesson word present): say it like this or as a natural variant with the SAME words, and keep the track register.\n' : '') +
     rows.map(r => '  ' + r.turnId + ' ' + r.speaker + ' ' + r.act + ' — ' + r.proposition + (r.answerType ? ' ⟨must give ' + r.answerType + '⟩' : '') +
       (r.targets.length ? ' · REQUIRED: ' + r.targets.join(' + ') : ' · no lesson word required') + ' · SUPPORT: ' + (r.support.join(' ') || '(grammar words only)') +
+      (r.frame ? ' · PROVEN: ' + r.frame : '') +
       (r.forms.length ? ' · AUTHORISED FORMS (every word allowed — use one or adapt it): ' + r.forms.join(' / ') : '')).join('\n') + '\n'
 }
 function _lnScenePaletteFor(env, sc) {
@@ -19873,7 +21129,7 @@ function _lnScenePaletteFor(env, sc) {
   const pal = buildScenePalette({ lang: env.la.lang, sceneId: id, required: reqIds.map(x => byId.get(x)).filter(Boolean),
     authorised: (env.ctx.inventory && env.ctx.inventory.taught) || env.ctx.exposed || [], otherTargetIds: new Set(env.targets.map(t => t.id)),
     entities: (env.ctx.sceneEntities || []).map(e => e.surface || e), needs: plan && plan.feasibility ? plan.feasibility.needs : [], premise: plan ? plan.purpose : '',
-    bank: env.ctx.vocab, seed: (env.o && env.o.planSeed) || '' })
+    bank: env.ctx.vocab, seed: (env.o && env.o.planSeed) || '', frameSupport: (plan && plan.frameSupport) || [] })
   // a frozen palette keeps its support words; a reassigned target only JOINS it (§41)
   if (old) { pal.support = old.support; pal.content = new Set(pal.required.map(t => t.surface).concat(old.support.map(x => x.surface), pal.entities)); pal.size = pal.content.size }
   env.palettes.set(id, pal)
@@ -20169,15 +21425,26 @@ async function _lnComposeByScenes(env) {
   // (planListeningCoverage) is kept only for o.legacyScenes
   const _speakers = ((env.sc0 && env.sc0.characters) || []).map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') || null
   const _rel = ctx.jaStyle ? (ctx.jaStyle === 'polite' ? 'acquaintances (adults who are not close)' : ctx.jaStyle === 'casual' ? 'close friends' : 'adult friends') : 'friends'
+  // v674 — the language adapter's verbal context: the SAME closed-vocabulary checker, belt and target matcher as the audit
+  env.verbal = null
+  if (!o.legacyScenes && o.verbal !== false) { try { env.verbal = listeningVerbalContext(la.lang, ctx.vocab, targets, { ctx, exposed: ctx.exposed, eligTargets: ctx.eligTargets, complexity: ctx.complexity }) } catch (e) { log && log('⚠ LISTENING_VERBAL_CONTEXT unavailable: ' + String(e && e.message || e).slice(0, 80)) } }
   const plan = o.legacyScenes
     ? planListeningCoverage(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, hardMax: ctx.complexity ? ctx.complexity.preferredMax : null,   // v666: the PREFERRED range decides "low belt"
       friends: !!(ctx.jaStyle && ctx.jaStyle !== 'polite'), inventoryGlosses, complexity: ctx.complexity || null })
-    : planListeningConversationBest(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, complexity: ctx.complexity || null, friends: !(ctx.jaStyle === 'polite'), speakers: _speakers, relationship: _rel, inventoryGlosses })
+    : planListeningConversationBest(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, complexity: ctx.complexity || null, friends: !(ctx.jaStyle === 'polite'), speakers: _speakers, relationship: _rel, inventoryGlosses, verbal: env.verbal, verbalStrict: !!o.standalone })
   env.oneConversation = !!plan.oneConversation; env.contract = plan.contract || null
   if (plan.oneConversation) {
     log && log('🧵 LISTENING_ONE_CONVERSATION story=' + plan.story.join(' → ') + ' · ' + plan.nScenes + ' internal phase(s) of ONE conversation · planned ' + plan.totalExpectedTurns + ' turns (target ' + LISTENING_CONVERSATION_TURNS.min + '–' + LISTENING_CONVERSATION_TURNS.max + ', allowed ' + env.turnsMin + '–' + env.turnsMax + ')')
     log && log('🧵 CONVERSATION_CONTRACT speakers=' + plan.contract.speakers + ' · relationship=' + plan.contract.relationship + ' · objective=' + plan.contract.objective + ' · ending=' + plan.contract.endingGoal)
     plan.scenes.forEach(sc => (sc.contrasts || []).forEach(x => log && log('🧵 PHASE_CONTRAST ' + sc.sceneId + ' (' + sc.phase + ') ' + x.kind + ' words ' + x.surfaces.join(' / ') + ' → proposal + counter-proposal; the LAST is the agreed value')))
+    if (plan.verbalized) {
+      log && log('🧩 LISTENING_VERBALIZABILITY ' + (plan.unverbalizable.length ? 'INCOMPLETE' : 'PROVEN') + ' · ' + plan.provenTurns + ' planned turn(s) carry a proven authorised realisation · blueprints: ' + LN_BLUEPRINT_ADAPTERS[la.lang].name + ' → ONE shared planner' +
+        (plan.unverbalizable.length ? ' · UNVERBALIZABLE (frozen ids are never swapped): ' + plan.unverbalizable.map(u => u.surface + ' (' + u.why + ')').join('; ') : ''))
+      tel.LISTENING_PROVEN_TURNS = plan.provenTurns
+      if ((plan.unprovenTargets || []).length) log && log('⚠ LISTENING_UNPROVEN_TURNS (Daily-derived frozen set) ' + plan.unprovenTargets.map(u => u.surface + ' (' + u.why + ')').join('; ') + ' — no template can voice them: the model realises these turns and every phase gate + the final audit still judge them')
+      env.targetTrace = plan.scenes.flatMap(sc => (sc.skeleton || []).filter(k => k.targetIds.length).map(k => ({ sceneId: sc.sceneId, phase: sc.phase, turn: k.turn, act: k.intent, targets: k.surfaces, frame: k.frame || null })))
+      env.targetTrace.forEach(r => log && log('   🧩 LISTENING_TARGET_TRACE ' + r.sceneId + ' ' + r.phase + ' t' + r.turn + ' ' + r.act + ' [' + r.targets.join('+') + '] proven="' + (r.frame || '—') + '"'))
+    }
     // v673 §2C — the abstract meaning-level conversation, validated BEFORE any surface language
     if (plan.meaningPlan) {
       listeningMeaningPlanLog(plan.meaningPlan, plan.story).forEach(l => log && log(l))
@@ -20303,7 +21570,7 @@ async function _lnComposeByScenes(env) {
   // and escalate (a strategy change — never a cost abort). No COMMIT_WITH_DEFECTS; no target scattering: a target moves
   // only when semantic replanning places it (LISTENING_GLOBAL_REPLAN), never to an arbitrary later scene.
   const LINE_CLASS = new Set(['CLOSED_VOCAB', 'TOKENIZATION_ERROR', 'TOO_COMPLEX', 'REGISTER', 'MERGED_SPEAKERS', 'MAX_TARGETS_PER_TURN', 'SPEAKER_IDENTITY', 'LINE_QUALITY', 'EXACT_DUPLICATE', 'NEAR_DUPLICATE', 'UNNATURAL'])
-  const EXCHANGE_CLASS = new Set(['ADJACENCY', 'COHERENCE_LINE', 'CONTINUITY'])
+  const EXCHANGE_CLASS = new Set(['ADJACENCY', 'COHERENCE_LINE', 'CONTINUITY', 'TRANSITION', 'STATE_CONFLICT'])
   env.phaseHealth = env.phaseHealth || []
   const phaseIssues = async (sc, sp) => {
     const flat = sc.turns
@@ -20312,15 +21579,27 @@ async function _lnComposeByScenes(env) {
     const cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
     const pf = validateScenePreflight(env, sc, sp, { accepted, allowedMax: sp._allowedMax })
     const all = hard.concat(nat.map(x => ({ code: 'UNNATURAL', line: x.line, detail: x.detail })))
-    return { pf, cov, all, line: all.filter(x => LINE_CLASS.has(x.code)), exchange: all.filter(x => EXCHANGE_CLASS.has(x.code)), nat,
-      phase: pf.fundamental || pf.regMajor || pf.overBudget || !!pf.counts.structure && !pf.lines.coh.size, clean: !all.length && !cov.missing.length && pf.totalHard === 0 && flat.length > 0 }
+    // v674 §3 — LOCAL_PHASE_PASS first; only then the TRANSITION gate (the same judge as the final audit + state checks)
+    const localClean = !all.length && !cov.missing.length && pf.totalHard === 0 && flat.length > 0
+    let transition = null
+    if (localClean && env.oneConversation && env.transitionGate !== false) { transition = await phaseTransitionValidation(env, sc, sp, accepted); transition.issues.forEach(x => all.push(x)) }
+    return { pf, cov, all, line: all.filter(x => LINE_CLASS.has(x.code)), exchange: all.filter(x => EXCHANGE_CLASS.has(x.code)), nat, transition,
+      phase: pf.fundamental || pf.regMajor || pf.overBudget || !!pf.counts.structure && !pf.lines.coh.size, clean: localClean && (!transition || transition.pass) }
   }
   const failureKey = (x, sc) => x.code + '|' + (sc.turns[x.line - 1] ? _lnNorm(la.text(sc.turns[x.line - 1].pair)) : x.line)
   // re-run the REMAINING global semantic plan for the targets not yet committed (this phase + every later phase). The
   // targets that could not be placed here are planned AWAY from this moment (a natural new placement or none).
+  // v674 — up to LN_MAX_REMAINING_PLAN_REBUILDS (3) rebuilds of the UNCOMMITTED future (committed good phases are kept).
+  // Each rebuild first records the frames that failed at runtime (RUNTIME_REALISATION_FAILED) so the language adapter
+  // proves ANOTHER blueprint for those targets; the target ids never change after the freeze.
   const globalReplan = (qi, moveIds, reason) => {
-    if (env.globalReplans >= 1) return false
+    if ((env.globalReplans || 0) >= LN_MAX_REMAINING_PLAN_REBUILDS) { log && log('⛔ LISTENING_REMAINING_PLAN_REBUILDS_SPENT ' + LN_MAX_REMAINING_PLAN_REBUILDS + '/' + LN_MAX_REMAINING_PLAN_REBUILDS + ' — ' + reason); return false }
     const sp = queue[qi]
+    env.failedFrames = env.failedFrames || new Map()
+    moveIds.forEach(id => { const fr = (sp.exchanges || []).filter(e => e.turns.some(tu => tu.targetIds.includes(id))).map(e => e.turns.map(tu => tu.frame || '').join(' / ')).filter(k => k.replace(/[ /]/g, ''))
+      if (!fr.length) return
+      const set = env.failedFrames.get(id) || new Set(); fr.forEach(k => set.add(k)); env.failedFrames.set(id, set)
+      log && log('🧩 RUNTIME_REALISATION_FAILED target=' + id + ' ' + ((byId.get(id) || {}).surface || '') + ' frame="' + fr[0] + '" — the adapter must prove another blueprint for it') })
     const later = queue.slice(qi + 1)
     const keep = sp.requiredTargetIds.filter(id => !moveIds.includes(id))
     const remainingIds = [...new Set(moveIds.concat(later.flatMap(s => s.requiredTargetIds)))]
@@ -20328,11 +21607,13 @@ async function _lnComposeByScenes(env) {
     const order = LISTENING_STORY_PHASES.map(p => p.key)
     const minIdx = Math.min(order.length - 1, order.indexOf(sp.phase) + (keep.length ? 1 : 0))
     const rem = remainingIds.map(id => byId.get(id)).filter(Boolean)
-    const sub = planListeningConversation(rem, { seed: (o.planSeed || '') + '|replan', turnsMax: Math.max(8, env.turnsMax - usedTurns - (keep.length ? sp.expectedTurns : 0)), complexity: ctx.complexity || null,
+    const sub = planListeningConversation(rem, { seed: (o.planSeed || '') + '|replan' + ((env.globalReplans || 0) + 1), verbal: env.verbal || null, verbalStrict: !!o.standalone, avoidFrames: env.failedFrames, turnsMax: Math.max(8, env.turnsMax - usedTurns - (keep.length ? sp.expectedTurns : 0)), complexity: ctx.complexity || null,
       friends: !(ctx.jaStyle === 'polite'), inventoryGlosses: (((ctx.inventory && ctx.inventory.taught) || ctx.exposed || []).map(w => String(w.english || '')).filter(Boolean)), minPhaseIndex: minIdx, continuation: true,
       idOffset: Math.max(...queue.map(x => +String(x.sceneId).replace(/\D/g, '') || 0)), avoidPhase: new Map(moveIds.map(id => [id, sp.phase])) })
     env.globalReplans = (env.globalReplans || 0) + 1
     tel.LISTENING_GLOBAL_REPLANS = (tel.LISTENING_GLOBAL_REPLANS || 0) + 1
+    tel.LISTENING_REMAINING_PLAN_REBUILDS = env.globalReplans
+    log && log('🧭 LISTENING_REMAINING_PLAN_REBUILD ' + env.globalReplans + '/' + LN_MAX_REMAINING_PLAN_REBUILDS + ' after ' + sp.sceneId + ' — ' + reason + ' · only the UNCOMMITTED future is rebuilt; ' + accepted.length + ' committed phase(s) kept')
     listeningMeaningPlanLog(sub.meaningPlan, sub.story).forEach(l => log && log(l.replace('LISTENING_MEANING_PLAN', 'LISTENING_MEANING_PLAN (global replan)')))
     if (!sub.valid) { log && log('⛔ LISTENING_GLOBAL_REPLAN_INVALID — ' + sub.problems.slice(0, 4).join('; ') + ' · the remaining targets keep their plan; the phase stays uncommitted'); return false }
     sub.scenes.forEach(s2 => { s2.relationship = sp.relationship; s2.registerExpectation = sp.registerExpectation; s2.originalTargetIds = s2.requiredTargetIds.slice(); s2.replan = true; env.scenePlanById.set(s2.sceneId, s2)
@@ -20351,7 +21632,9 @@ async function _lnComposeByScenes(env) {
       listeningMeaningPlanLog(mp, [sp.phase]).forEach(l => log && log(l.replace('LISTENING_MEANING_PLAN', 'LISTENING_MEANING_PLAN (' + sp.sceneId + ' re-planned)'))) }
     const pal = _lnScenePaletteFor(env, sp)
     const minLater = queue.slice(qi + 1).reduce((a, s) => a + (s.requiredTargetIds.length ? Math.max(2, s.expectedTurns || 2) : 0), 0)
-    const allowedMax = Math.max(sp.expectedTurns, Math.min(Math.max(sp.maxTurns || 0, sp.expectedTurns + 1), env.turnsMax - usedTurns - minLater)); sp._allowedMax = allowedMax
+    // v674 — a proven plan is DENSER (two lesson words may share a turn): the phase may still use one turn per lesson word
+    // when the conversation's global budget allows it (the 44-turn cap is never exceeded)
+    const allowedMax = Math.max(sp.expectedTurns, Math.min(Math.max(sp.maxTurns || 0, sp.expectedTurns + 1, (sp.requiredTargetIds || []).length), env.turnsMax - usedTurns - minLater)); sp._allowedMax = allowedMax
     const prev = accepted[accepted.length - 1]
     const context = accepted.length ? 'earlier: ' + accepted.map(s => s.setting).filter(Boolean).join(' → ') + '. The previous part ended with: ' +
       prev.turns.slice(-2).map(tn => tn.speaker + ': ' + la.text(tn.pair) + ' (' + (tn.pair.english || '') + ')').join(' / ') + ' — continue naturally from there.' : ''
@@ -20421,7 +21704,7 @@ async function _lnComposeByScenes(env) {
         }
         if (G.atomicRepairCalls + G.exchangeRepairCalls > G.generationCalls || repeated.length) {
           const why = repeated.length ? 'the same semantic failure occurred twice (' + repeated.slice(0, 2).map(k => k.split('|')[0]).join(', ') + ')' : 'repair calls (' + (G.atomicRepairCalls + G.exchangeRepairCalls) + ') > generation calls (' + G.generationCalls + ')'
-          log && log('🧭 REPAIR_STRATEGY_GUARD ' + sp.sceneId + ' — ' + why + ' · STOP ATOMIC REPAIR → escalate to ' + (gen < LISTENING_SCENE_ATTEMPTS ? 'PHASE REGENERATION from the meaning plan' : (env.globalReplans || 0) < 1 ? 'GLOBAL REPLANNING' : 'DETERMINISTIC TRIM / explicit UNPLACED (the one global replan is spent)') + ' (strategy change, not a cost abort)')
+          log && log('🧭 REPAIR_STRATEGY_GUARD ' + sp.sceneId + ' — ' + why + ' · STOP ATOMIC REPAIR → escalate to ' + (gen < LISTENING_SCENE_ATTEMPTS ? 'PHASE REGENERATION from the meaning plan' : (env.globalReplans || 0) < LN_MAX_REMAINING_PLAN_REBUILDS ? 'REMAINING-CONVERSATION REPLAN (' + ((env.globalReplans || 0) + 1) + '/' + LN_MAX_REMAINING_PLAN_REBUILDS + ')' : 'DETERMINISTIC TRIM / explicit UNPLACED (the one global replan is spent)') + ' (strategy change, not a cost abort)')
           tel.LISTENING_STRATEGY_ESCALATIONS = (tel.LISTENING_STRATEGY_ESCALATIONS || 0) + 1
           G.escalations.push('GUARD (' + why + ')'); break
         }
@@ -20447,7 +21730,15 @@ async function _lnComposeByScenes(env) {
       reject = { reasons: st.pf.reasons.length ? st.pf.reasons : st.all.slice(0, 6).map(x => x.code + ' L' + x.line + (x.detail ? ': ' + String(x.detail).slice(0, 80) : '')).concat(st.cov.missing.length ? ['TARGET_MISSING: ' + st.cov.missing.map(id => byId.get(id).surface).join(', ') + ' must be heard in its planned turn'] : []),
         budgetNote: st.pf.overBudget ? 'Your previous draft had ' + cand.turns.length + ' turns — that is too long.' : '' }
     }
-    if (!committed && last) {
+    // v674 — a phase whose ONLY residual defect is its transition (it does not follow from the committed conversation) is
+    // never "fixed" by moving targets: the targets are not the cause. It stays uncommitted (NOT_READY, exact reason) —
+    // no plan rebuild, no repair spiral.
+    // (an INCOMPATIBLE STATE — a second payment, eating restarting, a changed agreed time — IS a rebuild trigger: the
+    // remaining plan is rebuilt with the committed state in its contract)
+    const _trOnly = !committed && last && last.st.all.length && !last.st.cov.missing.length && last.st.all.every(x => x.code === 'TRANSITION')
+    if (_trOnly) env.abortComposition = 'PHASE_TRANSITION_UNRESOLVED ' + sp.sceneId
+    if (_trOnly) log && log('⛔ PHASE_TRANSITION_UNRESOLVED ' + sp.sceneId + ' (' + sp.phase + ') — ' + last.st.all.map(x => 'L' + x.line + ' ' + x.code + ': ' + String(x.detail || '').slice(0, 70)).join(' · ') + ' · after exchange repair + phase regeneration; targets are not moved (they are not the cause) → not committed')
+    if (!committed && last && !_trOnly) {
       // only targets left unplaced (every other gate clean) ⇒ SEMANTIC replanning moves them explicitly, the phase commits without them
       const onlyCoverage = !last.st.all.length && last.st.pf.totalHard === last.st.cov.missing.length && last.st.cov.missing.length
       if (onlyCoverage && globalReplan(qi, last.st.cov.missing.slice(), 'targets [' + last.st.cov.missing.map(id => byId.get(id).surface).join(', ') + '] do not fit this phase after its regeneration')) {
@@ -20462,8 +21753,8 @@ async function _lnComposeByScenes(env) {
       } else {
         // defects remain: the targets in the defective lines + the missing ones are re-planned (once per track); the phase is
         // regenerated from the new plan at this same position
-        const bad = [...new Set(last.st.all.flatMap(x => { const tn = last.cand.turns[x.line - 1]; return tn ? sp.requiredTargetIds.filter(id => la.present(la.text(tn.pair), byId.get(id).surface, ctx)) : [] }).concat(last.st.cov.missing))]
-        if (bad.length && bad.length < sp.requiredTargetIds.length && globalReplan(qi, bad, 'phase still defective after regeneration (' + Object.entries(last.st.pf.counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ') + (last.st.nat.length ? ', unnatural ' + last.st.nat.length : '') + ')')) {
+        const bad = [...new Set(last.st.all.filter(x => x.code !== 'TRANSITION').flatMap(x => { const tn = last.cand.turns[x.line - 1]; return tn ? sp.requiredTargetIds.filter(id => la.present(la.text(tn.pair), byId.get(id).surface, ctx)) : [] }).concat(last.st.cov.missing))]
+        if (bad.length && globalReplan(qi, bad, 'phase still defective after regeneration (' + Object.entries(last.st.pf.counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ') + (last.st.nat.length ? ', unnatural ' + last.st.nat.length : '') + ')')) {
           sp.skeleton = null; sp.replanRetry = (sp.replanRetry || 0) + 1
           env.phaseHealth.push({ sceneId: sp.sceneId, ...G, committed: false, replanned: true })
           return 'retry'
@@ -20499,10 +21790,18 @@ async function _lnComposeByScenes(env) {
     log && log('🩺 PHASE_REPAIR_STRATEGY ' + sp.sceneId + ' (' + sp.phase + ') generationCalls=' + G.generationCalls + ' atomicRepairCalls=' + G.atomicRepairCalls + ' exchangeRepairCalls=' + G.exchangeRepairCalls + ' phaseRegenerations=' + G.phaseRegenerations +
       (G.escalations.length ? ' escalations=[' + G.escalations.join(' | ') + ']' : '') + ' → ' + (committed ? (committed._trimmed ? 'COMMITTED after deterministic trim' : G.phaseRegenerations || G.atomicRepairCalls || G.exchangeRepairCalls ? 'COMMITTED after repair' : 'COMMITTED on first generation') : 'NOT COMMITTED'))
     if (committed) delete committed._trimmed
+    // v674 — a phase that holds ONLY targets which already failed at runtime (moved here by a rebuild) and still cannot
+    // carry them is not a broken scene: those targets are explicitly UNPLACED (named) and nothing else is lost
+    if (!committed && sp.requiredTargetIds.length && env.failedFrames && sp.requiredTargetIds.every(id => env.failedFrames.has(id))) {
+      sp.requiredTargetIds.forEach(id => { unplaceable.add(id); log && log('⛔ LISTENING_TARGET_UNPLACED ' + id + ' ' + ((byId.get(id) || {}).surface || '') + ' — failed again after ' + (env.globalReplans || 0) + ' remaining-plan rebuild(s) with another blueprint; it is NOT forced into an unrelated turn (NOT_READY)') })
+      report.push({ sceneId: sp.sceneId, required: sp.requiredTargetIds.length, heard: 0, turns: 0, allowedMax, reassignedOut: 0 })
+      emit('scene', qi + 1, { sceneId: sp.sceneId })
+      return
+    }
     if (!committed) {
       env.uncommitted.push({ sceneId: sp.sceneId, residual: last ? Object.entries(last.st.pf.counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).concat(last.st.nat.length ? ['unnatural ' + last.st.nat.length] : []).join(', ') || 'no valid candidate' : 'no valid candidate', targets: sp.requiredTargetIds.slice() })
       tel.LISTENING_UNCOMMITTED_SCENES = (tel.LISTENING_UNCOMMITTED_SCENES || 0) + 1
-      sp.requiredTargetIds.forEach(id => unplaceable.add(id))
+      sp.requiredTargetIds.forEach(id => { unplaceable.add(id); log && log('⛔ LISTENING_TARGET_UNPLACED ' + id + ' ' + ((byId.get(id) || {}).surface || '') + ' — its phase ' + sp.sceneId + ' could not commit (named, never silently lost) → NOT_READY') })
       log && log('⛔ PHASE_NOT_COMMITTED ' + sp.sceneId + ' — NO COMMIT_WITH_DEFECTS: nothing from this candidate enters the conversation; its targets [' + sp.requiredTargetIds.map(id => byId.get(id).surface).join(', ') + '] stay unheard (no random scattering) → NOT_READY')
       report.push({ sceneId: sp.sceneId, required: sp.requiredTargetIds.length, heard: 0, turns: 0, allowedMax, reassignedOut: 0 })
       emit('scene', qi + 1, { sceneId: sp.sceneId })
@@ -20512,12 +21811,19 @@ async function _lnComposeByScenes(env) {
     sp.verifiedTargetIds = cov.heard.slice()
     accepted.push(sc); usedTurns += sc.turns.length
     updateConversationContract(env.contract, sc, la, byId, sp.phase || sp.sceneId)
+    // v674 §3 — the conversation state is RECOMPUTED from the committed text after every commit
+    env.convState = recomputeListeningConversationState(accepted, la, env.contract, { remainingTargets: queue.slice(qi + 1).flatMap(s2 => s2.requiredTargetIds) })
+    log && log('🧾 CONVERSATION_STATE after ' + sp.sceneId + ' · activities ' + env.convState.completedActivities.length + ' · agreedTimes [' + env.convState.agreedTimes.join(', ') + '] · payments ' + env.convState.paymentsCompleted +
+      ' · eatingDone ' + env.convState.eatingDone + ' · openQuestion ' + (env.convState.unresolvedQuestions.length ? 'yes' : 'no') + ' · remainingTargets ' + env.convState.remainingTargets.length)
     log && log('🧵 PHASE_COMMITTED ' + sp.sceneId + ' (' + (sp.phase || '-') + ') ' + sc.turns.length + ' turns · facts ' + env.contract.knownFacts.length + ' · commitments ' + env.contract.commitmentsMade.length + (env.contract.unresolvedQuestions.length ? ' · open question carried into the next part' : ''))
     report.push({ sceneId: sp.sceneId, required: sp.requiredTargetIds.length, heard: cov.heard.length, turns: sc.turns.length, allowedMax, reassignedOut: 0 })
     emit('scene', qi + 1, { sceneId: sp.sceneId })
   }
   for (let qi = 0; qi < queue.length; qi++) {
-    if (env.oneConversation && !o.legacyRepairLoop) { const r = await composePlannedPhase(qi); if (r === 'retry') qi--; continue }
+    if (env.oneConversation && !o.legacyRepairLoop) { const r = await composePlannedPhase(qi); if (r === 'retry') qi--
+      // v674 — the track is already NOT_READY (an unresolved transition keeps required targets unheard): no further paid calls
+      if (env.abortComposition) { log && log('⛔ LISTENING_COMPOSITION_STOPPED — ' + env.abortComposition + ' · the remaining ' + (queue.length - qi - 1) + ' phase(s) are not generated (the track cannot be READY; no further paid calls)'); break }
+      continue }
     const sp = queue[qi]
     if (!sp.requiredTargetIds.length) { log && log('  LISTENING_SCENE ' + sp.sceneId + ' has no required targets left — skipped'); continue }
     const requiredAtStart = sp.requiredTargetIds.length
@@ -20721,6 +22027,10 @@ async function _lnComposeByScenes(env) {
     if (sc.turns.length) { accepted.push(sc); usedTurns += sc.turns.length
       // v672 §2 — the committed phase updates the ONE conversation contract (facts, commitments, places, open intent)
       if (env.oneConversation) { updateConversationContract(env.contract, sc, la, byId, sp.phase || sp.sceneId)
+        // v674 §3 — the conversation state is RECOMPUTED from the committed text after every commit
+        env.convState = recomputeListeningConversationState(accepted, la, env.contract, { remainingTargets: queue.slice(qi + 1).flatMap(s2 => s2.requiredTargetIds) })
+        log && log('🧾 CONVERSATION_STATE after ' + sp.sceneId + ' · activities ' + env.convState.completedActivities.length + ' · agreedTimes [' + env.convState.agreedTimes.join(', ') + '] · payments ' + env.convState.paymentsCompleted +
+          ' · eatingDone ' + env.convState.eatingDone + ' · openQuestion ' + (env.convState.unresolvedQuestions.length ? 'yes' : 'no') + ' · remainingTargets ' + env.convState.remainingTargets.length)
         log && log('🧵 PHASE_COMMITTED ' + sp.sceneId + ' (' + (sp.phase || '-') + ') ' + sc.turns.length + ' turns · facts ' + env.contract.knownFacts.length + ' · commitments ' + env.contract.commitmentsMade.length + (env.contract.unresolvedQuestions.length ? ' · open question carried into the next part' : '')) } }
     report.push({ sceneId: sp.sceneId, required: requiredAtStart, heard: cov.heard.length, turns: sc.turns.length, allowedMax, reassignedOut: cov.missing.length })
     emit('scene', qi + 1, { sceneId: sp.sceneId })
@@ -21028,7 +22338,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   const lt = {
     listeningTrackId: ltId, sourceMainTrackId: listeningTrackId(mainTrack), sourceFingerprint: trackPairsFingerprint(mainTrack.pairs), sourceFinal: trackFinal,
     language: lang, listeningVersion: o.version || 1, creationMode: o.creationMode || 'AUTO_PRETRACK', createdAt: new Date().toISOString(),
-    status: 'not_started', architecture: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? (sceneGates.plan && sceneGates.plan.meaningPlan ? LISTENING_ARCHITECTURE_V673 : LISTENING_ARCHITECTURE_V672) : LISTENING_ARCHITECTURE, composer: 'model',
+    status: 'not_started', architecture: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? (sceneGates.plan && sceneGates.plan.meaningPlan ? (sceneGates.plan.verbalized ? LISTENING_ARCHITECTURE_V674 : LISTENING_ARCHITECTURE_V673) : LISTENING_ARCHITECTURE_V672) : LISTENING_ARCHITECTURE, composer: 'model',
     oneConversation: !!(sceneGates && sceneGates.ONE_CONVERSATION === 'PASS'), conversationContract: sceneGates && sceneGates.contract ? { ...sceneGates.contract, transcript: undefined } : null, story: sceneGates ? sceneGates.story || null : null,
     continuityIssues: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? conversationContinuityAudit(scenes, la, targets) : [],
     eligibleTargetIds: targets.map(t => t.id), excludedNewTargetIds: [], omittedTargetIds: audit.missing.map(t => t.id),
@@ -21158,7 +22468,14 @@ function listeningCandidatePool(lang, vocab, snap) {
 function planListeningConversationBest(targets, opt) {
   const base = (opt && opt.seed) || ''
   let best = null
-  for (let k = 0; k < 4; k++) {
+  // v674 — a proven plan is cheap to re-try (the verbal context caches every check): 8 seeds instead of 4 before a target
+  // is deferred for the turn budget alone
+  // v674 — if none of the 8 is a VALID plan (e.g. a noun-heavy Thai set lands 2 turns over the budget for ~9% of attempt
+  // seeds), up to 16 more seeds are tried before the set is called infeasible: feasibility of a FROZEN set must not depend on
+  // the clock. Planning only (no model call); a valid plan stops the search as before
+  const tries = opt && opt.verbal ? 24 : 4
+  for (let k = 0; k < tries; k++) {
+    if (k >= 8 && best && best._ok) break
     const seed = k ? base + '|alt' + k : base
     const p = planListeningConversation(targets, { ...opt, seed })
     p.seedUsed = seed
@@ -21191,13 +22508,18 @@ function selectFeasibleListeningTargets(o) {
   }
   // batch-dependent needs (a digit needs a phone number or other digits IN THIS BATCH)
   const batchCheck = () => chosen.filter(id => !listeningTargetFeasibility(metas.get(id), glosses, chosen.map(x => metas.get(x))).feasible)
-  let plan = null, rounds = 0
+  let plan = null, rounds = 0, verbal = undefined      // v674: ONE verbal context (the candidate pool is authorised) for every round
   const problems = []
   while (rounds++ < 8) {
     const bad0 = o.frozen ? [] : batchCheck()
     if (bad0.length) { bad0.forEach(id => { chosen.splice(chosen.indexOf(id), 1); deferred.push({ id, surface: tById.get(id).surface, reason: listeningTargetFeasibility(metas.get(id), glosses, chosen.map(x => metas.get(x))).reasons[0], stage: 'batch' }) })
       T.filter(t => !chosen.includes(t.id) && !deferred.some(d => d.id === t.id) && feasibleAlone(t).feasible).slice(0, need - chosen.length).forEach(t => chosen.push(t.id)); continue }
-    plan = planListeningConversationBest(chosen.map(id => tById.get(id)), { seed: o.seed || '', turnsMax: chosen.length + 14, complexity: cc, inventoryGlosses: glosses, friends: o.friends !== false })
+    // v674 — the plan is built with the language adapter's VERBALIZABILITY PROOF: a target whose exchange cannot be said
+    // with the learner's authorised words is reported UNVERBALIZABLE and deferred here (before the freeze, SRS kept)
+    const chosenT = chosen.map(id => tById.get(id))
+    if (verbal === undefined) { verbal = null; if (o.verbal !== false) { try { verbal = listeningVerbalContext(lang, vocab, chosenT) } catch (e) { verbal = null } } }
+    else if (verbal) verbal.setTargets(chosenT)
+    plan = planListeningConversationBest(chosen.map(id => tById.get(id)), { seed: o.seed || '', turnsMax: chosen.length + 14, complexity: cc, inventoryGlosses: glosses, friends: o.friends !== false, verbal })
     if (plan.valid && plan.meaningPlan && plan.meaningPlan.valid) break
     let culprits = [...((plan.meaningPlan && plan.meaningPlan.byTarget) || new Map()).keys()].filter(id => chosen.includes(id))
     // a plan that only misses the TURN BUDGET (no target is misplaced): defer the lowest-priority target that costs a whole
@@ -21218,12 +22540,15 @@ function selectFeasibleListeningTargets(o) {
   const reason = feasible ? null : chosen.length < need ? 'only ' + chosen.length + ' of ' + T.length + ' candidate(s) can carry a natural role with the learner\'s authorised vocabulary in ONE coherent conversation (needs ' + need + ')'
     : indivBad.length ? 'the frozen set contains ' + indivBad.length + ' target(s) with no natural role in the authorised vocabulary: ' + deferred.filter(d => indivBad.includes(d.id)).slice(0, 4).map(d => d.surface + ' (' + d.reason + ')').join('; ')
     : 'the meaning plan cannot place every target naturally: ' + (problems.length ? problems.join('; ') : ((plan && plan.problems) || []).slice(0, 4).join('; '))
-  return { feasible, targetIds: chosen.slice(0, need), deferred, plan, planSeed: plan ? plan.seedUsed : null, poolSize: T.length, supportCount: glosses.length, reason, metas }
+  return { feasible, targetIds: chosen.slice(0, need), deferred, plan, planSeed: plan ? plan.seedUsed : null, poolSize: T.length, supportCount: glosses.length, reason, metas,
+    verbalized: !!(plan && plan.verbalized), provenTurns: plan ? plan.provenTurns || 0 : 0 }
 }
 function listeningFeasibilityLog(f, lang) {
   const out = ['🧭 LISTENING_FEASIBILITY ' + (f.feasible ? 'PASS' : 'FAIL') + ' language=' + lang + ' · pool=' + f.poolSize + ' candidate(s) in SRS order · authorised support=' + f.supportCount + ' word(s) · selected ' + f.targetIds.length +
     ' · deferred ' + f.deferred.length + (f.deferred.length ? ': ' + f.deferred.slice(0, 8).map(d => d.surface + ' (' + d.stage + ': ' + String(d.reason || '').slice(0, 70) + ')').join('; ') : '') +
     ' · meaning plan ' + (f.plan && f.plan.meaningPlan ? (f.plan.meaningPlan.valid ? 'VALID' : 'INVALID') + ' (' + f.plan.meaningPlan.turnCount + ' turns)' : 'not built') + ' — checked BEFORE the targets are frozen']
+  if (f.verbalized) out.push('🧩 LISTENING_VERBALIZABILITY ' + (f.feasible ? 'PROVEN' : 'INCOMPLETE') + ' · ' + f.provenTurns + ' planned turn(s) carry a proven authorised realisation (closed vocabulary + hardMax + target presence, both sides of every exchange) — no target enters the meaning plan without one')
+  f.deferred.forEach(d => out.push('⏭ LISTENING_TARGET_DEFERRED target=' + d.id + ' ' + d.surface + ' reason=' + String(d.reason || '').replace(/\s+/g, ' ').slice(0, 120) + ' stage=' + d.stage + ' srsObligationPreserved=true'))
   if (f.deferred.length) out.push('🧭 LISTENING_DEFERRED_SRS ids=[' + f.deferred.map(d => d.id).join(',') + '] — skipped words keep their SRS obligation (due date untouched; the next Revision / Daily selection still takes them)')
   return out
 }
@@ -21295,7 +22620,7 @@ async function _buildStandaloneListeningTrackCore(o) {
   if (keywords.length < LISTENING_TRACK_TARGETS) { log && log('⛔ LISTENING_TRACK_NOT_READY — only ' + keywords.length + ' learned word(s) are eligible (needs ' + LISTENING_TRACK_TARGETS + ')'); return fail('only ' + keywords.length + ' learned words available (needs ' + LISTENING_TRACK_TARGETS + ')') }
   // v673 §2B — no feasible 30-target conversation ⇒ NOT_READY BEFORE generation (never 100+ calls proving it)
   if (feas && !feas.feasible) {
-    log && log('⛔ LISTENING_PLAN_INFEASIBLE — ' + feas.reason + ' · NOT_READY before generation (0 paid calls)')
+    log && log('⛔ LISTENING_PLAN_INFEASIBLE paidLanguageGenerationCalls=0 — ' + feas.reason + ' · NOT_READY before generation (0 paid calls)')
     const r = fail('LISTENING_PLAN_INFEASIBLE: ' + feas.reason)
     r.track.failedChecks = ['LISTENING_PLAN_INFEASIBLE']; r.track.feasibility = { feasible: false, reason: feas.reason, deferred: feas.deferred.slice(0, 30) }
     return r
@@ -31458,6 +32783,7 @@ async function runJapaneseTrackQC(track, vocab, opts, onProgress, onLog) {
         accept(iss, 'correct repetition \u2014 no other licensed frame for this target')
       else if (rules.allowNearDuplicate)
         accept(iss, 'accepted repetition \u2014 learner inventory \u2264 15 words')
+      else if (q._framing) accept(iss, 'framing line repetition (not a lesson sentence) \u2014 kept, does not affect the 90 target pairs')   // v674
       else unresolved(iss)
     }
     seen.set(key, i)
@@ -32726,15 +34052,19 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
         // One pass per MISSING SLOT, not three passes total. With 15 missing recalls
         // a cap of 3 could only ever restore 3 of them, so the track stayed
         // incomplete however well recovery worked.
-        let guard = 0
+        let guard = 0, _sweep = 1
         const _slots = (out.missingRecalls || []).length
-        const _cap = Math.min(Math.max(_slots, 3), 45)
+        // v674 — two sweeps over the open slots (a recall stopped early by its per-target paid budget may use its remaining
+        // genuine checks on the second sweep); EXHAUSTED_AT_11 recalls are never picked again
+        const _cap = Math.min(Math.max(_slots * 2, 3), 45)
         // v672 §3 — recovery ALWAYS starts (an efficiency signal only changes strategy). After COST_LIMIT_REACHED only free
         // deterministic fallback candidates are judged. A recall that fails is skipped for this pass, not the end of recovery.
         if (_guard.hardStop) push('\u26D4 COST_LIMIT_REACHED before recovery (' + _guard.reason + ') \u2014 only deterministic fallback candidates (no paid request) will be tried')
         const _failedThisPass = new Set()
         while (out.complete === false && (out.missingRecalls || []).length && guard++ < _cap) {
-          const _cand = (out.missingRecalls || []).find(m => !_failedThisPass.has(m.targetId + ':' + m.recallIndex) && !m.exhausted)
+          const _term = m => m.exhausted || m.terminal === RECALL_TERMINAL_STATE || recallLedger('ja').terminal(m.targetId, m.recallIndex)
+          let _cand = (out.missingRecalls || []).find(m => !_failedThisPass.has(m.targetId + ':' + m.recallIndex) && !_term(m))
+          if (!_cand && _sweep === 1 && (out.missingRecalls || []).some(m => !_term(m))) { _sweep = 2; _failedThisPass.clear(); _cand = (out.missingRecalls || []).find(m => !_term(m)) }
           if (!_cand) break
           push('\u21BB Auto-recovering missing recall ' + guard + '/' + _cap + ' \u2014 ' +
                (out.missingRecalls || []).length + ' slot(s) outstanding\u2026')
@@ -32760,6 +34090,11 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
         }
       }
       if (out && out.complete === false) {
+        // v674 — no dead end: when every missing recall is TERMINAL (EXHAUSTED_AT_11) there is no legitimate recovery action
+        // left in this generator, so the track FINISHES (final audit → NOT_READY, unresolvedRecalls named) instead of waiting
+        // on a Retry that can only re-log the same exhausted recall
+        const _left = (out.missingRecalls || []).filter(m => !(m.exhausted || m.terminal === RECALL_TERMINAL_STATE || recallLedger('ja').terminal(m.targetId, m.recallIndex)))
+        if (!_left.length && (out.missingRecalls || []).length) { finishJapaneseIncomplete(out); return }
         setPartial(out)
         setGenerationError({ type:'incomplete-recalls', expected:out.expectedRecallCount, produced:out.recallCount,
                              missing:out.missingRecalls || [], lastRecoveryFailure: out.lastRecoveryFailure, costGuard: out.costGuard || null })
@@ -32877,16 +34212,34 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
     }
   }
 
+  // v674 — finish an incomplete generation whose remaining recalls are all EXHAUSTED_AT_11: the retained recalls go through
+  // the normal final audit (which never re-opens an exhausted recall) and the track ends NOT_READY with unresolvedRecalls
+  function finishJapaneseIncomplete(part) {
+    const unresolvedRecalls = (part.missingRecalls || []).map(m => ({ targetId: m.targetId, target: m.targetJapanese, recallIndex: m.recallIndex, state: RECALL_TERMINAL_STATE, lastFailure: m.lastFailure || null }))
+    push('\u26D4 GENERATION_FINISHED_INCOMPLETE ' + part.recallCount + '/' + part.expectedRecallCount + ' \u2014 every missing recall is ' + RECALL_TERMINAL_STATE + ' (' +
+      unresolvedRecalls.map(u => u.target + ' r' + u.recallIndex).join(', ') + ') \u2014 no recovery attempt left; finishing NOT_READY with unresolvedRecalls named (no further paid calls)')
+    const recalls = assembleRecallsByScene(part.perTarget || [], targets, part.scenePlan || null, { alternateSpeakers: true })
+    const pairs = [...(part.open || []), ...recalls, ...(part.close || [])]
+    setPartial(null); setGenerationError(null)
+    setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0)
+    setPhase('done')
+    buildAndQc({ ...jaTrackObject(jaTrackContext(), { pairs, scene: part.scene || scene, scenePlan: part.scenePlan || null, buildingBlocks: part.buildingBlocks || [], allowedContent: part.allowedContent || [],
+      recallCount: part.recallCount, framingCount: part.framingCount, generationStats: part.generationStats || null }, targets, register, model, trackMode), unresolvedRecalls })
+  }
+
   // §6/§14 — retry ONLY the missing recall against the preserved state.
   async function retryMissingRecall() {
     if (!partial) return
+    // v674 — a Retry never re-opens an EXHAUSTED_AT_11 recall; when nothing recoverable is left the track finishes NOT_READY
+    const _open = (partial.missingRecalls || []).filter(m => !(m.exhausted || m.terminal === RECALL_TERMINAL_STATE || recallLedger('ja').terminal(m.targetId, m.recallIndex)))
+    if (!_open.length) { finishJapaneseIncomplete(partial); return }
     setRecovering(true)
     setRecoveryAttempt(a => a + 1)
     try {
       const next = await recoverJapaneseMissingRecall(partial, targets, vocab, register, apiKey, model,
         push,
         meta => { if (meta.checkTier) setCurrentCheckTier(meta.checkTier); if (meta.targetId) setCurrentTargetId(meta.targetId); if (meta.checkHistory && meta.targetId != null) setCheckHist(h => ({ ...h, [meta.targetId + ':' + meta.recallIndex]: meta.checkHistory.slice() })) },
-        { trackContext: jaTrackContext(), runId: aiRunRef.current, manual: true })
+        { trackContext: jaTrackContext(), runId: aiRunRef.current, manual: true, pick: _open[0].targetId + ':' + _open[0].recallIndex })
       // §22 — accepted recall state survives; add the recovered one to the display.
       if (next.recovered) {
         const p = next.recovered
@@ -34216,6 +35569,29 @@ function jaReadingFromInventory(jp, inv) {
   return /[\u4E00-\u9FFF]/.test(s) ? '' : s
 }
 
+// v674 — TARGET-SPECIFIC LICENSED CONSTRUCTIONS for verbs the model keeps replacing (live 8-Oct: する → 作る on checks 5–11).
+// Offered to the prompt (one per recall, a DIFFERENT one each) and to the fallback, but ONLY those whose every word is
+// authorised for this learner (japaneseCheckLine) — the acceptance gate still judges each candidate.
+const JA_TARGET_CONSTRUCTIONS = {
+  'する': [{ jp: '何してるの？', en: 'What are you doing?', cue: 'Ask what they are doing right now' },
+          { jp: '今日は何する？', en: 'What shall we do today?', cue: 'Ask what to do today' },
+          { jp: 'これ、どうする？', en: 'What shall we do with this?', cue: 'Ask what to do with this' },
+          { jp: '明日、何する？', en: 'What are you doing tomorrow?', cue: 'Ask about their plans for tomorrow' },
+          { jp: '一緒に何かする？', en: 'Shall we do something together?', cue: 'Suggest doing something together' }],
+  'ある': [{ jp: '時間ある？', en: 'Do you have time?', cue: 'Ask if they have time' }, { jp: 'ここにある。', en: "It's here.", cue: 'Say it is here' }, { jp: 'まだある？', en: 'Is there any left?', cue: 'Ask if there is any left' }],
+  'いる': [{ jp: '今どこにいる？', en: 'Where are you now?', cue: 'Ask where they are now' }, { jp: '家にいるよ。', en: "I'm at home.", cue: 'Say you are at home' }, { jp: '誰かいる？', en: 'Is anyone there?', cue: 'Ask if anyone is there' }],
+  '来る': [{ jp: 'いつ来る？', en: 'When are you coming?', cue: 'Ask when they are coming' }, { jp: '明日来る？', en: 'Are you coming tomorrow?', cue: 'Ask if they are coming tomorrow' }, { jp: 'ここに来て。', en: 'Come here.', cue: 'Ask them to come here' }],
+}
+function jaLicensedConstructions(target, inv) {
+  const list = JA_TARGET_CONSTRUCTIONS[target && target.japanese] || []
+  return list.filter(c => { try { return japaneseCheckLine(c.jp, inv).ok } catch (e) { return false } })
+}
+function jaLicensedConstructionsLine(target, inv) {
+  const ok = jaLicensedConstructions(target, inv)
+  if (!ok.length) return ''
+  return 'LICENSED CONSTRUCTIONS for ' + target.japanese + ' (every word is authorised — build each recall on a DIFFERENT one, adapting it to the scene; keep ' + target.japanese +
+    ' itself, never a different verb): ' + ok.map(c => c.jp + ' (' + c.en + ')').join(' · ') + '\n'
+}
 function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
   const t = target.japanese
   // §10 — a cue must read as English, not as a dictionary line. "like / liked"
@@ -34228,6 +35604,8 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
   // INTENT FIRST. Offer only frames whose semantic role this target can fill,
   // then let the acceptance gate reject anything that is still not Japanese.
   const _roles = jaTargetRoles(target)
+  // v674 — the target's own licensed constructions come first (a DIFFERENT one per recall, never one 何する？ for every slot)
+  jaLicensedConstructions(target, inv).forEach(c => cands.push({ jp: c.jp, en: c.en, cue: c.cue }))
   JA_INTENT_FRAMES.forEach(fr => {
     if (!_roles.has(fr.needs.role)) return
     const g = fr.needs.role.includes('verb') ? vsense : sense
@@ -35132,6 +36510,7 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
     (failures.length ? 'PREVIOUS FAILURES (exact reasons) — fix these:\n' + failures.map(s => '  recall ' + s.recallIndex + ': ' + s.lastFailure +
       (s.failedSentences && s.failedSentences.length ? ' — rejected: ' + s.failedSentences.join('／') : '')).join('\n') + '\n' : '') +
     japaneseUsageHintLine(target).replace(/^\n/, '') + (japaneseUsageHintLine(target) ? '\n' : '') +
+    jaLicensedConstructionsLine(target, inv) +
     (c.rejected && c.rejected.length ? 'DO NOT USE (not taught yet): ' + c.rejected.join(' ') + '. Choose a different, simpler idea.\n' : '') +
     (c.objectives || '').replace(/^\n/, '') + (c.objectives ? '\n' : '') +
     'ALLOWED CONTENT (' + (inv.allContent || []).length + '): ' + allowed +
@@ -35619,13 +36998,21 @@ function japaneseRecoveryEngine({ vocab, registerId, apiKey, model, inv, rules, 
 
 // §6/§14/§26 — repair ONE missing recall against the preserved partial state. The
 // eight already-validated recalls are never regenerated and the scene is reused.
+const RECALL_TERMINAL_STATE = 'EXHAUSTED_AT_11'
 async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId, apiKey, model, onLog, onProgress, recOpts) {
   const _ro = recOpts || {}
   const _tc = _ro.trackContext || partial.trackContext || null
-  const missing = _ro.pick ? (partial.missingRecalls || []).find(m => m.targetId + ':' + m.recallIndex === _ro.pick) : (partial.missingRecalls || [])[0]
-  if (!missing) return partial
+  const _L = _ro.ledger || recallLedger('ja')
+  // v674 — EXHAUSTED_AT_11 is TERMINAL: a recall whose 11 checks are used is never picked again (the 8-Oct run re-enqueued
+  // する recall 3 at 11/11 over and over and never tried the other open slot). Without an explicit pick, the first
+  // NON-terminal missing recall is taken; a terminal pick returns at once — no log line, no check, no paid call.
+  const _isTerm = m => !!m && (m.terminal === RECALL_TERMINAL_STATE || _L.terminal(m.targetId, m.recallIndex))
+  const missing = _ro.pick ? (partial.missingRecalls || []).find(m => m.targetId + ':' + m.recallIndex === _ro.pick) : (partial.missingRecalls || []).find(m => !_isTerm(m))
+  if (!missing) return { ...partial, recovered: null, noRecoverableRecall: true, missingRecalls: (partial.missingRecalls || []).map(m => _isTerm(m) ? { ...m, exhausted: true, terminal: RECALL_TERMINAL_STATE } : m) }
+  if (_isTerm(missing)) return { ...partial, recovered: null, noRecoverableRecall: !(partial.missingRecalls || []).some(m => !_isTerm(m)),
+    missingRecalls: (partial.missingRecalls || []).map(m => _isTerm(m) ? { ...m, exhausted: true, terminal: RECALL_TERMINAL_STATE } : m) }
   const t = targets.find(x => x.id === missing.targetId)
-  if (!t) return partial
+  if (!t) return { ...partial, recovered: null }
   // §7 — the SAME learner context: inventory, scarcity rules, seenMap, targets.
   const allowCtx = japaneseAllowedContent(vocab, targets)
   const inv = japaneseLearnerInventory(vocab, targets)
@@ -35636,7 +37023,6 @@ async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId,
   // v672 §1/§3 — recovery of ONE missing recall runs through the SAME target-group core as generation: the recall
   // CONTINUES its own check history in the run ledger (never a fresh "1st check"), only that slot is regenerated, the
   // efficiency guard steers the strategy, and the deterministic fallback passes the same gates (no exact-repeat privilege)
-  const _L = _ro.ledger || recallLedger('ja')
   const trackUsed = (partial.perTarget || []).flat().map(p => String(p && p.japanese || '').trim()).filter(Boolean)
   const prevForT = ((partial.perTarget || [])[missing.targetIdx] || []).map(p => p.japanese)
   const adapter = japaneseTargetGroupAdapter({ vocab, registerId, inv, rules, seenMap, trackUsed, apiKey, model, onLog,
@@ -35650,8 +37036,12 @@ async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId,
     const why = (sl && sl.lastFailure) || 'no valid candidate'
     const exhausted = _L.remaining(t.id, missing.recallIndex) <= 0
     onLog && onLog('\u274C Recovery failed \u2014 ' + (exhausted ? 'CHECKS_EXHAUSTED (' + RECALL_MAX_CHECKS + '/' + RECALL_MAX_CHECKS + ') \u2014 UNRESOLVED: ' : '') + why)
-    const _mr = (partial.missingRecalls || []).map(m => m.targetId === missing.targetId && m.recallIndex === missing.recallIndex ? { ...m, lastFailure: why, exhausted } : m)
-    return { ...partial, missingRecalls: _mr, lastRecoveryFailure: why, lastRecoveryFailureType: exhausted ? 'CHECKS_EXHAUSTED' : (sl && sl.outcome === 'cost-limit' ? 'COST_LIMIT_REACHED' : 'UNRESOLVED'),
+    if (exhausted) { _L.markUnresolved(t.id, missing.recallIndex, why)
+      onLog && onLog('\u26D4 RECALL_TERMINAL ' + RECALL_TERMINAL_STATE + ' ' + t.japanese + ' recall ' + missing.recallIndex + ' \u2014 never enqueued again in this run (no further checks, no paid calls)') }
+    const _mr = (partial.missingRecalls || []).map(m => m.targetId === missing.targetId && m.recallIndex === missing.recallIndex ? { ...m, lastFailure: why, exhausted, ...(exhausted ? { terminal: RECALL_TERMINAL_STATE } : {}) } : m)
+    // v674 — `recovered` from an EARLIER pass must not survive a failed pass (it made the caller believe this pass
+    // succeeded, so the failed recall was never skipped and was picked again)
+    return { ...partial, recovered: null, missingRecalls: _mr, noRecoverableRecall: !_mr.some(m => !_isTerm(m)), lastRecoveryFailure: why, lastRecoveryFailureType: exhausted ? 'CHECKS_EXHAUSTED' : (sl && sl.outcome === 'cost-limit' ? 'COST_LIMIT_REACHED' : 'UNRESOLVED'),
              recoveryStats: { checks: _L.count(t.id, missing.recallIndex), paid: grp.paidCalls } }
   }
   const got = { pair: sl.pair, checkTier: sl.checkTier }
@@ -35680,7 +37070,9 @@ async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId,
   const stillMissing = []
   targets.forEach((tg, idx) => {
     const have2 = new Set((perTarget[idx] || []).map(p => p.recallIndex))       // v653: slots are independent, gaps are possible
-    for (let r = 1; r <= 3; r++) if (!have2.has(r)) stillMissing.push({ targetId: tg.id, targetIdx: idx, targetJapanese: tg.japanese, recallIndex: r, lastFailure: 'not yet generated' })
+    for (let r = 1; r <= 3; r++) if (!have2.has(r)) { const prev = (partial.missingRecalls || []).find(m => m.targetId === tg.id && m.recallIndex === r)
+      stillMissing.push({ targetId: tg.id, targetIdx: idx, targetJapanese: tg.japanese, recallIndex: r, lastFailure: prev ? prev.lastFailure : 'not yet generated',
+        ...(_L.terminal(tg.id, r) ? { exhausted: true, terminal: RECALL_TERMINAL_STATE } : {}) }) }
   })
   const produced = perTarget.reduce((a, s) => a + s.length, 0)
   if (produced !== partial.expectedRecallCount) {

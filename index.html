@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v672"/>
+<meta name="app-version" content="v673"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v672';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v672').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v673';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v673').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -3446,6 +3446,51 @@ function mandarinSegmentSource(surface, inv) {
 
 // ── Mandarin generation (§20, §28, §29, §30, §44, §64-§74) ───────────────────
 
+// v673 §4 — POSITIVE target-specific Mandarin patterns (what TO write), so first-pass generation does not need repair:
+// the live run spent 75 rejections on untaught words (点 in 喝点, 菜, 水, 时候, 走) and 62 on duplicates
+const ZH_TARGET_PATTERNS = Object.freeze({
+  '一点': 'VERB + 一点 (吃一点 / 买一点) or ADJECTIVE + 一点 to ask for a bit more (快一点 / 慢一点) — never 一点 + verb',
+  '有点': '有点 + ADJECTIVE for a slight complaint (有点大 / 有点慢) — never 有点 + verb',
+  '太': '太 + ADJECTIVE + 了 (太大了 / 太慢了 / 太好了)',
+  '很': '很 + ADJECTIVE (很好 / 很大 / 很快) — never 很 + verb or noun',
+  '多': 'NOUN + 很多 (人很多) or 很多 + NOUN (很多东西); 多少 asks an amount',
+  '少': 'NOUN + 很少 (人很少) / 太少了',
+  '不': '不 + VERB / ADJECTIVE for now, future or habit (我不去 / 不大)',
+  '没有': '没有 + NOUN (我没有钱) or 没(有) + VERB for something that did not happen (我没去) — never 没…了',
+  '没': '没 + VERB for something that did not happen (我没去) / 没有 + NOUN',
+  '有': 'SUBJECT + 有 + NOUN (我有钱 / 这里有人)',
+  '吗': 'a statement + 吗？ (你去吗？ / 这个好吗？)',
+  '什么': 'VERB + 什么？ (你要什么？ / 你吃什么？)',
+  '哪里': '去哪里？ / 在哪里？ (你去哪里？)',
+  '谁': '谁 + VERB？ (谁去？) or VERB + 谁？ (你找谁？)',
+  '多少': '多少钱？ / 多少 + NOUN？',
+  '怎么': '怎么 + VERB？ (怎么去？ / 这个怎么用？)',
+  '为什么': '为什么 + VERB / ADJECTIVE？ (你为什么不去？) — the reply is a REASON clause, never a bare adjective',
+  '现在': 'TIME word before the verb: 我现在去 / 现在可以吗？',
+  '今天': 'TIME word before the verb: 我今天去 / 今天你做什么？',
+  '明天': 'TIME word before the verb: 我明天去 / 明天见',
+  '昨天': 'TIME word + a completed action: 我昨天去了 / 你昨天做什么了？',
+  '在': '在 + PLACE + VERB (我在家吃) or SUBJECT + 在 + PLACE (他在那里)',
+  '这个': '这个 + NOUN / 这个 + 很 + ADJECTIVE (这个很好)',
+  '那个': '那个 + NOUN / 那个 + 很 + ADJECTIVE (那个很大)',
+  '一起': 'SUBJECT + 一起 + VERB (我们一起去 / 一起吃吧)',
+  '跟': '跟 + PERSON + VERB (我跟朋友去)',
+  '给': '给 + PERSON + THING (给你) or VERB + 给 + PERSON',
+  '要': '要 + NOUN / VERB (我要这个 / 我要去)',
+  '想': '想 + VERB (我想吃 / 你想去吗？)',
+  '可以': '可以 + VERB？ / 可以吗？ (我可以去吗？)',
+  '喜欢': '喜欢 + NOUN / VERB (我喜欢这个 / 你喜欢吃吗？)',
+})
+function zhTargetPatternLine(target, inv, vocab, rules) {
+  const zh = target && target.chinese
+  if (!zh) return ''
+  const pat = ZH_TARGET_PATTERNS[zh]
+  const ex = []
+  try { for (let r = 1; r <= 3 && ex.length < 2; r++) { const fb = mandarinFallbackPair(target, inv, r, null, vocab, rules); if (fb && fb.chinese && !ex.includes(fb.chinese)) ex.push(fb.chinese) } } catch (e) {}
+  if (!pat && !ex.length) return ''
+  return 'PATTERN FOR ' + zh + ': ' + (pat || 'use it in its normal position in a short sentence') +
+    (ex.length ? ' · AUTHORISED EXAMPLES (every word in them is allowed — reuse the STRUCTURE with different content, never copy them): ' + ex.join(' / ') : '') + '\n'
+}
 function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
   const content = inv.allContent.map(w => '  ' + w.chinese + ' [' + w.pinyin + '] = ' + w.english +
     (w.note ? '  \u2014 use when ' + w.note : '')).join('\n')
@@ -3474,6 +3519,8 @@ function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
     '不 for present/future and habits, 没/没有 for past events and 有 (我没去 / 我不去 — NOT 我没去了); 了 for a completed action; a measure word between a number and a noun (两个人); ' +
     'verb before object; time before the verb (我明天去), place with 在 before the verb (我在家吃); question words stay in place (你去哪里？); 能 = able, 可以 = allowed / OK, 要 = want / will, 想 = would like; ' +
     '把 only if it is listed above.\n' +
+    // v673 §4 — POSITIVE, target-specific patterns + authorised example sentences (built only from the learner's words)
+    zhTargetPatternLine(target, inv, vocab, rules) +
     (rules.requirePatternVariety ? 'Vary the grammar pattern from earlier recalls.\n'
       : 'Controlled repetition and similar structures are DESIRABLE at this stage (\u00a754).\n') +
     '\u00a770: adjectives take \u5F88 etc., NOT \u662F. \u00a771: use \u4E0D vs \u6CA1 correctly. \u00a769: keep the subject when it aids clarity.\n' +
@@ -3601,7 +3648,9 @@ function validateMandarinPair(cand, target, inv, vocab, rules, seenMap) {
   // H. complexity
   const cx = mandarinComplexity({ chinese:zh, segments:segs }, inv)
   // v665 — belt hardMax, no +2 tolerance, counted on the canonical segmentation's lexical units
-  { const _cc = getLearnerComplexityContract({ lang: 'zh', vocab, lexicon: inv && inv.lexicon }), _an = _cc.analyse({ chinese: zh, segments: segs })
+  // v673 §4 — counted on the CANONICAL segmentation as well as the candidate's own segments (the larger wins): the live
+  // 7u line (这个真的很好，我朋友说。) passed recovery on the model's coarser segments and failed only at the final audit
+  { const _cc = getLearnerComplexityContract({ lang: 'zh', vocab, lexicon: inv && inv.lexicon }), _an = hardComplexityAnalyse(_cc, 'zh', { chinese: zh, segments: segs })
     if (_an.overHardMax) P.push('LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' words > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')') }
   if (P.length) return { ok:false, problems:P }
   // \u00a770/\u00a771 \u2014 basic Mandarin grammaticality. Broken Chinese is not an acceptable
@@ -3621,6 +3670,14 @@ function validateMandarinPair(cand, target, inv, vocab, rules, seenMap) {
   return { ok:true, problems:[], segments:segs, complexity:cx }
 }
 
+// v673 §4 — THE Mandarin acceptance function. Generation, the deterministic fallback, quota recovery and QC replacement
+// all accept a candidate through it: segmentation → target presence / sense → closed vocabulary → grammar → HARD
+// complexity (canonical count) → cue alignment (naturalness is the semantic QC that follows). Nothing that fails it can
+// enter canonical track state, so no path can defer hardMax to the final audit.
+function mandarinAcceptCandidate(pair, target, inv, vocab, o) {
+  const c = o || {}
+  return validateMandarinPair(pair, target, inv, vocab, c.rules || { allowCrossTargetReuse: true }, c.seenMap || new Map())
+}
 // §30 — deterministic fallback, built only from the learner's own inventory, and
 // run through the SAME validator. Never trusted merely because it is hardcoded.
 // Dictionary glosses are lookup entries, not sentence English. "want to / feel like"
@@ -3902,8 +3959,9 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
       const owner = seenMap.get(strip(p.chinese))
       if (owner === target.id || !(rules && rules.allowCrossTargetReuse)) continue
     }
-    if (vocab && rules) {
-      const v = validateMandarinPair(p, target, inv, vocab, rules, seenMap || new Map())
+    if (vocab) {
+      // v673 §4 — the fallback is accepted by THE acceptance function too (rules default when the caller has none)
+      const v = mandarinAcceptCandidate(p, target, inv, vocab, { rules: rules || { allowCrossTargetReuse: true }, seenMap: seenMap || new Map() })
       if (!v.ok) continue
     } else if (!mandarinTargetPresent(p.chinese, target, inv)) continue
     usable.push(p)
@@ -7027,8 +7085,19 @@ function getLearnerComplexityContract(o) {
       ' only when the idea or the lesson word cannot be said naturally more simply. Never exceed ' + b.hardMax + '. A short natural reply ("yes", "okay", "really?") is fine — never pad a line. If a speaker needs to say more, split it into another turn.',
     repairRule: 'prefer ' + b.preferredMin + '–' + b.preferredMax + ' ' + unitName + ', absolute maximum ' + b.hardMax + ' (particles do not count)' }
 }
+// v673 §4 — the HARD ceiling is measured the way the FINAL audit measures it: a JA / ZH pair is counted on its own segments
+// AND on the canonical segmentation of its text; the larger count decides (no path can pass hardMax on coarser segments)
+function hardComplexityAnalyse(cc, lang, p) {
+  const a1 = cc.analyse(p)
+  // Mandarin only: Japanese counts from its segments everywhere (Daily READY with 0 issues — not changed)
+  if (lang !== 'zh' || !p || typeof p !== 'object') return a1
+  const text = p.chinese || p.thai
+  if (!text) return a1
+  const a2 = cc.analyse(String(text))
+  return a2.units > a1.units ? a2 : a1
+}
 // one-line log of the contract (Daily / Revision / Listening print the same line)
-const COMPLEXITY_STATE = Object.freeze({ WITHIN: 'WITHIN_PREFERRED', SHORT_NATURAL: 'SHORT_NATURAL_ALLOWED', ABOVE_PREFERRED: 'ABOVE_PREFERRED_BUT_ALLOWED', HARD_FAIL: 'HARD_FAIL_TOO_COMPLEX' })
+const COMPLEXITY_STATE =Object.freeze({ WITHIN: 'WITHIN_PREFERRED', SHORT_NATURAL: 'SHORT_NATURAL_ALLOWED', ABOVE_PREFERRED: 'ABOVE_PREFERRED_BUT_ALLOWED', HARD_FAIL: 'HARD_FAIL_TOO_COMPLEX' })
 // v666 §13/§14/§24 — the complexity audit over a set of lines (Daily / Revision / Listening share it). READY needs
 // overHardMax=0; the preferred ratio (≥ 80% of substantive target-bearing lines WITHIN_PREFERRED) is ADVISORY drift telemetry.
 const COMPLEXITY_PREFERRED_RATIO_TARGET = 0.8
@@ -9980,6 +10049,80 @@ function _thaiLinePhoneticFromWords(words, lex) {
   }
   return parts.join(' ')
 }
+// ══ v673 §4 — SPOKEN-TEXT OWNERSHIP ════════════════════════════════════════════════════════════════════════════
+// A line is { speakerId, speakerDisplayName, spokenText }. Speaker names / UI labels ("นิดา:", "Somchai:", "A:", "B:",
+// "[S1]", cue metadata) are NOT part of the sentence: they are never tokenised, romanised or aligned. Live 7 Oct (Thai
+// Daily): the framing reply came back as "นิดา: สวัสดีค่ะสมชาย สบายดีค่ะ" → SEGMENTATION_DRIFT on two framing lines =
+// the ONLY reason the track was NOT_READY. A proper name that is genuinely SPOKEN inside the sentence ("สวัสดีค่ะสมชาย")
+// is normal linguistic content and stays.
+function _v673RxEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+const SPEAKER_LABEL_RX = {
+  ab: /^\s*(?:\[[^\]\n]{1,16}\]\s*)?(?:(?:speaker|person)\s*)?([AB])\s*[:：]\s*/i,
+  sceneId: /^\s*\[(?:S|LS)?\d{1,2}\]\s*/,
+  // a short name in one script at the very start, followed by a colon (a colon is never part of spoken Thai / CJK)
+  scriptName: /^\s*([฀-๿]{1,14}|[぀-ヿ一-鿿]{1,6})\s*[:：]\s*/,
+  latinName: /^\s*([A-Z][a-z]{1,15}(?: [A-Z][a-z]{1,15})?)\s*[:：]\s+/,
+  // romanisation fields: a leading "nídaa:" / "Nida:" label
+  romanLabel: /^\s*([^\s:：]{1,18})\s*[:：]\s+/,
+}
+function separateSpeakerLabel(text, names, o) {
+  const s = String(text == null ? '' : text)
+  const c = o || {}
+  const done = (m, label) => ({ label: String(label || m[0]).replace(/[:：\s\[\]]+$/g, '').replace(/^[\s\[]+/, '').trim(), spokenText: s.slice(m[0].length).trim(), changed: true })
+  let m = SPEAKER_LABEL_RX.ab.exec(s); if (m) return done(m, m[1])
+  m = SPEAKER_LABEL_RX.sceneId.exec(s); if (m) { const r = separateSpeakerLabel(s.slice(m[0].length), names, o); return { label: r.changed ? r.label : m[0].trim(), spokenText: r.spokenText, changed: true } }
+  for (const n of (names || []).filter(Boolean).map(String).sort((a, b) => b.length - a.length)) {
+    const mm = new RegExp('^\\s*' + _v673RxEsc(n) + '\\s*[:：]\\s*').exec(s); if (mm) return done(mm, n)
+  }
+  m = SPEAKER_LABEL_RX.scriptName.exec(s); if (m) return done(m, m[1])
+  m = SPEAKER_LABEL_RX.latinName.exec(s); if (m) return done(m, m[1])
+  if (c.roman) { m = SPEAKER_LABEL_RX.romanLabel.exec(s); if (m) return done(m, m[1]) }
+  return { label: null, spokenText: s, changed: false }
+}
+// one pair: the spoken field, its English and its romanisation lose a leading label; the label is kept as metadata;
+// a changed line drops its token list (rebuilt deterministically from the spoken text by the normal segmentation stage)
+function normalisePairSpokenText(p, lang, names) {
+  if (!p) return { pair: p, changed: false }
+  const field = lang === 'ja' ? 'japanese' : lang === 'zh' ? 'chinese' : 'thai'
+  if (typeof p[field] !== 'string' || !p[field]) return { pair: p, changed: false }
+  const sep = separateSpeakerLabel(p[field], names)
+  if (!sep.changed || !sep.spokenText) return { pair: p, changed: false }
+  const q = { ...p, [field]: sep.spokenText, speakerId: p.speakerId || p.speaker || null, speakerDisplayName: sep.label, spokenText: sep.spokenText }
+  if (lang !== 'th' && typeof p.thai === 'string' && p.thai === p[field]) q.thai = sep.spokenText
+  if (typeof p.english === 'string') { const e = separateSpeakerLabel(p.english, names); if (e.changed && e.spokenText) q.english = e.spokenText }
+  ;(lang === 'ja' ? ['romaji', 'phonetic', 'reading'] : lang === 'zh' ? ['pinyin', 'phonetic', 'spokenPinyin'] : ['phonetic']).forEach(f => {
+    if (typeof p[f] === 'string' && p[f]) { const r = separateSpeakerLabel(p[f], names, { roman: true }); if (r.changed && r.spokenText) q[f] = r.spokenText } })
+  if (Array.isArray(p.words)) q.words = []
+  if (Array.isArray(p.segments) && p.segments.length) q.segments = p.segments.filter(sg => sg && !/^[:：]$/.test(String(sg.surface || '')) && String(sg.surface || '') !== sep.label)
+  if (q._pronTextKey) delete q._pronTextKey
+  return { pair: q, changed: true, label: sep.label }
+}
+// the scene's framing fields (opening / reply / closing / closing_reply) are spoken text — a "Nida:" label is removed at
+// creation (with its English / romanisation), so the framing line never carries it into tokenisation
+function normaliseSceneSpokenFields(sceneData, lang) {
+  if (!sceneData || typeof sceneData !== 'object') return sceneData
+  const names = [sceneData.characterA, sceneData.characterB].filter(Boolean).map(x => String(x).split(',')[0].trim())
+    .concat(((sceneData.characters || [])).flatMap(x => [x && x.nativeName, x && x.name]).filter(Boolean))
+  const out = { ...sceneData }
+  let n = 0
+  ;['opening', 'reply', 'closing', 'closing_reply'].forEach(k => {
+    if (typeof out[k] !== 'string' || !out[k]) return
+    const sep = separateSpeakerLabel(out[k], names)
+    if (!sep.changed || !sep.spokenText) return
+    n++; out[k] = sep.spokenText; out[k + '_speakerDisplayName'] = sep.label
+    ;['_english', '_phonetic', '_reading', '_romaji', '_pinyin'].forEach(suf => { const f = k + suf
+      if (typeof out[f] === 'string' && out[f]) { const r = separateSpeakerLabel(out[f], names, { roman: suf !== '_english' }); if (r.changed && r.spokenText) out[f] = r.spokenText } })
+  })
+  if (n) out._spokenLabelsRemoved = n
+  return out
+}
+function normaliseSpokenTextOwnership(pairs, lang, names, onLog, stage) {
+  let n = 0
+  const labels = []
+  const out = (pairs || []).map(p => { const r = normalisePairSpokenText(p, lang, names); if (r.changed) { n++; labels.push((p.pairId || p._pairKey || p.lineId || '?') + '=' + r.label) } return r.pair })
+  if (n) onLog && onLog('  🗣 SPOKEN_TEXT_OWNERSHIP ' + n + ' line(s) carried a speaker label inside the sentence — label stored as speakerDisplayName, pronunciation runs on spokenText only (' + labels.slice(0, 6).join(', ') + ')' + (stage ? ' · ' + stage : ''))
+  return { pairs: out, changed: n }
+}
 function thaiPronunciationLineAudit(p, lex, o) {
   const c = o || {}
   const thai = String((p && p.thai) || '')
@@ -11918,7 +12061,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     (s0 => 'INTENDED SENSE of "' + target.thai + '": ' + s0.targetSense + (s0.targetUsageNote ? ' — ' + s0.targetUsageNote : '') + (s0.targetNotSense ? '. NOT: ' + s0.targetNotSense : '') + '. The "prompt" and "english" must express this same sense.\n')(thaiTargetSenseInfo({ wordId: target.id, thai: target.thai, english: target.english }, vocab)) +
     // v671 §B2 — the sense-specific construction plan (only constructions the taught vocabulary can express)
     // v672 §3 — the target's FUNCTION PLAN (three different communicative functions from taught words; digit caps; what is NOT taught)
-    (_fp => _fp && !_fp.generic ? thaiFunctionPlanLine(_fp) : thaiSenseConstructionLine(target.thai, thaiAuthorisedSurfaces(vocab, [target.thai])))(
+    (_fp => _fp && !_fp.generic ? thaiFunctionPlanLine(_fp) : thaiSenseConstructionLine(target.thai, thaiAuthorisedSurfaces(vocab, [target.thai])) + thaiGenericVarietyLine(target))(
       (target._functionPlan = thaiTargetFunctionPlan(target, vocab, thaiAuthorisedSurfaces(vocab, [target.thai]), { have: [], state: null }))) +
     // v669 §9 — three DIFFERENT communicative uses where the word allows it, never three near-identical templates
     'PRACTICE FUNCTIONS: make the three uses genuinely different where the word naturally allows it — e.g. LINE 1 an ordinary statement or question that introduces it, ' +
@@ -12961,7 +13104,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   const allPairs = []
   const prevLines = []
   // Use pre-established scene or fall back to default
-  const sceneData = preScene || { scene:'Two friends at a market.', characterA:'Somchai, a Thai man', characterB:'Nida, a Thai woman', opening:'สวัสดีครับ วันนี้เราจะคุยเรื่องอะไรดีครับ' }
+  const sceneData = normaliseSceneSpokenFields(preScene || { scene:'Two friends at a market.', characterA:'Somchai, a Thai man', characterB:'Nida, a Thai woman', opening:'สวัสดีครับ วันนี้เราจะคุยเรื่องอะไรดีครับ' }, 'th')
   const scene = sceneData.scene || 'Two friends at a market.'
   const charA = sceneData.characterA || 'Somchai, a Thai man'
   const charB = sceneData.characterB || 'Nida, a Thai woman'
@@ -12975,6 +13118,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     _err.code = 'INTERNAL_SPEAKER_MAP_CONFLICT'; throw _err
   }
   thaiSceneCharacterCheck(charA, charB).forEach(m => onProgress && onProgress(0, targets.length * 3, { apiError: 'ℹ ' + m }, null, null))
+  if (sceneData._spokenLabelsRemoved) onProgress && onProgress(0, targets.length * 3, { apiError: '🗣 SPOKEN_TEXT_OWNERSHIP ' + sceneData._spokenLabelsRemoved + ' framing line(s) carried a speaker label ("' + ['opening', 'reply', 'closing', 'closing_reply'].map(k => sceneData[k + '_speakerDisplayName']).filter(Boolean).join('", "') + ':") — removed before tokenisation; speakerDisplayName kept as metadata' }, null, null)
   // v650 §3 — the approved scene is a CONTRACT for generation, framing, QC and Listening
   const _sceneContract = buildSceneContract(sceneData, 'th', { vocab })
   let _scenePlan = null
@@ -14388,7 +14532,7 @@ const JA_FUNCTION_SCAFFOLD = {
   sentenceFinal: 'かな かね よね だよ だね よな わ さ ぞ ぜ っけ',
   connector: 'でも だから それで そして それから では',
   determiner: 'この その あの どの',
-  filler: 'あの えっと えーと うーん ええ ああ あっ えっ へえ ほら',
+  filler: 'あの えっと えーと うーん ええ ああ あっ えっ へえ ほら そっか',   // v673: そっか is the spoken contraction of そう+か (same function words), not a new lexeme
 }
 const JA_FUNCTION_FORMS = [...new Set(Object.values(JA_FUNCTION_SCAFFOLD).join(' ').split(/\s+/).filter(Boolean))]
 const ZH_FUNCTION_FORMS = [...new Set(['的', '了', '吗', '呢', '吧', '啊', '着', '过', '得', '地', '们', '呀', '哦', '嘛'])]
@@ -14879,7 +15023,10 @@ function listeningCoherenceCheck(lines) {
       flag(2, 'one line asserts what the other denies', i)
     // 2b. contradiction: same noun, different quantity, no correction marker
     const q1 = _quantities(pen), q2 = _quantities(en)
-    q2.forEach((v, noun) => { if (q1.has(noun) && q1.get(noun) !== v && !/actually|sorry|no,|i mean|not /i.test(en))
+    // v673 §2 — a PROPOSAL → COUNTER-PROPOSAL ("Shall we go at 10?" → "How about 11?" / "11 is better") is planned
+    // dialogue, not a contradiction: a different value after a question, as a question, or with a counter marker is allowed
+    const _counter = _isQuestion(prev) || _isQuestion(cur) || /\b(how about|what about|instead|rather|better|earlier|later|make it|too (early|late|much|expensive)|can we|could we|let's|shall we|ok(ay)?,? then|then)\b/i.test(en)
+    q2.forEach((v, noun) => { if (!_counter && q1.has(noun) && q1.get(noun) !== v && !/actually|sorry|no,|i mean|not /i.test(en))
       flag(2, 'contradicts the previous line (' + q1.get(noun) + ' vs ' + v + ' ' + noun + ')', i) })
     // 3. a question must be followed by something that plausibly answers it
     const continues = /^(and|so|then|but|okay|ok|well|yes|yeah|no|right|sure)\b/i.test(en.trim())
@@ -15085,7 +15232,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v672'
+const LISTENING_BUILD_VERSION = 'v673'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -15642,7 +15789,7 @@ function trackPairValidity(p, kw, adapter, ctx) {
   if (inv) reasons.push(inv)
   adapter.hardProblems(p, ctx).forEach(h => reasons.push(h))
   // v665 — the same belt LENGTH contract as Thai (canonical content units / segmentation)
-  { const _cc = getLearnerComplexityContract({ lang: adapter.lang, vocab: ctx && ctx.vocab }), _an = _cc.analyse(p)
+  { const _cc = getLearnerComplexityContract({ lang: adapter.lang, vocab: ctx && ctx.vocab }), _an = hardComplexityAnalyse(_cc, adapter.lang, p)
     if (_an.overHardMax) reasons.push('LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' ' + _cc.unitName + ' > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')') }
   return { valid: reasons.length === 0, reasons }
 }
@@ -15871,6 +16018,10 @@ async function finaliseMainTrack(track, adapter, ctx) {
   } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; _coh = { state: 'UNVERIFIED', reason: String(e && e.message || e).slice(0, 120) } }
   const _idViol = []
   if (adapter.lang === 'th') { try { _idViol.push(...thaiTargetIdentityViolations(t.pairs, adapter.keywordsOf(t), 'after quota recovery')) } catch (e) {} }
+  // v673 §4 — spoken-text ownership BEFORE the freeze: a speaker label inside a sentence is moved to speakerDisplayName,
+  // so the frozen text (and everything pronunciation builds from it) is the spoken text only
+  try { const _nm = _trackSpeakerNames(t).concat(adapter.lang === 'th' ? thaiSceneNameEntries(t, c.vocab).map(n => n.surface) : [])
+    t = { ...t, pairs: normaliseSpokenTextOwnership(t.pairs, adapter.lang, _nm, log, 'before FINAL_LINE_TEXT freeze').pairs } } catch (e) {}
   // v655 §22 — the learner text is FROZEN here (after quota recovery and coherence repair); pronunciation is
   // built from this exact text, and any later text change is detected as STALE and rebuilt before the audit
   const _frozen = new Map((t.pairs || []).map((p, i) => [thaiLineId(p, i), p && (p.thai || p.japanese || p.chinese)]))
@@ -15947,7 +16098,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (!inv.EVERY_TARGET_3_OF_3 && !reasons.some(r => /^TARGET_PAIR_QUOTA/.test(r))) reasons.push('EVERY_TARGET_3_OF_3=false')
   // v665 §23 / v666 §24 — MAIN_COMPLEXITY_AUDIT: every learner line ≤ the belt hardMax; preferred / short / above-preferred
   // are reported (above-preferred is allowed — advisory drift only)
-  const lengthAudit = complexityAudit(_cc, (t.pairs || []).filter(p => p && classifyTrackPair(p)).map((p, k) => ({ line: k + 1, pairId: p.pairId || p._pairKey || null, text: adapter.sentenceOf(p), a: _cc.analyse(p), targetBearing: classifyTrackPair(p) === 'TARGET' })))
+  const lengthAudit = complexityAudit(_cc, (t.pairs || []).filter(p => p && classifyTrackPair(p)).map((p, k) => ({ line: k + 1, pairId: p.pairId || p._pairKey || null, text: adapter.sentenceOf(p), a: hardComplexityAnalyse(_cc, adapter.lang, p), targetBearing: classifyTrackPair(p) === 'TARGET' })))
   const _lenOver = lengthAudit.over
   log && log(complexityAuditLog('MAIN_COMPLEXITY_AUDIT', lengthAudit))
   inv.LENGTH_PASS = !_lenOver.length
@@ -16240,7 +16391,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v672'
+const APP_BUILD_VERSION = 'v673'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -16959,6 +17110,29 @@ function thaiTargetFunctionPlan(kw, vocab, authorised, o) {
     allowedConstructions: functions.map(f => f.id), avoidConstructions: [(info.targetNotSense || '')].filter(Boolean).concat(rejected.filter(r => r.text).slice(-4).map(r => '"' + r.text + '" (' + r.reason + ')')),
     functions, unavailable, acceptedFunctions: accepted, rejected, next, whyNone, generic: !list }
 }
+// v673 §4 — TARGET_VARIETY planned BEFORE generation for every Thai target (not only the sense-construction list): three
+// DIFFERENT communicative uses chosen from the word's own type (a question word is asked in different situations, a reply
+// word answers different kinds of turn, a verb is stated / asked / proposed …). Never forced: two similar uses are fine
+// when a third would be unnatural.
+function thaiGenericVarietyUses(target) {
+  const g = String((target && (target.english || target.gloss)) || '').toLowerCase().trim()
+  const pos = String((target && (target.partOfSpeech || target.pos)) || '').toLowerCase()
+  if (/\?\s*(\)|$)/.test(g) || /^(how|what|where|when|why|who|which|may i ask|do you know)\b/.test(g))
+    return ['ask it in one situation', 'ask it in a DIFFERENT situation (another topic or person)', 'ask it as a follow-up after the other person\'s answer']
+  if (/^(yes|no|not (exactly|really|quite)|of course|sure|exactly|that's right|no way)\b/.test(g))
+    return ['reply to a yes/no question', 'reply that corrects or qualifies what the other person said', 'reply to a suggestion']
+  if (/^(hello|hi|good (morning|evening|night)|goodbye|bye|see you|good luck|take care|thank|sorry|excuse me)\b/.test(g))
+    return ['say it at the natural moment (opening / closing / after help)', 'say it to a different person or in a different moment', 'say it as a reply to the other person']
+  if (/^to\s/.test(g) || /verb/.test(pos)) return ['state what someone does or will do', 'ask the other person whether they do it', 'suggest it, ask for it, or say you will not do it']
+  if (/adj/.test(pos) || /^(good|bad|big|small|hot|cold|delicious|expensive|cheap|funny|fun|busy|free|easy|difficult|new|old|tired|happy|pretty|beautiful|worth)\b/.test(g))
+    return ['describe something with it', 'ask whether something is like that', 'react with it to what the other person said']
+  if (/\b(today|tomorrow|yesterday|now|later|morning|evening|o'clock|\d\s*(am|pm)|week|time)\b/.test(g)) return ['say when something happens', 'ask about plans for that time', 'answer a "when?" question with it']
+  return ['a statement about it', 'a question about it', 'a request, offer or choice involving it']
+}
+function thaiGenericVarietyLine(target) {
+  const u = thaiGenericVarietyUses(target)
+  return 'VARIETY PLAN (planned before writing): LINE 1 = ' + u[0] + ' · LINE 2 = ' + u[1] + ' · LINE 3 = ' + u[2] + ' — three genuinely different uses of the same sense; never force an unnatural one.\n'
+}
 // the generation-time plan: three DIFFERENT functions, one per line
 function thaiFunctionPlanLine(plan) {
   if (!plan || !plan.functions.length) return ''
@@ -17155,6 +17329,10 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
 async function _thFinaliseMetadata(pairs, ctx) {
   const c = ctx || {}, log = c.onLog || null
   let out = pairs.slice()
+  // v673 §4 — 0. spoken-text ownership BEFORE any romanisation / segmentation / alignment: a speaker label inside the
+  // sentence ("นิดา: สวัสดีค่ะ…") is metadata, never a token
+  try { const _names = thaiSceneNameEntries(c.track, c.vocab).map(n => n.surface).concat((((c.track && c.track.sceneContract) || {}).characters || []).flatMap(x => [x.nativeName, x.name]).filter(Boolean))
+    out = normaliseSpokenTextOwnership(out, 'th', _names, log, 'final metadata').pairs } catch (e) {}
   // 1. broken romanisation: v650 §9 — canonical dictionary composition FIRST (deterministic, no
   //    request); only lines it cannot fully resolve go to the romanisation stage, on Flash-Lite
   try {
@@ -17382,9 +17560,24 @@ async function _zhRecoverTargetPairs(kw, need, ctx) {
   const marked = markQcInvalidPairs(qc.pairs, qc.issues)
   marked.filter(p => p._qcInvalid || p._qcUnresolved).forEach(p => { const why = String(p._qcInvalid || p._qcUnresolved); reasons.push('QC: ' + why + ': ' + p.chinese)
     if (st) recordRecoveryFailure(st, { code: /naturalness/.test(why) ? 'UNNATURAL' : /prompt/.test(why) ? 'CUE_MISMATCH' : 'OTHER', text: p.chinese, reason: why }) })
-  return { accepted: marked.filter(p => !p._qcInvalid && !p._qcUnresolved && mandarinTargetPresent(p.chinese, t, inv)), reasons }
+  // v673 §4 — whatever QC returned (a replacement included) re-passes THE acceptance function before it can count;
+  // a hardMax / cue / grammar failure is rejected HERE (its slot stays missing → regenerated), never at the final audit
+  const accepted = []
+  marked.filter(p => !p._qcInvalid && !p._qcUnresolved && mandarinTargetPresent(p.chinese, t, inv)).forEach(p => {
+    const v = mandarinAcceptCandidate(p, t, inv, c.vocab, { rules })
+    if (v.ok) accepted.push(p)
+    else { reasons.push('ACCEPTANCE: ' + v.problems[0] + ': ' + p.chinese); log && log('  ⛔ ZH_ACCEPTANCE_REJECTED (quota recovery, after QC) ' + v.problems[0] + ' — "' + p.chinese + '" · the slot is regenerated')
+      if (st) recordRecoveryFailure(st, { code: /LEVEL_COMPLEXITY/.test(v.problems[0]) ? 'COMPLEXITY' : 'OTHER', text: p.chinese, reason: v.problems[0] }) }
+  })
+  return { accepted, reasons }
+}
+function _trackSpeakerNames(track) {
+  const sc = (track && track.sceneContract) || {}
+  return ((sc.characters || []).flatMap(x => [x && x.nativeName, x && x.name])).concat([track && track.scene && track.scene.characterA, track && track.scene && track.scene.characterB].filter(Boolean).map(x => String(x).split(',')[0].trim())).filter(Boolean)
 }
 async function _jaFinaliseMetadata(pairs, ctx) {
+  // v673 §4 — spoken-text ownership first (a speaker label is never read / romanised)
+  try { pairs = normaliseSpokenTextOwnership(pairs, 'ja', _trackSpeakerNames(ctx && ctx.track), ctx && ctx.onLog, 'final metadata').pairs } catch (e) {}
   const out = pairs.map(p => {
     if (!p || !p.japanese) return p
     const q = { ...p }
@@ -17415,6 +17608,7 @@ async function _jaFinaliseMetadata(pairs, ctx) {
 }
 async function _zhFinaliseMetadata(pairs, ctx) {
   const c = ctx || {}
+  try { pairs = normaliseSpokenTextOwnership(pairs, 'zh', _trackSpeakerNames(c.track), c.onLog, 'final metadata').pairs } catch (e) {}
   const targets = ((c.track && c.track.keywords) || []).map(k => c.vocabById.get(k.wordId)).filter(Boolean)
   const inv = mandarinLearnerInventory(c.vocab, targets)
   const strip = x => String(x || '').replace(/[\s，。？！；、]/g, '')
@@ -17928,6 +18122,7 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
 // NOT_READY ("Listening track needs repair") and is never playable.
 const LISTENING_ARCHITECTURE = 'fresh-conversation-v656'
 const LISTENING_ARCHITECTURE_V672 = 'one-conversation-v672'
+const LISTENING_ARCHITECTURE_V673 = 'planning-first-v673'   // v673 — feasibility + meaning plan before generation, failure-class repair
 // v672 §2 — continuity over the FINAL text: a greeting after the first part or a goodbye before the last part breaks ONE conversation
 function conversationContinuityAudit(scenes, la, targets) {
   const out = [], n = (scenes || []).length
@@ -18070,6 +18265,40 @@ function _lnDice(a, b) {
   return 2 * inter / (a.length - 1 + b.length - 1)
 }
 // §3/§4/§8/§9/§15/§18 — deterministic audit of the FINISHED dialogue (never the model's intendedTargetIds)
+// the line is SHORT conversational glue ("okay", "yes", "really?", "let's go") — repeating it is natural
+function _lnShortGlue(text, units, cc) {
+  const n = _lnNorm(text)
+  if (!n) return true
+  const u = units != null ? units : (cc ? cc.countUnits(text) : null)
+  if (u != null) return u <= 2
+  return /[\u0E00-\u0E7F]/.test(n) ? n.length <= 10 : /[\u3040-\u30FF\u4E00-\u9FFF]/.test(n) ? n.length <= 4 : n.length <= 12
+}
+function listeningDuplicateIssues(rows, cc) {
+  const out = []
+  const R = (rows || []).map(r => ({ ...r, n: _lnNorm(r.text) }))
+  const seen = new Map()
+  R.forEach((r, b) => {
+    if (!r.n || r.intentional) { if (r.n) seen.set(r.n, (seen.get(r.n) || []).concat([b])); return }
+    const prev = seen.get(r.n) || []
+    // a short line that CARRIES a lesson word (それは友達よ。) is substantive, not glue — only a one-unit token stays glue
+    const glue = _lnShortGlue(r.text, r.units, cc) && !((r.targets || []).length && (r.units == null || r.units > 1))
+    if (prev.length) {
+      const a = prev[prev.length - 1]
+      if (a === b - 1) out.push({ code: 'EXACT_DUPLICATE', line: b + 1, detail: 'immediately repeats line ' + (a + 1) + ' (accidental duplicate)' })
+      else if (prev.length >= 2 && !glue) out.push({ code: 'EXACT_DUPLICATE', line: b + 1, detail: 'repetitive loop — the same line for the ' + (prev.length + 1) + 'th time' })
+      else if (prev.length >= 3) out.push({ code: 'EXACT_DUPLICATE', line: b + 1, detail: 'repetitive loop — the same short line ' + (prev.length + 1) + ' times' })
+      else if (b > 0 && prev.some(a2 => a2 > 0 && R[a2 - 1].n && R[a2 - 1].n === R[b - 1].n)) out.push({ code: 'EXACT_DUPLICATE', line: b + 1, detail: 'duplicates a whole earlier exchange (lines ' + prev.find(a2 => a2 > 0 && R[a2 - 1].n === R[b - 1].n) + '–' + (prev.find(a2 => a2 > 0 && R[a2 - 1].n === R[b - 1].n) + 1) + ')' })
+      else if (!glue) out.push({ code: 'EXACT_DUPLICATE', line: b + 1, detail: 'repeats substantive line ' + (a + 1) })
+      // a short glue line repeated once or twice later (okay / yes / let's go) is natural — no issue
+    } else if (!glue) {
+      // near repeats only for substantive lines that carry the same lesson words (failed-generation echoes)
+      for (let a = 0; a < b; a++) { const q = R[a]
+        if (q.n && Math.min(q.n.length, r.n.length) >= 6 && _lnDice(q.n, r.n) >= 0.9 && (q.targets || []).join() === (r.targets || []).join() && !_lnShortGlue(q.text, q.units, cc)) { out.push({ code: 'NEAR_DUPLICATE', line: b + 1, detail: 'near-repeats line ' + (a + 1) }); break } }
+    }
+    seen.set(r.n, prev.concat([b]))
+  })
+  return out
+}
 function listeningConversationAudit(scenes, targets, la, ctx) {
   const c = ctx || {}
   const lines = []
@@ -18089,14 +18318,12 @@ function listeningConversationAudit(scenes, targets, la, ctx) {
   if (c.complexity) per.forEach(r => { if (r.units > c.complexity.hardMax) issues.push({ code: 'TOO_COMPLEX', line: r.n, detail: r.units + ' ' + c.complexity.unitName + ' > hardMax ' + c.complexity.hardMax + ' (belt ' + c.complexity.belt + ') — rewrite it shorter (' + c.complexity.repairRule + '), or split the idea across the A/B exchange' }) })
   per.forEach(r => { if (r.targetCount > LISTENING_MAX_TARGETS_PER_TURN) issues.push({ code: 'MAX_TARGETS_PER_TURN', line: r.n, detail: r.targetCount + ' current targets (' + r.actualTargetIds.join(',') + ')' }) })
   lines.forEach((l, n) => { const m = listeningMergedSpeakerProblem(la.text(l.tn.pair), l.tn.pair.english, la.lang); if (m) issues.push({ code: 'MERGED_SPEAKERS', line: n + 1, detail: m }) })
-  // duplicates — exact and near (near = ≥ 0.9 character similarity AND the same current targets)
-  for (let a = 0; a < per.length; a++) for (let b = a + 1; b < per.length; b++) {
-    if (lines[b].tn.intentionalRepetition) continue
-    const na = _lnNorm(per[a].text), nb = _lnNorm(per[b].text)
-    if (!na || !nb) continue
-    if (na === nb) issues.push({ code: 'EXACT_DUPLICATE', line: b + 1, detail: 'repeats line ' + (a + 1) })
-    else if (Math.min(na.length, nb.length) >= 6 && _lnDice(na, nb) >= 0.9 && per[a].actualTargetIds.join() === per[b].actualTargetIds.join()) issues.push({ code: 'NEAR_DUPLICATE', line: b + 1, detail: 'near-repeats line ' + (a + 1) })
-  }
+  // v673 §3 — LISTENING DUPLICATE POLICY. Daily / Revision keep three meaningfully distinct practice pairs; a Listening
+  // conversation may repeat naturally ("okay", "yes", "really?", "where?", "let's go", "I don't know", short repeated
+  // structures, deliberate lexical repetition). Only these are defects: an accidental IMMEDIATE duplicate line, a
+  // duplicated whole EXCHANGE, a repetitive LOOP (the same line 3+ times), and a repeated substantive line (target
+  // stuffing / failed generation). A short line that appeared earlier never invalidates a natural beginner conversation.
+  listeningDuplicateIssues(per.map((r, i) => ({ text: r.text, units: r.units, targets: r.actualTargetIds, intentional: !!lines[i].tn.intentionalRepetition })), c.complexity).forEach(x => issues.push(x))
   // speakers, scenes
   const sp = new Set(lines.map(l => l.tn.speaker))
   if (lines.length && sp.size < 2) issues.push({ code: 'ONE_SPEAKER', line: 0, detail: 'every turn is speaker ' + [...sp][0] })
@@ -18273,12 +18500,12 @@ function _lnSituationCandidates(top, k, hardMax, friends) {
 // ══ v668 §13–§16 — THE INTENT SKELETON: turn intents planned (and validated) BEFORE any surface language ══
 // QUESTION → ANSWER · PROPOSAL → ACCEPT / REJECT / COUNTERPROPOSAL · STATEMENT → REACTION · REQUEST → RESPONSE ·
 // CHOICE → SELECTION · GREETING → GREETING · FAREWELL → FAREWELL. Targets are planned 1 per turn (never 4).
-const LISTENING_ADJACENCY = { QUESTION: ['ANSWER'], PROPOSAL: ['ACCEPT', 'REJECT', 'COUNTERPROPOSAL'], STATEMENT: ['REACTION'], REQUEST: ['RESPONSE', 'ACCEPT', 'REJECT'],
-  CHOICE: ['SELECTION'], GREETING: ['GREETING'], FAREWELL: ['FAREWELL'], APOLOGY: ['ACKNOWLEDGEMENT'] }
-const LISTENING_SECOND_PART = { QUESTION: 'ANSWER', PROPOSAL: 'ACCEPT', STATEMENT: 'REACTION', REQUEST: 'RESPONSE', CHOICE: 'SELECTION', GREETING: 'GREETING', FAREWELL: 'FAREWELL', APOLOGY: 'ACKNOWLEDGEMENT' }
+const LISTENING_ADJACENCY = { QUESTION: ['ANSWER'], PROPOSAL: ['ACCEPT', 'REJECT', 'COUNTERPROPOSAL'], COUNTERPROPOSAL: ['ACCEPT', 'REJECT'], STATEMENT: ['REACTION'], REQUEST: ['RESPONSE', 'ACCEPT', 'REJECT'],
+  CHOICE: ['SELECTION'], GREETING: ['GREETING'], FAREWELL: ['FAREWELL'], APOLOGY: ['ACKNOWLEDGEMENT'], THANKS: ['ACKNOWLEDGEMENT'] }
+const LISTENING_SECOND_PART = { QUESTION: 'ANSWER', PROPOSAL: 'ACCEPT', STATEMENT: 'REACTION', REQUEST: 'RESPONSE', CHOICE: 'SELECTION', GREETING: 'GREETING', FAREWELL: 'FAREWELL', APOLOGY: 'ACKNOWLEDGEMENT', THANKS: 'ACKNOWLEDGEMENT' }
 // v671 §B5 — what each act asks for / what its reply must mean (carried by every planned turn and shown in the prompt)
-const LISTENING_SLOT_EXPECTS = { AGE: 'an age', DURATION: 'a length of time', AMOUNT: 'an amount / price', TIME: 'a time', PLACE: 'a place', PERSON: 'a person', REASON: 'a reason', STATE: 'how it is', THING: 'the thing asked about', YESNO: 'yes / no (or a qualified answer)' }
-const LISTENING_ACT_EXPECTS = { PROPOSAL: 'accept / refuse / counter-proposal', STATEMENT: 'a reaction to it', REQUEST: 'agree / refuse / respond', CHOICE: 'a selection', GREETING: 'a greeting back', FAREWELL: 'a farewell back', APOLOGY: 'an acknowledgement (it\'s okay / no problem)' }
+const LISTENING_SLOT_EXPECTS = { AGE: 'an age', DURATION: 'a length of time', AMOUNT: 'an amount / price', TIME: 'a time', PLACE: 'a place', PERSON: 'a person', REASON: 'a reason (a short clause — never a bare yes / no or a bare adjective)', STATE: 'how it is', THING: 'the thing asked about', YESNO: 'yes / no (or a qualified answer)', PHONE: 'the phone number (a few digits)' }
+const LISTENING_ACT_EXPECTS = { PROPOSAL: 'accept / refuse / counter-proposal', STATEMENT: 'a reaction to it', REQUEST: 'agree / refuse / respond', CHOICE: 'a selection', GREETING: 'a greeting back', FAREWELL: 'a farewell back', APOLOGY: 'an acknowledgement (it\'s okay / no problem)', THANKS: 'an acknowledgement (you\'re welcome / no problem)' }
 // the shortest natural realisation of each intent, in learner units (complexity is PLANNED, not only checked — §16)
 const LISTENING_INTENT_UNITS = { APOLOGY: 1, ACKNOWLEDGEMENT: 1, QUESTION: 2, ANSWER: 2, PROPOSAL: 2, ACCEPT: 1, REJECT: 1, COUNTERPROPOSAL: 2, STATEMENT: 2, REACTION: 1, REQUEST: 2, RESPONSE: 1, CHOICE: 3, SELECTION: 1, GREETING: 1, FAREWELL: 1 }
 function _lnFirstIntent(ta, tb, k, purpose) {
@@ -18302,6 +18529,8 @@ function validateIntentSkeleton(skeleton, cc) {
         if (!(LISTENING_ADJACENCY[first.intent] || []).includes(t.intent)) problems.push(first.intent + ' (turn ' + first.turn + ') → ' + t.intent + ' (turn ' + t.turn + '): expected ' + (LISTENING_ADJACENCY[first.intent] || ['?']).join('/'))
         // v669 §14 — SEMANTIC adjacency: the answer's planned content must fill the question's slot
         if (first.intent === 'QUESTION' && first.slot && t.intent === 'ANSWER') (t.fillers || []).forEach((f, i) => {
+          // v673 — a modifier (很 / 太 / 一起) rides in the answer; it is never THE filler of the slot
+          if (f === 'MODIFIER') return
           if (!listeningSlotAccepts(first.slot, f)) problems.push('ANSWER(' + (_LN_SLOT_LABEL[first.slot] || first.slot) + ') (turn ' + t.turn + ') cannot be filled by ' + ((t.surfaces || [])[i] || 'its target') + ' (' + f.toLowerCase() + ')') })
       }
     } else if (!LISTENING_ADJACENCY[t.intent]) problems.push('turn ' + t.turn + ' (' + t.intent + ') answers nothing')
@@ -18319,28 +18548,38 @@ function validateIntentSkeleton(skeleton, cc) {
 function _lnPlanSkeleton(sc, byId, cc) {
   const build = safe => {
     const sk = []
+    let n = 0
     ;(sc.exchanges || []).forEach((ex, k) => {
-      const a = ex.turns[0], b = ex.turns[1]
+      const a = ex.turns[0], b = ex.turns[1], c3 = ex.turns[2] || null
       const ta = a.targetIds.map(id => byId.get(id)).filter(Boolean), tb = b.targetIds.map(id => byId.get(id)).filter(Boolean)
       const first = safe ? 'QUESTION' : (ex.kind && LISTENING_SECOND_PART[ex.kind] ? ex.kind : _lnFirstIntent(ta, tb, k, sc.purpose))
       const slot = first === 'QUESTION' ? (ex.slot || (ta[0] ? _lnQuestionSlot(ta[0]) : 'YESNO')) : null
       // v671 §B5 — every planned turn carries its act, topic, requested information, expected response meaning, target
       // ids + senses, relationship and register (the prompt shows them; the validators check the reply against them)
       const _exp = first === 'QUESTION' ? (LISTENING_SLOT_EXPECTS[slot] || 'an answer') : (LISTENING_ACT_EXPECTS[first] || 'a reply')
-      const _common = { topic: sc.purpose || null, relationship: sc.relationship || null, register: sc.registerExpectation || null }
-      sk.push({ turn: 2 * k + 1, speaker: a.speaker, intent: first, act: first, slot, requests: first === 'QUESTION' ? (_LN_SLOT_LABEL[slot] || slot) : null, expects: _exp,
-        targetIds: a.targetIds.slice(), senses: ta.map(t => t.sense || t.gloss || ''), roles: ta.map(t => t.role), surfaces: ta.map(t => t.surface), ..._common })
+      const _common = { topic: sc.purpose || null, relationship: sc.relationship || null, register: sc.registerExpectation || null, exchangeIndex: ex.exchangeIndex || k + 1 }
+      const t1 = ++n
+      sk.push({ turn: t1, speaker: a.speaker, intent: first, act: first, slot, requests: first === 'QUESTION' ? (_LN_SLOT_LABEL[slot] || slot) : null, expects: _exp,
+        targetIds: a.targetIds.slice(), senses: ta.map(t => t.sense || t.gloss || ''), roles: ta.map(t => t.role), surfaces: ta.map(t => t.surface), ..._common, meaning: a.meaning || null })
       const _second = (!safe && ex.second && (LISTENING_ADJACENCY[first] || []).includes(ex.second)) ? ex.second : LISTENING_SECOND_PART[first]
-      sk.push({ turn: 2 * k + 2, speaker: b.speaker, intent: _second, act: _second, respondsTo: 2 * k + 1, slot, means: _second === 'COUNTERPROPOSAL' ? 'a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)' : _exp, targetIds: b.targetIds.slice(),
-        senses: tb.map(t => t.sense || t.gloss || ''), roles: tb.map(t => t.role), surfaces: tb.map(t => t.surface), fillers: tb.map(_lnFillerType), ..._common })
+      const t2 = ++n
+      sk.push({ turn: t2, speaker: b.speaker, intent: _second, act: _second, respondsTo: t1, slot, means: _second === 'COUNTERPROPOSAL' ? 'a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)' : _exp, targetIds: b.targetIds.slice(),
+        senses: tb.map(t => t.sense || t.gloss || ''), roles: tb.map(t => t.role), surfaces: tb.map(t => t.surface), fillers: tb.map(sc.phase ? _lnFillerTypeOfMeta : _lnFillerType), ..._common, meaning: b.meaning || null })
+      // v673 — a planned third turn (the first speaker accepts the counter-proposal)
+      if (c3 && !safe) { const tc = c3.targetIds.map(id => byId.get(id)).filter(Boolean)
+        sk.push({ turn: ++n, speaker: c3.speaker, intent: 'ACCEPT', act: 'ACCEPT', respondsTo: t2, slot: null, means: 'agreement with the counter-proposal — that value is now agreed', targetIds: c3.targetIds.slice(),
+          senses: tc.map(t => t.sense || t.gloss || ''), roles: tc.map(t => t.role), surfaces: tc.map(t => t.surface), fillers: [], ..._common, meaning: c3.meaning || null }) }
     })
     return sk
   }
   let sk = build(false), check = validateIntentSkeleton(sk, cc)
   sc.skeletonReplanned = false
   // a bad skeleton is never realised as text: re-plan the exchanges semantically, then (last resort) question → answer
-  if (!check.valid) { sc.skeletonProblems = check.problems; _lnPlanExchanges(sc, byId); sk = build(false); check = validateIntentSkeleton(sk, cc); sc.skeletonReplanned = true
-    if (!check.valid) { sk = build(true); sk.forEach(t => { if (t.intent === 'ANSWER') t.fillers = [] }); check = validateIntentSkeleton(sk, cc) } }
+  // (a meaning-planned phase is deterministic and may carry budget merges — re-planning it would undo them: it is not re-planned)
+  if (!check.valid) { sc.skeletonProblems = check.problems; if (!sc.phase) { _lnPlanExchanges(sc, byId); sk = build(false); check = validateIntentSkeleton(sk, cc) } sc.skeletonReplanned = !sc.phase
+    // v673 — a MEANING-PLANNED phase is never silently degraded to "question → answer" everywhere: its problem stays
+    // visible, the meaning plan is INVALID and the feasibility stage replaces the target that cannot be placed
+    if (!check.valid && !sc.phase) { sk = build(true); sk.forEach(t => { if (t.intent === 'ANSWER') t.fillers = [] }); check = validateIntentSkeleton(sk, cc) } }
   sc.skeleton = sk; sc.skeletonCheck = check
   return sc
 }
@@ -18410,6 +18649,15 @@ const LISTENING_REASSIGN_CALLS = 4            // v668: paid placement calls for 
 const LISTENING_SALVAGE_CALLS = 3             // v669: bounded salvage of an escalated / re-planned candidate — 3 independent batches cover
                                               // every line of a scene (context lines may not overlap), so salvage can finish before commit
 const LISTENING_PREFLIGHT = { CLOSED_VOCAB_LINES: 3, HARD_FAILURES: 3, MALFORMED_LINES: 2, MALFORMED_RATE: 0.25 }
+// candidate-local line numbers (1-based) that the duplicate policy flags against the already committed lines
+function crossPhaseDuplicateLines(env, accepted, cand) {
+  const { la, ctx } = env
+  const cc = ctx && ctx.complexity
+  const tg = text => (env.targets || []).filter(t => t.surface && la.present(text, t.surface, ctx)).map(t => t.id)
+  const prev = (accepted || []).filter(a => a !== cand).flatMap(s => s.turns.map(tn => ({ text: la.text(tn.pair), intentional: true, units: cc ? cc.countUnits(la.text(tn.pair)) : null })))
+  const mine = (cand.turns || []).map(tn => ({ text: la.text(tn.pair), intentional: !!tn.intentionalRepetition, units: cc ? cc.countUnits(la.text(tn.pair)) : null, targets: tg(la.text(tn.pair)) }))
+  return listeningDuplicateIssues(prev.concat(mine), cc).filter(x => x.line > prev.length).map(x => x.line - prev.length)
+}
 function validateScenePreflight(env, cand, sp, o) {
   const { la, targets, ctx, byId } = env
   const opt = o || {}
@@ -18419,8 +18667,8 @@ function validateScenePreflight(env, cand, sp, o) {
   const cv = lines('CLOSED_VOCAB'), tok = lines('TOKENIZATION_ERROR'), len = lines('TOO_COMPLEX'), m3 = lines('MAX_TARGETS_PER_TURN'), merged = lines('MERGED_SPEAKERS')
   const dup = lines(/DUPLICATE/)
   const qual = lines(/^(SPEAKER_IDENTITY|LINE_QUALITY)$/)   // v669 §6
-  const prevTexts = new Set((opt.accepted || []).flatMap(s => s.turns.map(tn => _lnNorm(la.text(tn.pair)))).filter(Boolean))
-  cand.turns.forEach((tn, k) => { const nt = _lnNorm(la.text(tn.pair)); if (nt && prevTexts.has(nt) && !tn.intentionalRepetition) dup.add(k + 1) })
+  // v673 §3 — a repeat of an EARLIER committed line follows the Listening duplicate policy (short glue may recur)
+  crossPhaseDuplicateLines(env, opt.accepted || [], cand).forEach(k => dup.add(k))
   const speakers = new Set(cand.turns.map(t => t.speaker))
   const oneSpeaker = cand.turns.length >= 2 && speakers.size < 2
   const det = cand.turns.length > 1 ? listeningCoherenceCheck(cand.turns.map((tn, i) => ({ idx: i, pair: tn.pair, speaker: tn.speaker }))) : { score: 5, reason: '' }
@@ -18523,14 +18771,25 @@ function _lnQuestionSlot(t) {
   if (/\b(what|which)\b/.test(g)) return 'THING'
   return 'YESNO'
 }
+// v673 — a meaning-planned phase classifies a filler with the SAME metadata its planner used (one classifier, no drift:
+// "ครอบครัว (family)" is a PERSON for both the planner and the validator)
+function _lnFillerTypeOfMeta(t) {
+  const m = listeningTargetMetadata(t)
+  if (m.valueType === 'PHONE') return 'THING'
+  return m.valueType || _lnFillerType(t)
+}
 function _lnFillerType(t) {
   const g = String(t.gloss || '').toLowerCase()
+  // v673 — degree / relational words modify another word (很 "very", 一起 "together", 跟 "with")
+  if (/^(very|too|so|quite|a little|a bit|rather|extremely)\s*([,;/(]|$|much)/.test(g.trim()) || /^(with|together|at|in|on|to|from|also|still|already|again|just)\s*([,;/(]|$)/.test(g.trim())) return 'MODIFIER'
   if (t.role === 'RESPONSE_TOKEN') return 'YESNO'
   if (t.role === 'TIME' || /\b\d+\s*(am|pm)\b|o'clock|today|tomorrow|tonight|morning|evening|noon/.test(g)) return 'TIME'
   if (/years? old/.test(g)) return 'AGE'
   if (/\b(minutes?|hours?)\b/.test(g)) return 'DURATION'
   // v672 §2 — a phone number / code is a THING to exchange, never an age or a price (live: "B ANSWER(age) uses เบอร์โทรศัพท์")
   if (/\b(phone|telephone|number plate|code|password)\b/.test(g)) return 'THING'
+  // v673 §2 — a digit (ศูนย์ "zero") is part of a NUMBER being given (a phone number, an amount) — never statement filler
+  if (/^(zero|one|two|three|four|five|six|seven|eight|nine)\b/.test(g.trim())) return 'DIGITS'
   if (t.role === 'NUMBER' || /\b(baht|price|money|cost)\b/.test(g)) return 'AMOUNT'
   if (t.role === 'PLACE') return 'PLACE'
   if (t.role === 'ACTION') return 'ACTION'
@@ -18538,11 +18797,17 @@ function _lnFillerType(t) {
   if (/\b(you all|friend|brother|sister|mother|father|people|person|tourist)\b/.test(g)) return 'PERSON'
   return 'THING'
 }
-const LISTENING_SLOT_FILLERS = { AGE: ['AGE', 'AMOUNT'], DURATION: ['DURATION'], AMOUNT: ['AMOUNT'], TIME: ['TIME'], PLACE: ['PLACE'], PERSON: ['PERSON'],
-  REASON: ['STATE', 'ACTION', 'THING'], STATE: ['STATE'], THING: ['THING', 'PLACE', 'PERSON', 'ACTION'], YESNO: ['YESNO', 'ACTION', 'STATE'] }
+// v673 §2 — a WHY question is answered by a REASON clause: no lesson word fills it automatically (为什么 → 大 is not a
+// reason); a PHONE request is answered by digits
+const LISTENING_SLOT_FILLERS = { AGE: ['AGE', 'AMOUNT'], DURATION: ['DURATION'], AMOUNT: ['AMOUNT', 'DIGITS'], TIME: ['TIME'], PLACE: ['PLACE'], PERSON: ['PERSON'],
+  REASON: [], STATE: ['STATE'], THING: ['THING', 'PLACE', 'PERSON', 'ACTION'], YESNO: ['YESNO', 'ACTION', 'STATE'], PHONE: ['DIGITS'] }
 function listeningSlotAccepts(slot, filler) { return (LISTENING_SLOT_FILLERS[slot] || []).includes(filler) }
-const _LN_SLOT_LABEL = { AGE: 'age', DURATION: 'how long', AMOUNT: 'amount', TIME: 'time', PLACE: 'place', PERSON: 'person', REASON: 'reason', STATE: 'how it is', THING: 'what', YESNO: 'yes/no' }
+const _LN_SLOT_LABEL = { AGE: 'age', DURATION: 'how long', AMOUNT: 'amount', TIME: 'time', PLACE: 'place', PERSON: 'person', REASON: 'reason', STATE: 'how it is', THING: 'what', YESNO: 'yes/no', PHONE: 'phone number' }
+// v673 — one-conversation phases are planned SEMANTICALLY (meaning first); the multi-scene legacy planner keeps its pairing
 function _lnPlanExchanges(sc, byId) {
+  return sc && sc.phase ? _lnPlanMeaningExchanges(sc, byId) : _lnPlanExchangesLegacy(sc, byId)
+}
+function _lnPlanExchangesLegacy(sc, byId) {
   const ts = sc.requiredTargetIds.map(id => byId.get(id)).filter(Boolean)
   const greet = ts.filter(t => t.role === 'GREETING'), part = ts.filter(t => t.role === 'PARTING')
   const q = ts.filter(t => t.role === 'QUESTION_WORD'), r = ts.filter(t => t.role === 'RESPONSE_TOKEN')
@@ -18585,6 +18850,227 @@ function _lnPlanExchanges(sc, byId) {
   // v671 §B5 — a compact plan (headroom) drops the per-scene transition allowance; the scene may still use it if room is left
   sc.expectedTurns = Math.max(4, 2 * ex.length + (sc.compact ? 0 : 1))
   return sc
+}
+// ══ v673 §2D — TARGET COMMUNICATIVE METADATA (derived, deterministic, language-neutral) ═══════════════════════════════
+// canonical sense · part of speech · communicative functions · natural contexts · required complements · collocations ·
+// question types it can ASK / ANSWER · incompatible roles · standalone response? · recognition-only?
+// Examples encoded: WHY words request a reason (no lesson word is an automatic reason: 为什么 → 大 is invalid); WHERE words
+// request / supply a place; HOW MUCH requests / supplies an amount; an APOLOGY expects an acknowledgement; ไม่เชิง is a
+// qualified correction (only after a yes/no question, never filler); ศูนย์ is a digit inside a real number (a phone number,
+// an amount), never statement filler; เบอร์โทรศัพท์ is a phone-number concept — requested and GIVEN as digits, never a
+// proposal countered by พัน; なんで is reason-seeking and is never answered by いいえ.
+const LN_DIGIT_GLOSS = /^(zero|one|two|three|four|five|six|seven|eight|nine)\b/
+const LN_POSITIVE_STATE = /^(good|great|nice|fun|funny|worth|delicious|tasty|okay|ok|fine|interesting|beautiful|pretty|cheap|easy|happy|cool)\b/
+const LN_STATE_GLOSS = /^(funny|fun|worth|good|bad|big|small|hot|cold|delicious|expensive|cheap|busy|free|easy|difficult|hard|new|old|tired|happy|pretty|beautiful|far|near|interesting|boring|nice|great|spicy|sweet|tasty|late|early|fast|slow|quiet|noisy|crowded|clean|dirty|full|hungry)\b/
+function listeningTargetMetadata(t) {
+  const g = String((t && t.gloss) || '').toLowerCase().trim()
+  const full = (g + ' ' + String((t && t.word && t.word.english) || '')).toLowerCase()
+  const role = (t && t.role) || 'CONTENT'
+  const posRaw = String((t && t.word && (t.word.partOfSpeech || t.word.pos)) || '').toLowerCase()
+  const pos = posRaw || ({ QUESTION_WORD: 'question word', ACTION: 'verb', DESCRIPTION: 'adjective', RESPONSE_TOKEN: 'response', DISCOURSE_MARKER: 'interjection', GREETING: 'set phrase', PARTING: 'set phrase', APOLOGY: 'set phrase', TIME: 'time noun', PLACE: 'place noun', NUMBER: 'number' })[role] || 'noun'
+  const m = { id: t.id, surface: t.surface, canonicalSense: (t && (t.sense || t.gloss)) || '', pos, role, valueType: null, asks: null, functions: [], canAnswer: [], incompatibleRoles: [],
+    standaloneResponse: false, recognitionOnly: false, naturalContexts: [], requiredComplements: [], collocations: [], supportNeeds: [] }
+  const phone = /\b(phone|telephone|mobile)\b/.test(g) && !/^to (phone|call|ring)/.test(g)
+  const digit = LN_DIGIT_GLOSS.test(g) && !/\b(hundred|thousand|million|o'clock|am|pm|years?)\b/.test(g)
+  if (role === 'QUESTION_WORD') {
+    const slot = _lnQuestionSlot(t)
+    Object.assign(m, { asks: slot, functions: ['ASK'], incompatibleRoles: ['ANSWER', 'REACTION', 'ACCEPT', 'COUNTERPROPOSAL'] })
+    if (slot === 'REASON') m.supportNeeds.push({ concept: 'something to give a reason with (any action / state word)', rx: /\b(to |go|come|eat|like|want|busy|tired|far|near|good|bad|expensive|cheap|have|need|work|home)\b/ })
+    if (slot === 'AMOUNT') m.supportNeeds.push({ concept: 'an amount to answer with (a number, money, expensive / cheap, a lot / a little)', rx: /\b(one|two|three|four|five|six|seven|eight|nine|ten|hundred|thousand|million|money|baht|yen|yuan|expensive|cheap|a lot|many|much|little|few)\b/ })
+    if (slot === 'PLACE') m.supportNeeds.push({ concept: 'a place to answer with', rx: /\b(here|there|home|house|station|shop|store|restaurant|school|office|market|museum|temple|park|city|place)\b/ })
+    if (slot === 'TIME') m.supportNeeds.push({ concept: 'a time to answer with', rx: /\b(today|tomorrow|yesterday|now|later|morning|evening|night|o'clock|\d\s*(am|pm)|noon|week)\b/ })
+    if (slot === 'PERSON') m.supportNeeds.push({ concept: 'a person to answer with', rx: /\b(i|me|you|he|she|friend|mother|father|teacher|person|people|we)\b/ })
+    m.naturalContexts = [listeningStoryPhaseOf(t) || 'any']
+  } else if (phone) {
+    Object.assign(m, { valueType: 'PHONE', functions: ['REQUEST_ITEM', 'STATE'], canAnswer: ['THING'], incompatibleRoles: ['PROPOSAL', 'COUNTERPROPOSAL', 'ANSWER(AMOUNT)', 'ANSWER(AGE)'], naturalContexts: ['CLOSE', 'OPEN'],
+      collocations: ['DIGITS'], requiredComplements: ['the digits of the number (or "I will give it to you")'] })
+    m.supportNeeds.push({ concept: 'digits to give the number with', rx: /\b(zero|one|two|three|four|five|six|seven|eight|nine)\b/, min: 2, orBatchValueType: 'DIGITS' })
+  } else if (digit) {
+    Object.assign(m, { valueType: 'DIGITS', functions: ['ANSWER'], canAnswer: ['PHONE', 'AMOUNT'], incompatibleRoles: ['STATEMENT', 'REACTION', 'PROPOSAL', 'COUNTERPROPOSAL', 'QUESTION'], naturalContexts: ['CLOSE', 'PAY'],
+      collocations: ['PHONE', 'AMOUNT'] })
+    m.supportNeeds.push({ concept: 'a real number context (other digits or a phone number)', rx: /\b(one|two|three|four|five|six|seven|eight|nine|phone|telephone|number)\b/, min: 2, orBatchValueType: 'PHONE' })
+  } else if (role === 'NUMBER') {
+    Object.assign(m, { valueType: 'AMOUNT', functions: ['ANSWER', 'PROPOSAL', 'COUNTERPROPOSAL', 'STATE'], canAnswer: ['AMOUNT', 'AGE'], naturalContexts: ['PAY'], collocations: ['THING', 'PLACE'] })
+  } else if (role === 'TIME' || /\b\d+\s*(am|pm)\b|o'clock|noon|midnight/.test(g)) {
+    const clock = /\b\d+\s*(am|pm)\b|o'clock|noon|midnight|morning/.test(g) && /\b(ten|eleven|twelve|one|two|three|four|five|six|seven|eight|nine|\d+)\b|noon|midnight/.test(g)
+    // a PAST time (yesterday, last week) belongs to catching up at the start — never to planning; a future / present day word
+    // (today, tomorrow, now) can be proposed and countered like a clock time ("Today? — Tomorrow is better.")
+    const past = /\b(yesterday|last|ago|earlier|before|previous)\b/.test(g)
+    const day = !past && /\b(today|tomorrow|tonight|now|later|soon|weekend|next|this (morning|afternoon|evening))\b/.test(g)
+    Object.assign(m, { valueType: 'TIME', past, clock, functions: (clock || day) ? ['ANSWER', 'PROPOSAL', 'COUNTERPROPOSAL'] : ['ANSWER', 'STATE'], canAnswer: ['TIME'], naturalContexts: past ? ['OPEN'] : ['ARRANGE'], collocations: ['ACTION'] })
+  } else if (role === 'RESPONSE_TOKEN') {
+    const qualified = /^(not (exactly|really|quite))\b/.test(g)
+    Object.assign(m, { valueType: 'YESNO', functions: qualified ? ['CORRECT'] : ['ANSWER'], canAnswer: ['YESNO'], standaloneResponse: true, incompatibleRoles: ['QUESTION', 'PROPOSAL', 'STATEMENT', 'ANSWER(WH)'],
+      requiredComplements: qualified ? ['a yes/no question whose assumption is only partly right'] : ['a yes/no question'] })
+  } else if (role === 'APOLOGY') Object.assign(m, { functions: ['APOLOGISE'], standaloneResponse: true, incompatibleRoles: ['QUESTION', 'ANSWER'], requiredComplements: ['an acknowledgement ("it\'s okay")'] })
+  else if (role === 'GREETING') Object.assign(m, { functions: ['GREET'], standaloneResponse: true, naturalContexts: ['OPEN'] })
+  else if (role === 'PARTING') Object.assign(m, { functions: ['FAREWELL'], standaloneResponse: true, naturalContexts: ['CLOSE'] })
+  else if (role === 'DISCOURSE_MARKER') Object.assign(m, { functions: ['REACT'], standaloneResponse: true, incompatibleRoles: ['QUESTION'] })
+  // v673 — a polite set phrase is a speech ACT, never a "thing" to ask a yes / no question about (live-style plan: "A asks a
+  // yes / no question using ありがとう"): thanks answers an offer / something given · please makes a request · you're welcome /
+  // no problem acknowledges · good luck / congratulations react
+  else if (role === 'FUNCTIONAL_PHRASE' || /^(thank|thanks|please|you'?re welcome|no problem|good luck|congratulations|cheers)\b/.test(g)) {
+    const thank = /^(thank|thanks)\b/.test(g), please = /^please\b/.test(g), ack = /^(you'?re welcome|no problem)\b/.test(g)
+    Object.assign(m, { functions: thank ? ['THANK'] : please ? ['REQUEST'] : ack ? ['ACKNOWLEDGE'] : ['REACT'], standaloneResponse: !please,
+      incompatibleRoles: ['QUESTION', 'ANSWER', 'PROPOSAL', 'COUNTERPROPOSAL'],
+      requiredComplements: [thank ? 'something to thank for (an offer, help, a thing given)' : please ? 'the thing asked for' : ack ? 'a thanks or an apology to acknowledge' : 'something to react to'] })
+  }
+  // v673 — a degree word (very / too / a bit) or a relational word (with / together / at) MODIFIES another word: it rides in
+  // the turn of the word it modifies (很 + 大, 一起 + 去) — never a statement or a "proposal" of its own (live ZH: 很 planned as ACTION)
+  else if (/^(very|too|so|quite|a little|a bit|rather|really|extremely)\s*([,;/(]|$|\(|much)/.test(g) || /^too \(/.test(g)) Object.assign(m, { valueType: 'MODIFIER', modifies: 'STATE', functions: ['MODIFY'], collocations: ['STATE'], incompatibleRoles: ['PROPOSAL', 'COUNTERPROPOSAL'] })
+  else if (/^(with|together|at|in|on|to|from|also|still|already|again|just)\s*([,;/(]|$)/.test(g) || /^(be at|be in|located|together with)\b/.test(g)) Object.assign(m, { valueType: 'MODIFIER', modifies: 'ACTION', functions: ['MODIFY'], collocations: ['ACTION', 'PLACE', 'PERSON'], incompatibleRoles: ['COUNTERPROPOSAL'] })
+  else if (role === 'ACTION') {
+    const motion = /\b(go|come|visit|return|arrive|go to|get to|walk|ride|take)\b/.test(g)
+    const transitive = /\b(eat|drink|buy|take|use|see|look|watch|want|have|need|find|bring|give|pay|order|make|do|wait)\b/.test(g)
+    const stative = /\b(know|understand|like|love|want|think|mean|remember|forget|believe|feel|hope|be|is|exist)\b/.test(g) && !motion
+    Object.assign(m, { valueType: 'ACTION', stative, functions: stative ? ['QUESTION(YESNO)', 'STATEMENT'] : ['PROPOSAL', 'STATEMENT', 'QUESTION(YESNO)'], canAnswer: ['YESNO', 'THING'], collocations: motion ? ['PLACE', 'TIME'] : transitive ? ['THING'] : [],
+      incompatibleRoles: stative ? ['PROPOSAL', 'COUNTERPROPOSAL'] : [], requiredComplements: motion ? ['a destination (a place)'] : transitive ? ['an object (a thing)'] : [] })
+  }
+  // a "let's …" phrase is a proposal of its own (ทานกันเลย "let's eat")
+  else if (/^let'?s\b/.test(g)) Object.assign(m, { valueType: 'ACTION', functions: ['PROPOSAL'], canAnswer: [], collocations: [], requiredComplements: [], incompatibleRoles: ['QUESTION', 'ANSWER'] })
+  else if (role === 'DESCRIPTION' || LN_STATE_GLOSS.test(g)) Object.assign(m, { valueType: 'STATE', functions: ['ANSWER', 'REACT', 'STATEMENT'], canAnswer: ['STATE', 'YESNO'], standaloneResponse: g.split(/\s+/).length <= 2 })
+  else if (role === 'PLACE') Object.assign(m, { valueType: 'PLACE', functions: ['ANSWER', 'STATEMENT', 'PROPOSAL'], canAnswer: ['PLACE', 'THING'], collocations: ['ACTION'] })
+  else {
+    const person = /\b(you all|friend|brother|sister|mother|father|people|person|tourist|teacher|child|family|husband|wife)\b/.test(g)
+    Object.assign(m, { valueType: person ? 'PERSON' : 'THING', functions: ['STATEMENT', 'QUESTION(YESNO)', 'ANSWER'], canAnswer: person ? ['PERSON', 'THING'] : ['THING'] })
+  }
+  if (!m.naturalContexts.length) m.naturalContexts = [listeningStoryPhaseOf(t) || 'any']
+  // a formal / written-only gloss is recognition-only (heard, but a poor spoken production target)
+  m.recognitionOnly = /\b(formal|written|literary)\b/.test(full) && !/\bspoken\b/.test(full)
+  return m
+}
+// a target is individually FEASIBLE when the learner's authorised support vocabulary can carry at least one natural role
+function listeningTargetFeasibility(meta, glosses, batchMetas) {
+  const G = (glosses || []).map(x => String(x || '').toLowerCase())
+  const reasons = []
+  ;(meta.supportNeeds || []).forEach(nd => {
+    const hits = G.filter(x => nd.rx.test(x)).length
+    const batchOk = nd.orBatchValueType && (batchMetas || []).some(b => b.id !== meta.id && b.valueType === nd.orBatchValueType)
+    if (hits < (nd.min || 1) && !batchOk) reasons.push('needs ' + nd.concept + ' — not in the learner\'s authorised vocabulary')
+  })
+  if (meta.recognitionOnly) reasons.push('recognition-only (formal / written) — not a natural spoken target')
+  return { feasible: !reasons.length, reasons }
+}
+// ══ v673 §2C/§2E — THE MEANING PLAN of one phase: targets are placed where the story can carry them NATURALLY ══════════
+// (never "six targets in this phase, paired in order"). Natural pairings: a WH question and the target that ANSWERS it;
+// a phone-number request and the digits that give it; two clock times as proposal → counter-proposal → acceptance; a
+// reply word after a yes/no question that carries another target; a time / amount / person / place / state target as the
+// ANSWER to a short free question; a motion / transitive verb together with its place / object; a reaction word after a
+// statement. A target with no fitting partner gets its own exchange with a FREE partner turn — two unrelated targets are
+// never forced into "A says X / B reacts with Y".
+function _lnPlanMeaningExchanges(sc, byId) {
+  const ts = sc.requiredTargetIds.map(id => byId.get(id)).filter(Boolean)
+  const M = new Map(ts.map(t => [t.id, listeningTargetMetadata(t)]))
+  const left = new Set(ts.map(t => t.id))
+  const ord = ts.slice()
+  const pick = pred => { const t = ord.find(x => left.has(x.id) && pred(M.get(x.id), x)); if (t) left.delete(t.id); return t || null }
+  const all = pred => { const out = []; let t; while ((t = pick(pred))) out.push(t); return out }
+  const ex = []
+  const push = (kind, slot, a, b, extra) => { ex.push({ exchangeIndex: ex.length + 1, kind, slot: slot || null,
+    turns: [{ speaker: 'A', targetIds: (a || []).filter(Boolean).map(t => t.id) }, { speaker: 'B', targetIds: (b || []).filter(Boolean).map(t => t.id) }].concat(extra && extra.third ? [{ speaker: 'A', targetIds: [] }] : []),
+    ...(extra || {}), third: undefined }); return ex[ex.length - 1] }
+  // 1. greetings
+  const greet = all(m => m.functions.includes('GREET'))
+  if (greet.length) push('GREETING', null, [greet[0]], [greet[1]])
+  greet.slice(2).forEach(g => push('GREETING', null, [g], []))
+  // 2. apology → acknowledgement
+  all(m => m.functions.includes('APOLOGISE')).forEach(a => push('APOLOGY', null, [a], [pick(m => /\b(okay|ok|fine|alright|all right|no problem|don't worry|never mind)\b/i.test(String((byId.get(m.id) || {}).gloss || '')))]))
+  // 3. phone number requested → given as digits
+  all(m => m.valueType === 'PHONE').forEach(ph => push('QUESTION', 'PHONE', [ph], [pick(m => m.valueType === 'DIGITS')]))
+  // 4. two clock times / two amounts → proposal → counter-proposal → acceptance (the LAST value is the agreed one)
+  ;(sc.contrasts || []).forEach(cx => { const pair = cx.ids.filter(id => left.has(id)).map(id => byId.get(id)); if (pair.length < 2) return
+    pair.forEach(t => left.delete(t.id)); const e = push('PROPOSAL', null, [pair[0]], [pair[1]], { third: true }); e.second = 'COUNTERPROPOSAL'; e.agreedTargetId = pair[1].id })
+  // 5. WH questions with the target that answers them (a motion / transitive verb may ride in the question)
+  all(m => m.role === 'QUESTION_WORD').forEach(q => {
+    const slot = M.get(q.id).asks || _lnQuestionSlot(q)
+    const filler = slot === 'REASON' ? null : (pick(m => m.valueType === slot && m.canAnswer.includes(slot)) || pick(m => m.canAnswer.includes(slot) && listeningSlotAccepts(slot, _lnFillerType(byId.get(m.id)))))
+    const verb = /^(PLACE|THING|TIME|REASON|PERSON)$/.test(slot) ? pick(m => m.valueType === 'ACTION' && (m.collocations.includes(slot) || (slot !== 'PLACE' && slot !== 'TIME' && m.requiredComplements.length))) : null
+    // a reply word answers a yes/no question
+    const yn = !filler && slot === 'YESNO' ? pick(m => m.valueType === 'YESNO') : null
+    push('QUESTION', slot, [q, verb], [filler || yn])
+  })
+  // 6. reply words after a yes/no question carrying another target (a verb, a state, a thing)
+  all(m => m.valueType === 'YESNO').forEach(r => { const carrier = pick(m => ['ACTION', 'STATE', 'THING', 'PLACE', 'PERSON'].includes(m.valueType))
+    push('QUESTION', 'YESNO', [carrier], [r]) })
+  // 7. motion / transitive verbs WITH their place / object → proposal → acceptance (a state word may be the reaction). First
+  // the verbs whose place / object is available, so a value question never steals a verb from its complement.
+  const _hasLeft = vt => ord.some(x => left.has(x.id) && M.get(x.id).valueType === vt)
+  all(m => m.valueType === 'ACTION' && ((m.collocations.includes('PLACE') && _hasLeft('PLACE')) || (m.collocations.includes('THING') && _hasLeft('THING')))).forEach(v => { const mv = M.get(v.id)
+    const comp = mv.collocations.includes('PLACE') ? pick(m => m.valueType === 'PLACE') : mv.collocations.includes('THING') ? pick(m => m.valueType === 'THING') : null
+    // a stative verb (know, like, mean …) is never "proposed": it is asked about ("do you know …?")
+    if (mv.stative) push('QUESTION', 'YESNO', [v, comp], [])
+    else push('PROPOSAL', null, [v, comp], [pick(m => m.valueType === 'STATE' && m.standaloneResponse && LN_POSITIVE_STATE.test(String((byId.get(m.id) || {}).gloss || '').toLowerCase()))]) })
+  // 8. values as ANSWERS to a short free question (when? how much? who? where?) — a verb may ride in the question
+  all(m => m.valueType === 'TIME').forEach(tm => push('QUESTION', 'TIME', [pick(m => m.valueType === 'ACTION' && m.collocations.includes('TIME'))], [tm]))
+  all(m => m.valueType === 'AMOUNT').forEach(am => push('QUESTION', 'AMOUNT', [pick(m => m.valueType === 'THING')], [am]))
+  all(m => m.valueType === 'DIGITS').forEach(d => push('QUESTION', 'AMOUNT', [], [d]))       // a digit with no phone request: a number answer
+  all(m => m.valueType === 'PERSON').forEach(p => push('QUESTION', 'PERSON', [pick(m => m.valueType === 'ACTION')], [p]))
+  // remaining verbs: a motion verb + another action is ONE serial proposal ("let's go and buy it" 去买); a transitive verb with no
+  // object target is asked about with WHAT ("what are you waiting for?"); a motion verb with WHERE; a stative one yes/no
+  all(m => m.valueType === 'ACTION' && m.collocations.includes('PLACE') && !m.stative && ord.some(x => left.has(x.id) && x.id !== m.id && M.get(x.id).valueType === 'ACTION' && !M.get(x.id).stative && !M.get(x.id).collocations.includes('PLACE'))).forEach(v => {
+    const w = pick(m => m.valueType === 'ACTION' && !m.stative && !m.collocations.includes('PLACE'))
+    push('PROPOSAL', null, [v, w], [pick(m => m.valueType === 'STATE' && m.standaloneResponse && LN_POSITIVE_STATE.test(String((byId.get(m.id) || {}).gloss || '').toLowerCase()))]) })
+  all(m => m.valueType === 'ACTION').forEach(v => { const mv = M.get(v.id)
+    if (mv.stative) push('QUESTION', 'YESNO', [v], [])
+    else if (mv.functions.length === 1 && mv.functions[0] === 'PROPOSAL') push('PROPOSAL', null, [v], [])
+    else if (mv.collocations.includes('THING')) push('QUESTION', 'THING', [v], [])
+    else if (mv.collocations.includes('PLACE')) push('QUESTION', 'PLACE', [v], [])
+    else push('PROPOSAL', null, [v], [pick(m => m.valueType === 'STATE' && m.standaloneResponse && LN_POSITIVE_STATE.test(String((byId.get(m.id) || {}).gloss || '').toLowerCase()))]) })
+  // 9. places: asked about with WHERE (free), the place answers
+  all(m => m.valueType === 'PLACE').forEach(p => push('QUESTION', 'PLACE', [], [p]))
+  // 10. state words answer "how is it?" about a thing (the thing rides in the question)
+  all(m => m.valueType === 'STATE').forEach(s => push('QUESTION', 'STATE', [pick(m => m.valueType === 'THING')], [s]))
+  // 10b. modifiers ride in the turn of the word they modify (a state answer, a verb's turn); else a free question's answer
+  all(m => m.valueType === 'MODIFIER').forEach(md => { const mm = M.get(md.id)
+    const host = ex.find(e => e.turns.some(tu => tu.targetIds.length && tu.targetIds.length < 2 && tu.targetIds.some(id => (M.get(id) || {}).valueType === mm.modifies)))
+    if (host) { host.turns.find(tu => tu.targetIds.length < 2 && tu.targetIds.some(id => (M.get(id) || {}).valueType === mm.modifies)).targetIds.push(md.id); return }
+    // a relational word (跟 / 在 / 一起) also rides in a question or proposal turn with room ("跟谁去？", "在哪里？")
+    if (mm.modifies === 'ACTION') { const q = ex.find(e => (e.kind === 'QUESTION' || e.kind === 'PROPOSAL') && e.turns[0].targetIds.length < 2 && !e.turns[0].targetIds.some(id => (M.get(id) || {}).valueType === 'MODIFIER'))
+      if (q) { q.turns[0].targetIds.push(md.id); return } }
+    if (mm.modifies === 'STATE') push('QUESTION', 'STATE', [pick(m => m.valueType === 'THING')], [md])
+    else push('PROPOSAL', null, [md], []) })
+  // 11. reaction words react to a statement (which may carry a thing)
+  all(m => m.functions.includes('REACT') && (m.role === 'DISCOURSE_MARKER' || !m.valueType)).forEach(d => push('STATEMENT', null, [pick(m => m.valueType === 'THING')], [d]))
+  // 11b. v673 — polite set phrases keep their act: please → a REQUEST (with the thing asked for) · thanks → the reply to an
+  // offer / a thing given · you're welcome / no problem → the reply that acknowledges
+  all(m => m.functions.includes('REQUEST')).forEach(r => push('REQUEST', null, [r, pick(m => m.valueType === 'THING')], []))
+  all(m => m.functions.includes('THANK')).forEach(t => push('THANKS', null, [t], [pick(m => m.functions.includes('ACKNOWLEDGE'))]))
+  all(m => m.functions.includes('ACKNOWLEDGE')).forEach(a => push('THANKS', null, [], [a]))
+  // 12. remaining things: a statement with a free reaction
+  all(m => m.role !== 'PARTING').forEach(t => push('STATEMENT', null, [t], []))
+  // 13. farewell
+  const part = all(m => m.functions.includes('FAREWELL'))
+  if (part.length) push('FAREWELL', null, [part[0]], [part[1]])
+  part.slice(2).forEach(p => push('FAREWELL', null, [p], []))
+  sc.exchanges = ex
+  sc.targetMetadata = Object.fromEntries([...M.entries()].map(([id, m]) => [id, m]))
+  sc.expectedTurns = Math.max(2, ex.reduce((a, e) => a + e.turns.length, 0) + (sc.compact ? 0 : 1))
+  return sc
+}
+// the English PROPOSITION of a planned turn (meaning level — no target-language text yet)
+const _LN_ASK_PHRASE = { PLACE: 'where (a place)', TIME: 'when / what time', AMOUNT: 'how much / how many', PERSON: 'who', REASON: 'why (a reason)', STATE: 'how it is', THING: 'what', YESNO: 'a yes / no question', AGE: 'how old', DURATION: 'how long', PHONE: 'for the phone number' }
+function _lnTurnProposition(tu, byId, other) {
+  const S = tu.speaker, O = S === 'A' ? 'B' : 'A'
+  const gl = (tu.targetIds || []).map(id => { const t = byId.get(id); return t ? t.surface + ' "' + t.gloss + '"' : '' }).filter(Boolean)
+  const w = gl.length ? ' (using ' + gl.join(' + ') + ')' : ''
+  switch (tu.intent) {
+    case 'GREETING': return tu.respondsTo ? S + ' greets ' + O + ' back' + w : S + ' greets ' + O + w
+    case 'FAREWELL': return tu.respondsTo ? S + ' says goodbye back' + w : S + ' starts saying goodbye' + w
+    case 'APOLOGY': return S + ' apologises to ' + O + w
+    case 'THANKS': return S + ' thanks ' + O + w
+    case 'ACKNOWLEDGEMENT': return other && other.intent === 'THANKS' ? S + ' replies to the thanks ("you\'re welcome")' + w : S + ' accepts the apology ("it\'s okay")' + w
+    case 'QUESTION': return S + ' asks ' + O + ' ' + (_LN_ASK_PHRASE[tu.slot] || 'a question') + w
+    case 'ANSWER': return S + ' answers with ' + (LISTENING_SLOT_EXPECTS[tu.slot] || 'the information asked for') + w
+    case 'PROPOSAL': return S + ' suggests ' + (gl.length ? gl.join(' + ') : 'what to do next')
+    case 'COUNTERPROPOSAL': return S + ' suggests ' + (gl.length ? gl.join(' + ') : 'a different value') + ' instead — this becomes the agreed value'
+    case 'ACCEPT': return S + ' agrees' + w
+    case 'REJECT': return S + ' declines' + w
+    case 'STATEMENT': return S + ' tells ' + O + ' something' + (gl.length ? ' about ' + gl.join(' + ') : ' that moves the plan on')
+    case 'REACTION': return S + ' reacts' + w
+    case 'REQUEST': return S + ' asks ' + O + ' for something' + w
+    case 'RESPONSE': return S + ' responds' + w
+    default: return S + ' speaks' + w
+  }
 }
 // v671 §B5 — the SIMPLE rung of scene recovery: the same cluster, said in the plainest situation its main topic allows
 function _lnSimplePremise(sc, byId) {
@@ -18777,8 +19263,12 @@ function listeningStoryPhaseOf(t) {
   const g = String(t.gloss || t.english || '').toLowerCase(), d = _lnPlanDomain(t), r = t.role || 'CONTENT'
   if (r === 'GREETING') return 'OPEN'
   if (r === 'PARTING' || /\b(goodbye|good-bye|bye|take leave|see you|take care|have a (good|nice)|enjoy your)\b/.test(g)) return 'CLOSE'
+  // v673 §2 — a phone number is swapped before they part (requested, then GIVEN as digits) — never a price
+  if (/\b(phone|telephone|mobile)\b/.test(g) && !/^to (phone|call|ring)/.test(g)) return 'CLOSE'
   if (/\b(welcome|nice to meet|pleased to meet)\b/.test(g)) return 'OPEN'
   if (/how long|how many (minutes|hours)/.test(g)) return 'MOVE'
+  // v673 — a past time word is catching up (OPEN), not planning
+  if (r === 'TIME' && /\b(yesterday|last (week|night|month|year)|ago)\b/.test(g)) return 'OPEN'
   if (/\b(\d+\s*(am|pm)|o'clock|noon|midnight|what time|when|morning|afternoon|evening|tomorrow|today|appointment|schedule|in advance)\b/.test(g)) return 'ARRANGE'
   if (/how old|age|years old|name|how are you|how is|you all|friend|family|brother|sister|mother|father/.test(g)) return 'OPEN'
   if (/\b(taxi|bus|train|car|way|road|route|walk|drive|arrive|get there|far|near|street|map)\b/.test(g)) return 'MOVE'
@@ -18790,15 +19280,99 @@ function listeningStoryPhaseOf(t) {
   if (d === 'home' || d === 'household actions' || d === 'colours & things') return 'DO'
   return null                                     // topic-neutral (discourse words, response tokens …): placed by load below
 }
+// ══ v673 §2C — THE ABSTRACT MEANING PLAN (built and validated before any surface language) ══════════════════════════
+const LISTENING_PHASE_TIME = { OPEN: 'now — where they meet', DECIDE: 'now — still where they meet', ARRANGE: 'now — planning when to go (later today)', MOVE: 'later — on the way, after agreeing the time',
+  DO: 'later — at the place they chose', PAY: 'later — at the end of the visit', CLOSE: 'at the end — as they part' }
+function allowedSupportConceptsFor(sk, metaOf) {
+  const out = []
+  const add = (...x) => x.forEach(y => { if (y && !out.includes(y)) out.push(y) })
+  if (sk.intent === 'QUESTION') add({ PLACE: 'go / come + a place word', TIME: 'time words (today, tomorrow, o\'clock)', AMOUNT: 'money / price words', PERSON: 'person words (friend, I, you)', REASON: 'want / like / busy …', STATE: 'this / that + the thing', THING: 'this / that + a verb', YESNO: 'a question particle', PHONE: 'ask / give + number' }[sk.slot] || null)
+  if (sk.intent === 'ANSWER') add({ PLACE: 'a place word', TIME: 'a time word', AMOUNT: 'a number / money word', PERSON: 'a person word', REASON: 'a short reason clause (because-meaning without new words)', STATE: 'a state / adjective', THING: 'this / that + a noun', YESNO: 'yes / no + a short reason', PHONE: 'digits' }[sk.slot] || null)
+  if (sk.intent === 'PROPOSAL' || sk.intent === 'COUNTERPROPOSAL') add('let\'s / shall we / how about')
+  if (sk.intent === 'ACCEPT') add('okay / good / let\'s do that')
+  if (sk.intent === 'REACTION') add('a short reaction (really? / nice / oh)')
+  if (sk.intent === 'APOLOGY' || sk.intent === 'ACKNOWLEDGEMENT') add('sorry / it\'s okay')
+  if (sk.intent === 'THANKS') add('thanks / you\'re welcome')
+  ;(sk.targetIds || []).forEach(id => { const m = metaOf.get(id); if (m) (m.requiredComplements || []).forEach(rc => add(rc)) })
+  return out
+}
+function buildListeningMeaningPlan(scenes, byId, metaOf, o) {
+  const c = o || {}
+  const turns = []
+  let n = 0
+  scenes.forEach((sc, si) => {
+    const P = LISTENING_STORY_PHASES.find(p => p.key === sc.phase) || {}
+    ;(sc.skeleton || []).forEach(sk => {
+      n++
+      sk.turnId = 'T' + n
+      const prev = sk.respondsTo ? (sc.skeleton.find(x => x.turn === sk.respondsTo) || null) : null
+      const tg = (sk.targetIds || []).map(id => byId.get(id)).filter(Boolean)
+      const m = { turnId: sk.turnId, phase: sc.phase, sceneId: sc.sceneId, speaker: sk.speaker, actType: sk.intent, slot: sk.slot || null,
+        proposition: _lnTurnProposition(sk, byId, prev), topic: P.goal || sc.purpose || '',
+        asksFor: sk.intent === 'QUESTION' ? (_LN_SLOT_LABEL[sk.slot] || sk.slot || null) : null,
+        answerType: sk.respondsTo ? (sk.intent === 'ANSWER' ? (LISTENING_SLOT_EXPECTS[sk.slot] || 'an answer') : (sk.means || LISTENING_ACT_EXPECTS[sk.intent] || null)) : null,
+        referents: tg.map(t => t.gloss).concat(prev ? (prev.targetIds || []).map(id => (byId.get(id) || {}).gloss) : []).filter(Boolean),
+        temporalContext: (LISTENING_PHASE_TIME[sc.phase] || 'during the conversation') + ' · part ' + (si + 1) + ' of ' + scenes.length,
+        targetIds: (sk.targetIds || []).slice(), requiredSense: tg.map(t => t.sense || t.gloss || ''), allowedSupportConcepts: allowedSupportConceptsFor(sk, metaOf),
+        respondsTo: prev ? prev.turnId : null }
+      sk.meaning = m
+      turns.push(m)
+    })
+  })
+  const v = validateListeningMeaningPlan(turns, scenes, byId, metaOf, c)
+  return { turns, valid: v.valid, problems: v.problems, byTarget: v.byTarget, turnCount: turns.length, merges: c.merges || 0 }
+}
+// the complete abstract conversation is VALIDATED before generation: adjacency, semantic slot filling, target roles,
+// incompatible roles, a digit inside a real number, one placement per target, the turn budget
+function validateListeningMeaningPlan(turns, scenes, byId, metaOf, o) {
+  const c = o || {}
+  const problems = [], byTarget = new Map()
+  const bad = (text, ids) => { problems.push({ text, targetIds: ids || [] }); (ids || []).forEach(id => byTarget.set(id, (byTarget.get(id) || []).concat([text]))) }
+  ;(scenes || []).forEach(sc => { if (sc.skeletonCheck && !sc.skeletonCheck.valid) sc.skeletonCheck.problems.forEach(pb => bad(sc.sceneId + ' (' + sc.phase + '): ' + pb,
+    (sc.requiredTargetIds || []).filter(id => { const sf = (byId.get(id) || {}).surface; return sf && pb.includes(sf) }))) })
+  const seen = new Map()
+  ;(turns || []).forEach(t => {
+    t.targetIds.forEach(id => {
+      seen.set(id, (seen.get(id) || 0) + 1)
+      const m = metaOf.get(id); if (!m) return
+      const surf = (byId.get(id) || {}).surface || id
+      const act = t.actType, slotAct = act + '(' + (t.slot || '') + ')'
+      if ((m.incompatibleRoles || []).includes(act) || (m.incompatibleRoles || []).includes(slotAct)) bad(t.turnId + ': ' + surf + ' cannot be a ' + slotAct.replace(/\(\)$/, '') + ' (' + (m.valueType || m.role) + ')', [id])
+      if (m.valueType === 'DIGITS' && !(act === 'ANSWER' && (t.slot === 'PHONE' || t.slot === 'AMOUNT'))) bad(t.turnId + ': the digit ' + surf + ' must be part of a number being GIVEN (a phone number / an amount), not filler', [id])
+      if (m.valueType === 'YESNO' && !(act === 'ANSWER' && t.slot === 'YESNO')) bad(t.turnId + ': the reply word ' + surf + ' must answer a yes/no question', [id])
+      if (m.role === 'QUESTION_WORD' && act !== 'QUESTION') bad(t.turnId + ': the question word ' + surf + ' can only be asked', [id])
+      if (m.valueType === 'PHONE' && /PROPOSAL/.test(act)) bad(t.turnId + ': ' + surf + ' is a phone-number concept — never a proposal / counter-proposal', [id])
+    })
+    if (t.actType === 'ANSWER' && t.slot === 'REASON' && t.targetIds.some(id => (metaOf.get(id) || {}).valueType === 'STATE')) bad(t.turnId + ': a bare state word is not a reason', t.targetIds)
+    if (t.targetIds.length > LISTENING_MAX_TARGETS_PER_TURN) bad(t.turnId + ': ' + t.targetIds.length + ' targets in one turn', t.targetIds)
+  })
+  seen.forEach((k, id) => { if (k > 1) bad('target ' + ((byId.get(id) || {}).surface || id) + ' placed ' + k + ' times', [id]) })
+  if (c.turnsMax && (turns || []).length > c.turnsMax) bad('TURN_BUDGET ' + turns.length + ' planned turns > ' + c.turnsMax, [])
+  return { valid: !problems.length, problems, byTarget }
+}
+function listeningMeaningPlanLog(mp, story) {
+  const out = ['🧠 LISTENING_MEANING_PLAN ' + (mp.valid ? 'VALID' : 'INVALID') + ' · ' + mp.turnCount + ' planned turns (aim ' + LISTENING_CONVERSATION_TURNS.min + '–' + LISTENING_CONVERSATION_TURNS.max + ') · story ' + (story || []).join(' → ') +
+    (mp.merges ? ' · ' + mp.merges + ' statement merge(s) for the turn budget' : '') + ' — validated BEFORE any language is generated' + (mp.valid ? '' : ' · problems: ' + mp.problems.slice(0, 6).map(p => p.text).join('; '))]
+  mp.turns.forEach(t => out.push('   ' + t.turnId + ' ' + t.speaker + ' ' + t.actType + (t.asksFor ? '(' + t.asksFor + ')' : '') + (t.respondsTo ? ' ↩' + t.respondsTo : '') + ' — ' + t.proposition +
+    (t.answerType ? ' ⟨must give ' + t.answerType + '⟩' : '') + ' · ' + t.temporalContext.split(' · ')[0]))
+  return out
+}
 function planListeningConversation(targets, o) {
   const opt = o || {}, T = (targets || []).length, seed = String(opt.seed || '')
   const byId = new Map(targets.map(t => [t.id, t]))
   const rank = x => _lnSeedHash(seed + '|' + x)
   const phaseOf = new Map(LISTENING_STORY_PHASES.map(p => [p.key, { ...p, ids: [] }]))
   const flex = []
-  targets.slice().sort((a, b) => rank(a.id) - rank(b.id)).forEach(t => { const k = listeningStoryPhaseOf(t); if (k) phaseOf.get(k).ids.push(t.id); else flex.push(t) })
-  // balance: an overfull moment hands its most flexible targets to the NEXT moment of the story (never backwards)
   const order = LISTENING_STORY_PHASES.map(p => p.key)
+  // v673 — a GLOBAL REPLAN of the remaining targets never reaches back into committed moments (minPhaseIndex) and plans a
+  // target that did not fit a moment away from it (avoidPhase)
+  const minIdx = Math.max(0, opt.minPhaseIndex || 0)
+  const clampPhase = (k, t) => { if (!k) return k; let i = order.indexOf(k)
+    if (opt.avoidPhase && opt.avoidPhase.get(t.id) === k) i = Math.min(order.length - 1, i + 1)
+    if (i < minIdx) i = minIdx
+    return order[i] }
+  targets.slice().sort((a, b) => rank(a.id) - rank(b.id)).forEach(t => { const k = clampPhase(listeningStoryPhaseOf(t), t); if (k) phaseOf.get(k).ids.push(t.id); else flex.push(t) })
+  // balance: an overfull moment hands its most flexible targets to the NEXT moment of the story (never backwards)
   order.forEach((k, i) => {
     const ph = phaseOf.get(k)
     while (ph.ids.length > LISTENING_PHASE_MAX_TARGETS) {
@@ -18814,19 +19388,38 @@ function planListeningConversation(targets, o) {
     ph.ids.slice().forEach(a => { const sa = (byId.get(a) || {}).surface || ''
       if (sa && ph.ids.some(b => b !== a && ((byId.get(b) || {}).surface || '').includes(sa))) { const nk = order[i + 1] && order[i + 1] !== 'CLOSE' ? order[i + 1] : order[Math.max(1, i - 1)]; if (nk !== k) { ph.ids.splice(ph.ids.indexOf(a), 1); phaseOf.get(nk).ids.push(a) } } })
   })
-  // topic-neutral words join the moments that carry content, lightest first (a question word goes where its answer fits)
-  flex.forEach(t => {
-    const pool = order.filter(k => k !== 'CLOSE' && phaseOf.get(k).ids.length && phaseOf.get(k).ids.length < LISTENING_PHASE_MAX_TARGETS)
-    const k = (pool.length ? pool : order.filter(x => x !== 'CLOSE')).sort((a, b) => phaseOf.get(a).ids.length - phaseOf.get(b).ids.length || order.indexOf(a) - order.indexOf(b))[0]
+  // v673 §2E — SEMANTIC placement of topic-neutral words: a question word goes to the moment that holds the target that
+  // ANSWERS it (何時 → the moment with the times), a reply word to a moment with something to ask about, a digit to the
+  // moment with the phone number; only then the lightest moment
+  const metaOf = new Map(targets.map(t => [t.id, listeningTargetMetadata(t)]))
+  const phaseWith = pred => order.find(k => phaseOf.get(k).ids.some(id => pred(metaOf.get(id))))
+  const roomIn = k => phaseOf.get(k).ids.length < LISTENING_PHASE_MAX_TARGETS
+  // (modifiers last, so the word they modify is already placed)
+  flex.filter(t => metaOf.get(t.id).valueType !== 'MODIFIER').concat(flex.filter(t => metaOf.get(t.id).valueType === 'MODIFIER')).forEach(t => {
+    const m = metaOf.get(t.id)
+    let k = null
+    if (m.asks) { const hit = phaseWith(x => x.valueType === m.asks || (x.canAnswer || []).includes(m.asks) && x.role !== 'QUESTION_WORD'); if (hit && hit !== 'CLOSE' && roomIn(hit)) k = hit }
+    // a modifier goes where the word it modifies is (很 → the moment with a state word; 一起 → a moment with a verb)
+    if (!k && m.valueType === 'MODIFIER') { const hit = order.find(x => x !== 'CLOSE' && roomIn(x) && phaseOf.get(x).ids.some(id => (metaOf.get(id) || {}).valueType === m.modifies)); if (hit) k = hit }
+    if (!k && m.valueType === 'YESNO') { const hit = order.filter(x => x !== 'CLOSE' && phaseOf.get(x).ids.length && roomIn(x)).sort((a, b) => phaseOf.get(a).ids.length - phaseOf.get(b).ids.length)[0]; if (hit) k = hit }
+    if (k && order.indexOf(k) < minIdx) k = null
+    if (!k) {
+      const okK = x => order.indexOf(x) >= minIdx && (x !== 'CLOSE' || minIdx >= order.length - 1)
+      const pool = order.filter(x => okK(x) && phaseOf.get(x).ids.length && roomIn(x))
+      k = (pool.length ? pool : order.filter(okK)).sort((a, b) => phaseOf.get(a).ids.length - phaseOf.get(b).ids.length || order.indexOf(a) - order.indexOf(b))[0]
+    }
     phaseOf.get(k).ids.push(t.id)
   })
+  // a digit (ศูนย์) belongs with the phone number it is part of
+  { const phoneK = order.find(k => phaseOf.get(k).ids.some(id => metaOf.get(id).valueType === 'PHONE'))
+    if (phoneK) order.forEach(k => { if (k === phoneK) return; const ph = phaseOf.get(k); ph.ids.filter(id => metaOf.get(id).valueType === 'DIGITS').forEach(id => { ph.ids.splice(ph.ids.indexOf(id), 1); phaseOf.get(phoneK).ids.push(id) }) }) }
   // the story keeps only the moments it needs (an empty middle moment is skipped; the opening and closing frame stay)
   const kept = order.filter(k => phaseOf.get(k).ids.length || k === 'OPEN' || k === 'CLOSE')
   const scenes = []
   kept.forEach(k => {
     const ph = phaseOf.get(k)
     if (!ph.ids.length) return
-    const sc = { sceneId: 'LS' + (scenes.length + 1), index: scenes.length, phase: k, requiredTargetIds: ph.ids.slice(), optionalTargetIds: [], domains: {} }
+    const sc = { sceneId: 'LS' + ((opt.idOffset || 0) + scenes.length + 1), index: scenes.length, phase: k, requiredTargetIds: ph.ids.slice(), optionalTargetIds: [], domains: {} }
     sc.requiredTargetIds.forEach(id => { const t = byId.get(id); const dk = _lnPlanDomain(t) !== 'general conversation' ? _lnPlanDomain(t) : 'role:' + (t.role || 'CONTENT'); sc.domains[dk] = (sc.domains[dk] || 0) + 1 })
     scenes.push(sc)
   })
@@ -18834,10 +19427,13 @@ function planListeningConversation(targets, o) {
   const objective = 'spend time together: ' + scenes.map(sc => LISTENING_PHASE_SHORT[sc.phase] || sc.phase).join(' → ')
   scenes.forEach((sc, k) => {
     const P = LISTENING_STORY_PHASES.find(p => p.key === sc.phase)
-    // two values of the SAME kind in one moment (สิบโมงเช้า + สิบเอ็ดโมงเช้า) are planned as a proposal and a counter-proposal:
-    // the LAST one is the agreed value from then on (live 7 Oct: "11 vs 10 am" contradicted itself on seven regenerations)
+    // two values of the SAME kind in one moment (สิบโมงเช้า + สิบเอ็ดโมงเช้า) are planned as proposal → counter-proposal →
+    // acceptance: the LAST one is the agreed value. v673: only real VALUES (clock times, amounts) — a phone-number concept
+    // (เบอร์โทรศัพท์) or a digit is never a proposal (live 7 Oct: "เบอร์โทรศัพท์ / พัน → proposal + counter-proposal")
     const kinds = new Map()
-    sc.requiredTargetIds.forEach(id => { const t = byId.get(id); const kk = /o'clock|\d\s*(am|pm)|morning|noon/.test(String(t.gloss || '').toLowerCase()) ? 'time' : t.role === 'NUMBER' ? 'number' : null; if (kk) { if (!kinds.has(kk)) kinds.set(kk, []); kinds.get(kk).push(id) } })
+    sc.requiredTargetIds.forEach(id => { const m = metaOf.get(id)
+      const kk = m.valueType === 'TIME' && m.functions.includes('COUNTERPROPOSAL') ? (m.clock ? 'time' : 'day') : m.valueType === 'AMOUNT' ? 'amount' : null
+      if (kk) { if (!kinds.has(kk)) kinds.set(kk, []); kinds.get(kk).push(id) } })
     sc.contrasts = [...kinds.entries()].filter(([, ids]) => ids.length >= 2).map(([kind, ids]) => ({ kind, ids: ids.slice(0, 2), surfaces: ids.slice(0, 2).map(id => (byId.get(id) || {}).surface) }))
     _lnPlanExchanges(sc, byId)
     // SCENE_LANGUAGE_FEASIBILITY for the moment: the richest goal the taught vocabulary + this part's targets can say
@@ -18848,19 +19444,65 @@ function planListeningConversation(targets, o) {
     if (Array.isArray(opt.inventoryGlosses)) { for (const g of ladder) { const f = sceneLanguageFeasibility(g, pool); if (f.feasible) { goal = g; break } rejected.push({ text: g.text, missing: f.missing }) } }
     else goal = ladder[0]
     sc.feasibility = { checked: true, situation: goal.text, needs: goal.needs || [], rejected }
-    sc.purpose = (k === 0 && sc.phase !== 'OPEN' ? 'A and B meet and greet; then ' : '') + goal.text + (sc === last && sc.phase !== 'CLOSE' ? '; then they wrap up and say goodbye' : '')
+    sc.purpose = (k === 0 && sc.phase !== 'OPEN' && !opt.continuation ? 'A and B meet and greet; then ' : '') + goal.text + (sc === last && sc.phase !== 'CLOSE' ? '; then they wrap up and say goodbye' : '')
     sc.premise = sc.purpose
     sc.intent = { who: opt.friends === false ? 'two acquaintances' : 'the same two friends throughout', where: P.where, why: objective, what: goal.text, situation: goal.text }
     _lnPlanSkeleton(sc, byId, opt.complexity || null)
     sc.requiredTargets = sc.requiredTargetIds.map(id => (byId.get(id) || {}).surface); sc.plannedExchanges = sc.exchanges
     sc.plausible = true
-    sc.first = sc === first; sc.last = sc === last
+    sc.first = sc === first && !opt.continuation; sc.last = sc === last
   })
-  // turn budget: ONE conversation of ~28–36 turns (never planned at the 44 maximum — leave recovery headroom)
+  // turn budget: ONE conversation of ~28–36 planned turns (allowed 24–44); a plan over the cap drops the transition turns
+  // first, then merges two plain statements of the SAME moment (two things mentioned in one statement) — never two
+  // unrelated targets into a fake "reaction"
   const turnsMax = opt.turnsMax || T + 14
   const cap = Math.min(LISTENING_CONVERSATION_TURNS.max, Math.floor(turnsMax * LISTENING_PLAN_HEADROOM))
+  const planLimit = Math.max(cap, Math.min(turnsMax - 4, LISTENING_CONVERSATION_TURNS.max + 4))
   let totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0)
-  if (totalExpected > cap) { scenes.forEach(sc => { sc.compact = true; sc.expectedTurns = Math.max(2, 2 * sc.exchanges.length) }); totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0) }
+  if (totalExpected > cap) { scenes.forEach(sc => { sc.compact = true; sc.expectedTurns = Math.max(2, sc.exchanges.reduce((a, e) => a + e.turns.length, 0)) }); totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0) }
+  let merges = 0
+  const _refType = id => ['THING', 'PERSON', 'PLACE'].includes((metaOf.get(id) || {}).valueType)
+  const _replan = sc => { sc.exchanges.forEach((e, i) => { e.exchangeIndex = i + 1 }); _lnPlanSkeleton(sc, byId, opt.complexity || null); sc.expectedTurns = Math.max(2, sc.exchanges.reduce((a, e) => a + e.turns.length, 0)); merges++ }
+  for (let guardN = 0; totalExpected > cap && guardN < 60; guardN++) {
+    let done = false
+    for (const sc of scenes) {
+      const plain = sc.exchanges.filter(e => e.kind === 'STATEMENT' && e.turns[0].targetIds.length === 1 && !e.turns[1].targetIds.length && _refType(e.turns[0].targetIds[0]))
+      // 1) a plain statement's referent becomes the topic of a FREE question in the same moment ("the taxi — how long?")
+      const freeQ = sc.exchanges.find(e => e.kind === 'QUESTION' && /^(PLACE|TIME|AMOUNT|STATE|PERSON|DURATION|AGE)$/.test(e.slot || '') && !e.turns[0].targetIds.length && e.turns[1].targetIds.length <= 1)
+      if (plain.length && freeQ) { freeQ.turns[0].targetIds.push(plain[0].turns[0].targetIds[0]); sc.exchanges.splice(sc.exchanges.indexOf(plain[0]), 1); _replan(sc); done = true; break }
+      // 2) two plain statements of the same moment → one statement that mentions both things
+      if (plain.length >= 2) { plain[0].turns[0].targetIds.push(plain[1].turns[0].targetIds[0]); sc.exchanges.splice(sc.exchanges.indexOf(plain[1]), 1); _replan(sc); done = true; break }
+      // 3) two FREE questions of the same kind (where? → X · where? → Y) → one question answered with both values ("X or Y")
+      const freeQs = sc.exchanges.filter(e => e.kind === 'QUESTION' && e.slot && !/^(REASON|YESNO|PHONE)$/.test(e.slot) && !e.turns[0].targetIds.length && e.turns[1].targetIds.length === 1)
+      const twin = freeQs.find((e, i) => freeQs.slice(i + 1).some(f => f.slot === e.slot))
+      if (twin) { const other = freeQs.find(f => f !== twin && f.slot === twin.slot); twin.turns[1].targetIds.push(other.turns[1].targetIds[0]); sc.exchanges.splice(sc.exchanges.indexOf(other), 1); _replan(sc); done = true; break }
+      // 4) a reaction word answering a FREE statement moves into the free reply of another statement / proposal of the moment
+      const reactOnly = sc.exchanges.find(e => e.kind === 'STATEMENT' && !e.turns[0].targetIds.length && e.turns[1].targetIds.length === 1)
+      const host = reactOnly && sc.exchanges.find(e => e !== reactOnly && (e.kind === 'STATEMENT' || e.kind === 'PROPOSAL') && e.turns.length === 2 && !e.turns[1].targetIds.length && e.turns[0].targetIds.length)
+      if (reactOnly && host) { host.turns[1].targetIds.push(reactOnly.turns[1].targetIds[0]); sc.exchanges.splice(sc.exchanges.indexOf(reactOnly), 1); _replan(sc); done = true; break }
+      // 5) v673 — a FREE answer hosts the word of a one-target exchange of the same moment when that word can ANSWER the
+      // question (where? → ここ · how is it? → a STATE word · yes/no? → a response token / state) — semantic, by metadata
+      const contrastIds = new Set((sc.contrasts || []).flatMap(x => x.ids))
+      const nT = e => e.turns.reduce((a, tu) => a + tu.targetIds.length, 0)
+      const fits = (id, slot) => { const m = metaOf.get(id) || {}
+        if (m.asks || contrastIds.has(id) || ['ACTION', 'MODIFIER', 'PHONE', 'TIME'].includes(m.valueType)) return false
+        return slot === 'YESNO' ? ['STATE', 'YESNO'].includes(m.valueType) : (m.canAnswer || []).includes(slot) }
+      let hosted = false
+      for (const h of sc.exchanges.filter(e => e.kind === 'QUESTION' && e.turns.length === 2 && !e.turns[1].targetIds.length && /^(PLACE|AMOUNT|STATE|PERSON|THING|YESNO)$/.test(e.slot || ''))) {
+        const donor = sc.exchanges.find(d => d !== h && nT(d) === 1 && d.turns[0].targetIds.length === 1 && d.turns.length === 2 && d.kind !== 'QUESTION' && fits(d.turns[0].targetIds[0], h.slot)) ||
+          sc.exchanges.find(d => d !== h && nT(d) === 1 && d.turns.length === 2 && d.kind === 'QUESTION' && d.slot === 'YESNO' && d.turns[0].targetIds.length === 1 && fits(d.turns[0].targetIds[0], h.slot))
+        if (donor) { h.turns[1].targetIds.push(donor.turns[0].targetIds[0]); sc.exchanges.splice(sc.exchanges.indexOf(donor), 1); _replan(sc); hosted = true; break }
+      }
+      if (hosted) { done = true; break }
+      // 6) v673 — two plain PROPOSALS of the same moment, each one action word with a free "okay" → ONE proposal of two
+      // actions ("let's eat and then go home") — at most 2 lesson words in that turn
+      const props = sc.exchanges.filter(e => e.kind === 'PROPOSAL' && e.turns.length === 2 && !e.turns[1].targetIds.length && e.turns[0].targetIds.length === 1 &&
+        e.turns[0].targetIds.every(id => { const m = metaOf.get(id) || {}; return m.valueType === 'ACTION' && !m.stative && !contrastIds.has(id) }))
+      if (props.length >= 2) { props[0].turns[0].targetIds.push(props[1].turns[0].targetIds[0]); sc.exchanges.splice(sc.exchanges.indexOf(props[1]), 1); _replan(sc); done = true; break }
+    }
+    if (!done) break
+    totalExpected = scenes.reduce((a, sc) => a + sc.expectedTurns, 0)
+  }
   const slack = Math.max(0, turnsMax - totalExpected), share = scenes.length ? Math.floor(slack / scenes.length) : 0
   scenes.forEach(sc => { sc.maxTurns = sc.expectedTurns + Math.max(1, Math.min(3, share)) })
   const assignments = []
@@ -18874,9 +19516,14 @@ function planListeningConversation(targets, o) {
   if (assignments.length !== T) problems.push('assignments ' + assignments.length + ' ≠ targets ' + T)
   if (scenes.some(sc => sc.exchanges.some(ex => ex.turns.some(tu => tu.targetIds.length > LISTENING_MAX_TARGETS_PER_TURN)))) problems.push('a planned turn exceeds ' + LISTENING_MAX_TARGETS_PER_TURN + ' targets')
   const contract = createConversationContract({ speakers: opt.speakers, relationship: opt.relationship, objective, scenes, byId })
+  // v673 §2C — the ABSTRACT, meaning-level conversation (every turn: turnId, speaker, actType, proposition, topic, asksFor,
+  // answerType, referents, temporalContext, targetIds, requiredSense, allowedSupportConcepts), validated BEFORE any
+  // Thai / Japanese / Mandarin is written
+  const meaningPlan = buildListeningMeaningPlan(scenes, byId, metaOf, { complexity: opt.complexity || null, turnsMax, merges })
+  meaningPlan.problems.forEach(pb => { if (!problems.includes(pb.text)) problems.push(pb.text) })
   return { scenes, assignments, valid: !problems.length && T > 0, problems: T ? problems : ['no targets'], warnings: [], nScenes: scenes.length, cap: LISTENING_PHASE_MAX_TARGETS,
     totalExpectedTurns: totalExpected, turnsMax, headroomCap: cap, compact: scenes.some(sc => sc.compact), seed, oneConversation: true, contract,
-    story: scenes.map(sc => sc.phase) }
+    story: scenes.map(sc => sc.phase), meaningPlan, targetMetadata: metaOf }
 }
 // the conversation contract: created at planning time, updated after every committed phase
 function createConversationContract(o) {
@@ -19005,7 +19652,10 @@ async function _lnGenerateScene(env, sp, info) {
     scenePaletteBlock(pal) + '\n' +
     'You may use ONLY: 1. the required target words · 2. the allowed support vocabulary · 3. the grammar / function words. Do NOT introduce any other lexical content (no other noun, verb, adjective, adverb, interjection or name). If an idea cannot be said with these words, SIMPLIFY THE IDEA — never improvise a new word.\n' +
     // v668 §13/§14 — the intent skeleton (validated before this call) fixes the adjacency: questions are answered
-    'INTENT SKELETON (follow it in order; each second turn answers the turn before it — an ANSWER(time) gives the time, an ANSWER(age) gives the age, ACCEPT agrees with that proposal; at most one extra short reaction per exchange): ' + _lnSkeletonText(sp, byId) + '\n' +
+    // v673 §2F — a meaning-planned phase carries its TURN PLAN with a positive palette per turn (proposition · required
+    // target · relevant support words · authorised forms); the legacy multi-scene path keeps the intent skeleton line
+    ((sp.skeleton || []).some(x => x.meaning) ? listeningTurnPlanBlock(listeningTurnPalettes(env, sp, pal)) :
+    'INTENT SKELETON (follow it in order; each second turn answers the turn before it — an ANSWER(time) gives the time, an ANSWER(age) gives the age, ACCEPT agrees with that proposal; at most one extra short reaction per exchange): ' + _lnSkeletonText(sp, byId) + '\n') +
     'PLAN: ' + sp.exchanges.map(ex => 'exchange ' + ex.exchangeIndex + ': ' + ex.turns.map(tu => tu.speaker + (tu.targetIds.length ? ' uses ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).join('+') : ' replies')).join(', then ')).join(' · ') + '\n' +
     'ROLE GUIDE: ' + [...new Set(req.map(t => t.role))].map(r => r + ' = ' + (LISTENING_ROLE_HINT[r] || 'fits naturally')).join(' · ') + '\n' +
     'LENGTH: ' + sp.expectedTurns + '–' + info.allowedMax + ' turns. HARD MAXIMUM ' + info.allowedMax + ' turns.' + (info.budgetNote ? ' ' + info.budgetNote : '') + '\n' +
@@ -19172,6 +19822,46 @@ function _lnPalette(env, flat, scope, protectedIds) {
   return [...new Set(words)]
 }
 // the frozen palette of a scene (built once from the Layer B snapshot; a reassigned target joins its new scene's palette)
+// ══ v673 §2F — THE POSITIVE PALETTE OF EVERY PLANNED TURN ══════════════════════════════════════════════════════════
+// requiredTarget · allowed support words (the phase palette, most relevant first) · allowed grammar · candidate
+// structures · the intended proposition. Generation CHOOSES from an authorised space instead of being told what it
+// cannot say. Candidate structures are built ONLY from the learner's own words by the language's deterministic
+// builder (Japanese / Mandarin) and pass that language's acceptance gate; Thai (large inventories, few closed-vocab
+// failures) gets the proposition + the relevant palette words.
+const LN_SUPPORT_CONCEPT_RX = { PLACE: /\b(here|there|home|house|station|shop|store|restaurant|school|office|market|museum|temple|park|city|place|room|go|come)\b/, TIME: /\b(today|tomorrow|yesterday|now|later|morning|evening|night|o'clock|noon|week|time|when|go|meet)\b/,
+  AMOUNT: /\b(one|two|three|four|five|six|seven|eight|nine|ten|hundred|thousand|money|price|baht|yen|yuan|expensive|cheap|many|much|little)\b/, PERSON: /\b(i|me|you|he|she|friend|mother|father|person|people|we|they)\b/,
+  REASON: /\b(want|like|busy|tired|far|near|good|bad|have|need|work|because)\b/, STATE: /\b(good|bad|big|small|hot|cold|delicious|expensive|cheap|fun|nice|far|near|this|that)\b/, THING: /\b(this|that|thing|food|drink|it)\b/,
+  PHONE: /\b(zero|one|two|three|four|five|six|seven|eight|nine|number|phone)\b/ }
+function listeningTurnPalettes(env, sp, pal) {
+  const { la, ctx, byId } = env
+  const sup = (pal && pal.support) || []
+  const formsOf = t => {
+    const w = t && t.word
+    if (!w) return []
+    const out = []
+    try {
+      if (la.lang === 'ja' && ctx.jaInv) for (let r = 1; r <= 3 && out.length < 2; r++) { const f = jaFallbackRecall(w, ctx.jaInv, r, out); const s = f && (f.japanese || f.jp); if (s && !out.includes(s) && japaneseCheckLine(s, ctx.jaInv).ok) out.push(s) }
+      if (la.lang === 'zh' && ctx.zhInv) { const rules = mandarinScarcityRules(ctx.zhInv); for (let r = 1; r <= 3 && out.length < 2; r++) { const f = mandarinFallbackPair(w, ctx.zhInv, r, null, ctx.vocab, rules); if (f && f.chinese && !out.includes(f.chinese)) out.push(f.chinese) } }
+    } catch (e) {}
+    return out
+  }
+  return (sp.skeleton || []).map(sk => {
+    const m = sk.meaning || {}
+    const tg = (sk.targetIds || []).map(id => byId.get(id)).filter(Boolean)
+    const rx = LN_SUPPORT_CONCEPT_RX[sk.slot] || null
+    const rel = rx ? sup.filter(x => rx.test(String(x.gloss || '').toLowerCase())) : []
+    const support = [...new Set(rel.concat(sup))].slice(0, 6).map(x => x.surface)
+    return { turnId: m.turnId || ('t' + sk.turn), speaker: sk.speaker, act: sk.intent + (sk.slot && sk.intent === 'QUESTION' ? '(' + (_LN_SLOT_LABEL[sk.slot] || sk.slot) + ')' : ''), proposition: m.proposition || _lnTurnProposition(sk, byId),
+      answerType: m.answerType || null, targets: tg.map(t => t.surface + ' "' + t.gloss + '"'), support, forms: tg.flatMap(formsOf).slice(0, 2) }
+  })
+}
+function listeningTurnPlanBlock(rows) {
+  if (!rows || !rows.length) return ''
+  return 'TURN PLAN — MEANING FIRST (validated before this call; say each planned turn in this order, with exactly this meaning; at most ONE extra short reaction may be added between planned turns):\n' +
+    rows.map(r => '  ' + r.turnId + ' ' + r.speaker + ' ' + r.act + ' — ' + r.proposition + (r.answerType ? ' ⟨must give ' + r.answerType + '⟩' : '') +
+      (r.targets.length ? ' · REQUIRED: ' + r.targets.join(' + ') : ' · no lesson word required') + ' · SUPPORT: ' + (r.support.join(' ') || '(grammar words only)') +
+      (r.forms.length ? ' · AUTHORISED FORMS (every word allowed — use one or adapt it): ' + r.forms.join(' / ') : '')).join('\n') + '\n'
+}
 function _lnScenePaletteFor(env, sc) {
   const id = sc.sceneId
   env.palettes = env.palettes || new Map()
@@ -19352,6 +20042,8 @@ async function _lnAtomicQueue(env, scenes, issueSource, opts) {
       batch.push(u)
       if (batch.length >= LISTENING_ATOMIC_BATCH) break
     }
+    // v673 — the phase transaction's strategy guard counts a failure as "repeated" only once it was ATTEMPTED
+    if (opts.budget && opts.budget.attempted) batch.forEach(u => { opts.budget.attempted.add(u.line); (u.scope || []).forEach(k => opts.budget.attempted.add(k)) })
     batch.forEach(u => { AT(u.key).set(u.key, (AT(u.key).get(u.key) || 0) + 1)
       log && log('🔧 LISTENING_ATOMIC_REPAIR issue=' + u.codes.join('+') + ' scene=' + u.sceneId + ' line=' + G(u.line) + (u.scope.length > 1 ? ' scope=' + u.scope.map(G).join('+') : '') +
         (u.unknownWords.length ? ' unknown=[' + u.unknownWords.join(', ') + '] palette=' + u.palette.length : '') + (u.place ? ' place=' + u.place.surface : '') + ' protected=[' + u.protectedIds.map(id => (byId.get(id) || {}).surface).join(', ') + '] attempt=' + (u.tried + 1) + ' level=' + (u.place ? 2 : u.level)) })
@@ -19429,7 +20121,9 @@ function _lnCoherenceLineIssues(coh, scenes) {
 // a small local insertion.
 async function _lnAtomicPlace(env, scenes, sceneObj, reqIds, extraIssues, lineOffset, budget) {
   const { la, ctx, byId } = env
-  const attempts = new Map()
+  // v673 — a phase transaction keeps its placement attempts across repair rounds, so the relocation LEVEL rises (another
+  // exchange → the word's own short exchange) instead of repeating the same failed placement
+  const attempts = (budget && budget.placeAttempts) || new Map()
   await _lnAtomicQueue(env, scenes, async flat => {
     const issues = []
     const cov = _lnSceneCoverage(sceneObj, reqIds, byId, la, ctx)
@@ -19478,12 +20172,19 @@ async function _lnComposeByScenes(env) {
   const plan = o.legacyScenes
     ? planListeningCoverage(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, hardMax: ctx.complexity ? ctx.complexity.preferredMax : null,   // v666: the PREFERRED range decides "low belt"
       friends: !!(ctx.jaStyle && ctx.jaStyle !== 'polite'), inventoryGlosses, complexity: ctx.complexity || null })
-    : planListeningConversation(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, complexity: ctx.complexity || null, friends: !(ctx.jaStyle === 'polite'), speakers: _speakers, relationship: _rel, inventoryGlosses })
+    : planListeningConversationBest(targets, { seed: o.planSeed || '', turnsMax: env.turnsMax, complexity: ctx.complexity || null, friends: !(ctx.jaStyle === 'polite'), speakers: _speakers, relationship: _rel, inventoryGlosses })
   env.oneConversation = !!plan.oneConversation; env.contract = plan.contract || null
   if (plan.oneConversation) {
     log && log('🧵 LISTENING_ONE_CONVERSATION story=' + plan.story.join(' → ') + ' · ' + plan.nScenes + ' internal phase(s) of ONE conversation · planned ' + plan.totalExpectedTurns + ' turns (target ' + LISTENING_CONVERSATION_TURNS.min + '–' + LISTENING_CONVERSATION_TURNS.max + ', allowed ' + env.turnsMin + '–' + env.turnsMax + ')')
     log && log('🧵 CONVERSATION_CONTRACT speakers=' + plan.contract.speakers + ' · relationship=' + plan.contract.relationship + ' · objective=' + plan.contract.objective + ' · ending=' + plan.contract.endingGoal)
     plan.scenes.forEach(sc => (sc.contrasts || []).forEach(x => log && log('🧵 PHASE_CONTRAST ' + sc.sceneId + ' (' + sc.phase + ') ' + x.kind + ' words ' + x.surfaces.join(' / ') + ' → proposal + counter-proposal; the LAST is the agreed value')))
+    // v673 §2C — the abstract meaning-level conversation, validated BEFORE any surface language
+    if (plan.meaningPlan) {
+      listeningMeaningPlanLog(plan.meaningPlan, plan.story).forEach(l => log && log(l))
+      tel.LISTENING_MEANING_PLAN_TURNS = plan.meaningPlan.turnCount
+      if (!plan.meaningPlan.valid) { log && log('⛔ LISTENING_MEANING_PLAN_INVALID — ' + plan.meaningPlan.problems.slice(0, 6).map(p => p.text).join('; ') + ' · generation NOT started (0 paid calls)')
+        return { ok: false, reason: 'LISTENING_MEANING_PLAN_INVALID: ' + plan.meaningPlan.problems.slice(0, 4).map(p => p.text).join('; '), plan } }
+    }
   }
   // v667 §11 — every Japanese scene carries an explicit relationship + register expectation (the generator never guesses)
   if (ctx.jaStyle) plan.scenes.forEach(sc => {
@@ -19531,8 +20232,8 @@ async function _lnComposeByScenes(env) {
   // whole-conversation line offset of a scene (accepted scenes first; the scene being written comes next)
   const offsetOf = sc => { let n = 0; for (const a of accepted) { if (a === sc) return n; n += a.turns.length } return n }
   // duplicates of an ALREADY COMMITTED line are a preflight defect of the candidate (§38)
-  const crossDup = sc => { const prevT = new Set(accepted.filter(a => a !== sc).flatMap(a => a.turns.map(tn => _lnNorm(la.text(tn.pair)))).filter(Boolean))
-    return sc.turns.map((tn, k) => ({ k, nt: _lnNorm(la.text(tn.pair)) })).filter(x => x.nt && prevT.has(x.nt)).map(x => ({ code: 'EXACT_DUPLICATE', line: x.k + 1, detail: 'repeats a line of an earlier scene' })) }
+  // v673 §3 — only the duplicate POLICY's defects (immediate / whole exchange / loop / substantive repeat), never short glue
+  const crossDup = sc => crossPhaseDuplicateLines(env, accepted, sc).map(k => ({ code: 'EXACT_DUPLICATE', line: k, detail: 'repeats a line of an earlier part (duplicate policy: substantive / immediate / loop)' }))
   const localHard = sc => listeningConversationAudit([sc], targets, la, ctx).issues.filter(x => LOCAL_GATE_CODES.includes(x.code)).concat(crossDup(sc))
     .concat(phaseContinuityIssues(env, sc, env.scenePlanById.get(sc.sceneId) || {}))
     .concat(skeletonAdjacencyIssues(sc.turns, env.scenePlanById.get(sc.sceneId)).map(x => ({ code: 'ADJACENCY', line: x.line, detail: x.detail + ' — rewrite this reply so it answers the question before it' })))
@@ -19541,11 +20242,10 @@ async function _lnComposeByScenes(env) {
   const logLocal = (sc, label) => localHard(sc).filter((x, i, a) => a.findIndex(y => y.code === x.code && y.line === x.line) === i).forEach(x => log && log((x.code === 'TOO_COMPLEX' ? '⛔ LEVEL_COMPLEXITY_FAIL' : x.code === 'CLOSED_VOCAB' ? '⛔ CLOSED_VOCAB_FAIL' : x.code === 'TOKENIZATION_ERROR' ? '⛔ TOKENIZATION_ERROR' : x.code === 'REGISTER' ? '⛔ JA_REGISTER_FAIL' : /DUPLICATE/.test(x.code) ? '⛔ DUPLICATE_FAIL' : x.code === 'MERGED_SPEAKERS' ? '⛔ MERGED_SPEAKERS_FAIL' : x.code === 'ADJACENCY' ? '⛔ ADJACENCY_FAIL' : '⛔ MAX3_FAIL') +
     ' scene=' + sc.sceneId + ' line=L' + (x.line + offsetOf(sc)) + ' ' + (x.code === 'TOO_COMPLEX' ? 'belt=' + ctx.complexity.belt + ' units=' + String(x.detail).split(' ')[0] + ' hardMax=' + ctx.complexity.hardMax : x.code === 'CLOSED_VOCAB' ? 'unknown=[' + String(x.detail).replace(/^.*unknown words:\s*/, '') + '] UNKNOWN_LEXEME' : x.code === 'TOKENIZATION_ERROR' ? 'fragments=[' + String(x.detail).replace(/^.*unparseable fragments:\s*/, '') + '] (morphology could not parse — not a learner word)' : x.detail) + (label ? ' (' + label + ')' : '')))
   // ONE local repair pass for a candidate's isolated residual defects — the positive scene palette only (§20/§28)
-  const repairCandidate = async (sc, sp, pf, salvage) => {
-    let cov = pf.coverage
-    // v667 §17/§19 — a scene in the WRONG register: ONE controlled scene-level register transformation (only when the
-    // regenerated scene is still wrong — a register mismatch is first a reason to REGENERATE)
-    if (sc.turns.length && ctx.jaStyle && pf.regMajor) {
+  // v667 §17/§19 — a scene in the WRONG register: ONE controlled scene-level register transformation (only when the
+  // regenerated scene is still wrong — a register mismatch is first a reason to REGENERATE). Returns the coverage after.
+  const registerTransform = async (sc, sp, cov) => {
+    if (sc.turns.length && ctx.jaStyle) {
       const rel = sp.relationship || 'adult friends'
       const exm = targets.map(t => t.surface)
       const ra = japaneseSceneRegisterAudit(sc.turns.map(tn => la.text(tn.pair)), ctx.jaStyle, rel, exm)
@@ -19561,6 +20261,11 @@ async function _lnComposeByScenes(env) {
         sc.turns = before; log && log('⛔ PATCH_REJECTED register-transform ' + sp.sceneId + ' reason=' + (cov.heard.some(id => !c2.heard.includes(id)) ? 'PROTECTED_TARGET_LOST' : badNew.length ? 'NEW_TURN_FAILS_' + (badNew[0].len ? 'LENGTH' : badNew[0].vocab ? 'CLOSED_VOCAB' : 'MAX3') : 'NOT_IMPROVED') + ' · original kept (lines repaired one by one next)')
       } else { cov = c2; log && log('✅ PATCH_ACCEPTED register-transform ' + sp.sceneId + ' · politeLines ' + ra.politeLines + '→' + ra2.politeLines + ' plainLines ' + ra.plainLines + '→' + ra2.plainLines + ' · ' + ra2.verdict) }
     }
+    return cov
+  }
+  const repairCandidate = async (sc, sp, pf, salvage) => {
+    let cov = pf.coverage
+    if (sc.turns.length && ctx.jaStyle && pf.regMajor) cov = await registerTransform(sc, sp, cov)
     if (sc.turns.length && (cov.missing.length || localHard(sc).length)) {
       // v663 §9 — atomic: the missing word goes into the best exchange; a 4-target line is split over its A/B exchange
       // v665 — the same atomic stage fixes an over-long line (TOO_COMPLEX) and an unknown word (CLOSED_VOCAB) in this scene
@@ -19586,7 +20291,233 @@ async function _lnComposeByScenes(env) {
     }
   }
   const better = (a, b) => !a ? b : !b ? a : (b.pf.totalHard + (b.pf.fundamental ? 100 : 0) <= a.pf.totalHard + (a.pf.fundamental ? 100 : 0) ? b : a)
+  // ══ v673 §3 — THE PLANNED-PHASE TRANSACTION (one conversation). The meaning plan is FROZEN before generation; a phase is
+  // written from it and may commit ONLY with every gate clean (coverage · closed vocab · hard complexity · grammar /
+  // register · adjacency · continuity · naturalness). The FAILURE CLASS decides the repair level:
+  //   LINE (lexical / particle / simple grammar / length / unnatural line)  → repair that ONE line
+  //   EXCHANGE (question–answer / adjacency / contradiction / continuity)   → regenerate the 2-turn exchange
+  //   TARGET does not fit its exchange                                      → relocate it within this phase
+  //   PHASE (fundamentally invalid candidate, or the guard escalates)       → regenerate the phase from its plan (once)
+  //   targets still do not fit after that                                   → re-run the REMAINING global semantic plan (once per track)
+  // REPAIR STRATEGY GUARD: atomic repair calls > generation calls, or the SAME semantic failure twice ⇒ stop atomic repair
+  // and escalate (a strategy change — never a cost abort). No COMMIT_WITH_DEFECTS; no target scattering: a target moves
+  // only when semantic replanning places it (LISTENING_GLOBAL_REPLAN), never to an arbitrary later scene.
+  const LINE_CLASS = new Set(['CLOSED_VOCAB', 'TOKENIZATION_ERROR', 'TOO_COMPLEX', 'REGISTER', 'MERGED_SPEAKERS', 'MAX_TARGETS_PER_TURN', 'SPEAKER_IDENTITY', 'LINE_QUALITY', 'EXACT_DUPLICATE', 'NEAR_DUPLICATE', 'UNNATURAL'])
+  const EXCHANGE_CLASS = new Set(['ADJACENCY', 'COHERENCE_LINE', 'CONTINUITY'])
+  env.phaseHealth = env.phaseHealth || []
+  const phaseIssues = async (sc, sp) => {
+    const flat = sc.turns
+    const hard = localHard(sc).filter((x, i, a) => a.findIndex(y => y.code === x.code && y.line === x.line) === i)
+    const nat = sc.turns.length ? (await naturalness([sc])).filter(x => x.code === 'UNNATURAL') : []
+    const cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
+    const pf = validateScenePreflight(env, sc, sp, { accepted, allowedMax: sp._allowedMax })
+    const all = hard.concat(nat.map(x => ({ code: 'UNNATURAL', line: x.line, detail: x.detail })))
+    return { pf, cov, all, line: all.filter(x => LINE_CLASS.has(x.code)), exchange: all.filter(x => EXCHANGE_CLASS.has(x.code)), nat,
+      phase: pf.fundamental || pf.regMajor || pf.overBudget || !!pf.counts.structure && !pf.lines.coh.size, clean: !all.length && !cov.missing.length && pf.totalHard === 0 && flat.length > 0 }
+  }
+  const failureKey = (x, sc) => x.code + '|' + (sc.turns[x.line - 1] ? _lnNorm(la.text(sc.turns[x.line - 1].pair)) : x.line)
+  // re-run the REMAINING global semantic plan for the targets not yet committed (this phase + every later phase). The
+  // targets that could not be placed here are planned AWAY from this moment (a natural new placement or none).
+  const globalReplan = (qi, moveIds, reason) => {
+    if (env.globalReplans >= 1) return false
+    const sp = queue[qi]
+    const later = queue.slice(qi + 1)
+    const keep = sp.requiredTargetIds.filter(id => !moveIds.includes(id))
+    const remainingIds = [...new Set(moveIds.concat(later.flatMap(s => s.requiredTargetIds)))]
+    if (!remainingIds.length) return false
+    const order = LISTENING_STORY_PHASES.map(p => p.key)
+    const minIdx = Math.min(order.length - 1, order.indexOf(sp.phase) + (keep.length ? 1 : 0))
+    const rem = remainingIds.map(id => byId.get(id)).filter(Boolean)
+    const sub = planListeningConversation(rem, { seed: (o.planSeed || '') + '|replan', turnsMax: Math.max(8, env.turnsMax - usedTurns - (keep.length ? sp.expectedTurns : 0)), complexity: ctx.complexity || null,
+      friends: !(ctx.jaStyle === 'polite'), inventoryGlosses: (((ctx.inventory && ctx.inventory.taught) || ctx.exposed || []).map(w => String(w.english || '')).filter(Boolean)), minPhaseIndex: minIdx, continuation: true,
+      idOffset: Math.max(...queue.map(x => +String(x.sceneId).replace(/\D/g, '') || 0)), avoidPhase: new Map(moveIds.map(id => [id, sp.phase])) })
+    env.globalReplans = (env.globalReplans || 0) + 1
+    tel.LISTENING_GLOBAL_REPLANS = (tel.LISTENING_GLOBAL_REPLANS || 0) + 1
+    listeningMeaningPlanLog(sub.meaningPlan, sub.story).forEach(l => log && log(l.replace('LISTENING_MEANING_PLAN', 'LISTENING_MEANING_PLAN (global replan)')))
+    if (!sub.valid) { log && log('⛔ LISTENING_GLOBAL_REPLAN_INVALID — ' + sub.problems.slice(0, 4).join('; ') + ' · the remaining targets keep their plan; the phase stays uncommitted'); return false }
+    sub.scenes.forEach(s2 => { s2.relationship = sp.relationship; s2.registerExpectation = sp.registerExpectation; s2.originalTargetIds = s2.requiredTargetIds.slice(); s2.replan = true; env.scenePlanById.set(s2.sceneId, s2)
+      const pal2 = _lnScenePaletteFor(env, s2); s2.sceneSupportVocabulary = pal2.support.map(x => x.surface); s2.grammarSupport = pal2.grammar })
+    queue.splice(qi + 1, queue.length - qi - 1, ...sub.scenes)
+    sp.requiredTargetIds = keep
+    log && log('🧭 LISTENING_GLOBAL_REPLAN after ' + sp.sceneId + ' (' + sp.phase + ') — ' + reason + ' · moved by SEMANTIC replanning: [' + moveIds.map(id => (byId.get(id) || {}).surface).join(', ') + '] · remaining ' + rem.length + ' target(s) re-planned together → ' +
+      sub.scenes.map(s2 => s2.sceneId + ' ' + s2.phase + ' [' + s2.requiredTargetIds.map(id => (byId.get(id) || {}).surface).join(', ') + ']').join(' · '))
+    return true
+  }
+  const composePlannedPhase = async (qi) => {
+    const sp = queue[qi]
+    if (!sp.requiredTargetIds.length) { log && log('  LISTENING_PHASE ' + sp.sceneId + ' has no required targets left — skipped'); return }
+    if (!sp.skeleton || !sp.skeleton.length) { _lnPlanExchanges(sp, byId); _lnPlanSkeleton(sp, byId, ctx.complexity || null)
+      const mp = buildListeningMeaningPlan([sp], byId, plan.targetMetadata || new Map(sp.requiredTargetIds.map(id => [id, listeningTargetMetadata(byId.get(id))])), {})
+      listeningMeaningPlanLog(mp, [sp.phase]).forEach(l => log && log(l.replace('LISTENING_MEANING_PLAN', 'LISTENING_MEANING_PLAN (' + sp.sceneId + ' re-planned)'))) }
+    const pal = _lnScenePaletteFor(env, sp)
+    const minLater = queue.slice(qi + 1).reduce((a, s) => a + (s.requiredTargetIds.length ? Math.max(2, s.expectedTurns || 2) : 0), 0)
+    const allowedMax = Math.max(sp.expectedTurns, Math.min(Math.max(sp.maxTurns || 0, sp.expectedTurns + 1), env.turnsMax - usedTurns - minLater)); sp._allowedMax = allowedMax
+    const prev = accepted[accepted.length - 1]
+    const context = accepted.length ? 'earlier: ' + accepted.map(s => s.setting).filter(Boolean).join(' → ') + '. The previous part ended with: ' +
+      prev.turns.slice(-2).map(tn => tn.speaker + ': ' + la.text(tn.pair) + ' (' + (tn.pair.english || '') + ')').join(' / ') + ' — continue naturally from there.' : ''
+    const firstSpeaker = prev ? (prev.turns[prev.turns.length - 1].speaker === 'A' ? 'B' : 'A') : 'A'
+    const G = { generationCalls: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0, phaseRegenerations: 0, escalations: [] }
+    let placeAttempts = new Map()
+    const exchangeTried = new Set()   // failure keys that already had their ONE exchange-level rewrite in this phase
+    const seenFail = new Map()
+    let committed = null, reject = null, last = null
+    for (let gen = 1; gen <= LISTENING_SCENE_ATTEMPTS && !committed; gen++) {
+      if (gen > 1) { G.phaseRegenerations++; tel.LISTENING_SCENE_REGENERATIONS++
+        log && log('🔁 PHASE_REGENERATE ' + sp.sceneId + ' (' + (sp.phase || '-') + ') — ' + (G.escalations[G.escalations.length - 1] || (reject && reject.reasons || []).slice(0, 2).join('; ') || 'defects remain') + ' · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves') }
+      placeAttempts = new Map()
+      const cand = await _lnGenerateScene(env, sp, { position: (qi + 1) + ' of ' + queue.length, context, allowedMax, budgetNote: reject && reject.budgetNote || '', last: qi === queue.length - 1, firstSpeaker, regenerate: reject })
+      G.generationCalls++
+      if (!cand || !cand.turns.length) { reject = { reasons: ['the previous draft was empty / unparseable'] }; G.escalations.push('EMPTY'); continue }
+      if (cand.turns.length > allowedMax) log && log('⚠ LISTENING_TURN_BUDGET ' + sp.sceneId + ' returned ' + cand.turns.length + ' turns > hard max ' + allowedMax + (gen < LISTENING_SCENE_ATTEMPTS ? ' — rejected, regenerating within budget' : ' — rejected (over budget after ' + gen + ' attempts)'))
+      let st = await phaseIssues(cand, sp)
+      if (gen === 1) tel.LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES += st.pf.counts.closedVocab
+      log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' required=' + sp.requiredTargetIds.length + ' heard=' + st.cov.heard.length + (st.cov.missing.length ? ' missing=[' + st.cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS') + ' · turns ' + cand.turns.length + '/' + allowedMax + (gen > 1 ? ' (phase regenerated from its plan)' : ''))
+      logLocal(cand, gen > 1 ? 'regenerated' : 'as generated')
+      // v666 §12/§16 (kept) — a line above the preferred range but ≤ hardMax is VALID: logged, never repaired just to hit preferredMax
+      if (cand.turns.length && ctx.complexity) { const ab = cand.turns.map((tn, k) => ({ k, a: ctx.complexity.analyse(la.text(tn.pair)) })).filter(x => x.a.abovePreferredButAllowed)
+        if (ab.length) log && log('ℹ ABOVE_PREFERRED_BUT_ALLOWED scene=' + sp.sceneId + ' ' + ab.map(x => 'L' + (x.k + 1 + offsetOf(cand)) + ' ' + x.a.units + 'u').join(' · ') + ' (preferred ' + ctx.complexity.preferredMin + '–' + ctx.complexity.preferredMax + ', max ' + ctx.complexity.hardMax + ') — valid, no repair') }
+      if (st.nat.length) log && log('⛔ NATURALNESS_FAIL ' + sp.sceneId + ' ' + st.nat.map(x => 'L' + (x.line + offsetOf(cand)) + ' ' + String(x.detail || '').slice(0, 60)).join(' · ') + ' (phase commit gate)')
+      log && log('🛂 ' + scenePreflightLog(sp, st.pf, gen > 1 ? 'regenerated candidate' : 'candidate'))
+      // Japanese (unchanged contract): the scene register verdict of every candidate is logged as generated
+      if (ctx.jaStyle && cand.turns.length) { const r0 = (st.pf.audit.registerAudit || [])[0] || {}
+        log && log('🗣 JA_SCENE_REGISTER scene=' + sp.sceneId + ' relationship=' + (sp.relationship || 'adult friends') + ' expected=' + r0.label + ' politeLines=' + r0.politeLines + ' plainLines=' + r0.plainLines + ' verdict=' + r0.verdict + (r0.verdict === 'FAIL' ? ' reason=' + r0.reason : '') + (gen > 1 ? ' (regenerated)' : ' (as generated)')) }
+      let exchangeEscalated = false
+      for (let round = 1; round <= 3 && !st.clean; round++) {
+        // v667 §17/§19 kept (Japanese is not redesigned): a REGENERATED phase still in the wrong register gets ONE
+        // controlled scene-level register transformation (validated: same lines, speakers, lesson words) before escalation
+        if (st.phase && ctx.jaStyle && st.pf.regMajor && st.pf.reasons.every(x => /^REGISTER/.test(x)) && !st.pf.overBudget && gen > 1 && !G.registerTransform) {
+          G.registerTransform = true; G.atomicRepairCalls++
+          await registerTransform(cand, sp, st.cov)
+          st = await phaseIssues(cand, sp)
+          log && log('🛂 ' + scenePreflightLog(sp, st.pf, 'after scene-level register transformation') + (st.nat.length ? ' naturalness=FAIL(' + st.nat.length + ')' : ''))
+          if (st.clean) break
+          if (st.phase) { G.escalations.push('PHASE (' + (st.pf.reasons.join('; ') || 'structure') + ')'); break }
+          continue
+        }
+        if (st.phase) { G.escalations.push('PHASE (' + (st.pf.reasons.join('; ') || 'structure') + ')'); break }
+        // REPAIR STRATEGY GUARD (before any further atomic call)
+        // a failure is "the same failure twice" only when it survived an ATTEMPT (an issue the batch never reached is not repeated)
+        const keys = st.all.map(x => failureKey(x, cand))
+        const repeated = [...new Set(keys.filter(k => (seenFail.get(k) || 0) >= 1))]
+        const markAttempted = (pre, att) => pre.filter(p => att.has(p.line)).forEach(p => seenFail.set(p.key, (seenFail.get(p.key) || 0) + 1))
+        // the repair LEVEL rises before the strategy changes: a LINE failure that survived its one-line repair gets ONE
+        // exchange-level rewrite (the line with its partner turn, level 2) — accepted good patches stay — before the phase
+        // is regenerated (line → exchange → phase → global plan)
+        if (repeated.length && !exchangeEscalated && G.atomicRepairCalls + G.exchangeRepairCalls <= G.generationCalls && repeated.every(k => LINE_CLASS.has(k.split('|')[0])) && !st.exchange.length &&
+            repeated.some(k => !exchangeTried.has(k))) {
+          exchangeEscalated = true; repeated.forEach(k => exchangeTried.add(k))
+          log && log('🧭 REPAIR_STRATEGY_GUARD ' + sp.sceneId + ' — the same line failure occurred twice (' + repeated.slice(0, 2).map(k => k.split('|')[0]).join(', ') + ') · STOP LINE REPAIR → escalate ONE level to EXCHANGE REGENERATION (the line with its partner turn; accepted patches kept)')
+          tel.LISTENING_STRATEGY_ESCALATIONS = (tel.LISTENING_STRATEGY_ESCALATIONS || 0) + 1
+          G.escalations.push('EXCHANGE (' + repeated.slice(0, 2).map(k => k.split('|')[0]).join(', ') + ')')
+          env.acceptedOthers = accepted.flatMap(a => a.turns.map(tn => la.text(tn.pair)))
+          const b0 = tel.LISTENING_ATOMIC_REPAIR_CALLS || 0, preX = st.all.map(x => ({ key: failureKey(x, cand), line: x.line })), bX = { calls: 0, max: 1, attempted: new Set() }
+          await _lnAtomicPlace(env, [cand], cand, sp.requiredTargetIds, () => st.line.map(x => ({ code: x.code, line: x.line, detail: x.detail,
+            unknownWords: x.code === 'CLOSED_VOCAB' || x.code === 'TOKENIZATION_ERROR' ? String(x.detail || '').replace(/^.*(unknown words|unparseable fragments):\s*/, '').split(/\s+/).filter(Boolean) : [] })), offsetOf(cand), bX)
+          markAttempted(preX, bX.attempted)
+          G.exchangeRepairCalls += Math.max(1, (tel.LISTENING_ATOMIC_REPAIR_CALLS || 0) - b0)
+          st = await phaseIssues(cand, sp)
+          log && log('🛂 ' + scenePreflightLog(sp, st.pf, 'after exchange regeneration') + (st.nat.length ? ' naturalness=FAIL(' + st.nat.length + ')' : ''))
+          continue
+        }
+        if (G.atomicRepairCalls + G.exchangeRepairCalls > G.generationCalls || repeated.length) {
+          const why = repeated.length ? 'the same semantic failure occurred twice (' + repeated.slice(0, 2).map(k => k.split('|')[0]).join(', ') + ')' : 'repair calls (' + (G.atomicRepairCalls + G.exchangeRepairCalls) + ') > generation calls (' + G.generationCalls + ')'
+          log && log('🧭 REPAIR_STRATEGY_GUARD ' + sp.sceneId + ' — ' + why + ' · STOP ATOMIC REPAIR → escalate to ' + (gen < LISTENING_SCENE_ATTEMPTS ? 'PHASE REGENERATION from the meaning plan' : (env.globalReplans || 0) < 1 ? 'GLOBAL REPLANNING' : 'DETERMINISTIC TRIM / explicit UNPLACED (the one global replan is spent)') + ' (strategy change, not a cost abort)')
+          tel.LISTENING_STRATEGY_ESCALATIONS = (tel.LISTENING_STRATEGY_ESCALATIONS || 0) + 1
+          G.escalations.push('GUARD (' + why + ')'); break
+        }
+        const units = st.line.concat(st.exchange)
+        const cls = st.exchange.length ? 'EXCHANGE' : st.line.length ? 'LINE' : 'TARGET'
+        log && log('🔧 PHASE_REPAIR ' + sp.sceneId + ' class=' + cls + ' · ' + (st.line.length ? st.line.length + ' line issue(s) → one-line repair · ' : '') + (st.exchange.length ? st.exchange.length + ' exchange issue(s) → regenerate the 2-turn exchange · ' : '') +
+          (st.cov.missing.length ? 'relocate [' + st.cov.missing.map(id => byId.get(id).surface).join(', ') + '] within this phase' : '') + ' (round ' + round + ')')
+        env.acceptedOthers = accepted.flatMap(a => a.turns.map(tn => la.text(tn.pair)))
+        const before = tel.LISTENING_ATOMIC_REPAIR_CALLS || 0, pre = st.all.map(x => ({ key: failureKey(x, cand), line: x.line })),
+          bud = { calls: 0, max: st.cov.missing.length && round > 1 ? 2 : 1, attempted: new Set(), placeAttempts }
+        await _lnAtomicPlace(env, [cand], cand, sp.requiredTargetIds, () => units.map(x => ({ code: x.code, line: x.line, detail: x.detail,
+          unknownWords: x.code === 'CLOSED_VOCAB' || x.code === 'TOKENIZATION_ERROR' ? String(x.detail || '').replace(/^.*(unknown words|unparseable fragments):\s*/, '').split(/\s+/).filter(Boolean) : [] })), offsetOf(cand), bud)
+        markAttempted(pre, bud.attempted)
+        const spent = Math.max(1, (tel.LISTENING_ATOMIC_REPAIR_CALLS || 0) - before)
+        if (cls === 'EXCHANGE') G.exchangeRepairCalls += spent; else G.atomicRepairCalls += spent
+        st = await phaseIssues(cand, sp)
+        log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' (after atomic repair) required=' + sp.requiredTargetIds.length + ' heard=' + st.cov.heard.length + (st.cov.missing.length ? ' missing=[' + st.cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS'))
+        log && log('🛂 ' + scenePreflightLog(sp, st.pf, 'after ' + cls.toLowerCase() + ' repair') + (st.nat.length ? ' naturalness=FAIL(' + st.nat.length + ')' : ''))
+      }
+      if (st.clean) { committed = cand; if (gen === 1 && !G.atomicRepairCalls && !G.exchangeRepairCalls) tel.LISTENING_SCENES_COMMITTED_FIRST_PASS++; else tel.LISTENING_SCENES_COMMITTED_AFTER_REPAIR++; break }
+      last = { cand, st }
+      // a phase regeneration carries the exact residual defects + the frozen plan
+      reject = { reasons: st.pf.reasons.length ? st.pf.reasons : st.all.slice(0, 6).map(x => x.code + ' L' + x.line + (x.detail ? ': ' + String(x.detail).slice(0, 80) : '')).concat(st.cov.missing.length ? ['TARGET_MISSING: ' + st.cov.missing.map(id => byId.get(id).surface).join(', ') + ' must be heard in its planned turn'] : []),
+        budgetNote: st.pf.overBudget ? 'Your previous draft had ' + cand.turns.length + ' turns — that is too long.' : '' }
+    }
+    if (!committed && last) {
+      // only targets left unplaced (every other gate clean) ⇒ SEMANTIC replanning moves them explicitly, the phase commits without them
+      const onlyCoverage = !last.st.all.length && last.st.pf.totalHard === last.st.cov.missing.length && last.st.cov.missing.length
+      if (onlyCoverage && globalReplan(qi, last.st.cov.missing.slice(), 'targets [' + last.st.cov.missing.map(id => byId.get(id).surface).join(', ') + '] do not fit this phase after its regeneration')) {
+        committed = last.cand; tel.LISTENING_SCENES_COMMITTED_AFTER_REPAIR++
+      } else if (onlyCoverage) {
+        // replanning is spent: the plan EXPLICITLY drops the target(s) this conversation cannot carry naturally — named,
+        // the track is NOT_READY — and the phase's clean, validated lines commit (no defect is committed, nothing is scattered)
+        const miss = last.st.cov.missing.slice()
+        miss.forEach(id => { unplaceable.add(id); log && log('⛔ LISTENING_TARGET_UNPLACED ' + id + ' ' + byId.get(id).surface + ' — no natural placement after phase regeneration and replanning; it is NOT forced into an unrelated turn (NOT_READY)') })
+        sp.requiredTargetIds = sp.requiredTargetIds.filter(id => !miss.includes(id))
+        committed = last.cand; tel.LISTENING_SCENES_COMMITTED_AFTER_REPAIR++
+      } else {
+        // defects remain: the targets in the defective lines + the missing ones are re-planned (once per track); the phase is
+        // regenerated from the new plan at this same position
+        const bad = [...new Set(last.st.all.flatMap(x => { const tn = last.cand.turns[x.line - 1]; return tn ? sp.requiredTargetIds.filter(id => la.present(la.text(tn.pair), byId.get(id).surface, ctx)) : [] }).concat(last.st.cov.missing))]
+        if (bad.length && bad.length < sp.requiredTargetIds.length && globalReplan(qi, bad, 'phase still defective after regeneration (' + Object.entries(last.st.pf.counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ') + (last.st.nat.length ? ', unnatural ' + last.st.nat.length : '') + ')')) {
+          sp.skeleton = null; sp.replanRetry = (sp.replanRetry || 0) + 1
+          env.phaseHealth.push({ sceneId: sp.sceneId, ...G, committed: false, replanned: true })
+          return 'retry'
+        }
+        // replanning is spent: the defective EXCHANGES are cut out deterministically (no paid call) — what remains must pass
+        // every phase gate on its own; the targets they carried are explicitly UNPLACED (named, NOT_READY). A defect is never
+        // committed and nothing is scattered.
+        if (!committed && last.cand.turns.length > 2) {
+          const badLines = new Set(last.st.all.map(x => x.line).filter(k => k > 0))
+          const cut = new Set()
+          badLines.forEach(k => { cut.add(k); const tn = last.cand.turns[k - 1], pv = last.cand.turns[k - 2], nx = last.cand.turns[k]
+            if (pv && pv.speaker !== tn.speaker && _isQuestion(pv.pair)) cut.add(k - 1)
+            if (nx && nx.speaker !== tn.speaker && _isQuestion(tn.pair)) cut.add(k + 1) })
+          const kept = last.cand.turns.filter((tn, i) => !cut.has(i + 1))
+          if (kept.length >= 2 && kept.length < last.cand.turns.length) {
+            const trimmed = { ...last.cand, turns: kept, _trimmed: true }
+            const lost = sp.requiredTargetIds.filter(id => !kept.some(tn => la.present(la.text(tn.pair), byId.get(id).surface, ctx)))
+            const spT = { ...sp, requiredTargetIds: sp.requiredTargetIds.filter(id => !lost.includes(id)) }
+            const stT = await phaseIssues(trimmed, spT)
+            if (stT.clean && spT.requiredTargetIds.length) {
+              log && log('✂ PHASE_TRIMMED ' + sp.sceneId + ' — the defective exchange(s) L' + [...cut].sort((a, b) => a - b).map(k => k + offsetOf(last.cand)).join(',L') + ' are cut out (no generation call); the remaining ' + kept.length + ' turns pass every gate again (re-judged in their new context) · ' +
+                (lost.length ? 'UNPLACED: [' + lost.map(id => byId.get(id).surface).join(', ') + '] (NOT_READY)' : 'no target lost (every required target is still heard in a clean line)'))
+              lost.forEach(id => { unplaceable.add(id); log && log('⛔ LISTENING_TARGET_UNPLACED ' + id + ' ' + byId.get(id).surface + ' — every candidate carried it in a defective exchange; it is NOT forced into an unrelated turn (NOT_READY)') })
+              sp.requiredTargetIds = spT.requiredTargetIds; committed = trimmed; tel.LISTENING_SCENES_TRIMMED = (tel.LISTENING_SCENES_TRIMMED || 0) + 1
+            }
+          }
+        }
+      }
+    }
+    const sc = committed || { sceneId: sp.sceneId, setting: sp.purpose, turns: [] }
+    const cov = _lnSceneCoverage(sc, sp.requiredTargetIds, byId, la, ctx)
+    env.phaseHealth.push({ sceneId: sp.sceneId, ...G, committed: !!committed })
+    log && log('🩺 PHASE_REPAIR_STRATEGY ' + sp.sceneId + ' (' + sp.phase + ') generationCalls=' + G.generationCalls + ' atomicRepairCalls=' + G.atomicRepairCalls + ' exchangeRepairCalls=' + G.exchangeRepairCalls + ' phaseRegenerations=' + G.phaseRegenerations +
+      (G.escalations.length ? ' escalations=[' + G.escalations.join(' | ') + ']' : '') + ' → ' + (committed ? (committed._trimmed ? 'COMMITTED after deterministic trim' : G.phaseRegenerations || G.atomicRepairCalls || G.exchangeRepairCalls ? 'COMMITTED after repair' : 'COMMITTED on first generation') : 'NOT COMMITTED'))
+    if (committed) delete committed._trimmed
+    if (!committed) {
+      env.uncommitted.push({ sceneId: sp.sceneId, residual: last ? Object.entries(last.st.pf.counts).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).concat(last.st.nat.length ? ['unnatural ' + last.st.nat.length] : []).join(', ') || 'no valid candidate' : 'no valid candidate', targets: sp.requiredTargetIds.slice() })
+      tel.LISTENING_UNCOMMITTED_SCENES = (tel.LISTENING_UNCOMMITTED_SCENES || 0) + 1
+      sp.requiredTargetIds.forEach(id => unplaceable.add(id))
+      log && log('⛔ PHASE_NOT_COMMITTED ' + sp.sceneId + ' — NO COMMIT_WITH_DEFECTS: nothing from this candidate enters the conversation; its targets [' + sp.requiredTargetIds.map(id => byId.get(id).surface).join(', ') + '] stay unheard (no random scattering) → NOT_READY')
+      report.push({ sceneId: sp.sceneId, required: sp.requiredTargetIds.length, heard: 0, turns: 0, allowedMax, reassignedOut: 0 })
+      emit('scene', qi + 1, { sceneId: sp.sceneId })
+      return
+    }
+    log && log('✅ SCENE_COMMIT ' + sp.sceneId + ' decision=COMMIT · ' + sc.turns.length + ' turns · heard ' + cov.heard.length + '/' + sp.requiredTargetIds.length + ' · every phase gate clean (coverage, closed vocab, complexity, grammar/register, adjacency, continuity, naturalness)')
+    sp.verifiedTargetIds = cov.heard.slice()
+    accepted.push(sc); usedTurns += sc.turns.length
+    updateConversationContract(env.contract, sc, la, byId, sp.phase || sp.sceneId)
+    log && log('🧵 PHASE_COMMITTED ' + sp.sceneId + ' (' + (sp.phase || '-') + ') ' + sc.turns.length + ' turns · facts ' + env.contract.knownFacts.length + ' · commitments ' + env.contract.commitmentsMade.length + (env.contract.unresolvedQuestions.length ? ' · open question carried into the next part' : ''))
+    report.push({ sceneId: sp.sceneId, required: sp.requiredTargetIds.length, heard: cov.heard.length, turns: sc.turns.length, allowedMax, reassignedOut: 0 })
+    emit('scene', qi + 1, { sceneId: sp.sceneId })
+  }
   for (let qi = 0; qi < queue.length; qi++) {
+    if (env.oneConversation && !o.legacyRepairLoop) { const r = await composePlannedPhase(qi); if (r === 'retry') qi--; continue }
     const sp = queue[qi]
     if (!sp.requiredTargetIds.length) { log && log('  LISTENING_SCENE ' + sp.sceneId + ' has no required targets left — skipped'); continue }
     const requiredAtStart = sp.requiredTargetIds.length
@@ -19857,7 +20788,7 @@ async function _lnComposeByScenes(env) {
   tel.LISTENING_SCENES_REALLOCATED = env.uncommitted.filter(u => u.reallocated).length
   return { ok: true, scenes: accepted, audit, natIssues, plan, report, coh,
     gates: { SCENE_REQUIRED_COVERAGE: allScenesPass ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total <= env.turnsMax && !budgetExceeded, SCENES_VALIDATED: env.uncommitted.every(u => u.reallocated),
-      ONE_CONVERSATION: env.oneConversation ? 'PASS' : 'n/a' }, uncommitted: env.uncommitted.slice(), contract: env.contract || null, story: plan.story || null }
+      ONE_CONVERSATION: env.oneConversation ? 'PASS' : 'n/a' }, uncommitted: env.uncommitted.slice(), contract: env.contract || null, story: plan.story || null, phaseHealth: (env.phaseHealth || []).slice() }
 }
 async function buildListeningConversation(mainTrack, vocab0, o) {
   const lang = o.lang || (mainTrack && mainTrack.language) || trackLanguageOf(mainTrack), log = o.onLog || null
@@ -19926,11 +20857,15 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     const cur = scs || scenes
     // v669 §2 — each line is judged IN CONTEXT (the previous line of its scene travels with it)
     const all = cur.flatMap(sc => sc.turns.map((tn, k) => k > 0 ? { ...tn.pair, _context: la.text(sc.turns[k - 1].pair) + (sc.turns[k - 1].pair.english ? ' (' + sc.turns[k - 1].pair.english + ')' : '') } : tn.pair))
-    const todo = all.filter(p => !verdictsCache.has(la.text(p)))
-    if (todo.length) { tel.LISTENING_QC_CALLS += Math.ceil(todo.length / 12); const vv = await la.verdicts(todo, jaStyle ? { ...o, speechStyle: jaStyle } : o, log); vv.forEach((v, k) => verdictsCache.set(k, v)) }
+    // v673 — a verdict is cached per (line, previous line): a reply judged unnatural BECAUSE of its context is judged again
+    // once that context changed (it used to stay "unnatural" forever — the cache was keyed by the text alone)
+    const vKey = p => la.text(p) + '\u241F' + (p._context || '')
+    const todo = all.filter((p, i) => !verdictsCache.has(vKey(p)) && all.findIndex(q => vKey(q) === vKey(p)) === i)
+    if (todo.length) { tel.LISTENING_QC_CALLS += Math.ceil(todo.length / 12); const vv = await la.verdicts(todo, jaStyle ? { ...o, speechStyle: jaStyle } : o, log); todo.forEach(p => { if (vv.has(la.text(p))) verdictsCache.set(vKey(p), vv.get(la.text(p))) }) }
     const issues = []
     let n = 0
-    cur.forEach(sc => sc.turns.forEach(tn => { n++; const v = verdictsCache.get(la.text(tn.pair))
+    const keyAt = (sc, k) => vKey(k > 0 ? { ...sc.turns[k].pair, _context: la.text(sc.turns[k - 1].pair) + (sc.turns[k - 1].pair.english ? ' (' + sc.turns[k - 1].pair.english + ')' : '') } : sc.turns[k].pair)
+    cur.forEach(sc => sc.turns.forEach((tn, k) => { n++; const v = verdictsCache.get(keyAt(sc, k))
       if (!v || v.state === QUALITY.UNVERIFIED) issues.push({ code: 'NATURALNESS_UNVERIFIED', line: n, detail: (v && v.error) || 'no verdict' })
       else if (v.state === QUALITY.REJECTED) issues.push({ code: 'UNNATURAL', line: n, detail: 'naturalness ' + v.score + '/5' + (v.note ? ' — ' + v.note : '') }) }))
     return issues
@@ -19944,8 +20879,15 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     // v669 §17: no scene validated → nothing enters the track; the reason names the uncommitted INVALID candidates
     const unc = (r.uncommitted || []).map(u => (u.sceneId || u.id || '?') + (u.residual ? ' (' + u.residual + ')' : '')).join(', ')
     const why = r.reason || (unc ? 'UNCOMMITTED_SCENE: no scene candidate validated — INVALID_CANDIDATE ' + unc : 'the conversation could not be composed')
-    if (!r.ok || !r.scenes.length) return { ok: false, empty: true, listeningQuality: 'NEEDS_REPAIR — ' + why, reason: why, stats: {}, telemetry: tel, plan: r.plan, uncommitted: r.uncommitted || [] }
-    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh, uncommitted: r.uncommitted || [], contract: r.contract || null, story: r.story || null }
+    if (!r.ok || !r.scenes.length) {
+      // v673 §5 — the efficiency health line is printed even when nothing validated (that is when it matters most)
+      const pf = tel.LISTENING_REPAIR_CALLS >= 50 || tel.LISTENING_REPAIR_CALLS > tel.LISTENING_GENERATION_CALLS
+      Object.assign(tel, { LISTENING_PHASES_FIRST_GENERATION_PCT: 0, LISTENING_PLANNER_FAILURE: pf })
+      log && log('🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=0% (target ≥70%) · repairCalls=' + tel.LISTENING_REPAIR_CALLS + ' (target <10) · generationCalls=' + tel.LISTENING_GENERATION_CALLS +
+        (pf ? ' · ⚠ PLANNER_FAILURE — ' + (tel.LISTENING_REPAIR_CALLS >= 50 ? '50+ repair calls' : 'repair calls > generation calls') + ': diagnose upstream planning (feasibility / meaning plan / palettes)' : ' · ⚠ nothing validated') + ' — health targets, not gates')
+      return { ok: false, empty: true, listeningQuality: 'NEEDS_REPAIR — ' + why, reason: why, stats: {}, telemetry: tel, plan: r.plan, uncommitted: r.uncommitted || [] }
+    }
+    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh, uncommitted: r.uncommitted || [], contract: r.contract || null, story: r.story || null, phaseHealth: r.phaseHealth || [] }
   }
   // ── 3. whole-conversation coherence (scene + whole) — a HARD gate ──
   const cohScenes = scenes.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair })) }))
@@ -20019,6 +20961,12 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
       SCENES_VALIDATED: (sceneGates.uncommitted || []).every(u => (u.targets || []).every(id => audit.covered.includes(id))) } : {}),
     // v672 §2 — ONE cohesive conversation: planned as one story and no re-greeting / early goodbye anywhere in the final text
     ...(sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? { ONE_CONVERSATION: conversationContinuityAudit(scenes, la, targets).length ? 'FAIL' : 'PASS' } : {}),
+    // v673 §3F — the FINAL audit reads the assembled conversation as ONE discourse: the meaning plan was validated before
+    // generation, every question–answer relation in the final text holds (one broken required exchange fails it — an
+    // average coherence score cannot override it), and no committed phase carries a defect
+    ...(sceneGates && sceneGates.plan && sceneGates.plan.meaningPlan ? { MEANING_PLAN_VALIDATED: sceneGates.plan.meaningPlan.valid ? 'PASS' : 'FAIL',
+      QUESTION_ANSWER: (() => { const flatT = scenes.flatMap(sc => sc.turns); return skeletonAdjacencyIssues(flatT, null).length ? 'FAIL' : 'PASS' })(),
+      NO_DEFECTIVE_COMMITTED_PHASES: (tel.LISTENING_SCENES_COMMITTED_WITH_DEFECTS || 0) === 0 } : {}),
   }
   // v665 §47 — the Listening READY contract: EVERY gate is hard (coverage 30/30, max3, LENGTH, CLOSED_VOCAB, speakers,
   // merged lines, duplicates, singleton scenes, line quality, naturalness, coherence, pronunciation, turn budget).
@@ -20032,6 +20980,17 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   log && log('🩺 LISTENING_REPAIR_HEALTH repairCalls=' + tel.LISTENING_REPAIR_CALLS + ' (target < ' + LISTENING_REPAIR_CALL_TARGET + ') ' + (tel.LISTENING_REPAIR_CALLS < LISTENING_REPAIR_CALL_TARGET ? 'OK' : 'HIGH') +
     ' · sceneRegenerations=' + (tel.LISTENING_SCENE_REGENERATIONS || 0) + ' · scenesCommittedFirstPass=' + (tel.LISTENING_SCENES_COMMITTED_FIRST_PASS || 0) + ' · afterRepair=' + (tel.LISTENING_SCENES_COMMITTED_AFTER_REPAIR || 0) +
     ' · withDefects=' + (tel.LISTENING_SCENES_COMMITTED_WITH_DEFECTS || 0) + ' · firstGenerationUnknownLexemeLines=' + (tel.LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES || 0) + ' — telemetry only, not a gate')
+  // v673 §5 — EFFICIENCY HEALTH (targets, never READY gates): ≥ 70% of phases committed on first generation · < 10 repair
+  // calls · very few phase regenerations · near-zero target moves · no 100+ call spirals. 50+ repair calls, or repair calls
+  // > generation calls, is a PLANNER FAILURE (diagnose upstream planning) even when READY passes.
+  { const ph = (sceneGates && sceneGates.phaseHealth) || []
+    const firstPct = ph.length ? Math.round(100 * ph.filter(x => x.committed && !x.phaseRegenerations && !x.atomicRepairCalls && !x.exchangeRepairCalls).length / ph.length) : null
+    const plannerFailure = tel.LISTENING_REPAIR_CALLS >= 50 || tel.LISTENING_REPAIR_CALLS > tel.LISTENING_GENERATION_CALLS
+    Object.assign(tel, { LISTENING_PHASES_FIRST_GENERATION_PCT: firstPct, LISTENING_PLANNER_FAILURE: plannerFailure })
+    log && log('🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=' + (firstPct == null ? 'n/a' : firstPct + '%') + ' (target ≥70%) · repairCalls=' + tel.LISTENING_REPAIR_CALLS + ' (target <10) · generationCalls=' + tel.LISTENING_GENERATION_CALLS +
+      ' · phaseRegenerations=' + (tel.LISTENING_SCENE_REGENERATIONS || 0) + ' · globalReplans=' + (tel.LISTENING_GLOBAL_REPLANS || 0) + ' · targetReassignments=' + (tel.LISTENING_REASSIGNMENTS || 0) +
+      (plannerFailure ? ' · ⚠ PLANNER_FAILURE — ' + (tel.LISTENING_REPAIR_CALLS >= 50 ? '50+ repair calls' : 'repair calls > generation calls') + ': diagnose upstream planning (feasibility / meaning plan / palettes), even if READY passes' :
+        (firstPct != null && firstPct < 70) || tel.LISTENING_REPAIR_CALLS >= 10 ? ' · ⚠ below efficiency target (' + [firstPct != null && firstPct < 70 ? 'first-generation commits ' + firstPct + '% < 70%' : '', tel.LISTENING_REPAIR_CALLS >= 10 ? 'repair calls ' + tel.LISTENING_REPAIR_CALLS + ' ≥ 10' : ''].filter(Boolean).join(', ') + ') — no planner failure' : ' · planner health OK') + ' — health targets, not gates') }
   // ── 6. the Listening track object ──
   const ltId = 'lt-' + Date.now() + '-' + Math.floor(Math.random() * 1e4)
   const chars = sc0.characters || []
@@ -20069,7 +21028,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   const lt = {
     listeningTrackId: ltId, sourceMainTrackId: listeningTrackId(mainTrack), sourceFingerprint: trackPairsFingerprint(mainTrack.pairs), sourceFinal: trackFinal,
     language: lang, listeningVersion: o.version || 1, creationMode: o.creationMode || 'AUTO_PRETRACK', createdAt: new Date().toISOString(),
-    status: 'not_started', architecture: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? LISTENING_ARCHITECTURE_V672 : LISTENING_ARCHITECTURE, composer: 'model',
+    status: 'not_started', architecture: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? (sceneGates.plan && sceneGates.plan.meaningPlan ? LISTENING_ARCHITECTURE_V673 : LISTENING_ARCHITECTURE_V672) : LISTENING_ARCHITECTURE, composer: 'model',
     oneConversation: !!(sceneGates && sceneGates.ONE_CONVERSATION === 'PASS'), conversationContract: sceneGates && sceneGates.contract ? { ...sceneGates.contract, transcript: undefined } : null, story: sceneGates ? sceneGates.story || null : null,
     continuityIssues: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? conversationContinuityAudit(scenes, la, targets) : [],
     eligibleTargetIds: targets.map(t => t.id), excludedNewTargetIds: [], omittedTargetIds: audit.missing.map(t => t.id),
@@ -20178,7 +21137,107 @@ function listeningUsageSince(led0) {
     cost += r.costUsd || 0; byModel[r.model] = (byModel[r.model] || 0) + 1 })
   return { requests: rows.length, inputTokens: inTok, outputTokens: outTok, totalTokens: inTok + outTok, costUsd: cost, costSgd: cost * (typeof AI_USD_TO_SGD !== 'undefined' ? AI_USD_TO_SGD : 1.3), byModel }
 }
-async function buildStandaloneListeningTrack(o) {
+// ══ v673 §2B — FEASIBILITY BEFORE FREEZE ═══════════════════════════════════════════════════════════════════════════════
+// The 30 Listening targets are NOT frozen merely because they are due: the candidate pool (existing revision / SRS order)
+// is tested first — every target needs a natural communicative role its authorised support vocabulary can carry, and the
+// whole batch must fit ONE coherent conversation (the meaning plan validates). An infeasible candidate is skipped (its
+// SRS obligation is untouched: it stays due for the next Revision / Daily selection) and the next candidate is tried.
+// No feasible 30-target set ⇒ LISTENING_PLAN_INFEASIBLE ⇒ NOT_READY BEFORE any paid call.
+function listeningCandidatePool(lang, vocab, snap) {
+  const first = (snap && snap.targets) || []
+  let rest = []
+  if (lang === 'th') rest = (snap && snap.reserve) || []
+  else { try { rest = selectRevisionTrackTargets({ vocab, maxTargets: 100000, language: lang }).targets.filter(w => jazhTargetEligible(w, lang)) } catch (e) { rest = [] } }
+  const seen = new Set(), out = []
+  first.concat(rest).forEach(w => { if (w && w.id != null && !seen.has(w.id)) { seen.add(w.id); out.push(w) } })
+  return out
+}
+// v673 §2 — the planner's story order depends on a seed; a plan that misses the turn budget with one seed often fits with
+// another. Up to 4 deterministic seeds are planned (no model call) and the VALID plan with the fewest turns wins — stopping
+// at the first one inside the 28–36 aim. Returns the chosen plan with .seedUsed.
+function planListeningConversationBest(targets, opt) {
+  const base = (opt && opt.seed) || ''
+  let best = null
+  for (let k = 0; k < 4; k++) {
+    const seed = k ? base + '|alt' + k : base
+    const p = planListeningConversation(targets, { ...opt, seed })
+    p.seedUsed = seed
+    const ok = p.valid && p.meaningPlan && p.meaningPlan.valid
+    const n = p.meaningPlan ? p.meaningPlan.turnCount : p.totalExpectedTurns
+    if (!best || (ok && !best._ok) || (ok === best._ok && n < best._n)) { best = p; best._ok = ok; best._n = n }
+    if (ok && n <= LISTENING_CONVERSATION_TURNS.max) break
+  }
+  return best
+}
+function selectFeasibleListeningTargets(o) {
+  const lang = o.lang, vocab = o.vocab || [], need = o.need || LISTENING_TRACK_TARGETS
+  const pool = (o.pool || []).slice(0, o.maxPool || 150)
+  const fake = { keywords: pool.map(w => listeningTrackKeyword(lang, w)), selectedTargetIds: pool.map(w => w.id), language: lang }
+  const T = listeningConversationTargets(fake, vocab, lang)
+  const tById = new Map(T.map(t => [t.id, t]))
+  const metas = new Map(T.map(t => [t.id, listeningTargetMetadata(t)]))
+  let glosses = []
+  try { const s0 = snapshotLearnerInventory(lang, vocab, pool.slice(0, need), 'listening'); glosses = ((s0.inventory && s0.inventory.taught) || []).map(w => String(w.english || '')).filter(Boolean) } catch (e) { glosses = vocab.map(w => String(w.english || '')) }
+  const cc = (() => { try { return getLearnerComplexityContract({ lang, vocab }) } catch (e) { return null } })()
+  const deferred = []
+  const allMetas = T.map(t => metas.get(t.id))
+  const feasibleAlone = t => listeningTargetFeasibility(metas.get(t.id), glosses, allMetas)
+  let chosen = []
+  for (const t of T) {
+    if (chosen.length >= need) break
+    const f = feasibleAlone(t)
+    if (f.feasible) chosen.push(t.id)
+    else { deferred.push({ id: t.id, surface: t.surface, reason: f.reasons[0], stage: 'individual' }); if (o.frozen) chosen.push(t.id) }
+  }
+  // batch-dependent needs (a digit needs a phone number or other digits IN THIS BATCH)
+  const batchCheck = () => chosen.filter(id => !listeningTargetFeasibility(metas.get(id), glosses, chosen.map(x => metas.get(x))).feasible)
+  let plan = null, rounds = 0
+  const problems = []
+  while (rounds++ < 8) {
+    const bad0 = o.frozen ? [] : batchCheck()
+    if (bad0.length) { bad0.forEach(id => { chosen.splice(chosen.indexOf(id), 1); deferred.push({ id, surface: tById.get(id).surface, reason: listeningTargetFeasibility(metas.get(id), glosses, chosen.map(x => metas.get(x))).reasons[0], stage: 'batch' }) })
+      T.filter(t => !chosen.includes(t.id) && !deferred.some(d => d.id === t.id) && feasibleAlone(t).feasible).slice(0, need - chosen.length).forEach(t => chosen.push(t.id)); continue }
+    plan = planListeningConversationBest(chosen.map(id => tById.get(id)), { seed: o.seed || '', turnsMax: chosen.length + 14, complexity: cc, inventoryGlosses: glosses, friends: o.friends !== false })
+    if (plan.valid && plan.meaningPlan && plan.meaningPlan.valid) break
+    let culprits = [...((plan.meaningPlan && plan.meaningPlan.byTarget) || new Map()).keys()].filter(id => chosen.includes(id))
+    // a plan that only misses the TURN BUDGET (no target is misplaced): defer the lowest-priority target that costs a whole
+    // exchange on its own (one lesson word + a free reply) and take the next feasible candidate — never declare infeasible
+    // while the pool still has candidates
+    if (!culprits.length && !o.frozen && (plan.problems || []).some(x => /TURN_BUDGET|turns? > /.test(x))) {
+      const solo = plan.scenes.flatMap(sc => sc.exchanges.filter(e => e.turns.reduce((a, tu) => a + tu.targetIds.length, 0) === 1).flatMap(e => e.turns.flatMap(tu => tu.targetIds)))
+      const pick = chosen.slice().reverse().find(id => solo.includes(id))
+      if (pick != null) culprits = [pick]
+    }
+    if (!culprits.length || o.frozen) { problems.push(...(plan.problems || []).slice(0, 4)); break }
+    culprits.forEach(id => { chosen.splice(chosen.indexOf(id), 1); deferred.push({ id, surface: tById.get(id).surface, reason: ((plan.meaningPlan.byTarget && plan.meaningPlan.byTarget.get(id)) || ['the conversation is over the turn budget — this word alone needs a whole exchange'])[0], stage: 'plan' }) })
+    T.filter(t => !chosen.includes(t.id) && !deferred.some(d => d.id === t.id) && feasibleAlone(t).feasible).slice(0, need - chosen.length).forEach(t => chosen.push(t.id))
+    if (chosen.length < need) break
+  }
+  const indivBad = o.frozen ? deferred.filter(d => d.stage === 'individual').map(d => d.id) : []
+  const feasible = chosen.length >= need && !indivBad.length && !!plan && plan.valid && !!plan.meaningPlan && plan.meaningPlan.valid
+  const reason = feasible ? null : chosen.length < need ? 'only ' + chosen.length + ' of ' + T.length + ' candidate(s) can carry a natural role with the learner\'s authorised vocabulary in ONE coherent conversation (needs ' + need + ')'
+    : indivBad.length ? 'the frozen set contains ' + indivBad.length + ' target(s) with no natural role in the authorised vocabulary: ' + deferred.filter(d => indivBad.includes(d.id)).slice(0, 4).map(d => d.surface + ' (' + d.reason + ')').join('; ')
+    : 'the meaning plan cannot place every target naturally: ' + (problems.length ? problems.join('; ') : ((plan && plan.problems) || []).slice(0, 4).join('; '))
+  return { feasible, targetIds: chosen.slice(0, need), deferred, plan, planSeed: plan ? plan.seedUsed : null, poolSize: T.length, supportCount: glosses.length, reason, metas }
+}
+function listeningFeasibilityLog(f, lang) {
+  const out = ['🧭 LISTENING_FEASIBILITY ' + (f.feasible ? 'PASS' : 'FAIL') + ' language=' + lang + ' · pool=' + f.poolSize + ' candidate(s) in SRS order · authorised support=' + f.supportCount + ' word(s) · selected ' + f.targetIds.length +
+    ' · deferred ' + f.deferred.length + (f.deferred.length ? ': ' + f.deferred.slice(0, 8).map(d => d.surface + ' (' + d.stage + ': ' + String(d.reason || '').slice(0, 70) + ')').join('; ') : '') +
+    ' · meaning plan ' + (f.plan && f.plan.meaningPlan ? (f.plan.meaningPlan.valid ? 'VALID' : 'INVALID') + ' (' + f.plan.meaningPlan.turnCount + ' turns)' : 'not built') + ' — checked BEFORE the targets are frozen']
+  if (f.deferred.length) out.push('🧭 LISTENING_DEFERRED_SRS ids=[' + f.deferred.map(d => d.id).join(',') + '] — skipped words keep their SRS obligation (due date untouched; the next Revision / Daily selection still takes them)')
+  return out
+}
+// ══ v673 §2A — THE ONE SHARED LISTENING PIPELINE ═══════════════════════════════════════════════════════════════════════
+// Thai, Japanese and Mandarin all call generateCohesiveListeningTrack(): SELECT TARGETS → TEST FEASIBILITY → BUILD MEANING
+// PLAN → VALIDATE MEANING PLAN → GENERATE LANGUAGE → LIGHT VALIDATION / REPAIR → FINAL AUDIT. Language adapters
+// (listeningAdapterFor) supply morphology, particles, register, segmentation, pronunciation and readings only.
+async function generateCohesiveListeningTrack(o) {
+  const lang = o.lang, log = o.onLog || null
+  log && log('🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=' + APP_BUILD_VERSION + ' language=' + lang + ' path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=' + lang + ')')
+  return _buildStandaloneListeningTrackCore(o)
+}
+async function buildStandaloneListeningTrack(o) { return generateCohesiveListeningTrack(o) }
+async function _buildStandaloneListeningTrackCore(o) {
   const lang = o.lang, vocab = o.vocab || [], log = o.onLog || null
   if (!TRACK_LANGUAGES.includes(lang)) throw pipelineInternalError('INVALID_TRACK_LANGUAGE', 'Listening Track requested for "' + lang + '"')
   const led0 = typeof AI_LEDGER !== 'undefined' ? AI_LEDGER.length : 0
@@ -20187,7 +21246,20 @@ async function buildStandaloneListeningTrack(o) {
   // canonical Revision selector (selectRevisionTargets — the very call the Revision Track makes); a Rebuild passes
   // the frozen ids and never runs the selector again. Nothing is substituted mid-generation.
   const snap = o.targetIds && o.targetIds.length ? null : (o.snapshot || selectRevisionTargets(lang, vocab))
-  const frozenIds = Object.freeze((o.targetIds && o.targetIds.length ? o.targetIds : snap.targetIds).slice())
+  // v673 §2B — feasibility BEFORE the freeze (a rebuild tests its frozen ids without substitution)
+  const _attemptId = o.attemptId || ('lattempt-' + new Date().toISOString())
+  let feas = null
+  if (!o.skipFeasibility) {
+    try {
+      const pool = snap ? listeningCandidatePool(lang, vocab, snap) : o.targetIds.map(id => byId.get(id)).filter(Boolean)
+      if (pool.length >= LISTENING_TRACK_TARGETS) {
+        feas = selectFeasibleListeningTargets({ lang, vocab, pool, need: Math.min(LISTENING_TRACK_TARGETS, (snap ? snap.targetIds.length : o.targetIds.length) || LISTENING_TRACK_TARGETS), seed: _attemptId, frozen: !snap,
+          friends: !(lang === 'ja' && canonicalJapaneseSpeechStyle(o.speechStyle) === 'polite') })
+        listeningFeasibilityLog(feas, lang).forEach(l => log && log(l))
+      }
+    } catch (e) { log && log('⚠ LISTENING_FEASIBILITY could not run: ' + String(e && e.message || e).slice(0, 100)); feas = null }
+  }
+  const frozenIds = Object.freeze((feas && feas.feasible && snap ? feas.targetIds : (o.targetIds && o.targetIds.length ? o.targetIds : snap.targetIds)).slice())
   const snapWord = new Map(((snap && snap.targets) || []).map(w => [w.id, w]))
   const words = frozenIds.map(id => snapWord.get(id) || byId.get(id)).filter(Boolean)
   const createdAt = new Date().toISOString()
@@ -20197,7 +21269,7 @@ async function buildStandaloneListeningTrack(o) {
   // saved with the track; generation never re-reads the dashboard selector
   const speechStyle = lang === 'ja' ? canonicalJapaneseSpeechStyle(o.speechStyle) : null
   const source = { trackType: 'listening', language: lang, mode: 'listening', trackMode: 'listening', createdAt, id: 'listen-' + createdAt, ...(speechStyle ? { speechStyle, speechStyleSnapshot: speechStyle } : {}),
-    attemptId: o.attemptId || ('lattempt-' + createdAt), date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    attemptId: _attemptId, date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
     keywords, selectedTargetIds: keywords.map(k => k.wordId), listeningSelectedTargetIds: frozenIds.slice(), selector: snap ? snap.selector : 'snapshot (rebuild)',
     pairs: [], sceneContract: contract, lessonContext: buildLessonContext(contract, lang),
     targetCounts: { selectedTargetCount: keywords.length, newTargetCount: 0, reviewTargetCount: keywords.length, requiredListeningTargetCount: keywords.length, mode: 'listening' },
@@ -20209,15 +21281,25 @@ async function buildStandaloneListeningTrack(o) {
   log && log('🎧 LISTENING_TRACK_START language=' + lang + (speechStyle ? ' speechStyle=' + japaneseSpeechStyleName(speechStyle) : '') + ' trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=' + keywords.length + ' NEW=0 REVIEW=' + keywords.length +
     ' LISTENING_MAIN_GENERATION_CALLS=0' + (o.targetIds ? ' · REBUILD with the same ' + keywords.length + ' target ids' : ''))
   const usageTel = () => { const u = listeningUsageSince(led0); return { LISTENING_TOKEN_USAGE: u.totalTokens, LISTENING_COST: Number(u.costUsd.toFixed(6)), usage: u } }
-  const fail = (reason, uncommitted) => { const ut = usageTel()
+  const fail = (reason, uncommitted, spentTel) => { const ut = usageTel()
     // v669 §17: when every scene candidate was INVALID the failure says so (SCENES_VALIDATED=FAIL + the uncommitted scenes)
     const fc = ['TARGET_COVERAGE=FAIL'].concat(uncommitted && uncommitted.length ? ['SCENES_VALIDATED=FAIL'] : [])
     try { o.onProgress && o.onProgress({ stage: 'final', coverage: Object.fromEntries(frozenIds.map(id => [id, 'repair'])), targetIds: frozenIds.slice(), covered: 0, required: frozenIds.length, missing: frozenIds.slice(), ready: false, failedChecks: fc }) } catch (e) {}
     return { track: { ...source, status: 'NOT_READY', ready: false, failureReason: reason, listening: null,
       coverage: { covered: 0, required: Math.max(LISTENING_TRACK_TARGETS, keywords.length), missing: keywords.map(k => k.wordId) }, failedChecks: fc, uncommittedScenes: uncommitted || [], usage: ut.usage,
+      // v673 — a composition that validated nothing still REPORTS what it spent (it used to print 0 calls next to real tokens)
       telemetry: { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, LISTENING_GENERATION_CALLS: 0, LISTENING_REPAIR_CALLS: 0, LISTENING_QC_CALLS: 0, LISTENING_TOTAL_PAID_CALLS: 0,
+        ...(spentTel ? Object.fromEntries(Object.entries(spentTel).filter(([k, v]) => /^LISTENING_/.test(k) && typeof v !== 'object')) : {}), LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0,
+        LISTENING_TOTAL_PAID_CALLS: spentTel ? (spentTel.LISTENING_GENERATION_CALLS || 0) + (spentTel.LISTENING_REPAIR_CALLS || 0) + (spentTel.LISTENING_QC_CALLS || 0) : 0,
         LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST } }, result: null } }
   if (keywords.length < LISTENING_TRACK_TARGETS) { log && log('⛔ LISTENING_TRACK_NOT_READY — only ' + keywords.length + ' learned word(s) are eligible (needs ' + LISTENING_TRACK_TARGETS + ')'); return fail('only ' + keywords.length + ' learned words available (needs ' + LISTENING_TRACK_TARGETS + ')') }
+  // v673 §2B — no feasible 30-target conversation ⇒ NOT_READY BEFORE generation (never 100+ calls proving it)
+  if (feas && !feas.feasible) {
+    log && log('⛔ LISTENING_PLAN_INFEASIBLE — ' + feas.reason + ' · NOT_READY before generation (0 paid calls)')
+    const r = fail('LISTENING_PLAN_INFEASIBLE: ' + feas.reason)
+    r.track.failedChecks = ['LISTENING_PLAN_INFEASIBLE']; r.track.feasibility = { feasible: false, reason: feas.reason, deferred: feas.deferred.slice(0, 30) }
+    return r
+  }
   if (!o.apiKey) return fail('Listening composition needs a model key')
   let res = null
   if (o.targetIds && o.targetIds.length) log && log('🎧 LISTENING_REBUILD_TARGET_SET=UNCHANGED (' + frozenIds.length + ' frozen ids)')
@@ -20225,7 +21307,7 @@ async function buildStandaloneListeningTrack(o) {
     planSeed: source.attemptId, rebuild: !!(o.targetIds && o.targetIds.length), speechStyle }) }
   catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return fail('LISTENING_BUILD_ERROR: ' + (e && e.message || e)) }
   const lt = res && res.listeningTrack
-  if (!lt) return fail((res && res.reason) || 'the conversation could not be composed', res && res.uncommitted)
+  if (!lt) return fail((res && res.reason) || 'the conversation could not be composed', res && res.uncommitted, res && res.telemetry)
   const ut = usageTel()
   const tel = { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, ...(lt.telemetry || {}), LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST }
   const ready = lt.readiness === 'READY' && lt.coverage.coveredTargetIds.length === keywords.length
@@ -20529,10 +21611,10 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
     try { const a = await saveListeningAttempt(lang, listeningAttemptRecord({ ...base, state: 'BUILDING' })); if (liveRef.current) setAttempts(a) } catch (e) {}
     let r = null
     try {
-      r = await buildStandaloneListeningTrack({ lang, vocab, apiKey, model, attemptId, rebuildOf: rebuildOf || null, speechStyle,
+      r = await generateCohesiveListeningTrack({ lang, vocab, apiKey, model, attemptId, rebuildOf: rebuildOf || null, speechStyle,
         ...(targetIds ? { targetIds: useIds } : { snapshot: snap }),
         onLog: push,
-        onProgress: ev => { if (!liveRef.current || !ev || !ev.coverage) return; setCoverage(ev.coverage); setStage(ev.stage); if (ev.sceneId) setSceneDone(ev.sceneId); setUsage(listeningUsageSince(led0)) } })
+        onProgress: ev => { if (!liveRef.current || !ev || !ev.coverage) return; setCoverage(ev.coverage); if (Array.isArray(ev.targetIds) && ev.targetIds.length) setIds(ids0 => (ids0.join() === ev.targetIds.join() ? ids0 : ev.targetIds.slice())); setStage(ev.stage); if (ev.sceneId) setSceneDone(ev.sceneId); setUsage(listeningUsageSince(led0)) } })
     } catch (e) {
       push('❌ Listening generation stopped: ' + String(e && e.message || e))
       r = { track: { trackType: 'listening', language: lang, selectedTargetIds: useIds, status: 'NOT_READY', ready: false, failureReason: String(e && e.message || e),
@@ -29413,7 +30495,12 @@ function mandarinQcEngine(inv, vocab) {
     },
     validatePair(pair, { target }) {
       if (!pair || !pair.chinese) return { ok:false, problems:['missing Chinese'] }
+      // v673 §4 — a QC REPLACEMENT is accepted by THE SAME function as a generated candidate (hardMax, cue form,
+      // grammar, closed vocabulary …) — there is no separate, weaker "replacement acceptance"
+      if (target && target.chinese) { const v = mandarinAcceptCandidate(pair, target, inv, vocab); if (!v.ok) return { ok: false, problems: v.problems } }
       if (target && !mandarinTargetPresent(pair.chinese, target, inv)) return { ok:false, problems:['target ' + target.chinese + ' not present'] }
+      { const _cc = getLearnerComplexityContract({ lang: 'zh', vocab, lexicon: inv && inv.lexicon }), _an = hardComplexityAnalyse(_cc, 'zh', pair)
+        if (_an.overHardMax) return { ok: false, problems: ['LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' words > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')'] } }
       const unk = mandarinUnknownContent(pair.chinese, inv)
       if (unk.length) return { ok:false, problems:['untaught vocabulary: ' + unk.join(' ')] }
       const pv = validateMandarinPinyin(pair.pinyin)
@@ -31381,6 +32468,44 @@ function JapaneseBlockPill({ b, kind, row }) {
   )
 }
 
+// v673 §4 — NEW_TARGET_SHORTFALL: a Daily track that gets fewer NEW words than the language's per-track allowance says
+// exactly why (never a silent 1/3). Telemetry only — the Japanese selection pipeline is unchanged.
+function newTargetShortfallReport(o) {
+  const c = o || {}, lang = c.lang || 'ja', vocab = c.vocab || [], sel = c.selection || {}, fin = c.targets || []
+  if (c.trackMode === 'revision') return null
+  let requested = 3
+  try { requested = newWordsPerTrack(lang, 'daily', vocab) || requested } catch (e) {}
+  const isNewT = t => t && (t.selectionRole === 'new' || t._newCeilingOverflow)
+  const selected = fin.filter(isNewT).length
+  if (selected >= requested) return null
+  const reservedBySelector = (sel.targets || []).filter(t => t && t.selectionRole === 'new')
+  const finIds = new Set(fin.map(t => t.id))
+  const inv = (() => { try { return lang === 'ja' ? japaneseLearnerInventory(vocab, fin) : null } catch (e) { return null } })()
+  const whyDeferred = t => { try { if (!jazhTargetEligible(t, lang)) return 'not suitable for spoken conversation (activity preflight)'
+      if (inv && lang === 'ja') { const f = japaneseTargetFeasibility(t, inv); if (!f.teachable) return f.reasons[0] || 'not expressible with the taught words yet' } } catch (e) {}
+    return 'replaced by the feasibility backfill' }
+  const deferred = reservedBySelector.filter(t => !finIds.has(t.id)).map(t => ({ id: t.id, surface: t.japanese || t.chinese || t.thai, reason: whyDeferred(t) }))
+  const unseen = vocab.filter(w => w && isGenuinelyNew(w))
+  let eligibleNewCount = 0
+  for (const w of unseen.slice(0, 400)) { try { if (!jazhTargetEligible(w, lang)) continue; if (inv && lang === 'ja' && !japaneseTargetFeasibility(w, inv).teachable) continue; eligibleNewCount++ } catch (e) {} }
+  let beltLimit = null
+  try { if (sel.belt) beltLimit = getNewWordLimitForBelt(sel.belt) } catch (e) {}
+  let slotLimit = null
+  try { if (lang === 'ja') slotLimit = japaneseSlotsFor(vocab) } catch (e) {}
+  const ceiling = [beltLimit, slotLimit].filter(x => x != null).reduce((m, x) => Math.min(m, x), Infinity)
+  const blockedByCeiling = Number.isFinite(ceiling) ? Math.max(0, requested - ceiling) : 0
+  const today = new Date().toISOString().slice(0, 10)
+  const due = vocab.filter(w => w && w.status !== 'new' && w.dueDate && w.dueDate <= today).length
+  const overdue = vocab.filter(w => w && w.status !== 'new' && w.dueDate && w.dueDate < today).length
+  const backfilledReviews = Math.max(0, requested - selected)
+  const reason = deferred.length ? deferred.length + ' reserved NEW word(s) deferred before generation: ' + deferred.map(d => d.surface + ' (' + d.reason + ')').join('; ')
+    : blockedByCeiling ? 'the NEW ceiling for this learner is ' + ceiling + ' (belt / slot allowance)'
+    : reservedBySelector.length < requested ? 'only ' + reservedBySelector.length + ' unseen word(s) were available to the selector in the active belt'
+    : 'the selector reserved ' + reservedBySelector.length + ' NEW but the 30-target contract kept ' + selected
+  return { requested, selected, reason, eligibleNewCount, blockedByCeiling, debtState: 'due=' + due + ' overdue=' + overdue + ' (no review-debt cap on NEW)', backfilledReviews, deferred,
+    line: '⚠ NEW_TARGET_SHORTFALL requested=' + requested + ' selected=' + selected + ' reason=' + reason + ' eligibleNewCount=' + eligibleNewCount + ' blockedByCeiling=' + blockedByCeiling +
+      ' debtState=due=' + due + ',overdue=' + overdue + ' backfilledReviews=' + backfilledReviews }
+}
 // v651 §9/§12 — the Japanese TrackContext: frozen at generation start from the SELECTOR's roles.
 // NEW = targets the selector placed in a new slot; a feasibility backfill or an SRS status is never
 // re-interpreted as NEW afterwards. The expected count is the selector's own reserve for this track.
@@ -31520,7 +32645,9 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
       const _guard = createJaCostGuard((targets || []).length * 3, null, { onLog: m => push(m), runId: aiRunRef.current })      // v672 §3 — one efficiency guard (strategy changes; whole-track hard limit) for generation AND auto-recovery
       aiSetTrackId(_tc.trackId)
       push('\u2139 TRACK_CONTEXT trackId=' + _tc.trackId + ' language=' + _tc.language + ' mode=' + _tc.mode + ' selected=' + _tc.selectedTargetIds.length +
-           ' new=' + _tc.selectedNewTargetIds.length + (_tc.expectedNewCount != null ? '/' + _tc.expectedNewCount + ' expected' : '') + ' requiredReview=' + _tc.requiredReviewTargetIds.length + ' pipeline=' + PIPELINE_VERSION)
+           ' new=' + _tc.selectedNewTargetIds.length + (_tc.expectedNewCount != null ? '/' + _tc.expectedNewCount + ' expected' : '') + ' requiredReview=' + _tc.requiredReviewTargetIds.length + ' pipeline=' + PIPELINE_VERSION + ' build=' + APP_BUILD_VERSION)
+      // v673 §4 — never a silent 1/3: the shortfall and its specific reason are logged (telemetry only)
+      try { const _sf = newTargetShortfallReport({ lang: 'ja', selection, targets, vocab, trackMode }); if (_sf) { push(_sf.line); _tc.newShortfall = { requested: _sf.requested, selected: _sf.selected, reason: _sf.reason, eligibleNewCount: _sf.eligibleNewCount, blockedByCeiling: _sf.blockedByCeiling, debtState: _sf.debtState, backfilledReviews: _sf.backfilledReviews } } } catch (e) {}
       let res = await generateJapaneseTrack(
         targets, vocab, register, apiKey, model,
         (done, total, srcs, meta) => {

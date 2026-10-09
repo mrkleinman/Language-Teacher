@@ -93,3 +93,42 @@ All reviews are by the same model family as me. They are **uncalibrated** until 
 | Mandarin Daily ×1 | Gen2 has no pinyin stage yet; build it offline like the romaji stage, and add the zh equivalents of fixes 2–4 | about US$0.08 |
 | Thai Daily ×1 | no Thai phonetic stage yet; check the Thai closed-vocabulary checker for gaps like 5–6 | about US$0.12–0.15 |
 | Listening ×3 (ja, zh, th) | Listening has not been touched today; it needs the format, vocabulary and pronunciation fixes first | about US$0.02–0.04 each |
+
+---
+
+# v679: the Japanese "Use the new generator (test)" switch
+
+## What changed for the learner
+
+- The Japanese **Scene Ready** screen gains a switch, **"🧪 Use the new generator (test)"**. It is **off by default** and remembered on the device.
+- With the switch **off**, everything is exactly v677: the 18 live v677 runs replay identically, and the browser test confirms the standard generator runs.
+- With the switch **on**, Gen2 writes the recalls. They then go through the **unchanged** production tail: provenance, QC, the final audit, the 11-check display, and the learner's own Save through the existing SRS code.
+- Deferred words stay due. A replacement word is never a NEW word.
+
+## App-path defects found live, and fixed
+
+| Live run | Problem | Fix |
+|---|---|---|
+| 1, 3 | One unfixable romaji line stopped the whole lesson. | Retry with the exact error; then the dictionary reading, only if it passes the exact check. |
+| 2 | Production's audit flagged 21 lines because Gen2 sent no word breakdown. | Dictionary word breakdown aligned to the reading (all 791 recorded readings now pass production's audit). |
+| 4, 5, 7 | Production QC replaced 8–15 correct sentences (行きます, してる, 電話しよう) because its noun+verb rule saw word fragments. | Each word carries its lemma. Production's usage rules also run inside Gen2's gate, so production does not need to replace sentences. |
+| 7 | Production counted particles as content words ("9 units > 7"). | Segments carry production's own token classes. Gen2's length gate uses production's count. |
+| 9 | Coherence 1/5: 90 lines were judged as one scene. | Six sections with honest local premises. The audit is unchanged. |
+
+## Results on the final build (runs 8–12)
+
+- READY in **3 of 4** runs. The other run, 11, failed the coherence audit; the screen then offers "Study anyway", as v677 does.
+- About **US$0.08** per lesson.
+- Production QC replaced 0–4 sentences per lesson.
+- Blind review, against v677 run 2:
+
+| Recalls with any problem | Useful cues | Cues copying the answer | Misleading translations |
+|---|---|---|---|
+| v679 app path: **12/90 and 22/90** | **83 and 72** | 1 and 0 | 3 and 5 |
+| v677: 27/90 | 32 | 49 | 8 |
+
+## Production QC rules that reject natural Japanese (for the owner; not changed)
+
+- ありがとう cannot share a line with a verb, which blocks 来てくれてありがとう.
+- あそこ / 店 cannot be the object of 見る, which blocks あそこ見て.
+- An adjective in て-form before a verb is rejected (忙しくて行けない).

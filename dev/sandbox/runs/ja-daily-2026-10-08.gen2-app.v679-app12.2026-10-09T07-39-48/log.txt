@@ -1,0 +1,136 @@
+✓ Scene ready
+🧪 GEN2 DAILY ja · gen2-pilot/1.1 · generator gemini-2.5-flash-lite · judge gemini-2.5-flash · candidates 107 (fixed 30 + reserve)
+✅ TEACHABLE どう (question-word) · え、本当？どうして？ / この本、どう思う？ / これどうする？
+✅ TEACHABLE なんで (question-word) · なんで遅いんだ / なんであれを買ったの / なんでそこへ行くの
+✅ TEACHABLE どっち (question-word) · 駅はどっち？ / 映画はどっちにする？ / 家はどっちか分かる？
+✅ TEACHABLE どれ (question-word) · どれが飲みたい？ / どれが見たい？ / どれが欲しい？
+✅ TEACHABLE また (adverb) · また会わない？ / え、また会ったね。 / 今日またご飯食べる。
+✅ TEACHABLE あそこ (pronoun) · 本はあそこにあるよ。 / 電車はあそこ？ / あそこは遠いから、行きたくない。
+✅ TEACHABLE あれ (pronoun) · あれ、何？ / あれ、持ってる。 / あれ、好き？
+✅ TEACHABLE ごめん (expression) · ごめん、今日忙しいんだ / ねえ、ごめん。何してる？ / あ、ごめん。大丈夫？
+✅ TEACHABLE 電話 (noun) · 今電話できる？ / また電話するね。 / 電話使う？
+↪ DEFERRED はい — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE うん (response) · うん、行こう。 / うん、分かる。 / うん、ありがとう。
+↪ DEFERRED いいえ — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE たぶん (adverb) · たぶん忙しいよ / たぶん家にいると思う / たぶんお金がある
+✅ TEACHABLE 乗る (verb) · バスに乗ろうか。 / 新しい電車に乗ったことある？ / 電車に乗るのが好きだ。
+↪ DEFERRED 大丈夫 — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE 行く (verb) · おいしい店に行こうか。 / 駅に行く。 / 店まで車で行こうか。
+✅ TEACHABLE 食べる (verb) · これ食べる？ / 何食べる？ / ご飯食べるの好き。
+✅ TEACHABLE 好き (adjective) · ここ、本当に好きだね。 / 店はちょっと好きじゃないかな。 / 誰が好き？
+✅ TEACHABLE 何 (question-word) · それは何？ / 今何してるの？ / あれは何て言うの？
+✅ TEACHABLE 飲む (verb) · これ飲む？ / 何飲む？ / ちょっと飲みに行く。
+✅ TEACHABLE どこ (question-word) · 友達、どこに住んでいる？ / 今日、どこへ行くの？ / どこで食べる？
+✅ TEACHABLE 一緒 (noun) · うん、一緒に行こう。 / 店に一緒に行かない？ / 一緒に食べたい。
+↪ DEFERRED する — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE 今 (noun) · 今何時？ / 今忙しい。 / 今から行こう。
+✅ TEACHABLE ちょっと (adverb) · 水ちょっと飲む？ / ご飯はちょっとだね。 / この仕事はちょっと難しい。
+✅ TEACHABLE 来る (verb) · 何時に来る？ / 今日来る？ / あの人が来るんだ
+✅ TEACHABLE 分かる (verb) · これ、分かる？ / うん、分かるよ。 / ごめん、分からない。
+✅ TEACHABLE ありがとう (expression) · あ、そうか。ありがとう。 / おいしい！ありがとう。 / うん、いいね。ありがとう。
+✅ TEACHABLE すみません (expression) · すみません、ちょっといいですか。 / すみません。 / すみません、トイレはどこですか。
+✅ TEACHABLE いい (adjective) · うん、いいね / どっちがいい？ / 大丈夫、いいよ
+✅ TEACHABLE 今日 (noun) · 今日映画を見る。 / うん、今日会おう。 / 今日何をする？
+✅ TEACHABLE 明日 (noun) · 明日どこか行こうよ / 明日は何するの / 明日は働くよ
+✅ TEACHABLE 見る (verb) · 映画を見ようよ。 / ああ、それを見たいんだね。 / その本を見た？
+✅ TEACHABLE 買う (verb) · あれ、いくらで買ったの？ / 明日、新しい本を買いたいんだ。 / まだ買ってないよ。
+🔤 READING/ROMAJI 90/90
+📋 GEN2 DAILY READY · targets 30/30 · recalls 90/90 · deferred 4 · calls 90 {"P_gen2_probe":45,"R_gen2_judge":41,"S_gen2_reading":4}
+🧪 NEW GENERATOR track: 30 targets · 90 recalls · deferred (stay due): はい いいえ 大丈夫 する · replaced by: 今日 明日 見る 買う
+━━ Quality check
+▶ Checking cue and translation alignment…
+  Batch 1/8: checking 12 pairs
+  Batch 2/8: checking 12 pairs
+  Batch 3/8: checking 12 pairs
+  Batch 4/8: checking 12 pairs
+  Batch 5/8: checking 12 pairs
+  Batch 6/8: checking 12 pairs
+  Batch 7/8: checking 12 pairs
+  Batch 8/8: checking 5 pairs
+  CUE_CHECK_COVERAGE scored 89/89 eligible pair(s)
+⚠ Pair 14 — cue could be clearer (3/5) — translation adds 'want'
+⚠ Pair 17 — cue does not map to the answer (2/5) — cue asks to point out, sentence asks what it is
+⚠ Pair 38 — cue could be clearer (3/5) — translation adds 'want'
+⚠ Pair 46 — cue does not map to the answer (1/5) — Japanese asks 'What is that?', cue asks 'what they are giving you'
+⚠ Pair 48 — cue does not map to the answer (2/5) — Japanese addresses friend as 'friend', cue is direct address
+⚠ Pair 50 — cue could be clearer (3/5) — translation adds 'want'
+⚠ Pair 87 — cue could be clearer (3/5) — translation adds 'want'
+⚠ Pair 89 — cue could be clearer (3/5) — Japanese omits 'you lent them'
+▶ Evaluating 30 target groups…
+  ✓ どう
+  ✓ なんで
+  ✓ どっち
+  ✓ どれ
+  ✓ また
+  ✓ あそこ
+⚠ Pair 17 — あれ: cue or translation does not match the sentence (2/5)
+  🔄 あれ: cue or translation does not match the sentence (2/5)
+  ✓ あれ replaced and revalidated
+  ✓ ごめん
+  ✓ 電話
+  ✓ うん
+  ✓ たぶん
+  ✓ 乗る
+  ✓ 行く
+  ✓ 食べる
+  ✓ 好き
+⚠ Pair 46 — 何: cue or translation does not match the sentence (1/5)
+  🔄 何: cue or translation does not match the sentence (1/5)
+  ✓ 何 replaced and revalidated
+  ✓ 飲む
+⚠ Pair 48 — どこ: cue or translation does not match the sentence (2/5)
+  🔄 どこ: cue or translation does not match the sentence (2/5)
+  ✓ どこ replaced and revalidated
+  ✓ 一緒
+  ✓ 今
+  ✓ ちょっと
+  ✓ 来る
+  ✓ 分かる
+  ✓ ありがとう
+  ✓ すみません
+  ✓ いい
+  ✓ 今日
+  ✓ 明日
+  ✓ 見る
+  ✓ 買う
+✅ QC complete — 11 found, 6 fixed, 0 accepted, 0 unresolved
+✅ 11 found · 6 fixed · 0 accepted · 0 unresolved
+━━ FINAL_TRACK (ja): quota → recovery → coherence → freeze text → pronunciation → final audit → invariants
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Japanese content units, benchmark-fixture ja-daily-2026-10-08)
+📚 VOCAB INVENTORY introducedContent=77 selectedTargets=30 newTargets=1 (daily)
+  🧩 MAIN_TRACK_COHERENCE 6/6 scene(s) coherent · overall 4/5 (threshold 3) · S1=3 S2=3 S3=3 S4=4 S5=4 S6=4 → PASS
+  🧊 FINAL_LINE_TEXT frozen: 90 line(s) · fingerprint 90:1k4t1g9
+  🔤 FINAL readings/romaji (after recovery): 0 alignment issue(s)
+  🧩 TARGET_VARIETY_AUDIT 30/30 target(s) practise 3 distinct applications
+📏 MAIN_COMPLEXITY_AUDIT belt=10th Kyu preferred=3–5 hardMax=7 lines=90 withinPreferred=52 shortNatural=37 abovePreferredAllowed=1 overHardMax=0 maxObserved=6 · preferredRatio=98% (advisory ≥80%) PASS
+  🔁 FINAL_DUPLICATE_AUDIT target pairs=90 duplicates=0 PASS (run on the FINAL persisted pairs)
+  ⚠️ SCENE_CONTRACT_DRIFT opening line of A missing (approved: "やあ、元気？")
+  ⚠️ SCENE_CONTRACT_DRIFT opening line of B missing (approved: "うん、元気だよ。そっちは？")
+  📊 CHECK_MODEL recalls=90 candidateAttempts=90 (1.00/recall) accepted=90 unresolved=0 firstAttemptSuccess=100% acceptedAtCheck=1:90 rejectionClasses=none
+  🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=90 · by origin: model reply 90 · outcomes: accepted 90 · fallback accepted for 0 recall(s) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+📋 MAIN TRACK READY — 90/90 target pairs · coherence PASS overall 4/5 (threshold 3) · S1=3 S2=3 S3=3 S4=4 S5=4 S6=4 · pronunciation 0 issues
+🧾 TRACK INTEGRITY (ja): READY
+  MAIN_TRACK: READY · TARGET PAIRS 90/90 · COHERENCE PASS overall 4/5 (threshold 3) · S1=3 S2=3 S3=3 S4=4 S5=4 S6=4
+  TARGET WORDS: 30/30 covered
+  TARGET PAIRS: 90/90 valid target-practice sentences (3 per target word)
+  QC: 0 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 0 other) · 3 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 90 evaluated, 0 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+  BRIDGE PAIRS: 0 · FRAMING PAIRS: 0 · TOTAL PLAYABLE LINES: 90
+  PRONUNCIATION ALIGNMENT: 0 issue(s) · UNVERIFIED FINAL PAIRS: 0
+🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a Daily Track
+🤖 GEMINI USAGE SUMMARY
+Model: gemini-2.5-flash-lite ×87 · gemini-2.5-flash ×45
+Track ID: - · run ja-track-1791439200007-5701
+Total requests: 132 · Successful: 132 · Failed: 0 · Retried: 0
+Generation calls: 3 · QC calls: 39 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 0 · Listening calls: 0 · Other: 90
+Input tokens: 93754 · Output tokens: 50855 · Total tokens: 144609 (provider usage metadata)
+Retry requests: 0 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+Provider requests: 132 · Provider-error retries: 0
+GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+PAID REQUESTS BY PURPOSE: other 90 (109411 tok, USD 0.0745) · QC judging 36 (19960 tok, USD 0.0029) · generation (first attempt / scene) 3 (9340 tok, USD 0.0013) · QC repair (replace / improve) 3 (5898 tok, USD 0.0016)
+Estimated Gemini cost: USD 0.0803 (≈ SGD 0.1043 at 1.3 — assumed rate)
+TOP GEMINI COST SOURCES
+  1. R_gen2_judge — 41 requests / 43067 tokens / ~64%
+  2. P_gen2_probe — 45 requests / 60750 tokens / ~16%
+  3. S_gen2_reading — 4 requests / 5594 tokens / ~13%
+  4. G_replace — 3 requests / 5898 tokens / ~2%
+  5. C_group_eval — 27 requests / 9959 tokens / ~2%

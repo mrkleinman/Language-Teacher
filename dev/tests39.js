@@ -220,6 +220,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       const two = c.gen2PickDistinct('zh', [{ text: '你到了没有？', cue: 'Ask your friend if they have arrived yet.', function: 'check arrival', situation: 'on the phone' },
         { text: '你到了吗？', cue: 'Ask your friend if they have arrived yet.', function: 'confirm arrival', situation: 'waiting outside' },
         { text: '我到了。', cue: 'Tell your friend you have arrived.', function: 'announce', situation: 'at the door' }], 3)
+      T('F25', 'v680: Mandarin uses Chinese punctuation (这个多少钱? → 这个多少钱？; 好, 我来. → 好，我来。)', c.gen2Tidy('zh', '这个多少钱?') === '这个多少钱？' && c.gen2Tidy('zh', '好, 我来.') === '好，我来。' && c.gen2Tidy('zh', '你好！') === '你好！')
       T('F23', 'v680: two candidates with the SAME cue are one use (live zh run: 你到了没有？ / 你到了吗？ broke the lesson with DUPLICATE_CUES)', two.length === 2 && two[1].text === '我到了。', two.map(x => x.text))
       const a = { text: 'ผมของคุณยาว', speaker: 'female' }, b = { text: 'ผมของคุณยาว', speaker: 'either' }
       const pa = c.gen2SpeakerProblem({ lang: 'th' }, a), pb = c.gen2SpeakerProblem({ lang: 'th' }, b)

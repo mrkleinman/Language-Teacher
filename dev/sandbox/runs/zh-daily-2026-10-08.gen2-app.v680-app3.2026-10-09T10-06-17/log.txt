@@ -1,0 +1,155 @@
+🧪 GEN2 DAILY zh · gen2-pilot/1.1 · generator gemini-2.5-flash-lite · judge gemini-2.5-flash · candidates 65 (fixed 30 + reserve)
+✅ TEACHABLE 可以 (verb) · 你现在可以回家。 / 我可以用你的钱吗 / 你可以吃这个
+✅ TEACHABLE 到 (verb) · 我到了。 / 你要到哪里去？ / 我快到了。
+✅ TEACHABLE 一点 (adverb) · 吃一点吗？ / 我有一点工作。 / 你帮我一点。
+✅ TEACHABLE 多 (adjective) · 那里人很多。 / 这个多少钱? / 我有很多工作。
+✅ TEACHABLE 少 (adjective) · 我钱很少。 / 我的朋友很少 / 东西很少吗
+✅ TEACHABLE 快 (adjective) · 工作快好了 / 你快到了吗 / 你快拿给我
+↪ DEFERRED 慢 — ONLY_1_DISTINCT_ACCEPTED after 3 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE 大 (adjective) · 我觉得很大。 / 这个很大 / 地方很大
+✅ TEACHABLE 小 (adjective) · 这个地方很小。 / 这个东西小吗？ / 我家很小。
+✅ TEACHABLE 很 (adverb) · 你很好看。 / 这个很好喝。 / 这里很大。
+✅ TEACHABLE 太 (adverb) · 我吃太多了。 / 你太快了。 / 这个太大了。
+✅ TEACHABLE 跟 (function-word) · 你跟我一起去吗？ / 我想跟你说一下。 / 你想跟我一起吃吗
+✅ TEACHABLE 一起 (adverb) · 我喜欢一起做东西。 / 你想一起做什么？ / 昨天一起做的。
+✅ TEACHABLE 回 (verb) · 我想明天回。 / 你回吗？ / 我想回。
+✅ TEACHABLE 拿 (verb) · 我的东西呢？你拿了吗？ / 嗯，我拿到了。 / 我帮你拿。
+✅ TEACHABLE 用 (verb) · 我用这个做。 / 我可以用一下你的吗 / 我用那个做的
+✅ TEACHABLE 做 (verb) · 你今天要做什么？ / 我不想做那个。 / 你做过这个东西了没有？
+✅ TEACHABLE 等 (verb) · 你等等我一下。 / 好，我等你。 / 我等好了。
+✅ TEACHABLE 找 (verb) · 我想找这个东西。 / 我找到了那个人。 / 你帮我找一下。
+✅ TEACHABLE 我 (pronoun) · 我吃。 / 我想回家。 / 我懂了。
+✅ TEACHABLE 想 (verb) · 你想喝什么呢 / 我想吃东西 / 你想来吗
+✅ TEACHABLE 吃 (verb) · 你喜欢吃什么东西？ / 你吃过了吗？ / 我现在不想吃。
+✅ TEACHABLE 你 (pronoun) · 你帮我一下 / 你现在在哪里 / 我帮你买
+↪ DEFERRED 什么 — ONLY_0_DISTINCT_ACCEPTED after 3 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE 好 (adjective) · 嗯，好。 / 明天好。 / 我很好。
+✅ TEACHABLE 喝 (verb) · 你喜欢喝什么？ / 这个可以喝吗？ / 你昨天喝什么了？
+✅ TEACHABLE 这个 (pronoun) · 我喜欢这个 / 我要这个 / 这个很好
+✅ TEACHABLE 要 (verb) · 你要吃什么？ / 我要回家了。 / 我要钱买东西。
+✅ TEACHABLE 不 (response) · 我不要吃。 / 我不在。 / 我不想去。
+✅ TEACHABLE 那个 (pronoun) · 那个多少钱 / 我真的喜欢那个 / 你看那个
+✅ TEACHABLE 喜欢 (verb) · 你喜欢这里吗？ / 我真的喜欢。 / 我不喜欢。
+✅ TEACHABLE 有 (verb) · 你有钱吗？ / 这里有很多人 / 我有钱
+📋 GEN2 DAILY READY · targets 30/30 · recalls 90/90 · deferred 2 · calls 106 {"P_gen2_probe":55,"R_gen2_judge":51}
+🧪 NEW GENERATOR track: 30 targets · 90 recalls · deferred (stay due): 慢 什么 · replaced by: 喜欢 有
+━━ Quality check
+⚠ Pair 9 — no gloss available for ?
+❌ Pair 9 — could not repair grammar
+▶ Checking cue and translation alignment…
+  Batch 1/8: checking 12 pairs
+  Batch 2/8: checking 12 pairs
+  Batch 3/8: checking 12 pairs
+  Batch 4/8: checking 12 pairs
+  Batch 5/8: checking 12 pairs
+  Batch 6/8: checking 12 pairs
+  Batch 7/8: checking 12 pairs
+  Batch 8/8: checking 6 pairs
+  CUE_CHECK_COVERAGE scored 90/90 eligible pair(s)
+⚠ Pair 25 — cue does not map to the answer (2/5) — The cue asks to tell the friend to go slower, while the sentence states the friend is going too fast. The meaning is related but the instruction is not followed.
+⚠ Pair 35 — cue could be clearer (3/5) — The sentence is too general. 'Fix something' is missing.
+⚠ Pair 49 — cue does not map to the answer (1/5) — The Mandarin sentence means 'I eat' or 'I'm eating', which is not an offer of food to a friend. The cue is an instruction to offer food.
+▶ Evaluating 30 target groups…
+  ✓ 可以
+  ✓ 到
+  ✓ 一点
+  ✓ 多
+  ✓ 少
+  ✓ 快
+  ✓ 大
+  ✓ 小
+  ✓ 很
+⚠ Pair 20 — 太: cue or translation does not match the sentence (2/5)
+  🔄 太: cue or translation does not match the sentence (2/5)
+  ↻ 太 replace attempt 1 rejected: regenerated pair failed validation: untaught vocabulary: 慢
+  ↻ 太 replace attempt 2 rejected: regenerated pair failed validation: untaught vocabulary: 慢
+  ✓ 太 improved and revalidated (attempt 3)
+  ✓ 跟
+  ✓ 一起
+  ✓ 回
+  ✓ 拿
+  ✓ 用
+  ✓ 做
+  ✓ 等
+  ✓ 找
+⚠ Pair 49 — 我: cue or translation does not match the sentence (1/5)
+  🔄 我: cue or translation does not match the sentence (1/5)
+  ✓ 我 replaced and revalidated
+  ✓ 想
+  ✓ 吃
+  ✓ 你
+  ✓ 好
+  ✓ 喝
+  ✓ 这个
+  ✓ 要
+  ✓ 不
+  ✓ 那个
+  ✓ 喜欢
+  ✓ 有
+✅ QC complete — 6 found, 4 fixed, 0 accepted, 1 unresolved
+✅ 6 found · 4 fixed · 0 accepted · 1 unresolved
+━━ FINAL_TRACK (zh): quota → recovery → coherence → freeze text → pronunciation → final audit → invariants
+  ⛔ TARGET PAIR rejected [多] "这个多少钱?" — grammar: no gloss available for ?
+♻️ QUOTA RECOVERY round 1: 1 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 1 · TARGET PAIRS 89/90
+  🟠 2nd check: 多 · recall 2
+  ✅ 2nd check passed: 这里有多少人？
+⚠ Pair 1 — target 多 not present
+❌ Pair 1 — could not repair target
+▶ Checking cue and translation alignment…
+  Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+  ✓ 多
+✅ QC complete — 1 found, 0 fixed, 0 accepted, 1 unresolved
+  ⛔ QUOTA RECOVERY 多: 0/1 accepted — QC: target: target 多 not present: 这里有多少人？
+♻️ QUOTA RECOVERY round 2: 1 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 1 · TARGET PAIRS 89/90
+  🔶 3rd check: 多 · recall 2
+  ❌ same sentence template as an accepted recall (only a particle differs) — use a different communicative function: 这个多少钱？
+  🔵 4th check: 多 · recall 2
+  ✅ 4th check passed: 这里人多吗？
+▶ Checking cue and translation alignment…
+  Batch 1/1: checking 1 pairs
+  ⚠ CUE_CHECK_UNVERIFIED batch 1: reply unparseable — 1 pair(s) carry NO cue verdict (they are not cue-verified)
+  CUE_CHECK_COVERAGE scored 0/1 eligible pair(s) · 1 UNVERIFIED (no cue verdict)
+▶ Evaluating 1 target groups…
+  ✓ 多
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+  ✅ QUOTA RECOVERY 多: +1 TARGET PAIR(S) (needed 1) — 这里人多吗？
+📏 LEVEL belt=Mukyu preferred=2–4 hardMax=6 · LEVEL Mukyu · target 2–4 · max 6 (Mandarin words, benchmark-fixture zh-daily-2026-10-08)
+📚 VOCAB INVENTORY introducedContent=34 selectedTargets=30 newTargets=4 (daily)
+  ⚠ MAIN_TRACK_COHERENCE_PARTIAL — 0/6 section verdict(s) recovered from the first reply · bounded recovery: up to 2 more calls for the remaining 6
+  ✅ MAIN_TRACK_COHERENCE_RECOVERED — every section has a verdict (3 judge calls)
+  🧩 MAIN_TRACK_COHERENCE 6/6 scene(s) coherent · overall 4/5 (threshold 3) · S1=3 S2=4 S3=4 S4=4 S5=4 S6=4 → PASS
+  🧊 FINAL_LINE_TEXT frozen: 90 line(s) · fingerprint 90:8zeuqy
+  🔤 FINAL pinyin/segments (after recovery): 0 alignment issue(s)
+  🧩 TARGET_VARIETY_AUDIT 29/30 target(s) practise 3 distinct applications · fewer: 有 (2 distinct of 3)
+📏 MAIN_COMPLEXITY_AUDIT belt=Mukyu preferred=2–4 hardMax=6 lines=90 withinPreferred=66 shortNatural=0 abovePreferredAllowed=24 overHardMax=0 maxObserved=6 · preferredRatio=73% (advisory ≥80% — DRIFT: the prompt or scene plan is too complex for this learner) PASS
+  🔁 FINAL_DUPLICATE_AUDIT target pairs=90 duplicates=0 PASS (run on the FINAL persisted pairs)
+  🧾 QC_RECONCILE pair 9 grammar (no gloss available for ?) → RESOLVED (pair replaced / no longer in the final set)
+  📊 CHECK_MODEL recalls=90 candidateAttempts=93 (1.03/recall) accepted=90 unresolved=0 firstAttemptSuccess=99% acceptedAtCheck=1:89,2:1 rejectionClasses=OTHER×2
+  🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=93 · by origin: model reply 93 · outcomes: accepted 91 · rejected 2 · fallback accepted for 0 recall(s) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+📋 MAIN TRACK READY — 90/90 target pairs · coherence PASS overall 4/5 (threshold 3) · S1=3 S2=4 S3=4 S4=4 S5=4 S6=4 · pronunciation 0 issues
+🧾 TRACK INTEGRITY (zh): READY
+  MAIN_TRACK: READY · TARGET PAIRS 90/90 · COHERENCE PASS overall 4/5 (threshold 3) · S1=3 S2=4 S3=4 S4=4 S5=4 S6=4
+  TARGET WORDS: 30/30 covered
+  TARGET PAIRS: 90/90 valid target-practice sentences (3 per target word)
+  QC: 1 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 1 other) · 3 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 93 evaluated, 2 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+  BRIDGE PAIRS: 0 · FRAMING PAIRS: 0 · TOTAL PLAYABLE LINES: 90
+  PRONUNCIATION ALIGNMENT: 0 issue(s) · UNVERIFIED FINAL PAIRS: 0
+🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a Daily Track
+🤖 GEMINI USAGE SUMMARY
+Model: gemini-2.5-flash-lite ×106 · gemini-2.5-flash ×51
+Track ID: - · run zh-track-1791439200007-5701
+Total requests: 157 · Successful: 157 · Failed: 0 · Retried: 2
+Generation calls: 0 · QC calls: 44 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 7 · Listening calls: 0 · Other: 106
+Input tokens: 100962 · Output tokens: 50928 · Total tokens: 151890 (provider usage metadata)
+Retry requests: 2 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+Provider requests: 157 · Provider-error retries: 0
+GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+PAID REQUESTS BY PURPOSE: other 106 (114855 tok, USD 0.0633) · QC judging 40 (25535 tok, USD 0.0044) · quota / target recovery 7 (6841 tok, USD 0.0008) · QC repair (replace / improve) 4 (4659 tok, USD 0.0012)
+Estimated Gemini cost: USD 0.0697 (≈ SGD 0.0906 at 1.3 — assumed rate)
+TOP GEMINI COST SOURCES
+  1. R_gen2_judge — 51 requests / 45358 tokens / ~70%
+  2. P_gen2_probe — 55 requests / 69497 tokens / ~21%
+  3. F_main_coherence — 3 requests / 8389 tokens / ~3%
+  4. C_group_eval — 29 requests / 9750 tokens / ~2%
+  5. E_cue_check — 8 requests / 7396 tokens / ~2%

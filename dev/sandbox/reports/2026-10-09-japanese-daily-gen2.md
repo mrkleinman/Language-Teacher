@@ -132,3 +132,35 @@ All reviews are by the same model family as me. They are **uncalibrated** until 
 - ありがとう cannot share a line with a verb, which blocks 来てくれてありがとう.
 - あそこ / 店 cannot be the object of 見る, which blocks あそこ見て.
 - An adjective in て-form before a verb is rejected (忙しくて行けない).
+
+---
+
+# v680: the same switch for Thai and Mandarin
+
+## What changed for the learner
+
+- **Thai:** the Daily Track scene preview gains **"🧪 Use the new generator (test)"**. **Mandarin:** the same tick box sits on the dashboard, under Daily / Revision / Listening. Both are **off by default**, remembered on the device, and apply to the **Daily Track only**.
+- With the switch off, everything is exactly as before: the 18 live v677 runs replay identically.
+- With it on, Gen2 writes the recalls, and they then pass the **unchanged** production tail: Thai QC, FINAL_TRACK and Save, or the Mandarin QC, FINAL_TRACK and Save.
+
+## Live runs through the real app path (owner's new key, same project as before)
+
+| Run | Result | Cost | Notes |
+|---|---|---|---|
+| Thai, owner's real vocabulary | **READY 90/90** | US$0.092 | One line (ผมของคุณยาว, "your hair is long") was lost: production reads ผม as the male "I". **Fixed:** Gen2 now uses production's own speaker evidence (F24). |
+| Mandarin, run 2 | NOT_READY | US$0.075 | Gen2's own acceptance check caught a repeated cue (你到了没有？ / 你到了吗？). **Fixed:** the same cue now counts as the same use (F23). |
+| Mandarin, run 3 | **READY 90/90** | US$0.070 | Production QC replaced one line ending in a half-width "?". **Fixed:** Chinese punctuation (F25). |
+
+## Reading the sentences (my own line-by-line pass)
+
+- **Thai:** mostly natural everyday Thai. Weak or odd lines: นี่คือชิ้นที่ใช่ใช่ไหมครับ, เพื่อนฉันรีบ.
+  - Lexicon romanisation quirks: 'looong' for ลอง, the tone mark on แจ็ก.
+  - Production's cue repair rewrites some cues as "Tell the other person: …" (production behaviour, unchanged).
+- **Mandarin:** correct but plain. Weak lines: 我等好了。, 你帮我一点。, 我钱很少。.
+  - Six cues copy the translation ("You ate too much."). Production's Mandarin QC wrote them when it repaired the 太 and 我 lines; production behaviour, unchanged.
+
+## Checks
+
+- tests39: 53/53.
+- Browser tests: Thai and Mandarin switches 9/9; Japanese switch 7/7.
+- Full offline suite: OK. The only failures are the known ones (tests33 2G; tests35 2C BLOCKED).

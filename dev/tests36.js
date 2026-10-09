@@ -312,7 +312,7 @@ const poolTargets = (c, S, lang, k) => c.listeningConversationTargets({ keywords
   }
   {
     const c = setup('th').c
-    T('E1', 'version v674+ (app + Listening build; v675 = Step 0 instrumentation, same generation behaviour)', /^v67[4-8]$/.test(c.ev('APP_BUILD_VERSION')) && /^v67[4-8]$/.test(c.ev('LISTENING_BUILD_VERSION')))
+    T('E1', 'version v674+ (app + Listening build; v675 = Step 0 instrumentation, same generation behaviour)', /^v67[4-9]$/.test(c.ev('APP_BUILD_VERSION')) && /^v67[4-9]$/.test(c.ev('LISTENING_BUILD_VERSION')))
   }
   console.log(out.join('\n'))
   console.log('\nv674 verbalizability-first regression: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))

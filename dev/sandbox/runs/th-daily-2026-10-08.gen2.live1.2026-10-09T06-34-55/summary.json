@@ -1,0 +1,121 @@
+{
+ "runId": "th-daily-2026-10-08.gen2.live1.2026-10-09T06-34-55",
+ "fixture": "th-daily-2026-10-08",
+ "pipelineRequested": "gen2",
+ "pipelineExecuted": "gen2",
+ "gen2Version": "gen2-pilot/1.1",
+ "models": {
+  "generator": "gemini-2.5-flash-lite",
+  "judge": "gemini-2.5-flash"
+ },
+ "app": {
+  "appBuild": "v678",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "NOT_READY",
+ "reasons": [
+  "TARGETS_FROZEN=13/30"
+ ],
+ "error": null,
+ "stop": null,
+ "recalls": 39,
+ "deferred": [
+  "ครั้ง — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)",
+  "คุ้ม — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ควร — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)",
+  "กังวล — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "รีบ — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "หวัง — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)",
+  "คู่ — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ชิ้น — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ไฟ — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "สามารถ — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "เล่า — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)",
+  "รองเท้า — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)",
+  "เบา — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ประตู — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "เตียง — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ตู้เย็น — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ตัดสินใจ — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "หมายถึง — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)",
+  "คะ — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ใบ — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ตัว — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "นั้น — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "อย่างไร — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "กี่ — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "อ่าน — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)"
+ ],
+ "gen2Calls": 127,
+ "gen2ByStage": {
+  "P_gen2_probe": 73,
+  "R_gen2_judge": 54
+ },
+ "acceptance": {
+  "ok": true,
+  "problems": []
+ },
+ "spend": {
+  "costUsd": 0.07455,
+  "capUsd": 0.25,
+  "tokens": {
+   "in": 260653,
+   "out": 45774
+  },
+  "requestsSent": 127,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "gen2-daily-probe v1 @ gemini-2.5-flash-lite": {
+    "requests": 73,
+    "in": 230944,
+    "out": 34236,
+    "usd": 0.03678880000000001
+   },
+   "gen2-daily-judge v1 @ gemini-2.5-flash": {
+    "requests": 54,
+    "in": 29709,
+    "out": 11538,
+    "usd": 0.03775770000000001
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×73 · gemini-2.5-flash ×54",
+  "Track ID: - · run daily-track-1791439204249-3223",
+  "Total requests: 127 · Successful: 127 · Failed: 0 · Retried: 0",
+  "Generation calls: 0 · QC calls: 0 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 0 · Listening calls: 0 · Other: 127",
+  "Input tokens: 260653 · Output tokens: 45774 · Total tokens: 306427 (provider usage metadata)",
+  "Retry requests: 0 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 127 · Provider-error retries: 0",
+  "GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)",
+  "PAID REQUESTS BY PURPOSE: other 127 (306427 tok, USD 0.0743)",
+  "Estimated Gemini cost: USD 0.0743 (≈ SGD 0.0966 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. R_gen2_judge — 54 requests / 41247 tokens / ~51%",
+  "  2. P_gen2_probe — 73 requests / 265180 tokens / ~49%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 194
+}

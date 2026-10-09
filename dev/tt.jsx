@@ -8696,6 +8696,24 @@ async function ttBenchJapaneseDaily(fx, vocab, apiKey, model, L, runId) {
     return { track: (o2 && o2.track) || final || track }
   } catch (e) { L('❌ Quality check failed: ' + (e.message || '')); return { track: final || track } }
 }
+// v679 — JapaneseGenerator with "Use the new generator" ON: scene → jaGen2MainTrack → buildAndQc() (the same calls as the screen)
+async function ttBenchJapaneseDailyGen2App(fx, vocab, apiKey, model, L, runId) {
+  const targets = ttBenchJazhTargets(fx, vocab)
+  const selection = { targets, counts: { total: targets.length, new: targets.filter(w => w.selectionRole === 'new').length, due: targets.filter(w => w.selectionRole === 'due').length, reinforce: 0 } }
+  const register = canonicalJapaneseSpeechStyle(fx.speechStyle || 'natural'), trackMode = 'daily'
+  const scene = await generateJapaneseScene(targets, vocab, register, apiKey, model)
+  if (!scene) { L('Could not build a scene. Try again. — the screen stops here'); return { track: null, stop: 'SCENE_FAILED' } }
+  L('\u2713 Scene ready')
+  const out = await jaGen2MainTrack({ targets, selection, vocab, register, apiKey, model, trackMode, runId, scene, onLog: L })
+  if (!out.track) { L('\u26D4 ' + out.error); return { track: null, stop: 'GEN2_NOT_READY', gen2: out.gen2 } }
+  L('\u2501\u2501 Quality check')
+  let final = null
+  try {
+    const o2 = await jazhQcFinaliseAndListen(out.track, 'ja', { vocab, apiKey, model, register, runId, cancelled: () => false, onProgress: () => {}, push: m => L(m),
+      onQcResult: () => {}, onFinal: t => { final = t }, onListening: () => {} })
+    return { track: (o2 && o2.track) || final || out.track, gen2: out.gen2 }
+  } catch (e) { L('\u274C Quality check failed: ' + (e.message || '')); return { track: final || out.track, gen2: out.gen2 } }
+}
 // MandarinGenerator — generation → buildAndQc()
 async function ttBenchMandarinDaily(fx, vocab, apiKey, model, L, runId) {
   const targets = ttBenchJazhTargets(fx, vocab)
@@ -8770,6 +8788,7 @@ async function ttBenchRunFixture(fx, o) {
       const g2o = { lang, vocab, apiKey, fixedTargets, onLog: L, speechStyle: fx.speechStyle || 'natural', generatorModel: o.generatorModel, judgeModel: o.judgeModel }
       out = fx.trackType === 'daily' ? await gen2Daily(g2o) : await gen2Listening(g2o)
     }
+    else if (o.pipeline === 'gen2-app' && lang === 'ja' && fx.trackType === 'daily') out = await ttBenchJapaneseDailyGen2App(fx, vocab, apiKey, model, L, runId)
     else if (fx.trackType === 'daily') out = lang === 'th' ? await ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId)
       : lang === 'ja' ? await ttBenchJapaneseDaily(fx, vocab, apiKey, model, L, runId) : await ttBenchMandarinDaily(fx, vocab, apiKey, model, L, runId)
     else { out = await ttBenchListening(fx, vocab, apiKey, model, L); runId = out.runId }
@@ -8778,7 +8797,7 @@ async function ttBenchRunFixture(fx, o) {
   let usage = null, usageLines = [], integrityLines = null
   try { usage = aiUsageSummary(runId); usageLines = aiUsageSummaryLines(usage) } catch (e) {}
   try { integrityLines = track && track.integrity ? trackIntegrityLines(track) : null } catch (e) {}
-  return { fixtureId: fx.id, language: lang, trackType: fx.trackType, path: o.pipeline === 'gen2' ? GEN2_VERSION : TT_BENCH_PATH_VERSION, pipeline: o.pipeline === 'gen2' ? 'gen2' : 'production', appBuild: APP_BUILD_VERSION, listeningBuild: LISTENING_BUILD_VERSION, model,
+  return { fixtureId: fx.id, language: lang, trackType: fx.trackType, path: o.pipeline === 'gen2' || o.pipeline === 'gen2-app' ? GEN2_VERSION : TT_BENCH_PATH_VERSION, pipeline: o.pipeline === 'gen2' ? 'gen2' : o.pipeline === 'gen2-app' && lang === 'ja' && fx.trackType === 'daily' ? 'gen2-app' : 'production', appBuild: APP_BUILD_VERSION, listeningBuild: LISTENING_BUILD_VERSION, model,
     stop: (out && out.stop) || null, error, gen2: (out && out.gen2) || null,
     content: track ? ttBenchContentOutcome(lang, fx.trackType, track, vocab) : null,
     telemetry: { usageSummary: usageLines, integrity: integrityLines, costUsd: usage ? usage.costUsd : null, requests: usage ? usage.total : null },
@@ -9034,7 +9053,7 @@ function gen2JaReadingProblem(c, inv) {
   const r = String(c.reading || ''), ro = gen2RomajiNorm(c.romaji)
   if (!r || !ro) return 'reading/romaji missing'
   if (/[一-鿿]/.test(r)) return 'reading contains kanji'
-  if (/[^\x20-\x7eāūēō]/.test(ro.replace(/[、。？！]/g, ''))) return 'romaji contains non-latin text'
+  if (/[^\x20-\x7eāūēō]/.test(ro.replace(/[、。？！…「」]/g, ''))) return 'romaji contains non-latin text'
   if (!romajiMatchesReading(ro, r)) return 'romaji does not match the reading'
   // the reading must be THIS sentence: its kana exactly as written, each kanji word read as the dictionary reads it
   // (catches romaji that adds or changes words: 明日は何する？ read あしたはなに「を」する, してる read している)
@@ -9090,11 +9109,90 @@ const gen2RomajiNorm = x => String(x || '').trim().replace(/\s+/g, ' ').replace(
 // contains the sentence's own kana, romaji transcribing that reading); failures are asked once more; anything still
 // failing leaves the lesson NOT_READY (ROMAJI_MISSING) — never a guessed romaji.
 function gen2PronouncePrompt(items) {
+  // v679: a retry names the exact mistake (at temperature 0 the same question returns the same wrong reading)
   return '[task: gen2-ja-reading v1]\n' +
     'For each Japanese sentence give its reading in hiragana exactly as spoken in this sentence, and its romaji.\n' +
+    'The reading must contain EVERY word of the sentence, including small words such as と, は, を, よ — never add, drop or change a word.\n' +
     'Romaji style: Hepburn, words separated by spaces, long vowels spelled out (ou, uu, ei — no macrons), the particles は / を / へ written wa / o / e, っち written cchi.\n' +
-    items.map((x, i) => (i + 1) + '. ' + x.text).join('\n') + '\n' +
+    items.map((x, i) => (i + 1) + '. ' + x.text + (x._pronWhy ? '   (your previous answer "' + x._pronPrev + '" was wrong: ' + x._pronWhy + ')' : '')).join('\n') + '\n' +
     'Return ONLY JSON: {"items": [{"n": 1, "reading": "", "romaji": ""}]}'
+}
+// v679 — WORD-BY-WORD BREAKDOWN aligned to a validated reading. Production's final pronunciation audit accepts the
+// Hepburn particles (は→wa, を→o, へ→e) only when the segments mark them, and the player's word list reads the segments.
+// The validated reading is cut at the sentence's own word boundaries (Intl.Segmenter); each kanji word takes exactly the
+// reading the exact-sentence check matched. The same segments give a deterministic, word-spaced romaji.
+const GEN2_JA_PARTICLE_ROMAJI = { 'は': 'wa', 'を': 'o', 'へ': 'e' }
+const GEN2_JA_PUNCT = { '、': ',', '。': '.', '？': '?', '！': '!', '…': '…', '?': '?', '!': '!', ',': ',', '.': '.' }
+function gen2JaSegments(text, reading, inv) {
+  if (!inv || !inv.jaInv || typeof Intl === 'undefined' || typeof Intl.Segmenter !== 'function') return null
+  const { map, keys } = gen2JaStemReadings(inv)
+  const t = String(text || ''), esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // one capture group per text position that carries sound: kanji keys → their dictionary readings; kana → itself
+  const units = []   // { from, to, group }
+  let re = '', i = 0
+  while (i < t.length) {
+    const ch = t[i]
+    if (/[一-鿿]/.test(ch)) {
+      const k = keys.find(k => t.startsWith(k, i))
+      const alt = k ? '(' + [...map.get(k)].map(esc).join('|') + ')' : '([ぁ-ゖー]{1,4})'
+      units.push({ from: i, to: i + (k ? k.length : 1) }); re += alt; i += k ? k.length : 1; continue
+    }
+    const kn = gen2KanaNorm(ch)
+    if (kn) { units.push({ from: i, to: i + 1 }); re += '(' + esc(kn) + ')' }
+    i++
+  }
+  let m; try { m = new RegExp('^' + re + '$').exec(gen2KanaNorm(reading)) } catch (e) { m = null }
+  if (!m) return null
+  const sound = new Array(t.length).fill('')
+  units.forEach((u, k) => { sound[u.from] = m[k + 1] })
+  const byWord = new Map(((inv.jaInv && inv.jaInv.allContent) || []).map(w => [w.japanese, w]))
+  // word pieces: the segmenter's words, with a trailing は/を/へ split off a small word (のは → の + は) and an inflection
+  // ending glued back onto its kanji word (見 + たよ → 見たよ, し + てる → してる)
+  const SMALL = /^(の|と|に|で|から|まで|より|って|ん|こと|もの)$/
+  const pieces = []
+  for (const sg of new Intl.Segmenter('ja', { granularity: 'word' }).segment(t)) {
+    const surf = sg.segment
+    if (!sg.isWordLike) { pieces.push({ surf, from: sg.index, punct: true }); continue }
+    if (surf.length >= 2 && GEN2_JA_PARTICLE_ROMAJI[surf.slice(-1)] && SMALL.test(surf.slice(0, -1))) {
+      pieces.push({ surf: surf.slice(0, -1), from: sg.index }); pieces.push({ surf: surf.slice(-1), from: sg.index + surf.length - 1 }); continue }
+    const prev = pieces[pieces.length - 1]
+    if (surf.length >= 2 && GEN2_JA_PARTICLE_ROMAJI[surf[0]] && prev && !prev.punct && /[\u4e00-\u9fff\u30a0-\u30ff]$/.test(prev.surf)) {   // 映画|はよかった → 映画|は|よかった
+      pieces.push({ surf: surf[0], from: sg.index }); pieces.push({ surf: surf.slice(1), from: sg.index + 1 }); continue }
+    pieces.push({ surf, from: sg.index })
+  }
+  // a taught word's kanji absorbs exactly that word's own ending (楽 + しかった, 使 + った, 見 + た): dictionary, not guesswork
+  const { tails } = gen2JaStemTable(inv), tailKeys = [...tails.keys()].sort((x, y) => y.length - x.length)
+  for (let k = 0; k < pieces.length; k++) {
+    const pc = pieces[k]; if (pc.punct) continue
+    const key = tailKeys.find(x => pc.surf.endsWith(x)); if (!key) continue
+    const rest = t.slice(pc.from + pc.surf.length)
+    const tl = [...tails.get(key)].filter(z => rest.startsWith(z)).sort((x, y) => y.length - x.length)[0]
+    let need = tl ? tl.length : 0
+    while (need > 0 && pieces[k + 1] && !pieces[k + 1].punct) {
+      const nx = pieces[k + 1]
+      if (nx.surf.length > need) { pieces.splice(k + 1, 1, { surf: nx.surf.slice(0, need), from: nx.from }, { surf: nx.surf.slice(need), from: nx.from + need }); continue }
+      pc.surf += nx.surf; need -= nx.surf.length; pieces.splice(k + 1, 1)
+    }
+  }
+  // a piece that starts with the small っ belongs to the word before it (its doubling would otherwise be lost)
+  for (let k = pieces.length - 1; k > 0; k--) if (!pieces[k].punct && !pieces[k - 1].punct && /^っ/.test(pieces[k].surf)) { pieces[k - 1].surf += pieces[k].surf; pieces.splice(k, 1) }
+  // …and a piece that ENDS with っ takes the next piece (か + っ + たよ → かったよ): the doubling needs the following sound
+  for (let k = 0; k < pieces.length - 1; k++) while (k < pieces.length - 1 && !pieces[k].punct && !pieces[k + 1].punct && /っ$/.test(pieces[k].surf)) { pieces[k].surf += pieces[k + 1].surf; pieces.splice(k + 1, 1) }
+  const segs = []
+  for (const pc of pieces) {
+    const surf = pc.surf
+    if (pc.punct) { if (GEN2_JA_PUNCT[surf.trim()] != null) segs.push({ surface: surf, reading: surf, romaji: '', english: '', type: 'punct' }); continue }
+    let rd = ''; for (let j = pc.from; j < pc.from + surf.length; j++) rd += sound[j]
+    if (!rd) continue
+    const part = GEN2_JA_PARTICLE_ROMAJI[surf] && rd === surf
+    const w = byWord.get(surf)
+    segs.push({ surface: surf, reading: rd, romaji: part ? GEN2_JA_PARTICLE_ROMAJI[surf] : kanaToRomaji(rd), english: w ? String(w.english || '').split(/[\/;,]/)[0].trim() : '', type: part ? 'particle' : 'content' })
+  }
+  const joined = segs.filter(s => s.type !== 'punct').map(s => s.reading).join('')
+  if (joined !== gen2KanaNorm(reading)) return null
+  let romaji = ''
+  segs.forEach(s => { if (s.type === 'punct') romaji += GEN2_JA_PUNCT[s.surface.trim()]; else romaji += (romaji && !/\s$/.test(romaji) ? ' ' : '') + s.romaji })
+  return { reading: segs.map(s => s.type === 'punct' ? s.surface : s.reading).join(''), romaji: romaji.replace(/\s+([,.?!])/g, '$1').replace(/([,])(?=\S)/g, '$1 ').trim(), segments: segs.filter(s => s.type !== 'punct') }
 }
 async function gen2JaPronounce(ctx, inv, recalls) {
   let todo = recalls.slice()
@@ -9110,12 +9208,25 @@ async function gen2JaPronounce(ctx, inv, recalls) {
         const v = items.find(x => +x.n === i + 1) || {}
         const cand = { text: c.text, reading: gen2Tidy('ja', v.reading), romaji: gen2RomajiNorm(v.romaji) }
         const why = gen2JaReadingProblem(cand, inv)
-        if (why) { left.push(c); if (round === 2) report.failed.push(c.text + ': ' + why) }
-        else { c.reading = cand.reading; c.romaji = cand.romaji; report.ok++ }
+        if (why) { c._pronWhy = why; c._pronPrev = cand.reading + ' / ' + cand.romaji; left.push(c); if (round === 2) report.failed.push(c.text + ': ' + why) }
+        else { c.reading = cand.reading; c.romaji = cand.romaji; delete c._pronWhy; delete c._pronPrev; report.ok++ }
       })
     }
     todo = left
   }
+  // v679: still failing after the corrected retry → the dictionary's own reading, accepted ONLY if it passes the same
+  // exact-sentence check; its romaji is built word by word from the segments (never a guess)
+  report.dictionary = 0
+  todo.forEach(c => {
+    let d = null; try { d = rebuildJapaneseReadingPipeline({ japanese: c.text }, inv.jaInv).reading } catch (e) {}
+    const sg = d && !/[\u4e00-\u9fff]/.test(d) ? gen2JaSegments(c.text, d, inv) : null
+    if (sg && !gen2JaReadingProblem({ text: c.text, reading: sg.reading, romaji: sg.romaji }, inv)) {
+      c.reading = sg.reading; c.romaji = sg.romaji; c._pronSource = 'dictionary'; report.dictionary++; report.ok++
+      report.failed = report.failed.filter(f => !f.startsWith(c.text + ': '))
+    }
+  })
+  // every accepted reading gets its word-by-word breakdown (production's audit and the player's word list need it)
+  recalls.forEach(c => { if (!c.romaji) return; const sg = gen2JaSegments(c.text, c.reading, inv); if (sg) c.segments = sg.segments; else report.noSegments = (report.noSegments || 0) + 1 })
   return report
 }
 // a template repeated with another noun (この本、どう思う？ / この映画、どう思う？) is not a different use (Japanese)
@@ -9333,7 +9444,8 @@ function gen2CandidateOrder(lang, vocab, fixedTargets) {
     else rest = selectRevisionTrackTargets({ vocab, maxTargets: 100000, language: lang }).targets.filter(w => jazhTargetEligible(w, lang))
   } catch (e) { rest = [] }
   const byId = new Map(vocab.map(w => [w.id, w]))
-  rest.forEach(x => { const w = byId.get(x.id) || x; if (w && !ids.has(w.id)) { ids.add(w.id); out.push(w) } })
+  // v679: a replacement never introduces a NEW word (the new-word quota is decided by the existing selector, not by Gen2)
+  rest.forEach(x => { const w = byId.get(x.id) || x; if (w && !ids.has(w.id) && w.status !== 'new') { ids.add(w.id); out.push(w) } })
   return out
 }
 async function gen2Daily(o) {
@@ -9398,7 +9510,7 @@ async function gen2Daily(o) {
       const c = rec.recalls[r]; if (!c) return
       const spk = c.speaker === 'male' || c.speaker === 'female' ? gen2LetterFor(c.speaker) : (alt++ % 2 ? 'B' : 'A')
       pairs.push({ speaker: spk, [L.field]: c.text, thai: c.text, english: c.english, prompt: c.cue, targetId: rec.id, recallIndex: r + 1, isTargetPair: true,
-        ...(lang === 'ja' ? { reading: c.reading, romaji: c.romaji, phonetic: c.romaji } : {}),
+        ...(lang === 'ja' ? { reading: c.reading, romaji: c.romaji, phonetic: c.romaji, segments: c.segments || [] } : {}),
         ...(lang === 'zh' ? (pz => ({ pinyin: pz, phonetic: pz }))((gen2Pron('zh', c.text, st.inv) || {}).pron || '') : {}),
         ...(lang === 'th' ? { phonetic: (gen2Pron('th', c.text, st.inv) || {}).pron || '' } : {}),
         _source: 'gen2:teachability', _gen2: { function: c.function, situation: c.situation, judge: c.judge || null } })
@@ -17017,7 +17129,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v678'
+const LISTENING_BUILD_VERSION = 'v679'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -18287,7 +18399,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v678'
+const APP_BUILD_VERSION = 'v679'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -35744,6 +35856,38 @@ function jaTrackObject(tc, g, targets, register, model, trackMode) {
     })),
   }
 }
+// v679 — the NEW Japanese generator (Gen2) for a learner's Main Track, behind the OFF-by-default switch on the Japanese
+// "Scene Ready" screen. Gen2 writes and accepts the recalls (with validated romaji); the result then enters the UNCHANGED
+// production tail: provenance → jazhQcFinaliseAndListen (QC, final audit, 11-check display) → the learner's own Save.
+// Deferred targets are not in the track, so their SRS state is untouched (they stay due). A replacement comes from the
+// existing SRS order and is never a NEW word. Gen2 itself still writes nothing; the track is saved only by the screen's
+// normal Save, through the existing SRS code. The same function runs in the sandbox benchmark (pipeline 'gen2-app').
+const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'
+async function jaGen2MainTrack(o) {
+  const { targets, selection, vocab, register, apiKey, model, trackMode, runId, scene } = o
+  const log = o.onLog || (() => {})
+  const g = await gen2Daily({ lang: 'ja', vocab, apiKey, fixedTargets: targets, onLog: log, speechStyle: register })
+  const t = g.track, status = t.integrity && t.integrity.status
+  if (status !== 'READY') return { track: null, gen2: g.gen2,
+    error: 'The new generator could not build a complete lesson (' + (((t.integrity && t.integrity.reasons) || []).join('; ') || 'not ready') + '). Nothing was saved. Try again, or switch the new generator off.' }
+  const byId = new Map((vocab || []).map(w => [w.id, w])), given = new Map((targets || []).map(w => [w.id, w]))
+  const frozen = t.selectedTargetIds.map(id => given.get(id) || (w => w && { ...w, selectionRole: 'review', gen2Replacement: true })(byId.get(id))).filter(Boolean)
+  const tc = jaGeneratorTrackContext(frozen, selection, trackMode, register, runId)
+  const fById = new Map(frozen.map(w => [w.id, w]))
+  const pairs = t.pairs.map(p => {
+    const w = fById.get(p.targetId)
+    return stampPairProvenance({ speaker: p.speaker, thai: p.japanese, japanese: p.japanese, reading: p.reading || '', phonetic: p.romaji || '', romaji: p.romaji || '',
+      english: p.english, prompt: p.prompt, segments: p.segments || [], words: (p.segments || []).map(x => ({ p: x.romaji || x.surface, e: x.english || '' })), wordId: p.targetId, targetId: p.targetId, _target: w.japanese, recallIndex: p.recallIndex,
+      sourceCheck: 1, checkTier: 1, _checkCount: 1, _checkHistory: [{ index: 1, outcome: 'accepted', kind: 'model' }], _source: 'gen2:teachability', _framing: false, _gen2: p._gen2 },
+      jaPairProvenance(tc, w, p.recallIndex, 'generation-gen2'))
+  })
+  const track = { ...jaTrackObject(tc, { pairs, scene: scene || null, scenePlan: null, buildingBlocks: [], allowedContent: [], recallCount: pairs.length, framingCount: 0, generationStats: null }, frozen, register, model, trackMode),
+    generator: GEN2_VERSION, deferredTargets: t.deferredTargets || [],
+    gen2: { version: GEN2_VERSION, models: g.gen2.models, calls: g.gen2.calls, byStage: g.gen2.byStage, pronunciation: g.gen2.pronunciation || null, replacementsUsed: g.gen2.replacementsUsed } }
+  log('🧪 NEW GENERATOR track: ' + frozen.length + ' targets · ' + pairs.length + ' recalls' + (track.deferredTargets.length ? ' · deferred (stay due): ' + track.deferredTargets.map(d => d.surface).join(' ') : '') +
+    (frozen.some(w => w.gen2Replacement) ? ' · replaced by: ' + frozen.filter(w => w.gen2Replacement).map(w => w.japanese).join(' ') : ''))
+  return { track, gen2: g.gen2 }
+}
 function JapaneseGenerator({ vocab, targets, selection, register: registerProp, cred, trackMode, onGenerated, onBack }) {
   // v667 §4 — the speech style is FROZEN when the generator opens: a later change of the dashboard selector never
   // reaches an in-progress track (the TrackContext, every prompt, recovery and the saved track read this snapshot)
@@ -35799,6 +35943,10 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
 
   const apiKey = cred.geminiKey
   const model  = GEMINI_DEFAULT_MODEL
+  // v679 — "Use the new generator (test)": OFF unless the learner turns it on; remembered on this device
+  const [useGen2, setUseGen2] = useState(false)
+  useEffect(() => { let go = true; stGet(JA_GEN2_SETTING_KEY).then(v => { if (go) setUseGen2(v === true) }).catch(() => {}); return () => { go = false } }, [])
+  const toggleGen2 = v => { setUseGen2(v); stSet(JA_GEN2_SETTING_KEY, v).catch(() => {}) }
   const FRAMING_SLOTS = 4
   const recallTotal = (targets || []).length * 3
   const totalSlots = FRAMING_SLOTS + recallTotal
@@ -35841,7 +35989,31 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
   // §4 — regenerating the scene must not disturb targets or SRS state.
   function tryAnotherScene() { setScene(null); buildScene() }
 
+  // v679 — the new generator: Gen2 writes the recalls, then the unchanged production QC / final audit / Save
+  async function runGen2Generation() {
+    if (!aiRunRef.current) aiRunRef.current = aiBeginRun('ja-track')
+    setPhase('generating'); setFullLog([]); setLiveLog([]); setBrickSources({}); setCheckHist({}); setAcceptanceHistory([]); setRecallDone(0); setFramingDone(0); setCurrentTier(''); setWordStatus('')
+    setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0); setTargetProgress({})
+    try {
+      push('\u{1F9EA} NEW GENERATOR (test) \u00B7 ' + GEN2_VERSION + ' \u00B7 build ' + APP_BUILD_VERSION)
+      let n = 0
+      const out = await jaGen2MainTrack({ targets, selection, vocab, register, apiKey, model, trackMode, runId: aiRunRef.current, scene,
+        onLog: m => { push(m, !/^\u2139/.test(m)); if (/^\u2705 TEACHABLE/.test(m)) { n++; setRecallDone(Math.min(n * 3, recallTotal)); setWordStatus(n + ' of ' + (targets || []).length + ' words ready') } } })
+      if (stopRef.current.cancelled) return
+      if (!out.track) { setError(out.error); setPhase('error'); return }
+      const _pv = assertTrackPairsProvenance(out.track.pairs, 'ja')
+      push(_pv.ok ? '\u2713 ' + out.track.pairs.length + ' recalls carry provenance' : '\u26D4 ' + _pv.bad.length + ' recall(s) missing provenance')
+      // light the word pills of the targets that made it into the lesson
+      const tp = {}; out.track.pairs.forEach(p => { const cur = tp[p.targetId] || { recallsCompleted: 0, recalls: [] }; cur.recalls.push({ recallIndex: p.recallIndex, checkTier: 1, source: JA_TIER_SOURCE(1) }); cur.recallsCompleted = cur.recalls.length; tp[p.targetId] = cur })
+      setTargetProgress(tp); setRecallDone(out.track.pairs.length)
+      trackCtxRef.current = out.track.trackContext
+      setPhase('done')
+      buildAndQc(out.track)
+    } catch (e) { setError(e.message || 'Generation failed.'); setPhase('error') }
+  }
+
   async function runGeneration() {
+    if (useGen2) return runGen2Generation()
     if (!aiRunRef.current) aiRunRef.current = aiBeginRun('ja-track')   // v649: scene + generation + QC + recovery in ONE run
     setPhase('generating'); setFullLog([]); setLiveLog([]); setBrickSources({}); setCheckHist({}); setAcceptanceHistory([]); setRecallDone(0); setFramingDone(0); setCurrentTier(''); setWordStatus('')
     setCurrentTargetIdx(-1); setCurrentTargetId(null); setCurrentRecallIndex(0); setCurrentCheckTier(0); setTargetProgress({})
@@ -36261,8 +36433,13 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
           </div>
           <TargetHeader />
           <Btn onClick={runGeneration} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>
-            {'\u25B6'} Generate Track from this Scene
+            {'\u25B6'} {useGen2 ? 'Generate with the NEW generator (test)' : 'Generate Track from this Scene'}
           </Btn>
+          <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'var(--text)', cursor:'pointer', padding:'4px 2px' }}>
+            <input type="checkbox" checked={useGen2} onChange={e => toggleGen2(e.target.checked)} />
+            <span>{'\u{1F9EA}'} Use the new generator (test)</span>
+          </label>
+          {useGen2 && <p style={{ fontSize:11, color:'var(--muted)', margin:'-8px 0 0' }}>Test version: each sentence is checked by a second model and comes with romaji. A word it cannot teach well is left for a later lesson (it stays due). Costs a little more than the standard generator.</p>}
           <Btn onClick={tryAnotherScene} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>
             {'\u{1F504}'} Try a different scene
           </Btn>

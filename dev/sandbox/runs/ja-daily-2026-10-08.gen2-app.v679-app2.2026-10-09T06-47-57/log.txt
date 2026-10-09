@@ -1,0 +1,130 @@
+✓ Scene ready
+🧪 GEN2 DAILY ja · gen2-pilot/1.1 · generator gemini-2.5-flash-lite · judge gemini-2.5-flash · candidates 107 (fixed 30 + reserve)
+✅ TEACHABLE どう (question-word) · この写真、どう思う？ / これ、どう？ / 明日、どうしたい？
+✅ TEACHABLE なんで (question-word) · なんで遅いんだ / なんでそれ食べてるの / なんであそこへ行くの
+✅ TEACHABLE どっち (question-word) · どっちが食べたい？ / どっちがいい？ / どっちのバスに乗る？
+✅ TEACHABLE どれ (question-word) · どれがいい？ / どれにする？ / バスはどれで行く？
+✅ TEACHABLE また (adverb) · 明日また会わない？ / あの映画をまた見たよ。 / 店にまた行くよ。
+✅ TEACHABLE あそこ (pronoun) · 新しい本はあそこにあるよ。 / じゃあ、あそこで会おう。 / 店はあそこにあるの？
+✅ TEACHABLE あれ (pronoun) · あれ、どこ？ / あれ、飲む？ / あれ、大きい。
+✅ TEACHABLE ごめん (expression) · ごめん、遅かったね。 / あ、ごめん！大丈夫？ / ごめん、今日、忙しいんだ。
+✅ TEACHABLE 電話 (noun) · また電話するね。 / 電話しようか？ / 電話あったんだ。
+↪ DEFERRED はい — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE うん (response) · うん、映画見る。 / うん、大丈夫。 / うん、分かる。
+✅ TEACHABLE いいえ (response) · いいえ、だいじょうぶです。 / いいえ、もっていません。 / いいえ、できません。
+✅ TEACHABLE たぶん (adverb) · うん、たぶん行く。 / 友達はたぶん駅にいる。 / 今日はたぶん忙しくない。
+✅ TEACHABLE 乗る (verb) · 電車に乗ろうよ / 昨日バスに乗った？ / 電車に乗るのが好き
+✅ TEACHABLE 大丈夫 (expression) · 大丈夫？持つ？ / わかる？大丈夫？ / 明日、大丈夫？
+✅ TEACHABLE 行く (verb) · 店に行こうよ / どこへ行くの / 昨日駅に行った？
+✅ TEACHABLE 食べる (verb) · これ、食べる？ / 今、何食べてるの？ / ご飯を食べるのが好きだ。
+✅ TEACHABLE 好き (adjective) · 何が好き？ / 映画が好きだった。 / この本が好き？
+✅ TEACHABLE 何 (question-word) · それ、何？ / 今、何してるの？ / え？何？
+✅ TEACHABLE 飲む (verb) · これ飲む？ / 何飲む？ / 水飲むよ。
+✅ TEACHABLE どこ (question-word) · 今日どこ行く？ / 駅はどこ？ / どこで会おうか？
+✅ TEACHABLE 一緒 (noun) · 映画を一緒に見ない？ / 昨日、一緒にご飯を食べるのは楽しかった。 / 今、一緒に店へ行く暇がある？
+↪ DEFERRED する — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE 今 (noun) · 今何してる？ / 今帰る。 / 今、これ食べる？
+✅ TEACHABLE ちょっと (adverb) · 水ちょっと飲む？ / ご飯ちょっと食べた。 / ちょっと待って。
+✅ TEACHABLE 来る (verb) · いつ来るの？ / 明日、会おうよ。駅に来て。 / うん、そこに来るよ。
+✅ TEACHABLE 分かる (verb) · これ、分かる？ / うん、分かるよ。 / なんで忙しいか、分からない。
+↪ DEFERRED ありがとう — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE すみません (expression) · いいえ、すみません。もうご飯を食べました。 / すみません、トイレはどこですか。 / すみません、この本はどこにあるか分かりますか。
+✅ TEACHABLE いい (adjective) · うん、いいね / もういいよ / いい本が欲しい
+✅ TEACHABLE 今日 (noun) · 今日何する？ / 今日会わない？ / 今日忙しい。
+✅ TEACHABLE 明日 (noun) · 明日映画を見ない？ / 明日何をする？ / 明日家に帰るよ。
+✅ TEACHABLE 見る (verb) · 映画を見ようか / あの写真を見た？ / うん、大きい家を見たよ。
+🔤 READING/ROMAJI 90/90
+📋 GEN2 DAILY READY · targets 30/30 · recalls 90/90 · deferred 3 · calls 87 {"P_gen2_probe":42,"R_gen2_judge":41,"S_gen2_reading":4}
+🧪 NEW GENERATOR track: 30 targets · 90 recalls · deferred (stay due): はい する ありがとう · replaced by: 今日 明日 見る
+━━ Quality check
+▶ Checking cue and translation alignment…
+  Batch 1/8: checking 12 pairs
+  Batch 2/8: checking 12 pairs
+  Batch 3/8: checking 12 pairs
+  Batch 4/8: checking 12 pairs
+  Batch 5/8: checking 12 pairs
+  Batch 6/8: checking 12 pairs
+  Batch 7/8: checking 12 pairs
+  Batch 8/8: checking 6 pairs
+  CUE_CHECK_COVERAGE scored 90/90 eligible pair(s)
+⚠ Pair 4 — cue could be clearer (3/5) — The Japanese is very general and could refer to anything, not specifically a book to buy.
+⚠ Pair 14 — cue could be clearer (3/5) — The Japanese sentence is ambiguous and could mean 'Which bus goes there?' or 'Which bus should I take to go there?'. The cue is specific about asking which bus goes *to the station*. The translation is too general.
+⚠ Pair 29 — cue could be clearer (3/5) — The Japanese sentence implies a past event, but it doesn't explicitly confirm receipt of the call. It states that a call happened.
+⚠ Pair 38 — cue could be clearer (3/5) — translation adds 'want'
+⚠ Pair 39 — cue could be clearer (3/5) — translation adds 'is it okay?'
+⚠ Pair 58 — cue could be clearer (3/5) — The Japanese is a very casual and abrupt way of asking for clarification, while the English is a more direct translation of the meaning. The Japanese implies confusion or disbelief rather than just asking for meaning.
+⚠ Pair 69 — cue could be clearer (3/5) — The Japanese sentence includes an additional instruction '駅に来て' (Come to the station) which is not present in the cue.
+▶ Evaluating 30 target groups…
+  ✓ どう
+  ✓ なんで
+  ✓ どっち
+  ✓ どれ
+  ✓ また
+  ✓ あそこ
+  ✓ あれ
+  ✓ ごめん
+  ✓ 電話
+  ✓ うん
+  ✓ いいえ
+  ✓ たぶん
+  ✓ 乗る
+  ✓ 大丈夫
+  ✓ 行く
+  ✓ 食べる
+  ✓ 好き
+  ✓ 何
+  ✓ 飲む
+  ✓ どこ
+  ✓ 一緒
+  ✓ 今
+  ✓ ちょっと
+  ✓ 来る
+  ✓ 分かる
+  ✓ すみません
+  ✓ いい
+  ✓ 今日
+  ✓ 明日
+  ✓ 見る
+✅ QC complete — 7 found, 0 fixed, 0 accepted, 0 unresolved
+✅ 7 found · 0 fixed · 0 accepted · 0 unresolved
+━━ FINAL_TRACK (ja): quota → recovery → coherence → freeze text → pronunciation → final audit → invariants
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Japanese content units, benchmark-fixture ja-daily-2026-10-08)
+📚 VOCAB INVENTORY introducedContent=77 selectedTargets=30 newTargets=1 (daily)
+  🧩 MAIN_TRACK_COHERENCE 1/1 scene(s) coherent · overall 4/5 (threshold 3) · S1=4 → PASS
+  🧊 FINAL_LINE_TEXT frozen: 90 line(s) · fingerprint 90:15n1p2a
+  🔤 FINAL readings/romaji (after recovery): 21 alignment issue(s)
+  🧩 TARGET_VARIETY_AUDIT 30/30 target(s) practise 3 distinct applications
+📏 MAIN_COMPLEXITY_AUDIT belt=10th Kyu preferred=3–5 hardMax=7 lines=90 withinPreferred=36 shortNatural=54 abovePreferredAllowed=0 overHardMax=0 maxObserved=5 · preferredRatio=100% (advisory ≥80%) PASS
+  🔁 FINAL_DUPLICATE_AUDIT target pairs=90 duplicates=0 PASS (run on the FINAL persisted pairs)
+  ⚠️ SCENE_CONTRACT_DRIFT opening line of A missing (approved: "やあ、元気？")
+  ⚠️ SCENE_CONTRACT_DRIFT opening line of B missing (approved: "うん、元気だよ。そっちは？")
+  📊 CHECK_MODEL recalls=90 candidateAttempts=90 (1.00/recall) accepted=90 unresolved=0 firstAttemptSuccess=100% acceptedAtCheck=1:90 rejectionClasses=none
+  🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=90 · by origin: model reply 90 · outcomes: accepted 90 · fallback accepted for 0 recall(s) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+📋 MAIN TRACK NOT_READY
+📋 Reasons:
+📋 - pronunciation: 21 line(s)
+🧾 TRACK INTEGRITY (ja): NOT_READY — PRONUNCIATION_ALIGNMENT_ISSUES=21
+  MAIN_TRACK: NOT_READY · TARGET PAIRS 90/90 · COHERENCE PASS overall 4/5 (threshold 3) · S1=4
+  TARGET WORDS: 30/30 covered
+  TARGET PAIRS: 90/90 valid target-practice sentences (3 per target word)
+  QC: 0 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 0 other) · 0 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 90 evaluated, 0 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+  BRIDGE PAIRS: 0 · FRAMING PAIRS: 0 · TOTAL PLAYABLE LINES: 90
+  PRONUNCIATION ALIGNMENT: 21 issue(s) · UNVERIFIED FINAL PAIRS: 0
+🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a Daily Track
+🤖 GEMINI USAGE SUMMARY
+Model: gemini-2.5-flash-lite ×85 · gemini-2.5-flash ×45
+Track ID: - · run ja-track-1791439200007-5701
+Total requests: 130 · Successful: 130 · Failed: 0 · Retried: 0
+Generation calls: 3 · QC calls: 40 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 0 · Listening calls: 0 · Other: 87
+Input tokens: 89325 · Output tokens: 44723 · Total tokens: 134048 (provider usage metadata)
+Retry requests: 0 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+Provider requests: 130 · Provider-error retries: 0
+GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+PAID REQUESTS BY PURPOSE: other 87 (104229 tok, USD 0.0713) · QC judging 40 (20511 tok, USD 0.0028) · generation (first attempt / scene) 3 (9308 tok, USD 0.0012)
+Estimated Gemini cost: USD 0.0752 (≈ SGD 0.0978 at 1.3 — assumed rate)
+TOP GEMINI COST SOURCES
+  1. R_gen2_judge — 41 requests / 41812 tokens / ~65%
+  2. P_gen2_probe — 42 requests / 57012 tokens / ~16%
+  3. S_gen2_reading — 4 requests / 5405 tokens / ~14%
+  4. C_group_eval — 31 requests / 11151 tokens / ~2%
+  5. E_cue_check — 8 requests / 7501 tokens / ~2%

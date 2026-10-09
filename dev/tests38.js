@@ -167,8 +167,8 @@ const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
     T('O2', 'the v674 architecture review, v674 report, v674 test bundle and v674 test evidence are kept in the benchmark (historical/…/evidence)', need.every(f => fs.existsSync(path.join(ev, f))), need.filter(f => !fs.existsSync(path.join(ev, f))))
     const base = fs.readFileSync(path.join(__dirname, 'tt.v674.jsx'), 'utf8')
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
-    T('O3', 'v676 adds NO storage write to the app (same stSet / localStorage.setItem call sites as v674)', writes(SRC) === writes(base), [writes(SRC), writes(base)])
-    T('O4', 'version v676+', /^v67[6-8]$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('O3', 'v676 adds NO storage write to the app (same stSet / localStorage.setItem call sites as v674; v679 adds exactly one: the Japanese new-generator switch setting)', writes(SRC) === writes(base) + (SRC.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length && (SRC.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length <= 1, [writes(SRC), writes(base)])
+    T('O4', 'version v676+', /^v67[6-9]$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
   console.log(out.join('\n'))
   console.log('\nv676 Step 0 live-capture tooling: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))

@@ -21,7 +21,13 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     T('A1', 'Gen2 is DISABLED by default (GEN2_FLAG.enabled=false, shadowOnly=true)', c.ev('GEN2_FLAG.enabled') === false && c.ev('GEN2_FLAG.shadowOnly') === true)
     const calls = [...OUTSIDE.matchAll(/\bgen2(Daily|Listening)\(/g)].length
     const branch = /if \(o\.pipeline === 'gen2'\) \{[\s\S]{0,700}await gen2Daily\(g2o\) : await gen2Listening\(g2o\)/.test(OUTSIDE)
-    T('A2', 'no learner-facing code calls Gen2: the ONLY call sites are the benchmark run function’s pipeline=gen2 branch (reached from the sandboxed worker / Node)', calls === 2 && branch, { calls })
+    // v679: exactly ONE learner-facing call site — jaGen2MainTrack, reached only from the Japanese screen when the learner turns
+    // the OFF-by-default switch on (and from its benchmark mirror). Thai / Mandarin / Listening screens never call Gen2.
+    const jaOnly = (OUTSIDE.match(/await gen2Daily\(\{ lang: 'ja'/g) || []).length === 1 && /async function jaGen2MainTrack/.test(OUTSIDE)
+    const screen = /const \[useGen2, setUseGen2\] = useState\(false\)/.test(OUTSIDE) && /setUseGen2\(v === true\)/.test(OUTSIDE) && /if \(useGen2\) return runGen2Generation\(\)/.test(OUTSIDE)
+    const callers = [...OUTSIDE.matchAll(/await jaGen2MainTrack\(/g)].length
+    T('A2', 'Gen2 reaches learners ONLY through the Japanese screen switch (OFF by default, on only when the learner sets it) and its benchmark mirror; the shadow pipeline=gen2 branch is unchanged',
+      calls === 3 && branch && jaOnly && screen && callers === 2, { calls, callers })
     T('A3', 'the Gen2 block writes nothing: no storage, no SRS / vocabulary update, no saved track, no attempt record', !/stSet\(|localStorage|sessionStorage|setVocab|onSave|saveListeningAttempt|saveTrack|window\.storage/.test(G2))
     T('A4', 'Gen2 commits no PROVEN template realisation and uses no fixed phase storyline (no proven frames, no planListeningConversation, no OPEN/DECIDE/ARRANGE phase list)',
       !/proven|PROVEN|planListeningConversation|listeningVerbal|LISTENING_PHASE|'OPEN'|'DECIDE'|'ARRANGE'/.test(G2CODE))
@@ -38,7 +44,9 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const base = fs.readFileSync(path.join(__dirname, 'tt.v677.jsx'), 'utf8')
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0]
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
-    T('A6', 'vocabulary banks, belt contracts and storage writes are byte-identical to v677 (no learner data path touched)', banks(SRC) === banks(base) && banks(SRC).length > 1000 && writes(SRC) === writes(base), [writes(SRC), writes(base)])
+    // v679: exactly ONE new storage write — the switch setting itself (key tt-ja-gen2); no learner-data write is added
+    const extra = (SRC.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length
+    T('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly one: the switch setting (tt-ja-gen2) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 1 && writes(SRC) === writes(base) + 1 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC), [writes(SRC), writes(base), extra])
   }
   // ══ B — DETERMINISTIC ACCEPTANCE RULES ════════════════════════════════════════════════════════════════════════════
   {
@@ -122,7 +130,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
   {
     T('E1', 'the benchmark panel offers the shadow pilot (6 × 1 / 6 × 3), passes pipeline=gen2 to the sandboxed worker and keeps pilot results and files apart (-gen2-)',
       /id="pilot1"/.test(SRC) && /runInWorker\(fx, k, \{ pipeline: 'gen2', judgeModel:/.test(SRC) && /const pipeline = m\.pipeline === 'gen2' \? 'gen2' : 'production'/.test(SRC) && /'-gen2'/.test(SRC))
-    T('E2', 'version v678', c.ev('APP_BUILD_VERSION') === 'v678' && c.ev('LISTENING_BUILD_VERSION') === 'v678')
+    T('E2', 'version v679', c.ev('APP_BUILD_VERSION') === 'v679' && c.ev('LISTENING_BUILD_VERSION') === 'v679')
   }
   // ══ F — v678.1 SANDBOX FIXES (defects found in the first live Japanese Daily run, 9 Oct 2026) ══════════════════
   {
@@ -193,9 +201,14 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
         /[āáǎàēéěèīíǐìōóǒòūúǔù]/.test(c.gen2Pron('zh', '你喜欢这个东西吗？', zi).pron) && c.gen2PronProblem('zh', '你喜欢这个东西吗？', zi) === null &&
         /们/.test(c.gen2PronProblem('zh', '我们一起去', zi) || '') && !!c.gen2PronProblem('th', 'ฉันอยากได้ความหวังค่ะ', ti) &&
         c.gen2PronProblem('th', 'คุณรีบไปไหนครับ', ti) === null && /khráp/.test(c.gen2Pron('th', 'คุณรีบไปไหนครับ', ti).pron)) }
+    { const sg = c.gen2JaSegments('映画はよかったよ。', 'えいがはよかったよ。', inv), sg2 = c.gen2JaSegments('昨日、一緒にご飯を食べるのは楽しかった。', 'きのう、いっしょにごはんをたべるのはたのしかった。', inv)
+      const aud = (t, g, ro) => ((c.auditJapaneseReading({ japanese: t, reading: g.reading, romaji: ro, phonetic: ro, segments: g.segments }) || {}).problems || [])
+      T('F21', 'every Japanese recall carries a word-by-word breakdown aligned to its validated reading, so PRODUCTION\'s own pronunciation audit accepts the Hepburn particles (は→wa, を→o); conjugated words stay whole (楽しかった, 見た); the breakdown also gives a word-spaced romaji',
+        sg && sg2 && aud('映画はよかったよ。', sg, 'eiga wa yokatta yo.').length === 0 && aud('昨日、一緒にご飯を食べるのは楽しかった。', sg2, 'kinou, issho ni gohan o taberu no wa tanoshikatta.').length === 0 &&
+        sg2.segments.some(x => x.surface === '楽しかった') && sg2.romaji === 'kinou, issho ni gohan o taberu no wa tanoshikatta.' && /dictionary/.test(SRC.slice(SRC.indexOf('async function gen2JaPronounce'), SRC.indexOf('async function gen2JaPronounce') + 2500)), sg2 && sg2.romaji) }
     T('F16', 'generator prompt: vocabulary discipline (no unlisted nouns, names, 私/あなた) and different real situations', /VOCABULARY DISCIPLINE/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)) && /あなた/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)))
   }
   console.log(out.join('\n'))
-  console.log('\nv678 Gen2 shadow pilot: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
+  console.log('\nv679 Gen2 pilot + Japanese switch: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
   process.exit(fails ? 1 : 0)
 })().catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1) })

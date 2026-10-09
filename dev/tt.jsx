@@ -8963,16 +8963,52 @@ function gen2JaKanaWordProblem(text, inv) {
 // dictionary can read the sentence unambiguously the model's reading must agree with it
 const gen2KanaNorm = x => String(x || '').replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60)).replace(/[^぀-ゟー]/g, '')
 function gen2JaReadingProblem(c, inv) {
-  const r = String(c.reading || ''), ro = String(c.romaji || '')
+  const r = String(c.reading || ''), ro = gen2RomajiNorm(c.romaji)
   if (!r || !ro) return 'reading/romaji missing'
   if (/[一-鿿]/.test(r)) return 'reading contains kanji'
   if (/[^\x20-\x7eāūēō]/.test(ro.replace(/[、。？！]/g, ''))) return 'romaji contains non-latin text'
   if (!romajiMatchesReading(ro, r)) return 'romaji does not match the reading'
-  try {
-    const d = rebuildJapaneseReadingPipeline({ japanese: c.text }, inv.jaInv).reading
-    if (d && !/[一-鿿]/.test(d) && gen2KanaNorm(d) !== gen2KanaNorm(r)) return 'reading ' + r + ' disagrees with the dictionary reading ' + d
-  } catch (e) {}
+  // every kana written in the sentence must appear, in order, in the reading (catches a reading of another sentence).
+  // No dictionary veto: the inventory reader misreads unlisted words (遅れた → おそれた via 遅い).
+  const want = gen2KanaNorm(String(c.text || '').replace(/[一-鿿]/g, '')), have = gen2KanaNorm(r)
+  let i = 0; for (const ch of have) if (ch === want[i]) i++
+  if (i < want.length) return 'reading does not contain the sentence\'s own kana'
   return null
+}
+const gen2RomajiNorm = x => String(x || '').trim().replace(/\s+/g, ' ').replace(/tch/g, 'cch')
+// ── PRONUNCIATION (Japanese): a separate stage AFTER teachability, so a pronunciation slip never costs an accepted
+// sentence (asking for it inside the sentence request made flash-lite write whole sentences in kana). The judge model
+// writes reading + romaji for every accepted sentence; each is validated deterministically (kana-only reading that
+// contains the sentence's own kana, romaji transcribing that reading); failures are asked once more; anything still
+// failing leaves the lesson NOT_READY (ROMAJI_MISSING) — never a guessed romaji.
+function gen2PronouncePrompt(items) {
+  return '[task: gen2-ja-reading v1]\n' +
+    'For each Japanese sentence give its reading in hiragana exactly as spoken in this sentence, and its romaji.\n' +
+    'Romaji style: Hepburn, words separated by spaces, long vowels spelled out (ou, uu, ei — no macrons), the particles は / を / へ written wa / o / e, っち written cchi.\n' +
+    items.map((x, i) => (i + 1) + '. ' + x.text).join('\n') + '\n' +
+    'Return ONLY JSON: {"items": [{"n": 1, "reading": "", "romaji": ""}]}'
+}
+async function gen2JaPronounce(ctx, inv, recalls) {
+  let todo = recalls.slice()
+  const report = { asked: 0, ok: 0, failed: [] }
+  for (let round = 1; round <= 2 && todo.length; round++) {
+    const left = []
+    for (let k = 0; k < todo.length; k += 30) {
+      const batch = todo.slice(k, k + 30)
+      report.asked += batch.length
+      const res = await gen2Ask(ctx, 'S_gen2_reading', gen2PronouncePrompt(batch), { judge: true, attempt: round, maxTokens: 6000 })
+      const items = res && Array.isArray(res.items) ? res.items : []
+      batch.forEach((c, i) => {
+        const v = items.find(x => +x.n === i + 1) || {}
+        const cand = { text: c.text, reading: gen2Tidy('ja', v.reading), romaji: gen2RomajiNorm(v.romaji) }
+        const why = gen2JaReadingProblem(cand, inv)
+        if (why) { left.push(c); if (round === 2) report.failed.push(c.text + ': ' + why) }
+        else { c.reading = cand.reading; c.romaji = cand.romaji; report.ok++ }
+      })
+    }
+    todo = left
+  }
+  return report
 }
 // a template repeated with another noun (この本、どう思う？ / この映画、どう思う？) is not a different use (Japanese)
 const gen2Skeleton = (lang, core) => lang === 'ja' ? core.replace(/[一-鿿゠-ヿ]+/g, '■') : core
@@ -9009,7 +9045,9 @@ async function gen2Ask(ctx, stage, prompt, o) {
   return gen2ParseJson(text)
 }
 function gen2ConventionLine(ctx) {
-  if (ctx.lang === 'ja' && ctx.speechStyle === 'polite') return 'Two adults speaking politely (です/ます).'
+  if (ctx.lang === 'ja' && ctx.speechStyle === 'polite') return ctx.politeForTarget
+    ? 'Polite Japanese (です/ます), as spoken to a shop assistant, a stranger or a colleague — not to a close friend. Every cue must say who the learner is talking to (e.g. "Ask a shop assistant …").'
+    : 'Two adults speaking politely (です/ます).'
   if (ctx.lang !== 'th' || !ctx.allowedSet) return GEN2_LANG[ctx.lang].speakers
   // Thai: the speaker contract names only pronouns the learner has been taught (a convention never smuggles in a word)
   const has = w => ctx.allowedSet.has(w)
@@ -9035,10 +9073,10 @@ function gen2ProbePrompt(ctx, w, inv, siblings, feedback, n) {
     'Write ' + n + ' candidate practice sentences. Together they must contain at least THREE DIFFERENT real uses of the target (different communicative functions, e.g. asking, answering, offering, refusing, suggesting, describing) — never the same sentence with one word changed.\n' +
     'Every sentence must be complete, grammatically perfect, and something a native speaker would naturally say to a friend in an everyday situation, using the target in the sense "' + w.english + '". Do not invent odd combinations just to use the allowed words.\n' +
     'For each candidate give: "function" (1–3 words), "situation" (when it is said, short English), "cue" (an English instruction telling the learner WHAT TO COMMUNICATE without giving the words, e.g. "Ask your friend whether they are free tonight." — never a translation of the sentence; a learner following it should naturally need THIS target word), "text" (the ' + L.name + ' sentence: ONE utterance by ONE speaker — never a question together with its answer' + (ctx.lang === 'ja' || ctx.lang === 'zh' ? '; normal writing with no spaces between words' : '') + '), "english" (a faithful natural translation that keeps the nuance), "speaker" ("male", "female" or "either")' +
-    (ctx.lang === 'ja' ? ', "reading" (the whole sentence in hiragana exactly as spoken), "romaji" (Hepburn romaji of that reading, words separated by spaces; the particles は / を / へ are written wa / o / e)' : '') + '.\n' +
+    (ctx.lang === 'ja' ? '. Write "text" normally, with kanji exactly as the words appear in ALLOWED WORDS (never the whole sentence in kana)' : '') + '.\n' +
     'If this word cannot be used naturally with the allowed words, return "teachable": false with a short "reason" instead of forcing sentences.\n' +
     (feedback ? feedback + '\n' : '') +
-    'Return ONLY JSON: {"teachable": true, "reason": "", "candidates": [{"function": "", "situation": "", "cue": "", "text": "", "english": "", "speaker": ""' + (ctx.lang === 'ja' ? ', "reading": "", "romaji": ""' : '') + '}]}'
+    'Return ONLY JSON: {"teachable": true, "reason": "", "candidates": [{"function": "", "situation": "", "cue": "", "text": "", "english": "", "speaker": ""}]}'
 }
 function gen2JudgePrompt(ctx, w, items, siblings) {
   const L = GEN2_LANG[ctx.lang]
@@ -9052,12 +9090,11 @@ function gen2JudgePrompt(ctx, w, items, siblings) {
     ' cue: useful | copies-answer | ambiguous | misleading   (could a learner who reads ONLY the cue produce essentially this sentence with this target word?)\n' +
     ' speaker: ok | wrong   (fits the stated speaker and register)\n useful: useful | weak | not-useful   (a real, reusable thing a beginner needs to say)\n fragment: true | false\n' +
     ' turns: one | multiple   (ONE utterance by ONE speaker; a question together with its own answer is "multiple")\n' +
-    (ctx.lang === 'ja' ? ' reading: ok | error   (the hiragana reading and the romaji are exactly how this sentence is said)\n' : '') +
     ' note: a short reason when anything is wrong\n' +
     'Be precise about: the cue is "misleading" when a learner following it would naturally say it with a DIFFERENT word; the translation is "misleading" when it changes the function (e.g. Japanese 大丈夫 in reply to an offer politely DECLINES it; ちょっとだけ means "just a little", not "just a moment").' +
     (ctx.lang === 'ja' ? ' Between friends あなた sounds unnatural, and いいえ / です・ます are polite speech; judge the register against SPEAKERS above.' : '') + '\n' +
-    'ITEMS:\n' + items.map((c, i) => (i + 1) + '. [speaker: ' + c.speaker + '] ' + c.text + (ctx.lang === 'ja' ? ' | Reading: ' + c.reading + ' | Romaji: ' + c.romaji : '') + ' | English: ' + c.english + ' | Cue: ' + c.cue).join('\n') + '\n' +
-    'Return ONLY JSON: {"items": [{"n": 1, "grammar": "", "natural": "", "translation": "", "target": "", "cue": "", "speaker": "", "useful": "", "fragment": false, "turns": "one",' + (ctx.lang === 'ja' ? ' "reading": "ok",' : '') + ' "note": ""}]}'
+    'ITEMS:\n' + items.map((c, i) => (i + 1) + '. [speaker: ' + c.speaker + '] ' + c.text + ' | English: ' + c.english + ' | Cue: ' + c.cue).join('\n') + '\n' +
+    'Return ONLY JSON: {"items": [{"n": 1, "grammar": "", "natural": "", "translation": "", "target": "", "cue": "", "speaker": "", "useful": "", "fragment": false, "turns": "one", "note": ""}]}'
 }
 function gen2Verdict(v) {
   if (!v) return { ok: false, why: 'judge: no verdict (UNVERIFIED)' }
@@ -9104,7 +9141,6 @@ function gen2DetCheck(ctx, w, c, inv) {
   const { a, units } = gen2Units(ctx, w, c.text)
   if (a.overHardMax) p.push('too long (' + a.units + ' > ' + ctx.cc.hardMax + ')')
   if (units < 2 && gen2WordClass(ctx.lang, w) !== 'expression') p.push('fragment (' + units + ' unit)')
-  if (ctx.lang === 'ja') { const rp = gen2JaReadingProblem(c, inv); if (rp) p.push(rp) }
   const cp = gen2CueProblem(c.cue, c.english, ctx.lang); if (cp) p.push(cp)
   const sp = gen2SpeakerProblem(ctx, c); if (sp) p.push(sp)
   return p
@@ -9137,7 +9173,7 @@ async function gen2TeachTarget(ctx0, w, st) {
     if (res && res.teachable === false) { att.reasons.push('generator: not teachable — ' + (res.reason || '')); if (!accepted.length) { rec.status = 'deferred'; rec.reason = 'NOT_TEACHABLE_WITH_INVENTORY: ' + (res.reason || 'generator declined'); return rec } continue }
     const cands = (res && Array.isArray(res.candidates) ? res.candidates : []).filter(Boolean).map(c => ({ function: String(c.function || ''), situation: String(c.situation || ''), cue: String(c.cue || '').trim(),
       text: gen2Tidy(ctx.lang, c.text), english: String(c.english || '').trim(), speaker: /^(male|female)$/.test(c.speaker) ? c.speaker : 'either',
-      ...(ctx.lang === 'ja' ? { reading: gen2Tidy('ja', c.reading), romaji: String(c.romaji || '').trim().replace(/\s+/g, ' ') } : {}) }))
+ }))
     att.candidates = cands.length
     if (!cands.length) { att.reasons.push('generator reply unusable'); continue }
     const toJudge = []
@@ -9208,6 +9244,11 @@ async function gen2Daily(o) {
       }
     }
   } catch (e) { if (!e.gen2Budget) throw e; stop = e.message; ctx.log('⛔ ' + e.message) }
+  let pron = null
+  if (lang === 'ja' && frozen.length && !stop) {
+    try { pron = await gen2JaPronounce(ctx, st.inv, frozen.flatMap(r => r.recalls)); ctx.log('🔤 READING/ROMAJI ' + pron.ok + '/' + frozen.length * 3 + (pron.failed.length ? ' · failed: ' + pron.failed.join(' | ') : '')) }
+    catch (e) { if (!e.gen2Budget) throw e; stop = e.message; ctx.log('⛔ ' + e.message) }
+  }
   // composition: groups of five targets, recalls round-robin (the shape learners already know); the speaker follows
   // each sentence's own requirement (female particles → the woman), never a fixed alternation
   const pairs = []
@@ -9230,7 +9271,7 @@ async function gen2Daily(o) {
   const keywords = frozen.map(rec => ({ wordId: rec.id, [L.field]: rec.surface, thai: rec.surface, english: rec.english }))
   return { track: { language: lang, mode: 'daily', trackMode: 'daily', generator: GEN2_VERSION, pairs, keywords, selectedTargetIds: frozen.map(r => r.id),
       integrity: { status, reasons, checkModel: null }, deferredTargets: deferred.map(d => ({ wordId: d.id, surface: d.surface, reason: d.reason, srs: 'unchanged — still due' })) },
-    gen2: { version: GEN2_VERSION, models: { generator: ctx.genModel, judge: ctx.judgeModel }, calls: ctx.calls, byStage: ctx.byStage, frozen: frozen.map(gen2RecSummary), deferred: deferred.map(gen2RecSummary), replacementsUsed: replacements, acceptance: inv } }
+    gen2: { version: GEN2_VERSION, models: { generator: ctx.genModel, judge: ctx.judgeModel }, calls: ctx.calls, byStage: ctx.byStage, pronunciation: pron, frozen: frozen.map(gen2RecSummary), deferred: deferred.map(gen2RecSummary), replacementsUsed: replacements, acceptance: inv } }
 }
 // the speaker letter for a gender, read from THE speaker map (no local A/B ↔ gender table anywhere else)
 function gen2LetterFor(gender) { return Object.keys(THAI_SPEAKER_MAP).find(k => THAI_SPEAKER_MAP[k].gender === gender) || 'A' }
@@ -9246,7 +9287,8 @@ function gen2AcceptDaily(ctx, frozen, pairs, need, st) {
     const ps = byT.get(rec.id) || [], w = ctx.byId.get(rec.id), tctx = gen2TargetCtx(ctx, w)
     if (ps.length !== 3) problems.push(rec.surface + ': ' + ps.length + ' recalls')
     if (new Set(ps.map(p => gen2Core(lang, p[field]))).size !== ps.length) problems.push(rec.surface + ': duplicate recalls')
-    ps.forEach(p => { const d = gen2DetCheck(tctx, w, { text: p[field], english: p.english, cue: p.prompt, reading: p.reading, romaji: p.romaji, speaker: lang === 'th' ? thaiSpeakerMapGender(p.speaker) : 'either' }, st.inv)
+    ps.forEach(p => { const d = gen2DetCheck(tctx, w, { text: p[field], english: p.english, cue: p.prompt, speaker: lang === 'th' ? thaiSpeakerMapGender(p.speaker) : 'either' }, st.inv)
+      if (lang === 'ja') { const rp = gen2JaReadingProblem({ text: p[field], reading: p.reading, romaji: p.romaji }, st.inv); if (rp) d.push('ROMAJI_MISSING (' + rp + ')') }
       if (d.length) problems.push(rec.surface + ': ' + d.join(', ')) ; if (!p._gen2 || !p._gen2.judge || !gen2Verdict(p._gen2.judge).ok) problems.push(rec.surface + ': not judge-accepted') })
   })
   const cores = pairs.map(p => gen2Core(lang, p[field])), cues = pairs.map(p => gen2Norm(p.prompt))

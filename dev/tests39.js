@@ -144,11 +144,15 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const u = (w, t) => c.gen2Units(ctx, w, t).units
     T('F5', 'fragment test counts words, not the complexity estimate: 今、何してるの？ (する) and 何飲む？ (何) are sentences; a lone word is still a fragment',
       u(suru, '今、何してるの？') >= 2 && u(nani, '何飲む？') >= 2 && u(nani, '何？') < 2)
-    T('F6', 'romaji line: required for Japanese, must transcribe the reading, and the reading must agree with the dictionary reading',
+    T('F6', 'romaji line: required for Japanese, must transcribe the reading (tch = cch), and the reading must contain the sentence\'s own kana',
       c.gen2JaReadingProblem({ text: '今、何してるの？', reading: 'いま、なにしてるの？', romaji: 'ima, nani shiteru no?' }, inv) === null &&
       /missing/.test(c.gen2JaReadingProblem({ text: '今、何してるの？' }, inv)) &&
       !!c.gen2JaReadingProblem({ text: '今、何してるの？', reading: 'いま、なにしてるの？', romaji: 'kyou nani shiteru no' }, inv) &&
-      /disagrees/.test(c.gen2JaReadingProblem({ text: '今日、行く？', reading: 'こんにち、いく？', romaji: 'konnichi, iku?' }, inv) || ''))
+      /own kana/.test(c.gen2JaReadingProblem({ text: 'あれは何？', reading: 'これはなに？', romaji: 'kore wa nani?' }, inv) || '') &&
+      c.gen2JaReadingProblem({ text: 'どっち？', reading: 'どっち？', romaji: 'dotchi?' }, inv) === null)
+    T('F11', 'pronunciation is its own stage after acceptance (the sentence request asks for no reading — asking made the generator write whole sentences in kana); a Japanese lesson without a validated romaji line is not accepted',
+      !/"reading"/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)) && /task: gen2-ja-reading/.test(c.gen2PronouncePrompt([{ text: '何？' }])) &&
+      /ROMAJI_MISSING/.test(SRC) && /pron = await gen2JaPronounce/.test(SRC))
     const pick = c.gen2PickDistinct('ja', [{ text: 'この本、どう思う？', function: 'ask opinion' }, { text: 'この映画、どう思う？', function: 'opinion of film' }, { text: '駅までどう行く？', function: 'ask way' }, { text: '仕事、どう？', function: 'ask how it went' }], 3)
     T('F7', 'three DISTINCT uses: the same template with another noun (この本／この映画、どう思う？) counts once', pick.length === 3 && !pick.some(p => p.text === 'この映画、どう思う？'), pick.map(p => p.text))
     const base = c.gen2Context({ lang: 'ja', vocab: V, apiKey: 'x' })

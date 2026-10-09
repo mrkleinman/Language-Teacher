@@ -39,6 +39,10 @@ function gen2SimReply(q, S, lang, opts) {
       cue: 'Tell your friend about item ' + t.id + ' in situation ' + (i + (second ? 3 : 0)) + '.', text: textOf(lang, s), english: s.english,
       speaker: lang === 'th' ? (s.speaker === 'B' ? 'female' : 'male') : 'either', ...(lang === 'ja' ? simReading(S, s) : {}) })) })
   }
+  if (task === 'gen2-ja-reading') {   // v678.1: the pronunciation stage — the dictionary's reading (mechanics only)
+    const items = [...q.matchAll(/^(\d+)\. (.*)$/gm)]
+    return JSON.stringify({ items: items.map(m => ({ n: +m[1], ...simReading(S, { japanese: m[2] }) })) })
+  }
   if (task === 'gen2-daily-judge' || task === 'gen2-listen-judge-exchange') {
     if (opts.judgeGarbage) return 'I think these are fine.'
     const items = [...q.matchAll(/^(\d+)\. (.*)$/gm)]

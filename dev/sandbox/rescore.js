@@ -28,12 +28,12 @@ for (const e of run.cassette.entries) {
   let j; try { j = JSON.parse(e.response.body.candidates[0].content.parts[0].text) } catch (x) { continue }
   for (const cand of j.candidates || []) {
     const tctx = c.gen2TargetCtx(ctx, w)
-    const k = { ...cand, text: c.gen2Tidy(lang, cand.text), speaker: /^(male|female)$/.test(cand.speaker) ? cand.speaker : 'either', reading: cand.reading || 'あ', romaji: cand.romaji || 'a' }
-    const p = c.gen2DetCheck(tctx, w, k, inv).filter(x => !/^reading|^romaji|disagrees with the dictionary/.test(x))
-    rows.push({ target: w[F], text: cand.text, tidy: k.text, wasAccepted: accepted.has(cand.text), nowDet: p })
+    const k = { ...cand, text: c.gen2Tidy(lang, cand.text), speaker: /^(male|female)$/.test(cand.speaker) ? cand.speaker : 'either', reading: cand.reading || 'あ', romaji: cand.romaji || 'a' }, keepReading = !!cand.reading
+    const p = c.gen2DetCheck(tctx, w, k, inv).filter(x => keepReading || !/^reading|^romaji|disagrees with the dictionary/.test(x))
+    rows.push({ target: w[F], reading: cand.reading, romaji: cand.romaji, text: cand.text, tidy: k.text, wasAccepted: accepted.has(cand.text), nowDet: p })
   }
 }
-if (process.argv[3]) rows.filter(r => r.target === process.argv[3]).forEach(r => console.log("  [" + process.argv[3] + "] " + r.tidy + "  → " + (r.nowDet.join("; ") || "PASS det")))
+if (process.argv[3]) rows.filter(r => process.argv[3] === "*" || r.target === process.argv[3]).forEach(r => console.log("  [" + r.target + "] " + r.tidy + (process.argv[4] ? "  {" + r.reading + " / " + r.romaji + "}" : "") + "  → " + (r.nowDet.join("; ") || "PASS det")))
 const nowRejectedAccepted = rows.filter(r => r.wasAccepted && r.nowDet.length)
 const formerlyDetRejected = new Set(); g2.frozen.concat(g2.deferred).forEach(r => r.rejectionReasons.forEach(x => { const t = x.split(': ')[0]; if (!/judge:/.test(x)) formerlyDetRejected.add(t) }))
 const nowPassDet = rows.filter(r => !r.wasAccepted && !r.nowDet.length && formerlyDetRejected.has(r.text))

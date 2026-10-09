@@ -8830,7 +8830,7 @@ const GEN2_VERSION = 'gen2-pilot/1.1'   // 1.1: sandbox fixes after the first li
 const GEN2_FLAG = Object.freeze({ enabled: false, shadowOnly: true })   // activation for learners needs a separate change
 const GEN2_CONFIG = Object.freeze({
   generatorModel: 'gemini-2.5-flash-lite', judgeModel: 'gemini-2.5-flash',
-  candidatesPerProbe: 6, probesPerTarget: 2, maxReplacements: 8, dailyMaxCalls: 170,
+  candidatesPerProbe: 6, probesPerTarget: 2, probesByLang: { th: 3, zh: 3 }, maxReplacements: 8, dailyMaxCalls: 170,
   listeningProbeBatch: 10, listeningMaxCalls: 60, sceneAttempts: 3, minScenes: 3, maxScenes: 5, maxTargetsPerScene: 9,
 })
 const GEN2_LANG = {
@@ -8933,6 +8933,7 @@ const GEN2_CJK = '　-ヿ㐀-鿿！-｠'
 function gen2Tidy(lang, s) {
   s = String(s || '').trim()
   if (lang === 'ja' || lang === 'zh') s = s.replace(new RegExp('(?<=[' + GEN2_CJK + '])[ 　]+(?=[' + GEN2_CJK + '])', 'gu'), '')
+  if (lang === 'th') s = s.replace(/(?<=[\u0e00-\u0e7f])(?<!ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า|น่ะ) +(?=[\u0e00-\u0e7f])/gu, '')   // v679: no spaces between Thai words inside a clause
   return s
 }
 // ONE utterance by ONE speaker: no line breaks, no question followed by its own answer (水、飲む？はい、飲む。)
@@ -9032,11 +9033,27 @@ function gen2Pron(lang, text, inv) {
     const unresolved = segs.filter(x => x.type !== 'punct' && !x.pinyin && /[一-鿿]/.test(x.surface || '')).map(x => x.surface)
     return { pron: tidyPinyin(segs.map(x => x.type === 'punct' ? x.surface : x.pinyin).filter(Boolean).join(' ')), unresolved }
   }
-  if (lang === 'th' && inv.thLex) {
-    const r = composeThaiPhonetic(t, inv.thLex)
-    return { pron: r.phonetic, unresolved: r.unresolved ? ['(' + r.unresolved + ' Thai characters)'] : [] }
-  }
+  if (lang === 'th' && inv.thLex) return gen2ThaiCompose(t, inv)
+
   return null
+}
+// v679: Thai words are found by the BEST segmentation over the canonical lexicon — the greedy longest match read ไปที่นั่น
+// as ไปที่ + (นั่น unresolved) and so rejected good sentences as "untaught"
+function gen2ThaiCompose(t, inv) {
+  if (!inv._thByFirst) { const m = new Map(); for (const k of inv.thLex.keys()) { if (!k) continue; const f = k[0]; if (!m.has(f)) m.set(f, []); m.get(f).push(k) } inv._thByFirst = m }
+  const s = String(t || ''), n = s.length
+  const best = new Array(n + 1).fill(null); best[0] = { u: 0, w: 0, prev: -1, tok: null }
+  for (let i = 0; i < n; i++) {
+    const b = best[i]; if (!b) continue
+    const ch = s[i]
+    const relax = (j, u, tok) => { const c = best[j]; const nu = b.u + u, nw = b.w + (tok ? 1 : 0); if (!c || nu < c.u || (nu === c.u && nw < c.w)) best[j] = { u: nu, w: nw, prev: i, tok } }
+    if (!/[฀-๿]/.test(ch)) { relax(i + 1, 0, /\s/.test(ch) ? null : { lit: ch }); continue }
+    for (const k of inv._thByFirst.get(ch) || []) if (s.startsWith(k, i)) relax(i + k.length, 0, { word: k })
+    relax(i + 1, 1, { bad: ch })
+  }
+  const toks = []; for (let j = n; j > 0 && best[j]; j = best[j].prev) if (best[j].tok) toks.unshift(best[j].tok)
+  const bad = toks.filter(x => x.bad).length
+  return { pron: toks.map(x => x.word ? inv.thLex.get(x.word) : x.lit || '').filter(Boolean).join(' ').replace(/\s+/g, ' ').trim(), unresolved: bad ? ['(' + bad + ' Thai characters)'] : [] }
 }
 function gen2PronProblem(lang, text, inv) {
   const r = gen2Pron(lang, text, inv)
@@ -9428,7 +9445,8 @@ async function gen2TeachTarget(ctx0, w, st) {
   const siblings = gen2Siblings(ctx, w, st.pool)
   const rejected = st.rejectedByTarget.get(w.id) || new Set(); st.rejectedByTarget.set(w.id, rejected)
   let accepted = []
-  for (let k = 1; k <= GEN2_CONFIG.probesPerTarget; k++) {
+  const probes = (GEN2_CONFIG.probesByLang && GEN2_CONFIG.probesByLang[ctx.lang]) || GEN2_CONFIG.probesPerTarget
+  for (let k = 1; k <= probes; k++) {
     const need = 3 - gen2PickDistinct(ctx.lang, accepted, 3).length
     const fb = k === 1 ? '' : 'ALREADY REJECTED — do not repeat or lightly edit these: ' + [...rejected].slice(-12).join(' / ') + '\nREASONS: ' + rec.attempts[rec.attempts.length - 1].reasons.slice(0, 6).join('; ') +
       (accepted.length ? '\nALREADY ACCEPTED (write DIFFERENT functions from these): ' + accepted.map(a => a.text + ' [' + a.function + ']').join(' / ') : '') + '\nWrite new candidates; at least ' + need + ' must be acceptable.'

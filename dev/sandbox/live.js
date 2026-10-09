@@ -33,7 +33,7 @@ const modelOf = url => (String(url).match(/models\/([^:?]+):/) || [])[1] || null
 const usd = (m, i, o) => { const p = PRICE[m]; if (!p) throw new Error('no price for model ' + m); return (i * p.in + o * p.out) / 1e6 }
 
 ;(async () => {
-  const fixtureId = arg('fixture'), pipeline = arg('pipeline', 'gen2'), cap = +arg('cap', 0.25), sessionCap = +arg('session-cap', 2)
+  const fixtureId = arg('fixture'), pipeline = arg('pipeline', 'gen2'), cap = +arg('cap', 0.25), sessionCap = +arg('session-cap', 3.62)
   const appFile = path.resolve(DEV, arg('app', 'tt.compiled.js'))
   const fx = loadFixture(fixtureId)
   const ledger = readLedger(); const spentBefore = ledger.runs.reduce((a, r) => a + (r.costUsd || 0), 0)

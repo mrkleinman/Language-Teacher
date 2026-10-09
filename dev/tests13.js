@@ -80,7 +80,7 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
 
   // ── 6. Source invariants: one transport, zero banned identifiers ──
   const src = fs.readFileSync('tt.jsx', 'utf8')
-  const shell = (() => { const h = fs.readFileSync('/mnt/user-data/uploads/index-1.html', 'utf8'); return h.slice(0, h.indexOf('<script type="text/babel">')) + h.slice(h.lastIndexOf('</script>')) })()
+  const shell = (() => { const h = fs.readFileSync(fs.existsSync('/mnt/user-data/uploads/index-1.html') ? '/mnt/user-data/uploads/index-1.html' : require('path').join(__dirname, 'build/index-1.shell.html'), 'utf8'); return h.slice(0, h.indexOf('<script type="text/babel">')) + h.slice(h.lastIndexOf('</script>')) })()
   const BANNED = /qwen|anthropic|claude|openai|gpt-|openrouter|deepseek|mistral|groq|ollama|huggingface|together\.ai|fallbackProvider|secondaryProvider|fallbackModel|secondaryModel|alternateModel|haiku|sk-or-|x-api-key|chat\/completions/i
   const hits = (text, name) => text.split('\n').map((l, i) => BANNED.test(l) ? name + ':' + (i + 1) + ' ' + l.trim().slice(0, 80) : null).filter(Boolean)
   const allHits = hits(src, 'tt.jsx').concat(hits(shell, 'index-shell'))

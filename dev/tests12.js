@@ -32,9 +32,17 @@ function learner(c) { const v = c.initVocab().map(w => ({ ...w })); v.forEach(w 
     if (btn) { await TR.act(async () => { btn.props.onClick(); await flush() }); await TR.act(async () => { await flush() }) }
     return { onMount, afterDifferentScene: scene - onMount, sawButton: !!btn }
   }
+  // sandbox: v646 was never published to the repository, so its build cannot be restored. The current-build half of R
+  // still runs (R-cur); the v646 comparison is reported BLOCKED (never counted as a pass).
+  if (!fs.existsSync('tt.v646.compiled.js')) {
+    const s = await sceneCount('tt.compiled.js')
+    T('R-cur', 'one user action = one scene request on the current build — on mount and on "Try a different scene"', s.onMount === 1 && s.sawButton && s.afterDifferentScene === 1, s)
+    out.push('BLOCKED R  v646 comparison: tt.v646.compiled.js is not available (never published to the repository)')
+  } else {
   const s646 = await sceneCount('tt.v646.compiled.js'), s647 = await sceneCount('tt.compiled.js')
   T('R', 'one user action = one scene request: v646 fired 2 (build() re-entered on its own phase change), v647 fires 1 — on mount and on "Try a different scene"',
     s646.onMount === 2 && s647.onMount === 1 && s647.sawButton && s647.afterDifferentScene === 1 && s646.afterDifferentScene === 2, { v646: s646, v647: s647 })
+  }
 
   // ── F: deterministic provider failure (HTTP 402) ──
   const c = load('tt.compiled.js'); c.AbortController = AbortController

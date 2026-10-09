@@ -193,13 +193,13 @@ async function runOnceUi(fx, o) {
   let rec = null, rep = null
   if (o.mode === 'replay') { rep = createReplayer(o.cassette); c.fetch = rep.fetch }
   else {
-    const provider = o.provider === 'live' ? liveProvider() : simProvider(c, fx.language, applyFixture(bankOf(c, fx.language), fx), fx.targets.map(t => t.id), o.simOpts, true)
+    const provider = o.provider === 'live' ? (o.liveFetch || liveProvider()) : simProvider(c, fx.language, applyFixture(bankOf(c, fx.language), fx), fx.targets.map(t => t.id), o.simOpts, true)   // liveFetch: sandbox/live.js (proxy-authenticated, cost-capped)
     rec = createRecorder(provider, { fixture: fx.id, provider: o.provider === 'live' ? 'LIVE gemini' : 'SIMULATED (mechanics only — not teaching quality)', simOpts: o.simOpts || null, appBuild: c.ev('APP_BUILD_VERSION'),
       listeningBuild: c.ev('LISTENING_BUILD_VERSION'), model: c.ev('GEMINI_DEFAULT_MODEL'), belt: fx.belt.rank, path: 'ui-path/1', uiPaths: how, pipeline: o.pipeline || 'production',
       clock: 'deterministic (' + new Date(fx.clockStartMs || Date.UTC(2026, 9, 8, 6, 0, 0)).toISOString() + ', +7ms per read; reset at run start)', seed: 20261008 })
     c.fetch = rec.fetch
   }
-  const key = o.provider === 'live' && o.mode !== 'replay' ? process.env.GEMINI_API_KEY : SIM_KEY
+  const key = o.provider === 'live' && o.mode !== 'replay' ? (o.apiKey || process.env.GEMINI_API_KEY) : SIM_KEY
   const fxc = require('./embed_fixtures').compact(fx)
   const pipeline = o.pipeline || (o.cassette && o.cassette.meta && o.cassette.meta.pipeline) || 'production'
   const r = await c.ttBenchRunFixture(fxc, { apiKey: key, clockReset: globals.__ttBenchClockReset, pipeline })

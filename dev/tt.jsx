@@ -8841,7 +8841,7 @@ const GEN2_CLASS_GUIDE = {
   'particle': 'This is a PARTICLE. Each application must be a complete sentence whose function REQUIRES this particle (for a female polite question particle: a woman asking a real question; for a softening particle: a real suggestion or reminder). Give the speaker the particle requires.',
   'classifier': 'This is a CLASSIFIER. Use it the way it is really used: counting (noun + number + classifier) or pointing out one item (noun + classifier + this/that), with a noun it actually classifies.',
   'expression': 'This is a SET EXPRESSION. Each application is a different real moment where people say it (e.g. apologising for being late, getting someone’s attention, declining politely), as a complete natural utterance.',
-  'response': 'This word ANSWERS someone. Write ONLY the learner\'s reply (it may continue after the answer word, e.g. "はい、お願いします。"); put the other person\'s question or offer in the CUE (e.g. "The shop assistant asks whether you need a bag. Say yes."). Never write the question and the answer together.',
+  'response': 'This word ANSWERS someone. Write ONLY the learner\'s reply (it may continue after the answer word); put the other person\'s question or offer in the CUE and end the cue with what to do (e.g. "Your friend asks whether you are free tonight. Say yes and suggest a film."). Never write the question and the answer together.',
   'verb': 'This is a VERB. Every sentence must contain THIS verb itself in some form (dictionary, polite, past, negative, て-form, volitional …); a sentence that only implies it does not count.',
   'question-word': 'This is a QUESTION WORD. Use real questions whose answers would be natural; the three applications ask about different things.',
   'function-word': 'This is a FUNCTION WORD. Use it in its grammatical role linking two parts; every sentence must be complete.',
@@ -8886,7 +8886,10 @@ function gen2CueProblem(cue, english, lang) {
   if (GEN2_LANG[lang].script.test(c)) return 'cue-contains-target-language'
   const stripped = c.replace(/^(ask|say|tell( the other person| your friend| them| him| her)?|answer|reply)\s*[:,-]\s*/i, '')
   if (gen2Norm(stripped) === gen2Norm(e) || gen2Similar(gen2Norm(stripped), gen2Norm(e)) >= 0.75) return 'cue-copies-answer'
-  if (!GEN2_CUE_INTENT.test(c)) return 'cue-not-an-intent'
+  // v678.1: "Your friend asks whether you are busy today. (Answer.)" is an intent cue for a reply word — the other person's
+  // question is the situation the learner answers; an instruction may also follow a context sentence
+  const SETUP = /^(your|a|an|the|someone|somebody)\b[^.?!]*\b(asks?|offers?|invites?|suggests?|says?|wants? to know|hands?|thanks?|apologi[sz]es?)\b/i
+  if (!GEN2_CUE_INTENT.test(c) && !c.split(/(?<=[.?!])\s+/).some(x => GEN2_CUE_INTENT.test(x.trim())) && !SETUP.test(c)) return 'cue-not-an-intent'
   if (/:\s*["“]?[A-Z]/.test(c) && gen2Similar(gen2Norm(c.split(':').slice(1).join(':')), gen2Norm(e)) >= 0.5) return 'cue-copies-answer'
   return null
 }
@@ -9175,7 +9178,13 @@ function gen2SpeakerProblem(ctx, c) {
   return null
 }
 // deterministic gate for one candidate (cheap, before any paid judging)
+const GEN2_JA_POLITE_GRAMMAR = ['です', 'でした', 'ます', 'ました', 'ません', 'ませんでした', 'ましょう', 'ませんか'].map(form => ({ form }))
 function gen2DetCheck(ctx, w, c, inv) {
+  if (ctx.politeForTarget && inv.jaInv && !inv.politeCheck) {   // same closed vocabulary; only the polite verb endings are added
+    const pinv = { ...inv.jaInv, grammarScaffold: inv.jaInv.grammarScaffold.concat(GEN2_JA_POLITE_GRAMMAR) }
+    inv.politeCheck = text => { const r = japaneseCheckLine(text, pinv); return r.ok ? [] : ['untaught: ' + r.unknown.join(' ')] }
+  }
+  if (ctx.politeForTarget && inv.politeCheck) inv = { ...inv, check: inv.politeCheck }
   const L = GEN2_LANG[ctx.lang], p = []
   if (!c || !c.text || !c.english) return ['incomplete candidate']
   if (!L.script.test(c.text)) p.push('not ' + L.name)

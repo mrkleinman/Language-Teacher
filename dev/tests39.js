@@ -177,6 +177,12 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       ['いつくる？', 'きのうともだちがきたよ。'].every((r, i) => rp(['いつ来る？', '昨日友達が来たよ。'][i], r) === null) && rp('一緒に食べに来ない？', 'いっしょにたべにこない？') === null)
     T('F15', 'a recall whose romaji cannot be validated is swapped for another judge-accepted distinct recall of the same target (pronounced and validated), never kept without romaji',
       /rec\.spares = accepted\.filter/.test(SRC) && /SPARE SWAPS/.test(SRC) && /never kept without romaji, never guessed/.test(SRC))
+    T('F17', 'reply-word cues may set up the other person\'s question ("Your friend asks if you are busy today."); translation-style and contentless cues are still rejected',
+      c.gen2CueProblem('Your friend asks if you are busy today.', 'Yeah, a little busy.', 'ja') === null && c.gen2CueProblem('The shop assistant asks whether you need a bag. Say yes.', 'Yes, please.', 'ja') === null &&
+      c.gen2CueProblem('The weather is nice.', 'Nice weather.', 'ja') === 'cue-not-an-intent' && c.gen2CueProblem('What are you doing today?', 'What are you doing today?', 'ja') === 'cue-copies-answer')
+    { const dd = (x, t) => c.gen2DetCheck(c.gen2TargetCtx(ctx, jw(x)), jw(x), { text: t, english: 'x', cue: 'The shop assistant asks something. Answer politely.', speaker: 'either' }, inv)
+      T('F18', 'polite-register targets may use polite verb endings (ましょう, ません); casual targets may not; untaught words stay untaught',
+        dd('はい', 'はい、一緒に行きましょう。').length === 0 && dd('食べる', '行きましょう、食べよう。').some(x => /untaught/.test(x)) && dd('はい', 'はい、猫がいます。').some(x => /untaught: 猫/.test(x))) }
     T('F16', 'generator prompt: vocabulary discipline (no unlisted nouns, names, 私/あなた) and different real situations', /VOCABULARY DISCIPLINE/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)) && /あなた/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)))
   }
   console.log(out.join('\n'))

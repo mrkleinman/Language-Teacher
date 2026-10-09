@@ -9156,7 +9156,8 @@ function gen2Pron(lang, text, inv) {
   const t = String(text || '')
   if (lang === 'zh' && inv.zhInv) {
     const segs = segmentMandarin(t, inv.zhInv.lexicon)
-    const unresolved = segs.filter(x => x.type !== 'punct' && !x.pinyin && /[一-鿿]/.test(x.surface || '')).map(x => x.surface)
+    // a structure particle the segmenter now reads (们 — v681) is still untaught for Gen2 unless the learner's lexicon has it
+    const unresolved = segs.filter(x => x.type !== 'punct' && /[一-鿿]/.test(x.surface || '') && (!x.pinyin || (typeof ZH_STRUCTURE_GLOSS !== 'undefined' && ZH_STRUCTURE_GLOSS[x.surface] && !(inv.zhInv.lexicon || []).some(l => l.w === x.surface)))).map(x => x.surface)
     return { pron: tidyPinyin(segs.map(x => x.type === 'punct' ? x.surface : x.pinyin).filter(Boolean).join(' ')), unresolved }
   }
   if (lang === 'th' && inv.thLex) return gen2ThaiCompose(t, inv)

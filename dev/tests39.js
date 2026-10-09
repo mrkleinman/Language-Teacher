@@ -49,8 +49,8 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       const m0 = rep.replay.mismatches[0]
       rows.push({ f, listening: /listening/.test(f), faithful: rep.replay.faithful, same: compareContent(r.outcome.content, rep.content).identical, firstCall: m0 ? m0.call : null })
     }
-    const allowedL = f => /zh-listening-2026-10-08-run[23]/.test(f)
-    T('A5', 'v681 CHANGE IS CONFINED: the 18 live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the 2 Mandarin runs that used 你到哪里？; Daily runs differ only through validator decisions',
+    const allowedL = f => /zh-listening-2026-10-08-run[123]/.test(f)   // v681: 你到哪里？ rejected; 们 is now read as grammar (not an unknown length unit)
+    T('A5', 'v681 CHANGE IS CONFINED: the 18 live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the Mandarin runs (你到哪里？ rejected; 们 read as grammar); Daily runs differ only through validator decisions',
       rows.length === 18 && rows.every(x => x.faithful ? x.same : x.firstCall >= (/th-daily/.test(x.f) ? 2 : 6)) && rows.filter(x => x.listening).every(x => x.faithful || allowedL(x.f)),
       rows.map(x => x.f.replace('tt-bench-', '').replace('-v677.json', '') + ':' + (x.faithful ? 'faithful' : 'differs@' + x.firstCall)))
     const base = fs.readFileSync(path.join(__dirname, 'tt.v677.jsx'), 'utf8')

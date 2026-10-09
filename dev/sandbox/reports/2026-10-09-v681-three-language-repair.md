@@ -102,6 +102,30 @@ Total **US$0.119** of the US$0.25 cap. No request was refused by the cap. No ret
 2. Deploy v681 only if all three reach READY with no critical accepted errors.
 3. The new generator (the v680 switches) remains the stronger path for teaching quality (Thai 16/90 problems vs 27/90 for the standard generator).
 
+
+## 7. Retest (owner-approved, same fixtures, final v681 code at the time)
+
+| | Japanese | Thai | Mandarin |
+|---|---|---|---|
+| Result | **READY 90/90** | NOT_READY 89/90 | **READY 90/90** |
+| Requests · cost | 101 · US$0.032 | 166 · US$0.042 | 233 · US$0.043 |
+| Notes | variety audit 29/30 (only すみません, a set phrase deliberately exempt); QC 1 found = 1 accepted | length now PASS (0 over the maximum); ไปรถไฟฟ้า caught twice; สบาย ended 2/3 because สบายๆ (doubled word) was wrongly treated as target-missing | QC 4 found = 2 fixed + 2 accepted + 0 unresolved (accounting now balances) |
+
+Phase total: US$0.237 of the US$0.25 cap (first attempts US$0.119 + retest US$0.117).
+
+### Defects the retest exposed, fixed afterwards (tests40 now has 37 checks)
+- Thai: a doubled word (สบายๆ, ช้าๆ) is the target (T10).
+- Thai fallback: ยุ่ง became อันนี้ยุ่งไหมคะ; person-state adjectives are now said of a person (T11).
+- Thai: ตั๋วรถไฟสองคู่ (tickets are not pairs) is now rejected (T12).
+- Mandarin: 我们回家吧 shipped with the pinyin "wǒ huí jiā ba" and counted as aligned. 们 now has its reading, and the final audit requires every character to have a reading; a line that differs from its words is rebuilt and logged (Z13).
+
+### Retest inspection (my reading, not native-validated)
+- **Japanese:** natural casual Japanese throughout. Remaining problems: about 25 cues copy the translation; どこ is practised twice as どこか; weak bare lines (うん。 / いいよ。); 電話、まだ大丈夫？ is odd. **Score 6.5/10.**
+- **Thai:** clearly better. Vehicles are used with นั่ง, ก็ / แล้ว are natural, and the length limit holds. Remaining problems: ผมเชื่อเราไปเจ็ดโมง (missing ว่า); ขอเวลาสั้นๆ mistranslated; ผมอยากไปเที่ยวกับคู่; one cue says "He" for a female line; ไม่ได้ยิน romanised mâi-dâi yin. **Score 6.5/10.**
+- **Mandarin:** grammatical. Remaining problems: every cue is "Tell the other person / Ask: <translation>" (the standard Mandarin cue design); fragments 大吗？ / 好吗？ / 不快。; weak 你吃好吗？ / 你慢吗？; the missing 们 pinyin (now fixed). **Score 5.5/10.**
+
+Recommendation: one more Thai run (about US$0.045, slightly above the US$0.25 phase cap) to confirm the สบายๆ fix. Deploying v681 is reasonable once Thai is READY; the cue-copy problem in the standard generator's Japanese and Mandarin cues is the next quality step.
+
 ## TL;DR
 
 The supplied logs were the standard generator; the new generator only runs with the test switch on. I traced and fixed the root causes in all three languages, with 33 new regression tests (23 of which fail on v680) and the full suite green. The first live attempts on v681 cost US$0.119; all three stopped short for reasons that are now fixed. A retest (about US$0.13) is needed before anything goes live.

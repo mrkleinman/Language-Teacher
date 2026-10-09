@@ -139,7 +139,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     T('F1', 'word class: adverbs (また, たぶん, ちょっと) are adverbs — "adverb" contains "verb" and used to be classed as a verb',
       ['また', 'たぶん', 'ちょっと'].every(x => c.gen2WordClass('ja', jw(x)) === 'adverb') && c.gen2WordClass('ja', jw('食べる')) === 'verb')
     T('F2', 'Japanese / Chinese / Thai sentences lose spaces between words before any check (駅 は どっち？ → 駅はどっち？, ไป ไหน ครับ → ไปไหนครับ); a Thai space after a final particle (between clauses) is kept',
-      c.gen2Tidy('ja', 'すみません、駅 は どっち？') === 'すみません、駅はどっち？' && c.gen2Tidy('zh', '你 好 吗？') === '你好吗？' && c.gen2Tidy('th', 'ไป ไหน ครับ') === 'ไปไหนครับ' && c.gen2Tidy('th', 'รีบหน่อยครับ เดี๋ยวสาย') === 'รีบหน่อยครับ เดี๋ยวสาย')
+      c.gen2Tidy('ja', 'すみません、駅 は どっち？') === 'すみません、駅はどっち？' && c.gen2Tidy('zh', '你 好 吗？') === '你好吗？' && c.gen2Tidy('th', 'ไป ไหน ครับ') === 'ไปไหนครับ' && c.gen2Tidy('th', 'รีบหน่อยครับ เดี๋ยวสาย') === 'รีบหน่อยครับ เดี๋ยวสาย' && c.gen2Tidy('th', 'ฉันหวังว่าคุณทำได้นะ คะ') === 'ฉันหวังว่าคุณทำได้นะคะ')
     T('F3', 'one utterance by one speaker: a line break or a question followed by its own answer is rejected; a statement + question is not',
       !!c.gen2TurnProblem('ja', 'こんにちは。\nはい、こんにちは。') && !!c.gen2TurnProblem('ja', '水、飲む？ はい、飲む。') && !!c.gen2TurnProblem('ja', '明日、会う。はい、会う。') &&
       !c.gen2TurnProblem('ja', 'ご飯、あるよ。食べる？') && !c.gen2TurnProblem('ja', 'うん、いいよ。'))

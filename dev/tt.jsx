@@ -8934,6 +8934,7 @@ function gen2Tidy(lang, s) {
   s = String(s || '').trim()
   if (lang === 'ja' || lang === 'zh') s = s.replace(new RegExp('(?<=[' + GEN2_CJK + '])[ 　]+(?=[' + GEN2_CJK + '])', 'gu'), '')
   if (lang === 'th') s = s.replace(/(?<=[\u0e00-\u0e7f])(?<!ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า|น่ะ) +(?=[\u0e00-\u0e7f])/gu, '')   // v679: no spaces between Thai words inside a clause
+  if (lang === 'th') s = s.replace(/ +(?=(ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า)(?![\u0e00-\u0e7f]))/gu, '')   // …and never a space before a final particle (ได้นะ คะ → ได้นะคะ)
   return s
 }
 // ONE utterance by ONE speaker: no line breaks, no question followed by its own answer (水、飲む？はい、飲む。)

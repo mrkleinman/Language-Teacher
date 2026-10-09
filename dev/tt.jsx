@@ -3170,6 +3170,9 @@ function segmentMandarin(sentence, lexicon) {
     // name the word, not its characters (下 / 午)
     const comp = ZH_COMMON_COMPOUNDS.find(w => s.startsWith(w, i))
     if (comp) { out.push({ surface: comp, pinyin: '', english: '', type: 'unknown' }); i += comp.length; continue }
+    // v681: a taught structure particle (们 / 地 / 得 / 着) has a fixed reading and gloss — it used to stay pinyin '' and the
+    // fallback's sentence pinyin silently dropped it (live v681: 我们回家吧 → "wǒ huí jiā ba")
+    if (typeof ZH_STRUCTURE_GLOSS !== 'undefined' && ZH_STRUCTURE_GLOSS[ch]) { out.push({ surface: ch, pinyin: ZH_STRUCTURE_GLOSS[ch].p, english: ZH_STRUCTURE_GLOSS[ch].e, type: 'grammar' }); i += 1; continue }
     // §8 — unknown character: record it, resolving a polyphonic default if known.
     const poly = MANDARIN_POLYPHONIC[ch]
     out.push({ surface:ch, pinyin: poly ? poly.def : '', english:'', type:'unknown' })
@@ -11139,6 +11142,12 @@ function makeFallbackPairsRaw(target) {
 
   // Adjective/state. v681: รู้สึก ("feel") only for FEELINGS — the live v681 Thai run shipped ผมรู้สึกสั้นครับ ("I feel short") and
   // ผมรู้สึกยุ่งครับ from this template; any other adjective describes a thing (อันนี้สั้นครับ / อันนี้สั้นไหมคะ / ไม่สั้นครับ)
+  // v681 retest: ยุ่ง (busy) came out as อันนี้ยุ่งไหมคะ ("is this one busy?") — a PERSON-STATE adjective is said of a person
+  if (type === 'adjective' && /\b(busy|free|ready|late|early|lazy|rich|poor|strong|weak|fine|okay|ok)\b/i.test(eng)) return [
+    {prompt:'Say you are '+eng+' today',thai:'วันนี้ผม'+tw+'ครับ',english:'I am '+eng+' today.',phonetic:'wan-níi phǒm '+ph+' khráp',words:[{p:'wan-níi',e:'today'},{p:'phǒm',e:'I'},{p:ph,e:eng},{p:'khráp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if they are '+eng,thai:'คุณ'+tw+'ไหมคะ',english:'Are you '+eng+'?',phonetic:'khun '+ph+' mǎi khá',words:[{p:'khun',e:'you'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say you are not '+eng,thai:'ผมไม่'+tw+'ครับ',english:'I am not '+eng+'.',phonetic:'phǒm mâi '+ph+' khráp',words:[{p:'phǒm',e:'I'},{p:'mâi',e:'not'},{p:ph,e:eng},{p:'khráp',e:'[polite]'}],target_phonetic:ph},
+  ]
   if (type === 'adjective' && !/\b(tired|happy|sad|bored|hungry|full|well|sick|ill|cold|hot|scared|afraid|nervous|angry|lonely|sleepy|worried|excited|comfortable|relaxed|glad|upset|homesick)\b/i.test(eng)) return [
     {prompt:'Say this one is '+eng,thai:'อันนี้'+tw+'ครับ',english:'This one is '+eng+'.',phonetic:'an-níi '+ph+' khráp',words:[{p:'an-níi',e:'this one'},{p:ph,e:eng},{p:'khráp',e:'[polite]'}],target_phonetic:ph},
     {prompt:'Ask if this one is '+eng,thai:'อันนี้'+tw+'ไหมคะ',english:'Is this one '+eng+'?',phonetic:'an-níi '+ph+' mǎi khá',words:[{p:'an-níi',e:'this one'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
@@ -19052,6 +19061,9 @@ function thaiTargetConceptPresent(target, sentence, vocab) {
   // the target itself is always a segmentation unit, so an unknown neighbour can never swallow it
   try { toks = segmentThaiWithDiagnostics(s, vocab || [], null, [t], true).map(x => x.matchedSpan) } catch (e) {}
   if (!toks || !toks.length || toks.includes(t)) return { present: true, form: 'STANDALONE', token: t }
+  // v681: a reduplicated word (สบายๆ / ช้าๆ / เร็วๆ — ๆ repeats the word it follows) IS the target, used in its intensified /
+  // relaxed form. Live v681 retest: ผมอยากสบายๆครับ was rejected as TARGET_MISSING, and สบาย ended 2/3.
+  if (toks.includes(t + '\u0E46')) return { present: true, form: 'REDUPLICATION', token: t + '\u0E46' }
   const tg = thaiGlossWords(t, vocab)
   for (const tok of toks) {
     if (tok === t || tok.length <= t.length || !tok.includes(t)) continue
@@ -19869,6 +19881,21 @@ async function _zhFinaliseMetadata(pairs, ctx) {
     const probs = []
     if (!validateMandarinPinyin(q.pinyin).ok) probs.push('pinyin invalid: ' + q.pinyin)
     if (!Array.isArray(q.segments) || strip(q.segments.map(s => s.surface || '').join('')) !== strip(q.chinese)) probs.push('segments do not reconstruct the sentence')
+    // v681 — the sentence pinyin must cover EVERY character. Every Chinese segment needs a reading, and the sentence pinyin must
+    // equal its words' readings (tone marks ignored). When the words are complete and the line differs (a dropped syllable),
+    // the line is rebuilt from the dictionary readings and the repair is logged — never counted as "aligned" as it was.
+    else {
+      const hanSegs = q.segments.filter(s => s && s.type !== 'punct' && /[\u4e00-\u9fff]/.test(s.surface || ''))
+      const noReading = hanSegs.filter(s => !s.pinyin).map(s => s.surface)
+      const N = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/gi, '').toLowerCase()
+      if (noReading.length) probs.push('no reading for ' + noReading.join(' '))
+      else if (N(hanSegs.map(s => s.pinyin).join('')) !== N(q.pinyin)) {
+        const rebuilt = tidyPinyin(q.segments.map(s => s.type === 'punct' ? s.surface : s.pinyin).filter(Boolean).join(' '))
+        c.onLog && c.onLog('  🔤 PINYIN_REBUILT ' + q.chinese + ': "' + q.pinyin + '" → "' + rebuilt + '" (the line did not match its words)')
+        q.pinyin = rebuilt; q.phonetic = rebuilt; q.spokenPinyin = tidyPinyin(mandarinSpokenPinyin(rebuilt))
+        if (!validateMandarinPinyin(q.pinyin).ok) probs.push('pinyin invalid after rebuild: ' + q.pinyin)
+      }
+    }
     if (probs.length) issues.push({ pairId: q.pairId || ('#' + (i + 1)), index: i, text: q.chinese, problems: probs })
     return q
   })
@@ -29841,7 +29868,7 @@ function thaiLexicalSenseProblems(p) {
     out.push({ id: 'COLLOCATION_VEHICLE_GO', code: 'UNNATURAL', why: '"' + th.match(/ไป(รถไฟฟ้า|รถไฟใต้ดิน|รถไฟ|รถเมล์|รถบัส|รถตู้|รถแท็กซี่|แท็กซี่|วินมอเตอร์ไซค์|มอเตอร์ไซค์|เรือ|เครื่องบิน)/)[0] + '" — travelling by a vehicle is นั่ง / ขึ้น + vehicle (+ ไป): เรานั่งรถไฟฟ้าไปกันนะครับ' })
   // (2) คู่ classifies things that come in PAIRS (รองเท้า ถุงเท้า ตะเกียบ ต่างหู ถุงมือ) or a couple — never a single object
   //     (ผมอยากได้ตู้เย็นคู่หนึ่งครับ). Each object keeps its own classifier (ตู้เย็นเครื่องหนึ่ง / เก้าอี้ตัวหนึ่ง).
-  if (/(ตู้เย็น|โต๊ะ|เก้าอี้|รถ|บ้าน|ห้อง|ทีวี|โทรศัพท์|มือถือ|เสื้อ|กระเป๋า|หนังสือ|แก้ว|จาน|ชาม|ประตู|หน้าต่าง|เตียง|แอร์|พัดลม|คอมพิวเตอร์|นาฬิกา)คู่/.test(th))
+  if (/(ตู้เย็น|โต๊ะ|เก้าอี้|รถ|บ้าน|ห้อง|ทีวี|โทรศัพท์|มือถือ|เสื้อ|กระเป๋า|หนังสือ|แก้ว|จาน|ชาม|ประตู|หน้าต่าง|เตียง|แอร์|พัดลม|คอมพิวเตอร์|นาฬิกา|ตั๋ว\S{0,6}?(สอง|หนึ่ง)?)คู่/.test(th))
     out.push({ id: 'CLASSIFIER_KHUU_MISUSE', code: 'UNNATURAL', why: '"' + th.match(/\S{0,8}คู่/)[0] + '" — คู่ counts things that come in pairs (รองเท้า ถุงเท้า ตะเกียบ) or a couple; a single object takes its own classifier' })
   if (/^พี่(?!น้อง|สาว|ชาย)/.test(th.trim()) && /(ไหม|มั้ย|อะไร|ไหน|ใคร|ทำไม|ยังไง|เมื่อไหร่|เท่าไหร่|คะ|ครับ)\s*[?？]?$/.test(th) && /[?？]\s*$/.test(en) && /\bolder (brother|sister|sibling)\b/.test(en))
     out.push({ id: 'PHI_ADDRESS_TERM', code: 'CUE_MISMATCH', why: 'พี่ opens a question to the listener — it is an address term ("you", to someone a little older), not "older brother / sister"' })

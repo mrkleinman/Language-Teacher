@@ -57,6 +57,8 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     const V = c.initVocab(), pres = (s, t) => !!c.thaiTargetConceptPresent(t, s, V).present
     T('T1', 'thaiTargetConceptPresent: a target after a negation is present — ผมไม่ได้ยินอะไรเลยครับ (ได้ยิน) · เราไม่เหนื่อยแล้วครับ (เหนื่อย) · ผมยังไม่หิวครับ (หิว)',
       pres('ผมไม่ได้ยินอะไรเลยครับ', 'ได้ยิน') && pres('เราไม่เหนื่อยแล้วครับ', 'เหนื่อย') && pres('ผมยังไม่หิวครับ', 'หิว'))
+    T('T10', 'thaiTargetConceptPresent: a reduplicated word is the target — ผมอยากสบายๆครับ (สบาย) · ช้าๆหน่อยครับ (ช้า) (live v681 retest rejected สบายๆ as TARGET_MISSING)',
+      pres('ผมอยากสบายๆครับ', 'สบาย') && pres('ฉันอยากไปเที่ยวสบายๆค่ะ', 'สบาย') && pres('ช้าๆหน่อยครับ', 'ช้า'))
     T('T2', 'thaiTargetConceptPresent: accidental substrings and different words are still NOT the target — มา in หมา · ใจ in เข้าใจ · น้ำ in น้ำแข็ง · ตา in ตาย · แท็กซี่ absent',
       !pres('หมาตัวนี้น่ารัก', 'มา') && !pres('ผมเข้าใจครับ', 'ใจ') && !pres('น้ำแข็งเย็น', 'น้ำ') && !pres('ตายแล้ว', 'ตา') && !pres('ไม่ครับ เราไปรถไฟฟ้าดีกว่าครับ', 'แท็กซี่'))
     const lx = s => (c.thaiLexicalSenseProblems({ thai: s, english: '' }) || []).map(x => x.id)
@@ -75,6 +77,9 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     const fbS = safe(() => c.makeFallbackPairs({ thai: 'สั้น', english: 'short', phonetic: 'sân', partOfSpeech: 'adjective' })), fbT = safe(() => c.makeFallbackPairs({ thai: 'เหนื่อย', english: 'tired', phonetic: 'nùeai', partOfSpeech: 'adjective' }))
     T('T9', 'Thai fallback: รู้สึก ("feel") only for feelings — สั้น (short) gets อันนี้สั้นครับ, never ผมรู้สึกสั้นครับ (live v681); เหนื่อย (tired) keeps ผมรู้สึกเหนื่อยครับ',
       Array.isArray(fbS) && !fbS.some(x => /รู้สึก/.test(x.thai)) && Array.isArray(fbT) && fbT.some(x => /รู้สึกเหนื่อย/.test(x.thai)), { short: Array.isArray(fbS) && fbS.map(x => x.thai), tired: Array.isArray(fbT) && fbT.map(x => x.thai) })
+    const fbB = safe(() => c.makeFallbackPairs({ thai: 'ยุ่ง', english: 'busy', phonetic: 'yûng', partOfSpeech: 'adjective' }))
+    T('T11', 'Thai fallback: a person-state adjective (ยุ่ง busy) is said of a person — วันนี้ผมยุ่งครับ / คุณยุ่งไหมคะ, never อันนี้ยุ่งไหมคะ (live v681 retest)', Array.isArray(fbB) && fbB.every(x => !/อันนี้/.test(x.thai)) && fbB.some(x => /ยุ่งไหม/.test(x.thai)), Array.isArray(fbB) && fbB.map(x => x.thai))
+    T('T12', 'คู่: tickets are not pairs — ผมอยากได้ตั๋วรถไฟสองคู่ครับ FAIL (live v681 retest); ผมซื้อรองเท้าคู่ใหม่ครับ PASS', lx('ผมอยากได้ตั๋วรถไฟสองคู่ครับ').includes('CLASSIFIER_KHUU_MISUSE') && !lx('ผมซื้อรองเท้าคู่ใหม่ครับ').length)
     const lex = c.buildThaiPhoneticLexicon(V), unk = 'ซ็อกโก้'
     const mk = ph => [{ thai: 'ผม' + unk + 'ครับ', phonetic: ph, words: [{ p: 'ผม', e: '' }, { p: unk, e: '' }, { p: 'ครับ', e: '' }], english: 'x' }]
     const good = c.finaliseThaiTrackPhonetics(mk('phǒm sók-goh khráp'), lex)[0], shifted = c.finaliseThaiTrackPhonetics(mk('sók-goh phǒm khráp'), lex)[0]
@@ -111,6 +116,9 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
       (() => { const w = VZ.find(x => x.chinese === '到'); const fbs = [1, 2, 3].map(r => safe(() => c.mandarinFallbackPair(w, invZ, r, new Map(), VZ, c.scarcityRules(invZ)))).filter(x => x && x.chinese).map(x => x.chinese); return fbs.length >= 2 && new Set(fbs).size >= 2 })())
     T('Z12', 'from the live v681 run — 你想可以。/ 你可以什么？/ 这个什么？/ 我来帮 / 快。 FAIL; 你想要什么？/ 你可以做什么？/ 这个是什么？/ 我来帮你。/ 快一点！/ 我不会。 PASS',
       bad('你想可以。') && bad('你可以什么？') && bad('这个什么？') && bad('我来帮') && bad('快。') && !bad('你想要什么？') && !bad('你可以做什么？') && !bad('这个是什么？') && !bad('我来帮你。') && !bad('快一点！') && !bad('我不会。'))
+    { const segs = c.segmentMandarin('我们回家吧。', invZ.lexicon), SRCZ = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
+      T('Z13', 'pinyin covers every character: 们 has its reading (我们回家吧 → wǒ men huí jiā ba; the live v681 retest shipped "wǒ huí jiā ba" as aligned), and the final audit rebuilds a line that differs from its words',
+        segs.find(x => x.surface === '们').pinyin === 'men' && /PINYIN_REBUILT/.test(SRCZ) && /no reading for ' \+ noReading\.join/.test(SRCZ)) }
     T('Z9', 'variety: 你用这个。 / 我用那个。 are one application (pronoun + demonstrative swap); 你用什么？ is another', sv('你用这个。') === sv('我用那个。') && sv('你用什么？') !== sv('你用这个。'))
     // breadth: no false rejections over all real Mandarin sentences recorded so far, except the reported defect shapes
     const sents = new Set(); const add = r => { const cc = r && r.outcome && r.outcome.content; ((cc && cc.pairs) || []).forEach(p => p.text && sents.add(p.text)) }

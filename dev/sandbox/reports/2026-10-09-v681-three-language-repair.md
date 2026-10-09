@@ -126,6 +126,21 @@ Phase total: US$0.237 of the US$0.25 cap (first attempts US$0.119 + retest US$0.
 
 Recommendation: one more Thai run (about US$0.045, slightly above the US$0.25 phase cap) to confirm the สบายๆ fix. Deploying v681 is reasonable once Thai is READY; the cue-copy problem in the standard generator's Japanese and Mandarin cues is the next quality step.
 
+
+## 8. Final Thai confirmation run (owner-approved)
+
+**Thai READY 90/90**: 154 requests, US$0.038. สบายๆ is now recognised, the length limit held, and vehicles were taught with นั่ง.
+
+The inspection still found two accepted defects, both fixed afterwards and tested in tests40 T13 (38 checks):
+- **คู่:** all three คู่ recalls used it with noodles (ก๋วยเตี๋ยวคู่ไหน). The rule is now an allow-list: a classifier use of คู่ needs a pair noun. Over all 947 recorded Thai lines it flags 9 weak or wrong lines and none of the legitimate ones (ตั๋วคู่ "couple ticket" passes).
+- **Translation copied the gloss:** ขออันหน่อยครับ was translated "Can I have a general classifier / item", which is now rejected.
+
+Still weak: แล้ว (2 of 3 translations are off); ได้ยิน romanised mâi-dâi yin; several targets share one template (ทำความสะอาด X ×4).
+
+**Thai score 6.5/10.** Full suite: 1,306 checks pass (the same 3 known failures plus 1 blocked check). Total spend for this testing phase: US$0.275.
+
+**Final status:** all three languages have reached READY on the final v681 code (Japanese and Mandarin in the retest, Thai in this run), and every defect the runs exposed has a fix and a regression test. Deploying v681 is reasonable as an improvement over v680; it is not perfect. The next quality steps are cues that do not copy the translation (Japanese / Mandarin), どこ vs どこか, and the Thai phonetic split of ไม่ได้ยิน.
+
 ## TL;DR
 
 The supplied logs were the standard generator; the new generator only runs with the test switch on. I traced and fixed the root causes in all three languages, with 33 new regression tests (23 of which fail on v680) and the full suite green. The first live attempts on v681 cost US$0.119; all three stopped short for reasons that are now fixed. A retest (about US$0.13) is needed before anything goes live.

@@ -29869,8 +29869,15 @@ function thaiLexicalSenseProblems(p) {
     out.push({ id: 'COLLOCATION_VEHICLE_GO', code: 'UNNATURAL', why: '"' + th.match(/ไป(รถไฟฟ้า|รถไฟใต้ดิน|รถไฟ|รถเมล์|รถบัส|รถตู้|รถแท็กซี่|แท็กซี่|วินมอเตอร์ไซค์|มอเตอร์ไซค์|เรือ|เครื่องบิน)/)[0] + '" — travelling by a vehicle is นั่ง / ขึ้น + vehicle (+ ไป): เรานั่งรถไฟฟ้าไปกันนะครับ' })
   // (2) คู่ classifies things that come in PAIRS (รองเท้า ถุงเท้า ตะเกียบ ต่างหู ถุงมือ) or a couple — never a single object
   //     (ผมอยากได้ตู้เย็นคู่หนึ่งครับ). Each object keeps its own classifier (ตู้เย็นเครื่องหนึ่ง / เก้าอี้ตัวหนึ่ง).
-  if (/(ตู้เย็น|โต๊ะ|เก้าอี้|รถ|บ้าน|ห้อง|ทีวี|โทรศัพท์|มือถือ|เสื้อ|กระเป๋า|หนังสือ|แก้ว|จาน|ชาม|ประตู|หน้าต่าง|เตียง|แอร์|พัดลม|คอมพิวเตอร์|นาฬิกา|ตั๋ว\S{0,6}?(สอง|หนึ่ง)?)คู่/.test(th))
+  if (/(ตู้เย็น|โต๊ะ|เก้าอี้|รถ|บ้าน|ห้อง|ทีวี|โทรศัพท์|มือถือ|เสื้อ|กระเป๋า|หนังสือ|แก้ว|จาน|ชาม|ประตู|หน้าต่าง|เตียง|แอร์|พัดลม|คอมพิวเตอร์|นาฬิกา)คู่/.test(th))
     out.push({ id: 'CLASSIFIER_KHUU_MISUSE', code: 'UNNATURAL', why: '"' + th.match(/\S{0,8}คู่/)[0] + '" — คู่ counts things that come in pairs (รองเท้า ถุงเท้า ตะเกียบ) or a couple; a single object takes its own classifier' })
+  // v681 (final Thai run): a classifier use of คู่ (…คู่ไหน / คู่นี้ / คู่หนึ่ง / สองคู่ …) needs a PAIR noun before it — the run
+  // accepted ก๋วยเตี๋ยวคู่ไหน ("which pair of noodles") for all three recalls. Allow-list, not a growing deny-list.
+  if (/คู่(ไหน|นี้|นั้น|หนึ่ง|เดียว|ละ|ใหม่)|(สอง|สาม|สี่|ห้า|หลาย)คู่/.test(th) && !/(รองเท้า|ถุงเท้า|ตะเกียบ|ต่างหู|ถุงมือ|แฝด|รัก|บ่าวสาว|ชีวิต|หูฟัง|ถุงน่อง|รองเท้าแตะ)\S{0,10}คู่/.test(th))
+    out.push({ id: 'CLASSIFIER_KHUU_MISUSE', code: 'UNNATURAL', why: '"' + th.match(/\S{0,8}คู่\S{0,4}/)[0] + '" — คู่ counts things that come in pairs (รองเท้า ถุงเท้า ตะเกียบ ต่างหู) or a couple; anything else takes its own classifier' })
+  // an English line that copies the dictionary gloss ("a general classifier / item") is not a translation
+  if (/\bclassifier\b|\(general\)|\bgeneral classifier\b/i.test(en))
+    out.push({ id: 'TRANSLATION_IS_GLOSS', code: 'CUE_MISMATCH', why: 'the English copies the dictionary gloss ("' + en.match(/[^.?!]*classifier[^.?!]*/i)?.[0] + '") instead of translating the sentence' })
   if (/^พี่(?!น้อง|สาว|ชาย)/.test(th.trim()) && /(ไหม|มั้ย|อะไร|ไหน|ใคร|ทำไม|ยังไง|เมื่อไหร่|เท่าไหร่|คะ|ครับ)\s*[?？]?$/.test(th) && /[?？]\s*$/.test(en) && /\bolder (brother|sister|sibling)\b/.test(en))
     out.push({ id: 'PHI_ADDRESS_TERM', code: 'CUE_MISMATCH', why: 'พี่ opens a question to the listener — it is an address term ("you", to someone a little older), not "older brother / sister"' })
   return out

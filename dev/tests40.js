@@ -77,6 +77,10 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     const fbS = safe(() => c.makeFallbackPairs({ thai: 'สั้น', english: 'short', phonetic: 'sân', partOfSpeech: 'adjective' })), fbT = safe(() => c.makeFallbackPairs({ thai: 'เหนื่อย', english: 'tired', phonetic: 'nùeai', partOfSpeech: 'adjective' }))
     T('T9', 'Thai fallback: รู้สึก ("feel") only for feelings — สั้น (short) gets อันนี้สั้นครับ, never ผมรู้สึกสั้นครับ (live v681); เหนื่อย (tired) keeps ผมรู้สึกเหนื่อยครับ',
       Array.isArray(fbS) && !fbS.some(x => /รู้สึก/.test(x.thai)) && Array.isArray(fbT) && fbT.some(x => /รู้สึกเหนื่อย/.test(x.thai)), { short: Array.isArray(fbS) && fbS.map(x => x.thai), tired: Array.isArray(fbT) && fbT.map(x => x.thai) })
+    const lxe = (th, en) => (c.thaiLexicalSenseProblems({ thai: th, english: en }) || []).map(x => x.id)
+    T('T13', 'final Thai run: คู่ as a classifier needs a pair noun — คุณอยากกินก๋วยเตี๋ยวคู่ไหนครับ FAIL; รองเท้าคู่นี้แพง / ถุงเท้าสองคู่ / ตะเกียบคู่หนึ่ง PASS; an English line copying the gloss ("a general classifier / item") FAIL',
+      lx('คุณอยากกินก๋วยเตี๋ยวคู่ไหนครับ').includes('CLASSIFIER_KHUU_MISUSE') && !lx('รองเท้าคู่นี้แพง').length && !lx('ถุงเท้าสองคู่').length && !lx('ตะเกียบคู่หนึ่ง').length &&
+      lxe('ขออันหน่อยครับ', 'Can I have a general classifier / item, please?').includes('TRANSLATION_IS_GLOSS') && !lxe('ขออันนี้หน่อยครับ', 'Can I have this one, please?').length)
     const fbB = safe(() => c.makeFallbackPairs({ thai: 'ยุ่ง', english: 'busy', phonetic: 'yûng', partOfSpeech: 'adjective' }))
     T('T11', 'Thai fallback: a person-state adjective (ยุ่ง busy) is said of a person — วันนี้ผมยุ่งครับ / คุณยุ่งไหมคะ, never อันนี้ยุ่งไหมคะ (live v681 retest)', Array.isArray(fbB) && fbB.every(x => !/อันนี้/.test(x.thai)) && fbB.some(x => /ยุ่งไหม/.test(x.thai)), Array.isArray(fbB) && fbB.map(x => x.thai))
     T('T12', 'คู่: tickets are not pairs — ผมอยากได้ตั๋วรถไฟสองคู่ครับ FAIL (live v681 retest); ผมซื้อรองเท้าคู่ใหม่ครับ PASS', lx('ผมอยากได้ตั๋วรถไฟสองคู่ครับ').includes('CLASSIFIER_KHUU_MISUSE') && !lx('ผมซื้อรองเท้าคู่ใหม่ครับ').length)

@@ -8,7 +8,7 @@
 //   banks: no saved learner data exists here and nothing is persisted.
 // • Authentication: this sandbox's network proxy adds the Gemini key as a header. The app's own URL key parameter is
 //   given a placeholder and stripped before sending. The key is never visible to this process.
-// • HARD COST CAP per run (--cap, default US$0.25) and per session (--session-cap, default US$2, ledger in
+// • HARD COST CAP per run (--cap, default US$0.25) and per session (--session-cap, default US$1 — the owner's cap, ledger in
 //   sandbox/spend-ledger.json). Before every request the worst case (prompt + the full maxOutputTokens) is priced; a
 //   request that could cross either cap is NOT sent and the app receives HTTP 402 "SANDBOX_COST_CAP" (its fatal-provider
 //   path: no retries). Spend is computed from Gemini's own usageMetadata at the app's price table.
@@ -33,7 +33,7 @@ const modelOf = url => (String(url).match(/models\/([^:?]+):/) || [])[1] || null
 const usd = (m, i, o) => { const p = PRICE[m]; if (!p) throw new Error('no price for model ' + m); return (i * p.in + o * p.out) / 1e6 }
 
 ;(async () => {
-  const fixtureId = arg('fixture'), pipeline = arg('pipeline', 'gen2'), cap = +arg('cap', 0.25), sessionCap = +arg('session-cap', 2)
+  const fixtureId = arg('fixture'), pipeline = arg('pipeline', 'gen2'), cap = +arg('cap', 0.25), sessionCap = +arg('session-cap', 1)
   const appFile = path.resolve(DEV, arg('app', 'tt.compiled.js'))
   const fx = loadFixture(fixtureId)
   const ledger = readLedger(); const spentBefore = ledger.runs.reduce((a, r) => a + (r.costUsd || 0), 0)

@@ -1,0 +1,117 @@
+{
+ "runId": "ja-daily-2026-10-08.gen2.live3-gen2.1b.2026-10-09T05-30-49",
+ "fixture": "ja-daily-2026-10-08",
+ "pipelineRequested": "gen2",
+ "pipelineExecuted": "gen2",
+ "gen2Version": "gen2-pilot/1.1",
+ "models": {
+  "generator": "gemini-2.5-flash-lite",
+  "judge": "gemini-2.5-flash"
+ },
+ "app": {
+  "appBuild": "v678",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "NOT_READY",
+ "reasons": [
+  "TARGETS_FROZEN=28/30",
+  "あそこ: ROMAJI_MISSING (reading/romaji missing)"
+ ],
+ "error": null,
+ "stop": null,
+ "recalls": 84,
+ "deferred": [
+  "どう — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "なんで — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "どれ — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "はい — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)",
+  "どこ — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "一緒 — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "する — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "買う — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "いくら — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "いる — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)"
+ ],
+ "gen2Calls": 120,
+ "gen2ByStage": {
+  "P_gen2_probe": 61,
+  "R_gen2_judge": 55,
+  "S_gen2_reading": 4
+ },
+ "acceptance": {
+  "ok": false,
+  "problems": [
+   "あそこ: ROMAJI_MISSING (reading/romaji missing)"
+  ]
+ },
+ "spend": {
+  "costUsd": 0.08265,
+  "capUsd": 0.105,
+  "tokens": {
+   "in": 78872,
+   "out": 52700
+  },
+  "requestsSent": 120,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "gen2-daily-probe v1 @ gemini-2.5-flash-lite": {
+    "requests": 61,
+    "in": 46748,
+    "out": 30196,
+    "usd": 0.0167532
+   },
+   "gen2-daily-judge v1 @ gemini-2.5-flash": {
+    "requests": 55,
+    "in": 30893,
+    "out": 19463,
+    "usd": 0.0579254
+   },
+   "gen2-ja-reading v1 @ gemini-2.5-flash": {
+    "requests": 4,
+    "in": 1231,
+    "out": 3041,
+    "usd": 0.0079718
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×61 · gemini-2.5-flash ×59",
+  "Track ID: - · run ja-track-1791439200007-5701",
+  "Total requests: 120 · Successful: 120 · Failed: 0 · Retried: 0",
+  "Generation calls: 0 · QC calls: 0 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 0 · Listening calls: 0 · Other: 120",
+  "Input tokens: 78872 · Output tokens: 52700 · Total tokens: 131572 (provider usage metadata)",
+  "Retry requests: 0 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 120 · Provider-error retries: 0",
+  "GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)",
+  "PAID REQUESTS BY PURPOSE: other 120 (131572 tok, USD 0.0827)",
+  "Estimated Gemini cost: USD 0.0827 (≈ SGD 0.1074 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. R_gen2_judge — 55 requests / 50356 tokens / ~70%",
+  "  2. P_gen2_probe — 61 requests / 76944 tokens / ~20%",
+  "  3. S_gen2_reading — 4 requests / 4272 tokens / ~10%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 227
+}

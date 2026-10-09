@@ -9139,6 +9139,13 @@ function gen2JaFormIndex(inv) {
   inv._forms = { map, keys: [...map.keys()].sort((a, b) => b.length - a.length) }
   return inv._forms
 }
+// production's own token classes decide what is a content word (its complexity count skips particle / grammar)
+function gen2JaPieceType(pc, isParticle) {
+  if (isParticle) return 'particle'
+  if (pc.lemma === 'だ') return 'grammar'
+  let cls = null; try { cls = jaTokenClass(pc.surf) } catch (e) {}
+  return cls === 'case-particle' || cls === 'sentence-particle' || cls === 'nominaliser' ? 'particle' : 'content'
+}
 function gen2JaPieces(t, inv) {
   // word pieces — DICTIONARY FIRST: at each position the longest known form of a taught word (any conjugation: 行きます,
   // してる, 楽しかった, 電話 …) is one piece carrying its LEMMA (production's usage rules judge 行く / する, not 行き + ます).
@@ -9206,7 +9213,7 @@ function gen2JaSegments(text, reading, inv) {
     const part = GEN2_JA_PARTICLE_ROMAJI[surf] && rd === surf
     const w = byWord.get(surf)
     const lw = pc.lemma ? byWord.get(pc.lemma) : w
-    segs.push({ surface: surf, reading: rd, romaji: part ? GEN2_JA_PARTICLE_ROMAJI[surf] : kanaToRomaji(rd), english: lw ? String(lw.english || '').split(/[\/;,]/)[0].trim() : '', type: part ? 'particle' : 'content', ...(pc.lemma ? { lemma: pc.lemma } : {}) })
+    segs.push({ surface: surf, reading: rd, romaji: part ? GEN2_JA_PARTICLE_ROMAJI[surf] : kanaToRomaji(rd), english: lw ? String(lw.english || '').split(/[\/;,]/)[0].trim() : '', type: gen2JaPieceType(pc, part), ...(pc.lemma ? { lemma: pc.lemma } : {}) })
   }
   const joined = segs.filter(s => s.type !== 'punct').map(s => s.reading).join('')
   if (joined !== gen2KanaNorm(reading)) return null
@@ -9246,7 +9253,7 @@ async function gen2JaPronounce(ctx, inv, recalls) {
     }
   })
   // every accepted reading gets its word-by-word breakdown (production's audit and the player's word list need it)
-  recalls.forEach(c => { if (!c.romaji) return; const sg = gen2JaSegments(c.text, c.reading, inv); if (sg) c.segments = sg.segments; else report.noSegments = (report.noSegments || 0) + 1 })
+  recalls.forEach(c => { if (!c.romaji) return; const sg = gen2JaSegments(c.text, c.reading, inv); if (sg) { c.segments = sg.segments; c.reading = sg.reading } else report.noSegments = (report.noSegments || 0) + 1 })
   return report
 }
 // a template repeated with another noun (この本、どう思う？ / この映画、どう思う？) is not a different use (Japanese)
@@ -9392,7 +9399,10 @@ function gen2DetCheck(ctx, w, c, inv) {
   if (ctx.lang === 'zh' || ctx.lang === 'th') { const pp = gen2PronProblem(ctx.lang, c.text, inv); if (pp) p.push(pp) }
   const tp = gen2TurnProblem(ctx.lang, c.text); if (tp) p.push(tp)
   const { a, units } = gen2Units(ctx, w, c.text)
-  if (a.overHardMax) p.push('too long (' + a.units + ' > ' + ctx.cc.hardMax + ')')
+  let prodUnits = a.units
+  if (ctx.lang === 'ja' && inv.jaInv && typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {   // v679: production's own count on typed words
+    try { prodUnits = Math.max(a.units, complexityUnits('ja', { japanese: c.text, segments: gen2JaPieces(c.text, inv).map(x => x.punct ? { surface: x.surf, type: 'punct' } : { surface: x.surf, type: gen2JaPieceType(x, !!GEN2_JA_PARTICLE_ROMAJI[x.surf]) }) })) } catch (e) {} }
+  if (a.overHardMax || prodUnits > ctx.cc.hardMax) p.push('too long (' + prodUnits + ' > ' + ctx.cc.hardMax + ')')
   if (units < 2 && !/^(expression|response)$/.test(gen2WordClass(ctx.lang, w))) p.push('fragment (' + units + ' unit)')
   const cp = gen2CueProblem(c.cue, c.english, ctx.lang); if (cp) p.push(cp)
   const sp = gen2SpeakerProblem(ctx, c); if (sp) p.push(sp)

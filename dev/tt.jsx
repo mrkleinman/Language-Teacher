@@ -9287,7 +9287,10 @@ function gen2Context(o) {
 function gen2Inventory(ctx, targets) {
   const lang = ctx.lang
   if (lang === 'th') {
-    const allowed = thaiAuthorisedSurfaces(ctx.vocab, targets)
+    // v679: EXACTLY production's closed-vocabulary set (taught words + targets + approved grammar words such as ไม่ / นะ);
+    // the learner's words alone were stricter than production and rejected sentences v677 itself accepts
+    let allowed
+    try { allowed = buildThaiTrackVocabContext(ctx.vocab, targets).allowedSet } catch (e) { allowed = thaiAuthorisedSurfaces(ctx.vocab, targets) }
     return { list: [...allowed], thLex: buildThaiPhoneticLexicon(ctx.vocab), check: text => { const r = thaiQcCheckVocabulary({ thai: text }, allowed, ctx.vocab); return r.ok ? [] : r.problems } }
   }
   if (lang === 'ja') {
@@ -9336,6 +9339,7 @@ function gen2ProbePrompt(ctx, w, inv, siblings, feedback, n) {
     'Write ' + n + ' candidate practice sentences. Together they must show at least THREE DIFFERENT real uses of the target: different everyday situations and different things said or asked (e.g. asking, answering, offering, refusing, suggesting, describing) — never the same sentence with one word changed.\n' +
     'VOCABULARY DISCIPLINE: every noun, verb, adjective and adverb must come from ALLOWED WORDS (or be the target). Do not use any other word, however common — no other nouns (no animals, foods, places or objects that are not listed), no people\'s names' +
     (ctx.lang === 'ja' ? ', no 私 / わたし / あなた / 彼 (Japanese leaves out "I" and "you")' : '') + '. If an idea needs an unlisted word, choose a different idea.\n' +
+    (ctx.lang === 'zh' || ctx.lang === 'th' ? 'SIMPLE BEATS CLEVER: with few words available, write short, very common sentences a native speaker really says every day (e.g. ' + (ctx.lang === 'zh' ? '人很多。 / 我到了。 / 这个多少钱？' : 'ไปไหนครับ / อร่อยไหมคะ') + '). Never build an unusual sentence just to fit the word list.\n' : '') +
     'Every sentence must be complete, grammatically perfect, and something a native speaker would naturally say to a friend in an everyday situation, using the target in the sense "' + w.english + '". Do not invent odd combinations just to use the allowed words.\n' +
     'For each candidate give: "function" (1–3 words), "situation" (when it is said, short English), "cue" (an English instruction telling the learner WHAT TO COMMUNICATE without giving the words, e.g. "Ask your friend whether they are free tonight." — never a translation of the sentence; a learner following it should naturally need THIS target word), "text" (the ' + L.name + ' sentence: ONE utterance by ONE speaker — never a question together with its answer' + (ctx.lang === 'ja' || ctx.lang === 'zh' ? '; normal writing with no spaces between words' : '') + '), "english" (a faithful natural translation that keeps the nuance), "speaker" ("male", "female" or "either")' +
     (ctx.lang === 'ja' ? '. Write "text" normally, with kanji exactly as the words appear in ALLOWED WORDS (never the whole sentence in kana)' : '') + '.\n' +
@@ -9357,7 +9361,8 @@ function gen2JudgePrompt(ctx, w, items, siblings) {
     ' turns: one | multiple   (ONE utterance by ONE speaker; a question together with its own answer is "multiple")\n' +
     ' note: a short reason when anything is wrong\n' +
     'Be precise about: the cue is "misleading" when a learner following it would naturally say it with a DIFFERENT word; the translation is "misleading" when it changes the function (e.g. Japanese 大丈夫 in reply to an offer politely DECLINES it; ちょっとだけ means "just a little", not "just a moment").' +
-    (ctx.lang === 'ja' ? ' Between friends あなた sounds unnatural, and いいえ / です・ます are polite speech; judge the register against SPEAKERS above.' : '') + '\n' +
+    (ctx.lang === 'ja' ? ' Between friends あなた sounds unnatural, and いいえ / です・ます are polite speech; judge the register against SPEAKERS above.' : '') +
+    (ctx.lang === 'zh' || ctx.lang === 'th' ? ' "natural" means a native speaker would say EXACTLY this in that situation; if a native would phrase it differently (word order, a missing measure word or particle, another verb, a more usual expression), it is "marginal".' : '') + '\n' +
     'ITEMS:\n' + items.map((c, i) => (i + 1) + '. [speaker: ' + c.speaker + '] ' + c.text + ' | English: ' + c.english + ' | Cue: ' + c.cue).join('\n') + '\n' +
     'Return ONLY JSON: {"items": [{"n": 1, "grammar": "", "natural": "", "translation": "", "target": "", "cue": "", "speaker": "", "useful": "", "fragment": false, "turns": "one", "note": ""}]}'
 }

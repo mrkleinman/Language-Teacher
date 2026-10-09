@@ -101,9 +101,10 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const gar = readJ(path.join(dir, 'synthetic-zh-daily.gen2.judgegarbage.sim.json')).outcome
     T('C5', 'a judge whose replies cannot be parsed accepts NOTHING (no default pass): no recall is accepted, the budget cap stops the run, the track is NOT_READY with the reason',
       gar.content.status === 'NOT_READY' && gar.content.pairs.length === 0 && /BUDGET/.test(gar.content.reasons.join(' ')))
-    const th = readJ(path.join(dir, 'th-daily-2026-10-08.gen2.sim.json')).outcome.gen2
+    // v679: a stress recording where the (simulated) judge rejects every ครับ sentence, stress: the (simulated) judge rejects every sentence, so later probes re-offer rejected ones
+    const th = readJ(path.join(dir, 'th-daily-2026-10-08.gen2.rejectrepeat.sim.json')).outcome.gen2
     const sup = [...th.frozen, ...th.deferred].reduce((a, r) => a + r.repeatsSuppressed, 0)
-    T('C6', 'a rejected candidate offered again is suppressed BEFORE paid judging (' + sup + ' repeats suppressed in the historical Thai run) — no repeated rejection loop', sup > 0)
+    T('C6', 'a rejected candidate offered again is suppressed BEFORE paid judging (' + sup + ' repeats suppressed in the historical Thai stress run) — no repeated rejection loop', sup > 0)
     const lis = cas.filter(x => /listening/.test(x.f) && x.d.outcome.content && x.d.outcome.content.status === 'READY')
     const lOk = lis.every(x => { const L = x.d.outcome.content.lines, sc = new Set(L.map(l => l.scene)); return sc.size >= 3 && sc.size <= 5 && L.every((l, i) => !i || L[i - 1].scene !== l.scene || L[i - 1].speaker !== l.speaker) && x.d.outcome.content.coverage.covered === 30 })
     T('C7', 'Gen2 Listening: one conversation in 3–5 scenes, speakers alternate, coverage 30/30 measured from the text (' + lis.length + ' READY sim tracks)', lis.length >= 4 && lOk)

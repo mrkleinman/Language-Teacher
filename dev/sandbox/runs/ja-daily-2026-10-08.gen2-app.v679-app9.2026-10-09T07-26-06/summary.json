@@ -1,0 +1,117 @@
+{
+ "runId": "ja-daily-2026-10-08.gen2-app.v679-app9.2026-10-09T07-26-06",
+ "fixture": "ja-daily-2026-10-08",
+ "pipelineRequested": "gen2-app",
+ "pipelineExecuted": "gen2-app",
+ "gen2Version": "gen2-pilot/1.1",
+ "models": {
+  "generator": "gemini-2.5-flash-lite",
+  "judge": "gemini-2.5-flash"
+ },
+ "app": {
+  "appBuild": "v679",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "NOT_READY",
+ "reasons": [
+  "MAIN_TRACK_COHERENCE=FAIL (overall 1/5 · S1=1 · after repair of 9 line(s))"
+ ],
+ "error": null,
+ "stop": null,
+ "recalls": 90,
+ "deferred": [
+  "また — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "はい — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "何 — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ありがとう — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)"
+ ],
+ "gen2Calls": 97,
+ "gen2ByStage": {
+  "P_gen2_probe": 48,
+  "R_gen2_judge": 45,
+  "S_gen2_reading": 4
+ },
+ "acceptance": {
+  "ok": true,
+  "problems": []
+ },
+ "spend": {
+  "costUsd": 0.08332,
+  "capUsd": 0.25,
+  "tokens": {
+   "in": 129338,
+   "out": 53860
+  },
+  "requestsSent": 170,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "(untagged) @ gemini-2.5-flash-lite": {
+    "requests": 73,
+    "in": 58680,
+    "out": 9568,
+    "usd": 0.009695200000000005
+   },
+   "gen2-daily-probe v1 @ gemini-2.5-flash-lite": {
+    "requests": 48,
+    "in": 41990,
+    "out": 23763,
+    "usd": 0.013704200000000003
+   },
+   "gen2-daily-judge v1 @ gemini-2.5-flash": {
+    "requests": 45,
+    "in": 27200,
+    "out": 16589,
+    "usd": 0.04963250000000001
+   },
+   "gen2-ja-reading v1 @ gemini-2.5-flash": {
+    "requests": 4,
+    "in": 1468,
+    "out": 3940,
+    "usd": 0.0102904
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×121 · gemini-2.5-flash ×49",
+  "Track ID: - · run ja-track-1791439200007-5701",
+  "Total requests: 170 · Successful: 170 · Failed: 0 · Retried: 9",
+  "Generation calls: 3 · QC calls: 40 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 30 · Listening calls: 0 · Other: 97",
+  "Input tokens: 129338 · Output tokens: 53860 · Total tokens: 183198 (provider usage metadata)",
+  "Retry requests: 9 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 170 · Provider-error retries: 0",
+  "GENERATION (app level): recalls requested 0 · first attempts 0 · regeneration attempts 0 · total attempts 0 · average 0.00 per recall · resolved first attempt 0/0 · requiring 2 attempts 0 · requiring 3 attempts 0 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 0 · recovery recalls 9 (12 paid)",
+  "GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)",
+  "PAID REQUESTS BY PURPOSE: other 97 (114950 tok, USD 0.0736) · QC judging 39 (22620 tok, USD 0.0033) · quota / target recovery 30 (34509 tok, USD 0.0044) · generation (first attempt / scene) 3 (9172 tok, USD 0.0011) · QC repair (replace / improve) 1 (1947 tok, USD 0.0005)",
+  "Estimated Gemini cost: USD 0.0829 (≈ SGD 0.1078 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. R_gen2_judge — 45 requests / 43789 tokens / ~60%",
+  "  2. P_gen2_probe — 48 requests / 65753 tokens / ~17%",
+  "  3. S_gen2_reading — 4 requests / 5408 tokens / ~12%",
+  "  4. H_recovery — 30 requests / 34509 tokens / ~5%",
+  "  5. C_group_eval — 29 requests / 10661 tokens / ~2%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 234
+}

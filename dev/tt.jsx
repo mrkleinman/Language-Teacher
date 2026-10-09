@@ -35915,7 +35915,19 @@ async function jaGen2MainTrack(o) {
       sourceCheck: 1, checkTier: 1, _checkCount: 1, _checkHistory: [{ index: 1, outcome: 'accepted', kind: 'model' }], _source: 'gen2:teachability', _framing: false, _gen2: p._gen2 },
       jaPairProvenance(tc, w, p.recallIndex, 'generation-gen2'))
   })
-  const track = { ...jaTrackObject(tc, { pairs, scene: scene || null, scenePlan: null, buildingBlocks: [], allowedContent: [], recallCount: pairs.length, framingCount: 0, generationStats: null }, frozen, register, model, trackMode),
+  // the lesson's sections are Gen2's own composition groups (five targets, recalls round-robin — the order production's
+  // coherence audit numbers them in); each section's local premise is written from the situations of ITS OWN recalls,
+  // so the audit judges every section against what it actually contains (it is not made any less strict)
+  const order = [], seen = new Set(); pairs.forEach(p => { if (!seen.has(p.targetId)) { seen.add(p.targetId); order.push(p.targetId) } })
+  const scenes = []
+  for (let k = 0; k < order.length; k += 5) {
+    const ids = order.slice(k, k + 5), lines = pairs.filter(p => ids.includes(p.targetId))
+    const sits = [...new Set(lines.map(p => String((p._gen2 && p._gen2.situation) || '').trim().replace(/\.$/, '')).filter(Boolean))].slice(0, 4)
+    scenes.push({ sceneId: 'S' + (scenes.length + 1), targetIds: ids, purpose: 'Practise ' + ids.map(id => (fById.get(id) || {}).japanese).join(', ') + ' in short everyday exchanges between two friends',
+      localPremise: 'Two friends in everyday moments' + (sits.length ? ': ' + sits.join('; ') : ''), targetRoles: {} })
+  }
+  const scenePlan = { version: 'gen2-sections/1', scenes }
+  const track = { ...jaTrackObject(tc, { pairs, scene: scene || null, scenePlan, buildingBlocks: [], allowedContent: [], recallCount: pairs.length, framingCount: 0, generationStats: null }, frozen, register, model, trackMode),
     generator: GEN2_VERSION, deferredTargets: t.deferredTargets || [],
     gen2: { version: GEN2_VERSION, models: g.gen2.models, calls: g.gen2.calls, byStage: g.gen2.byStage, pronunciation: g.gen2.pronunciation || null, replacementsUsed: g.gen2.replacementsUsed } }
   log('🧪 NEW GENERATOR track: ' + frozen.length + ' targets · ' + pairs.length + ' recalls' + (track.deferredTargets.length ? ' · deferred (stay due): ' + track.deferredTargets.map(d => d.surface).join(' ') : '') +

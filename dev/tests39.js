@@ -216,6 +216,15 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       T('F22', 'Japanese recalls are cut into DICTIONARY words carrying their lemma (行きます<行く, してる<する, です<だ, これ|は|いくら), so production\'s own usage rules judge the real words — the correct sentences production QC used to replace (はい、駅へ行きます / 今、何してる？ / また電話しようよ / 大丈夫です) now pass; a candidate production would still reject is rejected by Gen2 up front',
         /行きます<行く/.test(pcs('はい、駅へ行きます。')) && /してる<する/.test(pcs('今、何してる？')) && /これ\|は\|いくら/.test(pcs('すみません、これはいくらですか。')) &&
         ['はい、駅へ行きます。', '今、何してる？', 'また電話しようよ。', 'いいえ、大丈夫です。'].every(x => usage(x).length === 0) && /production usage rule/.test(SRC), pcs('はい、駅へ行きます。')) }
+    {
+      const two = c.gen2PickDistinct('zh', [{ text: '你到了没有？', cue: 'Ask your friend if they have arrived yet.', function: 'check arrival', situation: 'on the phone' },
+        { text: '你到了吗？', cue: 'Ask your friend if they have arrived yet.', function: 'confirm arrival', situation: 'waiting outside' },
+        { text: '我到了。', cue: 'Tell your friend you have arrived.', function: 'announce', situation: 'at the door' }], 3)
+      T('F23', 'v680: two candidates with the SAME cue are one use (live zh run: 你到了没有？ / 你到了吗？ broke the lesson with DUPLICATE_CUES)', two.length === 2 && two[1].text === '我到了。', two.map(x => x.text))
+      const a = { text: 'ผมของคุณยาว', speaker: 'female' }, b = { text: 'ผมของคุณยาว', speaker: 'either' }
+      const pa = c.gen2SpeakerProblem({ lang: 'th' }, a), pb = c.gen2SpeakerProblem({ lang: 'th' }, b)
+      T('F24', "v680: Thai speaker follows production's own evidence — ผม (even 'hair') needs the male speaker; a female-declared ผม line is rejected, an 'either' one becomes male", !!pa && pb === null && b.speaker === 'male', [pa, pb, b.speaker])
+    }
     T('F16', 'generator prompt: vocabulary discipline (no unlisted nouns, names, 私/あなた) and different real situations', /VOCABULARY DISCIPLINE/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)) && /あなた/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)))
   }
   console.log(out.join('\n'))

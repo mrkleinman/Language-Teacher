@@ -9404,8 +9404,11 @@ function gen2SpeakerProblem(ctx, c) {
   if (ctx.lang === 'th') {
     const g = c.speaker === 'male' || c.speaker === 'female' ? c.speaker : null
     const parts = typeof thaiParticlesIn === 'function' ? thaiParticlesIn(c.text) : []
-    const fem = parts.some(p => p === 'ค่ะ' || p === 'คะ'), mas = parts.includes('ครับ')
-    if (fem && mas) return 'speaker: male and female particles in one sentence'
+    // v680: the speaker is decided by production's OWN evidence too (thaiSpeakerEvidence — e.g. ผม counts as male even when
+    // it means "hair"), so a line production's final audit would reject for its speaker is never accepted here
+    const ev = typeof thaiSpeakerEvidence === 'function' ? thaiSpeakerEvidence(c.text) : { male: [], female: [] }
+    const fem = parts.some(p => p === 'ค่ะ' || p === 'คะ') || ev.female.some(x => x !== 'ฉัน'), mas = parts.includes('ครับ') || ev.male.length > 0
+    if (fem && mas) return 'speaker: male and female markers in one sentence'
     const need = fem ? 'female' : mas ? 'male' : g
     if (!need) return null
     if (g && g !== need) return 'speaker: declared ' + g + ' but the particles need a ' + need + ' speaker'
@@ -9457,6 +9460,8 @@ function gen2PickDistinct(lang, accepted, need) {
     // v678.1: a shared function label alone is not the same use (live run: six accepted いくら questions all labelled
     // "ask price" counted as one); same label AND same situation (or no situation given) still is
     if (out.some(o => fn && gen2Norm(o.function) === fn && (!sit || !gen2Norm(o.situation) || gen2Similar(gen2Norm(o.situation), sit) >= 0.5))) continue
+    // v680: the same cue is the same use (live zh run: 你到了没有？ / 你到了吗？ both "Ask your friend if they have arrived yet")
+    if (c.cue && out.some(o => gen2Norm(o.cue) === gen2Norm(c.cue))) continue
     if (out.some(o => { const oc = gen2Core(lang, o.text); return oc === core || gen2Similar(oc, core) >= 0.6 || (lang === 'ja' && gen2Skeleton(lang, oc) === gen2Skeleton(lang, core)) })) continue
     out.push(c)
     if (out.length >= need) break

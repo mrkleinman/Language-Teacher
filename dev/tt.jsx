@@ -8827,6 +8827,7 @@ function gen2WordClass(lang, w) {
   const g = String((w && w.english) || '').toLowerCase(), pos = String((w && w.partOfSpeech) || '').toLowerCase(), s = String((w && (w.thai || w.japanese || w.chinese)) || '')
   if (/particle/.test(g) || /particle/.test(pos)) return 'particle'
   if (/classifier|counter/.test(g) || /classifier|counter/.test(pos)) return 'classifier'
+  if (/^(yes|no|yeah|nope|yep)\b/.test(g) || (lang === 'ja' && /^(はい|いいえ|うん|ううん|ええ)$/.test(s)) || (lang === 'zh' && /^(是的|对|不|好的|嗯)$/.test(s))) return 'response'   // v678.1
   if (/^(hello|thank|thanks|sorry|excuse me|goodbye|bye|yes|no|okay|ok)\b/.test(g) || /expression|interjection|phrase/.test(pos) || (lang === 'ja' && /^(すみません|ありがとう|ごめん|はい|いいえ|うん)/.test(s))) return 'expression'
   if (/^(what|where|when|who|why|how|which)\b/.test(g) || /interrogative|question/.test(pos)) return 'question-word'
   if (/conjunction|preposition|coverb/.test(pos) || /^(and|or|but|with|because|if|so|then)\b/.test(g)) return 'function-word'
@@ -8840,6 +8841,8 @@ const GEN2_CLASS_GUIDE = {
   'particle': 'This is a PARTICLE. Each application must be a complete sentence whose function REQUIRES this particle (for a female polite question particle: a woman asking a real question; for a softening particle: a real suggestion or reminder). Give the speaker the particle requires.',
   'classifier': 'This is a CLASSIFIER. Use it the way it is really used: counting (noun + number + classifier) or pointing out one item (noun + classifier + this/that), with a noun it actually classifies.',
   'expression': 'This is a SET EXPRESSION. Each application is a different real moment where people say it (e.g. apologising for being late, getting someone’s attention, declining politely), as a complete natural utterance.',
+  'response': 'This word ANSWERS someone. Write ONLY the learner\'s reply (it may continue after the answer word, e.g. "はい、お願いします。"); put the other person\'s question or offer in the CUE (e.g. "The shop assistant asks whether you need a bag. Say yes."). Never write the question and the answer together.',
+  'verb': 'This is a VERB. Every sentence must contain THIS verb itself in some form (dictionary, polite, past, negative, て-form, volitional …); a sentence that only implies it does not count.',
   'question-word': 'This is a QUESTION WORD. Use real questions whose answers would be natural; the three applications ask about different things.',
   'function-word': 'This is a FUNCTION WORD. Use it in its grammatical role linking two parts; every sentence must be complete.',
 }
@@ -8968,12 +8971,52 @@ function gen2JaReadingProblem(c, inv) {
   if (/[一-鿿]/.test(r)) return 'reading contains kanji'
   if (/[^\x20-\x7eāūēō]/.test(ro.replace(/[、。？！]/g, ''))) return 'romaji contains non-latin text'
   if (!romajiMatchesReading(ro, r)) return 'romaji does not match the reading'
-  // every kana written in the sentence must appear, in order, in the reading (catches a reading of another sentence).
-  // No dictionary veto: the inventory reader misreads unlisted words (遅れた → おそれた via 遅い).
-  const want = gen2KanaNorm(String(c.text || '').replace(/[一-鿿]/g, '')), have = gen2KanaNorm(r)
-  let i = 0; for (const ch of have) if (ch === want[i]) i++
-  if (i < want.length) return 'reading does not contain the sentence\'s own kana'
+  // the reading must be THIS sentence: its kana exactly as written, each kanji word read as the dictionary reads it
+  // (catches romaji that adds or changes words: 明日は何する？ read あしたはなに「を」する, してる read している)
+  const pat = gen2JaReadingPattern(c.text, inv)
+  if (pat && !pat.test(gen2KanaNorm(r))) return 'reading is not exactly this sentence'
+  if (!pat) {   // no pattern (no inventory): the sentence's own kana must at least appear in order
+    const want = gen2KanaNorm(String(c.text || '').replace(/[\u4e00-\u9fff]/g, '')), have = gen2KanaNorm(r)
+    let i = 0; for (const ch of have) if (ch === want[i]) i++
+    if (i < want.length) return 'reading does not contain the sentence\'s own kana'
+  }
   return null
+}
+// kanji stem → its dictionary readings (何 → なに|なん, 来 → く|き|こ, 行 → い …), longest stems first
+function gen2JaStemReadings(inv) {
+  if (inv._stems) return inv._stems
+  const m = new Map(), add = (k, r) => { if (!k || !r) return; if (!m.has(k)) m.set(k, new Set()); m.get(k).add(r) }
+  ;((inv.jaInv && inv.jaInv.allContent) || []).forEach(w => {
+    const jp = w.japanese || ''
+    if (!/[\u4e00-\u9fff]/.test(jp)) return
+    const x = jp.match(/^(.*?[\u4e00-\u9fff])([\u3040-\u309f]*)$/); if (!x) return
+    String(w.reading || '').split(/[\/／|・,、]/).map(t => gen2KanaNorm(t)).filter(Boolean).forEach(rd => {
+      add(x[1], x[2] && rd.endsWith(x[2]) ? rd.slice(0, rd.length - x[2].length) : rd)
+      if (x[2]) add(jp, rd)
+    })
+    if (w.conjugationClass === 'irregular-kuru') ['く', 'き', 'こ'].forEach(r => add(x[1], r))
+  })
+  inv._stems = { map: m, keys: [...m.keys()].sort((a, b) => b.length - a.length) }
+  return inv._stems
+}
+function gen2JaReadingPattern(text, inv) {
+  if (!inv || !inv.jaInv) return null
+  const { map, keys } = gen2JaStemReadings(inv)
+  const t = String(text || ''), esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  let re = '', i = 0
+  while (i < t.length) {
+    const ch = t[i]
+    if (/[\u4e00-\u9fff]/.test(ch)) {
+      const k = keys.find(k => t.startsWith(k, i))
+      if (k) { re += '(?:' + [...map.get(k)].map(esc).join('|') + ')'; i += k.length }
+      else { re += '[\u3041-\u3096ー]{1,4}'; i++ }   // a kanji the dictionary does not know (closed vocabulary makes this rare)
+      continue
+    }
+    const k = gen2KanaNorm(ch)
+    if (k) re += esc(k)
+    i++
+  }
+  try { return new RegExp('^' + re + '$') } catch (e) { return null }
 }
 const gen2RomajiNorm = x => String(x || '').trim().replace(/\s+/g, ' ').replace(/tch/g, 'cch')
 // ── PRONUNCIATION (Japanese): a separate stage AFTER teachability, so a pronunciation slip never costs an accepted
@@ -9070,7 +9113,9 @@ function gen2ProbePrompt(ctx, w, inv, siblings, feedback, n) {
     (siblings.length ? 'OTHER WORDS IN THIS LESSON WITH A SIMILAR MEANING: ' + siblings.join(' · ') + '. Each cue must lead to THIS word, not those.\n' : '') +
     'SPEAKERS: ' + gen2ConventionLine(ctx) + '\n' +
     'ALLOWED WORDS — use ONLY these words, the target word, and normal grammar (particles, inflection): ' + inv.list.join(' ') + (inv.grammar ? '\nALLOWED GRAMMAR: ' + inv.grammar.join(' ') : '') + '\n' +
-    'Write ' + n + ' candidate practice sentences. Together they must contain at least THREE DIFFERENT real uses of the target (different communicative functions, e.g. asking, answering, offering, refusing, suggesting, describing) — never the same sentence with one word changed.\n' +
+    'Write ' + n + ' candidate practice sentences. Together they must show at least THREE DIFFERENT real uses of the target: different everyday situations and different things said or asked (e.g. asking, answering, offering, refusing, suggesting, describing) — never the same sentence with one word changed.\n' +
+    'VOCABULARY DISCIPLINE: every noun, verb, adjective and adverb must come from ALLOWED WORDS (or be the target). Do not use any other word, however common — no other nouns (no animals, foods, places or objects that are not listed), no people\'s names' +
+    (ctx.lang === 'ja' ? ', no 私 / わたし / あなた / 彼 (Japanese leaves out "I" and "you")' : '') + '. If an idea needs an unlisted word, choose a different idea.\n' +
     'Every sentence must be complete, grammatically perfect, and something a native speaker would naturally say to a friend in an everyday situation, using the target in the sense "' + w.english + '". Do not invent odd combinations just to use the allowed words.\n' +
     'For each candidate give: "function" (1–3 words), "situation" (when it is said, short English), "cue" (an English instruction telling the learner WHAT TO COMMUNICATE without giving the words, e.g. "Ask your friend whether they are free tonight." — never a translation of the sentence; a learner following it should naturally need THIS target word), "text" (the ' + L.name + ' sentence: ONE utterance by ONE speaker — never a question together with its answer' + (ctx.lang === 'ja' || ctx.lang === 'zh' ? '; normal writing with no spaces between words' : '') + '), "english" (a faithful natural translation that keeps the nuance), "speaker" ("male", "female" or "either")' +
     (ctx.lang === 'ja' ? '. Write "text" normally, with kanji exactly as the words appear in ALLOWED WORDS (never the whole sentence in kana)' : '') + '.\n' +
@@ -9085,7 +9130,7 @@ function gen2JudgePrompt(ctx, w, items, siblings) {
     'TARGET WORD: ' + w[L.field] + ' — "' + w.english + '"\n' + (siblings.length ? 'Other lesson words with similar meanings: ' + siblings.join(' · ') + '\n' : '') +
     'SPEAKERS: ' + gen2ConventionLine(ctx) + '\n' +
     'For EACH item judge:\n' +
-    ' grammar: ok | error\n natural: natural | marginal | unnatural   (would a native speaker say exactly this to a friend?)\n' +
+    ' grammar: ok | error\n natural: natural | marginal | unnatural   (would a native speaker say exactly this in this situation? "marginal" = grammatical but odd in meaning, e.g. asking where "that over there" is while pointing at it, or calling food "a little tasty")\n' +
     ' translation: accurate | misleading   (does the English say what the sentence says?)\n target: correct | wrong-sense | absent   (target present in a correct form, used in the sense given)\n' +
     ' cue: useful | copies-answer | ambiguous | misleading   (could a learner who reads ONLY the cue produce essentially this sentence with this target word?)\n' +
     ' speaker: ok | wrong   (fits the stated speaker and register)\n useful: useful | weak | not-useful   (a real, reusable thing a beginner needs to say)\n fragment: true | false\n' +
@@ -9140,7 +9185,7 @@ function gen2DetCheck(ctx, w, c, inv) {
   const tp = gen2TurnProblem(ctx.lang, c.text); if (tp) p.push(tp)
   const { a, units } = gen2Units(ctx, w, c.text)
   if (a.overHardMax) p.push('too long (' + a.units + ' > ' + ctx.cc.hardMax + ')')
-  if (units < 2 && gen2WordClass(ctx.lang, w) !== 'expression') p.push('fragment (' + units + ' unit)')
+  if (units < 2 && !/^(expression|response)$/.test(gen2WordClass(ctx.lang, w))) p.push('fragment (' + units + ' unit)')
   const cp = gen2CueProblem(c.cue, c.english, ctx.lang); if (cp) p.push(cp)
   const sp = gen2SpeakerProblem(ctx, c); if (sp) p.push(sp)
   return p
@@ -9149,8 +9194,10 @@ function gen2DetCheck(ctx, w, c, inv) {
 function gen2PickDistinct(lang, accepted, need) {
   const out = []
   for (const c of accepted) {
-    const core = gen2Core(lang, c.text), fn = gen2Norm(c.function)
-    if (out.some(o => gen2Norm(o.function) === fn && fn) ) continue
+    const core = gen2Core(lang, c.text), fn = gen2Norm(c.function), sit = gen2Norm(c.situation)
+    // v678.1: a shared function label alone is not the same use (live run: six accepted いくら questions all labelled
+    // "ask price" counted as one); same label AND same situation (or no situation given) still is
+    if (out.some(o => fn && gen2Norm(o.function) === fn && (!sit || !gen2Norm(o.situation) || gen2Similar(gen2Norm(o.situation), sit) >= 0.5))) continue
     if (out.some(o => { const oc = gen2Core(lang, o.text); return oc === core || gen2Similar(oc, core) >= 0.6 || (lang === 'ja' && gen2Skeleton(lang, oc) === gen2Skeleton(lang, core)) })) continue
     out.push(c)
     if (out.length >= need) break
@@ -9200,7 +9247,7 @@ async function gen2TeachTarget(ctx0, w, st) {
     if (gen2PickDistinct(ctx.lang, accepted, 3).length >= 3) break
   }
   const pick = gen2PickDistinct(ctx.lang, accepted, 3)
-  if (pick.length >= 3) { rec.status = 'teachable'; rec.recalls = pick }
+  if (pick.length >= 3) { rec.status = 'teachable'; rec.recalls = pick; rec.spares = accepted.filter(a => !pick.includes(a)) }
   else { rec.status = 'deferred'; rec.reason = 'ONLY_' + pick.length + '_DISTINCT_ACCEPTED after ' + rec.attempts.length + ' probe(s)' }
   return rec
 }
@@ -9246,7 +9293,26 @@ async function gen2Daily(o) {
   } catch (e) { if (!e.gen2Budget) throw e; stop = e.message; ctx.log('⛔ ' + e.message) }
   let pron = null
   if (lang === 'ja' && frozen.length && !stop) {
-    try { pron = await gen2JaPronounce(ctx, st.inv, frozen.flatMap(r => r.recalls)); ctx.log('🔤 READING/ROMAJI ' + pron.ok + '/' + frozen.length * 3 + (pron.failed.length ? ' · failed: ' + pron.failed.join(' | ') : '')) }
+    try {
+      pron = await gen2JaPronounce(ctx, st.inv, frozen.flatMap(r => r.recalls))
+      ctx.log('🔤 READING/ROMAJI ' + pron.ok + '/' + frozen.length * 3 + (pron.failed.length ? ' · failed: ' + pron.failed.join(' | ') : ''))
+      // a recall whose pronunciation could not be validated is replaced by another judge-accepted, distinct recall of
+      // the same target (pronounced and validated the same way) — never kept without romaji, never guessed
+      const swaps = []
+      frozen.forEach(r => r.recalls.forEach((x, i) => {
+        if (x.romaji) return
+        const keep = r.recalls.filter(y => y !== x)
+        const sp = (r.spares || []).find(s2 => !swaps.some(w => w.s === s2) && !st.usedCues.has(gen2Norm(s2.cue)) && !st.usedCores.has(gen2Core(lang, s2.text)) && gen2PickDistinct(lang, keep.concat([s2]), 3).length === 3)
+        if (sp) swaps.push({ r, i, s: sp })
+      }))
+      if (swaps.length) {
+        const p2 = await gen2JaPronounce(ctx, st.inv, swaps.map(w => w.s))
+        let n = 0
+        swaps.forEach(w => { if (w.s.romaji) { const old = w.r.recalls[w.i]; st.usedCores.delete(gen2Core(lang, old.text)); st.usedCues.delete(gen2Norm(old.cue)); w.r.recalls[w.i] = w.s; st.usedCores.add(gen2Core(lang, w.s.text)); st.usedCues.add(gen2Norm(w.s.cue)); n++ } })
+        pron.spareSwaps = n; pron.spareFailed = p2.failed
+        ctx.log('🔤 SPARE SWAPS ' + n + '/' + swaps.length)
+      }
+    }
     catch (e) { if (!e.gen2Budget) throw e; stop = e.message; ctx.log('⛔ ' + e.message) }
   }
   // composition: groups of five targets, recalls round-robin (the shape learners already know); the speaker follows

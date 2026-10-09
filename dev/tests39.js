@@ -144,11 +144,11 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const u = (w, t) => c.gen2Units(ctx, w, t).units
     T('F5', 'fragment test counts words, not the complexity estimate: 今、何してるの？ (する) and 何飲む？ (何) are sentences; a lone word is still a fragment',
       u(suru, '今、何してるの？') >= 2 && u(nani, '何飲む？') >= 2 && u(nani, '何？') < 2)
-    T('F6', 'romaji line: required for Japanese, must transcribe the reading (tch = cch), and the reading must contain the sentence\'s own kana',
+    T('F6', 'romaji line: required for Japanese, must transcribe the reading (tch = cch), and the reading must be exactly this sentence',
       c.gen2JaReadingProblem({ text: '今、何してるの？', reading: 'いま、なにしてるの？', romaji: 'ima, nani shiteru no?' }, inv) === null &&
       /missing/.test(c.gen2JaReadingProblem({ text: '今、何してるの？' }, inv)) &&
       !!c.gen2JaReadingProblem({ text: '今、何してるの？', reading: 'いま、なにしてるの？', romaji: 'kyou nani shiteru no' }, inv) &&
-      /own kana/.test(c.gen2JaReadingProblem({ text: 'あれは何？', reading: 'これはなに？', romaji: 'kore wa nani?' }, inv) || '') &&
+      /not exactly this sentence|own kana/.test(c.gen2JaReadingProblem({ text: 'あれは何？', reading: 'これはなに？', romaji: 'kore wa nani?' }, inv) || '') &&
       c.gen2JaReadingProblem({ text: 'どっち？', reading: 'どっち？', romaji: 'dotchi?' }, inv) === null)
     T('F11', 'pronunciation is its own stage after acceptance (the sentence request asks for no reading — asking made the generator write whole sentences in kana); a Japanese lesson without a validated romaji line is not accepted',
       !/"reading"/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)) && /task: gen2-ja-reading/.test(c.gen2PronouncePrompt([{ text: '何？' }])) &&
@@ -164,6 +164,20 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       c.gen2CueProblem("Politely refuse your friend's offer.", "No, it's fine. Sorry.", 'ja') === null &&
       c.gen2CueProblem('What are you doing today?', 'What are you doing today?', 'ja') === 'cue-copies-answer')
     T('F10', 'version gen2-pilot/1.1', c.ev('GEN2_VERSION') === 'gen2-pilot/1.1')
+    const prices = [{ text: 'これいくら？', function: 'asking price', situation: 'at a shop counter' }, { text: 'いくらお金使ったの？', function: 'asking price', situation: 'after a friend went shopping' },
+      { text: 'あの本はいくら？', function: 'asking price', situation: 'pointing at a book in a bookshop window' }]
+    const same = [{ text: '今、何してるの？', function: 'ask', situation: 'phone call' }, { text: '一緒に何かしない？', function: 'ask', situation: 'phone call' }]
+    T('F12', 'distinct uses: a shared function LABEL alone does not merge different sentences in different situations (six accepted いくら questions all labelled "ask price"); same label + same situation still does',
+      c.gen2PickDistinct('ja', prices, 3).length === 3 && c.gen2PickDistinct('ja', same, 3).length === 1)
+    T('F13', 'reply words (はい / いいえ / うん) are taught as the learner\'s reply only, the question goes in the cue; they are not fragments by length',
+      c.gen2WordClass('ja', jw('はい')) === 'response' && /Write ONLY the learner/.test(c.ev('GEN2_CLASS_GUIDE.response')) && !c.gen2DetCheck(c.gen2TargetCtx(ctx, jw('はい')), jw('はい'), { text: 'はい、お願いします。', english: 'Yes, please.', cue: 'The shop assistant asks whether you need a bag. Say yes.', speaker: 'either' }, inv).some(x => /fragment/.test(x)))
+    const rp = (t, r) => c.gen2JaReadingProblem({ text: t, reading: r, romaji: c.kanaToRomaji(r) }, inv)
+    T('F14', 'romaji must be EXACTLY this sentence: words added or changed are rejected (明日は何する？ ≠ あしたはなにをする, してる ≠ している); 来 reads く/き/こ by form',
+      !!rp('明日は何する？', 'あしたはなにをする？') && rp('明日は何する？', 'あしたはなにする？') === null && !!rp('今何してるの？', 'いまなにしているの？') &&
+      ['いつくる？', 'きのうともだちがきたよ。'].every((r, i) => rp(['いつ来る？', '昨日友達が来たよ。'][i], r) === null) && rp('一緒に食べに来ない？', 'いっしょにたべにこない？') === null)
+    T('F15', 'a recall whose romaji cannot be validated is swapped for another judge-accepted distinct recall of the same target (pronounced and validated), never kept without romaji',
+      /rec\.spares = accepted\.filter/.test(SRC) && /SPARE SWAPS/.test(SRC) && /never kept without romaji, never guessed/.test(SRC))
+    T('F16', 'generator prompt: vocabulary discipline (no unlisted nouns, names, 私/あなた) and different real situations', /VOCABULARY DISCIPLINE/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)) && /あなた/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)))
   }
   console.log(out.join('\n'))
   console.log('\nv678 Gen2 shadow pilot: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))

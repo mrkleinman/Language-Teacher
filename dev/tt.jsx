@@ -8965,6 +8965,43 @@ function gen2JaKanaWordProblem(text, inv) {
   }
   return bad.length ? 'untaught (kana): ' + bad.join(' ') : null
 }
+// kanji stems of taught words may only be followed by that word's own endings (遅 of 遅い is not 遅れた)
+const GEN2_JA_IADJ_TAILS = ['い', 'く', 'かった', 'くない', 'くなかった', 'くて', 'ければ', 'さ', 'そう', 'すぎ', 'くな']
+const GEN2_JA_ICHIDAN_STEM_TAILS = ['に', 'ながら', 'そう', 'すぎ', 'ず', 'やすい', 'にくい', 'たい', 'ない', 'ます', 'ませ', 'まし', 'た', 'て', 'ちゃ', 'よう', 'ろ', 'れば', 'られ', 'させ']
+function gen2JaStemTable(inv) {
+  if (inv._stemTails) return inv._stemTails
+  const free = new Set(), tails = new Map()
+  ;((inv.jaInv && inv.jaInv.allContent) || []).forEach(w => {
+    const jp = w.japanese || ''
+    if (!/[一-鿿]/.test(jp)) return
+    const x = jp.match(/^(.*?[一-鿿])([぀-ゟ]*)$/); if (!x) return
+    if (!x[2]) { free.add(jp); return }
+    const t = tails.get(x[1]) || new Set(); tails.set(x[1], t)
+    t.add(x[2])
+    try { gen2JaForms(w).forEach(f => { if (f.startsWith(x[1]) && f.length > x[1].length) t.add(f.slice(x[1].length)) }) } catch (e) {}
+    if (/i-adj/.test(w.partOfSpeech || '') && x[2].endsWith('い')) { const base = x[2].slice(0, -1); GEN2_JA_IADJ_TAILS.forEach(z => t.add(base + z)) }
+    if (w.conjugationClass === 'ichidan') { const base = x[2].slice(0, -1); GEN2_JA_ICHIDAN_STEM_TAILS.forEach(z => t.add(base + z)) }   // 見に行く, 見ながら
+  })
+  inv._stemTails = { free, tails, keys: [...new Set([...free, ...tails.keys()])].sort((a, b) => b.length - a.length) }
+  return inv._stemTails
+}
+function gen2JaStemProblem(text, inv) {
+  if (!inv || !inv.jaInv) return null
+  const { free, tails, keys } = gen2JaStemTable(inv), t = String(text || ''), bad = []
+  let i = 0
+  while (i < t.length) {
+    if (!/[一-鿿]/.test(t[i])) { i++; continue }
+    const k = keys.find(k => t.startsWith(k, i))
+    if (!k) { i++; continue }   // an unknown kanji is the line checker's job
+    const rest = t.slice(i + k.length)
+    if (!free.has(k) && !(free.has(t.slice(i, i + k.length + 1)))) {
+      const ok = [...(tails.get(k) || [])].some(z => rest.startsWith(z))
+      if (!ok) bad.push(k + rest.slice(0, 3))
+    }
+    i += k.length
+  }
+  return bad.length ? 'untaught (kanji used for another word): ' + bad.join(' ') : null
+}
 // reading + romaji (the learner's pronunciation line): kana only, romaji must transcribe that reading, and where the
 // dictionary can read the sentence unambiguously the model's reading must agree with it
 const gen2KanaNorm = x => String(x || '').replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60)).replace(/[^぀-ゟー]/g, '')
@@ -9191,6 +9228,7 @@ function gen2DetCheck(ctx, w, c, inv) {
   if (!gen2TargetPresent(ctx.lang, c.text, w, ctx.vocab)) p.push('target absent')
   p.push(...inv.check(c.text))
   if (ctx.lang === 'ja') { const kw = gen2JaKanaWordProblem(c.text, inv); if (kw) p.push(kw) }
+  if (ctx.lang === 'ja') { const sp = gen2JaStemProblem(c.text, inv); if (sp) p.push(sp) }
   const tp = gen2TurnProblem(ctx.lang, c.text); if (tp) p.push(tp)
   const { a, units } = gen2Units(ctx, w, c.text)
   if (a.overHardMax) p.push('too long (' + a.units + ' > ' + ctx.cc.hardMax + ')')

@@ -1,0 +1,98 @@
+{
+ "runId": "zh-daily-2026-10-08.gen2.live3.2026-10-09T08-26-53",
+ "fixture": "zh-daily-2026-10-08",
+ "pipelineRequested": "gen2",
+ "pipelineExecuted": "gen2",
+ "gen2Version": "gen2-pilot/1.1",
+ "models": {
+  "generator": "gemini-2.5-flash-lite",
+  "judge": "gemini-2.5-flash"
+ },
+ "app": {
+  "appBuild": "v679",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "READY",
+ "reasons": [],
+ "error": null,
+ "stop": null,
+ "recalls": 90,
+ "deferred": [
+  "慢 — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)",
+  "太 — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)",
+  "一起 — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)",
+  "回 — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)"
+ ],
+ "gen2Calls": 122,
+ "gen2ByStage": {
+  "P_gen2_probe": 63,
+  "R_gen2_judge": 59
+ },
+ "acceptance": {
+  "ok": true,
+  "problems": []
+ },
+ "spend": {
+  "costUsd": 0.07382,
+  "capUsd": 0.25,
+  "tokens": {
+   "in": 84726,
+   "out": 48387
+  },
+  "requestsSent": 122,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "gen2-daily-probe v1 @ gemini-2.5-flash-lite": {
+    "requests": 63,
+    "in": 50517,
+    "out": 29746,
+    "usd": 0.016950100000000003
+   },
+   "gen2-daily-judge v1 @ gemini-2.5-flash": {
+    "requests": 59,
+    "in": 34209,
+    "out": 18641,
+    "usd": 0.05686519999999999
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×63 · gemini-2.5-flash ×59",
+  "Track ID: - · run zh-track-1791439200007-5701",
+  "Total requests: 122 · Successful: 122 · Failed: 0 · Retried: 0",
+  "Generation calls: 0 · QC calls: 0 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 0 · Listening calls: 0 · Other: 122",
+  "Input tokens: 84726 · Output tokens: 48387 · Total tokens: 133113 (provider usage metadata)",
+  "Retry requests: 0 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 122 · Provider-error retries: 0",
+  "GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)",
+  "PAID REQUESTS BY PURPOSE: other 122 (133113 tok, USD 0.0738)",
+  "Estimated Gemini cost: USD 0.0738 (≈ SGD 0.0960 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. R_gen2_judge — 59 requests / 52850 tokens / ~77%",
+  "  2. P_gen2_probe — 63 requests / 80263 tokens / ~23%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 206
+}

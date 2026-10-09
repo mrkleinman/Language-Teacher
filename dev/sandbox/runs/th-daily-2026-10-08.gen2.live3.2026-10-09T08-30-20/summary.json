@@ -1,0 +1,110 @@
+{
+ "runId": "th-daily-2026-10-08.gen2.live3.2026-10-09T08-30-20",
+ "fixture": "th-daily-2026-10-08",
+ "pipelineRequested": "gen2",
+ "pipelineExecuted": "gen2",
+ "gen2Version": "gen2-pilot/1.1",
+ "models": {
+  "generator": "gemini-2.5-flash-lite",
+  "judge": "gemini-2.5-flash"
+ },
+ "app": {
+  "appBuild": "v679",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "NOT_READY",
+ "reasons": [
+  "TARGETS_FROZEN=24/30"
+ ],
+ "error": null,
+ "stop": null,
+ "recalls": 72,
+ "deferred": [
+  "รถเมล์ — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)",
+  "ครั้ง — ONLY_1_DISTINCT_ACCEPTED after 3 probe(s)",
+  "ควร — ONLY_1_DISTINCT_ACCEPTED after 3 probe(s)",
+  "กังวล — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)",
+  "หวัง — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)",
+  "คู่ — ONLY_1_DISTINCT_ACCEPTED after 3 probe(s)",
+  "ไฟ — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)",
+  "เล่า — ONLY_1_DISTINCT_ACCEPTED after 3 probe(s)",
+  "ประตู — ONLY_1_DISTINCT_ACCEPTED after 3 probe(s)",
+  "ตัดสินใจ — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)",
+  "หมายถึง — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)",
+  "ใบ — ONLY_1_DISTINCT_ACCEPTED after 3 probe(s)",
+  "ตัว — ONLY_1_DISTINCT_ACCEPTED after 3 probe(s)",
+  "กี่ — ONLY_2_DISTINCT_ACCEPTED after 3 probe(s)"
+ ],
+ "gen2Calls": 157,
+ "gen2ByStage": {
+  "P_gen2_probe": 87,
+  "R_gen2_judge": 70
+ },
+ "acceptance": {
+  "ok": true,
+  "problems": []
+ },
+ "spend": {
+  "costUsd": 0.10259,
+  "capUsd": 0.25,
+  "tokens": {
+   "in": 339398,
+   "out": 59240
+  },
+  "requestsSent": 157,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "gen2-daily-probe v1 @ gemini-2.5-flash-lite": {
+    "requests": 87,
+    "in": 296994,
+    "out": 41872,
+    "usd": 0.0464482
+   },
+   "gen2-daily-judge v1 @ gemini-2.5-flash": {
+    "requests": 70,
+    "in": 42404,
+    "out": 17368,
+    "usd": 0.0561412
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×87 · gemini-2.5-flash ×70",
+  "Track ID: - · run daily-track-1791439204249-3223",
+  "Total requests: 157 · Successful: 157 · Failed: 0 · Retried: 0",
+  "Generation calls: 0 · QC calls: 0 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 0 · Listening calls: 0 · Other: 157",
+  "Input tokens: 339398 · Output tokens: 59240 · Total tokens: 398638 (provider usage metadata)",
+  "Retry requests: 0 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 157 · Provider-error retries: 0",
+  "GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)",
+  "PAID REQUESTS BY PURPOSE: other 157 (398638 tok, USD 0.1015)",
+  "Estimated Gemini cost: USD 0.1015 (≈ SGD 0.1319 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. R_gen2_judge — 70 requests / 59772 tokens / ~55%",
+  "  2. P_gen2_probe — 87 requests / 338866 tokens / ~45%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 263
+}

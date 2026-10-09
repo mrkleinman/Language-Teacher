@@ -48,6 +48,9 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     T('J7', 'recallVariationKey: genuinely different uses stay distinct (これ、好き？ / 犬が好き。 / 好きな食べ物は何？ → 3)', vk(['これ、好き？', '犬が好き。', '好きな食べ物は何？'], '好き') === 3)
     const vv = has(c, 'japaneseVariationVerdict') ? c.japaneseVariationVerdict('これ、好き？', 1, new Map([['k', { targetId: 1, text: 'それ、好き？' }]]), '好き') : { ok: true }
     T('J8', 'japaneseVariationVerdict (wired into the Japanese generator): これ、好き？ after それ、好き？ for the same target is rejected as the same application', vv.ok === false && vv.level === 'V')
+    const SRCJ = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
+    T('J9', 'variety is NOT forced on social formulas / reply words (ありがとう, すみません, はい …): the live v681 Japanese run left ありがとう recall 3 with no candidate — they are exempt',
+      /!\(jaSemanticClass\(target\.japanese\) \|\| \{\}\)\.standalone && !JA_LIMITED_VARIETY_WORDS\.includes\(target\.japanese\)\) dup = japaneseVariationVerdict/.test(SRCJ) && !!(c.jaSemanticClass('ありがとう') || {}).standalone)
   }
   // ══ T — THAI ═════════════════════════════════════════════════════════════════════════════════════════════════════
   {
@@ -100,6 +103,9 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     T('Z8', 'mandarinFallbackPair(很): the deterministic fallback gives 很 a SUBJECT (人很多。/ 这个很快。), never the fragment 很多。',
       fb.length > 0 && fb.every(x => !/^很/.test(x)), fb)
     const sv = s => has(c, 'recallVariationKey') ? c.recallVariationKey(s, '用') : s
+    T('Z11', 'Mandarin: an unresolved recall gets ONE bounded recovery round on its own ledger before the track is declared incomplete (live v681: one 到 recall failed the whole track); 到 has licensed frames 我到了。/ 你到了吗？/ 我快到了。',
+      /ONE bounded recovery round: an unresolved recall continues its OWN ledger history/.test(fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')) &&
+      (() => { const w = VZ.find(x => x.chinese === '到'); const fbs = [1, 2, 3].map(r => safe(() => c.mandarinFallbackPair(w, invZ, r, new Map(), VZ, c.scarcityRules(invZ)))).filter(x => x && x.chinese).map(x => x.chinese); return fbs.length >= 2 && new Set(fbs).size >= 2 })())
     T('Z9', 'variety: 你用这个。 / 我用那个。 are one application (pronoun + demonstrative swap); 你用什么？ is another', sv('你用这个。') === sv('我用那个。') && sv('你用什么？') !== sv('你用这个。'))
     // breadth: no false rejections over all real Mandarin sentences recorded so far, except the reported defect shapes
     const sents = new Set(); const add = r => { const cc = r && r.outcome && r.outcome.content; ((cc && cc.pairs) || []).forEach(p => p.text && sents.add(p.text)) }

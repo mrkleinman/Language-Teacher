@@ -1,0 +1,75 @@
+{
+ "runId": "zh-daily-2026-10-08.production.v681.2026-10-09T15-07-11",
+ "fixture": "zh-daily-2026-10-08",
+ "pipelineRequested": "production",
+ "pipelineExecuted": "production",
+ "gen2Version": null,
+ "models": null,
+ "app": {
+  "appBuild": "v681",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": null,
+ "reasons": null,
+ "error": null,
+ "stop": "GENERATION_INCOMPLETE",
+ "recalls": null,
+ "deferred": [],
+ "spend": {
+  "costUsd": 0.04326,
+  "capUsd": 0.07,
+  "tokens": {
+   "in": 355387,
+   "out": 19307
+  },
+  "requestsSent": 203,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "(untagged) @ gemini-2.5-flash-lite": {
+    "requests": 203,
+    "in": 355387,
+    "out": 19307,
+    "usd": 0.04326150000000002
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×203",
+  "Track ID: - · run zh-track-1791439200007-5701",
+  "Total requests: 203 · Successful: 203 · Failed: 0 · Retried: 113",
+  "Generation calls: 203 · QC calls: 0 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 0 · Listening calls: 0 · Other: 0",
+  "Input tokens: 355387 · Output tokens: 19307 · Total tokens: 374694 (provider usage metadata)",
+  "Retry requests: 113 · caused by provider errors: 0 · DUPLICATES: candidates 6 · prevented 0 (answered from an identical request, not sent) · actually sent 6 (B_generation_retry ×6)",
+  "Provider requests: 203 · Provider-error retries: 0",
+  "GENERATION WASTE: first-attempt tokens 163293 · regeneration tokens 211401 · regeneration share 56% · regeneration cost USD 0.0170 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)",
+  "PAID REQUESTS BY PURPOSE: regeneration (paid retry of a rejected candidate) 113 (211401 tok, USD 0.0170) · generation (first attempt / scene) 90 (163293 tok, USD 0.0127)",
+  "Estimated Gemini cost: USD 0.0297 (≈ SGD 0.0387 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. B_generation_retry — 113 requests / 211401 tokens / ~57%",
+  "  2. A_generation — 90 requests / 163293 tokens / ~43%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 163
+}

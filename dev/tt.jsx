@@ -3900,7 +3900,12 @@ const ZH_VERB_FRAMES = {
              ['\u4F60\u62FF\u90A3\u4E2A\u5417\uFF1F','Are you taking that one?','Ask if they are taking that one',['\u4F60','\u90A3\u4E2A']],
              ['\u6211\u62FF\u4E1C\u897F\u3002','I\u2019ll get the things.','Say you will get the things',['\u6211','\u4E1C\u897F']]],
   '\u5230':   [['\u6211\u5230\u5BB6\u4E86\u3002','I\u2019m home.','Say you have got home',['\u6211','\u5BB6']],
-             ['\u4F60\u5230\u5BB6\u4E86\u5417\uFF1F','Are you home yet?','Ask if they have got home',['\u4F60','\u5BB6']]],
+             ['\u4F60\u5230\u5BB6\u4E86\u5417\uFF1F','Are you home yet?','Ask if they have got home',['\u4F60','\u5BB6']],
+             // v681: 你到哪里？ is (correctly) rejected now, so 到 needs more licensed frames
+             ['\u6211\u5230\u4E86\u3002','I\u2019m here.','Say you have arrived',['\u6211']],
+             ['\u4F60\u5230\u4E86\u5417\uFF1F','Have you arrived?','Ask if they have arrived',['\u4F60']],
+             ['\u6211\u5FEB\u5230\u4E86\u3002','I\u2019m almost there.','Say you are almost there',['\u6211','\u5FEB']],
+             ['\u4F60\u5230\u54EA\u91CC\u4E86\uFF1F','Where are you now?','Ask where they have got to',['\u4F60','\u54EA\u91CC']]],
   '\u89C9\u5F97': [['\u6211\u89C9\u5F97\u5F88\u597D\u3002','I think it\u2019s good.','Say you think it is good',['\u6211','\u5F88','\u597D']],
              ['\u4F60\u89C9\u5F97\u597D\u5417\uFF1F','Do you think it\u2019s good?','Ask if they think it is good',['\u4F60','\u597D']],
              ['\u6211\u89C9\u5F97\u8FD9\u4E2A\u5F88\u597D\u3002','I think this one is good.','Say you think this one is good',['\u6211','\u8FD9\u4E2A','\u5F88','\u597D']]],
@@ -4373,6 +4378,27 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
     onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, completed:true, recallsCompleted:accepted.length })
   }
 
+  // v681 — ONE bounded recovery round: an unresolved recall continues its OWN ledger history (its remaining checks, rejection
+  // memory intact) before the track is declared incomplete. Live v681 run: 到 recall 3 ended at 4/11 checks after the model
+  // repeated the now-rejected 你到哪里？, and the whole Mandarin track failed for one recall (Japanese has its own recovery loop).
+  for (const f of failures.slice()) {
+    if (stopSignal && stopSignal.cancelled) break
+    const ti = targets.findIndex(t => t.id === f.targetId); if (ti < 0) continue
+    const t = targets[ti]
+    if (_zhLedger.count(t.id, f.recallIndex) >= RECALL_MAX_CHECKS) continue
+    onLog && onLog('\u21BB Recovering ' + t.chinese + ' recall ' + f.recallIndex + ' (' + _zhLedger.count(t.id, f.recallIndex) + '/' + RECALL_MAX_CHECKS + ' checks used)')
+    const got = await generateMandarinOneRecall(t, f.recallIndex, vocab, inv, rules, apiKey, model, seenMap, onLog,
+      tier => { attempts++; S.attempts++; S.highestCheckTier = Math.max(S.highestCheckTier, tier) }, S, { ledger: _zhLedger, phase: 'recovery' })
+    if (!got) continue
+    const pr = stampPairProvenance({ ...got.pair, checkTier: got.checkTier, sourceModel: model, _acceptedAtCheck: got.checkTier,
+        _repairLineage: got.pair && got.pair._fallbackUsed ? ['deterministic-fallback'] : [] },
+      { language: 'zh', trackId: 'zh-' + S.startedAt, generationRunId: AI_CTX.runId, targetId: t.id, targetSurface: t.chinese, recallIndex: f.recallIndex,
+        sourceStage: got.pair && got.pair._fallbackUsed ? 'recovery-fallback' : 'recovery' })
+    const set = perTarget[ti] || (perTarget[ti] = [])
+    set.push(pr); set.sort((a, b) => (a.recallIndex || 0) - (b.recallIndex || 0))
+    failures.splice(failures.indexOf(f), 1); S.completedRecalls++; doneRecall++
+    onLog && onLog('  \u2705 recovered: ' + got.pair.chinese)
+  }
   const produced = perTarget.reduce((a, s) => a + s.length, 0)
   if (produced !== totalRecall && !(stopSignal && stopSignal.cancelled)) {
     const err = new Error('Generation incomplete: expected ' + totalRecall + ' recalls, produced ' + produced)
@@ -5513,6 +5539,7 @@ function japaneseDuplicateVerdict(jp, targetId, seenMap, rules) {
 }
 // v681 — same target, same APPLICATION (only a demonstrative / pronoun / filler / final particle differs): これ、好き？ after
 // それ、好き？ is not a second use. o.surface = the target's own surface (so the target itself is never normalised away).
+const JA_LIMITED_VARIETY_WORDS = Object.freeze(['はい', 'いいえ', 'うん', 'ううん', 'ええ', 'おはよう', 'こんにちは', 'こんばんは', 'じゃあね', 'またね'])
 function japaneseVariationVerdict(jp, targetId, seenMap, surface) {
   const v = recallVariationKey(jp, surface)
   for (const [, e] of seenMap) if (e && e.targetId === targetId && e.text && recallVariationKey(e.text, surface) === v)
@@ -38697,7 +38724,10 @@ function jaEvaluateRecallCandidate(cand, ctx) {
     if (_v.dropped.length) onLog && onLog('  ℹ declared but not present, dropped: ' + _v.dropped.join(' '))
   } catch (e) { onLog && onLog('  ℹ grammar verification unavailable: ' + e.message) }
   let dup = japaneseDuplicateVerdict(c2.japanese, target.id, seenMap, rules)
-  if (dup.ok) dup = japaneseVariationVerdict(c2.japanese, target.id, seenMap, target.japanese)   // v681: same application = not a new use
+  // v681: same application = not a new use. Social formulas (ありがとう / すみません / ごめん) and reply words (はい / うん / いいえ)
+  // have few natural applications — they are taught as they are used, never pushed into artificial variety (live v681 run:
+  // ありがとう。 vs あ、ありがとうね！ left the recall with no candidate at all)
+  if (dup.ok && !(jaSemanticClass(target.japanese) || {}).standalone && !JA_LIMITED_VARIETY_WORDS.includes(target.japanese)) dup = japaneseVariationVerdict(c2.japanese, target.id, seenMap, target.japanese)
   return { ok: true, cand: c2, repairs, dup }
 }
 // Punctuation never decides validity: "？" as its own segment (romaji "?" / "" / "question") is

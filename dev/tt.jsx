@@ -3601,6 +3601,14 @@ function mandarinSurfaceGrammarProblems(zh, inv) {
   if (/(做|写|跑|走|唱|学|睡|开|玩|讲)的(很|真|太|不|非常|挺)?(好|快|慢|早|晚|不错|怎么样)/.test(s))
     P.push('ungrammatical: ' + s.match(/(做|写|跑|走|唱|学|睡|开|玩|讲)的/)[0] + ' — a degree complement takes 得 (' + s.match(/(做|写|跑|走|唱|学|睡|开|玩|讲)的/)[1] + '得…)')
   // (5) 到 + 哪里 asks "where have you got to" only with 了 (你到哪里了？); otherwise it is 你去哪里？
+  // (7) from the live v681 Mandarin run: stacked modals (你想可以。), a modal with a question-word object (你可以什么？), a
+  //     demonstrative + 什么 without 是 (这个什么？ → 这个是什么？), 来/去 + a transitive verb with nothing after it (我来帮), and a
+  //     one-character adjective fragment (快。)
+  if (/(想|要|会|能)(可以|能|会)/.test(s) && !/不(会|能)/.test(s)) P.push('ungrammatical: two modal verbs stacked (' + s.match(/(想|要|会|能)(可以|能|会)/)[0] + ')')
+  if (/(可以|能|会|想|要)(什么|哪里|哪儿|谁)[？?]?$/.test(s) && !/(要|想)(什么|谁)[？?]?$/.test(s)) P.push('ungrammatical: ' + s.match(/(可以|能|会|想|要)(什么|哪里|哪儿|谁)/)[0] + ' — a modal needs a verb (你可以做什么？)')
+  if (/^(这个|那个|这|那)什么[？?]?$/.test(s)) P.push('ungrammatical: ' + s + ' — needs 是 (这个是什么？)')
+  if (/(来|去)(帮|给|拿|买|找|用|做)[。！!]?$/.test(s)) P.push('incomplete: ' + s + ' — the verb needs an object (我来帮你)')
+  if (/^(快|慢|大|小|多|少|长|短|高)[。！!]?$/.test(s)) P.push('fragment: ' + s + ' — a bare adjective is not a usable recall (这个很快 / 快一点)')
   // (6) only a motion / location verb takes 哪里 directly (去哪里 / 在哪里 / 住哪里); an action verb needs 在…: 你在哪里买？ not 你拿哪里？
   if (/(拿|吃|喝|买|看|找|用|做|等|帮|给|说|听|开|玩|学)哪(里|儿)/.test(s)) P.push('ungrammatical: ' + s.match(/(拿|吃|喝|买|看|找|用|做|等|帮|给|说|听|开|玩|学)哪(里|儿)/)[0] + ' — an action verb takes the place with 在 (你在哪里' + s.match(/(拿|吃|喝|买|看|找|用|做|等|帮|给|说|听|开|玩|学)哪/)[1] + '？)')
   if (/到哪(里|儿)[？?]?$/.test(s) && !/(了|去|来)/.test(s)) P.push('unnatural: ' + s + ' — say 你到哪里了？ (where are you now) or 你去哪里？ (where are you going)')
@@ -11129,7 +11137,13 @@ function makeFallbackPairsRaw(target) {
     {prompt:'Say you just ate '+eng,thai:'เพิ่งกิน'+tw+'ครับ',english:'I just ate '+eng+'.',phonetic:'phûeng gin '+ph+' khrâp',words:[{p:'phûeng',e:'just'},{p:'gin',e:'eat'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
   ]
 
-  // Adjective/state
+  // Adjective/state. v681: รู้สึก ("feel") only for FEELINGS — the live v681 Thai run shipped ผมรู้สึกสั้นครับ ("I feel short") and
+  // ผมรู้สึกยุ่งครับ from this template; any other adjective describes a thing (อันนี้สั้นครับ / อันนี้สั้นไหมคะ / ไม่สั้นครับ)
+  if (type === 'adjective' && !/\b(tired|happy|sad|bored|hungry|full|well|sick|ill|cold|hot|scared|afraid|nervous|angry|lonely|sleepy|worried|excited|comfortable|relaxed|glad|upset|homesick)\b/i.test(eng)) return [
+    {prompt:'Say this one is '+eng,thai:'อันนี้'+tw+'ครับ',english:'This one is '+eng+'.',phonetic:'an-níi '+ph+' khráp',words:[{p:'an-níi',e:'this one'},{p:ph,e:eng},{p:'khráp',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Ask if this one is '+eng,thai:'อันนี้'+tw+'ไหมคะ',english:'Is this one '+eng+'?',phonetic:'an-níi '+ph+' mǎi khá',words:[{p:'an-níi',e:'this one'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khá',e:'[polite]'}],target_phonetic:ph},
+    {prompt:'Say it is not '+eng,thai:'ไม่'+tw+'ครับ',english:'It is not '+eng+'.',phonetic:'mâi '+ph+' khráp',words:[{p:'mâi',e:'not'},{p:ph,e:eng},{p:'khráp',e:'[polite]'}],target_phonetic:ph},
+  ]
   if (type === 'adjective') return [
     {prompt:'Say you feel '+eng,thai:'ผมรู้สึก'+tw+'ครับ',english:'I feel '+eng+'.',phonetic:'phǒm rúu-sùek '+ph+' khrâp',words:[{p:'phǒm',e:'I'},{p:'rúu-sùek',e:'feel'},{p:ph,e:eng},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},
     {prompt:'Ask if they feel '+eng,thai:'คุณรู้สึก'+tw+'ไหมครับ',english:'Do you feel '+eng+'?',phonetic:'khun rúu-sùek '+ph+' mǎi khrâp',words:[{p:'khun',e:'you'},{p:'rúu-sùek',e:'feel'},{p:ph,e:eng},{p:'mǎi',e:'?'},{p:'khrâp',e:'[polite]'}],target_phonetic:ph},

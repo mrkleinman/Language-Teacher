@@ -72,6 +72,9 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
       Array.isArray(tg) && tg.length === 30 && fnSel.length >= 1 && fnSel.length <= 2 && ['แล้ว', 'ก็', 'นะ'].some(x => fnSel.includes(x)), { fnSel })
     T('T6', 'function-word teaching contract: แล้ว / ก็ / นะ each have their own guide (change of state · linking reaction · softener on a suggestion), used by the Thai prompt',
       ['แล้ว', 'ก็', 'นะ'].every(x => G[x] && G[x].length > 40) && /THAI_FUNCTION_TARGET_GUIDE\[target\.thai\]\) return THAI_FUNCTION_TARGET_GUIDE\[target\.thai\]/.test(fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')))
+    const fbS = safe(() => c.makeFallbackPairs({ thai: 'สั้น', english: 'short', phonetic: 'sân', partOfSpeech: 'adjective' })), fbT = safe(() => c.makeFallbackPairs({ thai: 'เหนื่อย', english: 'tired', phonetic: 'nùeai', partOfSpeech: 'adjective' }))
+    T('T9', 'Thai fallback: รู้สึก ("feel") only for feelings — สั้น (short) gets อันนี้สั้นครับ, never ผมรู้สึกสั้นครับ (live v681); เหนื่อย (tired) keeps ผมรู้สึกเหนื่อยครับ',
+      Array.isArray(fbS) && !fbS.some(x => /รู้สึก/.test(x.thai)) && Array.isArray(fbT) && fbT.some(x => /รู้สึกเหนื่อย/.test(x.thai)), { short: Array.isArray(fbS) && fbS.map(x => x.thai), tired: Array.isArray(fbT) && fbT.map(x => x.thai) })
     const lex = c.buildThaiPhoneticLexicon(V), unk = 'ซ็อกโก้'
     const mk = ph => [{ thai: 'ผม' + unk + 'ครับ', phonetic: ph, words: [{ p: 'ผม', e: '' }, { p: unk, e: '' }, { p: 'ครับ', e: '' }], english: 'x' }]
     const good = c.finaliseThaiTrackPhonetics(mk('phǒm sók-goh khráp'), lex)[0], shifted = c.finaliseThaiTrackPhonetics(mk('sók-goh phǒm khráp'), lex)[0]
@@ -106,13 +109,15 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     T('Z11', 'Mandarin: an unresolved recall gets ONE bounded recovery round on its own ledger before the track is declared incomplete (live v681: one 到 recall failed the whole track); 到 has licensed frames 我到了。/ 你到了吗？/ 我快到了。',
       /ONE bounded recovery round: an unresolved recall continues its OWN ledger history/.test(fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')) &&
       (() => { const w = VZ.find(x => x.chinese === '到'); const fbs = [1, 2, 3].map(r => safe(() => c.mandarinFallbackPair(w, invZ, r, new Map(), VZ, c.scarcityRules(invZ)))).filter(x => x && x.chinese).map(x => x.chinese); return fbs.length >= 2 && new Set(fbs).size >= 2 })())
+    T('Z12', 'from the live v681 run — 你想可以。/ 你可以什么？/ 这个什么？/ 我来帮 / 快。 FAIL; 你想要什么？/ 你可以做什么？/ 这个是什么？/ 我来帮你。/ 快一点！/ 我不会。 PASS',
+      bad('你想可以。') && bad('你可以什么？') && bad('这个什么？') && bad('我来帮') && bad('快。') && !bad('你想要什么？') && !bad('你可以做什么？') && !bad('这个是什么？') && !bad('我来帮你。') && !bad('快一点！') && !bad('我不会。'))
     T('Z9', 'variety: 你用这个。 / 我用那个。 are one application (pronoun + demonstrative swap); 你用什么？ is another', sv('你用这个。') === sv('我用那个。') && sv('你用什么？') !== sv('你用这个。'))
     // breadth: no false rejections over all real Mandarin sentences recorded so far, except the reported defect shapes
     const sents = new Set(); const add = r => { const cc = r && r.outcome && r.outcome.content; ((cc && cc.pairs) || []).forEach(p => p.text && sents.add(p.text)) }
     const L = path.join(__dirname, 'benchmark', 'live', 'v677')
     for (const f of fs.readdirSync(L).filter(f => /zh-daily/.test(f))) add(JSON.parse(fs.readFileSync(path.join(L, f), 'utf8')))
     const flagged = [...sents].filter(bad)
-    const known = /^(很快。|我想吃。|我想吃|我慢。|今天好。|明天好。|很多。|我想喝|你做的好吗？|你喜欢|你到哪里？)$/
+    const known = /^(很快。|我想吃。|我想吃|我慢。|今天好。|明天好。|很多。|我想喝|你做的好吗？|你喜欢|你到哪里？|快。|你想可以。|你可以什么？|这个什么？|我来帮)$/
     T('Z10', 'breadth: over every Mandarin sentence in the 3 live v677 Daily runs, the only rejections are the defect shapes this suite names (no wider false rejection)',
       flagged.filter(x => !known.test(x)).length === 0, flagged)
   }

@@ -218,8 +218,8 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0] + (s.match(/const CURRICULUM_BELTS = [\s\S]*?\n\]/) || [''])[0]
     T('G2', 'no vocabulary entry, belt threshold or complexity contract changed in the source (bank / belt tables byte-identical to v674)', banks(src) === banks(base) && banks(src).length > 1000)
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
-    T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679 adds exactly one: the Japanese new-generator switch setting)', writes(src) === writes(base) + (src.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length && (src.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length <= 1, [writes(src), writes(base)])
-    T('G4', 'version v675+ (Step 0 build)', /^v67[5-9]$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
+    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|680)$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
 
   console.log(out.join('\n'))

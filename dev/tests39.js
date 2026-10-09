@@ -135,7 +135,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
   {
     T('E1', 'the benchmark panel offers the shadow pilot (6 × 1 / 6 × 3), passes pipeline=gen2 to the sandboxed worker and keeps pilot results and files apart (-gen2-)',
       /id="pilot1"/.test(SRC) && /runInWorker\(fx, k, \{ pipeline: 'gen2', judgeModel:/.test(SRC) && /const pipeline = m\.pipeline === 'gen2' \? 'gen2' : 'production'/.test(SRC) && /'-gen2'/.test(SRC))
-    T('E2', 'version v679', c.ev('APP_BUILD_VERSION') === 'v679' && c.ev('LISTENING_BUILD_VERSION') === 'v679')
+    T('E2', 'version v680', c.ev('APP_BUILD_VERSION') === 'v680' && c.ev('LISTENING_BUILD_VERSION') === 'v680')
   }
   // ══ F — v678.1 SANDBOX FIXES (defects found in the first live Japanese Daily run, 9 Oct 2026) ══════════════════
   {
@@ -219,6 +219,6 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     T('F16', 'generator prompt: vocabulary discipline (no unlisted nouns, names, 私/あなた) and different real situations', /VOCABULARY DISCIPLINE/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)) && /あなた/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)))
   }
   console.log(out.join('\n'))
-  console.log('\nv679 Gen2 pilot + Japanese switch: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
+  console.log('\nv680 Gen2 + Japanese/Thai/Mandarin switches: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
   process.exit(fails ? 1 : 0)
 })().catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1) })

@@ -1,0 +1,92 @@
+━━━━ TH — simulated real-path track ━━━━
+🧾 TRACK INTEGRITY (th): READY
+  MAIN_TRACK: READY · TARGET PAIRS 90/90 · COHERENCE PASS overall 4/5 (threshold 3) · S1=4
+  TARGET WORDS: 30/30 covered
+  TARGET PAIRS: 90/90 valid target-practice sentences (3 per target word)
+  QC: 0 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 0 other) · 30 replacement sentence(s) generated and verified
+  BRIDGE PAIRS: 0 · FRAMING PAIRS: 2 · TOTAL PLAYABLE LINES: 92
+  PRONUNCIATION ALIGNMENT: 0 issue(s) · UNVERIFIED FINAL PAIRS: 0
+  DAILY TRACK: SELECTED 30 · NEW 3 · LISTENING CALLS after the Daily track: 0 · listeningBuild: none
+  LISTENING TRACK (standalone): selected 30 · NEW 0 · REVIEW 30 · Main generation calls 0 · LISTENING_SELECTION_COUNT=30 LISTENING_MAIN_GENERATION_CALLS=0 LISTENING_GENERATION_CALLS=6 LISTENING_REPAIR_CALLS=1 LISTENING_QC_CALLS=14 LISTENING_TOTAL_PAID_CALLS=21 LISTENING_PROVEN_TURNS=38 LISTENING_MEANING_PLAN_TURNS=38 LISTENING_SCENE_GENERATION_CALLS=6 LISTENING_LOCAL_REPAIR_CALLS=1 LISTENING_REASSIGNMENTS=0 LISTENING_COVERAGE_PLAN_TARGETS=30 LISTENING_VERIFIED_TARGETS=30 LISTENING_SCENE_REGENERATIONS=0 LISTENING_SCENES_COMMITTED_FIRST_PASS=5 LISTENING_SCENES_COMMITTED_AFTER_REPAIR=1 LISTENING_SCENES_COMMITTED_WITH_DEFECTS=0 LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES=0 LISTENING_ATOMIC_REPAIR_CALLS=1 LISTENING_ATOMIC_CAPPED=1 LISTENING_ATOMIC_PATCHES_ACCEPTED=1 LISTENING_ATOMIC_PATCHES_REJECTED=0 LISTENING_ATOMIC_EXHAUSTED=0 LISTENING_TRANSITION_CALLS=6 LISTENING_SCENES_REALLOCATED=0 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=83 LISTENING_PLANNER_FAILURE=false COMPLEXITY_PREFERRED_RANGE=4–16 COMPLEXITY_HARD_MAX=20 COMPLEXITY_WITHIN_PREFERRED=16 COMPLEXITY_SHORT_NATURAL=14 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=0 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=100% LISTENING_TOKEN_USAGE=30893 LISTENING_COST=0.003762
+  QUOTA before recovery → after: 60/90 → 90/90 · removed TARGET PAIRS: 0 · recovered: 30
+  LISTENING: READY · 30/30 required targets · scenes 6 · lines 30 · BRIDGE lines 0 · coherence undefined
+  COVERAGE TRUTHFUL: yes (30 covered targets each present in a line that claims it)
+  CONVERSATION (first 2 scenes):
+   Scene 1 — market
+     A: ผมชอบครอบครัวมากครับ  — I really like the family.  [TARGET ครอบครัว]
+     B: ฉันชอบภาษาไทยค่ะ  — I like the Thai language.  [TARGET ภาษาไทย]
+     A: ผมชอบใครมากครับ  — I really like the who.  [TARGET ใคร]
+     B: ฉันชอบเครื่องบินค่ะ  — I like the airplane.  [TARGET เครื่องบิน]
+     A: ผมมีไม่ดีครับ  — Mock repair.  [TARGET ไม่ดี]
+   Scene 2 — market
+     A: ผมชอบไหนมากครับ  — I really like the where.  [TARGET ไหน]
+     B: ฉันชอบกี่ค่ะ  — I like the how many.  [TARGET กี่]
+     A: ผมชอบวิถีชีวิตมากครับ  — I really like the lifestyle.  [TARGET วิถีชีวิต]
+     B: ฉันชอบนั้นค่ะ  — I like the that.  [TARGET นั้น]
+     A: ผมชอบรักมากครับ  — I really like the love.  [TARGET รัก]
+  RECOVERED TARGET PAIRS (sample, with final pronunciation): ข้าวอยู่ที่ไหนคะ / khâao yùu thîi-nǎi khá {th-79-q1-1-s0 target 79} · น้ำอยู่ที่ไหนคะ / náam yùu thîi-nǎi khá {th-80-q1-1-s0 target 80} · อาหารอยู่ที่ไหนคะ / aa-hǎan yùu thîi-nǎi khá {th-81-q1-1-s0 target 81}
+  GEMINI (simulated at the REST boundary): Model: gemini-2.5-flash-lite ×206 | Track ID: - · run th-track-1791437657548-943 | Total requests: 206 · Successful: 206 · Failed: 0 · Retried: 2 | Generation calls: 63 · QC calls: 113 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 30 · Listening calls: 0 · Other: 0 | Input tokens: 389598 · Output tokens: 21925 · Total tokens: 411523 (provider usage metadata) | Retry requests: 2 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0 | Provider requests: 206 · Provider-error retries: 0 | GENERATION (app level): recalls requested 60 · first attempts 60 · regeneration attempts 2 · total attempts 62 · average 1.03 per recall · resolved first attempt 58/60 · requiring 2 attempts 0 · requiring 3 attempts 0 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 0 | GENERATION WASTE: first-attempt tokens 237733 · regeneration tokens 8411 · regeneration share 3% · regeneration cost USD 0.0009 · fallback-after-paid-retries 0 | THAI GENERATION: targets generated 60 · recall checks 93 (sum of each target's highest recall check; max 11 per recall — one check = one candidate attempt) · initial paid generation calls 60 · paid regeneration calls 2 · deterministic/local checks 31 · local repairs 0 · quota-recovery generation calls 30 · cue-QC calls 44 · naturalness-QC calls 38 · passed on the first paid call 58/60
+  REST requests actually sent: {"gemini-2.5-flash-lite":227}
+  THAI GENERATION: targets generated 60 · recall checks 93 (sum of each target's highest recall check; max 11 per recall — one check = one candidate attempt) · initial paid generation calls 60 · paid regeneration calls 2 · deterministic/local checks 31 · local repairs 0 · quota-recovery generation calls 30 · cue-QC calls 44 · naturalness-QC calls 38 · passed on the first paid call 58/60
+  🗺 SCENE_PLAN 5 mini-scene(s): S1. planning the shopping [9] · S2. planning the shopping — shopping & payment [3] · S3. planning the shopping — places & travel [3] · S4. back at home [8] · S5. back at home (continued) [7]
+  🔤 FINAL_PRONUNCIATION_AUDIT (authoritative, persisted Main Track): 0 issue(s) over 92 line(s)
+  LISTENING_SCENE_PLAN LS1 phase=OPEN required=[ครอบครัว, ภาษาไทย, ใคร, เครื่องบิน, ไม่ดี] expectedTurns=6 max=7 · A and B meet, greet each other and start talking about today
+  LISTENING_SCENE_PLAN LS2 phase=DECIDE required=[ไหน, กี่, วิถีชีวิต, นั้น, รัก] expectedTurns=6 max=7 · they decide what to do and where to go together
+  🔍 SEGMENTATION: 92 deterministic · 0 cached · 0 ambiguous → 0 batched Gemini request(s) |   🔍 SEGMENTATION: 0 deterministic · 0 cached · 0 ambiguous → 0 batched Gemini request(s)
+
+━━━━ JA — simulated real-path track ━━━━
+🧾 TRACK INTEGRITY (ja): READY
+  MAIN_TRACK: READY · TARGET PAIRS 90/90 · COHERENCE PASS overall 4/5 (threshold 3) · S1=4
+  TARGET WORDS: 30/30 covered
+  TARGET PAIRS: 90/90 valid target-practice sentences (3 per target word)
+  QC: 28 candidate sentence(s) rejected (28 cue mismatch · 0 unnatural · 0 other) · 28 replacement sentence(s) generated and verified
+  BRIDGE PAIRS: 0 · FRAMING PAIRS: 0 · TOTAL PLAYABLE LINES: 90
+  PRONUNCIATION ALIGNMENT: 0 issue(s) · UNVERIFIED FINAL PAIRS: 0
+  DAILY TRACK: SELECTED 30 · NEW 3 · LISTENING CALLS after the Daily track: 0 · listeningBuild: none
+  LISTENING TRACK (standalone): selected 30 · NEW 0 · REVIEW 30 · Main generation calls 0 · LISTENING_SELECTION_COUNT=30 LISTENING_MAIN_GENERATION_CALLS=0 LISTENING_GENERATION_CALLS=5 LISTENING_REPAIR_CALLS=0 LISTENING_QC_CALLS=11 LISTENING_TOTAL_PAID_CALLS=16 LISTENING_PROVEN_TURNS=37 LISTENING_MEANING_PLAN_TURNS=37 LISTENING_SCENE_GENERATION_CALLS=5 LISTENING_LOCAL_REPAIR_CALLS=0 LISTENING_REASSIGNMENTS=0 LISTENING_COVERAGE_PLAN_TARGETS=30 LISTENING_VERIFIED_TARGETS=30 LISTENING_SCENE_REGENERATIONS=0 LISTENING_SCENES_COMMITTED_FIRST_PASS=5 LISTENING_SCENES_COMMITTED_AFTER_REPAIR=0 LISTENING_SCENES_COMMITTED_WITH_DEFECTS=0 LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES=0 LISTENING_TRANSITION_CALLS=5 LISTENING_ATOMIC_PATCHES_ACCEPTED=0 LISTENING_ATOMIC_PATCHES_REJECTED=0 LISTENING_ATOMIC_EXHAUSTED=0 LISTENING_SCENES_REALLOCATED=0 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=100 LISTENING_PLANNER_FAILURE=false COMPLEXITY_PREFERRED_RANGE=4–16 COMPLEXITY_HARD_MAX=20 COMPLEXITY_WITHIN_PREFERRED=0 COMPLEXITY_SHORT_NATURAL=30 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=0 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=100% LISTENING_TOKEN_USAGE=24134 LISTENING_COST=0.003127
+  QUOTA before recovery → after: 62/90 → 90/90 · removed TARGET PAIRS: 28 · recovered: 28
+  LISTENING: READY · 30/30 required targets · scenes 5 · lines 30 · BRIDGE lines 0 · coherence undefined
+  COVERAGE TRUTHFUL: yes (30 covered targets each present in a line that claims it)
+  CONVERSATION (first 2 scenes):
+   Scene 1 — market
+     A: それはちょっとよ。  — I think that one is a little, you know.  [TARGET ちょっと,それ]
+     B: 一緒がいいね。  — I think together would be nice, right?  [TARGET 一緒,いい]
+   Scene 2 — market
+     A: それはそこよ。  — I think that one is there, you know.  [TARGET そこ,それ]
+     B: ここがいいね。  — I think here would be nice, right?  [TARGET いい,ここ]
+     A: それはどこよ。  — I think that one is where, you know.  [TARGET どこ,それ]
+     B: 大丈夫がいいね。  — I think okay would be nice, right?  [TARGET 大丈夫,いい]
+     A: それは来るよ。  — I think that one is come, you know.  [TARGET 来る,それ]
+     B: いるがいいね。  — I think exist would be nice, right?  [TARGET いい,いる]
+     A: それはこれよ。  — I think that one is this, you know.  [TARGET これ,それ]
+  RECOVERED TARGET PAIRS (sample, with final pronunciation): それが行くね。 / sore ga iku ne. {ja:2026-09-29T09:00:00.000Z-ja:t2:r1-2-0 target 2} · それが今日ね。 / sore ga kyou ne. {ja:2026-09-29T09:00:00.000Z-ja:t3:r1-3-0 target 3} · それが食べるね。 / sore ga taberu ne. {ja:2026-09-29T09:00:00.000Z-ja:t4:r1-4-0 target 4}
+  GEMINI (simulated at the REST boundary): Model: gemini-2.5-flash-lite ×215 | Track ID: - · run ja-track-1791437670576-7109 | Total requests: 215 · Successful: 215 · Failed: 0 · Retried: 30 | Generation calls: 36 · QC calls: 95 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 84 · Listening calls: 0 · Other: 0 | Input tokens: 268800 · Output tokens: 27954 · Total tokens: 296754 (provider usage metadata) | Retry requests: 30 · caused by provider errors: 0 · DUPLICATES: candidates 1 · prevented 0 (answered from an identical request, not sent) · actually sent 1 (A0_scene ×1) | Provider requests: 215 · Provider-error retries: 0 | GENERATION (app level): recalls requested 90 · first attempts 30 · regeneration attempts 2 · total attempts 32 · average 0.36 per recall · resolved first attempt 88/90 · requiring 2 attempts 2 · requiring 3 attempts 0 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 0 · recovery recalls 28 (28 paid) | GENERATION WASTE: first-attempt tokens 86223 · regeneration tokens 4990 · regeneration share 5% · regeneration cost USD 0.0006 · fallback-after-paid-retries 0 | JAPANESE GENERATION (target groups): target groups 30 · recalls 90 · initial paid group calls 30 · slot regeneration calls 2 · recall checks 32 (sum of each group's highest recall check; max 11 per recall — one check = one candidate attempt) · local repairs 0 · reading repair calls (Flash-Lite) 0 · accepted from the first call 88/90 · fallback 0 · unresolved 0 · quota-recovery generation calls 84
+  REST requests actually sent: {"gemini-2.5-flash-lite":231}
+  🗺 SCENE_PLAN 5 mini-scene(s): S1. Talking about food [7] · S2. Getting somewhere [1] · S3. planning the shopping (continued) [7] · S4. back at home [8] · S5. back at home (continued) [7]
+  LISTENING_SCENE_PLAN LS1 phase=OPEN required=[ちょっと, 一緒] expectedTurns=2 max=3 · A and B meet and start talking about today
+  LISTENING_SCENE_PLAN LS2 phase=DECIDE required=[そこ, ここ, どこ, 大丈夫, 来る, いる, これ] expectedTurns=6 max=7 · they decide what to do and where to go together
+  LISTENING_SCENE_PLAN LS3 phase=ARRANGE required=[明日, 今日, たぶん, 見る, 分かる, ある, 行く] expectedTurns=11 max=12 · they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed
+  🔤 FINAL readings/romaji (after recovery): 0 alignment issue(s)
+
+━━━━ ZH — simulated real-path track ━━━━
+🧾 TRACK INTEGRITY (zh): READY
+  MAIN_TRACK: READY · TARGET PAIRS 90/90 · COHERENCE PASS overall 4/5 (threshold 3) · S1=4
+  TARGET WORDS: 30/30 covered
+  TARGET PAIRS: 90/90 valid target-practice sentences (3 per target word)
+  QC: 28 candidate sentence(s) rejected (28 cue mismatch · 0 unnatural · 0 other) · 28 replacement sentence(s) generated and verified
+  BRIDGE PAIRS: 0 · FRAMING PAIRS: 4 · TOTAL PLAYABLE LINES: 94
+  PRONUNCIATION ALIGNMENT: 0 issue(s) · UNVERIFIED FINAL PAIRS: 0
+  DAILY TRACK: SELECTED 30 · NEW 3 · LISTENING CALLS after the Daily track: 0 · listeningBuild: none
+  LISTENING TRACK (standalone): selected 30 · NEW 0 · REVIEW 30 · Main generation calls 0 · LISTENING_SELECTION_COUNT=30 LISTENING_MAIN_GENERATION_CALLS=0 LISTENING_GENERATION_CALLS=16 LISTENING_REPAIR_CALLS=15 LISTENING_QC_CALLS=14 LISTENING_TOTAL_PAID_CALLS=45 LISTENING_PROVEN_TURNS=37 LISTENING_MEANING_PLAN_TURNS=37 LISTENING_SCENE_GENERATION_CALLS=16 LISTENING_LOCAL_REPAIR_CALLS=15 LISTENING_REASSIGNMENTS=0 LISTENING_COVERAGE_PLAN_TARGETS=30 LISTENING_VERIFIED_TARGETS=0 LISTENING_SCENE_REGENERATIONS=8 LISTENING_SCENES_COMMITTED_FIRST_PASS=0 LISTENING_SCENES_COMMITTED_AFTER_REPAIR=0 LISTENING_SCENES_COMMITTED_WITH_DEFECTS=0 LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES=0 LISTENING_ATOMIC_REPAIR_CALLS=15 LISTENING_ATOMIC_CAPPED=14 LISTENING_ATOMIC_PATCHES_ACCEPTED=0 LISTENING_ATOMIC_PATCHES_REJECTED=25 LISTENING_ATOMIC_EXHAUSTED=16 LISTENING_STRATEGY_ESCALATIONS=24 LISTENING_GLOBAL_REPLANS=3 LISTENING_REMAINING_PLAN_REBUILDS=3 LISTENING_REPAIR_DEDUPED=1 LISTENING_UNCOMMITTED_SCENES=5 LISTENING_SCENES_REALLOCATED=0 LISTENING_PHASES_FIRST_GENERATION_PCT=0 LISTENING_PLANNER_FAILURE=false LISTENING_TOKEN_USAGE=55952 LISTENING_COST=0.00728 · failed: TARGET_COVERAGE=FAIL, SCENES_VALIDATED=FAIL
+  QUOTA before recovery → after: 62/90 → 90/90 · removed TARGET PAIRS: 28 · recovered: 28
+  LISTENING: NOT_READY · 0/30 required targets · scenes 0 · lines 0 · BRIDGE lines 0 · coherence undefined
+  RECOVERED TARGET PAIRS (sample, with final pronunciation): 我要钱。 / wǒ yào qián. {zh:2026-09-29T09:00:00.000Z-zh:t30:r1-30-0 target 30} · 我要买。 / wǒ yào mǎi. {zh:2026-09-29T09:00:00.000Z-zh:t31:r1-31-0 target 31} · 我要人。 / wǒ yào rén. {zh:2026-09-29T09:00:00.000Z-zh:t32:r1-32-0 target 32}
+  GEMINI (simulated at the REST boundary): Model: gemini-2.5-flash-lite ×288 | Track ID: - · run zh-track-1791437673947-1900 | Total requests: 288 · Successful: 288 · Failed: 0 · Retried: 28 | Generation calls: 108 · QC calls: 95 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 85 · Listening calls: 0 · Other: 0 | Input tokens: 396926 · Output tokens: 16112 · Total tokens: 413038 (provider usage metadata) | Retry requests: 28 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0 | Provider requests: 288 · Provider-error retries: 0 | GENERATION WASTE: first-attempt tokens 259235 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries 0 | Estimated Gemini cost: USD 0.0461 (≈ SGD 0.0600 at 1.3 — assumed rate) | TOP GEMINI COST SOURCES
+  REST requests actually sent: {"gemini-2.5-flash-lite":332}
+  LISTENING_SCENE_PLAN LS1 phase=OPEN required=[昨天, 那个, 不, 去, 怎么, 我, 什么] expectedTurns=6 max=7 · A and B meet and start talking about today
+  LISTENING_SCENE_PLAN LS2 phase=DECIDE required=[没有, 哪里, 这里, 那里, 为什么, 好, 在] expectedTurns=8 max=9 · they decide what to do and where to go together
+  LISTENING_SCENE_PLAN LS3 phase=ARRANGE required=[今天, 明天, 有, 谁, 这个, 你] expectedTurns=7 max=8 · they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed
+  LISTENING_SCENE_PLAN LS4 phase=DO required=[吃, 喝, 喜欢, 现在, 要] expectedTurns=8 max=9 · they do the main activity there: eat, look around or pick something
+  🔤 FINAL pinyin/segments (after recovery): 0 alignment issue(s)
+
+SUMMARY [{"lang":"th","status":"READY","pairs":90,"dailyListeningCalls":0,"listeningTrack":"READY","listeningCoverage":"30/30","listeningMainGenerationCalls":0},{"lang":"ja","status":"READY","pairs":90,"dailyListeningCalls":0,"listeningTrack":"READY","listeningCoverage":"30/30","listeningMainGenerationCalls":0},{"lang":"zh","status":"READY","pairs":90,"dailyListeningCalls":0,"listeningTrack":"NOT_READY","listeningCoverage":"0/30","listeningMainGenerationCalls":0}]

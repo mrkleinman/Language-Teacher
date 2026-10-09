@@ -1,0 +1,47 @@
+PASS 1A   ONE canonical 11-check table in the exact belt order (White → Orange → Orange+Stripe → … → Brown+Stripe); Thai, Japanese and Mandarin read the same colour and emoji for check N
+PASS 1B   a recall that never passes walks EVERY position 1…11 in order (v672: paid attempts then deterministic fallback CANDIDATES — the decision is not a check) — no jump, no off-by-one; every logged ordinal carries its own belt icon
+PASS 1C   the three recalls of ONE target keep INDEPENDENT histories: after 2 paid checks r2 is accepted by its 2nd fallback check (4), r3 by its 1st (3), r1 walks to 11 — each pair carries its own _checkHistory and the fallback keeps its ACTUAL count
+PASS 1D   a recall that succeeds at check 3 lights ONLY positions 1–3 (checkTier 3, history [1,2,3]); checks ≠ paid calls (3 checks, 3 calls here because each check was a paid regeneration)
+PASS 1E   batching is kept: ONE paid group call is check 1 of each of its 3 recalls (3 histories [1], paidCalls 1) — a check is not an API call
+PASS 1F   reload and QC rerun preserve the exact visual state: recall circles + histories are rebuilt from the saved pairs (r1 [1] · r2 fallback [1…5] · r3 from a Thai source tier 3 → [1,2,3])
+PASS 1G   the pill: a recall that succeeded at check 3 lights ONLY the first 3 of its 11 positions (white, orange, orange-stripe); an in-progress recall at check 11 lights all 11 in belt order
+PASS 1H   ZH equivalence: a Mandarin recall accepted at its 4th tier (the deterministic fallback) shows its REAL count 4 and history [1…4]
+PASS 1I   TH equivalence: a Thai response line (bridge, supportsTargetId) lights its recall circle; a template fallback after 7 checks shows 7 (not the old fixed "10"); a Gemini line shows its own check
+PASS 2A   ศูนย์ means ZERO: construction planning offers only constructions the TAUGHT words can express (phone number / check a digit / score / temperature) — never a zero price; ≥ 3 distinct uses = feasible
+PASS 2B   pre-freeze feasibility: ศูนย์ with < 3 expressible uses is DEFERRED before the freeze (slot backfilled, still 30 targets, logged) and its SRS state is untouched (it stays due)
+PASS 2C   quota recovery names the MISSING TARGET + its sense and a construction for THIS attempt; a failed attempt moves to the NEXT construction; a construction an accepted line already uses is not offered first
+PASS 2D   objective lexical-sense checks: zero price only with a free context · หน่อย not on a descriptive adjective (fine in a request) · เจอ + person = meet, not find · พี่ as an address term ≠ "older brother" · จ่าย is plain spoken Thai
+PASS 2E   the semantic judge knows the v671 lexical facts (จ่าย everyday · หนึ่งหมื่น not สิบพัน · "just right" needs no เพิ่ง · พอดี senses · เจอ meet/find · พี่ address · หน่อย · zero price · stylistic variation is not an error)
+PASS 2F   an unparseable coherence reply is parsed robustly: fences, prose around the JSON, trailing commas, and a TRUNCATED reply keeps its complete section verdicts (flagged partial)
+FAIL 2G   MAIN coherence: an unparseable judge reply gets ONE bounded chunked retry (2 smaller calls) → VERIFIED 4/4 sections; still unparseable → UNVERIFIED with the precise reason (≤ 3 calls, blocks READY)
+      {"r1":["VERIFIED",true],"r2":{"state":"UNVERIFIED","reason":"no section verdict parsed after 4 judge call(s)","sections":4,"attempts":4}}
+PASS 2H   speaker convention B = female: a Listening line that only lacks its final particle (live L30 "ใช่ค่ะ ฉันอยากทานอาหาร") gets ค่ะ deterministically; a line with a particle glued mid-sentence is NOT patched
+PASS 2L   "just right" does NOT require เพิ่ง: only the TEMPORAL "just" (has just arrived / just now) does (live: เสื้อตัวนี้ขนาดพอดีครับ was rejected for "just right")
+PASS 2M   spacing preserves CLAUSE boundaries (สีก็สวย ขนาดกำลังดีครับ · โอเค งั้น… · ห้าร้อยบาท แพงค่ะ · ใช่ค่ะ ฉัน…) and still collapses word-by-word token spacing (ผม ชอบ สี ดำ ครับ)
+PASS 2N   English-cue accuracy for Thai idioms / collocations: หิวข้าว is "hungry" (not "hungry for rice"); มากับรถแท็กซี่ is not "came by taxi" (นั่งรถแท็กซี่มา)
+PASS 2I   Listening turn plan keeps HEADROOM: the planned total stays ≤ 85 % of the maximum (live: "planned 43 turns (max 44)")
+PASS 2J   (v673) a phase whose candidate keeps a defect is REGENERATED from its frozen meaning plan (the exact defect named) — the SAME targets, the SAME turn plan — before any target moves; it commits only clean; nothing is replanned, unplaced or committed with defects
+PASS 2K   (v673) a phase defective on EVERY generation is NOT scattered: ≤ 1 semantic GLOBAL REPLAN, then the defective exchange is TRIMMED (no paid call) — the defective line never enters the conversation, every unheard target is explicitly UNPLACED, 0 reassignments, 0 committed-with-defects, NOT_READY
+PASS 3A   speech style ids map onto the register table: "casual" IS Very Casual (it used to fall through to Natural)
+PASS 3B   register is judged by the SCENE RELATIONSHIP, not a blanket ban: です／ます to a shop assistant is fine in Natural; between friends it is flagged; Very Casual flags it; a Polite track accepts it
+PASS 3C   no fallback privilege — the live fallbacks are rejected by the SHARED gate: 今日の今日は？ · 今日は？ · 場所は何？ · この物、何？ · 今日する？; natural lines pass (これは何？ 名前は？ 何する？)
+PASS 3D   the fallback frames no longer BUILD those sentences (今日の今日 / 今日は？ / X は何？ / 物ある？ / bare 今日する？)
+PASS 3E   cue accuracy (objective): desire 〜たい needs "want" · "want" needs a desire form · a question is not cued as a statement · a ね tag question may be rendered "…, right?"
+PASS 3F   contextual 何: あれは何？ is no longer rejected for "dictionary alternatives" — the reading is resolved from the sentence (あれはなに？) and the romaji reads the particle as spoken (are wa nani)
+PASS 3G   morphology: conjugated targets are recognised — 来る in kana (きました / こない), する colloquial (しよっか / しちゃった), 行く volitional / ちゃう (行こっか / 行っちゃう)
+PASS 3H   every rejection names its category: taught lemma absent · untaught grammar · untaught content · tokenisation · duplicate · genuine error
+PASS 3I   the scene plan travels with the Japanese track: the coherence audit sees one section PER mini-scene (live: 8 mini-scenes became "coherence 1/1")
+PASS 3J   an unparseable group verdict is NEVER "clean": asked once more, then UNVERIFIED (the group is marked unresolved, not passed)
+PASS 5A   Q-type → response meaning: なんで → いいえ (WHY answered by a bare "No.") and いくら → 映画 (HOW MUCH answered without an amount) are rejected; a reason / an amount / "I don't know" pass
+PASS 5B   an apology is its own act: "sorry" → APOLOGY (live: ごめん was planned as a QUESTION) → expects an ACKNOWLEDGEMENT; an apology inside a QUESTION turn is rejected before generation
+PASS 5C   every planned turn carries act, topic, requested information, expected response meaning, target ids + senses, relationship and register; the prompt shows what each reply must give
+PASS 4A   NEW per track: ZH Daily at Mukyu = 5 · JA 3 · TH 5 (belt) · ZH Revision / Listening 0 · ZH above Mukyu unchanged (3)
+PASS 4B   the Mandarin selector takes 5 NEW words at Mukyu (not a hardcoded 3); with only 3 eligible it takes 3
+PASS 4C   the shared track selector composes 5 NEW + 25 REVIEW for a Mandarin Daily at Mukyu; NEW is the selection role (a review word is never labelled NEW)
+PASS 4D   Mandarin grammar (live): 太吗？ · 我一点想吃 · 我一点要吃 · 太贵。 (needs 了) · 你也吗？ are rejected; 太贵了 · 我有点想吃 · 我想吃一点 · 很好吃 · 我们一起去吧 · 这个不太贵 pass
+PASS 4E   the Mandarin fallback never builds a dangling adverb (太吗？ / 太。) — a degree adverb gets an adjective frame (太X了。) or stays unresolved; no unfiltered fallback pool
+PASS 4F   segmentation keeps compounds whole (时间 时候 taught; 下午 周末 公园 kept as ONE untaught word, never 下 / 午)
+PASS 4G   cue accuracy (objective): 我… cued as "you" and 你… cued as "I" are rejected; a question rendered as a statement is rejected
+PASS 4H   mock / live integrity: provenance is MEASURED — a mocked transport never counts as a live provider response (the run is reported NOT LIVE)
+
+v671 unified language quality regression: 43/44 — 1 FAILED

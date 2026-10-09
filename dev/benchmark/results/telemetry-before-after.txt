@@ -1,0 +1,108 @@
+══ zh-daily-2026-10-08.sim.json (recorded on v674, replayed on the current build; content identical: true)
+  BEFORE (lines that changed):
+   - QC: 0 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 0 other) · 0 replacement sentence(s) generated and verified
+   - Total requests: 161 · Successful: 161 · Failed: 0 · Retried: 0
+   - Retry requests: 0 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+   - GENERATION WASTE: first-attempt tokens 234272 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries 0
+   - Total requests: 161 · Successful: 161 · Failed: 0 · Retried: 0
+   - Retry requests: 0 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+   - GENERATION WASTE: first-attempt tokens 234272 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries 0
+  AFTER  (lines that changed / were added):
+   + CUE_CHECK_COVERAGE scored 90/90 eligible pair(s)
+   + 🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=124 · by origin: model reply 122 · deterministic fallback (no request) 2 · outcomes: accepted 90 · rejected 34 · fallback accepted for 2 recall(s) (2 after 20 rejected model candidate(s)) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+   + QC: 0 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 0 other) · 0 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 124 evaluated, 34 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+   + Total requests: 161 · Successful: 161 · Failed: 0 · Retried: 32
+   + Retry requests: 32 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+   + GENERATION WASTE: first-attempt tokens 171132 · regeneration tokens 63140 · regeneration share 27% · regeneration cost USD 0.0073 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+   + PAID REQUESTS BY PURPOSE: generation (first attempt / scene) 90 (171132 tok, USD 0.0200) · QC judging 39 (19593 tok, USD 0.0024) · regeneration (paid retry of a rejected candidate) 32 (63140 tok, USD 0.0073)
+   + Total requests: 161 · Successful: 161 · Failed: 0 · Retried: 32
+   + Retry requests: 32 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+   + GENERATION WASTE: first-attempt tokens 171132 · regeneration tokens 63140 · regeneration share 27% · regeneration cost USD 0.0073 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+   + PAID REQUESTS BY PURPOSE: generation (first attempt / scene) 90 (171132 tok, USD 0.0200) · QC judging 39 (19593 tok, USD 0.0024) · regeneration (paid retry of a rejected candidate) 32 (63140 tok, USD 0.0073)
+══ th-daily-2026-10-08.sim.json (recorded on v674, replayed on the current build; content identical: true)
+  BEFORE (lines that changed):
+   - QC: 0 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 0 other) · 60 replacement sentence(s) generated and verified
+   - GENERATION (app level): recalls requested 31 · first attempts 31 · regeneration attempts 31 · total attempts 62 · average 2.00 per recall · resolved first attempt 0/31 · requiring 2 attempts 0 · requiring 3 attempts 0 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 0
+  AFTER  (lines that changed / were added):
+   + 🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=218 · by origin: model reply 216 · deterministic fallback (no request) 2 · outcomes: accepted 89 · rejected 70 · provisional 59 · fallback accepted for 1 recall(s) (1 after 2 rejected model candidate(s)) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+   + QC: 0 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 0 other) · 60 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 218 evaluated, 70 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+   + GENERATION (app level; unit = one TARGET-GROUP request (3 recalls each) — not one recall): target-group requests 31 · first attempts 31 · regeneration attempts 31 · total attempts 62 · average 2.00 per target group · resolved first attempt 0/31 · requiring 2 attempts 0 · requiring 3 attempts 0 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 0
+   + PAID REQUESTS BY PURPOSE: QC judging 111 (118464 tok, USD 0.0134) · generation (first attempt / scene) 32 (128051 tok, USD 0.0140) · quota / target recovery 32 (36621 tok, USD 0.0061) · regeneration (paid retry of a rejected candidate) 31 (141765 tok, USD 0.0153)
+══ synthetic-ja-daily.sim.json (recorded on v674, replayed on the current build; content identical: true)
+  BEFORE (lines that changed):
+   - QC: 0 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 0 other) · 0 replacement sentence(s) generated and verified
+  AFTER  (lines that changed / were added):
+   + CUE_CHECK_COVERAGE scored 90/90 eligible pair(s)
+   + 🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=92 · by origin: model reply 92 · outcomes: accepted 90 · rejected 2 · fallback accepted for 0 recall(s) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+   + QC: 0 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 0 other) · 0 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 92 evaluated, 2 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+   + PAID REQUESTS BY PURPOSE: QC judging 39 (23081 tok, USD 0.0027) · generation (first attempt / scene) 34 (97759 tok, USD 0.0148) · regeneration (paid retry of a rejected candidate) 2 (4990 tok, USD 0.0006)
+   + PAID REQUESTS BY PURPOSE: QC judging 39 (23081 tok, USD 0.0027) · generation (first attempt / scene) 34 (97759 tok, USD 0.0148) · regeneration (paid retry of a rejected candidate) 2 (4990 tok, USD 0.0006)
+══ th-listening-2026-10-08.sim.json (recorded on v674, replayed on the current build; content identical: true)
+  BEFORE (lines that changed):
+   - 🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn
+   - 🎧 LISTENING_CLOSED_VOCAB PASS
+   - 🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS
+   - 🎧 LISTENING_NATURALNESS PASS
+   - 🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn
+   - 🎧 LISTENING_CLOSED_VOCAB PASS
+   - 🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS
+   - 🎧 LISTENING_NATURALNESS PASS
+   - 🎧 LISTENING_TURN_BUDGET 0 turns (allowed 24–44) PASS
+   - GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries 0
+  AFTER  (lines that changed / were added):
+   + 🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_CLOSED_VOCAB PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_NATURALNESS PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_CLOSED_VOCAB PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_NATURALNESS PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_TURN_BUDGET 0 turns (allowed 24–44) PASS [scope: committed turns only — 7 phase(s) were not committed]
+   + GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+   + PAID REQUESTS BY PURPOSE: listening scene generation 18 (50059 tok, USD 0.0063) · listening judging 13 (15131 tok, USD 0.0017) · listening repair 13 (9006 tok, USD 0.0011)
+══ synthetic-ja-listening.cohfail.sim.json (recorded on v674, replayed on the current build; content identical: true)
+  BEFORE (lines that changed):
+   - 🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn
+   - 🎧 LISTENING_CLOSED_VOCAB PASS
+   - 🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS
+   - 🎧 LISTENING_NATURALNESS PASS
+   - 🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn
+   - 🎧 LISTENING_CLOSED_VOCAB PASS
+   - 🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS
+   - 🎧 LISTENING_NATURALNESS PASS
+   - 🎧 LISTENING_TURN_BUDGET 0 turns (allowed 24–44) PASS
+   - GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries 0
+  AFTER  (lines that changed / were added):
+   + 🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_CLOSED_VOCAB PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_NATURALNESS PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_CLOSED_VOCAB PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_NATURALNESS PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+   + 🎧 LISTENING_TURN_BUDGET 0 turns (allowed 24–44) PASS [scope: committed turns only — 1 phase(s) were not committed]
+   + GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+   + PAID REQUESTS BY PURPOSE: listening judging 6 (3388 tok, USD 0.0004) · listening scene generation 2 (6825 tok, USD 0.0009) · listening repair 2 (2162 tok, USD 0.0002)
+══ synthetic-zh-daily.reject.sim.json (recorded on v674, replayed on the current build; content identical: true)
+  BEFORE (lines that changed):
+   - QC: 28 candidate sentence(s) rejected (28 cue mismatch · 0 unnatural · 0 other) · 28 replacement sentence(s) generated and verified
+   - Total requests: 288 · Successful: 288 · Failed: 0 · Retried: 28
+   - Retry requests: 28 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+   - GENERATION WASTE: first-attempt tokens 259235 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries 0
+   - Total requests: 288 · Successful: 288 · Failed: 0 · Retried: 28
+   - Retry requests: 28 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+   - GENERATION WASTE: first-attempt tokens 259235 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries 0
+  AFTER  (lines that changed / were added):
+   + CUE_CHECK_COVERAGE scored 90/90 eligible pair(s)
+   + 🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=138 · by origin: model reply 137 · deterministic fallback (no request) 1 · outcomes: rejected 48 · accepted 90 · fallback accepted for 1 recall(s) (1 after 10 rejected model candidate(s)) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+   + QC: 28 candidate sentence(s) rejected (28 cue mismatch · 0 unnatural · 0 other) · 28 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 138 evaluated, 48 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+   + Total requests: 288 · Successful: 288 · Failed: 0 · Retried: 46
+   + Retry requests: 46 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+   + GENERATION WASTE: first-attempt tokens 215104 · regeneration tokens 44131 · regeneration share 17% · regeneration cost USD 0.0050 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+   + PAID REQUESTS BY PURPOSE: generation (first attempt / scene) 90 (215104 tok, USD 0.0244) · quota / target recovery 85 (92259 tok, USD 0.0103) · QC repair (replace / improve) 84 (51539 tok, USD 0.0052) · regeneration (paid retry of a rejected candidate) 18 (44131 tok, USD 0.0050) · QC judging 11 (10005 tok, USD 0.0013)
+   + Total requests: 288 · Successful: 288 · Failed: 0 · Retried: 46
+   + Retry requests: 46 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+   + GENERATION WASTE: first-attempt tokens 215104 · regeneration tokens 44131 · regeneration share 17% · regeneration cost USD 0.0050 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+   + PAID REQUESTS BY PURPOSE: generation (first attempt / scene) 90 (215104 tok, USD 0.0244) · quota / target recovery 85 (92259 tok, USD 0.0103) · QC repair (replace / improve) 84 (51539 tok, USD 0.0052) · regeneration (paid retry of a rejected candidate) 18 (44131 tok, USD 0.0050) · QC judging 11 (10005 tok, USD 0.0013)

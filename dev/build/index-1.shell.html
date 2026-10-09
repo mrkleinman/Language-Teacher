@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#d4a94a"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
+<meta name="app-version" content="v667"/>
+  <title>Thai Teacher</title>
+  <link rel="manifest" href="./manifest.json"/>
+  <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
+  <script>
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v667';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v667').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    let dp;
+    window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
+    function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
+    window.addEventListener('appinstalled',()=>{document.getElementById('ib').style.display='none'});
+  </script>
+  <div id="ib" onclick="installApp()" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#d4a94a,#b88a35);color:#0b1120;border:none;border-radius:24px;padding:12px 24px;font-family:Sarabun,sans-serif;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 20px rgba(212,169,74,.5);align-items:center;gap:8px;">⬇️ Install Thai Teacher</div>
+    <script>
+  (function() {
+    function showErr(t,m,s,c){document.body.style.cssText="margin:0;background:#0b1120;min-height:100vh;padding:20px;box-sizing:border-box";document.body.innerHTML="<div style='max-width:480px;font-family:monospace'><div style='color:"+c+";font-size:16px;font-weight:800;margin-bottom:12px'>"+t+"</div><div style='background:#1a1a2e;border:1px solid "+c+";border-radius:10px;padding:14px'><div style='color:#fca5a5;font-size:13px;word-break:break-all;margin-bottom:10px'>"+(m||"")+"</div>"+(s?"<pre style='color:#94a3b8;font-size:10px;white-space:pre-wrap;margin:0'>"+(""+s).slice(0,800)+"</pre>":"")+"</div></div>";}
+    window.addEventListener("error",function(e){showErr("App crashed",e.message||(e+""),e.error&&e.error.stack||"at "+e.filename+":"+e.lineno+":"+e.colno,"#f43f5e");});
+    window.addEventListener("unhandledrejection",function(e){var r=e.reason;showErr("Async error",r?(r.message||r+""):"Unhandled rejection",r&&r.stack,"#f59e0b");});
+  })();
+  </script>
+<script type="text/babel">
+</script>
+</body>
+</html>

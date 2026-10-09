@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Native Speaker Review</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1f;--muted:#6b6b70;--line:#e3e1da;--accent:#9a6b12;--accent-ink:#fff;--sel:#1f5f8b;--sel-ink:#fff;--warn:#a1361f;--ok:#1d6b3a;--chip:#f0eee8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121316;--card:#1b1d22;--ink:#ececf0;--muted:#9a9ca6;--line:#2c2f36;--accent:#d4a94a;--accent-ink:#111;--sel:#5aa6dc;--sel-ink:#0b1120;--warn:#ef8a74;--ok:#6fd39a;--chip:#24272e}}
+:root[data-theme="dark"]{--bg:#121316;--card:#1b1d22;--ink:#ececf0;--muted:#9a9ca6;--line:#2c2f36;--accent:#d4a94a;--accent-ink:#111;--sel:#5aa6dc;--sel-ink:#0b1120;--warn:#ef8a74;--ok:#6fd39a;--chip:#24272e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI","Noto Sans Thai","Noto Sans JP","Noto Sans SC",sans-serif}
+.w{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:6px 0 4px}h2{font-size:15px;margin:0 0 8px}
+.m{color:var(--muted);font-size:13px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0}
+label.f{display:block;margin:8px 0 2px;font-size:13px;color:var(--muted)}input[type=text],select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+button{font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:8px 12px;cursor:pointer}
+button.p{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}button:disabled{opacity:.45;cursor:default}
+.mat{font-size:22px;line-height:1.55;margin:6px 0}.mat .sp{display:inline-block;min-width:26px;color:var(--muted);font-size:13px;font-weight:600}
+.tgt{display:inline-block;background:var(--chip);border-radius:6px;padding:1px 8px;font-weight:600}
+.ctx{border-left:3px solid var(--line);padding-left:10px;margin-top:8px}.ctx li{margin:2px 0}
+.q{border-top:1px solid var(--line);padding:10px 0}.q:first-child{border-top:0}
+.qt{font-weight:600;font-size:14px}.qc{font-size:12.5px;color:var(--muted);margin:2px 0 6px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}.opts button{padding:6px 10px;font-size:13.5px}.opts button.on{background:var(--sel);color:var(--sel-ink);border-color:var(--sel)}
+.cats{display:grid;grid-template-columns:1fr;gap:4px;font-size:13px}@media (min-width:640px){.cats{grid-template-columns:1fr 1fr}}
+.nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.dots{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}.dots span{width:12px;height:12px;border-radius:3px;background:var(--line);cursor:pointer}.dots span.d{background:var(--ok)}.dots span.c{outline:2px solid var(--accent)}
+.bad{color:var(--warn)}.good{color:var(--ok)}
+.sticky{position:sticky;bottom:0;background:var(--bg);padding:10px 0;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="w" id="app"></div>
+<script>
+const PACK = /*__PACK__*/null
+const LN = { th: 'Thai', ja: 'Japanese', zh: 'Mandarin Chinese' }
+const NICE = { ok: 'OK', error: 'Error', natural: 'Natural', marginal: 'Odd / stilted', unnatural: 'Unnatural', correct: 'Correct', 'wrong-sense': 'Wrong meaning', 'wrong-form': 'Wrong form', absent: 'Missing', 'n/a': 'Not applicable',
+  match: 'Matches', mismatch: 'Does not match', answers: 'Answers it', 'does-not-answer': 'Does not answer', coherent: 'Makes sense', incoherent: 'Does not make sense', useful: 'Useful', weak: 'Weak', 'not-useful': 'Not useful' }
+const TITLE = { grammar: 'Grammar', naturalness: 'Naturalness', targetUsage: 'Target word', cue: 'Cue / English', qa: 'Question → answer', coherence: 'Makes sense together', register: 'Politeness, speech level, gender', usefulness: 'Teaching value' }
+const KEY = 'tt-golden-review-v1'
+let S = { reviewer: { name: '', nativeLanguage: '', isNative: false }, lang: null, i: 0, answers: {} }
+try { const d = JSON.parse(localStorage.getItem(KEY) || 'null'); if (d && d.answers) S = { ...S, ...d } } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)) } catch (e) {} }
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+const items = () => PACK.items.filter(it => it.language === S.lang)
+const dims = Object.keys(PACK.dimensions)
+function defaults(it) { const d = {}; if (!it.cue) d.cue = 'n/a'; if (it.kind === 'sentence' || it.turns.length < 2) { d.qa = 'n/a'; d.coherence = 'n/a' } return d }
+function ans(it) { if (!S.answers[it.id]) S.answers[it.id] = { verdicts: defaults(it), errorCategories: [], comment: '', unsure: false }; return S.answers[it.id] }
+const complete = it => { const a = S.answers[it.id]; return !!a && dims.every(d => a.verdicts[d]) }
+function exportFile() {
+  const out = { format: 'tt-golden-human-labels/1', golden: PACK.golden, rubric: PACK.rubric, reviewer: { ...S.reviewer, reviewedLanguage: S.lang }, exportedAt: new Date().toISOString(),
+    labelKind: 'HUMAN (native-speaker review, blind: no model labels were shown)',
+    items: items().filter(it => S.answers[it.id]).map(it => ({ id: it.id, complete: complete(it), ...S.answers[it.id] })) }
+  const blob = new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }), u = URL.createObjectURL(blob), a = document.createElement('a')
+  a.href = u; a.download = 'golden-v1-human-labels-' + S.lang + '-' + (S.reviewer.name || 'reviewer').replace(/\W+/g, '_') + '.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 3000)
+}
+function start() {
+  const langs = Object.keys(PACK.counts)
+  return '<h1>Native speaker review</h1><div class="m">Sentences and short conversations written by a language-learning app for adult beginners. Your judgement becomes the reference the app’s automatic checks are measured against.</div>' +
+    '<div class="card"><h2>How it works</h2><ul class="m" style="margin:0;padding-left:18px"><li>Judge each item as a native speaker. You will not see what the app or any AI decided — that is deliberate.</li>' +
+    '<li>Eight short questions per item, one tap each. Use “Not applicable” only where the question does not apply.</li><li>Your answers stay in this browser until you press <b>Download my answers</b>; send that file back.</li><li>About 30–45 items per language, 20–40 minutes.</li></ul></div>' +
+    '<div class="card"><h2>About you</h2><label class="f">Name or initials</label><input type="text" id="nm" value="' + esc(S.reviewer.name) + '">' +
+    '<label class="f">Your native language</label><input type="text" id="nl" value="' + esc(S.reviewer.nativeLanguage) + '" placeholder="e.g. Thai (Bangkok)">' +
+    '<label class="f" style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="nat" ' + (S.reviewer.isNative ? 'checked' : '') + '> I am a native speaker of the language I will review</label>' +
+    '<label class="f">Language to review</label><div class="opts">' + langs.map(l => '<button data-l="' + l + '" class="' + (S.lang === l ? 'on' : '') + '">' + LN[l] + ' (' + PACK.counts[l] + ')</button>').join('') + '</div>' +
+    '<div style="margin-top:12px"><button class="p" id="go">Start</button></div></div>'
+}
+function itemView() {
+  const L = items(), it = L[S.i], a = ans(it), c = it.reviewContext || {}
+  const mat = it.turns.map(t => '<div class="mat" lang="' + it.language + '"><span class="sp">' + esc(t.speaker || '') + '</span>' + esc(t.text) + '</div>').join('')
+  let ctx = ''
+  if (c.kind === 'listening') ctx = '<div class="m"><b>Scene ' + esc(c.scene || '?') + (c.phase ? ' · ' + esc(c.phase) : '') + '</b>' + (c.situation ? ': ' + esc(c.situation) : '') + '</div>' +
+    (c.plannedTurnsOfThisScene && c.plannedTurnsOfThisScene.length ? '<ol class="ctx m" lang="' + it.language + '">' + c.plannedTurnsOfThisScene.map(t => '<li value="' + t.turn + '">' + esc(t.text) + ' <span style="opacity:.7">(' + esc(t.function.toLowerCase()) + ')</span></li>').join('') + '</ol>' : '') +
+    '<div class="m" style="font-size:12px">' + esc(c.note || '') + '</div>'
+  else ctx = '<div class="m">' + esc(c.scene || '') + '</div>' + (c.otherSentencesForThisTarget && c.otherSentencesForThisTarget.length ? '<div class="m" style="margin-top:6px">Other sentences for this word in the same lesson:</div><ul class="ctx m" lang="' + it.language + '">' + c.otherSentencesForThisTarget.map(s => '<li>' + esc(s) + '</li>').join('') + '</ul>' : '') + '<div class="m" style="font-size:12px">' + esc(c.note || '') + '</div>'
+  const qs = dims.map(d => { const D = PACK.dimensions[d]
+    return '<div class="q"><div class="qt">' + TITLE[d] + '</div><div class="qc">' + esc(D.question) + (D.clarification ? '<br><i>' + esc(D.clarification) + '</i>' : '') + '</div><div class="opts">' +
+      D.values.map(v => '<button data-d="' + d + '" data-v="' + v + '" class="' + (a.verdicts[d] === v ? 'on' : '') + '">' + esc(NICE[v] || v) + '</button>').join('') + '</div></div>' }).join('')
+  const cats = Object.entries(PACK.errorCategories).map(([k, v]) => '<label><input type="checkbox" data-c="' + k + '" ' + (a.errorCategories.includes(k) ? 'checked' : '') + '> ' + esc(v) + '</label>').join('')
+  const done = L.filter(complete).length
+  return '<div class="m">' + LN[S.lang] + ' · item ' + (S.i + 1) + ' of ' + L.length + ' · ' + done + ' complete · reviewer ' + esc(S.reviewer.name || '?') + '</div>' +
+    '<div class="card"><div class="m">Target word</div><div style="font-size:20px"><span class="tgt" lang="' + it.language + '">' + esc(it.target.surface) + '</span> <span class="m">' + esc(it.target.gloss || '') + '</span></div>' +
+    '<div class="m" style="margin-top:6px">Learner: ' + esc(it.level || '') + (it.speakers ? ' · Speakers: ' + esc(it.speakers) : '') + '</div>' +
+    '<h2 style="margin-top:12px">' + (it.kind === 'exchange' ? 'The exchange to judge' : 'The sentence to judge') + '</h2>' + mat +
+    (it.cue ? '<div class="m">Cue shown to the learner: <b>' + esc(it.cue) + '</b></div>' : '') +
+    '<details open style="margin-top:10px"><summary class="m" style="cursor:pointer">Context</summary>' + ctx + '</details></div>' +
+    '<div class="card">' + qs + '</div>' +
+    '<div class="card"><h2>Problems you see (tick any)</h2><div class="cats">' + cats + '</div>' +
+    '<label class="f">Comment (optional — e.g. how a native speaker would say it)</label><textarea id="cm" rows="2">' + esc(a.comment) + '</textarea>' +
+    '<label class="f" style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="un" ' + (a.unsure ? 'checked' : '') + '> I am unsure about this item</label></div>' +
+    '<div class="sticky"><div class="nav"><button id="pv" ' + (S.i ? '' : 'disabled') + '>← Previous</button><button class="p" id="nx">' + (S.i < L.length - 1 ? 'Next →' : 'Finish') + '</button>' +
+    '<span class="' + (complete(it) ? 'good' : 'bad') + ' m">' + (complete(it) ? 'complete' : (dims.filter(d => !a.verdicts[d]).length + ' question(s) left')) + '</span>' +
+    '<span style="flex:1"></span><button id="ex">Download my answers</button><button id="bk">Change language</button></div>' +
+    '<div class="dots">' + L.map((x, k) => '<span title="' + (k + 1) + '" data-j="' + k + '" class="' + (complete(x) ? 'd' : '') + (k === S.i ? ' c' : '') + '"></span>').join('') + '</div></div>'
+}
+function render() {
+  const app = document.getElementById('app')
+  if (!PACK) { app.textContent = 'No review data in this file.'; return }
+  app.innerHTML = S.lang && S.started ? itemView() : start()
+  const $ = id => document.getElementById(id)
+  if (!(S.lang && S.started)) {
+    app.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { S.lang = b.dataset.l; S.i = 0; collect(); render() })
+    const collect = () => { S.reviewer = { name: $('nm').value.trim(), nativeLanguage: $('nl').value.trim(), isNative: $('nat').checked }; save() }
+    ;['nm', 'nl', 'nat'].forEach(id => { $(id).onchange = collect })
+    $('go').onclick = () => { collect(); if (!S.lang) { alert('Choose the language to review.'); return } if (!S.reviewer.name) { alert('Please enter a name or initials.'); return } S.started = true; save(); render(); scrollTo(0, 0) }
+    return
+  }
+  const it = items()[S.i], a = ans(it)
+  app.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { a.verdicts[b.dataset.d] = b.dataset.v; a.answeredAt = new Date().toISOString(); save(); const y = scrollY; render(); scrollTo(0, y) })
+  app.querySelectorAll('[data-c]').forEach(c => c.onchange = () => { const k = c.dataset.c; a.errorCategories = c.checked ? [...new Set([...a.errorCategories, k])] : a.errorCategories.filter(x => x !== k); save() })
+  $('cm').oninput = e => { a.comment = e.target.value; save() }
+  $('un').onchange = e => { a.unsure = e.target.checked; save() }
+  $('pv').onclick = () => { S.i--; save(); render(); scrollTo(0, 0) }
+  $('nx').onclick = () => { if (S.i < items().length - 1) { S.i++; save(); render(); scrollTo(0, 0) } else { const n = items().filter(complete).length; if (confirm(n + ' of ' + items().length + ' items complete. Download your answers now?')) exportFile() } }
+  $('ex').onclick = exportFile
+  $('bk').onclick = () => { S.started = false; save(); render() }
+  app.querySelectorAll('[data-j]').forEach(s => s.onclick = () => { S.i = +s.dataset.j; save(); render(); scrollTo(0, 0) })
+}
+render()
+</script>
+</body>
+</html>

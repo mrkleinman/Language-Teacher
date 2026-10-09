@@ -1,0 +1,1198 @@
+{
+ "at": "deterministic",
+ "build": "v674",
+ "cassettes": 38,
+ "coverageOriginal16": {
+  "th-daily": [
+   "synthetic-th-daily.reject.sim.json",
+   "synthetic-th-daily.sim.json",
+   "th-daily-2026-10-08.sim.json"
+  ],
+  "ja-daily": [
+   "ja-daily-2026-10-08.sim.json",
+   "synthetic-ja-daily.sim.json"
+  ],
+  "zh-daily": [
+   "synthetic-zh-daily.reject.sim.json",
+   "synthetic-zh-daily.sim.json",
+   "zh-daily-2026-10-08.sim.json"
+  ],
+  "th-listening": [
+   "synthetic-th-listening.missing.sim.json",
+   "synthetic-th-listening.sim.json",
+   "th-listening-2026-10-08.sim.json"
+  ],
+  "ja-listening": [
+   "ja-listening-2026-10-08.sim.json",
+   "synthetic-ja-listening.cohfail.sim.json",
+   "synthetic-ja-listening.sim.json"
+  ],
+  "zh-listening": [
+   "synthetic-zh-listening.sim.json",
+   "zh-listening-2026-10-08.sim.json"
+  ]
+ },
+ "coverageAll": {
+  "th-daily": [
+   "synthetic-th-daily.reject.sim.json",
+   "synthetic-th-daily.sim.json",
+   "synthetic-th-daily.ui.reject.sim.json",
+   "synthetic-th-daily.ui.sim.json",
+   "th-daily-2026-10-08.sim.json",
+   "th-daily-2026-10-08.ui.sim.json"
+  ],
+  "ja-daily": [
+   "ja-daily-2026-10-08.sim.json",
+   "ja-daily-2026-10-08.ui.sim.json",
+   "synthetic-ja-daily.sim.json",
+   "synthetic-ja-daily.ui.jafail.sim.json",
+   "synthetic-ja-daily.ui.sim.json"
+  ],
+  "zh-daily": [
+   "synthetic-zh-daily.reject.sim.json",
+   "synthetic-zh-daily.sim.json",
+   "synthetic-zh-daily.ui.incomplete.sim.json",
+   "synthetic-zh-daily.ui.reject.sim.json",
+   "synthetic-zh-daily.ui.sim.json",
+   "zh-daily-2026-10-08.sim.json",
+   "zh-daily-2026-10-08.ui.http429.sim.json",
+   "zh-daily-2026-10-08.ui.sim.json"
+  ],
+  "th-listening": [
+   "synthetic-th-listening.missing.sim.json",
+   "synthetic-th-listening.sim.json",
+   "synthetic-th-listening.ui.missing.sim.json",
+   "synthetic-th-listening.ui.sim.json",
+   "th-listening-2026-10-08.sim.json",
+   "th-listening-2026-10-08.ui.sim.json"
+  ],
+  "ja-listening": [
+   "ja-listening-2026-10-08.sim.json",
+   "ja-listening-2026-10-08.ui.sim.json",
+   "synthetic-ja-listening.cohfail.sim.json",
+   "synthetic-ja-listening.sim.json",
+   "synthetic-ja-listening.ui.cohfail.sim.json",
+   "synthetic-ja-listening.ui.sim.json"
+  ],
+  "zh-listening": [
+   "synthetic-zh-listening.sim.json",
+   "synthetic-zh-listening.ui.missing.sim.json",
+   "synthetic-zh-listening.ui.sim.json",
+   "zh-listening-2026-10-08.sim.json",
+   "zh-listening-2026-10-08.ui.fatal402.sim.json",
+   "zh-listening-2026-10-08.ui.neterror.sim.json",
+   "zh-listening-2026-10-08.ui.sim.json"
+  ]
+ },
+ "gapsOriginal16": [
+  {
+   "scope": "original 16 (v675)",
+   "type": "th-daily",
+   "gap": "not recorded through the screens’ steps (the v675 runner used a fixed default scene instead of the model-written scene the screen requests, and no scene contract reached QC)"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "ja-daily",
+   "gap": "not recorded through the screens’ steps (no scene step, no screen auto-recovery loop, no TrackContext / cost guard from the screen)"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "ja-daily",
+   "gap": "no NOT_READY outcome"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "zh-daily",
+   "gap": "not recorded through the screens’ steps"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "zh-daily",
+   "gap": "no NOT_READY outcome"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "th-listening",
+   "gap": "not recorded through the screens’ steps (the v675 runner used its own attempt id, which seeds the conversation planner, and passed no speech style / attempt record — the requests differ from what the screen sends)"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "ja-listening",
+   "gap": "not recorded through the screens’ steps (the v675 runner used its own attempt id, which seeds the conversation planner, and passed no speech style / attempt record — the requests differ from what the screen sends)"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "zh-listening",
+   "gap": "not recorded through the screens’ steps (the v675 runner used its own attempt id, which seeds the conversation planner, and passed no speech style / attempt record — the requests differ from what the screen sends)"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "zh-listening",
+   "gap": "no NOT_READY outcome"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: Thai scene step (establishConvoScene)"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: Thai target romanisation request (only when a target has no romanisation)"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: Japanese auto-recovery loop (screen)"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: Japanese finish with exhausted recalls"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: Japanese stop awaiting learner Retry"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: Japanese cost guard limit"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: Mandarin generation incomplete (the screen shows an error; no track)"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: provider HTTP error (429/5xx) + retry"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: network failure / timeout + retry"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: fatal provider error (401/402/403) stops the run"
+  },
+  {
+   "scope": "original 16 (v675)",
+   "type": "all",
+   "gap": "never reached: backup Gemini key used (needs two keys; never in a simulator run)"
+  }
+ ],
+ "rows": [
+  {
+   "cassette": "ja-daily-2026-10-08.sim.json",
+   "type": "ja-daily",
+   "path": "legacy v675 Node path",
+   "fixture": "ja-daily-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 76,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A0_scene×3",
+    "A0_scene_plan×1",
+    "A_generation×30",
+    "B_generation_retry×3",
+    "C_group_eval×30",
+    "E_cue_check×8",
+    "F_main_coherence×1"
+   ],
+   "reached": [
+    "Japanese scene step (generateJapaneseScene)",
+    "Mandarin paid regeneration (check 2+)",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "ja-daily-2026-10-08.ui.sim.json",
+   "type": "ja-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "ja-daily-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 74,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "A0_scene×1",
+    "A0_scene_plan×1",
+    "A_generation×30",
+    "B_generation_retry×3",
+    "C_group_eval×30",
+    "E_cue_check×8",
+    "F_main_coherence×1"
+   ],
+   "reached": [
+    "Japanese scene step (generateJapaneseScene)",
+    "Mandarin paid regeneration (check 2+)",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "final audit judges",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "ja-listening-2026-10-08.sim.json",
+   "type": "ja-listening",
+   "path": "legacy v675 Node path",
+   "fixture": "ja-listening-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 19,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×7",
+    "O_listening_qc×6",
+    "O_listening_scene×6"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "ja-listening-2026-10-08.ui.sim.json",
+   "type": "ja-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "ja-listening-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 19,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×7",
+    "O_listening_qc×6",
+    "O_listening_scene×6"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-ja-daily.sim.json",
+   "type": "ja-daily",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-ja-daily",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 75,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A0_scene×3",
+    "A0_scene_plan×1",
+    "A_generation×30",
+    "B_generation_retry×2",
+    "C_group_eval×30",
+    "E_cue_check×8",
+    "F_main_coherence×1"
+   ],
+   "reached": [
+    "Japanese scene step (generateJapaneseScene)",
+    "Mandarin paid regeneration (check 2+)",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-ja-daily.ui.jafail.sim.json",
+   "type": "ja-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-ja-daily",
+   "variant": "{\"jaFailTargets\":[\"今日\"]}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 48,
+   "faithful": true,
+   "status": "INCOMPLETE_AWAITING_USER",
+   "stages": [
+    "A0_scene×1",
+    "A0_scene_plan×1",
+    "A_generation×30",
+    "B_generation_retry×4",
+    "H_recovery×12"
+   ],
+   "reached": [
+    "Japanese scene step (generateJapaneseScene)",
+    "Japanese auto-recovery loop (screen)",
+    "Japanese stop awaiting learner Retry",
+    "Mandarin paid regeneration (check 2+)",
+    "QC replacement / quota recovery"
+   ]
+  },
+  {
+   "cassette": "synthetic-ja-daily.ui.sim.json",
+   "type": "ja-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-ja-daily",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 73,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "A0_scene×1",
+    "A0_scene_plan×1",
+    "A_generation×30",
+    "B_generation_retry×2",
+    "C_group_eval×30",
+    "E_cue_check×8",
+    "F_main_coherence×1"
+   ],
+   "reached": [
+    "Japanese scene step (generateJapaneseScene)",
+    "Mandarin paid regeneration (check 2+)",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "final audit judges",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-ja-listening.cohfail.sim.json",
+   "type": "ja-listening",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-ja-listening",
+   "variant": "{\"cohFail\":true}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 10,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "O_listening_coherence×3",
+    "O_listening_qc×3",
+    "O_listening_repair×2",
+    "O_listening_scene×2"
+   ],
+   "reached": [
+    "Listening repair",
+    "Listening transition / coherence FAIL",
+    "Listening targets left unplaced",
+    "Listening VACUOUS verdict (0 lines)",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-ja-listening.sim.json",
+   "type": "ja-listening",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-ja-listening",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 16,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×6",
+    "O_listening_qc×5",
+    "O_listening_scene×5"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-ja-listening.ui.cohfail.sim.json",
+   "type": "ja-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-ja-listening",
+   "variant": "{\"cohFail\":true}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 10,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "O_listening_coherence×3",
+    "O_listening_qc×3",
+    "O_listening_repair×2",
+    "O_listening_scene×2"
+   ],
+   "reached": [
+    "Listening repair",
+    "Listening transition / coherence FAIL",
+    "Listening targets left unplaced",
+    "Listening VACUOUS verdict (0 lines)",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-ja-listening.ui.sim.json",
+   "type": "ja-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-ja-listening",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 16,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×6",
+    "O_listening_qc×5",
+    "O_listening_scene×5"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-th-daily.reject.sim.json",
+   "type": "th-daily",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-th-daily",
+   "variant": "{\"reject\":[\"ดีมากครับ\"]}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 206,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A0_scene_plan×1",
+    "A_generation×60",
+    "B_generation_retry×2",
+    "C_group_eval×29",
+    "E_cue_check×6",
+    "F_main_coherence×1",
+    "F_naturalness_final×38",
+    "G_replace×1",
+    "H_recovery×30",
+    "L_final_cue_audit×38"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "QC replacement / quota recovery",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-th-daily.sim.json",
+   "type": "th-daily",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-th-daily",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 87,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A0_scene_plan×1",
+    "A_generation×30",
+    "B_generation_retry×1",
+    "C_group_eval×29",
+    "E_cue_check×8",
+    "F_main_coherence×1",
+    "F_naturalness_final×8",
+    "G_replace×1",
+    "L_final_cue_audit×8"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "QC replacement / quota recovery",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-th-daily.ui.reject.sim.json",
+   "type": "th-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-th-daily",
+   "variant": "{\"reject\":[\"ดีมากครับ\"]}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 208,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A0_scene×1",
+    "A0_scene_plan×1",
+    "A_generation×60",
+    "B_generation_retry×2",
+    "C_group_eval×30",
+    "E_cue_check×6",
+    "F_main_coherence×1",
+    "F_naturalness_final×38",
+    "G_replace×1",
+    "H_recovery×30",
+    "L_final_cue_audit×38"
+   ],
+   "reached": [
+    "Thai scene step (establishConvoScene)",
+    "Mandarin paid regeneration (check 2+)",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "QC replacement / quota recovery",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-th-daily.ui.sim.json",
+   "type": "th-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-th-daily",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 89,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A0_scene×1",
+    "A0_scene_plan×1",
+    "A_generation×30",
+    "B_generation_retry×1",
+    "C_group_eval×30",
+    "E_cue_check×8",
+    "F_main_coherence×1",
+    "F_naturalness_final×8",
+    "G_replace×1",
+    "L_final_cue_audit×8"
+   ],
+   "reached": [
+    "Thai scene step (establishConvoScene)",
+    "Mandarin paid regeneration (check 2+)",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "QC replacement / quota recovery",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-th-listening.missing.sim.json",
+   "type": "th-listening",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-th-listening",
+   "variant": "{\"ln\":{\"missing\":[63,64],\"noRepair\":true}}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 23,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "O_listening_coherence×5",
+    "O_listening_qc×5",
+    "O_listening_repair×3",
+    "O_listening_scene×10"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "Listening targets left unplaced",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-th-listening.sim.json",
+   "type": "th-listening",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-th-listening",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 16,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×6",
+    "O_listening_qc×5",
+    "O_listening_scene×5"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-th-listening.ui.missing.sim.json",
+   "type": "th-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-th-listening",
+   "variant": "{\"ln\":{\"missing\":[63,64],\"noRepair\":true}}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 23,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "O_listening_coherence×5",
+    "O_listening_qc×5",
+    "O_listening_repair×3",
+    "O_listening_scene×10"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "Listening targets left unplaced",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-th-listening.ui.sim.json",
+   "type": "th-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-th-listening",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 16,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×6",
+    "O_listening_qc×5",
+    "O_listening_scene×5"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-zh-daily.reject.sim.json",
+   "type": "zh-daily",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-zh-daily",
+   "variant": "{\"reject\":[\"我喜欢\"]}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 288,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A_generation×90",
+    "B_generation_retry×18",
+    "C_group_eval×2",
+    "E_cue_check×8",
+    "F_main_coherence×1",
+    "G_improve×28",
+    "G_replace×56",
+    "H_recovery×85"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "deterministic fallback accepted",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "QC replacement / quota recovery",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-zh-daily.sim.json",
+   "type": "zh-daily",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-zh-daily",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 147,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A_generation×90",
+    "B_generation_retry×18",
+    "C_group_eval×30",
+    "E_cue_check×8",
+    "F_main_coherence×1"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "deterministic fallback accepted",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-zh-daily.ui.incomplete.sim.json",
+   "type": "zh-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-zh-daily",
+   "variant": "{\"reject\":[\"我喜欢\"],\"noRecovery\":true}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 634,
+   "faithful": true,
+   "status": "GENERATION_INCOMPLETE",
+   "stages": [
+    "A_generation×90",
+    "B_generation_retry×544"
+   ],
+   "reached": [
+    "Mandarin generation incomplete (the screen shows an error; no track)",
+    "Mandarin paid regeneration (check 2+)"
+   ]
+  },
+  {
+   "cassette": "synthetic-zh-daily.ui.reject.sim.json",
+   "type": "zh-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-zh-daily",
+   "variant": "{\"reject\":[\"我喜欢\"]}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 288,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A_generation×90",
+    "B_generation_retry×18",
+    "C_group_eval×2",
+    "E_cue_check×8",
+    "F_main_coherence×1",
+    "G_improve×28",
+    "G_replace×56",
+    "H_recovery×85"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "deterministic fallback accepted",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "QC replacement / quota recovery",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-zh-daily.ui.sim.json",
+   "type": "zh-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-zh-daily",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 147,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A_generation×90",
+    "B_generation_retry×18",
+    "C_group_eval×30",
+    "E_cue_check×8",
+    "F_main_coherence×1"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "deterministic fallback accepted",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-zh-listening.sim.json",
+   "type": "zh-listening",
+   "path": "legacy v675 Node path",
+   "fixture": "synthetic-zh-listening",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 16,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×6",
+    "O_listening_qc×5",
+    "O_listening_scene×5"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-zh-listening.ui.missing.sim.json",
+   "type": "zh-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-zh-listening",
+   "variant": "{\"ln\":{\"missing\":[30,31],\"noRepair\":true}}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 23,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "O_listening_coherence×5",
+    "O_listening_qc×5",
+    "O_listening_repair×3",
+    "O_listening_scene×10"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "Listening targets left unplaced",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "synthetic-zh-listening.ui.sim.json",
+   "type": "zh-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "synthetic-zh-listening",
+   "variant": "synthetic learner",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 16,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×6",
+    "O_listening_qc×5",
+    "O_listening_scene×5"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "th-daily-2026-10-08.sim.json",
+   "type": "th-daily",
+   "path": "legacy v675 Node path",
+   "fixture": "th-daily-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 206,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "A0_scene_plan×1",
+    "A_generation×31",
+    "B_generation_retry×31",
+    "C_group_eval×29",
+    "E_cue_check×3",
+    "F_main_coherence×1",
+    "F_naturalness_final×39",
+    "H_recovery×32",
+    "L_final_cue_audit×39"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "deterministic fallback accepted",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "QC replacement / quota recovery",
+    "final audit judges",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "th-daily-2026-10-08.ui.sim.json",
+   "type": "th-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "th-daily-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 208,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "A0_scene×1",
+    "A0_scene_plan×1",
+    "A_generation×31",
+    "B_generation_retry×31",
+    "C_group_eval×30",
+    "E_cue_check×3",
+    "F_main_coherence×1",
+    "F_naturalness_final×39",
+    "H_recovery×32",
+    "L_final_cue_audit×39"
+   ],
+   "reached": [
+    "Thai scene step (establishConvoScene)",
+    "Mandarin paid regeneration (check 2+)",
+    "deterministic fallback accepted",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "QC replacement / quota recovery",
+    "final audit judges",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "th-listening-2026-10-08.sim.json",
+   "type": "th-listening",
+   "path": "legacy v675 Node path",
+   "fixture": "th-listening-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 44,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "O_listening_qc×13",
+    "O_listening_repair×13",
+    "O_listening_scene×18"
+   ],
+   "reached": [
+    "Listening repair",
+    "Listening targets left unplaced",
+    "Listening VACUOUS verdict (0 lines)",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "th-listening-2026-10-08.ui.sim.json",
+   "type": "th-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "th-listening-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 46,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "O_listening_qc×14",
+    "O_listening_repair×14",
+    "O_listening_scene×18"
+   ],
+   "reached": [
+    "Listening repair",
+    "Listening targets left unplaced",
+    "Listening VACUOUS verdict (0 lines)",
+    "track NOT_READY"
+   ]
+  },
+  {
+   "cassette": "zh-daily-2026-10-08.sim.json",
+   "type": "zh-daily",
+   "path": "legacy v675 Node path",
+   "fixture": "zh-daily-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 161,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A_generation×90",
+    "B_generation_retry×32",
+    "C_group_eval×30",
+    "E_cue_check×8",
+    "F_main_coherence×1"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "deterministic fallback accepted",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "zh-daily-2026-10-08.ui.http429.sim.json",
+   "type": "zh-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "zh-daily-2026-10-08",
+   "variant": "{\"http429Every\":9}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 181,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A_generation×101",
+    "B_generation_retry×36",
+    "C_group_eval×33",
+    "E_cue_check×9",
+    "F_main_coherence×2"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "deterministic fallback accepted",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "final audit judges",
+    "track READY",
+    "provider HTTP error (429/5xx) + retry"
+   ]
+  },
+  {
+   "cassette": "zh-daily-2026-10-08.ui.sim.json",
+   "type": "zh-daily",
+   "path": "screens (ui-path/1)",
+   "fixture": "zh-daily-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 161,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "A_generation×90",
+    "B_generation_retry×32",
+    "C_group_eval×30",
+    "E_cue_check×8",
+    "F_main_coherence×1"
+   ],
+   "reached": [
+    "Mandarin paid regeneration (check 2+)",
+    "deterministic fallback accepted",
+    "candidates rejected during generation (CANDIDATE_ACCOUNTING)",
+    "final audit judges",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "zh-listening-2026-10-08.sim.json",
+   "type": "zh-listening",
+   "path": "legacy v675 Node path",
+   "fixture": "zh-listening-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 16,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×6",
+    "O_listening_qc×5",
+    "O_listening_scene×5"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  },
+  {
+   "cassette": "zh-listening-2026-10-08.ui.fatal402.sim.json",
+   "type": "zh-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "zh-listening-2026-10-08",
+   "variant": "{\"fatalAt\":6}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 6,
+   "faithful": true,
+   "status": "NOT_READY",
+   "stages": [
+    "O_listening_coherence×2",
+    "O_listening_qc×2",
+    "O_listening_scene×2"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track NOT_READY",
+    "fatal provider error (401/402/403) stops the run"
+   ]
+  },
+  {
+   "cassette": "zh-listening-2026-10-08.ui.neterror.sim.json",
+   "type": "zh-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "zh-listening-2026-10-08",
+   "variant": "{\"netErrorEvery\":5}",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 19,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×7",
+    "O_listening_qc×6",
+    "O_listening_scene×6"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY",
+    "network failure / timeout + retry"
+   ]
+  },
+  {
+   "cassette": "zh-listening-2026-10-08.ui.sim.json",
+   "type": "zh-listening",
+   "path": "screens (ui-path/1)",
+   "fixture": "zh-listening-2026-10-08",
+   "variant": "historical fixture",
+   "provider": "SIMULATED (mechanics only — not teaching quality)",
+   "recordedOn": "v674",
+   "requests": 16,
+   "faithful": true,
+   "status": "READY",
+   "stages": [
+    "O_listening_coherence×6",
+    "O_listening_qc×5",
+    "O_listening_scene×5"
+   ],
+   "reached": [
+    "Listening scene committed",
+    "Listening repair",
+    "track READY"
+   ]
+  }
+ ],
+ "gaps": [
+  {
+   "type": "zh-daily",
+   "gap": "no NOT_READY outcome recorded"
+  },
+  {
+   "type": "all",
+   "gap": "never reached: Thai target romanisation request (only when a target has no romanisation)"
+  },
+  {
+   "type": "all",
+   "gap": "never reached: Japanese finish with exhausted recalls"
+  },
+  {
+   "type": "all",
+   "gap": "never reached: Japanese cost guard limit"
+  },
+  {
+   "type": "all",
+   "gap": "never reached: backup Gemini key used (needs two keys; never in a simulator run)"
+  },
+  {
+   "type": "all",
+   "gap": "every cassette is SIMULATED (template sentences): none says anything about teaching quality, and real-model behaviours (prose replies, malformed JSON variety, latency, 429/5xx, timeouts) are absent until live cassettes exist"
+  }
+ ],
+ "legacyPathTypes": [
+  "th-daily",
+  "ja-daily",
+  "zh-daily",
+  "th-listening",
+  "ja-listening",
+  "zh-listening"
+ ]
+}

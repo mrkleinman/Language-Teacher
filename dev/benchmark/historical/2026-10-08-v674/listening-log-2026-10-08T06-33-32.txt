@@ -1,0 +1,299 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v674 language=ja path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=ja)
+🧭 LISTENING_FEASIBILITY PASS language=ja · pool=106 candidate(s) in SRS order · authorised support=76 word(s) · selected 30 · deferred 0 · meaning plan VALID (36 turns) — checked BEFORE the targets are frozen
+🧩 LISTENING_VERBALIZABILITY PROVEN · 36 planned turn(s) carry a proven authorised realisation (closed vocabulary + hardMax + target presence, both sides of every exchange) — no target enters the meaning plan without one
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(ja) = selectRevisionTrackTargets → jazhContractTargets(revision)
+🎧 LISTENING_SELECTED_TARGET_IDS=[101,102,80,103,104,105,106,20,43,44,83,40,82,87,84,85,86,30,19,46,47,31,32,14,21,22,23,45,81,33]
+🗣 JA_SPEECH_STYLE selected=natural snapshot=natural (Natural · Friendly everyday Japanese)
+🎧 LISTENING_TRACK_START language=ja speechStyle=natural trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=ja introducedContent=76 targets=30 authorised=106 snapshot=r9zq2r (frozen at generation start) · Layer A lexicon 455 entries (segmentation only — not permission)
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Japanese content units, rankProgressFor) · Listening: no minimum, aim 3–5, no turn above 7
+📚 VOCAB INVENTORY introducedContent=76 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Japanese particles / inflection / copula
+🧭 LISTENING_PLANNER_INPUT language=ja belt=10th Kyu preferredRange=3–5 hardMax=7 selectedTargets=30 learnerAuthorizedInventory=76 speechStyle=natural
+🧵 LISTENING_ONE_CONVERSATION story=OPEN → DECIDE → ARRANGE → MOVE → DO → PAY · 6 internal phase(s) of ONE conversation · planned 36 turns (target 28–36, allowed 24–44)
+🧵 CONVERSATION_CONTRACT speakers=A = Speaker A (friend) · B = Speaker B (friend) · relationship=adult friends · objective=spend time together: meet → decide where to go → agree the time → go there → do / eat / buy → pay · ending=they finish what they set out to do and say goodbye
+🧩 LISTENING_VERBALIZABILITY PROVEN · 36 planned turn(s) carry a proven authorised realisation · blueprints: buildJapaneseListeningBlueprints → ONE shared planner
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t1 QUESTION [どれ] proven="どれを見る？"
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t2 ANSWER [本] proven="本を見る。"
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t3 QUESTION [映画+欲しい] proven="映画、欲しい？"
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t6 ANSWER [昨日] proven="昨日、行った。"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t1 QUESTION [どっち] proven="どっちを食べる？"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t2 ANSWER [あれ] proven="あれを食べる。"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t3 QUESTION [あそこ] proven="あそこに行く？"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t4 ANSWER [うん] proven="うん、行く。"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t5 QUESTION [できる] proven="日本語、できる？"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t1 QUESTION [何時] proven="何時に行く？"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t2 ANSWER [明日] proven="明日、行く。"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t3 QUESTION [なんで+見る] proven="映画、なんで見るの？"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t6 ANSWER [たぶん] proven="たぶん行く。"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t1 QUESTION [電車+バス] proven="電車とバス、ある？"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t2 ANSWER [はい] proven="はい、ある。"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t3 PROPOSAL [また+写真] proven="また写真、見ようか？"
+   🧩 LISTENING_TARGET_TRACE LS5 DO t1 QUESTION [どう+車] proven="車、どう？"
+   🧩 LISTENING_TARGET_TRACE LS5 DO t3 QUESTION [帰る] proven="家に帰る？"
+   🧩 LISTENING_TARGET_TRACE LS5 DO t5 APOLOGY [ごめん] proven="ごめん。"
+   🧩 LISTENING_TARGET_TRACE LS5 DO t7 QUESTION [まだ] proven="まだ行く？"
+   🧩 LISTENING_TARGET_TRACE LS6 PAY t1 QUESTION [いくら] proven="これ、いくら？"
+   🧩 LISTENING_TARGET_TRACE LS6 PAY t3 QUESTION [買う+もう] proven="もうご飯、買った？"
+   🧩 LISTENING_TARGET_TRACE LS6 PAY t4 ANSWER [いいえ] proven="いいえ、買わなかった。"
+   🧩 LISTENING_TARGET_TRACE LS6 PAY t5 STATEMENT [お金] proven="お金、あるよ。"
+🧠 LISTENING_MEANING_PLAN VALID · 36 planned turns (aim 28–36) · story OPEN → DECIDE → ARRANGE → MOVE → DO → PAY · 9 statement merge(s) for the turn budget — validated BEFORE any language is generated
+   T1 A QUESTION(what) — A asks B what (using どれ "which one") · now — where they meet ⟦proven: どれを見る？⟧
+   T2 B ANSWER ↩T1 — B answers with the thing asked about (using 本 "book") ⟨must give the thing asked about⟩ · now — where they meet ⟦proven: 本を見る。⟧
+   T3 A QUESTION(yes/no) — A asks B a yes / no question (using 映画 "movie" + 欲しい "want") · now — where they meet ⟦proven: 映画、欲しい？⟧
+   T4 B ANSWER ↩T3 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — where they meet ⟦proven: うん、欲しい。⟧
+   T5 A QUESTION(time) — A asks B when / what time · now — where they meet ⟦proven: いつ行った？⟧
+   T6 B ANSWER ↩T5 — B answers with a time (using 昨日 "yesterday") ⟨must give a time⟩ · now — where they meet ⟦proven: 昨日、行った。⟧
+   T7 A QUESTION(what) — A asks B what (using どっち "which") · now — still where they meet ⟦proven: どっちを食べる？⟧
+   T8 B ANSWER ↩T7 — B answers with the thing asked about (using あれ "that over there") ⟨must give the thing asked about⟩ · now — still where they meet ⟦proven: あれを食べる。⟧
+   T9 A QUESTION(yes/no) — A asks B a yes / no question (using あそこ "over there") · now — still where they meet ⟦proven: あそこに行く？⟧
+   T10 B ANSWER ↩T9 — B answers with yes / no (or a qualified answer) (using うん "yeah") ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: うん、行く。⟧
+   T11 A QUESTION(yes/no) — A asks B a yes / no question (using できる "can") · now — still where they meet ⟦proven: 日本語、できる？⟧
+   T12 B ANSWER ↩T11 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: うん、できる。⟧
+   T13 A QUESTION(time) — A asks B when / what time (using 何時 "what time") · now — planning when to go (later today) ⟦proven: 何時に行く？⟧
+   T14 B ANSWER ↩T13 — B answers with a time (using 明日 "tomorrow") ⟨must give a time⟩ · now — planning when to go (later today) ⟦proven: 明日、行く。⟧
+   T15 A QUESTION(reason) — A asks B why (a reason) (using なんで "why" + 見る "see") · now — planning when to go (later today) ⟦proven: 映画、なんで見るの？⟧
+   T16 B ANSWER ↩T15 — B answers with a reason (a short clause — never a bare yes / no or a bare adjective) ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · now — planning when to go (later today) ⟦proven: 好きだから。⟧
+   T17 A QUESTION(yes/no) — A asks B a yes / no question · now — planning when to go (later today) ⟦proven: 行く？⟧
+   T18 B ANSWER ↩T17 — B answers with yes / no (or a qualified answer) (using たぶん "probably") ⟨must give yes / no (or a qualified answer)⟩ · now — planning when to go (later today) ⟦proven: たぶん行く。⟧
+   T19 A QUESTION(yes/no) — A asks B a yes / no question (using 電車 "train" + バス "bus") · later — on the way, after agreeing the time ⟦proven: 電車とバス、ある？⟧
+   T20 B ANSWER ↩T19 — B answers with yes / no (or a qualified answer) (using はい "yes") ⟨must give yes / no (or a qualified answer)⟩ · later — on the way, after agreeing the time ⟦proven: はい、ある。⟧
+   T21 A PROPOSAL — A suggests また "again" + 写真 "photo" · later — on the way, after agreeing the time ⟦proven: また写真、見ようか？⟧
+   T22 B ACCEPT ↩T21 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · later — on the way, after agreeing the time ⟦proven: いいね。⟧
+   T23 A QUESTION(how it is) — A asks B how it is (using どう "how" + 車 "car") · later — at the place they chose ⟦proven: 車、どう？⟧
+   T24 B ANSWER ↩T23 — B answers with how it is ⟨must give how it is⟩ · later — at the place they chose ⟦proven: いいね。⟧
+   T25 A QUESTION(yes/no) — A asks B a yes / no question (using 帰る "return") · later — at the place they chose ⟦proven: 家に帰る？⟧
+   T26 B ANSWER ↩T25 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — at the place they chose ⟦proven: うん、帰る。⟧
+   T27 A APOLOGY — A apologises to B (using ごめん "sorry") · later — at the place they chose ⟦proven: ごめん。⟧
+   T28 B ACKNOWLEDGEMENT ↩T27 — B accepts the apology ("it's okay") ⟨must give an acknowledgement (it's okay / no problem)⟩ · later — at the place they chose ⟦proven: 大丈夫。⟧
+   T29 A QUESTION(yes/no) — A asks B a yes / no question (using まだ "still") · later — at the place they chose ⟦proven: まだ行く？⟧
+   T30 B ANSWER ↩T29 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — at the place they chose ⟦proven: 行く。⟧
+   T31 A QUESTION(amount) — A asks B how much / how many (using いくら "how much") · later — at the end of the visit ⟦proven: これ、いくら？⟧
+   T32 B ANSWER ↩T31 — B answers with an amount / price ⟨must give an amount / price⟩ · later — at the end of the visit ⟦proven: 高いね。⟧
+   T33 A QUESTION(yes/no) — A asks B a yes / no question (using 買う "buy" + もう "already") · later — at the end of the visit ⟦proven: もうご飯、買った？⟧
+   T34 B ANSWER ↩T33 — B answers with yes / no (or a qualified answer) (using いいえ "no") ⟨must give yes / no (or a qualified answer)⟩ · later — at the end of the visit ⟦proven: いいえ、買わなかった。⟧
+   T35 A STATEMENT — A tells B something about お金 "money" · later — at the end of the visit ⟦proven: お金、あるよ。⟧
+   T36 B REACTION ↩T35 — B reacts ⟨must give a reaction to it⟩ · later — at the end of the visit ⟦proven: 本当？⟧
+🎧 LISTENING_COVERAGE_PLAN 30/30 assigned · 6 scenes · ≤7 targets per scene · planned 36 turns (max 44, headroom target ≤36, compact scenes)
+  LISTENING_SCENE_PLAN LS1 phase=OPEN required=[昨日, 本, 映画, 欲しい, どれ] expectedTurns=6 max=7 · A and B meet and start talking about today
+  LISTENING_SCENE_PLAN LS2 phase=DECIDE required=[どっち, あれ, あそこ, できる, うん] expectedTurns=6 max=7 · they decide what to do and where to go together
+  LISTENING_SCENE_PLAN LS3 phase=ARRANGE required=[何時, 明日, たぶん, なんで, 見る] expectedTurns=6 max=7 · they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed
+  LISTENING_SCENE_PLAN LS4 phase=MOVE required=[電車, バス, 写真, また, はい] expectedTurns=4 max=5 · they set off and get there (the way, the transport) and arrive
+  LISTENING_SCENE_PLAN LS5 phase=DO required=[帰る, 車, どう, ごめん, まだ] expectedTurns=8 max=9 · they do the main activity there: eat, look around or pick something
+  LISTENING_SCENE_PLAN LS6 phase=PAY required=[買う, お金, いくら, いいえ, もう] expectedTurns=6 max=7 · they pay and check the price; then they wrap up and say goodbye
+🧭 SCENE_LANGUAGE_FEASIBILITY LS1 PASS situation="A and B meet and start talking about today" · rejected (FAIL): "A and B meet, greet each other and start talking about today" missing [hello]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS2 PASS situation="they decide what to do and where to go together" needs=[go]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS3 PASS situation="they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed" needs=[time, go]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS4 PASS situation="they set off and get there (the way, the transport) and arrive" needs=[go, way]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS5 PASS situation="they do the main activity there: eat, look around or pick something" needs=[eat]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS6 PASS situation="they pay and check the price" needs=[pay] · rejected (FAIL): "they pay: the price, card or cash, the receipt" missing [card]
+🧭 SCENE_INTENT_SKELETON LS1 VALID · 1. A QUESTION(what) — uses どれ ⟨expects the thing asked about⟩ · 2. B ANSWER(what) (to 1) — uses 本 ⟨must give the thing asked about⟩ · 3. A QUESTION(yes/no) — uses 映画+欲しい ⟨expects yes / no (or a qualified answer)⟩ · 4. B ANSWER(yes/no) (to 3) ⟨must give yes / no (or a qualified answer)⟩ · 5. A QUESTION(time) ⟨expects a time⟩ · 6. B ANSWER(time) (to 5) — uses 昨日 ⟨must give a time⟩
+🧭 SCENE_INTENT_SKELETON LS2 VALID · 1. A QUESTION(what) — uses どっち ⟨expects the thing asked about⟩ · 2. B ANSWER(what) (to 1) — uses あれ ⟨must give the thing asked about⟩ · 3. A QUESTION(yes/no) — uses あそこ ⟨expects yes / no (or a qualified answer)⟩ · 4. B ANSWER(yes/no) (to 3) — uses うん ⟨must give yes / no (or a qualified answer)⟩ · 5. A QUESTION(yes/no) — uses できる ⟨expects yes / no (or a qualified answer)⟩ · 6. B ANSWER(yes/no) (to 5) ⟨must give yes / no (or a qualified answer)⟩
+🧭 SCENE_INTENT_SKELETON LS3 VALID · 1. A QUESTION(time) — uses 何時 ⟨expects a time⟩ · 2. B ANSWER(time) (to 1) — uses 明日 ⟨must give a time⟩ · 3. A QUESTION(reason) — uses なんで+見る ⟨expects a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · 4. B ANSWER(reason) (to 3) ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · 5. A QUESTION(yes/no) ⟨expects yes / no (or a qualified answer)⟩ · 6. B ANSWER(yes/no) (to 5) — uses たぶん ⟨must give yes / no (or a qualified answer)⟩
+🧭 SCENE_INTENT_SKELETON LS4 VALID · 1. A QUESTION(yes/no) — uses 電車+バス ⟨expects yes / no (or a qualified answer)⟩ · 2. B ANSWER(yes/no) (to 1) — uses はい ⟨must give yes / no (or a qualified answer)⟩ · 3. A PROPOSAL — uses また+写真 ⟨expects accept / refuse / counter-proposal⟩ · 4. B ACCEPT (to 3) ⟨must give accept / refuse / counter-proposal⟩
+🧭 SCENE_INTENT_SKELETON LS5 VALID · 1. A QUESTION(how it is) — uses どう+車 ⟨expects how it is⟩ · 2. B ANSWER(how it is) (to 1) ⟨must give how it is⟩ · 3. A QUESTION(yes/no) — uses 帰る ⟨expects yes / no (or a qualified answer)⟩ · 4. B ANSWER(yes/no) (to 3) ⟨must give yes / no (or a qualified answer)⟩ · 5. A APOLOGY — uses ごめん ⟨expects an acknowledgement (it's okay / no problem)⟩ · 6. B ACKNOWLEDGEMENT (to 5) ⟨must give an acknowledgement (it's okay / no problem)⟩ · 7. A QUESTION(yes/no) — uses まだ ⟨expects yes / no (or a qualified answer)⟩ · 8. B ANSWER(yes/no) (to 7) ⟨must give yes / no (or a qualified answer)⟩
+🧭 SCENE_INTENT_SKELETON LS6 VALID · 1. A QUESTION(amount) — uses いくら ⟨expects an amount / price⟩ · 2. B ANSWER(amount) (to 1) ⟨must give an amount / price⟩ · 3. A QUESTION(yes/no) — uses 買う+もう ⟨expects yes / no (or a qualified answer)⟩ · 4. B ANSWER(yes/no) (to 3) — uses いいえ ⟨must give yes / no (or a qualified answer)⟩ · 5. A STATEMENT — uses お金 · 6. B REACTION (to 5) ⟨must give a reaction to it⟩
+🗣 JA_SCENE_REGISTER scene=LS1 relationship=adult friends speechStyle=natural expected=plain / friendly everyday Japanese
+🗣 JA_SCENE_REGISTER scene=LS2 relationship=adult friends speechStyle=natural expected=plain / friendly everyday Japanese
+🗣 JA_SCENE_REGISTER scene=LS3 relationship=adult friends speechStyle=natural expected=plain / friendly everyday Japanese
+🗣 JA_SCENE_REGISTER scene=LS4 relationship=adult friends speechStyle=natural expected=plain / friendly everyday Japanese
+🗣 JA_SCENE_REGISTER scene=LS5 relationship=adult friends speechStyle=natural expected=plain / friendly everyday Japanese
+🗣 JA_SCENE_REGISTER scene=LS6 relationship=adult friends speechStyle=natural expected=plain / friendly everyday Japanese
+🎧 LISTENING_SCENE_PLAUSIBILITY PASS — every scene is one plausible everyday situation (checked before writing)
+    LISTENING_TARGET_ASSIGNMENT target=44 どれ → LS1 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=104 本 → LS1 exchange 1 (B) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=105 映画 → LS1 exchange 2 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=47 欲しい → LS1 exchange 2 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=81 昨日 → LS1 exchange 3 (B) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=43 どっち → LS2 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=83 あれ → LS2 exchange 1 (B) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=82 あそこ → LS2 exchange 2 (A) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=85 うん → LS2 exchange 2 (B) role=RESPONSE_TOKEN
+    LISTENING_TARGET_ASSIGNMENT target=46 できる → LS2 exchange 3 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=45 何時 → LS3 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=14 明日 → LS3 exchange 1 (B) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=40 なんで → LS3 exchange 2 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=19 見る → LS3 exchange 2 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=30 たぶん → LS3 exchange 3 (B) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=101 電車 → LS4 exchange 1 (A) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=102 バス → LS4 exchange 1 (A) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=84 はい → LS4 exchange 1 (B) role=RESPONSE_TOKEN
+    LISTENING_TARGET_ASSIGNMENT target=80 また → LS4 exchange 2 (A) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=106 写真 → LS4 exchange 2 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=20 どう → LS5 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=103 車 → LS5 exchange 1 (A) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=33 帰る → LS5 exchange 2 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=87 ごめん → LS5 exchange 3 (A) role=DISCOURSE_MARKER
+    LISTENING_TARGET_ASSIGNMENT target=32 まだ → LS5 exchange 4 (A) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=22 いくら → LS6 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=21 買う → LS6 exchange 2 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=31 もう → LS6 exchange 2 (A) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=86 いいえ → LS6 exchange 2 (B) role=RESPONSE_TOKEN
+    LISTENING_TARGET_ASSIGNMENT target=23 お金 → LS6 exchange 3 (A) role=CONTENT
+🎨 SCENE_PALETTE scene=LS1 requiredTargets=[昨日, 本, 映画, 欲しい, どれ] supportVocabulary=[いつ, 今日, 知る, 何, 好き, 行く, どこ, 一緒, これ, それ, ある, いる, 本当, 会う, ありがとう, 今, する, 来る, ちょっと, 誰] (20 taught) grammar=110 forms
+🎨 SCENE_PALETTE scene=LS2 requiredTargets=[どっち, あれ, あそこ, できる, うん] supportVocabulary=[行く, 日本語, そこ, 食べる, 入る, 何, 一緒, どこ, いい, 思う, ありがとう, する, 今, ちょっと, 来る, 好き, 大丈夫, 今日, 作る, いつ] (20 taught) grammar=110 forms
+🎨 SCENE_PALETTE scene=LS3 requiredTargets=[何時, 明日, たぶん, なんで, 見る] supportVocabulary=[行く, 好き, 何, いつ, 出る, 入る, 会う, 持つ, これ, それ, 誰, 本当, 作る, 取る, ある, いる, 知る, 休む, どこ, 一緒] (20 taught) grammar=110 forms
+🎨 SCENE_PALETTE scene=LS4 requiredTargets=[電車, バス, 写真, また, はい] supportVocabulary=[ある, いい, 行く, 入る, 知る, 思う, 今日, 大丈夫, 何, 好き, 一緒, どこ, 作る, ありがとう, そこ, 本当, いる, 出る, 誰, ちょっと] (20 taught) grammar=110 forms
+🎨 SCENE_PALETTE scene=LS5 requiredTargets=[帰る, 車, どう, ごめん, まだ] supportVocabulary=[いい, 行く, 大丈夫, 家, 飲む, 食べる, 知る, 思う, 今, する, 来る, ちょっと, すみません, ありがとう, いつ, ある, いる, 誰, 出る, 入る] (20 taught) grammar=110 forms
+🎨 SCENE_PALETTE scene=LS6 requiredTargets=[買う, お金, いくら, いいえ, もう] supportVocabulary=[いい, これ, 本当, ある, 高い, ご飯, する, 今, ちょっと, 来る, ありがとう, 持つ, いつ, 誰, 知る, 今日, 行く, 好き, 何, 一緒] (20 taught) grammar=110 forms
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 6) generation call 1 · required 5 · 6–7 turns
+⚠ LISTENING_TURN_BUDGET LS1 returned 8 turns > hard max 7 — rejected, regenerating within budget
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=5 heard=5 PASS · turns 8/7
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L1 unknown=[やあ 元気] UNKNOWN_LEXEME (as generated)
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L2 unknown=[元気 そっち] UNKNOWN_LEXEME (as generated)
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L3 unknown=[元気] UNKNOWN_LEXEME (as generated)
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L6 unknown=[いや 別] UNKNOWN_LEXEME (as generated)
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L8 unknown=[かあ] UNKNOWN_LEXEME (as generated)
+ℹ ABOVE_PREFERRED_BUT_ALLOWED scene=LS1 L4 6u (preferred 3–5, max 7) — valid, no repair
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=FAIL(5 lines) length=PASS max3=PASS register=PASS structure=PASS duplicates=PASS decision=REGENERATE reason=CLOSED_VOCAB 5 lines; TURN_BUDGET 8 > 7 unknown=[やあ, 元気, そっち, いや, 別, かあ] (candidate)
+🗣 JA_SCENE_REGISTER scene=LS1 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=6 verdict=PASS (as generated)
+🔁 PHASE_REGENERATE LS1 (OPEN) — PHASE (CLOSED_VOCAB 5 lines; TURN_BUDGET 8 > 7) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 6) generation call 2 · required 5 · 6–7 turns
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=5 heard=5 PASS · turns 6/7 (phase regenerated from its plan)
+⛔ NATURALNESS_FAIL LS1 L3 naturalness 2/5 — '欲しい' is unnatural for wanting a movie; us (phase commit gate)
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=PASS structure=PASS duplicates=PASS decision=COMMIT (regenerated candidate)
+🗣 JA_SCENE_REGISTER scene=LS1 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=6 verdict=PASS (regenerated)
+🔧 PHASE_REPAIR LS1 class=LINE · 1 line issue(s) → one-line repair ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=UNNATURAL scene=LS1 line=L3 protected=[映画, 欲しい] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L3 candidate="映画、見たい？" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 1 remaining issue(s) are left to the final gates
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_PASS · window=0+6 turns · judge=pass (det 5/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=5 heard=5 PASS
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=PASS structure=PASS duplicates=PASS decision=COMMIT (after line repair)
+🩺 PHASE_REPAIR_STRATEGY LS1 (OPEN) generationCalls=2 atomicRepairCalls=1 exchangeRepairCalls=0 phaseRegenerations=1 escalations=[PHASE (CLOSED_VOCAB 5 lines; TURN_BUDGET 8 > 7)] → COMMITTED after repair
+✅ SCENE_COMMIT LS1 decision=COMMIT · 6 turns · heard 5/5 · every phase gate clean (coverage, closed vocab, complexity, grammar/register, adjacency, continuity, naturalness)
+🧾 CONVERSATION_STATE after LS1 · activities 1 · agreedTimes [] · payments 0 · eatingDone false · openQuestion no · remainingTargets 25
+🧵 PHASE_COMMITTED LS1 (OPEN) 6 turns · facts 0 · commitments 2
+🎧 LISTENING_COMPOSITION scene LS2 (2 of 6) generation call 3 · required 5 · 6–7 turns
+🔗 PHASE_TRANSITION_VALIDATION LS2 (DECIDE) LOCAL_PHASE_PASS · TRANSITION_PASS · window=3+6 turns · judge=pass (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS2 required=5 heard=5 PASS · turns 6/7
+🛂 SCENE_PREFLIGHT LS2 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=PASS structure=PASS duplicates=PASS decision=COMMIT (candidate)
+🗣 JA_SCENE_REGISTER scene=LS2 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=6 verdict=PASS (as generated)
+🩺 PHASE_REPAIR_STRATEGY LS2 (DECIDE) generationCalls=1 atomicRepairCalls=0 exchangeRepairCalls=0 phaseRegenerations=0 → COMMITTED on first generation
+✅ SCENE_COMMIT LS2 decision=COMMIT · 6 turns · heard 5/5 · every phase gate clean (coverage, closed vocab, complexity, grammar/register, adjacency, continuity, naturalness)
+🧾 CONVERSATION_STATE after LS2 · activities 2 · agreedTimes [] · payments 0 · eatingDone false · openQuestion no · remainingTargets 20
+🧵 PHASE_COMMITTED LS2 (DECIDE) 6 turns · facts 0 · commitments 4
+🎧 LISTENING_COMPOSITION scene LS3 (3 of 6) generation call 4 · required 5 · 6–7 turns
+🔗 PHASE_TRANSITION_VALIDATION LS3 (ARRANGE) LOCAL_PHASE_PASS · TRANSITION_PASS · window=3+6 turns · judge=pass (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS3 required=5 heard=5 PASS · turns 6/7
+🛂 SCENE_PREFLIGHT LS3 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=PASS structure=PASS duplicates=PASS decision=COMMIT (candidate)
+🗣 JA_SCENE_REGISTER scene=LS3 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=5 verdict=PASS (as generated)
+🩺 PHASE_REPAIR_STRATEGY LS3 (ARRANGE) generationCalls=1 atomicRepairCalls=0 exchangeRepairCalls=0 phaseRegenerations=0 → COMMITTED on first generation
+✅ SCENE_COMMIT LS3 decision=COMMIT · 6 turns · heard 5/5 · every phase gate clean (coverage, closed vocab, complexity, grammar/register, adjacency, continuity, naturalness)
+🧾 CONVERSATION_STATE after LS3 · activities 3 · agreedTimes [] · payments 0 · eatingDone false · openQuestion no · remainingTargets 15
+🧵 PHASE_COMMITTED LS3 (ARRANGE) 6 turns · facts 0 · commitments 4
+🎧 LISTENING_COMPOSITION scene LS4 (4 of 6) generation call 5 · required 5 · 4–5 turns
+🎧 SCENE_REQUIRED_COVERAGE LS4 required=5 heard=5 PASS · turns 4/5
+⛔ MAX3_FAIL scene=LS4 line=L19 4 current targets (101,102,103,43) (as generated)
+⛔ CLOSED_VOCAB_FAIL scene=LS4 line=L21 unknown=[撮る] UNKNOWN_LEXEME (as generated)
+⛔ CLOSED_VOCAB_FAIL scene=LS4 line=L22 unknown=[撮る] UNKNOWN_LEXEME (as generated)
+🛂 SCENE_PREFLIGHT LS4 coverage=PASS closedVocab=FAIL(2 lines) length=PASS max3=FAIL(1) register=PASS structure=PASS duplicates=PASS decision=REGENERATE reason=HARD_FAILURES 3 in 3 defective unit(s) (closedVocab 2, max3 1) unknown=[撮る] (candidate)
+🗣 JA_SCENE_REGISTER scene=LS4 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=4 verdict=PASS (as generated)
+🔁 PHASE_REGENERATE LS4 (MOVE) — PHASE (HARD_FAILURES 3 in 3 defective unit(s) (closedVocab 2, max3 1)) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS4 (4 of 6) generation call 6 · required 5 · 4–5 turns
+🔗 PHASE_TRANSITION_VALIDATION LS4 (MOVE) LOCAL_PHASE_PASS · TRANSITION_PASS · window=3+4 turns · judge=pass (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS4 required=5 heard=5 PASS · turns 4/5 (phase regenerated from its plan)
+🛂 SCENE_PREFLIGHT LS4 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=PASS structure=PASS duplicates=PASS decision=COMMIT (regenerated candidate)
+🗣 JA_SCENE_REGISTER scene=LS4 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=4 verdict=PASS (regenerated)
+🩺 PHASE_REPAIR_STRATEGY LS4 (MOVE) generationCalls=2 atomicRepairCalls=0 exchangeRepairCalls=0 phaseRegenerations=1 escalations=[PHASE (HARD_FAILURES 3 in 3 defective unit(s) (closedVocab 2, max3 1))] → COMMITTED after repair
+✅ SCENE_COMMIT LS4 decision=COMMIT · 4 turns · heard 5/5 · every phase gate clean (coverage, closed vocab, complexity, grammar/register, adjacency, continuity, naturalness)
+🧾 CONVERSATION_STATE after LS4 · activities 4 · agreedTimes [] · payments 0 · eatingDone false · openQuestion no · remainingTargets 10
+🧵 PHASE_COMMITTED LS4 (MOVE) 4 turns · facts 0 · commitments 5
+🎧 LISTENING_COMPOSITION scene LS5 (5 of 6) generation call 7 · required 5 · 8–9 turns
+🔗 PHASE_TRANSITION_VALIDATION LS5 (DO) LOCAL_PHASE_PASS · TRANSITION_PASS · window=3+8 turns · judge=pass (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS5 required=5 heard=5 PASS · turns 8/9
+🛂 SCENE_PREFLIGHT LS5 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=PASS structure=PASS duplicates=PASS decision=COMMIT (candidate)
+🗣 JA_SCENE_REGISTER scene=LS5 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=6 verdict=PASS (as generated)
+🩺 PHASE_REPAIR_STRATEGY LS5 (DO) generationCalls=1 atomicRepairCalls=0 exchangeRepairCalls=0 phaseRegenerations=0 → COMMITTED on first generation
+✅ SCENE_COMMIT LS5 decision=COMMIT · 8 turns · heard 5/5 · every phase gate clean (coverage, closed vocab, complexity, grammar/register, adjacency, continuity, naturalness)
+🧾 CONVERSATION_STATE after LS5 · activities 5 · agreedTimes [] · payments 0 · eatingDone false · openQuestion no · remainingTargets 5
+🧵 PHASE_COMMITTED LS5 (DO) 8 turns · facts 0 · commitments 6
+🎧 LISTENING_COMPOSITION scene LS6 (6 of 6) generation call 8 · required 5 · 6–7 turns
+⚠ LISTENING_TURN_BUDGET LS6 returned 8 turns > hard max 7 — rejected, regenerating within budget
+🎧 SCENE_REQUIRED_COVERAGE LS6 required=5 heard=5 PASS · turns 8/7
+🛂 SCENE_PREFLIGHT LS6 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=PASS structure=PASS duplicates=PASS decision=REGENERATE reason=TURN_BUDGET 8 > 7 (candidate)
+🗣 JA_SCENE_REGISTER scene=LS6 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=6 verdict=PASS (as generated)
+🔁 PHASE_REGENERATE LS6 (PAY) — PHASE (TURN_BUDGET 8 > 7) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS6 (6 of 6) generation call 9 · required 5 · 6–7 turns
+⚠ LISTENING_TURN_BUDGET LS6 returned 8 turns > hard max 7 — rejected (over budget after 2 attempts)
+🎧 SCENE_REQUIRED_COVERAGE LS6 required=5 heard=5 PASS · turns 8/7 (phase regenerated from its plan)
+🛂 SCENE_PREFLIGHT LS6 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=PASS structure=PASS duplicates=PASS decision=REGENERATE reason=TURN_BUDGET 8 > 7 (regenerated candidate)
+🗣 JA_SCENE_REGISTER scene=LS6 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=7 verdict=PASS (regenerated)
+🩺 PHASE_REPAIR_STRATEGY LS6 (PAY) generationCalls=2 atomicRepairCalls=0 exchangeRepairCalls=0 phaseRegenerations=1 escalations=[PHASE (TURN_BUDGET 8 > 7) | PHASE (TURN_BUDGET 8 > 7)] → NOT COMMITTED
+⛔ LISTENING_TARGET_UNPLACED 21 買う — its phase LS6 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 23 お金 — its phase LS6 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 22 いくら — its phase LS6 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 86 いいえ — its phase LS6 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 31 もう — its phase LS6 could not commit (named, never silently lost) → NOT_READY
+⛔ PHASE_NOT_COMMITTED LS6 — NO COMMIT_WITH_DEFECTS: nothing from this candidate enters the conversation; its targets [買う, お金, いくら, いいえ, もう] stay unheard (no random scattering) → NOT_READY
+🎧 LISTENING_SCENE_COVERAGE_UNION 25/30 · assembled 5 scenes · 30 turns (max 44)
+🎧 LISTENING_TARGET_AUDIT (assembled) covered=25/30 missing=[いいえ, もう, 買う, いくら, お金]
+🎧 LISTENING_MAX3_AUDIT PASS · max 3 targets/turn
+🎧 LISTENING_CLOSED_VOCAB PASS
+🎧 LISTENING_DIALOGUE speakers=A/B · duplicates PASS · merged Q+A PASS
+🎧 LISTENING_NATURALNESS PASS
+🎧 LISTENING_TARGET_AUDIT (after atomic repair) covered=25/30 missing=[いいえ, もう, 買う, いくら, お金]
+🎧 LISTENING_MAX3_AUDIT PASS · max 3 targets/turn
+🎧 LISTENING_CLOSED_VOCAB PASS
+🎧 LISTENING_DIALOGUE speakers=A/B · duplicates PASS · merged Q+A PASS
+🎧 LISTENING_NATURALNESS PASS
+  🎬 COHERENCE AUDIT: 4/5 scene(s) pass · scene 5 FAIL: deterministic continuity 3/5: the reply does not answer the question
+🎧 LISTENING_COHERENCE_AUTHORITY scene-level verdicts are authoritative — overall 4/5 cannot override 1 failed scene(s); exact lines: L27
+🔧 LISTENING_ATOMIC_REPAIR issue=COHERENCE_LINE scene=LS5 line=L27 scope=L26+L27 protected=[うん, 帰る, ごめん] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L27 candidate="うん、まだ家には帰らない。 / ごめん、ちょっとまだ行けないんだ。" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+  🎬 COHERENCE AUDIT: 1/5 scene(s) pass · scene 2 FAIL: Topic shifts abruptly from eating to Japanese ability without clear connection. · scene 3 FAIL: The reason 'Because I like it' doesn't logically explain 'Why are we going?' · scene 4 FAIL: deterministic continuity 3/5: the reply does not answer the question · scene 5 FAIL: deterministic continuity 3/5: the reply does not answer the question
+🎧 LISTENING_ATOMIC_SUMMARY accepted=1 rejected=0 exhausted=0 · atomic calls 2
+🎧 LISTENING_TURN_BUDGET 30 turns (allowed 24–44) PASS
+⛔ SCENE_UNRESOLVED LS6 — INVALID candidate (budget 1) not committed; still unheard: [買う, お金, いくら, いいえ, もう]
+🎧 LISTENING_COHERENCE FAIL · overall 1/5 · scene-level verdicts are authoritative: scene 2 FAIL (Topic shifts abruptly from eating to Japanese ability withou); scene 3 FAIL (The reason 'Because I like it' doesn't logically explain 'Wh); scene 4 FAIL (deterministic continuity 3/5: the reply does not answer the ); scene 5 FAIL (deterministic continuity 3/5: the reply does not answer the )
+🧊 LISTENING_TEXT_FREEZE ja lines=30 — the Japanese text is final; readings / romaji are derived only now
+🔤 JA_READING_PIPELINE deterministic units=77 unresolved=0 · segmentation → dictionary → morphology → kana → romaji
+🔤 JA_READING_ALIGNMENT lines=30 issues=0 PASS · JA_TEXT_FREEZE intact (30 lines byte-identical)
+🎧 LISTENING_PRONUNCIATION PASS
+🎧 LISTENING_TARGET_AUDIT (final) covered=25/30 missing=[いいえ, もう, 買う, いくら, お金]
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS1 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=6 verdict=PASS
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS2 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=6 verdict=PASS
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS3 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=5 verdict=PASS
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS4 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=4 verdict=PASS
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS5 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=7 verdict=PASS
+🗣 JA_REGISTER_AUDIT scenes=5 pass=5 fail=0 REGISTER_PASS=true
+🩺 LISTENING_REPAIR_HEALTH repairCalls=2 (target < 10) OK · sceneRegenerations=3 · scenesCommittedFirstPass=3 · afterRepair=2 · withDefects=0 · firstGenerationUnknownLexemeLines=7 — telemetry only, not a gate
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=50% (target ≥70%) · repairCalls=2 (target <10) · generationCalls=9 · phaseRegenerations=3 · globalReplans=0 · targetReassignments=0 · ⚠ below efficiency target (first-generation commits 50% < 70%) — no planner failure — health targets, not gates
+📏 LISTENING_COMPLEXITY_AUDIT belt=10th Kyu preferred=3–5 hardMax=7 lines=30 withinPreferred=3 shortNatural=27 abovePreferredAllowed=0 overHardMax=0 maxObserved=4 · preferredRatio=100% (advisory ≥80%) PASS
+📚 LISTENING_CLOSED_VOCAB unknown=0 PASS
+    LISTENING_LINE L1 speaker=A actualTargetIds=[44,19] targetCount=2
+    LISTENING_LINE L2 speaker=B actualTargetIds=[104,19] targetCount=2
+    LISTENING_LINE L3 speaker=A actualTargetIds=[105,19] targetCount=2
+    LISTENING_LINE L4 speaker=B actualTargetIds=[85,47] targetCount=2
+    LISTENING_LINE L5 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L6 speaker=B actualTargetIds=[81] targetCount=1
+    LISTENING_LINE L7 speaker=A actualTargetIds=[43] targetCount=1
+    LISTENING_LINE L8 speaker=B actualTargetIds=[83] targetCount=1
+    LISTENING_LINE L9 speaker=A actualTargetIds=[82] targetCount=1
+    LISTENING_LINE L10 speaker=B actualTargetIds=[85] targetCount=1
+    LISTENING_LINE L11 speaker=A actualTargetIds=[104,46] targetCount=2
+    LISTENING_LINE L12 speaker=B actualTargetIds=[85,46] targetCount=2
+    LISTENING_LINE L13 speaker=A actualTargetIds=[45] targetCount=1
+    LISTENING_LINE L14 speaker=B actualTargetIds=[14] targetCount=1
+    LISTENING_LINE L15 speaker=A actualTargetIds=[40] targetCount=1
+    LISTENING_LINE L16 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L17 speaker=A actualTargetIds=[19] targetCount=1
+    LISTENING_LINE L18 speaker=B actualTargetIds=[30,19] targetCount=2
+    LISTENING_LINE L19 speaker=A actualTargetIds=[101,102,103] targetCount=3
+    LISTENING_LINE L20 speaker=B actualTargetIds=[84] targetCount=1
+    LISTENING_LINE L21 speaker=A actualTargetIds=[80,106,19] targetCount=3
+    LISTENING_LINE L22 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L23 speaker=A actualTargetIds=[103,20] targetCount=2
+    LISTENING_LINE L24 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L25 speaker=A actualTargetIds=[33] targetCount=1
+    LISTENING_LINE L26 speaker=B actualTargetIds=[85,32,33] targetCount=3
+    LISTENING_LINE L27 speaker=A actualTargetIds=[87,32] targetCount=2
+    LISTENING_LINE L28 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L29 speaker=A actualTargetIds=[32] targetCount=1
+    LISTENING_LINE L30 speaker=B actualTargetIds=[] targetCount=0
+⛔ LISTENING_UNCOMMITTED_SCENES LS6 (budget 1 — unheard 5) — SCENES_VALIDATED=false
+🎧 LISTENING_FINAL_INTEGRITY NOT_READY · TARGET COVERAGE 25/30 · failed: COVERAGE_PASS, WHOLE_CONVERSATION_COHERENCE, SCENE_REQUIRED_COVERAGE, SCENES_VALIDATED
+  🎧 LISTENING_GATES TARGET_COVERAGE=25/30 · COVERAGE_PASS=false · MAX_TARGETS_PER_TURN=3 · MAX3_PASS=true · BOTH_SPEAKERS=true · NO_MERGED_SPEAKER_LINES=true · NO_DUPLICATES=true · NO_SINGLETON_SCENES=true · CLOSED_VOCAB=true · LENGTH_PASS=true · JA_REGISTER_PASS=true · LINE_QUALITY=true · NATURALNESS=true · WHOLE_CONVERSATION_COHERENCE=FAIL · PRONUNCIATION=true · SCENE_REQUIRED_COVERAGE=FAIL · TURN_COUNT=30/44 · TURN_BUDGET=true · SCENES_VALIDATED=false · ONE_CONVERSATION=PASS · MEANING_PLAN_VALIDATED=PASS · QUESTION_ANSWER=PASS · NO_DEFECTIVE_COMMITTED_PHASES=true
+  🎧 LISTENING NOT_READY — Listening track needs repair (COVERAGE_PASS=FAIL, WHOLE_CONVERSATION_COHERENCE=FAIL, SCENE_REQUIRED_COVERAGE=FAIL, SCENES_VALIDATED=FAIL) · TARGET COVERAGE 25/30 · 30 turns · 5 scene(s) · 💰 LISTENING_GENERATION_CALLS=9 LISTENING_REPAIR_CALLS=2 LISTENING_QC_CALLS=18 LISTENING_TOTAL_PAID_CALLS=29 LISTENING_PROVEN_TURNS=36 LISTENING_MEANING_PLAN_TURNS=36 LISTENING_SCENE_GENERATION_CALLS=9 LISTENING_LOCAL_REPAIR_CALLS=2 LISTENING_REASSIGNMENTS=0 LISTENING_COVERAGE_PLAN_TARGETS=30 LISTENING_VERIFIED_TARGETS=25 LISTENING_SCENE_REGENERATIONS=3 LISTENING_SCENES_COMMITTED_FIRST_PASS=3 LISTENING_SCENES_COMMITTED_AFTER_REPAIR=2 LISTENING_SCENES_COMMITTED_WITH_DEFECTS=0 LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES=7 LISTENING_ATOMIC_REPAIR_CALLS=2 LISTENING_ATOMIC_CAPPED=1 LISTENING_ATOMIC_PATCHES_ACCEPTED=2 LISTENING_ATOMIC_PATCHES_REJECTED=0 LISTENING_ATOMIC_EXHAUSTED=0 LISTENING_TRANSITION_CALLS=5 LISTENING_UNCOMMITTED_SCENES=1 LISTENING_SCENES_REALLOCATED=0 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=50 LISTENING_PLANNER_FAILURE=false COMPLEXITY_PREFERRED_RANGE=3–5 COMPLEXITY_HARD_MAX=7 COMPLEXITY_WITHIN_PREFERRED=3 COMPLEXITY_SHORT_NATURAL=27 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=0 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=100%
+🎧 LISTENING_SNAPSHOT_INVARIANT PASS — track / coverage target ids === the frozen snapshot (30)
+🎧 LISTENING_TRACK_RESULT status=NOT_READY · TARGET COVERAGE 25/30 · failed: COVERAGE_PASS=FAIL, WHOLE_CONVERSATION_COHERENCE=FAIL, SCENE_REQUIRED_COVERAGE=FAIL, SCENES_VALIDATED=FAIL · level 10th Kyu hardMax 7 · LISTENING_SELECTION_COUNT=30 LISTENING_MAIN_GENERATION_CALLS=0 LISTENING_GENERATION_CALLS=9 LISTENING_REPAIR_CALLS=2 LISTENING_QC_CALLS=18 LISTENING_TOTAL_PAID_CALLS=29 LISTENING_PROVEN_TURNS=36 LISTENING_MEANING_PLAN_TURNS=36 LISTENING_SCENE_GENERATION_CALLS=9 LISTENING_LOCAL_REPAIR_CALLS=2 LISTENING_REASSIGNMENTS=0 LISTENING_COVERAGE_PLAN_TARGETS=30 LISTENING_VERIFIED_TARGETS=25 LISTENING_SCENE_REGENERATIONS=3 LISTENING_SCENES_COMMITTED_FIRST_PASS=3 LISTENING_SCENES_COMMITTED_AFTER_REPAIR=2 LISTENING_SCENES_COMMITTED_WITH_DEFECTS=0 LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES=7 LISTENING_ATOMIC_REPAIR_CALLS=2 LISTENING_ATOMIC_CAPPED=1 LISTENING_ATOMIC_PATCHES_ACCEPTED=2 LISTENING_ATOMIC_PATCHES_REJECTED=0 LISTENING_ATOMIC_EXHAUSTED=0 LISTENING_TRANSITION_CALLS=5 LISTENING_UNCOMMITTED_SCENES=1 LISTENING_SCENES_REALLOCATED=0 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=50 LISTENING_PLANNER_FAILURE=false COMPLEXITY_PREFERRED_RANGE=3–5 COMPLEXITY_HARD_MAX=7 COMPLEXITY_WITHIN_PREFERRED=3 COMPLEXITY_SHORT_NATURAL=27 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=0 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=100% LISTENING_TOKEN_USAGE=39079 LISTENING_COST=0.005702

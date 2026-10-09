@@ -1,0 +1,5023 @@
+{
+ "format": "tt-golden-review-pack/1",
+ "golden": "golden-v1",
+ "rubric": "tt-eval-rubric/1.1",
+ "createdAt": "2026-10-08",
+ "counts": {
+  "ja": 36,
+  "th": 35,
+  "zh": 43
+ },
+ "labelPolicy": "BLIND REVIEW. The pack carries no model labels. Model labels (annotator A = claude-opus-5-5, author of the pipeline; annotator B = a blind model annotator of the same family) stay in golden-v1.json / golden-v1.annotator-b.json, labelled as model labels. Human labels are stored separately (golden-v1.human-labels.json) with the reviewer’s name and native language; calibration is claimed only against human labels.",
+ "dimensions": {
+  "grammar": {
+   "values": [
+    "ok",
+    "error"
+   ],
+   "question": "Is the sentence grammatical and morphologically correct (particles, classifiers / measure words, verb forms, word order)?",
+   "clarification": null
+  },
+  "naturalness": {
+   "values": [
+    "natural",
+    "marginal",
+    "unnatural"
+   ],
+   "question": "Would a native speaker plausibly say this, in this situation? marginal = understandable but odd or stilted.",
+   "clarification": "Judge the wording only (would a native speaker say it like this in this situation?). Meaning problems across turns go to coherence."
+  },
+  "targetUsage": {
+   "values": [
+    "correct",
+    "wrong-sense",
+    "wrong-form",
+    "absent",
+    "n/a"
+   ],
+   "question": "Is the TARGET word present and used in its intended sense and a correct form?",
+   "clarification": null
+  },
+  "cue": {
+   "values": [
+    "match",
+    "mismatch",
+    "n/a"
+   ],
+   "question": "If a learner followed the cue / English, would they produce this sentence (same meaning)? n/a when no cue is given.",
+   "clarification": null
+  },
+  "qa": {
+   "values": [
+    "answers",
+    "does-not-answer",
+    "n/a"
+   ],
+   "question": "For a question→reply exchange: does the reply answer the question asked (right type: time for \"when\", reason for \"why\", amount for \"how much\")?",
+   "clarification": null
+  },
+  "coherence": {
+   "values": [
+    "coherent",
+    "incoherent",
+    "n/a"
+   ],
+   "question": "Do the turns make sense together as a conversation (logic, facts, chronology)? n/a for a single sentence.",
+   "clarification": "Judge MEANING across the turns: does the reply connect to what was said AND does the exchange make sense (logic, facts, time)? A reply of the right form with absurd content (\"Is the money big?\" — \"Very big.\") is INCOHERENT. Phrasing alone belongs to naturalness."
+  },
+  "register": {
+   "values": [
+    "ok",
+    "error",
+    "n/a"
+   ],
+   "question": "Are politeness, speech level and speaker-gendered forms right for the stated speaker and relationship?",
+   "clarification": null
+  },
+  "usefulness": {
+   "values": [
+    "useful",
+    "weak",
+    "not-useful"
+   ],
+   "question": "Would this teach the target word well to a learner at this level (a real, reusable communicative use)?",
+   "clarification": "useful = a real, reusable way to use this word that a beginner needs · weak = correct but artificial, rare or low-value · not-useful = teaches something wrong, meaningless or misleading."
+  }
+ },
+ "errorCategories": {
+  "GRAMMAR_MORPHOLOGY": "wrong particle / inflection / 的-得 / verb form",
+  "GRAMMAR_WORD_ORDER": "word order error",
+  "MISSING_ARGUMENT": "a required object / complement / verb is missing (e.g. 跟 with no object, 想 + 可以 with no verb)",
+  "SELECTIONAL_MISMATCH": "words that cannot combine in meaning (money \"big\", milk \"funny\", a movie you \"want\" as 欲しい)",
+  "WRONG_SENSE": "the target is used in a sense other than the intended one",
+  "CLASSIFIER_ERROR": "wrong classifier / measure word",
+  "TENSE_ASPECT_CONFLICT": "time reference conflicts with mood / aspect (let's go … yesterday; もう … 買わなかった)",
+  "QA_TYPE_MISMATCH": "the reply gives the wrong type of answer (a day for \"what time\")",
+  "NON_ANSWER": "the reply does not answer the question at all",
+  "TOPIC_JUMP": "unmotivated change of topic",
+  "CUE_MISMATCH": "cue / English does not lead to this sentence",
+  "REGISTER_GENDER_PARTICLE": "a speaker uses the other gender's particle / pronoun",
+  "REGISTER_POLITENESS": "wrong politeness / speech level for the relationship",
+  "TEMPLATE_FRAGMENT": "a mechanical template / fragment nobody would say alone",
+  "UNIDIOMATIC": "grammatical but not how it is said",
+  "REDUNDANT_DUPLICATE": "repeats another item's construction with no new function"
+ },
+ "items": [
+  {
+   "id": "ja-daily-046",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "なんで",
+    "gloss": "why"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "なんで行かないの？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "あれ、なんで？",
+     "なんで来ないの？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 40
+   }
+  },
+  {
+   "id": "ja-daily-060",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "ごめん",
+    "gloss": "sorry"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "ごめん、今日、暇じゃないんだ。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "あれ、ごめん、もう行っちゃった？",
+     "ごめんね、ちょっと待ってくれる？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 128
+   }
+  },
+  {
+   "id": "ja-daily-055",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "いいえ",
+    "gloss": "no"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "いいえ、大丈夫。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "いいえ、大丈夫じゃない。",
+     "いいえ、もう帰るんだ。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 180
+   }
+  },
+  {
+   "id": "ja-daily-045",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どう",
+    "gloss": "how"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "今日、どう？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "これ、どう思う？",
+     "これ、どう？",
+     "あそこに行きたいんだけど、どう？",
+     "あれ、どう思う？",
+     "電話、どうする？",
+     "これ、どうする？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 30
+   }
+  },
+  {
+   "id": "ja-daily-052",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "飲む",
+    "gloss": "drink"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "今日、飲む？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "水、飲む？",
+     "今日、何飲む？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 304
+   }
+  },
+  {
+   "id": "ja-listening-073",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "また",
+    "gloss": "again"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "また写真、見ようか？"
+    },
+    {
+     "speaker": "B",
+     "text": "いいね。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS4",
+    "phase": "MOVE",
+    "situation": "they set off and get there (the way, the transport) and arrive",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "電車とバス、ある？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "はい、ある。"
+     },
+     {
+      "turn": 3,
+      "function": "PROPOSAL",
+      "text": "また写真、見ようか？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 31
+   }
+  },
+  {
+   "id": "ja-daily-048",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どっち",
+    "gloss": "which way"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "え、駅はどっち？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "どっちがいい？",
+     "じゃあ、どっちにする？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 58
+   }
+  },
+  {
+   "id": "ja-daily-051",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "乗る",
+    "gloss": "ride"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "何時に乗る？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "どれに乗る？",
+     "一緒に乗る？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 220
+   }
+  },
+  {
+   "id": "ja-listening-072",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "はい",
+    "gloss": "yes"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "電車とバス、ある？"
+    },
+    {
+     "speaker": "B",
+     "text": "はい、ある。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS4",
+    "phase": "MOVE",
+    "situation": "they set off and get there (the way, the transport) and arrive",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "電車とバス、ある？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "はい、ある。"
+     },
+     {
+      "turn": 3,
+      "function": "PROPOSAL",
+      "text": "また写真、見ようか？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 29
+   }
+  },
+  {
+   "id": "ja-listening-076",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "まだ",
+    "gloss": "still"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "まだ行く？"
+    },
+    {
+     "speaker": "B",
+     "text": "行く。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "DO",
+    "situation": "they do the main activity there: eat, look around or pick something",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "車、どう？"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "家に帰る？"
+     },
+     {
+      "turn": 5,
+      "function": "APOLOGY",
+      "text": "ごめん。"
+     },
+     {
+      "turn": 7,
+      "function": "QUESTION",
+      "text": "まだ行く？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 35
+   }
+  },
+  {
+   "id": "ja-listening-078",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "もう",
+    "gloss": "already"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "もうご飯、買った？"
+    },
+    {
+     "speaker": "B",
+     "text": "いいえ、買わなかった。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS6",
+    "phase": "PAY",
+    "situation": "they pay and check the price; then they wrap up and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "これ、いくら？"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "もうご飯、買った？"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "いいえ、買わなかった。"
+     },
+     {
+      "turn": 5,
+      "function": "STATEMENT",
+      "text": "お金、あるよ。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 37
+   }
+  },
+  {
+   "id": "ja-daily-044",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どう",
+    "gloss": "how"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "これ、どう思う？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "今日、どう？",
+     "これ、どう？",
+     "あそこに行きたいんだけど、どう？",
+     "あれ、どう思う？",
+     "電話、どうする？",
+     "これ、どうする？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 25
+   }
+  },
+  {
+   "id": "ja-listening-064",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どれ",
+    "gloss": "which one"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "どれを見る？"
+    },
+    {
+     "speaker": "B",
+     "text": "本を見る。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "どれを見る？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "本を見る。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "映画、欲しい？"
+     },
+     {
+      "turn": 6,
+      "function": "ANSWER",
+      "text": "昨日、行った。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 16
+   }
+  },
+  {
+   "id": "ja-listening-066",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "昨日",
+    "gloss": "yesterday"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "いつ行った？"
+    },
+    {
+     "speaker": "B",
+     "text": "昨日、行った。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS6",
+    "phase": "PAY",
+    "situation": "they pay and check the price; then they wrap up and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "これ、いくら？"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "もうご飯、買った？"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "いいえ、買わなかった。"
+     },
+     {
+      "turn": 5,
+      "function": "STATEMENT",
+      "text": "お金、あるよ。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 45
+   }
+  },
+  {
+   "id": "ja-daily-056",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "また",
+    "gloss": "again"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "また、ここ、好きだよ。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "また明日。",
+     "また来る？",
+     "また行こうよ。",
+     "うん、いいよ。じゃあ、また明日ね。",
+     "うん、また明日ね。",
+     "じゃあ、また一緒に行こうよ。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 277
+   }
+  },
+  {
+   "id": "ja-listening-074",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どう",
+    "gloss": "how"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "車、どう？"
+    },
+    {
+     "speaker": "B",
+     "text": "いいね。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "DO",
+    "situation": "they do the main activity there: eat, look around or pick something",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "車、どう？"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "家に帰る？"
+     },
+     {
+      "turn": 5,
+      "function": "APOLOGY",
+      "text": "ごめん。"
+     },
+     {
+      "turn": 7,
+      "function": "QUESTION",
+      "text": "まだ行く？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 32
+   }
+  },
+  {
+   "id": "ja-daily-057",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "電話",
+    "gloss": "phone"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "電話、まだ使ってないんだ。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "電話、どうする？",
+     "電話、まだ？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 142
+   }
+  },
+  {
+   "id": "ja-daily-050",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "あれ",
+    "gloss": "that over there"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "あれ、高い？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "あれ、なんで？",
+     "あれ、どう思う？",
+     "あれ、いいんじゃない？",
+     "あれ、ごめん、もう行っちゃった？",
+     "すみません、あれ、何？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 122
+   }
+  },
+  {
+   "id": "ja-listening-079",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "お金",
+    "gloss": "money"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "お金、あるよ。"
+    },
+    {
+     "speaker": "B",
+     "text": "本当？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS6",
+    "phase": "PAY",
+    "situation": "they pay and check the price; then they wrap up and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "これ、いくら？"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "もうご飯、買った？"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "いいえ、買わなかった。"
+     },
+     {
+      "turn": 5,
+      "function": "STATEMENT",
+      "text": "お金、あるよ。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 39
+   }
+  },
+  {
+   "id": "ja-daily-058",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "たぶん",
+    "gloss": "probably"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "たぶん、もう行っちゃう？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "たぶん大丈夫だと思う。",
+     "たぶん、もう帰るね。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 200
+   }
+  },
+  {
+   "id": "ja-listening-068",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "できる",
+    "gloss": "can"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "日本語、できる？"
+    },
+    {
+     "speaker": "B",
+     "text": "うん、できる。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS2",
+    "phase": "DECIDE",
+    "situation": "they decide what to do and where to go together",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "どっちを食べる？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "あれを食べる。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "あそこに行く？"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "うん、行く。"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "日本語、できる？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 24
+   }
+  },
+  {
+   "id": "ja-daily-059",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "いいえ",
+    "gloss": "no"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "いいえ、大丈夫じゃない。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "いいえ、もう帰るんだ。",
+     "いいえ、大丈夫。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 180
+   }
+  },
+  {
+   "id": "ja-daily-062",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "ありがとう",
+    "gloss": "thank you"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "わあ、これ、ありがとう。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "ありがとう。",
+     "ああ、これ、ありがとう。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 412
+   }
+  },
+  {
+   "id": "ja-listening-077",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "いくら",
+    "gloss": "how much"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "これ、いくら？"
+    },
+    {
+     "speaker": "B",
+     "text": "高いね。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS6",
+    "phase": "PAY",
+    "situation": "they pay and check the price; then they wrap up and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "これ、いくら？"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "もうご飯、買った？"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "いいえ、買わなかった。"
+     },
+     {
+      "turn": 5,
+      "function": "STATEMENT",
+      "text": "お金、あるよ。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 36
+   }
+  },
+  {
+   "id": "ja-daily-053",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "分かる",
+    "gloss": "understand"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "明日分かる？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "うん、分かるよ。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 403
+   }
+  },
+  {
+   "id": "ja-listening-069",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "何時",
+    "gloss": "what time"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "何時に行く？"
+    },
+    {
+     "speaker": "B",
+     "text": "明日、行く。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS3",
+    "phase": "ARRANGE",
+    "situation": "they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "何時に行く？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "明日、行く。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "映画、なんで見るの？"
+     },
+     {
+      "turn": 6,
+      "function": "ANSWER",
+      "text": "たぶん行く。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 25
+   }
+  },
+  {
+   "id": "ja-daily-063",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "すみません",
+    "gloss": "excuse me"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "すみません、あれ、何？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "すみません、ちょっといい？",
+     "あ、すみません、ちょっといい？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 429
+   }
+  },
+  {
+   "id": "ja-daily-047",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どっち",
+    "gloss": "which"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "じゃあ、どっちにする？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "どっちがいい？",
+     "え、駅はどっち？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 55
+   }
+  },
+  {
+   "id": "ja-listening-065",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "欲しい",
+    "gloss": "want"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "映画、欲しい？"
+    },
+    {
+     "speaker": "B",
+     "text": "うん、欲しい。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "どれを見る？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "本を見る。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "映画、欲しい？"
+     },
+     {
+      "turn": 6,
+      "function": "ANSWER",
+      "text": "昨日、行った。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 18
+   }
+  },
+  {
+   "id": "ja-daily-054",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "いい",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "いいよ。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "どっちがいい？",
+     "どれがいい？",
+     "あれ、いいんじゃない？",
+     "うん、いいよ。じゃあ、また明日ね。",
+     "いいえ、大丈夫じゃない。",
+     "いいえ、もう帰るんだ。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 170
+   }
+  },
+  {
+   "id": "ja-daily-061",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "うん",
+    "gloss": "yeah"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "うん、いいよ。じゃあ、また明日ね。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "うん、そう思う。",
+     "うん、また明日ね。",
+     "うん、大丈夫だよ。",
+     "うん、食べるよ。",
+     "うん、好きだよ。",
+     "うん、分かるよ。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 170
+   }
+  },
+  {
+   "id": "ja-daily-049",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どれ",
+    "gloss": "which one"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "どれが好き？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene plan: 7 mini-scene(s): S1. Greeting and initial inquiry · S2. Making plans to eat together · S3. Deciding where to go · S4. Confirming the plan · S5. Further conversation about the day · S6. Expressing agreement and future meeting · S7. Two old friends, A and B, bump into each other unexpectedly near a shop. A asks B what she's doing today. — small talk",
+    "otherSentencesForThisTarget": [
+     "どれがいい？",
+     "じゃあ、どれにする？",
+     "どれに乗る？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 75
+   }
+  },
+  {
+   "id": "ja-listening-070",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "なんで",
+    "gloss": "why"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "映画、なんで見るの？"
+    },
+    {
+     "speaker": "B",
+     "text": "好きだから。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS3",
+    "phase": "ARRANGE",
+    "situation": "they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "何時に行く？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "明日、行く。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "映画、なんで見るの？"
+     },
+     {
+      "turn": 6,
+      "function": "ANSWER",
+      "text": "たぶん行く。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 27
+   }
+  },
+  {
+   "id": "ja-listening-075",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "ごめん",
+    "gloss": "sorry"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ごめん。"
+    },
+    {
+     "speaker": "B",
+     "text": "大丈夫。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "DO",
+    "situation": "they do the main activity there: eat, look around or pick something",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "車、どう？"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "家に帰る？"
+     },
+     {
+      "turn": 5,
+      "function": "APOLOGY",
+      "text": "ごめん。"
+     },
+     {
+      "turn": 7,
+      "function": "QUESTION",
+      "text": "まだ行く？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 34
+   }
+  },
+  {
+   "id": "ja-listening-067",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "あそこ",
+    "gloss": "over there"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "あそこに行く？"
+    },
+    {
+     "speaker": "B",
+     "text": "うん、行く。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS2",
+    "phase": "DECIDE",
+    "situation": "they decide what to do and where to go together",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "どっちを食べる？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "あれを食べる。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "あそこに行く？"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "うん、行く。"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "日本語、できる？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 22
+   }
+  },
+  {
+   "id": "ja-listening-071",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "たぶん",
+    "gloss": "probably"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "行く？"
+    },
+    {
+     "speaker": "B",
+     "text": "たぶん行く。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS2",
+    "phase": "DECIDE",
+    "situation": "they decide what to do and where to go together",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "どっちを食べる？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "あれを食べる。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "あそこに行く？"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "うん、行く。"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "日本語、できる？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 22
+   }
+  },
+  {
+   "id": "th-daily-086",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "รถเมล์",
+    "gloss": "bus"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผมจะไปตลาดใหม่ด้วยรถเมล์ครับ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ฉันชอบนั่งรถเมล์มากกว่าค่ะ",
+     "นี่คือตั๋วรถเมล์ใบหนึ่งค่ะ",
+     "คุณมีตั๋วรถเมล์กี่ใบครับ",
+     "คุณไปตลาดใหม่ด้วยรถเมล์ไหมครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 885
+   }
+  },
+  {
+   "id": "th-listening-099",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "น่าดู",
+    "gloss": "worth seeing"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "พิพิธภัณฑสถานแห่งชาติน่าดูไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "น่าดูค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet, greet each other and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "คุณอายุเท่าไหร่ครับ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "นี่เป็นอย่างไรครับ"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "แก่มากค่ะ"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "นี่หมายถึงอะไรครับ"
+     },
+     {
+      "turn": 7,
+      "function": "STATEMENT",
+      "text": "พวกคุณจะไปร้านครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 174
+   }
+  },
+  {
+   "id": "th-listening-111",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "เบอร์โทรศัพท์",
+    "gloss": "phone number"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "เบอร์โทรศัพท์อะไรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ห้าสามสามสองสองหนึ่งค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS7",
+    "phase": "CLOSE",
+    "situation": "they wrap up the day and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "เบอร์โทรศัพท์อะไรครับ"
+     },
+     {
+      "turn": 3,
+      "function": "FAREWELL",
+      "text": "โชคดีครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 39
+   }
+  },
+  {
+   "id": "th-listening-102",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ศูนย์",
+    "gloss": "zero"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ศูนย์ตลกไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ไม่เชิงตลกค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS3",
+    "phase": "ARRANGE",
+    "situation": "they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "PROPOSAL",
+      "text": "สิบโมงเช้าไปกันไหมครับ"
+     },
+     {
+      "turn": 2,
+      "function": "COUNTERPROPOSAL",
+      "text": "สิบเอ็ดโมงเช้าดีกว่าค่ะ"
+     },
+     {
+      "turn": 4,
+      "function": "QUESTION",
+      "text": "ศูนย์ตลกไหมครับ"
+     },
+     {
+      "turn": 5,
+      "function": "ANSWER",
+      "text": "ไม่เชิงตลกค่ะ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 28
+   }
+  },
+  {
+   "id": "th-listening-114",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ขนาด",
+    "gloss": "size"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ขนาดกำลังดีครับ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS15",
+    "phase": null,
+    "situation": null,
+    "plannedTurnsOfThisScene": [],
+    "note": "Listening tracks are one connected conversation, but the log does not record the other lines of this scene: judge the item as a turn in a friendly conversation."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 428
+   }
+  },
+  {
+   "id": "th-listening-113",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "สิบโมงเช้า",
+    "gloss": "10 a.m."
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "เราไปกันตอนสิบเอ็ดโมงเช้าดีไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "สิบโมงเช้าก็ดีค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS9",
+    "phase": null,
+    "situation": null,
+    "plannedTurnsOfThisScene": [],
+    "note": "Listening tracks are one connected conversation, but the log does not record the other lines of this scene: judge the item as a turn in a friendly conversation."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 371
+   }
+  },
+  {
+   "id": "th-daily-088",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "หวัง",
+    "gloss": "hope"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "คุณมีหวังว่าจะได้อะไรคะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ผมหวังว่าไฟจะพอครับ",
+     "ผมหวังว่ามันจะดีครับ",
+     "ผมหวังว่ารถไม่ติดครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 928
+   }
+  },
+  {
+   "id": "th-daily-094",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ตัว",
+    "gloss": "classifier (animals / things)"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "ตั๋วรถเมล์ตัวนี้กี่ใบคะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ผมเห็นใบปลิวใบนั้นครับ มีรูปเสือตัวหนึ่งครับ",
+     "ผมเห็นตัวอะไรในใบปลิวนั้นครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 975
+   }
+  },
+  {
+   "id": "th-listening-107",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ขนาด",
+    "gloss": "size"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ชอบขนาดครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "จริงเหรอคะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "DO",
+    "situation": "they do the main activity there: eat, look around or pick something",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "PROPOSAL",
+      "text": "ทานกันเลยครับ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "ผัดไทยอยู่ที่ไหนครับ"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "อยู่ร้านอาหารค่ะ"
+     },
+     {
+      "turn": 5,
+      "function": "STATEMENT",
+      "text": "ชอบขนาดครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 35
+   }
+  },
+  {
+   "id": "th-listening-108",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ใบเสร็จ",
+    "gloss": "receipt"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ใบเสร็จราคาเท่าไหร่ครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "พันบาทค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS6",
+    "phase": "PAY",
+    "situation": "they pay: the price, card or cash, the receipt",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "ใบเสร็จราคาเท่าไหร่ครับ"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "พันบาทค่ะ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "ซื้อนมหรือบัตรครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 36
+   }
+  },
+  {
+   "id": "th-listening-110",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "บัตร",
+    "gloss": "card / ticket"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ซื้อนมหรือบัตรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ซื้อบัตรค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS6",
+    "phase": "PAY",
+    "situation": "they pay: the price, card or cash, the receipt",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "ใบเสร็จราคาเท่าไหร่ครับ"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "พันบาทค่ะ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "ซื้อนมหรือบัตรครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 38
+   }
+  },
+  {
+   "id": "th-listening-103",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "นานเท่าไหร่",
+    "gloss": "how long"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ทางนานเท่าไหร่ครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "สิบนาทีค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS4",
+    "phase": "MOVE",
+    "situation": "they set off and get there (the way, the transport) and arrive",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "ทางนานเท่าไหร่ครับ"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "อันนั้นคือรถแท็กซี่ค่ะ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 30
+   }
+  },
+  {
+   "id": "th-listening-096",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "แก่",
+    "gloss": "old (people)"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "นี่เป็นอย่างไรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "แก่มากค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet, greet each other and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "คุณอายุเท่าไหร่ครับ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "นี่เป็นอย่างไรครับ"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "แก่มากค่ะ"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "นี่หมายถึงอะไรครับ"
+     },
+     {
+      "turn": 7,
+      "function": "STATEMENT",
+      "text": "พวกคุณจะไปร้านครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 17
+   }
+  },
+  {
+   "id": "th-daily-091",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ใบ",
+    "gloss": "classifier (flat things)"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "คุณมีตั๋วรถเมล์กี่ใบครับ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "กระเป๋าใบนี้เบาดีค่ะ",
+     "นี่คือตั๋วรถเมล์ใบหนึ่งค่ะ",
+     "ผมซื้อใบชามาด้วยครับ",
+     "ผมเห็นใบปลิวที่นั่นครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 922
+   }
+  },
+  {
+   "id": "th-listening-105",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ทานกันเลย",
+    "gloss": "let's eat"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ทานกันเลยครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ได้ค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "DO",
+    "situation": "they do the main activity there: eat, look around or pick something",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "PROPOSAL",
+      "text": "ทานกันเลยครับ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "ผัดไทยอยู่ที่ไหนครับ"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "อยู่ร้านอาหารค่ะ"
+     },
+     {
+      "turn": 5,
+      "function": "STATEMENT",
+      "text": "ชอบขนาดครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 32
+   }
+  },
+  {
+   "id": "th-listening-100",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "นักท่องเที่ยว",
+    "gloss": "tourist"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "เรียกนักท่องเที่ยวไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "เรียกค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS2",
+    "phase": "DECIDE",
+    "situation": "they decide what to do and where to go together",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "ไปที่ไหนครับ"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "ที่นั่นค่ะ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "สนามหลวงน่าดูไหมครับ"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "เรียกนักท่องเที่ยวไหมครับ"
+     },
+     {
+      "turn": 7,
+      "function": "STATEMENT",
+      "text": "ไปพิพิธภัณฑสถานแห่งชาติครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 24
+   }
+  },
+  {
+   "id": "th-daily-090",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ใบ",
+    "gloss": "classifier (flat things)"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "นี่คือตั๋วรถเมล์ใบหนึ่งค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "กระเป๋าใบนี้เบาดีค่ะ",
+     "คุณมีตั๋วรถเมล์กี่ใบครับ",
+     "ผมซื้อใบชามาด้วยครับ",
+     "ผมเห็นใบปลิวที่นั่นครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 922
+   }
+  },
+  {
+   "id": "th-daily-082",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คะ",
+    "gloss": "polite question particle (female)"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "อันนี้หมายถึงอะไรคะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ครั้งนี้ไปทางนั้นคุ้มไหมคะ",
+     "หน้าต่างห้องนอนใหญ่ไหมคะ",
+     "คุณจะไปตลาดเมื่อไหร่คะ",
+     "คุณมีหวังว่าจะได้อะไรคะ",
+     "คุณกังวลไหมคะ",
+     "ไฟที่นี่ดีไหมคะ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 917
+   }
+  },
+  {
+   "id": "th-daily-093",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ไฟ",
+    "gloss": "light / electricity"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "อาหารนี้ไฟดีมากค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ผมหวังว่าไฟจะพอครับ",
+     "ไฟที่นี่ดีไหมคะ",
+     "ตอนนี้ไฟยังมีอยู่ครับ",
+     "ที่นี่ไฟสว่างดีครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 939
+   }
+  },
+  {
+   "id": "th-daily-080",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "กังวล",
+    "gloss": "to worry"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "คุณกังวลไหมคะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ผมกังวลว่ารถจะติดครับ",
+     "ผมไม่กังวลครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 951
+   }
+  },
+  {
+   "id": "th-daily-089",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "เบา",
+    "gloss": "light"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "กระเป๋าใบนี้เบาดีค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "เสื้อตัวนี้เบาครับ",
+     "ผมอยากได้เก้าอี้เบาครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 912
+   }
+  },
+  {
+   "id": "th-listening-101",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "สิบเอ็ดโมงเช้า",
+    "gloss": "11 a.m."
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "สิบโมงเช้าไปกันไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "สิบเอ็ดโมงเช้าดีกว่าค่ะ"
+    },
+    {
+     "speaker": "A",
+     "text": "ได้สิบเอ็ดโมงเช้านะครับ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS3",
+    "phase": "ARRANGE",
+    "situation": "they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "PROPOSAL",
+      "text": "สิบโมงเช้าไปกันไหมครับ"
+     },
+     {
+      "turn": 2,
+      "function": "COUNTERPROPOSAL",
+      "text": "สิบเอ็ดโมงเช้าดีกว่าค่ะ"
+     },
+     {
+      "turn": 4,
+      "function": "QUESTION",
+      "text": "ศูนย์ตลกไหมครับ"
+     },
+     {
+      "turn": 5,
+      "function": "ANSWER",
+      "text": "ไม่เชิงตลกค่ะ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 26
+   }
+  },
+  {
+   "id": "th-listening-097",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คุณอายุเท่าไหร่",
+    "gloss": "how old are you"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "คุณอายุเท่าไหร่ครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "สิบปีค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet, greet each other and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "คุณอายุเท่าไหร่ครับ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "นี่เป็นอย่างไรครับ"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "แก่มากค่ะ"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "นี่หมายถึงอะไรครับ"
+     },
+     {
+      "turn": 7,
+      "function": "STATEMENT",
+      "text": "พวกคุณจะไปร้านครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 16
+   }
+  },
+  {
+   "id": "th-listening-098",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ไปที่",
+    "gloss": "go to"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ไปที่ไหนครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ที่นั่นค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS2",
+    "phase": "DECIDE",
+    "situation": "they decide what to do and where to go together",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "ไปที่ไหนครับ"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "ที่นั่นค่ะ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "สนามหลวงน่าดูไหมครับ"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "เรียกนักท่องเที่ยวไหมครับ"
+     },
+     {
+      "turn": 7,
+      "function": "STATEMENT",
+      "text": "ไปพิพิธภัณฑสถานแห่งชาติครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 21
+   }
+  },
+  {
+   "id": "th-listening-109",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "นม",
+    "gloss": "milk"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "นมเป็นอย่างไรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ตลกมากค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet, greet each other and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "คุณอายุเท่าไหร่ครับ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "นี่เป็นอย่างไรครับ"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "แก่มากค่ะ"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "นี่หมายถึงอะไรครับ"
+     },
+     {
+      "turn": 7,
+      "function": "STATEMENT",
+      "text": "พวกคุณจะไปร้านครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 183
+   }
+  },
+  {
+   "id": "th-daily-092",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ไฟ",
+    "gloss": "light / electricity"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผมหวังว่าไฟจะพอครับ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ไฟที่นี่ดีไหมคะ",
+     "ตอนนี้ไฟยังมีอยู่ครับ",
+     "ที่นี่ไฟสว่างดีครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 957
+   }
+  },
+  {
+   "id": "th-listening-112",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ไม่เชิง",
+    "gloss": "not exactly"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "มีนามบัตรไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ไม่เชิงมีค่ะ มีแต่ใบเสร็จค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS17",
+    "phase": null,
+    "situation": null,
+    "plannedTurnsOfThisScene": [],
+    "note": "Listening tracks are one connected conversation, but the log does not record the other lines of this scene: judge the item as a turn in a friendly conversation."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 497
+   }
+  },
+  {
+   "id": "th-daily-081",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คะ",
+    "gloss": "polite question particle (female)"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "คุณจะไปตลาดเมื่อไหร่คะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ครั้งนี้ไปทางนั้นคุ้มไหมคะ",
+     "หน้าต่างห้องนอนใหญ่ไหมคะ",
+     "อันนี้หมายถึงอะไรคะ",
+     "คุณมีหวังว่าจะได้อะไรคะ",
+     "คุณกังวลไหมคะ",
+     "ไฟที่นี่ดีไหมคะ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 917
+   }
+  },
+  {
+   "id": "th-daily-095",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คู่",
+    "gloss": "pair"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "ฉันจะซื้ออาหารอีกคู่นะคะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ผมอยากได้เสื้อคู่หนึ่งครับ",
+     "ตลาดนั้นมีของขายเป็นคู่ครับ",
+     "ผมอยากได้รถมอเตอร์ไซค์คู่ครับ",
+     "ผมอยากได้รองเท้าคู่ใหม่ครับ",
+     "ผมมีรองเท้าคู่หนึ่งครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 877
+   }
+  },
+  {
+   "id": "th-listening-106",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ผัดไทย",
+    "gloss": "pad thai"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผัดไทยอยู่ที่ไหนครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "อยู่ร้านอาหารค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "DO",
+    "situation": "they do the main activity there: eat, look around or pick something",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "PROPOSAL",
+      "text": "ทานกันเลยครับ"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "ผัดไทยอยู่ที่ไหนครับ"
+     },
+     {
+      "turn": 4,
+      "function": "ANSWER",
+      "text": "อยู่ร้านอาหารค่ะ"
+     },
+     {
+      "turn": 5,
+      "function": "STATEMENT",
+      "text": "ชอบขนาดครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 33
+   }
+  },
+  {
+   "id": "th-daily-087",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "หน้าต่าง",
+    "gloss": "window"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "หน้าต่างห้องนอนใหญ่ไหมคะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "หน้าต่างห้องนั่งเล่นอยู่ตรงนั้นครับ",
+     "หน้าต่างไม่ใหญ่ครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 907
+   }
+  },
+  {
+   "id": "th-daily-083",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คะ",
+    "gloss": "polite question particle (female)"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผมอยากไปตลาดใหม่คะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ครั้งนี้ไปทางนั้นคุ้มไหมคะ",
+     "หน้าต่างห้องนอนใหญ่ไหมคะ",
+     "คุณจะไปตลาดเมื่อไหร่คะ",
+     "อันนี้หมายถึงอะไรคะ",
+     "คุณมีหวังว่าจะได้อะไรคะ",
+     "คุณกังวลไหมคะ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 712
+   }
+  },
+  {
+   "id": "th-listening-104",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "รถแท็กซี่",
+    "gloss": "taxi"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "อันนั้นอะไรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "อันนั้นคือรถแท็กซี่ค่ะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS7",
+    "phase": "CLOSE",
+    "situation": "they wrap up the day and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "เบอร์โทรศัพท์อะไรครับ"
+     },
+     {
+      "turn": 3,
+      "function": "FAREWELL",
+      "text": "โชคดีครับ"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 65
+   }
+  },
+  {
+   "id": "th-daily-084",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คุ้ม",
+    "gloss": "worthwhile"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "ครั้งนี้ไปทางนั้นคุ้มไหมคะ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ผมว่าคุ้มครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 874
+   }
+  },
+  {
+   "id": "th-daily-085",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คู่",
+    "gloss": "pair"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผมอยากได้เสื้อคู่หนึ่งครับ"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "Scene: Nida asks Somchai if he has taken the bus to the new market · A = สมชาย (male, ครับ) · B = นิดา (female, ค่ะ)",
+    "otherSentencesForThisTarget": [
+     "ตลาดนั้นมีของขายเป็นคู่ครับ",
+     "ผมอยากได้รถมอเตอร์ไซค์คู่ครับ",
+     "ผมอยากได้รองเท้าคู่ใหม่ครับ",
+     "ผมมีรองเท้าคู่หนึ่งครับ"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 934
+   }
+  },
+  {
+   "id": "zh-daily-001",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "可以",
+    "gloss": "can"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "这个可以吗？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "你现在可以来吗？",
+     "我想可以。",
+     "这个可以"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 8
+   }
+  },
+  {
+   "id": "zh-daily-016",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "要",
+    "gloss": "want"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我想要。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "我想要一点。",
+     "你要什么？",
+     "我要去",
+     "你要这个吗？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 48
+   }
+  },
+  {
+   "id": "zh-daily-021",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "好",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "好。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "很好",
+     "这个很好。",
+     "那个人很好",
+     "这个太好了",
+     "你做的好吗？",
+     "你等我一下，好吗？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 2
+   }
+  },
+  {
+   "id": "zh-daily-018",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "好",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你很好"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "很好",
+     "这个很好。",
+     "那个人很好",
+     "这个太好了",
+     "你做的好吗？",
+     "你等我一下，好吗？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 159
+   }
+  },
+  {
+   "id": "zh-daily-010",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "太",
+    "gloss": "too"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "这个太快了"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "人太少了。",
+     "这个太慢了",
+     "这个太大了",
+     "这个太小了",
+     "这个太好了",
+     "太慢了"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 166
+   }
+  },
+  {
+   "id": "zh-daily-014",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "回",
+    "gloss": "return"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你回家吗？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "我回家。",
+     "你回。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 217
+   }
+  },
+  {
+   "id": "zh-daily-019",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "好",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "嗯，好。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "很好",
+     "这个很好。",
+     "那个人很好",
+     "这个太好了",
+     "你做的好吗？",
+     "你等我一下，好吗？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 394
+   }
+  },
+  {
+   "id": "zh-daily-023",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "喝",
+    "gloss": "drink"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你喝不喝？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "你想喝什么？",
+     "你想喝吗？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 411
+   }
+  },
+  {
+   "id": "zh-listening-027",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "昨天",
+    "gloss": "yesterday"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "我们昨天去这里吧。"
+    },
+    {
+     "speaker": "B",
+     "text": "好啊。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "这个怎么来？"
+     },
+     {
+      "turn": 3,
+      "function": "STATEMENT",
+      "text": "这个很小。"
+     },
+     {
+      "turn": 6,
+      "function": "ANSWER",
+      "text": "我在家。"
+     },
+     {
+      "turn": 7,
+      "function": "QUESTION",
+      "text": "你昨天回家了吗？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 225
+   }
+  },
+  {
+   "id": "zh-listening-038",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "怎么",
+    "gloss": "how"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "这个怎么来？"
+    },
+    {
+     "speaker": "B",
+     "text": "我不知道。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "这个怎么来？"
+     },
+     {
+      "turn": 3,
+      "function": "STATEMENT",
+      "text": "这个很小。"
+     },
+     {
+      "turn": 6,
+      "function": "ANSWER",
+      "text": "我在家。"
+     },
+     {
+      "turn": 7,
+      "function": "QUESTION",
+      "text": "你昨天回家了吗？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 18
+   }
+  },
+  {
+   "id": "zh-daily-005",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "到",
+    "gloss": "arrive"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你到哪里？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "我到家了",
+     "你到这里",
+     "这个到。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 41
+   }
+  },
+  {
+   "id": "zh-daily-024",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "跟",
+    "gloss": "with"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我跟你去。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "我跟你说",
+     "你跟我说"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 193
+   }
+  },
+  {
+   "id": "zh-listening-026",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "太",
+    "gloss": "too"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你买什么？"
+    },
+    {
+     "speaker": "B",
+     "text": "我太买东西。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "这个怎么来？"
+     },
+     {
+      "turn": 3,
+      "function": "STATEMENT",
+      "text": "这个很小。"
+     },
+     {
+      "turn": 6,
+      "function": "ANSWER",
+      "text": "我在家。"
+     },
+     {
+      "turn": 7,
+      "function": "QUESTION",
+      "text": "你昨天回家了吗？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 188
+   }
+  },
+  {
+   "id": "zh-listening-039",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一起",
+    "gloss": "together"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我们一起去哪里？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS10",
+    "phase": null,
+    "situation": null,
+    "plannedTurnsOfThisScene": [],
+    "note": "Listening tracks are one connected conversation, but the log does not record the other lines of this scene: judge the item as a turn in a friendly conversation."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 344
+   }
+  },
+  {
+   "id": "zh-listening-028",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "跟",
+    "gloss": "with"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你在哪里？"
+    },
+    {
+     "speaker": "B",
+     "text": "我跟在这里。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS2",
+    "phase": "DECIDE",
+    "situation": "they decide what to do next together",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你在哪里？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "我跟在这里。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "我可以开吗？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "一起找钱吗？"
+     },
+     {
+      "turn": 8,
+      "function": "ANSWER",
+      "text": "我去那里。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 22
+   }
+  },
+  {
+   "id": "zh-daily-020",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "好",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "今天好。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "很好",
+     "这个很好。",
+     "那个人很好",
+     "这个太好了",
+     "你做的好吗？",
+     "你等我一下，好吗？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 584
+   }
+  },
+  {
+   "id": "zh-listening-032",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "昨天",
+    "gloss": "yesterday"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你昨天回家了吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "回了。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS1",
+    "phase": "OPEN",
+    "situation": "A and B meet and start talking about today",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "这个怎么来？"
+     },
+     {
+      "turn": 3,
+      "function": "STATEMENT",
+      "text": "这个很小。"
+     },
+     {
+      "turn": 6,
+      "function": "ANSWER",
+      "text": "我在家。"
+     },
+     {
+      "turn": 7,
+      "function": "QUESTION",
+      "text": "你昨天回家了吗？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 21
+   }
+  },
+  {
+   "id": "zh-daily-022",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "那个",
+    "gloss": "that"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "那个好吃吗？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "那个人很好",
+     "那个很好",
+     "那个好吗？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 501
+   }
+  },
+  {
+   "id": "zh-daily-004",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "到",
+    "gloss": "arrive"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我到家了"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "你到哪里？",
+     "你到这里",
+     "这个到。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 37
+   }
+  },
+  {
+   "id": "zh-listening-041",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "做",
+    "gloss": "do"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你做什么？"
+    },
+    {
+     "speaker": "B",
+     "text": "我做工作。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS3",
+    "phase": "ARRANGE",
+    "situation": "they agree what to do first",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "PROPOSAL",
+      "text": "我们今天去吧。"
+     },
+     {
+      "turn": 2,
+      "function": "COUNTERPROPOSAL",
+      "text": "明天好。"
+     },
+     {
+      "turn": 4,
+      "function": "PROPOSAL",
+      "text": "我们现在拿钱吧。"
+     },
+     {
+      "turn": 6,
+      "function": "QUESTION",
+      "text": "你做什么？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 30
+   }
+  },
+  {
+   "id": "zh-listening-043",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "等",
+    "gloss": "wait"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你等什么呢？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS14",
+    "phase": null,
+    "situation": null,
+    "plannedTurnsOfThisScene": [],
+    "note": "Listening tracks are one connected conversation, but the log does not record the other lines of this scene: judge the item as a turn in a friendly conversation."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 372
+   }
+  },
+  {
+   "id": "zh-listening-025",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "钱",
+    "gloss": "money"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "钱大吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "很大。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "PAY",
+    "situation": "they pay and check the price; then they wrap up and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你为什么买东西？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "太好了。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "你帮人吗？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "钱大吗？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 38
+   }
+  },
+  {
+   "id": "zh-daily-009",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "少",
+    "gloss": "few"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "人太少了。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "人很少",
+     "这个地方人很少。",
+     "这个多少钱？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 74
+   }
+  },
+  {
+   "id": "zh-daily-015",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "这个",
+    "gloss": "this"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "这个到。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "这个可以吗？",
+     "这个地方人多吗？",
+     "这个地方人很多。",
+     "这个地方人很少。",
+     "这个很快。",
+     "这个很慢。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 458
+   }
+  },
+  {
+   "id": "zh-daily-013",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "回",
+    "gloss": "return"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你回。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "我回家。",
+     "你回家吗？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 217
+   }
+  },
+  {
+   "id": "zh-daily-003",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "可以",
+    "gloss": "can"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你现在可以来吗？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "这个可以吗？",
+     "我想可以。",
+     "这个可以"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 12
+   }
+  },
+  {
+   "id": "zh-daily-008",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一点",
+    "gloss": "a little"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你慢一点"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "我想要一点。",
+     "多一点",
+     "你快一点。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 52
+   }
+  },
+  {
+   "id": "zh-listening-030",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "找",
+    "gloss": "look for"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "一起找钱吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "找。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS2",
+    "phase": "DECIDE",
+    "situation": "they decide what to do next together",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你在哪里？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "我跟在这里。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "我可以开吗？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "一起找钱吗？"
+     },
+     {
+      "turn": 8,
+      "function": "ANSWER",
+      "text": "我去那里。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 25
+   }
+  },
+  {
+   "id": "zh-daily-017",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "做",
+    "gloss": "do"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你做的好吗？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "一起做",
+     "你做什么？",
+     "我做这个。",
+     "你想做什么？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 276
+   }
+  },
+  {
+   "id": "zh-listening-034",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "为什么",
+    "gloss": "why"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你为什么买东西？"
+    },
+    {
+     "speaker": "B",
+     "text": "太好了。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "PAY",
+    "situation": "they pay and check the price; then they wrap up and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你为什么买东西？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "太好了。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "你帮人吗？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "钱大吗？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 35
+   }
+  },
+  {
+   "id": "zh-daily-002",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "可以",
+    "gloss": "can"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我想可以。"
+    }
+   ],
+   "cue": "I want to can",
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "这个可以吗？",
+     "你现在可以来吗？",
+     "这个可以"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 34
+   }
+  },
+  {
+   "id": "zh-listening-033",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "开",
+    "gloss": "open"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "我可以开吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "可以。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS2",
+    "phase": "DECIDE",
+    "situation": "they decide what to do next together",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你在哪里？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "我跟在这里。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "我可以开吗？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "一起找钱吗？"
+     },
+     {
+      "turn": 8,
+      "function": "ANSWER",
+      "text": "我去那里。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 24
+   }
+  },
+  {
+   "id": "zh-daily-011",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一起",
+    "gloss": "together"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我们一起吃吧？"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "我们一起去。",
+     "一起做"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 200
+   }
+  },
+  {
+   "id": "zh-listening-036",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "用",
+    "gloss": "use"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你用钱吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "用。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS4",
+    "phase": "MOVE",
+    "situation": "they go there and arrive",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你跟谁去？"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "你为什么不到？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "你用钱吗？"
+     },
+     {
+      "turn": 7,
+      "function": "QUESTION",
+      "text": "你等什么？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 33
+   }
+  },
+  {
+   "id": "zh-listening-042",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "小",
+    "gloss": "small"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "钱小吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "很大。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS10",
+    "phase": null,
+    "situation": null,
+    "plannedTurnsOfThisScene": [],
+    "note": "Listening tracks are one connected conversation, but the log does not record the other lines of this scene: judge the item as a turn in a friendly conversation."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 331
+   }
+  },
+  {
+   "id": "zh-listening-029",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "跟",
+    "gloss": "with"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你去哪里？"
+    },
+    {
+     "speaker": "B",
+     "text": "我跟去那里。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "PAY",
+    "situation": "they pay and check the price; then they wrap up and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你为什么买东西？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "太好了。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "你帮人吗？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "钱大吗？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 54
+   }
+  },
+  {
+   "id": "zh-daily-007",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一点",
+    "gloss": "a little"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我想要一点。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "多一点",
+     "你慢一点",
+     "你快一点。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 48
+   }
+  },
+  {
+   "id": "zh-daily-012",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一起",
+    "gloss": "together"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "一起做"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "我们一起去。",
+     "我们一起吃吧？"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 208
+   }
+  },
+  {
+   "id": "zh-listening-035",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "谁",
+    "gloss": "who"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你跟谁去？"
+    },
+    {
+     "speaker": "B",
+     "text": "我跟朋友去。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS4",
+    "phase": "MOVE",
+    "situation": "they go there and arrive",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你跟谁去？"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "你为什么不到？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "你用钱吗？"
+     },
+     {
+      "turn": 7,
+      "function": "QUESTION",
+      "text": "你等什么？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 31
+   }
+  },
+  {
+   "id": "zh-daily-006",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "到",
+    "gloss": "arrive"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你到这里"
+    }
+   ],
+   "cue": "You arrive here",
+   "reviewContext": {
+    "kind": "daily",
+    "scene": "No scene: a Mandarin Daily track is a set of short independent sentences (no conversation scene).",
+    "otherSentencesForThisTarget": [
+     "我到家了",
+     "你到哪里？",
+     "这个到。"
+    ],
+    "note": "Daily tracks are mostly independent sentences: judge this item on its own. The other sentences are what the app wrote for the same word in the same lesson (not all of them were kept)."
+   },
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 43
+   }
+  },
+  {
+   "id": "zh-listening-037",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "人",
+    "gloss": "person"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你帮人吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "帮。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS5",
+    "phase": "PAY",
+    "situation": "they pay and check the price; then they wrap up and say goodbye",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你为什么买东西？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "太好了。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "你帮人吗？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "钱大吗？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 37
+   }
+  },
+  {
+   "id": "zh-listening-040",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "明天",
+    "gloss": "tomorrow"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "我们今天去吧。"
+    },
+    {
+     "speaker": "B",
+     "text": "明天好。"
+    },
+    {
+     "speaker": "A",
+     "text": "好，明天。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS3",
+    "phase": "ARRANGE",
+    "situation": "they agree what to do first",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "PROPOSAL",
+      "text": "我们今天去吧。"
+     },
+     {
+      "turn": 2,
+      "function": "COUNTERPROPOSAL",
+      "text": "明天好。"
+     },
+     {
+      "turn": 4,
+      "function": "PROPOSAL",
+      "text": "我们现在拿钱吧。"
+     },
+     {
+      "turn": 6,
+      "function": "QUESTION",
+      "text": "你做什么？"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 27
+   }
+  },
+  {
+   "id": "zh-listening-031",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "在",
+    "gloss": "be at"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你在哪里？"
+    },
+    {
+     "speaker": "B",
+     "text": "我在家。"
+    }
+   ],
+   "cue": null,
+   "reviewContext": {
+    "kind": "listening",
+    "scene": "LS2",
+    "phase": "DECIDE",
+    "situation": "they decide what to do next together",
+    "plannedTurnsOfThisScene": [
+     {
+      "turn": 1,
+      "function": "QUESTION",
+      "text": "你在哪里？"
+     },
+     {
+      "turn": 2,
+      "function": "ANSWER",
+      "text": "我跟在这里。"
+     },
+     {
+      "turn": 3,
+      "function": "QUESTION",
+      "text": "我可以开吗？"
+     },
+     {
+      "turn": 5,
+      "function": "QUESTION",
+      "text": "一起找钱吗？"
+     },
+     {
+      "turn": 8,
+      "function": "ANSWER",
+      "text": "我去那里。"
+     }
+    ],
+    "note": "Listening tracks are one connected conversation. The planned turns of this scene are listed in order (the app later writes the final lines from this plan; some may differ)."
+   },
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 22
+   }
+  }
+ ]
+}

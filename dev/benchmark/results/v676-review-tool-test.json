@@ -1,0 +1,44 @@
+{
+ "pass": true,
+ "checks": [
+  {
+   "name": "R1 the review page carries no model label (no expected verdicts, no rationale, no annotator)",
+   "pass": true,
+   "detail": {
+    "leakedRationales": 0
+   }
+  },
+  {
+   "name": "R2 Thai review starts at item 1 of 35 with context shown",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "R3 export: human-label file, reviewer recorded, 2 complete items, label kind HUMAN",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "R4 importer: labels stored separately as HUMAN, rubric-valid",
+   "pass": true,
+   "detail": {
+    "problems": []
+   }
+  },
+  {
+   "name": "R5 calibration with 2 human items → NOT CALIBRATED (needs ≥30 per language)",
+   "pass": true,
+   "detail": "NOT CALIBRATED — human-reviewed labels exist but fewer than 30 per language"
+  },
+  {
+   "name": "R6 golden-v1.json (model labels) unchanged by review / import / calibration",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "R7 no page errors",
+   "pass": true,
+   "detail": []
+  }
+ ]
+}

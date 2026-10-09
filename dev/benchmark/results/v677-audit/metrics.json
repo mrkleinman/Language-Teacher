@@ -1,0 +1,466 @@
+[
+ {
+  "run": "ja-daily-2026-10-08-run1",
+  "lang": "ja",
+  "type": "daily",
+  "status": "READY",
+  "requests": 105,
+  "costUsd": 0.03332197500000003,
+  "targetPairs": 90,
+  "cueCopiesEnglish": 25,
+  "cueInstruction": 47,
+  "cueOther": 18,
+  "cueCopiesEnglishExamples": [
+   "すみません、今からどこか行くんですか？ | Excuse me, are you going somewhere now?",
+   "今日、何する？ | What are you doing today?",
+   "ごめん、今日、暇なんだ。 | Sorry, I'm free today.",
+   "すみません、もう帰るんですか？ | Excuse me, are you going home already?",
+   "今日、何食べる？ | What are you eating today?",
+   "ちょっと待って。 | Wait a moment."
+  ],
+  "nearDuplicateRecalls": 1,
+  "nearDuplicateExamples": [
+   "今、何してるの？ ≈ あれ？今、何してるの？ (targets 11 / 10)"
+  ],
+  "surfaceAbsent": [
+   "する → あれ？今、何してるの？",
+   "食べる → じゃあ、何か食べに行こうよ。",
+   "来る → ここに来てくれる？",
+   "行く → じゃあ、一緒に行こうよ。",
+   "分かる → あ、ごめん。ここ、分からないんだ。",
+   "分かる → え、どこか分からない？",
+   "乗る → じゃあ、電車に乗ろうか。",
+   "乗る → 一緒に乗らない？"
+  ],
+  "targetsWith3Distinct": 30,
+  "rejectedRepeatedSentences": 3,
+  "rejectedRepeatedTotal": 8,
+  "rejectedRepeatedTop": [
+   "かな ×5",
+   "じゃあ、何か食べに行こうよ。 ×3",
+   "いいです ×3"
+  ],
+  "suruPresenceFlags": [
+   "  ❌ recall 3: target どっち not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"ここにする？\"",
+   "  ❌ recall 2: target する not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"じゃあ、何か食べに行こうよ。\"",
+   "  ❌ recall 2: target する not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"じゃあ、何か食べに行こうよ。\""
+  ]
+ },
+ {
+  "run": "ja-daily-2026-10-08-run2",
+  "lang": "ja",
+  "type": "daily",
+  "status": "READY",
+  "requests": 105,
+  "costUsd": 0.032138850000000004,
+  "targetPairs": 90,
+  "cueCopiesEnglish": 20,
+  "cueInstruction": 61,
+  "cueOther": 9,
+  "cueCopiesEnglishExamples": [
+   "なんで来ないの？ | Why aren't you coming?",
+   "それは何？ | What is that?",
+   "なんで忙しいの？ | Why are you busy?",
+   "なんで？ | Why?",
+   "何か飲む？ | Want something to drink?",
+   "明日、一緒に行こうよ。 | Let's go together tomorrow."
+  ],
+  "nearDuplicateRecalls": 2,
+  "nearDuplicateExamples": [
+   "すみません、ちょっといい？ ≈ あ、すみません、ちょっといい？ (targets 17 / 17)",
+   "どっちがいい？ ≈ あれ、どっちがいい？ (targets 43 / 83)"
+  ],
+  "surfaceAbsent": [
+   "来る → ここに来て。",
+   "分かる → ごめん、ちょっと分からないんだ。",
+   "行く → どこか行こうよ。",
+   "食べる → もう食べた？",
+   "行く → もう行った？",
+   "食べる → これ、食べたことある？",
+   "行く → 明日、駅に行こうか？"
+  ],
+  "targetsWith3Distinct": 29,
+  "rejectedRepeatedSentences": 6,
+  "rejectedRepeatedTotal": 6,
+  "rejectedRepeatedTop": [
+   "I wonder which one is good. ×2",
+   "これ、美味しいね。 ×2",
+   "元気だった？ ×2",
+   "もう一杯、飲んだ？ ×2",
+   "今、時間ある？ ×2"
+  ],
+  "suruPresenceFlags": [
+   "  ❌ recall 2: target どれ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"うーん、どっちの店にする？\"",
+   "  ❌ recall 3: target どれ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"うーん、これにするよ。\"",
+   "  ❌ recall 1: target どれ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"どっちにする？\""
+  ]
+ },
+ {
+  "run": "ja-daily-2026-10-08-run3",
+  "lang": "ja",
+  "type": "daily",
+  "status": "READY",
+  "requests": 109,
+  "costUsd": 0.03716002500000003,
+  "targetPairs": 90,
+  "cueCopiesEnglish": 25,
+  "cueInstruction": 52,
+  "cueOther": 13,
+  "cueCopiesEnglishExamples": [
+   "これ、どう？ | How is this?",
+   "すみません、ちょっといい？ | Excuse me, do you have a moment?",
+   "これ、食べたことある？ | Have you eaten this before?",
+   "これ、ちょっと大きいね。 | This is a little big, isn't it?",
+   "今、何してる？ | What are you doing now?",
+   "じゃあ、何か食べようか。 | Well then, shall we eat something?"
+  ],
+  "nearDuplicateRecalls": 2,
+  "nearDuplicateExamples": [
+   "すみません。 ≈ あ、すみません！ (targets 17 / 17)",
+   "どっちにする？ ≈ じゃあ、どっちにする？ (targets 43 / 43)"
+  ],
+  "surfaceAbsent": [
+   "食べる → これ、食べたことある？",
+   "来る → ここに来てくれる？",
+   "食べる → じゃあ、何か食べようか。",
+   "行く → また明日行こうか。",
+   "乗る → じゃあ、一緒にバスに乗ろうか。",
+   "行く → じゃあ、また明日行こうよ。",
+   "する → 今、何してるの？",
+   "する → じゃあ、一緒に何かしない？",
+   "分かる → え、本当？ 全然分からなかったよ。"
+  ],
+  "targetsWith3Distinct": 28,
+  "rejectedRepeatedSentences": 6,
+  "rejectedRepeatedTotal": 10,
+  "rejectedRepeatedTop": [
+   "かな ×6",
+   "昔、電話で話したこと、覚えてる？ ×2",
+   "何飲む？ ×2",
+   "あれ、この店、知ってる？ ×2",
+   "え、本当？全然分からなかったよ。 ×2"
+  ],
+  "suruPresenceFlags": []
+ },
+ {
+  "run": "ja-listening-2026-10-08-run1",
+  "lang": "ja",
+  "type": "listening",
+  "status": "NOT_READY",
+  "requests": 62,
+  "costUsd": 0.011226474999999996,
+  "coverage": "17/30",
+  "lines": 22,
+  "failedChecks": [
+   "COVERAGE_PASS=FAIL",
+   "WHOLE_CONVERSATION_COHERENCE=FAIL",
+   "SCENE_REQUIRED_COVERAGE=FAIL",
+   "SCENES_VALIDATED=FAIL"
+  ],
+  "scenes": 4,
+  "rejectedRepeatedSentences": 1,
+  "rejectedRepeatedTotal": 1,
+  "rejectedRepeatedTop": [
+   "because it's good ×2"
+  ],
+  "suruPresenceFlags": []
+ },
+ {
+  "run": "ja-listening-2026-10-08-run2",
+  "lang": "ja",
+  "type": "listening",
+  "status": "NOT_READY",
+  "requests": 33,
+  "costUsd": 0.0071102499999999985,
+  "coverage": "2/30",
+  "lines": 2,
+  "failedChecks": [
+   "COVERAGE_PASS=FAIL",
+   "SCENE_REQUIRED_COVERAGE=FAIL",
+   "SCENES_VALIDATED=FAIL"
+  ],
+  "scenes": 1,
+  "rejectedRepeatedSentences": 0,
+  "rejectedRepeatedTotal": 0,
+  "rejectedRepeatedTop": [],
+  "suruPresenceFlags": []
+ },
+ {
+  "run": "ja-listening-2026-10-08-run3",
+  "lang": "ja",
+  "type": "listening",
+  "status": "NOT_READY",
+  "requests": 15,
+  "costUsd": 0.004022025,
+  "coverage": "0/30",
+  "lines": 0,
+  "failedChecks": [
+   "TARGET_COVERAGE=FAIL",
+   "SCENES_VALIDATED=FAIL"
+  ],
+  "scenes": 0,
+  "rejectedRepeatedSentences": 0,
+  "rejectedRepeatedTotal": 0,
+  "rejectedRepeatedTop": [],
+  "suruPresenceFlags": []
+ },
+ {
+  "run": "th-daily-2026-10-08-run1",
+  "lang": "th",
+  "type": "daily",
+  "status": "NOT_READY",
+  "requests": 193,
+  "costUsd": 0.05460284999999998,
+  "targetPairs": 87,
+  "cueCopiesEnglish": 0,
+  "cueInstruction": 11,
+  "cueOther": 76,
+  "cueCopiesEnglishExamples": [],
+  "nearDuplicateRecalls": 1,
+  "nearDuplicateExamples": [
+   "คุณรีบไปไหนครับ ≈ คุณรีบไปไหนคะ (targets 459 / 459)"
+  ],
+  "surfaceAbsent": [],
+  "targetsWith3Distinct": 27,
+  "rejectedRepeatedSentences": 2,
+  "rejectedRepeatedTotal": 6,
+  "rejectedRepeatedTop": [
+   "คะ ×6",
+   "ควร ×2"
+  ]
+ },
+ {
+  "run": "th-daily-2026-10-08-run2",
+  "lang": "th",
+  "type": "daily",
+  "status": "NOT_READY",
+  "requests": 249,
+  "costUsd": 0.07094114999999995,
+  "targetPairs": 87,
+  "cueCopiesEnglish": 0,
+  "cueInstruction": 18,
+  "cueOther": 69,
+  "cueCopiesEnglishExamples": [],
+  "nearDuplicateRecalls": 0,
+  "nearDuplicateExamples": [],
+  "surfaceAbsent": [],
+  "targetsWith3Distinct": 28,
+  "rejectedRepeatedSentences": 3,
+  "rejectedRepeatedTotal": 7,
+  "rejectedRepeatedTop": [
+   "ยาว ×6",
+   "คะ ×2",
+   "ครั้ง ×2"
+  ]
+ },
+ {
+  "run": "th-daily-2026-10-08-run3",
+  "lang": "th",
+  "type": "daily",
+  "status": "NOT_READY",
+  "requests": 239,
+  "costUsd": 0.06996415000000003,
+  "targetPairs": 89,
+  "cueCopiesEnglish": 0,
+  "cueInstruction": 21,
+  "cueOther": 68,
+  "cueCopiesEnglishExamples": [],
+  "nearDuplicateRecalls": 0,
+  "nearDuplicateExamples": [],
+  "surfaceAbsent": [],
+  "targetsWith3Distinct": 28,
+  "rejectedRepeatedSentences": 1,
+  "rejectedRepeatedTotal": 2,
+  "rejectedRepeatedTop": [
+   "เบา ×3"
+  ]
+ },
+ {
+  "run": "th-listening-2026-10-08-run1",
+  "lang": "th",
+  "type": "listening",
+  "status": "NOT_READY",
+  "requests": 68,
+  "costUsd": 0.013018174999999998,
+  "coverage": "19/30",
+  "lines": 26,
+  "failedChecks": [
+   "COVERAGE_PASS=FAIL",
+   "WHOLE_CONVERSATION_COHERENCE=FAIL",
+   "SCENE_REQUIRED_COVERAGE=FAIL",
+   "SCENES_VALIDATED=FAIL"
+  ],
+  "scenes": 5,
+  "rejectedRepeatedSentences": 0,
+  "rejectedRepeatedTotal": 0,
+  "rejectedRepeatedTop": []
+ },
+ {
+  "run": "th-listening-2026-10-08-run2",
+  "lang": "th",
+  "type": "listening",
+  "status": "NOT_READY",
+  "requests": 65,
+  "costUsd": 0.012916799999999999,
+  "coverage": "15/30",
+  "lines": 23,
+  "failedChecks": [
+   "COVERAGE_PASS=FAIL",
+   "SCENE_REQUIRED_COVERAGE=FAIL",
+   "SCENES_VALIDATED=FAIL"
+  ],
+  "scenes": 5,
+  "rejectedRepeatedSentences": 0,
+  "rejectedRepeatedTotal": 0,
+  "rejectedRepeatedTop": []
+ },
+ {
+  "run": "th-listening-2026-10-08-run3",
+  "lang": "th",
+  "type": "listening",
+  "status": "NOT_READY",
+  "requests": 66,
+  "costUsd": 0.012471950000000002,
+  "coverage": "6/30",
+  "lines": 8,
+  "failedChecks": [
+   "COVERAGE_PASS=FAIL",
+   "SCENE_REQUIRED_COVERAGE=FAIL",
+   "SCENES_VALIDATED=FAIL"
+  ],
+  "scenes": 1,
+  "rejectedRepeatedSentences": 0,
+  "rejectedRepeatedTotal": 0,
+  "rejectedRepeatedTop": []
+ },
+ {
+  "run": "zh-daily-2026-10-08-run1",
+  "lang": "zh",
+  "type": "daily",
+  "status": "READY",
+  "requests": 226,
+  "costUsd": 0.029910825000000012,
+  "targetPairs": 90,
+  "cueCopiesEnglish": 3,
+  "cueInstruction": 87,
+  "cueOther": 0,
+  "cueCopiesEnglishExamples": [
+   "你想要吃一点什么？ | What do you want to eat a little of?",
+   "你喜欢这个东西吗？ | Do you like this thing?",
+   "你现在可以来吗？ | Can you come now?"
+  ],
+  "nearDuplicateRecalls": 0,
+  "nearDuplicateExamples": [],
+  "surfaceAbsent": [],
+  "targetsWith3Distinct": 30,
+  "rejectedRepeatedSentences": 2,
+  "rejectedRepeatedTotal": 4,
+  "rejectedRepeatedTop": [
+   "你什么时候回？ ×4",
+   "这个好 ×2"
+  ]
+ },
+ {
+  "run": "zh-daily-2026-10-08-run2",
+  "lang": "zh",
+  "type": "daily",
+  "status": "GENERATION_INCOMPLETE",
+  "requests": 171,
+  "costUsd": 0.02542625,
+  "rejectedRepeatedSentences": 3,
+  "rejectedRepeatedTotal": 5,
+  "rejectedRepeatedTop": [
+   "这个好 ×4",
+   "你什么时候到？ ×2",
+   "你什么时候回？ ×2"
+  ]
+ },
+ {
+  "run": "zh-daily-2026-10-08-run3",
+  "lang": "zh",
+  "type": "daily",
+  "status": "READY",
+  "requests": 238,
+  "costUsd": 0.031790175000000004,
+  "targetPairs": 90,
+  "cueCopiesEnglish": 3,
+  "cueInstruction": 87,
+  "cueOther": 0,
+  "cueCopiesEnglishExamples": [
+   "你喜欢这个吗？ | Do you like this?",
+   "你吃这个吗？ | Are you eating this?",
+   "你现在要吃吗？ | Do you want to eat now?"
+  ],
+  "nearDuplicateRecalls": 0,
+  "nearDuplicateExamples": [],
+  "surfaceAbsent": [],
+  "targetsWith3Distinct": 30,
+  "rejectedRepeatedSentences": 3,
+  "rejectedRepeatedTotal": 3,
+  "rejectedRepeatedTop": [
+   "你什么时候回？ ×2",
+   "这个好。 ×2",
+   "这个好 ×2"
+  ]
+ },
+ {
+  "run": "zh-listening-2026-10-08-run1",
+  "lang": "zh",
+  "type": "listening",
+  "status": "NOT_READY",
+  "requests": 52,
+  "costUsd": 0.009385699999999999,
+  "coverage": "13/30",
+  "lines": 19,
+  "failedChecks": [
+   "COVERAGE_PASS=FAIL",
+   "WHOLE_CONVERSATION_COHERENCE=FAIL",
+   "SCENE_REQUIRED_COVERAGE=FAIL",
+   "SCENES_VALIDATED=FAIL"
+  ],
+  "scenes": 3,
+  "rejectedRepeatedSentences": 0,
+  "rejectedRepeatedTotal": 0,
+  "rejectedRepeatedTop": []
+ },
+ {
+  "run": "zh-listening-2026-10-08-run2",
+  "lang": "zh",
+  "type": "listening",
+  "status": "NOT_READY",
+  "requests": 58,
+  "costUsd": 0.010398000000000001,
+  "coverage": "8/30",
+  "lines": 6,
+  "failedChecks": [
+   "COVERAGE_PASS=FAIL",
+   "WHOLE_CONVERSATION_COHERENCE=FAIL",
+   "SCENE_REQUIRED_COVERAGE=FAIL",
+   "SCENES_VALIDATED=FAIL"
+  ],
+  "scenes": 2,
+  "rejectedRepeatedSentences": 0,
+  "rejectedRepeatedTotal": 0,
+  "rejectedRepeatedTop": []
+ },
+ {
+  "run": "zh-listening-2026-10-08-run3",
+  "lang": "zh",
+  "type": "listening",
+  "status": "NOT_READY",
+  "requests": 66,
+  "costUsd": 0.011105600000000002,
+  "coverage": "19/30",
+  "lines": 17,
+  "failedChecks": [
+   "COVERAGE_PASS=FAIL",
+   "WHOLE_CONVERSATION_COHERENCE=FAIL",
+   "SCENE_REQUIRED_COVERAGE=FAIL",
+   "SCENES_VALIDATED=FAIL"
+  ],
+  "scenes": 4,
+  "rejectedRepeatedSentences": 0,
+  "rejectedRepeatedTotal": 0,
+  "rejectedRepeatedTop": []
+ }
+]

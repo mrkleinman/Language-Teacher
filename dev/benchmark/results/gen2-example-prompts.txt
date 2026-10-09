@@ -1,0 +1,89 @@
+Gen2 shadow pilot — example requests exactly as sent (from the simulator cassettes; simulator answers are not shown and say nothing about quality)
+
+=== Daily teachability request (Thai คะ, historical fixture) ===
+[task: gen2-daily-probe v1]
+You are an experienced teacher of Thai writing practice sentences for an adult beginner (10th Kyu). Sentences are 3–5 Thai words, never more than 7.
+TARGET WORD: คะ — "polite question particle (female)" · word class: particle
+This is a PARTICLE. Each application must be a complete sentence whose function REQUIRES this particle (for a female polite question particle: a woman asking a real question; for a softening particle: a real suggestion or reminder). Give the speaker the particle requires.
+SPEAKERS: Two adult friends. A is a man: his polite sentences end with ครับ and he says ผม for "I". B is a woman: she ends statements with ค่ะ and questions with คะ and says ฉัน for "I". A sentence that needs a female particle (ค่ะ / คะ) must be spoken by the woman; one that needs ครับ by the man.
+ALLOWED WORDS — use ONLY these words, the target word, and normal grammar (particles, inflection): ผม ฉัน คุณ นั้น ที่นี่ ไหน อะไร เมื่อไหร่ อย่างไร กี่ ครับ ค่ะ ไหม และ ด้วย ไป อยู่ มี ได้ อยาก ชอบ อ่าน เขียน ขาย ดี ไม่ดี ใหญ่ นิดหน่อย ร้อ … [rest of the learner's taught words]
+Write 6 candidate practice sentences. Together they must contain at least THREE DIFFERENT real uses of the target (different communicative functions, e.g. asking, answering, offering, refusing, suggesting, describing) — never the same sentence with one word changed.
+Every sentence must be complete, grammatically perfect, and something a native speaker would naturally say to a friend in an everyday situation, using the target in the sense "polite question particle (female)". Do not invent odd combinations just to use the allowed words.
+For each candidate give: "function" (1–3 words), "situation" (when it is said, short English), "cue" (an English instruction telling the learner WHAT TO COMMUNICATE without giving the words, e.g. "Ask your friend whether they are free tonight." — never a translation of the sentence), "text" (the Thai sentence), "english" (a faithful natural translation), "speaker" ("male", "female" or "either").
+If this word cannot be used naturally with the allowed words, return "teachable": false with a short "reason" instead of forcing sentences.
+Return ONLY JSON: {"teachable": true, "reason": "", "candidates": [{"function": "", "situation": "", "cue": "", "text": "", "english": "", "speaker": ""}]}
+
+=== Daily independent judge (Thai) ===
+[task: gen2-daily-judge v1]
+You are a strict native Thai editor checking practice material for adult beginners. You did not write it. Do not be lenient because it is for learners.
+TARGET WORD: รถเมล์ — "bus"
+SPEAKERS: Two adult friends. A is a man: his polite sentences end with ครับ and he says ผม for "I". B is a woman: she ends statements with ค่ะ and questions with คะ and says ฉัน for "I". A sentence that needs a female particle (ค่ะ / คะ) must be spoken by the woman; one that needs ครับ by the man.
+For EACH item judge:
+ grammar: ok | error
+ natural: natural | marginal | unnatural   (would a native speaker say exactly this to a friend?)
+ translation: accurate | misleading   (does the English say what the sentence says?)
+ target: correct | wrong-sense | absent   (target present in a correct form, used in the sense given)
+ cue: useful | copies-answer | ambiguous | misleading   (could a learner who reads ONLY the cue produce essentially this sentence with this target word?)
+ speaker: ok | wrong   (fits the stated speaker)
+ useful: useful | weak | not-useful   (a real, reusable thing a beginner needs to say)
+ fragment: true | false
+ note: a short reason when anything is wrong
+ITEMS:
+1. [speaker: female] ฉันชอบรถเมล์ค่ะ | English: I like the bus. | Cue: Tell your friend about item 1530 in situation 1.
+2. [speaker: male] ผมมีรถเมล์ครับ | English: I have a bus. | Cue: Tell your friend about item 1530 in situation 4.
+Return ONLY JSON: {"items": [{"n": 1, "grammar": "", "natural": "", "translation": "", "target": "", "cue": "", "speaker": "", "useful": "", "fragment": false, "note": ""}]}
+
+=== Listening scene request (Japanese, scene 2) ===
+[task: gen2-scene v1]
+Write scene 2 of 4 of one continuous Japanese conversation between two adult friends for a beginner listener (10th Kyu: every line at most 7 Japanese content units).
+SPEAKERS: Two adult friends speaking casual Japanese (plain forms, no です/ます except fixed phrases such as すみません or ありがとうございます). Avoid strongly gendered sentence endings. (A = the first friend, B = the second; either may open the scene).
+STORY: sim: two friends spend an afternoon together
+THIS SCENE: Scene 2 — sim situation 2
+THE CONVERSATION SO FAR ENDS WITH:
+A: それは映画よ。 (I think that one is movie, you know.)
+B: 映画がいいね。 (I think movie would be nice, right?)
+A: それは写真よ。 (I think that one is photo, you know.)
+B: 写真がいいね。 (I think photo would be nice, right?)
+A: それはどうよ。 (I think that one is how, you know.)
+B: どうがいいね。 (I think how would be nice, right?)
+Continue naturally from there (a short transition line is fine); do not contradict anything already said.
+WORDS THIS SCENE MUST USE (each at least once, in its intended sense; the example shows one natural use — you may reuse or adapt it):
+- どっち — "which / which way" e.g. A: それはどっちよ。 / B: どっちがいいね。
+- どれ — "which one" e.g. A: それはどれよ。 / B: どれがいいね。
+- あれ — "that over there" e.g. A: それはあれよ。 / B: あれがいいね。
+- なんで — "why" e.g. A: それはなんでよ。 / B: なんでがいいね。
+- あそこ — "over there" e.g. A: それはあそこよ。 / B: あそこがいいね。
+- ごめん — "sorry" e.g. A: それはごめんよ。 / B: ごめんがいいね。
+- はい — "yes" e.g. A: それははいよ。 / B: はいがいいね。
+- うん — "yeah" e.g. A: それはうんよ。 / B: うんがいいね。
+ALLOWED WORDS — use ONLY these, the words above and normal grammar: 電車 バス また 車 本 映画 写真 どう どっち どれ あれ なんで あそこ ごめん はい うん いいえ たぶん 見る できる 欲しい もう まだ 明日 買う いくら お金 何時 昨日 帰る 大丈夫 行く 今日 食べる 好き 何 飲む どこ 一緒 する 今 ちょっと 来る 分かる ありがとう すみません いい ある いる ここ そこ これ  … [rest of the learner's taught words]
+ALLOWED GRAMMAR: は か ね よ だ に の を も と で が から まで へ ます ない た て ている たい けど たら
+Write the scene as whole exchanges: every question is answered in the very next line by the other friend; A and B alternate; 10–15 lines (a line may use more than one of the words); natural, coherent, consistent facts (times, places, plans) with the story so far.
+Return ONLY JSON: {"lines": [{"speaker": "A", "text": "", "english": "", "uses": [""]}]}
+
+=== Listening scene judge (Japanese) ===
+[task: gen2-scene-judge v1]
+You are a strict native Japanese editor checking a scene of a conversation between two adult friends for beginner listeners. You did not write it. Do not be lenient.
+SPEAKERS: Two adult friends speaking casual Japanese (plain forms, no です/ます except fixed phrases such as すみません or ありがとうございます). Avoid strongly gendered sentence endings.
+STORY: sim: two friends spend an afternoon together
+THIS SCENE: Scene 1 — sim situation 1
+SCENE LINES:
+1. A: それは電車よ。 (I think that one is train, you know.)
+2. B: 電車がいいね。 (I think train would be nice, right?)
+3. A: それはバスよ。 (I think that one is bus, you know.)
+4. B: バスがいいね。 (I think bus would be nice, right?)
+5. A: それはまたよ。 (I think that one is again, you know.)
+6. B: またがいいね。 (I think again would be nice, right?)
+7. A: それは車よ。 (I think that one is car, you know.)
+8. B: 車がいいね。 (I think car would be nice, right?)
+9. A: それは本よ。 (I think that one is book, you know.)
+10. B: 本がいいね。 (I think book would be nice, right?)
+11. A: それは映画よ。 (I think that one is movie, you know.)
+12. B: 映画がいいね。 (I think movie would be nice, right?)
+13. A: それは写真よ。 (I think that one is photo, you know.)
+14. B: 写真がいいね。 (I think photo would be nice, right?)
+15. A: それはどうよ。 (I think that one is how, you know.)
+16. B: どうがいいね。 (I think how would be nice, right?)
+For EACH line: grammar (ok|error), natural (natural|marginal|unnatural), translation (accurate|misleading), answered (yes|no|n/a — if the line is a question, does the NEXT line answer it with the right kind of answer?), note.
+For the scene: coherent (yes|no — the lines make sense together, facts consistent), transition (yes|no|n/a — follows naturally from the previous lines), note.
+Return ONLY JSON: {"lines": [{"n": 1, "grammar": "", "natural": "", "translation": "", "answered": "", "note": ""}], "scene": {"coherent": "", "transition": "", "note": ""}}

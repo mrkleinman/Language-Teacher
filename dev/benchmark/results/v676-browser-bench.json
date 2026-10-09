@@ -1,0 +1,556 @@
+{
+ "at": "2026-10-09T01:36:45.543Z",
+ "note": "headless Chromium; Gemini faked at the network from v674 UI-path SIMULATOR cassettes — mechanics only",
+ "fakeGemini": {
+  "served": 2088,
+  "unknown": 0,
+  "wrongKey": 0,
+  "unknownSamples": []
+ },
+ "pass": true,
+ "checks": [
+  {
+   "name": "P1 normal app boots with the seeded learner",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P1 real storage snapshot taken",
+   "pass": true,
+   "detail": "11 keys · sha 01f0711a4722fe41"
+  },
+  {
+   "name": "P2 panel shows SANDBOX ACTIVE",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P2 panel finds the Gemini key (and never shows it)",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P2 six historical fixtures offered",
+   "pass": true,
+   "detail": [
+    "th-daily-2026-10-08:RECONSTRUCTED",
+    "ja-daily-2026-10-08:LOG_EXACT_INVENTORY",
+    "zh-daily-2026-10-08:LOG_EXACT_INVENTORY",
+    "th-listening-2026-10-08:RECONSTRUCTED",
+    "ja-listening-2026-10-08:LOG_PARTIAL",
+    "zh-listening-2026-10-08:LOG_PARTIAL"
+   ]
+  },
+  {
+   "name": "P2 Thai fixtures are labelled RECONSTRUCTED, none claims an exact learner state",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P2 panel read only the key name from real storage",
+   "pass": true,
+   "detail": {
+    "installed": true,
+    "realReadKeys": [
+     "tt-gemini-key"
+    ],
+    "realWriteAttemptsBlocked": 0,
+    "keysWrittenInMemoryOnly": 0,
+    "problems": []
+   }
+  },
+  {
+   "name": "P3 th-daily-2026-10-08 browser REPLAY faithful + content identical to Node",
+   "pass": true,
+   "detail": {
+    "replay": {
+     "served": 208,
+     "recorded": 208,
+     "mismatches": 0,
+     "unused": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "name": "P3 ja-daily-2026-10-08 browser REPLAY faithful + content identical to Node",
+   "pass": true,
+   "detail": {
+    "replay": {
+     "served": 74,
+     "recorded": 74,
+     "mismatches": 0,
+     "unused": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "name": "P3 zh-daily-2026-10-08 browser REPLAY faithful + content identical to Node",
+   "pass": true,
+   "detail": {
+    "replay": {
+     "served": 159,
+     "recorded": 159,
+     "mismatches": 0,
+     "unused": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "name": "P3 th-listening-2026-10-08 browser REPLAY faithful + content identical to Node",
+   "pass": true,
+   "detail": {
+    "replay": {
+     "served": 46,
+     "recorded": 46,
+     "mismatches": 0,
+     "unused": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "name": "P3 ja-listening-2026-10-08 browser REPLAY faithful + content identical to Node",
+   "pass": true,
+   "detail": {
+    "replay": {
+     "served": 19,
+     "recorded": 19,
+     "mismatches": 0,
+     "unused": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "name": "P3 zh-listening-2026-10-08 browser REPLAY faithful + content identical to Node",
+   "pass": true,
+   "detail": {
+    "replay": {
+     "served": 16,
+     "recorded": 16,
+     "mismatches": 0,
+     "unused": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "name": "P9 zh-daily-2026-10-08 Gen2 pilot in the browser worker: replay faithful + content identical to Node, pipeline recorded as gen2, sandbox intact",
+   "pass": true,
+   "detail": {
+    "pipeline": "gen2",
+    "replay": {
+     "served": 69,
+     "recorded": 69,
+     "mismatches": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "name": "P9 ja-listening-2026-10-08 Gen2 pilot in the browser worker: replay faithful + content identical to Node, pipeline recorded as gen2, sandbox intact",
+   "pass": true,
+   "detail": {
+    "pipeline": "gen2",
+    "replay": {
+     "served": 15,
+     "recorded": 15,
+     "mismatches": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "name": "P9 th-daily-2026-10-08 Gen2 pilot in the browser worker: replay faithful + content identical to Node, pipeline recorded as gen2, sandbox intact",
+   "pass": true,
+   "detail": {
+    "pipeline": "gen2",
+    "replay": {
+     "served": 123,
+     "recorded": 123,
+     "mismatches": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "name": "P4 th-daily-2026-10-08 live-mode run: only known requests, always the stored key, content = Node",
+   "pass": true,
+   "detail": {
+    "requests": 208,
+    "unknown": 0,
+    "wrongKey": 0,
+    "error": null,
+    "sample": null
+   }
+  },
+  {
+   "name": "P4 th-daily-2026-10-08 result file contains no key",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P4 th-daily-2026-10-08 worker sandbox: installed, 0 blocked writes, real reads = key names only",
+   "pass": true,
+   "detail": {
+    "installed": true,
+    "realReadKeys": [
+     "tt-gemini-key",
+     "tt-gemini-fallback-key"
+    ],
+    "realWriteAttemptsBlocked": 0,
+    "keysWrittenInMemoryOnly": 0,
+    "problems": []
+   }
+  },
+  {
+   "name": "P4 th-daily-2026-10-08 browser-recorded cassette replays FAITHFULLY in Node",
+   "pass": true,
+   "detail": {
+    "served": 208,
+    "recorded": 208,
+    "mismatches": [],
+    "unused": 0
+   }
+  },
+  {
+   "name": "P4 ja-daily-2026-10-08 live-mode run: only known requests, always the stored key, content = Node",
+   "pass": true,
+   "detail": {
+    "requests": 74,
+    "unknown": 0,
+    "wrongKey": 0,
+    "error": null,
+    "sample": null
+   }
+  },
+  {
+   "name": "P4 ja-daily-2026-10-08 result file contains no key",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P4 ja-daily-2026-10-08 worker sandbox: installed, 0 blocked writes, real reads = key names only",
+   "pass": true,
+   "detail": {
+    "installed": true,
+    "realReadKeys": [
+     "tt-gemini-key",
+     "tt-gemini-fallback-key"
+    ],
+    "realWriteAttemptsBlocked": 0,
+    "keysWrittenInMemoryOnly": 3,
+    "problems": []
+   }
+  },
+  {
+   "name": "P4 ja-daily-2026-10-08 browser-recorded cassette replays FAITHFULLY in Node",
+   "pass": true,
+   "detail": {
+    "served": 74,
+    "recorded": 74,
+    "mismatches": [],
+    "unused": 0
+   }
+  },
+  {
+   "name": "P4 zh-daily-2026-10-08 live-mode run: only known requests, always the stored key, content = Node",
+   "pass": true,
+   "detail": {
+    "requests": 159,
+    "unknown": 0,
+    "wrongKey": 0,
+    "error": null,
+    "sample": null
+   }
+  },
+  {
+   "name": "P4 zh-daily-2026-10-08 result file contains no key",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P4 zh-daily-2026-10-08 worker sandbox: installed, 0 blocked writes, real reads = key names only",
+   "pass": true,
+   "detail": {
+    "installed": true,
+    "realReadKeys": [
+     "tt-gemini-key",
+     "tt-gemini-fallback-key"
+    ],
+    "realWriteAttemptsBlocked": 0,
+    "keysWrittenInMemoryOnly": 1,
+    "problems": []
+   }
+  },
+  {
+   "name": "P4 zh-daily-2026-10-08 browser-recorded cassette replays FAITHFULLY in Node",
+   "pass": true,
+   "detail": {
+    "served": 159,
+    "recorded": 159,
+    "mismatches": [],
+    "unused": 0
+   }
+  },
+  {
+   "name": "P4 th-listening-2026-10-08 live-mode run: only known requests, always the stored key, content = Node",
+   "pass": true,
+   "detail": {
+    "requests": 46,
+    "unknown": 0,
+    "wrongKey": 0,
+    "error": null,
+    "sample": null
+   }
+  },
+  {
+   "name": "P4 th-listening-2026-10-08 result file contains no key",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P4 th-listening-2026-10-08 worker sandbox: installed, 0 blocked writes, real reads = key names only",
+   "pass": true,
+   "detail": {
+    "installed": true,
+    "realReadKeys": [
+     "tt-gemini-key",
+     "tt-gemini-fallback-key"
+    ],
+    "realWriteAttemptsBlocked": 0,
+    "keysWrittenInMemoryOnly": 1,
+    "problems": []
+   }
+  },
+  {
+   "name": "P4 th-listening-2026-10-08 browser-recorded cassette replays FAITHFULLY in Node",
+   "pass": true,
+   "detail": {
+    "served": 46,
+    "recorded": 46,
+    "mismatches": [],
+    "unused": 0
+   }
+  },
+  {
+   "name": "P4 ja-listening-2026-10-08 live-mode run: only known requests, always the stored key, content = Node",
+   "pass": true,
+   "detail": {
+    "requests": 19,
+    "unknown": 0,
+    "wrongKey": 0,
+    "error": null,
+    "sample": null
+   }
+  },
+  {
+   "name": "P4 ja-listening-2026-10-08 result file contains no key",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P4 ja-listening-2026-10-08 worker sandbox: installed, 0 blocked writes, real reads = key names only",
+   "pass": true,
+   "detail": {
+    "installed": true,
+    "realReadKeys": [
+     "tt-gemini-key",
+     "tt-gemini-fallback-key"
+    ],
+    "realWriteAttemptsBlocked": 0,
+    "keysWrittenInMemoryOnly": 1,
+    "problems": []
+   }
+  },
+  {
+   "name": "P4 ja-listening-2026-10-08 browser-recorded cassette replays FAITHFULLY in Node",
+   "pass": true,
+   "detail": {
+    "served": 19,
+    "recorded": 19,
+    "mismatches": [],
+    "unused": 0
+   }
+  },
+  {
+   "name": "P4 zh-listening-2026-10-08 live-mode run: only known requests, always the stored key, content = Node",
+   "pass": true,
+   "detail": {
+    "requests": 16,
+    "unknown": 0,
+    "wrongKey": 0,
+    "error": null,
+    "sample": null
+   }
+  },
+  {
+   "name": "P4 zh-listening-2026-10-08 result file contains no key",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P4 zh-listening-2026-10-08 worker sandbox: installed, 0 blocked writes, real reads = key names only",
+   "pass": true,
+   "detail": {
+    "installed": true,
+    "realReadKeys": [
+     "tt-gemini-key",
+     "tt-gemini-fallback-key"
+    ],
+    "realWriteAttemptsBlocked": 0,
+    "keysWrittenInMemoryOnly": 1,
+    "problems": []
+   }
+  },
+  {
+   "name": "P4 zh-listening-2026-10-08 browser-recorded cassette replays FAITHFULLY in Node",
+   "pass": true,
+   "detail": {
+    "served": 16,
+    "recorded": 16,
+    "mismatches": [],
+    "unused": 0
+   }
+  },
+  {
+   "name": "P5 \"Run all 18\" completed 18 runs (order: run 1 of every type, then 2, then 3)",
+   "pass": true,
+   "detail": {
+    "seconds": 1110,
+    "first": [
+     "th-daily-2026-10-08#1",
+     "ja-daily-2026-10-08#1",
+     "zh-daily-2026-10-08#1",
+     "th-listening-2026-10-08#1",
+     "ja-listening-2026-10-08#1",
+     "zh-listening-2026-10-08#1"
+    ]
+   }
+  },
+  {
+   "name": "P5 no run errored",
+   "pass": true,
+   "detail": []
+  },
+  {
+   "name": "P5 the 3 runs of each fixture are identical when the model answers identically",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P5 one file saved per run",
+   "pass": true,
+   "detail": "18 downloads"
+  },
+  {
+   "name": "P8 resume: a new panel page loads the 18 saved run files; nothing is left to run",
+   "pass": true,
+   "detail": {
+    "n": 18,
+    "goDisabled": true,
+    "text": "Done 18/18"
+   }
+  },
+  {
+   "name": "P5 bundle: format, 18 runs, fidelity per fixture, no key anywhere",
+   "pass": true,
+   "detail": {
+    "bytes": 11318263,
+    "classes": [
+     "th-daily-2026-10-08:RECONSTRUCTED",
+     "ja-daily-2026-10-08:LOG_EXACT_INVENTORY",
+     "zh-daily-2026-10-08:LOG_EXACT_INVENTORY",
+     "th-listening-2026-10-08:RECONSTRUCTED",
+     "ja-listening-2026-10-08:LOG_PARTIAL",
+     "zh-listening-2026-10-08:LOG_PARTIAL"
+    ]
+   }
+  },
+  {
+   "name": "P5 import_bundle: 18 runs imported, all replay faithfully in Node",
+   "pass": true,
+   "detail": []
+  },
+  {
+   "name": "P6 device snapshot: 6 DEVICE_SNAPSHOT fixtures with exact per-word state",
+   "pass": true,
+   "detail": [
+    {
+     "id": "th-daily-device-2026-10-09",
+     "exact": true,
+     "words": 1643,
+     "belt": "Mukyu",
+     "targets": 30
+    },
+    {
+     "id": "th-listening-device-2026-10-09",
+     "exact": true,
+     "words": 1643,
+     "belt": "Mukyu",
+     "targets": 30
+    },
+    {
+     "id": "ja-daily-device-2026-10-09",
+     "exact": true,
+     "words": 200,
+     "belt": "Mukyu",
+     "targets": 30
+    },
+    {
+     "id": "ja-listening-device-2026-10-09",
+     "exact": true,
+     "words": 200,
+     "belt": "Mukyu",
+     "targets": 30
+    },
+    {
+     "id": "zh-daily-device-2026-10-09",
+     "exact": true,
+     "words": 100,
+     "belt": "Mukyu",
+     "targets": 30
+    },
+    {
+     "id": "zh-listening-device-2026-10-09",
+     "exact": true,
+     "words": 100,
+     "belt": "Mukyu",
+     "targets": 30
+    }
+   ]
+  },
+  {
+   "name": "P6 panel real reads = key + the three vocab keys (names only), 0 blocked writes",
+   "pass": true,
+   "detail": [
+    "tt-gemini-key",
+    "tt-vocab",
+    "tt-ja-vocab",
+    "tt-zh-vocab"
+   ]
+  },
+  {
+   "name": "P7 real browser storage identical after benchmark mode (every key, every value)",
+   "pass": true,
+   "detail": {
+    "before": "01f0711a4722fe41",
+    "after": "01f0711a4722fe41",
+    "changed": []
+   }
+  },
+  {
+   "name": "P7 normal app still boots",
+   "pass": true,
+   "detail": null
+  },
+  {
+   "name": "P7 no page errors in any page",
+   "pass": true,
+   "detail": []
+  }
+ ]
+}

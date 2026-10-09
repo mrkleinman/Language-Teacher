@@ -1,0 +1,5600 @@
+{
+ "format": "tt-golden/1",
+ "version": "golden-v1",
+ "rubric": "tt-eval-rubric/1",
+ "createdAt": "2026-10-08",
+ "provenance": "Material verbatim from the six historical 8-Oct-2026 v674 logs. Labels: model annotator A only. No native-speaker review yet — human review pending (humanReviewed=false on every item).",
+ "counts": [
+  "th-daily 16",
+  "th-listening 19",
+  "ja-daily 20",
+  "ja-listening 16",
+  "zh-daily 24",
+  "zh-listening 19"
+ ],
+ "items": [
+  {
+   "id": "zh-daily-001",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "可以",
+    "gloss": "can"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "这个可以吗？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 8,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural \"Is this OK?\".",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-002",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "可以",
+    "gloss": "can"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我想可以。"
+    }
+   ],
+   "cue": "I want to can",
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 34,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-form",
+    "cue": "mismatch",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "MISSING_ARGUMENT",
+    "TEMPLATE_FRAGMENT",
+    "CUE_MISMATCH"
+   ],
+   "rationale": "想 + 可以 needs a following verb; template output; the QC later rejected it.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-003",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "可以",
+    "gloss": "can"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你现在可以来吗？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 12,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural \"Can you come now?\".",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-004",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "到",
+    "gloss": "arrive"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我到家了"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 37,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural \"I'm home.\"",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-005",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "到",
+    "gloss": "arrive"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你到哪里？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 41,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Understandable; 你到哪儿了？ is the natural form.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-006",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "到",
+    "gloss": "arrive"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你到这里"
+    }
+   ],
+   "cue": "You arrive here",
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 43,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "match",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Bare statement/imperative, stilted without 来 or 了.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-007",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一点",
+    "gloss": "a little"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我想要一点。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 48,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-008",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一点",
+    "gloss": "a little"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你慢一点"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 52,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural \"Slow down a bit\".",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-009",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "少",
+    "gloss": "few"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "人太少了。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 74,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-010",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "太",
+    "gloss": "too"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "这个太快了"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 166,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-011",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一起",
+    "gloss": "together"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我们一起吃吧？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 200,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural suggestion (吧 with a rising question is fine).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-012",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一起",
+    "gloss": "together"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "一起做"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 208,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "TEMPLATE_FRAGMENT"
+   ],
+   "rationale": "A fragment with no object or context.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-013",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "回",
+    "gloss": "return"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你回。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 217,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "MISSING_ARGUMENT",
+    "TEMPLATE_FRAGMENT"
+   ],
+   "rationale": "回 needs a destination or 来/去; \"你回。\" is not said.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-014",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "回",
+    "gloss": "return"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你回家吗？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 217,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural; it was rejected 7× as a \"same template\" by a paid-attempt rule and then accepted unchanged as the fallback.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-015",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "这个",
+    "gloss": "this"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "这个到。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 458,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "SELECTIONAL_MISMATCH",
+    "TEMPLATE_FRAGMENT"
+   ],
+   "rationale": "\"This arrive.\" — meaningless; it passed the QC group judge.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-016",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "要",
+    "gloss": "want"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我想要。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 48,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "TEMPLATE_FRAGMENT"
+   ],
+   "rationale": "Possible as a reply in context, weak as a stand-alone recall.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-017",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "做",
+    "gloss": "do"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你做的好吗？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 276,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "GRAMMAR_MORPHOLOGY"
+   ],
+   "rationale": "Should be 你做得好吗 (得 complement), and the question itself is odd.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-018",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "好",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你很好"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 159,
+    "origin": "rejected-unverified"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [],
+   "rationale": "Natural; removed only because the judge reply was unparseable (UNVERIFIED).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-019",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "好",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "嗯，好。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 394,
+    "origin": "rejected-unverified"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural agreement; removed as UNVERIFIED and replaced by templates.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-020",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "好",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "今天好。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 584,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "TEMPLATE_FRAGMENT"
+   ],
+   "rationale": "\"Today good.\" — template; replaced a natural line.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-021",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "好",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "好。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 2,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "TEMPLATE_FRAGMENT"
+   ],
+   "rationale": "Fine as a reply, teaches little alone.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-022",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "那个",
+    "gloss": "that"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "那个好吃吗？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 501,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-023",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "喝",
+    "gloss": "drink"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你喝不喝？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 411,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural A-not-A question.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-daily-024",
+   "language": "zh",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "跟",
+    "gloss": "with"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我跟你去。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "mandarin-gen-log-2026-10-08.txt",
+    "line": 193,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-025",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "钱",
+    "gloss": "money"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "钱大吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "很大。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 38,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "SELECTIONAL_MISMATCH"
+   ],
+   "rationale": "\"Is money big?\" — money is not big/small; nonsense exchange.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-026",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "太",
+    "gloss": "too"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你买什么？"
+    },
+    {
+     "speaker": "B",
+     "text": "我太买东西。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 188,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-form",
+    "cue": "n/a",
+    "qa": "does-not-answer",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "GRAMMAR_WORD_ORDER",
+    "NON_ANSWER"
+   ],
+   "rationale": "太 cannot modify 买东西; does not say what is bought.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-027",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "昨天",
+    "gloss": "yesterday"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "我们昨天去这里吧。"
+    },
+    {
+     "speaker": "B",
+     "text": "好啊。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 225,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "TENSE_ASPECT_CONFLICT"
+   ],
+   "rationale": "A proposal (吧) about yesterday; 去这里 is also odd.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-028",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "跟",
+    "gloss": "with"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你在哪里？"
+    },
+    {
+     "speaker": "B",
+     "text": "我跟在这里。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 22,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-form",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "MISSING_ARGUMENT"
+   ],
+   "rationale": "跟 needs an object (跟你/跟朋友).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-029",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "跟",
+    "gloss": "with"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你去哪里？"
+    },
+    {
+     "speaker": "B",
+     "text": "我跟去那里。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 54,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-form",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "MISSING_ARGUMENT"
+   ],
+   "rationale": "跟 needs an object.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-030",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "找",
+    "gloss": "look for"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "一起找钱吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "找。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 25,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "\"Look for money together?\" is a strange thing to propose.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-031",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "在",
+    "gloss": "be at"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你在哪里？"
+    },
+    {
+     "speaker": "B",
+     "text": "我在家。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 22,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-032",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "昨天",
+    "gloss": "yesterday"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你昨天回家了吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "回了。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 21,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-033",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "开",
+    "gloss": "open"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "我可以开吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "可以。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 24,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "MISSING_ARGUMENT"
+   ],
+   "rationale": "Fine only if the thing to open is visible; no object given.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-034",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "为什么",
+    "gloss": "why"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你为什么买东西？"
+    },
+    {
+     "speaker": "B",
+     "text": "太好了。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 35,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "does-not-answer",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "NON_ANSWER"
+   ],
+   "rationale": "A why-question answered with \"Great!\".",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-035",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "谁",
+    "gloss": "who"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你跟谁去？"
+    },
+    {
+     "speaker": "B",
+     "text": "我跟朋友去。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 31,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-036",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "用",
+    "gloss": "use"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你用钱吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "用。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 33,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "\"Do you use money?\" — odd question.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-037",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "人",
+    "gloss": "person"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你帮人吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "帮。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 37,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "\"Do you help people?\" out of the blue.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-038",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "怎么",
+    "gloss": "how"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "这个怎么来？"
+    },
+    {
+     "speaker": "B",
+     "text": "我不知道。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 18,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "这个怎么来的 / 你怎么来的 would be natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-039",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "一起",
+    "gloss": "together"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "我们一起去哪里？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 344,
+    "origin": "patch"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural (accepted patch).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-040",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "明天",
+    "gloss": "tomorrow"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "我们今天去吧。"
+    },
+    {
+     "speaker": "B",
+     "text": "明天好。"
+    },
+    {
+     "speaker": "A",
+     "text": "好，明天。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 27,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "明天吧 / 明天比较好 is the natural counter-proposal.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-041",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "做",
+    "gloss": "do"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "你做什么？"
+    },
+    {
+     "speaker": "B",
+     "text": "我做工作。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 30,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "n/a",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "我在工作 / 我工作 — \"我做工作\" is unidiomatic.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-042",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "小",
+    "gloss": "small"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "钱小吗？"
+    },
+    {
+     "speaker": "B",
+     "text": "很大。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 331,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "n/a",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "SELECTIONAL_MISMATCH"
+   ],
+   "rationale": "Money small/big — nonsense.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "zh-listening-043",
+   "language": "zh",
+   "trackType": "listening",
+   "kind": "sentence",
+   "level": "Mukyu (first 100 words), 2–4 words",
+   "speakers": "A and B are friends (casual Mandarin)",
+   "target": {
+    "surface": "等",
+    "gloss": "wait"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "你等什么呢？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-31-46.txt",
+    "line": 372,
+    "origin": "patch"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "n/a",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural (accepted patch).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-044",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どう",
+    "gloss": "how"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "これ、どう思う？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 25,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-045",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どう",
+    "gloss": "how"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "今日、どう？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 30,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-046",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "なんで",
+    "gloss": "why"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "なんで行かないの？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 40,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-047",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どっち",
+    "gloss": "which"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "じゃあ、どっちにする？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 55,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-048",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どっち",
+    "gloss": "which way"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "え、駅はどっち？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 58,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-049",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どれ",
+    "gloss": "which one"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "どれが好き？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 75,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural (fallback).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-050",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "あれ",
+    "gloss": "that over there"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "あれ、高い？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 122,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural (fallback).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-051",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "乗る",
+    "gloss": "ride"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "何時に乗る？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 220,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural (fallback).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-052",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "飲む",
+    "gloss": "drink"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "今日、飲む？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 304,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural casual invitation to drink (fallback).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-053",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "分かる",
+    "gloss": "understand"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "明日分かる？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 403,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "TEMPLATE_FRAGMENT"
+   ],
+   "rationale": "\"Will you know tomorrow?\" — possible only with context; template origin.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-054",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "いい",
+    "gloss": "good"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "いいよ。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 170,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-055",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "いいえ",
+    "gloss": "no"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "いいえ、大丈夫。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 180,
+    "origin": "fallback"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-056",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "また",
+    "gloss": "again"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "また、ここ、好きだよ。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 277,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "WRONG_SENSE",
+    "UNIDIOMATIC"
+   ],
+   "rationale": "また does not fit; the sentence is odd.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-057",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "電話",
+    "gloss": "phone"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "電話、まだ使ってないんだ。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 142,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Understandable but contextless.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-058",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "たぶん",
+    "gloss": "probably"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "たぶん、もう行っちゃう？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 200,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "たぶん in a question to the listener is odd.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-059",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "いいえ",
+    "gloss": "no"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "いいえ、大丈夫じゃない。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 180,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-060",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "ごめん",
+    "gloss": "sorry"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "ごめん、今日、暇じゃないんだ。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 128,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-061",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "うん",
+    "gloss": "yeah"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "うん、いいよ。じゃあ、また明日ね。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 170,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-062",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "ありがとう",
+    "gloss": "thank you"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "わあ、これ、ありがとう。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 412,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-daily-063",
+   "language": "ja",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "すみません",
+    "gloss": "excuse me"
+   },
+   "turns": [
+    {
+     "speaker": null,
+     "text": "すみません、あれ、何？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "japanese-gen-log-2026-10-08.txt",
+    "line": 429,
+    "origin": "accepted"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "error",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "REGISTER_POLITENESS"
+   ],
+   "rationale": "すみません with casual 何？ mixes registers.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-064",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どれ",
+    "gloss": "which one"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "どれを見る？"
+    },
+    {
+     "speaker": "B",
+     "text": "本を見る。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 16,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "本 is read (読む), not \"looked at\".",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-065",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "欲しい",
+    "gloss": "want"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "映画、欲しい？"
+    },
+    {
+     "speaker": "B",
+     "text": "うん、欲しい。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 18,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "SELECTIONAL_MISMATCH"
+   ],
+   "rationale": "You do not \"want (to possess)\" a movie with 欲しい.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-066",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "昨日",
+    "gloss": "yesterday"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "いつ行った？"
+    },
+    {
+     "speaker": "B",
+     "text": "昨日、行った。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 45,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-067",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "あそこ",
+    "gloss": "over there"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "あそこに行く？"
+    },
+    {
+     "speaker": "B",
+     "text": "うん、行く。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 22,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-068",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "できる",
+    "gloss": "can"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "日本語、できる？"
+    },
+    {
+     "speaker": "B",
+     "text": "うん、できる。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 24,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-069",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "何時",
+    "gloss": "what time"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "何時に行く？"
+    },
+    {
+     "speaker": "B",
+     "text": "明日、行く。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 25,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "does-not-answer",
+    "coherence": "incoherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "QA_TYPE_MISMATCH"
+   ],
+   "rationale": "A clock time is asked; a day is given.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-070",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "なんで",
+    "gloss": "why"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "映画、なんで見るの？"
+    },
+    {
+     "speaker": "B",
+     "text": "好きだから。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 27,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-071",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "たぶん",
+    "gloss": "probably"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "行く？"
+    },
+    {
+     "speaker": "B",
+     "text": "たぶん行く。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 22,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-072",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "はい",
+    "gloss": "yes"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "電車とバス、ある？"
+    },
+    {
+     "speaker": "B",
+     "text": "はい、ある。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 29,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "error",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "REGISTER_POLITENESS"
+   ],
+   "rationale": "はい + plain ある between friends is a register mix; うん expected.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-073",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "また",
+    "gloss": "again"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "また写真、見ようか？"
+    },
+    {
+     "speaker": "B",
+     "text": "いいね。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 31,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Plausible only with prior context.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-074",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "どう",
+    "gloss": "how"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "車、どう？"
+    },
+    {
+     "speaker": "B",
+     "text": "いいね。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 32,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-075",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "ごめん",
+    "gloss": "sorry"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ごめん。"
+    },
+    {
+     "speaker": "B",
+     "text": "大丈夫。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 34,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-076",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "まだ",
+    "gloss": "still"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "まだ行く？"
+    },
+    {
+     "speaker": "B",
+     "text": "行く。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 35,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Possible but bare.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-077",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "いくら",
+    "gloss": "how much"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "これ、いくら？"
+    },
+    {
+     "speaker": "B",
+     "text": "高いね。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 36,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "does-not-answer",
+    "coherence": "incoherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "NON_ANSWER"
+   ],
+   "rationale": "The price is asked; a comment is given.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-078",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "もう",
+    "gloss": "already"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "もうご飯、買った？"
+    },
+    {
+     "speaker": "B",
+     "text": "いいえ、買わなかった。"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 37,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "TENSE_ASPECT_CONFLICT"
+   ],
+   "rationale": "After もう…た the natural negative is まだ (買ってない), not 買わなかった.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "ja-listening-079",
+   "language": "ja",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, 3–5 content units",
+   "speakers": "A and B are adult friends (plain, casual Japanese)",
+   "target": {
+    "surface": "お金",
+    "gloss": "money"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "お金、あるよ。"
+    },
+    {
+     "speaker": "B",
+     "text": "本当？"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-33-32.txt",
+    "line": 39,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [],
+   "rationale": "Natural but thin.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-080",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "กังวล",
+    "gloss": "to worry"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "คุณกังวลไหมคะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 951,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-081",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คะ",
+    "gloss": "polite question particle (female)"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "คุณจะไปตลาดเมื่อไหร่คะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 917,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural; คะ correctly on a female question.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-082",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คะ",
+    "gloss": "polite question particle (female)"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "อันนี้หมายถึงอะไรคะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 917,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-083",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คะ",
+    "gloss": "polite question particle (female)"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผมอยากไปตลาดใหม่คะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 712,
+    "origin": "rejected"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "error",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "REGISTER_GENDER_PARTICLE"
+   ],
+   "rationale": "ผม (male) with คะ (female question particle) on a statement.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-084",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คุ้ม",
+    "gloss": "worthwhile"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "ครั้งนี้ไปทางนั้นคุ้มไหมคะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 874,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Stilted.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-085",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คู่",
+    "gloss": "pair"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผมอยากได้เสื้อคู่หนึ่งครับ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 934,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "CLASSIFIER_ERROR"
+   ],
+   "rationale": "Shirts are counted with ตัว; คู่ is for pairs.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-086",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "รถเมล์",
+    "gloss": "bus"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผมจะไปตลาดใหม่ด้วยรถเมล์ครับ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 885,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "นั่งรถเมล์ไป is more natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-087",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "หน้าต่าง",
+    "gloss": "window"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "หน้าต่างห้องนอนใหญ่ไหมคะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 907,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-088",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "หวัง",
+    "gloss": "hope"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "คุณมีหวังว่าจะได้อะไรคะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 928,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-form",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "GRAMMAR_MORPHOLOGY"
+   ],
+   "rationale": "มีหวัง means \"have a chance\"; คุณหวังว่า… intended.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-089",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "เบา",
+    "gloss": "light"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "กระเป๋าใบนี้เบาดีค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 912,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-090",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ใบ",
+    "gloss": "classifier (flat things)"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "นี่คือตั๋วรถเมล์ใบหนึ่งค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 922,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Stilted textbook phrasing.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-091",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ใบ",
+    "gloss": "classifier (flat things)"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "คุณมีตั๋วรถเมล์กี่ใบครับ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 922,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-092",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ไฟ",
+    "gloss": "light / electricity"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผมหวังว่าไฟจะพอครับ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 957,
+    "origin": "quota-recovery"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Odd without context.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-093",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ไฟ",
+    "gloss": "light / electricity"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "อาหารนี้ไฟดีมากค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 939,
+    "origin": "rejected"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "WRONG_SENSE"
+   ],
+   "rationale": "ไฟ used as if it meant something about food.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-094",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ตัว",
+    "gloss": "classifier (animals / things)"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "ตั๋วรถเมล์ตัวนี้กี่ใบคะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 975,
+    "origin": "rejected"
+   },
+   "expected": {
+    "grammar": "error",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-form",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "CLASSIFIER_ERROR"
+   ],
+   "rationale": "Tickets take ใบ, and the sentence mixes two classifiers.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-daily-095",
+   "language": "th",
+   "trackType": "daily",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คู่",
+    "gloss": "pair"
+   },
+   "turns": [
+    {
+     "speaker": "B",
+     "text": "ฉันจะซื้ออาหารอีกคู่นะคะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "gen-log-2026-10-08T06-40-49.txt",
+    "line": 877,
+    "origin": "rejected"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "WRONG_SENSE"
+   ],
+   "rationale": "Food is not bought in pairs.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-096",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "แก่",
+    "gloss": "old (people)"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "นี่เป็นอย่างไรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "แก่มากค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 17,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "SELECTIONAL_MISMATCH"
+   ],
+   "rationale": "แก่ is for people/animals; \"this is very old (aged)\" is wrong.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-097",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "คุณอายุเท่าไหร่",
+    "gloss": "how old are you"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "คุณอายุเท่าไหร่ครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "สิบปีค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 16,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural exchange (odd between adults who are 10 — content only).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-098",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ไปที่",
+    "gloss": "go to"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ไปที่ไหนครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ที่นั่นค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 21,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "\"ไปไหนครับ\" is more natural; \"over there\" is a vague answer.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-099",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "น่าดู",
+    "gloss": "worth seeing"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "พิพิธภัณฑสถานแห่งชาติน่าดูไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "น่าดูค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 174,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural (formal place name).",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-100",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "นักท่องเที่ยว",
+    "gloss": "tourist"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "เรียกนักท่องเที่ยวไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "เรียกค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 24,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "\"Do you call tourists?\" — meaningless here.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-101",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "สิบเอ็ดโมงเช้า",
+    "gloss": "11 a.m."
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "สิบโมงเช้าไปกันไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "สิบเอ็ดโมงเช้าดีกว่าค่ะ"
+    },
+    {
+     "speaker": "A",
+     "text": "ได้สิบเอ็ดโมงเช้านะครับ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 26,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural proposal, counter-proposal and agreement.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-102",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ศูนย์",
+    "gloss": "zero"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ศูนย์ตลกไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ไม่เชิงตลกค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 28,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "SELECTIONAL_MISMATCH",
+    "WRONG_SENSE"
+   ],
+   "rationale": "\"Is zero/the centre funny?\" — nonsense.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-103",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "นานเท่าไหร่",
+    "gloss": "how long"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ทางนานเท่าไหร่ครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "สิบนาทีค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 30,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "ไปนานเท่าไหร่ / ใช้เวลานานเท่าไหร่ is natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-104",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "รถแท็กซี่",
+    "gloss": "taxi"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "อันนั้นอะไรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "อันนั้นคือรถแท็กซี่ค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 65,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "อันนั้น for a vehicle and the คือ answer are stilted.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-105",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ทานกันเลย",
+    "gloss": "let's eat"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ทานกันเลยครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ได้ค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 32,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-106",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ผัดไทย",
+    "gloss": "pad thai"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ผัดไทยอยู่ที่ไหนครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "อยู่ร้านอาหารค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 33,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Odd question about where pad thai \"is\".",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-107",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ขนาด",
+    "gloss": "size"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ชอบขนาดครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "จริงเหรอคะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 35,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "incoherent",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "\"(I) like size\" — incomplete and unnatural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-108",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ใบเสร็จ",
+    "gloss": "receipt"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ใบเสร็จราคาเท่าไหร่ครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "พันบาทค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 36,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-sense",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "SELECTIONAL_MISMATCH"
+   ],
+   "rationale": "A receipt has no price.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-109",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "นม",
+    "gloss": "milk"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "นมเป็นอย่างไรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ตลกมากค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 183,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "incoherent",
+    "register": "ok",
+    "usefulness": "not-useful"
+   },
+   "errorCategories": [
+    "SELECTIONAL_MISMATCH"
+   ],
+   "rationale": "\"How is the milk?\" — \"Very funny.\"",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-110",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "บัตร",
+    "gloss": "card / ticket"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ซื้อนมหรือบัตรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ซื้อบัตรค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 38,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "Milk-or-card choice has no situation.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-111",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "เบอร์โทรศัพท์",
+    "gloss": "phone number"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "เบอร์โทรศัพท์อะไรครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ห้าสามสามสองสองหนึ่งค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 39,
+    "origin": "proven-frame"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "marginal",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "เบอร์อะไร is natural; a 6-digit number is not a Thai phone number.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-112",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ไม่เชิง",
+    "gloss": "not exactly"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "มีนามบัตรไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "ไม่เชิงมีค่ะ มีแต่ใบเสร็จค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 497,
+    "origin": "patch"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "unnatural",
+    "targetUsage": "wrong-form",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "weak"
+   },
+   "errorCategories": [
+    "UNIDIOMATIC"
+   ],
+   "rationale": "\"ไม่เชิงมี\" is not idiomatic.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-113",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "exchange",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "สิบโมงเช้า",
+    "gloss": "10 a.m."
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "เราไปกันตอนสิบเอ็ดโมงเช้าดีไหมครับ"
+    },
+    {
+     "speaker": "B",
+     "text": "สิบโมงเช้าก็ดีค่ะ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 371,
+    "origin": "patch"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "answers",
+    "coherence": "coherent",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural.",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  },
+  {
+   "id": "th-listening-114",
+   "language": "th",
+   "trackType": "listening",
+   "kind": "sentence",
+   "level": "10th Kyu, sentences of 3–5 words",
+   "speakers": "A = Thai man (ผม / ครับ), B = Thai woman (ฉัน / ค่ะ, คะ); friends",
+   "target": {
+    "surface": "ขนาด",
+    "gloss": "size"
+   },
+   "turns": [
+    {
+     "speaker": "A",
+     "text": "ขนาดกำลังดีครับ"
+    }
+   ],
+   "cue": null,
+   "context": null,
+   "source": {
+    "file": "listening-log-2026-10-08T06-45-28.txt",
+    "line": 428,
+    "origin": "patch"
+   },
+   "expected": {
+    "grammar": "ok",
+    "naturalness": "natural",
+    "targetUsage": "correct",
+    "cue": "n/a",
+    "qa": "n/a",
+    "coherence": "n/a",
+    "register": "ok",
+    "usefulness": "useful"
+   },
+   "errorCategories": [],
+   "rationale": "Natural \"The size is just right.\"",
+   "labels": [
+    {
+     "by": "model:claude-opus-5-5",
+     "role": "annotator A — author of the pipeline under review (NOT independent)",
+     "date": "2026-10-08"
+    }
+   ],
+   "humanReviewed": false,
+   "humanReview": null
+  }
+ ]
+}

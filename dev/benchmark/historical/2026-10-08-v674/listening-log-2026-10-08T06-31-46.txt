@@ -1,0 +1,426 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v674 language=zh path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=zh)
+🧭 LISTENING_FEASIBILITY PASS language=zh · pool=60 candidate(s) in SRS order · authorised support=30 word(s) · selected 30 · deferred 1: 多少 (individual: needs an amount to answer with (a number, money, expensive / cheap, a ) · meaning plan VALID (37 turns) — checked BEFORE the targets are frozen
+🧩 LISTENING_VERBALIZABILITY PROVEN · 37 planned turn(s) carry a proven authorised realisation (closed vocabulary + hardMax + target presence, both sides of every exchange) — no target enters the meaning plan without one
+⏭ LISTENING_TARGET_DEFERRED target=29 多少 reason=needs an amount to answer with (a number, money, expensive / cheap, a lot / a little) — not in the learner's authorised  stage=individual srsObligationPreserved=true
+🧭 LISTENING_DEFERRED_SRS ids=[29] — skipped words keep their SRS obligation (due date untouched; the next Revision / Daily selection still takes them)
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(zh) = selectRevisionTrackTargets → feasibility gate → jazhContractTargets(revision)
+🎧 LISTENING_SELECTED_TARGET_IDS=[32,54,62,63,57,58,55,56,51,53,50,47,48,49,16,17,18,19,20,21,22,23,24,25,26,27,28,30,31,52]
+🎧 LISTENING_TRACK_START language=zh trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=zh introducedContent=30 targets=30 authorised=60 snapshot=l2ujdq (frozen at generation start) · Layer A lexicon 439 entries (segmentation only — not permission)
+📏 LEVEL belt=Mukyu preferred=2–4 hardMax=6 · LEVEL Mukyu · target 2–4 · max 6 (Mandarin words, rankProgressFor) · Listening: no minimum, aim 2–4, no turn above 6
+📚 VOCAB INVENTORY introducedContent=30 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Mandarin grammar particles
+🧭 LISTENING_PLANNER_INPUT language=zh belt=Mukyu preferredRange=2–4 hardMax=6 selectedTargets=30 learnerAuthorizedInventory=30
+🧵 LISTENING_ONE_CONVERSATION story=OPEN → DECIDE → ARRANGE → MOVE → PAY · 5 internal phase(s) of ONE conversation · planned 37 turns (target 28–36, allowed 24–44)
+🧵 CONVERSATION_CONTRACT speakers=A = Speaker A (friend) · B = Speaker B (friend) · relationship=friends · objective=spend time together: meet → decide where to go → agree the time → go there → pay · ending=they finish what they set out to do and say goodbye
+🧵 PHASE_CONTRAST LS3 (ARRANGE) day words 今天 / 明天 → proposal + counter-proposal; the LAST is the agreed value
+🧩 LISTENING_VERBALIZABILITY PROVEN · 37 planned turn(s) carry a proven authorised realisation · blueprints: buildMandarinListeningBlueprints → ONE shared planner
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t1 QUESTION [怎么+来] proven="这个怎么来？"
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t3 STATEMENT [很+小] proven="这个很小。"
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t6 ANSWER [在] proven="我在家。"
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t7 QUESTION [回+昨天] proven="你昨天回家了吗？"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t1 QUESTION [哪里] proven="你在哪里？"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t2 ANSWER [跟+这里] proven="我跟在这里。"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t3 QUESTION [开] proven="我可以开吗？"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t5 QUESTION [一起+找] proven="一起找钱吗？"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t8 ANSWER [那里] proven="我去那里。"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t1 PROPOSAL [今天] proven="我们今天去吧。"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t2 COUNTERPROPOSAL [明天] proven="明天好。"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t4 PROPOSAL [现在+拿] proven="我们现在拿钱吧。"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t6 QUESTION [做] proven="你做什么？"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t1 QUESTION [谁+去] proven="你跟谁去？"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t3 QUESTION [到] proven="你为什么不到？"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t5 QUESTION [用] proven="你用钱吗？"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t7 QUESTION [等] proven="你等什么？"
+   🧩 LISTENING_TARGET_TRACE LS5 PAY t1 QUESTION [为什么+买] proven="你为什么买东西？"
+   🧩 LISTENING_TARGET_TRACE LS5 PAY t2 ANSWER [太] proven="太好了。"
+   🧩 LISTENING_TARGET_TRACE LS5 PAY t3 QUESTION [人] proven="你帮人吗？"
+   🧩 LISTENING_TARGET_TRACE LS5 PAY t5 QUESTION [大+钱] proven="钱大吗？"
+🧠 LISTENING_MEANING_PLAN VALID · 37 planned turns (aim 28–36) · story OPEN → DECIDE → ARRANGE → MOVE → PAY · 10 statement merge(s) for the turn budget — validated BEFORE any language is generated
+   T1 A QUESTION(how it is) — A asks B how it is (using 怎么 "how" + 来 "come") · now — where they meet ⟦proven: 这个怎么来？⟧
+   T2 B ANSWER ↩T1 — B answers with how it is ⟨must give how it is⟩ · now — where they meet ⟦proven: 我不知道。⟧
+   T3 A STATEMENT — A tells B something about 很 "very" + 小 "small" · now — where they meet ⟦proven: 这个很小。⟧
+   T4 B REACTION ↩T3 — B reacts ⟨must give a reaction to it⟩ · now — where they meet ⟦proven: 真的吗？⟧
+   T5 A QUESTION(place) — A asks B where (a place) · now — where they meet ⟦proven: 你在哪里？⟧
+   T6 B ANSWER ↩T5 — B answers with a place (using 在 "be at") ⟨must give a place⟩ · now — where they meet ⟦proven: 我在家。⟧
+   T7 A QUESTION(yes/no) — A asks B a yes / no question (using 回 "return" + 昨天 "yesterday") · now — where they meet ⟦proven: 你昨天回家了吗？⟧
+   T8 B ANSWER ↩T7 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — where they meet ⟦proven: 回了。⟧
+   T9 A QUESTION(place) — A asks B where (a place) (using 哪里 "where") · now — still where they meet ⟦proven: 你在哪里？⟧
+   T10 B ANSWER ↩T9 — B answers with a place (using 跟 "with" + 这里 "here") ⟨must give a place⟩ · now — still where they meet ⟦proven: 我跟在这里。⟧
+   T11 A QUESTION(yes/no) — A asks B a yes / no question (using 开 "open") · now — still where they meet ⟦proven: 我可以开吗？⟧
+   T12 B ANSWER ↩T11 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: 可以。⟧
+   T13 A QUESTION(yes/no) — A asks B a yes / no question (using 一起 "together" + 找 "look for") · now — still where they meet ⟦proven: 一起找钱吗？⟧
+   T14 B ANSWER ↩T13 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: 找。⟧
+   T15 A QUESTION(place) — A asks B where (a place) · now — still where they meet ⟦proven: 你去哪里？⟧
+   T16 B ANSWER ↩T15 — B answers with a place (using 那里 "there") ⟨must give a place⟩ · now — still where they meet ⟦proven: 我去那里。⟧
+   T17 A PROPOSAL — A suggests 今天 "today" · now — planning when to go (later today) ⟦proven: 我们今天去吧。⟧
+   T18 B COUNTERPROPOSAL ↩T17 — B suggests 明天 "tomorrow" instead — this becomes the agreed value ⟨must give a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)⟩ · now — planning when to go (later today) ⟦proven: 明天好。⟧
+   T19 A ACCEPT ↩T18 — A agrees ⟨must give agreement with the counter-proposal — that value is now agreed⟩ · now — planning when to go (later today) ⟦proven: 好，明天。⟧
+   T20 A PROPOSAL — A suggests 现在 "now" + 拿 "take" · now — planning when to go (later today) ⟦proven: 我们现在拿钱吧。⟧
+   T21 B ACCEPT ↩T20 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · now — planning when to go (later today) ⟦proven: 好啊。⟧
+   T22 A QUESTION(what) — A asks B what (using 做 "do") · now — planning when to go (later today) ⟦proven: 你做什么？⟧
+   T23 B ANSWER ↩T22 — B answers with the thing asked about ⟨must give the thing asked about⟩ · now — planning when to go (later today) ⟦proven: 我做工作。⟧
+   T24 A QUESTION(person) — A asks B who (using 谁 "who" + 去 "go") · later — on the way, after agreeing the time ⟦proven: 你跟谁去？⟧
+   T25 B ANSWER ↩T24 — B answers with a person ⟨must give a person⟩ · later — on the way, after agreeing the time ⟦proven: 我跟朋友去。⟧
+   T26 A QUESTION(reason) — A asks B why (a reason) (using 到 "arrive") · later — on the way, after agreeing the time ⟦proven: 你为什么不到？⟧
+   T27 B ANSWER ↩T26 — B answers with a reason (a short clause — never a bare yes / no or a bare adjective) ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · later — on the way, after agreeing the time ⟦proven: 我不想到。⟧
+   T28 A QUESTION(yes/no) — A asks B a yes / no question (using 用 "use") · later — on the way, after agreeing the time ⟦proven: 你用钱吗？⟧
+   T29 B ANSWER ↩T28 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — on the way, after agreeing the time ⟦proven: 用。⟧
+   T30 A QUESTION(what) — A asks B what (using 等 "wait") · later — on the way, after agreeing the time ⟦proven: 你等什么？⟧
+   T31 B ANSWER ↩T30 — B answers with the thing asked about ⟨must give the thing asked about⟩ · later — on the way, after agreeing the time ⟦proven: 我等朋友。⟧
+   T32 A QUESTION(reason) — A asks B why (a reason) (using 为什么 "why" + 买 "buy") · later — at the end of the visit ⟦proven: 你为什么买东西？⟧
+   T33 B ANSWER ↩T32 — B answers with a reason (a short clause — never a bare yes / no or a bare adjective) (using 太 "too") ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · later — at the end of the visit ⟦proven: 太好了。⟧
+   T34 A QUESTION(yes/no) — A asks B a yes / no question (using 人 "person") · later — at the end of the visit ⟦proven: 你帮人吗？⟧
+   T35 B ANSWER ↩T34 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — at the end of the visit ⟦proven: 帮。⟧
+   T36 A QUESTION(yes/no) — A asks B a yes / no question (using 大 "big" + 钱 "money") · later — at the end of the visit ⟦proven: 钱大吗？⟧
+   T37 B ANSWER ↩T36 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — at the end of the visit ⟦proven: 很大。⟧
+🎧 LISTENING_COVERAGE_PLAN 30/30 assigned · 5 scenes · ≤7 targets per scene · planned 37 turns (max 44, headroom target ≤36, compact scenes)
+  LISTENING_SCENE_PLAN LS1 phase=OPEN required=[昨天, 来, 回, 小, 怎么, 在, 很] expectedTurns=8 max=9 · A and B meet and start talking about today
+  LISTENING_SCENE_PLAN LS2 phase=DECIDE required=[哪里, 开, 这里, 那里, 找, 一起, 跟] expectedTurns=8 max=9 · they decide what to do next together
+  LISTENING_SCENE_PLAN LS3 phase=ARRANGE required=[今天, 明天, 拿, 现在, 做] expectedTurns=7 max=8 · they agree what to do first
+  LISTENING_SCENE_PLAN LS4 phase=MOVE required=[到, 去, 用, 等, 谁] expectedTurns=8 max=9 · they go there and arrive
+  LISTENING_SCENE_PLAN LS5 phase=PAY required=[买, 钱, 大, 为什么, 人, 太] expectedTurns=6 max=7 · they pay and check the price; then they wrap up and say goodbye
+🧭 SCENE_LANGUAGE_FEASIBILITY LS1 PASS situation="A and B meet and start talking about today" · rejected (FAIL): "A and B meet, greet each other and start talking about today" missing [hello]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS2 PASS situation="they decide what to do next together" · rejected (FAIL): "they decide what to do and where to go together" missing [go]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS3 PASS situation="they agree what to do first" · rejected (FAIL): "they arrange WHEN to go and how long it will take — one time" missing [time, go] ; "they agree WHEN to go — one time is agreed and then stays ag" missing [time]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS4 PASS situation="they go there and arrive" needs=[go] · rejected (FAIL): "they set off and get there (the way, the transport) and arri" missing [way]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS5 PASS situation="they pay and check the price" needs=[pay] · rejected (FAIL): "they pay: the price, card or cash, the receipt" missing [card]
+🧭 SCENE_INTENT_SKELETON LS1 VALID · 1. A QUESTION(how it is) — uses 怎么+来 ⟨expects how it is⟩ · 2. B ANSWER(how it is) (to 1) ⟨must give how it is⟩ · 3. A STATEMENT — uses 很+小 · 4. B REACTION (to 3) ⟨must give a reaction to it⟩ · 5. A QUESTION(place) ⟨expects a place⟩ · 6. B ANSWER(place) (to 5) — uses 在 ⟨must give a place⟩ · 7. A QUESTION(yes/no) — uses 回+昨天 ⟨expects yes / no (or a qualified answer)⟩ · 8. B ANSWER(yes/no) (to 7) ⟨must give yes / no (or a qualified answer)⟩
+🧭 SCENE_INTENT_SKELETON LS2 VALID · 1. A QUESTION(place) — uses 哪里 ⟨expects a place⟩ · 2. B ANSWER(place) (to 1) — uses 跟+这里 ⟨must give a place⟩ · 3. A QUESTION(yes/no) — uses 开 ⟨expects yes / no (or a qualified answer)⟩ · 4. B ANSWER(yes/no) (to 3) ⟨must give yes / no (or a qualified answer)⟩ · 5. A QUESTION(yes/no) — uses 一起+找 ⟨expects yes / no (or a qualified answer)⟩ · 6. B ANSWER(yes/no) (to 5) ⟨must give yes / no (or a qualified answer)⟩ · 7. A QUESTION(place) ⟨expects a place⟩ · 8. B ANSWER(place) (to 7) — uses 那里 ⟨must give a place⟩
+🧭 SCENE_INTENT_SKELETON LS3 VALID · 1. A PROPOSAL — uses 今天 ⟨expects accept / refuse / counter-proposal⟩ · 2. B COUNTERPROPOSAL (to 1) — uses 明天 ⟨must give a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)⟩ · 3. A ACCEPT (to 2) ⟨must give agreement with the counter-proposal — that value is now agreed⟩ · 4. A PROPOSAL — uses 现在+拿 ⟨expects accept / refuse / counter-proposal⟩ · 5. B ACCEPT (to 4) ⟨must give accept / refuse / counter-proposal⟩ · 6. A QUESTION(what) — uses 做 ⟨expects the thing asked about⟩ · 7. B ANSWER(what) (to 6) ⟨must give the thing asked about⟩
+🧭 SCENE_INTENT_SKELETON LS4 VALID · 1. A QUESTION(person) — uses 谁+去 ⟨expects a person⟩ · 2. B ANSWER(person) (to 1) ⟨must give a person⟩ · 3. A QUESTION(reason) — uses 到 ⟨expects a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · 4. B ANSWER(reason) (to 3) ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · 5. A QUESTION(yes/no) — uses 用 ⟨expects yes / no (or a qualified answer)⟩ · 6. B ANSWER(yes/no) (to 5) ⟨must give yes / no (or a qualified answer)⟩ · 7. A QUESTION(what) — uses 等 ⟨expects the thing asked about⟩ · 8. B ANSWER(what) (to 7) ⟨must give the thing asked about⟩
+🧭 SCENE_INTENT_SKELETON LS5 VALID · 1. A QUESTION(reason) — uses 为什么+买 ⟨expects a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · 2. B ANSWER(reason) (to 1) — uses 太 ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · 3. A QUESTION(yes/no) — uses 人 ⟨expects yes / no (or a qualified answer)⟩ · 4. B ANSWER(yes/no) (to 3) ⟨must give yes / no (or a qualified answer)⟩ · 5. A QUESTION(yes/no) — uses 大+钱 ⟨expects yes / no (or a qualified answer)⟩ · 6. B ANSWER(yes/no) (to 5) ⟨must give yes / no (or a qualified answer)⟩
+🎧 LISTENING_SCENE_PLAUSIBILITY PASS — every scene is one plausible everyday situation (checked before writing)
+    LISTENING_TARGET_ASSIGNMENT target=26 怎么 → LS1 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=17 来 → LS1 exchange 1 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=57 很 → LS1 exchange 2 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=63 小 → LS1 exchange 2 (A) role=DESCRIPTION
+    LISTENING_TARGET_ASSIGNMENT target=19 在 → LS1 exchange 3 (B) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=53 回 → LS1 exchange 4 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=25 昨天 → LS1 exchange 4 (A) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=18 哪里 → LS2 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=55 跟 → LS2 exchange 1 (B) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=20 这里 → LS2 exchange 1 (B) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=52 开 → LS2 exchange 2 (A) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=56 一起 → LS2 exchange 3 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=48 找 → LS2 exchange 3 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=21 那里 → LS2 exchange 4 (B) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=23 今天 → LS3 exchange 1 (A) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=24 明天 → LS3 exchange 1 (B) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=22 现在 → LS3 exchange 2 (A) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=51 拿 → LS3 exchange 2 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=49 做 → LS3 exchange 3 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=28 谁 → LS4 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=16 去 → LS4 exchange 1 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=54 到 → LS4 exchange 2 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=50 用 → LS4 exchange 3 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=47 等 → LS4 exchange 4 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=27 为什么 → LS5 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=31 买 → LS5 exchange 1 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=58 太 → LS5 exchange 1 (B) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=32 人 → LS5 exchange 2 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=62 大 → LS5 exchange 3 (A) role=DESCRIPTION
+    LISTENING_TARGET_ASSIGNMENT target=30 钱 → LS5 exchange 3 (A) role=CONTENT
+🎨 SCENE_PALETTE scene=LS1 requiredTargets=[昨天, 来, 回, 小, 怎么, 在, 很] supportVocabulary=[这个, 知道, 我, 真的, 你, 不, 家, 喜欢, 可以, 那个, 多少, 没有, 有, 要, 看, 什么, 好, 东西, 给, 地方, 帮, 工作, 朋友, 懂] (24 taught) grammar=20 forms
+🎨 SCENE_PALETTE scene=LS2 requiredTargets=[哪里, 开, 这里, 那里, 找, 一起, 跟] supportVocabulary=[我, 你, 可以, 什么, 好, 要, 这个, 有, 没有, 喜欢, 多少, 那个, 看, 真的, 知道, 不, 东西, 地方, 给, 朋友, 工作, 帮, 懂, 听] (24 taught) grammar=20 forms
+🎨 SCENE_PALETTE scene=LS3 requiredTargets=[今天, 明天, 拿, 现在, 做] supportVocabulary=[什么, 我, 好, 你, 工作, 多少, 真的, 那个, 喜欢, 可以, 没有, 有, 知道, 看, 这个, 要, 东西, 朋友, 地方, 不] (20 taught) grammar=20 forms
+🎨 SCENE_PALETTE scene=LS4 requiredTargets=[到, 去, 用, 等, 谁] supportVocabulary=[什么, 你, 我, 不, 朋友, 想, 有, 没有, 要, 这个, 知道, 看, 那个, 可以, 喜欢, 真的, 多少, 好, 听, 说] (20 taught) grammar=20 forms
+🎨 SCENE_PALETTE scene=LS5 requiredTargets=[买, 钱, 大, 为什么, 人, 太] supportVocabulary=[你, 什么, 好, 帮, 东西, 多少, 没有, 有, 喜欢, 可以, 那个, 知道, 真的, 看, 这个, 要, 我, 不, 懂, 说, 听, 给] (22 taught) grammar=20 forms
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 5) generation call 1 · required 7 · 8–9 turns
+⚠ LISTENING_TURN_BUDGET LS1 returned 10 turns > hard max 9 — rejected, regenerating within budget
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=7 heard=7 PASS · turns 10/9
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L1 unknown=[啦] UNKNOWN_LEXEME (as generated)
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L7 unknown=[是] UNKNOWN_LEXEME (as generated)
+⛔ ADJACENCY_FAIL scene=LS1 line=L7 QUESTION expects ANSWER, got an unrelated QUESTION — rewrite this reply so it answers the question before it (as generated)
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=FAIL(2 lines) length=PASS max3=PASS register=n/a structure=FAIL(1) duplicates=PASS decision=REGENERATE reason=TURN_BUDGET 10 > 9 unknown=[啦, 是] (candidate)
+🔁 PHASE_REGENERATE LS1 (OPEN) — PHASE (TURN_BUDGET 10 > 9) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 5) generation call 2 · required 7 · 8–9 turns
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=7 heard=7 PASS · turns 8/9 (phase regenerated from its plan)
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L5 unknown=[是] UNKNOWN_LEXEME (regenerated)
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L6 unknown=[是] UNKNOWN_LEXEME (regenerated)
+⛔ ADJACENCY_FAIL scene=LS1 line=L5 QUESTION expects ANSWER, got an unrelated QUESTION — rewrite this reply so it answers the question before it (regenerated)
+⛔ NATURALNESS_FAIL LS1 L1 naturalness 3/5 — '这个怎么来的？' is more natural for asking about · L5 naturalness 2/5 — '你在哪里？' is the natural way to ask 'Where a · L6 naturalness 2/5 — '我在家' is the natural way to say 'I am at h (phase commit gate)
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=FAIL(2 lines) length=PASS max3=PASS register=n/a structure=FAIL(1) duplicates=PASS decision=REPAIR reason=closedVocab 2, adjacency 1 unknown=[是] (regenerated candidate)
+🔧 PHASE_REPAIR LS1 class=EXCHANGE · 5 line issue(s) → one-line repair · 1 exchange issue(s) → regenerate the 2-turn exchange ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=CLOSED_VOCAB+UNNATURAL+ADJACENCY scene=LS1 line=L5 scope=L4+L5 unknown=[是] palette=32 protected=[哪里, 在] attempt=1 level=1
+🔧 LISTENING_ATOMIC_REPAIR issue=UNNATURAL scene=LS1 line=L1 protected=[来, 怎么] attempt=1 level=1
+⛔ PATCH_REJECTED issue=i1 line=L5 reason=PROTECTED_TARGET_LOST: 哪里 · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)
+✅ PATCH_ACCEPTED issue=i2 line=L1 candidate="这个怎么来的？" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 3 remaining issue(s) are left to the final gates
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=7 heard=7 PASS
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=FAIL(2 lines) length=PASS max3=PASS register=n/a structure=FAIL(1) duplicates=PASS decision=REPAIR reason=closedVocab 2, adjacency 1 unknown=[是] (after exchange repair) naturalness=FAIL(2)
+🧭 REPAIR_STRATEGY_GUARD LS1 — the same semantic failure occurred twice (CLOSED_VOCAB, ADJACENCY) · STOP ATOMIC REPAIR → escalate to REMAINING-CONVERSATION REPLAN (1/3) (strategy change, not a cost abort)
+🧩 RUNTIME_REALISATION_FAILED target=19 在 frame="你在哪里？ / 我在家。" — the adapter must prove another blueprint for it
+🧭 LISTENING_REMAINING_PLAN_REBUILD 1/3 after LS1 — phase still defective after regeneration (closedVocab 2, adjacency 1, unnatural 2) · only the UNCOMMITTED future is rebuilt; 0 committed phase(s) kept
+🧠 LISTENING_MEANING_PLAN (global replan) VALID · 34 planned turns (aim 28–36) · story DECIDE → ARRANGE → MOVE → PAY · 6 statement merge(s) for the turn budget — validated BEFORE any language is generated
+   T1 A QUESTION(place) — A asks B where (a place) (using 哪里 "where") · now — still where they meet ⟦proven: 你去哪里？⟧
+   T2 B ANSWER ↩T1 — B answers with a place (using 跟 "with" + 那里 "there") ⟨must give a place⟩ · now — still where they meet ⟦proven: 我跟去那里。⟧
+   T3 A QUESTION(yes/no) — A asks B a yes / no question (using 开 "open") · now — still where they meet ⟦proven: 我可以开吗？⟧
+   T4 B ANSWER ↩T3 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: 可以。⟧
+   T5 A QUESTION(yes/no) — A asks B a yes / no question (using 一起 "together" + 找 "look for") · now — still where they meet ⟦proven: 一起找钱吗？⟧
+   T6 B ANSWER ↩T5 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: 找。⟧
+   T7 A QUESTION(place) — A asks B where (a place) · now — still where they meet ⟦proven: 你在哪里？⟧
+   T8 B ANSWER ↩T7 — B answers with a place (using 这里 "here") ⟨must give a place⟩ · now — still where they meet ⟦proven: 我在这里。⟧
+   T9 A STATEMENT — A tells B something about 今天 "today" · now — planning when to go (later today) ⟦proven: 我今天回家。⟧
+   T10 B REACTION ↩T9 — B reacts ⟨must give a reaction to it⟩ · now — planning when to go (later today) ⟦proven: 真的吗？⟧
+   T11 A QUESTION(place) — A asks B where (a place) · now — planning when to go (later today) ⟦proven: 你在哪里？⟧
+   T12 B ANSWER ↩T11 — B answers with a place (using 在 "be at") ⟨must give a place⟩ · now — planning when to go (later today) ⟦proven: 我在这里。⟧
+   T13 A PROPOSAL — A suggests 明天 "tomorrow" · now — planning when to go (later today) ⟦proven: 我们明天回家吧。⟧
+   T14 B ACCEPT ↩T13 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · now — planning when to go (later today) ⟦proven: 好啊。⟧
+   T15 A QUESTION(reason) — A asks B why (a reason) (using 为什么 "why" + 去 "go") · now — planning when to go (later today) ⟦proven: 你为什么去？⟧
+   T16 B ANSWER ↩T15 — B answers with a reason (a short clause — never a bare yes / no or a bare adjective) ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · now — planning when to go (later today) ⟦proven: 太好了。⟧
+   T17 A PROPOSAL — A suggests 现在 "now" · now — planning when to go (later today) ⟦proven: 我们现在回家吧。⟧
+   T18 B ACCEPT ↩T17 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · now — planning when to go (later today) ⟦proven: 好啊。⟧
+   T19 A QUESTION(person) — A asks B who (using 谁 "who") · later — on the way, after agreeing the time ⟦proven: 你跟谁去？⟧
+   T20 B ANSWER ↩T19 — B answers with a person ⟨must give a person⟩ · later — on the way, after agreeing the time ⟦proven: 我跟朋友去。⟧
+   T21 A QUESTION(reason) — A asks B why (a reason) (using 到 "arrive") · later — on the way, after agreeing the time ⟦proven: 你为什么不到？⟧
+   T22 B ANSWER ↩T21 — B answers with a reason (a short clause — never a bare yes / no or a bare adjective) ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · later — on the way, after agreeing the time ⟦proven: 我不想到。⟧
+   T23 A QUESTION(what) — A asks B what (using 用 "use") · later — on the way, after agreeing the time ⟦proven: 你用什么？⟧
+   T24 B ANSWER ↩T23 — B answers with the thing asked about ⟨must give the thing asked about⟩ · later — on the way, after agreeing the time ⟦proven: 我用钱。⟧
+   T25 A QUESTION(yes/no) — A asks B a yes / no question (using 等 "wait" + 人 "person") · later — on the way, after agreeing the time ⟦proven: 你等人吗？⟧
+   T26 B ANSWER ↩T25 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — on the way, after agreeing the time ⟦proven: 等。⟧
+   T27 A PROPOSAL — A suggests 做 "do" · later — at the end of the visit ⟦proven: 我们做工作吧。⟧
+   T28 B ACCEPT ↩T27 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · later — at the end of the visit ⟦proven: 好啊。⟧
+   T29 A QUESTION(yes/no) — A asks B a yes / no question (using 拿 "take" + 钱 "money") · later — at the end of the visit ⟦proven: 你拿钱吗？⟧
+   T30 B ANSWER ↩T29 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — at the end of the visit ⟦proven: 拿。⟧
+   T31 A QUESTION(yes/no) — A asks B a yes / no question (using 大 "big") · later — at the end of the visit ⟦proven: 这个大吗？⟧
+   T32 B ANSWER ↩T31 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — at the end of the visit ⟦proven: 很大。⟧
+   T33 A QUESTION(what) — A asks B what · later — at the end of the visit ⟦proven: 你买什么？⟧
+   T34 B ANSWER ↩T33 — B answers with the thing asked about (using 太 "too" + 买 "buy") ⟨must give the thing asked about⟩ · later — at the end of the visit ⟦proven: 我太买东西。⟧
+🧭 LISTENING_GLOBAL_REPLAN after LS1 (OPEN) — phase still defective after regeneration (closedVocab 2, adjacency 1, unnatural 2) · moved by SEMANTIC replanning: [在] · remaining 24 target(s) re-planned together → LS6 DECIDE [开, 那里, 这里, 哪里, 找, 一起, 跟] · LS7 ARRANGE [今天, 明天, 现在, 为什么, 去, 在] · LS8 MOVE [到, 人, 用, 等, 谁] · LS9 PAY [钱, 买, 拿, 做, 大, 太]
+🧠 LISTENING_MEANING_PLAN (LS1 re-planned) VALID · 6 planned turns (aim 28–36) · story OPEN — validated BEFORE any language is generated
+   T1 A QUESTION(how it is) — A asks B how it is (using 怎么 "how") · now — where they meet
+   T2 B ANSWER ↩T1 — B answers with how it is (using 小 "small" + 很 "very") ⟨must give how it is⟩ · now — where they meet
+   T3 A QUESTION(time) — A asks B when / what time (using 来 "come") · now — where they meet
+   T4 B ANSWER ↩T3 — B answers with a time (using 昨天 "yesterday") ⟨must give a time⟩ · now — where they meet
+   T5 A QUESTION(place) — A asks B where (a place) (using 回 "return") · now — where they meet
+   T6 B ANSWER ↩T5 — B answers with a place ⟨must give a place⟩ · now — where they meet
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 5) generation call 3 · required 6 · 6–9 turns
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=6 heard=5 missing=[小] · turns 6/9
+⛔ ADJACENCY_FAIL scene=LS1 line=L2 QUESTION expects ANSWER, got an unrelated QUESTION — rewrite this reply so it answers the question before it (as generated)
+ℹ ABOVE_PREFERRED_BUT_ALLOWED scene=LS1 L3 5u (preferred 2–4, max 6) — valid, no repair
+⛔ NATURALNESS_FAIL LS1 L1 naturalness 2/5 — The word order is incorrect. It should be  (phase commit gate)
+🛂 SCENE_PREFLIGHT LS1 coverage=FAIL(missing 1) closedVocab=PASS length=PASS max3=PASS register=n/a structure=FAIL(1) duplicates=PASS decision=REPAIR reason=coverage 1, adjacency 1 (candidate)
+🔧 PHASE_REPAIR LS1 class=EXCHANGE · 1 line issue(s) → one-line repair · 1 exchange issue(s) → regenerate the 2-turn exchange · relocate [小] within this phase (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=TARGET_MISSING scene=LS1 line=L5 scope=L5+L6 place=小 protected=[回] attempt=1 level=2
+🔧 LISTENING_ATOMIC_REPAIR issue=UNNATURAL scene=LS1 line=L1 protected=[到, 怎么] attempt=1 level=1
+⛔ PATCH_REJECTED issue=i1 line=L5 reason=TARGET_NOT_PLACED: 小 · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)
+⛔ PATCH_REJECTED issue=i2 line=L1 reason=PROTECTED_TARGET_LOST: 到, 怎么 · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 2 remaining issue(s) are left to the final gates
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=6 heard=5 missing=[小]
+🛂 SCENE_PREFLIGHT LS1 coverage=FAIL(missing 1) closedVocab=PASS length=PASS max3=PASS register=n/a structure=FAIL(1) duplicates=PASS decision=REPAIR reason=coverage 1, adjacency 1 (after exchange repair) naturalness=FAIL(1)
+🧭 REPAIR_STRATEGY_GUARD LS1 — the same semantic failure occurred twice (UNNATURAL) · STOP ATOMIC REPAIR → escalate to PHASE REGENERATION from the meaning plan (strategy change, not a cost abort)
+🔁 PHASE_REGENERATE LS1 (OPEN) — GUARD (the same semantic failure occurred twice (UNNATURAL)) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 5) generation call 4 · required 6 · 6–9 turns
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=6 heard=4 missing=[小, 怎么] · turns 6/9 (phase regenerated from its plan)
+⛔ CLOSED_VOCAB_FAIL scene=LS1 line=L1 unknown=[怎么样] UNKNOWN_LEXEME (regenerated)
+⛔ NATURALNESS_FAIL LS1 L4 naturalness 1/5 — This sentence is grammatically incorrect a (phase commit gate)
+🛂 SCENE_PREFLIGHT LS1 coverage=FAIL(missing 2) closedVocab=FAIL(1 lines) length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=REGENERATE reason=HARD_FAILURES 3 in 3 defective unit(s) (coverage 2, closedVocab 1) unknown=[怎么样] (regenerated candidate)
+🧭 LISTENING_REMAINING_PLAN_REBUILD 2/3 after LS1 — phase still defective after regeneration (coverage 2, closedVocab 1, unnatural 1) · only the UNCOMMITTED future is rebuilt; 0 committed phase(s) kept
+🧠 LISTENING_MEANING_PLAN (global replan) VALID · 31 planned turns (aim 28–36) · story DECIDE → ARRANGE → MOVE → PAY · 9 statement merge(s) for the turn budget — validated BEFORE any language is generated
+   T1 A QUESTION(yes/no) — A asks B a yes / no question (using 开 "open") · now — still where they meet ⟦proven: 我可以开吗？⟧
+   T2 B ANSWER ↩T1 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: 可以。⟧
+   T3 A QUESTION(place) — A asks B where (a place) (using 哪里 "where" + 去 "go") · now — still where they meet ⟦proven: 你去哪里？⟧
+   T4 B ANSWER ↩T3 — B answers with a place (using 一起 "together" + 那里 "there") ⟨must give a place⟩ · now — still where they meet ⟦proven: 我一起去那里。⟧
+   T5 A PROPOSAL — A suggests 这里 "here" + 昨天 "yesterday" · now — still where they meet ⟦proven: 我们昨天去这里吧。⟧
+   T6 B ACCEPT ↩T5 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · now — still where they meet ⟦proven: 好啊。⟧
+   T7 A PROPOSAL — A suggests 明天 "tomorrow" · now — planning when to go (later today) ⟦proven: 我们明天去吧。⟧
+   T8 B COUNTERPROPOSAL ↩T7 — B suggests 今天 "today" instead — this becomes the agreed value ⟨must give a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)⟩ · now — planning when to go (later today) ⟦proven: 今天好。⟧
+   T9 A ACCEPT ↩T8 — A agrees ⟨must give agreement with the counter-proposal — that value is now agreed⟩ · now — planning when to go (later today) ⟦proven: 好，今天。⟧
+   T10 A QUESTION(how it is) — A asks B how it is (using 怎么 "how" + 等 "wait") · now — planning when to go (later today) ⟦proven: 这个怎么等？⟧
+   T11 B ANSWER ↩T10 — B answers with how it is ⟨must give how it is⟩ · now — planning when to go (later today) ⟦proven: 我不知道。⟧
+   T12 A QUESTION(yes/no) — A asks B a yes / no question (using 小 "small") · now — planning when to go (later today) ⟦proven: 这个小吗？⟧
+   T13 B ANSWER ↩T12 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — planning when to go (later today) ⟦proven: 很小。⟧
+   T14 A QUESTION(what) — A asks B what (using 找 "look for") · now — planning when to go (later today) ⟦proven: 你找什么？⟧
+   T15 B ANSWER ↩T14 — B answers with the thing asked about (using 跟 "with") ⟨must give the thing asked about⟩ · now — planning when to go (later today) ⟦proven: 我跟找钱。⟧
+   T16 A QUESTION(person) — A asks B who (using 谁 "who") · later — on the way, after agreeing the time ⟦proven: 你跟谁去？⟧
+   T17 B ANSWER ↩T16 — B answers with a person ⟨must give a person⟩ · later — on the way, after agreeing the time ⟦proven: 我跟朋友去。⟧
+   T18 A QUESTION(yes/no) — A asks B a yes / no question (using 人 "person") · later — on the way, after agreeing the time ⟦proven: 你帮人吗？⟧
+   T19 B ANSWER ↩T18 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — on the way, after agreeing the time ⟦proven: 帮。⟧
+   T20 A QUESTION(what) — A asks B what (using 拿 "take") · later — on the way, after agreeing the time ⟦proven: 你拿什么？⟧
+   T21 B ANSWER ↩T20 — B answers with the thing asked about (using 在 "be at") ⟨must give the thing asked about⟩ · later — on the way, after agreeing the time ⟦proven: 我在拿钱。⟧
+   T22 A STATEMENT — A tells B something about 现在 "now" + 到 "arrive" · later — on the way, after agreeing the time ⟦proven: 我现在到。⟧
+   T23 B REACTION ↩T22 — B reacts ⟨must give a reaction to it⟩ · later — on the way, after agreeing the time ⟦proven: 真的吗？⟧
+   T24 A QUESTION(what) — A asks B what (using 做 "do") · later — on the way, after agreeing the time ⟦proven: 你做什么？⟧
+   T25 B ANSWER ↩T24 — B answers with the thing asked about ⟨must give the thing asked about⟩ · later — on the way, after agreeing the time ⟦proven: 我做工作。⟧
+   T26 A QUESTION(reason) — A asks B why (a reason) (using 为什么 "why" + 买 "buy") · later — at the end of the visit ⟦proven: 你为什么买东西？⟧
+   T27 B ANSWER ↩T26 — B answers with a reason (a short clause — never a bare yes / no or a bare adjective) ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · later — at the end of the visit ⟦proven: 太好了。⟧
+   T28 A PROPOSAL — A suggests 用 "use" + 钱 "money" · later — at the end of the visit ⟦proven: 我们用钱吧。⟧
+   T29 B ACCEPT ↩T28 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · later — at the end of the visit ⟦proven: 好啊。⟧
+   T30 A STATEMENT — A tells B something about 太 "too" + 大 "big" · later — at the end of the visit ⟦proven: 这个太大了。⟧
+   T31 B REACTION ↩T30 — B reacts ⟨must give a reaction to it⟩ · later — at the end of the visit ⟦proven: 真的吗？⟧
+🧭 LISTENING_GLOBAL_REPLAN after LS1 (OPEN) — phase still defective after regeneration (coverage 2, closedVocab 1, unnatural 1) · moved by SEMANTIC replanning: [昨天, 小, 怎么] · remaining 27 target(s) re-planned together → LS10 DECIDE [开, 哪里, 昨天, 这里, 那里, 去, 一起] · LS11 ARRANGE [明天, 今天, 等, 找, 小, 怎么, 跟] · LS12 MOVE [到, 人, 拿, 做, 谁, 现在, 在] · LS13 PAY [买, 钱, 用, 大, 为什么, 太]
+🧠 LISTENING_MEANING_PLAN (LS1 re-planned) VALID · 6 planned turns (aim 28–36) · story OPEN — validated BEFORE any language is generated
+   T1 A QUESTION(place) — A asks B where (a place) (using 来 "come") · now — where they meet
+   T2 B ANSWER ↩T1 — B answers with a place ⟨must give a place⟩ · now — where they meet
+   T3 A QUESTION(place) — A asks B where (a place) (using 回 "return") · now — where they meet
+   T4 B ANSWER ↩T3 — B answers with a place ⟨must give a place⟩ · now — where they meet
+   T5 A QUESTION(how it is) — A asks B how it is · now — where they meet
+   T6 B ANSWER ↩T5 — B answers with how it is (using 很 "very") ⟨must give how it is⟩ · now — where they meet
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 5) generation call 5 · required 3 · 6–9 turns
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_PASS · window=0+6 turns · judge=pass (det 5/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=3 heard=3 PASS · turns 6/9
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (candidate)
+🩺 PHASE_REPAIR_STRATEGY LS1 (OPEN) generationCalls=1 atomicRepairCalls=0 exchangeRepairCalls=0 phaseRegenerations=0 → COMMITTED on first generation
+✅ SCENE_COMMIT LS1 decision=COMMIT · 6 turns · heard 3/3 · every phase gate clean (coverage, closed vocab, complexity, grammar/register, adjacency, continuity, naturalness)
+🧾 CONVERSATION_STATE after LS1 · activities 1 · agreedTimes [] · payments 0 · eatingDone false · openQuestion no · remainingTargets 27
+🧵 PHASE_COMMITTED LS1 (OPEN) 6 turns · facts 0 · commitments 0
+🎧 LISTENING_COMPOSITION scene LS10 (2 of 5) generation call 6 · required 7 · 6–7 turns
+🎧 SCENE_REQUIRED_COVERAGE LS10 required=7 heard=6 missing=[哪里] · turns 6/7
+⛔ CLOSED_VOCAB_FAIL scene=LS10 line=L9 unknown=[世 里] UNKNOWN_LEXEME (as generated)
+ℹ ABOVE_PREFERRED_BUT_ALLOWED scene=LS10 L11 5u (preferred 2–4, max 6) — valid, no repair
+⛔ NATURALNESS_FAIL LS10 L9 naturalness 2/5 · L10 naturalness 3/5 · L11 naturalness 1/5 (phase commit gate)
+🛂 SCENE_PREFLIGHT LS10 coverage=FAIL(missing 1) closedVocab=FAIL(1 lines) length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=REPAIR reason=coverage 1, closedVocab 1 unknown=[世, 里] (candidate)
+🔧 PHASE_REPAIR LS10 class=LINE · 4 line issue(s) → one-line repair · relocate [哪里] within this phase (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=TARGET_MISSING scene=LS10 line=L8 scope=L8+L9 place=哪里 protected=[去] attempt=1 level=2
+⛔ PATCH_REJECTED issue=i1 line=L8 reason=ADJACENCY_REGRESSION: the new text puts an unrelated question after a question · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 4 remaining issue(s) are left to the final gates
+🎧 SCENE_REQUIRED_COVERAGE LS10 (after atomic repair) required=7 heard=6 missing=[哪里]
+🛂 SCENE_PREFLIGHT LS10 coverage=FAIL(missing 1) closedVocab=FAIL(1 lines) length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=REPAIR reason=coverage 1, closedVocab 1 unknown=[世, 里] (after line repair) naturalness=FAIL(3)
+🧭 REPAIR_STRATEGY_GUARD LS10 — the same line failure occurred twice (CLOSED_VOCAB, UNNATURAL) · STOP LINE REPAIR → escalate ONE level to EXCHANGE REGENERATION (the line with its partner turn; accepted patches kept)
+🔧 LISTENING_ATOMIC_REPAIR issue=TARGET_MISSING scene=LS10 line=L8 scope=L8+L9 place=哪里 protected=[去] attempt=1 level=2
+  ⏭ LISTENING_REPAIR_DEDUPED atomic [i1@LS10] — an equivalent request was already rejected; not repeated
+⛔ PATCH_REJECTED issue=i1 line=L8 reason=NO_PATCH_RETURNED
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 4 remaining issue(s) are left to the final gates
+🛂 SCENE_PREFLIGHT LS10 coverage=FAIL(missing 1) closedVocab=FAIL(1 lines) length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=REPAIR reason=coverage 1, closedVocab 1 unknown=[世, 里] (after exchange regeneration) naturalness=FAIL(3)
+🧭 REPAIR_STRATEGY_GUARD LS10 — the same semantic failure occurred twice (CLOSED_VOCAB, UNNATURAL) · STOP ATOMIC REPAIR → escalate to PHASE REGENERATION from the meaning plan (strategy change, not a cost abort)
+🔁 PHASE_REGENERATE LS10 (DECIDE) — GUARD (the same semantic failure occurred twice (CLOSED_VOCAB, UNNATURAL)) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS10 (2 of 5) generation call 7 · required 7 · 6–7 turns
+⚠ LISTENING_TURN_BUDGET LS10 returned 8 turns > hard max 7 — rejected (over budget after 2 attempts)
+🎧 SCENE_REQUIRED_COVERAGE LS10 required=7 heard=7 PASS · turns 8/7 (phase regenerated from its plan)
+⛔ DUPLICATE_FAIL scene=LS10 line=L7 repeats a line of an earlier part (duplicate policy: substantive / immediate / loop) (regenerated)
+⛔ DUPLICATE_FAIL scene=LS10 line=L8 repeats a line of an earlier part (duplicate policy: substantive / immediate / loop) (regenerated)
+ℹ ABOVE_PREFERRED_BUT_ALLOWED scene=LS10 L12 5u · L13 5u (preferred 2–4, max 6) — valid, no repair
+⛔ NATURALNESS_FAIL LS10 L9 naturalness 2/5 · L13 naturalness 1/5 (phase commit gate)
+🛂 SCENE_PREFLIGHT LS10 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=FAIL(2) decision=REGENERATE reason=TURN_BUDGET 8 > 7 (regenerated candidate)
+🧩 RUNTIME_REALISATION_FAILED target=52 开 frame="我可以开吗？ / 可以。" — the adapter must prove another blueprint for it
+🧩 RUNTIME_REALISATION_FAILED target=25 昨天 frame="我们昨天去这里吧。 / 好啊。" — the adapter must prove another blueprint for it
+🧩 RUNTIME_REALISATION_FAILED target=20 这里 frame="我们昨天去这里吧。 / 好啊。" — the adapter must prove another blueprint for it
+🧩 RUNTIME_REALISATION_FAILED target=16 去 frame="你去哪里？ / 我一起去那里。" — the adapter must prove another blueprint for it
+🧭 LISTENING_REMAINING_PLAN_REBUILD 3/3 after LS10 — phase still defective after regeneration (duplicates 2, budget 1, unnatural 2) · only the UNCOMMITTED future is rebuilt; 1 committed phase(s) kept
+🧠 LISTENING_MEANING_PLAN (global replan) VALID · 31 planned turns (aim 28–36) · story ARRANGE → MOVE → DO → PAY · 8 statement merge(s) for the turn budget — validated BEFORE any language is generated
+   T1 A PROPOSAL — A suggests 今天 "today" · now — planning when to go (later today) ⟦proven: 我们今天去吧。⟧
+   T2 B COUNTERPROPOSAL ↩T1 — B suggests 明天 "tomorrow" instead — this becomes the agreed value ⟨must give a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)⟩ · now — planning when to go (later today) ⟦proven: 明天好。⟧
+   T3 A ACCEPT ↩T2 — A agrees ⟨must give agreement with the counter-proposal — that value is now agreed⟩ · now — planning when to go (later today) ⟦proven: 好，明天。⟧
+   T4 A QUESTION(yes/no) — A asks B a yes / no question (using 做 "do" + 昨天 "yesterday") · now — planning when to go (later today) ⟦proven: 你昨天做工作了吗？⟧
+   T5 B ANSWER ↩T4 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — planning when to go (later today) ⟦proven: 做了。⟧
+   T6 A QUESTION(what) — A asks B what (using 等 "wait") · now — planning when to go (later today) ⟦proven: 你等什么？⟧
+   T7 B ANSWER ↩T6 — B answers with the thing asked about ⟨must give the thing asked about⟩ · now — planning when to go (later today) ⟦proven: 我等朋友。⟧
+   T8 A QUESTION(place) — A asks B where (a place) · now — planning when to go (later today) ⟦proven: 你在哪里？⟧
+   T9 B ANSWER ↩T8 — B answers with a place (using 这里 "here") ⟨must give a place⟩ · now — planning when to go (later today) ⟦proven: 我在这里。⟧
+   T10 A QUESTION(reason) — A asks B why (a reason) (using 开 "open") · now — planning when to go (later today) ⟦proven: 你为什么不开？⟧
+   T11 B ANSWER ↩T10 — B answers with a reason (a short clause — never a bare yes / no or a bare adjective) ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · now — planning when to go (later today) ⟦proven: 我不想开。⟧
+   T12 A QUESTION(person) — A asks B who (using 谁 "who" + 去 "go") · later — on the way, after agreeing the time ⟦proven: 你跟谁去？⟧
+   T13 B ANSWER ↩T12 — B answers with a person ⟨must give a person⟩ · later — on the way, after agreeing the time ⟦proven: 我跟朋友去。⟧
+   T14 A QUESTION(yes/no) — A asks B a yes / no question (using 人 "person") · later — on the way, after agreeing the time ⟦proven: 你帮人吗？⟧
+   T15 B ANSWER ↩T14 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — on the way, after agreeing the time ⟦proven: 帮。⟧
+   T16 A STATEMENT — A tells B something about 现在 "now" + 到 "arrive" · later — on the way, after agreeing the time ⟦proven: 我现在到。⟧
+   T17 B REACTION ↩T16 — B reacts ⟨must give a reaction to it⟩ · later — on the way, after agreeing the time ⟦proven: 真的吗？⟧
+   T18 A QUESTION(what) — A asks B what (using 找 "look for") · later — on the way, after agreeing the time ⟦proven: 你找什么？⟧
+   T19 B ANSWER ↩T18 — B answers with the thing asked about ⟨must give the thing asked about⟩ · later — on the way, after agreeing the time ⟦proven: 我找钱。⟧
+   T20 A QUESTION(what) — A asks B what (using 用 "use") · later — on the way, after agreeing the time ⟦proven: 你用什么？⟧
+   T21 B ANSWER ↩T20 — B answers with the thing asked about ⟨must give the thing asked about⟩ · later — on the way, after agreeing the time ⟦proven: 我用钱。⟧
+   T22 A QUESTION(place) — A asks B where (a place) · later — at the place they chose ⟦proven: 你在哪里？⟧
+   T23 B ANSWER ↩T22 — B answers with a place (using 跟 "with" + 在 "be at") ⟨must give a place⟩ · later — at the place they chose ⟦proven: 我跟在家。⟧
+   T24 A STATEMENT — A tells B something about 太 "too" · later — at the place they chose ⟦proven: 这个太好了。⟧
+   T25 B REACTION ↩T24 — B reacts ⟨must give a reaction to it⟩ · later — at the place they chose ⟦proven: 很好。⟧
+   T26 A QUESTION(reason) — A asks B why (a reason) (using 为什么 "why" + 买 "buy") · later — at the end of the visit ⟦proven: 你为什么买东西？⟧
+   T27 B ANSWER ↩T26 — B answers with a reason (a short clause — never a bare yes / no or a bare adjective) ⟨must give a reason (a short clause — never a bare yes / no or a bare adjective)⟩ · later — at the end of the visit ⟦proven: 太好了。⟧
+   T28 A QUESTION(how it is) — A asks B how it is (using 怎么 "how" + 拿 "take") · later — at the end of the visit ⟦proven: 这个怎么拿？⟧
+   T29 B ANSWER ↩T28 — B answers with how it is ⟨must give how it is⟩ · later — at the end of the visit ⟦proven: 我不知道。⟧
+   T30 A QUESTION(yes/no) — A asks B a yes / no question (using 钱 "money" + 小 "small") · later — at the end of the visit ⟦proven: 钱小吗？⟧
+   T31 B ANSWER ↩T30 — B answers with yes / no (or a qualified answer) (using 大 "big") ⟨must give yes / no (or a qualified answer)⟩ · later — at the end of the visit ⟦proven: 很大。⟧
+🧭 LISTENING_GLOBAL_REPLAN after LS10 (DECIDE) — phase still defective after regeneration (duplicates 2, budget 1, unnatural 2) · moved by SEMANTIC replanning: [开, 昨天, 这里, 去] · remaining 24 target(s) re-planned together → LS14 ARRANGE [这里, 今天, 昨天, 明天, 开, 做, 等] · LS15 MOVE [到, 去, 人, 谁, 现在, 找, 用] · LS16 DO [在, 太, 跟] · LS17 PAY [钱, 买, 小, 大, 为什么, 怎么, 拿]
+🧠 LISTENING_MEANING_PLAN (LS10 re-planned) VALID · 2 planned turns (aim 28–36) · story DECIDE — validated BEFORE any language is generated
+   T1 A QUESTION(place) — A asks B where (a place) (using 哪里 "where" + 一起 "together") · now — still where they meet
+   T2 B ANSWER ↩T1 — B answers with a place (using 那里 "there") ⟨must give a place⟩ · now — still where they meet
+🎧 LISTENING_COMPOSITION scene LS10 (2 of 6) generation call 8 · required 3 · 2–7 turns
+🎧 SCENE_REQUIRED_COVERAGE LS10 required=3 heard=3 PASS · turns 3/7
+ℹ ABOVE_PREFERRED_BUT_ALLOWED scene=LS10 L7 5u · L9 5u (preferred 2–4, max 6) — valid, no repair
+⛔ NATURALNESS_FAIL LS10 L7 naturalness 2/5 — Word order is unnatural. Should be '我们一起去哪 (phase commit gate)
+🛂 SCENE_PREFLIGHT LS10 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (candidate)
+🔧 PHASE_REPAIR LS10 class=LINE · 1 line issue(s) → one-line repair ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=UNNATURAL scene=LS10 line=L7 protected=[一起, 去, 哪里] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L7 candidate="我们一起去哪里？" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 1 remaining issue(s) are left to the final gates
+🔗 PHASE_TRANSITION_VALIDATION LS10 (DECIDE) LOCAL_PHASE_PASS · TRANSITION_PASS · window=3+3 turns · judge=pass (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS10 (after atomic repair) required=3 heard=3 PASS
+🛂 SCENE_PREFLIGHT LS10 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after line repair)
+🩺 PHASE_REPAIR_STRATEGY LS10 (DECIDE) generationCalls=1 atomicRepairCalls=1 exchangeRepairCalls=0 phaseRegenerations=0 → COMMITTED after repair
+✅ SCENE_COMMIT LS10 decision=COMMIT · 3 turns · heard 3/3 · every phase gate clean (coverage, closed vocab, complexity, grammar/register, adjacency, continuity, naturalness)
+🧾 CONVERSATION_STATE after LS10 · activities 2 · agreedTimes [] · payments 0 · eatingDone false · openQuestion no · remainingTargets 24
+🧵 PHASE_COMMITTED LS10 (DECIDE) 3 turns · facts 0 · commitments 0
+🎧 LISTENING_COMPOSITION scene LS14 (3 of 6) generation call 9 · required 7 · 11–12 turns
+🔗 PHASE_TRANSITION_VALIDATION LS14 (ARRANGE) LOCAL_PHASE_PASS · TRANSITION_FAIL — L3 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=3+11 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS14 required=7 heard=7 PASS · turns 11/12
+🛂 SCENE_PREFLIGHT LS14 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (candidate)
+🔧 PHASE_REPAIR LS14 class=EXCHANGE · 1 exchange issue(s) → regenerate the 2-turn exchange ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=TRANSITION scene=LS14 line=L12 protected=[明天] attempt=1 level=1
+⛔ PATCH_REJECTED issue=i1 line=L12 reason=NO_CHANGE · LISTENING_ATOMIC_REPAIR_REJECTED (original kept) · no retry (unchanged text) → kept as a quality note
+⛔ LISTENING_ATOMIC_REPAIR_EXHAUSTED line=L12 issue=TRANSITION after 2 attempts — the rest of the track stays intact
+🔗 PHASE_TRANSITION_VALIDATION LS14 (ARRANGE) LOCAL_PHASE_PASS · TRANSITION_FAIL — L3 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=3+11 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS14 (after atomic repair) required=7 heard=7 PASS
+🛂 SCENE_PREFLIGHT LS14 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after exchange repair)
+🧭 REPAIR_STRATEGY_GUARD LS14 — the same semantic failure occurred twice (TRANSITION) · STOP ATOMIC REPAIR → escalate to PHASE REGENERATION from the meaning plan (strategy change, not a cost abort)
+🔁 PHASE_REGENERATE LS14 (ARRANGE) — GUARD (the same semantic failure occurred twice (TRANSITION)) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS14 (3 of 6) generation call 10 · required 7 · 11–12 turns
+🎧 SCENE_REQUIRED_COVERAGE LS14 required=7 heard=7 PASS · turns 11/12 (phase regenerated from its plan)
+⛔ NATURALNESS_FAIL LS14 L15 naturalness 3/5 — Needs object or context. '等什么呢？' is more n (phase commit gate)
+🛂 SCENE_PREFLIGHT LS14 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (regenerated candidate)
+🔧 PHASE_REPAIR LS14 class=LINE · 1 line issue(s) → one-line repair ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=UNNATURAL scene=LS14 line=L15 protected=[等] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L15 candidate="你等什么呢？" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 1 remaining issue(s) are left to the final gates
+🔗 PHASE_TRANSITION_VALIDATION LS14 (ARRANGE) LOCAL_PHASE_PASS · TRANSITION_FAIL — L3 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=3+11 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS14 (after atomic repair) required=7 heard=7 PASS
+🛂 SCENE_PREFLIGHT LS14 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after line repair)
+🧭 REPAIR_STRATEGY_GUARD LS14 — the same semantic failure occurred twice (TRANSITION) · STOP ATOMIC REPAIR → escalate to DETERMINISTIC TRIM / explicit UNPLACED (the one global replan is spent) (strategy change, not a cost abort)
+⛔ PHASE_TRANSITION_UNRESOLVED LS14 (ARRANGE) — L3 TRANSITION: the part does not follow naturally from the conversation so far (deter · after exchange repair + phase regeneration; targets are not moved (they are not the cause) → not committed
+🩺 PHASE_REPAIR_STRATEGY LS14 (ARRANGE) generationCalls=2 atomicRepairCalls=1 exchangeRepairCalls=1 phaseRegenerations=1 escalations=[GUARD (the same semantic failure occurred twice (TRANSITION)) | GUARD (the same semantic failure occurred twice (TRANSITION))] → NOT COMMITTED
+⛔ LISTENING_TARGET_UNPLACED 20 这里 — its phase LS14 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 23 今天 — its phase LS14 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 25 昨天 — its phase LS14 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 24 明天 — its phase LS14 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 52 开 — its phase LS14 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 49 做 — its phase LS14 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 47 等 — its phase LS14 could not commit (named, never silently lost) → NOT_READY
+⛔ PHASE_NOT_COMMITTED LS14 — NO COMMIT_WITH_DEFECTS: nothing from this candidate enters the conversation; its targets [这里, 今天, 昨天, 明天, 开, 做, 等] stay unheard (no random scattering) → NOT_READY
+⛔ LISTENING_COMPOSITION_STOPPED — PHASE_TRANSITION_UNRESOLVED LS14 · the remaining 3 phase(s) are not generated (the track cannot be READY; no further paid calls)
+🎧 LISTENING_SCENE_COVERAGE_UNION 6/30 · assembled 2 scenes · 9 turns (max 44)
+🎧 LISTENING_TARGET_AUDIT (assembled) covered=7/30 missing=[人, 到, 大, 小, 太, 跟, 拿, 用, 等, 找, 做, 在, 这里, 现在, 今天, 明天, 昨天, 怎么, 为什么, 谁, 钱, 买, 开]
+🎧 LISTENING_MAX3_AUDIT PASS · max 3 targets/turn
+🎧 LISTENING_CLOSED_VOCAB PASS
+🎧 LISTENING_DIALOGUE speakers=A/B · duplicates PASS · merged Q+A PASS
+🎧 LISTENING_NATURALNESS PASS
+🎧 LISTENING_TARGET_AUDIT (after atomic repair) covered=7/30 missing=[人, 到, 大, 小, 太, 跟, 拿, 用, 等, 找, 做, 在, 这里, 现在, 今天, 明天, 昨天, 怎么, 为什么, 谁, 钱, 买, 开]
+🎧 LISTENING_MAX3_AUDIT PASS · max 3 targets/turn
+🎧 LISTENING_CLOSED_VOCAB PASS
+🎧 LISTENING_DIALOGUE speakers=A/B · duplicates PASS · merged Q+A PASS
+🎧 LISTENING_NATURALNESS PASS
+  🎬 COHERENCE AUDIT: 2/2 scene(s) pass
+🎧 LISTENING_ATOMIC_SUMMARY accepted=0 rejected=0 exhausted=0 · atomic calls 6
+🎧 LISTENING_TURN_BUDGET 9 turns (allowed 24–44) PASS
+⛔ SCENE_UNRESOLVED LS14 — INVALID candidate (no valid candidate) not committed; still unheard: [这里, 今天, 昨天, 明天, 开, 做, 等]
+🎧 LISTENING_COHERENCE PASS · overall 5/5 · The conversation flows naturally and logically between the two scenes.
+  🔤 FINAL pinyin/segments (after recovery): 0 alignment issue(s)
+🎧 LISTENING_PRONUNCIATION PASS
+🎧 LISTENING_TARGET_AUDIT (final) covered=7/30 missing=[人, 到, 大, 小, 太, 跟, 拿, 用, 等, 找, 做, 在, 这里, 现在, 今天, 明天, 昨天, 怎么, 为什么, 谁, 钱, 买, 开]
+🩺 LISTENING_REPAIR_HEALTH repairCalls=6 (target < 10) OK · sceneRegenerations=4 · scenesCommittedFirstPass=1 · afterRepair=1 · withDefects=0 · firstGenerationUnknownLexemeLines=3 — telemetry only, not a gate
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=17% (target ≥70%) · repairCalls=6 (target <10) · generationCalls=10 · phaseRegenerations=4 · globalReplans=3 · targetReassignments=0 · ⚠ below efficiency target (first-generation commits 17% < 70%) — no planner failure — health targets, not gates
+📏 LISTENING_COMPLEXITY_AUDIT belt=Mukyu preferred=2–4 hardMax=6 lines=9 withinPreferred=7 shortNatural=0 abovePreferredAllowed=2 overHardMax=0 maxObserved=5 · preferredRatio=75% (advisory ≥80% — DRIFT: the prompt or scene plan is too complex for this learner) PASS
+📚 LISTENING_CLOSED_VOCAB unknown=0 PASS
+    LISTENING_LINE L1 speaker=A actualTargetIds=[17] targetCount=1
+    LISTENING_LINE L2 speaker=B actualTargetIds=[17] targetCount=1
+    LISTENING_LINE L3 speaker=A actualTargetIds=[53] targetCount=1
+    LISTENING_LINE L4 speaker=B actualTargetIds=[53] targetCount=1
+    LISTENING_LINE L5 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L6 speaker=B actualTargetIds=[57] targetCount=1
+    LISTENING_LINE L7 speaker=A actualTargetIds=[56,16,18] targetCount=3
+    LISTENING_LINE L8 speaker=B actualTargetIds=[57,21] targetCount=2
+    LISTENING_LINE L9 speaker=A actualTargetIds=[16,21] targetCount=2
+⛔ LISTENING_UNCOMMITTED_SCENES LS14 (no valid candidate — unheard 7) — SCENES_VALIDATED=false
+🎧 LISTENING_FINAL_INTEGRITY NOT_READY · TARGET COVERAGE 7/30 · failed: COVERAGE_PASS, SCENE_REQUIRED_COVERAGE, SCENES_VALIDATED
+  🎧 LISTENING_GATES TARGET_COVERAGE=7/30 · COVERAGE_PASS=false · MAX_TARGETS_PER_TURN=3 · MAX3_PASS=true · BOTH_SPEAKERS=true · NO_MERGED_SPEAKER_LINES=true · NO_DUPLICATES=true · NO_SINGLETON_SCENES=true · CLOSED_VOCAB=true · LENGTH_PASS=true · LINE_QUALITY=true · NATURALNESS=true · WHOLE_CONVERSATION_COHERENCE=PASS · PRONUNCIATION=true · SCENE_REQUIRED_COVERAGE=FAIL · TURN_COUNT=9/44 · TURN_BUDGET=true · SCENES_VALIDATED=false · ONE_CONVERSATION=PASS · MEANING_PLAN_VALIDATED=PASS · QUESTION_ANSWER=PASS · NO_DEFECTIVE_COMMITTED_PHASES=true
+  🎧 LISTENING NOT_READY — Listening track needs repair (COVERAGE_PASS=FAIL, SCENE_REQUIRED_COVERAGE=FAIL, SCENES_VALIDATED=FAIL) · TARGET COVERAGE 7/30 · 9 turns · 2 scene(s) · 💰 LISTENING_GENERATION_CALLS=10 LISTENING_REPAIR_CALLS=6 LISTENING_QC_CALLS=18 LISTENING_TOTAL_PAID_CALLS=34 LISTENING_PROVEN_TURNS=37 LISTENING_MEANING_PLAN_TURNS=37 LISTENING_SCENE_GENERATION_CALLS=10 LISTENING_LOCAL_REPAIR_CALLS=6 LISTENING_REASSIGNMENTS=0 LISTENING_COVERAGE_PLAN_TARGETS=30 LISTENING_VERIFIED_TARGETS=7 LISTENING_SCENE_REGENERATIONS=4 LISTENING_SCENES_COMMITTED_FIRST_PASS=1 LISTENING_SCENES_COMMITTED_AFTER_REPAIR=1 LISTENING_SCENES_COMMITTED_WITH_DEFECTS=0 LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES=3 LISTENING_ATOMIC_REPAIR_CALLS=6 LISTENING_ATOMIC_CAPPED=6 LISTENING_ATOMIC_PATCHES_ACCEPTED=3 LISTENING_ATOMIC_PATCHES_REJECTED=6 LISTENING_ATOMIC_EXHAUSTED=1 LISTENING_STRATEGY_ESCALATIONS=6 LISTENING_GLOBAL_REPLANS=3 LISTENING_REMAINING_PLAN_REBUILDS=3 LISTENING_TRANSITION_CALLS=4 LISTENING_REPAIR_DEDUPED=1 LISTENING_UNCOMMITTED_SCENES=1 LISTENING_SCENES_REALLOCATED=0 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=17 LISTENING_PLANNER_FAILURE=false COMPLEXITY_PREFERRED_RANGE=2–4 COMPLEXITY_HARD_MAX=6 COMPLEXITY_WITHIN_PREFERRED=7 COMPLEXITY_SHORT_NATURAL=0 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=2 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=75%
+🎧 LISTENING_SNAPSHOT_INVARIANT PASS — track / coverage target ids === the frozen snapshot (30)
+🎧 LISTENING_TRACK_RESULT status=NOT_READY · TARGET COVERAGE 7/30 · failed: COVERAGE_PASS=FAIL, SCENE_REQUIRED_COVERAGE=FAIL, SCENES_VALIDATED=FAIL · level Mukyu hardMax 6 · LISTENING_SELECTION_COUNT=30 LISTENING_MAIN_GENERATION_CALLS=0 LISTENING_GENERATION_CALLS=10 LISTENING_REPAIR_CALLS=6 LISTENING_QC_CALLS=18 LISTENING_TOTAL_PAID_CALLS=34 LISTENING_PROVEN_TURNS=37 LISTENING_MEANING_PLAN_TURNS=37 LISTENING_SCENE_GENERATION_CALLS=10 LISTENING_LOCAL_REPAIR_CALLS=6 LISTENING_REASSIGNMENTS=0 LISTENING_COVERAGE_PLAN_TARGETS=30 LISTENING_VERIFIED_TARGETS=7 LISTENING_SCENE_REGENERATIONS=4 LISTENING_SCENES_COMMITTED_FIRST_PASS=1 LISTENING_SCENES_COMMITTED_AFTER_REPAIR=1 LISTENING_SCENES_COMMITTED_WITH_DEFECTS=0 LISTENING_FIRST_GENERATION_UNKNOWN_LEXEMES=3 LISTENING_ATOMIC_REPAIR_CALLS=6 LISTENING_ATOMIC_CAPPED=6 LISTENING_ATOMIC_PATCHES_ACCEPTED=3 LISTENING_ATOMIC_PATCHES_REJECTED=6 LISTENING_ATOMIC_EXHAUSTED=1 LISTENING_STRATEGY_ESCALATIONS=6 LISTENING_GLOBAL_REPLANS=3 LISTENING_REMAINING_PLAN_REBUILDS=3 LISTENING_TRANSITION_CALLS=4 LISTENING_REPAIR_DEDUPED=1 LISTENING_UNCOMMITTED_SCENES=1 LISTENING_SCENES_REALLOCATED=0 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=17 LISTENING_PLANNER_FAILURE=false COMPLEXITY_PREFERRED_RANGE=2–4 COMPLEXITY_HARD_MAX=6 COMPLEXITY_WITHIN_PREFERRED=7 COMPLEXITY_SHORT_NATURAL=0 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=2 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=75% LISTENING_TOKEN_USAGE=39445 LISTENING_COST=0.006435

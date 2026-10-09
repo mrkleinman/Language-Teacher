@@ -23,11 +23,15 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const branch = /if \(o\.pipeline === 'gen2'\) \{[\s\S]{0,700}await gen2Daily\(g2o\) : await gen2Listening\(g2o\)/.test(OUTSIDE)
     // v679: exactly ONE learner-facing call site — jaGen2MainTrack, reached only from the Japanese screen when the learner turns
     // the OFF-by-default switch on (and from its benchmark mirror). Thai / Mandarin / Listening screens never call Gen2.
-    const jaOnly = (OUTSIDE.match(/await gen2Daily\(\{ lang: 'ja'/g) || []).length === 1 && /async function jaGen2MainTrack/.test(OUTSIDE)
-    const screen = /const \[useGen2, setUseGen2\] = useState\(false\)/.test(OUTSIDE) && /setUseGen2\(v === true\)/.test(OUTSIDE) && /if \(useGen2\) return runGen2Generation\(\)/.test(OUTSIDE)
-    const callers = [...OUTSIDE.matchAll(/await jaGen2MainTrack\(/g)].length
-    T('A2', 'Gen2 reaches learners ONLY through the Japanese screen switch (OFF by default, on only when the learner sets it) and its benchmark mirror; the shadow pipeline=gen2 branch is unchanged',
-      calls === 3 && branch && jaOnly && screen && callers === 2, { calls, callers })
+    // v680: the same OFF-by-default switch for Thai and Mandarin (Daily Track only). One learner-facing call site per language.
+    const one = l => (OUTSIDE.match(new RegExp("await gen2Daily\\(\\{ lang: '" + l + "'", 'g')) || []).length === 1
+    const jaOnly = one('ja') && one('zh') && one('th') && /async function jaGen2MainTrack/.test(OUTSIDE)
+    const screen = /const \[useGen2, setUseGen2\] = useState\(false\)/.test(OUTSIDE) && /setUseGen2\(v === true\)/.test(OUTSIDE) && /if \(useGen2\) return runGen2Generation\(\)/.test(OUTSIDE) &&
+      /const useGen2 = trackMode !== 'revision' && trackMode !== 'srs' && \(await stGet\(ZH_GEN2_SETTING_KEY\)/.test(OUTSIDE) &&
+      /const _g2on = mode === 'daily' && !resumeDraft && \(await stGet\(TH_GEN2_SETTING_KEY\)/.test(OUTSIDE) && /const \[on, setOn\] = useState\(false\)/.test(OUTSIDE)
+    const callers = [...OUTSIDE.matchAll(/await jaGen2MainTrack\(/g)].length, zhC = [...OUTSIDE.matchAll(/await zhGen2MainTrack\(/g)].length, thC = [...OUTSIDE.matchAll(/await thGen2MainPairs\(/g)].length
+    T('A2', 'Gen2 reaches learners ONLY through the per-language screen switches (OFF by default, on only when the learner sets it; Thai/Mandarin Daily Track only) and their benchmark mirrors; the shadow pipeline=gen2 branch is unchanged',
+      calls === 5 && branch && jaOnly && screen && callers === 2 && zhC === 2 && thC === 2, { calls, callers, zhC, thC })
     T('A3', 'the Gen2 block writes nothing: no storage, no SRS / vocabulary update, no saved track, no attempt record', !/stSet\(|localStorage|sessionStorage|setVocab|onSave|saveListeningAttempt|saveTrack|window\.storage/.test(G2))
     T('A4', 'Gen2 commits no PROVEN template realisation and uses no fixed phase storyline (no proven frames, no planListeningConversation, no OPEN/DECIDE/ARRANGE phase list)',
       !/proven|PROVEN|planListeningConversation|listeningVerbal|LISTENING_PHASE|'OPEN'|'DECIDE'|'ARRANGE'/.test(G2CODE))
@@ -45,8 +49,8 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0]
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
     // v679: exactly ONE new storage write — the switch setting itself (key tt-ja-gen2); no learner-data write is added
-    const extra = (SRC.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length
-    T('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly one: the switch setting (tt-ja-gen2) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 1 && writes(SRC) === writes(base) + 1 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC), [writes(SRC), writes(base), extra])
+    const extra = (SRC.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length + (SRC.match(/stSet\(settingKey, v\)/g) || []).length
+    T('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly two: the switch settings (tt-ja-gen2; tt-th-gen2 / tt-zh-gen2 via one shared tick box) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 2 && writes(SRC) === writes(base) + 2 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC) && /const TH_GEN2_SETTING_KEY = 'tt-th-gen2'/.test(SRC) && /const ZH_GEN2_SETTING_KEY = 'tt-zh-gen2'/.test(SRC), [writes(SRC), writes(base), extra])
   }
   // ══ B — DETERMINISTIC ACCEPTANCE RULES ════════════════════════════════════════════════════════════════════════════
   {

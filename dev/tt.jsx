@@ -8559,7 +8559,7 @@ function ttBenchContentOutcome(lang, trackType, track, vocab) {
 function ttBenchBank(lang) { return lang === 'th' ? initVocab() : lang === 'ja' ? initJapaneseVocab() : initMandarinVocab() }
 
 // ThaiGenerator (Daily, contract path) — build(): scene → generation → QC → FINAL_TRACK
-async function ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId) {
+async function ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId, useGen2) {   // v680: useGen2 = the screen's "Use the new generator" switch
   const byId = new Map(vocab.map(w => [w.id, w]))
   // pickWords tags full-sentence targets; the fixture's order IS the logged generation order
   const raw = fx.targets.map(t => byId.get(t.id)).filter(Boolean).map(t => {
@@ -8587,14 +8587,16 @@ async function ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId) {
   const needsPhonetics = activeTargets.filter(t => !t.phonetic)
   const phonP = needsPhonetics.length > 0 ? fetchTargetPhonetics(needsPhonetics, apiKey).then(map => { if (map && Object.keys(map).length) Object.assign(phon, map) }).catch(() => {}) : Promise.resolve()
   try { Object.defineProperty(activeTargets, '_targetCounts', { value: targetCounts, configurable: true }) } catch (e) {}
-  const pairs = await generateConversationTrack(activeTargets, activeAnchors, apiKey, (done, total, meta) => {
+  const g2 = useGen2 ? await thGen2MainPairs({ targets: activeTargets, vocab, apiKey, scene: sd, onLog: L }) : null
+  if (g2 && !g2.pairs) { L('\u26D4 ' + g2.error); return { track: null, stop: 'GEN2_NOT_READY', gen2: g2.gen2 } }
+  const pairs = g2 ? g2.pairs : await generateConversationTrack(activeTargets, activeAnchors, apiKey, (done, total, meta) => {
     if (meta && meta.recallAccepted) return
     if (meta && meta.wordStatus) L('━━ ' + meta.wordStatus)
     else if (meta && meta.apiError) L(meta.apiError)
   }, vocab, model, { cancelled: false }, sd)
   await phonP
-  const _kwOf = w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: w.status === 'new', isUnseen: w.status === 'new' && isUnseen(w), phonetic: phon[w.id] || phon[w.thai] || '' })
-  const keywords = buildTrackKeywords(targets, targets, [], _kwOf)
+  const _kwOf = w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: w.status === 'new', isUnseen: w.status === 'new' && isUnseen(w), phonetic: phon[w.id] || phon[w.thai] || (g2 && w.phonetic) || '' })
+  const keywords = g2 ? buildTrackKeywords(g2.targets, g2.targets, [], _kwOf) : buildTrackKeywords(targets, targets, [], _kwOf)
   const sc = (pairs && pairs._sceneContract) || (sd ? buildSceneContract(sd, 'th', { vocab }) : null)
   const track = {
     date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -8605,6 +8607,7 @@ async function ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId) {
     unresolvedTargets: keywords.filter(k => k.unresolved).map(k => ({ wordId: k.wordId, thai: k.thai, reason: k.unresolvedReason })),
     skippedCandidates: (targetCounts && targetCounts.skippedCandidates) || [], selectionBackfills: (targetCounts && targetCounts.backfills) || [] }
   track.language = 'th'; track.pipelineVersion = PIPELINE_VERSION; track.generatorVersion = GENERATOR_VERSIONS.th
+  if (g2) { track.generator = GEN2_VERSION; track.deferredTargets = g2.deferredTargets; track.gen2 = g2.gen2 }
   track.trackContext = makeTrackContext({ trackId: track.createdAt, language: 'th', mode: 'daily', selectedTargetIds: track.selectedTargetIds,
     selectedNewTargetIds: keywords.filter(k => k && k.isNew && k.isUnseen !== false).map(k => k.wordId), generationRunId: AI_CTX.runId })
   track.selectedNewTargetIds = track.trackContext.selectedNewTargetIds.slice()
@@ -8624,7 +8627,7 @@ async function ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId) {
     catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; L('⚠️ FINAL_TRACK failed: ' + e.message) }
   }
   L('🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a Daily Track')
-  return { track: shown }
+  return g2 ? { track: shown, gen2: g2.gen2 } : { track: shown }
 }
 // the selector roles the Japanese / Mandarin screens receive (NEW for a new target, DUE for a review target)
 function ttBenchJazhTargets(fx, vocab) {
@@ -8714,6 +8717,19 @@ async function ttBenchJapaneseDailyGen2App(fx, vocab, apiKey, model, L, runId) {
     return { track: (o2 && o2.track) || final || out.track, gen2: out.gen2 }
   } catch (e) { L('\u274C Quality check failed: ' + (e.message || '')); return { track: final || out.track, gen2: out.gen2 } }
 }
+// v680 — MandarinGenerator with "Use the new generator" ON: zhGen2MainTrack → buildAndQc() (the same calls as the screen)
+async function ttBenchMandarinDailyGen2App(fx, vocab, apiKey, model, L, runId) {
+  const targets = ttBenchJazhTargets(fx, vocab)
+  const out = await zhGen2MainTrack({ targets, vocab, apiKey, model, onLog: L })
+  if (!out.track) { L('⛔ ' + out.error); return { track: null, stop: 'GEN2_NOT_READY', gen2: out.gen2 } }
+  L('━━ Quality check')
+  let final = null
+  try {
+    const o2 = await jazhQcFinaliseAndListen(out.track, 'zh', { vocab, apiKey, model, runId, cancelled: () => false, onProgress: () => {}, push: m => L(m),
+      onQcResult: () => {}, onFinal: t => { final = t }, onListening: () => {} })
+    return { track: (o2 && o2.track) || final || out.track, gen2: out.gen2 }
+  } catch (e) { L('❌ Quality check failed: ' + (e.message || '')); return { track: final || out.track, gen2: out.gen2 } }
+}
 // MandarinGenerator — generation → buildAndQc()
 async function ttBenchMandarinDaily(fx, vocab, apiKey, model, L, runId) {
   const targets = ttBenchJazhTargets(fx, vocab)
@@ -8789,6 +8805,8 @@ async function ttBenchRunFixture(fx, o) {
       out = fx.trackType === 'daily' ? await gen2Daily(g2o) : await gen2Listening(g2o)
     }
     else if (o.pipeline === 'gen2-app' && lang === 'ja' && fx.trackType === 'daily') out = await ttBenchJapaneseDailyGen2App(fx, vocab, apiKey, model, L, runId)
+    else if (o.pipeline === 'gen2-app' && lang === 'zh' && fx.trackType === 'daily') out = await ttBenchMandarinDailyGen2App(fx, vocab, apiKey, model, L, runId)
+    else if (o.pipeline === 'gen2-app' && lang === 'th' && fx.trackType === 'daily') out = await ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId, true)
     else if (fx.trackType === 'daily') out = lang === 'th' ? await ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId)
       : lang === 'ja' ? await ttBenchJapaneseDaily(fx, vocab, apiKey, model, L, runId) : await ttBenchMandarinDaily(fx, vocab, apiKey, model, L, runId)
     else { out = await ttBenchListening(fx, vocab, apiKey, model, L); runId = out.runId }
@@ -8797,7 +8815,7 @@ async function ttBenchRunFixture(fx, o) {
   let usage = null, usageLines = [], integrityLines = null
   try { usage = aiUsageSummary(runId); usageLines = aiUsageSummaryLines(usage) } catch (e) {}
   try { integrityLines = track && track.integrity ? trackIntegrityLines(track) : null } catch (e) {}
-  return { fixtureId: fx.id, language: lang, trackType: fx.trackType, path: o.pipeline === 'gen2' || o.pipeline === 'gen2-app' ? GEN2_VERSION : TT_BENCH_PATH_VERSION, pipeline: o.pipeline === 'gen2' ? 'gen2' : o.pipeline === 'gen2-app' && lang === 'ja' && fx.trackType === 'daily' ? 'gen2-app' : 'production', appBuild: APP_BUILD_VERSION, listeningBuild: LISTENING_BUILD_VERSION, model,
+  return { fixtureId: fx.id, language: lang, trackType: fx.trackType, path: o.pipeline === 'gen2' || o.pipeline === 'gen2-app' ? GEN2_VERSION : TT_BENCH_PATH_VERSION, pipeline: o.pipeline === 'gen2' ? 'gen2' : o.pipeline === 'gen2-app' && fx.trackType === 'daily' ? 'gen2-app' : 'production', appBuild: APP_BUILD_VERSION, listeningBuild: LISTENING_BUILD_VERSION, model,
     stop: (out && out.stop) || null, error, gen2: (out && out.gen2) || null,
     content: track ? ttBenchContentOutcome(lang, fx.trackType, track, vocab) : null,
     telemetry: { usageSummary: usageLines, integrity: integrityLines, costUsd: usage ? usage.costUsd : null, requests: usage ? usage.total : null },
@@ -25698,6 +25716,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   const [convoPct, setConvoPct] = useState(0)
   const [convoSpeed, setConvoSpeed] = useState(() => { try { return parseFloat(localStorage.getItem('tt-speed') || '0.8') } catch { return 0.8 } })
   const [generatedTrack, setGeneratedTrack] = useState(null)
+  const [thUseGen2, setThUseGen2] = useState(false)          // v680 — label of the Generate button only; build() reads the stored setting
   const phoneticsRef = useRef({})
   const { targets: _rawTargets, anchors: _rawAnchors, shortfall: _selShortfall, lockedByUnratedTracks: _lockedByUnrated,
           reserve: _reserve, skippedCandidates: _skippedCandidates, candidateStats: _candidateStats, contract: _contract, selectionBackfills: _selBackfills, canon: _revCanon } = useMemo(() => {
@@ -25889,7 +25908,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   useEffect(() => {
     async function build() {
       try {
-        let pairs
+        let pairs, _g2 = null
         if (apiKey) {
           // Block if 3 tracks already generated today
           const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -25950,6 +25969,20 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           const _sceneForGen = useConvoTrack ? sceneDataRef.current : null
           // named counts travel with the target list (non-enumerable, never persisted in it)
           try { Object.defineProperty(activeTargets, '_targetCounts', { value: targetCounts, configurable: true }) } catch (e) {}
+          // v680 — "Use the new generator (test)" (Daily Track only, not a resumed draft): Gen2 writes the recalls; the keywords,
+          // track object, QC, FINAL_TRACK and Save below are unchanged
+          const _g2on = mode === 'daily' && !resumeDraft && (await stGet(TH_GEN2_SETTING_KEY).catch(() => null)) === true
+          if (_g2on) {
+            const _gl = m => { logAll(m); setGenLog(prev => [...prev.slice(-8), m]) }
+            _gl('\u{1F9EA} NEW GENERATOR (test) \u00B7 ' + GEN2_VERSION + ' \u00B7 build ' + APP_BUILD_VERSION)
+            let _n = 0
+            _g2 = await thGen2MainPairs({ targets: activeTargets, vocab, apiKey, scene: sceneDataRef.current,
+              onLog: m => { if (/^\u2139/.test(m)) logAll(m); else _gl(m); if (/^\u2705 TEACHABLE/.test(m)) { _n++; setPairsDone(Math.min(_n * 3, activeTargets.length * 3)) } } })
+            if (!_g2.pairs) { setPhase('error'); setError(_g2.error); return }
+            pairs = _g2.pairs
+            setPairsTotal(pairs.length); setPairsDone(pairs.length)
+            setBrickSources(Object.fromEntries(pairs.map((_, k) => [k, THAI_CHECK_SRCS[0] + 'conv'])))
+          } else
           pairs = await (useConvoTrack ? (t,a,k,...r) => generateConversationTrack(t,a,k,...r,_sceneForGen) : generateTrack)(activeTargets, activeAnchors, apiKey,
             (done, total, meta, sources, wordIdx) => {
               // Per-recall acceptance: light exactly one circle, at its own tier,
@@ -26050,7 +26083,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
         // AUTHORITATIVE SELECTION: every selected target stays in the lesson, in selection
         // order. One that could not be generated is listed as UNRESOLVED, never dropped.
         // v645: under the contract the frozen selection IS the lesson (nothing unresolved)
-        const keywords = buildTrackKeywords(resumeDraft || _contract ? allTargets : (_rawTargets || allTargets), allTargets, resumeDraft || _contract ? [] : (_skippedTargets || []), _kwOf)
+        const keywords = _g2 ? buildTrackKeywords(_g2.targets, _g2.targets, [], w => { const k = _kwOf(w); return { ...k, phonetic: k.phonetic || w.phonetic || '' } })
+          : buildTrackKeywords(resumeDraft || _contract ? allTargets : (_rawTargets || allTargets), allTargets, resumeDraft || _contract ? [] : (_skippedTargets || []), _kwOf)
         const track = {
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           mode, pairs, keywords, rated: false, createdAt: new Date().toISOString(),
@@ -26071,6 +26105,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
         track.language = 'th'
         track.pipelineVersion = PIPELINE_VERSION
         track.generatorVersion = GENERATOR_VERSIONS.th
+        if (_g2) { track.generator = GEN2_VERSION; track.deferredTargets = _g2.deferredTargets; track.gen2 = _g2.gen2 }
         track.trackContext = makeTrackContext({ trackId: track.createdAt, language: 'th', mode: mode === 'revision' ? 'revision' : 'daily',
           selectedTargetIds: track.selectedTargetIds, selectedNewTargetIds: keywords.filter(k => k && k.isNew && k.isUnseen !== false).map(k => k.wordId),
           generationRunId: AI_CTX.runId })
@@ -26199,8 +26234,9 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
             </div>
             <Btn onClick={() => { setGenLog([]); setPairsDone(0); setBrickSources({}); setBrickChecks({}); setBrickHist({}); setSessionTargets(null); setSessionAnchors(null); setPhase('starting') }}
               style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>
-              ▶ Generate Track from this Scene
+              ▶ {mode === 'daily' && thUseGen2 ? 'Generate with the NEW generator (test)' : 'Generate Track from this Scene'}
             </Btn>
+            {mode === 'daily' && !resumeDraft && <Gen2Switch settingKey={TH_GEN2_SETTING_KEY} onChange={setThUseGen2} />}
             <Btn onClick={() => { sceneDataRef.current = null; setSceneData(null); setSessionTargets(null); setSessionAnchors(null); setPhase('starting') }}
               variant="secondary" style={{ width:'100%', justifyContent:'center' }}>
               🔄 Try a different scene
@@ -35162,6 +35198,23 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
       setPhase('generating')
       aiRunRef.current = aiBeginRun('zh-track')                 // v649: generation + QC + recovery in ONE run
       try {
+        // v680 — "Use the new generator (test)" (Daily Track only): Gen2 writes the recalls, then the unchanged QC / FINAL_TRACK / Save
+        const useGen2 = trackMode !== 'revision' && trackMode !== 'srs' && (await stGet(ZH_GEN2_SETTING_KEY).catch(() => null)) === true
+        if (useGen2) {
+          push('\u{1F9EA} NEW GENERATOR (test) \u00B7 ' + GEN2_VERSION + ' \u00B7 build ' + APP_BUILD_VERSION)
+          let n = 0
+          const out = await zhGen2MainTrack({ targets, vocab, apiKey, model,
+            onLog: m => { push(m, !/^\u2139/.test(m)); if (/^\u2705 TEACHABLE/.test(m)) { n++; setRecallDone(Math.min(n * 3, recallTotal)) } } })
+          if (stopRef.current.cancelled) return
+          if (!out.track) { setError(out.error); setPhase('error'); return }
+          const _pv2 = assertTrackPairsProvenance(out.track.pairs, 'zh')
+          push(_pv2.ok ? '\u2713 ' + out.track.pairs.length + ' recalls carry provenance' : '\u26D4 ' + _pv2.bad.length + ' recall(s) missing provenance')
+          const tp = {}; out.track.pairs.forEach(p => { const cur = tp[p.targetId] || { recallsCompleted: 0, recalls: [] }; cur.recalls.push({ recallIndex: p.recallIndex, checkTier: 1, source: ZH_TIER_SOURCE(1), history: [1] }); cur.recallsCompleted = cur.recalls.length; tp[p.targetId] = cur })
+          setTargetProgress(tp); setRecallDone(out.track.pairs.length)
+          setPhase('done'); setCurrentTargetId(null)
+          buildAndQc(out.track)
+          return
+        }
         const res = await generateMandarinTrack(targets, vocab, apiKey, model,
           (done, total, meta) => {
             setRecallDone(done)
@@ -35957,6 +36010,118 @@ async function jaGen2MainTrack(o) {
   log('🧪 NEW GENERATOR track: ' + frozen.length + ' targets · ' + pairs.length + ' recalls' + (track.deferredTargets.length ? ' · deferred (stay due): ' + track.deferredTargets.map(d => d.surface).join(' ') : '') +
     (frozen.some(w => w.gen2Replacement) ? ' · replaced by: ' + frozen.filter(w => w.gen2Replacement).map(w => w.japanese).join(' ') : ''))
   return { track, gen2: g.gen2 }
+}
+// v680 — the same switch for Mandarin and Thai. Shared: Gen2's composition groups become the lesson's sections, each with a
+// local premise written from ITS OWN recalls' situations (the production coherence audit is unchanged).
+function gen2LessonSections(pairs, surfaceOf) {
+  const order = [], seen = new Set(); pairs.forEach(p => { if (!seen.has(p.targetId)) { seen.add(p.targetId); order.push(p.targetId) } })
+  const scenes = []
+  for (let k = 0; k < order.length; k += 5) {
+    const ids = order.slice(k, k + 5), lines = pairs.filter(p => ids.includes(p.targetId))
+    const sits = [...new Set(lines.map(p => String((p._gen2 && p._gen2.situation) || '').trim().replace(/\.$/, '')).filter(Boolean))].slice(0, 4)
+    scenes.push({ sceneId: 'S' + (scenes.length + 1), targetIds: ids, purpose: 'Practise ' + ids.map(surfaceOf).join(', ') + ' in short everyday exchanges between two friends',
+      localPremise: 'Two friends in everyday moments' + (sits.length ? ': ' + sits.join('; ') : ''), targetRoles: {} })
+  }
+  return { version: 'gen2-sections/1', scenes }
+}
+const TH_GEN2_SETTING_KEY = 'tt-th-gen2'
+// Thai: Gen2 writes the recalls; they are typed exactly as generateConversationTrack types its content lines and then pass
+// the same generation tail (closed-vocabulary gate → final phonetics → final audit). The screen's own QC / FINAL_TRACK /
+// Save run unchanged afterwards. Returns { pairs, targets } (the lesson's targets: deferred words are replaced by due
+// reviews, never by NEW words) or { pairs: null, error }.
+async function thGen2MainPairs(o) {
+  const { targets, vocab, apiKey } = o
+  const log = o.onLog || (() => {})
+  const g = await gen2Daily({ lang: 'th', vocab, apiKey, fixedTargets: targets, onLog: log })
+  const t = g.track, status = t.integrity && t.integrity.status
+  if (status !== 'READY') return { pairs: null, gen2: g.gen2,
+    error: 'The new generator could not build a complete lesson (' + (((t.integrity && t.integrity.reasons) || []).join('; ') || 'not ready') + '). Nothing was saved. Try again, or switch the new generator off.' }
+  const byId = new Map((vocab || []).map(w => [w.id, w])), given = new Map((targets || []).map(w => [w.id, w]))
+  const frozen = t.selectedTargetIds.map(id => given.get(id) || (w => w && { ...w, gen2Replacement: true })(byId.get(id))).filter(Boolean)
+  const fById = new Map(frozen.map(w => [w.id, w]))
+  const sceneContract = buildSceneContract(normaliseSceneSpokenFields(o.scene || { scene: 'Two friends in everyday moments.', characterA: 'Somchai, a Thai man', characterB: 'Nida, a Thai woman' }), 'th', { vocab })
+  const lex = buildThaiPhoneticLexicon(vocab)
+  const pairs = t.pairs.map(p => {
+    const w = fById.get(p.targetId), key = 'th-' + w.id + '-' + p.recallIndex
+    const words = enrichWordsWithCompounds((p.phonetic || '').trim().split(/\s+/).filter(Boolean).map(tok => ({ p: tok, e: '' })))
+    const line = { speaker: p.speaker, thai: p.thai, phonetic: p.phonetic || '', english: p.english, prompt: p.prompt, words, language: 'th', _target: w.thai,
+      _targetSense: thaiTargetSense({ wordId: w.id, english: w.english }, vocab), recallGroupId: 'rg-' + w.id, recallIndex: p.recallIndex, _source: 'gen2:teachability',
+      _typedAt: 'creation', _pairKey: key, lineId: key, sceneId: null, scenePurpose: null, speakerGender: thaiSpeakerMapGender(p.speaker),
+      pairType: 'content', targetId: w.id, wordId: w.id, recallRole: 'alternative', targetRequired: true,
+      _checkCount: 1, checkTier: 1, _checkHistory: [{ index: 1, outcome: 'accepted', kind: 'model' }], _gen2: p._gen2 }
+    assertThaiPairIdentity(line)
+    return line
+  })
+  let out = pairs
+  try { const cv = enforceThaiClosedVocabulary(out, buildThaiTrackVocabContext(vocab, frozen, sceneContract.allowedSceneEntities), { targetsById: fById, stage: 'generation', sceneContract, onLog: log }); if (cv && Array.isArray(cv.pairs)) out = cv.pairs }
+  catch (e) { log('⚠ closed-vocabulary gate failed — lines kept as generated: ' + String(e && e.message || e).slice(0, 100)) }
+  try { out = finaliseThaiTrackPhonetics(out, withThaiSceneNamePhonetics(lex, thaiSceneNameEntries({ sceneContract }, vocab))) }
+  catch (e) { log('⚠ final phonetics failed — lines kept as generated: ' + String(e && e.message || e).slice(0, 100)) }
+  let report = null
+  try { const fa = thaiFinalTrackAudit(out, { keywords: thaiAuditKeywords(null, frozen), vocab, stage: 'generation', onLog: log }); out = fa.pairs; report = fa.report }
+  catch (e) { log('⚠ final audit failed — lines kept as generated: ' + String(e && e.message || e).slice(0, 100)) }
+  out = out.slice()
+  Object.defineProperty(out, '_finalAudit', { value: report, enumerable: false })
+  Object.defineProperty(out, '_sceneContract', { value: sceneContract, enumerable: false })
+  Object.defineProperty(out, '_scenePlan', { value: gen2LessonSections(out.filter(x => x.pairType === 'content'), id => (fById.get(id) || {}).thai), enumerable: false })
+  log('🧪 NEW GENERATOR track: ' + frozen.length + ' targets · ' + out.length + ' recalls' + ((t.deferredTargets || []).length ? ' · deferred (stay due): ' + t.deferredTargets.map(d => d.surface).join(' ') : '') +
+    (frozen.some(w => w.gen2Replacement) ? ' · replaced by: ' + frozen.filter(w => w.gen2Replacement).map(w => w.thai).join(' ') : ''))
+  return { pairs: out, targets: frozen, deferredTargets: t.deferredTargets || [],
+    gen2: { version: GEN2_VERSION, models: g.gen2.models, calls: g.gen2.calls, byStage: g.gen2.byStage, replacementsUsed: g.gen2.replacementsUsed } }
+}
+const ZH_GEN2_SETTING_KEY = 'tt-zh-gen2'
+async function zhGen2MainTrack(o) {
+  const { targets, vocab, apiKey, model } = o
+  const log = o.onLog || (() => {})
+  const g = await gen2Daily({ lang: 'zh', vocab, apiKey, fixedTargets: targets, onLog: log })
+  const t = g.track, status = t.integrity && t.integrity.status
+  if (status !== 'READY') return { track: null, gen2: g.gen2,
+    error: 'The new generator could not build a complete lesson (' + (((t.integrity && t.integrity.reasons) || []).join('; ') || 'not ready') + '). Nothing was saved. Try again, or switch the new generator off.' }
+  const byId = new Map((vocab || []).map(w => [w.id, w])), given = new Map((targets || []).map(w => [w.id, w]))
+  const frozen = t.selectedTargetIds.map(id => given.get(id) || (w => w && { ...w, selectionRole: 'review', gen2Replacement: true })(byId.get(id))).filter(Boolean)
+  const fById = new Map(frozen.map(w => [w.id, w]))
+  const inv = mandarinLearnerInventory(vocab, frozen)
+  const startedAt = new Date().toISOString(), runId = AI_CTX.runId
+  const pairs = t.pairs.map(p => {
+    const w = fById.get(p.targetId)
+    // the word breakdown production's QC reads: the same segmenter and lexicon gloss the standard generator applies
+    const segments = segmentMandarin(p.chinese, inv.lexicon).map(sg => sg.type === 'punct' ? sg : { surface: sg.surface, pinyin: sg.pinyin, english: sg.english, type: sg.type, ...(sg.vocabId != null ? { vocabId: sg.vocabId } : {}) })
+    return stampPairProvenance({ speaker: p.speaker, chinese: p.chinese, pinyin: p.pinyin, spokenPinyin: tidyPinyin(mandarinSpokenPinyin(p.pinyin)), english: p.english, prompt: p.prompt,
+      segments, targetId: p.targetId, targetChinese: w.chinese, recallIndex: p.recallIndex, checkTier: 1, _source: 'gen2:teachability', _fallbackUsed: false,
+      _checkCount: 1, _checkHistory: [{ index: 1, outcome: 'accepted', kind: 'model' }], _provenance: { lang: 'zh', tier: 1, attempt: 1, fallback: false, recallIndex: p.recallIndex, targetId: p.targetId, phase: 'generation-gen2' },
+      thai: p.chinese, phonetic: p.pinyin, wordId: p.targetId, words: segments.filter(sg => sg.type !== 'punct').map(sg => ({ p: sg.pinyin, e: sg.english })),
+      sourceModel: (g.gen2.models || {}).generator || model, provenanceLive: true, provider: 'gemini', _gen2: p._gen2 },
+      { language: 'zh', trackId: 'zh-' + startedAt, generationRunId: runId, targetId: p.targetId, targetSurface: w.chinese, recallIndex: p.recallIndex, sourceStage: 'generation-gen2' })
+  })
+  const track = {
+    createdAt: startedAt, date: startedAt.slice(0, 10), language: 'zh', mode: 'daily', trackMode: 'daily', speechStyle: MANDARIN_REGISTER.id,
+    provider: 'gemini', model, pairs, scenePlan: gen2LessonSections(pairs, id => (fById.get(id) || {}).chinese),
+    allowedContent: inv.allContent.map(w => ({ chinese: w.chinese, pinyin: w.pinyin, english: w.english })),
+    grammarUsed: inv.grammarScaffold.map(gg => ({ form: gg.form, pinyin: gg.pinyin, meaning: gg.meaning })), scarcity: mandarinScarcityLevel(inv),
+    recallCount: pairs.length, framingCount: 0, rated: false, bookmark: 0, selectedTargetIds: Object.freeze(frozen.map(w => w.id)),
+    keywords: frozen.map(w => ({ chinese: w.chinese, pinyin: w.pinyin, english: w.english, wordId: w.id, rating: null, thai: w.chinese, phonetic: w.pinyin, partOfSpeech: w.partOfSpeech || null,
+      isNew: w.selectionRole ? w.selectionRole === 'new' : w.status === 'new', selectionRole: w.selectionRole || (w.status === 'new' ? 'new' : 'review') })),
+    generator: GEN2_VERSION, deferredTargets: t.deferredTargets || [],
+    gen2: { version: GEN2_VERSION, models: g.gen2.models, calls: g.gen2.calls, byStage: g.gen2.byStage, replacementsUsed: g.gen2.replacementsUsed } }
+  log('🧪 NEW GENERATOR track: ' + frozen.length + ' targets · ' + pairs.length + ' recalls' + (track.deferredTargets.length ? ' · deferred (stay due): ' + track.deferredTargets.map(d => d.surface).join(' ') : '') +
+    (frozen.some(w => w.gen2Replacement) ? ' · replaced by: ' + frozen.filter(w => w.gen2Replacement).map(w => w.chinese).join(' ') : ''))
+  return { track, gen2: g.gen2 }
+}
+// v680 — the "Use the new generator (test)" tick box for Thai and Mandarin. OFF unless the learner turns it on; remembered on
+// this device. It only stores the choice: each screen reads the setting itself when generation starts.
+function Gen2Switch({ settingKey, onChange, note }) {
+  const [on, setOn] = useState(false)
+  useEffect(() => { let go = true; stGet(settingKey).then(v => { if (go) { setOn(v === true); onChange && onChange(v === true) } }).catch(() => {}); return () => { go = false } }, [settingKey])
+  const toggle = v => { setOn(v); onChange && onChange(v); stSet(settingKey, v).catch(() => {}) }
+  return (
+    <div>
+      <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'var(--text-2)', cursor:'pointer' }}>
+        <input type="checkbox" checked={on} onChange={e => toggle(e.target.checked)} />
+        {'\u{1F9EA}'} Use the new generator (test)
+      </label>
+      {on && <p style={{ fontSize:11, color:'var(--muted)', margin:'4px 0 0' }}>{note || 'Test version: each sentence is checked by a second model. A word it cannot teach well is left for a later lesson (it stays due). Costs a little more than the standard generator.'}</p>}
+    </div>
+  )
 }
 function JapaneseGenerator({ vocab, targets, selection, register: registerProp, cred, trackMode, onGenerated, onBack }) {
   // v667 §4 — the speech style is FROZEN when the generator opens: a later change of the dashboard selector never
@@ -39427,6 +39592,7 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
         <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
         <ListeningLatestBar lang={"zh"} tracks={tracks} onListen={t => onOpenTrack && onOpenTrack(t)} onRebuild={onRebuildListening} />
       </div>
+      <Gen2Switch settingKey={ZH_GEN2_SETTING_KEY} note={'Daily Track only. Test version: each sentence is checked by a second model. A word it cannot teach well is left for a later lesson (it stays due). Costs a little more than the standard generator.'} />
 
       {/* Rank Test — same component and behaviour in every language */}
       <RankTestButton vocab={vocab} rank={currentRankName(vocab)}

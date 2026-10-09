@@ -1,0 +1,83 @@
+{
+ "runId": "th-daily-device-2026-10-09.gen2-app.v680-app1.2026-10-09T09-46-10",
+ "fixture": "th-daily-device-2026-10-09",
+ "pipelineRequested": "gen2-app",
+ "pipelineExecuted": "gen2-app",
+ "gen2Version": null,
+ "models": null,
+ "app": {
+  "appBuild": "v679",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": null,
+ "reasons": null,
+ "error": "Error: 404 | This model models/gemini-2.5-flash-lite is no longer available to new users. Please update your code to use models/gemini-3.5-flash-lite for the latest features and improvements. We recommend you to use the Interactions API (https://ai.google.dev/gemini-api/docs/get-started).\n    at aiMakeError (/home/user/Language-Teacher/dev/tt.compiled.js:8728:13)\n    at _geminiSend (/home/user/Lan",
+ "stop": null,
+ "recalls": null,
+ "deferred": [],
+ "spend": {
+  "costUsd": 0,
+  "capUsd": 0.3,
+  "tokens": {
+   "in": 0,
+   "out": 0
+  },
+  "requestsSent": 2,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {
+   "404": 2
+  },
+  "byTaskModel": {
+   "(untagged) @ gemini-2.5-flash-lite": {
+    "requests": 1,
+    "in": 0,
+    "out": 0,
+    "usd": 0
+   },
+   "gen2-daily-probe v1 @ gemini-2.5-flash-lite": {
+    "requests": 1,
+    "in": 0,
+    "out": 0,
+    "usd": 0
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×2",
+  "Track ID: - · run daily-track-1791535372160-3223",
+  "Total requests: 2 · Successful: 0 · Failed: 2 · Retried: 0",
+  "Generation calls: 1 · QC calls: 0 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 0 · Listening calls: 0 · Other: 1",
+  "Input tokens: 4913 · Output tokens: 0 · Total tokens: 4913 (ESTIMATED from characters)",
+  "Retry requests: 0 · caused by provider errors: 2 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 2 · Provider-error retries: 0",
+  "GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)",
+  "PAID REQUESTS BY PURPOSE: generation (first attempt / scene) 1 (1747 tok, USD 0.0000) · other 1 (3166 tok, USD 0.0000)",
+  "Estimated Gemini cost: USD 0.0000 (≈ SGD 0.0000 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. P_gen2_probe — 1 requests / 3166 tokens / ~0%",
+  "  2. A0_scene — 1 requests / 1747 tokens / ~0%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 1
+}

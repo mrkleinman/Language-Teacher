@@ -98,9 +98,10 @@ const usd = (m, i, o) => { const p = PRICE[m]; if (!p) throw new Error('no price
   fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify(summary, null, 1))
   fs.writeFileSync(path.join(dir, 'log.txt'), (r.log || []).join('\n'))
   if (acct.refusedGuard.length) fs.writeFileSync(path.join(dir, 'pipeline-guard.json'), JSON.stringify(acct.refusedGuard, null, 1))
-  ledger.sessionCapUsd = sessionCap
-  ledger.runs.push({ runId, at: new Date().toISOString(), costUsd: +acct.costUsd.toFixed(5), requests: acct.sent, status: summary.status })
-  fs.writeFileSync(LEDGER, JSON.stringify(ledger, null, 1))
+  const ledgerNow = readLedger()   // re-read: another run may have finished meanwhile
+  ledgerNow.sessionCapUsd = sessionCap
+  ledgerNow.runs.push({ runId, at: new Date().toISOString(), costUsd: +acct.costUsd.toFixed(5), requests: acct.sent, status: summary.status })
+  fs.writeFileSync(LEDGER, JSON.stringify(ledgerNow, null, 1))
   console.log(JSON.stringify({ ...summary, spend: { ...summary.spend, byTaskModel: undefined }, appCostLedger: undefined, gen2ByStage: summary.gen2ByStage, byTaskModel: Object.fromEntries(Object.entries(acct.byTaskModel).map(([k, v]) => [k, v.requests + ' req · US$' + v.usd.toFixed(4)])) }, null, 1))
   console.log('→ ' + path.relative(DEV, dir))
   process.exit(summary.replay.faithful && summary.replay.contentIdentical && !acct.refusedGuard.length ? 0 : 1)

@@ -17,6 +17,12 @@ function cands(S, lang, t) {
 }
 let NO_CHAN = false   // set per request: the prompt says ฉัน is not taught, so the woman leaves out "I" (as instructed)
 const textOf = (lang, s) => { const t = s[FIELD[lang]] || s.thai; return lang === 'th' && NO_CHAN ? t.replace(/ฉัน/g, '') : t }
+// v678.1: Gen2 asks for a reading + romaji per Japanese candidate; the simulator supplies the dictionary's (mechanics only)
+function simReading(S, s) {
+  const c = S.c, inv = S.jaInv || (S.jaInv = c.japaneseLearnerInventory(S.vocab, S.targets || []))
+  const r = c.rebuildJapaneseReadingPipeline({ japanese: s.japanese }, inv).reading
+  return { reading: r, romaji: c.kanaToRomaji(r) }
+}
 function gen2SimReply(q, S, lang, opts) {
   opts = opts || {}
   NO_CHAN = /ฉัน is not taught yet/.test(q)
@@ -31,7 +37,7 @@ function gen2SimReply(q, S, lang, opts) {
     const cs = cands(S, lang, t).slice(second ? 3 : 0, second ? 7 : 6)
     return JSON.stringify({ teachable: true, reason: '', candidates: cs.map((s, i) => ({ function: FUNCS[(i + (second ? 3 : 0)) % FUNCS.length], situation: 'sim',
       cue: 'Tell your friend about item ' + t.id + ' in situation ' + (i + (second ? 3 : 0)) + '.', text: textOf(lang, s), english: s.english,
-      speaker: lang === 'th' ? (s.speaker === 'B' ? 'female' : 'male') : 'either' })) })
+      speaker: lang === 'th' ? (s.speaker === 'B' ? 'female' : 'male') : 'either', ...(lang === 'ja' ? simReading(S, s) : {}) })) })
   }
   if (task === 'gen2-daily-judge' || task === 'gen2-listen-judge-exchange') {
     if (opts.judgeGarbage) return 'I think these are fine.'

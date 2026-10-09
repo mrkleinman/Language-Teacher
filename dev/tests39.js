@@ -124,6 +124,43 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       /id="pilot1"/.test(SRC) && /runInWorker\(fx, k, \{ pipeline: 'gen2', judgeModel:/.test(SRC) && /const pipeline = m\.pipeline === 'gen2' \? 'gen2' : 'production'/.test(SRC) && /'-gen2'/.test(SRC))
     T('E2', 'version v678', c.ev('APP_BUILD_VERSION') === 'v678' && c.ev('LISTENING_BUILD_VERSION') === 'v678')
   }
+  // ══ F — v678.1 SANDBOX FIXES (defects found in the first live Japanese Daily run, 9 Oct 2026) ══════════════════
+  {
+    const J = c.initJapaneseVocab(), jw = s => J.find(w => w.japanese === s)
+    T('F1', 'word class: adverbs (また, たぶん, ちょっと) are adverbs — "adverb" contains "verb" and used to be classed as a verb',
+      ['また', 'たぶん', 'ちょっと'].every(x => c.gen2WordClass('ja', jw(x)) === 'adverb') && c.gen2WordClass('ja', jw('食べる')) === 'verb')
+    T('F2', 'Japanese / Chinese sentences lose spaces between words before any check (駅 は どっち？ → 駅はどっち？); Thai spaces are kept',
+      c.gen2Tidy('ja', 'すみません、駅 は どっち？') === 'すみません、駅はどっち？' && c.gen2Tidy('zh', '你 好 吗？') === '你好吗？' && c.gen2Tidy('th', 'ไป ไหน ครับ') === 'ไป ไหน ครับ')
+    T('F3', 'one utterance by one speaker: a line break or a question followed by its own answer is rejected; a statement + question is not',
+      !!c.gen2TurnProblem('ja', 'こんにちは。\nはい、こんにちは。') && !!c.gen2TurnProblem('ja', '水、飲む？ はい、飲む。') && !!c.gen2TurnProblem('ja', '明日、会う。はい、会う。') &&
+      !c.gen2TurnProblem('ja', 'ご飯、あるよ。食べる？') && !c.gen2TurnProblem('ja', 'うん、いいよ。'))
+    const fx = loadFixture('ja-daily-2026-10-08'), V = c.ttBenchApplyFixture(c.ttBenchBank('ja'), require('./benchmark/embed_fixtures').compact(fx)), byId = new Map(V.map(w => [w.id, w]))
+    const tg = fx.targets.map(t => byId.get(t.id)), ctx = c.gen2Context({ lang: 'ja', vocab: V, apiKey: 'x' }), inv = c.gen2Inventory(ctx, tg)
+    const untaught = ['わたしにはいもうとがいる。', 'あなたはどっちにする？', 'ねこがいる。', 'かわいい猫だね。'].map(x => c.gen2JaKanaWordProblem(x, inv))
+    const fine = ['またあれが食べたい。', 'どこかで飲もうよ。', '今、何してるの？', 'いくらか分からないけど、たぶん高いよ。', 'これ食べる？'].map(x => c.gen2JaKanaWordProblem(x, inv))
+    T('F4', 'closed vocabulary, Japanese kana words: untaught hiragana words (いもうと/わたし, あなた, ねこ, かわいい) are rejected — the production line checker passes them — while inflected taught words pass',
+      untaught.every(Boolean) && fine.every(x => x === null), { untaught, fine })
+    const suru = jw('する'), nani = jw('何')
+    const u = (w, t) => c.gen2Units(ctx, w, t).units
+    T('F5', 'fragment test counts words, not the complexity estimate: 今、何してるの？ (する) and 何飲む？ (何) are sentences; a lone word is still a fragment',
+      u(suru, '今、何してるの？') >= 2 && u(nani, '何飲む？') >= 2 && u(nani, '何？') < 2)
+    T('F6', 'romaji line: required for Japanese, must transcribe the reading, and the reading must agree with the dictionary reading',
+      c.gen2JaReadingProblem({ text: '今、何してるの？', reading: 'いま、なにしてるの？', romaji: 'ima, nani shiteru no?' }, inv) === null &&
+      /missing/.test(c.gen2JaReadingProblem({ text: '今、何してるの？' }, inv)) &&
+      !!c.gen2JaReadingProblem({ text: '今、何してるの？', reading: 'いま、なにしてるの？', romaji: 'kyou nani shiteru no' }, inv) &&
+      /disagrees/.test(c.gen2JaReadingProblem({ text: '今日、行く？', reading: 'こんにち、いく？', romaji: 'konnichi, iku?' }, inv) || ''))
+    const pick = c.gen2PickDistinct('ja', [{ text: 'この本、どう思う？', function: 'ask opinion' }, { text: 'この映画、どう思う？', function: 'opinion of film' }, { text: '駅までどう行く？', function: 'ask way' }, { text: '仕事、どう？', function: 'ask how it went' }], 3)
+    T('F7', 'three DISTINCT uses: the same template with another noun (この本／この映画、どう思う？) counts once', pick.length === 3 && !pick.some(p => p.text === 'この映画、どう思う？'), pick.map(p => p.text))
+    const base = c.gen2Context({ lang: 'ja', vocab: V, apiKey: 'x' })
+    T('F8', 'polite-register words (はい, いいえ, すみません) are taught in polite speech for their own recalls; other words keep casual speech; the run context (budget, counts) is shared',
+      c.gen2TargetCtx(base, jw('はい')).speechStyle === 'polite' && c.gen2TargetCtx(base, jw('すみません')).speechStyle === 'polite' && c.gen2TargetCtx(base, jw('食べる')) === base &&
+      /gen2Ask\(ctx0, 'P_gen2_probe'/.test(SRC) && !/gen2Ask\(ctx, 'P_gen2_probe'/.test(SRC))
+    T('F9', 'cue intent accepts manner adverbs and more imperatives ("Get your friend’s attention", "Politely refuse …"); a translation-style cue is still rejected',
+      c.gen2CueProblem("Get your friend's attention before asking them something.", 'Excuse me, got a second?', 'ja') === null &&
+      c.gen2CueProblem("Politely refuse your friend's offer.", "No, it's fine. Sorry.", 'ja') === null &&
+      c.gen2CueProblem('What are you doing today?', 'What are you doing today?', 'ja') === 'cue-copies-answer')
+    T('F10', 'version gen2-pilot/1.1', c.ev('GEN2_VERSION') === 'gen2-pilot/1.1')
+  }
   console.log(out.join('\n'))
   console.log('\nv678 Gen2 shadow pilot: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
   process.exit(fails ? 1 : 0)

@@ -8807,7 +8807,7 @@ async function ttBenchRunFixture(fx, o) {
 //   generator. A judge reply that cannot be parsed accepts NOTHING. Nothing is accepted because it is constructible.
 // • Listening is written scene by scene as whole dialogues (questions and answers together), 3–5 connected scenes chosen
 //   for THIS vocabulary — no fixed phase list, no PROVEN template sentences.
-const GEN2_VERSION = 'gen2-pilot/1'
+const GEN2_VERSION = 'gen2-pilot/1.1'   // 1.1: sandbox fixes after the first live Japanese run (see sandbox/README.md)
 const GEN2_FLAG = Object.freeze({ enabled: false, shadowOnly: true })   // activation for learners needs a separate change
 const GEN2_CONFIG = Object.freeze({
   generatorModel: 'gemini-2.5-flash-lite', judgeModel: 'gemini-2.5-flash',
@@ -8830,9 +8830,9 @@ function gen2WordClass(lang, w) {
   if (/^(hello|thank|thanks|sorry|excuse me|goodbye|bye|yes|no|okay|ok)\b/.test(g) || /expression|interjection|phrase/.test(pos) || (lang === 'ja' && /^(すみません|ありがとう|ごめん|はい|いいえ|うん)/.test(s))) return 'expression'
   if (/^(what|where|when|who|why|how|which)\b/.test(g) || /interrogative|question/.test(pos)) return 'question-word'
   if (/conjunction|preposition|coverb/.test(pos) || /^(and|or|but|with|because|if|so|then)\b/.test(g)) return 'function-word'
+  if (/adverb/.test(pos)) return 'adverb'   // v678.1: before 'verb' — 'adverb' contains 'verb' (また/たぶん/ちょっと were classed as verbs)
   if (/verb/.test(pos)) return 'verb'
   if (/adj/.test(pos)) return 'adjective'
-  if (/adverb/.test(pos)) return 'adverb'
   if (/pronoun|demonstrative/.test(pos)) return 'pronoun'
   return pos || 'word'
 }
@@ -8876,7 +8876,7 @@ function gen2Core(lang, s) {
 }
 function gen2Bigrams(s) { const a = new Set(); for (let i = 0; i < s.length - 1; i++) a.add(s.slice(i, i + 2)); return a }
 function gen2Similar(a, b) { const A = gen2Bigrams(a), B = gen2Bigrams(b); if (!A.size || !B.size) return a === b ? 1 : 0; let n = 0; A.forEach(x => { if (B.has(x)) n++ }); return n / (A.size + B.size - n) }
-const GEN2_CUE_INTENT = /^(ask|tell|say|suggest|offer|invite|refuse|decline|agree|accept|apologi[sz]e|thank|greet|explain|express|confirm|check|propose|describe|mention|point out|admit|warn|complain|request|answer|reply|respond|react|insist|remind|encourage|praise|compliment|let|order|count|call|wish|introduce|recommend|correct|disagree|admit)\b/i
+const GEN2_CUE_INTENT = /^(?:(?:politely|gently|quickly|casually|kindly|briefly|softly|firmly|warmly|happily|excitedly|lightly|nicely|quietly|honestly)\s+)?(get|acknowledge|receive|show|choose|share|wonder|guess|interrupt|hand|give|attract|signal|admit|say no|say yes|ask|tell|say|suggest|offer|invite|refuse|decline|agree|accept|apologi[sz]e|thank|greet|explain|express|confirm|check|propose|describe|mention|point out|admit|warn|complain|request|answer|reply|respond|react|insist|remind|encourage|praise|compliment|let|order|count|call|wish|introduce|recommend|correct|disagree|admit)\b/i
 function gen2CueProblem(cue, english, lang) {
   const c = String(cue || '').trim(), e = String(english || '').trim()
   if (!c) return 'cue-missing'
@@ -8895,6 +8895,87 @@ function gen2ParseJson(text) {
   if (a >= 0 && b > a) { try { return JSON.parse(s.slice(a, b + 1)) } catch (e) {} }
   return null
 }
+// ── v678.1 (sandbox findings, live Japanese Daily run 1, 9 Oct 2026): deterministic gates the judge did not supply
+// Japanese words that belong to polite speech are taught where they are really used (with a stranger, a shop
+// assistant, a colleague) instead of being forced into casual talk between friends, where natives say ううん etc.
+const GEN2_JA_POLITE_TARGETS = /^(はい|いいえ|すみません|ええ)$/
+function gen2TargetCtx(ctx, w) {
+  return ctx.lang === 'ja' && ctx.speechStyle !== 'polite' && GEN2_JA_POLITE_TARGETS.test((w && w.japanese) || '') ? { ...ctx, speechStyle: 'polite', politeForTarget: true } : ctx
+}
+// Japanese / Chinese are written without spaces between words: spaces the model inserts are removed BEFORE any check
+// (12 of 90 accepted recalls in the live run had them). Thai is left alone (its spaces are meaningful).
+const GEN2_CJK = '　-ヿ㐀-鿿！-｠'
+function gen2Tidy(lang, s) {
+  s = String(s || '').trim()
+  if (lang === 'ja' || lang === 'zh') s = s.replace(new RegExp('(?<=[' + GEN2_CJK + '])[ 　]+(?=[' + GEN2_CJK + '])', 'gu'), '')
+  return s
+}
+// ONE utterance by ONE speaker: no line breaks, no question followed by its own answer (水、飲む？はい、飲む。)
+function gen2TurnProblem(lang, s) {
+  if (/\n/.test(s)) return 'two turns in one utterance (line break)'
+  const reply = lang === 'ja' ? /[。？！?!]\s*(はい|いいえ|うん|ううん|ええ)/ : lang === 'zh' ? /[。？！?!]\s*(对|是的|不是|好的|嗯|没有)/ : null
+  return reply && reply.test(s) ? 'two turns in one utterance (a reply follows)' : null
+}
+// fragment test counts the target itself: the unit counter does not count 何 / する / あれ, so 今、何してるの？ was "1 unit"
+function gen2Units(ctx, w, text) {
+  const a = ctx.cc.analyse(text), t = w && w[GEN2_LANG[ctx.lang].field]
+  let units = a.units
+  try { if (t && ctx.cc.analyse(t).units === 0) units++ } catch (e) {}
+  // Japanese: the complexity counter is an upper-bound length measure (今、何してるの？ = 1 unit), not a fragment test;
+  // count words with the segmenter instead (particles excluded) — the length limit still uses the production counter
+  if (ctx.lang === 'ja' && typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function')
+    units = Math.max(units, [...new Intl.Segmenter('ja', { granularity: 'word' }).segment(String(text || ''))].filter(x => x.isWordLike && !/^(は|が|を|に|で|へ|と|も|の|や|か|ね|よ|な)$/.test(x.segment)).length)
+  return { a, units }
+}
+// Japanese closed vocabulary, kana words: the production line checker passes ANY all-hiragana word (ねこ, いもうと,
+// あなた, かわいい …). Gen2 segments the sentence and requires every stand-alone hiragana word to be a taught word (kana
+// spelling, reading or inflection), a basic, a grammar form or a function morpheme. Fragments of an inflected word
+// (the segmenter's べた in 食べた) are not stand-alone. この/その/あの/どの are allowed only when これ/それ/あれ/どれ is taught.
+const GEN2_JA_FUNCTION = ('は が を に で へ と も の や か ね よ な わ ぞ さ ん だ です ます でした ました ません ない なかった た て で てる でる ' +
+  'ている ちゃう ちゃった じゃ じゃない だった だろう でしょう う よう ろう れば ば たら ら から まで けど けれど のに ので って し たい たく たかった ' +
+  'そう みたい かな かも ね え あ ああ ほら まあ ねえ よね んだ んです こと もの ところ だよ だね だから だけ だけど しか もう なあ じゃん とか など くらい ぐらい ずつ ほど より').split(' ')
+function gen2JaKanaLexicon(inv) {
+  const kana = new Set(GEN2_JA_FUNCTION), isKana = x => !!x && /^[぀-ゟ]+$/.test(x)
+  const add = x => { if (isKana(x)) kana.add(x) }
+  ;(inv.allContent || []).forEach(w => { add(w.japanese); add(w.reading); try { gen2JaForms(w).forEach(add) } catch (e) {} })
+  ;(inv.conversationBasics || []).forEach(b => { add(b.form); add(b.reading) })
+  ;(inv.grammarScaffold || []).forEach(g => add(g.form))
+  ;[['これ', 'この'], ['それ', 'その'], ['あれ', 'あの'], ['どれ', 'どの']].forEach(([pro, det]) => { if (kana.has(pro)) kana.add(det) })
+  return kana
+}
+function gen2JaKanaWordProblem(text, inv) {
+  if (typeof Intl === 'undefined' || typeof Intl.Segmenter !== 'function' || !inv.jaInv) return null   // no segmenter: production checker only
+  if (!inv.kana) inv.kana = gen2JaKanaLexicon(inv.jaInv)
+  const K = inv.kana, PART = /^(は|が|を|に|で|へ|と|も|の|や|か|ね|よ)$/
+  const known = x => K.has(x) || [...K].some(f => f.length > x.length && f.startsWith(x)) ||
+    [...Array(x.length - 1).keys()].some(i => i >= 1 && K.has(x.slice(0, i + 1)) && (K.has(x.slice(i + 1)) || GEN2_JA_FUNCTION.includes(x.slice(i + 1))))
+  const bad = []
+  let prev = null
+  for (const sg of new Intl.Segmenter('ja', { granularity: 'word' }).segment(text)) {
+    const x = sg.segment
+    const standAlone = !prev || !prev.isWordLike || PART.test(prev.segment)
+    if (sg.isWordLike && /^[぀-ゟ]{2,}$/.test(x) && standAlone && !known(x)) bad.push(x)
+    prev = sg
+  }
+  return bad.length ? 'untaught (kana): ' + bad.join(' ') : null
+}
+// reading + romaji (the learner's pronunciation line): kana only, romaji must transcribe that reading, and where the
+// dictionary can read the sentence unambiguously the model's reading must agree with it
+const gen2KanaNorm = x => String(x || '').replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60)).replace(/[^぀-ゟー]/g, '')
+function gen2JaReadingProblem(c, inv) {
+  const r = String(c.reading || ''), ro = String(c.romaji || '')
+  if (!r || !ro) return 'reading/romaji missing'
+  if (/[一-鿿]/.test(r)) return 'reading contains kanji'
+  if (/[^\x20-\x7eāūēō]/.test(ro.replace(/[、。？！]/g, ''))) return 'romaji contains non-latin text'
+  if (!romajiMatchesReading(ro, r)) return 'romaji does not match the reading'
+  try {
+    const d = rebuildJapaneseReadingPipeline({ japanese: c.text }, inv.jaInv).reading
+    if (d && !/[一-鿿]/.test(d) && gen2KanaNorm(d) !== gen2KanaNorm(r)) return 'reading ' + r + ' disagrees with the dictionary reading ' + d
+  } catch (e) {}
+  return null
+}
+// a template repeated with another noun (この本、どう思う？ / この映画、どう思う？) is not a different use (Japanese)
+const gen2Skeleton = (lang, core) => lang === 'ja' ? core.replace(/[一-鿿゠-ヿ]+/g, '■') : core
 // ── the run context: one place for models, budget, inventory, accounting
 function gen2Context(o) {
   const lang = o.lang, vocab = o.vocab
@@ -8913,7 +8994,7 @@ function gen2Inventory(ctx, targets) {
   if (lang === 'ja') {
     const inv = japaneseLearnerInventory(ctx.vocab, targets)
     const list = [...new Set([...inv.allContent.map(w => w.japanese), ...inv.conversationBasics.map(b => b.form)])]
-    return { list, grammar: inv.grammarScaffold.map(g => g.form), check: text => { const r = japaneseCheckLine(text, inv); return r.ok ? [] : ['untaught: ' + r.unknown.join(' ')] } }
+    return { list, grammar: inv.grammarScaffold.map(g => g.form), jaInv: inv, check: text => { const r = japaneseCheckLine(text, inv); return r.ok ? [] : ['untaught: ' + r.unknown.join(' ')] } }
   }
   const inv = mandarinLearnerInventory(ctx.vocab, targets)
   return { list: [...new Set((inv.lexicon || []).map(x => x.w))], check: text => { const r = mandarinCheckLine(text, inv); const g = mandarinSurfaceGrammarProblems(text, inv) || []; return (r.ok ? [] : ['untaught: ' + r.unknown.join(' ')]).concat(g.map(x => typeof x === 'string' ? x : (x && (x.code || x.reason)) || 'grammar')) } }
@@ -8953,10 +9034,11 @@ function gen2ProbePrompt(ctx, w, inv, siblings, feedback, n) {
     'ALLOWED WORDS — use ONLY these words, the target word, and normal grammar (particles, inflection): ' + inv.list.join(' ') + (inv.grammar ? '\nALLOWED GRAMMAR: ' + inv.grammar.join(' ') : '') + '\n' +
     'Write ' + n + ' candidate practice sentences. Together they must contain at least THREE DIFFERENT real uses of the target (different communicative functions, e.g. asking, answering, offering, refusing, suggesting, describing) — never the same sentence with one word changed.\n' +
     'Every sentence must be complete, grammatically perfect, and something a native speaker would naturally say to a friend in an everyday situation, using the target in the sense "' + w.english + '". Do not invent odd combinations just to use the allowed words.\n' +
-    'For each candidate give: "function" (1–3 words), "situation" (when it is said, short English), "cue" (an English instruction telling the learner WHAT TO COMMUNICATE without giving the words, e.g. "Ask your friend whether they are free tonight." — never a translation of the sentence), "text" (the ' + L.name + ' sentence), "english" (a faithful natural translation), "speaker" ("male", "female" or "either").\n' +
+    'For each candidate give: "function" (1–3 words), "situation" (when it is said, short English), "cue" (an English instruction telling the learner WHAT TO COMMUNICATE without giving the words, e.g. "Ask your friend whether they are free tonight." — never a translation of the sentence; a learner following it should naturally need THIS target word), "text" (the ' + L.name + ' sentence: ONE utterance by ONE speaker — never a question together with its answer' + (ctx.lang === 'ja' || ctx.lang === 'zh' ? '; normal writing with no spaces between words' : '') + '), "english" (a faithful natural translation that keeps the nuance), "speaker" ("male", "female" or "either")' +
+    (ctx.lang === 'ja' ? ', "reading" (the whole sentence in hiragana exactly as spoken), "romaji" (Hepburn romaji of that reading, words separated by spaces; the particles は / を / へ are written wa / o / e)' : '') + '.\n' +
     'If this word cannot be used naturally with the allowed words, return "teachable": false with a short "reason" instead of forcing sentences.\n' +
     (feedback ? feedback + '\n' : '') +
-    'Return ONLY JSON: {"teachable": true, "reason": "", "candidates": [{"function": "", "situation": "", "cue": "", "text": "", "english": "", "speaker": ""}]}'
+    'Return ONLY JSON: {"teachable": true, "reason": "", "candidates": [{"function": "", "situation": "", "cue": "", "text": "", "english": "", "speaker": ""' + (ctx.lang === 'ja' ? ', "reading": "", "romaji": ""' : '') + '}]}'
 }
 function gen2JudgePrompt(ctx, w, items, siblings) {
   const L = GEN2_LANG[ctx.lang]
@@ -8968,9 +9050,14 @@ function gen2JudgePrompt(ctx, w, items, siblings) {
     ' grammar: ok | error\n natural: natural | marginal | unnatural   (would a native speaker say exactly this to a friend?)\n' +
     ' translation: accurate | misleading   (does the English say what the sentence says?)\n target: correct | wrong-sense | absent   (target present in a correct form, used in the sense given)\n' +
     ' cue: useful | copies-answer | ambiguous | misleading   (could a learner who reads ONLY the cue produce essentially this sentence with this target word?)\n' +
-    ' speaker: ok | wrong   (fits the stated speaker)\n useful: useful | weak | not-useful   (a real, reusable thing a beginner needs to say)\n fragment: true | false\n note: a short reason when anything is wrong\n' +
-    'ITEMS:\n' + items.map((c, i) => (i + 1) + '. [speaker: ' + c.speaker + '] ' + c.text + ' | English: ' + c.english + ' | Cue: ' + c.cue).join('\n') + '\n' +
-    'Return ONLY JSON: {"items": [{"n": 1, "grammar": "", "natural": "", "translation": "", "target": "", "cue": "", "speaker": "", "useful": "", "fragment": false, "note": ""}]}'
+    ' speaker: ok | wrong   (fits the stated speaker and register)\n useful: useful | weak | not-useful   (a real, reusable thing a beginner needs to say)\n fragment: true | false\n' +
+    ' turns: one | multiple   (ONE utterance by ONE speaker; a question together with its own answer is "multiple")\n' +
+    (ctx.lang === 'ja' ? ' reading: ok | error   (the hiragana reading and the romaji are exactly how this sentence is said)\n' : '') +
+    ' note: a short reason when anything is wrong\n' +
+    'Be precise about: the cue is "misleading" when a learner following it would naturally say it with a DIFFERENT word; the translation is "misleading" when it changes the function (e.g. Japanese 大丈夫 in reply to an offer politely DECLINES it; ちょっとだけ means "just a little", not "just a moment").' +
+    (ctx.lang === 'ja' ? ' Between friends あなた sounds unnatural, and いいえ / です・ます are polite speech; judge the register against SPEAKERS above.' : '') + '\n' +
+    'ITEMS:\n' + items.map((c, i) => (i + 1) + '. [speaker: ' + c.speaker + '] ' + c.text + (ctx.lang === 'ja' ? ' | Reading: ' + c.reading + ' | Romaji: ' + c.romaji : '') + ' | English: ' + c.english + ' | Cue: ' + c.cue).join('\n') + '\n' +
+    'Return ONLY JSON: {"items": [{"n": 1, "grammar": "", "natural": "", "translation": "", "target": "", "cue": "", "speaker": "", "useful": "", "fragment": false, "turns": "one",' + (ctx.lang === 'ja' ? ' "reading": "ok",' : '') + ' "note": ""}]}'
 }
 function gen2Verdict(v) {
   if (!v) return { ok: false, why: 'judge: no verdict (UNVERIFIED)' }
@@ -8983,6 +9070,8 @@ function gen2Verdict(v) {
   if (v.speaker && v.speaker !== 'ok') bad.push('speaker ' + v.speaker)
   if (v.useful !== 'useful') bad.push('usefulness ' + v.useful)
   if (v.fragment === true || v.fragment === 'true') bad.push('fragment')
+  if (v.turns != null && v.turns !== 'one') bad.push('turns ' + v.turns)
+  if (v.reading != null && v.reading !== 'ok') bad.push('reading ' + v.reading)
   return bad.length ? { ok: false, why: 'judge: ' + bad.join(', ') + (v.note ? ' — ' + v.note : '') } : { ok: true }
 }
 function gen2SpeakerProblem(ctx, c) {
@@ -9010,9 +9099,12 @@ function gen2DetCheck(ctx, w, c, inv) {
   if (!L.script.test(c.text)) p.push('not ' + L.name)
   if (!gen2TargetPresent(ctx.lang, c.text, w, ctx.vocab)) p.push('target absent')
   p.push(...inv.check(c.text))
-  const a = ctx.cc.analyse(c.text)
+  if (ctx.lang === 'ja') { const kw = gen2JaKanaWordProblem(c.text, inv); if (kw) p.push(kw) }
+  const tp = gen2TurnProblem(ctx.lang, c.text); if (tp) p.push(tp)
+  const { a, units } = gen2Units(ctx, w, c.text)
   if (a.overHardMax) p.push('too long (' + a.units + ' > ' + ctx.cc.hardMax + ')')
-  if (a.units < 2 && gen2WordClass(ctx.lang, w) !== 'expression') p.push('fragment (' + a.units + ' unit)')
+  if (units < 2 && gen2WordClass(ctx.lang, w) !== 'expression') p.push('fragment (' + units + ' unit)')
+  if (ctx.lang === 'ja') { const rp = gen2JaReadingProblem(c, inv); if (rp) p.push(rp) }
   const cp = gen2CueProblem(c.cue, c.english, ctx.lang); if (cp) p.push(cp)
   const sp = gen2SpeakerProblem(ctx, c); if (sp) p.push(sp)
   return p
@@ -9023,14 +9115,15 @@ function gen2PickDistinct(lang, accepted, need) {
   for (const c of accepted) {
     const core = gen2Core(lang, c.text), fn = gen2Norm(c.function)
     if (out.some(o => gen2Norm(o.function) === fn && fn) ) continue
-    if (out.some(o => { const oc = gen2Core(lang, o.text); return oc === core || gen2Similar(oc, core) >= 0.6 })) continue
+    if (out.some(o => { const oc = gen2Core(lang, o.text); return oc === core || gen2Similar(oc, core) >= 0.6 || (lang === 'ja' && gen2Skeleton(lang, oc) === gen2Skeleton(lang, core)) })) continue
     out.push(c)
     if (out.length >= need) break
   }
   return out
 }
-async function gen2TeachTarget(ctx, w, st) {
-  const L = GEN2_LANG[ctx.lang], rec = { id: w.id, surface: w[L.field], english: w.english, wordClass: gen2WordClass(ctx.lang, w), attempts: [], status: null, reason: null, recalls: [] }
+async function gen2TeachTarget(ctx0, w, st) {
+  const ctx = gen2TargetCtx(ctx0, w)   // v678.1: polite-register words get the polite convention for their own recalls
+  const L = GEN2_LANG[ctx.lang], rec = { id: w.id, surface: w[L.field], english: w.english, wordClass: gen2WordClass(ctx.lang, w), speechStyle: ctx.speechStyle, attempts: [], status: null, reason: null, recalls: [] }
   const siblings = gen2Siblings(ctx, w, st.pool)
   const rejected = st.rejectedByTarget.get(w.id) || new Set(); st.rejectedByTarget.set(w.id, rejected)
   let accepted = []
@@ -9040,10 +9133,11 @@ async function gen2TeachTarget(ctx, w, st) {
       (accepted.length ? '\nALREADY ACCEPTED (write DIFFERENT functions from these): ' + accepted.map(a => a.text + ' [' + a.function + ']').join(' / ') : '') + '\nWrite new candidates; at least ' + need + ' must be acceptable.'
     const att = { probe: k, candidates: 0, detRejected: 0, repeatsSuppressed: 0, judged: 0, accepted: 0, reasons: [] }
     rec.attempts.push(att)
-    const res = await gen2Ask(ctx, 'P_gen2_probe', gen2ProbePrompt(ctx, w, st.inv, siblings, fb, GEN2_CONFIG.candidatesPerProbe), { attempt: k })
+    const res = await gen2Ask(ctx0, 'P_gen2_probe', gen2ProbePrompt(ctx, w, st.inv, siblings, fb, GEN2_CONFIG.candidatesPerProbe), { attempt: k })
     if (res && res.teachable === false) { att.reasons.push('generator: not teachable — ' + (res.reason || '')); if (!accepted.length) { rec.status = 'deferred'; rec.reason = 'NOT_TEACHABLE_WITH_INVENTORY: ' + (res.reason || 'generator declined'); return rec } continue }
     const cands = (res && Array.isArray(res.candidates) ? res.candidates : []).filter(Boolean).map(c => ({ function: String(c.function || ''), situation: String(c.situation || ''), cue: String(c.cue || '').trim(),
-      text: String(c.text || '').trim(), english: String(c.english || '').trim(), speaker: /^(male|female)$/.test(c.speaker) ? c.speaker : 'either' }))
+      text: gen2Tidy(ctx.lang, c.text), english: String(c.english || '').trim(), speaker: /^(male|female)$/.test(c.speaker) ? c.speaker : 'either',
+      ...(ctx.lang === 'ja' ? { reading: gen2Tidy('ja', c.reading), romaji: String(c.romaji || '').trim().replace(/\s+/g, ' ') } : {}) }))
     att.candidates = cands.length
     if (!cands.length) { att.reasons.push('generator reply unusable'); continue }
     const toJudge = []
@@ -9057,8 +9151,8 @@ async function gen2TeachTarget(ctx, w, st) {
     }
     if (toJudge.length) {
       att.judged = toJudge.length
-      let jr = await gen2Ask(ctx, 'R_gen2_judge', gen2JudgePrompt(ctx, w, toJudge, siblings), { judge: true, attempt: k, maxTokens: 1800 })
-      if (!jr || !Array.isArray(jr.items)) jr = await gen2Ask(ctx, 'R_gen2_judge', gen2JudgePrompt(ctx, w, toJudge, siblings) + '\n(Reply with valid JSON only.)', { judge: true, attempt: k + 10, maxTokens: 1800 })
+      let jr = await gen2Ask(ctx0, 'R_gen2_judge', gen2JudgePrompt(ctx, w, toJudge, siblings), { judge: true, attempt: k, maxTokens: 1800 })
+      if (!jr || !Array.isArray(jr.items)) jr = await gen2Ask(ctx0, 'R_gen2_judge', gen2JudgePrompt(ctx, w, toJudge, siblings) + '\n(Reply with valid JSON only.)', { judge: true, attempt: k + 10, maxTokens: 1800 })
       const items = jr && Array.isArray(jr.items) ? jr.items : []
       toJudge.forEach((c, i) => {
         const v = items.find(x => +x.n === i + 1) || null
@@ -9124,6 +9218,7 @@ async function gen2Daily(o) {
       const c = rec.recalls[r]; if (!c) return
       const spk = c.speaker === 'male' || c.speaker === 'female' ? gen2LetterFor(c.speaker) : (alt++ % 2 ? 'B' : 'A')
       pairs.push({ speaker: spk, [L.field]: c.text, thai: c.text, english: c.english, prompt: c.cue, targetId: rec.id, recallIndex: r + 1, isTargetPair: true,
+        ...(lang === 'ja' ? { reading: c.reading, romaji: c.romaji, phonetic: c.romaji } : {}),
         _source: 'gen2:teachability', _gen2: { function: c.function, situation: c.situation, judge: c.judge || null } })
     })
   }
@@ -9148,10 +9243,10 @@ function gen2AcceptDaily(ctx, frozen, pairs, need, st) {
   const byT = new Map(); pairs.forEach(p => { if (!byT.has(p.targetId)) byT.set(p.targetId, []); byT.get(p.targetId).push(p) })
   if (pairs.length !== frozen.length * 3) problems.push('RECALLS=' + pairs.length + '/' + frozen.length * 3)
   frozen.forEach(rec => {
-    const ps = byT.get(rec.id) || [], w = ctx.byId.get(rec.id)
+    const ps = byT.get(rec.id) || [], w = ctx.byId.get(rec.id), tctx = gen2TargetCtx(ctx, w)
     if (ps.length !== 3) problems.push(rec.surface + ': ' + ps.length + ' recalls')
     if (new Set(ps.map(p => gen2Core(lang, p[field]))).size !== ps.length) problems.push(rec.surface + ': duplicate recalls')
-    ps.forEach(p => { const d = gen2DetCheck(ctx, w, { text: p[field], english: p.english, cue: p.prompt, speaker: lang === 'th' ? thaiSpeakerMapGender(p.speaker) : 'either' }, st.inv)
+    ps.forEach(p => { const d = gen2DetCheck(tctx, w, { text: p[field], english: p.english, cue: p.prompt, reading: p.reading, romaji: p.romaji, speaker: lang === 'th' ? thaiSpeakerMapGender(p.speaker) : 'either' }, st.inv)
       if (d.length) problems.push(rec.surface + ': ' + d.join(', ')) ; if (!p._gen2 || !p._gen2.judge || !gen2Verdict(p._gen2.judge).ok) problems.push(rec.surface + ': not judge-accepted') })
   })
   const cores = pairs.map(p => gen2Core(lang, p[field])), cues = pairs.map(p => gen2Norm(p.prompt))

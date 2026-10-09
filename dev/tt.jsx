@@ -9123,6 +9123,56 @@ function gen2PronouncePrompt(items) {
 // reading the exact-sentence check matched. The same segments give a deterministic, word-spaced romaji.
 const GEN2_JA_PARTICLE_ROMAJI = { 'は': 'wa', 'を': 'o', 'へ': 'e' }
 const GEN2_JA_PUNCT = { '、': ',', '。': '.', '？': '?', '！': '!', '…': '…', '?': '?', '!': '!', ',': ',', '.': '.' }
+function gen2JaFormIndex(inv) {
+  if (inv._forms) return inv._forms
+  const map = new Map(), add = (f, lemma) => { if (f && !map.has(f)) map.set(f, lemma) }
+  ;((inv.jaInv && inv.jaInv.allContent) || []).concat(((inv.jaInv && inv.jaInv.conversationBasics) || []).map(b => ({ japanese: b.form }))).forEach(w => {
+    const jp = w.japanese || ''; if (!jp) return
+    add(jp, jp)
+    try { gen2JaForms(w).forEach(f => add(f, jp)) } catch (e) {}
+    const x = jp.match(/^(.*?[一-鿿])([぀-ゟ]*)$/)
+    if (x && /i-adj/.test(w.partOfSpeech || '') && x[2].endsWith('い')) GEN2_JA_IADJ_TAILS.forEach(z => add(x[1] + x[2].slice(0, -1) + z, jp))
+    if (x && w.conjugationClass === 'ichidan') ['た', 'て', 'ない', 'ます', 'ました', 'ません', 'たい', 'よう', 'ちゃった', 'てる', 'ている', 'なかった', 'られる', 'れば', 'ろ'].forEach(z => add(x[1] + x[2].slice(0, -1) + z, jp))
+  })
+  ;['です', 'でした', 'でしょう', 'だ', 'だった', 'だろう'].forEach(f => add(f, 'だ'))   // the copula is never a verb (大丈夫|です)
+  ;[...map.keys()].filter(f => /ます$/.test(f)).forEach(f => { const st = f.slice(0, -2); ['ましょう', 'ませんか', 'ませんでした'].forEach(z => add(st + z, map.get(f))) })   // 行きましょう
+  inv._forms = { map, keys: [...map.keys()].sort((a, b) => b.length - a.length) }
+  return inv._forms
+}
+function gen2JaPieces(t, inv) {
+  // word pieces — DICTIONARY FIRST: at each position the longest known form of a taught word (any conjugation: 行きます,
+  // してる, 楽しかった, 電話 …) is one piece carrying its LEMMA (production's usage rules judge 行く / する, not 行き + ます).
+  // Elsewhere the segmenter's words, with は/を/へ split off a small word (のは → の + は) or a noun (映画|はよかった).
+  const formsOf = gen2JaFormIndex(inv)
+  const segAt = new Map(); for (const sg of new Intl.Segmenter('ja', { granularity: 'word' }).segment(t)) segAt.set(sg.index, sg)
+  const SMALL = /^(の|と|に|で|から|まで|より|って|ん|こと|もの)$/
+  const pieces = []
+  let i0 = 0
+  while (i0 < t.length) {
+    const ch = t[i0]
+    if (GEN2_JA_PUNCT[ch] != null || /\s/.test(ch)) { pieces.push({ surf: ch, from: i0, punct: true }); i0++; continue }
+    const longestAt = i => formsOf.keys.find(k => t.startsWith(k, i) && !(k.length === 1 && /^[ぁ-ゖ]$/.test(k)))
+    let f = longestAt(i0)
+    // a particle followed by a longer word beats a kana word that swallows the particle (これ|は|いくら, not これ|はい|くら)
+    if (f && /^[ぁ-ゖ]+$/.test(f) && /^(は|が|を|に|で|と|も|へ|の|か)$/.test(ch)) { const nx = longestAt(i0 + 1), sn = segAt.get(i0 + 1), nxLen = Math.max(nx ? nx.length : 0, sn && sn.isWordLike ? sn.segment.length : 0); if (nxLen && 1 + nxLen > f.length) f = null }
+    if (f) { pieces.push({ surf: f, from: i0, lemma: formsOf.map.get(f) }); i0 += f.length; continue }
+    const sg = segAt.get(i0)
+    let surf = sg ? sg.segment : ch
+    // never swallow the start of a known form that begins inside this segment
+    for (let j = 1; j < surf.length; j++) if (formsOf.keys.some(k => k.length > 1 && t.startsWith(k, i0 + j))) { surf = surf.slice(0, j); break }
+    const prev = pieces[pieces.length - 1]
+    if (surf.length >= 2 && GEN2_JA_PARTICLE_ROMAJI[surf.slice(-1)] && SMALL.test(surf.slice(0, -1))) {
+      pieces.push({ surf: surf.slice(0, -1), from: i0 }); pieces.push({ surf: surf.slice(-1), from: i0 + surf.length - 1 }); i0 += surf.length; continue }
+    if (surf.length >= 2 && GEN2_JA_PARTICLE_ROMAJI[surf[0]] && prev && !prev.punct && /[一-鿿゠-ヿ]$/.test(prev.surf)) {
+      pieces.push({ surf: surf[0], from: i0 }); i0 += 1; continue }
+    pieces.push({ surf, from: i0 }); i0 += surf.length
+  }
+  // a piece that starts with the small っ belongs to the word before it (its doubling would otherwise be lost)
+  for (let k = pieces.length - 1; k > 0; k--) if (!pieces[k].punct && !pieces[k - 1].punct && /^っ/.test(pieces[k].surf)) { pieces[k - 1].surf += pieces[k].surf; pieces.splice(k, 1) }
+  // …and a piece that ENDS with っ takes the next piece (か + っ + たよ → かったよ): the doubling needs the following sound
+  for (let k = 0; k < pieces.length - 1; k++) while (k < pieces.length - 1 && !pieces[k].punct && !pieces[k + 1].punct && /っ$/.test(pieces[k].surf)) { pieces[k].surf += pieces[k + 1].surf; pieces.splice(k + 1, 1) }
+  return pieces
+}
 function gen2JaSegments(text, reading, inv) {
   if (!inv || !inv.jaInv || typeof Intl === 'undefined' || typeof Intl.Segmenter !== 'function') return null
   const { map, keys } = gen2JaStemReadings(inv)
@@ -9146,38 +9196,7 @@ function gen2JaSegments(text, reading, inv) {
   const sound = new Array(t.length).fill('')
   units.forEach((u, k) => { sound[u.from] = m[k + 1] })
   const byWord = new Map(((inv.jaInv && inv.jaInv.allContent) || []).map(w => [w.japanese, w]))
-  // word pieces: the segmenter's words, with a trailing は/を/へ split off a small word (のは → の + は) and an inflection
-  // ending glued back onto its kanji word (見 + たよ → 見たよ, し + てる → してる)
-  const SMALL = /^(の|と|に|で|から|まで|より|って|ん|こと|もの)$/
-  const pieces = []
-  for (const sg of new Intl.Segmenter('ja', { granularity: 'word' }).segment(t)) {
-    const surf = sg.segment
-    if (!sg.isWordLike) { pieces.push({ surf, from: sg.index, punct: true }); continue }
-    if (surf.length >= 2 && GEN2_JA_PARTICLE_ROMAJI[surf.slice(-1)] && SMALL.test(surf.slice(0, -1))) {
-      pieces.push({ surf: surf.slice(0, -1), from: sg.index }); pieces.push({ surf: surf.slice(-1), from: sg.index + surf.length - 1 }); continue }
-    const prev = pieces[pieces.length - 1]
-    if (surf.length >= 2 && GEN2_JA_PARTICLE_ROMAJI[surf[0]] && prev && !prev.punct && /[\u4e00-\u9fff\u30a0-\u30ff]$/.test(prev.surf)) {   // 映画|はよかった → 映画|は|よかった
-      pieces.push({ surf: surf[0], from: sg.index }); pieces.push({ surf: surf.slice(1), from: sg.index + 1 }); continue }
-    pieces.push({ surf, from: sg.index })
-  }
-  // a taught word's kanji absorbs exactly that word's own ending (楽 + しかった, 使 + った, 見 + た): dictionary, not guesswork
-  const { tails } = gen2JaStemTable(inv), tailKeys = [...tails.keys()].sort((x, y) => y.length - x.length)
-  for (let k = 0; k < pieces.length; k++) {
-    const pc = pieces[k]; if (pc.punct) continue
-    const key = tailKeys.find(x => pc.surf.endsWith(x)); if (!key) continue
-    const rest = t.slice(pc.from + pc.surf.length)
-    const tl = [...tails.get(key)].filter(z => rest.startsWith(z)).sort((x, y) => y.length - x.length)[0]
-    let need = tl ? tl.length : 0
-    while (need > 0 && pieces[k + 1] && !pieces[k + 1].punct) {
-      const nx = pieces[k + 1]
-      if (nx.surf.length > need) { pieces.splice(k + 1, 1, { surf: nx.surf.slice(0, need), from: nx.from }, { surf: nx.surf.slice(need), from: nx.from + need }); continue }
-      pc.surf += nx.surf; need -= nx.surf.length; pieces.splice(k + 1, 1)
-    }
-  }
-  // a piece that starts with the small っ belongs to the word before it (its doubling would otherwise be lost)
-  for (let k = pieces.length - 1; k > 0; k--) if (!pieces[k].punct && !pieces[k - 1].punct && /^っ/.test(pieces[k].surf)) { pieces[k - 1].surf += pieces[k].surf; pieces.splice(k, 1) }
-  // …and a piece that ENDS with っ takes the next piece (か + っ + たよ → かったよ): the doubling needs the following sound
-  for (let k = 0; k < pieces.length - 1; k++) while (k < pieces.length - 1 && !pieces[k].punct && !pieces[k + 1].punct && /っ$/.test(pieces[k].surf)) { pieces[k].surf += pieces[k + 1].surf; pieces.splice(k + 1, 1) }
+  const pieces = gen2JaPieces(t, inv)
   const segs = []
   for (const pc of pieces) {
     const surf = pc.surf
@@ -9186,7 +9205,8 @@ function gen2JaSegments(text, reading, inv) {
     if (!rd) continue
     const part = GEN2_JA_PARTICLE_ROMAJI[surf] && rd === surf
     const w = byWord.get(surf)
-    segs.push({ surface: surf, reading: rd, romaji: part ? GEN2_JA_PARTICLE_ROMAJI[surf] : kanaToRomaji(rd), english: w ? String(w.english || '').split(/[\/;,]/)[0].trim() : '', type: part ? 'particle' : 'content' })
+    const lw = pc.lemma ? byWord.get(pc.lemma) : w
+    segs.push({ surface: surf, reading: rd, romaji: part ? GEN2_JA_PARTICLE_ROMAJI[surf] : kanaToRomaji(rd), english: lw ? String(lw.english || '').split(/[\/;,]/)[0].trim() : '', type: part ? 'particle' : 'content', ...(pc.lemma ? { lemma: pc.lemma } : {}) })
   }
   const joined = segs.filter(s => s.type !== 'punct').map(s => s.reading).join('')
   if (joined !== gen2KanaNorm(reading)) return null
@@ -9365,6 +9385,10 @@ function gen2DetCheck(ctx, w, c, inv) {
   p.push(...inv.check(c.text))
   if (ctx.lang === 'ja') { const kw = gen2JaKanaWordProblem(c.text, inv); if (kw) p.push(kw) }
   if (ctx.lang === 'ja') { const sp = gen2JaStemProblem(c.text, inv); if (sp) p.push(sp) }
+  if (ctx.lang === 'ja' && inv.jaInv && typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {   // v679: production's usage rules, applied up front
+    try { const segs = gen2JaPieces(c.text, inv).filter(x => !x.punct).map(x => ({ surface: x.surf, ...(x.lemma ? { lemma: x.lemma } : {}), type: 'content' }))
+      const r = validateJapaneseUsage({ japanese: c.text, segments: segs }, inv.jaInv), pr = Array.isArray(r) ? r : ((r && r.problems) || [])
+      if (pr.length) p.push('production usage rule: ' + pr.join('; ')) } catch (e) {} }
   if (ctx.lang === 'zh' || ctx.lang === 'th') { const pp = gen2PronProblem(ctx.lang, c.text, inv); if (pp) p.push(pp) }
   const tp = gen2TurnProblem(ctx.lang, c.text); if (tp) p.push(tp)
   const { a, units } = gen2Units(ctx, w, c.text)

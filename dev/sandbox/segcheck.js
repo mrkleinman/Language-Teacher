@@ -17,3 +17,9 @@ for (const [t, g] of m) { const sg = c.gen2JaSegments(t, g.reading, inv); if (!s
   if (pr.length) bad.push(t + ' → ' + pr.join('; ')) }
 console.log('validated readings ' + m.size + ' · segmented ' + seg + ' · production-audit problems ' + bad.length); bad.slice(0, 8).forEach(x => console.log('  ' + x))
 for (const [t, r] of [['あの映画をまた見たよ。', 'あのえいがをまたみたよ。'], ['今何してるの？', 'いまなにしてるの？'], ['昨日、一緒にご飯を食べるのは楽しかった。', 'きのう、いっしょにごはんをたべるのはたのしかった。']]) { const sg = c.gen2JaSegments(t, r, inv); console.log('  ' + t + ' → ' + (sg && sg.romaji) + ' · ' + (sg && sg.segments.map(x => x.surface).join('|'))) }
+// production's own usage rules (the ones that replaced Gen2 sentences in the app path) on every validated reading
+let usage = [], checked = 0
+for (const [t, g] of m) { const sg = c.gen2JaSegments(t, g.reading, inv); if (!sg) continue; checked++
+  const r = c.validateJapaneseUsage({ japanese: t, reading: sg.reading, romaji: g.romaji, segments: sg.segments }, inv.jaInv)
+  const pr = Array.isArray(r) ? r : ((r && r.problems) || []); if (pr.length) usage.push(t + ' → ' + pr.join('; ')) }
+console.log('production usage rules: ' + checked + ' checked · ' + usage.length + ' flagged'); usage.forEach(x => console.log('  ' + x))

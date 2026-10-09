@@ -1,0 +1,271 @@
+✓ Scene ready
+🧪 GEN2 DAILY ja · gen2-pilot/1.1 · generator gemini-2.5-flash-lite · judge gemini-2.5-flash · candidates 107 (fixed 30 + reserve)
+✅ TEACHABLE どう (question-word) · これどう使う？ / 大丈夫？どう？ / このご飯、どう？おいしい？
+✅ TEACHABLE なんで (question-word) · なんで遅いんだ / なんで行きたくないの / なんでその本を買うんだ
+↪ DEFERRED どっち — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE どれ (question-word) · 写真、どれが家族のだ？ / 映画、どれを見る？ / 本、どれが欲しい？
+✅ TEACHABLE また (adverb) · 今日また会おうよ / またあれが食べたい / うん、また電話するよ
+✅ TEACHABLE あそこ (pronoun) · あそこにある新しい店見てよ / トイレはあそこにある？ / あそこへはどう行くの？
+✅ TEACHABLE あれ (pronoun) · あれ、欲しいもの？ / あれ、駅？ / あれ、友達だ！
+↪ DEFERRED ごめん — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE 電話 (noun) · 明日電話するよ。 / 電話を待っていたから。 / 電話しようか？
+✅ TEACHABLE はい (response) · はい、分かりました。 / はい、これを買います。 / はい、一緒に行きましょう。
+✅ TEACHABLE うん (response) · うん、行こう。 / うん、分かるよ。 / うん、いい。ありがとう。
+✅ TEACHABLE いいえ (response) · いいえ、わかりません。 / いいえ、このほんはかいません。 / いいえ、えきへは行きません。
+✅ TEACHABLE たぶん (adverb) · あれはたぶん新しい車だ。 / たぶん分からない。 / あの店はたぶんおいしいよ。
+✅ TEACHABLE 乗る (verb) · 電車に乗ろうよ / 電車に乗るのが好き / どの電車に乗ればいい
+✅ TEACHABLE 大丈夫 (expression) · ごめん、今日はもう大丈夫。 / ここまで分かる？大丈夫？ / あれ、大丈夫？
+✅ TEACHABLE 行く (verb) · 今日、一緒に行こうか。 / どこへ行くの？ / あそこへ行く。
+↪ DEFERRED 食べる — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE 好き (adjective) · 何が好き？ / この映画が好き。 / この新しい店が本当に好き。
+✅ TEACHABLE 何 (question-word) · それ、何？ / 何をするの？ / 何食べてるの？
+✅ TEACHABLE 飲む (verb) · これ飲んでみる？ / 昨日何飲んだ？ / どこか飲みに行こうよ。
+✅ TEACHABLE どこ (question-word) · 会うのはどこ？ / どこに住んでる？ / その本どこで買った？
+✅ TEACHABLE 一緒 (noun) · どこか一緒に行かない？ / 映画を一緒に見ない？ / ここで一緒に食べない？
+↪ DEFERRED する — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE 今 (noun) · 今何してる？ / 今から行こうか？ / 今忙しいんだ。
+✅ TEACHABLE ちょっと (adverb) · きょうはちょっといそがしい。 / もうちょっとはなして。わからない。 / ちょっとやすもうか。
+✅ TEACHABLE 来る (verb) · いつ来るの？ / 何時に来るの？ / 明日、会いに来ない？
+↪ DEFERRED 分かる — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE ありがとう (expression) · あ、ありがとう。 / うん、欲しい。ありがとう。 / 今日は楽しかった。ありがとう。またね。
+✅ TEACHABLE すみません (expression) · すみません、あれはいくらですか。 / すみません、駅はどっちですか。 / すみません、この本はどこですか。
+✅ TEACHABLE いい (adjective) · あそこはいいから、行こう。 / うん、その本、いいと思う。 / これとそれはどっちがいい？
+✅ TEACHABLE 今日 (noun) · 今日何する？ / 今日駅へ行く。 / 今日映画見ない？
+✅ TEACHABLE 明日 (noun) · 明日、映画を見に行かない？ / 明日、何をする？ / 明日、店に行くよ。
+✅ TEACHABLE 見る (verb) · この映画見ようよ / あの写真見た？ / 大きい車を見たよ
+✅ TEACHABLE 買う (verb) · 昨日本買った。 / 新しい電話が欲しい。買いたい。 / また何か買う？
+↪ DEFERRED いくら — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s) · SRS unchanged (stays due)
+✅ TEACHABLE お金 (noun) · あれいくらお金？ / ごめん、今お金がないんだ。 / お金、ある？
+🔤 READING/ROMAJI 90/90
+📋 GEN2 DAILY READY · targets 30/30 · recalls 90/90 · deferred 6 · calls 105 {"P_gen2_probe":52,"R_gen2_judge":49,"S_gen2_reading":4}
+🧪 NEW GENERATOR track: 30 targets · 90 recalls · deferred (stay due): どっち ごめん 食べる する 分かる いくら · replaced by: 今日 明日 見る 買う お金
+━━ Quality check
+▶ Checking cue and translation alignment…
+  ⚠ Japanese invalid (pair 7): "行きたく" needs a particle — a bare noun cannot sit directly against "たく"
+⚠ Pair 7 — "行きたく" needs a particle — a bare noun cannot sit directly against "たく"
+  ⚠ Japanese invalid (pair 23): "買います" needs a particle — a bare noun cannot sit directly against "ます"
+⚠ Pair 23 — "買います" needs a particle — a bare noun cannot sit directly against "ます"
+  ⚠ Japanese invalid (pair 27): "電話しよう" needs a particle — a bare noun cannot sit directly against "よう"
+⚠ Pair 27 — "電話しよう" needs a particle — a bare noun cannot sit directly against "よう"
+  ⚠ Japanese invalid (pair 28): "ましょう" needs a particle — a bare noun cannot sit directly against "しょう"
+⚠ Pair 28 — "ましょう" needs a particle — a bare noun cannot sit directly against "しょう"
+  ⚠ Japanese invalid (pair 47): "飲んでみる" needs a particle — a bare noun cannot sit directly against "みる"
+⚠ Pair 47 — "飲んでみる" needs a particle — a bare noun cannot sit directly against "みる"
+  ⚠ Japanese invalid (pair 50): "してる" needs a particle — a bare noun cannot sit directly against "てる"
+⚠ Pair 50 — "してる" needs a particle — a bare noun cannot sit directly against "てる"
+  ⚠ Japanese invalid (pair 78): "映画見よう" needs a particle — a bare noun cannot sit directly against "見よう"
+⚠ Pair 78 — "映画見よう" needs a particle — a bare noun cannot sit directly against "見よう"
+  Batch 1/8: checking 12 pairs
+  Batch 2/8: checking 12 pairs
+  Batch 3/8: checking 12 pairs
+  Batch 4/8: checking 12 pairs
+  Batch 5/8: checking 12 pairs
+  Batch 6/8: checking 12 pairs
+  Batch 7/8: checking 12 pairs
+  Batch 8/8: checking 6 pairs
+  CUE_CHECK_COVERAGE scored 90/90 eligible pair(s)
+⚠ Pair 4 — cue does not map to the answer (2/5) — Cue is an 'ask' instruction, sentence is a suggestion. Translation is accurate for the sentence but not the cue.
+⚠ Pair 10 — cue could be clearer (3/5) — Cue implies pointing vaguely, sentence implies a specific location. Translation is accurate for the sentence but not the cue.
+⚠ Pair 14 — cue could be clearer (3/5) — The Japanese sentence does not include 'want'. The English translation adds this word, making it a mismatch with the Japanese sentence.
+⚠ Pair 26 — cue could be clearer (3/5) — translation adds 'want'
+⚠ Pair 30 — cue could be clearer (3/5) — Japanese only negates going to the station, doesn't specify going somewhere else
+⚠ Pair 38 — cue could be clearer (3/5) — translation adds 'want'
+⚠ Pair 41 — cue could be clearer (3/5) — cue is a suggestion, translation is a statement
+⚠ Pair 46 — cue could be clearer (3/5) — cue asks what friend has, translation asks what 'that' is
+⚠ Pair 66 — cue could be clearer (3/5) — The Japanese includes 'I don't understand', which is not present in the cue.
+⚠ Pair 89 — cue could be clearer (3/5) — The Japanese is a general question about buying something later, while the English translation adds 'again'.
+▶ Evaluating 30 target groups…
+  ✓ どう
+  ✓ なんで
+  ✓ どれ
+⚠ Pair 4 — また: cue or translation does not match the sentence (2/5)
+  🔄 また: cue or translation does not match the sentence (2/5)
+  ↻ また replace attempt 1 rejected: regenerated pair failed validation: CURRICULUM_NOT_YET_ALLOWED: grammar "な" is valid Japan
+  ↻ また replace attempt 2 rejected: regenerated pair failed validation: CURRICULUM_NOT_YET_ALLOWED: grammar "な" is valid Japan
+  ↻ また improve attempt 3 rejected: regenerated pair failed validation: CURRICULUM_NOT_YET_ALLOWED: grammar "な" is valid Japan
+  ❌ また: unrecoverable after 3 attempts — original kept
+  ✓ あそこ
+  ✓ あれ
+  ✓ 電話
+  ✓ はい
+  ✓ うん
+  ✓ いいえ
+  ✓ たぶん
+  ✓ 乗る
+  ✓ 大丈夫
+  ✓ 行く
+  ✓ 好き
+  ✓ 何
+  ✓ 飲む
+  ✓ どこ
+  ✓ 一緒
+  ✓ 今
+  ✓ ちょっと
+  ✓ 来る
+  ✓ ありがとう
+  ✓ すみません
+  ✓ いい
+  ✓ 今日
+  ✓ 明日
+  ✓ 見る
+  ✓ 買う
+  ✓ お金
+✅ QC complete — 18 found, 0 fixed, 0 accepted, 9 unresolved
+✅ 18 found · 0 fixed · 0 accepted · 9 unresolved
+━━ FINAL_TRACK (ja): quota → recovery → coherence → freeze text → pronunciation → final audit → invariants
+  ⛔ TARGET PAIR rejected [なんで] "なんで行きたくないの" — japanese: "行きたく" needs a particle — a bare noun cannot sit directly against "たく"
+  ⛔ TARGET PAIR rejected [また] "今日また会おうよ" — promptMeaning: cue does not map to the answer (2/5) — Cue is an 'ask' instruction, sentence is a suggestion. Translation is accurate for the sentence but not the cue.
+  ⛔ TARGET PAIR rejected [電話] "電話しようか？" — japanese: "電話しよう" needs a particle — a bare noun cannot sit directly against "よう"
+  ⛔ TARGET PAIR rejected [はい] "はい、これを買います。" — japanese: "買います" needs a particle — a bare noun cannot sit directly against "ます"
+  ⛔ TARGET PAIR rejected [はい] "はい、一緒に行きましょう。" — japanese: "ましょう" needs a particle — a bare noun cannot sit directly against "しょう"
+  ⛔ TARGET PAIR rejected [飲む] "これ飲んでみる？" — japanese: "飲んでみる" needs a particle — a bare noun cannot sit directly against "みる"
+  ⛔ TARGET PAIR rejected [今] "今何してる？" — japanese: "してる" needs a particle — a bare noun cannot sit directly against "てる"
+  ⛔ TARGET PAIR rejected [見る] "この映画見ようよ" — japanese: "映画見よう" needs a particle — a bare noun cannot sit directly against "見よう"
+♻️ QUOTA RECOVERY round 1: 7 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 8 · TARGET PAIRS 82/90
+  🟠 2nd check: なんで · recall 2 · target-group request (1 recall in one paid call)
+  ℹ ignored unknown grammar labels: na-adverb content plain-present ka
+  ℹ declared but not present, dropped: ni plain-present ka
+  ✅ recall 2 passed at its 2nd check: なんで駅に行くの？
+  🧾 decision なんで: r2=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=なんで CHECKS per recall r2=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=2:accepted/1paid
+▶ Checking cue and translation alignment…
+  Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+  ✓ なんで
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+  ✅ QUOTA RECOVERY なんで: +1 TARGET PAIR(S) (needed 1) — なんで駅に行くの？
+  🟠 2nd check: また · recall 1 · target-group request (1 recall in one paid call)
+  ℹ ignored unknown grammar labels: mata また
+  ✅ recall 1 passed at its 2nd check: また明日。
+  🧾 decision また: r1=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=また CHECKS per recall r1=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid
+▶ Checking cue and translation alignment…
+  Batch 1/1: checking 1 pairs
+  ⚠ CUE_CHECK_UNVERIFIED batch 1: reply unparseable — 1 pair(s) carry NO cue verdict (they are not cue-verified)
+  CUE_CHECK_COVERAGE scored 0/1 eligible pair(s) · 1 UNVERIFIED (no cue verdict)
+▶ Evaluating 1 target groups…
+  ✓ また
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+  ✅ QUOTA RECOVERY また: +1 TARGET PAIR(S) (needed 1) — また明日。
+  🟠 2nd check: 電話 · recall 3 · target-group request (1 recall in one paid call)
+  ℹ ignored unknown grammar labels: denwa mada 電話 まだ
+  ℹ declared but not present, dropped: ka
+  ✅ recall 3 passed at its 2nd check: 電話、まだ？
+  🧾 decision 電話: r3=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=電話 CHECKS per recall r3=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=3:accepted/1paid
+▶ Checking cue and translation alignment…
+  Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+  ✓ 電話
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+  ✅ QUOTA RECOVERY 電話: +1 TARGET PAIR(S) (needed 1) — 電話、まだ？
+  🟠 2nd check: はい · recall 2+3 · target-group request (2 recalls in one paid call)
+  ❌ recall 2: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "はい、駅へ行きます。"
+  ℹ ignored unknown grammar labels: はい
+  ℹ declared but not present, dropped: ka
+  ✅ recall 3 passed at its 2nd check: はい、大丈夫。
+  🔶 3rd check: はい · recall 2 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 3
+  ❌ recall 2: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "はい、行きます。"
+  🔵 4th check: はい · recall 2 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 3
+  ℹ ignored unknown grammar labels: plain-present
+  ℹ declared but not present, dropped: wa wo ni de to no ka ne yo
+  ✅ recall 2 passed at its 4th check: はい、行く。
+  🧾 decision はい: r2=accepted@🔵4 r3=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=はい CHECKS per recall r2=4/11 r3=2/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=2:accepted/3paid,3:accepted/1paid
+▶ Checking cue and translation alignment…
+  Batch 1/1: checking 2 pairs
+▶ Evaluating 1 target groups…
+  ✓ はい
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+  ✅ QUOTA RECOVERY はい: +2 TARGET PAIR(S) (needed 2) — はい、行く。 / はい、大丈夫。
+  🟠 2nd check: 飲む · recall 1 · target-group request (1 recall in one paid call)
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ ignored unknown grammar labels: 何 飲む
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 2nd check: 何飲む？
+  🧾 decision 飲む: r1=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=飲む CHECKS per recall r1=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted/1paid
+▶ Checking cue and translation alignment…
+  Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+  ✓ 飲む
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+  ✅ QUOTA RECOVERY 飲む: +1 TARGET PAIR(S) (needed 1) — 何飲む？
+  🟠 2nd check: 今 · recall 1 · target-group request (1 recall in one paid call)
+  ℹ ignored unknown grammar labels: content grammar content grammar
+  ✅ recall 1 passed at its 2nd check: 今から行くよ。
+  🧾 decision 今: r1=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=今 CHECKS per recall r1=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid
+▶ Checking cue and translation alignment…
+  Batch 1/1: checking 1 pairs
+  ⚠ CUE_CHECK_UNVERIFIED batch 1: reply unparseable — 1 pair(s) carry NO cue verdict (they are not cue-verified)
+  CUE_CHECK_COVERAGE scored 0/1 eligible pair(s) · 1 UNVERIFIED (no cue verdict)
+▶ Evaluating 1 target groups…
+  ✓ 今
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+  ✅ QUOTA RECOVERY 今: +1 TARGET PAIR(S) (needed 1) — 今から行くよ。
+  🟠 2nd check: 見る · recall 1 · target-group request (1 recall in one paid call)
+  ❌ recall 1: target 見る not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "あれ、駅？"
+  🔶 3rd check: 見る · recall 1 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: none
+  ❌ recall 1: target 見る not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "あれ、誰か来るの？"
+  🔵 4th check: 見る · recall 1 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: none
+  ❌ recall 1: target 見る not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "あれ、駅？"
+  🔷 5th check: 見る · recall 1 · deterministic fallback candidate (no request)
+  ✅ recall 1 deterministic fallback (no model request) at its 5th check: 何見る？
+  🧾 decision 見る: r1=fallback@🔷5
+  📊 JA_GENERATION_BUDGET target=見る CHECKS per recall r1=5/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:fallback/3paid
+▶ Checking cue and translation alignment…
+  Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+  ✓ 見る
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+  ✅ QUOTA RECOVERY 見る: +1 TARGET PAIR(S) (needed 1) — 何見る？
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Japanese content units, benchmark-fixture ja-daily-2026-10-08)
+📚 VOCAB INVENTORY introducedContent=77 selectedTargets=30 newTargets=1 (daily)
+  🧩 MAIN_TRACK_COHERENCE 1/1 scene(s) coherent · overall 4/5 (threshold 3) · S1=4 → PASS
+  🧊 FINAL_LINE_TEXT frozen: 90 line(s) · fingerprint 90:n1mi4q
+  🔤 FINAL readings/romaji (after recovery): 1 alignment issue(s)
+  🧩 TARGET_VARIETY_AUDIT 30/30 target(s) practise 3 distinct applications
+📏 MAIN_COMPLEXITY_AUDIT belt=10th Kyu preferred=3–5 hardMax=7 lines=90 withinPreferred=60 shortNatural=17 abovePreferredAllowed=13 overHardMax=0 maxObserved=7 · preferredRatio=82% (advisory ≥80%) PASS
+  🔁 FINAL_DUPLICATE_AUDIT target pairs=90 duplicates=0 PASS (run on the FINAL persisted pairs)
+  🧾 QC_RECONCILE pair 7 japanese ("行きたく" needs a particle — a bare noun cannot sit directly against "たく") → RESOLVED (pair replaced / no longer in the final set)
+  🧾 QC_RECONCILE pair 23 japanese ("買います" needs a particle — a bare noun cannot sit directly against "ます") → RESOLVED (pair replaced / no longer in the final set)
+  🧾 QC_RECONCILE pair 27 japanese ("電話しよう" needs a particle — a bare noun cannot sit directly against "よう") → RESOLVED (pair replaced / no longer in the final set)
+  🧾 QC_RECONCILE pair 28 japanese ("ましょう" needs a particle — a bare noun cannot sit directly against "しょう") → RESOLVED (pair replaced / no longer in the final set)
+  🧾 QC_RECONCILE pair 47 japanese ("飲んでみる" needs a particle — a bare noun cannot sit directly against "みる") → RESOLVED (pair replaced / no longer in the final set)
+  🧾 QC_RECONCILE pair 50 japanese ("してる" needs a particle — a bare noun cannot sit directly against "てる") → RESOLVED (pair replaced / no longer in the final set)
+  🧾 QC_RECONCILE pair 78 japanese ("映画見よう" needs a particle — a bare noun cannot sit directly against "見よう") → RESOLVED (pair replaced / no longer in the final set)
+  🧾 QC_RECONCILE pair 4 promptMeaning (cue does not map to the answer (2/5) — Cue is an 'ask' instruction, sentence is ) → RESOLVED (pair replaced / no longer in the final set)
+  ⚠️ SCENE_CONTRACT_DRIFT opening line of A missing (approved: "あ、ユミ。久しぶり。元気？")
+  ⚠️ SCENE_CONTRACT_DRIFT opening line of B missing (approved: "ケンジ！ うん、元気だよ。そっちは？")
+  📊 CHECK_MODEL recalls=90 candidateAttempts=103 (1.14/recall) accepted=90 unresolved=0 firstAttemptSuccess=91% acceptedAtCheck=1:82,2:6,4:1,5:1 rejectionClasses=OTHER×7 TARGET_MISSING×3 REGISTER×2 CUE_FORM×1
+  🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=103 · by origin: model reply 102 · deterministic fallback (no request) 1 · outcomes: accepted 90 · rejected 13 · fallback accepted for 1 recall(s) (1 after 4 rejected model candidate(s)) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+📋 MAIN TRACK NOT_READY
+📋 Reasons:
+📋 - pronunciation: 1 line(s)
+🧾 TRACK INTEGRITY (ja): NOT_READY — PRONUNCIATION_ALIGNMENT_ISSUES=1
+  MAIN_TRACK: NOT_READY · TARGET PAIRS 90/90 · COHERENCE PASS overall 4/5 (threshold 3) · S1=4
+  TARGET WORDS: 30/30 covered
+  TARGET PAIRS: 90/90 valid target-practice sentences (3 per target word)
+  QC: 8 candidate sentence(s) rejected (1 cue mismatch · 0 unnatural · 7 other) · 8 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 103 evaluated, 13 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+  BRIDGE PAIRS: 0 · FRAMING PAIRS: 0 · TOTAL PLAYABLE LINES: 90
+  PRONUNCIATION ALIGNMENT: 1 issue(s) · UNVERIFIED FINAL PAIRS: 0
+🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a Daily Track
+🤖 GEMINI USAGE SUMMARY
+Model: gemini-2.5-flash-lite ×122 · gemini-2.5-flash ×53
+Track ID: - · run ja-track-1791439200007-5701
+Total requests: 175 · Successful: 175 · Failed: 0 · Retried: 7
+Generation calls: 3 · QC calls: 42 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 25 · Listening calls: 0 · Other: 105
+Input tokens: 132557 · Output tokens: 58734 · Total tokens: 191291 (provider usage metadata)
+Retry requests: 7 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+Provider requests: 175 · Provider-error retries: 0
+GENERATION (app level): recalls requested 0 · first attempts 0 · regeneration attempts 0 · total attempts 0 · average 0.00 per recall · resolved first attempt 0/0 · requiring 2 attempts 0 · requiring 3 attempts 0 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 0 · recovery recalls 8 (11 paid)
+GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)
+PAID REQUESTS BY PURPOSE: other 105 (124540 tok, USD 0.0794) · QC judging 39 (20836 tok, USD 0.0029) · quota / target recovery 25 (30773 tok, USD 0.0041) · generation (first attempt / scene) 3 (9381 tok, USD 0.0013) · QC repair (replace / improve) 3 (5761 tok, USD 0.0015)
+Estimated Gemini cost: USD 0.0892 (≈ SGD 0.1160 at 1.3 — assumed rate)
+TOP GEMINI COST SOURCES
+  1. R_gen2_judge — 49 requests / 47721 tokens / ~61%
+  2. P_gen2_probe — 52 requests / 71342 tokens / ~17%
+  3. S_gen2_reading — 4 requests / 5477 tokens / ~12%
+  4. H_recovery — 25 requests / 30773 tokens / ~5%
+  5. C_group_eval — 30 requests / 11096 tokens / ~2%

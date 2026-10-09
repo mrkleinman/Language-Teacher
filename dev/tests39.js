@@ -206,6 +206,11 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       T('F21', 'every Japanese recall carries a word-by-word breakdown aligned to its validated reading, so PRODUCTION\'s own pronunciation audit accepts the Hepburn particles (は→wa, を→o); conjugated words stay whole (楽しかった, 見た); the breakdown also gives a word-spaced romaji',
         sg && sg2 && aud('映画はよかったよ。', sg, 'eiga wa yokatta yo.').length === 0 && aud('昨日、一緒にご飯を食べるのは楽しかった。', sg2, 'kinou, issho ni gohan o taberu no wa tanoshikatta.').length === 0 &&
         sg2.segments.some(x => x.surface === '楽しかった') && sg2.romaji === 'kinou, issho ni gohan o taberu no wa tanoshikatta.' && /dictionary/.test(SRC.slice(SRC.indexOf('async function gen2JaPronounce'), SRC.indexOf('async function gen2JaPronounce') + 2500)), sg2 && sg2.romaji) }
+    { const pcs = x => c.gen2JaPieces(x, inv).filter(y => !y.punct).map(y => y.surf + (y.lemma ? '<' + y.lemma : '')).join('|')
+      const usage = x => { const segs = c.gen2JaPieces(x, inv).filter(y => !y.punct).map(y => ({ surface: y.surf, ...(y.lemma ? { lemma: y.lemma } : {}), type: 'content' })); const r = c.validateJapaneseUsage({ japanese: x, segments: segs }, inv.jaInv); return Array.isArray(r) ? r : ((r && r.problems) || []) }
+      T('F22', 'Japanese recalls are cut into DICTIONARY words carrying their lemma (行きます<行く, してる<する, です<だ, これ|は|いくら), so production\'s own usage rules judge the real words — the correct sentences production QC used to replace (はい、駅へ行きます / 今、何してる？ / また電話しようよ / 大丈夫です) now pass; a candidate production would still reject is rejected by Gen2 up front',
+        /行きます<行く/.test(pcs('はい、駅へ行きます。')) && /してる<する/.test(pcs('今、何してる？')) && /これ\|は\|いくら/.test(pcs('すみません、これはいくらですか。')) &&
+        ['はい、駅へ行きます。', '今、何してる？', 'また電話しようよ。', 'いいえ、大丈夫です。'].every(x => usage(x).length === 0) && /production usage rule/.test(SRC), pcs('はい、駅へ行きます。')) }
     T('F16', 'generator prompt: vocabulary discipline (no unlisted nouns, names, 私/あなた) and different real situations', /VOCABULARY DISCIPLINE/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)) && /あなた/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)))
   }
   console.log(out.join('\n'))

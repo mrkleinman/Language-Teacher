@@ -1,0 +1,119 @@
+{
+ "runId": "ja-daily-2026-10-08.gen2-app.v679-app5.2026-10-09T07-03-41",
+ "fixture": "ja-daily-2026-10-08",
+ "pipelineRequested": "gen2-app",
+ "pipelineExecuted": "gen2-app",
+ "gen2Version": "gen2-pilot/1.1",
+ "models": {
+  "generator": "gemini-2.5-flash-lite",
+  "judge": "gemini-2.5-flash"
+ },
+ "app": {
+  "appBuild": "v679",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "NOT_READY",
+ "reasons": [
+  "PRONUNCIATION_ALIGNMENT_ISSUES=1"
+ ],
+ "error": null,
+ "stop": null,
+ "recalls": 90,
+ "deferred": [
+  "どっち — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "ごめん — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "食べる — ONLY_0_DISTINCT_ACCEPTED after 2 probe(s)",
+  "する — ONLY_1_DISTINCT_ACCEPTED after 2 probe(s)",
+  "分かる — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)",
+  "いくら — ONLY_2_DISTINCT_ACCEPTED after 2 probe(s)"
+ ],
+ "gen2Calls": 105,
+ "gen2ByStage": {
+  "P_gen2_probe": 52,
+  "R_gen2_judge": 49,
+  "S_gen2_reading": 4
+ },
+ "acceptance": {
+  "ok": true,
+  "problems": []
+ },
+ "spend": {
+  "costUsd": 0.08935,
+  "capUsd": 0.25,
+  "tokens": {
+   "in": 132557,
+   "out": 58734
+  },
+  "requestsSent": 175,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "(untagged) @ gemini-2.5-flash-lite": {
+    "requests": 70,
+    "in": 55667,
+    "out": 11084,
+    "usd": 0.010000300000000004
+   },
+   "gen2-daily-probe v1 @ gemini-2.5-flash-lite": {
+    "requests": 52,
+    "in": 45779,
+    "out": 25563,
+    "usd": 0.014803100000000001
+   },
+   "gen2-daily-judge v1 @ gemini-2.5-flash": {
+    "requests": 49,
+    "in": 29635,
+    "out": 18086,
+    "usd": 0.05410550000000001
+   },
+   "gen2-ja-reading v1 @ gemini-2.5-flash": {
+    "requests": 4,
+    "in": 1476,
+    "out": 4001,
+    "usd": 0.0104453
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×122 · gemini-2.5-flash ×53",
+  "Track ID: - · run ja-track-1791439200007-5701",
+  "Total requests: 175 · Successful: 175 · Failed: 0 · Retried: 7",
+  "Generation calls: 3 · QC calls: 42 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 25 · Listening calls: 0 · Other: 105",
+  "Input tokens: 132557 · Output tokens: 58734 · Total tokens: 191291 (provider usage metadata)",
+  "Retry requests: 7 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 175 · Provider-error retries: 0",
+  "GENERATION (app level): recalls requested 0 · first attempts 0 · regeneration attempts 0 · total attempts 0 · average 0.00 per recall · resolved first attempt 0/0 · requiring 2 attempts 0 · requiring 3 attempts 0 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 0 · recovery recalls 8 (11 paid)",
+  "GENERATION WASTE: first-attempt tokens 0 · regeneration tokens 0 · regeneration share 0% · regeneration cost USD 0.0000 · fallback-after-paid-retries n/a (this generator writes no per-recall rows — see CANDIDATE_ACCOUNTING)",
+  "PAID REQUESTS BY PURPOSE: other 105 (124540 tok, USD 0.0794) · QC judging 39 (20836 tok, USD 0.0029) · quota / target recovery 25 (30773 tok, USD 0.0041) · generation (first attempt / scene) 3 (9381 tok, USD 0.0013) · QC repair (replace / improve) 3 (5761 tok, USD 0.0015)",
+  "Estimated Gemini cost: USD 0.0892 (≈ SGD 0.1160 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. R_gen2_judge — 49 requests / 47721 tokens / ~61%",
+  "  2. P_gen2_probe — 52 requests / 71342 tokens / ~17%",
+  "  3. S_gen2_reading — 4 requests / 5477 tokens / ~12%",
+  "  4. H_recovery — 25 requests / 30773 tokens / ~5%",
+  "  5. C_group_eval — 30 requests / 11096 tokens / ~2%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 282
+}

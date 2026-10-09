@@ -9002,6 +9002,31 @@ function gen2JaStemProblem(text, inv) {
   }
   return bad.length ? 'untaught (kanji used for another word): ' + bad.join(' ') : null
 }
+// ── v678.1 PRONUNCIATION, Mandarin and Thai: composed deterministically from the dictionary, exactly as production's
+// own fallback / final phonetic stages do (segmentMandarin → tidyPinyin; composeThaiPhonetic over the canonical bank).
+// No model call. A piece the dictionary cannot pronounce is a word the learner was never taught (v677 accepted 我们 with
+// 们 untaught, and ความหวัง) — so it is rejected at the deterministic gate, before any judging.
+function gen2Pron(lang, text, inv) {
+  const t = String(text || '')
+  if (lang === 'zh' && inv.zhInv) {
+    const segs = segmentMandarin(t, inv.zhInv.lexicon)
+    const unresolved = segs.filter(x => x.type !== 'punct' && !x.pinyin && /[一-鿿]/.test(x.surface || '')).map(x => x.surface)
+    return { pron: tidyPinyin(segs.map(x => x.type === 'punct' ? x.surface : x.pinyin).filter(Boolean).join(' ')), unresolved }
+  }
+  if (lang === 'th' && inv.thLex) {
+    const r = composeThaiPhonetic(t, inv.thLex)
+    return { pron: r.phonetic, unresolved: r.unresolved ? ['(' + r.unresolved + ' Thai characters)'] : [] }
+  }
+  return null
+}
+function gen2PronProblem(lang, text, inv) {
+  const r = gen2Pron(lang, text, inv)
+  if (!r) return null
+  if (r.unresolved.length) return 'untaught (no dictionary pronunciation): ' + r.unresolved.join(' ')
+  if (!r.pron) return 'pronunciation missing'
+  if (lang === 'zh') { const v = validateMandarinPinyin(r.pron); if (!v.ok) return 'pinyin: ' + v.reason }
+  return null
+}
 // reading + romaji (the learner's pronunciation line): kana only, romaji must transcribe that reading, and where the
 // dictionary can read the sentence unambiguously the model's reading must agree with it
 const gen2KanaNorm = x => String(x || '').replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60)).replace(/[^぀-ゟー]/g, '')
@@ -9108,7 +9133,7 @@ function gen2Inventory(ctx, targets) {
   const lang = ctx.lang
   if (lang === 'th') {
     const allowed = thaiAuthorisedSurfaces(ctx.vocab, targets)
-    return { list: [...allowed], check: text => { const r = thaiQcCheckVocabulary({ thai: text }, allowed, ctx.vocab); return r.ok ? [] : r.problems } }
+    return { list: [...allowed], thLex: buildThaiPhoneticLexicon(ctx.vocab), check: text => { const r = thaiQcCheckVocabulary({ thai: text }, allowed, ctx.vocab); return r.ok ? [] : r.problems } }
   }
   if (lang === 'ja') {
     const inv = japaneseLearnerInventory(ctx.vocab, targets)
@@ -9116,7 +9141,7 @@ function gen2Inventory(ctx, targets) {
     return { list, grammar: inv.grammarScaffold.map(g => g.form), jaInv: inv, check: text => { const r = japaneseCheckLine(text, inv); return r.ok ? [] : ['untaught: ' + r.unknown.join(' ')] } }
   }
   const inv = mandarinLearnerInventory(ctx.vocab, targets)
-  return { list: [...new Set((inv.lexicon || []).map(x => x.w))], check: text => { const r = mandarinCheckLine(text, inv); const g = mandarinSurfaceGrammarProblems(text, inv) || []; return (r.ok ? [] : ['untaught: ' + r.unknown.join(' ')]).concat(g.map(x => typeof x === 'string' ? x : (x && (x.code || x.reason)) || 'grammar')) } }
+  return { list: [...new Set((inv.lexicon || []).map(x => x.w))], zhInv: inv, check: text => { const r = mandarinCheckLine(text, inv); const g = mandarinSurfaceGrammarProblems(text, inv) || []; return (r.ok ? [] : ['untaught: ' + r.unknown.join(' ')]).concat(g.map(x => typeof x === 'string' ? x : (x && (x.code || x.reason)) || 'grammar')) } }
 }
 async function gen2Ask(ctx, stage, prompt, o) {
   o = o || {}
@@ -9229,6 +9254,7 @@ function gen2DetCheck(ctx, w, c, inv) {
   p.push(...inv.check(c.text))
   if (ctx.lang === 'ja') { const kw = gen2JaKanaWordProblem(c.text, inv); if (kw) p.push(kw) }
   if (ctx.lang === 'ja') { const sp = gen2JaStemProblem(c.text, inv); if (sp) p.push(sp) }
+  if (ctx.lang === 'zh' || ctx.lang === 'th') { const pp = gen2PronProblem(ctx.lang, c.text, inv); if (pp) p.push(pp) }
   const tp = gen2TurnProblem(ctx.lang, c.text); if (tp) p.push(tp)
   const { a, units } = gen2Units(ctx, w, c.text)
   if (a.overHardMax) p.push('too long (' + a.units + ' > ' + ctx.cc.hardMax + ')')
@@ -9373,6 +9399,8 @@ async function gen2Daily(o) {
       const spk = c.speaker === 'male' || c.speaker === 'female' ? gen2LetterFor(c.speaker) : (alt++ % 2 ? 'B' : 'A')
       pairs.push({ speaker: spk, [L.field]: c.text, thai: c.text, english: c.english, prompt: c.cue, targetId: rec.id, recallIndex: r + 1, isTargetPair: true,
         ...(lang === 'ja' ? { reading: c.reading, romaji: c.romaji, phonetic: c.romaji } : {}),
+        ...(lang === 'zh' ? (pz => ({ pinyin: pz, phonetic: pz }))((gen2Pron('zh', c.text, st.inv) || {}).pron || '') : {}),
+        ...(lang === 'th' ? { phonetic: (gen2Pron('th', c.text, st.inv) || {}).pron || '' } : {}),
         _source: 'gen2:teachability', _gen2: { function: c.function, situation: c.situation, judge: c.judge || null } })
     })
   }
@@ -9402,6 +9430,7 @@ function gen2AcceptDaily(ctx, frozen, pairs, need, st) {
     if (new Set(ps.map(p => gen2Core(lang, p[field]))).size !== ps.length) problems.push(rec.surface + ': duplicate recalls')
     ps.forEach(p => { const d = gen2DetCheck(tctx, w, { text: p[field], english: p.english, cue: p.prompt, speaker: lang === 'th' ? thaiSpeakerMapGender(p.speaker) : 'either' }, st.inv)
       if (lang === 'ja') { const rp = gen2JaReadingProblem({ text: p[field], reading: p.reading, romaji: p.romaji }, st.inv); if (rp) d.push('ROMAJI_MISSING (' + rp + ')') }
+      if ((lang === 'zh' || lang === 'th') && !p.phonetic) d.push('PRONUNCIATION_MISSING')
       if (d.length) problems.push(rec.surface + ': ' + d.join(', ')) ; if (!p._gen2 || !p._gen2.judge || !gen2Verdict(p._gen2.judge).ok) problems.push(rec.surface + ': not judge-accepted') })
   })
   const cores = pairs.map(p => gen2Core(lang, p[field])), cues = pairs.map(p => gen2Norm(p.prompt))

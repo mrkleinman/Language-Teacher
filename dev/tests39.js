@@ -186,6 +186,13 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     T('F19', 'closed vocabulary, kanji stems: a taught word\'s kanji used for an untaught word is rejected (遅れた is not 遅い, 見えない is not 見る) — the line checker passes both — while real inflections and 見に行く pass',
       !!c.gen2JaStemProblem('ごめん、遅れた', inv) && !!c.gen2JaStemProblem('あれが見えない。', inv) &&
       ['映画を見に行こう。', '遅かったね。', '高くない。', '行きました。', '食べちゃった。', '今日、来ない？'].every(x => c.gen2JaStemProblem(x, inv) === null))
+    { const mk = l => { const f = loadFixture(l + '-daily-2026-10-08'), VV = c.ttBenchApplyFixture(c.ttBenchBank(l), require('./benchmark/embed_fixtures').compact(f)), bi = new Map(VV.map(w => [w.id, w]))
+        const cx = c.gen2Context({ lang: l, vocab: VV, apiKey: 'x' }); return c.gen2Inventory(cx, f.targets.map(t => bi.get(t.id))) }
+      const zi = mk('zh'), ti = mk('th')
+      T('F20', 'Mandarin / Thai pronunciation is composed from the dictionary (pinyin with tone marks, Thai phonetics); a piece the dictionary cannot pronounce is an untaught word and is rejected (v677 accepted 们 in 我们 and ความหวัง)',
+        /[āáǎàēéěèīíǐìōóǒòūúǔù]/.test(c.gen2Pron('zh', '你喜欢这个东西吗？', zi).pron) && c.gen2PronProblem('zh', '你喜欢这个东西吗？', zi) === null &&
+        /们/.test(c.gen2PronProblem('zh', '我们一起去', zi) || '') && !!c.gen2PronProblem('th', 'ฉันอยากได้ความหวังค่ะ', ti) &&
+        c.gen2PronProblem('th', 'คุณรีบไปไหนครับ', ti) === null && /khráp/.test(c.gen2Pron('th', 'คุณรีบไปไหนครับ', ti).pron)) }
     T('F16', 'generator prompt: vocabulary discipline (no unlisted nouns, names, 私/あなた) and different real situations', /VOCABULARY DISCIPLINE/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)) && /あなた/.test(c.gen2ProbePrompt({ ...ctx, allowedSet: new Set() }, jw('行く'), inv, [], '', 6)))
   }
   console.log(out.join('\n'))

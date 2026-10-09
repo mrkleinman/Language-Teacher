@@ -111,8 +111,12 @@ async function openListening(S, lang, props = {}) {
         const g = old.gateTargetsByFeasibility(raw, old.selectRevisionTrackTargets({ vocab: V, maxTargets: 100000, language: 'zh' }).targets, w => old.mandarinTargetTeachable(w, inv0, V, rules0), w => !old.hasBeenIntroduced(w))
         oldIds = old.jazhContractTargets(g.targets, 'zh', V, 'revision').map(w => w.id)
       }
-      T(lang, 'P4', 'regression: v658\'s Revision generator computation picks the same ordered 30 — the canonical selector changed nothing for Revision',
-        same(oldIds, canon.targetIds), { old: oldIds.slice(0, 8), now: canon.targetIds.slice(0, 8) })
+      // v681: Thai function words (แล้ว / ก็ / นะ …) are teachable targets again, at most 2 per track; with them removed the order
+      // is v658's exactly (they only take slots, they never reorder the rest)
+      const _fn = new Set(lang === 'th' ? V.filter(w => c.ev('THAI_FUNCTION_TARGET_GUIDE')[w.thai]).map(w => w.id) : [])
+      const _now = canon.targetIds.filter(id => !_fn.has(id)), _old = oldIds.filter(id => !_fn.has(id))
+      T(lang, 'P4', 'regression: v658\'s Revision generator computation picks the same ordered 30 (Thai: apart from at most 2 function-word targets, v681) — the canonical selector changed nothing else',
+        same(_now, _old.slice(0, _now.length)) && canon.targetIds.length - _now.length <= 2, { old: oldIds.slice(0, 8), now: canon.targetIds.slice(0, 8), functionTargets: canon.targetIds.filter(id => _fn.has(id)) })
       T(lang, 'P3', '§22 the selection is non-trivial (mixed tiers / due dates) and all 30 are learned: NEW 0 · REVIEW 30',
         canon.targets.every(w => c.revisionEligible(w)) && ['hard', 'overdue', 'due', 'reinforce'].filter(k => canon.counts[k] > 0).length >= 2 && canon.counts.new === 0, { tiers: canon.counts })
     }

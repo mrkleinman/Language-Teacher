@@ -3242,6 +3242,10 @@ function mandarinSpokenPinyin(pinyin) {
   const parts = String(pinyin || '').split(/(\s+)/)
   const syl = parts.map((p, i) => ({ p, i, isWord: !/^\s*$/.test(p) }))
   const words = syl.filter(x => x.isWord)
+  // v681: 不 sandhi — bù before a 4th-tone syllable is spoken bú (不要 bú yào, 不是 bú shì, 不在 bú zài)
+  for (let k = 0; k < words.length - 1; k++) {
+    if (/^b\u00F9([.,?!;:]*)$/i.test(words[k].p) && toneOf(words[k + 1].p) === 4) words[k].p = words[k].p.replace('\u00F9', '\u00FA')
+  }
   // third-tone sandhi: 3+3 -> 2+3, applied left to right across adjacent syllables
   for (let k = 0; k < words.length - 1; k++) {
     if (toneOf(words[k].p) === 3 && toneOf(words[k + 1].p) === 3) {
@@ -3574,6 +3578,32 @@ function mandarinSurfaceGrammarProblems(zh, inv) {
   if (/^(我|你|他|她|我们|你们|他们)(也|都)?多一点/.test(s)) P.push('ungrammatical: 多一点 needs a verb or adjective (我要多一点 / 多吃一点) (' + s + ')')
   if (/(吃|喝|买|要)多[吗呢吧]?[。？！?!]?$/.test(s) && !/很多|太多|不多|多少/.test(s)) P.push('unnatural: ' + s.match(/(吃|喝|买|要)多/)[0] + ' — say 吃很多 / 多吃一点 (' + s + ')')
   if (/^(这个|那个|这里|那里|这儿|那儿|这|那)(大|小|好|贵|远|近|新|旧|快|慢|长|短|高|热|冷|难|容易)[。！!]?$/.test(s)) P.push('unnatural: a bare adjective predicate (' + s.replace(/[。！!]$/, '') + ') — use 很 / 太…了 / 不 (这个很' + s.match(/(大|小|好|贵|远|近|新|旧|快|慢|长|短|高|热|冷|难|容易)/)[0] + ')')
+  // v681: a doubled degree adverb (很很好) and a degree adverb before a question word (你很什么？) are not Chinese
+  if (/(很|太|非常|真|有点)(很|太|非常|真|有点)/.test(s) && !/不太/.test(s)) P.push('ungrammatical: two degree adverbs together (' + s.match(/(很|太|非常|真|有点)(很|太|非常|真|有点)/)[0] + ')')
+  if (/一起(?![去来走吃喝玩看做学买跑住回找等用说听拿开坐唱聊工作上])/.test(s) && /一起./.test(s) && !/一起[吧吗呢啊]?[。？！?!，,]?$/.test(s)) P.push('ungrammatical: 一起 must come right before its verb (一起去 / 一起吃): ' + s)
+  if (/一起(很|太|非常|真|有点)/.test(s)) P.push('ungrammatical: 一起 needs a verb (一起去 / 一起吃), not a degree adverb')
+  if (/一起[吧吗呢啊]?[。！!？?]?$/.test(s) && !/(在|跟.{1,3}|和.{1,3})一起[吧吗呢啊]?[。！!？?]?$/.test(s) && /[\u4e00-\u9fff]一起/.test(s)) P.push('ungrammatical: 一起 at the end only after 在 / 跟… (我们在一起 / 我跟你一起) — otherwise it goes before the verb: ' + s)
+  if (/(很|太|非常|真|有点)(什么|谁|哪里|哪儿|怎么|几|多少)/.test(s)) P.push('ungrammatical: a degree adverb cannot modify a question word (' + s.match(/(很|太|非常|真|有点)(什么|谁|哪里|哪儿|怎么|几|多少)/)[0] + ')')
+  // v681 — from the 9-Oct Mandarin log (all accepted, all wrong or unusable as a standalone recall):
+  // (1) a bare adjective predicate after ANY plain subject, not only a demonstrative: 今天好。/ 我好。/ 天气冷。 (the fallback built
+  //     今天好。 because the old rule only knew 这个/那个). 你好 is the greeting and stays legal; a contrast (这个大，那个小) has a comma.
+  if (/^(今天|明天|昨天|现在|天气|我|他|她|我们|你们|他们|人|东西|地方|家|工作|朋友|钱|你)(大|小|好|贵|远|近|新|旧|快|慢|长|短|高|热|冷|难|多|少|忙|累|对)[。！!]?$/.test(s) && s.replace(/[。！!]$/, '') !== '你好')
+    P.push('unnatural: a bare adjective predicate (' + s.replace(/[。！!]$/, '') + ') — add 很 / 不 / 太…了 (' + s.replace(/[。！!]$/, '').replace(/^(\S+?)(大|小|好|贵|远|近|新|旧|快|慢|长|短|高|热|冷|难|多|少|忙|累|对)$/, '$1很$2') + ')')
+  // (2) a subjectless 很/非常 + adjective is a fragment as a standalone recall (很多。); 很好。 is a fixed reply and stays legal
+  if (/^(很|非常)(大|小|贵|远|近|新|旧|快|慢|长|短|高|热|冷|难|多|少|忙|累)[。！!]?$/.test(s))
+    P.push('fragment: ' + s.replace(/[。！!]$/, '') + ' has no subject — say what is ' + s.replace(/[。！!]$/, '').slice(-1) + ' (人很多 / 这个很大)')
+  // (3) a positive statement that ENDS on a transitive verb with no object: 你喜欢 / 我想喝 / 我吃. A negated reply (我不喜欢),
+  //     a question (你吃吗？ / 你喝不喝？), 吧 / 了 / 过 and any following content (我想喝水) are untouched.
+  if (/^(我|你|他|她|我们|你们|他们)(也|都|还)?(想|要|会|能|可以)?(喜欢|喝|吃|买|拿|找|看|听|用|做|给|帮|开|觉得)[。！!]?$/.test(s))
+    P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' ends on a verb with no object — add what (我想喝水 / 你喜欢这个吗？)')
+  // (4) 的 / 得: a degree complement after an action verb takes 得 (你做得好吗？ / 他跑得很快), never 的. 你说的对 (what you said is
+  //     right) and 我做的饭 (a 的-noun phrase) are correct and untouched.
+  if (/(做|写|跑|走|唱|学|睡|开|玩|讲)的(很|真|太|不|非常|挺)?(好|快|慢|早|晚|不错|怎么样)/.test(s))
+    P.push('ungrammatical: ' + s.match(/(做|写|跑|走|唱|学|睡|开|玩|讲)的/)[0] + ' — a degree complement takes 得 (' + s.match(/(做|写|跑|走|唱|学|睡|开|玩|讲)的/)[1] + '得…)')
+  // (5) 到 + 哪里 asks "where have you got to" only with 了 (你到哪里了？); otherwise it is 你去哪里？
+  // (6) only a motion / location verb takes 哪里 directly (去哪里 / 在哪里 / 住哪里); an action verb needs 在…: 你在哪里买？ not 你拿哪里？
+  if (/(拿|吃|喝|买|看|找|用|做|等|帮|给|说|听|开|玩|学)哪(里|儿)/.test(s)) P.push('ungrammatical: ' + s.match(/(拿|吃|喝|买|看|找|用|做|等|帮|给|说|听|开|玩|学)哪(里|儿)/)[0] + ' — an action verb takes the place with 在 (你在哪里' + s.match(/(拿|吃|喝|买|看|找|用|做|等|帮|给|说|听|开|玩|学)哪/)[1] + '？)')
+  if (/到哪(里|儿)[？?]?$/.test(s) && !/(了|去|来)/.test(s)) P.push('unnatural: ' + s + ' — say 你到哪里了？ (where are you now) or 你去哪里？ (where are you going)')
   if (/没(?!有)[\u4e00-\u9fff]{1,2}了[。！？?!]?$/.test(s)) P.push('ungrammatical: 没 + verb + 了 (say 没' + (s.match(/没([\u4e00-\u9fff]{1,2})了/) || [])[1] + ' or ' + (s.match(/没([\u4e00-\u9fff]{1,2})了/) || [])[1] + '了)')
   P.push(...mandarinDemonstrativeSubjectProblems(s, inv))
   return P
@@ -3833,6 +3863,7 @@ function zhFallbackIsWellFormed(zh, target) {
 // word means "together" and naturally needs a plural subject, so every attempt
 // was rejected for \u4EEC — 33 times in one run.
 const ZH_PARTICLES = ['\u5417','\u5462','\u5427','\u554A','\u7684','\u4E86','\u7740','\u8FC7','\u4E00\u4E0B','\u5730','\u5F97','\u4EEC']
+const ZH_STRUCTURE_GLOSS = Object.freeze({ '\u4EEC': { p: 'men', e: '(plural)' }, '\u5730': { p: 'de', e: '(adverb marker)' }, '\u5F97': { p: 'de', e: '(complement marker)' }, '\u7740': { p: 'zhe', e: '(ongoing)' } })
 function zhIsParticle(w) { return ZH_PARTICLES.includes(String(w || '')) }
 
 // Verb + object frames for the fallback. v596 correctly rejected bare 我开。 我等。
@@ -4023,6 +4054,16 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
       else if (zh === '\u6709\u70B9') C.push({ zh: '\u6709\u70B9' + a.chinese + '\u3002', en: "It's a bit " + g + '.', cue: 'Say it is a bit ' + g })
       else if (zh === '\u5F88' || zh === '\u975E\u5E38' || zh === '\u771F') C.push({ zh: zh + a.chinese + '\u3002', en: "It's " + (zh === '\u5F88' ? '' : 'really ') + g + '.', cue: 'Say it is ' + (zh === '\u5F88' ? '' : 'really ') + g })
     })
+    // v681: 很 / 非常 + adjective needs a SUBJECT as a standalone recall (很多。 is a fragment) — taught subjects first
+    if (zh === '\u5F88' || zh === '\u975E\u5E38') {
+      const has = w => (inv.allContent || []).some(x => x && x.chinese === w)
+      const subj = [['\u8FD9\u4E2A', 'This', 'this'], ['\u4EBA', 'People', 'people'], ['\u6211', 'I', 'you'], ['\u4ECA\u5929', 'Today', 'today'], ['\u8FD9\u91CC', 'This place', 'this place']].filter(x => has(x[0]))
+      // the subject must suit the adjective: 人很多 / 我很忙 / 这个很大 (never 这个很多)
+      const fit = a => /^(多|少)$/.test(a.chinese) ? ['\u4EBA', '\u8FD9\u91CC'] : /^(忙|累|好|饿|高兴)$/.test(a.chinese) ? ['\u6211', '\u4ECA\u5929'] : ['\u8FD9\u4E2A', '\u8FD9\u91CC']
+      adjs.forEach(a => { const sb = subj.find(x => fit(a).includes(x[0])); if (!sb) return
+        const g = primarySense(a.english), en = sb[1] + (sb[0] === '\u6211' ? ' am ' : sb[0] === '\u4EBA' ? ' are ' : ' is ') + (zh === '\u5F88' ? '' : 'really ') + g + '.'
+        C.push({ zh: sb[0] + zh + a.chinese + '\u3002', en, cue: 'Say that ' + sb[2] + (sb[0] === '\u6211' ? ' are ' : sb[0] === '\u4EBA' ? ' are ' : ' is ') + (zh === '\u5F88' ? '' : 'really ') + g }) })
+    }
   }
   // every candidate passes the surface grammar rules too; v671 §B4: NO unfiltered fallback pool — when nothing is
   // well-formed the recall stays unresolved (it used to return 太吗？ from the unfiltered list)
@@ -4148,9 +4189,9 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
     // another attempt, not a third use (拿: 你拿这个。/ 你拿这个吧) — never enforced on the deterministic fallback
     if (!isFallback) {
       const mine = [...(seenMap || new Map()).entries()].filter(([, id]) => id === target.id).map(([kk]) => kk)
-      const key = _recoveryConstructionKey(cand.chinese, target.chinese)
-      if (key && mine.some(m => _recoveryConstructionKey(m, target.chinese) === key)) {
-        last = 'same sentence template as an accepted recall (only a particle differs) — use a different communicative function'
+      const key = _recoveryConstructionKey(cand.chinese, target.chinese), vkey = recallVariationKey(cand.chinese, target.chinese)
+      if ((key && mine.some(m => _recoveryConstructionKey(m, target.chinese) === key)) || (vkey && mine.some(m => recallVariationKey(m, target.chinese) === vkey))) {
+        last = 'same application as an accepted recall (only a particle, demonstrative or pronoun differs) — use a different communicative function'
         recordMandarinRejection(stats, 'duplicate'); onLog && onLog('  \u274C ' + last + ': ' + cand.chinese); L.settle(tid, recallIndex, 'rejected', last, n); continue }
       // generate within the level: while the track drifts below 80% preferred-length sentences, a first attempt above the
       // preferred range is asked once to be shorter (never the last paid attempt, never a hard reject of natural Mandarin)
@@ -4423,6 +4464,8 @@ function runMandarinQualityCheckCore(pair, target, inv, vocab) {
     if (hit) {
       if (hit.p && seg.pinyin !== hit.p) { seg.pinyin = hit.p; repairs.push('segment pinyin corrected: ' + seg.surface) }
       if (hit.e && seg.english !== hit.e) { seg.english = hit.e; repairs.push('segment gloss corrected: ' + seg.surface) }
+    } else if (!seg.english && ZH_STRUCTURE_GLOSS[seg.surface]) {   // v681: a taught structure particle (们 — we/you all) has a fixed gloss
+      seg.english = ZH_STRUCTURE_GLOSS[seg.surface].e; if (!seg.pinyin) seg.pinyin = ZH_STRUCTURE_GLOSS[seg.surface].p; repairs.push('structure gloss: ' + seg.surface)
     } else if (!seg.english) issues.push('no gloss available for ' + seg.surface)
     return seg
   })
@@ -5468,6 +5511,14 @@ function japaneseDuplicateVerdict(jp, targetId, seenMap, rules) {
   if (rules.allowCrossTargetReuse) return { ok: true, note: 'reused across targets (allowed at low inventory)' }
   return { ok: false, level: 'B', reason: 'sentence already used for another target' }
 }
+// v681 — same target, same APPLICATION (only a demonstrative / pronoun / filler / final particle differs): これ、好き？ after
+// それ、好き？ is not a second use. o.surface = the target's own surface (so the target itself is never normalised away).
+function japaneseVariationVerdict(jp, targetId, seenMap, surface) {
+  const v = recallVariationKey(jp, surface)
+  for (const [, e] of seenMap) if (e && e.targetId === targetId && e.text && recallVariationKey(e.text, surface) === v)
+    return { ok: false, level: 'V', reason: 'same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): ' + e.text }
+  return { ok: true }
+}
 
 // §11 — the enforcement point.
 function validateJapaneseContentVocabulary(sentence, allowed, scaffold) {
@@ -6291,6 +6342,17 @@ function pickWords(vocab, mode, todayNewWords) {
     // a short ranked order (tiny learner, most of the bank ineligible) continues into the tiers in order
     ordered = ordered.concat(learned, unseen, rest)
   }
+  // v681 — function-word targets (THAI_FUNCTION_TARGET_GUIDE) in PRIORITY order: the first THAI_FUNCTION_TARGETS_PER_TRACK keep their
+  // slot; any further one is skipped (logged, still due) so a lesson is never mostly particles
+  {
+    let fn = 0
+    ordered = ordered.filter((w, pos) => {
+      if (!w || !THAI_FUNCTION_TARGET_GUIDE[w.thai]) return true
+      if (fn < THAI_FUNCTION_TARGETS_PER_TRACK) { fn++; return true }
+      if (!reached.has(w.id)) reached.set(w.id, { id: w.id, thai: w.thai, reason: 'FUNCTION_TARGET_CAP', detail: 'at most ' + THAI_FUNCTION_TARGETS_PER_TRACK + ' function-word targets per track — stays due for the next track', bucket: w._selectorStage || '-', position: pos })
+      return false
+    })
+  }
   let targets = ordered.slice(0, N)
   const tIds = new Set(targets.map(w => w.id))
   const reserve = ordered.slice(N).filter(w => !tIds.has(w.id))
@@ -6427,7 +6489,12 @@ function freezeThaiTargetSelection({ selected, reserve, required, mode, onLog, n
 function selectThaiRevisionTargets(vocab, maxTargets) {
   const pool = thaiEligibleCandidatePool(vocab)
   const skippedById = new Map(pool.skipped.map(x => [x.id, x]))
-  const r = selectRevisionTrackTargets({ vocab, maxTargets: maxTargets || REVISION_TRACK_MAX, language: 'th', eligible: w => pool.eligibleIds.has(w.id) })
+  // v681: function-word targets take at most THAI_FUNCTION_TARGETS_PER_TRACK slots, in ranked order (the same cap as Daily)
+  const fnIds = new Set()
+  const elig = w => { if (!pool.eligibleIds.has(w.id)) return false
+    if (THAI_FUNCTION_TARGET_GUIDE[w.thai] && !fnIds.has(w.id)) { if (fnIds.size >= THAI_FUNCTION_TARGETS_PER_TRACK) return false; fnIds.add(w.id) }
+    return true }
+  const r = selectRevisionTrackTargets({ vocab, maxTargets: maxTargets || REVISION_TRACK_MAX, language: 'th', eligible: elig })
   r.skippedCandidates = (r.skippedCandidates || []).map(x => ({ ...(skippedById.get(x.id) || { reason: VOCAB_INELIGIBLE.UNVERIFIED }), ...x }))
   // selection-time BACKFILL: the next eligible ranked word took the slot the skipped candidate ranked into
   r.selectionBackfills = r.skippedCandidates.map(x => { const rep = r.targets[x.position] || (r.reserve || [])[x.position - r.targets.length] || null
@@ -7490,7 +7557,7 @@ function BeltRankCard({ vocab, onNav, langName }) {
         {(langName || 'Thai')} vocab rank only · Phrase, grammar & scenario banks coming soon
       </p>
       <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, lineHeight: 1.5 }}>
-        Introducing <span style={{ color: '#4a90e2', fontWeight: 700 }}>{newSlotsFor(vocab)} new words</span> per track at this rank
+        Introducing <span style={{ color: '#4a90e2', fontWeight: 700 }}>{langName === 'Japanese' ? newWordsPerTrack('ja', 'daily', vocab) : langName === 'Mandarin' ? newWordsPerTrack('zh', 'daily', vocab) : newSlotsFor(vocab)} new words</span> per Daily Track at this rank
       </p>
     </Card>
   )
@@ -9442,6 +9509,8 @@ function gen2DetCheck(ctx, w, c, inv) {
     try { const segs = gen2JaPieces(c.text, inv).filter(x => !x.punct).map(x => ({ surface: x.surf, ...(x.lemma ? { lemma: x.lemma } : {}), type: 'content' }))
       const r = validateJapaneseUsage({ japanese: c.text, segments: segs }, inv.jaInv), pr = Array.isArray(r) ? r : ((r && r.problems) || [])
       if (pr.length) p.push('production usage rule: ' + pr.join('; ')) } catch (e) {} }
+  if (ctx.lang === 'th') { try { const lr = thaiLexicalSenseProblems({ thai: c.text, english: c.english }); if (lr.length) p.push('production sense rule: ' + lr.map(x => x.why).join('; ')) } catch (e) {} }   // v681
+  if (ctx.lang === 'zh' && inv.zhInv) { try { const zr = mandarinSurfaceGrammarProblems(c.text, inv.zhInv); if (zr.length) p.push('production grammar rule: ' + zr.join('; ')) } catch (e) {} }   // v681
   if (ctx.lang === 'zh' || ctx.lang === 'th') { const pp = gen2PronProblem(ctx.lang, c.text, inv); if (pp) p.push(pp) }
   const tp = gen2TurnProblem(ctx.lang, c.text); if (tp) p.push(tp)
   const { a, units } = gen2Units(ctx, w, c.text)
@@ -11882,7 +11951,13 @@ function finaliseThaiTrackPhonetics(pairs, lex, onLog) {
       // the model returns nothing) recovers its value from the incoming line by
       // position when the token counts agree. It is NEVER dropped silently.
       const incoming = String(p.phonetic || '').trim().split(/\s+/).filter(Boolean)
-      const positional = incoming.length === words.length
+      // v681: equal counts alone never prove the incoming romanisation belongs to each token. Positional recovery is used only
+      // when the line is ANCHORED: every token the lexicon knows matches the incoming syllable at its own position (tone marks
+      // ignored), and at least one such anchor exists. A shifted or wrong line now leaves derived tokens empty (reported as
+      // missing → repaired / flagged) instead of silently "aligned".
+      const _phN = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[-\s]/g, '').toLowerCase()
+      const _anch = incoming.length === words.length ? words.map((w, idx) => { const th = w && (w.p || w.thai); return lex.has(th) ? _phN(incoming[idx]) === _phN(lex.get(th)) : null }) : []
+      const positional = incoming.length === words.length && _anch.some(x => x === true) && !_anch.some(x => x === false)
       missing = []
       const w2 = []
       words.forEach((w, idx) => {
@@ -14001,6 +14076,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   })[target.thai] || _properNouns[target.thai] || (() => {
     // Grammar particles — appear naturally in any sentence, don't force them
     const grammarParticles = ['ที่','ก็','แล้ว','ด้วย','อยู่','เลย','นะ','สิ','แต่','เพราะ','ถ้า','หรือ','และ','กับ','จน','พอ','ตอน','เมื่อ','ว่า','ให้','จาก','โดย','ของ','ใน','บน','ใต้']
+    if (THAI_FUNCTION_TARGET_GUIDE[target.thai]) return THAI_FUNCTION_TARGET_GUIDE[target.thai]   // v681: a real teaching contract
     if (grammarParticles.includes(target.thai)) {
       return 'CONTINUE the exact same topic the conversation has been about — do NOT change topic. The word "' + target.thai + '" (' + target.english + ') is a grammar particle that will appear naturally in any sentence. Just keep talking about the same thing as the previous lines.'
     }
@@ -17212,7 +17288,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v680'
+const LISTENING_BUILD_VERSION = 'v681'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -17614,6 +17690,19 @@ function createRecoveryState(kw, o) {
     get successfulStructures() { return this.successfulPatterns },
     failedTargetMissing: [], failedCuePatterns: [], failedSpeakerPatterns: [], failedNaturalnessPatterns: [],
     sceneContext: c.sceneContext || '', codeFails: {}, lang: c.lang || null }
+}
+// v681 — ONE shared "same application" key (ja / zh / th). Two recalls of the same target are the same learning application
+// when they differ only in: a demonstrative (これ/それ/あれ, 这个/那个, นี้/นั้น), a personal pronoun, a leading filler or
+// interjection (え、/ あ、/ 嗯，), sentence-final particles (の / か / だよ / 吗 / ครับ …) or punctuation. Live examples that used to
+// count as three distinct uses: これ、好き？ / うん、好きだよ。 / それ、好き？ (→ 2 uses); 今日、何する？ / え、今日、何するの？ (→ 1).
+function recallVariationKey(text, target) {
+  let k = String(text || '').replace(/\s+/g, '').split(target || '\u0000').join('<T>')
+  k = k.replace(/^(え|あ|ねえ|ああ|へえ|嗯|哦|啊|欸|เอ่อ|อ้อ|อ๋อ)[、，,！!…]*/u, '')
+  k = k.replace(/(これ|それ|あれ|どれ(?!も)|この|その|あの|ここ|そこ|あそこ|这个|那个|这儿|那儿|这里|那里|这|那|นี้|นั้น|โน้น|นี่|นั่น)/gu, '<D>')
+  k = k.replace(/(私|僕|俺|あなた|君|我们|你们|我|你|他|她|ผม|ฉัน|คุณ|เขา|เรา|เธอ)/gu, '<P>')
+  k = k.replace(/<D>(は|が|を|も)/gu, '<D>').replace(/<P>(は|が|も)/gu, '<P>')
+  k = k.replace(/(のですか|んですか|ですか|ますか|ですね|ですよ|だよね|だよ|だね|なの|の|か|よ|ね|わ|ぞ|吗|呢|吧|啊|ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า|ไหม|มั้ย|[。？！?!.,、，…])+$/gu, '')
+  return k.replace(/[、，,]/g, '')
 }
 function _recoveryConstructionKey(text, target) {
   return String(text || '').split(target || '\u0000').join('<T>')
@@ -18082,7 +18171,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
     kws.forEach(k => {
       const id = k.wordId, surf = adapter.surfaceOf ? adapter.surfaceOf(k) : (k.thai || k.japanese || k.chinese)
       const ps = (t.pairs || []).filter(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId === id && !p._qcInvalid && !p._qcUnresolved)
-      const keys = new Set(ps.map(p => _recoveryConstructionKey(adapter.sentenceOf(p), surf)))
+      const keys = new Set(ps.map(p => recallVariationKey(adapter.sentenceOf(p), surf)))
       if (ps.length >= 3 && keys.size < 3) _short.push(surf + ' (' + keys.size + ' distinct of ' + ps.length + ')')
     })
     inv.TARGETS_WITHOUT_3_DISTINCT_USES = _short.length
@@ -18482,7 +18571,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v680'
+const APP_BUILD_VERSION = 'v681'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -18909,6 +18998,7 @@ function thaiRawGlossOf(surface, vocab) {
   const b = (typeof RAW_VOCAB !== 'undefined' ? RAW_VOCAB : []).filter(d => d && d.t === surface && !d.dup).map(d => d.e || '')
   return a.concat(b).join(' / ')
 }
+const THAI_PREVERBAL_GLUE = Object.freeze(['ไม่', 'ไม่ได้', 'ได้', 'จะ', 'ก็', 'ยัง', 'ยังไม่', 'เคย', 'ไม่เคย', 'กำลัง', 'อยาก', 'ไม่อยาก', 'ต้อง', 'ไม่ต้อง', 'ควร', 'คง', 'ค่อย', 'ไม่ค่อย', 'อย่า', 'เลย', 'แล้ว'])
 function thaiTargetConceptPresent(target, sentence, vocab) {
   const s = String(sentence || '').replace(/\s+/g, ''), t = String((target && (target.thai || target.t || target.surface)) || target || '').replace(/\s+/g, '')
   if (!t) return { present: false, form: 'NO_TARGET', reason: 'no target surface' }
@@ -18932,6 +19022,22 @@ function thaiTargetConceptPresent(target, sentence, vocab) {
         return { present: true, form: 'COMPOUND_HEAD', token: tok }
     }
   }
+  // v681: longest-match segmentation lets a lexicalised neighbour swallow the target across a word boundary — ไม่ได้|ยิน for
+  // ไม่|ได้ยิน, ไม่เหนื่อย for ไม่|เหนื่อย (live: ผมไม่ได้ยินอะไรเลยครับ / เราไม่เหนื่อยแล้วครับ rejected as TARGET_MISSING). The
+  // target IS present when an equally valid segmentation exists: the target as one unit and everything before and after it
+  // segmenting into known words with no unknown span. An accidental substring still fails (มา in หมา: ห is not a word).
+  // Only a GRAMMATICAL pre-verbal word may be glued in front (ไม่, ไม่ได้, จะ, ยัง …): a lexicalised compound such as เข้าใจ
+  // ("understand") never yields ใจ, and a compound the target heads (รถไฟ, น้ำแข็ง) keeps the sense rules above.
+  try {
+    const fully = str => !str || segmentThaiWithDiagnostics(str, vocab || [], null, [], true).every(x => !x.unknown)
+    const spans = []; let at = 0; for (const tok of toks) { spans.push([at, at + tok.length]); at += tok.length }
+    if (at === s.length) for (let i = s.indexOf(t); i >= 0; i = s.indexOf(t, i + 1)) {
+      const cov = spans.find(([a0, b0]) => a0 <= i && i < b0)
+      if (!cov || cov[0] === i) continue
+      if (!THAI_PREVERBAL_GLUE.includes(s.slice(cov[0], i))) continue
+      if (fully(s.slice(0, i)) && fully(s.slice(i + t.length))) return { present: true, form: 'ALTERNATIVE_SEGMENTATION', token: t, glued: s.slice(cov[0], i) }
+    }
+  } catch (e) {}
   return { present: false, form: 'NOT_A_COMPONENT', reason: 'target "' + t + '" only occurs inside ' + toks.filter(x => x.includes(t)).join(', ') + ' (a different word)' }
 }
 function thaiTargetPresent(text, surface, vocab) { return thaiTargetConceptPresent(surface, text, vocab).present }
@@ -29470,9 +29576,13 @@ function thaiSemanticAuditStatus(pairs) {
   const nat = lines.filter(x => typeof x.p._semNat === 'number').length
   const cueTotal = lines.filter(x => x.p._semCue !== 'n/a').length
   const cue = lines.filter(x => typeof x.p._semCue === 'number').length
-  const unverified = lines.filter(x => x.p._semanticState !== 'VERIFIED').map(x => ({ pairId: _semanticPairId(x.p, x.i), index: x.i + 1,
+  // v681: a VERIFIED flag whose naturalness verdict was recorded for DIFFERENT text (the line changed after its audit — e.g. a
+  // bridge line rewritten by a later closed-vocabulary repair) is not verified: the final persisted text was never judged
+  const stale = p => !!(p._semVerdicts && p._semVerdicts.nat && p._semVerdicts.nat.key !== _semCacheKey('nat', p))
+  const unverified = lines.filter(x => x.p._semanticState !== 'VERIFIED' || stale(x.p)).map(x => ({ pairId: _semanticPairId(x.p, x.i), index: x.i + 1,
     targetId: x.p.targetId != null ? x.p.targetId : (x.p.supportsTargetId != null ? x.p.supportsTargetId : null), target: x.p._target || null, thai: x.p.thai,
-    stage: x.p._semanticUnverified ? x.p._semanticUnverified.stage : 'NOT_AUDITED', reason: x.p._semanticUnverified ? x.p._semanticUnverified.reason : 'no audit verdict recorded for this pair' }))
+    stage: stale(x.p) && x.p._semanticState === 'VERIFIED' ? 'TEXT_CHANGED_AFTER_AUDIT' : x.p._semanticUnverified ? x.p._semanticUnverified.stage : 'NOT_AUDITED',
+    reason: stale(x.p) && x.p._semanticState === 'VERIFIED' ? 'the final text differs from the text that was judged' : x.p._semanticUnverified ? x.p._semanticUnverified.reason : 'no audit verdict recorded for this pair' }))
   const total = lines.length
   const status = !total ? 'COMPLETE' : !nat ? 'FAILED' : unverified.length ? 'PARTIAL' : 'COMPLETE'
   return { finalPairs: (pairs || []).length, auditedLines: total, naturalnessJudged: nat, cueJudged: cue, cueTotal, unverified, status,
@@ -29674,6 +29784,14 @@ function thaiLexicalSenseProblems(p) {
     out.push({ id: 'IDIOM_MISTRANSLATED', code: 'CUE_MISMATCH', why: 'หิวข้าว means "I\'m hungry" — the English must not say "rice"' })
   if (/มากับ(รถ|แท็กซี่|รถแท็กซี่|รถบัส|รถไฟ|เครื่องบิน|เรือ|มอเตอร์ไซค์)/.test(th))
     out.push({ id: 'COLLOCATION_VEHICLE', code: 'UNNATURAL', why: '"' + th.match(/มากับ\S{0,8}/)[0] + '" — มากับ is "came with (someone)"; by a vehicle is นั่ง…มา (ผมนั่งรถแท็กซี่มาครับ)' })
+  // v681 — from the 9-Oct Thai log. (1) Travelling BY a vehicle is นั่ง / ขึ้น + vehicle (+ ไป): ไป + vehicle (เราไปรถไฟฟ้ากันนะครับ,
+  // เราไปวินมอเตอร์ไซค์กันนะครับ) is clipped colloquial at best and a poor model sentence. ไปขึ้นรถ… / นั่งรถ…ไป / ไปที่รถ are untouched.
+  if (/ไป(รถไฟฟ้า|รถไฟใต้ดิน|รถไฟ|รถเมล์|รถบัส|รถตู้|รถแท็กซี่|แท็กซี่|วินมอเตอร์ไซค์|มอเตอร์ไซค์|เรือ|เครื่องบิน)/.test(th))
+    out.push({ id: 'COLLOCATION_VEHICLE_GO', code: 'UNNATURAL', why: '"' + th.match(/ไป(รถไฟฟ้า|รถไฟใต้ดิน|รถไฟ|รถเมล์|รถบัส|รถตู้|รถแท็กซี่|แท็กซี่|วินมอเตอร์ไซค์|มอเตอร์ไซค์|เรือ|เครื่องบิน)/)[0] + '" — travelling by a vehicle is นั่ง / ขึ้น + vehicle (+ ไป): เรานั่งรถไฟฟ้าไปกันนะครับ' })
+  // (2) คู่ classifies things that come in PAIRS (รองเท้า ถุงเท้า ตะเกียบ ต่างหู ถุงมือ) or a couple — never a single object
+  //     (ผมอยากได้ตู้เย็นคู่หนึ่งครับ). Each object keeps its own classifier (ตู้เย็นเครื่องหนึ่ง / เก้าอี้ตัวหนึ่ง).
+  if (/(ตู้เย็น|โต๊ะ|เก้าอี้|รถ|บ้าน|ห้อง|ทีวี|โทรศัพท์|มือถือ|เสื้อ|กระเป๋า|หนังสือ|แก้ว|จาน|ชาม|ประตู|หน้าต่าง|เตียง|แอร์|พัดลม|คอมพิวเตอร์|นาฬิกา)คู่/.test(th))
+    out.push({ id: 'CLASSIFIER_KHUU_MISUSE', code: 'UNNATURAL', why: '"' + th.match(/\S{0,8}คู่/)[0] + '" — คู่ counts things that come in pairs (รองเท้า ถุงเท้า ตะเกียบ) or a couple; a single object takes its own classifier' })
   if (/^พี่(?!น้อง|สาว|ชาย)/.test(th.trim()) && /(ไหม|มั้ย|อะไร|ไหน|ใคร|ทำไม|ยังไง|เมื่อไหร่|เท่าไหร่|คะ|ครับ)\s*[?？]?$/.test(th) && /[?？]\s*$/.test(en) && /\bolder (brother|sister|sibling)\b/.test(en))
     out.push({ id: 'PHI_ADDRESS_TERM', code: 'CUE_MISMATCH', why: 'พี่ opens a question to the listener — it is an address term ("you", to someone a little older), not "older brother / sister"' })
   return out
@@ -30499,7 +30617,23 @@ const VOCAB_INELIGIBLE = Object.freeze({
   RETIRED_NO_REPLACEMENT: 'VOCAB_RETIRED_NO_REPLACEMENT', CANONICALISATION_FAILED: 'VOCAB_CANONICALISATION_FAILED',
   MALFORMED_SURFACE: 'VOCAB_MALFORMED_SURFACE', INVALID_FRAGMENT: 'VOCAB_INVALID_FRAGMENT', NOT_GENERATABLE: 'VOCAB_NOT_GENERATABLE' })
 // function words a 3-line recall cannot be built around (was a post-selection filter in pickWords)
-const THAI_NOT_GENERATABLE = new Set(['ก็','ที่','ของ','กับ','ว่า','แต่','หรือ','และ','เพราะ','แล้ว','ด้วย','นะ','ก็ได้',
+// v681: discourse / function words are TEACHABLE targets with their own teaching contract (THAI_FUNCTION_TARGET_GUIDE): they
+// were skipped as VOCAB_NOT_GENERATABLE on every track (live log: 878 แล้ว / 28 ก็ / 24 นะ, all belt-due) and so never left SRS.
+// At most THAI_FUNCTION_TARGETS_PER_TRACK are taken per track; the rest stay due for the next one. Personal pronouns, the
+// copula/core verbs and pure structure words below stay non-targets (practised implicitly in every sentence).
+const THAI_FUNCTION_TARGET_GUIDE = Object.freeze({
+  'แล้ว': 'TEACH แล้ว AS A CHANGE OF STATE or completion: กินข้าวแล้ว (already ate), ถึงแล้ว (I have arrived), ดีขึ้นแล้ว (it is better now) — or "and then" between two actions. Each sentence must NEED แล้ว for its meaning.',
+  'ก็': 'TEACH ก็ AS A LINK OF REACTION or "too / then / so": ผมก็ชอบ (I like it too), ถ้าว่างก็มานะ (if you are free, then come), งั้นก็ไปกัน (then let us go). Each sentence must NEED ก็.',
+  'นะ': 'TEACH นะ AS A SOFTENER on a suggestion, request or reminder: ไปกันนะ (let us go, OK?), อย่าลืมนะ (don\'t forget, OK?), รอแป๊บนะ (wait a moment, OK?). The cue must name the speech act (suggest / remind / ask gently).',
+  'ด้วย': 'TEACH ด้วย AS "too / along" or a polite request softener: ไปด้วยกันไหม (shall we go together?), ขอน้ำด้วยครับ (some water too, please), ช่วยด้วย (help!).',
+  'ก็ได้': 'TEACH ก็ได้ AS "that is fine too / either is fine" — accepting an alternative: กาแฟก็ได้ (coffee is fine too), พรุ่งนี้ก็ได้ (tomorrow works too).',
+  'เพราะ': 'TEACH เพราะ AS GIVING A REASON: ไม่ไปเพราะฝนตก (not going because it is raining), ชอบร้านนี้เพราะอร่อย.',
+  'แต่': 'TEACH แต่ AS A CONTRAST between two facts: อร่อยแต่แพง (tasty but expensive), อยากไปแต่ไม่ว่าง.',
+  'หรือ': 'TEACH หรือ AS A CHOICE: กาแฟหรือชา (coffee or tea?), ไปวันนี้หรือพรุ่งนี้.',
+  'ว่า': 'TEACH ว่า AFTER A VERB OF SAYING / THINKING: คิดว่า (I think that…), บอกว่า (said that…), รู้ว่า (know that…).',
+})
+const THAI_FUNCTION_TARGETS_PER_TRACK = 2
+const THAI_NOT_GENERATABLE = new Set(['ที่','ของ','กับ','และ',
   'มี','ไป','มา','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ไม่','ได้','จะ','เป็น','ทำ','รู้'])
 function thaiVocabEligibility(w) {
   if (!w || w.id == null) return { ok: false, reason: VOCAB_INELIGIBLE.CANONICALISATION_FAILED, detail: 'no id' }
@@ -33174,10 +33308,13 @@ function validateJapaneseUsage(pair, inv) {
   })
   // An interrogative cannot be ASSERTED. 誰だよ。/ いつだよ。/ 何時だよ。are not
   // statements — they are question words being declared as facts.
+  // v681: only the question word ITSELF can be the asserted predicate (誰だよ。/ いつです。). A question word inside an
+  // indefinite / universal compound is not interrogative: どれも一緒だよ。/ 何でもいいです。/ どこも同じだ。 are good Japanese
+  // (the old rule rejected any sentence that contained a question word anywhere and ended in だ/だよ/です).
   const jp0 = pair.japanese || ''
-  if (/(\u3060\u3088|\u3060|\u3067\u3059)[\u3002]?$/.test(jp0)) {
+  if (/(\u3060\u3088|\u3060|\u3067\u3059)[\u3002\uFF01!]?$/.test(jp0)) {
     words.forEach(w => {
-      if (jaIsInterrogative(w))
+      if (jaIsInterrogative(w) && new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\u3060\u3088|\u3060|\u3067\u3059)[\u3002\uFF01!]?$').test(jp0))
         problems.push('"' + w + '" is a question word and cannot be asserted with \u3060\u3088/\u3067\u3059')
     })
   }
@@ -33642,6 +33779,7 @@ function aiQcGroups(pairs) {
 
 // The full AI pass. Returns issues in the SAME ledger shape the deterministic pass
 // uses, so found = fixed + accepted + unresolved still reconciles.
+const QC_SENTENCE_DEFECT_NOTE = /\b(fragment|incomplete|not a (complete|full) sentence|ungrammatical|grammatically (wrong|incorrect)|unnatural|awkward|(does not|doesn't) make sense|missing (an? |the )?(object|verb|subject))\b/i
 async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, onProgress, cancelled, addIssue }) {
   let all = [...pairs]
   if (!apiKey) { onLog && onLog('\u2139 No API key \u2014 semantic checks skipped'); return { pairs: all, ran:false } }
@@ -33681,9 +33819,14 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
     //     Recorded as advisory, not blocking.
     // v671 §B3 — no fallback privilege: a deterministic fallback recall needs a cue ≥ 4 like a judged recall would; at 3/5
     // (a key detail missing / added / changed) it is blocking, not advisory
-    if (v.score === 3 && !(all[i] && all[i]._fallback)) {
-      addIssue(i, 'promptStyle',
+    // v681: a 3/5 whose note names a SENTENCE defect (fragment, incomplete, ungrammatical, unnatural) is a teaching defect, not a
+    // cue nit — live zh log: "cue could be clearer (3/5) — The Mandarin sentence is a fragment" stayed 'found' and the track went
+    // READY. It now goes to the blocking repair ladder. A genuine phrasing nit is explicitly ACCEPTED with its reason, so
+    // found = fixed + accepted + unresolved holds (it used to stay 'found' forever, outside every total).
+    if (v.score === 3 && !(all[i] && all[i]._fallback) && !QC_SENTENCE_DEFECT_NOTE.test(v.note || '')) {
+      const iss = addIssue(i, 'promptStyle',
         'cue could be clearer (' + v.score + '/5)' + (v.note ? ' \u2014 ' + v.note : ''), 'found')
+      if (iss) { iss.status = 'accepted'; iss.acceptReason = 'minor cue phrasing (3/5): the intended learner response is still clear — kept' }
       return
     }
     // 1-2 = the cue genuinely does not map to the answer. Blocking.
@@ -36974,17 +37117,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
   const dailyTargets = useMemo(() => {
     const raw = selection.targets || []
     if (!raw.length || !hasVocab) return raw
-    try {
-      const inv0 = japaneseLearnerInventory(vocab, raw)
-      const part = partitionJapaneseTargetsByFeasibility(raw, inv0, null)
-      if (!part.deferred.length) return raw
-      // v651 §12 — a feasibility backfill replaces a deferred target with an already-INTRODUCED word
-      // (tagged review). An unseen word pulled in here was later counted as a 4th NEW word, which
-      // made the Listening denominator 26 instead of 27.
-      const pool = (vocab || []).filter(w => !raw.some(t => t.id === w.id) && hasBeenIntroduced(w)).map(w => ({ ...w, selectionRole: 'reinforce', _selectorStage: 'feasibility-backfill' }))
-      const filled = backfillJapaneseTargets(part.eligible, part.deferred, pool, inv0, raw.length)
-      return filled.length ? filled : raw
-    } catch (e) { return raw }        // never block a track on the gate
+    try { return japaneseDailyFeasibleTargets(raw, vocab) } catch (e) { return raw }        // never block a track on the gate
   }, [selection, vocab, hasVocab])
   // REVISION TRACK — same shared selector as Thai and Mandarin. It never
   // consumes or accumulates the Daily Track's new-word allowance.
@@ -37589,7 +37722,7 @@ function japaneseTargetFeasibility(target, inv) {
     }
     if (!roles.length) reasons.push('no usage role could be assigned (part of speech ' +
       (target.partOfSpeech || 'unknown') + ')')
-    if (!reasons.length) reasons.push('no licensed frame could be built from the current inventory')
+    if (!reasons.length) reasons.push('no licensed frame: none of its constructions can be built from the taught words yet')
   }
   return {
     target: target.japanese,
@@ -37625,6 +37758,35 @@ function partitionJapaneseTargetsByFeasibility(targets, inv, onLog) {
 }
 // Fills a shortfall with the next eligible words, so deferring does not shrink the
 // track. Never introduces support vocabulary to rescue an unteachable target.
+// The Daily feasibility gate as ONE testable function. Unteachable targets are deferred (they stay due) and replaced.
+// v681: a deferred NEW word is replaced by the next FEASIBLE unseen word as NEW (same NEW count — never a 4th NEW word,
+// which v651 §12 guarded against), and only then are remaining slots filled with already-introduced words. Before, every
+// replacement was a review word, so a 3-NEW track that deferred 物 and 場所 shipped with 1 NEW word on every track.
+function japaneseDailyFeasibleTargets(raw, vocab) {
+  const inv0 = japaneseLearnerInventory(vocab, raw)
+  const part = partitionJapaneseTargetsByFeasibility(raw, inv0, null)
+  if (!part.deferred.length) return raw
+  const isNew = w => w.selectionRole === 'new' || (!w.selectionRole && w.status === 'new')
+  const deferredNew = part.deferred.filter(d => isNew(d.target)).length
+  const out = part.eligible.slice()
+  if (deferredNew) {
+    const byOrder = (a, b) => (a.unlockOrder || a.id || 0) - (b.unlockOrder || b.id || 0)
+    const taken = new Set(raw.map(t => t.id))
+    const unseen = (vocab || []).filter(w => w.status === 'new' && !taken.has(w.id) && (w.repCount || 0) === 0 && !w.lastSeen && !hasBeenIntroduced(w) &&
+      jazhTargetEligible(w, 'ja')).sort(byOrder)
+    let added = 0
+    for (const w of unseen) {
+      if (added >= deferredNew) break
+      const cand = { ...w, selectionRole: 'new', _selectorStage: 'feasibility-backfill-new' }
+      if (!japaneseTargetFeasibility(cand, japaneseLearnerInventory(vocab, out.concat([cand]))).teachable) continue
+      out.push(cand); taken.add(w.id); added++
+    }
+  }
+  // v651 §12 — every other replacement is an already-INTRODUCED word (tagged review)
+  const pool = (vocab || []).filter(w => !raw.some(t => t.id === w.id) && !out.some(t => t.id === w.id) && hasBeenIntroduced(w)).map(w => ({ ...w, selectionRole: 'reinforce', _selectorStage: 'feasibility-backfill' }))
+  const filled = backfillJapaneseTargets(out, part.deferred, pool, inv0, raw.length)
+  return filled.length ? filled : raw
+}
 function backfillJapaneseTargets(eligible, deferred, pool, inv, want) {
   const have = new Set(eligible.map(t => t.id))
   const out = [...eligible]
@@ -37872,6 +38034,16 @@ function jaReadingFromInventory(jp, inv) {
 // Offered to the prompt (one per recall, a DIFFERENT one each) and to the fallback, but ONLY those whose every word is
 // authorised for this learner (japaneseCheckLine) — the acceptance gate still judges each candidate.
 const JA_TARGET_CONSTRUCTIONS = {
+  // v681: generic nouns had NO construction at all (JA_NOT_POSSESSABLE blocks the "have-it" frame), so 物 / 場所 were deferred
+  // on every Daily Track as "no licensed frame". Natural collocations; each still passes japaneseCheckLine (taught words only).
+  '物': [{ jp: '買う物ある？', en: 'Is there anything to buy?', cue: 'Ask if there is anything you need to buy' },
+        { jp: '食べる物ある？', en: 'Is there anything to eat?', cue: 'Ask if there is something to eat' },
+        { jp: '好きな物は何？', en: 'What do you like?', cue: 'Ask what kinds of things they like' },
+        { jp: '欲しい物ある？', en: 'Is there anything you want?', cue: 'Ask if there is anything they want' }],
+  '場所': [{ jp: '場所、分かる？', en: 'Do you know the place?', cue: 'Ask if they know where the place is' },
+         { jp: 'いい場所だね。', en: 'Nice spot.', cue: 'Say this is a nice spot' },
+         { jp: '場所はどこ？', en: 'Where is the place?', cue: 'Ask where the place is' },
+         { jp: '会う場所はどこ？', en: 'Where are we meeting?', cue: 'Ask where you are meeting' }],
   'する': [{ jp: '何してるの？', en: 'What are you doing?', cue: 'Ask what they are doing right now' },
           { jp: '今日は何する？', en: 'What shall we do today?', cue: 'Ask what to do today' },
           { jp: 'これ、どうする？', en: 'What shall we do with this?', cue: 'Ask what to do with this' },
@@ -38524,7 +38696,8 @@ function jaEvaluateRecallCandidate(cand, ctx) {
     c2 = { ...c2, buildingBlockIds: _v.blocks, conversationBasicIds: _v.basics, intent: c2.intent || '', register: registerId, _grammarDropped: _v.dropped, _grammarUndeclared: _v.undeclared }
     if (_v.dropped.length) onLog && onLog('  ℹ declared but not present, dropped: ' + _v.dropped.join(' '))
   } catch (e) { onLog && onLog('  ℹ grammar verification unavailable: ' + e.message) }
-  const dup = japaneseDuplicateVerdict(c2.japanese, target.id, seenMap, rules)
+  let dup = japaneseDuplicateVerdict(c2.japanese, target.id, seenMap, rules)
+  if (dup.ok) dup = japaneseVariationVerdict(c2.japanese, target.id, seenMap, target.japanese)   // v681: same application = not a new use
   return { ok: true, cand: c2, repairs, dup }
 }
 // Punctuation never decides validity: "？" as its own segment (romaji "?" / "" / "question") is

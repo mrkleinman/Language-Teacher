@@ -281,7 +281,7 @@ const tg = (id, surface, gloss, role) => ({ id, surface, gloss, english: gloss, 
   // ══ version ════════════════════════════════════════════════════════════
   {
     const S = setup('th')
-    T('5A', 'version v673+ (app + Listening build)', /^v(67[3-9]|680)$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[3-9]|680)$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
+    T('5A', 'version v673+ (app + Listening build)', /^v(67[3-9]|68[01])$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[3-9]|68[01])$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
   }
 
   out.forEach(l => console.log(l))

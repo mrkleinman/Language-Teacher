@@ -132,8 +132,9 @@ const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
     const ui = metas.filter(x => x.m.path === 'ui-path/1')
     const types = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening', 'zh-listening']
     const arch = path.join(dir, 'archive-v674'), archM = fs.readdirSync(arch).filter(f => f.endsWith('.json')).map(f => readJ(path.join(arch, f)).cassette.meta)
-    T('M1', 'the original v674 recordings are KEPT (archive-v674: ' + archM.length + ', all recorded on v674); the working library (16 legacy + ' + ui.length + ' through the screens\u2019 steps) is re-recorded on the production baseline v677 and covers all six track types',
-      archM.length === 38 && archM.every(m => m.appBuild === 'v674') && metas.filter(x => !x.m.path).length === 16 && types.every(t => ui.some(x => x.f.includes(t))) && ui.every(x => x.m.appBuild === 'v677'), ui.map(x => x.f))
+    T('M1', 'the original v674 recordings are KEPT (archive-v674: ' + archM.length + ', all recorded on v674); the working library (16 legacy + ' + ui.length + ' through the screens\u2019 steps) is re-recorded on the current baseline (v681; the v677 set is kept in archive-v677) and covers all six track types',
+      archM.length === 38 && archM.every(m => m.appBuild === 'v674') && metas.filter(x => !x.m.path).length === 16 && types.every(t => ui.some(x => x.f.includes(t))) && ui.every(x => x.m.appBuild === 'v681') &&
+      fs.readdirSync(path.join(dir, 'archive-v677')).filter(f => f.endsWith('.json')).length === 38, ui.map(x => x.f))
     const net = readJ(path.join(dir, 'zh-listening-2026-10-08.ui.neterror.sim.json')).cassette.entries.filter(e => e.response.error).length
     const r429 = readJ(path.join(dir, 'zh-daily-2026-10-08.ui.http429.sim.json')).cassette.entries.filter(e => e.response.status === 429).length
     const jaf = readJ(path.join(dir, 'synthetic-ja-daily.ui.jafail.sim.json')).outcome.log.some(l => /Auto-recovering missing recall/.test(l))
@@ -168,7 +169,7 @@ const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
     const base = fs.readFileSync(path.join(__dirname, 'tt.v674.jsx'), 'utf8')
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
     T('O3', 'v676 adds NO storage write to the app (same stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings)', writes(SRC) === writes(base) + (SRC.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length && (SRC.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(SRC), writes(base)])
-    T('O4', 'version v676+', /^v(67[6-9]|680)$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('O4', 'version v676+', /^v(67[6-9]|68[01])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
   console.log(out.join('\n'))
   console.log('\nv676 Step 0 live-capture tooling: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))

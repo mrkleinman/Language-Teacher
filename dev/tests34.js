@@ -330,7 +330,7 @@ function scriptedModel(plan, need) {
     const logs = []
     const got = await c.generateMandarinOneRecall(t, 3, S.vocab, inv, rules, KEY, MODEL, seen, m => logs.push(m), null, c.createMandarinGenerationStats('mock', 30), { ledger: c.createRecallCheckLedger('zh') })
     T('4C', 'distinct applications: a recall that only repeats an accepted TEMPLATE (你拿这个 → 你拿这个吧) is another attempt (check 1 rejected), the next is accepted at check 2; its cue is derived from its own proposition (not the model\'s drifting "Ask him if he can help")',
-      got && got.checkTier === 2 && logs.some(l => /same sentence template/.test(l)) && /^Tell the other person: I will help you carry it\.$/.test(got.pair.prompt) && got.pair._cueSource === 'derived-from-proposition' && /Ask him/.test(got.pair._modelCue),
+      got && got.checkTier === 2 && logs.some(l => /same sentence template|same application as an accepted recall/.test(l)) && /^Tell the other person: I will help you carry it\.$/.test(got.pair.prompt) && got.pair._cueSource === 'derived-from-proposition' && /Ask him/.test(got.pair._modelCue),
       { tier: got && got.checkTier, cue: got && got.pair.prompt, log: logs.slice(0, 6) })
     const p = c.buildMandarinPrompt(t, inv, S.vocab, 2, rules)
     T('4D', 'the prompt aims WITHIN the level (the belt\'s preferred range — Mukyu: 2–4 words — counted as words, hardMax only when needed) and names one communicative function per recall + the grammar contract (有点 / 一点 / 太…了 / 很 / 不 vs 没 / measure words / 把 only if listed)',
@@ -358,7 +358,7 @@ function scriptedModel(plan, need) {
   // ══ version ═══════════════════════════════════════════════════════════════════════════════════════════════
   {
     const S = setup('th')
-    T('6A', 'version v672+ (app + Listening build)', /^v(67[2-9]|680)$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[2-9]|680)$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
+    T('6A', 'version v672+ (app + Listening build)', /^v(67[2-9]|68[01])$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[2-9]|68[01])$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
   }
 
   out.forEach(l => console.log(l))

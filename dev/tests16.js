@@ -248,8 +248,8 @@ async function genJa(S, responder, extra) {
     // P. export versioning
     const vx = S.c.trackVersionExportLines(ft).join('\n')
     T('X', 'export shows APP_BUILD_VERSION · PIPELINE_VERSION · GENERATOR_VERSION · QC_VERSION · FINALIZER_VERSION · LISTENING_VERSION · language=ja · path=CANONICAL',
-      /APP_BUILD_VERSION: v6(5[1-9]|6[0-9]|7[0-9]|80)/.test(vx) && /PIPELINE_VERSION: v651-canonical/.test(vx) && /GENERATOR_VERSION: ja-gen-v65[134]/.test(vx) && /QC_VERSION: qc-v65[12457]/.test(vx) &&
-      /FINALIZER_VERSION: /.test(vx) && /LISTENING_VERSION: v6(5[04689]|6[23456789]|7[0-9]|80)/.test(vx) && /language=ja · path=CANONICAL/.test(vx), vx.slice(0, 400))
+      /APP_BUILD_VERSION: v6(5[1-9]|6[0-9]|7[0-9]|8[01])/.test(vx) && /PIPELINE_VERSION: v651-canonical/.test(vx) && /GENERATOR_VERSION: ja-gen-v65[134]/.test(vx) && /QC_VERSION: qc-v65[12457]/.test(vx) &&
+      /FINALIZER_VERSION: /.test(vx) && /LISTENING_VERSION: v6(5[04689]|6[23456789]|7[0-9]|8[01])/.test(vx) && /language=ja · path=CANONICAL/.test(vx), vx.slice(0, 400))
   }
   // E / F — context failures and a failed Main track
   {

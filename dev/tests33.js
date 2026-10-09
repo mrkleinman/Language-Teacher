@@ -247,7 +247,7 @@ function scriptedAdapter(plan) {
     const fb = w => [1, 2, 3].map(r => c.jaFallbackRecall(V.find(x => x.japanese === w), inv, r, [])).filter(Boolean).map(p => p.japanese)
     const all = ['今日', '場所', '物', 'する'].flatMap(fb)
     T('3D', 'the fallback frames no longer BUILD those sentences (今日の今日 / 今日は？ / X は何？ / 物ある？ / bare 今日する？)',
-      !all.some(x => /今日の今日|^今日は？$|^.{1,3}は何？$|物ある|^今日する？$|^明日する？$|^一緒にする？$/.test(x)), all)
+      !all.some(x => /今日の今日|^今日は？$|^.{1,3}は何？$|^(この)?物ある|^今日する？$|^明日する？$|^一緒にする？$/.test(x)), all)   // v681: 買う物ある？ / 食べる物ある？ are licensed constructions for 物
     const cf = (jp, en, cue) => c.jaCueFormProblems({ japanese: jp, english: en, prompt: cue || '' })
     T('3E', 'cue accuracy (objective): desire 〜たい needs "want" · "want" needs a desire form · a question is not cued as a statement · a ね tag question may be rendered "…, right?"',
       cf('食べたい。', 'I eat.').length && cf('食べる。', 'I want to eat.').length && cf('行く？', 'Are you going?', 'Say that you are going').length && !cf('いいね。', 'Nice, right?').length && !cf('ぜったい行く。', "I'm definitely going.").length)

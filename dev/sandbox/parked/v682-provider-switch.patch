@@ -1,0 +1,962 @@
+diff --git a/dev/benchmark/run.js b/dev/benchmark/run.js
+index 5da9971..8791601 100644
+--- a/dev/benchmark/run.js
++++ b/dev/benchmark/run.js
+@@ -202,6 +202,7 @@ async function runOnceUi(fx, o) {
+   const key = o.provider === 'live' && o.mode !== 'replay' ? (o.apiKey || process.env.GEMINI_API_KEY) : SIM_KEY
+   const fxc = require('./embed_fixtures').compact(fx)
+   const pipeline = o.pipeline || (o.cassette && o.cassette.meta && o.cassette.meta.pipeline) || 'production'
++  if (o.setup) o.setup(c)   // v682: e.g. select an AI provider (and wrap c.fetch) before the run
+   const r = await c.ttBenchRunFixture(fxc, { apiKey: key, clockReset: globals.__ttBenchClockReset, pipeline })
+   if (o.inspect) o.inspect(c)
+   return { fixture: fx.id, mode: o.mode, path: 'ui', pipeline, gen2: r.gen2 || null, provider: o.mode === 'replay' ? 'REPLAY (no model)' : rec && rec.cassette().meta.provider, error: r.error, stop: r.stop || null,
+diff --git a/dev/run_all.sh b/dev/run_all.sh
+index 55eecbe..c17390e 100755
+--- a/dev/run_all.sh
++++ b/dev/run_all.sh
+@@ -1,7 +1,7 @@
+ #!/bin/sh
+ # v649: compile tt.jsx and run every suite (requires npm i in this folder)
+ node build.js tt.jsx tt.compiled.js
+-for t in tests.js tests2.js tests3.js tests5.js tests6.js tests7.js tests8.js tests9.js tests10.js tests11.js tests12.js tests13.js tests14.js tests15.js tests16.js tests17.js tests18.js tests19.js tests20.js tests21.js tests22.js tests23.js tests24.js tests25.js tests26.js tests27.js tests28.js tests29.js tests30.js tests31.js tests32.js tests33.js tests34.js tests35.js tests36.js tests37.js tests38.js tests39.js tests40.js; do
++for t in tests.js tests2.js tests3.js tests5.js tests6.js tests7.js tests8.js tests9.js tests10.js tests11.js tests12.js tests13.js tests14.js tests15.js tests16.js tests17.js tests18.js tests19.js tests20.js tests21.js tests22.js tests23.js tests24.js tests25.js tests26.js tests27.js tests28.js tests29.js tests30.js tests31.js tests32.js tests33.js tests34.js tests35.js tests36.js tests37.js tests38.js tests39.js tests40.js tests41.js; do
+   echo "== $t"; node $t 2>&1 | grep -E "^FAIL|passed|FAILED|TOTALS" | tail -3
+ done
+ # regress.js retired (retired/regress.js)
+diff --git a/dev/sandbox/browser_v682.js b/dev/sandbox/browser_v682.js
+new file mode 100644
+index 0000000..ef8a151
+--- /dev/null
++++ b/dev/sandbox/browser_v682.js
+@@ -0,0 +1,145 @@
++#!/usr/bin/env node
++// v682 — the AI provider switch in the REAL page (headless Chromium, served over http). Every provider is faked at the
++// network: the scene request gets a fixed scene, the connection test gets "OK", every other request is recorded and
++// refused with HTTP 402 so the screen stops right after its first generation request.
++//   P1  Settings shows "AI model provider", Google Gemini selected by default
++//   P2  incomplete OpenAI settings (no model) are NOT saved and say what is missing
++//   P3  OpenAI + key + models → "Save & test connection" sends ONE request to api.openai.com (Bearer key, fast model) and shows OpenAI's answer
++//   P4  the choice is stored (tt-ai-provider) and survives a reload; the key is not shown on screen
++//   P5  Thai Daily Track then sends its requests to OpenAI and none to Gemini
++//   P6  Mandarin Daily Track (shared credentials) also goes to OpenAI
++//   P7  switching back to Google Gemini → Daily Track goes to Gemini again, none to OpenAI
++//   P8  with NO Gemini key at all, a saved Anthropic provider is enough: Mandarin Daily Track sends Anthropic requests
++//   P9  no page errors; no learner data key written by these steps
++'use strict'
++const fs = require('fs'), path = require('path'), http = require('http')
++const { chromium } = require('playwright')
++const ROOT = path.join(__dirname, '..')
++const checks = []
++const ok = (n, c, d) => { checks.push({ n, pass: !!c, d: d == null ? null : d }); console.log((c ? 'PASS ' : 'FAIL ') + n + (d != null ? ' — ' + (typeof d === 'string' ? d : JSON.stringify(d)).slice(0, 300) : '')) }
++const SCENE_UNUSED = { scene: 'Two friends meet at a café after work.', characterA: 'Ken, a Japanese man', characterB: 'Yui, a Japanese woman', opening: 'こんにちは。', opening_reading: 'こんにちは',
++  opening_romaji: 'konnichiwa', opening_english: 'Hello.', opening_prompt: 'Ken greets Yui', reply: 'こんにちは。', reply_reading: 'こんにちは', reply_romaji: 'konnichiwa', reply_english: 'Hello.',
++  reply_prompt: 'Yui greets Ken', closing: 'じゃあね。', closing_reply: 'またね。', closing_english: 'See you.', closing_reply_english: 'See you later.' }
++function serve() {
++  return new Promise(res => {
++    const srv = http.createServer((req, rsp) => {
++      const p = decodeURIComponent(req.url.split('?')[0].split('#')[0])
++      const f = p === '/' ? path.join(ROOT, 'index.html') : path.join(ROOT, p)
++      if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { rsp.writeHead(404); return rsp.end() }
++      rsp.writeHead(200, { 'Content-Type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream' }); fs.createReadStream(f).pipe(rsp)
++    })
++    srv.listen(0, '127.0.0.1', () => res(srv))
++  })
++}
++;(async () => {
++  const srv = await serve(), base = 'http://127.0.0.1:' + srv.address().port + '/'
++  const browser = await chromium.launch()
++  const THSCENE = { scene: 'Two friends planning a weekend trip.', characterA: 'Somchai, a Thai man', characterB: 'Nida, a Thai woman', opening: 'สวัสดีครับ', opening_phonetic: '', opening_english: 'Hello.', opening_prompt: 'Somchai greets Nida',
++    reply: 'สวัสดีค่ะ', reply_phonetic: '', reply_english: 'Hello.', reply_prompt: 'Nida greets him', closing: 'แล้วเจอกันครับ', closing_phonetic: '', closing_english: 'See you later.', closing_prompt: 'Somchai says goodbye',
++    closing_reply: 'แล้วเจอกันค่ะ', closing_reply_phonetic: '', closing_reply_english: 'See you later.', closing_reply_prompt: 'Nida says goodbye' }
++  const local = { 'react.production.min.js': 'node_modules/react/umd/react.production.min.js', 'react-dom.production.min.js': 'node_modules/react-dom/umd/react-dom.production.min.js', 'babel.min.js': 'node_modules/@babel/standalone/babel.min.js' }
++  const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS' }
++  async function session(init) {
++    const ctx = await browser.newContext(), page = await ctx.newPage(), errors = [], seen = []
++    page.on('pageerror', e => errors.push(e.message))
++    await page.route('**/*', async route => {
++      const req = route.request(), u = req.url()
++      const k = Object.keys(local).find(k => u.endsWith(k))
++      if (k) return route.fulfill({ path: path.join(ROOT, local[k]), contentType: 'application/javascript' })
++      if (u.startsWith(base)) return route.continue()
++      const who = /generativelanguage\.googleapis\.com/.test(u) ? 'gemini' : /api\.openai\.com/.test(u) ? 'openai' : /api\.anthropic\.com/.test(u) ? 'anthropic' : null
++      if (!who) return route.fulfill({ status: 404, body: '' })
++      if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS, body: '' })
++      let b = {}; try { b = JSON.parse(req.postData() || '{}') } catch (e) {}
++      const q = who === 'gemini' ? (b.contents || []).map(c => c.parts.map(p => p.text).join('')).join('\n') : [b.system || '', ...(b.messages || []).map(m => m.content)].join('\n')
++      const isScene = /lesson scenarios/.test(q), isTest = /Reply with exactly one word: OK/.test(q)
++      seen.push({ who, url: u, model: b.model || (u.match(/models\/([^:]+):/) || [])[1], auth: req.headers()['authorization'] || req.headers()['x-api-key'] || null, isScene, isTest })
++      const text = isTest ? 'OK' : isScene ? JSON.stringify(THSCENE) : null
++      if (text == null) return route.fulfill({ status: 402, headers: CORS, contentType: 'application/json', body: JSON.stringify({ error: { code: 402, message: 'browser test: stop here' } }) })
++      const body = who === 'gemini' ? { candidates: [{ content: { parts: [{ text }] } }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 10, totalTokenCount: 20 } }
++        : who === 'openai' ? { choices: [{ message: { content: text } }], usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 } }
++        : { content: [{ type: 'text', text }], usage: { input_tokens: 10, output_tokens: 2 } }
++      return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(body) })
++    })
++    await page.addInitScript(init, null)
++    const waitText = async (re, ms = 120000) => { for (let i = 0; i < ms / 250; i++) { if (re.test(await page.evaluate(() => document.body.innerText))) return true; await page.waitForTimeout(250) } return false }
++    const settle = async () => { for (let i = 0; i < 80 && !seen.some(s => !s.isScene && !s.isTest); i++) await page.waitForTimeout(250); await page.waitForTimeout(1500) }
++    return { ctx, page, errors, seen, waitText, settle }
++  }
++  const keysOf = page => page.evaluate(() => Object.keys(localStorage).sort())
++  const gen = (seen, who) => seen.filter(s => s.who === who && !s.isTest).length
++  // Thai Daily Track → scene preview → Generate (stops at the first generation request)
++  async function thaiDaily(S) {
++    const { page } = S
++    await page.goto(base); await S.waitText(/Daily Track/)
++    S.seen.length = 0
++    await page.getByText('Daily Track', { exact: true }).first().click()
++    await S.waitText(/Generate Track from this Scene|Generate with the NEW generator/, 30000)
++    const g = page.getByText('Generate Track from this Scene')
++    if (await g.count()) { await g.click(); await S.settle() }
++  }
++  {
++    const S = await session(() => { try { if (!localStorage.getItem('tt-gemini-key')) { localStorage.setItem('tt-gemini-key', JSON.stringify('AIzaSyTEST-browser-v682-0000000000')); localStorage.setItem('tt-active-language', JSON.stringify('th')) } } catch (e) {} })
++    const { page } = S
++    await page.goto(base); await S.waitText(/Daily Track/); await page.waitForTimeout(3000)
++    const snap = () => page.evaluate(() => Object.fromEntries(Object.keys(localStorage).map(k => [k, localStorage.getItem(k)])))
++    const before = await snap()
++    const toSettings = async () => { await page.locator('button[title="Settings"]').first().click(); return S.waitText(/AI model provider/, 20000) }
++    const sel = () => page.locator('select:has(option[value="openai"])')
++    const shown = await toSettings()
++    ok('P1 Settings shows "AI model provider", Google Gemini selected by default', shown && await sel().inputValue() === 'gemini' && /Now using:\s*Google Gemini/.test(await page.evaluate(() => document.body.innerText)), S.errors.slice(0, 2))
++    await sel().selectOption('openai')
++    await page.locator('input[placeholder="API key"]').fill('sk-browser-test-key')
++    await page.getByText('Save provider', { exact: true }).click()
++    const refused = await S.waitText(/Not saved: .*fast model/i, 5000)
++    ok('P2 incomplete settings (no model name) are NOT saved and the message says what is missing', refused && await page.evaluate(() => localStorage.getItem('tt-ai-provider')) === null)
++    await page.locator('input[placeholder="model name"]').fill('gpt-test-fast')
++    await page.locator('input[placeholder="model name (optional)"]').fill('gpt-test-strong')
++    S.seen.length = 0
++    await page.getByText('Save & test connection', { exact: true }).click()
++    const answered = await S.waitText(/✅ OpenAI · gpt-test-fast \/ gpt-test-strong answered "OK"/, 20000)
++    if (!answered) console.log('   screen: ' + (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(0, 1500))
++    const t = S.seen.filter(s => s.isTest)
++    ok('P3 "Save & test connection" sends ONE request to OpenAI (Bearer key, fast model) and shows its answer', answered && t.length === 1 && t[0].who === 'openai' && t[0].url === 'https://api.openai.com/v1/chat/completions' &&
++      t[0].auth === 'Bearer sk-browser-test-key' && t[0].model === 'gpt-test-fast' && !S.seen.some(s => s.who === 'gemini'), S.seen.map(s => [s.who, s.model]))
++    const stored = JSON.parse(await page.evaluate(() => localStorage.getItem('tt-ai-provider')) || 'null')
++    const after = await snap()
++    const changed = Object.keys({ ...before, ...after }).filter(k => before[k] !== after[k])
++    await page.goto(base); await S.waitText(/Daily Track/); await toSettings()
++    const txt = await page.evaluate(() => document.body.innerText)
++    ok('P4 the choice is stored (tt-ai-provider) and survives a reload ("Now using: OpenAI"); the key is never shown on screen', stored && stored.provider === 'openai' && stored.fastModel === 'gpt-test-fast' &&
++      await sel().inputValue() === 'openai' && /Now using:\s*OpenAI/.test(txt) && !txt.includes('sk-browser-test-key'), stored && { provider: stored.provider, fast: stored.fastModel })
++    await thaiDaily(S)
++    ok('P5 Thai Daily Track then sends its requests to OpenAI and none to Gemini', gen(S.seen, 'openai') >= 2 && gen(S.seen, 'gemini') === 0 && S.seen.some(s => s.isScene && s.who === 'openai'), S.seen.slice(0, 3).map(s => [s.who, s.model]))
++    await page.evaluate(() => localStorage.setItem('tt-active-language', JSON.stringify('zh')))
++    await page.goto(base); await S.waitText(/Daily Track/)
++    S.seen.length = 0
++    await page.getByText('Daily Track', { exact: true }).first().click(); await S.settle()
++    ok('P6 Mandarin Daily Track (shared credentials) also goes to OpenAI', gen(S.seen, 'openai') >= 1 && gen(S.seen, 'gemini') === 0, S.seen.slice(0, 3).map(s => [s.who, s.model]))
++    await page.evaluate(() => localStorage.setItem('tt-active-language', JSON.stringify('th')))
++    await page.goto(base); await S.waitText(/Daily Track/); await toSettings()
++    await sel().selectOption('gemini'); await page.getByText('Save provider', { exact: true }).click()
++    await S.waitText(/Saved — Google Gemini is used/, 5000)
++    await thaiDaily(S)
++    ok('P7 switching back to Google Gemini → Daily Track goes to Gemini again, none to OpenAI', gen(S.seen, 'gemini') >= 2 && gen(S.seen, 'openai') === 0, S.seen.slice(0, 3).map(s => [s.who, s.model]))
++    ok('P9a no page errors; saving + testing the provider changed only tt-ai-provider (and the spend counter for the test request) — no learner data', !S.errors.length && changed.includes('tt-ai-provider') && changed.every(k => k === 'tt-ai-provider' || k === 'tt-gemini-spend'), { errors: S.errors.slice(0, 2), changed })
++    await S.ctx.close()
++  }
++  {
++    const S = await session(() => { try { if (!localStorage.getItem('tt-ai-provider')) { localStorage.setItem('tt-active-language', JSON.stringify('zh')); localStorage.setItem('tt-ai-provider', JSON.stringify({ provider: 'anthropic', key: 'sk-ant-browser', fastModel: 'claude-test-fast' })) } } catch (e) {} })
++    const { page } = S
++    await page.goto(base); await S.waitText(/Daily Track/)
++    S.seen.length = 0
++    await page.getByText('Daily Track', { exact: true }).first().click(); await S.settle()
++    const a = S.seen.filter(s => s.who === 'anthropic')
++    ok('P8 with NO Gemini key at all, a saved Anthropic provider is enough: Mandarin Daily Track sends Anthropic requests (x-api-key, fast model), none to Gemini', a.length >= 1 && a[0].auth === 'sk-ant-browser' && a[0].model === 'claude-test-fast' && gen(S.seen, 'gemini') === 0,
++      { seen: S.seen.slice(0, 3).map(s => [s.who, s.model]), text: (await page.evaluate(() => document.body.innerText)).slice(0, 200) })
++    ok('P9b no page errors', !S.errors.length, S.errors.slice(0, 3))
++    await S.ctx.close()
++  }
++  await browser.close(); srv.close()
++  const pass = checks.filter(c => c.pass).length
++  console.log('\nv682 browser provider-switch test: ' + pass + '/' + checks.length + (pass === checks.length ? ' — ALL PASS' : ' — FAILED'))
++  fs.mkdirSync(path.join(__dirname, 'logs'), { recursive: true }); fs.writeFileSync(path.join(__dirname, 'logs', 'browser_v682.json'), JSON.stringify(checks, null, 1))
++  process.exit(pass === checks.length ? 0 : 1)
++})().catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1) })
+diff --git a/dev/sandbox/reports/2026-10-09-v682-provider-switch.md b/dev/sandbox/reports/2026-10-09-v682-provider-switch.md
+new file mode 100644
+index 0000000..88781bf
+--- /dev/null
++++ b/dev/sandbox/reports/2026-10-09-v682-provider-switch.md
+@@ -0,0 +1,59 @@
++# v682 — Choosing a different AI provider
++
++Status: built and tested on the development branch. **Not live.** Releasing it needs the owner's approval.
++
++## What it does
++
++Until v681, every AI request went to Google Gemini. From v682, **Settings → "AI model provider — advanced"** lets you choose one of:
++
++| Choice | What you enter |
++|---|---|
++| Google Gemini (default) | Nothing new. This works exactly as before. |
++| OpenAI | API key, plus a fast model name (and an optional stronger one) |
++| Anthropic (Claude) | API key, plus a fast model name (and an optional stronger one) |
++| Other OpenAI-compatible service | Service address (for example https://openrouter.ai/api/v1, https://api.groq.com/openai/v1, https://api.deepseek.com/v1 or a local http://localhost:11434/v1), plus an API key and model names |
++
++- **Fast model:** does every job that Gemini Flash-Lite does today.
++- **Stronger model:** used only by the new generator's checker (the job Gemini Flash does). If you leave it empty, the fast model is used.
++- **Prices (optional):** US$ per million tokens. With them, the spend counter stays accurate. Without them, the cost shows as unknown.
++- **"Save & test connection":** sends one tiny request and shows the provider's answer.
++- **Switching back:** choose "Google Gemini (default)" and save.
++
++The same prompts, quality checks, retry rules and READY/NOT READY gates apply whatever provider is chosen. Nothing about vocabulary, SRS, belts or history changes. The only thing saved is the provider choice itself (`tt-ai-provider`, kept on the device).
++
++## How it works (for a developer)
++
++- There is still one request door, `geminiRequest`.
++  - With no provider chosen, it calls the unchanged Gemini sender.
++  - With a provider chosen, it calls `_aiProviderSend`, which:
++    - translates the request into that provider's format (OpenAI `chat/completions`, or Anthropic `messages`)
++    - translates the reply and its token counts back
++    - uses the same retry rules: 429 and 5xx are retried; a wrong key stops the run.
++- Model mapping: Gemini Flash-Lite → fast model; any other model → stronger model.
++- If a provider refuses a parameter (temperature, the token-limit field name, or JSON mode), that parameter is dropped and the request is repeated once.
++- Incomplete settings (no key, no model, or a bad address) never switch the provider. Gemini keeps working, and Settings says what is missing.
++
++## Evidence
++
++| Test | Result |
++|---|---|
++| `tests41.js`: request shapes, model mapping, cost from the provider's token counts, refused-parameter adaptation, 429 retry, 401 stop, key handling | 19/19 |
++| `tests41.js` E1–E3: a **full Daily lesson** sent as OpenAI requests (Japanese 74 requests, Mandarin 204), as Anthropic requests (same), and through a compatible service (Thai 208). Each gives exactly the same lesson as the Gemini path, with no request to Gemini. | pass |
++| `sandbox/browser_v682.js` (real page in Chromium): Settings panel, refusal of incomplete settings, connection test, the choice surviving a reload, Thai and Mandarin Daily going to the chosen provider, switching back to Gemini, Anthropic with no Gemini key, no learner data touched | 10/10 |
++| Default Gemini path | Unchanged. The 18 recorded live runs replay identically (tests39 A5), and the full suite passes. |
++
++These tests use a simulated provider. They prove the plumbing, not how good another model's lessons would be.
++
++## Not yet done
++
++- **No real call to another provider has been made.** This sandbox can only reach Google's servers, and only with the key sent as `x-goog-api-key`.
++  - Google also offers an OpenAI-format address (`…/v1beta/openai/`). It needs the key as `Authorization: Bearer`.
++  - If the owner adds that header to the sandbox secret, the "compatible" path can be tested for real against Gemini at a cost of a few cents.
++- **Quality on another model is unknown.** The prompts and checks were tuned on Flash-Lite. Compare a few lessons before relying on another provider.
++- **Keys entered in Settings stay on the device**, the same as the Gemini key.
++  - OpenAI and Anthropic allow direct calls from a browser. Anthropic needs a special header, which the app sends.
++  - Some other services block browser calls. If so, the connection test shows the error.
++
++## TL;DR
++
++v682 adds a provider choice under Settings: Gemini (the default, unchanged), OpenAI, Claude, or any OpenAI-compatible service. Tests sent complete lessons through each format and got lessons identical to Gemini's, and the real page works in a browser. No real call to another provider has been made yet, and how good lessons are on other models is unknown. It is not live until the owner approves.
+diff --git a/dev/sandbox/test_all.sh b/dev/sandbox/test_all.sh
+index e61b327..fc92b2e 100755
+--- a/dev/sandbox/test_all.sh
++++ b/dev/sandbox/test_all.sh
+@@ -21,7 +21,7 @@ for t in $SUITES render_test; do
+   e=$(cat "$f.exit"); p=$(grep -cE '^PASS' "$txt"); n=$(grep -cE '^FAIL' "$txt")
+   ids=$(grep -E '^FAIL' "$txt" | awk '{print $2}' | tr '\n' ' ')
+   note=""
+-  if [ "$e" != 0 ]; then
++  if [ "$e" != 0 ] || [ "$n" != 0 ]; then   # v682: a FAIL line counts even if the suite exited 0
+     if [ -n "${KNOWN_FAIL[$t]}" ] && [ "$(echo $ids | xargs)" = "${KNOWN_FAIL[$t]}" ]; then note="${KNOWN_WHY[$t]}"; else bad=1; note="<<< NEW FAILURE"; fi
+   fi
+   bl=$(grep -cE '^BLOCKED' "$txt")
+diff --git a/dev/tests13.js b/dev/tests13.js
+index 22d7318..562179d 100644
+--- a/dev/tests13.js
++++ b/dev/tests13.js
+@@ -84,15 +84,36 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
+   const BANNED = /qwen|anthropic|claude|openai|gpt-|openrouter|deepseek|mistral|groq|ollama|huggingface|together\.ai|fallbackProvider|secondaryProvider|fallbackModel|secondaryModel|alternateModel|haiku|sk-or-|x-api-key|chat\/completions/i
+   const hits = (text, name) => text.split('\n').map((l, i) => BANNED.test(l) ? name + ':' + (i + 1) + ' ' + l.trim().slice(0, 80) : null).filter(Boolean)
+   const allHits = hits(src, 'tt.jsx').concat(hits(shell, 'index-shell'))
+-  T('I1', 'runtime source (tt.jsx + app shell) contains ZERO banned provider identifiers — no exclusions, no allowlist',
+-    allHits.length === 0, allHits.slice(0, 10))
++  // v682: the OWNER asked for a provider choice. The v648 guarantees that matter are kept and re-checked: Gemini is the
++  // default; nothing switches provider or model automatically (no fallback chain); a non-Gemini key in the Gemini slot
++  // still goes nowhere; every other provider's code lives in ONE marked module (+ its Settings panel) behind one door.
++  const modA = src.indexOf('// AI_PROVIDER_MODULE_BEGIN'), modB = src.indexOf('// AI_PROVIDER_MODULE_END')
++  const panelA = src.indexOf('function AiProviderSettings('), panelB = src.indexOf('\nfunction Settings(', panelA)
++  const outside = modA > 0 && modB > modA && panelA > 0 && panelB > panelA ? src.slice(0, modA) + src.slice(modB, panelA) + src.slice(panelB) : src
++  const AUTO = /fallbackProvider|secondaryProvider|fallbackModel|secondaryModel|alternateModel|FALLBACK_MODEL|fallback-model/i
++  const outHits = hits(outside, 'tt.jsx(outside the provider module)').concat(hits(shell, 'index-shell'))
++  T('I1', 'provider identifiers appear ONLY in the marked v682 provider module and its Settings panel (none in generation, QC, UI or the shell); no automatic-fallback identifier exists anywhere',
++    modA > 0 && modB > modA && outHits.length === 0 && !AUTO.test(src), outHits.slice(0, 10))
+   const fetches = [...src.matchAll(/\bfetch\(\s*([^,\n]{0,90})/g)].map(m => m[1].trim())
+-  T('I2', 'network calls: exactly ONE AI transport (geminiRequest → Gemini REST); the only other fetches are Google Cloud TTS (audio, not an LLM)',
+-    fetches.filter(f => !/texttospeech\.googleapis\.com/.test(f)).length === 1 && /GEMINI_API_BASE \+ modelId/.test(fetches.find(f => !/texttospeech/.test(f)) || '') &&
++  const ai = fetches.filter(f => !/texttospeech\.googleapis\.com/.test(f))
++  const modSrc = src.slice(modA, modB)
++  T('I2', 'network calls: the Gemini REST transport + ONE provider transport (inside the module, reached only from geminiRequest when the owner has chosen a provider); the only other fetches are Google Cloud TTS',
++    ai.length === 2 && /GEMINI_API_BASE \+ modelId/.test(ai[0]) && ai[1] === 'req.url' && /\bfetch\(req\.url/.test(modSrc) &&
++    (src.match(/_aiProviderSend\(/g) || []).length === 2 && /const _prov = aiProviderActive\(\)/.test(src) && /const work = _prov \? _aiProviderSend\(/.test(src) &&
+     /const GEMINI_API_BASE = 'https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/'/.test(src), fetches)
+   const loopBody = src.slice(src.indexOf('async function geminiRequest('), src.indexOf('async function geminiGenerate('))
+-  T('I3', 'no model promotion: the model is fixed once (geminiModelId) before the retry loop and never reassigned; no fallback-model constant exists',
+-    (loopBody.match(/const modelId = /g) || []).length === 1 && !/modelId\s*=(?!=)/.test(loopBody.replace('const modelId = geminiModelId(model)', '')) && !/FALLBACK_MODEL|fallback-model/.test(src))
++  T('I3', 'no model promotion: the model is fixed once (Gemini model, or the owner\'s mapped model) before the retry loop and never reassigned; no fallback-model constant exists',
++    (loopBody.match(/const modelId = /g) || []).length === 1 && /const modelId = _prov \? aiProviderModelFor\(_prov, geminiModelId\(model\)\) : geminiModelId\(model\)/.test(loopBody) &&
++    !/modelId\s*=(?!=)/.test(loopBody.replace(/const modelId = [^\n]*/, '')) && !/FALLBACK_MODEL|fallback-model/.test(src))
++  T('I5', 'the provider is set ONLY from the owner\'s saved choice (loaded at start / saved in Settings) — never by an error, a retry or a stage',
++    (src.match(/aiSetProviderConfig\(/g) || []).length === 3 && /stGet\(AI_PROVIDER_SETTING_KEY\)\.then\(v => \{ if \(!dead && v && typeof v === 'object'\) setCfg\(aiSetProviderConfig\(v\)\)/.test(src) &&
++    (src.match(/\bAI_PROVIDER_CONFIG = /g) || []).length === 2 && /function aiSetProviderConfig\(c\) \{[^}]*\n  AI_PROVIDER_CONFIG = /.test(src))
++  { const c = fresh(); c.aiBeginRun('t-provider-default'); const log = recorder(c, () => gem('ok'))
++    await c.geminiGenerate(KEY, 'gemini-2.5-flash-lite', msg, 100)
++    c.aiSetProviderConfig({ provider: 'openai', key: 'sk-x' })   // incomplete (no model) → must NOT switch
++    let e = null; try { await c.geminiGenerate('sk-or-v1-0000000000000000000000000', 'gemini-2.5-flash-lite', msg, 100) } catch (x) { e = x }
++    T('I6', 'with no complete provider chosen, everything still goes to Gemini, and a non-Gemini key in the Gemini slot is still refused with ZERO requests',
++      log.length === 1 && log[0].host === 'generativelanguage.googleapis.com' && log[0].model === 'gemini-2.5-flash-lite' && e && /GEMINI_KEY_MISSING/.test(e.message), { log, e: e && e.message }) }
+   T('I4', 'no provider state / selector / key survives: tt-provider, the retired shared-key slot and provider selects are gone from the UI and loaders',
+     !/Generate with:/.test(src) && !/stGet\('tt-(provider|orkey|apikey|dskey)'\)/.test(src) && !/onSetProvider|resolveOr|orBalance/.test(src) && /GEMINI_ONLY_LEGACY_SETTING_KEYS = \['tt-orkey', 'tt-apikey', 'tt-dskey', 'tt-provider'\]/.test(src))
+ 
+@@ -199,4 +220,5 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
+       track.pairs.some(p => /^gemini-check-1:/.test(p._source || '')) && !track.pairs.some(p => BANNED.test(p._source || '')), [...new Set(track.pairs.map(p => String(p._source || '').replace(/:.*/, ':')))]) }
+ 
+   console.log(out.join('\n') + '\n\n' + (fails ? fails + ' FAILED' : 'all passed') + ' (' + out.filter(l => /^(PASS|FAIL)/.test(l)).length + ' checks)')
++  process.exit(fails ? 1 : 0)   // v682: a FAIL now fails the suite (it used to exit 0, so the runner could not see it)
+ })().catch(e => { console.error(e); process.exit(1) })
+diff --git a/dev/tests16.js b/dev/tests16.js
+index 8699090..c2b0404 100644
+--- a/dev/tests16.js
++++ b/dev/tests16.js
+@@ -248,8 +248,8 @@ async function genJa(S, responder, extra) {
+     // P. export versioning
+     const vx = S.c.trackVersionExportLines(ft).join('\n')
+     T('X', 'export shows APP_BUILD_VERSION · PIPELINE_VERSION · GENERATOR_VERSION · QC_VERSION · FINALIZER_VERSION · LISTENING_VERSION · language=ja · path=CANONICAL',
+-      /APP_BUILD_VERSION: v6(5[1-9]|6[0-9]|7[0-9]|8[01])/.test(vx) && /PIPELINE_VERSION: v651-canonical/.test(vx) && /GENERATOR_VERSION: ja-gen-v65[134]/.test(vx) && /QC_VERSION: qc-v65[12457]/.test(vx) &&
+-      /FINALIZER_VERSION: /.test(vx) && /LISTENING_VERSION: v6(5[04689]|6[23456789]|7[0-9]|8[01])/.test(vx) && /language=ja · path=CANONICAL/.test(vx), vx.slice(0, 400))
++      /APP_BUILD_VERSION: v6(5[1-9]|6[0-9]|7[0-9]|8[012])/.test(vx) && /PIPELINE_VERSION: v651-canonical/.test(vx) && /GENERATOR_VERSION: ja-gen-v65[134]/.test(vx) && /QC_VERSION: qc-v65[12457]/.test(vx) &&
++      /FINALIZER_VERSION: /.test(vx) && /LISTENING_VERSION: v6(5[04689]|6[23456789]|7[0-9]|8[012])/.test(vx) && /language=ja · path=CANONICAL/.test(vx), vx.slice(0, 400))
+   }
+   // E / F — context failures and a failed Main track
+   {
+diff --git a/dev/tests34.js b/dev/tests34.js
+index 5a51ac8..374638d 100644
+--- a/dev/tests34.js
++++ b/dev/tests34.js
+@@ -358,7 +358,7 @@ function scriptedModel(plan, need) {
+   // ══ version ═══════════════════════════════════════════════════════════════════════════════════════════════
+   {
+     const S = setup('th')
+-    T('6A', 'version v672+ (app + Listening build)', /^v(67[2-9]|68[01])$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[2-9]|68[01])$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
++    T('6A', 'version v672+ (app + Listening build)', /^v(67[2-9]|68[012])$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[2-9]|68[012])$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
+   }
+ 
+   out.forEach(l => console.log(l))
+diff --git a/dev/tests35.js b/dev/tests35.js
+index a145958..50c7ba3 100644
+--- a/dev/tests35.js
++++ b/dev/tests35.js
+@@ -281,7 +281,7 @@ const tg = (id, surface, gloss, role) => ({ id, surface, gloss, english: gloss,
+   // ══ version ════════════════════════════════════════════════════════════
+   {
+     const S = setup('th')
+-    T('5A', 'version v673+ (app + Listening build)', /^v(67[3-9]|68[01])$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[3-9]|68[01])$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
++    T('5A', 'version v673+ (app + Listening build)', /^v(67[3-9]|68[012])$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[3-9]|68[012])$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
+   }
+ 
+   out.forEach(l => console.log(l))
+diff --git a/dev/tests36.js b/dev/tests36.js
+index f1ce483..110f721 100644
+--- a/dev/tests36.js
++++ b/dev/tests36.js
+@@ -312,7 +312,7 @@ const poolTargets = (c, S, lang, k) => c.listeningConversationTargets({ keywords
+   }
+   {
+     const c = setup('th').c
+-    T('E1', 'version v674+ (app + Listening build; v675 = Step 0 instrumentation, same generation behaviour)', /^v(67[4-9]|68[01])$/.test(c.ev('APP_BUILD_VERSION')) && /^v(67[4-9]|68[01])$/.test(c.ev('LISTENING_BUILD_VERSION')))
++    T('E1', 'version v674+ (app + Listening build; v675 = Step 0 instrumentation, same generation behaviour)', /^v(67[4-9]|68[012])$/.test(c.ev('APP_BUILD_VERSION')) && /^v(67[4-9]|68[012])$/.test(c.ev('LISTENING_BUILD_VERSION')))
+   }
+   console.log(out.join('\n'))
+   console.log('\nv674 verbalizability-first regression: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
+diff --git a/dev/tests37.js b/dev/tests37.js
+index 8bd9ac6..afeb1c4 100644
+--- a/dev/tests37.js
++++ b/dev/tests37.js
+@@ -218,8 +218,8 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
+     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0] + (s.match(/const CURRICULUM_BELTS = [\s\S]*?\n\]/) || [''])[0]
+     T('G2', 'no vocabulary entry, belt threshold or complexity contract changed in the source (bank / belt tables byte-identical to v674)', banks(src) === banks(base) && banks(src).length > 1000)
+     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
+-    T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
+-    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[01])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
++    T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings; v682 one more: the AI provider choice)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length + (src.match(/stSet\(AI_PROVIDER_SETTING_KEY, c\)/g) || []).length && (src.match(/stSet\(AI_PROVIDER_SETTING_KEY, c\)/g) || []).length <= 1 && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
++    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[012])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+   }
+ 
+   console.log(out.join('\n'))
+diff --git a/dev/tests38.js b/dev/tests38.js
+index 0b379a7..a6f3c80 100644
+--- a/dev/tests38.js
++++ b/dev/tests38.js
+@@ -168,8 +168,8 @@ const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
+     T('O2', 'the v674 architecture review, v674 report, v674 test bundle and v674 test evidence are kept in the benchmark (historical/…/evidence)', need.every(f => fs.existsSync(path.join(ev, f))), need.filter(f => !fs.existsSync(path.join(ev, f))))
+     const base = fs.readFileSync(path.join(__dirname, 'tt.v674.jsx'), 'utf8')
+     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
+-    T('O3', 'v676 adds NO storage write to the app (same stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings)', writes(SRC) === writes(base) + (SRC.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length && (SRC.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(SRC), writes(base)])
+-    T('O4', 'version v676+', /^v(67[6-9]|68[01])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
++    T('O3', 'v676 adds NO storage write to the app (same stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings; v682 one more: the AI provider choice)', writes(SRC) === writes(base) + (SRC.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length + (SRC.match(/stSet\(AI_PROVIDER_SETTING_KEY, c\)/g) || []).length && (SRC.match(/stSet\(AI_PROVIDER_SETTING_KEY, c\)/g) || []).length <= 1 && (SRC.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(SRC), writes(base)])
++    T('O4', 'version v676+', /^v(67[6-9]|68[012])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+   }
+   console.log(out.join('\n'))
+   console.log('\nv676 Step 0 live-capture tooling: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
+diff --git a/dev/tests39.js b/dev/tests39.js
+index f746850..dd27214 100644
+--- a/dev/tests39.js
++++ b/dev/tests39.js
+@@ -57,8 +57,9 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
+     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0]
+     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
+     // v679: exactly ONE new storage write — the switch setting itself (key tt-ja-gen2); no learner-data write is added
++    const aiw = (SRC.match(/stSet\(AI_PROVIDER_SETTING_KEY, c\)/g) || []).length   // v682: the AI provider choice (Settings)
+     const extra = (SRC.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length + (SRC.match(/stSet\(settingKey, v\)/g) || []).length
+-    T('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly two: the switch settings (tt-ja-gen2; tt-th-gen2 / tt-zh-gen2 via one shared tick box) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 2 && writes(SRC) === writes(base) + 2 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC) && /const TH_GEN2_SETTING_KEY = 'tt-th-gen2'/.test(SRC) && /const ZH_GEN2_SETTING_KEY = 'tt-zh-gen2'/.test(SRC), [writes(SRC), writes(base), extra])
++    T('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly two switch settings (tt-ja-gen2; tt-th-gen2 / tt-zh-gen2 via one shared tick box) and, from v682, the AI provider choice (tt-ai-provider) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 2 && writes(SRC) === writes(base) + 2 + aiw && aiw <= 1 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC) && /const TH_GEN2_SETTING_KEY = 'tt-th-gen2'/.test(SRC) && /const ZH_GEN2_SETTING_KEY = 'tt-zh-gen2'/.test(SRC), [writes(SRC), writes(base), extra])
+   }
+   // ══ B — DETERMINISTIC ACCEPTANCE RULES ════════════════════════════════════════════════════════════════════════════
+   {
+@@ -143,7 +144,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
+   {
+     T('E1', 'the benchmark panel offers the shadow pilot (6 × 1 / 6 × 3), passes pipeline=gen2 to the sandboxed worker and keeps pilot results and files apart (-gen2-)',
+       /id="pilot1"/.test(SRC) && /runInWorker\(fx, k, \{ pipeline: 'gen2', judgeModel:/.test(SRC) && /const pipeline = m\.pipeline === 'gen2' \? 'gen2' : 'production'/.test(SRC) && /'-gen2'/.test(SRC))
+-    T('E2', 'version v681', c.ev('APP_BUILD_VERSION') === 'v681' && c.ev('LISTENING_BUILD_VERSION') === 'v681')
++    T('E2', 'version v681+ (v682 = AI provider switch, Gemini path unchanged)', /^v68[12]$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+   }
+   // ══ F — v678.1 SANDBOX FIXES (defects found in the first live Japanese Daily run, 9 Oct 2026) ══════════════════
+   {
+diff --git a/dev/tests41.js b/dev/tests41.js
+new file mode 100644
+index 0000000..095b405
+--- /dev/null
++++ b/dev/tests41.js
+@@ -0,0 +1,133 @@
++// v682 — AI PROVIDER SWITCH regression suite. Google Gemini stays the default and is sent byte-for-byte as before; OpenAI,
++// Anthropic and any OpenAI-compatible service receive the same prompts in their own wire format through the ONE request door
++// (geminiRequest). Real app functions; the network is a stand-in that checks each provider's request shape and answers in it.
++'use strict'
++const fs = require('fs'), path = require('path')
++const { load } = require('./harness')
++const { runOnceUi, loadFixture, compareContent } = require('./benchmark/run')
++const out = []; let n = 0, fails = 0
++const T = (id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + id.padEnd(5) + name + (!pass && detail !== undefined ? '\n      ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 700) : '')) }
++const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
++const GKEY = 'AIzaSyTEST-tests41-0000000000000000'
++
++// a stand-in network: records each request and answers in the format the URL belongs to
++function network(reply) {
++  const calls = []
++  const fetch = async (url, opts) => {
++    const body = JSON.parse(opts.body), headers = opts.headers || {}
++    calls.push({ url: String(url), headers, body })
++    const r = typeof reply === 'function' ? reply(String(url), body, calls.length) : null
++    if (r && r.status && r.status !== 200) return { ok: false, status: r.status, json: async () => r.body }
++    const text = (r && r.text) || 'OK'
++    if (/generativelanguage/.test(url)) return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 2, totalTokenCount: 12 } }) }
++    if (/\/messages$/.test(url)) return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text }], usage: { input_tokens: 100, output_tokens: 20 } }) }
++    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: text } }], usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 } }) }
++  }
++  return { calls, fetch }
++}
++const ask = (c, o) => c.geminiRequest({ apiKey: GKEY, model: c.ev('GEMINI_DEFAULT_MODEL'), messages: [{ role: 'user', content: 'Reply in JSON: {"ok":true}' }], maxTokens: 50, temperature: 0.4, stage: 'Z_test', dedupe: false, ...(o || {}) })
++
++;(async () => {
++  // ══ P — the switch at the request door ═══════════════════════════════════════════════════════════════════════════
++  {
++    const c = load(path.join(__dirname, 'tt.compiled.js'), { realBelt: true })
++    let net = network(); c.fetch = net.fetch
++    await ask(c)
++    const g = net.calls[0]
++    T('P1', 'default = Google Gemini, unchanged: generateContent URL with the Gemini model, Gemini body (contents + generationConfig), no Authorization header',
++      c.aiProviderActive() === null && /generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash-lite:generateContent\?key=/.test(g.url) && g.body.contents && g.body.generationConfig && !g.headers.Authorization, g.url)
++    c.aiSetProviderConfig({ provider: 'openai', key: 'sk-test', fastModel: '' })
++    net = network(); c.fetch = net.fetch; await ask(c)
++    T('P2', 'INCOMPLETE settings never switch provider silently (no fast model → Gemini is still used, and Settings names what is missing)',
++      c.aiProviderActive() === null && /generativelanguage/.test(net.calls[0].url) && /fast model/.test(c.aiProviderProblem()), c.aiProviderProblem())
++    c.aiSetProviderConfig({ provider: 'openai', key: 'sk-test-123456', fastModel: 'fast-model-x', strongModel: 'strong-model-y', prices: { fast: { in: 0.5, out: 2 }, strong: { in: 3, out: 12 } } })
++    net = network(() => ({ text: '{"ok":true}' })); c.fetch = net.fetch
++    const t1 = await ask(c, { json: true })
++    const t2 = await ask(c, { model: 'gemini-2.5-flash' })
++    const o1 = net.calls[0], o2 = net.calls[1]
++    T('P3', 'OpenAI: chat/completions with Bearer auth; the FAST model replaces Flash-Lite and the STRONGER model replaces Flash; max_completion_tokens; JSON mode; same prompt text',
++      o1.url === 'https://api.openai.com/v1/chat/completions' && o1.headers.Authorization === 'Bearer sk-test-123456' && o1.body.model === 'fast-model-x' && o2.body.model === 'strong-model-y' &&
++      o1.body.max_completion_tokens === 50 && o1.body.response_format && o1.body.response_format.type === 'json_object' && o1.body.messages[0].content === 'Reply in JSON: {"ok":true}' && t1 === '{"ok":true}',
++      { url: o1.url, model: [o1.body.model, o2.body.model], body: o1.body })
++    const row = c.ev('AI_LEDGER').filter(r => r.model === 'fast-model-x').slice(-1)[0]
++    T('P4', 'the cost ledger reads the provider\'s own token usage and the owner\'s prices (100 in × $0.50 + 20 out × $2 per 1M)',
++      row && row.provider === 'openai' && row.usage && row.usage.prompt === 100 && Math.abs(row.costUsd - (100 * 0.5 + 20 * 2) / 1e6) < 1e-12 && row.costSource === 'provider-usage', row && { usage: row.usage, cost: row.costUsd, src: row.costSource })
++    c.aiSetProviderConfig({ provider: 'anthropic', key: 'sk-ant-test', fastModel: 'claude-fast-x', strongModel: '' })
++    net = network(() => ({ text: '{"ok":true}' })); c.fetch = net.fetch
++    const ta = await c.geminiRequest({ apiKey: GKEY, model: c.ev('GEMINI_DEFAULT_MODEL'), messages: [{ role: 'system', content: 'Be brief.' }, { role: 'user', content: 'Part one.' }, { role: 'user', content: 'Part two.' }], maxTokens: 60, temperature: 0.2, json: true, stage: 'Z_test', dedupe: false })
++    const a = net.calls[0]
++    T('P5', 'Anthropic: /v1/messages with x-api-key + anthropic-version + browser-access header; system prompt separate; consecutive user turns merged; JSON asked for in words; reply text parsed',
++      a.url === 'https://api.anthropic.com/v1/messages' && a.headers['x-api-key'] === 'sk-ant-test' && a.headers['anthropic-version'] && a.headers['anthropic-dangerous-direct-browser-access'] === 'true' &&
++      a.body.system === 'Be brief.' && a.body.messages.length === 1 && /Part one\.\n\nPart two\./.test(a.body.messages[0].content) && /valid JSON only/.test(a.body.messages[0].content) && a.body.model === 'claude-fast-x' && a.body.max_tokens === 60 && ta === '{"ok":true}', a.body)
++    T('P6', 'Anthropic with no stronger model: the stronger stage falls back to the fast model', c.aiProviderModelFor(c.aiProviderActive(), 'gemini-2.5-flash') === 'claude-fast-x')
++    c.aiSetProviderConfig({ provider: 'compatible', key: 'or-key', baseUrl: 'https://openrouter.example/api/v1/', fastModel: 'vendor/model-a' })
++    net = network(() => ({ text: '```json\n{"ok":true}\n```' })); c.fetch = net.fetch
++    const tc = await ask(c, { json: true })
++    const cc = net.calls[0]
++    T('P7', 'OpenAI-compatible service: the owner\'s base URL (trailing / tidied), max_tokens (the widely supported name), Bearer key; a ```json fence around the reply is removed',
++      cc.url === 'https://openrouter.example/api/v1/chat/completions' && cc.body.max_tokens === 50 && !('max_completion_tokens' in cc.body) && cc.headers.Authorization === 'Bearer or-key' && tc === '{"ok":true}', { url: cc.url, body: cc.body, text: tc })
++    // a provider that refuses a parameter: dropped once and the request repeated (the refusal returned no answer)
++    net = network((url, body, k) => k === 1 ? { status: 400, body: { error: { message: "Unsupported parameter: 'temperature' is not supported with this model." } } } : { text: 'fine' }); c.fetch = net.fetch
++    const tr = await ask(c)
++    T('P8', 'a 400 naming an unsupported parameter (temperature) is adapted: the parameter is dropped and the request repeated once — the lesson goes on',
++      tr === 'fine' && net.calls.length === 2 && 'temperature' in net.calls[0].body && !('temperature' in net.calls[1].body), net.calls.map(x => Object.keys(x.body)))
++    c.aiSetProviderConfig({ provider: 'compatible', key: 'or-key-2', baseUrl: 'https://openrouter.example/api/v1', fastModel: 'vendor/model-a' })
++    net = network((url, body, k) => k === 1 ? { status: 429, body: { error: { message: 'Rate limit reached, try again' } } } : { text: 'after retry' }); c.fetch = net.fetch
++    const t429 = await ask(c)
++    T('P9', 'a rate limit (429) is retried on the same model, exactly like Gemini', t429 === 'after retry' && net.calls.length === 2)
++    c.aiSetProviderConfig({ provider: 'compatible', key: 'or-key-bad', baseUrl: 'https://openrouter.example/api/v1', fastModel: 'vendor/model-a' })
++    net = network(() => ({ status: 401, body: { error: { message: 'Invalid API key' } } })); c.fetch = net.fetch
++    let fatal = null; try { await ask(c) } catch (e) { fatal = e }
++    net = network(() => ({ text: 'should not be sent' })); c.fetch = net.fetch
++    let fatal2 = null; try { await ask(c) } catch (e) { fatal2 = e }
++    T('P10', 'a wrong key (401) stops the run at once (fatal, not retried) and later requests in the run fail fast without being sent',
++      fatal && fatal.fatalProvider && fatal.fatalProvider.reason === 'AUTH' && fatal2 && net.calls.length === 0, { e1: fatal && fatal.message, sent: net.calls.length })
++    c.aiSetProviderConfig({ provider: 'gemini' })
++    T('P11', 'keys: with Gemini the app needs a Gemini key (unchanged); with another provider the screens use that provider\'s key',
++      c.aiActiveKey(GKEY) === GKEY && c.aiHasUsableKey(GKEY) && !c.aiHasUsableKey('sk-xyz') &&
++      (c.aiSetProviderConfig({ provider: 'openai', key: 'sk-xyz', fastModel: 'm' }), c.aiActiveKey(GKEY) === 'sk-xyz' && c.aiHasUsableKey('sk-xyz')))
++  }
++  // ══ E — a whole Daily lesson through another provider's wire format ═════════════════════════════════════════════
++  {
++    // the stand-in network translates each provider request back into the simulator's question and its answer back into the
++    // provider's own reply format — so the REAL app code builds and parses every OpenAI / Anthropic request of a full lesson
++    const translate = (kind, cfg, sent) => inner => async (url, opts) => {
++      const b = JSON.parse(opts.body)
++      sent.push(String(url))
++      if (/generativelanguage/.test(url)) throw new Error('a Gemini request was sent while another provider was selected: ' + url)
++      const msgs = kind === 'anthropic' ? [...(b.system ? [{ role: 'system', content: b.system }] : []), ...b.messages] : b.messages
++      const contents = msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(m.content).replace(/\n\nReply with valid JSON only — no prose, no markdown fences\.$/, '') }] }))
++      const gModel = b.model === cfg.fastModel ? 'gemini-2.5-flash-lite' : 'gemini-2.5-flash'
++      const r = await inner('https://generativelanguage.googleapis.com/v1beta/models/' + gModel + ':generateContent?key=sim', { method: 'POST', body: JSON.stringify({ contents, generationConfig: {} }) })
++      const j = await r.json()
++      if (!r.ok) return { ok: false, status: r.status, json: async () => j }
++      const text = j.candidates[0].content.parts.map(x => x.text).join('')
++      return { ok: true, status: 200, json: async () => kind === 'anthropic' ? { content: [{ type: 'text', text }], usage: { input_tokens: 50, output_tokens: 10 } } : { choices: [{ message: { content: text } }], usage: { prompt_tokens: 50, completion_tokens: 10, total_tokens: 60 } } }
++    }
++    for (const [id, kind, cfg, fixtures] of [['E1', 'openai', { provider: 'openai', key: 'sk-e2e', fastModel: 'gpt-e2e-fast', strongModel: 'gpt-e2e-strong' }, ['ja-daily-2026-10-08', 'zh-daily-2026-10-08']],
++                                   ['E2', 'anthropic', { provider: 'anthropic', key: 'sk-ant-e2e', fastModel: 'claude-e2e-fast', strongModel: 'claude-e2e-strong' }, ['ja-daily-2026-10-08', 'zh-daily-2026-10-08']],
++                                   ['E3', 'compatible', { provider: 'compatible', key: 'or-e2e', baseUrl: 'https://router.example/api/v1', fastModel: 'vendor/fast', strongModel: 'vendor/strong' }, ['th-daily-2026-10-08']]]) {
++      for (const fxId of fixtures) {
++        const fx = loadFixture(fxId), sent = []
++        const base = await runOnceUi(fx, { mode: 'record', provider: 'sim' })
++        const viaProv = await runOnceUi(fx, { mode: 'record', provider: 'sim', setup: c => { c.aiSetProviderConfig(cfg); c.fetch = translate(kind, cfg, sent)(c.fetch) } })
++        const cmp = compareContent(base.content, viaProv.content)
++        const wrongDoor = sent.filter(u => u !== ({ anthropic: 'https://api.anthropic.com/v1/messages', openai: 'https://api.openai.com/v1/chat/completions', compatible: 'https://router.example/api/v1/chat/completions' })[kind])
++        T(id + fxId[0], 'a full ' + fxId.slice(0, 2) + ' Daily lesson sent as ' + kind + ' requests (' + sent.length + ' of them, none to Gemini) gives the SAME lesson as the Gemini path (status ' + (base.content && base.content.status) + ')',
++          !viaProv.error && base.content && cmp.identical && sent.length > 20 && sent.length === base.cassette.entries.length && wrongDoor.length === 0,
++          { error: viaProv.error && String(viaProv.error).slice(0, 300), sent: sent.length, base: base.cassette.entries.length, wrongDoor: wrongDoor.slice(0, 2), diff: cmp.identical ? null : cmp })
++      }
++    }
++  }
++  // ══ S — settings and isolation ═══════════════════════════════════════════════════════════════════════════════════
++  {
++    const writes = (SRC.match(/stSet\(AI_PROVIDER_SETTING_KEY, c\)/g) || []).length
++    T('S1', 'the provider choice is ONE storage write (tt-ai-provider), made only from Settings; no learner data is touched', writes === 1 && /onSaveAiProvider=\{saveAiProviderSetting\}/.test(SRC))
++    T('S2', 'every screen passes the ACTIVE key (the chosen provider\'s, else Gemini): Thai app root, the shared Japanese / Mandarin credentials and the header',
++      /const apiKey = aiActiveKey\(geminiKey\)/.test(SRC) && /const _k = aiActiveKey\(geminiKey\)/.test(SRC) && /const hasKey = aiHasUsableKey\(geminiKey\)/.test(SRC))
++    T('S3', 'the Gemini send path itself is unchanged (still the only code that builds a generateContent request)', (SRC.match(/':generateContent\?key=' \+ useKey/g) || []).length === 1)
++  }
++  console.log(out.join('\n'))
++  console.log('\nv682 AI provider switch: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
++  process.exit(fails ? 1 : 0)
++})().catch(e => { console.log('CRASH ' + (e && e.stack || e)); process.exit(1) })
+diff --git a/dev/tt.jsx b/dev/tt.jsx
+index 2264e9d..541d2f7 100644
+--- a/dev/tt.jsx
++++ b/dev/tt.jsx
+@@ -6785,7 +6785,7 @@ function Header({ view, onNav, onHome, lastTrackCost, geminiKey, geminiSpend, la
+   // v648: Gemini is the only AI service — no provider picker. The badge shows the
+   // token-based Gemini spend tracked by the Gemini client (USD, estimate).
+   const isNum = v => typeof v === 'number' && Number.isFinite(v)
+-  const hasKey = isGeminiApiKey(geminiKey)
++  const hasKey = aiHasUsableKey(geminiKey)                  // v682: Gemini key, or the chosen provider's key
+   const spend = isNum(geminiSpend) ? geminiSpend : 0
+   const spendColor = spend > 1 ? '#ef4444' : spend > 0.1 ? '#f59e0b' : '#10b981'
+   return (
+@@ -7801,7 +7801,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
+ // ── Target phonetics (Gemini) ─────────────────────────────────────────────────
+ // v648: now one request through the central Gemini client (same prompt, same map shape).
+ async function fetchTargetPhonetics(targets, apiKey) {
+-  if (!isGeminiApiKey(apiKey)) return {}
++  if (!aiHasUsableKey(apiKey)) return {}
+   const wordList = targets.map(w => w.thai).join(', ')
+   try {
+     let text = await geminiGenerate(apiKey, GEMINI_DEFAULT_MODEL, [{ role: 'user', content: `Give tone-marked romanization for each Thai word. Tone marks: mid=none, low=grave(à), falling=circumflex(â), high=acute(á), rising=caron(ǎ). Use hyphens between syllables.\nWords: ${wordList}\nRespond ONLY with valid JSON, no markdown: {"results":[{"thai":"word","phonetic":"romanization"},...]}` }], 800)
+@@ -8328,13 +8328,14 @@ async function geminiRequest({ apiKey, model, messages, maxTokens, temperature,
+   // telemetry: caller chain captured synchronously (before any await)
+   const _chain = aiCallerChain(new Error())
+   const _promptText = (messages || []).map(m => typeof m.content === 'string' ? m.content : JSON.stringify(m.content)).join('\n')
+-  const modelId = geminiModelId(model)   // no promotion: the model asked for is the model sent, every attempt
+-  const key = String(apiKey || '').trim()
++  const _prov = aiProviderActive()        // v682: null = Google Gemini (unchanged path)
++  const modelId = _prov ? aiProviderModelFor(_prov, geminiModelId(model)) : geminiModelId(model)   // no promotion: the model asked for is the model sent, every attempt
++  const key = _prov ? _prov.key : String(apiKey || '').trim()
+   // the run this request belongs to (captured now: a later run must not adopt it)
+   const runCtl = AI_CTX.controller, runId = AI_CTX.runId
+   const schema = json && typeof json === 'object' ? json : null
+   const schemaKey = schema ? Object.keys(GEMINI_SCHEMAS).find(k => GEMINI_SCHEMAS[k] === schema) || 'custom' : (json ? 'json' : null)
+-  if (!isGeminiApiKey(key)) {
++  if (!_prov && !isGeminiApiKey(key)) {
+     const row = aiRecordStart({ provider: 'gemini', stage, model: modelId, chain: _chain, prompt: _promptText, maxTokens })
+     row.latched = true
+     const err = aiMakeError(401, 'GEMINI_KEY_MISSING: add a Google AI Studio (Gemini) key in Settings', 'gemini')
+@@ -8377,7 +8378,8 @@ async function geminiRequest({ apiKey, model, messages, maxTokens, temperature,
+       return text
+     } catch (e) { aiRecordEnd(row, { http: null, ok: false, error: 'DEDUPED (shared failure): ' + (e && e.message) }); throw e }
+   }
+-  const work = _geminiSend({ key, modelId, messages, maxTokens, temperature, signal, stage, schema, json, _chain, _promptText, runCtl })
++  const work = _prov ? _aiProviderSend(_prov, { key, modelId, messages, maxTokens, temperature, signal, stage, json, _chain, _promptText, runCtl })
++    : _geminiSend({ key, modelId, messages, maxTokens, temperature, signal, stage, schema, json, _chain, _promptText, runCtl })
+   if (fp) {
+     AI_REQUEST_CACHE.set(fp, { promise: work })
+     if (AI_REQUEST_CACHE.size > 600) AI_REQUEST_CACHE.delete(AI_REQUEST_CACHE.keys().next().value)
+@@ -8453,6 +8455,158 @@ async function _geminiSend({ key, modelId, messages, maxTokens, temperature, sig
+   throw lastErr || aiMakeError(503, 'GEMINI_UNAVAILABLE', 'gemini')
+ }
+ 
++// AI_PROVIDER_MODULE_BEGIN
++// ══ v682 — AI PROVIDER SWITCH ═══════════════════════════════════════════════════════════════════════════════════════
++// Every model request already passes through ONE door (geminiRequest). The provider switch lives there: Google Gemini is the
++// default and is sent byte-for-byte as before; another provider (OpenAI, Anthropic, or any OpenAI-compatible service such as
++// OpenRouter, Groq, DeepSeek or a local server) receives the SAME prompt translated to its own request format, and its reply is
++// translated back to plain text. Nothing upstream (prompts, validators, QC, the cost ledger, retries) knows which provider
++// answered. The app asks for two kinds of model: the FAST one (every stage; Gemini Flash-Lite by default) and the STRONGER one
++// (only the new generator's checker / pronunciation; Gemini Flash by default) — the owner maps both in Settings.
++const AI_PROVIDER_SETTING_KEY = 'tt-ai-provider'
++const AI_PROVIDER_KINDS = Object.freeze({
++  gemini:     { label: 'Google Gemini (default)', kind: 'gemini' },
++  openai:     { label: 'OpenAI', kind: 'openai', baseUrl: 'https://api.openai.com/v1', modern: true },
++  anthropic:  { label: 'Anthropic (Claude)', kind: 'anthropic', baseUrl: 'https://api.anthropic.com/v1' },
++  compatible: { label: 'Other OpenAI-compatible service (OpenRouter, Groq, DeepSeek, local …)', kind: 'openai', baseUrl: '' },
++})
++let AI_PROVIDER_CONFIG = { provider: 'gemini' }
++// { provider, key, baseUrl, fastModel, strongModel, prices: { fast: { in, out }, strong: { in, out } } } — USD per 1M tokens, optional
++function aiSetProviderConfig(c) {
++  const k = c && AI_PROVIDER_KINDS[c.provider] ? c.provider : 'gemini'
++  AI_PROVIDER_CONFIG = { ...(c || {}), provider: k }
++  const pr = (c && c.prices) || {}
++  ;[['fastModel', 'fast'], ['strongModel', 'strong']].forEach(([m, t]) => {
++    const id = c && String(c[m] || '').trim(), p = pr[t]
++    if (id && p && +p.in >= 0 && +p.out >= 0 && (p.in !== '' && p.out !== '')) AI_PRICE_USD_PER_MTOK[id] = { in: +p.in, out: +p.out }
++  })
++  return AI_PROVIDER_CONFIG
++}
++function aiProviderConfig() { return AI_PROVIDER_CONFIG }
++// the ACTIVE non-Gemini provider, or null (= Gemini). Incomplete settings never switch provider silently.
++function aiProviderActive() {
++  const c = AI_PROVIDER_CONFIG
++  if (!c || c.provider === 'gemini' || !AI_PROVIDER_KINDS[c.provider]) return null
++  const baseUrl = String(c.baseUrl || AI_PROVIDER_KINDS[c.provider].baseUrl || '').trim().replace(/\/+$/, '')
++  if (!String(c.key || '').trim() || !String(c.fastModel || '').trim() || !/^https?:\/\//.test(baseUrl)) return null
++  return { ...c, id: c.provider, kind: AI_PROVIDER_KINDS[c.provider].kind, modern: !!AI_PROVIDER_KINDS[c.provider].modern, baseUrl, key: String(c.key).trim(),
++    fastModel: String(c.fastModel).trim(), strongModel: String(c.strongModel || '').trim() || String(c.fastModel).trim() }
++}
++function aiProviderProblem(c) {
++  c = c || AI_PROVIDER_CONFIG
++  if (!c || c.provider === 'gemini') return null
++  const kd = AI_PROVIDER_KINDS[c.provider]; if (!kd) return 'unknown provider'
++  if (!String(c.key || '').trim()) return 'add the API key for ' + kd.label
++  if (!String(c.fastModel || '').trim()) return 'name the fast model to use'
++  if (!/^https?:\/\//.test(String(c.baseUrl || kd.baseUrl || '').trim())) return 'add the service address (base URL), e.g. https://openrouter.ai/api/v1'
++  return null
++}
++// the key every screen passes around: the active provider's key, otherwise the Gemini key (unchanged)
++function aiActiveKey(geminiKey) { const p = aiProviderActive(); return p ? p.key : geminiKey }
++function aiHasUsableKey(key) { return aiProviderActive() ? !!String(key || '').trim() : isGeminiApiKey(key) }
++function aiProviderModelFor(p, geminiModelIdAsked) { return geminiModelIdAsked === GEMINI_DEFAULT_MODEL ? p.fastModel : p.strongModel }
++function aiActiveProviderLabel() { const p = aiProviderActive(); return p ? AI_PROVIDER_KINDS[p.id].label + ' · ' + p.fastModel + (p.strongModel !== p.fastModel ? ' / ' + p.strongModel : '') : 'Google Gemini · ' + GEMINI_DEFAULT_MODEL }
++
++// request translation — returns { url, headers, body } for one attempt; `drop` lists parameters a provider refused
++function aiProviderBuildRequest(p, model, messages, maxTokens, temperature, json, drop) {
++  const d = drop || {}
++  const msgs = (messages || []).map(m => ({ role: m.role === 'assistant' ? 'assistant' : m.role === 'system' ? 'system' : 'user', content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }))
++  if (p.kind === 'anthropic') {
++    // Anthropic: system prompt separate; turns must alternate starting with the user; no JSON mode → ask for it in words
++    const system = msgs.filter(m => m.role === 'system').map(m => m.content).join('\n\n')
++    const turns = []
++    msgs.filter(m => m.role !== 'system').forEach(m => { const last = turns[turns.length - 1]; if (last && last.role === m.role) last.content += '\n\n' + m.content; else turns.push({ ...m }) })
++    if (!turns.length || turns[0].role !== 'user') turns.unshift({ role: 'user', content: '(continue)' })
++    if (json) { const lu = [...turns].reverse().find(t => t.role === 'user'); lu.content += '\n\nReply with valid JSON only — no prose, no markdown fences.' }
++    const body = { model, max_tokens: maxTokens || 1200, messages: turns }
++    if (system) body.system = system
++    if (!d.temperature && temperature != null) body.temperature = temperature
++    return { url: p.baseUrl + '/messages', headers: { 'Content-Type': 'application/json', 'x-api-key': p.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body }
++  }
++  // OpenAI chat-completions format (OpenAI itself and every OpenAI-compatible service)
++  const body = { model, messages: msgs }
++  const tokKey = d.maxTokensKey || (p.modern ? 'max_completion_tokens' : 'max_tokens')
++  body[tokKey] = maxTokens || 1200
++  if (!d.temperature && temperature != null) body.temperature = temperature
++  if (json && !d.responseFormat) body.response_format = { type: 'json_object' }
++  return { url: p.baseUrl + '/chat/completions', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + p.key }, body }
++}
++// response translation → { text, usage } in the ledger's own shape
++function aiProviderParseResponse(p, data) {
++  if (!data) return { text: '', usage: null }
++  if (p.kind === 'anthropic') {
++    const text = (data.content || []).filter(b => b && b.type === 'text').map(b => b.text).join('')
++    const u = data.usage
++    return { text, usage: u ? { prompt: (u.input_tokens || 0) + (u.cache_read_input_tokens || 0), candidates: u.output_tokens || 0, total: (u.input_tokens || 0) + (u.output_tokens || 0), cached: u.cache_read_input_tokens || 0, thoughts: 0 } : null }
++  }
++  const ch = data.choices && data.choices[0], m = ch && ch.message
++  let text = m ? (typeof m.content === 'string' ? m.content : Array.isArray(m.content) ? m.content.map(x => x.text || '').join('') : '') : ''
++  text = String(text || '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '')
++  const u = data.usage
++  return { text, usage: u ? { prompt: u.prompt_tokens || 0, candidates: u.completion_tokens || 0, total: u.total_tokens || 0, cached: (u.prompt_tokens_details && u.prompt_tokens_details.cached_tokens) || 0, thoughts: 0 } : null }
++}
++// a 400 that names an unsupported parameter is answered by dropping / renaming THAT parameter once (not a paid retry of the
++// same request: the provider sent nothing back) — some models refuse temperature, max_tokens or response_format
++function aiProviderAdapt(msg, drop) {
++  const m = String(msg || ''), d = { ...drop }
++  if (/temperature/i.test(m) && !d.temperature) { d.temperature = true; return d }
++  if (/max_tokens/i.test(m) && /max_completion_tokens/i.test(m) && !d.maxTokensKey) { d.maxTokensKey = /use 'max_completion_tokens'|max_completion_tokens.* instead/i.test(m) ? 'max_completion_tokens' : 'max_tokens'; return d }
++  if (/response_format|json_object|json mode/i.test(m) && !d.responseFormat) { d.responseFormat = true; return d }
++  return null
++}
++async function _aiProviderSend(p, { key, modelId, messages, maxTokens, temperature, signal, stage, json, _chain, _promptText, runCtl }) {
++  let lastErr = null, why = null, drop = {}
++  for (let attempt = 1, adapts = 0; attempt <= GEMINI_MAX_ATTEMPTS; attempt++) {
++    if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) throw _cancelledError('run superseded')
++    const req = aiProviderBuildRequest(p, modelId, messages, maxTokens, temperature, json, drop)
++    const row = aiRecordStart({ provider: p.id, stage, model: modelId, chain: _chain, prompt: _promptText, maxTokens, attempt, retryReason: why })
++    const controller = aiNewController()
++    const tid = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
++    const onAbort = () => controller.abort()
++    if (signal && signal.addEventListener) signal.addEventListener('abort', onAbort)
++    if (runCtl && runCtl.signal.addEventListener) runCtl.signal.addEventListener('abort', onAbort)
++    const detach = () => { clearTimeout(tid); if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
++    let res = null
++    try { res = await fetch(req.url, { method: 'POST', signal: controller.signal, headers: req.headers, body: JSON.stringify(req.body) }) }
++    catch (fe) {
++      detach()
++      if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) { row.cancelled = true; aiRecordEnd(row, { ok: false, error: 'cancelled (run superseded)' }); throw _cancelledError('run superseded') }
++      const msg = fe && fe.name === 'AbortError' ? p.id + ' timeout after ' + (GEMINI_TIMEOUT_MS / 1000) + 's' : String((fe && fe.message) || fe) + (/Failed to fetch|NetworkError|CORS/i.test(String(fe && fe.message)) ? ' (the service may not accept requests from a browser)' : '')
++      aiRecordEnd(row, { ok: false, error: msg })
++      lastErr = aiMakeError(0, 'AI_PROVIDER_UNAVAILABLE: ' + msg, p.id); lastErr.geminiUnavailable = true
++      why = 'same-model retry after ' + (fe && fe.name === 'AbortError' ? 'timeout' : 'network error')
++      if (attempt < GEMINI_MAX_ATTEMPTS) { await new Promise(r => setTimeout(r, GEMINI_RETRY_BACKOFF_MS[attempt - 1] || 4000)); continue }
++      throw lastErr
++    }
++    detach()
++    row.http = res.status
++    AI_LIVE_TRANSPORT.responses++; if (res.ok) AI_LIVE_TRANSPORT.ok++
++    if (!res.ok) {
++      const e = await res.json().catch(() => ({}))
++      const message = (e && e.error && (e.error.message || (typeof e.error === 'string' ? e.error : ''))) || (e && e.message) || ('HTTP ' + res.status)
++      if (res.status === 400 && adapts < 3) { const nd = aiProviderAdapt(message, drop); if (nd) { drop = nd; adapts++; aiRecordEnd(row, { http: 400, ok: false, error: 'parameter refused, adapted: ' + String(message).slice(0, 120) }); attempt--; why = 'request adapted (provider refused a parameter)'; continue } }
++      const err = aiMakeError(res.status, message, p.id)
++      aiRecordEnd(row, { http: res.status, ok: false, error: String(err.message).slice(0, 200) })
++      if (err.fatalProvider) {
++        AI_PROVIDER_LATCH = { provider: p.id, keyTail: key.slice(-6), status: err.fatalProvider.status, reason: err.fatalProvider.reason, message: String(err.message || '').replace(/^\d{3} \| /, '').slice(0, 200), at: Date.now(), runId: AI_CTX.runId }
++        throw err
++      }
++      const retryable = res.status === 429 || res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504 || res.status === 529
++      if (retryable && attempt < GEMINI_MAX_ATTEMPTS) { why = 'same-model retry after HTTP ' + res.status; await new Promise(r => setTimeout(r, GEMINI_RETRY_BACKOFF_MS[attempt - 1] || 4000)); continue }
++      if (retryable) err.geminiUnavailable = true
++      throw err
++    }
++    const data = await res.json().catch(() => null)
++    const { text, usage } = aiProviderParseResponse(p, data)
++    aiRecordEnd(row, { http: res.status, ok: true, text, usage })
++    if (typeof window !== 'undefined' && typeof window.__trackGeminiUsage === 'function' && row.costUsd) window.__trackGeminiUsage(row.costUsd)
++    return text
++  }
++  throw lastErr || aiMakeError(503, 'AI_PROVIDER_UNAVAILABLE', p.id)
++}
++
++// AI_PROVIDER_MODULE_END
++
+ // ══ v675 (Step 0) — OPT-IN BENCHMARK CAPTURE (browser console only; no UI, no effect unless started) ══════════════
+ // window.ttBenchmark.startRecording('label') wraps window.fetch for Gemini requests ONLY while recording: the request
+ // body and the provider's JSON reply are copied (the app receives the untouched original response); the API key in the
+@@ -17342,7 +17496,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
+ // Nothing about Listening was stored on the track, so nothing could tell the screen that
+ // a build was due. Now Listening is built at the generation-complete boundary, persisted
+ // (and read back) BEFORE navigation, and its state lives on the track itself.
+-const LISTENING_BUILD_VERSION = 'v681'
++const LISTENING_BUILD_VERSION = 'v682'
+ const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
+ function listeningBuildStateOf(track) {
+   const b = track && track.listeningBuild
+@@ -18625,7 +18779,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
+ // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
+ // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
+ // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
+-const APP_BUILD_VERSION = 'v681'
++const APP_BUILD_VERSION = 'v682'
+ const PIPELINE_VERSION = 'v651-canonical'
+ const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
+ const QC_VERSION = 'qc-v657-unified-acceptance'
+@@ -28081,7 +28235,75 @@ function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey }) {
+ // ── Settings ─────────────────────────────────────────────────────────────────
+ // v648: Gemini is the only AI service. One Gemini key (Google AI Studio) plus an
+ // optional backup Gemini key that the Gemini client uses only for same-model retries.
+-function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, gcpTtsKey, onSaveGcpTtsKey, geminiBackupKey, onSaveGeminiBackupKey }) {
++// v682 — Settings → "AI model provider". Gemini stays the default; another provider is used only once its key, address and
++// fast model are filled in (incomplete settings never switch provider). The choice is stored on this device (tt-ai-provider).
++function AiProviderSettings({ value, onSave, geminiKey }) {
++  const v0 = value || { provider: 'gemini' }
++  const [d, setD] = useState({ provider: 'gemini', key: '', baseUrl: '', fastModel: '', strongModel: '', prices: { fast: { in: '', out: '' }, strong: { in: '', out: '' } }, ...v0,
++    prices: { fast: { in: '', out: '', ...((v0.prices || {}).fast || {}) }, strong: { in: '', out: '', ...((v0.prices || {}).strong || {}) } } })
++  const [msg, setMsg] = useState('')
++  const [busy, setBusy] = useState(false)
++  const kind = AI_PROVIDER_KINDS[d.provider] || AI_PROVIDER_KINDS.gemini
++  const set = (k, val) => { setD(x => ({ ...x, [k]: val })); setMsg('') }
++  const setPrice = (t, k, val) => { setD(x => ({ ...x, prices: { ...x.prices, [t]: { ...x.prices[t], [k]: val } } })); setMsg('') }
++  const field = { width: '100%', padding: '9px 11px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 9, color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono, monospace', outline: 'none', marginBottom: 8 }
++  const small = { fontSize: 11, color: 'var(--muted)', margin: '0 0 6px' }
++  async function save() {
++    const c = { ...d, baseUrl: String(d.baseUrl || '').trim(), key: String(d.key || '').trim(), fastModel: String(d.fastModel || '').trim(), strongModel: String(d.strongModel || '').trim() }
++    const prob = aiProviderProblem(c)
++    if (prob) { setMsg('❌ Not saved: ' + prob + '.'); return false }
++    await onSave(c)
++    setMsg(c.provider === 'gemini' ? '✓ Saved — Google Gemini is used.' : '✓ Saved — lessons now use ' + aiActiveProviderLabel() + '.')
++    return true
++  }
++  async function test() {
++    setBusy(true)
++    try {
++      if (!(await save())) return
++      const t0 = Date.now()
++      const reply = await geminiRequest({ apiKey: aiActiveKey(geminiKey), model: GEMINI_DEFAULT_MODEL, messages: [{ role: 'user', content: 'Reply with exactly one word: OK' }], maxTokens: 20, temperature: 0, stage: 'Z_provider_test', dedupe: false })
++      setMsg((/ok/i.test(String(reply)) ? '✅ ' : '⚠️ ') + aiActiveProviderLabel() + ' answered "' + String(reply).trim().slice(0, 40) + '" in ' + ((Date.now() - t0) / 1000).toFixed(1) + 's')
++    } catch (e) { setMsg('❌ Test failed: ' + String(e && e.message || e).slice(0, 220)) }
++    finally { setBusy(false) }
++  }
++  return (
++    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
++      <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 4 }}>AI model provider <span style={{ fontWeight: 400, fontSize: 11 }}>— advanced</span></p>
++      <p style={small}>The app is tuned on Google Gemini (Flash-Lite for everything; Flash for the new generator's checker). You can try another provider: every request is sent there instead, with the same prompts and the same quality checks. Quality and cost can differ — compare a few lessons before relying on it.</p>
++      <select value={d.provider} onChange={e => set('provider', e.target.value)} style={{ ...field, fontFamily: 'Sarabun,sans-serif' }}>
++        {Object.entries(AI_PROVIDER_KINDS).map(([k, x]) => <option key={k} value={k}>{x.label}</option>)}
++      </select>
++      {d.provider !== 'gemini' && (
++        <div>
++          {d.provider === 'compatible' && (<>
++            <p style={small}>Service address (base URL) — e.g. https://openrouter.ai/api/v1 · https://api.groq.com/openai/v1 · https://api.deepseek.com/v1 · http://localhost:11434/v1</p>
++            <input value={d.baseUrl} onChange={e => set('baseUrl', e.target.value)} placeholder="https://…/v1" style={field} />
++          </>)}
++          <p style={small}>API key for {kind.label} (stored only on this device)</p>
++          <input type="password" value={d.key} onChange={e => set('key', e.target.value)} placeholder="API key" style={field} />
++          <p style={small}>Fast model — used for every lesson step (the role Gemini Flash-Lite plays). Use the exact model name your provider lists.</p>
++          <input value={d.fastModel} onChange={e => set('fastModel', e.target.value)} placeholder="model name" style={field} />
++          <p style={small}>Stronger model — only the new generator's checker (the role Gemini Flash plays). Leave empty to use the fast model.</p>
++          <input value={d.strongModel} onChange={e => set('strongModel', e.target.value)} placeholder="model name (optional)" style={field} />
++          <p style={small}>Prices in US$ per 1 million tokens (optional — from your provider's price page; without them costs show as unknown)</p>
++          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 6 }}>
++            <input value={d.prices.fast.in} onChange={e => setPrice('fast', 'in', e.target.value)} placeholder="fast in" style={field} />
++            <input value={d.prices.fast.out} onChange={e => setPrice('fast', 'out', e.target.value)} placeholder="fast out" style={field} />
++            <input value={d.prices.strong.in} onChange={e => setPrice('strong', 'in', e.target.value)} placeholder="strong in" style={field} />
++            <input value={d.prices.strong.out} onChange={e => setPrice('strong', 'out', e.target.value)} placeholder="strong out" style={field} />
++          </div>
++        </div>
++      )}
++      <div style={{ display: 'flex', gap: 8 }}>
++        <button onClick={save} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', fontSize: 13 }}>Save provider</button>
++        <button onClick={test} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', fontSize: 13 }}>{busy ? 'Testing…' : 'Save & test connection'}</button>
++      </div>
++      {msg && <p style={{ fontSize: 12, marginTop: 8, color: /^[✓✅]/.test(msg) ? '#10b981' : /^⚠/.test(msg) ? '#f59e0b' : '#ef4444' }}>{msg}</p>}
++      <p style={{ ...small, marginTop: 8 }}>Now using: <b>{aiActiveProviderLabel()}</b></p>
++    </div>
++  )
++}
++function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, gcpTtsKey, onSaveGcpTtsKey, geminiBackupKey, onSaveGeminiBackupKey, aiProvider, onSaveAiProvider }) {
+   const [draftKey, setDraftKey] = useState(geminiKey || '')
+   const [backupKey, setBackupKey] = useState(geminiBackupKey || '')
+   const [backupSaved, setBackupSaved] = useState(false)
+@@ -28132,7 +28354,7 @@ function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGemi
+       <Card style={{ padding: 16, marginBottom: 12 }}>
+         <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>✦ Gemini API key</p>
+         <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>
+-          Every AI feature uses Google Gemini ({GEMINI_DEFAULT_MODEL}). Get your key at <span style={{ color: 'var(--text)' }}>aistudio.google.com</span>
++          {aiProviderActive() ? <>Lessons currently use <b>{aiActiveProviderLabel()}</b> (see "AI model provider" below). This Gemini key is used again as soon as Google Gemini is selected there. </> : <>Every AI feature uses Google Gemini ({GEMINI_DEFAULT_MODEL}). </>}Get your key at <span style={{ color: 'var(--text)' }}>aistudio.google.com</span>
+         </p>
+         <input type="password" value={currentKey} onChange={e => setKey(e.target.value)}
+           placeholder="AIza..."
+@@ -28164,15 +28386,18 @@ function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGemi
+           </div>
+         )}
+ 
+-        {/* Gemini live spend tracker (token-based) */}
+-        {keyLooksValid && (
++        {/* v682 — AI model provider (Gemini by default) */}
++        {onSaveAiProvider && <AiProviderSettings value={aiProvider} onSave={onSaveAiProvider} geminiKey={geminiKey} />}
++
++        {/* Gemini live spend tracker (token-based); v682: also shown for another provider (its own token counts and the owner's prices) */}
++        {(keyLooksValid || aiProviderActive()) && (
+           <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+             <div>
+-              <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>Gemini spend (USD, token-based estimate)</p>
++              <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>{aiProviderActive() ? 'AI spend' : 'Gemini spend'} (USD, token-based estimate)</p>
+               <p style={{ fontSize: 15, fontWeight: 700, color: geminiSpend > 0.01 ? '#f59e0b' : '#10b981', fontFamily: 'DM Mono, monospace' }}>
+                 {geminiSpend > 0 ? '-$' + geminiSpend.toFixed(5) : '$0.00000'}
+               </p>
+-              <p style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>Flash-Lite: $0.10/M in · $0.40/M out</p>
++              <p style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>{aiProviderActive() ? 'Now: ' + aiActiveProviderLabel() + ' — counted only if you entered its prices' : 'Flash-Lite: $0.10/M in · $0.40/M out'}</p>
+             </div>
+             {geminiSpend > 0 && (
+               <button onClick={onResetGeminiSpend}
+@@ -28577,7 +28802,7 @@ function LessonsView({ vocab, onVocabUpdate, onBack, apiKey }) {
+ 
+   async function generateLessonPhonetics(lesson) {
+     if (generatingPhonetics) return
+-    if (!isGeminiApiKey(apiKey)) { alert('Add a Gemini API key in Settings first.'); return }
++    if (!aiHasUsableKey(apiKey)) { alert('Add a Gemini API key (or set up another AI provider) in Settings first.'); return }
+     const lines = (lesson.dialogue || []).filter(d => d.thai && d.thai.length > 1)
+     if (!lines.length) return
+     setGeneratingPhonetics(true)
+@@ -31727,7 +31952,8 @@ function ThaiTeacher({ lang, onSetLang }) {
+   const [geminiKey, setGeminiKey] = useState('')
+   const [geminiBackupKey, setGeminiBackupKey] = useState('')
+   const [dailyNewWords, setDailyNewWords] = useState(null) // { date: 'YYYY-MM-DD', wordIds: [...] }
+-  const apiKey = geminiKey                                 // v648: the one AI key — Gemini
++  const aiProvider = useAiProvider()                       // v682: Gemini unless another provider is set up in Settings
++  const apiKey = aiActiveKey(geminiKey)                    // v648: the one AI key — Gemini (v682: or the chosen provider's)
+ 
+   // Expose the optional backup Gemini key to the Gemini client (same-model retries only)
+   useEffect(() => { window.__geminiBackupKey = geminiBackupKey }, [geminiBackupKey])
+@@ -32110,7 +32336,7 @@ function ThaiTeacher({ lang, onSetLang }) {
+   return (
+     <div className="app">
+       <FontStyle />
+-      <Header lang={lang} onSetLang={onSetLang} view={view} onNav={navigate} onHome={() => navigate('dashboard')} lastTrackCost={lastTrackCost} geminiKey={geminiKey} geminiSpend={geminiSpend} />
++      <Header lang={lang} onSetLang={onSetLang} view={view} onNav={navigate} onHome={() => navigate('dashboard')} lastTrackCost={lastTrackCost} geminiKey={apiKey} geminiSpend={geminiSpend} />
+       <main>
+         {view === 'dashboard' && <Dashboard vocab={vocab} tracks={tracks} onNav={navigate} onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack}
+             onOpenConvo={track => { setActiveTrack(track); setView('convo') }}
+@@ -32188,7 +32414,7 @@ function ThaiTeacher({ lang, onSetLang }) {
+         )}
+         {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate(returnBelt ? 'belt-rank' : 'dashboard')} initialFilter={browseFilter} initialQuery={beltWordQuery} initialBelt={browseBelt} phonetics={{}} onCustomTrack={onCustomTrack} apiKey={apiKey} onVocabUpdate={saveVocab} />}
+         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} apiKey={apiKey} />}
+-        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} geminiBackupKey={geminiBackupKey} onSaveGeminiBackupKey={async k => { setGeminiBackupKey(k); await stSet('tt-gemini-fallback-key', k) }} />}
++        {view === 'settings' && <Settings onBack={() => navigate('dashboard')} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} geminiBackupKey={geminiBackupKey} onSaveGeminiBackupKey={async k => { setGeminiBackupKey(k); await stSet('tt-gemini-fallback-key', k) }} aiProvider={aiProvider} onSaveAiProvider={saveAiProviderSetting} />}
+         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} fillApiKey={apiKey} fillModel={GEMINI_DEFAULT_MODEL} />}
+         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="th" onBack={() => navigate('dashboard')}
+           initialBelt={returnBelt} initialBeltFilter={returnBeltFilter}
+@@ -32355,6 +32581,23 @@ async function applyLegacyProvenanceMigration(store, tracks, saveFn) {
+ // persisted under shared keys (tt-gemini-key, tt-gemini-spend, tt-gcp-tts-key). Thai owns
+ // its own copies inside ThaiTeacher; any other programme reads the same persisted keys here.
+ // Learning progress remains strictly language-scoped.
++// v682 — the AI provider setting, loaded once and kept in sync across screens (Settings dispatches tt-ai-provider-changed)
++function useAiProvider() {
++  const [cfg, setCfg] = useState(() => aiProviderConfig())
++  useEffect(() => {
++    let dead = false
++    stGet(AI_PROVIDER_SETTING_KEY).then(v => { if (!dead && v && typeof v === 'object') setCfg(aiSetProviderConfig(v)) }).catch(() => {})
++    const on = () => { if (!dead) setCfg({ ...aiProviderConfig() }) }
++    try { window.addEventListener('tt-ai-provider-changed', on) } catch (e) {}
++    return () => { dead = true; try { window.removeEventListener('tt-ai-provider-changed', on) } catch (e) {} }
++  }, [])
++  return cfg
++}
++async function saveAiProviderSetting(c) {
++  await stSet(AI_PROVIDER_SETTING_KEY, c)
++  aiSetProviderConfig(c)
++  try { window.dispatchEvent(new Event('tt-ai-provider-changed')) } catch (e) {}
++}
+ function useSharedCredentials() {
+   const [geminiKey, setGeminiKey] = useState('')
+   const [geminiSpend, setGeminiSpend] = useState(0)
+@@ -32378,7 +32621,9 @@ function useSharedCredentials() {
+     return () => { dead = true }
+   }, [])
+ 
+-  return { geminiKey, apiKey: geminiKey, model: GEMINI_DEFAULT_MODEL, geminiSpend, gcpTtsKey }
++  useAiProvider()                                          // v682: re-render when the provider changes
++  const _k = aiActiveKey(geminiKey)
++  return { geminiKey: _k, apiKey: _k, model: GEMINI_DEFAULT_MODEL, geminiSpend, gcpTtsKey }
+ }
+ 
+ function JapaneseSpeechStyle({ value, onChange }) {

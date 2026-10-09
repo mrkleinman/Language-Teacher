@@ -14104,6 +14104,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     // Grammar particles — appear naturally in any sentence, don't force them
     const grammarParticles = ['ที่','ก็','แล้ว','ด้วย','อยู่','เลย','นะ','สิ','แต่','เพราะ','ถ้า','หรือ','และ','กับ','จน','พอ','ตอน','เมื่อ','ว่า','ให้','จาก','โดย','ของ','ใน','บน','ใต้']
     if (THAI_FUNCTION_TARGET_GUIDE[target.thai]) return THAI_FUNCTION_TARGET_GUIDE[target.thai]   // v681: a real teaching contract
+    // v681: a vehicle is travelled BY with นั่ง / ขึ้น (+ ไป / มา) — the model kept writing ไปรถไฟฟ้า, which the sense rule rejects
+    if (/^(รถไฟฟ้า|รถไฟใต้ดิน|รถไฟ|รถเมล์|รถบัส|รถตู้|รถแท็กซี่|แท็กซี่|วินมอเตอร์ไซค์|มอเตอร์ไซค์|เรือ|เครื่องบิน)$/.test(target.thai))
+      return 'use ' + target.thai + ' as a VEHICLE: travel by it with นั่ง or ขึ้น + ' + target.thai + ' (+ ไป / มา) — e.g. นั่ง' + target.thai + 'ไปกันไหม, ขึ้น' + target.thai + 'ตรงนี้ — or talk about it (' + target.thai + 'มาแล้ว, ' + target.thai + 'คนเยอะ). NEVER "ไป' + target.thai + '" (go + vehicle) — it is not a model sentence.'
     if (grammarParticles.includes(target.thai)) {
       return 'CONTINUE the exact same topic the conversation has been about — do NOT change topic. The word "' + target.thai + '" (' + target.english + ') is a grammar particle that will appear naturally in any sentence. Just keep talking about the same thing as the previous lines.'
     }
@@ -29118,7 +29121,14 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       // A rewrite returns bare model objects. Replacing the pair wholesale dropped pairType,
       // targetId, _target and recallGroupId — the 9 "TYPE unknown" lines of 25 Sept. Identity
       // now comes from the pair being replaced; the new TEXT is marked for re-validation.
-      if (newPairs) group.indices.forEach((idx, pi) => { if (newPairs[pi]) allPairs[idx] = reconcileMutatedThaiPair(newPairs[pi], allPairs[idx], `ai:${verdict.action}:${group.targetWord}`, verdict.action) })
+      // v681: a QC rewrite must respect the learner's length limit like any generated line (live v681: the parting lines were
+      // replaced by 13- and 9-unit sentences above hardMax 7, failing LENGTH_PASS). An over-long rewrite is discarded and the
+      // original line kept (it still faces the per-pair audits).
+      let _qcCC = null; try { _qcCC = getLearnerComplexityContract({ lang: 'th', vocab }) } catch (e) {}
+      if (newPairs) group.indices.forEach((idx, pi) => { if (!newPairs[pi]) return
+        const _an = _qcCC && newPairs[pi].thai ? _qcCC.analyse(newPairs[pi].thai) : null
+        if (_an && _an.overHardMax && !(allPairs[idx] && allPairs[idx].thai && _qcCC.analyse(allPairs[idx].thai).overHardMax)) { onLog?.(`  ⛔ QC ${verdict.action} discarded for ${group.targetWord}: ${_an.units} units > max ${_an.hardMax} — "${String(newPairs[pi].thai).slice(0, 40)}" (original kept)`); return }
+        allPairs[idx] = reconcileMutatedThaiPair(newPairs[pi], allPairs[idx], `ai:${verdict.action}:${group.targetWord}`, verdict.action) })
       counts[verdict.action] = (counts[verdict.action] || 0) + 1
     } catch(e) { onLog?.(`  ⚠️ ${group.targetWord}: ${e.message}`); counts.error++ }
   }

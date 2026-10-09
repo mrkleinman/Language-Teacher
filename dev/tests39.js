@@ -40,7 +40,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     // replay byte-for-byte; this proves the change is CONFINED: every run replays its setup identically (scene, selection and
     // the first generation requests), every Listening run is faithful except the two Mandarin runs whose planner used the now-
     // rejected 你到哪里？, and each first difference is a validator-driven change (rejection feedback, a regenerated slot or a
-    // different accepted line) — never a changed system prompt.
+    // different accepted line) or one of v681's two deliberate Thai prompt additions (vehicle and function-word targets).
     const dir = path.join(B, 'live', 'v677'), rows = []
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.json'))) {
       const r = readJ(path.join(dir, f))
@@ -50,8 +50,8 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       rows.push({ f, listening: /listening/.test(f), faithful: rep.replay.faithful, same: compareContent(r.outcome.content, rep.content).identical, firstCall: m0 ? m0.call : null })
     }
     const allowedL = f => /zh-listening-2026-10-08-run[23]/.test(f)
-    T('A5', 'v681 CHANGE IS CONFINED: the 18 live v677 runs replay their setup identically (first difference at request ≥ 6); Listening is faithful except the 2 Mandarin runs that used 你到哪里？; Daily runs differ only through validator decisions',
-      rows.length === 18 && rows.every(x => x.faithful ? x.same : x.firstCall >= 6) && rows.filter(x => x.listening).every(x => x.faithful || allowedL(x.f)),
+    T('A5', 'v681 CHANGE IS CONFINED: the 18 live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the 2 Mandarin runs that used 你到哪里？; Daily runs differ only through validator decisions',
+      rows.length === 18 && rows.every(x => x.faithful ? x.same : x.firstCall >= (/th-daily/.test(x.f) ? 2 : 6)) && rows.filter(x => x.listening).every(x => x.faithful || allowedL(x.f)),
       rows.map(x => x.f.replace('tt-bench-', '').replace('-v677.json', '') + ':' + (x.faithful ? 'faithful' : 'differs@' + x.firstCall)))
     const base = fs.readFileSync(path.join(__dirname, 'tt.v677.jsx'), 'utf8')
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0]

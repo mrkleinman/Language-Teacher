@@ -268,6 +268,11 @@ const deep = x => JSON.parse(JSON.stringify(x))
   }
   T('L10', 'coherence: an UNTOUCHED scene that passed before a repair and fails after it is a contradictory verdict — ONE more judgement decides it (live v682 Thai: S4/S5 2 → 4 → 2 with no line changed)',
     /MAIN_TRACK_COHERENCE_VERDICT_CONFLICT/.test(SRC) && /!touched\.has\(d\.sceneId\) && prevBy\.has\(d\.sceneId\) && prevBy\.get\(d\.sceneId\)\.coherent && !d\.coherent/.test(SRC))
+  { const c = load(APP, { realBelt: true }), fxJ = R.loadFixture('ja-daily-2026-10-08'), VJ = c.ttBenchApplyFixture(c.initJapaneseVocab(), fxJ), invJ = c.japaneseLearnerInventory(VJ, c.ttBenchJazhTargets(fxJ, VJ))
+    const nani = VJ.find(w => w.japanese === '何'), prev = ['これ、何て言うの？', 'これ、何？']
+    const f = c.jaFallbackRecall(nani, invJ, 1, prev), key = x => has(c, 'japaneseFormulaKey') ? c.japaneseFormulaKey(x, '何') : x
+    T('L11', 'Japanese 何 fallback after これ、何て言うの？ / これ、何？ is a DIFFERENT construction (live v682 verification run: only 何？ was offered and 何 recall 1 stayed unresolved)',
+      !!f && !prev.some(p => key(p) === key(f.japanese)) && f.japanese !== '何？', f && f.japanese) }
   // ══ S — shared contract ═════════════════════════════════════════════════════════════════════════════════════════════
   {
     const c = load(APP, { realBelt: true })

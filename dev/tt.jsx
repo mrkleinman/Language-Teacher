@@ -38945,7 +38945,9 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
     c._built = { reading, romaji, segments: segs }
   }
   const unused = uniq.filter(c => !used.has(c.jp))
-  const pool = unused.length ? unused : uniq
+  // v682 — prefer a DIFFERENT application, not merely a different string (何？ after これ、何？ is the same question)
+  const distinct = unused.filter(c => ![...used].some(u => japaneseFormulaKey(u, t) === japaneseFormulaKey(c.jp, t)))
+  const pool = distinct.length ? distinct : unused.length ? unused : uniq
   const pick = pool[(recallIndex - 1) % pool.length] || pool[0]
   if (!pick) return null
   // §18 — never paste a dictionary alternative ("なに / なん") into an utterance.
@@ -38976,6 +38978,9 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
 // and as the deterministic fallback's FIRST choice — so when the model will not
 // cooperate, どれ gets どれがいい？/どれにする？/どれが好き？ instead of どれ？ three times.
 const JA_HINT_PAIRS = {
+  // v682 — 何 in real constructions (the live v682 verification run had only 何？ as a fallback, which repeats これ、何？)
+  '\u4F55': [['\u4F55\u98DF\u3079\u308B\uFF1F', 'What will you eat?', 'Ask what they will eat'], ['\u4F55\u98F2\u3080\uFF1F', 'What will you drink?', 'Ask what they will drink'],
+           ['\u4F55\u3059\u308B\uFF1F', 'What will you do?', 'Ask what they will do'], ['\u4F55\u304C\u3044\u3044\uFF1F', 'What would be good?', 'Ask what would be good']],
   '\u3069\u308c': [['\u3069\u308c\u304c\u3044\u3044\uff1f', 'Which one is good?', 'Ask which one is good'], ['\u3069\u308c\u306b\u3059\u308b\uff1f', 'Which one will you have?', 'Ask which one they will choose'], ['\u3069\u308c\u304c\u597d\u304d\uff1f', 'Which one do you like?', 'Ask which one they like']],
   '\u3054\u3081\u3093': [['\u3054\u3081\u3093\u3001\u4eca\u65e5\u306f\u884c\u3051\u306a\u3044\u3002', 'Sorry, I can\'t go today.', 'Apologise and say you can\'t go today'], ['\u3054\u3081\u3093\u3001\u5206\u304b\u3089\u306a\u3044\u3002', 'Sorry, I don\'t understand.', 'Apologise and say you don\'t understand'], ['\u3054\u3081\u3093\u306d\u3002', 'Sorry.', 'Apologise casually']],
   '\u307e\u305f': [['\u307e\u305f\u660e\u65e5\u3002', 'See you tomorrow.', 'Say see you tomorrow'], ['\u307e\u305f\u6765\u308b\uff1f', 'Will you come again?', 'Ask if they will come again'], ['\u307e\u305f\u884c\u3053\u3046\u3002', 'Let\'s go again.', 'Suggest going again']],
@@ -39684,7 +39689,8 @@ function jaDuplicateContextBlock(ctx) {
   const forTarget = uniq(c.acceptedForTarget), inTrack = uniq(c.usedInTrack).filter(x => !forTarget.includes(x))
   return 'ALREADY ACCEPTED FOR THIS TARGET:\n' + (forTarget.length ? forTarget.map(x => '  - ' + x).join('\n') : '  (none yet)') + '\n' +
     'ALREADY USED IN THIS TRACK:\n' + (inTrack.length ? '  ' + inTrack.join(' ／ ') : '  (none yet)') + '\n' +
-    'DO NOT repeat or trivially paraphrase these.'
+    'DO NOT repeat or trivially paraphrase these. Swapping or dropping これ / それ / あれ, or adding え / うん / ここで, does NOT make a new sentence — ' +
+    'use the word in a DIFFERENT construction (another verb, object, particle or question type), e.g. 何？ → 何食べる？ / 何がいい？.'
 }
 // the variation plan for three recalls of one concept (natural variation only)
 const JA_RECALL_VARIATION = {

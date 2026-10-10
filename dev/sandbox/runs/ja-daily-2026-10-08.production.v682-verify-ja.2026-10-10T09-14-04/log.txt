@@ -1,0 +1,523 @@
+✓ Scene ready
+ℹ TRACK_CONTEXT trackId=2026-10-08T06:00:00.084Z language=ja mode=daily selected=30 new=1/1 expected requiredReview=29 pipeline=v651-canonical build=v682
+⚠ NEW_TARGET_SHORTFALL requested=3 selected=1 reason=only 1 unseen word(s) were available to the selector in the active belt eligibleNewCount=2 blockedByCeiling=0 debtState=due=29,overdue=29 backfilledReviews=2
+ℹ Content available: どう なんで どっち どれ また あそこ あれ ごめん 電話 はい うん いいえ たぶん 乗る 大丈夫 行く 食べる 好き 何 飲む どこ 一緒 する 今 ちょっと 来る 分かる ありがとう すみません いい 今日 明日 見る 買う いくら お金 ある いる ここ そこ これ それ もう まだ 帰る 会う 友達 話す 聞く 言う 本当 誰 いつ 何時 できる 欲しい 持つ 使う 待つ 見せる 取る 作る 入る 出る 降りる 住む 働く 休む 寝る 起きる おいしい 高い 安い 大きい 小さい 新しい 古い 早い 遅い 忙しい 暇 楽しい 難しい 簡単 近い 遠い 悪い 昨日 名前 人 家族 家 仕事 店 駅 日本語 水 ご飯 トイレ 思う 知る 電車 バス 車 本 映画 写真
+💬 Opening accepted
+  ✖ CONTEXTUAL_OPENING_REPAIR failed — dropped opening (untaught: 久 やあ ぶり)
+  ✖ CONTEXTUAL_OPENING_REPAIR failed — dropped reply (untaught: 元気)
+  ✖ CONTEXTUAL_OPENING_REPAIR failed — dropped closing (untaught: 元気 ころあ)
+ℹ Scarcity level C — 107 content words
+🗺 SCENE_PLAN_ADDED_MINI_SCENE "small talk" [2] for target(s) the planner did not place
+🗺 SCENE_ID=S1 SCENE_PURPOSE="Greeting and initial inquiry" LOCAL_PREMISE="Kenji and Yumi bump into each other on the street near a shop." TARGET_IDS=87,17,80,13,6,8 TARGET_ROLES=87:DISCOURSE_MARKER,17:DISCOURSE_MARKER,80:CONTENT,13:CONTENT,6:QUESTION_WORD,8:QUESTION_WORD SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+🗺 SCENE_ID=S2 SCENE_PURPOSE="Locating the item" LOCAL_PREMISE="Kenji is trying to describe the location of the item he is looking for." TARGET_IDS=82,83,44 TARGET_ROLES=82:CONTENT,83:CONTENT,44:QUESTION_WORD SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+🗺 SCENE_ID=S3 SCENE_PURPOSE="Suggestion to go inside" LOCAL_PREMISE="Yumi suggests a course of action to help Kenji find what he's looking for." TARGET_IDS=2,9,15,56 TARGET_ROLES=2:CONTENT,9:CONTENT,15:CONTENT,56:CONTENT SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+🗺 SCENE_ID=S4 SCENE_PURPOSE="Entering the shop and initial observation" LOCAL_PREMISE="Kenji and Yumi have just entered the shop." TARGET_IDS=11,4,7,5 TARGET_ROLES=11:CONTENT,4:CONTENT,7:CONTENT,5:CONTENT SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (food & cooking))
+🗺 SCENE_ID=S5 SCENE_PURPOSE="Further discussion and decision" LOCAL_PREMISE="Kenji and Yumi are inside the shop, contemplating their next move." TARGET_IDS=30,20,40,43,107 TARGET_ROLES=30:CONTENT,20:QUESTION_WORD,40:QUESTION_WORD,43:QUESTION_WORD,107:CONTENT SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (plans & schedule))
+🗺 SCENE_ID=S6 SCENE_PURPOSE="Concluding the interaction" LOCAL_PREMISE="Kenji and Yumi have found what they were looking for or decided on their next action." TARGET_IDS=1,18,84,85,86,16 TARGET_ROLES=1:RESPONSE_TOKEN,18:CONTENT,84:RESPONSE_TOKEN,85:RESPONSE_TOKEN,86:RESPONSE_TOKEN,16:FUNCTIONAL_PHRASE SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (places & travel))
+🗺 SCENE_ID=S7 SCENE_PURPOSE="Two friends, A and B, bump into each other near a shop. A asks B if they've seen a particular item, and B suggests they " LOCAL_PREMISE="A and B talk about two friends, A and B, bump into each other near a shop. A asks B if they've seen a particular item, and B suggests they go look inside. — small talk" TARGET_IDS=10,12 TARGET_ROLES=10:CONTENT,12:CONTENT SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+🗺 SCENE_PLAN 7 mini-scene(s): S1. Greeting and initial inquiry [6] · S2. Locating the item [3] · S3. Suggestion to go inside [4] · S4. Entering the shop and initial observation [4] · S5. Further discussion and decision [5] · S6. Concluding the interaction [6] · S7. Two friends, A and B, bump into each other near a shop. A asks B if they've seen a particular item, and B suggests they  [2]
+ℹ CHECKS: up to 11 per RECALL — one check = one candidate attempt for that recall (one group request is check n for each recall it asks for). Validation stages inside every attempt: structured output parse · target concept presence · morphology / grammar · register fit · closed vocabulary · duplicate sentence · reading alignment · romaji alignment · cue / meaning consistency · deterministic fallback candidate · unresolved decision
+1/30  どう  dou
+  ⚪ 1st check: どう · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 1 passed at its 1st check: これ、どう思う？
+  ❌ recall 2: target どう not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "店に入ってみる？"
+  ❌ recall 3: untaught content: うーん [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "うーん、どうしようかな。"
+  🟠 2nd check: どう · recall 2+3 · slot regeneration (paid, one call for 2 recalls) · accepted recalls kept: 1
+  ℹ ignored unknown grammar labels: これ
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 2nd check: これ、どう？
+  ❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "どうしたらいいかな。"
+  🔶 3rd check: どう · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "どうしたらいいかな？"
+  ⚠ recall 3: the same rejected sentence came back — no further paid attempt (strategy: deterministic fallback)
+  🔵 4th check: どう · recall 3 · deterministic fallback candidate (no request)
+  ❌ fallback rejected for recall 3: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、どう？ — "どう？"
+  🔷 5th check: どう · recall 3 · deterministic fallback candidate (no request)
+  ❌ fallback rejected for recall 3: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、どう思う？ — "どう思う？"
+  🟡 6th check: どう · recall 3 · deterministic fallback candidate (no request)
+  ✅ recall 3 deterministic fallback (no model request) at its 6th check: 今日はどう？
+  🧾 decision どう: r1=accepted@⚪1 r2=accepted@🟠2 r3=fallback@🟡6
+  📊 JA_GENERATION_BUDGET target=どう CHECKS per recall r1=1/11 r2=2/11 r3=6/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/2paid,3:fallback/3paid
+2/30  なんで  nande
+  ⚪ 1st check: なんで · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: なんで 入る
+  ℹ declared but not present, dropped: no-question
+  ✅ recall 1 passed at its 1st check: なんで入らないの？
+  ℹ ignored unknown grammar labels: なんで 思う
+  ℹ declared but not present, dropped: no-question
+  ✅ recall 2 passed at its 1st check: なんでそう思うの？
+  ℹ ignored unknown grammar labels: なんで
+  ✅ recall 3 passed at its 1st check: なんで？
+  🧾 decision なんで: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=なんで CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+3/30  どっち  docchi
+  ⚪ 1st check: どっち · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ❌ recall 1: untaught content: こっち あっち [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "こっちとあっち、どっちがいい？"
+  ❌ recall 2: untaught content: うーん 迷う [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "うーん、どっちにするか迷うね。"
+  ❌ recall 3: untaught content: 方向 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "店はどっちの方向？"
+  🟠 2nd check: どっち · recall 1+2+3 · slot regeneration (paid, one call for 3 recalls) · accepted recalls kept: none
+  ℹ ignored unknown grammar labels: いい
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 2nd check: どっちがいい？
+  ❌ recall 2: target どっち not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "これにする？"
+  ❌ recall 3: target どっち not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "じゃあ、どっちか入ろうか。"
+  🔶 3rd check: どっち · recall 2+3 · slot regeneration (paid, one call for 2 recalls) · accepted recalls kept: 1
+  ❌ recall 2: target どっち not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "これにする？"
+  ❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "どっちがいいかな？"
+  ⚠ recall 2: the same rejected sentence came back — no further paid attempt (strategy: deterministic fallback)
+  🔵 4th check: どっち · recall 2 · deterministic fallback candidate (no request)
+  ✅ recall 2 deterministic fallback (no model request) at its 4th check: 駅はどっち？
+  🔵 4th check: どっち · recall 3 · deterministic fallback candidate (no request)
+  ✅ recall 3 deterministic fallback (no model request) at its 4th check: どっちにする？
+  🧾 decision どっち: r1=accepted@🟠2 r2=fallback@🔵4 r3=fallback@🔵4
+  📊 JA_GENERATION_BUDGET target=どっち CHECKS per recall r1=2/11 r2=4/11 r3=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted/2paid,2:fallback/3paid,3:fallback/3paid
+4/30  どれ  dore
+  ⚪ 1st check: どれ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: plain-present
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: どれがいい？
+  ❌ recall 2: untaught content: えーっと 迷う [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "えーっと、どれにするか迷うなあ。"
+  ❌ recall 3: target どれ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "どれか分かる？"
+  🟠 2nd check: どれ · recall 2+3 · slot regeneration (paid, one call for 2 recalls) · accepted recalls kept: 1
+  ℹ ignored unknown grammar labels: いい
+  ℹ declared but not present, dropped: ka
+  ❌ recall 2: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): どれがいい？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "これ、どれがいい？"
+  ℹ ignored unknown grammar labels: する
+  ℹ declared but not present, dropped: ka
+  ✅ recall 3 passed at its 2nd check: あれ、どれにする？
+  🔶 3rd check: どれ · recall 2 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,3
+  ❌ recall 2: CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "どれがいいかな？"
+  🔵 4th check: どれ · recall 2 · deterministic fallback candidate (no request)
+  ✅ recall 2 deterministic fallback (no model request) at its 4th check: どれが好き？
+  🧾 decision どれ: r1=accepted@⚪1 r2=fallback@🔵4 r3=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=どれ CHECKS per recall r1=1/11 r2=4/11 r3=2/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:fallback/3paid,3:accepted/2paid
+5/30  また  mata
+  ⚪ 1st check: また · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: plain-present
+  ✅ recall 1 passed at its 1st check: また明日。
+  ℹ ignored unknown grammar labels: plain-present
+  ✅ recall 2 passed at its 1st check: また来る？
+  ℹ ignored unknown grammar labels: plain-present
+  ✅ recall 3 passed at its 1st check: また行こう。
+  🧾 decision また: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=また CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+6/30  あそこ  asoko
+  ⚪ 1st check: あそこ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ✅ recall 1 passed at its 1st check: あれ、あそこにある？
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ declared but not present, dropped: kana
+  ✅ recall 2 passed at its 1st check: あそこに行こうか。
+  ✅ recall 3 passed at its 1st check: あそこにあると思うよ。
+  🧾 decision あそこ: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=あそこ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+7/30  あれ  are
+  ⚪ 1st check: あれ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: past
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: あれ、まだあった？
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ ignored unknown grammar labels: plain
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 1st check: あれ、どこにあるか分かる？
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ ignored unknown grammar labels: plain
+  ℹ declared but not present, dropped: to
+  ✅ recall 3 passed at its 1st check: あれ、いいと思うよ。
+  🧾 decision あれ: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=あれ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=2 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+8/30  ごめん  gomen
+  ⚪ 1st check: ごめん · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: 今日 忙しい ごめん
+  ℹ declared but not present, dropped: plain-present no-question
+  ✅ recall 1 passed at its 1st check: ごめん、今日忙しいんだ。
+  ℹ ignored unknown grammar labels: nai-form ごめん ちょっと 分からない
+  ℹ declared but not present, dropped: no-question
+  ✅ recall 2 passed at its 1st check: ごめん、ちょっと分からないんだ。
+  ℹ ignored unknown grammar labels: ne-particle ごめん
+  ✅ recall 3 passed at its 1st check: あ、ごめんね。
+  🧾 decision ごめん: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=ごめん CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+9/30  電話  denwa
+  ⚪ 1st check: 電話 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: past
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: 電話、まだあった？
+  ℹ ignored unknown grammar labels: potential
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 1st check: 今、電話できる？
+  ℹ ignored unknown grammar labels: permission
+  ℹ declared but not present, dropped: temoii ka
+  ✅ recall 3 passed at its 1st check: 電話、使ってもいい？
+  🧾 decision 電話: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=電話 CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+10/30  はい  hai
+  ⚪ 1st check: はい · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: はい
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 1 passed at its 1st check: はい、大丈夫。
+  ℹ ignored unknown grammar labels: volitional はい
+  ✅ recall 2 passed at its 1st check: はい、行きましょう。
+  ❌ recall 3: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "はい、そう思います。"
+  🟠 2nd check: はい · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ℹ ignored unknown grammar labels: はい
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 3 passed at its 2nd check: はい、また明日。
+  🧾 decision はい: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=はい CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/2paid
+11/30  うん  un
+  ⚪ 1st check: うん · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ✅ recall 1 passed at its 1st check: うん、いいと思うよ。
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 1st check: うん、そう思う？
+  ❌ recall 3: CUE_FORM_MISMATCH: the Japanese is a question but the English is a statement ("Yeah, let's go already.") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "うん、もう行っちゃおうか。"
+  🟠 2nd check: うん · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ❌ recall 3: CUE_FORM_MISMATCH: the Japanese is a question but the English is a statement ("Yeah, let's go already.") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "うん、もう行こうか。"
+  🔶 3rd check: うん · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ℹ ignored unknown grammar labels: うん いい 思う
+  ❌ recall 3: identical sentence already used for this target [PROMPT_REGEN_REQUIRED · DUPLICATE] — "うん、いいと思うよ。"
+  🔵 4th check: うん · recall 3 · deterministic fallback candidate (no request)
+  ✅ recall 3 deterministic fallback (no model request) at its 4th check: うん。
+  🧾 decision うん: r1=accepted@⚪1 r2=accepted@⚪1 r3=fallback@🔵4
+  📊 JA_GENERATION_BUDGET target=うん CHECKS per recall r1=1/11 r2=1/11 r3=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:fallback/3paid
+12/30  いいえ  iie
+  ⚪ 1st check: いいえ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: いいえ
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 1 passed at its 1st check: いいえ、大丈夫。
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ ignored unknown grammar labels: nai-plain-present いいえ 買う
+  ✅ recall 2 passed at its 1st check: いいえ、もう買わない。
+  ℹ ignored unknown grammar labels: いいえ まだ
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 3 passed at its 1st check: いいえ、まだだよ。
+  🧾 decision いいえ: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=いいえ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+13/30  たぶん  tabun
+  ⚪ 1st check: たぶん · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 1 passed at its 1st check: たぶん大丈夫だと思う。
+  ℹ ignored unknown grammar labels: te-form 入る みる
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 2 passed at its 1st check: たぶん、入ってみる？
+  ℹ ignored unknown grammar labels: 明日 また 来る
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 3 passed at its 1st check: たぶん、明日また来るね。
+  🧾 decision たぶん: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=たぶん CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+14/30  乗る  noru
+  ⚪ 1st check: 乗る · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ declared but not present, dropped: plain-present ka
+  ✅ recall 1 passed at its 1st check: 電車に乗る？
+  ℹ ignored unknown grammar labels: volitional
+  ✅ recall 2 passed at its 1st check: 一緒に乗ろうよ。
+  ℹ ignored unknown grammar labels: past
+  ℹ declared but not present, dropped: ka
+  ✅ recall 3 passed at its 1st check: バスに乗った？
+  🧾 decision 乗る: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=乗る CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+15/30  大丈夫  daijoubu
+  ⚪ 1st check: 大丈夫 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: 大丈夫
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: これ、大丈夫？
+  ℹ ignored unknown grammar labels: 大丈夫
+  ✅ recall 2 passed at its 1st check: うん、大丈夫だよ。
+  ❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "明日、大丈夫かな。"
+  🟠 2nd check: 大丈夫 · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ℹ ignored unknown grammar labels: plain
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 3 passed at its 2nd check: もう大丈夫だよ。
+  🧾 decision 大丈夫: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=大丈夫 CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/2paid
+16/30  行く  iku
+  ⚪ 1st check: 行く · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: plain-present
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 1 passed at its 1st check: 一緒に行こうよ。
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ ignored unknown grammar labels: te-form miru
+  ℹ declared but not present, dropped: tekureru ka
+  ✅ recall 2 passed at its 1st check: 店に行ってみる？
+  ℹ ignored unknown grammar labels: past past
+  ℹ declared but not present, dropped: no-question
+  ✅ recall 3 passed at its 1st check: え、もう行ったの？
+  🧾 decision 行く: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=行く CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+17/30  食べる  taberu
+  ⚪ 1st check: 食べる · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: 食べる
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: これ、もう食べた？
+  ℹ ignored unknown grammar labels: 食べる
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 1st check: 何か食べたいものある？
+  ❌ recall 3: untaught content: 中 お菓子 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "じゃあ、中でお菓子でも食べようか。"
+  🟠 2nd check: 食べる · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ℹ ignored unknown grammar labels: 食べる
+  ℹ declared but not present, dropped: ka
+  ✅ recall 3 passed at its 2nd check: 何か食べる？
+  🧾 decision 食べる: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=食べる CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/2paid
+18/30  好き  suki
+  ⚪ 1st check: 好き · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ ignored unknown grammar labels: 好き
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: これ、好き？
+  ℹ ignored unknown grammar labels: 好き
+  ✅ recall 2 passed at its 1st check: うん、好きだよ。
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ ignored unknown grammar labels: 好き
+  ℹ declared but not present, dropped: ka
+  ✅ recall 3 passed at its 1st check: あれ、本当に好き？
+  🧾 decision 好き: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=好き CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=2 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+19/30  何  nani / nan
+  ⚪ 1st check: 何 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ❌ recall 1: target 何 not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "あれ、何かあった？"
+  ❌ recall 2: untaught content: あ ユミちゃん [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "あ、ユミちゃん、何してるの？"
+  ℹ declared but not present, dropped: no-question
+  ✅ recall 3 passed at its 1st check: これ、何て言うの？
+  🟠 2nd check: 何 · recall 1+2 · slot regeneration (paid, one call for 2 recalls) · accepted recalls kept: 3
+  ℹ ignored unknown grammar labels: what
+  ℹ declared but not present, dropped: no-question
+  ❌ recall 1: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何て言うの？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "あれ、何て言うの？"
+  ℹ ignored unknown grammar labels: what
+  ✅ recall 2 passed at its 2nd check: これ、何？
+  🔶 3rd check: 何 · recall 1 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 2,3
+  ℹ declared but not present, dropped: no-question
+  ❌ recall 1: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "あれ、何？"
+  🔵 4th check: 何 · recall 1 · deterministic fallback candidate (no request)
+  ❌ fallback rejected for recall 1: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？ — "何？"
+  ⛔ UNRESOLVED recall 1 of 何 after 4/11 check(s) — fallback rejected: same application as an accepted recall (only a demonstrative, pronoun, 
+  🧾 decision 何: r1=unresolved@🔵4 r2=accepted@🟠2 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=何 CHECKS per recall r1=4/11 r2=2/11 r3=1/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:unresolved/3paid,2:accepted/2paid,3:accepted/1paid stop=PAID_BUDGET_REACHED
+  ❌ 何 recall 1 could not be generated — fallback rejected: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？
+20/30  飲む  nomu
+  ⚪ 1st check: 飲む · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: 水、飲む？
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 1st check: 何飲む？
+  ℹ declared but not present, dropped: ka
+  ✅ recall 3 passed at its 1st check: 今日、何か飲む？
+  🧾 decision 飲む: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=飲む CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+21/30  どこ  doko
+  ⚪ 1st check: どこ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: plain-present
+  ℹ declared but not present, dropped: ka
+  ❌ recall 1: sentence already used for another target [PROMPT_REGEN_REQUIRED · DUPLICATE] — "あれ、どこにあるか分かる？"
+  ℹ ignored unknown grammar labels: teru
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 1st check: その店、どこにあるか知ってる？
+  ❌ recall 3: untaught content: え [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "え、もう帰っちゃったの？どこで？"
+  🟠 2nd check: どこ · recall 1+3 · slot regeneration (paid, one call for 2 recalls) · accepted recalls kept: 2
+  ℹ ignored unknown grammar labels: どこ
+  ℹ declared but not present, dropped: plain-present
+  ❌ recall 1: sentence already used for another target [PROMPT_REGEN_REQUIRED · DUPLICATE] — "あれ、どこにあるか分かる？"
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ ignored unknown grammar labels: どこ
+  ℹ declared but not present, dropped: past-nai no-question
+  ✅ recall 3 passed at its 2nd check: え、もう帰っちゃったの？どこで？
+  ⚠ recall 1: the same rejected sentence came back — no further paid attempt (strategy: deterministic fallback)
+  🔶 3rd check: どこ · recall 1 · deterministic fallback candidate (no request)
+  ✅ recall 1 deterministic fallback (no model request) at its 3rd check: どこ行く？
+  🧾 decision どこ: r1=fallback@🔶3 r2=accepted@⚪1 r3=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=どこ CHECKS per recall r1=3/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 recalls=1:fallback/2paid,2:accepted/1paid,3:accepted/2paid
+22/30  一緒  issho
+  ⚪ 1st check: 一緒 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: 行く
+  ℹ declared but not present, dropped: nai-invite
+  ✅ recall 1 passed at its 1st check: 店に一緒に行こうよ。
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ℹ ignored unknown grammar labels: 行く
+  ℹ declared but not present, dropped: past-nai no-question
+  ✅ recall 2 passed at its 1st check: え、もう一緒に行っちゃったの？
+  ℹ ignored unknown grammar labels: 見る
+  ℹ declared but not present, dropped: kana
+  ✅ recall 3 passed at its 1st check: ここにあるもの、一緒に見ようか。
+  🧾 decision 一緒: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=一緒 CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+23/30  する  suru
+  ⚪ 1st check: する · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: plain-present
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: 今日、何する？
+  ℹ ignored unknown grammar labels: plain-present
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 1st check: これ、どうする？
+  ❌ recall 3: target する not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "入ってみる？"
+  🟠 2nd check: する · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ℹ ignored unknown grammar labels: content
+  ℹ declared but not present, dropped: plain-present
+  ❌ recall 3: identical sentence already used for this target [PROMPT_REGEN_REQUIRED · DUPLICATE] — "これ、どうする？"
+  🔶 3rd check: する · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ℹ ignored unknown grammar labels: content
+  ℹ declared but not present, dropped: ka
+  ❌ recall 3: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、どうする？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "それ、どうする？"
+  🔵 4th check: する · recall 3 · deterministic fallback candidate (no request)
+  ✅ recall 3 deterministic fallback (no model request) at its 4th check: 明日、何する？
+  🧾 decision する: r1=accepted@⚪1 r2=accepted@⚪1 r3=fallback@🔵4
+  📊 JA_GENERATION_BUDGET target=する CHECKS per recall r1=1/11 r2=1/11 r3=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:fallback/3paid
+24/30  今  ima
+  ⚪ 1st check: 今 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: ima nani suru plain-present
+  ✅ recall 1 passed at its 1st check: 今、何してるの？
+  ℹ ignored unknown grammar labels: ima hairu miru kana-invite
+  ✅ recall 2 passed at its 1st check: 今、入ってみようか。
+  ❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "今、店にあるかな？"
+  🟠 2nd check: 今 · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ❌ recall 3: "これ入る" needs a particle — a bare noun cannot sit directly against "入る" [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "今、これ入ってる？"
+  🔶 3rd check: 今 · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+  ❌ recall 3: "これ入る" needs a particle — a bare noun cannot sit directly against "入る" [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "今、これ入ってる？"
+  ⚠ recall 3: the same rejected sentence came back — no further paid attempt (strategy: deterministic fallback)
+  🔵 4th check: 今 · recall 3 · deterministic fallback candidate (no request)
+  ✅ recall 3 deterministic fallback (no model request) at its 4th check: 今ある？
+  🧾 decision 今: r1=accepted@⚪1 r2=accepted@⚪1 r3=fallback@🔵4
+  📊 JA_GENERATION_BUDGET target=今 CHECKS per recall r1=1/11 r2=1/11 r3=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=1 recalls=1:accepted/1paid,2:accepted/1paid,3:fallback/3paid
+25/30  ちょっと  chotto
+  ⚪ 1st check: ちょっと · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: content
+  ✅ recall 1 passed at its 1st check: あれ、ちょっと高いね。
+  ℹ ignored unknown grammar labels: content
+  ℹ declared but not present, dropped: tekureru
+  ✅ recall 2 passed at its 1st check: これ、ちょっと見てくれる？
+  ❌ recall 3: untaught content: 寄る [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "店、ちょっと寄ってみない？"
+  🟠 2nd check: ちょっと · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ℹ ignored unknown grammar labels: plain-present
+  ℹ declared but not present, dropped: ka
+  ✅ recall 3 passed at its 2nd check: これ、ちょっと見る？
+  🧾 decision ちょっと: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@🟠2
+  📊 JA_GENERATION_BUDGET target=ちょっと CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/2paid
+26/30  来る  kuru
+  ⚪ 1st check: 来る · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: ashita mata kuru
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: 明日、また来る？
+  ❌ recall 2: target 来る not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "ちょっと待って。今から行くね。"
+  ❌ recall 3: romaji does not match reading (derived-field repair did not resolve it) [DETERMINISTIC_REPAIRABLE · TOKENISATION] — "え、もう帰っちゃったの？いつ来たの？"
+  🟠 2nd check: 来る · recall 2 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 2nd check: いつ来る？
+  🟠 2nd check: 来る · recall 3 · deterministic fallback candidate (no request)
+  ✅ recall 3 deterministic fallback (no model request) at its 2nd check: 今日来る？
+  🧾 decision 来る: r1=accepted@⚪1 r2=accepted@🟠2 r3=fallback@🟠2
+  📊 JA_GENERATION_BUDGET target=来る CHECKS per recall r1=1/11 r2=2/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 DERIVED_REPAIR_CALLS=1 recalls=1:accepted/1paid,2:accepted/2paid,3:fallback/1paid
+27/30  分かる  wakaru
+  ⚪ 1st check: 分かる · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: 分かる
+  ℹ declared but not present, dropped: ka
+  ✅ recall 1 passed at its 1st check: これ、分かる？
+  ❌ recall 2: untaught content: ああ 私 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "ああ、そうなんだ。私、全然分からなかったよ。"
+  ℹ ignored unknown grammar labels: 分かる 思う 見る
+  ℹ declared but not present, dropped: to
+  ✅ recall 3 passed at its 1st check: ちょっと見れば分かると思うよ。
+  🟠 2nd check: 分かる · recall 2 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,3
+  ❌ recall 2: CUE_FORM_MISMATCH: the Japanese is a question but the English is a statement ("I wonder if I'll understand once I enter.") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "これ、入ったら分かるかな？"
+  🔶 3rd check: 分かる · recall 2 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,3
+  ❌ recall 2: CUE_FORM_MISMATCH: the Japanese is a question but the English is a statement ("I wonder if I'll understand once I try entering.") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "入ってみたら分かるかな？"
+  🔵 4th check: 分かる · recall 2 · deterministic fallback candidate (no request)
+  ✅ recall 2 deterministic fallback (no model request) at its 4th check: 今日分かる？
+  🧾 decision 分かる: r1=accepted@⚪1 r2=fallback@🔵4 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=分かる CHECKS per recall r1=1/11 r2=4/11 r3=1/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:fallback/3paid,3:accepted/1paid
+28/30  ありがとう  arigatou
+  ⚪ 1st check: ありがとう · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: ありがとう
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 1 passed at its 1st check: 本当、ありがとうね。
+  ℹ ignored unknown grammar labels: ありがとう
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 2 passed at its 1st check: あ、ありがとう！
+  ❌ recall 3: untaught content: 助かる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "助かったよ、ありがとう。"
+  🟠 2nd check: ありがとう · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ❌ recall 3: untaught content: 助かる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "本当に助かるよ、ありがとう。"
+  🔶 3rd check: ありがとう · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+  ❌ recall 3: untaught content: 助かる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "本当に助かるよ、ありがとう。"
+  ⚠ recall 3: the same rejected sentence came back — no further paid attempt (strategy: deterministic fallback)
+  🔵 4th check: ありがとう · recall 3 · deterministic fallback candidate (no request)
+  ❌ fallback rejected for recall 3: same use of the set phrase as an accepted recall (same function, nothing new around it): あ、ありがとう！ — "ありがとう。"
+  ⛔ UNRESOLVED recall 3 of ありがとう after 4/11 check(s) — fallback rejected: same use of the set phrase as an accepted recall (same function, nothin
+  🧾 decision ありがとう: r1=accepted@⚪1 r2=accepted@⚪1 r3=unresolved@🔵4
+  📊 JA_GENERATION_BUDGET target=ありがとう CHECKS per recall r1=1/11 r2=1/11 r3=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:unresolved/3paid stop=PAID_BUDGET_REACHED
+  ❌ ありがとう recall 3 could not be generated — fallback rejected: same use of the set phrase as an accepted recall (same function, nothing new around it): あ、ありがとう！
+29/30  すみません  sumimasen
+  ⚪ 1st check: すみません · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ❌ recall 1: "いいです" needs a particle — a bare noun cannot sit directly against "です" [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "すみません、ちょっといいですか。"
+  ❌ recall 2: untaught content: ぶつかる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "あ、すみません！ぶつかっちゃった。"
+  ℹ ignored unknown grammar labels: すみません これ いくら
+  ℹ declared but not present, dropped: ka
+  ✅ recall 3 passed at its 1st check: すみません、これ、いくらですか。
+  🟠 2nd check: すみません · recall 1+2 · slot regeneration (paid, one call for 2 recalls) · accepted recalls kept: 3
+  ℹ ignored unknown grammar labels: いくら
+  ℹ declared but not present, dropped: ka
+  ❌ recall 1: same use of the set phrase as an accepted recall (same function, nothing new around it): すみません、これ、いくらですか。 [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "すみません、あれ、いくら？"
+  ℹ ignored unknown grammar labels: いい ちょっと
+  ℹ declared but not present, dropped: ka
+  ✅ recall 2 passed at its 2nd check: すみません、ちょっといい？
+  🔶 3rd check: すみません · recall 1 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 2,3
+  ℹ declared but not present, dropped: ka
+  ❌ recall 1: same use of the set phrase as an accepted recall (same function, nothing new around it): すみません、ちょっといい？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "あ、すみません、ちょっといい？"
+  🔵 4th check: すみません · recall 1 · deterministic fallback candidate (no request)
+  ✅ recall 1 deterministic fallback (no model request) at its 4th check: すみません。
+  🧾 decision すみません: r1=fallback@🔵4 r2=accepted@🟠2 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=すみません CHECKS per recall r1=4/11 r2=2/11 r3=1/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:fallback/3paid,2:accepted/2paid,3:accepted/1paid
+30/30  いい  ii
+  ⚪ 1st check: いい · recall 1+2+3 · target-group request (3 recalls in one paid call)
+  ℹ ignored unknown grammar labels: いい
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 1 passed at its 1st check: この店、いいと思うよ。
+  ℹ ignored unknown grammar labels: いい
+  ℹ declared but not present, dropped: no-question
+  ✅ recall 2 passed at its 1st check: これ、いいの？
+  ℹ ignored unknown grammar labels: いい
+  ℹ declared but not present, dropped: plain-present
+  ✅ recall 3 passed at its 1st check: うん、すごくいいよ。
+  🧾 decision いい: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+  📊 JA_GENERATION_BUDGET target=いい CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+ℹ TARGET-GROUP GENERATION: 30 target group(s) · 56 paid generation call(s) · 69 quality check(s) · 88/90 recalls accepted
+⚠ Generation incomplete: 88/90 — 2 recall(s) still needed
+↻ Auto-recovering missing recall 1/4 — 2 slot(s) outstanding…
+↻ Recovering 何 · recall 1  (last failure: fallback rejected: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？)
+  🔷 5th check: 何 · recall 1 · target-group request (1 recall in one paid call)
+  ℹ ignored unknown grammar labels: あれ 何 何
+  ℹ declared but not present, dropped: ka
+  ❌ recall 1: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "あれ、何？"
+  🟡 6th check: 何 · recall 1 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: none
+  ℹ ignored unknown grammar labels: 何
+  ℹ declared but not present, dropped: no
+  ❌ recall 1: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "あれ、何？"
+  ⚠ recall 1: the same rejected sentence came back — no further paid attempt (strategy: deterministic fallback)
+  🟨 7th check: 何 · recall 1 · deterministic fallback candidate (no request)
+  ❌ fallback rejected for recall 1: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？ — "何？"
+  ⛔ UNRESOLVED recall 1 of 何 after 7/11 check(s) — fallback rejected: same application as an accepted recall (only a demonstrative, pronoun, 
+  🧾 decision 何: r1=unresolved@🟨7
+  📊 JA_GENERATION_BUDGET target=何 CHECKS per recall r1=7/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:unresolved/2paid stop=PAID_BUDGET_REACHED
+❌ Recovery failed — fallback rejected: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？
+↻ Auto-recovering missing recall 2/4 — 2 slot(s) outstanding…
+↻ Recovering ありがとう · recall 3  (last failure: fallback rejected: same use of the set phrase as an accepted recall (same function, nothing new around it): あ、ありがとう！)
+  🔷 5th check: ありがとう · recall 3 · target-group request (1 recall in one paid call)
+  ℹ ignored unknown grammar labels: content grammar ありがとう
+  ✅ recall 3 passed at its 5th check: 本当にありがとうね。
+  🧾 decision ありがとう: r3=accepted@🔷5
+  📊 JA_GENERATION_BUDGET target=ありがとう CHECKS per recall r3=5/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=3:accepted/1paid
+✅ Recovered ありがとう recall 3: 本当にありがとうね。
+↻ Auto-recovering missing recall 3/4 — 1 slot(s) outstanding…
+↻ Recovering 何 · recall 1  (last failure: fallback rejected: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？)
+  🟢 8th check: 何 · recall 1 · target-group request (1 recall in one paid call)
+  ℹ ignored unknown grammar labels: content content
+  ❌ recall 1: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "あれ、何？"
+  🟩 9th check: 何 · recall 1 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: none
+  ℹ ignored unknown grammar labels: content
+  ℹ declared but not present, dropped: no
+  ❌ recall 1: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "あれ、何？"
+  ⚠ recall 1: the same rejected sentence came back — no further paid attempt (strategy: deterministic fallback)
+  🟤 10th check: 何 · recall 1 · deterministic fallback candidate (no request)
+  ❌ fallback rejected for recall 1: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？ — "何？"
+  ⛔ UNRESOLVED recall 1 of 何 after 10/11 check(s) — fallback rejected: same application as an accepted recall (only a demonstrative, pronoun, 
+  🧾 decision 何: r1=unresolved@🟤10
+  📊 JA_GENERATION_BUDGET target=何 CHECKS per recall r1=10/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:unresolved/2paid stop=PAID_BUDGET_REACHED
+❌ Recovery failed — fallback rejected: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): これ、何？
+INCOMPLETE_AWAITING_USER 1 recall(s) missing — the screen waits for the learner to press Retry

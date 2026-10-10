@@ -227,6 +227,18 @@ The round ran on build `240ffd6`, with real Gemini Flash-Lite and the same learn
 - Japanese was proven READY live in the first round. The 何 backup fix after the verification round is offline-verified only.
 - The remaining items are teaching polish (translations, cue wording, romanisation data), not reliability.
 
+## 12. "All must work" fixes (10 October, commit fdc9577)
+
+What was wrong, found by reading every line of the live runs:
+
+- **Japanese**: an example sentence in the prompt (何食べる？) was being copied into other words' sentences. The example is gone. The second Japanese run (safety stop US$0.04) was cut off before its last check, so Japanese has not yet had a complete live run on this build.
+- **Thai pronunciation**: ร้อย was spelled rááuy (now ráawy), ที่นั่น had the wrong tone (now thîi-nân), ปิด was bìt (now bpìt), น้อย/ลอยกระทง had "aauy" (now "aawy"), and ตอน showed as "dawn" (now dtaawn). อย่าง / อย่างนั้น / นั่น were missing, so whole lines fell back to toneless spellings ("wang wa jà pen yang nan"). The word splitter also cut words wrongly (มาก+ี่ instead of มา+กี่).
+- **Mandarin**: 那个太好了 was translated "That one is too good." (now "That's great!"). 这个多吗？ ("Is this one many?"), 我喜欢多。 and 多很好。 are now rejected. 多/少 get natural replacement sentences (人很多。 / 钱少吗？ / 太多了！), so no recall goes missing.
+
+Proof: tests42 is 47/47 on this build (the new checks fail on the earlier build). The full offline suite is OK, with only the three long-known exceptions. The browser test is 9/9. All saved recordings were re-recorded and no result changed.
+
+**Still to do:** one live run per language on this build. My attempt to start them was blocked by this session's permission system (it treats paid API calls as a real-world transaction). They need the owner's go-ahead in the app.
+
 ## TL;DR
 
 - **Root causes.** Mandarin 喝 failed because the learner knows no drink nouns and there was only one backup sentence. Thai ชิ้น failed because the AI was never taught what ชิ้น counts. Both are fixed.

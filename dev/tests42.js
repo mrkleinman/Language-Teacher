@@ -229,6 +229,45 @@ const deep = x => JSON.parse(JSON.stringify(x))
     const rt = has(c, 'jaPartialToJSON') ? c.jaPartialFromJSON(JSON.parse(JSON.stringify(c.jaPartialToJSON(part)))) : null
     T('J7', 'a Japanese partial generation survives storage (draft round trip keeps perTarget, missing recalls and the duplicate memory)', !!rt && rt.seenMap && rt.seenMap.constructor.name === 'Map' && rt.seenMap.get('x').text === 'x' && rt.perTarget[0][0].japanese === 'x' && rt.missingRecalls.length === 1)
   }
+  // ══ L — defects found by the live v682 runs (Mandarin 89/90 on 很, Thai duplicate across targets, Japanese これ今？) ════
+  {
+    const c = load(APP, { realBelt: true })
+    const fx = R.loadFixture('zh-daily-2026-10-08'), V = c.ttBenchApplyFixture(c.initMandarinVocab(), fx), TG = c.ttBenchJazhTargets(fx, V)
+    const inv = c.mandarinLearnerInventory(V, TG), rules = c.mandarinScarcityRules(inv), W = z => V.find(w => w.chinese === z)
+    const tp = (s, z) => c.mandarinTargetPresent(s, W(z), inv)
+    T('L1', 'a different word that only CONTAINS the target is not a use of it: 这个好喝吗？ ≠ 喝 (live v682 accepted it), 这个好吃吗？ ≠ 吃, 这个多少钱？ ≠ 多; 我想喝这个 / 人很多 still count',
+      !tp('这个好喝吗？', '喝') && !tp('这个好吃吗？', '吃') && !tp('这个多少钱？', '多') && tp('我想喝这个。', '喝') && tp('人很多。', '多'))
+    const bad = x => c.mandarinSurfaceGrammarProblems(x, inv).length > 0
+    T('L2', 'fragments accepted live are rejected — 我想。/ 你到。/ 大吗？/ 一点吗？/ 你等我一点; natural shapes pass — 好吗？/ 我到了。/ 我想去。/ 你等我一下 / 这个大吗？',
+      ['我想。', '你到。', '大吗？', '一点吗？', '你等我一点'].every(bad) && !['好吗？', '我到了。', '我想去。', '你等我一下', '这个大吗？'].some(bad))
+    const fbs = z => { const sm = new Map(); return [1, 2, 3].map(r => { const f = c.mandarinFallbackPair(W(z), inv, r, sm, V, rules); if (f) sm.set(f.chinese.replace(/[。？！]/g, ''), W(z).id); return f && f.chinese }) }
+    const big = fbs('大')
+    T('L3', 'adjective fallback: natural demonstrative frames first (这个很大。/ 这个不大。), never 你大吗？ ("are you big?") or the bare 大吗？', big[0] === '这个很大。' && !big.includes('你大吗？') && !big.includes('大吗？'), big)
+    // the group judge's unreadable reply: the second attempt is STRUCTURED (a valid verdict instead of UNVERIFIED)
+    const sg = c.geminiGenerate, sr = c.geminiRequest
+    c.geminiGenerate = async () => 'Sure! Here is my evaluation: the group is natural.'
+    c.geminiRequest = async o => o && o.json ? '{"action":"clean","reason":"natural"}' : 'not json'
+    const engine = { language: 'zh', labelSentence: 'Mandarin', labelPronunciation: 'pinyin', sentenceOf: p => p.chinese }
+    const grp = { targetWord: '很', indices: [0], pairs: [{ speaker: 'A', chinese: '这个很好。', english: 'This is very good.' }] }
+    const gv = await safe(() => c.aiQcEvaluateGroup(grp, grp.pairs, engine, 'AIzaSyTEST-x-0000000000000000000000', c.ev('GEMINI_DEFAULT_MODEL')))
+    c.geminiGenerate = sg; c.geminiRequest = sr
+    T('L4', 'a group judge reply that is not JSON is asked again in STRUCTURED mode and gives a real verdict (live v682: all three 很 pairs lost as UNVERIFIED)', gv && gv.action === 'clean', gv)
+    T('L5', 'a pair removed ONLY because its verdict is missing (UNVERIFIED) is not a failed construction: recovery may propose it again and re-judge it (live v682: 这个很好 blocked as "already used" for 10 checks → 89/90)',
+      /x\.reasons\.every\(r => \/UNVERIFIED\/\.test\(String\(r\)\)\)/.test(SRC) && /may be re-proposed and re-judged/.test(SRC))
+    const th = c.validateThaiTargetPair({ thai: 'ตั๋วใบนั้นราคาเท่าไหร่คะ', english: 'How much is that ticket?', prompt: 'She asks how much that ticket costs', speaker: 'B', _pairKey: 'k2', targetId: 482 },
+      { thai: 'ใบ', wordId: 482 }, { vocab: c.initVocab(), existing: [{ thai: 'ตั๋วใบนั้น ราคาเท่าไหร่คะ', _pairKey: 'k1', targetId: 876 }] }, 'test')
+    T('L6', 'Thai duplicate across targets is caught at acceptance (spacing ignored: ตั๋วใบนั้น ราคาเท่าไหร่คะ = ตั๋วใบนั้นราคาเท่าไหร่คะ), and an early-regenerated line may not repeat ANY line of the track (live v682: the final duplicate audit had to catch it)',
+      th && th.failed && th.failed.includes('NOT_DUPLICATE') && /_trackLines\.has\(_sp\(l\.thai\)\)/.test(SRC), th && th.failed)
+    const J = c.initJapaneseVocab(), ji = c.japaneseLearnerInventory(J, J.slice(0, 30))
+    const ju = x => { const r = c.validateJapaneseUsage({ japanese: x, segments: [] }, ji); return (Array.isArray(r) ? r : (r.problems || [])).some(y => /time word alone/.test(String(y))) }
+    T('L7', 'これ今？ ("Is this the now?" — accepted live) is rejected; これ、今使う？ passes', ju('これ今？') && !ju('これ、今使う？'))
+    const sm = new Map([['a', { targetId: 5, text: 'え、ここで何してるの？' }]]), vv = x => c.japaneseVariationVerdict(x, 5, sm, 'する').ok
+    T('L8', 'Japanese variety: after え、ここで何してるの？, え、何してるの？ is the same application (only "here" dropped); 何をするの？ is a different one', !vv('え、何してるの？') && vv('何をするの？'))
+    T('L9', 'Mandarin: a gap that appears AFTER generation (QC / final audit) can be retried from the draft — only the slots not valid in the final track are regenerated',
+      /function zhFinalGapSlots\(t\)/.test(SRC) && /RETRY_MISSING_RECALLS after the final checks/.test(SRC) && /onClick=\{retryFinalGaps\}/.test(SRC))
+  }
+  T('L10', 'coherence: an UNTOUCHED scene that passed before a repair and fails after it is a contradictory verdict — ONE more judgement decides it (live v682 Thai: S4/S5 2 → 4 → 2 with no line changed)',
+    /MAIN_TRACK_COHERENCE_VERDICT_CONFLICT/.test(SRC) && /!touched\.has\(d\.sceneId\) && prevBy\.has\(d\.sceneId\) && prevBy\.get\(d\.sceneId\)\.coherent && !d\.coherent/.test(SRC))
   // ══ S — shared contract ═════════════════════════════════════════════════════════════════════════════════════════════
   {
     const c = load(APP, { realBelt: true })

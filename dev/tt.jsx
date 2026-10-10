@@ -3365,8 +3365,17 @@ function mandarinComplexityCeiling(vocab) { return getLearnerComplexityContract(
 
 // §21/§50 — lexical target matching. 吃 must not satisfy a 吃饭 target, and a
 // legitimate grammatical frame around the target must not cause rejection.
-function mandarinTargetPresent(sentence, target, inv) {
+// v682 — a DIFFERENT word that merely contains the target's characters is not a use of the target (the Mandarin twin of
+// Japanese どこか ≠ どこ): live v682 accepted 这个好喝吗？ ("tasty?") as a 喝 (drink) recall, 这个好吃吗？ for 吃, 这个多少钱？ for 多.
+const ZH_TARGET_COMPOUNDS = Object.freeze({
+  '\u559D': ['\u597D\u559D'], '\u5403': ['\u597D\u5403', '\u5C0F\u5403'], '\u542C': ['\u597D\u542C'], '\u73A9': ['\u597D\u73A9'], '\u770B': ['\u597D\u770B'],
+  '\u7528': ['\u597D\u7528'], '\u591A': ['\u591A\u5C11', '\u5DEE\u4E0D\u591A'], '\u5C11': ['\u591A\u5C11'], '\u8BF4': ['\u5C0F\u8BF4'],
+  '\u5927': ['\u5927\u5BB6', '\u5927\u5B66'], '\u5C0F': ['\u5C0F\u65F6', '\u5C0F\u59D0', '\u5C0F\u5403', '\u5C0F\u8BF4'],
+  '\u597D': ['\u597D\u5403', '\u597D\u559D', '\u597D\u770B', '\u597D\u542C', '\u597D\u73A9', '\u597D\u7528'], '\u60F3': ['\u60F3\u6CD5'] })
+function mandarinTargetPresent(sentence0, target, inv) {
   const zh = (target && (target.chinese || target.w)) || ''
+  let sentence = String(sentence0 || '')
+  ;(ZH_TARGET_COMPOUNDS[zh] || []).forEach(cpd => { if (cpd !== zh) sentence = sentence.split(cpd).join('\u25A1'.repeat(cpd.length)) })
   if (!zh || !sentence) return false
   const segs = segmentMandarin(sentence, inv && inv.lexicon)
   if (segs.some(s => s.surface === zh)) return true
@@ -3629,6 +3638,12 @@ function mandarinSurfaceGrammarProblems(zh, inv) {
   if (/^(这个|那个|这|那)什么[？?]?$/.test(s)) P.push('ungrammatical: ' + s + ' — needs 是 (这个是什么？)')
   if (/(来|去)(帮|给|拿|买|找|用|做)[。！!]?$/.test(s)) P.push('incomplete: ' + s + ' — the verb needs an object (我来帮你)')
   if (/^(快|慢|大|小|多|少|长|短|高)[。！!]?$/.test(s)) P.push('fragment: ' + s + ' — a bare adjective is not a usable recall (这个很快 / 快一点)')
+  // v682 — from the live v682 Mandarin run (all accepted): 我想。("I want."), 你到。("You arrive."), 大吗？/ 慢吗？/ 一点吗？ (a bare
+  // one-word question), 你等我一点 (waiting "a little" is 等一下). 好吗？ (a real tag question) stays legal.
+  if (/^(我|你|他|她|我们|你们|他们)(也|都|还)?想[。！!]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 想 needs what you want / would like (我想去 / 我想要这个)')
+  if (/^(我|你|他|她|我们|你们|他们)到[。！!]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 到 needs 了 or a place (我到了 / 我到家了)')
+  if (/^(快|慢|大|小|多|少|长|短|高|贵|远|近|一点)吗[？?]$/.test(s)) P.push('fragment: ' + s + ' — say what (这个大吗？ / 你要一点吗？)')
+  if (/等(我|你|他|她|我们|你们)?一点/.test(s)) P.push('ungrammatical: ' + s.match(/等(我|你|他|她|我们|你们)?一点/)[0] + ' — waiting "a moment" is 等一下 (你等我一下)')
   // (6) only a motion / location verb takes 哪里 directly (去哪里 / 在哪里 / 住哪里); an action verb needs 在…: 你在哪里买？ not 你拿哪里？
   if (/(拿|吃|喝|买|看|找|用|做|等|帮|给|说|听|开|玩|学)哪(里|儿)/.test(s)) P.push('ungrammatical: ' + s.match(/(拿|吃|喝|买|看|找|用|做|等|帮|给|说|听|开|玩|学)哪(里|儿)/)[0] + ' — an action verb takes the place with 在 (你在哪里' + s.match(/(拿|吃|喝|买|看|找|用|做|等|帮|给|说|听|开|玩|学)哪/)[1] + '？)')
   if (/到哪(里|儿)[？?]?$/.test(s) && !/(了|去|来)/.test(s)) P.push('unnatural: ' + s + ' — say 你到哪里了？ (where are you now) or 你去哪里？ (where are you going)')
@@ -4003,7 +4018,8 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
     if (has('\u6211') && gram('\u4E0D')) C.push({ zh:'\u6211\u4E0D' + zh + '\u3002', en:'I do not ' + verbSense(target.english) + '.', cue:'Say that you do not ' + verbSense(target.english) })
   } else if (isAdj) {
     if (has('\u5F88')) C.push({ zh:'\u5F88' + zh + '\u3002', en:'Very ' + primarySense(target.english) + '.', cue:'Say it is very ' + primarySense(target.english) })
-    if (has('\u4F60') && gram('\u5417')) C.push({ zh:'\u4F60' + zh + '\u5417\uFF1F', en:'Are you ' + primarySense(target.english) + '?', cue:'Ask whether they are ' + primarySense(target.english) })
+    // v682 — "Are you X?" only for adjectives that describe a PERSON (你忙吗？ / 你累吗？); 你大吗？ / 你慢吗？ are not natural questions
+    if (has('\u4F60') && gram('\u5417') && /^(\u5FD9|\u7D2F|\u597D|\u997F|\u9AD8\u5174|\u51B7|\u70ED|\u5FEB\u4E50)$/.test(zh)) C.push({ zh:'\u4F60' + zh + '\u5417\uFF1F', en:'Are you ' + primarySense(target.english) + '?', cue:'Ask whether they are ' + primarySense(target.english) })
     if (gram('\u4E0D')) C.push({ zh:'\u4E0D' + zh + '\u3002', en:"It's not " + primarySense(target.english) + '.', cue:'Say it is not ' + primarySense(target.english) })
     // Shapes that do NOT need \u4E0D, so an adjective still has three options before
     // negation unlocks at vocabulary #10 (\u00a71/\u00a710).
@@ -4011,6 +4027,15 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
     if (has('\u4ECA\u5929')) C.push({ zh:'\u4ECA\u5929' + zh + '\u3002', en:'Today is ' + primarySense(target.english) + '.', cue:'Say today is ' + primarySense(target.english) })
     const nouns = inv.allContent.filter(w => w.partOfSpeech === 'noun')
     nouns.slice(0, 2).forEach(nn => C.push({ zh: nn.chinese + zh + '\u3002', en:'The ' + primarySense(nn.english) + ' is ' + primarySense(target.english) + '.', cue:'Say the ' + primarySense(nn.english) + ' is ' + primarySense(target.english) }))
+    // v682 — natural adjective frames with a demonstrative subject (这个很大。/ 这个大吗？/ 这个不大。/ 那个太大了。) — the bare
+    // 大吗？ the fallback used to hand out is now (rightly) a fragment
+    if (has('\u8FD9\u4E2A')) {
+      const g = primarySense(target.english)
+      if (has('\u5F88')) C.push({ zh:'\u8FD9\u4E2A\u5F88' + zh + '\u3002', en:'This one is very ' + g + '.', cue:'Say this one is very ' + g, curated: true })
+      C.push({ zh:'\u8FD9\u4E2A' + zh + '\u5417\uFF1F', en:'Is this one ' + g + '?', cue:'Ask whether this one is ' + g, curated: true })
+      if (has('\u4E0D') || gram('\u4E0D')) C.push({ zh:'\u8FD9\u4E2A\u4E0D' + zh + '\u3002', en:"This one isn't " + g + '.', cue:'Say this one is not ' + g, curated: true })
+      if (has('\u90A3\u4E2A') && has('\u592A')) C.push({ zh:'\u90A3\u4E2A\u592A' + zh + '\u4E86\u3002', en:'That one is too ' + g + '.', cue:'Say that one is too ' + g, curated: true })
+    }
   } else {
     // pronouns, nouns, question words, expressions: no \u4E0D negation, no \u5F88
     // §69 — pronouns need usable shapes from lesson one, built with any known verb.
@@ -4118,6 +4143,8 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
   }
   // every candidate passes the surface grammar rules too; v671 §B4: NO unfiltered fallback pool — when nothing is
   // well-formed the recall stays unresolved (it used to return 太吗？ from the unfiltered list)
+  // v682 — curated, collocation-checked frames are offered before the generic templates
+  C.sort((a, b) => (b.curated ? 1 : 0) - (a.curated ? 1 : 0))
   const wellFormed = C.filter(c => (c.curated || zhFallbackIsWellFormed(c.zh, target)) && !mandarinSurfaceGrammarProblems(c.zh, inv).length)
   const pool = wellFormed
   const uniq = []; pool.forEach(c => { if (c.zh && !uniq.some(u => u.zh === c.zh)) uniq.push(c) })
@@ -5735,7 +5762,14 @@ function japaneseDuplicateVerdict(jp, targetId, seenMap, rules) {
 const JA_LIMITED_VARIETY_WORDS = Object.freeze(['はい', 'いいえ', 'うん', 'ううん', 'ええ', 'おはよう', 'こんにちは', 'こんばんは', 'じゃあね', 'またね'])
 function jaUtteranceFunction(jp) { return /[\uFF1F?]\s*$|\u304B[\u3002]?\s*$/.test(String(jp || '').trim()) ? 'ask' : 'answer' }
 function japaneseFormulaKey(jp, surface) {
-  return jaUtteranceFunction(jp) + '|' + recallVariationKey(String(jp || '').replace(/^(\u3046\u3093|\u306F\u3044|\u3046\u3046\u3093|\u3044\u3084|\u3048\u3048|\u3044\u3044\u3048)[\u3001\uFF0C,\uFF01!]*/, ''), surface)
+  // v682 — a dropped / swapped BARE demonstrative or pronoun (これ、好き？ / 好き？), or an added place phrase
+  // (ここで), is not a new application (live v682: え、ここで何してるの？ / え、何してるの？ counted as distinct). Time words and
+  // これで ("with this") stay: 明日は大丈夫？ (is tomorrow OK?) and これで大丈夫。 (this will do) are real new uses.
+  let raw = String(jp || '').replace(/^(\u3046\u3093|\u306F\u3044|\u3046\u3046\u3093|\u3044\u3084|\u3048\u3048|\u3044\u3044\u3048)[\u3001\uFF0C,\uFF01!]*/, '')
+  if (!/^(\u3053\u3053|\u305D\u3053|\u3042\u305D\u3053)$/.test(String(surface || ''))) raw = raw.replace(/(\u3042\u305D\u3053|\u3053\u3053|\u305D\u3053)\u3067/g, '')
+  if (!/^(\u3053\u308C|\u305D\u308C|\u3042\u308C)$/.test(String(surface || ''))) raw = raw.replace(/^(\u3053\u308C|\u305D\u308C|\u3042\u308C)[\u3001\uFF0C,]\s*/, '')   // これ、好き？ = 好き？ (a bare topic demonstrative); それは… keeps its shape
+  const k = recallVariationKey(raw, surface)
+  return jaUtteranceFunction(jp) + '|' + k
 }
 function japaneseFormulaVariationVerdict(jp, targetId, seenMap, surface) {
   const k = japaneseFormulaKey(jp, surface)
@@ -8515,6 +8549,8 @@ function aiRequestFingerprint(o) {
 // Structured output (v649): judge stages ask Gemini for application/json with a schema, so
 // a reply can no longer arrive as prose, a numbered list or a truncated note.
 const GEMINI_SCHEMAS = {
+  // v682 — the group judge's verdict in structured mode (its free-text reply was unreadable twice in the live v681+ Mandarin run)
+  groupVerdict: { type: 'OBJECT', properties: { action: { type: 'STRING', enum: ['clean', 'fix_pronunciation', 'improve', 'replace'] }, reason: { type: 'STRING' } }, required: ['action'] },
   verdicts: { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: { type: 'INTEGER' }, s: { type: 'INTEGER' }, note: { type: 'STRING' }, wrongSense: { type: 'BOOLEAN', nullable: true }, thaiEnglishMatch: { type: 'BOOLEAN', nullable: true }, cueRepair: { type: 'STRING', nullable: true }, issue: { type: 'STRING', nullable: true } }, required: ['i', 's'] } },
   scene: { type: 'OBJECT', properties: { A: { type: 'INTEGER' }, B: { type: 'INTEGER' }, C: { type: 'INTEGER' }, D: { type: 'INTEGER' }, E: { type: 'INTEGER' },
     brokenAtPair: { type: 'INTEGER', nullable: true }, reason: { type: 'STRING' } }, required: ['A', 'B', 'C', 'D', 'E'] },
@@ -15582,7 +15618,11 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       try { ls = await generateWordLines(tg, scene, charA, charB, prevLines, vocab, apiKey, GEN_MODEL, Math.max(0, genOrder.indexOf(tg)), onProgress, '', usedSubjects) }
       catch (e) { if (e && (e.cancelled || e.fatalProvider || e.code === 'INTERNAL_SPEAKER_MAP_CONFLICT')) throw e; ls = null }
       tg._earlyRejected = null; tg._maxChecks = null; tg._slotPlan = null; tg._stage = null
-      const cands = (ls || []).filter(l => l && l.thai && thaiTargetPresent(l.thai, tg.thai, vocab) && !have.includes(l.thai) && !olds.some(o => o.thai === l.thai))
+      // v682 — never a line the track already has for ANOTHER target (live v682 Thai: the regenerated คะ slot became
+      // ตั๋วใบนั้น ราคาเท่าไหร่คะ, identical to a ใบ line — caught only by the FINAL duplicate audit → NOT_READY)
+      const _sp = x => String(x || '').replace(/\s+/g, '')
+      const _trackLines = new Set(allPairs.filter(Boolean).map(q => _sp(q.thai)))
+      const cands = (ls || []).filter(l => l && l.thai && thaiTargetPresent(l.thai, tg.thai, vocab) && !have.includes(l.thai) && !olds.some(o => o.thai === l.thai) && !_trackLines.has(_sp(l.thai)))
         .slice(0, olds.length + 1).map((l, k) => ({ ..._earlyTag(tg, l, 'th-' + tid + '-e' + (k + 1)), recallIndex: l.recallIndex != null ? l.recallIndex : null, _checkHistory: l._checkHistory || [], _checkCount: l._checkCount || 0, checkTier: l._checkCount || 0 }))
       fresh.push(...cands.map(p => ({ p, need: olds.length })))
     }
@@ -18094,7 +18134,7 @@ function validateThaiTargetPair(pair, target, ctx, stage) {
   if (p.pairType === 'framing' || p.pairType === 'bridge') fail('PROVENANCE', 'a ' + p.pairType + ' line is not a target pair')
   else if (tid != null && p.targetId != null && p.targetId !== tid) fail('PROVENANCE', 'typed for target ' + p.targetId)
   else d.PROVENANCE = 'PASS'
-  if (c.existing && c.existing.some(q => q && q !== p && q._pairKey !== p._pairKey && q.thai === p.thai)) fail('NOT_DUPLICATE', 'same sentence as another pair'); else d.NOT_DUPLICATE = 'PASS'
+  if (c.existing && c.existing.some(q => q && q !== p && q._pairKey !== p._pairKey && String(q.thai || '').replace(/\s+/g, '') === String(p.thai || '').replace(/\s+/g, ''))) fail('NOT_DUPLICATE', 'same sentence as another pair'); else d.NOT_DUPLICATE = 'PASS'   // v682: spacing-insensitive
   const sc = c.track && tid != null ? planSceneOfTarget(c.track, tid) : null
   d.SCENE_COMPATIBLE = !sc || !p.sceneId || p.sceneId === sc.sceneId ? (sc ? 'PASS' : 'N/A') : (fail('SCENE_COMPATIBLE', 'line is in ' + p.sceneId + ', target belongs to ' + sc.sceneId), 'FAIL')
   THAI_PAIR_DIMENSIONS.forEach(k => { if (!d[k]) d[k] = 'N/A' })
@@ -18198,6 +18238,10 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
   removed.forEach(x => {
     const kw0 = kws.find(k => k.wordId === x.targetId)
     if (!kw0) return
+    // v682 — a sentence removed ONLY because its verdict is missing (UNVERIFIED: the judge's reply was unreadable) was never found
+    // wrong: it is not a failed construction, so recovery may propose it again and the recovery QC judges it afresh. (Live v682
+    // Mandarin: 这个很好 was blocked as "identical sentence already used" for 10 checks and the track ended 89/90.)
+    if ((x.reasons || []).length && x.reasons.every(r => /UNVERIFIED/.test(String(r)))) { log && log('  \u21BA ' + x.target + ': "' + x.text + '" was only UNVERIFIED (no verdict) — it may be re-proposed and re-judged'); return }
     if (!states.has(x.targetId)) states.set(x.targetId, createRecoveryState(kw0, { surface: adapter.surfaceOf(kw0), sense: adapter.senseOf ? adapter.senseOf(kw0, c) : kw0.english }))
     recordRecoveryFailure(states.get(x.targetId), { code: /TARGET_MISSING/.test(x.reasons.join(' ')) ? 'TARGET_MISSING' : 'QC_REJECTED', text: x.text, reason: x.reasons.join('; ') })
   })
@@ -18384,7 +18428,26 @@ async function finaliseMainTrack(track, adapter, ctx) {
       _cohRepair = await mainTrackCoherenceRepair(t, adapter, c, _coh)
       if (_cohRepair.replaced) {
         t = { ...t, pairs: _cohRepair.pairs }
-        const again = await mainTrackCoherenceAudit(t, adapter, c)
+        let again = await mainTrackCoherenceAudit(t, adapter, c)
+        // v682 — a scene the repair did NOT touch that passed before and fails now is a contradictory verdict (live v682 Thai:
+        // S4 / S5 judged 2 → 4 → 2 with no line changed). ONE more judgement decides those scenes (majority of three);
+        // everything else keeps the latest verdict. Logged as MAIN_TRACK_COHERENCE_VERDICT_CONFLICT.
+        try {
+          const prevBy = new Map((_coh.sectionScores || []).map(d => [d.sceneId, d])), touched = new Set(_cohRepair.repairedScenes || [])
+          const flips = (again.sectionScores || []).filter(d => !touched.has(d.sceneId) && prevBy.has(d.sceneId) && prevBy.get(d.sceneId).coherent && !d.coherent)
+          if (again.state === 'VERIFIED' && !again.passed && flips.length) {
+            const third = await mainTrackCoherenceAudit(t, adapter, c)
+            if (third.state === 'VERIFIED') {
+              const decided = (again.sectionScores || []).map(d => { if (!flips.some(f => f.sceneId === d.sceneId)) return d; const t3 = (third.sectionScores || []).find(x => x.sceneId === d.sceneId); return t3 ? { ...d, score: t3.score, coherent: t3.coherent, reason: (t3.reason || '') + ' (decided by a third judgement)' } : d })
+              const failing = decided.filter(d => d.score == null || d.score <= MAIN_COHERENCE_SCENE_FAIL_AT), sc = decided.filter(d => d.score != null)
+              const overall = sc.length ? Math.round(sc.reduce((x, d) => x + d.score, 0) / sc.length) : again.overall
+              log && log('  ⚖ MAIN_TRACK_COHERENCE_VERDICT_CONFLICT untouched scene(s) ' + flips.map(f => f.sceneId + ' ' + prevBy.get(f.sceneId).score + '→' + f.score).join(', ') + ' — third judgement: ' +
+                flips.map(f => { const t3 = (third.sectionScores || []).find(x => x.sceneId === f.sceneId); return f.sceneId + '=' + (t3 ? t3.score : '?') }).join(' ') + ' → decided')
+              again = { ...again, sectionScores: decided, overall, passed: !failing.length && overall != null && overall >= MAIN_COHERENCE_THRESHOLD,
+                incoherent: failing.map(d => ({ section: d.section, sceneId: d.sceneId, purpose: d.purpose, score: d.score, reason: d.reason })), verdictConflict: flips.map(f => f.sceneId) }
+            }
+          }
+        } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e }
         _coh = { ...again, before: _coh.before || { overall: _coh.overall, sectionScores: _coh.sectionScores }, recluster: _coh.recluster, premiseReplan: _coh.premiseReplan, repair: { calls: _cohRepair.calls, replaced: _cohRepair.replaced, scenes: _cohRepair.repairedScenes } }
       } else _coh = { ..._coh, repair: { calls: _cohRepair.calls, replaced: 0, scenes: _cohRepair.repairedScenes } }
     }
@@ -33709,6 +33772,9 @@ function jaMayPrecedeVerbFreely(tok) {
 
 function validateJapaneseUsage(pair, inv) {
   const problems = []
+  // v682 — a bare demonstrative + time word question (これ今？ "Is this the now?" — accepted in the live v682 Japanese run)
+  { const _t2 = String(pair.japanese || '').replace(/\s+/g, '')
+    if (/^(\u3053\u308C|\u305D\u308C|\u3042\u308C)\u3001?(\u4ECA|\u4ECA\u65E5|\u660E\u65E5|\u6628\u65E5)[\uFF1F?\u3002]?$/.test(_t2)) problems.push('unnatural: ' + _t2 + ' — a demonstrative and a time word alone say nothing (これ、今使う？ / 今日、これ食べる？)') }
   // v682 — どこ already means "which place": え、どこがいい場所？ (live v681, accepted) is a redundant, unnatural question —
   // natural Japanese is どこがいい？ or いい場所はどこ？
   { const _t = String(pair.japanese || '').replace(/\s+/g, '')
@@ -34209,7 +34275,11 @@ async function aiQcEvaluateGroup(group, allPairs, engine, apiKey, model) {
   // returned as UNVERIFIED (the caller marks the group unresolved — an unjudged group cannot make the track READY)
   const VALID = /^(clean|fix_pronunciation|improve|replace)$/
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const raw = await geminiGenerate(apiKey, model, [{ role:'user', content: prompt + (attempt > 1 ? '\nYour previous reply could not be parsed. Reply with the JSON object ONLY.' : '') }], attempt > 1 ? 600 : 300)
+    // v682 — the second attempt uses STRUCTURED output (JSON schema with the four allowed actions): the live v682 Mandarin run lost
+    // all three 很 pairs to "group judge reply unparseable twice — UNVERIFIED" although nothing was wrong with them
+    const raw = attempt === 1
+      ? await geminiGenerate(apiKey, model, [{ role:'user', content: prompt }], 300)
+      : await geminiRequest({ apiKey, model, messages: [{ role:'user', content: prompt + '\nYour previous reply could not be parsed. Reply with the JSON object ONLY.' }], maxTokens: 600, temperature: 0.2, json: GEMINI_SCHEMAS.groupVerdict, stage: 'C_group_eval' })
     const p = coherenceJudgeParse(raw)
     if (p && VALID.test(String(p.action || ''))) return { action: p.action, reason: p.reason || '' }
   }
@@ -35885,6 +35955,25 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   function retryMissing() { const cp = cpOffer && cpOffer.compat.ok ? cpOffer.cp : null; if (!cp) return; resetWorkspace(); setCpOffer(null); startGeneration(cp) }
   // Start new generation: deliberately discards the draft first
   async function startNew() { await genCheckpointClear('zh'); cpRef.current = null; resetWorkspace(); setCpOffer(null); startGeneration(null) }
+  // v682 — a gap that appears AFTER generation (QC / final audit left a target below 3 valid pairs, e.g. the live 89/90): the
+  // slots that are not valid in the final track are taken out of the saved draft (their texts remembered as rejected) and ONLY
+  // they are regenerated; QC and the final checks then run again on the whole track
+  function zhFinalGapSlots(t) {
+    const r = trackReadiness(t), ids = new Set((r.unresolvedTargetIds || []).map(String))
+    const valid = new Set(((t && t.pairs) || []).filter(p => p && classifyTrackPair(p) === 'TARGET' && !p._qcInvalid && !p._qcUnresolved).map(p => p.targetId + ':' + p.recallIndex))
+    const cp = cpRef.current
+    return cp ? cp.accepted.filter(a => ids.has(String(a.targetId)) && !valid.has(a.slot)).map(a => a.slot) : []
+  }
+  async function retryFinalGaps() {
+    const cp = cpRef.current || await genCheckpointLoad('zh'); if (!cp) return
+    cpRef.current = cp
+    const gaps = zhFinalGapSlots(finalTrack); if (!gaps.length) return
+    cp.accepted.filter(a => gaps.includes(a.slot)).forEach(a => genCheckpointNoteRejected(cp, a.targetId, a.recallIndex, a.text))
+    cp.accepted = cp.accepted.filter(a => !gaps.includes(a.slot)); cp.status = 'incomplete'
+    if (!genCheckpointCompatible(cp, 'zh', targets, authorisedZh).ok) return
+    push('\u267B RETRY_MISSING_RECALLS after the final checks \u2014 ' + gaps.length + ' slot(s) regenerated: ' + gaps.join(', ') + ' \u00b7 the other ' + cp.accepted.length + ' verified recalls are kept')
+    await genCheckpointWrite('zh', cp); resetWorkspace(); startGeneration(cp)
+  }
 
   useEffect(() => {
     if (startedRef.current) return
@@ -36117,6 +36206,10 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
 
       {qcPhase === 'done' ? (
         <>
+          {isDailyZh && finalTrack && !trackReadiness(finalTrack).ready && cpRef.current && (cpRef.current.resumes || 0) < GEN_CHECKPOINT_MAX_RESUMES && zhFinalGapSlots(finalTrack).length > 0 && (
+            <Btn onClick={retryFinalGaps} style={{ width:'100%', justifyContent:'center' }}>
+              {'\u21BB'} Retry missing recalls ({zhFinalGapSlots(finalTrack).length}) {'\u2014'} the other verified recalls are kept
+            </Btn>)}
           <Btn onClick={() => { if (isDailyZh) genCheckpointClear('zh'); onGenerated(finalTrack) }}
             style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>{'\u25B6'} {trackReadiness(finalTrack).ready || !(finalTrack && finalTrack.integrity) ? 'Study track' : 'Study anyway \u2014 track not ready (' + trackReadiness(finalTrack).validTargetPairs + '/' + trackReadiness(finalTrack).expectedTargetPairs + ')'}</Btn>
           <Btn onClick={() => buildAndQc(finalTrack)} variant="secondary"

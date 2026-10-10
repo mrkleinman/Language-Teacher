@@ -1,0 +1,121 @@
+{
+ "runId": "th-daily-device-2026-10-09.production.v682-th-chin.2026-10-10T00-55-32",
+ "fixture": "th-daily-device-2026-10-09",
+ "pipelineRequested": "production",
+ "pipelineExecuted": "production",
+ "gen2Version": null,
+ "models": null,
+ "app": {
+  "appBuild": "v682",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "NOT_READY",
+ "reasons": [
+  "MAIN_TRACK_COHERENCE=FAIL (overall 3/5 · S3=2 S4=2 S5=2 S7=2 · after repair of 2 line(s))",
+  "FINAL_DUPLICATE_AUDIT=FAIL (1 duplicate target pair(s))"
+ ],
+ "error": null,
+ "stop": null,
+ "recalls": 94,
+ "deferred": [],
+ "spend": {
+  "costUsd": 0.04887,
+  "capUsd": 0.1,
+  "tokens": {
+   "in": 333644,
+   "out": 38763
+  },
+  "requestsSent": 179,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "(untagged) @ gemini-2.5-flash-lite": {
+    "requests": 179,
+    "in": 333644,
+    "out": 38763,
+    "usd": 0.04886960000000005
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×179",
+  "Track ID: 2026-10-09T08:42:54.575Z · run daily-track-1791535372160-3223",
+  "Total requests: 179 · Successful: 179 · Failed: 0 · Retried: 31",
+  "Generation calls: 71 · QC calls: 91 · Segmentation calls: 1 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 13 · Listening calls: 0 · Other: 3",
+  "Input tokens: 333644 · Output tokens: 38763 · Total tokens: 372407 (provider usage metadata)",
+  "Retry requests: 31 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 179 · Provider-error retries: 0",
+  "GENERATION (app level; unit = one TARGET-GROUP request (3 recalls each) — not one recall): target-group requests 38 · first attempts 38 · regeneration attempts 31 · total attempts 69 · average 1.82 per target group · resolved first attempt 21/38 · requiring 2 attempts 9 · requiring 3 attempts 6 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 7",
+  "GENERATION WASTE: first-attempt tokens 142243 · regeneration tokens 124153 · regeneration share 47% · regeneration cost USD 0.0151 · fallback-after-paid-retries 0",
+  "PAID REQUESTS BY PURPOSE: QC judging 91 (86390 tok, USD 0.0121) · generation (first attempt / scene) 40 (145996 tok, USD 0.0168) · regeneration (paid retry of a rejected candidate) 31 (124153 tok, USD 0.0151) · quota / target recovery 13 (13310 tok, USD 0.0020) · other 3 (2339 tok, USD 0.0004) · pronunciation / segmentation / gloss 1 (219 tok, USD 0.0001)",
+  "THAI GENERATION: targets generated 38 · recall checks 84 (sum of each target's highest recall check; max 11 per recall — one check = one candidate attempt) · initial paid generation calls 38 · paid regeneration calls 31 · deterministic/local checks 15 · local repairs 7 · quota-recovery generation calls 13 · cue-QC calls 32 · naturalness-QC calls 25 · passed on the first paid call 21/38",
+  "  THAI_GENERATION_BUDGET กังวล HIGHEST_RECALL_CHECK=6/11 PAID_GENERATION_ATTEMPTS=6 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ควร HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET รถเมล์ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET รีบ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ยาว HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET คุ้ม HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET หมายถึง HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET รีบ HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET หมายถึง HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=2 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ทางเข้า HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET สามารถ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET คู่ HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=4 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ชิ้น HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=1 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ครั้ง HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ไฟ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ต้องการ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET หวัง HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET สามารถ HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ชิ้น HIGHEST_RECALL_CHECK=5/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=failed",
+  "  THAI_GENERATION_BUDGET ไฟ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ตัดสินใจ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET เล่า HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET แต่งตัว HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET รองเท้า HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 outcome=accepted",
+  "  THAI_GENERATION_BUDGET แนะนำ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET แต่งตัว HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET เก้าอี้ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET เบา HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=2 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ประตู HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET หน้าต่าง HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET เตียง HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ตู้เย็น HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET อาบน้ำ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET เตียง HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET คะ HIGHEST_RECALL_CHECK=6/11 PAID_GENERATION_ATTEMPTS=6 LOCAL_REPAIRS=0 outcome=failed",
+  "  THAI_GENERATION_BUDGET ใบ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ตัว HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET คะ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "Estimated Gemini cost: USD 0.0465 (≈ SGD 0.0605 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. A_generation — 38 requests / 142243 tokens / ~35%",
+  "  2. B_generation_retry — 31 requests / 124153 tokens / ~32%",
+  "  3. L_final_cue_audit — 25 requests / 26950 tokens / ~9%",
+  "  4. F_naturalness_final — 25 requests / 28656 tokens / ~8%",
+  "  5. H_recovery — 13 requests / 13310 tokens / ~4%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 387
+}

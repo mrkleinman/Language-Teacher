@@ -129,7 +129,7 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     const L = path.join(__dirname, 'benchmark', 'live', 'v677')
     for (const f of fs.readdirSync(L).filter(f => /zh-daily/.test(f))) add(JSON.parse(fs.readFileSync(path.join(L, f), 'utf8')))
     const flagged = [...sents].filter(bad)
-    const known = /^(很快。|我想吃。|我想吃|我慢。|今天好。|明天好。|很多。|我想喝|你做的好吗？|你喜欢|你到哪里？|快。|你想可以。|你可以什么？|这个什么？|我来帮)$/
+    const known = /^(很快。|我想吃。|我想吃|我慢。|今天好。|明天好。|很多。|我想喝|你做的好吗？|你喜欢|你到哪里？|快。|你想可以。|你可以什么？|这个什么？|我来帮|一点吗？)$/   // v682 adds 一点吗？ (a bare one-word question)
     T('Z10', 'breadth: over every Mandarin sentence in the 3 live v677 Daily runs, the only rejections are the defect shapes this suite names (no wider false rejection)',
       flagged.filter(x => !known.test(x)).length === 0, flagged)
   }

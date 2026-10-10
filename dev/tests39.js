@@ -47,11 +47,13 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       const fx = loadFixture(r.fixtureId)
       const rep = await runOnceUi(fx, { mode: 'replay', cassette: r.cassette })
       const m0 = rep.replay.mismatches[0]
-      rows.push({ f, listening: /listening/.test(f), faithful: rep.replay.faithful, same: compareContent(r.outcome.content, rep.content).identical, firstCall: m0 ? m0.call : null })
+      rows.push({ f, listening: /listening/.test(f), faithful: rep.replay.faithful, same: compareContent(r.outcome.content, rep.content).identical, firstCall: m0 ? m0.call : null, diff: m0 && m0.promptDiff ? m0.promptDiff : null })
     }
+    const thPhFix = f => { const x = rows.find(r => r.f === f); return !!(x && x.diff && /thîi-nán/.test(x.diff.recorded) && x.diff.requested === x.diff.recorded.replace(/thîi-nán/g, 'thîi-nân')) }
     const allowedL = f => /zh-listening-2026-10-08-run[123]/.test(f)   // v681: 你到哪里？ rejected; 们 is now read as grammar (not an unknown length unit)
       || /ja-listening-2026-10-08-run1/.test(f)                           // v682: a どこか / 何か line no longer covers どこ / 何 — the scene's coverage feedback gains one item (request 18)
-    T('A5', 'v681+v682 CHANGE IS CONFINED: the 18 live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the Mandarin runs (你到哪里？ rejected; 们 read as grammar) and Japanese run 1 (v682: どこか ≠ どこ in coverage); Daily runs differ only through validator decisions',
+      || (/th-listening-2026-10-08-run[123]/.test(f) && thPhFix(f))         // v682: the bank romanisation of ที่นั่น was corrected (thîi-nán → thîi-nân) — the ONLY prompt difference
+    T('A5', 'v681+v682 CHANGE IS CONFINED: the 18 live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the Mandarin runs (你到哪里？ rejected; 们 read as grammar) and Japanese run 1 (v682: どこか ≠ どこ in coverage) and the Thai runs whose only difference is the corrected ที่นั่น romanisation (thîi-nân); Daily runs differ only through validator decisions',
       rows.length === 18 && rows.every(x => x.faithful ? x.same : x.firstCall >= (/th-daily/.test(x.f) ? 2 : 6)) && rows.filter(x => x.listening).every(x => x.faithful || allowedL(x.f)),
       rows.map(x => x.f.replace('tt-bench-', '').replace('-v677.json', '') + ':' + (x.faithful ? 'faithful' : 'differs@' + x.firstCall)))
     const base = fs.readFileSync(path.join(__dirname, 'tt.v677.jsx'), 'utf8')

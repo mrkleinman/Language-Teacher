@@ -278,6 +278,8 @@ const deep = x => JSON.parse(JSON.stringify(x))
       L('ผมเห็นรถตัวใหญ่ตัวหนึ่งครับ').includes('CLASSIFIER_MISMATCH') && !L('รถคันใหญ่ครับ').length && L('ขอเบาหน่อยครับ', 'Can I have a light / gentle, please?').includes('TRANSLATION_HAS_ALTERNATIVES') && !L('ขอเบาหน่อยครับ', 'A bit softer, please.').length)
     const fx = R.loadFixture('zh-daily-2026-10-08'), V = c.ttBenchApplyFixture(c.initMandarinVocab(), fx), inv = c.mandarinLearnerInventory(V, c.ttBenchJazhTargets(fx, V)), bad = x => c.mandarinSurfaceGrammarProblems(x, inv).length > 0
     T('L13', 'Mandarin (verification run): 你想吗？ ("Do you want?") is incomplete; 你想吃吗？ passes', bad('你想吗？') && !bad('你想吃吗？')) }
+  T('L14', 'the duplicate-context instruction carries NO concrete example sentence (live verification 2: the example 何食べる？ was copied into the 食べる and 飲む recalls)',
+    /Never reuse a sentence listed above, for this word or any other/.test(SRC) && !/e\.g\. 何？ → 何食べる？/.test(SRC))
   // ══ S — shared contract ═════════════════════════════════════════════════════════════════════════════════════════════
   {
     const c = load(APP, { realBelt: true })
@@ -286,6 +288,43 @@ const deep = x => JSON.parse(JSON.stringify(x))
       /tt-zh-gen-checkpoint/.test(keys) && /tt-ja-gen-checkpoint/.test(keys) && /tt-th-gen-checkpoint/.test(keys) && (SRC.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && !/GEN_CHECKPOINT_KEYS = [^\n]*(tt-vocab|tt-tracks|tt-ja-vocab|tt-zh-vocab)/.test(SRC))
     T('S2', 'the screens offer "Retry missing recalls" and "Start new generation" (never a silent full paid regeneration); a draft is cleared only when the finished track is handed to the app',
       /Retry missing ' \+ unit/.test(SRC) && /Start new generation/.test(SRC) && /genCheckpointClear\('zh'\); onGenerated\(finalTrack\)/.test(SRC) && /genCheckpointClear\('ja'\); onGenerated\(finalTrack\)/.test(SRC) && /genCheckpointClear\('th'\); onGenerated\(generatedTrack\)/.test(SRC))
+  }
+  // ══ Z15–16 — Mandarin lines from the live verification run (accepted at zh-check-4/5) ════════════════════════════════════
+  {
+    const c = load(APP, { realBelt: true })
+    const sp = z => c.mandarinSurfaceGrammarProblems(z, { allContent: [] })
+    T('Z15', '这个多吗？ ("Is this one many?") and 我喜欢多。 ("I like many") are rejected — 多 / 少 describe an amount of something, not "this one"; 人多吗？ and 这个大吗？ stay legal',
+      sp('这个多吗？').length > 0 && sp('那个少吗？').length > 0 && sp('我喜欢多。').length > 0 && sp('多很好。').length > 0 && !sp('多少钱？').length && !sp('人多吗？').length && !sp('这个大吗？').length, { a: sp('这个多吗？'), b: sp('人多吗？') })
+    // the adjective fallback for 好 and 多 with a learner who knows 这个 / 那个 / 很 / 太
+    const fx = R.loadFixture('zh-daily-2026-10-08'), V = c.ttBenchApplyFixture(c.initMandarinVocab(), fx), TG = c.ttBenchJazhTargets(fx, V)
+    const inv = c.mandarinLearnerInventory(V, TG), rules = c.mandarinScarcityRules(inv)
+    const mk = zh => ({ ...(V.find(w => w.chinese === zh) || { id: 'x-' + zh, chinese: zh, english: zh === '好' ? 'good' : 'many', partOfSpeech: 'adjective' }), partOfSpeech: 'adjective' })
+    const extra = ['这个', '那个', '很', '太', '不'].map(z => V.find(w => w.chinese === z)).filter(Boolean)
+    const inv2 = { ...inv, allContent: inv.allContent.concat(extra.filter(w => !inv.allContent.includes(w))) }
+    const outs = []
+    for (const zh of ['好', '多']) for (let r = 1; r <= 3; r++) { const f = c.mandarinFallbackPair(mk(zh), inv2, r, new Map(), V, rules); if (f) outs.push([f.chinese, f.english]) }
+    const bad = outs.filter(([z, e]) => (/太好了/.test(z) && /too good/i.test(e)) || /^(这个|那个)(多|少)吗/.test(z))
+    if (process.env.Z16) console.log(JSON.stringify(outs))
+    T('Z16', 'the deterministic fallback never hands out 那个太好了 as "That one is too good." (太好了 = "That\'s great!") nor 这个多吗？',
+      !bad.length, { bad, outs })
+  }
+  // ══ P — THAI PRONUNCIATION GUIDE (live v682 Thai lines with wrong / toneless romanisation) ══════════════════════════════
+  {
+    const c = load(APP, { realBelt: true })
+    const V = c.initVocab(), lex = c.buildThaiPhoneticLexicon(V)
+    const comp = t => c.composeThaiPhonetic(t, lex)
+    const seg = t => c.thaiDeterministicWords(t, V, lex, [])
+    const cases = [['ผมต้องการสองร้อยบาท', 'ráawy'], ['รถเมล์จะไปที่นั่นไหมคะ', 'nân'], ['ผมปิดประตูครับ', 'bpìt'], ['น้อยกว่านี้ค่ะ', 'náawy'], ['เราควรไปตอนนี้ครับ', 'dtaawn-níi']]
+    const bad1 = cases.map(([t, want]) => ({ t, ph: comp(t).phonetic })).filter((r, k) => !r.ph.includes(cases[k][1]))
+    T('P1', 'bank romanisations fixed: ร้อย ráawy (was rááuy), ที่นั่น/นั่น falling nân (was nán), ปิด bpìt (was bìt — ป is never b), น้อย náawy (was náauy), ตอน dtaawn (was the IPA dɔɔn shown as "dawn")',
+      !bad1.length, bad1)
+    const r2 = seg('หวังว่าจะเป็นอย่างนั้นนะครับ')
+    T('P2', 'หวังว่าจะเป็นอย่างนั้นนะครับ segments with NO unknown token and every word gets its toned canonical romanisation (live: the whole line fell back to toneless model text "wang wa jà pen yang nan")',
+      !r2.unknown.length && r2.words.every(w => w.ph) && r2.words.map(w => w.ph).join(' ').includes('yàang-nán'), r2)
+    const lines = { 'คุณมากี่โมงคะ': 'maa gìi', 'ฉันว่างานนี้ยากค่ะ': 'wâa ngaan', 'อ่านหนังสือพิมพ์ไหมคะ': 'nǎng-sǔue-phim' }
+    const bad3 = Object.entries(lines).map(([t, want]) => ({ t, want, ph: comp(t).phonetic, un: comp(t).unresolved, seg: seg(t).unknown })).filter(r => r.un || r.seg.length || !r.ph.includes(r.want))
+    T('P3', 'a dictionary word never swallows the start of the next word: มา|กี่ (not มาก+ี่), ว่า|งาน (not ว่าง+าน), อ่าน|หนังสือพิมพ์ (not อ่านหนังสือ+พิมพ์) — in both the segmenter and the line composer',
+      !bad3.length, bad3)
   }
   console.log(out.join('\n'))
   console.log('\nv682 reliability & teaching-quality repair: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))

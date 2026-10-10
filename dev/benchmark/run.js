@@ -216,7 +216,7 @@ function compareContent(a, b) {
   return { identical: false, firstDiffAt: i, recorded: sa.slice(Math.max(0, i - 100), i + 100), replayed: sb.slice(Math.max(0, i - 100), i + 100) }
 }
 
-module.exports = { runOnce, runOnceUi, loadFixture, applyFixture, contentOutcome, compareContent, uiPathsSource }
+module.exports = { runOnce, runOnceUi, loadFixture, applyFixture, contentOutcome, compareContent, uiPathsSource, simProvider, bankOf, SIM_KEY }
 
 if (require.main === module) (async () => {
   const fx = loadFixture(arg('fixture'))

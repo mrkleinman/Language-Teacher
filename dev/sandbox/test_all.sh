@@ -21,7 +21,7 @@ for t in $SUITES render_test; do
   e=$(cat "$f.exit"); p=$(grep -cE '^PASS' "$txt"); n=$(grep -cE '^FAIL' "$txt")
   ids=$(grep -E '^FAIL' "$txt" | awk '{print $2}' | tr '\n' ' ')
   note=""
-  if [ "$e" != 0 ]; then
+  if [ "$e" != 0 ] || [ "$n" != 0 ]; then   # v682: a FAIL line counts even if the suite exited 0
     if [ -n "${KNOWN_FAIL[$t]}" ] && [ "$(echo $ids | xargs)" = "${KNOWN_FAIL[$t]}" ]; then note="${KNOWN_WHY[$t]}"; else bad=1; note="<<< NEW FAILURE"; fi
   fi
   bl=$(grep -cE '^BLOCKED' "$txt")

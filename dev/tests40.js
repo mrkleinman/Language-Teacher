@@ -147,7 +147,7 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
     T('S2', 'the new generator (Gen2) applies the same production grammar / sense rules up front (zh: mandarinSurfaceGrammarProblems · th: thaiLexicalSenseProblems)',
       /production grammar rule: ' \+ zr\.join/.test(SRC) && /production sense rule: ' \+ lr\.map/.test(SRC))
-    T('S3', 'variety audit and the Mandarin generator use the ONE shared recallVariationKey', /const keys = new Set\(ps\.map\(p => recallVariationKey\(/.test(SRC) && /vkey = recallVariationKey\(cand\.chinese, target\.chinese\)/.test(SRC))
+    T('S3', 'variety audit and the Mandarin generator use the ONE shared recallVariationKey (v682: Japanese adds the asking/answering function on top of it)', (/const keys = new Set\(ps\.map\(p => recallVariationKey\(/.test(SRC) || /adapter\.lang === 'ja' \? japaneseFormulaKey\(x, surf\) : recallVariationKey\(x, surf\)/.test(SRC)) && /vkey = recallVariationKey\(cand\.chinese, target\.chinese\)/.test(SRC))
   }
   console.log(out.join('\n'))
   console.log('\nv681 three-language quality repair: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))

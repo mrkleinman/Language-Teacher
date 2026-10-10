@@ -17,7 +17,7 @@ const readJ = f => JSON.parse(fs.readFileSync(f, 'utf8'))
 const HIST = path.join(B, 'historical', '2026-10-08-v674')
 // v678: the production baseline moved to v677 (the deployed build, which changed generation); the simulator cassette
 // library was re-recorded on it (v674 recordings kept in benchmark/cassettes/archive-v674)
-const BASELINE_BUILD = 'v681'   // v681: the standard generator's validators changed on purpose; v677 cassettes are archived in cassettes/archive-v677
+const BASELINE_BUILD = 'v682'   // v682: validators / fallback / recovery prompts changed on purpose (reliability repair); v681 cassettes in cassettes/archive-v681, v677 in archive-v677
 const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening', 'zh-listening'].map(x => x + '-2026-10-08')
 
 ;(async () => {
@@ -218,8 +218,8 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0] + (s.match(/const CURRICULUM_BELTS = [\s\S]*?\n\]/) || [''])[0]
     T('G2', 'no vocabulary entry, belt threshold or complexity contract changed in the source (bank / belt tables byte-identical to v674)', banks(src) === banks(base) && banks(src).length > 1000)
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
-    T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
-    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[01])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings; v682 one: the generation-draft write site)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length + (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length && (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
+    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[012])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
 
   console.log(out.join('\n'))

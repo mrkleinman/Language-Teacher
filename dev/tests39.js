@@ -50,15 +50,17 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       rows.push({ f, listening: /listening/.test(f), faithful: rep.replay.faithful, same: compareContent(r.outcome.content, rep.content).identical, firstCall: m0 ? m0.call : null })
     }
     const allowedL = f => /zh-listening-2026-10-08-run[123]/.test(f)   // v681: 你到哪里？ rejected; 们 is now read as grammar (not an unknown length unit)
-    T('A5', 'v681 CHANGE IS CONFINED: the 18 live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the Mandarin runs (你到哪里？ rejected; 们 read as grammar); Daily runs differ only through validator decisions',
+      || /ja-listening-2026-10-08-run1/.test(f)                           // v682: a どこか / 何か line no longer covers どこ / 何 — the scene's coverage feedback gains one item (request 18)
+    T('A5', 'v681+v682 CHANGE IS CONFINED: the 18 live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the Mandarin runs (你到哪里？ rejected; 们 read as grammar) and Japanese run 1 (v682: どこか ≠ どこ in coverage); Daily runs differ only through validator decisions',
       rows.length === 18 && rows.every(x => x.faithful ? x.same : x.firstCall >= (/th-daily/.test(x.f) ? 2 : 6)) && rows.filter(x => x.listening).every(x => x.faithful || allowedL(x.f)),
       rows.map(x => x.f.replace('tt-bench-', '').replace('-v677.json', '') + ':' + (x.faithful ? 'faithful' : 'differs@' + x.firstCall)))
     const base = fs.readFileSync(path.join(__dirname, 'tt.v677.jsx'), 'utf8')
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0]
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
     // v679: exactly ONE new storage write — the switch setting itself (key tt-ja-gen2); no learner-data write is added
+    const ckw = (SRC.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length   // v682: the generation-draft (checkpoint) write site — its own keys, never learner data
     const extra = (SRC.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length + (SRC.match(/stSet\(settingKey, v\)/g) || []).length
-    T('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly two: the switch settings (tt-ja-gen2; tt-th-gen2 / tt-zh-gen2 via one shared tick box) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 2 && writes(SRC) === writes(base) + 2 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC) && /const TH_GEN2_SETTING_KEY = 'tt-th-gen2'/.test(SRC) && /const ZH_GEN2_SETTING_KEY = 'tt-zh-gen2'/.test(SRC), [writes(SRC), writes(base), extra])
+    T('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly two switch settings (tt-ja-gen2; tt-th-gen2 / tt-zh-gen2 via one shared tick box) and, from v682, ONE generation-draft write site (tt-th/ja/zh-gen-checkpoint) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 2 && writes(SRC) === writes(base) + 2 + ckw && ckw === 1 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC) && /const TH_GEN2_SETTING_KEY = 'tt-th-gen2'/.test(SRC) && /const ZH_GEN2_SETTING_KEY = 'tt-zh-gen2'/.test(SRC), [writes(SRC), writes(base), extra])
   }
   // ══ B — DETERMINISTIC ACCEPTANCE RULES ════════════════════════════════════════════════════════════════════════════
   {
@@ -134,8 +136,8 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const { measure } = require('./benchmark/compare_gen')
     const old = readJ(path.join(B, 'live', 'v677', 'tt-bench-ja-daily-2026-10-08-run1-v677.json'))
     const m = measure(old)
-    T('D1', 'the comparison measures BOTH generators with the same functions: the v677 Japanese run 1 has ' + m.cueCopiesAnswer + ' cues that copy the answer, ' + m.nearDuplicateRecalls + ' near-duplicate recall(s), and 0 targets absent once inflection is understood',
-      m.recalls === 90 && m.cueCopiesAnswer >= 20 && m.targetAbsent === 0)
+    T('D1', 'the comparison measures BOTH generators with the same functions: the v677 Japanese run 1 has ' + m.cueCopiesAnswer + ' cues that copy the answer, ' + m.nearDuplicateRecalls + ' near-duplicate recall(s), and ' + m.targetAbsent + ' target uses absent once inflection and question-word compounds are understood (v682: 何か / どこか are not 何 / どこ — 2 lines)',
+      m.recalls === 90 && m.cueCopiesAnswer >= 20 && m.targetAbsent === 2)   // v682: 今日は何か食べる？ / じゃあ、どこか入ろうか。 — 何か / どこか are not 何 / どこ
     const src = fs.readFileSync(path.join(B, 'compare_gen.js'), 'utf8')
     T('D2', 'linguistic quality comes only from label files and is marked UNCALIBRATED unless the labels are human; review items can be emitted blind (pipeline hidden)', /UNCALIBRATED/.test(src) && /blind-items\.json/.test(src) && /pipeline hidden/.test(src))
   }
@@ -143,7 +145,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
   {
     T('E1', 'the benchmark panel offers the shadow pilot (6 × 1 / 6 × 3), passes pipeline=gen2 to the sandboxed worker and keeps pilot results and files apart (-gen2-)',
       /id="pilot1"/.test(SRC) && /runInWorker\(fx, k, \{ pipeline: 'gen2', judgeModel:/.test(SRC) && /const pipeline = m\.pipeline === 'gen2' \? 'gen2' : 'production'/.test(SRC) && /'-gen2'/.test(SRC))
-    T('E2', 'version v681', c.ev('APP_BUILD_VERSION') === 'v681' && c.ev('LISTENING_BUILD_VERSION') === 'v681')
+    T('E2', 'version v681+ (v682 = reliability repair: resumable generation, recovery, teaching-quality rules)', /^v68[12]$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
   // ══ F — v678.1 SANDBOX FIXES (defects found in the first live Japanese Daily run, 9 Oct 2026) ══════════════════
   {

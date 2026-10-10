@@ -3471,9 +3471,26 @@ function zhTargetPatternLine(target, inv, vocab, rules) {
   const pat = ZH_TARGET_PATTERNS[zh]
   const ex = []
   try { for (let r = 1; r <= 3 && ex.length < 2; r++) { const fb = mandarinFallbackPair(target, inv, r, null, vocab, rules); if (fb && fb.chinese && !ex.includes(fb.chinese)) ex.push(fb.chinese) } } catch (e) {}
-  if (!pat && !ex.length) return ''
+  const obj = zhObjectHint(target, inv)
+  if (!pat && !ex.length && !obj) return ''
   return 'PATTERN FOR ' + zh + ': ' + (pat || 'use it in its normal position in a short sentence') +
-    (ex.length ? ' · AUTHORISED EXAMPLES (every word in them is allowed — reuse the STRUCTURE with different content, never copy them): ' + ex.join(' / ') : '') + '\n'
+    (ex.length ? ' · AUTHORISED EXAMPLES (every word in them is allowed — reuse the STRUCTURE with different content, never copy them): ' + ex.join(' / ') : '') + '\n' + obj
+}
+// v682 — a verb that needs an object, for a learner who has not been taught the nouns it normally takes (喝 without 水 / 茶 /
+// 咖啡): the model kept writing 我想喝水 / 我喝茶 (untaught → rejected) until the recall ran out of checks. Say so up front and
+// name what IS allowed.
+const ZH_TYPICAL_OBJECTS = Object.freeze({ '\u559d': ['\u6c34','\u8336','\u5496\u5561','\u9152','\u5564\u9152','\u679c\u6c41','\u725b\u5976'], '\u5403': ['\u996d','\u9762','\u83dc','\u6c34\u679c','\u9e21','\u8089'], '\u770b': ['\u4e66','\u7535\u5f71','\u7535\u89c6'], '\u5f00': ['\u8f66','\u95e8'], '\u542c': ['\u97f3\u4e50','\u6b4c'] })
+function zhObjectHint(target, inv) {
+  const zh = target && target.chinese
+  if (!zh || !zhVerbNeedsObject(zh)) return ''
+  const has = w => (inv.allContent || []).some(x => x && x.chinese === w)
+  const typical = ZH_TYPICAL_OBJECTS[zh] || []
+  const taught = typical.filter(has), untaught = typical.filter(w => !has(w))
+  const generic = ['\u8fd9\u4e2a', '\u90a3\u4e2a', '\u4ec0\u4e48', '\u4e00\u70b9', '\u4e1c\u897f'].filter(has)
+  return 'OBJECT FOR ' + zh + ': it needs an object (or a question / refusal: ' + zh + '不' + zh + '？ / 不' + zh + '). ' +
+    (taught.length ? 'Taught nouns that fit: ' + taught.join(' ') + '. ' : '') +
+    (untaught.length ? 'NOT taught (forbidden): ' + untaught.join(' ') + '. ' : '') +
+    (generic.length ? 'You may always use: ' + generic.join(' / ') + '.' : '') + '\n'
 }
 function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
   const content = inv.allContent.map(w => '  ' + w.chinese + ' [' + w.pinyin + '] = ' + w.english +
@@ -3888,6 +3905,24 @@ const ZH_VERB_FRAMES = {
            ['\u8FD9\u91CC\u6709\u4EC0\u4E48\uFF1F','What is there here?','Ask what there is here',['\u8FD9\u91CC','\u4EC0\u4E48']]],
   '\u5403': [['\u4f60\u5403\u4ec0\u4e48\uff1f','What are you eating?','Ask what they are eating',['\u4f60','\u4ec0\u4e48']], ['\u6211\u60f3\u5403\u996d\u3002','I want to eat.','Say you want to eat',['\u6211','\u60f3','\u996d']], ['\u6211\u4eec\u5403\u996d\u5427\u3002','Let\u2019s eat.','Suggest eating',['\u6211','\u996d']]],
   '\u559d': [['\u4f60\u559d\u4ec0\u4e48\uff1f','What are you drinking?','Ask what they are drinking',['\u4f60','\u4ec0\u4e48']], ['\u6211\u559d\u6c34\u3002','I\u2019ll have water.','Say you will drink water',['\u6211','\u6c34']], ['\u4f60\u60f3\u559d\u6c34\u5417\uff1f','Do you want some water?','Offer them water',['\u4f60','\u60f3','\u6c34']]],
+  // v682 — from the live v681 Mandarin failure (喝 recall 2 unresolved → no playable track): a learner with no drink noun (水 / 茶 /
+  // 咖啡 untaught) had exactly ONE passing 喝 frame (你喝什么？), so once a recall had used it the fallback had nothing left. These
+  // are natural, collocation-correct uses built only from words a beginner already has (demonstratives, 什么, 一点, 不, 一起).
+  '\u559d+': [['\u4f60\u60f3\u559d\u4ec0\u4e48\uff1f','What would you like to drink?','Ask what they would like to drink',['\u4f60','\u60f3','\u4ec0\u4e48']],
+           ['\u6211\u559d\u8fd9\u4e2a\u3002','I\u2019ll have this one.','Say you will drink this one',['\u6211','\u8fd9\u4e2a']],
+           ['\u6211\u60f3\u559d\u4e00\u70b9\u3002','I\u2019d like a little.','Say you would like a little to drink',['\u6211','\u60f3','\u4e00\u70b9']],
+           ['\u4f60\u8981\u559d\u4e00\u70b9\u5417\uff1f','Would you like a little?','Offer them a little to drink',['\u4f60','\u8981','\u4e00\u70b9']],
+           ['\u4f60\u559d\u4e0d\u559d\uff1f','Will you have some?','Ask whether they will have something to drink',['\u4f60','\u4e0d']],
+           ['\u6211\u4eec\u4e00\u8d77\u559d\u5427\u3002','Let\u2019s have a drink together.','Suggest having a drink together',['\u6211','\u4e00\u8d77']],
+           ['\u4f60\u559c\u6b22\u559d\u4ec0\u4e48\uff1f','What do you like to drink?','Ask what they like to drink',['\u4f60','\u559c\u6b22','\u4ec0\u4e48']],
+           ['\u6211\u4e0d\u559d\u3002','I won\u2019t have any.','Decline a drink',['\u6211','\u4e0d']]],
+  '\u5403+': [['\u4f60\u60f3\u5403\u4ec0\u4e48\uff1f','What would you like to eat?','Ask what they would like to eat',['\u4f60','\u60f3','\u4ec0\u4e48']],
+           ['\u6211\u5403\u8fd9\u4e2a\u3002','I\u2019ll have this one.','Say you will eat this one',['\u6211','\u8fd9\u4e2a']],
+           ['\u6211\u60f3\u5403\u4e00\u70b9\u3002','I\u2019d like a little.','Say you would like a little to eat',['\u6211','\u60f3','\u4e00\u70b9']],
+           ['\u4f60\u8981\u5403\u4e00\u70b9\u5417\uff1f','Would you like a little?','Offer them a little to eat',['\u4f60','\u8981','\u4e00\u70b9']],
+           ['\u6211\u4eec\u4e00\u8d77\u5403\u5427\u3002','Let\u2019s eat together.','Suggest eating together',['\u6211','\u4e00\u8d77']],
+           ['\u4f60\u559c\u6b22\u5403\u4ec0\u4e48\uff1f','What do you like to eat?','Ask what they like to eat',['\u4f60','\u559c\u6b22','\u4ec0\u4e48']],
+           ['\u6211\u4e0d\u5403\u3002','I won\u2019t have any.','Decline food',['\u6211','\u4e0d']]],
   '\u770b': [['\u4f60\u770b\u4ec0\u4e48\uff1f','What are you looking at?','Ask what they are looking at',['\u4f60','\u4ec0\u4e48']], ['\u4f60\u770b\u8fd9\u4e2a\u3002','Look at this.','Tell them to look at this',['\u4f60','\u8fd9\u4e2a']], ['\u6211\u770b\u4e00\u4e0b\u3002','Let me take a look.','Say you will take a look',['\u6211']]],
   '\u542c': [['\u4f60\u542c\u6211\u8bf4\u3002','Listen to me.','Ask them to listen to you',['\u4f60','\u6211','\u8bf4']], ['\u6211\u542c\u4f60\u7684\u3002','I\u2019ll do as you say.','Say you will go along with them',['\u6211','\u4f60']]],
   '\u8bf4': [['\u4f60\u8bf4\u4ec0\u4e48\uff1f','What did you say?','Ask what they said',['\u4f60','\u4ec0\u4e48']], ['\u4f60\u8bf4\u5427\u3002','Go ahead, say it.','Invite them to speak',['\u4f60']]],
@@ -4038,10 +4073,10 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
   // (你好吗 hides the target 好 inside the basic 你好) is silently skipped.
   // Transitive verbs get collocation-correct verb+object frames, gated on every
   // word being taught. Without these, rejecting 我开。 left the verb with nothing.
-  if (ZH_VERB_FRAMES[zh]) {
+  if (ZH_VERB_FRAMES[zh] || ZH_VERB_FRAMES[zh + '+']) {
     const hasV = w => (inv.allContent || []).some(x => x.chinese === w)
-    ZH_VERB_FRAMES[zh].forEach(([s, en, cue, needs]) => {
-      if (needs.every(hasV)) C.push({ zh: s, en, cue })
+    ;[...(ZH_VERB_FRAMES[zh] || []), ...(ZH_VERB_FRAMES[zh + '+'] || [])].forEach(([s, en, cue, needs]) => {
+      if (needs.every(hasV)) C.push({ zh: s, en, cue, curated: true })
     })
   }
   // An adverb target (一起, 也, 都…) needs a verb to modify. Offer real frames using
@@ -4083,7 +4118,7 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
   }
   // every candidate passes the surface grammar rules too; v671 §B4: NO unfiltered fallback pool — when nothing is
   // well-formed the recall stays unresolved (it used to return 太吗？ from the unfiltered list)
-  const wellFormed = C.filter(c => zhFallbackIsWellFormed(c.zh, target) && !mandarinSurfaceGrammarProblems(c.zh, inv).length)
+  const wellFormed = C.filter(c => (c.curated || zhFallbackIsWellFormed(c.zh, target)) && !mandarinSurfaceGrammarProblems(c.zh, inv).length)
   const pool = wellFormed
   const uniq = []; pool.forEach(c => { if (c.zh && !uniq.some(u => u.zh === c.zh)) uniq.push(c) })
   const strip = x => String(x || '').replace(/[\s\uFF0C\u3002\uFF1F\uFF01\uFF1B\u3001]/g, '')
@@ -4113,9 +4148,31 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
     usable.push(p)
   }
   // Rotate by recall index so three recalls do not all get the same sentence when
-  // several valid frames exist; a repeat is only used when nothing else passes.
-  if (!usable.length) return null
-  return usable[((recallIndex || 1) - 1) % usable.length]
+  // several valid frames exist.
+  // v682 — and never a superficial copy of a recall already accepted for this target (same construction with only a pronoun,
+  // demonstrative or particle changed): a fallback must be a DIFFERENT application, or a different communicative function
+  // (question / suggestion / refusal / statement). Before v682 the fallback was exempt and could hand back 你喝什么 for a target
+  // whose recall 1 was 你喝什么 — and when that was the only frame, the recall was simply unresolved.
+  const mine = seenMap ? [...seenMap.entries()].filter(([, id]) => id === target.id).map(([k]) => k) : []
+  const distinct = usable.filter(p => !mine.some(m => zhSameApplication(m, p.chinese, zh)))
+  if (!distinct.length) return null
+  return distinct[((recallIndex || 1) - 1) % distinct.length]
+}
+// v682 — the communicative function of a short Mandarin line (for "three meaningful applications")
+function zhCommunicativeFunction(s) {
+  const t = String(s || '').replace(/\s+/g, '')
+  if (/(什么|谁|哪|怎么|为什么|多少|几)/.test(t) || /([\u4e00-\u9fff])不\1/.test(t)) return 'question-open'
+  if (/[吗][。？?]?$|[？?]$/.test(t)) return 'question-yes-no'
+  if (/吧[。！!]?$/.test(t)) return 'suggestion'
+  if (/(不|没)/.test(t)) return 'refusal-or-negation'
+  return 'statement'
+}
+// two recalls are the SAME application when their construction key matches and their communicative function matches
+function zhSameApplication(a, b, target) {
+  const ka = recallVariationKey(a, target), kb = recallVariationKey(b, target)
+  const ca = _recoveryConstructionKey(a, target), cb = _recoveryConstructionKey(b, target)
+  const sameShape = (ka && ka === kb) || (ca && ca === cb)
+  return !!sameShape && zhCommunicativeFunction(a) === zhCommunicativeFunction(b)
 }
 
 // §20 — ONE recall, escalating tiers, locked once accepted. Never returns partial.
@@ -4158,7 +4215,9 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
       const _um = /untaught vocabulary: (.+)/.exec(last || '')
       if (_um) _um[1].split(/\s+/).forEach(w => w && _zhRejected.add(w))
       const _mine = [...(seenMap || new Map()).entries()].filter(([, id]) => id === target.id).map(([kk]) => kk)
+      const _prior = (o.priorRejected || []).filter(Boolean)
       const memory =
+        (_prior.length ? '\nALREADY REJECTED for this recall in an earlier attempt (do NOT submit these or a near copy — change the idea, the communicative function or the situation): ' + _prior.slice(-12).join('／') : '') +
         (_zhUsedElsewhere.size ? '\nThese sentences are ALREADY USED in this track — do not submit them again: ' + [..._zhUsedElsewhere].join('／') : '') +
         (_mine.length ? '\nYou ALREADY wrote these for ' + target.chinese + ' — write a DIFFERENT sentence with a DIFFERENT communicative function (question / answer / request / statement): ' + _mine.join('／') : '') +
         (_zhRejected.size ? '\nDO NOT USE (not taught yet): ' + [..._zhRejected].join(' ') +
@@ -4180,6 +4239,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
     const v = validateMandarinPair(cand, target, inv, vocab, rules, seenMap)
     if (!v.ok) {
       last = v.problems[0]; recordMandarinRejection(stats, last); onLog && onLog('  ❌ ' + last)
+      if (o.onRejected && cand.chinese) o.onRejected(cand.chinese, last)
       L.settle(tid, recallIndex, 'rejected', (isFallback ? 'fallback: ' : '') + last, n)
       // A sentence already used by ANOTHER target was never named in the retry,
       // so 喜欢 resubmitted 我喜欢这个 for eight tiers. Remember it.
@@ -4208,6 +4268,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
       const key = _recoveryConstructionKey(cand.chinese, target.chinese), vkey = recallVariationKey(cand.chinese, target.chinese)
       if ((key && mine.some(m => _recoveryConstructionKey(m, target.chinese) === key)) || (vkey && mine.some(m => recallVariationKey(m, target.chinese) === vkey))) {
         last = 'same application as an accepted recall (only a particle, demonstrative or pronoun differs) — use a different communicative function'
+        if (o.onRejected && cand.chinese) o.onRejected(cand.chinese, last)
         recordMandarinRejection(stats, 'duplicate'); onLog && onLog('  \u274C ' + last + ': ' + cand.chinese); L.settle(tid, recallIndex, 'rejected', last, n); continue }
       // generate within the level: while the track drifts below 80% preferred-length sentences, a first attempt above the
       // preferred range is asked once to be shorter (never the last paid attempt, never a hard reject of natural Mandarin)
@@ -4322,8 +4383,91 @@ function mandarinFramingPairs(inv) {
 }
 
 // §20/§83 — three recalls per target, or an explicit recoverable failure.
-async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, onLog, stopSignal, stats) {
+// ══ v682 — RESUMABLE DAILY GENERATION (generation checkpoints) ════════════════════════════════════════════════════════
+// The live v681 Mandarin run ended at 89/90 (喝 recall 2 unresolved) and threw all 89 verified recalls away: the error screen's
+// Retry started a NEW full paid generation. A checkpoint keeps every accepted, validated target pair of the CURRENT Daily
+// generation in an isolated draft (its own storage key per language — never the track list, never vocabulary / SRS / belts),
+// so "Retry missing recalls" generates ONLY what is missing.
+//   · identity: the 30 selected target ids (in order), the NEW ids, and a signature of the exact authorised vocabulary. A
+//     checkpoint resumes only when all three still match; otherwise the screen says why and offers a deliberate new generation.
+//   · idempotent: a (targetId, recallIndex) slot is written once — a resume never overwrites or duplicates a verified pair.
+//   · revalidated: every preserved pair is re-run through the CURRENT acceptance function before reuse (a build upgrade may be
+//     stricter); a pair that no longer passes is dropped and becomes a missing recall (logged — the one documented dependency).
+//   · bounded: at most GEN_CHECKPOINT_MAX_RESUMES explicit retries; each missing recall gets one fresh check ladder per retry,
+//     carrying the sentences already rejected for it, so a retry never pays for the same rejected construction again.
+//   · never a lesson: a checkpoint is not a track, is not playable, never counts as a completed lesson and never touches SRS.
+const GEN_CHECKPOINT_VERSION = 1
+const GEN_CHECKPOINT_KEYS = Object.freeze({ th: 'tt-th-gen-checkpoint', ja: 'tt-ja-gen-checkpoint', zh: 'tt-zh-gen-checkpoint' })
+const GEN_CHECKPOINT_MAX_RESUMES = 3
+const GEN_CHECKPOINT_REJECTED_CAP = 24
+function genCheckpointSig(words) {
+  const str = (words || []).map(w => String(w || '')).filter(Boolean).sort().join('|')
+  let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0
+  return h.toString(36) + '.' + (words || []).length
+}
+function genCheckpointFingerprint(lang, targets, authorisedWords) {
+  const isNew = t => t && (t.selectionRole ? t.selectionRole === 'new' : t.status === 'new')
+  return { lang, targetIds: (targets || []).map(t => t.id), newIds: (targets || []).filter(isNew).map(t => t.id), vocabSig: genCheckpointSig(authorisedWords) }
+}
+function genCheckpointCreate(lang, o) {
+  const c = o || {}, now = new Date().toISOString()
+  return { version: GEN_CHECKPOINT_VERSION, lang, mode: 'daily', id: lang + '-cp-' + now, createdAt: now, updatedAt: now, build: APP_BUILD_VERSION,
+    status: 'in-progress', fingerprint: genCheckpointFingerprint(lang, c.targets, c.authorisedWords), expected: (c.targets || []).length * 3,
+    accepted: [], rejected: {}, resumes: 0, history: [{ at: now, event: 'created', build: APP_BUILD_VERSION }], extra: c.extra || null }
+}
+const genCheckpointSlot = (targetId, recallIndex) => targetId + ':' + recallIndex
+// Adds one ACCEPTED pair; returns false (and changes nothing) when its slot is already filled — the idempotence guarantee.
+function genCheckpointAddPair(cp, pair, meta) {
+  if (!cp || !pair || pair.targetId == null || !pair.recallIndex) return false
+  const slot = genCheckpointSlot(pair.targetId, pair.recallIndex)
+  if (cp.accepted.some(a => a.slot === slot)) return false
+  const m = meta || {}
+  cp.accepted.push({ slot, targetId: pair.targetId, recallIndex: pair.recallIndex, text: pair.chinese || pair.japanese || pair.thai || '', english: pair.english || '', cue: pair.prompt || '',
+    pron: pair.pinyin || pair.romaji || pair.phonetic || '', source: pair._source || pair.sourceStage || '', qcStatus: m.qcStatus || 'generation-accepted', acceptedAt: new Date().toISOString(), pair })
+  cp.updatedAt = new Date().toISOString()
+  return true
+}
+function genCheckpointNoteRejected(cp, targetId, recallIndex, text) {
+  if (!cp || !text) return
+  const slot = genCheckpointSlot(targetId, recallIndex), list = cp.rejected[slot] || (cp.rejected[slot] = [])
+  if (!list.includes(text) && list.length < GEN_CHECKPOINT_REJECTED_CAP) list.push(text)
+}
+function genCheckpointMissing(cp) {
+  if (!cp || !cp.fingerprint) return []
+  const have = new Set((cp.accepted || []).map(a => a.slot)), out = []
+  cp.fingerprint.targetIds.forEach(id => { for (let r = 1; r <= 3; r++) if (!have.has(genCheckpointSlot(id, r))) out.push({ targetId: id, recallIndex: r }) })
+  return out
+}
+// { ok, reason } — may this checkpoint resume for THIS selection and authorised vocabulary?
+function genCheckpointCompatible(cp, lang, targets, authorisedWords) {
+  if (!cp || typeof cp !== 'object') return { ok: false, reason: 'no saved draft' }
+  if (cp.version !== GEN_CHECKPOINT_VERSION) return { ok: false, reason: 'the draft was saved in an older format' }
+  if (cp.lang !== lang || cp.mode !== 'daily') return { ok: false, reason: 'the draft belongs to another language or track type' }
+  const fp = genCheckpointFingerprint(lang, targets, authorisedWords)
+  if (JSON.stringify(fp.targetIds) !== JSON.stringify(cp.fingerprint.targetIds)) return { ok: false, reason: 'today\'s 30 target words differ from the draft\'s (your word selection has changed)' }
+  if (JSON.stringify(fp.newIds) !== JSON.stringify(cp.fingerprint.newIds)) return { ok: false, reason: 'the NEW words differ from the draft\'s' }
+  if (fp.vocabSig !== cp.fingerprint.vocabSig) return { ok: false, reason: 'the words you are allowed to use have changed since the draft was made (' + String(cp.fingerprint.vocabSig).split('.').pop() + ' then, ' + String(fp.vocabSig).split('.').pop() + ' now)' }
+  if ((cp.resumes || 0) >= GEN_CHECKPOINT_MAX_RESUMES) return { ok: false, reason: 'the draft has already been retried ' + cp.resumes + ' times (limit ' + GEN_CHECKPOINT_MAX_RESUMES + ')' }
+  return { ok: true, reason: '' }
+}
+function genCheckpointSummary(cp, targets) {
+  const miss = genCheckpointMissing(cp), byId = new Map((targets || []).map(t => [t.id, t]))
+  const label = id => { const t = byId.get(id); return t ? (t.chinese || t.japanese || t.thai || String(id)) : String(id) }
+  return { accepted: (cp && cp.accepted || []).length, expected: cp ? cp.expected : 0, missing: miss.map(m => ({ ...m, target: label(m.targetId) })), resumes: cp ? cp.resumes || 0 : 0 }
+}
+// ONE storage write site for every checkpoint operation (save and clear) — isolated keys only.
+async function genCheckpointWrite(lang, cp) { if (GEN_CHECKPOINT_KEYS[lang]) await stSet(GEN_CHECKPOINT_KEYS[lang], cp || null) }
+async function genCheckpointLoad(lang) {
+  try { const v = GEN_CHECKPOINT_KEYS[lang] ? await stGet(GEN_CHECKPOINT_KEYS[lang]) : null; return v && typeof v === 'object' && v.version ? v : null } catch (e) { return null }
+}
+const genCheckpointClear = lang => genCheckpointWrite(lang, null)
+
+async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, onLog, stopSignal, stats, genOpts) {
   const inv = mandarinLearnerInventory(vocab, targets)
+  // v682 — checkpoint: every accepted recall is recorded (and saved by the caller); a resume reuses the verified ones
+  const _go = genOpts || {}
+  const cp = _go.checkpoint || genCheckpointCreate('zh', { targets, authorisedWords: inv.allContent.map(w => w.chinese) })
+  const _saveCp = () => { try { _go.onCheckpoint && _go.onCheckpoint(cp) } catch (e) {} }
   const S = stats || createMandarinGenerationStats('unknown', 0)
   const _zhLedger = beginGenerationLedger('zh')          // v672 §1 — this run's per-recall check ledger
   // v671 §B4 — provenance is MEASURED, not assumed: real provider responses during this run ⇒ LIVE; none ⇒ MOCK / offline
@@ -4353,6 +4497,28 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
   const totalRecall = targets.length * 3
   let doneRecall = 0, attempts = 0
   const failures = []
+  // v682 — RESUME: re-run every preserved pair through the CURRENT acceptance function (in track order, so duplicate checks see
+  // exactly what a fresh run would); a pair that passes is reused as-is (no request), one that fails becomes a missing recall
+  const preserved = new Map()
+  if (_go.checkpoint) {
+    cp.resumes = (cp.resumes || 0) + 1
+    cp.history.push({ at: new Date().toISOString(), event: 'resume', n: cp.resumes, build: APP_BUILD_VERSION })
+    let kept = 0
+    const dropped = []
+    for (const t of targets) for (let r = 1; r <= 3; r++) {
+      const a = (cp.accepted || []).find(x => x.slot === genCheckpointSlot(t.id, r))
+      if (!a || !a.pair) continue
+      const v = validateMandarinPair(a.pair, t, inv, vocab, rules, seenMap)
+      if (!v.ok) { dropped.push({ slot: a.slot, text: a.text, why: v.problems[0] }); continue }
+      seenMap.set(strip(a.pair.chinese), t.id)
+      preserved.set(a.slot, { ...a.pair, _resumedFromCheckpoint: cp.id })
+      kept++
+    }
+    if (dropped.length) { cp.accepted = cp.accepted.filter(a => !dropped.some(d => d.slot === a.slot)); dropped.forEach(d => genCheckpointNoteRejected(cp, d.slot.split(':')[0], d.slot.split(':')[1], d.text)) }
+    onLog && onLog('\u267B RESUME_FROM_CHECKPOINT ' + cp.id + ' · attempt ' + cp.resumes + '/' + GEN_CHECKPOINT_MAX_RESUMES + ' · ' + kept + '/' + totalRecall + ' verified recalls kept (no request) · ' +
+      (totalRecall - kept) + ' to generate' + (dropped.length ? ' · ' + dropped.length + ' preserved pair(s) no longer pass the current checks and are regenerated: ' + dropped.map(d => d.text + ' (' + String(d.why).slice(0, 50) + ')').join('; ') : ''))
+    _saveCp()
+  }
 
   for (let i = 0; i < targets.length; i++) {
     if (stopSignal && stopSignal.cancelled) break
@@ -4362,9 +4528,18 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
     const accepted = []
     for (let r = 1; r <= 3; r++) {
       if (stopSignal && stopSignal.cancelled) break
+      const kept = preserved.get(genCheckpointSlot(t.id, r))
+      if (kept) {
+        accepted.push(kept); S.completedRecalls++; doneRecall++
+        onLog && onLog('  \u267B kept from the saved draft: ' + kept.chinese + ' (recall ' + r + ')')
+        onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, recallIndex:r, checkTier: kept.checkTier || 1, checkHistory: [], source: kept._source || ZH_TIER_SOURCE(1), accepted:true, resumed:true })
+        continue
+      }
+      const _slot = genCheckpointSlot(t.id, r)
       const got = await generateMandarinOneRecall(t, r, vocab, inv, rules, apiKey, model, seenMap, onLog,
         tier => { attempts++; S.attempts++; S.highestCheckTier = Math.max(S.highestCheckTier, tier)
-          onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, recallIndex:r, checkTier:tier, checkHistory: _zhLedger.history(t.id, r).map(e => e.index), accepted:false }) }, S, { ledger: _zhLedger, phase: 'generation' })
+          onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, recallIndex:r, checkTier:tier, checkHistory: _zhLedger.history(t.id, r).map(e => e.index), accepted:false }) }, S,
+        { ledger: _zhLedger, phase: _go.checkpoint ? 'resume' : 'generation', priorRejected: cp.rejected[_slot] || [], onRejected: txt => genCheckpointNoteRejected(cp, t.id, r, txt) })
       if (!got) {
         // §83 — visible, recoverable failure. Never silently continue.
         failures.push({ target:t.chinese, targetId:t.id, recallIndex:r, reason:'no valid candidate after all checks' })
@@ -4378,6 +4553,7 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
         { language: 'zh', trackId: 'zh-' + S.startedAt, generationRunId: AI_CTX.runId, targetId: t.id, targetSurface: t.chinese, recallIndex: r,
           sourceStage: got.pair && got.pair._fallbackUsed ? 'generation-fallback' : 'generation' }))
       if (got.pair && got.pair._fallbackUsed) S.fallbackUsed++
+      if (genCheckpointAddPair(cp, accepted[accepted.length - 1])) _saveCp()
       S.completedRecalls++
       doneRecall++
       onProgress && onProgress(doneRecall, totalRecall, {
@@ -4399,7 +4575,8 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
     if (_zhLedger.count(t.id, f.recallIndex) >= RECALL_MAX_CHECKS) continue
     onLog && onLog('\u21BB Recovering ' + t.chinese + ' recall ' + f.recallIndex + ' (' + _zhLedger.count(t.id, f.recallIndex) + '/' + RECALL_MAX_CHECKS + ' checks used)')
     const got = await generateMandarinOneRecall(t, f.recallIndex, vocab, inv, rules, apiKey, model, seenMap, onLog,
-      tier => { attempts++; S.attempts++; S.highestCheckTier = Math.max(S.highestCheckTier, tier) }, S, { ledger: _zhLedger, phase: 'recovery' })
+      tier => { attempts++; S.attempts++; S.highestCheckTier = Math.max(S.highestCheckTier, tier) }, S,
+      { ledger: _zhLedger, phase: 'recovery', priorRejected: cp.rejected[genCheckpointSlot(t.id, f.recallIndex)] || [], onRejected: txt => genCheckpointNoteRejected(cp, t.id, f.recallIndex, txt) })
     if (!got) continue
     const pr = stampPairProvenance({ ...got.pair, checkTier: got.checkTier, sourceModel: model, _acceptedAtCheck: got.checkTier,
         _repairLineage: got.pair && got.pair._fallbackUsed ? ['deterministic-fallback'] : [] },
@@ -4407,13 +4584,17 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
         sourceStage: got.pair && got.pair._fallbackUsed ? 'recovery-fallback' : 'recovery' })
     const set = perTarget[ti] || (perTarget[ti] = [])
     set.push(pr); set.sort((a, b) => (a.recallIndex || 0) - (b.recallIndex || 0))
+    if (genCheckpointAddPair(cp, pr)) _saveCp()
     failures.splice(failures.indexOf(f), 1); S.completedRecalls++; doneRecall++
     onLog && onLog('  \u2705 recovered: ' + got.pair.chinese)
   }
   const produced = perTarget.reduce((a, s) => a + s.length, 0)
   if (produced !== totalRecall && !(stopSignal && stopSignal.cancelled)) {
     const err = new Error('Generation incomplete: expected ' + totalRecall + ' recalls, produced ' + produced)
-    err.incomplete = { expected:totalRecall, produced, failures }
+    cp.status = 'incomplete'; cp.updatedAt = new Date().toISOString()
+    cp.history.push({ at: cp.updatedAt, event: 'incomplete', produced, missing: failures.map(f => f.targetId + ':' + f.recallIndex) })
+    _saveCp()
+    err.incomplete = { expected:totalRecall, produced, failures, checkpoint: cp }
     onLog && onLog('\u274C ' + err.message)
     throw err
   }
@@ -4421,9 +4602,10 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
   // interleave so exposures are spread rather than clustered
   const recalls = []
   for (let round = 0; round < 3; round++) for (const set of perTarget) if (set[round]) recalls.push(set[round])
+  if (!(stopSignal && stopSignal.cancelled)) { cp.status = 'generated'; cp.updatedAt = new Date().toISOString(); _saveCp() }
   S.finishedAt = new Date().toISOString()
   if (S._finalizeProvenance) S._finalizeProvenance()
-  recalls.forEach(p => { p.provenanceLive = !!S.live; p.provider = S.provider })
+  recalls.forEach(p => { if (p._resumedFromCheckpoint) return; p.provenanceLive = !!S.live; p.provider = S.provider })   // v682: a kept pair keeps the provenance of the run that made it
   const _pv = assertTrackPairsProvenance(recalls, 'zh')
   onLog && onLog('\u2139 provenance: ' + (S.live ? 'LIVE gemini (' + S.liveResponses + ' real provider responses)' : 'NOT LIVE (' + S.provider + ') \u2014 not evidence of live quality') +
     ' \u00b7 ' + (_pv.ok ? recalls.length + '/' + recalls.length + ' target pairs carry provenance' : _pv.bad.length + ' target pair(s) missing provenance'))
@@ -5551,9 +5733,21 @@ function japaneseDuplicateVerdict(jp, targetId, seenMap, rules) {
 // v681 — same target, same APPLICATION (only a demonstrative / pronoun / filler / final particle differs): これ、好き？ after
 // それ、好き？ is not a second use. o.surface = the target's own surface (so the target itself is never normalised away).
 const JA_LIMITED_VARIETY_WORDS = Object.freeze(['はい', 'いいえ', 'うん', 'ううん', 'ええ', 'おはよう', 'こんにちは', 'こんばんは', 'じゃあね', 'またね'])
+function jaUtteranceFunction(jp) { return /[\uFF1F?]\s*$|\u304B[\u3002]?\s*$/.test(String(jp || '').trim()) ? 'ask' : 'answer' }
+function japaneseFormulaKey(jp, surface) {
+  return jaUtteranceFunction(jp) + '|' + recallVariationKey(String(jp || '').replace(/^(\u3046\u3093|\u306F\u3044|\u3046\u3046\u3093|\u3044\u3084|\u3048\u3048|\u3044\u3044\u3048)[\u3001\uFF0C,\uFF01!]*/, ''), surface)
+}
+function japaneseFormulaVariationVerdict(jp, targetId, seenMap, surface) {
+  const k = japaneseFormulaKey(jp, surface)
+  for (const [, e] of seenMap) if (e && e.targetId === targetId && e.text && japaneseFormulaKey(e.text, surface) === k)
+    return { ok: false, level: 'V', reason: 'same use of the set phrase as an accepted recall (same function, nothing new around it): ' + e.text }
+  return { ok: true }
+}
 function japaneseVariationVerdict(jp, targetId, seenMap, surface) {
-  const v = recallVariationKey(jp, surface)
-  for (const [, e] of seenMap) if (e && e.targetId === targetId && e.text && recallVariationKey(e.text, surface) === v)
+  // v682 — function-aware (asking vs answering) and a leading reply word (うん / はい / ええ …) is not a new application: the live
+  // v681 大丈夫 recalls 大丈夫？/ 大丈夫だよ。/ うん、大丈夫。 counted as three
+  const v = japaneseFormulaKey(jp, surface)
+  for (const [, e] of seenMap) if (e && e.targetId === targetId && e.text && japaneseFormulaKey(e.text, surface) === v)
     return { ok: false, level: 'V', reason: 'same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): ' + e.text }
   return { ok: true }
 }
@@ -5602,11 +5796,24 @@ function japaneseStemOf(target) {
   if (/[\u304F\u3050\u3059\u3064\u306C\u3076\u3080\u3046]$/.test(lemma) && lemma.length > 1) return lemma.slice(0, -1)
   return lemma
 }
+// v682 — a QUESTION WORD target is not present inside a lexicalised indefinite / universal compound: どこか (somewhere), どこも
+// (anywhere / everywhere), 何か (something), 誰も (nobody / everyone), いつも (always) … are different words. The live v681 track
+// counted どこか行くの？ ("going somewhere?") as a use of どこ ("where").
+const JA_QUESTION_WORD_COMPOUNDS = Object.freeze({
+  '\u3069\u3053': ['\u3069\u3053\u304B', '\u3069\u3053\u3082', '\u3069\u3053\u3067\u3082'],
+  '\u4F55': ['\u4F55\u304B', '\u4F55\u3082', '\u4F55\u3067\u3082', '\u306A\u306B\u304B', '\u306A\u3093\u3067\u3082'],
+  '\u8AB0': ['\u8AB0\u304B', '\u8AB0\u3082', '\u8AB0\u3067\u3082', '\u3060\u308C\u304B', '\u3060\u308C\u3082'],
+  '\u3044\u3064': ['\u3044\u3064\u304B', '\u3044\u3064\u3082', '\u3044\u3064\u3067\u3082'],
+  '\u3069\u308C': ['\u3069\u308C\u304B', '\u3069\u308C\u3082', '\u3069\u308C\u3067\u3082'],
+  '\u3069\u3063\u3061': ['\u3069\u3063\u3061\u304B', '\u3069\u3063\u3061\u3082', '\u3069\u3063\u3061\u3067\u3082'],
+})
 function matchesJapaneseTarget(sentence, target) {
-  const s = (sentence || '')
+  let s = (sentence || '')
   if (!s || !target) return false
   const lemma = target.lemma || target.japanese || ''
   if (!lemma) return false
+  // (a question word followed by か as the QUESTION particle — どこか？ at the very end — is still the question word)
+  if (JA_QUESTION_WORD_COMPOUNDS[lemma]) JA_QUESTION_WORD_COMPOUNDS[lemma].forEach(cpd => { s = s.replace(new RegExp(cpd + '(?![\uFF1F?\u3002]?$)', 'g'), '\u3000') })
   if (s.includes(lemma)) return true                       // exact dictionary form
   // v651 §13F — the kana spelling of a noun / adjective target (すき for 好き, ごはん for ご飯). Verbs are
   // excluded: いく would match inside いくら; their inflection is handled by the form list / stem below.
@@ -7960,7 +8167,7 @@ function aiNewController() {
   return { signal: sig, abort() { if (!sig.aborted) { sig.aborted = true; sig._l.forEach(f => { try { f() } catch (e) {} }) } } }
 }
 function aiBeginRun(kind, trackId) {
-  try { SEMANTIC_VERDICT_CACHE.clear() } catch (e) {}       // v672 §5 — the verdict cache is run-scoped
+  try { SEMANTIC_VERDICT_CACHE.clear(); THAI_SENTENCE_VERDICTS.clear(); THAI_VERDICT_CONFLICTS = 0 } catch (e) {}       // v672 §5 — the verdict cache is run-scoped
   const lane = aiLaneOf(kind)
   const prev = AI_CTX.lanes[lane]
   if (prev && !prev.controller.signal.aborted) aiCancelRun(prev.runId, 'superseded by a new ' + lane + ' run')
@@ -10431,7 +10638,7 @@ function checkLedgerEfficiencyLine(e) {
     ' rejectionClasses=' + (Object.entries(e.rejectionClasses).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + '\u00d7' + v).join(' ') || 'none')
 }
 // generation start: a new, unbound ledger for this run
-function beginGenerationLedger(lang) { const L = recallLedger(lang, true); L.fresh = true; L.bound = false; try { SEMANTIC_VERDICT_CACHE.clear() } catch (e) {} return L }
+function beginGenerationLedger(lang) { const L = recallLedger(lang, true); L.fresh = true; L.bound = false; try { SEMANTIC_VERDICT_CACHE.clear(); THAI_SENTENCE_VERDICTS.clear(); THAI_VERDICT_CONFLICTS = 0 } catch (e) {} return L }
 function checkLogLine(index, verb, surface, recalls, detail) {
   const b = CHECK_BELT_SEQUENCE[Math.max(1, Math.min(11, index)) - 1]
   return b.icon + ' ' + CHECK_ORDINALS[b.n - 1] + ' check' + (verb ? ' ' + verb : '') + ': ' + surface + (recalls && recalls.length ? ' · recall ' + recalls.join('+') : '') + (detail ? ' · ' + detail : '')
@@ -14128,6 +14335,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     // Grammar particles — appear naturally in any sentence, don't force them
     const grammarParticles = ['ที่','ก็','แล้ว','ด้วย','อยู่','เลย','นะ','สิ','แต่','เพราะ','ถ้า','หรือ','และ','กับ','จน','พอ','ตอน','เมื่อ','ว่า','ให้','จาก','โดย','ของ','ใน','บน','ใต้']
     if (THAI_FUNCTION_TARGET_GUIDE[target.thai]) return THAI_FUNCTION_TARGET_GUIDE[target.thai]   // v681: a real teaching contract
+    if (THAI_CLASSIFIER_TARGET_GUIDE[target.thai]) return THAI_CLASSIFIER_TARGET_GUIDE[target.thai]   // v682: classifier teaching contract
     // v681: a vehicle is travelled BY with นั่ง / ขึ้น (+ ไป / มา) — the model kept writing ไปรถไฟฟ้า, which the sense rule rejects
     if (/^(รถไฟฟ้า|รถไฟใต้ดิน|รถไฟ|รถเมล์|รถบัส|รถตู้|รถแท็กซี่|แท็กซี่|วินมอเตอร์ไซค์|มอเตอร์ไซค์|เรือ|เครื่องบิน)$/.test(target.thai))
       return 'use ' + target.thai + ' as a VEHICLE: travel by it with นั่ง or ขึ้น + ' + target.thai + ' (+ ไป / มา) — e.g. นั่ง' + target.thai + 'ไปกันไหม, ขึ้น' + target.thai + 'ตรงนี้ — or talk about it (' + target.thai + 'มาแล้ว, ' + target.thai + 'คนเยอะ). NEVER "ไป' + target.thai + '" (go + vehicle) — it is not a model sentence.'
@@ -17342,7 +17550,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v681'
+const LISTENING_BUILD_VERSION = 'v682'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -18221,15 +18429,20 @@ async function finaliseMainTrack(track, adapter, ctx) {
   // (construction key = the sentence with the target and the final particles removed). Reported per target; beginner
   // repetition accepted by policy is allowed, so this is a diagnostic invariant (named, counted, logged), not a hidden average.
   try {
-    const _short = []
+    // v682 — a target with FEWER than 3 valid pairs does not practise 3 distinct applications either (the live v681 Thai log said
+    // "30/30 practise 3 distinct applications" with ชิ้น at 0/3 — only targets that had 3 pairs were ever examined)
+    const _short = [], _missing = []
     kws.forEach(k => {
       const id = k.wordId, surf = adapter.surfaceOf ? adapter.surfaceOf(k) : (k.thai || k.japanese || k.chinese)
       const ps = (t.pairs || []).filter(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId === id && !p._qcInvalid && !p._qcUnresolved)
-      const keys = new Set(ps.map(p => recallVariationKey(adapter.sentenceOf(p), surf)))
-      if (ps.length >= 3 && keys.size < 3) _short.push(surf + ' (' + keys.size + ' distinct of ' + ps.length + ')')
+      const keyOf = x => adapter.lang === 'ja' ? japaneseFormulaKey(x, surf) : recallVariationKey(x, surf)
+      const keys = new Set(ps.map(p => keyOf(adapter.sentenceOf(p))))
+      if (ps.length < 3) _missing.push(surf + ' (' + ps.length + '/3 valid)')
+      else if (keys.size < 3) _short.push(surf + ' (' + keys.size + ' distinct of ' + ps.length + ')')
     })
-    inv.TARGETS_WITHOUT_3_DISTINCT_USES = _short.length
-    log && log('  🧩 TARGET_VARIETY_AUDIT ' + (kws.length - _short.length) + '/' + kws.length + ' target(s) practise 3 distinct applications' + (_short.length ? ' · fewer: ' + _short.slice(0, 8).join(', ') : ''))
+    inv.TARGETS_WITHOUT_3_DISTINCT_USES = _short.length + _missing.length
+    log && log('  🧩 TARGET_VARIETY_AUDIT ' + (kws.length - _short.length - _missing.length) + '/' + kws.length + ' target(s) practise 3 distinct applications' +
+      (_short.length ? ' · repetitive: ' + _short.slice(0, 8).join(', ') : '') + (_missing.length ? ' · incomplete: ' + _missing.slice(0, 8).join(', ') : ''))
   } catch (e) {}
   // v655 §13/§22 — no line may reach READY with pronunciation built for an older sentence, or with text changed after the freeze
   if (adapter.lang === 'th') inv.PRONUNCIATION_STALE_LINES = (t.pairs || []).filter(p => p && p._pronTextKey && p._pronTextKey !== p.thai).length + _textChanged.length
@@ -18582,6 +18795,24 @@ function thaiQcRejections(counts) {
 }
 // Thai: QC result (metadata deferred) → FINAL_TRACK. Used by the Generator and by Quality Review,
 // so both paths hand Listening the same authoritative track.
+// v682 — "Retry missing recalls" for a finished Thai Daily track that is NOT READY (the live v681 run ended 87/90): ONLY the
+// targets with a deficit are regenerated, by the same quota engine / acceptance contract / final audit as the first time. Their
+// missing slots get ONE fresh check ladder (exhausted ledger entries are cleared); every verified pair is kept as it is.
+// Bounded by GEN_CHECKPOINT_MAX_RESUMES. Returns the re-finalised track (or null when nothing is missing / the limit is reached).
+async function thaiRetryMissingRecalls(t0, ctx) {
+  const c = ctx || {}, log = c.onLog || (() => {})
+  const r = trackReadiness(t0), ids = new Set((r.unresolvedTargetIds || []).map(String)), n = ((t0 && t0._missingRetries) || 0) + 1
+  if (!ids.size || n > GEN_CHECKPOINT_MAX_RESUMES) return null
+  const led = { ...(t0.checkLedger || {}) }
+  Object.keys(led).forEach(k => { const tid = k.split('|')[0]; if (ids.has(String(tid)) && !((led[k] && led[k].entries) || []).some(e => e.outcome === 'accepted' || e.outcome === 'provisional')) delete led[k] })
+  log('\u267B RETRY_MISSING_RECALLS attempt ' + n + '/' + GEN_CHECKPOINT_MAX_RESUMES + ' \u2014 ' + ids.size + ' target(s): ' + (r.perTarget || []).filter(x => ids.has(String(x.targetId))).map(x => x.target + ' ' + x.valid + '/3').join(', ') +
+    ' \u00b7 the ' + r.validTargetPairs + ' verified target pairs are kept (no request for them)')
+  recallLedger('th', true)
+  const fin = await finaliseThaiTrackAfterQc({ ...t0, checkLedger: led, _missingRetries: n }, null, { vocab: c.vocab, apiKey: c.apiKey, model: c.model, onLog: log })
+  const r2 = trackReadiness(fin)
+  log('\u267B RETRY_MISSING_RECALLS result \u2014 ' + r2.validTargetPairs + '/' + r2.expectedTargetPairs + ' target pairs \u00b7 ' + (r2.ready ? 'READY' : 'still NOT READY: ' + (r2.unresolvedTargetIds || []).length + ' target(s) incomplete'))
+  return { ...t0, ...fin, _missingRetries: n }
+}
 async function finaliseThaiTrackAfterQc(track, result, ctx) {
   const c = ctx || {}
   const counts = (result && result.counts) || {}
@@ -18625,7 +18856,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v681'
+const APP_BUILD_VERSION = 'v682'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -19510,6 +19741,11 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     'EVERY candidate MUST contain "' + kw.thai + '" literally, in its normal meaning (' + (THAI_SENSE_POLICY[kw.thai] ? THAI_SENSE_POLICY[kw.thai].sense : (kw.english || '')) + '). Return FEWER candidates — or an empty array — rather than any candidate without "' + kw.thai + '".\n' +
     'QUOTA RECOVERY — Thai target-practice sentences for a learner.\n' +
     'Scene: ' + (typeof scene === 'string' ? scene : 'everyday conversation') + '\n' +
+    // v682 — the live ชิ้น recovery stayed inside a transport scene (boats / tickets / seats) for every round: after a failed
+    // round, or for a classifier / function word, the scene is background only
+    ((st.failedAttempts || []).length || THAI_CLASSIFIER_TARGET_GUIDE[kw.thai] || THAI_FUNCTION_TARGET_GUIDE[kw.thai]
+      ? 'The scene is BACKGROUND ONLY: if it offers no natural use of "' + kw.thai + '", write a short self-contained everyday moment where the word is used correctly (correct meaning beats fitting the scene).\n' : '') +
+    (THAI_CLASSIFIER_TARGET_GUIDE[kw.thai] || THAI_FUNCTION_TARGET_GUIDE[kw.thai] ? 'TEACHING CONTRACT FOR "' + kw.thai + '": ' + (THAI_CLASSIFIER_TARGET_GUIDE[kw.thai] || THAI_FUNCTION_TARGET_GUIDE[kw.thai]) + '\n' : '') +
     (sc && sc.characters && sc.characters.length ? 'Characters: ' + sc.characters.map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') + '\n' : '') +
     'A = a man: says ผม for "I" and ends every sentence with ครับ. B = a woman: says ฉัน for "I" and ends with ค่ะ (statements) or คะ (questions).\n' +
     'TARGET WORD: "' + kw.thai + '" = ' + (kw.english || '') + '\n' + targetRoleLine(role, kw, 'th') +
@@ -19836,12 +20072,56 @@ function _trackSpeakerNames(track) {
   const sc = (track && track.sceneContract) || {}
   return ((sc.characters || []).flatMap(x => [x && x.nativeName, x && x.name])).concat([track && track.scene && track.scene.characterA, track && track.scene && track.scene.characterB].filter(Boolean).map(x => String(x).split(',')[0].trim())).filter(Boolean)
 }
+// v682 — 何 reads なん only before だ / で / の / と / な (何だ・何で・何の・何と・何なの) and counters; なに everywhere else (何？・何が・何を・
+// 何か・何も). The model's own reading was kept whenever it looked well-formed, so the live v681 track shipped あれは何？ read
+// あれはなん？. Repaired deterministically on the segments and the sentence reading (aligned occurrence by occurrence; when the
+// reading cannot be aligned safely it is left for the alignment audit, which names it).
+function jaNaniReadingFor(following) {
+  return /^(\u3067\u3082|\u3067|\u306E|\u3068|\u3060|\u3067\u3059|\u306A|[\u6642\u4EBA\u56DE\u500B\u5E74\u6708\u65E5\u6B73\u5206\u672C\u679A\u5339\u676F\u5EA6\u968E\u9031])/.test(String(following || '')) ? '\u306A\u3093' : '\u306A\u306B'
+}
+function jaFixNaniReading(p) {
+  const jp = String(p && p.japanese || '')
+  if (!jp.includes('\u4F55') || !p.reading) return { pair: p, fixed: 0 }
+  const q = { ...p }
+  let fixed = 0
+  const want = []
+  for (let i = jp.indexOf('\u4F55'); i >= 0; i = jp.indexOf('\u4F55', i + 1)) want.push(jaNaniReadingFor(jp.slice(i + 1)))
+  if (Array.isArray(q.segments) && q.segments.length) {
+    q.segments = q.segments.map((sg, k) => {
+      if (!sg || sg.surface !== '\u4F55') return sg
+      const following = q.segments.slice(k + 1).map(x => x && x.surface || '').join('')
+      const r = jaNaniReadingFor(following)
+      if (sg.reading === r) return sg
+      fixed++; return { ...sg, reading: r, romaji: kanaToRomaji(r) }
+    })
+    q.words = q.segments.map(x => ({ p: (x && (x.romaji || x.surface)) || '', e: (x && x.english) || '' }))
+  }
+  // sentence reading: only when the kana なに/なん occurrences line up one-to-one with the 何 occurrences
+  const rd = String(q.reading)
+  const hits = [...rd.matchAll(/\u306A[\u306B\u3093]/g)]
+  if (!/\u306A[\u306B\u3093]/.test(jp) && hits.length === want.length) {
+    let outRd = '', last = 0
+    hits.forEach((m, k) => { outRd += rd.slice(last, m.index) + want[k]; last = m.index + 2; if (m[0] !== want[k]) fixed++ })
+    outRd += rd.slice(last)
+    if (outRd !== rd) {
+      q.reading = outRd
+      // romaji: swap the aligned nan / nani tokens only (re-transcribing the whole reading would lose は → wa)
+      const ro = String(q.romaji || ''), rh = [...ro.matchAll(/\bnani?(?=[^a-z]|$)/gi)]
+      if (rh.length === want.length) { let o2 = '', l2 = 0; rh.forEach((m, k) => { o2 += ro.slice(l2, m.index) + (want[k] === '\u306A\u3093' ? 'nan' : 'nani'); l2 = m.index + m[0].length }); q.romaji = o2 + ro.slice(l2) }
+      else q.romaji = kanaToRomaji(outRd)
+      q.phonetic = q.romaji
+    }
+  }
+  return { pair: q, fixed }
+}
 async function _jaFinaliseMetadata(pairs, ctx) {
   // v673 §4 — spoken-text ownership first (a speaker label is never read / romanised)
   try { pairs = normaliseSpokenTextOwnership(pairs, 'ja', _trackSpeakerNames(ctx && ctx.track), ctx && ctx.onLog, 'final metadata').pairs } catch (e) {}
   const out = pairs.map(p => {
     if (!p || !p.japanese) return p
-    const q = { ...p }
+    const _nf = jaFixNaniReading(p)
+    if (_nf.fixed && ctx && ctx.onLog) ctx.onLog('  🔤 NANI_READING_FIXED "' + p.japanese + '" → ' + _nf.pair.reading)
+    const q = { ..._nf.pair }
     // particle は/へ/を are romanised wa/e/o (Hepburn) — a kana-literal comparison would call
     // correct romaji wrong and overwrite "kyou wa ii" with "kyouhaii"
     const PART = { 'は': 'wa', 'へ': 'e', 'を': 'o' }
@@ -25872,7 +26152,12 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   const [pairsTotal, setPairsTotal] = useState(90)
   const [targetPhonetics, setTargetPhonetics] = useState({})
   // Pause removed: generation runs to completion. Cancel remains available.
-  const [phase, setPhase] = useState('starting') // starting | streaming | done | error
+  const [phase, setPhase] = useState(() => (mode === 'daily' && !resumeDraft) ? 'draft-check' : 'starting') // draft-check | resume-choice | starting | streaming | done | error
+  // v682 — resumable Daily generation: a finished track that is NOT READY (e.g. 87/90) is kept as a draft, and "Retry missing
+  // recalls" regenerates ONLY the missing target pairs (the verified ones are kept); offered again when this screen reopens
+  const thCpRef = useRef(null)
+  const [thDraftOffer, setThDraftOffer] = useState(null)
+  const [thRetrying, setThRetrying] = useState(false)
   const stopSignal = useRef({ cancelled: false })
   const partialPairsRef = useRef([])
   // v649: leaving the Generator stops generation and cancels the run's in-flight / queued calls.
@@ -26085,6 +26370,51 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     targetCount: _progTargets.length, coreDone: pairsDone, phase,
     finalPairs: generatedTrack && generatedTrack.pairs ? generatedTrack.pairs.length : null })
   const _readiness = trackReadiness(generatedTrack)          // v650 §1: the ONE readiness source for this screen
+  const thDraftTargets = t => ((t && t.keywords) || []).map(k => ({ id: k.wordId, thai: k.thai, selectionRole: k.isNew ? 'new' : 'review' }))
+  // the words this learner may use: the learned ones (known / learning) + the targets — a change there means the draft is stale
+  const thDraftAuthorised = ids => (vocab || []).filter(w => w && (w.status === 'known' || w.status === 'learning' || ids.has(w.id))).map(w => w.id + ':' + (ids.has(w.id) ? 'target' : w.status))
+  useEffect(() => {
+    if (phase !== 'draft-check') return
+    ;(async () => {
+      const cp = await genCheckpointLoad('th')
+      if (cp && cp.extra && cp.extra.track && Array.isArray(cp.extra.track.pairs)) {
+        const tg = thDraftTargets(cp.extra.track)
+        const compat = genCheckpointCompatible(cp, 'th', tg, thDraftAuthorised(new Set(tg.map(t => t.id))))
+        setThDraftOffer({ cp, compat, summary: genCheckpointSummary(cp, tg) }); setPhase('resume-choice')
+      } else setPhase('starting')
+    })()
+  }, [phase])
+  useEffect(() => {
+    if (mode !== 'daily' || phase !== 'done' || listenPhase !== 'DONE' || !generatedTrack || !generatedTrack.integrity || thRetrying) return
+    const tg = thDraftTargets(generatedTrack)
+    const cp = thCpRef.current && thCpRef.current.fingerprint ? thCpRef.current : genCheckpointCreate('th', { targets: tg, authorisedWords: thDraftAuthorised(new Set(tg.map(t => t.id))) })
+    cp.status = trackReadiness(generatedTrack).ready ? 'final-ready' : 'final-not-ready'; cp.accepted = []
+    const nth = {}
+    ;(generatedTrack.pairs || []).filter(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId != null && !p._qcInvalid && !p._qcUnresolved)
+      .forEach(p => { nth[p.targetId] = (nth[p.targetId] || 0) + 1; if (nth[p.targetId] <= 3) genCheckpointAddPair(cp, { ...p, recallIndex: nth[p.targetId] }) })
+    cp.extra = { track: generatedTrack }; cp.updatedAt = new Date().toISOString()
+    thCpRef.current = cp; genCheckpointWrite('th', cp)
+  }, [phase, listenPhase, generatedTrack, thRetrying])
+  async function retryThaiMissing(trackIn) {
+    const t0 = trackIn || generatedTrack, r = trackReadiness(t0)
+    const ids = new Set((r.unresolvedTargetIds || []).map(String))
+    const n = (t0._missingRetries || 0) + 1
+    if (!ids.size || n > GEN_CHECKPOINT_MAX_RESUMES) return
+    const log = msg => { logAll(msg); setGenLog(prev => [...prev.slice(-300), generationLogFormat(msg)]) }
+    setThRetrying(true); setListenPhase('FINALISING')
+    if (!aiRunRef.current) aiRunRef.current = aiBeginRun('daily-track')
+    try { const fin = await thaiRetryMissingRecalls(t0, { vocab, apiKey, model: genModel, onLog: log }); if (fin) setGeneratedTrack(fin) }
+    catch (e) { if (e && (e.fatalProvider || e.cancelled)) log('\u26D4 ' + e.message); else log('\u274C retry failed: ' + (e.message || e)) }
+    setListenPhase('DONE'); setThRetrying(false)
+  }
+  async function resumeThaiDraft() {
+    const o = thDraftOffer; if (!o || !o.compat.ok) return
+    o.cp.resumes = (o.cp.resumes || 0) + 1; o.cp.history.push({ at: new Date().toISOString(), event: 'resume', n: o.cp.resumes, build: APP_BUILD_VERSION })
+    thCpRef.current = o.cp; genCheckpointWrite('th', o.cp)
+    const t0 = o.cp.extra.track
+    setThDraftOffer(null); setGeneratedTrack(t0); setPhase('done'); setListenPhase('DONE')
+    if (trackReadiness(t0).unresolvedTargetIds.length) await retryThaiMissing(t0)
+  }
   const pct = progress.pct
 
   // Latest pair preview from stream
@@ -26387,6 +26717,12 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     }
   }, [phase])
 
+  if (phase === 'resume-choice') return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:16 }}>
+      <GenCheckpointChoice offer={thDraftOffer} total={90} langLabel="Thai" unitLabel="target pairs" onRetryMissing={resumeThaiDraft}
+        onStartNew={async () => { await genCheckpointClear('th'); thCpRef.current = null; setThDraftOffer(null); setPhase('starting') }} onBack={onBack} />
+    </div>
+  )
   // Scene preview render
   if (phase === 'scene_preview') {
     return (
@@ -26500,7 +26836,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           <TrackQuality track={generatedTrack} />
           <TrackIntegrityPanel track={generatedTrack} />
 
-          <Btn onClick={() => { onGenerated(generatedTrack) }} disabled={listenPhase === 'BUILDING' || listenPhase === 'FINALISING'} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
+          {mode === 'daily' && !_readiness.ready && (_readiness.unresolvedTargetIds || []).length > 0 && (generatedTrack._missingRetries || 0) < GEN_CHECKPOINT_MAX_RESUMES && (
+            <Btn onClick={() => retryThaiMissing()} disabled={thRetrying || listenPhase === 'FINALISING'} style={{ width:'100%', justifyContent:'center' }}>
+              {thRetrying ? '\u267B Retrying the missing recalls\u2026' : '\u21BB Retry missing recalls (' + (_readiness.unresolvedTargetIds || []).length + ' word' + ((_readiness.unresolvedTargetIds || []).length > 1 ? 's' : '') + ') \u2014 the ' + _readiness.validTargetPairs + ' verified pairs are kept'}
+            </Btn>)}
+          <Btn onClick={() => { if (mode === 'daily') genCheckpointClear('th'); onGenerated(generatedTrack) }} disabled={listenPhase === 'BUILDING' || listenPhase === 'FINALISING'} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
             {listenPhase === 'FINALISING' ? '🔍 Quality check · FINAL_TRACK…' : listenPhase === 'BUILDING' ? '🎧 Building listening track…'
               : _readiness.ready ? '▶ Start SRS Track' : '▶ Start anyway — track not ready (' + _readiness.validTargetPairs + '/' + _readiness.expectedTargetPairs + ')'}
           </Btn>
@@ -29503,13 +29843,24 @@ async function thaiControlledAdjudication(items, verdicts, judgeFn, onLog) {
 // never sent to the judge twice, even when the pair object was re-created (early gate → final audit → recovery)
 const SEMANTIC_VERDICT_CACHE = new Map()
 const SEMANTIC_VERDICT_CACHE_MAX = 4000
+// v682 — ONE naturalness decision per Thai SENTENCE per run. The verdict cache above is keyed by sentence + English + speaker +
+// target, so the same Thai line with a re-worded translation (or judged inside a different batch) was judged afresh — the live
+// v681 Thai run rejected เราไปทางเข้ากันครับ as unnatural and later accepted the identical line. Now a later verdict that
+// CONTRADICTS the recorded one (pass ↔ fail) triggers ONE isolated re-judgement of that line alone; the majority of the three
+// decides, is logged as THAI_VERDICT_CONFLICT, and every later stage of the run reuses the decision (no further call).
+const THAI_SENTENCE_VERDICTS = new Map()
+const THAI_VERDICT_CONFLICT_CAP = 8
+let THAI_VERDICT_CONFLICTS = 0
+const thaiSentenceKey = t => String(t || '').replace(/[\s.!?？！。,]/g, '')
 async function _judgeCached(kind, items, judge, label, onLog, adjudicate) {
   const verdicts = new Map(), failed = new Map(), todo = []
   let runCacheHits = 0
   // the run-wide cache is keyed by the RUN as well: it only exists inside a generation / QC run (aiBeginRun)
   const runKey = AI_CTX && AI_CTX.runId ? AI_CTX.runId + '\u0002' : null
   items.forEach((p, k) => { const key = p ? _semCacheKey(kind, p) : null; const c0 = p && p._semVerdicts && p._semVerdicts[kind]
-    if (c0 && c0.key === key && c0.v && c0.v.s != null) verdicts.set(k, c0.v)
+    const dec = kind === 'nat' && runKey && p && p.thai ? THAI_SENTENCE_VERDICTS.get(runKey + thaiSentenceKey(p.thai)) : null
+    if (dec && dec.decided) { verdicts.set(k, dec.v); runCacheHits++ }
+    else if (c0 && c0.key === key && c0.v && c0.v.s != null) verdicts.set(k, c0.v)
     else if (runKey && key && SEMANTIC_VERDICT_CACHE.has(runKey + key)) { verdicts.set(k, SEMANTIC_VERDICT_CACHE.get(runKey + key)); runCacheHits++ }
     else todo.push(k) })
   let trace = { calls: 0, cached: items.length - todo.length, runCacheHits }
@@ -29525,6 +29876,27 @@ async function _judgeCached(kind, items, judge, label, onLog, adjudicate) {
       if (over && onLog) onLog('  ⚖ THAI_REGISTER_CLAIM_OVERRULED ' + over + ' rejection(s): the target is reviewed everyday spoken Thai — a blanket "too formal" opinion is not a reason')
       const sub = new Map(todo.filter(k => verdicts.has(k)).map(k => [k, verdicts.get(k)]))
       if (adjudicate) { await thaiControlledAdjudication(items, sub, adjudicate, onLog); sub.forEach((v, k) => verdicts.set(k, v)); trace.adjudicated = [...sub.values()].filter(v => v.adjudicated).length }
+    }
+    // v682 — one decision per Thai sentence per run (see THAI_SENTENCE_VERDICTS)
+    if (kind === 'nat' && runKey) for (const k of todo) {      // run-scoped, like the verdict cache
+      const v = verdicts.get(k), p = items[k]; if (!v || v.s == null || !p || !p.thai) continue
+      const sk = runKey + thaiSentenceKey(p.thai), prev = THAI_SENTENCE_VERDICTS.get(sk), pass = v.s >= 4 && !v.wrongSense
+      if (!prev) { THAI_SENTENCE_VERDICTS.set(sk, { v, pass, history: [{ s: v.s, note: v.note || '', stage: label }] }); continue }
+      prev.history.push({ s: v.s, note: v.note || '', stage: label })
+      if (prev.pass === pass) continue
+      let third = null
+      if (THAI_VERDICT_CONFLICTS < THAI_VERDICT_CONFLICT_CAP) {
+        THAI_VERDICT_CONFLICTS++
+        try { const r = await _judgeWithBoundedRetry([p], judge, label + ' (conflict re-judgement)', onLog); third = r.verdicts.get(0) || null } catch (e) { third = null }
+      }
+      const votes = [prev.pass, pass].concat(third && third.s != null ? [third.s >= 4 && !third.wrongSense] : [])
+      const yes = votes.filter(Boolean).length, decidedPass = votes.length === 3 ? yes >= 2 : false   // undecidable → the stricter verdict
+      const dv = decidedPass ? (pass ? v : (third && third.s >= 4 ? third : { ...v, s: 4, note: 'VERDICT_CONFLICT resolved: natural' }))
+                             : (!pass ? v : (third && third.s != null && third.s < 4 ? third : { ...v, s: Math.min(v.s, 3), note: 'VERDICT_CONFLICT resolved: unnatural (' + ((prev.v && prev.v.note) || '') + ')' }))
+      THAI_SENTENCE_VERDICTS.set(sk, { v: dv, pass: decidedPass, decided: true, history: prev.history.concat(third ? [{ s: third.s, note: third.note || '', stage: 'isolated re-judgement' }] : []) })
+      verdicts.set(k, dv)
+      onLog && onLog('  ⚖ THAI_VERDICT_CONFLICT "' + p.thai + '" — earlier ' + (prev.pass ? 'natural' : 'unnatural') + ' (' + ((prev.v && prev.v.s) != null ? prev.v.s + '/5' : '?') + '), now ' + (pass ? 'natural' : 'unnatural') + ' (' + v.s + '/5)' +
+        (third ? ', isolated re-judgement ' + third.s + '/5' : ', no re-judgement (cap reached) → stricter verdict') + ' → ' + (decidedPass ? 'NATURAL' : 'UNNATURAL') + ' for the rest of this run')
     }
     // the FINAL verdicts (after any adjudication) enter the run-wide cache
     if (runKey) todo.forEach(k => { const v = verdicts.get(k), key = items[k] ? _semCacheKey(kind, items[k]) : null
@@ -29875,6 +30247,9 @@ function thaiLexicalSenseProblems(p) {
   // accepted ก๋วยเตี๋ยวคู่ไหน ("which pair of noodles") for all three recalls. Allow-list, not a growing deny-list.
   if (/คู่(ไหน|นี้|นั้น|หนึ่ง|เดียว|ละ|ใหม่)|(สอง|สาม|สี่|ห้า|หลาย)คู่/.test(th) && !/(รองเท้า|ถุงเท้า|ตะเกียบ|ต่างหู|ถุงมือ|แฝด|รัก|บ่าวสาว|ชีวิต|หูฟัง|ถุงน่อง|รองเท้าแตะ)\S{0,10}คู่/.test(th))
     out.push({ id: 'CLASSIFIER_KHUU_MISUSE', code: 'UNNATURAL', why: '"' + th.match(/\S{0,8}คู่\S{0,4}/)[0] + '" — คู่ counts things that come in pairs (รองเท้า ถุงเท้า ตะเกียบ ต่างหู) or a couple; anything else takes its own classifier' })
+  // v682 — a classifier that does not fit its noun (เรือชิ้นนี้ / ตั๋วชิ้นหนึ่ง / ที่นั่งชิ้นนั้น — the live v681 ชิ้น attempts)
+  { const m = th.match(THAI_CLASSIFIER_MISMATCH_RE)
+    if (m && THAI_NOUN_CLASSIFIER[m[1]] !== m[2]) out.push({ id: 'CLASSIFIER_MISMATCH', code: 'UNNATURAL', why: '"' + m[0] + '" — ' + m[1] + ' is counted with ' + THAI_NOUN_CLASSIFIER[m[1]] + ', not ' + m[2] + ' (' + m[1] + THAI_NOUN_CLASSIFIER[m[1]] + 'นี้)' }) }
   // an English line that copies the dictionary gloss ("a general classifier / item") is not a translation
   if (/\bclassifier\b|\(general\)|\bgeneral classifier\b/i.test(en))
     out.push({ id: 'TRANSLATION_IS_GLOSS', code: 'CUE_MISMATCH', why: 'the English copies the dictionary gloss ("' + en.match(/[^.?!]*classifier[^.?!]*/i)?.[0] + '") instead of translating the sentence' })
@@ -30134,6 +30509,12 @@ function thaiFinalTrackAudit(pairs, opts) {
 // cue + naturalness (model) → final phonetics → the deterministic final gate. It is
 // accepted only if it yields a valid target-bearing line; otherwise the next attempt runs.
 const THAI_RECOVERY_MAX_ATTEMPTS = 2
+// v682 — what the recovery prompt is told about the word (it used to get only the surface form)
+function thaiRecoveryTeachingHint(kw) {
+  const w = kw && kw.thai || ''
+  const g = THAI_CLASSIFIER_TARGET_GUIDE[w] || THAI_FUNCTION_TARGET_GUIDE[w]
+  return g ? 'TEACHING CONTRACT: ' + g : (kw && kw.english ? 'MEANING: "' + w + '" = ' + kw.english + ' — use it in exactly this sense.' : '')
+}
 async function recoverUncoveredThaiTargets(pairs, missing, ctx) {
   const c = ctx || {}, log = c.onLog || null
   let all = pairs.slice(); let changed = false
@@ -30163,12 +30544,16 @@ async function recoverUncoveredThaiTargets(pairs, missing, ctx) {
     for (let a = 1; a <= THAI_RECOVERY_MAX_ATTEMPTS; a++) {
       if (!c.apiKey) { rec.attempts.push({ attempt: a, result: 'not attempted', reasons: ['no model credentials'] }); break }
       const pos = at()
+      // v682 — recovery that can actually change strategy: the word's teaching contract, every line already rejected for it
+      // (main generation + earlier attempts), and — from the second attempt — freedom to leave the surrounding scene
+      const _rejSoFar = [...new Set([...(c.rejectedByTarget && c.rejectedByTarget.get(kw.wordId) || []), ...rec.attempts.flatMap(x => x.candidates || [])])].slice(-12)
       const group = { targetWord: kw.thai, indices: [pos], pairs: [{ speaker: 'A' }, { speaker: 'B' }, { speaker: 'A' }],
-                      hint: isNumber ? thaiNumberTargetHint(kw) : '' }
+                      hint: (isNumber ? thaiNumberTargetHint(kw) : thaiRecoveryTeachingHint(kw)),
+                      avoid: _rejSoFar, freeContext: a >= 2 }
       let raw
       try { raw = await _qrReplace(group, all, c.apiKey, c.model, c.knownWords) }
       catch (e) {
-        rec.attempts.push({ attempt: a, result: 'rejected', reasons: ['generation: ' + e.message] })
+        rec.attempts.push({ attempt: a, result: 'rejected', reasons: ['generation: ' + e.message], candidates: [] })
         diagnostics.push({ target: kw.thai, targetId: kw.wordId, attempt: a, thai: '', english: '', cue: '', finalStatus: 'REJECTED (generation failed: ' + e.message + ')' })
         continue
       }
@@ -30229,7 +30614,7 @@ async function recoverUncoveredThaiTargets(pairs, missing, ctx) {
         break
       }
       diagnostics.push(...[...diag.values()].map(d => d.finalStatus ? d : { ...d, finalStatus: 'REJECTED (no target-bearing line survived)' }))
-      rec.attempts.push({ attempt: a, result: 'rejected', reasons: reasons.length ? reasons : ['no target-bearing line survived'] })
+      rec.attempts.push({ attempt: a, result: 'rejected', reasons: reasons.length ? reasons : ['no target-bearing line survived'], candidates: [...diag.keys()].filter(Boolean) })
       log && log('  ⛔ recovery attempt ' + a + ' for ' + kw.thai + ' rejected — ' + (reasons.join(' | ') || 'no target-bearing line survived'))
     }
     recovery.push(rec)
@@ -30719,6 +31104,27 @@ const THAI_FUNCTION_TARGET_GUIDE = Object.freeze({
   'ว่า': 'TEACH ว่า AFTER A VERB OF SAYING / THINKING: คิดว่า (I think that…), บอกว่า (said that…), รู้ว่า (know that…).',
 })
 const THAI_FUNCTION_TARGETS_PER_TRACK = 2
+// v682 — CLASSIFIER targets get a real teaching contract: what the classifier counts, natural frames, and what it NEVER counts.
+// The live v681 Thai run tried ชิ้น with boats, tickets and seats (ที่นั่ง) for all three recalls and both recovery attempts —
+// the prompt only said "classifier for a piece of something", inside a transport scene.
+const THAI_CLASSIFIER_TARGET_GUIDE = Object.freeze({
+  'ชิ้น': 'ชิ้น COUNTS PIECES — a piece of food (cake, pizza, chicken, fruit) or a separate item/part: ขอเค้กชิ้นนี้ครับ (this piece of cake, please), กินอีกชิ้นไหม (have another piece?), พิซซ่าสองชิ้น (two slices of pizza), ของชิ้นนี้ราคาเท่าไหร่ (how much is this item?). NEVER with vehicles (คัน), boats (ลำ), tickets (ใบ), seats (ที่), people (คน) or animals (ตัว). If the scene has nothing that comes in pieces, a short natural moment of sharing a snack is fine.',
+  'อัน': 'อัน counts small general objects: อันนี้ (this one), เอาอันไหน (which one do you want?), ขออันเล็ก (the small one, please). Not for people, animals or vehicles.',
+  'ตัว': 'ตัว counts animals, clothes (shirts, trousers) and chairs/tables: แมวตัวนี้ (this cat), เสื้อตัวนี้ (this shirt). Not for people.',
+  'ใบ': 'ใบ counts tickets, leaves, cards, bags and containers: ตั๋วสองใบ (two tickets), กระเป๋าใบนี้ (this bag).',
+  'คัน': 'คัน counts cars, bicycles, motorbikes and umbrellas: รถคันนี้ (this car), ร่มคันนั้น (that umbrella).',
+  'เล่ม': 'เล่ม counts books and notebooks (and knives): หนังสือเล่มนี้ (this book).',
+  'แก้ว': 'แก้ว counts glasses/cups OF A DRINK: กาแฟสองแก้ว (two coffees), ขอน้ำแก้วหนึ่ง (a glass of water).',
+  'จาน': 'จาน counts plates OF FOOD: ข้าวผัดจานหนึ่ง (a plate of fried rice), สั่งอีกจาน (order another plate).',
+  'ขวด': 'ขวด counts bottles: น้ำสองขวด (two bottles of water).',
+  'ลูก': 'ลูก counts round things (fruit, balls) — and also means "child": ส้มสามลูก (three oranges).',
+  'หลัง': 'หลัง counts houses and buildings: บ้านหลังนี้ (this house).',
+})
+// noun → its classifier, for the objective mismatch check below (a short, high-confidence list)
+const THAI_NOUN_CLASSIFIER = Object.freeze({ 'รถแท็กซี่': 'คัน', 'รถยนต์': 'คัน', 'รถ': 'คัน', 'แท็กซี่': 'คัน', 'จักรยาน': 'คัน', 'มอเตอร์ไซค์': 'คัน', 'ร่ม': 'คัน',
+  'เรือ': 'ลำ', 'เครื่องบิน': 'ลำ', 'ตั๋ว': 'ใบ', 'บัตร': 'ใบ', 'ที่นั่ง': 'ที่', 'หมา': 'ตัว', 'แมว': 'ตัว', 'บ้าน': 'หลัง', 'หนังสือ': 'เล่ม' })
+const THAI_CLASSIFIER_WORDS = ['ชิ้น', 'อัน', 'ตัว', 'ใบ', 'คัน', 'เล่ม', 'ลำ', 'หลัง', 'ที่', 'แก้ว', 'จาน', 'ขวด', 'ลูก', 'ชาม', 'เครื่อง']
+const THAI_CLASSIFIER_MISMATCH_RE = new RegExp('(' + Object.keys(THAI_NOUN_CLASSIFIER).sort((a, b) => b.length - a.length).join('|') + ')(?:อีก)?(?:หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ|[0-9]+)?(' + THAI_CLASSIFIER_WORDS.join('|') + ')(?=นี้|นั้น|โน้น|หนึ่ง|ไหน|ละ|เดียว|ครับ|ค่ะ|คะ|นะ|ไหม|\\s|$)')
 const THAI_NOT_GENERATABLE = new Set(['ที่','ของ','กับ','และ',
   'มี','ไป','มา','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ไม่','ได้','จะ','เป็น','ทำ','รู้'])
 function thaiVocabEligibility(w) {
@@ -31482,7 +31888,7 @@ ${prevPairs.map(fmt).join('\n') || '  (start)'}
 Context after:
 ${nextPairs.map(fmt).join('\n') || '  (end)'}
 
-Requirements: speaker order ${speakerPattern}. Must include "${targetWord}".${group.hint ? ' ' + group.hint : ''} Flow naturally from before to after. Simple everyday Thai. ${vocabLine}Forbidden: ${_QR_BANNED.join(' ')}.
+Requirements: speaker order ${speakerPattern}. Must include "${targetWord}".${group.hint ? ' ' + group.hint : ''} ${group.freeContext ? 'The context above is background only: if it offers no natural use of "' + targetWord + '", make the 3 lines a short self-contained moment where the word is used naturally (a brief change of topic is fine). Correct, natural Thai beats fitting the scene.' : 'Flow naturally from before to after.'} Simple everyday Thai. ${vocabLine}Forbidden: ${_QR_BANNED.join(' ')}.${(group.avoid || []).length ? '\nALREADY REJECTED for this word (do not repeat these or a near copy — use a different situation or construction): ' + group.avoid.join(' / ') : ''}
 The "prompt" field = one sentence describing what the speaker says, e.g. "He says he is going to the market" — Write it in plain English MEANING only — never name or quote a romanized Thai word, and never use tone marks. e.g. "He asks, in that case, what she wants to eat" NOT "He uses ngan to ask what she wants to eat". NOT quality evaluation notes.
 Return ONLY JSON array of 3 objects, no markdown:
 [{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]},{"speaker":"B","thai":"...","phonetic":"...","english":"...","prompt":"She asks ...","words":[{"p":"...","e":"..."}]},{"speaker":"A","thai":"...","phonetic":"...","english":"...","prompt":"He says ...","words":[{"p":"...","e":"..."}]}]`
@@ -33303,6 +33709,11 @@ function jaMayPrecedeVerbFreely(tok) {
 
 function validateJapaneseUsage(pair, inv) {
   const problems = []
+  // v682 — どこ already means "which place": え、どこがいい場所？ (live v681, accepted) is a redundant, unnatural question —
+  // natural Japanese is どこがいい？ or いい場所はどこ？
+  { const _t = String(pair.japanese || '').replace(/\s+/g, '')
+    if (/\u3069\u3053[\u304C\u306F][^\u3001\u3002\uFF1F?]{0,6}\u5834\u6240(\u3067\u3059|\u3060|\u306A\u306E|\u304B)*[\uFF1F?\u3002]?$/.test(_t))
+      problems.push('unnatural: \u3069\u3053 already means "which place" — \u3069\u3053\u304C\u3044\u3044\uFF1F or \u3044\u3044\u5834\u6240\u306F\u3069\u3053\uFF1F, not \u3069\u3053\u2026\u5834\u6240 (' + _t + ')') }
   const segs = (Array.isArray(pair.segments) ? pair.segments : [])
     .filter(s => s && s.type !== 'punct' && /[\u3040-\u30FF\u4E00-\u9FFF]/.test(s.surface || ''))
   const words = segs.map(s => s.lemma || s.surface)
@@ -33522,6 +33933,8 @@ function auditJapaneseReading(pair) {
   const problems = []
   const jp = pair.japanese || '', rd = pair.reading || '', ro = pair.romaji || ''
   if (!rd.trim()) problems.push('no reading')
+  // v682 — 何 must carry its contextual reading (なに / なん)
+  if (jp.includes('\u4F55') && rd && jaFixNaniReading(pair).fixed) problems.push('reading of \u4F55 does not fit its context (\u306A\u306B vs \u306A\u3093): ' + rd)
   if (/[\/\uFF5C|]/.test(rd)) problems.push('reading offers alternatives: ' + rd)
   if (/[\/\uFF5C|]/.test(ro)) problems.push('romaji offers alternatives: ' + ro)
   // Repair before rejecting: a leftover 今日 is a conversion gap, not a bad pair.
@@ -35387,6 +35800,36 @@ function mandarinSelectSrsTargets(vocab, max) {
     .slice(0, max || 3)
 }
 
+// v682 — the saved-draft choice, shared by the Daily generators: "Retry missing recalls" resumes a compatible draft (only the
+// missing recalls are generated); "Start new generation" deliberately discards it. When the draft cannot resume, the reason is
+// shown and nothing is started automatically. The draft is never a lesson and never touches progress.
+function GenCheckpointChoice({ offer, total, langLabel, onRetryMissing, onStartNew, onBack, fallbackRetry, unitLabel }) {
+  const unit = unitLabel || 'recalls'
+  if (!offer) return (
+    <>
+      {fallbackRetry && <Btn onClick={fallbackRetry} style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} Retry</Btn>}
+      <Btn onClick={onBack} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+    </>
+  )
+  const sm = offer.summary || { accepted: 0, expected: total, missing: [] }
+  const miss = sm.missing || []
+  return (
+    <>
+      <Card style={{ padding:'12px 14px', width:'100%' }}>
+        <p style={{ fontSize:13, fontWeight:700, marginBottom:6 }}>{'\uD83D\uDCBE'} Saved {langLabel} draft</p>
+        <p style={{ fontSize:12, color:'var(--muted)', lineHeight:1.6 }}>
+          {sm.accepted} / {sm.expected || total} {unit} are verified and kept. {miss.length ? miss.length + ' still missing:' : 'Nothing is missing \u2014 it only needs its final checks.'}
+        </p>
+        {miss.length > 0 && <p style={{ fontSize:12, lineHeight:1.6, marginTop:4 }}>{miss.slice(0, 8).map(m => m.target + ' (recall ' + m.recallIndex + ')').join(' \u00b7 ')}{miss.length > 8 ? ' \u2026' : ''}</p>}
+        <p style={{ fontSize:11, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>The draft is not a lesson yet: it is not playable, it is not in your track list and your word progress is unchanged.</p>
+        {!offer.compat.ok && <p style={{ fontSize:12, color:'#f59e0b', marginTop:6, lineHeight:1.5 }}>It cannot be resumed: {offer.compat.reason}.</p>}
+      </Card>
+      {offer.compat.ok && <Btn onClick={onRetryMissing} style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} {miss.length ? 'Retry missing ' + unit + ' (' + miss.length + ')' : 'Finish the saved draft'}</Btn>}
+      <Btn onClick={onStartNew} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Start new generation{sm.accepted ? ' (discards the ' + sm.accepted + ' saved)' : ''}</Btn>
+      <Btn onClick={onBack} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+    </>
+  )
+}
 function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGenerated, onBack }) {
   const [phase, setPhase] = useState('idle')
   const [fullLog, setFullLog] = useState([])
@@ -35424,6 +35867,24 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   const totalSlots = FRAMING + recallTotal
   const inv = useMemo(() => mandarinLearnerInventory(vocab, targets), [vocab, targets])
   const push = (m, live = true) => { setFullLog(l => [...l, m]); if (live) setLiveLog(l => [...l.slice(-7), m]) }
+  // v682 — resumable Daily generation: the saved draft (checkpoint) of THIS selection, and what the screen offers for it
+  const isDailyZh = trackMode !== 'revision' && trackMode !== 'srs'
+  const cpRef = useRef(null)
+  const [cpOffer, setCpOffer] = useState(null)          // { cp, compat, summary } when a saved draft exists
+  const authorisedZh = useMemo(() => inv.allContent.map(w => w.chinese), [inv])
+  const offerCheckpoint = cp => {
+    if (!cp) { setCpOffer(null); return null }
+    const o = { cp, compat: genCheckpointCompatible(cp, 'zh', targets, authorisedZh), summary: genCheckpointSummary(cp, targets) }
+    setCpOffer(o); return o
+  }
+  function resetWorkspace() {
+    setTargetProgress({}); setZhCheckHist({}); setBrickSources({}); setAcceptanceHistory([]); setRecallDone(0)
+    setCurrentTargetId(null); setCurrentRecall(0); setCurrentTier(0); setError(''); setQcPhase(null); setQcResult(null); setFinalTrack(null)
+  }
+  // Retry missing recalls: resumes the compatible draft (only the missing recalls are generated)
+  function retryMissing() { const cp = cpOffer && cpOffer.compat.ok ? cpOffer.cp : null; if (!cp) return; resetWorkspace(); setCpOffer(null); startGeneration(cp) }
+  // Start new generation: deliberately discards the draft first
+  async function startNew() { await genCheckpointClear('zh'); cpRef.current = null; resetWorkspace(); setCpOffer(null); startGeneration(null) }
 
   useEffect(() => {
     if (startedRef.current) return
@@ -35431,8 +35892,18 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
     ;(async () => {
       if (!apiKey) { setError('No API key configured. Mandarin uses the same key as Thai and Japanese.'); setPhase('error'); return }
       if (!targets || !targets.length) { setError('No Mandarin targets available.'); setPhase('error'); return }
+      // v682 — a saved draft is never resumed or discarded silently: the learner chooses
+      if (isDailyZh && (await stGet(ZH_GEN2_SETTING_KEY).catch(() => null)) !== true) {
+        const cp = await genCheckpointLoad('zh')
+        if (cp) { offerCheckpoint(cp); setPhase('resume-choice'); return }
+      }
+      startGeneration(null)
+    })()
+  }, [])
+
+  async function startGeneration(resumeCp) {
       setPhase('generating')
-      aiRunRef.current = aiBeginRun('zh-track')                 // v649: generation + QC + recovery in ONE run
+      if (!aiRunRef.current) aiRunRef.current = aiBeginRun('zh-track')                 // v649: generation + QC + recovery in ONE run
       try {
         // v680 — "Use the new generator (test)" (Daily Track only): Gen2 writes the recalls, then the unchanged QC / FINAL_TRACK / Save
         const useGen2 = trackMode !== 'revision' && trackMode !== 'srs' && (await stGet(ZH_GEN2_SETTING_KEY).catch(() => null)) === true
@@ -35451,6 +35922,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
           buildAndQc(out.track)
           return
         }
+        if (resumeCp) push('\u267B Resuming the saved draft — ' + genCheckpointSummary(resumeCp, targets).accepted + '/' + recallTotal + ' verified recalls kept; only the missing recalls are generated')
         const res = await generateMandarinTrack(targets, vocab, apiKey, model,
           (done, total, meta) => {
             setRecallDone(done)
@@ -35480,7 +35952,8 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
             }
             if (meta.completed) { setCurrentTargetId(null); setCurrentRecall(0) }
           },
-          m => { push(m, !/^\u2139/.test(m)) }, stopRef.current)
+          m => { push(m, !/^\u2139/.test(m)) }, stopRef.current, undefined,
+          isDailyZh ? { checkpoint: resumeCp || null, onCheckpoint: cp => { cpRef.current = cp; genCheckpointWrite('zh', cp) } } : {})
         if (stopRef.current.cancelled) return
         // §completeness — QC only after every recall carries provenance.
         // v671 §B4 — checked on the PAIRS themselves, like Japanese (the old check read a stale React closure → "0/90")
@@ -35504,10 +35977,11 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
           ? ('Generation incomplete: ' + inc.produced + '/' + inc.expected + ' recalls.\n' +
              (inc.failures || []).map(f => '\u2022 ' + f.target + ' recall ' + f.recallIndex + ': ' + f.reason).join('\n'))
           : (e && e.message) || 'Generation failed.')
+        // v682 — the verified recalls are in the saved draft: offer to generate only the missing ones
+        if (isDailyZh) offerCheckpoint((inc && inc.checkpoint) || cpRef.current || await genCheckpointLoad('zh'))
         setPhase('error')
       }
-    })()
-  }, [])
+  }
 
 
   // QC on this screen; the workspace never unmounts.
@@ -35580,12 +36054,11 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   const filled = (phase === 'idle' ? 0 : FRAMING) + recallDone
   const pct = totalSlots ? Math.min(100, Math.round((filled / totalSlots) * 100)) : 0
 
-  if (phase === 'error') return (
+  if (phase === 'error' || phase === 'resume-choice') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, alignItems:'center', minHeight:'50vh', justifyContent:'center' }}>
-      <p style={{ color:'#ef4444', fontSize:13, textAlign:'center', whiteSpace:'pre-wrap' }}>{error}</p>
-      <Btn onClick={() => { startedRef.current = false; setError(''); setPhase('idle'); setTargetProgress({}); setZhCheckHist({}); setBrickSources({}); setAcceptanceHistory([]); setRecallDone(0); startedRef.current = false; window.setTimeout(() => { startedRef.current = false }, 0) }}
-        style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} Retry</Btn>
-      <Btn onClick={onBack} variant="secondary" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+      {phase === 'error' && <p style={{ color:'#ef4444', fontSize:13, textAlign:'center', whiteSpace:'pre-wrap' }}>{error}</p>}
+      <GenCheckpointChoice offer={cpOffer} total={recallTotal} langLabel="Mandarin" onRetryMissing={retryMissing} onStartNew={startNew} onBack={onBack}
+        fallbackRetry={!cpOffer ? () => { resetWorkspace(); startGeneration(null) } : null} />
     </div>
   )
 
@@ -35644,7 +36117,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
 
       {qcPhase === 'done' ? (
         <>
-          <Btn onClick={() => onGenerated(finalTrack)}
+          <Btn onClick={() => { if (isDailyZh) genCheckpointClear('zh'); onGenerated(finalTrack) }}
             style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>{'\u25B6'} {trackReadiness(finalTrack).ready || !(finalTrack && finalTrack.integrity) ? 'Study track' : 'Study anyway \u2014 track not ready (' + trackReadiness(finalTrack).validTargetPairs + '/' + trackReadiness(finalTrack).expectedTargetPairs + ')'}</Btn>
           <Btn onClick={() => buildAndQc(finalTrack)} variant="secondary"
             style={{ width:'100%', justifyContent:'center' }}>{'\u21BB'} Run quality check again</Btn>
@@ -36425,6 +36898,67 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
   const allowCtx = useMemo(() => japaneseAllowedContent(vocab, targets), [vocab, targets])
   const scaffold = useMemo(() => japaneseScaffoldFor(vocab), [vocab])
   const inv = useMemo(() => japaneseLearnerInventory(vocab, targets), [vocab, targets])
+  // v682 — resumable Daily generation (saved draft of THIS selection)
+  const isDailyJa = trackMode !== 'revision' && trackMode !== 'srs'
+  const cpRefJa = useRef(null)
+  const [cpOfferJa, setCpOfferJa] = useState(null)
+  const authorisedJa = useMemo(() => inv.allContent.map(w => w.japanese), [inv])
+  const offerJaDraft = cp => {
+    if (!cp) { setCpOfferJa(null); return null }
+    const o = { cp, compat: genCheckpointCompatible(cp, 'ja', targets, authorisedJa), summary: genCheckpointSummary(cp, targets) }
+    if (o.compat.ok && !jaPartialFromJSON(cp.extra && cp.extra.partial)) o.compat = { ok: false, reason: 'the saved draft is incomplete' }
+    setCpOfferJa(o); return o
+  }
+  function jaSaveDraft(part, status) {
+    if (!isDailyJa || !part || useGen2) return
+    const base = cpRefJa.current && cpRefJa.current.fingerprint ? cpRefJa.current : genCheckpointCreate('ja', { targets, authorisedWords: authorisedJa })
+    base.status = status || 'incomplete'; base.accepted = []
+    ;(part.perTarget || []).flat().forEach(p => genCheckpointAddPair(base, p))
+    base.extra = { partial: jaPartialToJSON(part) }; base.updatedAt = new Date().toISOString()
+    cpRefJa.current = base; genCheckpointWrite('ja', base)
+  }
+  // Retry missing recalls from a saved draft: one fresh check ladder per missing recall, nothing already verified is regenerated
+  async function resumeJaDraft(cp) {
+    const part0 = jaPartialFromJSON(cp && cp.extra && cp.extra.partial)
+    if (!part0) return
+    cp.resumes = (cp.resumes || 0) + 1; cp.history.push({ at: new Date().toISOString(), event: 'resume', n: cp.resumes, build: APP_BUILD_VERSION })
+    cpRefJa.current = cp; genCheckpointWrite('ja', cp); setCpOfferJa(null)
+    if (!aiRunRef.current) aiRunRef.current = aiBeginRun('ja-track')
+    if (part0.trackContext) trackCtxRef.current = part0.trackContext
+    if (part0.scene) setScene(part0.scene)
+    recallLedger('ja', true)   // a deliberate retry: each missing recall gets ONE fresh ladder (the kept pairs carry their own histories)
+    let out = { ...part0, complete: false, missingRecalls: (part0.missingRecalls || []).map(m => { const { exhausted, terminal, ...rest } = m; return rest }) }
+    setPhase('generating'); setGenerationError(null); setPartial(null)
+    const tp = {}; (out.perTarget || []).flat().forEach(p => { if (!p || p.targetId == null) return; const cur = tp[p.targetId] || { recallsCompleted: 0, recalls: [] }; cur.recalls.push({ recallIndex: p.recallIndex, checkTier: pairCheckCount(p) || 1, source: p._source, history: pairCheckHistory(p) }); cur.recallsCompleted = cur.recalls.length; tp[p.targetId] = cur })
+    setTargetProgress(tp); setRecallDone(out.recallCount || 0); setFramingDone(FRAMING_SLOTS)
+    push('\u267B RESUME_FROM_CHECKPOINT ' + cp.id + ' · attempt ' + cp.resumes + '/' + GEN_CHECKPOINT_MAX_RESUMES + ' · ' + (out.recallCount || 0) + '/' + recallTotal + ' verified recalls kept (no request) · ' + (out.missingRecalls || []).length + ' to generate')
+    const _guard = createJaCostGuard((targets || []).length * 3, null, { onLog: m => push(m), runId: aiRunRef.current })
+    const tried = new Set()
+    try {
+      while (out.complete === false && (out.missingRecalls || []).some(m => !tried.has(m.targetId + ':' + m.recallIndex))) {
+        if (stopRef.current.cancelled) return
+        const m = out.missingRecalls.find(x => !tried.has(x.targetId + ':' + x.recallIndex)); tried.add(m.targetId + ':' + m.recallIndex)
+        push('\u21BB Retrying missing recall \u2014 ' + (m.targetJapanese || m.targetId) + ' recall ' + m.recallIndex)
+        const next = await recoverJapaneseMissingRecall(out, targets, vocab, register, apiKey, model, push,
+          meta => { if (meta.checkTier) setCurrentCheckTier(meta.checkTier); if (meta.targetId) setCurrentTargetId(meta.targetId) },
+          { trackContext: jaTrackContext(), runId: aiRunRef.current, costGuard: _guard, pick: m.targetId + ':' + m.recallIndex })
+        if (next.recovered) { setRecallDone(next.recallCount); appendAcceptance(next.recovered._source, { kind: 'recall', targetId: next.recovered.targetId, recallIndex: next.recovered.recallIndex }) }
+        out = { ...next, costGuard: _guard.summary() }
+      }
+    } catch (e) { push('\u274C ' + (e.message || 'recovery failed')) }
+    if (out.complete) {
+      jaSaveDraft(out, 'generated')
+      setCurrentTargetId(null); setCurrentCheckTier(0); setPhase('done')
+      buildAndQc(jaTrackObject(jaTrackContext(), { pairs: out.pairs, scene: out.scene || scene, scenePlan: out.scenePlan || null, buildingBlocks: out.buildingBlocks || [], allowedContent: out.allowedContent || [],
+        recallCount: out.recallCount, framingCount: out.framingCount, generationStats: out.generationStats || null }, targets, register, model, trackMode))
+    } else {
+      jaSaveDraft(out, 'incomplete')
+      setPartial(out)
+      setGenerationError({ type: 'incomplete-recalls', expected: out.expectedRecallCount, produced: out.recallCount, missing: out.missingRecalls || [], lastRecoveryFailure: out.lastRecoveryFailure, costGuard: out.costGuard || null })
+      setPhase('recover')
+    }
+  }
+  async function startNewJa() { await genCheckpointClear('ja'); cpRefJa.current = null; setCpOfferJa(null); buildScene() }
   // §16 — show ONLY what this track actually uses, and §15 cap new grammar at 2.
   const sceneText = scene ? [scene.opening, scene.reply, scene.closing, scene.closing_reply].join('') : ''
   // Phase 3 — curriculum rows with NEW / DUE / REINFORCE / LEARNED status. Generation
@@ -36455,7 +36989,14 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
       setScene(s); setPhase('scene_preview')
     } catch (e) { setError(e.message || 'Scene generation failed.'); setPhase('error') }
   }
-  useEffect(() => { buildScene() }, [])
+  useEffect(() => { (async () => {
+    // v682 — a saved draft is offered BEFORE a new scene is paid for; it is never resumed or discarded silently
+    if (isDailyJa && (await stGet(JA_GEN2_SETTING_KEY).catch(() => null)) !== true) {
+      const cp = await genCheckpointLoad('ja')
+      if (cp) { offerJaDraft(cp); setPhase('resume-choice'); return }
+    }
+    buildScene()
+  })() }, [])
 
   // §4 — regenerating the scene must not disturb targets or SRS state.
   function tryAnotherScene() { setScene(null); buildScene() }
@@ -36617,6 +37158,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
         // left in this generator, so the track FINISHES (final audit → NOT_READY, unresolvedRecalls named) instead of waiting
         // on a Retry that can only re-log the same exhausted recall
         const _left = (out.missingRecalls || []).filter(m => !(m.exhausted || m.terminal === RECALL_TERMINAL_STATE || recallLedger('ja').terminal(m.targetId, m.recallIndex)))
+        jaSaveDraft(out, 'incomplete')   // v682 — the verified recalls survive navigation / refresh
         if (!_left.length && (out.missingRecalls || []).length) { finishJapaneseIncomplete(out); return }
         setPartial(out)
         setGenerationError({ type:'incomplete-recalls', expected:out.expectedRecallCount, produced:out.recallCount,
@@ -36778,6 +37320,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
         appendAcceptance(p._source, { kind:'recall', targetId: p.targetId, recallIndex: p.recallIndex })   // v671 §B1
       }
       setPartial(next)
+      jaSaveDraft(next, next.complete ? 'generated' : 'incomplete')
       if (next.complete) {
         // §14 — continue straight into QC; no second Generate press required.
         // v649: this path previously handed the track to the app WITHOUT QC or FINAL_TRACK.
@@ -36855,6 +37398,12 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
     )
   }
 
+  // v682 — a saved Japanese draft: Retry missing recalls (resume) or Start new generation (discard), never automatic
+  if (phase === 'resume-choice') return (
+    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:16 }}>
+      <GenCheckpointChoice offer={cpOfferJa} total={recallTotal} langLabel="Japanese" onRetryMissing={() => cpOfferJa && cpOfferJa.compat.ok && resumeJaDraft(cpOfferJa.cp)} onStartNew={startNewJa} onBack={onBack} />
+    </div>
+  )
   if (phase === 'error') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:20 }}>
       <p style={{ color:'#ef4444', fontSize:14, textAlign:'center', whiteSpace:'pre-wrap' }}>{error}</p>
@@ -37023,7 +37572,11 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
 
       {qcPhase === 'done' ? (
         <>
-          <Btn onClick={() => onGenerated(finalTrack)}
+          {isDailyJa && !trackReadiness(finalTrack).ready && cpRefJa.current && genCheckpointMissing(cpRefJa.current).length > 0 && genCheckpointCompatible(cpRefJa.current, 'ja', targets, authorisedJa).ok && (
+            <Btn onClick={() => resumeJaDraft(cpRefJa.current)} style={{ width:'100%', justifyContent:'center' }}>
+              {'\u21BB'} Retry missing recalls ({genCheckpointMissing(cpRefJa.current).length}) {'\u2014'} the {cpRefJa.current.accepted.length} verified recalls are kept
+            </Btn>)}
+          <Btn onClick={() => { if (isDailyJa) genCheckpointClear('ja'); onGenerated(finalTrack) }}
             style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'13px' }}>
             {'\u25B6'} {trackReadiness(finalTrack).ready || !(finalTrack && finalTrack.integrity) ? 'Study track' : 'Study anyway \u2014 track not ready (' + trackReadiness(finalTrack).validTargetPairs + '/' + trackReadiness(finalTrack).expectedTargetPairs + ')'}
           </Btn>
@@ -38787,6 +39340,9 @@ function jaEvaluateRecallCandidate(cand, ctx) {
   // have few natural applications — they are taught as they are used, never pushed into artificial variety (live v681 run:
   // ありがとう。 vs あ、ありがとうね！ left the recall with no candidate at all)
   if (dup.ok && !(jaSemanticClass(target.japanese) || {}).standalone && !JA_LIMITED_VARIETY_WORDS.includes(target.japanese)) dup = japaneseVariationVerdict(c2.japanese, target.id, seenMap, target.japanese)
+  // v682 — a set phrase (大丈夫, ありがとう …) was exempt from the variety rule altogether, so 大丈夫？/ 大丈夫だよ。/ うん、大丈夫。 counted as
+  // three applications. It now needs a different FUNCTION (asking vs answering) or different content around it (明日は大丈夫？).
+  else if (dup.ok && (jaSemanticClass(target.japanese) || {}).standalone && !JA_LIMITED_VARIETY_WORDS.includes(target.japanese)) dup = japaneseFormulaVariationVerdict(c2.japanese, target.id, seenMap, target.japanese)
   return { ok: true, cand: c2, repairs, dup }
 }
 // Punctuation never decides validity: "？" as its own segment (romaji "?" / "" / "question") is
@@ -39584,6 +40140,17 @@ function japaneseRecoveryEngine({ vocab, registerId, apiKey, model, inv, rules, 
 // §6/§14/§26 — repair ONE missing recall against the preserved partial state. The
 // eight already-validated recalls are never regenerated and the scene is reused.
 const RECALL_TERMINAL_STATE = 'EXHAUSTED_AT_11'
+// v682 — a Japanese partial generation as a storable draft (its seenMap is a Map) and back
+function jaPartialToJSON(part) {
+  if (!part) return null
+  const { seenMap, costGuard, recovered, ...rest } = part
+  return { ...rest, seenMapEntries: seenMap && typeof seenMap.entries === 'function' ? [...seenMap.entries()] : [] }
+}
+function jaPartialFromJSON(obj) {
+  if (!obj || !Array.isArray(obj.perTarget)) return null
+  const { seenMapEntries, ...rest } = obj
+  return { ...rest, seenMap: new Map(seenMapEntries || []) }
+}
 async function recoverJapaneseMissingRecall(partial, targets, vocab, registerId, apiKey, model, onLog, onProgress, recOpts) {
   const _ro = recOpts || {}
   const _tc = _ro.trackContext || partial.trackContext || null

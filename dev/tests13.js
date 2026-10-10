@@ -199,4 +199,5 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
       track.pairs.some(p => /^gemini-check-1:/.test(p._source || '')) && !track.pairs.some(p => BANNED.test(p._source || '')), [...new Set(track.pairs.map(p => String(p._source || '').replace(/:.*/, ':')))]) }
 
   console.log(out.join('\n') + '\n\n' + (fails ? fails + ' FAILED' : 'all passed') + ' (' + out.filter(l => /^(PASS|FAIL)/.test(l)).length + ' checks)')
+  process.exit(fails ? 1 : 0)   // v682: a FAIL now fails the suite (it used to exit 0, so the runner could not see it)
 })().catch(e => { console.error(e); process.exit(1) })

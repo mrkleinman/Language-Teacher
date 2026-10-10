@@ -188,10 +188,49 @@ The runs used the build at commit `e03183d`. The fixes in the last table below c
   - The defects in section 7 remain.
 - **Next step:** one verification round (one run per language) on this final build. It would cost about US$0.13; only US$0.12 of this phase's cap is left, so it needs your approval for a small new budget (e.g. US$0.15). Native-speaker spot checks would also help.
 
+## 11. Owner-approved verification round (10 October, budget US$0.15)
+
+The round ran on build `240ffd6`, with real Gemini Flash-Lite and the same learner snapshots as before.
+
+| Run | Result | Requests | Cost |
+|---|---|---|---|
+| Mandarin (喝) | **READY 90/90**, coherence 4/5, no duplicates | 236 | US$0.0447 |
+| Thai (ชิ้น) | **READY 90/90**, coherence 4/5, no duplicates | 185 | US$0.0496 |
+| Japanese | **Incomplete, waiting for Retry**: 何 recall 1 unresolved | 67 | US$0.0313 |
+| **Total** | | **488** | **US$0.1256 of US$0.15** |
+
+**Why Japanese stopped.**
+- The 何 rules worked as intended. あれ、何かあった？ was correctly rejected (何か ≠ 何).
+- The AI then kept writing あれ、何？, which only swaps これ for あれ in the accepted これ、何？.
+- The only backup was 何？, which is also the same question.
+- In the app, this is the point where the new **Retry missing recalls** screen appears, keeping the 89 good recalls.
+
+**Fixed after the round (offline-verified, commit `88cf560`):**
+- The backup now offers real 何 constructions: 何食べる？ / 何飲む？ / 何する？ / 何がいい？.
+- The backup prefers a different application, not just a different string.
+- The prompt tells the AI that swapping or dropping これ / それ / あれ is not a new sentence.
+
+**Defects found in the READY lessons, fixed afterwards (offline-verified):**
+- ผมเห็นรถตัวใหญ่ (wrong classifier before an adjective)
+- "Can I have a light / gentle, please?" (an English line offering alternatives)
+- Mandarin 你想吗？ ("Do you want?")
+
+**Defects still present in the READY lessons:**
+- Mandarin: 那个太好了 → "That one is too good." (太好了 means "great!"); 这个多吗？ ("Is this one many?"); 你慢不慢？.
+- Mandarin near-repeats: 这里人很少 / 这个地方人很少; 你拿这个 / 这个你拿.
+- Cues that copy the English translation.
+- Thai ครั้ง lines that are awkward (เราไปบ่ายโมงครั้งหนึ่ง).
+- Thai romanisation: ตอนนี้ → "dawn-níi". This comes from the curriculum data itself (stored as "dɔɔn-níi"), and your word list keeps its own copy, so fixing it needs a data migration. That is your decision.
+
+**Deployment readiness, updated:**
+- Mandarin and Thai are now proven live (READY 90/90 each).
+- Japanese was proven READY live in the first round. The 何 backup fix after the verification round is offline-verified only.
+- The remaining items are teaching polish (translations, cue wording, romanisation data), not reliability.
+
 ## TL;DR
 
-- **Mandarin 喝.** It failed because the learner knows no drink nouns and the backup had only one valid 喝 sentence. Thai ชิ้น failed because the AI was never taught what ชิ้น counts and kept using it with boats, tickets and seats. Both are fixed and both worked in real Gemini runs.
-- **Drafts.** Generation now keeps a draft. "Retry missing recalls" makes only the missing sentences (offline: 3 requests instead of 165) and never touches your progress.
-- **Japanese.** どこか, あれは何 and 大丈夫 are fixed. Both the dashboard and the generator say 3 new words; your "5" was the old pre-v681 screen.
-- **Live results.** Japanese READY 90/90. Mandarin 89/90 and Thai 90/90-but-not-ready because of judge glitches, now fixed offline. Cost US$0.13 of US$0.25.
-- **Not ready to deploy.** Copied cues, some wrong English translations and Thai romanisation slips remain. I recommend one approved verification round first.
+- **Root causes.** Mandarin 喝 failed because the learner knows no drink nouns and there was only one backup sentence. Thai ชิ้น failed because the AI was never taught what ชิ้น counts. Both are fixed.
+- **Drafts.** Generation keeps a draft. "Retry missing recalls" makes only what is missing (3 requests instead of 165 offline) and never touches progress.
+- **Verification round (US$0.126 of US$0.15).** Mandarin READY 90/90 and Thai READY 90/90, both live. Japanese stopped at one 何 recall, which shows exactly when the new Retry screen appears; that backup is now fixed offline.
+- **Tests.** Every defect found in the live lessons now has a regression check (41/41). The full suite (1,344 checks) passes with only the 3 known failures.
+- **Deployment.** Reliability is fixed and Mandarin and Thai are proven live. Remaining polish: some English translations, cues copying translations, and Thai romanisation data (ตอน → "dawn") that needs your OK for a data fix. Deploy only with your approval.

@@ -3640,7 +3640,7 @@ function mandarinSurfaceGrammarProblems(zh, inv) {
   if (/^(快|慢|大|小|多|少|长|短|高)[。！!]?$/.test(s)) P.push('fragment: ' + s + ' — a bare adjective is not a usable recall (这个很快 / 快一点)')
   // v682 — from the live v682 Mandarin run (all accepted): 我想。("I want."), 你到。("You arrive."), 大吗？/ 慢吗？/ 一点吗？ (a bare
   // one-word question), 你等我一点 (waiting "a little" is 等一下). 好吗？ (a real tag question) stays legal.
-  if (/^(我|你|他|她|我们|你们|他们)(也|都|还)?想[。！!]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 想 needs what you want / would like (我想去 / 我想要这个)')
+  if (/^(我|你|他|她|我们|你们|他们)(也|都|还)?想[。！!]?$/.test(s) || /^(你|他|她|你们|他们)(也|都|还)?想(吗|不想)[？?]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 想 needs what you want / would like (我想去 / 你想吃什么？)')
   if (/^(我|你|他|她|我们|你们|他们)到[。！!]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 到 needs 了 or a place (我到了 / 我到家了)')
   if (/^(快|慢|大|小|多|少|长|短|高|贵|远|近|一点)吗[？?]$/.test(s)) P.push('fragment: ' + s + ' — say what (这个大吗？ / 你要一点吗？)')
   if (/等(我|你|他|她|我们|你们)?一点/.test(s)) P.push('ungrammatical: ' + s.match(/等(我|你|他|她|我们|你们)?一点/)[0] + ' — waiting "a moment" is 等一下 (你等我一下)')
@@ -30313,6 +30313,9 @@ function thaiLexicalSenseProblems(p) {
   // v682 — a classifier that does not fit its noun (เรือชิ้นนี้ / ตั๋วชิ้นหนึ่ง / ที่นั่งชิ้นนั้น — the live v681 ชิ้น attempts)
   { const m = th.match(THAI_CLASSIFIER_MISMATCH_RE)
     if (m && THAI_NOUN_CLASSIFIER[m[1]] !== m[2]) out.push({ id: 'CLASSIFIER_MISMATCH', code: 'UNNATURAL', why: '"' + m[0] + '" — ' + m[1] + ' is counted with ' + THAI_NOUN_CLASSIFIER[m[1]] + ', not ' + m[2] + ' (' + m[1] + THAI_NOUN_CLASSIFIER[m[1]] + 'นี้)' }) }
+  // v682 — an English line that offers alternatives ("Can I have a light / gentle, please?" — live verification run) is a
+  // dictionary gloss, not a translation of one sentence
+  if (/[a-z]\s*\/\s*[a-z]/i.test(en)) out.push({ id: 'TRANSLATION_HAS_ALTERNATIVES', code: 'CUE_MISMATCH', why: 'the English offers alternatives ("' + en.match(/\S+\s*\/\s*\S+/)[0] + '") — a translation says ONE thing' })
   // an English line that copies the dictionary gloss ("a general classifier / item") is not a translation
   if (/\bclassifier\b|\(general\)|\bgeneral classifier\b/i.test(en))
     out.push({ id: 'TRANSLATION_IS_GLOSS', code: 'CUE_MISMATCH', why: 'the English copies the dictionary gloss ("' + en.match(/[^.?!]*classifier[^.?!]*/i)?.[0] + '") instead of translating the sentence' })
@@ -31187,7 +31190,7 @@ const THAI_CLASSIFIER_TARGET_GUIDE = Object.freeze({
 const THAI_NOUN_CLASSIFIER = Object.freeze({ 'รถแท็กซี่': 'คัน', 'รถยนต์': 'คัน', 'รถ': 'คัน', 'แท็กซี่': 'คัน', 'จักรยาน': 'คัน', 'มอเตอร์ไซค์': 'คัน', 'ร่ม': 'คัน',
   'เรือ': 'ลำ', 'เครื่องบิน': 'ลำ', 'ตั๋ว': 'ใบ', 'บัตร': 'ใบ', 'ที่นั่ง': 'ที่', 'หมา': 'ตัว', 'แมว': 'ตัว', 'บ้าน': 'หลัง', 'หนังสือ': 'เล่ม' })
 const THAI_CLASSIFIER_WORDS = ['ชิ้น', 'อัน', 'ตัว', 'ใบ', 'คัน', 'เล่ม', 'ลำ', 'หลัง', 'ที่', 'แก้ว', 'จาน', 'ขวด', 'ลูก', 'ชาม', 'เครื่อง']
-const THAI_CLASSIFIER_MISMATCH_RE = new RegExp('(' + Object.keys(THAI_NOUN_CLASSIFIER).sort((a, b) => b.length - a.length).join('|') + ')(?:อีก)?(?:หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ|[0-9]+)?(' + THAI_CLASSIFIER_WORDS.join('|') + ')(?=นี้|นั้น|โน้น|หนึ่ง|ไหน|ละ|เดียว|ครับ|ค่ะ|คะ|นะ|ไหม|\\s|$)')
+const THAI_CLASSIFIER_MISMATCH_RE = new RegExp('(' + Object.keys(THAI_NOUN_CLASSIFIER).sort((a, b) => b.length - a.length).join('|') + ')(?:อีก)?(?:หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ|[0-9]+)?(' + THAI_CLASSIFIER_WORDS.join('|') + ')(?=นี้|นั้น|โน้น|หนึ่ง|ไหน|ละ|เดียว|ครับ|ค่ะ|คะ|นะ|ไหม|ใหญ่|เล็ก|ใหม่|เก่า|สวย|แพง|ถูก|ยาว|สั้น|สี|\\s|$)')   // v682: + an adjective after the classifier (รถตัวใหญ่ — live verification run)
 const THAI_NOT_GENERATABLE = new Set(['ที่','ของ','กับ','และ',
   'มี','ไป','มา','ผม','ฉัน','คุณ','เรา','เขา','เธอ','ไม่','ได้','จะ','เป็น','ทำ','รู้'])
 function thaiVocabEligibility(w) {

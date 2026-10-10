@@ -273,6 +273,11 @@ const deep = x => JSON.parse(JSON.stringify(x))
     const f = c.jaFallbackRecall(nani, invJ, 1, prev), key = x => has(c, 'japaneseFormulaKey') ? c.japaneseFormulaKey(x, '何') : x
     T('L11', 'Japanese 何 fallback after これ、何て言うの？ / これ、何？ is a DIFFERENT construction (live v682 verification run: only 何？ was offered and 何 recall 1 stayed unresolved)',
       !!f && !prev.some(p => key(p) === key(f.japanese)) && f.japanese !== '何？', f && f.japanese) }
+  { const c = load(APP, { realBelt: true }), L = (t, e) => c.thaiLexicalSenseProblems({ thai: t, english: e || 'x' }).map(x => x.id)
+    T('L12', 'Thai (verification run): a wrong classifier before an adjective (รถตัวใหญ่) and an English line with alternatives ("a light / gentle") are rejected; รถคันใหญ่ / "A bit softer, please." pass',
+      L('ผมเห็นรถตัวใหญ่ตัวหนึ่งครับ').includes('CLASSIFIER_MISMATCH') && !L('รถคันใหญ่ครับ').length && L('ขอเบาหน่อยครับ', 'Can I have a light / gentle, please?').includes('TRANSLATION_HAS_ALTERNATIVES') && !L('ขอเบาหน่อยครับ', 'A bit softer, please.').length)
+    const fx = R.loadFixture('zh-daily-2026-10-08'), V = c.ttBenchApplyFixture(c.initMandarinVocab(), fx), inv = c.mandarinLearnerInventory(V, c.ttBenchJazhTargets(fx, V)), bad = x => c.mandarinSurfaceGrammarProblems(x, inv).length > 0
+    T('L13', 'Mandarin (verification run): 你想吗？ ("Do you want?") is incomplete; 你想吃吗？ passes', bad('你想吗？') && !bad('你想吃吗？')) }
   // ══ S — shared contract ═════════════════════════════════════════════════════════════════════════════════════════════
   {
     const c = load(APP, { realBelt: true })

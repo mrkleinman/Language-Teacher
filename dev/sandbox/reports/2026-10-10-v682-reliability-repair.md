@@ -255,7 +255,7 @@ Four live rounds, one run per language each: 12 runs, US$0.52 in total (US$0.03�
 - Mandarin: 地方很少 ("the place is few") is wrong. 我很快 is odd. 这个不慢 / 不慢 are near-identical.
 - Japanese: たぶん has two lines that only swap word order (明日、たぶん行ける… / たぶん明日、行ける…). ちょっと、どう思う？ is odd.
 
-Proof: tests42 is 59/59 (every new check fails on the earlier build). The full offline suite is OK with no exceptions left. The browser test is 9/9.
+Proof: tests42 is 59/59 (every new check fails on the earlier build). The full offline suite is OK; only the three long-known exceptions remain (tests33 2G, already in the version you use now; tests35 2C ×2, blocked because their old files are missing). The browser test is 9/9.
 
 ## TL;DR
 

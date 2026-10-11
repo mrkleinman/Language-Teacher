@@ -289,6 +289,15 @@ const deep = x => JSON.parse(JSON.stringify(x))
     T('S2', 'the screens offer "Retry missing recalls" and "Start new generation" (never a silent full paid regeneration); a draft is cleared only when the finished track is handed to the app',
       /Retry missing ' \+ unit/.test(SRC) && /Start new generation/.test(SRC) && /genCheckpointClear\('zh'\); onGenerated\(finalTrack\)/.test(SRC) && /genCheckpointClear\('ja'\); onGenerated\(finalTrack\)/.test(SRC) && /genCheckpointClear\('th'\); onGenerated\(generatedTrack\)/.test(SRC))
   }
+  // ══ L15 — near-duplicates accepted in the live FINAL Japanese run ══════════════════════════════════════════════════════
+  {
+    const c = load(APP, { realBelt: true })
+    const same = (a, b, s) => c.japaneseFormulaKey(a, s) === c.japaneseFormulaKey(b, s)
+    const dup = [['ごめん、今日忙しいんだ。', 'ごめん、今日ちょっと忙しいんだ。', 'ごめん'], ['本当、ありがとうね。', '本当にありがとうね。', 'ありがとう'], ['ちょっと待ってくれる？', 'もうちょっと待ってくれる？', 'ちょっと']]
+    const distinct = [['今、何してる？', '今、ちょっと話せる？', '今'], ['いつもありがとうね。', '本当にありがとうね。', 'ありがとう'], ['ちょっと待ってくれる？', 'じゃあ、ちょっと話さない？', 'ちょっと']]
+    T('L15', 'an added softener / intensifier (ちょっと, もう-ちょっと, 本当に) is not a new application (live final run accepted all three pairs as distinct); real new uses stay distinct',
+      dup.every(([a, b, s]) => same(a, b, s)) && distinct.every(([a, b, s]) => !same(a, b, s)), dup.concat(distinct).map(([a, b, s]) => [a, b, same(a, b, s)]))
+  }
   // ══ Z15–16 — Mandarin lines from the live verification run (accepted at zh-check-4/5) ════════════════════════════════════
   {
     const c = load(APP, { realBelt: true })
@@ -307,6 +316,43 @@ const deep = x => JSON.parse(JSON.stringify(x))
     if (process.env.Z16) console.log(JSON.stringify(outs))
     T('Z16', 'the deterministic fallback never hands out 那个太好了 as "That one is too good." (太好了 = "That\'s great!") nor 这个多吗？',
       !bad.length, { bad, outs })
+  }
+  // ══ F — failures of the live FINAL runs (Mandarin 89/90 on 很, Thai 88/90 on สามารถ + coherence S6/S7 1/5) ════════════
+  {
+    const c = load(APP, { realBelt: true })
+    const fx = R.loadFixture('zh-daily-2026-10-08'), V = c.ttBenchApplyFixture(c.initMandarinVocab(), fx), TG = c.ttBenchJazhTargets(fx, V)
+    const inv = c.mandarinLearnerInventory(V, TG), rules = c.mandarinScarcityRules(inv), hen = TG.find(t => t.chinese === '很')
+    // every sentence the live run had already accepted with 很 in it (for 多 / 少 / 快 / 慢 / 大 / 小 / 好 / 你 / 那个 / 很)
+    const used = ['人很多', '这里人很多', '人很少', '这里人很少', '这个很快', '这个很慢', '这个很大', '这个很小', '这个很好', '你很好', '那个很好', '这个地方很好']
+    const seen = new Map(used.map((u, i) => [u, 'x' + i])), got = []
+    for (let r = 2; r <= 3; r++) { const f = hen && c.mandarinFallbackPair(hen, inv, r, seen, V, rules); const ok = f && c.validateMandarinPair(f, hen, inv, V, rules, seen).ok; got.push(f ? [f.chinese, f.english, ok] : null); if (f) seen.set(f.chinese.replace(/[。？]/g, ''), 'y' + r) }
+    T('F1', '很 recall 2 and 3 still have valid, natural deterministic sentences after the 12 很-sentences the live run had used (live final: UNRESOLVED → 89/90)',
+      got.every(g => g && g[2]) && got[0][0] !== got[1][0], got)
+    const TV = c.initVocab(), sam = TV.find(w => w.thai === 'สามารถ')
+    const lines = [['A', 'ผมสามารถไปที่นั่นได้ครับ', 'I can go there.'], ['B', 'คุณสามารถไปที่นั่นได้ค่ะ', 'You can go there.'], ['A', 'เราสามารถไปที่นั่นได้ครับ', 'We can go there.']]
+      .map(([sp, t, e]) => ({ speaker: sp, thai: t, english: e, prompt: 'Say that ' + e.toLowerCase().replace('.', '') }))
+    const vr = sam ? c.validateSmartPairs(lines, sam, TV, false, new Set(), true) : null
+    T('F2', 'three near-identical Thai lines (ผมสามารถไปที่นั่นได้…) keep the FIRST and re-ask only the copies with a concrete instruction (live final: all three thrown away 10 times → สามารถ 1/3 → 88/90)',
+      !!vr && vr.valid.length === 1 && vr.valid[0].thai === lines[0].thai && vr.failures.filter(f => /DIFFERENT pattern/.test(f)).length === 2,
+      vr && { valid: vr.valid.map(v => v.thai), failures: vr.failures })
+    const track = { keywords: [], scenePlan: { scenes: [{ sceneId: 'S6', purpose: 'p', localPremise: 'old premise', targetIds: [] }] } }
+    const audit = { sectionScores: [{ sceneId: 'S6', score: 1, premiseFitsTargets: false, suggestedPremise: 'The section is about discussing travel plans, but the lines are about shopping and unrelated items.' }] }
+    const rp = c.replanLocalPremises(track, audit, () => {})
+    const lp = rp.track.scenePlan.scenes[0].localPremise
+    T('F3', 'a coherence-judge CRITIQUE ("The section is about…, but the lines are about…") is never adopted as the scene premise (live final: it became S6/S7\'s premise and the quota-recovery SCENE CONTEXT); the leftovers scene no longer inherits the storyline as its purpose',
+      !/but the lines|section is about/i.test(lp) && !/premise \+ ' — small talk'/.test(SRC), lp)
+  }
+  // ══ F4–F5 — Mandarin lines accepted in the live FINAL run ═══════════════════════════════════════════════════════════════
+  {
+    const c = load(APP, { realBelt: true })
+    const k = (a, t) => c.zhApplicationKey(a, t)
+    const dup = [['人很多', '这里人很多', '多'], ['你在找什么？', '你找什么？', '找'], ['你现在可以来吗？', '你明天可以来吗？', '可以']]
+    const dis = [['我想去', '我想跟你一起去。', '想'], ['我要回家', '我们回家吧。', '回'], ['你在哪里？', '你去哪里？', '哪里']]
+    T('F4', 'Mandarin near-duplicates are one application: a dropped/swapped time word, an added leading 这里, a progressive 在 (live final: all three pairs accepted as distinct); real new uses stay distinct',
+      dup.every(([a, b, t]) => k(a, t) === k(b, t)) && dis.every(([a, b, t]) => k(a, t) !== k(b, t)), dup.concat(dis).map(([a, b, t]) => [a, b, k(a, t) === k(b, t)]))
+    const sp = z => c.mandarinSurfaceGrammarProblems(z, { allContent: [] }).length
+    T('F5', '你慢吗？ ("are you slow?"), 我们到这里。 (no 了) and 我跟你说， (stops on a comma) are rejected; 你忙吗？ / 我到家了。 / 我们到这里了。 stay legal',
+      sp('你慢吗？') && sp('我们到这里。') && sp('我跟你说，') && !sp('你忙吗？') && !sp('我到家了。') && !sp('我们到这里了。'))
   }
   // ══ P — THAI PRONUNCIATION GUIDE (live v682 Thai lines with wrong / toneless romanisation) ══════════════════════════════
   {

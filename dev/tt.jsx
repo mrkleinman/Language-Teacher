@@ -3642,6 +3642,10 @@ function mandarinSurfaceGrammarProblems(zh, inv) {
   // one-word question), 你等我一点 (waiting "a little" is 等一下). 好吗？ (a real tag question) stays legal.
   if (/^(我|你|他|她|我们|你们|他们)(也|都|还)?想[。！!]?$/.test(s) || /^(你|他|她|你们|他们)(也|都|还)?想(吗|不想)[？?]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 想 needs what you want / would like (我想去 / 你想吃什么？)')
   if (/^(我|你|他|她|我们|你们|他们)到[。！!]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 到 needs 了 or a place (我到了 / 我到家了)')
+  // v682 final run (all accepted live): 你慢吗？ ("are you slow?"), 我们到这里。 (arrival needs 了), 我跟你说， (ends on a comma)
+  if (/^(你|他|她|你们|他们)(慢|快|大|小|多|少|长|短|高|贵|远|近)吗[？?]$/.test(s)) P.push('unnatural: ' + s + ' — this adjective does not describe a person (这个慢吗？ / 你忙吗？)')
+  if (/^(我|你|他|她|我们|你们|他们)到(这里|那里|家)[。！!]?$/.test(s)) P.push('incomplete: ' + s + ' — arriving needs 了 (我们到这里了 / 我到家了)')
+  if (/[，,、]$/.test(s)) P.push('fragment: ' + s + ' — the sentence stops on a comma')
   if (/^(多|少)(很|太|真|不|也)/.test(s)) P.push('unnatural: ' + s + ' — 多 / 少 cannot be the subject on their own (人很多 / 这个很好)')
   if (/(喜欢|想要|要)(多|少)[。！!]?$/.test(s)) P.push('unnatural: ' + s + ' — 多 / 少 alone are not a thing to like or want (我喜欢这个 / 我要很多)')
   if (/^(这个|那个|这|那)(多|少)(吗|不多|不少)?[？?。]?$/.test(s)) P.push('unnatural: ' + s + ' — 多 / 少 describe an amount of something (人多吗？ / 这个多少钱？), not "this one"')
@@ -4152,14 +4156,42 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
       else if (zh === '\u5F88' || zh === '\u975E\u5E38' || zh === '\u771F') C.push({ zh: zh + a.chinese + '\u3002', en: "It's " + (zh === '\u5F88' ? '' : 'really ') + g + '.', cue: 'Say it is ' + (zh === '\u5F88' ? '' : 'really ') + g })
     })
     // v681: 很 / 非常 + adjective needs a SUBJECT as a standalone recall (很多。 is a fragment) — taught subjects first
-    if (zh === '\u5F88' || zh === '\u975E\u5E38') {
+    // v682 final run — EVERY taught adjective × every subject that suits it (it used to be the first three adjectives with one
+    // subject each: 人很多 / 人很少 / 这个很快 were all already used by 多 / 少 / 快, so 很 recall 2 went unresolved → 89/90)
+    if (zh === '很' || zh === '非常') {
       const has = w => (inv.allContent || []).some(x => x && x.chinese === w)
-      const subj = [['\u8FD9\u4E2A', 'This', 'this'], ['\u4EBA', 'People', 'people'], ['\u6211', 'I', 'you'], ['\u4ECA\u5929', 'Today', 'today'], ['\u8FD9\u91CC', 'This place', 'this place']].filter(x => has(x[0]))
-      // the subject must suit the adjective: 人很多 / 我很忙 / 这个很大 (never 这个很多)
-      const fit = a => /^(多|少)$/.test(a.chinese) ? ['\u4EBA', '\u8FD9\u91CC'] : /^(忙|累|好|饿|高兴)$/.test(a.chinese) ? ['\u6211', '\u4ECA\u5929'] : ['\u8FD9\u4E2A', '\u8FD9\u91CC']
-      adjs.forEach(a => { const sb = subj.find(x => fit(a).includes(x[0])); if (!sb) return
-        const g = primarySense(a.english), en = sb[1] + (sb[0] === '\u6211' ? ' am ' : sb[0] === '\u4EBA' ? ' are ' : ' is ') + (zh === '\u5F88' ? '' : 'really ') + g + '.'
-        C.push({ zh: sb[0] + zh + a.chinese + '\u3002', en, cue: 'Say that ' + sb[2] + (sb[0] === '\u6211' ? ' are ' : sb[0] === '\u4EBA' ? ' are ' : ' is ') + (zh === '\u5F88' ? '' : 'really ') + g }) })
+      const very = zh === '很' ? 'very ' : 'really '
+      const allAdjs = (inv.allContent || []).filter(w => w.partOfSpeech === 'adjective' && w.chinese !== zh)
+      // [subject, needs, English for "<subject> is very X" (X = the adjective's sense), cue subject]
+      const AMOUNT = { '人': ['people', true], '东西': ['stuff', false], '钱': ['money', false], '工作': ['work', false], '朋友': ['friends', true] }
+      // round-robin over the adjectives so consecutive fallbacks practise DIFFERENT adjectives (这个很大 / 我很好 / 人很多)
+      const lanes = []
+      allAdjs.forEach(a => {
+        const L = []; lanes.push(L); const push = x => L.push(x)
+        const g = primarySense(a.english), A = a.chinese
+        if (/^(多|少)$/.test(A)) {
+          const lots = A === '多'
+          Object.keys(AMOUNT).filter(has).forEach(n => { const [en, cnt] = AMOUNT[n]
+            const e = lots ? 'There ' + (cnt ? 'are' : 'is') + ' a lot of ' + en : 'There ' + (cnt ? 'are very few ' : 'is very little ') + en
+            push({ zh: n + zh + A + '。', en: e + '.', cue: 'Say ' + e.charAt(0).toLowerCase() + e.slice(1) })
+            if (n === '人' && has('这里')) push({ zh: '这里人' + zh + A + '。', en: e + ' here.', cue: 'Say ' + e.charAt(0).toLowerCase() + e.slice(1) + ' here' })
+          })
+          return
+        }
+        const person = /^(忙|累|饿|高兴)$/.test(A)
+        const subs = person ? [['我', 'I am', 'you are'], ['你', 'You are', 'they are']]
+          : A === '好' ? [['我', "I'm", "you're"], ['今天', 'Today is', 'today is'], ['这个', 'This one is', 'this one is'], ['那个', 'That one is', 'that one is'], ['这个地方', 'This place is', 'this place is']]
+          : [['这个', 'This one is', 'this one is'], ['那个', 'That one is', 'that one is'], ['这个地方', 'This place is', 'this place is'], ['家', 'The home is', 'the home is']]
+        // less-used subjects first: 这个 / 那个 + adjective are what the adjective targets themselves already practise
+        subs.sort((x, y) => (/^(这个|那个)$/.test(x[0]) ? 1 : 0) - (/^(这个|那个)$/.test(y[0]) ? 1 : 0))
+        subs.filter(sb => sb[0] === '这个地方' ? has('这个') && has('地方') : has(sb[0]))
+          .filter(sb => sb[0] !== '家' || /^(大|小)$/.test(A)).filter(sb => sb[0] !== '这个地方' || /^(大|小|好)$/.test(A))
+          .forEach(sb => {
+            const gg = A === '好' && sb[0] === '我' ? 'well' : g
+            push({ zh: sb[0] + zh + A + '。', en: sb[1] + ' ' + very + gg + '.', cue: 'Say ' + sb[2] + ' ' + very + gg })
+          })
+      })
+      for (let k = 0; lanes.some(L => L[k]); k++) lanes.forEach(L => { if (L[k]) C.push(L[k]) })
     }
   }
   // every candidate passes the surface grammar rules too; v671 §B4: NO unfiltered fallback pool — when nothing is
@@ -4216,8 +4248,17 @@ function zhCommunicativeFunction(s) {
   return 'statement'
 }
 // two recalls are the SAME application when their construction key matches and their communicative function matches
+// v682 final run — Mandarin application key: a time word swapped or dropped (你现在可以来吗？/ 你明天可以来吗？), a leading place
+// added (人很多 / 这里人很多) or a progressive 在 (你在找什么？/ 你找什么？) is not a new application of the target
+function zhApplicationKey(text, target) {
+  let s = String(text || '')
+  if (!/(现在|今天|明天|昨天)/.test(target || '')) s = s.replace(/(现在|今天|明天|昨天)/g, '')
+  if (!/^(这里|那里)$/.test(target || '')) s = s.replace(/^(这里|那里)(?=[\u4e00-\u9fff])/, '')
+  if (target !== '在') s = s.replace(/^(我|你|他|她|我们|你们|他们)在(?!(这里|那里|哪|家))/, '$1')
+  return recallVariationKey(s, target)
+}
 function zhSameApplication(a, b, target) {
-  const ka = recallVariationKey(a, target), kb = recallVariationKey(b, target)
+  const ka = zhApplicationKey(a, target), kb = zhApplicationKey(b, target)
   const ca = _recoveryConstructionKey(a, target), cb = _recoveryConstructionKey(b, target)
   const sameShape = (ka && ka === kb) || (ca && ca === cb)
   return !!sameShape && zhCommunicativeFunction(a) === zhCommunicativeFunction(b)
@@ -4313,9 +4354,9 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
     // another attempt, not a third use (拿: 你拿这个。/ 你拿这个吧) — never enforced on the deterministic fallback
     if (!isFallback) {
       const mine = [...(seenMap || new Map()).entries()].filter(([, id]) => id === target.id).map(([kk]) => kk)
-      const key = _recoveryConstructionKey(cand.chinese, target.chinese), vkey = recallVariationKey(cand.chinese, target.chinese)
-      if ((key && mine.some(m => _recoveryConstructionKey(m, target.chinese) === key)) || (vkey && mine.some(m => recallVariationKey(m, target.chinese) === vkey))) {
-        last = 'same application as an accepted recall (only a particle, demonstrative or pronoun differs) — use a different communicative function'
+      const key = _recoveryConstructionKey(cand.chinese, target.chinese), vkey = zhApplicationKey(cand.chinese, target.chinese)
+      if ((key && mine.some(m => _recoveryConstructionKey(m, target.chinese) === key)) || (vkey && mine.some(m => zhApplicationKey(m, target.chinese) === vkey))) {
+        last = 'same application as an accepted recall (only a particle, demonstrative, pronoun, time word, place or 在 differs) — use a different communicative function'
         if (o.onRejected && cand.chinese) o.onRejected(cand.chinese, last)
         recordMandarinRejection(stats, 'duplicate'); onLog && onLog('  \u274C ' + last + ': ' + cand.chinese); L.settle(tid, recallIndex, 'rejected', last, n); continue }
       // generate within the level: while the track drifts below 80% preferred-length sentences, a first attempt above the
@@ -5789,6 +5830,15 @@ function japaneseFormulaKey(jp, surface) {
   let raw = String(jp || '').replace(/^(\u3046\u3093|\u306F\u3044|\u3046\u3046\u3093|\u3044\u3084|\u3048\u3048|\u3044\u3044\u3048)[\u3001\uFF0C,\uFF01!]*/, '')
   if (!/^(\u3053\u3053|\u305D\u3053|\u3042\u305D\u3053)$/.test(String(surface || ''))) raw = raw.replace(/(\u3042\u305D\u3053|\u3053\u3053|\u305D\u3053)\u3067/g, '')
   if (!/^(\u3053\u308C|\u305D\u308C|\u3042\u308C)$/.test(String(surface || ''))) raw = raw.replace(/^(\u3053\u308C|\u305D\u308C|\u3042\u308C)[\u3001\uFF0C,]\s*/, '')   // これ、好き？ = 好き？ (a bare topic demonstrative); それは… keeps its shape
+  // v682 final run — a softener or intensifier added to an accepted recall is not a new application:
+  // ごめん、今日忙しいんだ。/ ごめん、今日ちょっと忙しいんだ。, 本当、ありがとうね。/ 本当にありがとうね。,
+  // ちょっと待ってくれる？/ もうちょっと待ってくれる？ (all accepted as distinct in the live final Japanese run)
+  const sf = String(surface || '')
+  ;['\u3082\u3046\u3061\u3087\u3063\u3068', '\u3061\u3087\u3063\u3068', '\u672C\u5F53\u306B', '\u672C\u5F53', '\u3059\u3054\u304F', '\u3068\u3066\u3082'].forEach(w => {
+    if (sf && (sf.includes(w) || w.includes(sf))) { if (w.startsWith('\u3082\u3046') && !sf.includes('\u3082\u3046')) raw = raw.split(w).join(w.slice(2)); return }
+    raw = raw.split(w).join('')
+  })
+  raw = raw.replace(/^[\u3001\uFF0C,\s]+/, '').replace(/([\u3001\uFF0C,])[\u3001\uFF0C,]+/g, '$1')
   const k = recallVariationKey(raw, surface)
   return jaUtteranceFunction(jp) + '|' + k
 }
@@ -13825,8 +13875,10 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     })
     const coreVerbs = valid.map(p => (p.thai||'').replace(/^(ผม|คุณ|เขา|เธอ|เรา|ดิฉัน|หนู)\s*/,'').slice(0,8))
     if (new Set(endings).size === 1 && new Set(coreVerbs).size === 1) {
-      valid.forEach(p => failures.push('identical grammar pattern — regenerating'))
-      valid.length = 0
+      // v682 final run — keep the FIRST line; only the copies are re-asked, with a concrete instruction. Rejecting all
+      // three made Gemini return the same batch 10 times (สามารถ: ผมสามารถไปที่นั่นได้ครับ ×10 → 88/90)
+      valid.slice(1).forEach(p => failures.push('identical grammar pattern to "' + valid[0].thai + '" — write a DIFFERENT pattern: a ไหม question, a negative with ไม่, or another verb / situation: ' + p.thai))
+      valid.length = 1
     }
   }
 
@@ -15409,7 +15461,9 @@ function finaliseScenePlan(scenesIn, targets, o) {
     log && log('🗺 SCENE_PLAN_ADDED_MINI_SCENE "' + d + '" [' + tids.length + '] for target(s) the planner did not place')
   })
   if (leftovers.length >= 2) {
-    scenes.push({ purpose: premise + ' — small talk', targetIds: leftovers }); audit.newScenes++
+    // v682 final run — the leftovers scene never inherits the track's storyline as its purpose: "<the travel plan premise> — small
+    // talk" holding shoes / chair / fridge / tickets was (rightly) judged 1/5 off-topic and could not be repaired
+    scenes.push({ purpose: 'everyday small talk', localPremise: 'A and B chat about everyday things: what they want, where things go and what they think', location: '', immediateGoal: 'short everyday questions, requests and answers', targetIds: leftovers }); audit.newScenes++
     log && log('🗺 SCENE_PLAN_ADDED_MINI_SCENE "small talk" [' + leftovers.length + '] for target(s) the planner did not place')
   } else if (leftovers.length === 1) {
     const home = scenes.slice().sort((a, b) => a.targetIds.length - b.targetIds.length)[0]
@@ -16267,8 +16321,10 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
       })
       const coreVerbs = valid.map(p => (p.thai||'').replace(/^(ผม|คุณ|เขา|เธอ|เรา|ดิฉัน|หนู)\s*/,'').slice(0,8))
       if (new Set(endings).size === 1 && new Set(coreVerbs).size === 1) {
-        valid.forEach(p => failures.push('identical grammar pattern — regenerating'))
-        valid.length = 0
+        // v682 final run — keep the FIRST line; only the copies are re-asked, with a concrete instruction. Rejecting all
+        // three made Gemini return the same batch 10 times (สามารถ: ผมสามารถไปที่นั่นได้ครับ ×10 → 88/90)
+        valid.slice(1).forEach(p => failures.push('identical grammar pattern to "' + valid[0].thai + '" — write a DIFFERENT pattern: a ไหม question, a negative with ไม่, or another verb / situation: ' + p.thai))
+        valid.length = 1
       }
     }
 
@@ -18539,7 +18595,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
     kws.forEach(k => {
       const id = k.wordId, surf = adapter.surfaceOf ? adapter.surfaceOf(k) : (k.thai || k.japanese || k.chinese)
       const ps = (t.pairs || []).filter(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId === id && !p._qcInvalid && !p._qcUnresolved)
-      const keyOf = x => adapter.lang === 'ja' ? japaneseFormulaKey(x, surf) : recallVariationKey(x, surf)
+      const keyOf = x => adapter.lang === 'ja' ? japaneseFormulaKey(x, surf) : adapter.lang === 'zh' ? zhApplicationKey(x, surf) : recallVariationKey(x, surf)
       const keys = new Set(ps.map(p => keyOf(adapter.sentenceOf(p))))
       if (ps.length < 3) _missing.push(surf + ' (' + ps.length + '/3 valid)')
       else if (keys.size < 3) _short.push(surf + ' (' + keys.size + ' distinct of ' + ps.length + ')')
@@ -18822,6 +18878,7 @@ async function mainTrackCoherenceAudit(track, adapter, ctx) {
 // v655 §6 — step 1 of a scene repair: is the LOCAL PREMISE wrong for the scene's targets? Then re-plan the
 // premise (the judge's suggestion, else one derived from the scene's semantic domain — no paid call) instead
 // of rewriting good sentences to fit a premise they were never about.
+const MAIN_PREMISE_CRITIQUE_RE = /\b(but the lines|the lines are|the section is|section is about|unrelated|off[- ]topic|does not fit|doesn't fit|do not match|don't match|not related)\b/i
 function replanLocalPremises(track, audit, log) {
   const plan = track && track.scenePlan && track.scenePlan.scenes
   if (!plan || !plan.length) return { track, replanned: [] }
@@ -18829,10 +18886,15 @@ function replanLocalPremises(track, audit, log) {
   const failing = (audit.sectionScores || []).filter(d => (d.score == null || d.score <= MAIN_COHERENCE_SCENE_FAIL_AT) && d.premiseFitsTargets === false)
   const replanned = []
   const scenes = plan.map(sc => {
-    const d = failing.find(x => x.sceneId === sc.sceneId)
+    let d = failing.find(x => x.sceneId === sc.sceneId)
     if (!d) return sc
     const byId = new Map(sc.targetIds.map(id => [id, kws.get(id) || { id }]))
     const derived = localPremiseFor(sc, sceneDominantDomain({ targetIds: sc.targetIds }, byId))
+    // v682 final run — the judge sometimes writes a CRITIQUE into suggestedPremise ("The section is about travel plans, but the lines
+    // are about small talk…"); adopted as the premise it made the repair impossible. A critique is never a premise.
+    const sug = d.suggestedPremise && !MAIN_PREMISE_CRITIQUE_RE.test(d.suggestedPremise) ? d.suggestedPremise : null
+    if (d.suggestedPremise && !sug) log && log('  🗺 MAIN_TRACK_PREMISE_SUGGESTION_REJECTED ' + sc.sceneId + ' — the judge returned a critique, not a premise: "' + String(d.suggestedPremise).slice(0, 120) + '"')
+    d = { ...d, suggestedPremise: sug }
     const to = d.suggestedPremise || derived.localPremise
     if (!to || to === sc.localPremise) return sc
     replanned.push({ sceneId: sc.sceneId, from: sc.localPremise, to, source: d.suggestedPremise ? 'coherence judge' : 'derived from the targets\' domain' })

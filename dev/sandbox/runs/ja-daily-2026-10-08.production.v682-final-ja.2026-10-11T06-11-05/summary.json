@@ -1,0 +1,112 @@
+{
+ "runId": "ja-daily-2026-10-08.production.v682-final-ja.2026-10-11T06-11-05",
+ "fixture": "ja-daily-2026-10-08",
+ "pipelineRequested": "production",
+ "pipelineExecuted": "production",
+ "gen2Version": null,
+ "models": null,
+ "app": {
+  "appBuild": "v682",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "READY",
+ "reasons": [],
+ "error": null,
+ "stop": null,
+ "recalls": 91,
+ "deferred": [],
+ "spend": {
+  "costUsd": 0.03867,
+  "capUsd": 0.3,
+  "tokens": {
+   "in": 162724,
+   "out": 56002
+  },
+  "requestsSent": 112,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {
+   "503": 1
+  },
+  "byTaskModel": {
+   "(untagged) @ gemini-2.5-flash-lite": {
+    "requests": 112,
+    "in": 162724,
+    "out": 56002,
+    "usd": 0.03867319999999999
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×112",
+  "Track ID: 2026-10-08T06:00:00.084Z · run ja-track-1791439200007-5701",
+  "Total requests: 112 · Successful: 111 · Failed: 1 · Retried: 35",
+  "Generation calls: 69 · QC calls: 41 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 2 · Listening calls: 0 · Other: 0",
+  "Input tokens: 164352 · Output tokens: 56002 · Total tokens: 220354 (mixed (provider usage where returned, estimates otherwise))",
+  "Retry requests: 35 · caused by provider errors: 1 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 112 · Provider-error retries: 1",
+  "GENERATION (app level): recalls requested 90 · first attempts 30 · regeneration attempts 33 · total attempts 63 · average 0.70 per recall · resolved first attempt 57/90 · requiring 2 attempts 15 · requiring 3 attempts 7 · hitting fallback 10 · repetition accepted 0 · unresolved 1 · deterministic repairs (no request) 5 · recovery recalls 1 (2 paid)",
+  "GENERATION WASTE: first-attempt tokens 92252 · regeneration tokens 83823 · regeneration share 48% · regeneration cost USD 0.0124 · fallback-after-paid-retries 10",
+  "PAID REQUESTS BY PURPOSE: QC judging 41 (26364 tok, USD 0.0045) · generation (first attempt / scene) 35 (103330 tok, USD 0.0190) · regeneration (paid retry of a rejected candidate) 33 (83823 tok, USD 0.0124) · quota / target recovery 2 (5016 tok, USD 0.0006) · other 1 (1821 tok, USD 0.0004)",
+  "JAPANESE GENERATION (target groups): target groups 30 · recalls 90 · initial paid group calls 30 · slot regeneration calls 33 · recall checks 71 (sum of each group's highest recall check; max 11 per recall — one check = one candidate attempt) · local repairs 5 · reading repair calls (Flash-Lite) 0 · accepted from the first call 57/90 · fallback 10 · unresolved 1 · quota-recovery generation calls 2",
+  "  JA_GENERATION_BUDGET どう HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET なんで HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:fallback,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET どっち HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:fallback",
+  "  JA_GENERATION_BUDGET どれ HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:fallback,3:accepted",
+  "  JA_GENERATION_BUDGET また HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET あそこ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET あれ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET ごめん HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 電話 HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:fallback,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET はい HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET うん HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET いいえ HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET たぶん HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 乗る HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 大丈夫 HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:fallback",
+  "  JA_GENERATION_BUDGET 行く HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 食べる HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 好き HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 何 HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 飲む HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:fallback",
+  "  JA_GENERATION_BUDGET どこ HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:fallback",
+  "  JA_GENERATION_BUDGET 一緒 HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET する HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=1 recalls=1:accepted,2:fallback,3:accepted",
+  "  JA_GENERATION_BUDGET 今 HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET ちょっと HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 来る HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:fallback",
+  "  JA_GENERATION_BUDGET 分かる HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET ありがとう HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET すみません HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET いい HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:fallback,2:unresolved,3:accepted",
+  "Estimated Gemini cost: USD 0.0370 (≈ SGD 0.0481 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. A_generation — 31 requests / 92252 tokens / ~47%",
+  "  2. B_generation_retry — 33 requests / 83823 tokens / ~34%",
+  "  3. F_main_coherence — 3 requests / 8666 tokens / ~6%",
+  "  4. C_group_eval — 30 requests / 10883 tokens / ~4%",
+  "  5. A0_scene — 3 requests / 9314 tokens / ~4%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 176
+}

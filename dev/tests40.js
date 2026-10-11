@@ -129,7 +129,7 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     const L = path.join(__dirname, 'benchmark', 'live', 'v677')
     for (const f of fs.readdirSync(L).filter(f => /zh-daily/.test(f))) add(JSON.parse(fs.readFileSync(path.join(L, f), 'utf8')))
     const flagged = [...sents].filter(bad)
-    const known = /^(很快。|我想吃。|我想吃|我慢。|今天好。|明天好。|很多。|我想喝|你做的好吗？|你喜欢|你到哪里？|快。|你想可以。|你可以什么？|这个什么？|我来帮|一点吗？)$/   // v682 adds 一点吗？ (a bare one-word question)
+    const known = /^(很快。|我想吃。|我想吃|我慢。|今天好。|明天好。|很多。|我想喝|你做的好吗？|你喜欢|你到哪里？|快。|你想可以。|你可以什么？|这个什么？|我来帮|一点吗？|你慢吗？)$/   // v682 adds 一点吗？ (a bare one-word question) and 你慢吗？ (an adjective that does not describe a person)
     T('Z10', 'breadth: over every Mandarin sentence in the 3 live v677 Daily runs, the only rejections are the defect shapes this suite names (no wider false rejection)',
       flagged.filter(x => !known.test(x)).length === 0, flagged)
   }
@@ -147,7 +147,7 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
     T('S2', 'the new generator (Gen2) applies the same production grammar / sense rules up front (zh: mandarinSurfaceGrammarProblems · th: thaiLexicalSenseProblems)',
       /production grammar rule: ' \+ zr\.join/.test(SRC) && /production sense rule: ' \+ lr\.map/.test(SRC))
-    T('S3', 'variety audit and the Mandarin generator use the ONE shared recallVariationKey (v682: Japanese adds the asking/answering function on top of it)', (/const keys = new Set\(ps\.map\(p => recallVariationKey\(/.test(SRC) || /adapter\.lang === 'ja' \? japaneseFormulaKey\(x, surf\) : recallVariationKey\(x, surf\)/.test(SRC)) && /vkey = recallVariationKey\(cand\.chinese, target\.chinese\)/.test(SRC))
+    T('S3', 'variety audit and the Mandarin generator use the ONE shared recallVariationKey (v682: Japanese adds the asking/answering function, Mandarin drops time words / a leading place / progressive 在, both on top of it)', (/const keys = new Set\(ps\.map\(p => recallVariationKey\(/.test(SRC) || /adapter\.lang === 'ja' \? japaneseFormulaKey\(x, surf\) : (adapter\.lang === 'zh' \? zhApplicationKey\(x, surf\) : )?recallVariationKey\(x, surf\)/.test(SRC)) && (/vkey = recallVariationKey\(cand\.chinese, target\.chinese\)/.test(SRC) || (/vkey = zhApplicationKey\(cand\.chinese, target\.chinese\)/.test(SRC) && /function zhApplicationKey[\s\S]{0,600}return recallVariationKey\(s, target\)/.test(SRC))))
   }
   console.log(out.join('\n'))
   console.log('\nv681 three-language quality repair: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))

@@ -1,0 +1,905 @@
+🎬 SCENE_CONTRACT premise="Somchai and Nida are discussing their travel plans. Somchai " · A=สมชาย · B=นิดา · SCENE_PROPER_NAME: สมชาย นิดา
+📚 SELECTED_TARGETS=30 GENERATION_TARGETS=30 NEW_TARGETS=1 REVIEW_TARGETS=29 LISTENING_REQUIRED_TARGETS=30 EXPECTED_TARGET_PAIRS=90 · trackAllowedSetId=trk-30-893 allowedCount=893
+📚 SUITABILITY_METADATA_AUDIT audited=177 (v654 FORMAL_WRITTEN / RECOGNITION_ONLY / VULGAR) · reclassified=66 (FORMAL_SPOKEN 65) · confirmed=19 · METADATA_REVIEW_REQUIRED=92 (kept excluded until reviewed)
+🗺 SCENE_PLAN_ADDED_MINI_SCENE "home" [4] for target(s) the planner did not place
+🗺 SCENE_PLAN_ADDED_MINI_SCENE "small talk" [17] for target(s) the planner did not place
+🗺 SCENE_PLAN_SPLIT_OVERSIZED "Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures him it's worthwhile for the sights they'll see. They also confirm the entrance location, and Somchai expresses his hope that the lights will be on when they arrive. — small talk" [17] → 2 mini-scene(s): Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures him it's worthwhile for the sights they'll see. They also confirm the entrance location, and Somchai expresses his hope that the lights will be on when they arrive. — small talk [9] · Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures him it's worthwhile for the sights they'll see. They also confirm the entrance location, and Somchai expresses his hope that the lights will be on when they arrive. — small talk (continued) [8]
+🗺 SCENE_ID=S1 SCENE_PURPOSE="Discussing travel route and duration" LOCAL_PREMISE="Somchai and Nida are discussing their travel plans." TARGET_IDS=1530,491,1022 TARGET_ROLES=1530:CONTENT,491:CONTENT,1022:CONTENT SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (places & travel))
+🗺 SCENE_ID=S2 SCENE_PURPOSE="Reassuring about the travel experience" LOCAL_PREMISE="Continuing their travel discussion, Nida tries to alleviate Somchai's worries." TARGET_IDS=1233,460 TARGET_ROLES=1233:CONTENT,460:CONTENT SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+🗺 SCENE_ID=S3 SCENE_PURPOSE="Confirming arrival details" LOCAL_PREMISE="Somchai and Nida are finalizing the details of their destination." TARGET_IDS=1479,1453 TARGET_ROLES=1479:CONTENT,1453:CONTENT SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+🗺 SCENE_ID=S4 SCENE_PURPOSE="Expressing hope for arrival conditions" LOCAL_PREMISE="As they anticipate their arrival, Somchai voices a practical concern." TARGET_IDS=1451,1473 TARGET_ROLES=1451:CONTENT,1473:CONTENT SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+🗺 SCENE_ID=S5 SCENE_PURPOSE="home" LOCAL_PREMISE="A and B are at home and talk about the rooms and things in it" TARGET_IDS=325,1465,1467,1426 TARGET_ROLES=325:CONTENT,1465:CONTENT,1467:CONTENT,1426:CONTENT SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (home))
+🗺 SCENE_ID=S6 SCENE_PURPOSE="Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures" LOCAL_PREMISE="A and B talk about somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures him it's worthwhile for the sights they'll see. They also confirm the entrance location, and Somchai expresses his hope that the lights will be on when they arrive. — small talk" TARGET_IDS=459,1528,1527,1076,1452,440,1430,324,1466 TARGET_ROLES=459:CONTENT,1528:CONTENT,1527:CONTENT,1076:CONTENT,1452:CONTENT,440:CONTENT,1430:CONTENT,324:CONTENT,1466:CONTENT SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+🗺 SCENE_ID=S7 SCENE_PURPOSE="Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures" LOCAL_PREMISE="A and B talk a plan through and explain exactly what they mean" TARGET_IDS=1597,1469,302,876,482,464,1455,923 TARGET_ROLES=1597:CONTENT,1469:CONTENT,302:CONTENT,876:CONTENT,482:CONTENT,464:CONTENT,1455:CONTENT,923:CONTENT SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (identity & names))
+🗺 SCENE_PLAN 7 mini-scene(s): S1. Discussing travel route and duration [3] · S2. Reassuring about the travel experience [2] · S3. Confirming arrival details [2] · S4. Expressing hope for arrival conditions [2] · S5. home [4] · S6. Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures [9] · S7. Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures [8]
+━━ 💬 1/30: รถเมล์ [bus]
+⚪ 1st check: รถเมล์ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "เรานั่งรถเมล์ไปกันไหมครับ",
+    "english": "Shall we go by bus?",
+    "pr
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: รถเมล์
+📊 THAI_GENERATION_BUDGET target=รถเมล์ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 2/30: ยาว [long]
+⚪ 1st check: ยาว · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "รถเมล์สายนี้ยาวมากครับ",
+    "english": "This bus route is very long.",
+ 
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ยาว
+📊 THAI_GENERATION_BUDGET target=ยาว CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 3/30: กังวล [to worry]
+⚪ 1st check: กังวล · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมกังวลเรื่องเวลาครับ",
+    "english": "I worry about the time.",
+    "pr
+⚠️ Quality fail: untaught vocabulary: เรื่อง in: ผมกังวลเรื่องเวลาครับ
+🔀 RECOVERY_STRATEGY_CHANGE กังวล → CHANGE THE LEXICAL CONSTRUCTION (forbidden token เรื่อง used again)
+🟠 2nd check: กังวล · recall 2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมกังวลรถติดครับ",
+    "english": "I worry about traffic jams.",
+    "pro
+✅ recall 1 at its 1st check, recall 2 at its 2nd check, recall 3 at its 2nd check passed: กังวล
+📊 THAI_GENERATION_BUDGET target=กังวล CHECKS per recall r1=1/11 r2=2/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 4/30: คุ้ม [to be worthwhile]
+⚪ 1st check: คุ้ม · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมว่าทางนี้คุ้มครับ",
+    "english": "I think this way is worthwhile.",
+ 
+⚠️ Quality fail: untaught vocabulary: แน่นอน in: สวยมากครับ คุ้มแน่นอนครับ
+🟠 2nd check: คุ้ม · recall 3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมคิดว่าคุ้มครับ",
+    "english": "I think it's worthwhile.",
+    "prompt
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 2nd check passed: คุ้ม
+📊 THAI_GENERATION_BUDGET target=คุ้ม CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 5/30: ครั้ง [time(s), occasion]
+⚪ 1st check: ครั้ง · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมไปที่นั่นครั้งแรกครับ",
+    "english": "It's my first time going there.
+⚠️ Quality fail: untaught vocabulary: ครั้งแรก in: ผมไปที่นั่นครั้งแรกครับ
+🟠 2nd check: ครั้ง · recall 3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมไปที่นั่นครั้งเดียวครับ",
+    "english": "I went there one time.",
+    
+🔧 LOCAL_REPAIR spacing (no paid call): ไปครั้งนั้น ดี ไหมคะ → ไปครั้งนั้นดีไหมคะ
+🔧 LOCAL_REPAIR spacing (no paid call): ใช่ครับ ครั้งนั้น ดี มากครับ → ใช่ครับ ครั้งนั้นดีมากครับ
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 2nd check passed: ครั้ง
+📊 THAI_GENERATION_BUDGET target=ครั้ง CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=2 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): รถเมล์ 3/3 PASSED · ยาว 2/3 — 1 slot(s) to regenerate · กังวล 2/2 PASSED · คุ้ม 1/2 — 1 slot(s) to regenerate · ครั้ง 3/3 PASSED
+🧪 EARLY_SEMANTIC_GATE batch 1: 13 line(s) judged · 2 rejected before the group counts as PASSED — [ยาว] นานเท่าไหร่คะ ยาวคะ (CUE_MISMATCH: prompt asks two questions, Thai asks two separ) | [คุ้ม] ผมจะคุ้มครับ (CUE_MISMATCH: prompt says 'will be worthwhile', Thai says 'w)
+🟠 2nd check: ยาว · recall 2
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ทางนี้ยาวมากครับ",
+    "english": "This way is very long.",
+    "prompt":
+✅ recall 2 at its 2nd check passed: ยาว
+📊 THAI_GENERATION_BUDGET target=ยาว CHECKS per recall r2=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🔶 3rd check: คุ้ม · recall 1
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมคิดว่าคุ้มครับ",
+    "english": "I think it's worthwhile.",
+    "prompt
+✅ recall 1 at its 3rd check passed: คุ้ม
+📊 THAI_GENERATION_BUDGET target=คุ้ม CHECKS per recall r1=3/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 EARLY_SLOT_REGENERATION 2 target(s) · 1 candidate(s) · 1 slot(s) refilled so far (only the rejected slots were regenerated)
+━━ 💬 6/30: ทางเข้า [entrance]
+⚪ 1st check: ทางเข้า · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ทางเข้าอยู่ตรงไหนครับ",
+    "english": "Where is the entrance?",
+    "pro
+⚠️ Quality fail: untaught vocabulary: ตรง in: ทางเข้าอยู่ตรงไหนครับ
+🟠 2nd check: ทางเข้า · recall 2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ทางเข้าอยู่ที่ไหนครับ",
+    "english": "Where is the entrance?",
+    "pro
+✅ recall 1 at its 1st check, recall 2 at its 2nd check, recall 3 at its 2nd check passed: ทางเข้า
+📊 THAI_GENERATION_BUDGET target=ทางเข้า CHECKS per recall r1=1/11 r2=2/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 7/30: ควร [should]
+⚪ 1st check: ควร · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "เราควรไปถึงก่อนมืดครับ",
+    "english": "We should arrive before dark.",
+
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ควร
+📊 THAI_GENERATION_BUDGET target=ควร CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 8/30: หวัง [hope]
+⚪ 1st check: หวัง · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมหวังว่าไฟจะเปิดครับ",
+    "english": "I hope the lights will be on.",
+ 
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: หวัง
+📊 THAI_GENERATION_BUDGET target=หวัง CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 9/30: ไฟ [light/electricity]
+⚪ 1st check: ไฟ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากเห็นไฟสวยๆ ครับ",
+    "english": "I want to see beautiful lights.",
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ไฟ
+📊 THAI_GENERATION_BUDGET target=ไฟ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 10/30: ประตู [door]
+⚪ 1st check: ประตู · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ประตูบ้านสวยครับ",
+    "english": "The house door is beautiful.",
+    "pr
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ประตู
+📊 THAI_GENERATION_BUDGET target=ประตู CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 11/30: หน้าต่าง [window]
+⚪ 1st check: หน้าต่าง · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากเห็นหน้าต่างครับ",
+    "english": "I want to see the window.",
+    
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: หน้าต่าง
+📊 THAI_GENERATION_BUDGET target=หน้าต่าง CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 12/30: เตียง [bed]
+⚪ 1st check: เตียง · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากเห็นเตียงครับ",
+    "english": "I want to see the bed.",
+    "promp
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: เตียง
+📊 THAI_GENERATION_BUDGET target=เตียง CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 13/30: อาบน้ำ [shower/bathe]
+⚪ 1st check: อาบน้ำ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากอาบน้ำครับ",
+    "english": "I want to take a shower.",
+    "prompt
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: อาบน้ำ
+📊 THAI_GENERATION_BUDGET target=อาบน้ำ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): ทางเข้า 2/2 PASSED · ควร 3/3 PASSED · หวัง 3/3 PASSED · ไฟ 3/3 PASSED · ประตู 3/3 PASSED · หน้าต่าง 3/3 PASSED · เตียง 3/3 PASSED · อาบน้ำ 3/3 PASSED
+🧪 EARLY_SEMANTIC_GATE batch 2: 23 line(s) judged · 0 rejected
+━━ 💬 14/30: รีบ [hurry]
+⚪ 1st check: รีบ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมต้องรีบไปแล้วครับ",
+    "english": "I have to hurry now.",
+    "prompt"
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: รีบ
+📊 THAI_GENERATION_BUDGET target=รีบ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 15/30: คู่ [pair/couple]
+⚪ 1st check: คู่ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้ตั๋วคู่ครับ",
+    "english": "I want a pair of tickets.",
+    "p
+⚠️ Natural fail: MANDATORY number missing — LINE 1 must include a number, time, or coun
+🟠 2nd check: คู่ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้ตั๋วสองคู่ครับ",
+    "english": "I want to buy two pairs of tick
+ℹ TARGET_MISSING_LINE_REJECT target=คู่ (1 line(s), deterministic): คุณจะไปกับใครคะ — 2/3 banked
+🔶 3rd check: คู่ · recall 3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมจะซื้อตั๋วคู่ครับ",
+    "english": "I will buy a pair of tickets.",
+   
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+⚠️ Natural fail: MANDATORY number missing — LINE 1 must include a number, time, or coun
+🔵 4th check: คู่ · recall 3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้ตั๋วรถไฟสองคู่ครับ",
+    "english": "I want to buy two pairs of 
+✅ recall 1 at its 2nd check, recall 2 at its 2nd check, recall 3 at its 4th check passed: คู่
+📊 THAI_GENERATION_BUDGET target=คู่ CHECKS per recall r1=2/11 r2=2/11 r3=4/11 PAID_GENERATION_ATTEMPTS=4 LOCAL_REPAIRS=0 LOCAL_REJECTS=1 outcome=PASSED
+━━ 💬 16/30: ชิ้น [piece/classifier]
+⚪ 1st check: ชิ้น · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้เค้กชิ้นนี้ครับ",
+    "english": "I want this piece of cake.",
+ 
+⚠️ Quality fail: untaught vocabulary: เค้ก in: ผมอยากได้เค้กชิ้นนี้ครับ
+🔀 RECOVERY_STRATEGY_CHANGE ชิ้น → CHANGE THE LEXICAL CONSTRUCTION (forbidden token เค้ก used again)
+🟠 2nd check: ชิ้น · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้ผลไม้นี้ชิ้นหนึ่งครับ",
+    "english": "I want one piece of this
+✅ recall 1 at its 2nd check, recall 2 at its 2nd check, recall 3 at its 2nd check passed: ชิ้น
+📊 THAI_GENERATION_BUDGET target=ชิ้น CHECKS per recall r1=2/11 r2=2/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 17/30: ต้องการ [want, need (formal)]
+⚪ 1st check: ต้องการ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมต้องการตั๋วรถครับ",
+    "english": "I need a bus ticket.",
+    "prompt"
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ต้องการ
+📊 THAI_GENERATION_BUDGET target=ต้องการ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 18/30: สามารถ [be able to (formal)]
+⚪ 1st check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปที่นั่นได้ครับ",
+    "english": "I can go there.",
+    "prompt"
+⚠️ Quality fail: identical grammar pattern — regenerating
+🟠 2nd check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปที่นั่นได้ครับ",
+    "english": "I can go there.",
+    "prompt"
+⚠️ Quality fail: identical grammar pattern — regenerating
+🔶 3rd check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปที่นั่นได้ครับ",
+    "english": "I can go there.",
+    "prompt"
+⚠️ Quality fail: identical grammar pattern — regenerating
+🔵 4th check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปที่นั่นได้ครับ",
+    "english": "I can go there.",
+    "prompt"
+⚠️ Quality fail: identical grammar pattern — regenerating
+🔷 5th check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปที่นั่นได้ครับ",
+    "english": "I can go there.",
+    "prompt"
+⚠️ Quality fail: identical grammar pattern — regenerating
+🟡 6th check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปถึงที่นั่นได้ครับ",
+    "english": "I can get there.",
+    "pro
+⚠️ Quality fail: identical grammar pattern — regenerating
+🟨 7th check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปได้ครับ",
+    "english": "I can go.",
+    "prompt": "He says he
+⚠️ Quality fail: identical grammar pattern — regenerating
+🟢 8th check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปที่นั่นครับ",
+    "english": "I can go there.",
+    "prompt": "
+⚠️ Quality fail: identical grammar pattern — regenerating
+🟩 9th check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปที่นั่นได้ครับ",
+    "english": "I can go there.",
+    "prompt"
+⚠️ Quality fail: identical grammar pattern — regenerating
+🟤 10th check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมสามารถไปที่นั่นได้ครับ",
+    "english": "I can go there.",
+    "prompt"
+⚠️ Quality fail: identical grammar pattern — regenerating
+🟫 11th check: สามารถ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมจะไปที่นั่นได้เมื่อไหร่ครับ",
+    "english": "When will I be able to go
+ℹ TARGET_MISSING_LINE_REJECT target=สามารถ (2 line(s), deterministic): ผมจะไปที่นั่นได้เมื่อไหร่ครับ | ผมจะไปถึงที่นั่นได้อย่างไรครับ — 1/3 banked
+📊 THAI_GENERATION_BUDGET target=สามารถ CHECKS per recall r1=11/11 r2=11/11 r3=11/11 PAID_GENERATION_ATTEMPTS=11 LOCAL_REPAIRS=0 LOCAL_REJECTS=2 outcome=BEST_ATTEMPT
+━━ 💬 19/30: เล่า [tell]
+⚪ 1st check: เล่า · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "คุณเล่าเรื่องให้ผมฟังหน่อยครับ",
+    "english": "Can you tell me a story?
+⚠️ Quality fail: untaught vocabulary: เรื่อง in: คุณเล่าเรื่องให้ผมฟังหน่อยครับ
+🔀 RECOVERY_STRATEGY_CHANGE เล่า → CHANGE THE LEXICAL CONSTRUCTION (forbidden token เรื่อง used again)
+🟠 2nd check: เล่า · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "คุณเล่าให้ผมฟังหน่อยครับ",
+    "english": "Can you tell me a story?",
+   
+⚠️ Quality fail: ask prompt but no question marker
+🔀 RECOVERY_STRATEGY_CHANGE เล่า → CHANGE THE SENTENCE INTENT (same construction failed twice (คุณอยากให้ฉันเล่าเรื่องอะไรคะ))
+🔶 3rd check: เล่า · recall 2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากให้คุณเล่าครับ",
+    "english": "I want you to tell me.",
+    "prom
+✅ recall 1 at its 2nd check, recall 2 at its 3rd check, recall 3 at its 3rd check passed: เล่า
+📊 THAI_GENERATION_BUDGET target=เล่า CHECKS per recall r1=2/11 r2=3/11 r3=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 20/30: แต่งตัว [get dressed]
+⚪ 1st check: แต่งตัว · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากให้คุณแต่งตัวครับ",
+    "english": "I want you to get dressed.",
+  
+🔧 LOCAL_REPAIR cue (no paid call): "He wants her to get dressed now." → "Tell the other person: I want you to get dressed now."
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: แต่งตัว
+📊 THAI_GENERATION_BUDGET target=แต่งตัว CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 21/30: รองเท้า [shoes]
+⚪ 1st check: รองเท้า · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมต้องหารองเท้าครับ",
+    "english": "I need to find my shoes.",
+    "pro
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: รองเท้า
+📊 THAI_GENERATION_BUDGET target=รองเท้า CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): รีบ 3/3 PASSED · คู่ 1/3 — 2 slot(s) to regenerate · ชิ้น 3/3 PASSED · ต้องการ 3/3 PASSED · สามารถ 2/3 — 1 slot(s) to regenerate · เล่า 2/3 — 1 slot(s) to regenerate · แต่งตัว 3/3 PASSED · รองเท้า 3/3 PASSED
+🧪 EARLY_SEMANTIC_GATE batch 3: 24 line(s) judged · 4 rejected before the group counts as PASSED — [คู่] ผมอยากได้ตั๋วสองคู่ครับ (UNNATURAL: CLASSIFIER_KHUU_MISUSE: "้ตั๋วสองคู่ครับ" — คู่ c) | [คู่] ผมอยากได้ตั๋วรถไฟสองคู่ครับ (UNNATURAL: CLASSIFIER_KHUU_MISUSE: "วรถไฟสองคู่ครับ" — คู่ c) | [สามารถ] คุณสามารถไปกี่โมงคะ (UNNATURAL: unnatural 2/5 — สามารถ is too formal for this cas) | [เล่า] เล่าเกี่ยวกับที่นี่ให้ผมฟังครับ (ACCEPTANCE_CONTRACT: CUE_CONSISTENT: CUE_FORM_MISMATCH: the )
+🔶 3rd check: คู่ · recall 1
+🔷 5th check: คู่ · recall 3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้รองเท้าสองคู่ครับ",
+    "english": "I want two pairs of shoes.",
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 3rd check, recall 3 at its 5th check passed: คู่
+📊 THAI_GENERATION_BUDGET target=คู่ CHECKS per recall r1=3/11 r3=5/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+⛔ CHECKS_EXHAUSTED สามารถ: recall 3 11/11 — UNRESOLVED (no further attempt)
+📊 THAI_GENERATION_BUDGET target=สามารถ CHECKS per recall r3=11/11 PAID_GENERATION_ATTEMPTS=0 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=FAILED
+🔶 3rd check: เล่า · recall 1
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากให้คุณเล่าเรื่องนี้ครับ",
+    "english": "I want you to tell this s
+⚠️ Quality fail: untaught vocabulary: เรื่อง in: ผมอยากให้คุณเล่าเรื่องนี้ครับ
+🔀 RECOVERY_STRATEGY_CHANGE เล่า → CHANGE THE LEXICAL CONSTRUCTION (forbidden token เรื่อง used again)
+🔵 4th check: เล่า · recall 1
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากให้คุณเล่าครับ",
+    "english": "I want you to tell me.",
+    "prom
+✅ recall 1 at its 4th check passed: เล่า
+📊 THAI_GENERATION_BUDGET target=เล่า CHECKS per recall r1=4/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 EARLY_SLOT_REGENERATION 3 target(s) · 2 candidate(s) · 3 slot(s) refilled so far (only the rejected slots were regenerated)
+━━ 💬 22/30: เก้าอี้ [chair]
+⚪ 1st check: เก้าอี้ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้เก้าอี้ครับ",
+    "english": "I want a chair.",
+    "prompt": "H
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: เก้าอี้
+📊 THAI_GENERATION_BUDGET target=เก้าอี้ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 23/30: เบา [light / gentle]
+⚪ 1st check: เบา · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "เก้าอี้ตัวนี้เบาครับ",
+    "english": "This chair is light.",
+    "prompt
+🔧 LOCAL_REPAIR spacing (no paid call): คุณจะยกเบาๆ นะคะ → คุณจะยกเบาๆนะคะ
+⚠️ Quality fail: untaught vocabulary: ยก in: คุณจะยกเบาๆนะคะ
+🔀 RECOVERY_STRATEGY_CHANGE เบา → CHANGE THE LEXICAL CONSTRUCTION (forbidden token ยก used again; same construction failed twice (ผมจะยกเบาๆครับ))
+🟠 2nd check: เบา · recall 2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้เก้าอี้ที่เบาครับ",
+    "english": "I want a light chair.",
+    
+✅ recall 1 at its 1st check, recall 2 at its 2nd check, recall 3 at its 2nd check passed: เบา
+📊 THAI_GENERATION_BUDGET target=เบา CHECKS per recall r1=1/11 r2=2/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 24/30: ตู้เย็น [refrigerator]
+⚪ 1st check: ตู้เย็น · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้ตู้เย็นครับ",
+    "english": "I want a refrigerator.",
+    "prom
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ตู้เย็น
+📊 THAI_GENERATION_BUDGET target=ตู้เย็น CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 25/30: ตัดสินใจ [decide]
+⚪ 1st check: ตัดสินใจ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมยังไม่ได้ตัดสินใจครับ",
+    "english": "I haven't decided yet.",
+    "p
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ตัดสินใจ
+📊 THAI_GENERATION_BUDGET target=ตัดสินใจ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 26/30: คะ [polite question particle (female)]
+⚪ 1st check: คะ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "คุณอยากไปไหนคะ",
+    "english": "Where do you want to go?",
+    "prompt":
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: male speaker uses คะ (female particle) (speaker A, male) in: คุณอยากไปไหนคะ
+🟠 2nd check: คะ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "คุณจะไปเมื่อไหร่คะ",
+    "english": "When will you go?",
+    "prompt": "H
+🔧 LOCAL_REPAIR particle (no paid call): คะ → ค่ะ on a statement: ฉันจะไปพรุ่งนี้คะ → ฉันจะไปพรุ่งนี้ค่ะ
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: male speaker uses คะ (female particle) (speaker A, male) in: คุณจะไปเมื่อไห
+🔀 RECOVERY_STRATEGY_CHANGE คะ → CHANGE THE LEXICAL CONSTRUCTION (same failure class twice (SPEAKER_CONFLICT))
+🔶 3rd check: คะ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากรู้ว่าคุณจะไปเมื่อไหร่คะ",
+    "english": "I want to know when you 
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=ครับ+คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: male speaker uses คะ (female particle) (speaker A, male) in: ผมอยากรู้ว่าคุ
+🔵 4th check: คะ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากรู้ว่าคุณจะตัดสินใจเมื่อไหร่คะ",
+    "english": "I want to know whe
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ Quality fail: untaught vocabulary: เรื่อง in: คุณจะตัดสินใจเรื่องอะไรคะ
+🔀 RECOVERY_STRATEGY_CHANGE คะ → CHANGE THE SENTENCE INTENT (forbidden token เรื่อง used again)
+🔀 RECOVERY_STRATEGY_CHANGE คะ → CHANGE THE SPEAKER (same construction failed twice (ผมอยากตัดสินใจเรื่องตู้เย็นครับ))
+🔷 5th check: คะ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "คุณจะไปไหนคะ",
+    "english": "Where will you go?",
+    "prompt": "He ask
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ 1/3 recalls accepted
+🔀 RECOVERY_STRATEGY_CHANGE คะ → CHANGE THE SCENE MOMENT (same failure class twice (TARGET_MISSING))
+🟡 6th check: คะ · recall 2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากรู้ว่าคุณจะไปเมื่อไหร่คะ",
+    "english": "I want to know when you 
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ SPEAKER_GENDER_CONFLICT speaker=A gender=male particles=คะ result=FAIL (male speaker uses คะ (female particle))
+⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: male speaker uses คะ (female particle) (speaker A, male) in: ผมอยากรู้ว่าคุ
+🔀 RECOVERY_STRATEGY_CHANGE คะ → USE ONLY THE SHORT SUPPORTING WORD LIST BELOW besides the target — nothing else. (same construction failed twice (ผมอยากรู้ว่าคุณจะไปเมื่อไหร่คะ))
+⛔ GENERATION_STOPPED_REPEATING คะ: still failing after 5 strategy changes — left to QUOTA RECOVERY (6 checks used)
+📊 THAI_GENERATION_BUDGET target=คะ CHECKS per recall r1=5/11 r2=6/11 r3=6/11 PAID_GENERATION_ATTEMPTS=6 LOCAL_REPAIRS=1 LOCAL_REJECTS=0 outcome=BEST_ATTEMPT
+━━ 💬 27/30: ใบ [classifier for flat objects]
+⚪ 1st check: ใบ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมมีตั๋วสองใบครับ",
+    "english": "I have two tickets.",
+    "prompt": "
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+ℹ TARGET_MISSING_LINE_REJECT target=ใบ (1 line(s), deterministic): คุณจะไปไหนคะ — 2/3 banked
+🟠 2nd check: ใบ · recall 3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้ตั๋วสองใบครับ",
+    "english": "I want two tickets.",
+    "promp
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 2nd check passed: ใบ
+📊 THAI_GENERATION_BUDGET target=ใบ CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 LOCAL_REJECTS=1 outcome=PASSED
+━━ 💬 28/30: ตัว [classifier for animals/things]
+⚪ 1st check: ตัว · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้เสื้อตัวนี้ครับ",
+    "english": "I want this shirt.",
+    "prom
+🔧 LOCAL_REPAIR cue (no paid call): "He says he wants two shirts." → "Tell the other person: I want two shirts."
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ตัว
+📊 THAI_GENERATION_BUDGET target=ตัว CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 29/30: หมายถึง [mean/refer to]
+⚪ 1st check: หมายถึง · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "คุณหมายถึงอะไรครับ",
+    "english": "What do you mean?",
+    "prompt": "H
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: หมายถึง
+📊 THAI_GENERATION_BUDGET target=หมายถึง CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 30/30: แนะนำ [recommend; introduce]
+⚪ 1st check: แนะนำ · recall 1+2+3
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "คุณแนะนำร้านนี้ครับ",
+    "english": "You recommend this shop.",
+    "pro
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: แนะนำ
+📊 THAI_GENERATION_BUDGET target=แนะนำ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): เก้าอี้ 3/3 PASSED · เบา 2/2 PASSED · ตู้เย็น 3/3 PASSED · ตัดสินใจ 3/3 PASSED · คะ 2/2 PASSED · ใบ 3/3 PASSED · ตัว 2/3 — 1 slot(s) to regenerate · หมายถึง 3/3 PASSED · แนะนำ 3/3 PASSED
+🧪 EARLY_SEMANTIC_GATE batch 4: 25 line(s) judged · 1 rejected before the group counts as PASSED — [ตัว] เสื้อตัวนั้นสวยดีนะคะ (CUE_MISMATCH: English adds 'too' which is not in Thai or pro)
+🟠 2nd check: ตัว · recall 2
+📄 ```json
+[
+  {
+    "speaker": "A",
+    "thai": "ผมอยากได้เสื้อสองตัวครับ",
+    "english": "I want two shirts.",
+    "prom
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+🔧 LOCAL_REPAIR cue (no paid call): "He states he wants that black shirt." → "Tell the other person: I want that black shirt."
+✅ recall 2 at its 2nd check passed: ตัว
+📊 THAI_GENERATION_BUDGET target=ตัว CHECKS per recall r2=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 LOCAL_REJECTS=0 outcome=PASSED
+  ⛔ token=ไม่ได้เจอกันนาน canonicalId=1405 learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=ai:check-1 stage=generation
+  ⛔ token=นาน canonicalId=none learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=gemini-check-1:conv stage=generation
+  ⛔ dropped pair 3 (gemini-check-1:conv): no authorised repair for นาน
+  ⛔ token=มืด canonicalId=none learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=gemini-check-1:conv stage=generation
+  ⛔ dropped pair 16 (gemini-check-1:conv): no authorised repair for มืด
+  ⛔ token=เรื่อง canonicalId=660 learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=best-attempt:conv stage=generation
+  ⛔ dropped pair 71 (best-attempt:conv): no authorised repair for เรื่อง
+  🔒 closed-vocab [generation] checked=85 pass=81 blockedUnseen=4 tokens=ไม่ได้เจอกันนาน นาน มืด เรื่อง repairs=4 (restored 0, fallback 0, framing 1, dropped 3) remainingIllegalPairs=0
+  🧾 FINAL_TRACK_AUDIT (generation): accepted 82/82 · content 78 · bridge 0 · framing 4 · rejected 0 · coverage 30/30 · invariants OK
+  ⚠️ Best-attempt pair [049]: He states that he is able to go to that place.
+Checking prompt alignment…
+  Batch 1/7: checking 12 pairs (e.g. "Nida greets Somchai back and says Nida i…")
+  Batch 2/7: checking 12 pairs (e.g. "He asks where the entrance is.…")
+  Batch 3/7: checking 12 pairs (e.g. "He says he wants to see that door.…")
+  Batch 4/7: checking 12 pairs (e.g. "He says he is hurrying to buy a ticket.…")
+  Batch 5/7: checking 12 pairs (e.g. "Tell her you want her to tell you someth…")
+  Batch 6/7: checking 12 pairs (e.g. "She asks if that chair is light in weigh…")
+  Batch 7/7: checking 9 pairs (e.g. "Tell the other person: I want two shirts…")
+⚠️ 2 prompt mismatches:
+  [He says he is going with his girlfriend and they are a ] score 3/5 — prompt says girlfriend but sentence says couple
+  [She says she will go to the market and asks him where h] score 4/5 — English translation omits the question about the listener's plans.
+Evaluating 31 groups…
+  ✓ รถเมล์
+  ✓ ยาว
+  ✓ กังวล
+  ✓ คุ้ม
+  ✓ ครั้ง
+  ✓ ทางเข้า
+  ✓ ควร
+  ✓ หวัง
+  ✓ ไฟ
+  ✓ ประตู
+  ✓ หน้าต่าง
+  ✓ เตียง
+  ✓ อาบน้ำ
+  ✓ รีบ
+  ✏️ คู่: Prompt mismatch (3/5): "He says he is going with his girlfriend " — "I'm going with my girlfriend. We are a c". prompt says girlfriend but sentence says couple
+  ⛔ QC improve discarded for คู่: 8 units > max 7 — "ผมไปกับแฟนครับ เราเป็นคู่กันครับ" (original kept)
+  ✓ ชิ้น
+  ✓ ต้องการ
+  🔄 สามารถ: auto-replace (was best-attempt)
+  🔄 สามารถ: Best-attempt fallback — all generation checks failed, replacing with fresh attempt
+  ✓ เล่า
+  ✓ แต่งตัว
+  ✓ รองเท้า
+  ✓ เก้าอี้
+  ✓ เบา
+  ✓ ตู้เย็น
+  ✓ ตัดสินใจ
+  ✓ คะ
+  ✓ ใบ
+  ✓ ตัว
+  ✓ หมายถึง
+  ✓ แนะนำ
+  ✓ parting
+  🔒 closed-vocab [qc] checked=82 pass=82 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔒 closed-vocab [qc-final] checked=82 pass=82 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [คู่] "She asks which pair of shoes he wants." → "Ask: Which pair of shoes do you want?" (rebuilt-from-english; cue 3/5 — prompt asks which pair he wants, but sentence asks which pair you want)
+  ⛔ final audit: [สามารถ] UNNATURAL — unnatural 2/5 — Can't arrive at zero baht, implies free. → dropped
+  ⛔ CUE_MISMATCH_DROP_PAIR [สามารถ] Thai is not natural (2/5): ผมสามารถไปถึงตอนห้าทุ่มครับ
+  ⛔ final audit: [สามารถ] CUE_MISMATCH — prompt says 11 PM but sentence says 5 PM (Thai is not natural (2/5)) → dropped
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (main): checked=78 cue=COMPLETE (78/78 judged) naturalness=COMPLETE (78/78 judged) templateGarbage=0 invalidTime=0 cueMismatch=1 cueRepaired=1 unnatural=1 unverified=0 (kept, marked) dropped=2 reusedVerdicts=150 (judged earlier on the same text, not paid again) status=COMPLETE
+  🔒 closed-vocab [post-audit] checked=80 pass=80 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  ♻️ final audit: restored pre-mutation candidate for สามารถ: คุณสามารถไปได้พรุ่งนี้ค่ะ
+  🧾 FINAL_TRACK_AUDIT (qc): accepted 81/80 · content 77 · bridge 0 · framing 4 · rejected 0 · coverage 30/30 · invariants OK
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (rescue): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 reusedVerdicts=2 (judged earlier on the same text, not paid again) status=COMPLETE
+  📊 coverage: 3+ candidates 20 · 2 7 · 1 3 · 0 0
+  🧭 SEMANTIC_AUDIT COMPLETE · NATURALNESS_AUDIT COMPLETE (77/77 judged) (pair-level only — MAIN_TRACK status is decided by TRACK INTEGRITY)
+━━ FINAL_TRACK (th): quota → recovery → coherence → freeze text → pronunciation → final audit → invariants
+♻️ QUOTA RECOVERY round 1: 10 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 13 · TARGET PAIRS 77/90
+  🟠 2nd check: รถเมล์ · recall 2 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [รถเมล์] "He asks if they should take the bus this way." → "Ask: Shall we take the bus this way?" (rebuilt-from-english; cue 3/5 — prompt says 'they' but sentence says 'we')
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=1 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY รถเมล์: +1 TARGET PAIR(S) (needed 1) — ฉันไม่ชอบรถเมล์ค่ะ
+  🔵 4th check: คุ้ม · recall 1 · quota recovery (paid, one request)
+  🟠 2nd check: คุ้ม · recall 2 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [คุ้ม] "She says if she gets to go, it will probably be worthwhile." → "Tell the other person: If I get to go, it will probably be worthwhile." (rebuilt-from-english; cue 3/5 — prompt says 'if she gets to go' but sentence implies 'if she goes')
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=1 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY คุ้ม: +2 TARGET PAIR(S) (needed 2) — ไปแล้วจะคุ้มไหมคะ / ได้ไปก็คงคุ้มค่ะ
+  🟠 2nd check: ทางเข้า · recall 1 · quota recovery (paid, one request)
+  ⛔ token=ค่อย canonicalId=987 learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=quota-recovery:ทางเข้า stage=quota-recovery
+  ⛔ dropped pair 1 (quota-recovery:ทางเข้า): no authorised repair for ค่อย
+  🔒 closed-vocab [quota-recovery] checked=2 pass=1 blockedUnseen=1 tokens=ค่อย repairs=1 (restored 0, fallback 0, framing 0, dropped 1) remainingIllegalPairs=0
+  ⚠️ PARSE_RETRY quota-recovery cue check batch of 1: 1 not judged — reply unparseable: Expected double-quoted property name in JSON at position 2698 (line 184 column 13) → retry ONLY these 1 in batches of 6
+  ⚠️ PARSE_RETRY quota-recovery cue check batch of 1: 1 not judged — reply unparseable: Expected double-quoted property name in JSON at position 2698 (line 184 column 13) → retry ONLY these 1 in batches of 3
+  ⚠️ PARSE_RETRY quota-recovery cue check batch of 1: 1 not judged — reply unparseable: Expected double-quoted property name in JSON at position 2698 (line 184 column 13) → UNVERIFIED
+  ⛔ quota-recovery audit: [ทางเข้า] CUE_UNVERIFIED (reply unparseable: Expected double-quoted property name in JSON at position 2698 (line 184 column 13)) → not accepted (fail closed)
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=FAILED (0/1 judged, 1 unverified) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=1 (dropped: fail closed) dropped=1 status=PARTIAL
+  ⛔ QUOTA RECOVERY ทางเข้า: 0/1 accepted — CLOSED_VOCABULARY (ค่อย): ทางเข้านี้ไม่ค่อยดีค่ะ | CUE_UNVERIFIED (reply unparseable: Expected double-quoted property name in JSON at position 2698 (line 184 column 13)): เราไปทางเข้าไหนกันดีครับ
+  🟠 2nd check: ควร · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=1 pass=1 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY ควร: +1 TARGET PAIR(S) (needed 1) — เราควรหาทางเข้ากันไหมคะ
+  🟠 2nd check: กังวล · recall 1 · quota recovery (paid, one request)
+  ⛔ token=เรื่อง canonicalId=660 learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=quota-recovery:กังวล stage=quota-recovery
+  ⛔ dropped pair 0 (quota-recovery:กังวล): no authorised repair for เรื่อง
+  🔒 closed-vocab [quota-recovery] checked=2 pass=1 blockedUnseen=1 tokens=เรื่อง repairs=1 (restored 0, fallback 0, framing 0, dropped 1) remainingIllegalPairs=0
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY กังวล: +1 TARGET PAIR(S) (needed 1) — เราไปกันไหมครับ ผมไม่กังวล
+  ⛔ CHECKS_EXHAUSTED สามารถ recall 2+3: 11/11 attempts used — UNRESOLVED
+  🔷 5th check: เล่า · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=1 pass=1 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY เล่า: +1 TARGET PAIR(S) (needed 1) — ผมจะเล่าให้คุณฟังครับ
+  🟠 2nd check: เบา · recall 1 · quota recovery (paid, one request)
+  ⛔ token=มัน canonicalId=960 learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=quota-recovery:เบา stage=quota-recovery
+  ⛔ dropped pair 1 (quota-recovery:เบา): no authorised repair for มัน
+  🔒 closed-vocab [quota-recovery] checked=2 pass=1 blockedUnseen=1 tokens=มัน repairs=1 (restored 0, fallback 0, framing 0, dropped 1) remainingIllegalPairs=0
+  ⛔ final audit: [เบา] UNNATURAL — unnatural 2/5 — เบา means light in weight or quiet, not suitable for describing placement. → dropped
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=1 unverified=0 (dropped: fail closed) dropped=1 status=COMPLETE
+  ⛔ QUOTA RECOVERY เบา: 0/1 accepted — CLOSED_VOCABULARY (มัน): ผมว่ามันเบาครับ | UNNATURAL: unnatural 2/5 — เบา means light in weight or quiet, not suitable for describing placement.: วางที่นี่ก็เบาค่ะ
+  🟨 7th check: คะ · recall 2+3 · quota recovery (paid, one request)
+  ⚠ RECOVERY_TARGET_MISSING_LOCAL_REJECT คะ (deterministic, no paid check; the model declared "คะ"): ฉันอยากได้ตัวนั้นน่ะค่ะ
+  🔒 closed-vocab [quota-recovery] checked=1 pass=1 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY คะ: +1 TARGET PAIR(S) (needed 2) — คุณจะเอาไปไว้ไหนคะ
+  🔶 3rd check: ตัว · recall 2 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [ตัว] "Nida asks Somchai how many shirts he will take." → "Ask: How many shirts will you take?" (rebuilt-from-english; cue 3/5 — prompt asks about 'he' taking shirts, Thai asks about 'you' taking shirts.)
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=1 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY ตัว: +1 TARGET PAIR(S) (needed 1) — ผมอยากได้เก้าอี้ตัวนั้นครับ
+♻️ QUOTA RECOVERY round 2: 3 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 3 · TARGET PAIRS 85/90
+  🔶 3rd check: ทางเข้า · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [ทางเข้า] "He asks which entrance they should go to." → "Ask: Which entrance should we go to?" (rebuilt-from-english; cue 3/5 — prompt asks which entrance 'they' should go to, but sentence asks which entrance 'we' should go to.)
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=1 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY ทางเข้า: +1 TARGET PAIR(S) (needed 1) — ทางเข้าอยู่ตรงนั้นค่ะ
+  🔶 3rd check: เบา · recall 1 · quota recovery (paid, one request)
+  ⛔ token=มัน canonicalId=960 learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=quota-recovery:เบา stage=quota-recovery
+  ⛔ dropped pair 0 (quota-recovery:เบา): no authorised repair for มัน
+  🔒 closed-vocab [quota-recovery] checked=1 pass=0 blockedUnseen=1 tokens=มัน repairs=1 (restored 0, fallback 0, framing 0, dropped 1) remainingIllegalPairs=0
+  ⛔ QUOTA RECOVERY เบา: 0/1 accepted — SPEAKER_CONFLICT: speaker A is male but the sentence is female (ค่ะ + ฉัน): ฉันอยากได้ของที่เบาค่ะ | CLOSED_VOCABULARY (มัน): ฉันว่ามันไม่เบาค่ะ
+  🔀 RECOVERY_STRATEGY_CHANGE เบา → 1 (CHANGE THE LEXICAL CONSTRUCTION) because forbidden token มัน used again
+  🟢 8th check: คะ · recall 3 · quota recovery (paid, one request)
+  ⚠ RECOVERY_TARGET_MISSING_LOCAL_REJECT คะ (deterministic, no paid check; the model declared "คะ"): ผมอยากได้เก้าอี้ตัวนั้นครับ
+  🔒 closed-vocab [quota-recovery] checked=1 pass=1 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY คะ: +1 TARGET PAIR(S) (needed 1) — แล้วคุณชอบอะไรคะ
+  🔀 RECOVERY_STRATEGY_CHANGE คะ → 1 (CHANGE THE LEXICAL CONSTRUCTION) because same failure class twice (TARGET_MISSING)
+♻️ QUOTA RECOVERY round 3: 1 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 1 · TARGET PAIRS 87/90
+  🔵 4th check: เบา · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [เบา] "Somchai states that he thinks this refrigerator is light." → "Tell the other person: I think this refrigerator is light." (rebuilt-from-english; cue 3/5 — prompt says refrigerator is light but sentence says it is light)
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=1 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY เบา: +1 TARGET PAIR(S) (needed 1) — ฉันไม่ชอบเก้าอี้ที่เบาค่ะ
+  ⛔ TARGET_PAIR_QUOTA_UNMET สามารถ (1452): 1/3 valid TARGET PAIRS after 1 recovery request(s) — CHECKS_EXHAUSTED
+  ℹ TARGET_UNSUITABLE_FOR_CURRENT_LEXICON not recorded for สามารถ: 1 valid pair(s) prove the target is usable with this lexicon — the misses were recovery-strategy failures ()
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Thai words, benchmark-fixture th-daily-device-2026-10-09)
+📚 VOCAB INVENTORY introducedContent=863 selectedTargets=30 newTargets=1 (daily)
+  🧩 MAIN_TRACK_COHERENCE 5/7 scene(s) coherent · overall 3/5 (threshold 3) · S1=4 S2=4 S3=4 S4=4 S5=5 S6=1 S7=1 · S6:  · S7:  → FAIL
+  🗺 SCENE_CLUSTER_VALIDATION S6 PASS (discourse / general words only) — the cluster is valid, so only its off-topic lines are rewritten
+  🗺 SCENE_CLUSTER_VALIDATION S7 PASS (one semantic domain (identity & names)) — the cluster is valid, so only its off-topic lines are rewritten
+  🗺 MAIN_TRACK_PREMISE_REPLAN S6 "Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures": LOCAL_PREMISE "A and B talk about somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures him it's worthwhile for the sights they'll see. They also confirm the entrance location, and Somchai expresses his hope that the lights will be on when they arrive. — small talk" → "The section is about discussing travel plans, but the lines are about small talk and unrelated items." (judge: premise did not fit the scene's targets)
+  🗺 MAIN_TRACK_PREMISE_REPLAN S7 "Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures": LOCAL_PREMISE "A and B talk a plan through and explain exactly what they mean" → "The section is about discussing travel plans, but the lines are about shopping and unrelated items." (judge: premise did not fit the scene's targets)
+  🧩 MAIN_TRACK_COHERENCE 5/7 scene(s) coherent · overall 3/5 (threshold 3) · S1=4 S2=4 S3=4 S4=4 S5=5 S6=1 S7=1 · S6:  · S7:  → FAIL
+  🔧 MAIN_TRACK_COHERENCE_REPAIR S6 "Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures" (score 1): rewriting 3 line(s) — L40,L41,L42
+  🟠 2nd check: รีบ · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [รีบ] "Nida tells Somchai that he doesn't need to hurry." → "Tell the other person: You don't need to hurry." (rebuilt-from-english; cue 3/5 — prompt says Nida tells Somchai but sentence says You)
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=1 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+    ✅ รีบ: "ผมต้องรีบไปแล้วครับ" → "ผมรีบไปหน่อยครับ"
+  🔶 3rd check: คู่ · recall 2 · quota recovery (paid, one request)
+  ⛔ token=สัก canonicalId=none learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=quota-recovery:คู่ stage=quota-recovery
+  ⛔ dropped pair 0 (quota-recovery:คู่): no authorised repair for สัก
+  🔒 closed-vocab [quota-recovery] checked=2 pass=1 blockedUnseen=1 tokens=สัก repairs=1 (restored 0, fallback 0, framing 0, dropped 1) remainingIllegalPairs=0
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+    ✅ คู่: "ผมไปกับแฟนครับ เป็นคู่กันครับ" → "ผมไม่ต้องการรองเท้าคู่นั้นครับ"
+  🔶 3rd check: ชิ้น · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=1 pass=1 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+    ✅ ชิ้น: "ผมอยากได้ผลไม้นี้ชิ้นหนึ่งครับ" → "นี่คือผลไม้หลายชิ้นค่ะ"
+  🔧 MAIN_TRACK_COHERENCE_REPAIR S7 "Somchai and Nida are discussing their travel plans. Somchai explains that the bus route is very long, but Nida reassures" (score 1): rewriting 3 line(s) — L65,L66,L67
+  🔶 3rd check: เบา · recall 2 · quota recovery (paid, one request)
+  ⛔ token=มัน canonicalId=960 learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=quota-recovery:เบา stage=quota-recovery
+  ⛔ dropped pair 1 (quota-recovery:เบา): no authorised repair for มัน
+  🔒 closed-vocab [quota-recovery] checked=2 pass=1 blockedUnseen=1 tokens=มัน repairs=1 (restored 0, fallback 0, framing 0, dropped 1) remainingIllegalPairs=0
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+    ✅ เบา: "ผมอยากได้เก้าอี้ที่เบาครับ" → "เก้าอี้ตัวนั้นเบาดีครับ"
+  🟠 2nd check: ตู้เย็น · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [ตู้เย็น] "Nida asks Somchai if he is going to buy a refrigerator." → "Ask: Are you going to buy a refrigerator?" (rebuilt-from-english; cue 3/5 — prompt asks if Somchai is going to buy, Thai asks if listener is going to buy)
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=1 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+    ✅ ตู้เย็น: "ผมอยากได้ตู้เย็นครับ" → "ผมไม่ชอบตู้เย็นครับ"
+  🟠 2nd check: ตัดสินใจ · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [ตัดสินใจ] "He says he will decide today." → "Tell the other person: I will decide today." (rebuilt-from-english; cue 3/5 — prompt says will decide today but sentence says decide today)
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=1 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+    ✅ ตัดสินใจ: "ผมยังไม่ได้ตัดสินใจครับ" → "ฉันยังไม่ได้ตัดสินใจค่ะ"
+  🧩 MAIN_TRACK_COHERENCE 5/7 scene(s) coherent · overall 3/5 (threshold 3) · S1=4 S2=4 S3=4 S4=4 S5=5 S6=1 S7=1 · S6:  · S7:  → FAIL
+  🧊 FINAL_LINE_TEXT frozen: 92 line(s) · fingerprint 92:17076lz
+  🔤 87 broken romanisation(s) rebuilt from the canonical dictionary (no model request)
+  Batch 1/1: re-romanizing 2 pairs (e.g. ผมอยากได้รองเท้าสองคู่ครับ…)
+  🔤 2 phonetics re-romanized (after recovery)
+  🔍 SEGMENTATION: 91 deterministic · 0 cached · 1 ambiguous → 1 batched Gemini request(s)
+  📖 GLOSS FILL: 1 of 92 pair(s) have a word without an English gloss
+  Batch 1/1: ผมต้องการไปที่นั่นครับ…
+  🔤 final phonetics: 541 canonical tokens, 1 derived, 0 alignment issue(s)
+  🗺 SCENE_ID_RESTORED 4 line(s) had no sceneId (target pairs are now stamped at creation; recovery / repair lines inherit their target's scene)
+  🔤 FINAL_PRONUNCIATION_AUDIT (authoritative, persisted Main Track): 0 issue(s) over 92 line(s)
+  🧩 TARGET_VARIETY_AUDIT 29/30 target(s) practise 3 distinct applications · incomplete: สามารถ (1/3 valid)
+📏 MAIN_COMPLEXITY_AUDIT belt=10th Kyu preferred=3–5 hardMax=7 lines=92 withinPreferred=64 shortNatural=2 abovePreferredAllowed=26 overHardMax=0 maxObserved=7 · preferredRatio=72% (advisory ≥80% — DRIFT: the prompt or scene plan is too complex for this learner) PASS
+  🔁 FINAL_DUPLICATE_AUDIT target pairs=88 duplicates=0 PASS (run on the FINAL persisted pairs)
+  📊 CHECK_MODEL recalls=90 candidateAttempts=185 (2.06/recall) accepted=89 unresolved=2 firstAttemptSuccess=72% acceptedAtCheck=1:64,2:15,3:3,4:1,5:2,6:1,8:1,11:2 rejectionClasses=OTHER×53 UNTAUGHT×18 CUE_FORM×5 TARGET_MISSING×3
+  🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=185 · by origin: model reply 184 · deterministic fallback (no request) 1 · outcomes: accepted 104 · rejected 79 · provisional 2 · fallback accepted for 0 recall(s) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+  ⛔ UNRESOLVED_RECALLS 2: 1452|2 (11/11 checks: all 11 checks used) · 1452|3 (11/11 checks: all 11 checks used)
+📋 MAIN TRACK NOT_READY
+📋 Reasons:
+📋 - target quota 88/90: สามารถ 1/3
+📋 - coherence: S6 1/5, S7 1/5
+🧾 TRACK INTEGRITY (th): NOT_READY — TARGET_PAIR_QUOTA=88/90 (required 90/90) · MAIN_TRACK_COHERENCE=FAIL (overall 3/5 · S6=1 S7=1 · after repair of 6 line(s))
+  MAIN_TRACK: NOT_READY · TARGET PAIRS 88/90 · COHERENCE FAIL overall 3/5 (threshold 3) · S1=4 S2=4 S3=4 S4=4 S5=5 S6=1 S7=1 · before repair 3/5 · repair 6 line(s) / 6 call(s)
+  TARGET WORDS: 30/30 covered
+  TARGET PAIRS: 88/90 valid target-practice sentences (3 per target word)
+  QC: 2 candidate sentence(s) rejected (1 cue mismatch · 1 unnatural · 0 other) · 12 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 185 evaluated, 79 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+  BRIDGE PAIRS: 0 · FRAMING PAIRS: 4 · TOTAL PLAYABLE LINES: 92
+  PRONUNCIATION ALIGNMENT: 0 issue(s) · UNVERIFIED FINAL PAIRS: 0
+🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a Daily Track

@@ -3643,6 +3643,12 @@ function mandarinSurfaceGrammarProblems(zh, inv) {
   if (/^(我|你|他|她|我们|你们|他们)(也|都|还)?想[。！!]?$/.test(s) || /^(你|他|她|你们|他们)(也|都|还)?想(吗|不想)[？?]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 想 needs what you want / would like (我想去 / 你想吃什么？)')
   if (/^(我|你|他|她|我们|你们|他们)到[。！!]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 到 needs 了 or a place (我到了 / 我到家了)')
   // v682 final run (all accepted live): 你慢吗？ ("are you slow?"), 我们到这里。 (arrival needs 了), 我跟你说， (ends on a comma)
+  // v682 final round 2 (accepted live in a READY track): 不吗？ ("Not?"), 这个地方到了。 ("this place has arrived"),
+  // 这个你拿可以吗？ (可以 after the verb) and 我要回。 (a statement with nowhere to return to; 你明天回吗？ is fine casual speech)
+  if (/^(不|没|没有)(吗|呢|吧)?[？?。！!]?$/.test(s)) P.push('fragment: ' + s + ' — a bare negation is not a sentence')
+  if (/^(这个地方|那个地方|这里|那里|地方|这个|那个)到了/.test(s)) P.push('unnatural: ' + s + ' — a place does not arrive; say 我们到了 / 到这里了')
+  if (/(拿|吃|喝|去|做|用|买|看|来|找|等|帮|开)可以(吗)?[？?。]?$/.test(s)) P.push('ungrammatical: ' + s + ' — 可以 comes before the verb (你可以拿这个吗？)')
+  if (/回[。！!]?$/.test(s) && !/(回来|回去|回家)/.test(s)) P.push('incomplete: ' + s + ' — 回 needs where to (回家 / 回去 / 回来)')
   if (/^(你|他|她|你们|他们)(慢|快|大|小|多|少|长|短|高|贵|远|近)吗[？?]$/.test(s)) P.push('unnatural: ' + s + ' — this adjective does not describe a person (这个慢吗？ / 你忙吗？)')
   if (/^(我|你|他|她|我们|你们|他们)到(这里|那里|家)[。！!]?$/.test(s)) P.push('incomplete: ' + s + ' — arriving needs 了 (我们到这里了 / 我到家了)')
   if (/[，,、]$/.test(s)) P.push('fragment: ' + s + ' — the sentence stops on a comma')
@@ -4155,6 +4161,22 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
       else if (zh === '\u6709\u70B9') C.push({ zh: '\u6709\u70B9' + a.chinese + '\u3002', en: "It's a bit " + g + '.', cue: 'Say it is a bit ' + g })
       else if (zh === '\u5F88' || zh === '\u975E\u5E38' || zh === '\u771F') C.push({ zh: zh + a.chinese + '\u3002', en: "It's " + (zh === '\u5F88' ? '' : 'really ') + g + '.', cue: 'Say it is ' + (zh === '\u5F88' ? '' : 'really ') + g })
     })
+    // v682 final round 2 — 太 gets DIFFERENT frames, not one frame with three adjectives (这个太慢了 / 这个太大了 / 这个太快了 now count
+    // as one application): an amount (人太多了), not-very (这个不太大), the exclamation 太好了！ and a place (这个地方太远了)
+    if (zh === '太') {
+      const hasW = w => (inv.allContent || []).some(x => x && x.chinese === w)
+      const all = (inv.allContent || []).filter(w => w.partOfSpeech === 'adjective')
+      const A = w => all.find(x => x.chinese === w)
+      if (A('好')) C.push({ zh: '太好了！', en: "That's great!", cue: 'Say that is great', curated: true })
+      if (hasW('人') && A('多')) C.push({ zh: '人太多了。', en: 'There are too many people.', cue: 'Say there are too many people', curated: true })
+      if (hasW('钱') && A('少')) C.push({ zh: '钱太少了。', en: "There's too little money.", cue: 'Say there is too little money', curated: true })
+      if (hasW('不') || gram('不')) all.filter(a => /^(大|小|快|慢|好|贵|远|近|难)$/.test(a.chinese)).slice(0, 2).forEach(a => {
+        const g = primarySense(a.english)
+        if (hasW('这个')) C.push({ zh: '这个不太' + a.chinese + '。', en: "This one isn't very " + g + '.', cue: 'Say this one is not very ' + g, curated: true })
+      })
+      if (hasW('这个') && hasW('地方')) all.filter(a => /^(大|小|远|近)$/.test(a.chinese)).slice(0, 1).forEach(a =>
+        C.push({ zh: '这个地方太' + a.chinese + '了。', en: 'This place is too ' + primarySense(a.english) + '.', cue: 'Say this place is too ' + primarySense(a.english), curated: true }))
+    }
     // v681: 很 / 非常 + adjective needs a SUBJECT as a standalone recall (很多。 is a fragment) — taught subjects first
     // v682 final run — EVERY taught adjective × every subject that suits it (it used to be the first three adjectives with one
     // subject each: 人很多 / 人很少 / 这个很快 were all already used by 多 / 少 / 快, so 很 recall 2 went unresolved → 89/90)
@@ -4239,6 +4261,9 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
   return distinct[((recallIndex || 1) - 1) % distinct.length]
 }
 // v682 — the communicative function of a short Mandarin line (for "three meaningful applications")
+// v682 — asking vs saying: the only function difference that makes the same shape a new application in the generator / audit
+// (吧 added to a statement stays the same use — v672 §4: 你拿这个。/ 你拿这个吧)
+function zhAskOrSay(s) { return /^question/.test(zhCommunicativeFunction(s)) ? 'ask' : 'say' }
 function zhCommunicativeFunction(s) {
   const t = String(s || '').replace(/\s+/g, '')
   if (/(什么|谁|哪|怎么|为什么|多少|几)/.test(t) || /([\u4e00-\u9fff])不\1/.test(t)) return 'question-open'
@@ -4253,9 +4278,15 @@ function zhCommunicativeFunction(s) {
 function zhApplicationKey(text, target) {
   let s = String(text || '')
   if (!/(现在|今天|明天|昨天)/.test(target || '')) s = s.replace(/(现在|今天|明天|昨天)/g, '')
-  if (!/^(这里|那里)$/.test(target || '')) s = s.replace(/^(这里|那里)(?=[\u4e00-\u9fff])/, '')
+  if (!/^(这里|那里|这个地方|那个地方|地方)$/.test(target || '')) s = s.replace(/^(这里|那里|这个地方|那个地方)(?=[\u4e00-\u9fff])/, '')
   if (target !== '在') s = s.replace(/^(我|你|他|她|我们|你们|他们)在(?!(这里|那里|哪|家))/, '$1')
-  return recallVariationKey(s, target)
+  // v682 final round 2 — a dropped / added subject pronoun (一起去吧 / 我们一起去吧) is the same application
+  if (!/^(我|你|他|她|我们|你们|他们)$/.test(target || '')) s = s.replace(/^(我们|你们|他们|我|你|他|她)(?=[\u4e00-\u9fff])/, '')
+  let k = recallVariationKey(s, target)
+  // ...and so is the same frame with another adjective (这个太慢了 / 这个太大了 / 这个太快了; 那个很好 / 那个很慢) — unless the
+  // target IS that adjective (这个很大 / 这个大吗？ practise 大 itself)
+  if (!/^(大|小|多|少|快|慢|好|贵|远|近|长|短|高|新|旧|热|冷|忙|累|难)$/.test(target || '')) k = k.replace(/(很|太|不|真|非常|<T>)(大|小|多|少|快|慢|好|贵|远|近|长|短|高|新|旧|热|冷|忙|累|难)/g, '$1<A>')
+  return k
 }
 function zhSameApplication(a, b, target) {
   const ka = zhApplicationKey(a, target), kb = zhApplicationKey(b, target)
@@ -4354,8 +4385,10 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
     // another attempt, not a third use (拿: 你拿这个。/ 你拿这个吧) — never enforced on the deterministic fallback
     if (!isFallback) {
       const mine = [...(seenMap || new Map()).entries()].filter(([, id]) => id === target.id).map(([kk]) => kk)
-      const key = _recoveryConstructionKey(cand.chinese, target.chinese), vkey = zhApplicationKey(cand.chinese, target.chinese)
-      if ((key && mine.some(m => _recoveryConstructionKey(m, target.chinese) === key)) || (vkey && mine.some(m => zhApplicationKey(m, target.chinese) === vkey))) {
+      const key = _recoveryConstructionKey(cand.chinese, target.chinese), vkey = zhAskOrSay(cand.chinese) + '|' + zhApplicationKey(cand.chinese, target.chinese)
+      // v682 — like Japanese: the same shape asked vs stated (我回家。/ 你回家吗？) is a different use; the same shape with the same
+      // function is not
+      if ((key && mine.some(m => _recoveryConstructionKey(m, target.chinese) === key && zhAskOrSay(m) === zhAskOrSay(cand.chinese))) || (vkey && mine.some(m => zhAskOrSay(m) + '|' + zhApplicationKey(m, target.chinese) === vkey))) {
         last = 'same application as an accepted recall (only a particle, demonstrative, pronoun, time word, place or 在 differs) — use a different communicative function'
         if (o.onRejected && cand.chinese) o.onRejected(cand.chinese, last)
         recordMandarinRejection(stats, 'duplicate'); onLog && onLog('  \u274C ' + last + ': ' + cand.chinese); L.settle(tid, recallIndex, 'rejected', last, n); continue }
@@ -13903,6 +13936,13 @@ const THAI_SPEAKER_MAP = Object.freeze({
   A: Object.freeze({ gender: 'male',   particles: Object.freeze(['\u0e04\u0e23\u0e31\u0e1a']),              role: 'Thai man' }),
   B: Object.freeze({ gender: 'female', particles: Object.freeze(['\u0e04\u0e48\u0e30', '\u0e04\u0e30']), role: 'Thai woman' }),
 })
+// v682 final run — the speaker a gender-bound target belongs to: คะ / ค่ะ / นะคะ / ดิฉัน → B (woman); ครับ / นะครับ / ผม → A (man)
+function thaiGenderedTargetSpeaker(thai) {
+  const t = String(thai || '').trim()
+  if (/^(\u0e04\u0e30|\u0e04\u0e48\u0e30|\u0e19\u0e30\u0e04\u0e30|\u0e14\u0e34\u0e09\u0e31\u0e19)$/.test(t)) return 'B'
+  if (/^(\u0e04\u0e23\u0e31\u0e1a|\u0e19\u0e30\u0e04\u0e23\u0e31\u0e1a|\u0e1c\u0e21)$/.test(t)) return 'A'
+  return null
+}
 function thaiSpeakerMapGender(letter) { const m = THAI_SPEAKER_MAP[letter]; return m ? m.gender : null }
 // Prompt text for a speaker's required ending, built from the map ("ครับ" / "ค่ะ or คะ").
 function thaiContractParticleText(letter) { return (THAI_SPEAKER_MAP[letter] || THAI_SPEAKER_MAP.A).particles.join(' or ') }
@@ -14499,9 +14539,16 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       target._earlyRejected.slice(0, 4).map(x => '  ✗ ' + x.thai + (x.why ? ' (' + String(x.why).slice(0, 90) + ')' : '')).join('\n') + '\n'
     : ''
   const baseUser = _topicBridge + _earlyRejectLine + context + 'Continue the conversation. Write exactly 3 lines:\n' +
-    'LINE 1 (A): ' + _usageHint + ' — must end with ' + thaiContractParticleText('A') + ' — MUST contain the Thai word "' + target.thai + '"\n' +
-    'LINE 2 (B): respond naturally to what A just said AND use "' + target.thai + '" yourself — must end with ' + thaiContractParticleText('B') + '\n' +
-    'LINE 3 (A): must contain "' + target.thai + '" again — must end with ' + thaiContractParticleText('A') + '\n' +
+    (_gs => _gs
+      // v682 final run — a word only ONE gender says (คะ / ค่ะ: women; ครับ / ผม: men) is said by that speaker in all three lines
+      // (live: คะ was put in male A's lines 11 times → every line rejected → 87/90)
+      ? '"' + target.thai + '" is said only by ' + (_gs === 'B' ? 'WOMEN' : 'MEN') + ', so ALL THREE lines are spoken by ' + _gs + ' (the ' + (_gs === 'B' ? 'woman' : 'man') + ').\n' +
+        'LINE 1 (' + _gs + '): ' + _usageHint + ' — must end with ' + thaiContractParticleText(_gs) + ' — MUST contain the Thai word "' + target.thai + '"\n' +
+        'LINE 2 (' + _gs + '): a DIFFERENT thing she/he says, again using "' + target.thai + '" — must end with ' + thaiContractParticleText(_gs) + '\n' +
+        'LINE 3 (' + _gs + '): must contain "' + target.thai + '" again — must end with ' + thaiContractParticleText(_gs) + '\n'
+      : 'LINE 1 (A): ' + _usageHint + ' — must end with ' + thaiContractParticleText('A') + ' — MUST contain the Thai word "' + target.thai + '"\n' +
+        'LINE 2 (B): respond naturally to what A just said AND use "' + target.thai + '" yourself — must end with ' + thaiContractParticleText('B') + '\n' +
+        'LINE 3 (A): must contain "' + target.thai + '" again — must end with ' + thaiContractParticleText('A') + '\n')(thaiGenderedTargetSpeaker(target.thai)) +
     '\nCRITICAL: ALL THREE lines MUST physically contain the characters "' + target.thai + '" — not a synonym, not a related word — the exact word. ' +
     'Each line is one TARGET PAIR; the lesson needs 3 per target word.\n' +
     // v669 §5 — the ONE intended sense of the target, which the cue and the English must express too
@@ -14756,6 +14803,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         // v642: the generated speaker letter is METADATA and is kept. It used to be
         // overwritten from the particle, which let a female line in A's slot pass as B.
         // Only a missing/invalid letter is filled from the particle, and that is logged.
+        // v682 final run — a line carrying a gender-bound TARGET (คะ / ครับ / ผม …) belongs to that target's speaker; the model
+        // labelled คะ lines as male A. Only when the line has no particle of the other gender (คะครับ stays a defect).
+        { const _gs = thaiGenderedTargetSpeaker(target.thai)
+          if (_gs && l.speaker && l.speaker !== _gs && thaiTargetPresent(l.thai, target.thai, vocab) &&
+              !THAI_SPEAKER_MAP[l.speaker].particles.some(pt => new RegExp(pt + '$').test(l.thai.replace(/\s+/g, '')) || (pt === '\u0e04\u0e23\u0e31\u0e1a' && l.thai.includes(pt)))) {
+            _tel.localRepairs++; onProgress && onProgress(-1, -1, { apiError: '🔧 LOCAL_REPAIR speaker (no paid call): "' + target.thai + '" is said only by ' + _gs + ' — ' + l.speaker + ' → ' + _gs + ': ' + l.thai.slice(0, 40) }, null, null)
+            l.speaker = _gs } }
         if (l.speaker !== 'A' && l.speaker !== 'B') {
           const _pt = thaiTrailingParticle(l.thai)
           const _fill = _pt && THAI_SPEAKER_MAP.A.particles.includes(_pt) ? 'A' : _pt && THAI_SPEAKER_MAP.B.particles.includes(_pt) ? 'B' : null
@@ -18595,7 +18649,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
     kws.forEach(k => {
       const id = k.wordId, surf = adapter.surfaceOf ? adapter.surfaceOf(k) : (k.thai || k.japanese || k.chinese)
       const ps = (t.pairs || []).filter(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId === id && !p._qcInvalid && !p._qcUnresolved)
-      const keyOf = x => adapter.lang === 'ja' ? japaneseFormulaKey(x, surf) : adapter.lang === 'zh' ? zhApplicationKey(x, surf) : recallVariationKey(x, surf)
+      const keyOf = x => adapter.lang === 'ja' ? japaneseFormulaKey(x, surf) : adapter.lang === 'zh' ? zhAskOrSay(x) + '|' + zhApplicationKey(x, surf) : recallVariationKey(x, surf)
       const keys = new Set(ps.map(p => keyOf(adapter.sentenceOf(p))))
       if (ps.length < 3) _missing.push(surf + ' (' + ps.length + '/3 valid)')
       else if (keys.size < 3) _short.push(surf + ' (' + keys.size + ' distinct of ' + ps.length + ')')
@@ -19924,7 +19978,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     (plan.generic ? thaiQuotaConstructionLine(kw.thai, cvCtx.allowedThaiWords, have, st) : thaiRecoveryFunctionLine(plan)) +
     recoveryStrategyPromptLines(st, { supportWords }) + recoveryFailureMemoryLines(st) +
     'Write ' + ask + ' NEW natural spoken Thai sentences. EVERY sentence MUST contain "' + kw.thai + '" as a word, used in ' + (THAI_SENSE_POLICY[kw.thai] ? 'the intended sense (' + THAI_SENSE_POLICY[kw.thai].sense.split(' (')[0] + ')' : 'its normal meaning') + '.\n' +
-    'Alternate speakers A and B. ' + getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }).promptRule + ' Continuous Thai (no spaces between words), no English in the Thai field.\n' +
+    (thaiGenderedTargetSpeaker(kw.thai) ? 'Every sentence is spoken by ' + thaiGenderedTargetSpeaker(kw.thai) + ' ("' + kw.thai + '" is said only by ' + (thaiGenderedTargetSpeaker(kw.thai) === 'B' ? 'women' : 'men') + '). ' : 'Alternate speakers A and B. ') + getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }).promptRule + ' Continuous Thai (no spaces between words), no English in the Thai field.\n' +
     'USE ONLY THESE CONTENT WORDS (all taught to this learner) plus the target "' + kw.thai + '":\n  ' + palette.words.join(' ') + '\n' +
     'and these speaker words / particles: ' + palette.particles.join(' ') + (sceneEntities.length ? ' · names: ' + sceneEntities.map(e => e.surface || e).join(' ') : '') + '\n' +
     'Any other content word will be rejected. english = a faithful natural translation. prompt = a third-person cue that says exactly what is said ("He asks if…", "She says…").\n' +
@@ -39084,6 +39138,14 @@ function jaFallbackRecall(target, inv, recallIndex, previousRecalls) {
 // and as the deterministic fallback's FIRST choice — so when the model will not
 // cooperate, どれ gets どれがいい？/どれにする？/どれが好き？ instead of どれ？ three times.
 const JA_HINT_PAIRS = {
+  // v682 final run — set phrases need DIFFERENT uses (what you thank / excuse yourself for), not 本当に / あ、 added to the same
+  // phrase: the second live final run ended 87/90 because ありがとう / すみません had only the bare phrase as a fallback
+  'ありがとう': [['電話、ありがとう。', 'Thanks for the call.', 'Thank them for the call'], ['いつもありがとう。', 'Thanks, as always.', 'Thank them for always helping'],
+           ['今日はありがとう。', 'Thanks for today.', 'Thank them for today'], ['ありがとう、また明日ね。', 'Thanks — see you tomorrow.', 'Thank them and say see you tomorrow']],
+  'すみません': [['すみません、駅はどこ？', 'Excuse me, where is the station?', 'Excuse yourself and ask where the station is'], ['すみません、大丈夫？', 'Excuse me — are you okay?', 'Excuse yourself and ask if they are okay'],
+           ['すみません、分からない。', "Sorry, I don't understand.", 'Apologise and say you do not understand'], ['すみません、ちょっといい？', 'Excuse me, do you have a moment?', 'Excuse yourself and ask if they have a moment']],
+  'ごめん': [['ごめん、ちょっと待って。', 'Sorry, wait a moment.', 'Apologise and ask them to wait a moment'], ['ごめん、分からない。', "Sorry, I don't get it.", 'Apologise and say you do not get it'],
+           ['ごめん、また明日ね。', 'Sorry — see you tomorrow.', 'Apologise and say see you tomorrow'], ['ごめん、今日は行かない。', "Sorry, I'm not going today.", 'Apologise and say you are not going today']],
   // v682 — 何 in real constructions (the live v682 verification run had only 何？ as a fallback, which repeats これ、何？)
   '\u4F55': [['\u4F55\u98DF\u3079\u308B\uFF1F', 'What will you eat?', 'Ask what they will eat'], ['\u4F55\u98F2\u3080\uFF1F', 'What will you drink?', 'Ask what they will drink'],
            ['\u4F55\u3059\u308B\uFF1F', 'What will you do?', 'Ask what they will do'], ['\u4F55\u304C\u3044\u3044\uFF1F', 'What would be good?', 'Ask what would be good']],

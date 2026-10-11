@@ -354,6 +354,32 @@ const deep = x => JSON.parse(JSON.stringify(x))
     T('F5', '你慢吗？ ("are you slow?"), 我们到这里。 (no 了) and 我跟你说， (stops on a comma) are rejected; 你忙吗？ / 我到家了。 / 我们到这里了。 stay legal',
       sp('你慢吗？') && sp('我们到这里。') && sp('我跟你说，') && !sp('你忙吗？') && !sp('我到家了。') && !sp('我们到这里了。'))
   }
+  // ══ F6–F7 — the second live final round (Thai คะ 0/3 → 87/90; Japanese ありがとう / すみません unresolved → 87/90) ═══════
+  {
+    const c = load(APP, { realBelt: true })
+    const g = t => c.thaiGenderedTargetSpeaker(t)
+    T('F6', 'a gender-bound Thai target goes to its own speaker: คะ / ค่ะ → B (woman), ครับ / ผม → A (man), other words alternate as before; the line prompt and quota recovery both say so and a mislabelled target line is re-assigned locally (live: คะ in male A\'s lines 11 times → 0/3)',
+      g('คะ') === 'B' && g('ค่ะ') === 'B' && g('ครับ') === 'A' && g('ผม') === 'A' && g('รถเมล์') === null &&
+      /is said only by ' \+ \(_gs === 'B' \? 'WOMEN' : 'MEN'\)/.test(SRC) && /Every sentence is spoken by ' \+ thaiGenderedTargetSpeaker\(kw\.thai\)/.test(SRC) && /LOCAL_REPAIR speaker \(no paid call\)/.test(SRC))
+    const fx = R.loadFixture('ja-daily-2026-10-08'), V = c.ttBenchApplyFixture(c.initJapaneseVocab(), fx), TG = c.ttBenchJazhTargets(fx, V), inv = c.japaneseLearnerInventory(V, TG)
+    const res = [['ありがとう', ['本当、ありがとうね。', 'いつもありがとうね。']], ['すみません', ['あ、すみません！', 'すみません、ちょっといい？']]].map(([t, prev]) => {
+      const tg = TG.find(x => x.japanese === t); const f = tg && c.jaFallbackRecall(tg, inv, 2, prev)
+      return { t, f: f && f.japanese, distinct: !!f && !prev.some(p => c.japaneseFormulaKey(p, t) === c.japaneseFormulaKey(f.japanese, t)) }
+    })
+    T('F7', 'set phrases have DIFFERENT fallback uses (電話、ありがとう。 / すみません、駅はどこ？), never the bare phrase again after 本当、ありがとうね。 / あ、すみません！ (live: both UNRESOLVED → 87/90)',
+      res.every(r => r.distinct), res)
+  }
+  // ══ F8 — lines accepted in the READY Mandarin track of the second live final round ═══════════════════════════════════════
+  {
+    const c = load(APP, { realBelt: true })
+    const k = (a, t) => c.zhAskOrSay(a) + '|' + c.zhApplicationKey(a, t)
+    const sp = z => c.mandarinSurfaceGrammarProblems(z, { allContent: [] }).length
+    const dup = [['一起去吧', '我们一起去吧。', '一起'], ['这个太慢了。', '这个太大了。', '太'], ['那个很好', '那个很慢', '那个'], ['人很多', '这个地方人很多。', '多']]
+    const dis = [['这个很大', '这个大吗？', '大'], ['我回家。', '你回家吗？', '回'], ['这个太大了。', '人太多了。', '太']]
+    T('F8', 'READY-track defects are caught: 不吗？ / 这个地方到了。 / 这个你拿可以吗？ / 我要回。 rejected (你明天回吗？ / 你可以拿这个吗？ / 我到了。 legal); a dropped pronoun or a swapped adjective is the same application; asked vs stated and a new subject stay distinct',
+      sp('不吗？') && sp('这个地方到了。') && sp('这个你拿可以吗？') && sp('我要回。') && !sp('你明天回吗？') && !sp('你可以拿这个吗？') && !sp('我到了。') &&
+      dup.every(([a, b, t]) => k(a, t) === k(b, t)) && dis.every(([a, b, t]) => k(a, t) !== k(b, t)), dup.concat(dis).map(([a, b, t]) => [a, b, k(a, t) === k(b, t)]))
+  }
   // ══ P — THAI PRONUNCIATION GUIDE (live v682 Thai lines with wrong / toneless romanisation) ══════════════════════════════
   {
     const c = load(APP, { realBelt: true })

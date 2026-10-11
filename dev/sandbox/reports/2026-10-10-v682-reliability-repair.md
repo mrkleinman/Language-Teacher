@@ -239,6 +239,24 @@ Proof: tests42 is 47/47 on this build (the new checks fail on the earlier build)
 
 **Still to do:** one live run per language on this build. My attempt to start them was blocked by this session's permission system (it treats paid API calls as a real-world transaction). They need the owner's go-ahead in the app.
 
+## 13. Live final rounds (11 October, owner: "don't cap, fix" / "go")
+
+Four live rounds, one run per language each: 12 runs, US$0.52 in total (US$0.03–0.06 per run; safety stop US$0.30 per run, never reached). After each round I read every sentence, fixed the root cause, added a regression check, re-recorded the offline recordings and re-ran the full suite before the next round.
+
+| Round | Japanese | Thai | Mandarin | Root causes fixed after the round |
+|---|---|---|---|---|
+| 1 | READY (3 near-duplicates found by reading) | 88/90 + 2 scenes 1/5 | 89/90 | 很 backups; three-copy Thai batch thrown away; leftover scene named after the storyline; judge's complaint adopted as the scene premise; softeners (ちょっと/本当に) counted as new uses; Mandarin time word / place / 在 / pronoun counted as new uses |
+| 2 | 87/90 | 87/90 | READY (defects found by reading) | set phrases lacked distinct backups; women-only คะ given to the man; 不吗？/这个地方到了/V+可以/bare 回; adjective swap = same use; 太 frames |
+| 3 | READY (2 near-duplicates) | 87/90 | duplicate line | "both speakers required" blocked คะ; คะ must end questions; QC replacement could copy an existing line; 你想到。/你到吗？ backups replaced with natural ones; Japanese internal 。 and an added sentence counted as new uses |
+| 4 | **READY 90/90** | **READY 90/90** | **READY 90/90** | — |
+
+**Round 4 (all READY), read line by line.** Most lines are natural and correct, and the earlier defects have not come back. These are still imperfect:
+- Thai: ยาว has two near-identical lines (ทางไปไกลยาวนะครับ / ทางไปไกล ยาวครับ, which is also unnatural). สามารถ, หวัง and ควร each have two lines that differ by only a pronoun or จะ. ผมอยากได้คู่รองเท้า has the wrong word order (it should be รองเท้าคู่หนึ่ง). A few romanisations in the word bank are inconsistent (pra-tuu, kan for การ).
+- Mandarin: 地方很少 ("the place is few") is wrong. 我很快 is odd. 这个不慢 / 不慢 are near-identical.
+- Japanese: たぶん has two lines that only swap word order (明日、たぶん行ける… / たぶん明日、行ける…). ちょっと、どう思う？ is odd.
+
+Proof: tests42 is 59/59 (every new check fails on the earlier build). The full offline suite is OK with no exceptions left. The browser test is 9/9.
+
 ## TL;DR
 
 - **Root causes.** Mandarin 喝 failed because the learner knows no drink nouns and there was only one backup sentence. Thai ชิ้น failed because the AI was never taught what ชิ้น counts. Both are fixed.

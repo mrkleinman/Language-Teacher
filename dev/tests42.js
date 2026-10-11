@@ -394,6 +394,15 @@ const deep = x => JSON.parse(JSON.stringify(x))
     T('F10', 'Thai คะ: the batch needs only the woman\'s lines (not both speakers) and the prompt says คะ ends QUESTIONS (live round 3: every B line rejected for "missing A or B speaker", statements turned คะ → ค่ะ)',
       /_gsT \? !genderValid\.some\(l => l\.speaker === _gsT\)/.test(SRC) && /ALL THREE lines must be QUESTIONS/.test(SRC) && /every sentence must be a question/.test(SRC))
   }
+  // ══ L16 — near-duplicates in the READY Japanese track of the third live final round ═══════════════════════════════════════
+  {
+    const c = load(APP, { realBelt: true })
+    const k = (a, s) => c.japaneseFormulaKey(a, s)
+    const seen = new Map([['x', { targetId: 1, text: 'うん、分かるよ。' }]])
+    T('L16', 'あ、ごめん。今日、忙しいんだ。 = ごめん、今日、忙しいんだ。 (an internal full stop is punctuation); ほんと = 本当; うん、分かるよ。一緒に行こう。 repeats うん、分かるよ。 (another sentence only added) — え、本当に分かるの？ stays a new use',
+      k('あ、ごめん。今日、忙しいんだ。', 'ごめん') === k('ごめん、今日、忙しいんだ。', 'ごめん') && k('ほんと、ありがとうね。', 'ありがとう') === k('本当にありがとうね。', 'ありがとう') &&
+      !c.japaneseVariationVerdict('うん、分かるよ。一緒に行こう。', 1, seen, '分かる').ok && c.japaneseVariationVerdict('え、本当に分かるの？', 1, seen, '分かる').ok)
+  }
   // ══ P — THAI PRONUNCIATION GUIDE (live v682 Thai lines with wrong / toneless romanisation) ══════════════════════════════
   {
     const c = load(APP, { realBelt: true })

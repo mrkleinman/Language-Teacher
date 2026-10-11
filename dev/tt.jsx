@@ -5881,6 +5881,9 @@ function japaneseFormulaKey(jp, surface) {
   // v682 final run — a softener or intensifier added to an accepted recall is not a new application:
   // ごめん、今日忙しいんだ。/ ごめん、今日ちょっと忙しいんだ。, 本当、ありがとうね。/ 本当にありがとうね。,
   // ちょっと待ってくれる？/ もうちょっと待ってくれる？ (all accepted as distinct in the live final Japanese run)
+  // v682 final round 3 — an internal full stop is punctuation, not a new sentence shape (あ、ごめん。今日、忙しいんだ。 /
+  // ごめん、今日、忙しいんだ。 were accepted as distinct); ほんと / ほんとに are 本当 / 本当に in kana
+  raw = raw.replace(/[\u3002\uFF01\uFF1F!?]+(?=.)/g, '\u3001').replace(/\u307B\u3093\u3068\u3046?\u306B?/g, '\u672C\u5F53')
   const sf = String(surface || '')
   ;['\u3082\u3046\u3061\u3087\u3063\u3068', '\u3061\u3087\u3063\u3068', '\u672C\u5F53\u306B', '\u672C\u5F53', '\u3059\u3054\u304F', '\u3068\u3066\u3082'].forEach(w => {
     if (sf && (sf.includes(w) || w.includes(sf))) { if (w.startsWith('\u3082\u3046') && !sf.includes('\u3082\u3046')) raw = raw.split(w).join(w.slice(2)); return }
@@ -5896,7 +5899,18 @@ function japaneseFormulaVariationVerdict(jp, targetId, seenMap, surface) {
     return { ok: false, level: 'V', reason: 'same use of the set phrase as an accepted recall (same function, nothing new around it): ' + e.text }
   return { ok: true }
 }
+// v682 final round 3 — the target's OWN sentence decides the application: うん、分かるよ。一緒に行こう。 adds a second sentence
+// to an accepted うん、分かるよ。 and is still the same use of 分かる
+function japaneseTargetClauseKey(jp, surface) {
+  const parts = String(jp || '').split(/(?<=[\u3002\uFF01\uFF1F!?])/).map(x => x.trim()).filter(Boolean)
+  if (parts.length < 2) return null
+  const own = parts.filter(x => matchesJapaneseTarget(x, { japanese: surface }))
+  return own.length === 1 ? japaneseFormulaKey(own[0], surface) : null
+}
 function japaneseVariationVerdict(jp, targetId, seenMap, surface) {
+  { const ck = japaneseTargetClauseKey(jp, surface)
+    if (ck) for (const [, e] of seenMap) if (e && e.targetId === targetId && e.text && (japaneseFormulaKey(e.text, surface) === ck || japaneseTargetClauseKey(e.text, surface) === ck))
+      return { ok: false, level: 'V', reason: 'same application as an accepted recall (the target\'s own sentence is the same; another sentence was only added): ' + e.text } }
   // v682 — function-aware (asking vs answering) and a leading reply word (うん / はい / ええ …) is not a new application: the live
   // v681 大丈夫 recalls 大丈夫？/ 大丈夫だよ。/ うん、大丈夫。 counted as three
   const v = japaneseFormulaKey(jp, surface)

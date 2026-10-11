@@ -380,6 +380,20 @@ const deep = x => JSON.parse(JSON.stringify(x))
       sp('不吗？') && sp('这个地方到了。') && sp('这个你拿可以吗？') && sp('我要回。') && !sp('你明天回吗？') && !sp('你可以拿这个吗？') && !sp('我到了。') &&
       dup.every(([a, b, t]) => k(a, t) === k(b, t)) && dis.every(([a, b, t]) => k(a, t) !== k(b, t)), dup.concat(dis).map(([a, b, t]) => [a, b, k(a, t) === k(b, t)]))
   }
+  // ══ F9–F10 — the third live final round (Mandarin duplicate via QC replacement + 你想到。/ 你到吗？; Thai คะ 0/3 again) ═════════
+  {
+    const c = load(APP, { realBelt: true })
+    const sp = z => c.mandarinSurfaceGrammarProblems(z, { allContent: [] }).length
+    const fx = R.loadFixture('zh-daily-2026-10-08'), V = c.ttBenchApplyFixture(c.initMandarinVocab(), fx), TG = c.ttBenchJazhTargets(fx, V)
+    const inv = c.mandarinLearnerInventory(V, TG), rules = c.mandarinScarcityRules(inv), ni = TG.find(t => t.chinese === '你')
+    const seen = new Map([['你喜欢这个吗', ni.id], ['你想吃什么', 999]]), got = []
+    for (let r = 1; r <= 3; r++) { const f = c.mandarinFallbackPair(ni, inv, r, seen, V, rules); got.push(f && [f.chinese, c.validateMandarinPair(f, ni, inv, V, rules, seen).ok]); if (f) seen.set(f.chinese.replace(/[。？]/g, ''), ni.id) }
+    T('F9', 'Mandarin: 你想到。/ 你到吗？/ 你回吗？/ 有你。 are rejected (你到了吗？ / 你明天回吗？ legal); 你 has natural fallbacks (我等你。/ 我跟你去。/ 你要什么？); a QC replacement may not copy a sentence the track already has (live: 你想吃什么？ twice → FINAL_DUPLICATE_AUDIT FAIL)',
+      sp('你想到。') && sp('你到吗？') && sp('你回吗？') && sp('有你。') && !sp('你到了吗？') && !sp('你明天回吗？') &&
+      got.every(g => g && g[1]) && got.every(g => !/^(有你|你回吗|你到吗|你想到)/.test(g[0])) && /duplicate of an existing track sentence/.test(SRC), got)
+    T('F10', 'Thai คะ: the batch needs only the woman\'s lines (not both speakers) and the prompt says คะ ends QUESTIONS (live round 3: every B line rejected for "missing A or B speaker", statements turned คะ → ค่ะ)',
+      /_gsT \? !genderValid\.some\(l => l\.speaker === _gsT\)/.test(SRC) && /ALL THREE lines must be QUESTIONS/.test(SRC) && /every sentence must be a question/.test(SRC))
+  }
   // ══ P — THAI PRONUNCIATION GUIDE (live v682 Thai lines with wrong / toneless romanisation) ══════════════════════════════
   {
     const c = load(APP, { realBelt: true })

@@ -3641,6 +3641,9 @@ function mandarinSurfaceGrammarProblems(zh, inv) {
   // v682 — from the live v682 Mandarin run (all accepted): 我想。("I want."), 你到。("You arrive."), 大吗？/ 慢吗？/ 一点吗？ (a bare
   // one-word question), 你等我一点 (waiting "a little" is 等一下). 好吗？ (a real tag question) stays legal.
   if (/^(我|你|他|她|我们|你们|他们)(也|都|还)?想[。！!]?$/.test(s) || /^(你|他|她|你们|他们)(也|都|还)?想(吗|不想)[？?]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 想 needs what you want / would like (我想去 / 你想吃什么？)')
+  if (/^有(我|你|他|她|我们|你们|他们)[。！!]?$/.test(s)) P.push('fragment: ' + s + ' — 有 + a pronoun alone is not a sentence')
+  if (/^(我|你|他|她|我们|你们|他们)回(吗|吧)?[？?。！!]?$/.test(s)) P.push('incomplete: ' + s + ' — say where to (你回家吗？ / 你明天回吗？)')
+  if (/^(我|你|他|她|我们|你们|他们)(想|要)?到(吗)?[。？?！!]?$/.test(s) && !/^(我|你|他|她|我们|你们|他们)到[。！!]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 到 needs 了 or a place (你到了吗？ / 我想到那里)')
   if (/^(我|你|他|她|我们|你们|他们)到[。！!]?$/.test(s)) P.push('incomplete: ' + s.replace(/[。！!]$/, '') + ' — 到 needs 了 or a place (我到了 / 我到家了)')
   // v682 final run (all accepted live): 你慢吗？ ("are you slow?"), 我们到这里。 (arrival needs 了), 我跟你说， (ends on a comma)
   // v682 final round 2 (accepted live in a READY track): 不吗？ ("Not?"), 这个地方到了。 ("this place has arrived"),
@@ -4071,6 +4074,18 @@ function mandarinFallbackPair(target, inv, recallIndex, seenMap, vocab, rules) {
     // pronouns, nouns, question words, expressions: no \u4E0D negation, no \u5F88
     // §69 — pronouns need usable shapes from lesson one, built with any known verb.
     if (pos === 'pronoun') {
+      // v682 final round 3 — curated, natural frames for 你 / 我 first (the generic frames handed out 你想到。/ 你到吗？/ 你回吗？/ 有你。):
+      // the pronoun as OBJECT (我等你。), a real question (你去哪里？) and the turn-back 你呢？
+      { const hv = w => inv.allContent.some(x => x.chinese === w)
+        const PRON = {
+          '你': [['我', '等', '我等你。', "I'll wait for you.", 'Say you will wait for them'], ['我', '找', '我找你。', "I'm looking for you.", 'Say you are looking for them'],
+                ['我', '跟', '我跟你去。', "I'll go with you.", 'Say you will go with them'], ['去', '哪里', '你去哪里？', 'Where are you going?', 'Ask where they are going'],
+                ['要', '什么', '你要什么？', 'What do you want?', 'Ask what they want'], ['在', '哪里', '你在哪里？', 'Where are you?', 'Ask where they are'], ['好', '吗', '你好吗？', 'How are you?', 'Ask how they are']],
+          '我': [['等', '你', '你等我一下。', 'Wait for me a moment.', 'Ask them to wait for you a moment'], ['给', '这个', '给我这个。', 'Give me this.', 'Ask them to give you this'],
+                ['找', '你', '你找我吗？', 'Are you looking for me?', 'Ask if they are looking for you'], ['很', '好', '我很好。', "I'm very well.", 'Say you are very well'], ['不', '去', '我不去。', "I'm not going.", 'Say you are not going']],
+        }
+        ;(PRON[zh] || []).filter(f => hv(f[0]) && (hv(f[1]) || gram(f[1]))).forEach(f => C.push({ zh: f[2], en: f[3], cue: f[4], curated: true }))
+        if (zh === '你' && (gram('呢') || hv('呢'))) C.push({ zh: '你呢？', en: 'And you?', cue: 'Ask them the same question back', curated: true }) }
       const verbs = inv.allContent.filter(w => w.partOfSpeech === 'verb' && w.chinese !== zh && w.chinese !== '\u60F3')
       // pronoun + \u60F3 + verb gives a third natural shape (\u4F60\u60F3\u5403\u3002) so a pronoun target
       // still has three usable recalls at the very first lesson.
@@ -14543,6 +14558,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       // v682 final run — a word only ONE gender says (คะ / ค่ะ: women; ครับ / ผม: men) is said by that speaker in all three lines
       // (live: คะ was put in male A's lines 11 times → every line rejected → 87/90)
       ? '"' + target.thai + '" is said only by ' + (_gs === 'B' ? 'WOMEN' : 'MEN') + ', so ALL THREE lines are spoken by ' + _gs + ' (the ' + (_gs === 'B' ? 'woman' : 'man') + ').\n' +
+        // คะ ends QUESTIONS only (a statement takes ค่ะ — the particle repair turns a statement's คะ into ค่ะ and the target is lost)
+        (target.thai === '\u0e04\u0e30' ? 'คะ ends a QUESTION (…ไหมคะ / …อะไรคะ / …ที่ไหนคะ / …เมื่อไหร่คะ / …ใช่ไหมคะ); a statement ends with ค่ะ instead — so ALL THREE lines must be QUESTIONS, each a different kind of question.\n' : '') +
         'LINE 1 (' + _gs + '): ' + _usageHint + ' — must end with ' + thaiContractParticleText(_gs) + ' — MUST contain the Thai word "' + target.thai + '"\n' +
         'LINE 2 (' + _gs + '): a DIFFERENT thing she/he says, again using "' + target.thai + '" — must end with ' + thaiContractParticleText(_gs) + '\n' +
         'LINE 3 (' + _gs + '): must contain "' + target.thai + '" again — must end with ' + thaiContractParticleText(_gs) + '\n'
@@ -14862,7 +14879,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
 
       const hasA = genderValid.some(l=>l.speaker==='A')
       const hasB = genderValid.some(l=>l.speaker==='B')
-      if (genderValid.length < 2 || !hasA || !hasB) {
+      // v682 final round 3 — a gender-bound target (คะ / ครับ …) is said by ONE speaker in every line: both speakers are not required
+      const _gsT = thaiGenderedTargetSpeaker(target.thai)
+      if (genderValid.length < 2 || (_gsT ? !genderValid.some(l => l.speaker === _gsT) : (!hasA || !hasB))) {
         const gFail = linesArr.find(l => !genderValid.includes(l))
         // Report the SAME reason the filter computed, so the repair prompt is told
         // what actually failed instead of a generic "particle error".
@@ -19978,7 +19997,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     (plan.generic ? thaiQuotaConstructionLine(kw.thai, cvCtx.allowedThaiWords, have, st) : thaiRecoveryFunctionLine(plan)) +
     recoveryStrategyPromptLines(st, { supportWords }) + recoveryFailureMemoryLines(st) +
     'Write ' + ask + ' NEW natural spoken Thai sentences. EVERY sentence MUST contain "' + kw.thai + '" as a word, used in ' + (THAI_SENSE_POLICY[kw.thai] ? 'the intended sense (' + THAI_SENSE_POLICY[kw.thai].sense.split(' (')[0] + ')' : 'its normal meaning') + '.\n' +
-    (thaiGenderedTargetSpeaker(kw.thai) ? 'Every sentence is spoken by ' + thaiGenderedTargetSpeaker(kw.thai) + ' ("' + kw.thai + '" is said only by ' + (thaiGenderedTargetSpeaker(kw.thai) === 'B' ? 'women' : 'men') + '). ' : 'Alternate speakers A and B. ') + getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }).promptRule + ' Continuous Thai (no spaces between words), no English in the Thai field.\n' +
+    (thaiGenderedTargetSpeaker(kw.thai) ? 'Every sentence is spoken by ' + thaiGenderedTargetSpeaker(kw.thai) + ' ("' + kw.thai + '" is said only by ' + (thaiGenderedTargetSpeaker(kw.thai) === 'B' ? 'women' : 'men') + ').' + (kw.thai === '\u0e04\u0e30' ? ' คะ ends QUESTIONS only (…ไหมคะ / …อะไรคะ / …ที่ไหนคะ) — every sentence must be a question.' : '') + ' ' : 'Alternate speakers A and B. ') + getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }).promptRule + ' Continuous Thai (no spaces between words), no English in the Thai field.\n' +
     'USE ONLY THESE CONTENT WORDS (all taught to this learner) plus the target "' + kw.thai + '":\n  ' + palette.words.join(' ') + '\n' +
     'and these speaker words / particles: ' + palette.particles.join(' ') + (sceneEntities.length ? ' · names: ' + sceneEntities.map(e => e.surface || e).join(' ') : '') + '\n' +
     'Any other content word will be rejected. english = a faithful natural translation. prompt = a third-person cue that says exactly what is said ("He asks if…", "She says…").\n' +
@@ -34490,6 +34509,13 @@ async function aiQcRegenerateGroup(group, allPairs, engine, apiKey, model, reaso
     const v = engine.validatePair(repaired, { target: group.target })
     // §critical — AI output is held to the SAME standard as generation output
     if (!v.ok) throw new Error('regenerated pair failed validation: ' + (v.problems || [])[0])
+    // v682 final round 3 — a replacement may not copy a sentence the track already has (live Mandarin: 你's bad recall was
+    // replaced by 你想吃什么？, already 想's recall 2 → FINAL_DUPLICATE_AUDIT FAIL → NOT_READY)
+    { const _norm = x => String(x || '').replace(/[\s\u3000.,!?;:，。？！；：、]/g, '')
+      const _txt = p => p && (p.thai || p.japanese || p.chinese || p.text || '')
+      const mine = _norm(_txt(repaired))
+      const clash = (allPairs || []).find(p => p && !group.pairs.includes(p) && _norm(_txt(p)) === mine)
+      if (mine && (clash || out.some(o => _norm(_txt(o)) === mine))) throw new Error('regenerated pair failed validation: duplicate of an existing track sentence: ' + _txt(repaired)) }
     out.push(repaired)
   }
   return out

@@ -98,7 +98,7 @@ async function open(browser, base, seed, marker, gem) {
       const m = /Introducing (\d+) new words?/i.exec(n.txt), mo = /Introducing (\d+) new words?/i.exec(o.txt)
       const rank = (/(Mukyu|\d+(?:st|nd|rd|th) Kyu)\n/.exec(n.txt) || [])[1]
       ok('[' + L.name + '] dashboard rank ' + rank + ': v683 introduces ' + L.expectNew + ' new words per Daily Track (owner table; v682: ' + (mo && mo[1]) + ')', m && +m[1] === L.expectNew, m && m[0])
-      const strip = t => t.replace(/v68[2-5]/g, '').replace(/Introducing \d+ new words?/gi, '')
+      const strip = t => t.replace(/v68[2-6]/g, '').replace(/Introducing \d+ new words?/gi, '')
       ok('[' + L.name + '] otherwise the Thai dashboard is identical in both builds (only the new-word line and the version label may differ)', strip(o.txt) === strip(n.txt), (() => { const a = strip(o.txt), b = strip(n.txt); let i = 0; while (i < a.length && a[i] === b[i]) i++; return a === b ? '' : 'first difference: old «' + a.slice(Math.max(0, i - 60), i + 80) + '» new «' + b.slice(Math.max(0, i - 60), i + 80) + '»' })())
     }
   }

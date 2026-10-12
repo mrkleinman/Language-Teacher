@@ -4,6 +4,21 @@
 **Branch:** `claude/session-continuation-check-a19meq` (development only)
 **Status:** built and tested offline. Nothing deployed, no paid calls made.
 
+
+> **Correction (v686, same day).** The site is served by **GitHub Pages**, not Netlify. Every release is published by GitHub's "pages build and deployment" job; the Netlify files in the repository are not used. GitHub Pages only serves files, so the `/api/anthropic` function could not run there: the owner's first Test Connection got "405".
+>
+> **The server is now a Google Cloud Run function.** It lives in `dev/server/google-cloud-anthropic/`:
+> - `index.js` and `package.json`;
+> - step-by-step `SETUP.md`.
+>
+> It has the same guard rails as before, plus a check that browsers may call it only from `https://mrkleinman.github.io` (changeable with `ALLOWED_ORIGINS`).
+>
+> **App changes:**
+> - Settings has a **Server address** field.
+> - "No server function here", "server refused", "site not allowed" and "server unreachable after 3 tries" now each stop the track at once, with a message saying what to fix.
+>
+> **Verified end to end in a real browser:** app → the function under Google's own Functions Framework with the real Anthropic SDK → a local stand-in for Anthropic (nothing paid). Tests45 now has 79 checks. **§4 and §8 below describe the Netlify setup; for this site, follow `dev/server/google-cloud-anthropic/SETUP.md` instead.**
+
 ---
 
 ## 1. Architecture and what was required

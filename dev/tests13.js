@@ -99,9 +99,9 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
   T('I1', 'runtime source contains ZERO banned provider identifiers; the owner-approved optional Claude Haiku model is named only in its own block, its Settings card and the named routing / pricing / report lines; no Anthropic endpoint or key in the client',
     allHits.length === 0 && zones.every(([a, b]) => b > a) && optCount > 0, allHits.slice(0, 10))
   const fetches = [...src.matchAll(/\bfetch\(\s*([^,\n]{0,90})/g)].map(m => m[1].trim())
-  T('I2', 'network calls: ONE Gemini transport (geminiRequest → Gemini REST) plus, from v685, ONE same-origin call to this site\'s own /api/anthropic function for the optional generation model; the only other fetches are Google Cloud TTS (audio, not an LLM)',
-    fetches.filter(f => !/texttospeech\.googleapis\.com/.test(f) && f !== 'ANTHROPIC_PROXY_PATH').length === 1 && fetches.filter(f => f === 'ANTHROPIC_PROXY_PATH').length === 1 && /const ANTHROPIC_PROXY_PATH = '\/api\/anthropic'/.test(src) &&
-    /GEMINI_API_BASE \+ modelId/.test(fetches.find(f => !/texttospeech/.test(f) && f !== 'ANTHROPIC_PROXY_PATH') || '') &&
+  T('I2', 'network calls: ONE Gemini transport (geminiRequest → Gemini REST) plus, from v685, ONE call to the owner\'s Haiku server function (the address saved in Settings, else this site\'s /api/anthropic) for the optional generation model; the only other fetches are Google Cloud TTS (audio, not an LLM)',
+    fetches.filter(f => !/texttospeech\.googleapis\.com/.test(f) && f !== 'anthropicServerUrl()').length === 1 && fetches.filter(f => f === 'anthropicServerUrl()').length === 1 && /const ANTHROPIC_PROXY_PATH = '\/api\/anthropic'/.test(src) &&
+    /GEMINI_API_BASE \+ modelId/.test(fetches.find(f => !/texttospeech/.test(f) && f !== 'anthropicServerUrl()') || '') &&
     /const GEMINI_API_BASE = 'https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/'/.test(src), fetches)
   const loopBody = src.slice(src.indexOf('async function geminiRequest('), src.indexOf('async function geminiGenerate('))
   T('I3', 'no model promotion: the model is fixed once (geminiModelId) before the retry loop and never reassigned; no fallback-model constant exists',

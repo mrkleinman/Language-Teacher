@@ -34,7 +34,8 @@ function app(o) {
   const calls = { gemini: [], anthropic: [] }
   let aq = (o.anthropic || []).slice()
   c.fetch = async (url, opts) => {
-    if (String(url) === '/api/anthropic') {
+    if (String(url) === '/api/anthropic' || /^https:\/\/[^/]+\.run\.app/.test(String(url))) {
+      calls.urls = (calls.urls || []).concat(String(url))
       calls.anthropic.push({ body: JSON.parse(opts.body), headers: opts.headers })
       const r = aq.length ? aq.shift() : resp(200, msg('[]'))
       if (r instanceof Error) throw r
@@ -90,6 +91,14 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     const k1 = c.genCheckpointCompatible(fake, 'zh', [], [])
     c.aiSetGenerationPreference({ model: HAIKU }); const k2 = c.genCheckpointCompatible(fake, 'zh', [], [])
     T('S9', 'a saved draft is resumed only with the model that wrote it (clear reason otherwise)', !k1.ok && /written by Claude Haiku 5\.5/.test(k1.reason) && k2.ok, { k1, k2 })
+    const u1 = c.aiSetGenerationPreference({ model: HAIKU, serverUrl: ' https://language-teacher-anthropic-abc123-as.a.run.app/ ' }).serverUrl
+    const u2 = c.aiSetGenerationPreference({ model: HAIKU, serverUrl: 'http://insecure.example.com' }).serverUrl, u3 = c.aiSetGenerationPreference({ model: HAIKU, serverUrl: 'javascript:alert(1)' }).serverUrl
+    const u4 = c.aiSetGenerationPreference({ model: HAIKU, serverUrl: 'http://127.0.0.1:8799' }).serverUrl; c.aiSetGenerationPreference({ model: HAIKU })
+    T('S10', 'server address: an https URL is kept (spaces / trailing slash trimmed); plain http only for this computer (local testing); anything else is refused; empty = this site\'s /api/anthropic',
+      u1 === 'https://language-teacher-anthropic-abc123-as.a.run.app' && u2 === '' && u3 === '' && u4 === 'http://127.0.0.1:8799' && c.anthropicServerUrl() === '/api/anthropic', { u1, u2, u3, u4 })
+    const sv = app({ haiku: true }); sv.aiSetGenerationPreference({ ...sv.aiGenerationPreference(), serverUrl: 'https://lt-anthropic-xyz.a.run.app' }); sv.aiBeginRun('daily-track')
+    await ask(sv, { stage: 'A_generation' })
+    T('S11', 'generation requests go to the saved server address (the Google Cloud function), with the access code header', (sv.__calls.urls || [])[0] === 'https://lt-anthropic-xyz.a.run.app' && sv.__calls.anthropic[0].headers['x-lt-access'] === CODE, sv.__calls.urls)
   }
 
   // ══ R — routing ═════════════════════════════════════════════════════════════════════════════════════════════════
@@ -189,6 +198,16 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     T('E13', 'an error the server function writes into its 200 keep-alive reply is handled by its real status: 402 latched and not retried; 529 retried',
       kae.e && kae.e.fatalProvider && kae.e.fatalProvider.reason === 'CREDITS_DEPLETED' && ka.__calls.anthropic.length === 1 && rows(ka, karun)[0].http === 402 && kbt === 'ok' && kb.__calls.anthropic.length === 2 && rows(kb, kbrun)[0].http === 529,
       { kae: kae.e && kae.e.message, n: ka.__calls.anthropic.length })
+    const st = async (r) => { const a = app({ haiku: true, anthropic: [r, resp(200, msg('later'))] }); const run = a.aiBeginRun('daily-track'); const e1 = await tryAsync(() => ask(a, { stage: 'A_generation' })); const e2 = await tryAsync(() => ask(a, { stage: 'A_generation', prompt: 'next' })); return { a, e1: e1.e, e2: e2.e, sent: a.__calls.anthropic.length } }
+    const s405 = await st(resp(405, null)), s403 = await st(resp(403, null)), sor = await st(err(403, 'origin_not_allowed'))
+    T('E14', 'a host with no server function (GitHub Pages answers 405) → stops at once: NOT_DEPLOYED, tells the learner to enter the Google Cloud function\'s address; nothing more sent',
+      s405.e1 && s405.e1.fatalProvider && s405.e1.fatalProvider.reason === 'NOT_DEPLOYED' && /Server address/.test(s405.e1.message) && s405.sent === 1 && s405.e2 && s405.e2.fatalProvider, s405.e1 && s405.e1.message)
+    T('E15', 'a server that refuses (403 without an API error, e.g. Cloud Run not public) or rejects this site\'s origin → stops at once with its own reason',
+      s403.e1 && s403.e1.fatalProvider.reason === 'SERVER_REFUSED' && /allow unauthenticated/.test(s403.e1.message) && sor.e1 && sor.e1.fatalProvider.reason === 'ORIGIN_NOT_ALLOWED' && s403.sent === 1 && sor.sent === 1, [s403.e1 && s403.e1.message, sor.e1 && sor.e1.message])
+    const un = app({ haiku: true, anthropic: [new TypeError('Failed to fetch'), new TypeError('Failed to fetch'), new TypeError('Failed to fetch'), resp(200, msg('never'))] }); un.aiBeginRun('daily-track')
+    const ue = await tryAsync(() => ask(un, { stage: 'A_generation' })), ue2 = await tryAsync(() => ask(un, { stage: 'A_generation', prompt: 'n2' }))
+    T('E16', 'server unreachable after 3 tries (wrong address, CORS, offline) → the track stops (draft kept) instead of failing every request; no Gemini fallback',
+      ue.e && ue.e.fatalProvider && ue.e.fatalProvider.reason === 'UNREACHABLE' && un.__calls.anthropic.length === 3 && ue2.e && ue2.e.fatalProvider && un.__calls.gemini.length === 0, ue.e && ue.e.message)
     const nc = app({ haiku: true, code: '' }); nc.aiBeginRun('daily-track')
     const ne = await tryAsync(() => ask(nc, { stage: 'A_generation' }))
     T('E11', 'no site access code → nothing is sent, a clear error, no Gemini fallback', ne.e && ne.e.fatalProvider && ne.e.fatalProvider.reason === 'ACCESS_DENIED' && nc.__calls.anthropic.length === 0 && nc.__calls.gemini.length === 0, ne.e && ne.e.message)
@@ -300,8 +319,8 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     const logs = JSON.stringify(rows(c, run)) + c.aiUsageSummaryLines(c.aiUsageSummary(run)).join('\n') + JSON.stringify(c.__logs)
     T('X3', 'the site access code travels only in the x-lt-access header to /api/anthropic — never in a log, ledger row, report or Gemini request',
       c.__calls.anthropic[0].headers['x-lt-access'] === CODE && !logs.includes(CODE) && !JSON.stringify(c.__calls.gemini).includes(CODE) && !JSON.stringify(c.__calls.anthropic[0].body).includes(CODE))
-    T('X4', 'stored on the device: the model choice (no credential) and the site access code only — the Settings card never asks for an Anthropic key',
-      /AI_GEN_PREF_KEY = 'tt-generation-model'/.test(SRC) && /This is not your Anthropic API key/.test(SRC) && !/sk-ant/.test(SRC) && JSON.stringify(c.aiGenerationPreference()).match(/^\{"model":"[^"]+","limitUsd":[\d.]+,"limitRequests":\d+\}$/))
+    T('X4', 'stored on the device: the model choice, limits and server address (no credential) and the site access code only — the Settings card never asks for an Anthropic key',
+      /AI_GEN_PREF_KEY = 'tt-generation-model'/.test(SRC) && /This is not your Anthropic API key/.test(SRC) && !/sk-ant/.test(SRC) && JSON.stringify(c.aiGenerationPreference()).match(/^\{"model":"[^"]+","limitUsd":[\d.]+,"limitRequests":\d+,"serverUrl":"(https:\/\/[^"]*)?"\}$/))
     // learner data: the new code writes only its two own keys
     const writes = (SRC.match(/stSet\(AI_[A-Z_]+_KEY/g) || []).concat(SRC.match(/stSet\(AI_ANTHROPIC_ACCESS_KEY/g) || [])
     const haikuBlock = SRC.slice(SRC.indexOf('const AI_GEN_MODELS = Object.freeze'), SRC.indexOf('// ══ v675 (Step 0) — OPT-IN BENCHMARK CAPTURE'))
@@ -363,6 +382,46 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     release(); for (;;) { const ch = await rd.read(); if (ch.done) break; txt += dec.decode(ch.value) }
     T('F8', 'long answers: headers (200) are sent before Anthropic replies, the connection is kept alive with spaces, then the JSON follows (valid JSON with leading whitespace)',
       sr.status === 200 && /^ +/.test(txt) && JSON.parse(txt).content[0].text === 'late', JSON.stringify(txt.slice(0, 40)))
+    // ── the Google Cloud Run function (dev/server/google-cloud-anthropic) — the server for the GitHub Pages site ──
+    const gdir = path.join(__dirname, 'server', 'google-cloud-anthropic'), gFile = path.join(tmp, 'gcf.mjs')
+    const gsrc = fs.readFileSync(path.join(gdir, 'index.js'), 'utf8')
+    fs.writeFileSync(gFile, gsrc.replace(/^import functions from "@google-cloud\/functions-framework";$/m, '').replace(/^import Anthropic from "@anthropic-ai\/sdk";$/m, 'const Anthropic = null;').replace(/^functions\.http\(.*$/m, ''))
+    const G = await import('file://' + gFile)
+    const ORIGIN = 'https://mrkleinman.github.io'
+    const mkRes = () => { const r = { code: 200, headers: {}, body: null, status(c) { this.code = c; return this }, set(k, v) { this.headers[k.toLowerCase()] = v; return this }, json(o) { this.body = o; return this }, send(b) { this.body = b; return this } }; return r }
+    const mkReq = (method, body, hdrs) => { const h = Object.fromEntries(Object.entries(hdrs || {}).map(([k, v]) => [k.toLowerCase(), v])); const raw = body == null ? '' : typeof body === 'string' ? body : JSON.stringify(body); let parsed; try { parsed = JSON.parse(raw) } catch (e) { parsed = raw }
+      return { method, headers: h, get: k => h[k.toLowerCase()], body: parsed, rawBody: Buffer.from(raw) } }
+    const gcalls = []
+    class GFake { constructor(o) { gcalls.push(o); this.messages = { create: async p => { gcalls.push(p); return { id: 'm', type: 'message', model: HAIKU, role: 'assistant', content: [{ type: 'text', text: 'ok' }], stop_reason: 'end_turn', usage: { input_tokens: 5, output_tokens: 1 } } } } } }
+    GFake.APIError = class extends Error {}
+    const GH = async (req, e, sdk) => { const r = mkRes(); await G.handleAnthropic(req, r, { getEnv: k => (e || env)[k], Anthropic: sdk || GFake }); return r }
+    const pre = await GH(mkReq('OPTIONS', null, { Origin: ORIGIN })), evil = await GH(mkReq('POST', good, { Origin: 'https://evil.example', 'x-lt-access': CODE }))
+    const gget = await GH(mkReq('GET', null, { Origin: ORIGIN })), gnc = await GH(mkReq('POST', good, { Origin: ORIGIN, 'x-lt-access': CODE }), {}), gbad = await GH(mkReq('POST', good, { Origin: ORIGIN, 'x-lt-access': 'nope' }))
+    const gbig = await GH(mkReq('POST', 'x'.repeat(400 * 1024), { Origin: ORIGIN, 'x-lt-access': CODE })), gmod = await GH(mkReq('POST', { ...good, model: 'claude-opus-5-5' }, { Origin: ORIGIN, 'x-lt-access': CODE }))
+    T('G1', 'Google function: browser preflight from the GitHub Pages site allowed (204, x-lt-access header permitted); other sites refused (403); GET 405; not configured 503; wrong code 401; oversized 413; other model 400 — none reaches Anthropic',
+      pre.code === 204 && pre.headers['access-control-allow-origin'] === ORIGIN && /x-lt-access/.test(pre.headers['access-control-allow-headers']) && evil.code === 403 && evil.body.error.type === 'origin_not_allowed' && !evil.headers['access-control-allow-origin']
+      && gget.code === 405 && gnc.code === 503 && gnc.body.error.type === 'not_configured' && gbad.code === 401 && gbad.body.error.type === 'access_denied' && gbig.code === 413 && gmod.code === 400 && gcalls.length === 0,
+      [pre.code, evil.code, gget.code, gnc.code, gbad.code, gbig.code, gmod.code, gcalls.length])
+    const gok = await GH(mkReq('POST', { ...good, temperature: 1 }, { Origin: ORIGIN, 'x-lt-access': CODE }))
+    T('G2', 'Google function success: SDK built with the server key and no retries; temperature dropped; the site gets the message (never the key), CORS limited to the site',
+      gok.code === 200 && gcalls[0].apiKey === env.ANTHROPIC_API_KEY && gcalls[0].maxRetries === 0 && !('temperature' in gcalls[1]) && gcalls[1].thinking.type === 'adaptive' && gok.body.content[0].text === 'ok' && !JSON.stringify(gok.body).includes(env.ANTHROPIC_API_KEY) && gok.headers['access-control-allow-origin'] === ORIGIN && gok.headers['cache-control'] === 'no-store', gok)
+    const gEnv = { ...env, ALLOWED_ORIGINS: 'https://owner.example.org, https://mrkleinman.github.io' }
+    const g2 = await GH(mkReq('OPTIONS', null, { Origin: 'https://owner.example.org' }), gEnv)
+    T('G3', 'Google function: ALLOWED_ORIGINS can name another site address (e.g. a custom domain)', g2.code === 204 && g2.headers['access-control-allow-origin'] === 'https://owner.example.org')
+    if (SDK) {
+      const gnet = []
+      const gmk = queue => class extends SDK { constructor(o) { super({ ...o, fetch: async (url, init) => { gnet.push({ url: String(url), headers: Object.fromEntries(new Headers(init.headers)), body: JSON.parse(init.body) }); const [s, b] = queue.shift(); return new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } }) } }) } }
+      const gr1 = await GH(mkReq('POST', { model: HAIKU, max_tokens: 3600, thinking: { type: 'adaptive' }, output_config: { effort: 'low' }, messages: [{ role: 'user', content: 'hi' }], top_p: 0.9 }, { Origin: ORIGIN, 'x-lt-access': CODE }), env,
+        gmk([[200, { id: 'msg_g', type: 'message', role: 'assistant', model: HAIKU, content: [{ type: 'text', text: 'hello' }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 3, output_tokens: 4 } }]]))
+      const gr2 = await GH(mkReq('POST', good, { Origin: ORIGIN, 'x-lt-access': CODE }), env, gmk([[402, { type: 'error', error: { type: 'billing_error', message: 'Your credit balance is too low' } }], [200, {}]]))
+      T('G4', 'Google function with the real SDK (mocked network): POST api.anthropic.com/v1/messages with the server key, adaptive thinking, no top_p; a billing error returns 402 billing_error after ONE call',
+        gr1.code === 200 && gnet[0].url === 'https://api.anthropic.com/v1/messages' && gnet[0].headers['x-api-key'] === env.ANTHROPIC_API_KEY && gnet[0].body.thinking.type === 'adaptive' && !('top_p' in gnet[0].body) && gr1.body.content[0].text === 'hello'
+        && gr2.code === 402 && gr2.body.error.type === 'billing_error' && gnet.length === 2, { gr1: gr1.body, gr2: gr2.body, n: gnet.length })
+    }
+    const gpkg = JSON.parse(fs.readFileSync(path.join(gdir, 'package.json'), 'utf8'))
+    T('G5', 'Google function package: pinned official SDK and Functions Framework, ES module, entry point "anthropic"; setup guide present; no key anywhere in the folder',
+      gpkg.dependencies['@anthropic-ai/sdk'] === '0.133.0' && /^\d+\.\d+\.\d+$/.test(gpkg.dependencies['@google-cloud/functions-framework']) && gpkg.type === 'module' && /functions\.http\("anthropic"/.test(gsrc)
+      && fs.existsSync(path.join(gdir, 'SETUP.md')) && !fs.readdirSync(gdir).some(f => /sk-ant-[A-Za-z0-9]{8}/.test(fs.readFileSync(path.join(gdir, f), 'utf8'))))
     T('F7', 'netlify.toml routes /api/anthropic to the function (same mechanism as the existing /api/deepseek)', /\[\[edge_functions\]\]\s*\n\s*path = "\/api\/anthropic"\s*\n\s*function = "anthropic"/.test(fs.readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8')))
     fs.rmSync(tmp, { recursive: true, force: true })
   }

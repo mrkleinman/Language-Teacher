@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v685"/>
+<meta name="app-version" content="v686"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v685';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v685').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v686';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v686').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -9047,7 +9047,7 @@ const ANTHROPIC_CONFIG = Object.freeze({
 const ANTHROPIC_PRICE_USD_PER_MTOK = Object.freeze({
   'claude-haiku-5-5': Object.freeze({ in: 0.10, out: 0.50, longIn: 0.50, longOut: 2.50, longAbove: 100000, cacheRead: 0.1, cacheWrite: 1.25 }),
 })
-const AI_GEN_DEFAULT_PREF = Object.freeze({ model: 'gemini-2.5-flash-lite', limitUsd: 0.25, limitRequests: 300 })
+const AI_GEN_DEFAULT_PREF = Object.freeze({ model: 'gemini-2.5-flash-lite', limitUsd: 0.25, limitRequests: 300, serverUrl: '' })
 let AI_GEN_PREF = { ...AI_GEN_DEFAULT_PREF }
 let AI_ANTHROPIC_ACCESS = ''
 const AI_RUN_GEN_MODEL = new Map()                          // runId → the generation model the run started with
@@ -9055,9 +9055,14 @@ function aiNormaliseGenPref(p) {
   const v = p && typeof p === 'object' ? p : {}
   const model = AI_GEN_MODELS[v.model] ? v.model : AI_GEN_DEFAULT_PREF.model
   const usd = Number(v.limitUsd), req = Math.floor(Number(v.limitRequests))
+  const url = String(v.serverUrl || '').trim().replace(/\/+$/, '')
   return { model, limitUsd: Number.isFinite(usd) && usd > 0 && usd <= 5 ? usd : AI_GEN_DEFAULT_PREF.limitUsd,
-    limitRequests: Number.isFinite(req) && req >= 10 && req <= 2000 ? req : AI_GEN_DEFAULT_PREF.limitRequests }
+    limitRequests: Number.isFinite(req) && req >= 10 && req <= 2000 ? req : AI_GEN_DEFAULT_PREF.limitRequests,
+    serverUrl: /^(https:\/\/[^\s/?#]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)(\/[^\s?#]*)?$/.test(url) ? url : '' }   // https, or this computer (local testing)
 }
+// Where the Haiku server function lives: the address saved in Settings (e.g. a Google Cloud Run function — needed when the
+// site is static, as on GitHub Pages), else this site's own /api/anthropic (a host that runs functions, e.g. Netlify).
+function anthropicServerUrl() { return AI_GEN_PREF.serverUrl || ANTHROPIC_PROXY_PATH }
 function aiSetGenerationPreference(p) { AI_GEN_PREF = aiNormaliseGenPref(p); return { ...AI_GEN_PREF } }
 function aiGenerationPreference() { return { ...AI_GEN_PREF } }
 function aiSetAnthropicAccess(code) { AI_ANTHROPIC_ACCESS = String(code || '').trim(); return !!AI_ANTHROPIC_ACCESS }
@@ -9178,7 +9183,10 @@ function anthropicError(status, type, message) {
   let text = m, fatal = null
   if (t === 'not_configured') { text = 'CLAUDE HAIKU UNAVAILABLE: the site\'s Anthropic server function is not set up (' + m + ')'; fatal = 'NOT_CONFIGURED' }
   else if (t === 'access_denied') { text = 'CLAUDE HAIKU UNAVAILABLE: the site access code in Settings is missing or wrong'; fatal = 'ACCESS_DENIED' }
-  else if (status === 404 && !t) { text = 'CLAUDE HAIKU UNAVAILABLE: this site has no Anthropic server function (/api/anthropic not deployed)'; fatal = 'NOT_DEPLOYED' }
+  else if (t === 'unreachable') { text = 'CLAUDE HAIKU UNREACHABLE: no answer from the server address in Settings (' + anthropicServerUrl() + ') after ' + ANTHROPIC_CONFIG.maxAttempts + ' tries — check the address, that the function is deployed and allows this site (' + m + ')'; fatal = 'UNREACHABLE' }
+  else if (t === 'origin_not_allowed') { text = 'CLAUDE HAIKU UNAVAILABLE: the server function does not accept requests from this site (set ALLOWED_ORIGINS on it)'; fatal = 'ORIGIN_NOT_ALLOWED' }
+  else if ((status === 404 || status === 405 || status === 501) && !t) { text = 'CLAUDE HAIKU UNAVAILABLE: there is no Haiku server function at ' + anthropicServerUrl() + ' (HTTP ' + status + ')' + (anthropicServerUrl() === ANTHROPIC_PROXY_PATH ? ' — this site cannot run one itself (e.g. GitHub Pages): enter your Google Cloud function\'s address under Settings → AI Generation Model → Server address' : ''); fatal = 'NOT_DEPLOYED' }
+  else if ((status === 401 || status === 403) && !t) { text = 'CLAUDE HAIKU UNAVAILABLE: the server at ' + anthropicServerUrl() + ' refused the request (HTTP ' + status + ') — on Google Cloud, allow unauthenticated invocations'; fatal = 'SERVER_REFUSED' }
   else if (t === 'authentication_error' || status === 401) { text = 'CLAUDE HAIKU UNAVAILABLE: Anthropic rejected the server\'s API key (' + m + ')'; fatal = 'AUTH' }
   else if (t === 'billing_error' || status === 402 || /credit balance|billing/i.test(m)) { text = 'CLAUDE HAIKU UNAVAILABLE: Anthropic billing / credit problem (' + m + ')'; fatal = 'CREDITS_DEPLETED' }
   else if (t === 'permission_error' || status === 403) { text = 'CLAUDE HAIKU UNAVAILABLE: the Anthropic key may not use this model (' + m + ')'; fatal = 'PERMISSION' }
@@ -9227,15 +9235,16 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
     if (runCtl && runCtl.signal.addEventListener) runCtl.signal.addEventListener('abort', onAbort)
     const detach = () => { clearTimeout(tid); if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
     let res = null
-    try { res = await fetch(ANTHROPIC_PROXY_PATH, { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json', 'x-lt-access': AI_ANTHROPIC_ACCESS }, body }) }
+    try { res = await fetch(anthropicServerUrl(), { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json', 'x-lt-access': AI_ANTHROPIC_ACCESS }, body }) }
     catch (fe) {
       detach()
       if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) { row.cancelled = true; aiRecordEnd(row, { ok: false, error: 'cancelled (run superseded)' }); throw _cancelledError('run superseded') }
       const msg = fe && fe.name === 'AbortError' ? 'timeout after ' + (ANTHROPIC_CONFIG.timeoutMs / 1000) + 's' : String((fe && fe.message) || fe)
       aiRecordEnd(row, { ok: false, error: msg })
-      lastErr = anthropicError(0, 'network', 'CLAUDE HAIKU UNREACHABLE: ' + msg)
+      lastErr = anthropicError(0, 'unreachable', msg)
       why = 'retry after ' + (fe && fe.name === 'AbortError' ? 'timeout' : 'network error')
       if (attempt < ANTHROPIC_CONFIG.maxAttempts) { await new Promise(r => setTimeout(r, ANTHROPIC_CONFIG.backoffMs[attempt - 1] || 5000)); continue }
+      AI_ANTHROPIC_LATCH.set(runId, lastErr)        // still unreachable after every attempt: stop the track (its draft is kept)
       throw lastErr
     }
     const data = await res.json().catch(() => null)
@@ -19370,7 +19379,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v685'
+const LISTENING_BUILD_VERSION = 'v686'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -20705,7 +20714,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v685'
+const APP_BUILD_VERSION = 'v686'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -30292,10 +30301,11 @@ function GenerationModelCard() {
   const [hasCode, setHasCode] = useState(!!AI_ANTHROPIC_ACCESS)
   const [usd, setUsd] = useState(String(aiGenerationPreference().limitUsd))
   const [req, setReq] = useState(String(aiGenerationPreference().limitRequests))
+  const [server, setServer] = useState(aiGenerationPreference().serverUrl)
   const [msg, setMsg] = useState('')
   const [testing, setTesting] = useState(false)
   useEffect(() => { (async () => {
-    try { const p = aiSetGenerationPreference(await stGet(AI_GEN_PREF_KEY)); setPref(p); setUsd(String(p.limitUsd)); setReq(String(p.limitRequests)) } catch (e) {}
+    try { const p = aiSetGenerationPreference(await stGet(AI_GEN_PREF_KEY)); setPref(p); setUsd(String(p.limitUsd)); setReq(String(p.limitRequests)); setServer(p.serverUrl) } catch (e) {}
     try { setHasCode(aiSetAnthropicAccess(await stGet(AI_ANTHROPIC_ACCESS_KEY))) } catch (e) {}
   })() }, [])
   async function choose(model) {
@@ -30303,8 +30313,11 @@ function GenerationModelCard() {
     setMsg('✓ New tracks will be written by ' + aiGenModelLabel(model) + '. Tracks you already made keep the model they were made with.')
   }
   async function saveLimits() {
-    const p = aiSetGenerationPreference({ ...pref, limitUsd: parseFloat(usd), limitRequests: parseInt(req, 10) }); setPref(p); await stSet(AI_GEN_PREF_KEY, p)
-    setUsd(String(p.limitUsd)); setReq(String(p.limitRequests)); setMsg('✓ Limits saved: US$' + p.limitUsd + ' and ' + p.limitRequests + ' Claude Haiku requests per track.')
+    const p = aiSetGenerationPreference({ ...pref, limitUsd: parseFloat(usd), limitRequests: parseInt(req, 10), serverUrl: server }); setPref(p); await stSet(AI_GEN_PREF_KEY, p)
+    setUsd(String(p.limitUsd)); setReq(String(p.limitRequests)); setServer(p.serverUrl)
+    const badUrl = String(server || '').trim() && !p.serverUrl
+    setMsg(badUrl ? '❌ The server address must start with https:// (copy the URL Google Cloud shows for your function).'
+      : '✓ Saved: server ' + (p.serverUrl || 'this site (/api/anthropic)') + ' · US$' + p.limitUsd + ' and ' + p.limitRequests + ' Claude Haiku requests per track.')
   }
   async function saveCode() {
     const ok = aiSetAnthropicAccess(code); await stSet(AI_ANTHROPIC_ACCESS_KEY, ok ? code.trim() : null); setHasCode(ok); setCode('')
@@ -30332,9 +30345,12 @@ function GenerationModelCard() {
       ))}
       {haiku && (
         <div style={{ marginTop: 10, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>Claude Haiku runs through this site's own server, which holds the Anthropic API key. If it is unavailable, generation stops with an error — it never switches to Gemini on its own.</p>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>Claude Haiku runs through your own small server function (Google Cloud), which holds the Anthropic API key. If it is unavailable, generation stops with an error — it never switches to Gemini on its own.</p>
+          <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Server address</p>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>The URL of your Google Cloud function (it holds the Anthropic API key), e.g. https://language-teacher-anthropic-….run.app. Leave empty only if this site runs its own /api/anthropic function.</p>
+          <input value={server} onChange={e => setServer(e.target.value)} placeholder="https://…run.app" inputMode="url" autoCapitalize="off" autoCorrect="off" spellCheck={false} style={{ ...box, marginBottom: 12 }} />
           <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Site access code {hasCode ? <span style={{ color: '#10b981', fontWeight: 400 }}>✓ saved on this device</span> : <span style={{ color: '#f59e0b', fontWeight: 400 }}>— not set</span>}</p>
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>The code the site owner set as LT_ACCESS_CODE on the server. This is not your Anthropic API key.</p>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>The code you set as LT_ACCESS_CODE on the server function. This is not your Anthropic API key.</p>
           <input type="password" value={code} onChange={e => setCode(e.target.value)} placeholder={hasCode ? '•••••• (enter a new code to replace it)' : 'site access code'} style={{ ...box, marginBottom: 8 }} />
           <button onClick={saveCode} style={{ ...btn, width: '100%', marginBottom: 12 }}>{code.trim() ? 'Save Access Code' : 'Clear Access Code'}</button>
           <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Limits per track (Claude Haiku requests)</p>
@@ -30343,7 +30359,7 @@ function GenerationModelCard() {
             <label style={{ flex: 1, fontSize: 11, color: 'var(--muted)' }}>Max requests<input value={req} onChange={e => setReq(e.target.value)} inputMode="numeric" style={{ ...box, marginTop: 4 }} /></label>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={saveLimits} style={{ ...btn, flex: 1 }}>Save Limits</button>
+            <button onClick={saveLimits} style={{ ...btn, flex: 1 }}>Save Address &amp; Limits</button>
             <button onClick={test} disabled={testing || !hasCode} style={{ ...btn, flex: 1, color: hasCode ? 'var(--text)' : 'var(--muted)', cursor: hasCode ? 'pointer' : 'not-allowed' }}>{testing ? 'Testing…' : 'Test Connection'}</button>
           </div>
           <p style={{ fontSize: 10, color: '#64748b', marginTop: 6 }}>Test Connection sends one tiny paid request (well under US$0.001). Claude Haiku 5.5: $0.10/M in · $0.50/M out.</p>

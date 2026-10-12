@@ -1331,5 +1331,148 @@
    "critical": 0
   }
  },
- "notes": "Overall the set is solid: all 45 target lines are grammatical, use the target in the stated sense, and are useful for beginners. There are no critical issues and one major one: ja いいえ recall 3 (いいえ、大丈夫です as a reply to thanks, which has a matching wrong gloss and a misleading cue). Most minor issues fall into four groups. (a) Staff register: in ja (あそこ/この where staff would say あちら/こちら) and zh (你 where staff would say 您), staff lines are less polite than real service speech. (b) Textbook stiffness: ja いいえ、乗りません; Thai คุณ between friends; zh echo answers. (c) Small coherence slips in surrounding lines: ja being told where the station is while at the station; th มีค่ะ answering พอไหม; ยัง answering a ไหม question; the 'we were late' perspective. (d) Pronunciation-field consistency. Mandarin sandhi is correct throughout (一 before tone 3 → yì, 一下 → yíxià, 3-3 → 2-3, 不 neutral in A-not-A). The exceptions are 'ní kéyǐ' against 'wǒ kéyǐ' in the same word, 哪里 written with a full-tone 里, and 回来 split as 'huí lái'. Thai tones are all correct. Length is lost in ร้าน 'rán' (×2) and แฟ 'fae' (should be 'faae' per the file's own convention, as in láaeo). Romanisation of unaspirated stops is inconsistent across the file: ก as g/k (gin vs kròot), ป as p/bp (pai vs bpen, bpìt), ต as t/dt (trong vs dtòk). None of these is ambiguous, because aspirates use kh/ph/th, but the app should pick one scheme. I did not flag this on every line; I mention it here. Distinctness: every word's three recalls are different uses. The weakest are zh 可以 recall 2, whose target repeats recall 1's reply, and th หลัง recalls 1 and 3, which are both temporal 'after' but with different complements (event vs clock time), so I accept them. Reviewed offline from my own knowledge; I am not a native speaker of any of the three languages, so the naturalness judgements, especially for Thai, should be confirmed by native speakers."
+ "notes": "Overall the set is solid: all 45 target lines are grammatical, use the target in the stated sense, and are useful for beginners. There are no critical issues and one major one: ja いいえ recall 3 (いいえ、大丈夫です as a reply to thanks, which has a matching wrong gloss and a misleading cue). Most minor issues fall into four groups. (a) Staff register: in ja (あそこ/この where staff would say あちら/こちら) and zh (你 where staff would say 您), staff lines are less polite than real service speech. (b) Textbook stiffness: ja いいえ、乗りません; Thai คุณ between friends; zh echo answers. (c) Small coherence slips in surrounding lines: ja being told where the station is while at the station; th มีค่ะ answering พอไหม; ยัง answering a ไหม question; the 'we were late' perspective. (d) Pronunciation-field consistency. Mandarin sandhi is correct throughout (一 before tone 3 → yì, 一下 → yíxià, 3-3 → 2-3, 不 neutral in A-not-A). The exceptions are 'ní kéyǐ' against 'wǒ kéyǐ' in the same word, 哪里 written with a full-tone 里, and 回来 split as 'huí lái'. Thai tones are all correct. Length is lost in ร้าน 'rán' (×2) and แฟ 'fae' (should be 'faae' per the file's own convention, as in láaeo). Romanisation of unaspirated stops is inconsistent across the file: ก as g/k (gin vs kròot), ป as p/bp (pai vs bpen, bpìt), ต as t/dt (trong vs dtòk). None of these is ambiguous, because aspirates use kh/ph/th, but the app should pick one scheme. I did not flag this on every line; I mention it here. Distinctness: every word's three recalls are different uses. The weakest are zh 可以 recall 2, whose target repeats recall 1's reply, and th หลัง recalls 1 and 3, which are both temporal 'after' but with different complements (event vs clock time), so I accept them. Reviewed offline from my own knowledge; I am not a native speaker of any of the three languages, so the naturalness judgements, especially for Thai, should be confirmed by native speakers.",
+ "rereview": [
+  {
+   "lang": "ja",
+   "target": "分かる",
+   "recall": 1,
+   "line": 1,
+   "is_target": false,
+   "text": "バスはあそこです。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "minor",
+     "explain": "The scene now makes sense, but station staff talking to a passenger would still say あちら rather than あそこ. 'バスはあそこです' also points at the bus itself; when giving directions staff usually point to the bus stop (バス乗り場).",
+     "correction": "バス乗り場はあちらです。"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "分かる",
+   "recall": 1,
+   "line": 2,
+   "is_target": true,
+   "text": "はい、分かりました。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "いいえ",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "水、飲みますか？",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "minor",
+     "explain": "A waiter would not drop the particle or use plain 飲みますか to a customer; it sounds too casual for service speech. The usual forms are お水はいかがですか or お水のおかわりはいかがですか (since water is normally served automatically, the offer is often a refill).",
+     "correction": "お水はいかがですか？ (omizu wa ikaga desu ka?)"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "いいえ",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "いいえ、大丈夫です。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "explain": "The sentence is now natural and fits the purpose (polite decline of an offer). The English adds 'thank you', which is not in the Japanese, so a learner may think they have to say ありがとうございます as well.",
+     "correction": "en: 'No, I'm fine.' (or add …、ありがとうございます to the Japanese if 'thank you' is wanted)"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "พรุ่งนี้เจอกันไหมครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "ได้ค่ะ เจอกันหลังห้าโมงเย็นนะคะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 3,
+   "line": 3,
+   "is_target": false,
+   "text": "ตกลงครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "ทุกคนได้กินหรือยังครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "ยังค่ะ ข้าวไม่พอค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 3,
+   "line": 3,
+   "is_target": false,
+   "text": "งั้นผมไปซื้ออีกครับ",
+   "verdict": "clean",
+   "issues": []
+  }
+ ],
+ "summaryAfterFixes": {
+  "ja": {
+   "clean": 20,
+   "minor": 10,
+   "major": 0,
+   "critical": 0
+  },
+  "zh": {
+   "clean": 20,
+   "minor": 10,
+   "major": 0,
+   "critical": 0
+  },
+  "th": {
+   "clean": 35,
+   "minor": 10,
+   "major": 0,
+   "critical": 0
+  }
+ }
 }

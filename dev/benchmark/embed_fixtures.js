@@ -12,7 +12,7 @@ function compact(fx) {
     targets: fx.targets.map(t => ({ id: t.id, status: t.status === 'new' ? 'new' : 'review' })), taughtIds: fx.inventory.taughtIds.slice(),
     fidelity: fx.fidelity, sourceLog: fx.historicalLog ? { file: fx.historicalLog.file, sha256: fx.historicalLog.sha256 } : null,
     historicalOutcome: fx.historicalOutcome || null,
-    ...(fx.wordState ? { wordState: fx.wordState } : {}), ...(fx.clockStartMs ? { clockStartMs: fx.clockStartMs } : {}), ...(fx.capturedAt ? { capturedAt: fx.capturedAt } : {}) }
+    ...(fx.wordState ? { wordState: fx.wordState } : {}), ...(fx.clockStartMs ? { clockStartMs: fx.clockStartMs } : {}), ...(fx.capturedAt ? { capturedAt: fx.capturedAt } : {}), ...(fx.stagedSubset ? { stagedSubset: true } : {}) }
 }
 function embeddedBlock() {
   const list = IDS.map(id => compact(JSON.parse(fs.readFileSync(path.join(DIR, id + '.json'), 'utf8'))))

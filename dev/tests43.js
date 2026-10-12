@@ -107,6 +107,31 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
       /WRONG_SENSE/.test(s1[0]) && !s1[1] && !s1[2] && !!s1[3] && /classifier/.test(s1[4]) && !!c.thaiClassifierGuideFor(tw('หลัง')), s1)
     T('P7', 'Thai under the plan: no gloss-guessed template fallback (makeFallbackPairs returns nothing; hand-written HARDCODED_FALLBACKS only)',
       on(() => c.makeFallbackPairs(tw('เดิน') || TV[50])).length === 0 && c.makeFallbackPairs(tw('เดิน') || TV[50]).length > 0)
+    // Stage A live findings (2026-10-12) — fixed under the plan only
+    const zfx5 = R.loadFixture('zh-daily-2026-10-08-t5'), ZV5 = c.ttBenchApplyFixture(c.initMandarinVocab(), zfx5), ZT5 = c.ttBenchJazhTargets(zfx5, ZV5)
+    const zi5 = c.mandarinLearnerInventory(ZV5, ZT5), zr5 = c.mandarinScarcityRules(zi5), hen = ZT5.find(t => t.chinese === '很')
+    const zv = (s, on1) => { const w = c.setTeachingPlan(on1); try { const r = c.validateMandarinPair({ chinese: s, pinyin: 'x', english: 'x', prompt: 'x', segments: c.segmentMandarin(s, zi5.lexicon).map(x => ({ surface: x.surface, pinyin: 'x', english: 'x' })) }, hen, zi5, ZV5, zr5, new Map()); return r.ok } finally { c.setTeachingPlan(w) } }
+    T('P9', 'Mandarin 很 + feeling verb (live Stage A: only 好 / 小 known, the model looped on 这个很好): under the plan 我很喜欢这个 / 我很想吃 pass, 我很要 / 我很吃 stay rejected, and the prompt states the same rule; v682 rejects both',
+      zv('我很喜欢这个。', true) && zv('我很想吃。', true) && !zv('我很要。', true) && !zv('我很吃。', true) && !zv('我很喜欢这个。', false) &&
+      on(() => /很 \+ a FEELING verb/.test(c.buildMandarinPrompt(hen, zi5, ZV5, 3, zr5).user)) && /never 很 \+ verb\/noun/.test(c.buildMandarinPrompt(hen, zi5, ZV5, 3, zr5).user))
+    const P2 = (thai, english) => ({ thai, english })
+    T('P10', 'Thai same-application check (live Stage A: นี่เป็นคู่ที่สวยงามมากครับ / นี่เป็นคู่ที่ดีครับ): a recall with the same speech act and frame as an accepted one is rejected; a question vs a statement is not; v682 run outputs ครั้งนี้คุณไปไหมคะ ~ ครั้งนี้คุณไปอีกไหมคะ are caught',
+      !!c.thaiTpSameFrame(P2('นี่เป็นคู่ที่ดีครับ', 'This is a good pair.'), [P2('นี่เป็นคู่ที่สวยงามมากครับ', 'This is a very beautiful pair.')], tw('คู่')) &&
+      !c.thaiTpSameFrame(P2('ฉันควรมีคู่แบบไหนคะ', 'What kind of pair should I have?'), [P2('ผมว่าคุณควรมีคู่ด้วยครับ', 'I think you should have a pair too.')], tw('ควร')) &&
+      !!c.thaiTpSameFrame(P2('ครั้งนี้คุณไปไหมคะ', 'Are you going this time?'), [P2('ครั้งนี้คุณไปอีกไหมคะ', 'Are you going again this time?')], tw('ครั้ง')) &&
+      /teachingPlanOn\(\) \? thaiTpSameFrame\(p, valid, target\)/.test(SRC) && /teachingPlanOn\(\) \? thaiTpSameFrame\(p, have\.filter/.test(SRC))
+    T('P11', 'Thai classifier plan names the counted noun (live Stage A: ใบนี้สวยนะคะ glossed "This leaf is beautiful"); Japanese あ / え only for a real reaction, never filler',
+      /NOUN \+ classifier \+ นี้/.test(c.teachingPlanLine(c.teachingPlan('th', tw('ใบ')), 2)) && !/NOUN \+ classifier/.test(c.teachingPlanLine(c.teachingPlan('zh', ZTG[0], { wordClass: 'classifier' }), 2)) &&
+      /never as filler/.test(c.jaTpPermissionLine()))
+    T('P12', 'Mandarin degree adverbs get their own plan (describe · ask/contrast · feeling verb) instead of the generic "different situation"; 这个太好吗？ (live Stage B false acceptance) is rejected under the plan, 太好了 passes; v682 pattern unchanged',
+      on(() => c.teachingPlan('zh', hen).wordClass === 'degree' && /FEELING/.test(c.teachingPlanLine(c.teachingPlan('zh', hen), 3))) && c.teachingPlan('zh', hen).wordClass === 'degree' &&
+      on(() => c.mandarinSurfaceGrammarProblems('这个太好吗？', zi5).length > 0 && !c.mandarinSurfaceGrammarProblems('这个太好了！', zi5).length) && !c.mandarinSurfaceGrammarProblems('这个太好吗？', zi5).length)
+    const J = (text, english) => ({ text, english })
+    T('P13', 'one shared same-application principle for Thai and Japanese (live Stage B: じゃあ、また明日ね / また明日ね · どれがいいかな？ / どれがいい？ · 明日、店に来る？ / 明日来る？ are the same use); different uses pass (いつ来る？ / 明日来る？ · これ、分かる？ / うん、分かるよ。)',
+      c.teachingSameFrame('ja', J('また明日ね。', 'See you tomorrow, okay?'), J('じゃあ、また明日ね。', 'Well then, see you tomorrow.'), 'また') &&
+      c.teachingSameFrame('ja', J('どれがいい？'), J('どれがいいかな？'), 'どれ') && c.teachingSameFrame('ja', J('明日来る？'), J('明日、店に来る？'), '来る') &&
+      !c.teachingSameFrame('ja', J('いつ来る？'), J('明日来る？'), '来る') && !c.teachingSameFrame('ja', J('これ、分かる？'), J('うん、分かるよ。'), '分かる') &&
+      /if \(teachingPlanOn\(\)\) for \(const \[, e\] of seenMap\) if \(e && e\.targetId === targetId && e\.text && teachingSameFrame\('ja'/.test(SRC))
     T('P8', 'bounded repair: under the plan a Mandarin repeat is recorded (the same repeat twice ends paid attempts) and the retry names the failure and the clashing recall; quota recovery passes rejection memory instead of seeding rejected sentences as accepted',
       /_rej\.record\(_rejScope, cand\.chinese, 'same application as ' \+ _clash\)/.test(SRC) && /teachingRepairLine\(last, _zhClash/.test(SRC) && /priorRejected: _tpPrior/.test(SRC) &&
       /it repeats the accepted recall/.test(c.teachingRepairLine('same application', '这个很大', c.teachingPlan('zh', ZTG[0]), 2)))

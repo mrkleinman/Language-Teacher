@@ -3441,6 +3441,13 @@ function mandarinSegmentSource(surface, inv) {
 
 // v673 §4 — POSITIVE target-specific Mandarin patterns (what TO write), so first-pass generation does not need repair:
 // the live run spent 75 rejections on untaught words (点 in 喝点, 菜, 水, 时候, 走) and 62 on duplicates
+// v683 teaching plan: 很 also takes a FEELING verb (我很喜欢这个 · 我很想吃 · 我很担心). v682 told the model "never 很 + verb" and the
+// validator rejected these standard sentences, so a learner with few adjectives could not get a third natural 很 recall.
+// A grammatical class (psych verbs), not vocabulary: each verb must still be taught to be used.
+const ZH_TP_DEGREE_ADVERBS = Object.freeze(['很', '太', '有点', '非常', '真', '挺', '更', '最', '比较'])
+const ZH_TP_DEGREE_VERBS = Object.freeze(['喜欢', '想', '爱', '怕', '担心', '希望', '需要'])
+const ZH_TP_HEN_PATTERN = '很 + ADJECTIVE (很好 / 很小) or 很 + a FEELING verb (很喜欢 / 很想 + verb) — never 很 + an action verb (NOT 很吃 / 很要) or a noun'
+const ZH_TP_HEN_GRAMMAR = '很 + adjective (很好) or 很 + a feeling verb (我很喜欢这个 · 我很想吃), never 很 + an action verb or a noun'
 const ZH_TARGET_PATTERNS = Object.freeze({
   '一点': 'VERB + 一点 (吃一点 / 买一点) or ADJECTIVE + 一点 to ask for a bit more (快一点 / 慢一点) — never 一点 + verb',
   '有点': '有点 + ADJECTIVE for a slight complaint (有点大 / 有点慢) — never 有点 + verb',
@@ -3477,7 +3484,7 @@ const ZH_TARGET_PATTERNS = Object.freeze({
 function zhTargetPatternLine(target, inv, vocab, rules) {
   const zh = target && target.chinese
   if (!zh) return ''
-  const pat = ZH_TARGET_PATTERNS[zh]
+  const pat = teachingPlanOn() && zh === '很' ? ZH_TP_HEN_PATTERN : ZH_TARGET_PATTERNS[zh]
   const ex = []
   // v683 teaching plan: no example sentences to "reuse the structure" of (they pulled the model towards one frame per target)
   if (!teachingPlanOn()) try { for (let r = 1; r <= 3 && ex.length < 2; r++) { const fb = mandarinFallbackPair(target, inv, r, null, vocab, rules); if (fb && fb.chinese && !ex.includes(fb.chinese)) ex.push(fb.chinese) } } catch (e) {}
@@ -3527,7 +3534,7 @@ function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
     _cc.promptRule + ' Simplified Chinese only. No Traditional characters.\n' +
     // v672 §4 — generate WITHIN the level (Mukyu preferred 2–4 words), do not lean on the hard ceiling
     'LENGTH AIM: ' + _cc.preferredMin + '–' + _cc.preferredMax + ' words (count words, not characters: 我想喝茶 = 我/想/喝/茶 = 4). Go up to ' + _cc.hardMax + ' ONLY when a natural sentence genuinely needs it. Short natural replies are good.\n' +
-    'GRAMMAR: 有点 + adjective ("a bit": 有点贵), verb/adjective + 一点(儿) ("a little more": 便宜一点) — never 一点 before a verb (NOT 我一点想吃); 太 + adjective + 了 (太贵了; NOT 太吗); 很 + adjective (很好), never 很 + verb/noun; ' +
+    'GRAMMAR: 有点 + adjective ("a bit": 有点贵), verb/adjective + 一点(儿) ("a little more": 便宜一点) — never 一点 before a verb (NOT 我一点想吃); 太 + adjective + 了 (太贵了; NOT 太吗); ' + (teachingPlanOn() ? ZH_TP_HEN_GRAMMAR : '很 + adjective (很好), never 很 + verb/noun') + '; ' +
     '不 for present/future and habits, 没/没有 for past events and 有 (我没去 / 我不去 — NOT 我没去了); 了 for a completed action; a measure word between a number and a noun (两个人); ' +
     'verb before object; time before the verb (我明天去), place with 在 before the verb (我在家吃); question words stay in place (你去哪里？); 能 = able, 可以 = allowed / OK, 要 = want / will, 想 = would like; ' +
     '把 only if it is listed above.\n' +
@@ -3576,7 +3583,7 @@ function mandarinGrammarProblems(zh, segs, inv) {
     // \u6CA1 negates \u6709 / past events, not a plain non-past verb phrase with \u4E0D-semantics
     if (a === '\u6CA1' && b !== '\u6709' && pb === 'adjective') P.push('ungrammatical: use \u4E0D not \u6CA1 before ' + b)
     // \u5F88 modifies adjectives, not verbs or nouns (\u00a770)
-    if (a === '\u5F88' && (pb === 'verb' || pb === 'noun' || pb === 'pronoun')) {
+    if (a === '\u5F88' && (pb === 'verb' || pb === 'noun' || pb === 'pronoun') && !(teachingPlanOn() && ZH_TP_DEGREE_VERBS.includes(b))) {
       P.push('ungrammatical: \u5F88 cannot modify ' + b)
     }
     // §70 — do not use 是 before an adjective predicate
@@ -3599,7 +3606,8 @@ function mandarinSurfaceGrammarProblems(zh, inv) {
   if (/一起(?=[吗呢啊。？！?!]|$)/.test(s) && !/[去来走吃喝玩看做学买跑住]/.test(s)) P.push('ungrammatical: 一起 needs a verb (一起去 / 一起吃)')
   if (/一点(儿)?(想|要|会|能|去|来|吃|喝|看|买|说|做|喜欢|是)/.test(s) && !/(有一点|有点)/.test(s.slice(0, s.search(/一点/) + 1)))
     P.push('ungrammatical: 一点 cannot stand before a verb (' + s.match(/一点(儿)?./)[0] + ') — "a little" before a verb/adjective is 有点; after one it is …一点')
-  if (/太(贵|好|大|小|多|少|远|近|忙|累|热|冷|快|慢|难|早|晚|高|长|短|好吃|好看|漂亮)(?!了)[吗。？！?!，,]?$/.test(s) && !/不太/.test(s))
+  // v683 teaching plan: also with 吗 + punctuation (live Stage B accepted 这个太好吗？ — the v682 pattern allowed only ONE final mark)
+  if ((teachingPlanOn() ? /太(贵|好|大|小|多|少|远|近|忙|累|热|冷|快|慢|难|早|晚|高|长|短|好吃|好看|漂亮)(?!了)[吗呢吧]?[。？！?!，,]*$/ : /太(贵|好|大|小|多|少|远|近|忙|累|热|冷|快|慢|难|早|晚|高|长|短|好吃|好看|漂亮)(?!了)[吗。？！?!，,]?$/).test(s) && !/不太/.test(s))
     P.push('unnatural: 太 + adjective needs 了 (太' + s.match(/太(\S)/)[1] + '了)')
   // v672 §4 — 把 only when the learner has been taught it; 没 + verb + 了 mixes the negated past with completion
   const _has = w => !!inv && ((inv.grammarScaffold || []).some(g => g && g.form === w) || (inv.allContent || []).some(x => x && x.chinese === w) || (inv.conversationBasics || []).some(b => b && b.form === w))
@@ -5953,6 +5961,8 @@ function japaneseVariationVerdict(jp, targetId, seenMap, surface) {
       return { ok: false, level: 'V', reason: 'same application as an accepted recall (the target\'s own sentence is the same; another sentence was only added): ' + e.text } }
   // v682 — function-aware (asking vs answering) and a leading reply word (うん / はい / ええ …) is not a new application: the live
   // v681 大丈夫 recalls 大丈夫？/ 大丈夫だよ。/ うん、大丈夫。 counted as three
+  if (teachingPlanOn()) for (const [, e] of seenMap) if (e && e.targetId === targetId && e.text && teachingSameFrame('ja', { text: jp }, { text: e.text }, surface))
+    return { ok: false, level: 'V', reason: 'same application as an accepted recall (the same frame with a word swapped, added or only a sentence-final particle changed): ' + e.text }
   const v = japaneseFormulaKey(jp, surface)
   for (const [, e] of seenMap) if (e && e.targetId === targetId && e.text && japaneseFormulaKey(e.text, surface) === v)
     return { ok: false, level: 'V', reason: 'same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): ' + e.text }
@@ -9102,14 +9112,16 @@ async function ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId, useGen2) {  
     const isFull = t.thai.includes('คุณ') || t.thai.includes('ผม') || t.thai.includes('เขา')
     return isFull && t.thai.split(' ').length > 1 ? { ...t, _phraseType: 'full_sentence' } : t })
   const _auth = thaiAuthorisedSurfaces(vocab, raw)
-  const f = freezeThaiTargetSelection({ selected: raw, reserve: [], required: THAI_TRACK_TARGET_COUNT, mode: 'daily', noNewOverflow: false, feasibility: thaiSelectionFeasibility(_auth) })
+  // v683: a staged sandbox fixture (5 / 10 targets, stagedSubset:true) requires only its own targets — benchmark entry only
+  const _need = fx.stagedSubset ? raw.length : THAI_TRACK_TARGET_COUNT
+  const f = freezeThaiTargetSelection({ selected: raw, reserve: [], required: _need, mode: 'daily', noNewOverflow: false, feasibility: thaiSelectionFeasibility(_auth) })
   if (f.blocked) { L('TRACK_SELECTION_BLOCKED eligible=' + f.blocked.eligible + ' required=' + f.blocked.required + ' — the screen stops here (no track)'); return { track: null, stop: 'TRACK_SELECTION_BLOCKED' } }
   const targets = f.targets
   const tIds = new Set(targets.map(w => w.id))
   const rawAnchors = vocab.filter(w => (w.status === 'known' || w.status === 'learning') && !tIds.has(w.id))
     .sort((a, b) => (!a.lastSeen ? -1 : !b.lastSeen ? 1 : a.lastSeen.localeCompare(b.lastSeen))).slice(0, 25)
   const anchors = resolveThaiTargetSet([], rawAnchors).anchors
-  const targetCounts = thaiTargetCounts({ requested: THAI_TRACK_TARGET_COUNT, selectedTargets: targets, generationTargets: targets, unresolved: [], mode: 'daily',
+  const targetCounts = thaiTargetCounts({ requested: _need, selectedTargets: targets, generationTargets: targets, unresolved: [], mode: 'daily',
     shortfall: null, lockedByUnratedTracks: 0, candidateStats: undefined, skippedCandidates: undefined, backfills: f.backfills, blocked: f.blocked, contract: true,
     suitabilityAudit: thaiSuitabilityAuditSummary(vocab) })
   // scene (the screen shows it for approval; the benchmark accepts it)
@@ -9344,6 +9356,7 @@ const TEACHING_APPLICATIONS = Object.freeze({
   general:    ['a STATEMENT using it', 'a QUESTION using it', 'a REPLY, a request or a different everyday situation'],
 })
 function teachingWordClass(lang, target) {
+  if (lang === 'zh' && ZH_TP_DEGREE_ADVERBS.includes(target && target.chinese)) return 'degree'
   const pos = String(target && (target.partOfSpeech || target.pos) || '').toLowerCase(), en = String(target && (target.english || target.e) || '').toLowerCase()
   if (/classifier/.test(pos) || /^classifier\b|\(classifier/.test(en)) return 'classifier'
   if (/particle/.test(pos) || /particle/.test(en)) return 'particle'
@@ -9356,12 +9369,20 @@ function teachingWordClass(lang, target) {
   if (/adverb|conjunction|preposition|function/.test(pos)) return 'function'
   return 'noun'
 }
+// Language-specific wording of a shared application (same three uses). Thai: a classifier always comes with the noun it counts, so the
+// meaning is in the sentence, not invented by the English (live: ใบนี้สวยนะคะ glossed "This leaf is beautiful" in a shop).
+const TEACHING_APPLICATIONS_LANG = Object.freeze({
+  // Mandarin degree adverbs (很 / 太 / 有点 …): their uses are describing, asking / contrasting and feelings — not the generic
+  // "in a different situation", which left 很 recall 3 with nothing to aim at (live Stage A and B)
+  zh: { degree: ['DESCRIBE — it + an adjective about something (这个很小)', 'REPLY or REACTION — a short answer or reaction (很好！ / 太好了！ / 不太好), not a yes/no question (很 / 太 rarely sit in one)', 'FEELING or REACTION — it + a feeling verb (很喜欢 / 很想 + verb), or a reaction'] },
+  th: { classifier: ['COUNT — NOUN + number + classifier (the noun it really counts, e.g. ticket / bag / shirt)', 'POINT — NOUN + classifier + นี้ / นั้น', 'ASK — NOUN + classifier + ไหน, or กี่ + classifier'] },
+})
 function teachingPlan(lang, target, opt) {
   const o = opt || {}
   const wordClass = o.wordClass || teachingWordClass(lang, target)
   const sense = String(o.sense || (target && (target.english || target.e)) || '').trim()
   return { lang, targetId: target && target.id, surface: target && (target.chinese || target.japanese || target.thai || target.t), sense, notSense: o.notSense || '',
-    wordClass, applications: (TEACHING_APPLICATIONS[wordClass] || TEACHING_APPLICATIONS.function).slice() }
+    wordClass, applications: ((TEACHING_APPLICATIONS_LANG[lang] || {})[wordClass] || TEACHING_APPLICATIONS[wordClass] || TEACHING_APPLICATIONS.function).slice() }
 }
 function teachingPlanLine(plan, recallIndex) {
   if (!plan) return ''
@@ -14017,6 +14038,7 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
     const _thisThai = (p.thai||'').replace(/[ครับค่ะคะๆ\s]/g,'').slice(0,13)
     const _dupThai = _thisThai.length > 8 && valid.some(v => (v.thai||'').replace(/[ครับค่ะคะๆ\s]/g,'').slice(0,13) === _thisThai)
     if (_dupThai) { failures.push('Thai text too similar to another pair in this cluster — vary the sentence'); continue }
+    { const _sf = teachingPlanOn() ? thaiTpSameFrame(p, valid, target) : ''; if (_sf) { failures.push('same application as the accepted recall "' + _sf + '" with a word swapped — use the word in a different application'); continue } }
     // Fix 13: Reject word-spacing artifacts (model writing each Thai word separately)
     const _thaiTokens = (p.thai||'').trim().split(/\s+/).filter(t => /[ก-๙]/.test(t))
     const _spaceCount = ((p.thai||'').match(/\s+/g)||[]).length
@@ -20162,6 +20184,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     const g = thaiLineGate(p, keywords, c.vocab)
     g.problems.forEach(x => why.push(x.code + ': ' + x.why))
     if (have.some(h => h.thai === p.thai)) why.push('DUPLICATE of an existing TARGET PAIR')
+    { const _sf = teachingPlanOn() ? thaiTpSameFrame(p, have.filter(h => h && (h.targetId === kw.wordId || h.wordId === kw.wordId)), kw) : ''; if (_sf) why.push('same application as the accepted recall "' + _sf + '" with a word swapped') }
     // v657 §3 — the same acceptance contract as generation and the final count (deterministic dimensions here)
     if (!why.length) { const v = validateThaiTargetPair(p, kw, { vocab: c.vocab, track, existing: have }, 'quota-recovery')
       v.failed.filter(k => k !== 'TARGET_PRESENT').forEach(k => why.push(v.reasons.find(r => r.startsWith(k + ':')))) }
@@ -31504,6 +31527,43 @@ function thaiTpNotSense(target) {
   if (!teachingPlanOn() || !g || /classifier|counter/i.test(thaiTpGloss(target)) || THAI_TP_CONTAINER_CLASSIFIERS.includes(t)) return ''
   return 'its use as a classifier (' + g.split(/[:—]/)[0].replace(t, '').trim() + ')'
 }
+// v683 teaching plan — the shared "same application" principle for Thai (Mandarin: zhSameUse). Two recalls of one target clash when
+// they are the same speech act (both questions or both statements) and, with the target and polite particles removed, one is
+// mostly the other's frame with a word swapped (live: นี่เป็นคู่ที่สวยงามมากครับ / นี่เป็นคู่ที่ดีครับ). Returns the clashing recall.
+// Shared across languages: the frame is the sentence minus the target, punctuation, the language's scaffolding particles
+// (sentence-final, polite, interjections — never content words). Mandarin keeps its own zhSameUse (application keys).
+const TEACHING_FRAME_STRIP = Object.freeze({
+  th: { lead: /^$/, tail: /(ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า)+$/, inner: /(ครับ|ค่ะ|คะ)/g, min: 3,
+        q: /(ไหม|มั้ย|หรือเปล่า|เหรอ|ไหน|อะไร|ใคร|เท่าไหร่|ยังไง|ทำไม|กี่)(ครับ|คะ|ค่ะ|นะ)?\s*$/ },
+  ja: { lead: /^(じゃあ|あっ|えっ|あ|え|うん|はい|ええ)/, tail: /(かな|よね|だね|だよ|ね|よ|な|の|か|わ)+$/, inner: /$^/g, min: 2, q: /[？?]\s*$/ },
+})
+function teachingFrame(lang, text, surface) {
+  const S = TEACHING_FRAME_STRIP[lang]; if (!S) return String(text || '')
+  let f = String(text || '').split(surface || '\u0000').join('').replace(/[\s、，,。．.！!？?…「」『』]/g, '')
+  for (let k = 0; k < 2; k++) f = f.replace(S.lead, '').replace(S.tail, '')
+  return f.replace(S.inner, '')
+}
+function teachingIsQuestion(lang, text, english) {
+  const S = TEACHING_FRAME_STRIP[lang]
+  // Japanese / Mandarin mark questions in the sentence itself (an English tag like "…, okay?" is not a question); Thai often does not
+  return (lang === 'th' && /\?\s*$/.test(String(english || ''))) || /[？?]\s*$/.test(String(text || '')) || !!(S && S.q.test(String(text || '')))
+}
+// Two recalls of one target are the same application when they are the same speech act and one is mostly the other's frame
+// with a word swapped or added (live: นี่เป็นคู่ที่สวยงามมากครับ / นี่เป็นคู่ที่ดีครับ · じゃあ、また明日ね / また明日ね · 明日、店に来る？ / 明日来る？).
+function teachingSameFrame(lang, a, b, surface) {   // a, b = { text, english }
+  if (!a || !b || !a.text || !b.text || a.text === b.text) return false
+  if (teachingIsQuestion(lang, a.text, a.english) !== teachingIsQuestion(lang, b.text, b.english)) return false
+  const x = teachingFrame(lang, a.text, surface), y = teachingFrame(lang, b.text, surface), n = Math.min(x.length, y.length)
+  if (n < ((TEACHING_FRAME_STRIP[lang] || {}).min || 3)) return false
+  let k = 0; while (k < n && x[k] === y[k]) k++
+  let m = 0; while (m < n - k && x[x.length - 1 - m] === y[y.length - 1 - m]) m++
+  return (k + m) / n >= 0.7
+}
+function thaiTpSameFrame(p, accepted, target) {
+  const t = target && (target.thai || target.t) || ''
+  for (const v of accepted || []) if (v && teachingSameFrame('th', { text: p && p.thai, english: p && p.english }, { text: v.thai, english: v.english }, t)) return v.thai
+  return ''
+}
 function thaiTpSenseProblem(thai, target) {
   const t = target && (target.thai || target.t)
   if (!t || !thaiTpNotSense(target)) return ''
@@ -34492,7 +34552,7 @@ function jaTpWordClass(target) {
 function jaTpPermissionLine() {
   return 'GRAMMAR PERMISSIONS: you may end a sentence with かな ("I wonder…" — the English and the cue MUST show that uncertainty) or with ' +
     'sentence-ending な (a reflective / emphatic "…, isn\'t it" — never the prohibitive "don\'t do" な after a verb), and you may start with the ' +
-    'interjection あ or え. These are scaffolding, not new words. ' + JA_TP_STILL_RESTRICTED.join(' / ') + ' and any other particle not listed ' +
+    'interjection あ or え ONLY when the speaker is really reacting to something just said or noticed — never as filler. These are scaffolding, not new words. ' + JA_TP_STILL_RESTRICTED.join(' / ') + ' and any other particle not listed ' +
     'above are NOT allowed yet.\n'
 }
 function jaSegmentIsSentenceFinal(segs, seg) {

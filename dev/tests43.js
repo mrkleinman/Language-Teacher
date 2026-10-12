@@ -152,12 +152,43 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
       SRC.indexOf('if (teachingPlanOn() && accepted.length)') > SRC.indexOf("LOCAL_REPAIR cue (no paid call)") &&
       !!c.thaiTpSameFrame(P2('ผมยังตัดสินใจไม่ได้ครับ', "I haven't decided yet."), [P2('ผมยังไม่ตัดสินใจครับ', "I haven't decided yet.")], tw('ตัดสินใจ')) &&
       !!c.thaiTpSameFrame(P2('ฉันสามารถไปได้ค่ะ', 'I can go.'), [P2('ผมสามารถไปได้ครับ', 'I can go.')], tw('สามารถ')))
-    T('P15', 'Japanese under the plan: the scene is background (the plan decides the sentence) and かな only for genuine uncertainty (live Stage C: 入る in 10 lines, かな in 10)',
+    T('P15', 'Japanese under the plan: no lesson theme, scene premise, example shapes or grammar-label role reach the recall prompt (the plan and a who-is-speaking line decide the sentence); かな only for genuine uncertainty (live Stage C: 入る in 10 lines, then trains; かな in 10)',
       (() => { const d2 = { ...doko, _sceneLocalPremise: 'A and B meet outside a shop. B was about to go inside.' }, g = [{ recallIndex: 1 }, { recallIndex: 2 }, { recallIndex: 3 }]
         const pOn = on(() => c.buildJapaneseGroupPrompt(d2, g, jinv, JV, c.ev('JA_REGISTER_DEFAULT'), { initial: true })), pOff = c.buildJapaneseGroupPrompt(d2, g, jinv, JV, c.ev('JA_REGISTER_DEFAULT'), { initial: true })
         const t = x => x.system + '\n' + x.user
-        return /background only: recalls must not contradict it/.test(t(pOn)) && !/every recall must make sense in THIS scene/.test(t(pOn)) && /every recall must make sense in THIS scene/.test(t(pOff)) })() && /ONLY when the speaker is genuinely unsure/.test(c.jaTpPermissionLine()) &&
+        return !/LESSON THEME|THIS SCENE|NATURAL PATTERNS|LICENSED CONSTRUCTIONS|TARGET ROLE/.test(t(pOn)) && /WHO IS SPEAKING/.test(t(pOn)) && /every recall must make sense in THIS scene/.test(t(pOff)) })() && /ONLY when the speaker is genuinely unsure/.test(c.jaTpPermissionLine()) &&
       /every recall must make sense in THIS scene \(same situation, same people\)/.test(SRC))
+    // ── phase 3: the six structural fixes ──
+    const fc = (lang, V0, w) => c.tpFunctionClass(lang, V0.find(x => (x.chinese || x.japanese || x.thai) === w))
+    const TV0 = c.initVocab()
+    T('P16', 'fix 1 — plans follow the word\'s conversational FUNCTION, not a grammar label: 可以 / 想 / 要 modal (their uses ask / say / refuse — never "suggest doing it together"); 好き / 喜欢 / ชอบ preference; 很 degree; すみません politeness (polite); いいえ response (polite); ครั้ง frequency; ยาว state; เล่า action',
+      ['可以', '想', '要'].every(w => fc('zh', ZV, w) === 'modal') && fc('zh', ZV, '喜欢') !== 'action' && fc('ja', JV, '好き') === 'preference' && fc('zh', ZV, '很') === 'degree' &&
+      fc('ja', JV, 'すみません') === 'politeness' && fc('ja', JV, 'いいえ') === 'response' && fc('th', TV0, 'ครั้ง') === 'frequency' && fc('th', TV0, 'ยาว') === 'state' && fc('th', TV0, 'เล่า') === 'action' &&
+      !c.teachingPlan('zh', ZTG.find(t => t.chinese === '想')).applications.some(a => /together/i.test(a)) &&
+      c.teachingPlan('ja', JTG.find(t => t.japanese === 'すみません'), { wordClass: c.jaTpWordClass(JTG.find(t => t.japanese === 'すみません')) }).polite === true)
+    const zp16 = on(() => c.buildMandarinPrompt(ZTG.find(t => t.chinese === '想'), zinv, ZV, 3, zrules).user)
+    T('P17', 'fix 2 / 4 — each use names its own situation and who is spoken to; Mandarin drops the grammar-label TARGET ROLE line; all three languages carry ONE cue definition',
+      /situation: /.test(zp16) && !/TARGET ROLE/.test(zp16) && zp16.includes(c.ev('TP_CUE_DEFINITION')) && jp.user.includes(c.ev('TP_CUE_DEFINITION')) &&
+      /TP_CUE_DEFINITION \+ '\\n' : ''\) \+/.test(SRC) && /'MISSING recall ' \+ r \+ ' = application: '/.test(SRC))
+    const sw = on(() => { const pl = c.teachingPlan('zh', ZTG.find(t => t.chinese === '可以')), before = c.tpUseFor(pl, 3).text; c.tpSwitchUse('zh', pl.targetId, 3); const after = c.tpUseFor(pl, 3); return { before, after: after.text, switched: after.switched, line: c.teachingPlanLine(pl, 3) } })
+    T('P18', 'fix 5 — recovery CHANGES the failing application instead of re-sending it: after two failures of one kind the recall switches to an unused use (logged APPLICATION_SWITCH), within the existing attempt budget; the switch is reset with the plan switch',
+      sw.switched && sw.before !== sw.after && /CHANGED after failed attempts/.test(sw.line) && /APPLICATION_SWITCH/.test(SRC) && /TP_USE_SHIFT\.clear\(\)/.test(SRC) && c.ev('TP_USE_SHIFT.size') === 0)
+    const cc = c.tpCueCheck
+    T('P19', 'fix 4 — the deterministic part of the cue rule: a cue quoting the target language (or missing) blocks; a cue that only copies the English meaning is COUNTED, never costing a good sentence; Mandarin keeps a good model cue instead of the derived "Tell the other person: <English>"',
+      cc('zh', 'I want to go.', '我想去').blocking.length === 1 && cc('ja', 'x', '').blocking.length === 1 && cc('zh', 'I want to go home.', 'Tell the other person: I want to go home.').copy === true &&
+      cc('zh', 'I want to go home.', 'Say you would like to head home now').copy === false && /_cueSource: 'model'/.test(SRC))
+    const D = c.tpJudgeDecide, ok5 = { natural: 5, grammar: true, register: true, english: true, target: true, cue: 'ok' }
+    const jprompt = c.tpJudgePrompt('ja', [{ target: 'すみません', sense: 'excuse me', to: 'station staff', text: 'すみません、駅はどこですか？', english: 'Excuse me, where is the station?', cue: 'Ask station staff where the station is' }])
+    T('P20', 'fix 3 — the rebuilt AI quality judge (Japanese / Mandarin): per-sentence verdicts with register (who it is said to), English, target sense and the shared cue definition, at low temperature; one wrong sentence fails the group; a copied cue is counted, a misleading cue fails; the v682 "simple repetitive sentences are GOOD" instruction is gone; a repaired group is judged AGAIN before it counts as fixed',
+      D([ok5, ok5, ok5]).action === 'clean' && D([ok5, { ...ok5, natural: 2 }, ok5]).action !== 'clean' && D([ok5, { ...ok5, register: false }, ok5]).action === 'improve' &&
+      D([ok5, { ...ok5, cue: 'copy' }, ok5]).action === 'clean' && D([ok5, { ...ok5, cue: 'misleading' }, ok5]).action !== 'clean' && D([ok5, { ...ok5, grammar: false }]).action === 'replace' &&
+      /said to: station staff/.test(jprompt) && jprompt.includes(c.ev('TP_CUE_DEFINITION')) && !/simple repetitive sentences are GOOD/.test(jprompt) &&
+      /if \(teachingPlanOn\(\) && \(engine\.language === 'ja' \|\| engine\.language === 'zh'\)\) return tpJudgeGroup/.test(SRC) && /temperature: 0\.1, json: TP_JUDGE_SCHEMA/.test(SRC) &&
+      /repaired group failed the quality judge again/.test(SRC) && /all\[i\] = _tpSnap\[k\]/.test(SRC))
+    T('P21', 'fix 6 — every rejected Thai candidate is logged with its stage and its OWN reason (speaker, target, quality, naturalness, early semantic gate, quota recovery)',
+      ['speaker', 'target', 'quality', 'naturalness', 'early-semantic', 'quota-recovery'].every(st => SRC.includes("thaiTpRejectLine('" + st + "'")) &&
+      c.thaiTpRejectLine('quality', 'ผมไปครับ', 'x') === '✖ TH_CANDIDATE_REJECTED stage=quality · "ผมไปครับ" · x' &&
+      c.thaiTpReasonFor('เราควรไปครับ', ['too short: ก', 'no target: ควร in: เราควรไปครับ']) === 'no target: ควร in: เราควรไปครับ')
     T('P8', 'bounded repair: under the plan a Mandarin repeat is recorded (the same repeat twice ends paid attempts) and the retry names the failure and the clashing recall; quota recovery passes rejection memory instead of seeding rejected sentences as accepted',
       /_rej\.record\(_rejScope, cand\.chinese, 'same application as ' \+ _clash\)/.test(SRC) && /teachingRepairLine\(last, _zhClash/.test(SRC) && /priorRejected: _tpPrior/.test(SRC) &&
       /it repeats the accepted recall/.test(c.teachingRepairLine('same application', '这个很大', c.teachingPlan('zh', ZTG[0]), 2)))

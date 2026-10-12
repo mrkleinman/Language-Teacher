@@ -61,6 +61,10 @@ for k, x in enumerate(cands):
     key = norm(x['text'])
     if key in acc or key in seen: continue
     seen.add(key)
+    if not reason and lang == 'th':
+        # v683 plan (fix 6): each rejected Thai candidate has its own log line with stage and reason
+        th = [ln.strip() for ln in log if 'TH_CANDIDATE_REJECTED' in ln and ('"' + (x['text'] or '').strip() + '"') in ln]
+        reason = th[0] if th else None
     if not reason:
         hits = [ln.strip() for ln in log if key[:10] and key[:10] in norm(ln) and ('❌' in ln or 'REJECT' in ln or '⛔' in ln or 'rejected' in ln or 'DROP' in ln)]
         reason = hits[0] if hits else None

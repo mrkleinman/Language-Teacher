@@ -3528,7 +3528,7 @@ function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
       'minimum context that makes ' + target.chinese + ' the obvious answer: ' + target.note + '.' : '') + '\n' +
     'Write ONE natural sentence (recall ' + recallIndex + ' of 3) that genuinely uses ' + target.chinese + '.\n' +
     // v672 §4 — a DIFFERENT communicative function per recall (where the word allows it — never forced)
-    (teachingPlanOn() ? teachingPlanLine(teachingPlan('zh', target), recallIndex)
+    (teachingPlanOn() ? (tpSetSituationPool('zh', (inv.allContent || []).map(w => w.english)), teachingPlanLine(teachingPlan('zh', target), recallIndex))
       : 'FUNCTION for this recall: ' + (ZH_RECALL_FUNCTION[recallIndex] || 'another natural use') + ' (if that is unnatural for ' + target.chinese + ', use another natural function — never bad Mandarin).\n') +
     (teachingPlanOn() ? TP_CUE_DEFINITION + '\n' : targetRoleLine(targetLinguisticRole(target, 'zh'), target, 'zh')) +      // v649 §27 role metadata (v683 plan: the plan replaces the grammar label)
     _cc.promptRule + ' Simplified Chinese only. No Traditional characters.\n' +
@@ -6050,6 +6050,8 @@ function matchesJapaneseTarget(sentence, target) {
   // (a question word followed by か as the QUESTION particle — どこか？ at the very end — is still the question word)
   if (JA_QUESTION_WORD_COMPOUNDS[lemma]) JA_QUESTION_WORD_COMPOUNDS[lemma].forEach(cpd => { s = s.replace(new RegExp(cpd + '(?![\uFF1F?\u3002]?$)', 'g'), '\u3000') })
   if (s.includes(lemma)) return true                       // exact dictionary form
+  // v683 plan: いい is also written 良い / 良く / 良かっ (live: この店、あんまり良くないね。 rejected as "target いい not present")
+  if (lemma === 'いい' && teachingPlanOn() && /良(い|く|かっ|さ|けれ)/.test(s)) return true
   // v651 §13F — the kana spelling of a noun / adjective target (すき for 好き, ごはん for ご飯). Verbs are
   // excluded: いく would match inside いくら; their inflection is handled by the form list / stem below.
   if (/[\u4E00-\u9FFF]/.test(lemma) && !/verb/.test(String(target.partOfSpeech || '')) && jaKanaSpellingsOf(target).some(k => k.length >= 2 && s.includes(k))) return true
@@ -9375,7 +9377,7 @@ async function ttBenchListening(fx, vocab, apiKey, model, L) {
 // Learner screens do not turn it on; only the sandbox pipeline 'teaching-plan' does, for the duration of one run.
 let TEACHING_PLAN_ACTIVE = false
 function teachingPlanOn() { return TEACHING_PLAN_ACTIVE }
-function setTeachingPlan(on) { const was = TEACHING_PLAN_ACTIVE; TEACHING_PLAN_ACTIVE = !!on; if (typeof TP_USE_SHIFT !== 'undefined') TP_USE_SHIFT.clear(); return was }
+function setTeachingPlan(on) { const was = TEACHING_PLAN_ACTIVE; TEACHING_PLAN_ACTIVE = !!on; if (typeof TP_USE_SHIFT !== 'undefined') TP_USE_SHIFT.clear(); if (typeof TP_SITUATION_POOL !== 'undefined') TP_SITUATION_POOL.clear(); return was }
 // THE TEACHING PLAN (shared acceptance principles; language-specific grammar lives in each language's validator).
 // For every target, BEFORE any sentence is written: its sense, its word class and three DIFFERENT applications. The same
 // plan drives the generation prompt, the "same application" check and the repair feedback, so they can never disagree.
@@ -9420,10 +9422,23 @@ const TEACHING_APPLICATIONS_LANG = Object.freeze({
 // Each use REQUIRES the word, names its own everyday situation and who is spoken to, so no scene has to supply the content.
 // Four or five uses per class: the plan takes three; recovery switches a failing recall to an unused one (tpSwitchUse) instead of
 // re-sending the instruction that already failed. Situations rotate by word id, so a track does not share one setting.
+// Each situation needs an ANCHOR word the learner has been taught (English gloss of the allowed content): the phase-3 live runs
+// showed situations like "at a café" / "planning the weekend" pulling the model to untaught nouns (コーヒー, 週末, 料理: 48 of 108
+// Japanese and 33 of 81 Mandarin rejections). The pool is set from the learner's inventory when a prompt is built.
 const TP_SITUATIONS = Object.freeze({
-  daily: ['at lunch', 'on the way home', 'planning the weekend', 'at a café', 'after work', 'at home in the evening', 'on the phone', 'at the market'],
-  polite: ['to a shop assistant', 'to station staff', 'to a stranger asking the way', 'to a waiter', 'at a hotel reception'],
+  daily: [['at lunch', /\b(eat|meal|rice|lunch|food|delicious)\b/], ['on the way home', /\b(home|house|go home|return)\b/], ['planning tomorrow', /\btomorrow\b/],
+    ['over a drink', /\b(tea|coffee|water|drink)\b/], ['after work', /\b(work|job)\b/], ['at home in the evening', /\b(home|house)\b/], ['on the phone', /\b(phone|telephone)\b/],
+    ['at a shop', /\b(shop|store|buy)\b/], ['at the station', /\b(station)\b/], ['on the train or bus', /\b(train|bus)\b/], ['with a friend today', /\btoday\b/]],
+  polite: [['to a shop assistant', /\b(shop|store|buy|how much)\b/], ['to station staff', /\b(station)\b/], ['to a stranger asking the way', /\b(where)\b/],
+    ['to a waiter', /\b(water|meal|drink|eat)\b/]],
 })
+const TP_SITUATION_POOL = new Map()   // lang → { daily: [...], polite: [...] } from the learner's taught words
+function tpSetSituationPool(lang, glosses) {
+  const g = (glosses || []).map(x => String(x || '').toLowerCase()).join(' | ')
+  const pick = list => { const ok = list.filter(([, re]) => re.test(g)).map(([n]) => n); return ok.length ? ok : ['in everyday life'] }
+  TP_SITUATION_POOL.set(lang, { daily: pick(TP_SITUATIONS.daily), polite: pick(TP_SITUATIONS.polite) })
+}
+function tpSituations(lang) { return TP_SITUATION_POOL.get(lang) || { daily: TP_SITUATIONS.daily.map(([n]) => n), polite: TP_SITUATIONS.polite.map(([n]) => n) } }
 const TP_USES = Object.freeze({
   modal: [
     { id: 'ask', act: 'ASK permission, ability or wish WITH THE WORD about one concrete action (may I … / can you … / do you want to …)' },
@@ -9496,7 +9511,7 @@ const TP_USES = Object.freeze({
     { id: 'suggest', act: 'SUGGEST doing something together' },
     { id: 'who', act: 'SAY who you do something with' },
     { id: 'ask', act: 'ASK who someone goes or does something with, or whether to do it together' },
-    { id: 'neg', act: 'SAY you are not doing it together / will go alone' },
+    { id: 'neg', act: 'SAY you are NOT doing it together this time, or decline doing it together' },
   ],
   modifier: [
     { id: 'plan', act: 'with a plan or a statement about what will happen' },
@@ -9655,10 +9670,10 @@ function teachingPlan(lang, target, opt) {
   const polite = (TP_POLITE_WORDS[lang] || []).includes(surface)
   const all = (((TP_USES_LANG[lang] || {})[functionClass]) || TP_USES[functionClass] || TP_USES.noun)
   const seed = _tpHash((target && target.id) + '|' + surface)
-  const places = polite ? TP_SITUATIONS.polite : TP_SITUATIONS.daily
+  const places = polite ? tpSituations(lang).polite : tpSituations(lang).daily
   const dress = (u, k) => ({ ...u, where: places[(seed + k * 3) % places.length], to: polite ? places[(seed + k * 3) % places.length].replace(/^to /, '').replace(/^at a /, 'staff at a ') : 'a friend', polite })
   const uses = all.map(dress)
-  const render = u => lang === 'th' ? u.act : u.act + ' — situation: ' + (polite ? 'speaking ' + u.where : u.where + ', speaking to a friend') + (polite && lang === 'ja' ? ' (polite speech: です／ます is correct here)' : '')
+  const render = u => lang === 'th' ? u.act : u.act + ' — situation: ' + (polite ? 'speaking ' + u.where : u.where + ', speaking to a friend') + (polite && lang === 'ja' ? ' (polite speech: です／ます is correct here)' : '') + ' (the situation is a setting, not a word list: use only allowed words)'
   return { lang, targetId: target && target.id, surface, sense, notSense: o.notSense || '', wordClass: functionClass, functionClass, polite,
     uses: uses.slice(0, 3), spare: uses.slice(3), applications: uses.slice(0, 3).map(render), render }
 }
@@ -40044,7 +40059,7 @@ function buildJapaneseRecallPrompt(target, recallIndex, inv, vocab, registerId, 
     'JAPANESE TARGET: ★ ' + target.japanese + (target.reading ? ' [' + target.reading + ']' : '') + ' = ' + (target.english || '') +
       (target.note ? ' — use when ' + target.note : '') + (role && !teachingPlanOn() ? '\n  ' + role : '') + '\n' +
     (teachingPlanOn()
-      ? teachingPlanLine(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) }), recallIndex) + jaTpSpeakersLine() + TP_CUE_DEFINITION + ' Any inflected form of the target counts. ' + range.contract.promptRule
+      ? (tpSetSituationPool('ja', (inv.allContent || []).map(w => w.english)), teachingPlanLine(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) }), recallIndex)) + jaTpSpeakersLine() + TP_CUE_DEFINITION + ' Any inflected form of the target counts. ' + range.contract.promptRule
       : 'THIS REPLY (recall ' + recallIndex + ' of 3): start from ONE real communicative intent (a request, question, reaction or plan) that naturally needs ' +
       '「' + target.japanese + '」, then write the Japanese a native speaker would use. Any inflected form of the target counts. ' +
       ' ' + range.contract.promptRule) +
@@ -40236,7 +40251,7 @@ function jaCueFormProblems(p) {
   // 食べようか。 = "shall we eat?", 行かないか。 = "won't you come?") — the live log rejected those as "statement vs question"
   const jpQ = /[？?]$/.test(jp) || /か[。！!]?$/.test(jp), enQ = /[?？]\s*$/.test(en)
   if (cue && jpQ && enQ && CUE_SAYS_RE.test(cue) && !CUE_ASKS_RE.test(cue) && !/^\s*(suggest|offer|invite|propose)/i.test(cue)) out.push('CUE_FORM_MISMATCH: the Japanese is a question but the cue asks for a statement ("' + cue.slice(0, 60) + '")')
-  if (cue && !jpQ && !enQ && /^\s*ask\b|\basks\b|\bwants to know\b/i.test(cue) && !CUE_SAYS_RE.test(cue)) out.push('CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question ("' + cue.slice(0, 60) + '")')
+  if (cue && !jpQ && !enQ && /^\s*ask\b|\basks\b|\bwants to know\b/i.test(cue) && !CUE_SAYS_RE.test(cue) && !(teachingPlanOn() && /\b(say|reply|answer|respond|tell (them|him|her))\b/i.test(cue))) out.push('CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question ("' + cue.slice(0, 60) + '")')
   // a Japanese question translated as a statement; the reverse only for a plain 。 statement (ね / よね / でしょ / じゃない
   // are rendered as English tag questions: "…, right?")
   const _volKa = /(よう|おう|こう|ごう|そう|とう|のう|ぼう|もう|ろう)か[。！!？?]?$/.test(jp)
@@ -40612,7 +40627,7 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
     (c.initial ? (n === 1 ? 'TARGET GROUP: write 1 recall sentence:\n' : 'TARGET GROUP: write ' + n + ' distinct recall sentences in ONE reply — useful variants, not copies:\n')
                : 'REPLACEMENT ONLY: write ' + n + ' new sentence(s) for the recall slot(s) below. The accepted recalls stay as they are.\n') +
       (teachingPlanOn()
-        ? teachingPlanLine(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) })) + slots.map(s => '  • recall ' + s.recallIndex + ' = application ' + s.recallIndex + ': ' + tpUseFor(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) }), s.recallIndex).text).join('\n') + '\n' + jaTpSpeakersLine() + TP_CUE_DEFINITION + '\n'
+        ? (tpSetSituationPool('ja', (inv.allContent || []).map(w => w.english)), teachingPlanLine(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) }))) + slots.map(s => '  • recall ' + s.recallIndex + ' = application ' + s.recallIndex + ': ' + tpUseFor(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) }), s.recallIndex).text).join('\n') + '\n' + jaTpSpeakersLine() + TP_CUE_DEFINITION + '\n'
         : slots.map(s => '  • ' + (JA_RECALL_VARIATION[s.recallIndex] || ('recall ' + s.recallIndex + ' of 3 — another natural use'))).join('\n') + '\n') +
       'Do not force unnatural variation just to be different. ' + range.contract.promptRule + '\n' +
     (!teachingPlanOn() && (c.scenePremise || target._scenePurpose || target._sceneLocalPremise) ? (c.scenePremise ? 'LESSON THEME (broad): ' + c.scenePremise + '\n' : '') +

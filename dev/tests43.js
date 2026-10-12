@@ -189,6 +189,13 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
       ['speaker', 'target', 'quality', 'naturalness', 'early-semantic', 'quota-recovery'].every(st => SRC.includes("thaiTpRejectLine('" + st + "'")) &&
       c.thaiTpRejectLine('quality', 'ผมไปครับ', 'x') === '✖ TH_CANDIDATE_REJECTED stage=quality · "ผมไปครับ" · x' &&
       c.thaiTpReasonFor('เราควรไปครับ', ['too short: ก', 'no target: ควร in: เราควรไปครับ']) === 'no target: ควร in: เราควรไปครับ')
+    const pool = on(() => { c.tpSetSituationPool('ja', ['station', 'tomorrow', 'eat', 'phone']); const r = c.ev("JSON.stringify(tpSituations('ja'))"); return JSON.parse(r) })
+    T('P22', 'live phase-3 findings: a situation is offered only when the learner knows an anchor word for it (no café / weekend / market → no コーヒー / 週末 / 料理); the cue rule accepts "Your friend asks … Say …" for a reply; 良くない counts as いい; the "together" use no longer needs "alone"',
+      pool.daily.includes('at the station') && pool.daily.includes('planning tomorrow') && !pool.daily.some(x => /café|weekend|market|drink/.test(x)) && pool.polite.includes('to station staff') && !pool.polite.includes('to a shop assistant') &&
+      on(() => !c.jaCueFormProblems({ japanese: 'うん、大丈夫だよ。', english: "Yeah, I'm fine.", prompt: "Your friend asks if you're okay. Say yes, you're fine." }).length) &&
+      c.jaCueFormProblems({ japanese: 'うん、大丈夫だよ。', english: "Yeah, I'm fine.", prompt: "Your friend asks if you're okay. Say yes, you're fine." }).length > 0 &&
+      on(() => c.matchesJapaneseTarget('この店、あんまり良くないね。', JV.find(w => w.japanese === 'いい'))) && !c.matchesJapaneseTarget('この店、あんまり良くないね。', JV.find(w => w.japanese === 'いい')) &&
+      !/alone/.test(JSON.stringify(c.ev('TP_USES').together)))
     T('P8', 'bounded repair: under the plan a Mandarin repeat is recorded (the same repeat twice ends paid attempts) and the retry names the failure and the clashing recall; quota recovery passes rejection memory instead of seeding rejected sentences as accepted',
       /_rej\.record\(_rejScope, cand\.chinese, 'same application as ' \+ _clash\)/.test(SRC) && /teachingRepairLine\(last, _zhClash/.test(SRC) && /priorRejected: _tpPrior/.test(SRC) &&
       /it repeats the accepted recall/.test(c.teachingRepairLine('same application', '这个很大', c.teachingPlan('zh', ZTG[0]), 2)))

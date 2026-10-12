@@ -1,0 +1,89 @@
+{
+ "runId": "th-daily-device-2026-10-09-t5.teaching-plan.v683A.2026-10-12T02-06-23",
+ "fixture": "th-daily-device-2026-10-09-t5",
+ "pipelineRequested": "teaching-plan",
+ "pipelineExecuted": "teaching-plan",
+ "gen2Version": null,
+ "models": null,
+ "app": {
+  "appBuild": "v682",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "NOT_READY",
+ "reasons": [
+  "SELECTED_TARGETS=5 (required 30)",
+  "TARGET_PAIR_QUOTA=15/15 (required 90/90)"
+ ],
+ "error": null,
+ "stop": null,
+ "recalls": 19,
+ "deferred": [],
+ "spend": {
+  "costUsd": 0.01036,
+  "capUsd": 0.03,
+  "tokens": {
+   "in": 69941,
+   "out": 8419
+  },
+  "requestsSent": 39,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "(untagged) @ gemini-2.5-flash-lite": {
+    "requests": 39,
+    "in": 69941,
+    "out": 8419,
+    "usd": 0.010361700000000001
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×39",
+  "Track ID: 2026-10-09T08:42:52.692Z · run daily-track-1791535372160-3223",
+  "Total requests: 39 · Successful: 39 · Failed: 0 · Retried: 8",
+  "Generation calls: 16 · QC calls: 20 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 1 · Gloss calls: 0 · Recovery calls: 2 · Listening calls: 0 · Other: 0",
+  "Input tokens: 69941 · Output tokens: 8419 · Total tokens: 78360 (provider usage metadata)",
+  "Retry requests: 8 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 39 · Provider-error retries: 0",
+  "GENERATION (app level; unit = one TARGET-GROUP request (3 recalls each) — not one recall): target-group requests 6 · first attempts 6 · regeneration attempts 8 · total attempts 14 · average 2.33 per target group · resolved first attempt 3/6 · requiring 2 attempts 1 · requiring 3 attempts 2 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 3",
+  "GENERATION WASTE: first-attempt tokens 23015 · regeneration tokens 32905 · regeneration share 59% · regeneration cost USD 0.0041 · fallback-after-paid-retries 0",
+  "PAID REQUESTS BY PURPOSE: QC judging 20 (16468 tok, USD 0.0023) · generation (first attempt / scene) 8 (26261 tok, USD 0.0036) · regeneration (paid retry of a rejected candidate) 8 (32905 tok, USD 0.0041) · quota / target recovery 2 (2224 tok, USD 0.0003) · pronunciation / segmentation / gloss 1 (502 tok, USD 0.0001)",
+  "THAI GENERATION: targets generated 6 · recall checks 18 (sum of each target's highest recall check; max 11 per recall — one check = one candidate attempt) · initial paid generation calls 6 · paid regeneration calls 8 · deterministic/local checks 4 · local repairs 3 · quota-recovery generation calls 2 · cue-QC calls 8 · naturalness-QC calls 5 · passed on the first paid call 3/6",
+  "  THAI_GENERATION_BUDGET คะ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ชิ้น HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=4 LOCAL_REPAIRS=3 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ใบ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET คู่ HIGHEST_RECALL_CHECK=5/11 PAID_GENERATION_ATTEMPTS=5 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET ควร HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted",
+  "  THAI_GENERATION_BUDGET คู่ HIGHEST_RECALL_CHECK=6/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=accepted",
+  "Estimated Gemini cost: USD 0.0104 (≈ SGD 0.0135 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. B_generation_retry — 8 requests / 32905 tokens / ~40%",
+  "  2. A_generation — 6 requests / 23015 tokens / ~28%",
+  "  3. L_final_cue_audit — 6 requests / 5684 tokens / ~8%",
+  "  4. F_naturalness_final — 5 requests / 5215 tokens / ~7%",
+  "  5. A0_scene — 1 requests / 2516 tokens / ~5%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 76
+}

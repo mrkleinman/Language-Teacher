@@ -1,0 +1,88 @@
+{
+ "runId": "ja-daily-2026-10-08-t5.teaching-plan.v683A.2026-10-12T02-05-43",
+ "fixture": "ja-daily-2026-10-08-t5",
+ "pipelineRequested": "teaching-plan",
+ "pipelineExecuted": "teaching-plan",
+ "gen2Version": null,
+ "models": null,
+ "app": {
+  "appBuild": "v682",
+  "gen2Version": "gen2-pilot/1.1",
+  "gen2Flag": {
+   "enabled": false,
+   "shadowOnly": true
+  },
+  "prices": {
+   "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4
+   },
+   "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5
+   }
+  }
+ },
+ "status": "NOT_READY",
+ "reasons": [
+  "SELECTED_TARGETS=5 (required 30)",
+  "TARGET_PAIR_QUOTA=15/15 (required 90/90)"
+ ],
+ "error": null,
+ "stop": null,
+ "recalls": 17,
+ "deferred": [],
+ "spend": {
+  "costUsd": 0.00847,
+  "capUsd": 0.03,
+  "tokens": {
+   "in": 36925,
+   "out": 11938
+  },
+  "requestsSent": 29,
+  "refusedByCap": 0,
+  "refusedByPipelineGuard": 0,
+  "httpErrors": {},
+  "byTaskModel": {
+   "(untagged) @ gemini-2.5-flash-lite": {
+    "requests": 29,
+    "in": 36925,
+    "out": 11938,
+    "usd": 0.008467699999999998
+   }
+  }
+ },
+ "appCostLedger": [
+  "🤖 GEMINI USAGE SUMMARY",
+  "Model: gemini-2.5-flash-lite ×29",
+  "Track ID: 2026-10-08T06:00:00.084Z · run ja-track-1791439200007-5701",
+  "Total requests: 29 · Successful: 29 · Failed: 0 · Retried: 7",
+  "Generation calls: 15 · QC calls: 10 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 1 · Gloss calls: 0 · Recovery calls: 3 · Listening calls: 0 · Other: 0",
+  "Input tokens: 36925 · Output tokens: 11938 · Total tokens: 48863 (provider usage metadata)",
+  "Retry requests: 7 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0",
+  "Provider requests: 29 · Provider-error retries: 0",
+  "GENERATION (app level): recalls requested 15 · first attempts 5 · regeneration attempts 5 · total attempts 10 · average 0.67 per recall · resolved first attempt 8/15 · requiring 2 attempts 6 · requiring 3 attempts 1 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 3 · recovery recalls 2 (1 paid)",
+  "GENERATION WASTE: first-attempt tokens 15136 · regeneration tokens 12584 · regeneration share 45% · regeneration cost USD 0.0020 · fallback-after-paid-retries 0",
+  "PAID REQUESTS BY PURPOSE: QC judging 10 (5817 tok, USD 0.0009) · generation (first attempt / scene) 9 (25194 tok, USD 0.0044) · regeneration (paid retry of a rejected candidate) 5 (12584 tok, USD 0.0020) · quota / target recovery 3 (3030 tok, USD 0.0005) · other 1 (1797 tok, USD 0.0004) · pronunciation / segmentation / gloss 1 (441 tok, USD 0.0001)",
+  "JAPANESE GENERATION (target groups): target groups 5 · recalls 15 · initial paid group calls 5 · slot regeneration calls 5 · recall checks 10 (sum of each group's highest recall check; max 11 per recall — one check = one candidate attempt) · local repairs 3 · reading repair calls (Flash-Lite) 1 · accepted from the first call 8/15 · fallback 0 · unresolved 0 · quota-recovery generation calls 3",
+  "  JA_GENERATION_BUDGET どれ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 READING_REPAIR_CALLS=1 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 電話 HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 一緒 HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 来る HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted",
+  "  JA_GENERATION_BUDGET 分かる HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted",
+  "Estimated Gemini cost: USD 0.0083 (≈ SGD 0.0107 at 1.3 — assumed rate)",
+  "TOP GEMINI COST SOURCES",
+  "  1. A_generation — 5 requests / 15136 tokens / ~37%",
+  "  2. B_generation_retry — 5 requests / 12584 tokens / ~24%",
+  "  3. A0_scene — 3 requests / 9356 tokens / ~14%",
+  "  4. H_recovery — 3 requests / 3030 tokens / ~5%",
+  "  5. B_opening_repair — 1 requests / 1797 tokens / ~5%"
+ ],
+ "replay": {
+  "faithful": true,
+  "contentIdentical": true,
+  "mismatches": 0,
+  "unused": 0
+ },
+ "seconds": 45
+}

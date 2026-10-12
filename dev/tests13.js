@@ -82,13 +82,26 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
   const src = fs.readFileSync('tt.jsx', 'utf8')
   const shell = (() => { const h = fs.readFileSync(fs.existsSync('/mnt/user-data/uploads/index-1.html') ? '/mnt/user-data/uploads/index-1.html' : require('path').join(__dirname, 'build/index-1.shell.html'), 'utf8'); return h.slice(0, h.indexOf('<script type="text/babel">')) + h.slice(h.lastIndexOf('</script>')) })()
   const BANNED = /qwen|anthropic|claude|openai|gpt-|openrouter|deepseek|mistral|groq|ollama|huggingface|together\.ai|fallbackProvider|secondaryProvider|fallbackModel|secondaryModel|alternateModel|haiku|sk-or-|x-api-key|chat\/completions/i
-  const hits = (text, name) => text.split('\n').map((l, i) => BANNED.test(l) ? name + ':' + (i + 1) + ' ' + l.trim().slice(0, 80) : null).filter(Boolean)
-  const allHits = hits(src, 'tt.jsx').concat(hits(shell, 'index-shell'))
-  T('I1', 'runtime source (tt.jsx + app shell) contains ZERO banned provider identifiers — no exclusions, no allowlist',
-    allHits.length === 0, allHits.slice(0, 10))
+  // v685 (owner brief 2026-10-12): Claude Haiku 5.5 is an owner-approved OPTIONAL generation model. Its names may appear only in
+  // its own block (OPTIONAL GENERATION MODEL … v675 benchmark), its Settings card, and the few named lines that route, price and
+  // report it. Every other provider stays banned everywhere, and no Anthropic endpoint, key or key header may appear in the client.
+  const OTHER = /qwen|openai|gpt-|openrouter|deepseek|mistral|groq|ollama|huggingface|together\.ai|fallbackProvider|secondaryProvider|fallbackModel|secondaryModel|alternateModel|sk-or-|x-api-key|chat\/completions|api\.anthropic\.com|sk-ant/i
+  const OPT = /anthropic|claude|haiku/i
+  const zone = (a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i); return i >= 0 && j > i ? [i, j] : [0, 0] }
+  const zones = [zone('// ══ OPTIONAL GENERATION MODEL', '// ══ v675 (Step 0) — OPT-IN BENCHMARK CAPTURE'), zone('// Settings → AI Generation Model.', 'function Settings(')]
+  const OPT_LINES = /row\.provider === 'anthropic'|anthropicCostUsd\(row\.model|ANTHROPIC_PRICE_USD_PER_MTOK\[row\.model\]|sum\.byProvider\.anthropic|bp\.anthropic|b\.provider === 'anthropic'|'🤖 AI USAGE SUMMARY \(Gemini \+ Claude Haiku\)'|AI_GEN_MODELS\[_genModel\]\.provider === 'anthropic'|return anthropicRequest\(\{ model: _genModel|aiSetAnthropicAccess\(await stGet\(AI_ANTHROPIC_ACCESS_KEY\)\)|^\/\/ (optional generation model: a GENERATION request of a run bound to Claude Haiku|judges \/ pronunciation always stay on Gemini, and an Anthropic failure)/
+  const hits = (text, name, z) => { let off = 0; return text.split('\n').map((l, i) => { const at = off; off += l.length + 1
+    const inZone = z && z.some(([a, b]) => at >= a && at < b), t = l.trim()
+    const bad = OTHER.test(l) || (OPT.test(l) && !(z && (inZone || OPT_LINES.test(t))))
+    return bad ? name + ':' + (i + 1) + ' ' + t.slice(0, 80) : null }).filter(Boolean) }
+  const allHits = hits(src, 'tt.jsx', zones).concat(hits(shell, 'index-shell', null))
+  const optCount = src.split('\n').filter(l => OPT.test(l)).length
+  T('I1', 'runtime source contains ZERO banned provider identifiers; the owner-approved optional Claude Haiku model is named only in its own block, its Settings card and the named routing / pricing / report lines; no Anthropic endpoint or key in the client',
+    allHits.length === 0 && zones.every(([a, b]) => b > a) && optCount > 0, allHits.slice(0, 10))
   const fetches = [...src.matchAll(/\bfetch\(\s*([^,\n]{0,90})/g)].map(m => m[1].trim())
-  T('I2', 'network calls: exactly ONE AI transport (geminiRequest → Gemini REST); the only other fetches are Google Cloud TTS (audio, not an LLM)',
-    fetches.filter(f => !/texttospeech\.googleapis\.com/.test(f)).length === 1 && /GEMINI_API_BASE \+ modelId/.test(fetches.find(f => !/texttospeech/.test(f)) || '') &&
+  T('I2', 'network calls: ONE Gemini transport (geminiRequest → Gemini REST) plus, from v685, ONE same-origin call to this site\'s own /api/anthropic function for the optional generation model; the only other fetches are Google Cloud TTS (audio, not an LLM)',
+    fetches.filter(f => !/texttospeech\.googleapis\.com/.test(f) && f !== 'ANTHROPIC_PROXY_PATH').length === 1 && fetches.filter(f => f === 'ANTHROPIC_PROXY_PATH').length === 1 && /const ANTHROPIC_PROXY_PATH = '\/api\/anthropic'/.test(src) &&
+    /GEMINI_API_BASE \+ modelId/.test(fetches.find(f => !/texttospeech/.test(f) && f !== 'ANTHROPIC_PROXY_PATH') || '') &&
     /const GEMINI_API_BASE = 'https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/'/.test(src), fetches)
   const loopBody = src.slice(src.indexOf('async function geminiRequest('), src.indexOf('async function geminiGenerate('))
   T('I3', 'no model promotion: the model is fixed once (geminiModelId) before the retry loop and never reassigned; no fallback-model constant exists',
@@ -100,8 +113,10 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
   { const cr = load('tt.compiled.js', { React })
     const set = RDS.renderToStaticMarkup(React.createElement(cr.Settings, { onBack() {}, geminiKey: KEY, onSaveGeminiKey() {}, geminiSpend: 0.0123, onResetGeminiSpend() {}, gcpTtsKey: '', onSaveGcpTtsKey() {}, geminiBackupKey: '', onSaveGeminiBackupKey() {} })).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
     const hdr = RDS.renderToStaticMarkup(React.createElement(cr.Header, { view: 'dashboard', onNav() {}, geminiKey: KEY, geminiSpend: 0.5, lang: 'th', onSetLang() {} })).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
-    T('UI1', 'Settings: one Gemini key + optional backup Gemini key; no provider picker; the saved key value is never rendered',
-      /Gemini API key/.test(set) && /Backup Gemini key/.test(set) && /gemini-2\.5-flash-lite/.test(set) && !BANNED.test(set) && !set.includes(KEY) && !/AI Provider/.test(set), set.slice(0, 200))
+    T('UI1', 'Settings: one Gemini key + optional backup Gemini key; no provider picker; the saved key value is never rendered; v685: the AI Generation Model choice (Gemini default, Claude Haiku experimental) with no Haiku fields shown while Gemini is selected',
+      /Gemini API key/.test(set) && /Backup Gemini key/.test(set) && /gemini-2\.5-flash-lite/.test(set) && !OTHER.test(set) && !set.includes(KEY) && !/AI Provider/.test(set)
+      && /AI Generation Model/.test(set) && /Gemini 2\.5 Flash-Lite — Default/.test(set) && /Claude Haiku 5\.5 — Experimental/.test(set) && !/Site access code|Test Connection/.test(set)
+      && set.replace(/AI Generation Model[\s\S]*?Claude Haiku 5\.5 — Experimental/, '').match(OPT) === null, set.slice(0, 200))
     // v650 §8: the header is the Gemini mark + LAST TRACK cost (no cumulative spend, no minus sign)
     T('UI2', 'Header: Gemini mark + last-track cost chip (no cumulative "-$" spend), no provider dropdown', /aria-label="Gemini"/.test(RDS.renderToStaticMarkup(React.createElement(cr.Header, { view: 'dashboard', onNav() {}, geminiKey: KEY, geminiSpend: 0.5, lang: 'th', onSetLang() {} }))) &&
       /S\$/.test(hdr) && !/-\$0\.5000/.test(hdr) && !BANNED.test(hdr), hdr.slice(0, 120)) }

@@ -4614,7 +4614,8 @@ function genCheckpointCreate(lang, o) {
   const c = o || {}, now = new Date().toISOString()
   return { version: GEN_CHECKPOINT_VERSION, lang, mode: 'daily', id: lang + '-cp-' + now, createdAt: now, updatedAt: now, build: APP_BUILD_VERSION,
     status: 'in-progress', fingerprint: genCheckpointFingerprint(lang, c.targets, c.authorisedWords), expected: (c.targets || []).length * 3,
-    accepted: [], rejected: {}, resumes: 0, history: [{ at: now, event: 'created', build: APP_BUILD_VERSION }], extra: c.extra || null }
+    accepted: [], rejected: {}, resumes: 0, history: [{ at: now, event: 'created', build: APP_BUILD_VERSION }], extra: c.extra || null,
+    generationModel: c.generationModel || (typeof aiRunGenModel === 'function' ? aiRunGenModel(AI_CTX.runId) : GEMINI_DEFAULT_MODEL) }
 }
 const genCheckpointSlot = (targetId, recallIndex) => targetId + ':' + recallIndex
 // Adds one ACCEPTED pair; returns false (and changes nothing) when its slot is already filled — the idempotence guarantee.
@@ -4649,6 +4650,8 @@ function genCheckpointCompatible(cp, lang, targets, authorisedWords) {
   if (JSON.stringify(fp.newIds) !== JSON.stringify(cp.fingerprint.newIds)) return { ok: false, reason: 'the NEW words differ from the draft\'s' }
   if (fp.vocabSig !== cp.fingerprint.vocabSig) return { ok: false, reason: 'the words you are allowed to use have changed since the draft was made (' + String(cp.fingerprint.vocabSig).split('.').pop() + ' then, ' + String(fp.vocabSig).split('.').pop() + ' now)' }
   if ((cp.resumes || 0) >= GEN_CHECKPOINT_MAX_RESUMES) return { ok: false, reason: 'the draft has already been retried ' + cp.resumes + ' times (limit ' + GEN_CHECKPOINT_MAX_RESUMES + ')' }
+  const cpModel = cp.generationModel || GEMINI_DEFAULT_MODEL, nowModel = typeof aiGenerationPreference === 'function' ? aiGenerationPreference().model : GEMINI_DEFAULT_MODEL
+  if (cpModel !== nowModel) return { ok: false, reason: 'the draft was written by ' + aiGenModelLabel(cpModel) + '; select that model in Settings to finish it (one track never mixes generation models)' }
   return { ok: true, reason: '' }
 }
 function genCheckpointSummary(cp, targets) {
@@ -8436,7 +8439,7 @@ function aiNewController() {
   const sig = { aborted: false, _l: [], addEventListener(t, f) { this._l.push(f) }, removeEventListener(t, f) { this._l = this._l.filter(x => x !== f) } }
   return { signal: sig, abort() { if (!sig.aborted) { sig.aborted = true; sig._l.forEach(f => { try { f() } catch (e) {} }) } } }
 }
-function aiBeginRun(kind, trackId) {
+function aiBeginRun(kind, trackId, opts) {
   try { SEMANTIC_VERDICT_CACHE.clear(); THAI_SENTENCE_VERDICTS.clear(); THAI_VERDICT_CONFLICTS = 0 } catch (e) {}       // v672 §5 — the verdict cache is run-scoped
   const lane = aiLaneOf(kind)
   const prev = AI_CTX.lanes[lane]
@@ -8445,6 +8448,7 @@ function aiBeginRun(kind, trackId) {
   AI_CTX.runKind = kind || 'run'; AI_CTX.trackId = trackId || null; AI_CTX.startedAt = new Date().toISOString()
   AI_CTX.controller = aiNewController()
   AI_CTX.lanes[lane] = { runId: AI_CTX.runId, controller: AI_CTX.controller }
+  if (typeof AI_RUN_GEN_MODEL !== 'undefined') { AI_RUN_GEN_MODEL.set(AI_CTX.runId, aiRunGenerationModel(kind, opts)); if (AI_RUN_GEN_MODEL.size > 200) AI_RUN_GEN_MODEL.delete(AI_RUN_GEN_MODEL.keys().next().value) }
   AI_REQUEST_CACHE.clear()
   AI_PROVIDER_LATCH = null                    // a new user action gets a fresh attempt at the provider
   return AI_CTX.runId
@@ -8534,7 +8538,12 @@ function aiRecordEnd(row, o) {
   row.outputChars = String(o.text || '').length; row.outputTokensEst = aiEstimateTokens(o.text)
   if (o.usage) row.usage = o.usage
   const pr = aiPriceOf(row.model)
-  if (row.usage && pr && row.usage.prompt != null) {
+  if (row.provider === 'anthropic') {
+    const c = row.usage ? anthropicCostUsd(row.model, row.usage) : null
+    const apr = ANTHROPIC_PRICE_USD_PER_MTOK[row.model]
+    if (c != null) { row.costUsd = c; row.costSource = 'provider-usage' }
+    else if (apr && row.http && row.http < 300) { row.costUsd = (row.inputTokensEst * apr.in + row.outputTokensEst * apr.out) / 1e6; row.costSource = 'estimate' }
+  } else if (row.usage && pr && row.usage.prompt != null) {
     const cached = row.usage.cached || 0, outTok = (row.usage.candidates || 0) + (row.usage.thoughts || 0)
     row.costUsd = ((row.usage.prompt - cached) * pr.in + cached * pr.in * 0.25 + outTok * pr.out) / 1e6; row.costSource = 'provider-usage'
   } else if (row.usage && row.usage.costUsd != null) { row.costUsd = row.usage.costUsd; row.costSource = 'provider-cost' }
@@ -8613,7 +8622,25 @@ function aiUsageSummary(runId) {
       regenerationCostUsd: regenCost, fallbackAfterPaidRetries: gen ? gen.fallbackAfterPaidRetries : 0 },
     duplicateCandidates: dedupedRequests + dup, duplicatesPrevented: dedupedRequests, duplicateRequestsActuallySent: dup, duplicatesSentByStage: dupByStage,
     categories: cats, inputTokens: inTok, outputTokens: outTok, costUsd: cost, tokenSource: usageRows === sent.length && sent.length ? 'provider usage metadata' : usageRows ? 'mixed (provider usage where returned, estimates otherwise)' : 'ESTIMATED from characters',
-    ranked: ranked.map(s => ({ ...s, pct: cost ? Math.round(s.costUsd / cost * 100) : 0 })), byPurpose }
+    ranked: ranked.map(s => ({ ...s, pct: cost ? Math.round(s.costUsd / cost * 100) : 0 })), byPurpose,
+    generationModel: typeof aiRunGenModel === 'function' && runId ? aiRunGenModel(runId) : null, byProvider: aiProviderBreakdown(sent) }
+}
+// per provider: requests, failures, retries, tokens (thinking separately where the provider reports it), cost, models served
+function aiProviderBreakdown(sent) {
+  const out = {}
+  ;(sent || []).forEach(r => {
+    const p = r.provider || 'gemini', b = out[p] || (out[p] = { provider: p, requests: 0, failed: 0, retries: 0, inTok: 0, outTok: 0, thinkingTok: 0, costUsd: 0, models: {}, servedModels: {}, byStage: {}, retryReasons: {} })
+    b.requests++; if (!r.ok) b.failed++
+    if (r.attempt > 1) { b.retries++; const k = r.retryReason || 'retry'; b.retryReasons[k] = (b.retryReasons[k] || 0) + 1 }
+    b.inTok += r.usage && r.usage.prompt != null ? r.usage.prompt : r.inputTokensEst
+    b.outTok += r.usage && r.usage.candidates != null ? r.usage.candidates + (r.usage.thoughts || 0) : r.outputTokensEst
+    b.thinkingTok += r.usage && r.usage.thoughts ? r.usage.thoughts : 0
+    b.costUsd += r.costUsd || 0
+    b.models[r.model] = (b.models[r.model] || 0) + 1
+    if (r.servedModel) b.servedModels[r.servedModel] = (b.servedModels[r.servedModel] || 0) + 1
+    const st = b.byStage[r.stage] || (b.byStage[r.stage] = { requests: 0, costUsd: 0 }); st.requests++; st.costUsd += r.costUsd || 0
+  })
+  return out
 }
 // v675 (Step 0) — the purpose of a paid request, from its stage (telemetry only)
 function aiPurposeOf(stage) {
@@ -8708,7 +8735,8 @@ function LastTrackCostChip() {
 }
 function aiUsageSummaryLines(sum) {
   if (!sum) return []
-  const L = ['🤖 GEMINI USAGE SUMMARY',
+  const _multi = !!(sum.byProvider && sum.byProvider.anthropic)
+  const L = [_multi ? '🤖 AI USAGE SUMMARY (Gemini + Claude Haiku)' : '🤖 GEMINI USAGE SUMMARY',
     'Model: ' + (Object.entries(sum.byModel).map(([m, n]) => m + ' ×' + n).join(' · ') || '-'),
     'Track ID: ' + (sum.trackId || '-') + ' · run ' + (sum.runId || '-'),
     'Total requests: ' + sum.total + ' · Successful: ' + sum.successful + ' · Failed: ' + sum.failed + ' · Retried: ' + sum.retried + (sum.latchedNotSent ? ' · not sent (provider latched): ' + sum.latchedNotSent : '') +
@@ -8733,9 +8761,19 @@ function aiUsageSummaryLines(sum) {
     ...(sum.byPurpose ? ['PAID REQUESTS BY PURPOSE: ' + Object.values(sum.byPurpose).sort((a, b) => b.requests - a.requests).map(b => b.purpose + ' ' + b.requests + ' (' + b.tokens + ' tok, USD ' + b.costUsd.toFixed(4) + ')').join(' · ')] : []),
     ...thaiGenerationTelemetryLines(sum.thaiGeneration),
     ...(typeof japaneseGenerationTelemetryLines === 'function' ? japaneseGenerationTelemetryLines(sum.japaneseGeneration) : []),
-    'Estimated Gemini cost: USD ' + sum.costUsd.toFixed(4) + ' (≈ SGD ' + (sum.costUsd * AI_USD_TO_SGD).toFixed(4) + ' at ' + AI_USD_TO_SGD + ' — assumed rate)',
-    'TOP GEMINI COST SOURCES']
+    (_multi ? 'Estimated AI cost (all providers): USD ' : 'Estimated Gemini cost: USD ') + sum.costUsd.toFixed(4) + ' (≈ SGD ' + (sum.costUsd * AI_USD_TO_SGD).toFixed(4) + ' at ' + AI_USD_TO_SGD + ' — assumed rate)',
+    _multi ? 'TOP AI COST SOURCES' : 'TOP GEMINI COST SOURCES']
   sum.ranked.slice(0, 5).forEach((s, i) => L.push('  ' + (i + 1) + '. ' + s.stage + ' — ' + s.requests + ' requests / ' + (s.inTok + s.outTok) + ' tokens / ~' + s.pct + '%'))
+  const bp = sum.byProvider || {}
+  if (bp.anthropic || (sum.generationModel && sum.generationModel !== GEMINI_DEFAULT_MODEL)) {
+    L.push('AI PROVIDERS (this run) · selected generation model: ' + aiGenModelLabel(sum.generationModel) + ' — generation requests go to it; quality checks and pronunciation stay on Gemini')
+    Object.values(bp).forEach(b => L.push('  ' + b.provider.toUpperCase() + ': ' + b.requests + ' requests (' + b.failed + ' failed, ' + b.retries + ' provider retries' +
+      (b.retries ? ': ' + Object.entries(b.retryReasons).map(([k, v]) => k + ' ×' + v).join(', ') : '') + ') · input ' + b.inTok + ' · output ' + b.outTok + ' tok' +
+      (b.provider === 'anthropic' ? ' (thinking ' + b.thinkingTok + ' of them)' : '') + ' · USD ' + b.costUsd.toFixed(4) +
+      ' · requested ' + Object.entries(b.models).map(([m, n]) => m + ' ×' + n).join(', ') + (Object.keys(b.servedModels).length ? ' · served by ' + Object.entries(b.servedModels).map(([m, n]) => m + ' ×' + n).join(', ') : '')))
+    Object.values(bp).forEach(b => L.push('  ' + b.provider.toUpperCase() + ' cost by stage: ' + Object.entries(b.byStage).sort((x, y) => y[1].costUsd - x[1].costUsd).map(([k, v]) => k + ' ' + v.requests + ' / USD ' + v.costUsd.toFixed(4)).join(' · ')))
+    L.push('  Estimated total track cost (all providers): USD ' + sum.costUsd.toFixed(4) + (bp.anthropic ? ' · Haiku priced at US$' + ANTHROPIC_PRICE_USD_PER_MTOK['claude-haiku-5-5'].in + ' / ' + ANTHROPIC_PRICE_USD_PER_MTOK['claude-haiku-5-5'].out + ' per M tokens (US$' + ANTHROPIC_PRICE_USD_PER_MTOK['claude-haiku-5-5'].longIn + ' / ' + ANTHROPIC_PRICE_USD_PER_MTOK['claude-haiku-5-5'].longOut + ' for a prompt over 100K tokens), thinking included as output' : ''))
+  }
   return L
 }
 
@@ -8811,6 +8849,11 @@ async function geminiRequest({ apiKey, model, messages, maxTokens, temperature, 
   const key = String(apiKey || '').trim()
   // the run this request belongs to (captured now: a later run must not adopt it)
   const runCtl = AI_CTX.controller, runId = AI_CTX.runId
+  // optional generation model: a GENERATION request of a run bound to Claude Haiku goes to Anthropic (never a silent switch:
+  // judges / pronunciation always stay on Gemini, and an Anthropic failure is reported, not retried on Gemini)
+  const _genModel = aiRunGenModel(runId)
+  if (_genModel !== GEMINI_DEFAULT_MODEL && AI_GEN_MODELS[_genModel] && AI_GEN_MODELS[_genModel].provider === 'anthropic' && aiRequestRole(stage, _promptText, _chain, json) === 'generation')
+    return anthropicRequest({ model: _genModel, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId })
   const schema = json && typeof json === 'object' ? json : null
   const schemaKey = schema ? Object.keys(GEMINI_SCHEMAS).find(k => GEMINI_SCHEMAS[k] === schema) || 'custom' : (json ? 'json' : null)
   if (!isGeminiApiKey(key)) {
@@ -8930,6 +8973,269 @@ async function _geminiSend({ key, modelId, messages, maxTokens, temperature, sig
     return text
   }
   throw lastErr || aiMakeError(503, 'GEMINI_UNAVAILABLE', 'gemini')
+}
+
+// ══ OPTIONAL GENERATION MODEL — Claude Haiku 5.5 (owner brief 2026-10-12) ═══════════════════════════════════════════════
+// A provider integration, not a generator redesign. The learner chooses the model that WRITES Daily Track sentences:
+//   Gemini 2.5 Flash-Lite (default, unchanged)  ·  Claude Haiku 5.5 (experimental)
+// Everything else is shared: the same 30 targets, quotas, prompts, validators, QC, recovery and completion rules. Requests
+// are routed HERE, in the one place every model call already passes through (geminiRequest), so no generator is forked.
+// • Only GENERATION requests of a Daily / Revision / Weak-words run go to the selected model. Judges (cue, naturalness,
+//   group, coherence) and pronunciation / segmentation / gloss helpers stay on Gemini, so both models are checked by the
+//   SAME quality control; every ledger row records which provider answered it.
+// • The model is bound to the RUN when it starts (and stamped on the track): changing the setting never changes a run in
+//   progress, a saved track, or a resumed draft. A failing provider is never silently replaced by the other one.
+// • The Anthropic API key never reaches the browser: requests go to the site's own server function (/api/anthropic, a
+//   Netlify Edge Function) that holds the key as a server-side environment variable. The browser only holds a site access
+//   code for that function (a revocable code, not the Anthropic key).
+// • Haiku 5.5 runs with adaptive thinking and an explicit effort level; temperature / top_p / top_k are never sent.
+// • A per-track spending ceiling and request limit stop experimentation from running up charges; billing, authentication
+//   and credit errors are never retried.
+const AI_GEN_MODELS = Object.freeze({
+  'gemini-2.5-flash-lite': Object.freeze({ id: 'gemini-2.5-flash-lite', provider: 'gemini', label: 'Gemini 2.5 Flash-Lite', tag: 'Default' }),
+  'claude-haiku-5-5': Object.freeze({ id: 'claude-haiku-5-5', provider: 'anthropic', label: 'Claude Haiku 5.5', tag: 'Experimental' }),
+})
+const AI_GEN_PREF_KEY = 'tt-generation-model'              // { model, limitUsd, limitRequests } — a preference, never a credential
+const AI_ANTHROPIC_ACCESS_KEY = 'tt-anthropic-site-access'  // the access code for THIS SITE's server function (not an Anthropic key)
+const ANTHROPIC_PROXY_PATH = '/api/anthropic'
+const ANTHROPIC_CONFIG = Object.freeze({
+  effort: 'low',               // Haiku 5.5 effort (default would be medium): short structured lesson lines; thinking stays adaptive
+  maxTokensCeiling: 16000,     // the server function enforces the same ceiling
+  maxAttempts: 3,              // 1 request + at most 2 retries — only for rate limits, overload, server and network errors
+  backoffMs: [2000, 5000],
+  timeoutMs: 180000,           // the server function keeps the connection alive while Haiku thinks (Netlify's 40 s header limit)
+})
+// USD per 1M tokens, Anthropic list prices for claude-haiku-5-5 (standard API, not batch): prompts of up to 100K tokens
+// $0.10 in / $0.50 out; longer prompts $0.50 / $2.50. Cache reads 0.1× input, 5-minute cache writes 1.25×. Thinking tokens
+// are output tokens. (This app sends no cache_control and no batch requests; a Daily Track prompt is far below 100K.)
+const ANTHROPIC_PRICE_USD_PER_MTOK = Object.freeze({
+  'claude-haiku-5-5': Object.freeze({ in: 0.10, out: 0.50, longIn: 0.50, longOut: 2.50, longAbove: 100000, cacheRead: 0.1, cacheWrite: 1.25 }),
+})
+const AI_GEN_DEFAULT_PREF = Object.freeze({ model: 'gemini-2.5-flash-lite', limitUsd: 0.25, limitRequests: 300 })
+let AI_GEN_PREF = { ...AI_GEN_DEFAULT_PREF }
+let AI_ANTHROPIC_ACCESS = ''
+const AI_RUN_GEN_MODEL = new Map()                          // runId → the generation model the run started with
+function aiNormaliseGenPref(p) {
+  const v = p && typeof p === 'object' ? p : {}
+  const model = AI_GEN_MODELS[v.model] ? v.model : AI_GEN_DEFAULT_PREF.model
+  const usd = Number(v.limitUsd), req = Math.floor(Number(v.limitRequests))
+  return { model, limitUsd: Number.isFinite(usd) && usd > 0 && usd <= 5 ? usd : AI_GEN_DEFAULT_PREF.limitUsd,
+    limitRequests: Number.isFinite(req) && req >= 10 && req <= 2000 ? req : AI_GEN_DEFAULT_PREF.limitRequests }
+}
+function aiSetGenerationPreference(p) { AI_GEN_PREF = aiNormaliseGenPref(p); return { ...AI_GEN_PREF } }
+function aiGenerationPreference() { return { ...AI_GEN_PREF } }
+function aiSetAnthropicAccess(code) { AI_ANTHROPIC_ACCESS = String(code || '').trim(); return !!AI_ANTHROPIC_ACCESS }
+function aiGenModelLabel(id) { const m = AI_GEN_MODELS[id]; return m ? m.label + ' (' + m.tag.toLowerCase() + ')' : String(id || 'unknown') }
+// Daily-family runs take the selected model (or the model of the track / draft they continue); every other run (Listening,
+// manual quality review, Kru chat, word autofill …) stays on Gemini.
+const AI_GEN_RUN_KINDS = /^(daily|revision|weak|th|ja|zh)-track$/
+function aiRunGenerationModel(kind, opts) {
+  if (!AI_GEN_RUN_KINDS.test(String(kind || ''))) return GEMINI_DEFAULT_MODEL
+  const forced = opts && opts.genModel
+  return AI_GEN_MODELS[forced] ? forced : AI_GEN_PREF.model
+}
+function aiRunGenModel(runId) { return AI_RUN_GEN_MODEL.get(runId) || GEMINI_DEFAULT_MODEL }
+// Which kind of request is this? 'generation' (writes lesson content) · 'judge' (rates / verifies content) · 'support'
+// (pronunciation, segmentation, gloss, utilities). Decided by stage, the judge prompt signatures, the structured-verdict
+// schemas and the calling function — any judge or support signal keeps the request on Gemini, and so does any stage that
+// is not a KNOWN writing stage (an allow-list: a new or unrecognised request can never drift to the experimental model).
+const AI_JUDGE_PROMPT_RX = [/Rate how well each (Thai|Japanese|Mandarin) sentence matches its/, /Evaluate this (Thai|Japanese|Mandarin) language[- ]learning group/,
+  /native (Thai|Japanese|Mandarin) speaker checking learner material/, /matches its prompt description, judging the PROMPT/, /Judge (the WHOLE|this short scene)/]
+const AI_JUDGE_FNS = new Set(['aiQcPromptMatch', 'aiQcEvaluateGroup', '_qrEvaluateGroup', '_qrBatchPromptCheck', '_finalCueJudge', '_finalNaturalnessJudge',
+  'thaiControlledAdjudication', 'tpJudgeGroup', '_lnGenericVerdicts', 'listeningQualityVerdicts', 'mainTrackCoherenceAudit', 'judge', 'finalPairSemanticAudit', 'gen2Judge',
+  '_qrBatchNaturalnessCheck', 'listeningWholeCoherenceAudit'])
+const AI_SUPPORT_FNS = new Set(['fetchTargetPhonetics', '_qrFixBrokenPhonetics', '_qrFixPhonetic', 'jaModelReadingRepair', 'thaiFinaliseWords', 'fillMissingGlossesForTrack',
+  'japaneseListeningPronunciation', 'gen2JaPronounce', 'askKru', 'Adder'])
+const AI_GENERATION_STAGE_RX = /^(A0?_|B_|G_|H_recovery$)/       // scene, generation, regeneration, QC replacement / improvement, quota recovery
+function aiRequestRole(stage, prompt, chain, json) {
+  const s = String(stage || aiStageOf(prompt, chain))
+  if (/^(I_|J_|K_|Q_|R_|Z_|O_listening_reading)/.test(s) || json === GEMINI_SCHEMAS.segmentation || (chain || []).some(f => AI_SUPPORT_FNS.has(f))) return 'support'
+  if (/^(C_|E_|F_|L_|H_recovery_audit|O_listening_(qc|coherence))/.test(s)) return 'judge'
+  if (json && (json === GEMINI_SCHEMAS.verdicts || json === GEMINI_SCHEMAS.groupVerdict || json === GEMINI_SCHEMAS.scene || json === GEMINI_SCHEMAS.coherence)) return 'judge'
+  const p = String(prompt || '')
+  if (AI_JUDGE_PROMPT_RX.some(rx => rx.test(p))) return 'judge'
+  if ((chain || []).some(f => AI_JUDGE_FNS.has(f))) return 'judge'
+  return AI_GENERATION_STAGE_RX.test(s) ? 'generation' : 'other'
+}
+// ── request translation ─────────────────────────────────────────────────────────────────────────────────────────────
+// The app's messages → Messages API: system messages become the top-level system prompt; the conversation must start and
+// end with the user (Haiku 5.5 rejects assistant prefill).
+function anthropicMessages(messages) {
+  const sys = [], msgs = []
+  ;(messages || []).forEach(m => {
+    const text = typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+    if (m.role === 'system') { sys.push(text); return }
+    const role = m.role === 'assistant' ? 'assistant' : 'user'
+    const last = msgs[msgs.length - 1]
+    if (last && last.role === role) last.content += '\n\n' + text; else msgs.push({ role, content: text })
+  })
+  if (!msgs.length || msgs[0].role !== 'user') msgs.unshift({ role: 'user', content: sys.length ? 'Follow the instructions above.' : '(no input)' })
+  if (msgs[msgs.length - 1].role !== 'user') msgs.push({ role: 'user', content: 'Continue.' })
+  return { system: sys.join('\n\n'), messages: msgs }
+}
+// The app's Gemini response schemas (OpenAPI subset: OBJECT / ARRAY / STRING …, nullable) → a JSON Schema for structured
+// outputs. Every object gets additionalProperties:false; a non-object root is wrapped in {"items": …} and unwrapped again
+// so callers receive exactly the JSON shape they asked Gemini for.
+function anthropicJsonSchema(g) {
+  if (!g || typeof g !== 'object') return { type: 'string' }
+  const T = { OBJECT: 'object', ARRAY: 'array', STRING: 'string', INTEGER: 'integer', NUMBER: 'number', BOOLEAN: 'boolean' }
+  const t = T[String(g.type || '').toUpperCase()] || 'string'
+  let s
+  if (t === 'object') {
+    const props = {}
+    Object.entries(g.properties || {}).forEach(([k, v]) => { props[k] = anthropicJsonSchema(v) })
+    s = { type: 'object', properties: props, additionalProperties: false }
+    if (Array.isArray(g.required) && g.required.length) s.required = g.required.filter(k => props[k])
+  } else if (t === 'array') s = { type: 'array', items: anthropicJsonSchema(g.items) }
+  else { s = { type: t }; if (Array.isArray(g.enum)) s.enum = g.enum.slice() }
+  return g.nullable ? { anyOf: [s, { type: 'null' }] } : s
+}
+function anthropicJsonFormat(geminiSchema) {
+  const inner = anthropicJsonSchema(geminiSchema)
+  const isObj = inner.type === 'object'
+  return { wrapped: !isObj, format: { type: 'json_schema', schema: isObj ? inner : { type: 'object', properties: { items: inner }, required: ['items'], additionalProperties: false } } }
+}
+function anthropicRequestBody({ model, messages, maxTokens, json }) {
+  const m = anthropicMessages(messages)
+  const fmt = json && typeof json === 'object' ? anthropicJsonFormat(json) : null
+  // Gemini ran with thinking off and a short cap; Haiku thinks adaptively and thinking counts toward max_tokens, so the cap
+  // leaves room for it (within the ceiling the server function enforces).
+  const max_tokens = Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, Math.max(2048, Math.round((maxTokens || 1200) * 3)))
+  const body = { model, max_tokens, messages: m.messages, thinking: { type: 'adaptive' }, output_config: { effort: ANTHROPIC_CONFIG.effort } }
+  if (m.system) body.system = m.system
+  if (fmt) body.output_config.format = fmt.format
+  return { body, wrapped: !!(fmt && fmt.wrapped), structured: !!fmt }
+}
+// A Messages API reply → the text the generators parse. Content blocks are read by TYPE (thinking blocks first, then text);
+// any stop other than end_turn is a failed request, never a partial answer.
+function anthropicReplyText(msg, wrapped) {
+  if (!msg || typeof msg !== 'object' || !Array.isArray(msg.content)) return { ok: false, problem: 'MALFORMED_REPLY: no content blocks' }
+  const thinkingBlocks = msg.content.filter(b => b && (b.type === 'thinking' || b.type === 'redacted_thinking')).length
+  const text = msg.content.filter(b => b && b.type === 'text').map(b => String(b.text || '')).join('')
+  if (msg.stop_reason === 'refusal') return { ok: false, thinkingBlocks, problem: 'REFUSAL' + (msg.stop_details && msg.stop_details.category ? ' (' + msg.stop_details.category + ')' : '') }
+  if (msg.stop_reason === 'max_tokens') return { ok: false, thinkingBlocks, problem: 'MAX_TOKENS: the reply was cut off (' + (msg.usage && msg.usage.output_tokens) + ' output tokens)' }
+  if (msg.stop_reason !== 'end_turn' && msg.stop_reason !== 'stop_sequence') return { ok: false, thinkingBlocks, problem: 'UNEXPECTED_STOP: ' + msg.stop_reason }
+  if (!text.trim()) return { ok: false, thinkingBlocks, problem: 'EMPTY_REPLY: no text block' }
+  if (wrapped) {
+    let o = null; try { o = JSON.parse(text) } catch (e) {}
+    if (!o || !Object.prototype.hasOwnProperty.call(o, 'items')) return { ok: false, thinkingBlocks, problem: 'MALFORMED_JSON: structured reply without "items"' }
+    return { ok: true, thinkingBlocks, text: JSON.stringify(o.items) }
+  }
+  return { ok: true, thinkingBlocks, text }
+}
+function anthropicUsage(u) {
+  if (!u || typeof u !== 'object') return null
+  const cacheRead = u.cache_read_input_tokens || 0, cacheWrite = u.cache_creation_input_tokens || 0, inp = u.input_tokens || 0, out = u.output_tokens || 0
+  const thinking = u.output_tokens_details && Number.isFinite(u.output_tokens_details.thinking_tokens) ? u.output_tokens_details.thinking_tokens : null
+  return { prompt: inp + cacheRead + cacheWrite, candidates: thinking != null ? out - thinking : out, thoughts: thinking || 0, thinkingReported: thinking != null,
+    total: inp + cacheRead + cacheWrite + out, cached: cacheRead, cacheWrite, inputUncached: inp, output: out }
+}
+function anthropicCostUsd(model, usage) {
+  const pr = ANTHROPIC_PRICE_USD_PER_MTOK[model]
+  if (!pr || !usage) return null
+  const long = usage.prompt > pr.longAbove, pin = long ? pr.longIn : pr.in, pout = long ? pr.longOut : pr.out
+  return (usage.inputUncached * pin + usage.cached * pin * pr.cacheRead + usage.cacheWrite * pin * pr.cacheWrite + usage.output * pout) / 1e6
+}
+// ── errors: what the learner sees, and what may be retried ──────────────────────────────────────────────────────────────
+function anthropicError(status, type, message) {
+  const t = String(type || ''), m = String(message || '')
+  let text = m, fatal = null
+  if (t === 'not_configured') { text = 'CLAUDE HAIKU UNAVAILABLE: the site\'s Anthropic server function is not set up (' + m + ')'; fatal = 'NOT_CONFIGURED' }
+  else if (t === 'access_denied') { text = 'CLAUDE HAIKU UNAVAILABLE: the site access code in Settings is missing or wrong'; fatal = 'ACCESS_DENIED' }
+  else if (status === 404 && !t) { text = 'CLAUDE HAIKU UNAVAILABLE: this site has no Anthropic server function (/api/anthropic not deployed)'; fatal = 'NOT_DEPLOYED' }
+  else if (t === 'authentication_error' || status === 401) { text = 'CLAUDE HAIKU UNAVAILABLE: Anthropic rejected the server\'s API key (' + m + ')'; fatal = 'AUTH' }
+  else if (t === 'billing_error' || status === 402 || /credit balance|billing/i.test(m)) { text = 'CLAUDE HAIKU UNAVAILABLE: Anthropic billing / credit problem (' + m + ')'; fatal = 'CREDITS_DEPLETED' }
+  else if (t === 'permission_error' || status === 403) { text = 'CLAUDE HAIKU UNAVAILABLE: the Anthropic key may not use this model (' + m + ')'; fatal = 'PERMISSION' }
+  else if (t === 'not_found_error') { text = 'CLAUDE HAIKU UNAVAILABLE: model not available to this Anthropic account (' + m + ')'; fatal = 'MODEL_NOT_FOUND' }
+  else if (t === 'track_limit') { text = 'CLAUDE HAIKU TRACK LIMIT REACHED: ' + m; fatal = 'TRACK_LIMIT' }
+  const e = new Error((status ? status + ' | ' : '') + text + (fatal ? ' — your model choice was NOT changed; select Gemini in Settings to continue with Gemini.' : ''))
+  e.httpStatus = status
+  e.anthropicType = t || null
+  if (fatal) e.fatalProvider = { provider: 'anthropic', status, reason: fatal }
+  return e
+}
+function anthropicRetryable(status, type) {
+  if (type === 'rate_limit_error' || type === 'overloaded_error' || type === 'api_error') return true
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504 || status === 529
+}
+const AI_ANTHROPIC_LATCH = new Map()                        // runId → fatal error (billing / auth / config): nothing more is sent
+function aiRunSpend(runId, provider) {
+  const rows = AI_LEDGER.filter(r => r.runId === runId && r.provider === provider && !r.latched && !r.deduped && !r.cancelled)
+  return { requests: rows.length, costUsd: rows.reduce((a, r) => a + (r.costUsd || 0), 0) }
+}
+// ── the Anthropic transport (one ledger row per HTTP attempt, like Gemini) ──────────────────────────────────────────────
+async function anthropicRequest({ model, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId }) {
+  const stageNow = stage || aiStageOf(_promptText, _chain)
+  const req = anthropicRequestBody({ model, messages, maxTokens, json })
+  const latched = AI_ANTHROPIC_LATCH.get(runId)
+  const notSent = (why, err) => { const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens }); row.latched = true; aiRecordEnd(row, { http: null, ok: false, error: why }); throw err }
+  if (latched) notSent('LATCHED: ' + latched.fatalProvider.reason, latched)
+  if ((runCtl && runCtl.signal.aborted) || (signal && signal.aborted)) { const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens }); row.cancelled = true; row.latched = true; aiRecordEnd(row, { http: null, ok: false, error: 'CANCELLED (not sent)' }); throw _cancelledError('run superseded') }
+  // per-track ceiling and request limit — checked BEFORE every request with the worst case of this one
+  const spent = aiRunSpend(runId, 'anthropic'), pr = ANTHROPIC_PRICE_USD_PER_MTOK[model]
+  const worst = pr ? (aiEstimateTokens(_promptText) * 1.3 * pr.in + req.body.max_tokens * pr.out) / 1e6 : 0
+  if (spent.requests >= AI_GEN_PREF.limitRequests || spent.costUsd + worst > AI_GEN_PREF.limitUsd) {
+    const err = anthropicError(0, 'track_limit', 'US$' + spent.costUsd.toFixed(4) + ' and ' + spent.requests + ' Haiku request(s) used of US$' + AI_GEN_PREF.limitUsd + ' / ' + AI_GEN_PREF.limitRequests + ' for this track (Settings → AI Generation Model). The draft is kept.')
+    AI_ANTHROPIC_LATCH.set(runId, err)
+    notSent('TRACK_LIMIT (not sent)', err)
+  }
+  if (!AI_ANTHROPIC_ACCESS) { const err = anthropicError(401, 'access_denied', ''); AI_ANTHROPIC_LATCH.set(runId, err); notSent('NO_ACCESS_CODE (not sent)', err) }
+  const body = JSON.stringify(req.body)
+  let why = null, lastErr = null
+  for (let attempt = 1; attempt <= ANTHROPIC_CONFIG.maxAttempts; attempt++) {
+    if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) throw _cancelledError('run superseded')
+    const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens, attempt, retryReason: why })
+    const controller = aiNewController(), tid = setTimeout(() => controller.abort(), ANTHROPIC_CONFIG.timeoutMs)
+    const onAbort = () => controller.abort()
+    if (signal && signal.addEventListener) signal.addEventListener('abort', onAbort)
+    if (runCtl && runCtl.signal.addEventListener) runCtl.signal.addEventListener('abort', onAbort)
+    const detach = () => { clearTimeout(tid); if (signal && signal.removeEventListener) signal.removeEventListener('abort', onAbort); if (runCtl && runCtl.signal.removeEventListener) runCtl.signal.removeEventListener('abort', onAbort) }
+    let res = null
+    try { res = await fetch(ANTHROPIC_PROXY_PATH, { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json', 'x-lt-access': AI_ANTHROPIC_ACCESS }, body }) }
+    catch (fe) {
+      detach()
+      if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) { row.cancelled = true; aiRecordEnd(row, { ok: false, error: 'cancelled (run superseded)' }); throw _cancelledError('run superseded') }
+      const msg = fe && fe.name === 'AbortError' ? 'timeout after ' + (ANTHROPIC_CONFIG.timeoutMs / 1000) + 's' : String((fe && fe.message) || fe)
+      aiRecordEnd(row, { ok: false, error: msg })
+      lastErr = anthropicError(0, 'network', 'CLAUDE HAIKU UNREACHABLE: ' + msg)
+      why = 'retry after ' + (fe && fe.name === 'AbortError' ? 'timeout' : 'network error')
+      if (attempt < ANTHROPIC_CONFIG.maxAttempts) { await new Promise(r => setTimeout(r, ANTHROPIC_CONFIG.backoffMs[attempt - 1] || 5000)); continue }
+      throw lastErr
+    }
+    const data = await res.json().catch(() => null)
+    detach()
+    // the server function answers 200 at once and writes an Anthropic error into the body with its real status
+    const status = res.ok && data && data.type === 'error' && data.status ? data.status : res.status, httpOk = status >= 200 && status < 300
+    row.http = status
+    AI_LIVE_TRANSPORT.responses++; if (httpOk) AI_LIVE_TRANSPORT.ok++
+    if (!httpOk) {
+      const er = (data && data.error) || {}
+      const err = anthropicError(status, er.type, er.message || ('HTTP ' + status))
+      aiRecordEnd(row, { http: status, ok: false, error: String(err.message).slice(0, 200) })
+      if (err.fatalProvider) { AI_ANTHROPIC_LATCH.set(runId, err); throw err }
+      if (anthropicRetryable(status, er.type) && attempt < ANTHROPIC_CONFIG.maxAttempts) { why = 'retry after HTTP ' + status + (er.type ? ' ' + er.type : ''); await new Promise(r => setTimeout(r, ANTHROPIC_CONFIG.backoffMs[attempt - 1] || 5000)); continue }
+      throw err
+    }
+    const out = anthropicReplyText(data, req.wrapped)
+    const usage = anthropicUsage(data && data.usage)
+    row.servedModel = (data && data.model) || null
+    row.stopReason = (data && data.stop_reason) || null
+    row.thinkingBlocks = out.thinkingBlocks || 0
+    aiRecordEnd(row, { http: status, ok: out.ok, text: out.ok ? out.text : '', usage, error: out.ok ? null : out.problem })
+    if (!out.ok) throw anthropicError(status, 'reply', 'CLAUDE HAIKU REPLY REJECTED: ' + out.problem)   // a failed candidate: the generator's own rules decide what next
+    if (typeof window !== 'undefined' && typeof window.__trackAnthropicUsage === 'function' && row.costUsd) window.__trackAnthropicUsage(row.costUsd)
+    return out.text
+  }
+  throw lastErr || anthropicError(503, 'network', 'CLAUDE HAIKU UNAVAILABLE')
+}
+// Settings → "Test connection": ONE tiny request through the server function (costs a fraction of a cent).
+async function anthropicTestConnection() {
+  const runId = aiBeginRun('haiku-connection-test')
+  AI_RUN_GEN_MODEL.set(runId, 'claude-haiku-5-5')
+  const text = await anthropicRequest({ model: 'claude-haiku-5-5', messages: [{ role: 'user', content: 'Reply with the single word OK.' }], maxTokens: 300, stage: 'Z_haiku_test',
+    _chain: ['anthropicTestConnection'], _promptText: 'Reply with the single word OK.', runCtl: AI_CTX.controller, runId })
+  const row = AI_LEDGER.filter(r => r.runId === runId).slice(-1)[0] || {}
+  return { text: String(text || '').trim().slice(0, 40), model: row.servedModel || null, costUsd: row.costUsd || 0 }
 }
 
 // ══ v675 (Step 0) — OPT-IN BENCHMARK CAPTURE (browser console only; no UI, no effect unless started) ══════════════
@@ -20559,7 +20865,7 @@ async function jazhQcFinaliseAndListen(track, lang, o) {
       const sum = aiUsageSummary(o.runId)
       aiUsageSummaryLines(sum).forEach(l => push(l))
       try { recordLastTrackAiUsage(sum, track.createdAt, lang) } catch (e) {}       // v650 §8 header chip
-      fin = { ...fin, aiUsage: { ...sum, ranked: sum.ranked.slice(0, 12) }, aiCalls: aiCompactRows(AI_LEDGER.filter(r => r.runId === o.runId)) }
+      fin = { ...fin, generationModel: fin.generationModel || aiRunGenModel(o.runId), aiUsage: { ...sum, ranked: sum.ranked.slice(0, 12) }, aiCalls: aiCompactRows(AI_LEDGER.filter(r => r.runId === o.runId)) }
     } catch (e) {}
   }
   return { track: fin, res }
@@ -20598,7 +20904,8 @@ function trackVersionExportLines(track) {
   const lb = t.listeningBuild || {}
   const out = ['APP_BUILD_VERSION: ' + APP_BUILD_VERSION + ' · PIPELINE_VERSION: ' + (t.pipelineVersion || 'legacy (pre-v651 — created before this build)') +
       ' · GENERATOR_VERSION: ' + (t.generatorVersion || (lang && GENERATOR_VERSIONS[lang]) || '-') + ' · QC_VERSION: ' + QC_VERSION +
-      ' · FINALIZER_VERSION: ' + ((t.integrity && t.integrity.version) ? t.integrity.version + ' / ' + FINALIZER_VERSION : FINALIZER_VERSION) + ' · LISTENING_VERSION: ' + (lb.buildVersion || LISTENING_BUILD_VERSION),
+      ' · FINALIZER_VERSION: ' + ((t.integrity && t.integrity.version) ? t.integrity.version + ' / ' + FINALIZER_VERSION : FINALIZER_VERSION) + ' · LISTENING_VERSION: ' + (lb.buildVersion || LISTENING_BUILD_VERSION) +
+      (t.generationModel ? ' · GENERATION_MODEL: ' + t.generationModel + (t.generationModel !== GEMINI_DEFAULT_MODEL ? ' (generation only — QC and pronunciation by Gemini)' : '') : ''),
     'language=' + (lang || 'MISSING') + ' · path=' + (legacy ? 'LEGACY (no TrackContext)' : 'CANONICAL') + ' · trackId=' + ((tc && tc.trackId) || listeningTrackId(t) || '-') +
       ' · selectedTargetIds=' + req.selected.length + ' · selectedNewTargetIds=' + req.newIds.length + (tc && tc.expectedNewCount != null ? ' (expected ' + tc.expectedNewCount + ')' : '') +
       ' · requiredListeningTargetIds=' + req.requiredIds.length,
@@ -27922,7 +28229,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     if (!ids.size || n > GEN_CHECKPOINT_MAX_RESUMES) return
     const log = msg => { logAll(msg); setGenLog(prev => [...prev.slice(-300), generationLogFormat(msg)]) }
     setThRetrying(true); setListenPhase('FINALISING')
-    if (!aiRunRef.current) aiRunRef.current = aiBeginRun('daily-track')
+    if (!aiRunRef.current) aiRunRef.current = aiBeginRun('daily-track', null, { genModel: t0.generationModel || GEMINI_DEFAULT_MODEL })
     try { const fin = await thaiRetryMissingRecalls(t0, { vocab, apiKey, model: genModel, onLog: log }); if (fin) setGeneratedTrack(fin) }
     catch (e) { if (e && (e.fatalProvider || e.cancelled)) log('\u26D4 ' + e.message); else log('\u274C retry failed: ' + (e.message || e)) }
     setListenPhase('DONE'); setThRetrying(false)
@@ -28212,7 +28519,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           const _rows = AI_LEDGER.filter(r => r.runId === aiRunRef.current)
           aiUsageSummaryLines(_sum).forEach(l => logAll(l))
           setGenLog(prev => [...prev.slice(-300), ...aiUsageSummaryLines(_sum)])
-          setGeneratedTrack(prev => prev ? { ...prev, aiUsage: { ..._sum, ranked: _sum.ranked.slice(0, 12) }, aiCalls: aiCompactRows(_rows) } : prev)
+          setGeneratedTrack(prev => prev ? { ...prev, generationModel: prev.generationModel || aiRunGenModel(aiRunRef.current), aiUsage: { ..._sum, ranked: _sum.ranked.slice(0, 12) }, aiCalls: aiCompactRows(_rows) } : prev)
         } catch (e) { console.warn('[ai-usage] summary failed', e) }
         // Show what the track cost (token-based Gemini estimate from the usage ledger)
         try { const _c = aiUsageSummary(aiRunRef.current).costUsd; onTrackCost && onTrackCost(Number.isFinite(_c) ? _c : null) } catch (e) {}
@@ -29940,6 +30247,76 @@ function GcpTtsSection({ gcpTtsKey, onSaveGcpTtsKey }) {
 }
 
 // ── Settings ─────────────────────────────────────────────────────────────────
+// Settings → AI Generation Model. Gemini stays the default; Claude Haiku 5.5 is an experimental alternative for the sentences
+// of new Daily / Revision / Weak-words tracks. Stored: the choice and two limits (a preference), and the SITE access code for
+// this app's own server function. The Anthropic API key is never entered here — it lives in the site's server settings.
+function GenerationModelCard() {
+  const [pref, setPref] = useState(aiGenerationPreference())
+  const [code, setCode] = useState('')
+  const [hasCode, setHasCode] = useState(!!AI_ANTHROPIC_ACCESS)
+  const [usd, setUsd] = useState(String(aiGenerationPreference().limitUsd))
+  const [req, setReq] = useState(String(aiGenerationPreference().limitRequests))
+  const [msg, setMsg] = useState('')
+  const [testing, setTesting] = useState(false)
+  useEffect(() => { (async () => {
+    try { const p = aiSetGenerationPreference(await stGet(AI_GEN_PREF_KEY)); setPref(p); setUsd(String(p.limitUsd)); setReq(String(p.limitRequests)) } catch (e) {}
+    try { setHasCode(aiSetAnthropicAccess(await stGet(AI_ANTHROPIC_ACCESS_KEY))) } catch (e) {}
+  })() }, [])
+  async function choose(model) {
+    const p = aiSetGenerationPreference({ ...pref, model }); setPref(p); await stSet(AI_GEN_PREF_KEY, p)
+    setMsg('✓ New tracks will be written by ' + aiGenModelLabel(model) + '. Tracks you already made keep the model they were made with.')
+  }
+  async function saveLimits() {
+    const p = aiSetGenerationPreference({ ...pref, limitUsd: parseFloat(usd), limitRequests: parseInt(req, 10) }); setPref(p); await stSet(AI_GEN_PREF_KEY, p)
+    setUsd(String(p.limitUsd)); setReq(String(p.limitRequests)); setMsg('✓ Limits saved: US$' + p.limitUsd + ' and ' + p.limitRequests + ' Claude Haiku requests per track.')
+  }
+  async function saveCode() {
+    const ok = aiSetAnthropicAccess(code); await stSet(AI_ANTHROPIC_ACCESS_KEY, ok ? code.trim() : null); setHasCode(ok); setCode('')
+    setMsg(ok ? '✓ Site access code saved on this device.' : 'Site access code cleared.')
+  }
+  async function test() {
+    setTesting(true); setMsg('')
+    try { const r = await anthropicTestConnection(); setMsg('✅ Claude Haiku answered "' + r.text + '" · model ' + (r.model || '?') + ' · cost ≈ US$' + r.costUsd.toFixed(6)) }
+    catch (e) { setMsg('❌ ' + String(e && e.message || e)) }
+    setTesting(false)
+  }
+  const box = { width: '100%', padding: '10px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 14, fontFamily: 'DM Mono, monospace', outline: 'none' }
+  const btn = { padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, fontFamily: 'Sarabun,sans-serif' }
+  const haiku = pref.model === 'claude-haiku-5-5'
+  return (
+    <Card style={{ padding: 16, marginBottom: 12 }}>
+      <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>AI Generation Model</p>
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>Which AI writes the sentences of new Daily, Revision and Weak-words tracks (Thai, Japanese and Mandarin). Quality checks and pronunciation always use Gemini, so your Gemini key is still needed.</p>
+      {Object.values(AI_GEN_MODELS).map(m => (
+        <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6, cursor: 'pointer',
+          border: '1px solid ' + (pref.model === m.id ? '#d4a94a' : 'var(--border)'), background: pref.model === m.id ? 'rgba(212,169,74,0.08)' : 'var(--surface2)' }}>
+          <input type="radio" name="tt-generation-model" value={m.id} checked={pref.model === m.id} onChange={() => choose(m.id)} />
+          <span style={{ fontSize: 13 }}>{m.label} <span style={{ color: 'var(--muted)' }}>— {m.tag}</span></span>
+        </label>
+      ))}
+      {haiku && (
+        <div style={{ marginTop: 10, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>Claude Haiku runs through this site's own server, which holds the Anthropic API key. If it is unavailable, generation stops with an error — it never switches to Gemini on its own.</p>
+          <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Site access code {hasCode ? <span style={{ color: '#10b981', fontWeight: 400 }}>✓ saved on this device</span> : <span style={{ color: '#f59e0b', fontWeight: 400 }}>— not set</span>}</p>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>The code the site owner set as LT_ACCESS_CODE on the server. This is not your Anthropic API key.</p>
+          <input type="password" value={code} onChange={e => setCode(e.target.value)} placeholder={hasCode ? '•••••• (enter a new code to replace it)' : 'site access code'} style={{ ...box, marginBottom: 8 }} />
+          <button onClick={saveCode} style={{ ...btn, width: '100%', marginBottom: 12 }}>{code.trim() ? 'Save Access Code' : 'Clear Access Code'}</button>
+          <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Limits per track (Claude Haiku requests)</p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <label style={{ flex: 1, fontSize: 11, color: 'var(--muted)' }}>US$ ceiling<input value={usd} onChange={e => setUsd(e.target.value)} inputMode="decimal" style={{ ...box, marginTop: 4 }} /></label>
+            <label style={{ flex: 1, fontSize: 11, color: 'var(--muted)' }}>Max requests<input value={req} onChange={e => setReq(e.target.value)} inputMode="numeric" style={{ ...box, marginTop: 4 }} /></label>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={saveLimits} style={{ ...btn, flex: 1 }}>Save Limits</button>
+            <button onClick={test} disabled={testing || !hasCode} style={{ ...btn, flex: 1, color: hasCode ? 'var(--text)' : 'var(--muted)', cursor: hasCode ? 'pointer' : 'not-allowed' }}>{testing ? 'Testing…' : 'Test Connection'}</button>
+          </div>
+          <p style={{ fontSize: 10, color: '#64748b', marginTop: 6 }}>Test Connection sends one tiny paid request (well under US$0.001). Claude Haiku 5.5: $0.10/M in · $0.50/M out.</p>
+        </div>
+      )}
+      {msg && <p style={{ fontSize: 12, marginTop: 10, color: msg.startsWith('❌') ? '#ef4444' : '#10b981' }}>{msg}</p>}
+    </Card>
+  )
+}
 // v648: Gemini is the only AI service. One Gemini key (Google AI Studio) plus an
 // optional backup Gemini key that the Gemini client uses only for same-model retries.
 function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGeminiSpend, gcpTtsKey, onSaveGcpTtsKey, geminiBackupKey, onSaveGeminiBackupKey }) {
@@ -30107,6 +30484,7 @@ function Settings({ onBack, geminiKey, onSaveGeminiKey, geminiSpend, onResetGemi
           🧪 Benchmark mode (developer) — runs the fixed test tracks in a sealed copy; your progress is not used or changed
         </button>
       </Card>
+      <GenerationModelCard />
     </div>
   )
 }
@@ -33952,6 +34330,7 @@ function ThaiTeacher({ lang, onSetLang }) {
       setTracks(st || [])
       await migrateGeminiOnlyCredentials()                  // v648: legacy non-Gemini settings removed (names logged, never values)
       const gk = await stGet('tt-gemini-key'); if (gk) setGeminiKey(gk)
+      try { aiSetGenerationPreference(await stGet(AI_GEN_PREF_KEY)); aiSetAnthropicAccess(await stGet(AI_ANTHROPIC_ACCESS_KEY)) } catch (e) {}   // optional generation model (Gemini unless chosen)
       const gfk = await stGet('tt-gemini-fallback-key'); if (gfk) setGeminiBackupKey(gfk)
       const gsp = await stGet('tt-gemini-spend'); if (gsp != null) setGeminiSpend(parseFloat(gsp) || 0)
       const gtk = await stGet('tt-gcp-tts-key'); if (gtk) setGcpTtsKey(gtk)
@@ -37730,7 +38109,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
     setFinalTrack(track)
     setQcPhase('running'); setQcProgress(0); setQcStatus('Starting quality check\u2026')
     push('\u2501\u2501 Quality check')
-    if (!aiRunRef.current) aiRunRef.current = aiBeginRun(track.language + '-track', track.createdAt)
+    if (!aiRunRef.current) aiRunRef.current = aiBeginRun(track.language + '-track', track.createdAt, { genModel: track.generationModel || GEMINI_DEFAULT_MODEL })
     try {
       const out = await jazhQcFinaliseAndListen(track, track.language, {   // v651: the language the track was CREATED with (was the literal placeholder 'LANG')
         vocab, apiKey, model, runId: aiRunRef.current,
@@ -39003,7 +39382,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
     setFinalTrack(track)
     setQcPhase('running'); setQcProgress(0); setQcStatus('Starting quality check\u2026')
     push('\u2501\u2501 Quality check')
-    if (!aiRunRef.current) aiRunRef.current = aiBeginRun(track.language + '-track', track.createdAt)
+    if (!aiRunRef.current) aiRunRef.current = aiBeginRun(track.language + '-track', track.createdAt, { genModel: track.generationModel || GEMINI_DEFAULT_MODEL })
     try {
       const out = await jazhQcFinaliseAndListen(track, track.language, {   // v651: the language the track was CREATED with (was the literal placeholder 'LANG')
         vocab, apiKey, model, register, runId: aiRunRef.current,

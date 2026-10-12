@@ -199,6 +199,9 @@ async function runOnceUi(fx, o) {
       clock: 'deterministic (' + new Date(fx.clockStartMs || Date.UTC(2026, 9, 8, 6, 0, 0)).toISOString() + ', +7ms per read; reset at run start)', seed: 20261008 })
     c.fetch = rec.fetch
   }
+  // optional hooks (tests only): wrap the transport (e.g. answer /api/anthropic from the same recording) and set app state first
+  if (typeof o.wrapFetch === 'function') c.fetch = o.wrapFetch(c.fetch, c)
+  if (typeof o.prepare === 'function') o.prepare(c)
   const key = o.provider === 'live' && o.mode !== 'replay' ? (o.apiKey || process.env.GEMINI_API_KEY) : SIM_KEY
   const fxc = require('./embed_fixtures').compact(fx)
   const pipeline = o.pipeline || (o.cassette && o.cassette.meta && o.cassette.meta.pipeline) || 'production'

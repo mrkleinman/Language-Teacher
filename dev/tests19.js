@@ -163,8 +163,8 @@ async function main() {
     const S = setup('ja')
     const jv = S.c.initJapaneseVocab()
     const newW = jv.filter(w => w.status === 'new').slice(0, 5).map(w => w.id)
-    T('N1', 'newWordsPerTrack(ja, daily) = 3 · japaneseSlotsFor = 3 · revision = 0 · Thai Daily keeps its belt allowance (5)',
-      S.c.newWordsPerTrack('ja', 'daily', jv) === 3 && S.c.japaneseSlotsFor(jv) === 3 && S.c.newWordsPerTrack('ja', 'revision', jv) === 0 && S.c.newWordsPerTrack('th', 'daily', S.c.initVocab()) === 5)
+    T('N1', 'newWordsPerTrack(ja, daily) = 3 · japaneseSlotsFor = 3 · revision = 0 · Thai Daily keeps its belt allowance (v683 owner table: 3 at Mukyu)',
+      S.c.newWordsPerTrack('ja', 'daily', jv) === 3 && S.c.japaneseSlotsFor(jv) === 3 && S.c.newWordsPerTrack('ja', 'revision', jv) === 0 && S.c.newWordsPerTrack('th', 'daily', S.c.initVocab()) === 3)
     T('N2', '5 slots saved under the old allowance ⇒ still exactly 3 NEW selected', S.c.japaneseSelectNewSlots(jv, newW).length === 3 && S.c.japaneseSelectNewSlots(jv, []).length === 3)
     // §31 — 30 selected: 3 NEW, 27 REVIEW, with the response-token / question / content mix
     const mixW = ['はい', 'うん', 'いいえ', '好き', 'また', '今日', '食べる', '何', '飲む', '一緒'].map(j => S.vocab.find(w => w.japanese === j))

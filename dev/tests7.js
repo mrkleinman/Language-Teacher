@@ -154,7 +154,8 @@ async function genOnce(file, opts = {}) {
   const cs = countsFor(ps.targets, 'daily', 30, { shortfall: ps.shortfall, lockedByUnratedTracks: 240 })
   // v646: superseded — a short review pool no longer yields a short selection. The cascade fills 30 and any unseen
   // word used beyond the NEW ceiling (no review word left in the whole bank) is counted and logged as NEW_CEILING_OVERFLOW.
+  // v683 owner's quota table: Thai Mukyu introduces 3 new words (was 5), so 9 unseen = 3 NEW + 6 overflow
   T('S', 'v646: a learner with only 21 introduced words still gets 30 targets; the extra unseen words are REPORTED (NEW_CEILING_OVERFLOW), never silent',
-    ps.targets.length === 30 && !ps.shortfall && /NEW_CEILING_OVERFLOW=4/.test(c.thaiTargetCountsLine(cs)), c.thaiTargetCountsLine(cs))
+    ps.targets.length === 30 && !ps.shortfall && /NEW_CEILING_OVERFLOW=6/.test(c.thaiTargetCountsLine(cs)), c.thaiTargetCountsLine(cs))
   console.log(out.join('\n') + '\n\n' + (fails ? fails + ' FAILED' : 'all passed'))
 })().catch(e => { console.error(e); process.exit(1) })

@@ -50,6 +50,67 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
     T('D2', 'generation-screen headings (Mandarin and Japanese) count the targets actually generated, not the raw new-word selection',
       (SRC.match(/describeTargetSelection\(\(selection && selection\.counts\) \|\| \{[^}]*\}, targets\)/g) || []).length === 3)
   }
+  // ══ C — language-quality corpus (real sentences from the 2026-10-12 production logs and the v682 sandbox runs) ═══════════
+  {
+    const { run } = require('./sandbox/corpus_eval')
+    const r = run(APP)
+    T('C1', 'corpus, deterministic entries: the teaching-plan pipeline makes fewer false acceptances AND fewer false rejections than v682 (old ' +
+      r.old.correct + '/' + r.old.decided + ' correct, ' + r.old.falseAccept.length + ' FA / ' + r.old.falseReject.length + ' FR → new ' + r.new.correct + '/' + r.new.decided + ', ' + r.new.falseAccept.length + ' FA / ' + r.new.falseReject.length + ' FR)',
+      r.new.falseAccept.length < r.old.falseAccept.length && r.new.falseReject.length < r.old.falseReject.length && r.new.correct > r.old.correct, { old: r.old, new: r.new })
+    T('C2', 'the four live false acceptances are gone under the plan: 有不。 · 一緒ある？ · บ้านหลังนั้นสวยมากครับ (wrong sense) — and the false rejections 我找你 / 我等你 / どれがいいかな？ / 一緒に乗らない？ / 早く来てね pass',
+      ['有不。', '一緒ある？', 'บ้านหลังนั้นสวยมากครับ'].every(t => { const x = r.rows.find(y => y.text === t); return x && x.new.verdict === 'reject' }) &&
+      ['我找你', '我等你', 'どれがいいかな？', '一緒に乗らない？', '駅で待ってるよ。早く来てね。'].every(t => { const x = r.rows.find(y => y.text === t); return x && x.new.verdict === 'accept' }))
+  }
+  // ══ P — teaching-plan pipeline contract ═════════════════════════════════════════════════════════════════════════════
+  {
+    const c = load(APP, { realBelt: true })
+    const on = f => { const w = c.setTeachingPlan(true); try { return f() } finally { c.setTeachingPlan(w) } }
+    T('P1', 'the switch is OFF by default and only the sandbox pipeline turns it on (learner screens never do); OFF is the v682 generator',
+      c.teachingPlanOn() === false && (SRC.match(/setTeachingPlan\(/g) || []).length === 3 && /const _tpWas = setTeachingPlan\(o\.pipeline === 'teaching-plan'\)/.test(SRC) && /finally \{ setTeachingPlan\(_tpWas\) \}/.test(SRC))
+    // Mandarin: no string-built fallback
+    const zfx = R.loadFixture('zh-daily-2026-10-08'), ZV = c.ttBenchApplyFixture(c.initMandarinVocab(), zfx), ZTG = c.ttBenchJazhTargets(zfx, ZV)
+    const zinv = c.mandarinLearnerInventory(ZV, ZTG), zrules = c.mandarinScarcityRules(zinv)
+    const bu = ZTG.find(t => t.chinese === '不')
+    const fbOld = [1, 2, 3].map(k => (c.mandarinFallbackPair(bu, zinv, k, new Map(), ZV, zrules) || {}).chinese).filter(Boolean)
+    const fbNew = on(() => ZTG.flatMap(t => [1, 2, 3].map(k => ({ t: t.chinese, s: (c.mandarinFallbackPair(t, zinv, k, new Map(), ZV, zrules) || {}).chinese })).filter(x => x.s)))
+    const generic = fbNew.filter(x => /^(有|我要)[^\s]{1,2}[。]$/.test(x.s) || x.s === x.t + '。' || x.s === x.t + '吗？')
+    T('P2', 'Mandarin under the plan: the deterministic fallback returns hand-written frames only — no 有X / 我要X / X。 / X吗？ concatenation for any fixture target (v682 for 不: ' + fbOld.join(' / ') + ')',
+      !generic.length && !fbNew.some(x => /有不|我要不/.test(x.s)), generic.slice(0, 6))
+    // Japanese: no intent-frame / add-on fallback output
+    const jfx = R.loadFixture('ja-daily-2026-10-08'), JV = c.ttBenchApplyFixture(c.initJapaneseVocab(), jfx), JTG = c.ttBenchJazhTargets(jfx, JV), jinv = c.japaneseLearnerInventory(JV, JTG)
+    const jaOut = on(() => JTG.flatMap(t => [1, 2, 3].map(k => ((c.jaFallbackRecall(t, jinv, k, []) || {}).japanese) || null)).filter(Boolean))
+    const curated = new Set(Object.values(c.ev('JA_HINT_PAIRS')).flat().map(x => x[0]).concat(Object.values(c.ev('JA_TARGET_CONSTRUCTIONS')).flat().map(x => x.jp)))
+    T('P3', 'Japanese under the plan: every fallback recall is a hand-written frame (JA_HINT_PAIRS / JA_TARGET_CONSTRUCTIONS) — never 一緒ある？ / 明日分かる？-style joins; teachability may still count role frames',
+      jaOut.length > 0 && jaOut.every(x => curated.has(x)) && !jaOut.includes('一緒ある？') && /jaFallbackRecall\(target, inv, r, seen, \{ forTeachability: true \}\)/.test(SRC), jaOut.filter(x => !curated.has(x)).slice(0, 6))
+    // Japanese grammar permissions + safeguards (owner decision 1)
+    const doko = JTG.find(t => t.japanese === 'どれ') || JV.find(t => t.japanese === 'どれ'), iku = JTG.find(t => t.japanese === '行く') || JV.find(t => t.japanese === '行く')
+    const ev = (t, jp, en, cue) => on(() => { const inv = JTG.some(w => w.id === t.id) ? jinv : c.japaneseLearnerInventory(JV, JTG.concat([t]))
+      const r = c.jaEvaluateRecallCandidate({ japanese: jp, english: en, prompt: cue }, { target: t, inv, vocab: JV, registerId: c.ev('JA_REGISTER_DEFAULT'), seenMap: new Map(), rules: c.scarcityRules(inv), opts: {}, onLog: null }); return r.ok ? 'ok' : r.failure })
+    const k1 = ev(doko, 'どれがいいかな？', 'Which one is good, I wonder?', 'Wonder aloud which one is good')
+    const k2 = ev(doko, 'どれがいいかな？', 'Which one is good?', 'Ask which one is good')
+    const k3 = ev(iku, '行くな。', "Don't go.", 'Tell them not to go')
+    const k4 = ev(iku, '駅だけ行く。', 'I only go to the station.', 'Say you only go to the station')
+    const k5 = ev(doko, 'え、どれ？', 'Huh? Which one?', 'Ask which one, surprised')
+    T('P4', 'Japanese permissions: かな accepted when the English shows the uncertainty, rejected when it does not; the prohibitive 行くな and だけ stay unauthorised; the interjection え is free',
+      k1 === 'ok' && /かな/.test(k2) && k3 !== 'ok' && k4 !== 'ok' && k5 === 'ok', { k1, k2, k3, k4, k5 })
+    const zp = on(() => c.buildMandarinPrompt(ZTG[0], zinv, ZV, 2, zrules).user)
+    const zpOld = c.buildMandarinPrompt(ZTG[0], zinv, ZV, 2, zrules).user
+    const jp = on(() => c.buildJapaneseGroupPrompt(doko, [{ recallIndex: 1 }, { recallIndex: 2 }, { recallIndex: 3 }], jinv, JV, c.ev('JA_REGISTER_DEFAULT'), { initial: true }))
+    T('P5', 'instructions agree with the checks under the plan: Mandarin drops "similar structures are DESIRABLE" and the copied example sentences and states the planned application; Japanese states the exact grammar permissions instead of "particles are free"',
+      /TEACHING PLAN/.test(zp) && /THIS recall = application 2/.test(zp) && !/DESIRABLE/.test(zp) && !/AUTHORISED EXAMPLES/.test(zp) &&
+      /GRAMMAR PERMISSIONS/.test(jp.system) && !/Particles, the copula and normal inflection of allowed words are free/.test(jp.system) && /TEACHING PLAN/.test(jp.user) &&
+      (/DESIRABLE|Vary the grammar/.test(zpOld)), { zp: zp.slice(0, 200) })
+    // Thai: sense-keyed classifier guide and the wrong-sense check
+    const TV = c.initVocab(), tw = t => TV.find(w => w.thai === t)
+    const s1 = on(() => [c.thaiTpSenseProblem('บ้านหลังนั้นสวยมากครับ', tw('หลัง')), c.thaiTpSenseProblem('ผมจะไปทีหลังครับ', tw('หลัง')), c.thaiClassifierGuideFor(tw('หลัง')), c.thaiClassifierGuideFor(tw('ชิ้น')), c.thaiTpNotSense(tw('หลัง'))])
+    T('P6', 'Thai under the plan: หลัง ("after / back") gets no house-classifier guide, its plan says NOT the classifier use, and บ้านหลังนั้น is rejected as WRONG_SENSE while ทีหลัง passes; ชิ้น keeps its classifier guide; OFF keeps v682 behaviour',
+      /WRONG_SENSE/.test(s1[0]) && !s1[1] && !s1[2] && !!s1[3] && /classifier/.test(s1[4]) && !!c.thaiClassifierGuideFor(tw('หลัง')), s1)
+    T('P7', 'Thai under the plan: no gloss-guessed template fallback (makeFallbackPairs returns nothing; hand-written HARDCODED_FALLBACKS only)',
+      on(() => c.makeFallbackPairs(tw('เดิน') || TV[50])).length === 0 && c.makeFallbackPairs(tw('เดิน') || TV[50]).length > 0)
+    T('P8', 'bounded repair: under the plan a Mandarin repeat is recorded (the same repeat twice ends paid attempts) and the retry names the failure and the clashing recall; quota recovery passes rejection memory instead of seeding rejected sentences as accepted',
+      /_rej\.record\(_rejScope, cand\.chinese, 'same application as ' \+ _clash\)/.test(SRC) && /teachingRepairLine\(last, _zhClash/.test(SRC) && /priorRejected: _tpPrior/.test(SRC) &&
+      /it repeats the accepted recall/.test(c.teachingRepairLine('same application', '这个很大', c.teachingPlan('zh', ZTG[0]), 2)))
+  }
   console.log(out.join('\n'))
   console.log('\nv683 generation architecture stabilisation: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
   process.exit(fails ? 1 : 0)

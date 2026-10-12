@@ -99,17 +99,17 @@ function daily(c, vocab, mode = 'daily') {
     fB2.backfills.slice(1).every(b => b.sameBucketExhausted && b.replacementBucket !== bkt) && !fB2.blocked, fB2.log)
   // C: Daily with 5 NEW
   const dC = daily(c, learner(c))
-  T('C', 'Daily with 5 NEW ⇒ exactly 5 valid NEW + exactly 25 valid non-NEW = 30 · generation 30 · expected target pairs 90',
-    dC.cnt.selectedTargetCount === 30 && dC.cnt.newTargetCount === 5 && dC.cnt.generationTargetCount === 30 && dC.cnt.expectedTargetPairs === 90 &&
-    /SELECTED_TARGETS=30 GENERATION_TARGETS=30 NEW_TARGETS=5 REVIEW_TARGETS=25 LISTENING_REQUIRED_TARGETS=30 EXPECTED_TARGET_PAIRS=90/.test(dC.line) && dC.f.targets.filter(t => !c.isGenuinelyNew(t)).length === 25, dC.line)
+  T('C', 'Daily at Mukyu (v683 owner table: Thai 3 NEW) ⇒ exactly 3 valid NEW + exactly 27 valid non-NEW = 30 · generation 30 · expected target pairs 90',
+    dC.cnt.selectedTargetCount === 30 && dC.cnt.newTargetCount === 3 && dC.cnt.generationTargetCount === 30 && dC.cnt.expectedTargetPairs === 90 &&
+    /SELECTED_TARGETS=30 GENERATION_TARGETS=30 NEW_TARGETS=3 REVIEW_TARGETS=27 LISTENING_REQUIRED_TARGETS=30 EXPECTED_TARGET_PAIRS=90/.test(dC.line) && dC.f.targets.filter(t => !c.isGenuinelyNew(t)).length === 27, dC.line)
   // C2: a NEW slot that fails preflight is backfilled with a NEW word (NEW count preserved)
   const newVictim = dC.pw.targets.find(t => c.isGenuinelyNew(t))
   const nRec = raw.find(d => d.id === newVictim.id), nSave = { semanticQc: nRec.semanticQc, qcStatus: nRec.qcStatus }
   nRec.semanticQc = 'NEEDS_REVIEW'; nRec.qcStatus = 'NEEDS_REVIEW'
   const fC2 = c.freezeThaiTargetSelection({ selected: dC.pw.targets, reserve: dC.pw.reserve, required: 30, mode: 'daily' })
   Object.assign(nRec, nSave)
-  T('C2', 'a NEW target failing preflight is replaced by the next eligible NEW word ⇒ NEW stays 5, total 30',
-    fC2.targets.length === 30 && fC2.targets.filter(t => c.isGenuinelyNew(t)).length === 5 && fC2.backfills[0] && fC2.backfills[0].bucket === 'belt-new', fC2.log)
+  T('C2', 'a NEW target failing preflight is replaced by the next eligible NEW word ⇒ NEW stays 3 (v683 Thai Mukyu), total 30',
+    fC2.targets.length === 30 && fC2.targets.filter(t => c.isGenuinelyNew(t)).length === 3 && fC2.backfills[0] && fC2.backfills[0].bucket === 'belt-new', fC2.log)
   // D: Revision
   const rv = c.selectThaiRevisionTargets(learner(c), 30)
   const rvAll = c.selectThaiRevisionTargets(learner(c), 100000)
@@ -199,7 +199,7 @@ function daily(c, vocab, mode = 'daily') {
   T('J', 'generation progress: word 1/30 … 30/30, pairs 0 of 90 … 90 of 90; start log shows SELECTED 30 / GENERATION 30 / EXPECTED_TARGET_PAIRS 90 and never "26 of 30"',
     statuses.length === 30 && /1\/30: /.test(statuses[0]) && /30\/30: /.test(statuses[29]) && [...totals].every(t => t === 90) && lastDone >= 90 &&
     pm0.statusLine === '0 of 90 pairs' && pm90.statusLine === '90 of 90 pairs' &&
-    logs.some(l => /SELECTED_TARGETS=30 GENERATION_TARGETS=30 NEW_TARGETS=5 REVIEW_TARGETS=25 LISTENING_REQUIRED_TARGETS=30 EXPECTED_TARGET_PAIRS=90/.test(l)),
+    logs.some(l => /SELECTED_TARGETS=30 GENERATION_TARGETS=30 NEW_TARGETS=3 REVIEW_TARGETS=27 LISTENING_REQUIRED_TARGETS=30 EXPECTED_TARGET_PAIRS=90/.test(l)),
     { first: statuses[0], last: statuses[29], totals: [...totals], lastDone, startLog: logs.filter(l => /CANDIDATES|SKIPPED|SELECTED_TARGETS/.test(l)).slice(0, 4) })
   // K: lexicon audit record for the report
   const audit = c.ev('THAI_LEXICON_AUDIT_V645')

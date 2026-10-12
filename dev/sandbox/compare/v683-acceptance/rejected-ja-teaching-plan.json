@@ -1,0 +1,242 @@
+{
+ "run": "ja-daily-2026-10-08.teaching-plan.v683C2.2026-10-12T02-37-36",
+ "lang": "ja",
+ "candidates": 118,
+ "acceptedDistinct": 90,
+ "rejected": [
+  {
+   "seq": 9,
+   "target": "どれ",
+   "text": "この中でどれがいい？",
+   "english": "Which one of these is good?",
+   "cue": "Which of these is good?",
+   "reason": "❌ recall 1: untaught content: なか [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この中でどれがいい？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 9,
+   "target": "どれ",
+   "text": "え、どれにするか決めた？",
+   "english": "Oh, did you decide which one?",
+   "cue": "Did you decide which one?",
+   "reason": "❌ recall 3: untaught content: 決める [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"え、どれにするか決めた？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 10,
+   "target": "どれ",
+   "text": "この電車、どれに乗る？",
+   "english": "Which train do I ride?",
+   "cue": "Which train should I take?",
+   "reason": "❌ recall 1: same application as an accepted recall (the same frame with a word swapped, added or only a sentence-final particle changed): 電車、どれに乗る？ [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"この電車、どれに乗る？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 11,
+   "target": "どれ",
+   "text": "どれがいい？",
+   "english": "Which one is good?",
+   "cue": "Which one is good?",
+   "reason": "❌ recall 1: untaught content: なか [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この中でどれがいい？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 13,
+   "target": "あそこ",
+   "text": "あそこは何？",
+   "english": "What is over there?",
+   "cue": "Ask what is over there.",
+   "reason": "❌ recall 3: UNNATURAL: \"あそこは何？\" — \"X は何？\" does not ask about a concrete thing or place in Japanese [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"あそこは何？\"",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 17,
+   "target": "電話",
+   "text": "電話、貸してくれる？",
+   "english": "Can you lend me the phone?",
+   "cue": "Ask someone to lend you the phone.",
+   "reason": "❌ recall 3: untaught content: 貸す [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"電話、貸してくれる？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 19,
+   "target": "はい",
+   "text": "はい、行きます。",
+   "english": "Yes, I'll go.",
+   "cue": "Agree to go.",
+   "reason": "❌ recall 2: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"はい、行きます。\"",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 19,
+   "target": "はい",
+   "text": "はい、分かりました。",
+   "english": "Yes, I understood.",
+   "cue": "Confirm you understood.",
+   "reason": "❌ recall 3: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"はい、分かりました。\"",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 20,
+   "target": "はい",
+   "text": "はい、あの本、読んだよ。",
+   "english": "Yes, I read that book.",
+   "cue": "Say \"yes\" and add that you read that book.",
+   "reason": "❌ recall 2: untaught content: 読む [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"はい、あの本、読んだよ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 23,
+   "target": "いいえ",
+   "text": "いいえ、まだ時間あるよ。",
+   "english": "No, there's still time.",
+   "cue": "Say 'no, there's still time' to someone who seems rushed.",
+   "reason": "❌ recall 2: untaught content: 時間 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"いいえ、まだ時間あるよ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 25,
+   "target": "たぶん",
+   "text": "たぶん、明日乗る？",
+   "english": "Will you probably ride tomorrow?",
+   "cue": "Ask if they will probably ride tomorrow.",
+   "reason": "❌ recall 2: \"明日\" is a time word — \"乗る\" needs a place or thing, so \"明日乗る\" is not Japanese [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"たぶん、明日乗る？\"",
+   "class": "OTHER"
+  },
+  {
+   "seq": 26,
+   "target": "たぶん",
+   "text": "その電車、たぶん遅れるよ。",
+   "english": "That train will probably be late.",
+   "cue": "Say that train will probably be late.",
+   "reason": "❌ recall 2: untaught content: 遅れる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"その電車、たぶん遅れるよ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 28,
+   "target": "乗る",
+   "text": "え、もう駅に着いた？乗らないの？",
+   "english": "Huh? You're already at the station? Aren't you getting on?",
+   "cue": "Ask if they've already arrived at the station and aren't getting on.",
+   "reason": "❌ recall 3: untaught content: 着く [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"え、もう駅に着いた？乗らないの？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 30,
+   "target": "大丈夫",
+   "text": "ううん、ちょっと大丈夫じゃない。",
+   "english": "No, it's not really okay.",
+   "cue": "Say 'no, it's not really okay'.",
+   "reason": "❌ recall 3: untaught content: ううん [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"ううん、ちょっと大丈夫じゃない。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 31,
+   "target": "大丈夫",
+   "text": "これ、大丈夫じゃないと思う。",
+   "english": "I don't think this is okay.",
+   "cue": "Say you don't think this is okay.",
+   "reason": "❌ recall 3: same application as an accepted recall (the same frame with a word swapped, added or only a sentence-final particle changed): これ、大丈夫だよ。 [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"これ、大丈夫じゃないと思う。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 36,
+   "target": "何",
+   "text": "次は何に乗る？",
+   "english": "What will you ride next?",
+   "cue": "Ask what train/bus the other person will take next.",
+   "reason": "❌ recall 2: untaught content: 次 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"次は何に乗る？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 39,
+   "target": "どこ",
+   "text": "次、どこへ行く？",
+   "english": "Where are you going next?",
+   "cue": "Ask where to go next.",
+   "reason": "❌ recall 2: untaught content: 次 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"次、どこへ行く？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 39,
+   "target": "どこ",
+   "text": "え、もう帰るの？どこか行く？",
+   "english": "Oh, you're going home already? Are you going somewhere?",
+   "cue": "React with surprise and ask if they are going somewhere.",
+   "reason": "❌ recall 3: target どこ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"え、もう帰るの？どこか行く？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 40,
+   "target": "どこ",
+   "text": "どこか行きたいところある？",
+   "english": "Is there anywhere you want to go?",
+   "cue": "Is there anywhere you want to go?",
+   "reason": "❌ recall 3: target どこ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"どこか行きたいところある？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 43,
+   "target": "する",
+   "text": "駅で、友達と話すよ。",
+   "english": "I'll speak with a friend at the station.",
+   "cue": "State that you will speak with a friend at the station.",
+   "reason": "❌ recall 2: target する not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"駅で、友達と話すよ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 45,
+   "target": "今",
+   "text": "今、駅に着いたの？",
+   "english": "Did you arrive at the station now?",
+   "cue": "Ask if they arrived at the station now.",
+   "reason": "❌ recall 1: untaught content: 着く [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"今、駅に着いたの？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 45,
+   "target": "今",
+   "text": "今、時間がないんだ。",
+   "english": "I don't have time now.",
+   "cue": "Say you don't have time now.",
+   "reason": "❌ recall 2: untaught content: 時間 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"今、時間がないんだ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 45,
+   "target": "今",
+   "text": "今、これを見せて。",
+   "english": "Show me this now.",
+   "cue": "Ask to see this now.",
+   "reason": "❌ recall 3: CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question (\"Ask to see this now.\") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"今、これを見せて。\"",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 49,
+   "target": "分かる",
+   "text": "この話、分かる？",
+   "english": "Do you understand this story?",
+   "cue": "Ask if the listener understands this story.",
+   "reason": "❌ recall 1: untaught content: 話 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この話、分かる？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 51,
+   "target": "ありがとう",
+   "text": "今日、来てくれてありがとうね。",
+   "english": "Thanks for coming today, okay?",
+   "cue": "Thank your friend for coming today, using 'kureru'.",
+   "reason": "❌ recall 2: \"ありがとう\" is a fixed expression and cannot take a verb (今日、来てくれてありがとうね。) [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"今日、来てくれてありがとうね。\"",
+   "class": "OTHER"
+  },
+  {
+   "seq": 56,
+   "target": "どこ",
+   "text": "この電車はどこ行き？",
+   "english": "Where is this train going?",
+   "cue": "Ask where this train is going.",
+   "reason": "❌ recall 3: untaught content: 行き [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この電車はどこ行き？\"",
+   "class": "RULE"
+  }
+ ]
+}

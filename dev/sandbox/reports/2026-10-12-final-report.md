@@ -155,7 +155,7 @@ All changes are in `dev/tt.jsx`, commits 6ccbfad → 98cf479.
 - **Does Mandarin display the expected number of words?** Yes. Next Targets shows 30 (5 new · 25 review), the generation heading shows 30, and Learn New Words still shows 5. This is confirmed in a real browser test.
 - **Do the quotas agree?** Yes, all from one table. This is confirmed by tests43 Q1–Q5 (including Japanese 10th Kyu = 5 of 30 via the real selector) and by the browser test.
 - **Tests:**
-  - The full offline suite passes, apart from the long-known exception tests33 2G.
+  - The full offline suite passes, apart from the long-known exceptions: tests33 2G (a real failure, present since deployed v677) and tests35 2C-thTH / 2C-zhZH (blocked: the replay files they need are not in the package). *(Corrected: the first version of this report named only tests33 2G.)*
   - tests43 passes 24/24, and the browser tests pass 7/7 and 9/9.
   - Seven older checks were updated to your quota table: six for the Thai Mukyu number, and one test that called the selector without naming the language.
   - I committed step 1 before running the full suite, which was a process slip. It was caught and fixed in step 2.
@@ -172,3 +172,8 @@ All changes are in `dev/tt.jsx`, commits 6ccbfad → 98cf479.
    - Japanese needs the scene and register work above.
    - Mandarin needs a decision on how to handle Mukyu function words when the learner knows too few words. That is a curriculum question, not a code patch.
 3. I have not merged or deployed anything.
+
+## Corrections and follow-up (added later on 2026-10-12)
+
+- Section 6 now names both known suite exceptions; the first version listed only tests33 2G.
+- Section 5 item 1 says Mandarin failed because "the learner knows very few words". The follow-up investigation (`2026-10-12-phase2-investigation.md`) found the main cause was planning instead: the plan gave 可以 / 想 / 要 a "suggest doing it together" use, which needs no modal verb.

@@ -1,0 +1,386 @@
+{
+ "run": "zh-daily-2026-10-08.production.v682-final4-zh.2026-10-11T08-25-53",
+ "lang": "zh",
+ "candidates": 208,
+ "acceptedDistinct": 90,
+ "rejected": [
+  {
+   "seq": 1,
+   "target": "可以",
+   "text": "你现在可以来我家吗？",
+   "english": "Can you come to my place now?",
+   "cue": "Asking permission to visit",
+   "reason": "❌ LEVEL_COMPLEXITY_FAIL: 7 words > hardMax 6 (belt Mukyu)",
+   "class": "RULE"
+  },
+  {
+   "seq": 8,
+   "target": "到",
+   "text": "你到哪里？",
+   "english": "Where are you going to?",
+   "cue": "Ask someone about their destination using 'to'.",
+   "reason": "❌ unnatural: 你到哪里？ — say 你到哪里了？ (where are you now) or 你去哪里？ (where are you going)",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 9,
+   "target": "到",
+   "text": "你什么时候到？",
+   "english": "When will you arrive?",
+   "cue": "Ask someone when they will arrive.",
+   "reason": "❌ untaught vocabulary: 时候",
+   "class": "RULE"
+  },
+  {
+   "seq": 10,
+   "target": "到",
+   "text": "你到这里。",
+   "english": "You arrive here.",
+   "cue": "Tell someone to come here.",
+   "reason": "❌ incomplete: 你到这里。 — arriving needs 了 (我们到这里了 / 我到家了)",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 14,
+   "target": "一点",
+   "text": "这个菜好吃吗？",
+   "english": "Is this dish tasty?",
+   "cue": "Ask if a dish is tasty",
+   "reason": "❌ target 一点 not present",
+   "class": "RULE"
+  },
+  {
+   "seq": 16,
+   "target": "一点",
+   "text": "这个东西有一点儿贵。",
+   "english": "This thing is a little expensive.",
+   "cue": "This thing is a little expensive.",
+   "reason": "❌ untaught vocabulary: 儿 贵",
+   "class": "RULE"
+  },
+  {
+   "seq": 17,
+   "target": "一点",
+   "text": "这个东西不慢。",
+   "english": "This thing is not slow.",
+   "cue": "Reply that something isn't slow.",
+   "reason": "❌ target 一点 not present",
+   "class": "RULE"
+  },
+  {
+   "seq": 18,
+   "target": "一点",
+   "text": "这个菜有一点儿咸。",
+   "english": "This dish is a little salty.",
+   "cue": "This dish tastes a little salty.",
+   "reason": "❌ untaught vocabulary: 菜 儿 咸",
+   "class": "RULE"
+  },
+  {
+   "seq": 24,
+   "target": "多",
+   "text": "这里人很多",
+   "english": "There are many people here.",
+   "cue": "Describe a place that is crowded.",
+   "reason": "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time word, place or 在 differs) — use a different communicative function: 这里人很多",
+   "class": "RULE"
+  },
+  {
+   "seq": 28,
+   "target": "少",
+   "text": "人太少。",
+   "english": "There are too few people.",
+   "cue": "Too few people.",
+   "reason": "❌ unnatural: 太 + adjective needs 了 (太少了)",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 29,
+   "target": "少",
+   "text": "地方太少。",
+   "english": "There are too few places.",
+   "cue": "There are too few places.",
+   "reason": "❌ unnatural: 太 + adjective needs 了 (太少了)",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 36,
+   "target": "慢",
+   "text": "这个有点慢。",
+   "english": "This is a bit slow.",
+   "cue": "Describe something as being a little slow.",
+   "reason": "❌ untaught vocabulary: 点",
+   "class": "RULE"
+  },
+  {
+   "seq": 38,
+   "target": "慢",
+   "text": "你走得有点慢。",
+   "english": "You walk a little slow.",
+   "cue": "Ask how someone is walking.",
+   "reason": "❌ untaught vocabulary: 走 点",
+   "class": "RULE"
+  },
+  {
+   "seq": 39,
+   "target": "慢",
+   "text": "你做得有点慢。",
+   "english": "You're doing it a little slow.",
+   "cue": "How is your progress?",
+   "reason": "❌ untaught vocabulary: 点",
+   "class": "RULE"
+  },
+  {
+   "seq": 42,
+   "target": "慢",
+   "text": "这个走很慢。",
+   "english": "This walk is slow.",
+   "cue": "Describe a walk as slow.",
+   "reason": "❌ untaught vocabulary: 走",
+   "class": "RULE"
+  },
+  {
+   "seq": 44,
+   "target": "大",
+   "text": "这个大",
+   "english": "This is big.",
+   "cue": "Describe something as big.",
+   "reason": "❌ unnatural: a bare adjective predicate (这个大) — use 很 / 太…了 / 不 (这个很大)",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 52,
+   "target": "小",
+   "text": "这个有点小。",
+   "english": "This is a little small.",
+   "cue": "Say this is a little small.",
+   "reason": "❌ untaught vocabulary: 点",
+   "class": "RULE"
+  },
+  {
+   "seq": 53,
+   "target": "小",
+   "text": "这个小。",
+   "english": "This is small.",
+   "cue": "Describe this thing as small.",
+   "reason": "❌ unnatural: a bare adjective predicate (这个小) — use 很 / 太…了 / 不 (这个很小)",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 56,
+   "target": "很",
+   "text": "这个好。",
+   "english": "This is good.",
+   "cue": "Use 'hǎo' to indicate something is good.",
+   "reason": "❌ target 很 not present",
+   "class": "RULE"
+  },
+  {
+   "seq": 64,
+   "target": "很",
+   "text": "这个地方很大",
+   "english": "This place is big.",
+   "cue": "This place is very big.",
+   "reason": "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time word, place or 在 differs) — use a different communicative function: 这个地方很大",
+   "class": "RULE"
+  },
+  {
+   "seq": 66,
+   "target": "很",
+   "text": "你很好",
+   "english": "You are very good.",
+   "cue": "The person you are talking to is good.",
+   "reason": "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time word, place or 在 differs) — use a different communicative function: 你很好",
+   "class": "RULE"
+  },
+  {
+   "seq": 72,
+   "target": "太",
+   "text": "这个太快了",
+   "english": "This is too fast.",
+   "cue": "Something is happening too quickly.",
+   "reason": "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time word, place or 在 differs) — use a different communicative function: 这个太快了",
+   "class": "RULE"
+  },
+  {
+   "seq": 74,
+   "target": "太",
+   "text": "这个太大了",
+   "english": "This is too big.",
+   "cue": "This thing is excessively large.",
+   "reason": "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time word, place or 在 differs) — use a different communicative function: 这个太大了",
+   "class": "RULE"
+  },
+  {
+   "seq": 82,
+   "target": "太",
+   "text": "这个太贵了",
+   "english": "This is too expensive.",
+   "cue": "This is too expensive.",
+   "reason": "❌ untaught vocabulary: 贵",
+   "class": "RULE"
+  },
+  {
+   "seq": 86,
+   "target": "太",
+   "text": "菜太好了！",
+   "english": "The food is too good!",
+   "cue": "Something is excessively good.",
+   "reason": "❌ untaught vocabulary: 菜",
+   "class": "RULE"
+  },
+  {
+   "seq": 96,
+   "target": "一起",
+   "text": "我们一起去吧。",
+   "english": "Let's go together.",
+   "cue": "Suggest going somewhere together.",
+   "reason": "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time word, place or 在 differs) — use a different communicative function: 我们一起去吧。",
+   "class": "RULE"
+  },
+  {
+   "seq": 99,
+   "target": "回",
+   "text": "你什么时候回？",
+   "english": "When are you returning?",
+   "cue": "Ask when someone is coming back.",
+   "reason": "❌ untaught vocabulary: 时候",
+   "class": "RULE"
+  },
+  {
+   "seq": 125,
+   "target": "我",
+   "text": "我有点儿想吃。",
+   "english": "I feel like eating a little.",
+   "cue": "I want to eat a bit.",
+   "reason": "❌ untaught vocabulary: 点 儿",
+   "class": "RULE"
+  },
+  {
+   "seq": 130,
+   "target": "想",
+   "text": "我想吃。",
+   "english": "I feel like eating.",
+   "cue": "What do you feel like doing?",
+   "reason": "❌ incomplete: 我想吃 ends on a verb with no object — add what (我想喝水 / 你喜欢这个吗？)",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 135,
+   "target": "吃",
+   "text": "你想吃点什么？",
+   "english": "What would you like to eat?",
+   "cue": "Ask someone what they want to eat.",
+   "reason": "❌ untaught vocabulary: 点",
+   "class": "RULE"
+  },
+  {
+   "seq": 142,
+   "target": "吃",
+   "text": "这个好吃吗？",
+   "english": "Does this taste good?",
+   "cue": "Ask if something tastes good",
+   "reason": "❌ segments do not reconstruct the sentence",
+   "class": "RULE"
+  },
+  {
+   "seq": 146,
+   "target": "你",
+   "text": "你找谁？",
+   "english": "Who are you looking for?",
+   "cue": "Ask who someone is looking for.",
+   "reason": "❌ segments do not reconstruct the sentence",
+   "class": "RULE"
+  },
+  {
+   "seq": 147,
+   "target": "你",
+   "text": "你喜欢这个吗？",
+   "english": "Do you like this?",
+   "cue": "Ask someone if they like this.",
+   "reason": "❌ segments do not reconstruct the sentence",
+   "class": "RULE"
+  },
+  {
+   "seq": 148,
+   "target": "你",
+   "text": "你喜欢什么？",
+   "english": "What do you like?",
+   "cue": "Ask someone what they like.",
+   "reason": "❌ segments do not reconstruct the sentence",
+   "class": "RULE"
+  },
+  {
+   "seq": 169,
+   "target": "喝",
+   "text": "你想喝点什么？",
+   "english": "What would you like to drink?",
+   "cue": "Ask someone what they would like to drink.",
+   "reason": "❌ untaught vocabulary: 点",
+   "class": "RULE"
+  },
+  {
+   "seq": 178,
+   "target": "这个",
+   "text": "这个怎么样？",
+   "english": "How about this one?",
+   "cue": "Ask for an opinion about 'this'.",
+   "reason": "❌ untaught vocabulary: 样",
+   "class": "RULE"
+  },
+  {
+   "seq": 188,
+   "target": "要",
+   "text": "你买什么？",
+   "english": "What do you want to buy?",
+   "cue": "What do you need to buy?",
+   "reason": "❌ target 要 not present",
+   "class": "RULE"
+  },
+  {
+   "seq": 190,
+   "target": "要",
+   "text": "我要回",
+   "english": "I want to go back",
+   "cue": "When you feel like returning somewhere",
+   "reason": "❌ incomplete: 我要回 — 回 needs where to (回家 / 回去 / 回来)",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 193,
+   "target": "不",
+   "text": "你不好奇吗？",
+   "english": "Aren't you curious?",
+   "cue": "Ask if someone is curious, using 'not' to form a question.",
+   "reason": "❌ untaught vocabulary: 奇",
+   "class": "RULE"
+  },
+  {
+   "seq": 197,
+   "target": "不",
+   "text": "这个不贵",
+   "english": "This isn't expensive.",
+   "cue": "This item is not expensive.",
+   "reason": "❌ untaught vocabulary: 贵",
+   "class": "RULE"
+  },
+  {
+   "seq": 198,
+   "target": "不",
+   "text": "这个不小",
+   "english": "This isn't small.",
+   "cue": "Say something isn't small.",
+   "reason": "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time word, place or 在 differs) — use a different communicative function: 这个不小",
+   "class": "RULE"
+  },
+  {
+   "seq": 207,
+   "target": "那个",
+   "text": "那个好",
+   "english": "That one is good.",
+   "cue": "That one is good.",
+   "reason": "❌ unnatural: a bare adjective predicate (那个好) — use 很 / 太…了 / 不 (这个很好)",
+   "class": "QUALITY"
+  }
+ ]
+}

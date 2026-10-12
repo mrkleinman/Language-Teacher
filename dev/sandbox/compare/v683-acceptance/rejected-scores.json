@@ -1,0 +1,544 @@
+{
+ "ja-old": {
+  "byClass(rejected, judgedGood)": {
+   "QUALITY": [
+    1,
+    0
+   ],
+   "RULE": [
+    25,
+    16
+   ],
+   "OTHER": [
+    2,
+    2
+   ],
+   "UNKNOWN": [
+    12,
+    0
+   ]
+  },
+  "qualityFalseRejections": [],
+  "ruleRejectedButGood": [
+   [
+    "どう",
+    "明日の予定、どうする？",
+    "❌ recall 2: untaught content: 予定 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"明日の予定、どうする？"
+   ],
+   [
+    "どっち",
+    "駅はどっちかな？",
+    "❌ recall 3: target どっち not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"駅はどっちか"
+   ],
+   [
+    "どれ",
+    "この中から、どれが一番いいと思う？",
+    "❌ recall 3: untaught content: 中 一番 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この中から、どれが"
+   ],
+   [
+    "どれ",
+    "どれにするか、まだ分からないんだ。",
+    "❌ recall 3: same application as an accepted recall (only a demonstrative, pronoun, filler "
+   ],
+   [
+    "どれ",
+    "どれがいいかな？",
+    "❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar \"かな\" is valid Japanese but not taught yet "
+   ],
+   [
+    "ごめん",
+    "あ、ごめん。ぶつかっちゃった。",
+    "❌ recall 1: untaught content: ぶつかる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"あ、ごめん。ぶつか"
+   ],
+   [
+    "ごめん",
+    "え、ゆみちゃん？ ごめん、気づかなかった。",
+    "❌ recall 2: untaught content: ゆみちゃん 気づく [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"え、ゆみ"
+   ],
+   [
+    "ごめん",
+    "あー、ごめん！そんなつもりじゃなかったんだ。",
+    "❌ recall 3: untaught content: そんな [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"あー、ごめん！そんな"
+   ],
+   [
+    "電話",
+    "電話番号、まだ教えてないんだ。",
+    "❌ recall 3: untaught content: 電話番号 教える [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"電話番号、"
+   ],
+   [
+    "大丈夫",
+    "明日、大丈夫かな。",
+    "❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar \"かな\" is valid Japanese but not taught yet "
+   ],
+   [
+    "行く",
+    "さっき、ちょっとそこまで行ったんだ。",
+    "❌ recall 3: untaught content: さっき [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"さっき、ちょっとそこ"
+   ],
+   [
+    "食べる",
+    "このお菓子、食べてみる？",
+    "❌ recall 1: untaught content: お菓子 食べてみる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"このお菓"
+   ],
+   [
+    "今",
+    "今、時間ある？",
+    "❌ recall 2: untaught content: 時間 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"今、時間ある？\""
+   ],
+   [
+    "分かる",
+    "え、どういう意味か分かる？",
+    "❌ recall 2: untaught content: え どういう 意味 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"え、どう"
+   ],
+   [
+    "分かる",
+    "この後、何するかわかる？",
+    "❌ recall 2: target 分かる not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"この後、何す"
+   ],
+   [
+    "ありがとう",
+    "助かったよ、ありがとう！",
+    "❌ recall 2: untaught content: 助かる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"助かったよ、ありがと"
+   ]
+  ]
+ },
+ "ja-new": {
+  "byClass(rejected, judgedGood)": {
+   "QUALITY": [
+    4,
+    3
+   ],
+   "RULE": [
+    20,
+    14
+   ],
+   "OTHER": [
+    2,
+    1
+   ]
+  },
+  "qualityFalseRejections": [
+   [
+    "あそこ",
+    "あそこは何？",
+    "❌ recall 3: UNNATURAL: \"あそこは何？\" — \"X は何？\" does not ask about a concrete thing or place in Japanese [PROMPT_REG"
+   ],
+   [
+    "はい",
+    "はい、行きます。",
+    "❌ recall 2: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_"
+   ],
+   [
+    "はい",
+    "はい、分かりました。",
+    "❌ recall 3: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_"
+   ]
+  ],
+  "ruleRejectedButGood": [
+   [
+    "どれ",
+    "この中でどれがいい？",
+    "❌ recall 1: untaught content: なか [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この中でどれがいい？\""
+   ],
+   [
+    "どれ",
+    "え、どれにするか決めた？",
+    "❌ recall 3: untaught content: 決める [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"え、どれにするか決め"
+   ],
+   [
+    "どれ",
+    "どれがいい？",
+    "❌ recall 1: untaught content: なか [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この中でどれがいい？\""
+   ],
+   [
+    "電話",
+    "電話、貸してくれる？",
+    "❌ recall 3: untaught content: 貸す [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"電話、貸してくれる？\""
+   ],
+   [
+    "たぶん",
+    "その電車、たぶん遅れるよ。",
+    "❌ recall 2: untaught content: 遅れる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"その電車、たぶん遅れ"
+   ],
+   [
+    "乗る",
+    "え、もう駅に着いた？乗らないの？",
+    "❌ recall 3: untaught content: 着く [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"え、もう駅に着いた？乗"
+   ],
+   [
+    "大丈夫",
+    "ううん、ちょっと大丈夫じゃない。",
+    "❌ recall 3: untaught content: ううん [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"ううん、ちょっと大丈"
+   ],
+   [
+    "大丈夫",
+    "これ、大丈夫じゃないと思う。",
+    "❌ recall 3: same application as an accepted recall (the same frame with a word swapped, ad"
+   ],
+   [
+    "何",
+    "次は何に乗る？",
+    "❌ recall 2: untaught content: 次 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"次は何に乗る？\""
+   ],
+   [
+    "どこ",
+    "次、どこへ行く？",
+    "❌ recall 2: untaught content: 次 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"次、どこへ行く？\""
+   ],
+   [
+    "今",
+    "今、駅に着いたの？",
+    "❌ recall 1: untaught content: 着く [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"今、駅に着いたの？\""
+   ],
+   [
+    "今",
+    "今、時間がないんだ。",
+    "❌ recall 2: untaught content: 時間 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"今、時間がないんだ。\""
+   ],
+   [
+    "分かる",
+    "この話、分かる？",
+    "❌ recall 1: untaught content: 話 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この話、分かる？\""
+   ],
+   [
+    "どこ",
+    "この電車はどこ行き？",
+    "❌ recall 3: untaught content: 行き [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この電車はどこ行き？\""
+   ]
+  ]
+ },
+ "zh-old": {
+  "byClass(rejected, judgedGood)": {
+   "QUALITY": [
+    9,
+    2
+   ],
+   "RULE": [
+    33,
+    25
+   ]
+  },
+  "qualityFalseRejections": [
+   [
+    "少",
+    "人太少。",
+    "❌ unnatural: 太 + adjective needs 了 (太少了)"
+   ],
+   [
+    "想",
+    "我想吃。",
+    "❌ incomplete: 我想吃 ends on a verb with no object — add what (我想喝水 / 你喜欢这个吗？)"
+   ]
+  ],
+  "ruleRejectedButGood": [
+   [
+    "可以",
+    "你现在可以来我家吗？",
+    "❌ LEVEL_COMPLEXITY_FAIL: 7 words > hardMax 6 (belt Mukyu)"
+   ],
+   [
+    "到",
+    "你什么时候到？",
+    "❌ untaught vocabulary: 时候"
+   ],
+   [
+    "一点",
+    "这个东西有一点儿贵。",
+    "❌ untaught vocabulary: 儿 贵"
+   ],
+   [
+    "一点",
+    "这个菜有一点儿咸。",
+    "❌ untaught vocabulary: 菜 儿 咸"
+   ],
+   [
+    "多",
+    "这里人很多",
+    "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time wo"
+   ],
+   [
+    "慢",
+    "这个有点慢。",
+    "❌ untaught vocabulary: 点"
+   ],
+   [
+    "慢",
+    "你走得有点慢。",
+    "❌ untaught vocabulary: 走 点"
+   ],
+   [
+    "慢",
+    "你做得有点慢。",
+    "❌ untaught vocabulary: 点"
+   ],
+   [
+    "小",
+    "这个有点小。",
+    "❌ untaught vocabulary: 点"
+   ],
+   [
+    "很",
+    "这个地方很大",
+    "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time wo"
+   ],
+   [
+    "太",
+    "这个太快了",
+    "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time wo"
+   ],
+   [
+    "太",
+    "这个太大了",
+    "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time wo"
+   ],
+   [
+    "太",
+    "这个太贵了",
+    "❌ untaught vocabulary: 贵"
+   ],
+   [
+    "一起",
+    "我们一起去吧。",
+    "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time wo"
+   ],
+   [
+    "回",
+    "你什么时候回？",
+    "❌ untaught vocabulary: 时候"
+   ],
+   [
+    "我",
+    "我有点儿想吃。",
+    "❌ untaught vocabulary: 点 儿"
+   ],
+   [
+    "吃",
+    "你想吃点什么？",
+    "❌ untaught vocabulary: 点"
+   ],
+   [
+    "你",
+    "你找谁？",
+    "❌ segments do not reconstruct the sentence"
+   ],
+   [
+    "你",
+    "你喜欢这个吗？",
+    "❌ segments do not reconstruct the sentence"
+   ],
+   [
+    "你",
+    "你喜欢什么？",
+    "❌ segments do not reconstruct the sentence"
+   ],
+   [
+    "喝",
+    "你想喝点什么？",
+    "❌ untaught vocabulary: 点"
+   ],
+   [
+    "这个",
+    "这个怎么样？",
+    "❌ untaught vocabulary: 样"
+   ],
+   [
+    "不",
+    "你不好奇吗？",
+    "❌ untaught vocabulary: 奇"
+   ],
+   [
+    "不",
+    "这个不贵",
+    "❌ untaught vocabulary: 贵"
+   ],
+   [
+    "不",
+    "这个不小",
+    "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time wo"
+   ]
+  ]
+ },
+ "zh-new": {
+  "byClass(rejected, judgedGood)": {
+   "QUALITY": [
+    4,
+    3
+   ],
+   "RULE": [
+    25,
+    10
+   ]
+  },
+  "qualityFalseRejections": [
+   [
+    "一点",
+    "你慢一点",
+    "❌ CUE_FORM_MISMATCH: the Chinese is a statement but the English is a question (\"Can you go a little slower?\")"
+   ],
+   [
+    "少",
+    "这个太少。",
+    "❌ unnatural: 太 + adjective needs 了 (太少了)"
+   ],
+   [
+    "回",
+    "我明天回",
+    "❌ incomplete: 我明天回 — 回 needs where to (回家 / 回去 / 回来)"
+   ]
+  ],
+  "ruleRejectedButGood": [
+   [
+    "可以",
+    "我下午可以去。",
+    "❌ untaught vocabulary: 下午"
+   ],
+   [
+    "可以",
+    "我们明天可以去",
+    "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time wo"
+   ],
+   [
+    "到",
+    "你什么时候到？",
+    "❌ untaught vocabulary: 时候"
+   ],
+   [
+    "慢",
+    "这个有点慢。",
+    "❌ untaught vocabulary: 点"
+   ],
+   [
+    "小",
+    "这个有点小。",
+    "❌ untaught vocabulary: 点"
+   ],
+   [
+    "太",
+    "这个太慢了",
+    "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time wo"
+   ],
+   [
+    "拿",
+    "我们拿这个吧",
+    "❌ same application as an accepted recall (only a particle, demonstrative, pronoun, time wo"
+   ],
+   [
+    "想",
+    "我想吃面条",
+    "❌ untaught vocabulary: 面条"
+   ],
+   [
+    "想",
+    "我想喝茶",
+    "❌ untaught vocabulary: 茶"
+   ],
+   [
+    "你",
+    "你吃饭了吗？",
+    "❌ untaught vocabulary: 饭"
+   ]
+  ]
+ },
+ "th-old": {
+  "byClass(rejected, judgedGood)": {
+   "QUALITY": [
+    8,
+    5
+   ],
+   "RULE": [
+    3,
+    2
+   ]
+  },
+  "qualityFalseRejections": [
+   [
+    null,
+    "ผมว่ารถเมล์คุ้มครับ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 23 line(s) judged · 4 rejected before the group counts as PASSED — [รถเมล์] ไม่"
+   ],
+   [
+    null,
+    "เราควรไปรถเมล์ครับ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 23 line(s) judged · 4 rejected before the group counts as PASSED — [รถเมล์] ไม่"
+   ],
+   [
+    null,
+    "ผมสามารถไปรถเมล์ได้ครับ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 23 line(s) judged · 4 rejected before the group counts as PASSED — [รถเมล์] ไม่"
+   ],
+   [
+    null,
+    "เราควรไปรถทัวร์ไหมคะ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 23 line(s) judged · 4 rejected before the group counts as PASSED — [รถเมล์] ไม่"
+   ],
+   [
+    null,
+    "คุณจะเอาคู่ไหนคะ",
+    "🧪 EARLY_SEMANTIC_GATE batch 4: 12 line(s) judged · 3 rejected before the group counts as PASSED — [ครั้ง] ขอคร"
+   ]
+  ],
+  "ruleRejectedButGood": [
+   [
+    null,
+    "รถเมล์จะมาไหมคะ",
+    "ℹ TARGET_MISSING_LINE_REJECT target=หวัง (1 line(s), deterministic): รถเมล์จะมาไหมคะ — 2/3"
+   ],
+   [
+    null,
+    "เราจะไปที่นั่นได้ไหมคะ",
+    "⚠ RECOVERY_TARGET_MISSING_LOCAL_REJECT คุ้ม (deterministic, no paid check; the model decla"
+   ]
+  ]
+ },
+ "th-new": {
+  "byClass(rejected, judgedGood)": {
+   "QUALITY": [
+    9,
+    4
+   ],
+   "RULE": [
+    5,
+    3
+   ]
+  },
+  "qualityFalseRejections": [
+   [
+    null,
+    "เรานั่งรถเมล์ไปกันไหมครับ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 12 line(s) judged · 3 rejected before the group counts as PASSED — [กังวล] ผมกั"
+   ],
+   [
+    null,
+    "เราควรไปรถไฟครับ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 12 line(s) judged · 3 rejected before the group counts as PASSED — [กังวล] ผมกั"
+   ],
+   [
+    null,
+    "เราควรไปรถเมล์ครับ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 12 line(s) judged · 3 rejected before the group counts as PASSED — [กังวล] ผมกั"
+   ],
+   [
+    null,
+    "ผมตัดสินใจแล้วครับ ไปรถไฟครับ",
+    "🧪 EARLY_SEMANTIC_GATE batch 3: 22 line(s) judged · 5 rejected before the group counts as PASSED — [ตัดสินใจ] ผ"
+   ]
+  ],
+  "ruleRejectedButGood": [
+   [
+    null,
+    "ใช่ครับ ไม่มีใครเข้าได้ครับ",
+    "ℹ TARGET_MISSING_LINE_REJECT target=ทางเข้า (1 line(s), deterministic): ใช่ครับ ไม่มีใครเข"
+   ],
+   [
+    null,
+    "ฉันไม่ได้กังวลเรื่องนั้นค่ะ",
+    "⛔ QUOTA RECOVERY กังวล: 0/1 accepted — TARGET_MISSING; TARGET_MISSING: target \"กังวล\" is n"
+   ],
+   [
+    null,
+    "ผมไม่ค่อยอยากไปตอนนี้ครับ",
+    "⚠ RECOVERY_TARGET_MISSING_LOCAL_REJECT กังวล (deterministic, no paid check; the model decl"
+   ]
+  ]
+ }
+}

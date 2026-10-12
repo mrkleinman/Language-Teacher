@@ -1,0 +1,368 @@
+{
+ "run": "ja-daily-2026-10-08.production.v682-final4-ja.2026-10-11T08-17-24",
+ "lang": "ja",
+ "candidates": 135,
+ "acceptedDistinct": 90,
+ "rejected": [
+  {
+   "seq": 4,
+   "target": null,
+   "text": "あ、ユミだ。",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "ケンジ？久しぶり！",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "本当！ここで会うなんて、びっくりしたよ。",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "うん、私も！元気だった？",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "元気だよ。ユミは？",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "私も元気だよ。ありがとう。",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "ちょっと買い物に来たんだ。",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "そうなんだ。何か欲しいものある？",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "ううん、特にないかな。見てるだけ。",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "そっか。私は友達と一緒だよ。",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "あ、そうなんだ。じゃあ、またね。",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 4,
+   "target": null,
+   "text": "うん、またね！",
+   "english": null,
+   "cue": null,
+   "reason": "",
+   "class": "UNKNOWN"
+  },
+  {
+   "seq": 6,
+   "target": "どう",
+   "text": "明日の予定、どうする？",
+   "english": "What are we doing about tomorrow's plans?",
+   "cue": "What about tomorrow's plan?",
+   "reason": "❌ recall 2: untaught content: 予定 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"明日の予定、どうする？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 6,
+   "target": "どう",
+   "text": "じゃあ、私はこれで。",
+   "english": "Well then, I'll be going now.",
+   "cue": "Then, I'll do this.",
+   "reason": "❌ recall 3: target どう not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"じゃあ、私はこれで。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 9,
+   "target": "どっち",
+   "text": "駅はどっちかな？",
+   "english": "I wonder which way the station is?",
+   "cue": "Which way is the station, I wonder?",
+   "reason": "❌ recall 3: target どっち not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"駅はどっちかな？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 11,
+   "target": "どれ",
+   "text": "これとそれ、どっちがいい？",
+   "english": "Which of these two is better?",
+   "cue": "Which of these two is better?",
+   "reason": "❌ recall 1: target どれ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"これとそれ、どっちがいい？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 11,
+   "target": "どれ",
+   "text": "この中から、どれが一番いいと思う？",
+   "english": "Which do you think is the best among these?",
+   "cue": "Which do you think is the best among these?",
+   "reason": "❌ recall 3: untaught content: 中 一番 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"この中から、どれが一番いいと思う？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 12,
+   "target": "どれ",
+   "text": "どれにするか、まだ分からないんだ。",
+   "english": "I still don't know which one to choose.",
+   "cue": "I still don't know which one to choose.",
+   "reason": "❌ recall 3: same application as an accepted recall (only a demonstrative, pronoun, filler or particle differs): え、どれにするか、まだ分からないんだ。 [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"どれにするか、まだ分からないんだ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 13,
+   "target": "どれ",
+   "text": "どれがいいかな？",
+   "english": "Which one seems good?",
+   "cue": "Which one seems good?",
+   "reason": "❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar \"かな\" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — \"どれがいいかな？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 16,
+   "target": "あれ",
+   "text": "え、あれ、どういうこと？",
+   "english": "What do you mean by that over there?",
+   "cue": "What do you mean by that over there?",
+   "reason": "❌ recall 2: untaught content: どういう [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"え、あれ、どういうこと？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 19,
+   "target": "ごめん",
+   "text": "あ、ごめん。ぶつかっちゃった。",
+   "english": "Oh, sorry. I bumped into you.",
+   "cue": "Apologize for bumping into someone.",
+   "reason": "❌ recall 1: untaught content: ぶつかる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"あ、ごめん。ぶつかっちゃった。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 19,
+   "target": "ごめん",
+   "text": "え、ゆみちゃん？ ごめん、気づかなかった。",
+   "english": "Huh, Yumi? Sorry, I didn't notice you.",
+   "cue": "Apologize for not noticing someone you know.",
+   "reason": "❌ recall 2: untaught content: ゆみちゃん 気づく [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"え、ゆみちゃん？ ごめん、気づかなかった。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 19,
+   "target": "ごめん",
+   "text": "あー、ごめん！そんなつもりじゃなかったんだ。",
+   "english": "Ah, sorry! I didn't mean to do that.",
+   "cue": "Apologize, explaining it wasn't intentional.",
+   "reason": "❌ recall 3: untaught content: そんな [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"あー、ごめん！そんなつもりじゃなかったんだ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 21,
+   "target": "電話",
+   "text": "電話番号、まだ教えてないんだ。",
+   "english": "I haven't given my phone number yet.",
+   "cue": "I haven't given my phone number yet.",
+   "reason": "❌ recall 3: untaught content: 電話番号 教える [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"電話番号、まだ教えてないんだ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 23,
+   "target": "はい",
+   "text": "うん、それ、いいと思うよ。",
+   "english": "Yeah, I think that's good.",
+   "cue": "Agree with the suggestion.",
+   "reason": "❌ recall 2: target はい not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"うん、それ、いいと思うよ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 27,
+   "target": "たぶん",
+   "text": "え、たぶん、もう店にいるかな。",
+   "english": "Huh? Maybe they're already at the shop.",
+   "cue": "Say \"Huh? Maybe they're already at the shop.\"",
+   "reason": "❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar \"かな\" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — \"え、たぶん、もう店にいるかな。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 30,
+   "target": "大丈夫",
+   "text": "明日、大丈夫かな。",
+   "english": "I wonder if tomorrow will be okay.",
+   "cue": "Say \"I wonder if tomorrow will be okay.\"",
+   "reason": "❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar \"かな\" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — \"明日、大丈夫かな。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 32,
+   "target": "行く",
+   "text": "もうすぐ帰るけど、どこか行く？",
+   "english": "I'm heading back soon, but do you want to go somewhere?",
+   "cue": "Ask if they want to go somewhere, mentioning you're leaving soon.",
+   "reason": "❌ recall 2: \"ぐ帰る\" needs a particle — a bare noun cannot sit directly against \"帰る\" [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"もうすぐ帰るけど、どこか行く？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 32,
+   "target": "行く",
+   "text": "さっき、ちょっとそこまで行ったんだ。",
+   "english": "I just went over there a little while ago.",
+   "cue": "Say you just went over there a little while ago.",
+   "reason": "❌ recall 3: untaught content: さっき [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"さっき、ちょっとそこまで行ったんだ。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 34,
+   "target": "行く",
+   "text": "どこか行きたいんだけど、どう思う？",
+   "english": "I want to go somewhere, what do you think?",
+   "cue": "Ask where someone wants to go",
+   "reason": "⛔ TARGET PAIR rejected [行く] \"どこか行きたいんだけど、どう思う？\" — LEVEL_COMPLEXITY_FAIL: 8 Japanese content units > hardMax 7 (belt 10th Kyu)",
+   "class": "RULE"
+  },
+  {
+   "seq": 35,
+   "target": "食べる",
+   "text": "このお菓子、食べてみる？",
+   "english": "Do you want to try this snack?",
+   "cue": "Ask if they want to try this snack.",
+   "reason": "❌ recall 1: untaught content: お菓子 食べてみる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"このお菓子、食べてみる？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 35,
+   "target": "食べる",
+   "text": "うん、あれおいしそうだね。",
+   "english": "Yeah, that over there looks delicious.",
+   "cue": "Agree and say that over there looks delicious.",
+   "reason": "❌ recall 2: target 食べる not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"うん、あれおいしそうだね。\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 40,
+   "target": "どこ",
+   "text": "明日、どこか行く？",
+   "english": "Are you going somewhere tomorrow?",
+   "cue": "Ask about going somewhere tomorrow.",
+   "reason": "❌ recall 1: target どこ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"明日、どこか行く？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 42,
+   "target": "一緒",
+   "text": "え、まだ一緒じゃないの？",
+   "english": "Huh? Aren't you two together yet? (referring to a couple or close friends)",
+   "cue": "Huh? Aren't you two together yet?",
+   "reason": "❌ recall 3: CUE_FORM_MISMATCH: the Japanese is a question but the English is a statement (\"Huh? Aren't you two together yet? (referring to a \") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"え、まだ一緒じゃないの？\"",
+   "class": "QUALITY"
+  },
+  {
+   "seq": 45,
+   "target": "今",
+   "text": "今、時間ある？",
+   "english": "Do you have time now?",
+   "cue": "Do you have time now?",
+   "reason": "❌ recall 2: untaught content: 時間 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"今、時間ある？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 49,
+   "target": "分かる",
+   "text": "え、どういう意味か分かる？",
+   "english": "Huh? Do you understand what that means?",
+   "cue": "Ask if they understand the meaning.",
+   "reason": "❌ recall 2: untaught content: え どういう 意味 [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"え、どういう意味か分かる？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 50,
+   "target": "分かる",
+   "text": "この後、何するかわかる？",
+   "english": "Do you know what to do after this?",
+   "cue": "Ask if they know what to do next.",
+   "reason": "❌ recall 2: target 分かる not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — \"この後、何するかわかる？\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 52,
+   "target": "ありがとう",
+   "text": "助かったよ、ありがとう！",
+   "english": "That was a big help, thank you!",
+   "cue": "That was a big help, thanks!",
+   "reason": "❌ recall 2: untaught content: 助かる [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — \"助かったよ、ありがとう！\"",
+   "class": "RULE"
+  },
+  {
+   "seq": 52,
+   "target": "ありがとう",
+   "text": "また会えてよかった。ありがとう、またね。",
+   "english": "It was good to see you again. Thank you, see you later.",
+   "cue": "It was good to see you again. Thanks, see you!",
+   "reason": "❌ recall 3: \"ありがとう\" is a fixed expression and cannot take a verb (また会えてよかった。ありがとう、またね。) [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"また会えてよかった。ありがとう、またね。\"",
+   "class": "OTHER"
+  },
+  {
+   "seq": 53,
+   "target": "ありがとう",
+   "text": "今日はありがとう。",
+   "english": "Thanks for today.",
+   "cue": "Say thanks for today.",
+   "reason": "❌ recall 3: same use of the set phrase as an accepted recall (same function, nothing new around it): 今日はありがとうね。 [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \"今日はありがとう。\"",
+   "class": "OTHER"
+  }
+ ]
+}

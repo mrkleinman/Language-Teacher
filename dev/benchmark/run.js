@@ -204,7 +204,7 @@ async function runOnceUi(fx, o) {
   const pipeline = o.pipeline || (o.cassette && o.cassette.meta && o.cassette.meta.pipeline) || 'production'
   const r = await c.ttBenchRunFixture(fxc, { apiKey: key, clockReset: globals.__ttBenchClockReset, pipeline })
   if (o.inspect) o.inspect(c)
-  return { fixture: fx.id, mode: o.mode, path: 'ui', pipeline, gen2: r.gen2 || null, provider: o.mode === 'replay' ? 'REPLAY (no model)' : rec && rec.cassette().meta.provider, error: r.error, stop: r.stop || null,
+  return { fixture: fx.id, mode: o.mode, path: 'ui', pipeline, gen2: r.gen2 || null, v684: r.v684 || null, provider: o.mode === 'replay' ? 'REPLAY (no model)' : rec && rec.cassette().meta.provider, error: r.error, stop: r.stop || null,
     content: r.content, telemetry: { usageSummary: r.telemetry.usageSummary, integrity: r.telemetry.integrity, logLines: r.log.length },
     log: r.log, cassette: rec ? rec.cassette() : null, replay: rep ? rep.report() : null }
 }

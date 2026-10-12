@@ -9736,6 +9736,13 @@ async function ttBenchRunFixture(fx, o) {
       const g2o = { lang, vocab, apiKey, fixedTargets, onLog: L, speechStyle: fx.speechStyle || 'natural', generatorModel: o.generatorModel, judgeModel: o.judgeModel }
       out = fx.trackType === 'daily' ? await gen2Daily(g2o) : await gen2Listening(g2o)
     }
+    else if (o.pipeline === 'v684' && fx.trackType === 'daily') {
+      // v684 lesson contract (experimental): the same fixture, vocabulary and fixed targets as v683; writes nothing
+      const byId = new Map(vocab.map(w => [w.id, w])), fixedTargets = fx.targets.map(t => byId.get(t.id)).filter(Boolean)
+      if (!runId) runId = aiBeginRun('v684-daily')
+      const res = await v684DailyLesson({ lang, vocab, targets: fixedTargets, apiKey, onLog: L, engine: o.v684Engine })
+      out = { track: v684ToTrack(lang, res, fixedTargets), v684: { version: V684_VERSION, status: res.status, gate: res.gate, calls: res.calls, plan: res.plan && { exchanges: res.plan.exchanges, problems: res.plan.problems } }, stop: res.stop }
+    }
     else if (o.pipeline === 'gen2-app' && lang === 'ja' && fx.trackType === 'daily') out = await ttBenchJapaneseDailyGen2App(fx, vocab, apiKey, model, L, runId)
     else if (o.pipeline === 'gen2-app' && lang === 'zh' && fx.trackType === 'daily') out = await ttBenchMandarinDailyGen2App(fx, vocab, apiKey, model, L, runId)
     else if (o.pipeline === 'gen2-app' && lang === 'th' && fx.trackType === 'daily') out = await ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId, true)
@@ -9748,14 +9755,789 @@ async function ttBenchRunFixture(fx, o) {
   let usage = null, usageLines = [], integrityLines = null
   try { usage = aiUsageSummary(runId); usageLines = aiUsageSummaryLines(usage) } catch (e) {}
   try { integrityLines = track && track.integrity ? trackIntegrityLines(track) : null } catch (e) {}
-  return { fixtureId: fx.id, language: lang, trackType: fx.trackType, path: o.pipeline === 'gen2' || o.pipeline === 'gen2-app' ? GEN2_VERSION : TT_BENCH_PATH_VERSION, pipeline: o.pipeline === 'gen2' ? 'gen2' : o.pipeline === 'gen2-app' && fx.trackType === 'daily' ? 'gen2-app' : 'production', appBuild: APP_BUILD_VERSION, listeningBuild: LISTENING_BUILD_VERSION, model,
-    stop: (out && out.stop) || null, error, gen2: (out && out.gen2) || null,
+  return { fixtureId: fx.id, language: lang, trackType: fx.trackType, path: o.pipeline === 'v684' ? V684_VERSION : o.pipeline === 'gen2' || o.pipeline === 'gen2-app' ? GEN2_VERSION : TT_BENCH_PATH_VERSION, pipeline: o.pipeline === 'v684' && fx.trackType === 'daily' ? 'v684' : o.pipeline === 'gen2' ? 'gen2' : o.pipeline === 'gen2-app' && fx.trackType === 'daily' ? 'gen2-app' : 'production', appBuild: APP_BUILD_VERSION, listeningBuild: LISTENING_BUILD_VERSION, model,
+    stop: (out && out.stop) || null, error, gen2: (out && out.gen2) || null, v684: (out && out.v684) || null,
     content: track ? ttBenchContentOutcome(lang, fx.trackType, track, vocab) : null,
     telemetry: { usageSummary: usageLines, integrity: integrityLines, costUsd: usage ? usage.costUsd : null, requests: usage ? usage.total : null },
     aiCalls: (() => { try { return aiCompactRows(AI_LEDGER.filter(r => r.runId === runId)) } catch (e) { return null } })(),
     log }
 }
 // TT_BENCH_UI_PATHS_END ══════════════════════════════════════════════════════════════════════════════════════════════
+
+// TT_V684_BEGIN ════════════════════════════════════════════════════════════════════════════════════════════════════
+// ══ v684 — LESSON CONTRACT (owner brief "teaching quality overhaul", 2026-10-12) ═══════════════════════════════════════
+// ONE teaching plan (sense → function → intent card → exchange) and ONE final gate on the frozen lesson. Behind its own
+// bench pipeline ('v684'); production v683 never calls any of it. Principle: every exercise teaches a specific vocabulary
+// sense through a natural, useful act of communication.
+// The audit of the three exported v683 lessons (dev/sandbox/v684/audit) found four causes: no communicative intent (lines
+// written one at a time, stitched afterwards), pronunciation never verified against the sentence, sense keyed to spelling,
+// and many overlapping checks none of which looks at the finished lesson. This block answers each with one mechanism.
+const V684_VERSION = 'v684-lesson-contract-1'
+
+// ── 1. INDEPENDENT PRONUNCIATION (never the model's word) ──────────────────────────────────────────────────────────────
+// Mandarin: syllables come from the taught lexicon (citation tones); the SPOKEN line is computed by rule, never generated.
+// v683 faults reproduced: toneOf read a whole word's tone from any 3rd-tone mark inside it (yìdiǎn → "3" → 有 yóu;
+// wǒmen → wómen), there was no 一 rule (一下 yī xià), and 3-3 never applied inside a word (可以 had no spoken line).
+const V684_ZH_SYLLABLES = new Set('a ai an ang ao ba bai ban bang bao bei ben beng bi bian biang biao bie bin bing bo bong bu ca cai can cang cao ce cei cen ceng cha chai chan chang chao che chen cheng chi chong chou chu chua chuai chuan chuang chui chun chuo ci cong cou cu cuan cui cun cuo da dai dan dang dao de dei den deng di dia dian diao die din ding diu dong dou du duan dui dun duo e ei en eng er fa fan fang fei fen feng fiao fo fou fu ga gai gan gang gao ge gei gen geng gong gou gu gua guai guan guang gui gun guo ha hai han hang hao he hei hen heng hm hng hong hou hu hua huai huan huang hui hun huo ji jia jian jiang jiao jie jin jing jiong jiu ju juan jue jun ka kai kan kang kao ke kei ken keng kong kou ku kua kuai kuan kuang kui kun kuo la lai lan lang lao le lei len leng li lia lian liang liao lie lin ling liu lo long lou lu luan lue lun luo m ma mai man mang mao me mei men meng mi mian miao mie min ming miu mo mou mu n na nai nan nang nao ne nei nen neng ng ni nia nian niang niao nie nin ning niu nong nou nu nuan nue nun nuo o ou pa pai pan pang pao pei pen peng pi pian piao pie pin ping po pou pu qi qia qian qiang qiao qie qin qing qiong qiu qu quan que qun r ran rang rao re ren reng ri rong rou ru rua ruan rui run ruo sa sai san sang sao se sen seng sha shai shan shang shao she shei shen sheng shi shou shu shua shuai shuan shuang shui shun shuo si song sou su suan sui sun suo ta tai tan tang tao te tei teng ti tian tiao tie ting tong tou tu tuan tui tun tuo wa wai wan wang wei wen weng wo wong wu xi xia xian xiang xiao xie xin xing xiong xiu xu xuan xue xun ya yan yang yao ye yi yin ying yo yong you yu yuan yue yun za zai zan zang zao ze zei zen zeng zha zhai zhan zhang zhao zhe zhei zhen zheng zhi zhong zhou zhu zhua zhuai zhuan zhuang zhui zhun zhuo zi zong zou zu zuan zui zun zuo'.split(' '))
+const V684_ZH_MARKS = { 'ā': 1, 'á': 2, 'ǎ': 3, 'à': 4, 'ē': 1, 'é': 2, 'ě': 3, 'è': 4, 'ī': 1, 'í': 2, 'ǐ': 3, 'ì': 4, 'ō': 1, 'ó': 2, 'ǒ': 3, 'ò': 4,
+  'ū': 1, 'ú': 2, 'ǔ': 3, 'ù': 4, 'ǖ': 1, 'ǘ': 2, 'ǚ': 3, 'ǜ': 4, 'ń': 2, 'ň': 3, 'ǹ': 4 }
+const V684_ZH_VOWEL_MARKS = { a: 'āáǎà', e: 'ēéěè', i: 'īíǐì', o: 'ōóǒò', u: 'ūúǔù', 'ü': 'ǖǘǚǜ' }
+// always-neutral syllables (suffixes, particles): they never take part in 3-3 (我们 wǒmen, 你的 nǐ de)
+const V684_ZH_NEUTRAL = new Set([...'们的了吗吧呢啊着过么得地呀哦嘛'])
+// underlying tone of syllables often written neutral, for 一 (一个 yí ge, 一下 yíxià)
+const V684_ZH_UNDERLYING = Object.freeze({ '个': 4, '下': 4, '些': 1 })
+const V684_ZH_NUMERALS = new Set([...'零一二三四五六七八九十百千万两第'])
+function v684ZhTone(s) { for (const c of String(s || '')) if (V684_ZH_MARKS[c]) return V684_ZH_MARKS[c]; return 5 }
+function v684ZhBare(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ü/g, 'v').toLowerCase() }
+function v684ZhWithTone(syl, tone) {
+  const b = String(syl || '').normalize('NFD').replace(/[̀-ͯ]/g, '').normalize('NFC'), low = b.toLowerCase()
+  if (tone === 5) return b
+  let i = low.search(/[ae]/)
+  if (i < 0) i = low.indexOf('ou')
+  if (i < 0) for (let k = low.length - 1; k >= 0; k--) if ('iouü'.includes(low[k])) { i = k; break }
+  if (i < 0) { const m = low.search(/[nm]/); if (m < 0) return b; return b.slice(0, m) + ({ n: ['n̄', 'ń', 'ň', 'ǹ'], m: ['m̄', 'ḿ', 'm̌', 'm̀'] })[low[m]][tone - 1] + b.slice(m + 1) }
+  return b.slice(0, i) + V684_ZH_VOWEL_MARKS[low[i]][tone - 1] + b.slice(i + 1)
+}
+// split a pinyin string into syllables (longest valid syllable first, with backtracking); null when it cannot be split
+function v684ZhSyllables(py) {
+  if (!py) return []
+  const out = []
+  for (const chunk of String(py).match(/[a-zA-Züāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜńňǹ]+/g) || []) {
+    const w = chunk.normalize('NFC'), b = v684ZhBare(w), memo = new Map()
+    const rec = i => { if (i === b.length) return []; if (memo.has(i)) return memo.get(i)
+      for (let j = Math.min(b.length, i + 6); j > i; j--) if (V684_ZH_SYLLABLES.has(b.slice(i, j))) { const r = rec(j); if (r) { const v = [[i, j]].concat(r); memo.set(i, v); return v } }
+      memo.set(i, null); return null }
+    const r = rec(0)
+    if (!r) return null
+    const chars = [...w]
+    r.forEach(([i, j]) => out.push(chars.slice(i, j).join('')))
+  }
+  return out
+}
+// sentence particles that may be missing from a learner's lexicon (they are grammar: always neutral)
+// (numerals too: their pronunciation is fixed; whether a numeral may be USED is the closed-vocabulary check's decision)
+const V684_ZH_PARTICLE_PINYIN = Object.freeze({ '一': 'yī', '二': 'èr', '两': 'liǎng', '三': 'sān', '四': 'sì', '五': 'wǔ', '六': 'liù', '七': 'qī', '八': 'bā', '九': 'jiǔ', '十': 'shí', '啊': 'a', '呀': 'ya', '嘛': 'ma', '呢': 'ne', '吧': 'ba', '了': 'le', '的': 'de', '吗': 'ma', '着': 'zhe', '过': 'guo', '得': 'de', '地': 'de', '们': 'men', '哦': 'o' })
+// citation syllables per Han character from the taught lexicon (lexicalised 一 / 不 forms are returned to citation)
+function v684ZhCitation(text, lexicon) {
+  const segs = segmentMandarin(String(text || ''), lexicon), chars = [], cit = [], unverified = [], breaks = new Set()
+  segs.forEach(s => {
+    if (!s || s.type === 'punct') { if (chars.length) breaks.add(chars.length - 1); return }
+    const hz = [...String(s.surface || '')].filter(c => /[一-鿿]/.test(c))
+    if (!hz.length) return
+    const syl = v684ZhSyllables(s.pinyin || V684_ZH_PARTICLE_PINYIN[s.surface] || '')
+    if (!syl || syl.length !== hz.length) { hz.forEach(c => { chars.push(c); cit.push(null) }); unverified.push(s.surface); return }
+    hz.forEach((c, k) => {
+      let p = syl[k]
+      if (c === '一' && v684ZhBare(p) === 'yi') p = 'yī'
+      if (c === '不' && v684ZhBare(p) === 'bu' && v684ZhTone(p) !== 5) p = 'bù'
+      chars.push(c); cit.push(p)
+    })
+  })
+  return { chars, cit, unverified, breaks }
+}
+// the spoken line by rule: 一 and 不 first (from the next syllable's citation tone), then 3-3 on the RESULTING tones;
+// intrinsic neutral syllables block 3-3; a pause (punctuation) ends a run
+function v684ZhSpoken(chars, cit, breaks) {
+  const n = chars.length, base = cit.map(v684ZhTone), out = base.slice(), br = breaks || new Set()
+  for (let i = 0; i < n; i++) {
+    const nxt = i + 1 < n && !br.has(i) ? (base[i + 1] === 5 ? (V684_ZH_UNDERLYING[chars[i + 1]] || 5) : base[i + 1]) : null
+    if (chars[i] === '一' && v684ZhBare(cit[i]) === 'yi') {
+      const numeric = (i > 0 && V684_ZH_NUMERALS.has(chars[i - 1])) || (i + 1 < n && V684_ZH_NUMERALS.has(chars[i + 1]))
+      out[i] = !nxt || numeric ? 1 : nxt === 4 ? 2 : nxt === 5 ? 1 : 4
+    }
+    if (chars[i] === '不' && v684ZhBare(cit[i]) === 'bu' && base[i] !== 5) out[i] = i > 0 && i + 1 < n && chars[i - 1] === chars[i + 1] ? 5 : nxt === 4 ? 2 : 4   // A-不-A: neutral
+  }
+  for (let i = 0; i < n;) {
+    if (out[i] !== 3 || V684_ZH_NEUTRAL.has(chars[i])) { i++; continue }
+    let j = i
+    while (j + 1 < n && out[j + 1] === 3 && !br.has(j)) j++
+    for (let k = i; k < j; k++) out[k] = 2
+    i = j + 1
+  }
+  return cit.map((s, k) => v684ZhWithTone(s, out[k]))
+}
+function v684ZhJoin(chars, syl, text) {
+  // words separated as the sentence's segments are; punctuation kept
+  return syl.join(' ')
+}
+// the Mandarin pronunciation contract for one line: dictionary line = citation syllables of the taught words; spoken line
+// shown whenever any tone changes, and equal to the rule result (a run of 3+ third tones accepts either grouping)
+function v684ZhPronunciation(text, lexicon) {
+  const c = v684ZhCitation(text, lexicon)
+  if (c.unverified.length || c.cit.some(x => !x)) return { ok: false, problems: ['pinyin unverified for: ' + c.unverified.join(' ')], pinyin: '', spoken: '' }
+  const sp = v684ZhSpoken(c.chars, c.cit, c.breaks)
+  const changed = sp.some((s, k) => v684ZhTone(s) !== v684ZhTone(c.cit[k]))
+  return { ok: true, problems: [], chars: c.chars, cit: c.cit, spokenSyl: sp, pinyin: c.cit.join(' '), spoken: changed ? sp.join(' ') : '', breaks: c.breaks }
+}
+// the dictionary line shows 一 / 不 in citation form (yī / bù), the spoken line the change — owner question 3 in the v684
+// report; 'either' also accepts the v683 convention (一点 written yìdiǎn), used to judge v683 lessons on real errors only
+const V684_ZH_DICTIONARY_YI = 'citation'
+function v684ZhVerify(line, lexicon, opt) {
+  const want = v684ZhPronunciation(line.text, lexicon), probs = [], either = (opt && opt.yi || V684_ZH_DICTIONARY_YI) === 'either'
+  if (!want.ok) return want.problems
+  const shown = v684ZhSyllables(line.pinyin)
+  const lexOk = (k, s) => either && (want.chars[k] === '一' || want.chars[k] === '不') && v684ZhBare(s) === v684ZhBare(want.cit[k]) && v684ZhTone(s) === v684ZhTone(want.spokenSyl[k])
+  if (!shown || shown.length !== want.cit.length) probs.push('dictionary pinyin "' + (line.pinyin || '') + '" does not align with the characters')
+  else shown.forEach((s, k) => { if ((v684ZhBare(s) !== v684ZhBare(want.cit[k]) || v684ZhTone(s) !== v684ZhTone(want.cit[k])) && !lexOk(k, s)) probs.push(want.chars[k] + ': dictionary pinyin "' + s + '" ≠ "' + want.cit[k] + '"') })
+  const shownDiffers = shown && shown.length === want.cit.length ? want.spokenSyl.some((s, k) => v684ZhTone(s) !== v684ZhTone(shown[k])) : !!want.spoken
+  if (want.spoken && !line.spoken && (!either || shownDiffers)) probs.push('spoken pinyin missing: the tones change (' + want.spokenSyl.join(' ') + ')')
+  if (line.spoken) {
+    const sp = v684ZhSyllables(line.spoken), base = want.cit.map(v684ZhTone)
+    if (!sp || sp.length !== want.cit.length) probs.push('spoken pinyin "' + line.spoken + '" does not align with the characters')
+    else sp.forEach((s, k) => {
+      const t = v684ZhTone(s), w = v684ZhTone(want.spokenSyl[k])
+      if (v684ZhBare(s) !== v684ZhBare(want.cit[k])) { probs.push(want.chars[k] + ': spoken "' + s + '" is a different syllable'); return }
+      if (t === w) return
+      const run3 = base[k] === 3 && [[k - 2, k - 1], [k - 1, k + 1], [k + 1, k + 2]].some(([a, b]) => base[a] === 3 && base[b] === 3)
+      if (run3 && (t === 2 || t === 3) && k < base.length - 1) return
+      probs.push(want.chars[k] + ': spoken tone ' + t + ' ("' + s + '") but the rules give ' + w + ' ("' + want.spokenSyl[k] + '")')
+    })
+  }
+  return probs
+}
+
+// Japanese: the reading must be DERIVABLE from the sentence. Every kana of the sentence appears unchanged and in order;
+// every kanji run is read as a taught word reads it (inflection included); 何 by context; the romaji transcribes the reading.
+// v683: the reading was the model's, never compared with the sentence, and the finaliser rewrote the romaji to match it
+// (どこかいきの → "dokokaikino"); the 何 rule forced なに before に (何にも → なににも).
+const V684_JA_KANJI = /[一-鿿々]/
+function v684JaHira(s) { return String(s || '').replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60)) }
+function v684JaStrip(s) { return v684JaHira(s).replace(/[\s、。，．！？!?,.・「」『』…〜~―]/g, '') }
+function v684JaNani(following) { return /^(にも|でも|で|の|と|だ|です|な|[時人回個年月日歳分本枚匹杯度階週])/.test(String(following || '')) ? 'なん' : 'なに' }
+function v684JaKanjiReadings(bank) {
+  const map = new Map(), add = (k, r) => { if (!k || !r) return; if (!map.has(k)) map.set(k, new Set()); map.get(k).add(r) }
+  ;(bank || []).forEach(w => {
+    const s = String(w.japanese || ''), rds = String(w.reading || '').split(/\s*[\/／｜|]\s*/).map(v684JaHira).filter(Boolean)
+    if (!V684_JA_KANJI.test(s)) return
+    const parts = s.match(/[一-鿿々]+|[^一-鿿々]+/g)
+    const rx = new RegExp('^' + parts.map(p => V684_JA_KANJI.test(p) ? '(.+?)' : v684JaHira(p).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('') + '$')
+    rds.forEach(r => { const m = r.match(rx); if (!m) return; let g = 1; parts.forEach(p => { if (V684_JA_KANJI.test(p)) add(p, m[g++]) }) })
+    // a godan verb's noun / stem form keeps the kanji and moves the last kana to the i-row (話す → 話 はなし, 休む → 休み やすみ)
+    if (/verb/i.test(String(w.partOfSpeech || '')) && parts.length === 2 && V684_JA_KANJI.test(parts[0]) && parts[1].length === 1) {
+      const I = { 'う': 'い', 'く': 'き', 'ぐ': 'ぎ', 'す': 'し', 'つ': 'ち', 'ぬ': 'に', 'ぶ': 'び', 'む': 'み', 'る': 'り' }[parts[1]]
+      if (I && map.has(parts[0])) [...map.get(parts[0])].forEach(k => add(parts[0], k + I))
+    }
+  })
+  if (map.has('来')) ['く', 'こ', 'き'].forEach(r => add('来', r))     // 来る / 来ない / 来て — the kanji reading changes with the inflection
+  return map
+}
+function v684JaReadingProblems(sentence, reading, kmap) {
+  const r = v684JaStrip(reading), probs = []
+  if (!r) return ['no reading']
+  if (V684_JA_KANJI.test(r)) return ['reading still contains kanji']
+  const units = (v684JaHira(sentence).match(/[一-鿿々]+|[^一-鿿々]/g) || []).filter(u => v684JaStrip(u) !== '')
+  const cover = (run, depth) => {
+    const out = new Set(); if (kmap.has(run)) kmap.get(run).forEach(x => out.add(x))
+    if (depth < 4) for (let i = 1; i < run.length; i++) { const a = cover(run.slice(0, i), depth + 1), b = a && cover(run.slice(i), depth + 1); if (a && b) a.forEach(x => b.forEach(y => out.add(x + y))) }
+    return out.size ? out : null
+  }
+  const groups = [], unknown = []
+  const rx = units.map((u, k) => {
+    if (!V684_JA_KANJI.test(u)) return u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const alts = cover(u, 0); groups.push({ run: u, k })
+    if (!alts) { unknown.push(u); return '(.+?)' }
+    return '(' + [...alts].sort((a, b) => b.length - a.length).map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')'
+  }).join('')
+  const m = r.match(new RegExp('^' + rx + '$'))
+  if (!m) probs.push('reading "' + reading + '" is not a reading of "' + sentence + '"')
+  else groups.forEach((g, i) => { if (g.run === '何') { const f = units.slice(g.k + 1).join(''), want = v684JaNani(f); if (m[i + 1] !== want) probs.push('何 before "' + f.slice(0, 3) + '" is read ' + want + ', not ' + m[i + 1]) } })
+  if (unknown.length) probs.push('kanji outside the taught vocabulary (reading unverifiable): ' + unknown.join(' '))
+  return probs
+}
+function v684JaRomajiProblems(reading, romaji) {
+  if (!romaji) return ['no romaji']
+  if (/[぀-ヿ一-鿿]/.test(romaji)) return ['romaji contains kana or kanji']
+  const N = s => String(s || '').toLowerCase().replace(/[^a-z]/g, '').replace(/ou/g, 'o').replace(/uu/g, 'u').replace(/nn/g, 'n').replace(/wa/g, 'ha').replace(/(^|[^a-z])e/g, '$1he')
+  const want = N(kanaToRomaji(v684JaHira(reading))), got = N(romaji)
+  // は/へ/を as particles are wa/e/o (normalised both ways above); otherwise letter for letter
+  return want === got || want.replace(/wo/g, 'o') === got.replace(/wo/g, 'o') ? [] : ['romaji "' + romaji + '" does not transcribe the reading (' + kanaToRomaji(v684JaHira(reading)) + ')']
+}
+// deterministic repair: the dictionary-based reading the Listening path already uses, with the corrected 何 rule
+function v684JaDerive(text, bank) {
+  try {
+    const d = jaDeterministicReading(text, bank)
+    if (d.unresolved.length) return null
+    const segs = d.segs.map((s, i) => s.surface === '何' ? { ...s, reading: v684JaNani(d.segs.slice(i + 1).map(x => x.surface).join('')) } : s)
+    const a = _jaAssemble(segs)
+    return { reading: a.reading, romaji: a.romaji }
+  } catch (e) { return null }
+}
+
+// Thai: every word's phonetic is checked against the consonant-class tone rules (the app's own engine, calcThaiSyllableTone,
+// which v683 never called) and against the spelled vowel length / quality. The v683 line audit dropped tone marks and vowel
+// length before comparing, and the bank it compared with carries wrong tones (แล้ว lâeo, โกรธ krôot, ใช้ chây …).
+// Corrections below are the adjudicated scan of the bank (dev/sandbox/v684/audit/th-bank-tone-scan.json): applied ONLY in
+// v684 lessons, PENDING THE OWNER'S APPROVAL; the stored vocabulary, its ids and every learner's data are untouched.
+const V684_TH_PHONETIC_CORRECTIONS = Object.freeze({
+  'สาย': 'sǎai', 'เช่า': 'châo', 'ดึก': 'dʉ̀k', 'สวม': 'sǔam', 'โกรธ': 'kròot', 'ใช้': 'chái', 'ซ้าย': 'sáai', 'ช้อน': 'cháawn', 'ชัด': 'chát',
+  'เจี๊ยบ': 'jíap', 'อูฐ': 'ùut', 'แก่': 'gàe', 'เหรอ': 'rə̌ə', 'เกิด': 'gə̀ət', 'แผน': 'phǎen', 'ตึก': 'tʉ̀k', 'เริ่ม': 'rə̂əm', 'แล้ว': 'láaeo',
+  'บาง': 'baang', 'สู้': 'sûu', 'ร้อน': 'ráawn', 'ผู้ชาย': 'phûu-chaai',
+})
+function v684ThLexicon(vocab) {
+  const lex = buildThaiPhoneticLexicon(vocab), fixes = []
+  Object.entries(V684_TH_PHONETIC_CORRECTIONS).forEach(([k, v]) => { const old = lex.get(k), nu = loadCanonicalThaiPhonetic(v); if (old && old !== nu) fixes.push([k, old, nu]); lex.set(k, nu) })
+  // a compound entry that contains a corrected word and its wrong syllable gets the same correction (แล้วคุณล่ะ lâeo-khun-lâ)
+  lex.forEach((ph, th) => fixes.forEach(([k, old, nu]) => {
+    if (th === k || !th.includes(k) || !ph) return
+    const parts = ph.split(/([\s-])/), i = parts.indexOf(old)
+    if (i >= 0 && !old.includes('-')) { parts[i] = nu; lex.set(th, parts.join('')) }
+  }))
+  return lex
+}
+const V684_TH_TONE = { '̀': 'low', '́': 'high', '̂': 'falling', '̌': 'rising' }
+function v684ThPhTone(syl) { for (const c of String(syl || '').normalize('NFD')) if (V684_TH_TONE[c]) return V684_TH_TONE[c]; return 'mid' }
+// Thai tone of ONE written syllable by the consonant-class rules. Live / dead is decided by the FINAL consonant when there is
+// one (เป็น, เย็น: short vowel + n = live) and by vowel length only when there is none — the rule the app's older engine
+// (calcThaiSyllableTone) gets wrong, which is why v684 does not use it. Silent letters (์, a trailing ร after a final) drop.
+const V684_TH_MID = 'กจฎฏดตบปอ', V684_TH_HIGH = 'ขฃฉฐถผฝศษสห', V684_TH_SONOR = 'งญนมยรลวฬ'
+const V684_TH_LIVE_FINAL = 'งนญณรลฬมยว'
+function v684ThToneOf(syl) {
+  let s = String(syl || '').replace(/[ก-ฮ][ิุ]?์/g, '')
+  const mk = (s.match(/[่-๋]/) || [''])[0]
+  s = s.replace(/[่-๋]/g, '')
+  if (!s) return null
+  let i = 0
+  const pre = /[เแโใไ]/.test(s[0]) ? s[i++] : ''
+  if (!/[ก-ฮ]/.test(s[i] || '')) return null
+  let c1 = s[i], cls = V684_TH_MID.includes(c1) ? 'm' : V684_TH_HIGH.includes(c1) ? 'h' : 'l'
+  i++
+  const nx = s[i] || ''
+  if (c1 === 'ห' && nx && V684_TH_SONOR.includes(nx)) { cls = 'h'; i++ }
+  else if (c1 === 'อ' && nx === 'ย') { cls = 'm'; i++ }
+  else if ('รลว'.includes(nx) && nx && i + 1 < s.length && !(nx === 'ว' && /^[ก-ฮ]?$/.test(s.slice(i + 1)) && !pre)) i++   // cluster: class of the first
+  let rest = s.slice(i)
+  // a trailing ร after a final consonant is silent (บัตร, โคตร); a trailing ิ / ุ after a final is silent (ญาติ)
+  rest = rest.replace(/([ก-ฮ])ร$/, (m, a) => /[ะ-ู]|^.*[ก-ฮ]/.test(rest.slice(0, -2)) || pre ? a : m).replace(/([ก-ฮ])[ิุ]$/, (m, a) => /[าีืู]/.test(rest) ? a : m)
+  const sonorEnd = /[ำ]/.test(rest) || pre === 'ใ' || pre === 'ไ' || (pre === 'เ' && /า$/.test(rest) && !/าะ$/.test(rest))
+  let fin = '', short = false
+  if (!sonorEnd) {
+    // vowel form
+    if (/^ะ$|^ั|^ิ|^ึ|^ุ|^็|าะ$|^อะ$/.test(rest) || (pre && /ะ$/.test(rest)) || (pre && /^็/.test(rest))) short = true
+    const cons = rest.replace(/[ะ-ฺ็]/g, '')
+    // medial อ / ว as vowels (ร้อน, นวด) and ย / ว glides at the end
+    let finals = cons
+    if (/^อ/.test(finals) && rest[0] !== 'ะ') finals = finals.slice(1)                 // C + อ (+ final): the vowel ɔɔ
+    else if (/^ว[ก-ฮ]$/.test(finals) && !pre) finals = finals.slice(1)               // C + ว + final: the vowel ua (นวด, สวม)
+    else if (pre === 'เ' && /^ีย|^ือ/.test(rest)) finals = finals.replace(/^[ยอ]/, '')
+    else if (pre === 'เ' && /^ิ/.test(rest)) short = false                           // เ-ิ: the long vowel əə (เลิก, เกิด)
+    fin = finals.slice(-1)
+    if (!fin && !short && !rest && !pre) short = true                                 // a bare consonant never stands alone
+    if (fin && !/[ะ-ู็]/.test(rest) && !pre && !/^อ|^ว/.test(cons)) short = true   // implicit o (รถ, คน)
+    if (/^ั/.test(rest)) short = true
+    if (/[าีืู]/.test(rest) || (pre && !/[ะ็]/.test(rest) && !/^ิ|^ั/.test(rest)) || /^อ/.test(cons) || /^ัว/.test(rest)) short = false
+    if (pre === 'เ' && /^ิ/.test(rest)) short = false
+    if (/ะ$/.test(rest)) { short = true; fin = '' }                                      // -ะ endings (เกาะ, เยอะ, เพราะ): short, no final
+  }
+  const live = sonorEnd || (fin ? V684_TH_LIVE_FINAL.includes(fin) : !short)
+  if (mk === '่') return cls === 'l' ? 'falling' : 'low'
+  if (mk === '้') return cls === 'l' ? 'high' : 'falling'
+  if (mk === '๊') return 'high'
+  if (mk === '๋') return 'rising'
+  if (live) return cls === 'h' ? 'rising' : 'mid'
+  if (cls !== 'l') return 'low'
+  return short ? 'high' : 'falling'
+}
+// spelled vowel length / quality of ONE Thai syllable, checked only where the display convention can show it:
+// า → aa (not in เ-า / ำ), ี → ii, ู → uu; ั / ะ are short; a medial or final อ (ร้อน, ของ) is the ɔ vowel (aw / aaw)
+function v684ThVowelProblems(syl, p) {
+  const s = String(syl || '').replace(/[่-์]/g, ''), bare = String(p || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  if (/^[ก-ฮ]{1,2}อ[ก-ฮ]?$/.test(s) && !/^อ/.test(s) && !/aw|ɔ/.test(bare)) return ['the vowel is ɔ (written aw)']
+  if (/า/.test(s) && !/ำ|^เ.*า|าะ$/.test(s) && !/aa/.test(bare)) return ['the vowel is long (aa)']
+  if (/ี/.test(s) && !/ii|ia/.test(bare)) return ['the vowel is long (ii)']
+  if (/ู/.test(s) && !/uu/.test(bare)) return ['the vowel is long (uu)']
+  if (/ั/.test(s) && !/ัว/.test(s) && /aa/.test(bare)) return ['the vowel is short (a)']
+  return []
+}
+// one-syllable words only: there the Thai syllable and its phonetic align with certainty (calibrated on all 587 one-syllable
+// bank entries: the rule flags the 20 adjudicated bank errors and disagrees elsewhere only with the convention ก็ and a loanword)
+const V684_TH_TONE_EXCEPTIONS = new Set(['ก็', 'เวอร์'])
+function v684ThWordProblems(word, ph) {
+  const syl = String(ph || '').split('-').filter(Boolean)
+  if (syl.length !== 1 || /\s/.test(word) || V684_TH_TONE_EXCEPTIONS.has(word)) return []
+  const probs = [], tone = v684ThToneOf(word), shown = v684ThPhTone(syl[0])
+  if (tone && shown !== tone) probs.push(word + ': "' + syl[0] + '" is ' + shown + ' tone; the spelling gives ' + tone)
+  v684ThVowelProblems(word, syl[0]).forEach(x => probs.push(word + ': "' + syl[0] + '" — ' + x))
+  return probs
+}
+function v684ThVerify(line, vocab, lex) {
+  const words = tokenizeThaiAgainstVocab(line.text, vocab, [...lex.keys()])
+  const joined = words.join(''), probs = []
+  if (joined !== String(line.text || '').replace(/\s+/g, '').replace(/[.?!,]/g, '')) probs.push('Thai text does not segment into known words: ' + line.text)
+  const want = composeThaiPhonetic(line.text, lex)
+  if (want.unresolved) probs.push(want.unresolved + ' word(s) without a dictionary phonetic')
+  const N = s => String(s || '').normalize('NFC').replace(/[\s\-]+/g, '')     // word spacing is formatting, tones and letters are not
+  if (N(line.ph) !== N(want.phonetic)) probs.push('phonetic "' + line.ph + '" ≠ dictionary rendering "' + want.phonetic + '"')
+  words.forEach(w => { const p = lex.get(w); if (p) v684ThWordProblems(w, p).forEach(x => probs.push(x)) })
+  return probs
+}
+
+// ── 2. ONE SCAFFOLDING TABLE per language (grammar building blocks; never content, never SRS) ──────────────────────────
+// Consolidates the lists the v683 checks used separately (zh: ZH_PARTICLES / ZH_FUNCTION_FORMS / the grammar scaffold;
+// ja: case + sentence particles, function forms, the grammar scaffold; th: track grammar words, discourse interjections,
+// polite particles). Content words stay strictly closed: nothing here is a noun, verb, adjective or adverb of content.
+function v684Scaffolding(lang, inv) {
+  const items = new Set()
+  if (lang === 'zh') { ZH_PARTICLES.forEach(x => items.add(x)); ZH_FUNCTION_FORMS.forEach(x => items.add(x)); ((inv && inv.zhInv && inv.zhInv.grammarScaffold) || []).forEach(g => items.add(g.form)) }
+  if (lang === 'ja') { JA_CASE_PARTICLES.forEach(x => items.add(x)); JA_SENTENCE_PARTICLES.forEach(x => items.add(x)); JA_FUNCTION_FORMS.forEach(x => items.add(x)); ((inv && inv.jaInv && inv.jaInv.grammarScaffold) || []).forEach(g => items.add(g.form));
+    ['この', 'その', 'あの', 'どの', 'じゃあ', 'ねえ', 'ああ', 'え', 'うーん', 'です', 'ます', 'ございます'].forEach(x => items.add(x)) }
+  if (lang === 'th') { THAI_TRACK_GRAMMAR_WORDS.forEach(x => items.add(x)); THAI_DISCOURSE_INTERJECTIONS.forEach(x => items.add(x)); ['ครับ', 'ค่ะ', 'คะ', 'นะ', 'ไหม', 'เหรอ', 'ล่ะ'].forEach(x => items.add(x)) }
+  return [...items].filter(Boolean)
+}
+// building blocks the production closed-vocabulary tokeniser does not know as words (Japanese polite auxiliary ございます and
+// line-initial interjections) are removed before that check — they are grammar from the table above, never content
+function v684ScaffoldStrip(lang, text) {
+  if (lang !== 'ja') return String(text || '')
+  return String(text || '').replace(/^(うーん|ああ|じゃあ|ねえ|え)[、,]?/, '').replace(/ございます/g, '')
+}
+// which building blocks a line uses (shown to the learner as "building blocks"; never written to the SRS as mastered)
+function v684ScaffoldingUsed(lang, text, scaffold) {
+  const t = String(text || '')
+  if (lang === 'th') { const w = tokenizeThaiAgainstVocab(t, [], scaffold); return [...new Set(w.filter(x => scaffold.includes(x)))] }
+  return scaffold.filter(x => x.length >= (lang === 'ja' ? 1 : 1) && t.includes(x)).filter((x, i, a) => !a.some(y => y !== x && y.includes(x) && t.includes(y)))
+}
+
+// ── 3. THE TEACHING PLAN ─────────────────────────────────────────────────────────────────────────────────────────────
+// 3a. Sense record (deterministic): what the learner is studying, and the other senses of the same spelling that must NOT be
+// taught today. v683 attached "หลัง counts houses" to the spelling หลัง while the entry's sense is after / back.
+function v684Surface(lang, t) { return String(t && (lang === 'zh' ? t.chinese : lang === 'ja' ? t.japanese : (t.thai || t.t)) || '') }
+const V684_JA_CASUAL_ONLY = Object.freeze(['うん', 'ううん', 'ごめん'])
+function v684SenseRecord(lang, t) {
+  const surface = v684Surface(lang, t), gloss = String(t.english || t.e || '').trim(), pos = String(t.partOfSpeech || t.pos || '').trim()
+  const senses = gloss.split(/\s*[\/;]\s*/).map(x => x.trim()).filter(Boolean)
+  const otherSenses = []
+  if (lang === 'th' && THAI_CLASSIFIER_TARGET_GUIDE[surface] && !/classifier/i.test(gloss + ' ' + pos)) otherSenses.push({ label: 'classifier', avoid: THAI_CLASSIFIER_TARGET_GUIDE[surface], pattern: 'classifier' })
+  const register = lang === 'ja' && (TP_POLITE_WORDS.ja || []).includes(surface) ? 'polite-only' : lang === 'ja' && V684_JA_CASUAL_ONLY.includes(surface) ? 'casual-only' : 'any'
+  return { id: t.id, lang, surface, gloss, pos, senses, note: String(t.note || t.usageNote || ''), otherSenses, register, functionClass: tpFunctionClass(lang, t) }
+}
+// 3b. Three DIFFERENT communicative functions from the word's function class (the phase-3 table), rotated by word id
+function v684Functions(lang, rec, avoid) {
+  const all = (((TP_USES_LANG[lang] || {})[rec.functionClass]) || TP_USES[rec.functionClass] || TP_USES.noun)
+  const seed = _tpHash(rec.id + '|' + rec.surface), skip = new Set(avoid || [])
+  const order = all.map((u, k) => all[(seed + k) % all.length]).filter(u => !skip.has(u.id))
+  return order.slice(0, 3)
+}
+// 3c. Intent cards + exchanges: ONE planning request per batch (the model writes situations and purposes, no target-language
+// sentences), then deterministic validation. Each recall lives inside a short exchange: 2 lines (ja / zh) or 3 (th);
+// where it fits, the other line teaches another target; otherwise a bridge line (never counted, capped).
+const V684_EXCHANGE_LEN = { ja: 2, zh: 2, th: 3 }
+const V684_MAX_BRIDGES = { ja: 1, zh: 1, th: 2 }   // a bridge line never counts as an exercise; the lesson length (bridges) is reported by the gate
+const V684_PLAN_SCHEMA = { type: 'OBJECT', properties: { exchanges: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+  id: { type: 'STRING' }, situation: { type: 'STRING' },
+  lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+    voice: { type: 'STRING' }, role: { type: 'STRING' }, addressee: { type: 'STRING' }, relation: { type: 'STRING' },
+    target: { type: 'STRING' }, recall: { type: 'INTEGER' }, functionId: { type: 'STRING' }, sense: { type: 'STRING' }, purpose: { type: 'STRING' } },
+    required: ['voice', 'role', 'addressee', 'relation', 'target', 'purpose'] } } }, required: ['id', 'situation', 'lines'] } } }, required: ['exchanges'] }
+const V684_RELATIONS = ['friend', 'family', 'colleague', 'staff', 'stranger']
+function v684Speakers(lang) {
+  if (lang === 'ja') return { A: 'Kenji (a man)', B: 'Yumi (a woman)', names: { A: 'Kenji', B: 'Yumi' } }
+  if (lang === 'th') return { A: 'a man (says ผม, ends with ครับ)', B: 'a woman (says ฉัน, ends with ค่ะ / คะ)', names: { A: 'Somchai', B: 'Nida' } }
+  return { A: 'a man', B: 'a woman', names: { A: '', B: '' } }
+}
+function v684PlanPrompt(lang, recs, fnByTarget, allowedList, o) {
+  o = o || {}
+  const sp = v684Speakers(lang), n = V684_EXCHANGE_LEN[lang], name = { ja: 'Japanese', zh: 'Mandarin Chinese', th: 'Thai' }[lang]
+  const tlines = recs.map(r => '- "' + r.surface + '" — teach the sense: ' + r.gloss + (r.pos ? ' (' + r.pos + ')' : '') +
+    (r.otherSenses.length ? ' · NOT the sense: ' + r.otherSenses.map(x => x.label + ' (' + x.avoid + ')').join('; ') : '') +
+    (r.register === 'polite-only' ? ' · POLITE word: only to staff or a stranger' : r.register === 'casual-only' ? ' · CASUAL word: only between friends' : '') +
+    '\n    its 3 recalls use these 3 different functions: ' + fnByTarget.get(r.id).map((u, k) => (k + 1) + ') ' + u.id + ' = ' + u.act).join(' · ')).join('\n')
+  return '[task: v684-plan v1]\n' +
+    'You are planning a ' + name + ' speaking lesson for an adult beginner. Do NOT write ' + name + ' sentences. Plan WHO says WHAT to WHOM and WHY.\n' +
+    'Speakers: A = ' + sp.A + ', B = ' + sp.B + '. Either may play a role (friend, shop assistant, station staff, waiter, driver, stranger …).\n' +
+    'TARGET WORDS (each needs exactly 3 recalls, one per listed function, each in a DIFFERENT everyday situation):\n' + tlines + '\n' +
+    'WORDS THE LEARNER KNOWS (situations must be expressible with these words; plan nothing that needs other nouns or verbs): ' + allowedList.join(' ') + '\n' +
+    'Group the recalls into EXCHANGES of exactly ' + n + ' lines. In each exchange the voices alternate (A then B' + (n === 3 ? ' then A' : ', or B then A') + '), and every line responds to the line before it. ' +
+    'Prefer exchanges where every line is a recall (e.g. a question with one target answered by a line that teaches another target). When no target fits, one line may be a bridge (target ""), at most one per exchange.\n' +
+    'For every line give: voice (A/B), role (who the speaker is in this situation), addressee (who they speak to), relation (one of: ' + V684_RELATIONS.join(', ') + '), target (the target word, or ""), recall (1–3), functionId (from the list above), sense (the sense used), purpose (one plain sentence: who does what and why, e.g. "A customer asks whether the shop has a slightly bigger one before deciding to buy").\n' +
+    'Rules: relation decides register (friend/family → casual; staff/stranger → polite). A speaker never addresses themself. No situation is used more than 3 times in the lesson. Purposes are concrete actions, not topics.' +
+    (o.feedback ? '\nTHE PREVIOUS PLAN HAD THESE PROBLEMS — plan these recalls differently: ' + o.feedback : '') + '\nReturn JSON {"exchanges":[{"id","situation","lines":[...]}]}.'
+}
+// deterministic validation of a plan: returns cards (one per recall) and problems (each names the target / exchange)
+function v684ValidatePlan(lang, plan, recs, fnByTarget) {
+  const problems = [], cards = [], byTarget = new Map(recs.map(r => [r.surface, { rec: r, seen: [] }])), n = V684_EXCHANGE_LEN[lang]
+  const situ = new Map(), exs = (plan && Array.isArray(plan.exchanges)) ? plan.exchanges : []
+  if (!exs.length) problems.push({ code: 'PLAN_EMPTY', detail: 'no exchanges' })
+  exs.forEach((ex, ei) => {
+    const lines = Array.isArray(ex.lines) ? ex.lines : [], exId = String(ex.id || 'e' + (ei + 1))
+    const sk = String(ex.situation || '').toLowerCase().replace(/[^a-z ]/g, '').trim()
+    situ.set(sk, (situ.get(sk) || 0) + 1)
+    if (lines.length !== n) problems.push({ code: 'EXCHANGE_LENGTH', exchange: exId, detail: lines.length + ' lines (want ' + n + ')' })
+    if (lines.filter(l => !String(l.target || '').trim()).length > V684_MAX_BRIDGES[lang]) problems.push({ code: 'TOO_MANY_BRIDGES', exchange: exId })
+    lines.forEach((l, li) => {
+      const v = String(l.voice || '').toUpperCase()
+      if (v !== 'A' && v !== 'B') problems.push({ code: 'VOICE', exchange: exId, line: li, detail: l.voice })
+      if (li > 0 && String(lines[li - 1].voice || '').toUpperCase() === v) problems.push({ code: 'VOICES_DO_NOT_ALTERNATE', exchange: exId, line: li })
+      const rel = String(l.relation || '').toLowerCase()
+      if (!V684_RELATIONS.includes(rel)) problems.push({ code: 'RELATION', exchange: exId, line: li, detail: l.relation })
+      if (String(l.addressee || '').trim().toLowerCase() === String(l.role || '').trim().toLowerCase() && rel !== 'friend' && rel !== 'family' && rel !== 'colleague') problems.push({ code: 'SELF_ADDRESS', exchange: exId, line: li })
+      if (String(l.purpose || '').trim().split(/\s+/).length < 5) problems.push({ code: 'PURPOSE_TOO_VAGUE', exchange: exId, line: li, detail: l.purpose })
+      const tg = String(l.target || '').trim()
+      if (!tg) return
+      const e = byTarget.get(tg)
+      if (!e) { problems.push({ code: 'UNKNOWN_TARGET', exchange: exId, line: li, detail: tg }); return }
+      const fids = fnByTarget.get(e.rec.id).map(u => u.id)
+      if (!fids.includes(String(l.functionId || ''))) problems.push({ code: 'FUNCTION_NOT_PLANNED', exchange: exId, line: li, target: tg, detail: l.functionId })
+      const register = rel === 'staff' || rel === 'stranger' ? 'polite' : 'casual'
+      if (e.rec.register === 'polite-only' && register !== 'polite') problems.push({ code: 'REGISTER', exchange: exId, line: li, target: tg, detail: tg + ' is polite: only to staff or a stranger' })
+      if (e.rec.register === 'casual-only' && register !== 'casual') problems.push({ code: 'REGISTER', exchange: exId, line: li, target: tg, detail: tg + ' is casual: only between friends' })
+      e.seen.push(String(l.functionId || ''))
+      cards.push({ exchange: exId, line: li, targetId: e.rec.id, surface: tg, recall: e.seen.length, functionId: String(l.functionId || ''), sense: String(l.sense || e.rec.gloss),
+        voice: v, role: String(l.role || ''), addressee: String(l.addressee || ''), relation: rel, register, situation: String(ex.situation || ''), purpose: String(l.purpose || '') })
+    })
+  })
+  byTarget.forEach(({ rec, seen }, tg) => {
+    if (seen.length !== 3) problems.push({ code: 'RECALL_COUNT', target: tg, detail: seen.length + ' recalls (want 3)' })
+    if (new Set(seen).size !== seen.length) problems.push({ code: 'FUNCTIONS_NOT_DISTINCT', target: tg, detail: seen.join(', ') })
+  })
+  situ.forEach((c, k) => { if (k && c > 3) problems.push({ code: 'SITUATION_OVERUSED', detail: k + ' ×' + c }) })
+  return { ok: !problems.length, problems, cards, exchanges: exs }
+}
+
+// ── 4. GENERATION: the model only PHRASES a validated exchange ──────────────────────────────────────────────────────────
+const V684_GEN_SCHEMA = { type: 'OBJECT', properties: { exchanges: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+  id: { type: 'STRING' }, lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+    text: { type: 'STRING' }, english: { type: 'STRING' }, cue: { type: 'STRING' }, reading: { type: 'STRING' }, romaji: { type: 'STRING' } },
+    required: ['text', 'english', 'cue'] } } }, required: ['id', 'lines'] } } }, required: ['exchanges'] }
+function v684GenPrompt(lang, exs, allowedList, scaffold, cc, o) {
+  o = o || {}
+  const sp = v684Speakers(lang), name = { ja: 'Japanese', zh: 'Mandarin Chinese', th: 'Thai' }[lang]
+  const body = exs.map(ex => 'EXCHANGE ' + ex.id + ' — situation: ' + ex.situation + '\n' + ex.lines.map((l, i) =>
+    '  line ' + (i + 1) + ' · ' + l.voice + ' as ' + l.role + ' → to ' + l.addressee + ' (' + (l.relation === 'staff' || l.relation === 'stranger' ? 'POLITE' : 'casual') + ')' +
+    (l.target ? ' · TARGET "' + l.target + '" in the sense "' + l.sense + '"' : ' · bridge line (no target)') + ' · purpose: ' + l.purpose).join('\n')).join('\n')
+  return '[task: v684-generate v1]\n' +
+    'Write natural, everyday ' + name + ' for these planned exchanges. A = ' + sp.A + ', B = ' + sp.B + '.\n' + body + '\n' +
+    'Each line must carry out its purpose, respond to the line before it in its exchange, and use its TARGET in exactly the stated sense. ' +
+    'Length: ' + cc.preferredMin + '–' + cc.preferredMax + ' ' + cc.unitName + ' per line, never more than ' + cc.hardMax + '.\n' +
+    'Use ONLY these words: ' + allowedList.join(' ') + '; plus grammar building blocks: ' + scaffold.join(' ') + '. If an idea needs another word, say it differently.\n' +
+    (lang === 'ja' ? 'Casual speech between friends (no です/ます, うん not はい); polite です/ます to staff and strangers. Leave out 私 / あなた as Japanese does. Write kanji as the word list writes them; give "reading" (hiragana) and "romaji".\n' : '') +
+    (lang === 'zh' ? 'Casual-polite spoken Mandarin. Do not give pinyin (it is computed).\n' : '') +
+    (lang === 'th' ? 'A ends with ครับ and says ผม; B ends with ค่ะ (statements) / คะ (questions) and says ฉัน. Do not give a romanisation (it is computed).\n' : '') +
+    'For every line also give "english" (an accurate, natural English translation) and "cue": an English instruction that tells the learner the situation, who they are speaking to and what to communicate, so that THIS sentence is the natural answer. ' +
+    'The cue never quotes ' + name + ', never uses the characters\' names, and is not a word-for-word copy of the translation.' +
+    (o.feedback ? '\nA PREVIOUS VERSION FAILED: ' + o.feedback + ' — write it differently.' : '') + '\nReturn JSON {"exchanges":[{"id","lines":[{"text","english","cue"' + (lang === 'ja' ? ',"reading","romaji"' : '') + '}]}]}.'
+}
+// pronunciation filled by rule after generation (ja: the model's reading kept only if it verifies, else derived)
+function v684FillPronunciation(lang, line, ctx) {
+  if (lang === 'zh') { const p = v684ZhPronunciation(line.text, ctx.zhLexicon); line.pinyin = p.pinyin; line.spoken = p.spoken; line._pronSource = p.ok ? 'rule' : 'unverified'; return }
+  if (lang === 'th') { const c = composeThaiPhonetic(line.text, ctx.thLex); line.ph = c.phonetic; line._pronSource = c.unresolved ? 'unverified' : 'dictionary'; return }
+  const okModel = line.reading && !v684JaReadingProblems(line.text, line.reading, ctx.jaKanji).length && !v684JaRomajiProblems(line.reading, line.romaji).length
+  if (okModel) { line._pronSource = 'model (verified)'; return }
+  const d = v684JaDerive(line.text, ctx.jaBank)
+  if (d) { line.reading = d.reading; line.romaji = d.romaji; line._pronSource = 'dictionary' } else line._pronSource = 'unverified'
+}
+
+// ── 5. THE FINAL GATE — once, on the frozen lesson ──────────────────────────────────────────────────────────────────────
+// 12 criteria per exercise. Deterministic checks own what rules can decide (presence, other-sense patterns, cue form and
+// uniqueness, speaker / register, distinct functions, pronunciation, exchange structure, length, closed vocabulary); ONE
+// batched judge owns sense, grammar, naturalness, cue producibility, meaning, intent, distinct use and coherence — and sees
+// each exchange whole (speaker, addressee, previous line, cue, sentence, English, the planned purpose).
+// A verdict is bound to the line's fingerprint: any later change voids it. One failed exercise → NOT READY.
+const V684_CRITERIA = Object.freeze({ 1: 'target sense', 2: 'grammar', 3: 'naturalness', 4: 'producible cue', 5: 'English meaning', 6: 'communicative intent',
+  7: 'speaker / register', 8: 'distinct recalls', 9: 'pronunciation', 10: 'coherence', 11: 'complexity', 12: 'closed vocabulary' })
+const V684_JUDGE_FIELD = Object.freeze({ 1: 'sense', 2: 'grammar', 3: 'natural', 4: 'cue', 5: 'meaning', 6: 'intent', 8: 'distinct', 10: 'coherence' })
+const V684_SCORE_GROUPS = Object.freeze({ technical: [11, 12], correctness: [1, 2, 5], naturalness: [3, 7], meaningCue: [4, 5], usefulness: [6, 8], coherence: [10], pronunciation: [9] })
+const V684_SCRIPT = { zh: /[一-鿿]/, ja: /[぀-ヿ一-鿿]/, th: /[฀-๿]/ }
+const V684_REPLY_START = { ja: /^(うん|ううん|はい|いいえ|そう|いや)[、,。！!]?/, zh: /^(好|对|嗯|是|不是|可以)[，,。！!]/, th: /^(ใช่|ไม่ใช่|ได้|ค่ะ|ครับ)(\s|$)/ }
+const V684_QUESTION = { ja: /[？?]$|(の|か)$/, zh: /[？?]$|[吗呢]$/, th: /(ไหม|มั้ย|เหรอ|หรือเปล่า|อะไร|ไหน|ทำไม|เมื่อไหร่|ยังไง|กี่|ใคร)(ครับ|คะ|ค่ะ)?$/ }
+function v684Fp(x) { const s = JSON.stringify(x); return _tpHash(s).toString(36) + '.' + _tpHash(s.split('').reverse().join('')).toString(36) }
+function v684LineFp(l) { return v684Fp([l.voice, l.relation, l.text, l.english, l.cue, l.reading, l.romaji, l.pinyin, l.spoken, l.ph, l.target && l.target.surface]) }
+function v684Norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim() }
+function v684Frame(lang, text, surface) {   // a recall's frame: target masked, interjections / particles / punctuation removed
+  let t = String(text || '').split(surface).join('§')
+  t = t.replace(lang === 'ja' ? /^(ああ|あ|うん|ええ|え|ねえ|はい|いや|じゃあ|うーん)[、,]?/ : lang === 'zh' ? /^(嗯|啊|好|哦)[，,]?/ : /^(อ้อ|อ๋อ|อืม|เอ่อ)\s*/, '')
+  return t.replace(/[\s、。，．！？!?,.・「」『』…]/g, '').replace(lang === 'th' ? /(ครับ|ค่ะ|คะ|นะ)/g : lang === 'ja' ? /[よねわな]$/ : /[吗呢吧啊了]$/g, '')
+}
+function v684Similar(a, b) {   // Dice coefficient on character bigrams
+  const bg = s => { const m = new Map(); for (let i = 0; i < s.length - 1; i++) { const k = s.slice(i, i + 2); m.set(k, (m.get(k) || 0) + 1) } return m }
+  if (a === b) return 1; if (a.length < 2 || b.length < 2) return a === b ? 1 : 0
+  const A = bg(a), B = bg(b); let inter = 0; A.forEach((v, k) => { inter += Math.min(v, B.get(k) || 0) })
+  return 2 * inter / (Math.max(1, a.length - 1) + Math.max(1, b.length - 1))
+}
+function v684TargetPresent(lang, line, ctx) {
+  const t = ctx.targetById.get(line.target.id) || {}
+  try {
+    // the production matcher removes question-word compounds (どっちか "either") — but どっち + かな / か？ is the question word
+    if (lang === 'ja') return matchesJapaneseTarget(line.text, t) || (/^(どっち|どこ|どれ|何|なに|誰|いつ)$/.test(line.target.surface) && new RegExp(line.target.surface + '(かな|かね|かい|か[？?]?$)').test(String(line.text || '')))
+    if (lang === 'zh') return mandarinTargetPresent(line.text, t, ctx.zhInv)
+    return thaiTargetPresent(line.text, line.target.surface, ctx.vocab)
+  } catch (e) { return String(line.text || '').includes(line.target.surface) }
+}
+// other-sense patterns (deterministic part of criterion 1): e.g. a Thai classifier frame when the sense is not a classifier
+function v684OtherSenseProblems(lang, line, rec) {
+  const out = [], s = line.target.surface, t = String(line.text || '')
+  ;(rec && rec.otherSenses || []).forEach(o => {
+    if (o.pattern === 'classifier' && lang === 'th' && new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(นี้|นั้น|ไหน|นู้น)|(หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ|กี่|[0-9])' + s).test(t))
+      out.push('"' + s + '" is used as a classifier, but the sense taught is "' + rec.gloss + '"')
+  })
+  return out
+}
+function v684Deterministic(lang, lesson, ctx) {
+  const res = new Map(), sp = v684Speakers(lang), names = [sp.names.A, sp.names.B].filter(Boolean)
+  const put = (l, c, why) => { const r = res.get(l.id); (r[c] = r[c] || []).push(why) }
+  lesson.forEach(l => res.set(l.id, {}))
+  const cueCount = new Map()
+  lesson.filter(l => l.target).forEach(l => { const k = v684Norm(l.cue); if (!cueCount.has(k)) cueCount.set(k, new Set()); cueCount.get(k).add(l.text) })
+  const byEx = new Map(); lesson.forEach(l => { if (!byEx.has(l.exchange)) byEx.set(l.exchange, []); byEx.get(l.exchange).push(l) })
+  lesson.forEach(l => {
+    const rec = l.target && ctx.recById.get(l.target.id)
+    // 1 — sense (presence + other-sense pattern)
+    if (l.target) { if (!v684TargetPresent(lang, l, ctx)) put(l, 1, 'target "' + l.target.surface + '" not present'); v684OtherSenseProblems(lang, l, rec).forEach(x => put(l, 1, x)) }
+    // 2 — grammar rules the app already trusts (Mandarin: bare adjective predicate, 太…了 …)
+    // applied clause by clause: a stand-alone reply word (不， / 好，) is its own clause, not a modifier of what follows
+    if (lang === 'zh') { try { String(l.text || '').split(/[，,。！？!?；]/).filter(x => x.trim()).forEach(cl => (mandarinGrammarProblems(cl, segmentMandarin(cl, ctx.zhLexicon), ctx.zhInv) || []).forEach(x => put(l, 2, String(x)))) } catch (e) {} }
+    // 4 — cue: English, names the act, no names, no other exercise with the same cue and a different answer
+    if (l.target) {
+      const cue = String(l.cue || '')
+      if (cue.trim().split(/\s+/).length < 3) put(l, 4, 'cue missing or too short')
+      if (V684_SCRIPT[lang].test(cue)) put(l, 4, 'cue quotes the target language')
+      names.forEach(n => { if (new RegExp('\\b' + n + '\\b', 'i').test(cue)) put(l, 4, 'cue uses a character name ("' + n + '")') })
+      if ((cueCount.get(v684Norm(cue)) || new Set()).size > 1) put(l, 4, 'the same cue leads to a different answer elsewhere in the lesson')
+      if (l.relation === 'staff' || l.relation === 'stranger') { if (!/\b(staff|assistant|attendant|waiter|waitress|driver|stranger|clerk|cashier|shop|station|tourist|passer|customer|receptionist|officer|server|vendor|guard|ticket)\b/i.test(cue)) put(l, 4, 'polite line: the cue does not say who is spoken to') }
+    }
+    // 6 — communicative intent: a planned purpose behind every exercise
+    if (l.target && !(l.purpose && String(l.purpose).trim().split(/\s+/).length >= 5)) put(l, 6, 'no planned communicative purpose')
+    // 7 — speaker / register
+    const t = String(l.text || '')
+    if (lang === 'th') {
+      if (l.voice === 'A' && /(ค่ะ|คะ|ดิฉัน)/.test(t)) put(l, 7, 'the man uses a female particle / pronoun')
+      if (l.voice === 'B' && /(ครับ|ผม)/.test(t)) put(l, 7, 'the woman uses a male particle / pronoun')
+    }
+    if (lang === 'ja') {
+      const polite = l.relation === 'staff' || l.relation === 'stranger'
+      if (!polite && /^(はい|いいえ)/.test(t)) put(l, 7, 'はい / いいえ to a friend — casual うん / ううん')
+      if (!polite && /(です|ます)[。！？!?]?$/.test(t) && !/^すみません/.test(t)) put(l, 7, 'polite です/ます to a friend')
+      if (polite && !/(です|ます|ました|ません|ください|すみません|ございます|でした|ましょう)/.test(t) && t.replace(/[、。！？!?\s]/g, '').length > 4) put(l, 7, 'plain form to staff / a stranger')
+      if (l.target && rec && rec.register === 'polite-only' && !polite) put(l, 7, rec.surface + ' is polite: only to staff or a stranger')
+      if (l.target && rec && rec.register === 'casual-only' && polite) put(l, 7, rec.surface + ' is casual: not to staff or a stranger')
+    }
+    const own = sp.names[l.voice]
+    if (own && new RegExp('\\b(ask|tell|greet|thank|say to)\\s+' + own + '\\b', 'i').test(String(l.cue || ''))) put(l, 7, 'the speaker (' + own + ') is told to address ' + own)
+    // 9 — pronunciation, independent verifiers only
+    const pr = lang === 'zh' ? v684ZhVerify(l, ctx.zhLexicon) : lang === 'ja' ? v684JaReadingProblems(l.text, l.reading, ctx.jaKanji).concat(l.reading ? v684JaRomajiProblems(l.reading, l.romaji) : []) : v684ThVerify(l, ctx.vocab, ctx.thLex)
+    pr.forEach(x => put(l, 9, x))
+    // 11 — complexity
+    try { const a = ctx.cc.analyse(t); if (a.overHardMax) put(l, 11, 'too long for the learner (' + a.units + ' ' + ctx.cc.unitName + ', max ' + a.hardMax + ')') } catch (e) {}
+    // 12 — closed vocabulary (the production checker for this language)
+    try { (ctx.inv.check(v684ScaffoldStrip(lang, t)) || []).forEach(x => put(l, 12, String(x))) } catch (e) { put(l, 12, 'closed-vocabulary check failed: ' + e.message) }
+  })
+  // 10 — exchange structure: voices alternate; an exchange does not open with a reply; a question is answered
+  byEx.forEach(ls => ls.forEach((l, i) => {
+    if (i > 0 && ls[i - 1].voice === l.voice) put(l, 10, 'the same speaker talks twice in a row')
+    if (i === 0 && V684_REPLY_START[lang].test(String(l.text || '').trim())) put(l, 10, 'opens an exchange with a reply to nothing')
+    if (i === ls.length - 1 && i > 0 && V684_QUESTION[lang].test(String(l.text || '').replace(/[。.！!]+$/, '').trim()) && !(ls.length === 1)) put(l, 10, 'ends an exchange with a question nobody answers')
+  }))
+  // 8 — distinct recalls: three different planned functions, and no two frames alike
+  const byT = new Map(); lesson.filter(l => l.target).forEach(l => { if (!byT.has(l.target.id)) byT.set(l.target.id, []); byT.get(l.target.id).push(l) })
+  byT.forEach(ls => ls.forEach((l, i) => ls.slice(0, i).forEach(o => {
+    if (l.target.functionId && l.target.functionId === o.target.functionId) put(l, 8, 'same planned function as recall ' + o.target.recall + ' (' + l.target.functionId + ')')
+    const sim = v684Similar(v684Frame(lang, l.text, l.target.surface), v684Frame(lang, o.text, o.target.surface))
+    if (sim >= 0.8) put(l, 8, 'same frame as recall ' + o.target.recall + ' ("' + o.text + '", similarity ' + sim.toFixed(2) + ')')
+  })))
+  return res
+}
+// the judge (one batched request per group of exchanges) — prompt, schema, decision
+const V684_JUDGE_SCHEMA = { type: 'OBJECT', properties: { items: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+  id: { type: 'STRING' }, sense: { type: 'BOOLEAN' }, grammar: { type: 'BOOLEAN' }, natural: { type: 'BOOLEAN' }, cue: { type: 'BOOLEAN' }, meaning: { type: 'BOOLEAN' },
+  intent: { type: 'BOOLEAN' }, distinct: { type: 'BOOLEAN' }, coherence: { type: 'BOOLEAN' }, note: { type: 'STRING' } },
+  required: ['id', 'sense', 'grammar', 'natural', 'cue', 'meaning', 'intent', 'distinct', 'coherence', 'note'] } } }, required: ['items'] }
+function v684JudgePrompt(lang, lines, lesson) {
+  const name = { ja: 'Japanese', zh: 'Mandarin Chinese', th: 'Thai' }[lang], sp = v684Speakers(lang)
+  const byEx = new Map(); lines.forEach(l => { if (!byEx.has(l.exchange)) byEx.set(l.exchange, []); byEx.get(l.exchange).push(l) })
+  const sib = l => lesson.filter(o => o.target && l.target && o.target.id === l.target.id && o.id !== l.id).map(o => o.text)
+  const body = [...byEx.entries()].map(([ex, ls]) => 'EXCHANGE ' + ex + ' — ' + (ls[0].situation || '') + '\n' + ls.map(l =>
+    '  [' + l.id + '] ' + l.voice + ' (' + l.role + ' → ' + l.addressee + ', ' + l.relation + ')' + (l.target ? ' · TARGET "' + l.target.surface + '" sense "' + l.target.sense + '" · purpose: ' + l.purpose + ' · cue: ' + l.cue + ' · other recalls of this word: ' + (sib(l).join(' / ') || '—') : ' · bridge line') +
+    '\n      ' + name + ': ' + l.text + '\n      English: ' + l.english).join('\n')).join('\n')
+  return '[task: v684-judge v1]\n' +
+    'You are a strict native-speaker ' + name + ' teacher checking a finished beginner lesson line by line. A = ' + sp.A + ', B = ' + sp.B + '.\n' + body + '\n' +
+    'For EVERY line answer true/false: sense (target used in exactly the stated sense; true for bridge lines), grammar (grammatical), natural (a native speaker would say exactly this, to this person, here), ' +
+    'cue (a learner reading the cue would produce this sentence and not a different one; true for bridge lines), meaning (the English is accurate), intent (the sentence carries out the stated purpose; true for bridge lines), ' +
+    'distinct (a different use of the word from its other recalls, not the same frame with one word swapped; true for bridge lines), coherence (it responds sensibly to the previous line of its exchange; for a first line: it opens the exchange sensibly). ' +
+    'Be strict: "acceptable but odd" is false. note = the main problem in a few words, or "". Return JSON {"items":[{"id",…}]} with one item per line id.'
+}
+function v684JudgeApply(lines, out) {
+  const items = new Map(((out && out.items) || []).map(x => [String(x.id), x]))
+  lines.forEach(l => { const v = items.get(String(l.id)); if (v) l._judge = { fp: v684LineFp(l), v } })
+}
+// the gate: deterministic + bound judge verdicts → per-line failures, seven scores, READY or not
+function v684FinalGate(lang, lesson, ctx) {
+  const det = v684Deterministic(lang, lesson, ctx), perLine = []
+  lesson.forEach(l => {
+    const fails = { ...det.get(l.id) }
+    const j = l._judge && l._judge.fp === v684LineFp(l) ? l._judge.v : null
+    Object.entries(V684_JUDGE_FIELD).forEach(([c, f]) => {
+      if (!l.target && (f === 'sense' || f === 'cue' || f === 'intent' || f === 'distinct')) return
+      if (!j) (fails[c] = fails[c] || []).push('no judge verdict on the final text')
+      else if (j[f] !== true) (fails[c] = fails[c] || []).push('judge: ' + (j.note || f + ' = false'))
+    })
+    perLine.push({ id: l.id, exchange: l.exchange, target: l.target ? l.target.surface + ' #' + l.target.recall : null, text: l.text, fails, pass: !Object.keys(fails).length })
+  })
+  const tl = perLine.filter(p => p.target), scores = {}
+  Object.entries(V684_SCORE_GROUPS).forEach(([g, cs]) => { scores[g] = { pass: tl.filter(p => cs.every(c => !p.fails[c])).length, total: tl.length } })
+  const reasons = []
+  ctx.recs.forEach(r => { const n = tl.filter(p => p.target && lesson.find(l => l.id === p.id).target.id === r.id).length; if (n !== 3) reasons.push('TARGET ' + r.surface + ': ' + n + '/3 recalls') })
+  const bad = perLine.filter(p => !p.pass)
+  if (bad.length) reasons.push(bad.length + ' line(s) fail: ' + bad.slice(0, 6).map(p => p.id + ' [' + Object.keys(p.fails).map(c => V684_CRITERIA[c]).join(', ') + ']').join(' · '))
+  return { version: V684_VERSION, fingerprint: v684Fp(lesson.map(v684LineFp)), ready: !reasons.length, reasons, scores, perLine,
+    targetLines: tl.length, bridgeLines: perLine.length - tl.length, expected: ctx.recs.length * 3, judged: lesson.filter(l => l._judge && l._judge.fp === v684LineFp(l)).length, lines: lesson.length }
+}
+
+// ── 6. MODEL CALLS: a ledger that refuses a prompt identical to one already sent ───────────────────────────────────────
+function v684Ledger(ask, log) {
+  const sent = new Set(), byStage = {}
+  return { byStage, sent,
+    async call(stage, prompt, opts) {
+      const k = v684Fp(prompt)
+      if (sent.has(k)) { log && log('⛔ V684_IDENTICAL_PROMPT_REFUSED ' + stage); const e = new Error('identical prompt refused'); e.v684Identical = true; throw e }
+      sent.add(k); byStage[stage] = (byStage[stage] || 0) + 1
+      return ask(stage, prompt, opts || {})
+    } }
+}
+
+// ── 7. THE PIPELINE ──────────────────────────────────────────────────────────────────────────────────────────────────
+// plan → validate (re-plan only failing targets, with feedback) → phrase exchanges → pronunciation by rule → freeze →
+// gate → targeted repair (a DIFFERENT function for the failing recall; only that line regenerated; its exchange re-gated)
+// → gate again on the frozen lesson. It stops honestly: a lesson that cannot meet the contract stays a DRAFT.
+const V684_CONFIG = Object.freeze({ planBatch: 10, genBatch: 5, judgeBatch: 6, maxPlanRounds: 2, maxRepairRounds: 2, maxCalls: 45 })
+function v684Context(o) {
+  const lang = o.lang, vocab = o.vocab, targets = o.targets
+  const g2 = gen2Context({ lang, vocab, apiKey: o.apiKey, onLog: o.onLog, maxCalls: o.maxCalls || V684_CONFIG.maxCalls, generatorModel: o.generatorModel, judgeModel: o.judgeModel })
+  const inv = gen2Inventory(g2, o.inventoryTargets || targets)    // inventoryTargets: the lesson's full target set (all are authorised words)
+  const recs = targets.map(t => v684SenseRecord(lang, t))
+  const ctx = { lang, vocab, targets, g2, inv, recs, recById: new Map(recs.map(r => [r.id, r])), targetById: new Map(targets.map(t => [t.id, t])), cc: g2.cc, log: g2.log,
+    scaffold: v684Scaffolding(lang, inv), allowed: inv.list }
+  if (lang === 'zh') { ctx.zhInv = mandarinLearnerInventory(vocab, o.inventoryTargets || targets); ctx.zhLexicon = ctx.zhInv.lexicon.concat(mandarinLexicon(null)) }
+  if (lang === 'ja') { ctx.jaBank = vocab.concat(RAW_JAPANESE_VOCAB); ctx.jaKanji = v684JaKanjiReadings(ctx.jaBank) }
+  if (lang === 'th') ctx.thLex = v684ThLexicon(vocab)
+  return ctx
+}
+function v684Chunks(a, n) { const out = []; for (let i = 0; i < a.length; i += n) out.push(a.slice(i, i + n)); return out }
+async function v684Plan(ctx, L) {
+  const fnBy = new Map(ctx.recs.map(r => [r.id, v684Functions(ctx.lang, r)]))
+  const accepted = []
+  for (const batch of v684Chunks(ctx.recs, V684_CONFIG.planBatch)) {
+    let todo = batch, feedback = '', exs = []
+    for (let round = 1; round <= V684_CONFIG.maxPlanRounds && todo.length; round++) {
+      let out
+      try { out = await L.call('V684_plan', v684PlanPrompt(ctx.lang, todo, fnBy, ctx.allowed, { feedback }), { schema: V684_PLAN_SCHEMA }) } catch (e) { if (e.v684Identical || e.gen2Budget) break; throw e }
+      const v = v684ValidatePlan(ctx.lang, out, todo, fnBy)
+      const badT = new Set(v.problems.map(p => p.target || (p.exchange && (((out.exchanges || []).find(x => String(x.id) === p.exchange) || {}).lines || []).map(l => l.target))).flat().filter(Boolean))
+      const badEx = new Set(v.problems.map(p => p.exchange).filter(Boolean))
+      ;(out.exchanges || []).forEach(ex => { if (!badEx.has(String(ex.id)) && (ex.lines || []).every(l => !l.target || !badT.has(l.target))) exs.push(ex) })
+      ctx.log('🗺 V684_PLAN round ' + round + ' · ' + todo.map(r => r.surface).join(' ') + ' · problems ' + v.problems.length + (v.problems.length ? ' — ' + v.problems.slice(0, 4).map(p => p.code + (p.target ? ' ' + p.target : '')).join(', ') : ''))
+      const doneT = new Set(exs.flatMap(ex => (ex.lines || []).map(l => l.target)).filter(Boolean))
+      todo = todo.filter(r => !doneT.has(r.surface))
+      feedback = v.problems.slice(0, 8).map(p => p.code + (p.target ? ' (' + p.target + ')' : '') + (p.detail ? ': ' + p.detail : '')).join('; ')
+    }
+    exs.forEach((ex, k) => accepted.push({ ...ex, id: 'x' + (accepted.length + 1) }))
+  }
+  const v = v684ValidatePlan(ctx.lang, { exchanges: accepted }, ctx.recs, fnBy)
+  return { exchanges: accepted, cards: v.cards, problems: v.problems, fnBy }
+}
+async function v684Generate(ctx, L, plan) {
+  const lesson = []
+  for (const group of v684Chunks(plan.exchanges, V684_CONFIG.genBatch)) {
+    let out = null
+    try { out = await L.call('V684_generate', v684GenPrompt(ctx.lang, group, ctx.allowed, ctx.scaffold, ctx.cc), { schema: V684_GEN_SCHEMA }) } catch (e) { if (!(e.v684Identical || e.gen2Budget)) throw e }
+    const got = new Map((((out && out.exchanges) || [])).map(x => [String(x.id), x]))
+    group.forEach(ex => {
+      const g = got.get(String(ex.id)) || { lines: [] }
+      ex.lines.forEach((pl, i) => {
+        const w = (g.lines || [])[i] || {}, card = plan.cards.find(c => c.exchange === ex.id && c.line === i)
+        const line = { id: ex.id + '.' + (i + 1), exchange: ex.id, idx: i, voice: String(pl.voice || '').toUpperCase(), role: pl.role, addressee: pl.addressee, relation: String(pl.relation || '').toLowerCase(),
+          situation: ex.situation, purpose: pl.purpose, text: String(w.text || '').trim(), english: String(w.english || '').trim(), cue: String(w.cue || '').trim(), reading: w.reading, romaji: w.romaji,
+          target: card ? { id: card.targetId, surface: card.surface, recall: card.recall, functionId: card.functionId, sense: card.sense } : null }
+        v684FillPronunciation(ctx.lang, line, ctx)
+        line.scaffolding = v684ScaffoldingUsed(ctx.lang, line.text, ctx.scaffold)
+        lesson.push(line)
+      })
+    })
+  }
+  return lesson
+}
+async function v684Judge(ctx, L, lesson, lines) {
+  const byEx = [...new Set(lines.map(l => l.exchange))]
+  for (const exs of v684Chunks(byEx, V684_CONFIG.judgeBatch)) {
+    const ls = lesson.filter(l => exs.includes(l.exchange))
+    try { v684JudgeApply(ls, await L.call('V684_judge', v684JudgePrompt(ctx.lang, ls, lesson), { schema: V684_JUDGE_SCHEMA, judge: true })) }
+    catch (e) { if (!(e.v684Identical || e.gen2Budget)) throw e }
+  }
+}
+// targeted repair of ONE failing line: a different function for that recall, the rest of its exchange fixed
+const V684_REPAIR_SCHEMA = { type: 'OBJECT', properties: { purpose: { type: 'STRING' }, text: { type: 'STRING' }, english: { type: 'STRING' }, cue: { type: 'STRING' }, reading: { type: 'STRING' }, romaji: { type: 'STRING' } }, required: ['purpose', 'text', 'english', 'cue'] }
+function v684RepairPrompt(lang, line, exLines, fn, failures, ctx) {
+  const name = { ja: 'Japanese', zh: 'Mandarin Chinese', th: 'Thai' }[lang], sp = v684Speakers(lang)
+  return '[task: v684-repair v1]\n' +
+    'One line of a ' + name + ' beginner exchange failed and must be rewritten. A = ' + sp.A + ', B = ' + sp.B + '. Situation: ' + line.situation + '.\n' +
+    exLines.map(o => (o.id === line.id ? '  >>> REWRITE THIS LINE: ' + o.voice + ' (' + o.role + ' → ' + o.addressee + ', ' + o.relation + ')' : '  (fixed, do not change) ' + o.voice + ': ' + o.text + ' — ' + o.english)).join('\n') + '\n' +
+    'The rewritten line must use "' + line.target.surface + '" in the sense "' + line.target.sense + '" for this function: ' + fn.id + ' = ' + fn.act + '. ' +
+    'It must respond to the line before it and be answered by the line after it. Why the old line failed: ' + failures.join('; ') + '.\n' +
+    'Use ONLY these words: ' + ctx.allowed.join(' ') + '; plus building blocks: ' + ctx.scaffold.join(' ') + '. Length ' + ctx.cc.preferredMin + '–' + ctx.cc.preferredMax + ' ' + ctx.cc.unitName + '.\n' +
+    'Return JSON {"purpose" (one plain sentence: who does what and why), "text", "english", "cue" (English: situation + who is spoken to + what to communicate; no ' + name + ', no names)' + (lang === 'ja' ? ', "reading", "romaji"' : '') + '}.'
+}
+async function v684RepairRound(ctx, L, lesson, gate, plan, used) {
+  const failing = gate.perLine.filter(p => !p.pass)
+  let changed = 0
+  for (const p of failing) {
+    const line = lesson.find(l => l.id === p.id), fails = Object.entries(p.fails)
+    // pronunciation-only: recompute by rule, no model call
+    if (fails.every(([c]) => c === '9')) { v684FillPronunciation(ctx.lang, line, ctx); changed++; continue }
+    if (!line.target) continue                                     // bridge lines are not regenerated alone
+    const key = line.target.id + '#' + line.target.recall
+    if (!used.has(key)) used.set(key, new Set([line.target.functionId]))
+    const sibs = lesson.filter(l => l.target && l.target.id === line.target.id && l.id !== line.id).map(l => l.target.functionId)
+    const fn = v684Functions(ctx.lang, ctx.recById.get(line.target.id), [...used.get(key), ...sibs])[0]
+    if (!fn) { ctx.log('⛔ V684_REPAIR_EXHAUSTED ' + line.id + ' ' + line.target.surface + ' — no unused function left'); continue }
+    used.get(key).add(fn.id)
+    let out
+    try { out = await L.call('V684_repair', v684RepairPrompt(ctx.lang, line, lesson.filter(l => l.exchange === line.exchange), fn, fails.map(([c, w]) => V684_CRITERIA[c] + ': ' + w.join(' / ')), ctx), { schema: V684_REPAIR_SCHEMA }) }
+    catch (e) { if (e.v684Identical || e.gen2Budget) { ctx.log('⛔ V684_REPAIR_STOPPED ' + (e.message || e)); break } throw e }
+    if (!out || !out.text) continue
+    Object.assign(line, { text: String(out.text).trim(), english: String(out.english || '').trim(), cue: String(out.cue || '').trim(), purpose: String(out.purpose || '').trim(), reading: out.reading, romaji: out.romaji, _judge: null })
+    line.target = { ...line.target, functionId: fn.id }
+    v684FillPronunciation(ctx.lang, line, ctx); line.scaffolding = v684ScaffoldingUsed(ctx.lang, line.text, ctx.scaffold)
+    ctx.log('🔧 V684_REPAIR ' + line.id + ' ' + line.target.surface + ' #' + line.target.recall + ' → function ' + fn.id + ' · "' + line.text + '"')
+    changed++
+  }
+  return changed
+}
+async function v684DailyLesson(o) {
+  const ctx = v684Context(o)
+  const ask = o.engine || ((stage, prompt, opts) => gen2Ask(ctx.g2, stage, prompt, { judge: !!(opts && opts.judge), maxTokens: 4000 }))
+  const L = v684Ledger(ask, ctx.log)
+  ctx.log('🧭 V684 ' + ctx.lang + ' · ' + V684_VERSION + ' · targets ' + ctx.recs.length + ' · scaffolding ' + ctx.scaffold.length + ' items')
+  let lesson = [], plan = null, gate = null, stop = null
+  try {
+    plan = await v684Plan(ctx, L)
+    lesson = await v684Generate(ctx, L, plan)
+    await v684Judge(ctx, L, lesson, lesson)
+    gate = v684FinalGate(ctx.lang, lesson, ctx)
+    const used = new Map()
+    for (let round = 1; round <= V684_CONFIG.maxRepairRounds && !gate.ready; round++) {
+      const changed = await v684RepairRound(ctx, L, lesson, gate, plan, used)
+      if (!changed) break
+      const stale = lesson.filter(l => !(l._judge && l._judge.fp === v684LineFp(l)))
+      const exs = new Set(stale.map(l => l.exchange))
+      await v684Judge(ctx, L, lesson, lesson.filter(l => exs.has(l.exchange)))   // the whole exchange is re-judged (coherence)
+      gate = v684FinalGate(ctx.lang, lesson, ctx)
+      ctx.log('🔁 V684_GATE after repair round ' + round + ': ' + (gate.ready ? 'READY' : gate.reasons.join(' | ')))
+    }
+  } catch (e) { if (!e.gen2Budget) throw e; stop = e.message; ctx.log('⛔ ' + e.message) }
+  if (!gate) gate = v684FinalGate(ctx.lang, lesson, ctx)
+  const status = gate.ready && !stop ? 'READY' : 'DRAFT'
+  ctx.log('📋 V684 ' + status + ' · ' + gate.targetLines + '/' + gate.expected + ' recalls · scores ' + Object.entries(gate.scores).map(([k, s]) => k + ' ' + s.pass + '/' + s.total).join(' · ') + ' · calls ' + JSON.stringify(L.byStage))
+  return { status, lesson, plan, gate, stop, calls: L.byStage }
+}
+// app-shaped track (for the bench and the export) — every exercise keeps its plan
+function v684ToTrack(lang, res, targets) {
+  const field = lang === 'zh' ? 'chinese' : lang === 'ja' ? 'japanese' : 'thai'
+  const pairs = res.lesson.map(l => ({ speaker: l.voice, [field]: l.text, thai: l.text, english: l.english, prompt: l.cue, targetId: l.target ? l.target.id : null, recallIndex: l.target ? l.target.recall : null,
+    isTargetPair: !!l.target, pairType: l.target ? 'content' : 'bridge',
+    ...(lang === 'ja' ? { reading: l.reading, romaji: l.romaji, phonetic: l.romaji } : {}), ...(lang === 'zh' ? { pinyin: l.pinyin, spokenPinyin: l.spoken || '', phonetic: l.pinyin } : {}), ...(lang === 'th' ? { phonetic: l.ph } : {}),
+    _source: 'v684', _v684: { exchange: l.exchange, situation: l.situation, role: l.role, addressee: l.addressee, relation: l.relation, purpose: l.purpose, functionId: l.target && l.target.functionId, sense: l.target && l.target.sense, scaffolding: l.scaffolding } }))
+  return { language: lang, mode: 'daily', trackMode: 'daily', generator: V684_VERSION, pairs, selectedTargetIds: targets.map(t => t.id),
+    keywords: targets.map(t => ({ wordId: t.id, [field]: v684Surface(lang, t), thai: v684Surface(lang, t), english: t.english || t.e })),
+    integrity: { status: res.status === 'READY' ? 'READY' : 'NOT_READY', reasons: res.gate.reasons, scores: res.gate.scores, fingerprint: res.gate.fingerprint } }
+}
+// TT_V684_END ════════════════════════════════════════════════════════════════════════════════════════════════════
 
 // TT_GEN2_BEGIN ═════════════════════════════════════════════════════════════════════════════════════════════════════
 // v678 — CONTROLLED GENERATION ARCHITECTURE ("Gen2"), SHADOW-MODE PILOT. DISABLED BY DEFAULT.

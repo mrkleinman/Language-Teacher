@@ -1,0 +1,1335 @@
+{
+ "reviewer": "independent AI reviewer (Claude), not a native speaker",
+ "items": [
+  {
+   "lang": "ja",
+   "target": "分かる",
+   "recall": 1,
+   "line": 1,
+   "is_target": false,
+   "text": "駅はあそこです。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "explain": "The situation is 'at the station' and the cue says the attendant has just shown the way, yet the attendant says 'The station is over there.' Someone already at the station would not be told where the station is.",
+     "correction": "改札はあちらです。(The ticket gate is over there.) or set the scene on the street: 駅はあちらです。"
+    },
+    {
+     "criterion": "speaker",
+     "severity": "minor",
+     "explain": "Station staff speaking to a passenger would use the polite demonstrative あちら, not あそこ.",
+     "correction": "駅はあちらです。"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "分かる",
+   "recall": 1,
+   "line": 2,
+   "is_target": true,
+   "text": "はい、分かりました。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "分かる",
+   "recall": 2,
+   "line": 1,
+   "is_target": true,
+   "text": "日本語、分かる？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "分かる",
+   "recall": 2,
+   "line": 2,
+   "is_target": false,
+   "text": "うん、ちょっと。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "分かる",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "バスは何時？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "分かる",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "ごめん、分からない。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "いいえ",
+   "recall": 1,
+   "line": 1,
+   "is_target": false,
+   "text": "この電車に乗りますか？",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "Staff seldom ask a passenger this in plain form; the set phrase is ご乗車ですか, and the scene itself is a little unusual. Acceptable for a beginner, but not what staff actually say.",
+     "correction": "この電車にご乗車ですか？ (keep this one if the line is meant to be simple input)"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "いいえ",
+   "recall": 1,
+   "line": 2,
+   "is_target": true,
+   "text": "いいえ、乗りません。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "A bare 'いいえ、乗りません' is textbook-correct but sounds stiff. In real speech people say いえ, or soften it (あ、いえ、大丈夫です). It is still a fair beginner target for a polite 'no'.",
+     "correction": "いえ、乗りません。"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "いいえ",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "この本ですか？",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "minor",
+     "explain": "A shop assistant talking to a customer would say こちら rather than この.",
+     "correction": "こちらの本ですか？"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "いいえ",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "いいえ、あれです。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "いいえ",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "ありがとうございます。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "いいえ",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "いいえ、大丈夫です。",
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "major",
+     "explain": "'いいえ、大丈夫です' is how you turn down an offer ('No thanks, I'm fine'). It is not the usual way to brush off thanks: to a native ear it sounds like refusing something or reassuring that you are not hurt. The normal replies to ありがとうございます are いえいえ or いいえ、どういたしまして.",
+     "correction": "いいえ、どういたしまして。 (or いえいえ。)"
+    },
+    {
+     "criterion": "meaning",
+     "severity": "major",
+     "explain": "'Not at all, it's no trouble' does not translate 大丈夫です.",
+     "correction": "If you keep the sentence: 'No, it's fine.' Better to change the sentence: いいえ、どういたしまして = 'Not at all / You're welcome.'"
+    },
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "explain": "'Reply politely that it was no trouble' leads learners towards 全然大丈夫です, ご迷惑じゃないです and similar, not to this sentence.",
+     "correction": "A stranger thanks you for showing the way. Reply politely 'not at all, you're welcome.'"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "行く",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "明日、どこか行く？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "行く",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "うん、友達と映画を見るよ。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "行く",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "あの映画、見たいな。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "行く",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "じゃあ、一緒に行こうよ。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "行く",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "今日、店に行く？",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "A bare 店に行く？ ('going to the shop?') sounds translated. Japanese speakers name the shop or the activity, or say あの店.",
+     "correction": "今日、あの店に行く？ / 今日、買い物に行く？"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "行く",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "忙しいから、今日は行かない。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "どこ",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "すみません、トイレはどこですか？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "どこ",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "あそこです。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "minor",
+     "explain": "Station staff answering a passenger would use あちら.",
+     "correction": "あちらです。"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "どこ",
+   "recall": 2,
+   "line": 1,
+   "is_target": true,
+   "text": "今、どこ？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "どこ",
+   "recall": 2,
+   "line": 2,
+   "is_target": false,
+   "text": "ごめん、まだ駅。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "どこ",
+   "recall": 3,
+   "line": 1,
+   "is_target": true,
+   "text": "それ、どこで買ったの？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "どこ",
+   "recall": 3,
+   "line": 2,
+   "is_target": false,
+   "text": "駅の店だよ。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "好き",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "映画、好き？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "好き",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "うん、楽しいよね。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "好き",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "どっちがいい？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "好き",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "これが好き。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "When the friend asks どっちがいい？ about two items, natives answer with こっち (not これ) and usually ～がいい or ～のほうが好き. 'これが好き' works but is not the most natural answer to a choice between two.",
+     "correction": "こっちのほうが好き。 (or こっちが好き。)"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "explain": "The question asks which one is better/wanted, and the answer switches to 'like'. This is acceptable only because the target word forces it.",
+     "correction": "こっちのほうが好き。"
+    }
+   ]
+  },
+  {
+   "lang": "ja",
+   "target": "好き",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "この映画、見る？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "ja",
+   "target": "好き",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "うーん、それは好きじゃない。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "Turning down a friend's suggestion with a flat 好きじゃない is a little blunt; natives soften it with あんまり or ちょっと.",
+     "correction": "うーん、それはあんまり好きじゃない。"
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "一点",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "可以说慢一点吗？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "一点",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "好，我说慢一点。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "一点",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "你要不要喝？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "一点",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "好，我喝一点。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "一点",
+   "recall": 3,
+   "line": 1,
+   "is_target": true,
+   "text": "有没有大一点的？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "一点",
+   "recall": 3,
+   "line": 2,
+   "is_target": false,
+   "text": "有，你等一下。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "minor",
+     "explain": "A shop assistant would normally say 您 and 稍等 to a customer. 你等一下 sounds casual, though some shops do say it.",
+     "correction": "有，您稍等一下。 (yǒu, nín shāo děng yīxià / spoken: yǒu, nín shāo déng yíxià)"
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "等",
+   "recall": 1,
+   "line": 1,
+   "is_target": false,
+   "text": "我们去吧！",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "When setting off, the natural thing to say is 走吧 / 我们走吧. 我们去吧 needs a destination already in the context.",
+     "correction": "我们走吧！ (wǒmen zǒu ba)"
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "等",
+   "recall": 1,
+   "line": 2,
+   "is_target": true,
+   "text": "等我一下！",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "等",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "你在哪里？",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "explain": "哪里 is dictionary nǎli (second syllable neutral) and is spoken náli. 'nǎlǐ / nálǐ' gives 里 a full third tone.",
+     "correction": "pinyin: nǐ zài nǎli? spoken: nǐ zài náli?"
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "等",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "我在家等你。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "等",
+   "recall": 3,
+   "line": 1,
+   "is_target": true,
+   "text": "你在等谁？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "等",
+   "recall": 3,
+   "line": 2,
+   "is_target": false,
+   "text": "我在等朋友。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "可以",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "我可以看一下吗？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "可以",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "可以，你看吧。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "minor",
+     "explain": "A shop assistant would say 您 to a customer, or a set phrase such as 您随便看.",
+     "correction": "可以，您看吧。 / 可以，您随便看。"
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "可以",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "我可以用这个吗？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "可以",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "可以，你用吧。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "explain": "This target is almost word for word the same as the non-target reply in recall 1 (可以，你看吧). The learner has already seen the pattern, so this recall adds little. It also overlaps with recall 1's ask/grant pair.",
+     "correction": "Keep the grant, but vary the form, e.g. 可以啊，你拿去用吧。, or use a different sense such as 'it's OK / not bad' (还可以)."
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "可以",
+   "recall": 3,
+   "line": 1,
+   "is_target": true,
+   "text": "明天你可以来吗？",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "For 'are you available / able to come', mainland speakers mostly use 能: 你明天能来吗？ 可以 is understood, and common in southern speech and Taiwan, but it leans towards 'are you allowed to'.",
+     "correction": "你明天能来吗？ (or keep 可以 and note the variation)"
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "explain": "Spoken 'ní kéyǐ' here does not match 'wǒ kéyǐ' in recalls 1–2. For a 1+2 grouping (你+可以) the textbook form is nǐ kéyǐ (half-third + second + third). Both occur in fast speech, but the fixtures should be consistent.",
+     "correction": "spoken: míngtiān nǐ kéyǐ lái ma?"
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "可以",
+   "recall": 3,
+   "line": 2,
+   "is_target": false,
+   "text": "可以啊。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "什么",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "你想喝什么？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "什么",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "我喝这个。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "什么",
+   "recall": 2,
+   "line": 1,
+   "is_target": true,
+   "text": "你在找什么？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "什么",
+   "recall": 2,
+   "line": 2,
+   "is_target": false,
+   "text": "我找我的钱。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "People look for a wallet, not 'my money', and 找钱 also means 'give change'. 我找我的钱 sounds slightly off.",
+     "correction": "我在找我的钱包。 (wǒ zài zhǎo wǒ de qiánbāo)"
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "什么",
+   "recall": 3,
+   "line": 1,
+   "is_target": true,
+   "text": "你说什么？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "什么",
+   "recall": 3,
+   "line": 2,
+   "is_target": false,
+   "text": "我说，我们明天去吧。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "回",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "你现在回家吗？",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "回",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "现在不回家。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "Echoing the full phrase back (现在不回家) is stiff. A real reply would be shorter or give a reason.",
+     "correction": "还不回，我再待一会儿。 / 现在不回。"
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "回",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "你今天回来吗？",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "explain": "回来 is one word and should be written huílái (or huílai with a neutral directional complement). 'huí lái' with a space is inconsistent with 'huíqù' in recall 3.",
+     "correction": "nǐ jīntiān huílái ma?"
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "回",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "我明天回来。",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "explain": "Same as the previous line: write 回来 as one word, huílái / huílai.",
+     "correction": "wǒ míngtiān huílái."
+    }
+   ]
+  },
+  {
+   "lang": "zh",
+   "target": "回",
+   "recall": 3,
+   "line": 1,
+   "is_target": true,
+   "text": "我要回去拿东西。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "zh",
+   "target": "回",
+   "recall": 3,
+   "line": 2,
+   "is_target": false,
+   "text": "好，我等你。",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "หลังกินข้าว เราไปเดินกันไหมครับ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "'Go for a walk' is ไปเดินเล่น. ไปเดินกัน alone just means 'go walking'. Also, when people are already finishing lunch, Thai speakers say กินข้าวเสร็จแล้ว rather than หลังกินข้าว, though หลัง(จาก)กินข้าว is fine and keeps the target.",
+     "correction": "หลังกินข้าว ไปเดินเล่นกันไหมครับ (lǎng gin khâao pai doen-lên kan mǎi khráp)"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "ดีค่ะ ไปไหนดีคะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 1,
+   "line": 3,
+   "is_target": false,
+   "text": "ไปร้านกาแฟกันครับ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "explain": "ร้าน is long ráan (written correctly elsewhere in the file). แฟ is long ɛɛ, which the stated convention shows as 'aae' (compare láaeo), so it should be faae. Neither is the exempt ɔ/ə case.",
+     "correction": "pai ráan-gaa-faae kan khráp"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "ห้องน้ำอยู่ที่ไหนครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "อยู่หลังร้านค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 2,
+   "line": 3,
+   "is_target": false,
+   "text": "ขอบคุณครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "พรุ่งนี้เจอกันไหมครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "ได้ค่ะ เจอกันหลังห้าโมงนะคะ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "explain": "A bare ห้าโมง is ambiguous in the Thai clock (ห้าโมงเช้า = 11:00, ห้าโมงเย็น = 17:00). For 'after five (pm)' learners should learn ห้าโมงเย็น.",
+     "correction": "ได้ค่ะ เจอกันหลังห้าโมงเย็นนะคะ (… lǎng hâa moong yen ná khá)"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "หลัง",
+   "recall": 3,
+   "line": 3,
+   "is_target": false,
+   "text": "ตกลงครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 1,
+   "line": 1,
+   "is_target": false,
+   "text": "เอาข้าวอีกไหมคะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 1,
+   "line": 2,
+   "is_target": true,
+   "text": "พอแล้วครับ ขอบคุณครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 1,
+   "line": 3,
+   "is_target": false,
+   "text": "ไม่เป็นไรค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 2,
+   "line": 1,
+   "is_target": true,
+   "text": "เงินพอไหมครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 2,
+   "line": 2,
+   "is_target": false,
+   "text": "มีค่ะ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "explain": "To 'เงินพอไหม' (is the money enough?) a Thai speaker answers with the same verb: พอค่ะ. มีค่ะ ('I have some') answers a different question (มีเงินไหม).",
+     "correction": "พอค่ะ (phaw khâ)"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 2,
+   "line": 3,
+   "is_target": false,
+   "text": "งั้นไปกันครับ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "explain": "She is at the counter about to pay, so 'then let's go' skips the payment. A follow-up such as 'OK, pay then' fits better.",
+     "correction": "งั้นจ่ายเลยครับ (ngán jàai loei khráp)"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "ทุกคนได้กินไหมครับ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "explain": "The next line answers ยัง ('not yet'), which goes with a หรือยัง question. ได้กินไหม does not set up ยัง well.",
+     "correction": "ทุกคนได้กินหรือยังครับ (thúk khon dâi gin rǔe yang khráp)"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "ยังค่ะ ข้าวไม่พอค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "พอ",
+   "recall": 3,
+   "line": 3,
+   "is_target": false,
+   "text": "งั้นผมไปซื้ออีกครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ล่ะ",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "ผมชอบกาแฟครับ คุณล่ะครับ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "Thai friends rarely call each other คุณ; they use a nickname, เธอ, or drop the pronoun. คุณล่ะครับ is fine as a polite textbook form but sounds stiff between friends.",
+     "correction": "ผมชอบกาแฟครับ แล้ว[ชื่อ]ล่ะครับ / keep คุณล่ะ but set the relation as acquaintance"
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "explain": "กาแฟ: แฟ is long, so faae under the stated convention.",
+     "correction": "phǒm châwp gaa-faae khráp khun lâ khráp"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "ล่ะ",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "ฉันชอบชาค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ล่ะ",
+   "recall": 1,
+   "line": 3,
+   "is_target": false,
+   "text": "ร้านนี้มีชาครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ล่ะ",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "อันนี้ไม่ชอบค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ล่ะ",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "อันนั้นล่ะครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ล่ะ",
+   "recall": 2,
+   "line": 3,
+   "is_target": false,
+   "text": "อันนั้นดีค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ล่ะ",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "ร้านปิดแล้วค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ล่ะ",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "แล้วเราจะไปไหนล่ะครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ล่ะ",
+   "recall": 3,
+   "line": 3,
+   "is_target": false,
+   "text": "ไปร้านกาแฟกันค่ะ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "explain": "ร้าน should be long ráan, and แฟ long faae.",
+     "correction": "pai ráan-gaa-faae kan khâ"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "ตรงไป",
+   "recall": 1,
+   "line": 1,
+   "is_target": false,
+   "text": "สถานีไปทางไหนคะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ตรงไป",
+   "recall": 1,
+   "line": 2,
+   "is_target": true,
+   "text": "ตรงไปครับ แล้วจะเจอสถานีครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ตรงไป",
+   "recall": 1,
+   "line": 3,
+   "is_target": false,
+   "text": "ขอบคุณค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ตรงไป",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "สถานีอยู่ทางนั้นครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ตรงไป",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "ตรงไปใช่ไหมคะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ตรงไป",
+   "recall": 2,
+   "line": 3,
+   "is_target": false,
+   "text": "ใช่ครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ตรงไป",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "ตรงนี้ใช่ไหมคะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ตรงไป",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "ยังครับ ตรงไปอีกหน่อยครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "ตรงไป",
+   "recall": 3,
+   "line": 3,
+   "is_target": false,
+   "text": "ได้ค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "โกรธ",
+   "recall": 1,
+   "line": 1,
+   "is_target": true,
+   "text": "คุณโกรธฉันเหรอคะ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "คุณ…ฉัน between friends is stiff. A friend would drop the pronoun or use a nickname. Fine as a polite learner form.",
+     "correction": "โกรธฉันเหรอคะ (kròot chǎn rǒe khá)"
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "explain": "ก is written 'k' here (kròot) but 'g' everywhere else (gin, gaa-fae). The tone and vowel are correct; only the romanisation is inconsistent.",
+     "correction": "gròot"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "โกรธ",
+   "recall": 1,
+   "line": 2,
+   "is_target": false,
+   "text": "ไม่ครับ ไม่เป็นไรครับ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "To deny a เหรอ / หรือเปล่า question, เปล่า is the natural word. 'ไม่ครับ ไม่เป็นไรครับ' ('no, never mind') half implies he is a bit upset, and it also gives away recall 2's target pattern.",
+     "correction": "เปล่าครับ ไม่ได้โกรธครับ (plào khráp mâi dâi gròot khráp)"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "โกรธ",
+   "recall": 1,
+   "line": 3,
+   "is_target": false,
+   "text": "ดีแล้วค่ะ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "explain": "'ดีแล้วค่ะ' means 'that's fine as it is'. To mean 'oh good, then' Thai speakers say งั้นก็ดีค่ะ / ดีจังค่ะ.",
+     "correction": "งั้นก็ดีค่ะ (ngán gâw dii khâ)"
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "โกรธ",
+   "recall": 2,
+   "line": 1,
+   "is_target": false,
+   "text": "ขอโทษนะคะ ฉันมาสาย",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "โกรธ",
+   "recall": 2,
+   "line": 2,
+   "is_target": true,
+   "text": "ไม่เป็นไรครับ ผมไม่โกรธครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "โกรธ",
+   "recall": 2,
+   "line": 3,
+   "is_target": false,
+   "text": "ขอบคุณค่ะ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "โกรธ",
+   "recall": 3,
+   "line": 1,
+   "is_target": false,
+   "text": "เพื่อนคุณเป็นอะไรครับ",
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "lang": "th",
+   "target": "โกรธ",
+   "recall": 3,
+   "line": 2,
+   "is_target": true,
+   "text": "เขาโกรธเพราะเรามาสายค่ะ",
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "explain": "'Because we were late' includes the friend who is asking, yet he asks 'what's wrong with your friend?' as if he were not involved. The cue's 'because you were late' is also ambiguous between ฉันมาสาย and เรามาสาย.",
+     "correction": "Cue: '…say he is angry because the two of you were late.' Or change the sentence to เขาโกรธเพราะฉันมาสายค่ะ."
+    }
+   ]
+  },
+  {
+   "lang": "th",
+   "target": "โกรธ",
+   "recall": 3,
+   "line": 3,
+   "is_target": false,
+   "text": "งั้นไปขอโทษเขากันครับ",
+   "verdict": "clean",
+   "issues": []
+  }
+ ],
+ "summary": {
+  "ja": {
+   "clean": 21,
+   "minor": 8,
+   "major": 1,
+   "critical": 0
+  },
+  "zh": {
+   "clean": 20,
+   "minor": 10,
+   "major": 0,
+   "critical": 0
+  },
+  "th": {
+   "clean": 33,
+   "minor": 12,
+   "major": 0,
+   "critical": 0
+  }
+ },
+ "notes": "Overall the set is solid: all 45 target lines are grammatical, use the target in the stated sense, and are useful for beginners. There are no critical issues and one major one: ja いいえ recall 3 (いいえ、大丈夫です as a reply to thanks, which has a matching wrong gloss and a misleading cue). Most minor issues fall into four groups. (a) Staff register: in ja (あそこ/この where staff would say あちら/こちら) and zh (你 where staff would say 您), staff lines are less polite than real service speech. (b) Textbook stiffness: ja いいえ、乗りません; Thai คุณ between friends; zh echo answers. (c) Small coherence slips in surrounding lines: ja being told where the station is while at the station; th มีค่ะ answering พอไหม; ยัง answering a ไหม question; the 'we were late' perspective. (d) Pronunciation-field consistency. Mandarin sandhi is correct throughout (一 before tone 3 → yì, 一下 → yíxià, 3-3 → 2-3, 不 neutral in A-not-A). The exceptions are 'ní kéyǐ' against 'wǒ kéyǐ' in the same word, 哪里 written with a full-tone 里, and 回来 split as 'huí lái'. Thai tones are all correct. Length is lost in ร้าน 'rán' (×2) and แฟ 'fae' (should be 'faae' per the file's own convention, as in láaeo). Romanisation of unaspirated stops is inconsistent across the file: ก as g/k (gin vs kròot), ป as p/bp (pai vs bpen, bpìt), ต as t/dt (trong vs dtòk). None of these is ambiguous, because aspirates use kh/ph/th, but the app should pick one scheme. I did not flag this on every line; I mention it here. Distinctness: every word's three recalls are different uses. The weakest are zh 可以 recall 2, whose target repeats recall 1's reply, and th หลัง recalls 1 and 3, which are both temporal 'after' but with different complements (event vs clock time), so I accept them. Reviewed offline from my own knowledge; I am not a native speaker of any of the three languages, so the naturalness judgements, especially for Thai, should be confirmed by native speakers."
+}

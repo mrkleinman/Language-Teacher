@@ -5,6 +5,34 @@ Language Teacher is a static website on GitHub Pages, so it cannot keep a secret
 - About 15 minutes, once.
 - **Never paste the key into a chat, the app or GitHub.**
 
+## Easiest way: one line in Google Cloud Shell (about 10 minutes)
+
+1. **Get an Anthropic key.** Go to **console.anthropic.com**.
+   - **Settings → Billing:** add a small credit (for example US$5).
+   - **Settings → Limits:** set a monthly spend limit (for example US$5).
+   - **Settings → API keys → Create key:** copy the key. It starts with `sk-ant-` and is shown only once.
+2. **Open Google Cloud.** Go to **console.cloud.google.com** and sign in with your Google account.
+   - At the top, pick the project your Gemini key belongs to, or create a new one.
+   - The project needs **billing** linked (**Billing → Link a billing account**). This usage normally stays inside the free allowance.
+3. **Open Cloud Shell.** Click the **>_** button (top right, "Activate Cloud Shell"). A black terminal window opens at the bottom. If asked, click **Authorize**.
+4. **Paste this one line** into the terminal and press **Enter**:
+
+   ```
+   bash <(curl -sL https://raw.githubusercontent.com/mrkleinman/Language-Teacher/claude/session-continuation-check-a19meq/dev/server/google-cloud-anthropic/deploy.sh)
+   ```
+
+5. **Answer the questions:**
+   - **Paste your Anthropic key** and press Enter. Nothing appears while you paste; that is normal.
+   - **Press Enter** to get a random access code.
+   - Then wait 3–5 minutes.
+6. **Copy what it prints.** At the end you'll see a **Server address** (ending in `.run.app`) and an **Access code**. Enter both in the app: **Settings → AI Generation Model → Claude Haiku 5.5**, then **Save Address & Limits**, **Save Access Code** and **Test Connection**.
+
+If the script stops with a message, it says what to do (for example "switch on billing"). Running it again is safe.
+
+---
+
+## The manual way (Google Cloud console forms) — only if you prefer clicking
+
 ## 1. Anthropic key
 
 1. Go to **console.anthropic.com**. Under **Settings → Billing**, add a small credit (for example US$5).

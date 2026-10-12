@@ -132,6 +132,17 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
       c.teachingSameFrame('ja', J('どれがいい？'), J('どれがいいかな？'), 'どれ') && c.teachingSameFrame('ja', J('明日来る？'), J('明日、店に来る？'), '来る') &&
       !c.teachingSameFrame('ja', J('いつ来る？'), J('明日来る？'), '来る') && !c.teachingSameFrame('ja', J('これ、分かる？'), J('うん、分かるよ。'), '分かる') &&
       /if \(teachingPlanOn\(\)\) for \(const \[, e\] of seenMap\) if \(e && e\.targetId === targetId && e\.text && teachingSameFrame\('ja'/.test(SRC))
+    T('P14', 'Thai same-application check covers recalls accepted in EARLIER attempts and candidates of the same recovery batch (live Stage C: ผมยังไม่ตัดสินใจครับ / ผมยังตัดสินใจไม่ได้ครับ · ผมสามารถไปได้ครับ / ฉันสามารถไปได้ค่ะ)',
+      /if \(teachingPlanOn\(\) && accepted\.length\) \{ const _acc = accepted\.map\(a => a\.line\)/.test(SRC) && /\.concat\(_tpKept\), kw\)/.test(SRC) && /_tpKept\.push\(p\)/.test(SRC) &&
+      SRC.indexOf('if (teachingPlanOn() && accepted.length)') > SRC.indexOf("LOCAL_REPAIR cue (no paid call)") &&
+      !!c.thaiTpSameFrame(P2('ผมยังตัดสินใจไม่ได้ครับ', "I haven't decided yet."), [P2('ผมยังไม่ตัดสินใจครับ', "I haven't decided yet.")], tw('ตัดสินใจ')) &&
+      !!c.thaiTpSameFrame(P2('ฉันสามารถไปได้ค่ะ', 'I can go.'), [P2('ผมสามารถไปได้ครับ', 'I can go.')], tw('สามารถ')))
+    T('P15', 'Japanese under the plan: the scene is background (the plan decides the sentence) and かな only for genuine uncertainty (live Stage C: 入る in 10 lines, かな in 10)',
+      (() => { const d2 = { ...doko, _sceneLocalPremise: 'A and B meet outside a shop. B was about to go inside.' }, g = [{ recallIndex: 1 }, { recallIndex: 2 }, { recallIndex: 3 }]
+        const pOn = on(() => c.buildJapaneseGroupPrompt(d2, g, jinv, JV, c.ev('JA_REGISTER_DEFAULT'), { initial: true })), pOff = c.buildJapaneseGroupPrompt(d2, g, jinv, JV, c.ev('JA_REGISTER_DEFAULT'), { initial: true })
+        const t = x => x.system + '\n' + x.user
+        return /background only: recalls must not contradict it/.test(t(pOn)) && !/every recall must make sense in THIS scene/.test(t(pOn)) && /every recall must make sense in THIS scene/.test(t(pOff)) })() && /ONLY when the speaker is genuinely unsure/.test(c.jaTpPermissionLine()) &&
+      /every recall must make sense in THIS scene \(same situation, same people\)/.test(SRC))
     T('P8', 'bounded repair: under the plan a Mandarin repeat is recorded (the same repeat twice ends paid attempts) and the retry names the failure and the clashing recall; quota recovery passes rejection memory instead of seeding rejected sentences as accepted',
       /_rej\.record\(_rejScope, cand\.chinese, 'same application as ' \+ _clash\)/.test(SRC) && /teachingRepairLine\(last, _zhClash/.test(SRC) && /priorRejected: _tpPrior/.test(SRC) &&
       /it repeats the accepted recall/.test(c.teachingRepairLine('same application', '这个很大', c.teachingPlan('zh', ZTG[0]), 2)))

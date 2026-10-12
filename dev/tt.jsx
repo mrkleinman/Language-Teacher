@@ -15094,6 +15094,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           }
         })
       }
+      // (after the local cue repair, which could otherwise re-admit the line)
+      // v683 teaching plan: a later attempt is compared with the recalls ALREADY accepted for this target, not only with its own
+      // batch (live Stage C: ผมยังไม่ตัดสินใจครับ was accepted as recall 1 and ผมยังตัดสินใจไม่ได้ครับ as recall 3)
+      if (teachingPlanOn() && accepted.length) { const _acc = accepted.map(a => a.line)
+        qualRes.valid = qualRes.valid.filter(l => { const x = thaiTpSameFrame(l, _acc, target); if (x) qualRes.failures.push('same application as the accepted recall "' + x + '" with a word swapped — use the word in a different application'); return !x }) }
       if (qualRes.valid.length < genderValid.length) {
         // Bank the lines that DID pass before retrying; only the shortfall is re-asked.
         qualRes.valid.forEach(v => {
@@ -20175,6 +20180,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
       sceneId: (c.coherenceRepair && c.coherenceRepair.sceneId) || (_lp && _lp.sceneId) || null, scenePurpose: (_lp && _lp.purpose) || null }
   })
   // deterministic gates first (target presence, script, speaker, markup, template, time)
+  const _tpKept = []   // v683: candidates of THIS batch are compared with each other too (live: ผมสามารถไปได้ครับ / ฉันสามารถไปได้ค่ะ)
   cands = cands.filter(p => {
     const why = []
     // v652 §6 — enforced BEFORE closed vocabulary, cue QC, naturalness QC and phonetics: no paid check
@@ -20184,11 +20190,12 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     const g = thaiLineGate(p, keywords, c.vocab)
     g.problems.forEach(x => why.push(x.code + ': ' + x.why))
     if (have.some(h => h.thai === p.thai)) why.push('DUPLICATE of an existing TARGET PAIR')
-    { const _sf = teachingPlanOn() ? thaiTpSameFrame(p, have.filter(h => h && (h.targetId === kw.wordId || h.wordId === kw.wordId)), kw) : ''; if (_sf) why.push('same application as the accepted recall "' + _sf + '" with a word swapped') }
+    { const _sf = teachingPlanOn() ? thaiTpSameFrame(p, have.filter(h => h && (h.targetId === kw.wordId || h.wordId === kw.wordId)).concat(_tpKept), kw) : ''; if (_sf) why.push('same application as the accepted recall "' + _sf + '" with a word swapped') }
     // v657 §3 — the same acceptance contract as generation and the final count (deterministic dimensions here)
     if (!why.length) { const v = validateThaiTargetPair(p, kw, { vocab: c.vocab, track, existing: have }, 'quota-recovery')
       v.failed.filter(k => k !== 'TARGET_PRESENT').forEach(k => why.push(v.reasons.find(r => r.startsWith(k + ':')))) }
     if (why.length) { fail(p, why.join('; ')); return false }
+    _tpKept.push(p)
     return true
   })
   // closed vocabulary WITHOUT template fallback; the blocked words feed the next request
@@ -34550,7 +34557,7 @@ function jaTpWordClass(target) {
   return teachingWordClass('ja', target)
 }
 function jaTpPermissionLine() {
-  return 'GRAMMAR PERMISSIONS: you may end a sentence with かな ("I wonder…" — the English and the cue MUST show that uncertainty) or with ' +
+  return 'GRAMMAR PERMISSIONS: you may end a sentence with かな ("I wonder…") ONLY when the speaker is genuinely unsure — not as a softener on ordinary lines; the English and the cue MUST show that uncertainty — or with ' +
     'sentence-ending な (a reflective / emphatic "…, isn\'t it" — never the prohibitive "don\'t do" な after a verb), and you may start with the ' +
     'interjection あ or え ONLY when the speaker is really reacting to something just said or noticed — never as filler. These are scaffolding, not new words. ' + JA_TP_STILL_RESTRICTED.join(' / ') + ' and any other particle not listed ' +
     'above are NOT allowed yet.\n'
@@ -40210,7 +40217,10 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
       'Do not force unnatural variation just to be different. ' + range.contract.promptRule + '\n' +
     ((c.scenePremise || target._scenePurpose || target._sceneLocalPremise) ? (c.scenePremise ? 'LESSON THEME (broad): ' + c.scenePremise + '\n' : '') +
       (target._sceneLocalPremise || target._scenePurpose ? 'THIS SCENE: ' + (target._sceneLocalPremise || '') + (target._scenePurpose ? (target._sceneLocalPremise ? ' (' + target._scenePurpose + ')' : target._scenePurpose) : '') +
-      ' — every recall must make sense in THIS scene (same situation, same people).\n' : '') : '') +
+      (teachingPlanOn()
+        // v683 teaching plan: the scene is background, the plan decides the sentence (live Stage C: "B was about to go inside" put 入る in 10 lines)
+        ? ' — background only: recalls must not contradict it, but each follows its TEACHING PLAN application; do not repeat the scene\'s action in every line.\n'
+        : ' — every recall must make sense in THIS scene (same situation, same people).\n') : '') : '') +
     jaDuplicateContextBlock({ acceptedForTarget: c.acceptedForTarget, usedInTrack: c.usedInTrack }) + '\n' +
     (failures.length ? 'PREVIOUS FAILURES (exact reasons) — fix these:\n' + failures.map(s => '  recall ' + s.recallIndex + ': ' + s.lastFailure +
       (s.failedSentences && s.failedSentences.length ? ' — rejected: ' + s.failedSentences.join('／') : '')).join('\n') + '\n' : '') +

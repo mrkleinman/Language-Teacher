@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v682"/>
+<meta name="app-version" content="v683"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v682';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v682').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v683';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v683').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6053,12 +6053,12 @@ function matchesJapaneseTarget(sentence, target) {
 function japaneseBeltFor(vocab) { return calculateBeltRank((vocab||[]).filter(w => w.status === 'known').length) }
 // Per-TRACK allowance for the learner's active rank. Starting a second track the
 // same day grants the full allowance again — the limit is per track, not per day.
-function beltNewAllowanceFor(vocab) {
-  return getNewWordLimitForBelt(earliestIncompleteBelt(vocab) || 'White')
+function beltNewAllowanceFor(vocab, lang) {
+  return newWordQuotaFor(vocab, lang || 'th')
 }
 // Per-track, rank-configured. Previously newSlotsFor(vocab), which keys on total
 // known count and so drifted away from the learner's actual belt.
-// v654 §12 — Japanese Daily introduces exactly JA_DAILY_NEW_WORDS (3); the belt allowance is Thai's
+// v683 — Japanese Daily introduces newWordsPerTrack('ja') from the ONE configuration
 function japaneseSlotsFor(vocab) { return newWordsPerTrack('ja', 'daily', vocab) }
 // v665: the Japanese length numbers come from the ONE belt contract (no known-count table)
 function japaneseUnitRange(vocab) {
@@ -6196,7 +6196,7 @@ function isUnseen(w) { return (w.repCount || 0) === 0 && !w.lastSeen }
 // The belt page's "Introducing N new words per track" now comes from the SAME
 // config the selector uses, so the two can never disagree again.
 function newSlotsFor(vocab) {
-  return getNewWordLimitForBelt(earliestIncompleteBelt(vocab) || 'White')
+  return newWordQuotaFor(vocab, 'th')
 }
 const OK_STREAK_TO_KNOWN = 7
 const OK_STREAK_TO_KNOWN_LAPSED = 9
@@ -6484,7 +6484,39 @@ const BELT_CONFIG = {
   'Shodan':          { newWordLimit: 15 },
 }
 function getBeltConfig(beltName) { return BELT_CONFIG[beltName] || BELT_CONFIG['White'] }
-function getNewWordLimitForBelt(beltName) { return getBeltConfig(beltName).newWordLimit }
+// v683 — THE authoritative new-words-per-Daily-Track configuration for every language (owner decision 2026-10-12):
+// the belt table above, plus ONE explicit beginner exception at Mukyu (White belt).
+//   Rank            Thai  Japanese  Mandarin
+//   Mukyu             3      3         5        ← DAILY_NEW_WORDS_MUKYU
+//   10th–9th Kyu      5      5         5
+//   8th–7th Kyu       7      7         7
+//   6th–5th Kyu      10     10        10
+//   4th–3rd Kyu      12     12        12
+//   2nd Kyu–Shodan   15     15        15
+// Every Daily Track still has 30 targets; due reviews fill the rest, under the existing ceilings and debt rules.
+const DAILY_NEW_WORDS_MUKYU = Object.freeze({ th: 3, ja: 3, zh: 5 })
+function getNewWordLimitForBelt(beltName, lang) {
+  const b = beltName || 'White'
+  if (b === 'White') { const x = DAILY_NEW_WORDS_MUKYU[lang || 'th']; if (x != null) return x }
+  return getBeltConfig(b).newWordLimit
+}
+// v683 — the per-track NEW quota follows the learner's RANK: the rank the belt card, the rank test and the length rules
+// show (rankProgressFor). The strict earliest-incomplete belt still decides WHICH words are drawn,
+// but must not decide HOW MANY: a 10th Kyu learner (White rank test passed) with White words still "learning" is not Mukyu.
+function quotaBeltFor(vocab) {
+  const v = vocab || []
+  // the belt card's own resolver, read from the learner's words (a sandbox / test rank override never changes a quota)
+  let name = 'White'
+  try { const r = rankProgressFor(v); if (r && r.current && r.current.label) name = r.current.label } catch (e) {}
+  // a bank with no curriculum at that rank (Mandarin past White today) counts as the first belt after its last allocated one
+  if (v.length && !wordsForRank(v, name).length) {
+    const last = CURRICULUM_BELTS.slice().reverse().find(b => wordsForRank(v, b.name).length)
+    const nxt = last && CURRICULUM_BELTS[CURRICULUM_BELTS.indexOf(last) + 1]
+    if (nxt) name = nxt.name
+  }
+  return name
+}
+function newWordQuotaFor(vocab, lang) { return getNewWordLimitForBelt(quotaBeltFor(vocab), lang || 'th') }
 // Kept for compatibility; both now resolve to the same number.
 const BELT_NEW_ALLOWANCE = Object.fromEntries(
   Object.entries(BELT_CONFIG).map(([k, v]) => [k, v.newWordLimit]))
@@ -6538,8 +6570,8 @@ function summariseTargets(targets, today) {
 }
 // Hard pre-generation validation. Fails loudly in development rather than shipping
 // a track that silently over-introduces.
-function assertTrackComposition(targets, activeBelt, trackSize, onLog) {
-  const limit = getNewWordLimitForBelt(activeBelt)
+function assertTrackComposition(targets, activeBelt, trackSize, onLog, quota) {
+  const limit = quota != null ? quota : getNewWordLimitForBelt(activeBelt)
   const actualNew = countGenuinelyNew(targets)
   const summary = summariseTargets(targets)
   const displayedNew = summary.new || 0
@@ -6567,6 +6599,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   const _elig = opts && opts.eligible ? opts.eligible : null
   const usable = (vocab || []).filter(w => isUsableWord(w) && w.status !== 'locked')
   const activeBelt = earliestIncompleteBelt(usable)
+  const _quota = newWordQuotaFor(vocab, 'th')   // v683: HOW MANY new words = the learner's rank; activeBelt = WHICH words
   const diag = { activeBelt, unfinishedInBelt: 0, newAvailableInBelt: 0,
                  selectedNew: [], selectedReinforce: [], spilloverReason: null, beyondAdmitted: [] }
   const out = []
@@ -6574,7 +6607,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   // The NEW budget is enforced at ADMISSION, not by sorting afterwards. Once it is
   // spent, every later stage — belt rest, spillover, completed words, beyond
   // curriculum, padding — must reject genuinely unseen words.
-  const newLimit = getNewWordLimitForBelt(activeBelt)
+  const newLimit = _quota
   let newAdmitted = 0
   const take = (list, stage) => list.forEach(w => {
     if (seen.has(w.id) || out.length >= cap) return
@@ -6595,7 +6628,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   // filtered to the belt rather than trusted.
   // Per-track allowance from the ACTIVE BELT. Not derived from known-count, and not
   // from however many words an injected daily list happened to contain.
-  const allowance = getNewWordLimitForBelt(activeBelt)
+  const allowance = _quota
   if (activeBelt) {
     const beltWords = wordsForRank(usable, activeBelt)
     const unfinished = beltWords.filter(w => !isWordCompleteForBelt(w))
@@ -6704,7 +6737,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   }
   // FINAL ENFORCEMENT. Whatever any path did, the returned set cannot exceed the
   // allowance: excess unseen words are dropped and replaced with review material.
-  const limit = getNewWordLimitForBelt(activeBelt)
+  const limit = _quota
   let kept = 0
   const enforced = out.filter(w => {
     if (!isGenuinelyNew(w)) return true
@@ -6728,7 +6761,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   diag.actualNew = countGenuinelyNew(out)
   diag.composition = summariseTargets(out, today)
   if (typeof window !== 'undefined') window.__lastBeltSelection = diag
-  assertTrackComposition(out, activeBelt, null)
+  assertTrackComposition(out, activeBelt, null, undefined, _quota)
   return out.slice(0, cap)
 }
 
@@ -17810,7 +17843,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v682'
+const LISTENING_BUILD_VERSION = 'v683'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -19145,7 +19178,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v682'
+const APP_BUILD_VERSION = 'v683'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -31362,17 +31395,14 @@ function targetActivityPreflight(w, lang, ctx) {
   if (md.spokenSuitability === 'FORMAL_SPOKEN') return out(TARGET_SUITABILITY.REGISTER_DEPENDENT, 'FORMAL_SPOKEN', md.suitabilityBasis)
   return out(TARGET_SUITABILITY.SUITABLE, '', md.sources.join(', '))
 }
-// §12 — the ONE authoritative NEW-words-per-track configuration
-const JA_DAILY_NEW_WORDS = 3
-// v671 §B4 — Mandarin Daily at Mukyu (White belt): 5 NEW + 25 REVIEW (3 + 27 when only 3 new words are eligible). Higher
-// belts keep the previous Mandarin Daily count (3). Revision / Listening: 0 NEW.
-const ZH_DAILY_NEW_WORDS_MUKYU = 5, ZH_DAILY_NEW_WORDS_DEFAULT = 3
-function zhDailyNewWords(vocab) { const b = earliestIncompleteBelt(vocab || []); return (b === 'White' || (b == null && !(vocab || []).length)) ? ZH_DAILY_NEW_WORDS_MUKYU : ZH_DAILY_NEW_WORDS_DEFAULT }
+// §12 / v683 — NEW words per track come from the ONE configuration (getNewWordLimitForBelt + DAILY_NEW_WORDS_MUKYU).
+// The quota follows the learner's rank (newWordQuotaFor); a bank with no curriculum at that rank counts as the next belt.
+function dailyNewWordsFor(lang, vocab) { return newWordQuotaFor(vocab, lang) }
+function zhDailyNewWords(vocab) { return dailyNewWordsFor('zh', vocab) }
 function newWordsPerTrack(language, mode, vocab) {
   if (mode === 'revision' || mode === 'listening') return 0
-  if (language === 'ja') return JA_DAILY_NEW_WORDS
-  if (language === 'zh') return zhDailyNewWords(vocab)
-  return beltNewAllowanceFor(vocab || [])            // Thai: the belt-configured allowance (unchanged)
+  if (language === 'ja' || language === 'zh') return dailyNewWordsFor(language, vocab)
+  return beltNewAllowanceFor(vocab || [], 'th')
 }
 
 const VOCAB_INELIGIBLE = Object.freeze({
@@ -35194,7 +35224,7 @@ function beltCandidateOrder(words, today) {
 // Builds the candidate pool: earliest incomplete belt first, later belts only to
 // fill remaining capacity. Completed words never consume progression slots while
 // unfinished same-belt words remain.
-function beltPriorityCandidates(vocab, cap, today) {
+function beltPriorityCandidates(vocab, cap, today, lang) {
   const first = earliestIncompleteBelt(vocab)
   const out = []
   const seen = new Set()
@@ -35206,7 +35236,7 @@ function beltPriorityCandidates(vocab, cap, today) {
     // Without this, a due-heavy belt filled every slot and the unseen words never
     // reached the pool — so the NEW allowance was silently lost.
     const unseen = beltCandidateOrder(unfinished.filter(w => isGenuinelyNew(w)), today)
-    push(unseen.slice(0, getNewWordLimitForBelt(first)))
+    push(unseen.slice(0, newWordQuotaFor(vocab, lang)))
     push(beltCandidateOrder(unfinished.filter(w => !seen.has(w.id)), today))
   }
   // Spillover: later belts, in curriculum order, still unfinished-first.
@@ -35375,7 +35405,7 @@ function selectTrackTargets(opts) {
   const beltPriority = opts.beltPriority !== false
   // Build a candidate pool LARGER than the track so the reserved NEW slots are not
   // crowded out by due words competing for the same cap.
-  const belt = beltPriority ? beltPriorityCandidates(vocab, cap * 3, today) : { first: null, candidates: null }
+  const belt = beltPriority ? beltPriorityCandidates(vocab, cap * 3, today, opts.lang) : { first: null, candidates: null }
   // Everything below draws from this scope, so SRS ranks WITHIN the belt rather
   // than across the whole bank.
   const scope = belt.candidates && belt.candidates.length ? belt.candidates : vocab
@@ -35389,7 +35419,7 @@ function selectTrackTargets(opts) {
   // words first left zero room for new ones, so a learner with plenty of unseen
   // vocabulary could still be offered none.
   const newSelector = opts.newSelector || (() => [])
-  const newAllowance = beltPriority ? getNewWordLimitForBelt(belt.first) : cap
+  const newAllowance = beltPriority ? newWordQuotaFor(vocab, opts.lang) : cap
   const availableNew = inScope(newSelector(vocab)).filter(w => isGenuinelyNew(w) || w._occupiesNewSlot).length
   const reserve = Math.min(newAllowance, availableNew)
   const due = inScope(dueSelector(vocab)).slice(0, Math.max(0, cap - reserve))
@@ -36422,7 +36452,7 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
 
       <div>
         <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' }}>
-          {describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:(targets||[]).length, due:0, reinforce:0 })}
+          {describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:(targets||[]).length, due:0, reinforce:0 }, targets)}
         </p>
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
           {(targets || []).map(w => (
@@ -36956,7 +36986,7 @@ function newTargetShortfallReport(o) {
   let eligibleNewCount = 0
   for (const w of unseen.slice(0, 400)) { try { if (!jazhTargetEligible(w, lang)) continue; if (inv && lang === 'ja' && !japaneseTargetFeasibility(w, inv).teachable) continue; eligibleNewCount++ } catch (e) {} }
   let beltLimit = null
-  try { if (sel.belt) beltLimit = getNewWordLimitForBelt(sel.belt) } catch (e) {}
+  try { if (sel.belt) beltLimit = newWordQuotaFor(vocab, lang) } catch (e) {}
   let slotLimit = null
   try { if (lang === 'ja') slotLimit = japaneseSlotsFor(vocab) } catch (e) {}
   const ceiling = [beltLimit, slotLimit].filter(x => x != null).reduce((m, x) => Math.min(m, x), Infinity)
@@ -37516,7 +37546,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
     <div>
       <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
         {/* §10 — real role counts, so the learner is never told a 6-target track has 3 words */}
-        <span>{describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:newCount, due:0, reinforce:0 })}</span>
+        <span>{describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:newCount, due:0, reinforce:0 }, targets)}</span>
         <span style={{ color:'var(--muted)' }}>{'\u00B7'} {allowCtx.all.length} content words available</span>
       </p>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
@@ -37882,7 +37912,7 @@ function JapaneseGenerator({ vocab, targets, selection, register: registerProp, 
       {/* §11/§12 — targets stay close to the process; static curriculum info compressed */}
       <div>
         <p style={{ fontSize:9, color:'var(--muted)', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.05em' }}>
-          {describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:newCount, due:0, reinforce:0 })}
+          {describeTargetSelection((selection && selection.counts) || { total:(targets||[]).length, new:newCount, due:0, reinforce:0 }, targets)}
         </p>
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
           {(targets || []).map((w, i) => (
@@ -38073,7 +38103,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
     () => [...tracks].reverse().slice(0, 3).map(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)),
     [tracks])
   const selection = useMemo(() => hasVocab ? selectTrackTargets({
-    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds,
+    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds, lang: 'ja',
     newSelector: v => japaneseSelectNewSlots(v, slots),      // §5 unchanged new-slot logic
   }) : { targets: [], counts: { total:0, new:0, due:0, reinforce:0 }, expectedRecalls: 0 },
   [vocab, slots, hasVocab, recentTrackWordIds])
@@ -40657,8 +40687,8 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
   // A word rated 'hard' keeps its NEW slot and is re-offered. It occupies the slot,
   // so it must be reported as NEW too — classifying it as REINFORCE is what made a
   // 3-slot rank display "1 NEW · 29 REINFORCE".
-  // v654 §12 — the NEW count is exactly newWordsPerTrack('ja','daily') = 3: slots saved under the old
-  // 5-slot belt allowance never carry more than 3 words into one track
+  // v683 — the NEW count is exactly newWordsPerTrack('ja','daily') (the ONE configuration: 3 at Mukyu, 5 at 10th Kyu …);
+  // carried slots never exceed it
   const carried = (savedSlots || [])
     .map(id => vocab.find(w => w.id === id))
     .filter(w => w && w.status === 'new')
@@ -40675,7 +40705,7 @@ function japaneseSelectNewSlots(vocab, savedSlots) {
 }
 
 // §43/§45 — Mandarin dashboard. Same visual language as Thai/Japanese.
-function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
+function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack, notice,
                              onOpenTrack, onDeleteTrack, onLearnWords, onStartSrsTrack, srsDue, onNav, selection, revisionSelection, listeningSelection, onStartListening, onRebuildListening }) {
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
@@ -40724,13 +40754,17 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
         <span style={{ fontSize:10, color:'var(--muted)', marginLeft:'auto' }}>very casual, still polite</span>
       </Card>
 
-      {targets && targets.length > 0 && (
+      {/* v683 — Next targets lists the WHOLE Daily Track (the 30 targets the generator receives: new + review), not only the
+          raw new-word picks; the Learn New Words card below keeps showing just the new words */}
+      {(() => { const list = (trackTargets && trackTargets.length) ? trackTargets : (targets || [])
+        const nNew = list.filter(t => t.selectionRole ? t.selectionRole === 'new' : t.status === 'new').length
+        return list.length > 0 && (
         <Card style={{ padding:'14px 16px' }}>
           <p style={{ fontSize:12, fontWeight:600, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
-            Next targets ({targets.length})
+            Next targets ({list.length}) · {nNew} new · {list.length - nNew} review
           </p>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {targets.map(t => (
+            {list.map(t => (
               <div key={t.id} style={{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap' }}>
                 <span className="zh" style={{ fontSize:20, fontWeight:700, color:'var(--gold)' }}>{t.chinese}</span>
                 <span className="phon" style={{ fontSize:13, color:'var(--text)' }}>{t.pinyin}</span>
@@ -40739,7 +40773,7 @@ function MandarinDashboard({ vocab, tracks, targets, onStartTrack, notice,
             ))}
           </div>
         </Card>
-      )}
+      ) })()}
 
       {/* §4 — learn the new words (v671: 5 at Mukyu) before practising them */}
       <button onClick={onLearnWords} disabled={!targets || !targets.length}
@@ -40872,7 +40906,7 @@ function MandarinTeacher({ lang, onSetLang }) {
     () => [...tracks].reverse().slice(0, 3).map(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)),
     [tracks])
   const newSelection = useMemo(() => (vocab.length ? selectTrackTargets({
-    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds,
+    vocab, targetCap: TRACK_TARGET_CAP, recentTrackWordIds, lang: 'zh',
     newSelector: v => mandarinSelectTargets(v, slots),
   }) : { targets: [], counts:{ total:0, new:0, due:0, reinforce:0 }, expectedRecalls:0 }),
   [vocab, slots, recentTrackWordIds])
@@ -40989,7 +41023,7 @@ function MandarinTeacher({ lang, onSetLang }) {
         lastTrackCost={null} geminiKey={cred.geminiKey} geminiSpend={cred.geminiSpend} />
       <main>
         {view === 'dashboard' && (
-          <MandarinDashboard vocab={vocab} tracks={tracks} targets={newTargets} notice={notice}
+          <MandarinDashboard vocab={vocab} tracks={tracks} targets={newTargets} trackTargets={targets} notice={notice}
             srsDue={srsSelection.counts.due} selection={newSelection} onNav={setView}
             onLearnWords={() => { setTrackMode('daily'); setNotice(''); setView('learn') }}
             revisionSelection={revisionSelection}

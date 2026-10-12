@@ -6018,7 +6018,7 @@ function japaneseBeltFor(vocab) { return calculateBeltRank((vocab||[]).filter(w 
 // Per-TRACK allowance for the learner's active rank. Starting a second track the
 // same day grants the full allowance again — the limit is per track, not per day.
 function beltNewAllowanceFor(vocab, lang) {
-  return getNewWordLimitForBelt(earliestIncompleteBelt(vocab) || 'White', lang || 'th')
+  return newWordQuotaFor(vocab, lang || 'th')
 }
 // Per-track, rank-configured. Previously newSlotsFor(vocab), which keys on total
 // known count and so drifted away from the learner's actual belt.
@@ -6160,7 +6160,7 @@ function isUnseen(w) { return (w.repCount || 0) === 0 && !w.lastSeen }
 // The belt page's "Introducing N new words per track" now comes from the SAME
 // config the selector uses, so the two can never disagree again.
 function newSlotsFor(vocab) {
-  return getNewWordLimitForBelt(earliestIncompleteBelt(vocab) || 'White', 'th')
+  return newWordQuotaFor(vocab, 'th')
 }
 const OK_STREAK_TO_KNOWN = 7
 const OK_STREAK_TO_KNOWN_LAPSED = 9
@@ -6464,6 +6464,23 @@ function getNewWordLimitForBelt(beltName, lang) {
   if (b === 'White') { const x = DAILY_NEW_WORDS_MUKYU[lang || 'th']; if (x != null) return x }
   return getBeltConfig(b).newWordLimit
 }
+// v683 — the per-track NEW quota follows the learner's RANK: the rank the belt card, the rank test and the length rules
+// show (rankProgressFor). The strict earliest-incomplete belt still decides WHICH words are drawn,
+// but must not decide HOW MANY: a 10th Kyu learner (White rank test passed) with White words still "learning" is not Mukyu.
+function quotaBeltFor(vocab) {
+  const v = vocab || []
+  // the belt card's own resolver, read from the learner's words (a sandbox / test rank override never changes a quota)
+  let name = 'White'
+  try { const r = rankProgressFor(v); if (r && r.current && r.current.label) name = r.current.label } catch (e) {}
+  // a bank with no curriculum at that rank (Mandarin past White today) counts as the first belt after its last allocated one
+  if (v.length && !wordsForRank(v, name).length) {
+    const last = CURRICULUM_BELTS.slice().reverse().find(b => wordsForRank(v, b.name).length)
+    const nxt = last && CURRICULUM_BELTS[CURRICULUM_BELTS.indexOf(last) + 1]
+    if (nxt) name = nxt.name
+  }
+  return name
+}
+function newWordQuotaFor(vocab, lang) { return getNewWordLimitForBelt(quotaBeltFor(vocab), lang || 'th') }
 // Kept for compatibility; both now resolve to the same number.
 const BELT_NEW_ALLOWANCE = Object.fromEntries(
   Object.entries(BELT_CONFIG).map(([k, v]) => [k, v.newWordLimit]))
@@ -6517,8 +6534,8 @@ function summariseTargets(targets, today) {
 }
 // Hard pre-generation validation. Fails loudly in development rather than shipping
 // a track that silently over-introduces.
-function assertTrackComposition(targets, activeBelt, trackSize, onLog) {
-  const limit = getNewWordLimitForBelt(activeBelt)
+function assertTrackComposition(targets, activeBelt, trackSize, onLog, quota) {
+  const limit = quota != null ? quota : getNewWordLimitForBelt(activeBelt)
   const actualNew = countGenuinelyNew(targets)
   const summary = summariseTargets(targets)
   const displayedNew = summary.new || 0
@@ -6546,6 +6563,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   const _elig = opts && opts.eligible ? opts.eligible : null
   const usable = (vocab || []).filter(w => isUsableWord(w) && w.status !== 'locked')
   const activeBelt = earliestIncompleteBelt(usable)
+  const _quota = newWordQuotaFor(vocab, 'th')   // v683: HOW MANY new words = the learner's rank; activeBelt = WHICH words
   const diag = { activeBelt, unfinishedInBelt: 0, newAvailableInBelt: 0,
                  selectedNew: [], selectedReinforce: [], spilloverReason: null, beyondAdmitted: [] }
   const out = []
@@ -6553,7 +6571,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   // The NEW budget is enforced at ADMISSION, not by sorting afterwards. Once it is
   // spent, every later stage — belt rest, spillover, completed words, beyond
   // curriculum, padding — must reject genuinely unseen words.
-  const newLimit = getNewWordLimitForBelt(activeBelt)
+  const newLimit = _quota
   let newAdmitted = 0
   const take = (list, stage) => list.forEach(w => {
     if (seen.has(w.id) || out.length >= cap) return
@@ -6574,7 +6592,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   // filtered to the belt rather than trusted.
   // Per-track allowance from the ACTIVE BELT. Not derived from known-count, and not
   // from however many words an injected daily list happened to contain.
-  const allowance = getNewWordLimitForBelt(activeBelt)
+  const allowance = _quota
   if (activeBelt) {
     const beltWords = wordsForRank(usable, activeBelt)
     const unfinished = beltWords.filter(w => !isWordCompleteForBelt(w))
@@ -6683,7 +6701,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   }
   // FINAL ENFORCEMENT. Whatever any path did, the returned set cannot exceed the
   // allowance: excess unseen words are dropped and replaced with review material.
-  const limit = getNewWordLimitForBelt(activeBelt)
+  const limit = _quota
   let kept = 0
   const enforced = out.filter(w => {
     if (!isGenuinelyNew(w)) return true
@@ -6707,7 +6725,7 @@ function pickBeltPriorityTargets(vocab, todayNewWords, today, cap, opts) {
   diag.actualNew = countGenuinelyNew(out)
   diag.composition = summariseTargets(out, today)
   if (typeof window !== 'undefined') window.__lastBeltSelection = diag
-  assertTrackComposition(out, activeBelt, null)
+  assertTrackComposition(out, activeBelt, null, undefined, _quota)
   return out.slice(0, cap)
 }
 
@@ -31342,11 +31360,8 @@ function targetActivityPreflight(w, lang, ctx) {
   return out(TARGET_SUITABILITY.SUITABLE, '', md.sources.join(', '))
 }
 // §12 / v683 — NEW words per track come from the ONE configuration (getNewWordLimitForBelt + DAILY_NEW_WORDS_MUKYU).
-// A language whose bank is complete for every listed belt (Mandarin past White today) is treated as 10th Kyu.
-function dailyNewWordsFor(lang, vocab) {
-  const v = vocab || [], b = earliestIncompleteBelt(v)
-  return getNewWordLimitForBelt(b || (v.length && lang !== 'th' ? 'Orange' : 'White'), lang)
-}
+// The quota follows the learner's rank (newWordQuotaFor); a bank with no curriculum at that rank counts as the next belt.
+function dailyNewWordsFor(lang, vocab) { return newWordQuotaFor(vocab, lang) }
 function zhDailyNewWords(vocab) { return dailyNewWordsFor('zh', vocab) }
 function newWordsPerTrack(language, mode, vocab) {
   if (mode === 'revision' || mode === 'listening') return 0
@@ -35185,7 +35200,7 @@ function beltPriorityCandidates(vocab, cap, today, lang) {
     // Without this, a due-heavy belt filled every slot and the unseen words never
     // reached the pool — so the NEW allowance was silently lost.
     const unseen = beltCandidateOrder(unfinished.filter(w => isGenuinelyNew(w)), today)
-    push(unseen.slice(0, getNewWordLimitForBelt(first, lang)))
+    push(unseen.slice(0, newWordQuotaFor(vocab, lang)))
     push(beltCandidateOrder(unfinished.filter(w => !seen.has(w.id)), today))
   }
   // Spillover: later belts, in curriculum order, still unfinished-first.
@@ -35368,7 +35383,7 @@ function selectTrackTargets(opts) {
   // words first left zero room for new ones, so a learner with plenty of unseen
   // vocabulary could still be offered none.
   const newSelector = opts.newSelector || (() => [])
-  const newAllowance = beltPriority ? getNewWordLimitForBelt(belt.first, opts.lang) : cap
+  const newAllowance = beltPriority ? newWordQuotaFor(vocab, opts.lang) : cap
   const availableNew = inScope(newSelector(vocab)).filter(w => isGenuinelyNew(w) || w._occupiesNewSlot).length
   const reserve = Math.min(newAllowance, availableNew)
   const due = inScope(dueSelector(vocab)).slice(0, Math.max(0, cap - reserve))
@@ -36935,7 +36950,7 @@ function newTargetShortfallReport(o) {
   let eligibleNewCount = 0
   for (const w of unseen.slice(0, 400)) { try { if (!jazhTargetEligible(w, lang)) continue; if (inv && lang === 'ja' && !japaneseTargetFeasibility(w, inv).teachable) continue; eligibleNewCount++ } catch (e) {} }
   let beltLimit = null
-  try { if (sel.belt) beltLimit = getNewWordLimitForBelt(sel.belt, lang) } catch (e) {}
+  try { if (sel.belt) beltLimit = newWordQuotaFor(vocab, lang) } catch (e) {}
   let slotLimit = null
   try { if (lang === 'ja') slotLimit = japaneseSlotsFor(vocab) } catch (e) {}
   const ceiling = [beltLimit, slotLimit].filter(x => x != null).reduce((m, x) => Math.min(m, x), Infinity)

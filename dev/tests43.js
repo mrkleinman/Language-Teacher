@@ -24,7 +24,9 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
     T('Q1', 'ONE configuration gives the owner\'s table for every rank and language (Mukyu th 3 / ja 3 / zh 5; 10th–9th Kyu 5; 8th–7th 7; 6th–5th 10; 4th–3rd 12; 2nd Kyu–Shodan 15)',
       !bad.length, bad.map(([b]) => b + ': ' + ['th', 'ja', 'zh'].map(l => c.getNewWordLimitForBelt(b, l)).join('/')))
     T('Q2', 'every surface reads it: newWordsPerTrack (dashboard, belt card, selectors, logs, shortfall/QC checks) → getNewWordLimitForBelt; no separate Japanese or Mandarin constant remains',
-      !/JA_DAILY_NEW_WORDS|ZH_DAILY_NEW_WORDS/.test(SRC) && /function dailyNewWordsFor[\s\S]{0,300}getNewWordLimitForBelt/.test(SRC) &&
+      !/JA_DAILY_NEW_WORDS|ZH_DAILY_NEW_WORDS/.test(SRC) && /function dailyNewWordsFor\(lang, vocab\) \{ return newWordQuotaFor\(vocab, lang\) \}/.test(SRC) &&
+      /function newWordQuotaFor\(vocab, lang\) \{ return getNewWordLimitForBelt\(quotaBeltFor\(vocab\), lang \|\| 'th'\) \}/.test(SRC) &&
+      !/getNewWordLimitForBelt\((activeBelt|first, lang|belt\.first|sel\.belt|earliestIncompleteBelt)/.test(SRC.replace('quota != null ? quota : getNewWordLimitForBelt(activeBelt)', '')) &&
       /lang: 'ja',\n    newSelector: v => japaneseSelectNewSlots/.test(SRC) && /lang: 'zh',\n    newSelector: v => mandarinSelectTargets/.test(SRC))
     // a Japanese learner at 10th Kyu (White complete): the REAL selector picks 5 new words out of 30 targets
     const J = c.initJapaneseVocab(), today = new Date().toISOString().slice(0, 10)
@@ -39,6 +41,19 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
     const Z = c.initMandarinVocab(), Th = c.initVocab()
     T('Q4', 'Mukyu beginners: Mandarin 5, Thai 3 (owner table; Thai White was 5 in v682 — the one deliberate change, flagged in the report), Japanese 3',
       c.newWordsPerTrack('zh', 'daily', Z) === 5 && c.newWordsPerTrack('th', 'daily', Th) === 3 && c.newSlotsFor(Th) === 3 && c.newWordsPerTrack('ja', 'daily', c.initJapaneseVocab()) === 3)
+    // Q6 — the quota follows the learner's RANK (belt card / rank test), not the strict "every word known" belt. Like the owner's
+    // real Thai profile (White rank test passed, 36 White words still learning): rank 10th Kyu → 5, never the Mukyu 3.
+    const rank10 = v => { v.forEach(w => { if (w.curriculumIndex >= 1 && w.curriculumIndex <= 100) Object.assign(w, { status: 'learning', rankPassed: true, repCount: 3, okStreak: 0, lastSeen: today, dueDate: '2099-01-01' }) }); return v }
+    const T10 = rank10(c.initVocab())
+    // Japanese: White rank test passed, most White words known, 10 still learning (with EVERY White word still learning, v682's
+    // belt-priority rule draws no new words at all — unchanged here)
+    const J10 = c.initJapaneseVocab(); J10.forEach(w => { if (w.curriculumIndex >= 1 && w.curriculumIndex <= 100) Object.assign(w, { status: 'known', okStreak: 12, repCount: 15, lastSeen: today, dueDate: '2099-01-01' }) })
+    J10.filter(w => w.curriculumIndex >= 1 && w.curriculumIndex <= 100).slice(0, 10).forEach(w => Object.assign(w, { status: 'learning', okStreak: 2, rankPassed: true, dueDate: today }))
+    const thPick = c.pickWords(T10, 'daily', []), thNew = thPick.targets.filter(w => c.isGenuinelyNew(w)).length
+    const j10 = sel(J10), j10New = j10.targets.filter(t => t.selectionRole === 'new').length
+    T('Q6', 'quota follows the learner\'s RANK: White rank test passed but White words still learning (like the owner\'s Thai profile) → rank ' + c.rankProgressFor(T10).current.rank + ', strict belt ' + c.earliestIncompleteBelt(T10) + ': Thai dashboard ' + c.newSlotsFor(T10) + ' / Thai selector ' + thNew + ' new; Japanese ' + c.newWordsPerTrack('ja', 'daily', J10) + ' / selector ' + j10New + ' new (all 5, not the Mukyu 3)',
+      c.rankProgressFor(T10).current.rank === '10th Kyu' && c.earliestIncompleteBelt(T10) === 'White' && c.newSlotsFor(T10) === 5 && thNew === 5 && thPick.targets.length === 30 &&
+      c.rankProgressFor(J10).current.rank === '10th Kyu' && c.newWordsPerTrack('ja', 'daily', J10) === 5 && j10New === 5 && j10.targets.length === 30)
     T('Q5', 'Revision and Listening tracks introduce 0 new words in every language (unchanged)',
       ['th', 'ja', 'zh'].every(l => c.newWordsPerTrack(l, 'revision', []) === 0 && c.newWordsPerTrack(l, 'listening', []) === 0))
   }

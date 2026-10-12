@@ -1,0 +1,1592 @@
+{
+ "language": "ja",
+ "reviewer": "independent AI reviewer (Claude), not a native speaker",
+ "pairs": [
+  {
+   "pair": 1,
+   "target": "来る",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "The framing says they meet at a station, yet the opening asks whether Yumi is coming to the station. Fine only if this is a phone call before meeting; the lesson never sets that up.",
+     "correction": "Keep 駅まで来る？ (えきまでくる？ eki made kuru?) but frame the scene as a phone call before meeting."
+    }
+   ]
+  },
+  {
+   "pair": 2,
+   "target": "ごめん",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": [],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 3,
+   "target": "今",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "'Do you have any now?' has no referent: nothing has been mentioned that 'any' could refer to, and it follows 'Sorry, I'm busy today'.",
+     "correction": "今、時間ある？ is already pair 9; alternatively 今、どこ？ (いま、どこ？ ima, doko? 'Where are you now?')"
+    },
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "Cue 'Ask if they have any now' is vague English with no object; a learner cannot know what to ask about.",
+     "correction": "Cue: 'Ask where she is right now.' -> 今、どこ？"
+    },
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "今ある？ on its own is a low-value, context-free fragment.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 4,
+   "target": "来る",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "major",
+     "objective": true,
+     "explain": "Speaker is B (Yumi) but the cue tells the learner to 'Ask Yumi if she's coming soon' - Yumi cannot ask herself.",
+     "correction": "Make speaker A, or change cue to 'Ask Kenji if he's coming soon.'"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "A just asked B if she is coming; B immediately asking A 'are you coming soon?' makes no sense in the same exchange.",
+     "correction": "B: うん、もう行くよ。(うん、もういくよ。un, mou iku yo. 'Yeah, I'm leaving now.') or reassign line."
+    },
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": false,
+     "explain": "もう来る？ is colloquial for 'about to come?'; もうすぐ来る？ is the clearer form for 'coming soon?'",
+     "correction": "もうすぐ来る？ (もうすぐくる？ mou sugu kuru? 'Are you coming soon?')"
+    }
+   ]
+  },
+  {
+   "pair": 5,
+   "target": "ごめん",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "They are supposed to meet at a station, and A just asked if Yumi is coming to the station; now A asks which way the station is. The same question is repeated by B in pair 13.",
+     "correction": "Use a different ごめん context, e.g. ごめん、ちょっと遅れる。(ごめん、ちょっとおくれる。gomen, chotto okureru. 'Sorry, I'll be a bit late.')"
+    },
+    {
+     "criterion": "sense",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The line starts with the interjection あれ ('huh?') while あれ is also a target word taught as 'that over there' (pairs 68/71/74). This can confuse a beginner.",
+     "correction": "Drop あれ: ごめん、駅はどっち？"
+    },
+    {
+     "criterion": "speaker",
+     "severity": "minor",
+     "objective": false,
+     "explain": "If this is said to a stranger, ごめん is too casual (すみません). If it is said to Yumi it is fine, but the cue does not make the addressee clear.",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 6,
+   "target": "今",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": true,
+     "explain": "'Are you going somewhere from now?' is unnatural English; 今から means 'now / after this'.",
+     "correction": "English: 'Are you going somewhere now?'"
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Starting now' is awkward cue English.",
+     "correction": "Cue: 'Ask if he's heading somewhere now.'"
+    }
+   ]
+  },
+  {
+   "pair": 7,
+   "target": "来る",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "major",
+     "objective": false,
+     "explain": "After suggesting meeting at the station tomorrow, asking 'will you come again?' is redundant/odd; also a reply to 'are you going somewhere now?' is missing.",
+     "correction": "明日も駅に来る？ (あしたもえきにくる？ ashita mo eki ni kuru? 'Are you coming to the station tomorrow too?')"
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": false,
+     "explain": "A two-sentence answer from a two-part cue is heavy for a recall; the cue also gives away また.",
+     "correction": ""
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "また来る？ is drilled again word-for-word as pair 70 (また target), and 明日、駅で会おうよ is repeated in pairs 67/84.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 8,
+   "target": "ごめん",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": false,
+     "explain": "As a reply to 'Will you come again?', ちょっと分からない means 'I'm not sure', not 'I don't understand'. The English gloss misleads the learner.",
+     "correction": "English: 'Sorry, I'm not really sure.'"
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 9,
+   "target": "今",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Nearly identical to pair 45 (時間ある？) and pair 46 (今、ちょっと時間ある？), so the learner drills the same question three times.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 10,
+   "target": "どこ",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "A speaks twice in a row (pairs 9 and 10). After asking 'Do you have time now?', A then says 'Where?' to nothing.",
+     "correction": "Give to B as a reply with content, e.g. うん。どこ行く？ (うん。どこいく？ un. doko iku?)"
+    },
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "A bare どこ？ with no situation has limited teaching value.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 11,
+   "target": "行く",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "'Are you going to go?' follows 'Where?' with no referent; it is not an answer.",
+     "correction": "駅に行く？ (えきにいく？ eki ni iku? 'Are you going to the station?')"
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": true,
+     "explain": "'Are you going to go' is clumsy English.",
+     "correction": "Cue: 'Ask if he's going.'"
+    }
+   ]
+  },
+  {
+   "pair": 12,
+   "target": "どれ",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "There is no set of items in the scene for 'which one' to refer to.",
+     "correction": ""
+    },
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Which one is good?' is literal; in natural English it would be 'Which one do you want?' or 'Which is good?'",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 13,
+   "target": "どっち",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "Repeats pair 5 (駅はどっち？) almost verbatim, and here B asks it right after A asked 'which one is good?'. It is a non-sequitur and a repeated question.",
+     "correction": "どっち行く？ (どっちいく？ docchi iku? 'Which way are you going?')"
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 14,
+   "target": "乗る",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": true,
+     "explain": "どの is outside the closed vocabulary (only どれ is listed).",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 15,
+   "target": "どこ",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 16,
+   "target": "行く",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "major",
+     "objective": true,
+     "explain": "'Does this train go somewhere?' is semantically empty: every train goes somewhere. No native speaker asks this.",
+     "correction": "この電車、駅まで行く？ (このでんしゃ、えきまでいく？ kono densha, eki made iku? 'Does this train go to the station?') or この電車、どこ行き？"
+    },
+    {
+     "criterion": "value",
+     "severity": "major",
+     "objective": false,
+     "explain": "It teaches an odd question. The same どこか行く pattern appears in pairs 6 and 91.",
+     "correction": ""
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Romaji 'ko no densha' splits この.",
+     "correction": "kono densha doko ka iku?"
+    }
+   ]
+  },
+  {
+   "pair": 17,
+   "target": "どれ",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Which one do you like?' has no referent after a question about a train.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 18,
+   "target": "どっち",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "It answers B's question with another question.",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 19,
+   "target": "乗る",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "major",
+     "objective": true,
+     "explain": "'Are you riding together?' is wrong English for 一緒に乗る？, which is an invitation: 'Shall we ride together?' / 'Want to ride together?'",
+     "correction": "English and cue: 'Hey, want to ride together?'"
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 20,
+   "target": "どこ",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "The same use as pair 15 (どこ行くの？ 'where are you going?') with これから added. The three どこ recalls are どこ？, どこ行くの？ and これからどこ行くの？, so two are the same question.",
+     "correction": "どこで会う？ (どこであう？ doko de au? 'Where shall we meet?') or トイレはどこ？"
+    },
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": true,
+     "explain": "'Where are you going from now?' is unnatural English.",
+     "correction": "'Where are you headed now?'"
+    }
+   ]
+  },
+  {
+   "pair": 21,
+   "target": "行く",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "B reacts 'Oh, you're going to the station' although A never said so. A had just asked where B was going.",
+     "correction": "Answer the question: 駅まで行くよ。(えきまでいくよ。eki made iku yo. 'I'm going to the station.')"
+    }
+   ]
+  },
+  {
+   "pair": 22,
+   "target": "どれ",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "There are no options in the scene.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 23,
+   "target": "どっち",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Very close to pair 14 どの電車に乗る？ (the same question with a different question word).",
+     "correction": ""
+    },
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "It answers a question with a question.",
+     "correction": ""
+    },
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Which one will you ride?' sounds unnatural for trains; 'Which one are you taking?'",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 24,
+   "target": "乗る",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Asking the listener if they know what time they themselves get on is odd. 何時の電車に乗る？ is the natural question.",
+     "correction": "何時の電車に乗る？ (なんじのでんしゃにのる？ nanji no densha ni noru? 'What time train are you taking?')"
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 25,
+   "target": "はい",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "major",
+     "objective": false,
+     "explain": "はい between friends, followed by a plain casual predicate, is a register mix; うん/うん、〜 is the default 'yes' with a friend. はい should be taught towards staff/strangers.",
+     "correction": "うん、大丈夫。 for a friend; teach はい with staff: はい、大丈夫です。"
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Cue 'Confirm it's okay' equally yields うん、大丈夫, so はい is not forced.",
+     "correction": ""
+    },
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Yes, it's okay' does not answer 'Do you know what time you're getting on?'",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 26,
+   "target": "うん",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Yeah, I'm going' answers no preceding question.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 27,
+   "target": "なんで",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "B just said 'Yeah, I'm going', and A asks 'Why aren't you going?', which directly contradicts it.",
+     "correction": "Place after a refusal, or: なんで行くの？"
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Romaji 'ikana i no' wrongly splits 行かない.",
+     "correction": "nande ikanai no?"
+    }
+   ]
+  },
+  {
+   "pair": 28,
+   "target": "場所",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Topic jump from 'why aren't you going?'",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 29,
+   "target": "はい",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "major",
+     "objective": false,
+     "explain": "はい between friends, followed by a plain casual predicate, is a register mix; うん/うん、〜 is the default 'yes' with a friend. はい should be taught towards staff/strangers. はい + よ sounds mismatched.",
+     "correction": "うん、乗るよ。"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "'Yes, I'll ride' does not answer 'Do you know this place?'",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 30,
+   "target": "うん",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "major",
+     "objective": true,
+     "explain": "Surprise (え、本当？) and then confirming 'yeah, that's right' in the same breath contradict each other. After 本当？, そうなんだ reads as 'oh, I see', not 'that's right'.",
+     "correction": "うん、本当だよ。(うん、ほんとうだよ。un, hontou da yo. 'Yeah, it's true.') as a reply to 本当？"
+    },
+    {
+     "criterion": "meaning",
+     "severity": "major",
+     "objective": true,
+     "explain": "そうなんだ is mainly 'Oh, I see / is that so'. Glossing it as 'that's right' is misleading.",
+     "correction": ""
+    },
+    {
+     "criterion": "sense",
+     "severity": "minor",
+     "objective": false,
+     "explain": "うん here is a filler before a self-reply, not a clear 'yeah' answer.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 31,
+   "target": "なんで",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 32,
+   "target": "場所",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'It's a nice place' does not answer 'Huh? Why?'",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 33,
+   "target": "はい",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "major",
+     "objective": false,
+     "explain": "はい、ここ行く mixes polite はい with a clipped casual ここ行く, and 'I'm going here' is odd unless pointing at a map.",
+     "correction": "うん、ここに行く。(うん、ここにいく。un, koko ni iku. 'Yeah, I'm going here [pointing at map].')"
+    },
+    {
+     "criterion": "speaker",
+     "severity": "major",
+     "objective": false,
+     "explain": "はい between friends, followed by a plain casual predicate, is a register mix; うん/うん、〜 is the default 'yes' with a friend. はい should be taught towards staff/strangers.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 34,
+   "target": "うん",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Romaji has stray spaces before punctuation ('un , ... yo .').",
+     "correction": "un, kono densha de kaeru yo."
+    }
+   ]
+  },
+  {
+   "pair": 35,
+   "target": "なんで",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "major",
+     "objective": false,
+     "explain": "After B says she is going home on this train, asking 'why are you riding (it)?' is a strange, almost rude question.",
+     "correction": "なんで帰るの？ (なんでかえるの？ nande kaeru no? 'Why are you going home?')"
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 36,
+   "target": "場所",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "その場所 ('that place') needs an earlier mention, and the line does not answer 'Why are you riding?'. その is also outside the closed vocabulary.",
+     "correction": "ここがいい場所だよ。or ここだよ。"
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 37,
+   "target": "時間",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": true,
+     "explain": "'Is the time okay?' is unnatural English for 時間、大丈夫？",
+     "correction": "English: 'Are you okay for time?'; cue: 'Ask if she has enough time.'"
+    }
+   ]
+  },
+  {
+   "pair": 38,
+   "target": "ちょっと",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "There is no object in the scene for これ.",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 39,
+   "target": "電話",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "電話、いる？ is ambiguous (need a phone? / is there a call?). Offering your phone is plausible, but the cue 'Ask if the phone is needed' is vague.",
+     "correction": "電話、使う？ (でんわ、つかう？ denwa, tsukau? 'Do you want to use my phone?')"
+    }
+   ]
+  },
+  {
+   "pair": 40,
+   "target": "物",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 41,
+   "target": "時間",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 42,
+   "target": "ちょっと",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "major",
+     "objective": true,
+     "explain": "駅まで、ちょっと待ってくれる？ is unclear ('wait until the station?'), and the English 'wait a little for the station' is not meaningful.",
+     "correction": "駅で、ちょっと待ってくれる？ (えきで、ちょっとまってくれる？ eki de, chotto matte kureru? 'Can you wait for me at the station for a bit?')"
+    },
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "The cue repeats the broken English, so a learner cannot reliably reach 駅まで.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 43,
+   "target": "電話",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Can you make a call at the station?' is an unlikely modern question.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 44,
+   "target": "物",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "The same use as pair 40 (買う物ある？) with 何か added, and B asks it again four lines later.",
+     "correction": "持つ物 / 物が多い: 物、多いね。(もの、おおいね。mono, ooi ne. 'You've got a lot of stuff.')"
+    }
+   ]
+  },
+  {
+   "pair": 45,
+   "target": "時間",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Duplicates pair 9 (今、時間ある？), and pair 46 repeats it again.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 46,
+   "target": "ちょっと",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "A just asked 'Do you have time?' and B echoes the same question back instead of answering.",
+     "correction": "Answer: うん、ちょっとならあるよ。or use ちょっと待って。"
+    }
+   ]
+  },
+  {
+   "pair": 47,
+   "target": "電話",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "To borrow a friend's phone, 電話、借りてもいい？ is more idiomatic, though 使ってもいい is acceptable.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 48,
+   "target": "物",
+   "recall": 3,
+   "verdict": "critical",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "critical",
+     "objective": true,
+     "explain": "何にも is read なんにも (nannimo), not なににも / nani ni mo. UniDic also gives ナンニ+モ.",
+     "correction": "欲しい物、なんにもないよ。reading ほしいもの、なんにもないよ。romaji hoshii mono, nannimo nai yo. Or use 何も (なにも nanimo)."
+    }
+   ]
+  },
+  {
+   "pair": 49,
+   "target": "一緒",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 50,
+   "target": "好き",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "major",
+     "objective": false,
+     "explain": "'Do you like this train?' is an odd thing to ask a friend. It is a known owner concern.",
+     "correction": "この店、好き？ (このみせ、すき？ kono mise, suki?) or 電車、好き？ ('Do you like trains?')"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "No train is present (they had just agreed to walk to the station).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 51,
+   "target": "する",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'What are you doing?' to a person standing next to you, after 'do you like this train?', is a non-sequitur.",
+     "correction": ""
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Romaji 'nani shi te ru no' over-segments してる.",
+     "correction": "nani shiteru no?"
+    }
+   ]
+  },
+  {
+   "pair": 52,
+   "target": "一緒",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "Cue 'Ask if they are going home alone' cannot produce え、もう帰るの？一緒じゃないの？ (the もう帰るの part has no cue).",
+     "correction": "Cue: 'Huh? You're going home already? Aren't we going together?'"
+    },
+    {
+     "criterion": "meaning",
+     "severity": "major",
+     "objective": true,
+     "explain": "'Aren't you going together?' is wrong. 一緒じゃないの means 'Aren't we (going) together?'",
+     "correction": "English: 'Aren't we going together?'"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "It does not follow 'What are you doing?'",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 53,
+   "target": "好き",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "'Yeah, I like it' answers nothing in the previous line ('Aren't we going together?').",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 54,
+   "target": "する",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "There is no object in the scene for これ.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 55,
+   "target": "一緒",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "grammar",
+     "severity": "minor",
+     "objective": true,
+     "explain": "この電車、一緒に行かない？ drops で. この電車で一緒に行かない？ is the correct/natural form.",
+     "correction": "この電車で一緒に行かない？ (このでんしゃでいっしょにいかない？ kono densha de issho ni ikanai?)"
+    },
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Won't you go together [with me] on this train?' is awkward English.",
+     "correction": "'Want to take this train together?'"
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "The same function as pair 49 (suggesting going together).",
+     "correction": "一緒に食べる？ / 一緒に写真を撮ろう。"
+    }
+   ]
+  },
+  {
+   "pair": 56,
+   "target": "好き",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "Bare 好き？ is the same use as pair 50 (この電車、好き？) without the object.",
+     "correction": "Use 好き in a different use: 何が好き？ / 日本語、好き？"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "'Do you like it?' has no referent after an invitation to ride together.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 57,
+   "target": "する",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 58,
+   "target": "いいえ",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "major",
+     "objective": false,
+     "explain": "いいえ is formal/polite and sounds stiff or cold to a friend, especially with plain-form casual endings; friends say ううん or いや.",
+     "correction": "ううん、行かないよ。(ううん、いかないよ。uun, ikanai yo.)"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "A speaks twice in a row and refuses his own suggestion from pair 57.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 59,
+   "target": "分かる",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 60,
+   "target": "どう",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "major",
+     "objective": true,
+     "explain": "English meaning 'How do you think about this?' is ungrammatical English. どう思う = 'What do you think (of this)?'",
+     "correction": "'What do you think of this?'"
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Cue 'How do you feel about this?' is acceptable but steers toward feelings; 'What do you think of this?' maps better to どう思う.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 61,
+   "target": "いいえ",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "major",
+     "objective": false,
+     "explain": "いいえ is formal/polite and sounds stiff or cold to a friend, especially with plain-form casual endings; friends say ううん or いや.",
+     "correction": "ううん、大丈夫。(ううん、だいじょうぶ。uun, daijoubu.) or いや、大丈夫。"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "'Oh, no, I'm okay' (declining) does not answer 'What do you think of this?'",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 62,
+   "target": "分かる",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "The same sentence as pair 59 (ああ、分かるよ) with only the interjection changed. This is a known owner concern.",
+     "correction": "分かった、駅で待ってる。(わかった、えきでまってる。wakatta, eki de matteru. 'Got it, I'll wait at the station.') or 道、分かる？"
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 63,
+   "target": "どう",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Very close to pair 54 (これ、どうする？), which is drilled as the する target.",
+     "correction": "どうやって行く？ (どうやっていく？ dou yatte iku? 'How are you getting there?') for the 'how' sense"
+    },
+    {
+     "criterion": "sense",
+     "severity": "minor",
+     "objective": false,
+     "explain": "The target is glossed 'how', but どうする is 'what to do'; 'how' is better shown with どうやって or どう？",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 64,
+   "target": "いいえ",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "speaker",
+     "severity": "major",
+     "objective": false,
+     "explain": "いいえ is formal/polite and sounds stiff or cold to a friend, especially with plain-form casual endings; friends say ううん or いや.",
+     "correction": "ううん、何も。じゃあ、またね。"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "'No, nothing' answers a yes/no question, but B asked 'What will you do?'. A also says goodbye mid-conversation, although 27 more lines follow.",
+     "correction": ""
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "major",
+     "objective": true,
+     "explain": "Romaji 'nani mojaa mata ne' runs 何も and じゃあ together across a sentence break.",
+     "correction": "uun/iie, nanimo. jaa, mata ne."
+    }
+   ]
+  },
+  {
+   "pair": 65,
+   "target": "分かる",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "A just said goodbye; B answers 'No, I don't understand yet', which does not follow.",
+     "correction": ""
+    },
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": false,
+     "explain": "まだ分からない is more often 'I don't know yet' (e.g. plans), not 'understand'.",
+     "correction": "'No, I don't know yet.'"
+    }
+   ]
+  },
+  {
+   "pair": 66,
+   "target": "どう",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "Cue 'How is today?' is not natural English. 今日はどう？ means 'How about today?' (scheduling) or 'How's today going?'; the gloss 'How is your day?' is a third reading.",
+     "correction": "Cue: 'Ask if today works for her.' English: 'How about today?'"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "It follows 'I don't know yet' loosely, and A then speaks again in pair 67.",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 67,
+   "target": "また",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "明日、駅で会おうよ appeared in pair 7 and returns in pair 84 (昼に駅で会おうよ).",
+     "correction": ""
+    },
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "A speaks twice in a row (pairs 66 and 67).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 68,
+   "target": "あれ",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "sense",
+     "severity": "minor",
+     "objective": false,
+     "explain": "あれ、何？ is also commonly heard as the interjection 'Huh? What?'. Fine here, but it is ambiguous next to pair 5's interjection あれ.",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 69,
+   "target": "あそこ",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Are you taking the book over there?' is an odd line in a station conversation.",
+     "correction": "あそこにトイレがあるよ。(あそこにトイレがあるよ。asoko ni toire ga aru yo.)"
+    }
+   ]
+  },
+  {
+   "pair": 70,
+   "target": "また",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "Word-for-word repeat of the second half of pair 7 (また来る？).",
+     "correction": "また電話するね。(またでんわするね。mata denwa suru ne. 'I'll call you again.')"
+    }
+   ]
+  },
+  {
+   "pair": 71,
+   "target": "あれ",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Do you think that over there is good?' is stiff English.",
+     "correction": "'Do you think that one's good?'"
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 72,
+   "target": "あそこ",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": [],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 73,
+   "target": "また",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "じゃあ、またね is an exact repeat of the end of pair 64.",
+     "correction": ""
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "It is a second goodbye mid-lesson, and the conversation continues for another 18 lines.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 74,
+   "target": "あれ",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "It follows a goodbye, and it mirrors pair 38 (これ、ちょっと高いね).",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 75,
+   "target": "あそこ",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": [],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 76,
+   "target": "食べる",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "A speaks twice in a row (pairs 75 and 76) with a topic jump.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 77,
+   "target": "飲む",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 78,
+   "target": "食べる",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "B asked 'What will you drink?' and A answers 'Yeah, I'll eat it'.",
+     "correction": "Swap the order of pairs 77 and 78."
+    }
+   ]
+  },
+  {
+   "pair": 79,
+   "target": "飲む",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 80,
+   "target": "食べる",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "A said 'I'll eat it' two lines earlier, then asks 'have you eaten already?'",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 81,
+   "target": "飲む",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "The same as pair 79 (水、飲む？) with 今日 added.",
+     "correction": "何か飲む？ (なにかのむ？ nanika nomu?) or もう飲んだ？"
+    },
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Will you drink water today?' is an odd question.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 82,
+   "target": "大丈夫",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 83,
+   "target": "何",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": [],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 84,
+   "target": "昼",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "This is the third 'let's meet at the station' line (pairs 7, 67, 84).",
+     "correction": ""
+    },
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "お昼に is more natural/softer in speech.",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 85,
+   "target": "大丈夫",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 86,
+   "target": "何",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "major",
+     "objective": true,
+     "explain": "何するの？ means 'What are you going to do?'. 'What are you doing?' is 何してるの？ (pair 51), and the cue/gloss conflates the two.",
+     "correction": "Cue/English: 'Huh, what are you going to do?'"
+    },
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "Cue 'What are you doing?' is identical to pair 51's meaning, so a learner would produce 何してるの？",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 87,
+   "target": "昼",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "お昼、何か食べる？ / 'at lunchtime' is more natural than 昼に / 'at noon'.",
+     "correction": "お昼、何か食べる？ (おひる、なにかたべる？ ohiru, nanika taberu?)"
+    }
+   ]
+  },
+  {
+   "pair": 88,
+   "target": "大丈夫",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 89,
+   "target": "何",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": [],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 90,
+   "target": "昼",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "'I'm free during the daytime' does not respond to 'What is this?'",
+     "correction": ""
+    }
+   ],
+   "note": "Cue copies the English meaning (acceptable)."
+  },
+  {
+   "pair": 91,
+   "target": "framing",
+   "recall": null,
+   "verdict": "critical",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "critical",
+     "objective": true,
+     "explain": "The reading どこかいきの is wrong; 行くの is いくの. This is a known owner concern.",
+     "correction": "reading: どこかいくの？"
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "critical",
+     "objective": true,
+     "explain": "Romaji 'dokokaikino' is wrong and unsegmented.",
+     "correction": "doko ka iku no?"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "Labelled a 'parting' framing line, but 'Are you going somewhere?' is not a parting line. It comes after two goodbyes and repeats pair 6 (今からどこか行くの？).",
+     "correction": "じゃあ、また明日。(じゃあ、またあした。jaa, mata ashita. 'See you tomorrow.')"
+    }
+   ]
+  }
+ ],
+ "summary": "The Japanese sentences are mostly grammatical and, taken one by one, many are natural casual Japanese. The biggest weakness is the conversation itself: lines are produced target by target in an A/B/A rotation, so many turns do not answer the previous line. For example, 'What will you drink?' gets 'Yeah, I'll eat it', and 'Yeah, I'm going' gets 'Why aren't you going?'. A speaks twice in a row several times, and there are two mid-lesson goodbyes. Register is inconsistent. はい and いいえ are drilled entirely in friend-to-friend talk with plain casual endings (はい、乗るよ / いいえ、行かないよ), even though ううん/いや (and いや appears correctly in pair 65) are what friends say. There are several same-use repeats both within and across targets (分かるよ x2, 買う物ある？ x2, 水飲む？ x2, また来る？ x2, 時間ある？ x3, じゃあまたね x2, どこ行くの？ x2). Pronunciation is mostly right, with two critical errors: 何にも read as なににも (should be なんにも) and the framing line's どこかいきの/dokokaikino. Several romaji strings are also mis-segmented. Several English glosses or cues are wrong or unnatural: 'How do you think about this?', 'How is today?', 'wait a little for the station', 'are you riding together?', 'Aren't you going together?', and 何するの glossed as 'What are you doing?'. Pair 4 tells speaker B (Yumi) to 'Ask Yumi'. Several lines are semantically odd or have no referent (この電車、どこか行く？, この電車、好き？, 今ある？, bare 好き?/行く?). Likely causes: each line is generated per target without checking the previous turn or the speaker identity, register is not constrained by addressee, and readings for inflected or irregular forms are not validated against the sentence. Note: この/その/どの, なんか, ねえ, じゃあ and similar words are outside the closed vocabulary, though they are harmless function words.",
+ "score10": 5
+}

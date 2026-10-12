@@ -1,0 +1,1421 @@
+{
+ "language": "zh",
+ "reviewer": "independent AI reviewer (Claude), not a native speaker",
+ "pairs": [
+  {
+   "pair": 1,
+   "target": "framing greeting",
+   "recall": null,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 2,
+   "target": "framing greeting",
+   "recall": null,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "A greets with 你好 and B answers only 嗯 (Mm). A native speaker returns the greeting; 嗯 sounds cold or dismissive.",
+     "correction": "你好！nǐ hǎo (spoken ní hǎo) — Hi!"
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The cue says 'Acknowledge warmly', but 嗯 is not warm.",
+     "correction": "Cue: 'Greet them back'"
+    }
+   ]
+  },
+  {
+   "pair": 3,
+   "target": "可以",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "major",
+     "objective": true,
+     "explain": "可以 is always pronounced kéyǐ (3-3 sandhi) but there is no spoken-pinyin line.",
+     "correction": "Add spoken pinyin with kéyǐ."
+    },
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "As the first line after the greeting, 'You can go now' is an odd opener (it sounds like a dismissal).",
+     "correction": "Use it later, after a wait: 好了，你现在可以去了。"
+    }
+   ]
+  },
+  {
+   "pair": 4,
+   "target": "到",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": true,
+     "explain": "我们 is not in the closed allowed vocabulary (only 我 is listed).",
+     "correction": "Either add 我们 to the allowed set or rephrase, e.g. 我跟你一起去."
+    },
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'We arrived home' does not follow 'You can go now' in a face-to-face conversation.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 5,
+   "target": "很",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": true,
+     "explain": "In 我很好, 很 is mostly a linker; 'I'm very good' over-translates it. It means 'I'm fine/good'.",
+     "correction": "English: 'I'm fine.' The cue could be 'Say you're fine.'"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Nobody asked 你好吗, so 'I'm fine' answers no question.",
+     "correction": "Put 你好吗？ before it."
+    }
+   ]
+  },
+  {
+   "pair": 6,
+   "target": "太",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'Too slow!' with nothing to refer to. Context is unclear.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 7,
+   "target": "大",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    }
+   ]
+  },
+  {
+   "pair": 8,
+   "target": "小",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    }
+   ]
+  },
+  {
+   "pair": 9,
+   "target": "一点",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "major",
+     "objective": true,
+     "explain": "可以 is always pronounced kéyǐ (3-3 sandhi) but there is no spoken-pinyin line.",
+     "correction": "Add spoken pinyin with kéyǐ."
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The dictionary line already shows the sandhi form of 一 (yì/yí) instead of citation yī, and there is no separate spoken line. Dictionary and spoken pinyin are not kept distinct (and this is inconsistent with pair 82, which writes yī).",
+     "correction": "Pick one convention: dictionary yī + spoken yì/yí, applied in every line."
+    },
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "You normally ask a person to slow down (可以慢一点吗？). Asking whether 'this' can be slower is vague.",
+     "correction": "你可以说慢一点吗？ nǐ kěyǐ shuō màn yìdiǎn ma — Can you speak a bit slower?"
+    }
+   ]
+  },
+  {
+   "pair": 10,
+   "target": "多",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 11,
+   "target": "少",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 12,
+   "target": "快",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    },
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'This is very fast' without saying what 'this' is.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 13,
+   "target": "慢",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    }
+   ]
+  },
+  {
+   "pair": 14,
+   "target": "跟",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 15,
+   "target": "一起",
+   "recall": 1,
+   "verdict": "critical",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "critical",
+     "objective": true,
+     "explain": "Spoken line gives 'wómen'. 们 is neutral tone, so there is no 3-3 sandhi: 我们 is pronounced wǒmen (half-third), never wómen.",
+     "correction": "Spoken: wǒmen yìqǐ ..."
+    },
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": true,
+     "explain": "我们 is not in the closed allowed vocabulary (only 我 is listed).",
+     "correction": "Either add 我们 to the allowed set or rephrase, e.g. 我跟你一起去."
+    }
+   ]
+  },
+  {
+   "pair": 16,
+   "target": "回",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "A bare 我回家 sounds like a plan or habit. Announcing that you are going home is more natural with 了 or 要.",
+     "correction": "我要回家了。wǒ yào huí jiā le — I'm heading home."
+    }
+   ]
+  },
+  {
+   "pair": 17,
+   "target": "拿",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 18,
+   "target": "用",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 19,
+   "target": "做",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": true,
+     "explain": "'What are you doing (right now)?' is normally 你在做什么？. 你做什么？ leans towards 'what will you do / what do you do'.",
+     "correction": "你在做什么？ nǐ zài zuò shénme — What are you doing?"
+    }
+   ]
+  },
+  {
+   "pair": 20,
+   "target": "等",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The dictionary line already shows the sandhi form of 一 (yì/yí) instead of citation yī, and there is no separate spoken line. Dictionary and spoken pinyin are not kept distinct (and this is inconsistent with pair 82, which writes yī).",
+     "correction": "Pick one convention: dictionary yī + spoken yì/yí, applied in every line."
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The cue 'You wait for me a moment' is a word-for-word calque, not natural English.",
+     "correction": "Cue: 'Ask them to wait for you a moment.'"
+    }
+   ]
+  },
+  {
+   "pair": 21,
+   "target": "找",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "找朋友 without context suggests 'make friends' or 'find a partner'. 'I want to find a friend' is ambiguous.",
+     "correction": "我找我朋友。wǒ zhǎo wǒ péngyou — I'm looking for my friend."
+    }
+   ]
+  },
+  {
+   "pair": 22,
+   "target": "我",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 23,
+   "target": "想",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 24,
+   "target": "吃",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "meaning",
+     "severity": "minor",
+     "objective": true,
+     "explain": "你吃这个吗 is closer to 'Will you eat / do you eat this?' than progressive 'Are you eating this?'.",
+     "correction": "English: 'Are you going to eat this?'"
+    }
+   ]
+  },
+  {
+   "pair": 25,
+   "target": "你",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 26,
+   "target": "什么",
+   "recall": 1,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "The cue 'What do you want to drink?' is identical to pair 23, which expected 你想喝什么. The learner cannot know whether to include 想.",
+     "correction": "Cue: 'Ask what they're drinking.' → 你喝什么？"
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Practically the same sentence as pair 23, three lines earlier.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 27,
+   "target": "好",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    }
+   ]
+  },
+  {
+   "pair": 28,
+   "target": "喝",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Third 你想喝… question in six lines (23, 26, 28).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 29,
+   "target": "这个",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 30,
+   "target": "要",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "回去 is one word with neutral-tone 去 in speech (huíqu); written split as 'huí qù'.",
+     "correction": "huíqu / huíqù"
+    }
+   ]
+  },
+  {
+   "pair": 31,
+   "target": "不",
+   "recall": 1,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 32,
+   "target": "那个",
+   "recall": 1,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Mirrors pair 27 (这个很好), five lines earlier.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 33,
+   "target": "可以",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "major",
+     "objective": true,
+     "explain": "可以 is always pronounced kéyǐ (3-3 sandhi) but there is no spoken-pinyin line.",
+     "correction": "Add spoken pinyin with kéyǐ."
+    }
+   ]
+  },
+  {
+   "pair": 34,
+   "target": "到",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": false,
+     "explain": "In a face-to-face conversation, 'I'm here / I've arrived' only fits a phone call or an arrival moment.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 35,
+   "target": "很",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    }
+   ]
+  },
+  {
+   "pair": 36,
+   "target": "太",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "Same use as recall 1 (pair 6, 太慢了) with 这个 added: a repeat, not a new use.",
+     "correction": "我太累了 is out of vocab; e.g. 那个太多了。nàge tài duō le — That's too much. Or 不太好 (not very good)."
+    }
+   ]
+  },
+  {
+   "pair": 37,
+   "target": "大",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    }
+   ]
+  },
+  {
+   "pair": 38,
+   "target": "小",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Mirror of pair 7 (这个大吗？).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 39,
+   "target": "一点",
+   "recall": 2,
+   "verdict": "critical",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "critical",
+     "objective": true,
+     "explain": "Spoken 'yóu yìdiǎn' is wrong. Once 一 becomes yì, 有 is no longer before a 3rd tone, so there is no 3-3 sandhi. It is pronounced yǒu yìdiǎn.",
+     "correction": "Spoken: yǒu yìdiǎn"
+    },
+    {
+     "criterion": "meaning",
+     "severity": "major",
+     "objective": true,
+     "explain": "Answering 这个小吗？ (prev. line), 有一点 means 'A little (bit), yes', not existential 'There is a little'. The cue/meaning teaches the wrong reading.",
+     "correction": "English/cue: 'Answer: a little bit (yes, it's a bit small).' 有一点(小)。yǒu yìdiǎn (xiǎo)"
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The dictionary line already shows the sandhi form of 一 (yì/yí) instead of citation yī, and there is no separate spoken line. Dictionary and spoken pinyin are not kept distinct (and this is inconsistent with pair 82, which writes yī).",
+     "correction": "Pick one convention: dictionary yī + spoken yì/yí, applied in every line."
+    }
+   ]
+  },
+  {
+   "pair": 40,
+   "target": "多",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 41,
+   "target": "少",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 42,
+   "target": "快",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The dictionary line already shows the sandhi form of 一 (yì/yí) instead of citation yī, and there is no separate spoken line. Dictionary and spoken pinyin are not kept distinct (and this is inconsistent with pair 82, which writes yī).",
+     "correction": "Pick one convention: dictionary yī + spoken yì/yí, applied in every line."
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": true,
+     "explain": "'You, a little faster.' is broken English.",
+     "correction": "Cue: 'Tell them to hurry up a bit.'"
+    }
+   ]
+  },
+  {
+   "pair": 43,
+   "target": "慢",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The dictionary line already shows the sandhi form of 一 (yì/yí) instead of citation yī, and there is no separate spoken line. Dictionary and spoken pinyin are not kept distinct (and this is inconsistent with pair 82, which writes yī).",
+     "correction": "Pick one convention: dictionary yī + spoken yì/yí, applied in every line."
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": true,
+     "explain": "'You go a little slower' is a calque.",
+     "correction": "Cue: 'Tell them to slow down a bit.'"
+    }
+   ]
+  },
+  {
+   "pair": 44,
+   "target": "跟",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 45,
+   "target": "一起",
+   "recall": 2,
+   "verdict": "critical",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "critical",
+     "objective": true,
+     "explain": "Spoken line gives 'wómen'. 们 is neutral tone, so there is no 3-3 sandhi: 我们 is pronounced wǒmen (half-third), never wómen.",
+     "correction": "Spoken: wǒmen yìqǐ ..."
+    },
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": true,
+     "explain": "我们 is not in the closed allowed vocabulary (only 我 is listed).",
+     "correction": "Either add 我们 to the allowed set or rephrase, e.g. 我跟你一起去."
+    }
+   ]
+  },
+  {
+   "pair": 46,
+   "target": "回",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "回 with no object or direction sounds clipped; 回去 or 回家 is standard.",
+     "correction": "你现在回去吗？ nǐ xiànzài huíqu ma — Are you going back now?"
+    }
+   ]
+  },
+  {
+   "pair": 47,
+   "target": "拿",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 48,
+   "target": "用",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 49,
+   "target": "做",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 50,
+   "target": "等",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The dictionary line already shows the sandhi form of 一 (yì/yí) instead of citation yī, and there is no separate spoken line. Dictionary and spoken pinyin are not kept distinct (and this is inconsistent with pair 82, which writes yī).",
+     "correction": "Pick one convention: dictionary yī + spoken yì/yí, applied in every line."
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": true,
+     "explain": "'Can you wait a moment, okay?' is redundant English.",
+     "correction": "Cue: 'Politely ask them to wait a moment.'"
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Very close to recall 1 (pair 20, 你等我一下).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 51,
+   "target": "找",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 52,
+   "target": "我",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "The cue 'I am here.' is the same as pair 34's 'I'm here.' (answer 我到了), so the learner cannot tell which answer is expected.",
+     "correction": "Cue: 'Tell them where you are: I'm over here.' → 我在这里。"
+    }
+   ]
+  },
+  {
+   "pair": 53,
+   "target": "想",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Same frame as recall 1 (你想喝什么 → 你想吃什么).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 54,
+   "target": "吃",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 55,
+   "target": "你",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 56,
+   "target": "什么",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 57,
+   "target": "什么",
+   "recall": 3,
+   "verdict": "critical",
+   "issues": [
+    {
+     "criterion": "sense",
+     "severity": "critical",
+     "objective": true,
+     "explain": "回 means 'go back', not 'return (an item)' (that is 还 huán). 回什么？ is not a sensible question and mis-teaches 回.",
+     "correction": "你看什么？ nǐ kàn shénme — What are you looking at? / 你说什么？ — What did you say?"
+    },
+    {
+     "criterion": "value",
+     "severity": "major",
+     "objective": true,
+     "explain": "Not a usable beginner sentence. It echoes nothing and has no communicative purpose.",
+     "correction": ""
+    },
+    {
+     "criterion": "coherence",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Placed straight after 什么 recall 2, out of the round order.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 58,
+   "target": "好",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "The cue 'Is this okay?' is identical to pair 33 (answer 这个可以吗？). It is ambiguous, and 这个好吗 is closer to 'Is this good?'.",
+     "correction": "Cue: 'Ask if this one is good.' → 这个好吗？ / 这个好不好？"
+    }
+   ]
+  },
+  {
+   "pair": 59,
+   "target": "喝",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'I'd like (to drink) a little' with no object.",
+     "correction": "我想喝一点这个。/ 我想喝一点水 (水 not in vocab)"
+    },
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": false,
+     "explain": "It follows 'Is this good?' and does not answer it.",
+     "correction": ""
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The cue 'I'd like a little' does not signal 喝 or 想.",
+     "correction": "Cue: 'Say you'd like to drink a little of it.'"
+    }
+   ]
+  },
+  {
+   "pair": 60,
+   "target": "喝",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": true,
+     "explain": "我们 is not in the closed allowed vocabulary (only 我 is listed).",
+     "correction": "Either add 我们 to the allowed set or rephrase, e.g. 我跟你一起去."
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The dictionary line already shows the sandhi form of 一 (yì/yí) instead of citation yī, and there is no separate spoken line. Dictionary and spoken pinyin are not kept distinct (and this is inconsistent with pair 82, which writes yī).",
+     "correction": "Pick one convention: dictionary yī + spoken yì/yí, applied in every line."
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "我们 is split as 'wǒ men', and this is the only 我们一起 line without a spoken line (inconsistent with 15/45/77).",
+     "correction": "wǒmen yìqǐ hē ba"
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Fourth 我们一起V吧 line (15, 45, 60, 77).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 61,
+   "target": "这个",
+   "recall": 2,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "The cue 'Do you like this?' is identical to pair 55 (answer 你喜欢这个吗？), six lines earlier. The learner will give that answer.",
+     "correction": "Cue: 'Point at it first, then ask if they like it.' → 这个你喜欢吗？"
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Same meaning as pair 55, only the word order differs.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 62,
+   "target": "要",
+   "recall": 2,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 63,
+   "target": "不",
+   "recall": 2,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    }
+   ]
+  },
+  {
+   "pair": 64,
+   "target": "那个",
+   "recall": 2,
+   "verdict": "critical",
+   "issues": [
+    {
+     "criterion": "grammar",
+     "severity": "critical",
+     "objective": true,
+     "explain": "那个谁？ is not 'Who is that?'. It is a colloquial filler meaning 'what's-his-name / hey, you there'. 'Who is that?' needs 是 (那个人是谁？), which is outside the vocabulary.",
+     "correction": "Replace: 你要那个吗？ nǐ yào nàge ma — Do you want that one? (or add 是 to vocab: 那个人是谁？ nàge rén shì shéi)"
+    },
+    {
+     "criterion": "value",
+     "severity": "major",
+     "objective": true,
+     "explain": "Teaches a fragment that a beginner would misuse.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 65,
+   "target": "可以",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "major",
+     "objective": true,
+     "explain": "可以 is always pronounced kéyǐ (3-3 sandhi) but there is no spoken-pinyin line.",
+     "correction": "Add spoken pinyin with kéyǐ."
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "This is the statement version of recall 2 (这个可以吗？), the same sense.",
+     "correction": "e.g. 我可以用这个吗？ (permission) / 可以，没有问题 (out of vocab)"
+    }
+   ]
+  },
+  {
+   "pair": 66,
+   "target": "到",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "minor",
+     "objective": false,
+     "explain": "你到了？ is what people say; adding 这里 is redundant face-to-face.",
+     "correction": "你到了吗？ nǐ dào le ma — Are you here yet?"
+    }
+   ]
+  },
+  {
+   "pair": 67,
+   "target": "很",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "natural",
+     "severity": "major",
+     "objective": true,
+     "explain": "A bare 家很大 with no possessor is unnatural, and so is 'The home is very big'.",
+     "correction": "你家很大。nǐ jiā hěn dà — Your home is really big."
+    }
+   ]
+  },
+  {
+   "pair": 68,
+   "target": "太",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 69,
+   "target": "大",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "It comes right after 这个不太大 (pair 68): two almost identical consecutive lines.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 70,
+   "target": "小",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    }
+   ]
+  },
+  {
+   "pair": 71,
+   "target": "一点",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "major",
+     "objective": true,
+     "explain": "可以 is always pronounced kéyǐ (3-3 sandhi) but there is no spoken-pinyin line.",
+     "correction": "Add spoken pinyin with kéyǐ."
+    },
+    {
+     "criterion": "pronunciation",
+     "severity": "minor",
+     "objective": true,
+     "explain": "The dictionary line already shows the sandhi form of 一 (yì/yí) instead of citation yī, and there is no separate spoken line. Dictionary and spoken pinyin are not kept distinct (and this is inconsistent with pair 82, which writes yī).",
+     "correction": "Pick one convention: dictionary yī + spoken yì/yí, applied in every line."
+    },
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "Exact frame of recall 1 (pair 9, 这个可以慢一点吗) with 快 in place of 慢. The same use of 一点 again.",
+     "correction": "我要一点。wǒ yào yìdiǎn — I'll have a little. / 我会说一点 (会 out of vocab)"
+    }
+   ]
+  },
+  {
+   "pair": 72,
+   "target": "多",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "The bare noun phrase 很多人 is not a complete utterance in this conversation.",
+     "correction": "这里有很多人。zhèlǐ yǒu hěn duō rén — There are lots of people here."
+    }
+   ]
+  },
+  {
+   "pair": 73,
+   "target": "少",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Same idea as recall 2 (人很少).",
+     "correction": "这个太少了 / 我要少一点"
+    }
+   ]
+  },
+  {
+   "pair": 74,
+   "target": "快",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Another 这个/那个 + (很/太/不) + adjective line; this frame appears about 20 times in the lesson, so recalls feel interchangeable.",
+     "correction": "Vary the subject and situation, e.g. 你家很大, 今天人很多, 这里的东西太贵 (if vocab allows)."
+    }
+   ]
+  },
+  {
+   "pair": 75,
+   "target": "慢",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "Repeats recall 1 (pair 13, 这个很慢) with 东西 added.",
+     "correction": "你说得太快了 is out of vocab; e.g. 你慢慢吃。nǐ mànmàn chī — Take your time eating."
+    },
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": false,
+     "explain": "'This thing is very slow' has no clear situation.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 76,
+   "target": "跟",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 77,
+   "target": "一起",
+   "recall": 3,
+   "verdict": "critical",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "critical",
+     "objective": true,
+     "explain": "Spoken line gives 'wómen'. 们 is neutral tone, so there is no 3-3 sandhi: 我们 is pronounced wǒmen (half-third), never wómen.",
+     "correction": "Spoken: wǒmen yìqǐ ..."
+    },
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": true,
+     "explain": "我们 is not in the closed allowed vocabulary (only 我 is listed).",
+     "correction": "Either add 我们 to the allowed set or rephrase, e.g. 我跟你一起去."
+    }
+   ]
+  },
+  {
+   "pair": 78,
+   "target": "回",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Same collocation 回家 as recall 1.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 79,
+   "target": "拿",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "Close to recall 1 (你拿这个).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 80,
+   "target": "用",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 81,
+   "target": "做",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 82,
+   "target": "等",
+   "recall": 3,
+   "verdict": "critical",
+   "issues": [
+    {
+     "criterion": "pronunciation",
+     "severity": "critical",
+     "objective": true,
+     "explain": "Spoken 'yī xià' is wrong. 一 before 4th-tone 下 is yí, so it should be yíxià. The dictionary line also uses a spaced 'yī xià', unlike 'yíxià' in pairs 20 and 50.",
+     "correction": "Spoken: ní děng yíxià"
+    },
+    {
+     "criterion": "distinct",
+     "severity": "major",
+     "objective": true,
+     "explain": "Repeats pair 50 (你等一下，好吗？) and is nearly pair 20.",
+     "correction": "我在这里等你。wǒ zài zhèlǐ děng nǐ — I'll wait for you here."
+    }
+   ]
+  },
+  {
+   "pair": 83,
+   "target": "找",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 84,
+   "target": "我",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 85,
+   "target": "想",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 86,
+   "target": "吃",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "The cue 'What do you want to eat?' signals 想 (cf. pair 53 你想吃什么), but the answer is 你吃什么？.",
+     "correction": "Cue: 'Ask what they're having.'"
+    }
+   ]
+  },
+  {
+   "pair": 87,
+   "target": "你",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "cue",
+     "severity": "major",
+     "objective": true,
+     "explain": "The cue 'What do you want?' is identical to pair 62 (answer 你想要什么？). It is ambiguous.",
+     "correction": "Cue for 62: 'Ask what they'd like.'; for 87: 'Ask what they want (blunt).'"
+    }
+   ]
+  },
+  {
+   "pair": 88,
+   "target": "好",
+   "recall": 3,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "It answers 'What do you want?' with 'Very good.', which is incoherent.",
+     "correction": "Swap with 89: 你要什么？ → 我要这个。 → 很好/好的."
+    },
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": true,
+     "explain": "A fragment of recall 1 (这个很好).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 89,
+   "target": "这个",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 90,
+   "target": "要",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 91,
+   "target": "不",
+   "recall": 3,
+   "verdict": "clean",
+   "issues": []
+  },
+  {
+   "pair": 92,
+   "target": "那个",
+   "recall": 3,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "distinct",
+     "severity": "minor",
+     "objective": false,
+     "explain": "Mirrors pair 29 (这个多少钱？).",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 93,
+   "target": "framing parting",
+   "recall": null,
+   "verdict": "minor",
+   "issues": [
+    {
+     "criterion": "value",
+     "severity": "minor",
+     "objective": true,
+     "explain": "再见 is outside the closed vocabulary, which is acceptable for a framing line.",
+     "correction": ""
+    }
+   ]
+  },
+  {
+   "pair": 94,
+   "target": "framing parting",
+   "recall": null,
+   "verdict": "major",
+   "issues": [
+    {
+     "criterion": "coherence",
+     "severity": "major",
+     "objective": true,
+     "explain": "A goodbye answered only by 嗯 is unnatural. A native speaker would say goodbye back.",
+     "correction": "再见！zàijiàn — Bye! / 好，明天见 (见 out of vocab)"
+    },
+    {
+     "criterion": "cue",
+     "severity": "minor",
+     "objective": true,
+     "explain": "'Acknowledge and close off' invites a non-response.",
+     "correction": "Cue: 'Say goodbye back'"
+    }
+   ]
+  }
+ ],
+ "summary": "Most target sentences are grammatical and use the target in the listed sense, but the lesson has systematic pinyin and cue-design defects. Pronunciation: the spoken line wrongly applies 3-3 sandhi to 我们 (wómen) in pairs 15/45/77, misapplies it in 有一点 (yóu, pair 39) and leaves 一下 unsandhied (yī xià, pair 82). Every 可以 line (3/9/33/65/71) lacks the obligatory kéyǐ spoken line, and 一 is written in sandhi form in the dictionary line inconsistently. This suggests the sandhi generator works per character without tone-after-sandhi or neutral-tone awareness. Cues: several English cues are reused verbatim for different Chinese answers (23/26, 33/58, 34/52, 55/61, 62/87, 53/86), so the learner cannot know which answer is expected. Almost every cue is the weak 'Tell the other person: <translation>' pattern (not flagged per line), and some are word-for-word calques ('You, a little faster'). Content: 那个谁？ (64) and 回什么？ (57) are wrong or meaningless. About 20 lines use the 这个/那个 + 很/太/不 + adjective frame, and several recalls repeat the previous use (6/36, 9/71, 13/75, 20/50/82). Coherence: the lesson is billed as one conversation but reads as unconnected sentences. Both framing greetings are answered by a bare 嗯, and 'What do you want?' is answered by 'Very good.' 我们 is used five times although it is not in the closed vocabulary. Exercises carry no speaker labels, so A/B consistency cannot be checked. Likely causes: generation per target with no conversation-level planning, no de-duplication of cues across targets, and a rule-based sandhi pass that does not handle neutral tones or recompute after 一 sandhi.",
+ "score10": 5
+}

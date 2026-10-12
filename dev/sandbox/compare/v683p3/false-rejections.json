@@ -1,0 +1,120 @@
+{
+ "ja-old": {
+  "rejected": 28,
+  "qualityRejected": 1,
+  "qualityJudgedGood(FR)": 0,
+  "ruleRejected": 25,
+  "ruleJudgedGood": 17,
+  "FRexamples": []
+ },
+ "ja-new": {
+  "rejected": 51,
+  "qualityRejected": 5,
+  "qualityJudgedGood(FR)": 3,
+  "ruleRejected": 46,
+  "ruleJudgedGood": 17,
+  "FRexamples": [
+   [
+    "はい",
+    "はい、買います。",
+    "❌ recall 1: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \""
+   ],
+   [
+    "一緒",
+    "友達と一緒に行きます。",
+    "❌ recall 2: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \""
+   ],
+   [
+    "一緒",
+    "誰と一緒に行きますか？",
+    "❌ recall 3: register: Natural selected (friends) but the sentence uses です／ます [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — \""
+   ]
+  ]
+ },
+ "zh-old": {
+  "rejected": 42,
+  "qualityRejected": 9,
+  "qualityJudgedGood(FR)": 2,
+  "ruleRejected": 33,
+  "ruleJudgedGood": 25,
+  "FRexamples": [
+   [
+    "少",
+    "人太少。",
+    "❌ unnatural: 太 + adjective needs 了 (太少了)"
+   ],
+   [
+    "想",
+    "我想吃。",
+    "❌ incomplete: 我想吃 ends on a verb with no object — add what (我想喝水 / 你喜欢这个吗？)"
+   ]
+  ]
+ },
+ "zh-new": {
+  "rejected": 40,
+  "qualityRejected": 7,
+  "qualityJudgedGood(FR)": 2,
+  "ruleRejected": 31,
+  "ruleJudgedGood": 20,
+  "FRexamples": [
+   [
+    "少",
+    "钱太少",
+    "❌ unnatural: 太 + adjective needs 了 (太少了)"
+   ],
+   [
+    "回",
+    "我明天回",
+    "❌ incomplete: 我明天回 — 回 needs where to (回家 / 回去 / 回来)"
+   ]
+  ]
+ },
+ "th-old": {
+  "rejected": 11,
+  "qualityRejected": 8,
+  "qualityJudgedGood(FR)": 4,
+  "ruleRejected": 3,
+  "ruleJudgedGood": 2,
+  "FRexamples": [
+   [
+    null,
+    "ผมว่ารถเมล์คุ้มครับ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 23 line(s) judged · 4 rejected before the group counts as PASSED — [รถเมล์] ไม่มีรถเมล์คร"
+   ],
+   [
+    null,
+    "เราควรไปรถเมล์ครับ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 23 line(s) judged · 4 rejected before the group counts as PASSED — [รถเมล์] ไม่มีรถเมล์คร"
+   ],
+   [
+    null,
+    "เราควรไปรถทัวร์ไหมคะ",
+    "🧪 EARLY_SEMANTIC_GATE batch 1: 23 line(s) judged · 4 rejected before the group counts as PASSED — [รถเมล์] ไม่มีรถเมล์คร"
+   ],
+   [
+    null,
+    "คุณจะเอาคู่ไหนคะ",
+    "🧪 EARLY_SEMANTIC_GATE batch 4: 12 line(s) judged · 3 rejected before the group counts as PASSED — [ครั้ง] ขอครั้งหน่อยคร"
+   ]
+  ]
+ },
+ "th-new": {
+  "rejected": 42,
+  "qualityRejected": 8,
+  "qualityJudgedGood(FR)": 2,
+  "ruleRejected": 30,
+  "ruleJudgedGood": 26,
+  "FRexamples": [
+   [
+    null,
+    "คุณจะกินชิ้นไหนคะ",
+    "✖ TH_CANDIDATE_REJECTED stage=naturalness · \"คุณจะกินชิ้นไหนคะ\" · MANDATORY number missing — LINE 1 must include a numbe"
+   ],
+   [
+    null,
+    "ขอชิ้นที่ใหญ่ที่สุดครับ",
+    "✖ TH_CANDIDATE_REJECTED stage=naturalness · \"ขอชิ้นที่ใหญ่ที่สุดครับ\" · MANDATORY number missing — LINE 1 must include a"
+   ]
+  ]
+ }
+}

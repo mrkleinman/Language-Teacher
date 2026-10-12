@@ -1,0 +1,9490 @@
+{
+ "runId": "judge-calibration.2026-10-12T05-47-21",
+ "model": "gemini-2.5-flash-lite",
+ "costUsd": 0.01537,
+ "requests": 66,
+ "refusedByCap": 0,
+ "byLang": {
+  "ja": {
+   "judged": 299,
+   "badCaught": "48% (13/27)",
+   "cleanPassed": "93% (185/198)",
+   "misleadingCuesCaught": "36% (4/11)",
+   "missedBad": [
+    "ごめんね、ちょっと遅い。 — reviewer: ちょっと遅い means \"a bit slow/late\"; being late needs 遅れた/遅くなった",
+    "うん、今日、店に入るんだ。 — reviewer: 今日 means today, not now; cue mirrors wrong English",
+    "え、これ、たぶん入らないよ。 — reviewer: 入らない here means \"won't fit\", not \"won't enter\"",
+    "何食べる？ — reviewer: 何食べる = \"what will you eat\", not \"are eating\"",
+    "友達と駅で会うから、もう来るよ。 — reviewer: illogical; もう来る means 'coming soon', not 'I'm coming because'",
+    "え、あれ、どういうこと？ — reviewer: あれ here is 'huh?'/'that (matter)', not 'that over there'.",
+    "明日、どこか行く？ — reviewer: Uses どこか (somewhere), not question word どこ.",
+    "これとそれ、どっちがいい？ — reviewer: Target どれ not present; uses どっち.",
+    "え、もう帰るの？どこか行く？ — reviewer: Uses どこか not どこ; going home vs going somewhere is contradictory.",
+    "どこか行きたいところある？ — reviewer: Uses どこか (somewhere), not question word どこ.",
+    "どこか行きたい場所、ある？ — reviewer: どこか (somewhere) does not practise どこ (where).",
+    "どの電車に乗るの？ — reviewer: Only the softening の differs."
+   ],
+   "failedClean": [
+    "ちょっと電話してくれる？ — judge: English meaning — The sentence means 'Can you call me?', not 'Can you make a phone call for me?'",
+    "え、どれにするか、まだ分からないんだ。 — judge: misleading cue — Cue is a word-for-word copy of the English meaning.",
+    "どっちがいい？ — judge: English meaning, misleading cue — English meaning is not a direct translation.",
+    "あそこにある本、取ってくれる？ — judge: misleading cue — The cue is a word-for-word copy of the English meaning.",
+    "電話、ちょっと高いね。 — judge: naturalness 1/5, misleading cue — The target word '電話' is used to mean 'phone' (the object), but the sentence implies a conversation or a call, which is a different meaning. A more natural sentence would be 'この電話、ちょっと高いね。' (This phone is a little expensive, isn't it?) or '電話代、ちょっと高いね。' (The phone bi",
+    "あ、すみません、ありがとう。 — judge: naturalness 3/5, misleading cue — Using 'すみません' before 'ありがとう' when thanking a friend is unnatural. 'すみません' is typically used for apologies or to get attention. A friend would usually just say 'ありがとう'.",
+    "これ、どこで買うの？ — judge: English meaning — English meaning is too general",
+    "これ、ちょっと高いね。 — judge: misleading cue — The cue is too general. It should specify commenting on the price being a little high.",
+    "え、もう帰るの？じゃあ、また明日来ない？ — judge: naturalness 3/5, misleading cue — The cue implies they are leaving, but the sentence is about them coming.",
+    "どっちにする？ — judge: misleading cue",
+    "何を食べたい？ — judge: misleading cue",
+    "あ、すみません、分からない。 — judge: register, naturalness 3/5, misleading cue — register mismatch"
+   ]
+  },
+  "zh": {
+   "judged": 224,
+   "badCaught": "50% (16/32)",
+   "cleanPassed": "94% (145/154)",
+   "misleadingCuesCaught": "33% (2/6)",
+   "missedBad": [
+    "这个东西慢一点 — reviewer: Odd request form; English fragment; cue implies a request the Chinese does not make.",
+    "我跟你说 — reviewer: 跟 marks addressee (\"to\"), not \"with\"; \"Let me tell you\".",
+    "你到这里了。 — reviewer: Telling someone they arrived here is odd; 你到了 suffices.",
+    "我们一起去吧 — reviewer: Target 可以 not present.",
+    "这个太贵了 — reviewer: Target 多 not present.",
+    "菜太好了！ — reviewer: 太好了 means 'great', not 'too good'; 菜太好吃了 more natural.",
+    "你想要什么？ — reviewer: Target 我 not present.",
+    "你有什么事？ — reviewer: Target 我 not present; means 'What's the matter?'.",
+    "这里人多少？ — reviewer: Should be 这里有多少人？; 多 only inside 多少.",
+    "我们明天一起去吧 — reviewer: Target 要 not present.",
+    "这个你懂吗？ — reviewer: Target 我 not present.",
+    "我们一起去，好吗？ — reviewer: Target 想 not present."
+   ],
+   "failedClean": [
+    "我跟朋友去 — judge: grammar, naturalness 3/5, misleading cue — Sentence is incomplete.",
+    "你现在可以去吗？ — judge: misleading cue — The cue asks for permission to go, but the sentence asks if the other person can go.",
+    "这个很好 — judge: naturalness 3/5, misleading cue — The cue asks 'How is this?', but the sentence is a statement 'This is very good.'",
+    "这个不快 — judge: naturalness 3/5",
+    "我要去 — judge: naturalness 3/5 — The sentence is incomplete. A native speaker would say 我要去[place] or 我要去[activity].",
+    "我回家 — judge: grammar — Missing particle '了' or '去'",
+    "你现在可以来我家吗？ — judge: misleading cue — cue: The sentence is asking if the other person can come, not asking permission for oneself.",
+    "这个地方很大 — judge: misleading cue — cue: The sentence means 'big', not 'very big'.",
+    "我等你 — judge: target sense"
+   ]
+  }
+ },
+ "items": [
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "なんで帰るの？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今日はありがとうね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あ、ごめん。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "電話、ありがとう。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "いつもありがとうね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "ごめんね、ちょっと遅い。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日来る？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あ、すみません！大丈夫？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、一緒にバスに乗らない？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、店に来る？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、あそこに行くの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、いいんじゃない？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、これ、分かる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "どこか行く？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、食べてみる？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "水、飲む？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "それはどう？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今、何してるの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "駅はどっち？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "じゃあ、どっちにする？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "はい、それでいいよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、どこで会う？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "まだ分からないんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "はい、大丈夫。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あ、ごめん、入る。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 1,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "The sentence is unnatural. A native speaker would say 'ごめん、入るよ' or 'ごめん、入るね'."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "また明日。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "いつ来るの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、何？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、なんで？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、もうしない。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、どれにする？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "この電話、いいと思うよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "はい、行こう！",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今日、何か飲む？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今、何買ってるの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、これ、そんなによくないかな？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今、何してる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、分かる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "駅はどこにあるの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あれ、いいと思うよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あれがいいと思う。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "電話、ある？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、どっちにする？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、これ、もう分かるよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、店へ行くよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、友達と映画に行くんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "どれが好き？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あれ、何？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、好きだよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "なんで忙しいの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、明日、店に来るよ。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "ok",
+    "problem": "The speaker is saying they are coming, not that they will come."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、今日、店に入るんだ。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、一緒に行こうよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "何飲む？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "ちょっと電話してくれる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 7,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "ok",
+    "problem": "The sentence means 'Can you call me?', not 'Can you make a phone call for me?'"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "一緒に食べない？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "じゃあ、一緒に行こうか。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "まだ一緒じゃないの？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "いいお店、知ってる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、それで大丈夫。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "いいえ、大丈夫じゃない。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もう大丈夫？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、いいえ、まだ買わないよ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、どうしたの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あ、また会ったね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あれがいい。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "どの電車に乗る？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、大丈夫？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あそこにある。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "それ、好き？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "はい、入る。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、どこへ行くの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、これ、たぶん入らないよ。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もう一緒に行かないの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、何がいいかな？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "ここ、どうする？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "どれがいい？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "ちょっと、どう思う？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 6,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "ok",
+    "problem": "English meaning adds 'about this a little'"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、そう思う。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あそこ、何があるか分かる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "この映画、いいと思うよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "たぶん明日、行けると思う。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "それ、何がいい？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、大丈夫だよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "いいえ、その映画は好きじゃないんだ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "cue is a direct quote"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、どうする？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、一緒に入ろうか。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もうすぐ、何か食べたいね。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "いいえ、入らない。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 1,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "A native speaker would not say いいえ to mean 'I won't enter'. They would say いいえ, 入りません or いいえ, 行きません."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "どこで会おうか？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "店に入るんだ。ちょっと待って。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あそこはどこ？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The sentence means 'Where is over there?', but the cue is 'where is over there?'. A native speaker would not ask this question. They would ask 'Where is X?' or 'What is over there?'"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "電話、貸してくれる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あれ、いい？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "いいえ、大丈夫。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、ちょっと大きいかな？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もう帰るの？大丈夫？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、これ、どうする？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "すみません、駅はどこ？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 3,
+    "grammar": true,
+    "register": false,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "register"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もうすぐご飯食べに行こうよ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "なんで入らないの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "すみません、これ、どこで買いましたか？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "電話、ありがとうね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もう来る？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、来ると思う？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、何する？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、ちょっと待ってくれる？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "電話、もう使った？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "misleading",
+    "problem": "English meaning is not a direct translation."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、どれにするか、まだ分からないんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "Cue is a word-for-word copy of the English meaning."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もう電車に乗った？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "どっちがいい？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "misleading",
+    "problem": "English meaning is not a direct translation."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "ちょっと高いね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "何してるの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、どうする？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、いいと思うよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "いいえ、まだ買わない。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今から行こうか？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "なんで行かないの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、ごめん、全然分からなかった。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、その電話、いいかな？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "The English meaning is too vague. The Japanese sentence is asking if the phone is good, not if it's okay to take it."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、好きだよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "一緒に乗らない？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "本当にありがとうね。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今日、一緒じゃないんだ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、どれがいいかな？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "え、またここ？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "たぶん大丈夫だと思う。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "たぶん、明日来るかな？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "じゃあ、もう一緒には買わないね。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 1,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The cue is a word-for-word copy of the English meaning."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "また来る？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "じゃあ、また明日。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もう食べた？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、ちょっと高いかな。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "その店、どこにある？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "また行こうよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あそこにある本、取ってくれる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The cue is a word-for-word copy of the English meaning."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もうご飯、食べた？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "何食べる？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "電話、ちょっと高いね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The target word '電話' is used to mean 'phone' (the object), but the sentence implies a conversation or a call, which is a different meaning. A more natural sentence would be 'この電話、ちょっと高いね。' (This phone is a little expensive, isn't it?) or '電話代、ちょっと高いね。' (The phone bill is a little expensive, isn't it?)."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あ、すみません、ありがとう。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "Using 'すみません' before 'ありがとう' when thanking a friend is unnatural. 'すみません' is typically used for apologies or to get attention. A friend would usually just say 'ありがとう'."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "一緒に行こうか。店で何か飲む？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "すみません、ちょっと待って。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "はい、買う。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、バスに乗るよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今、これ、いる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、どう思う？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、どこで買うの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "ok",
+    "problem": "English meaning is too general"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、どう？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "店で何する？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、大丈夫だよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今日、何する？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、分かるよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "すみません、ちょっといい？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "もう分からないかな。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 2,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The cue is a word-for-word copy of the English sentence, and the Japanese sentence is a bit unnatural."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "明日、たぶん行けると思うんだけど、どう？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The cue is a word-for-word copy of the English sentence."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "ごめんね、今日行けないんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "ごめん、今日、行けない。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今、店に入るんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "どこかへ行くの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "店、ちょっと遠いね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "今日、ご飯食べるよ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "これ、好き？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "大丈夫？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あそこに行こう。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "うん、また明日。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "水、飲むよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "どれ？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "あ、すみません、入る。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 8,
+    "natural": 2,
+    "grammar": false,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "misleading",
+    "problem": "grammar and register mismatch"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja.json",
+   "text": "それ、好きだと思う？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 1,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The English translation is a bit unnatural. A native speaker would more likely ask 'Do you like that?' or 'Is that good?'"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "この電車はいいよ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "ごめん、ちょっと待って。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "明日、駅へ行くよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "これ、食べる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "今、これ欲しいんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "駅まで一緒に行こうよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "これ、ちょっと高いね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The cue is too general. It should specify commenting on the price being a little high."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "駅まで行くの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "すみません、ちょっと待ってください。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "あ、ごめん！",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "まだ食べないで、一緒に行こう。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "一緒に乗る？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、その電車、好き？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、もう帰るの？じゃあ、また明日来ない？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 7,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The cue implies they are leaving, but the sentence is about them coming."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "友達と駅で会うから、もう来るよ。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "電話、もう使ったよ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "ううん、この電車はあんまり好きじゃないんだ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "うん、たぶんその電車に乗るよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "はい、駅まで行く。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "これ、ありがとう。また明日ね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "あ、すみません、大丈夫？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "その電車、友達と一緒なんだ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "うん、たぶん大丈夫。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "もう飲まない。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "どっちにする？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、その店、どこにあるの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "はい。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "もう行かない。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "うん、そうだよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "何を食べたい？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、ちょっと高すぎるよ。いいじゃない。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 8,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "ok",
+    "problem": "The sentence says 'It's not good' but the English says 'It's not good'."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、もう帰るの？ 一緒に何かしない？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "いいえ、これじゃないと思う。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "駅はどこにある？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "あ、あれ、見せて。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "明日、駅に来る？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "あれ、いいと思う？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "なんでそんなに忙しいの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "電話、どこにある？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "今日、ありがとう。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、どの電車に乗るの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "どれにする？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "あそこにあるよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "駅まで、ちょっと遠いかな？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "駅まで大丈夫？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、これ、たぶん行けないんだ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "その電車、いいかな？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "今、何時？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "電話、欲しいんだ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 2,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "うん、乗るよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "あ、あれ、どれがいいかな？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "いいえ、まだ大丈夫だよ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "これ、たぶん明日行く？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 6,
+    "natural": 2,
+    "grammar": false,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "misleading",
+    "problem": "grammar, english"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、本当？どうしたの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "電車、どれに乗る？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "駅でご飯食べたよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "すみません、駅はどこですか？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "この電車、好きだよ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "あ、すみません、ちょっと待ってください。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "もう分からない。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "駅までどうやって行く？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、もう帰るの？一緒じゃないの？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "なんで来ないの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "え、それは分かるよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "blind:items-ja2.json",
+   "text": "ごめん、今日行けないんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "人太多了。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你想喝这个吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我到家了。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "有一点。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我跟朋友去",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 5,
+    "natural": 3,
+    "grammar": false,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "Sentence is incomplete."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个很好吃",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你现在可以去吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The cue asks for permission to go, but the sentence asks if the other person can go."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个很好",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 8,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The cue asks 'How is this?', but the sentence is a statement 'This is very good.'"
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我等你",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我不去。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个不快",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "人很多",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我很快",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我想回家",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我买东西。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你吃什么？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你跟我去吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "那个很好",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我找这个",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你到了吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我不想去",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你要去哪里？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个东西慢一点",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "The sentence is understandable, but a native speaker might say '请慢一点' or '这个东西可以慢一点吗？' depending on the context."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个不好。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个很大",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个东西慢一点可以吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 2,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个很快。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我想喝这个",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个可以吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你想吃什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个好吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "人很少。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个不太快。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个地方很小。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你想做什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你要什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我喜欢这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个快吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我等你。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我太想你了！",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我做这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我用这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我吃一点。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个好吃吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个不小。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我到了。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我想用这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我明天到",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我吃这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们回家吧。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们一起拿吧。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The English adds 'okay?' which is not in the Chinese."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我明天要去",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 3,
+    "grammar": false,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "The sentence is incomplete. It should be 我明天要去+verb."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你做什么？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个大吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "那个多少钱？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个不大",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个太慢了",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你想喝什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你可以。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "This is not a natural sentence. A native speaker would say 你可以的 or 你能做到 or similar."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你拿这个吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你吃这个吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "不好。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我拿这个",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "A native speaker would likely add 的, like 我拿这个的."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你们一起去吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个很慢。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们一起去。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我跟你去。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个小吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你喜欢这个吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我要去",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 6,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "The sentence is incomplete. A native speaker would say 我要去[place] or 我要去[activity]."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你在哪里？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们吃一点东西吧",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你现在可以去。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你等我吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个地方很慢。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "A place cannot be slow. Only a person or an action can be slow."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个地方慢吗？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "A place cannot be slow. Only a person or an action can be slow."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我回家",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": false,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "Missing particle '了' or '去'"
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我喜欢你",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你回不回？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我想找这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "The object '这个' is too vague. A native speaker would likely specify what 'this' refers to."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我要这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "钱多吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 2,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "ok",
+    "problem": "English meaning is unnatural"
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我跟你说",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你拿什么？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你等我一下。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你跟谁去？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我想去",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我明天回家。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你找我吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "人太少了",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "那个好吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们一起回吧",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个好吃",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我想吃这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这里人少吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你拿这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你回家吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你找什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我喜欢那个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我想喝一点",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个东西多少钱？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我跟你去",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们一起等吧",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个地方小吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你去哪里？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这里人多吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们一起吃吧",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我要买这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你用这个吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你到这里了。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "快一点！",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "那个太好了。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个慢一点。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 2,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我找你",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "地方很少",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们不用这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我不懂",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们一起找吧",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你用什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个可以",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个地方人太少了。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们一起做吧",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "不慢。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "很好！",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我很想吃这个。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你做什么东西？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这里人很少。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个不慢",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我明天可以去。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个太小了",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你喜欢那个吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我很好。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们喝这个吧？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个很小",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你等我一下，好吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个很快",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "不小。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我想去那里。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你现在要去哪里？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "我们一起吃吧。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个很小。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这里人很多。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你不想去吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你想吃这个吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "东西很多",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你在找什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "这个不慢。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "家很大。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "你很好",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "钱很多",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "blind:items-zh.json",
+   "text": "太好了！",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "駅で、友達と話すよ。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "misleading",
+    "problem": "target word 'する' not used"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "どれにするか、まだ分からないんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "駅はどっちかな？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "この電車、どれに乗る？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 6,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "misleading",
+    "problem": "English meaning is 'Which train should I take?', but sentence is 'Which train do I ride?'"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "明日の予定、どうする？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "次、どこへ行く？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "次は何に乗る？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "この中でどれがいい？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "うん、あれおいしそうだね。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "misleading",
+    "problem": "target word not used"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "電話番号、まだ教えてないんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "今日はありがとう。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "今、これを見せて。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 6,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": "a bit unnatural"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "え、どういう意味か分かる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "はい、分かりました。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "明日、大丈夫かな。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "え、ゆみちゃん？ ごめん、気づかなかった。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "じゃあ、私はこれで。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": false,
+    "cue": "misleading",
+    "problem": "The sentence doesn't use the target word 'どう'. The English meaning is also not what the sentence says."
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "ううん、ちょっと大丈夫じゃない。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "今日、来てくれてありがとうね。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "はい、あの本、読んだよ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "え、あれ、どういうこと？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "この後、何するかわかる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "え、たぶん、もう店にいるかな。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "さっき、ちょっとそこまで行ったんだ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "どこか行きたいんだけど、どう思う？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "misleading",
+    "problem": "English meaning is wrong"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "あそこは何？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "たぶん、明日乗る？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 5,
+    "natural": 1,
+    "grammar": false,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "Grammar is wrong, English meaning is wrong"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "また会えてよかった。ありがとう、またね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "あー、ごめん！そんなつもりじゃなかったんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "はい、行きます。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "明日、どこか行く？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "その電車、たぶん遅れるよ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "あ、ごめん。ぶつかっちゃった。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "今、時間がないんだ。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "え、もう駅に着いた？乗らないの？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "今、時間ある？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "いいえ、まだ時間あるよ。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 7,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "この話、分かる？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "これとそれ、どっちがいい？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "助かったよ、ありがとう！",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "え、まだ一緒じゃないの？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "今、駅に着いたの？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "うん、それ、いいと思うよ。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 5,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "ok",
+    "problem": "target not in sentence"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "え、もう帰るの？どこか行く？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "この中から、どれが一番いいと思う？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "これ、大丈夫じゃないと思う。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "この電車はどこ行き？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "え、どれにするか決めた？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "このお菓子、食べてみる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "どこか行きたいところある？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "どれがいいかな？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "rejected-candidates",
+   "text": "もうすぐ帰るけど、どこか行く？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我要回",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 1,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我们一起去吧",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个太贵了",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个太大了",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我们一起到",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 5,
+    "natural": 1,
+    "grammar": false,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The sentence is incomplete and unnatural."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个不贵",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你喜欢什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个怎么样？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个有点小。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个菜做得快",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 2,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The sentence sounds like the dish was cooked quickly, not that it is a fast-cooking dish."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "菜太好了！",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我有点儿想吃。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你吃饭了吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个有点慢。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你什么时候到？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个你想买吗？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 8,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "misleading",
+    "problem": "The target word '我' is not in the sentence."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你想喝点什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "人太少。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我下午可以去。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你想要什么？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我们明天可以去",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个太少。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "那个好",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你什么时候回？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我们一起去吧。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你到哪里？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这里人很多",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个多少钱？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "misleading",
+    "problem": "target word '我' is missing"
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我明天回",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你什么时候来？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "misleading",
+    "problem": "target word '我' is missing"
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个太快了",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我想吃面条",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你有什么事？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个好。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 2,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "misleading",
+    "problem": "Target word '很' is missing."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "地方太少。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个菜好吃吗？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "misleading",
+    "problem": "Target word '一点' is missing."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这里人多少？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个大",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你想吃点什么？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个小。",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我们不去了。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 1,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "misleading",
+    "problem": "target word '想' is missing"
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我们明天一起去吧",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个走很慢。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 3,
+    "grammar": false,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "grammar: '走' is a verb, not a noun. Should be '这个散步很慢' or '走得很慢'"
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你现在可以来我家吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "cue: The sentence is asking if the other person can come, not asking permission for oneself."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个菜有一点儿咸。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个东西有一点儿贵。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个地方很大",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "cue: The sentence means 'big', not 'very big'."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个东西不慢。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 8,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "cue: The sentence means 'this thing is not slow', but the English implies 'this thing is not slow *enough*' or 'this thing is fast'. The sentence is grammatically correct but semantically odd in most contexts."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个不小",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你喝一点儿吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你慢一点",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我想喝茶",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你买什么？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 5,
+    "natural": 4,
+    "grammar": true,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "ok",
+    "problem": "English meaning is 'What do you need to buy?' not 'What do you want to buy?'"
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "这个你懂吗？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我们一起去，好吗？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我们拿这个吧",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你到这里。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 1,
+    "natural": 1,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "The cue is misleading. The sentence is a command, not a statement."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你找谁？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你走得有点慢。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你不好奇吗？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "你做得有点慢。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "rejected-candidates",
+   "text": "我想吃。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "一緒ある？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 7,
+    "natural": 1,
+    "grammar": false,
+    "register": true,
+    "english": false,
+    "target": false,
+    "cue": "misleading",
+    "problem": "grammar/meaning"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "明日分かる？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 8,
+    "natural": 1,
+    "grammar": false,
+    "register": true,
+    "english": false,
+    "target": false,
+    "cue": "misleading",
+    "problem": "grammar/meaning"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "どれがいいかな？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "あ、ごめん！ 分かんない。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "あ、すみません、分からない。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 3,
+    "natural": 3,
+    "grammar": true,
+    "register": false,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "register mismatch"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "どうもありがとう。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 4,
+    "natural": 3,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "misleading",
+    "problem": "target word mismatch"
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "一緒に乗らない？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "いい場所、どこか知ってる？",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "駅で待ってるよ。早く来てね。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "どこか行きたい場所、ある？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "どの電車に乗るの？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "あ、ごめん。今日、忙しいんだ。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "ja",
+   "src": "corpus",
+   "text": "今、時間ある？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "有不。",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": true,
+   "verdict": {
+    "i": 7,
+    "natural": 1,
+    "grammar": false,
+    "register": true,
+    "english": false,
+    "target": true,
+    "cue": "misleading",
+    "problem": "Grammar is wrong. The English meaning is wrong."
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "我找你",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "copy",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "我等你",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": true,
+   "verdict": {
+    "i": 1,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": false,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "这个小一点吗？",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 2,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "那个小一点",
+   "refBad": false,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 3,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "这个地方人多。",
+   "refBad": false,
+   "refClean": true,
+   "judgeFail": false,
+   "verdict": {
+    "i": 4,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "这个大",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 5,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "你什么时候到？",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 6,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "这个很小",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 7,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  },
+  {
+   "lang": "zh",
+   "src": "corpus",
+   "text": "我要回",
+   "refBad": true,
+   "refClean": false,
+   "judgeFail": false,
+   "verdict": {
+    "i": 8,
+    "natural": 5,
+    "grammar": true,
+    "register": true,
+    "english": true,
+    "target": true,
+    "cue": "ok",
+    "problem": ""
+   }
+  }
+ ]
+}

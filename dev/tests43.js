@@ -50,6 +50,9 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
     T('D2', 'generation-screen headings (Mandarin and Japanese) count the targets actually generated, not the raw new-word selection',
       (SRC.match(/describeTargetSelection\(\(selection && selection\.counts\) \|\| \{[^}]*\}, targets\)/g) || []).length === 3)
   }
+  // ══ R — release candidate guard: no experimental generator code ships ══════════════════════════════════════════════
+  T('R1', 'release candidate: the teaching-plan generator is NOT in this build (no switch, no plan, no shared same-frame check) — the generator is v682\'s; only the quota table and the Mandarin display changed',
+    !/teachingPlan|TEACHING_PLAN|setTeachingPlan|teachingSameFrame|teaching-plan/.test(SRC))
   console.log(out.join('\n'))
   console.log('\nv683 generation architecture stabilisation: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))
   process.exit(fails ? 1 : 0)

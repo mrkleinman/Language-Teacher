@@ -293,14 +293,14 @@ function scriptedAdapter(plan) {
   {
     const Z = setup('zh'), c = Z.c
     const fresh = c.initMandarinVocab()
-    T('4A', 'NEW per track: ZH Daily at Mukyu = 5 · JA 3 · TH 5 (belt) · ZH Revision / Listening 0 · ZH above Mukyu unchanged (3)',
+    T('4A', 'NEW per track (v683 owner table): ZH Daily at Mukyu = 5 · JA 3 · TH 3 · ZH Revision / Listening 0 · ZH at 10th Kyu = 5 (was 3)',
       c.newWordsPerTrack('zh', 'daily', fresh) === 5 && c.newWordsPerTrack('ja', 'daily', fresh) === 3 && c.newWordsPerTrack('zh', 'revision', fresh) === 0 && c.newWordsPerTrack('zh', 'listening', fresh) === 0 &&
-      c.newWordsPerTrack('th', 'daily', c.initVocab()) === 5 && c.zhDailyNewWords(fresh.map(w => w.unlockOrder <= 100 ? { ...w, status: 'known', repCount: 5, okStreak: 5, lastSeen: '2026-09-01' } : w)) === 3)
+      c.newWordsPerTrack('th', 'daily', c.initVocab()) === 3 && c.zhDailyNewWords(fresh.map(w => w.unlockOrder <= 100 ? { ...w, status: 'known', repCount: 5, okStreak: 5, lastSeen: '2026-09-01' } : w)) === 5)
     const sel = c.mandarinSelectTargets(fresh, [])
     const few = fresh.map((w, k) => k < 97 ? { ...w, status: 'learning', repCount: 1, lastSeen: '2026-09-01' } : w)
     const sel3 = c.mandarinSelectTargets(few, [])
     T('4B', 'the Mandarin selector takes 5 NEW words at Mukyu (not a hardcoded 3); with only 3 eligible it takes 3', sel.length === 5 && sel.every(w => w.status === 'new') && sel3.length === 3, { n: sel.length, n3: sel3.length })
-    const st = c.selectTrackTargets({ vocab: fresh.map((w, k) => k >= 5 && k < 60 ? { ...w, status: 'learning', repCount: 2, lastSeen: '2026-09-01', dueDate: '2026-09-02' } : w), targetCap: 30, newSelector: v => c.mandarinSelectTargets(v, []) })
+    const st = c.selectTrackTargets({ vocab: fresh.map((w, k) => k >= 5 && k < 60 ? { ...w, status: 'learning', repCount: 2, lastSeen: '2026-09-01', dueDate: '2026-09-02' } : w), targetCap: 30, lang: 'zh', newSelector: v => c.mandarinSelectTargets(v, []) })
     const roles = st.targets.reduce((a, t) => (a[t.selectionRole] = (a[t.selectionRole] || 0) + 1, a), {})
     T('4C', 'the shared track selector composes 5 NEW + 25 REVIEW for a Mandarin Daily at Mukyu; NEW is the selection role (a review word is never labelled NEW)',
       st.targets.length === 30 && roles.new === 5 && st.targets.filter(t => t.selectionRole !== 'new').length === 25, roles)

@@ -252,7 +252,7 @@ The changes are confined to:
 
 ## What I will do next (minimum changes to test this)
 
-1. **Regression corpus (started).** `dev/sandbox/corpus/language-quality-corpus.json` has 34 real sentences from the 2026-10-12 logs and the v682 sandbox runs. Each has an observed verdict, an expected verdict and a reason. All are labelled **AI-judged (Claude), not native-verified**. A test will run the real validators over it and report false acceptances and false rejections, old build vs new.
+1. **Regression corpus (started).** `dev/sandbox/corpus/language-quality-corpus.json` has 33 real sentences (corrected from 34 on 2026-10-12: the first count was wrong) from the 2026-10-12 logs and the v682 sandbox runs. Each has an observed verdict, an expected verdict and a reason. All are labelled **AI-judged (Claude), not native-verified**. A test will run the real validators over it and report false acceptances and false rejections, old build vs new.
 2. **Minimum changes** for the corpus failures and the contradictions in sections 3–4. These replace or remove rules rather than adding new ones:
    - curated-only backups (remove the string templates and the "any noun + ある" licence)
    - teachability judged by curated frames

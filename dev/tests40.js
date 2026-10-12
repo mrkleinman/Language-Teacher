@@ -41,7 +41,7 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     T('J4', 'japaneseDailyFeasibleTargets: an unteachable NEW word is replaced by the next teachable unseen word AS NEW (the live log: requested 3, deferred 物/場所, shipped 1)', qOk, qDetail)
     const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
     T('J5', 'dashboard: "N new words per Daily Track" for Japanese / Mandarin reads newWordsPerTrack (the generator\'s own quota), not the Thai belt allowance',
-      /langName === 'Japanese' \? newWordsPerTrack\('ja', 'daily', vocab\)/.test(SRC) && c.newWordsPerTrack('ja', 'daily', V) === c.ev('JA_DAILY_NEW_WORDS'))
+      /langName === 'Japanese' \? newWordsPerTrack\('ja', 'daily', vocab\)/.test(SRC) && c.newWordsPerTrack('ja', 'daily', V) === c.getNewWordLimitForBelt(c.earliestIncompleteBelt(V) || 'White', 'ja'))
     const vk = has(c, 'recallVariationKey') ? (a, t) => new Set(a.map(x => c.recallVariationKey(x, t))).size : () => -1
     T('J6', 'recallVariationKey: これ、好き？ / うん、好きだよ。 / それ、好き？ are 2 applications, not 3; 今日、何する？ / え、今日、何するの？ are 1',
       vk(['これ、好き？', 'うん、好きだよ。', 'それ、好き？'], '好き') === 2 && vk(['今日、何する？', 'え、今日、何するの？'], 'する') === 1)

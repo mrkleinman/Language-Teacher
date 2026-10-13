@@ -409,9 +409,9 @@ const deep = x => JSON.parse(JSON.stringify(x))
     const V = c.initVocab(), lex = c.buildThaiPhoneticLexicon(V)
     const comp = t => c.composeThaiPhonetic(t, lex)
     const seg = t => c.thaiDeterministicWords(t, V, lex, [])
-    const cases = [['ผมต้องการสองร้อยบาท', 'ráawy'], ['รถเมล์จะไปที่นั่นไหมคะ', 'nân'], ['ผมปิดประตูครับ', 'bpìt'], ['น้อยกว่านี้ค่ะ', 'náawy'], ['เราควรไปตอนนี้ครับ', 'dtaawn-níi']]
+    const cases = [['ผมต้องการสองร้อยบาท', 'rói'], ['รถเมล์จะไปที่นั่นไหมคะ', 'nân'], ['ผมปิดประตูครับ', 'bpìt'], ['น้อยกว่านี้ค่ะ', 'nói'], ['เราควรไปตอนนี้ครับ', 'dtaawn-níi']]
     const bad1 = cases.map(([t, want]) => ({ t, ph: comp(t).phonetic })).filter((r, k) => !r.ph.includes(cases[k][1]))
-    T('P1', 'bank romanisations fixed: ร้อย ráawy (was rááuy), ที่นั่น/นั่น falling nân (was nán), ปิด bpìt (was bìt — ป is never b), น้อย náawy (was náauy), ตอน dtaawn (was the IPA dɔɔn shown as "dawn")',
+    T('P1', 'bank romanisations fixed: ร้อย rói (was rááuy; Oct13 owner: -อย is "oi", earlier ráawy), ที่นั่น/นั่น falling nân (was nán), ปิด bpìt (was bìt — ป is never b), น้อย nói (was náauy), ตอน dtaawn (was the IPA dɔɔn shown as "dawn")',
       !bad1.length, bad1)
     const r2 = seg('หวังว่าจะเป็นอย่างนั้นนะครับ')
     T('P2', 'หวังว่าจะเป็นอย่างนั้นนะครับ segments with NO unknown token and every word gets its toned canonical romanisation (live: the whole line fell back to toneless model text "wang wa jà pen yang nan")',

@@ -6516,7 +6516,7 @@ function initVocab() {
     }
     // Apply tone correction to phonetic from lesson data
     // Canonical phonetic enters the runtime unchanged (no tone recalculation).
-    const phonetic = loadCanonicalThaiPhonetic(d.ph || null)
+    const phonetic = loadCanonicalThaiPhonetic(d.ph || null, d.t)
     return { id: d.id || (idx + 1), duplicateOf: d.dup || null, thai: d.t, english: d.e, phonetic, status,
       difficulty: l, lessonId: d.lid || null, interval, lastSeen: null, dueDate,
       // `d.r` is bank metadata, NOT learner history. It must not seed repCount, or
@@ -10194,6 +10194,7 @@ async function ttBenchRunFixture(fx, o) {
   } catch (e) { error = String(e && e.stack || e); L('⛔ RUN_ERROR ' + String(e && e.message || e)) }
   finally { setTeachingPlan(_tpWas) }
   const track = out && out.track
+  TT_BENCH.lastTrack = track || null; TT_BENCH.lastRunId = runId        // Oct13: the sandbox live harness exports the finished track
   let usage = null, usageLines = [], integrityLines = null
   try { usage = aiUsageSummary(runId); usageLines = aiUsageSummaryLines(usage) } catch (e) {}
   try { integrityLines = track && track.integrity ? trackIntegrityLines(track) : null } catch (e) {}
@@ -10483,7 +10484,9 @@ function v684ThToneOf(syl) {
 // า → aa (not in เ-า / ำ), ี → ii, ู → uu; ั / ะ are short; a medial or final อ (ร้อน, ของ) is the ɔ vowel (aw / aaw)
 function v684ThVowelProblems(syl, p) {
   const s = String(syl || '').replace(/[่-์]/g, ''), bare = String(p || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  if (/^[ก-ฮ]{1,2}อ[ก-ฮ]?$/.test(s) && !/^อ/.test(s) && !/aw|ɔ/.test(bare)) return ['the vowel is ɔ (written aw)']
+  // Oct13 (owner): ɔ + ย (-อย: หน่อย, ร้อย, ซอย) is written "oi"
+  if (/^[ก-ฮ]{1,2}อย$/.test(s) && !/^อ/.test(s) && oct13On()) { if (!/oi|ɔ/.test(bare)) return ['the vowel is ɔ + i (written oi)'] }
+  else if (/^[ก-ฮ]{1,2}อ[ก-ฮ]?$/.test(s) && !/^อ/.test(s) && !/aw|ɔ/.test(bare)) return ['the vowel is ɔ (written aw)']
   if (/า/.test(s) && !/ำ|^เ.*า|าะ$/.test(s) && !/aa/.test(bare)) return ['the vowel is long (aa)']
   if (/ี/.test(s) && !/ii|ia/.test(bare)) return ['the vowel is long (ii)']
   if (/ู/.test(s) && !/uu/.test(bare)) return ['the vowel is long (uu)']
@@ -13998,10 +14001,10 @@ function buildThaiPhoneticLexicon(vocab, extra) {
   //    stale values until Step E, so it must not be the first source for tracks.
   ;(typeof RAW_VOCAB !== 'undefined' ? RAW_VOCAB : []).forEach(d => {
     if (!d || !d.t || !d.ph || (d.qcStatus && LEXICALLY_INVALID_STATUSES.has(d.qcStatus))) return
-    if (!lex.has(d.t)) lex.set(d.t, loadCanonicalThaiPhonetic(d.ph))
+    if (!lex.has(d.t)) lex.set(d.t, loadCanonicalThaiPhonetic(d.ph, d.t))
   })
   // 2. approved grammar / function-word phonetics
-  Object.entries(extra || THAI_FUNCTION_PHONETICS).forEach(([k, v]) => { if (!lex.has(k)) lex.set(k, v) })
+  Object.entries(extra || THAI_FUNCTION_PHONETICS).forEach(([k, v]) => { if (!lex.has(k)) lex.set(k, thaiOiDisplay(v, k)) })
   // 3. the learner's own custom words (not in the bank)
   ;(vocab || []).forEach(w => {
     const th = w.thai || w.t, ph = w.phonetic || w.ph
@@ -31261,7 +31264,7 @@ function LessonsView({ vocab, onVocabUpdate, onBack, apiKey }) {
               <div style={{ background:'var(--surface)', border:`1px solid ${seasonInfo?.color || 'var(--gold)'}`, borderRadius:12, padding:'16px', marginBottom:16 }}>
                 <div style={{ fontSize:11, color: seasonInfo?.color || 'var(--gold)', fontWeight:700, marginBottom:8 }}>KEY PATTERN</div>
                 <div style={{ fontSize:24, fontWeight:800, color:'var(--text)', marginBottom:6 }}>{lesson.keyPattern?.thai}</div>
-                <div style={{ fontSize:14, color:'#7dd3fc', marginBottom:4 }}>{lesson.keyPattern?.phonetic}</div>
+                <div style={{ fontSize:14, color:'#7dd3fc', marginBottom:4 }}>{thaiOiDisplay(lesson.keyPattern?.phonetic)}</div>
                 <div style={{ fontSize:14, color:'var(--muted)' }}>{lesson.keyPattern?.english}</div>
               </div>
               <div style={{ fontSize:14, color:'var(--text)', lineHeight:1.7, marginBottom:16 }}>{lesson.teacherExplanation}</div>
@@ -31345,7 +31348,7 @@ function LessonsView({ vocab, onVocabUpdate, onBack, apiKey }) {
                   <div key={i} style={{ background:'var(--surface)', borderRadius:10, padding:'12px 14px', marginBottom:8, display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ flex:1, cursor:'pointer' }} onClick={() => speak(w.thai, 'female')}>
                       <div style={{ fontSize:20, fontWeight:800, color:'var(--text)' }}>{w.thai}</div>
-                      <div style={{ fontSize:13, color:'#7dd3fc', marginTop:2 }}>{w.phonetic}</div>
+                      <div style={{ fontSize:13, color:'#7dd3fc', marginTop:2 }}>{thaiOiDisplay(w.phonetic)}</div>
                       <div style={{ fontSize:13, color:'var(--muted)', marginTop:1 }}>{w.english}</div>
                     </div>
                     <button onClick={() => addWordToLibrary(w)} disabled={inLib}
@@ -31371,7 +31374,7 @@ function LessonsView({ vocab, onVocabUpdate, onBack, apiKey }) {
                     <div style={{ fontSize:22, fontWeight:800, color: seasonInfo?.color || 'var(--gold)', marginBottom:6, cursor:'pointer' }} onClick={() => speak(currentDrill.thai, 'male')}>
                       {currentDrill.thai}
                     </div>
-                    <div style={{ fontSize:14, color:'#7dd3fc', marginBottom:4 }}>{currentDrill.phonetic}</div>
+                    <div style={{ fontSize:14, color:'#7dd3fc', marginBottom:4 }}>{thaiOiDisplay(currentDrill.phonetic)}</div>
                     <div style={{ fontSize:10, color: seasonInfo?.color || 'var(--gold)', opacity:0.7 }}>Tap Thai to hear</div>
                   </div>
                   <div style={{ display:'flex', gap:8 }}>
@@ -31402,7 +31405,7 @@ function LessonsView({ vocab, onVocabUpdate, onBack, apiKey }) {
               {(lesson.samples || []).map((s, i) => (
                 <div key={i} style={{ background:'var(--surface)', borderRadius:10, padding:'12px 14px', marginBottom:8, cursor:'pointer' }} onClick={() => speak(s.thai, i%2===0 ? 'male' : 'female')}>
                   <div style={{ fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>{s.thai}</div>
-                  <div style={{ fontSize:13, color:'#7dd3fc', marginBottom:3 }}>{s.phonetic}</div>
+                  <div style={{ fontSize:13, color:'#7dd3fc', marginBottom:3 }}>{thaiOiDisplay(s.phonetic)}</div>
                   <div style={{ fontSize:13, color:'var(--muted)' }}>{s.english}</div>
                 </div>
               ))}
@@ -33784,11 +33787,23 @@ async function rollbackThaiLexiconMigrationV1() {
 // still stored in IPA (ɔ ə ʉ ɛ) is adapted by fixIPAPhonetic, until the bank's IPA
 // records are converted to the D1 convention; after that this adapter never fires.
 const THAI_IPA_CHARS = /[\u0254\u0259\u0289\u025B]/
-function loadCanonicalThaiPhonetic(ph) {
+function loadCanonicalThaiPhonetic(ph, thai) {
   if (!ph) return ph
   // Oct13: one known dictionary typo (ลอง "looong") is displayed in the app's own spelling of the long ɔɔ vowel (สอง sǎawng)
   const out = THAI_IPA_CHARS.test(ph) ? fixIPAPhonetic(ph) : ph
-  return oct13On() ? out.replace(/(^|[\s-])looong(?=$|[\s-])/g, '$1laawng') : out
+  return oct13On() ? thaiOiDisplay(out.replace(/(^|[\s-])looong(?=$|[\s-])/g, '$1laawng'), thai) : out
+}
+// Oct13 (owner, 13 Oct: "use nòi for หน่อย, consistently across Thai phonetics") — the ɔ + i diphthong (spelled -อย) is shown as "oi"
+// with the tone mark on the o, whatever spelling the source used: IPA nɔ̀i, the app's own náawy / khâawy / bplàawy, or the
+// converted nàwi. หน่อย nòi · น้อย nói · ร้อย rói · ค่อย khôi · ปล่อย bplòi · อร่อย à-ròi · ซอย soi · ลอย loi. DISPLAY ONLY: the stored
+// dictionary, its ids and every saved track are untouched (an old track keeps the text it was saved with). โดย dooi is a different
+// vowel (โ-ย) and is not changed.
+const _TH_A2O = { 'a': 'o', '\u00e0': '\u00f2', '\u00e1': '\u00f3', '\u00e2': '\u00f4', '\u01ce': '\u01d2' }
+function thaiOiDisplay(ph, thai) {
+  if (!ph || typeof ph !== 'string' || (typeof oct13On === 'function' && !oct13On())) return ph
+  let out = ph.replace(/([a\u00e0\u00e1\u00e2\u01ce])a?w[yi](?![a-z\u0300-\u036f])/g, (m0, a) => _TH_A2O[a] + 'i')
+  if (thai && /ลอย/.test(thai)) out = out.replace(/(^|[\s-])looi(?=$|[\s-])/g, '$1loi')
+  return out
 }
 // VALIDATOR, not a mutator: reports what the rule-based tone engine would change,
 // for QC and audit tooling. Nothing at load time may write its result back.
@@ -33841,9 +33856,8 @@ function fixIPAPhonetic(ph) {
     [new RegExp(ipa, 'g'), base]                                             // short
   ]
   let out = ph
-  // Oct13: the ɔ + i diphthong is written the way the app's hand-written entries write it (ร้อย ráawy, น้อย náawy, ค่อย khâawy):
-  // long ɔɔi → aawy, short ɔi → awy. The plain rule gave "nàwi" for หน่อย and "sawi" for ซอย.
-  if (oct13On()) out = out.replace(/\u0254([\u0300\u0301\u0302\u030C]?)\u0254i/g, (_, d) => t('aa', d) + 'wy').replace(/\u0254([\u0300\u0301\u0302\u030C]?)i(?![a-z\u0300-\u036f])/g, (_, d) => t('aw', d) + 'y')
+  // Oct13 (owner, 13 Oct): the ɔ + i diphthong is written "oi", tone on the o (หน่อย nòi, ซอย soi). The plain rule gave "nàwi".
+  if (oct13On()) out = out.replace(/\u0254([\u0300\u0301\u0302\u030C]?)\u0254?i(?![a-z\u0300-\u036f])/g, (_, d) => t('o', d) + 'i')
   for (const [ipa, base] of [['\u0254','aw'], ['\u0259','oe'], ['\u0289','ue'], ['\u025b','ae']]) {
     for (const [re, rep] of pair(ipa, base)) out = out.replace(re, rep)
   }

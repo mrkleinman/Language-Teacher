@@ -20835,10 +20835,11 @@ async function finaliseMainTrack(track, adapter, ctx) {
     if (adapter.lang === 'zh') { const xc = zhExchangeContradictions(t.pairs)
       if (xc.length) { const bad = new Map(xc.map(x => [x.pair, x.reason])); t = { ...t, pairs: t.pairs.map(p => bad.has(p) ? { ...p, _qcInvalid: bad.get(p) } : p) }
         log && log('  🧭 ZH_EXCHANGE_CONTRADICTION ' + xc.length + ' line(s) contradict their own exchange — their slots go to quota recovery: ' + xc.map(x => '"' + x.pair.chinese + '" (' + x.reason + ')').join(' | ').slice(0, 400)) } }
-    // v694 C1 — the FINAL pairs are the authoritative object: the deterministic language rules run again on every target line as it
-    // will be saved (a line changed by a group rewrite, a recovery or a cue fix is judged on its final text, not on an old verdict)
+    // v694 C1 — the FINAL pairs are the authoritative object: a target line CHANGED after it was accepted (a QC group rewrite, a cue
+    // fix) is judged again by the deterministic language rules on its final text, not trusted on an old verdict. An untouched line
+    // already passed the same rules at acceptance.
     if (adapter.lang === 'zh' || adapter.lang === 'ja') { const fin = []
-      t.pairs.forEach((p, i) => { if (!p || classifyTrackPair(p) !== 'TARGET' || p._qcInvalid) return
+      t.pairs.forEach((p, i) => { if (!p || classifyTrackPair(p) !== 'TARGET' || p._qcInvalid || !(p._qcAction || p._cueAddresseeFixed)) return
         const pr = adapter.lang === 'zh' ? mandarinSurfaceGrammarProblems(p.chinese, null, null).concat(zhEnglishAddsMeaning(p.chinese, p.english))
           : jaCueFormProblems(p).concat(jaPragmaticProblems(p.japanese, (c.vocabById && c.vocabById.get(p.targetId)) || null))
         if (pr.length) fin.push({ p, why: pr[0] }) })

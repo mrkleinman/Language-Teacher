@@ -7,6 +7,15 @@ const V691_IDS = {
   ja: [101, 102, 80, 103, 104, 105, 106, 44, 83, 20, 43, 40, 82, 87, 84, 85, 86, 19, 46, 47, 31, 32, 14, 21, 22, 23, 45, 81, 33, 34],
   zh: [32, 54, 62, 63, 57, 58, 55, 56, 51, 53, 50, 47, 48, 49, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 52],
 }
+// v694: the three v693 Listening runs of 13 Oct (owner logs 14-46-45 / 14-54-41 / 14-57-34): the 30 selected ids plus the
+// candidates the v693 feasibility check deferred (Thai ขนาด 1524 · เพราะ 676; Japanese いくら 22 · 何時 45 · 話す 36; Mandarin
+// 多少 29 · 做 49), all due — so the v694 feasibility review decides them again
+const V693_IDS = {
+  th: [779, 359, 1233, 1479, 1536, 1539, 821, 839, 653, 717, 719, 730, 737, 761, 858, 744, 750, 817, 840, 841, 860, 667, 669, 672, 686, 787, 815, 847, 712, 726],
+  ja: [101, 102, 80, 103, 104, 105, 106, 44, 83, 20, 43, 40, 82, 87, 84, 85, 86, 19, 46, 47, 31, 32, 14, 21, 23, 81, 33, 34, 50, 49],
+  zh: [32, 54, 62, 63, 57, 58, 55, 56, 51, 53, 50, 47, 48, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 52, 33],
+}
+const V693_DEFERRED = { th: [1524, 676], ja: [22, 45, 36], zh: [29, 49] }
 const surf = lang => lang === 'ja' ? 'japanese' : lang === 'zh' ? 'chinese' : 'thai'
 function learner(c, lang, o = {}) {
   const vocab = lang === 'th' ? c.initVocab() : lang === 'ja' ? c.initJapaneseVocab() : c.initMandarinVocab()
@@ -27,4 +36,4 @@ function learner(c, lang, o = {}) {
   if (o.belt !== false && typeof c.setLearnerStateOverride === 'function') c.setLearnerStateOverride({ rank: { th: '9th Kyu', ja: '10th Kyu', zh: 'Mukyu' }[lang], source: 'v692-regression' })
   return { vocab, field: surf(lang), byId: new Map(vocab.map(w => [w.id, w])) }
 }
-module.exports = { V691_IDS, learner, surf }
+module.exports = { V691_IDS, V693_IDS, V693_DEFERRED, learner, surf }

@@ -4,9 +4,13 @@
 // model's REPLIES are scripted (benchmark/v692/mock.js), at the transport boundary — planning and validation are never
 // bypassed. Learners: the three v691 Listening runs of 13 Oct (target ids from the owner's logs; benchmark/v692/learners.js).
 // A mocked success proves the PIPELINE, not the teaching quality of what the real model will write.
+// v694 (section J): the plan is requested ONE SITUATION AT A TIME (compact format, bounded output); learners and model replies
+// modelled on the three v693 runs (benchmark/v692/learners.js V693_IDS · benchmark/v694/plans.js, incl. the plan Claude Haiku
+// actually returned for the Japanese v693 run).
 'use strict'
 const { load } = require('./harness')
-const { learner, V691_IDS } = require('./benchmark/v692/learners')
+const { learner, V691_IDS, V693_IDS, V693_DEFERRED } = require('./benchmark/v692/learners')
+const { GOOD693, JA_V693 } = require('./benchmark/v694/plans')
 const { GOOD, V691_BAD } = require('./benchmark/v692/plans')
 const { mockMeaningFirst } = require('./benchmark/v692/mock')
 const out = []; let n = 0, fails = 0
@@ -14,10 +18,10 @@ const T = (id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass 
 const KEY = 'AIzaSyTEST-harness-key-000000', MODEL = 'gemini-2.5-flash-lite'
 const LANGS = ['th', 'ja', 'zh']
 const count = a => a.reduce((m, s) => (m[s] = (m[s] || 0) + 1, m), {})
-async function run(lang, opt = {}, extra = {}) {
+async function run(lang, opt = {}, extra = {}, lopt) {
   const c = load(__dirname + '/tt.compiled.js', { realBelt: true })
   const defaultOn = c.listeningMeaningFirstOn()
-  const L = learner(c, lang)
+  const L = learner(c, lang, lopt)
   // the app's Thai selection folds a RETIRED ALIAS's history into its canonical word (pre-existing, idempotent) — applied once
   // here as any earlier Revision / Daily selection would have, so the snapshot isolates what the Listening run itself changes
   if (lang === 'th') c.selectRevisionTargets('th', L.vocab)
@@ -39,16 +43,18 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
   for (const lang of LANGS) good[lang] = await run(lang)
   for (const lang of LANGS) {
     const g = good[lang], tr = g.track
-    T('A1-' + lang, lang + ': the meaning-first planner is the DEFAULT (no switch set) and ran — PLANNER log, the plan / audit stages, architecture meaning-first-v692; no legacy scene composer, no legacy preflight',
-      g.defaultOn === true && /LISTENING_PLANNER planner=meaning-first-1/.test(g.Ls) && g.stages.O_listening_meaning_plan === 1 && g.stages.O_listening_semantic_audit >= 1 && !g.stages.O_listening_scene &&
+    T('A1-' + lang, lang + ': the meaning-first planner is the DEFAULT (no switch set) and ran — PLANNER log, one plan request per situation (v694) + the audit stage, architecture meaning-first-v692; no legacy scene composer, no legacy preflight',
+      g.defaultOn === true && /LISTENING_PLANNER planner=meaning-first-2/.test(g.Ls) && g.stages.O_listening_meaning_plan === (g.Ls.match(/LISTENING_SITUATION S\d/g) || []).length && g.stages.O_listening_semantic_audit >= 1 && !g.stages.O_listening_scene &&
       !/SCENE_PREFLIGHT|LISTENING_VERBALIZABILITY PROVEN|LISTENING_COMPOSITION scene/.test(g.Ls) && tr.listening && tr.listening.architecture === 'meaning-first-v692', { stages: g.stages, arch: tr && tr.listening && tr.listening.architecture })
     T('A2-' + lang, lang + ': READY with 30/30 targets heard, every final gate passing, 24–44 turns, ≤3 targets per turn, both speakers', tr.status === 'READY' && tr.coverage.covered === 30 && tr.failedChecks.length === 0 &&
       tr.listening.lines.length >= 24 && tr.listening.lines.length <= 44 && tr.listening.gates.MAX_TARGETS_PER_TURN <= 3 && tr.listening.gates.BOTH_SPEAKERS, { status: tr.status, cov: tr.coverage, failed: tr.failedChecks })
     T('A3-' + lang, lang + ': exactly 30 selected revision targets, 0 new; SRS history / status / due dates of every word unchanged by the run', tr.selectedTargetIds.length === 30 && tr.targetCounts.newTargetCount === 0 && g.srsUntouched)
     T('A4-' + lang, lang + ': the plan was proven before commit — STRUCTURAL_VALIDATION PASS and SEMANTIC_AUDIT PASS, then SCENE_ACCEPTED / SCENE_COMMITTED, MEANING_PLAN_VALIDATED gate PASS',
       /STRUCTURAL_VALIDATION \(candidate\) PASS/.test(g.Ls) && /SEMANTIC_AUDIT \(candidate\) PASS/.test(g.Ls) && /state=APPROVED/.test(g.Ls) && /SCENE_ACCEPTED LS1/.test(g.Ls) && /SCENE_COMMITTED LS1/.test(g.Ls) && tr.listening.gates.MEANING_PLAN_VALIDATED === 'PASS')
-    T('A5-' + lang, lang + ': 3 model calls in all (1 plan · 1 semantic audit · 1 final coherence judge) — no per-scene generation, no repair calls when the plan is valid',
-      (g.stages.O_listening_meaning_plan + g.stages.O_listening_semantic_audit + (g.stages.O_listening_coherence || 0)) === 3 && !g.stages.O_listening_plan_repair, g.stages)
+    // v694: the plan is requested one situation at a time (v693's single whole-conversation request hit the 16000-token cap)
+    const nSit = (g.Ls.match(/LISTENING_SITUATION S\d/g) || []).length
+    T('A5-' + lang, lang + ': situations + 2 model calls in all (1 plan request per situation · 1 semantic audit · 1 final coherence judge) — no re-plans, no repair calls when the plan is valid',
+      nSit >= 4 && g.stages.O_listening_meaning_plan === nSit && g.stages.O_listening_semantic_audit === 1 && (g.stages.O_listening_coherence || 0) === 1 && !g.stages.O_listening_plan_repair && /LISTENING_MF_SCENE_REPLANS=0/.test(g.Ls), { nSit, stages: g.stages })
     // every planned turn carries structured meaning (speaker, intention, referent …) in the saved plan
     const mp = tr.listening.coveragePlan && tr.listening
     T('A6-' + lang, lang + ': every target is heard in the FINAL text (the coverage rows come from the final lines), and every line\'s speaker is A or B', tr.listening.coverage.rows.every(rw => rw.status === 'COVERED') && tr.listening.lines.every(l => l.speaker === 'A' || l.speaker === 'B'))
@@ -98,8 +104,10 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
   {
     // D1 · a QUESTION_ANSWER fault → the WHOLE exchange is repaired (one call), re-validated and re-audited → READY
     const ja1 = await run('ja', { plan: splice(GOOD.ja, 7, V691_BAD.ja.slice(0, 2)), repair: () => [['A', 'ASK', 'TIME', 'we', 'いつ行く？', 'When shall we go?'], ['B', 'ANSWER', '', 'we', '明日、行こう。', 'Let\'s go tomorrow.']] })
-    T('D1', 'ja: 何時→明日 is repaired as an EXCHANGE (QUESTION_ANSWER), the new いつ→明日 exchange passes both gates, the track is READY — 1 repair call, every other turn kept',
-      ja1.track.status === 'READY' && /MEANING_REPAIR round 1\/3 · 1 part\(s\): x1 exchange \[QUESTION_ANSWER\]/.test(ja1.Ls) && /PART_REPAIRED x1 \(exchange/.test(ja1.Ls) && ja1.stages.O_listening_plan_repair === 1, { st: ja1.track.status, r: ja1.track.failureReason, s: ja1.stages })
+    // v694: with no number words 何時 is an INFEASIBLE INTENTION on any turn — the part is repaired at the INTENTION level (a
+    // different question), not as a surface / answer patch of the same clock-time question
+    T('D1', 'ja: 何時→明日 is caught as ANSWER_TYPE + INFEASIBLE_INTENTION, repaired as a new INTENTION (いつ→明日), passes both gates, READY — 1 repair call, every other turn kept',
+      ja1.track.status === 'READY' && /SCENE_LOCAL_CHECK S\d FAIL[^\n]*INFEASIBLE_INTENTION/.test(ja1.Ls) && /MEANING_REPAIR round 1\/3 · 1 part\(s\): x1 intention \[[A-Z_+]*QUESTION_ANSWER/.test(ja1.Ls) && /PART_REPAIRED x1 \(intention/.test(ja1.Ls) && ja1.stages.O_listening_plan_repair === 1, { st: ja1.track.status, r: ja1.track.failureReason, s: ja1.stages })
     // D2 · a GRAMMAR fault → a line repair keeps the protected lesson words
     const zh1 = await run('zh', { plan: splice(GOOD.zh, 6, [['A', 'INFORM', '', 'I', '我现在一起到。', 'I now together arrive.'], ['B', 'REACT', '', '', '真的吗？', 'Really?']]), repair: () => [['A', 'INFORM', '', 'I', '我现在到了。', 'I\'m here now.'], ['B', 'REACT', '', 'we', '好，我们一起去吧！', 'Great, let\'s go together!']] })
     T('D2', 'zh: 我现在一起到 (GRAMMAR + more than 3 lesson words) → repaired into two turns (我现在到了 / 好，我们一起去吧) keeping 现在 + 一起 + 到 → READY', zh1.track.status === 'READY' && /PART_REPAIRED x1 \([a-z]+ · [A-Z+_]*GRAMMAR/.test(zh1.Ls), { st: zh1.track.status, r: zh1.track.failureReason })
@@ -158,7 +166,7 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     let thrown = null
     try { await c.generateCohesiveListeningTrack({ lang: 'zh', vocab: L.vocab, apiKey: KEY, model: MODEL, onLog: x => logs.push(x), attemptId: 'lattempt-v692-fatal' }) } catch (e) { thrown = e }
     T('H2', 'a provider that is UNREACHABLE (the v691 Mandarin proxy failure) is logged as TECHNICAL_FAILURE — "NOT a language or planning verdict" — and surfaces to the app (the user\'s provider is not switched)',
-      thrown && thrown.fatalProvider && /TECHNICAL_FAILURE \(fault 9\) during meaning plan — provider=anthropic reason=UNREACHABLE/.test(logs.join('\n')) && /NOT a language or planning verdict/.test(logs.join('\n')))
+      thrown && thrown.fatalProvider && /TECHNICAL_FAILURE \(fault 9\) during meaning plan \(situation S1\) — provider=anthropic reason=UNREACHABLE/.test(logs.join('\n')) && /NOT a language or planning verdict/.test(logs.join('\n')))
     T('H3', 'no silent fallback: the legacy planner is used only when the switch is turned off explicitly (setListeningMeaningFirst(false)) — the composer branch is the only route to it',
       /listeningMeaningFirstOn\(\) && o\.standalone && !o\.legacyScenes \? await _lnComposeMeaningFirst\(_env\) : await _lnComposeByScenes\(_env\)/.test(require('fs').readFileSync(__dirname + '/tt.jsx', 'utf8')) && c.setListeningMeaningFirst(false) === false)
   }
@@ -177,6 +185,76 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
       c.lnMfAnswerProblem('zh', 'CLOCK_TIME', { text: '三点。' }, { text: '几点去？' }) === null && !!c.lnMfAnswerProblem('th', 'CLOCK_TIME', { text: 'พรุ่งนี้ค่ะ' }, { text: 'ไปกี่โมงคะ' }))
     const car = c.initJapaneseVocab().find(w => w.id === 103), book = c.initJapaneseVocab().find(w => w.id === 104)
     T('I7', 'ja target identity: 車 is not heard inside 電車, 本 not inside 日本語 / 本当 — but 電車と車 and 日本語の本 still count', !c.matchesJapaneseTarget('電車で行こう', car) && c.matchesJapaneseTarget('電車と車', car) && !c.matchesJapaneseTarget('本当？', book) && c.matchesJapaneseTarget('日本語の本', book))
+  }
+  // ══ J — v694: PLAN ONE SITUATION AT A TIME, on learners modelled on the three v693 runs ═══════════════════════════
+  {
+    const L693 = lang => ({ dueIds: V693_IDS[lang].concat(V693_DEFERRED[lang]) })
+    const sceneRows = (rows, key) => rows.filter(r => r[0] === key).map(r => r.slice(1))
+    const planCalls = g => g.st.calls.filter(x => x.stage === 'O_listening_meaning_plan')
+    const g693 = {}
+    for (const lang of LANGS) g693[lang] = await run(lang, { plan: GOOD693[lang] }, {}, L693(lang))
+    for (const lang of LANGS) {
+      const g = g693[lang], tr = g.track, nSit = (g.Ls.match(/LISTENING_SITUATION S\d/g) || []).length, pc = planCalls(g)
+      // demonstrations 1 · 2 · 3 · 5 · 12
+      T('J1-' + lang, lang + ' (v693 learner): READY 30/30 from ONE request per situation — ' + nSit + ' plan requests, each for exactly one situation, each with a bounded budget (≤ 2000 tokens; v693 asked 7000 for everything), the compact turn format (no addressee / context / expects fields), every situation after the first sees the turns before it',
+        tr.status === 'READY' && tr.coverage.covered === 30 && tr.failedChecks.length === 0 && pc.length === nSit && nSit >= 4 &&
+        pc.every(x => x.max <= 2000 && (x.prompt.match(/^PLAN SITUATION S\d+ of/gm) || []).length === 1 && /"turns":\[\{"speaker"/.test(x.prompt) && !/"addressee"|"expects"|"context"/.test(x.prompt)) &&
+        pc.slice(1).every(x => /^SO FAR/m.test(x.prompt)) && !/^SO FAR/m.test(pc[0].prompt), { status: tr.status, failed: tr.failedChecks, n: pc.length, nSit, max: pc.map(x => x.max) })
+      T('J2-' + lang, lang + ': the situations ASSEMBLE into one conversation — every situation passed its local check, then ONE whole-conversation validation + semantic audit, then the final gates on the final text (24–44 turns, ≤3 targets per turn, closed vocabulary, both speakers, final coherence judge)',
+        (g.Ls.match(/SCENE_LOCAL_CHECK S\d PASS/g) || []).length === nSit && /STRUCTURAL_VALIDATION \(candidate\) PASS/.test(g.Ls) && /SEMANTIC_AUDIT \(candidate\) PASS/.test(g.Ls) && g.stages.O_listening_semantic_audit === 1 && g.stages.O_listening_coherence === 1 &&
+        tr.listening.lines.length >= 24 && tr.listening.lines.length <= 44 && tr.listening.gates.MAX_TARGETS_PER_TURN <= 3 && tr.listening.gates.CLOSED_VOCAB === true && tr.listening.gates.BOTH_SPEAKERS && tr.listening.gates.ONE_CONVERSATION === 'PASS', tr.listening && tr.listening.gates)
+    }
+    // A5 · the deferral review against the run's own vocabulary (demonstration 9)
+    {
+      const th = g693.th, ja = g693.ja, zh = g693.zh
+      const covered = (g, id) => g.track.listening.coverage.rows.some(r => r.targetId === id && r.status === 'COVERED')
+      T('J3', 'deferral review: เพราะ (because), 話す (speak), 做 (do) — deferred in v693 because no situation pattern covered them — are now SELECTED and heard in the final text (เพราะเดินมากค่ะ · 日本語で話した · 你回家做什么); いくら / 何時 / 多少 stay DEFERRED (no number words), ขนาด stays deferred (its shop / looking situations are not in this conversation) — every deferral keeps its SRS obligation, and the run changes no SRS data',
+        th.track.selectedTargetIds.includes(676) && covered(th, 676) && ja.track.selectedTargetIds.includes(36) && covered(ja, 36) && zh.track.selectedTargetIds.includes(49) && covered(zh, 49) &&
+        /LISTENING_TARGET_DEFERRED target=1524 ขนาด[^\n]*srsObligationPreserved=true/.test(th.Ls) && /target=22 いくら[^\n]*srsObligationPreserved=true/.test(ja.Ls) && /target=45 何時[^\n]*srsObligationPreserved=true/.test(ja.Ls) && /target=29 多少[^\n]*srsObligationPreserved=true/.test(zh.Ls) &&
+        !/TARGET_DEFERRED target=(676|36|49) /.test(th.Ls + ja.Ls + zh.Ls) && th.srsUntouched && ja.srsUntouched && zh.srsUntouched && LANGS.every(l => g693[l].track.targetCounts.newTargetCount === 0),
+        { th: th.track.selectedTargetIds.includes(676), ja: ja.track.selectedTargetIds.includes(36), zh: zh.track.selectedTargetIds.includes(49) })
+      T('J4', 'Thai has number words: นานเท่าไหร่ (how long) → ยี่สิบนาที is a feasible question (no INFEASIBLE_INTENTION); feasibility is decided by the learner\'s words, not by question type alone', !/INFEASIBLE_INTENTION/.test(th.Ls) && th.track.status === 'READY')
+    }
+    // the plan Claude Haiku actually returned for the Japanese v693 run (demonstrations 6 · 7 · 11); the replans are a little
+    // shorter than GOOD693 so that v693's long S2 (11 turns) still fits the 24–44 budget
+    const JA_REPLAN = GOOD693.ja.filter(r => !['大丈夫。好きな本だから。', 'ありがとう。', 'うん、じゃあね。'].includes(r[5]))
+    {
+      const ja = await run('ja', { plan: (n, q, key, replan) => replan ? JA_REPLAN : JA_V693 }, {}, L693('ja'))
+      const finals = ja.track.listening ? ja.track.listening.lines.map(l => l.japanese) : []
+      T('J5', 'ja v693 plan: the situation checks catch what v693 only found after a full plan — なる / 二千 (unauthorised) in S1 / S5 and これ、いくら？ as an INFEASIBLE INTENTION (an UNTARGETED line asking a price with no number words) — each defective situation is REPLANNED once, the replans pass, READY with 0 repair calls',
+        /SCENE_LOCAL_CHECK S1 FAIL[^\n]*なる/.test(ja.Ls) && /SCENE_LOCAL_CHECK S5 FAIL[^\n]*INFEASIBLE_INTENTION[^\n]*いくら/.test(ja.Ls) && /SCENE_LOCAL_CHECK S5 \(replan\) PASS · the replanned version is kept/.test(ja.Ls) &&
+        ja.track.status === 'READY' && !ja.stages.O_listening_plan_repair && /LISTENING_MF_SCENE_REPLANS=2/.test(ja.Ls) && !finals.some(t => /いくら|二千|なる/.test(t)), { st: ja.track.status, r: ja.track.failureReason, scenes: ja.st.scenes })
+      T('J6', 'validated situations are NOT regenerated: S2–S4 of the v693 plan passed their checks and were requested once each — their turns are in the final conversation word for word',
+        ['S2', 'S3', 'S4'].every(k => ja.st.scenes.filter(x => x === k).length === 1 && !ja.st.scenes.includes(k + 'r')) && ['S2', 'S3', 'S4'].every(k => sceneRows(JA_V693, k).every(r => finals.includes(r[4]))), ja.st.scenes)
+      // the replan brings the price question back with an honest "I don't know"; the repair brings it back AGAIN → the same
+      // failure signature escalates (intention → scene) and the rejected sentence never returns
+      const priceS5 = sceneRows(JA_REPLAN, 'S5'); priceS5.splice(1, 0, ['A', 'ASK', 'PRICE', 'this', 'これ、いくら？', 'How much is this?'], ['B', 'ANSWER', '', 'this', '分からない。', 'I don\'t know.'])
+      const ja2 = await run('ja', { plan: (n, q, key, replan) => key === 'S5' && replan ? priceS5.map(r => ['S5', ...r]) : replan ? JA_REPLAN : JA_V693,
+        repair: (scope, head, q, st) => st.repair === 1 ? [['A', 'ASK', 'PRICE', 'this', 'これ、いくら？', 'How much is this?'], ['B', 'ANSWER', '', 'this', 'ちょっと高いね。', 'A little expensive, huh.']] : /\(scene\)/.test(head) ? sceneRows(JA_REPLAN, 'S5') : null }, {}, L693('ja'))
+      const f2 = ja2.track.listening ? ja2.track.listening.lines.map(l => l.japanese) : []
+      T('J7', 'ja: an unworkable exchange is REPLANNED, not endlessly surface-repaired — INFEASIBLE_INTENTION → an intention repair; the repair returns the same price question → REPEATED_FAILURE_SIGNATURE, the rejected sentence is caught at once, and the part ESCALATES to a scene replan, which succeeds → READY, いくら never in the final text, ≤ 3 rounds',
+        /x1 intention \[SEMANTIC/.test(ja2.Ls) && /REPEATED_FAILURE_SIGNATURE [^\n]*INFEASIBLE_INTENTION/.test(ja2.Ls) && /REPEATED_REJECTED_SENTENCE[^\n]*いくら/.test(ja2.Ls) && /MEANING_REPAIR round 2\/3 [^\n]*scene/.test(ja2.Ls) &&
+        ja2.track.status === 'READY' && (ja2.stages.O_listening_plan_repair || 0) <= 3 && !f2.some(t => /いくら/.test(t)), { st: ja2.track.status, r: ja2.track.failureReason, s: ja2.stages })
+    }
+    // technical failures (demonstrations 8 · 10 · 11)
+    {
+      const zh = await run('zh', { plan: GOOD693.zh, scenePlan: (key, st) => key === 'S3' && st.scenes.filter(x => x === 'S3').length === 1 ? '__truncated__' : null }, {}, L693('zh'))
+      T('J8', 'zh: a CUT-OFF reply for S3 is a TECHNICAL failure (fault 9) — never parsed or validated — S3 alone is requested again (S1 / S2 are kept, not requested again), the retry asks for a shorter reply, READY',
+        /SCENE_PLAN_TRUNCATED S3 attempt 1 — the reply was cut off: a TECHNICAL failure \(fault 9\); a cut-off plan is never parsed, validated or kept/.test(zh.Ls) && zh.st.scenes.join(',') === 'S1,S2,S3,S3,S4,S5,S6' &&
+        /was too long and was cut off/.test(planCalls(zh)[3].prompt) && zh.track.status === 'READY' && /LISTENING_MF_TRUNCATIONS=1/.test(zh.Ls), { st: zh.track.status, scenes: zh.st.scenes })
+      const th = await run('th', { plan: GOOD693.th, scenePlan: key => key === 'S4' ? '__truncated__' : null }, {}, L693('th'))
+      T('J9', 'th: S4 cut off twice → BLOCKED as TECHNICAL (fault 9) naming the situation; the 3 situations planned before it are KEPT in the result (not discarded), no validation / audit / repair ran on anything partial, no linguistic fault is named, NOT_READY — never READY from a truncated reply, no legacy fallback',
+        th.track.status === 'NOT_READY' && /TECHNICAL \(fault 9\): situation S4 could not be planned after 2 attempts \(2 cut-off replies\) — 3 situation\(s\) planned before it were kept/.test(th.Ls) &&
+        !th.stages.O_listening_semantic_audit && !th.stages.O_listening_plan_repair && !/STRUCTURAL_VALIDATION|GRAMMAR_CONTRACT|SEMANTIC_AUDIT \(/.test(th.Ls) && !/SCENE_PREFLIGHT|LISTENING_COMPOSITION scene/.test(th.Ls) && th.st.scenes.join(',') === 'S1,S2,S3,S4,S4', { st: th.track.status, r: th.track.failureReason, scenes: th.st.scenes })
+    }
+    // Japanese closed-vocabulary false positives seen in the v693 repairs (the words are reported correctly or accepted)
+    {
+      const c = good.ja.c, V = learner(c, 'ja').vocab
+      const un = t => c.validateClosedWorldCandidate('ja', t, V, []).unknown
+      T('J10', 'ja segmentation: 使いすぎ / 食べすぎた are 使う / 食べる + 〜すぎ (grammar, as 高すぎる already was), じゃあね is じゃあ + ね — no longer すぐ / 姉; an unauthorised ところで is reported as ところで (not 頃); すぐ on its own is still unknown (closed vocabulary not weakened)',
+        !un('お金、使いすぎじゃない？').length && !un('食べすぎた。').length && !un('うん、じゃあね。').length && un('ところで、明日できる？').join() === 'ところで' && un('すぐ行く。').join() === 'すぐ',
+        { a: un('お金、使いすぎじゃない？'), b: un('うん、じゃあね。'), c: un('ところで、明日できる？'), d: un('すぐ行く。') })
+    }
   }
   console.log(out.join('\n'))
   console.log('\n' + (n - fails) + '/' + n + ' passed')

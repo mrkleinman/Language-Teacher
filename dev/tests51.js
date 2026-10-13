@@ -87,7 +87,11 @@ function exportPairs() {
     const after = c.cueSelfAddressLines(fixed, tr)
     T('E1', 'the final self-address check finds the three live cues (pairs 70, 79, 90 — "As Daiki, tell Daiki …", "As Mio, ask Mio …")', before.length === 3, before)
     T('E2', 'after the cue fix: none left; each is "As <speaker>, tell/ask <the other>"', after.length === 0 && fixed[69].prompt.startsWith('As Mio, tell Daiki') && fixed[78].prompt.startsWith('As Daiki, ask Mio') && fixed[89].prompt.startsWith('As Mio, tell Daiki'), [fixed[69].prompt, fixed[78].prompt, fixed[89].prompt])
-    T('E3', 'correct cues are untouched by the fix (every other line of the export keeps its cue)', fixed.every((p, i) => [69, 78, 89].includes(i) || p.prompt === P[i].prompt), fixed.map((p, i) => p.prompt !== P[i].prompt ? i + 1 : null).filter(Boolean))
+    // v694: four more cues of this export are repaired on purpose — descriptions become instructions ("Asking which place …" →
+    // "Ask which place …", pairs 29 / 30 / 45) and a speaker letter becomes the listener's name ("Tell B …" → "Tell Mio …", pair 67)
+    const v694 = { 28: /^Ask which place/, 29: /^Ask which of the shops/, 44: /^Ask whether the two of you/, 66: /^Tell Mio it's fine/ }
+    T('E3', 'correct cues are untouched by the fix (every other line of the export keeps its cue; v694 also turns 3 descriptions into instructions and "Tell B" into "Tell Mio")',
+      fixed.every((p, i) => [69, 78, 89].includes(i) || (v694[i] ? v694[i].test(p.prompt) : p.prompt === P[i].prompt)), fixed.map((p, i) => p.prompt !== P[i].prompt ? i + 1 : null).filter(Boolean))
   } catch (e) { T('ERR', 'section crashed: ' + String(e && e.message).slice(0, 120), false) }
 
   // ══ F — reply words need something to reply to (Phase 4) ══════════════════════════════════════════════════════

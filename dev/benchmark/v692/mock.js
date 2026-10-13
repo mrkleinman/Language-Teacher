@@ -2,18 +2,27 @@
 // every other stage (final whole-conversation coherence, pronunciation metadata) goes to the tests14 mock.
 'use strict'
 const { mock: base14 } = require('../../tests14')
-const { planJson } = require('./plans')
-// opt: plan (rows) · audit(turnText, n) → verdict override · repair(scopeId, partText, q) → rows for that part ·
+const { planJson, sceneJson } = require('./plans')
+// opt: plan (rows; v694: each situation request gets its own rows) · scenePlan(key, st, prompt, replan) → rows | Error | '__truncated__' · audit(turnText, n) → verdict override · repair(scopeId, partText, q) → rows for that part ·
 //      cohFail · down (network) · log (array to record stages)
 function mockMeaningFirst(c, vocab, lang, opt = {}) {
   const S = { c, vocab, targets: [], zhLex: null }
   base14(S, lang, { cohFail: !!opt.cohFail })
-  const inner = S._mockFn, st = { stages: [], plan: 0, audit: 0, repair: 0, auditedTexts: [] }
+  const inner = S._mockFn, st = { stages: [], plan: 0, audit: 0, repair: 0, auditedTexts: [], scenes: [], calls: [] }
   c.mockGeminiGenerate = async (k, m, msgs, max, o) => {
     const q = msgs[msgs.length - 1].content, stage = o && o.stage
-    st.stages.push(stage)
+    st.stages.push(stage); st.calls.push({ stage, max, prompt: q })
     if (opt.down) throw new Error('Failed to fetch')
-    if (stage === 'O_listening_meaning_plan') { st.plan++; return JSON.stringify(typeof opt.plan === 'function' ? opt.plan(st.plan, q) : planJson(opt.plan)) }
+    if (stage === 'O_listening_meaning_plan') {
+      // v694 — one request per situation ("PLAN SITUATION S3 of 6"): the reply is that situation's rows only
+      st.plan++
+      const key = (q.match(/^PLAN SITUATION (S\d+) of/m) || [])[1]
+      const replan = /HAD THESE DEFECTS/.test(q)
+      if (key) { st.scenes.push(key + (replan ? 'r' : ''))
+        if (opt.scenePlan) { const ov = opt.scenePlan(key, st, q, replan); if (ov instanceof Error) throw ov; if (ov === '__truncated__') { const e = new Error('CLAUDE HAIKU REPLY REJECTED: MAX_TOKENS: the reply was cut off (6000 output tokens)'); throw e } if (ov) return JSON.stringify(sceneJson(ov, key)) } }
+      const rows = typeof opt.plan === 'function' ? opt.plan(st.plan, q, key, replan) : opt.plan
+      return JSON.stringify(key ? sceneJson(rows, key) : planJson(rows))
+    }
     if (stage === 'O_listening_semantic_audit') {
       st.audit++
       const rows = [...q.matchAll(/^([★ ])(\d+)\. ([AB]) \[[^\]]*\] (.*?) — /gm)]

@@ -150,4 +150,9 @@ function planJson(rows) {
   return { situations: keys.map(k => ({ key: k, where: '', turns: rows.filter(r => r[0] === k).map(r => ({ n: ++n, speaker: r[1], addressee: r[1] === 'A' ? 'B' : 'A', intent: r[2], asks: r[3], referent: r[4],
     action: '', object: '', context: '', expects: '', respondsTo: 0, targetIds: [], text: r[5], english: r[6] })) })) }
 }
-module.exports = { GOOD, V691_BAD, planJson }
+// v694 — the reply to ONE situation request (rows of that situation; a row already in scene form [speaker, …] is taken as is)
+function sceneJson(rows, key) {
+  const mine = (rows || []).filter(r => r.length === 6 || r[0] === key).map(r => r.length === 6 ? r : r.slice(1))
+  return { where: '', turns: mine.map(r => ({ speaker: r[0], intent: r[1], asks: r[2], respondsTo: 0, about: r[3], object: '', targetIds: [], text: r[4], english: r[5] })) }
+}
+module.exports = { GOOD, V691_BAD, planJson, sceneJson }

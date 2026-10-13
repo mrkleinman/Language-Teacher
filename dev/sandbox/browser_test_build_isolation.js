@@ -58,7 +58,9 @@ const P = 'tt-test:'
 
   // 2 · use the test build hard: open each language, change settings, remove keys, clear()
   const testTh = await go('/test/')
-  ok('test build shows the TEST banner and v691', /TEST BUILD v691/.test(testTh) && (await page.evaluate(() => document.querySelector('meta[name=app-version]').content)) === 'v691')
+  // the expected version is the production page's own (both pages are built from the same index.html)
+  const _want = (fs.readFileSync(path.join(SITE, 'index.html'), 'utf8').match(/name="app-version" content="([^"]+)"/) || [])[1]
+  ok('test build shows the TEST banner and ' + _want, new RegExp('TEST BUILD ' + _want).test(testTh) && (await page.evaluate(() => document.querySelector('meta[name=app-version]').content)) === _want)
   const strip = t => t.replace(/TEST BUILD[^\n]*\n?/, '').replace(/Delete test data\n?/, '').replace(/v69\d/g, 'vX')
   const words = t => (t.match(/\b\d+\s+(words?|known|learning|due)\b/gi) || []).join(' | ')
   ok('test build READS the real Thai progress (same word counts as production)', words(strip(testTh)) === words(prodTh) && words(prodTh).length > 0, words(prodTh) + ' ‖ ' + words(strip(testTh)))

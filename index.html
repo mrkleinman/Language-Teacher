@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v686"/>
+<meta name="app-version" content="v687"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v686';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v686').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v687';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v687').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -8802,7 +8802,7 @@ function aiUsageSummaryLines(sum) {
   sum.ranked.slice(0, 5).forEach((s, i) => L.push('  ' + (i + 1) + '. ' + s.stage + ' — ' + s.requests + ' requests / ' + (s.inTok + s.outTok) + ' tokens / ~' + s.pct + '%'))
   const bp = sum.byProvider || {}
   if (bp.anthropic || (sum.generationModel && sum.generationModel !== GEMINI_DEFAULT_MODEL)) {
-    L.push('AI PROVIDERS (this run) · selected generation model: ' + aiGenModelLabel(sum.generationModel) + ' — generation requests go to it; quality checks and pronunciation stay on Gemini')
+    L.push('AI PROVIDERS (this run) · selected generation model: ' + aiGenModelLabel(sum.generationModel) + ' — every request of this run goes to it (writing, quality checks, pronunciation)')
     Object.values(bp).forEach(b => L.push('  ' + b.provider.toUpperCase() + ': ' + b.requests + ' requests (' + b.failed + ' failed, ' + b.retries + ' provider retries' +
       (b.retries ? ': ' + Object.entries(b.retryReasons).map(([k, v]) => k + ' ×' + v).join(', ') : '') + ') · input ' + b.inTok + ' · output ' + b.outTok + ' tok' +
       (b.provider === 'anthropic' ? ' (thinking ' + b.thinkingTok + ' of them)' : '') + ' · USD ' + b.costUsd.toFixed(4) +
@@ -8885,21 +8885,21 @@ async function geminiRequest({ apiKey, model, messages, maxTokens, temperature, 
   const key = String(apiKey || '').trim()
   // the run this request belongs to (captured now: a later run must not adopt it)
   const runCtl = AI_CTX.controller, runId = AI_CTX.runId
-  // optional generation model: a GENERATION request of a run bound to Claude Haiku goes to Anthropic (never a silent switch:
-  // judges / pronunciation always stay on Gemini, and an Anthropic failure is reported, not retried on Gemini)
-  const _genModel = aiRunGenModel(runId)
-  if (_genModel !== GEMINI_DEFAULT_MODEL && AI_GEN_MODELS[_genModel] && AI_GEN_MODELS[_genModel].provider === 'anthropic' && aiRequestRole(stage, _promptText, _chain, json) === 'generation')
-    return anthropicRequest({ model: _genModel, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId })
+  // optional AI model (owner, v687): a run bound to Claude Haiku sends EVERY request to Anthropic — writing, quality checks,
+  // pronunciation, segmentation, gloss. Never a silent switch: an Anthropic failure is reported, never retried on Gemini.
+  const _aiModel = aiModelForRequest(runId, stage)
+  const _optModel = !!(AI_GEN_MODELS[_aiModel] && AI_GEN_MODELS[_aiModel].provider === 'anthropic')
+  const _prov = _optModel ? 'anthropic' : 'gemini', _rowModel = _optModel ? _aiModel : modelId
   const schema = json && typeof json === 'object' ? json : null
   const schemaKey = schema ? Object.keys(GEMINI_SCHEMAS).find(k => GEMINI_SCHEMAS[k] === schema) || 'custom' : (json ? 'json' : null)
-  if (!isGeminiApiKey(key)) {
+  if (!_optModel && !isGeminiApiKey(key)) {
     const row = aiRecordStart({ provider: 'gemini', stage, model: modelId, chain: _chain, prompt: _promptText, maxTokens })
     row.latched = true
     const err = aiMakeError(401, 'GEMINI_KEY_MISSING: add a Google AI Studio (Gemini) key in Settings', 'gemini')
     aiRecordEnd(row, { http: null, ok: false, error: 'GEMINI_KEY_MISSING (not sent)' })
     throw err
   }
-  if ((runCtl && runCtl.signal.aborted) || (signal && signal.aborted)) {
+  if (!_optModel && ((runCtl && runCtl.signal.aborted) || (signal && signal.aborted))) {
     const row = aiRecordStart({ provider: 'gemini', stage, model: modelId, chain: _chain, prompt: _promptText, maxTokens })
     row.cancelled = true; row.latched = true
     aiRecordEnd(row, { http: null, ok: false, error: 'CANCELLED (not sent: its run was superseded or stopped)' })
@@ -8907,7 +8907,7 @@ async function geminiRequest({ apiKey, model, messages, maxTokens, temperature, 
   }
   // a deterministic failure (402 credits depleted, auth, quota) earlier in this run
   // means every further request would fail the same way — fail fast, send nothing.
-  if (AI_PROVIDER_LATCH && AI_PROVIDER_LATCH.keyTail === key.slice(-6)) {
+  if (!_optModel && AI_PROVIDER_LATCH && AI_PROVIDER_LATCH.keyTail === key.slice(-6)) {
     const row = aiRecordStart({ provider: 'gemini', stage, model: modelId, chain: _chain, prompt: _promptText, maxTokens })
     row.latched = true
     const err = aiMakeError(AI_PROVIDER_LATCH.status, AI_PROVIDER_LATCH.message + ' (fail-fast: Gemini rejected an earlier request in this run)', 'gemini')
@@ -8923,10 +8923,10 @@ async function geminiRequest({ apiKey, model, messages, maxTokens, temperature, 
   // deliberate re-ask and must reach the model.
   const _stageNow = stage || aiStageOf(_promptText, _chain)
   const _reusable = !!json || /^(C_|E_|F_|I_|J_|K_|L_|O_)/.test(_stageNow)
-  const fp = dedupe === false ? null : aiRequestFingerprint({ runId, stage: _stageNow, model: modelId, maxTokens, temperature, schemaKey, attempt: _attemptTag, prompt: _promptText })
+  const fp = dedupe === false ? null : aiRequestFingerprint({ runId, stage: _stageNow, model: _rowModel, maxTokens, temperature, schemaKey, attempt: _attemptTag, prompt: _promptText })
   if (fp && AI_REQUEST_CACHE.has(fp)) {
     const hit = AI_REQUEST_CACHE.get(fp)
-    const row = aiRecordStart({ provider: 'gemini', stage, model: modelId, chain: _chain, prompt: _promptText, maxTokens })
+    const row = aiRecordStart({ provider: _prov, stage, model: _rowModel, chain: _chain, prompt: _promptText, maxTokens })
     row.deduped = true
     try {
       const text = hit.text != null ? hit.text : await hit.promise
@@ -8935,7 +8935,8 @@ async function geminiRequest({ apiKey, model, messages, maxTokens, temperature, 
       return text
     } catch (e) { aiRecordEnd(row, { http: null, ok: false, error: 'DEDUPED (shared failure): ' + (e && e.message) }); throw e }
   }
-  const work = _geminiSend({ key, modelId, messages, maxTokens, temperature, signal, stage, schema, json, _chain, _promptText, runCtl })
+  const work = _optModel ? anthropicRequest({ model: _aiModel, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId })
+    : _geminiSend({ key, modelId, messages, maxTokens, temperature, signal, stage, schema, json, _chain, _promptText, runCtl })
   if (fp) {
     AI_REQUEST_CACHE.set(fp, { promise: work })
     if (AI_REQUEST_CACHE.size > 600) AI_REQUEST_CACHE.delete(AI_REQUEST_CACHE.keys().next().value)
@@ -9065,17 +9066,27 @@ function aiNormaliseGenPref(p) {
 function anthropicServerUrl() { return AI_GEN_PREF.serverUrl || ANTHROPIC_PROXY_PATH }
 function aiSetGenerationPreference(p) { AI_GEN_PREF = aiNormaliseGenPref(p); return { ...AI_GEN_PREF } }
 function aiGenerationPreference() { return { ...AI_GEN_PREF } }
-function aiSetAnthropicAccess(code) { AI_ANTHROPIC_ACCESS = String(code || '').trim(); return !!AI_ANTHROPIC_ACCESS }
+function aiSetAnthropicAccess(code) { AI_ANTHROPIC_ACCESS = String(code || '').replace(/\s+/g, ''); return !!AI_ANTHROPIC_ACCESS }   // codes never contain spaces (a phone copy can wrap one)
 function aiGenModelLabel(id) { const m = AI_GEN_MODELS[id]; return m ? m.label + ' (' + m.tag.toLowerCase() + ')' : String(id || 'unknown') }
-// Daily-family runs take the selected model (or the model of the track / draft they continue); every other run (Listening,
-// manual quality review, Kru chat, word autofill …) stays on Gemini.
-const AI_GEN_RUN_KINDS = /^(daily|revision|weak|th|ja|zh)-track$/
+// v687 (owner): the selected model does EVERYTHING for a run — Daily, Revision, Weak-words and Listening tracks, quality
+// review. Work on an existing track (QC rebuild, Retry missing) uses the model that made it. The experimental benchmark
+// pipelines (gen2-, v684-) stay on Gemini.
+const AI_GEMINI_ONLY_RUN_KINDS = /^(gen2-|v684-)/
 function aiRunGenerationModel(kind, opts) {
-  if (!AI_GEN_RUN_KINDS.test(String(kind || ''))) return GEMINI_DEFAULT_MODEL
   const forced = opts && opts.genModel
-  return AI_GEN_MODELS[forced] ? forced : AI_GEN_PREF.model
+  if (AI_GEN_MODELS[forced]) return forced
+  if (AI_GEMINI_ONLY_RUN_KINDS.test(String(kind || ''))) return GEMINI_DEFAULT_MODEL
+  return AI_GEN_PREF.model
 }
 function aiRunGenModel(runId) { return AI_RUN_GEN_MODEL.get(runId) || GEMINI_DEFAULT_MODEL }
+// The model for one request: Settings → Test Key always checks the Gemini key; Kru chat and word auto-fill (not part of a
+// track) follow the current setting; everything else follows the run it belongs to.
+function aiModelForRequest(runId, stage) {
+  const s = String(stage || '')
+  if (/^Z_key_test/.test(s)) return GEMINI_DEFAULT_MODEL
+  if (/^(Q_|R_)/.test(s)) return AI_GEN_PREF.model
+  return aiRunGenModel(runId)
+}
 // Which kind of request is this? 'generation' (writes lesson content) · 'judge' (rates / verifies content) · 'support'
 // (pronunciation, segmentation, gloss, utilities). Decided by stage, the judge prompt signatures, the structured-verdict
 // schemas and the calling function — any judge or support signal keeps the request on Gemini, and so does any stage that
@@ -9145,7 +9156,7 @@ function anthropicRequestBody({ model, messages, maxTokens, json }) {
   const body = { model, max_tokens, messages: m.messages, thinking: { type: 'adaptive' }, output_config: { effort: ANTHROPIC_CONFIG.effort } }
   if (m.system) body.system = m.system
   if (fmt) body.output_config.format = fmt.format
-  return { body, wrapped: !!(fmt && fmt.wrapped), structured: !!fmt }
+  return { body, wrapped: !!(fmt && fmt.wrapped), structured: !!fmt, loose: json === true }
 }
 // A Messages API reply → the text the generators parse. Content blocks are read by TYPE (thinking blocks first, then text);
 // any stop other than end_turn is a failed request, never a partial answer.
@@ -9262,6 +9273,7 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
       throw err
     }
     const out = anthropicReplyText(data, req.wrapped)
+    if (out.ok && req.loose) out.text = out.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')   // JSON asked without a schema: no Markdown fence
     const usage = anthropicUsage(data && data.usage)
     row.servedModel = (data && data.model) || null
     row.stopReason = (data && data.stop_reason) || null
@@ -19379,7 +19391,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v686'
+const LISTENING_BUILD_VERSION = 'v687'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -20714,7 +20726,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v686'
+const APP_BUILD_VERSION = 'v687'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -20950,7 +20962,7 @@ function trackVersionExportLines(track) {
   const out = ['APP_BUILD_VERSION: ' + APP_BUILD_VERSION + ' · PIPELINE_VERSION: ' + (t.pipelineVersion || 'legacy (pre-v651 — created before this build)') +
       ' · GENERATOR_VERSION: ' + (t.generatorVersion || (lang && GENERATOR_VERSIONS[lang]) || '-') + ' · QC_VERSION: ' + QC_VERSION +
       ' · FINALIZER_VERSION: ' + ((t.integrity && t.integrity.version) ? t.integrity.version + ' / ' + FINALIZER_VERSION : FINALIZER_VERSION) + ' · LISTENING_VERSION: ' + (lb.buildVersion || LISTENING_BUILD_VERSION) +
-      (t.generationModel ? ' · GENERATION_MODEL: ' + t.generationModel + (t.generationModel !== GEMINI_DEFAULT_MODEL ? ' (generation only — QC and pronunciation by Gemini)' : '') : ''),
+      (t.generationModel ? ' · GENERATION_MODEL: ' + t.generationModel + (t.generationModel !== GEMINI_DEFAULT_MODEL ? ' (all AI work: writing, quality checks, pronunciation)' : '') : ''),
     'language=' + (lang || 'MISSING') + ' · path=' + (legacy ? 'LEGACY (no TrackContext)' : 'CANONICAL') + ' · trackId=' + ((tc && tc.trackId) || listeningTrackId(t) || '-') +
       ' · selectedTargetIds=' + req.selected.length + ' · selectedNewTargetIds=' + req.newIds.length + (tc && tc.expectedNewCount != null ? ' (expected ' + tc.expectedNewCount + ')' : '') +
       ' · requiredListeningTargetIds=' + req.requiredIds.length,
@@ -30308,23 +30320,28 @@ function GenerationModelCard() {
     try { const p = aiSetGenerationPreference(await stGet(AI_GEN_PREF_KEY)); setPref(p); setUsd(String(p.limitUsd)); setReq(String(p.limitRequests)); setServer(p.serverUrl) } catch (e) {}
     try { setHasCode(aiSetAnthropicAccess(await stGet(AI_ANTHROPIC_ACCESS_KEY))) } catch (e) {}
   })() }, [])
+  const savePref = p => stSet(AI_GEN_PREF_KEY, p)   // the one write site for the preference (model, limits, server address)
   async function choose(model) {
-    const p = aiSetGenerationPreference({ ...pref, model }); setPref(p); await stSet(AI_GEN_PREF_KEY, p)
+    const p = aiSetGenerationPreference({ ...pref, model }); setPref(p); await savePref(p)
     setMsg('✓ New tracks will be written by ' + aiGenModelLabel(model) + '. Tracks you already made keep the model they were made with.')
   }
   async function saveLimits() {
-    const p = aiSetGenerationPreference({ ...pref, limitUsd: parseFloat(usd), limitRequests: parseInt(req, 10), serverUrl: server }); setPref(p); await stSet(AI_GEN_PREF_KEY, p)
+    const p = aiSetGenerationPreference({ ...pref, limitUsd: parseFloat(usd), limitRequests: parseInt(req, 10), serverUrl: server }); setPref(p); await savePref(p)
     setUsd(String(p.limitUsd)); setReq(String(p.limitRequests)); setServer(p.serverUrl)
     const badUrl = String(server || '').trim() && !p.serverUrl
     setMsg(badUrl ? '❌ The server address must start with https:// (copy the URL Google Cloud shows for your function).'
       : '✓ Saved: server ' + (p.serverUrl || 'this site (/api/anthropic)') + ' · US$' + p.limitUsd + ' and ' + p.limitRequests + ' Claude Haiku requests per track.')
   }
   async function saveCode() {
-    const ok = aiSetAnthropicAccess(code); await stSet(AI_ANTHROPIC_ACCESS_KEY, ok ? code.trim() : null); setHasCode(ok); setCode('')
+    const ok = aiSetAnthropicAccess(code); await stSet(AI_ANTHROPIC_ACCESS_KEY, ok ? String(code).replace(/\s+/g, '') : null); setHasCode(ok); setCode('')
     setMsg(ok ? '✓ Site access code saved on this device.' : 'Site access code cleared.')
   }
   async function test() {
     setTesting(true); setMsg('')
+    // a server address typed but not yet saved is saved first (Test Connection always tests what is on screen)
+    if (aiNormaliseGenPref({ ...pref, serverUrl: server }).serverUrl !== pref.serverUrl) {
+      const p = aiSetGenerationPreference({ ...pref, serverUrl: server }); setPref(p); await savePref(p); setServer(p.serverUrl)
+    }
     try { const r = await anthropicTestConnection(); setMsg('✅ Claude Haiku answered "' + r.text + '" · model ' + (r.model || '?') + ' · cost ≈ US$' + r.costUsd.toFixed(6)) }
     catch (e) { setMsg('❌ ' + String(e && e.message || e)) }
     setTesting(false)
@@ -30335,7 +30352,7 @@ function GenerationModelCard() {
   return (
     <Card style={{ padding: 16, marginBottom: 12 }}>
       <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>AI Generation Model</p>
-      <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>Which AI writes the sentences of new Daily, Revision and Weak-words tracks (Thai, Japanese and Mandarin). Quality checks and pronunciation always use Gemini, so your Gemini key is still needed.</p>
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 10 }}>Which AI does all the work for new tracks (Daily, Revision, Weak-words, Listening — Thai, Japanese and Mandarin): writing, quality checks, pronunciation and translations, plus Kru chat and word auto-fill. Tracks you already made keep the AI that made them.</p>
       {Object.values(AI_GEN_MODELS).map(m => (
         <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6, cursor: 'pointer',
           border: '1px solid ' + (pref.model === m.id ? '#d4a94a' : 'var(--border)'), background: pref.model === m.id ? 'rgba(212,169,74,0.08)' : 'var(--surface2)' }}>

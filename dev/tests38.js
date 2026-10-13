@@ -169,7 +169,7 @@ const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
     const base = fs.readFileSync(path.join(__dirname, 'tt.v674.jsx'), 'utf8')
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
     T('O3', 'v676 adds NO storage write to the app (same stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings; v682 one: the generation-draft write site; v685 at most three: the AI Generation Model setting and site access code in Settings)', writes(SRC) === writes(base) + (SRC.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length + (SRC.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length + (SRC.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length && (SRC.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length <= 3 && (SRC.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && (SRC.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(SRC), writes(base)])
-    T('O4', 'version v676+', /^v(67[6-9]|68[0-7])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('O4', 'version v676+', /^v(67[6-9]|68[0-8])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
   console.log(out.join('\n'))
   console.log('\nv676 Step 0 live-capture tooling: ' + (n - fails) + '/' + n + (fails ? ' — ' + fails + ' FAILED' : ' — ALL PASS'))

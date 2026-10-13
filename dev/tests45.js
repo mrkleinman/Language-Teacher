@@ -81,6 +81,10 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     T('S6', 'work on an existing track keeps the model it was made with (Gemini track under a Haiku setting, and the reverse)', c.aiRunGenModel(r1) === GEM && c.aiRunGenModel(r2) === HAIKU)
     const sites = (SRC.match(/aiBeginRun\(track\.language \+ '-track', track\.createdAt, \{ genModel: track\.generationModel \|\| GEMINI_DEFAULT_MODEL \}\)/g) || []).length
     T('S6b', 'the existing-track entry points (Japanese and Mandarin QC rebuild, Thai Retry missing) pass the track\'s own model', sites === 2 && /aiBeginRun\('daily-track', null, \{ genModel: t0\.generationModel \|\| GEMINI_DEFAULT_MODEL \}\)/.test(SRC), sites)
+    T('S3c', 'v688: the saved choice and access code are loaded at start-up whatever language the app opens in (Japanese / Mandarin start-ups never loaded them)',
+      /;\(async \(\) => \{\n  try \{ const p = await stGet\(AI_GEN_PREF_KEY\); if \(p\) aiSetGenerationPreference\(p\) \} catch \(e\) \{\}\n  try \{ const c = await stGet\(AI_ANTHROPIC_ACCESS_KEY\); if \(c\) aiSetAnthropicAccess\(c\) \} catch \(e\) \{\}\n\}\)\(\)/.test(SRC))
+    T('S3d', 'v688: Japanese and Mandarin Settings show the shared AI Generation Model card; their Thai-only buttons explain instead of showing an empty page',
+      (SRC.match(/<NonThaiExtraView view=\{view\} lang="(ja|zh)" onBack=\{\(\) => setView\('dashboard'\)\} \/>/g) || []).length === 2 && /if \(view === 'settings'\) return \([\s\S]{0,200}<GenerationModelCard \/>/.test(SRC))
     T('S7', 'Settings shows "AI Generation Model" with exactly the two labelled choices', /AI Generation Model/.test(SRC) && /label: 'Gemini 2\.5 Flash-Lite', tag: 'Default'/.test(SRC) && /label: 'Claude Haiku 5\.5', tag: 'Experimental'/.test(SRC) && /<GenerationModelCard \/>/.test(SRC)
       && Object.keys(c.ev('AI_GEN_MODELS')).length === 2)
     T('S8', 'the model is stamped on the finished track and its export (finaliseMainTrack, the Thai screen, the export header)',

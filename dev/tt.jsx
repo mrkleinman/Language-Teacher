@@ -9259,6 +9259,13 @@ async function anthropicTestConnection() {
   return { text: String(text || '').trim().slice(0, 40), model: row.servedModel || null, costUsd: row.costUsd || 0 }
 }
 
+// v688: the saved AI choice and site access code are loaded as soon as the app starts, whichever language it opens in (the
+// Japanese and Mandarin screens have their own start-up, which never loaded them — their tracks silently stayed on Gemini).
+;(async () => {
+  try { const p = await stGet(AI_GEN_PREF_KEY); if (p) aiSetGenerationPreference(p) } catch (e) {}
+  try { const c = await stGet(AI_ANTHROPIC_ACCESS_KEY); if (c) aiSetAnthropicAccess(c) } catch (e) {}
+})()
+
 // ══ v675 (Step 0) — OPT-IN BENCHMARK CAPTURE (browser console only; no UI, no effect unless started) ══════════════
 // window.ttBenchmark.startRecording('label') wraps window.fetch for Gemini requests ONLY while recording: the request
 // body and the provider's JSON reply are copied (the app receives the untouched original response); the API key in the
@@ -19355,7 +19362,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v687'
+const LISTENING_BUILD_VERSION = 'v688'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -20690,7 +20697,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v687'
+const APP_BUILD_VERSION = 'v688'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -30348,6 +30355,35 @@ function GenerationModelCard() {
       )}
       {msg && <p style={{ fontSize: 12, marginTop: 10, color: msg.startsWith('❌') ? '#ef4444' : '#10b981' }}>{msg}</p>}
     </Card>
+  )
+}
+// v688: Japanese and Mandarin have no Lessons / Words / Add / Data screens of their own (Thai-only; they showed an empty page).
+// Their Settings shows the AI Generation Model card, which is shared by every language.
+const TH_ONLY_VIEWS = { lessons: 'Lessons', browse: 'Words', 'add-words': 'Add words', data: 'Data', settings: 'Settings' }
+function NonThaiExtraView({ view, lang, onBack }) {
+  if (!TH_ONLY_VIEWS[view]) return null
+  const name = lang === 'ja' ? 'Japanese' : lang === 'zh' ? 'Mandarin' : 'this language'
+  const back = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}><Icon name="arrow_left" size={20} /></button>
+      <span className="display" style={{ fontSize: 18 }}>{TH_ONLY_VIEWS[view]}</span>
+    </div>
+  )
+  if (view === 'settings') return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+      {back}
+      <GenerationModelCard />
+      <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>This choice applies to every language. The Gemini key, voices and backups are set in the Thai profile's Settings (they also apply to every language).</p>
+    </div>
+  )
+  return (
+    <div className="fade-in" style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}>
+      {back}
+      <Card style={{ padding: 16 }}>
+        <p style={{ fontSize: 14, marginBottom: 12 }}>{TH_ONLY_VIEWS[view]} is not available for {name} yet — it exists only in the Thai profile.</p>
+        <button onClick={onBack} style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer' }}>Back to the {name} dashboard</button>
+      </Card>
+    </div>
   )
 }
 // v648: Gemini is the only AI service. One Gemini key (Google AI Studio) plus an
@@ -40012,6 +40048,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
               onBack={() => { setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard') }} />
           </ErrorBoundary>
         )}
+        <NonThaiExtraView view={view} lang="ja" onBack={() => setView('dashboard')} />
       </main>
     </div>
   )
@@ -42919,6 +42956,7 @@ function MandarinTeacher({ lang, onSetLang }) {
               onBack={() => { setActiveTrack(null); setPlayerResumeCompleted(false); setView('dashboard') }} />
           </ErrorBoundary>
         )}
+        <NonThaiExtraView view={view} lang="zh" onBack={() => setView('dashboard')} />
       </main>
     </div>
   )

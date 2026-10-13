@@ -463,8 +463,14 @@ Ready for **one controlled live Mandarin Daily run**. Watch for:
 - No vocabulary ID, SRS field, Known status, bookmark, belt threshold, saved lesson or provider setting is touched.
 - The Listening architecture is unchanged; it only shares the corrected Japanese target-sense function.
 
-**Full offline regression**
-- Listed at the end of the commit message and in the reply.
+**Full offline regression (final v693 build)**
+- 1,736 checks pass; 3 fail. All 3 are the known pre-existing items:
+  - tests33 2G (since deployed v677);
+  - tests35 2C-thTH and 2C-zhZH (blocked: their replay files are not in the package).
+- The first full run caught 3 regressions in 2 suites, all fixed before this result:
+  - Mandarin resume re-checked saved recalls without context (tests42 Z5/Z6);
+  - one tone rule contradicted an existing one (tests47 P3).
+- Replay proof: the 3 recorded v682 runs, 527 requests, 0 mismatches, identical content.
 
 ## TL;DR
 

@@ -1,4 +1,5 @@
 // v639 fixture suite. Real app functions, loaded from the compiled tt.jsx; only the
+process.env.TT_DAILY_LEGACY = '1'   // v693: LEGACY Daily rules (assertions unchanged — e.g. A expects a target-less QC rewrite to reach the final audit); the v693 rules are tested in tests50
 // external model call (the Gemini client, geminiRequest) and generateWordLines' model are mocked.
 const { load } = require('./harness'), { loadFixture } = require('./fixture'), { lnRespond } = require('./ln_mock')
 const results = []

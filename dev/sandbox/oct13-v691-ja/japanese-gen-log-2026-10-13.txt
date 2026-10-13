@@ -1,0 +1,606 @@
+✓ Scene ready
+ℹ TRACK_CONTEXT trackId=2026-10-13T11:23:21.277Z language=ja mode=daily selected=30 new=5/5 expected requiredReview=25 pipeline=v651-canonical build=v691
+ℹ Content available: どれ また あれ 電話 物 場所 時間 昼 どう どっち あそこ ごめん なんで はい うん いいえ 乗る 大丈夫 行く 食べる 好き 何 飲む どこ 一緒 する 今 ちょっと 来る 分かる 今日 明日 ありがとう すみません いい 見る 買う いくら お金 ある いる ここ そこ これ それ たぶん もう まだ 帰る 会う 友達 話す 聞く 言う 本当 誰 いつ 何時 できる 欲しい 持つ 使う 待つ 見せる 取る 作る 入る 出る 降りる 住む 働く 休む 寝る 起きる おいしい 高い 安い 大きい 小さい 新しい 古い 早い 遅い 忙しい 暇 楽しい 難しい 簡単 近い 遠い 悪い 昨日 名前 人 家族 家 仕事 店 駅 日本語 水 ご飯 トイレ 思う 知る 電車 バス 車 本 映画 写真
+ð¬ Opening accepted
+✓ opening validated
+✓ opening reply validated
+ℹ Scarcity level C — 111 content words
+ðº SCENE_ID=S1 SCENE_PURPOSE="Suggesting lunch together and asking about food and drink" LOCAL_PREMISE="Daiki and Mio are standing in the school hallway in the morning, and Daiki suggests eating lunch together today." TARGET_IDS=4,5,7,108 TARGET_ROLES=4:CONTENT,5:CONTENT,7:CONTENT,108:CONTENT SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (food & cooking))
+ðº SCENE_ID=S2 SCENE_PURPOSE="Choosing where to go for lunch" LOCAL_PREMISE="Daiki and Mio are looking at a map of the neighborhood near the school, and Mio starts asking where they should go." TARGET_IDS=8,43,44,82,83,109,20 TARGET_ROLES=8:QUESTION_WORD,43:QUESTION_WORD,44:QUESTION_WORD,82:CONTENT,83:CONTENT,109:CONTENT,20:QUESTION_WORD SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+ðº SCENE_ID=S3 SCENE_PURPOSE="Getting to the lunch spot" LOCAL_PREMISE="Daiki and Mio are at the bus stop, talking about how to get to the restaurant and whether it is all right to go there." TARGET_IDS=56,2,13,1 TARGET_ROLES=56:CONTENT,2:CONTENT,13:CONTENT,1:RESPONSE_TOKEN SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (places & travel))
+ðº SCENE_ID=S4 SCENE_PURPOSE="Checking the time and calling ahead" LOCAL_PREMISE="Daiki and Mio are sitting on a bench, and Daiki wants to call the restaurant to check the lunch hours and the time they can come." TARGET_IDS=107,110,112,11,80,12 TARGET_ROLES=107:CONTENT,110:CONTENT,112:CONTENT,11:CONTENT,80:CONTENT,12:CONTENT SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+ðº SCENE_ID=S5 SCENE_PURPOSE="Answering, apologizing, and checking understanding" LOCAL_PREMISE="Daiki and Mio are walking together and Mio asks why Daiki changed the plan, then they respond to each other's questions." TARGET_IDS=84,85,86,87,40,15,10,6,9 TARGET_ROLES=84:RESPONSE_TOKEN,85:RESPONSE_TOKEN,86:RESPONSE_TOKEN,87:DISCOURSE_MARKER,40:QUESTION_WORD,15:CONTENT,10:CONTENT,6:QUESTION_WORD,9:CONTENT SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+ðº SCENE_PLAN 5 mini-scene(s): S1. Suggesting lunch together and asking about food and drink [4] · S2. Choosing where to go for lunch [7] · S3. Getting to the lunch spot [4] · S4. Checking the time and calling ahead [6] · S5. Answering, apologizing, and checking understanding [9]
+ℹ CHECKS: up to 11 per RECALL — one check = one candidate attempt for that recall (one group request is check n for each recall it asks for). Validation stages inside every attempt: structured output parse · target concept presence · morphology / grammar · register fit · closed vocabulary · duplicate sentence · reading alignment · romaji alignment · cue / meaning consistency · deterministic fallback candidate · unresolved decision
+1/30 どれ dore
+ ⚪ 1st check: どれ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ❌ recall 1: target どれ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "どれも近いね。"
+ ℹ declared but not present, dropped: volitional
+ ✅ recall 2 passed at its 1st check: どれにしよっか？
+ ℹ ignored unknown grammar labels: ga ねえ
+ ✅ recall 3 passed at its 1st check: ねえ、どれが安いかな？
+ ð  2nd check: どれ · recall 1 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 2,3
+ ℹ declared but not present, dropped: ka
+ ✅ recall 1 passed at its 2nd check: どれが近いか分からない。
+ ð§¾ decision どれ: r1=accepted@ð 2 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=どれ CHECKS per recall r1=2/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted/2paid,2:accepted/1paid,3:accepted/1paid
+2/30 また mata
+ ⚪ 1st check: また · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ ignored unknown grammar labels: plain-present
+ ✅ recall 1 passed at its 1st check: また電話してみる。
+ ℹ ignored unknown grammar labels: plain-present
+ ℹ declared but not present, dropped: nai-invite
+ ✅ recall 2 passed at its 1st check: また電話する？
+ ℹ ignored unknown grammar labels: volitional
+ ℹ declared but not present, dropped: volitional ka
+ ✅ recall 3 passed at its 1st check: また来ようか。
+ ð§¾ decision また: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=また CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+3/30 あれ are
+ ⚪ 1st check: あれ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ✅ recall 1 passed at its 1st check: あれ、ちょっと高いね。
+ ✅ recall 2 passed at its 1st check: あれ、行ってみない？
+ ✅ recall 3 passed at its 1st check: あれがいいかも。
+ ð§¾ decision あれ: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=あれ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+4/30 電話 denwa
+ ⚪ 1st check: 電話 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ❌ recall 1: untaught content: 電話する [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "店に電話して、昼の時間聞いてみる。"
+ ✅ recall 2 passed at its 1st check: 今、電話で時間聞いてくれる？
+ ❌ recall 3: untaught content: 電話する [PROMPT_REGEN_REQUIRED · UNTAUGHT_CONTENT] — "今電話したら、大丈夫かな？"
+ ð  2nd check: 電話 · recall 1+3 · slot regeneration (paid, one call for 2 recalls) · accepted recalls kept: 2
+ ✅ recall 1 passed at its 2nd check: 時間は電話で聞くね。
+ ℹ declared but not present, dropped: ka
+ ✅ recall 3 passed at its 2nd check: 今の電話、お店の人？
+ ð§¾ decision 電話: r1=accepted@ð 2 r2=accepted@⚪1 r3=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=電話 CHECKS per recall r1=2/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted/2paid,2:accepted/1paid,3:accepted/2paid
+5/30 物 mono
+ ⚪ 1st check: 物 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ✅ recall 1 passed at its 1st check: 今日の昼、食べる物ないんだよね。
+ ℹ declared but not present, dropped: ka
+ ✅ recall 2 passed at its 1st check: ねえ、何か飲む物欲しい？
+ ℹ ignored unknown grammar labels: plain-present
+ ℹ declared but not present, dropped: ka
+ ✅ recall 3 passed at its 1st check: 昼に買う物ある？
+ ð§¾ decision 物: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=物 CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+6/30 場所 basho
+ ⚪ 1st check: 場所 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ✅ recall 1 passed at its 1st check: ここ、いい場所だね。
+ ℹ declared but not present, dropped: ka
+ ✅ recall 2 passed at its 1st check: そこの場所、分かる？
+ ✅ recall 3 passed at its 1st check: 食べる場所はどこにする？
+ ð§¾ decision 場所: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=場所 CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+7/30 時間 jikan
+ ⚪ 1st check: 時間 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ✅ recall 1 passed at its 1st check: 昼の時間、ちょっと分かんない。
+ ℹ declared but not present, dropped: plain-present
+ ✅ recall 2 passed at its 1st check: 行ける時間、何時ごろ？
+ ❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "今日の時間、大丈夫かな？"
+ ð  2nd check: 時間 · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+ ℹ ignored unknown grammar labels: no te
+ ✅ recall 3 passed at its 2nd check: お店の時間、見てみる？
+ ð§¾ decision 時間: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=時間 CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/2paid
+8/30 昼 hiru
+ ⚪ 1st check: 昼 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ✅ recall 1 passed at its 1st check: 昼の時間、今見てみる。
+ ℹ declared but not present, dropped: plain-present
+ ✅ recall 2 passed at its 1st check: 昼、何時に来ればいい？
+ ℹ declared but not present, dropped: volitional ka
+ ✅ recall 3 passed at its 1st check: 昼の時間、電話で聞いてみようか。
+ ð§¾ decision 昼: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=昼 CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+9/30 どう dou
+ ⚪ 1st check: どう · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ℹ declared but not present, dropped: ka
+ ✅ recall 1 passed at its 1st check: どう行くか分からない。
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ✅ recall 2 passed at its 1st check: ここからどう行く？
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ✅ recall 3 passed at its 1st check: ここの場所はどう？
+ ð§¾ decision どう: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=どう CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=3 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+10/30 どっち docchi
+ ⚪ 1st check: どっち · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ❌ recall 1: CUE_FORM_MISMATCH: the Japanese is a question but the cue asks for a statement ("Tell Mio that both of the shops look cheap, and end it softl") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "どっちの店も安いね。"
+ ℹ ignored unknown grammar labels: plain-present
+ ✅ recall 2 passed at its 1st check: 駅はどっち？
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ℹ ignored unknown grammar labels: volitional
+ ℹ declared but not present, dropped: volitional ka
+ ✅ recall 3 passed at its 1st check: どっちの店で食べようか。
+ ð  2nd check: どっち · recall 1 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 2,3
+ ℹ ignored unknown grammar labels: wa ka
+ ℹ declared but not present, dropped: ka
+ ✅ recall 1 passed at its 2nd check: 店はどっちにあるか分かんない。
+ ð§¾ decision どっち: r1=accepted@ð 2 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=どっち CHECKS per recall r1=2/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 recalls=1:accepted/2paid,2:accepted/1paid,3:accepted/1paid
+11/30 あそこ asoko
+ ⚪ 1st check: あそこ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ ignored unknown grammar labels: ga ni yo
+ ✅ recall 1 passed at its 1st check: あそこに駅があるよ。
+ ❌ recall 2: UNNATURAL: "あそこは何？" — "X は何？" does not ask about a concrete thing or place in Japanese [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "あそこは何？"
+ ℹ ignored unknown grammar labels: ni volitional ka
+ ℹ declared but not present, dropped: volitional ka
+ ✅ recall 3 passed at its 1st check: あそこに行こうか。
+ ð  2nd check: あそこ · recall 2 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,3
+ ✅ recall 2 passed at its 2nd check: あそこ、何がある？
+ ð§¾ decision あそこ: r1=accepted@⚪1 r2=accepted@ð 2 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=あそこ CHECKS per recall r1=1/11 r2=2/11 r3=1/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 recalls=1:accepted/1paid,2:accepted/2paid,3:accepted/1paid
+12/30 ごめん gomen
+ ⚪ 1st check: ごめん · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ ignored unknown grammar labels: ne
+ ✅ recall 1 passed at its 1st check: ごめん、昼は一緒に食べられない。
+ ✅ recall 2 passed at its 1st check: ごめん、分からなかった。
+ ℹ ignored unknown grammar labels: ne
+ ✅ recall 3 passed at its 1st check: ごめんね、電話で言えばよかった。
+ ð§¾ decision ごめん: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=ごめん CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+13/30 なんで nande
+ ⚪ 1st check: なんで · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ ignored unknown grammar labels: plain-present
+ ℹ declared but not present, dropped: ka
+ ✅ recall 1 passed at its 1st check: なんで来ないのか分からない。
+ ✅ recall 2 passed at its 1st check: なんで？昼、一緒に食べないの？
+ ℹ ignored unknown grammar labels: plain-present
+ ✅ recall 3 passed at its 1st check: ごめん、なんでか分からないけど、昼は食べられないかも。
+ ð§¾ decision なんで: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=なんで CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+14/30 はい hai
+ ⚪ 1st check: はい · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ✅ recall 1 passed at its 1st check: はい、分かった。
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ✅ recall 2 passed at its 1st check: はい、大丈夫。
+ ✅ recall 3 passed at its 1st check: はい、明日の昼、行く。
+ ð§¾ decision はい: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=はい CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+15/30 うん un
+ ⚪ 1st check: うん · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ ignored unknown grammar labels: plain-present
+ ✅ recall 1 passed at its 1st check: うん、ちょっと時間がないんだ。
+ ℹ ignored unknown grammar labels: past
+ ℹ declared but not present, dropped: ka
+ ✅ recall 2 passed at its 1st check: うん、今の分かった？
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ℹ ignored unknown grammar labels: plain-present
+ ✅ recall 3 passed at its 1st check: うん、もう大丈夫だよ。
+ ð§¾ decision うん: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=うん CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+16/30 いいえ iie
+ ⚪ 1st check: いいえ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ❌ recall 1: CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question ("Mio asks if you've eaten lunch yet. Give a clear no and say ") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "いいえ、まだ食べてない。"
+ ❌ recall 2: CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question ("Mio asks if you're upset with her for changing the plan. Ans") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "いいえ、大丈夫だよ。"
+ ❌ recall 3: CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question ("Mio asks if you ate something earlier today. Answer no, you ") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "いいえ、食べなかったよ。"
+ ð  2nd check: いいえ · recall 1+2+3 · slot regeneration (paid, one call for 3 recalls) · accepted recalls kept: none
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ✅ recall 1 passed at its 2nd check: いいえ、今は大丈夫だよ。
+ ❌ recall 2: CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question ("Mio asks you to go somewhere with her. Tell her no, you won'") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "いいえ、今日は行かない。"
+ ✅ recall 3 passed at its 2nd check: いいえ、分からない。
+ ð¶ 3rd check: いいえ · recall 2 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,3
+ ❌ recall 2: CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question ("Mio asks if you still have time before lunch. Tell her no, y") [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "いいえ、もう時間ない。"
+ ðµ 4th check: いいえ · recall 2 · deterministic fallback candidate (no request)
+ ✅ recall 2 deterministic fallback (no model request) at its 4th check: いいえ。
+ ð§¾ decision いいえ: r1=accepted@ð 2 r2=fallback@ðµ4 r3=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=いいえ CHECKS per recall r1=2/11 r2=4/11 r3=2/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=1 recalls=1:accepted/2paid,2:fallback/3paid,3:accepted/2paid
+17/30 乗る noru
+ ⚪ 1st check: 乗る · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ✅ recall 1 passed at its 1st check: これに乗ればいいよ。
+ ℹ declared but not present, dropped: volitional ka
+ ✅ recall 2 passed at its 1st check: 一緒に乗ろうか。
+ ℹ declared but not present, dropped: no-question
+ ✅ recall 3 passed at its 1st check: 何時のバスに乗る？
+ ð§¾ decision 乗る: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=乗る CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+18/30 大丈夫 daijoubu
+ ⚪ 1st check: 大丈夫 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ℹ ignored unknown grammar labels: de
+ ✅ recall 1 passed at its 1st check: このバスで大丈夫だよ。
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ℹ ignored unknown grammar labels: de te
+ ℹ declared but not present, dropped: te
+ ✅ recall 2 passed at its 1st check: バスで行って大丈夫？
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar "な" is valid Japanese but not taught yet (untaught grammar particle: な) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "ここから遠いけど、大丈夫かな。"
+ ð  2nd check: 大丈夫 · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+ ℹ ignored unknown grammar labels: te mo
+ ✅ recall 3 passed at its 2nd check: ここで待っても大丈夫？
+ ð§¾ decision 大丈夫: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=大丈夫 CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=3 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/2paid
+19/30 行く iku
+ ⚪ 1st check: 行く · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ declared but not present, dropped: plain-present
+ ✅ recall 1 passed at its 1st check: バスで行くね。
+ ✅ recall 2 passed at its 1st check: そこ、バスで行ける？
+ ℹ ignored unknown grammar labels: te temoii
+ ✅ recall 3 passed at its 1st check: お店、今から行ってもいい？
+ ð§¾ decision 行く: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=行く CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+20/30 食べる taberu
+ ⚪ 1st check: 食べる · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ✅ recall 1 passed at its 1st check: 今日の昼は、店で食べるね。
+ ✅ recall 2 passed at its 1st check: 昼、何食べる？
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ✅ recall 3 passed at its 1st check: 今日、ご飯食べた？
+ ð§¾ decision 食べる: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=食べる CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=2 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+21/30 好き suki
+ ⚪ 1st check: 好き · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ ignored unknown grammar labels: yo
+ ✅ recall 1 passed at its 1st check: 昼ご飯、好きだよ。
+ ℹ ignored unknown grammar labels: ga
+ ✅ recall 2 passed at its 1st check: 昼、何が好き？
+ ❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar "な" is valid Japanese but not taught yet (untaught grammar particle: な) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "それ、ちょっと好きじゃないな。"
+ ð  2nd check: 好き · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+ ℹ ignored unknown grammar labels: ねえ
+ ✅ recall 3 passed at its 2nd check: ねえ、どこの店が好き？
+ ð§¾ decision 好き: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=好き CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/2paid
+22/30 何 nani / nan
+ ⚪ 1st check: 何 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ❌ recall 1: target 何 not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "何もないよ、大丈夫。"
+ ℹ ignored unknown grammar labels: ka
+ ✅ recall 2 passed at its 1st check: 何が分からなかった？
+ ❌ recall 3: target 何 not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "ごめん、何かあった？"
+ ð  2nd check: 何 · recall 1+3 · slot regeneration (paid, one call for 2 recalls) · accepted recalls kept: 2
+ ℹ ignored unknown grammar labels: past ka ne
+ ✅ recall 1 passed at its 2nd check: 何があったか、今話すね。
+ ℹ ignored unknown grammar labels: past ka
+ ℹ declared but not present, dropped: ka
+ ✅ recall 3 passed at its 2nd check: ごめん、何が悪かったか分かる？
+ ð§¾ decision 何: r1=accepted@ð 2 r2=accepted@⚪1 r3=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=何 CHECKS per recall r1=2/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted/2paid,2:accepted/1paid,3:accepted/2paid
+23/30 飲む nomu
+ ⚪ 1st check: 飲む · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ ignored unknown grammar labels: plain-present
+ ✅ recall 1 passed at its 1st check: 昼は水を飲むかも。
+ ℹ ignored unknown grammar labels: plain-present
+ ✅ recall 2 passed at its 1st check: 昼、何飲む？
+ ℹ ignored unknown grammar labels: te
+ ℹ declared but not present, dropped: temoii
+ ✅ recall 3 passed at its 1st check: ちょっと水飲んでもいい？
+ ð§¾ decision 飲む: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=飲む CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+24/30 どこ doko
+ ⚪ 1st check: どこ · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ declared but not present, dropped: plain-present
+ ✅ recall 1 passed at its 1st check: お店はどこにあるか分からない。
+ ℹ declared but not present, dropped: ne
+ ✅ recall 2 passed at its 1st check: 今日の昼、どこで食べる？
+ ❌ recall 3: target どこ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "ここ、どこか行こうよ。"
+ ð  2nd check: どこ · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+ ❌ recall 3: target どこ not present [PROMPT_REGEN_REQUIRED · TARGET_LEMMA_ABSENT] — "どこか近い店ないかな？"
+ ð¶ 3rd check: どこ · recall 3 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 1,2
+ ❌ recall 3: CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "今日の昼は、どこがいいかな？"
+ ðµ 4th check: どこ · recall 3 · deterministic fallback candidate (no request)
+ ✅ recall 3 deterministic fallback (no model request) at its 4th check: どこ行く？
+ ð§¾ decision どこ: r1=accepted@⚪1 r2=accepted@⚪1 r3=fallback@ðµ4
+ ð JA_GENERATION_BUDGET target=どこ CHECKS per recall r1=1/11 r2=1/11 r3=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:fallback/3paid
+25/30 一緒 issho
+ ⚪ 1st check: 一緒 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ ignored unknown grammar labels: plain-present
+ ✅ recall 1 passed at its 1st check: 明日なら一緒に行けるよ。
+ ℹ ignored unknown grammar labels: nai-invite
+ ✅ recall 2 passed at its 1st check: 今日、一緒に帰らない？
+ ℹ ignored unknown grammar labels: te ne
+ ℹ declared but not present, dropped: te
+ ✅ recall 3 passed at its 1st check: 一緒に行けなくてごめんね。
+ ð§¾ decision 一緒: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=一緒 CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+26/30 する suru
+ ⚪ 1st check: する · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ✅ recall 1 passed at its 1st check: ちょっと忙しくて、何もしなかったんだ。
+ ✅ recall 2 passed at its 1st check: 時間ないけど、どうする？
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ℹ declared but not present, dropped: ka
+ ✅ recall 3 passed at its 1st check: じゃあ、明日一緒に何かする？
+ ð§¾ decision する: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=する CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+27/30 今 ima
+ ⚪ 1st check: 今 · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ ignored unknown grammar labels: ni
+ ✅ recall 1 passed at its 1st check: 今ならお店にいるかも。
+ ℹ ignored unknown grammar labels: no ni tekureru
+ ✅ recall 2 passed at its 1st check: 今、お店の人に聞いてくれる？
+ ℹ ignored unknown grammar labels: wa
+ ✅ recall 3 passed at its 1st check: 今はまだ行けないね。
+ ð§¾ decision 今: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=今 CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+28/30 ちょっと chotto
+ ⚪ 1st check: ちょっと · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ❌ recall 1: CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな) [PROMPT_REGEN_REQUIRED · UNTAUGHT_GRAMMAR] — "時間、ちょっと早いかな。"
+ ✅ recall 2 passed at its 1st check: ちょっと時間見てくれる？
+ ❌ recall 3: "遅いなる" needs a particle — a bare noun cannot sit directly against "なる" [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "ごめん、ちょっと遅くなるかも。"
+ ð  2nd check: ちょっと · recall 1+3 · slot regeneration (paid, one call for 2 recalls) · accepted recalls kept: 2
+ ❌ recall 1: "早い行く" needs a particle — a bare noun cannot sit directly against "行く" [PROMPT_REGEN_REQUIRED · GENUINE_ERROR] — "ちょっと早く行こうね。"
+ ℹ ignored unknown grammar labels: teru
+ ✅ recall 3 passed at its 2nd check: ちょっと待ってて。
+ ð¶ 3rd check: ちょっと · recall 1 · slot regeneration (paid, one call for 1 recall) · accepted recalls kept: 2,3
+ ℹ ignored unknown grammar labels: wa
+ ✅ recall 1 passed at its 3rd check: 昼は店がちょっと忙しいかも。
+ ð§¾ decision ちょっと: r1=accepted@ð¶3 r2=accepted@⚪1 r3=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=ちょっと CHECKS per recall r1=3/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted/3paid,2:accepted/1paid,3:accepted/2paid
+29/30 来る kuru
+ ⚪ 1st check: 来る · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ℹ declared but not present, dropped: past
+ ✅ recall 1 passed at its 1st check: あ、バスが来たよ。
+ ✅ recall 2 passed at its 1st check: バス、いつ来る？
+ ✅ recall 3 passed at its 1st check: バス、まだ来ないね。
+ ð§¾ decision 来る: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=来る CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+30/30 分かる wakaru
+ ⚪ 1st check: 分かる · recall 1+2+3 · target-group request (3 recalls in one paid call)
+ ✅ recall 1 passed at its 1st check: なんでか、私も分からないんだ。
+ ✅ recall 2 passed at its 1st check: 話したこと、分かった？
+ ℹ ignored unknown grammar labels: yo teru
+ ℹ declared but not present, dropped: yo
+ ✅ recall 3 passed at its 1st check: 分かってるよ、大丈夫。
+ ð§¾ decision 分かる: r1=accepted@⚪1 r2=accepted@⚪1 r3=accepted@⚪1
+ ð JA_GENERATION_BUDGET target=分かる CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid,2:accepted/1paid,3:accepted/1paid
+ℹ TARGET-GROUP GENERATION: 30 target group(s) · 44 paid generation call(s) · 46 quality check(s) · 90/90 recalls accepted
+ℹ 90 recalls from 44 model attempts (0.49 per recall)
+✓ closing generated
+✓ Final validation passed — 90 recalls, 4 conversation lines
+✓ 90/90 target pairs carry provenance
+━━ Quality check
+▶ Checking cue and translation alignment…
+ Batch 1/8: checking 12 pairs
+ Batch 2/8: checking 12 pairs
+ Batch 3/8: checking 12 pairs
+ Batch 4/8: checking 12 pairs
+ Batch 5/8: checking 12 pairs
+ Batch 6/8: checking 12 pairs
+ Batch 7/8: checking 12 pairs
+ Batch 8/8: checking 5 pairs
+ CUE_CHECK_COVERAGE scored 89/89 eligible pair(s)
+⚠ Pair 30 — cue does not map to the answer (3/5) — translation is ungrammatical; intended meaning is 'Which shop shall we eat at?'
+⚠ Pair 33 — cue could be clearer (3/5) — cue says 'for lunch', sentence omits it
+⚠ Pair 34 — cue could be clearer (3/5) — cue says 'for lunch', sentence omits it
+⚠ Pair 51 — cue could be clearer (3/5) — omits 'so they could answer'; translation 'If it's now' is a stiff literal rendering
+⚠ Pair 59 — cue could be clearer (3/5) — translation says 'the time' but 時間 means 'hours' here
+⚠ Pair 63 — cue could be clearer (3/5) — cue's 'need to wait a bit' is missing; English adds a tag question 'can we?' not in the Japanese
+⚠ Pair 69 — cue could be clearer (3/5) — cue's 'today' is missing from both the Japanese and English
+⚠ Pair 87 — cue could be clearer (3/5) — cue says 'about the change'; sentence omits it
+▶ Evaluating 30 target groups…
+⚠ Pair 3 — 食べる: Line 3 jumps topic: after inviting B to lunch, asking whether they have already eaten today doesn't follow, and B's reply answers the lunch-food question in line 2 instead.
+ ✏️ 食べる: Line 3 jumps topic: after inviting B to lunch, asking whether they have already eaten today doesn't follow, and B's reply answers the lunch-food question in line 2 instead. (line 3 only)
+ ✓ 食べる improved and revalidated
+ ✓ 好き
+ ✓ 飲む
+ ✓ 物
+⚠ Pair 15 — どこ: Line 3 asks "どこ行く？" (Where are you going?) in reply to B's question about where to eat lunch, so it doesn't match the topic; "どこにする？" (Where shall we go?) would fit the choice of restaurant.
+ ✏️ どこ: Line 3 asks "どこ行く？" (Where are you going?) in reply to B's question about where to eat lunch, so it doesn't match the topic; "どこにする？" (Where shall we go?) would fit the choice of restaurant. (line 3 only)
+ ✓ どこ improved and revalidated
+⚠ Pair 16 — どっち: cue or translation does not match the sentence (3/5)
+ ✏️ どっち: cue or translation does not match the sentence (3/5) (line 3 only)
+ ✓ どっち improved and revalidated
+ ✓ どれ
+ ✓ あそこ
+ ✓ あれ
+⚠ Pair 20 — 場所: Line 2 uses そこ (near the listener) for a place previously pointed at as あそこ, which is vague, and line 3 uses the awkward 食べる場所はどこにする? where どこで食べる？ is the natural way to ask where to eat.
+ ✏️ 場所: Line 2 uses そこ (near the listener) for a place previously pointed at as あそこ, which is vague, and line 3 uses the awkward 食べる場所はどこにする? where どこで食べる？ is the natural way to ask where to eat. (lines 2, 3 only)
+ ✓ 場所 improved and revalidated
+ ✓ どう
+⚠ Pair 36 — 乗る: Line 1 uses これ with no clear referent, since the preceding talk is about a place to eat, so it reads as a sudden jump to a vehicle; lines 2 and 3 fit the bus topic that follows.
+ ✏️ 乗る: Line 1 uses これ with no clear referent, since the preceding talk is about a place to eat, so it reads as a sudden jump to a vehicle; lines 2 and 3 fit the bus topic that follows. (line 1 only)
+ ✓ 乗る improved and revalidated
+⚠ Pair 37 — 行く: Line 3 is grammatical, but 「お店、今から行ってもいい？」 introduces an unspecified shop out of nowhere in a conversation about getting there by bus, so it does not connect to the preceding lines.
+ ✏️ 行く: Line 3 is grammatical, but 「お店、今から行ってもいい？」 introduces an unspecified shop out of nowhere in a conversation about getting there by bus, so it does not connect to the preceding lines. (line 3 only)
+ ✓ 行く improved and revalidated
+⚠ Pair 38 — 来る: Line 1 says the bus has already arrived, which contradicts line 2 asking when it is coming and line 3 saying it still hasn't come, and it jumps ahead of the planning talk in the context before.
+ ✏️ 来る: Line 1 says the bus has already arrived, which contradicts line 2 asking when it is coming and line 3 saying it still hasn't come, and it jumps ahead of the planning talk in the context before. (line 1 only)
+ ↻ 来る improve attempt 1 rejected: regenerated pair failed validation: "バス来る" needs a particle — a bare noun cannot sit direc
+ ✓ 来る replaced and revalidated (attempt 2)
+ ✓ 大丈夫
+ ✓ 電話
+⚠ Pair 49 — 時間: Line 2 is awkward as a fragment: 行ける時間 is unnatural for asking when they can go, and it shifts from the shop's hours to the group's availability; 何時ごろ行ける？ would be more natural.
+ ✏️ 時間: Line 2 is awkward as a fragment: 行ける時間 is unnatural for asking when they can go, and it shifts from the shop's hours to the group's availability; 何時ごろ行ける？ would be more natural. (line 2 only)
+ ↻ 時間 improve attempt 1 rejected: regenerated pair failed validation: untaught vocabulary: おら
+ ✓ 時間 replaced and revalidated (attempt 2)
+ ✓ 昼
+ ✓ 今
+ ✓ また
+⚠ Pair 53 — ちょっと: Line 2 asks A to check the time right after A has already offered to check the lunch hours, and 時間見て is ambiguous (clock time vs. opening hours); 営業時間を調べてくれる? would be clearer.
+ ✏️ ちょっと: Line 2 asks A to check the time right after A has already offered to check the lunch hours, and 時間見て is ambiguous (clock time vs. opening hours); 営業時間を調べてくれる? would be clearer. (line 2 only)
+ ✓ ちょっと improved and revalidated
+⚠ Pair 66 — はい: Line 3 starts with はい but answers no question, and its statement about going tomorrow for lunch comes out of nowhere; a clearer cue, such as a proposal to eat together tomorrow, would make it fit.
+ ✏️ はい: Line 3 starts with はい but answers no question, and its statement about going tomorrow for lunch comes out of nowhere; a clearer cue, such as a proposal to eat together tomorrow, would make it fit. (line 3 only)
+ ✓ はい improved and revalidated
+⚠ Pair 67 — うん: Line 1 jumps topic: 'I don't have much time' does not follow A's 'はい、分かった', so it needs a link to the previous line, while lines 2 and 3 connect naturally.
+ ✏️ うん: Line 1 jumps topic: 'I don't have much time' does not follow A's 'はい、分かった', so it needs a link to the previous line, while lines 2 and 3 connect naturally. (line 1 only)
+ ✓ うん improved and revalidated
+⚠ Pair 68 — いいえ: The group uses いいえ in casual speech with no question to answer: line 1 replies to a statement, line 2 is a bare "No" with nothing to refuse, and line 3 says "I don't understand" right after A said "I understood"; ううん or いや would fit the casual tone, and the lines need to respond to what was actually said.
+ ✏️ いいえ: The group uses いいえ in casual speech with no question to answer: line 1 replies to a statement, line 2 is a bare "No" with nothing to refuse, and line 3 says "I don't understand" right after A said "I understood"; ううん or いや would fit the casual tone, and the lines need to respond to what was actually said.
+ ✓ いいえ improved and revalidated
+⚠ Pair 69 — ごめん: Line 2 contradicts the earlier 「分かった」 and does not follow from line 1; it should be replaced with a line that responds to the lunch apology, such as 「ううん、大丈夫だよ」.
+ ✏️ ごめん: Line 2 contradicts the earlier 「分かった」 and does not follow from line 1; it should be replaced with a line that responds to the lunch apology, such as 「ううん、大丈夫だよ」. (line 2 only)
+ ✓ ごめん improved and revalidated
+⚠ Pair 70 — なんで: Line 1 is a statement that doesn't follow from B's lunch refusal; it introduces an unrelated 'he's not coming' topic, so it should be rewritten to respond to the lunch context.
+ ✏️ なんで: Line 1 is a statement that doesn't follow from B's lunch refusal; it introduces an unrelated 'he's not coming' topic, so it should be rewritten to respond to the lunch context. (line 1 only)
+ ↻ なんで improve attempt 1 rejected: regenerated pair failed validation: untaught vocabulary: られ
+ ✓ なんで replaced and revalidated (attempt 2)
+ ✓ 分かる
+⚠ Pair 72 — する: Line 1 is a statement about A's own busy, idle past that doesn't follow from B's 'I don't know why either' and doesn't connect to the lunch plans, so it reads as out of place there.
+ ✏️ する: Line 1 is a statement about A's own busy, idle past that doesn't follow from B's 'I don't know why either' and doesn't connect to the lunch plans, so it reads as out of place there. (line 1 only)
+ ✓ する improved and revalidated
+ ✓ 何
+⚠ Pair 74 — 一緒: Line 3 answers B's invitation to go home together (帰らない？) with 行けなくて, which mismatches the verb; it should be 一緒に帰れなくてごめんね.
+ ✏️ 一緒: Line 3 answers B's invitation to go home together (帰らない？) with 行けなくて, which mismatches the verb; it should be 一緒に帰れなくてごめんね. (line 3 only)
+ ↻ 一緒 improve attempt 1 rejected: regenerated pair failed validation: untaught vocabulary: なく
+ ✓ 一緒 replaced and revalidated (attempt 2)
+✅ QC complete — 24 found, 17 fixed, 7 accepted, 0 unresolved
+✅ 24 found · 17 fixed · 7 accepted · 0 unresolved
+━━ FINAL_TRACK (ja): quota → recovery → coherence → freeze text → pronunciation → final audit → invariants
+ ⛔ TARGET PAIR rejected [ごめん] "うん、ごめんね、昼は大丈夫だよ。" — LEVEL_COMPLEXITY_FAIL: 8 Japanese content units > hardMax 7 (belt 10th Kyu)
+ ⛔ TARGET PAIR rejected [はい] "はい、じゃあ明日の昼、一緒に食べない？" — LEVEL_COMPLEXITY_FAIL: 9 Japanese content units > hardMax 7 (belt 10th Kyu)
+ ⛔ TARGET PAIR rejected [うん] "うん、分かったけど、ちょっと時間ないんだ。" — LEVEL_COMPLEXITY_FAIL: 9 Japanese content units > hardMax 7 (belt 10th Kyu)
+ ⛔ TARGET PAIR rejected [一緒] "ごめん、今日はたぶん一緒に帰れない。" — LEVEL_COMPLEXITY_FAIL: 8 Japanese content units > hardMax 7 (belt 10th Kyu)
+ ⛔ TARGET PAIR rejected [ちょっと] "ちょっと店の昼の時間、見てね。" — LEVEL_COMPLEXITY_FAIL: 9 Japanese content units > hardMax 7 (belt 10th Kyu)
+♻️ QUOTA RECOVERY round 1: 5 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 5 · TARGET PAIRS 85/90
+ ð  2nd check: ごめん · recall 2 · target-group request (1 recall in one paid call)
+ ℹ ignored unknown grammar labels: plain-present
+ ℹ declared but not present, dropped: wa ni
+ ✅ recall 2 passed at its 2nd check: ごめん、今日は一緒に帰れないかも。
+ ð§¾ decision ごめん: r2=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=ごめん CHECKS per recall r2=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=2:accepted/1paid
+▶ Checking cue and translation alignment…
+ Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+ ✓ ごめん
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+ ✅ QUOTA RECOVERY ごめん: +1 TARGET PAIR(S) (needed 1) — ごめん、今日は一緒に帰れないかも。
+ ð  2nd check: はい · recall 3 · target-group request (1 recall in one paid call)
+ ℹ declared but not present, dropped: wa ni ne
+ ✅ recall 3 passed at its 2nd check: はい、ごめん。明日は一緒に食べようね。
+ ð§¾ decision はい: r3=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=はい CHECKS per recall r3=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=3:accepted/1paid
+▶ Checking cue and translation alignment…
+ Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+⚠ Pair 1 — はい: With no preceding line, 'はい、ごめん' is an unnatural opener between friends; casual speech would use うん、ごめん, and the rest of the sentence is fine.
+ ✏️ はい: With no preceding line, 'はい、ごめん' is an unnatural opener between friends; casual speech would use うん、ごめん, and the rest of the sentence is fine.
+ ✓ はい improved and revalidated
+✅ QC complete — 1 found, 1 fixed, 0 accepted, 0 unresolved
+ ✅ QUOTA RECOVERY はい: +1 TARGET PAIR(S) (needed 1) — ごめん、はい、これ、明日一緒に食べようね。
+ ð  2nd check: うん · recall 1 · target-group request (1 recall in one paid call)
+ ℹ declared but not present, dropped: ka yo
+ ✅ recall 1 passed at its 2nd check: うん、なんでか分かったよ。
+ ð§¾ decision うん: r1=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=うん CHECKS per recall r1=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted/1paid
+▶ Checking cue and translation alignment…
+ Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+⚠ Pair 1 — うん: The sentence is natural casual Japanese, but with no preceding line, うん (yeah) has nothing to respond to, so it reads as a statement out of the blue; a prior question such as「なんで分かったの？」would make it fit.
+ ✏️ うん: The sentence is natural casual Japanese, but with no preceding line, うん (yeah) has nothing to respond to, so it reads as a statement out of the blue; a prior question such as「なんで分かったの？」would make it fit.
+ ✓ うん improved and revalidated
+✅ QC complete — 1 found, 1 fixed, 0 accepted, 0 unresolved
+ ✅ QUOTA RECOVERY うん: +1 TARGET PAIR(S) (needed 1) — うん、見たから分かったよ。
+ ð  2nd check: 一緒 · recall 3 · target-group request (1 recall in one paid call)
+ ℹ ignored unknown grammar labels: plain-present
+ ℹ declared but not present, dropped: ni no ka
+ ✅ recall 3 passed at its 2nd check: 一緒に帰れないの、分かった？
+ ð§¾ decision 一緒: r3=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=一緒 CHECKS per recall r3=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=3:accepted/1paid
+▶ Checking cue and translation alignment…
+ Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+ ✓ 一緒
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+ ✅ QUOTA RECOVERY 一緒: +1 TARGET PAIR(S) (needed 1) — 一緒に帰れないの、分かった？
+ ð  2nd check: ちょっと · recall 2 · target-group request (1 recall in one paid call)
+ ℹ ignored unknown grammar labels: ねえ
+ ℹ declared but not present, dropped: ne
+ ✅ recall 2 passed at its 2nd check: ねえ、今ちょっと電話してもいい？
+ ð§¾ decision ちょっと: r2=accepted@ð 2
+ ð JA_GENERATION_BUDGET target=ちょっと CHECKS per recall r2=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=2:accepted/1paid
+▶ Checking cue and translation alignment…
+ Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+ ✓ ちょっと
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+ ✅ QUOTA RECOVERY ちょっと: +1 TARGET PAIR(S) (needed 1) — ねえ、今ちょっと電話してもいい？
+ ⛔ TARGET PAIR rejected (found invalid after round 1) [はい] "ごめん、はい、これ、明日一緒に食べようね。" — LEVEL_COMPLEXITY_FAIL: 9 Japanese content units > hardMax 7 (belt 10th Kyu) (its slot is replaced, never appended)
+ ⛔ TARGET PAIR rejected (found invalid after round 1) [うん] "うん、見たから分かったよ。" — LEVEL_COMPLEXITY_FAIL: 8 Japanese content units > hardMax 7 (belt 10th Kyu) (its slot is replaced, never appended)
+♻️ QUOTA RECOVERY round 2: 2 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 2 · TARGET PAIRS 88/90
+ ð¶ 3rd check: はい · recall 3 · target-group request (1 recall in one paid call)
+ ℹ declared but not present, dropped: ne
+ ✅ recall 3 passed at its 3rd check: はい、ちょっと待ってね。
+ ð§¾ decision はい: r3=accepted@ð¶3
+ ð JA_GENERATION_BUDGET target=はい CHECKS per recall r3=3/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=3:accepted/1paid
+▶ Checking cue and translation alignment…
+ Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+ ✓ はい
+✅ QC complete — 0 found, 0 fixed, 0 accepted, 0 unresolved
+ ✅ QUOTA RECOVERY はい: +1 TARGET PAIR(S) (needed 1) — はい、ちょっと待ってね。
+ ð¶ 3rd check: うん · recall 1 · target-group request (1 recall in one paid call)
+ ⚙ deterministic repair: reading/romaji/segments rebuilt locally (no model request)
+ ℹ declared but not present, dropped: wa
+ ✅ recall 1 passed at its 3rd check: うん、今日は忙しいんだ。
+ ð§¾ decision うん: r1=accepted@ð¶3
+ ð JA_GENERATION_BUDGET target=うん CHECKS per recall r1=3/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted/1paid
+▶ Checking cue and translation alignment…
+ Batch 1/1: checking 1 pairs
+▶ Evaluating 1 target groups…
+⚠ Pair 1 — うん: The line opens the conversation with うん, which answers nothing, so it reads as a reply out of the blue; a question or prompt before it, or a sentence without うん, would fit the context better.
+ ✏️ うん: The line opens the conversation with うん, which answers nothing, so it reads as a reply out of the blue; a question or prompt before it, or a sentence without うん, would fit the context better.
+ ✓ うん improved and revalidated
+✅ QC complete — 1 found, 1 fixed, 0 accepted, 0 unresolved
+ ✅ QUOTA RECOVERY うん: +1 TARGET PAIR(S) (needed 1) — 今日は、うん、忙しいんだ。
+ð LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Japanese content units, rankProgressFor)
+ð VOCAB INVENTORY introducedContent=81 selectedTargets=30 newTargets=5 (daily)
+ ð§© MAIN_TRACK_COHERENCE 5/5 scene(s) coherent · overall 4/5 (threshold 3) · S1=4 S2=5 S3=5 S4=5 S5=3 → PASS
+ ð£ CUE_ADDRESSEE_FIXED 15 cue(s) named the speaker as the listener — now addressed to the other character: "Tell Daiki on the map that you don't know which direction th" | "Ask Mio what is over there on the map." | "Point at a place on the map and ask Daiki if he wants to go " | "Ask Mio what she thinks of the spot you're pointing at on th"
+ ð§ FINAL_LINE_TEXT frozen: 94 line(s) · fingerprint 94:tyutqj
+ ð¤ ROMAJI_REBUILT "なんで？何かあったの？": "nande？ nani ka a ta no？" → "nande? nanika atta no?"
+ ð¤ FINAL readings/romaji (after recovery): 0 alignment issue(s)
+ ð§© TARGET_VARIETY_AUDIT 30/30 target(s) practise 3 distinct applications
+ð MAIN_COMPLEXITY_AUDIT belt=10th Kyu preferred=3–5 hardMax=7 lines=94 withinPreferred=72 shortNatural=18 abovePreferredAllowed=4 overHardMax=0 maxObserved=7 · preferredRatio=96% (advisory ≥80%) PASS
+ ð FINAL_DUPLICATE_AUDIT target pairs=90 duplicates=0 PASS (run on the FINAL persisted pairs)
+ ð CHECK_MODEL recalls=90 candidateAttempts=118 (1.31/recall) accepted=90 unresolved=0 firstAttemptSuccess=77% acceptedAtCheck=1:69,2:16,3:3,4:2 rejectionClasses=UNTAUGHT×7 COMPLEXITY×7 CUE_FORM×6 TARGET_MISSING×5 OTHER×3
+ ð§® CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=90 candidates=118 · by origin: model reply 116 · deterministic fallback (no request) 2 · outcomes: rejected 28 · accepted 90 · fallback accepted for 2 recall(s) (2 after 6 rejected model candidate(s)) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+ð MAIN TRACK READY — 90/90 target pairs · coherence PASS overall 4/5 (threshold 3) · S1=4 S2=5 S3=5 S4=5 S5=3 · pronunciation 0 issues
+ð§¾ TRACK INTEGRITY (ja): READY
+ MAIN_TRACK: READY · TARGET PAIRS 90/90 · COHERENCE PASS overall 4/5 (threshold 3) · S1=4 S2=5 S3=5 S4=5 S5=3
+ TARGET WORDS: 30/30 covered
+ TARGET PAIRS: 90/90 valid target-practice sentences (3 per target word)
+ QC: 7 candidate sentence(s) rejected (0 cue mismatch · 0 unnatural · 7 other) · 8 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 118 evaluated, 28 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+ BRIDGE PAIRS: 0 · FRAMING PAIRS: 4 · TOTAL PLAYABLE LINES: 94
+ PRONUNCIATION ALIGNMENT: 0 issue(s) · UNVERIFIED FINAL PAIRS: 0
+ð§ LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a Daily Track
+ð¤ AI USAGE SUMMARY (Claude Haiku)
+Model: claude-haiku-5-5 ×130
+Track ID: 2026-10-13T11:23:21.277Z · run ja-track-1791890590913-6654
+Total requests: 130 · Successful: 128 · Failed: 2 · Retried: 23
+Generation calls: 48 · QC calls: 58 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 0 · Gloss calls: 0 · Recovery calls: 24 · Listening calls: 0 · Other: 0
+Input tokens: 337672 · Output tokens: 182497 · Total tokens: 520169 (mixed (provider usage where returned, estimates otherwise))
+Retry requests: 23 · caused by provider errors: 0 · DUPLICATES: candidates 0 · prevented 0 (answered from an identical request, not sent) · actually sent 0
+Provider requests: 130 · Provider-error retries: 2
+GENERATION (app level): recalls requested 90 · first attempts 30 · regeneration attempts 14 · total attempts 44 · average 0.49 per recall · resolved first attempt 74/90 · requiring 2 attempts 13 · requiring 3 attempts 1 · hitting fallback 2 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 14 · recovery recalls 7 (7 paid)
+GENERATION WASTE: first-attempt tokens 219090 · regeneration tokens 92692 · regeneration share 30% · regeneration cost USD 0.0185 · fallback-after-paid-retries 2
+PAID REQUESTS BY PURPOSE: QC judging 38 (72023 tok, USD 0.0190) · generation (first attempt / scene) 32 (227824 tok, USD 0.0566) · quota / target recovery 24 (67482 tok, USD 0.0140) · QC repair (replace / improve) 20 (60148 tok, USD 0.0170) · regeneration (paid retry of a rejected candidate) 16 (92692 tok, USD 0.0185)
+JAPANESE GENERATION (target groups): target groups 30 · recalls 90 · initial paid group calls 30 · slot regeneration calls 14 · recall checks 46 (sum of each group's highest recall check; max 11 per recall — one check = one candidate attempt) · local repairs 14 · reading repair calls (Flash-Lite) 0 · accepted from the first call 74/90 · fallback 2 · unresolved 0 · quota-recovery generation calls 24
+ JA_GENERATION_BUDGET どれ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET また HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET あれ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 電話 HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 物 HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 場所 HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 時間 HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 昼 HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET どう HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=3 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET どっち HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET あそこ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET ごめん HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET なんで HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET はい HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET うん HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET いいえ HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=1 recalls=1:accepted,2:fallback,3:accepted
+ JA_GENERATION_BUDGET 乗る HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 大丈夫 HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=3 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 行く HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 食べる HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=2 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 好き HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 何 HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 飲む HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET どこ HIGHEST_RECALL_CHECK=4/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:fallback
+ JA_GENERATION_BUDGET 一緒 HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET する HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 今 HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET ちょっと HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=3 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 来る HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+ JA_GENERATION_BUDGET 分かる HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 recalls=1:accepted,2:accepted,3:accepted
+Estimated AI cost (Claude Haiku): USD 0.1250 (≈ SGD 0.1625 at 1.3 — assumed rate)
+TOP CLAUDE HAIKU COST SOURCES
+ 1. A_generation — 30 requests / 219090 tokens / ~44%
+ 2. B_generation_retry — 16 requests / 92692 tokens / ~15%
+ 3. H_recovery — 24 requests / 67482 tokens / ~11%
+ 4. G_improve — 16 requests / 48504 tokens / ~11%
+ 5. C_group_eval — 29 requests / 46865 tokens / ~9%
+AI PROVIDERS (this run) · selected generation model: Claude Haiku 5.5 (experimental) — every request of this run goes to it (writing, quality checks, pronunciation)
+ ANTHROPIC: 130 requests (2 failed, 2 provider retries: retry after connection lost ×2) · input 337672 · output 182497 tok (thinking 118295 of them) · USD 0.1250 · requested claude-haiku-5-5 ×130 · served by claude-haiku-5-5 ×128
+ ANTHROPIC cost by stage: A_generation 30 / USD 0.0544 · B_generation_retry 16 / USD 

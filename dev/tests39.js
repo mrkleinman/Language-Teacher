@@ -2,6 +2,7 @@
 // A isolation & preservation · B deterministic acceptance rules · C pipeline mechanics (simulator: mechanics only)
 // D comparison tooling · E benchmark panel wiring
 process.env.TT_LISTENING_LEGACY = '1'   // v692: LEGACY Listening planner regression (assertions unchanged); the default meaning-first planner is tested in tests49
+process.env.TT_DAILY_LEGACY = '1'   // v693: LEGACY Daily rules for D1, whose count pins the pre-v693 target-presence rules (assertions unchanged); the v693 rules are tested in tests50
 'use strict'
 const fs = require('fs'), path = require('path')
 const { load } = require('./harness')

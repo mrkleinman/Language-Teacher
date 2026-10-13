@@ -128,10 +128,8 @@ async function runOnce(fx, o) {
   if (o.qualityOct13 === false && typeof c.setQualityOct13 === 'function') c.setQualityOct13(false)
   // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
   if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
-  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
-  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
-  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
-  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
+  // v693: a cassette recorded before the 13-Oct Daily repairs (v691 briefs) replays with the pre-v693 Daily rules
+  if ((o.dailyV693 === false || o.qualityOct13 === false) && typeof c.setDailyV693 === 'function') c.setDailyV693(false)
   c.setLearnerStateOverride({ rank: fx.belt.rank, source: 'benchmark-fixture ' + fx.id })
   const vocab = applyFixture(bankOf(c, lang), fx)
   const byId = new Map(vocab.map(w => [w.id, w]))
@@ -203,10 +201,8 @@ async function runOnceUi(fx, o) {
   if (o.qualityOct13 === false && typeof c.setQualityOct13 === 'function') c.setQualityOct13(false)
   // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
   if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
-  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
-  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
-  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
-  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
+  // v693: a cassette recorded before the 13-Oct Daily repairs (v691 briefs) replays with the pre-v693 Daily rules
+  if ((o.dailyV693 === false || o.qualityOct13 === false) && typeof c.setDailyV693 === 'function') c.setDailyV693(false)
   const how = ensureUiPaths(c)
   let rec = null, rep = null
   if (o.mode === 'replay') { rep = createReplayer(o.cassette); c.fetch = rep.fetch }

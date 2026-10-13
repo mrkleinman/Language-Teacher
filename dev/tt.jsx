@@ -3278,8 +3278,33 @@ function mandarinSpokenPinyin(pinyin) {
   }
   // third-tone sandhi: 3+3 -> 2+3, left to right across adjacent syllables (not across punctuation)
   const t0 = syl.map(s => toneOf(s.x))
-  for (let k = 0; k < syl.length - 1; k++) {
-    if (t0[k] === 3 && t0[k + 1] === 3 && !syl[k].tail) syl[k].x = syl[k].x.replace(TONE3, m => T3_TO_T2[m] || m)
+  // v693 — phrasing, not every adjacent pair: (1) 里 in 这里 / 那里 is spoken in the neutral tone, so it neither changes nor triggers a
+  // change (live v691: 这里很多人 "zhèlí hěn", 那里很 "nàlí hěn"); (2) across a WORD boundary the change applies only when the left word is
+  // one syllable that leans on the next (我 可以 → wó kéyǐ, 很 好 → hén hǎo); the last syllable of a two-syllable word keeps its tone
+  // before the next word (可以 等你 → kéyǐ déng nǐ, not kéyí). Inside a word every 3+3 changes, as before.
+  const _v693 = typeof dailyV693On === 'function' && dailyV693On()
+  if (_v693) {
+    const wordOf = new Map(); syl.forEach(s0 => wordOf.set(s0.i, (wordOf.get(s0.i) || []).concat([s0])))
+    syl.forEach(s0 => { const w = wordOf.get(s0.i); s0._n = w.length; s0._first = w[0] === s0
+      const wtxt = w.map(x => x.x).join('').normalize('NFC'); if ((wtxt === 'zh\u00E8l\u01D0' || wtxt === 'n\u00E0l\u01D0') && !s0._first) s0._neutral = true })
+  }
+  const _to2 = k => { syl[k].x = syl[k].x.replace(TONE3, m => T3_TO_T2[m] || m) }
+  if (!_v693) { for (let k = 0; k < syl.length - 1; k++) if (t0[k] === 3 && t0[k + 1] === 3 && !syl[k].tail) _to2(k) }
+  else {
+    const ch = new Set()
+    // (a) inside a word: every 3+3
+    for (let k = 0; k < syl.length - 1; k++) if (syl[k].i === syl[k + 1].i && !syl[k]._neutral && !syl[k + 1]._neutral && t0[k] === 3 && t0[k + 1] === 3 && !syl[k].tail) ch.add(k)
+    // (b) a run of one-syllable 3rd-tone words groups into feet of two (an odd run starts with a foot of three): 我也很好 → wó yě hén hǎo,
+    //     你等我 → ní déng wǒ, 很好 → hén hǎo; a run of one before a 3rd-tone word leans on it: 我可以 → wó kéyǐ
+    for (let k = 0; k < syl.length; ) {
+      if (!(syl[k]._n === 1 && t0[k] === 3)) { k++; continue }
+      const run = [k]; while (!syl[run[run.length - 1]].tail && run[run.length - 1] + 1 < syl.length && syl[run[run.length - 1] + 1]._n === 1 && t0[run[run.length - 1] + 1] === 3) run.push(run[run.length - 1] + 1)
+      const m = run.length, nx = run[m - 1] + 1
+      if (m === 1) { if (!syl[k].tail && nx < syl.length && t0[nx] === 3 && !syl[nx]._neutral) ch.add(k) }
+      else { let j = 0; if (m % 2) { ch.add(run[0]); ch.add(run[1]); j = 3 } for (; j + 1 < m; j += 2) ch.add(run[j]) }
+      k = nx
+    }
+    ch.forEach(_to2)
   }
   const byWord = new Map()
   syl.forEach(s => byWord.set(s.i, (byWord.get(s.i) || '') + s.x + s.tail))
@@ -3633,14 +3658,64 @@ function zhCueFormProblems(p) {
   if (zhSubj === 'YOU' && /^(i\b|i'm\b|i'll\b|i've\b|do i\b|am i\b|can i\b)/i.test(en)) out.push('CUE_SUBJECT_MISMATCH: 你 (you) but the English says "I" ("' + en.slice(0, 50) + '")')
   return out
 }
-function mandarinGrammarProblems(zh, segs, inv) {
+// v693 — the English must not ADD meaning the Mandarin does not carry (live v691 pair 33: 我慢吗？ → "Am I too slow?"). Unambiguous
+// markers only: degree "too" ↔ 太, "already" ↔ 已经/了, "still" ↔ 还, "must / have to" ↔ 得/必须/要, "probably" ↔ 可能/大概/吧, and negation
+// in the Mandarin. A natural paraphrase is not flagged ("I'll have yours", "Go ahead"); an A-不-A question (回不回) is not a negation.
+function zhEnglishAddsMeaning(zh, en) {
+  const z = String(zh || ''), e = String(en || '').toLowerCase(), out = []
+  if (!z || !e) return out
+  if (/\btoo\s+(?!\.|!|\?|,|$)(much|many|little|few|\w+)/.test(e) && !/\b(me|you|him|her|us|them|it) too\b/.test(e) && !/太|过/.test(z)) out.push('"too" — the Mandarin has no 太 (degree)')
+  if (/\balready\b/.test(e) && !/已经|了/.test(z)) out.push('"already" — the Mandarin has no 已经 / 了')
+  if (/\bstill\b/.test(e) && !/还/.test(z)) out.push('"still" — the Mandarin has no 还')
+  if (/\b(must|have to|has to|need to)\b/.test(e) && !/得|必须|要|应该/.test(z)) out.push('"must / have to" — the Mandarin has no 得 / 必须 / 要')
+  if (/\bprobably\b/.test(e) && !/可能|大概|吧/.test(z)) out.push('"probably" — the Mandarin has no 可能 / 大概')
+  const zNeg = /[不没别]/.test(z.replace(/(.)不\1/g, '').replace(/不(好意思|客气|错|用谢)/g, ''))
+  const eNeg = /\b(not|no|never|nothing|nobody|none|don't|doesn't|didn't|won't|can't|isn't|aren't|wasn't|haven't|hasn't)\b|n't\b/.test(e)
+  // (English-only negation is NOT flagged: an antonym paraphrase is natural English — 我很快 "I won't be long")
+  if (zNeg && !eNeg) out.push('the Mandarin negates (不 / 没) but the English does not')
+  return out
+}
+// v693 — LOCAL EXCHANGE checks for a target's three lines (Daily standard: contradictions and unanswerable references only — topic
+// changes are fine). From the live v691 Mandarin export: 我工作很快 … 不太快 (one speaker, both), 你不慢 → 我慢一点吧 (slowing down
+// right after being told you are not slow), 我到这里了 → 到了说 ("tell me when you arrive" after arriving), 我用一点 (a little of what?).
+const ZH_STATE_ADJ = ['快', '慢', '大', '小', '多', '少', '好', '贵', '远', '近', '忙', '累', '热', '冷', '难', '高']
+function zhExchangeProblems(prev, cand) {
+  const out = [], c = String(cand && cand.chinese || ''), cs = cand && cand.speaker
+  const isQ = t => /[？?]|[吗呢]$/.test(String(t || '').replace(/[。！!]$/, ''))
+  const pol = (t, adj) => { const s0 = String(t || '').replace(/[，。！？!?]/g, ''); const i = s0.indexOf(adj); if (i < 0) return null
+    const pre = s0.slice(0, i); const neg = /(不|不太|没|没有)$/.test(pre)
+    return { neg, subj: pre.replace(/(不太|不|没有|没|很|太|真|非常|有点|也|都|好，|好|嗯)+$/, '').replace(/^(好|嗯|对)/, '') } }
+  for (const p of (prev || [])) {
+    const t = String(p && p.chinese || ''); if (!t) continue
+    if (cs && p.speaker === cs && !isQ(t) && !isQ(c)) for (const adj of ZH_STATE_ADJ) {
+      const a = pol(t, adj), b = pol(c, adj)
+      if (a && b && a.neg !== b.neg && (a.subj === b.subj || !b.subj || !a.subj) && !/一点/.test(c)) { out.push('SELF_CONTRADICTION: the same speaker said "' + t + '" and now "' + c + '"'); break }
+    }
+    if (cs && p.speaker && p.speaker !== cs) for (const adj of ZH_STATE_ADJ)
+      if (new RegExp('你不(太)?' + adj).test(t) && new RegExp('我' + adj + '一点').test(c)) out.push('UNMOTIVATED: told "' + t + '" and then "' + c + '" — no reason to become more ' + adj)
+    if (/我到.{0,4}了/.test(t) && p.speaker !== cs && /到了(再)?(说|告诉我)/.test(c)) out.push('CONTRADICTION: "' + c + '" asks to hear about an arrival that "' + t + '" already reported')
+  }
+  if (/用一点/.test(c) && !(prev || []).concat([cand]).some(p => /水|钱|油|糖|盐|茶|咖啡|酒/.test(String(p && p.chinese || '')))) out.push('UNCLEAR_REFERENT: "' + c + '" — a little of what? (nothing measurable has been named)')
+  return out
+}
+function zhExchangeContradictions(pairs) {
+  const by = new Map(), out = []
+  ;(pairs || []).forEach(p => { if (p && p.targetId != null && classifyTrackPair(p) === 'TARGET') { if (!by.has(p.targetId)) by.set(p.targetId, []); by.get(p.targetId).push(p) } })
+  by.forEach(list => list.forEach((p, k) => { const pr = zhExchangeProblems(list.slice(0, k), p); if (pr.length) out.push({ pair: p, reason: pr[0] }) }))
+  return out
+}
+function mandarinGrammarProblems(zh, segs, inv, ctx) {
   const P = []
-  const words = (segs || []).filter(s => s && s.type !== 'punct')
+  // v693: two words are ADJACENT only when no punctuation stands between them. Filtering punctuation out first made 不，那里很小。
+  // ("No, it's small there") read as 不 + 那里 — "不 cannot negate 那里" (live v691 pair 11, then replaced by a worse sentence)
+  const words = dailyV693On() ? (segs || []).filter(Boolean).map((s0, k, all) => s0.type === 'punct' ? null : { ...s0, _pausedAfter: !!(all[k + 1] && all[k + 1].type === 'punct') }).filter(Boolean)
+    : (segs || []).filter(s => s && s.type !== 'punct')
   const posOf = surface => {
     const w = (inv.allContent || []).find(x => x.chinese === surface)
     return w ? (w.partOfSpeech || '') : (surface === '\u4E0D' || surface === '\u6CA1' ? 'negation' : '')
   }
   for (let i = 0; i < words.length - 1; i++) {
+    if (words[i]._pausedAfter) continue           // a pause (，) ends the phrase: 不，… is an independent "no"
     const a = words[i].surface, b = words[i + 1].surface
     const pb = posOf(b)
     // \u4E0D / \u6CA1 negate verbs and adjectives, never a pronoun or a bare noun
@@ -3660,13 +3735,28 @@ function mandarinGrammarProblems(zh, segs, inv) {
   const content = words.filter(w => w.type !== 'grammar')
   if (!content.length) P.push('no content word in sentence')
   // v671 §B4 — string-level rules for the live errors (they do not depend on segmentation):
-  P.push(...mandarinSurfaceGrammarProblems(zh, inv))
+  P.push(...mandarinSurfaceGrammarProblems(zh, inv, ctx))
   return P
+}
+// v693 — ELLIPSIS: a reply may leave out what the line it answers already said (你回不回？ — 我不回。 · 你想吃吗？ — 我想吃。 ·
+// 你要买那个吗？ — 我要去买。). An "incomplete" verb is accepted only when the PREVIOUS line of the exchange contains that same verb, so
+// the object / destination is recoverable; without that context the rule stands (我要回。 out of the blue is still incomplete).
+function zhEllipsisRecoverable(zh, prev) {
+  const s = String(zh || '').replace(/[\s。！!？?，,]/g, ''), pv = String(prev || '')
+  if (!pv) return false
+  const v = (s.replace(/(了|吧|呢|啊)+$/, '').match(/(回|吃|喝|买|拿|找|看|听|用|做|给|帮|开|去|来|喜欢|觉得)$/) || [])[1]
+  return !!v && pv.includes(v)
 }
 // 太吗？ (an adverb with nothing to modify) · 我一点想吃 / 我一点要吃 (一点 never precedes a verb; "a little" before an
 // adjective/verb is 有点 / 有一点, after a verb or adjective it is 一点) · 太 + adjective needs 了 (太贵了) · 有点 + adjective
 // (not 有点 + verb of motion) · a degree adverb straight before 吗 / 。
-function mandarinSurfaceGrammarProblems(zh, inv) {
+function mandarinSurfaceGrammarProblems(zh, inv, ctx) {
+  const P0 = _mandarinSurfaceGrammarProblems(zh, inv)
+  const prev = ctx && (ctx.prev || (ctx.exchange && ctx.exchange.length ? ctx.exchange[ctx.exchange.length - 1].chinese : ''))
+  if (!dailyV693On() || !prev || !zhEllipsisRecoverable(zh, prev)) return P0
+  return P0.filter(x => !/^incomplete:/.test(x))
+}
+function _mandarinSurfaceGrammarProblems(zh, inv) {
   const s = String(zh || '').replace(/\s+/g, ''), P = []
   const dangling = s.match(/(太|很|非常|最|更|有点|常常|也|都|又|再|才|就)(?=[吗呢吧啊。？！?!]|$)/)
   if (dangling) P.push('ungrammatical: the adverb ' + dangling[1] + ' has nothing to modify (' + s + ')')
@@ -3824,7 +3914,7 @@ function mandarinCueFromProposition(c) {
 const ZH_RECALL_FUNCTION = Object.freeze({ 1: 'a short statement', 2: 'a question to the other person', 3: 'a reply, request or suggestion' })
 
 // §28 — cheap deterministic checks BEFORE expensive repair, in the specified order.
-function validateMandarinPair(cand, target, inv, vocab, rules, seenMap) {
+function validateMandarinPair(cand, target, inv, vocab, rules, seenMap, _vctx) {
   const P = []
   if (!cand || !cand.chinese) return { ok:false, problems:['missing Chinese'] }
   const zh = String(cand.chinese).trim()
@@ -3868,11 +3958,14 @@ function validateMandarinPair(cand, target, inv, vocab, rules, seenMap) {
   if (P.length) return { ok:false, problems:P }
   // \u00a770/\u00a771 \u2014 basic Mandarin grammaticality. Broken Chinese is not an acceptable
   // way to satisfy a closed vocabulary (\u00a764).
-  const gp = mandarinGrammarProblems(zh, segs, inv)
+  const gp = mandarinGrammarProblems(zh, segs, inv, _vctx)
   if (gp.length) return { ok:false, problems:gp }
   // v671 §B4 — objective cue accuracy (question vs statement, I vs you)
   const cf = zhCueFormProblems(cand)
   if (cf.length) return { ok:false, problems:cf }
+  if (dailyV693On() && _vctx && _vctx.exchange && _vctx.exchange.length) { const xp = zhExchangeProblems(_vctx.exchange, cand); if (xp.length) return { ok: false, problems: [xp[0]] } }
+  if (dailyV693On()) { const am = zhEnglishAddsMeaning(zh, cand.english).concat(zhEnglishAddsMeaning(zh, cand.prompt).filter(x => /^"too"/.test(x)))
+    if (am.length) return { ok: false, problems: ['CUE_MEANING_MISMATCH: the English adds ' + am[0]] } }
   // I. duplicate \u2014 last, and scarcity-aware (\u00a754)
   const key = strip(zh)
   const prev = seenMap.get(key)
@@ -3941,7 +4034,7 @@ function makeRejectedCandidateRecord(lang) {
 // enter canonical track state, so no path can defer hardMax to the final audit.
 function mandarinAcceptCandidate(pair, target, inv, vocab, o) {
   const c = o || {}
-  return validateMandarinPair(pair, target, inv, vocab, c.rules || { allowCrossTargetReuse: true }, c.seenMap || new Map())
+  return validateMandarinPair(pair, target, inv, vocab, c.rules || { allowCrossTargetReuse: true }, c.seenMap || new Map(), { exchange: c.exchange, prev: c.prev })
 }
 // §30 — deterministic fallback, built only from the learner's own inventory, and
 // run through the SAME validator. Never trusted merely because it is hardcoded.
@@ -4480,7 +4573,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
     // costs a regeneration; the model's own cue is kept for diagnostics
     if (teachingPlanOn() && cand && !tpCueCheck('zh', cand.english, cand.prompt).blocking.length && !zhCueFormProblems(cand).length) cand = { ...cand, _cueSource: 'model', _cueCopiesEnglish: tpCueCheck('zh', cand.english, cand.prompt).copy }
     else { const dc = mandarinCueFromProposition(cand); if (dc && dc !== cand.prompt) cand = { ...cand, _modelCue: cand.prompt || '', prompt: dc, _cueSource: 'derived-from-proposition' } }
-    const v = validateMandarinPair(cand, target, inv, vocab, rules, seenMap)
+    const v = validateMandarinPair(cand, target, inv, vocab, rules, seenMap, { exchange: o.exchange })
     if (!v.ok) {
       last = v.problems[0]; recordMandarinRejection(stats, last); onLog && onLog('  ❌ ' + last)
       if (o.onRejected && cand.chinese) o.onRejected(cand.chinese, last)
@@ -4544,7 +4637,9 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
         const _cc = getLearnerComplexityContract({ lang: 'zh', vocab, lexicon: inv && inv.lexicon }), an = _cc.analyse(cand)
         if (stats) { stats.lenAccepted = stats.lenAccepted || 0; stats.lenPreferred = stats.lenPreferred || 0 }
         const ratio = stats && stats.lenAccepted >= 6 ? stats.lenPreferred / stats.lenAccepted : 1
-        if (an.abovePreferredButAllowed && k === 1 && maxTier > 2 && ratio < 0.8) {
+        // v693: preferred length is a GUIDELINE — a natural sentence within hardMax is never discarded for it (live v691: 你明天回家吗？,
+        // 5 words, hardMax 6, was thrown away and a paid retry produced 你回不回？). The drift stays visible in MAIN_COMPLEXITY_AUDIT.
+        if (an.abovePreferredButAllowed && k === 1 && maxTier > 2 && ratio < 0.8 && !dailyV693On()) {
           last = 'PREFERRED_RANGE_DRIFT: ' + an.units + ' words > preferred ' + _cc.preferredMin + '–' + _cc.preferredMax + ' (track at ' + Math.round(ratio * 100) + '% preferred) — say the same idea in ' + _cc.preferredMax + ' words or fewer'
           recordMandarinRejection(stats, 'too complex'); onLog && onLog('  \u274C ' + last + ': ' + cand.chinese); L.settle(tid, recallIndex, 'rejected', last, n); continue }
         if (stats) { stats.lenAccepted++; if (!an.abovePreferredButAllowed) stats.lenPreferred++ }
@@ -4931,7 +5026,7 @@ function mandarinQuickScan(pairs) {
   return { total:(pairs || []).length, suspect }
 }
 
-function runMandarinQualityCheckCore(pair, target, inv, vocab) {
+function runMandarinQualityCheckCore(pair, target, inv, vocab, ctx) {
   const issues = [], repairs = []
   const out = { ...pair }
   const zh = (out.chinese || '').trim()
@@ -4976,6 +5071,13 @@ function runMandarinQualityCheckCore(pair, target, inv, vocab) {
   }
   out.pinyin = tidyPinyin(out.pinyin)
   out.spokenPinyin = tidyPinyin(mandarinSpokenPinyin(out.pinyin))
+  // v693: a degree "too" the Mandarin does not carry is removed from the English and the cue (deterministic, no paid call) —
+  // live v691 pair 33: 我慢吗？ was taught as "Am I too slow?"
+  if (dailyV693On() && out.english && zhEnglishAddsMeaning(zh, out.english).some(x => /^"too"/.test(x))) {
+    const drop = t => String(t || '').replace(/\btoo\s+(?=\w)/i, '').replace(/\s{2,}/g, ' ')
+    out.english = drop(out.english); if (out.prompt) out.prompt = drop(out.prompt)
+    repairs.push('translation fidelity: removed "too" — the Mandarin has no 太 ("' + out.english + '")')
+  }
   // translation / prompt (§66)
   if (!out.english || !String(out.english).trim()) issues.push('translation: missing English')
   if (!out.prompt || !String(out.prompt).trim()) issues.push('prompt: missing English cue')
@@ -4989,7 +5091,7 @@ function runMandarinQualityCheckCore(pair, target, inv, vocab) {
   const unk = mandarinUnknownContent(zh, inv).filter(w => !zhIsParticle(w))
   if (unk.length) issues.push('vocabulary: untaught ' + unk.join(' '))
   // grammar (§70/§71) and register (§68)
-  mandarinGrammarProblems(zh, out.segments, inv).forEach(g => issues.push('grammar: ' + g))
+  mandarinGrammarProblems(zh, out.segments, inv, ctx).forEach(g => issues.push('grammar: ' + g))
   for (const rx of MANDARIN_REGISTER.tooFormal) if (rx.test(zh)) { issues.push('register: too formal for casual-polite'); break }
   for (const rx of MANDARIN_REGISTER.tooRough) if (rx.test(zh)) { issues.push('register: too rough'); break }
   return { fatal:false, issues, repairs, pair:out }
@@ -5024,13 +5126,14 @@ async function runMandarinTrackQC(track, vocab, opts, onProgress, onLog) {
     onProgress && onProgress(Math.round((i / pairs.length) * 90), 'Checking pair ' + (i + 1) + '/' + pairs.length)
     const p = pairs[i]
     const target = p.targetId ? (vocab || []).find(w => w.id === p.targetId) : null
-    const r = runMandarinQualityCheckCore(p, target, inv, vocab)
+    const _qctx = dailyV693On() ? { prev: i > 0 && pairs[i - 1] ? pairs[i - 1].chinese : '' } : undefined
+    const r = runMandarinQualityCheckCore(p, target, inv, vocab, _qctx)
     if (r.fatal) { unresolved(add(i, 'chinese', r.issues[0] || 'fatal')); out.push(p); continue }
     // §34 — a repair only counts once it has been revalidated
     r.repairs.forEach(rep => {
-      const cat = /pinyin/.test(rep) ? 'pinyin' : /gloss/.test(rep) ? 'gloss' : /segment/.test(rep) ? 'segments' : 'contamination'
+      const cat = /pinyin/.test(rep) ? 'pinyin' : /gloss/.test(rep) ? 'gloss' : /segment/.test(rep) ? 'segments' : /translation fidelity/.test(rep) ? 'translation' : 'contamination'
       const iss = add(i, cat, rep)
-      const re = runMandarinQualityCheckCore(r.pair, target, inv, vocab)
+      const re = runMandarinQualityCheckCore(r.pair, target, inv, vocab, _qctx)
       const stillBroken = re.issues.some(x => x.split(':')[0] === cat)
       if (stillBroken) unresolved(iss); else fix(iss, rep)
     })
@@ -6115,6 +6218,8 @@ function japaneseStemOf(target) {
 // v682 — a QUESTION WORD target is not present inside a lexicalised indefinite / universal compound: どこか (somewhere), どこも
 // (anywhere / everywhere), 何か (something), 誰も (nobody / everyone), いつも (always) … are different words. The live v681 track
 // counted どこか行くの？ ("going somewhere?") as a use of どこ ("where").
+const JA_REPLY_WORDS = ['\u306F\u3044', '\u3046\u3093', '\u3044\u3044\u3048']
+const JA_ARE_INTERJECTION_RE = /(?<=^|[\u3002\uFF01!\uFF1F?\s\u300C])\u3042\u308C(?=[\u3001,\uFF0C\uFF1F?\uFF01!\u3002\u3063\u30C3\u2026]|$)/g
 const JA_QUESTION_WORD_COMPOUNDS = Object.freeze({
   '\u3069\u3053': ['\u3069\u3053\u304B', '\u3069\u3053\u3082', '\u3069\u3053\u3067\u3082'],
   '\u4F55': ['\u4F55\u304B', '\u4F55\u3082', '\u4F55\u3067\u3082', '\u306A\u306B\u304B', '\u306A\u3093\u3067\u3082'],
@@ -6140,6 +6245,12 @@ function matchesJapaneseTarget(sentence, target) {
   if (JA_QUESTION_WORD_COMPOUNDS[lemma]) JA_QUESTION_WORD_COMPOUNDS[lemma].forEach(cpd => { s = s.replace(new RegExp(cpd + '(?![\uFF1F?\u3002]?$)', 'g'), '\u3000') })
   // v692 — a ONE-kanji target inside a longer bank word is a different word (車 is not heard in 電車, 本 not in 日本語)
   if (oct13On() && /^[\u4E00-\u9FFF]$/.test(lemma)) jaCompoundsContaining(lemma).forEach(cpd => { s = s.split(cpd).join('\u3000'.repeat(cpd.length)) })
+  // v693 — あれ followed by a pause (あれ、… / あれ？ / あれっ) is the interjection "huh?", not the demonstrative "that over there"
+  // (live v691 pairs 19 / 26: あれ、ちょっと高いね。 · あれ、行ってみない？). The demonstrative is marked: あれは / あれが / あれ、何？ needs あれは.
+  if (dailyV693On() && lemma === '\u3042\u308C') s = s.replace(JA_ARE_INTERJECTION_RE, '\u3000\u3000')
+  // v693 — a reply word (はい / うん / いいえ) practises the reply only where it OPENS an utterance; 今日は、うん、忙しいんだ。 (live v691
+  // pair 85) uses うん as a hesitation filler
+  if (dailyV693On() && JA_REPLY_WORDS.includes(lemma)) s = s.replace(new RegExp('(?<!^|[\u3002\uFF01!\uFF1F?\\s\u300C])' + lemma, 'g'), '\u3000'.repeat(lemma.length))
   if (s.includes(lemma)) return true                       // exact dictionary form
   // v683 plan: いい is also written 良い / 良く / 良かっ (live: この店、あんまり良くないね。 rejected as "target いい not present")
   if (lemma === 'いい' && teachingPlanOn() && /良(い|く|かっ|さ|けれ)/.test(s)) return true
@@ -7840,10 +7951,26 @@ function _complexityMandarinUnits(text, vocab, lexicon) {
 }
 // `x` is a sentence or a pair; a JA / ZH pair that carries its canonical segments is counted from them
 // (content segments only — grammar and punctuation segments never count)
+const _JA_UNITS_CACHE = new Map()
+function _jaDeterministicUnits(text) {
+  const t = String(text || '')
+  if (!t || typeof RAW_JAPANESE_VOCAB === 'undefined') return null
+  if (_JA_UNITS_CACHE.has(t)) return _JA_UNITS_CACHE.get(t)
+  let u = null
+  try { const d = jaDeterministicReading(t, RAW_JAPANESE_VOCAB)
+    if (!d.unresolved.length) u = jaJoinWordPieces(d.segs).filter(s => s && s.type === 'content' && !s._prefix && /[\u3040-\u30FF\u4E00-\u9FFF]/.test(s.surface || '')).length } catch (e) { u = null }
+  if (_JA_UNITS_CACHE.size > 5000) _JA_UNITS_CACHE.clear()
+  _JA_UNITS_CACHE.set(t, u)
+  return u
+}
 function complexityUnits(lang, x, o) {
   const c = o || {}
   const text = x && typeof x === 'object' ? (lang === 'ja' ? (x.japanese || x.thai) : lang === 'zh' ? (x.chinese || x.thai) : (x.thai || x.text)) || x.text || '' : x
   const segs = x && typeof x === 'object' && Array.isArray(x.segments) && x.segments.length ? x.segments : null
+  // v693: Japanese is counted from ONE deterministic segmentation of the text at every stage. Counting the pair's own segments gave
+  // the same sentence different lengths at generation (model segments) and at the final count (rebuilt segments) — live v691: five
+  // lines accepted at generation failed hardMax 7 at the final count, and two recovery replacements failed the same way (wasted calls)
+  if (lang === 'ja' && dailyV693On()) { const u = _jaDeterministicUnits(text); if (u != null) return u }
   if (segs && (lang === 'ja' || lang === 'zh')) return segs.filter(s => s && s.type !== 'grammar' && s.type !== 'punct' && s.type !== 'particle' && /[\u3040-\u30FF\u4E00-\u9FFF]/.test(s.surface || '')).length
   if (lang === 'th') return _complexityThaiUnits(text, c.vocab)
   if (lang === 'ja') return _complexityJapaneseUnits(text)
@@ -9846,6 +9973,11 @@ function teachingPlanOn() { return TEACHING_PLAN_ACTIVE }
 let QUALITY_OCT13_ACTIVE = true
 function oct13On() { return QUALITY_OCT13_ACTIVE }
 function setQualityOct13(on) { const was = QUALITY_OCT13_ACTIVE; QUALITY_OCT13_ACTIVE = !!on; return was }
+// v693 — the Daily-track repairs of 13 Oct (v691 Thai / Japanese briefs). ON by default; turned off only for rollback and for the legacy
+// regression suites whose assertions pin pre-v693 measurements (env TT_DAILY_LEGACY=1). Requires the Oct13 quality switch.
+let DAILY_V693_ACTIVE = true
+function dailyV693On() { return QUALITY_OCT13_ACTIVE && DAILY_V693_ACTIVE }
+function setDailyV693(on) { const was = DAILY_V693_ACTIVE; DAILY_V693_ACTIVE = !!on; return was }
 // Oct13 — VOCABULARY-AWARE TEACHING (adaptive, soft): how much variety to ask for depends on how many words the learner can use.
 // ABSOLUTE at every stage: three recalls per target, each a complete, natural, correct sentence that uses the target in its sense
 // and fits the scene. SOFT: how different the three constructions are — with under 100 words, near-identical useful patterns are
@@ -10444,15 +10576,45 @@ function v684JaRomajiProblems(reading, romaji) {
 // "mata ae ta ne"), honorific お+昼 ("o hiru"), unknown kana く+れる ("shite ku reru"), て-contraction 待って+て. Those pieces are joined
 // back; particles (は が を に で と も の へ か ね よ な …) are never joined.
 const JA_ROMAJI_PARTICLES = new Set(['は', 'が', 'を', 'に', 'で', 'と', 'も', 'の', 'へ', 'か', 'ね', 'よ', 'な', 'や', 'から', 'まで', 'より', 'けど', 'ので', 'し', 'って', 'わ', 'さ', 'ぞ', 'ぜ'])
+// v693 — a kana run the dictionary does not know arrives as ONE "word" (にしよっか · ならお · られないかも), so the romaji showed
+// "dore nishiyokka", "ima narao mise", "tabe rarenaikamo" (live v691 export pairs 24, 51, 89). The run is split at its particle
+// boundaries: leading particles (に · なら …), an honorific お/ご that belongs to the NEXT word, trailing particles (かも · ね …).
+const JA_LEAD_PARTICLES = ['なら', 'から', 'まで', 'けど', 'に', 'を', 'が', 'は', 'で', 'と', 'も', 'へ']
+const JA_TRAIL_PARTICLES = ['かも', 'けど', 'から', 'よね', 'って', 'ね', 'よ', 'の', 'か', 'な']
+const JA_VERB_AUX_RE = /^(?:られ|れ|させ|せ)?(?:ない|なかった|ません|ます|ました|た|て|る|ず)?$/
+function jaSplitKanaRuns(segs) {
+  const out = []
+  ;(segs || []).forEach((s, i) => {
+    if (!s || s.type !== 'content' || s.how !== 'kana' || String(s.surface).length < 2) { out.push(s); return }
+    let rest = String(s.surface), tail = []
+    const prev = out[out.length - 1], next = segs[i + 1]
+    const afterVerb = prev && prev.type === 'content' && /[うくぐすつぬぶむる]$/.test(String(prev.lemma || '')) && prev.lemma !== prev.surface
+    const piece = (x, type) => ({ surface: x, reading: x, type, lemma: x, how: type === 'grammar' ? 'function' : 'kana' })
+    // trailing particles (only when what stays ends like a word: られない|かも, しよっ|か is NOT split — しよっか is one form)
+    for (let k = 0; k < 3; k++) { const tp = JA_TRAIL_PARTICLES.find(p => rest.length > p.length + 1 && rest.endsWith(p) && /[いるたてうだ]$/.test(rest.slice(0, -p.length)))
+      if (!tp) break; tail.unshift(piece(tp, 'grammar')); rest = rest.slice(0, -tp.length) }
+    if (!afterVerb) {
+      const lp = JA_LEAD_PARTICLES.find(p => rest.startsWith(p) && rest.length > p.length)
+      if (lp) { out.push(piece(lp, 'grammar')); rest = rest.slice(lp.length) }
+      if ((rest === 'お' || rest === 'ご') && next && next.type === 'content') { out.push({ ...piece(rest, 'content'), _prefix: true }); out.push(...tail); return }
+    }
+    out.push({ ...s, surface: rest, reading: rest, lemma: rest }); out.push(...tail)
+  })
+  return out
+}
 function jaJoinWordPieces(segs) {
   const out = []
   const isVerb = s => s && s.type === 'content' && /[うくぐすつぬぶむる]$/.test(String(s.lemma || '')) && String(s.lemma || '') !== String(s.surface || '')
+  if (dailyV693On()) segs = jaSplitKanaRuns(segs)
   for (const s of segs) {
     const prev = out[out.length - 1]
     const kana = x => /^[\u3041-\u309F]+$/.test(String(x && x.surface || ''))
     const join = () => { out[out.length - 1] = { ...prev, surface: prev.surface + s.surface, reading: (prev.reading || prev.surface) + (s.reading || s.surface), type: 'content', _joined: true } }
     if (prev && s.type === 'grammar' && /^(た|だ|て|で|ちゃう|ちゃった|とく)$/.test(s.surface) && isVerb(prev) && /[てでっ]$|[えけげせてねべめれ]$/.test(prev.surface)) { join(); continue }
     if (prev && (prev.surface === 'お' || prev.surface === 'ご') && prev.type !== 'punct' && s.type === 'content') { join(); continue }
+    // v693: a verb stem + its auxiliaries is ONE word in romaji (食べ+られ+ない → taberarenai; live v691 "tabe rare nai")
+    if (dailyV693On() && prev && (isVerb(prev) || prev._verbJoined) && s.type !== 'punct' && s.surface && JA_VERB_AUX_RE.test(s.surface) && !/[てで]$/.test(prev.surface) && !/[ないたうる]$/.test(prev.surface) || (dailyV693On() && prev && prev._verbJoined && /^(ない|なかった|ません|ます|ました|た|て)$/.test(s.surface))) {
+      out[out.length - 1] = { ...prev, surface: prev.surface + s.surface, reading: (prev.reading || prev.surface) + (s.reading || s.surface), type: 'content', _joined: true, _verbJoined: true, lemma: prev.lemma }; continue }
     if (prev && prev.type === 'content' && kana(prev) && prev.surface.length === 1 && !JA_ROMAJI_PARTICLES.has(prev.surface) && kana(s) && s.type === 'grammar' && !JA_ROMAJI_PARTICLES.has(s.surface)) { join(); continue }
     out.push(s)
   }
@@ -14544,6 +14706,7 @@ function thaiIsTokenSpaced(thai) {
 // real utterance boundary (ใช่ครับ ไม่ต้องจ่ายครับ · ฟรีจริงๆเหรอคะ ไม่ต้องจ่ายเลยค่ะ): it is kept as ONE space. Spaces inside
 // a clause (token spacing from the model) are still removed. No underscores / markers are ever introduced.
 const THAI_CLAUSE_END_RE = /(ครับ|ค่ะ|คะ|จ้ะ|จ้า|นะ|เหรอ|หรอ|ไหม|มั้ย|เถอะ|ล่ะ)$/
+const THAI_RESPONSE_HEAD_RE = /^(ใช่|ไม่ใช่|โอเค|จริงเหรอ|งั้น|อ๋อ|อืม|เอ่อ|เปล่า|แน่นอน)\s+(?!แล้ว|เลย|ไหม|มั้ย|หรือ)[\u0e00-\u0e7f]/
 const THAI_CLAUSE_FOLLOW_RE = /^(ครับ|ค่ะ|คะ|จ้ะ|จ้า|จ๊ะ|นะ|ล่ะ|เหรอ|หรอ|ไหม|มั้ย)/   // v669: a particle that continues the same clause
 function normaliseThaiSpacing(thai) {
   let s = String(thai || '').trim().replace(/[_]+/g, ' ')
@@ -14554,7 +14717,10 @@ function normaliseThaiSpacing(thai) {
   // "ห้าร้อยบาท แพงค่ะ") keeps its clause spaces; word-by-word token spacing ("ผม ชอบ สี ดำ ครับ") is still collapsed
   const _chunks = s.split(/\s+/).filter(x => /[\u0e00-\u0e7f]/.test(x))
   const _clauseSpaced = _chunks.length >= 2 && _chunks.length <= 4 && _chunks.every(x => x.length >= 4) && _chunks.reduce((a, x) => a + x.length, 0) / _chunks.length >= 6
-  s = s.replace(/([\u0e00-\u0e7f]+)\s+(?=([\u0e00-\u0e7f]+))/g, (m, left, right) => (THAI_CLAUSE_END_RE.test(left) || _clauseSpaced) && !THAI_CLAUSE_FOLLOW_RE.test(right) ? left + ' ' : left)
+  // v693: a sentence-initial RESPONSE word (ใช่ / ไม่ใช่ / ได้ / โอเค / จริง / งั้น …) ends its own clause — live v691 collapsed
+  // "ใช่ หลังกินข้าวกลับบ้านครับ" into the run-on ใช่หลังกินข้าวกลับบ้านครับ
+  const _respHead = dailyV693On() ? (s.match(THAI_RESPONSE_HEAD_RE) || [null, null])[1] : null
+  s = s.replace(/([\u0e00-\u0e7f]+)\s+(?=([\u0e00-\u0e7f]+))/g, (m, left, right, off) => (THAI_CLAUSE_END_RE.test(left) || _clauseSpaced || (_respHead && off === 0 && left === _respHead)) && !THAI_CLAUSE_FOLLOW_RE.test(right) ? left + ' ' : left)
   return s.replace(/\s{2,}/g, ' ').trim()
 }
 
@@ -17568,6 +17734,16 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       const v = tg ? validateThaiTargetPair(p, tg, _vctx, 'early-generation') : null
       if (v && v.state === 'FAIL') { kept.delete(key); why.set(p.thai, 'ACCEPTANCE_CONTRACT: ' + v.reasons.join('; ')) }
     })
+    // v693: one speaker must not contradict himself inside a target's exchange (live v691: ค่าโดยสารแพงนิดหน่อยครับ … ค่าโดยสารไม่แพงเลยครับ,
+    // both Somchai). The LATER line's slot is regenerated; earlier accepted lines of the same target count as context.
+    if (dailyV693On()) {
+      const seenBy = new Map()
+      allPairs.concat(batch).forEach(p => { if (!p || p.targetId == null || (batch.includes(p) && !kept.has(p._pairKey))) return
+        const prior = seenBy.get(p.targetId) || []
+        const c = prior.map(q => thaiSelfContradiction(q, p)).find(Boolean)
+        if (c && batch.includes(p)) { kept.delete(p._pairKey); why.set(p.thai, 'STATE_CONTRADICTION: ' + c) }
+        else seenBy.set(p.targetId, prior.concat([p])) })
+    }
     const dropped = batch.filter(p => !kept.has(p._pairKey))
     {
       const byTarget = new Map()
@@ -19580,7 +19756,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v692'
+const LISTENING_BUILD_VERSION = 'v693'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -20090,6 +20266,21 @@ function recoveryStateSummary(st) {
 //  10 SCENE_COMPATIBLE the line belongs to its target's scene (when a plan exists)
 // "PASS" = every dimension PASS or N/A. A generation group is never called PASSED while a dimension is PENDING.
 const THAI_PAIR_DIMENSIONS = ['TARGET_PRESENT', 'TARGET_SENSE', 'CLOSED_VOCAB', 'LENGTH', 'NATURAL', 'CUE_CONSISTENT', 'SPEAKER_REGISTER', 'COMPOSITION', 'PROVENANCE', 'NOT_DUPLICATE', 'SCENE_COMPATIBLE']
+// v693 — the same speaker stating X and then not-X about the same thing inside one target's exchange (questions excluded)
+const THAI_STATE_ADJ = ['แพง', 'ถูก', 'ง่าย', 'ยาก', 'ไกล', 'ใกล้', 'ร้อน', 'หนาว', 'อร่อย', 'เผ็ด', 'หวาน', 'เค็ม', 'ใหญ่', 'เล็ก', 'สาย', 'ทัน', 'เร็ว', 'ช้า', 'ว่าง', 'ยุ่ง', 'หิว', 'อิ่ม', 'คุ้ม', 'สะอาด', 'เปิด', 'ปิด']
+function thaiSelfContradiction(a, b) {
+  if (!a || !b || !a.thai || !b.thai || a === b || (a.speaker || 'A') !== (b.speaker || 'A')) return ''
+  const isQ = t => THAI_Q_END_RE.test(t) || /อะไร|เท่าไหร่|ที่ไหน|ไหน|ยังไง|ทำไม|เมื่อไหร่|กี่|ใคร|หรือเปล่า|หรือยัง|ใช่ไหม/.test(t)
+  if (isQ(a.thai) || isQ(b.thai)) return ''
+  // polarity + the subject before the adjective (ร้านนี้ไม่ไกล vs ร้านนั้นไกลมาก are two different shops — not a contradiction)
+  const pol = (t, adj) => { const i = t.indexOf(adj); if (i < 0) return null; const pre = t.slice(0, i)
+    return { p: /ไม่(ค่อย)?$/.test(pre) ? 'neg' : 'pos', subj: pre.replace(/ไม่(ค่อย)?$/, '').replace(/^(ผม|ฉัน|เรา)?/, '') } }
+  for (const adj of THAI_STATE_ADJ) {
+    const x = pol(a.thai, adj), y = pol(b.thai, adj)
+    if (x && y && x.p !== y.p && x.subj === y.subj) return '"' + a.thai + '" vs "' + b.thai + '" — the same speaker says ' + adj + ' and not ' + adj
+  }
+  return ''
+}
 function validateThaiTargetPair(pair, target, ctx, stage) {
   const c = ctx || {}, p = pair || {}, tw = (target && (target.thai || target.surface)) || ''
   const tid = target && (target.wordId != null ? target.wordId : target.id)
@@ -20412,6 +20603,125 @@ function targetLinesExact(pairs, kws, surfaceOf) {
   const ok = !off.length && !stray && total === (kws || []).length * TRACK_CONTRACT.PAIRS_PER_TARGET
   return { ok, total, off, stray, detail: ok ? '' : total + ' target line(s)' + (off.length ? ' · ' + off.map(([id, n]) => { const k = (kws || []).find(x => x.wordId === id); return ((surfaceOf && k && surfaceOf(k)) || id) + '=' + n }).join(', ') : '') + (stray ? ' · ' + stray + ' line(s) for no selected target' : '') }
 }
+// v693 — a cue changed AFTER its pair was judged (cue-addressee fix, a later repair) no longer carries a verdict for the cue the
+// learner sees: validateThaiTargetPair then reads it as PENDING and the pair silently stops counting (live Thai v691: ง่าย 2/3, 89/90).
+// Such pairs are re-judged here with the same audit (naturalness verdicts are reused — the text did not change).
+function thaiStaleCuePairs(pairs) {
+  return (pairs || []).map((p, i) => ({ p, i })).filter(({ p }) => p && p.thai && p.pairType !== 'framing' && p._semVerdicts && p._semVerdicts.cue &&
+    p._semVerdicts.cue.key !== _semCacheKey('cue', p) && !(p._cueRepaired && p.prompt === p._cueRepaired.to))
+}
+async function thaiRevalidateStaleCues(pairs, c, log, label) {
+  const stale = thaiStaleCuePairs(pairs)
+  if (!stale.length) return { pairs, revalidated: 0, dropped: [] }
+  const sem = await finalPairSemanticAudit(stale.map(x => x.p), c.apiKey, c.model, log, { label: label || 'cue-revalidation', failClosed: false })
+  const byThai = new Map(sem.pairs.filter(Boolean).map(p => [p.thai + '\u0001' + (p.targetId != null ? p.targetId : ''), p]))
+  const dropped = [], idx = new Set(stale.map(x => x.i))
+  const out = []
+  ;(pairs || []).forEach((p, i) => {
+    if (!idx.has(i)) { out.push(p); return }
+    const np = byThai.get(p.thai + '\u0001' + (p.targetId != null ? p.targetId : ''))
+    if (np) out.push(np); else dropped.push(p)
+  })
+  log && log('  🔁 CUE_REVALIDATED ' + stale.length + ' pair(s) whose cue changed after judgement were judged again' + (dropped.length ? ' · ' + dropped.length + ' failed and were removed (quota recovery replaces them): ' + dropped.map(p => p.thai).join(' | ') : ' · all kept'))
+  return { pairs: out, revalidated: stale.length, dropped }
+}
+// v693 — a Japanese reply line (はい、… / うん、… / いいえ、…) needs something to reply to: a yes/no question from the OTHER speaker right
+// before it. The recalls are arranged round-robin per scene, so a reply often followed an unrelated line (live v691: はい、分かった。 after
+// ちょっと待ってて / いいえ、じゃあ今日はどう？). A reply without a trigger is moved (text unchanged) to right after an unanswered yes/no question
+// of the other speaker in the same scene; one that has none is logged as RESPONSE_WITHOUT_TRIGGER.
+const JA_WH_RE = /何|なに|なん|どこ|いつ|どれ|どの|どう|どっち|誰|だれ|いくら|なんで|なぜ/
+function jaIsYesNoQuestion(p) { const jp = String(p && p.japanese || '').trim(); return /[？?]$/.test(jp) && !JA_WH_RE.test(jp) }
+function jaIsReplyLine(p) { return !!(p && classifyTrackPair(p) === 'TARGET' && /^(はい|うん|いいえ|ううん)[、。！!]/.test(String(p.japanese || '').trim())) }
+function jaPlaceReplyLines(pairs, log) {
+  const out = (pairs || []).slice(), moved = [], orphan = []
+  const triggered = i => { const r = out[i], q = out[i - 1]; return !!(q && q.speaker && r.speaker && q.speaker !== r.speaker && jaIsYesNoQuestion(q)) }
+  for (let pass = 0; pass < out.length; pass++) {
+    const i = out.findIndex((p, k) => jaIsReplyLine(p) && !triggered(k) && !moved.includes(p) && !orphan.includes(p))
+    if (i < 0) break
+    const r = out[i]
+    const qi = out.findIndex((q, k) => k !== i && q && q.speaker && q.speaker !== r.speaker && jaIsYesNoQuestion(q) && (!r.sceneId || !q.sceneId || q.sceneId === r.sceneId) &&
+      !(out[k + 1] && out[k + 1].speaker && out[k + 1].speaker !== q.speaker))   // the question is not already answered
+    if (qi < 0) { orphan.push(r); continue }
+    const qLine = out[qi]; out.splice(i, 1); out.splice(out.indexOf(qLine) + 1, 0, r); moved.push(r)
+  }
+  if (log && moved.length) log('  💬 RESPONSE_PLACED ' + moved.length + ' reply line(s) moved after a yes/no question from the other speaker (text unchanged): ' + moved.map(p => p.japanese).join(' | ').slice(0, 200))
+  if (log && orphan.length) log('  ⚠️ RESPONSE_WITHOUT_TRIGGER ' + orphan.length + ' reply line(s) have no yes/no question to answer in their scene: ' + orphan.map(p => p.japanese).join(' | ').slice(0, 200))
+  return { pairs: out, moved, orphan }
+}
+// v693 — a reply with nothing to answer gets the question that makes it natural: ONE batched request writes, for every such reply, a
+// short yes/no question the OTHER speaker asks just before it (a BRIDGE line — never counted as a target pair). Each question passes the
+// same closed-vocabulary, grammar, usage and length gates as any Japanese line; a question that fails is not inserted (logged instead).
+const JA_REPLY_TRIGGER_SCHEMA = { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: { type: 'INTEGER' }, japanese: { type: 'STRING' }, english: { type: 'STRING' } }, required: ['i', 'japanese', 'english'] } }
+async function jaBridgeReplyTriggers(t, c, log) {
+  const placed = jaPlaceReplyLines(t.pairs, log)
+  let pairs = placed.pairs
+  if (!placed.orphan.length || !c.apiKey || !c.vocab) return { pairs, inserted: [] }
+  const kws = (t.keywords || []).map(k => (c.vocabById && c.vocabById.get(k.wordId)) || null).filter(Boolean)
+  const inv = japaneseLearnerInventory(c.vocab, kws)
+  const cc = getLearnerComplexityContract({ lang: 'ja', vocab: c.vocab })
+  const sc = t.sceneContract || {}, scene = t.scene || {}
+  const nameOf = sp => { const ch = (sc.characters || []).find(x => x && x.speaker === sp) || {}; return ch.name || _sceneEnglishName(sp === 'A' ? scene.characterA : scene.characterB) || (sp === 'A' ? 'A' : 'B') }
+  const words = [...new Set(japaneseInventoryForms(inv).concat(inv.allContent.map(w => w.japanese)).filter(Boolean))].slice(0, 220)
+  const rows = placed.orphan.map((r, k) => { const i = pairs.indexOf(r), prev = pairs[i - 1]
+    return (k + 1) + '. ' + nameOf(r.speaker === 'A' ? 'B' : 'A') + ' asks; ' + nameOf(r.speaker) + ' replies: ' + r.japanese + ' (' + (r.english || '') + ')' + (prev && prev.japanese ? '\n   line before: ' + prev.japanese : '') })
+  const q = 'Japanese beginner lesson (casual, friends). Each reply below needs the yes/no QUESTION that comes right before it, asked by the other ' +
+    'person, so the reply makes sense. Write ONE short casual yes/no question for each (no question words like 何/どこ/いつ/どう; at most ' + cc.hardMax +
+    ' words), using ONLY these words and particles: ' + words.join(' ') + '\nThe question must not contradict the line before it.\n\n' + rows.join('\n') +
+    '\n\nReply ONLY with JSON: [{"i":1,"japanese":"…？","english":"…?"}]'
+  let got = []
+  try { aiTagNextCall('reply triggers (one batched request)'); got = _semanticReplyArray(await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: q }], maxTokens: 900, temperature: 0.3, json: JA_REPLY_TRIGGER_SCHEMA, stage: 'ja_reply_trigger' })) }
+  catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; log && log('  ⚠️ RESPONSE_TRIGGER request failed: ' + String(e && e.message || e).slice(0, 80)); return { pairs, inserted: [] } }
+  const inserted = [], refused = []
+  placed.orphan.forEach((r, k) => {
+    const g = (got || []).find(x => x && +x.i === k + 1)
+    if (!g || !g.japanese) { refused.push(r.japanese + ' (no question returned)'); return }
+    const asker = r.speaker === 'A' ? 'B' : 'A'
+    let b = { japanese: String(g.japanese).trim(), english: String(g.english || '').trim(), speaker: asker, prompt: 'Ask ' + nameOf(r.speaker) + ': ' + String(g.english || '').trim(),
+      pairType: 'bridge', recallRole: 'trigger', supportsTargetId: r.targetId, targetId: null, wordId: null, sceneId: r.sceneId || null, language: 'ja', _replyTrigger: true }
+    const why = []
+    if (!jaIsYesNoQuestion(b)) why.push('not a yes/no question')
+    const cl = japaneseCheckLine(b.japanese, inv); if (!cl.ok) why.push('untaught: ' + cl.unknown.join(' '))
+    const fin = finaliseJapanesePair(b, inv, { allowedGrammarIds: inv.allowedGrammarIds }); b = fin.pair
+    if (!fin.ok) why.push(fin.problems[0])
+    jaSentenceFinalGrammarProblems(b.japanese, jaAllowedGrammarForms(c.vocab)).forEach(x => why.push(x))
+    if (cc.analyse(b).overHardMax) why.push('longer than ' + cc.hardMax)
+    if (why.length) { refused.push(b.japanese + ' (' + why[0] + ')'); return }
+    const i = pairs.indexOf(r); pairs = pairs.slice(0, i).concat([b], pairs.slice(i)); inserted.push(b)
+  })
+  log && log('  💬 RESPONSE_TRIGGER ' + inserted.length + '/' + placed.orphan.length + ' reply line(s) given the yes/no question they answer (bridge lines, one request)' +
+    (inserted.length ? ': ' + inserted.map(b => b.japanese).join(' | ').slice(0, 160) : '') + (refused.length ? ' · not inserted: ' + refused.join(' | ').slice(0, 200) : ''))
+  return { pairs, inserted, refused }
+}
+// v693 — Japanese conversational STATE across the final lines (owner's list: "proposing today right after 'busy today'"). Deterministic,
+// narrow and explainable: (1) a speaker rules out a day (今日は忙しい / 明日はだめ / 昼は一緒に食べられない …) and the OTHER speaker then
+// proposes that same day; (2) the speaker who cancelled a shared plan later asks why it is not happening (なんで？昼、一緒に食べないの？).
+// Simple repetition is never flagged; only the later, contradicting line is.
+const JA_DAY_WORDS = [['今日', '今日'], ['昼', '今日'], ['明日', '明日']]
+function jaDayOf(jp) { const h = JA_DAY_WORDS.find(([w]) => jp.includes(w)); return h ? h[1] : null }
+function jaRulesOutDay(jp) {
+  if (/[？?]\s*$/.test(jp)) return null
+  const d = jaDayOf(jp); if (!d) return null
+  return /忙しい|だめ|ダメ|無理|行けない|来られない|来れない|食べられない|帰れない|会えない|時間(が)?ない/.test(jp) ? d : null
+}
+function jaProposesDay(jp) {
+  const d = jaDayOf(jp); if (!d) return null
+  // a PROPOSAL: "how about …?" / "won't we …?" / "shall we …?" — not "what shall we do?" (どうする), not "why?"
+  return /[？?]\s*$/.test(jp) && /どう[？?]|ない[？?]|よう(か)?[？?]|ましょう(か)?[？?]|一緒に.*[？?]|行く[？?]/.test(jp) && !/どうする|なんで|なぜ|何(?!か)/.test(jp) ? d : null
+}
+function jaStateContradictions(pairs) {
+  const out = [], ruled = [], cancelled = []
+  ;(pairs || []).forEach((p, i) => {
+    const jp = String(p && p.japanese || ''); if (!jp || !p.speaker) return
+    const prop = jaProposesDay(jp)
+    const clash = prop && ruled.find(r => r.day === prop && r.speaker !== p.speaker && i - r.i <= 24)
+    if (clash) out.push({ i, pair: p, reason: 'PLAN_CONTRADICTION: proposes ' + prop + ' right after "' + clash.text + '" ruled it out' })
+    const why = /なんで|なぜ/.test(jp) && /一緒に(\S+?)ない(の)?[？?]/.exec(jp)
+    if (why) { const c = cancelled.find(x => x.speaker === p.speaker && i - x.i <= 24 && jp.includes(x.verb)); if (c) out.push({ i, pair: p, reason: 'PLAN_CONTRADICTION: asks why the plan is off, but this speaker cancelled it ("' + c.text + '")' }) }
+    const r = jaRulesOutDay(jp); if (r) ruled.push({ i, day: r, speaker: p.speaker, text: jp })
+    const cx = /一緒に(\S{1,3}?)(られ|れ)?ない/.exec(jp); if (cx && !/[？?]\s*$/.test(jp)) cancelled.push({ i, speaker: p.speaker, verb: cx[1], text: jp })
+  })
+  return out
+}
 async function finaliseMainTrack(track, adapter, ctx) {
   const c = { ...(ctx || {}) }, log = c.onLog || null
   if (!adapter || !TRACK_LANGUAGES.includes(adapter.lang)) throw pipelineInternalError('MISSING_TRACK_LANGUAGE', 'finaliseMainTrack called without a language adapter')
@@ -20423,6 +20733,17 @@ async function finaliseMainTrack(track, adapter, ctx) {
   // v672 §1 — the run's per-recall check ledger: the generation ledger when this track was just generated, otherwise the
   // persisted snapshot + the pairs' own histories (reload / QC rerun). QC and recovery continue each recall's history.
   c.ledger = c.ledger || ledgerForTrack(adapter.lang, t)
+  // v693: cue addressees are corrected BEFORE the quota is counted, and a Thai cue that changed is judged again, so a pair that fails
+  // on its corrected cue is replaced by quota recovery instead of disappearing from the count after recovery has run
+  if (dailyV693On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {}
+    if (adapter.lang === 'th') { const rv = await thaiRevalidateStaleCues(t.pairs, c, log, 'cue-revalidation'); t = { ...t, pairs: rv.pairs } }
+    if (adapter.lang === 'zh') { const xc = zhExchangeContradictions(t.pairs)
+      if (xc.length) { const bad = new Map(xc.map(x => [x.pair, x.reason])); t = { ...t, pairs: t.pairs.map(p => bad.has(p) ? { ...p, _qcInvalid: bad.get(p) } : p) }
+        log && log('  🧭 ZH_EXCHANGE_CONTRADICTION ' + xc.length + ' line(s) contradict their own exchange — their slots go to quota recovery: ' + xc.map(x => '"' + x.pair.chinese + '" (' + x.reason + ')').join(' | ').slice(0, 400)) } }
+    if (adapter.lang === 'ja') { const sc = jaStateContradictions(t.pairs).filter(x => classifyTrackPair(x.pair) === 'TARGET')
+      if (sc.length) { const bad = new Map(sc.map(x => [x.pair, x.reason])); t = { ...t, pairs: t.pairs.map(p => bad.has(p) ? { ...p, _qcInvalid: bad.get(p) } : p) }
+        log && log('  🧭 JA_STATE_CONTRADICTION ' + sc.length + ' line(s) contradict the conversation so far — their slots go to quota recovery: ' + sc.map(x => '"' + x.pair.japanese + '" (' + x.reason + ')').join(' | ').slice(0, 400)) } }
+    c.track = t }
   const q = await enforceTrackPairQuota(t, adapter, c)
   t = { ...t, pairs: q.pairs }
   // v665 — ONE learner level: the belt contract + the learner-authorised inventory (same as Listening)
@@ -20492,6 +20813,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
   // so the frozen text (and everything pronunciation builds from it) is the spoken text only
   try { const _nm = _trackSpeakerNames(t).concat(adapter.lang === 'th' ? thaiSceneNameEntries(t, c.vocab).map(n => n.surface) : [])
     t = { ...t, pairs: normaliseSpokenTextOwnership(t.pairs, adapter.lang, _nm, log, 'before FINAL_LINE_TEXT freeze').pairs } } catch (e) {}
+  if (dailyV693On() && adapter.lang === 'ja') { try { t = { ...t, pairs: (await jaBridgeReplyTriggers(t, c, log)).pairs } } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
   if (oct13On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {} }
   if (oct13On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiTidyCommas(t.pairs, log) } } catch (e) {} }
   // v655 §22 — the learner text is FROZEN here (after quota recovery and coherence repair); pronunciation is
@@ -20508,6 +20830,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
   const kws = adapter.keywordsOf(t)
   if (adapter.lang === 'th') { try { _idViol.push(...thaiTargetIdentityViolations(t.pairs, kws, 'after final metadata')) } catch (e) {} }
   _idViol.forEach(v => log && log('  ⛔ TARGET_IDENTITY_VIOLATION ' + v.pairId + ' (' + v.stage + '): ' + v.problem))
+  // v693: any cue still changed after its judgement (a coherence-repaired line, a late addressee fix) is judged again before counting
+  if (dailyV693On() && adapter.lang === 'th') { try { const rv = await thaiRevalidateStaleCues(t.pairs, c, log, 'cue-revalidation (final)'); t = { ...t, pairs: rv.pairs } } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
   const quota = trackQuotaReport(t.pairs, kws, adapter, c)
   const status = adapter.qcStatus(t, c)
   const inv = {
@@ -20527,6 +20851,9 @@ async function finaliseMainTrack(track, adapter, ctx) {
   // v691: EXACTLY three target lines per selected target in the FINAL track — the valid-pair quota alone said 90/90 while the live
   // 13-Oct v690 Japanese track carried 91 target-bearing lines (an invalid 4th はい line). Counted on the persisted lines.
   if (oct13On()) { const tl = targetLinesExact(t.pairs, kws, k => adapter.surfaceOf(k)); inv.TARGET_LINES_EXACT = tl.ok; if (!tl.ok) inv.TARGET_LINES_DETAIL = tl.detail }
+  // v693: no persisted cue may address its own speaker ("As Daiki, tell Daiki …", "Nida greets Nida …") — checked on the final lines
+  if (dailyV693On() && adapter.lang === 'ja') { const sc = jaStateContradictions(t.pairs); inv.STATE_CONTRADICTIONS = sc.length; if (sc.length) { inv.STATE_CONTRADICTIONS_DETAIL = sc.slice(0, 2).map(x => x.pair.japanese + ' — ' + x.reason).join(' | '); log && log('  ⛔ STATE_CONTRADICTIONS ' + sc.length + ': ' + inv.STATE_CONTRADICTIONS_DETAIL) } }
+  if (dailyV693On()) { const sa = cueSelfAddressLines(t.pairs, t); inv.CUE_SELF_ADDRESS = sa.length; if (sa.length) { inv.CUE_SELF_ADDRESS_DETAIL = sa.slice(0, 3).join(' | '); log && log('  ⛔ CUE_SELF_ADDRESS ' + sa.length + ': ' + inv.CUE_SELF_ADDRESS_DETAIL) } }
   // v671 §B3 — the final audit inspects EVERY persisted pair: each target should practise 3 DISTINCT useful applications
   // (construction key = the sentence with the target and the final particles removed). Reported per target; beginner
   // repetition accepted by policy is allowed, so this is a diagnostic invariant (named, counted, logged), not a hidden average.
@@ -20566,6 +20893,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
     reasons.push('NEW_COUNT_MISMATCH=' + inv.SELECTED_NEW)
   if (inv.SELECTED_TARGETS !== TRACK_CONTRACT.TARGETS) reasons.push('SELECTED_TARGETS=' + inv.SELECTED_TARGETS + ' (required ' + TRACK_CONTRACT.TARGETS + ')')
   if (quota.quotaMet !== TRACK_CONTRACT.TARGETS * TRACK_CONTRACT.PAIRS_PER_TARGET) reasons.push('TARGET_PAIR_QUOTA=' + inv.TARGET_PAIR_QUOTA + ' (required 90/90)')
+  if (inv.STATE_CONTRADICTIONS) reasons.push('STATE_CONTRADICTIONS=' + inv.STATE_CONTRADICTIONS + ' (' + inv.STATE_CONTRADICTIONS_DETAIL + ')')
+  if (inv.CUE_SELF_ADDRESS) reasons.push('CUE_SELF_ADDRESS=' + inv.CUE_SELF_ADDRESS + ' (' + inv.CUE_SELF_ADDRESS_DETAIL + ')')
   if (inv.TARGET_LINES_EXACT === false) reasons.push('TARGET_LINES_EXACT=false (' + inv.TARGET_LINES_DETAIL + '; required exactly 3 per target, 90 in all)')
   if (!inv.TARGET_PRESENCE_PASS) reasons.push('TARGET_PRESENCE_PASS=false')
   if (inv.SEMANTIC_QC !== 'COMPLETE') reasons.push('SEMANTIC_QC=' + inv.SEMANTIC_QC)
@@ -20969,7 +21298,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v692'
+const APP_BUILD_VERSION = 'v693'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -21910,6 +22239,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     const g = thaiLineGate(p, keywords, c.vocab)
     g.problems.forEach(x => why.push(x.code + ': ' + x.why))
     if (have.some(h => h.thai === p.thai)) why.push('DUPLICATE of an existing TARGET PAIR')
+    if (dailyV693On()) { const _sc = have.filter(h => h && (h.targetId === kw.wordId || h.wordId === kw.wordId)).map(h => thaiSelfContradiction(h, p)).find(Boolean); if (_sc) why.push('STATE_CONTRADICTION: ' + _sc) }
     { const _sf = teachingPlanOn() ? thaiTpSameFrame(p, have.filter(h => h && (h.targetId === kw.wordId || h.wordId === kw.wordId)).concat(_tpKept), kw) : ''; if (_sf) why.push('same application as the accepted recall "' + _sf + '" with a word swapped') }
     // v657 §3 — the same acceptance contract as generation and the final count (deterministic dimensions here)
     if (!why.length) { const v = validateThaiTargetPair(p, kw, { vocab: c.vocab, track, existing: have }, 'quota-recovery')
@@ -21933,6 +22263,8 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
   }
   // the SAME fail-closed semantic audit (cue + naturalness + sense) as every Main Track pair
   if (cands.length) {
+    // v693: recovered lines get their final cue addressee BEFORE they are judged (the v691 fix ran afterwards and unjudged the cue)
+    if (dailyV693On()) { try { cands = fixCueAddressees(cands, track, null).pairs } catch (e) {} }
     const sem = await finalPairSemanticAudit(cands, c.apiKey, c.model, log, { label: 'quota-recovery', failClosed: true })
     sem.stats.failures.forEach(f => fail({ thai: f.thai }, f.code + ': ' + f.reason))
     sem.stats.unverified.forEach(u => reasons.push(u.state + ' (' + u.reason + '): ' + u.thai))
@@ -22153,7 +22485,20 @@ async function _jaRecoverTargetPairs(kw, need, ctx) {
   const marked = markQcInvalidPairs(qc.pairs, qc.issues)
   marked.filter(p => p._qcInvalid || p._qcUnresolved).forEach(p => { const why = String(p._qcInvalid || p._qcUnresolved); reasons.push('QC: ' + why + ': ' + p.japanese)
     if (st) recordRecoveryFailure(st, { code: /naturalness/.test(why) ? 'UNNATURAL' : /prompt/.test(why) ? 'CUE_MISMATCH' : /register/.test(why) ? 'SPEAKER_CONFLICT' : 'OTHER', text: p.japanese, reason: why }) })
-  return { accepted: marked.filter(p => !p._qcInvalid && !p._qcUnresolved && matchesJapaneseTarget(p.japanese, t)), reasons }
+  // v693: the recovered line must pass the SAME hard invariants as the final count BEFORE it is accepted (length on the one
+  // deterministic counter, sentence-final grammar permission). Live v691 accepted 9-unit replacements here, the final count rejected
+  // them and a second paid recovery round was needed.
+  const _cc = dailyV693On() ? getLearnerComplexityContract({ lang: 'ja', vocab: c.vocab }) : null
+  return { accepted: marked.filter(p => {
+    if (p._qcInvalid || p._qcUnresolved || !matchesJapaneseTarget(p.japanese, t)) return false
+    if (!_cc) return true
+    const why = []
+    const an = hardComplexityAnalyse(_cc, 'ja', p); if (an.overHardMax) why.push('LEVEL_COMPLEXITY_FAIL: ' + an.units + ' Japanese content units > hardMax ' + _cc.hardMax)
+    jaSentenceFinalGrammarProblems(p.japanese, jaAllowedGrammarForms(c.vocab)).forEach(x => why.push(x))
+    if (!why.length) return true
+    reasons.push('HARD_INVARIANT: ' + why[0] + ': ' + p.japanese); log && log('  ⛔ JA_RECOVERY_REJECTED before acceptance — ' + why[0] + ' — "' + p.japanese + '" (no later round needed to find this)')
+    if (st) recordRecoveryFailure(st, { code: /LEVEL_COMPLEXITY/.test(why[0]) ? 'COMPLEXITY' : 'OTHER', text: p.japanese, reason: why[0] })
+    return false }), reasons }
 }
 async function _zhRecoverTargetPairs(kw, need, ctx) {
   const c = ctx || {}, log = c.onLog || null
@@ -22207,6 +22552,15 @@ function _sceneCharGender(desc) {
   const m = /\b(male|man|boy|guy|husband|brother|he|his)\b/.test(d), f = /\b(female|woman|girl|lady|wife|sister|she|her)\b/.test(d)
   return m && !f ? 'm' : f && !m ? 'f' : null
 }
+// v693: a full role swap flips every gendered pronoun (each one refers to one of the two characters); "her" is "his" before a noun
+function _swapCuePronouns(s) {
+  const cap = (w, r) => w[0] === w[0].toUpperCase() ? r[0].toUpperCase() + r.slice(1) : r
+  return String(s).replace(/\b(he|she|him|his|hers|her)\b(\s+(\w+))?/gi, (m, w, gap, nxt) => {
+    const l = w.toLowerCase(), g = gap || ''
+    const r = l === 'he' ? 'she' : l === 'she' ? 'he' : l === 'him' ? 'her' : l === 'his' ? 'her' : l === 'hers' ? 'his'
+      : nxt && !/^(and|or|but|that|if|whether|to|about|for|with|at|in|on|again|back|too|now|so|know|why|how|what|when|where|the|a|an)$/i.test(nxt) ? 'his' : 'him'
+    return cap(w, r) + g })
+}
 function fixCueAddressees(pairs, track, log) {
   const sc = (track && track.sceneContract) || {}, scene = (track && track.scene) || {}
   const ch = sp => { const c = (sc.characters || []).find(x => x && x.speaker === sp) || {}; const desc = c.description || (sp === 'A' ? scene.characterA : scene.characterB) || ''
@@ -22222,13 +22576,37 @@ function fixCueAddressees(pairs, track, log) {
     // v691: ANY mention of the speaker's own name is the listener's (live v690: "correct Ken" on Ken's line — "correct" was not in the
     // verb list); only an introduction keeps it ("my name is Ken", "I'm Ken", "this is Ken")
     const re = new RegExp('(^|[^A-Za-z])(?<!(?:name is|named|called|I am|I\'m|this is|it\'s)\\s)()' + esc(me.name) + '\\b(?!\\s+is\\s+(?:your|my)\\s+name)', 'gi')
+    // v693: the cue's SUBJECT ("Somchai says …", "As Daiki, tell …") is the speaker, never the listener. v691 replaced EVERY
+    // mention, so the live Thai v691 track read "Nida greets Nida …" / "Somchai thanks Somchai …" and the recovered ง่าย line
+    // (Somchai's) was cued "Nida says, with a smile …" — the cue changed after it was judged, so the pair lost its verdict (89/90).
+    const subj = n => new RegExp('^\\s*(?:as\\s+)?' + esc(n) + '\\b(?!\\s*\'s\\b)', 'i')
     const upd = {}
     for (const f of ['prompt', 'cue']) {
       const cue = p[f]
-      if (typeof cue !== 'string' || !re.test(cue)) continue
-      re.lastIndex = 0
-      let nc = cue.replace(re, (m0, v, sp) => v + sp + you.name)
-      if (you.gender && me.gender && you.gender !== me.gender) { const map = PRON[you.gender]; nc = nc.replace(/\b(he|she|him|her|his|hers)\b/gi, w => { const r = map[w.toLowerCase()]; return r ? (w[0] === w[0].toUpperCase() ? r[0].toUpperCase() + r.slice(1) : r) : w }) }
+      if (typeof cue !== 'string') continue
+      let nc = cue
+      const _lead = dailyV693On() ? (cue.match(subj(you.name)) || [''])[0] : ''
+      if (_lead && !subj(me.name).test(cue) && !new RegExp('\\b' + esc(me.name) + '\\b', 'i').test(cue.slice(_lead.length))) {
+        // only the SUBJECT names the wrong person ("As Daiki, tell Daiki …" on Mio's line): the subject becomes the speaker; the
+        // addressee and the pronouns about the addressee are already right
+        nc = _lead.replace(new RegExp(esc(you.name), 'i'), me.name) + cue.slice(_lead.length)
+      } else if (_lead && !subj(me.name).test(cue)) {
+        // the cue was written for the OTHER speaker (its subject is the listener): swap the two roles throughout
+        // (live v691 Japanese "As Daiki, tell Daiki …" was a half swap of such a cue)
+        const both = new RegExp('\\b(' + esc(me.name) + '|' + esc(you.name) + ')\\b', 'gi')
+        nc = cue.replace(both, w => w.toLowerCase() === me.name.toLowerCase() ? you.name : me.name)
+        if (you.gender && me.gender && you.gender !== me.gender) nc = _swapCuePronouns(nc)
+      } else {
+        const lead = dailyV693On() ? (cue.match(subj(me.name)) || [''])[0] : ''
+        const rest = cue.slice(lead.length)
+        re.lastIndex = 0
+        if (!re.test(rest)) continue
+        re.lastIndex = 0
+        let nr = rest.replace(re, (m0, v, sp) => v + sp + you.name)
+        // pronouns follow the new addressee only in a cue that does not name the speaker as its subject (there he/she may be the speaker)
+        if (!lead && you.gender && me.gender && you.gender !== me.gender) { const map = PRON[you.gender]; nr = nr.replace(/\b(he|she|him|her|his|hers)\b/gi, w => { const r = map[w.toLowerCase()]; return r ? (w[0] === w[0].toUpperCase() ? r[0].toUpperCase() + r.slice(1) : r) : w }) }
+        nc = lead + nr
+      }
       if (nc !== cue) upd[f] = nc
     }
     if (!Object.keys(upd).length) return p
@@ -22237,6 +22615,29 @@ function fixCueAddressees(pairs, track, log) {
   })
   if (fixed.length && log) log('  🗣 CUE_ADDRESSEE_FIXED ' + fixed.length + ' cue(s) named the speaker as the listener — now addressed to the other character: ' + fixed.slice(0, 4).map(x => '"' + String(x.after).slice(0, 60) + '"').join(' | '))
   return { pairs: out, fixed }
+}
+// v693 — a cue that names the line's own speaker as the person spoken to: its subject is the speaker and the same name is addressed
+// again, or (no subject) an addressing verb is followed by the speaker's own name
+function cueSelfAddressLines(pairs, track) {
+  const sc = (track && track.sceneContract) || {}, scene = (track && track.scene) || {}
+  const nm = sp => { const c = (sc.characters || []).find(x => x && x.speaker === sp) || {}; return c.name || _sceneEnglishName(sp === 'A' ? scene.characterA : scene.characterB) }
+  const A = nm('A'), B = nm('B')
+  if (!A || !B || A.toLowerCase() === B.toLowerCase()) return []
+  const esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const out = []
+  ;(pairs || []).forEach(p => {
+    if (!p || (p.speaker !== 'A' && p.speaker !== 'B')) return
+    const me = p.speaker === 'A' ? A : B, cue = String(p.prompt || p.cue || '')
+    const subj = new RegExp('^\\s*(?:as\\s+)?' + esc(me) + '\\b', 'i'), again = new RegExp('\\b(?:' + CUE_ADDRESS_VERBS + ')\\s+' + esc(me) + '\\b', 'i')
+    const m = cue.match(subj)
+    // either name as the subject and the SAME name addressed again (As Daiki, tell Daiki …) is self-address on any line
+    const other = p.speaker === 'A' ? B : A
+    const os = cue.match(new RegExp('^\\s*(?:as\\s+)?' + esc(other) + '\\b', 'i'))
+    if (os && new RegExp('\\b(?:' + CUE_ADDRESS_VERBS + ')\\s+' + esc(other) + '\\b', 'i').test(cue.slice(os[0].length))) { out.push('[' + p.speaker + '] ' + cue.slice(0, 70)); return }
+    if ((m && again.test(cue.slice(m[0].length))) || (!m && /^\s*(tell|ask|thank|greet|remind|invite|answer|reply to|say (?:sorry|goodbye|hello) to)\b/i.test(cue) && new RegExp('^\\s*\\S+(?:\\s+\\S+)?\\s+' + esc(me) + '\\b', 'i').test(cue)))
+      out.push('[' + p.speaker + '] ' + cue.slice(0, 70))
+  })
+  return out
 }
 function _trackSpeakerNames(track) {
   const sc = (track && track.sceneContract) || {}
@@ -22481,11 +22882,13 @@ const TRACK_ADAPTERS = {
     canonicalId: id => id,
     targetPresent: (p, k, ctx) => { const w = ctx && ctx.vocabById && ctx.vocabById.get(k.wordId); return !!(p && p.japanese && (w ? matchesJapaneseTarget(p.japanese, w) : p.japanese.includes(k.japanese || ''))) },
     invalidReason: p => (p && (p._qcInvalid || p._qcUnresolved)) ? String(p._qcInvalid || p._qcUnresolved) : null,
-    hardProblems: p => {
+    hardProblems: (p, ctx) => {
       const out = [], jp = String((p && p.japanese) || '')
       if (/[A-Za-z]{2,}/.test(jp)) out.push('SCRIPT_CONTAMINATION: Latin text inside the Japanese sentence')
       if (/[฀-๿]/.test(jp)) out.push('SCRIPT_CONTAMINATION: Thai script inside the Japanese sentence')
       pairMarkupLeaks(p || {}).forEach(x => out.push('MARKUP: ' + x))
+      // v693: the FINAL count applies the same grammar permission as generation / QC / recovery (かな)
+      if (dailyV693On() && ctx && ctx.vocab) jaSentenceFinalGrammarProblems(jp, jaAllowedGrammarForms(ctx.vocab)).forEach(x => out.push(x))
       return out
     },
     recoverTargetPairs: _jaRecoverTargetPairs,
@@ -32706,6 +33109,16 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       } else if (groupBestAttempt) {
         verdict = { action: 'replace', reason: 'Best-attempt fallback — all generation checks failed, replacing with fresh attempt' }
         onLog?.(`  🔄 ${group.targetWord}: auto-replace (was best-attempt)`)
+      } else if (pmFails.length > 0 && dailyV693On() && pmFails.every(p => p._pm >= 3) && pmFails.every(p => thaiLocalCueRepair(p))) {
+        // v693: a 3/5 prompt mismatch means the CUE asks for more than the Thai says ("Prompt says 'right place to wait'; sentence omits
+        // waiting"). v691 rewrote the THAI to carry the cue's extra detail (ป้ายนี้ถูกครับ → ป้ายนี้ถูกที่รอครับ) — the cue is the defect, so
+        // it is rebuilt from the line's own English (no paid call) and the group is then judged normally. The final cue audit re-checks it.
+        pmFails.forEach(p => { const i = allPairs.indexOf(p), cue = thaiLocalCueRepair(p)
+          onLog?.(`  🎯 THAI_CUE_REBUILT_FROM_TRANSLATION ${group.targetWord}: "${(p.prompt || '').slice(0, 50)}" → "${cue}" (cue asked for more than the Thai says; the Thai is kept)`)
+          if (i >= 0) allPairs[i] = { ...p, prompt: cue, _cueRebuiltFrom: p.prompt, _pm: null, _pmNote: null } })
+        counts.prompt_fix++
+        group.pairs = group.indices.map(i => allPairs[i])
+        verdict = await _qrEvaluateGroup(group, allPairs, apiKey, model)
       } else if (pmFails.length > 0) {
         const worst = pmFails.reduce((a, b) => a._pm < b._pm ? a : b)
         verdict = {
@@ -32716,6 +33129,10 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       } else {
         verdict = await _qrEvaluateGroup(group, allPairs, apiKey, model)
       }
+      // v693: a Daily track forgives topic changes between targets. A verdict whose ONLY complaint is a topic jump / missing bridge (the
+      // lines themselves natural and on-cue) is clean — v691 "bridged" ถอด by gluing an unrelated clause on: ถอดได้เลยครับ จานนั้นขนาดใหญ่มาก
+      if (dailyV693On() && verdict.action === 'improve' && THAI_TOPIC_ONLY_VERDICT_RE.test(verdict.reason || '') && !THAI_LINE_DEFECT_VERDICT_RE.test(verdict.reason || '')) {
+        counts.clean++; onLog?.(`  ✓ ${group.targetWord} (topic-change remark only — not rewritten: ${String(verdict.reason).slice(0, 90)})`); continue }
       if (verdict.action === 'clean') { counts.clean++; onLog?.(`  ✓ ${group.targetWord}`); continue }
       // v671 §B2 — an unparseable group verdict is not "clean": logged as UNVERIFIED; every pair still faces the authoritative
       // per-pair FINAL_PAIR_SEMANTIC_AUDIT (cue + naturalness), which fails closed
@@ -32736,7 +33153,14 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       if (newPairs) group.indices.forEach((idx, pi) => { if (!newPairs[pi]) return
         const _an = _qcCC && newPairs[pi].thai ? _qcCC.analyse(newPairs[pi].thai) : null
         if (_an && _an.overHardMax && !(allPairs[idx] && allPairs[idx].thai && _qcCC.analyse(allPairs[idx].thai).overHardMax)) { onLog?.(`  ⛔ QC ${verdict.action} discarded for ${group.targetWord}: ${_an.units} units > max ${_an.hardMax} — "${String(newPairs[pi].thai).slice(0, 40)}" (original kept)`); return }
-        allPairs[idx] = reconcileMutatedThaiPair(newPairs[pi], allPairs[idx], `ai:${verdict.action}:${group.targetWord}`, verdict.action) })
+        // v693: a rewrite must pass the hard line invariants (target present, line gate, lexical sense) BEFORE it replaces the
+        // original — live v691 QC turned the จอด line into ใช่ครับ ไปด้วยกันไหมครับ (target lost), which the final audit then dropped
+        const _rec = reconcileMutatedThaiPair(newPairs[pi], allPairs[idx], `ai:${verdict.action}:${group.targetWord}`, verdict.action)
+        if (dailyV693On() && _rec && _rec.thai && allPairs[idx] && allPairs[idx].pairType === 'content') {
+          const _hp = thaiQcRewriteProblems(_rec, allPairs[idx], vocab, track)
+          if (_hp.length) { onLog?.(`  ⛔ QC ${verdict.action} discarded for ${group.targetWord}: ${_hp[0]} — "${String(_rec.thai).slice(0, 40)}" (original kept)`); return }
+        }
+        allPairs[idx] = _rec })
       counts[verdict.action] = (counts[verdict.action] || 0) + 1
     } catch(e) { onLog?.(`  ⚠️ ${group.targetWord}: ${e.message}`); counts.error++ }
   }
@@ -32952,7 +33376,11 @@ function _naturalnessPromptText(chunk) {
   return 'You are a native Thai speaker checking learner material. For EACH sentence answer: would a native speaker plausibly ' +
     'say this exact sentence in ordinary conversation, with this intended meaning, as this speaker?\n' +
     'Penalise: malformed grammar, target-word stuffing, duplicated words, English-shaped Thai, wrong sense of a word, ' +
-    'mixed male/female particles (ผม/ครับ vs ฉัน/ค่ะ/คะ), absurd everyday claims, meaningless fragments.\n' + NATURALNESS_SIMPLICITY_RULE + THAI_SEMANTIC_JUDGE_RULES +
+    'mixed male/female particles (ผม/ครับ vs ฉัน/ค่ะ/คะ), absurd everyday claims, meaningless fragments.\n' +
+    // v693 — the three kinds of line the v691 Thai track kept although each read as natural word by word
+    (dailyV693On() ? 'Also penalise (s ≤ 3): two unrelated statements glued into one line (ถอดได้เลยครับ จานนั้นขนาดใหญ่มาก); a subject the listener cannot ' +
+      'identify from this line or the previous one (ขนาดเล็ก… — the small size of WHAT?); a collocation a Thai speaker would not use (ไปกับรถสองแถว — ' +
+      'one takes / rides นั่ง a songthaew; ป้ายนี้ถูกที่รอ for "this is the right stop to wait at").\n' : '') + NATURALNESS_SIMPLICITY_RULE + THAI_SEMANTIC_JUDGE_RULES +
     'Scale: 5 natural · 4 natural with a small quirk · 3 understandable but unnatural · 2 wrong/awkward · 1 broken.\n\n' +
     (anySense ? 'When a target word and its intended sense are given, set "wrongSense": true if the sentence uses the target in a DIFFERENT sense ' +
       '(e.g. เบา "light in weight" used for money or weather).\n' : '') +
@@ -33461,6 +33889,9 @@ function thaiLexicalSenseProblems(p) {
     out.push({ id: 'IDIOM_MISTRANSLATED', code: 'CUE_MISMATCH', why: 'หิวข้าว means "I\'m hungry" — the English must not say "rice"' })
   if (/มากับ(รถ|แท็กซี่|รถแท็กซี่|รถบัส|รถไฟ|เครื่องบิน|เรือ|มอเตอร์ไซค์)/.test(th))
     out.push({ id: 'COLLOCATION_VEHICLE', code: 'UNNATURAL', why: '"' + th.match(/มากับ\S{0,8}/)[0] + '" — มากับ is "came with (someone)"; by a vehicle is นั่ง…มา (ผมนั่งรถแท็กซี่มาครับ)' })
+  // v693 — ไปกับ + vehicle is "go WITH (a person)" too: the live v691 Thai track kept ไปกับรถสองแถวนี้ไหมครับ ("go with this songthaew?")
+  if (dailyV693On() && /ไปกับ(รถ|แท็กซี่|เรือ|มอเตอร์ไซค์|ตุ๊กตุ๊ก|เครื่องบิน)/.test(th))
+    out.push({ id: 'COLLOCATION_VEHICLE', code: 'UNNATURAL', why: '"' + th.match(/ไปกับ\S{0,8}/)[0] + '" — ไปกับ is "go with (someone)"; taking a vehicle is นั่ง / ขึ้น + vehicle (นั่งรถสองแถวคันนี้ไปไหมครับ)' })
   // v681 — from the 9-Oct Thai log. (1) Travelling BY a vehicle is นั่ง / ขึ้น + vehicle (+ ไป): ไป + vehicle (เราไปรถไฟฟ้ากันนะครับ,
   // เราไปวินมอเตอร์ไซค์กันนะครับ) is clipped colloquial at best and a poor model sentence. ไปขึ้นรถ… / นั่งรถ…ไป / ไปที่รถ are untouched.
   if (/ไป(รถไฟฟ้า|รถไฟใต้ดิน|รถไฟ|รถเมล์|รถบัส|รถตู้|รถแท็กซี่|แท็กซี่|วินมอเตอร์ไซค์|มอเตอร์ไซค์|เรือ|เครื่องบิน)/.test(th))
@@ -33474,7 +33905,11 @@ function thaiLexicalSenseProblems(p) {
   if (/คู่(ไหน|นี้|นั้น|หนึ่ง|เดียว|ละ|ใหม่)|(สอง|สาม|สี่|ห้า|หลาย)คู่/.test(th) && !/(รองเท้า|ถุงเท้า|ตะเกียบ|ต่างหู|ถุงมือ|แฝด|รัก|บ่าวสาว|ชีวิต|หูฟัง|ถุงน่อง|รองเท้าแตะ)\S{0,10}คู่/.test(th))
     out.push({ id: 'CLASSIFIER_KHUU_MISUSE', code: 'UNNATURAL', why: '"' + th.match(/\S{0,8}คู่\S{0,4}/)[0] + '" — คู่ counts things that come in pairs (รองเท้า ถุงเท้า ตะเกียบ ต่างหู) or a couple; anything else takes its own classifier' })
   // v682 — a classifier that does not fit its noun (เรือชิ้นนี้ / ตั๋วชิ้นหนึ่ง / ที่นั่งชิ้นนั้น — the live v681 ชิ้น attempts)
-  { const m = th.match(THAI_CLASSIFIER_MISMATCH_RE)
+  // v693: ที่ is a classifier only AFTER a number (ตั๋วสองที่). Without one it is the question word ที่ไหน, the relative "that"
+  // (ร้านที่ถูก) or the ordinal (ตั๋วที่หนึ่ง) — the live v691 Thai run rejected ซื้อตั๋วที่ไหนคะ ("Where do I buy a ticket?") as a
+  // classifier mismatch. Every match is examined, so a false one no longer hides a real mismatch later in the line.
+  { const _ms = dailyV693On() ? [...th.matchAll(new RegExp(THAI_CLASSIFIER_MISMATCH_RE.source, 'g'))].filter(x => !(x[2] === 'ที่' && x[0] === x[1] + x[2])) : [th.match(THAI_CLASSIFIER_MISMATCH_RE)]
+    const m = _ms.find(x => x && THAI_NOUN_CLASSIFIER[x[1]] !== x[2]) || null
     if (m && THAI_NOUN_CLASSIFIER[m[1]] !== m[2]) out.push({ id: 'CLASSIFIER_MISMATCH', code: 'UNNATURAL', why: '"' + m[0] + '" — ' + m[1] + ' is counted with ' + THAI_NOUN_CLASSIFIER[m[1]] + ', not ' + m[2] + ' (' + m[1] + THAI_NOUN_CLASSIFIER[m[1]] + 'นี้)' }) }
   // v682 — an English line that offers alternatives ("Can I have a light / gentle, please?" — live verification run) is a
   // dictionary gloss, not a translation of one sentence
@@ -35050,6 +35485,16 @@ function _qrScanGroups(track) {
   return flagged
 }
 
+// v693 — the hard invariants a QC rewrite of a Thai TARGET line must pass before it may replace the original
+const THAI_TOPIC_ONLY_VERDICT_RE = /topic (jump|shift|change)|shifts? (topic|to)|switches from|jumps? (to|from)|without (a|any) link|no link|bridg|surrounding (context|conversation)|out of (place|context)|unrelated|doesn't (follow|flow)|does not (follow|flow)|abrupt|unprompted/i
+const THAI_LINE_DEFECT_VERDICT_RE = /unnatural|awkward|forced|ungrammatical|wrong (sense|word|meaning)|mismatch|missing the target|redundant|padded|incorrect|\bodd\b|stiff|literal|crammed|glued|two (unrelated )?(sentences|statements)/i
+function thaiQcRewriteProblems(np, orig, vocab, track) {
+  const out = [], tw = orig._target || ''
+  if (tw && !thaiTargetPresent(np.thai, tw, vocab)) out.push('TARGET_MISSING: "' + tw + '" is not in the rewrite')
+  try { TRACK_ADAPTERS.th.hardProblems({ ...orig, ...np, pairType: 'content', targetId: orig.targetId, _target: tw }).forEach(h => out.push(h)) } catch (e) {}
+  try { thaiLexicalSenseProblems({ ...orig, ...np }).forEach(g => out.push(g.id + ': ' + g.why)) } catch (e) {}
+  return out
+}
 async function _qrEvaluateGroup(group, allPairs, apiKey, model) {
   const { targetWord, indices, pairs: groupPairs } = group
   const startIdx = indices[0]
@@ -35080,7 +35525,8 @@ Return JSON: {"action":"clean|fix_phonetic|improve|replace","reason":"one senten
 action:
 - "clean": flows naturally, target word used correctly, connects to context, simple everyday Thai
 - "fix_phonetic": Thai is fine but romanization has errors or doesn't match the Thai words
-- "improve": fixable issue — topic jump, two unrelated sentences crammed together, forced unnatural number, vague prompt — but the sentence is salvageable
+- "improve": fixable issue — ${dailyV693On() ? '' : 'topic jump, '}two unrelated sentences crammed together, forced unnatural number, vague prompt — but the sentence is salvageable${dailyV693On() ? `
+  (a change of topic from the neighbouring lines is NOT a reason to improve: this is daily vocabulary practice; never ask for a clause to be added to bridge topics)` : ''}
 - "replace": too broken — OOV words (${_QR_BANNED.join(' ')}), completely random/aristocratic sentence, no connection to anything
 
 Return ONLY JSON, no markdown.`
@@ -37035,6 +37481,8 @@ function jaMayPrecedeVerbFreely(tok) {
 
 function validateJapaneseUsage(pair, inv) {
   const problems = []
+  // v693 — 何時に時間ある？ (live v691 pair 55) is not how availability is asked: 何時なら時間ある？ / 何時が空いてる？
+  if (dailyV693On() && /何時に時間(が)?ある/.test(String(pair.japanese || '').replace(/\s+/g, ''))) problems.push('unnatural: 何時に時間ある — availability is asked as 何時なら時間ある？')
   // v682 — a bare demonstrative + time word question (これ今？ "Is this the now?" — accepted in the live v682 Japanese run)
   { const _t2 = String(pair.japanese || '').replace(/\s+/g, '')
     if (/^(\u3053\u308C|\u305D\u308C|\u3042\u308C)\u3001?(\u4ECA|\u4ECA\u65E5|\u660E\u65E5|\u6628\u65E5)[\uFF1F?\u3002]?$/.test(_t2)) problems.push('unnatural: ' + _t2 + ' — a demonstrative and a time word alone say nothing (これ、今使う？ / 今日、これ食べる？)') }
@@ -37089,8 +37537,10 @@ function validateJapaneseUsage(pair, inv) {
     if (!_bareAdjacent(i)) continue             // v651: a particle or punctuation stands between them
     // v683 teaching plan: どこか / 何か / 誰か are indefinite pronouns (somewhere / something / someone), not the question word;
     // an i-adjective written in its adverb form (早く来て) is an adverb, not a bare noun
-    if (teachingPlanOn() && /^(\u3069\u3053|\u4f55|\u8ab0|\u3044\u3064)$/.test(a) && String(pair.japanese || '').includes(a + '\u304b')) continue
-    if (teachingPlanOn() && /\u3044$/.test(a) && String(pair.japanese || '').includes(a.slice(0, -1) + '\u304f')) continue
+    // v693: these two licences ran only with the teaching plan switched on, so the live v691 Daily path (plan off) rejected
+    // ごめん、ちょっと遅くなるかも。 ("遅いなる needs a particle") and ちょっと早く行こうね。 — an adverbial く form is never a bare noun
+    if ((teachingPlanOn() || dailyV693On()) && /^(\u3069\u3053|\u4f55|\u8ab0|\u3044\u3064)$/.test(a) && String(pair.japanese || '').includes(a + '\u304b')) continue
+    if ((teachingPlanOn() || dailyV693On()) && /\u3044$/.test(a) && String(pair.japanese || '').includes(a.slice(0, -1) + '\u304f')) continue
     // DEFAULT DENY for bare noun + verb. The checks below are an allowlist of
     // known-bad pairings and therefore miss any verb absent from the tables
     // (降りる, 休む, 乗る …). This runs first and denies unless licensed.
@@ -37428,6 +37878,22 @@ function jaScaffoldingProblems(pair) {
 }
 // v683 teaching plan — nouns whose meaning is adverbial ("together", "really", "all") cannot be the subject of ある / いる (一緒ある？)
 const JA_ADVERBIAL_NOUNS = Object.freeze(['\u4e00\u7dd2', '\u672c\u5f53', '\u5168\u90e8', '\u5c11\u3057', '\u4e00\u756a', '\u5927\u4e08\u592b'])
+// v693 — sentence-final かな ("I wonder") judged from the TEXT, not from how a segmenter typed it. v691 rejected 大丈夫かな？ / 早いかな。
+// (segment typed "grammar") yet kept ねえ、どれが安いかな？ in the final lesson (segment typed "content") — two answers to one question.
+// Taught only when the learner's grammar scaffold has it (or the teaching plan's sentence-end scaffolding is on).
+function jaSentenceFinalGrammarProblems(jp, allowedForms) {
+  if (teachingPlanOn()) return []
+  const t = String(jp || '').replace(/\s+/g, '')
+  if (/かな[ぁ]?[？?。！!…]*$/.test(t) && !/(さ|しず|ゆた|わず|おろ|はる)かな[？?。！!…]*$/.test(t) && !(allowedForms && allowedForms.has('かな')))
+    return ['CURRICULUM_NOT_YET_ALLOWED: grammar "かな" is valid Japanese but not taught yet (untaught grammar particle: かな)']
+  return []
+}
+const _JA_FORMS_BY_VOCAB = new WeakMap()
+function jaAllowedGrammarForms(vocab) {
+  if (!vocab || typeof vocab !== 'object') return null
+  if (!_JA_FORMS_BY_VOCAB.has(vocab)) { let f = null; try { f = new Set(japaneseScaffoldFor(vocab).map(g => g.form)) } catch (e) {} ; _JA_FORMS_BY_VOCAB.set(vocab, f) }
+  return _JA_FORMS_BY_VOCAB.get(vocab)
+}
 function validateJapaneseGrammarClosure(pair, inv, allowedGrammarIds) {
   const problems = []
   // legacy scaffold ∪ curriculum blocks the learner has actually been introduced to
@@ -37461,6 +37927,7 @@ function validateJapaneseGrammarClosure(pair, inv, allowedGrammarIds) {
     // CURRICULUM_NOT_YET_ALLOWED, never reported as grammatically invalid.
     if (!allowedForms.has(s.surface)) problems.push('CURRICULUM_NOT_YET_ALLOWED: grammar "' + s.surface + '" is valid Japanese but not taught yet (untaught grammar particle: ' + s.surface + ')')
   })
+  if (dailyV693On() && !problems.some(x => /"かな"/.test(x))) jaSentenceFinalGrammarProblems(jp, allowedForms).forEach(x => problems.push(x))
   // particles present in the sentence but never declared
   const KNOWN_PARTICLES = ['\u306F','\u304C','\u3092','\u306B','\u3067','\u3068','\u3082','\u306E','\u304B','\u306D','\u3088','\u3060','\u3078','\u304B\u3089','\u307E\u3067']
   const segSurfaces = new Set((pair.segments || []).map(s => s.surface))
@@ -37824,6 +38291,10 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
       try { verdict = await aiQcEvaluateGroup(g, all, engine, apiKey, model) }
       catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; verdict = { action: 'unverified', reason: 'group judge failed: ' + String(e && e.message || e).slice(0, 60) } }
     }
+    // v693: Daily practice forgives a change of topic between target groups. A verdict whose only complaint is a topic jump / missing
+    // link (live v691 Mandarin: 可以 / 回 / 等 / 找 / 要 rewritten for that alone — paid calls that replaced good lines) is clean.
+    if (dailyV693On() && (verdict.action === 'improve' || verdict.action === 'replace') && !groupWeak.length && THAI_TOPIC_ONLY_VERDICT_RE.test(verdict.reason || '') && !THAI_LINE_DEFECT_VERDICT_RE.test(verdict.reason || '') && !/contradict|makes no sense|doesn't answer|does not answer|no referent|unclear|wrong/i.test(verdict.reason || '')) {
+      onLog && onLog('  \u2713 ' + g.targetWord + ' (topic-change remark only — Daily practice forgives topic changes; not rewritten: ' + String(verdict.reason).slice(0, 90) + ')'); continue }
     if (verdict.action === 'clean') { onLog && onLog('  \u2713 ' + g.targetWord); continue }
     if (verdict.action === 'unverified') {
       g.indices.forEach(idx => { if (all[idx]) all[idx] = { ...all[idx], _qcUnresolved: 'naturalness UNVERIFIED (' + verdict.reason + ')' } })
@@ -42536,6 +43007,7 @@ const GEN_FAILURE_CLASS = Object.freeze({ DETERMINISTIC_REPAIRABLE: 'DETERMINIST
 // not recognise) · untaught grammar · untaught content · tokenisation (reading / segments / romaji) · genuine error
 function generationFailureCategory(msg) {
   const m = String(msg || '')
+  if (/TARGET_SENSE_DIFFERENT/.test(m)) return 'TARGET_SENSE'
   if (/not present|TARGET_MISSING/.test(m)) return 'TARGET_LEMMA_ABSENT'
   if (/CURRICULUM_NOT_YET_ALLOWED|untaught grammar|grammar inventory|not taught yet/.test(m)) return 'UNTAUGHT_GRAMMAR'
   if (/untaught content|CLOSED_VOCAB|unknown words/.test(m)) return 'UNTAUGHT_CONTENT'
@@ -42825,12 +43297,22 @@ function jaCueFormProblems(p) {
   if (!jpWant && enWant && !enOffer && !/\b(want to know|wants to know)\b/i.test(en)) out.push('CUE_MEANING_MISMATCH: the English says "want" but the Japanese has no desire form ("' + jp + '")')
   return out
 }
+// v693 — target IDENTITY vs target SENSE: どれも / 何も / どこか contain the target's characters but are different words (any / nothing /
+// somewhere). v691 reported them as "target どれ not present", which read as a parser miss. They are now named for what they are.
+function jaTargetAbsentReason(jp, target) {
+  const lemma = (target && (target.lemma || target.japanese)) || ''
+  const cpd = (JA_QUESTION_WORD_COMPOUNDS[lemma] || []).find(x => String(jp || '').includes(x))
+  if (lemma === '\u3042\u308C' && /\u3042\u308C/.test(String(jp || ''))) return 'TARGET_SENSE_DIFFERENT: "あれ" followed by a pause is the interjection "huh?" — the target あれ ("that over there") needs a particle: あれは / あれが / あれに'
+  if (JA_REPLY_WORDS.includes(lemma) && String(jp || '').includes(lemma)) return 'TARGET_SENSE_DIFFERENT: the reply word ' + lemma + ' must open the reply (' + lemma + '、…) — inside a sentence it is a filler, not a reply'
+  if (cpd) return 'TARGET_SENSE_DIFFERENT: "' + cpd + '" is a different word from the target ' + lemma + ' (' + (target.english || 'the question word') + ') — use ' + lemma + ' itself as the question word'
+  return 'target ' + (target && target.japanese) + ' not present'
+}
 function jaEvaluateRecallCandidate(cand, ctx) {
   const { target, inv, vocab, registerId, seenMap, rules, opts, onLog } = ctx
   let repairs = 0
   const fail = (msg, extra) => ({ ok: false, cand, failure: msg, cls: classifyJaGenerationFailure(msg), repairs, ...(extra || {}) })
   const jp = String(cand.japanese || '').trim()
-  if (!matchesJapaneseTarget(jp, target)) return fail('target ' + target.japanese + ' not present')
+  if (!matchesJapaneseTarget(jp, target)) return fail(dailyV693On() ? jaTargetAbsentReason(jp, target) : 'target ' + target.japanese + ' not present')
   // v683 plan (owner decision 1): a word whose natural use is polite is taught to the person its application names — the register
   // gate then treats polite speech as correct, and the rest of the sentence must actually BE polite (すみません、駅はどこ？ to a
   // stranger is a register slip); a bare formula (すみません。/ いいえ。) is complete as it is

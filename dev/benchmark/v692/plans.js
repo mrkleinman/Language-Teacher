@@ -57,7 +57,7 @@ const GOOD = {
     ['S1', 'A', 'ANSWER', '', 'work', 'ちょっと忙しい。', 'A bit busy.'],
     ['S2', 'B', 'ASK', 'THING', 'we', '今日、何する？', 'What shall we do today?'],
     ['S2', 'A', 'PROPOSE', '', 'the shop over there', 'あそこの店に行く？', 'Shall we go to that shop over there?'],
-    ['S2', 'B', 'ASK', 'YESNO', 'that shop', 'いいね。あれ、本の店？', 'Sounds good. Is that a book shop?'],
+    ['S2', 'B', 'ASK', 'YESNO', 'that shop', 'いいね。あれは本の店？', 'Sounds good. Is that a book shop?'],
     ['S2', 'A', 'ANSWER', '', 'books', 'うん。一緒に本を見よう。', 'Yeah. Let\'s look at books together.'],
     ['S3', 'B', 'ASK', 'CHOICE', 'you', '本と映画、どっちが好き？', 'Books or movies — which do you like?'],
     ['S3', 'A', 'ANSWER', '', 'movies', '映画が好き。', 'I like movies.'],

@@ -38,12 +38,10 @@ function load(file, opts = {}) {
     else ctx.callOpenRouterOnce = fn   // pre-v648 builds (loaded only for before/after comparisons) used the old transport name
   } })
   ctx.ev = code => vm.runInContext(code, ctx)
-  // v692: a suite that tests the LEGACY template Listening planner (kept behind the switch for rollback) opts in explicitly
-  if (process.env.TT_LISTENING_LEGACY === '1' && typeof ctx.setListeningMeaningFirst === 'function') ctx.setListeningMeaningFirst(false)
   // v692: a suite that tests the LEGACY template Listening planner (kept behind the switch as rollback) opts in explicitly
   if (process.env.TT_LISTENING_LEGACY === '1' && typeof ctx.setListeningMeaningFirst === 'function') ctx.setListeningMeaningFirst(false)
-  // v692: a suite that tests the LEGACY template Listening planner (kept behind the switch as rollback) opts in explicitly
-  if (process.env.TT_LISTENING_LEGACY === '1' && typeof ctx.setListeningMeaningFirst === 'function') ctx.setListeningMeaningFirst(false)
+  // v693: a suite whose assertions pin pre-v693 Daily measurements runs on the pre-v693 Daily rules (kept behind the switch as rollback)
+  if (process.env.TT_DAILY_LEGACY === '1' && typeof ctx.setDailyV693 === 'function') ctx.setDailyV693(false)
   // v665: sentence complexity follows the learner's CURRENT belt (BELT_COMPLEXITY). The pre-v665 fixtures are
   // Mukyu learners (hardMax 4) with longer recorded sentences, so suites that test OTHER contracts pin the belt
   // explicitly; the v665 suites call setLearnerStateOverride(null) to test the real resolver.

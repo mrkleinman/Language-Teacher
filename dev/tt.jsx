@@ -3544,8 +3544,37 @@ const ZH_NATURALNESS_GUIDE =
   '  - arrival: 你到了吗？ — not 你到不到？ (A-not-A asks about a habit or plan, not whether someone has arrived)\n' +
   '  - offering food: 你要吃一点吗？ / 吃一点吧 — not 你吃一点吗？\n' +
   '  - a sentence needs a reason to be said here: 你的钱很少吗？, 那个东西不快。, 家很小。 out of the blue are odd — say whose home / which thing, ' +
-    'or make it a reply to the line before (这个车不快。 after a question about the car)\n'
-function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
+    'or make it a reply to the line before (这个车不快。 after a question about the car)\n' +
+  // v691 (live v690 Mandarin)
+  '  - "what shall we eat?" is 你想吃什么？ / 我们吃什么？ — not 一起吃什么吧？\n' +
+  '  - ONE line never asks and answers itself (这个快吗？不快。): the question is one line, the answer is the other person\'s line\n' +
+  '  - 东西 is "thing(s)"; the English never names a specific item the Chinese did not name (可以，东西到了 ≠ "the drink has arrived")\n' +
+  '  - the English never adds a reason the Chinese does not say (我今天不跟你去 ≠ "…because I have work")\n' +
+  '  - asking about taste: 这个好喝吗？ / 好吃吗？ — no 很 in that simple question\n'
+// v691 — MANDARIN MINI-EXCHANGES. With 65 words a 90-line story is impossible; the live v690 track (coherence 1/5) wrote every
+// sentence alone, with no speaker and no previous line, and then interleaved all targets. Now each target is ONE short exchange
+// between two friends: line 1 (A) opens, line 2 (B) replies to line 1, line 3 (A) follows up — each request SEES the accepted lines.
+// Local coherence (the brief's standard for Mukyu), not storytelling. Speakers are fixed BEFORE the cue is written.
+const ZH_EXCHANGE_SPEAKER = Object.freeze({ 1: 'A', 2: 'B', 3: 'A' })
+function zhExchangeRoleLine(target, recallIndex, exchange) {
+  const prev = (exchange || []).filter(x => x && x.chinese && x.recallIndex < recallIndex).sort((a, b) => a.recallIndex - b.recallIndex)
+  const show = prev.map(x => '  line ' + x.recallIndex + ' (' + (x.speaker || ZH_EXCHANGE_SPEAKER[x.recallIndex]) + '): ' + x.chinese + ' — ' + (x.english || '')).join('\n')
+  const sp = ZH_EXCHANGE_SPEAKER[recallIndex] || 'A'
+  if (recallIndex === 1 || !prev.length) return 'MINI EXCHANGE: this is line ' + recallIndex + ' of a 3-line everyday exchange between two friends (A and B). Speaker ' + sp + ' says it. ' +
+    (recallIndex === 1 ? 'It OPENS a small situation (asking, offering, buying, eating, going, waiting, finding, helping…) so that the other person can reply.\n' : 'It must make sense on its own as part of a small everyday situation.\n')
+  return 'MINI EXCHANGE so far:\n' + show + '\nWrite line ' + recallIndex + ', said by ' + sp + (recallIndex === 2 ? ': B\'s natural REPLY to line 1 (answer the question, accept or decline the offer, react to the statement).' :
+    ': A\'s natural FOLLOW-UP to B\'s reply (a short answer, request, suggestion or reaction that fits).') + ' It must follow from the line before it, use ' + target.chinese + ', and need no other context.\n' +
+    'The English cue describes what ' + sp + ' says in this exchange.\n'
+}
+// v691 — Japanese patterns from the live v690 track (the natural form given), shared by the writer and the group judge
+const JA_NATURALNESS_GUIDE =
+  'NATURAL JAPANESE — mistakes seen before (write the natural form):\n' +
+  '  - asking where: 今日の昼、どこで食べる？ / どこで食べようか？ — and the English is a question ("Where shall we eat…?"), never "Let\'s eat somewhere"\n' +
+  '  - choosing between restaurants: どこにする？ / どっちの店にする？ — not どれで食べる？\n' +
+  '  - おいしそう describes FOOD (あれ、おいしそうだね about a dish) — not a restaurant; for a place say よさそう / 人気だね\n' +
+  '  - いいえ answers a question that was actually asked; in casual speech between friends ううん / いや is usual — use はい / いいえ only where they fit (a polite or clear yes/no answer)\n' +
+  '  - the cue names the OTHER person (Ken talks to Yuka), never the speaker\n'
+function buildMandarinPrompt(target, inv, vocab, recallIndex, rules, exch) {
   const content = inv.allContent.map(w => '  ' + w.chinese + ' [' + w.pinyin + '] = ' + w.english +
     (w.note ? '  \u2014 use when ' + w.note : '')).join('\n')
   const basics  = inv.conversationBasics.map(b => '  ' + b.form + ' [' + b.pinyin + '] = ' + b.english).join('\n')
@@ -3565,6 +3594,7 @@ function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
     'Write ONE natural sentence (recall ' + recallIndex + ' of 3) that genuinely uses ' + target.chinese + '.\n' +
     // v672 §4 — a DIFFERENT communicative function per recall (where the word allows it — never forced)
     (teachingPlanOn() ? (tpSetSituationPool('zh', (inv.allContent || []).map(w => w.english)), teachingPlanLine(teachingPlan('zh', target), recallIndex))
+      : oct13On() ? zhExchangeRoleLine(target, recallIndex, exch)
       : 'FUNCTION for this recall: ' + (ZH_RECALL_FUNCTION[recallIndex] || 'another natural use') + ' (if that is unnatural for ' + target.chinese + ', use another natural function — never bad Mandarin).\n') +
     (teachingPlanOn() ? TP_CUE_DEFINITION + '\n' : targetRoleLine(targetLinguisticRole(target, 'zh'), target, 'zh')) +      // v649 §27 role metadata (v683 plan: the plan replaces the grammar label)
     _cc.promptRule + ' Simplified Chinese only. No Traditional characters.\n' +
@@ -4417,7 +4447,7 @@ async function generateMandarinOneRecall(target, recallIndex, vocab, inv, rules,
       n = L.attempt(tid, recallIndex, { kind: 'model', stage: o.phase || 'generation' })
       onTier && onTier(n)
       onLog && onLog('  ' + checkLogLine(n, '', target.chinese, [recallIndex]))
-      const { system, user } = buildMandarinPrompt(target, inv, vocab, recallIndex, rules)
+      const { system, user } = buildMandarinPrompt(target, inv, vocab, recallIndex, rules, o.exchange)
       // Retries used to say only THAT the last attempt failed, never what it wrote or
       // which words were rejected — so 到 repeated 我明天到家 for nine tiers and 开 asked
       // for 门 thirty-three times. Carry both forward, as the Japanese generator does.
@@ -4781,7 +4811,8 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
       const got = await generateMandarinOneRecall(t, r, vocab, inv, rules, apiKey, model, seenMap, onLog,
         tier => { attempts++; S.attempts++; S.highestCheckTier = Math.max(S.highestCheckTier, tier)
           onProgress && onProgress(doneRecall, totalRecall, { targetIdx:i, targetId:t.id, recallIndex:r, checkTier:tier, checkHistory: _zhLedger.history(t.id, r).map(e => e.index), accepted:false }) }, S,
-        { ledger: _zhLedger, phase: _go.checkpoint ? 'resume' : 'generation', priorRejected: cp.rejected[_slot] || [], onRejected: txt => genCheckpointNoteRejected(cp, t.id, r, txt) })
+        { ledger: _zhLedger, phase: _go.checkpoint ? 'resume' : 'generation', priorRejected: cp.rejected[_slot] || [], onRejected: txt => genCheckpointNoteRejected(cp, t.id, r, txt),
+          exchange: oct13On() ? accepted.map(a => ({ recallIndex: a.recallIndex, speaker: a.speaker, chinese: a.chinese, english: a.english })) : undefined })
       if (!got) {
         // §83 — visible, recoverable failure. Never silently continue.
         failures.push({ target:t.chinese, targetId:t.id, recallIndex:r, reason:'no valid candidate after all checks' })
@@ -4790,7 +4821,7 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
       }
       // v671 §B4 — per-pair provenance from birth (target + recall identity, source model, the accepted check, fallback /
       // repair lineage); live vs mock is stamped once the run's real-provider count is known (below)
-      accepted.push(stampPairProvenance({ ...got.pair, checkTier: got.checkTier, sourceModel: model, _acceptedAtCheck: got.checkTier,
+      accepted.push(stampPairProvenance({ ...got.pair, ...(oct13On() ? { speaker: ZH_EXCHANGE_SPEAKER[r] || 'A', _zhExchange: true } : {}), checkTier: got.checkTier, sourceModel: model, _acceptedAtCheck: got.checkTier,
           _repairLineage: got.pair && got.pair._repairs ? got.pair._repairs : (got.pair && got.pair._fallbackUsed ? ['deterministic-fallback'] : []) },
         { language: 'zh', trackId: 'zh-' + S.startedAt, generationRunId: AI_CTX.runId, targetId: t.id, targetSurface: t.chinese, recallIndex: r,
           sourceStage: got.pair && got.pair._fallbackUsed ? 'generation-fallback' : 'generation' }))
@@ -4818,9 +4849,10 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
     onLog && onLog('\u21BB Recovering ' + t.chinese + ' recall ' + f.recallIndex + ' (' + _zhLedger.count(t.id, f.recallIndex) + '/' + RECALL_MAX_CHECKS + ' checks used)')
     const got = await generateMandarinOneRecall(t, f.recallIndex, vocab, inv, rules, apiKey, model, seenMap, onLog,
       tier => { attempts++; S.attempts++; S.highestCheckTier = Math.max(S.highestCheckTier, tier) }, S,
-      { ledger: _zhLedger, phase: 'recovery', priorRejected: cp.rejected[genCheckpointSlot(t.id, f.recallIndex)] || [], onRejected: txt => genCheckpointNoteRejected(cp, t.id, f.recallIndex, txt) })
+      { ledger: _zhLedger, phase: 'recovery', priorRejected: cp.rejected[genCheckpointSlot(t.id, f.recallIndex)] || [], onRejected: txt => genCheckpointNoteRejected(cp, t.id, f.recallIndex, txt),
+        exchange: oct13On() ? (perTarget[ti] || []).map(a => ({ recallIndex: a.recallIndex, speaker: a.speaker, chinese: a.chinese, english: a.english })) : undefined })
     if (!got) continue
-    const pr = stampPairProvenance({ ...got.pair, checkTier: got.checkTier, sourceModel: model, _acceptedAtCheck: got.checkTier,
+    const pr = stampPairProvenance({ ...got.pair, ...(oct13On() ? { speaker: ZH_EXCHANGE_SPEAKER[f.recallIndex] || 'A', _zhExchange: true } : {}), checkTier: got.checkTier, sourceModel: model, _acceptedAtCheck: got.checkTier,
         _repairLineage: got.pair && got.pair._fallbackUsed ? ['deterministic-fallback'] : [] },
       { language: 'zh', trackId: 'zh-' + S.startedAt, generationRunId: AI_CTX.runId, targetId: t.id, targetSurface: t.chinese, recallIndex: f.recallIndex,
         sourceStage: got.pair && got.pair._fallbackUsed ? 'recovery-fallback' : 'recovery' })
@@ -4842,8 +4874,10 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
   }
 
   // interleave so exposures are spread rather than clustered
+  // v691: each target's mini exchange stays together (line 1 → 2 → 3); interleaving put unrelated lines next to each other
   const recalls = []
-  for (let round = 0; round < 3; round++) for (const set of perTarget) if (set[round]) recalls.push(set[round])
+  if (oct13On()) perTarget.forEach(set => set.slice().sort((a, b) => (a.recallIndex || 0) - (b.recallIndex || 0)).forEach(p => recalls.push(p)))
+  else for (let round = 0; round < 3; round++) for (const set of perTarget) if (set[round]) recalls.push(set[round])
   if (!(stopSignal && stopSignal.cancelled)) { cp.status = 'generated'; cp.updatedAt = new Date().toISOString(); _saveCp() }
   S.finishedAt = new Date().toISOString()
   if (S._finalizeProvenance) S._finalizeProvenance()
@@ -10396,11 +10430,30 @@ function v684JaRomajiProblems(reading, romaji) {
   return want === got || want.replace(/wo/g, 'o') === got.replace(/wo/g, 'o') ? [] : ['romaji "' + romaji + '" does not transcribe the reading (' + kanaToRomaji(v684JaHira(reading)) + ')']
 }
 // deterministic repair: the dictionary-based reading the Listening path already uses, with the corrected 何 rule
-function v684JaDerive(text, bank) {
+// v691: romaji is spaced by WORD. The dictionary reader splits what it does not know as one word — potential 会え+た (live v690
+// "mata ae ta ne"), honorific お+昼 ("o hiru"), unknown kana く+れる ("shite ku reru"), て-contraction 待って+て. Those pieces are joined
+// back; particles (は が を に で と も の へ か ね よ な …) are never joined.
+const JA_ROMAJI_PARTICLES = new Set(['は', 'が', 'を', 'に', 'で', 'と', 'も', 'の', 'へ', 'か', 'ね', 'よ', 'な', 'や', 'から', 'まで', 'より', 'けど', 'ので', 'し', 'って', 'わ', 'さ', 'ぞ', 'ぜ'])
+function jaJoinWordPieces(segs) {
+  const out = []
+  const isVerb = s => s && s.type === 'content' && /[うくぐすつぬぶむる]$/.test(String(s.lemma || '')) && String(s.lemma || '') !== String(s.surface || '')
+  for (const s of segs) {
+    const prev = out[out.length - 1]
+    const kana = x => /^[\u3041-\u309F]+$/.test(String(x && x.surface || ''))
+    const join = () => { out[out.length - 1] = { ...prev, surface: prev.surface + s.surface, reading: (prev.reading || prev.surface) + (s.reading || s.surface), type: 'content', _joined: true } }
+    if (prev && s.type === 'grammar' && /^(た|だ|て|で|ちゃう|ちゃった|とく)$/.test(s.surface) && isVerb(prev) && /[てでっ]$|[えけげせてねべめれ]$/.test(prev.surface)) { join(); continue }
+    if (prev && (prev.surface === 'お' || prev.surface === 'ご') && prev.type !== 'punct' && s.type === 'content') { join(); continue }
+    if (prev && prev.type === 'content' && kana(prev) && prev.surface.length === 1 && !JA_ROMAJI_PARTICLES.has(prev.surface) && kana(s) && s.type === 'grammar' && !JA_ROMAJI_PARTICLES.has(s.surface)) { join(); continue }
+    out.push(s)
+  }
+  return out
+}
+function v684JaDerive(text, bank, o) {
   try {
     const d = jaDeterministicReading(text, bank)
     if (d.unresolved.length) return null
-    const segs = d.segs.map((s, i) => s.surface === '何' ? { ...s, reading: v684JaNani(d.segs.slice(i + 1).map(x => x.surface).join('')) } : s)
+    let segs = d.segs.map((s, i) => s.surface === '何' ? { ...s, reading: v684JaNani(d.segs.slice(i + 1).map(x => x.surface).join('')) } : s)
+    if (o && o.wordJoin) segs = jaJoinWordPieces(segs)
     const a = _jaAssemble(segs)
     return { reading: a.reading, romaji: a.romaji }
   } catch (e) { return null }
@@ -15927,7 +15980,14 @@ const THAI_NATURALNESS_GUIDE =
   '  - an embedded question needs ว่า: ผมไม่รู้ว่านี่หมายถึงอะไรครับ — not ผมไม่รู้นี่หมายถึงอะไร\n' +
   '  - นิดหน่อย softens something unwelcome (แพงนิดหน่อย, เผ็ดนิดหน่อย); for "fairly easy" say ง่ายนิดเดียว or ไม่ยาก — not ง่ายนิดหน่อย\n' +
   '  - reassurance is a statement, not a ไหม question: ไม่ต้องรีบนะครับ — not ไม่ต้องพยายามมากไหมครับ; พยายาม is real effort (พยายามพูดไทย), not for easy things\n' +
-  '  - use the target in its intended sense (หลัง = "behind / after / back" as the target says; a house classifier only when that is the sense)\n'
+  '  - use the target in its intended sense (หลัง = "behind / after / back" as the target says; a house classifier only when that is the sense)\n' +
+  // v691 (live v690 Thai)
+  '  - feeling well is สบายดี: วันนี้ฉันสบายดีค่ะ — not วันนี้ฉันดีค่ะ\n' +
+  '  - arriving: ข้ามสะพานไปก็ถึงครับ / ต้องข้ามสะพานครับ — not ต้องข้ามสะพานไปถึงครับ\n' +
+  '  - after a noun "this" is นี้ (ขนาดนี้, อันนี้, ร้านนี้); นี่ stands alone (นี่อะไร, นี่ครับ) — not ขนาดนี่\n' +
+  '  - the verb must fit its object: ถอด = take off something worn or attached (ถอดรองเท้า, ถอดฝา); a bottle is opened (เปิดขวด); ' +
+    'a plate is taken away to wash (เอาจานไปล้าง / เก็บจาน) — not ขวดนี้ถอดได้ไหม, ฉันถอดจานนี้ไปล้าง\n' +
+  '  - goodbyes are short and natural (ไว้เจอกันใหม่นะครับ / แล้วเจอกันค่ะ / กลับบ้านดีๆ นะ); friends do not keep calling each other by name\n'
 function buildThaiLanguageQcPrompt(pairs, allowedWords) {
   const lines = pairs.map((p, i) =>
     (i + 1) + '. THAI: ' + p.thai + '\n   ENGLISH: ' + (p.english || ''))
@@ -19509,7 +19569,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v690'
+const LISTENING_BUILD_VERSION = 'v691'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -20178,8 +20238,25 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
     if (!states.has(x.targetId)) states.set(x.targetId, createRecoveryState(kw0, { surface: adapter.surfaceOf(kw0), sense: adapter.senseOf ? adapter.senseOf(kw0, c) : kw0.english }))
     recordRecoveryFailure(states.get(x.targetId), { code: /TARGET_MISSING/.test(x.reasons.join(' ')) ? 'TARGET_MISSING' : 'QC_REJECTED', text: x.text, reason: x.reasons.join('; ') })
   })
+  // v691: a pair that became invalid AFTER the first removal (a QC repair, a recovery acceptance judged again) is removed at the start
+  // of the next round too, so its slot is REPLACED (same recall number) instead of a 4th recall being appended. Live 13-Oct v690
+  // Japanese: an overlength はい line stayed in the track while recovery added "recall 4" → 91 target lines, 95 playable, NOT_READY.
+  const dropInvalidNow = (why) => {
+    const rp = trackQuotaReport(pairs, kws, adapter, c), late = []
+    rp.rows.forEach(r => r.invalid.forEach(x => late.push({ targetId: r.targetId, target: r.target, pairId: x.pairId, text: x.text, reasons: x.reasons })))
+    if (!late.length) return 0
+    const drop = new Set(late.map(x => x.pairId))
+    pairs.forEach((p, i) => { if (!(p && classifyTrackPair(p) === 'TARGET' && drop.has(p.pairId))) return
+      if (p.recallIndex != null && L.count(p.targetId, p.recallIndex)) { const rx = late.find(x => x.pairId === p.pairId); L.settle(p.targetId, p.recallIndex, 'rejected', 'QC: ' + ((rx && rx.reasons[0]) || 'rejected')) }
+      let j = i - 1; while (j >= 0 && pairs[j] && classifyTrackPair(pairs[j]) === 'TARGET' && drop.has(pairs[j].pairId)) j--
+      const m = slotMemory.get(p.targetId) || []; m.push({ pos: i, recallIndex: p.recallIndex, speaker: p.speaker || null, anchorPairId: j >= 0 && pairs[j] ? pairs[j].pairId : null }); slotMemory.set(p.targetId, m) })
+    pairs = pairs.filter(p => !(p && classifyTrackPair(p) === 'TARGET' && drop.has(p.pairId)))
+    late.forEach(x => { removed.push(x); log && log('  ⛔ TARGET PAIR rejected ' + why + ' [' + x.target + '] "' + x.text + '" — ' + x.reasons.join('; ') + ' (its slot is replaced, never appended)') })
+    return late.length
+  }
   for (let round = 1; round <= TRACK_CONTRACT.QUOTA_ROUNDS; round++) {
     if (c.cancelled && c.cancelled()) break
+    if (round > 1 && oct13On()) dropInvalidNow('(found invalid after round ' + (round - 1) + ')')
     const rep = trackQuotaReport(pairs, kws, adapter, c)
     const todo = rep.rows.filter(r => r.deficit > 0 && !r.unresolvedAtSelection && !((history.get(r.targetId) || {}).escalated))
     if (!todo.length) break
@@ -20243,6 +20320,7 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
         log && log('  🔀 RECOVERY_STRATEGY_CHANGE ' + r.target + ' → ' + ch.to + ' (' + (RECOVERY_STRATEGIES[ch.to] || '').split(':')[0] + ') because ' + ch.why))
     }
   }
+  if (oct13On()) dropInvalidNow('(still invalid after the last recovery round — never kept in the final track)')
   const after = trackQuotaReport(pairs, kws, adapter, c)
   const unresolved = after.rows.filter(r => r.deficit > 0).map(r => ({ targetId: r.targetId, target: r.target, valid: r.valid, deficit: r.deficit,
     attempts: (history.get(r.targetId) || { attempts: [] }).attempts, reason: r.unresolvedAtSelection ? 'unresolved at selection' : (history.get(r.targetId) || {}).escalated || 'QUOTA_RECOVERY_EXHAUSTED' }))
@@ -20314,6 +20392,14 @@ function reconcileQcIssues(qcIssues, qcPairs, finalPairs, adapter) {
       state: !present ? 'RESOLVED (pair replaced / no longer in the final set)' : p._framing ? 'FRAMING (not a lesson sentence)' : 'STILL_PRESENT' })
   })
   return rows
+}
+// v691: EXACTLY PAIRS_PER_TARGET target lines per selected target (and no target line for anything else) in the persisted pairs
+function targetLinesExact(pairs, kws, surfaceOf) {
+  const per = new Map((kws || []).map(k => [k.wordId, 0])); let stray = 0, total = 0
+  ;(pairs || []).forEach(p => { if (!p || classifyTrackPair(p) !== 'TARGET') return; total++; if (per.has(p.targetId)) per.set(p.targetId, per.get(p.targetId) + 1); else stray++ })
+  const off = [...per.entries()].filter(([, n]) => n !== TRACK_CONTRACT.PAIRS_PER_TARGET)
+  const ok = !off.length && !stray && total === (kws || []).length * TRACK_CONTRACT.PAIRS_PER_TARGET
+  return { ok, total, off, stray, detail: ok ? '' : total + ' target line(s)' + (off.length ? ' · ' + off.map(([id, n]) => { const k = (kws || []).find(x => x.wordId === id); return ((surfaceOf && k && surfaceOf(k)) || id) + '=' + n }).join(', ') : '') + (stray ? ' · ' + stray + ' line(s) for no selected target' : '') }
 }
 async function finaliseMainTrack(track, adapter, ctx) {
   const c = { ...(ctx || {}) }, log = c.onLog || null
@@ -20427,6 +20513,9 @@ async function finaliseMainTrack(track, adapter, ctx) {
     UNRESOLVED_REQUIRED_TARGET_PAIRS: quota.rows.reduce((n, r) => n + r.deficit, 0),
   }
   if (adapter.lang === 'th') inv.TARGET_IDENTITY_VIOLATIONS = _idViol.length
+  // v691: EXACTLY three target lines per selected target in the FINAL track — the valid-pair quota alone said 90/90 while the live
+  // 13-Oct v690 Japanese track carried 91 target-bearing lines (an invalid 4th はい line). Counted on the persisted lines.
+  if (oct13On()) { const tl = targetLinesExact(t.pairs, kws, k => adapter.surfaceOf(k)); inv.TARGET_LINES_EXACT = tl.ok; if (!tl.ok) inv.TARGET_LINES_DETAIL = tl.detail }
   // v671 §B3 — the final audit inspects EVERY persisted pair: each target should practise 3 DISTINCT useful applications
   // (construction key = the sentence with the target and the final particles removed). Reported per target; beginner
   // repetition accepted by policy is allowed, so this is a diagnostic invariant (named, counted, logged), not a hidden average.
@@ -20466,6 +20555,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
     reasons.push('NEW_COUNT_MISMATCH=' + inv.SELECTED_NEW)
   if (inv.SELECTED_TARGETS !== TRACK_CONTRACT.TARGETS) reasons.push('SELECTED_TARGETS=' + inv.SELECTED_TARGETS + ' (required ' + TRACK_CONTRACT.TARGETS + ')')
   if (quota.quotaMet !== TRACK_CONTRACT.TARGETS * TRACK_CONTRACT.PAIRS_PER_TARGET) reasons.push('TARGET_PAIR_QUOTA=' + inv.TARGET_PAIR_QUOTA + ' (required 90/90)')
+  if (inv.TARGET_LINES_EXACT === false) reasons.push('TARGET_LINES_EXACT=false (' + inv.TARGET_LINES_DETAIL + '; required exactly 3 per target, 90 in all)')
   if (!inv.TARGET_PRESENCE_PASS) reasons.push('TARGET_PRESENCE_PASS=false')
   if (inv.SEMANTIC_QC !== 'COMPLETE') reasons.push('SEMANTIC_QC=' + inv.SEMANTIC_QC)
   if (inv.NATURALNESS_QC !== 'COMPLETE') reasons.push('NATURALNESS_QC=' + inv.NATURALNESS_QC)
@@ -20572,7 +20662,11 @@ function mainCoherenceSections(track) {
   const byTarget = new Map()
   ;(track.pairs || []).forEach(p => { if (p && classifyTrackPair(p) === 'TARGET') { if (!byTarget.has(p.targetId)) byTarget.set(p.targetId, []); byTarget.get(p.targetId).push(p) } })
   const premise = (track.sceneContract && track.sceneContract.premise) || 'lesson'
+  // v691: Mandarin mini exchanges (one per target) are judged one by one against "a short everyday exchange" — the brief's
+  // standard for a 65-word learner is local coherence, never one 90-line story
+  const zhExch = !plan && oct13On() && (track.pairs || []).some(p => p && p._zhExchange)
   const sections = plan ? plan.map((sc, k) => ({ sceneId: sc.sceneId || ('S' + (k + 1)), purpose: sc.purpose, localPremise: sc.localPremise || null, targetRoles: sc.targetRoles || {}, ids: sc.targetIds.slice() }))
+                        : zhExch ? [...byTarget.keys()].map((id, k) => ({ sceneId: 'X' + (k + 1), purpose: 'a short everyday exchange between two friends (A opens, B replies, A follows up)', localPremise: 'a short everyday exchange between two friends', targetRoles: {}, ids: [id] }))
                         : [{ sceneId: 'S1', purpose: premise, localPremise: premise, targetRoles: {}, ids: [...byTarget.keys()] }]
   const inPlan = new Set(sections.flatMap(x => x.ids))
   const extra = [...byTarget.keys()].filter(id => !inPlan.has(id))
@@ -20864,7 +20958,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v690'
+const APP_BUILD_VERSION = 'v691'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -22070,9 +22164,10 @@ async function _zhRecoverTargetPairs(kw, need, ctx) {
   const cands = [], reasons = []
   for (const slot of (c.recallSlots && c.recallSlots.length ? c.recallSlots : _missingRecallSlots(all, kw.wordId, need)).slice(0, need)) {
     aiTagNextCall('quota recovery ' + t.chinese + ' recall ' + slot)
-    const got = await generateMandarinOneRecall(t, slot, c.vocab, inv, rules, c.apiKey, c.model, seenMap, log, null, null, { ledger: c.ledger || null, phase: 'quota-recovery', ...(teachingPlanOn() ? { priorRejected: _tpPrior } : {}) })
+    const _exch = oct13On() ? all.filter(p => p && p.targetId === kw.wordId && p.chinese && !p._qcInvalid).map(p => ({ recallIndex: p.recallIndex, speaker: p.speaker, chinese: p.chinese, english: p.english })) : undefined
+    const got = await generateMandarinOneRecall(t, slot, c.vocab, inv, rules, c.apiKey, c.model, seenMap, log, null, null, { ledger: c.ledger || null, phase: 'quota-recovery', ...(teachingPlanOn() ? { priorRejected: _tpPrior } : {}), exchange: _exch })
     if (!got || !got.pair) { reasons.push('recall ' + slot + ': no valid candidate'); if (st) recordRecoveryFailure(st, { code: 'OTHER', reason: 'no valid candidate' }); continue }
-    cands.push({ ...got.pair, language: 'zh' })
+    cands.push({ ...got.pair, language: 'zh', ...(oct13On() ? { speaker: ZH_EXCHANGE_SPEAKER[slot] || 'A', _zhExchange: true } : {}) })
   }
   if (!cands.length) return { accepted: [], reasons }
   const qc = await runMandarinTrackQC({ language: 'zh', pairs: cands, keywords: [kw], ...(oct13On() ? { authorisedKeywords: track.keywords || [kw] } : {}) }, c.vocab, { apiKey: c.apiKey, model: c.model, skipCountAudit: true }, null, log)
@@ -22113,7 +22208,9 @@ function fixCueAddressees(pairs, track, log) {
   const out = (pairs || []).map((p, i) => {
     if (!p || (p.speaker !== 'A' && p.speaker !== 'B')) return p
     const me = p.speaker === 'A' ? A : B, you = p.speaker === 'A' ? B : A
-    const re = new RegExp('\\b(' + CUE_ADDRESS_VERBS + ')(\\s+)' + esc(me.name) + '\\b', 'gi')
+    // v691: ANY mention of the speaker's own name is the listener's (live v690: "correct Ken" on Ken's line — "correct" was not in the
+    // verb list); only an introduction keeps it ("my name is Ken", "I'm Ken", "this is Ken")
+    const re = new RegExp('(^|[^A-Za-z])(?<!(?:name is|named|called|I am|I\'m|this is|it\'s)\\s)()' + esc(me.name) + '\\b(?!\\s+is\\s+(?:your|my)\\s+name)', 'gi')
     const upd = {}
     for (const f of ['prompt', 'cue']) {
       const cue = p[f]
@@ -22190,7 +22287,7 @@ function jaFinalRomaji(q, bank, onLog) {
   if (!q || !q.japanese) return q
   const K = x => String(x || '').replace(/[\s、。，．,.？?！!「」『』…~〜ー]/g, '')
   const before = q.romaji || q.phonetic || ''
-  const d = bank ? v684JaDerive(q.japanese, bank) : null
+  const d = bank ? v684JaDerive(q.japanese, bank, { wordJoin: true }) : null
   if (d && d.reading && K(d.reading) === K(q.reading || d.reading)) {
     q.reading = d.reading; q.romaji = jaTidyRomaji(d.romaji)
   } else {
@@ -22247,8 +22344,23 @@ async function _zhFinaliseMetadata(pairs, ctx) {
   const out = pairs.map((p, i) => {
     if (!p || !p.chinese) return p
     const target = p.targetId ? c.vocabById.get(p.targetId) : null
-    const r = runMandarinQualityCheckCore(p, target, inv, c.vocab)
+    // v691: the FINAL segments come from the learner lexicon whenever it reads the whole sentence (live v690: a segment
+    // "，我拿吧。" swallowed punctuation and two words; 不多 shown as one word), and the pinyin line is rebuilt from those words, so
+    // the Chinese, the pinyin, the spoken pinyin and the breakdown always agree (no more "zhè ge" / "dōng xi" / "kě yǐ" spacing)
+    let p0 = p
+    if (oct13On()) { try {
+      const PL = { '我': ['wǒmen', 'we / us'], '你': ['nǐmen', 'you (plural)'], '他': ['tāmen', 'they'], '她': ['tāmen', 'they (female)'], '它': ['tāmen', 'they (things)'] }
+      const seg = segmentMandarin(p.chinese, inv.lexicon).reduce((acc, x) => { const pr = acc[acc.length - 1]
+        if (pr && x.surface === '们' && PL[pr.surface]) acc[acc.length - 1] = { ...pr, surface: pr.surface + '们', pinyin: PL[pr.surface][0], english: PL[pr.surface][1] }
+        else acc.push(x); return acc }, []), strip2 = x => String(x || '').replace(/[\s，。？！；、,.?!;:]/g, '')
+      if (seg.length && strip2(seg.map(x => x.surface).join('')) === strip2(p.chinese) && seg.every(x => x.type === 'punct' || x.pinyin)) p0 = { ...p, segments: seg }
+    } catch (e) {} }
+    const r = runMandarinQualityCheckCore(p0, target, inv, c.vocab)
     const q = { ...r.pair, phonetic: r.pair.pinyin }
+    if (oct13On() && Array.isArray(q.segments) && q.segments.length && q.segments.every(x => x.type === 'punct' || x.pinyin)) {
+      const rebuilt = tidyPinyin(q.segments.map(x => x.type === 'punct' ? x.surface : x.pinyin).join(' '))
+      if (rebuilt && validateMandarinPinyin(rebuilt).ok) { q.pinyin = rebuilt; q.phonetic = rebuilt; q.spokenPinyin = tidyPinyin(mandarinSpokenPinyin(rebuilt)) }
+    }
     const probs = []
     if (!validateMandarinPinyin(q.pinyin).ok) probs.push('pinyin invalid: ' + q.pinyin)
     if (!Array.isArray(q.segments) || strip(q.segments.map(s => s.surface || '').join('')) !== strip(q.chinese)) probs.push('segments do not reconstruct the sentence')
@@ -22863,6 +22975,12 @@ function listeningTargetRole(src, lang) {
   if (/\b(here|there|over there|place|where|home|house|station|shop|store|restaurant|school|office|market|room|city)\b/.test(g) || dom === 'places & travel') return 'PLACE'
   if (/^to\s/.test(eng) || /verb/.test(pos) || /^(go|come|eat|drink|see|look|buy|sell|do|make|take|ride|get on|return|go home|meet|use|wait|know|understand|think|like|want|have|exist|be)\b/.test(g)) return 'ACTION'
   if (/adj/.test(pos) || /^(good|bad|big|small|hot|cold|delicious|expensive|cheap|fine|okay|busy|free|fun|easy|difficult|new|old|kind|tired|happy|pretty|beautiful)\b/.test(g)) return 'DESCRIPTION'
+  // v691: the live 13-Oct Thai plan treated เลี้ยว "turn", ตลก "funny" and น่าดู "worth seeing" as plain nouns — so a verb answered
+  // "what is that?" and "funny" described pad thai. Common bare English verbs are ACTIONs; describing words (LN_STATE_GLOSS) DESCRIPTIONs.
+  if (oct13On()) {
+    if (/^(turn|walk|stop|sit|stand|run|help|open|close|carry|bring|send|pay|choose|cross|enter|leave|arrive|rest|sleep|wake up|start|finish|wash|cook|read|write|speak|say|tell|ask|listen|hear|try|visit|travel|drive|reserve|pick|find|look for|go out|go in)\b/.test(g)) return 'ACTION'
+    if (LN_STATE_GLOSS.test(g)) return 'DESCRIPTION'
+  }
   return 'CONTENT'
 }
 const LISTENING_ROLE_HINT = { TIME: 'when something happens (plans, "today / tomorrow …")', PLACE: 'where to go / where something is', ACTION: 'what someone does or will do',
@@ -23981,6 +24099,58 @@ function buildListeningMeaningPlan(scenes, byId, metaOf, o) {
 }
 // the complete abstract conversation is VALIDATED before generation: adjacency, semantic slot filling, target roles,
 // incompatible roles, a digit inside a real number, one placement per target, the turn budget
+// v691 — SEMANTIC COMPATIBILITY of a planned exchange (the 13-Oct v690 Thai Listening plan was "VERBALIZABILITY PROVEN" and "VALID"
+// with ทางเข้าเป็นอย่างไร → แก่มาก, ค่าโดยสารนานเท่าไหร่, ผัดไทยเป็นอย่างไร → ตลกมาก, อันนั้นคือเลี้ยว, พวกคุณชอบขนาด: the proof checked
+// vocabulary, length and target presence only). Classes come from the English gloss; an unknown class is never blocked.
+// Vocabulary permission ≠ grammatical feasibility ≠ semantic compatibility ≠ natural usage — this adds the third.
+const LN_SEM = Object.freeze({
+  FOOD: /\b(food|rice|noodles?|soup|dish|fried|pad thai|curry|fruit|meal|breakfast|lunch|dinner|bread|coffee|tea|juice|beer|sushi|ramen|salad|chicken|pork|beef|fish|egg|dessert|snack|cake|tofu|dumplings?)\b/,
+  PLACE: /\b(entrance|exit|road|way|street|restaurant|shop|store|market|museum|temple|station|airport|hotel|room|house|home|school|office|park|beach|city|village|place|area|building|palace|bridge|corner|sanam luang|toilet|bathroom)\b/,
+  PERSON: /\b(friends?|tourists?|teachers?|person|people|man|woman|child(ren)?|mother|father|you all|staff|driver|doctor|students?|family|boss|neighbou?r)\b/,
+  MONEY: /\b(fare|price|cost|money|baht|yen|yuan|fee|bill|change \(money\))\b/,
+  VEHICLE: /\b(taxi|bus|train|car|songthaew|boat|motorbike|tuk[- ]?tuk|plane|subway|bicycle|bike)\b/,
+  MEASURE: /^(size|number|colou?r|amount|weight|height|length|shape|kind|type)\b/,
+})
+function lnSemClass(t) {
+  const g = String((t && (t.gloss || (t.word && t.word.english))) || '').toLowerCase()
+  if (!g) return null
+  if (/^to\s/.test(g) || (t && t.role === 'ACTION')) return 'VERB'
+  for (const k of ['MEASURE', 'MONEY', 'FOOD', 'VEHICLE', 'PERSON', 'PLACE']) if (LN_SEM[k].test(g)) return k
+  return null
+}
+function lnAdjFits(adj) {      // the subject classes an adjective may describe (null = no restriction known)
+  const g = String((adj && (adj.gloss || (adj.word && adj.word.english))) || '').toLowerCase()
+  if (/\((people|persons?|living things?|animals?)/.test(g) || /^(old \(people|young|handsome|kind|funny|smart|clever|lazy|busy|tired|hungry|full \(after eating|happy|sad|angry|polite|rude)\b/.test(g)) return ['PERSON']
+  if (/^(delicious|tasty|spicy|sweet|salty|sour|bitter|bland|hot \(spicy)\b/.test(g)) return ['FOOD']
+  if (/^(worth seeing|beautiful|crowded|quiet|far|near|clean|dirty)\b/.test(g)) return ['PLACE', 'PERSON', 'VEHICLE', 'FOOD'].filter(k => k !== 'FOOD' || /beautiful|clean|dirty/.test(g))
+  return null
+}
+function lnExchangeSemanticProblems(turns, byId) {
+  const out = []
+  const tgt = id => byId.get(id) || null
+  const subjectOf = t => (t.targetIds || []).map(tgt).filter(x => x && x.role !== 'QUESTION_WORD').find(x => ['FOOD', 'PLACE', 'PERSON', 'MONEY', 'VEHICLE', 'MEASURE'].includes(lnSemClass(x)))
+  ;(turns || []).forEach(a => {
+    // a question about duration must be about something that lasts (a trip, a wait, an event) — never money
+    if (a.actType === 'QUESTION' && a.slot === 'DURATION') { const sub = subjectOf(a); if (sub && ['MONEY', 'PERSON', 'FOOD', 'MEASURE'].includes(lnSemClass(sub))) out.push({ text: a.turnId + ': "how long" cannot be asked about ' + sub.surface + ' (' + sub.gloss + ') — a ' + lnSemClass(sub).toLowerCase() + ' has no duration', ids: [sub.id] }) }
+    // an abstract measure word (size, colour, number) needs a concrete referent in its own exchange
+    const q = a.respondsTo ? (turns || []).find(x => x.turnId === a.respondsTo) : null
+    const exIds = (a.targetIds || []).concat(q ? q.targetIds || [] : [])
+    ;(a.targetIds || []).map(tgt).filter(x => x && lnSemClass(x) === 'MEASURE').forEach(m => {
+      const concrete = exIds.map(tgt).some(x => x && x !== m && ['FOOD', 'PLACE', 'VEHICLE'].includes(lnSemClass(x)))
+      if (!concrete && !(q && /THING|STATE/.test(String(q.slot || '')) && (q.targetIds || []).map(tgt).some(x => x && ['FOOD', 'PLACE', 'VEHICLE'].includes(lnSemClass(x))))) out.push({ text: a.turnId + ': ' + m.surface + ' (' + m.gloss + ') has no concrete thing to measure in this exchange', ids: [m.id] })
+    })
+    if (!q) return
+    // "how is X?" → the describing word must fit X (แก่ "old (people)" cannot describe an entrance; ตลก "funny" is not a taste)
+    if (q.actType === 'QUESTION' && q.slot === 'STATE') {
+      const sub = subjectOf(q), sc = sub ? lnSemClass(sub) : null
+      if (sc) (a.targetIds || []).map(tgt).filter(Boolean).forEach(adj => { const fits = lnAdjFits(adj)
+        if (fits && !fits.includes(sc)) out.push({ text: a.turnId + ': ' + adj.surface + ' (' + adj.gloss + ') cannot describe ' + sub.surface + ' (' + sub.gloss + ') — "how is the ' + String(sub.gloss).split(/[;,(]/)[0].trim() + '?" needs a word that fits a ' + sc.toLowerCase(), ids: [adj.id] }) })
+    }
+    // "what is that?" is answered with a THING — a verb is not a thing (อันนั้นคือเลี้ยว "that is turn")
+    if (q.actType === 'QUESTION' && q.slot === 'THING' && a.actType === 'ANSWER') (a.targetIds || []).map(tgt).filter(x => x && lnSemClass(x) === 'VERB').forEach(v => out.push({ text: a.turnId + ': the verb ' + v.surface + ' (' + v.gloss + ') cannot be the THING that answers "what?"', ids: [v.id] }))
+  })
+  return out
+}
 function validateListeningMeaningPlan(turns, scenes, byId, metaOf, o) {
   const c = o || {}
   const problems = [], byTarget = new Map()
@@ -24006,6 +24176,7 @@ function validateListeningMeaningPlan(turns, scenes, byId, metaOf, o) {
     if (c.verbal && t.targetIds.length && !t.provenFrame) bad(t.turnId + ': NOT_VERBALIZED — no authorised realisation proven for ' + t.targetIds.map(id => (byId.get(id) || {}).surface).join('+'), t.targetIds)
   })
   seen.forEach((k, id) => { if (k > 1) bad('target ' + ((byId.get(id) || {}).surface || id) + ' placed ' + k + ' times', [id]) })
+  if (oct13On()) lnExchangeSemanticProblems(turns, byId).forEach(x => bad('SEMANTIC_MISMATCH ' + x.text, x.ids))
   if (c.turnsMax && (turns || []).length > c.turnsMax) bad('TURN_BUDGET ' + turns.length + ' planned turns > ' + c.turnsMax, [])
   return { valid: !problems.length, problems, byTarget }
 }
@@ -26280,7 +26451,7 @@ async function _lnComposeByScenes(env) {
           G.registerTransform = true; G.atomicRepairCalls++
           await registerTransform(cand, sp, st.cov)
           st = await phaseIssues(cand, sp)
-          log && log('🛂 ' + scenePreflightLog(sp, st.pf, 'after scene-level register transformation') + (st.nat.length ? ' naturalness=FAIL(' + st.nat.length + ')' : ''))
+          log && log('🛂 ' + scenePreflightLog(sp, st.pf, 'after scene-level register transformation') + (st.nat.length ? ' naturalness=FAIL(' + st.nat.length + ')' + (oct13On() ? ' → NOT COMMITTED (structure passed; the semantic gate did not)' : '') : ''))
           if (st.clean) break
           if (st.phase) { G.escalations.push('PHASE (' + (st.pf.reasons.join('; ') || 'structure') + ')'); break }
           continue
@@ -26307,7 +26478,7 @@ async function _lnComposeByScenes(env) {
           markAttempted(preX, bX.attempted)
           G.exchangeRepairCalls += Math.max(1, (tel.LISTENING_ATOMIC_REPAIR_CALLS || 0) - b0)
           st = await phaseIssues(cand, sp)
-          log && log('🛂 ' + scenePreflightLog(sp, st.pf, 'after exchange regeneration') + (st.nat.length ? ' naturalness=FAIL(' + st.nat.length + ')' : ''))
+          log && log('🛂 ' + scenePreflightLog(sp, st.pf, 'after exchange regeneration') + (st.nat.length ? ' naturalness=FAIL(' + st.nat.length + ')' + (oct13On() ? ' → NOT COMMITTED (structure passed; the semantic gate did not)' : '') : ''))
           continue
         }
         if (G.atomicRepairCalls + G.exchangeRepairCalls > G.generationCalls || repeated.length) {
@@ -26330,7 +26501,7 @@ async function _lnComposeByScenes(env) {
         if (cls === 'EXCHANGE') G.exchangeRepairCalls += spent; else G.atomicRepairCalls += spent
         st = await phaseIssues(cand, sp)
         log && log('🎧 SCENE_REQUIRED_COVERAGE ' + sp.sceneId + ' (after atomic repair) required=' + sp.requiredTargetIds.length + ' heard=' + st.cov.heard.length + (st.cov.missing.length ? ' missing=[' + st.cov.missing.map(id => byId.get(id).surface).join(', ') + ']' : ' PASS'))
-        log && log('🛂 ' + scenePreflightLog(sp, st.pf, 'after ' + cls.toLowerCase() + ' repair') + (st.nat.length ? ' naturalness=FAIL(' + st.nat.length + ')' : ''))
+        log && log('🛂 ' + scenePreflightLog(sp, st.pf, 'after ' + cls.toLowerCase() + ' repair') + (st.nat.length ? ' naturalness=FAIL(' + st.nat.length + ')' + (oct13On() ? ' → NOT COMMITTED (structure passed; the semantic gate did not)' : '') : ''))
       }
       if (st.clean) { _lnCommitTransition.set(cand, { tr: st.transition, natUnverified: st.natUnverified }); committed = cand; if (gen === 1 && !G.atomicRepairCalls && !G.exchangeRepairCalls) tel.LISTENING_SCENES_COMMITTED_FIRST_PASS++; else tel.LISTENING_SCENES_COMMITTED_AFTER_REPAIR++; break }
       last = { cand, st }
@@ -33798,11 +33969,16 @@ function loadCanonicalThaiPhonetic(ph, thai) {
 // converted nàwi. หน่อย nòi · น้อย nói · ร้อย rói · ค่อย khôi · ปล่อย bplòi · อร่อย à-ròi · ซอย soi · ลอย loi. DISPLAY ONLY: the stored
 // dictionary, its ids and every saved track are untouched (an old track keeps the text it was saved with). โดย dooi is a different
 // vowel (โ-ย) and is not changed.
+// v691: a compound shown with a vowel its own component never has (ขนาดนั้น "khà-nàt-nán" while ขนาด is khà-nàat). Display only; the
+// other compound/component differences in the bank are mostly real (น้ำ is shortened in compounds) and are listed for review in
+// dev/sandbox/reports/2026-10-13-thai-compound-phonetics.txt rather than changed.
+const THAI_PHONETIC_DISPLAY_FIXES = Object.freeze({ 'ขนาดนั้น': 'khà-nàat-nán' })
 const _TH_A2O = { 'a': 'o', '\u00e0': '\u00f2', '\u00e1': '\u00f3', '\u00e2': '\u00f4', '\u01ce': '\u01d2' }
 function thaiOiDisplay(ph, thai) {
   if (!ph || typeof ph !== 'string' || (typeof oct13On === 'function' && !oct13On())) return ph
   let out = ph.replace(/([a\u00e0\u00e1\u00e2\u01ce])a?w[yi](?![a-z\u0300-\u036f])/g, (m0, a) => _TH_A2O[a] + 'i')
   if (thai && /ลอย/.test(thai)) out = out.replace(/(^|[\s-])looi(?=$|[\s-])/g, '$1loi')
+  if (thai && THAI_PHONETIC_DISPLAY_FIXES[thai]) out = THAI_PHONETIC_DISPLAY_FIXES[thai]
   return out
 }
 // VALIDATOR, not a mutator: reports what the rule-based tone engine would change,
@@ -36606,6 +36782,7 @@ async function aiQcEvaluateGroup(group, allPairs, engine, apiKey, model) {
     'vague or misleading cue, topic jump — but salvageable\n' +
     '- "replace": too broken — ungrammatical, meaningless, or unrelated to the target\n\n' +
     'The learner is a beginner: simple repetitive sentences are GOOD and should be "clean".\n' +
+    (oct13On() ? ({ th: THAI_NATURALNESS_GUIDE.replace('write the natural form', 'flag these'), ja: JA_NATURALNESS_GUIDE.replace('write the natural form', 'flag these'), zh: ZH_NATURALNESS_GUIDE.replace('write the natural form', 'flag these') }[engine.language] || '') : '') +
     (oct13On() ? 'Judge each line IN CONTEXT: it must make sense said by that speaker at that moment (it answers, follows or prompts the line before). ' +
     'A correct sentence that nobody would say there (a statement out of the blue, a question answered by the same speaker, a greeting answered with "mm") is "improve" — name that line.\n' : '') +
     'Return ONLY JSON, no markdown.'
@@ -36658,6 +36835,9 @@ async function aiQcRegenerateGroup(group, allPairs, engine, apiKey, model, reaso
     'Context before:\n' + (prev.map(fmt).join('\n') || '  (start)') + '\n\n' +
     (group._whole ? 'Whole group (keep the other lines as they are):\n' + group._whole.pairs.map(fmt).join('\n') + '\n\nRewrite ONLY these line(s):\n' : 'Current pairs:\n') + group.pairs.map(fmt).join('\n') + '\n\n' +
     engine.registerContract() + '\n' + engine.allowedVocabularyLine() + '\n' +
+    // v691: the learner's LENGTH rule is stated to the repair too — live v690 Mandarin lost 17 repair calls to LEVEL_COMPLEXITY_FAIL
+    // (the rewrite was longer than the belt allows) and Japanese kept an 11-unit repair
+    (group._lengthRule ? 'LENGTH: ' + group._lengthRule + '. A rewrite is never longer than the line it replaces needs to be.\n' : '') +
     'Every sentence must contain "' + group.targetWord + '".\n' +
     'The "prompt" field is a plain-English cue describing what the speaker says. Never quote the ' +
     engine.labelPronunciation + ' or name the target word in it.\n' +
@@ -36769,10 +36949,12 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
   // Step 2/3 — group evaluation and repair
   // v651 §8 — the group's target comes from the pairs' authoritative provenance (targetId), never from
   // an optional text field; a group without it cannot be repaired ("target undefined not present").
+  let _lengthRule = null
+  if (oct13On()) { try { _lengthRule = getLearnerComplexityContract({ lang: engine.language, vocab }).repairRule } catch (e) {} }
   const groups = aiQcGroups(all).map(g => {
     const tid = (g.pairs.find(p => p && p.targetId != null) || {}).targetId
     const target = tid != null ? (vocab || []).find(w => w.id === tid) : null
-    return { ...g, targetId: tid != null ? tid : null, target: target || null }
+    return { ...g, targetId: tid != null ? tid : null, target: target || null, _lengthRule }
   })
   onLog && onLog('\u25B6 Evaluating ' + groups.length + ' target groups\u2026')
   for (let gi = 0; gi < groups.length; gi++) {
@@ -36936,6 +37118,10 @@ function japaneseQcEngine(inv, vocab, registerId) {
       if (!cv.ok) return { ok:false, problems:['untaught vocabulary: ' + cv.unknown.join(' ')] }
       const st = structuralValidateJapanesePair(pair)
       if (!st.ok) return { ok:false, problems: st.problems }
+      // v691: a QC repair is held to the learner's LENGTH contract like every other candidate (live 13-Oct v690: a repair turned
+      // はい、ごめん、あそこの店で食べよう。 into the 11-unit はい、今行く。あそこの店で一緒に食べよう。 — hardMax 7 — and it was kept)
+      if (oct13On()) { const _cc = getLearnerComplexityContract({ lang: 'ja', vocab }), _an = hardComplexityAnalyse(_cc, 'ja', pair)
+        if (_an.overHardMax) return { ok: false, problems: ['LEVEL_COMPLEXITY_FAIL: ' + _an.units + ' Japanese content units > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')'] } }
       // FULL GATE, fail-closed. Target + allowed vocab + structure is NOT enough:
       // that combination accepted 日本語行く？, 水行く？ and おいしいだよ。 Repair is
       // atomic — reading, romaji and segments are rebuilt from the final Japanese
@@ -41746,6 +41932,19 @@ function jaPragmaticProblems(jp, target) {
 }
 // v671 §B3 — OBJECTIVE cue accuracy for Japanese (unambiguous evidence only): a question cued as a statement or the reverse,
 // and DESIRE (〜たい / 欲しい) vs a plain statement or opinion ("I want to eat" ≠ "I eat" / "I like")
+// v691: a question-word question written with 。 is still a question — 今日の昼、どこで食べよう。 = "Where shall we eat at lunch today?"
+// (live v690: translated "Let's eat somewhere at lunch today."). Not a question: indefinites (どこか, 何も, いつも, 誰でも), embedded
+// questions (どう行くか、まだ分からない — a か after the question word that does not end the sentence), どうぞ / どうも.
+function jaWhQuestion(jp) {
+  const s = String(jp || '').trim()
+  const m = /(どこ|何|なに|なん|誰|だれ|いつ|どう|どれ|どっち|どちら|なんで|なぜ|いくら)/.exec(s)
+  if (!m) return false
+  const rest = s.slice(m.index + m[0].length)
+  if (/^(か|も|でも|ぞ)/.test(rest) || /^(も|ぞ)/.test(rest) && m[0] === 'どう') return false
+  if (m[0] === 'どう' && /^(も|ぞ)/.test(rest)) return false
+  if (/か(?![。！!？?]?$)/.test(rest)) return false
+  return true
+}
 function jaCueFormProblems(p) {
   const jp = String(p && p.japanese || '').trim(), cue = String(p && p.prompt || '').trim()
   // v683 teaching plan: "Won't you ride together? (invitation)" is a question — a trailing note in brackets is not the sentence
@@ -41755,7 +41954,9 @@ function jaCueFormProblems(p) {
   const out = []
   // v672 §3 — a sentence-final か is a Japanese question / proposal even when it is written with 。 (行こうか。 = "shall we go?",
   // 食べようか。 = "shall we eat?", 行かないか。 = "won't you come?") — the live log rejected those as "statement vs question"
-  const jpQ = /[？?]$/.test(jp) || /か[。！!]?$/.test(jp), enQ = /[?？]\s*$/.test(en)
+  // v691: a question-word question written with 。 counts only when the English has no question word at all (the v690 case: どこで食べよう。
+  // → "Let's eat somewhere…"); an English that keeps the question word ("that one is where…") is left to the other checks
+  const jpQ = /[？?]$/.test(jp) || /か[。！!]?$/.test(jp) || (oct13On() && jaWhQuestion(jp) && !/\b(where|what|who|when|how|which|why)\b/i.test(en)), enQ = /[?？]\s*$/.test(en)
   if (cue && jpQ && enQ && CUE_SAYS_RE.test(cue) && !CUE_ASKS_RE.test(cue) && !/^\s*(suggest|offer|invite|propose)/i.test(cue)) out.push('CUE_FORM_MISMATCH: the Japanese is a question but the cue asks for a statement ("' + cue.slice(0, 60) + '")')
   if (cue && !jpQ && !enQ && /^\s*ask\b|\basks\b|\bwants to know\b/i.test(cue) && !CUE_SAYS_RE.test(cue) && !(teachingPlanOn() && /\b(say|reply|answer|respond|tell (them|him|her))\b/i.test(cue))) out.push('CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question ("' + cue.slice(0, 60) + '")')
   // a Japanese question translated as a statement; the reverse only for a plain 。 statement (ね / よね / でしょ / じゃない
@@ -42135,7 +42336,7 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
       (teachingPlanOn()
         ? (tpSetSituationPool('ja', (inv.allContent || []).map(w => w.english)), teachingPlanLine(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) }))) + slots.map(s => '  • recall ' + s.recallIndex + ' = application ' + s.recallIndex + ': ' + tpUseFor(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) }), s.recallIndex).text).join('\n') + '\n' + jaTpSpeakersLine() + TP_CUE_DEFINITION + '\n'
         : slots.map(s => '  • ' + (JA_RECALL_VARIATION[s.recallIndex] || ('recall ' + s.recallIndex + ' of 3 — another natural use'))).join('\n') + '\n') +
-      'Do not force unnatural variation just to be different. ' + range.contract.promptRule + '\n' + vocabStagePromptRule((inv.allContent || []).length) +
+      'Do not force unnatural variation just to be different. ' + range.contract.promptRule + '\n' + vocabStagePromptRule((inv.allContent || []).length) + (oct13On() ? JA_NATURALNESS_GUIDE : '') +
     (!teachingPlanOn() && (c.scenePremise || target._scenePurpose || target._sceneLocalPremise) ? (c.scenePremise ? 'LESSON THEME (broad): ' + c.scenePremise + '\n' : '') +
       (target._sceneLocalPremise || target._scenePurpose ? 'THIS SCENE: ' + (target._sceneLocalPremise || '') + (target._scenePurpose ? (target._sceneLocalPremise ? ' (' + target._scenePurpose + ')' : target._scenePurpose) : '') +
       (teachingPlanOn()

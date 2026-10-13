@@ -1,0 +1,345 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v690 language=th path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=th)
+🧭 LISTENING_FEASIBILITY PASS language=th · pool=150 candidate(s) in SRS order · authorised support=876 word(s) · selected 30 · deferred 2: เพราะ (plan: UNVERBALIZABLE เพราะ — target not realisable in the frame); ว่า (plan: UNVERBALIZABLE ว่า — target not realisable in the frame) · meaning plan VALID (37 turns) — checked BEFORE the targets are frozen
+🧩 LISTENING_VERBALIZABILITY PROVEN · 37 planned turn(s) carry a proven authorised realisation (closed vocabulary + hardMax + target presence, both sides of every exchange) — no target enters the meaning plan without one
+⏭ LISTENING_TARGET_DEFERRED target=676 เพราะ reason=UNVERBALIZABLE เพราะ — target not realisable in the frame stage=plan srsObligationPreserved=true
+⏭ LISTENING_TARGET_DEFERRED target=744 ว่า reason=UNVERBALIZABLE ว่า — target not realisable in the frame stage=plan srsObligationPreserved=true
+🧭 LISTENING_DEFERRED_SRS ids=[676,744] — skipped words keep their SRS obligation (due date untouched; the next Revision / Daily selection still takes them)
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(th) = selectThaiRevisionTargets → freezeThaiTargetSelection
+🎧 LISTENING_SELECTED_TARGET_IDS=[779,359,1233,1479,1524,1536,1539,821,839,653,717,719,730,737,761,858,750,817,840,841,860,667,669,672,686,787,815,847,712,726]
+🎧 LISTENING_TRACK_START language=th trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=th introducedContent=876 targets=30 authorised=906 snapshot=qp4xjg (frozen at generation start) · Layer A lexicon 1882 entries (segmentation only — not permission)
+📏 LEVEL belt=9th Kyu preferred=4–6 hardMax=8 · LEVEL 9th Kyu · target 4–6 · max 8 (Thai words, rankProgressFor) · Listening: no minimum, aim 4–6, no turn above 8
+📚 VOCAB INVENTORY introducedContent=876 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Thai particles + structural markers
+🧭 LISTENING_PLANNER_INPUT language=th belt=9th Kyu preferredRange=4–6 hardMax=8 selectedTargets=30 learnerAuthorizedInventory=876
+🧵 LISTENING_ONE_CONVERSATION story=OPEN → DECIDE → ARRANGE → MOVE → DO → CLOSE · 6 internal phase(s) of ONE conversation · planned 37 turns (target 28–36, allowed 24–44)
+🧵 CONVERSATION_CONTRACT speakers=A = Speaker A (friend) · B = Speaker B (friend) · relationship=friends · objective=spend time together: meet → decide where to go → agree the time → go there → do / eat / buy → say goodbye · ending=they finish what they set out to do and say goodbye
+🧵 PHASE_CONTRAST LS3 (ARRANGE) time words สิบโมงเช้า / สิบเอ็ดโมงเช้า → proposal + counter-proposal; the LAST is the agreed value
+🧩 LISTENING_VERBALIZABILITY PROVEN · 37 planned turn(s) carry a proven authorised realisation · blueprints: buildThaiListeningBlueprints → ONE shared planner
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t1 QUESTION [คุณอายุเท่าไหร่] proven="คุณอายุเท่าไหร่ครับ"
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t3 QUESTION [เป็นอย่างไร+ทางเข้า] proven="ทางเข้าเป็นอย่างไรครับ"
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t4 ANSWER [แก่] proven="แก่มากค่ะ"
+   🧩 LISTENING_TARGET_TRACE LS1 OPEN t5 STATEMENT [ขนาด+พวกคุณ] proven="พวกคุณชอบขนาดครับ"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t1 QUESTION [ไปที่] proven="ไปที่ไหนครับ"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t2 ANSWER [ที่นั่น] proven="ไปที่นั่นค่ะ"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t3 QUESTION [สนามหลวง] proven="สนามหลวงเป็นอย่างไรครับ"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t4 ANSWER [น่าดู] proven="น่าดูมากค่ะ"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t5 QUESTION [นักท่องเที่ยว] proven="เรียกนักท่องเที่ยวไหมครับ"
+   🧩 LISTENING_TARGET_TRACE LS2 DECIDE t7 STATEMENT [พิพิธภัณฑสถานแห่งชาติ] proven="ไปพิพิธภัณฑสถานแห่งชาติครับ"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t1 PROPOSAL [สิบโมงเช้า] proven="สิบโมงเช้าไปกันไหมครับ"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t2 COUNTERPROPOSAL [สิบเอ็ดโมงเช้า] proven="สิบเอ็ดโมงเช้าดีกว่าค่ะ"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t4 QUESTION [รถสองแถว+คุ้ม] proven="รถสองแถวคุ้มไหมครับ"
+   🧩 LISTENING_TARGET_TRACE LS3 ARRANGE t7 ANSWER [เลี้ยว+คือ] proven="อันนั้นคือเลี้ยวค่ะ"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t1 QUESTION [นานเท่าไหร่+ค่าโดยสาร] proven="ค่าโดยสารนานเท่าไหร่ครับ"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t3 QUESTION [ทาง] proven="ชอบทางไหมครับ"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t4 ANSWER [ไม่เชิง] proven="ไม่เชิงชอบค่ะ"
+   🧩 LISTENING_TARGET_TRACE LS4 MOVE t6 ANSWER [รถแท็กซี่] proven="เห็นรถแท็กซี่ค่ะ"
+   🧩 LISTENING_TARGET_TRACE LS5 DO t1 PROPOSAL [ทานกันเลย] proven="ทานกันเลยครับ"
+   🧩 LISTENING_TARGET_TRACE LS5 DO t3 STATEMENT [ร้านอาหาร] proven="ไปร้านอาหารครับ"
+   🧩 LISTENING_TARGET_TRACE LS5 DO t4 REACTION [แย่แล้ว] proven="แย่แล้วค่ะ"
+   🧩 LISTENING_TARGET_TRACE LS5 DO t5 QUESTION [ผัดไทย] proven="ผัดไทยเป็นอย่างไรครับ"
+   🧩 LISTENING_TARGET_TRACE LS5 DO t6 ANSWER [ตลก] proven="ตลกมากค่ะ"
+   🧩 LISTENING_TARGET_TRACE LS6 CLOSE t1 QUESTION [เบอร์โทรศัพท์] proven="เบอร์โทรศัพท์อะไรครับ"
+   🧩 LISTENING_TARGET_TRACE LS6 CLOSE t3 FAREWELL [โชคดี] proven="โชคดีครับ"
+🧠 LISTENING_MEANING_PLAN VALID · 37 planned turns (aim 28–36) · story OPEN → DECIDE → ARRANGE → MOVE → DO → CLOSE · 13 statement merge(s) for the turn budget — validated BEFORE any language is generated
+   T1 A QUESTION(age) — A asks B how old (using คุณอายุเท่าไหร่ "how old are you?") · now — where they meet ⟦proven: คุณอายุเท่าไหร่ครับ⟧
+   T2 B ANSWER ↩T1 — B answers with an age ⟨must give an age⟩ · now — where they meet ⟦proven: สิบปีค่ะ⟧
+   T3 A QUESTION(how it is) — A asks B how it is (using เป็นอย่างไร "how is it?" + ทางเข้า "entrance") · now — where they meet ⟦proven: ทางเข้าเป็นอย่างไรครับ⟧
+   T4 B ANSWER ↩T3 — B answers with how it is (using แก่ "old (people, living things)") ⟨must give how it is⟩ · now — where they meet ⟦proven: แก่มากค่ะ⟧
+   T5 A STATEMENT — A tells B something about ขนาด "size" + พวกคุณ "you all" · now — where they meet ⟦proven: พวกคุณชอบขนาดครับ⟧
+   T6 B REACTION ↩T5 — B reacts ⟨must give a reaction to it⟩ · now — where they meet ⟦proven: จริงเหรอคะ⟧
+   T7 A QUESTION(place) — A asks B where (a place) (using ไปที่ "go to") · now — still where they meet ⟦proven: ไปที่ไหนครับ⟧
+   T8 B ANSWER ↩T7 — B answers with a place (using ที่นั่น "there") ⟨must give a place⟩ · now — still where they meet ⟦proven: ไปที่นั่นค่ะ⟧
+   T9 A QUESTION(how it is) — A asks B how it is (using สนามหลวง "Sanam Luang") · now — still where they meet ⟦proven: สนามหลวงเป็นอย่างไรครับ⟧
+   T10 B ANSWER ↩T9 — B answers with how it is (using น่าดู "worth seeing") ⟨must give how it is⟩ · now — still where they meet ⟦proven: น่าดูมากค่ะ⟧
+   T11 A QUESTION(yes/no) — A asks B a yes / no question (using นักท่องเที่ยว "tourist") · now — still where they meet ⟦proven: เรียกนักท่องเที่ยวไหมครับ⟧
+   T12 B ANSWER ↩T11 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: เรียกค่ะ⟧
+   T13 A STATEMENT — A tells B something about พิพิธภัณฑสถานแห่งชาติ "national museum" · now — still where they meet ⟦proven: ไปพิพิธภัณฑสถานแห่งชาติครับ⟧
+   T14 B REACTION ↩T13 — B reacts ⟨must give a reaction to it⟩ · now — still where they meet ⟦proven: จริงเหรอคะ⟧
+   T15 A PROPOSAL — A suggests สิบโมงเช้า "10 AM" · now — planning when to go (later today) ⟦proven: สิบโมงเช้าไปกันไหมครับ⟧
+   T16 B COUNTERPROPOSAL ↩T15 — B suggests สิบเอ็ดโมงเช้า "11 AM" instead — this becomes the agreed value ⟨must give a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)⟩ · now — planning when to go (later today) ⟦proven: สิบเอ็ดโมงเช้าดีกว่าค่ะ⟧
+   T17 A ACCEPT ↩T16 — A agrees ⟨must give agreement with the counter-proposal — that value is now agreed⟩ · now — planning when to go (later today) ⟦proven: ได้สิบเอ็ดโมงเช้านะครับ⟧
+   T18 A QUESTION(yes/no) — A asks B a yes / no question (using รถสองแถว "songthaew" + คุ้ม "to be worthwhile") · now — planning when to go (later today) ⟦proven: รถสองแถวคุ้มไหมครับ⟧
+   T19 B ANSWER ↩T18 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — planning when to go (later today) ⟦proven: คุ้มค่ะ⟧
+   T20 A QUESTION(what) — A asks B what · now — planning when to go (later today) ⟦proven: อันนั้นอะไรครับ⟧
+   T21 B ANSWER ↩T20 — B answers with the thing asked about (using เลี้ยว "turn" + คือ "is (identifying") ⟨must give the thing asked about⟩ · now — planning when to go (later today) ⟦proven: อันนั้นคือเลี้ยวค่ะ⟧
+   T22 A QUESTION(how long) — A asks B how long (using นานเท่าไหร่ "how long?" + ค่าโดยสาร "fare") · later — on the way, after agreeing the time ⟦proven: ค่าโดยสารนานเท่าไหร่ครับ⟧
+   T23 B ANSWER ↩T22 — B answers with a length of time ⟨must give a length of time⟩ · later — on the way, after agreeing the time ⟦proven: สิบนาทีค่ะ⟧
+   T24 A QUESTION(yes/no) — A asks B a yes / no question (using ทาง "way") · later — on the way, after agreeing the time ⟦proven: ชอบทางไหมครับ⟧
+   T25 B ANSWER ↩T24 — B answers with yes / no (or a qualified answer) (using ไม่เชิง "not exactly") ⟨must give yes / no (or a qualified answer)⟩ · later — on the way, after agreeing the time ⟦proven: ไม่เชิงชอบค่ะ⟧
+   T26 A QUESTION(what) — A asks B what · later — on the way, after agreeing the time ⟦proven: เห็นอะไรครับ⟧
+   T27 B ANSWER ↩T26 — B answers with the thing asked about (using รถแท็กซี่ "taxi") ⟨must give the thing asked about⟩ · later — on the way, after agreeing the time ⟦proven: เห็นรถแท็กซี่ค่ะ⟧
+   T28 A PROPOSAL — A suggests ทานกันเลย "let's eat" · later — at the place they chose ⟦proven: ทานกันเลยครับ⟧
+   T29 B ACCEPT ↩T28 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · later — at the place they chose ⟦proven: ได้ค่ะ⟧
+   T30 A STATEMENT — A tells B something about ร้านอาหาร "restaurant" · later — at the place they chose ⟦proven: ไปร้านอาหารครับ⟧
+   T31 B REACTION ↩T30 — B reacts (using แย่แล้ว "oh no!") ⟨must give a reaction to it⟩ · later — at the place they chose ⟦proven: แย่แล้วค่ะ⟧
+   T32 A QUESTION(how it is) — A asks B how it is (using ผัดไทย "pad thai") · later — at the place they chose ⟦proven: ผัดไทยเป็นอย่างไรครับ⟧
+   T33 B ANSWER ↩T32 — B answers with how it is (using ตลก "funny") ⟨must give how it is⟩ · later — at the place they chose ⟦proven: ตลกมากค่ะ⟧
+   T34 A QUESTION(phone number) — A asks B for the phone number (using เบอร์โทรศัพท์ "phone number") · at the end — as they part ⟦proven: เบอร์โทรศัพท์อะไรครับ⟧
+   T35 B ANSWER ↩T34 — B answers with the phone number (a few digits) ⟨must give the phone number (a few digits)⟩ · at the end — as they part ⟦proven: ห้าสามสามสองสองหนึ่งค่ะ⟧
+   T36 A FAREWELL — A starts saying goodbye (using โชคดี "good luck") · at the end — as they part ⟦proven: โชคดีครับ⟧
+   T37 B FAREWELL ↩T36 — B says goodbye back ⟨must give a farewell back⟩ · at the end — as they part ⟦proven: โชคดีค่ะ⟧
+🎧 LISTENING_COVERAGE_PLAN 30/30 assigned · 6 scenes · ≤7 targets per scene · planned 37 turns (max 44, headroom target ≤36, compact scenes)
+  LISTENING_SCENE_PLAN LS1 phase=OPEN required=[คุณอายุเท่าไหร่, แก่, เป็นอย่างไร, พวกคุณ, ทางเข้า, ขนาด] expectedTurns=6 max=7 · A and B meet, greet each other and start talking about today
+  LISTENING_SCENE_PLAN LS2 phase=DECIDE required=[ไปที่, น่าดู, สนามหลวง, พิพิธภัณฑสถานแห่งชาติ, นักท่องเที่ยว, ที่นั่น] expectedTurns=8 max=9 · they decide what to do and where to go together
+  LISTENING_SCENE_PLAN LS3 phase=ARRANGE required=[สิบโมงเช้า, สิบเอ็ดโมงเช้า, คือ, รถสองแถว, เลี้ยว, คุ้ม] expectedTurns=7 max=8 · they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed
+  LISTENING_SCENE_PLAN LS4 phase=MOVE required=[นานเท่าไหร่, ทาง, รถแท็กซี่, ค่าโดยสาร, ไม่เชิง] expectedTurns=6 max=7 · they set off and get there (the way, the transport) and arrive
+  LISTENING_SCENE_PLAN LS5 phase=DO required=[ร้านอาหาร, ทานกันเลย, ผัดไทย, แย่แล้ว, ตลก] expectedTurns=6 max=7 · they do the main activity there: eat, look around or pick something
+  LISTENING_SCENE_PLAN LS6 phase=CLOSE required=[เบอร์โทรศัพท์, โชคดี] expectedTurns=4 max=5 · they wrap up the day and say goodbye
+🧭 SCENE_LANGUAGE_FEASIBILITY LS1 PASS situation="A and B meet, greet each other and start talking about today" needs=[hello]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS2 PASS situation="they decide what to do and where to go together" needs=[go]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS3 PASS situation="they arrange WHEN to go and how long it will take — one time is agreed and then stays agreed" needs=[time, go]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS4 PASS situation="they set off and get there (the way, the transport) and arrive" needs=[go, way]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS5 PASS situation="they do the main activity there: eat, look around or pick something" needs=[eat]
+🧭 SCENE_LANGUAGE_FEASIBILITY LS6 PASS situation="they wrap up the day and say goodbye"
+🧭 SCENE_INTENT_SKELETON LS1 VALID · 1. A QUESTION(age) — uses คุณอายุเท่าไหร่ ⟨expects an age⟩ · 2. B ANSWER(age) (to 1) ⟨must give an age⟩ · 3. A QUESTION(how it is) — uses เป็นอย่างไร+ทางเข้า ⟨expects how it is⟩ · 4. B ANSWER(how it is) (to 3) — uses แก่ ⟨must give how it is⟩ · 5. A STATEMENT — uses ขนาด+พวกคุณ · 6. B REACTION (to 5) ⟨must give a reaction to it⟩
+🧭 SCENE_INTENT_SKELETON LS2 VALID · 1. A QUESTION(place) — uses ไปที่ ⟨expects a place⟩ · 2. B ANSWER(place) (to 1) — uses ที่นั่น ⟨must give a place⟩ · 3. A QUESTION(how it is) — uses สนามหลวง ⟨expects how it is⟩ · 4. B ANSWER(how it is) (to 3) — uses น่าดู ⟨must give how it is⟩ · 5. A QUESTION(yes/no) — uses นักท่องเที่ยว ⟨expects yes / no (or a qualified answer)⟩ · 6. B ANSWER(yes/no) (to 5) ⟨must give yes / no (or a qualified answer)⟩ · 7. A STATEMENT — uses พิพิธภัณฑสถานแห่งชาติ · 8. B REACTION (to 7) ⟨must give a reaction to it⟩
+🧭 SCENE_INTENT_SKELETON LS3 VALID · 1. A PROPOSAL — uses สิบโมงเช้า ⟨expects accept / refuse / counter-proposal⟩ · 2. B COUNTERPROPOSAL (to 1) — uses สิบเอ็ดโมงเช้า ⟨must give a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)⟩ · 3. A ACCEPT (to 2) ⟨must give agreement with the counter-proposal — that value is now agreed⟩ · 4. A QUESTION(yes/no) — uses รถสองแถว+คุ้ม ⟨expects yes / no (or a qualified answer)⟩ · 5. B ANSWER(yes/no) (to 4) ⟨must give yes / no (or a qualified answer)⟩ · 6. A QUESTION(what) ⟨expects the thing asked about⟩ · 7. B ANSWER(what) (to 6) — uses เลี้ยว+คือ ⟨must give the thing asked about⟩
+🧭 SCENE_INTENT_SKELETON LS4 VALID · 1. A QUESTION(how long) — uses นานเท่าไหร่+ค่าโดยสาร ⟨expects a length of time⟩ · 2. B ANSWER(how long) (to 1) ⟨must give a length of time⟩ · 3. A QUESTION(yes/no) — uses ทาง ⟨expects yes / no (or a qualified answer)⟩ · 4. B ANSWER(yes/no) (to 3) — uses ไม่เชิง ⟨must give yes / no (or a qualified answer)⟩ · 5. A QUESTION(what) ⟨expects the thing asked about⟩ · 6. B ANSWER(what) (to 5) — uses รถแท็กซี่ ⟨must give the thing asked about⟩
+🧭 SCENE_INTENT_SKELETON LS5 VALID · 1. A PROPOSAL — uses ทานกันเลย ⟨expects accept / refuse / counter-proposal⟩ · 2. B ACCEPT (to 1) ⟨must give accept / refuse / counter-proposal⟩ · 3. A STATEMENT — uses ร้านอาหาร · 4. B REACTION (to 3) — uses แย่แล้ว ⟨must give a reaction to it⟩ · 5. A QUESTION(how it is) — uses ผัดไทย ⟨expects how it is⟩ · 6. B ANSWER(how it is) (to 5) — uses ตลก ⟨must give how it is⟩
+🧭 SCENE_INTENT_SKELETON LS6 VALID · 1. A QUESTION(phone number) — uses เบอร์โทรศัพท์ ⟨expects the phone number (a few digits)⟩ · 2. B ANSWER(phone number) (to 1) ⟨must give the phone number (a few digits)⟩ · 3. A FAREWELL — uses โชคดี ⟨expects a farewell back⟩ · 4. B FAREWELL (to 3) ⟨must give a farewell back⟩
+🎧 LISTENING_SCENE_PLAUSIBILITY PASS — every scene is one plausible everyday situation (checked before writing)
+    LISTENING_TARGET_ASSIGNMENT target=717 คุณอายุเท่าไหร่ → LS1 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=737 เป็นอย่างไร → LS1 exchange 2 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=1479 ทางเข้า → LS1 exchange 2 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=719 แก่ → LS1 exchange 2 (B) role=DESCRIPTION
+    LISTENING_TARGET_ASSIGNMENT target=1524 ขนาด → LS1 exchange 3 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=787 พวกคุณ → LS1 exchange 3 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=858 ไปที่ → LS2 exchange 1 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=686 ที่นั่น → LS2 exchange 1 (B) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=841 สนามหลวง → LS2 exchange 2 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=839 น่าดู → LS2 exchange 2 (B) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=821 นักท่องเที่ยว → LS2 exchange 3 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=840 พิพิธภัณฑสถานแห่งชาติ → LS2 exchange 4 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=653 สิบโมงเช้า → LS3 exchange 1 (A) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=667 สิบเอ็ดโมงเช้า → LS3 exchange 1 (B) role=TIME
+    LISTENING_TARGET_ASSIGNMENT target=1536 รถสองแถว → LS3 exchange 2 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=1233 คุ้ม → LS3 exchange 2 (A) role=ACTION
+    LISTENING_TARGET_ASSIGNMENT target=359 เลี้ยว → LS3 exchange 3 (B) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=750 คือ → LS3 exchange 3 (B) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=730 นานเท่าไหร่ → LS4 exchange 1 (A) role=QUESTION_WORD
+    LISTENING_TARGET_ASSIGNMENT target=1539 ค่าโดยสาร → LS4 exchange 1 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=669 ทาง → LS4 exchange 2 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=860 ไม่เชิง → LS4 exchange 2 (B) role=RESPONSE_TOKEN
+    LISTENING_TARGET_ASSIGNMENT target=761 รถแท็กซี่ → LS4 exchange 3 (B) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=779 ทานกันเลย → LS5 exchange 1 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=847 ร้านอาหาร → LS5 exchange 2 (A) role=PLACE
+    LISTENING_TARGET_ASSIGNMENT target=726 แย่แล้ว → LS5 exchange 2 (B) role=DISCOURSE_MARKER
+    LISTENING_TARGET_ASSIGNMENT target=815 ผัดไทย → LS5 exchange 3 (A) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=817 ตลก → LS5 exchange 3 (B) role=CONTENT
+    LISTENING_TARGET_ASSIGNMENT target=712 เบอร์โทรศัพท์ → LS6 exchange 1 (A) role=NUMBER
+    LISTENING_TARGET_ASSIGNMENT target=672 โชคดี → LS6 exchange 2 (A) role=PARTING
+🎨 SCENE_PALETTE scene=LS1 requiredTargets=[คุณอายุเท่าไหร่, แก่, เป็นอย่างไร, พวกคุณ, ทางเข้า, ขนาด] supportVocabulary=[เหรอ, เท่าไหร่, ชอบ, มา, คุณ, มาก, อย่างไร, จริง, สิ, จริงเหรอ, อายุ, ค่ะ, เป็น, ครับ, คะ, รอ, เข้า, อย่า, รับ, ขน, ปี, สิบ] (22 taught) grammar=43 forms
+🎨 SCENE_PALETTE scene=LS2 requiredTargets=[ไปที่, น่าดู, สนามหลวง, พิพิธภัณฑสถานแห่งชาติ, นักท่องเที่ยว, ที่นั่น] supportVocabulary=[ไปที่ไหน, ไป, ที่ไหน, ไหน, เหรอ, มาก, ดู, มา, จริง, อย่างไร, จริงเหรอ, น่า, เป็น, ที่, ไหม, ค่ะ, ครับ, เรียก, ชา, รอ, คะ, อย่า] (22 taught) grammar=43 forms
+🎨 SCENE_PALETTE scene=LS3 requiredTargets=[สิบโมงเช้า, สิบเอ็ดโมงเช้า, คือ, รถสองแถว, เลี้ยว, คุ้ม] supportVocabulary=[ไป, สิ, เช้า, โมง, ดี, อะไร, นั้น, กัน, ว่า, ได้, ครับ, ค่ะ, ไหม, รับ, ช้า, อัน, กว่า, นะ, โมงเช้า, แถว, ดีกว่า, รถ] (22 taught) grammar=43 forms
+🎨 SCENE_PALETTE scene=LS4 requiredTargets=[นานเท่าไหร่, ทาง, รถแท็กซี่, ค่าโดยสาร, ไม่เชิง] supportVocabulary=[สิ, รถ, แท็กซี่, อะไร, เท่าไหร่, ไม่, ชอบ, เห็น, ครับ, ไหม, ค่ะ, นาที, โดย, รับ, บน, สิบ, ค่า, ไป, มีรถขับ, ทางนี้] (20 taught) grammar=43 forms
+🎨 SCENE_PALETTE scene=LS5 requiredTargets=[ร้านอาหาร, ทานกันเลย, ผัดไทย, แย่แล้ว, ตลก] supportVocabulary=[ทาน, อาหาร, มา, ไป, มาก, กัน, เลย, อย่างไร, ได้, เป็น, ค่ะ, ครับ, อย่า, หา, แล้ว, รับ, ร้าน, ดู, ไม่ได้เจอกันตั้งนาน, เห็น] (20 taught) grammar=43 forms
+🎨 SCENE_PALETTE scene=LS6 requiredTargets=[เบอร์โทรศัพท์, โชคดี] supportVocabulary=[ห้า, สาม, หนึ่ง, สอง, ดี, อะไร, ค่ะ, ครับ, รับ, โทร, ยินดีที่ได้รู้จัก, แล้วเจอกัน, โชคดีนะ, ฝันดี] (14 taught) grammar=43 forms
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 6) generation call 1 · required 6 · 6–7 turns
+  ⚖ THAI_SEMANTIC_ADJUDICATION 2 borderline rejection(s) without a quoted construction → one batched adjudication · 2 decided
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=6 heard=6 PASS · turns 6/7
+⛔ NATURALNESS_FAIL LS1 L5 naturalness 2/5 — Missing question word; should be ชอบขนาดไห (phase commit gate)
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (candidate)
+🔧 PHASE_REPAIR LS1 class=LINE · 1 line issue(s) → one-line repair ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=UNNATURAL scene=LS1 line=L5 protected=[ขนาด, พวกคุณ] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L5 candidate="พวกคุณชอบขนาดเท่าไหร่ครับ" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+⛔ PATCH_REVERTED issue=i1 line=L5 reason=NEW_LINE_UNNATURAL (L5) · original restored
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 1 remaining issue(s) are left to the final gates
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=6 heard=6 PASS
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after line repair) naturalness=FAIL(1)
+🧭 REPAIR_STRATEGY_GUARD LS1 — the same line failure occurred twice (UNNATURAL) · STOP LINE REPAIR → escalate ONE level to EXCHANGE REGENERATION (the line with its partner turn; accepted patches kept)
+🔧 LISTENING_ATOMIC_REPAIR issue=UNNATURAL scene=LS1 line=L5 scope=L5+L6 protected=[ขนาด, พวกคุณ] attempt=2 level=2
+✅ PATCH_ACCEPTED issue=i1 line=L5 candidate="พวกคุณชอบขนาดเท่าไหร่ครับ / ชอบมากค่ะ" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+  ⚖ THAI_SEMANTIC_ADJUDICATION 1 borderline rejection(s) without a quoted construction → one batched adjudication · 1 decided
+⛔ PATCH_REVERTED issue=i1 line=L5 reason=NEW_LINE_UNNATURAL (L5) · original restored
+⛔ LISTENING_ATOMIC_REPAIR_EXHAUSTED line=L5 issue=UNNATURAL after 2 attempts — the rest of the track stays intact
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after exchange regeneration) naturalness=FAIL(1)
+🧭 REPAIR_STRATEGY_GUARD LS1 — the same semantic failure occurred twice (UNNATURAL) · STOP ATOMIC REPAIR → escalate to PHASE REGENERATION from the meaning plan (strategy change, not a cost abort)
+🔁 PHASE_REGENERATE LS1 (OPEN) — GUARD (the same semantic failure occurred twice (UNNATURAL)) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 6) generation call 2 · required 6 · 6–7 turns
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=6 heard=6 PASS · turns 6/7 (phase regenerated from its plan)
+⛔ NATURALNESS_FAIL LS1 L5 naturalness 2/5 — Missing question word; should be ชอบขนาดไห (phase commit gate)
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (regenerated candidate)
+🧭 REPAIR_STRATEGY_GUARD LS1 — the same semantic failure occurred twice (UNNATURAL) · STOP ATOMIC REPAIR → escalate to REMAINING-CONVERSATION REPLAN (1/3) (strategy change, not a cost abort)
+🧩 RUNTIME_REALISATION_FAILED target=787 พวกคุณ frame="พวกคุณชอบขนาดครับ / จริงเหรอคะ" — the adapter must prove another blueprint for it
+🧩 RUNTIME_REALISATION_FAILED target=1524 ขนาด frame="พวกคุณชอบขนาดครับ / จริงเหรอคะ" — the adapter must prove another blueprint for it
+🧭 LISTENING_REMAINING_PLAN_REBUILD 1/3 after LS1 — phase still defective after regeneration (, unnatural 1) · only the UNCOMMITTED future is rebuilt; 0 committed phase(s) kept
+🧠 LISTENING_MEANING_PLAN (global replan) VALID · 35 planned turns (aim 28–36) · story DECIDE → ARRANGE → MOVE → DO → CLOSE · 9 statement merge(s) for the turn budget — validated BEFORE any language is generated
+   T1 A QUESTION(place) — A asks B where (a place) (using ไปที่ "go to") · now — still where they meet ⟦proven: ไปที่ไหนครับ⟧
+   T2 B ANSWER ↩T1 — B answers with a place (using ที่นั่น "there") ⟨must give a place⟩ · now — still where they meet ⟦proven: ไปที่นั่นค่ะ⟧
+   T3 A QUESTION(yes/no) — A asks B a yes / no question (using สนามหลวง "Sanam Luang" + น่าดู "worth seeing") · now — still where they meet ⟦proven: สนามหลวงน่าดูไหมครับ⟧
+   T4 B ANSWER ↩T3 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: น่าดูค่ะ⟧
+   T5 A QUESTION(yes/no) — A asks B a yes / no question (using นักท่องเที่ยว "tourist") · now — still where they meet ⟦proven: เรียกนักท่องเที่ยวไหมครับ⟧
+   T6 B ANSWER ↩T5 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: เรียกค่ะ⟧
+   T7 A QUESTION(yes/no) — A asks B a yes / no question (using พิพิธภัณฑสถานแห่งชาติ "national museum") · now — still where they meet ⟦proven: ไปพิพิธภัณฑสถานแห่งชาติไหมครับ⟧
+   T8 B ANSWER ↩T7 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · now — still where they meet ⟦proven: ไปค่ะ⟧
+   T9 A STATEMENT — A tells B something about พวกคุณ "you all" · now — still where they meet ⟦proven: พวกคุณจะไปร้านครับ⟧
+   T10 B REACTION ↩T9 — B reacts ⟨must give a reaction to it⟩ · now — still where they meet ⟦proven: จริงเหรอคะ⟧
+   T11 A PROPOSAL — A suggests สิบโมงเช้า "10 AM" · now — planning when to go (later today) ⟦proven: สิบโมงเช้าไปกันไหมครับ⟧
+   T12 B COUNTERPROPOSAL ↩T11 — B suggests สิบเอ็ดโมงเช้า "11 AM" instead — this becomes the agreed value ⟨must give a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)⟩ · now — planning when to go (later today) ⟦proven: สิบเอ็ดโมงเช้าดีกว่าค่ะ⟧
+   T13 A ACCEPT ↩T12 — A agrees ⟨must give agreement with the counter-proposal — that value is now agreed⟩ · now — planning when to go (later today) ⟦proven: ได้สิบเอ็ดโมงเช้านะครับ⟧
+   T14 A QUESTION(yes/no) — A asks B a yes / no question (using คุ้ม "to be worthwhile") · now — planning when to go (later today) ⟦proven: นี่คุ้มไหมครับ⟧
+   T15 B ANSWER ↩T14 — B answers with yes / no (or a qualified answer) (using ไม่เชิง "not exactly") ⟨must give yes / no (or a qualified answer)⟩ · now — planning when to go (later today) ⟦proven: ไม่เชิงคุ้มค่ะ⟧
+   T16 A QUESTION(how it is) — A asks B how it is (using ขนาด "size") · now — planning when to go (later today) ⟦proven: ขนาดเป็นอย่างไรครับ⟧
+   T17 B ANSWER ↩T16 — B answers with how it is (using ตลก "funny") ⟨must give how it is⟩ · now — planning when to go (later today) ⟦proven: ตลกมากค่ะ⟧
+   T18 A QUESTION(how long) — A asks B how long (using นานเท่าไหร่ "how long?" + ค่าโดยสาร "fare") · later — on the way, after agreeing the time ⟦proven: ค่าโดยสารนานเท่าไหร่ครับ⟧
+   T19 B ANSWER ↩T18 — B answers with a length of time ⟨must give a length of time⟩ · later — on the way, after agreeing the time ⟦proven: สิบนาทีค่ะ⟧
+   T20 A STATEMENT — A tells B something about ทาง "way" · later — on the way, after agreeing the time ⟦proven: ชอบทางครับ⟧
+   T21 B REACTION ↩T20 — B reacts (using แย่แล้ว "oh no!") ⟨must give a reaction to it⟩ · later — on the way, after agreeing the time ⟦proven: แย่แล้วค่ะ⟧
+   T22 A QUESTION(what) — A asks B what · later — on the way, after agreeing the time ⟦proven: อันนั้นอะไรครับ⟧
+   T23 B ANSWER ↩T22 — B answers with the thing asked about (using คือ "is (identifying" + รถแท็กซี่ "taxi") ⟨must give the thing asked about⟩ · later — on the way, after agreeing the time ⟦proven: อันนั้นคือรถแท็กซี่ค่ะ⟧
+   T24 A PROPOSAL — A suggests ทานกันเลย "let's eat" · later — at the place they chose ⟦proven: ทานกันเลยครับ⟧
+   T25 B ACCEPT ↩T24 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · later — at the place they chose ⟦proven: ได้ค่ะ⟧
+   T26 A QUESTION(place) — A asks B where (a place) (using ผัดไทย "pad thai") · later — at the place they chose ⟦proven: ผัดไทยอยู่ที่ไหนครับ⟧
+   T27 B ANSWER ↩T26 — B answers with a place (using ร้านอาหาร "restaurant") ⟨must give a place⟩ · later — at the place they chose ⟦proven: อยู่ร้านอาหารค่ะ⟧
+   T28 A QUESTION(yes/no) — A asks B a yes / no question (using รถสองแถว "songthaew") · later — at the place they chose ⟦proven: ชอบรถสองแถวไหมครับ⟧
+   T29 B ANSWER ↩T28 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — at the place they chose ⟦proven: ชอบค่ะ⟧
+   T30 A QUESTION(yes/no) — A asks B a yes / no question (using เลี้ยว "turn") · later — at the place they chose ⟦proven: ชอบเลี้ยวไหมครับ⟧
+   T31 B ANSWER ↩T30 — B answers with yes / no (or a qualified answer) ⟨must give yes / no (or a qualified answer)⟩ · later — at the place they chose ⟦proven: ชอบค่ะ⟧
+   T32 A QUESTION(phone number) — A asks B for the phone number (using เบอร์โทรศัพท์ "phone number") · at the end — as they part ⟦proven: เบอร์โทรศัพท์อะไรครับ⟧
+   T33 B ANSWER ↩T32 — B answers with the phone number (a few digits) ⟨must give the phone number (a few digits)⟩ · at the end — as they part ⟦proven: ห้าสามสามสองสองหนึ่งค่ะ⟧
+   T34 A FAREWELL — A starts saying goodbye (using โชคดี "good luck") · at the end — as they part ⟦proven: โชคดีครับ⟧
+   T35 B FAREWELL ↩T34 — B says goodbye back ⟨must give a farewell back⟩ · at the end — as they part ⟦proven: โชคดีค่ะ⟧
+🧭 LISTENING_GLOBAL_REPLAN after LS1 (OPEN) — phase still defective after regeneration (, unnatural 1) · moved by SEMANTIC replanning: [พวกคุณ, ขนาด] · remaining 26 target(s) re-planned together → LS7 DECIDE [ไปที่, น่าดู, นักท่องเที่ยว, พวกคุณ, ที่นั่น, สนามหลวง, พิพิธภัณฑสถานแห่งชาติ] · LS8 ARRANGE [สิบโมงเช้า, สิบเอ็ดโมงเช้า, คุ้ม, ตลก, ขนาด, ไม่เชิง] · LS9 MOVE [รถแท็กซี่, ทาง, นานเท่าไหร่, แย่แล้ว, ค่าโดยสาร, คือ] · LS10 DO [ผัดไทย, ทานกันเลย, ร้านอาหาร, รถสองแถว, เลี้ยว] · LS11 CLOSE [เบอร์โทรศัพท์, โชคดี]
+🧠 LISTENING_MEANING_PLAN (LS1 re-planned) VALID · 6 planned turns (aim 28–36) · story OPEN — validated BEFORE any language is generated
+   T1 A QUESTION(age) — A asks B how old (using คุณอายุเท่าไหร่ "how old are you?") · now — where they meet
+   T2 B ANSWER ↩T1 — B answers with an age ⟨must give an age⟩ · now — where they meet
+   T3 A QUESTION(how it is) — A asks B how it is (using เป็นอย่างไร "how is it?") · now — where they meet
+   T4 B ANSWER ↩T3 — B answers with how it is (using แก่ "old (people, living things)") ⟨must give how it is⟩ · now — where they meet
+   T5 A STATEMENT — A tells B something about ทางเข้า "entrance" · now — where they meet
+   T6 B REACTION ↩T5 — B reacts ⟨must give a reaction to it⟩ · now — where they meet
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 6) generation call 3 · required 4 · 6–7 turns
+  ⚖ THAI_SEMANTIC_ADJUDICATION 1 borderline rejection(s) without a quoted construction → one batched adjudication · 1 decided
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_FAIL — L2 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=0+6 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=4 heard=4 PASS · turns 6/7
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (candidate)
+🔧 PHASE_REPAIR LS1 class=EXCHANGE · 1 exchange issue(s) → regenerate the 2-turn exchange ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=TRANSITION scene=LS1 line=L2 protected=[] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L2 candidate="อายุสิบปีค่ะ" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+  ⚖ THAI_SEMANTIC_ADJUDICATION 1 borderline rejection(s) without a quoted construction → one batched adjudication · 1 decided
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 1 remaining issue(s) are left to the final gates
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_FAIL — L3 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=0+6 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=4 heard=4 PASS
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after exchange repair)
+🔧 PHASE_REPAIR LS1 class=EXCHANGE · 1 exchange issue(s) → regenerate the 2-turn exchange ·  (round 2)
+🔧 LISTENING_ATOMIC_REPAIR issue=TRANSITION scene=LS1 line=L3 protected=[เป็นอย่างไร] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L3 candidate="อายุสิบปี เป็นอย่างไรครับ" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+  ⚖ THAI_SEMANTIC_ADJUDICATION 2 borderline rejection(s) without a quoted construction → one batched adjudication · 2 decided
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 1 remaining issue(s) are left to the final gates
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_FAIL — L4 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=0+6 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=4 heard=4 PASS
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after exchange repair)
+🧭 REPAIR_STRATEGY_GUARD LS1 — repair calls (2) > generation calls (1) · STOP ATOMIC REPAIR → escalate to PHASE REGENERATION from the meaning plan (strategy change, not a cost abort)
+🔁 PHASE_REGENERATE LS1 (OPEN) — GUARD (repair calls (2) > generation calls (1)) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 6) generation call 4 · required 4 · 6–7 turns
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=4 heard=4 PASS · turns 6/7 (phase regenerated from its plan)
+⛔ NATURALNESS_FAIL LS1 L4 naturalness 2/5 — แก่ is for people or animals aging; things · L5 naturalness 2/5 — ทางเข้า is a noun; the suggestion should b (phase commit gate)
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (regenerated candidate)
+🔧 PHASE_REPAIR LS1 class=LINE · 2 line issue(s) → one-line repair ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=UNNATURAL scene=LS1 line=L4 protected=[แก่] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L4 candidate="ไม่แก่ค่ะ" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+⛔ PATCH_REVERTED issue=i1 line=L4 reason=NEW_LINE_UNNATURAL (L4) · original restored
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 2 remaining issue(s) are left to the final gates
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=4 heard=4 PASS
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after line repair) naturalness=FAIL(2)
+🧭 REPAIR_STRATEGY_GUARD LS1 — the same semantic failure occurred twice (UNNATURAL) · STOP ATOMIC REPAIR → escalate to REMAINING-CONVERSATION REPLAN (2/3) (strategy change, not a cost abort)
+🧭 LISTENING_REMAINING_PLAN_REBUILD 2/3 after LS1 — phase still defective after regeneration (, unnatural 2) · only the UNCOMMITTED future is rebuilt; 0 committed phase(s) kept
+🧠 LISTENING_MEANING_PLAN (global replan) VALID · 35 planned turns (aim 28–36) · story DECIDE → ARRANGE → MOVE → DO → CLOSE · 9 statement merge(s) for the turn budget — validated BEFORE any language is generated
+   T1 A QUESTION(place) — A asks B where (a place) (using ไปที่ "go to") · now — still where they meet ⟦proven: ไปที่ไหนครับ⟧
+   T2 B ANSWER ↩T1 — B answers with a place (using ที่นั่น "there") ⟨must give a place⟩ · now — still where they meet ⟦proven: ไปที่นั่นค่ะ⟧
+   T3 A STATEMENT — A tells B something about พวกคุณ "you all" · now — still where they meet ⟦proven: พวกคุณจะไปร้านครับ⟧
+   T4 B REACTION ↩T3 — B reacts ⟨must give a reaction to it⟩ · now — still where they meet ⟦proven: จริงเหรอคะ⟧
+   T5 A QUESTION(how it is) — A asks B how it is (using นักท่องเที่ยว "tourist") · now — still where they meet ⟦proven: นักท่องเที่ยวเป็นอย่างไรครับ⟧
+   T6 B ANSWER ↩T5 — B answers with how it is (using น่าดู "worth seeing") ⟨must give how it is⟩ · now — still where they meet ⟦proven: น่าดูมากค่ะ⟧
+   T7 A QUESTION(how it is) — A asks B how it is (using สนามหลวง "Sanam Luang") · now — still where they meet ⟦proven: สนามหลวงเป็นอย่างไรครับ⟧
+   T8 B ANSWER ↩T7 — B answers with how it is (using แก่ "old (people, living things)") ⟨must give how it is⟩ · now — still where they meet ⟦proven: แก่มากค่ะ⟧
+   T9 A PROPOSAL — A suggests สิบเอ็ดโมงเช้า "11 AM" · now — planning when to go (later today) ⟦proven: สิบเอ็ดโมงเช้าไปกันไหมครับ⟧
+   T10 B COUNTERPROPOSAL ↩T9 — B suggests สิบโมงเช้า "10 AM" instead — this becomes the agreed value ⟨must give a counter-proposal with a DIFFERENT value — the agreed one from now on (the first speaker then agrees)⟩ · now — planning when to go (later today) ⟦proven: สิบโมงเช้าดีกว่าค่ะ⟧
+   T11 A ACCEPT ↩T10 — A agrees ⟨must give agreement with the counter-proposal — that value is now agreed⟩ · now — planning when to go (later today) ⟦proven: ได้สิบโมงเช้านะครับ⟧
+   T12 A QUESTION(yes/no) — A asks B a yes / no question (using พิพิธภัณฑสถานแห่งชาติ "national museum" + คุ้ม "to be worthwhile") · now — planning when to go (later today) ⟦proven: พิพิธภัณฑสถานแห่งชาติคุ้มไหมครับ⟧
+   T13 B ANSWER ↩T12 — B answers with yes / no (or a qualified answer) (using ไม่เชิง "not exactly") ⟨must give yes / no (or a qualified answer)⟩ · now — planning when to go (later today) ⟦proven: ไม่เชิงคุ้มค่ะ⟧
+   T14 A QUESTION(how it is) — A asks B how it is (using รถสองแถว "songthaew") · now — planning when to go (later today) ⟦proven: รถสองแถวเป็นอย่างไรครับ⟧
+   T15 B ANSWER ↩T14 — B answers with how it is (using ตลก "funny") ⟨must give how it is⟩ · now — planning when to go (later today) ⟦proven: ตลกมากค่ะ⟧
+   T16 A QUESTION(how long) — A asks B how long (using นานเท่าไหร่ "how long?" + เลี้ยว "turn") · later — on the way, after agreeing the time ⟦proven: เลี้ยวนานเท่าไหร่ครับ⟧
+   T17 B ANSWER ↩T16 — B answers with a length of time ⟨must give a length of time⟩ · later — on the way, after agreeing the time ⟦proven: สิบนาทีค่ะ⟧
+   T18 A QUESTION(what) — A asks B what · later — on the way, after agreeing the time ⟦proven: เห็นอะไรครับ⟧
+   T19 B ANSWER ↩T18 — B answers with the thing asked about (using รถแท็กซี่ "taxi") ⟨must give the thing asked about⟩ · later — on the way, after agreeing the time ⟦proven: เห็นรถแท็กซี่ค่ะ⟧
+   T20 A STATEMENT — A tells B something about ทาง "way" · later — on the way, after agreeing the time ⟦proven: ชอบทางครับ⟧
+   T21 B REACTION ↩T20 — B reacts (using แย่แล้ว "oh no!") ⟨must give a reaction to it⟩ · later — on the way, after agreeing the time ⟦proven: แย่แล้วค่ะ⟧
+   T22 A STATEMENT — A tells B something about ขนาด "size" · later — on the way, after agreeing the time ⟦proven: ชอบขนาดครับ⟧
+   T23 B REACTION ↩T22 — B reacts ⟨must give a reaction to it⟩ · later — on the way, after agreeing the time ⟦proven: ดีจังค่ะ⟧
+   T24 A PROPOSAL — A suggests ทานกันเลย "let's eat" · later — at the place they chose ⟦proven: ทานกันเลยครับ⟧
+   T25 B ACCEPT ↩T24 — B agrees ⟨must give accept / refuse / counter-proposal⟩ · later — at the place they chose ⟦proven: ได้ค่ะ⟧
+   T26 A QUESTION(place) — A asks B where (a place) (using ผัดไทย "pad thai") · later — at the place they chose ⟦proven: ผัดไทยอยู่ที่ไหนครับ⟧
+   T27 B ANSWER ↩T26 — B answers with a place (using ร้านอาหาร "restaurant") ⟨must give a place⟩ · later — at the place they chose ⟦proven: อยู่ร้านอาหารค่ะ⟧
+   T28 A QUESTION(what) — A asks B what · later — at the place they chose ⟦proven: อันนั้นอะไรครับ⟧
+   T29 B ANSWER ↩T28 — B answers with the thing asked about (using ทางเข้า "entrance" + คือ "is (identifying") ⟨must give the thing asked about⟩ · later — at the place they chose ⟦proven: อันนั้นคือทางเข้าค่ะ⟧
+   T30 A STATEMENT — A tells B something about ค่าโดยสาร "fare" · later — at the place they chose ⟦proven: ชอบค่าโดยสารครับ⟧
+   T31 B REACTION ↩T30 — B reacts ⟨must give a reaction to it⟩ · later — at the place they chose ⟦proven: จริงเหรอคะ⟧
+   T32 A QUESTION(phone number) — A asks B for the phone number (using เบอร์โทรศัพท์ "phone number") · at the end — as they part ⟦proven: เบอร์โทรศัพท์อะไรครับ⟧
+   T33 B ANSWER ↩T32 — B answers with the phone number (a few digits) ⟨must give the phone number (a few digits)⟩ · at the end — as they part ⟦proven: ห้าสามสามสองสองหนึ่งค่ะ⟧
+   T34 A FAREWELL — A starts saying goodbye (using โชคดี "good luck") · at the end — as they part ⟦proven: โชคดีครับ⟧
+   T35 B FAREWELL ↩T34 — B says goodbye back ⟨must give a farewell back⟩ · at the end — as they part ⟦proven: โชคดีค่ะ⟧
+🧭 LISTENING_GLOBAL_REPLAN after LS1 (OPEN) — phase still defective after regeneration (, unnatural 2) · moved by SEMANTIC replanning: [แก่, ทางเข้า] · remaining 28 target(s) re-planned together → LS12 DECIDE [สนามหลวง, น่าดู, พวกคุณ, ที่นั่น, นักท่องเที่ยว, แก่, ไปที่] · LS13 ARRANGE [สิบเอ็ดโมงเช้า, สิบโมงเช้า, พิพิธภัณฑสถานแห่งชาติ, ตลก, คุ้ม, ไม่เชิง, รถสองแถว] · LS14 MOVE [นานเท่าไหร่, ทาง, รถแท็กซี่, แย่แล้ว, เลี้ยว, ขนาด] · LS15 DO [ผัดไทย, ร้านอาหาร, ทานกันเลย, คือ, ทางเข้า, ค่าโดยสาร] · LS16 CLOSE [โชคดี, เบอร์โทรศัพท์]
+🧠 LISTENING_MEANING_PLAN (LS1 re-planned) VALID · 4 planned turns (aim 28–36) · story OPEN — validated BEFORE any language is generated
+   T1 A QUESTION(age) — A asks B how old (using คุณอายุเท่าไหร่ "how old are you?") · now — where they meet
+   T2 B ANSWER ↩T1 — B answers with an age ⟨must give an age⟩ · now — where they meet
+   T3 A QUESTION(how it is) — A asks B how it is (using เป็นอย่างไร "how is it?") · now — where they meet
+   T4 B ANSWER ↩T3 — B answers with how it is ⟨must give how it is⟩ · now — where they meet
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 6) generation call 5 · required 2 · 4–7 turns
+  ⚖ THAI_SEMANTIC_ADJUDICATION 1 borderline rejection(s) without a quoted construction → one batched adjudication · 1 decided
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_FAIL — L2 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=0+6 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=2 heard=2 PASS · turns 6/7
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (candidate)
+🔧 PHASE_REPAIR LS1 class=EXCHANGE · 1 exchange issue(s) → regenerate the 2-turn exchange ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=TRANSITION scene=LS1 line=L2 protected=[] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L2 candidate="ฉันแก่มากค่ะ" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+  ⚖ THAI_SEMANTIC_ADJUDICATION 1 borderline rejection(s) without a quoted construction → one batched adjudication · 1 decided
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 1 remaining issue(s) are left to the final gates
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_FAIL — L3 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=0+6 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=2 heard=2 PASS
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after exchange repair)
+🔧 PHASE_REPAIR LS1 class=EXCHANGE · 1 exchange issue(s) → regenerate the 2-turn exchange ·  (round 2)
+🔧 LISTENING_ATOMIC_REPAIR issue=TRANSITION scene=LS1 line=L3 protected=[] attempt=1 level=1
+⛔ PATCH_REJECTED issue=i1 line=L3 reason=REGRESSION: dup 0→1 · LISTENING_ATOMIC_REPAIR_REJECTED (original kept)
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 1 remaining issue(s) are left to the final gates
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_FAIL — L3 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=0+6 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=2 heard=2 PASS
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after exchange repair)
+🧭 REPAIR_STRATEGY_GUARD LS1 — the same semantic failure occurred twice (TRANSITION) · STOP ATOMIC REPAIR → escalate to PHASE REGENERATION from the meaning plan (strategy change, not a cost abort)
+🔁 PHASE_REGENERATE LS1 (OPEN) — GUARD (the same semantic failure occurred twice (TRANSITION)) · the part is regenerated from its FROZEN meaning plan (same targets, same turn plan, the exact rejected defects named) before any target moves
+🎧 LISTENING_COMPOSITION scene LS1 (1 of 6) generation call 6 · required 2 · 4–7 turns
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_FAIL — L4 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=0+6 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 required=2 heard=2 PASS · turns 6/7 (phase regenerated from its plan)
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (regenerated candidate)
+🔧 PHASE_REPAIR LS1 class=EXCHANGE · 1 exchange issue(s) → regenerate the 2-turn exchange ·  (round 1)
+🔧 LISTENING_ATOMIC_REPAIR issue=TRANSITION scene=LS1 line=L4 protected=[] attempt=1 level=1
+✅ PATCH_ACCEPTED issue=i1 line=L4 candidate="สิบปีค่ะ ชอบมากค่ะ" · LISTENING_ATOMIC_REPAIR_ACCEPTED
+⛔ PATCH_REVERTED issue=i1 line=L4 reason=NEW_LINE_UNNATURAL (L4) · original restored
+⏹ LISTENING_ATOMIC_CALL_CAP 1/1 repair calls used for this stage — 1 remaining issue(s) are left to the final gates
+🔗 PHASE_TRANSITION_VALIDATION LS1 (OPEN) LOCAL_PHASE_PASS · TRANSITION_FAIL — L4 TRANSITION: the part does not follow naturally from the conversation so far (deter · window=0+6 turns · judge=fail (det 3/5)
+🎧 SCENE_REQUIRED_COVERAGE LS1 (after atomic repair) required=2 heard=2 PASS
+🛂 SCENE_PREFLIGHT LS1 coverage=PASS closedVocab=PASS length=PASS max3=PASS register=n/a structure=PASS duplicates=PASS decision=COMMIT (after exchange repair)
+🧭 REPAIR_STRATEGY_GUARD LS1 — the same semantic failure occurred twice (TRANSITION) · STOP ATOMIC REPAIR → escalate to REMAINING-CONVERSATION REPLAN (3/3) (strategy change, not a cost abort)
+⛔ PHASE_TRANSITION_UNRESOLVED LS1 (OPEN) — L4 TRANSITION: the part does not follow naturally from the conversation so far (deter · after exchange repair + phase regeneration; targets are not moved (they are not the cause) → not committed
+🩺 PHASE_REPAIR_STRATEGY LS1 (OPEN) generationCalls=2 atomicRepairCalls=0 exchangeRepairCalls=3 phaseRegenerations=1 escalations=[GUARD (the same semantic failure occurred twice (TRANSITION)) | GUARD (the same semantic failure occurred twice (TRANSITION))] → NOT COMMITTED
+⛔ LISTENING_TARGET_UNPLACED 717 คุณอายุเท่าไหร่ — its phase LS1 could not commit (named, never silently lost) → NOT_READY
+⛔ LISTENING_TARGET_UNPLACED 737 เป็นอย่างไร — its phase LS1 could not commit (named, never silently lost) → NOT_READY
+⛔ PHASE_NOT_COMMITTED LS1 — NO COMMIT_WITH_DEFECTS: nothing from this candidate enters the conversation; its targets [คุณอายุเท่าไหร่, เป็นอย่างไร] stay unheard (no random scattering) → NOT_READY
+⛔ LISTENING_COMPOSITION_STOPPED — PHASE_TRANSITION_UNRESOLVED LS1 · the remaining 5 phase(s) are not generated (the track cannot be READY; no further paid calls)
+🎧 LISTENING_SCENE_COVERAGE_UNION 0/30 · assembled 0 scenes · 0 turns (max 44)
+🎧 LISTENING_TARGET_AUDIT (assembled) covered=0/30 missing=[ทานกันเลย, เลี้ยว, คุ้ม, ทางเข้า, ขนาด, รถสองแถว, ค่าโดยสาร, นักท่องเที่ยว, น่าดู, สิบโมงเช้า, คุณอายุเท่าไหร่, แก่, นานเท่าไหร่, เป็นอย่างไร, รถแท็กซี่, ไปที่, คือ, ตลก, พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ไม่เชิง, สิบเอ็ดโมงเช้า, ทาง, โชคดี, ที่นั่น, พวกคุณ, ผัดไทย, ร้านอาหาร, เบอร์โทรศัพท์, แย่แล้ว]
+🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+🎧 LISTENING_CLOSED_VOCAB PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+🎧 LISTENING_NATURALNESS PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+🎧 LISTENING_TARGET_AUDIT (after atomic repair) covered=0/30 missing=[ทานกันเลย, เลี้ยว, คุ้ม, ทางเข้า, ขนาด, รถสองแถว, ค่าโดยสาร, นักท่องเที่ยว, น่าดู, สิบโมงเช้า, คุณอายุเท่าไหร่, แก่, นานเท่าไหร่, เป็นอย่างไร, รถแท็กซี่, ไปที่, คือ, ตลก, พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ไม่เชิง, สิบเอ็ดโมงเช้า, ทาง, โชคดี, ที่นั่น, พวกคุณ, ผัดไทย, ร้านอาหาร, เบอร์โทรศัพท์, แย่แล้ว]
+🎧 LISTENING_MAX3_AUDIT PASS · max 0 targets/turn [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+🎧 LISTENING_CLOSED_VOCAB PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+🎧 LISTENING_DIALOGUE speakers= · duplicates PASS · merged Q+A PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+🎧 LISTENING_NATURALNESS PASS [VACUOUS — no line was assembled (0/30 targets); this is not a verdict on any content]
+  🎬 COHERENCE AUDIT: 0/0 scene(s) pass
+🎧 LISTENING_ATOMIC_SUMMARY accepted=0 rejected=0 exhausted=0 · atomic calls 8
+🎧 LISTENING_TURN_BUDGET 0 turns (allowed 24–44) PASS [scope: committed turns only — 1 phase(s) were not committed]
+⛔ SCENE_UNRESOLVED LS1 — INVALID candidate (no valid candidate) not committed; still unheard: [คุณอายุเท่าไหร่, เป็นอย่างไร]
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=0% (target ≥70%) · repairCalls=8 (target <10) · generationCalls=6 · ⚠ PLANNER_FAILURE — repair calls > generation calls: diagnose upstream planning (feasibility / meaning plan / palettes) — health targets, not gates

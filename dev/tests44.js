@@ -207,7 +207,7 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
       // Oct13: two production uses by design — the final Japanese romaji (jaFinalRomaji → v684JaDerive) and the per-syllable Mandarin
       // tone sandhi (mandarinSpokenPinyin → v684ZhSyllables); both are deterministic readers, no switch or storage of the v684 block
       uses.length && uses.every(u => /^(v684DailyLesson|v684ToTrack|v684JaDerive|v684ZhSyllables)\($/.test(u)) && /o\.pipeline === 'v684' && fx\.trackType === 'daily'/.test(outside) &&
-        uses.filter(u => u === 'v684JaDerive(').length === 1 && uses.filter(u => u === 'v684ZhSyllables(').length === 1 && /const d = bank \? v684JaDerive\(q\.japanese, bank\) : null/.test(outside) && /try \{ ss = v684ZhSyllables\(m\[1\]\) \}/.test(outside), uses)
+        uses.filter(u => u === 'v684JaDerive(').length === 1 && uses.filter(u => u === 'v684ZhSyllables(').length === 1 && /const d = bank \? v684JaDerive\(q\.japanese, bank(, \{ wordJoin: true \})?\) : null/.test(outside) && /try \{ ss = v684ZhSyllables\(m\[1\]\) \}/.test(outside), uses)
     T('X2', 'the experimental switches stay off by default (TEACHING_PLAN_ACTIVE = false; Gen2 disabled); no storage write in the v684 block',
       /let TEACHING_PLAN_ACTIVE = false/.test(SRC) && !/localStorage|setItem|saveVocab|persist/i.test(blk) && c.ev('teachingPlanOn()') === false)
   }

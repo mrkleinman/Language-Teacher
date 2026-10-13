@@ -202,4 +202,6 @@ New section J uses learners modelled on the three v693 runs (`V693_IDS`). These 
 
 ## 8. Full offline regression
 
-(filled in below)
+`sandbox/test_all.sh` on the final build (all 51 suites + render test): **OFFLINE REGRESSION: OK** — 1,774 checks pass. The only failing checks are the documented, pre-existing ones: tests33 2G (known since deployed v677) and tests35 2C-thTH / 2C-zhZH (blocked: the v673 replay script and logs are not in the package). Notable suites: tests13 28/28 (source hygiene), tests37 43/43 (the v682 production cassettes replay byte-identical with the Oct13 switch off), tests23–39 unchanged and passing on their explicit legacy opt-in, tests43 32/32, tests45 83/83, tests49 72/72, tests50 19/19, tests51 29/29, tests52 25/25, tests53 24/24. `rc_replay_check.js` (v682-final4, ja / th / zh): 0 mismatches, content identical.
+
+Found and fixed by the first full run: the final text check also re-judged untouched synthetic lines in tests14 / 15 / 29, so it now covers only lines changed after acceptance (its purpose); tests43 P22 asserted the old false rejection of a reply cue and now checks the default path accepts it and the legacy path keeps the old rule; tests51 E3 lists the four intended v694 cue repairs of the v691 export. No legacy test (tests23–39) assertion was changed.

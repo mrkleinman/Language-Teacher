@@ -42022,7 +42022,9 @@ function jaCueFormProblems(p) {
   const out = []
   // v672 §3 — a sentence-final か is a Japanese question / proposal even when it is written with 。 (行こうか。 = "shall we go?",
   // 食べようか。 = "shall we eat?", 行かないか。 = "won't you come?") — the live log rejected those as "statement vs question"
-  const jpQ = /[？?]$/.test(jp) || /か[。！!]?$/.test(jp) || (oct13On() && jaWhQuestion(jp)), enQ = /[?？]\s*$/.test(en)
+  // v691: a question-word question written with 。 counts only when the English has no question word at all (the v690 case: どこで食べよう。
+  // → "Let's eat somewhere…"); an English that keeps the question word ("that one is where…") is left to the other checks
+  const jpQ = /[？?]$/.test(jp) || /か[。！!]?$/.test(jp) || (oct13On() && jaWhQuestion(jp) && !/\b(where|what|who|when|how|which|why)\b/i.test(en)), enQ = /[?？]\s*$/.test(en)
   if (cue && jpQ && enQ && CUE_SAYS_RE.test(cue) && !CUE_ASKS_RE.test(cue) && !/^\s*(suggest|offer|invite|propose)/i.test(cue)) out.push('CUE_FORM_MISMATCH: the Japanese is a question but the cue asks for a statement ("' + cue.slice(0, 60) + '")')
   if (cue && !jpQ && !enQ && /^\s*ask\b|\basks\b|\bwants to know\b/i.test(cue) && !CUE_SAYS_RE.test(cue) && !(teachingPlanOn() && /\b(say|reply|answer|respond|tell (them|him|her))\b/i.test(cue))) out.push('CUE_FORM_MISMATCH: the Japanese is a statement but the cue asks a question ("' + cue.slice(0, 60) + '")')
   // a Japanese question translated as a statement; the reverse only for a plain 。 statement (ね / よね / でしょ / じゃない

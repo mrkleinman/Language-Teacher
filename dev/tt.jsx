@@ -6318,12 +6318,14 @@ const CURRICULUM_BELTS = [
   { name:'Orange + Stripe', rank:'9th Kyu',  from:201,  to:300  },
   { name:'Blue',            rank:'8th Kyu',  from:301,  to:400  },
   { name:'Blue + Stripe',   rank:'7th Kyu',  from:401,  to:500  },
-  { name:'Yellow',          rank:'6th Kyu',  from:501,  to:750  },
-  { name:'Yellow + Stripe', rank:'5th Kyu',  from:751,  to:1000 },
-  { name:'Green',           rank:'4th Kyu',  from:1001, to:1200 },
-  { name:'Green + Stripe',  rank:'3rd Kyu',  from:1201, to:1400 },
-  { name:'Brown',           rank:'2nd Kyu',  from:1401, to:1600 },
-  { name:'Brown + Stripe',  rank:'1st Kyu',  from:1601, to:1800 },
+  // v689 (owner, 2026-10-13): 6th–1st Kyu re-banded — 200 words each for 6th–3rd Kyu, 250 each for 2nd and 1st Kyu.
+  // Shown on the belt page as from−1 … to−1: 500–699, 700–899, 900–1099, 1100–1299, 1300–1549, 1550–1799, Shodan 1800+.
+  { name:'Yellow',          rank:'6th Kyu',  from:501,  to:700  },
+  { name:'Yellow + Stripe', rank:'5th Kyu',  from:701,  to:900  },
+  { name:'Green',           rank:'4th Kyu',  from:901,  to:1100 },
+  { name:'Green + Stripe',  rank:'3rd Kyu',  from:1101, to:1300 },
+  { name:'Brown',           rank:'2nd Kyu',  from:1301, to:1550 },
+  { name:'Brown + Stripe',  rank:'1st Kyu',  from:1551, to:1800 },
   { name:'Shodan',          rank:'Shodan',   from:1801, to:2000 },
 ].map(b => ({ ...b, size: b.to - b.from + 1, start: b.from - 1 }))
 // Total curated curriculum words required to reach Shodan.
@@ -19362,7 +19364,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v688'
+const LISTENING_BUILD_VERSION = 'v689'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -20697,7 +20699,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v688'
+const APP_BUILD_VERSION = 'v689'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'

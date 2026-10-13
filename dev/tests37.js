@@ -216,10 +216,18 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
     T('G1', 'the benchmark applies fixtures to a FRESH in-memory copy of the bundled banks — the bank (ids, entries, SRS defaults) of a new app instance is unchanged', srs(c.initMandarinVocab()) === s0 && JSON.stringify(c.initMandarinVocab().map(w => [w.id, w.chinese, w.pinyin, w.english])) === idsBefore && rp.replay.faithful)
     const src = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8'), base = fs.readFileSync(path.join(__dirname, 'tt.v674.jsx'), 'utf8')
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0] + (s.match(/const CURRICULUM_BELTS = [\s\S]*?\n\]/) || [''])[0]
-    T('G2', 'no vocabulary entry, belt threshold or complexity contract changed in the source (bank / belt tables byte-identical to v674)', banks(src) === banks(base) && banks(src).length > 1000)
+    // v689 (owner, 2026-10-13): the 6th–1st Kyu rows were re-banded on purpose. Undoing exactly those six rows (and their comment) must give v674's table back.
+    const OLD_ROWS = { '6th Kyu': [501, 750], '5th Kyu': [751, 1000], '4th Kyu': [1001, 1200], '3rd Kyu': [1201, 1400], '2nd Kyu': [1401, 1600], '1st Kyu': [1601, 1800] }
+    const NEW_ROWS = { '6th Kyu': [501, 700], '5th Kyu': [701, 900], '4th Kyu': [901, 1100], '3rd Kyu': [1101, 1300], '2nd Kyu': [1301, 1550], '1st Kyu': [1551, 1800] }
+    const pad = (x, w) => (String(x) + ',').padEnd(w)
+    const undo689 = t => { let u = t.replace(/\n  \/\/ v689 \(owner, 2026-10-13\)[^\n]*\n  \/\/ Shown on the belt page[^\n]*/, '')
+      Object.keys(NEW_ROWS).forEach(r => { const [f, to] = NEW_ROWS[r], [of, oto] = OLD_ROWS[r]
+        u = u.replace(new RegExp("rank:'" + r + "',(\\s*)from:" + f + ",(\\s*)to:" + to + "(\\s*)\\}"), (m, a, b) => "rank:'" + r + "'," + a + 'from:' + pad(of, 6) + 'to:' + (String(oto) + ' ').padEnd(5) + '}') })
+      return u }
+    T('G2', 'no vocabulary entry or complexity contract changed in the source (bank / belt tables byte-identical to v674) except the owner\'s v689 re-banding of 6th–1st Kyu, which is exactly those six rows', banks(undo689(src)) === banks(base) && banks(src).length > 1000, [banks(undo689(src)).length, banks(base).length])
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
     T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings; v682 one: the generation-draft write site; v685 at most three: the AI Generation Model setting and site access code in Settings)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length + (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length + (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length && (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length <= 3 && (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
-    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[0-8])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[0-9])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
 
   console.log(out.join('\n'))

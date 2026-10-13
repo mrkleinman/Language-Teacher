@@ -6,6 +6,7 @@
 // recovery (MAX_REMAINING_PLAN_REBUILDS = 3, RUNTIME_REALISATION_FAILED, committed phases kept). Part D: Daily fixes
 // (JA terminal EXHAUSTED_AT_11, する licensed constructions, ZH one authoritative final pair set, TH preferred length).
 // Every check runs the app's real functions in the node harness; Gemini is simulated only at the transport boundary.
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock } = require('./tests14')
 const fs = require('fs')
 const out = []; let fails = 0, n = 0

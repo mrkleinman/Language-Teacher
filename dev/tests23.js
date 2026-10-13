@@ -2,6 +2,7 @@
 // (selectRevisionTargets → buildStandaloneListeningTrack → the shared Listening builder and its 12 gates),
 // plus the §17/§21/§22 UI (ListeningGenerator, ListeningTrackButton, the recent-tracks badge) rendered with
 // react-test-renderer. The model is simulated at the Gemini boundary (tests14 responder); everything else is app code.
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock, makeTrack } = require('./tests14')
 const { load } = require('./harness')
 const React = require('react'), TR = require('react-test-renderer')

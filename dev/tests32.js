@@ -2,6 +2,7 @@
 // Linguistic fixtures use reviewed expectations only (the sense policy, the reviewed bank glosses and objective rules);
 // nothing here turns a stylistic opinion into a deterministic truth. Listening fixtures run the real scene transaction
 // with Gemini simulated at the transport boundary (tests14 responder).
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock, makeTrack } = require('./tests14')
 const out = []; let fails = 0, n = 0
 const T = (id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + id.padEnd(4) + name + (!pass && detail !== undefined ? '\n      ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 1400) : '')) }

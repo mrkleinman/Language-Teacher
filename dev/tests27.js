@@ -8,6 +8,7 @@
 //   C  cost: NO_CHANGE ends an issue after 1 call; quality repair capped at LISTENING_QUALITY_ATOMIC_CALLS
 //   A  comparison scenes do not trip the "amount jumps" heuristic (live false positive 20,000 → 1,000,000)
 //   U  UI: notes on READY · History ▶ Play · autoPlay a playable track · dashboard bar shows a playable track
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock } = require('./tests14')
 const { load } = require('./harness')
 const React = require('react'), TR = require('react-test-renderer')

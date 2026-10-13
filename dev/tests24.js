@@ -8,6 +8,7 @@
 //   §4/§18/§19 snapshot · Rebuild (same ids, selector NOT re-run, new History attempt, old kept) · new track re-selects
 //   §5/§16/§25 the generator shell is the SAME components as Daily/Revision and stays visible on failure
 //   §6/§12/§13/§15 denominator 30, live coverage (claimed ≠ lit), stage logs, cost
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock } = require('./tests14')
 const { load } = require('./harness')
 const React = require('react'), TR = require('react-test-renderer')

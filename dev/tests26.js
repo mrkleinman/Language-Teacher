@@ -3,6 +3,7 @@
 // the model is simulated at the Gemini boundary (tests14 responder). Defects are injected into the scene replies.
 //   §26 closed vocab, one line   §27 naturalness, one exchange   §28 patch loses a target   §29 coherence line
 //   §30 independent batch        §10/§24/§25 no broad rounds, logs, cost   §14–§16 planner plausibility
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock } = require('./tests14')
 const out = []; let fails = 0, n = 0
 const T = (lang, id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + lang.toUpperCase() + ' ' + id.padEnd(4) + name + (!pass && detail !== undefined ? '\n      ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 900) : '')) }

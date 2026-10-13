@@ -4,6 +4,7 @@
 //   §2–§5 / §23  the coverage plan     §8 / §24  missing target inside a scene     §10  reassignment
 //   §12–§13 / §25  target lost during a quality repair     §14 / §26  turn limit     §16–§17 / §27  small repair JSON
 //   §18  rebuild regenerates the plan, same targets     §29  cost     §30  success criteria in the log
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock } = require('./tests14')
 const out = []; let fails = 0, n = 0
 const T = (lang, id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + lang.toUpperCase() + ' ' + id.padEnd(4) + name + (!pass && detail !== undefined ? '\n      ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 900) : '')) }

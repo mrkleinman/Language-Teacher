@@ -154,6 +154,7 @@ const { runOnceUi, loadFixture, applyFixture, bankOf } = require('./benchmark/ru
     const res = []
     for (const fxId of ['th-listening-2026-10-08', 'th-listening-device-2026-10-09', 'ja-listening-2026-10-08', 'zh-listening-2026-10-08']) {
       const c2 = load(APP, { realBelt: true }), fx = loadFixture(fxId), vocab = applyFixture(bankOf(c2, fx.language), fx)
+      c2.setListeningMeaningFirst(false)   // v692: L6 / L7 test the v691 LEGACY planner (rollback path) — assertions unchanged; v692 is tested in tests49
       const snap = c2.selectRevisionTargets(fx.language, vocab), pool = c2.listeningCandidatePool(fx.language, vocab, snap)
       const f = c2.selectFeasibleListeningTargets({ lang: fx.language, vocab, pool, need: 30, seed: 'tests48', frozen: false })
       const tt = (f.plan && f.plan.meaningPlan && f.plan.meaningPlan.turns) || []
@@ -166,7 +167,7 @@ const { runOnceUi, loadFixture, applyFixture, bankOf } = require('./benchmark/ru
     // the whole workflow (select → plan → generate → repair → final audit), simulated model, all three languages
     const runs = []
     for (const fxId of ['synthetic-th-listening', 'ja-listening-2026-10-08', 'zh-listening-2026-10-08', 'th-listening-device-2026-10-09']) {
-      const r = await runOnceUi(loadFixture(fxId), { mode: 'record', provider: 'sim' })
+      const r = await runOnceUi(loadFixture(fxId), { mode: 'record', provider: 'sim', listeningMeaningFirst: false })
       runs.push({ fxId, status: r.content && r.content.status, calls: r.cassette.entries.length, infeasible: r.log.some(l => /LISTENING_PLAN_INFEASIBLE paidLanguageGenerationCalls=0/.test(l)), sem: r.log.some(l => /LISTENING_PLAN_INFEASIBLE.*ขนาด/.test(l)) })
     }
     T('L7', 'full workflow: Thai / Japanese / Mandarin build READY; a fixture whose 30 frozen targets include a target with no valid exchange (ขนาด, no spare candidate) STOPS before generation with 0 paid calls and an explicit diagnostic (v690 spent the calls and ended 0/30)',

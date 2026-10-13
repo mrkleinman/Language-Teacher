@@ -1,6 +1,7 @@
 // v675 — STEP 0 (benchmark & honest instrumentation) regression suite.
 // A historical baseline · B record/replay · C behaviour equivalence (v674 cassettes replayed on this build)
 // D telemetry corrections (reporting only) · E evaluator + golden dataset · F opt-in browser capture · G learner data
+process.env.TT_LISTENING_LEGACY = '1'   // v692: LEGACY Listening planner regression (assertions unchanged); the default meaning-first planner is tested in tests49
 'use strict'
 const fs = require('fs'), path = require('path'), crypto = require('crypto')
 const { load } = require('./harness')

@@ -126,6 +126,12 @@ async function runOnce(fx, o) {
   // Oct13: replays of recordings made before the 13-Oct teaching-quality changes can run with that one switch OFF, which proves the
   // build is otherwise unchanged (the changes themselves are covered by tests47 with the switch on, as the app runs)
   if (o.qualityOct13 === false && typeof c.setQualityOct13 === 'function') c.setQualityOct13(false)
+  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
+  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
+  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
+  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
+  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
+  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
   c.setLearnerStateOverride({ rank: fx.belt.rank, source: 'benchmark-fixture ' + fx.id })
   const vocab = applyFixture(bankOf(c, lang), fx)
   const byId = new Map(vocab.map(w => [w.id, w]))
@@ -195,6 +201,12 @@ async function runOnceUi(fx, o) {
   // Oct13: replays of recordings made before the 13-Oct teaching-quality changes can run with that one switch OFF, which proves the
   // build is otherwise unchanged (the changes themselves are covered by tests47 with the switch on, as the app runs)
   if (o.qualityOct13 === false && typeof c.setQualityOct13 === 'function') c.setQualityOct13(false)
+  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
+  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
+  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
+  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
+  // v692: a cassette recorded before the meaning-first Listening planner replays with the legacy planner it was recorded on
+  if ((o.listeningMeaningFirst === false || o.qualityOct13 === false) && typeof c.setListeningMeaningFirst === 'function') c.setListeningMeaningFirst(false)
   const how = ensureUiPaths(c)
   let rec = null, rep = null
   if (o.mode === 'replay') { rep = createReplayer(o.cassette); c.fetch = rep.fetch }

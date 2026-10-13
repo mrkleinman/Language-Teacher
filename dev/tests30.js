@@ -2,6 +2,7 @@
 // Polite / Natural / Very Casual must reach every stage of a Japanese track: snapshot → planner → scenes → repairs →
 // naturalness QC → per-scene register audit (hard READY gate) → saved track / history / export.
 // The model is simulated at the Gemini boundary (tests14 responder); everything else is app code.
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const fs = require('fs')
 const { setup, mock } = require('./tests14')
 const { load } = require('./harness')

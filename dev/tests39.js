@@ -1,6 +1,7 @@
 // v678 — Gen2 SHADOW PILOT (controlled generation architecture) regression suite.
 // A isolation & preservation · B deterministic acceptance rules · C pipeline mechanics (simulator: mechanics only)
 // D comparison tooling · E benchmark panel wiring
+process.env.TT_LISTENING_LEGACY = '1'   // v692: LEGACY Listening planner regression (assertions unchanged); the default meaning-first planner is tested in tests49
 'use strict'
 const fs = require('fs'), path = require('path')
 const { load } = require('./harness')
@@ -103,7 +104,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
   {
     const dir = path.join(B, 'cassettes', 'gen2'), cas = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => ({ f, d: readJ(path.join(dir, f)) }))
     const rep = []
-    for (const x of cas) { const r = await runOnceUi(loadFixture(x.d.cassette.meta.fixture), { mode: 'replay', cassette: x.d.cassette }); rep.push({ f: x.f, faithful: r.replay.faithful, same: compareContent(x.d.outcome.content, r.content).identical }) }
+    for (const x of cas) { const r = await runOnceUi(loadFixture(x.d.cassette.meta.fixture), { mode: 'replay', cassette: x.d.cassette, qualityOct13: false }); rep.push({ f: x.f, faithful: r.replay.faithful, same: compareContent(x.d.outcome.content, r.content).identical }) }
     T('C1', 'every Gen2 simulator cassette (' + rep.length + ', all six track types + stress) replays faithfully with identical content — the pilot is deterministic and replayable', rep.length >= 15 && rep.every(r => r.faithful && r.same), rep.filter(r => !(r.faithful && r.same)))
     const daily = cas.filter(x => /daily/.test(x.f) && x.d.outcome.content && x.d.outcome.content.status === 'READY')
     const dOk = daily.every(x => { const ps = x.d.outcome.content.pairs.filter(p => p && p.targetId != null), per = new Map(); ps.forEach(p => per.set(p.targetId, (per.get(p.targetId) || 0) + 1))

@@ -2,6 +2,7 @@
 // The canonical BELT_COMPLEXITY contract + the learner-authorised inventory, for Thai / Japanese / Mandarin and for
 // Daily / Revision / Listening; the model is simulated at the Gemini boundary (tests14 responder), everything else is
 // app code. Belts are set explicitly (setLearnerStateOverride) or resolved from the fixture learner (Mukyu).
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const fs = require('fs')
 const { setup, mock, makeTrack } = require('./tests14')
 const out = []; let fails = 0, n = 0

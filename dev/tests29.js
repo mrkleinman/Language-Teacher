@@ -2,6 +2,7 @@
 // preferred range = the normal generation target; hardMax = absolute safety ceiling. Only HARD_FAIL_TOO_COMPLEX is
 // rejected; a natural 5–6 unit Mukyu line is valid and is NOT repaired. TH / JA / ZH through the real pipeline, the
 // model simulated at the Gemini boundary (tests14 responder). The fixture learner is Mukyu (preferred 2–4, hardMax 6).
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const fs = require('fs')
 const { setup, mock, makeTrack } = require('./tests14')
 const out = []; let fails = 0, n = 0

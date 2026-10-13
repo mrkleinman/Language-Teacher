@@ -1,6 +1,7 @@
 // v671 — UNIFIED LANGUAGE QUALITY & GENERATION RELIABILITY (Thai · Japanese · Mandarin) regression set.
 // Every check runs the app's real functions in the node harness; Gemini is simulated only at the transport boundary.
 // Fixtures are the live-run sentences named in the v671 spec (ศูนย์ quota, 今日の今日は？, 太吗？, なんで → いいえ …).
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock } = require('./tests14')
 const React = require('react'), TR = require('react-test-renderer')
 globalThis.IS_REACT_ACT_ENVIRONMENT = true

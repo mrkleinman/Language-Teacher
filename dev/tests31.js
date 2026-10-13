@@ -1,6 +1,7 @@
 // v668 — CLOSED-WORLD GENERATION (spec "v668 Closed-World Generation — Fix Untaught Vocabulary Leakage at the Source",
 // regressions §54–§69 + the layer / planner / palette / preflight / pronunciation contracts §1–§53).
 // The model is simulated at the Gemini boundary (tests14 responder); every layer, gate and repair is the app's own code.
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const fs = require('fs')
 const { setup, mock } = require('./tests14')
 const out = []; let fails = 0, n = 0

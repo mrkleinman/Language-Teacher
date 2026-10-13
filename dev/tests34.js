@@ -2,6 +2,7 @@
 // Part 1: ONE authoritative per-recall 11-check model (one check = one candidate attempt) · Part 2: Listening = ONE
 // conversation · Part 3: Thai target-function planning + the Japanese efficiency guard · Part 4: Mandarin · Part 5: caching.
 // Every check runs the app's real functions in the node harness; Gemini is simulated only at the transport boundary.
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock, makeTrack } = require('./tests14')
 const React = require('react'), TR = require('react-test-renderer')
 globalThis.IS_REACT_ACT_ENVIRONMENT = true

@@ -6123,6 +6123,14 @@ const JA_QUESTION_WORD_COMPOUNDS = Object.freeze({
   '\u3069\u308C': ['\u3069\u308C\u304B', '\u3069\u308C\u3082', '\u3069\u308C\u3067\u3082'],
   '\u3069\u3063\u3061': ['\u3069\u3063\u3061\u304B', '\u3069\u3063\u3061\u3082', '\u3069\u3063\u3061\u3067\u3082'],
 })
+const _JA_COMPOUND_CACHE = new Map()
+function jaCompoundsContaining(lemma) {
+  if (_JA_COMPOUND_CACHE.has(lemma)) return _JA_COMPOUND_CACHE.get(lemma)
+  const out = (typeof RAW_JAPANESE_VOCAB !== 'undefined' ? RAW_JAPANESE_VOCAB : []).map(w => w && (w.japanese || w.j || w[1])).filter(x => typeof x === 'string' && x.length > 1 && x.includes(lemma) && /^[\u4E00-\u9FFF\u3040-\u30FF]+$/.test(x))
+  const uniq = [...new Set(out)].sort((a, b) => b.length - a.length)
+  _JA_COMPOUND_CACHE.set(lemma, uniq)
+  return uniq
+}
 function matchesJapaneseTarget(sentence, target) {
   let s = (sentence || '')
   if (!s || !target) return false
@@ -6130,6 +6138,8 @@ function matchesJapaneseTarget(sentence, target) {
   if (!lemma) return false
   // (a question word followed by か as the QUESTION particle — どこか？ at the very end — is still the question word)
   if (JA_QUESTION_WORD_COMPOUNDS[lemma]) JA_QUESTION_WORD_COMPOUNDS[lemma].forEach(cpd => { s = s.replace(new RegExp(cpd + '(?![\uFF1F?\u3002]?$)', 'g'), '\u3000') })
+  // v692 — a ONE-kanji target inside a longer bank word is a different word (車 is not heard in 電車, 本 not in 日本語)
+  if (oct13On() && /^[\u4E00-\u9FFF]$/.test(lemma)) jaCompoundsContaining(lemma).forEach(cpd => { s = s.split(cpd).join('\u3000'.repeat(cpd.length)) })
   if (s.includes(lemma)) return true                       // exact dictionary form
   // v683 plan: いい is also written 良い / 良く / 良かっ (live: この店、あんまり良くないね。 rejected as "target いい not present")
   if (lemma === 'いい' && teachingPlanOn() && /良(い|く|かっ|さ|けれ)/.test(s)) return true
@@ -19033,7 +19043,8 @@ function _zhLexiconAdapter(vocab) {
   ;(typeof MANDARIN_CONVERSATION_BASICS !== 'undefined' ? MANDARIN_CONVERSATION_BASICS : []).forEach(b => push(b.form, b.pinyin, b.english, 'basic', { basicId: b.id }))
   ;(typeof MANDARIN_EXTRA_LEXICON !== 'undefined' ? MANDARIN_EXTRA_LEXICON : []).forEach(x => push(x.w, x.p, x.e, 'lexeme'))
   ZH_LANGUAGE_LEXICON.forEach(x => push(x.w, x.p, x.e, 'lexeme', { layerA: true }))
-  ZH_FUNCTION_FORMS.forEach(f => push(f, '', '', 'function'))
+  // v692: a function word the closed-vocabulary check allows also carries its reading (啊 had none → "no reading for 啊" blocked READY)
+  ZH_FUNCTION_FORMS.forEach(f => push(f, (typeof V684_ZH_PARTICLE_PINYIN !== 'undefined' && V684_ZH_PARTICLE_PINYIN[f]) || '', '', 'function'))
   const index = new Map()
   lex.forEach(e => { const k = e.w[0]; if (!index.has(k)) index.set(k, []); index.get(k).push(e) })
   index.forEach(list => list.sort((x, y) => y.w.length - x.w.length))
@@ -19569,7 +19580,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v691'
+const LISTENING_BUILD_VERSION = 'v692'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -20958,7 +20969,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v691'
+const APP_BUILD_VERSION = 'v692'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -26965,7 +26976,9 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   // scene by scene as closed-world transactions (plan → feasibility → skeleton → palette → candidate → preflight → commit)
   {
     if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
-    const r = await _lnComposeByScenes({ lang, la, log, tel, targets, ctx, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax })
+    // v692 — the standalone Listening Track is planned MEANING FIRST (the legacy template planner stays behind the switch)
+    const _env = { lang, la, log, tel, targets, ctx, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax }
+    const r = listeningMeaningFirstOn() && o.standalone && !o.legacyScenes ? await _lnComposeMeaningFirst(_env) : await _lnComposeByScenes(_env)
     // v669 §17: no scene validated → nothing enters the track; the reason names the uncommitted INVALID candidates
     const unc = (r.uncommitted || []).map(u => (u.sceneId || u.id || '?') + (u.residual ? ' (' + u.residual + ')' : '')).join(', ')
     const why = r.reason || (unc ? 'UNCOMMITTED_SCENE: no scene candidate validated — INVALID_CANDIDATE ' + unc : 'the conversation could not be composed')
@@ -27120,7 +27133,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   const lt = {
     listeningTrackId: ltId, sourceMainTrackId: listeningTrackId(mainTrack), sourceFingerprint: trackPairsFingerprint(mainTrack.pairs), sourceFinal: trackFinal,
     language: lang, listeningVersion: o.version || 1, creationMode: o.creationMode || 'AUTO_PRETRACK', createdAt: new Date().toISOString(),
-    status: 'not_started', architecture: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? (sceneGates.plan && sceneGates.plan.meaningPlan ? (sceneGates.plan.verbalized ? LISTENING_ARCHITECTURE_V674 : LISTENING_ARCHITECTURE_V673) : LISTENING_ARCHITECTURE_V672) : LISTENING_ARCHITECTURE, composer: 'model',
+    status: 'not_started', architecture: sceneGates && sceneGates.plan && sceneGates.plan.meaningFirst ? LISTENING_ARCHITECTURE_V692 : sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? (sceneGates.plan && sceneGates.plan.meaningPlan ? (sceneGates.plan.verbalized ? LISTENING_ARCHITECTURE_V674 : LISTENING_ARCHITECTURE_V673) : LISTENING_ARCHITECTURE_V672) : LISTENING_ARCHITECTURE, composer: 'model',
     oneConversation: !!(sceneGates && sceneGates.ONE_CONVERSATION === 'PASS'), conversationContract: sceneGates && sceneGates.contract ? { ...sceneGates.contract, transcript: undefined } : null, story: sceneGates ? sceneGates.story || null : null,
     continuityIssues: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? conversationContinuityAudit(scenes, la, targets) : [],
     eligibleTargetIds: targets.map(t => t.id), excludedNewTargetIds: [], omittedTargetIds: audit.missing.map(t => t.id),
@@ -27229,6 +27242,834 @@ function listeningUsageSince(led0) {
     cost += r.costUsd || 0; byModel[r.model] = (byModel[r.model] || 0) + 1 })
   return { requests: rows.length, inputTokens: inTok, outputTokens: outTok, totalTokens: inTok + outTok, costUsd: cost, costSgd: cost * (typeof AI_USD_TO_SGD !== 'undefined' ? AI_USD_TO_SGD : 1.3), byModel }
 }
+// TT_V692_MEANING_FIRST_BEGIN
+// ══ v692 — MEANING-FIRST LISTENING PLANNER ═══════════════════════════════════════════════════════════════════════════
+// Root cause of the v673–v691 Listening failures: the planner was TEMPLATE-FIRST. It fixed a story arc (OPEN → DECIDE →
+// ARRANGE → MOVE → DO → PAY), put words into grammatical slots by their English gloss (很 = ACTION, 开 = PLACE), realised
+// each slot with ~60 fixed frames per language (ชอบ X ไหม · X、ある？ · 我们X吧) and called the plan "VERBALIZABILITY
+// PROVEN" when the words were authorised, short enough and present. Meaning was never planned: the AI judges rejected
+// the scenes, repair had to keep the same intention, regeneration re-used the frozen plan, and the track stopped at 0/30.
+// v692 plans MEANING FIRST:
+//   PROFILE  each target's real contract (what it needs around it, what it can describe, what a question word asks for)
+//   GROUP    targets join the everyday SITUATIONS they belong to — chosen from the targets, never a fixed arc; a word no
+//            situation the learner can talk about fits is deferred and replaced from the SRS pool BEFORE the freeze
+//   PLAN     ONE model call writes the intentions turn by turn (speaker · addressee · intention · referent · action ·
+//            object · context · expected reply · targets · sentence · English)
+//   VALIDATE deterministic proof where it is reliable: A vocabulary · B grammar contracts · C meaning rules · D question →
+//            answer type · E conversation state (the SAME closed-vocabulary / length / duplicate audit as the final gate)
+//   AUDIT    ONE batched semantic evaluation (sense · reply · usage on a 4-level scale · scene coherence · transitions):
+//            the call that wrote the plan never grades it
+//   RECOVER  by fault class (line · exchange · NEW intention · move a target · scene start) — never the same blueprint
+//            twice; no viable plan ⇒ the blocker is reported and no further paid call is made
+//   COMMIT   accepted situations only; the shared final gates then judge the actual final text
+// The legacy planner stays behind setListeningMeaningFirst(false) (rollback + its own regression suites).
+let LISTENING_MEANING_FIRST_ACTIVE = true
+function listeningMeaningFirstOn() { return LISTENING_MEANING_FIRST_ACTIVE }
+function setListeningMeaningFirst(on) { LISTENING_MEANING_FIRST_ACTIVE = !!on; return LISTENING_MEANING_FIRST_ACTIVE }
+const LISTENING_PLANNER_VERSION = 'meaning-first-1'
+const LISTENING_ARCHITECTURE_V692 = 'meaning-first-v692'
+const LN_MF_FAULTS = Object.freeze({ 1: 'SURFACE', 2: 'CUE', 3: 'VOCABULARY', 4: 'GRAMMAR', 5: 'SEMANTIC', 6: 'QUESTION_ANSWER', 7: 'TRANSITION', 8: 'GROUPING', 9: 'TECHNICAL' })
+const LN_MF_RECOVERY = Object.freeze({ 1: 'rewrite this line (same intention, same lesson words)', 2: 'correct the English of this line', 3: 'rewrite this line with authorised words only',
+  4: 'rewrite this line so the grammar of every word is complete', 5: 'replace the INTENTION: write a NEW meaningful exchange for these lesson words (not the rejected one)',
+  6: 'rewrite the WHOLE exchange so the reply really answers the question', 7: 'rewrite the start of this situation so it follows naturally from what came before',
+  8: 'add one short natural exchange for this lesson word in this situation', 9: 'bounded connection retry' })
+const LN_MF_MAX_ROUNDS = 3, LN_MF_SITUATION_CAP = 8, LN_MF_MAX_SITUATIONS = 6
+
+// ── what a word refers to (English gloss / plan field → a semantic class) ──
+const LN_MF_CLASS = Object.freeze({
+  PERSON: /\b(friends?|person|people|tourists?|teachers?|man|woman|child(ren)?|kids?|mother|father|mum|mom|dad|parents?|you all|family|brother|sister|staff|driver|doctor|students?|boss|neighbou?r|wife|husband|son|daughter|baby|guest|customer|someone|everyone)\b/,
+  ANIMAL: /\b(dog|cat|bird|animal|horse|elephant|cow|pig)\b/,
+  DRINK: /\b(coffee|tea|water|juice|beer|milk|drinks?|wine|soda)\b/,
+  FOOD: LN_SEM.FOOD, VEHICLE: LN_SEM.VEHICLE,
+  MONEY: /\b(money|fares?|price|cost|fee|bill|baht|yen|yuan|cash|payment)\b/,
+  MEDIA: /\b(movies?|films?|books?|photos?|pictures?|songs?|music|games?|shows?|tv|story|stories|jokes?|news)\b/,
+  EVENT: /\b(party|trip|meeting|festival|class|lesson|concert|holiday)\b/,
+  PLACE: /\b(entrance|exit|road|way|street|restaurants?|shops?|stores?|market|museum|temple|station|airport|hotel|room|house|home|school|office|park|beach|city|village|place|area|building|palace|bridge|corner|sanam luang|toilet|bathroom|here|there|over there)\b/,
+})
+function lnMfNounClass(english) {
+  const g = String(english || '').toLowerCase().trim()
+  if (!g) return null
+  for (const k of ['PERSON', 'ANIMAL', 'DRINK', 'FOOD', 'VEHICLE', 'MONEY', 'MEDIA', 'EVENT', 'PLACE']) if (LN_MF_CLASS[k].test(g)) return k
+  if (/^(i|me|you|he|she|we|they|him|her|us|them)\b/.test(g)) return 'PERSON'
+  if (/^(this|that|it|these|those|the thing|something|thing|stuff|what)\b/.test(g)) return 'THING'
+  return null
+}
+// adjectives restricted to what they can describe (a gloss rule; the language contracts below add exact words)
+const LN_MF_ADJ_DESCRIBES = [
+  [/^old \((people|person|living|age)/, ['PERSON', 'ANIMAL']],
+  [/^(funny|humorous)\b/, ['PERSON', 'MEDIA', 'EVENT']],
+  [/^(delicious|tasty|spicy|sweet|sour|salty|bitter)\b/, ['FOOD', 'DRINK']],
+  [/^(far|near|close by)\b/, ['PLACE']],
+  [/^(hungry|full|tired|sleepy|sad|sick)\b/, ['PERSON', 'ANIMAL']],
+]
+// verbs restricted to the objects they take
+const LN_MF_VERB_OBJECT = [[/^(to )?eat\b/, ['FOOD', 'THING']], [/^(to )?drink\b/, ['DRINK', 'THING']], [/^(to )?read\b/, ['MEDIA', 'THING']], [/^(to )?(ride|drive)\b/, ['VEHICLE', 'THING']],
+  [/^(to )?meet\b/, ['PERSON']]]
+// ── language contracts: the real grammar / meaning of words the v690–v691 plans broke (regression coverage, not a full
+// grammar). asks = what a question word asks for · describes = what an adjective may describe · needs = a class of word
+// the learner must have for the word to be usable at all · rule = the hint the planner and the repair prompt see.
+const LN_MF_CONTRACTS = {
+  zh: {
+    '跟': { needs: ['PERSON'], rule: '跟 + a person + a verb (我跟朋友去 · 你跟谁去？) — never 跟 + a verb' },
+    '给': { needs: ['PERSON'], rule: '给 + the person it is for (给你 · 我给你钱)' },
+    '用': { needs: ['THING'], rule: '用 + the thing used (用这个 · 用钱买东西)' },
+    '做': { needs: ['THING'], rule: '做 + what is done (做什么 · 做工作) or 怎么做 about a named thing' },
+    '找': { needs: ['THING'], rule: '找 + who / what is looked for (找朋友 · 你找什么？)' },
+    '拿': { needs: ['THING'], rule: '拿 + the thing taken (拿这个 · 拿钱)' },
+    '来': { rule: 'a subject + 来 (+ a place): 你来吗？ · 朋友来我家' },
+    '到': { rule: '到 + a place, or 到了 (我到了 · 到家了) — never a bare 到 at the end' },
+    '回': { needs: ['PLACE'], rule: '回 + a place (回家)' },
+    '很': { rule: '很 + an adjective as the predicate (这个很大)' },
+    '太': { rule: '太 + an adjective + 了 (太大了), or 不太 + adjective' },
+    '一起': { rule: 'a plural subject (我们 · 你们) or 跟 + a person, then 一起 + a verb (我们一起去吧)' },
+    '在': { rule: '在 + a place (我在家 · 你在哪里？)' },
+    '吗': { rule: '吗 ends a yes / no question — never together with 谁 / 哪里 / 什么 / 怎么 / 为什么 / 多少' },
+    '吧': { rule: '吧 ends a suggestion (我们去吧) — never about the past (昨天)' },
+    '怎么': { asks: 'METHOD', rule: '怎么 + a verb asks HOW to do it (怎么去？ · 这个怎么做？)' },
+    '多少': { asks: 'QUANTITY', rule: '多少 asks how many / how much — answered with a number' },
+  },
+  ja: {
+    '何時': { asks: 'CLOCK_TIME', rule: '何時 asks for a clock time — the answer gives 〜時, never only 明日 / 今日' },
+    'いつ': { asks: 'TIME', rule: 'いつ asks when — answered with a day or time (明日 · 今日 · 今)' },
+    'いくら': { asks: 'PRICE', rule: 'いくら asks a price — the answer gives an amount (〜円), not only 高い / 安い' },
+    'なんで': { asks: 'REASON', rule: 'なんで asks why — the answer gives the reason (〜から), never a brush-off like いいから' },
+    'どれ': { asks: 'CHOICE', rule: 'どれ = which one (of three or more things)' },
+    'どっち': { asks: 'CHOICE', rule: 'どっち = which (of two) / which way' },
+    'どう': { asks: 'STATE', rule: 'どう = how is it / how about … (〜はどう？)' },
+    'あれ': { rule: 'あれ = that THING over there (use あそこ for the place)' },
+    'あそこ': { rule: 'あそこ = over there (a place: あそこに行く)' },
+    'いいえ': { rule: 'いいえ = a clear "no" — natural when correcting a wrong guess or answering a direct question; it may stay even where うん / ううん would be more casual' },
+    'はい': { rule: 'はい = yes / here you are — a clear answer' },
+    'うん': { rule: 'うん = yeah — casual agreement' },
+    'ごめん': { rule: 'ごめん = sorry (casual) — an apology the other speaker acknowledges' },
+    'まだ': { rule: 'まだ = not yet / still (まだ食べてない · まだいる？)' },
+    'もう': { rule: 'もう = already / (not) any more (もう食べた？ · もう帰る)' },
+  },
+  th: {
+    'แก่': { describes: ['PERSON', 'ANIMAL'], rule: 'แก่ = old (people / animals) — never about a thing or a place (things are เก่า)' },
+    'ตลก': { describes: ['PERSON', 'MEDIA', 'EVENT'], rule: 'ตลก = funny — a person, a story, a film; never after ไว้' },
+    'ไว้': { rule: 'ไว้ follows a verb (จองไว้ · เก็บไว้ = in advance / keep) — never before an adjective' },
+    'คุ้ม': { describes: ['MONEY', 'THING', 'FOOD', 'PLACE', 'MEDIA', 'EVENT', 'VEHICLE'], rule: 'คุ้ม = worth it (the price / the trip)' },
+    'ค่าโดยสาร': { rule: 'ค่าโดยสาร = the fare — ask or give its amount (ค่าโดยสารเท่าไหร่ · …บาท); never "like the fare"' },
+    'นานเท่าไหร่': { asks: 'DURATION', rule: 'how long — answered with a length of time (สิบนาที)' },
+    'เป็นอย่างไร': { asks: 'STATE', rule: 'how is it — about a named thing / place / person, answered with a fitting description' },
+    'น่าดู': { describes: ['PLACE', 'MEDIA', 'EVENT', 'THING'], rule: 'worth seeing — places, films, shows' },
+    'คือ': { rule: 'X คือ Y — says what X is' },
+    'ไม่เชิง': { rule: 'ไม่เชิง = not exactly — a qualified answer to a yes / no question' },
+  },
+}
+function lnMfContract(lang, surface) { return ((LN_MF_CONTRACTS[lang] || {})[surface]) || null }
+function lnMfAsks(t, meta, lang) {
+  const c = lnMfContract(lang, t.surface)
+  if (c && c.asks) return c.asks
+  const g = String(t.gloss || '').toLowerCase()
+  if (/^what time\b|o'clock/.test(g)) return 'CLOCK_TIME'
+  if (/^how long\b/.test(g)) return 'DURATION'
+  if (/^how old\b/.test(g)) return 'AGE'
+  if (/^how much\b/.test(g)) return 'PRICE'
+  if (/^how many\b/.test(g)) return 'QUANTITY'
+  if (/^when\b/.test(g)) return 'TIME'
+  if (/^where\b/.test(g)) return 'PLACE'
+  if (/^who\b/.test(g)) return 'PERSON'
+  if (/^why\b/.test(g)) return 'REASON'
+  if (/^which\b/.test(g)) return 'CHOICE'
+  if (/^how (is|are|was)\b|how is it/.test(g)) return 'STATE'
+  if (/^how\b/.test(g)) return 'METHOD'
+  if (/^what\b/.test(g)) return 'THING'
+  return meta && meta.asks ? meta.asks : 'YESNO'
+}
+// the profile of ONE target: its role, what it asks / describes / needs, and whether it can go almost anywhere
+function lnMfProfile(t, lang) {
+  const meta = listeningTargetMetadata(t)
+  const g = String(t.gloss || '').toLowerCase()
+  const c = lnMfContract(lang, t.surface)
+  const asks = meta.role === 'QUESTION_WORD' || (c && c.asks) ? lnMfAsks(t, meta, lang) : null
+  const nounClass = !asks && (['THING', 'PERSON', 'PLACE'].includes(meta.valueType) || meta.role === 'CONTENT') ? lnMfNounClass(g) : null
+  let describes = c && c.describes ? c.describes : null
+  if (!describes && (meta.valueType === 'STATE' || meta.role === 'DESCRIPTION')) { const hit = LN_MF_ADJ_DESCRIBES.find(([rx]) => rx.test(g)); if (hit) describes = hit[1] }
+  const head = g.split(/[;,/(]/)[0].trim()
+  const generic = /^(i|me|you|we|he|she|they|this|that|these|those|it|here|there|good|okay|ok|fine|very|really|so|also|too|that one|this one)$/.test(head)
+  // general verbs / copulas can go in any situation (can, want, know, think, is …) — never "no situation fits"
+  const general = /^(to )?(can|be able( to)?|want( to)?|would like|like|love|know|understand|think|have|has|need|say|tell|is|are|be|mean|try|help|feel)\b/.test(head) || /^is \(identif/.test(g)
+  const flexible = !asks && (['YESNO', 'MODIFIER'].includes(meta.valueType) || ['RESPONSE_TOKEN', 'DISCOURSE_MARKER', 'APOLOGY', 'FUNCTIONAL_PHRASE'].includes(meta.role) ||
+    (meta.valueType === 'STATE' && !describes && generic) || generic || (general && !(c && (c.asks || c.describes || c.needs))))
+  return { id: t.id, surface: t.surface, gloss: t.gloss || '', role: meta.role, valueType: meta.valueType, asks, nounClass, describes, needs: (c && c.needs) || [], rule: c ? c.rule : null, flexible, past: !!meta.past, meta }
+}
+// ── SITUATIONS: everyday settings a conversation can move through. Chosen FROM the targets (never a fixed arc); a
+// situation is available only when the learner's words can carry its core (needs).
+const LN_MF_SITUATIONS = [
+  { key: 'MEET', rank: 1, title: 'meeting and catching up', where: 'where they meet', desc: 'they meet, greet each other and catch up (how they are, what they did, who they were with)',
+    rx: /\b(friends?|family|name|age|how are|yesterday|last|meet|work|job|busy|tired|happy|fine|sorry|hello|hi|you all|people|person|who)\b/, cls: ['PERSON', 'ANIMAL'], asks: ['PERSON', 'AGE', 'STATE', 'YESNO', 'REASON'], val: ['PERSON'] },
+  { key: 'PLAN', rank: 2, title: 'deciding what to do', where: 'still where they meet', desc: 'they decide what to do together and where to go',
+    rx: /\b(movies?|films?|books?|photos?|see|watch|want|visit|museum|temple|park|palace|tourists?|which|where|there|over there|here|worth seeing|go to|sanam luang|national)\b/, cls: ['MEDIA', 'PLACE', 'EVENT'], asks: ['THING', 'CHOICE', 'PLACE', 'REASON', 'YESNO'], val: ['PLACE'] },
+  { key: 'TIME', rank: 3, title: 'agreeing when', where: 'still where they meet', desc: 'they agree a day or a time to go; once a time is agreed it stays agreed',
+    rx: /\b(today|tomorrow|tonight|now|later|o'clock|a\.?m\.?|p\.?m\.?|morning|evening|afternoon|what time|when|again|still|not yet|already|in advance|soon)\b/, asks: ['CLOCK_TIME', 'TIME'], val: ['TIME'],
+    needs: /\b(today|tomorrow|now|o'clock|time|morning|evening|afternoon|tonight)\b/ },
+  { key: 'TRAVEL', rank: 4, title: 'getting there', where: 'on the way', desc: 'they go there: how to get there, by bus / train / taxi, the way, how long it takes, the fare',
+    rx: /\b(bus|train|taxi|cars?|songthaew|way|road|turn|walk|drive|ride|arrive|come|go|entrance|exit|fares?|how long|far|near|wait|return|go back|get on|get off|station)\b/, cls: ['VEHICLE'], asks: ['DURATION', 'METHOD', 'PLACE', 'REASON', 'YESNO'],
+    needs: /\b(go|come|arrive|bus|train|cars?|taxi|walk|ride)\b/ },
+  { key: 'EAT', rank: 5, title: 'eating and drinking', where: 'at a place to eat', desc: 'they eat or drink somewhere: choosing, ordering, how it tastes',
+    rx: /\b(eat|drink|food|rice|noodles?|restaurant|delicious|tasty|spicy|hungry|full|order|menu|coffee|tea|let's eat|pad thai|meal|water|worthwhile|worth)\b/, cls: ['FOOD', 'DRINK'], asks: ['THING', 'STATE', 'CHOICE', 'YESNO'],
+    needs: /\b(eat|drink|food|rice|coffee|tea|restaurant|meal|water)\b/ },
+  { key: 'SHOP', rank: 6, title: 'shopping and paying', where: 'at a shop', desc: 'they look at something to buy, ask the price, decide and pay',
+    rx: /\b(buy|pay|price|cost|money|expensive|cheap|worth|how much|how many|thing|stuff|use|take|hold|open|baht|yen|yuan|shop|store)\b/, cls: ['MONEY'], asks: ['PRICE', 'QUANTITY', 'CHOICE', 'THING', 'YESNO'],
+    needs: /\b(buy|money|price|how much|pay)\b/ },
+  { key: 'LOOK', rank: 7, title: 'looking around', where: 'at the place they chose', desc: 'they look at things there and talk about them (big, small, nice, old, funny …)',
+    rx: /\b(look|see|this|that|big|small|nice|beautiful|old|new|funny|interesting|worth seeing|photos?|pictures?|show)\b/, cls: ['MEDIA', 'THING', 'PLACE', 'ANIMAL'], asks: ['STATE', 'THING', 'CHOICE', 'YESNO'], val: ['STATE'] },
+  { key: 'HOME', rank: 8, title: 'at home', where: 'at home', desc: 'they talk about home and everyday things to do there',
+    rx: /\b(home|house|do|make|cook|wait|open|close|work|rest|sleep|family|return|go home|find|look for)\b/, asks: ['METHOD', 'THING', 'PLACE', 'YESNO'], needs: /\b(home|house)\b/ },
+  { key: 'PART', rank: 9, title: 'wrapping up', where: 'as they part', desc: 'they wrap up, maybe swap phone numbers or plan to meet again, and say goodbye',
+    rx: /\b(goodbye|bye|see you|good luck|take care|phone|number|again|go home|thanks?|thank you)\b/, val: ['PHONE', 'DIGITS'], asks: ['YESNO'] },
+]
+function lnMfSituationScore(p, s) {
+  let sc = 0
+  const g = p.gloss.toLowerCase()
+  if (s.rx.test(g)) sc += 3
+  if (p.nounClass && (s.cls || []).includes(p.nounClass)) sc += 3
+  if (p.asks && (s.asks || []).includes(p.asks)) sc += 3
+  if (p.valueType && (s.val || []).includes(p.valueType)) sc += 2
+  if (p.valueType === 'TIME' && p.past) sc += s.key === 'MEET' ? 4 : s.key === 'TIME' ? -4 : 0
+  if (p.describes && p.describes.some(c => (s.cls || []).includes(c))) sc += 2
+  if (p.role === 'GREETING') sc += s.key === 'MEET' ? 6 : -6
+  if (p.role === 'PARTING') sc += s.key === 'PART' ? 6 : -6
+  return sc
+}
+// GROUP the targets by situation (deterministic): a greedy cover by the situations the targets genuinely fit, then every
+// target to its best chosen situation (≤ LN_MF_SITUATION_CAP each); flexible words (yes / no, very, together …) join the
+// situation that can host them. A non-flexible word with no available situation is UNPLACEABLE (deferred before the freeze).
+function lnMfGroupTargets(profiles, glosses, o) {
+  const opt = o || {}
+  const allG = (glosses || []).concat(profiles.map(p => p.gloss)).map(x => String(x || '').toLowerCase())
+  const sits = LN_MF_SITUATIONS.filter(s => !s.needs || allG.some(g => s.needs.test(g)))
+  const firm = profiles.filter(p => !p.flexible), flex = profiles.filter(p => p.flexible)
+  const opts = new Map(firm.map(p => [p.id, sits.map(s => [s, lnMfSituationScore(p, s)]).filter(x => x[1] >= 2).sort((a, b) => b[1] - a[1] || a[0].rank - b[0].rank)]))
+  const unplaceable = firm.filter(p => !opts.get(p.id).length).map(p => ({ id: p.id, surface: p.surface, reason: 'no everyday situation the learner can talk about fits "' + p.gloss + '"' + (sits.length < LN_MF_SITUATIONS.length ? ' (unavailable situations: ' + LN_MF_SITUATIONS.filter(s => !sits.includes(s)).map(s => s.key).join(', ') + ')' : '') }))
+  const chosen = []
+  const PART = sits.find(s => s.key === 'PART')
+  let left = firm.filter(p => opts.get(p.id).length)
+  if (PART && left.some(p => opts.get(p.id)[0][0] === PART)) { chosen.push(PART); left = left.filter(p => !opts.get(p.id).some(x => x[0] === PART)) }
+  while (left.length && chosen.filter(s => s !== PART).length < LN_MF_MAX_SITUATIONS - 1) {
+    const best = sits.filter(s => !chosen.includes(s)).map(s => [s, left.filter(p => opts.get(p.id).some(x => x[0] === s)).reduce((a, p) => a + 1 + (opts.get(p.id)[0][0] === s ? 1 : 0), 0)])
+      .sort((a, b) => b[1] - a[1] || a[0].rank - b[0].rank)[0]
+    if (!best || !best[1]) break
+    chosen.push(best[0]); left = left.filter(p => !opts.get(p.id).some(x => x[0] === best[0]))
+  }
+  left.forEach(p => unplaceable.push({ id: p.id, surface: p.surface, reason: 'its situations (' + opts.get(p.id).map(x => x[0].key).join(', ') + ') could not join this conversation (at most ' + LN_MF_MAX_SITUATIONS + ' situations)' }))
+  if (!chosen.length) chosen.push(sits.find(s => s.key === 'MEET') || sits[0])
+  const groups = new Map(chosen.map(s => [s.key, []]))
+  const unp = new Set(unplaceable.map(u => u.id))
+  firm.filter(p => !unp.has(p.id)).sort((a, b) => opts.get(a.id).filter(x => chosen.includes(x[0])).length - opts.get(b.id).filter(x => chosen.includes(x[0])).length).forEach(p => {
+    const o2 = opts.get(p.id).filter(x => chosen.includes(x[0]))
+    const pick = o2.find(x => groups.get(x[0].key).length < LN_MF_SITUATION_CAP) || o2[0]
+    groups.get(pick[0].key).push(p)
+  })
+  // flexible words go where they have a host: a degree word next to describing words, a time adverb / "together" next to
+  // actions, a yes / no word where questions are asked; otherwise the lightest situation
+  const hostScore = (p, s) => { const g = groups.get(s.key)
+    if (p.valueType === 'MODIFIER' && p.meta.modifies === 'STATE') return g.filter(x => x.valueType === 'STATE' || x.role === 'DESCRIPTION').length * 2
+    if (p.valueType === 'MODIFIER') return g.filter(x => x.valueType === 'ACTION' || x.role === 'ACTION').length * 2
+    if (p.valueType === 'YESNO' || p.role === 'RESPONSE_TOKEN') return g.filter(x => x.asks === 'YESNO' || x.valueType === 'ACTION').length
+    return lnMfSituationScore(p, s) }
+  flex.forEach(p => { const pick = chosen.slice().sort((a, b) => (hostScore(p, b) - hostScore(p, a)) || (groups.get(a.key).length - groups.get(b.key).length) || a.rank - b.rank)
+    .find(s => groups.get(s.key).length < LN_MF_SITUATION_CAP + 1) || chosen[0]; groups.get(pick.key).push(p) })
+  // an overfull situation becomes two consecutive parts of it
+  const scenes = []
+  chosen.slice().sort((a, b) => a.rank - b.rank).forEach(s => { const ps = groups.get(s.key)
+    if (!ps.length) return
+    const parts = Math.ceil(ps.length / LN_MF_SITUATION_CAP)
+    for (let k = 0; k < parts; k++) scenes.push({ key: s.key + (parts > 1 ? '-' + (k + 1) : ''), situation: s.key, title: s.title + (parts > 1 ? ' (' + (k + 1) + ')' : ''), where: s.where, desc: s.desc, targetIds: ps.slice(Math.floor(k * ps.length / parts), Math.floor((k + 1) * ps.length / parts)).map(p => p.id) }) })
+  if (scenes.length) { scenes[0].opening = true; scenes[scenes.length - 1].closing = true }
+  return { scenes, unplaceable, available: sits.map(s => s.key), situations: chosen.map(s => s.key), valid: !unplaceable.length && scenes.length > 0 }
+}
+// is ONE target usable at all with the learner's words? (the v673 support needs + answer vocabulary + the contract's needs)
+const LN_MF_NUMBER_GLOSS = /^(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|million|\d)/
+function lnMfTargetFeasibility(p, glosses, batch) {
+  const reasons = (listeningTargetFeasibility(p.meta, glosses, (batch || []).map(b => b.meta)).reasons || []).slice()
+  const G = (glosses || []).map(x => String(x || '').toLowerCase())
+  const hasNum = G.some(g => LN_MF_NUMBER_GLOSS.test(g)) || (batch || []).some(b => b.id !== p.id && ['AMOUNT', 'DIGITS'].includes(b.valueType))
+  const label = { CLOCK_TIME: 'a clock time', PRICE: 'a price', QUANTITY: 'a number', DURATION: 'a length of time', AGE: 'an age' }
+  if (label[p.asks] && !hasNum) reasons.push('asks for ' + label[p.asks] + ', but the learner has no number words to answer with (the reply would be a non-answer)')
+  const hasClass = cls => G.some(g => (LN_MF_CLASS[cls] && LN_MF_CLASS[cls].test(g)) || (cls === 'PERSON' && /^(i|me|you|we|he|she|they|friend)\b/.test(g)) ||
+    (cls === 'THING' && /^(this|that|thing|stuff|what|it)\b/.test(g)) || (cls === 'PLACE' && /^(here|there|home|house|place|where)\b/.test(g)))
+  ;(p.needs || []).forEach(cls => { if (!hasClass(cls)) reasons.push(p.surface + ' needs ' + cls.toLowerCase() + ' word(s) (' + p.rule + ') — none authorised') })
+  return { feasible: !reasons.length, reasons: [...new Set(reasons)] }
+}
+// SELECT → PROFILE → GROUP before the freeze (deterministic, 0 paid calls): an infeasible or unplaceable candidate is deferred
+// (its SRS obligation untouched) and the next SRS candidate is tried; a frozen (rebuild) set is never substituted.
+function lnMfSelectFeasible(o, T, glosses) {
+  const lang = o.lang, need = o.need || LISTENING_TRACK_TARGETS
+  const tById = new Map(T.map(t => [t.id, t]))
+  const prof = new Map(T.map(t => [t.id, lnMfProfile(t, lang)]))
+  const deferred = [], chosen = []
+  const isDeferred = id => deferred.some(d => d.id === id)
+  const fill = () => { for (const t of T) { if (chosen.length >= need) break; if (chosen.includes(t.id) || isDeferred(t.id)) continue
+    const f = lnMfTargetFeasibility(prof.get(t.id), glosses, chosen.map(id => prof.get(id)))
+    if (f.feasible || o.frozen) chosen.push(t.id); if (!f.feasible) deferred.push({ id: t.id, surface: t.surface, reason: f.reasons[0], stage: 'individual' }) } }
+  fill()
+  let grouping = null
+  for (let round = 0; round < 8; round++) {
+    grouping = lnMfGroupTargets(chosen.map(id => prof.get(id)), glosses, { lang })
+    if (grouping.valid || o.frozen) break
+    grouping.unplaceable.forEach(u => { chosen.splice(chosen.indexOf(u.id), 1); deferred.push({ id: u.id, surface: u.surface, reason: u.reason, stage: 'situation' }) })
+    fill()
+    if (chosen.length < need) { grouping = lnMfGroupTargets(chosen.map(id => prof.get(id)), glosses, { lang }); break }
+  }
+  const indivBad = o.frozen ? deferred.filter(d => d.stage === 'individual').map(d => d.id) : []
+  const feasible = chosen.length >= need && !indivBad.length && !!grouping && grouping.valid
+  const reason = feasible ? null : chosen.length < need ? 'only ' + chosen.length + ' of ' + T.length + ' candidate(s) have a natural use the learner can say in an everyday situation (needs ' + need + ')'
+    : indivBad.length ? 'the frozen set contains ' + indivBad.length + ' target(s) the learner cannot use naturally: ' + deferred.filter(d => indivBad.includes(d.id)).slice(0, 4).map(d => d.surface + ' (' + d.reason + ')').join('; ')
+    : 'no situation fits: ' + (grouping ? grouping.unplaceable.slice(0, 4).map(u => u.surface + ' (' + u.reason + ')').join('; ') : 'grouping failed')
+  const plan = { meaningFirst: true, valid: feasible, grouping, meaningPlan: null, problems: reason ? [reason] : [], scenes: [] }
+  return { feasible, targetIds: chosen.slice(0, need), deferred, plan, planSeed: null, poolSize: T.length, supportCount: glosses.length, reason, metas: new Map([...prof.entries()].map(([k, v]) => [k, v.meta])),
+    verbalized: false, provenTurns: 0, meaningFirst: true, grouping, profiles: prof, tById }
+}
+function lnMfGroupingLog(g, byId) {
+  const out = (g.scenes || []).map((s, k) => '🗺 LISTENING_SITUATION S' + (k + 1) + ' ' + s.key + ' "' + s.title + '" targets=[' + s.targetIds.map(id => (byId.get(id) || {}).surface).join(', ') + ']' + (s.opening ? ' · opens the conversation' : '') + (s.closing ? ' · ends with goodbye' : ''))
+  ;(g.unplaceable || []).forEach(u => out.push('⛔ LISTENING_SITUATION_UNPLACEABLE ' + u.id + ' ' + u.surface + ' — ' + u.reason))
+  return out
+}
+
+// ── deterministic language checks (B grammar contracts · C meaning rules · D answer types) ──
+const LN_MF_NUM = { th: /[0-9๐-๙]|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ|ยี่|ร้อย|พัน|หมื่น|แสน|ล้าน|เที่ยง/, ja: /[0-9０-９]|[一二三四五六七八九十百千万]/, zh: /[0-9]|[一二两三四五六七八九十百千万半]/ }
+const LN_MF_UNIT = {
+  CLOCK_TIME: { th: /โมง|ทุ่ม|บ่าย|เที่ยง|ตี(หนึ่ง|สอง|สาม|สี่|ห้า)|นาฬิกา/, ja: /時/, zh: /点/ },
+  DURATION: { th: /นาที|ชั่วโมง|วัน|อาทิตย์|สัปดาห์|เดือน|ปี/, ja: /分|時間|日|週間|か月|年/, zh: /分钟|小时|天|星期|个月|年/ },
+  AGE: { th: /ขวบ|ปี/, ja: /歳|才/, zh: /岁/ },
+}
+const LN_MF_TIMEKEY = { zh: /[0-9一二两三四五六七八九十]+点(半)?/, ja: /[0-9０-９一二三四五六七八九十]+時(半)?/,
+  th: /(บ่าย)?(สิบเอ็ด|สิบสอง|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ)(โมง|ทุ่ม)(เช้า|เย็น)?|เที่ยง(วัน|คืน)?/ }
+const LN_MF_BRUSH_OFF = { ja: /^(いいから|べつに|別に|なんでもない|なんとなく|ちょっと)[。！!…]*$/, zh: /^(没什么|不知道|就是)[。！!]*$/, th: /^(ไม่รู้|เปล่า|ก็แค่)(ครับ|ค่ะ|คะ)?$/ }
+function lnMfStrip(lang, text) { return String(text || '').replace(lang === 'th' ? /(ครับ|ค่ะ|คะ|นะ|จ้ะ)+$/ : /[。？！?!，、,.\s…]+/g, '').trim() }
+// what kind of answer a question turn asks for: the contract word in it overrides the plan's own label
+function lnMfQuestionAsks(lang, tu, byId) {
+  const ids = tu.targetIds || [], txt = tu.text || ''
+  for (const id of ids) { const t = byId.get(id); const c = t && lnMfContract(lang, t.surface); if (c && c.asks) return c.asks }
+  if (lang === 'ja' && /何時/.test(txt)) return 'CLOCK_TIME'
+  if (lang === 'ja' && /いくら/.test(txt)) return 'PRICE'
+  if (lang === 'zh' && /几点/.test(txt)) return 'CLOCK_TIME'
+  if (lang === 'zh' && /多少钱/.test(txt)) return 'PRICE'
+  if (lang === 'th' && /กี่โมง/.test(txt)) return 'CLOCK_TIME'
+  if (lang === 'th' && /นานเท่าไหร่|กี่นาที|กี่ชั่วโมง/.test(txt)) return 'DURATION'
+  if (lang === 'th' && /อายุเท่าไหร่|กี่ขวบ/.test(txt)) return 'AGE'
+  if (lang === 'th' && /(ราคา|ค่า\S*)เท่าไหร่|กี่บาท/.test(txt)) return 'PRICE'
+  return String(tu.asks || '').toUpperCase() || null
+}
+function lnMfAnswerProblem(lang, asks, ans, q) {
+  const raw = ans.text || '', t = lnMfStrip(lang, raw), num = LN_MF_NUM[lang] || /\d/
+  const say = { CLOCK_TIME: 'a clock time', PRICE: 'an amount', QUANTITY: 'a number', DURATION: 'a length of time', AGE: 'an age', REASON: 'a reason' }
+  const noAnswer = what => 'the question "' + q.text + '" asks for ' + what + ' — the reply "' + raw + '" gives none'
+  if (/(わから|知らない|分から|不知道|ไม่รู้|ไม่แน่ใจ)/.test(raw) && asks !== 'REASON') return null       // an honest "I don't know" answers
+  if (asks === 'CLOCK_TIME' && !((LN_MF_UNIT.CLOCK_TIME[lang] || /x^/).test(raw) && num.test(raw))) return noAnswer(say.CLOCK_TIME)
+  if ((asks === 'PRICE' || asks === 'QUANTITY') && !num.test(raw)) return noAnswer(say[asks])
+  if (asks === 'DURATION' && !((LN_MF_UNIT.DURATION[lang] || /x^/).test(raw) && num.test(raw))) return noAnswer(say.DURATION)
+  if (asks === 'AGE' && !num.test(raw)) return noAnswer(say.AGE)
+  if (asks === 'REASON' && ((LN_MF_BRUSH_OFF[lang] && LN_MF_BRUSH_OFF[lang].test(t)) || /^(はい|うん|いいえ|ううん|是|对|不|好|ครับ|ค่ะ|ใช่|ไม่)$/.test(t))) return noAnswer(say.REASON)
+  return null
+}
+// Mandarin grammar contracts (the brief's 跟 给 用 做 找 来 到 回 · 很 太 一起 在 了 吗 吧) on the sentence itself
+const ZH_MF_PERSON = /^(我们|你们|他们|她们|咱们|大家|我|你|他|她|朋友|人|谁|家人|老师|妈妈|爸爸)/
+function lnMfZhProblems(text, prevText, adjSet) {
+  const out = [], s = String(text || '')
+  const after = w => { const i = s.indexOf(w); return i < 0 ? null : s.slice(i + w.length) }
+  const end = r => r == null || /^[。？！，?!,]?$/.test(r) || /^[。？！?!]/.test(r)
+  const bare = s.replace(/[。？！，?!,\s]/g, '').replace(/了$/, '')
+  // a short echo answer (你找钱吗？ — 找。 · 你回家吗？ — 我不回。) — the verb's complement is recoverable from the question
+  const echo = v => bare.replace(/^(我们|你们|我|你|他|她)/, '').replace(/^(也|就|都)/, '').replace(/^(不|没)/, '') === v && String(prevText || '').includes(v)
+  const g = (w, why, fault) => out.push({ fault: fault || 4, word: w, detail: why })
+  let r
+  if ((r = after('跟')) != null && !(ZH_MF_PERSON.test(r) && !end(r.replace(ZH_MF_PERSON, '')))) g('跟', '跟 needs a person and then a verb (跟 + 朋友 + 去) — "' + s + '"')
+  if ((r = after('给')) != null && !ZH_MF_PERSON.test(r) && !echo('给')) g('给', '给 needs the person it is for (给你) — "' + s + '"')
+  for (const v of ['用', '找', '拿']) if ((r = after(v)) != null && end(r) && !echo(v)) g(v, v + ' needs what is ' + (v === '找' ? 'looked for' : v === '用' ? 'used' : 'taken') + ' — "' + s + '"')
+  if ((r = after('做')) != null && end(r) && !/怎么做|做的|谁做/.test(s) && !echo('做')) g('做', '做 needs what is done (做什么 · 做工作) — "' + s + '"')
+  if ((r = after('回')) != null && !/^(家|这里|那里|哪里|去|来|国|了)/.test(r) && !echo('回')) g('回', '回 needs where to (回家) — "' + s + '"')
+  if ((r = after('到')) != null && !/^(了|家|这里|那里|哪里|这|那)/.test(r) && !/到了/.test(s) && !echo('到')) g('到', '到 needs a place or 了 (我到了 · 到家了) — "' + s + '"')
+  if ((r = after('很')) != null && !([...adjSet].some(a => r.startsWith(a)))) g('很', '很 must be followed by an adjective (很大 · 很好) — "' + s + '"')
+  if ((r = after('太')) != null) { if (!([...adjSet].some(a => r.startsWith(a)))) g('太', '太 must be followed by an adjective — "' + s + '"'); else if (!/了/.test(r) && !/不太/.test(s)) g('太', '太 + adjective needs 了 (太大了) — "' + s + '"') }
+  { const i = s.indexOf('一起'); if (i >= 0) { const before = s.slice(0, i)
+    // 你想一起吃吗？ / 一起去吧 imply "with me" (a question or suggestion to the listener); a plain statement by ONE person does not (我现在一起到)
+    const plural = /(我们|你们|他们|她们|咱们|大家|跟.{1,4}$)/.test(before), invite = /[吗吧][？?！!。]?$|[？?]$/.test(s) && !/^我(?!们)/.test(before)
+    if (!plural && !invite) g('一起', '一起 needs a plural subject (我们一起 …), 跟 + a person, or a question / suggestion to the listener — "' + s + '"')
+    if (end(s.slice(i + 2))) g('一起', '一起 must be followed by a verb (一起去) — "' + s + '"') } }
+  if ((r = after('在')) != null && end(r)) g('在', '在 needs where (在家 · 在哪里) — "' + s + '"')
+  if (/吗[？?]?$/.test(s) && /(谁|哪里|哪儿|什么|怎么|为什么|多少|几)/.test(s)) g('吗', '吗 cannot end a question that already has a question word — "' + s + '"')
+  if (/吧/.test(s) && /昨天/.test(s)) g('吧', 'a suggestion (吧) cannot be about yesterday — "' + s + '"', 5)
+  if (/去这里/.test(s)) g('去', '去这里 ("go here") — one comes here: 来这里 — "' + s + '"', 5)
+  if (/来那里/.test(s)) g('来', '来那里 ("come there") — one goes there: 去那里 — "' + s + '"', 5)
+  return out
+}
+function lnMfJaProblems(text) {
+  const out = [], s = String(text || '')
+  if (/あれ(に|へ)(行|来|いこ|行こ)/.test(s)) out.push({ fault: 5, word: 'あれ', detail: 'あれ is a thing; the place over there is あそこ — "' + s + '"' })
+  if (/昨日/.test(s) && /(よう|[おこごそぞとどのぼぽもろ]う|ましょう)(か|ね|よ)?[？?。！!]?$/.test(s)) out.push({ fault: 5, word: '昨日', detail: 'a suggestion cannot be about yesterday — "' + s + '"' })
+  return out
+}
+function lnMfThProblems(text, english, verbSurfaces) {
+  const out = [], s = String(text || ''), en = String(english || '').toLowerCase()
+  const i = s.indexOf('ไว้')
+  if (i >= 0) {
+    const before = s.slice(0, i)
+    if (!before.trim() || /^(ผม|ฉัน|เรา|คุณ)?$/.test(before.trim())) out.push({ fault: 4, word: 'ไว้', detail: 'ไว้ follows a verb (จองไว้ · เก็บไว้) — "' + s + '"' })
+    else if (/^(ตลก|สวย|ดี|อร่อย|แพง|ถูก|น่าดู|มาก)/.test(s.slice(i + 3))) out.push({ fault: 4, word: 'ไว้', detail: 'ไว้ cannot come before an adjective — "' + s + '"' })
+  }
+  if (/แก่/.test(s) && /^(นี่|นั่น|โน่น|อันนี้|อันนั้น|ที่นี่|ที่นั่น)/.test(s)) out.push({ fault: 5, word: 'แก่', detail: 'แก่ is "old" for people / animals — not for this thing / place — "' + s + '"' })
+  if (/ค่าโดยสาร/.test(s) && !/เท่าไหร่|กี่บาท|บาท|แพง|ถูก|จ่าย|ราคา|คุ้ม|ฟรี/.test(s) && !/\b(how much|price|cost|pay|paid|expensive|cheap|baht|free|worth)\b/.test(en))
+    out.push({ fault: 5, word: 'ค่าโดยสาร', detail: 'talk about the fare\'s amount (ค่าโดยสารเท่าไหร่ · …บาท) — "' + s + '"' })
+  return out
+}
+// ── the PLAN as data: normalise a model reply into situations → turns (ids, numbers, made lines) ──
+const LN_MF_TURN_SCHEMA = { type: 'OBJECT', properties: { n: { type: 'INTEGER' }, speaker: { type: 'STRING' }, addressee: { type: 'STRING' }, intent: { type: 'STRING' }, asks: { type: 'STRING' },
+  referent: { type: 'STRING' }, action: { type: 'STRING' }, object: { type: 'STRING' }, context: { type: 'STRING' }, expects: { type: 'STRING' }, respondsTo: { type: 'INTEGER' },
+  targetIds: { type: 'ARRAY', items: { type: 'INTEGER' } }, text: { type: 'STRING' }, english: { type: 'STRING' } }, required: ['speaker', 'intent', 'text', 'english', 'targetIds'] }
+const LN_MF_PLAN_SCHEMA = { type: 'OBJECT', properties: { situations: { type: 'ARRAY', items: { type: 'OBJECT', properties: { key: { type: 'STRING' }, where: { type: 'STRING' },
+  turns: { type: 'ARRAY', items: LN_MF_TURN_SCHEMA } }, required: ['key', 'turns'] } } }, required: ['situations'] }
+const LN_MF_AUDIT_SCHEMA = { type: 'OBJECT', properties: {
+  turns: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'INTEGER' }, sense: { type: 'STRING' }, responds: { type: 'STRING' }, usage: { type: 'STRING' }, fault: { type: 'INTEGER' }, note: { type: 'STRING' } }, required: ['n', 'usage'] } },
+  situations: { type: 'ARRAY', items: { type: 'OBJECT', properties: { key: { type: 'STRING' }, coherent: { type: 'BOOLEAN' }, transition: { type: 'STRING' }, note: { type: 'STRING' } }, required: ['key'] } } }, required: ['turns'] }
+const LN_MF_REPAIR_SCHEMA = { type: 'OBJECT', properties: { parts: { type: 'ARRAY', items: { type: 'OBJECT', properties: { scope: { type: 'STRING' }, turns: { type: 'ARRAY', items: LN_MF_TURN_SCHEMA } }, required: ['scope', 'turns'] } } }, required: ['parts'] }
+const LN_MF_INTENTS = ['GREET', 'ASK', 'ANSWER', 'PROPOSE', 'ACCEPT', 'DECLINE', 'COUNTER', 'INFORM', 'REACT', 'THANK', 'APOLOGISE', 'ACKNOWLEDGE', 'REQUEST', 'OFFER', 'FAREWELL']
+const LN_MF_REPLY_INTENTS = new Set(['ANSWER', 'ACCEPT', 'DECLINE', 'COUNTER', 'REACT', 'ACKNOWLEDGE', 'THANK'])
+function lnMfMakeTurn(la, x, id, sceneKey) {
+  const sp = x && x.speaker === 'B' ? 'B' : 'A'
+  const made = _lnMakeTurn(la, { speaker: sp, text: String((x && x.text) || '').trim(), english: String((x && x.english) || '').trim(), intendedTargetIds: (x && x.targetIds) || [] }, sp)
+  const intent = String((x && x.intent) || '').toUpperCase().replace(/[^A-Z_]/g, '')
+  return { id, scene: sceneKey, speaker: sp, addressee: sp === 'A' ? 'B' : 'A', intent: LN_MF_INTENTS.includes(intent) ? intent : (/\?|？|吗$|か$|ไหม/.test(String(x && x.text || '')) ? 'ASK' : 'INFORM'),
+    asks: String((x && x.asks) || '').toUpperCase().replace(/[^A-Z_]/g, ''), referent: String((x && x.referent) || ''), action: String((x && x.action) || ''), object: String((x && x.object) || ''),
+    context: String((x && x.context) || ''), expects: String((x && x.expects) || ''), respondsToRaw: Number.isFinite(+(x && x.respondsTo)) ? +x.respondsTo : 0,
+    targetIds: [...new Set(((x && x.targetIds) || []).map(Number).filter(Number.isFinite))], text: la.text(made.pair), english: String(made.pair.english || ''), pair: made.pair }
+}
+// numbers 1..N in order; respondsTo becomes a turn id (a reply to the PREVIOUS other-speaker turn when the model's number is
+// missing, forward-pointing or the same speaker)
+function lnMfRenumber(mp) {
+  const flat = mp.scenes.flatMap(s => s.turns)
+  const byOldN = new Map()
+  flat.forEach((tu, i) => { if (tu.nRaw != null && !byOldN.has(tu.nRaw)) byOldN.set(tu.nRaw, tu); tu.n = i + 1 })
+  flat.forEach((tu, i) => {
+    let r = tu.respondsToId ? flat.find(x => x.id === tu.respondsToId) : (tu.respondsToRaw ? byOldN.get(tu.respondsToRaw) : null)
+    if (r && (r.n >= tu.n || r.speaker === tu.speaker)) r = null
+    if (!r && LN_MF_REPLY_INTENTS.has(tu.intent)) { for (let k = i - 1; k >= 0 && k >= i - 3; k--) if (flat[k].speaker !== tu.speaker) { r = flat[k]; break } }
+    tu.respondsToId = r ? r.id : null
+  })
+  mp.flat = flat
+  return mp
+}
+function lnMfNormalise(raw, grouping, la, idPrefix) {
+  const sits = Array.isArray(raw && raw.situations) ? raw.situations : []
+  const scenes = (grouping.scenes || []).map((g, k) => {
+    const src = sits.find(s => String(s.key || '').toUpperCase() === 'S' + (k + 1)) || sits[k] || { turns: [] }
+    return { key: 'S' + (k + 1), situation: g.situation, title: g.title, where: String(src.where || g.where || ''), targetIds: g.targetIds.slice(),
+      turns: (src.turns || []).filter(x => x && String(x.text || '').trim()).map((x, j) => ({ ...lnMfMakeTurn(la, x, (idPrefix || 't') + (k + 1) + '_' + (j + 1), 'S' + (k + 1)), nRaw: Number.isFinite(+x.n) ? +x.n : null })) }
+  })
+  // a reply with MORE situations than planned: their turns join the last situation (never silently dropped)
+  const extra = sits.filter((x, i) => i >= scenes.length && !scenes.some((sc, k) => String(x.key || '').toUpperCase() === 'S' + (k + 1)))
+  if (extra.length && scenes.length) { const last = scenes[scenes.length - 1]
+    extra.forEach((x, e) => (x.turns || []).filter(t => t && String(t.text || '').trim()).forEach((t, j) => last.turns.push({ ...lnMfMakeTurn(la, t, (idPrefix || 't') + 'x' + (e + 1) + '_' + (j + 1), last.key), nRaw: Number.isFinite(+t.n) ? +t.n : null }))) }
+  const mp = lnMfRenumber({ scenes })
+  mp.extraSituations = extra.length
+  return mp
+}
+function lnMfScenesForAudit(mp) { return mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: tu.pair, intendedTargetIds: tu.targetIds })) })) }
+const lnMfNorm = t => String(t || '').replace(/[\s。？！，、,.?!…「」]/g, '').toLowerCase()
+// the RELATIONSHIP an audit-rejected turn expressed: its lesson words, its act, what it really asks for (何時 = a clock time,
+// いつ = a day — computed, not the plan's label), its referent and action
+function lnMfRelSig(tu, byId, lang) { return (tu.targetIds || []).map(id => (byId.get(id) || {}).surface).sort().join('+') + '|' + tu.intent + '|' + (tu.intent === 'ASK' ? lnMfQuestionAsks(lang, tu, byId) || '' : '') + '|' + lnMfNorm(tu.referent) + '|' + lnMfNorm(tu.action) }
+// ── VALIDATE (deterministic A–E). Every issue names its fault class, its turn(s) and the targets involved. ──
+function lnMfValidate(env, mp) {
+  const { la, targets, ctx } = env, lang = la.lang, byId = env.byId, mf = env.mf
+  const flat = mp.flat, issues = []
+  const add = (fault, code, tus, detail, extra) => issues.push({ fault, code, turnIds: tus.map(t => t.id), scene: tus[0] ? tus[0].scene : null, targetIds: [...new Set(tus.flatMap(t => t.targetIds))], detail, ...(extra || {}) })
+  // A · vocabulary, length, duplicates, speakers, max 3 targets, coverage — the SAME audit the final gate runs on the final text
+  const scenes = lnMfScenesForAudit(mp)
+  const audit = listeningConversationAudit(scenes, targets, la, ctx)
+  const FAULT_OF = { CLOSED_VOCAB: 3, TOKENIZATION_ERROR: 3, TOO_COMPLEX: 1, MAX_TARGETS_PER_TURN: 8, MERGED_SPEAKERS: 1, SPEAKER_IDENTITY: 1, LINE_QUALITY: 1, REGISTER: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, REPETITIVE_LOOP: 1, DUPLICATE_EXCHANGE: 1 }
+  audit.issues.forEach(x => {
+    if (x.code === 'TARGET_MISSING') { const t = byId.get(x.targetId); add(8, 'TARGET_MISSING', [], (t ? t.surface : x.targetId) + ' is not heard anywhere in the plan', { targetIds: [x.targetId] }); return }
+    if (x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION' || x.code === 'ONE_SPEAKER') { add(7, x.code, [], x.detail); return }
+    const tu = flat[x.line - 1]; if (!tu) return
+    add(FAULT_OF[x.code] || 1, x.code, [tu], x.detail)
+  })
+  // the turn's targets are what the sentence really contains (the plan's own list is a claim; the text decides)
+  audit.lines.forEach((r, i) => { const tu = flat[i]; if (tu) tu.targetIds = r.actualTargetIds.slice() })
+  // B · grammar contracts and C · deterministic meaning rules, on every turn (lesson words AND support words)
+  const adj = new Set((ctx.vocab || []).filter(w => /adjective/i.test(String(w.partOfSpeech || ''))).map(w => w.chinese).filter(Boolean).concat(['好', '大', '小', '多', '少', '贵', '忙', '累', '远', '近', '高兴', '喜欢', '想']))
+  const thVerbs = lang === 'th' ? (ctx.exposed || []).concat(ctx.eligTargets || []).filter(w => /^to\s/i.test(String(w.english || ''))).map(w => w.thai).filter(Boolean) : null
+  flat.forEach((tu, i) => {
+    const prev = flat[i - 1]
+    const probs = lang === 'zh' ? lnMfZhProblems(tu.text, prev && prev.text, adj) : lang === 'ja' ? lnMfJaProblems(tu.text) : lnMfThProblems(tu.text, tu.english, thVerbs)
+    probs.forEach(p => add(p.fault, p.fault === 4 ? 'GRAMMAR_CONTRACT' : 'MEANING_RULE', [tu], p.detail))
+    // an adjective about the wrong kind of thing · a verb with the wrong kind of object (when the plan names them)
+    ;(tu.targetIds || []).forEach(id => { const p = env.mfProfiles.get(id); if (!p) return
+      const rc = lnMfNounClass(tu.referent)
+      if (p.describes && rc && !p.describes.includes(rc) && rc !== 'THING') add(5, 'REFERENT_MISMATCH', [tu], p.surface + ' (' + p.gloss + ') cannot describe ' + tu.referent + ' (' + rc.toLowerCase() + ')')
+      if (p.describes && rc === 'THING' && !p.describes.includes('THING') && /^(this|that|it)\b/i.test(tu.referent)) add(5, 'REFERENT_MISMATCH', [tu], p.surface + ' (' + p.gloss + ') cannot describe "' + tu.referent + '" (a thing)')
+      const q = tu.respondsToId ? flat.find(x => x.id === tu.respondsToId) : null
+      if (p.describes && !p.describes.includes('THING') && q && /^(นี่|นั่น|อันนี้|อันนั้น|これ|それ|あれ|这个|那个|这|那)/.test(q.text) && !rc) add(5, 'REFERENT_MISMATCH', [q, tu], p.surface + ' (' + p.gloss + ') answers a question about a thing ("' + q.text + '")')
+      const vo = LN_MF_VERB_OBJECT.find(([rx]) => rx.test(p.gloss.toLowerCase())); const oc = lnMfNounClass(tu.object)
+      if (vo && oc && !vo[1].includes(oc)) add(5, 'OBJECT_MISMATCH', [tu], p.surface + ' (' + p.gloss + ') with ' + tu.object + ' (' + oc.toLowerCase() + ')') })
+    // a suggestion about the past is impossible
+    if ((tu.intent === 'PROPOSE' || tu.intent === 'COUNTER') && /\byesterday\b/i.test(tu.english)) add(5, 'TEMPORAL_CONTRADICTION', [tu], 'a suggestion about yesterday: "' + tu.text + '"')
+    // a reply never answers itself, and an answer is not another unrelated question
+    if (tu.intent === 'ANSWER' && !tu.respondsToId) add(6, 'ANSWER_WITHOUT_QUESTION', [tu], 'an answer with no question before it: "' + tu.text + '"')
+  })
+  // D · question → answer: the reply gives what the question asks for (clock time, amount, length of time, a reason …)
+  flat.forEach(q => { if (q.intent !== 'ASK') return
+    const asks = lnMfQuestionAsks(lang, q, byId)
+    const replies = flat.filter(r => r.respondsToId === q.id && (r.intent === 'ANSWER' || r.intent === 'DECLINE' || r.intent === 'INFORM'))
+    replies.forEach(r => { const why = lnMfAnswerProblem(lang, asks, r, q); if (why) add(6, 'ANSWER_TYPE', [q, r], why) }) })
+  skeletonAdjacencyIssues(flat.map(tu => ({ speaker: tu.speaker, pair: tu.pair })), null).forEach(x => { const b = flat[x.line - 1], a = flat[x.line - 2]; if (a && b) add(6, 'ADJACENCY', [a, b], x.detail) })
+  // E · conversation state: greetings only at the start, goodbyes only at the end, no three turns by one speaker, an agreed
+  // clock time is not silently changed later
+  flat.forEach((tu, i) => {
+    if (tu.intent === 'GREET' && tu.scene !== 'S1') add(7, 'LATE_GREETING', [tu], 'a greeting in the middle of the conversation: "' + tu.text + '"')
+    if (tu.intent === 'FAREWELL' && tu.scene !== mp.scenes[mp.scenes.length - 1].key) add(7, 'EARLY_GOODBYE', [tu], 'a goodbye before the last situation: "' + tu.text + '"')
+    if (i >= 2 && flat[i - 1].speaker === tu.speaker && flat[i - 2].speaker === tu.speaker) add(1, 'ONE_SPEAKER_RUN', [tu], 'three turns in a row by speaker ' + tu.speaker)
+  })
+  conversationContinuityAudit(scenes, la, targets).forEach(x => { const tu = flat[(x.line || 1) - 1]; add(7, 'CONTINUITY', tu ? [tu] : [], x.detail || x.code || 'continuity') })
+  { const key = t => (String(t || '').match(LN_MF_TIMEKEY[lang]) || [])[0] || null; let agreed = null
+    flat.forEach((tu, i) => {
+      if (tu.intent === 'ACCEPT' && i > 0 && key(flat[i - 1].text)) agreed = key(flat[i - 1].text)
+      else if (agreed && key(tu.text) && key(tu.text) !== agreed && !['PROPOSE', 'COUNTER', 'ASK'].includes(tu.intent)) add(7, 'STATE_CONTRADICTION', [tu], 'the agreed time was ' + agreed + ', this turn says ' + key(tu.text) + ': "' + tu.text + '"') }) }
+  // a plan inside the turn budget (24–44), and a turn that repeats a REJECTED sentence or relationship is rejected at once
+  const n = flat.length
+  if (n < env.turnsMin || n > env.turnsMax) add(8, 'TURN_BUDGET', [], n + ' turns — the conversation must have ' + env.turnsMin + '–' + env.turnsMax)
+  flat.forEach(tu => {
+    if (mf.rejectedTexts.has(lnMfNorm(tu.text))) add(mf.rejectedTexts.get(lnMfNorm(tu.text)), 'REPEATED_REJECTED_SENTENCE', [tu], 'this sentence was already rejected: "' + tu.text + '"')
+    else if ((tu.targetIds || []).length && mf.rejectedRel.has(lnMfRelSig(tu, byId, lang))) add(5, 'REPEATED_REJECTED_RELATIONSHIP', [tu], 'the same rejected relationship again (' + lnMfRelSig(tu, byId, lang) + ')')
+  })
+  return { issues, audit }
+}
+// ── AUDIT (one batched model call): sense · reply · usage (natural / acceptable / awkward / incorrect) · scenes ──
+const LN_MF_GUIDE = () => ({ th: typeof THAI_NATURALNESS_GUIDE !== 'undefined' ? THAI_NATURALNESS_GUIDE : '', ja: typeof JA_NATURALNESS_GUIDE !== 'undefined' ? JA_NATURALNESS_GUIDE : '', zh: typeof ZH_NATURALNESS_GUIDE !== 'undefined' ? ZH_NATURALNESS_GUIDE : '' })
+function lnMfVerdictKey(tu, prev) { return tu.text + '␟' + tu.english + '␟' + (prev ? prev.text : '') }
+function lnMfSceneKey(s, prevScene) { return s.turns.map(t => t.text).join('|') + '␟' + (prevScene && prevScene.turns.length ? prevScene.turns[prevScene.turns.length - 1].text : '') }
+function lnMfConversationRows(mp, byId, mark) {
+  return mp.scenes.map((s, k) => 'S' + (k + 1) + ' — ' + s.title + (s.where ? ' (' + s.where + ')' : '') + '\n' + s.turns.map(tu => (mark && mark.has(tu.id) ? '★' : ' ') + tu.n + '. ' + tu.speaker + ' [' + tu.intent + (tu.asks && tu.intent === 'ASK' ? ' ' + tu.asks : '') +
+    (tu.respondsToId ? ' → reply to ' + ((mp.flat.find(x => x.id === tu.respondsToId) || {}).n) : '') + '] ' + tu.text + ' — ' + tu.english + ((tu.targetIds || []).length ? '   (lesson words: ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).filter(Boolean).join(', ') + ')' : '')).join('\n')).join('\n\n')
+}
+async function lnMfAuditCall(env, mp, scopeIds) {
+  const { la, log, tel, o, ctx } = env, mf = env.mf, byId = env.byId
+  const mark = new Set(scopeIds)
+  const prompt = 'You are a native ' + la.label + ' teacher checking a planned LISTENING conversation for a learner (' + (ctx.complexity ? ctx.complexity.belt : 'beginner') + '). The vocabulary is restricted ON PURPOSE: simple, short and repetitive is fine at this level. Judge MEANING and NATURALNESS in context, not word choice.\n' +
+    (LN_MF_GUIDE()[la.lang] ? la.label.toUpperCase() + ' NOTES:\n' + LN_MF_GUIDE()[la.lang] + '\n' : '') +
+    'For every turn marked ★ give:\n' +
+    '- sense: "ok" | "fail" — does it make sense (subject, verb, object, adjective, time and place fit together)?\n' +
+    '- responds: "ok" | "fail" | "n/a" — if it replies to an earlier turn, does it really answer / respond to it (what time → a clock time · how much → an amount · why → a reason)?\n' +
+    '- usage: "natural" | "acceptable" | "awkward" | "incorrect". "acceptable" = correct and fine here although another wording is more common — a REQUIRED lesson word used correctly is at least "acceptable" (e.g. いいえ where ううん would be more casual). "awkward" = a native speaker would find it odd HERE. "incorrect" = ungrammatical or the wrong meaning.\n' +
+    '- fault: 0 none · 1 wording · 2 the English is wrong · 4 grammar · 5 it does not make sense · 6 the reply does not answer · 7 it does not follow from what came before\n- note: a short reason in English.\n' +
+    'Then for EVERY situation: coherent (true / false — one plausible everyday moment), transition ("ok" | "fail" — does it follow naturally from the situation before?), note.\n\nCONVERSATION:\n' + lnMfConversationRows(mp, byId, mark) +
+    '\n\nReply ONLY with JSON: {"turns":[{"n":1,"sense":"ok","responds":"n/a","usage":"natural","fault":0,"note":""}],"situations":[{"key":"S1","coherent":true,"transition":"ok","note":""}]}'
+  let obj = null
+  for (let attempt = 1; attempt <= 2 && !obj; attempt++) {
+    tel.LISTENING_QC_CALLS++; mf.calls.audit++
+    try { obj = _lnParseJson(await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt }], maxTokens: 4000, temperature: 0.1, json: LN_MF_AUDIT_SCHEMA, stage: 'O_listening_semantic_audit', attempt: 'ln-mf-audit-' + mf.calls.audit })) }
+    catch (e) { if (e && (e.fatalProvider || e.cancelled)) { lnMfTechnicalLog(env, e, 'semantic audit'); throw e } log && log('⚠ SEMANTIC_AUDIT_UNREADABLE attempt ' + attempt + ' — ' + String(e && e.message || e).slice(0, 70) + ' (fault 9 TECHNICAL, not a language verdict)') }
+  }
+  const got = new Map(((obj && obj.turns) || []).map(v => [+v.n, v]))
+  mp.flat.forEach((tu, i) => { if (!mark.has(tu.id)) return; const v = got.get(tu.n)
+    if (v) mf.verdicts.set(lnMfVerdictKey(tu, mp.flat[i - 1]), { sense: String(v.sense || 'ok').toLowerCase(), responds: String(v.responds || 'n/a').toLowerCase(), usage: String(v.usage || '').toLowerCase(), fault: +v.fault || 0, note: String(v.note || '') }) })
+  ;((obj && obj.situations) || []).forEach(v => { const k = +String(v.key || '').replace(/\D/g, '') - 1; const s = mp.scenes[k]; if (s) mf.sceneVerdicts.set(lnMfSceneKey(s, mp.scenes[k - 1]), { coherent: v.coherent !== false, transition: String(v.transition || 'ok').toLowerCase(), note: String(v.note || '') }) })
+  return !!obj
+}
+function lnMfVerdictIssue(v) {
+  if (!v) return null
+  const usageBad = v.usage === 'awkward' || v.usage === 'incorrect' || !['natural', 'acceptable', 'awkward', 'incorrect'].includes(v.usage)
+  if (v.sense !== 'fail' && v.responds !== 'fail' && !usageBad) return null
+  const fault = v.responds === 'fail' ? 6 : v.sense === 'fail' ? 5 : [1, 2, 4, 5, 6, 7].includes(v.fault) ? v.fault : v.usage === 'incorrect' ? 4 : 1
+  return { fault, detail: (v.usage ? v.usage + ' · ' : '') + (v.sense === 'fail' ? 'does not make sense · ' : '') + (v.responds === 'fail' ? 'does not answer · ' : '') + (v.note || '') }
+}
+async function lnMfValidateAndAudit(env, mp) {
+  const mf = env.mf
+  const det = lnMfValidate(env, mp)
+  const detIds = new Set(det.issues.flatMap(x => x.turnIds))
+  // the model judges only turns that passed the deterministic proof and have no verdict for this exact text in this context
+  const scope = mp.flat.filter((tu, i) => !detIds.has(tu.id) && !mf.verdicts.has(lnMfVerdictKey(tu, mp.flat[i - 1])))
+  const scenesNeeding = mp.scenes.filter((s, k) => !mf.sceneVerdicts.has(lnMfSceneKey(s, mp.scenes[k - 1])))
+  if (scope.length || scenesNeeding.length) await lnMfAuditCall(env, mp, scope.map(t => t.id))
+  const sem = []
+  mp.flat.forEach((tu, i) => { if (detIds.has(tu.id)) return
+    const v = mf.verdicts.get(lnMfVerdictKey(tu, mp.flat[i - 1]))
+    if (!v) { sem.push({ fault: 9, code: 'SEMANTIC_UNVERIFIED', turnIds: [tu.id], scene: tu.scene, targetIds: tu.targetIds.slice(), detail: 'the semantic audit returned no verdict for this turn' }); return }
+    const iss = lnMfVerdictIssue(v)
+    if (iss) { const partner = iss.fault === 6 || iss.fault === 5 ? mp.flat.find(x => x.id === tu.respondsToId) : null
+      sem.push({ fault: iss.fault, code: 'SEMANTIC_AUDIT', turnIds: partner ? [partner.id, tu.id] : [tu.id], scene: tu.scene, targetIds: [...new Set((partner ? partner.targetIds : []).concat(tu.targetIds))], detail: iss.detail }) } })
+  mp.scenes.forEach((s, k) => { const v = mf.sceneVerdicts.get(lnMfSceneKey(s, mp.scenes[k - 1]))
+    if (!v) { sem.push({ fault: 9, code: 'SCENE_UNVERIFIED', turnIds: [], scene: s.key, targetIds: [], detail: 'no coherence verdict for ' + s.key }); return }
+    if (!v.coherent) sem.push({ fault: 7, code: 'SCENE_INCOHERENT', turnIds: s.turns.map(t => t.id), scene: s.key, targetIds: s.turns.flatMap(t => t.targetIds), detail: v.note || 'the situation is not one coherent moment' })
+    else if (k > 0 && v.transition === 'fail') sem.push({ fault: 7, code: 'SCENE_TRANSITION', turnIds: s.turns.slice(0, 2).map(t => t.id), scene: s.key, targetIds: s.turns.slice(0, 2).flatMap(t => t.targetIds), detail: v.note || 'does not follow from the situation before' }) })
+  return { issues: det.issues.concat(sem), det: det.issues, sem, audit: det.audit }
+}
+function lnMfTechnicalLog(env, e, stage) {
+  const fp = e && e.fatalProvider
+  env.log && env.log('⛔ TECHNICAL_FAILURE (fault 9) during ' + stage + ' — ' + (fp ? 'provider=' + fp.provider + ' reason=' + fp.reason : 'cancelled') + ' · ' + String(e && e.message || e).slice(0, 140) + ' — a connection / provider problem, NOT a language or planning verdict; nothing partial is saved as this track')
+  env.tel.LISTENING_TECHNICAL_FAILURES = (env.tel.LISTENING_TECHNICAL_FAILURES || 0) + 1
+}
+// ── PLAN (one model call) ──
+function lnMfVocabRows(env) {
+  const { la, ctx } = env, lang = la.lang
+  const surf = w => lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : w.thai
+  const tIds = new Set(env.targets.map(t => t.id))
+  const rows = (ctx.exposed || []).filter(w => surf(w) && !tIds.has(w.id)).map(w => surf(w) + (lang === 'ja' && w.reading && w.reading !== surf(w) ? ' [' + w.reading + ']' : '') + ' = ' + String(w.english || '').split(/[;]/)[0])
+  return rows
+}
+function lnMfTargetRows(env, ids) {
+  const { byId } = env
+  return ids.map(id => { const t = byId.get(id), p = env.mfProfiles.get(id); if (!t) return ''
+    return 'T' + t.id + ' | ' + t.surface + (t.reading ? ' [' + t.reading + ']' : '') + ' | ' + t.gloss + (t.sense ? ' (sense: ' + t.sense + ')' : '') + (p && p.rule ? ' | use: ' + p.rule : p && p.asks ? ' | asks for: ' + p.asks.toLowerCase().replace('_', ' ') : '') }).filter(Boolean)
+}
+function lnMfPlanPrompt(env, grouping) {
+  const { la, ctx, extra } = env, cc = ctx.complexity
+  const scaffold = (() => { try { return languageFunctionScaffold(la.lang).forms.join(' ') } catch (e) { return '' } })()
+  const rel = ctx.jaStyle ? (ctx.jaStyle === 'polite' ? 'acquaintances (adults who are not close)' : ctx.jaStyle === 'casual' ? 'close friends' : 'adult friends') : 'friends'
+  return 'Plan ONE natural spoken ' + la.label + ' LISTENING conversation between two people, for a learner. Plan MEANING FIRST: for each situation decide what these two people really want to say to each other (ask, answer, suggest, agree, react …), and only then write each turn in ' + la.label + '.\n' +
+    'LEARNER: ' + (cc ? cc.belt + ' — each turn ' + cc.preferredMin + '–' + cc.preferredMax + ' ' + cc.unitName + ', never more than ' + cc.hardMax + '. ' + (cc.promptRule || '') : 'beginner — short turns') + '\n' +
+    'SPEAKERS: A and B, ' + rel + '. ' + la.speakerContract + (extra || '') + '\n' +
+    'ONE CONVERSATION in ' + grouping.scenes.length + ' connected situations, in this order (move between them with ordinary transitions — "shall we go?", "okay, let\'s eat"):\n' +
+    grouping.scenes.map((s, k) => 'S' + (k + 1) + ' ' + s.title + ' — ' + s.desc + (s.opening ? ' · starts with a short natural greeting' : '') + (s.closing ? ' · ends with goodbye' : '') +
+      '\n   lesson words for S' + (k + 1) + ':\n' + lnMfTargetRows(env, s.targetIds).map(r => '   ' + r).join('\n')).join('\n') + '\n' +
+    'ALLOWED VOCABULARY (the ONLY other content words you may use): ' + lnMfVocabRows(env).join(' · ') + '\n' +
+    (scaffold ? 'GRAMMAR / FUNCTION WORDS you may use: ' + scaffold + '\n' : '') +
+    'RULES:\n' +
+    '- Every turn must make sense for these two people in this situation. A reply ANSWERS the turn before it: what time → a clock time · how much → an amount · how long → a length of time · why → a real reason · where → a place · which → one of the options.\n' +
+    '- Every lesson word is heard at least once, in its own situation, in its real meaning and with its grammar complete (see "use:"). One lesson word in a turn is fine; never more than 3. Never force unrelated lesson words into one sentence — give a word its own short exchange instead.\n' +
+    '- A lesson word may be said by either speaker. Simple, short, everyday sentences; repeating simple words is fine at this level. No narration, no names.\n' +
+    '- Keep track of the state: where they are, what they are doing, what has been agreed (an agreed time stays agreed), who knows what. A greeting only at the start, goodbye only at the end.\n' +
+    '- Use ONLY the lesson words, the allowed vocabulary and the grammar words. If an idea needs another word, choose a different idea.\n' +
+    '- ' + env.turnsMin + '–' + env.turnsMax + ' turns in total (aim ' + LISTENING_CONVERSATION_TURNS.min + '–' + LISTENING_CONVERSATION_TURNS.max + '). A and B alternate naturally.\n' +
+    'For EVERY turn give: n (1, 2, 3 … through the whole conversation), speaker, addressee, intent (' + LN_MF_INTENTS.join(' | ') + '), asks (for ASK: CLOCK_TIME | TIME | PRICE | QUANTITY | DURATION | AGE | PLACE | PERSON | REASON | METHOD | STATE | THING | CHOICE | YESNO, else ""), ' +
+    'referent (who / what the turn is about, English), action (the verb or state, English), object (English or ""), context (time / place, English or ""), expects (the reply it expects, or ""), respondsTo (the n it answers, 0 if none), targetIds (the T numbers it uses), text (' + la.label + '), english.\n' +
+    'Reply ONLY with JSON: {"situations":[{"key":"S1","where":"...","turns":[{"n":1,"speaker":"A","addressee":"B","intent":"GREET","asks":"","referent":"","action":"","object":"","context":"","expects":"","respondsTo":0,"targetIds":[],"text":"...","english":"..."}]}]}'
+}
+async function lnMfPlanCall(env, grouping) {
+  const { log, tel, o, la } = env, mf = env.mf
+  const prompt = lnMfPlanPrompt(env, grouping)
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    tel.LISTENING_GENERATION_CALLS++; mf.calls.plan++
+    log && log('📝 MEANING_PLAN call ' + mf.calls.plan + ' · ' + grouping.scenes.length + ' situations · ' + env.targets.length + ' targets' + (attempt > 1 ? ' · retry (the previous reply was not readable)' : ''))
+    try {
+      const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt + (attempt > 1 ? '\nYour previous reply was not valid JSON. Return ONLY the JSON object.' : '') }], maxTokens: 7000, temperature: 0.6, json: LN_MF_PLAN_SCHEMA, stage: 'O_listening_meaning_plan', attempt: 'ln-mf-plan-' + attempt })
+      const mp = lnMfNormalise(_lnParseJson(raw), grouping, la, 't')
+      if (mp.flat.length) return mp
+      log && log('⚠ MEANING_PLAN_EMPTY attempt ' + attempt + ' (fault 9 TECHNICAL)')
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) { lnMfTechnicalLog(env, e, 'meaning plan'); throw e }
+      log && log('⚠ MEANING_PLAN_UNREADABLE attempt ' + attempt + ' — ' + String(e && e.message || e).slice(0, 80) + ' (fault 9 TECHNICAL)') }
+  }
+  return null
+}
+// ── RECOVER by fault class: issues → scopes (line · exchange · scene start · add-in-another-situation) ──
+function lnMfScopes(env, mp, issues) {
+  const mf = env.mf, byId = env.byId, flat = mp.flat
+  const at = id => flat.find(t => t.id === id)
+  const exchangeOf = tu => { const q = tu.respondsToId ? at(tu.respondsToId) : tu; return [q].concat(flat.filter(r => r.respondsToId === q.id)).filter(Boolean) }
+  const scopes = []
+  const scopeFor = (kind, tus, issue) => {
+    const ids = [...new Set(tus.map(t => t.id))]
+    const ex = scopes.find(s => s.kind !== 'add' && s.turnIds.some(id => ids.includes(id)))
+    if (ex) { ids.forEach(id => { if (!ex.turnIds.includes(id)) ex.turnIds.push(id) }); ex.issues.push(issue); if (rank[kind] > rank[ex.kind]) ex.kind = kind; return ex }
+    const s = { id: 'x' + (scopes.length + 1), kind, turnIds: ids, issues: [issue], scene: tus[0] && tus[0].scene }; scopes.push(s); return s
+  }
+  const rank = { line: 1, exchange: 2, intention: 3, scene: 4 }
+  issues.forEach(is => {
+    const tus = is.turnIds.map(at).filter(Boolean)
+    if (is.fault === 9) return
+    if (is.fault === 8 || !tus.length) {
+      if (is.code === 'MAX_TARGETS_PER_TURN' && tus.length) { scopeFor('exchange', tus.flatMap(exchangeOf), is); return }
+      if (is.code === 'TURN_BUDGET') { const over = flat.length > env.turnsMax
+        const sc = mp.scenes.slice().sort((a, b) => over ? b.turns.length - a.turns.length : a.turns.length - b.turns.length)[0]
+        if (over) scopeFor('scene', sc.turns, { ...is, detail: is.detail + ' — say the same in fewer turns (keep every lesson word)' })
+        else scopes.push({ id: 'x' + (scopes.length + 1), kind: 'add', turnIds: [], insertAfter: (sc.turns[sc.turns.length - 1] || {}).id || null, scene: sc.key, targetIds: [], issues: [is] })
+        return }
+      if (is.code === 'TARGET_MISSING') {
+        ;(is.targetIds || []).forEach(id => { const home = mp.scenes.find(s => s.targetIds.includes(id)) || mp.scenes[0]
+          const moves = mf.moves.get(id) || 0
+          // a word whose exchange keeps failing MOVES to another situation that fits it (GROUPING recovery)
+          const p = env.mfProfiles.get(id), alt = moves ? mp.scenes.filter(s => s !== home).map(s => [s, lnMfSituationScore(p, LN_MF_SITUATIONS.find(x => x.key === s.situation) || LN_MF_SITUATIONS[0])]).sort((a, b) => b[1] - a[1])[0] : null
+          const dest = alt && alt[1] >= 2 ? alt[0] : home
+          if (dest !== home) { home.targetIds = home.targetIds.filter(x => x !== id); dest.targetIds.push(id); env.log && env.log('🔁 LISTENING_TARGET_MOVED ' + id + ' ' + (byId.get(id) || {}).surface + ' ' + home.key + ' → ' + dest.key + ' (GROUPING recovery — its use in ' + home.key + ' kept failing)') }
+          const last = dest.turns[dest.turns.length - 1], before = dest.turns.length > 1 && last && last.intent === 'FAREWELL' ? dest.turns[dest.turns.length - 2] : last
+          scopes.push({ id: 'x' + (scopes.length + 1), kind: 'add', turnIds: [], insertAfter: before ? before.id : null, scene: dest.key, targetIds: [id], issues: [is] }) })
+      } else if (is.code === 'SINGLETON_SCENE' || is.code === 'SCENE_FRAGMENTATION' || is.code === 'ONE_SPEAKER') {
+        mp.scenes.filter(s => s.turns.length < 2).forEach(s => scopeFor('scene', s.turns, is))
+      }
+      return
+    }
+    // escalation: a part that failed before is repaired one level higher (never the same blueprint again)
+    const lvl = Math.max(...tus.map(t => mf.attempts.get(t.id) || 0))
+    let kind = is.fault === 6 ? 'exchange' : is.fault === 5 ? 'intention' : is.fault === 7 ? 'scene' : 'line'
+    if (lvl >= 1 && kind === 'line') kind = 'exchange'
+    if (lvl >= 2 && (kind === 'exchange' || kind === 'intention')) kind = 'scene'
+    const span = kind === 'line' ? tus : kind === 'scene' ? (is.code === 'SCENE_TRANSITION' ? tus : flat.filter(t => t.scene === tus[0].scene)) : tus.flatMap(exchangeOf)
+    scopeFor(kind, span, is)
+  })
+  scopes.forEach(s => { if (s.kind === 'add') return
+    s.turnIds.sort((a, b) => at(a).n - at(b).n)
+    const first = at(s.turnIds[0]), last = at(s.turnIds[s.turnIds.length - 1])
+    s.turnIds = flat.filter(t => t.n >= first.n && t.n <= last.n).map(t => t.id)            // a contiguous span
+    s.targetIds = [...new Set(s.turnIds.flatMap(id => at(id).targetIds))].filter(id => byId.has(id))
+    s.scene = first.scene })
+  return scopes
+}
+async function lnMfRepairCall(env, mp, scopes, round) {
+  const { la, log, tel, o, byId, ctx, extra } = env, mf = env.mf
+  const at = id => mp.flat.find(t => t.id === id)
+  const rejected = [...mf.rejectedTexts.keys()].slice(-24)
+  const lines = scopes.map(s => {
+    const head = '[' + s.id + '] ' + (s.kind === 'add' ? 'ADD to ' + s.scene + ' after turn ' + ((at(s.insertAfter) || {}).n || 0) + ' — a short natural exchange (2 turns)' : 'turns ' + s.turnIds.map(id => at(id).n).join(', ') + ' (' + s.kind + ')')
+    const why = s.issues.map(is => (LN_MF_FAULTS[is.fault] || 'ISSUE') + ': ' + String(is.detail || '').slice(0, 220)).join(' · ')
+    const fault = Math.max(...s.issues.map(is => is.fault))
+    const todo = s.kind === 'add' ? (s.targetIds.length ? LN_MF_RECOVERY[8] : 'add a short natural exchange (2 turns) that fits here') : s.kind === 'intention' ? LN_MF_RECOVERY[5] : s.kind === 'scene' ? LN_MF_RECOVERY[7] + (s.issues.some(x => x.code === 'SCENE_INCOHERENT') ? ' — rewrite this whole situation as one plausible everyday moment' : '') : LN_MF_RECOVERY[fault] || LN_MF_RECOVERY[1]
+    const keep = (s.targetIds || []).map(id => { const t = byId.get(id), p = env.mfProfiles.get(id); return t ? t.surface + ' (T' + id + ', ' + t.gloss + (p && p.rule ? '; ' + p.rule : '') + ')' : '' }).filter(Boolean)
+    return head + '\n   problem: ' + why + '\n   do: ' + todo + '\n   lesson words that must be heard in the new turns: ' + (keep.join(', ') || '(none)')
+  })
+  const prompt = 'REPAIR parts of a planned ' + la.label + ' LISTENING conversation for a learner (' + (ctx.complexity ? ctx.complexity.belt + ', each turn ≤ ' + ctx.complexity.hardMax + ' ' + ctx.complexity.unitName : 'beginner') + '). Speakers: ' + la.speakerContract + (extra || '') + '\n' +
+    'THE WHOLE CONVERSATION (context — only the listed parts change; every other turn stays exactly as it is):\n' + lnMfConversationRows(mp, byId, null) + '\n\n' +
+    'FIX THESE PARTS (keep the same speakers alternating; each new part must make sense, answer what it replies to, and lead naturally into the turn after it):\n' + lines.join('\n') + '\n' +
+    (rejected.length ? 'NEVER reuse these rejected sentences (or the same idea with the same lesson words): ' + rejected.join(' · ') + '\n' : '') +
+    'ALLOWED VOCABULARY (the ONLY other content words): ' + lnMfVocabRows(env).join(' · ') + '\n' +
+    'For each part return its new turns with the same fields as the plan (speaker, addressee, intent, asks, referent, action, object, context, expects, respondsTo 0, targetIds, text, english).\n' +
+    'Reply ONLY with JSON: {"parts":[{"scope":"x1","turns":[{"speaker":"A","addressee":"B","intent":"ASK","asks":"PLACE","referent":"","action":"","object":"","context":"","expects":"","respondsTo":0,"targetIds":[],"text":"...","english":"..."}]}]}'
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    tel.LISTENING_REPAIR_CALLS++; mf.calls.repair++
+    try {
+      const obj = _lnParseJson(await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt + (attempt > 1 ? '\nYour previous reply was not valid JSON. Return ONLY the JSON object.' : '') }], maxTokens: 3500, temperature: 0.5, json: LN_MF_REPAIR_SCHEMA, stage: 'O_listening_plan_repair', attempt: 'ln-mf-repair-' + round + '-' + attempt }))
+      if (obj && Array.isArray(obj.parts)) return obj
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) { lnMfTechnicalLog(env, e, 'plan repair'); throw e }
+      log && log('⚠ MEANING_REPAIR_UNREADABLE round ' + round + ' attempt ' + attempt + ' — ' + String(e && e.message || e).slice(0, 80) + ' (fault 9 TECHNICAL)') }
+  }
+  return null
+}
+// apply the repaired parts: a replaced span keeps every turn outside it; a part that loses a lesson word it had to keep is
+// REJECTED (the old turns stay and the part escalates next round)
+function lnMfApply(env, mp, scopes, rep, round) {
+  const { la, byId, log } = env, mf = env.mf
+  const parts = new Map(((rep && rep.parts) || []).map(p => [String(p.scope || ''), p]))
+  let applied = 0
+  scopes.forEach(s => {
+    const part = parts.get(s.id)
+    const scene = mp.scenes.find(x => x.key === s.scene)
+    if (!part || !scene || !Array.isArray(part.turns) || !part.turns.length) { log && log('⛔ PART_NOT_REPAIRED ' + s.id + ' (' + s.kind + ') — no replacement returned · the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)); return }
+    const fresh = part.turns.filter(x => x && String(x.text || '').trim()).map((x, j) => lnMfMakeTurn(la, x, 'r' + round + '_' + s.id + '_' + (j + 1), scene.key))
+    const heard = new Set(fresh.flatMap(tu => byId ? [...byId.values()].filter(t => t.surface && la.present(tu.text, t.surface, env.ctx)).map(t => t.id) : []))
+    const lost = (s.targetIds || []).filter(id => !heard.has(id))
+    if (lost.length) { log && log('⛔ PART_REJECTED ' + s.id + ' (' + s.kind + ') — PROTECTED_TARGET_LOST ' + lost.map(id => (byId.get(id) || {}).surface).join(', ') + ' · the old turns stay; the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)); return }
+    fresh.forEach(tu => { tu.targetIds = [...new Set(tu.targetIds.concat([...heard].filter(id => la.present(tu.text, (byId.get(id) || {}).surface || '\u0000', env.ctx))))] })
+    // remember what failed, so no later round may bring it back
+    // what may never come back: a defective SENTENCE (wording, vocabulary, grammar, meaning) and, for a meaning fault the audit
+    // found, its RELATIONSHIP; for a question → answer mismatch only the failed ANSWER (the question may be fine); a transition
+    // fault rejects no sentence (the order was wrong, not the lines)
+    s.turnIds.forEach(id => { const old = mp.flat.find(t => t.id === id); if (!old) return
+      const fs = s.issues.filter(is => is.turnIds.includes(id)).map(is => is.fault)
+      const line = fs.filter(f => [1, 3, 4, 5].includes(f)), qa = fs.includes(6) && old.respondsToId && s.issues.some(is => is.fault === 6 && is.turnIds[is.turnIds.length - 1] === id)
+      if (line.length) mf.rejectedTexts.set(lnMfNorm(old.text), Math.max(...line))
+      else if (qa) mf.rejectedTexts.set(lnMfNorm(old.text), 6)
+      if (fs.includes(5) && s.issues.some(is => is.fault === 5 && is.code === 'SEMANTIC_AUDIT')) mf.rejectedRel.add(lnMfRelSig(old, byId, env.la.lang)) })
+    const lvl = Math.max(0, ...s.turnIds.map(id => mf.attempts.get(id) || 0)) + 1
+    fresh.forEach(tu => mf.attempts.set(tu.id, lvl))
+    if (s.kind === 'add') { const k = s.insertAfter ? scene.turns.findIndex(t => t.id === s.insertAfter) + 1 : scene.turns.length; scene.turns.splice(k, 0, ...fresh) }
+    else { const k = scene.turns.findIndex(t => t.id === s.turnIds[0]); scene.turns.splice(k, s.turnIds.length, ...fresh) }
+    applied++
+    log && log('✅ PART_REPAIRED ' + s.id + ' (' + s.kind + ' · ' + s.issues.map(is => LN_MF_FAULTS[is.fault]).filter((x, i, a) => a.indexOf(x) === i).join('+') + ') ' + (s.kind === 'add' ? 'added' : s.turnIds.length + ' turn(s) →') + ' ' + fresh.length + ' new: ' + fresh.map(t => t.speaker + ': ' + t.text).join(' / '))
+  })
+  lnMfRenumber(mp)
+  return applied
+}
+function lnMfLogPlan(env, mp, label) {
+  const { log, byId } = env
+  if (!log) return
+  log('🧠 LISTENING_MEANING_PLAN (' + label + ') ' + mp.flat.length + ' turns · ' + mp.scenes.length + ' situations · planner=' + LISTENING_PLANNER_VERSION)
+  mp.scenes.forEach(s => { log('  ' + s.key + ' ' + s.title + ' targets=[' + s.targetIds.map(id => (byId.get(id) || {}).surface).join(', ') + ']')
+    s.turns.forEach(tu => log('   T' + tu.n + ' ' + tu.speaker + '→' + tu.addressee + ' ' + tu.intent + (tu.intent === 'ASK' && tu.asks ? '(' + tu.asks + ')' : '') + (tu.respondsToId ? ' ↩T' + ((mp.flat.find(x => x.id === tu.respondsToId) || {}).n) : '') +
+      ' · about ' + (tu.referent || '-') + ' · ' + (tu.action || '-') + (tu.object ? ' ' + tu.object : '') + ' ⟦' + tu.text + '⟧ "' + tu.english + '"' + (tu.targetIds.length ? ' [' + tu.targetIds.map(id => (byId.get(id) || {}).surface).join('+') + ']' : ''))) })
+}
+function lnMfIssueLog(env, res, label) {
+  const { log } = env
+  if (!log) return
+  const by = {}
+  res.issues.forEach(is => { by[LN_MF_FAULTS[is.fault]] = (by[LN_MF_FAULTS[is.fault]] || 0) + 1 })
+  log('🔎 STRUCTURAL_VALIDATION (' + label + ') ' + (res.det.length ? 'FAIL ' + res.det.length : 'PASS') + ' · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic')
+  log('🧠 SEMANTIC_AUDIT (' + label + ') ' + (res.sem.length ? 'FAIL ' + res.sem.length : 'PASS') + ' · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions')
+  res.issues.slice(0, 24).forEach(is => log('   ⛔ ' + LN_MF_FAULTS[is.fault] + ' ' + is.code + (is.turnIds.length ? ' ' + is.turnIds.map(id => 'T' + ((env.mfPlan && env.mfPlan.flat.find(t => t.id === id)) || {}).n).join(',') : '') + ' — ' + String(is.detail || '').slice(0, 160)))
+  if (res.issues.length) log('   fault classes: ' + Object.entries(by).map(([k, v]) => k + '×' + v).join(' · '))
+}
+// ── THE COMPOSER: PLAN → VALIDATE → AUDIT → RECOVER → COMMIT (same result shape as _lnComposeByScenes) ──
+async function _lnComposeMeaningFirst(env) {
+  const { la, log, tel, targets, ctx } = env
+  const byId = new Map(targets.map(t => [t.id, t])); env.byId = byId
+  const mf = env.mf = { rejectedTexts: new Map(), rejectedRel: new Set(), verdicts: new Map(), sceneVerdicts: new Map(), attempts: new Map(), moves: new Map(), calls: { plan: 0, audit: 0, repair: 0 }, byFault: {} }
+  const authorised = (ctx.inventory && ctx.inventory.taught) || ctx.exposed || []
+  const glosses = authorised.map(w => String(w.english || '')).filter(Boolean)
+  log && log('🧭 LISTENING_PLANNER planner=' + LISTENING_PLANNER_VERSION + ' (v692 meaning-first) · language=' + la.lang + ' belt=' + (ctx.complexity ? ctx.complexity.belt : '-') + ' · targets=' + targets.length + ' · authorised support=' + authorised.length +
+    ' · path PROFILE → GROUP BY SITUATION → PLAN INTENTIONS → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS → COMMIT')
+  env.mfProfiles = new Map(targets.map(t => [t.id, lnMfProfile(t, la.lang)]))
+  const grouping = lnMfGroupTargets([...env.mfProfiles.values()], glosses, { lang: la.lang })
+  lnMfGroupingLog(grouping, byId).forEach(l => log && log(l))
+  const plan = { meaningFirst: true, oneConversation: true, verbalized: false, story: grouping.scenes.map(s => s.situation), seed: null, scenes: [], assignments: [], meaningPlan: { valid: false, turnCount: 0, problems: [] }, cap: LN_MF_SITUATION_CAP }
+  const blocked = (reason, uncommitted) => {
+    log && log('⛔ LISTENING_PLAN_BLOCKED — ' + reason + ' · composition stops here: no further paid scene generation (calls: plan ' + mf.calls.plan + ' · audit ' + mf.calls.audit + ' · repair ' + mf.calls.repair + ')')
+    Object.assign(tel, { LISTENING_MF_PLAN_CALLS: mf.calls.plan, LISTENING_MF_AUDIT_CALLS: mf.calls.audit, LISTENING_MF_REPAIR_CALLS: mf.calls.repair, LISTENING_PLANNER: LISTENING_PLANNER_VERSION })
+    return { ok: false, reason: 'LISTENING_PLAN_BLOCKED: ' + reason, plan, scenes: [], uncommitted: uncommitted || [] }
+  }
+  if (!grouping.valid) return blocked('GROUPING (fault 8): ' + grouping.unplaceable.map(u => u.surface + ' — ' + u.reason).slice(0, 4).join('; '))
+  // PLAN
+  let mp = await lnMfPlanCall(env, grouping)
+  if (!mp) return blocked('TECHNICAL (fault 9): the meaning plan could not be read after 2 attempts')
+  env.mfPlan = mp
+  lnMfLogPlan(env, mp, 'candidate')
+  log && log('📝 MEANING_PLAN state=CANDIDATE_GENERATED · ' + mp.flat.length + ' turns — not yet validated, not committed')
+  let res = await lnMfValidateAndAudit(env, mp)
+  lnMfIssueLog(env, res, 'candidate')
+  let prevSig = null, stale = 0, round = 0
+  const sigOf = r => r.issues.map(is => LN_MF_FAULTS[is.fault] + ':' + is.turnIds.map(id => (mp.flat.find(t => t.id === id) || {}).text).join('/')).sort().join('|')
+  while (res.issues.length && round < LN_MF_MAX_ROUNDS) {
+    round++
+    res.issues.forEach(is => { mf.byFault[LN_MF_FAULTS[is.fault]] = (mf.byFault[LN_MF_FAULTS[is.fault]] || 0) + 1 })
+    // an unverified turn is simply audited again (fault 9) — never treated as passed
+    const repairable = res.issues.filter(is => is.fault !== 9)
+    if (!repairable.length) { res = await lnMfValidateAndAudit(env, mp); lnMfIssueLog(env, res, 're-audit ' + round); continue }
+    repairable.filter(is => is.code === 'TARGET_MISSING' || is.fault === 8).forEach(is => (is.targetIds || []).forEach(id => mf.moves.set(id, (mf.moves.get(id) || 0) + (round > 1 ? 1 : 0))))
+    const scopes = lnMfScopes(env, mp, repairable)
+    log && log('🔧 MEANING_REPAIR round ' + round + '/' + LN_MF_MAX_ROUNDS + ' · ' + scopes.length + ' part(s): ' + scopes.map(s => s.id + ' ' + s.kind + ' [' + s.issues.map(is => LN_MF_FAULTS[is.fault]).filter((x, i, a) => a.indexOf(x) === i).join('+') + ']').join(' · ') + ' — every other turn is kept exactly')
+    if (!scopes.length) break
+    const rep = await lnMfRepairCall(env, mp, scopes, round)
+    if (!rep) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
+    lnMfApply(env, mp, scopes, rep, round)
+    res = await lnMfValidateAndAudit(env, mp)
+    lnMfIssueLog(env, res, 'after repair round ' + round)
+    const sig = sigOf(res)
+    stale = sig === prevSig ? stale + 1 : 0; prevSig = sig
+    if (stale >= 1 && round >= 2) { log && log('⛔ MEANING_REPAIR_NO_PROGRESS — the same defects after two rounds; stopping instead of looping'); break }
+  }
+  Object.assign(tel, { LISTENING_MF_PLAN_CALLS: mf.calls.plan, LISTENING_MF_AUDIT_CALLS: mf.calls.audit, LISTENING_MF_REPAIR_CALLS: mf.calls.repair, LISTENING_MF_REPAIR_ROUNDS: round, LISTENING_PLANNER: LISTENING_PLANNER_VERSION })
+  if (res.issues.length) {
+    const unheard = [...new Set(res.issues.flatMap(is => is.targetIds || []))].map(id => (byId.get(id) || {}).surface).filter(Boolean)
+    lnMfLogPlan(env, mp, 'not approved')
+    return blocked(res.issues.length + ' unresolved after ' + round + ' repair round(s): ' + res.issues.slice(0, 5).map(is => LN_MF_FAULTS[is.fault] + ' ' + is.code + ' — ' + String(is.detail || '').slice(0, 90)).join(' · ') + (unheard.length ? ' · lesson words in the failing parts: ' + unheard.join(', ') : ''),
+      mp.scenes.filter(s => res.issues.some(is => is.scene === s.key)).map(s => ({ sceneId: s.key, residual: res.issues.filter(is => is.scene === s.key).map(is => LN_MF_FAULTS[is.fault]).join('+'), targets: s.targetIds.slice() })))
+  }
+  // COMMIT — every situation passed BOTH gates; the shared final gates still judge the final text
+  lnMfLogPlan(env, mp, 'approved')
+  log && log('✅ MEANING_PLAN state=APPROVED · structural validation PASS · semantic audit PASS · ' + mp.flat.length + ' turns · ' + round + ' repair round(s)')
+  const scenes = mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, intendedTargetIds: tu.targetIds.slice() }, intendedTargetIds: tu.targetIds.slice(),
+    meaning: { intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects, respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null } })) }))
+  const audit = listeningConversationAudit(scenes, targets, la, ctx)
+  scenes.forEach((sc, k) => { const s = mp.scenes[k]
+    log && log('✅ SCENE_ACCEPTED ' + sc.sceneId + ' (' + s.situation + ') · structural PASS · semantic PASS · ' + sc.turns.length + ' turns · targets [' + s.targetIds.map(id => (byId.get(id) || {}).surface).join(', ') + ']')
+    log && log('🧵 SCENE_COMMITTED ' + sc.sceneId + ' — enters the conversation') })
+  // naturalness of the final lines = the semantic audit's verdicts (4-level scale) for exactly these lines in this context
+  const natIssues = []
+  mp.flat.forEach((tu, i) => { const v = mf.verdicts.get(lnMfVerdictKey(tu, mp.flat[i - 1])); const iss = lnMfVerdictIssue(v)
+    if (!v) natIssues.push({ code: 'NATURALNESS_UNVERIFIED', line: i + 1, detail: 'no semantic verdict' }); else if (iss) natIssues.push({ code: 'UNNATURAL', line: i + 1, detail: iss.detail }) })
+  plan.scenes = mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), phase: s.situation, purpose: s.title + ' — ' + (LN_MF_SITUATIONS.find(x => x.key === s.situation) || {}).desc, requiredTargetIds: s.targetIds.slice(), expectedTurns: s.turns.length, maxTurns: s.turns.length }))
+  plan.assignments = mp.flat.flatMap(tu => tu.targetIds.map(id => ({ targetId: id, surface: (byId.get(id) || {}).surface, sceneId: 'LS' + (mp.scenes.findIndex(s => s.key === tu.scene) + 1), turn: tu.n, speaker: tu.speaker, intent: tu.intent })))
+  plan.meaningPlan = { valid: true, turnCount: mp.flat.length, problems: [], turns: mp.flat.map(tu => ({ n: tu.n, speaker: tu.speaker, addressee: tu.addressee, intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects,
+    respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null, targetIds: tu.targetIds.slice(), text: tu.text, english: tu.english })), repairRounds: round, byFault: { ...mf.byFault } }
+  const total = audit.lines.length
+  const allIn = mp.scenes.every(s => s.targetIds.every(id => audit.covered.includes(id)))
+  log && log('🎧 LISTENING_SCENE_COVERAGE_UNION ' + audit.covered.length + '/' + targets.length + ' · committed ' + scenes.length + ' situations · ' + total + ' turns (allowed ' + env.turnsMin + '–' + env.turnsMax + ')')
+  const contract = createConversationContract({ speakers: 'A and B (the same two people throughout)', relationship: ctx.jaStyle === 'polite' ? 'acquaintances' : 'friends', objective: grouping.scenes.map(s => s.title).join(' → '), scenes: plan.scenes, byId })
+  return { ok: true, scenes, audit, natIssues, plan, report: scenes.map((sc, k) => ({ sceneId: sc.sceneId, required: mp.scenes[k].targetIds.length, heard: mp.scenes[k].targetIds.filter(id => audit.covered.includes(id)).length, turns: sc.turns.length })), coh: null,
+    gates: { SCENE_REQUIRED_COVERAGE: allIn ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total >= env.turnsMin && total <= env.turnsMax, SCENES_VALIDATED: true, ONE_CONVERSATION: 'PASS' },
+    uncommitted: [], contract, story: plan.story, phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
+}
+// TT_V692_MEANING_FIRST_END
 // ══ v673 §2B — FEASIBILITY BEFORE FREEZE ═══════════════════════════════════════════════════════════════════════════════
 // The 30 Listening targets are NOT frozen merely because they are due: the candidate pool (existing revision / SRS order)
 // is tested first — every target needs a natural communicative role its authorised support vocabulary can carry, and the
@@ -27277,6 +28118,8 @@ function selectFeasibleListeningTargets(o) {
   const metas = new Map(T.map(t => [t.id, listeningTargetMetadata(t)]))
   let glosses = []
   try { const s0 = snapshotLearnerInventory(lang, vocab, pool.slice(0, need), 'listening'); glosses = ((s0.inventory && s0.inventory.taught) || []).map(w => String(w.english || '')).filter(Boolean) } catch (e) { glosses = vocab.map(w => String(w.english || '')) }
+  // v692 — MEANING-FIRST feasibility: profile → situation grouping (deterministic, 0 paid calls) before the freeze
+  if (listeningMeaningFirstOn() && o.meaningFirst !== false) return lnMfSelectFeasible(o, T, glosses)
   const cc = (() => { try { return getLearnerComplexityContract({ lang, vocab }) } catch (e) { return null } })()
   const deferred = []
   const allMetas = T.map(t => metas.get(t.id))
@@ -27326,6 +28169,15 @@ function selectFeasibleListeningTargets(o) {
     verbalized: !!(plan && plan.verbalized), provenTurns: plan ? plan.provenTurns || 0 : 0 }
 }
 function listeningFeasibilityLog(f, lang) {
+  if (f.meaningFirst) {
+    const out = ['🧭 LISTENING_FEASIBILITY ' + (f.feasible ? 'PASS' : 'FAIL') + ' language=' + lang + ' planner=' + LISTENING_PLANNER_VERSION + ' · pool=' + f.poolSize + ' candidate(s) in SRS order · authorised support=' + f.supportCount + ' word(s) · selected ' + f.targetIds.length +
+      ' · deferred ' + f.deferred.length + (f.deferred.length ? ': ' + f.deferred.slice(0, 8).map(d => d.surface + ' (' + d.stage + ': ' + String(d.reason || '').slice(0, 90) + ')').join('; ') : '') +
+      ' · situations ' + (f.grouping ? (f.grouping.valid ? 'VALID' : 'INVALID') + ' [' + f.grouping.scenes.map(s => s.key + ' ' + s.targetIds.length).join(', ') + ']' : 'not built') + ' — checked BEFORE the targets are frozen (0 paid calls)']
+    out.push('🧩 LISTENING_SEMANTIC_FEASIBILITY ' + (f.feasible ? 'PASS' : 'INCOMPLETE') + ' · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning')
+    f.deferred.forEach(d => out.push('⏭ LISTENING_TARGET_DEFERRED target=' + d.id + ' ' + d.surface + ' reason=' + String(d.reason || '').replace(/\s+/g, ' ').slice(0, 140) + ' stage=' + d.stage + ' srsObligationPreserved=true'))
+    if (f.deferred.length) out.push('🧭 LISTENING_DEFERRED_SRS ids=[' + f.deferred.map(d => d.id).join(',') + '] — skipped words keep their SRS obligation (due date untouched; the next Revision / Daily selection still takes them)')
+    return out
+  }
   const out = ['🧭 LISTENING_FEASIBILITY ' + (f.feasible ? 'PASS' : 'FAIL') + ' language=' + lang + ' · pool=' + f.poolSize + ' candidate(s) in SRS order · authorised support=' + f.supportCount + ' word(s) · selected ' + f.targetIds.length +
     ' · deferred ' + f.deferred.length + (f.deferred.length ? ': ' + f.deferred.slice(0, 8).map(d => d.surface + ' (' + d.stage + ': ' + String(d.reason || '').slice(0, 70) + ')').join('; ') : '') +
     ' · meaning plan ' + (f.plan && f.plan.meaningPlan ? (f.plan.meaningPlan.valid ? 'VALID' : 'INVALID') + ' (' + f.plan.meaningPlan.turnCount + ' turns)' : 'not built') + ' — checked BEFORE the targets are frozen']

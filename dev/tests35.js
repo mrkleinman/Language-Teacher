@@ -7,6 +7,7 @@
 // Also (found while validating v673): 2H best-of-seeds planning + budget-only deferral · 3F short target-bearing repeats are
 // substantive · 3G the Japanese scene-level register transformation kept in the phase transaction · 3H the deterministic trim.
 // Every check runs the app's real functions in the node harness; Gemini is simulated only at the transport boundary.
+process.env.TT_LISTENING_LEGACY = '1'   // v692: this suite tests the LEGACY template Listening planner (kept behind setListeningMeaningFirst(false) as rollback); the meaning-first planner is tested in tests49
 const { setup, mock } = require('./tests14')
 const fs = require('fs')
 const out = []; let fails = 0, n = 0

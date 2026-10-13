@@ -2,6 +2,7 @@
 // H fixtures (fidelity classes, embedded copy) · I in-app run path (= screens' steps; = Node) · J sandbox · K recorder /
 // replayer · L import of browser results · M replay coverage (UI-path cassettes) · N human review pack · O preservation
 // Generation behaviour itself is covered by tests37 C1 (every cassette — legacy and UI path — replays on this build).
+process.env.TT_LISTENING_LEGACY = '1'   // v692: LEGACY Listening planner regression (assertions unchanged); the default meaning-first planner is tested in tests49
 'use strict'
 const fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm')
 const { load } = require('./harness')

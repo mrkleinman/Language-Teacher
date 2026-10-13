@@ -62,7 +62,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     // v679: exactly ONE new storage write — the switch setting itself (key tt-ja-gen2); no learner-data write is added
     const ckw = (SRC.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length   // v682: the generation-draft (checkpoint) write site — its own keys, never learner data
     const extra = (SRC.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length + (SRC.match(/stSet\(settingKey, v\)/g) || []).length
-    const gm = (SRC.match(/await stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length   // v685: the AI Generation Model choice and the site access code (Settings) — never learner data
+    const gm = (SRC.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length   // v685: the AI Generation Model choice and the site access code (Settings) — never learner data
     T('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly two switch settings (tt-ja-gen2; tt-th-gen2 / tt-zh-gen2 via one shared tick box) and, from v682, ONE generation-draft write site (tt-th/ja/zh-gen-checkpoint) and, from v685, at most three Settings writes (tt-generation-model, tt-anthropic-site-access) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 2 && writes(SRC) === writes(base) + 2 + ckw + gm && ckw === 1 && gm <= 3 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC) && /const TH_GEN2_SETTING_KEY = 'tt-th-gen2'/.test(SRC) && /const ZH_GEN2_SETTING_KEY = 'tt-zh-gen2'/.test(SRC), [writes(SRC), writes(base), extra, gm])
   }
   // ══ B — DETERMINISTIC ACCEPTANCE RULES ════════════════════════════════════════════════════════════════════════════
@@ -148,7 +148,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
   {
     T('E1', 'the benchmark panel offers the shadow pilot (6 × 1 / 6 × 3), passes pipeline=gen2 to the sandboxed worker and keeps pilot results and files apart (-gen2-)',
       /id="pilot1"/.test(SRC) && /runInWorker\(fx, k, \{ pipeline: 'gen2', judgeModel:/.test(SRC) && /const pipeline = m\.pipeline === 'gen2' \? 'gen2' : 'production'/.test(SRC) && /'-gen2'/.test(SRC))
-    T('E2', 'version v681+ (v682 = reliability repair: resumable generation, recovery, teaching-quality rules)', /^v68[1-6]$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('E2', 'version v681+ (v682 = reliability repair: resumable generation, recovery, teaching-quality rules)', /^v68[1-7]$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
   // ══ F — v678.1 SANDBOX FIXES (defects found in the first live Japanese Daily run, 9 Oct 2026) ══════════════════
   {

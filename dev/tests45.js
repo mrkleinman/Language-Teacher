@@ -37,7 +37,8 @@ function app(o) {
     if (String(url) === '/api/anthropic' || /^https:\/\/[^/]+\.run\.app/.test(String(url))) {
       calls.urls = (calls.urls || []).concat(String(url))
       calls.anthropic.push({ body: JSON.parse(opts.body), headers: opts.headers })
-      const r = aq.length ? aq.shift() : resp(200, msg('[]'))
+      const _b = JSON.parse(opts.body), _f = _b.output_config && _b.output_config.format
+      const r = aq.length ? aq.shift() : resp(200, msg(_f && _f.schema && _f.schema.properties && _f.schema.properties.items && Object.keys(_f.schema.properties).length === 1 ? '{"items":[]}' : '[]'))
       if (r instanceof Error) throw r
       return typeof r === 'function' ? r(JSON.parse(opts.body)) : r
     }
@@ -69,9 +70,9 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     const restored = c2.aiSetGenerationPreference(JSON.parse(raw))
     T('S3', 'the choice persists: saved under tt-generation-model and restored on the next start', restored.model === HAIKU && restored.limitUsd === 0.4 && restored.limitRequests === 120, { raw, restored })
     T('S3b', 'app start loads the saved choice and the site access code (next to the Gemini key)', /const gk = await stGet\('tt-gemini-key'\)[^\n]*\n\s*try \{ aiSetGenerationPreference\(await stGet\(AI_GEN_PREF_KEY\)\); aiSetAnthropicAccess\(await stGet\(AI_ANTHROPIC_ACCESS_KEY\)\)/.test(SRC))
-    const kinds = ['daily-track', 'revision-track', 'weak-track', 'th-track', 'ja-track', 'zh-track'].map(k => c.aiRunGenerationModel(k))
-    const others = ['listening-th', 'kru-chat', 'haiku-connection-test', 'manual-qc', 'v684-daily', 'gen2-daily', undefined].map(k => c.aiRunGenerationModel(k))
-    T('S4', 'Daily / Revision / Weak-words runs in all three languages take the selected model; every other run stays on Gemini', kinds.every(m => m === HAIKU) && others.every(m => m === GEM), { kinds, others })
+    const kinds = ['daily-track', 'revision-track', 'weak-track', 'th-track', 'ja-track', 'zh-track', 'listening-track', 'listening-th', 'listening-handoff', 'quality-review', undefined].map(k => c.aiRunGenerationModel(k))
+    const others = ['v684-daily', 'gen2-daily'].map(k => c.aiRunGenerationModel(k))
+    T('S4', 'v687: every track run in all three languages (Daily, Revision, Weak-words, Listening, quality review) takes the selected model; only the experimental benchmark pipelines stay on Gemini', kinds.every(m => m === HAIKU) && others.every(m => m === GEM), { kinds, others })
     const runId = c.aiBeginRun('ja-track')
     c.aiSetGenerationPreference({ model: GEM })
     T('S5', 'changing the setting mid-run never changes the running track\'s model', c.aiRunGenModel(runId) === HAIKU)
@@ -96,6 +97,8 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     const u4 = c.aiSetGenerationPreference({ model: HAIKU, serverUrl: 'http://127.0.0.1:8799' }).serverUrl; c.aiSetGenerationPreference({ model: HAIKU })
     T('S10', 'server address: an https URL is kept (spaces / trailing slash trimmed); plain http only for this computer (local testing); anything else is refused; empty = this site\'s /api/anthropic',
       u1 === 'https://language-teacher-anthropic-abc123-as.a.run.app' && u2 === '' && u3 === '' && u4 === 'http://127.0.0.1:8799' && c.anthropicServerUrl() === '/api/anthropic', { u1, u2, u3, u4 })
+    c.aiSetAnthropicAccess(' lt-UpA1bR4 OBvp\nPyd '); const stripped = c.ev('AI_ANTHROPIC_ACCESS'); c.aiSetAnthropicAccess(CODE)
+    T('S10b', 'the access code ignores spaces and line breaks picked up when copying from a phone (generated codes never contain any)', stripped === 'lt-UpA1bR4OBvpPyd', stripped)
     const sv = app({ haiku: true }); sv.aiSetGenerationPreference({ ...sv.aiGenerationPreference(), serverUrl: 'https://lt-anthropic-xyz.a.run.app' }); sv.aiBeginRun('daily-track')
     await ask(sv, { stage: 'A_generation' })
     T('S11', 'generation requests go to the saved server address (the Google Cloud function), with the access code header', (sv.__calls.urls || [])[0] === 'https://lt-anthropic-xyz.a.run.app' && sv.__calls.anthropic[0].headers['x-lt-access'] === CODE, sv.__calls.urls)
@@ -113,8 +116,12 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     await ask(c, { stage: 'I_segmentation', prompt: 'Segment this Thai sentence' })
     await ask(c, { stage: 'J_romanisation', prompt: 'Re-romanize each Thai sentence' })
     await ask(c, { prompt: 'Give tone-marked romanization for each Thai word.' })      // an unnamed stage (P_other) → Gemini
-    T('R2', 'Haiku run: judges (by stage, by prompt signature, by verdict schema), pronunciation, segmentation and unnamed requests stay on Gemini',
-      c.__calls.anthropic.length === 1 && c.__calls.gemini.length === 6, { a: c.__calls.anthropic.length, g: c.__calls.gemini.length })
+    T('R2', 'v687 Haiku mode: judges (by stage, by prompt, by verdict schema), pronunciation, segmentation and unnamed requests ALSO go to Haiku — nothing to Gemini',
+      c.__calls.anthropic.length === 7 && c.__calls.gemini.length === 0, { a: c.__calls.anthropic.length, g: c.__calls.gemini.length })
+    await ask(c, { stage: 'Z_key_test', prompt: 'hi', maxTokens: 5 })
+    c.aiSetGenerationPreference({ model: GEM }); await ask(c, { stage: 'Q_kru_chat', prompt: 'Kru question' }); await ask(c, { stage: 'A_generation', prompt: 'still the run' })
+    T('R2b', 'Settings → Test Key always checks the Gemini key; Kru chat / word auto-fill follow the CURRENT setting; a running track keeps its model',
+      c.__calls.gemini.length === 2 && c.__calls.anthropic.length === 8, { a: c.__calls.anthropic.length, g: c.__calls.gemini.length })
     const role = (s, p, ch, j) => c.aiRequestRole(s, p, ch, j)
     const roles = [role('A_generation'), role('B_generation_retry'), role('A0_scene'), role('G_replace'), role('H_recovery'), role('H_recovery_audit'), role('E_cue_check'), role('L_final_cue_audit'),
       role('F_naturalness_final'), role('P_other'), role('H_recovery', '', ['aiQcEvaluateGroup']), role('A_generation', '', ['fetchTargetPhonetics']), role('H_recovery', '', ['thaiControlledAdjudication']),
@@ -128,9 +135,9 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     T('R4', 'Gemini run (the default): every request goes to Gemini exactly as before (thinking off, same settings); nothing to /api/anthropic',
       g.__calls.anthropic.length === 0 && g.__calls.gemini.length === 2 && gb.generationConfig.thinkingConfig.thinkingBudget === 0 && gb.generationConfig.temperature === 0.7 && /gemini-2\.5-flash-lite:generateContent/.test(g.__calls.gemini[0].url))
     const l = app({ haiku: true }); l.aiBeginRun('listening-th'); await ask(l, { stage: 'O_listening_scene', prompt: 'Write ONE natural Thai LISTENING conversation' })
-    T('R5', 'with Haiku selected, a Listening run still uses Gemini end to end', l.__calls.anthropic.length === 0 && l.__calls.gemini.length === 1)
+    T('R5', 'v687: with Haiku selected, a Listening run uses Haiku too', l.__calls.anthropic.length === 1 && l.__calls.gemini.length === 0)
     T('R6', 'one transport switch only: the generators call the same function for both models (no forked generator, no Haiku-only rules)',
-      (SRC.match(/return anthropicRequest\(/g) || []).length === 1 && (SRC.match(/anthropicRequest\(\{/g) || []).length === 3 && !/provider === 'anthropic'[^\n]*(accept|reject|quota|valid)/i.test(SRC))
+      (SRC.match(/const work = _optModel \? anthropicRequest\(/g) || []).length === 1 && (SRC.match(/anthropicRequest\(\{/g) || []).length === 3 && !/provider === 'anthropic'[^\n]*(accept|reject|quota|valid)/i.test(SRC))
   }
 
   // ══ M — mapping ═════════════════════════════════════════════════════════════════════════════════════════════════
@@ -220,7 +227,7 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
       resp(200, msg('b', { usage: { input_tokens: 150000, output_tokens: 100, output_tokens_details: { thinking_tokens: 0 } } })),
       resp(200, msg('c', { usage: { input_tokens: 1000, output_tokens: 0, cache_read_input_tokens: 10000, cache_creation_input_tokens: 2000 } }))], limitUsd: 2 })
     const run = c.aiBeginRun('daily-track')
-    await ask(c, { stage: 'A_generation' }); await ask(c, { stage: 'B_generation_retry', prompt: 'p2' }); await ask(c, { stage: 'G_replace', prompt: 'p3' }); await ask(c, { stage: 'C_group_eval', prompt: 'Evaluate this Thai language learning group' })
+    await ask(c, { stage: 'A_generation' }); await ask(c, { stage: 'B_generation_retry', prompt: 'p2' }); await ask(c, { stage: 'G_replace', prompt: 'p3' })
     const rs = rows(c, run), a = rs.filter(r => r.provider === 'anthropic')
     const near = (x, y) => Math.abs(x - y) < 1e-12
     T('C1', 'Haiku cost from its own usage at US$0.10 in / 0.50 out per M, thinking tokens counted as output (1000 in, 2000 out of which 1500 thinking → US$0.0011)',
@@ -230,7 +237,7 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     const s = c.aiUsageSummary(run), bp = s.byProvider
     T('C4', 'usage summary per provider: requests, failures, retries with reasons, input / output / thinking tokens, cost, requested and served model',
       bp.anthropic.requests === 4 && bp.anthropic.failed === 1 && bp.anthropic.retries === 1 && bp.anthropic.retryReasons['retry after HTTP 429 rate_limit_error'] === 1 && bp.anthropic.thinkingTok === 1500
-      && bp.anthropic.servedModels[HAIKU] === 3 && bp.gemini.requests === 1 && s.generationModel === HAIKU && near(bp.anthropic.costUsd, a.reduce((x, r) => x + (r.costUsd || 0), 0)), bp)
+      && bp.anthropic.servedModels[HAIKU] === 3 && !bp.gemini && s.generationModel === HAIKU && near(bp.anthropic.costUsd, a.reduce((x, r) => x + (r.costUsd || 0), 0)), bp)
     const lines = c.aiUsageSummaryLines(s).join('\n')
     T('C5', 'the report names both providers, the selected model, thinking tokens, cost per stage and the total', /AI USAGE SUMMARY \(Gemini \+ Claude Haiku\)/.test(lines) && /AI PROVIDERS \(this run\) · selected generation model: Claude Haiku 5\.5/.test(lines)
       && /ANTHROPIC: 4 requests \(1 failed, 1 provider retries: retry after HTTP 429 rate_limit_error ×1\)/.test(lines) && /thinking 1500/.test(lines) && /ANTHROPIC cost by stage: /.test(lines) && /Estimated total track cost \(all providers\)/.test(lines), lines.slice(-900))
@@ -269,15 +276,15 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
       const r = await runOnceUi(loadFixture(fxId), { mode: 'replay', cassette: run.cassette, pipeline: 'production', wrapFetch: h.wrapFetch,
         prepare: c => { C = c; c.aiSetGenerationPreference({ model: HAIKU, limitUsd: 5, limitRequests: 2000 }); c.aiSetAnthropicAccess(CODE) } })
       const cmp = compareContent(run.outcome.content, r.content), rs = C.ev('AI_LEDGER')
-      const genRx = C.ev('AI_GENERATION_STAGE_RX'), an = rs.filter(x => x.provider === 'anthropic'), gm = rs.filter(x => x.provider === 'gemini')
-      const judgesOnGemini = rs.filter(x => /^(C_|E_|F_|L_|H_recovery_audit|I_|J_|K_)/.test(x.stage)).every(x => x.provider === 'gemini')
-      T('P' + ({ ja: 1, th: 2, zh: 3 })[lang], lang + ': recorded live Daily run (' + run.cassette.entries.length + ' requests) with generation answered via the Haiku path → identical track; every recorded request used once; ' +
-        an.length + ' writing requests on Haiku, ' + gm.length + ' checks / pronunciation on Gemini',
-        cmp.identical && r.replay.faithful && !h.stats.unmatched.length && an.length === h.stats.anthropic && an.length > 0 && an.every(x => genRx.test(x.stage)) && judgesOnGemini && !r.error,
+      const an = rs.filter(x => x.provider === 'anthropic' && !x.deduped), gm = rs.filter(x => x.provider === 'gemini')
+      const checks = an.filter(x => /^(C_|E_|F_|L_|I_|J_|K_)/.test(x.stage)).length
+      T('P' + ({ ja: 1, th: 2, zh: 3 })[lang], lang + ': recorded live Daily run (' + run.cassette.entries.length + ' requests) with EVERY request answered via the Haiku path → identical track; every recorded request used once; ' +
+        an.length + ' requests on Haiku (' + checks + ' of them checks / pronunciation), none on Gemini',
+        cmp.identical && r.replay.faithful && !h.stats.unmatched.length && an.length === h.stats.anthropic && an.length === run.cassette.entries.length && gm.length === 0 && checks > 0 && !r.error,
         { cmp: cmp.identical, mm: r.replay.mismatches.length, unused: r.replay.unused.length, unmatched: h.stats.unmatched, err: r.error && r.error.slice(0, 200) })
       if (lang === 'th') {
         const ut = r.telemetry.usageSummary.join('\n')
-        T('P4', 'the run report shows both providers with the Haiku cost by stage and the access code is in none of it', /ANTHROPIC: \d+ requests/.test(ut) && /GEMINI: \d+ requests/.test(ut) && !ut.includes(CODE) && !JSON.stringify(rs).includes(CODE) && !r.log.join('\n').includes(CODE)
+        T('P4', 'the run report shows the Haiku requests and cost by stage (no Gemini line) and the access code is in none of it', /ANTHROPIC: \d+ requests/.test(ut) && !/GEMINI: \d+ requests/.test(ut) && !ut.includes(CODE) && !JSON.stringify(rs).includes(CODE) && !r.log.join('\n').includes(CODE)
           && [...h.stats.accessHeaders].join() === CODE, ut.slice(-900))
       }
     }
@@ -315,10 +322,10 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     T('X2', 'the key is read only on the server (Netlify environment variable), never returned: the reply carries only id / model / content / stop reason / usage',
       /getEnv\("ANTHROPIC_API_KEY"\)/.test(px) && /Netlify\.env\.get\(k\)/.test(px) && !/apiKey[^\n]*reply\(/.test(px) && !/Access-Control-Allow-Origin/.test(px))
     const c = app({ haiku: true }); const run = c.aiBeginRun('daily-track')
-    await ask(c, { stage: 'A_generation' }); await ask(c, { stage: 'C_group_eval', prompt: 'Evaluate this Thai language learning group' })
+    await ask(c, { stage: 'A_generation' }); await ask(c, { stage: 'Z_key_test', prompt: 'hi', maxTokens: 5 })
     const logs = JSON.stringify(rows(c, run)) + c.aiUsageSummaryLines(c.aiUsageSummary(run)).join('\n') + JSON.stringify(c.__logs)
     T('X3', 'the site access code travels only in the x-lt-access header to /api/anthropic — never in a log, ledger row, report or Gemini request',
-      c.__calls.anthropic[0].headers['x-lt-access'] === CODE && !logs.includes(CODE) && !JSON.stringify(c.__calls.gemini).includes(CODE) && !JSON.stringify(c.__calls.anthropic[0].body).includes(CODE))
+      c.__calls.anthropic[0].headers['x-lt-access'] === CODE && c.__calls.gemini.length === 1 && !logs.includes(CODE) && !JSON.stringify(c.__calls.gemini).includes(CODE) && !JSON.stringify(c.__calls.anthropic[0].body).includes(CODE))
     T('X4', 'stored on the device: the model choice, limits and server address (no credential) and the site access code only — the Settings card never asks for an Anthropic key',
       /AI_GEN_PREF_KEY = 'tt-generation-model'/.test(SRC) && /This is not your Anthropic API key/.test(SRC) && !/sk-ant/.test(SRC) && JSON.stringify(c.aiGenerationPreference()).match(/^\{"model":"[^"]+","limitUsd":[\d.]+,"limitRequests":\d+,"serverUrl":"(https:\/\/[^"]*)?"\}$/))
     // learner data: the new code writes only its two own keys
@@ -327,7 +334,7 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     const card = SRC.slice(SRC.indexOf('function GenerationModelCard()'), SRC.indexOf('function Settings('))
     T('X5', 'learner data untouched: the new code writes no track, vocabulary, bookmark, belt or SRS key — only tt-generation-model and tt-anthropic-site-access',
       !/stSet\(/.test(haikuBlock) && (card.match(/stSet\(([A-Z_]+)/g) || []).every(s => /AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY/.test(s)) && writes.length >= 2 && !/tt-(vocab|tracks|bookmarks|srs|belt)/.test(haikuBlock + card))
-    T('X6', 'the experimental generators stay off (v684 teaching plan and Gen2 are not switched on by this change)', /function aiRunGenerationModel/.test(SRC) && !/setTeachingPlan\(true\)/.test(haikuBlock + card) && !/gen2/i.test(haikuBlock.replace(/'gen2Judge'|gen2JaPronounce/g, '')))
+    T('X6', 'the experimental generators stay off (v684 teaching plan and Gen2 are not switched on by this change)', /function aiRunGenerationModel/.test(SRC) && !/setTeachingPlan\(true\)/.test(haikuBlock + card) && !/gen2/i.test(haikuBlock.replace(/'gen2Judge'|gen2JaPronounce|\(gen2-\|v684-\)|gen2-, v684-/g, '')))
   }
 
   // ══ F — the server function ═════════════════════════════════════════════════════════════════════════════════════

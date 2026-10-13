@@ -23,6 +23,12 @@ ask()  { local __v; read -r -p "$1" __v < "$TTY" >&2; printf '%s' "$__v"; }
 
 command -v gcloud >/dev/null || fail "Please run this in Google Cloud Shell (the >_ button at the top of console.cloud.google.com)."
 
+# 0. Cloud Shell must be signed in to your Google account (one-time: link → Allow → paste the code back)
+if [ -z "$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null)" ]; then
+  say "First, sign Cloud Shell in to your Google account: open the link below, choose your account, click Allow, then paste the code back here."
+  gcloud auth login --no-launch-browser < "$TTY" || fail "Sign-in did not finish. Run this line again."
+fi
+
 # 1. which Google Cloud project
 PROJECT="$(gcloud config get-value project 2>/dev/null || true)"
 if [ -z "$PROJECT" ] || [ "$PROJECT" = "(unset)" ]; then

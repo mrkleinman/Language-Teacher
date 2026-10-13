@@ -88,7 +88,7 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
     for (const f of files) {
       const cas = readJ(path.join(dir, f))
       // v676: a cassette recorded through the screens' steps (meta.path ui-path/1) replays through the same path
-      const r = await (cas.cassette.meta.path === 'ui-path/1' ? runOnceUi : runOnce)(loadFixture(cas.cassette.meta.fixture), { mode: 'replay', cassette: cas.cassette })
+      const r = await (cas.cassette.meta.path === 'ui-path/1' ? runOnceUi : runOnce)(loadFixture(cas.cassette.meta.fixture), { mode: 'replay', cassette: cas.cassette, qualityOct13: false })   // Oct13 changes off (tests47 covers them)
       rows.push({ f, onV674: cas.cassette.meta.appBuild === BASELINE_BUILD, faithful: r.replay.faithful, same: compareContent(cas.outcome.content, r.content).identical, n: r.replay.served })
     }
     T('C1', 'BEHAVIOUR UNCHANGED: every cassette recorded on the production baseline build (' + BASELINE_BUILD + ', ' + rows.length + ' runs · 6 historical fixtures + synthetic + stress variants) replays on this build with byte-identical prompts, no unused request and identical learner-facing content',
@@ -227,7 +227,7 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
     T('G2', 'no vocabulary entry or complexity contract changed in the source (bank / belt tables byte-identical to v674) except the owner\'s v689 re-banding of 6th–1st Kyu, which is exactly those six rows', banks(undo689(src)) === banks(base) && banks(src).length > 1000, [banks(undo689(src)).length, banks(base).length])
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
     T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings; v682 one: the generation-draft write site; v685 at most three: the AI Generation Model setting and site access code in Settings)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length + (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length + (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length && (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length <= 3 && (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
-    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[0-9])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[0-9]|69[0-9])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
 
   console.log(out.join('\n'))

@@ -45,7 +45,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.json'))) {
       const r = readJ(path.join(dir, f))
       const fx = loadFixture(r.fixtureId)
-      const rep = await runOnceUi(fx, { mode: 'replay', cassette: r.cassette })
+      const rep = await runOnceUi(fx, { mode: 'replay', cassette: r.cassette, qualityOct13: false })   // Oct13 changes off: the proof is about everything else
       const m0 = rep.replay.mismatches[0]
       rows.push({ f, listening: /listening/.test(f), faithful: rep.replay.faithful, same: compareContent(r.outcome.content, rep.content).identical, firstCall: m0 ? m0.call : null, diff: m0 && m0.promptDiff ? m0.promptDiff : null })
     }
@@ -148,7 +148,7 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
   {
     T('E1', 'the benchmark panel offers the shadow pilot (6 × 1 / 6 × 3), passes pipeline=gen2 to the sandboxed worker and keeps pilot results and files apart (-gen2-)',
       /id="pilot1"/.test(SRC) && /runInWorker\(fx, k, \{ pipeline: 'gen2', judgeModel:/.test(SRC) && /const pipeline = m\.pipeline === 'gen2' \? 'gen2' : 'production'/.test(SRC) && /'-gen2'/.test(SRC))
-    T('E2', 'version v681+ (v682 = reliability repair: resumable generation, recovery, teaching-quality rules)', /^v68[1-9]$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('E2', 'version v681+ (v682 = reliability repair: resumable generation, recovery, teaching-quality rules)', /^v(68[1-9]|69[0-9])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
   // ══ F — v678.1 SANDBOX FIXES (defects found in the first live Japanese Daily run, 9 Oct 2026) ══════════════════
   {

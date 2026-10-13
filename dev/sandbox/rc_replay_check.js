@@ -12,7 +12,7 @@ const args = process.argv.slice(2), appFile = /\.js$/.test(args[0] || '') ? path
   let ok = true
   for (const d of args) {
     const run = JSON.parse(fs.readFileSync(path.join(__dirname, 'runs', d, 'run.json'))), fxId = d.split('.')[0]
-    const r = await runOnceUi(loadFixture(fxId), { mode: 'replay', cassette: run.cassette, appFile, pipeline: 'production' })
+    const r = await runOnceUi(loadFixture(fxId), { mode: 'replay', cassette: run.cassette, appFile, pipeline: 'production', qualityOct13: process.env.OCT13 === 'on' ? undefined : false })
     const cmp = compareContent(run.outcome.content, r.content), good = r.replay.faithful && !r.replay.mismatches.length && !r.replay.unused.length && cmp.identical
     ok = ok && good
     console.log((good ? 'PASS ' : 'FAIL ') + d + ' · requests ' + run.cassette.entries.length + ' · mismatches ' + r.replay.mismatches.length + ' · unused ' + r.replay.unused.length + ' · content identical ' + cmp.identical)

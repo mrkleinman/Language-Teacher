@@ -31,7 +31,10 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
     const bank = c.ev('RAW_VOCAB').map(d => ({ id: d.id, thai: d.t, phonetic: d.ph })), lex = c.v684ThLexicon(bank), names = c.ev('THAI_NAME_PHONETIC')
     Object.entries(names).forEach(([k, v]) => lex.set(k, v)); bank.push(...Object.keys(names).map(k => ({ thai: k })))
     const tf = J('th.json').filter(p => c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex).length).map(p => p.pos)
-    T('V3', 'Thai: the 94 exported lines → exactly the 12 audited errors (แล้ว lâeo ×5, ร้อน rón, โกรธ krôot ×3, ผู้ชาย chai ×3)', eq(tf, [11, 14, 27, 38, 54, 55, 60, 61, 62, 78, 79, 80]), tf)
+    // Oct13: the ɔi diphthong is now displayed "awy" (หน่อย nàwy, อร่อย à-ràwy) — lines 7, 71, 85 carry the old "nàwi / à-ràwi" and are
+    // flagged for that rendering ONLY (nothing else on those lines)
+    const ɔiOnly = J('th.json').filter(p => [7, 71, 85].includes(p.pos)).every(p => { const pr = c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex); return pr.length === 1 && /≠ dictionary rendering/.test(pr[0]) && pr[0].replace(/àwi/g, 'àwy').split('≠')[0].includes(pr[0].split('rendering "')[1].replace(/"$/, '')) })
+    T('V3', 'Thai: the 94 exported lines → exactly the 12 audited errors (แล้ว lâeo ×5, ร้อน rón, โกรธ krôot ×3, ผู้ชาย chai ×3) + the 3 lines whose only difference is the Oct13 ɔi rendering (nàwi → nàwy)', eq(tf, [7, 11, 14, 27, 38, 54, 55, 60, 61, 62, 71, 78, 79, 80, 85]) && ɔiOnly, tf)
     const zlexT = zlex.concat([{ w: '是', p: 'shì' }, { w: '个', p: 'gè' }, { w: '人', p: 'rén' }])     // rule cases need these three syllables
     const sp = (t) => { const p = c.v684ZhPronunciation(t, zlexT); return p.spoken || p.pinyin }
     const cases = [['有一点', 'yǒu yì diǎn'], ['我们一起去', 'wǒ men yì qǐ qù'], ['你等一下', 'ní děng yí xià'], ['可以', 'ké yǐ'], ['你好', 'ní hǎo'], ['不是', 'bú shì'], ['要不要', 'yào bu yào'], ['我很好', 'wó hén hǎo'], ['一个人', 'yí gè rén']]
@@ -199,8 +202,11 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
     const blk = SRC.slice(SRC.indexOf('// TT_V684_BEGIN'), SRC.indexOf('// TT_V684_END'))
     const outside = SRC.replace(blk, '')
     const uses = [...outside.matchAll(/\bv684[A-Z][A-Za-z]*\(/g)].map(m => m[0])
-    T('X1', 'nothing outside the v684 block calls it except the bench pipeline \'v684\' (v684DailyLesson / v684ToTrack inside ttBenchRunFixture)',
-      uses.length && uses.every(u => /^(v684DailyLesson|v684ToTrack)\($/.test(u)) && /o\.pipeline === 'v684' && fx\.trackType === 'daily'/.test(outside), uses)
+    T('X1', 'nothing outside the v684 block calls it except the bench pipeline \'v684\' (v684DailyLesson / v684ToTrack inside ttBenchRunFixture) and, from Oct13, the two deterministic readers (Japanese final romaji, Mandarin syllables)',
+      // Oct13: two production uses by design — the final Japanese romaji (jaFinalRomaji → v684JaDerive) and the per-syllable Mandarin
+      // tone sandhi (mandarinSpokenPinyin → v684ZhSyllables); both are deterministic readers, no switch or storage of the v684 block
+      uses.length && uses.every(u => /^(v684DailyLesson|v684ToTrack|v684JaDerive|v684ZhSyllables)\($/.test(u)) && /o\.pipeline === 'v684' && fx\.trackType === 'daily'/.test(outside) &&
+        uses.filter(u => u === 'v684JaDerive(').length === 1 && uses.filter(u => u === 'v684ZhSyllables(').length === 1 && /const d = bank \? v684JaDerive\(q\.japanese, bank\) : null/.test(outside) && /try \{ ss = v684ZhSyllables\(m\[1\]\) \}/.test(outside), uses)
     T('X2', 'the experimental switches stay off by default (TEACHING_PLAN_ACTIVE = false; Gen2 disabled); no storage write in the v684 block',
       /let TEACHING_PLAN_ACTIVE = false/.test(SRC) && !/localStorage|setItem|saveVocab|persist/i.test(blk) && c.ev('teachingPlanOn()') === false)
   }

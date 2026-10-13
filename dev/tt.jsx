@@ -3241,21 +3241,49 @@ function tidyPinyin(p) {
     .replace(/\s{2,}/g, ' ')
     .trim()
 }
-function mandarinSpokenPinyin(pinyin) {
+// the previous rule (word = one syllable), kept for the switch-off replay proof only
+function mandarinSpokenPinyinV682(pinyin) {
   const parts = String(pinyin || '').split(/(\s+)/)
   const syl = parts.map((p, i) => ({ p, i, isWord: !/^\s*$/.test(p) }))
   const words = syl.filter(x => x.isWord)
-  // v681: 不 sandhi — bù before a 4th-tone syllable is spoken bú (不要 bú yào, 不是 bú shì, 不在 bú zài)
   for (let k = 0; k < words.length - 1; k++) {
     if (/^b\u00F9([.,?!;:]*)$/i.test(words[k].p) && toneOf(words[k + 1].p) === 4) words[k].p = words[k].p.replace('\u00F9', '\u00FA')
   }
-  // third-tone sandhi: 3+3 -> 2+3, applied left to right across adjacent syllables
   for (let k = 0; k < words.length - 1; k++) {
     if (toneOf(words[k].p) === 3 && toneOf(words[k + 1].p) === 3) {
       words[k].p = words[k].p.replace(TONE3, m => T3_TO_T2[m] || m)
     }
   }
   words.forEach(w => { parts[w.i] = w.p })
+  return parts.join('')
+}
+function mandarinSpokenPinyin(pinyin) {
+  if (typeof oct13On === 'function' && !oct13On()) return mandarinSpokenPinyinV682(pinyin)
+  const parts = String(pinyin || '').split(/(\s+)/)
+  // Oct13: tone changes are decided SYLLABLE by syllable. A word was treated as one syllable whose tone was "any tone mark in it",
+  // so 我们 一起 (wǒmen yìqǐ) became "wómen" (yìqǐ counted as 3rd tone because of its ǐ) and 我 可以 gave "wó kěyǐ" (可以's own
+  // 3+3 never changed). Words keep their spacing; a word that cannot be split into syllables counts as one, as before.
+  const syl = []
+  parts.forEach((p, i) => {
+    if (/^\s*$/.test(p)) return
+    const m = String(p).match(/^(.*?)([.,?!;:]*)$/)
+    let ss = null
+    try { ss = v684ZhSyllables(m[1]) } catch (e) { ss = null }
+    if (!ss || !ss.length || ss.join('') !== m[1].normalize('NFC')) ss = [m[1]]
+    ss.forEach((x, k) => syl.push({ i, x, tail: k === ss.length - 1 ? m[2] : '', last: k === ss.length - 1 }))
+  })
+  // v681: 不 sandhi — bù before a 4th-tone syllable is spoken bú (不要 bú yào, 不是 bú shì, 不在 bú zài)
+  for (let k = 0; k < syl.length - 1; k++) {
+    if (/^b\u00F9$/i.test(syl[k].x) && !syl[k].tail && toneOf(syl[k + 1].x) === 4) syl[k].x = syl[k].x.replace('\u00F9', '\u00FA')
+  }
+  // third-tone sandhi: 3+3 -> 2+3, left to right across adjacent syllables (not across punctuation)
+  const t0 = syl.map(s => toneOf(s.x))
+  for (let k = 0; k < syl.length - 1; k++) {
+    if (t0[k] === 3 && t0[k + 1] === 3 && !syl[k].tail) syl[k].x = syl[k].x.replace(TONE3, m => T3_TO_T2[m] || m)
+  }
+  const byWord = new Map()
+  syl.forEach(s => byWord.set(s.i, (byWord.get(s.i) || '') + s.x + s.tail))
+  byWord.forEach((w, i) => { parts[i] = w })
   return parts.join('')
 }
 
@@ -3509,6 +3537,14 @@ function zhObjectHint(target, inv) {
     (untaught.length ? 'NOT taught (forbidden): ' + untaught.join(' ') + '. ' : '') +
     (generic.length ? 'You may always use: ' + generic.join(' / ') + '.' : '') + '\n'
 }
+// Oct13 — patterns from the live 13-Oct Mandarin track that a native speaker would not say (with the natural form). Teaching the
+// pattern, not a blacklist: the same words are fine in a natural sentence.
+const ZH_NATURALNESS_GUIDE =
+  'NATURAL MANDARIN — mistakes seen before (write the natural form):\n' +
+  '  - arrival: 你到了吗？ — not 你到不到？ (A-not-A asks about a habit or plan, not whether someone has arrived)\n' +
+  '  - offering food: 你要吃一点吗？ / 吃一点吧 — not 你吃一点吗？\n' +
+  '  - a sentence needs a reason to be said here: 你的钱很少吗？, 那个东西不快。, 家很小。 out of the blue are odd — say whose home / which thing, ' +
+    'or make it a reply to the line before (这个车不快。 after a question about the car)\n'
 function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
   const content = inv.allContent.map(w => '  ' + w.chinese + ' [' + w.pinyin + '] = ' + w.english +
     (w.note ? '  \u2014 use when ' + w.note : '')).join('\n')
@@ -3542,6 +3578,7 @@ function buildMandarinPrompt(target, inv, vocab, recallIndex, rules) {
     zhTargetPatternLine(target, inv, vocab, rules) +
     (teachingPlanOn() ? '' : rules.requirePatternVariety ? 'Vary the grammar pattern from earlier recalls.\n'
       : 'Controlled repetition and similar structures are DESIRABLE at this stage (\u00a754).\n') +
+    (oct13On() ? ZH_NATURALNESS_GUIDE : '') + vocabStagePromptRule((inv.allContent || []).length) +
     '\u00a770: adjectives take \u5F88 etc., NOT \u662F. \u00a771: use \u4E0D vs \u6CA1 correctly. \u00a769: keep the subject when it aids clarity.\n' +
     '\u00a766: the English prompt must cue the meaning naturally without revealing the Chinese.\n' +
     'Return ONLY JSON:\n' +
@@ -4576,10 +4613,11 @@ function mandarinFramingPairs(inv) {
     words:[{ p:b.pinyin, e:b.english }],
   } : null
   const open  = mk('A', basic('\u4F60\u597D'), 'Hello.',   'Greet them',            'greeting')
-  const reply = mk('B', basic('\u55EF'),       'Mm.',      'Acknowledge warmly',    'greeting')
+  // Oct13: a greeting is answered with a greeting and a goodbye with a goodbye — "嗯" ("mm") after 你好 / 再见 is not what a speaker
+  // says (live 13-Oct track). 嗯 remains the fallback only if the bank lacks 你好 / 再见.
+  const reply = (oct13On() && mk('B', basic('\u4F60\u597D'), 'Hello.', 'Greet them back', 'greeting')) || mk('B', basic('\u55EF'), 'Mm.', 'Acknowledge warmly', 'greeting')
   const close = mk('A', basic('\u518D\u89C1'), 'Goodbye.', 'Say goodbye',           'parting')
-  // \u597D\u7684 was removed from the basics inventory (\u00a72); \u55EF closes the exchange instead.
-  const creply= mk('B', basic('\u55EF'),       'Mm.',      'Acknowledge and close off','parting')
+  const creply= (oct13On() && mk('B', basic('\u518D\u89C1'), 'Goodbye.', 'Say goodbye back', 'parting')) || mk('B', basic('\u55EF'), 'Mm.', 'Acknowledge and close off', 'parting')
   return { open:[open, reply].filter(Boolean), close:[close, creply].filter(Boolean) }
 }
 
@@ -4882,6 +4920,9 @@ function runMandarinQualityCheckCore(pair, target, inv, vocab) {
   // §67 — segment glosses from the canonical lexicon, never invented
   out.segments = (out.segments || []).map(s => {
     const seg = { ...s }
+    // Oct13: a segment that is only punctuation (。？！，…) is punctuation whatever its "type" says — the live 13-Oct run rejected a
+    // valid sentence for "no gloss available for 。"
+    if (oct13On() && seg.type !== 'punct' && seg.surface && /^[\s\p{P}\p{S}\u3000-\u303F\uFF00-\uFF0F\uFF1A-\uFF20]+$/u.test(String(seg.surface))) { seg.type = 'punct'; delete seg.pinyin; delete seg.english }
     if (seg.type === 'punct') return seg
     const hit = (inv.lexicon || []).find(x => x.w === seg.surface)
     if (hit) {
@@ -4925,7 +4966,10 @@ async function runMandarinTrackQC(track, vocab, opts, onProgress, onLog) {
   // v651 §7 — Mandarin QC accepts Mandarin only. A Japanese/Thai pair is refused before any request.
   { const lc = assertQcLanguage(track, 'zh'); if (!lc.ok) throw pipelineInternalError(lc.code, lc.detail) }
   const pairs = (track.pairs || []).slice()
-  const targets = (track.keywords || []).map(k => (vocab || []).find(w => w.id === k.wordId)).filter(Boolean)
+  // Oct13: ONE permission contract — quota recovery checks a few pairs of one target, but the words they may use are the whole
+  // track's (authorisedKeywords), exactly the inventory they were generated with. Checking against [that target] alone rejected
+  // the track's other new words (多 / 一点 / 快) as "untaught".
+  const targets = (track.authorisedKeywords || track.keywords || []).map(k => (vocab || []).find(w => w.id === k.wordId)).filter(Boolean)
   const inv = mandarinLearnerInventory(vocab, targets)
   const rules = mandarinScarcityRules(inv)
   const issues = []
@@ -8664,10 +8708,19 @@ function aiCompactRows(rows) {
   return (rows || []).slice(-400).map(r => [r.id, r.stage, r.fn, r.model, r.attempt, r.usage && r.usage.prompt != null ? r.usage.prompt : r.inputTokensEst,
     r.usage && r.usage.candidates != null ? r.usage.candidates : r.outputTokensEst, r.usage && r.usage.prompt != null ? 'P' : 'E', r.http, r.ok ? 1 : 0, r.durationMs, r.retryReason || '', r.latched ? 1 : 0, r.inputChars])
 }
+// Oct13: what the run cost per sentence the learner actually got (valid target pairs in the saved track)
+function aiCostPerAcceptedRecall(track) {
+  const sum = track && track.aiUsage
+  if (!sum || !Number.isFinite(sum.costUsd)) return null
+  const ok = (track.pairs || []).filter(p => p && !p._framing && p.targetId != null && classifyTrackPair(p) === 'TARGET' && !p._qcInvalid && !p._qcUnresolved).length
+  return { accepted: ok, costUsd: sum.costUsd, perRecallUsd: ok ? sum.costUsd / ok : null, requests: sum.total, requestsPerRecall: ok ? sum.total / ok : null }
+}
 function aiUsageExportLines(track) {
-  const out = ['GEMINI / AI USAGE (this track\'s creation run)', '-'.repeat(30)]
+  const out = [(track && track.aiUsage ? aiProvidersUsed(track.aiUsage).map(aiProviderName).join(' + ').toUpperCase() : 'AI') + ' / AI USAGE (this track\'s creation run)', '-'.repeat(30)]
   if (!track || !track.aiUsage) return out.concat(['not recorded (track made before v647)'])
   aiUsageSummaryLines(track.aiUsage).forEach(l => out.push(l))
+  const cpr = aiCostPerAcceptedRecall(track)
+  if (cpr && cpr.accepted) out.push('COST PER ACCEPTED RECALL: USD ' + cpr.perRecallUsd.toFixed(5) + ' (USD ' + cpr.costUsd.toFixed(4) + ' ÷ ' + cpr.accepted + ' valid target pairs) · requests per accepted recall ' + cpr.requestsPerRecall.toFixed(2))
   const rows = track.aiCalls || []
   if (rows.length) {
     out.push('', 'AI_CALL_ID | STAGE | FUNCTION | MODEL | ATTEMPT | INPUT_TOKENS | OUTPUT_TOKENS | TOKENS_SRC | HTTP | OK | DURATION_MS | RETRY_REASON | INPUT_CHARS')
@@ -8738,7 +8791,8 @@ function LastTrackCostChip() {
 function aiUsageSummaryLines(sum) {
   if (!sum) return []
   const _multi = !!(sum.byProvider && sum.byProvider.anthropic)
-  const L = [_multi ? '🤖 AI USAGE SUMMARY (Gemini + Claude Haiku)' : '🤖 GEMINI USAGE SUMMARY',
+  const _names = aiProvidersUsed(sum).map(aiProviderName).join(' + ')
+  const L = [_multi ? '🤖 AI USAGE SUMMARY (' + _names + ')' : '🤖 GEMINI USAGE SUMMARY',
     'Model: ' + (Object.entries(sum.byModel).map(([m, n]) => m + ' ×' + n).join(' · ') || '-'),
     'Track ID: ' + (sum.trackId || '-') + ' · run ' + (sum.runId || '-'),
     'Total requests: ' + sum.total + ' · Successful: ' + sum.successful + ' · Failed: ' + sum.failed + ' · Retried: ' + sum.retried + (sum.latchedNotSent ? ' · not sent (provider latched): ' + sum.latchedNotSent : '') +
@@ -8763,8 +8817,8 @@ function aiUsageSummaryLines(sum) {
     ...(sum.byPurpose ? ['PAID REQUESTS BY PURPOSE: ' + Object.values(sum.byPurpose).sort((a, b) => b.requests - a.requests).map(b => b.purpose + ' ' + b.requests + ' (' + b.tokens + ' tok, USD ' + b.costUsd.toFixed(4) + ')').join(' · ')] : []),
     ...thaiGenerationTelemetryLines(sum.thaiGeneration),
     ...(typeof japaneseGenerationTelemetryLines === 'function' ? japaneseGenerationTelemetryLines(sum.japaneseGeneration) : []),
-    (_multi ? 'Estimated AI cost (all providers): USD ' : 'Estimated Gemini cost: USD ') + sum.costUsd.toFixed(4) + ' (≈ SGD ' + (sum.costUsd * AI_USD_TO_SGD).toFixed(4) + ' at ' + AI_USD_TO_SGD + ' — assumed rate)',
-    _multi ? 'TOP AI COST SOURCES' : 'TOP GEMINI COST SOURCES']
+    (_multi ? 'Estimated AI cost (' + _names + '): USD ' : 'Estimated Gemini cost: USD ') + sum.costUsd.toFixed(4) + ' (≈ SGD ' + (sum.costUsd * AI_USD_TO_SGD).toFixed(4) + ' at ' + AI_USD_TO_SGD + ' — assumed rate)',
+    _multi ? 'TOP ' + _names.toUpperCase() + ' COST SOURCES' : 'TOP GEMINI COST SOURCES']
   sum.ranked.slice(0, 5).forEach((s, i) => L.push('  ' + (i + 1) + '. ' + s.stage + ' — ' + s.requests + ' requests / ' + (s.inTok + s.outTok) + ' tokens / ~' + s.pct + '%'))
   const bp = sum.byProvider || {}
   if (bp.anthropic || (sum.generationModel && sum.generationModel !== GEMINI_DEFAULT_MODEL)) {
@@ -8826,7 +8880,7 @@ function aiRequestFingerprint(o) {
 // a reply can no longer arrive as prose, a numbered list or a truncated note.
 const GEMINI_SCHEMAS = {
   // v682 — the group judge's verdict in structured mode (its free-text reply was unreadable twice in the live v681+ Mandarin run)
-  groupVerdict: { type: 'OBJECT', properties: { action: { type: 'STRING', enum: ['clean', 'fix_pronunciation', 'improve', 'replace'] }, reason: { type: 'STRING' } }, required: ['action'] },
+  groupVerdict: { type: 'OBJECT', properties: { action: { type: 'STRING', enum: ['clean', 'fix_pronunciation', 'improve', 'replace'] }, reason: { type: 'STRING' }, problems: { type: 'ARRAY', items: { type: 'INTEGER' }, nullable: true } }, required: ['action'] },
   verdicts: { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: { type: 'INTEGER' }, s: { type: 'INTEGER' }, note: { type: 'STRING' }, wrongSense: { type: 'BOOLEAN', nullable: true }, thaiEnglishMatch: { type: 'BOOLEAN', nullable: true }, cueRepair: { type: 'STRING', nullable: true }, issue: { type: 'STRING', nullable: true } }, required: ['i', 's'] } },
   scene: { type: 'OBJECT', properties: { A: { type: 'INTEGER' }, B: { type: 'INTEGER' }, C: { type: 'INTEGER' }, D: { type: 'INTEGER' }, E: { type: 'INTEGER' },
     brokenAtPair: { type: 'INTEGER', nullable: true }, reason: { type: 'STRING' } }, required: ['A', 'B', 'C', 'D', 'E'] },
@@ -9226,6 +9280,19 @@ async function anthropicRequest({ model, messages, maxTokens, signal, stage, jso
     }
     const data = await res.json().catch(() => null)
     detach()
+    // Oct13: a 200 whose body never arrived (the phone dropped the open connection — seen after 226–418 s) is a lost
+    // connection, not a bad answer from Haiku: retry it like a network error. After the last try it fails this ONE request
+    // (non-fatal, nothing latched), so the generator's own rules decide what next and accepted sentences are kept.
+    if (res.ok && (data == null || typeof data !== 'object')) {
+      if ((signal && signal.aborted) || (runCtl && runCtl.signal.aborted)) { row.cancelled = true; aiRecordEnd(row, { ok: false, error: 'cancelled (run superseded)' }); throw _cancelledError('run superseded') }
+      row.http = res.status
+      aiRecordEnd(row, { http: res.status, ok: false, error: 'CONNECTION_LOST: HTTP 200 without a readable body' })
+      lastErr = anthropicError(res.status, 'network', 'CLAUDE HAIKU CONNECTION LOST: the reply did not arrive (HTTP 200 without a body)')
+      lastErr.connectionLost = true
+      why = 'retry after connection lost'
+      if (attempt < ANTHROPIC_CONFIG.maxAttempts) { await new Promise(r => setTimeout(r, ANTHROPIC_CONFIG.backoffMs[attempt - 1] || 5000)); continue }
+      throw lastErr
+    }
     // the server function answers 200 at once and writes an Anthropic error into the body with its real status
     const status = res.ok && data && data.type === 'error' && data.status ? data.status : res.status, httpOk = status >= 200 && status < 300
     row.http = status
@@ -9267,6 +9334,23 @@ async function anthropicTestConnection() {
   try { const p = await stGet(AI_GEN_PREF_KEY); if (p) aiSetGenerationPreference(p) } catch (e) {}
   try { const c = await stGet(AI_ANTHROPIC_ACCESS_KEY); if (c) aiSetAnthropicAccess(c) } catch (e) {}
 })()
+
+// Oct13: provider names come from what the run actually used. A track made with the optional model was exported as "Generated by: Gemini ·
+// model=gemini-2.5-flash-lite" (track.model is the legacy Gemini default) and its usage block was headed "GEMINI / AI USAGE".
+function aiProviderName(p) { return p === 'anthropic' ? 'Claude Haiku' : p === 'gemini' ? 'Gemini' : String(p || 'AI') }
+function aiProvidersUsed(sum) {
+  const bp = (sum && sum.byProvider) || {}
+  const used = Object.values(bp).filter(b => b && b.requests > 0).map(b => b.provider)
+  if (used.length) return used
+  const gm = sum && sum.generationModel
+  return [gm && AI_GEN_MODELS[gm] ? AI_GEN_MODELS[gm].provider : 'gemini']
+}
+function trackGeneratedByLine(track) {
+  const model = (track && (track.generationModel || track.model)) || GEMINI_DEFAULT_MODEL
+  const prov = AI_GEN_MODELS[model] ? AI_GEN_MODELS[model].provider : 'gemini'
+  const used = track && track.aiUsage ? aiProvidersUsed(track.aiUsage) : [prov]
+  return 'Generated by: ' + used.map(aiProviderName).join(' + ') + ' · model=' + model
+}
 
 // ══ v675 (Step 0) — OPT-IN BENCHMARK CAPTURE (browser console only; no UI, no effect unless started) ══════════════
 // window.ttBenchmark.startRecording('label') wraps window.fetch for Gemini requests ONLY while recording: the request
@@ -9713,6 +9797,28 @@ async function ttBenchListening(fx, vocab, apiKey, model, L) {
 // Learner screens do not turn it on; only the sandbox pipeline 'teaching-plan' does, for the duration of one run.
 let TEACHING_PLAN_ACTIVE = false
 function teachingPlanOn() { return TEACHING_PLAN_ACTIVE }
+// Oct13 — ONE switch for the 13-Oct teaching-quality changes (ON in the app). Off reproduces the previous build exactly; the replay
+// guards use that to prove nothing ELSE changed (old recordings replay byte-identically with it off). Not a setting; never stored.
+let QUALITY_OCT13_ACTIVE = true
+function oct13On() { return QUALITY_OCT13_ACTIVE }
+function setQualityOct13(on) { const was = QUALITY_OCT13_ACTIVE; QUALITY_OCT13_ACTIVE = !!on; return was }
+// Oct13 — VOCABULARY-AWARE TEACHING (adaptive, soft): how much variety to ask for depends on how many words the learner can use.
+// ABSOLUTE at every stage: three recalls per target, each a complete, natural, correct sentence that uses the target in its sense
+// and fits the scene. SOFT: how different the three constructions are — with under 100 words, near-identical useful patterns are
+// GOOD teaching; variety is only expected once the vocabulary can carry it. Validators keep their own rules; this only steers
+// the writer (it never accepts or rejects a sentence).
+const VOCAB_STAGES = Object.freeze([
+  { upTo: 99,  id: 'starter',  rule: 'the learner knows under 100 words: short, useful, everyday sentences; repeating one helpful pattern across the three recalls is GOOD (e.g. ask → answer → ask again about something else); do not reach for variety the vocabulary cannot support' },
+  { upTo: 299, id: 'growing',  rule: 'the learner knows 100–299 words: keep sentences short and useful; vary the situation or the person (ask / answer / suggest) where it stays natural; repetition is still fine' },
+  { upTo: 699, id: 'building', rule: 'the learner knows 300–699 words: prefer three different everyday uses of the target (a question, an answer, a suggestion or a reason), still short and natural' },
+  { upTo: Infinity, id: 'fluent', rule: 'the learner knows 700+ words: three clearly different natural uses of the target, each fitting its moment in the conversation' },
+])
+function vocabStageFor(n) { const k = Number(n) || 0; return VOCAB_STAGES.find(s => k <= s.upTo) }
+function vocabStagePromptRule(n) {
+  if (!oct13On()) return ''
+  const st = vocabStageFor(n)
+  return '• LEVEL (' + st.id + '): ' + st.rule + '. Always: three recalls, each complete, natural, useful in THIS scene, and following from the line before it.\n'
+}
 function setTeachingPlan(on) { const was = TEACHING_PLAN_ACTIVE; TEACHING_PLAN_ACTIVE = !!on; if (typeof TP_USE_SHIFT !== 'undefined') TP_USE_SHIFT.clear(); if (typeof TP_SITUATION_POOL !== 'undefined') TP_SITUATION_POOL.clear(); return was }
 // THE TEACHING PLAN (shared acceptance principles; language-specific grammar lives in each language's validator).
 // For every target, BEFORE any sentence is written: its sense, its word class and three DIFFERENT applications. The same
@@ -14763,10 +14869,30 @@ function thaiQcCheckTargetUsage(pair, target, ctx) {
   return { ok: true, problems: [], diagnostics: { target: tw, perLine, pairContainsTarget: true } }
 }
 // Runs every check and returns ALL failures, so repair sees the full picture.
+// Oct13 — Thai spelling that the vocabulary check cannot see because both spellings are real words: ที่นั้น ("at that-[determiner]")
+// where ที่นั่น ("there") is meant — the live 13-Oct track kept ทางเข้าอยู่ที่นั้นครับ. Rejected with the correct spelling named, so
+// the repair / regeneration writes ที่นั่น (it is never silently rewritten: ที่นั่น must itself pass the learner's vocabulary check).
+function thaiQcCheckSpelling(pair) {
+  if (!oct13On()) return { ok: true }
+  const th = String(pair && pair.thai || '').replace(/\s+/g, '')
+  if (/ที่นั้น(?=$|ครับ|ค่ะ|คะ|นะ|ไหม|หรือ|เลย|ก็|แล้ว|มี|ด้วย|[?!.])/.test(th) || /(อยู่|ไป|มา|จาก|ถึง|ตรง)ที่นั้น/.test(th))
+    return { ok: false, code: 'THAI_SPELLING', problems: ['ที่นั้น is a misspelling here — "there" is ที่นั่น'] }
+  return { ok: true }
+}
+// Oct13 — Thai does not use commas inside a sentence (a space marks the pause): ของฝากนี่ถูกมาก, เอาไหมครับ → ของฝากนี่ถูกมาก เอาไหมครับ.
+// Display-only punctuation: no word changes, so the vocabulary and target checks are unaffected.
+function thaiTidyCommas(pairs, log) {
+  let n = 0
+  const out = (pairs || []).map(p => { if (!p || typeof p.thai !== 'string' || !/[,，、]/.test(p.thai)) return p; n++
+    const th = p.thai.replace(/\s*[,，、]\s*/g, ' ').replace(/\s{2,}/g, ' ').trim(); return { ...p, thai: th, ...(p.text === p.thai ? { text: th } : {}) } })
+  if (n && log) log('  ✂ THAI_COMMAS_REMOVED ' + n + ' line(s): a space marks the pause in Thai')
+  return out
+}
 function runThaiQcChecks(pair, ctx) {
   const out = []
   const c = ctx || {}
   ;[
+    () => thaiQcCheckSpelling(pair),
     () => c.allowedSet ? thaiQcCheckVocabulary(pair, c.allowedSet, c.vocab) : { ok: true },
     () => c.lex ? thaiQcCheckPhonetic(pair, c.lex) : { ok: true },
     () => thaiQcCheckMeaning(pair),
@@ -15788,6 +15914,17 @@ function evaluatePromptAlignment(promptText, english) {
   }
 }
 
+// Oct13 — the kinds of Thai a native speaker would not say, taken from the live 13-Oct track (each with the natural form). Shared by
+// the writer and the native-speaker reviewer so both hold the same standard. They teach the PATTERN; nothing is blacklisted.
+const THAI_NATURALNESS_GUIDE =
+  '• NATURAL THAI — mistakes seen before (write the natural form):\n' +
+  '  - "there" is ที่นั่น (ทางเข้าอยู่ที่นั่นครับ), never ที่นั้น (นั้น = "that" after a noun)\n' +
+  '  - asking for a discount: ลดให้หน่อยได้ไหมครับ / ลดเหลือพันบาทได้ไหมครับ — not ลดให้พันบาท (unclear: "a thousand off" or "down to a thousand"?)\n' +
+  '  - a price per item uses classifier + ละ: ถุงเท้าคู่ละสิบเจ็ดบาทครับ — not ถุงเท้าคู่ราคาสิบเจ็ดบาท; a classifier may stand alone when the noun is clear (เอาสองคู่ครับ)\n' +
+  '  - an embedded question needs ว่า: ผมไม่รู้ว่านี่หมายถึงอะไรครับ — not ผมไม่รู้นี่หมายถึงอะไร\n' +
+  '  - นิดหน่อย softens something unwelcome (แพงนิดหน่อย, เผ็ดนิดหน่อย); for "fairly easy" say ง่ายนิดเดียว or ไม่ยาก — not ง่ายนิดหน่อย\n' +
+  '  - reassurance is a statement, not a ไหม question: ไม่ต้องรีบนะครับ — not ไม่ต้องพยายามมากไหมครับ; พยายาม is real effort (พยายามพูดไทย), not for easy things\n' +
+  '  - use the target in its intended sense (หลัง = "behind / after / back" as the target says; a house classifier only when that is the sense)\n'
 function buildThaiLanguageQcPrompt(pairs, allowedWords) {
   const lines = pairs.map((p, i) =>
     (i + 1) + '. THAI: ' + p.thai + '\n   ENGLISH: ' + (p.english || ''))
@@ -15806,6 +15943,7 @@ function buildThaiLanguageQcPrompt(pairs, allowedWords) {
     '"\u0e15\u0e2d\u0e19\u0e40\u0e27\u0e25\u0e32\u0e2a\u0e32\u0e21". Do NOT reject playful or large numbers when the context\n' +
     'genuinely supports them. Prefer a simple plausible sentence over a creative\n' +
     'strange one.\n\n' +
+    (oct13On() ? THAI_NATURALNESS_GUIDE.replace('write the natural form', 'reject these and give the natural form') + '\n' : '') +
     'Do NOT comment on which words a learner has studied. Do NOT suggest words\n' +
     'outside this list:\n' + (allowedWords || []).slice(0, 300).join(' ') + '\n\n' +
     'If a sentence is awkward, incomplete, or the English does not match, give a\n' +
@@ -16001,7 +16139,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• ซึ่ง is WRITTEN Thai — never use ซึ่ง as a relative clause in spoken conversation. Say "รูปปั้นนั้นสวยมาก" not "รูปปั้นซึ่งสวยมาก"\n' +
     '• Make sentences that CONTINUE THE CONVERSATION naturally from the previous lines — no random topic jumps\n' +
     '• GRAMMAR: sentences must be complete and natural spoken Thai — the kind real friends say to each other\n' +
-    '• COMMAS: add commas where natural speech pauses occur — after topic-setting phrases, before the main comment, e.g. ผมไปตลาดมา, เจอของสวยมากเลยครับ\n' +
+    // Oct13: this used to ASK for commas (contradicting the orthography rule above) — the live track had ของฝากนี่ถูกมาก, เอาไหมครับ
+    (oct13On() ? '• PAUSES: Thai marks a pause with a SPACE, never a comma: ผมไปตลาดมา เจอของสวยมากเลยครับ\n' +
+    THAI_NATURALNESS_GUIDE +
+    vocabStagePromptRule(knownWords.length)
+      : '• COMMAS: add commas where natural speech pauses occur — after topic-setting phrases, before the main comment, e.g. ผมไปตลาดมา, เจอของสวยมากเลยครับ\n') +
     '• VARIETY: NEVER start a line with ไม่ทราบว่า — banned completely. Use: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, จริงๆ เหรอ, ยังไม่รู้เลย\n' +
     '• PRONOUNS: when A speaks TO or about B who is present → คุณ. เธอ is ONLY for absent 3rd party females NOT in this conversation. ผม = A always. ฉัน = B always. เรา = we. พวกเขา = group. NEVER use เธอ for B.\n' +
     '• ENGLISH FIELD: if Thai uses คุณ, English must say "you". If Thai uses เขา/เธอ for 3rd party, English says "he/she". NEVER put Thai particles (ครับ ค่ะ คะ) in the English field.\n' +
@@ -19364,7 +19506,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v689'
+const LISTENING_BUILD_VERSION = 'v690'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -19976,10 +20118,19 @@ function trackQuotaReport(pairs, keywords, adapter, ctx) {
 }
 // Where a recovered TARGET PAIR goes: right after what remains of its word's group,
 // otherwise before the closing FRAMING lines.
-function _quotaInsertAt(pairs, targetId) {
+// Oct13: when the word's whole group was removed, the recovered pairs go back WHERE THE GROUP WAS (after the line that preceded
+// it), not to the end of the track — the live Japanese どこ pairs landed among the closing lines, out of their scene.
+function _quotaInsertAt(pairs, targetId, memory) {
   let last = -1
   pairs.forEach((p, i) => { if (p && (p.targetId === targetId || p.supportsTargetId === targetId || p.recallGroupId === 'rg-' + targetId)) last = i })
   if (last >= 0) return last + 1
+  const mem = memory && memory.get ? memory.get(targetId) : null
+  if (mem && mem.length) {
+    const first = mem.slice().sort((x, y) => x.pos - y.pos)[0]
+    if (first.anchorPairId == null) return 0
+    const ai = pairs.findIndex(p => p && p.pairId === first.anchorPairId)
+    if (ai >= 0) return ai + 1
+  }
   const close = pairs.findIndex(p => p && classifyTrackPair(p) === 'FRAMING' && /part|clos/i.test(String(p._kind || p._target || p._pairKey || '')))
   return close >= 0 ? close : pairs.length
 }
@@ -19998,10 +20149,15 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
   // v672 §1 — QC / audit verdicts SETTLE the recall's last check (rejected + reason); they never open a check
   const L = c.ledger || ledgerForTrack(adapter.lang, track)
   c.ledger = L
+  const slotMemory = new Map()                          // targetId → [{ pos, recallIndex, speaker, anchorPairId }] of removed pairs
   if (removed.length) {
     const drop = new Set(removed.map(x => x.pairId))
     pairs.forEach(p => { if (p && classifyTrackPair(p) === 'TARGET' && drop.has(p.pairId) && p.recallIndex != null && L.count(p.targetId, p.recallIndex)) {
       const rx = removed.find(x => x.pairId === p.pairId); L.settle(p.targetId, p.recallIndex, 'rejected', 'QC: ' + ((rx && rx.reasons[0]) || 'rejected')) } })
+    // Oct13: remember where each removed pair stood and who said it, so a recovered pair can return to the same place
+    pairs.forEach((p, i) => { if (!(p && classifyTrackPair(p) === 'TARGET' && drop.has(p.pairId))) return
+      let j = i - 1; while (j >= 0 && pairs[j] && classifyTrackPair(pairs[j]) === 'TARGET' && drop.has(pairs[j].pairId)) j--
+      const m = slotMemory.get(p.targetId) || []; m.push({ pos: i, recallIndex: p.recallIndex, speaker: p.speaker || null, anchorPairId: j >= 0 && pairs[j] ? pairs[j].pairId : null }); slotMemory.set(p.targetId, m) })
     pairs = pairs.filter(p => !(p && classifyTrackPair(p) === 'TARGET' && drop.has(p.pairId)))
     removed.forEach(x => log && log('  ⛔ TARGET PAIR rejected [' + x.target + '] "' + x.text + '" — ' + x.reasons.join('; ')))
   }
@@ -20067,7 +20223,11 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
           language: adapter.lang, isTargetPair: true, targetSurface: p.targetSurface || adapter.surfaceOf(kw), generationRunId: p.generationRunId || AI_CTX.runId || null },
         { trackId: listeningTrackId(track), lang: adapter.lang, adapter, index: 'r' + round + '-' + r.targetId + '-' + k, surfaceOf: () => r.target }))
       if (acc.length) {
-        const at = _quotaInsertAt(pairs, r.targetId)
+        const at = _quotaInsertAt(pairs, r.targetId, oct13On() ? slotMemory : null)
+        // Oct13 (Japanese only — Thai and Mandarin speakers are tied to the sentence itself): a recovered pair takes the speaker of the
+        // pair it replaces, so the dialogue keeps its turn order (live: recovered pairs all became speaker A)
+        const mem = slotMemory.get(r.targetId)
+        if (oct13On() && adapter.lang === 'ja' && mem && mem.length) acc.forEach((p, k) => { const m = mem.find(x => x.recallIndex === p.recallIndex) || mem[k]; if (m && m.speaker) acc[k] = { ...p, speaker: m.speaker } })
         pairs.splice(at, 0, ...acc)
         acc.forEach(p => recovered.push({ targetId: r.targetId, target: r.target, round, pairId: p.pairId, text: adapter.sentenceOf(p) }))
         log && log('  ✅ QUOTA RECOVERY ' + r.target + ': +' + acc.length + ' TARGET PAIR(S) (needed ' + r.deficit + ') — ' + acc.map(p => adapter.sentenceOf(p)).join(' / '))
@@ -20232,6 +20392,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
   // so the frozen text (and everything pronunciation builds from it) is the spoken text only
   try { const _nm = _trackSpeakerNames(t).concat(adapter.lang === 'th' ? thaiSceneNameEntries(t, c.vocab).map(n => n.surface) : [])
     t = { ...t, pairs: normaliseSpokenTextOwnership(t.pairs, adapter.lang, _nm, log, 'before FINAL_LINE_TEXT freeze').pairs } } catch (e) {}
+  if (oct13On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {} }
+  if (oct13On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiTidyCommas(t.pairs, log) } } catch (e) {} }
   // v655 §22 — the learner text is FROZEN here (after quota recovery and coherence repair); pronunciation is
   // built from this exact text, and any later text change is detected as STALE and rebuilt before the audit
   const _frozen = new Map((t.pairs || []).map((p, i) => [thaiLineId(p, i), p && (p.thai || p.japanese || p.chinese)]))
@@ -20699,7 +20861,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v689'
+const APP_BUILD_VERSION = 'v690'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -21878,7 +22040,7 @@ async function _jaRecoverTargetPairs(kw, need, ctx) {
   }
   if (!cands.length) return { accepted: [], reasons }
   // recovery QC = the SAME Japanese QC (deterministic + AI cue/naturalness/group) as the track
-  const qc = await runJapaneseTrackQC({ language: 'ja', speechStyle: registerId, pairs: cands, keywords: [kw] }, c.vocab,
+  const qc = await runJapaneseTrackQC({ language: 'ja', speechStyle: registerId, pairs: cands, keywords: [kw], ...(oct13On() ? { authorisedKeywords: track.keywords || [kw] } : {}) }, c.vocab,
     { apiKey: c.apiKey, model: c.model, content: true, translations: true, register: true, skipCountAudit: true }, null, log)
   const marked = markQcInvalidPairs(qc.pairs, qc.issues)
   marked.filter(p => p._qcInvalid || p._qcUnresolved).forEach(p => { const why = String(p._qcInvalid || p._qcUnresolved); reasons.push('QC: ' + why + ': ' + p.japanese)
@@ -21910,7 +22072,7 @@ async function _zhRecoverTargetPairs(kw, need, ctx) {
     cands.push({ ...got.pair, language: 'zh' })
   }
   if (!cands.length) return { accepted: [], reasons }
-  const qc = await runMandarinTrackQC({ language: 'zh', pairs: cands, keywords: [kw] }, c.vocab, { apiKey: c.apiKey, model: c.model, skipCountAudit: true }, null, log)
+  const qc = await runMandarinTrackQC({ language: 'zh', pairs: cands, keywords: [kw], ...(oct13On() ? { authorisedKeywords: track.keywords || [kw] } : {}) }, c.vocab, { apiKey: c.apiKey, model: c.model, skipCountAudit: true }, null, log)
   const marked = markQcInvalidPairs(qc.pairs, qc.issues)
   marked.filter(p => p._qcInvalid || p._qcUnresolved).forEach(p => { const why = String(p._qcInvalid || p._qcUnresolved); reasons.push('QC: ' + why + ': ' + p.chinese)
     if (st) recordRecoveryFailure(st, { code: /naturalness/.test(why) ? 'UNNATURAL' : /prompt/.test(why) ? 'CUE_MISMATCH' : 'OTHER', text: p.chinese, reason: why }) })
@@ -21924,6 +22086,46 @@ async function _zhRecoverTargetPairs(kw, need, ctx) {
       if (st) recordRecoveryFailure(st, { code: /LEVEL_COMPLEXITY/.test(v.problems[0]) ? 'COMPLEXITY' : 'OTHER', text: p.chinese, reason: v.problems[0] }) }
   })
   return { accepted, reasons }
+}
+// Oct13 — a cue must address the OTHER character. Speakers are (re)assigned after the cues are written (scene assembly alternates
+// A/B; recovery restores the replaced pair's speaker), so a cue written for one speaker could end up on the other: the live
+// Japanese track had Kenji's lines cued "Tell Kenji …". Deterministic: the speaker's own name in an addressing position
+// ("Tell / Ask / Suggest to / with … <name>") becomes the addressee's name; he/she/him/her/his in THAT cue then follow the
+// addressee's gender when the scene states both genders. Anything else in the cue is left alone.
+const CUE_ADDRESS_VERBS = 'tell|ask|remind|invite|thank|greet|warn|show|answer|reassure|encourage|urge|help|let|offer|promise|reply to|say to|suggest to|explain to|apologi[sz]e to|admit to|confirm to|mention to|point out to|agree with|check with|to|with'
+function _sceneCharGender(desc) {
+  const d = String(desc || '').toLowerCase()
+  const m = /\b(male|man|boy|guy|husband|brother|he|his)\b/.test(d), f = /\b(female|woman|girl|lady|wife|sister|she|her)\b/.test(d)
+  return m && !f ? 'm' : f && !m ? 'f' : null
+}
+function fixCueAddressees(pairs, track, log) {
+  const sc = (track && track.sceneContract) || {}, scene = (track && track.scene) || {}
+  const ch = sp => { const c = (sc.characters || []).find(x => x && x.speaker === sp) || {}; const desc = c.description || (sp === 'A' ? scene.characterA : scene.characterB) || ''
+    return { name: c.name || _sceneEnglishName(desc), gender: _sceneCharGender(desc) } }
+  const A = ch('A'), B = ch('B')
+  if (!A.name || !B.name || A.name.toLowerCase() === B.name.toLowerCase() || !/^[A-Za-z][A-Za-z'-]+$/.test(A.name + B.name)) return { pairs, fixed: [] }
+  const esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const PRON = { m: { she: 'he', her: 'him', hers: 'his' }, f: { he: 'she', him: 'her', his: 'her' } }
+  const fixed = []
+  const out = (pairs || []).map((p, i) => {
+    if (!p || (p.speaker !== 'A' && p.speaker !== 'B')) return p
+    const me = p.speaker === 'A' ? A : B, you = p.speaker === 'A' ? B : A
+    const re = new RegExp('\\b(' + CUE_ADDRESS_VERBS + ')(\\s+)' + esc(me.name) + '\\b', 'gi')
+    const upd = {}
+    for (const f of ['prompt', 'cue']) {
+      const cue = p[f]
+      if (typeof cue !== 'string' || !re.test(cue)) continue
+      re.lastIndex = 0
+      let nc = cue.replace(re, (m0, v, sp) => v + sp + you.name)
+      if (you.gender && me.gender && you.gender !== me.gender) { const map = PRON[you.gender]; nc = nc.replace(/\b(he|she|him|her|his|hers)\b/gi, w => { const r = map[w.toLowerCase()]; return r ? (w[0] === w[0].toUpperCase() ? r[0].toUpperCase() + r.slice(1) : r) : w }) }
+      if (nc !== cue) upd[f] = nc
+    }
+    if (!Object.keys(upd).length) return p
+    fixed.push({ i, speaker: p.speaker, before: p.prompt || p.cue, after: upd.prompt || upd.cue })
+    return { ...p, ...upd, _cueAddresseeFixed: true }
+  })
+  if (fixed.length && log) log('  🗣 CUE_ADDRESSEE_FIXED ' + fixed.length + ' cue(s) named the speaker as the listener — now addressed to the other character: ' + fixed.slice(0, 4).map(x => '"' + String(x.after).slice(0, 60) + '"').join(' | '))
+  return { pairs: out, fixed }
 }
 function _trackSpeakerNames(track) {
   const sc = (track && track.sceneContract) || {}
@@ -21971,7 +22173,34 @@ function jaFixNaniReading(p) {
   }
   return { pair: q, fixed }
 }
+// Oct13 — the FINAL romaji is built deterministically from the final sentence (word by word, from the dictionary readings) whenever
+// that reading agrees with the sentence's reading: the live 13-Oct track showed "shi yo u", "wa kara nai", "no n de ru", "too ku nai"
+// (syllables split from the per-character fallback) and Japanese punctuation inside romaji (？ 。). When the dictionary cannot read
+// the sentence, or reads it differently, the existing romaji is kept and only its punctuation and spacing are tidied.
+function jaTidyRomaji(r) {
+  return String(r || '').replace(/？/g, '?').replace(/！/g, '!').replace(/。/g, '.').replace(/[、，]/g, ',').replace(/\s+([?!.,])/g, '$1')
+    .replace(/([?!.,])(?=[A-Za-z])/g, '$1 ').replace(/\s{2,}/g, ' ').trim()
+    // particle spacing as learners see it in Hepburn textbooks: da ne / da yo, mata ne, kamo, o (を)
+    .replace(/\b([Dd])a(yone|yo|ne)\b/g, '$1a $2').replace(/\b([Mm])atane\b/g, '$1ata ne').replace(/\b([Kk])a mo\b/g, '$1amo').replace(/\bwo\b/g, 'o')
+}
+function jaFinalRomaji(q, bank, onLog) {
+  if (!q || !q.japanese) return q
+  const K = x => String(x || '').replace(/[\s、。，．,.？?！!「」『』…~〜ー]/g, '')
+  const before = q.romaji || q.phonetic || ''
+  const d = bank ? v684JaDerive(q.japanese, bank) : null
+  if (d && d.reading && K(d.reading) === K(q.reading || d.reading)) {
+    q.reading = d.reading; q.romaji = jaTidyRomaji(d.romaji)
+  } else {
+    if (q.reading) q.reading = String(q.reading).replace(/\s+/g, '')
+    q.romaji = jaTidyRomaji(before)
+  }
+  q.phonetic = q.romaji
+  if (onLog && romajiKey(before) !== romajiKey(q.romaji)) onLog('  🔤 ROMAJI_REBUILT "' + q.japanese + '": "' + before + '" → "' + q.romaji + '"')
+  return q
+}
 async function _jaFinaliseMetadata(pairs, ctx) {
+  let _jaBank = null
+  try { _jaBank = ((ctx && ctx.vocab) || []).concat(RAW_JAPANESE_VOCAB) } catch (e) {}
   // v673 §4 — spoken-text ownership first (a speaker label is never read / romanised)
   try { pairs = normaliseSpokenTextOwnership(pairs, 'ja', _trackSpeakerNames(ctx && ctx.track), ctx && ctx.onLog, 'final metadata').pairs } catch (e) {}
   const out = pairs.map(p => {
@@ -21992,6 +22221,7 @@ async function _jaFinaliseMetadata(pairs, ctx) {
     const segRomaji = segsGood ? segs.map(s => s.romaji).join(' ') + (/[？?]\s*$/.test(q.japanese) ? '?' : /[。.]\s*$/.test(q.japanese) ? '.' : '') : ''
     const sentOk = romajiMatchesReading(q.romaji || q.phonetic, q.reading) || (segsGood && romajiKey(q.romaji || q.phonetic) === romajiKey(segRomaji))
     if (q.reading && !/[一-鿿]/.test(q.reading) && !sentOk) { q.romaji = segsGood ? segRomaji : kanaToRomaji(q.reading); q.phonetic = q.romaji }
+    if (oct13On()) jaFinalRomaji(q, _jaBank, ctx && ctx.onLog)
     return q
   })
   const issues = []
@@ -33556,7 +33786,9 @@ async function rollbackThaiLexiconMigrationV1() {
 const THAI_IPA_CHARS = /[\u0254\u0259\u0289\u025B]/
 function loadCanonicalThaiPhonetic(ph) {
   if (!ph) return ph
-  return THAI_IPA_CHARS.test(ph) ? fixIPAPhonetic(ph) : ph
+  // Oct13: one known dictionary typo (ลอง "looong") is displayed in the app's own spelling of the long ɔɔ vowel (สอง sǎawng)
+  const out = THAI_IPA_CHARS.test(ph) ? fixIPAPhonetic(ph) : ph
+  return oct13On() ? out.replace(/(^|[\s-])looong(?=$|[\s-])/g, '$1laawng') : out
 }
 // VALIDATOR, not a mutator: reports what the rule-based tone engine would change,
 // for QC and audit tooling. Nothing at load time may write its result back.
@@ -33609,6 +33841,9 @@ function fixIPAPhonetic(ph) {
     [new RegExp(ipa, 'g'), base]                                             // short
   ]
   let out = ph
+  // Oct13: the ɔ + i diphthong is written the way the app's hand-written entries write it (ร้อย ráawy, น้อย náawy, ค่อย khâawy):
+  // long ɔɔi → aawy, short ɔi → awy. The plain rule gave "nàwi" for หน่อย and "sawi" for ซอย.
+  if (oct13On()) out = out.replace(/\u0254([\u0300\u0301\u0302\u030C]?)\u0254i/g, (_, d) => t('aa', d) + 'wy').replace(/\u0254([\u0300\u0301\u0302\u030C]?)i(?![a-z\u0300-\u036f])/g, (_, d) => t('aw', d) + 'y')
   for (const [ipa, base] of [['\u0254','aw'], ['\u0259','oe'], ['\u0289','ue'], ['\u025b','ae']]) {
     for (const [re, rep] of pair(ipa, base)) out = out.replace(re, rep)
   }
@@ -35024,7 +35259,7 @@ function downloadJapaneseTrack(track) {
   L.push('Date: ' + (track.date || ''))
   L.push('Speech Style: ' + (reg ? reg.label + ' (' + reg.sub + ')' : (track.speechStyle || 'unknown')))
   if (track.legacyProvenance) L.push('Generated by: a pre-v648 build (original label kept in the provenance ledger)')
-  else if (track.provider || track.model) L.push('Generated by: Gemini' + (track.model ? ' · model=' + track.model : ''))
+  else if (track.provider || track.model || track.generationModel) L.push(trackGeneratedByLine(track))
   L.push('Pairs: ' + pairs.length)
   L.push('Created: ' + (track.createdAt || ''))
   trackReadinessExportLines(track).forEach(x => L.push(x))
@@ -36347,7 +36582,9 @@ async function aiQcEvaluateGroup(group, allPairs, engine, apiKey, model) {
     'Context before:\n' + (prev.map(fmt).join('\n') || '  (start)') + '\n\n' +
     'Group to evaluate:\n' + group.pairs.map(fmt).join('\n') + '\n\n' +
     'Context after:\n' + (next.map(fmt).join('\n') || '  (end)') + '\n\n' +
-    'Return JSON: {"action":"clean|fix_pronunciation|improve|replace","reason":"one sentence"}\n\n' +
+    (oct13On() ? 'Return JSON: {"action":"clean|fix_pronunciation|improve|replace","reason":"one sentence","problems":[numbers]}\n' +
+    '"problems": the numbers (1 = first line of the group) of ONLY the lines that are wrong; [] when "clean". A good line is never listed.\n\n'
+      : 'Return JSON: {"action":"clean|fix_pronunciation|improve|replace","reason":"one sentence"}\n\n') +
     'action:\n' +
     '- "clean": natural, target used correctly, connects to context, simple everyday language\n' +
     '- "fix_pronunciation": the sentence is fine but the ' + engine.labelPronunciation + ' is wrong or mismatched\n' +
@@ -36355,22 +36592,39 @@ async function aiQcEvaluateGroup(group, allPairs, engine, apiKey, model) {
     'vague or misleading cue, topic jump — but salvageable\n' +
     '- "replace": too broken — ungrammatical, meaningless, or unrelated to the target\n\n' +
     'The learner is a beginner: simple repetitive sentences are GOOD and should be "clean".\n' +
+    (oct13On() ? 'Judge each line IN CONTEXT: it must make sense said by that speaker at that moment (it answers, follows or prompts the line before). ' +
+    'A correct sentence that nobody would say there (a statement out of the blue, a question answered by the same speaker, a greeting answered with "mm") is "improve" — name that line.\n' : '') +
     'Return ONLY JSON, no markdown.'
   // v671 §B3 — an unparseable verdict is NEVER "clean": parsed robustly, asked once more with more room, and otherwise
   // returned as UNVERIFIED (the caller marks the group unresolved — an unjudged group cannot make the track READY)
   const VALID = /^(clean|fix_pronunciation|improve|replace)$/
+  let lastThrow = null
   for (let attempt = 1; attempt <= 2; attempt++) {
     // v682 — the second attempt uses STRUCTURED output (JSON schema with the four allowed actions): the live v682 Mandarin run lost
     // all three 很 pairs to "group judge reply unparseable twice — UNVERIFIED" although nothing was wrong with them
-    const raw = attempt === 1
-      ? await geminiGenerate(apiKey, model, [{ role:'user', content: prompt }], 300)
-      : await geminiRequest({ apiKey, model, messages: [{ role:'user', content: prompt + '\nYour previous reply could not be parsed. Reply with the JSON object ONLY.' }], maxTokens: 600, temperature: 0.2, json: GEMINI_SCHEMAS.groupVerdict, stage: 'C_group_eval' })
+    // Oct13: a failed REQUEST (lost connection, empty reply) is asked once more too — the live 13-Oct Japanese run lost three valid
+    // どこ sentences to one dropped connection ("group judge failed: … MALFORMED_REPLY"). Cancellation and fatal provider errors stop.
+    let raw
+    try {
+      raw = attempt === 1
+        ? await geminiGenerate(apiKey, model, [{ role:'user', content: prompt }], 300)
+        : await geminiRequest({ apiKey, model, messages: [{ role:'user', content: prompt + '\nYour previous reply could not be parsed. Reply with the JSON object ONLY.' }], maxTokens: 600, temperature: 0.2, json: oct13On() ? GEMINI_SCHEMAS.groupVerdict : GROUP_VERDICT_SCHEMA_V682, stage: 'C_group_eval' })
+    } catch (e) { if (e && (e.cancelled || e.fatalProvider) || !oct13On()) throw e; lastThrow = e; continue }
     const p = coherenceJudgeParse(raw)
-    if (p && VALID.test(String(p.action || ''))) return { action: p.action, reason: p.reason || '' }
+    if (p && VALID.test(String(p.action || ''))) return { action: p.action, reason: p.reason || '', problems: oct13On() ? aiQcProblemSlots(p.problems, group.pairs.length) : null }
   }
+  if (lastThrow) return { action: 'unverified', reason: 'group judge failed twice: ' + String(lastThrow.message || lastThrow).slice(0, 60) }
   return { action: 'unverified', reason: 'group judge reply unparseable twice — UNVERIFIED' }
 }
 
+const GROUP_VERDICT_SCHEMA_V682 = { type: 'OBJECT', properties: { action: { type: 'STRING', enum: ['clean', 'fix_pronunciation', 'improve', 'replace'] }, reason: { type: 'STRING' } }, required: ['action'] }
+// Oct13: the group judge names WHICH lines are wrong (1-based). Only a proper, valid subset narrows the repair to those slots;
+// anything else (missing, empty, out of range, or every line) keeps the old whole-group behaviour.
+function aiQcProblemSlots(raw, n) {
+  if (!Array.isArray(raw)) return null
+  const s = [...new Set(raw.map(x => Number(x)).filter(x => Number.isInteger(x) && x >= 1 && x <= n))].sort((a, b) => a - b)
+  return s.length && s.length < n ? s.map(x => x - 1) : null
+}
 function replacementIdentityProblem(rep, orig, engine) {
   if (rep.targetId !== orig.targetId) return 'targetId ' + rep.targetId + ' !== ' + orig.targetId
   if (rep.canonicalTargetId !== orig.canonicalTargetId) return 'canonicalTargetId changed'
@@ -36388,7 +36642,7 @@ async function aiQcRegenerateGroup(group, allPairs, engine, apiKey, model, reaso
     (mode === 'replace' ? 'Replace' : 'Fix') + ' this ' + engine.labelSentence + ' learning group.\n' +
     'Issue: "' + reason + '". Target word: "' + group.targetWord + '".\n\n' +
     'Context before:\n' + (prev.map(fmt).join('\n') || '  (start)') + '\n\n' +
-    'Current pairs:\n' + group.pairs.map(fmt).join('\n') + '\n\n' +
+    (group._whole ? 'Whole group (keep the other lines as they are):\n' + group._whole.pairs.map(fmt).join('\n') + '\n\nRewrite ONLY these line(s):\n' : 'Current pairs:\n') + group.pairs.map(fmt).join('\n') + '\n\n' +
     engine.registerContract() + '\n' + engine.allowedVocabularyLine() + '\n' +
     'Every sentence must contain "' + group.targetWord + '".\n' +
     'The "prompt" field is a plain-English cue describing what the speaker says. Never quote the ' +
@@ -36532,7 +36786,11 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
     const iss = addIssue(g.indices[0], verdict.action === 'fix_pronunciation' ? 'pronunciation' : 'naturalness',
       g.targetWord + ': ' + verdict.reason, 'found')
     if (iss) iss.groupIssue = true      // v649: a group verdict, not a verdict on pair g.indices[0]; the rejected pairs are marked _qcUnresolved
-    onLog && onLog('  ' + (verdict.action === 'replace' ? '\u{1F504}' : '\u270F\uFE0F') + ' ' + g.targetWord + ': ' + verdict.reason)
+    // Oct13: when the judge names the faulty line(s), ONLY those slots are rewritten (and, if unrecoverable, rejected); the
+    // good sentences of the group are kept as they are. Weak-cue groups already know their slots.
+    const slotIdx = groupWeak.length ? groupWeak : (verdict.problems ? verdict.problems.map(k => g.indices[k]).filter(i => i != null) : null)
+    const rg = oct13On() && slotIdx && slotIdx.length && slotIdx.length < g.indices.length ? { ...g, indices: slotIdx, pairs: slotIdx.map(i => all[i]), _whole: g } : g
+    onLog && onLog('  ' + (verdict.action === 'replace' ? '\u{1F504}' : '\u270F\uFE0F') + ' ' + g.targetWord + ': ' + verdict.reason + (rg !== g ? ' (line' + (rg.indices.length > 1 ? 's ' : ' ') + rg.indices.map(i => g.indices.indexOf(i) + 1).join(', ') + ' only)' : ''))
     // Repair, revalidate, and ESCALATE. A single failed attempt used to end the
     // group as unresolved; Thai instead keeps working the problem. Here each
     // attempt is also revalidated, so persistence never lowers the bar.
@@ -36546,12 +36804,12 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
       const reason = attempt === 0 ? verdict.reason
         : verdict.reason + ' \u2014 previous repair rejected: ' + lastErr
       try {
-        const fresh = await aiQcRegenerateGroup(g, all, engine, apiKey, model, reason, mode)
+        const fresh = await aiQcRegenerateGroup(rg, all, engine, apiKey, model, reason, mode)
         const _tpSnap = g.indices.map(i => all[i])
               // SECONDARY GENERATOR — every rewrite re-runs the SAME authoritative
       // closed-vocabulary validator. An unvalidated splice here is how untaught
       // words reached the saved track after the candidate had already passed.
-      g.indices.forEach((idx, pi) => {
+      rg.indices.forEach((idx, pi) => {
         if (!fresh[pi]) return
         // The authoritative context: prefer the one frozen at track creation, else
         // rebuild from the same inputs. Never a wider dictionary-based set.
@@ -36597,7 +36855,7 @@ async function runAiQualityCheck({ pairs, engine, vocab, apiKey, model, onLog, o
       // replaces them with verified sentences.
       // a repair triggered by specific weak pairs rejects THOSE pairs; a group-level verdict that
       // names no pair rejects the group
-      ;(groupWeak.length ? groupWeak : g.indices).forEach(idx => _unresolvedIdx.set(idx, 'QC_UNRESOLVED: ' + g.targetWord + ' — ' + String(verdict.reason || '').slice(0, 80)))
+      ;(oct13On() ? rg.indices : (groupWeak.length ? groupWeak : g.indices)).forEach(idx => _unresolvedIdx.set(idx, 'QC_UNRESOLVED: ' + g.targetWord + ' — ' + String(verdict.reason || '').slice(0, 80)))
       onLog && onLog('  \u274C ' + g.targetWord + ': unrecoverable after ' + ladder.length + ' attempts \u2014 original kept')
     }
   }
@@ -37568,7 +37826,8 @@ async function runJapaneseTrackQC(track, vocab, opts, onProgress, onLog) {
   // v651 §7/§16 — Japanese QC accepts Japanese only (never asks for Chinese/pinyin/Thai fields).
   { const lc = assertQcLanguage(track, 'ja'); if (!lc.ok) throw pipelineInternalError(lc.code, lc.detail) }
   const pairs = (track.pairs || []).slice()
-  const inv = japaneseLearnerInventory(vocab, (track.keywords || []).map(k =>
+  // Oct13: same permission contract as Mandarin — recovery QC uses the whole track's targets (昼 / 時間 were rejected as untaught)
+  const inv = japaneseLearnerInventory(vocab, (track.authorisedKeywords || track.keywords || []).map(k =>
     (vocab || []).find(w => w.id === k.wordId)).filter(Boolean))
   const rules = scarcityRules(inv)
   const registerId = track.speechStyle || track.register || JA_REGISTER_DEFAULT
@@ -37812,7 +38071,7 @@ function downloadMandarinTrack(track) {
   L.push('Date: ' + (track.date || ''))
   L.push('Speech style: ' + MANDARIN_REGISTER.label)
   if (track.legacyProvenance) L.push('Generated by: a pre-v648 build (original label kept in the provenance ledger)')
-  else if (track.provider || track.model) L.push('Generated by: Gemini' + (track.model ? ' · model=' + track.model : ''))
+  else if (track.provider || track.model || track.generationModel) L.push(trackGeneratedByLine(track))
   L.push('Pairs: ' + (track.pairs || []).length)
   trackReadinessExportLines(track).forEach(x => L.push(x))
   trackVersionExportLines(track).forEach(x => L.push(x))            // v651 §23
@@ -41862,7 +42121,7 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
       (teachingPlanOn()
         ? (tpSetSituationPool('ja', (inv.allContent || []).map(w => w.english)), teachingPlanLine(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) }))) + slots.map(s => '  • recall ' + s.recallIndex + ' = application ' + s.recallIndex + ': ' + tpUseFor(teachingPlan('ja', target, { wordClass: jaTpWordClass(target) }), s.recallIndex).text).join('\n') + '\n' + jaTpSpeakersLine() + TP_CUE_DEFINITION + '\n'
         : slots.map(s => '  • ' + (JA_RECALL_VARIATION[s.recallIndex] || ('recall ' + s.recallIndex + ' of 3 — another natural use'))).join('\n') + '\n') +
-      'Do not force unnatural variation just to be different. ' + range.contract.promptRule + '\n' +
+      'Do not force unnatural variation just to be different. ' + range.contract.promptRule + '\n' + vocabStagePromptRule((inv.allContent || []).length) +
     (!teachingPlanOn() && (c.scenePremise || target._scenePurpose || target._sceneLocalPremise) ? (c.scenePremise ? 'LESSON THEME (broad): ' + c.scenePremise + '\n' : '') +
       (target._sceneLocalPremise || target._scenePurpose ? 'THIS SCENE: ' + (target._sceneLocalPremise || '') + (target._scenePurpose ? (target._sceneLocalPremise ? ' (' + target._scenePurpose + ')' : target._scenePurpose) : '') +
       (teachingPlanOn()

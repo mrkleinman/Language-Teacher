@@ -243,7 +243,7 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
       bp.anthropic.requests === 4 && bp.anthropic.failed === 1 && bp.anthropic.retries === 1 && bp.anthropic.retryReasons['retry after HTTP 429 rate_limit_error'] === 1 && bp.anthropic.thinkingTok === 1500
       && bp.anthropic.servedModels[HAIKU] === 3 && !bp.gemini && s.generationModel === HAIKU && near(bp.anthropic.costUsd, a.reduce((x, r) => x + (r.costUsd || 0), 0)), bp)
     const lines = c.aiUsageSummaryLines(s).join('\n')
-    T('C5', 'the report names both providers, the selected model, thinking tokens, cost per stage and the total', /AI USAGE SUMMARY \(Gemini \+ Claude Haiku\)/.test(lines) && /AI PROVIDERS \(this run\) · selected generation model: Claude Haiku 5\.5/.test(lines)
+    T('C5', 'the report names the provider(s) the run actually used (Oct13: a run with no Gemini request is not labelled "Gemini + Claude Haiku"), the selected model, thinking tokens, cost per stage and the total', /AI USAGE SUMMARY \(Claude Haiku\)/.test(lines) && /AI PROVIDERS \(this run\) · selected generation model: Claude Haiku 5\.5/.test(lines)
       && /ANTHROPIC: 4 requests \(1 failed, 1 provider retries: retry after HTTP 429 rate_limit_error ×1\)/.test(lines) && /thinking 1500/.test(lines) && /ANTHROPIC cost by stage: /.test(lines) && /Estimated total track cost \(all providers\)/.test(lines), lines.slice(-900))
     const g = app(); const grun = g.aiBeginRun('daily-track'); await ask(g, { stage: 'A_generation' })
     const gl = g.aiUsageSummaryLines(g.aiUsageSummary(grun)).join('\n')
@@ -277,7 +277,7 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     for (const d of dirs) {
       const run = JSON.parse(fs.readFileSync(path.join(RUNS, d, 'run.json'))), fxId = d.split('.')[0], lang = d.slice(0, 2)
       const h = haikuReplayWrap(run.cassette); let C
-      const r = await runOnceUi(loadFixture(fxId), { mode: 'replay', cassette: run.cassette, pipeline: 'production', wrapFetch: h.wrapFetch,
+      const r = await runOnceUi(loadFixture(fxId), { mode: 'replay', cassette: run.cassette, pipeline: 'production', wrapFetch: h.wrapFetch, qualityOct13: false,
         prepare: c => { C = c; c.aiSetGenerationPreference({ model: HAIKU, limitUsd: 5, limitRequests: 2000 }); c.aiSetAnthropicAccess(CODE) } })
       const cmp = compareContent(run.outcome.content, r.content), rs = C.ev('AI_LEDGER')
       const an = rs.filter(x => x.provider === 'anthropic' && !x.deduped), gm = rs.filter(x => x.provider === 'gemini')

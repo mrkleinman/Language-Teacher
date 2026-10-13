@@ -123,6 +123,9 @@ async function runOnce(fx, o) {
   const lang = fx.language
   const globals = deterministicGlobals({ realTimers: o.provider === 'live' })
   const c = load(o.appFile || path.join(ROOT, 'tt.compiled.js'), { realBelt: true, globals })
+  // Oct13: replays of recordings made before the 13-Oct teaching-quality changes can run with that one switch OFF, which proves the
+  // build is otherwise unchanged (the changes themselves are covered by tests47 with the switch on, as the app runs)
+  if (o.qualityOct13 === false && typeof c.setQualityOct13 === 'function') c.setQualityOct13(false)
   c.setLearnerStateOverride({ rank: fx.belt.rank, source: 'benchmark-fixture ' + fx.id })
   const vocab = applyFixture(bankOf(c, lang), fx)
   const byId = new Map(vocab.map(w => [w.id, w]))
@@ -189,6 +192,9 @@ function ensureUiPaths(c) {
 async function runOnceUi(fx, o) {
   const globals = deterministicGlobals({ realTimers: o.provider === 'live', startMs: fx.clockStartMs })
   const c = load(o.appFile || path.join(ROOT, 'tt.compiled.js'), { realBelt: true, globals })
+  // Oct13: replays of recordings made before the 13-Oct teaching-quality changes can run with that one switch OFF, which proves the
+  // build is otherwise unchanged (the changes themselves are covered by tests47 with the switch on, as the app runs)
+  if (o.qualityOct13 === false && typeof c.setQualityOct13 === 'function') c.setQualityOct13(false)
   const how = ensureUiPaths(c)
   let rec = null, rep = null
   if (o.mode === 'replay') { rep = createReplayer(o.cassette); c.fetch = rep.fetch }

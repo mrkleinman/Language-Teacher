@@ -3304,6 +3304,8 @@ function mandarinSpokenPinyin(pinyin) {
       else { let j = 0; if (m % 2) { ch.add(run[0]); ch.add(run[1]); j = 3 } for (; j + 1 < m; j += 2) ch.add(run[j]) }
       k = nx
     }
+    // (c) the last syllable of a longer word before a 3rd-tone word changes as before (一起 等 → yìqí děng, 可以 等你 → kéyí)
+    for (let k = 0; k < syl.length - 1; k++) if (syl[k]._n > 1 && syl[k].i !== syl[k + 1].i && !syl[k]._neutral && !syl[k + 1]._neutral && t0[k] === 3 && t0[k + 1] === 3 && !syl[k].tail) ch.add(k)
     ch.forEach(_to2)
   }
   const byWord = new Map()
@@ -3744,8 +3746,9 @@ function mandarinGrammarProblems(zh, segs, inv, ctx) {
 function zhEllipsisRecoverable(zh, prev) {
   const s = String(zh || '').replace(/[\s。！!？?，,]/g, ''), pv = String(prev || '')
   if (!pv) return false
-  const v = (s.replace(/(了|吧|呢|啊)+$/, '').match(/(回|吃|喝|买|拿|找|看|听|用|做|给|帮|开|去|来|喜欢|觉得)$/) || [])[1]
-  return !!v && pv.includes(v)
+  // only a bare reply: subject + (negation / modal / 去·来) + the verb — 我在看回 is not ellipsis, it is broken
+  const m = /^(我|你|他|她|我们|你们|他们)(也|都|还)?(不|没|不想|不要|想|要|会|能|可以)?(去|来)?(回|吃|喝|买|拿|找|看|听|用|做|给|帮|开|去|来|喜欢|觉得)(了|吧|呢|啊)?$/.exec(s)
+  return !!m && pv.includes(m[5])
 }
 // 太吗？ (an adverb with nothing to modify) · 我一点想吃 / 我一点要吃 (一点 never precedes a verb; "a little" before an
 // adjective/verb is 有点 / 有一点, after a verb or adjective it is 一点) · 太 + adjective needs 了 (太贵了) · 有点 + adjective
@@ -4872,15 +4875,17 @@ async function generateMandarinTrack(targets, vocab, apiKey, model, onProgress, 
     cp.history.push({ at: new Date().toISOString(), event: 'resume', n: cp.resumes, build: APP_BUILD_VERSION })
     let kept = 0
     const dropped = []
-    for (const t of targets) for (let r = 1; r <= 3; r++) {
+    for (const t of targets) { const _ex = [] ; for (let r = 1; r <= 3; r++) {
       const a = (cp.accepted || []).find(x => x.slot === genCheckpointSlot(t.id, r))
       if (!a || !a.pair) continue
-      const v = validateMandarinPair(a.pair, t, inv, vocab, rules, seenMap)
+      // v693: re-checked with the SAME exchange context it was accepted with (the earlier recalls of its target)
+      const v = validateMandarinPair(a.pair, t, inv, vocab, rules, seenMap, dailyV693On() ? { exchange: _ex.slice() } : undefined)
       if (!v.ok) { dropped.push({ slot: a.slot, text: a.text, why: v.problems[0] }); continue }
       seenMap.set(strip(a.pair.chinese), t.id)
       preserved.set(a.slot, { ...a.pair, _resumedFromCheckpoint: cp.id })
+      _ex.push({ recallIndex: r, speaker: a.pair.speaker, chinese: a.pair.chinese, english: a.pair.english })
       kept++
-    }
+    } }
     if (dropped.length) { cp.accepted = cp.accepted.filter(a => !dropped.some(d => d.slot === a.slot)); dropped.forEach(d => genCheckpointNoteRejected(cp, d.slot.split(':')[0], d.slot.split(':')[1], d.text)) }
     onLog && onLog('\u267B RESUME_FROM_CHECKPOINT ' + cp.id + ' · attempt ' + cp.resumes + '/' + GEN_CHECKPOINT_MAX_RESUMES + ' · ' + kept + '/' + totalRecall + ' verified recalls kept (no request) · ' +
       (totalRecall - kept) + ' to generate' + (dropped.length ? ' · ' + dropped.length + ' preserved pair(s) no longer pass the current checks and are regenerated: ' + dropped.map(d => d.text + ' (' + String(d.why).slice(0, 50) + ')').join('; ') : ''))

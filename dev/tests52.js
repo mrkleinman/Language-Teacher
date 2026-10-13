@@ -103,7 +103,8 @@ const sec = async (fn) => { try { await fn() } catch (e) { T('ERR', 'section cra
   await sec(async () => {
     const sp = x => c.mandarinSpokenPinyin(x)
     T('I1', '这里 / 那里: 里 is neutral, so 这里很多人 is not "zhèlí hěn" (live pairs 09 / 10)', sp('zhèlǐ hěn duō rén.') === 'zhèlǐ hěn duō rén.' && sp('nàlǐ hěn duō rén ma?') === 'nàlǐ hěn duō rén ma?', [sp('zhèlǐ hěn duō rén.'), sp('nàlǐ hěn duō rén ma?')])
-    T('I2', 'a two-syllable word keeps its last tone before the next word: 我可以等你吗 → wó kéyǐ déng nǐ (live: wó kéyí déng nǐ)', sp('hǎo, wǒ kěyǐ děng nǐ ma?') === 'hǎo, wó kéyǐ déng nǐ ma?', sp('hǎo, wǒ kěyǐ děng nǐ ma?'))
+    T('I2', 'a longer word still changes before a 3rd-tone word, as in v691 (一起等 → yìqí děng, 我可以等你 → wó kéyí déng nǐ) — only 这里/那里 and one-syllable runs change', sp('wǒmen yìqǐ děng') === 'wǒmen yìqí děng' && sp('hǎo, wǒ kěyǐ děng nǐ ma?') === 'hǎo, wó kéyí déng nǐ ma?', [sp('wǒmen yìqǐ děng'), sp('hǎo, wǒ kěyǐ děng nǐ ma?')])
+    T('B3', 'a broken line is not excused as ellipsis: 我在看回。 after a 回 question is still incomplete (resume replay of the v682 simulated track)', gp('我在看回。', { prev: '你回不回？' }).some(x => /^incomplete/.test(x)), gp('我在看回。', { prev: '你回不回？' }))
     T('I3', 'runs of one-syllable words group in feet: 我也很好 → wó yě hén hǎo · 我很好 → wó hén hǎo · 你好 → ní hǎo · 很好 → hén hǎo', sp('wǒ yě hěn hǎo') === 'wó yě hén hǎo' && sp('wǒ hěn hǎo') === 'wó hén hǎo' && sp('nǐ hǎo') === 'ní hǎo' && sp('hěn hǎo') === 'hén hǎo')
     T('I4', 'unchanged where the live track was right: 不 before 4th tone (bú màn), 一起 (yìqǐ), 我们 (wǒmen), 哪里 (nálǐ), 给你 (géi nǐ)', sp('nǐ bù màn.') === 'nǐ bú màn.' && sp('wǒmen yìqǐ') === 'wǒmen yìqǐ' && sp('nǐ dào nǎlǐ le?') === 'nǐ dào nálǐ le?' && sp('hǎo, wǒ ná gěi nǐ.') === 'hǎo, wǒ ná géi nǐ.')
     const changed = P.filter(p => p.pinyin && p.spoken && sp(p.pinyin) !== p.spoken).map(p => p.n + ' ' + p.spoken + ' → ' + sp(p.pinyin))

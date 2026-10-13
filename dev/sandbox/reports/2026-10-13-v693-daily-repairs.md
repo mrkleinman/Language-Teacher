@@ -8,7 +8,7 @@ New tests built from the exact v691 exports and logs:
 |---|---|---|---|
 | tests50 | Thai | 19/19 | 3/19 (several sections crash: the functions do not exist yet) |
 | tests51 | Japanese | 29/29 | 5/22 |
-| tests52 | Mandarin | 24/24 | 7/16 |
+| tests52 | Mandarin | 25/25 | 7/16 |
 
 All three Daily Tracks share one new switch, `dailyV693On()`. It is on by default; `setDailyV693(false)` is the rollback. Replays of the three recorded v682 runs still match exactly (0 mismatches, content identical).
 
@@ -318,7 +318,7 @@ The `zh-gen-v650` per-recall generator is kept. Every change is a validation or 
 - The shared Japanese/Mandarin group QC rewrote any group the judge called a "topic jump": paid calls that replaced acceptable lines.
 
 **G. Spoken tones**
-- Third-tone sandhi was applied to every adjacent 3+3 pair. So 这里很多人 became "zhèlí hěn" (里 is neutral in 这里/那里), and 我可以等你吗 became "wó kéyí déng nǐ".
+- Third-tone sandhi was applied to every adjacent 3+3 pair. So 这里很多人 became "zhèlí hěn" (里 is neutral in 这里/那里), and 我也很好 became "wó yé hén hǎo".
 
 ### 2. Exact code changes (`dev/tt.jsx`)
 
@@ -344,8 +344,8 @@ The `zh-gen-v650` per-recall generator is kept. Every change is a validation or 
 
 **Tones** (`mandarinSpokenPinyin`)
 - 里 in 这里/那里 is neutral.
-- Across words, a change happens only from a one-syllable word.
 - Runs of one-syllable 3rd tones group in pairs (an odd run starts with three).
+- Inside a word, and from a longer word into the next 3rd-tone word, the change applies as before (一起等 → yìqí děng).
 
 ### 3. What improves actual teaching
 
@@ -385,7 +385,7 @@ The `zh-gen-v650` per-recall generator is kept. Every change is a validation or 
 | 35 我慢一点吧 after 你不慢 | flagged, regenerated |
 | 50 我用一点 (of what?) | flagged, regenerated |
 | 回 / 等 / 找 / 要 / 可以 rewritten for topic changes | not rewritten |
-| zhèlí hěn duō rén · wó kéyí déng nǐ | zhèlǐ hěn duō rén · wó kéyǐ déng nǐ |
+| zhèlí hěn duō rén · wó yé hén hǎo | zhèlǐ hěn duō rén · wó yě hén hǎo |
 
 ### 7. Cue / translation results (tests52 C1–C5)
 
@@ -397,7 +397,7 @@ The `zh-gen-v650` per-recall generator is kept. Every change is a validation or 
 | Case | Result |
 |---|---|
 | 这里 / 那里 | neutral 里 |
-| 可以 等你 | kéyǐ déng nǐ |
+| 可以 等你 / 一起 等 | kéyí déng nǐ / yìqí děng (unchanged: a longer word still changes before a 3rd tone) |
 | 我也很好 | wó yě hén hǎo |
 | 我很好 | wó hén hǎo |
 | 不 sandhi | bú màn (unchanged) |
@@ -406,7 +406,7 @@ The `zh-gen-v650` per-recall generator is kept. Every change is a validation or 
 | 哪里 | nálǐ (unchanged) |
 | 给你 | géi nǐ (unchanged) |
 
-Replayed over all 94 final lines, only those phrasing cases change. Third-tone grouping inside long chains is a teaching convention; I chose the textbook grouping and flag it as a judgement call.
+Replayed over all 94 final lines, only those phrasing cases change. Third-tone grouping inside long chains is a teaching convention; I chose the textbook grouping and flag it as a judgement call. (A first draft also kept the last tone of a two-syllable word before the next word, as in kéyǐ déng; the full regression showed this contradicts the v690 rule tested in tests47 P3, 一起等 → yìqí děng. That part was reverted, so 可以等你 stays kéyí déng nǐ.)
 
 ### 9. Local exchange results (tests52 D1–D3)
 
@@ -434,7 +434,7 @@ Replayed over all 94 final lines, only those phrasing cases change. Third-tone g
 ### 12. Risks and readiness
 
 - **Narrow checks:** the exchange checks are deliberately narrow and will miss contradictions phrased differently.
-- **Ellipsis:** ellipsis now relies on the previous recall in the exchange.
+- **Ellipsis:** it is accepted only for a bare reply (subject + negation/modal + the verb) whose verb the previous recall used, so 我在看回 is still rejected. The resume path re-checks saved recalls with the same context; the full regression caught this (tests42 Z5/Z6).
 - **Live verification:** the fixes have not yet run on a live track.
 
 Ready for **one controlled live Mandarin Daily run**. Watch for:
@@ -479,7 +479,7 @@ Ready for **one controlled live Mandarin Daily run**. Watch for:
   - Japanese あれ、 / filler うん counted as targets;
   - "busy today → how about today?";
   - Mandarin "Am I too slow?" and same-speaker contradictions.
-- **Romaji** (dore ni shiyokka, ima nara omise, taberarenai kamo) and **Mandarin spoken tones** (这里, 可以等你) are corrected deterministically.
+- **Romaji** (dore ni shiyokka, ima nara omise, taberarenai kamo) and **Mandarin spoken tones** (这里 / 那里, one-syllable chains) are corrected deterministically.
 - **Japanese かな:** one consistent decision at every stage.
 - **Cost:** wasted calls are cut (length mismatches, topic-only rewrites, needless retries). Savings are estimated, not measured.
 - **Unproven:** real teaching quality. Nothing here is claimed at 8/10. The next safe step is **one controlled live Daily run per language**, then an independent review of the three new lessons.

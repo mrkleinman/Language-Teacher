@@ -38,13 +38,14 @@ const splice = (rows, at, add) => rows.slice(0, at).concat(add.map(a => [rows[at
 const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
 
 ;(async () => {
+  if (process.env.T49_ONLY !== 'K') {
   // ══ A — the DEFAULT path: meaning-first, all three languages READY on the v691 regression learners ═════════════
   const good = {}
   for (const lang of LANGS) good[lang] = await run(lang)
   for (const lang of LANGS) {
     const g = good[lang], tr = g.track
     T('A1-' + lang, lang + ': the meaning-first planner is the DEFAULT (no switch set) and ran — PLANNER log, one plan request per situation (v694) + the audit stage, architecture meaning-first-v692; no legacy scene composer, no legacy preflight',
-      g.defaultOn === true && /LISTENING_PLANNER planner=meaning-first-2/.test(g.Ls) && g.stages.O_listening_meaning_plan === (g.Ls.match(/LISTENING_SITUATION S\d/g) || []).length && g.stages.O_listening_semantic_audit >= 1 && !g.stages.O_listening_scene &&
+      g.defaultOn === true && /LISTENING_PLANNER planner=meaning-first-3/.test(g.Ls) && g.stages.O_listening_meaning_plan === (g.Ls.match(/LISTENING_SITUATION S\d/g) || []).length && g.stages.O_listening_semantic_audit >= 1 && !g.stages.O_listening_scene &&
       !/SCENE_PREFLIGHT|LISTENING_VERBALIZABILITY PROVEN|LISTENING_COMPOSITION scene/.test(g.Ls) && tr.listening && tr.listening.architecture === 'meaning-first-v692', { stages: g.stages, arch: tr && tr.listening && tr.listening.architecture })
     T('A2-' + lang, lang + ': READY with 30/30 targets heard, every final gate passing, 24–44 turns, ≤3 targets per turn, both speakers', tr.status === 'READY' && tr.coverage.covered === 30 && tr.failedChecks.length === 0 &&
       tr.listening.lines.length >= 24 && tr.listening.lines.length <= 44 && tr.listening.gates.MAX_TARGETS_PER_TURN <= 3 && tr.listening.gates.BOTH_SPEAKERS, { status: tr.status, cov: tr.coverage, failed: tr.failedChecks })
@@ -196,12 +197,12 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     for (const lang of LANGS) {
       const g = g693[lang], tr = g.track, nSit = (g.Ls.match(/LISTENING_SITUATION S\d/g) || []).length, pc = planCalls(g)
       // demonstrations 1 · 2 · 3 · 5 · 12
-      T('J1-' + lang, lang + ' (v693 learner): READY 30/30 from ONE request per situation — ' + nSit + ' plan requests, each for exactly one situation, each with a bounded budget (≤ 2000 tokens; v693 asked 7000 for everything), the compact turn format (no addressee / context / expects fields), every situation after the first sees the turns before it',
+      T('J1-' + lang, lang + ' (v693 learner): READY 30/30 from ONE request per situation — ' + nSit + ' plan requests, each for exactly one situation, each with a bounded budget (≤ 2700 tokens — v695 added the separate pron field so a romanisation has its own place instead of the sentence field; v693 asked 7000 for everything), the compact turn format (no addressee / context / expects fields), every situation after the first sees the turns before it',
         tr.status === 'READY' && tr.coverage.covered === 30 && tr.failedChecks.length === 0 && pc.length === nSit && nSit >= 4 &&
-        pc.every(x => x.max <= 2000 && (x.prompt.match(/^PLAN SITUATION S\d+ of/gm) || []).length === 1 && /"turns":\[\{"speaker"/.test(x.prompt) && !/"addressee"|"expects"|"context"/.test(x.prompt)) &&
+        pc.every(x => x.max <= 2700 && (x.prompt.match(/^PLAN SITUATION S\d+ of/gm) || []).length === 1 && /"turns":\[\{"speaker"/.test(x.prompt) && !/"addressee"|"expects"|"context"/.test(x.prompt)) &&
         pc.slice(1).every(x => /^SO FAR/m.test(x.prompt)) && !/^SO FAR/m.test(pc[0].prompt), { status: tr.status, failed: tr.failedChecks, n: pc.length, nSit, max: pc.map(x => x.max) })
       T('J2-' + lang, lang + ': the situations ASSEMBLE into one conversation — every situation passed its local check, then ONE whole-conversation validation + semantic audit, then the final gates on the final text (24–44 turns, ≤3 targets per turn, closed vocabulary, both speakers, final coherence judge)',
-        (g.Ls.match(/SCENE_LOCAL_CHECK S\d PASS/g) || []).length === nSit && /STRUCTURAL_VALIDATION \(candidate\) PASS/.test(g.Ls) && /SEMANTIC_AUDIT \(candidate\) PASS/.test(g.Ls) && g.stages.O_listening_semantic_audit === 1 && g.stages.O_listening_coherence === 1 &&
+        (g.Ls.match(/SCENE_LOCAL_CHECK S\d STATUS=PASS ·/g) || []).length === nSit && /STRUCTURAL_VALIDATION \(candidate\) PASS/.test(g.Ls) && /SEMANTIC_AUDIT \(candidate\) PASS/.test(g.Ls) && g.stages.O_listening_semantic_audit === 1 && g.stages.O_listening_coherence === 1 &&
         tr.listening.lines.length >= 24 && tr.listening.lines.length <= 44 && tr.listening.gates.MAX_TARGETS_PER_TURN <= 3 && tr.listening.gates.CLOSED_VOCAB === true && tr.listening.gates.BOTH_SPEAKERS && tr.listening.gates.ONE_CONVERSATION === 'PASS', tr.listening && tr.listening.gates)
     }
     // A5 · the deferral review against the run's own vocabulary (demonstration 9)
@@ -255,6 +256,133 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
         !un('お金、使いすぎじゃない？').length && !un('食べすぎた。').length && !un('うん、じゃあね。').length && un('ところで、明日できる？').join() === 'ところで' && un('すぐ行く。').join() === 'すぐ',
         { a: un('お金、使いすぎじゃない？'), b: un('うん、じゃあね。'), c: un('ところで、明日できる？'), d: un('すぐ行く。') })
     }
+  }
+  } // end of sections A–J (T49_ONLY=K runs section K alone)
+  // ══ K — v695: the three v694 Listening failures, end to end (learners + model replies from the owner's v694 logs) ════════
+  // every run goes through the real selection → grouping → per-situation plan → local check → validation → audit → repair →
+  // commit → final gates; only the model's replies are scripted (benchmark/v695/plans.js)
+  {
+    const F = require('./benchmark/v695/plans')
+    const L694 = lang => ({ dueIds: F.V694_IDS[lang].concat(F.V694_DEFERRED[lang]), dueOrder: true })
+    const swapT = (rows, pairs) => rows.map(r => { const p = pairs.find(x => x[0] === r[5]); return p ? p[1] : r })
+    const sit = (rows, key) => rows.filter(r => r[0] === key)
+    // the text of one part of a repair request ("[x2] turns 6, 7 (exchange …)" up to the next part)
+    const block = (q, scope) => { const i = q.indexOf('[' + scope + '] '); if (i < 0) return ''; const j = q.indexOf('\n[x', i + 1); return q.slice(i, j < 0 ? q.indexOf('\nNEVER', i) : j) }
+    const TH_TOURIST = [['B', 'ANSWER', '', 'I', 'สวัสดีค่ะ ฉันเป็นนักท่องเที่ยวค่ะ', 'Hello, I\'m a tourist.'], ['A', 'ASK', 'STATE', 'trip', 'ไปเที่ยวมาเป็นอย่างไรครับ', 'How was the trip?']]
+    const TH_YOUALL = [['A', 'ASK', 'AGE', 'you', 'คุณอายุเท่าไหร่ครับ', 'How old are you?'], ['B', 'ANSWER', '', 'age', 'ยี่สิบเจ็ดปีค่ะ แล้วพวกคุณล่ะคะ', 'Twenty-seven. And you all?']]
+    const thRewrite = (scope, q) => { const b = block(q, scope); return !/exactly \d+ turns/.test(b) ? null : /นักท่องเที่ยว/.test(b.split('lesson words that must be heard')[1] || '') ? TH_TOURIST : /พวกคุณ/.test(b.split('lesson words that must be heard')[1] || '') ? TH_YOUALL : null }
+    const TH_PHONE2 = [['A', 'REQUEST', '', 'phone number', 'ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ', 'Could I have your phone number?'], ['B', 'ACCEPT', '', 'phone number', 'ได้ค่ะ อันนี้คือเบอร์โทรศัพท์ของฉันค่ะ', 'Sure, this is my phone number.']]
+    const repCalls = g => g.st.calls.filter(x => x.stage === 'O_listening_plan_repair')
+    const planCalls = g => g.st.calls.filter(x => x.stage === 'O_listening_meaning_plan')
+    const finalTexts = (g, f) => g.track.listening ? g.track.listening.lines.map(l => l[f]) : []
+    const contract = (g, lang) => { const tr = g.track, L = tr.listening
+      return tr.status === 'READY' && tr.coverage.covered === 30 && tr.selectedTargetIds.length === 30 && tr.targetCounts.newTargetCount === 0 && g.srsUntouched && tr.failedChecks.length === 0 &&
+        L.lines.length >= 24 && L.lines.length <= 44 && L.gates.MAX_TARGETS_PER_TURN <= 3 && L.gates.BOTH_SPEAKERS && L.gates.ONE_CONVERSATION === 'PASS' && L.gates.CLOSED_VOCAB === true && L.gates.LENGTH_PASS !== false &&
+        /LISTENING_PLANNER planner=meaning-first-3/.test(g.Ls) && L.architecture === 'meaning-first-v692' }
+    // every FAILED situation status is followed by an explicit re-check on the final plan — never approved silently
+    const failedCleared = g => { const failed = [...g.Ls.matchAll(/SCENE_LOCAL_CHECK (S\d) STATUS=FAILED/g)].map(m => m[1])
+      return failed.every(k => new RegExp('SCENE_STATUS ' + k + ' FAILED [^\\n]*CLEARED_BY_GLOBAL_VALIDATION · re-checked on the final plan').test(g.Ls)) }
+    const thBase = { plan: [], scenePlan: (key, st, q, replan) => key === 'S1' && replan ? F.TH_FIX.S1 : key === 'S6' && replan ? F.TH_FIX.S6 : key === 'S2' ? swapT(sit(F.TH_V694, 'S2'), [F.TH_FIX.S2first]) : sit(F.TH_V694, key) }
+    const jaBase = { plan: [], scenePlan: (key, st, q, replan) => replan && F.JA_FIX[key] ? swapT(sit(F.JA_V694, key), F.JA_FIX[key]) : sit(F.JA_V694, key), repair: (scope, head) => /BOUNDARY/.test(head) ? F.JA_FIX.boundary : null }
+    const zhBase = { plan: [], scenePlan: key => sit(F.ZH_V694, key) }
+
+    // ── THAI ──
+    const th = await run('th', thBase, {}, L694('th'))
+    T('K1-th', 'th v694: S1 without พวกคุณ / นักท่องเที่ยว is NOT accepted — SCENE_TARGET_MISSING names both words, S1 is replanned with the defects named, and only the replan that carries them passes (status PASS_AFTER_REPLAN); v694 logged "S1 PASS"',
+      /SCENE_LOCAL_CHECK S1 FAIL 2: SCENE_TARGET_MISSING — พวกคุณ[^\n]*SCENE_TARGET_MISSING — นักท่องเที่ยว/.test(th.Ls) && /SCENE_LOCAL_CHECK S1 \(replan\) PASS/.test(th.Ls) && /SCENE_LOCAL_CHECK S1 STATUS=PASS_AFTER_REPLAN/.test(th.Ls) &&
+      /SCENE_TARGET_MISSING: พวกคุณ/.test(planCalls(th).find(x => /HAD THESE DEFECTS/.test(x.prompt) && /PLAN SITUATION S1 of/.test(x.prompt)).prompt), lineOf(th.Ls, /SCENE_LOCAL_CHECK S1[^\n]*/))
+    T('K2-th', 'th v694: "เบอร์โทรศัพท์ของคุณคืออะไรครับ" (what IS your number?) is caught BEFORE the audit as an INFEASIBLE_INTENTION in S6 (asking for the digits) — the replan asks FOR the number and promises to send it; no "what is the number" question in the final text',
+      /SCENE_LOCAL_CHECK S6 FAIL[^\n]*INFEASIBLE_INTENTION — "เบอร์โทรศัพท์ของคุณคืออะไรครับ"/.test(th.Ls) && /SCENE_LOCAL_CHECK S6 \(replan\) PASS/.test(th.Ls) &&
+      !finalTexts(th, 'thai').some(t => /เบอร์\S*คืออะไร/.test(t)) && finalTexts(th, 'thai').some(t => /ขอเบอร์โทรศัพท์/.test(t)) && finalTexts(th, 'thai').some(t => /จะส่งให้/.test(t)), finalTexts(th, 'thai').slice(-5))
+    T('K3-th', 'th v694 learner: FULL ASSEMBLY → READY — 30/30 heard in the final text, 0 new, SRS untouched, 24–44 turns, ≤3 targets per turn, two speakers, one conversation, closed vocabulary, hard length 8; every situation that ended its local check FAILED was re-checked on the final plan and named (never approved silently)',
+      contract(th, 'th') && failedCleared(th) && /COMPLEXITY_HARD_MAX=8/.test(th.Ls), { st: th.track.status, r: th.track.failureReason, f: th.track.failedChecks })
+    // the reserve: S1 still misses its words after the replan; the words move on (logged) and at the end a missing word is fixed by a
+    // same-size REWRITE (the plan is already near 40 turns) — never an add that pushes the plan past the reserve (v694: 41 → 45)
+    {
+      let rew = 0
+      const g = await run('th', { ...thBase, scenePlan: (key, st, q, replan) => key === 'S1' ? sit(F.TH_V694, 'S1') : thBase.scenePlan(key, st, q, replan),
+        repair: (scope, head, q) => { const r = thRewrite(scope, q); if (r) rew++; return r } }, {}, L694('th'))
+      const turnsAfter = [...g.Ls.matchAll(/STRUCTURAL_VALIDATION[^\n]*/g)].length
+      T('K4-th', 'th: missing lesson words that no later situation carried are NOT added as extra turns past the reserve — TURN_RESERVE: a same-size rewrite of a target-free exchange (exactly N turns) is asked instead; the plan never exceeds 44 turns at any point; READY 30/30',
+        /LISTENING_TARGET_REASSIGNED [^\n]*พวกคุณ|LISTENING_TARGET_REASSIGNED [^\n]*นักท่องเที่ยว/.test(g.Ls) && /TURN_RESERVE/.test(g.Ls) && rew >= 1 && !/45 turns|4[5-9] turns — the conversation must have/.test(g.Ls) && contract(g, 'th'),
+        { st: g.track.status, r: g.track.failureReason, reserve: lineOf(g.Ls, /[^\n]*TURN_RESERVE[^\n]*/), rew })
+    }
+    // the v694 repair reply for the phone exchange ("what is your number?" / digits with an unknown word) is validated BEFORE it is
+    // applied and rejected; the next round's patch is applied
+    {
+      const g = await run('th', { ...thBase, scenePlan: (key, st, q, replan) => key === 'S6' ? sit(F.TH_V694, 'S6') : thBase.scenePlan(key, st, q, replan),
+        repair: (scope, head, q, st) => st.repair === 1 ? [['A', 'ASK', 'THING', 'phone number', 'เบอร์โทรศัพท์ของคุณคืออะไรครับ', 'What is your phone number?'], ['B', 'ANSWER', '', 'phone number', 'เบอร์ของฉันคือ ศูนย์แปด เก้าสี่ สองค่ะ', 'My number is 08 94 2.']]
+          : /\(scene\)/.test(head) ? F.TH_FIX.S6.map(r => r.slice(1)) : TH_PHONE2 }, {}, L694('th'))
+      T('K5-th', 'th: a malformed / invalid repair patch is REJECTED before it is applied (PART_REJECTED … PATCH_INVALID — the phone question and the unknown เบอร์), the old turns stay, the next round\'s valid patch (ask for the number + promise) is applied and validated in place → READY',
+        /PART_REJECTED x\d \([a-z]+\) — PATCH_INVALID[^\n]*(INFEASIBLE_INTENTION|CLOSED_VOCAB)/.test(g.Ls) && /PART_REPAIRED x\d [^\n]*validated in place[^\n]*ขอเบอร์โทรศัพท์/.test(g.Ls) && contract(g, 'th') && !finalTexts(g, 'thai').some(t => /คืออะไร|ศูนย์แปด/.test(t)),
+        { st: g.track.status, r: g.track.failureReason, rej: lineOf(g.Ls, /[^\n]*PART_REJECTED[^\n]*/) })
+    }
+    // bounded repairs: a request with two parts is cut off → it is SPLIT, each half asked on its own (never the same request again);
+    // a single part that is cut off is asked once more with a shorter instruction, then left (PARTS_TECHNICAL) — never published
+    {
+      const g = await run('th', { ...thBase, scenePlan: (key, st, q, replan) => key === 'S1' || key === 'S6' ? sit(F.TH_V694, key) : thBase.scenePlan(key, st, q, replan),
+        repair: (scope, head, q) => (q.match(/^\[x\d+\]/gm) || []).length > 1 ? '__truncated__' : thRewrite(scope, q) || (/\(intention\)|\(exchange\)/.test(head) ? TH_PHONE2 : null) }, {}, L694('th'))
+      const rc = repCalls(g), prompts = rc.map(x => x.prompt)
+      T('K6-th', 'th: a cut-off repair with 2+ parts → REPAIR_TRUNCATED + REPAIR_SPLIT, each half sent alone; every repair request is DIFFERENT (the same oversized request is never resent), each bounded (≤ ' + 2500 + ' tokens) → READY',
+        /REPAIR_TRUNCATED/.test(g.Ls) && /REPAIR_SPLIT/.test(g.Ls) && new Set(prompts).size === prompts.length && rc.every(x => x.max <= 2500) && contract(g, 'th'), { st: g.track.status, r: g.track.failureReason, n: rc.length, max: rc.map(x => x.max) })
+      const g2 = await run('th', { ...thBase, scenePlan: (key, st, q, replan) => key === 'S6' ? sit(F.TH_V694, 'S6') : thBase.scenePlan(key, st, q, replan), repair: () => '__truncated__' }, {}, L694('th'))
+      const p2 = repCalls(g2).map(x => x.prompt)
+      T('K7-th', 'th: a single part cut off every time → one shorter retry per round ("was cut off … ONLY the N new turns"), never the identical request; the part keeps its old turns (PARTS_TECHNICAL), the plan is BLOCKED → NOT_READY, nothing from a cut-off reply is validated or published',
+        /REPAIR_TRUNCATED/.test(g2.Ls) && /PARTS_TECHNICAL/.test(g2.Ls) && p2.some(p => /Your previous reply was cut off/.test(p)) && new Set(p2).size === p2.length && g2.track.status === 'NOT_READY' && /LISTENING_PLAN_BLOCKED/.test(g2.Ls) && !(g2.track.listening && g2.track.listening.lines && g2.track.listening.lines.length),
+        { st: g2.track.status, n: p2.length })
+    }
+
+    // ── JAPANESE ──
+    const ja = await run('ja', jaBase, {}, L694('ja'))
+    const jaFinal = finalTexts(ja, 'japanese')
+    T('K8-ja', 'ja v694: ごめん、聞いちゃった。 is no longer an unknown 聞 (〜ちゃう forms of a godan verb resolve to 聞く); こっち / こと are still unauthorised (S3 / S6 replanned) — closed vocabulary not weakened',
+      !/unknown words: 聞/.test(ja.Ls) && /SCENE_LOCAL_CHECK S1 STATUS=PASS/.test(ja.Ls) && /SCENE_LOCAL_CHECK S3 FAIL[^\n]*unknown words: こっち/.test(ja.Ls) && /SCENE_LOCAL_CHECK S6 FAIL[^\n]*unknown words: こと/.test(ja.Ls), lineOf(ja.Ls, /SCENE_LOCAL_CHECK S1[^\n]*/))
+    const bnd = repCalls(ja)
+    T('K9-ja', 'ja v694: the "today agreed → tomorrow?" contradiction is found deterministically (STATE_CONTRADICTION at S4, not only by the audit in the last round) and fixed by ONE bounded BOUNDARY repair — the end of S3 + the start of S4 (4 turns) in one request; no situation is rebuilt; the rest of the plan is unchanged',
+      /SCENE_LOCAL_CHECK S4 FAIL 1: STATE_CONTRADICTION — the plan for 今日 was agreed/.test(ja.Ls) && /MEANING_REPAIR round 1\/3 · 1 part\(s\): x1 boundary \[TRANSITION\]/.test(ja.Ls) && /PART_REPAIRED x1 \(boundary · TRANSITION\) 4 turn\(s\) → 4 new/.test(ja.Ls) &&
+      bnd.length === 1 && /BOUNDARY between S3 and S4: return exactly 4 turns/.test(bnd[0].prompt) && !/ scene \[/.test(lineOf(ja.Ls, /MEANING_REPAIR round[^\n]*/)) && jaFinal.includes('じゃ、あそこ行こう。') && !jaFinal.includes('じゃ、今日あそこ行こう。') && jaFinal.includes('明日、行かない？'),
+      { r: lineOf(ja.Ls, /MEANING_REPAIR round[^\n]*/), n: bnd.length })
+    T('K10-ja', 'ja v694 learner: FULL ASSEMBLY → READY — 30/30, 0 new, SRS untouched, 24–44 turns, ≤3 targets per turn, two speakers, hard length 7, every FAILED situation re-checked and named',
+      contract(ja, 'ja') && failedCleared(ja) && /COMPLEXITY_HARD_MAX=7/.test(ja.Ls), { st: ja.track.status, r: ja.track.failureReason, f: ja.track.failedChecks })
+    // the repair is the boundary even when it fails once (second attempt is again a boundary repair, never "rewrite S4 only")
+    {
+      const g = await run('ja', { ...jaBase, repair: (scope, head, q, st) => !/BOUNDARY/.test(head) ? null : st.repair === 1 ? F.JA_FIX.boundary.slice(0, 3) : F.JA_FIX.boundary }, {}, L694('ja'))
+      T('K11-ja', 'ja: a boundary patch with the wrong number of turns / a lost lesson word (まだ) is rejected before it is applied; the second round is again a BOUNDARY repair (not a whole-situation rewrite) and succeeds → READY',
+        /PART_REJECTED x1 \(boundary\)/.test(g.Ls) && /MEANING_REPAIR round 2\/3 · 1 part\(s\): x1 boundary/.test(g.Ls) && /PART_REPAIRED x1 \(boundary/.test(g.Ls) && contract(g, 'ja'), { st: g.track.status, r: g.track.failureReason })
+    }
+
+    // ── MANDARIN ──
+    const zh = await run('zh', zhBase, {}, L694('zh'))
+    T('K12-zh', 'zh v694: 好，一起去。(reply ellipsis after 我跟你去) is accepted — S4 passes its first local check (v694: GRAMMAR_CONTRACT "一起 needs a plural subject" → replan → 你知道哪里吗 also rejected)',
+      /SCENE_LOCAL_CHECK S4 STATUS=PASS ·/.test(zh.Ls) && !/GRAMMAR_CONTRACT[^\n]*好，一起去/.test(zh.Ls) && finalTexts(zh, 'chinese').includes('好，一起去。'), lineOf(zh.Ls, /SCENE_LOCAL_CHECK S4[^\n]*/))
+    T('K13-zh', 'zh v694 learner: FULL ASSEMBLY → READY — 30/30, 0 new, SRS untouched, 24–44 turns, ≤3 targets per turn, two speakers, hard length 6, every FAILED situation re-checked and named; the final continuity check reads the PLANNED replies (今天不可以，明天吧 → 好，明天 is an acceptance, not a contradiction)',
+      contract(zh, 'zh') && failedCleared(zh) && /COMPLEXITY_HARD_MAX=6/.test(zh.Ls), { st: zh.track.status, r: zh.track.failureReason, f: zh.track.failedChecks })
+    {
+      const g = await run('zh', { ...zhBase, scenePlan: key => key === 'S4' ? sit(F.ZH_V694, 'S4').map(r => r[5] === '去哪里？' ? F.ZH_ELLIPSIS.embedded : r).filter(r => r[5] !== '你家。') :
+        key === 'S5' ? sit(F.ZH_V694, 'S5').map(r => r[5] === '我给你钱，好吗？' ? ['S5', 'A', 'REQUEST', '', 'this one', '你拿这个，好吗？', 'Take this one, okay?'] : r[5] === '好，你拿这个。' ? F.ZH_ELLIPSIS.take : r) : sit(F.ZH_V694, key) }, {}, L694('zh'))
+      const c = g.c, P = (t, p) => c.lnMfZhProblems(t, p, new Set())
+      T('K14-zh', 'zh: the over-broad v694 rules are narrowed, not removed — 你知道哪里吗？ (embedded question) and 好，我拿。 after 你拿这个 (object ellipsis) pass in a full run; out of context the rules still fire: 你去哪里吗？ (wh + 吗), 我一起去。 (lone 我 + 一起), 我拿。 with nothing named before it',
+        !/GRAMMAR_CONTRACT[^\n]*(你知道哪里吗|好，我拿)/.test(g.Ls) && g.track.status === 'READY' && !P('你知道哪里吗？', '').length && !P('好，一起去。', '我跟你去。').length && !P('好，我拿。', '你拿这个，好吗？').length &&
+        P('你去哪里吗？', '').length > 0 && P('我一起去。', '').length > 0 && P('我拿。', '你好！').length > 0, { st: g.track.status, r: g.track.failureReason, a: P('你去哪里吗？', ''), b: P('我一起去。', ''), c: P('我拿。', '你好！') })
+    }
+    // the audit's v694 findings + the v694 repair replies verbatim ("中文 (pinyin)" in the sentence field)
+    {
+      const bad = { '我做工作。': { sense: 'bad', responds: 'no', usage: 'incorrect', fault: 6, note: '做工作 is not a natural way to say worked' }, '好，我用钱买。': { usage: 'awkward', note: 'using money to buy is odd' } }
+      const g = await run('zh', { ...zhBase, audit: t => bad[t] || null,
+        repair: (scope, head, q) => /做工作/.test(block(q, scope)) ? F.ZH_REPAIR_V694.work : /using money/.test(block(q, scope)) ? [['B', 'ACCEPT', '', 'buying', '好，我用钱买这个。(hǎo, wǒ yòng qián mǎi zhège.)', 'Okay, I\'ll pay for this one.']] : null }, {}, L694('zh'))
+      const fin = finalTexts(g, 'chinese')
+      T('K15-zh', 'zh v694: repair replies with pinyin in the sentence field are CLEANED deterministically before validation (PATCH_TEXT_CLEANED "我工作了。(wǒ gōngzuò le.)" → "我工作了。"), length is measured on the Chinese only (no TOO_COMPLEX 16–31 words), no Latin script in any final line → READY 30/30',
+        /PATCH_TEXT_CLEANED[^\n]*我工作了。\(wǒ gōngzuò le\.\)" → "我工作了。"/.test(g.Ls) && !/TOO_COMPLEX/.test(g.Ls) && !/SCRIPT_CONTAMINATION/.test(g.Ls) && fin.includes('我工作了。') && !fin.some(t => /[A-Za-zāáǎàōóǒòēéěèīíǐìūúǔù]/.test(t)) && contract(g, 'zh'),
+        { st: g.track.status, r: g.track.failureReason, cl: lineOf(g.Ls, /[^\n]*PATCH_TEXT_CLEANED[^\n]*/) })
+      const g2 = await run('zh', { ...zhBase, audit: t => bad[t] || null,
+        repair: (scope, head, q, st) => /做工作/.test(block(q, scope)) ? (st.repair === 1 ? [F.ZH_REPAIR_V694.work[0], F.ZH_REPAIR_V694.leading] : [['A', 'ASK', 'THING', 'yesterday', '你昨天做什么了？', 'What did you do yesterday?'], ['B', 'ANSWER', '', 'work', '我工作了。(wǒ gōngzuò le.)', 'I worked.']]) :
+          /using money/.test(block(q, scope)) ? [['B', 'ACCEPT', '', 'buying', '好，我用钱买这个。', 'Okay, I\'ll pay for this one.']] : null }, {}, L694('zh'))
+      T('K16-zh', 'zh: a romanisation that cannot be removed safely ("wǒ gōngzuò le 我工作了。" — Latin first) makes that PATCH invalid: it is rejected before it is applied (the old lines stay, nothing Latin reaches the plan), the next round\'s patch is cleaned and applied → READY; no final line has Latin script',
+        /PART_REJECTED x\d \([a-z]+\) — PATCH_INVALID[^\n]*(LINE_QUALITY|SCRIPT|TOO_COMPLEX)/.test(g2.Ls) && !finalTexts(g2, 'chinese').some(t => /[A-Za-zāáǎàōóǒòēéěèīíǐìūúǔù]/.test(t)) && contract(g2, 'zh'),
+        { st: g2.track.status, r: g2.track.failureReason, rej: lineOf(g2.Ls, /[^\n]*PART_REJECTED[^\n]*/) })
+    }
+    T('K17', 'scene planning keeps the same safeguards: every situation request is bounded (≤ 2700 tokens), the text field rule forbids romanisation / labels / notes and gives the reading its own "pron" field, the phone rule is in every prompt',
+      [th, ja, zh].every(g => planCalls(g).every(x => x.max <= 2700 && /no romanisation/.test(x.prompt) && /"pron"/.test(x.prompt) && /phone number/i.test(x.prompt))), planCalls(zh)[0].prompt.slice(-600))
   }
   console.log(out.join('\n'))
   console.log('\n' + (n - fails) + '/' + n + ' passed')

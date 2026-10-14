@@ -17,6 +17,8 @@ const V693_IDS = {
 }
 const V693_DEFERRED = { th: [1524, 676], ja: [22, 45, 36], zh: [29, 49] }
 const surf = lang => lang === 'ja' ? 'japanese' : lang === 'zh' ? 'chinese' : 'thai'
+// v695: o.dueOrder — the due words fall due one day apart in the order given (the order a run's log selected them in)
+const lnDay = i => new Date(Date.UTC(2026, 0, 1 + Math.max(0, i))).toISOString().slice(0, 10)
 function learner(c, lang, o = {}) {
   const vocab = lang === 'th' ? c.initVocab() : lang === 'ja' ? c.initJapaneseVocab() : c.initMandarinVocab()
   const due = new Set(o.dueIds || V691_IDS[lang].concat(lang === 'zh' ? [29] : []))
@@ -31,7 +33,7 @@ function learner(c, lang, o = {}) {
     const early = w => /^(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|minute|hour|goodbye|see you|thank|sorry|excuse|hello|next to|beside|travel|visit|ticket|book|reserve)/i.test(String(w.english || ''))
     for (const w of vocab.slice().sort((a, b) => (early(b) - early(a)) || a.id - b.id)) { if (n >= (o.thaiIntroduced || 906)) break; if (w.status === 'new') { learn(w); n++ } }
   }
-  vocab.forEach(w => { if (w.status === 'known' || w.status === 'learning') { if (due.has(w.id)) { w.dueDate = '2026-01-01'; w.difficulty = 'hard' } else { w.dueDate = '2099-01-01'; if (w.difficulty === 'hard') w.difficulty = 'ok' } } })
+  vocab.forEach(w => { if (w.status === 'known' || w.status === 'learning') { if (due.has(w.id)) { w.dueDate = o.dueOrder ? lnDay(o.dueIds.indexOf(w.id)) : '2026-01-01'; w.difficulty = 'hard' } else { w.dueDate = '2099-01-01'; if (w.difficulty === 'hard') w.difficulty = 'ok' } } })
   // the belt of each v691 run (log: Thai 9th Kyu · Japanese 10th Kyu · Mandarin Mukyu)
   if (o.belt !== false && typeof c.setLearnerStateOverride === 'function') c.setLearnerStateOverride({ rank: { th: '9th Kyu', ja: '10th Kyu', zh: 'Mukyu' }[lang], source: 'v692-regression' })
   return { vocab, field: surf(lang), byId: new Map(vocab.map(w => [w.id, w])) }

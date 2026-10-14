@@ -19118,6 +19118,8 @@ function jaInflectionPairs(lemma, reading, cls) {
     const te = cls === 'godan-iku' ? ['って', 'った'] : (JA_GODAN_TE[e] || ['って', 'った'])
     const A = JA_GODAN_A[e], I = JA_GODAN_I[e], E = JA_GODAN_E[e], O = JA_GODAN_O[e]
     TE_AUX(te[0]).concat([te[1], te[1] + 'ら']).forEach(t => add(s + t, r + t))
+    // v695 (Oct13 switch): 聞いちゃった / 行っちゃう / 飲んじゃった — live v694 Listening rejected ごめん、聞いちゃった。 as "unknown 聞"
+    if (oct13On()) { const cha = te[0].replace(/て$/, 'ちゃ').replace(/で$/, 'じゃ'); ['う', 'った', 'って'].forEach(t => add(s + cha + t, r + cha + t)) }
     if (A) tails(s, r, [A + 'ない', A + 'なかった', A + 'れる', A + 'せる', A + 'ないで', A + 'なきゃ'])
     if (I) tails(s, r, [I, I + 'ます', I + 'ました', I + 'ません', I + 'ませんでした', I + 'ましょう', I + 'たい', I + 'たかった'])
     if (I && oct13On()) tails(s, r, JA_SUGI_TAILS.map(t => I + t))
@@ -19577,7 +19579,12 @@ function listeningCoherenceCheck(lines) {
     // 2a. contradiction by negation: the same action asserted and denied
     //     ("Let me help." → "I can't help.") — these are alternative candidates, not dialogue
     const neg = t => /\b(can't|cannot|don't|doesn't|didn't|isn't|aren't|won't|not|no longer|never)\b/i.test(t)
-    if (neg(en) !== neg(pen) && _sharesReferent(pen, en) && !_isQuestion(cur) && !_isQuestion(prev) &&
+    // v695: "N years old" is an age, not an assertion that someone is old ("Twenty-seven years old." → "You're not old at all.")
+    const penA = oct13On() ? pen.replace(/\b(years?|months?) old\b/gi, '') : pen
+    // v695: a meaning-first turn PLANNED as the reply to the line before it (accept / counter / decline / answer — the semantic audit
+    // judged that relationship) is dialogue, not two alternative candidates ("Not today, tomorrow." → "Okay, tomorrow.")
+    const mi = lines[i].meaning, planned = !!(mi && mi.respondsTo != null && ['ACCEPT', 'COUNTER', 'DECLINE', 'ANSWER'].includes(mi.intent))
+    if (!planned && neg(en) !== neg(pen) && _sharesReferent(penA, en) && !_isQuestion(cur) && !_isQuestion(prev) &&
         !/actually|sorry|but |i mean|instead/i.test(en))
       flag(2, 'one line asserts what the other denies', i)
     // 2b. contradiction: same noun, different quantity, no correction marker
@@ -19791,7 +19798,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v694'
+const LISTENING_BUILD_VERSION = 'v695'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -21413,7 +21420,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v694'
+const APP_BUILD_VERSION = 'v695'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -23425,7 +23432,7 @@ function _lnSceneRows(scenes, la) {
 // §15 — WHOLE-LISTENING COHERENCE AUDIT (separate from per-line naturalness). Deterministic
 // continuity checks per scene + ONE model judgement of the whole transcript.
 async function listeningWholeCoherenceAudit(scenes, la, o, log) {
-  const det = scenes.map(sc => sc.lines.length > 1 ? listeningCoherenceCheck(sc.lines.map((l, i) => ({ idx: i, pair: l.pair, speaker: l.speaker }))) : { score: 5, coherent: true, reason: 'single line' })
+  const det = scenes.map(sc => sc.lines.length > 1 ? listeningCoherenceCheck(sc.lines.map((l, i) => ({ idx: i, pair: l.pair, speaker: l.speaker, ...(l.meaning ? { meaning: l.meaning } : {}) }))) : { score: 5, coherent: true, reason: 'single line' })
   let model = null, state = QUALITY.UNVERIFIED, reason = ''
   const multi = scenes.some(sc => sc.lines.length > 1)
   if (!multi) state = QUALITY.VERIFIED
@@ -27582,7 +27589,8 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh, uncommitted: r.uncommitted || [], contract: r.contract || null, story: r.story || null, phaseHealth: r.phaseHealth || [] }
   }
   // ── 3. whole-conversation coherence (scene + whole) — a HARD gate ──
-  const cohScenes = scenes.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair })) }))
+  // v695: a meaning-first turn carries its planned act (meaning.intent / respondsTo) into the deterministic continuity check
+  const cohScenes = scenes.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, ...(tn.meaning ? { meaning: tn.meaning } : {}) })) }))
   // v663: the scene-by-scene path already audited (and atomically repaired) coherence — reuse that verdict, no second call
   let coh
   if (sceneGates && sceneGates.coh) coh = sceneGates.coh
@@ -27855,7 +27863,7 @@ function listeningUsageSince(led0) {
 let LISTENING_MEANING_FIRST_ACTIVE = true
 function listeningMeaningFirstOn() { return LISTENING_MEANING_FIRST_ACTIVE }
 function setListeningMeaningFirst(on) { LISTENING_MEANING_FIRST_ACTIVE = !!on; return LISTENING_MEANING_FIRST_ACTIVE }
-const LISTENING_PLANNER_VERSION = 'meaning-first-2'
+const LISTENING_PLANNER_VERSION = 'meaning-first-3'
 const LISTENING_ARCHITECTURE_V692 = 'meaning-first-v692'
 const LN_MF_FAULTS = Object.freeze({ 1: 'SURFACE', 2: 'CUE', 3: 'VOCABULARY', 4: 'GRAMMAR', 5: 'SEMANTIC', 6: 'QUESTION_ANSWER', 7: 'TRANSITION', 8: 'GROUPING', 9: 'TECHNICAL' })
 const LN_MF_RECOVERY = Object.freeze({ 1: 'rewrite this line (same intention, same lesson words)', 2: 'correct the English of this line', 3: 'rewrite this line with authorised words only',
@@ -27910,9 +27918,9 @@ const LN_MF_CONTRACTS = {
     '回': { needs: ['PLACE'], rule: '回 + a place (回家)' },
     '很': { rule: '很 + an adjective as the predicate (这个很大)' },
     '太': { rule: '太 + an adjective + 了 (太大了), or 不太 + adjective' },
-    '一起': { rule: 'a plural subject (我们 · 你们) or 跟 + a person, then 一起 + a verb (我们一起去吧)' },
+    '一起': { rule: 'a plural subject (我们 · 你们) or 跟 + a person, then 一起 + a verb (我们一起去吧); in a reply the "we" may be understood (好，一起去。)' },
     '在': { rule: '在 + a place (我在家 · 你在哪里？)' },
-    '吗': { rule: '吗 ends a yes / no question — never together with 谁 / 哪里 / 什么 / 怎么 / 为什么 / 多少' },
+    '吗': { rule: '吗 ends a yes / no question — not together with 谁 / 哪里 / 什么 / 怎么 / 为什么 / 多少, except an embedded question after 知道 / 记得 (你知道他在哪里吗？)' },
     '吧': { rule: '吧 ends a suggestion (我们去吧) — never about the past (昨天)' },
     '怎么': { asks: 'METHOD', rule: '怎么 + a verb asks HOW to do it (怎么去？ · 这个怎么做？)' },
     '多少': { asks: 'QUANTITY', rule: '多少 asks how many / how much — answered with a number' },
@@ -27944,6 +27952,7 @@ const LN_MF_CONTRACTS = {
     'เป็นอย่างไร': { asks: 'STATE', rule: 'how is it — about a named thing / place / person, answered with a fitting description' },
     'น่าดู': { describes: ['PLACE', 'MEDIA', 'EVENT', 'THING'], rule: 'worth seeing — places, films, shows' },
     'คือ': { rule: 'X คือ Y — says what X is' },
+    'เบอร์โทรศัพท์': { rule: 'ask FOR it (ขอเบอร์โทรศัพท์หน่อยได้ไหม) — the natural reply agrees and promises to send it (ได้ค่ะ เดี๋ยวส่งให้นะคะ); never ask what the number is (nobody recites the digits)' },
     'ไม่เชิง': { rule: 'ไม่เชิง = not exactly — a qualified answer to a yes / no question' },
   },
 }
@@ -28128,6 +28137,9 @@ const LN_MF_UNIT = {
 const LN_MF_TIMEKEY = { zh: /[0-9一二两三四五六七八九十]+点(半)?/, ja: /[0-9０-９一二三四五六七八九十]+時(半)?/,
   th: /(บ่าย)?(สิบเอ็ด|สิบสอง|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ)(โมง|ทุ่ม)(เช้า|เย็น)?|เที่ยง(วัน|คืน)?/ }
 const LN_MF_BRUSH_OFF = { ja: /^(いいから|べつに|別に|なんでもない|なんとなく|ちょっと)[。！!…]*$/, zh: /^(没什么|不知道|就是)[。！!]*$/, th: /^(ไม่รู้|เปล่า|ก็แค่)(ครับ|ค่ะ|คะ)?$/ }
+const LN_MF_DAYKEY = { ja: /今日|明日|あした|昨日/, zh: /今天|明天|昨天/, th: /วันนี้|พรุ่งนี้|เมื่อวาน/ }
+const LN_MF_PAST_DAY = { ja: /昨日/, zh: /昨天/, th: /เมื่อวาน/ }
+const LN_MF_REASON_RE = { ja: /でも|けど|やっぱり|から/, zh: /但是|可是|不过|因为/, th: /แต่|เพราะ|เปลี่ยนใจ/ }
 function lnMfStrip(lang, text) { return String(text || '').replace(lang === 'th' ? /(ครับ|ค่ะ|คะ|นะ|จ้ะ)+$/ : /[。？！?!，、,.\s…]+/g, '').trim() }
 // what kind of answer a question turn asks for: the contract word in it overrides the plan's own label
 function lnMfQuestionAsks(lang, tu, byId) {
@@ -28164,11 +28176,13 @@ function lnMfZhProblems(text, prevText, adjSet) {
   const bare = s.replace(/[。？！，?!,\s]/g, '').replace(/了$/, '')
   // a short echo answer (你找钱吗？ — 找。 · 你回家吗？ — 我不回。) — the verb's complement is recoverable from the question
   const echo = v => bare.replace(/^(我们|你们|我|你|他|她)/, '').replace(/^(也|就|都)/, '').replace(/^(不|没)/, '') === v && String(prevText || '').includes(v)
+  // v695: a short REPLY after a turn that names the thing (你拿这个吗？ — 好，我拿。) carries its object by ellipsis
+  const objReply = v => (dailyV693On() || oct13On()) && /^(好|行|对|嗯|可以)[，,]?/.test(s) && bare.replace(/^(好|行|对|嗯|可以)/, '').replace(/^(我们|我|你)/, '').replace(/^(也|就)/, '') === v && /(这个|那个|东西|钱|它)/.test(String(prevText || ''))
   const g = (w, why, fault) => out.push({ fault: fault || 4, word: w, detail: why })
   let r
   if ((r = after('跟')) != null && !(ZH_MF_PERSON.test(r) && !end(r.replace(ZH_MF_PERSON, '')))) g('跟', '跟 needs a person and then a verb (跟 + 朋友 + 去) — "' + s + '"')
   if ((r = after('给')) != null && !ZH_MF_PERSON.test(r) && !echo('给')) g('给', '给 needs the person it is for (给你) — "' + s + '"')
-  for (const v of ['用', '找', '拿']) if ((r = after(v)) != null && end(r) && !echo(v)) g(v, v + ' needs what is ' + (v === '找' ? 'looked for' : v === '用' ? 'used' : 'taken') + ' — "' + s + '"')
+  for (const v of ['用', '找', '拿']) if ((r = after(v)) != null && end(r) && !echo(v) && !objReply(v)) g(v, v + ' needs what is ' + (v === '找' ? 'looked for' : v === '用' ? 'used' : 'taken') + ' — "' + s + '"')
   if ((r = after('做')) != null && end(r) && !/怎么做|做的|谁做/.test(s) && !echo('做')) g('做', '做 needs what is done (做什么 · 做工作) — "' + s + '"')
   if ((r = after('回')) != null && !/^(家|这里|那里|哪里|去|来|国|了)/.test(r) && !echo('回')) g('回', '回 needs where to (回家) — "' + s + '"')
   if ((r = after('到')) != null && !/^(了|家|这里|那里|哪里|这|那)/.test(r) && !/到了/.test(s) && !echo('到')) g('到', '到 needs a place or 了 (我到了 · 到家了) — "' + s + '"')
@@ -28177,10 +28191,13 @@ function lnMfZhProblems(text, prevText, adjSet) {
   { const i = s.indexOf('一起'); if (i >= 0) { const before = s.slice(0, i)
     // 你想一起吃吗？ / 一起去吧 imply "with me" (a question or suggestion to the listener); a plain statement by ONE person does not (我现在一起到)
     const plural = /(我们|你们|他们|她们|咱们|大家|跟.{1,4}$)/.test(before), invite = /[吗吧][？?！!。]?$|[？?]$/.test(s) && !/^我(?!们)/.test(before)
-    if (!plural && !invite) g('一起', '一起 needs a plural subject (我们一起 …), 跟 + a person, or a question / suggestion to the listener — "' + s + '"')
+    // v695: an agreeing reply with the "we" understood (好，一起去。 — live v694 Mandarin, rejected) — a lone 我 subject is still wrong
+    const elided = /^(好|行|对|嗯|那|走)[，,]?(一起|我们一起)?/.test(s) && !/我(?!们)/.test(before) && /^(好|行|对|嗯|那|走)[，,]?$/.test(before)
+    if (!plural && !invite && !elided) g('一起', '一起 needs a plural subject (我们一起 …), 跟 + a person, or a question / suggestion to the listener — "' + s + '"')
     if (end(s.slice(i + 2))) g('一起', '一起 must be followed by a verb (一起去) — "' + s + '"') } }
   if ((r = after('在')) != null && end(r)) g('在', '在 needs where (在家 · 在哪里) — "' + s + '"')
-  if (/吗[？?]?$/.test(s) && /(谁|哪里|哪儿|什么|怎么|为什么|多少|几)/.test(s)) g('吗', '吗 cannot end a question that already has a question word — "' + s + '"')
+  // v695: an embedded question after 知道 / 记得 (你知道他在哪里吗？ "do you know where he is?") is a yes / no question
+  if (/吗[？?]?$/.test(s) && /(谁|哪里|哪儿|什么|怎么|为什么|多少|几)/.test(s) && !/(知道|记得)\S*(谁|哪里|哪儿|什么|怎么|为什么|多少|几)/.test(s)) g('吗', '吗 cannot end a question that already has a question word — "' + s + '"')
   if (/吧/.test(s) && /昨天/.test(s)) g('吧', 'a suggestion (吧) cannot be about yesterday — "' + s + '"', 5)
   if (/去这里/.test(s)) g('去', '去这里 ("go here") — one comes here: 来这里 — "' + s + '"', 5)
   if (/来那里/.test(s)) g('来', '来那里 ("come there") — one goes there: 去那里 — "' + s + '"', 5)
@@ -28206,23 +28223,21 @@ function lnMfThProblems(text, english, verbSurfaces) {
   return out
 }
 // ── the PLAN as data: normalise a model reply into situations → turns (ids, numbers, made lines) ──
-const LN_MF_TURN_SCHEMA = { type: 'OBJECT', properties: { n: { type: 'INTEGER' }, speaker: { type: 'STRING' }, addressee: { type: 'STRING' }, intent: { type: 'STRING' }, asks: { type: 'STRING' },
-  referent: { type: 'STRING' }, action: { type: 'STRING' }, object: { type: 'STRING' }, context: { type: 'STRING' }, expects: { type: 'STRING' }, respondsTo: { type: 'INTEGER' },
-  targetIds: { type: 'ARRAY', items: { type: 'INTEGER' } }, text: { type: 'STRING' }, english: { type: 'STRING' } }, required: ['speaker', 'intent', 'text', 'english', 'targetIds'] }
 const LN_MF_AUDIT_SCHEMA = { type: 'OBJECT', properties: {
   turns: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'INTEGER' }, sense: { type: 'STRING' }, responds: { type: 'STRING' }, usage: { type: 'STRING' }, fault: { type: 'INTEGER' }, note: { type: 'STRING' } }, required: ['n', 'usage'] } },
   situations: { type: 'ARRAY', items: { type: 'OBJECT', properties: { key: { type: 'STRING' }, coherent: { type: 'BOOLEAN' }, transition: { type: 'STRING' }, note: { type: 'STRING' } }, required: ['key'] } } }, required: ['turns'] }
-const LN_MF_REPAIR_SCHEMA = { type: 'OBJECT', properties: { parts: { type: 'ARRAY', items: { type: 'OBJECT', properties: { scope: { type: 'STRING' }, turns: { type: 'ARRAY', items: LN_MF_TURN_SCHEMA } }, required: ['scope', 'turns'] } } }, required: ['parts'] }
 const LN_MF_INTENTS = ['GREET', 'ASK', 'ANSWER', 'PROPOSE', 'ACCEPT', 'DECLINE', 'COUNTER', 'INFORM', 'REACT', 'THANK', 'APOLOGISE', 'ACKNOWLEDGE', 'REQUEST', 'OFFER', 'FAREWELL']
 const LN_MF_REPLY_INTENTS = new Set(['ANSWER', 'ACCEPT', 'DECLINE', 'COUNTER', 'REACT', 'ACKNOWLEDGE', 'THANK'])
 function lnMfMakeTurn(la, x, id, sceneKey) {
   const sp = x && x.speaker === 'B' ? 'B' : 'A'
-  const made = _lnMakeTurn(la, { speaker: sp, text: String((x && x.text) || '').trim(), english: String((x && x.english) || '').trim(), intendedTargetIds: (x && x.targetIds) || [] }, sp)
+  const rawText = String((x && x.text) || '').trim(), cleanText = lnMfCleanText(la.lang, rawText)
+  const made = _lnMakeTurn(la, { speaker: sp, text: cleanText, english: String((x && x.english) || '').trim(), intendedTargetIds: (x && x.targetIds) || [] }, sp)
   const intent = String((x && x.intent) || '').toUpperCase().replace(/[^A-Z_]/g, '')
   return { id, scene: sceneKey, speaker: sp, addressee: sp === 'A' ? 'B' : 'A', intent: LN_MF_INTENTS.includes(intent) ? intent : (/\?|？|吗$|か$|ไหม/.test(String(x && x.text || '')) ? 'ASK' : 'INFORM'),
     asks: String((x && x.asks) || '').toUpperCase().replace(/[^A-Z_]/g, ''), referent: String((x && x.referent) || ''), action: String((x && x.action) || ''), object: String((x && x.object) || ''),
     context: String((x && x.context) || ''), expects: String((x && x.expects) || ''), respondsToRaw: Number.isFinite(+(x && x.respondsTo)) ? +x.respondsTo : 0,
-    targetIds: [...new Set(((x && x.targetIds) || []).map(Number).filter(Number.isFinite))], text: la.text(made.pair), english: String(made.pair.english || ''), pair: made.pair }
+    targetIds: [...new Set(((x && x.targetIds) || []).map(Number).filter(Number.isFinite))], text: la.text(made.pair), english: String(made.pair.english || ''), pair: made.pair,
+    ...(cleanText !== rawText ? { cleanedFrom: rawText } : {}) }
 }
 // numbers 1..N in order; respondsTo becomes a turn id (a reply to the PREVIOUS other-speaker turn when the model's number is
 // missing, forward-pointing or the same speaker)
@@ -28304,6 +28319,17 @@ function lnMfValidate(env, mp) {
     flat.forEach((tu, i) => {
       if (tu.intent === 'ACCEPT' && i > 0 && key(flat[i - 1].text)) agreed = key(flat[i - 1].text)
       else if (agreed && key(tu.text) && key(tu.text) !== agreed && !['PROPOSE', 'COUNTER', 'ASK'].includes(tu.intent)) add(7, 'STATE_CONTRADICTION', [tu], 'the agreed time was ' + agreed + ', this turn says ' + key(tu.text) + ': "' + tu.text + '"') }) }
+  // v695 · an agreed DAY stays agreed (live v694 Japanese: じゃ、今日あそこ行こう。 — いいよ、行こう。 then the next situation opened
+  // with 明日、行かない？ — "they just agreed to go today", found by the audit only in the last round)
+  { const DK = LN_MF_DAYKEY[lang], day = t => (String(t || '').match(DK || /x^/) || [])[0] || null; let agreed = null, at = null
+    flat.forEach((tu, i) => { const d = day(tu.text)
+      if (tu.intent === 'ACCEPT' && i > 0) { const q = flat.find(x => x.id === tu.respondsToId) || flat[i - 1]; const dq = d || day(q && q.text); if (dq && ['PROPOSE', 'COUNTER', 'ASK'].includes(q && q.intent)) { agreed = dq; at = tu } }
+      // only a NEW proposal for another day (PROPOSE / COUNTER, or a yes / no question such as 明日、行ける？) — asking how or where
+      // about another day (今日、何で帰る？ after うん、明日また来る。) is not a change of plan
+      else if (agreed && d && d !== agreed && !LN_MF_PAST_DAY[lang].test(d) && (['PROPOSE', 'COUNTER'].includes(tu.intent) || (tu.intent === 'ASK' && (!tu.asks || tu.asks === 'YESNO'))) && !(LN_MF_REASON_RE[lang] || /x^/).test(tu.text))
+        add(7, 'STATE_CONTRADICTION', [tu], 'the plan for ' + agreed + ' was agreed at "' + at.text + '"; this turn proposes ' + d + ' with no reason — "' + tu.text + '"') }) }
+  // v695 · the per-situation turn reserve is a PLANNING budget (local check + replan) and a REPAIR limit (lnMfScopes / lnMfApply:
+  // no add past the reserve, no patch may grow a situation past its budget); the whole plan's hard limit stays TURN_BUDGET 24–44
   // a plan inside the turn budget (24–44), and a turn that repeats a REJECTED sentence or relationship is rejected at once
   const n = flat.length
   if (n < env.turnsMin || n > env.turnsMax) add(8, 'TURN_BUDGET', [], n + ' turns — the conversation must have ' + env.turnsMin + '–' + env.turnsMax)
@@ -28397,10 +28423,17 @@ function lnMfTargetRows(env, ids) {
 // without a reply"). Now each situation is its own small request with a compact turn format, planned in order with the
 // earlier situations as context; a technical failure retries THAT situation only and every situation already planned is
 // kept. A cut-off reply is a TECHNICAL failure (fault 9): it is never parsed, validated or repaired into a plan.
+// v695: a separate pron field — without one the model wrote the romanisation into the sentence (live v694 Mandarin repairs:
+// "我工作了。(wǒ gōngzuò le.)" counted as 16–28 words with Latin script)
 const LN_MF_SCENE_TURN_SCHEMA = { type: 'OBJECT', properties: { speaker: { type: 'STRING' }, intent: { type: 'STRING' }, asks: { type: 'STRING' }, respondsTo: { type: 'INTEGER' },
-  about: { type: 'STRING' }, object: { type: 'STRING' }, targetIds: { type: 'ARRAY', items: { type: 'INTEGER' } }, text: { type: 'STRING' }, english: { type: 'STRING' } }, required: ['speaker', 'intent', 'text', 'english', 'targetIds'] }
+  about: { type: 'STRING' }, object: { type: 'STRING' }, targetIds: { type: 'ARRAY', items: { type: 'INTEGER' } }, text: { type: 'STRING' }, pron: { type: 'STRING' }, english: { type: 'STRING' } }, required: ['speaker', 'intent', 'text', 'english', 'targetIds'] }
 const LN_MF_SCENE_SCHEMA = { type: 'OBJECT', properties: { where: { type: 'STRING' }, turns: { type: 'ARRAY', items: LN_MF_SCENE_TURN_SCHEMA } }, required: ['turns'] }
-const LN_MF_SCENE_MAX_TOKENS = 2000, LN_MF_SCENE_ATTEMPTS = 2
+// v695: 2700 (cap 8100 with adaptive thinking) — live v694 Thai and Mandarin S1 were cut off once at 6000 (thinking, not text)
+const LN_MF_SCENE_MAX_TOKENS = 2700, LN_MF_SCENE_ATTEMPTS = 2
+// v695 turn reservation: the situations are planned toward ~34 turns in all (each situation at most its aim + 2, and the running
+// total at most the aims so far + 4, so the assembled plan stays ≤ ~38), so the global
+// repairs have room inside the hard 24–44 contract instead of starting at the ceiling (live v694: 41 and 44 turns planned)
+const LN_MF_TURN_GOAL = 34, LN_MF_TURN_RESERVE = 40, LN_MF_TURN_SLACK = 4
 // questions that can only be answered with a number (a price, a clock time, a quantity, a length of time, an age)
 const LN_MF_NUMBER_ASKS = new Set(['PRICE', 'CLOCK_TIME', 'QUANTITY', 'DURATION', 'AGE'])
 const LN_MF_NUMBER_ASK_RE = { ja: /何時|いくら|何分|何歳|いくつ|何人|何円|何日|何回/, zh: /几点|多少|几个|几岁|多久|几天|几块|几次/, th: /กี่|เท่าไหร่|เท่าไร/ }
@@ -28413,22 +28446,53 @@ function lnMfHasNumbers(env) {
 }
 // A3 · an INFEASIBLE INTENTION: a turn (lesson word or not) asking for something the learner has no words to answer
 function lnMfInfeasibleAsk(env, tu) {
-  if (lnMfHasNumbers(env)) return null
   const lang = env.la.lang, txt = String(tu.text || '')
+  const ph = txt.match(LN_MF_PHONE_ASK_RE[lang] || /x^/)
+  if (ph) return 'the digits of a phone number — ask for it and answer with a promise to send it'
+  if (lnMfHasNumbers(env)) return null
   const byContract = (tu.targetIds || []).map(id => env.byId.get(id)).map(t => t && lnMfContract(lang, t.surface)).find(c => c && LN_MF_NUMBER_ASKS.has(c.asks))
   const m = txt.match(LN_MF_NUMBER_ASK_RE[lang] || /x^/)
   if (!byContract && !m) return null
   if (lang === 'th' && m && !/[?？]|ไหม|คะ$|ครับ$/.test(txt) && tu.intent !== 'ASK') return null
   return (m ? m[0] : '') || (byContract && byContract.asks)
 }
+// v695: an exact phone number forces a string of digits (live v694 Thai: "what is your phone number?" → the audit wanted the digits
+// → the repair wrote ศูนย์แปด เก้าสี่ สอง with an untaught เบอร์ and 10 words). Ask FOR it and answer with a promise instead.
+const LN_MF_PHONE_ASK_RE = { th: /เบอร์\S*?(คือ|เป็น)?\s*(อะไร|เท่าไหร่|เท่าไร)/, ja: /電話番号(は|って)?\s*(何|なに|なん)/, zh: /电话(号码)?(是)?多少/ }
+const LN_MF_PHONE_RULE = '- To exchange phone numbers, one person ASKS FOR the number (may I have …?) and the other agrees and promises to send it — nobody recites the digits.\n'
+// v695: the sentence field holds the target-language sentence ONLY (pronunciation has its own field)
+const LN_MF_TEXT_FIELD_RULE = la => 'text (' + la.label + ' only — no romanisation, no pinyin / reading, no speaker label, no notes), pron (its romanisation, optional), english.'
+// a romanisation, speaker label or note that slipped into the sentence field is removed deterministically; whatever is left is
+// validated like any other sentence (a Latin letter that remains still fails as SCRIPT_CONTAMINATION)
+const LN_MF_LATIN_RE = /[A-Za-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü]/
+function lnMfCleanText(lang, text) {
+  let t = String(text || '').trim()
+  if (!['th', 'ja', 'zh'].includes(lang)) return t
+  t = t.replace(/^\s*(?:speaker\s*)?[AB]\s*[:：]\s*/i, '')
+  t = t.replace(/\s*[（(][^()（）]*[)）]/g, m => LN_MF_LATIN_RE.test(m) ? '' : m)
+  t = t.replace(/([。？！?!.…]|ครับ|ค่ะ|คะ|นะ)\s+[A-Za-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü][^\u0E00-\u0E7F\u3040-\u30FF\u4E00-\u9FFF]*$/, '$1')
+  t = t.replace(/\s+[—–-]\s*(note|i\.e\.|meaning)\b.*$/i, '')
+  return t.trim()
+}
 const LN_MF_NO_NUMBERS_RULE = '- The learner has NO number words: never ask what time, how much, how many, how long or how old (nobody could answer). Ask about a day (today / tomorrow), a place, a choice, a yes / no, an opinion instead.\n'
 function lnMfSceneBudget(env, g, k) {
-  const total = Math.max(1, env.targets.length), n = g.scenes[k].targetIds.length
-  const aim = Math.max(3, Math.min(10, Math.round(LISTENING_CONVERSATION_TURNS.max * n / total)))
-  return { min: Math.max(2, aim - 2), max: Math.min(12, aim + 2) }
+  if (!g._budgets) {
+    const raw = g.scenes.map(x => 1 + x._assigned0)
+    const scale = LN_MF_TURN_GOAL / Math.max(1, raw.reduce((a, b) => a + b, 0))
+    g._budgets = raw.map(r => { const aim = Math.max(3, Math.min(9, Math.round(r * scale))); return { aim, min: Math.max(2, aim - 2), max: aim + 2 } })
+  }
+  return g._budgets[k]
+}
+// what situation k may use GIVEN the situations planned before it: its own max, reduced when the earlier ones overspent (the
+// running total stays ≤ the aims so far + LN_MF_TURN_SLACK) — but never below its own aim, so a late situation can still carry its words
+function lnMfSceneAllowance(env, g, k, prior) {
+  const b = lnMfSceneBudget(env, g, k), used = (prior || []).reduce((a, x) => a + x.turns.length, 0)
+  const cumMax = g.scenes.slice(0, k + 1).reduce((a, x, j) => a + lnMfSceneBudget(env, g, j).aim, 0) + LN_MF_TURN_SLACK
+  const max = Math.max(b.aim, Math.min(b.max, cumMax - used))
+  return { aim: b.aim, min: Math.min(b.min, max), max }
 }
 function lnMfScenePrompt(env, g, k, prior, fix) {
-  const { la, ctx, extra } = env, cc = ctx.complexity, s = g.scenes[k], b = lnMfSceneBudget(env, g, k)
+  const { la, ctx, extra } = env, cc = ctx.complexity, s = g.scenes[k], b = lnMfSceneAllowance(env, g, k, prior)
   const scaffold = (() => { try { return languageFunctionScaffold(la.lang).forms.join(' ') } catch (e) { return '' } })()
   const rel = ctx.jaStyle ? (ctx.jaStyle === 'polite' ? 'acquaintances (adults who are not close)' : ctx.jaStyle === 'casual' ? 'close friends' : 'adult friends') : 'friends'
   const before = prior.flatMap(p => p.turns), unheard = lnMfUnheardSoFar(env, prior)
@@ -28443,14 +28507,14 @@ function lnMfScenePrompt(env, g, k, prior, fix) {
     'ALLOWED VOCABULARY (the ONLY other content words you may use): ' + lnMfVocabRows(env).join(' · ') + '\n' +
     (scaffold ? 'GRAMMAR / FUNCTION WORDS you may use: ' + scaffold + '\n' : '') +
     'RULES:\n' +
-    '- ' + b.min + '–' + b.max + ' turns. A and B alternate. Every turn makes sense for these two people at this moment.\n' +
+    '- ' + b.min + '–' + b.max + ' turns (never more than ' + b.max + '). A and B alternate. Every turn makes sense for these two people at this moment.\n' +
     '- A reply ANSWERS the turn before it: what time → a clock time · how much → an amount · why → a real reason · where → a place · which → one of the options. Never answer a question with something it did not ask.\n' +
-    (lnMfHasNumbers(env) ? '' : LN_MF_NO_NUMBERS_RULE) +
+    (lnMfHasNumbers(env) ? '' : LN_MF_NO_NUMBERS_RULE) + LN_MF_PHONE_RULE +
     '- One lesson word in a turn is fine; never more than 3. Never force unrelated lesson words into one sentence — give a word its own short exchange.\n' +
     '- Use ONLY the lesson words, the allowed vocabulary and the grammar words. If an idea needs another word, choose a different idea. No narration, no names.\n' +
     (fix ? 'YOUR FIRST VERSION OF S' + (k + 1) + ' HAD THESE DEFECTS — write a NEW version that has none of them (a different idea where an idea was the problem):\n' + fix.map(x => '- ' + x).join('\n') + '\n' : '') +
-    'For each turn: speaker (A | B), intent (' + LN_MF_INTENTS.join(' | ') + '), asks (for ASK: TIME | PLACE | PERSON | REASON | METHOD | STATE | THING | CHOICE | YESNO' + (lnMfHasNumbers(env) ? ' | CLOCK_TIME | PRICE | QUANTITY | DURATION | AGE' : '') + ', else ""), respondsTo (the number of the turn IN THIS SITUATION it answers, 0 if none), about (who / what it is about, 1–3 English words), object (English or ""), targetIds (the T numbers it uses), text (' + la.label + '), english.\n' +
-    'Reply ONLY with JSON: {"where":"...","turns":[{"speaker":"A","intent":"ASK","asks":"PLACE","respondsTo":0,"about":"","object":"","targetIds":[],"text":"...","english":"..."}]}'
+    'For each turn: speaker (A | B), intent (' + LN_MF_INTENTS.join(' | ') + '), asks (for ASK: TIME | PLACE | PERSON | REASON | METHOD | STATE | THING | CHOICE | YESNO' + (lnMfHasNumbers(env) ? ' | CLOCK_TIME | PRICE | QUANTITY | DURATION | AGE' : '') + ', else ""), respondsTo (the number of the turn IN THIS SITUATION it answers, 0 if none), about (who / what it is about, 1–3 English words), object (English or ""), targetIds (the T numbers it uses), ' + LN_MF_TEXT_FIELD_RULE(la) + '\n' +
+    'Reply ONLY with JSON: {"where":"...","turns":[{"speaker":"A","intent":"ASK","asks":"PLACE","respondsTo":0,"about":"","object":"","targetIds":[],"text":"...","pron":"","english":"..."}]}'
 }
 // one situation → scene object { key, situation, title, where, targetIds, turns } (turn n / respondsTo numbered after `offset`)
 function lnMfSceneFromReply(env, g, k, raw, offset, idPrefix) {
@@ -28478,19 +28542,24 @@ async function lnMfScenePlanCall(env, g, k, prior, fix) {
       const msg = String(e && e.message || e), cut = /MAX_TOKENS|cut off/i.test(msg)
       if (cut) { mf.truncations++; log && log('⛔ SCENE_PLAN_TRUNCATED ' + key + ' attempt ' + attempt + ' — the reply was cut off: a TECHNICAL failure (fault 9); a cut-off plan is never parsed, validated or kept') }
       else log && log('⚠ SCENE_PLAN_UNREADABLE ' + key + ' attempt ' + attempt + ' — ' + msg.slice(0, 80) + ' (fault 9 TECHNICAL)')
-      note = cut ? '\nYour previous reply was too long and was cut off. Write at most ' + lnMfSceneBudget(env, g, k).max + ' turns, short English, and return ONLY the JSON object.' : '\nYour previous reply was not valid JSON. Return ONLY the JSON object.'
+      note = cut ? '\nYour previous reply was too long and was cut off. Write at most ' + lnMfSceneAllowance(env, g, k, prior).max + ' turns, short English, and return ONLY the JSON object.' : '\nYour previous reply was not valid JSON. Return ONLY the JSON object.'
     }
   }
   return null
 }
-// the deterministic checks of ONE new situation, in the context of the situations before it (vocabulary, grammar, meaning
-// rules, answer types, infeasible questions, ≤3 targets, its own lesson words heard) — no model call
-// (a lesson word the situation did not use is NOT a local defect: a later situation may still use it — the next request lists
-// it as "not heard yet", and the global check adds an exchange for any word still unheard at the end)
+// the deterministic checks of ONE new situation, in the context of the situations before it — no model call. v695: the situation
+// must PROVE its assignment: every lesson word assigned to it heard by its end (in it or earlier), its own turn budget, plus
+// vocabulary, grammar, meaning rules, answer types, infeasible questions, ≤3 targets, speakers, hard length. Live v694 Thai S1
+// "passed" without นักท่องเที่ยว / พวกคุณ (v694 skipped missing words locally) and the global "add" repair then broke the 44 limit.
 const LN_MF_LOCAL_SKIP = new Set(['TARGET_MISSING', 'TURN_BUDGET', 'SINGLETON_SCENE', 'SCENE_FRAGMENTATION', 'ONE_SPEAKER', 'EARLY_GOODBYE', 'CONTINUITY'])
-function lnMfSceneLocalIssues(env, scenes, sc) {
+function lnMfSceneLocalIssues(env, scenes, sc, g, k) {
   const mp = lnMfRenumber({ scenes: scenes.concat([sc]) })
-  return lnMfValidate(env, mp).issues.filter(is => !LN_MF_LOCAL_SKIP.has(is.code) && is.scene === sc.key)
+  const out = lnMfValidate(env, mp).issues.filter(is => !LN_MF_LOCAL_SKIP.has(is.code) && is.code !== 'SCENE_TURN_BUDGET' && is.scene === sc.key)
+  const missing = lnMfUnheardSoFar(env, scenes.concat([sc])).filter(id => sc.targetIds.includes(id))
+  missing.forEach(id => { const t = env.byId.get(id); out.push({ fault: 8, code: 'SCENE_TARGET_MISSING', turnIds: [], scene: sc.key, targetIds: [id], detail: (t ? t.surface + ' (' + t.gloss + ')' : id) + ' is assigned to ' + sc.key + ' but is not heard in it' }) })
+  const b = g ? lnMfSceneAllowance(env, g, k, scenes) : null
+  if (b && sc.turns.length > b.max) out.push({ fault: 8, code: 'SCENE_TURN_BUDGET', turnIds: [], scene: sc.key, targetIds: [], detail: sc.turns.length + ' turns — ' + sc.key + ' may have at most ' + b.max + ' (the conversation is planned toward ~' + LN_MF_TURN_GOAL + ' turns so that repairs stay inside 44)' })
+  return out
 }
 function lnMfUnheardSoFar(env, prior) {
   const texts = prior.flatMap(p => p.turns.map(t => t.text))
@@ -28499,23 +28568,38 @@ function lnMfUnheardSoFar(env, prior) {
 async function lnMfPlanByScenes(env, g) {
   const { log } = env, mf = env.mf
   const scenes = []
+  g.scenes.forEach(x => { if (x._assigned0 == null) x._assigned0 = x.targetIds.length })
   for (let k = 0; k < g.scenes.length; k++) {
     let sc = await lnMfScenePlanCall(env, g, k, scenes, null)
     if (!sc) return { mp: null, kept: scenes, failed: 'S' + (k + 1) }
-    let local = lnMfSceneLocalIssues(env, scenes, sc)
+    let local = lnMfSceneLocalIssues(env, scenes, sc, g, k)
     if (local.length) {
       // recovery level "replan the scene": once, with its defects named; the version with fewer defects is kept and the
       // global validation / audit / repair rounds judge it again
       log && log('🔎 SCENE_LOCAL_CHECK ' + sc.key + ' FAIL ' + local.length + ': ' + local.slice(0, 4).map(is => is.code + ' — ' + String(is.detail || '').slice(0, 90)).join(' · '))
       const sc2 = await lnMfScenePlanCall(env, g, k, scenes, local.map(is => (LN_MF_FAULTS[is.fault] || 'ISSUE') + ' ' + is.code + ': ' + String(is.detail || '').slice(0, 200)))
-      if (sc2) { const l2 = lnMfSceneLocalIssues(env, scenes, sc2)
+      if (sc2) { const l2 = lnMfSceneLocalIssues(env, scenes, sc2, g, k)
         log && log('🔎 SCENE_LOCAL_CHECK ' + sc.key + ' (replan) ' + (l2.length ? 'FAIL ' + l2.length + ': ' + l2.slice(0, 4).map(is => is.code + ' — ' + String(is.detail || '').slice(0, 90)).join(' · ') : 'PASS') + (l2.length < local.length ? ' · the replanned version is kept' : ' · the first version is kept (the replan was not better)'))
         if (l2.length < local.length) {
           // the defective sentences of the discarded version may not come back in a later repair
           local.forEach(is => { if ([3, 4, 5, 6].includes(is.fault)) is.turnIds.forEach(id => { const tu = sc.turns.find(t => t.id === id)
             if (tu && !(is.fault === 6 && tu.intent === 'ASK' && is.code !== 'INFEASIBLE_INTENTION') && !sc2.turns.some(t => lnMfNorm(t.text) === lnMfNorm(tu.text))) mf.rejectedTexts.set(lnMfNorm(tu.text), is.fault) }) })
-          sc = sc2; local = l2 } }
-    } else log && log('🔎 SCENE_LOCAL_CHECK ' + sc.key + ' PASS · ' + sc.turns.length + ' turns')
+          sc = sc2; sc._replanned = true; local = l2 } }
+      // a lesson word this situation still does not carry MOVES to a later situation that fits it (explicit, logged) — the
+      // situation is then judged on what it keeps; in the last situation there is nowhere to move it
+      const miss = local.filter(is => is.code === 'SCENE_TARGET_MISSING').flatMap(is => is.targetIds)
+      miss.forEach(id => { const p = env.mfProfiles.get(id), later = g.scenes.slice(k + 1)
+        if (!later.length || !p) return
+        const dest = later.map(x => [x, lnMfSituationScore(p, LN_MF_SITUATIONS.find(y => y.key === x.situation) || LN_MF_SITUATIONS[0])]).sort((a, b) => b[1] - a[1])[0][0]
+        g.scenes[k].targetIds = g.scenes[k].targetIds.filter(x => x !== id); sc.targetIds = sc.targetIds.filter(x => x !== id); dest.targetIds.push(id); sc._moved = true
+        log && log('🔁 LISTENING_TARGET_REASSIGNED ' + id + ' ' + (env.byId.get(id) || {}).surface + ' ' + sc.key + ' → S' + (g.scenes.indexOf(dest) + 1) + ' (' + dest.situation + ') — ' + sc.key + ' did not carry it after a replan') })
+      if (miss.length) local = lnMfSceneLocalIssues(env, scenes, sc, g, k)
+    }
+    // the situation's STATUS is kept: a situation that still fails is NOT approved — it goes into the conversation marked FAILED
+    // and only the global validation of the whole plan (the same checks) can clear it
+    sc.status = !local.length ? (sc._replanned ? 'PASS_AFTER_REPLAN' : 'PASS') + (sc._moved ? '_TARGETS_MOVED' : '') : 'FAILED'
+    sc.localIssues = local.map(is => is.code)
+    log && log('🔎 SCENE_LOCAL_CHECK ' + sc.key + ' ' + (sc.status === 'FAILED' ? 'STATUS=FAILED (' + local.length + ': ' + local.slice(0, 3).map(is => is.code).join(', ') + ') — kept for global recovery, NOT approved' : 'STATUS=' + sc.status) + ' · ' + sc.turns.length + ' turns (budget ' + lnMfSceneAllowance(env, g, k, scenes).min + '–' + lnMfSceneAllowance(env, g, k, scenes).max + ')')
     scenes.push(sc)
   }
   return { mp: lnMfRenumber({ scenes }), kept: scenes, failed: null }
@@ -28549,10 +28633,37 @@ function lnMfScopes(env, mp, issues) {
     if (ex) { ids.forEach(id => { if (!ex.turnIds.includes(id)) ex.turnIds.push(id) }); ex.issues.push(issue); if (rank[kind] > rank[ex.kind]) ex.kind = kind; return ex }
     const s = { id: 'x' + (scopes.length + 1), kind, turnIds: ids, issues: [issue], scene: tus[0] && tus[0].scene }; scopes.push(s); return s
   }
-  const rank = { line: 1, exchange: 2, intention: 3, scene: 4 }
+  const rank = { line: 1, exchange: 2, intention: 3, boundary: 3.5, scene: 4 }
+  const budgetMax = sc => { const k = mp.scenes.indexOf(sc), b = env.mfGrouping && env.mfGrouping._budgets && env.mfGrouping._budgets[k]; return b ? b.max + 1 : 99 }
+  let pendingAdds = 0
+  // v695: a lesson word still unheard is ADDED only when the conversation and its situation have room; otherwise a target-free
+  // exchange of that situation is rewritten to carry it, with the same number of turns (live v694 Thai: two "add" parts took
+  // 41 turns to 45 — over the 44 contract)
+  const addOrRewrite = (dest, id, is) => {
+    const room = flat.length + 2 * (pendingAdds + 1) <= LN_MF_TURN_RESERVE && dest.turns.length + 2 <= budgetMax(dest)
+    if (room) { pendingAdds++
+      const last = dest.turns[dest.turns.length - 1], before = dest.turns.length > 1 && last && last.intent === 'FAREWELL' ? dest.turns[dest.turns.length - 2] : last
+      scopes.push({ id: 'x' + (scopes.length + 1), kind: 'add', turnIds: [], insertAfter: before ? before.id : null, scene: dest.key, targetIds: [id], issues: [is] }); return }
+    const pairs = sc => sc.turns.map((tu, j) => [tu, sc.turns[j + 1]]).filter(([q, r]) => r && !q.targetIds.length && !r.targetIds.length && !['GREET', 'FAREWELL'].includes(q.intent) && !['GREET', 'FAREWELL'].includes(r.intent) &&
+      !scopes.some(s => s.turnIds.includes(q.id) || s.turnIds.includes(r.id)))
+    // no target-free exchange: an exchange that carries few lesson words is rewritten instead (its words are protected — the
+    // patch must keep them, ≤ 3 per turn); an add past the reserve is the LAST resort and only while the plan stays ≤ 44
+    const light = sc => sc.turns.map((tu, j) => [tu, sc.turns[j + 1]]).filter(([q, r]) => r && q.speaker !== r.speaker && q.targetIds.length + r.targetIds.length <= 2 && !['GREET', 'FAREWELL'].includes(q.intent) && !['GREET', 'FAREWELL'].includes(r.intent) &&
+      !scopes.some(s => s.turnIds.includes(q.id) || s.turnIds.includes(r.id))).sort((a, b) => (a[0].targetIds.length + a[1].targetIds.length) - (b[0].targetIds.length + b[1].targetIds.length))
+    // the situations in order of how well they fit the word (its home first on a tie)
+    const prof = env.mfProfiles.get(id), fit = sc => prof ? lnMfSituationScore(prof, LN_MF_SITUATIONS.find(x => x.key === sc.situation) || LN_MF_SITUATIONS[0]) : 0
+    const order = mp.scenes.slice().sort((a, b) => (fit(b) - fit(a)) || ((b === dest) - (a === dest)))
+    const cand = pairs(dest).concat(...mp.scenes.filter(x => x !== dest).map(pairs))[0] || [].concat(...order.map(light))[0]
+    if (!cand && flat.length + 2 * (pendingAdds + 1) > env.turnsMax) { env.log && env.log('📏 TURN_RESERVE ' + flat.length + ' turns — no exchange can take ' + (byId.get(id) || {}).surface + ' and an add would pass ' + env.turnsMax + ': not added (the word stays missing → the plan is not approved)'); return }
+    if (!cand) { pendingAdds++; scopes.push({ id: 'x' + (scopes.length + 1), kind: 'add', turnIds: [], insertAfter: (dest.turns[dest.turns.length - 1] || {}).id || null, scene: dest.key, targetIds: [id], issues: [is] }); return }
+    const s = scopeFor('exchange', cand, { ...is, detail: is.detail + ' — rewrite this exchange so it ALSO uses ' + (byId.get(id) || {}).surface + ', with exactly the same number of turns (the conversation has no room for more)' })
+    s.mustInclude = (s.mustInclude || []).concat([id])
+    env.log && env.log('📏 TURN_RESERVE ' + flat.length + ' turns — ' + (byId.get(id) || {}).surface + ' is fitted into an existing exchange (' + cand.map(t => 'T' + t.n).join(',') + ') instead of adding turns')
+  }
   issues.forEach(is => {
     const tus = is.turnIds.map(at).filter(Boolean)
     if (is.fault === 9) return
+    if (is.code === 'SCENE_TURN_BUDGET' && tus.length) { scopeFor('scene', tus, is); return }
     if (is.fault === 8 || !tus.length) {
       if (is.code === 'MAX_TARGETS_PER_TURN' && tus.length) { scopeFor('exchange', tus.flatMap(exchangeOf), is); return }
       if (is.code === 'TURN_BUDGET') { const over = flat.length > env.turnsMax
@@ -28567,8 +28678,7 @@ function lnMfScopes(env, mp, issues) {
           const p = env.mfProfiles.get(id), alt = moves ? mp.scenes.filter(s => s !== home).map(s => [s, lnMfSituationScore(p, LN_MF_SITUATIONS.find(x => x.key === s.situation) || LN_MF_SITUATIONS[0])]).sort((a, b) => b[1] - a[1])[0] : null
           const dest = alt && alt[1] >= 2 ? alt[0] : home
           if (dest !== home) { home.targetIds = home.targetIds.filter(x => x !== id); dest.targetIds.push(id); env.log && env.log('🔁 LISTENING_TARGET_MOVED ' + id + ' ' + (byId.get(id) || {}).surface + ' ' + home.key + ' → ' + dest.key + ' (GROUPING recovery — its use in ' + home.key + ' kept failing)') }
-          const last = dest.turns[dest.turns.length - 1], before = dest.turns.length > 1 && last && last.intent === 'FAREWELL' ? dest.turns[dest.turns.length - 2] : last
-          scopes.push({ id: 'x' + (scopes.length + 1), kind: 'add', turnIds: [], insertAfter: before ? before.id : null, scene: dest.key, targetIds: [id], issues: [is] }) })
+          addOrRewrite(dest, id, is) })
       } else if (is.code === 'SINGLETON_SCENE' || is.code === 'SCENE_FRAGMENTATION' || is.code === 'ONE_SPEAKER') {
         mp.scenes.filter(s => s.turns.length < 2).forEach(s => scopeFor('scene', s.turns, is))
       }
@@ -28582,6 +28692,17 @@ function lnMfScopes(env, mp, issues) {
     // the same failure signature again → one rung higher per repeat
     const rung = Math.min(LN_MF_LADDER.length - 1, LN_MF_LADDER.indexOf(kind) + (is.repeats || 0))
     kind = LN_MF_LADDER[Math.max(rung, LN_MF_LADDER.indexOf(kind))]
+    // v695: a transition between two situations is a DISCOURSE-STATE fault at their boundary: the end of the earlier situation and
+    // the start of the later one are repaired together (live v694 Japanese: "agreed today" at the end of S3 vs "tomorrow?" at the
+    // start of S4 — v694 could only rewrite the start of S4, which cannot undo the earlier agreement)
+    if (is.code === 'SCENE_TRANSITION' || (is.code === 'STATE_CONTRADICTION' && tus[0])) {
+      const k = mp.scenes.findIndex(x => x.key === tus[0].scene), cur = mp.scenes[k], prev = mp.scenes[k - 1]
+      const head = is.code === 'SCENE_TRANSITION' ? cur.turns.slice(0, 2) : exchangeOf(tus[0])
+      const tail = prev && (is.code === 'SCENE_TRANSITION' || head[0] === cur.turns[0] || head[0] === cur.turns[1]) ? prev.turns.slice(-2) : []
+      // the boundary is the first two recovery levels of a transition fault (a whole-scene rewrite only after it failed twice), and
+      // the extra boundary round is always a boundary repair
+      if ((is.repeats || 0) < 2 || mf.boundaryRound) { scopeFor('boundary', tail.concat(head), is); return }
+    }
     if (kind === 'reassign') {
       // top rung: the lesson word(s) of a part that failed at scene level move to another situation that fits them; this
       // situation is rewritten without forcing them (never silently lost: an "add" part must make each one heard there)
@@ -28591,57 +28712,102 @@ function lnMfScopes(env, mp, issues) {
         if (!alt || alt[1] < 2) return
         home.targetIds = home.targetIds.filter(x => x !== id); alt[0].targetIds.push(id); moved.push(id); mf.released.add(id)
         env.log && env.log('🔁 LISTENING_TARGET_REASSIGNED ' + id + ' ' + (byId.get(id) || {}).surface + ' ' + home.key + ' → ' + alt[0].key + ' (the same failure after a scene replan: ' + is.code + ')')
-        const last = alt[0].turns[alt[0].turns.length - 1], before = alt[0].turns.length > 1 && last && last.intent === 'FAREWELL' ? alt[0].turns[alt[0].turns.length - 2] : last
-        scopes.push({ id: 'x' + (scopes.length + 1), kind: 'add', turnIds: [], insertAfter: before ? before.id : null, scene: alt[0].key, targetIds: [id], issues: [{ ...is, fault: 8, code: 'TARGET_REASSIGNED', detail: (byId.get(id) || {}).surface + ' moved here from ' + home.key }] }) })
+        addOrRewrite(alt[0], id, { ...is, fault: 8, code: 'TARGET_REASSIGNED', detail: (byId.get(id) || {}).surface + ' moved here from ' + home.key }) })
       const sc = scopeFor('scene', flat.filter(t => t.scene === tus[0].scene), { ...is, detail: is.detail + (moved.length ? ' — ' + moved.map(id => (byId.get(id) || {}).surface).join(', ') + ' moved to another situation: do not use it here' : '') })
       sc.release = (sc.release || []).concat(moved)
       return
     }
-    const span = kind === 'line' ? tus : kind === 'scene' ? (is.code === 'SCENE_TRANSITION' ? tus : flat.filter(t => t.scene === tus[0].scene)) : tus.flatMap(exchangeOf)
+    const span = kind === 'line' ? tus : kind === 'scene' ? flat.filter(t => t.scene === tus[0].scene) : tus.flatMap(exchangeOf)
     scopeFor(kind, span, is)
   })
   scopes.forEach(s => { if (s.kind === 'add') return
     s.turnIds.sort((a, b) => at(a).n - at(b).n)
     const first = at(s.turnIds[0]), last = at(s.turnIds[s.turnIds.length - 1])
     s.turnIds = flat.filter(t => t.n >= first.n && t.n <= last.n).map(t => t.id)            // a contiguous span
-    s.targetIds = [...new Set(s.turnIds.flatMap(id => at(id).targetIds))].filter(id => byId.has(id) && !(s.release || []).includes(id))
-    s.scene = first.scene })
+    s.targetIds = [...new Set(s.turnIds.flatMap(id => at(id).targetIds).concat(s.mustInclude || []))].filter(id => byId.has(id) && !(s.release || []).includes(id))
+    s.scene = first.scene
+    s.scenes = [...new Set(s.turnIds.map(id => at(id).scene))] })
   return scopes
 }
-async function lnMfRepairCall(env, mp, scopes, round) {
-  const { la, log, tel, o, byId, ctx, extra } = env, mf = env.mf
+// v695 — BOUNDED REPAIR REQUESTS. A repair reply holds only the changed turns of a few parts, in the compact turn format, and a
+// request never carries more than ~10 output turns (live v694 Thai round 2: four parts incl. two whole situations, every turn in
+// the 14-field plan format, in ONE reply → cut off at 10500 output tokens, twice, the same request). A cut-off batch is SPLIT
+// and its halves are requested separately; a single part that is cut off is retried once with a shorter instruction, then left
+// unrepaired (technical) while every other part goes on.
+const LN_MF_REPAIR_SCHEMA = { type: 'OBJECT', properties: { parts: { type: 'ARRAY', items: { type: 'OBJECT', properties: { scope: { type: 'STRING' }, turns: { type: 'ARRAY', items: LN_MF_SCENE_TURN_SCHEMA } }, required: ['scope', 'turns'] } } }, required: ['parts'] }
+const LN_MF_REPAIR_MAX_TOKENS = 2500, LN_MF_REPAIR_BATCH_TURNS = 10
+function lnMfRepairSize(s) { return s.kind === 'add' ? 2 : s.turnIds.length }
+function lnMfRepairPrompt(env, mp, scopes, note) {
+  const { la, byId, ctx, extra } = env, mf = env.mf
   const at = id => mp.flat.find(t => t.id === id)
   const rejected = [...mf.rejectedTexts.keys()].slice(-24)
   const lines = scopes.map(s => {
-    const head = '[' + s.id + '] ' + (s.kind === 'add' ? 'ADD to ' + s.scene + ' after turn ' + ((at(s.insertAfter) || {}).n || 0) + ' — a short natural exchange (2 turns)' : 'turns ' + s.turnIds.map(id => at(id).n).join(', ') + ' (' + s.kind + ')')
+    const ns = s.turnIds.map(id => at(id).n)
+    const head = '[' + s.id + '] ' + (s.kind === 'add' ? 'ADD to ' + s.scene + ' after turn ' + ((at(s.insertAfter) || {}).n || 0) + ' — a short natural exchange (2 turns)'
+      : s.kind === 'boundary' ? 'turns ' + ns.join(', ') + ' (the BOUNDARY between ' + s.scenes.join(' and ') + ': return exactly ' + ns.length + ' turns — the first ' + s.turnIds.filter(id => at(id).scene === s.scenes[0]).length + ' end ' + s.scenes[0] + ', the rest start ' + (s.scenes[1] || s.scenes[0]) + ')'
+      : 'turns ' + ns.join(', ') + ' (' + s.kind + (s.mustInclude ? ' — exactly ' + ns.length + ' turns' : '') + ')')
     const why = s.issues.map(is => (LN_MF_FAULTS[is.fault] || 'ISSUE') + ': ' + String(is.detail || '').slice(0, 220)).join(' · ')
     const fault = Math.max(...s.issues.map(is => is.fault))
-    const todo = (s.kind === 'add' ? (s.targetIds.length ? LN_MF_RECOVERY[8] : 'add a short natural exchange (2 turns) that fits here') : s.kind === 'intention' ? LN_MF_RECOVERY[5] : s.kind === 'scene' ? LN_MF_RECOVERY[7] + (s.issues.some(x => x.code === 'SCENE_INCOHERENT') ? ' — rewrite this whole situation as one plausible everyday moment' : '') : LN_MF_RECOVERY[fault] || LN_MF_RECOVERY[1]) +
-      (s.issues.some(x => x.code === 'INFEASIBLE_INTENTION') ? ' — REMOVE the question that needs a number (the learner has none): the speakers want something else here (a day, a choice, a yes / no, an opinion)' : '') +
+    const todo = (s.mustInclude && s.mustInclude.length ? 'rewrite these ' + s.turnIds.length + ' turns so they ALSO use ' + s.mustInclude.map(id => (byId.get(id) || {}).surface).join(', ') + ' — exactly ' + s.turnIds.length + ' turns, the same speakers in the same order, and every lesson word already in them kept' : s.kind === 'add' ? (s.targetIds.length ? LN_MF_RECOVERY[8] : 'add a short natural exchange (2 turns) that fits here') : s.kind === 'intention' ? LN_MF_RECOVERY[5]
+      : s.kind === 'boundary' ? 'make the two situations consistent: what was agreed or said before must still hold — change the earlier agreement (e.g. do not fix the day yet), or what the later turns want, or add a short reason the authorised words allow'
+      : s.kind === 'scene' ? LN_MF_RECOVERY[7] + (s.issues.some(x => x.code === 'SCENE_INCOHERENT') ? ' — rewrite this whole situation as one plausible everyday moment' : '') : LN_MF_RECOVERY[fault] || LN_MF_RECOVERY[1]) +
+      (s.issues.some(x => x.code === 'INFEASIBLE_INTENTION') ? ' — REMOVE the question the learner cannot answer (a number / the digits of a phone number): the speakers want something else here (a day, a choice, a yes / no, asking FOR the number and a promise to send it)' : '') +
       (s.issues.some(x => (x.repeats || 0) >= 1) ? ' — this part already failed the same way before: do NOT write the same idea again, change what the speakers want to say' : '')
     const keep = (s.targetIds || []).map(id => { const t = byId.get(id), p = env.mfProfiles.get(id); return t ? t.surface + ' (T' + id + ', ' + t.gloss + (p && p.rule ? '; ' + p.rule : '') + ')' : '' }).filter(Boolean)
     return head + '\n   problem: ' + why + '\n   do: ' + todo + '\n   lesson words that must be heard in the new turns: ' + (keep.join(', ') || '(none)')
   })
-  const prompt = 'REPAIR parts of a planned ' + la.label + ' LISTENING conversation for a learner (' + (ctx.complexity ? ctx.complexity.belt + ', each turn ≤ ' + ctx.complexity.hardMax + ' ' + ctx.complexity.unitName : 'beginner') + '). Speakers: ' + la.speakerContract + (extra || '') + '\n' +
+  return 'REPAIR parts of a planned ' + la.label + ' LISTENING conversation for a learner (' + (ctx.complexity ? ctx.complexity.belt + ', each turn ≤ ' + ctx.complexity.hardMax + ' ' + ctx.complexity.unitName : 'beginner') + '). Speakers: ' + la.speakerContract + (extra || '') + '\n' +
     'THE WHOLE CONVERSATION (context — only the listed parts change; every other turn stays exactly as it is):\n' + lnMfConversationRows(mp, byId, null) + '\n\n' +
     'FIX THESE PARTS (keep the same speakers alternating; each new part must make sense, answer what it replies to, and lead naturally into the turn after it):\n' + lines.join('\n') + '\n' +
     (rejected.length ? 'NEVER reuse these rejected sentences (or the same idea with the same lesson words): ' + rejected.join(' · ') + '\n' : '') +
-    (lnMfHasNumbers(env) ? '' : LN_MF_NO_NUMBERS_RULE.replace(/^- /, '')) +
+    (lnMfHasNumbers(env) ? '' : LN_MF_NO_NUMBERS_RULE.replace(/^- /, '')) + LN_MF_PHONE_RULE.replace(/^- /, '') +
     'ALLOWED VOCABULARY (the ONLY other content words): ' + lnMfVocabRows(env).join(' · ') + '\n' +
-    'For each part return its new turns with the same fields as the plan (speaker, addressee, intent, asks, referent, action, object, context, expects, respondsTo 0, targetIds, text, english).\n' +
-    'Reply ONLY with JSON: {"parts":[{"scope":"x1","turns":[{"speaker":"A","addressee":"B","intent":"ASK","asks":"PLACE","referent":"","action":"","object":"","context":"","expects":"","respondsTo":0,"targetIds":[],"text":"...","english":"..."}]}]}'
+    'Return ONLY the new turns of each part — nothing else, no explanations. For each turn: speaker (A | B), intent, asks, about, object, targetIds, ' + LN_MF_TEXT_FIELD_RULE(la) + '\n' +
+    'Reply ONLY with JSON: {"parts":[{"scope":"x1","turns":[{"speaker":"A","intent":"ASK","asks":"PLACE","about":"","object":"","targetIds":[],"text":"...","pron":"","english":"..."}]}]}' + (note || '')
+}
+async function lnMfRepairRequest(env, mp, batch, round) {
+  const { log, tel, o } = env, mf = env.mf
+  let note = ''
   for (let attempt = 1; attempt <= 2; attempt++) {
     tel.LISTENING_REPAIR_CALLS++; mf.calls.repair++
     try {
-      const obj = _lnParseJson(await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prompt + (attempt > 1 ? '\nYour previous reply was not valid JSON. Return ONLY the JSON object.' : '') }], maxTokens: 3500, temperature: 0.5, json: LN_MF_REPAIR_SCHEMA, stage: 'O_listening_plan_repair', attempt: 'ln-mf-repair-' + round + '-' + attempt }))
-      if (obj && Array.isArray(obj.parts)) return obj
+      const obj = _lnParseJson(await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: lnMfRepairPrompt(env, mp, batch, note) }], maxTokens: LN_MF_REPAIR_MAX_TOKENS, temperature: 0.5, json: LN_MF_REPAIR_SCHEMA, stage: 'O_listening_plan_repair', attempt: 'ln-mf-repair-' + round + '-' + mf.calls.repair }))
+      if (obj && Array.isArray(obj.parts)) return { ok: true, parts: obj.parts }
+      note = '\nYour previous reply had no "parts". Return ONLY the JSON object.'
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) { lnMfTechnicalLog(env, e, 'plan repair'); throw e }
-      log && log('⚠ MEANING_REPAIR_UNREADABLE round ' + round + ' attempt ' + attempt + ' — ' + String(e && e.message || e).slice(0, 80) + ' (fault 9 TECHNICAL)') }
+      const msg = String(e && e.message || e), cut = /MAX_TOKENS|cut off/i.test(msg)
+      if (cut) { mf.truncations++; log && log('⛔ REPAIR_TRUNCATED round ' + round + ' · parts ' + batch.map(s => s.id).join(', ') + ' (' + batch.reduce((a, s) => a + lnMfRepairSize(s), 0) + ' turns) — the reply was cut off: a TECHNICAL failure (fault 9); nothing from it is applied')
+        if (batch.length > 1) return { ok: false, truncated: true }                 // the caller splits the batch — never the same request again
+        note = '\nYour previous reply was cut off. Return ONLY the ' + lnMfRepairSize(batch[0]) + ' new turns of this one part, short English, no explanation.' }
+      else { log && log('⚠ MEANING_REPAIR_UNREADABLE round ' + round + ' attempt ' + attempt + ' — ' + msg.slice(0, 80) + ' (fault 9 TECHNICAL)'); note = '\nYour previous reply was not valid JSON. Return ONLY the JSON object.' }
+    }
   }
-  return null
+  return { ok: false, truncated: false }
 }
-// apply the repaired parts: a replaced span keeps every turn outside it; a part that loses a lesson word it had to keep is
-// REJECTED (the old turns stay and the part escalates next round)
+async function lnMfRepairCall(env, mp, scopes, round) {
+  const { log } = env
+  const batches = []
+  scopes.forEach(s => { const b = batches[batches.length - 1]
+    if (b && b.reduce((a, x) => a + lnMfRepairSize(x), 0) + lnMfRepairSize(s) <= LN_MF_REPAIR_BATCH_TURNS) b.push(s); else batches.push([s]) })
+  const parts = []; let ok = 0, failed = []
+  const run = async batch => {
+    const r = await lnMfRepairRequest(env, mp, batch, round)
+    if (r.ok) { parts.push(...r.parts); ok++; return }
+    if (r.truncated && batch.length > 1) { const h = Math.ceil(batch.length / 2); log && log('✂ REPAIR_SPLIT round ' + round + ' — the cut-off request is split: ' + batch.slice(0, h).map(s => s.id).join(',') + ' | ' + batch.slice(h).map(s => s.id).join(','))
+      await run(batch.slice(0, h)); await run(batch.slice(h)); return }
+    failed = failed.concat(batch.map(s => s.id))
+  }
+  if (batches.length > 1) log && log('🔧 REPAIR_BATCHES round ' + round + ' — ' + scopes.length + ' part(s) in ' + batches.length + ' bounded request(s) (≤ ' + LN_MF_REPAIR_BATCH_TURNS + ' turns each)')
+  for (const b of batches) await run(b)
+  if (failed.length) log && log('⛔ PARTS_TECHNICAL ' + failed.join(', ') + ' — no readable repair (fault 9); those parts keep their old turns, every other part goes on')
+  return ok ? { parts } : null
+}
+// apply the repaired parts. v695: every patch is VALIDATED before it is applied — its new turns, in the conversation they would
+// stand in, must pass the hard checks (script, length, vocabulary, grammar, meaning rules, answer types, infeasible questions,
+// duplicates, speakers, state, the situation's turn budget). A patch that fails is NOT applied: the old turns stay and the part
+// escalates (live v694 Mandarin: "我工作了。(wǒ gōngzuò le.)" replaced a valid line and failed as 16–28 words with Latin script).
+const LN_MF_PATCH_HARD = new Set(['TOO_COMPLEX', 'LINE_QUALITY', 'MERGED_SPEAKERS', 'SPEAKER_IDENTITY', 'CLOSED_VOCAB', 'TOKENIZATION_ERROR', 'REGISTER', 'GRAMMAR_CONTRACT', 'MEANING_RULE', 'REFERENT_MISMATCH', 'OBJECT_MISMATCH',
+  'TEMPORAL_CONTRADICTION', 'ANSWER_TYPE', 'INFEASIBLE_INTENTION', 'REPEATED_REJECTED_SENTENCE', 'EXACT_DUPLICATE', 'NEAR_DUPLICATE', 'ONE_SPEAKER_RUN', 'STATE_CONTRADICTION', 'MAX_TARGETS_PER_TURN', 'LATE_GREETING', 'EARLY_GOODBYE'])
 function lnMfApply(env, mp, scopes, rep, round) {
   const { la, byId, log } = env, mf = env.mf
   const parts = new Map(((rep && rep.parts) || []).map(p => [String(p.scope || ''), p]))
@@ -28649,18 +28815,46 @@ function lnMfApply(env, mp, scopes, rep, round) {
   scopes.forEach(s => {
     const part = parts.get(s.id)
     const scene = mp.scenes.find(x => x.key === s.scene)
+    const fail = why => { log && log('⛔ PART_REJECTED ' + s.id + ' (' + s.kind + ') — ' + why + ' · the old turns stay; the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)) }
     if (!part || !scene || !Array.isArray(part.turns) || !part.turns.length) { log && log('⛔ PART_NOT_REPAIRED ' + s.id + ' (' + s.kind + ') — no replacement returned · the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)); return }
-    const fresh = part.turns.filter(x => x && String(x.text || '').trim()).map((x, j) => lnMfMakeTurn(la, x, 'r' + round + '_' + s.id + '_' + (j + 1), scene.key))
+    // where the span lies: one situation, or the boundary of two (its new turns are split in the same proportion)
+    const span = s.turnIds.map(id => mp.flat.find(t => t.id === id)).filter(Boolean)
+    const sceneKeys = s.kind === 'add' ? [scene.key] : [...new Set(span.map(t => t.scene))]
+    const rows = part.turns.filter(x => x && String(x.text || '').trim())
+    const nFirst = sceneKeys.length > 1 ? Math.max(1, Math.min(rows.length - 1, Math.round(rows.length * span.filter(t => t.scene === sceneKeys[0]).length / span.length))) : rows.length
+    const fresh = rows.map((x, j) => lnMfMakeTurn(la, { ...x, referent: x.about || x.referent || '' }, 'r' + round + '_' + s.id + '_' + (j + 1), j < nFirst ? sceneKeys[0] : sceneKeys[1]))
+    const cleaned = fresh.filter(t => t.cleanedFrom)
+    if (cleaned.length) log && log('🧹 PATCH_TEXT_CLEANED ' + s.id + ' — the sentence field carried a romanisation / label / note, removed before validation: ' + cleaned.map(t => '"' + t.cleanedFrom + '" → "' + t.text + '"').join(' | ').slice(0, 300))
     const heard = new Set(fresh.flatMap(tu => byId ? [...byId.values()].filter(t => t.surface && la.present(tu.text, t.surface, env.ctx)).map(t => t.id) : []))
     const lost = (s.targetIds || []).filter(id => !heard.has(id))
-    if (lost.length) { log && log('⛔ PART_REJECTED ' + s.id + ' (' + s.kind + ') — PROTECTED_TARGET_LOST ' + lost.map(id => (byId.get(id) || {}).surface).join(', ') + ' · the old turns stay; the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)); return }
+    if (lost.length) { fail('PROTECTED_TARGET_LOST ' + lost.map(id => (byId.get(id) || {}).surface).join(', ')); return }
+    if (s.mustInclude && rows.length !== s.turnIds.length) { fail('the exchange had to keep its ' + s.turnIds.length + ' turns (got ' + rows.length + ')'); return }
     fresh.forEach(tu => { tu.targetIds = [...new Set(tu.targetIds.concat([...heard].filter(id => la.present(tu.text, (byId.get(id) || {}).surface || '\u0000', env.ctx))))] })
+    // the trial: the conversation with this patch in place, validated before anything changes
+    const trial = { scenes: mp.scenes.map(x => ({ ...x, turns: x.turns.map(t => ({ ...t })) })) }
+    const place = sc => { const ins = fresh.filter(t => t.scene === sc.key)
+      if (s.kind === 'add') { const k = s.insertAfter ? sc.turns.findIndex(t => t.id === s.insertAfter) + 1 : sc.turns.length; sc.turns.splice(k, 0, ...ins); return }
+      const idx = sc.turns.findIndex(t => s.turnIds.includes(t.id)); if (idx < 0) return
+      sc.turns = sc.turns.filter(t => !s.turnIds.includes(t.id)); sc.turns.splice(idx, 0, ...ins) }
+    trial.scenes.filter(x => sceneKeys.includes(x.key)).forEach(place)
+    const tr = lnMfValidate(env, lnMfRenumber(trial))
+    const freshIds = new Set(fresh.map(t => t.id))
+    const bad = tr.issues.filter(is => (LN_MF_PATCH_HARD.has(is.code) && is.turnIds.some(id => freshIds.has(id))) ||
+      (is.code === 'TURN_BUDGET' && trial.scenes.reduce((a, x) => a + x.turns.length, 0) > env.turnsMax))
+    // a patch may not GROW a situation past its reserved budget (v694 Thai grew to 45 turns through repairs)
+    const bud = env.mfGrouping && env.mfGrouping._budgets
+    trial.scenes.forEach((x, k) => { const was = (mp.scenes.find(y => y.key === x.key) || { turns: [] }).turns.length
+      if (bud && bud[k] && sceneKeys.includes(x.key) && x.turns.length > was && x.turns.length > bud[k].max) bad.push({ fault: 8, code: 'SCENE_TURN_BUDGET', turnIds: [], detail: x.key + ' would grow from ' + was + ' to ' + x.turns.length + ' turns — its budget is ' + bud[k].max }) })
+    if (bad.length) {
+      bad.filter(is => [1, 3, 4, 5].includes(is.fault)).forEach(is => is.turnIds.forEach(id => { const t = fresh.find(x => x.id === id); if (t) mf.rejectedTexts.set(lnMfNorm(t.text), is.fault) }))
+      fail('PATCH_INVALID — ' + bad.slice(0, 3).map(is => is.code + ': ' + String(is.detail || '').slice(0, 90)).join(' · ')); return }
     // remember what failed, so no later round may bring it back
     // what may never come back: a defective SENTENCE (wording, vocabulary, grammar, meaning) and, for a meaning fault the audit
     // found, its RELATIONSHIP; for a question → answer mismatch only the failed ANSWER (the question may be fine); a transition
     // fault rejects no sentence (the order was wrong, not the lines)
     s.turnIds.forEach(id => { const old = mp.flat.find(t => t.id === id); if (!old) return
-      const fs = s.issues.filter(is => is.turnIds.includes(id)).map(is => is.fault)
+      // v695: an INFEASIBLE question rejects the QUESTION only — the reply to it (ได้ค่ะ ฉันจะส่งให้นะคะ, a promise) may come back
+      const fs = s.issues.filter(is => is.turnIds.includes(id) && !(is.code === 'INFEASIBLE_INTENTION' && is.turnIds[0] !== id)).map(is => is.fault)
       const line = fs.filter(f => [1, 3, 4, 5].includes(f)), qa = fs.includes(6) && old.respondsToId && s.issues.some(is => is.fault === 6 && is.turnIds[is.turnIds.length - 1] === id)
       const qaAgain = fs.includes(6) && s.issues.some(is => is.fault === 6 && (is.repeats || 0) >= 1 && is.turnIds.includes(id))
       if (line.length) mf.rejectedTexts.set(lnMfNorm(old.text), Math.max(...line))
@@ -28668,10 +28862,9 @@ function lnMfApply(env, mp, scopes, rep, round) {
       if (fs.includes(5) && s.issues.some(is => is.fault === 5 && is.code === 'SEMANTIC_AUDIT')) mf.rejectedRel.add(lnMfRelSig(old, byId, env.la.lang)) })
     const lvl = Math.max(0, ...s.turnIds.map(id => mf.attempts.get(id) || 0)) + 1
     fresh.forEach(tu => mf.attempts.set(tu.id, lvl))
-    if (s.kind === 'add') { const k = s.insertAfter ? scene.turns.findIndex(t => t.id === s.insertAfter) + 1 : scene.turns.length; scene.turns.splice(k, 0, ...fresh) }
-    else { const k = scene.turns.findIndex(t => t.id === s.turnIds[0]); scene.turns.splice(k, s.turnIds.length, ...fresh) }
+    mp.scenes.filter(x => sceneKeys.includes(x.key)).forEach(place)
     applied++
-    log && log('✅ PART_REPAIRED ' + s.id + ' (' + s.kind + ' · ' + s.issues.map(is => LN_MF_FAULTS[is.fault]).filter((x, i, a) => a.indexOf(x) === i).join('+') + ') ' + (s.kind === 'add' ? 'added' : s.turnIds.length + ' turn(s) →') + ' ' + fresh.length + ' new: ' + fresh.map(t => t.speaker + ': ' + t.text).join(' / '))
+    log && log('✅ PART_REPAIRED ' + s.id + ' (' + s.kind + ' · ' + s.issues.map(is => LN_MF_FAULTS[is.fault]).filter((x, i, a) => a.indexOf(x) === i).join('+') + ') ' + (s.kind === 'add' ? 'added' : s.turnIds.length + ' turn(s) →') + ' ' + fresh.length + ' new (validated in place): ' + fresh.map(t => t.speaker + ': ' + t.text).join(' / '))
   })
   lnMfRenumber(mp)
   return applied
@@ -28705,6 +28898,7 @@ async function _lnComposeMeaningFirst(env) {
     ' · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT')
   env.mfProfiles = new Map(targets.map(t => [t.id, lnMfProfile(t, la.lang)]))
   const grouping = lnMfGroupTargets([...env.mfProfiles.values()], glosses, { lang: la.lang })
+  env.mfGrouping = grouping
   lnMfGroupingLog(grouping, byId).forEach(l => log && log(l))
   const plan = { meaningFirst: true, oneConversation: true, verbalized: false, story: grouping.scenes.map(s => s.situation), seed: null, scenes: [], assignments: [], meaningPlan: { valid: false, turnCount: 0, problems: [] }, cap: LN_MF_SITUATION_CAP }
   const blocked = (reason, uncommitted) => {
@@ -28725,7 +28919,12 @@ async function _lnComposeMeaningFirst(env) {
   lnMfIssueLog(env, res, 'candidate')
   let prevSig = null, stale = 0, round = 0
   const sigOf = r => r.issues.map(is => LN_MF_FAULTS[is.fault] + ':' + is.turnIds.map(id => (mp.flat.find(t => t.id === id) || {}).text).join('/')).sort().join('|')
-  while (res.issues.length && round < LN_MF_MAX_ROUNDS) {
+  // v695: when only one or two TRANSITION / state faults are left after the last round, ONE more bounded boundary repair runs
+  // (live v694 Japanese ended its 3 rounds with structural PASS and a single today → tomorrow transition)
+  const boundaryOnly = r => r.issues.length > 0 && r.issues.length <= 2 && r.issues.every(is => is.fault === 7)
+  let boundaryRound = false
+  while (res.issues.length && (round < LN_MF_MAX_ROUNDS || (!boundaryRound && boundaryOnly(res)))) {
+    if (round >= LN_MF_MAX_ROUNDS) { boundaryRound = true; mf.boundaryRound = true; log && log('🔧 MEANING_REPAIR boundary round — only ' + res.issues.length + ' transition fault(s) left after ' + round + ' rounds: one bounded repair of the situation boundary, nothing else changes') }
     round++
     res.issues.forEach(is => { mf.byFault[LN_MF_FAULTS[is.fault]] = (mf.byFault[LN_MF_FAULTS[is.fault]] || 0) + 1 })
     lnMfCountSignatures(env, mp, res.issues)
@@ -28743,7 +28942,7 @@ async function _lnComposeMeaningFirst(env) {
     lnMfIssueLog(env, res, 'after repair round ' + round)
     const sig = sigOf(res)
     stale = sig === prevSig ? stale + 1 : 0; prevSig = sig
-    if (stale >= 1 && round >= 2) { log && log('⛔ MEANING_REPAIR_NO_PROGRESS — the same defects after two rounds; stopping instead of looping'); break }
+    if (stale >= 1 && round >= 2 && !boundaryOnly(res)) { log && log('⛔ MEANING_REPAIR_NO_PROGRESS — the same defects after two rounds; stopping instead of looping'); break }
   }
   Object.assign(tel, { LISTENING_MF_PLAN_CALLS: mf.calls.plan, LISTENING_MF_SCENE_REPLANS: mf.calls.sceneReplan, LISTENING_MF_AUDIT_CALLS: mf.calls.audit, LISTENING_MF_REPAIR_CALLS: mf.calls.repair, LISTENING_MF_REPAIR_ROUNDS: round, LISTENING_MF_TRUNCATIONS: mf.truncations, LISTENING_PLANNER: LISTENING_PLANNER_VERSION })
   if (res.issues.length) {
@@ -28758,6 +28957,17 @@ async function _lnComposeMeaningFirst(env) {
   const scenes = mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, intendedTargetIds: tu.targetIds.slice() }, intendedTargetIds: tu.targetIds.slice(),
     meaning: { intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects, respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null } })) }))
   const audit = listeningConversationAudit(scenes, targets, la, ctx)
+  // v695: a situation marked FAILED by its local check is never accepted silently — it is checked again on the final plan;
+  // a remaining lesson-word / meaning defect blocks, and only the planning reserve (turns over the situation's share of ~34,
+  // which exists to leave room for repairs) may remain once the whole plan has passed every hard check
+  const failedLocal = mp.scenes.map((s, k) => [s, k]).filter(([s]) => s.status === 'FAILED')
+  for (const [s, k] of failedLocal) {
+    const left = lnMfSceneLocalIssues(env, mp.scenes.slice(0, k), s, null, k).filter(is => is.code !== 'SCENE_TURN_BUDGET')
+    const over = s.turns.length > lnMfSceneAllowance(env, env.mfGrouping, k, mp.scenes.slice(0, k)).max
+    if (left.length) return blocked('situation ' + s.key + ' still FAILS its local check on the final plan: ' + left.map(is => is.code + ' — ' + String(is.detail || '').slice(0, 80)).join(' · '))
+    s.status = 'CLEARED_BY_GLOBAL_VALIDATION'
+    log && log('🔎 SCENE_STATUS ' + s.key + ' FAILED (' + (s.localIssues || []).join(', ') + ') → CLEARED_BY_GLOBAL_VALIDATION · re-checked on the final plan: no lesson-word or meaning defect left' + ((s.localIssues || []).some(c => c !== 'SCENE_TURN_BUDGET') ? ' (repaired in the global rounds)' : '') + '; ' + s.turns.length + ' turns' + (over ? ' — over its planning reserve only (a repair-room budget, not a quality defect; hard limit ' + env.turnsMax + ' for the whole conversation: ' + mp.flat.length + ')' : ' — inside its budget'))
+  }
   scenes.forEach((sc, k) => { const s = mp.scenes[k]
     log && log('✅ SCENE_ACCEPTED ' + sc.sceneId + ' (' + s.situation + ') · structural PASS · semantic PASS · ' + sc.turns.length + ' turns · targets [' + s.targetIds.map(id => (byId.get(id) || {}).surface).join(', ') + ']')
     log && log('🧵 SCENE_COMMITTED ' + sc.sceneId + ' — enters the conversation') })

@@ -16,20 +16,22 @@ const GOOD693 = {
   th: (() => {
     let r = after(GOOD.th, 'สนุกค่ะ แต่ฉันรู้สึกแก่แล้วค่ะ', [['S1', 'A', 'ASK', 'REASON', 'you', 'ทำไมครับ', 'Why?'], ['S1', 'B', 'ANSWER', '', 'I', 'เพราะเดินมากค่ะ', 'Because I walked a lot.']])
     r = r.filter(x => !['ขอบคุณค่ะ โชคดีนะคะ', 'ลาก่อนครับ', 'ค่าโดยสารเท่าไหร่ครับ', 'สิบบาทค่ะ'].includes(x[5]))
+    // v695 — each situation inside its turn reserve, every situation hears its own lesson words: the greeting joins the first
+    // question (S1 at most 10 turns) and คือ (a S3 word for this learner) is heard in S3
+    r = r.filter(x => !['สวัสดีครับ', 'สวัสดีค่ะ'].includes(x[5]))
+    r = swap(r, 'พวกคุณเป็นนักท่องเที่ยวเหรอครับ', ['S1', 'A', 'ASK', 'YESNO', 'you all', 'สวัสดีครับ พวกคุณเป็นนักท่องเที่ยวเหรอครับ', 'Hello — are you all tourists?'])
+    r = after(r, 'ได้ค่ะ สิบเอ็ดโมงเช้า', [['S3', 'A', 'ASK', 'YESNO', 'this', 'อันนี้คือตั๋วเหรอครับ', 'Is this the ticket?'], ['S3', 'B', 'ANSWER', '', 'the ticket', 'ใช่ค่ะ', 'Yes.']])
     return r.concat([['S6', 'B', 'THANK', '', '', 'ขอบคุณค่ะ', 'Thanks.'], ['S6', 'A', 'INFORM', '', 'we', 'คิดว่าเราจะเจอกันอีกครับ', 'I think we\'ll meet again.'], ['S6', 'B', 'FAREWELL', '', '', 'ค่ะ โชคดีนะคะ', 'Yes. Good luck!'], ['S6', 'A', 'FAREWELL', '', '', 'ลาก่อนครับ', 'Goodbye.']])
   })(),
   // 明天我们去买东西吧 carried four lesson words (东西 is a v693 target and is heard in S3 already)
   zh: swap(GOOD.zh, '明天我们去买东西吧。', ['S2', 'A', 'PROPOSE', '', 'we', '明天我们去买吧。', 'Let\'s go shopping tomorrow.']),
   ja: [
-    ['S1', 'A', 'GREET', '', 'you', 'あっ、来た。', 'Oh, you came.'],
     ['S1', 'B', 'APOLOGISE', '', 'I', 'ごめん、遅かった。', 'Sorry, I was late.'],
     ['S1', 'A', 'ACKNOWLEDGE', '', '', 'いいよ、大丈夫。', 'It\'s fine, no problem.'],
     ['S1', 'A', 'ASK', 'PERSON', 'you', '昨日、誰と会った？', 'Who did you meet yesterday?'],
-    ['S1', 'B', 'ANSWER', '', 'a friend', '友達と会った。', 'I met a friend.'],
-    ['S1', 'A', 'ASK', 'STATE', 'it', 'どうだった？', 'How was it?'],
-    ['S1', 'B', 'ANSWER', '', 'we', '楽しかった。日本語で話した。', 'It was fun. We talked in Japanese.'],
-    ['S1', 'A', 'ASK', 'YESNO', 'you', '日本語、できる？', 'You can speak Japanese?'],
-    ['S1', 'B', 'ANSWER', '', 'I', 'うん、ちょっと。', 'Yeah, a little.'],
+    ['S1', 'B', 'ANSWER', '', 'a friend', '友達と会った。日本語で話した。', 'I met a friend. We talked in Japanese.'],
+    ['S1', 'A', 'ASK', 'STATE', 'your Japanese', '日本語、どう？', 'How\'s your Japanese?'],
+    ['S1', 'B', 'ANSWER', '', 'I', 'ちょっとできる。', 'I can speak a little.'],
     ['S1', 'A', 'ASK', 'REASON', 'you', 'なんで日本語？', 'Why Japanese?'],
     ['S1', 'B', 'ANSWER', '', 'my friend', '友達が日本語、好きだから。', 'Because my friend likes Japanese.'],
     ['S2', 'A', 'PROPOSE', '', 'we', '今日、映画見ない？', 'Do you want to watch a movie today?'],
@@ -57,8 +59,6 @@ const GOOD693 = {
     ['S5', 'B', 'ANSWER', '', 'the book', '写真の本を買う。', 'I\'ll buy the photo book.'],
     ['S5', 'A', 'ASK', 'YESNO', 'money', 'お金、ある？', 'Do you have money?'],
     ['S5', 'B', 'ANSWER', '', 'I', 'うん、ある。', 'Yeah, I do.'],
-    ['S5', 'A', 'ASK', 'YESNO', 'money', 'お金、使いすぎじゃない？', 'Aren\'t you spending too much?'],
-    ['S5', 'B', 'ANSWER', '', 'I', '大丈夫。好きな本だから。', 'It\'s fine. It\'s a book I like.'],
     ['S5', 'A', 'OFFER', '', 'money', 'はい、ちょっと使って。', 'Here, use some of mine.'],
     ['S5', 'B', 'THANK', '', '', 'ありがとう。', 'Thanks.'],
     ['S5', 'B', 'FAREWELL', '', '', 'じゃあ、また明日。', 'Well then, see you tomorrow.'],

@@ -3,7 +3,7 @@
 'use strict'
 const { mock: base14 } = require('../../tests14')
 const { planJson, sceneJson } = require('./plans')
-// opt: plan (rows; v694: each situation request gets its own rows) · scenePlan(key, st, prompt, replan) → rows | Error | '__truncated__' · audit(turnText, n) → verdict override · repair(scopeId, partText, q) → rows for that part ·
+// opt: plan (rows; v694: each situation request gets its own rows) · scenePlan(key, st, prompt, replan) → rows | Error | '__truncated__' · audit(turnText, n) → verdict override · repair(scopeId, partText, q) → rows for that part ([speaker, intent, asks, about, text, english, pron?]) or '__truncated__' · repairRaw(q, st) → raw reply text ·
 //      cohFail · down (network) · log (array to record stages)
 function mockMeaningFirst(c, vocab, lang, opt = {}) {
   const S = { c, vocab, targets: [], zhLex: null }
@@ -33,9 +33,13 @@ function mockMeaningFirst(c, vocab, lang, opt = {}) {
     }
     if (stage === 'O_listening_plan_repair') {
       st.repair++
+      // v695: a repair reply can be cut off ('__truncated__' for any part → the whole reply is cut off) or be raw text (repairRaw)
+      if (opt.repairRaw) { const raw = opt.repairRaw(q, st); if (raw != null) return raw }
       const parts = [...q.matchAll(/^\[(x\d+)\] (.*)$/gm)].map(r => ({ scope: r[1], head: r[2] }))
-      return JSON.stringify({ parts: parts.map(p => ({ scope: p.scope, turns: ((opt.repair && opt.repair(p.scope, p.head, q, st)) || []).map(r => ({ speaker: r[0], addressee: r[0] === 'A' ? 'B' : 'A', intent: r[1], asks: r[2], referent: r[3],
-        action: '', object: '', context: '', expects: '', respondsTo: 0, targetIds: [], text: r[4], english: r[5] })) })) })
+      const got = parts.map(p => ({ p, rows: (opt.repair && opt.repair(p.scope, p.head, q, st)) || [] }))
+      if (got.some(g => g.rows === '__truncated__')) throw new Error('CLAUDE HAIKU REPLY REJECTED: MAX_TOKENS: the reply was cut off (' + max + ' output tokens)')
+      return JSON.stringify({ parts: got.map(({ p, rows }) => ({ scope: p.scope, turns: rows.map(r => ({ speaker: r[0], addressee: r[0] === 'A' ? 'B' : 'A', intent: r[1], asks: r[2], referent: r[3],
+        action: '', object: '', context: '', expects: '', respondsTo: 0, targetIds: [], text: r[4], english: r[5], ...(r[6] != null ? { pron: r[6] } : {}) })) })) })
     }
     return inner(k, m, msgs, max, o)
   }

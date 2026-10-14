@@ -177,7 +177,7 @@ v695 changes this in three ways:
 | Section K run against the v694 code with the same fixtures | **0/17**: Thai, Japanese and Mandarin each end NOT_READY for the same reason as the live run (Thai TARGET_MISSING, Japanese unknown 聞, Mandarin 一起 grammar) |
 | Production replay (v682-final4 cassettes, ja / th / zh) | **0 mismatches**, content identical |
 | check_sync | IN SYNC v695 |
-| Full regression (tests1–53, snapshot) | REG_RESULT |
+| Full regression (tests1–53, snapshot) | **OFFLINE REGRESSION: OK**: 52 suites. The only failures are the 3 known pre-existing ones: tests33 2G (already failing in deployed v677), and tests35 2C-thTH / 2C-zhZH (their replay inputs are not in the package). tests23–39 (legacy planner) are otherwise unchanged and passing. |
 
 Full plan assembly + final validation from the **v694 regression fixtures**, each through selection → grouping → per-situation plans → local checks → validation → audit → repair → commit → final gates:
 

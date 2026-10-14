@@ -1,0 +1,158 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v696 language=th path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=th)
+🧭 LISTENING_FEASIBILITY PASS language=th planner=meaning-first-3 · pool=150 candidate(s) in SRS order · authorised support=878 word(s) · selected 30 · deferred 0 · situations VALID [MEET 7, PLAN 8, TIME 3, TRAVEL 5, EAT 4, PART 3] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(th) = selectThaiRevisionTargets → freezeThaiTargetSelection
+🎧 LISTENING_SELECTED_TARGET_IDS=[779,359,1233,1479,1536,1539,821,839,653,676,717,719,730,737,761,858,744,750,817,840,841,860,667,669,672,686,787,815,847,712]
+🎧 LISTENING_TRACK_START language=th trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=th introducedContent=878 targets=30 authorised=908 snapshot=dfdvca (frozen at generation start) · Layer A lexicon 1881 entries (segmentation only — not permission)
+📏 LEVEL belt=9th Kyu preferred=4–6 hardMax=8 · LEVEL 9th Kyu · target 4–6 · max 8 (Thai words, v692-regression) · Listening: no minimum, aim 4–6, no turn above 8
+📚 VOCAB INVENTORY introducedContent=878 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Thai particles + structural markers
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=th belt=9th Kyu · targets=30 · authorised support=878 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET "meeting and catching up" targets=[คุณอายุเท่าไหร่, แก่, พวกคุณ, นักท่องเที่ยว, เพราะ, เป็นอย่างไร, ตลก] · opens the conversation
+🗺 LISTENING_SITUATION S2 PLAN "deciding what to do" targets=[พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ทางเข้า, น่าดู, ไปที่, ทาง, ร้านอาหาร, ที่นั่น]
+🗺 LISTENING_SITUATION S3 TIME "agreeing when" targets=[สิบโมงเช้า, สิบเอ็ดโมงเช้า, ว่า]
+🗺 LISTENING_SITUATION S4 TRAVEL "getting there" targets=[เลี้ยว, รถสองแถว, ค่าโดยสาร, นานเท่าไหร่, รถแท็กซี่]
+🗺 LISTENING_SITUATION S5 EAT "eating and drinking" targets=[ทานกันเลย, ผัดไทย, คุ้ม, ไม่เชิง]
+🗺 LISTENING_SITUATION S6 PART "wrapping up" targets=[โชคดี, เบอร์โทรศัพท์, คือ] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 7 targets
+🔎 SCENE_LOCAL_CHECK S1 STATUS=PASS · 10 turns (budget 6–10)
+📝 SCENE_PLAN S2 (PLAN) call 2 · 8 targets
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS · 11 turns (budget 7–11)
+📝 SCENE_PLAN S3 (TIME) call 3 · 3 targets
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS · 4 turns (budget 2–4)
+📝 SCENE_PLAN S4 (TRAVEL) call 4 · 5 targets
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS · 6 turns (budget 4–6)
+📝 SCENE_PLAN S5 (EAT) call 5 · 4 targets
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS · 5 turns (budget 3–5)
+📝 SCENE_PLAN S6 (PART) call 6 · 3 targets
+🔎 SCENE_LOCAL_CHECK S6 STATUS=PASS · 4 turns (budget 2–4)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[คุณอายุเท่าไหร่, แก่, พวกคุณ, นักท่องเที่ยว, เพราะ, เป็นอย่างไร, ตลก]
+   T1 A→B GREET · about meeting again · - ⟦สวัสดีครับ ไม่ได้เจอกันเลยครับ⟧ "Hi, long time no see."
+   T2 B→A ASK(STATE) ↩T1 · about how A is · - ⟦สวัสดีค่ะ สบายดีไหมคะ⟧ "Hi! Are you well?"
+   T3 A→B ASK(PLACE) ↩T2 · about where friends went · - trip ⟦สบายดีครับ พวกคุณไปไหนมาครับ⟧ "Fine. Where have you all been?" [พวกคุณ]
+   T4 B→A ANSWER ↩T3 · about Pai trip · - Pai ⟦ไปปายค่ะ มีนักท่องเที่ยวเยอะค่ะ⟧ "Pai. There are lots of tourists." [นักท่องเที่ยว]
+   T5 A→B ASK(REASON) ↩T4 · about reason for trip · - ⟦ทำไมไปปายครับ⟧ "Why did you go to Pai?"
+   T6 B→A ANSWER ↩T5 · about grandmother · - ⟦เพราะยายอยากไปค่ะ⟧ "Because grandma wanted to go." [เพราะ]
+   T7 A→B ASK(STATE) ↩T6 · about grandmother · - grandmother ⟦ยายเป็นอย่างไรบ้างครับ⟧ "How is grandma?" [เป็นอย่างไร]
+   T8 B→A ANSWER ↩T7 · about grandmother · - grandmother ⟦ยายแก่แล้วค่ะ แต่ตลกมากค่ะ⟧ "Grandma's already old, but she's really funny." [แก่+ตลก]
+   T9 A→B ASK(AGE) ↩T8 · about B's age · - age ⟦แล้วคุณอายุเท่าไหร่ครับ⟧ "And how old are you?" [คุณอายุเท่าไหร่]
+   T10 B→A ANSWER ↩T9 · about B's age · - age ⟦ยี่สิบเจ็ดปีค่ะ⟧ "I'm 27."
+  S2 deciding what to do targets=[พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ทางเข้า, น่าดู, ไปที่, ทาง, ร้านอาหาร, ที่นั่น]
+   T11 A→B ASK(PLACE) · about today's outing · - ⟦อ้อวันนี้เราไปไหนดีครับ⟧ "Oh, where shall we go today?"
+   T12 B→A PROPOSE ↩T11 · about national museum · - national museum ⟦ไปที่พิพิธภัณฑสถานแห่งชาติกันไหมคะ⟧ "Shall we go to the National Museum?" [ไปที่+พิพิธภัณฑสถานแห่งชาติ]
+   T13 A→B COUNTER ↩T12 · about Sanam Luang · - Sanam Luang ⟦ไปที่สนามหลวงดีกว่าครับ⟧ "Let's go to Sanam Luang instead." [ไปที่+สนามหลวง]
+   T14 B→A DECLINE ↩T13 · about the heat · - ⟦ไม่มีทาง วันนี้ร้อนมากค่ะ⟧ "No way, it's very hot today." [ทาง]
+   T15 A→B ACCEPT ↩T14 · about national museum · - national museum ⟦ได้ครับ ไปที่พิพิธภัณฑสถานแห่งชาติครับ⟧ "Okay, let's go to the National Museum." [ไปที่+พิพิธภัณฑสถานแห่งชาติ]
+   T16 B→A REACT ↩T15 · about national museum · - ⟦น่าดู ข้างในเย็นด้วยค่ะ⟧ "It's worth seeing, and it's cool inside too." [น่าดู]
+   T17 A→B ASK(PLACE) ↩T16 · about museum entrance · - ⟦ทางเข้าอยู่ที่ไหนครับ⟧ "Where is the entrance?" [ทางเข้า+ทาง]
+   T18 B→A ANSWER ↩T17 · about museum entrance · - entrance ⟦ทางเข้าอยู่ที่นั่นค่ะ⟧ "The entrance is there." [ทางเข้า+ทาง+ที่นั่น]
+   T19 A→B REACT ↩T18 · about being hungry · - ⟦ดีผมหิวแล้วครับ⟧ "Good, I'm already hungry."
+   T20 B→A PROPOSE ↩T19 · about restaurant after visit · - restaurant ⟦เสร็จแล้วไปร้านอาหารกันไหมคะ⟧ "After we finish, shall we go to a restaurant?" [ร้านอาหาร]
+   T21 A→B ACCEPT ↩T20 · about restaurant after visit · - ⟦ได้เลยครับ⟧ "Sure."
+  S3 agreeing when targets=[สิบโมงเช้า, สิบเอ็ดโมงเช้า, ว่า]
+   T22 B→A ASK(CLOCK_TIME) · about time today · - ⟦วันนี้ไปกี่โมงดีคะ⟧ "What time shall we go today?"
+   T23 A→B PROPOSE ↩T22 · about time today · - 11 AM ⟦ไปสิบเอ็ดโมงเช้าดีไหมครับ⟧ "How about going at 11 AM?" [สิบเอ็ดโมงเช้า]
+   T24 B→A COUNTER ↩T23 · about time today · - 10 AM ⟦สิบโมงเช้าดีกว่าค่ะ วันนี้ร้อนมากค่ะ⟧ "10 AM is better, it's very hot today." [สิบโมงเช้า]
+   T25 A→B ACCEPT ↩T24 · about time today · - 10 AM ⟦ได้ครับ คุณบอกว่าสิบโมงเช้าดีกว่าครับ⟧ "Okay, you said 10 AM is better." [สิบโมงเช้า+ว่า]
+  S4 getting there targets=[เลี้ยว, รถสองแถว, ค่าโดยสาร, นานเท่าไหร่, รถแท็กซี่]
+   T26 B→A PROPOSE · about taxi, heat · - taxi ⟦ร้อนมากค่ะ นั่งรถแท็กซี่ดีไหมคะ⟧ "It's very hot, shall we take a taxi?" [รถแท็กซี่]
+   T27 A→B COUNTER ↩T26 · about songthaew, fare · - songthaew ⟦รถสองแถวถูกกว่าครับ ค่าโดยสารยี่สิบบาทครับ⟧ "The songthaew is cheaper, the fare is twenty baht." [รถสองแถว+ค่าโดยสาร]
+   T28 B→A COUNTER ↩T27 · about taxi, speed · - taxi ⟦แต่รถแท็กซี่เร็วกว่าค่ะ⟧ "But the taxi is faster." [รถแท็กซี่]
+   T29 A→B ASK(DURATION) ↩T28 · about travel time · - ⟦ได้เลยครับ ไปนานเท่าไหร่ครับ⟧ "Sure, how long will it take?" [นานเท่าไหร่]
+   T30 B→A ANSWER ↩T29 · about travel time, route · - route ⟦สิบนาทีค่ะ ตรงไปแล้วเลี้ยวซ้ายค่ะ⟧ "Ten minutes. Go straight, then turn left." [เลี้ยว]
+   T31 A→B ACKNOWLEDGE ↩T30 · about going now · - ⟦ได้ครับ ไปกันเลยครับ⟧ "Okay, let's go right now."
+  S5 eating and drinking targets=[ทานกันเลย, ผัดไทย, คุ้ม, ไม่เชิง]
+   T32 A→B PROPOSE · about visit, eating · - ⟦ดูเสร็จแล้วครับ ทานกันเลยครับ⟧ "We've finished the visit. Let's eat." [ทานกันเลย]
+   T33 B→A ASK(CHOICE) ↩T32 · about food choice · - pad thai, sour curry ⟦ผัดไทยหรือแกงส้มดีคะ⟧ "Which is better, pad thai or sour curry?" [ผัดไทย]
+   T34 A→B ANSWER ↩T33 · about food choice · - pad thai ⟦ผมเอาผัดไทยดีกว่าครับ⟧ "I'll go with pad thai, it's better." [ผัดไทย]
+   T35 B→A ASK(YESNO) ↩T34 · about price · - price ⟦ราคาที่นี่คุ้มไหมคะ⟧ "Is the price here worth it?" [คุ้ม]
+   T36 A→B ANSWER ↩T35 · about price · - ⟦ไม่เชิงครับ แพงนิดหน่อยครับ⟧ "Not exactly, it's a bit expensive." [ไม่เชิง]
+  S6 wrapping up targets=[โชคดี, เบอร์โทรศัพท์, คือ]
+   T37 B→A REACT ↩T36 · about the day · - ⟦อิ่มแล้วค่ะ วันนี้คือวันที่สนุกมากค่ะ⟧ "I'm full already. Today is a really fun day." [คือ]
+   T38 A→B REQUEST ↩T37 · about phone number · - phone number ⟦ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ⟧ "Could I have your phone number?" [เบอร์โทรศัพท์]
+   T39 B→A ACCEPT ↩T38 · about phone number · - phone number ⟦ได้ค่ะ เดี๋ยวส่งให้นะค่ะ⟧ "Sure. I'll send it to you."
+   T40 A→B FAREWELL ↩T39 · about goodbye, good luck · - ⟦โชคดีนะครับ ลาก่อนครับ⟧ "Good luck. Goodbye." [โชคดี]
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed
+🔎 STRUCTURAL_VALIDATION (candidate) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (candidate) FAIL 4 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SEMANTIC SEMANTIC_AUDIT T32 — awkward · does not make sense · ดูเสร็จแล้ว cannot be true right after they have just set off; the time does not fit the turn before.
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T36,T37 — acceptable · does not answer · As a reaction to 36 it ignores the price remark and talks about being full and the day being fun instead.
+   ⛔ SURFACE SEMANTIC_AUDIT T40 — awkward · ลาก่อน is formal and sounds stiff between friends parting for the day; with โชคดี stacked before it, the farewell sounds over-long.
+   ⛔ TRANSITION SCENE_TRANSITION T32,T33 — S4 ends with them setting off now, but S5 treats the visit as already finished; no time passes in between to make that possible.
+   fault classes: SEMANTIC×1 · QUESTION_ANSWER×1 · SURFACE×1 · TRANSITION×1
+🔧 MEANING_REPAIR round 1/3 · 3 part(s): x1 boundary [SEMANTIC+TRANSITION] · x2 exchange [QUESTION_ANSWER] · x3 line [SURFACE] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (boundary · SEMANTIC+TRANSITION) 4 turn(s) → 4 new (validated in place): B: สิบนาทีค่ะ ตรงไปแล้วเลี้ยวซ้ายค่ะ / A: ได้ครับ ผมหิวแล้วครับ ไปร้านอาหารเลยครับ / A: ถึงแล้วครับ ทานกันเลยครับ / B: ผัดไทยหรือแกงส้มดีคะ
+✅ PART_REPAIRED x2 (exchange · QUESTION_ANSWER) 3 turn(s) → 3 new (validated in place): B: ราคาที่นี่คุ้มไหมคะ / A: ไม่เชิงครับ แพงนิดหน่อยครับ แต่อร่อยมากครับ / B: งั้นก็ได้ค่ะ ที่นี่คือร้านอร่อยค่ะ
+✅ PART_REPAIRED x3 (line · SURFACE) 1 turn(s) → 1 new (validated in place): A: โชคดีนะครับ แล้วเจอกันครับ
+🔎 STRUCTURAL_VALIDATION (after repair round 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 1) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T31 — awkward · Acknowledging the directions is fine, but the restaurant was planned only after the museum visit (turn 20), so going there right away does not follow 
+   ⛔ TRANSITION SCENE_TRANSITION T32,T33 — Eating at the restaurant follows only from turn 31, which drops the agreed museum visit (S2-S3) and contradicts turn 20 (restaurant after the museum).
+   fault classes: TRANSITION×2
+🔁 REPEATED_FAILURE_SIGNATURE S5|SCENE_TRANSITION|779+815| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 2/3 · 1 part(s): x1 scene [TRANSITION] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (scene · TRANSITION) 8 turn(s) → 8 new (validated in place): B: ร้อนมากค่ะ ไปรถสองแถวกันไหมคะ / A: ค่าโดยสารเท่าไหร่ครับ / B: สิบห้าบาทค่ะ รถแท็กซี่แพงกว่าค่ะ / A: ไปรถสองแถวนานเท่าไหร่ครับ / B: ยี่สิบนาที ต้องเลี้ยวที่สี่แยกค่ะ / A: ได้ครับ ไปดูกันเลยครับ / A: ดูทั้งหมดแล้วครับ ไปร้านอาหารกันครับ / B: ทานกันเลยไหม ผัดไทยหรือแกงส้มคะ
+🔎 STRUCTURAL_VALIDATION (after repair round 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 2) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T32 — awkward · Says they have already seen everything, but in S4 they have only just set off to the museum; no visit is shown, so the claim does not follow from what
+   ⛔ TRANSITION SCENE_TRANSITION T32,T33 — No museum visit is shown between S4 and S5, so the move on to the restaurant after 'we've seen it all' does not follow from the trip just begun.
+   fault classes: TRANSITION×2
+🔧 MEANING_REPAIR round 3/3 · 1 part(s): x1 scene [TRANSITION] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (scene · TRANSITION) 7 turn(s) → 7 new (validated in place): B: ยี่สิบนาทีค่ะ ต้องเลี้ยวที่สี่แยกค่ะ / A: ถึงแล้วครับ ไปดูข้างในกันเลยครับ / A: ดูมาเยอะแล้วครับ หิวครับ ไปร้านอาหารกันครับ / B: ทานกันเลยไหมคะ ผัดไทยหรือแกงส้มคะ / A: ผมเอาผัดไทยดีกว่าครับ / B: ราคาที่นี่คุ้มไหมคะ / A: ไม่เชิงครับ แพงนิดหน่อยครับ แต่อร่อยมากครับ
+🔎 STRUCTURAL_VALIDATION (after repair round 3) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 3) FAIL 3 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T30,T31 — awkward · does not answer · Arrival is announced right after the answer that the trip takes twenty minutes, so no travel time has passed; the reply does not res
+   ⛔ TRANSITION SCENE_INCOHERENT T11,T12,T13,T14,T15,T16,T17,T18,T19,T20,T21 — Turns 17-20 place the speakers at the museum (entrance, inside, what to do after finishing), but the situation opens with deciding where to go today, and S3-S4 
+   ⛔ TRANSITION SCENE_TRANSITION T22,T23 — Asks what time to go today as if the museum visit had not started, which reverses the S2 storyline where they are already at the entrance
+   fault classes: QUESTION_ANSWER×1 · TRANSITION×2
+🧠 LISTENING_MEANING_PLAN (not approved) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[คุณอายุเท่าไหร่, แก่, พวกคุณ, นักท่องเที่ยว, เพราะ, เป็นอย่างไร, ตลก]
+   T1 A→B GREET · about meeting again · - ⟦สวัสดีครับ ไม่ได้เจอกันเลยครับ⟧ "Hi, long time no see."
+   T2 B→A ASK(STATE) ↩T1 · about how A is · - ⟦สวัสดีค่ะ สบายดีไหมคะ⟧ "Hi! Are you well?"
+   T3 A→B ASK(PLACE) ↩T2 · about where friends went · - trip ⟦สบายดีครับ พวกคุณไปไหนมาครับ⟧ "Fine. Where have you all been?" [พวกคุณ]
+   T4 B→A ANSWER ↩T3 · about Pai trip · - Pai ⟦ไปปายค่ะ มีนักท่องเที่ยวเยอะค่ะ⟧ "Pai. There are lots of tourists." [นักท่องเที่ยว]
+   T5 A→B ASK(REASON) ↩T4 · about reason for trip · - ⟦ทำไมไปปายครับ⟧ "Why did you go to Pai?"
+   T6 B→A ANSWER ↩T5 · about grandmother · - ⟦เพราะยายอยากไปค่ะ⟧ "Because grandma wanted to go." [เพราะ]
+   T7 A→B ASK(STATE) ↩T6 · about grandmother · - grandmother ⟦ยายเป็นอย่างไรบ้างครับ⟧ "How is grandma?" [เป็นอย่างไร]
+   T8 B→A ANSWER ↩T7 · about grandmother · - grandmother ⟦ยายแก่แล้วค่ะ แต่ตลกมากค่ะ⟧ "Grandma's already old, but she's really funny." [แก่+ตลก]
+   T9 A→B ASK(AGE) ↩T8 · about B's age · - age ⟦แล้วคุณอายุเท่าไหร่ครับ⟧ "And how old are you?" [คุณอายุเท่าไหร่]
+   T10 B→A ANSWER ↩T9 · about B's age · - age ⟦ยี่สิบเจ็ดปีค่ะ⟧ "I'm 27."
+  S2 deciding what to do targets=[พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ทางเข้า, น่าดู, ไปที่, ทาง, ร้านอาหาร, ที่นั่น]
+   T11 A→B ASK(PLACE) · about today's outing · - ⟦อ้อวันนี้เราไปไหนดีครับ⟧ "Oh, where shall we go today?"
+   T12 B→A PROPOSE ↩T11 · about national museum · - national museum ⟦ไปที่พิพิธภัณฑสถานแห่งชาติกันไหมคะ⟧ "Shall we go to the National Museum?" [ไปที่+พิพิธภัณฑสถานแห่งชาติ]
+   T13 A→B COUNTER ↩T12 · about Sanam Luang · - Sanam Luang ⟦ไปที่สนามหลวงดีกว่าครับ⟧ "Let's go to Sanam Luang instead." [ไปที่+สนามหลวง]
+   T14 B→A DECLINE ↩T13 · about the heat · - ⟦ไม่มีทาง วันนี้ร้อนมากค่ะ⟧ "No way, it's very hot today." [ทาง]
+   T15 A→B ACCEPT ↩T14 · about national museum · - national museum ⟦ได้ครับ ไปที่พิพิธภัณฑสถานแห่งชาติครับ⟧ "Okay, let's go to the National Museum." [ไปที่+พิพิธภัณฑสถานแห่งชาติ]
+   T16 B→A REACT ↩T15 · about national museum · - ⟦น่าดู ข้างในเย็นด้วยค่ะ⟧ "It's worth seeing, and it's cool inside too." [น่าดู]
+   T17 A→B ASK(PLACE) ↩T16 · about museum entrance · - ⟦ทางเข้าอยู่ที่ไหนครับ⟧ "Where is the entrance?" [ทางเข้า+ทาง]
+   T18 B→A ANSWER ↩T17 · about museum entrance · - entrance ⟦ทางเข้าอยู่ที่นั่นค่ะ⟧ "The entrance is there." [ทางเข้า+ทาง+ที่นั่น]
+   T19 A→B REACT ↩T18 · about being hungry · - ⟦ดีผมหิวแล้วครับ⟧ "Good, I'm already hungry."
+   T20 B→A PROPOSE ↩T19 · about restaurant after visit · - restaurant ⟦เสร็จแล้วไปร้านอาหารกันไหมคะ⟧ "After we finish, shall we go to a restaurant?" [ร้านอาหาร]
+   T21 A→B ACCEPT ↩T20 · about restaurant after visit · - ⟦ได้เลยครับ⟧ "Sure."
+  S3 agreeing when targets=[สิบโมงเช้า, สิบเอ็ดโมงเช้า, ว่า]
+   T22 B→A ASK(CLOCK_TIME) · about time today · - ⟦วันนี้ไปกี่โมงดีคะ⟧ "What time shall we go today?"
+   T23 A→B PROPOSE ↩T22 · about time today · - 11 AM ⟦ไปสิบเอ็ดโมงเช้าดีไหมครับ⟧ "How about going at 11 AM?" [สิบเอ็ดโมงเช้า]
+   T24 B→A COUNTER ↩T23 · about time today · - 10 AM ⟦สิบโมงเช้าดีกว่าค่ะ วันนี้ร้อนมากค่ะ⟧ "10 AM is better, it's very hot today." [สิบโมงเช้า]
+   T25 A→B ACCEPT ↩T24 · about time today · - 10 AM ⟦ได้ครับ คุณบอกว่าสิบโมงเช้าดีกว่าครับ⟧ "Okay, you said 10 AM is better." [สิบโมงเช้า+ว่า]
+  S4 getting there targets=[เลี้ยว, รถสองแถว, ค่าโดยสาร, นานเท่าไหร่, รถแท็กซี่]
+   T26 B→A PROPOSE · about - · - ⟦ร้อนมากค่ะ ไปรถสองแถวกันไหมคะ⟧ "It's very hot, shall we go by songthaew?" [รถสองแถว]
+   T27 A→B ASK(PRICE) · about - · - ⟦ค่าโดยสารเท่าไหร่ครับ⟧ "How much is the fare?" [ค่าโดยสาร]
+   T28 B→A ANSWER ↩T27 · about - · - ⟦สิบห้าบาทค่ะ รถแท็กซี่แพงกว่าค่ะ⟧ "Fifteen baht. The taxi is more expensive." [รถแท็กซี่]
+   T29 A→B ASK(DURATION) · about - · - ⟦ไปรถสองแถวนานเท่าไหร่ครับ⟧ "How long does it take by songthaew?" [รถสองแถว+นานเท่าไหร่]
+   T30 B→A ANSWER ↩T29 · about DURATION · - ⟦ยี่สิบนาทีค่ะ ต้องเลี้ยวที่สี่แยกค่ะ⟧ "Twenty minutes. You have to turn at the intersection." [เลี้ยว]
+   T31 A→B ACKNOWLEDGE ↩T30 · about ARRIVAL · - ⟦ถึงแล้วครับ ไปดูข้างในกันเลยครับ⟧ "We've arrived. Let's go and look inside."
+  S5 eating and drinking targets=[ทานกันเลย, ผัดไทย, คุ้ม, ไม่เชิง]
+   T32 A→B PROPOSE · about RESTAURANT · - ร้านอาหาร ⟦ดูมาเยอะแล้วครับ หิวครับ ไปร้านอาหารกันครับ⟧ "We've already looked around a lot. I'm hungry. Let's go to a restaurant." [ร้านอาหาร]
+   T33 B→A ASK(CHOICE) · about FOOD · - ผัดไทย ⟦ทานกันเลยไหมคะ ผัดไทยหรือแกงส้มคะ⟧ "Shall we eat? Pad thai or sour curry?" [ทานกันเลย+ผัดไทย]
+   T34 A→B ANSWER ↩T33 · about FOOD · - ผัดไทย ⟦ผมเอาผัดไทยดีกว่าครับ⟧ "I'll go with pad thai, it's better." [ผัดไทย]
+   T35 B→A ASK(YESNO) · about PRICE · - ⟦ราคาที่นี่คุ้มไหมคะ⟧ "Is the price here worth it?" [คุ้ม]
+   T36 A→B ANSWER ↩T35 · about PRICE · - ⟦ไม่เชิงครับ แพงนิดหน่อยครับ แต่อร่อยมากครับ⟧ "Not exactly. It's a bit expensive, but very delicious." [ไม่เชิง]
+  S6 wrapping up targets=[โชคดี, เบอร์โทรศัพท์, คือ]
+   T37 B→A REACT ↩T36 · about - · - ⟦งั้นก็ได้ค่ะ ที่นี่คือร้านอร่อยค่ะ⟧ "Then it's okay. This place is a delicious restaurant." [คือ]
+   T38 A→B REQUEST · about phone number · - phone number ⟦ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ⟧ "Could I have your phone number?" [เบอร์โทรศัพท์]
+   T39 B→A ACCEPT ↩T38 · about phone number · - phone number ⟦ได้ค่ะ เดี๋ยวส่งให้นะค่ะ⟧ "Sure. I'll send it to you."
+   T40 A→B FAREWELL · about - · - ⟦โชคดีนะครับ แล้วเจอกันครับ⟧ "Good luck. See you." [โชคดี]
+⛔ LISTENING_PLAN_BLOCKED — 3 unresolved after 3 repair round(s): QUESTION_ANSWER SEMANTIC_AUDIT — awkward · does not answer · Arrival is announced right after the answer that the trip take · TRANSITION SCENE_INCOHERENT — Turns 17-20 place the speakers at the museum (entrance, inside, what to do after finishing · TRANSITION SCENE_TRANSITION — Asks what time to go today as if the museum visit had not started, which reverses the S2 s · lesson words in the failing parts: เลี้ยว, ไปที่, พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ทาง, น่าดู, ทางเข้า, ที่นั่น, ร้านอาหาร, สิบเอ็ดโมงเช้า · composition stops here: no further paid scene generation (calls: plan 6 · audit 4 · repair 3)
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=0% (target ≥70%) · repairCalls=3 (target <10) · generationCalls=6 · ⚠ nothing validated — health targets, not gates

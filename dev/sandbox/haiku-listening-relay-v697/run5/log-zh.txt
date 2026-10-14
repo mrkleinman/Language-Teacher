@@ -1,0 +1,161 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v696 language=zh path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=zh)
+🧭 LISTENING_FEASIBILITY PASS language=zh planner=meaning-first-3 · pool=60 candidate(s) in SRS order · authorised support=30 word(s) · selected 30 · deferred 1: 多少 (individual: needs an amount to answer with (a number, money, expensive / cheap, a lot / a little) — no) · situations VALID [MEET 5, TIME 3, TRAVEL-1 4, TRAVEL-2 5, SHOP 6, LOOK 7] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+⏭ LISTENING_TARGET_DEFERRED target=29 多少 reason=needs an amount to answer with (a number, money, expensive / cheap, a lot / a little) — not in the learner's authorised vocabulary stage=individual srsObligationPreserved=true
+🧭 LISTENING_DEFERRED_SRS ids=[29] — skipped words keep their SRS obligation (due date untouched; the next Revision / Daily selection still takes them)
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(zh) = selectRevisionTrackTargets → feasibility gate → jazhContractTargets(revision)
+🎧 LISTENING_SELECTED_TARGET_IDS=[32,54,62,63,57,58,55,56,51,53,50,47,48,49,16,17,18,19,20,21,22,23,24,25,26,27,28,30,31,52]
+🎧 LISTENING_TRACK_START language=zh trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=zh introducedContent=30 targets=30 authorised=60 snapshot=l2ujdq (frozen at generation start) · Layer A lexicon 439 entries (segmentation only — not permission)
+📏 LEVEL belt=Mukyu preferred=2–4 hardMax=6 · LEVEL Mukyu · target 2–4 · max 6 (Mandarin words, v692-regression) · Listening: no minimum, aim 2–4, no turn above 6
+📚 VOCAB INVENTORY introducedContent=30 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Mandarin grammar particles
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=zh belt=Mukyu · targets=30 · authorised support=30 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET "meeting and catching up" targets=[人, 做, 昨天, 谁, 为什么] · opens the conversation
+🗺 LISTENING_SITUATION S2 TIME "agreeing when" targets=[现在, 今天, 明天]
+🗺 LISTENING_SITUATION S3 TRAVEL-1 "getting there (1)" targets=[到, 回, 等, 去]
+🗺 LISTENING_SITUATION S4 TRAVEL-2 "getting there (2)" targets=[来, 哪里, 怎么, 跟, 一起]
+🗺 LISTENING_SITUATION S5 SHOP "shopping and paying" targets=[拿, 用, 钱, 买, 开, 在]
+🗺 LISTENING_SITUATION S6 LOOK "looking around" targets=[大, 小, 找, 很, 太, 这里, 那里] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 5 targets
+🔎 SCENE_LOCAL_CHECK S1 STATUS=PASS · 8 turns (budget 4–8)
+📝 SCENE_PLAN S2 (TIME) call 2 · 3 targets
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS · 4 turns (budget 2–6)
+📝 SCENE_PLAN S3 (TRAVEL) call 3 · 4 targets
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS · 6 turns (budget 3–7)
+📝 SCENE_PLAN S4 (TRAVEL) call 4 · 5 targets
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS · 6 turns (budget 4–7)
+📝 SCENE_PLAN S5 (SHOP) call 5 · 6 targets
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS · 8 turns (budget 5–8)
+📝 SCENE_PLAN S6 (LOOK) call 6 · 7 targets
+🔎 SCENE_LOCAL_CHECK S6 STATUS=PASS · 8 turns (budget 6–8)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[人, 做, 昨天, 谁, 为什么]
+   T1 A→B GREET · about greeting · - ⟦你好吗？⟧ "Hi, how are you?"
+   T2 B→A ANSWER ↩T1 · about me, how I am · - ⟦我好，你呢？⟧ "I'm good, and you?"
+   T3 A→B ASK(THING) · about yesterday · - what you did ⟦昨天你做什么？⟧ "What did you do yesterday?" [做+昨天]
+   T4 B→A ANSWER ↩T3 · about visit · - friend ⟦我看朋友了。⟧ "I visited a friend."
+   T5 A→B ASK(PERSON) ↩T4 · about the friend · - ⟦谁啊？⟧ "Oh, who?" [谁]
+   T6 B→A ANSWER ↩T5 · about the person · - friend ⟦这个人，你知道。⟧ "This person, you know them." [人]
+   T7 A→B ASK(REASON) ↩T6 · about the visit · - ⟦为什么？⟧ "Why?" [为什么]
+   T8 B→A ANSWER ↩T7 · about the reason · - friend ⟦这个人懂我啊。⟧ "Because this person understands me." [人]
+  S2 agreeing when targets=[现在, 今天, 明天]
+   T9 A→B PROPOSE · about the place · - place ⟦那个地方，今天，好吗？⟧ "That place, today, okay?" [今天]
+   T10 B→A COUNTER ↩T9 · about the day · - ⟦现在不好，明天吧。⟧ "Not now, tomorrow then." [现在+明天]
+   T11 A→B ASK(CHOICE) ↩T10 · about the day · - ⟦今天，明天？⟧ "Today, or tomorrow?" [今天+明天]
+   T12 B→A ANSWER ↩T11 · about the day · - ⟦好，今天吧。⟧ "Okay, today then." [今天]
+  S3 getting there (1) targets=[到, 回, 等, 去]
+   T13 A→B PROPOSE · about the place · - that place ⟦好，到那个地方吧。⟧ "Okay, let's go to that place then." [到]
+   T14 B→A ASK(YESNO) · about going home · - home ⟦你回家吗？⟧ "Are you going home first?" [回]
+   T15 A→B ANSWER ↩T14 · about not going home · - that place ⟦不回家，去那个地方。⟧ "No, not home, we're going to that place." [回+去]
+   T16 B→A INFORM · about friend waiting · - us ⟦朋友等我们。⟧ "Our friend is waiting for us." [等]
+   T17 A→B ACKNOWLEDGE ↩T16 · about the place · - that place ⟦好，我知道那个地方。⟧ "Okay, I know that place."
+   T18 B→A ACCEPT ↩T17 · about going there · - that place ⟦好，我们去吧。⟧ "Okay, let's go." [去]
+  S4 getting there (2) targets=[来, 哪里, 怎么, 跟, 一起]
+   T19 A→B INFORM · about the way · - ⟦我知道怎么去。⟧ "I know how to get there." [去+怎么]
+   T20 B→A ASK(PLACE) · about things there · - things ⟦哪里有东西呢？⟧ "So where are the things?" [哪里]
+   T21 A→B ANSWER ↩T20 · about that place · - ⟦那个地方有东西。⟧ "That place has things."
+   T22 B→A ACCEPT ↩T21 · about going together · - ⟦好，一起去。⟧ "Okay, let's go together." [一起+去]
+   T23 A→B INFORM · about arrival · - ⟦我们来了。⟧ "We're here." [来]
+   T24 B→A INFORM ↩T23 · about friend · - ⟦我跟朋友说。⟧ "I'll tell our friend." [跟]
+  S5 shopping and paying targets=[拿, 用, 钱, 买, 开, 在]
+   T25 A→B ASK(YESNO) · about opening this · - thing ⟦我可以开这个吗？⟧ "May I open this?" [开]
+   T26 B→A ACCEPT ↩T25 · about opening this · - thing ⟦可以，你开吧。⟧ "Okay, go ahead and open it." [开]
+   T27 A→B REACT ↩T26 · about this thing · - thing ⟦我喜欢这个。⟧ "I like this."
+   T28 B→A ASK(YESNO) ↩T27 · about money · - money ⟦你有钱吗？⟧ "Do you have money?" [钱]
+   T29 A→B ANSWER ↩T28 · about money · - money ⟦没有，钱在家。⟧ "No, the money is at home." [在+钱]
+   T30 B→A OFFER ↩T29 · about money · - money ⟦用我的钱吧。⟧ "Use my money, then." [用+钱]
+   T31 A→B ACCEPT ↩T30 · about this thing · - thing ⟦好，我拿这个。⟧ "Okay, I'll take this." [拿]
+   T32 B→A ACCEPT ↩T31 · about buying this · - thing ⟦好，我买。⟧ "Okay, I'll buy it." [买]
+  S6 looking around targets=[大, 小, 找, 很, 太, 这里, 那里]
+   T33 A→B REACT ↩T32 · about things here · - ⟦这里的东西很好。⟧ "The things here are very good." [很+这里]
+   T34 B→A ASK(YESNO) · about this one's size · - ⟦这个大吗？⟧ "Is this one big?" [大]
+   T35 A→B ANSWER ↩T34 · about this one's size · - ⟦这个很大。⟧ "This one is very big." [大+很]
+   T36 B→A COUNTER ↩T35 · about small one · - small one ⟦我找小的。⟧ "I'm looking for a small one." [小+找]
+   T37 A→B ANSWER ↩T36 · about small ones · - small ones ⟦那里有小的。⟧ "There are small ones over there." [小+那里]
+   T38 B→A REACT ↩T37 · about small one · - ⟦小的太小了。⟧ "The small one is too small." [小+太]
+   T39 A→B ACCEPT ↩T38 · about the big one · - this one ⟦好，我们要这个。⟧ "Okay, we'll take this one."
+   T40 B→A FAREWELL ↩T39 · about goodbye · - ⟦好，再见。⟧ "Okay, goodbye."
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed
+🔎 STRUCTURAL_VALIDATION (candidate) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (candidate) FAIL 4 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T9 — awkward · 'that place' has no antecedent; nothing before it names a place
+   ⛔ TRANSITION SEMANTIC_AUDIT T34 — awkward · the purchase was already agreed in 31-32; asking about size reopens it
+   ⛔ TRANSITION SCENE_TRANSITION T9,T10 — no line in S1 introduces a place or a plan; the talk jumps from the friend to 'that place'
+   ⛔ TRANSITION SCENE_TRANSITION T33,T34 — S5 already agreed to take and buy the item; S6 reopens size shopping as if nothing was agreed
+   fault classes: TRANSITION×4
+🔧 MEANING_REPAIR round 1/3 · 2 part(s): x1 scene [TRANSITION] · x2 scene [TRANSITION] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 1 — 2 part(s) in 2 bounded request(s) (≤ 10 turns each)
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: 个 · the old turns stay; one corrected retry this round
+✅ PART_REPAIRED x2 (scene · TRANSITION) 10 turn(s) → 10 new (validated in place): A: 好，我拿这个。 / B: 好，我买。 / A: 这里的东西很好。 / B: 这里大吗？ / A: 这里很大。 / B: 那里太小了，朋友呢？ / A: 那里有朋友。 / B: 好，我找朋友。 / A: 好，你找吧。 / B: 好，再见。
+🔁 PATCH_RETRY round 1 · x1 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x1 (scene · TRANSITION) 6 turn(s) → 6 new (validated in place): A: 为什么？ / B: 这个人懂我啊。 / A: 有地方看东西，好吗？ / B: 现在不好，明天吧。 / A: 今天，明天？ / B: 好，今天吧。
+🔎 STRUCTURAL_VALIDATION (after repair round 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 1) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SURFACE SEMANTIC_AUDIT T37 — awkward · 有 makes it read as 'there is a friend over there' rather than telling where the friend is, which is what 朋友呢 asks. Understandable, but odd as the answ
+   fault classes: SURFACE×1
+🔧 MEANING_REPAIR round 2/3 · 1 part(s): x1 exchange [SURFACE] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (exchange · SURFACE) 2 turn(s) → 2 new (validated in place): B: 那里太小了，朋友呢？ / A: 朋友，那里。
+🔎 STRUCTURAL_VALIDATION (after repair round 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 2) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SURFACE SEMANTIC_AUDIT T37 — awkward · Clipped: the place is given with no verb tying the friend to it, so it reads as a fragment rather than a full answer to where the friend is.
+   fault classes: SURFACE×1
+🔁 REPEATED_FAILURE_SIGNATURE |SEMANTIC_AUDIT|21| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 3/3 · 1 part(s): x1 scene [SURFACE] — every other turn is kept exactly
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — GRAMMAR_CONTRACT: 找 needs what is looked for — "好，我帮你找。" · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round 3 · x1 — rejected by the hard checks; asked once more with the exact reason
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — MAX_TARGETS_PER_TURN: 5 current targets (62,63,57,58,21) · the old turns stay; the part escalates next round
+🔎 STRUCTURAL_VALIDATION (after repair round 3) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 3) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SURFACE SEMANTIC_AUDIT T37 — awkward · Clipped: the place is given with no verb tying the friend to it, so it reads as a fragment rather than a full answer to where the friend is.
+   fault classes: SURFACE×1
+⛔ MEANING_REPAIR_NO_PROGRESS — the same defects after two rounds; stopping instead of looping
+🧠 LISTENING_MEANING_PLAN (not approved) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[人, 做, 昨天, 谁, 为什么]
+   T1 A→B GREET · about greeting · - ⟦你好吗？⟧ "Hi, how are you?"
+   T2 B→A ANSWER ↩T1 · about me, how I am · - ⟦我好，你呢？⟧ "I'm good, and you?"
+   T3 A→B ASK(THING) · about yesterday · - what you did ⟦昨天你做什么？⟧ "What did you do yesterday?" [做+昨天]
+   T4 B→A ANSWER ↩T3 · about visit · - friend ⟦我看朋友了。⟧ "I visited a friend."
+   T5 A→B ASK(PERSON) ↩T4 · about the friend · - ⟦谁啊？⟧ "Oh, who?" [谁]
+   T6 B→A ANSWER ↩T5 · about the person · - friend ⟦这个人，你知道。⟧ "This person, you know them." [人]
+   T7 A→B ASK(REASON) · about PERSON · - ⟦为什么？⟧ "Why?" [为什么]
+   T8 B→A ANSWER ↩T7 · about PERSON · - ⟦这个人懂我啊。⟧ "Because this person understands me." [人]
+  S2 agreeing when targets=[现在, 今天, 明天]
+   T9 A→B PROPOSE · about PLACE · - ⟦有地方看东西，好吗？⟧ "There's a place to look at things, okay?"
+   T10 B→A COUNTER ↩T9 · about TIME · - ⟦现在不好，明天吧。⟧ "Not now, tomorrow then." [现在+明天]
+   T11 A→B ASK(CHOICE) · about TIME · - ⟦今天，明天？⟧ "Today, or tomorrow?" [今天+明天]
+   T12 B→A ANSWER ↩T11 · about TIME · - ⟦好，今天吧。⟧ "Okay, today then." [今天]
+  S3 getting there (1) targets=[到, 回, 等, 去]
+   T13 A→B PROPOSE · about the place · - that place ⟦好，到那个地方吧。⟧ "Okay, let's go to that place then." [到]
+   T14 B→A ASK(YESNO) · about going home · - home ⟦你回家吗？⟧ "Are you going home first?" [回]
+   T15 A→B ANSWER ↩T14 · about not going home · - that place ⟦不回家，去那个地方。⟧ "No, not home, we're going to that place." [回+去]
+   T16 B→A INFORM · about friend waiting · - us ⟦朋友等我们。⟧ "Our friend is waiting for us." [等]
+   T17 A→B ACKNOWLEDGE ↩T16 · about the place · - that place ⟦好，我知道那个地方。⟧ "Okay, I know that place."
+   T18 B→A ACCEPT ↩T17 · about going there · - that place ⟦好，我们去吧。⟧ "Okay, let's go." [去]
+  S4 getting there (2) targets=[来, 哪里, 怎么, 跟, 一起]
+   T19 A→B INFORM · about the way · - ⟦我知道怎么去。⟧ "I know how to get there." [去+怎么]
+   T20 B→A ASK(PLACE) · about things there · - things ⟦哪里有东西呢？⟧ "So where are the things?" [哪里]
+   T21 A→B ANSWER ↩T20 · about that place · - ⟦那个地方有东西。⟧ "That place has things."
+   T22 B→A ACCEPT ↩T21 · about going together · - ⟦好，一起去。⟧ "Okay, let's go together." [一起+去]
+   T23 A→B INFORM · about arrival · - ⟦我们来了。⟧ "We're here." [来]
+   T24 B→A INFORM ↩T23 · about friend · - ⟦我跟朋友说。⟧ "I'll tell our friend." [跟]
+  S5 shopping and paying targets=[拿, 用, 钱, 买, 开, 在]
+   T25 A→B ASK(YESNO) · about opening this · - thing ⟦我可以开这个吗？⟧ "May I open this?" [开]
+   T26 B→A ACCEPT ↩T25 · about opening this · - thing ⟦可以，你开吧。⟧ "Okay, go ahead and open it." [开]
+   T27 A→B REACT ↩T26 · about this thing · - thing ⟦我喜欢这个。⟧ "I like this."
+   T28 B→A ASK(YESNO) ↩T27 · about money · - money ⟦你有钱吗？⟧ "Do you have money?" [钱]
+   T29 A→B ANSWER ↩T28 · about money · - money ⟦没有，钱在家。⟧ "No, the money is at home." [在+钱]
+   T30 B→A OFFER ↩T29 · about money · - money ⟦用我的钱吧。⟧ "Use my money, then." [用+钱]
+   T31 A→B ACCEPT ↩T30 · about THING · - 这个 ⟦好，我拿这个。⟧ "Okay, I'll take this." [拿]
+   T32 B→A ACCEPT ↩T31 · about THING · - 这个 ⟦好，我买。⟧ "Okay, I'll buy it." [买]
+  S6 looking around targets=[大, 小, 找, 很, 太, 这里, 那里]
+   T33 A→B REACT ↩T32 · about PLACE · - 东西 ⟦这里的东西很好。⟧ "The things here are very good." [很+这里]
+   T34 B→A ASK(YESNO) · about PLACE · - ⟦这里大吗？⟧ "Is this place big?" [大+这里]
+   T35 A→B ANSWER ↩T34 · about PLACE · - ⟦这里很大。⟧ "This place is very big." [大+很+这里]
+   T36 B→A ASK(PERSON) · about - · - ⟦那里太小了，朋友呢？⟧ "Over there it's too small, though. Where's our friend?" [小+太+那里]
+   T37 A→B ANSWER ↩T36 · about PLACE · - ⟦朋友，那里。⟧ "Our friend is over there." [那里]
+   T38 B→A INFORM · about PERSON · - 朋友 ⟦好，我找朋友。⟧ "Okay, I'll go find our friend." [找]
+   T39 A→B ACCEPT ↩T38 · about PERSON · - 朋友 ⟦好，你找吧。⟧ "Okay, you go and look for them." [找]
+   T40 B→A FAREWELL · about - · - ⟦好，再见。⟧ "Okay, goodbye."
+⛔ LISTENING_PLAN_BLOCKED — 1 unresolved after 3 repair round(s): SURFACE SEMANTIC_AUDIT — awkward · Clipped: the place is given with no verb tying the friend to it, so it reads as  · lesson words in the failing parts: 那里 · composition stops here: no further paid scene generation (calls: plan 6 · audit 3 · repair 6)
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=0% (target ≥70%) · repairCalls=6 (target <10) · generationCalls=6 · ⚠ nothing validated — health targets, not gates

@@ -1,0 +1,168 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v696 language=ja path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=ja)
+🧭 LISTENING_FEASIBILITY PASS language=ja planner=meaning-first-3 · pool=106 candidate(s) in SRS order · authorised support=76 word(s) · selected 30 · deferred 0 · situations VALID [MEET 7, PLAN-1 4, PLAN-2 5, TIME 4, TRAVEL 7, SHOP 3] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(ja) = selectRevisionTrackTargets → jazhContractTargets(revision)
+🎧 LISTENING_SELECTED_TARGET_IDS=[101,102,80,103,104,105,106,44,83,20,43,40,82,87,84,85,86,19,46,47,31,32,14,21,23,81,33,34,36,50]
+🗣 JA_SPEECH_STYLE selected=natural snapshot=natural (Natural · Friendly everyday Japanese)
+🎧 LISTENING_TRACK_START language=ja speechStyle=natural trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=ja introducedContent=76 targets=30 authorised=106 snapshot=r9zq2r (frozen at generation start) · Layer A lexicon 457 entries (segmentation only — not permission)
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Japanese content units, v692-regression) · Listening: no minimum, aim 3–5, no turn above 7
+📚 VOCAB INVENTORY introducedContent=76 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Japanese particles / inflection / copula
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=ja belt=10th Kyu · targets=30 · authorised support=76 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET "meeting and catching up" targets=[どう, 昨日, 会う, 話す, なんで, ごめん, うん] · opens the conversation
+🗺 LISTENING_SITUATION S2 PLAN-1 "deciding what to do (1)" targets=[本, 映画, 写真, あれ]
+🗺 LISTENING_SITUATION S3 PLAN-2 "deciding what to do (2)" targets=[あそこ, 見る, どれ, どっち, 欲しい]
+🗺 LISTENING_SITUATION S4 TIME "agreeing when" targets=[また, もう, まだ, 明日]
+🗺 LISTENING_SITUATION S5 TRAVEL "getting there" targets=[帰る, 待つ, 電車, バス, 車, はい, いいえ]
+🗺 LISTENING_SITUATION S6 SHOP "shopping and paying" targets=[買う, お金, できる] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 7 targets
+🔎 SCENE_LOCAL_CHECK S1 STATUS=PASS · 10 turns (budget 6–10)
+📝 SCENE_PLAN S2 (PLAN) call 2 · 4 targets
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS · 6 turns (budget 3–7)
+📝 SCENE_PLAN S3 (PLAN) call 3 · 5 targets
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS · 6 turns (budget 4–7)
+📝 SCENE_PLAN S4 (TIME) call 4 · 4 targets
+🔎 SCENE_LOCAL_CHECK S4 FAIL 1: CLOSED_VOCAB — VOCABULARY_FAILED: unknown words: 分
+📝 SCENE_PLAN S4 (TIME) call 5 · 4 targets · REPLAN (1 defect(s) in the first version)
+🔎 SCENE_LOCAL_CHECK S4 (replan) PASS · the replanned version is kept
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS_AFTER_REPLAN · 6 turns (budget 3–6)
+📝 SCENE_PLAN S5 (TRAVEL) call 6 · 7 targets
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS · 8 turns (budget 6–8)
+📝 SCENE_PLAN S6 (SHOP) call 7 · 3 targets
+🔎 SCENE_LOCAL_CHECK S6 STATUS=PASS · 4 turns (budget 2–4)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[どう, 昨日, 会う, 話す, なんで, ごめん, うん]
+   T1 A→B GREET · about arrival · - ⟦あっ、来た！⟧ "Oh, you're here!"
+   T2 B→A INFORM ↩T1 · about arrival · - ⟦うん、今来た。⟧ "Yeah, I just got here." [うん]
+   T3 A→B ASK(STATE) ↩T2 · about work · - work ⟦仕事どう？⟧ "How's work?" [どう]
+   T4 B→A ANSWER ↩T3 · about work · - ⟦忙しいよ。⟧ "It's busy."
+   T5 A→B ASK(THING) ↩T4 · about yesterday · - ⟦そっか、昨日何してた？⟧ "I see. What did you do yesterday?" [昨日]
+   T6 B→A ANSWER ↩T5 · about friend · - friend ⟦友達と会って話してた。⟧ "I met a friend and we talked." [会う+話す]
+   T7 A→B ASK(YESNO) ↩T6 · about promise · - ⟦昨日来るって言ったよね？⟧ "You said you'd come yesterday, right?" [昨日]
+   T8 B→A APOLOGISE ↩T7 · about apology · - ⟦うん、ごめん。来なかった。⟧ "Yeah, sorry. I didn't come." [ごめん+うん]
+   T9 A→B ASK(REASON) ↩T8 · about absence · - ⟦大丈夫、なんで来なかった？⟧ "It's okay. Why didn't you come?" [なんで]
+   T10 B→A ANSWER ↩T9 · about work · - work ⟦仕事が忙しかったから。⟧ "Because work was busy."
+  S2 deciding what to do (1) targets=[本, 映画, 写真, あれ]
+   T11 A→B ASK(THING) · about today's plans · - ⟦そっか。今日、何する？⟧ "I see. What are we doing today?"
+   T12 B→A PROPOSE ↩T11 · about a movie · - movie ⟦映画、行かない？⟧ "How about going to a movie?" [映画]
+   T13 A→B COUNTER ↩T12 · about movie or photos · - photo ⟦映画もいいけど、写真取りたい。⟧ "A movie's fine, but I want to take photos." [映画+写真]
+   T14 B→A ACCEPT ↩T13 · about photos · - photo ⟦写真いいね。それにしよう。⟧ "Photos sound good. Let's go with that." [写真]
+   T15 A→B ASK(PERSON) · about a book · - book ⟦あっ、あれ、誰の本？⟧ "Oh, whose book is that over there?" [本+あれ]
+   T16 B→A ANSWER ↩T15 · about book's owner · - book ⟦友達のだよ。⟧ "It's my friend's."
+  S3 deciding what to do (2) targets=[あそこ, 見る, どれ, どっち, 欲しい]
+   T17 A→B ASK(CHOICE) · about which shop · - shop ⟦そっか。店、古いのと新しいの、どっちで取る？⟧ "I see. The shop, the old one or the new one, which one should we take them at?" [どっち]
+   T18 B→A ANSWER ↩T17 · about old shop · - ⟦あそこの古いのがいい。⟧ "The old one over there is good." [あそこ]
+   T19 A→B REACT ↩T18 · about old shop · - ⟦へえ、ちょっと見たい。⟧ "Oh, I want to see it a little." [見る]
+   T20 B→A ACCEPT ↩T19 · about photos · - photos ⟦いいね、取りたい。⟧ "Sounds good, I want to take them."
+   T21 A→B INFORM ↩T20 · about shopping · - something ⟦店で何か欲しいな。⟧ "I want something at the shop." [欲しい]
+   T22 B→A ASK(CHOICE) ↩T21 · about which item · - item ⟦どれ欲しい？⟧ "Which one do you want?" [どれ+欲しい]
+  S4 agreeing when targets=[また, もう, まだ, 明日]
+   T23 A→B ANSWER ↩T22 · about which item · - ⟦うーん、まだ分からない。⟧ "Hmm, I still don't know." [まだ]
+   T24 B→A PROPOSE ↩T23 · about going today · - ⟦じゃ、今日行かない？⟧ "Then, shall we go today?"
+   T25 A→B DECLINE ↩T24 · about today · - ⟦今日はもう遅いよ。⟧ "It's already too late today." [もう]
+   T26 B→A PROPOSE ↩T25 · about going tomorrow · - ⟦じゃ、明日行く？⟧ "Then, shall we go tomorrow?" [明日]
+   T27 A→B ACCEPT ↩T26 · about tomorrow · - ⟦いいよ、明日ね。⟧ "Sure, tomorrow then." [明日]
+   T28 B→A THANK ↩T27 · about the shop · - ⟦ありがとう。店、また来たいな。⟧ "Thanks. I'd like to come to the shop again." [また]
+  S5 getting there targets=[帰る, 待つ, 電車, バス, 車, はい, いいえ]
+   T29 A→B ASK(METHOD) · about shop, transport · - shop ⟦店まで何で行く？⟧ "So, how are we getting to the shop?"
+   T30 B→A ANSWER ↩T29 · about train, bus · - train ⟦電車は早いけど、バスは遅いよ。⟧ "The train's fast, but the bus is slow." [電車+バス]
+   T31 A→B ASK(YESNO) ↩T30 · about car · - car ⟦車で行く？⟧ "Are we going by car?" [車]
+   T32 B→A ANSWER ↩T31 · about car, expensive · - car ⟦いいえ、車はちょっと高いよ。⟧ "No, the car's a bit expensive." [車+いいえ]
+   T33 A→B PROPOSE ↩T32 · about train · - train ⟦じゃ、電車にしよう。⟧ "Then let's go with the train." [電車]
+   T34 B→A PROPOSE ↩T33 · about station, wait · - station ⟦駅で待とうか。⟧ "Shall we wait at the station?" [待つ]
+   T35 A→B ASK(YESNO) · about return, train · - train ⟦帰るのも電車？⟧ "Going back by train too?" [電車+帰る]
+   T36 B→A ANSWER ↩T35 · about return, train · - train ⟦はい、電車で帰ろう。⟧ "Yes, let's go back by train." [電車+はい+帰る]
+  S6 shopping and paying targets=[買う, お金, できる]
+   T37 A→B ASK(YESNO) · about price of item · - ⟦あっ、これ、買いたいけど、高い？⟧ "Oh, I want to buy this, but is it expensive?" [買う]
+   T38 B→A ANSWER ↩T37 · about price · - ⟦ええ、ちょっと高いね。⟧ "Yeah, it's a bit expensive."
+   T39 A→B COUNTER ↩T38 · about buying it · - ⟦高いけど、お金あるから、買うのができるよ。⟧ "It's expensive, but I have money, so I can buy it." [できる+買う+お金]
+   T40 B→A FAREWELL ↩T39 · about buying, goodbye · - ⟦じゃ、これ買う。お金、使っちゃうね。じゃね。⟧ "Okay, I'll buy this. I'm going to spend the money. Bye." [買う+お金]
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed
+🔎 STRUCTURAL_VALIDATION (candidate) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (candidate) FAIL 3 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SURFACE SEMANTIC_AUDIT T17 — awkward · The で here reads as the place or means for 取る, so the choice of shop sounds off; choosing between two shops is a different pattern.
+   ⛔ GRAMMAR SEMANTIC_AUDIT T39 — incorrect · The verb + の + ができる construction is ungrammatical; the verb form before できる is wrong.
+   ⛔ TRANSITION SCENE_TRANSITION T29,T30 — S4 agreed to go tomorrow (turns 26-27), but S5 treats the shop trip as happening now, with a same-day return by train.
+   fault classes: SURFACE×1 · GRAMMAR×1 · TRANSITION×1
+🔧 MEANING_REPAIR round 1/3 · 3 part(s): x1 line [SURFACE] · x2 line [GRAMMAR] · x3 boundary [TRANSITION] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (line · SURFACE) 1 turn(s) → 1 new (validated in place): A: 店、古いのと新しいの、どっちがいい？
+⛔ PART_REJECTED x2 (line) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: ことができるよ · the old turns stay; the part escalates next round
+✅ PART_REPAIRED x3 (boundary · TRANSITION) 4 turn(s) → 4 new (validated in place): A: いいよ、明日ね。 / B: ありがとう。店、また来たいな。 / A: 明日、店まで何で行く？ / B: 電車は早いけど、バスは遅いよ。
+🔎 STRUCTURAL_VALIDATION (after repair round 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 1) FAIL 4 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T29,T30 — awkward · does not answer · Describes how fast the train and bus are but never says how they will travel, so the question is not answered.
+   ⛔ GRAMMAR SEMANTIC_AUDIT T39 — incorrect · The verb + の + ができる construction is ungrammatical; the verb form before できる is wrong.
+   ⛔ TRANSITION SCENE_TRANSITION T17,T18 — The shops appear right after the book talk with no link to the photo plan, so the topic jumps.
+   ⛔ TRANSITION SCENE_TRANSITION T37,T38 — After S5 they have already left the shop and are heading home by train, yet S6 starts with shopping there, so the storyline jumps back.
+   fault classes: QUESTION_ANSWER×1 · GRAMMAR×1 · TRANSITION×2
+🔁 REPEATED_FAILURE_SIGNATURE |SEMANTIC_AUDIT|21+23+46| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 2/3 · 3 part(s): x1 exchange [QUESTION_ANSWER] · x2 boundary [GRAMMAR+TRANSITION] · x3 boundary [TRANSITION] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 2 — 3 part(s) in 2 bounded request(s) (≤ 10 turns each)
+✅ PART_REPAIRED x1 (exchange · QUESTION_ANSWER) 2 turn(s) → 2 new (validated in place): A: 明日、店まで何で行こうか？ / B: 電車で行こうかな。バスは遅いよ。
+⛔ PART_REJECTED x2 (boundary) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: ことが · the old turns stay; the part escalates next round
+⛔ PART_REJECTED x3 (boundary) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: なら · the old turns stay; the part escalates next round
+🔎 STRUCTURAL_VALIDATION (after repair round 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 2) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ GRAMMAR SEMANTIC_AUDIT T39 — incorrect · The verb + の + ができる construction is ungrammatical; the verb form before できる is wrong.
+   ⛔ TRANSITION SCENE_TRANSITION T37,T38 — Shopping starts right after the planning of the train trip home, with no arrival at the shop and no clear time (now or tomorrow), so the storyline jumps.
+   fault classes: GRAMMAR×1 · TRANSITION×1
+🔁 REPEATED_FAILURE_SIGNATURE |SEMANTIC_AUDIT|21+23+46| ×3 — escalated 2 recovery level(s) (never the same repair again)
+🔁 REPEATED_FAILURE_SIGNATURE S6|SCENE_TRANSITION|21| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 3/3 · 1 part(s): x1 scene [GRAMMAR+TRANSITION] — every other turn is kept exactly
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — MAX_TARGETS_PER_TURN: 4 current targets (85,21,23,33) · CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: そろそろ · the old turns stay; the part escalates next round
+🔎 STRUCTURAL_VALIDATION (after repair round 3) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 3) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ GRAMMAR SEMANTIC_AUDIT T39 — incorrect · The verb + の + ができる construction is ungrammatical; the verb form before できる is wrong.
+   ⛔ TRANSITION SCENE_TRANSITION T37,T38 — Shopping starts right after the planning of the train trip home, with no arrival at the shop and no clear time (now or tomorrow), so the storyline jumps.
+   fault classes: GRAMMAR×1 · TRANSITION×1
+⛔ MEANING_REPAIR_NO_PROGRESS — the same defects after two rounds; stopping instead of looping
+🧠 LISTENING_MEANING_PLAN (not approved) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[どう, 昨日, 会う, 話す, なんで, ごめん, うん]
+   T1 A→B GREET · about arrival · - ⟦あっ、来た！⟧ "Oh, you're here!"
+   T2 B→A INFORM ↩T1 · about arrival · - ⟦うん、今来た。⟧ "Yeah, I just got here." [うん]
+   T3 A→B ASK(STATE) ↩T2 · about work · - work ⟦仕事どう？⟧ "How's work?" [どう]
+   T4 B→A ANSWER ↩T3 · about work · - ⟦忙しいよ。⟧ "It's busy."
+   T5 A→B ASK(THING) ↩T4 · about yesterday · - ⟦そっか、昨日何してた？⟧ "I see. What did you do yesterday?" [昨日]
+   T6 B→A ANSWER ↩T5 · about friend · - friend ⟦友達と会って話してた。⟧ "I met a friend and we talked." [会う+話す]
+   T7 A→B ASK(YESNO) ↩T6 · about promise · - ⟦昨日来るって言ったよね？⟧ "You said you'd come yesterday, right?" [昨日]
+   T8 B→A APOLOGISE ↩T7 · about apology · - ⟦うん、ごめん。来なかった。⟧ "Yeah, sorry. I didn't come." [ごめん+うん]
+   T9 A→B ASK(REASON) ↩T8 · about absence · - ⟦大丈夫、なんで来なかった？⟧ "It's okay. Why didn't you come?" [なんで]
+   T10 B→A ANSWER ↩T9 · about work · - work ⟦仕事が忙しかったから。⟧ "Because work was busy."
+  S2 deciding what to do (1) targets=[本, 映画, 写真, あれ]
+   T11 A→B ASK(THING) · about today's plans · - ⟦そっか。今日、何する？⟧ "I see. What are we doing today?"
+   T12 B→A PROPOSE ↩T11 · about a movie · - movie ⟦映画、行かない？⟧ "How about going to a movie?" [映画]
+   T13 A→B COUNTER ↩T12 · about movie or photos · - photo ⟦映画もいいけど、写真取りたい。⟧ "A movie's fine, but I want to take photos." [映画+写真]
+   T14 B→A ACCEPT ↩T13 · about photos · - photo ⟦写真いいね。それにしよう。⟧ "Photos sound good. Let's go with that." [写真]
+   T15 A→B ASK(PERSON) · about a book · - book ⟦あっ、あれ、誰の本？⟧ "Oh, whose book is that over there?" [本+あれ]
+   T16 B→A ANSWER ↩T15 · about book's owner · - book ⟦友達のだよ。⟧ "It's my friend's."
+  S3 deciding what to do (2) targets=[あそこ, 見る, どれ, どっち, 欲しい]
+   T17 A→B ASK(CHOICE) · about 店 · - ⟦店、古いのと新しいの、どっちがいい？⟧ "The shop, the old one or the new one, which do you prefer?" [どっち]
+   T18 B→A ANSWER ↩T17 · about old shop · - ⟦あそこの古いのがいい。⟧ "The old one over there is good." [あそこ]
+   T19 A→B REACT ↩T18 · about old shop · - ⟦へえ、ちょっと見たい。⟧ "Oh, I want to see it a little." [見る]
+   T20 B→A ACCEPT ↩T19 · about photos · - photos ⟦いいね、取りたい。⟧ "Sounds good, I want to take them."
+   T21 A→B INFORM ↩T20 · about shopping · - something ⟦店で何か欲しいな。⟧ "I want something at the shop." [欲しい]
+   T22 B→A ASK(CHOICE) ↩T21 · about which item · - item ⟦どれ欲しい？⟧ "Which one do you want?" [どれ+欲しい]
+  S4 agreeing when targets=[また, もう, まだ, 明日]
+   T23 A→B ANSWER ↩T22 · about which item · - ⟦うーん、まだ分からない。⟧ "Hmm, I still don't know." [まだ]
+   T24 B→A PROPOSE ↩T23 · about going today · - ⟦じゃ、今日行かない？⟧ "Then, shall we go today?"
+   T25 A→B DECLINE ↩T24 · about today · - ⟦今日はもう遅いよ。⟧ "It's already too late today." [もう]
+   T26 B→A PROPOSE ↩T25 · about going tomorrow · - ⟦じゃ、明日行く？⟧ "Then, shall we go tomorrow?" [明日]
+   T27 A→B ACCEPT ↩T26 · about 明日 · - ⟦いいよ、明日ね。⟧ "Sure, tomorrow then." [明日]
+   T28 B→A THANK ↩T27 · about 店 · - ⟦ありがとう。店、また来たいな。⟧ "Thanks. I'd like to come to the shop again." [また]
+  S5 getting there targets=[帰る, 待つ, 電車, バス, 車, はい, いいえ]
+   T29 A→B ASK(METHOD) · about - · - ⟦明日、店まで何で行こうか？⟧ "How shall we get to the shop tomorrow?" [明日]
+   T30 B→A ANSWER ↩T29 · about - · - ⟦電車で行こうかな。バスは遅いよ。⟧ "I think we'll go by train. The bus is slow." [電車+バス]
+   T31 A→B ASK(YESNO) · about car · - car ⟦車で行く？⟧ "Are we going by car?" [車]
+   T32 B→A ANSWER ↩T31 · about car, expensive · - car ⟦いいえ、車はちょっと高いよ。⟧ "No, the car's a bit expensive." [車+いいえ]
+   T33 A→B PROPOSE ↩T32 · about train · - train ⟦じゃ、電車にしよう。⟧ "Then let's go with the train." [電車]
+   T34 B→A PROPOSE ↩T33 · about station, wait · - station ⟦駅で待とうか。⟧ "Shall we wait at the station?" [待つ]
+   T35 A→B ASK(YESNO) · about return, train · - train ⟦帰るのも電車？⟧ "Going back by train too?" [電車+帰る]
+   T36 B→A ANSWER ↩T35 · about return, train · - train ⟦はい、電車で帰ろう。⟧ "Yes, let's go back by train." [電車+はい+帰る]
+  S6 shopping and paying targets=[買う, お金, できる]
+   T37 A→B ASK(YESNO) · about price of item · - ⟦あっ、これ、買いたいけど、高い？⟧ "Oh, I want to buy this, but is it expensive?" [買う]
+   T38 B→A ANSWER ↩T37 · about price · - ⟦ええ、ちょっと高いね。⟧ "Yeah, it's a bit expensive."
+   T39 A→B COUNTER ↩T38 · about buying it · - ⟦高いけど、お金あるから、買うのができるよ。⟧ "It's expensive, but I have money, so I can buy it." [できる+買う+お金]
+   T40 B→A FAREWELL ↩T39 · about buying, goodbye · - ⟦じゃ、これ買う。お金、使っちゃうね。じゃね。⟧ "Okay, I'll buy this. I'm going to spend the money. Bye." [買う+お金]
+⛔ LISTENING_PLAN_BLOCKED — 2 unresolved after 3 repair round(s): GRAMMAR SEMANTIC_AUDIT — incorrect · The verb + の + ができる construction is ungrammatical; the verb form before できる is · TRANSITION SCENE_TRANSITION — Shopping starts right after the planning of the train trip home, with no arrival at the sh · lesson words in the failing parts: できる, 買う, お金 · composition stops here: no further paid scene generation (calls: plan 7 · audit 3 · repair 4)
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=0% (target ≥70%) · repairCalls=4 (target <10) · generationCalls=7 · ⚠ nothing validated — health targets, not gates

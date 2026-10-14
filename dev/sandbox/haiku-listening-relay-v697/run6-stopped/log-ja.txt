@@ -1,0 +1,21 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v696 language=ja path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=ja)
+🧭 LISTENING_FEASIBILITY PASS language=ja planner=meaning-first-3 · pool=106 candidate(s) in SRS order · authorised support=76 word(s) · selected 30 · deferred 0 · situations VALID [MEET 8, PLAN-1 4, PLAN-2 5, TIME 4, TRAVEL 7, SHOP 2] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(ja) = selectRevisionTrackTargets → jazhContractTargets(revision)
+🎧 LISTENING_SELECTED_TARGET_IDS=[101,102,80,103,104,105,106,44,83,20,43,40,82,87,84,85,86,19,46,47,31,32,14,21,23,81,33,34,36,50]
+🗣 JA_SPEECH_STYLE selected=natural snapshot=natural (Natural · Friendly everyday Japanese)
+🎧 LISTENING_TRACK_START language=ja speechStyle=natural trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=ja introducedContent=76 targets=30 authorised=106 snapshot=r9zq2r (frozen at generation start) · Layer A lexicon 457 entries (segmentation only — not permission)
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Japanese content units, v692-regression) · Listening: no minimum, aim 3–5, no turn above 7
+📚 VOCAB INVENTORY introducedContent=76 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Japanese particles / inflection / copula
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=ja belt=10th Kyu · targets=30 · authorised support=76 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET "meeting and catching up" targets=[どう, 昨日, 会う, 話す, なんで, ごめん, うん, できる] · opens the conversation
+🗺 LISTENING_SITUATION S2 PLAN-1 "deciding what to do (1)" targets=[本, 映画, 写真, あれ]
+🗺 LISTENING_SITUATION S3 PLAN-2 "deciding what to do (2)" targets=[あそこ, 見る, どれ, どっち, 欲しい]
+🗺 LISTENING_SITUATION S4 TIME "agreeing when" targets=[また, もう, まだ, 明日]
+🗺 LISTENING_SITUATION S5 TRAVEL "getting there" targets=[帰る, 待つ, 電車, バス, 車, はい, いいえ]
+🗺 LISTENING_SITUATION S6 SHOP "shopping and paying" targets=[買う, お金] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 8 targets
+🔎 SCENE_LOCAL_CHECK S1 FAIL 1: ADJACENCY — APOLOGY expects an acknowledgement, got an unrelated question
+📝 SCENE_PLAN S1 (MEET) call 2 · 8 targets · REPLAN (1 defect(s) in the first version)

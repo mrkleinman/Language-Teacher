@@ -1,0 +1,261 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v696 language=ja path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=ja)
+🧭 LISTENING_FEASIBILITY PASS language=ja planner=meaning-first-3 · pool=106 candidate(s) in SRS order · authorised support=76 word(s) · selected 30 · deferred 0 · situations VALID [MEET 7, PLAN-1 4, PLAN-2 5, TIME 4, TRAVEL 7, SHOP 3] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(ja) = selectRevisionTrackTargets → jazhContractTargets(revision)
+🎧 LISTENING_SELECTED_TARGET_IDS=[101,102,80,103,104,105,106,44,83,20,43,40,82,87,84,85,86,19,46,47,31,32,14,21,23,81,33,34,36,50]
+🗣 JA_SPEECH_STYLE selected=natural snapshot=natural (Natural · Friendly everyday Japanese)
+🎧 LISTENING_TRACK_START language=ja speechStyle=natural trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=ja introducedContent=76 targets=30 authorised=106 snapshot=r9zq2r (frozen at generation start) · Layer A lexicon 457 entries (segmentation only — not permission)
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Japanese content units, v692-regression) · Listening: no minimum, aim 3–5, no turn above 7
+📚 VOCAB INVENTORY introducedContent=76 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Japanese particles / inflection / copula
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=ja belt=10th Kyu · targets=30 · authorised support=76 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET "meeting and catching up" targets=[どう, 昨日, 会う, 話す, なんで, ごめん, うん] · opens the conversation
+🗺 LISTENING_SITUATION S2 PLAN-1 "deciding what to do (1)" targets=[本, 映画, 写真, あれ]
+🗺 LISTENING_SITUATION S3 PLAN-2 "deciding what to do (2)" targets=[あそこ, 見る, どれ, どっち, 欲しい]
+🗺 LISTENING_SITUATION S4 TIME "agreeing when" targets=[また, もう, まだ, 明日]
+🗺 LISTENING_SITUATION S5 TRAVEL "getting there" targets=[帰る, 待つ, 電車, バス, 車, はい, いいえ]
+🗺 LISTENING_SITUATION S6 SHOP "shopping and paying" targets=[買う, お金, できる] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 7 targets
+🔎 SCENE_LOCAL_CHECK S1 FAIL 1: ADJACENCY — APOLOGY expects an acknowledgement, got an unrelated question
+📝 SCENE_PLAN S1 (MEET) call 2 · 7 targets · REPLAN (1 defect(s) in the first version)
+🔎 SCENE_LOCAL_CHECK S1 (replan) PASS · the replanned version is kept
+🔎 SCENE_LOCAL_CHECK S1 STATUS=PASS_AFTER_REPLAN · 10 turns (budget 6–10)
+📝 SCENE_PLAN S2 (PLAN) call 3 · 4 targets
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS · 6 turns (budget 3–7)
+📝 SCENE_PLAN S3 (PLAN) call 4 · 5 targets
+🔎 SCENE_LOCAL_CHECK S3 FAIL 1: SCENE_TARGET_MISSING — 見る (see) is assigned to S3 but is not heard in it
+📝 SCENE_PLAN S3 (PLAN) call 5 · 5 targets · REPLAN (1 defect(s) in the first version)
+🔎 SCENE_LOCAL_CHECK S3 (replan) PASS · the replanned version is kept
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS_AFTER_REPLAN · 7 turns (budget 4–7)
+📝 SCENE_PLAN S4 (TIME) call 6 · 4 targets
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS · 4 turns (budget 3–5)
+📝 SCENE_PLAN S5 (TRAVEL) call 7 · 7 targets
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS · 9 turns (budget 6–9)
+📝 SCENE_PLAN S6 (SHOP) call 8 · 3 targets
+🔎 SCENE_LOCAL_CHECK S6 STATUS=PASS · 4 turns (budget 2–4)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[どう, 昨日, 会う, 話す, なんで, ごめん, うん]
+   T1 A→B GREET · about greeting · - ⟦あ、来た来た。⟧ "Oh, there you are!"
+   T2 B→A APOLOGISE ↩T1 · about being late · - ⟦ごめん、遅かった。⟧ "Sorry, I was late." [ごめん]
+   T3 A→B ACKNOWLEDGE ↩T2 · about the apology · - ⟦うん、大丈夫。⟧ "Yeah, it's okay." [うん]
+   T4 B→A ASK(STATE) · about work · - work ⟦仕事はどう？⟧ "How's work?" [どう]
+   T5 A→B ANSWER ↩T4 · about being busy · - ⟦ちょっと忙しい。⟧ "A bit busy."
+   T6 B→A ASK(REASON) · about being busy · - ⟦なんで忙しいの？⟧ "Why are you busy?" [なんで]
+   T7 A→B ANSWER ↩T6 · about work difficulty · - work ⟦仕事が難しいから。⟧ "Because work is hard."
+   T8 B→A ASK(THING) · about yesterday · - yesterday ⟦そっか、昨日何したの？⟧ "I see. What did you do yesterday?" [昨日]
+   T9 A→B ANSWER ↩T8 · about meeting a friend · - friend ⟦友達と会ったよ。⟧ "I met a friend." [会う]
+   T10 B→A ASK(THING) · about talk topic · - talk ⟦へえ、何話したの？⟧ "Oh, what did you talk about?" [話す]
+  S2 deciding what to do (1) targets=[本, 映画, 写真, あれ]
+   T11 A→B ANSWER ↩T10 · about yesterday's talk · - movie ⟦えっと、映画。⟧ "Um, a movie." [映画]
+   T12 B→A PROPOSE ↩T11 · about going out today · - movie ⟦へえ、映画か。今日、一緒に行く？⟧ "Oh, a movie? Want to go together today?" [映画]
+   T13 A→B COUNTER ↩T12 · about choosing an activity · - book ⟦うーん、映画はちょっと高い。本は？⟧ "Hmm, movies are a bit expensive. How about books?" [本+映画]
+   T14 B→A ASK(THING) ↩T13 · about the thing over there · - that thing ⟦本か。あっ、あれ、何？⟧ "Books, huh. Oh, what's that over there?" [本+あれ]
+   T15 A→B ANSWER ↩T14 · about photo book · - photo book ⟦あれ？ 写真の本だよ。⟧ "That? It's a photo book." [本+写真]
+   T16 B→A ACCEPT ↩T15 · about choosing a book · - book ⟦写真の本か。いいね、本にしよう。⟧ "A photo book, huh. Sounds good, let's go with books." [本+写真]
+  S3 deciding what to do (2) targets=[あそこ, 見る, どれ, どっち, 欲しい]
+   T17 A→B ASK(PLACE) · about where to go · - ⟦じゃ、どこ行く？⟧ "Okay, where shall we go?"
+   T18 B→A PROPOSE ↩T17 · about shop over there · - shop ⟦あそこの店、見てみる？⟧ "How about checking out that shop over there?" [あそこ+見る]
+   T19 A→B COUNTER ↩T18 · about distance · - shop ⟦うーん、遠くない？⟧ "Hmm, isn't it far?"
+   T20 B→A ASK(CHOICE) ↩T19 · about which shop · - shop ⟦遠くないよ。駅の店と、どっちがいい？⟧ "It's not far. Which do you like, the shop at the station or that one?" [どっち]
+   T21 A→B ANSWER ↩T20 · about shop over there · - shop ⟦あそこ。何か欲しいから。⟧ "That one over there, because I want something." [あそこ+欲しい]
+   T22 B→A ASK(THING) ↩T21 · about which book · - book ⟦どれが欲しいの？⟧ "Which one do you want?" [どれ+欲しい]
+   T23 A→B ANSWER ↩T22 · about photo book · - book ⟦うーん、それかな。⟧ "Hmm, maybe that one."
+  S4 agreeing when targets=[また, もう, まだ, 明日]
+   T24 B→A ASK(CHOICE) · about the day · - ⟦じゃ、今日がいい？明日がいい？⟧ "Then, today or tomorrow, which is better?" [明日]
+   T25 A→B ANSWER ↩T24 · about going today · - ⟦今日がいい。もう行きたいから。⟧ "Today is better. I already want to go." [もう]
+   T26 B→A ACCEPT ↩T25 · about going today · - ⟦じゃ、今日行こう。また忙しいのに、ありがとう。⟧ "Then let's go today. Thanks, even though you're busy again." [また]
+   T27 A→B ACCEPT ↩T26 · about the shop · - shop ⟦大丈夫だよ。そこ、まだ行ってないし。⟧ "It's fine. We haven't been there yet, so." [まだ]
+  S5 getting there targets=[帰る, 待つ, 電車, バス, 車, はい, いいえ]
+   T28 B→A ASK(CHOICE) · about way to shop · - train or bus ⟦じゃ、行こう。電車かバス？⟧ "Then let's go. Train or bus?" [電車+バス]
+   T29 A→B ANSWER ↩T28 · about train · - train ⟦電車かな。バスは遅いから。⟧ "Maybe the train. The bus is slow." [電車+バス]
+   T30 B→A ASK(YESNO) ↩T29 · about going by car · - car ⟦じゃ、車で行く？⟧ "Then, shall we go by car?" [車]
+   T31 A→B ANSWER ↩T30 · about having a car · - car ⟦いいえ、車ないよ。⟧ "No, I don't have a car." [車+いいえ]
+   T32 B→A ACCEPT ↩T31 · about train · - train ⟦そっか。じゃ、電車だね。⟧ "I see. Then, the train it is." [電車]
+   T33 A→B ASK(YESNO) ↩T32 · about waiting for train · - train ⟦電車、待つ？⟧ "Do we have to wait for the train?" [電車+待つ]
+   T34 B→A ANSWER ↩T33 · about waiting a bit · - train ⟦はい、ちょっと待つね。⟧ "Yes, we'll wait a little." [はい+待つ]
+   T35 A→B ASK(YESNO) ↩T34 · about going home · - train ⟦帰るのも電車？⟧ "Going back by train too?" [電車+帰る]
+   T36 B→A ANSWER ↩T35 · about going home · - train ⟦ええ、電車で帰ろう。⟧ "Yeah, let's go back by train." [電車+帰る]
+  S6 shopping and paying targets=[買う, お金, できる]
+   T37 A→B INFORM · about the shop · - ⟦あっ、ここだ。⟧ "Oh, here we are."
+   T38 B→A ASK(YESNO) · about price · - photo book ⟦これ、高い？⟧ "Is this one expensive?"
+   T39 A→B ANSWER ↩T38 · about price · - photo book ⟦安いよ。買う。⟧ "It's cheap. I'll buy it." [買う]
+   T40 B→A FAREWELL ↩T39 · about money and pickup · - money ⟦お金ある。今日できるね。ありがとう、じゃね。⟧ "I've got the money. It'll be ready today, right? Thanks, see you." [できる+お金]
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed
+🔎 STRUCTURAL_VALIDATION (candidate) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (candidate) PASS · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+  🎬 COHERENCE AUDIT: 5/6 scene(s) pass · scene 6 FAIL: deterministic continuity 3/5: scene opens with a reply to something not in the scene [decided by the model judge (fail); the deterministic 3/5 alone would have been accepted]
+📖 STORY_JUDGE FAIL · overall 3/5 · the situations judged as ONE conversation
+📖 STORY_REPAIR 1/2 · 1 part(s): x1 intention (S6) — from the final story judge; every other turn is kept exactly
+✅ PART_REPAIRED x1 (intention · TRANSITION) 2 turn(s) → 2 new (validated in place): A: 安いよ。これ買う。お金ある。 / B: そっか。今日できるね。ありがとう、じゃね。
+🔎 STRUCTURAL_VALIDATION (after story repair 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after story repair 1) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T40 — awkward · Said right after the purchase and payment, so a ready-later idea does not fit an item bought on the spot. It reads as a made-to-order item, which no e
+   fault classes: TRANSITION×1
+🔧 MEANING_REPAIR round 1/2 · 1 part(s): x1 scene [TRANSITION] — every other turn is kept exactly
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: 料理 · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round 1 · x1 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x1 (scene · TRANSITION) 4 turn(s) → 4 new (validated in place): A: あっ、ここだ。ここで作るって。 / B: これ、高い？ / A: 安いよ。これ買う。お金ある。 / B: そっか。今日できるね。ありがとう、じゃね。
+🔎 STRUCTURAL_VALIDATION (after repair round 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 1) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T40 — awkward · Said right after the purchase and payment, so a ready-later idea does not fit an item bought on the spot. It reads as a made-to-order item, which no e
+   fault classes: TRANSITION×1
+🔁 REPEATED_FAILURE_SIGNATURE S6|SEMANTIC_AUDIT|46| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 2/2 · 1 part(s): x1 scene [TRANSITION] — every other turn is kept exactly
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: なら · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round 2 · x1 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x1 (scene · TRANSITION) 4 turn(s) → 4 new (validated in place): A: あっ、ここだ。来てみたかったんだ。 / B: 何か買うの？ / A: うん、これ買う。安いし、お金もある。 / B: そっか。これ、家でできる？ありがとう、じゃね。
+🔎 STRUCTURAL_VALIDATION (after repair round 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 2) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T40 — awkward · The thanks and goodbye have no reason here and come in the same turn as a question still waiting for an answer, so the farewell does not follow from A
+   fault classes: TRANSITION×1
+🔧 MEANING_REPAIR boundary round — only 1 transition fault(s) left after 2 rounds: one bounded repair of the situation boundary, nothing else changes
+🔁 REPEATED_FAILURE_SIGNATURE S6|SEMANTIC_AUDIT|46| ×3 — escalated 2 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 3/2 · 1 part(s): x1 scene [TRANSITION] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (scene · TRANSITION) 4 turn(s) → 4 new (validated in place): A: ここ、ご飯が安いらしいよ。 / B: じゃ、今食べる？ / A: うん、これ買う。お金もあるし。 / B: へえ、これ、今できる？
+🔎 STRUCTURAL_VALIDATION (after repair round 3) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 3) PASS · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+  🎬 COHERENCE AUDIT: 5/6 scene(s) pass · scene 6 FAIL: deterministic continuity 3/5: the reply does not answer the question [decided by the model judge (fail); the deterministic 3/5 alone would have been accepted]
+📖 STORY_JUDGE FAIL · overall 3/5 · the situations judged as ONE conversation · after story repair 1
+📖 STORY_REPAIR 2/2 · 1 part(s): x1 boundary (S5+S6) — from the final story judge; every other turn is kept exactly
+✅ PART_REPAIRED x1 (boundary · TRANSITION) 4 turn(s) → 4 new (validated in place): A: 帰るのも電車？ / B: うん、たぶん電車。 / A: そこ、ご飯が安いらしいよ。 / B: じゃ、そこ行ったら食べる？
+🔎 STRUCTURAL_VALIDATION (after story repair 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after story repair 2) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T38,T39 — awkward · does not answer · Eating is asked about, but the reply only talks about buying, so the question is never answered.
+   ⛔ TRANSITION SCENE_INCOHERENT T37,T38,T39,T40 — 38 is said before arriving at the shop, but 39-40 are at the counter; the arrival is never stated, and 39 does not answer 38.
+   fault classes: QUESTION_ANSWER×1 · TRANSITION×1
+🔧 MEANING_REPAIR round 4/5 · 1 part(s): x1 scene [QUESTION_ANSWER+TRANSITION] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (scene · QUESTION_ANSWER+TRANSITION) 4 turn(s) → 4 new (validated in place): A: あ、ここだ。ご飯が安いらしいよ。 / B: じゃ、ここで食べる？ / A: うん、食べる。お金もあるし、これ買う。 / B: へえ、これ、今できる？
+🔎 STRUCTURAL_VALIDATION (after repair round 4) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 4) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SURFACE SEMANTIC_AUDIT T40 — awkward · 今できる asks whether the food can be made at this moment, not whether the order is already finished; a native speaker would find it odd for this moment.
+   fault classes: SURFACE×1
+🔧 MEANING_REPAIR round 5/5 · 1 part(s): x1 scene [SURFACE] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (scene · SURFACE) 4 turn(s) → 4 new (validated in place): A: あ、ここだ。ご飯が安いらしいよ。 / B: じゃ、ここで食べる？お金、大丈夫？ / A: うん、大丈夫。これ買うね。 / B: へえ、これ、できた？早いね。
+🔎 STRUCTURAL_VALIDATION (after repair round 5) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 5) PASS · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+  🎬 COHERENCE AUDIT: 5/6 scene(s) pass · scene 6 FAIL: deterministic continuity 3/5: the reply does not answer the question [decided by the model judge (fail); the deterministic 3/5 alone would have been accepted]
+📖 STORY_JUDGE FAIL · overall 3/5 · the situations judged as ONE conversation · after story repair 2
+🧠 LISTENING_MEANING_PLAN (approved) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[どう, 昨日, 会う, 話す, なんで, ごめん, うん]
+   T1 A→B GREET · about greeting · - ⟦あ、来た来た。⟧ "Oh, there you are!"
+   T2 B→A APOLOGISE ↩T1 · about being late · - ⟦ごめん、遅かった。⟧ "Sorry, I was late." [ごめん]
+   T3 A→B ACKNOWLEDGE ↩T2 · about the apology · - ⟦うん、大丈夫。⟧ "Yeah, it's okay." [うん]
+   T4 B→A ASK(STATE) · about work · - work ⟦仕事はどう？⟧ "How's work?" [どう]
+   T5 A→B ANSWER ↩T4 · about being busy · - ⟦ちょっと忙しい。⟧ "A bit busy."
+   T6 B→A ASK(REASON) · about being busy · - ⟦なんで忙しいの？⟧ "Why are you busy?" [なんで]
+   T7 A→B ANSWER ↩T6 · about work difficulty · - work ⟦仕事が難しいから。⟧ "Because work is hard."
+   T8 B→A ASK(THING) · about yesterday · - yesterday ⟦そっか、昨日何したの？⟧ "I see. What did you do yesterday?" [昨日]
+   T9 A→B ANSWER ↩T8 · about meeting a friend · - friend ⟦友達と会ったよ。⟧ "I met a friend." [会う]
+   T10 B→A ASK(THING) · about talk topic · - talk ⟦へえ、何話したの？⟧ "Oh, what did you talk about?" [話す]
+  S2 deciding what to do (1) targets=[本, 映画, 写真, あれ]
+   T11 A→B ANSWER ↩T10 · about yesterday's talk · - movie ⟦えっと、映画。⟧ "Um, a movie." [映画]
+   T12 B→A PROPOSE ↩T11 · about going out today · - movie ⟦へえ、映画か。今日、一緒に行く？⟧ "Oh, a movie? Want to go together today?" [映画]
+   T13 A→B COUNTER ↩T12 · about choosing an activity · - book ⟦うーん、映画はちょっと高い。本は？⟧ "Hmm, movies are a bit expensive. How about books?" [本+映画]
+   T14 B→A ASK(THING) ↩T13 · about the thing over there · - that thing ⟦本か。あっ、あれ、何？⟧ "Books, huh. Oh, what's that over there?" [本+あれ]
+   T15 A→B ANSWER ↩T14 · about photo book · - photo book ⟦あれ？ 写真の本だよ。⟧ "That? It's a photo book." [本+写真]
+   T16 B→A ACCEPT ↩T15 · about choosing a book · - book ⟦写真の本か。いいね、本にしよう。⟧ "A photo book, huh. Sounds good, let's go with books." [本+写真]
+  S3 deciding what to do (2) targets=[あそこ, 見る, どれ, どっち, 欲しい]
+   T17 A→B ASK(PLACE) · about where to go · - ⟦じゃ、どこ行く？⟧ "Okay, where shall we go?"
+   T18 B→A PROPOSE ↩T17 · about shop over there · - shop ⟦あそこの店、見てみる？⟧ "How about checking out that shop over there?" [あそこ+見る]
+   T19 A→B COUNTER ↩T18 · about distance · - shop ⟦うーん、遠くない？⟧ "Hmm, isn't it far?"
+   T20 B→A ASK(CHOICE) ↩T19 · about which shop · - shop ⟦遠くないよ。駅の店と、どっちがいい？⟧ "It's not far. Which do you like, the shop at the station or that one?" [どっち]
+   T21 A→B ANSWER ↩T20 · about shop over there · - shop ⟦あそこ。何か欲しいから。⟧ "That one over there, because I want something." [あそこ+欲しい]
+   T22 B→A ASK(THING) ↩T21 · about which book · - book ⟦どれが欲しいの？⟧ "Which one do you want?" [どれ+欲しい]
+   T23 A→B ANSWER ↩T22 · about photo book · - book ⟦うーん、それかな。⟧ "Hmm, maybe that one."
+  S4 agreeing when targets=[また, もう, まだ, 明日]
+   T24 B→A ASK(CHOICE) · about the day · - ⟦じゃ、今日がいい？明日がいい？⟧ "Then, today or tomorrow, which is better?" [明日]
+   T25 A→B ANSWER ↩T24 · about going today · - ⟦今日がいい。もう行きたいから。⟧ "Today is better. I already want to go." [もう]
+   T26 B→A ACCEPT ↩T25 · about going today · - ⟦じゃ、今日行こう。また忙しいのに、ありがとう。⟧ "Then let's go today. Thanks, even though you're busy again." [また]
+   T27 A→B ACCEPT ↩T26 · about the shop · - shop ⟦大丈夫だよ。そこ、まだ行ってないし。⟧ "It's fine. We haven't been there yet, so." [まだ]
+  S5 getting there targets=[帰る, 待つ, 電車, バス, 車, はい, いいえ]
+   T28 B→A ASK(CHOICE) · about way to shop · - train or bus ⟦じゃ、行こう。電車かバス？⟧ "Then let's go. Train or bus?" [電車+バス]
+   T29 A→B ANSWER ↩T28 · about train · - train ⟦電車かな。バスは遅いから。⟧ "Maybe the train. The bus is slow." [電車+バス]
+   T30 B→A ASK(YESNO) ↩T29 · about going by car · - car ⟦じゃ、車で行く？⟧ "Then, shall we go by car?" [車]
+   T31 A→B ANSWER ↩T30 · about having a car · - car ⟦いいえ、車ないよ。⟧ "No, I don't have a car." [車+いいえ]
+   T32 B→A ACCEPT ↩T31 · about train · - train ⟦そっか。じゃ、電車だね。⟧ "I see. Then, the train it is." [電車]
+   T33 A→B ASK(YESNO) ↩T32 · about waiting for train · - train ⟦電車、待つ？⟧ "Do we have to wait for the train?" [電車+待つ]
+   T34 B→A ANSWER ↩T33 · about waiting a bit · - train ⟦はい、ちょっと待つね。⟧ "Yes, we'll wait a little." [はい+待つ]
+   T35 A→B ASK(YESNO) · about - · - ⟦帰るのも電車？⟧ "Going back by train too?" [電車+帰る]
+   T36 B→A ANSWER ↩T35 · about - · - ⟦うん、たぶん電車。⟧ "Yeah, probably the train." [電車+うん]
+  S6 shopping and paying targets=[買う, お金, できる]
+   T37 A→B INFORM · about - · - ⟦あ、ここだ。ご飯が安いらしいよ。⟧ "Oh, this is the place. Apparently the meals are cheap."
+   T38 B→A ASK(YESNO) · about - · - ⟦じゃ、ここで食べる？お金、大丈夫？⟧ "Then, shall we eat here? Is money okay?" [お金]
+   T39 A→B ANSWER ↩T38 · about - · - ⟦うん、大丈夫。これ買うね。⟧ "Yeah, it's fine. I'll buy this." [うん+買う]
+   T40 B→A ASK(YESNO) · about - · - ⟦へえ、これ、できた？早いね。⟧ "Oh, is this ready already? That was fast." [できる]
+✅ MEANING_PLAN state=APPROVED · structural validation PASS · semantic audit PASS · 40 turns · 5 repair round(s)
+✅ SCENE_ACCEPTED LS1 (MEET) · structural PASS · semantic PASS · 10 turns · targets [どう, 昨日, 会う, 話す, なんで, ごめん, うん]
+🧵 SCENE_COMMITTED LS1 — enters the conversation
+✅ SCENE_ACCEPTED LS2 (PLAN) · structural PASS · semantic PASS · 6 turns · targets [本, 映画, 写真, あれ]
+🧵 SCENE_COMMITTED LS2 — enters the conversation
+✅ SCENE_ACCEPTED LS3 (PLAN) · structural PASS · semantic PASS · 7 turns · targets [あそこ, 見る, どれ, どっち, 欲しい]
+🧵 SCENE_COMMITTED LS3 — enters the conversation
+✅ SCENE_ACCEPTED LS4 (TIME) · structural PASS · semantic PASS · 4 turns · targets [また, もう, まだ, 明日]
+🧵 SCENE_COMMITTED LS4 — enters the conversation
+✅ SCENE_ACCEPTED LS5 (TRAVEL) · structural PASS · semantic PASS · 9 turns · targets [帰る, 待つ, 電車, バス, 車, はい, いいえ]
+🧵 SCENE_COMMITTED LS5 — enters the conversation
+✅ SCENE_ACCEPTED LS6 (SHOP) · structural PASS · semantic PASS · 4 turns · targets [買う, お金, できる]
+🧵 SCENE_COMMITTED LS6 — enters the conversation
+🎧 LISTENING_SCENE_COVERAGE_UNION 30/30 · committed 6 situations · 40 turns (allowed 24–44)
+🎧 LISTENING_COHERENCE FAIL · overall 3/5 · scene-level verdicts are authoritative: scene 6 FAIL (deterministic continuity 3/5: the reply does not answer the )
+🧊 LISTENING_TEXT_FREEZE ja lines=40 — the Japanese text is final; readings / romaji are derived only now
+🔤 JA_READING_PIPELINE deterministic units=184 unresolved=0 · segmentation → dictionary → morphology → kana → romaji
+🔤 JA_READING_ALIGNMENT lines=40 issues=0 PASS · JA_TEXT_FREEZE intact (40 lines byte-identical)
+🎧 LISTENING_PRONUNCIATION PASS
+🎧 LISTENING_TARGET_AUDIT (final) covered=30/30
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS1 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=8 verdict=PASS
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS2 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=5 verdict=PASS
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS3 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=6 verdict=PASS
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS4 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=4 verdict=PASS
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS5 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=8 verdict=PASS
+🗣 JA_REGISTER_AUDIT speechStyle=natural scene=LS6 relationship=adult friends expected=plain / friendly everyday Japanese politeLines=0 plainLines=4 verdict=PASS
+🗣 JA_REGISTER_AUDIT scenes=6 pass=6 fail=0 REGISTER_PASS=true
+🩺 LISTENING_REPAIR_HEALTH repairCalls=9 (target < 10) OK · sceneRegenerations=0 · scenesCommittedFirstPass=0 · afterRepair=0 · withDefects=0 · firstGenerationUnknownLexemeLines=0 — telemetry only, not a gate
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=100% (target ≥70%) · repairCalls=9 (target <10) · generationCalls=8 · phaseRegenerations=0 · globalReplans=0 · targetReassignments=0 · ⚠ PLANNER_FAILURE — repair calls > generation calls: diagnose upstream planning (feasibility / meaning plan / palettes), even if READY passes — health targets, not gates
+📏 LISTENING_COMPLEXITY_AUDIT belt=10th Kyu preferred=3–5 hardMax=7 lines=40 withinPreferred=22 shortNatural=18 abovePreferredAllowed=0 overHardMax=0 maxObserved=5 · preferredRatio=100% (advisory ≥80%) PASS
+📚 LISTENING_CLOSED_VOCAB unknown=0 PASS
+    LISTENING_LINE L1 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L2 speaker=B actualTargetIds=[87] targetCount=1
+    LISTENING_LINE L3 speaker=A actualTargetIds=[85] targetCount=1
+    LISTENING_LINE L4 speaker=B actualTargetIds=[20] targetCount=1
+    LISTENING_LINE L5 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L6 speaker=B actualTargetIds=[40] targetCount=1
+    LISTENING_LINE L7 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L8 speaker=B actualTargetIds=[81] targetCount=1
+    LISTENING_LINE L9 speaker=A actualTargetIds=[34] targetCount=1
+    LISTENING_LINE L10 speaker=B actualTargetIds=[36] targetCount=1
+    LISTENING_LINE L11 speaker=A actualTargetIds=[105] targetCount=1
+    LISTENING_LINE L12 speaker=B actualTargetIds=[105] targetCount=1
+    LISTENING_LINE L13 speaker=A actualTargetIds=[104,105] targetCount=2
+    LISTENING_LINE L14 speaker=B actualTargetIds=[104,83] targetCount=2
+    LISTENING_LINE L15 speaker=A actualTargetIds=[104,106] targetCount=2
+    LISTENING_LINE L16 speaker=B actualTargetIds=[104,106] targetCount=2
+    LISTENING_LINE L17 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L18 speaker=B actualTargetIds=[82,19] targetCount=2
+    LISTENING_LINE L19 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L20 speaker=B actualTargetIds=[43] targetCount=1
+    LISTENING_LINE L21 speaker=A actualTargetIds=[82,47] targetCount=2
+    LISTENING_LINE L22 speaker=B actualTargetIds=[44,47] targetCount=2
+    LISTENING_LINE L23 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L24 speaker=B actualTargetIds=[14] targetCount=1
+    LISTENING_LINE L25 speaker=A actualTargetIds=[31] targetCount=1
+    LISTENING_LINE L26 speaker=B actualTargetIds=[80] targetCount=1
+    LISTENING_LINE L27 speaker=A actualTargetIds=[32] targetCount=1
+    LISTENING_LINE L28 speaker=B actualTargetIds=[101,102] targetCount=2
+    LISTENING_LINE L29 speaker=A actualTargetIds=[101,102] targetCount=2
+    LISTENING_LINE L30 speaker=B actualTargetIds=[103] targetCount=1
+    LISTENING_LINE L31 speaker=A actualTargetIds=[103,86] targetCount=2
+    LISTENING_LINE L32 speaker=B actualTargetIds=[101] targetCount=1
+    LISTENING_LINE L33 speaker=A actualTargetIds=[101,50] targetCount=2
+    LISTENING_LINE L34 speaker=B actualTargetIds=[84,50] targetCount=2
+    LISTENING_LINE L35 speaker=A actualTargetIds=[101,33] targetCount=2
+    LISTENING_LINE L36 speaker=B actualTargetIds=[101,85] targetCount=2
+    LISTENING_LINE L37 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L38 speaker=B actualTargetIds=[23] targetCount=1
+    LISTENING_LINE L39 speaker=A actualTargetIds=[85,21] targetCount=2
+    LISTENING_LINE L40 speaker=B actualTargetIds=[46] targetCount=1
+🎧 LISTENING_FINAL_INTEGRITY NOT_READY · TARGET COVERAGE 30/30 · failed: WHOLE_CONVERSATION_COHERENCE
+  🎧 LISTENING_GATES TARGET_COVERAGE=30/30 · COVERAGE_PASS=true · MAX_TARGETS_PER_TURN=2 · MAX3_PASS=true · BOTH_SPEAKERS=true · NO_MERGED_SPEAKER_LINES=true · NO_DUPLICATES=true · NO_SINGLETON_SCENES=true · CLOSED_VOCAB=true · LENGTH_PASS=true · JA_REGISTER_PASS=true · LINE_QUALITY=true · NATURALNESS=true · WHOLE_CONVERSATION_COHERENCE=FAIL · PRONUNCIATION=true · SCENE_REQUIRED_COVERAGE=PASS · TURN_COUNT=40/44 · TURN_BUDGET=true · SCENES_VALIDATED=true · ONE_CONVERSATION=PASS · MEANING_PLAN_VALIDATED=PASS · QUESTION_ANSWER=PASS · NO_DEFECTIVE_COMMITTED_PHASES=true
+  🎧 LISTENING NOT_READY — Listening track needs repair (WHOLE_CONVERSATION_COHERENCE=FAIL) · TARGET COVERAGE 30/30 · 40 turns · 6 scene(s) · 💰 LISTENING_GENERATION_CALLS=8 LISTENING_REPAIR_CALLS=9 LISTENING_QC_CALLS=11 LISTENING_TOTAL_PAID_CALLS=28 LISTENING_MF_PLAN_CALLS=8 LISTENING_MF_SCENE_REPLANS=2 LISTENING_MF_AUDIT_CALLS=8 LISTENING_MF_REPAIR_CALLS=9 LISTENING_MF_REPAIR_ROUNDS=5 LISTENING_MF_TRUNCATIONS=0 LISTENING_PLANNER=meaning-first-3 LISTENING_MF_STORY_ROUNDS=2 LISTENING_VERIFIED_TARGETS=30 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=100 LISTENING_PLANNER_FAILURE=true COMPLEXITY_PREFERRED_RANGE=3–5 COMPLEXITY_HARD_MAX=7 COMPLEXITY_WITHIN_PREFERRED=22 COMPLEXITY_SHORT_NATURAL=18 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=0 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=100%
+🎧 LISTENING_SNAPSHOT_INVARIANT PASS — track / coverage target ids === the frozen snapshot (30)
+🎧 LISTENING_TRACK_RESULT status=NOT_READY · TARGET COVERAGE 30/30 · failed: WHOLE_CONVERSATION_COHERENCE=FAIL · level 10th Kyu hardMax 7 · LISTENING_SELECTION_COUNT=30 LISTENING_MAIN_GENERATION_CALLS=0 LISTENING_GENERATION_CALLS=8 LISTENING_REPAIR_CALLS=9 LISTENING_QC_CALLS=11 LISTENING_TOTAL_PAID_CALLS=28 LISTENING_MF_PLAN_CALLS=8 LISTENING_MF_SCENE_REPLANS=2 LISTENING_MF_AUDIT_CALLS=8 LISTENING_MF_REPAIR_CALLS=9 LISTENING_MF_REPAIR_ROUNDS=5 LISTENING_MF_TRUNCATIONS=0 LISTENING_PLANNER=meaning-first-3 LISTENING_MF_STORY_ROUNDS=2 LISTENING_VERIFIED_TARGETS=30 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=100 LISTENING_PLANNER_FAILURE=true COMPLEXITY_PREFERRED_RANGE=3–5 COMPLEXITY_HARD_MAX=7 COMPLEXITY_WITHIN_PREFERRED=22 COMPLEXITY_SHORT_NATURAL=18 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=0 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=100% LISTENING_TOKEN_USAGE=0 LISTENING_COST=0

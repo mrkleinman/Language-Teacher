@@ -1,0 +1,62 @@
+=== SYSTEM ===
+(none)
+
+=== USER ===
+Judge the WHOLE listening track below as ONE continuous, natural Japanese conversation between the SAME two people. It was written in internal parts (numbered as "scenes" below) — they are NOT separate scenes: every part must continue directly from the previous part.
+Check the WHOLE text: the beginning makes sense; topics move on naturally; every answer responds to its question (why → a reason, where → a place, when → a time, how long → a duration, how much → an amount, a proposal → accept / refuse / counter-proposal); facts stay consistent (an agreed time or place stays agreed unless someone explicitly corrects it; whose mother / friend it is stays the same); names and pronouns stay consistent; a change of place is said in the dialogue; the time sequence makes sense (a part may start LATER the same day when its first line says what happened in between — "we have seen the museum", "we are here now": that stated time skip is fine); nobody greets again in the middle; the ending follows from the conversation. Speakers: A and B are friends talking; natural spoken Japanese in one consistent register..
+A part PASSES only if it is coherent in itself AND continues the previous part. If a part fails, give breakAfterLine = the line number after which it breaks (or null).
+
+Scene 1 — meeting and catching up
+  1. A: あ、来た来た。 — Oh, there you are!
+  2. B: ごめん、遅かった。 — Sorry, I was late.
+  3. A: うん、大丈夫。 — Yeah, it's okay.
+  4. B: 仕事はどう？ — How's work?
+  5. A: ちょっと忙しい。 — A bit busy.
+  6. B: なんで忙しいの？ — Why are you busy?
+  7. A: 仕事が難しいから。 — Because work is hard.
+  8. B: そっか、昨日何したの？ — I see. What did you do yesterday?
+  9. A: 友達と会ったよ。 — I met a friend.
+  10. B: へえ、何話したの？ — Oh, what did you talk about?
+
+Scene 2 — deciding what to do (1)
+  1. A: えっと、映画。 — Um, a movie.
+  2. B: へえ、映画か。今日、一緒に行く？ — Oh, a movie? Want to go together today?
+  3. A: うーん、映画はちょっと高い。本は？ — Hmm, movies are a bit expensive. How about books?
+  4. B: 本か。あっ、あれ、何？ — Books, huh. Oh, what's that over there?
+  5. A: あれ？ 写真の本だよ。 — That? It's a photo book.
+  6. B: 写真の本か。いいね、本にしよう。 — A photo book, huh. Sounds good, let's go with books.
+
+Scene 3 — deciding what to do (2)
+  1. A: じゃ、どこ行く？ — Okay, where shall we go?
+  2. B: あそこの店、見てみる？ — How about checking out that shop over there?
+  3. A: うーん、遠くない？ — Hmm, isn't it far?
+  4. B: 遠くないよ。駅の店と、どっちがいい？ — It's not far. Which do you like, the shop at the station or that one?
+  5. A: あそこ。何か欲しいから。 — That one over there, because I want something.
+  6. B: どれが欲しいの？ — Which one do you want?
+  7. A: うーん、それかな。 — Hmm, maybe that one.
+
+Scene 4 — agreeing when
+  1. B: じゃ、今日がいい？明日がいい？ — Then, today or tomorrow, which is better?
+  2. A: 今日がいい。もう行きたいから。 — Today is better. I already want to go.
+  3. B: じゃ、今日行こう。また忙しいのに、ありがとう。 — Then let's go today. Thanks, even though you're busy again.
+  4. A: 大丈夫だよ。そこ、まだ行ってないし。 — It's fine. We haven't been there yet, so.
+
+Scene 5 — getting there
+  1. B: じゃ、行こう。電車かバス？ — Then let's go. Train or bus?
+  2. A: 電車かな。バスは遅いから。 — Maybe the train. The bus is slow.
+  3. B: じゃ、車で行く？ — Then, shall we go by car?
+  4. A: いいえ、車ないよ。 — No, I don't have a car.
+  5. B: そっか。じゃ、電車だね。 — I see. Then, the train it is.
+  6. A: 電車、待つ？ — Do we have to wait for the train?
+  7. B: はい、ちょっと待つね。 — Yes, we'll wait a little.
+  8. A: 帰るのも電車？ — Going back by train too?
+  9. B: ええ、電車で帰ろう。 — Yeah, let's go back by train.
+
+Scene 6 — shopping and paying
+  1. A: あっ、ここだ。 — Oh, here we are.
+  2. B: これ、高い？ — Is this one expensive?
+  3. A: 安いよ。買う。 — It's cheap. I'll buy it.
+  4. B: お金ある。今日できるね。ありがとう、じゃね。 — I've got the money. It'll be ready today, right? Thanks, see you.
+
+Reply ONLY with JSON: {"scenes":[{"scene":1,"pass":true,"breakAfterLine":null,"reason":"..."}],"overall":1-5,"reason":"..."}
+Keep every reason under 12 words.

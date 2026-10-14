@@ -1,0 +1,22 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v696 language=zh path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=zh)
+🧭 LISTENING_FEASIBILITY PASS language=zh planner=meaning-first-3 · pool=60 candidate(s) in SRS order · authorised support=30 word(s) · selected 30 · deferred 1: 多少 (individual: needs an amount to answer with (a number, money, expensive / cheap, a lot / a little) — no) · situations VALID [MEET 5, TIME 3, TRAVEL-1 4, TRAVEL-2 5, SHOP 6, LOOK 7] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+⏭ LISTENING_TARGET_DEFERRED target=29 多少 reason=needs an amount to answer with (a number, money, expensive / cheap, a lot / a little) — not in the learner's authorised vocabulary stage=individual srsObligationPreserved=true
+🧭 LISTENING_DEFERRED_SRS ids=[29] — skipped words keep their SRS obligation (due date untouched; the next Revision / Daily selection still takes them)
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(zh) = selectRevisionTrackTargets → feasibility gate → jazhContractTargets(revision)
+🎧 LISTENING_SELECTED_TARGET_IDS=[32,54,62,63,57,58,55,56,51,53,50,47,48,49,16,17,18,19,20,21,22,23,24,25,26,27,28,30,31,52]
+🎧 LISTENING_TRACK_START language=zh trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=zh introducedContent=30 targets=30 authorised=60 snapshot=l2ujdq (frozen at generation start) · Layer A lexicon 439 entries (segmentation only — not permission)
+📏 LEVEL belt=Mukyu preferred=2–4 hardMax=6 · LEVEL Mukyu · target 2–4 · max 6 (Mandarin words, v692-regression) · Listening: no minimum, aim 2–4, no turn above 6
+📚 VOCAB INVENTORY introducedContent=30 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Mandarin grammar particles
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=zh belt=Mukyu · targets=30 · authorised support=30 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET "meeting and catching up" targets=[人, 做, 昨天, 谁, 为什么] · opens the conversation
+🗺 LISTENING_SITUATION S2 TIME "agreeing when" targets=[现在, 今天, 明天]
+🗺 LISTENING_SITUATION S3 TRAVEL-1 "getting there (1)" targets=[到, 回, 等, 去]
+🗺 LISTENING_SITUATION S4 TRAVEL-2 "getting there (2)" targets=[来, 哪里, 怎么, 跟, 一起]
+🗺 LISTENING_SITUATION S5 SHOP "shopping and paying" targets=[拿, 用, 钱, 买, 开, 在]
+🗺 LISTENING_SITUATION S6 LOOK "looking around" targets=[大, 小, 找, 很, 太, 这里, 那里] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 5 targets
+🔎 SCENE_LOCAL_CHECK S1 FAIL 1: GRAMMAR_CONTRACT — 做 needs what is done (做什么 · 做工作) — "我要做。"
+📝 SCENE_PLAN S1 (MEET) call 2 · 5 targets · REPLAN (1 defect(s) in the first version)

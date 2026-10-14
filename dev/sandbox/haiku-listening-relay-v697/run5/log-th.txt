@@ -1,0 +1,220 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v696 language=th path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=th)
+🧭 LISTENING_FEASIBILITY PASS language=th planner=meaning-first-3 · pool=150 candidate(s) in SRS order · authorised support=878 word(s) · selected 30 · deferred 0 · situations VALID [MEET 7, PLAN 8, TIME 3, TRAVEL 5, EAT 4, PART 3] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(th) = selectThaiRevisionTargets → freezeThaiTargetSelection
+🎧 LISTENING_SELECTED_TARGET_IDS=[779,359,1233,1479,1536,1539,821,839,653,676,717,719,730,737,761,858,744,750,817,840,841,860,667,669,672,686,787,815,847,712]
+🎧 LISTENING_TRACK_START language=th trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=th introducedContent=878 targets=30 authorised=908 snapshot=dfdvca (frozen at generation start) · Layer A lexicon 1881 entries (segmentation only — not permission)
+📏 LEVEL belt=9th Kyu preferred=4–6 hardMax=8 · LEVEL 9th Kyu · target 4–6 · max 8 (Thai words, v692-regression) · Listening: no minimum, aim 4–6, no turn above 8
+📚 VOCAB INVENTORY introducedContent=878 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Thai particles + structural markers
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=th belt=9th Kyu · targets=30 · authorised support=878 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET "meeting and catching up" targets=[คุณอายุเท่าไหร่, แก่, พวกคุณ, นักท่องเที่ยว, เพราะ, เป็นอย่างไร, ตลก] · opens the conversation
+🗺 LISTENING_SITUATION S2 PLAN "deciding what to do" targets=[พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ทางเข้า, น่าดู, ไปที่, ทาง, ร้านอาหาร, ที่นั่น]
+🗺 LISTENING_SITUATION S3 TIME "agreeing when" targets=[สิบโมงเช้า, สิบเอ็ดโมงเช้า, ว่า]
+🗺 LISTENING_SITUATION S4 TRAVEL "getting there" targets=[เลี้ยว, รถสองแถว, ค่าโดยสาร, นานเท่าไหร่, รถแท็กซี่]
+🗺 LISTENING_SITUATION S5 EAT "eating and drinking" targets=[ทานกันเลย, ผัดไทย, คุ้ม, ไม่เชิง]
+🗺 LISTENING_SITUATION S6 PART "wrapping up" targets=[โชคดี, เบอร์โทรศัพท์, คือ] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 7 targets
+🔎 SCENE_LOCAL_CHECK S1 STATUS=PASS · 10 turns (budget 6–10)
+📝 SCENE_PLAN S2 (PLAN) call 2 · 8 targets
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS · 10 turns (budget 7–11)
+📝 SCENE_PLAN S3 (TIME) call 3 · 3 targets
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS · 4 turns (budget 2–5)
+📝 SCENE_PLAN S4 (TRAVEL) call 4 · 5 targets
+🔎 SCENE_LOCAL_CHECK S4 FAIL 1: LINE_QUALITY — QUALITY_REJECTED: COLLOCATION_VEHICLE_GO: "ไปรถแท็กซี่" — travelling by a vehicle is นั่ง 
+📝 SCENE_PLAN S4 (TRAVEL) call 5 · 5 targets · REPLAN (1 defect(s) in the first version)
+🔎 SCENE_LOCAL_CHECK S4 (replan) PASS · the replanned version is kept
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS_AFTER_REPLAN · 7 turns (budget 4–7)
+📝 SCENE_PLAN S5 (EAT) call 6 · 4 targets
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS · 5 turns (budget 3–5)
+📝 SCENE_PLAN S6 (PART) call 7 · 3 targets
+🔎 SCENE_LOCAL_CHECK S6 FAIL 1: SCENE_TARGET_MISSING — คือ (is (identifying) is assigned to S6 but is not heard in it
+📝 SCENE_PLAN S6 (PART) call 8 · 3 targets · REPLAN (1 defect(s) in the first version)
+🔎 SCENE_LOCAL_CHECK S6 (replan) FAIL 1: SCENE_TARGET_MISSING — คือ (is (identifying) is assigned to S6 but is not heard in it · the first version is kept (the replan was not better)
+🔎 SCENE_LOCAL_CHECK S6 STATUS=FAILED (1: SCENE_TARGET_MISSING) — kept for global recovery, NOT approved · 4 turns (budget 2–4)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[คุณอายุเท่าไหร่, แก่, พวกคุณ, นักท่องเที่ยว, เพราะ, เป็นอย่างไร, ตลก]
+   T1 A→B GREET · about greeting, long time · - ⟦สวัสดี ไม่ได้เจอกันตั้งนานครับ⟧ "Hello, long time no see."
+   T2 B→A REACT ↩T1 · about herself, getting old · - ⟦ใช่ ฉันแก่แล้วค่ะ⟧ "Yes, I'm already old." [แก่]
+   T3 A→B ASK(AGE) ↩T2 · about her age · - ⟦แล้ว คุณอายุเท่าไหร่ครับ⟧ "So, how old are you?" [คุณอายุเท่าไหร่]
+   T4 B→A ANSWER ↩T3 · about her age · - ⟦ฉันยี่สิบเจ็ดปีค่ะ⟧ "I'm twenty-seven."
+   T5 A→B INFORM · about his friend, travel · - ⟦ผมกับเพื่อนเป็นนักท่องเที่ยวครับ⟧ "My friend and I are tourists." [นักท่องเที่ยว]
+   T6 B→A ASK(REASON) ↩T5 · about their trip · - ⟦ทำไมพวกคุณมาเมืองไทยคะ⟧ "Why did you all come to Thailand?" [พวกคุณ]
+   T7 A→B ANSWER ↩T6 · about nature, reason · - ⟦เพราะธรรมชาติสวยครับ⟧ "Because the nature is beautiful." [เพราะ]
+   T8 B→A ASK(STATE) · about his friend · - ⟦เพื่อนของคุณเป็นอย่างไรคะ⟧ "How is your friend?" [เป็นอย่างไร]
+   T9 A→B ANSWER ↩T8 · about his friend · - ⟦เขาตลกมากครับ⟧ "He is very funny." [ตลก]
+   T10 B→A REACT ↩T9 · about his humour · - ⟦จริงเหรอคะ⟧ "Really?"
+  S2 deciding what to do targets=[พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ทางเข้า, น่าดู, ไปที่, ทาง, ร้านอาหาร, ที่นั่น]
+   T11 A→B PROPOSE · about going out together · - ⟦ใช่ครับ เราไปเที่ยวด้วยกันไหมครับ⟧ "Yes, shall we go out together?"
+   T12 B→A ASK(PLACE) ↩T11 · about where to go · - ⟦ได้ค่ะ ไปไหนดีคะ⟧ "Sure, where shall we go?"
+   T13 A→B PROPOSE ↩T12 · about national museum · - National Museum ⟦ไปที่พิพิธภัณฑสถานแห่งชาติไหมครับ⟧ "How about going to the National Museum?" [ไปที่+พิพิธภัณฑสถานแห่งชาติ]
+   T14 B→A ASK(YESNO) ↩T13 · about worth seeing · - National Museum ⟦ที่นั่นน่าดูไหมคะ⟧ "Is it worth seeing there?" [น่าดู+ที่นั่น]
+   T15 A→B ANSWER ↩T14 · about worth seeing · - ⟦น่าดูมากครับ⟧ "Very worth seeing." [น่าดู]
+   T16 B→A INFORM ↩T15 · about location · - Sanam Luang ⟦ที่นั่นอยู่ใกล้สนามหลวงค่ะ⟧ "It's near Sanam Luang." [สนามหลวง+ที่นั่น]
+   T17 A→B ASK(YESNO) ↩T16 · about the way · - way ⟦คุณรู้ทางไหมครับ⟧ "Do you know the way?" [ทาง]
+   T18 B→A ANSWER ↩T17 · about entrance · - entrance ⟦รู้ค่ะ ทางเข้าอยู่ที่นั่นค่ะ⟧ "I know. The entrance is over there." [ทางเข้า+ทาง+ที่นั่น]
+   T19 A→B PROPOSE ↩T18 · about restaurant after · - restaurant ⟦แล้วเราไปร้านอาหารไหมครับ⟧ "Then shall we go to a restaurant?" [ร้านอาหาร]
+   T20 B→A ACCEPT ↩T19 · about going together · - ⟦ได้เลยค่ะ ไปด้วยกันค่ะ⟧ "Sure, let's go together."
+  S3 agreeing when targets=[สิบโมงเช้า, สิบเอ็ดโมงเช้า, ว่า]
+   T21 A→B PROPOSE · about time · - ⟦งั้นวันนี้ไปตอนสิบโมงเช้าไหมครับ⟧ "Then, shall we go today at 10 AM?" [สิบโมงเช้า]
+   T22 B→A COUNTER ↩T21 · about time · - ⟦ตอนสิบเอ็ดโมงเช้าดีกว่าค่ะ⟧ "11 AM is better." [สิบเอ็ดโมงเช้า]
+   T23 A→B INFORM ↩T22 · about 10 AM crowd · - ⟦เขาบอกว่าสิบโมงเช้าไม่เยอะครับ⟧ "They said that at 10 AM it's not crowded." [สิบโมงเช้า+ว่า]
+   T24 B→A ACCEPT ↩T23 · about time · - ⟦งั้นสิบโมงเช้าก็ได้ค่ะ⟧ "Then 10 AM is fine." [สิบโมงเช้า]
+  S4 getting there targets=[เลี้ยว, รถสองแถว, ค่าโดยสาร, นานเท่าไหร่, รถแท็กซี่]
+   T25 A→B PROPOSE · about songthaew ride · - ⟦งั้นเรานั่งรถสองแถวไปกันนะครับ⟧ "Then let's take the songthaew." [รถสองแถว]
+   T26 B→A COUNTER ↩T25 · about taxi speed · - ⟦รถแท็กซี่เร็วกว่านะคะ⟧ "The taxi is faster, you know." [รถแท็กซี่]
+   T27 A→B ASK(DURATION) ↩T26 · about songthaew travel time · - ⟦รถสองแถวไปนานเท่าไหร่ครับ⟧ "How long does the songthaew take?" [รถสองแถว+นานเท่าไหร่]
+   T28 B→A ANSWER ↩T27 · about travel time · - ⟦สิบนาทีค่ะ⟧ "Ten minutes."
+   T29 A→B ASK(PRICE) · about songthaew fare · - fare ⟦รถสองแถวค่าโดยสารเท่าไหร่ครับ⟧ "How much is the songthaew fare?" [รถสองแถว+ค่าโดยสาร]
+   T30 B→A ANSWER ↩T29 · about fare and route · - ⟦สิบบาทค่ะ เลี้ยวซ้ายที่สี่แยกนะคะ⟧ "Ten baht. Turn left at the intersection." [เลี้ยว]
+   T31 A→B ACCEPT ↩T30 · about songthaew ride · - ⟦ถูกดีครับ นั่งรถสองแถวกันเลยครับ⟧ "Cheap and good. Let's take the songthaew right away." [รถสองแถว]
+  S5 eating and drinking targets=[ทานกันเลย, ผัดไทย, คุ้ม, ไม่เชิง]
+   T32 A→B INFORM · about arriving at restaurant · - restaurant ⟦ดูเสร็จแล้ว ถึงร้านแล้วครับ⟧ "We finished looking, and we have already arrived at the restaurant."
+   T33 B→A PROPOSE · about eating together · - pad thai ⟦ทานกันเลยค่ะ ผัดไทยดีไหมคะ⟧ "Let's eat! How about pad thai?" [ทานกันเลย+ผัดไทย]
+   T34 A→B ASK(YESNO) ↩T33 · about pad thai spiciness · - pad thai ⟦ผัดไทยนี้เผ็ดไหมครับ⟧ "Is this pad thai spicy?" [ผัดไทย]
+   T35 B→A ANSWER ↩T34 · about pad thai spiciness · - spiciness ⟦ไม่เชิงค่ะ เผ็ดนิดหน่อยค่ะ⟧ "Not exactly, a little spicy." [ไม่เชิง]
+   T36 A→B REACT ↩T35 · about the price · - price ⟦ดีครับ ราคาคุ้มมากครับ⟧ "Good, the price is really worth it." [คุ้ม]
+  S6 wrapping up targets=[โชคดี, เบอร์โทรศัพท์, คือ]
+   T37 B→A INFORM · about restaurant · - ⟦ทานเสร็จแล้วค่ะ นี่คือร้านดีค่ะ⟧ "We've finished eating. This is a good restaurant."
+   T38 A→B ASK(THING) · about phone number · - phone number ⟦ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ⟧ "Could I have your phone number, please?" [เบอร์โทรศัพท์]
+   T39 B→A ACCEPT ↩T38 · about phone number · - phone number ⟦ได้ค่ะ เดี๋ยวส่งให้นะคะ⟧ "Sure, I'll send it to you shortly."
+   T40 A→B FAREWELL ↩T39 · about farewell · - ⟦โชคดีนะครับ แล้วเจอกันครับ⟧ "Good luck! See you." [โชคดี]
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed
+🔎 STRUCTURAL_VALIDATION (candidate) FAIL 1 · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (candidate) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ GROUPING TARGET_MISSING — คือ is not heard anywhere in the plan
+   ⛔ SEMANTIC SEMANTIC_AUDIT T22,T23 — awkward · does not make sense · ไม่เยอะ describes a crowd of people, so it does not fit a time as the subject
+   fault classes: GROUPING×1 · SEMANTIC×1
+📏 TURN_RESERVE 40 turns — คือ is fitted into an existing exchange (T11,T12) instead of adding turns
+🔧 MEANING_REPAIR round 1/3 · 2 part(s): x1 exchange [GROUPING] · x2 intention [SEMANTIC] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (exchange · GROUPING) 2 turn(s) → 2 new (validated in place): A: ใช่ครับ วันนี้คือวันหยุด ไปเที่ยวไหมครับ / B: ได้ค่ะ ไปไหนดีคะ
+✅ PART_REPAIRED x2 (intention · SEMANTIC) 3 turn(s) → 3 new (validated in place): A: งั้นวันนี้ไปตอนสิบโมงเช้าไหมครับ / B: ตอนสิบเอ็ดโมงเช้าดีกว่าค่ะ / A: เขาว่าตอนสิบเอ็ดโมงเช้าร้อนมากครับ
+🔎 STRUCTURAL_VALIDATION (after repair round 1) FAIL 1 · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 1) PASS · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SEMANTIC REPEATED_REJECTED_SENTENCE T22 — this sentence was already rejected: "ตอนสิบเอ็ดโมงเช้าดีกว่าค่ะ"
+   fault classes: SEMANTIC×1
+🔧 MEANING_REPAIR round 2/3 · 1 part(s): x1 intention [SEMANTIC] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (intention · SEMANTIC) 2 turn(s) → 2 new (validated in place): A: วันนี้ไปกี่โมงดีครับ / B: ตอนสิบโมงเช้าหรือสิบเอ็ดโมงเช้าดีคะ
+🔎 STRUCTURAL_VALIDATION (after repair round 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 2) PASS · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+  🎬 COHERENCE AUDIT: 6/6 scene(s) pass
+📖 STORY_JUDGE PASS · overall 4/5 · the situations judged as ONE conversation
+🧠 LISTENING_MEANING_PLAN (approved) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[คุณอายุเท่าไหร่, แก่, พวกคุณ, นักท่องเที่ยว, เพราะ, เป็นอย่างไร, ตลก]
+   T1 A→B GREET · about greeting, long time · - ⟦สวัสดี ไม่ได้เจอกันตั้งนานครับ⟧ "Hello, long time no see."
+   T2 B→A REACT ↩T1 · about herself, getting old · - ⟦ใช่ ฉันแก่แล้วค่ะ⟧ "Yes, I'm already old." [แก่]
+   T3 A→B ASK(AGE) ↩T2 · about her age · - ⟦แล้ว คุณอายุเท่าไหร่ครับ⟧ "So, how old are you?" [คุณอายุเท่าไหร่]
+   T4 B→A ANSWER ↩T3 · about her age · - ⟦ฉันยี่สิบเจ็ดปีค่ะ⟧ "I'm twenty-seven."
+   T5 A→B INFORM · about his friend, travel · - ⟦ผมกับเพื่อนเป็นนักท่องเที่ยวครับ⟧ "My friend and I are tourists." [นักท่องเที่ยว]
+   T6 B→A ASK(REASON) ↩T5 · about their trip · - ⟦ทำไมพวกคุณมาเมืองไทยคะ⟧ "Why did you all come to Thailand?" [พวกคุณ]
+   T7 A→B ANSWER ↩T6 · about nature, reason · - ⟦เพราะธรรมชาติสวยครับ⟧ "Because the nature is beautiful." [เพราะ]
+   T8 B→A ASK(STATE) · about his friend · - ⟦เพื่อนของคุณเป็นอย่างไรคะ⟧ "How is your friend?" [เป็นอย่างไร]
+   T9 A→B ANSWER ↩T8 · about his friend · - ⟦เขาตลกมากครับ⟧ "He is very funny." [ตลก]
+   T10 B→A REACT ↩T9 · about his humour · - ⟦จริงเหรอคะ⟧ "Really?"
+  S2 deciding what to do targets=[พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ทางเข้า, น่าดู, ไปที่, ทาง, ร้านอาหาร, ที่นั่น]
+   T11 A→B PROPOSE · about - · - ⟦ใช่ครับ วันนี้คือวันหยุด ไปเที่ยวไหมครับ⟧ "Yes, today is a holiday. Shall we go out?" [คือ]
+   T12 B→A ASK(PLACE) · about - · - ⟦ได้ค่ะ ไปไหนดีคะ⟧ "Sure, where shall we go?"
+   T13 A→B PROPOSE · about national museum · - National Museum ⟦ไปที่พิพิธภัณฑสถานแห่งชาติไหมครับ⟧ "How about going to the National Museum?" [ไปที่+พิพิธภัณฑสถานแห่งชาติ]
+   T14 B→A ASK(YESNO) ↩T13 · about worth seeing · - National Museum ⟦ที่นั่นน่าดูไหมคะ⟧ "Is it worth seeing there?" [น่าดู+ที่นั่น]
+   T15 A→B ANSWER ↩T14 · about worth seeing · - ⟦น่าดูมากครับ⟧ "Very worth seeing." [น่าดู]
+   T16 B→A INFORM ↩T15 · about location · - Sanam Luang ⟦ที่นั่นอยู่ใกล้สนามหลวงค่ะ⟧ "It's near Sanam Luang." [สนามหลวง+ที่นั่น]
+   T17 A→B ASK(YESNO) ↩T16 · about the way · - way ⟦คุณรู้ทางไหมครับ⟧ "Do you know the way?" [ทาง]
+   T18 B→A ANSWER ↩T17 · about entrance · - entrance ⟦รู้ค่ะ ทางเข้าอยู่ที่นั่นค่ะ⟧ "I know. The entrance is over there." [ทางเข้า+ทาง+ที่นั่น]
+   T19 A→B PROPOSE ↩T18 · about restaurant after · - restaurant ⟦แล้วเราไปร้านอาหารไหมครับ⟧ "Then shall we go to a restaurant?" [ร้านอาหาร]
+   T20 B→A ACCEPT ↩T19 · about going together · - ⟦ได้เลยค่ะ ไปด้วยกันค่ะ⟧ "Sure, let's go together."
+  S3 agreeing when targets=[สิบโมงเช้า, สิบเอ็ดโมงเช้า, ว่า]
+   T21 A→B ASK(TIME) · about - · - ⟦วันนี้ไปกี่โมงดีครับ⟧ "What time should we go today?"
+   T22 B→A ASK(CHOICE) · about - · - ⟦ตอนสิบโมงเช้าหรือสิบเอ็ดโมงเช้าดีคะ⟧ "Which is better, 10 AM or 11 AM?" [สิบโมงเช้า+สิบเอ็ดโมงเช้า]
+   T23 A→B INFORM · about - · - ⟦เขาว่าตอนสิบเอ็ดโมงเช้าร้อนมากครับ⟧ "They say at 11 AM it's very hot." [ว่า+สิบเอ็ดโมงเช้า]
+   T24 B→A ACCEPT ↩T23 · about time · - ⟦งั้นสิบโมงเช้าก็ได้ค่ะ⟧ "Then 10 AM is fine." [สิบโมงเช้า]
+  S4 getting there targets=[เลี้ยว, รถสองแถว, ค่าโดยสาร, นานเท่าไหร่, รถแท็กซี่]
+   T25 A→B PROPOSE · about songthaew ride · - ⟦งั้นเรานั่งรถสองแถวไปกันนะครับ⟧ "Then let's take the songthaew." [รถสองแถว]
+   T26 B→A COUNTER ↩T25 · about taxi speed · - ⟦รถแท็กซี่เร็วกว่านะคะ⟧ "The taxi is faster, you know." [รถแท็กซี่]
+   T27 A→B ASK(DURATION) ↩T26 · about songthaew travel time · - ⟦รถสองแถวไปนานเท่าไหร่ครับ⟧ "How long does the songthaew take?" [รถสองแถว+นานเท่าไหร่]
+   T28 B→A ANSWER ↩T27 · about travel time · - ⟦สิบนาทีค่ะ⟧ "Ten minutes."
+   T29 A→B ASK(PRICE) · about songthaew fare · - fare ⟦รถสองแถวค่าโดยสารเท่าไหร่ครับ⟧ "How much is the songthaew fare?" [รถสองแถว+ค่าโดยสาร]
+   T30 B→A ANSWER ↩T29 · about fare and route · - ⟦สิบบาทค่ะ เลี้ยวซ้ายที่สี่แยกนะคะ⟧ "Ten baht. Turn left at the intersection." [เลี้ยว]
+   T31 A→B ACCEPT ↩T30 · about songthaew ride · - ⟦ถูกดีครับ นั่งรถสองแถวกันเลยครับ⟧ "Cheap and good. Let's take the songthaew right away." [รถสองแถว]
+  S5 eating and drinking targets=[ทานกันเลย, ผัดไทย, คุ้ม, ไม่เชิง]
+   T32 A→B INFORM · about arriving at restaurant · - restaurant ⟦ดูเสร็จแล้ว ถึงร้านแล้วครับ⟧ "We finished looking, and we have already arrived at the restaurant."
+   T33 B→A PROPOSE · about eating together · - pad thai ⟦ทานกันเลยค่ะ ผัดไทยดีไหมคะ⟧ "Let's eat! How about pad thai?" [ทานกันเลย+ผัดไทย]
+   T34 A→B ASK(YESNO) ↩T33 · about pad thai spiciness · - pad thai ⟦ผัดไทยนี้เผ็ดไหมครับ⟧ "Is this pad thai spicy?" [ผัดไทย]
+   T35 B→A ANSWER ↩T34 · about pad thai spiciness · - spiciness ⟦ไม่เชิงค่ะ เผ็ดนิดหน่อยค่ะ⟧ "Not exactly, a little spicy." [ไม่เชิง]
+   T36 A→B REACT ↩T35 · about the price · - price ⟦ดีครับ ราคาคุ้มมากครับ⟧ "Good, the price is really worth it." [คุ้ม]
+  S6 wrapping up targets=[โชคดี, เบอร์โทรศัพท์, คือ]
+   T37 B→A INFORM · about restaurant · - ⟦ทานเสร็จแล้วค่ะ นี่คือร้านดีค่ะ⟧ "We've finished eating. This is a good restaurant."
+   T38 A→B ASK(THING) · about phone number · - phone number ⟦ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ⟧ "Could I have your phone number, please?" [เบอร์โทรศัพท์]
+   T39 B→A ACCEPT ↩T38 · about phone number · - phone number ⟦ได้ค่ะ เดี๋ยวส่งให้นะคะ⟧ "Sure, I'll send it to you shortly."
+   T40 A→B FAREWELL ↩T39 · about farewell · - ⟦โชคดีนะครับ แล้วเจอกันครับ⟧ "Good luck! See you." [โชคดี]
+✅ MEANING_PLAN state=APPROVED · structural validation PASS · semantic audit PASS · 40 turns · 2 repair round(s)
+🔎 SCENE_STATUS S6 FAILED (SCENE_TARGET_MISSING) → CLEARED_BY_GLOBAL_VALIDATION · re-checked on the final plan: no lesson-word or meaning defect left (repaired in the global rounds); 4 turns — inside its budget
+✅ SCENE_ACCEPTED LS1 (MEET) · structural PASS · semantic PASS · 10 turns · targets [คุณอายุเท่าไหร่, แก่, พวกคุณ, นักท่องเที่ยว, เพราะ, เป็นอย่างไร, ตลก]
+🧵 SCENE_COMMITTED LS1 — enters the conversation
+✅ SCENE_ACCEPTED LS2 (PLAN) · structural PASS · semantic PASS · 10 turns · targets [พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ทางเข้า, น่าดู, ไปที่, ทาง, ร้านอาหาร, ที่นั่น]
+🧵 SCENE_COMMITTED LS2 — enters the conversation
+✅ SCENE_ACCEPTED LS3 (TIME) · structural PASS · semantic PASS · 4 turns · targets [สิบโมงเช้า, สิบเอ็ดโมงเช้า, ว่า]
+🧵 SCENE_COMMITTED LS3 — enters the conversation
+✅ SCENE_ACCEPTED LS4 (TRAVEL) · structural PASS · semantic PASS · 7 turns · targets [เลี้ยว, รถสองแถว, ค่าโดยสาร, นานเท่าไหร่, รถแท็กซี่]
+🧵 SCENE_COMMITTED LS4 — enters the conversation
+✅ SCENE_ACCEPTED LS5 (EAT) · structural PASS · semantic PASS · 5 turns · targets [ทานกันเลย, ผัดไทย, คุ้ม, ไม่เชิง]
+🧵 SCENE_COMMITTED LS5 — enters the conversation
+✅ SCENE_ACCEPTED LS6 (PART) · structural PASS · semantic PASS · 4 turns · targets [โชคดี, เบอร์โทรศัพท์, คือ]
+🧵 SCENE_COMMITTED LS6 — enters the conversation
+🎧 LISTENING_SCENE_COVERAGE_UNION 30/30 · committed 6 situations · 40 turns (allowed 24–44)
+🎧 LISTENING_COHERENCE PASS · overall 4/5 · Coherent, consistent track; minor awkward joke and odd farewell.
+  🔍 SEGMENTATION: 0 deterministic · 0 cached · 0 ambiguous → 0 batched Gemini request(s)
+  📖 GLOSS FILL: 0 of 40 pair(s) have a word without an English gloss — no model request
+  🔤 final phonetics: 208 canonical tokens, 0 derived, 0 alignment issue(s)
+  🔤 FINAL_PRONUNCIATION_AUDIT (authoritative, persisted Main Track): 0 issue(s) over 40 line(s)
+🎧 LISTENING_PRONUNCIATION PASS
+🎧 LISTENING_TARGET_AUDIT (final) covered=30/30
+🩺 LISTENING_REPAIR_HEALTH repairCalls=2 (target < 10) OK · sceneRegenerations=0 · scenesCommittedFirstPass=0 · afterRepair=0 · withDefects=0 · firstGenerationUnknownLexemeLines=0 — telemetry only, not a gate
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=100% (target ≥70%) · repairCalls=2 (target <10) · generationCalls=8 · phaseRegenerations=0 · globalReplans=0 · targetReassignments=0 · planner health OK — health targets, not gates
+📏 LISTENING_COMPLEXITY_AUDIT belt=9th Kyu preferred=4–6 hardMax=8 lines=40 withinPreferred=20 shortNatural=20 abovePreferredAllowed=0 overHardMax=0 maxObserved=6 · preferredRatio=100% (advisory ≥80%) PASS
+📚 LISTENING_CLOSED_VOCAB unknown=0 PASS
+    LISTENING_LINE L1 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L2 speaker=B actualTargetIds=[719] targetCount=1
+    LISTENING_LINE L3 speaker=A actualTargetIds=[717] targetCount=1
+    LISTENING_LINE L4 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L5 speaker=A actualTargetIds=[821] targetCount=1
+    LISTENING_LINE L6 speaker=B actualTargetIds=[787] targetCount=1
+    LISTENING_LINE L7 speaker=A actualTargetIds=[676] targetCount=1
+    LISTENING_LINE L8 speaker=B actualTargetIds=[737] targetCount=1
+    LISTENING_LINE L9 speaker=A actualTargetIds=[817] targetCount=1
+    LISTENING_LINE L10 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L11 speaker=A actualTargetIds=[750] targetCount=1
+    LISTENING_LINE L12 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L13 speaker=A actualTargetIds=[858,840] targetCount=2
+    LISTENING_LINE L14 speaker=B actualTargetIds=[839,686] targetCount=2
+    LISTENING_LINE L15 speaker=A actualTargetIds=[839] targetCount=1
+    LISTENING_LINE L16 speaker=B actualTargetIds=[841,686] targetCount=2
+    LISTENING_LINE L17 speaker=A actualTargetIds=[669] targetCount=1
+    LISTENING_LINE L18 speaker=B actualTargetIds=[1479,669,686] targetCount=3
+    LISTENING_LINE L19 speaker=A actualTargetIds=[847] targetCount=1
+    LISTENING_LINE L20 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L21 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L22 speaker=B actualTargetIds=[653,667] targetCount=2
+    LISTENING_LINE L23 speaker=A actualTargetIds=[744,667] targetCount=2
+    LISTENING_LINE L24 speaker=B actualTargetIds=[653] targetCount=1
+    LISTENING_LINE L25 speaker=A actualTargetIds=[1536] targetCount=1
+    LISTENING_LINE L26 speaker=B actualTargetIds=[761] targetCount=1
+    LISTENING_LINE L27 speaker=A actualTargetIds=[1536,730] targetCount=2
+    LISTENING_LINE L28 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L29 speaker=A actualTargetIds=[1536,1539] targetCount=2
+    LISTENING_LINE L30 speaker=B actualTargetIds=[359] targetCount=1
+    LISTENING_LINE L31 speaker=A actualTargetIds=[1536] targetCount=1
+    LISTENING_LINE L32 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L33 speaker=B actualTargetIds=[779,815] targetCount=2
+    LISTENING_LINE L34 speaker=A actualTargetIds=[815] targetCount=1
+    LISTENING_LINE L35 speaker=B actualTargetIds=[860] targetCount=1
+    LISTENING_LINE L36 speaker=A actualTargetIds=[1233] targetCount=1
+    LISTENING_LINE L37 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L38 speaker=A actualTargetIds=[712] targetCount=1
+    LISTENING_LINE L39 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L40 speaker=A actualTargetIds=[672] targetCount=1
+🎧 LISTENING_FINAL_INTEGRITY READY · TARGET COVERAGE 30/30 · every gate passed
+  🎧 LISTENING_GATES TARGET_COVERAGE=30/30 · COVERAGE_PASS=true · MAX_TARGETS_PER_TURN=3 · MAX3_PASS=true · BOTH_SPEAKERS=true · NO_MERGED_SPEAKER_LINES=true · NO_DUPLICATES=true · NO_SINGLETON_SCENES=true · CLOSED_VOCAB=true · LENGTH_PASS=true · LINE_QUALITY=true · NATURALNESS=true · WHOLE_CONVERSATION_COHERENCE=PASS · PRONUNCIATION=true · SCENE_REQUIRED_COVERAGE=PASS · TURN_COUNT=40/44 · TURN_BUDGET=true · SCENES_VALIDATED=true · ONE_CONVERSATION=PASS · MEANING_PLAN_VALIDATED=PASS · QUESTION_ANSWER=PASS · NO_DEFECTIVE_COMMITTED_PHASES=true
+  🎧 LISTENING READY · TARGET COVERAGE 30/30 · 40 turns · 6 scene(s) · 💰 LISTENING_GENERATION_CALLS=8 LISTENING_REPAIR_CALLS=2 LISTENING_QC_CALLS=4 LISTENING_TOTAL_PAID_CALLS=14 LISTENING_MF_PLAN_CALLS=8 LISTENING_MF_SCENE_REPLANS=2 LISTENING_MF_AUDIT_CALLS=3 LISTENING_MF_REPAIR_CALLS=2 LISTENING_MF_REPAIR_ROUNDS=2 LISTENING_MF_TRUNCATIONS=0 LISTENING_PLANNER=meaning-first-3 LISTENING_MF_STORY_ROUNDS=0 LISTENING_VERIFIED_TARGETS=30 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=100 LISTENING_PLANNER_FAILURE=false COMPLEXITY_PREFERRED_RANGE=4–6 COMPLEXITY_HARD_MAX=8 COMPLEXITY_WITHIN_PREFERRED=20 COMPLEXITY_SHORT_NATURAL=20 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=0 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=100%
+🎧 LISTENING_SNAPSHOT_INVARIANT PASS — track / coverage target ids === the frozen snapshot (30)
+🎧 LISTENING_TRACK_RESULT status=READY · TARGET COVERAGE 30/30 · level 9th Kyu hardMax 8 · LISTENING_SELECTION_COUNT=30 LISTENING_MAIN_GENERATION_CALLS=0 LISTENING_GENERATION_CALLS=8 LISTENING_REPAIR_CALLS=2 LISTENING_QC_CALLS=4 LISTENING_TOTAL_PAID_CALLS=14 LISTENING_MF_PLAN_CALLS=8 LISTENING_MF_SCENE_REPLANS=2 LISTENING_MF_AUDIT_CALLS=3 LISTENING_MF_REPAIR_CALLS=2 LISTENING_MF_REPAIR_ROUNDS=2 LISTENING_MF_TRUNCATIONS=0 LISTENING_PLANNER=meaning-first-3 LISTENING_MF_STORY_ROUNDS=0 LISTENING_VERIFIED_TARGETS=30 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=100 LISTENING_PLANNER_FAILURE=false COMPLEXITY_PREFERRED_RANGE=4–6 COMPLEXITY_HARD_MAX=8 COMPLEXITY_WITHIN_PREFERRED=20 COMPLEXITY_SHORT_NATURAL=20 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=0 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=100% LISTENING_TOKEN_USAGE=0 LISTENING_COST=0

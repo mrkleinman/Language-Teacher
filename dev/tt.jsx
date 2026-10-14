@@ -29026,7 +29026,8 @@ function lnMfScenePrompt(env, g, k, prior, fix) {
     'ALLOWED VOCABULARY (the ONLY other content words you may use): ' + lnMfVocabRows(env).join(' · ') + '\n' +
     (scaffold ? 'GRAMMAR / FUNCTION WORDS you may use: ' + scaffold + '\n' : '') +
     'RULES:\n' +
-    '- ' + b.min + '–' + b.max + ' turns (never more than ' + b.max + '). A and B alternate. Every turn makes sense for these two people at this moment.\n' +
+    // v697 (live Haiku relay, Thai run 4): S6 opened with the speaker who had just ended S5 — "A: … เลี้ยวซ้ายครับ / A: ดูเสร็จแล้วครับ"
+    '- ' + b.min + '–' + b.max + ' turns (never more than ' + b.max + '). A and B alternate' + (before.length ? ' — the last turn above is ' + before[before.length - 1].speaker + "'s, so S" + (k + 1) + ' starts with ' + (before[before.length - 1].speaker === 'A' ? 'B' : 'A') : '') + '. Every turn makes sense for these two people at this moment.\n' +
     // v697 (live Haiku relay): situations planned one by one drifted — a movie was agreed, then a book of photos appeared; a
     // restaurant was planned, then "is the shop still far?" before anyone set off. The final judge failed 3 of 6 parts.
     (before.length ? '- ONE STORYLINE: S' + (k + 1) + ' follows from what was just said, agreed or planned above — if they decided to do something, they are now doing it (or one of them says why not); a new place, object or topic is brought in by what the speakers say, never by a jump.\n' : '') +

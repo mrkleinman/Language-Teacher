@@ -28841,7 +28841,9 @@ const LN_MF_GUIDE = () => ({ th: typeof THAI_NATURALNESS_GUIDE !== 'undefined' ?
 function lnMfVerdictKey(tu, prev) { return tu.text + '␟' + tu.english + '␟' + (prev ? prev.text : '') }
 function lnMfSceneKey(s, prevScene) { return s.turns.map(t => t.text).join('|') + '␟' + (prevScene && prevScene.turns.length ? prevScene.turns[prevScene.turns.length - 1].text : '') }
 function lnMfConversationRows(mp, byId, mark) {
-  return mp.scenes.map((s, k) => 'S' + (k + 1) + ' — ' + s.title + (s.where ? ' (' + s.where + ')' : '') + '\n' + s.turns.map(tu => (mark && mark.has(tu.id) ? '★' : ' ') + tu.n + '. ' + tu.speaker + ' [' + tu.intent + (tu.asks && tu.intent === 'ASK' ? ' ' + tu.asks : '') +
+  // v697 (live Haiku relay): only what the listener HEARS is shown — the planner's invented place label ("a restaurant near the
+  // National Museum" vs "restaurant near Sanam Luang") is never spoken, but the audit failed transitions on the labels alone
+  return mp.scenes.map((s, k) => 'S' + (k + 1) + ' — ' + s.title + '\n' + s.turns.map(tu => (mark && mark.has(tu.id) ? '★' : ' ') + tu.n + '. ' + tu.speaker + ' [' + tu.intent + (tu.asks && tu.intent === 'ASK' ? ' ' + tu.asks : '') +
     (tu.respondsToId ? ' → reply to ' + ((mp.flat.find(x => x.id === tu.respondsToId) || {}).n) : '') + '] ' + tu.text + ' — ' + tu.english + ((tu.targetIds || []).length ? '   (lesson words: ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).filter(Boolean).join(', ') + ')' : '')).join('\n')).join('\n\n')
 }
 async function lnMfAuditCall(env, mp, scopeIds) {
@@ -29491,7 +29493,7 @@ async function _lnComposeMeaningFirst(env) {
   // conversation is judged again — at most LN_MF_STORY_ROUNDS times. The verdict travels to the final gates (no second call).
   const scenesOf = () => mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, intendedTargetIds: tu.targetIds.slice() }, intendedTargetIds: tu.targetIds.slice(),
     meaning: { intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects, respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null } })) }))
-  const cohOf = scs => scs.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, meaning: tn.meaning })) }))
+  const cohOf = scs => scs.map((sc, k) => ({ title: (mp.scenes[k] && mp.scenes[k].title) || '', lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, meaning: tn.meaning })) }))
   const cohPass = c => !!c && c.state === QUALITY.VERIFIED && c.verdicts.every(v => v.pass) && (c.overall == null || c.overall >= 3)
   let coh = null
   mf.storyRounds = 0

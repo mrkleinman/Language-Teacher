@@ -28366,6 +28366,8 @@ const LN_MF_RECOVERY = Object.freeze({ 1: 'rewrite this line (same intention, sa
   6: 'rewrite the WHOLE exchange so the reply really answers the question', 7: 'rewrite the start of this situation so it follows naturally from what came before',
   8: 'add one short natural exchange for this lesson word in this situation', 9: 'bounded connection retry' })
 const LN_MF_MAX_ROUNDS = 3, LN_MF_SITUATION_CAP = 8, LN_MF_MAX_SITUATIONS = 6
+// v697 — the final story judge runs inside the composer; a failed part gets at most this many bounded story repairs
+const LN_MF_STORY_ROUNDS = 2
 
 // ── what a word refers to (English gloss / plan field → a semantic class) ──
 const LN_MF_CLASS = Object.freeze({
@@ -28852,7 +28854,10 @@ async function lnMfAuditCall(env, mp, scopeIds) {
     '- responds: "ok" | "fail" | "n/a" — if it replies to an earlier turn, does it really answer / respond to it (what time → a clock time · how much → an amount · why → a reason)?\n' +
     '- usage: "natural" | "acceptable" | "awkward" | "incorrect". "acceptable" = correct and fine here although another wording is more common — a REQUIRED lesson word used correctly is at least "acceptable" (e.g. いいえ where ううん would be more casual). "awkward" = a native speaker would find it odd HERE. "incorrect" = ungrammatical or the wrong meaning.\n' +
     '- fault: 0 none · 1 wording · 2 the English is wrong · 4 grammar · 5 it does not make sense · 6 the reply does not answer · 7 it does not follow from what came before\n- note: a short reason in English.\n' +
-    'Then for EVERY situation: coherent (true / false — one plausible everyday moment), transition ("ok" | "fail" — does it follow naturally from the situation before?), note.\n\nCONVERSATION:\n' + lnMfConversationRows(mp, byId, mark) +
+    'Then for EVERY situation: coherent (true / false — one plausible everyday moment), transition ("ok" | "fail" — does it follow naturally from the situation before, as ONE storyline: what was just said, agreed or planned still holds, and a new topic or place is introduced by what the speakers say, not by a jump?), note.\n' +
+    // v697 (live Haiku relay): the note was passed into the repair request and dictated wording the lesson rules forbid (a phrase
+    // the learner was never taught; 去 for the lesson word 来) — two patches were rejected and two repair rounds were lost
+    'NOTES: say WHAT is wrong, never dictate new wording. A turn\'s lesson words (shown in brackets) MUST stay — never advise replacing or removing one; the learner knows only a small vocabulary, so never suggest other words or phrases.\n\nCONVERSATION:\n' + lnMfConversationRows(mp, byId, mark) +
     '\n\nReply ONLY with JSON: {"turns":[{"n":1,"sense":"ok","responds":"n/a","usage":"natural","fault":0,"note":""}],"situations":[{"key":"S1","coherent":true,"transition":"ok","note":""}]}'
   let obj = null
   for (let attempt = 1; attempt <= 2 && !obj; attempt++) {
@@ -29198,6 +29203,12 @@ function lnMfScopes(env, mp, issues) {
       // the extra boundary round is always a boundary repair
       if ((is.repeats || 0) < 2 || mf.boundaryRound) { scopeFor('boundary', tail.concat(head), is); return }
     }
+    // v697 — a STORY_BREAK from the final story judge: the turns around the break are rewritten first (an intention-level
+    // rewrite of that span); only when the same break comes back does the whole situation get rewritten
+    if (is.code === 'STORY_BREAK' && tus.length && (is.repeats || 0) < 1) { scopeFor('intention', tus, is); return }
+    // a story fault never climbs to the "reassign" rung (moving a lesson word out of a situation that reads well locally only
+    // loses words): its top level is a rewrite of the whole situation
+    if (is.story && tus.length && kind === 'reassign') { scopeFor('scene', flat.filter(t => t.scene === tus[0].scene), is); return }
     if (kind === 'reassign') {
       // top rung: the lesson word(s) of a part that failed at scene level move to another situation that fits them; this
       // situation is rewritten without forcing them (never silently lost: an "add" part must make each one heard there)
@@ -29243,7 +29254,8 @@ function lnMfRepairPrompt(env, mp, scopes, note) {
       : 'turns ' + ns.join(', ') + ' (' + s.kind + (s.mustInclude ? ' — exactly ' + ns.length + ' turns' : '') + ')')
     const why = s.issues.map(is => (LN_MF_FAULTS[is.fault] || 'ISSUE') + ': ' + String(is.detail || '').slice(0, 220)).join(' · ')
     const fault = Math.max(...s.issues.map(is => is.fault))
-    const todo = (s.mustInclude && s.mustInclude.length ? 'rewrite these ' + s.turnIds.length + ' turns so they ALSO use ' + s.mustInclude.map(id => (byId.get(id) || {}).surface).join(', ') + ' — exactly ' + s.turnIds.length + ' turns, the same speakers in the same order, and every lesson word already in them kept' : s.kind === 'add' ? (s.targetIds.length ? LN_MF_RECOVERY[8] : 'add a short natural exchange (2 turns) that fits here') : s.kind === 'intention' ? LN_MF_RECOVERY[5]
+    const todo = s.issues.some(x => x.code === 'STORY_BREAK') ? 'rewrite these turns so the whole conversation reads as ONE story: they follow from what was just said, agreed or planned, lead naturally into the turn after them, and nothing is dropped or changes topic without a reason the speakers give — keep every lesson word listed below'
+      : (s.mustInclude && s.mustInclude.length ? 'rewrite these ' + s.turnIds.length + ' turns so they ALSO use ' + s.mustInclude.map(id => (byId.get(id) || {}).surface).join(', ') + ' — exactly ' + s.turnIds.length + ' turns, the same speakers in the same order, and every lesson word already in them kept' : s.kind === 'add' ? (s.targetIds.length ? LN_MF_RECOVERY[8] : 'add a short natural exchange (2 turns) that fits here') : s.kind === 'intention' ? LN_MF_RECOVERY[5]
       : s.kind === 'boundary' ? 'make the two situations consistent: what was agreed or said before must still hold — change the earlier agreement (e.g. do not fix the day yet), or what the later turns want, or add a short reason the authorised words allow'
       : s.kind === 'scene' ? LN_MF_RECOVERY[7] + (s.issues.some(x => x.code === 'SCENE_INCOHERENT') ? ' — rewrite this whole situation as one plausible everyday moment' : '') : LN_MF_RECOVERY[fault] || LN_MF_RECOVERY[1]) +
       (s.issues.some(x => x.code === 'INFEASIBLE_INTENTION') ? ' — REMOVE the question the learner cannot answer (a number / the digits of a phone number): the speakers want something else here (a day, a choice, a yes / no, asking FOR the number and a promise to send it)' : '') +
@@ -29418,39 +29430,103 @@ async function _lnComposeMeaningFirst(env) {
   // (live v694 Japanese ended its 3 rounds with structural PASS and a single today → tomorrow transition)
   const boundaryOnly = r => r.issues.length > 0 && r.issues.length <= 2 && r.issues.every(is => is.fault === 7)
   let boundaryRound = false
-  while (res.issues.length && (round < LN_MF_MAX_ROUNDS || (!boundaryRound && boundaryOnly(res)))) {
-    if (round >= LN_MF_MAX_ROUNDS) { boundaryRound = true; mf.boundaryRound = true; log && log('🔧 MEANING_REPAIR boundary round — only ' + res.issues.length + ' transition fault(s) left after ' + round + ' rounds: one bounded repair of the situation boundary, nothing else changes') }
-    round++
-    res.issues.forEach(is => { mf.byFault[LN_MF_FAULTS[is.fault]] = (mf.byFault[LN_MF_FAULTS[is.fault]] || 0) + 1 })
-    lnMfCountSignatures(env, mp, res.issues)
-    // an unverified turn is simply audited again (fault 9) — never treated as passed
-    const repairable = res.issues.filter(is => is.fault !== 9)
-    if (!repairable.length) { res = await lnMfValidateAndAudit(env, mp); lnMfIssueLog(env, res, 're-audit ' + round); continue }
-    repairable.filter(is => is.code === 'TARGET_MISSING' || is.fault === 8).forEach(is => (is.targetIds || []).forEach(id => mf.moves.set(id, (mf.moves.get(id) || 0) + (round > 1 ? 1 : 0))))
-    const scopes = lnMfScopes(env, mp, repairable)
-    log && log('🔧 MEANING_REPAIR round ' + round + '/' + LN_MF_MAX_ROUNDS + ' · ' + scopes.length + ' part(s): ' + scopes.map(s => s.id + ' ' + s.kind + ' [' + s.issues.map(is => LN_MF_FAULTS[is.fault]).filter((x, i, a) => a.indexOf(x) === i).join('+') + ']').join(' · ') + ' — every other turn is kept exactly')
-    if (!scopes.length) break
-    const rep = await lnMfRepairCall(env, mp, scopes, round)
-    if (!rep) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
-    lnMfApply(env, mp, scopes, rep, round)
-    res = await lnMfValidateAndAudit(env, mp)
-    lnMfIssueLog(env, res, 'after repair round ' + round)
-    const sig = sigOf(res)
-    stale = sig === prevSig ? stale + 1 : 0; prevSig = sig
-    if (stale >= 1 && round >= 2 && !boundaryOnly(res)) { log && log('⛔ MEANING_REPAIR_NO_PROGRESS — the same defects after two rounds; stopping instead of looping'); break }
+  // the fault-classified repair rounds (escalating by failure signature) until the plan passes both gates or `limit` is reached;
+  // returns true only when a repair reply could not be read at all (technical)
+  const repairLoop = async limit => {
+    while (res.issues.length && (round < limit || (!boundaryRound && boundaryOnly(res)))) {
+      if (round >= limit) { boundaryRound = true; mf.boundaryRound = true; log && log('🔧 MEANING_REPAIR boundary round — only ' + res.issues.length + ' transition fault(s) left after ' + round + ' rounds: one bounded repair of the situation boundary, nothing else changes') }
+      round++
+      res.issues.forEach(is => { mf.byFault[LN_MF_FAULTS[is.fault]] = (mf.byFault[LN_MF_FAULTS[is.fault]] || 0) + 1 })
+      lnMfCountSignatures(env, mp, res.issues)
+      // an unverified turn is simply audited again (fault 9) — never treated as passed
+      const repairable = res.issues.filter(is => is.fault !== 9)
+      if (!repairable.length) { res = await lnMfValidateAndAudit(env, mp); lnMfIssueLog(env, res, 're-audit ' + round); continue }
+      repairable.filter(is => is.code === 'TARGET_MISSING' || is.fault === 8).forEach(is => (is.targetIds || []).forEach(id => mf.moves.set(id, (mf.moves.get(id) || 0) + (round > 1 ? 1 : 0))))
+      const scopes = lnMfScopes(env, mp, repairable)
+      log && log('🔧 MEANING_REPAIR round ' + round + '/' + limit + ' · ' + scopes.length + ' part(s): ' + scopes.map(s => s.id + ' ' + s.kind + ' [' + s.issues.map(is => LN_MF_FAULTS[is.fault]).filter((x, i, a) => a.indexOf(x) === i).join('+') + ']').join(' · ') + ' — every other turn is kept exactly')
+      if (!scopes.length) break
+      const rep = await lnMfRepairCall(env, mp, scopes, round)
+      if (!rep) return true
+      lnMfApply(env, mp, scopes, rep, round)
+      res = await lnMfValidateAndAudit(env, mp)
+      lnMfIssueLog(env, res, 'after repair round ' + round)
+      const sig = sigOf(res)
+      stale = sig === prevSig ? stale + 1 : 0; prevSig = sig
+      if (stale >= 1 && round >= 2 && !boundaryOnly(res)) { log && log('⛔ MEANING_REPAIR_NO_PROGRESS — the same defects after two rounds; stopping instead of looping'); break }
+    }
+    return false
   }
-  Object.assign(tel, { LISTENING_MF_PLAN_CALLS: mf.calls.plan, LISTENING_MF_SCENE_REPLANS: mf.calls.sceneReplan, LISTENING_MF_AUDIT_CALLS: mf.calls.audit, LISTENING_MF_REPAIR_CALLS: mf.calls.repair, LISTENING_MF_REPAIR_ROUNDS: round, LISTENING_MF_TRUNCATIONS: mf.truncations, LISTENING_PLANNER: LISTENING_PLANNER_VERSION })
-  if (res.issues.length) {
+  // v697 — a lone reply the audit calls "does not answer" while rating its wording natural / acceptable (live Haiku Mandarin:
+  // 吃了，你怎么回家？ — 不知道，我去朋友家。 blocked the whole track after 3 rounds) no longer blocks the plan: it is DEFERRED to the
+  // final story judge, which reads the whole conversation; the line still fails the naturalness gate unless that judge passes
+  mf.deferredQA = new Set()
+  const deferSoftQA = () => {
+    if (!(res.issues.length === 1 && !res.det.length && res.issues[0].code === 'SEMANTIC_AUDIT' && res.issues[0].fault === 6 && /^(natural|acceptable) · /.test(String(res.issues[0].detail || '')))) return
+    const is = res.issues[0], tu = mp.flat.find(t => t.id === is.turnIds[is.turnIds.length - 1]), i = mp.flat.indexOf(tu)
+    if (tu) mf.deferredQA.add(lnMfVerdictKey(tu, mp.flat[i - 1]))
+    log && log('⚖ QUESTION_ANSWER_DEFERRED T' + (tu ? tu.n : '?') + ' — the only defect left is a reply the audit rated "' + String(is.detail).split(' · ')[0] + '" but "does not answer" (' + String(is.detail).slice(0, 120) + ') · not a blocker: the final story judge decides, and the line fails the naturalness gate unless that judge passes')
+    res = { ...res, issues: [], sem: [] }
+  }
+  const blockedUnresolved = label => {
     const unheard = [...new Set(res.issues.flatMap(is => is.targetIds || []))].map(id => (byId.get(id) || {}).surface).filter(Boolean)
     lnMfLogPlan(env, mp, 'not approved')
-    return blocked(res.issues.length + ' unresolved after ' + round + ' repair round(s): ' + res.issues.slice(0, 5).map(is => LN_MF_FAULTS[is.fault] + ' ' + is.code + ' — ' + String(is.detail || '').slice(0, 90)).join(' · ') + (unheard.length ? ' · lesson words in the failing parts: ' + unheard.join(', ') : ''),
+    return blocked(res.issues.length + ' unresolved after ' + label + ': ' + res.issues.slice(0, 5).map(is => LN_MF_FAULTS[is.fault] + ' ' + is.code + ' — ' + String(is.detail || '').slice(0, 90)).join(' · ') + (unheard.length ? ' · lesson words in the failing parts: ' + unheard.join(', ') : ''),
       mp.scenes.filter(s => res.issues.some(is => is.scene === s.key)).map(s => ({ sceneId: s.key, residual: res.issues.filter(is => is.scene === s.key).map(is => LN_MF_FAULTS[is.fault]).join('+'), targets: s.targetIds.slice() })))
   }
+  const setTel = () => Object.assign(tel, { LISTENING_MF_PLAN_CALLS: mf.calls.plan, LISTENING_MF_SCENE_REPLANS: mf.calls.sceneReplan, LISTENING_MF_AUDIT_CALLS: mf.calls.audit, LISTENING_MF_REPAIR_CALLS: mf.calls.repair, LISTENING_MF_REPAIR_ROUNDS: round, LISTENING_MF_TRUNCATIONS: mf.truncations, LISTENING_PLANNER: LISTENING_PLANNER_VERSION, LISTENING_MF_STORY_ROUNDS: mf.storyRounds || 0 })
+  if (await repairLoop(LN_MF_MAX_ROUNDS)) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
+  deferSoftQA()
+  setTel()
+  if (res.issues.length) return blockedUnresolved(round + ' repair round(s)')
+  // v697 — THE FINAL STORY JUDGE runs here, on the approved plan, reading the situations as ONE conversation. It used to run only
+  // after the commit, with the SEPARATE-SCENES prompt: a situation that opens by answering the one before ("Thank you." after a
+  // compliment; うん、そうしよう。) was failed as "no referent", and a failure was terminal. Now a failed part gets a bounded story
+  // repair (around its break; its boundary when it breaks at its first line), the plan is validated and audited again, and the
+  // conversation is judged again — at most LN_MF_STORY_ROUNDS times. The verdict travels to the final gates (no second call).
+  const scenesOf = () => mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, intendedTargetIds: tu.targetIds.slice() }, intendedTargetIds: tu.targetIds.slice(),
+    meaning: { intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects, respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null } })) }))
+  const cohOf = scs => scs.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, meaning: tn.meaning })) }))
+  const cohPass = c => !!c && c.state === QUALITY.VERIFIED && c.verdicts.every(v => v.pass) && (c.overall == null || c.overall >= 3)
+  let coh = null
+  mf.storyRounds = 0
+  if (env.o && env.o.apiKey) for (;;) {
+    tel.LISTENING_QC_CALLS++
+    coh = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: true }, log)
+    log && log('📖 STORY_JUDGE ' + (cohPass(coh) ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (coh.overall != null ? ' · overall ' + coh.overall + '/5' : '') + ' · the situations judged as ONE conversation' + (mf.storyRounds ? ' · after story repair ' + mf.storyRounds : ''))
+    if (cohPass(coh) || coh.state !== QUALITY.VERIFIED || mf.storyRounds >= LN_MF_STORY_ROUNDS) break
+    mf.storyRounds++
+    const issues = coh.verdicts.filter(v => !v.pass).map(v => { const s = mp.scenes[v.scene - 1]; if (!s || !s.turns.length) return null
+      const b = Number.isFinite(+v.breakAfterLine) && +v.breakAfterLine >= 1 && +v.breakAfterLine <= s.turns.length ? +v.breakAfterLine : null
+      // a part that breaks at (or right after) its first line breaks at the BOUNDARY with the part before it
+      if (v.scene > 1 && (b == null || b <= 1)) return { fault: 7, code: 'SCENE_TRANSITION', story: true, turnIds: s.turns.slice(0, 2).map(t => t.id), scene: s.key, targetIds: s.turns.slice(0, 2).flatMap(t => t.targetIds), detail: 'the final story judge: ' + String(v.reason || '') }
+      const tus = b == null ? s.turns : s.turns.slice(Math.max(0, b - 1), Math.min(s.turns.length, b + 2))
+      return { fault: 7, code: 'STORY_BREAK', story: true, turnIds: tus.map(t => t.id), scene: s.key, targetIds: [...new Set(tus.flatMap(t => t.targetIds))], detail: 'the final story judge: ' + String(v.reason || '') + (b != null ? ' (breaks after line ' + b + ' of ' + s.key + ')' : '') } })
+      .filter(Boolean)
+    // the overall verdict alone failed (every part passed): the weakest-looking part is the end of the conversation
+    if (!issues.length) { const s = mp.scenes[mp.scenes.length - 1]; const tus = s.turns.slice(-3)
+      issues.push({ fault: 7, code: 'STORY_BREAK', story: true, turnIds: tus.map(t => t.id), scene: s.key, targetIds: [...new Set(tus.flatMap(t => t.targetIds))], detail: 'the final story judge: ' + String(coh.reason || 'the conversation as a whole does not read as one story') }) }
+    lnMfCountSignatures(env, mp, issues)
+    const scopes = lnMfScopes(env, mp, issues)
+    log && log('📖 STORY_REPAIR ' + mf.storyRounds + '/' + LN_MF_STORY_ROUNDS + ' · ' + scopes.length + ' part(s): ' + scopes.map(sc => sc.id + ' ' + sc.kind + ' (' + sc.scenes.join('+') + ')').join(' · ') + ' — from the final story judge; every other turn is kept exactly')
+    if (!scopes.length) break
+    const rep = await lnMfRepairCall(env, mp, scopes, 'story-' + mf.storyRounds)
+    if (!rep) break
+    lnMfApply(env, mp, scopes, rep, 'story-' + mf.storyRounds)
+    res = await lnMfValidateAndAudit(env, mp)
+    lnMfIssueLog(env, res, 'after story repair ' + mf.storyRounds)
+    // what the story repair broke locally gets up to two ordinary repair rounds; the plan must pass both gates again
+    boundaryRound = false; stale = 0; prevSig = null; mf.boundaryRound = false
+    mf.deferredQA = new Set()
+    if (await repairLoop(round + 2)) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
+    deferSoftQA()
+    setTel()
+    if (res.issues.length) return blockedUnresolved('story repair ' + mf.storyRounds + ' and ' + round + ' repair round(s)')
+  }
+  setTel()
   // COMMIT — every situation passed BOTH gates; the shared final gates still judge the final text
   lnMfLogPlan(env, mp, 'approved')
   log && log('✅ MEANING_PLAN state=APPROVED · structural validation PASS · semantic audit PASS · ' + mp.flat.length + ' turns · ' + round + ' repair round(s)')
-  const scenes = mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, intendedTargetIds: tu.targetIds.slice() }, intendedTargetIds: tu.targetIds.slice(),
-    meaning: { intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects, respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null } })) }))
+  const scenes = scenesOf()
   const audit = listeningConversationAudit(scenes, targets, la, ctx)
   // v695: a situation marked FAILED by its local check is never accepted silently — it is checked again on the final plan;
   // a remaining lesson-word / meaning defect blocks, and only the planning reserve (turns over the situation's share of ~34,
@@ -29469,7 +29545,8 @@ async function _lnComposeMeaningFirst(env) {
   // naturalness of the final lines = the semantic audit's verdicts (4-level scale) for exactly these lines in this context
   const natIssues = []
   mp.flat.forEach((tu, i) => { const v = mf.verdicts.get(lnMfVerdictKey(tu, mp.flat[i - 1])); const iss = lnMfVerdictIssue(v)
-    if (!v) natIssues.push({ code: 'NATURALNESS_UNVERIFIED', line: i + 1, detail: 'no semantic verdict' }); else if (iss) natIssues.push({ code: 'UNNATURAL', line: i + 1, detail: iss.detail }) })
+    if (!v) natIssues.push({ code: 'NATURALNESS_UNVERIFIED', line: i + 1, detail: 'no semantic verdict' })
+    else if (iss && !(mf.deferredQA.has(lnMfVerdictKey(tu, mp.flat[i - 1])) && cohPass(coh))) natIssues.push({ code: 'UNNATURAL', line: i + 1, detail: iss.detail }) })
   plan.scenes = mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), phase: s.situation, purpose: s.title + ' — ' + (LN_MF_SITUATIONS.find(x => x.key === s.situation) || {}).desc, requiredTargetIds: s.targetIds.slice(), expectedTurns: s.turns.length, maxTurns: s.turns.length }))
   plan.assignments = mp.flat.flatMap(tu => tu.targetIds.map(id => ({ targetId: id, surface: (byId.get(id) || {}).surface, sceneId: 'LS' + (mp.scenes.findIndex(s => s.key === tu.scene) + 1), turn: tu.n, speaker: tu.speaker, intent: tu.intent })))
   plan.meaningPlan = { valid: true, turnCount: mp.flat.length, problems: [], turns: mp.flat.map(tu => ({ n: tu.n, speaker: tu.speaker, addressee: tu.addressee, intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects,
@@ -29478,7 +29555,7 @@ async function _lnComposeMeaningFirst(env) {
   const allIn = mp.scenes.every(s => s.targetIds.every(id => audit.covered.includes(id)))
   log && log('🎧 LISTENING_SCENE_COVERAGE_UNION ' + audit.covered.length + '/' + targets.length + ' · committed ' + scenes.length + ' situations · ' + total + ' turns (allowed ' + env.turnsMin + '–' + env.turnsMax + ')')
   const contract = createConversationContract({ speakers: 'A and B (the same two people throughout)', relationship: ctx.jaStyle === 'polite' ? 'acquaintances' : 'friends', objective: grouping.scenes.map(s => s.title).join(' → '), scenes: plan.scenes, byId })
-  return { ok: true, scenes, audit, natIssues, plan, report: scenes.map((sc, k) => ({ sceneId: sc.sceneId, required: mp.scenes[k].targetIds.length, heard: mp.scenes[k].targetIds.filter(id => audit.covered.includes(id)).length, turns: sc.turns.length })), coh: null,
+  return { ok: true, scenes, audit, natIssues, plan, report: scenes.map((sc, k) => ({ sceneId: sc.sceneId, required: mp.scenes[k].targetIds.length, heard: mp.scenes[k].targetIds.filter(id => audit.covered.includes(id)).length, turns: sc.turns.length })), coh,
     gates: { SCENE_REQUIRED_COVERAGE: allIn ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total >= env.turnsMin && total <= env.turnsMax, SCENES_VALIDATED: true, ONE_CONVERSATION: 'PASS' },
     uncommitted: [], contract, story: plan.story, phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
 }

@@ -17261,7 +17261,7 @@ function thaiCueFormRepair(p) {
   if (!thaiCueFormProblems(p).length) return null
   const en = String(p.english || '').trim().replace(/[.!]+$/, '')
   if (en.length < 4 || /[\u0e00-\u0e7f]/.test(en)) return null
-  if (cueClarityOn()) { const cc = cueFromEnglish('th', p.english, p.thai, cueClarityCtx('th')); if (cc && !thaiCueFormProblems({ ...p, prompt: cc }).length) return cc }
+  if (cueClarityOn()) { const cx = cueClarityCtx('th'), cc = cueFromEnglish('th', p.english, p.thai, { ...cx, addr: cx.addrOf(p) }); if (cc && !thaiCueFormProblems({ ...p, prompt: cc }).length) return cc }
   const q = /[?？]\s*$/.test(en)
   const cue = q ? 'Ask: ' + en.replace(/[?？]\s*$/, '') + '?' : 'Tell the other person: ' + en + '.'
   return thaiCueFormProblems({ ...p, prompt: cue }).length ? null : cue
@@ -17272,7 +17272,7 @@ function thaiLocalCueRepair(l) {
   const en = String((l && l.english) || '').trim().replace(/[.!]+$/, '')
   if (en.length < 8 || /[\u0e00-\u0e7f]/.test(en)) return null
   // v696: the rebuilt cue is a short instruction ("Say you came by songthaew."), not "Tell the other person: I came by songthaew."
-  if (cueClarityOn()) { const cc = cueFromEnglish('th', l.english, l.thai, cueClarityCtx('th')); if (cc && !thaiCueFormProblems({ ...l, prompt: cc }).length) return cc !== l.prompt ? cc : null }
+  if (cueClarityOn()) { const cx = cueClarityCtx('th'), cc = cueFromEnglish('th', l.english, l.thai, { ...cx, addr: cx.addrOf(l) }); if (cc && !thaiCueFormProblems({ ...l, prompt: cc }).length) return cc !== l.prompt ? cc : null }
   const isQ = /\?$/.test(en) || /ไหม|มั้ย|หรือเปล่า|หรือยัง|อะไร|ที่ไหน|ใคร|ทำไม|ยังไง|เมื่อไหร่|เท่าไหร่|กี่/.test(String(l.thai || ''))
   // v669 §10: never the generic "Say: …" template (the final audit rejects it as a fallback cue — v668 lost a valid จ่าย pair
   // that way); a statement is cued as what to tell the other person
@@ -17395,7 +17395,8 @@ function ccShiftPersons(s, o) {
     if (o.addressee !== false && o.addr && /^(your|yours|yourself)$/.test(low)) rep = ({ your: o.addr === 'm' ? 'his' : 'her', yours: o.addr === 'm' ? 'his' : 'hers', yourself: o.addr === 'm' ? 'himself' : 'herself' })[low]
     else if (o.addressee !== false && CC_ADDR[low] != null) {
       // "you" after a verb / preposition is an object → them
-      rep = low === 'you' && prevWord && !/^(and|or|but|if|that|so|when|because|whether|then|,)$/.test(prevWord) && !/^(are|were|have|had|will|would|can|could|should|do|did|don't|didn't)$/.test(prevWord) && k > 0 && !/^(is|are|was|were)$/.test(nextWord(parts, k)) && !CC_BASE_VERBS.has(nextWord(parts, k)) && !/^(want|need|like|know|think|feel|have|can|will|should|must|might|could|would|really|also|just|still|already|don't|didn't|are|were|'re)$/.test(nextWord(parts, k)) ? 'them' : CC_ADDR[low]
+      const objPrev = /^(to|for|with|at|from|about|of|by|give|gives|help|helps|let|lets|tell|tells|ask|asks|show|see|call|meet|like|love|thank|miss|need|want|wait|join|bring|take|send|buy|make|pay|told|asked|helped|gave|saw|met|called)$/.test(prevWord)
+      rep = low === 'you' && prevWord && (objPrev || (!/^(and|or|but|if|that|so|when|because|whether|then|,)$/.test(prevWord) && !/^(are|were|have|had|will|would|can|could|should|do|did|don't|didn't)$/.test(prevWord) && k > 0 && !/^(is|are|was|were)$/.test(nextWord(parts, k)) && !CC_BASE_VERBS.has(nextWord(parts, k)) && !/^(want|need|like|know|think|feel|have|can|will|should|must|might|could|would|really|also|just|still|already|don't|didn't|are|were|'re)$/.test(nextWord(parts, k)))) ? 'them' : CC_ADDR[low]
     } else if (CC_SPK[low] != null) rep = CC_SPK[low]
     if (rep == null) { prevWord = low; return tok }
     prevWord = low
@@ -17430,6 +17431,8 @@ function ccSpeakerToYou(s, g) {
     else if ((g === 'm' && low === "he'd") || (g === 'f' && low === "she'd")) W[i] = "you'd" + tail
     else if ((g === 'm' && low === 'his') || (g === 'f' && low === 'her' && W[i + 1] && !CC_STOP.has(W[i + 1].toLowerCase().replace(/[.,!?]+$/, '')) && !/[.,!?]$/.test(raw))) W[i] = 'your' + tail
     else if ((g === 'm' && low === 'himself') || (g === 'f' && low === 'herself')) W[i] = 'yourself' + tail
+    // "He asks if she wants him to recommend it" — after the first word, the speaker's object pronoun is the speaker
+    else if (i > 0 && ((g === 'm' && low === 'him') || (g === 'f' && low === 'her' && (!W[i + 1] || CC_STOP.has(W[i + 1].toLowerCase().replace(/[.,!?]+$/, '')) || /[.,!?]$/.test(raw))))) W[i] = 'you' + tail
   }
   return W.join(' ')
 }
@@ -17581,7 +17584,9 @@ function cueClarify(lang, p, ctx) {
     cue = obj === 'you' ? 'Say ' + rest : 'Tell ' + obj + ' ' + rest; note('NARRATION → instruction') }
   else if ((m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+(says|answers|replies|explains|admits|adds|mentions|notes|responds|remarks|states|comments)\s*:\s*(.+)$/))) {
     // "He remarks: i like money" — a quoted line: reported from the speaker ("Say you like money.")
-    const r = cueFromEnglish(lang, ccCap(m[3].trim()), '', ctx); if (r) { cue = /^Ask/.test(r) && !/[?]\s*$/.test(m[3]) ? 'Say ' + ccShiftPersons(m[3]) : r; note('NARRATION → instruction') } }
+    const body = ccSpeakerToYou(m[3].trim(), subjG(m[1]))
+    if (/^you\b/i.test(body) && body !== m[3].trim()) { cue = 'Say ' + body.replace(/^You\b/, 'you'); note('NARRATION → instruction') }
+    else { const r = cueFromEnglish(lang, ccCap(body), '', ctx); if (r) { cue = /^Ask/.test(r) && !/[?]\s*$/.test(m[3]) ? 'Say ' + ccShiftPersons(body) : r; note('NARRATION → instruction') } } }
   else if ((m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+(says|answers|replies|explains|admits|adds|mentions|notes|responds|remarks|states|comments)(?:\s+(?:back\s+)?(?:to\s+(?:her|him|them|[A-Z][a-z]+)))?\s*,?\s*(?:that\s+)?(.*)$/))) {
     cue = (CC_VERB_BASE[m[2]] || 'Say') + ' ' + ccSpeakerToYou(m[3], subjG(m[1])); note('NARRATION → instruction') }
   else if ((m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+asks\s*:\s*(.+)$/))) {
@@ -20270,7 +20275,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v695'
+const LISTENING_BUILD_VERSION = 'v696'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -34437,7 +34442,8 @@ function thaiCueRepairDecision(p, cv, nv) {
   if (!p.english || String(p.english).trim().length < 3) return { repair: false, why: 'no English to anchor the cue' }
   const clean = x => typeof x === 'string' && x.trim().length >= 8 && x.trim().length <= 160 && !/[\u0e00-\u0e7f]/.test(x) && /[a-z]/i.test(x) && !/_{2,}|\*\*/.test(x)
   if (clean(cv.cueRepair)) return { repair: true, cue: cv.cueRepair.trim(), method: 'judge-repair' }
-  const det = thaiLocalCueRepair(p)
+  // v696: the cue may ALREADY be the one built from the English (clarified before judging) — it is then kept, not the pair dropped
+  const det = thaiLocalCueRepair(p) || (cueClarityOn() ? (() => { const cx = cueClarityCtx('th'), r = cueFromEnglish('th', p.english, p.thai, { ...cx, addr: cx.addrOf(p) }); return r && !thaiCueFormProblems({ ...p, prompt: r }).length ? r : null })() : null)
   if (det) return { repair: true, cue: det, method: 'rebuilt-from-english' }
   return { repair: false, why: 'no safe cue could be built' }
 }

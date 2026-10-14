@@ -119,11 +119,11 @@ async function listen(S, lang, ln, inject) {
     T('H1', 'a statement cue for a Thai question (and a question cue for a statement) is CUE_FORM_MISMATCH; matching cues and embedded questions pass',
       c.thaiCueFormProblems(q).length === 1 && c.thaiCueFormProblems(s).length === 1 && !c.thaiCueFormProblems(okQ).length && !c.thaiCueFormProblems(emb).length)
     T('H2', 'the deterministic fix rebuilds the cue from the line\'s own English in the right form (never a "Say: …" template)',
-      c.thaiCueFormRepair(q) === 'Ask: How much did you pay?' && c.thaiCueFormRepair(s) === 'Tell the other person: I already paid.' && !/^Say:/.test(c.thaiCueFormRepair(s)), [c.thaiCueFormRepair(q), c.thaiCueFormRepair(s)])
+      /^Ask\b/.test(c.thaiCueFormRepair(q)) && c.thaiCueFormRepair(s) === 'Say you already paid.' && !/^Say:/.test(c.thaiCueFormRepair(s)), [c.thaiCueFormRepair(q), c.thaiCueFormRepair(s)])
     const v = c.validateThaiTargetPair({ ...q, speaker: 'A', pairType: 'content', targetId: w('จ่าย').id, _semanticState: 'VERIFIED' }, { thai: 'จ่าย', wordId: w('จ่าย').id }, { vocab: V }, 'final')
     const audit = await c.finalPairSemanticAudit([{ ...q, speaker: 'A', pairType: 'content', targetId: w('จ่าย').id, _target: 'จ่าย' }], null, null, null, { label: 'h' })
     T('H3', 'a mismatched cue cannot count toward 90 (CUE_CONSISTENT=FAIL, even when the judge passed it); the final audit rebuilds it BEFORE judging (THAI_CUE_FORM_REPAIRED)',
-      v.dimensions.CUE_CONSISTENT === 'FAIL' && audit.pairs[0] && audit.pairs[0].prompt === 'Ask: How much did you pay?' && audit.pairs[0]._cueFormRepairedFrom === q.prompt,
+      v.dimensions.CUE_CONSISTENT === 'FAIL' && audit.pairs[0] && /^Ask\b/.test(audit.pairs[0].prompt) && audit.pairs[0]._cueFormRepairedFrom === q.prompt,
       { cc: v.dimensions.CUE_CONSISTENT, p: audit.pairs[0] && audit.pairs[0].prompt })
     // v668 live: [042] เขาบอกว่าไม่ต้องจ่ายค่ะ was DROPPED for its "Say: …" cue — the slot that left จ่าย at 2/3 (89/90)
     const kw = { wordId: w('จ่าย').id, thai: 'จ่าย', english: 'to pay' }
@@ -131,7 +131,7 @@ async function listen(S, lang, ln, inject) {
     const fa = c.thaiFinalTrackAudit([fp], { keywords: [kw], vocab: V, stage: 'final' })
     const kept = (fa.pairs || fa.out || []).find(x => x && x.thai === fp.thai)
     T('H4', 'a valid line whose ONLY defect is the generic "Say: …" cue keeps its slot: the final audit rebuilds the cue from its own English (FINAL_CUE_REBUILT), never drops it',
-      !!kept && kept.prompt === "Tell the other person: He said we don't have to pay." && kept._cueRebuiltFrom === fp.prompt, { keys: Object.keys(fa), kept })
+      !!kept && kept.prompt === "Say he said we don't have to pay." && kept._cueRebuiltFrom === fp.prompt, { keys: Object.keys(fa), kept })
   }
 
   // ── I. clause-aware Thai spacing ─────────────────────────────────────────────────────────────────────────

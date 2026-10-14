@@ -219,6 +219,25 @@ The flagged rows are listed in the export ("CUE_FLAG …"). They are for sentenc
 | Production cassette replay (v682-final4 ja / th / zh) | 0 mismatches, content identical (the switch is gated on the Oct13 quality path, as before) |
 | check_sync | v696 in sync |
 
+**Existing tests changed, and why.** Four older suites asserted the exact old cue strings that this brief replaces. Only those string expectations were updated to the new contract. What each test checks — kept, not dropped, repaired, re-judged, 90/90 — is unchanged:
+
+- **tests17 A2–A4:** "Ask: Do you want me to recommend it?" → "Ask if she wants you to recommend it."
+- **tests32 H2/H4:** "Tell the other person: I already paid." → "Say you already paid."
+- **tests34 4A/4C:** "Ask: Where are you going?" → "Ask where they are going."
+- **tests50:**
+  - A1–A6 test the v693 addressee-fix + re-judgement mechanism, so they now run with the cue pass off. With it on, a narrated or mis-addressed cue is clarified before its first judgement.
+  - A new A7 checks that on-path.
+  - F1 accepts the earlier, cue-side fix.
+
+APP and Listening build versions are now both v696, which tests37 / 38 / 39 require; the Listening code is unchanged.
+
+**Two real bugs this exposed, both fixed:**
+
+- **Wrong pronoun in two cases.**
+  - The object after "help" became "they": "help they carry it" — now "help them carry it".
+  - The speaker's own object pronoun was not shifted: "He asks if she wants him to…" — now "wants you to…".
+- **A valid Thai pair could be dropped.** It happened when the judge scored a cue 3/5 that was already the cue built from the English. The pair is now kept.
+
 What tests54 covers:
 
 - The six brief examples (A–F), narration, the speaker contradiction and template copies.

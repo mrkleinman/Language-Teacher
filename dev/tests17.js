@@ -54,16 +54,17 @@ async function fin(S, track, adapter) {
     T('A1', 'cue judge prompt carries the perspective rule (A: he = I/ผม, she = you/คุณ) and the speaker identity of the line',
       /PERSPECTIVE RULE/.test(a1.seen.cue[0] || '') && /He asks if she wants him to recommend it\." = Thai "คุณอยากให้ผมแนะนำไหมครับ"/.test(a1.seen.cue[0] || '') &&
       /Speaker: A \(man — "he" in the prompt = "I\/ผม"; "she" = the listener "you\/คุณ"\)/.test(a1.seen.cue[0] || ''), (a1.seen.cue[0] || '').slice(-700))
-    T('A2', '"He asks if she wants him to recommend it." / คุณอยากให้ผมแนะนำไหมครับ → PASS (kept, VERIFIED, cue unchanged)',
-      a1.pairs.length === 1 && a1.pairs[0]._semanticState === 'VERIFIED' && a1.pairs[0].prompt === p.prompt && a1.stats.cueMismatch === 0)
+    // v696: the cue is clarified BEFORE it is judged (a short instruction to the speaker) — the pair passes on that cue
+    T('A2', '"He asks if she wants him to recommend it." / คุณอยากให้ผมแนะนำไหมครับ → PASS (kept, VERIFIED; v696: the judged + saved cue is the instruction "Ask if she wants you to recommend it.")',
+      a1.pairs.length === 1 && a1.pairs[0]._semanticState === 'VERIFIED' && a1.pairs[0].prompt === 'Ask if she wants you to recommend it.' && a1.stats.cueMismatch === 0, a1.pairs[0] && a1.pairs[0].prompt)
     // a pronoun-literal verdict: 2/5, but Thai natural, target present and Thai = English → cue repaired, pair kept
     const a3 = await runAudit(S, [p], { cue: { s: 2, note: "prompt says 'him', Thai says 'me'", thaiEnglishMatch: true, cueRepair: 'He asks if she would like him to recommend it.' } })
     T('A3', 'pronoun-literal cue verdict on a natural pair → CUE_REPAIRED_KEEP_PAIR (model repair), never dropped, never regenerated',
-      a3.pairs.length === 1 && a3.pairs[0]._semanticState === 'VERIFIED' && a3.pairs[0].prompt === 'He asks if she would like him to recommend it.' &&
+      a3.pairs.length === 1 && a3.pairs[0]._semanticState === 'VERIFIED' && a3.pairs[0].prompt === 'Ask if she would like you to recommend it.' &&
       a3.pairs[0]._cueRepaired && a3.stats.cueRepaired === 1 && a3.stats.dropped === 0 && a3.log.some(l => /CUE_REPAIRED_KEEP_PAIR \[แนะนำ\]/.test(l)), a3.log)
     const a4 = await runAudit(S, [p], { cue: { s: 3, thaiEnglishMatch: true, cueRepair: null } })
-    T('A4', 'no usable model repair → the cue is rebuilt deterministically from the English (no extra request): "Ask: Do you want me to recommend it?"',
-      a4.pairs.length === 1 && a4.pairs[0].prompt === 'Ask: Do you want me to recommend it?' && a4.pairs[0]._cueRepaired.method === 'rebuilt-from-english' && a4.seen.cue.length === 1)
+    T('A4', 'no usable model repair → the cue is rebuilt deterministically from the English (no extra request): v696 "Ask if she wants you to recommend it." (was "Ask: Do you want me to recommend it?")',
+      a4.pairs.length === 1 && a4.pairs[0].prompt === 'Ask if she wants you to recommend it.' && a4.pairs[0]._cueRepaired.method === 'rebuilt-from-english' && a4.seen.cue.length === 1)
     const a5 = await runAudit(S, [p], { cue: { s: 2, thaiEnglishMatch: false }, })
     T('A5', 'Thai and English disagree → CUE_MISMATCH_DROP_PAIR (logged, pair dropped)',
       a5.pairs.length === 0 && a5.stats.cueMismatch === 1 && a5.log.some(l => /CUE_MISMATCH_DROP_PAIR \[แนะนำ\] Thai and English disagree/.test(l)))

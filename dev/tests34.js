@@ -308,8 +308,8 @@ function scriptedModel(plan, need) {
   // ══ PART 4 — MANDARIN ═══════════════════════════════════════════════════════════════════════════════════
   {
     const S = setup('zh'), c = S.c
-    T('4A', 'the cue is DERIVED from the accepted proposition and verified: 你去哪里？ → "Ask: Where are you going?"; 我想喝茶。 → "Tell the other person: I want to drink tea."',
-      c.mandarinCueFromProposition({ chinese: '你去哪里？', english: 'Where are you going?' }) === 'Ask: Where are you going?' && c.mandarinCueFromProposition({ chinese: '我想喝茶。', english: 'I want to drink tea.' }) === 'Tell the other person: I want to drink tea.' &&
+    T('4A', 'the cue is DERIVED from the accepted proposition and verified (v696 short instruction form): 你去哪里？ → "Ask where they are going."; 我想喝茶。 → "Say you want to drink tea."',
+      c.mandarinCueFromProposition({ chinese: '你去哪里？', english: 'Where are you going?' }) === 'Ask where they are going.' && c.mandarinCueFromProposition({ chinese: '我想喝茶。', english: 'I want to drink tea.' }) === 'Say you want to drink tea.' &&
       c.mandarinCueFromProposition({ chinese: '我想喝茶。', english: 'Do you want tea?' }) === null)
     const inv = c.mandarinLearnerInventory(S.vocab, S.targets)
     const g = zh => c.mandarinSurfaceGrammarProblems(zh, inv)
@@ -331,7 +331,7 @@ function scriptedModel(plan, need) {
     const logs = []
     const got = await c.generateMandarinOneRecall(t, 3, S.vocab, inv, rules, KEY, MODEL, seen, m => logs.push(m), null, c.createMandarinGenerationStats('mock', 30), { ledger: c.createRecallCheckLedger('zh') })
     T('4C', 'distinct applications: a recall that only repeats an accepted TEMPLATE (你拿这个 → 你拿这个吧) is another attempt (check 1 rejected), the next is accepted at check 2; its cue is derived from its own proposition (not the model\'s drifting "Ask him if he can help")',
-      got && got.checkTier === 2 && logs.some(l => /same sentence template|same application as an accepted recall/.test(l)) && /^Tell the other person: I will help you carry it\.$/.test(got.pair.prompt) && got.pair._cueSource === 'derived-from-proposition' && /Ask him/.test(got.pair._modelCue),
+      got && got.checkTier === 2 && logs.some(l => /same sentence template|same application as an accepted recall/.test(l)) && /^Say you will help them carry it\.$/.test(got.pair.prompt) && got.pair._cueSource === 'derived-from-proposition' && /Ask him/.test(got.pair._modelCue),
       { tier: got && got.checkTier, cue: got && got.pair.prompt, log: logs.slice(0, 6) })
     const p = c.buildMandarinPrompt(t, inv, S.vocab, 2, rules)
     T('4D', 'the prompt aims WITHIN the level (the belt\'s preferred range — Mukyu: 2–4 words — counted as words, hardMax only when needed) and names one communicative function per recall + the grammar contract (有点 / 一点 / 太…了 / 很 / 不 vs 没 / measure words / 把 only if listed)',

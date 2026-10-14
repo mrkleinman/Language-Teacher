@@ -39,8 +39,10 @@ const thirdOf = (tr, id) => tr.pairs.filter(p => p && p.targetId === id && p.pai
 
 ;(async () => {
   // ══ A — 89/90: a cue rewritten AFTER its judgement silently un-counted a valid pair ═════════════════════════════
+  // v696: A1–A6 test the v693 addressee fix + re-judgement mechanism itself, so they run with the v696 cue clarity pass OFF (with it on,
+  // these narrated cues become "Say …" before they are ever judged — A7 below); the mechanism still applies to names a clarified cue keeps
   {
-    const S = setup('th'); mockTh(S)
+    const S = setup('th'); mockTh(S); S.c.setCueClarity(false)
     const c = S.c, tid = S.targets[0].id
     // the live recovered ง่าย line: Somchai's (A) line, cued with Somchai as the SUBJECT
     const tr = await judgedTrack(S, t => { const p = thirdOf(t, tid); p.speaker = 'A'; p.prompt = 'Somchai says, with a smile, that it is not easy at all.' })
@@ -54,7 +56,7 @@ const thirdOf = (tr, id) => tr.pairs.filter(p => p && p.targetId === id && p.pai
   }
   {
     // a GENUINE addressee fix after judgement ("Tell Somchai …" on Somchai's line) — the changed cue is judged again, the pair still counts
-    const S = setup('th'); const st = mockTh(S)
+    const S = setup('th'); const st = mockTh(S); S.c.setCueClarity(false)
     const tid = S.targets[1].id
     const tr = await judgedTrack(S, t => { const p = thirdOf(t, tid); p.speaker = 'A'; p.prompt = 'Tell Somchai that it is not easy at all.' })
     st.cueJudged.length = 0
@@ -66,12 +68,23 @@ const thirdOf = (tr, id) => tr.pairs.filter(p => p && p.targetId === id && p.pai
   }
   {
     // the corrected cue FAILS its new judgement: the pair is removed BEFORE the quota and quota recovery replaces it (never 89/90)
-    const S = setup('th'); const st = mockTh(S, { cueBad: ['Tell Nida that it is not easy at all.'] })
+    const S = setup('th'); const st = mockTh(S, { cueBad: ['Tell Nida that it is not easy at all.'] }); S.c.setCueClarity(false)
     const tid = S.targets[2].id
     const tr = await judgedTrack(S, t => { const p = thirdOf(t, tid); p.speaker = 'A'; p.prompt = 'Tell Somchai that it is not easy at all.' })
     const { t, log } = await fin(S, tr)
     T('A6', 'a pair whose corrected cue fails its re-judgement is removed before counting and REPLACED by quota recovery: 90/90',
       met(t) === 90 && log.some(l => /CUE_REVALIDATED 1 pair.*1 failed/.test(l)) && st.rec[tid] >= 1, { q: met(t), rec: st.rec[tid], log: log.filter(l => /CUE_REVALID|QUOTA RECOVERY/.test(l)) })
+  }
+  {
+    // v696 (cue clarity ON): the same narrated / mis-addressed cues are clarified BEFORE their first judgement — the saved cue is the
+    // judged cue, no wrong addressee is left, and the track keeps 90/90
+    const S = setup('th'); const st = mockTh(S)
+    const t0 = S.targets[0].id, t1 = S.targets[1].id
+    const tr = await judgedTrack(S, t => { const a = thirdOf(t, t0); a.speaker = 'A'; a.prompt = 'Somchai says, with a smile, that it is not easy at all.'; const b = thirdOf(t, t1); b.speaker = 'A'; b.prompt = 'Tell Somchai that it is not easy at all.' })
+    const { t, log } = await fin(S, tr)
+    T('A7', 'v696: "Somchai says, with a smile, that …" and "Tell Somchai that …" on Somchai\'s line become a "Say …" instruction before they are judged (no narration, no self-addressing, no manner aside — and because the scripted cue did not match its line, it is rebuilt from the line\'s own English), they are not re-judged needlessly, and the track keeps 90/90',
+      [t0, t1].every(id => /^Say /.test(thirdOf(t, id).prompt) && !/Somchai|Nida|says|smile/.test(thirdOf(t, id).prompt) && st.cueJudged.includes(thirdOf(t, id).prompt)) && !log.some(l => /CUE_REVALIDATED/.test(l)) && met(t) === 90,
+      { a: thirdOf(t, t0).prompt, b: thirdOf(t, t1).prompt, q: met(t) })
   }
 
   // ══ B — cue / speaker ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -151,8 +164,8 @@ const thirdOf = (tr, id) => tr.pairs.filter(p => p && p.targetId === id && p.pai
     const q = await c.runQualityCheckCore(tr, KEY, MODEL, { vocab: S.vocab, onLog: m => logs.push(m), deferMetadata: true })
     const after = id => q.pairs.filter(p => p && p.targetId === id && p.pairType === 'content')
     const pm = after(tP.id).find(p => p.thai === pmThai)
-    T('F1', 'a 3/5 prompt mismatch (cue asks for more than the Thai says) rebuilds the CUE from the English — the Thai is kept (live: ป้ายนี้ถูกครับ became ป้ายนี้ถูกที่รอครับ)',
-      !!pm && !/while they wait/.test(pm.prompt) && logs.some(l => /THAI_CUE_REBUILT_FROM_TRANSLATION/.test(l)) && !asked.improve.includes(tP.thai), { prompt: pm && pm.prompt, improve: asked.improve })
+    T('F1', 'a cue that asks for more than the Thai says is fixed on the CUE side — the Thai is kept (live: ป้ายนี้ถูกครับ became ป้ายนี้ถูกที่รอครับ); v696 removes the extra background before the prompt judge, v693 rebuilt it after a 3/5',
+      !!pm && !/while they wait/.test(pm.prompt) && logs.some(l => /THAI_CUE_REBUILT_FROM_TRANSLATION|CUE_CLARITY \(quality review/.test(l)) && !asked.improve.includes(tP.thai), { prompt: pm && pm.prompt, improve: asked.improve })
     T('F2', 'a remark that is ONLY a topic jump is not turned into a rewrite (live: ถอดได้เลยครับ จานนั้นขนาดใหญ่มาก)', !asked.improve.includes(tTopic.thai) && logs.some(l => /topic-change remark only/.test(l)), asked.improve)
     T('F3', 'a QC rewrite that loses the target is discarded and the original line kept (live: the จอด line became ใช่ครับ ไปด้วยกันไหมครับ, then the final audit dropped it)',
       asked.improve.includes(tLose.thai) && after(tLose.id).map(p => p.thai).join('|') === loseOrig.join('|') && logs.some(l => /QC improve discarded.*TARGET_MISSING/.test(l)), { now: after(tLose.id).map(p => p.thai), logs: logs.filter(l => /discarded/.test(l)) })

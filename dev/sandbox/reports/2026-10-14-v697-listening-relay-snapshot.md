@@ -59,7 +59,7 @@ In every READY run, SRS was untouched and there were 0 new words.
   - A reply that opens with an acknowledgement (yeah / okay / got it / I see / don't worry …), or asks *why*, now counts as a reply to the apology.
   - A question that ignores the apology ("Do you like movies?") still fails.
 - **Tests:** tests49 D4e uses the exact run-6 lines; tests49 now passes 94/94.
-- **Where it is:** on the dev branch only; not yet live.
+- **Released as v699** (14 Oct 2026, commit `bbd2406` on `main`). Offline regression: 1,893 passed; only the 5 known failures, all of which also fail on v696.
 
 ## What was changed in v697 (all in `tt.jsx`, WIP commits faddf5d … 5196d3f)
 
@@ -121,6 +121,5 @@ None of this is live. Each go-live still needs explicit approval.
   - Thai: twice.
   - Mandarin: twice.
   - Japanese: for the first time, in run 7. It needed 9 calls and no repairs.
-- **The last Japanese blocker was a false alarm in the app's apology check.** It is fixed (v699, dev branch only) and covered by a test.
+- **The last Japanese blocker was a false alarm in the app's apology check.** It is fixed, covered by a test, and **live as v699**.
 - **Quality flaws remain**, even in READY tracks: a few stiff lines forced by lesson words, and the odd abrupt goodbye.
-- **The v699 fix is not live yet.** Releasing it needs your go-ahead.

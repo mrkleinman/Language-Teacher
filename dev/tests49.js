@@ -228,7 +228,7 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     // A5 · the deferral review against the run's own vocabulary (demonstration 9)
     {
       const th = g693.th, ja = g693.ja, zh = g693.zh
-      const covered = (g, id) => g.track.listening.coverage.rows.some(r => r.targetId === id && r.status === 'COVERED')
+      const covered = (g, id) => !!(g.track && g.track.listening) && g.track.listening.coverage.rows.some(r => r.targetId === id && r.status === 'COVERED')
       T('J3', 'deferral review: เพราะ (because), 話す (speak), 做 (do) — deferred in v693 because no situation pattern covered them — are now SELECTED and heard in the final text (เพราะเดินมากค่ะ · 日本語で話した · 你回家做什么); いくら / 何時 / 多少 stay DEFERRED (no number words), ขนาด stays deferred (its shop / looking situations are not in this conversation) — every deferral keeps its SRS obligation, and the run changes no SRS data',
         th.track.selectedTargetIds.includes(676) && covered(th, 676) && ja.track.selectedTargetIds.includes(36) && covered(ja, 36) && zh.track.selectedTargetIds.includes(49) && covered(zh, 49) &&
         /LISTENING_TARGET_DEFERRED target=1524 ขนาด[^\n]*srsObligationPreserved=true/.test(th.Ls) && /target=22 いくら[^\n]*srsObligationPreserved=true/.test(ja.Ls) && /target=45 何時[^\n]*srsObligationPreserved=true/.test(ja.Ls) && /target=29 多少[^\n]*srsObligationPreserved=true/.test(zh.Ls) &&

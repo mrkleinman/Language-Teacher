@@ -28439,7 +28439,9 @@ const LN_MF_CONTRACTS = {
     'まだ': { rule: 'まだ = not yet / still (まだ食べてない · まだいる？)' },
     'もう': { rule: 'もう = already / (not) any more (もう食べた？ · もう帰る)' },
     // v697 (live Haiku relay): 買うのができる — the verb form before できる was wrong, and the scene could not be repaired
-    'できる': { rule: 'できる = can (a skill / a thing: 日本語ができる · 料理ができる) or be ready (もうできた？) — never a verb + の + できる' },
+    // v697 (Japanese runs 3–4, both blocked on できる in the shop: 買うのができる · "できる for a machine is odd"): a flexible word, it
+    // often lands in the shopping situation, where its natural sense is an ORDER BEING READY — said here so the planner uses it so
+    'できる': { rule: 'できる = can (a skill: 日本語ができる · 料理ができる) or be READY — in a shop or café: an order is ready (もうできた？ · はい、できました) — never a verb + の + できる, never "can buy" (that is 買える)' },
   },
   th: {
     'แก่': { describes: ['PERSON', 'ANIMAL'], rule: 'แก่ = old (people / animals) — never about a thing or a place (things are เก่า)' },

@@ -29345,7 +29345,10 @@ function lnMfApply(env, mp, scopes, rep, round) {
     const place = sc => { const ins = fresh.filter(t => t.scene === sc.key)
       if (s.kind === 'add') { const k = s.insertAfter ? sc.turns.findIndex(t => t.id === s.insertAfter) + 1 : sc.turns.length; sc.turns.splice(k, 0, ...ins); return }
       const idx = sc.turns.findIndex(t => s.turnIds.includes(t.id)); if (idx < 0) return
-      sc.turns = sc.turns.filter(t => !s.turnIds.includes(t.id)); sc.turns.splice(idx, 0, ...ins) }
+      sc.turns = sc.turns.filter(t => !s.turnIds.includes(t.id)); sc.turns.splice(idx, 0, ...ins)
+      // v697 (live Haiku relay): a situation rewritten as a whole keeps no stale place label — the audit and the judge read the
+      // old "where" ("a restaurant near the National Museum") against the new turns and failed it as "spans two places"
+      if (s.kind === 'scene') sc.where = '' }
     trial.scenes.filter(x => sceneKeys.includes(x.key)).forEach(place)
     const tr = lnMfValidate(env, lnMfRenumber(trial))
     const freshIds = new Set(fresh.map(t => t.id))

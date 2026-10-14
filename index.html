@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v698"/>
+<meta name="app-version" content="v699"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v698';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v698').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v699';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v699').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -20429,7 +20429,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v698'
+const LISTENING_BUILD_VERSION = 'v699'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -22057,7 +22057,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v698'
+const APP_BUILD_VERSION = 'v699'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -24628,10 +24628,14 @@ const LN_QTYPE_RX = [
   { q: /^\s*who\b/i, expects: 'a person' },
 ]
 const LN_BARE_YESNO = /^\s*(yes|yeah|yep|no|nope|okay|ok|sure|right)[.!]?\s*$/i
+const LN_APOLOGY_ACK = /^\s*(yeah|yes|yep|ok|okay|oh|ah|sure|fine|alright|all right|got it|i see|i understand|understood|no problem|no worries|never mind|don'?t worry|it'?s (ok|okay|fine|alright|all right)|that'?s (ok|okay|fine|alright|all right)|why|how come)\b/i
 function listeningQtypeIssue(aEn, bEn, aIsQ, bIsQ) {
   const a = String(aEn || '').trim(), b = String(bEn || '').trim()
   if (!a || !b || /\b(i don't know|not sure|no idea|i'm not sure)\b/i.test(b)) return null
-  if (/^\s*(sorry|i'm sorry|i am sorry|my apologies)\b/i.test(a) && bIsQ && !/^(are you|is it|really|what happened)/i.test(b)) return 'APOLOGY expects an acknowledgement, got an unrelated question'
+  // v699 (live relay run 6, Japanese): "Sorry, I didn't come yesterday." → "Yeah, got it. Why didn't you come?" acknowledges FIRST and
+  // asks about the same thing — it was rejected three repair rounds running and blocked the track. An acknowledgement opener, or a
+  // why-question about what was apologised for, is a reply to the apology; only a question that ignores it is not.
+  if (/^\s*(sorry|i'm sorry|i am sorry|my apologies)\b/i.test(a) && bIsQ && !/^(are you|is it|really|what happened)/i.test(b) && !LN_APOLOGY_ACK.test(b)) return 'APOLOGY expects an acknowledgement, got an unrelated question'
   if (!aIsQ) return null
   const qt = LN_QTYPE_RX.find(x => x.q.test(a))
   if (!qt) return null

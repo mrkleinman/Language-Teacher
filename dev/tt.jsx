@@ -28842,15 +28842,22 @@ function lnMfValidate(env, mp) {
 const LN_MF_GUIDE = () => ({ th: typeof THAI_NATURALNESS_GUIDE !== 'undefined' ? THAI_NATURALNESS_GUIDE : '', ja: typeof JA_NATURALNESS_GUIDE !== 'undefined' ? JA_NATURALNESS_GUIDE : '', zh: typeof ZH_NATURALNESS_GUIDE !== 'undefined' ? ZH_NATURALNESS_GUIDE : '' })
 function lnMfVerdictKey(tu, prev) { return tu.text + '␟' + tu.english + '␟' + (prev ? prev.text : '') }
 function lnMfSceneKey(s, prevScene) { return s.turns.map(t => t.text).join('|') + '␟' + (prevScene && prevScene.turns.length ? prevScene.turns[prevScene.turns.length - 1].text : '') }
-function lnMfConversationRows(mp, byId, mark) {
+function lnMfConversationRows(mp, byId, mark, headNote) {
   // v697 (live Haiku relay): only what the listener HEARS is shown — the planner's invented place label ("a restaurant near the
   // National Museum" vs "restaurant near Sanam Luang") is never spoken, but the audit failed transitions on the labels alone
-  return mp.scenes.map((s, k) => 'S' + (k + 1) + ' — ' + s.title + '\n' + s.turns.map(tu => (mark && mark.has(tu.id) ? '★' : ' ') + tu.n + '. ' + tu.speaker + ' [' + tu.intent + (tu.asks && tu.intent === 'ASK' ? ' ' + tu.asks : '') +
+  return mp.scenes.map((s, k) => 'S' + (k + 1) + ' — ' + s.title + (headNote && headNote.get(s.key) ? '   ' + headNote.get(s.key) : '') + '\n' + s.turns.map(tu => (mark && mark.has(tu.id) ? '★' : ' ') + tu.n + '. ' + tu.speaker + ' [' + tu.intent + (tu.asks && tu.intent === 'ASK' ? ' ' + tu.asks : '') +
     (tu.respondsToId ? ' → reply to ' + ((mp.flat.find(x => x.id === tu.respondsToId) || {}).n) : '') + '] ' + tu.text + ' — ' + tu.english + ((tu.targetIds || []).length ? '   (lesson words: ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).filter(Boolean).join(', ') + ')' : '')).join('\n')).join('\n\n')
 }
-async function lnMfAuditCall(env, mp, scopeIds) {
+async function lnMfAuditCall(env, mp, scopeIds, needScenes) {
   const { la, log, tel, o, ctx } = env, mf = env.mf, byId = env.byId
   const mark = new Set(scopeIds)
+  // v697 (live Haiku relay, Japanese run 4): a re-audit judged EVERY situation again and its verdicts overwrote earlier passes —
+  // a one-line wording fix in S3 brought back "S3 is incoherent" (approved before), and the plan escalated to moving lesson words
+  // and rewriting whole situations. Now only the situations that changed are judged; one approved before is shown as such, with
+  // its changed turns, and the question is whether the CHANGE keeps it coherent. Unchanged situations keep their verdict.
+  const need = new Set(needScenes || mp.scenes.map(x => x.key)), reaudit = need.size < mp.scenes.length || mp.scenes.some(x => mf.sceneLast.has(x.key))
+  const head = new Map(mp.scenes.map(x => [x.key, !need.has(x.key) ? '(already approved — context only)'
+    : mf.sceneLast.get(x.key) && mf.sceneLast.get(x.key).coherent ? '(NEEDS A VERDICT — approved before; turns marked ★ changed: judge whether the change keeps it one coherent moment that follows on)' : '(NEEDS A VERDICT)']))
   const prompt = 'You are a native ' + la.label + ' teacher checking a planned LISTENING conversation for a learner (' + (ctx.complexity ? ctx.complexity.belt : 'beginner') + '). The vocabulary is restricted ON PURPOSE: simple, short and repetitive is fine at this level. Judge MEANING and NATURALNESS in context, not word choice.\n' +
     (LN_MF_GUIDE()[la.lang] ? la.label.toUpperCase() + ' NOTES:\n' + LN_MF_GUIDE()[la.lang] + '\n' : '') +
     'For every turn marked ★ give:\n' +
@@ -28858,10 +28865,10 @@ async function lnMfAuditCall(env, mp, scopeIds) {
     '- responds: "ok" | "fail" | "n/a" — if it replies to an earlier turn, does it really answer / respond to it (what time → a clock time · how much → an amount · why → a reason)?\n' +
     '- usage: "natural" | "acceptable" | "awkward" | "incorrect". "acceptable" = correct and fine here although another wording is more common — a REQUIRED lesson word used correctly is at least "acceptable" (e.g. いいえ where ううん would be more casual). "awkward" = a native speaker would find it odd HERE. "incorrect" = ungrammatical or the wrong meaning.\n' +
     '- fault: 0 none · 1 wording · 2 the English is wrong · 4 grammar · 5 it does not make sense · 6 the reply does not answer · 7 it does not follow from what came before\n- note: a short reason in English.\n' +
-    'Then for EVERY situation: coherent (true / false — one plausible everyday moment), transition ("ok" | "fail" — does it follow naturally from the situation before, as ONE storyline: what was just said, agreed or planned still holds, and a new topic or place is introduced by what the speakers say, not by a jump? A situation may be a LATER moment of the same day when its first turn says what happened in between (we have seen the museum · we are here now): that stated time skip is ok, not a jump), note.\n' +
+    'Then for ' + (reaudit ? 'each situation marked NEEDS A VERDICT' : 'EVERY situation') + ': coherent (true / false — one plausible everyday moment), transition ("ok" | "fail" — does it follow naturally from the situation before, as ONE storyline: what was just said, agreed or planned still holds, and a new topic or place is introduced by what the speakers say, not by a jump? A situation may be a LATER moment of the same day when its first turn says what happened in between (we have seen the museum · we are here now): that stated time skip is ok, not a jump), note.\n' +
     // v697 (live Haiku relay): the note was passed into the repair request and dictated wording the lesson rules forbid (a phrase
     // the learner was never taught; 去 for the lesson word 来) — two patches were rejected and two repair rounds were lost
-    'NOTES: say WHAT is wrong, never dictate new wording. A turn\'s lesson words (shown in brackets) MUST stay — never advise replacing or removing one; the learner knows only a small vocabulary, so never suggest other words or phrases.\n\nCONVERSATION:\n' + lnMfConversationRows(mp, byId, mark) +
+    'NOTES: say WHAT is wrong, never dictate new wording. A turn\'s lesson words (shown in brackets) MUST stay — never advise replacing or removing one; the learner knows only a small vocabulary, so never suggest other words or phrases.\n\nCONVERSATION:\n' + lnMfConversationRows(mp, byId, mark, reaudit ? head : null) +
     '\n\nReply ONLY with JSON: {"turns":[{"n":1,"sense":"ok","responds":"n/a","usage":"natural","fault":0,"note":""}],"situations":[{"key":"S1","coherent":true,"transition":"ok","note":""}]}'
   let obj = null
   for (let attempt = 1; attempt <= 2 && !obj; attempt++) {
@@ -28872,7 +28879,9 @@ async function lnMfAuditCall(env, mp, scopeIds) {
   const got = new Map(((obj && obj.turns) || []).map(v => [+v.n, v]))
   mp.flat.forEach((tu, i) => { if (!mark.has(tu.id)) return; const v = got.get(tu.n)
     if (v) mf.verdicts.set(lnMfVerdictKey(tu, mp.flat[i - 1]), { sense: String(v.sense || 'ok').toLowerCase(), responds: String(v.responds || 'n/a').toLowerCase(), usage: String(v.usage || '').toLowerCase(), fault: +v.fault || 0, note: String(v.note || '') }) })
-  ;((obj && obj.situations) || []).forEach(v => { const k = +String(v.key || '').replace(/\D/g, '') - 1; const s = mp.scenes[k]; if (s) mf.sceneVerdicts.set(lnMfSceneKey(s, mp.scenes[k - 1]), { coherent: v.coherent !== false, transition: String(v.transition || 'ok').toLowerCase(), note: String(v.note || '') }) })
+  ;((obj && obj.situations) || []).forEach(v => { const k = +String(v.key || '').replace(/\D/g, '') - 1; const s = mp.scenes[k]; if (!s || !need.has(s.key)) return
+    const sv = { coherent: v.coherent !== false, transition: String(v.transition || 'ok').toLowerCase(), note: String(v.note || '') }
+    mf.sceneVerdicts.set(lnMfSceneKey(s, mp.scenes[k - 1]), sv); mf.sceneLast.set(s.key, sv) })
   return !!obj
 }
 function lnMfVerdictIssue(v) {
@@ -28889,7 +28898,7 @@ async function lnMfValidateAndAudit(env, mp) {
   // the model judges only turns that passed the deterministic proof and have no verdict for this exact text in this context
   const scope = mp.flat.filter((tu, i) => !detIds.has(tu.id) && !mf.verdicts.has(lnMfVerdictKey(tu, mp.flat[i - 1])))
   const scenesNeeding = mp.scenes.filter((s, k) => !mf.sceneVerdicts.has(lnMfSceneKey(s, mp.scenes[k - 1])))
-  if (scope.length || scenesNeeding.length) await lnMfAuditCall(env, mp, scope.map(t => t.id))
+  if (scope.length || scenesNeeding.length) await lnMfAuditCall(env, mp, scope.map(t => t.id), scenesNeeding.map(x => x.key))
   const sem = []
   mp.flat.forEach((tu, i) => { if (detIds.has(tu.id)) return
     const v = mf.verdicts.get(lnMfVerdictKey(tu, mp.flat[i - 1]))
@@ -29452,7 +29461,7 @@ function lnMfIssueLog(env, res, label) {
 async function _lnComposeMeaningFirst(env) {
   const { la, log, tel, targets, ctx } = env
   const byId = new Map(targets.map(t => [t.id, t])); env.byId = byId
-  const mf = env.mf = { rejectedTexts: new Map(), rejectedRel: new Set(), rejectedAsks: [], verdicts: new Map(), sceneVerdicts: new Map(), attempts: new Map(), moves: new Map(), sigs: new Map(), released: new Set(), truncations: 0, calls: { plan: 0, sceneReplan: 0, audit: 0, repair: 0 }, byFault: {} }
+  const mf = env.mf = { rejectedTexts: new Map(), rejectedRel: new Set(), rejectedAsks: [], verdicts: new Map(), sceneVerdicts: new Map(), sceneLast: new Map(), attempts: new Map(), moves: new Map(), sigs: new Map(), released: new Set(), truncations: 0, calls: { plan: 0, sceneReplan: 0, audit: 0, repair: 0 }, byFault: {} }
   const authorised = (ctx.inventory && ctx.inventory.taught) || ctx.exposed || []
   const glosses = authorised.map(w => String(w.english || '')).filter(Boolean)
   log && log('🧭 LISTENING_PLANNER planner=' + LISTENING_PLANNER_VERSION + ' (v692 meaning-first) · language=' + la.lang + ' belt=' + (ctx.complexity ? ctx.complexity.belt : '-') + ' · targets=' + targets.length + ' · authorised support=' + authorised.length +

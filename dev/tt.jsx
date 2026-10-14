@@ -29019,6 +29019,9 @@ function lnMfScenePrompt(env, g, k, prior, fix) {
     '- A reply ANSWERS the turn before it: what time → a clock time · how much → an amount · why → a real reason · where → a place · which → one of the options. Never answer a question with something it did not ask.\n' +
     (lnMfHasNumbers(env) ? '' : LN_MF_NO_NUMBERS_RULE) + LN_MF_PHONE_RULE +
     '- One lesson word in a turn is fine; never more than 3. Never force unrelated lesson words into one sentence — give a word its own short exchange.\n' +
+    // v697 (live Haiku relay, Japanese): 電車 / バス / 車 in one situation became "no train — the car is better — the bus?" with
+    // no choice ever made, and the audit failed it as "not one storyline" in every round
+    '- When several lesson words are alternatives (vehicles, foods, places, times …), the speakers COMPARE them and CHOOSE one; from then on that choice holds (it is not changed again without a reason).\n' +
     '- Use ONLY the lesson words, the allowed vocabulary and the grammar words. If an idea needs another word, choose a different idea. No narration, no names.\n' +
     (fix ? 'YOUR FIRST VERSION OF S' + (k + 1) + ' HAD THESE DEFECTS — write a NEW version that has none of them (a different idea where an idea was the problem):\n' + fix.map(x => '- ' + x).join('\n') + '\n' : '') +
     'For each turn: speaker (A | B), intent (' + LN_MF_INTENTS.join(' | ') + '), asks (for ASK: TIME | PLACE | PERSON | REASON | METHOD | STATE | THING | CHOICE | YESNO' + (lnMfHasNumbers(env) ? ' | CLOCK_TIME | PRICE | QUANTITY | DURATION | AGE' : '') + ', else ""), respondsTo (the number of the turn IN THIS SITUATION it answers, 0 if none), about (who / what it is about, 1–3 English words), object (English or ""), targetIds (the T numbers it uses), ' + LN_MF_TEXT_FIELD_RULE(la) + '\n' +

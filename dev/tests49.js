@@ -137,6 +137,10 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     const jr = ja5.st.calls.filter(x => x.stage === 'O_listening_plan_repair')
     T('D4c', 'a patch whose own turns put one speaker twice in a row (A / A) is rejected (SPEAKER_ALTERNATION), retried once with "the speakers alternate", and the A / B version is applied → READY',
       /PART_REJECTED x1 \([a-z]+\) — PATCH_INVALID — [^\n]*SPEAKER_ALTERNATION/.test(ja5.Ls) && jr.length === 2 && /the speakers alternate/.test(jr[1].prompt) && /PART_REPAIRED x1/.test(ja5.Ls) && ja5.track.status === 'READY', { st: ja5.track.status, r: ja5.track.failureReason, n: jr.length })
+    // D4d · v697 (live Haiku relay, Mandarin run 4): 到朋友的地方 failed "到 needs a place" twice — a possessor + place noun is a place
+    { const c = load(__dirname + '/tt.compiled.js', { realBelt: true }), adj = new Set(['大', '好', '小']), w = t => (c.lnMfZhProblems(t, '', adj) || []).map(x => x.word)
+      T('D4d', 'zh: 到 + a possessor + place noun is a place (到朋友的地方吧 · 到他家吗 · 我们到朋友家了 pass); a bare 到 still fails (我到。· 我现在一起到。)',
+        !w('到朋友的地方吧。').includes('到') && !w('到他家吗？').includes('到') && !w('我们到朋友家了。').includes('到') && w('我到。').includes('到') && w('我现在一起到。').includes('到')) }
     // D5 · a target the plan forgot → GROUPING recovery adds an exchange for it; the target is never silently lost
     const noCost = GOOD.th.filter(r => !/ค่าโดยสาร|สิบบาท/.test(r[5]))
     const th1 = await run('th', { plan: noCost, repair: () => [['A', 'ASK', 'PRICE', 'the fare', 'ค่าโดยสารเท่าไหร่ครับ', 'How much is the fare?'], ['B', 'ANSWER', '', 'the fare', 'สิบบาทค่ะ', 'Ten baht.']] })

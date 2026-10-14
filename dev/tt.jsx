@@ -28684,7 +28684,8 @@ function lnMfZhProblems(text, prevText, adjSet) {
   for (const v of ['用', '找', '拿']) if ((r = after(v)) != null && end(r) && !echo(v) && !objReply(v)) g(v, v + ' needs what is ' + (v === '找' ? 'looked for' : v === '用' ? 'used' : 'taken') + ' — "' + s + '"')
   if ((r = after('做')) != null && end(r) && !/怎么做|做的|谁做/.test(s) && !echo('做')) g('做', '做 needs what is done (做什么 · 做工作) — "' + s + '"')
   if ((r = after('回')) != null && !/^(家|这里|那里|哪里|去|来|国|了)/.test(r) && !echo('回')) g('回', '回 needs where to (回家) — "' + s + '"')
-  if ((r = after('到')) != null && !/^(了|家|这里|那里|哪里|这|那)/.test(r) && !/到了/.test(s) && !echo('到')) g('到', '到 needs a place or 了 (我到了 · 到家了) — "' + s + '"')
+  // v697 (live Haiku relay): 到朋友的地方 / 到朋友家 name a place — a possessor (+ 的) before a place noun is a place
+  if ((r = after('到')) != null && !/^(了|这里|那里|哪里|这|那|(我们|你们|他们|我|你|他|她|朋友|妈妈|爸爸|老师)?的?(家|地方|店|商店|饭店|学校|公司|医院|车站|机场|公园|这儿|那儿))/.test(r) && !/到了/.test(s) && !echo('到')) g('到', '到 needs a place or 了 (我到了 · 到家了) — "' + s + '"')
   if ((r = after('很')) != null && !([...adjSet].some(a => r.startsWith(a)))) g('很', '很 must be followed by an adjective (很大 · 很好) — "' + s + '"')
   if ((r = after('太')) != null) { if (!([...adjSet].some(a => r.startsWith(a)))) g('太', '太 must be followed by an adjective — "' + s + '"'); else if (!/了/.test(r) && !/不太/.test(s)) g('太', '太 + adjective needs 了 (太大了) — "' + s + '"') }
   { const i = s.indexOf('一起'); if (i >= 0) { const before = s.slice(0, i)

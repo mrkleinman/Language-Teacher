@@ -28438,6 +28438,8 @@ const LN_MF_CONTRACTS = {
     'ごめん': { rule: 'ごめん = sorry (casual) — an apology the other speaker acknowledges' },
     'まだ': { rule: 'まだ = not yet / still (まだ食べてない · まだいる？)' },
     'もう': { rule: 'もう = already / (not) any more (もう食べた？ · もう帰る)' },
+    // v697 (live Haiku relay): 買うのができる — the verb form before できる was wrong, and the scene could not be repaired
+    'できる': { rule: 'できる = can (a skill / a thing: 日本語ができる · 料理ができる) or be ready (もうできた？) — never a verb + の + できる' },
   },
   th: {
     'แก่': { describes: ['PERSON', 'ANIMAL'], rule: 'แก่ = old (people / animals) — never about a thing or a place (things are เก่า)' },
@@ -29272,7 +29274,7 @@ function lnMfRepairPrompt(env, mp, scopes, note) {
       (s.issues.some(x => x.code === 'INFEASIBLE_INTENTION') ? ' — REMOVE the question the learner cannot answer (a number / the digits of a phone number): the speakers want something else here (a day, a choice, a yes / no, asking FOR the number and a promise to send it)' : '') +
       (s.issues.some(x => (x.repeats || 0) >= 1) ? ' — this part already failed the same way before: do NOT write the same idea again, change what the speakers want to say' : '')
     const keep = (s.targetIds || []).map(id => { const t = byId.get(id), p = env.mfProfiles.get(id); return t ? t.surface + ' (T' + id + ', ' + t.gloss + (p && p.rule ? '; ' + p.rule : '') + ')' : '' }).filter(Boolean)
-    return head + '\n   problem: ' + why + '\n   do: ' + todo + '\n   lesson words that must be heard in the new turns: ' + (keep.join(', ') || '(none)')
+    return head + '\n   problem: ' + why + '\n   do: ' + todo + '\n   lesson words that must be heard in the new turns: ' + (keep.join(', ') || '(none)') + lnMfRetryNote(s, byId)
   })
   return 'REPAIR parts of a planned ' + la.label + ' LISTENING conversation for a learner (' + (ctx.complexity ? ctx.complexity.belt + ', each turn ≤ ' + ctx.complexity.hardMax + ' ' + ctx.complexity.unitName : 'beginner') + '). Speakers: ' + la.speakerContract + (extra || '') + '\n' +
     'THE WHOLE CONVERSATION (context — only the listed parts change; every other turn stays exactly as it is):\n' + lnMfConversationRows(mp, byId, null) + '\n\n' +
@@ -29282,6 +29284,30 @@ function lnMfRepairPrompt(env, mp, scopes, note) {
     'ALLOWED VOCABULARY (the ONLY other content words): ' + lnMfVocabRows(env).join(' · ') + '\n' +
     'Return ONLY the new turns of each part — nothing else, no explanations. For each turn: speaker (A | B), intent, asks, about, object, targetIds, ' + LN_MF_TEXT_FIELD_RULE(la) + '\n' +
     'Reply ONLY with JSON: {"parts":[{"scope":"x1","turns":[{"speaker":"A","intent":"ASK","asks":"PLACE","about":"","object":"","targetIds":[],"text":"...","pron":"","english":"..."}]}]}' + (note || '')
+}
+// v697 (live Haiku relay) — a part whose patch the hard checks REJECTED gets one corrected retry in the same round, told exactly
+// why (Japanese run 3: its last round was lost to one unknown word, そろそろ, and four lesson words in one turn — the rewrite was
+// otherwise right, and the track was blocked)
+const LN_MF_RETRY_HINT = { CLOSED_VOCAB: 'use ONLY the allowed vocabulary — replace the unknown word(s) with allowed words or drop them', MAX_TARGETS_PER_TURN: 'one turn carries too many lesson words — spread them over the turns', PROTECTED_TARGET_LOST: 'a lesson word went missing — every listed lesson word must be heard',
+  GRAMMAR_CONTRACT: 'fix the grammar named', TOO_COMPLEX: 'make the turn shorter', SCENE_TURN_BUDGET: 'do not add turns — return the same number of turns', EXACT_DUPLICATE: 'do not repeat a line already in the conversation', NEAR_DUPLICATE: 'do not repeat a line already in the conversation' }
+function lnMfRetryNote(s, byId) {
+  const r = s.patchRejected
+  if (!r) return ''
+  const hints = Object.keys(LN_MF_RETRY_HINT).filter(k => r.why.includes(k)).map(k => LN_MF_RETRY_HINT[k])
+  return '\n   YOUR LAST VERSION OF THIS PART WAS REJECTED: ' + r.why.replace(/^PATCH_INVALID — /, '').slice(0, 260) + (r.texts.length ? '\n   rejected version: ' + r.texts.join(' / ') : '') +
+    '\n   fix exactly that' + (hints.length ? ': ' + hints.join('; ') : '') + ' — keep everything else that was right in it'
+}
+async function lnMfRepairRound(env, mp, scopes, round) {
+  const rep = await lnMfRepairCall(env, mp, scopes, round)
+  if (!rep) return null
+  lnMfApply(env, mp, scopes, rep, round)
+  const again = scopes.filter(s => s.patchRejected && !s.patchRetried)
+  if (!again.length) return rep
+  again.forEach(s => { s.patchRetried = true })
+  env.log && env.log('🔁 PATCH_RETRY round ' + round + ' · ' + again.map(s => s.id).join(', ') + ' — rejected by the hard checks; asked once more with the exact reason')
+  const rep2 = await lnMfRepairCall(env, mp, again, round + '-retry')
+  if (rep2) lnMfApply(env, mp, again, rep2, round + 'b')
+  return rep
 }
 async function lnMfRepairRequest(env, mp, batch, round) {
   const { log, tel, o } = env, mf = env.mf
@@ -29333,7 +29359,13 @@ function lnMfApply(env, mp, scopes, rep, round) {
   scopes.forEach(s => {
     const part = parts.get(s.id)
     const scene = mp.scenes.find(x => x.key === s.scene)
-    const fail = why => { log && log('⛔ PART_REJECTED ' + s.id + ' (' + s.kind + ') — ' + why + ' · the old turns stay; the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)) }
+    // codes: the hard-check codes behind the rejection — only a patch whose every fault is one the model can be told how to fix
+    // gets the corrected retry (a model that brings back a rejected sentence is not asked again in the same round)
+    const fail = (why, texts, codes) => { const retry = !s.patchRetried && (codes || []).every(k => LN_MF_RETRY_HINT[k])
+      log && log('⛔ PART_REJECTED ' + s.id + ' (' + s.kind + ') — ' + why + ' · the old turns stay; ' + (retry ? 'one corrected retry this round' : 'the part escalates next round'))
+      // the retry of a part is the same recovery level: the part climbs ONE rung per round, however many replies it took
+      if (!s.patchRetried) s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1))
+      s.patchRejected = retry ? { why, texts: texts || [] } : null }
     if (!part || !scene || !Array.isArray(part.turns) || !part.turns.length) { log && log('⛔ PART_NOT_REPAIRED ' + s.id + ' (' + s.kind + ') — no replacement returned · the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)); return }
     // where the span lies: one situation, or the boundary of two (its new turns are split in the same proportion)
     const span = s.turnIds.map(id => mp.flat.find(t => t.id === id)).filter(Boolean)
@@ -29345,8 +29377,8 @@ function lnMfApply(env, mp, scopes, rep, round) {
     if (cleaned.length) log && log('🧹 PATCH_TEXT_CLEANED ' + s.id + ' — the sentence field carried a romanisation / label / note, removed before validation: ' + cleaned.map(t => '"' + t.cleanedFrom + '" → "' + t.text + '"').join(' | ').slice(0, 300))
     const heard = new Set(fresh.flatMap(tu => byId ? [...byId.values()].filter(t => t.surface && la.present(tu.text, t.surface, env.ctx)).map(t => t.id) : []))
     const lost = (s.targetIds || []).filter(id => !heard.has(id))
-    if (lost.length) { fail('PROTECTED_TARGET_LOST ' + lost.map(id => (byId.get(id) || {}).surface).join(', ')); return }
-    if (s.mustInclude && rows.length !== s.turnIds.length) { fail('the exchange had to keep its ' + s.turnIds.length + ' turns (got ' + rows.length + ')'); return }
+    if (lost.length) { fail('PROTECTED_TARGET_LOST ' + lost.map(id => (byId.get(id) || {}).surface).join(', '), fresh.map(t => t.text), ['PROTECTED_TARGET_LOST']); return }
+    if (s.mustInclude && rows.length !== s.turnIds.length) { fail('the exchange had to keep its ' + s.turnIds.length + ' turns (got ' + rows.length + ') — SCENE_TURN_BUDGET: return exactly ' + s.turnIds.length + ' turns', fresh.map(t => t.text), ['SCENE_TURN_BUDGET']); return }
     fresh.forEach(tu => { tu.targetIds = [...new Set(tu.targetIds.concat([...heard].filter(id => la.present(tu.text, (byId.get(id) || {}).surface || '\u0000', env.ctx))))] })
     // the trial: the conversation with this patch in place, validated before anything changes
     const trial = { scenes: mp.scenes.map(x => ({ ...x, turns: x.turns.map(t => ({ ...t })) })) }
@@ -29368,7 +29400,7 @@ function lnMfApply(env, mp, scopes, rep, round) {
       if (bud && bud[k] && sceneKeys.includes(x.key) && x.turns.length > was && x.turns.length > bud[k].max) bad.push({ fault: 8, code: 'SCENE_TURN_BUDGET', turnIds: [], detail: x.key + ' would grow from ' + was + ' to ' + x.turns.length + ' turns — its budget is ' + bud[k].max }) })
     if (bad.length) {
       bad.filter(is => [1, 3, 4, 5].includes(is.fault)).forEach(is => is.turnIds.forEach(id => { const t = fresh.find(x => x.id === id); if (t) mf.rejectedTexts.set(lnMfNorm(t.text), is.fault) }))
-      fail('PATCH_INVALID — ' + bad.slice(0, 3).map(is => is.code + ': ' + String(is.detail || '').slice(0, 90)).join(' · ')); return }
+      fail('PATCH_INVALID — ' + bad.slice(0, 3).map(is => is.code + ': ' + String(is.detail || '').slice(0, 90)).join(' · '), fresh.map(t => t.text), bad.map(is => is.code)); return }
     // remember what failed, so no later round may bring it back
     // what may never come back: a defective SENTENCE (wording, vocabulary, grammar, meaning) and, for a meaning fault the audit
     // found, its RELATIONSHIP; for a question → answer mismatch only the failed ANSWER (the question may be fine); a transition
@@ -29459,9 +29491,8 @@ async function _lnComposeMeaningFirst(env) {
       const scopes = lnMfScopes(env, mp, repairable)
       log && log('🔧 MEANING_REPAIR round ' + round + '/' + limit + ' · ' + scopes.length + ' part(s): ' + scopes.map(s => s.id + ' ' + s.kind + ' [' + s.issues.map(is => LN_MF_FAULTS[is.fault]).filter((x, i, a) => a.indexOf(x) === i).join('+') + ']').join(' · ') + ' — every other turn is kept exactly')
       if (!scopes.length) break
-      const rep = await lnMfRepairCall(env, mp, scopes, round)
+      const rep = await lnMfRepairRound(env, mp, scopes, round)
       if (!rep) return true
-      lnMfApply(env, mp, scopes, rep, round)
       res = await lnMfValidateAndAudit(env, mp)
       lnMfIssueLog(env, res, 'after repair round ' + round)
       const sig = sigOf(res)
@@ -29529,9 +29560,8 @@ async function _lnComposeMeaningFirst(env) {
     const scopes = lnMfScopes(env, mp, issues)
     log && log('📖 STORY_REPAIR ' + mf.storyRounds + '/' + LN_MF_STORY_ROUNDS + ' · ' + scopes.length + ' part(s): ' + scopes.map(sc => sc.id + ' ' + sc.kind + ' (' + sc.scenes.join('+') + ')').join(' · ') + ' — from the final story judge; every other turn is kept exactly')
     if (!scopes.length) break
-    const rep = await lnMfRepairCall(env, mp, scopes, 'story-' + mf.storyRounds)
+    const rep = await lnMfRepairRound(env, mp, scopes, 'story-' + mf.storyRounds)
     if (!rep) break
-    lnMfApply(env, mp, scopes, rep, 'story-' + mf.storyRounds)
     res = await lnMfValidateAndAudit(env, mp)
     lnMfIssueLog(env, res, 'after story repair ' + mf.storyRounds)
     // what the story repair broke locally gets up to two ordinary repair rounds; the plan must pass both gates again

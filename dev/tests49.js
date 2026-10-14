@@ -121,6 +121,14 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
       repair: (scope, head, q, st) => st.repair === 1 ? [['A', 'INFORM', '', 'I', '我们去吧。', 'Let\'s go.']] : [['A', 'INFORM', '', 'I', '我现在到了。', 'I\'m here now.'], ['B', 'REACT', '', 'we', '好，我们一起去吧！', 'Great, let\'s go together!']] })
     T('D4', 'a repair that LOSES a protected lesson word is rejected (PROTECTED_TARGET_LOST, old turns kept), the part ESCALATES to a wider scope next round, then succeeds',
       /PART_REJECTED x1 \([a-z]+\) — PROTECTED_TARGET_LOST/.test(zh3.Ls) && /round 2\/3 · 1 part\(s\): x1 (exchange|intention|scene)/.test(zh3.Ls) && zh3.track.status === 'READY', { st: zh3.track.status, r: zh3.track.failureReason })
+    // D4b · v697 (live Haiku relay, Japanese run 3): a patch rejected for an UNKNOWN WORD gets one corrected retry in the same
+    // round, told the exact reason and shown its rejected version; the retry is applied → READY in one round
+    const zh4 = await run('zh', { plan: splice(GOOD.zh, 6, [['A', 'INFORM', '', 'I', '我现在一起到。', 'I now together arrive.'], ['B', 'REACT', '', '', '真的吗？', 'Really?']]),
+      repair: (scope, head, q, st) => st.repair === 1 ? [['A', 'INFORM', '', 'we', '我们现在一起到咖啡馆了。', 'We\'ve arrived at the café together now.']] : [['A', 'INFORM', '', 'we', '我们现在一起到了。', 'We\'ve arrived together now.']] })
+    const zr = zh4.st.calls.filter(x => x.stage === 'O_listening_plan_repair')
+    T('D4b', 'a patch rejected for an unknown word (CLOSED_VOCAB) is retried ONCE in the same round with the exact reason and its rejected version → applied → READY in ONE round (2 repair calls)',
+      /PART_REJECTED x1 \([a-z]+\) — PATCH_INVALID — CLOSED_VOCAB/.test(zh4.Ls) && /PATCH_RETRY round \d+ · x1/.test(zh4.Ls) && zr.length >= 2 && /YOUR LAST VERSION OF THIS PART WAS REJECTED[^\n]*CLOSED_VOCAB/.test(zr[1].prompt) && /rejected version: 我们现在一起到咖啡馆了。/.test(zr[1].prompt) &&
+      /PART_REPAIRED x1 \(line/.test(zh4.Ls) && zr.length === 2 && !/MEANING_REPAIR round 2/.test(zh4.Ls) && zh4.track.status === 'READY', { st: zh4.track.status, r: zh4.track.failureReason, n: zr.length })
     // D5 · a target the plan forgot → GROUPING recovery adds an exchange for it; the target is never silently lost
     const noCost = GOOD.th.filter(r => !/ค่าโดยสาร|สิบบาท/.test(r[5]))
     const th1 = await run('th', { plan: noCost, repair: () => [['A', 'ASK', 'PRICE', 'the fare', 'ค่าโดยสารเท่าไหร่ครับ', 'How much is the fare?'], ['B', 'ANSWER', '', 'the fare', 'สิบบาทค่ะ', 'Ten baht.']] })
@@ -347,8 +355,10 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     // the repair is the boundary even when it fails once (second attempt is again a boundary repair, never "rewrite S4 only")
     {
       const g = await run('ja', { ...jaBase, repair: (scope, head, q, st) => !/BOUNDARY/.test(head) ? null : st.repair === 1 ? F.JA_FIX.boundary.slice(0, 3) : F.JA_FIX.boundary }, {}, L694('ja'))
-      T('K11-ja', 'ja: a boundary patch with the wrong number of turns / a lost lesson word (まだ) is rejected before it is applied; the second round is again a BOUNDARY repair (not a whole-situation rewrite) and succeeds → READY',
-        /PART_REJECTED x1 \(boundary\)/.test(g.Ls) && /MEANING_REPAIR round 2\/3 · 1 part\(s\): x1 boundary/.test(g.Ls) && /PART_REPAIRED x1 \(boundary/.test(g.Ls) && contract(g, 'ja'), { st: g.track.status, r: g.track.failureReason })
+      // v697: the second attempt is the corrected retry in the SAME round (told why the patch was rejected) — still a BOUNDARY repair
+      const gr = repCalls(g)
+      T('K11-ja', 'ja: a boundary patch with the wrong number of turns / a lost lesson word (まだ) is rejected before it is applied; the second attempt (the corrected retry, told the exact reason) is again a BOUNDARY repair (not a whole-situation rewrite) and succeeds → READY',
+        /PART_REJECTED x1 \(boundary\)/.test(g.Ls) && /PATCH_RETRY round 1 · x1/.test(g.Ls) && gr.length === 2 && /BOUNDARY between/.test(gr[1].prompt) && /YOUR LAST VERSION OF THIS PART WAS REJECTED/.test(gr[1].prompt) && /PART_REPAIRED x1 \(boundary/.test(g.Ls) && contract(g, 'ja'), { st: g.track.status, r: g.track.failureReason, n: gr.length })
     }
 
     // ── MANDARIN ──

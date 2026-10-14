@@ -1,4 +1,4 @@
-# v697 Listening with Haiku: snapshot of the relay work (paused)
+# v697–v699 Listening with Haiku: relay results
 
 This is a snapshot taken mid-work, at the owner's request ("take a snapshot here for now, we go back to listening later"). Everything here is on the dev branch only. Nothing has been deployed.
 
@@ -18,13 +18,50 @@ This is a snapshot taken mid-work, at the owner's request ("take a snapshot here
 | 3 | blocked (museum storyline) | blocked (できる + a jump) | **READY** 30/30, 40 turns, judge 4/5 |
 | 4 | **READY** 30/30, 40 turns, judge 4/5, 13 calls | blocked: 1 fault left (できる in the shop) | blocked (older build: 2 transitions + 1 wording fault) |
 | 5 | **READY** 30/30, 40 turns, judge 4/5 first time, 14 calls | not READY: 30/30, meaning check passed, story judge 3/5 ×3 (the shop scene turned into a food stall to fit できる) | blocked: 1 clipped line, which escalated to a scene rewrite |
-| 6 | (not run: Thai READY twice) | stopped at situation 1 | stopped at situation 2 |
+| 6 (v698 build) | (not run: Thai READY twice) | blocked by a **false alarm** in the apology check (see below) | **READY** 30/30, 40 turns, 18 calls (1 meaning repair + 1 story repair) |
+| 7 (v699 fix) | — | **READY** 30/30, 40 turns, **9 calls, 0 repairs**, all 6 scenes pass, story judge 3/5 (pass) | — |
 
 - **Thai has been READY twice in a row** (runs 4 and 5), with SRS untouched and 0 new words.
 - **Mandarin has been READY once** (run 3).
 - **Japanese has not yet been READY.** Its last blocker was できる sitting in the shopping situation. That is now fixed in the planner, and run 6 is the first run on that fix.
 
-## What was changed (all in `tt.jsx`, WIP commits faddf5d … 5196d3f)
+## Every language has now reached READY
+
+| | READY runs |
+|---|---|
+| Thai | runs 4, 5 |
+| Mandarin | runs 3, 6 |
+| Japanese | run 7 (its first) |
+
+In every READY run, SRS was untouched and there were 0 new words.
+
+**Japanese run 7 — the conversation.** It holds together as one story:
+1. They meet and catch up.
+2. B apologises for missing yesterday.
+3. They decide on a bookshop.
+4. They choose the bus.
+5. They wait for it and go.
+6. They buy the book.
+
+**Flaws still visible in it:**
+- 新しいの、高いの、安いの、どれ見る？ is stiff, forced by the lesson word どれ.
+- 友達、日本語ができるんだ is odd between two Japanese speakers.
+- The closing じゃね comes while they are still in the shop.
+
+**Mandarin run 6.** The story judge failed scene 4 at first (3/5). The story repair fixed it, but the repair introduced 哪里？— 你来那个地方。, which does not answer the question. The meaning check caught that, the patch that repeated an earlier line was rejected, and the corrected retry passed.
+
+## v699 fix (after run 6)
+
+**The apology check was too strict.** The rule "an apology expects an acknowledgement" treated any question after an apology as unrelated.
+- **What it did:** it rejected ごめん、昨日、来なかった。 → うん、分かった。なんで来なかったの？ ("Sorry, I didn't come yesterday." → "Yeah, got it. Why didn't you come?") three repair rounds running.
+- **Result:** it blocked Japanese run 6 even though the exchange is natural.
+- **The fix:**
+  - A reply that opens with an acknowledgement (yeah / okay / got it / I see / don't worry …), or asks *why*, now counts as a reply to the apology.
+  - A question that ignores the apology ("Do you like movies?") still fails.
+- **Tests:** tests49 D4e uses the exact run-6 lines; tests49 now passes 94/94.
+- **Where it is:** on the dev branch only; not yet live.
+
+## What was changed in v697 (all in `tt.jsx`, WIP commits faddf5d … 5196d3f)
 
 1. **A rejected patch gets one corrected retry, in the same round.**
    - What it covers: a repair patch that the hard checks reject for a fixable reason. The reasons are an unknown word, too many lesson words in one turn, a lost lesson word, the wrong turn count, a grammar contract, or one speaker twice in a row.
@@ -80,8 +117,10 @@ None of this is live. Each go-live still needs explicit approval.
 
 ## TL;DR
 
-- **Thai:** reached READY twice in a row with Haiku.
-- **Mandarin:** reached READY once.
-- **Japanese:** close, but not yet READY. Its last blocker (できる in the shop) is now fixed in the planner, and the run on that fix was paused at the owner's request.
-- **Eight pipeline fixes, all found from real Haiku runs.** They include a corrected retry for rejected patches, re-checks that judge only what changed, stated time skips, speakers alternating and できる placement. The Listening tests pass 93/93.
-- **Everything is on the dev branch.** Nothing is deployed.
+- **All three languages have now produced a READY Listening Track with Haiku:**
+  - Thai: twice.
+  - Mandarin: twice.
+  - Japanese: for the first time, in run 7. It needed 9 calls and no repairs.
+- **The last Japanese blocker was a false alarm in the app's apology check.** It is fixed (v699, dev branch only) and covered by a test.
+- **Quality flaws remain**, even in READY tracks: a few stiff lines forced by lesson words, and the odd abrupt goodbye.
+- **The v699 fix is not live yet.** Releasing it needs your go-ahead.

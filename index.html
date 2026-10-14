@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v696"/>
+<meta name="app-version" content="v698"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v696';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v696').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v698';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v698').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -130,6 +130,108 @@ THAI_LEXICON_AUDIT_V645.forEach(a => {
   a.before = { e: d.e, ph: d.ph, note: d.note || null, semanticQc: d.semanticQc, phoneticQc: d.phoneticQc, qcStatus: d.qcStatus, qcIssues: (d.qcIssues || []).slice() }
   Object.assign(d, a.set, { semanticQc: 'PASS', phoneticQc: 'PASS', qcStatus: 'PASS', qcIssues: [], qcAudit: 'v645', verificationEvidence: a.evidence })
   a.applied = true
+})
+
+// ══ v698 TOPICS — vocabulary for specific situations ══════════════════════════════════════════
+// A topic is an ORDERED LIST OF CANONICAL VOCABULARY IDS, never a second dictionary. Each topic word is one record in the
+// master dictionary (RAW_VOCAB): an existing entry with exactly the same Thai is reused (its id, SRS history and curriculum
+// position untouched); a genuinely absent word is added ONCE, unranked (curriculumIndex 0 — no Shodan position, no belt) and
+// flagged topicOnly, so the ordinary Daily new-word picker never introduces it (only its topic track does). Learner state
+// (introduced / SRS / known) lives on the one vocabulary record, so learning a word anywhere counts everywhere.
+const TOPICS_VERSION = 'topics-v1'
+const THAI_TOPIC_ID_BASE = 5001                 // new topic-only ids live well clear of learner-added words (max id + 1)
+// [Thai, English, tone-marked romanisation (the bank's convention: ɔɔ→aaw · ɛɛ→aae · ɤɤ→ooe · ʉʉ→uue · ia→iia · ua→uua ·
+//  ก g · ต dt · ป bp), usage note for constructions]
+const TOPIC_WEDDING_SPEECH_TH = [
+  ['ทุกคน', 'everyone', 'thúk-khon'],
+  ['ขอบพระคุณ', 'thank you (respectfully)', 'khàawp-phrá-khun', 'A respectful thank-you — to parents, elders and guests; ขอบคุณ is the everyday form.'],
+  ['พ่อแม่', 'parents', 'phâaw-mâae'],
+  ['ความรัก', 'love (noun)', 'khwaam-rák', 'The noun "love" (ความ + รัก): ความรักของเรา "our love". The verb is รัก.'],
+  ['ดูแล', 'take care of', 'duu-laae', 'Takes an object: ดูแลลูก "take care of the children", ดูแลกัน "take care of each other".'],
+  ['ต้อนรับ', 'welcome', 'dtâawn-ráp', 'To welcome / receive someone: ต้อนรับแขก "welcome the guests", ขอบคุณที่ต้อนรับ "thank you for welcoming (me)".'],
+  ['เลี้ยงดู', 'raise and care for (someone)', 'líiang-duu', 'Bringing someone up: พ่อแม่เลี้ยงดูฉัน "my parents raised me".'],
+  ['ขอให้', 'may … / wish that …', 'khǎaw-hâi', 'A wish followed by a clause: ขอให้มีความสุข "may you be happy". Not ขอ (ask for) + ให้ (give) separately.'],
+  ['งานแต่งงาน', 'wedding', 'ngaan-dtàeng-ngaan', 'The wedding (the event, งาน + แต่งงาน). แต่งงาน alone is the verb "to marry".'],
+  ['จริงใจ', 'sincere, genuine', 'jing-jai'],
+  ['เชื่อใจ', 'trust (someone)', 'chûea-jai', 'Trust a person: ฉันเชื่อใจคุณ "I trust you". เชื่อ alone is "believe".'],
+  ['เสมอ', 'always, consistently', 'sà-mǒoe', 'Usually after the verb phrase: เขาช่วยฉันเสมอ "he always helps me".'],
+  ['ให้อภัย', 'forgive', 'hâi-à-phai', 'Forgive someone: ให้อภัยฉันนะ "please forgive me".'],
+  ['ตลอดไป', 'forever', 'dtà-làawt-pai', 'After the verb: รักคุณตลอดไป "love you forever".'],
+  ['เคารพ', 'respect', 'khao-róp', 'Respect someone: เคารพพ่อแม่ "respect (one\'s) parents".'],
+  ['ความทรงจำ', 'memories', 'khwaam-song-jam', 'Memories (noun): ความทรงจำที่ดี "good memories".'],
+  ['อบอุ่น', 'warm, comforting', 'òp-ùn', 'Warm in feeling (a family, a welcome, a home), not only temperature.'],
+  ['คิดถึง', 'miss (someone)', 'khít-thǔeng', 'Miss someone: คิดถึงแม่ "I miss Mum".'],
+  ['หัวเราะ', 'laugh', 'hǔua-ráw'],
+  ['เจ้าสาว', 'bride', 'jâo-sǎao'],
+  ['ร่วมกัน', 'together, jointly', 'rûuam-gan', 'Doing something jointly, after the verb: สร้างร่วมกัน "build together".'],
+  ['เป็นห่วง', 'worry about; care about', 'bpen-hùuang', 'Worry about someone out of care: เป็นห่วงคุณ "(I) worry about you".'],
+  ['ให้กำลังใจ', 'encourage, give moral support', 'hâi-gam-lang-jai', 'Encourage someone: ให้กำลังใจฉันเสมอ "always encouraged me".'],
+  ['ความสัมพันธ์', 'relationship', 'khwaam-sǎm-phan'],
+  ['อวยพร', 'give blessings or good wishes', 'uai-phaawn', 'Give someone blessings: อวยพรให้เรา "give us your blessing".'],
+  ['ทุกอย่าง', 'everything', 'thúk-yàang'],
+  ['ปัญหา', 'problem', 'bpan-hǎa'],
+  ['ผ่าน', 'pass through; get through', 'phàan', 'Get through something: ผ่านปัญหามาด้วยกัน "got through problems together".'],
+  ['เรียนรู้', 'learn', 'riian-rúu', 'Learn (come to understand), often from experience: เรียนรู้กันและกัน "learn about each other".'],
+  ['ในที่สุด', 'finally, eventually', 'nai-thîi-sùt', 'At the start of the clause: ในที่สุดเราก็แต่งงาน "finally we got married".'],
+  ['ทำให้', 'make or cause (something)', 'tham-hâi', 'Causes a result: คุณทำให้ฉันมีความสุข "you make me happy". Not ทำ (do) + ให้ (give) separately.'],
+  ['ความหมาย', 'meaning, significance', 'khwaam-mǎai'],
+  ['ฝัน', 'dream', 'fǎn'],
+  ['ซื่อสัตย์', 'honest, faithful', 'sûue-sàt'],
+  ['เอาใจใส่', 'be attentive, caring', 'ao-jai-sài', 'Pay caring attention to someone: เอาใจใส่ครอบครัว "take good care of the family".'],
+  ['ความหวัง', 'hope', 'khwaam-wǎng', 'The noun "hope". The verb is หวัง.'],
+  ['สบายใจ', 'feel at ease', 'sà-baai-jai'],
+  ['ยินดี', 'glad, pleased', 'yin-dii', 'Glad / pleased: ยินดีมาก "very glad". ยินดีต้อนรับ is "welcome".'],
+  ['ยอมรับ', 'accept', 'yaawm-ráp'],
+  ['แบ่งปัน', 'share', 'bàeng-bpan'],
+  ['ประสบการณ์', 'experience', 'bprà-sòp-gaan'],
+  ['เติบโต', 'grow, mature', 'dtòoep-dtoo'],
+  ['เปลี่ยนแปลง', 'change', 'plìian-plaaeng'],
+  ['บางครั้ง', 'sometimes', 'baang-khráng'],
+  ['คำพูด', 'words, what someone says', 'kham-phûut'],
+  ['สนับสนุน', 'support', 'sà-nàp-sà-nǔn'],
+  ['แสดง', 'express, show', 'sà-daaeng', 'Show / express (a feeling): แสดงความรัก "show love".'],
+  ['คนอื่น', 'other people', 'khon-ùuen'],
+  ['แม้ว่า', 'although, even though', 'máae-wâa', 'Starts a clause: แม้ว่าจะยาก … "even though it is hard …".'],
+  ['เจ้าบ่าว', 'groom', 'jâo-bàao'],
+]
+// the learning progression of the 50 (display only — never fixed batches or track ids)
+const TOPIC_WEDDING_SPEECH_GROUPS = [
+  'Opening and gratitude', 'Thanking the families', 'Promises and commitment', 'Talking about the relationship', 'Love and support',
+  'The journey together', 'Expressing deeper feelings', 'Looking to the future', 'Life experiences', 'Additional expression']
+// Resolve each topic word to ONE canonical dictionary record: an exact existing headword (a retired alias follows to its kept
+// record) is reused; otherwise one topic-only record is added. Idempotent — runs once at module load, never duplicates.
+function seedThaiTopicEntries(raw, words, topicId, base) {
+  const alias = { 688: 790, 776: 885, 431: 1626 }                // THAI_CANONICAL_ALIASES (defined later in this file)
+  const ids = [], reused = [], created = []
+  words.forEach(([t, e, ph, usage], k) => {
+    const hit = raw.find(d => d && d.t === t && !d.dup)
+    if (hit) {
+      const id = alias[hit.id] != null ? alias[hit.id] : hit.id
+      const d = raw.find(x => x && x.id === id) || hit
+      d.topics = [...new Set([...(d.topics || []), topicId])]    // membership only — curriculum, text and phonetics untouched
+      ids.push(id); reused.push({ id, thai: t }); return
+    }
+    const id = base + k
+    const ex = raw.find(d => d && d.id === id)
+    if (ex) { if (ex.t !== t) throw new Error('TOPIC_ID_COLLISION ' + id + ' ' + ex.t + ' vs ' + t); ids.push(id); return }
+    raw.push({ t, e, ph, l: 'new', i: 0, r: 0, lp: 0, curriculumIndex: 0, belt: 'Beyond curriculum', beltOrder: 0, id,
+      qcVersion: 'thai-canonical-v1', semanticQc: 'PASS', phoneticQc: 'PASS', qcStatus: 'PASS', qcIssues: [], conversationGroup: 'A',
+      lexiconDisposition: 'ACTIVE', curriculumBucket: 'TOPIC', topicOnly: true, topics: [topicId],
+      ...(usage ? { usageNote: usage } : {}) })
+    ids.push(id); created.push({ id, thai: t })
+  })
+  return { ids, reused, created }
+}
+const _weddingSeed = seedThaiTopicEntries(RAW_VOCAB, TOPIC_WEDDING_SPEECH_TH, 'wedding-speech', THAI_TOPIC_ID_BASE)
+// THE TOPIC REGISTRY — data-driven: a new topic (any language) is one entry here; the selection and the generator are shared.
+const LANGUAGE_TOPICS = Object.freeze({
+  th: [{ id: 'wedding-speech', title: 'Wedding Speech', icon: '💍', available: true,
+    description: 'Learn useful Thai for thanking family, telling your story, making promises and celebrating your wedding.',
+    sceneHint: 'thanking their families, memories, plans and promises, wishing each other well, or an upcoming wedding',
+    vocabIds: Object.freeze(_weddingSeed.ids.slice()), groups: TOPIC_WEDDING_SPEECH_GROUPS, groupSize: 5,
+    seed: { reused: _weddingSeed.reused, created: _weddingSeed.created } }],
+  ja: [],
+  zh: [],
 })
 
 
@@ -4815,7 +4917,8 @@ function mandarinFramingPairs(inv) {
 //     carrying the sentences already rejected for it, so a retry never pays for the same rejected construction again.
 //   · never a lesson: a checkpoint is not a track, is not playable, never counts as a completed lesson and never touches SRS.
 const GEN_CHECKPOINT_VERSION = 1
-const GEN_CHECKPOINT_KEYS = Object.freeze({ th: 'tt-th-gen-checkpoint', ja: 'tt-ja-gen-checkpoint', zh: 'tt-zh-gen-checkpoint' })
+const GEN_CHECKPOINT_KEYS = Object.freeze({ th: 'tt-th-gen-checkpoint', ja: 'tt-ja-gen-checkpoint', zh: 'tt-zh-gen-checkpoint',
+  'th-topic': 'tt-th-topic-gen-checkpoint' })   // v698: a Topic track keeps its own draft slot (a Daily draft is never offered inside a Topic, or overwritten by one)
 const GEN_CHECKPOINT_MAX_RESUMES = 3
 const GEN_CHECKPOINT_REJECTED_CAP = 24
 function genCheckpointSig(words) {
@@ -8432,7 +8535,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => {
               // Load partial track as-is
-              const track = { date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), mode: genDraft.mode || 'daily', pairs: genDraft.pairs, keywords: (genDraft.targets||[]).map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '', isNew: w.status === 'new', isUnseen: w.status === 'new' && isUnseen(w) })), rated: false, createdAt: new Date().toISOString(), partial: true }
+              const track = { date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), mode: genDraft.mode || 'daily', pairs: genDraft.pairs, keywords: (genDraft.targets||[]).map(w => { const nw = genDraft.topicId ? (genDraft.selectedNewTargetIds || []).includes(w.id) : w.status === 'new'; return { thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '', isNew: nw, isUnseen: nw && isUnseen(w) } }), rated: false, createdAt: new Date().toISOString(), partial: true,
+                ...(genDraft.topicId ? { language: 'th', trackType: 'daily', selectionMode: 'topic', topicId: genDraft.topicId, topicTitle: genDraft.topicTitle, topicsVersion: TOPICS_VERSION, selectedNewTargetIds: (genDraft.selectedNewTargetIds || []).slice() } : {}) }
               onNav('open-draft-track', track)
               localStorage.removeItem('tt-gen-draft')
               setGenDraft(null)
@@ -8465,7 +8569,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={() => onNav('generate-revision')} />
         <ListeningTrackButton selection={listeningSelection} onStart={() => onNav('listening-track')} />
-        <ListeningLatestBar lang="th" tracks={tracks} onListen={t => onOpenTrack(t)} onRebuild={(ids, from) => onNav('listening-track', { rebuildIds: ids, rebuildOf: from })} />
+        {/* v698: Topics sits where the Listening repair banner was; the repair now lives inside the Listening screen */}
+        <TopicsEntryCard lang="th" onOpen={() => onNav('topics')} />
         <button onClick={() => onNav('lessons')}
           style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, #1a1e3a, #1e2a5a)', border: '1px solid #2d3a6b', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
@@ -8497,7 +8602,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, fontWeight:600 }}>{track.date}
                       {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6, fontSize:10, fontWeight:700 }}>REVISION</span>}
-                      {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}</p>
+                      {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}
+                      <TopicTrackBadge track={track} /></p>
                     <p style={{ fontSize:11, color:'var(--muted)' }}>
                       {isListeningTrack(track) ? listeningTrackSummary(track) : (track.pairs?.length||0) + ' pairs · ' + (track.keywords?.length||0) + ' words'}
                       {track.bookmark > 0 && <span style={{ color:'#86c900', marginLeft:6 }}>🔖 {track.bookmark+1}</span>}
@@ -14035,7 +14141,7 @@ function randomNumberHint(vocab, pairIndex) {
 }
 
 // ── Conversation-track generation ────────────────────────────────────────────
-async function establishConvoScene(targets, vocab, apiKey, model) {
+async function establishConvoScene(targets, vocab, apiKey, model, opts) {
   const wordList = targets.slice(0, 15).map(t => t.thai + '=' + t.english).join(', ')
   // The scene is built from the SAME allowed vocabulary the sentence generator is
   // bound by. Previously it was invented freely and then fed words like วันศุกร์ and
@@ -14051,6 +14157,10 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
     '\nIf a scene idea needs a Thai word that is NOT listed, simplify the scene or pick\n' +
     'a different situation. Never build the scene around an unlisted content word.\n' +
     'A simple situation using allowed words beats a vivid one that needs new vocabulary.'
+  // v698 — a Topic Track (e.g. Wedding Speech): a light preference only, never a forced theme; the two speakers stay friends
+  const _tp = opts && opts.topic
+  const _topicHint = _tp ? '\n\nTOPIC (preference only): this lesson\'s NEW words come from "' + _tp.title + '". Where it is natural, set the scene so these friends can ' +
+    'talk about ' + (_tp.sceneHint || 'that topic') + '. The other (revision) words must still fit naturally — never force them into the topic.' : ''
   const system = 'You design Thai language lesson scenarios. Given vocabulary words, create a vivid realistic scene where two Thai adult friends (not family members) naturally use these words. Characters A and B are friends or acquaintances — never parent/child, never siblings.'
   const user = 'Vocabulary: ' + wordList + '\n\nReturn ONLY valid JSON (no markdown):\n' +
     '{"scene":"2-sentence scene in English",' +
@@ -14077,7 +14187,7 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
   try {
     let raw = ''
     // v648: through the central Gemini client (was a second, hand-rolled Gemini fetch)
-    raw = await geminiRequest({ apiKey, model, messages: [{ role:'user', content: system + '\n\n' + user + _sceneConstraint }], maxTokens: 1200, temperature: 0.9 })
+    raw = await geminiRequest({ apiKey, model, messages: [{ role:'user', content: system + '\n\n' + user + _sceneConstraint + _topicHint }], maxTokens: 1200, temperature: 0.9 })
     const clean = raw.replace(/```json|```/g,'').trim()
     const parsed = JSON.parse(clean)
     if (parsed.scene && parsed.characterA) return parsed
@@ -15236,11 +15346,14 @@ const THAI_DISCOURSE_INTERJECTIONS = ['อ้อ', 'อ๋อ', 'อืม', '�
 // The validator is the existing validateThaiVocabulary on the RAW Thai string (its
 // own segmentation, never the model's words[]). Nothing here ever marks a word as
 // learned or widens the allowed set: the OUTPUT adapts to the learner.
+// The bank that decides whether an approved grammar-list word needs exposure. v698: a topic-only entry (added to the dictionary
+// for a topic, e.g. ทุกคน / ทุกอย่าง / ปัญหา for Wedding Speech) never takes away a word the approved lists already authorised.
+function thaiExposureBank(vocab) { return new Set((vocab || []).filter(w => !isThaiTopicOnly(w)).map(w => w.thai || w.t)) }
 function buildThaiTrackVocabContext(vocab, targets, sceneEntities) {
   // A BANK vocabulary entry is authorised only by learner exposure (introduced /
   // known / target), never by a grammar list: alwaysOk contained 34 content words
   // (โอกาส, โรงพยาบาล, สถานี, เค้ก …). Only its NON-bank function words are grammar.
-  const _bank = new Set((vocab || []).map(w => w.thai || w.t))
+  const _bank = thaiExposureBank(vocab)
   const _gram = [...new Set([...THAI_TRACK_GRAMMAR_WORDS, ...THAI_ALWAYS_OK_WORDS.filter(w => !_bank.has(w)), ...THAI_DISCOURSE_INTERJECTIONS.filter(w => !_bank.has(w))])]
   const set = buildThaiAllowedSet({ vocab, trackTargets: targets || [], grammarWords: _gram })
   ;(targets || []).forEach(t => { const th = typeof t === 'string' ? t : (t && (t.thai || t.t)); if (th) set.add(th) })
@@ -15659,7 +15772,7 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
   // listed here as universally legal, which defeated the closed-vocabulary gate
   // entirely — they must be earned through introduction or chosen as targets.
   const alwaysOk = (() => {   // bank vocabulary is authorised by exposure, not by this list
-    const _bank = new Set((vocab || []).map(w => w.thai || w.t))
+    const _bank = thaiExposureBank(vocab)
     return new Set(THAI_ALWAYS_OK_WORDS.filter(w => !_bank.has(w)))
   })()
 
@@ -20316,7 +20429,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v696'
+const LISTENING_BUILD_VERSION = 'v698'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -21944,7 +22057,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v696'
+const APP_BUILD_VERSION = 'v698'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -23973,7 +24086,7 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
       // v672 §2 — ONE conversation: the parts are internal generation chunks, NOT scenes; continuity across parts is judged too
       ? 'Judge the WHOLE listening track below as ONE continuous, natural ' + la.label + ' conversation between the SAME two people. It was written in internal parts (numbered as "scenes" below) — they are NOT separate scenes: every part must continue directly from the previous part.\n' +
         'Check the WHOLE text: the beginning makes sense; topics move on naturally; every answer responds to its question (why → a reason, where → a place, when → a time, how long → a duration, how much → an amount, a proposal → accept / refuse / counter-proposal); ' +
-        'facts stay consistent (an agreed time or place stays agreed unless someone explicitly corrects it; whose mother / friend it is stays the same); names and pronouns stay consistent; a change of place is said in the dialogue; the time sequence makes sense; nobody greets again in the middle; the ending follows from the conversation. ' +
+        'facts stay consistent (an agreed time or place stays agreed unless someone explicitly corrects it; whose mother / friend it is stays the same); names and pronouns stay consistent; a change of place is said in the dialogue; the time sequence makes sense (a part may start LATER the same day when its first line says what happened in between — "we have seen the museum", "we are here now": that stated time skip is fine); nobody greets again in the middle; the ending follows from the conversation. ' +
         'Speakers: ' + la.speakerContract + '.\nA part PASSES only if it is coherent in itself AND continues the previous part. If a part fails, give breakAfterLine = the line number after which it breaks (or null).\n\n'
       : 'Judge the WHOLE listening track below, scene by scene. Each scene must be ONE continuous, natural ' + la.label + ' conversation.\n' +
       'A scene PASSES only if: the topic continues (no unexplained jumps), questions get answers, time/place/activity stay consistent, ' +
@@ -28345,6 +28458,76 @@ function selectRevisionTargets(lang, vocab) {
   return { language: lang, rule: 'revision', selector: 'selectRevisionTargets(' + lang + ') = selectRevisionTrackTargets' + (lang === 'zh' ? ' → feasibility gate' : '') + ' → jazhContractTargets(revision)',
     selection: sel, raw: sel.targets, targets, targetIds: targets.map(w => w.id), counts: sel.counts, blocked: null }
 }
+// ══ v698 TOPICS — selection (the ONLY difference between a Topic Track and a Daily Track is where the NEW words come from) ══
+const TOPIC_NEW_PER_TRACK = 5
+function topicsFor(lang) { return (LANGUAGE_TOPICS[lang] || []).filter(t => t.available !== false) }
+function topicById(lang, topicId) { return topicsFor(lang).find(t => t.id === topicId) || null }
+// a dictionary word that exists for a topic and has no curriculum position (a later curriculum assignment ends this)
+function isThaiTopicOnly(w) {
+  const c = w && w.id != null ? thaiCanonicalById().get(w.id) : null
+  return !!(c && c.topicOnly && !(c.curriculumIndex > 0) && !(w.curriculumIndex > 0))
+}
+// the learner-facing state of one word, from the ONE authoritative record (never a topic counter):
+// known (the app's Known status) · learning (introduced, in SRS) · new (never introduced)
+function topicWordStatus(w) {
+  if (!w) return 'missing'
+  if (w.status === 'known' || w.manualKnown) return 'known'
+  return hasBeenIntroduced(w) ? 'learning' : 'new'
+}
+// Topic progress = a view over the learner's vocabulary: introduced ANYWHERE in the app counts, nothing is stored per topic
+function topicProgress(lang, topicId, vocab) {
+  const topic = topicById(lang, topicId)
+  if (!topic) return null
+  const byId = new Map((vocab || []).map(w => [w && w.id, w]))
+  const words = topic.vocabIds.map((id, k) => {
+    const w = byId.get(id), c = lang === 'th' ? thaiCanonicalById().get(id) : null
+    return { priority: k + 1, id, word: w || null, thai: (c && c.t) || (w && w.thai) || '', english: (c && c.e) || (w && w.english) || '',
+      phonetic: (w && w.phonetic) || (c && c.ph ? loadCanonicalThaiPhonetic(c.ph, c.t) : ''), status: topicWordStatus(w),
+      group: topic.groups ? topic.groups[Math.floor(k / (topic.groupSize || 5))] || null : null }
+  })
+  const introduced = words.filter(x => x.status !== 'new' && x.status !== 'missing').length
+  const known = words.filter(x => x.status === 'known').length
+  return { topicId, title: topic.title, total: words.length, introduced, remaining: words.filter(x => x.status === 'new').length, known,
+    pct: words.length ? Math.round(100 * introduced / words.length) : 0, words, allIntroduced: introduced === words.length }
+}
+// A Topic Track's 30 targets: up to TOPIC_NEW_PER_TRACK not-yet-introduced topic words in priority order, then the GLOBAL
+// revision queue in its existing order (the same ranking a Revision Track uses), then the shared freeze. Zero curriculum
+// new words: no curriculum picker runs, and the freeze may never overflow into new words. A topic word that is already
+// introduced and due is a REVISION target like any other. `pendingWordIds`: words already queued in an unplayed track (the
+// Daily safety check) are not selected again.
+function selectThaiTopicTargets(vocab, topicId, opts = {}) {
+  const V = vocab || [], topic = topicById('th', topicId)
+  const required = opts.required || THAI_TRACK_TARGET_COUNT, quota = opts.newQuota != null ? opts.newQuota : TOPIC_NEW_PER_TRACK
+  if (!topic) return { language: 'th', topicId, targets: [], targetIds: [], selectedNewTargetIds: [], selectedRevisionTargetIds: [], reserve: [],
+    blocked: { code: 'TOPIC_NOT_FOUND', eligible: 0, required, mode: 'topic', reason: 'no topic "' + topicId + '"' } }
+  const byId = new Map(V.map(w => [w && w.id, w])), pending = opts.pendingWordIds || new Set()
+  const newOk = w => w && !hasBeenIntroduced(w) && w.duplicateOf == null && thaiVocabEligibility(w).ok && targetActivityPreflight(w, 'th', {}).suitable
+  const topicNew = topic.vocabIds.map(id => byId.get(id)).filter(w => newOk(w) && !pending.has(w.id))
+  const newPick = topicNew.slice(0, Math.max(0, quota)).map(w => ({ ...w, _selectorStage: 'topic-new', selectionRole: 'new', topicId }))
+  const newIds = new Set(newPick.map(w => w.id))
+  const rvAll = selectThaiRevisionTargets(V, 100000)
+  const ranked = rvAll.targets.filter(w => !newIds.has(w.id))
+  const reviewOrder = ranked.filter(w => !pending.has(w.id)).concat(ranked.filter(w => pending.has(w.id)))   // a queued word only as a last resort
+  const nRev = Math.max(0, required - newPick.length)
+  const selected = newPick.concat(reviewOrder.slice(0, nRev).map(w => ({ ...w, selectionRole: 'review' })))
+  // the reserve: the next topic words first (they only ever replace a deferred NEW topic word), then the rest of the queue
+  const reserve = topicNew.slice(newPick.length).map(w => ({ ...w, _selectorStage: 'topic-new', selectionRole: 'new', topicId }))
+    .concat(reviewOrder.slice(nRev).map(w => ({ ...w, selectionRole: 'review' })))
+  const frozen = freezeThaiTargetSelection({ selected, reserve, required, mode: 'topic', noNewOverflow: true,
+    feasibility: thaiSelectionFeasibility(thaiAuthorisedSurfaces(V, selected)) })
+  const topicIdSet = new Set(topic.vocabIds)
+  const isTopicNew = t => topicIdSet.has(t.id) && !hasBeenIntroduced(byId.get(t.id) || t)
+  const finalNewIds = frozen.targets.filter(isTopicNew).map(t => t.id)
+  const blocked = frozen.blocked ? { ...frozen.blocked, mode: 'topic',
+    reason: 'a ' + topic.title + ' track needs ' + required + ' targets: ' + finalNewIds.length + ' new topic word(s) + the introduced words due for revision, but only ' +
+      frozen.targets.length + ' are available — learn more words in Daily or Revision Tracks first (no curriculum word is ever added to make up the number)' } : null
+  return { language: 'th', rule: 'topic', topicId, topicTitle: topic.title,
+    selector: 'selectThaiTopicTargets = topic words (priority order, not yet introduced) → selectThaiRevisionTargets order → freezeThaiTargetSelection(noNewOverflow)',
+    raw: selected, targets: frozen.targets, targetIds: frozen.targets.map(t => t.id),
+    selectedNewTargetIds: finalNewIds, selectedRevisionTargetIds: frozen.targets.filter(t => !finalNewIds.includes(t.id)).map(t => t.id),
+    topicNewAvailable: topicNew.length, topicNewRemainingAfter: Math.max(0, topicNew.length - finalNewIds.length),
+    reserve, blocked, selectionBackfills: frozen.backfills || [], skippedCandidates: [], candidateStats: rvAll.candidateStats || null, frozen, deferred: frozen.deferred || [] }
+}
 function listeningTrackKeyword(lang, w) {
   const base = { wordId: w.id, english: w.english, rating: null, isNew: false, isUnseen: false }
   if (lang === 'ja') return { ...base, japanese: w.japanese, reading: w.reading, romaji: w.romaji, thai: w.japanese, phonetic: w.romaji }
@@ -28402,6 +28585,8 @@ const LN_MF_RECOVERY = Object.freeze({ 1: 'rewrite this line (same intention, sa
   6: 'rewrite the WHOLE exchange so the reply really answers the question', 7: 'rewrite the start of this situation so it follows naturally from what came before',
   8: 'add one short natural exchange for this lesson word in this situation', 9: 'bounded connection retry' })
 const LN_MF_MAX_ROUNDS = 3, LN_MF_SITUATION_CAP = 8, LN_MF_MAX_SITUATIONS = 6
+// v697 — the final story judge runs inside the composer; a failed part gets at most this many bounded story repairs
+const LN_MF_STORY_ROUNDS = 2
 
 // ── what a word refers to (English gloss / plan field → a semantic class) ──
 const LN_MF_CLASS = Object.freeze({
@@ -28472,6 +28657,11 @@ const LN_MF_CONTRACTS = {
     'ごめん': { rule: 'ごめん = sorry (casual) — an apology the other speaker acknowledges' },
     'まだ': { rule: 'まだ = not yet / still (まだ食べてない · まだいる？)' },
     'もう': { rule: 'もう = already / (not) any more (もう食べた？ · もう帰る)' },
+    // v697 (live relay run): 買うのができる — the verb form before できる was wrong, and the scene could not be repaired
+    // v697 (Japanese runs 3–5, all stuck on できる in the shop: 買うのができる · "できる for a machine is odd" · and when it was made to
+    // mean "the food is ready", the bookshop scene turned into a food stall and broke the story): as a flexible word it went to the
+    // lightest situation. fits: the situations its talk belongs to — a skill when catching up, food being ready, looking at things
+    'できる': { fits: ['MEET', 'EAT', 'LOOK'], rule: 'できる = can (a skill: 日本語ができる) or be READY — something being MADE is ready (a coffee or food just ordered: もうできた？ · はい、できました); never for a thing bought off the shelf, never a verb + の + できる, never "can buy" (that is 買える)' },
   },
   th: {
     'แก่': { describes: ['PERSON', 'ANIMAL'], rule: 'แก่ = old (people / animals) — never about a thing or a place (things are เก่า)' },
@@ -28522,7 +28712,7 @@ function lnMfProfile(t, lang) {
   const general = /^(to )?(can|be able( to)?|want( to)?|would like|like|love|know|understand|think|have|has|need|say|tell|is|are|be|mean|try|help|feel)\b/.test(head) || /^is \(identif/.test(g)
   const flexible = !asks && (['YESNO', 'MODIFIER'].includes(meta.valueType) || ['RESPONSE_TOKEN', 'DISCOURSE_MARKER', 'APOLOGY', 'FUNCTIONAL_PHRASE'].includes(meta.role) ||
     (meta.valueType === 'STATE' && !describes && generic) || generic || (general && !(c && (c.asks || c.describes || c.needs))))
-  return { id: t.id, surface: t.surface, gloss: t.gloss || '', role: meta.role, valueType: meta.valueType, asks, nounClass, describes, needs: (c && c.needs) || [], rule: c ? c.rule : null, flexible, past: !!meta.past, meta }
+  return { id: t.id, surface: t.surface, gloss: t.gloss || '', role: meta.role, valueType: meta.valueType, asks, nounClass, describes, needs: (c && c.needs) || [], rule: c ? c.rule : null, fits: (c && c.fits) || null, flexible, past: !!meta.past, meta }
 }
 // ── SITUATIONS: everyday settings a conversation can move through. Chosen FROM the targets (never a fixed arc); a
 // situation is available only when the learner's words can carry its core (needs).
@@ -28601,6 +28791,13 @@ function lnMfGroupTargets(profiles, glosses, o) {
     return lnMfSituationScore(p, s) }
   flex.forEach(p => { const pick = chosen.slice().sort((a, b) => (hostScore(p, b) - hostScore(p, a)) || (groups.get(a.key).length - groups.get(b.key).length) || a.rank - b.rank)
     .find(s => groups.get(s.key).length < LN_MF_SITUATION_CAP + 1) || chosen[0]; groups.get(pick.key).push(p) })
+  // v697: a flexible word that FITS only some situations (fits) and landed elsewhere is then MOVED — alone — to a fitting situation
+  // that still has room (never splitting it); every other word stays exactly where it was placed
+  flex.filter(p => p.fits).forEach(p => {
+    const from = chosen.find(s => groups.get(s.key).includes(p)); if (!from || p.fits.includes(from.key)) return
+    const to = chosen.filter(s => p.fits.includes(s.key) && groups.get(s.key).length < LN_MF_SITUATION_CAP).sort((a, b) => groups.get(a.key).length - groups.get(b.key).length || a.rank - b.rank)[0]
+    if (!to) return
+    groups.set(from.key, groups.get(from.key).filter(x => x !== p)); groups.get(to.key).push(p) })
   // an overfull situation becomes two consecutive parts of it
   const scenes = []
   chosen.slice().sort((a, b) => a.rank - b.rank).forEach(s => { const ps = groups.get(s.key)
@@ -28708,7 +28905,8 @@ function lnMfZhProblems(text, prevText, adjSet) {
   // a short echo answer (你找钱吗？ — 找。 · 你回家吗？ — 我不回。) — the verb's complement is recoverable from the question
   const echo = v => bare.replace(/^(我们|你们|我|你|他|她)/, '').replace(/^(也|就|都)/, '').replace(/^(不|没)/, '') === v && String(prevText || '').includes(v)
   // v695: a short REPLY after a turn that names the thing (你拿这个吗？ — 好，我拿。) carries its object by ellipsis
-  const objReply = v => (dailyV693On() || oct13On()) && /^(好|行|对|嗯|可以)[，,]?/.test(s) && bare.replace(/^(好|行|对|嗯|可以)/, '').replace(/^(我们|我|你)/, '').replace(/^(也|就)/, '') === v && /(这个|那个|东西|钱|它)/.test(String(prevText || ''))
+  // v697 (live relay run, Mandarin run 5): 好，我帮你找。 — "I'll help you look" after a turn about what is looked for
+  const objReply = v => (dailyV693On() || oct13On()) && /^(好|行|对|嗯|可以)[，,]?/.test(s) && bare.replace(/^(好|行|对|嗯|可以)/, '').replace(/^(我们|我|你)/, '').replace(/^(也|就)/, '').replace(/^帮(你|我)/, '') === v && (/(这个|那个|东西|钱|它)/.test(String(prevText || '')) || String(prevText || '').includes(v))
   const g = (w, why, fault) => out.push({ fault: fault || 4, word: w, detail: why })
   let r
   if ((r = after('跟')) != null && !(ZH_MF_PERSON.test(r) && !end(r.replace(ZH_MF_PERSON, '')))) g('跟', '跟 needs a person and then a verb (跟 + 朋友 + 去) — "' + s + '"')
@@ -28716,7 +28914,8 @@ function lnMfZhProblems(text, prevText, adjSet) {
   for (const v of ['用', '找', '拿']) if ((r = after(v)) != null && end(r) && !echo(v) && !objReply(v)) g(v, v + ' needs what is ' + (v === '找' ? 'looked for' : v === '用' ? 'used' : 'taken') + ' — "' + s + '"')
   if ((r = after('做')) != null && end(r) && !/怎么做|做的|谁做/.test(s) && !echo('做')) g('做', '做 needs what is done (做什么 · 做工作) — "' + s + '"')
   if ((r = after('回')) != null && !/^(家|这里|那里|哪里|去|来|国|了)/.test(r) && !echo('回')) g('回', '回 needs where to (回家) — "' + s + '"')
-  if ((r = after('到')) != null && !/^(了|家|这里|那里|哪里|这|那)/.test(r) && !/到了/.test(s) && !echo('到')) g('到', '到 needs a place or 了 (我到了 · 到家了) — "' + s + '"')
+  // v697 (live relay run): 到朋友的地方 / 到朋友家 name a place — a possessor (+ 的) before a place noun is a place
+  if ((r = after('到')) != null && !/^(了|这里|那里|哪里|这|那|(我们|你们|他们|我|你|他|她|朋友|妈妈|爸爸|老师)?的?(家|地方|店|商店|饭店|学校|公司|医院|车站|机场|公园|这儿|那儿))/.test(r) && !/到了/.test(s) && !echo('到')) g('到', '到 needs a place or 了 (我到了 · 到家了) — "' + s + '"')
   if ((r = after('很')) != null && !([...adjSet].some(a => r.startsWith(a)))) g('很', '很 must be followed by an adjective (很大 · 很好) — "' + s + '"')
   if ((r = after('太')) != null) { if (!([...adjSet].some(a => r.startsWith(a)))) g('太', '太 must be followed by an adjective — "' + s + '"'); else if (!/了/.test(r) && !/不太/.test(s)) g('太', '太 + adjective needs 了 (太大了) — "' + s + '"') }
   { const i = s.indexOf('一起'); if (i >= 0) { const before = s.slice(0, i)
@@ -28873,14 +29072,27 @@ function lnMfValidate(env, mp) {
 // ── AUDIT (one batched model call): sense · reply · usage (natural / acceptable / awkward / incorrect) · scenes ──
 const LN_MF_GUIDE = () => ({ th: typeof THAI_NATURALNESS_GUIDE !== 'undefined' ? THAI_NATURALNESS_GUIDE : '', ja: typeof JA_NATURALNESS_GUIDE !== 'undefined' ? JA_NATURALNESS_GUIDE : '', zh: typeof ZH_NATURALNESS_GUIDE !== 'undefined' ? ZH_NATURALNESS_GUIDE : '' })
 function lnMfVerdictKey(tu, prev) { return tu.text + '␟' + tu.english + '␟' + (prev ? prev.text : '') }
+// v697 (live relay run, Japanese run 5): a FAILING verdict is tied to its situation as it was judged — "ready today" failed as
+// "nothing is being made", the repair added "they make them here" three turns earlier, and the cached fail (same line, same line
+// before it) came back unchanged. A fail is judged again once anything in its situation changed; a pass stays.
+function lnMfTurnCtx(mp, tu) { const s = mp.scenes.find(x => x.key === tu.scene); return s ? s.turns.map(t => t.text).join('|') : '' }
 function lnMfSceneKey(s, prevScene) { return s.turns.map(t => t.text).join('|') + '␟' + (prevScene && prevScene.turns.length ? prevScene.turns[prevScene.turns.length - 1].text : '') }
-function lnMfConversationRows(mp, byId, mark) {
-  return mp.scenes.map((s, k) => 'S' + (k + 1) + ' — ' + s.title + (s.where ? ' (' + s.where + ')' : '') + '\n' + s.turns.map(tu => (mark && mark.has(tu.id) ? '★' : ' ') + tu.n + '. ' + tu.speaker + ' [' + tu.intent + (tu.asks && tu.intent === 'ASK' ? ' ' + tu.asks : '') +
+function lnMfConversationRows(mp, byId, mark, headNote) {
+  // v697 (live relay run): only what the listener HEARS is shown — the planner's invented place label ("a restaurant near the
+  // National Museum" vs "restaurant near Sanam Luang") is never spoken, but the audit failed transitions on the labels alone
+  return mp.scenes.map((s, k) => 'S' + (k + 1) + ' — ' + s.title + (headNote && headNote.get(s.key) ? '   ' + headNote.get(s.key) : '') + '\n' + s.turns.map(tu => (mark && mark.has(tu.id) ? '★' : ' ') + tu.n + '. ' + tu.speaker + ' [' + tu.intent + (tu.asks && tu.intent === 'ASK' ? ' ' + tu.asks : '') +
     (tu.respondsToId ? ' → reply to ' + ((mp.flat.find(x => x.id === tu.respondsToId) || {}).n) : '') + '] ' + tu.text + ' — ' + tu.english + ((tu.targetIds || []).length ? '   (lesson words: ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).filter(Boolean).join(', ') + ')' : '')).join('\n')).join('\n\n')
 }
-async function lnMfAuditCall(env, mp, scopeIds) {
+async function lnMfAuditCall(env, mp, scopeIds, needScenes) {
   const { la, log, tel, o, ctx } = env, mf = env.mf, byId = env.byId
   const mark = new Set(scopeIds)
+  // v697 (live relay run, Japanese run 4): a re-audit judged EVERY situation again and its verdicts overwrote earlier passes —
+  // a one-line wording fix in S3 brought back "S3 is incoherent" (approved before), and the plan escalated to moving lesson words
+  // and rewriting whole situations. Now only the situations that changed are judged; one approved before is shown as such, with
+  // its changed turns, and the question is whether the CHANGE keeps it coherent. Unchanged situations keep their verdict.
+  const need = new Set(needScenes || mp.scenes.map(x => x.key)), reaudit = need.size < mp.scenes.length || mp.scenes.some(x => mf.sceneLast.has(x.key))
+  const head = new Map(mp.scenes.map(x => [x.key, !need.has(x.key) ? '(already approved — context only)'
+    : mf.sceneLast.get(x.key) && mf.sceneLast.get(x.key).coherent ? '(NEEDS A VERDICT — approved before; turns marked ★ changed: judge whether the change keeps it one coherent moment that follows on)' : '(NEEDS A VERDICT)']))
   const prompt = 'You are a native ' + la.label + ' teacher checking a planned LISTENING conversation for a learner (' + (ctx.complexity ? ctx.complexity.belt : 'beginner') + '). The vocabulary is restricted ON PURPOSE: simple, short and repetitive is fine at this level. Judge MEANING and NATURALNESS in context, not word choice.\n' +
     (LN_MF_GUIDE()[la.lang] ? la.label.toUpperCase() + ' NOTES:\n' + LN_MF_GUIDE()[la.lang] + '\n' : '') +
     'For every turn marked ★ give:\n' +
@@ -28888,7 +29100,10 @@ async function lnMfAuditCall(env, mp, scopeIds) {
     '- responds: "ok" | "fail" | "n/a" — if it replies to an earlier turn, does it really answer / respond to it (what time → a clock time · how much → an amount · why → a reason)?\n' +
     '- usage: "natural" | "acceptable" | "awkward" | "incorrect". "acceptable" = correct and fine here although another wording is more common — a REQUIRED lesson word used correctly is at least "acceptable" (e.g. いいえ where ううん would be more casual). "awkward" = a native speaker would find it odd HERE. "incorrect" = ungrammatical or the wrong meaning.\n' +
     '- fault: 0 none · 1 wording · 2 the English is wrong · 4 grammar · 5 it does not make sense · 6 the reply does not answer · 7 it does not follow from what came before\n- note: a short reason in English.\n' +
-    'Then for EVERY situation: coherent (true / false — one plausible everyday moment), transition ("ok" | "fail" — does it follow naturally from the situation before?), note.\n\nCONVERSATION:\n' + lnMfConversationRows(mp, byId, mark) +
+    'Then for ' + (reaudit ? 'each situation marked NEEDS A VERDICT' : 'EVERY situation') + ': coherent (true / false — one plausible everyday moment), transition ("ok" | "fail" — does it follow naturally from the situation before, as ONE storyline: what was just said, agreed or planned still holds, and a new topic or place is introduced by what the speakers say, not by a jump? A situation may be a LATER moment of the same day when its first turn says what happened in between (we have seen the museum · we are here now): that stated time skip is ok, not a jump), note.\n' +
+    // v697 (live relay run): the note was passed into the repair request and dictated wording the lesson rules forbid (a phrase
+    // the learner was never taught; 去 for the lesson word 来) — two patches were rejected and two repair rounds were lost
+    'NOTES: say WHAT is wrong, never dictate new wording. A turn\'s lesson words (shown in brackets) MUST stay — never advise replacing or removing one; the learner knows only a small vocabulary, so never suggest other words or phrases.\n\nCONVERSATION:\n' + lnMfConversationRows(mp, byId, mark, reaudit ? head : null) +
     '\n\nReply ONLY with JSON: {"turns":[{"n":1,"sense":"ok","responds":"n/a","usage":"natural","fault":0,"note":""}],"situations":[{"key":"S1","coherent":true,"transition":"ok","note":""}]}'
   let obj = null
   for (let attempt = 1; attempt <= 2 && !obj; attempt++) {
@@ -28898,8 +29113,10 @@ async function lnMfAuditCall(env, mp, scopeIds) {
   }
   const got = new Map(((obj && obj.turns) || []).map(v => [+v.n, v]))
   mp.flat.forEach((tu, i) => { if (!mark.has(tu.id)) return; const v = got.get(tu.n)
-    if (v) mf.verdicts.set(lnMfVerdictKey(tu, mp.flat[i - 1]), { sense: String(v.sense || 'ok').toLowerCase(), responds: String(v.responds || 'n/a').toLowerCase(), usage: String(v.usage || '').toLowerCase(), fault: +v.fault || 0, note: String(v.note || '') }) })
-  ;((obj && obj.situations) || []).forEach(v => { const k = +String(v.key || '').replace(/\D/g, '') - 1; const s = mp.scenes[k]; if (s) mf.sceneVerdicts.set(lnMfSceneKey(s, mp.scenes[k - 1]), { coherent: v.coherent !== false, transition: String(v.transition || 'ok').toLowerCase(), note: String(v.note || '') }) })
+    if (v) mf.verdicts.set(lnMfVerdictKey(tu, mp.flat[i - 1]), { sense: String(v.sense || 'ok').toLowerCase(), responds: String(v.responds || 'n/a').toLowerCase(), usage: String(v.usage || '').toLowerCase(), fault: +v.fault || 0, note: String(v.note || ''), ctx: lnMfTurnCtx(mp, tu) }) })
+  ;((obj && obj.situations) || []).forEach(v => { const k = +String(v.key || '').replace(/\D/g, '') - 1; const s = mp.scenes[k]; if (!s || !need.has(s.key)) return
+    const sv = { coherent: v.coherent !== false, transition: String(v.transition || 'ok').toLowerCase(), note: String(v.note || '') }
+    mf.sceneVerdicts.set(lnMfSceneKey(s, mp.scenes[k - 1]), sv); mf.sceneLast.set(s.key, sv) })
   return !!obj
 }
 function lnMfVerdictIssue(v) {
@@ -28914,9 +29131,11 @@ async function lnMfValidateAndAudit(env, mp) {
   const det = lnMfValidate(env, mp)
   const detIds = new Set(det.issues.flatMap(x => x.turnIds))
   // the model judges only turns that passed the deterministic proof and have no verdict for this exact text in this context
-  const scope = mp.flat.filter((tu, i) => !detIds.has(tu.id) && !mf.verdicts.has(lnMfVerdictKey(tu, mp.flat[i - 1])))
+  const scope = mp.flat.filter((tu, i) => { if (detIds.has(tu.id)) return false
+    const v = mf.verdicts.get(lnMfVerdictKey(tu, mp.flat[i - 1]))
+    return !v || (lnMfVerdictIssue(v) && v.ctx != null && v.ctx !== lnMfTurnCtx(mp, tu)) })
   const scenesNeeding = mp.scenes.filter((s, k) => !mf.sceneVerdicts.has(lnMfSceneKey(s, mp.scenes[k - 1])))
-  if (scope.length || scenesNeeding.length) await lnMfAuditCall(env, mp, scope.map(t => t.id))
+  if (scope.length || scenesNeeding.length) await lnMfAuditCall(env, mp, scope.map(t => t.id), scenesNeeding.map(x => x.key))
   const sem = []
   mp.flat.forEach((tu, i) => { if (detIds.has(tu.id)) return
     const v = mf.verdicts.get(lnMfVerdictKey(tu, mp.flat[i - 1]))
@@ -29031,17 +29250,27 @@ function lnMfScenePrompt(env, g, k, prior, fix) {
     'LEARNER: ' + (cc ? cc.belt + ' — each turn ' + cc.preferredMin + '–' + cc.preferredMax + ' ' + cc.unitName + ', never more than ' + cc.hardMax + '. ' + (cc.promptRule || '') : 'beginner — short turns') + '\n' +
     'SPEAKERS: A and B, ' + rel + '. ' + la.speakerContract + (extra || '') + '\n' +
     'THE WHOLE CONVERSATION: ' + g.scenes.map((x, j) => (j === k ? '★' : '') + 'S' + (j + 1) + ' ' + x.title).join(' → ') + '\n' +
+    // v697 (live relay run, Thai): S2 planned "the museum first, then a restaurant", but no later situation visits a museum
+    // (getting there → eating) — every repair then had to bridge a visit that never happens. A plan must fit what comes next.
+    (k < g.scenes.length - 1 ? 'WHAT HAPPENS NEXT (after S' + (k + 1) + '): ' + g.scenes.slice(k + 1).map((x, j) => 'S' + (k + j + 2) + ' — ' + ((LN_MF_SITUATIONS.find(y => y.key === x.situation) || {}).desc || x.title)).join(' · ') + '. Any plan the speakers make here must fit exactly this: never plan an activity, visit or place that these later situations do not include. These situations follow straight on, the SAME day, in this order — so a day or time agreed here must let them happen next (agree on today / now, not another day, when the next situation already goes there).\n' : '') +
     (before.length ? 'SO FAR (keep everything consistent with it — places, plans, what was agreed, who knows what; do not repeat it):\n' + before.map((tu, j) => (j + 1) + '. ' + tu.speaker + ': ' + tu.text + ' — ' + tu.english).join('\n') + '\n' : '') +
-    'NOW S' + (k + 1) + ' — ' + s.title + ': ' + s.desc + (k === 0 ? ' · starts with a short natural greeting' : ' · continues straight on from the last turn above (a natural link, no new greeting)') + (s.closing ? ' · ends with goodbye' : ' · no goodbye yet (the conversation goes on)') + '\n' +
+    'NOW S' + (k + 1) + ' — ' + s.title + ': ' + s.desc + (k === 0 ? ' · starts with a short natural greeting' : ' · continues straight on from the last turn above (a natural link, no new greeting); if what was planned above puts something between the last turn and this situation (a visit, a ride, a wait …), the FIRST turn says in a few words that it has happened') + (s.closing ? ' · ends with goodbye' : ' · no goodbye yet (the conversation goes on)') + '\n' +
     'LESSON WORDS for S' + (k + 1) + ' (each heard at least once, in its real meaning, its grammar complete):\n' + lnMfTargetRows(env, s.targetIds).map(r => '  ' + r).join('\n') + '\n' +
     (unheard.length ? 'NOT HEARD YET from earlier situations (use them here too if they fit naturally):\n' + lnMfTargetRows(env, unheard).map(r => '  ' + r).join('\n') + '\n' : '') +
     'ALLOWED VOCABULARY (the ONLY other content words you may use): ' + lnMfVocabRows(env).join(' · ') + '\n' +
     (scaffold ? 'GRAMMAR / FUNCTION WORDS you may use: ' + scaffold + '\n' : '') +
     'RULES:\n' +
-    '- ' + b.min + '–' + b.max + ' turns (never more than ' + b.max + '). A and B alternate. Every turn makes sense for these two people at this moment.\n' +
+    // v697 (live relay run, Thai run 4): S6 opened with the speaker who had just ended S5 — "A: … เลี้ยวซ้ายครับ / A: ดูเสร็จแล้วครับ"
+    '- ' + b.min + '–' + b.max + ' turns (never more than ' + b.max + '). A and B alternate' + (before.length ? ' — the last turn above is ' + before[before.length - 1].speaker + "'s, so S" + (k + 1) + ' starts with ' + (before[before.length - 1].speaker === 'A' ? 'B' : 'A') : '') + '. Every turn makes sense for these two people at this moment.\n' +
+    // v697 (live relay run): situations planned one by one drifted — a movie was agreed, then a book of photos appeared; a
+    // restaurant was planned, then "is the shop still far?" before anyone set off. The final judge failed 3 of 6 parts.
+    (before.length ? '- ONE STORYLINE: S' + (k + 1) + ' follows from what was just said, agreed or planned above — if they decided to do something, they are now doing it (or one of them says why not); a new place, object or topic is brought in by what the speakers say, never by a jump.\n' : '') +
     '- A reply ANSWERS the turn before it: what time → a clock time · how much → an amount · why → a real reason · where → a place · which → one of the options. Never answer a question with something it did not ask.\n' +
     (lnMfHasNumbers(env) ? '' : LN_MF_NO_NUMBERS_RULE) + LN_MF_PHONE_RULE +
     '- One lesson word in a turn is fine; never more than 3. Never force unrelated lesson words into one sentence — give a word its own short exchange.\n' +
+    // v697 (live relay run, Japanese): 電車 / バス / 車 in one situation became "no train — the car is better — the bus?" with
+    // no choice ever made, and the audit failed it as "not one storyline" in every round
+    '- When several lesson words are alternatives (vehicles, foods, places, times …), the speakers COMPARE them and CHOOSE one; from then on that choice holds (it is not changed again without a reason).\n' +
     '- Use ONLY the lesson words, the allowed vocabulary and the grammar words. If an idea needs another word, choose a different idea. No narration, no names.\n' +
     (fix ? 'YOUR FIRST VERSION OF S' + (k + 1) + ' HAD THESE DEFECTS — write a NEW version that has none of them (a different idea where an idea was the problem):\n' + fix.map(x => '- ' + x).join('\n') + '\n' : '') +
     'For each turn: speaker (A | B), intent (' + LN_MF_INTENTS.join(' | ') + '), asks (for ASK: TIME | PLACE | PERSON | REASON | METHOD | STATE | THING | CHOICE | YESNO' + (lnMfHasNumbers(env) ? ' | CLOCK_TIME | PRICE | QUANTITY | DURATION | AGE' : '') + ', else ""), respondsTo (the number of the turn IN THIS SITUATION it answers, 0 if none), about (who / what it is about, 1–3 English words), object (English or ""), targetIds (the T numbers it uses), ' + LN_MF_TEXT_FIELD_RULE(la) + '\n' +
@@ -29223,6 +29452,9 @@ function lnMfScopes(env, mp, issues) {
     // the same failure signature again → one rung higher per repeat
     const rung = Math.min(LN_MF_LADDER.length - 1, LN_MF_LADDER.indexOf(kind) + (is.repeats || 0))
     kind = LN_MF_LADDER[Math.max(rung, LN_MF_LADDER.indexOf(kind))]
+    // v697 (live relay run, Mandarin run 5): a WORDING fault (one clipped reply) climbed to a whole-situation rewrite in round 3,
+    // which then failed on five lesson words in one turn — a wording fault is rewritten at most as its exchange's intention
+    if (is.fault === 1 && LN_MF_LADDER.indexOf(kind) > LN_MF_LADDER.indexOf('intention')) kind = 'intention'
     // v695: a transition between two situations is a DISCOURSE-STATE fault at their boundary: the end of the earlier situation and
     // the start of the later one are repaired together (live v694 Japanese: "agreed today" at the end of S3 vs "tomorrow?" at the
     // start of S4 — v694 could only rewrite the start of S4, which cannot undo the earlier agreement)
@@ -29234,6 +29466,12 @@ function lnMfScopes(env, mp, issues) {
       // the extra boundary round is always a boundary repair
       if ((is.repeats || 0) < 2 || mf.boundaryRound) { scopeFor('boundary', tail.concat(head), is); return }
     }
+    // v697 — a STORY_BREAK from the final story judge: the turns around the break are rewritten first (an intention-level
+    // rewrite of that span); only when the same break comes back does the whole situation get rewritten
+    if (is.code === 'STORY_BREAK' && tus.length && (is.repeats || 0) < 1) { scopeFor('intention', tus, is); return }
+    // a story fault never climbs to the "reassign" rung (moving a lesson word out of a situation that reads well locally only
+    // loses words): its top level is a rewrite of the whole situation
+    if (is.story && tus.length && kind === 'reassign') { scopeFor('scene', flat.filter(t => t.scene === tus[0].scene), is); return }
     if (kind === 'reassign') {
       // top rung: the lesson word(s) of a part that failed at scene level move to another situation that fits them; this
       // situation is rewritten without forcing them (never silently lost: an "add" part must make each one heard there)
@@ -29279,13 +29517,14 @@ function lnMfRepairPrompt(env, mp, scopes, note) {
       : 'turns ' + ns.join(', ') + ' (' + s.kind + (s.mustInclude ? ' — exactly ' + ns.length + ' turns' : '') + ')')
     const why = s.issues.map(is => (LN_MF_FAULTS[is.fault] || 'ISSUE') + ': ' + String(is.detail || '').slice(0, 220)).join(' · ')
     const fault = Math.max(...s.issues.map(is => is.fault))
-    const todo = (s.mustInclude && s.mustInclude.length ? 'rewrite these ' + s.turnIds.length + ' turns so they ALSO use ' + s.mustInclude.map(id => (byId.get(id) || {}).surface).join(', ') + ' — exactly ' + s.turnIds.length + ' turns, the same speakers in the same order, and every lesson word already in them kept' : s.kind === 'add' ? (s.targetIds.length ? LN_MF_RECOVERY[8] : 'add a short natural exchange (2 turns) that fits here') : s.kind === 'intention' ? LN_MF_RECOVERY[5]
+    const todo = s.issues.some(x => x.code === 'STORY_BREAK') ? 'rewrite these turns so the whole conversation reads as ONE story: they follow from what was just said, agreed or planned, lead naturally into the turn after them, and nothing is dropped or changes topic without a reason the speakers give — keep every lesson word listed below'
+      : (s.mustInclude && s.mustInclude.length ? 'rewrite these ' + s.turnIds.length + ' turns so they ALSO use ' + s.mustInclude.map(id => (byId.get(id) || {}).surface).join(', ') + ' — exactly ' + s.turnIds.length + ' turns, the same speakers in the same order, and every lesson word already in them kept' : s.kind === 'add' ? (s.targetIds.length ? LN_MF_RECOVERY[8] : 'add a short natural exchange (2 turns) that fits here') : s.kind === 'intention' ? LN_MF_RECOVERY[5]
       : s.kind === 'boundary' ? 'make the two situations consistent: what was agreed or said before must still hold — change the earlier agreement (e.g. do not fix the day yet), or what the later turns want, or add a short reason the authorised words allow'
       : s.kind === 'scene' ? LN_MF_RECOVERY[7] + (s.issues.some(x => x.code === 'SCENE_INCOHERENT') ? ' — rewrite this whole situation as one plausible everyday moment' : '') : LN_MF_RECOVERY[fault] || LN_MF_RECOVERY[1]) +
       (s.issues.some(x => x.code === 'INFEASIBLE_INTENTION') ? ' — REMOVE the question the learner cannot answer (a number / the digits of a phone number): the speakers want something else here (a day, a choice, a yes / no, asking FOR the number and a promise to send it)' : '') +
       (s.issues.some(x => (x.repeats || 0) >= 1) ? ' — this part already failed the same way before: do NOT write the same idea again, change what the speakers want to say' : '')
     const keep = (s.targetIds || []).map(id => { const t = byId.get(id), p = env.mfProfiles.get(id); return t ? t.surface + ' (T' + id + ', ' + t.gloss + (p && p.rule ? '; ' + p.rule : '') + ')' : '' }).filter(Boolean)
-    return head + '\n   problem: ' + why + '\n   do: ' + todo + '\n   lesson words that must be heard in the new turns: ' + (keep.join(', ') || '(none)')
+    return head + '\n   problem: ' + why + '\n   do: ' + todo + '\n   lesson words that must be heard in the new turns: ' + (keep.join(', ') || '(none)') + lnMfRetryNote(s, byId)
   })
   return 'REPAIR parts of a planned ' + la.label + ' LISTENING conversation for a learner (' + (ctx.complexity ? ctx.complexity.belt + ', each turn ≤ ' + ctx.complexity.hardMax + ' ' + ctx.complexity.unitName : 'beginner') + '). Speakers: ' + la.speakerContract + (extra || '') + '\n' +
     'THE WHOLE CONVERSATION (context — only the listed parts change; every other turn stays exactly as it is):\n' + lnMfConversationRows(mp, byId, null) + '\n\n' +
@@ -29295,6 +29534,32 @@ function lnMfRepairPrompt(env, mp, scopes, note) {
     'ALLOWED VOCABULARY (the ONLY other content words): ' + lnMfVocabRows(env).join(' · ') + '\n' +
     'Return ONLY the new turns of each part — nothing else, no explanations. For each turn: speaker (A | B), intent, asks, about, object, targetIds, ' + LN_MF_TEXT_FIELD_RULE(la) + '\n' +
     'Reply ONLY with JSON: {"parts":[{"scope":"x1","turns":[{"speaker":"A","intent":"ASK","asks":"PLACE","about":"","object":"","targetIds":[],"text":"...","pron":"","english":"..."}]}]}' + (note || '')
+}
+// v697 (live relay run) — a part whose patch the hard checks REJECTED gets one corrected retry in the same round, told exactly
+// why (Japanese run 3: its last round was lost to one unknown word, そろそろ, and four lesson words in one turn — the rewrite was
+// otherwise right, and the track was blocked)
+const LN_MF_RETRY_HINT = { CLOSED_VOCAB: 'use ONLY the allowed vocabulary — replace the unknown word(s) with allowed words or drop them', MAX_TARGETS_PER_TURN: 'one turn carries too many lesson words — spread them over the turns', PROTECTED_TARGET_LOST: 'a lesson word went missing — every listed lesson word must be heard',
+  GRAMMAR_CONTRACT: 'fix the grammar named', TOO_COMPLEX: 'make the turn shorter', SCENE_TURN_BUDGET: 'do not add turns — return the same number of turns', EXACT_DUPLICATE: 'do not repeat a line already in the conversation', NEAR_DUPLICATE: 'do not repeat a line already in the conversation',
+  SPEAKER_ALTERNATION: 'the speakers alternate — the new turns continue A / B / A / B from the turn before them and into the turn after them',
+  ONE_SPEAKER_RUN: 'the speakers alternate — the new turns continue A / B / A / B from the turn before them and into the turn after them' }
+function lnMfRetryNote(s, byId) {
+  const r = s.patchRejected
+  if (!r) return ''
+  const hints = Object.keys(LN_MF_RETRY_HINT).filter(k => r.why.includes(k)).map(k => LN_MF_RETRY_HINT[k])
+  return '\n   YOUR LAST VERSION OF THIS PART WAS REJECTED: ' + r.why.replace(/^PATCH_INVALID — /, '').slice(0, 260) + (r.texts.length ? '\n   rejected version: ' + r.texts.join(' / ') : '') +
+    '\n   fix exactly that' + (hints.length ? ': ' + hints.join('; ') : '') + ' — keep everything else that was right in it'
+}
+async function lnMfRepairRound(env, mp, scopes, round) {
+  const rep = await lnMfRepairCall(env, mp, scopes, round)
+  if (!rep) return null
+  lnMfApply(env, mp, scopes, rep, round)
+  const again = scopes.filter(s => s.patchRejected && !s.patchRetried)
+  if (!again.length) return rep
+  again.forEach(s => { s.patchRetried = true })
+  env.log && env.log('🔁 PATCH_RETRY round ' + round + ' · ' + again.map(s => s.id).join(', ') + ' — rejected by the hard checks; asked once more with the exact reason')
+  const rep2 = await lnMfRepairCall(env, mp, again, round + '-retry')
+  if (rep2) lnMfApply(env, mp, again, rep2, round + 'b')
+  return rep
 }
 async function lnMfRepairRequest(env, mp, batch, round) {
   const { log, tel, o } = env, mf = env.mf
@@ -29346,7 +29611,13 @@ function lnMfApply(env, mp, scopes, rep, round) {
   scopes.forEach(s => {
     const part = parts.get(s.id)
     const scene = mp.scenes.find(x => x.key === s.scene)
-    const fail = why => { log && log('⛔ PART_REJECTED ' + s.id + ' (' + s.kind + ') — ' + why + ' · the old turns stay; the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)) }
+    // codes: the hard-check codes behind the rejection — only a patch whose every fault is one the model can be told how to fix
+    // gets the corrected retry (a model that brings back a rejected sentence is not asked again in the same round)
+    const fail = (why, texts, codes) => { const retry = !s.patchRetried && (codes || []).every(k => LN_MF_RETRY_HINT[k])
+      log && log('⛔ PART_REJECTED ' + s.id + ' (' + s.kind + ') — ' + why + ' · the old turns stay; ' + (retry ? 'one corrected retry this round' : 'the part escalates next round'))
+      // the retry of a part is the same recovery level: the part climbs ONE rung per round, however many replies it took
+      if (!s.patchRetried) s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1))
+      s.patchRejected = retry ? { why, texts: texts || [] } : null }
     if (!part || !scene || !Array.isArray(part.turns) || !part.turns.length) { log && log('⛔ PART_NOT_REPAIRED ' + s.id + ' (' + s.kind + ') — no replacement returned · the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)); return }
     // where the span lies: one situation, or the boundary of two (its new turns are split in the same proportion)
     const span = s.turnIds.map(id => mp.flat.find(t => t.id === id)).filter(Boolean)
@@ -29358,27 +29629,36 @@ function lnMfApply(env, mp, scopes, rep, round) {
     if (cleaned.length) log && log('🧹 PATCH_TEXT_CLEANED ' + s.id + ' — the sentence field carried a romanisation / label / note, removed before validation: ' + cleaned.map(t => '"' + t.cleanedFrom + '" → "' + t.text + '"').join(' | ').slice(0, 300))
     const heard = new Set(fresh.flatMap(tu => byId ? [...byId.values()].filter(t => t.surface && la.present(tu.text, t.surface, env.ctx)).map(t => t.id) : []))
     const lost = (s.targetIds || []).filter(id => !heard.has(id))
-    if (lost.length) { fail('PROTECTED_TARGET_LOST ' + lost.map(id => (byId.get(id) || {}).surface).join(', ')); return }
-    if (s.mustInclude && rows.length !== s.turnIds.length) { fail('the exchange had to keep its ' + s.turnIds.length + ' turns (got ' + rows.length + ')'); return }
+    if (lost.length) { fail('PROTECTED_TARGET_LOST ' + lost.map(id => (byId.get(id) || {}).surface).join(', '), fresh.map(t => t.text), ['PROTECTED_TARGET_LOST']); return }
+    if (s.mustInclude && rows.length !== s.turnIds.length) { fail('the exchange had to keep its ' + s.turnIds.length + ' turns (got ' + rows.length + ') — SCENE_TURN_BUDGET: return exactly ' + s.turnIds.length + ' turns', fresh.map(t => t.text), ['SCENE_TURN_BUDGET']); return }
     fresh.forEach(tu => { tu.targetIds = [...new Set(tu.targetIds.concat([...heard].filter(id => la.present(tu.text, (byId.get(id) || {}).surface || '\u0000', env.ctx))))] })
     // the trial: the conversation with this patch in place, validated before anything changes
     const trial = { scenes: mp.scenes.map(x => ({ ...x, turns: x.turns.map(t => ({ ...t })) })) }
     const place = sc => { const ins = fresh.filter(t => t.scene === sc.key)
       if (s.kind === 'add') { const k = s.insertAfter ? sc.turns.findIndex(t => t.id === s.insertAfter) + 1 : sc.turns.length; sc.turns.splice(k, 0, ...ins); return }
       const idx = sc.turns.findIndex(t => s.turnIds.includes(t.id)); if (idx < 0) return
-      sc.turns = sc.turns.filter(t => !s.turnIds.includes(t.id)); sc.turns.splice(idx, 0, ...ins) }
+      sc.turns = sc.turns.filter(t => !s.turnIds.includes(t.id)); sc.turns.splice(idx, 0, ...ins)
+      // v697 (live relay run): a situation rewritten as a whole keeps no stale place label — the audit and the judge read the
+      // old "where" ("a restaurant near the National Museum") against the new turns and failed it as "spans two places"
+      if (s.kind === 'scene') sc.where = '' }
     trial.scenes.filter(x => sceneKeys.includes(x.key)).forEach(place)
     const tr = lnMfValidate(env, lnMfRenumber(trial))
     const freshIds = new Set(fresh.map(t => t.id))
     const bad = tr.issues.filter(is => (LN_MF_PATCH_HARD.has(is.code) && is.turnIds.some(id => freshIds.has(id))) ||
       (is.code === 'TURN_BUDGET' && trial.scenes.reduce((a, x) => a + x.turns.length, 0) > env.turnsMax))
+    // v697 (live relay run, Mandarin run 3): a patch may not put two of ITS turns by the same speaker side by side — a boundary patch
+    // came back A / B / B / A and the track read "B: 好，我知道了。 B: 现在去，好吗？" (the plan's own turns are not re-judged here)
+    { const tf = trial.scenes.flatMap(x => x.turns)
+      for (let i = 1; i < tf.length; i++) if (tf[i].speaker === tf[i - 1].speaker && freshIds.has(tf[i].id) && freshIds.has(tf[i - 1].id)) {
+        bad.push({ fault: 1, code: 'SPEAKER_ALTERNATION', turnIds: [tf[i].id], detail: 'two turns in a row by speaker ' + tf[i].speaker + ' ("' + tf[i - 1].text + '" / "' + tf[i].text + '") — the speakers alternate' }); break } }
     // a patch may not GROW a situation past its reserved budget (v694 Thai grew to 45 turns through repairs)
     const bud = env.mfGrouping && env.mfGrouping._budgets
     trial.scenes.forEach((x, k) => { const was = (mp.scenes.find(y => y.key === x.key) || { turns: [] }).turns.length
       if (bud && bud[k] && sceneKeys.includes(x.key) && x.turns.length > was && x.turns.length > bud[k].max) bad.push({ fault: 8, code: 'SCENE_TURN_BUDGET', turnIds: [], detail: x.key + ' would grow from ' + was + ' to ' + x.turns.length + ' turns — its budget is ' + bud[k].max }) })
     if (bad.length) {
-      bad.filter(is => [1, 3, 4, 5].includes(is.fault)).forEach(is => is.turnIds.forEach(id => { const t = fresh.find(x => x.id === id); if (t) mf.rejectedTexts.set(lnMfNorm(t.text), is.fault) }))
-      fail('PATCH_INVALID — ' + bad.slice(0, 3).map(is => is.code + ': ' + String(is.detail || '').slice(0, 90)).join(' · ')); return }
+      // the ORDER of speakers is not a defect of the sentence: a turn rejected only for who says it may come back in the right place
+      bad.filter(is => [1, 3, 4, 5].includes(is.fault) && is.code !== 'SPEAKER_ALTERNATION' && is.code !== 'ONE_SPEAKER_RUN').forEach(is => is.turnIds.forEach(id => { const t = fresh.find(x => x.id === id); if (t) mf.rejectedTexts.set(lnMfNorm(t.text), is.fault) }))
+      fail('PATCH_INVALID — ' + bad.slice(0, 3).map(is => is.code + ': ' + String(is.detail || '').slice(0, 90)).join(' · '), fresh.map(t => t.text), bad.map(is => is.code)); return }
     // remember what failed, so no later round may bring it back
     // what may never come back: a defective SENTENCE (wording, vocabulary, grammar, meaning) and, for a meaning fault the audit
     // found, its RELATIONSHIP; for a question → answer mismatch only the failed ANSWER (the question may be fine); a transition
@@ -29422,7 +29702,7 @@ function lnMfIssueLog(env, res, label) {
 async function _lnComposeMeaningFirst(env) {
   const { la, log, tel, targets, ctx } = env
   const byId = new Map(targets.map(t => [t.id, t])); env.byId = byId
-  const mf = env.mf = { rejectedTexts: new Map(), rejectedRel: new Set(), rejectedAsks: [], verdicts: new Map(), sceneVerdicts: new Map(), attempts: new Map(), moves: new Map(), sigs: new Map(), released: new Set(), truncations: 0, calls: { plan: 0, sceneReplan: 0, audit: 0, repair: 0 }, byFault: {} }
+  const mf = env.mf = { rejectedTexts: new Map(), rejectedRel: new Set(), rejectedAsks: [], verdicts: new Map(), sceneVerdicts: new Map(), sceneLast: new Map(), attempts: new Map(), moves: new Map(), sigs: new Map(), released: new Set(), truncations: 0, calls: { plan: 0, sceneReplan: 0, audit: 0, repair: 0 }, byFault: {} }
   const authorised = (ctx.inventory && ctx.inventory.taught) || ctx.exposed || []
   const glosses = authorised.map(w => String(w.english || '')).filter(Boolean)
   log && log('🧭 LISTENING_PLANNER planner=' + LISTENING_PLANNER_VERSION + ' (v692 meaning-first) · language=' + la.lang + ' belt=' + (ctx.complexity ? ctx.complexity.belt : '-') + ' · targets=' + targets.length + ' · authorised support=' + authorised.length +
@@ -29454,39 +29734,107 @@ async function _lnComposeMeaningFirst(env) {
   // (live v694 Japanese ended its 3 rounds with structural PASS and a single today → tomorrow transition)
   const boundaryOnly = r => r.issues.length > 0 && r.issues.length <= 2 && r.issues.every(is => is.fault === 7)
   let boundaryRound = false
-  while (res.issues.length && (round < LN_MF_MAX_ROUNDS || (!boundaryRound && boundaryOnly(res)))) {
-    if (round >= LN_MF_MAX_ROUNDS) { boundaryRound = true; mf.boundaryRound = true; log && log('🔧 MEANING_REPAIR boundary round — only ' + res.issues.length + ' transition fault(s) left after ' + round + ' rounds: one bounded repair of the situation boundary, nothing else changes') }
-    round++
-    res.issues.forEach(is => { mf.byFault[LN_MF_FAULTS[is.fault]] = (mf.byFault[LN_MF_FAULTS[is.fault]] || 0) + 1 })
-    lnMfCountSignatures(env, mp, res.issues)
-    // an unverified turn is simply audited again (fault 9) — never treated as passed
-    const repairable = res.issues.filter(is => is.fault !== 9)
-    if (!repairable.length) { res = await lnMfValidateAndAudit(env, mp); lnMfIssueLog(env, res, 're-audit ' + round); continue }
-    repairable.filter(is => is.code === 'TARGET_MISSING' || is.fault === 8).forEach(is => (is.targetIds || []).forEach(id => mf.moves.set(id, (mf.moves.get(id) || 0) + (round > 1 ? 1 : 0))))
-    const scopes = lnMfScopes(env, mp, repairable)
-    log && log('🔧 MEANING_REPAIR round ' + round + '/' + LN_MF_MAX_ROUNDS + ' · ' + scopes.length + ' part(s): ' + scopes.map(s => s.id + ' ' + s.kind + ' [' + s.issues.map(is => LN_MF_FAULTS[is.fault]).filter((x, i, a) => a.indexOf(x) === i).join('+') + ']').join(' · ') + ' — every other turn is kept exactly')
-    if (!scopes.length) break
-    const rep = await lnMfRepairCall(env, mp, scopes, round)
-    if (!rep) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
-    lnMfApply(env, mp, scopes, rep, round)
-    res = await lnMfValidateAndAudit(env, mp)
-    lnMfIssueLog(env, res, 'after repair round ' + round)
-    const sig = sigOf(res)
-    stale = sig === prevSig ? stale + 1 : 0; prevSig = sig
-    if (stale >= 1 && round >= 2 && !boundaryOnly(res)) { log && log('⛔ MEANING_REPAIR_NO_PROGRESS — the same defects after two rounds; stopping instead of looping'); break }
+  // the fault-classified repair rounds (escalating by failure signature) until the plan passes both gates or `limit` is reached;
+  // returns true only when a repair reply could not be read at all (technical)
+  const repairLoop = async limit => {
+    while (res.issues.length && (round < limit || (!boundaryRound && boundaryOnly(res)))) {
+      if (round >= limit) { boundaryRound = true; mf.boundaryRound = true; log && log('🔧 MEANING_REPAIR boundary round — only ' + res.issues.length + ' transition fault(s) left after ' + round + ' rounds: one bounded repair of the situation boundary, nothing else changes') }
+      round++
+      res.issues.forEach(is => { mf.byFault[LN_MF_FAULTS[is.fault]] = (mf.byFault[LN_MF_FAULTS[is.fault]] || 0) + 1 })
+      lnMfCountSignatures(env, mp, res.issues)
+      // an unverified turn is simply audited again (fault 9) — never treated as passed
+      const repairable = res.issues.filter(is => is.fault !== 9)
+      if (!repairable.length) { res = await lnMfValidateAndAudit(env, mp); lnMfIssueLog(env, res, 're-audit ' + round); continue }
+      repairable.filter(is => is.code === 'TARGET_MISSING' || is.fault === 8).forEach(is => (is.targetIds || []).forEach(id => mf.moves.set(id, (mf.moves.get(id) || 0) + (round > 1 ? 1 : 0))))
+      const scopes = lnMfScopes(env, mp, repairable)
+      log && log('🔧 MEANING_REPAIR round ' + round + '/' + limit + ' · ' + scopes.length + ' part(s): ' + scopes.map(s => s.id + ' ' + s.kind + ' [' + s.issues.map(is => LN_MF_FAULTS[is.fault]).filter((x, i, a) => a.indexOf(x) === i).join('+') + ']').join(' · ') + ' — every other turn is kept exactly')
+      if (!scopes.length) break
+      const rep = await lnMfRepairRound(env, mp, scopes, round)
+      if (!rep) return true
+      res = await lnMfValidateAndAudit(env, mp)
+      lnMfIssueLog(env, res, 'after repair round ' + round)
+      const sig = sigOf(res)
+      stale = sig === prevSig ? stale + 1 : 0; prevSig = sig
+      if (stale >= 1 && round >= 2 && !boundaryOnly(res)) { log && log('⛔ MEANING_REPAIR_NO_PROGRESS — the same defects after two rounds; stopping instead of looping'); break }
+    }
+    return false
   }
-  Object.assign(tel, { LISTENING_MF_PLAN_CALLS: mf.calls.plan, LISTENING_MF_SCENE_REPLANS: mf.calls.sceneReplan, LISTENING_MF_AUDIT_CALLS: mf.calls.audit, LISTENING_MF_REPAIR_CALLS: mf.calls.repair, LISTENING_MF_REPAIR_ROUNDS: round, LISTENING_MF_TRUNCATIONS: mf.truncations, LISTENING_PLANNER: LISTENING_PLANNER_VERSION })
-  if (res.issues.length) {
+  // v697 — a lone reply the audit calls "does not answer" while rating its wording natural / acceptable (live relay run, Mandarin:
+  // 吃了，你怎么回家？ — 不知道，我去朋友家。 blocked the whole track after 3 rounds) no longer blocks the plan: it is DEFERRED to the
+  // final story judge, which reads the whole conversation; the line still fails the naturalness gate unless that judge passes
+  mf.deferredQA = new Set()
+  const deferSoftQA = () => {
+    if (!(res.issues.length === 1 && !res.det.length && res.issues[0].code === 'SEMANTIC_AUDIT' && res.issues[0].fault === 6 && /^(natural|acceptable) · /.test(String(res.issues[0].detail || '')))) return
+    const is = res.issues[0], tu = mp.flat.find(t => t.id === is.turnIds[is.turnIds.length - 1]), i = mp.flat.indexOf(tu)
+    if (tu) mf.deferredQA.add(lnMfVerdictKey(tu, mp.flat[i - 1]))
+    log && log('⚖ QUESTION_ANSWER_DEFERRED T' + (tu ? tu.n : '?') + ' — the only defect left is a reply the audit rated "' + String(is.detail).split(' · ')[0] + '" but "does not answer" (' + String(is.detail).slice(0, 120) + ') · not a blocker: the final story judge decides, and the line fails the naturalness gate unless that judge passes')
+    res = { ...res, issues: [], sem: [] }
+  }
+  const blockedUnresolved = label => {
     const unheard = [...new Set(res.issues.flatMap(is => is.targetIds || []))].map(id => (byId.get(id) || {}).surface).filter(Boolean)
     lnMfLogPlan(env, mp, 'not approved')
-    return blocked(res.issues.length + ' unresolved after ' + round + ' repair round(s): ' + res.issues.slice(0, 5).map(is => LN_MF_FAULTS[is.fault] + ' ' + is.code + ' — ' + String(is.detail || '').slice(0, 90)).join(' · ') + (unheard.length ? ' · lesson words in the failing parts: ' + unheard.join(', ') : ''),
+    return blocked(res.issues.length + ' unresolved after ' + label + ': ' + res.issues.slice(0, 5).map(is => LN_MF_FAULTS[is.fault] + ' ' + is.code + ' — ' + String(is.detail || '').slice(0, 90)).join(' · ') + (unheard.length ? ' · lesson words in the failing parts: ' + unheard.join(', ') : ''),
       mp.scenes.filter(s => res.issues.some(is => is.scene === s.key)).map(s => ({ sceneId: s.key, residual: res.issues.filter(is => is.scene === s.key).map(is => LN_MF_FAULTS[is.fault]).join('+'), targets: s.targetIds.slice() })))
   }
+  const setTel = () => Object.assign(tel, { LISTENING_MF_PLAN_CALLS: mf.calls.plan, LISTENING_MF_SCENE_REPLANS: mf.calls.sceneReplan, LISTENING_MF_AUDIT_CALLS: mf.calls.audit, LISTENING_MF_REPAIR_CALLS: mf.calls.repair, LISTENING_MF_REPAIR_ROUNDS: round, LISTENING_MF_TRUNCATIONS: mf.truncations, LISTENING_PLANNER: LISTENING_PLANNER_VERSION, LISTENING_MF_STORY_ROUNDS: mf.storyRounds || 0 })
+  if (await repairLoop(LN_MF_MAX_ROUNDS)) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
+  deferSoftQA()
+  setTel()
+  if (res.issues.length) return blockedUnresolved(round + ' repair round(s)')
+  // v697 — THE FINAL STORY JUDGE runs here, on the approved plan, reading the situations as ONE conversation. It used to run only
+  // after the commit, with the SEPARATE-SCENES prompt: a situation that opens by answering the one before ("Thank you." after a
+  // compliment; うん、そうしよう。) was failed as "no referent", and a failure was terminal. Now a failed part gets a bounded story
+  // repair (around its break; its boundary when it breaks at its first line), the plan is validated and audited again, and the
+  // conversation is judged again — at most LN_MF_STORY_ROUNDS times. The verdict travels to the final gates (no second call).
+  const scenesOf = () => mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, intendedTargetIds: tu.targetIds.slice() }, intendedTargetIds: tu.targetIds.slice(),
+    meaning: { intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects, respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null } })) }))
+  const cohOf = scs => scs.map((sc, k) => ({ title: (mp.scenes[k] && mp.scenes[k].title) || '', lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, meaning: tn.meaning })) }))
+  const cohPass = c => !!c && c.state === QUALITY.VERIFIED && c.verdicts.every(v => v.pass) && (c.overall == null || c.overall >= 3)
+  let coh = null, judgedSig = null
+  mf.storyRounds = 0
+  const textSig = () => mp.flat.map(t => t.speaker + ':' + t.text).join('|')
+  if (env.o && env.o.apiKey) for (;;) {
+    // a story repair that changed nothing (every patch rejected) is not judged again — the same text would get the same verdict;
+    // the next story round escalates instead (live relay run: a patch with an unknown word, then the identical text re-judged)
+    if (judgedSig !== textSig()) {
+      tel.LISTENING_QC_CALLS++
+      coh = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: true }, log)
+      judgedSig = textSig()
+    } else log && log('📖 STORY_JUDGE skipped — the story repair changed nothing (its patch was rejected); the next round escalates')
+    log && log('📖 STORY_JUDGE ' + (cohPass(coh) ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (coh.overall != null ? ' · overall ' + coh.overall + '/5' : '') + ' · the situations judged as ONE conversation' + (mf.storyRounds ? ' · after story repair ' + mf.storyRounds : ''))
+    if (cohPass(coh) || coh.state !== QUALITY.VERIFIED || mf.storyRounds >= LN_MF_STORY_ROUNDS) break
+    mf.storyRounds++
+    const issues = coh.verdicts.filter(v => !v.pass).map(v => { const s = mp.scenes[v.scene - 1]; if (!s || !s.turns.length) return null
+      const b = Number.isFinite(+v.breakAfterLine) && +v.breakAfterLine >= 1 && +v.breakAfterLine <= s.turns.length ? +v.breakAfterLine : null
+      // a part that breaks at (or right after) its first line breaks at the BOUNDARY with the part before it
+      if (v.scene > 1 && (b == null || b <= 1)) return { fault: 7, code: 'SCENE_TRANSITION', story: true, turnIds: s.turns.slice(0, 2).map(t => t.id), scene: s.key, targetIds: s.turns.slice(0, 2).flatMap(t => t.targetIds), detail: 'the final story judge: ' + String(v.reason || '') }
+      const tus = b == null ? s.turns : s.turns.slice(Math.max(0, b - 1), Math.min(s.turns.length, b + 2))
+      return { fault: 7, code: 'STORY_BREAK', story: true, turnIds: tus.map(t => t.id), scene: s.key, targetIds: [...new Set(tus.flatMap(t => t.targetIds))], detail: 'the final story judge: ' + String(v.reason || '') + (b != null ? ' (breaks after line ' + b + ' of ' + s.key + ')' : '') } })
+      .filter(Boolean)
+    // the overall verdict alone failed (every part passed): the weakest-looking part is the end of the conversation
+    if (!issues.length) { const s = mp.scenes[mp.scenes.length - 1]; const tus = s.turns.slice(-3)
+      issues.push({ fault: 7, code: 'STORY_BREAK', story: true, turnIds: tus.map(t => t.id), scene: s.key, targetIds: [...new Set(tus.flatMap(t => t.targetIds))], detail: 'the final story judge: ' + String(coh.reason || 'the conversation as a whole does not read as one story') }) }
+    lnMfCountSignatures(env, mp, issues)
+    const scopes = lnMfScopes(env, mp, issues)
+    log && log('📖 STORY_REPAIR ' + mf.storyRounds + '/' + LN_MF_STORY_ROUNDS + ' · ' + scopes.length + ' part(s): ' + scopes.map(sc => sc.id + ' ' + sc.kind + ' (' + sc.scenes.join('+') + ')').join(' · ') + ' — from the final story judge; every other turn is kept exactly')
+    if (!scopes.length) break
+    const rep = await lnMfRepairRound(env, mp, scopes, 'story-' + mf.storyRounds)
+    if (!rep) break
+    res = await lnMfValidateAndAudit(env, mp)
+    lnMfIssueLog(env, res, 'after story repair ' + mf.storyRounds)
+    // what the story repair broke locally gets up to two ordinary repair rounds; the plan must pass both gates again
+    boundaryRound = false; stale = 0; prevSig = null; mf.boundaryRound = false
+    mf.deferredQA = new Set()
+    if (await repairLoop(round + 2)) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
+    deferSoftQA()
+    setTel()
+    if (res.issues.length) return blockedUnresolved('story repair ' + mf.storyRounds + ' and ' + round + ' repair round(s)')
+  }
+  setTel()
   // COMMIT — every situation passed BOTH gates; the shared final gates still judge the final text
   lnMfLogPlan(env, mp, 'approved')
   log && log('✅ MEANING_PLAN state=APPROVED · structural validation PASS · semantic audit PASS · ' + mp.flat.length + ' turns · ' + round + ' repair round(s)')
-  const scenes = mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, intendedTargetIds: tu.targetIds.slice() }, intendedTargetIds: tu.targetIds.slice(),
-    meaning: { intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects, respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null } })) }))
+  const scenes = scenesOf()
   const audit = listeningConversationAudit(scenes, targets, la, ctx)
   // v695: a situation marked FAILED by its local check is never accepted silently — it is checked again on the final plan;
   // a remaining lesson-word / meaning defect blocks, and only the planning reserve (turns over the situation's share of ~34,
@@ -29505,7 +29853,8 @@ async function _lnComposeMeaningFirst(env) {
   // naturalness of the final lines = the semantic audit's verdicts (4-level scale) for exactly these lines in this context
   const natIssues = []
   mp.flat.forEach((tu, i) => { const v = mf.verdicts.get(lnMfVerdictKey(tu, mp.flat[i - 1])); const iss = lnMfVerdictIssue(v)
-    if (!v) natIssues.push({ code: 'NATURALNESS_UNVERIFIED', line: i + 1, detail: 'no semantic verdict' }); else if (iss) natIssues.push({ code: 'UNNATURAL', line: i + 1, detail: iss.detail }) })
+    if (!v) natIssues.push({ code: 'NATURALNESS_UNVERIFIED', line: i + 1, detail: 'no semantic verdict' })
+    else if (iss && !(mf.deferredQA.has(lnMfVerdictKey(tu, mp.flat[i - 1])) && cohPass(coh))) natIssues.push({ code: 'UNNATURAL', line: i + 1, detail: iss.detail }) })
   plan.scenes = mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), phase: s.situation, purpose: s.title + ' — ' + (LN_MF_SITUATIONS.find(x => x.key === s.situation) || {}).desc, requiredTargetIds: s.targetIds.slice(), expectedTurns: s.turns.length, maxTurns: s.turns.length }))
   plan.assignments = mp.flat.flatMap(tu => tu.targetIds.map(id => ({ targetId: id, surface: (byId.get(id) || {}).surface, sceneId: 'LS' + (mp.scenes.findIndex(s => s.key === tu.scene) + 1), turn: tu.n, speaker: tu.speaker, intent: tu.intent })))
   plan.meaningPlan = { valid: true, turnCount: mp.flat.length, problems: [], turns: mp.flat.map(tu => ({ n: tu.n, speaker: tu.speaker, addressee: tu.addressee, intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects,
@@ -29514,7 +29863,7 @@ async function _lnComposeMeaningFirst(env) {
   const allIn = mp.scenes.every(s => s.targetIds.every(id => audit.covered.includes(id)))
   log && log('🎧 LISTENING_SCENE_COVERAGE_UNION ' + audit.covered.length + '/' + targets.length + ' · committed ' + scenes.length + ' situations · ' + total + ' turns (allowed ' + env.turnsMin + '–' + env.turnsMax + ')')
   const contract = createConversationContract({ speakers: 'A and B (the same two people throughout)', relationship: ctx.jaStyle === 'polite' ? 'acquaintances' : 'friends', objective: grouping.scenes.map(s => s.title).join(' → '), scenes: plan.scenes, byId })
-  return { ok: true, scenes, audit, natIssues, plan, report: scenes.map((sc, k) => ({ sceneId: sc.sceneId, required: mp.scenes[k].targetIds.length, heard: mp.scenes[k].targetIds.filter(id => audit.covered.includes(id)).length, turns: sc.turns.length })), coh: null,
+  return { ok: true, scenes, audit, natIssues, plan, report: scenes.map((sc, k) => ({ sceneId: sc.sceneId, required: mp.scenes[k].targetIds.length, heard: mp.scenes[k].targetIds.filter(id => audit.covered.includes(id)).length, turns: sc.turns.length })), coh,
     gates: { SCENE_REQUIRED_COVERAGE: allIn ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total >= env.turnsMin && total <= env.turnsMax, SCENES_VALIDATED: true, ONE_CONVERSATION: 'PASS' },
     uncommitted: [], contract, story: plan.story, phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
 }
@@ -29753,6 +30102,184 @@ async function downloadListeningTrack(t) {
   a.href = url; a.download = (t.language || 'th') + '-listening-track-' + String(t.date || '').replace(/ /g, '-') + '.txt'
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url)
 }
+// ── Topics (v698) ─────────────────────────────────────────────────────────────
+// Situation vocabulary sets (LANGUAGE_TOPICS). A topic is a data-driven ordered list of canonical word ids in the ONE
+// master dictionary: progress here is read from the learner's real vocab / SRS state, never stored separately.
+const TOPIC_STATUS_STYLE = Object.freeze({
+  new: { label: 'Not introduced', color: 'var(--muted)', border: 'var(--border)' },
+  learning: { label: 'Introduced', color: '#60a5fa', border: 'rgba(96,165,250,0.5)' },
+  known: { label: 'Known', color: '#10b981', border: 'rgba(16,185,129,0.5)' },
+  missing: { label: 'Missing', color: '#ef4444', border: 'rgba(239,68,68,0.5)' },
+})
+// The dashboard entry — the same card, in the same place, in every language.
+function TopicsEntryCard({ lang, onOpen }) {
+  return (
+    <button data-topics-entry={lang} onClick={() => onOpen && onOpen()}
+      style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #261a33, #33204a)',
+               border: '1px solid #5b3a80', color: 'var(--text)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = '#a78bfa'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = '#5b3a80'}>
+      <div style={{ fontSize: 24, lineHeight: 1 }}>🗂️</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 15 }}>Topics</div>
+        <div style={{ fontSize: 11, color: '#c4b5fd', marginTop: 2 }}>Learn vocabulary for specific situations</div>
+      </div>
+      <div style={{ fontSize: 20, color: '#c4b5fd' }}>›</div>
+    </button>
+  )
+}
+function TopicBackRow({ onBack, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <button data-topics-back="1" onClick={() => onBack && onBack()} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', cursor: 'pointer', padding: '6px 10px', fontSize: 13 }}>← Back</button>
+      <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{label}</h2>
+    </div>
+  )
+}
+function TopicStatGrid({ p }) {
+  const cell = (n, l, c, k) => (
+    <div key={k} data-topic-stat={k} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '8px 6px', textAlign: 'center' }}>
+      <div style={{ fontSize: 18, fontWeight: 800, color: c }}>{n}</div>
+      <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{l}</div>
+    </div>
+  )
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+      {cell(p.total, 'Total', 'var(--text)', 'total')}
+      {cell(p.introduced, 'Introduced', '#60a5fa', 'introduced')}
+      {cell(p.remaining, 'Not yet introduced', 'var(--muted)', 'remaining')}
+      {cell(p.known, 'Known', '#10b981', 'known')}
+    </div>
+  )
+}
+// The Topics screen: every available topic for this language, or the explicit empty state (no placeholder topics).
+function TopicsView({ lang, vocab, onBack, onOpenWords, onGenerate }) {
+  const topics = topicsFor(lang)
+  return (
+    <div className="fade-in" data-topics-view={lang} style={{ padding: 16, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <TopicBackRow onBack={onBack} label="Topics" />
+      {!topics.length && (
+        <Card hover={false} style={{ textAlign: 'center', padding: '28px 16px' }}>
+          <div style={{ fontSize: 28 }}>🗂️</div>
+          <p data-topics-empty="1" style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Topics coming soon.</p>
+        </Card>
+      )}
+      {topics.map(t => {
+        const p = topicProgress(lang, t.id, vocab)
+        return (
+          <Card key={t.id} hover={false} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div data-topic-card={t.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 28, lineHeight: 1 }}>{t.icon || '🗂️'}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, lineHeight: 1.45 }}>{t.description}</div>
+              </div>
+            </div>
+            <TopicStatGrid p={p} />
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>
+                <span>Progress</span><span data-topic-progress={t.id}>{p.introduced}/{p.total} introduced · {p.pct}%</span>
+              </div>
+              <div style={{ height: 6, background: 'var(--surface2)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: p.pct + '%', background: 'linear-gradient(90deg, #a78bfa, #10b981)', borderRadius: 3 }} />
+              </div>
+            </div>
+            {p.allIntroduced && (
+              <div data-topic-all-introduced={t.id} style={{ fontSize: 12, color: '#10b981', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, padding: '8px 10px' }}>
+                ✓ All topic words introduced. A {t.title} Track is now revision only.
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Btn variant="secondary" onClick={() => onOpenWords && onOpenWords(t.id)} style={{ width: '100%', justifyContent: 'center' }}>
+                <span data-topic-view-all={t.id}>View all {p.total} words</span>
+              </Btn>
+              {lang === 'th' && (
+                <Btn variant="primary" onClick={() => onGenerate && onGenerate(t.id)} style={{ width: '100%', justifyContent: 'center' }}>
+                  <span data-topic-generate={t.id}>Generate {t.title} Track</span>
+                </Btn>
+              )}
+            </div>
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+// All words of one topic, in priority order, with their live status. Tapping a word opens it in the existing
+// vocabulary inspector (no second editor).
+function TopicWordsView({ lang, topicId, vocab, onBack, onOpenWord }) {
+  const t = topicById(lang, topicId)
+  const p = t ? topicProgress(lang, topicId, vocab) : null
+  if (!t || !p) return (
+    <div style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}><TopicBackRow onBack={onBack} label="Topic not found" /></div>
+  )
+  const groups = t.groups || []
+  const gs = t.groupSize || 0
+  return (
+    <div className="fade-in" data-topic-words={topicId} style={{ padding: 16, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <TopicBackRow onBack={onBack} label={(t.icon ? t.icon + ' ' : '') + t.title} />
+      <TopicStatGrid p={p} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {p.words.map((w, k) => {
+          const st = TOPIC_STATUS_STYLE[w.status] || TOPIC_STATUS_STYLE.new
+          const head = gs && groups.length && k % gs === 0 ? groups[Math.floor(k / gs)] : null
+          return (
+            <React.Fragment key={w.id}>
+              {head && <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: k ? 8 : 0 }}>{head}</p>}
+              <div data-topic-word={w.id} data-topic-word-status={w.status} onClick={() => w.word && onOpenWord && onOpenWord(w.word)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, cursor: onOpenWord ? 'pointer' : 'default' }}>
+                <div style={{ width: 24, fontSize: 12, color: 'var(--muted)', textAlign: 'right', flexShrink: 0 }}>{w.priority}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 18, fontWeight: 600, fontFamily: 'Sarabun, sans-serif' }}>{w.thai}</span>
+                    <span className="phon" style={{ fontSize: 12, color: 'var(--gold)' }}>{w.phonetic}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{w.english}</div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: st.color, border: '1px solid ' + st.border, borderRadius: 6, padding: '3px 6px', whiteSpace: 'nowrap' }}>{st.label}</span>
+              </div>
+            </React.Fragment>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+// Recent Tracks: a topic track is labelled with its topic ("Wedding Speech · Daily Track"); every other track keeps its label.
+function trackTopicLabel(track) {
+  return track && track.selectionMode === 'topic' && track.topicTitle ? track.topicTitle + ' · ' + trackModeLabel(track) : ''
+}
+function TopicTrackBadge({ track }) {
+  const l = trackTopicLabel(track)
+  return l ? <span data-track-topic={track.topicId} style={{ color: '#c4b5fd', marginLeft: 6, fontSize: 10, fontWeight: 700 }}>{((topicById(track.language || 'th', track.topicId) || {}).icon || '🗂️') + ' ' + l}</span> : null
+}
+// The Topic Track header on the generator screens: which topic, and the ACTUAL new topic words selected for this track
+// (or the explicit "all introduced" state, when the track is revision only).
+function TopicTrackSelectionPanel({ topic, selection, targets, compact }) {
+  const newIds = (selection && selection.selectedNewTargetIds) || []
+  const byId = new Map((targets || []).map(t => [t.id, t]))
+  const newWords = newIds.map(id => byId.get(id)).filter(Boolean)
+  const nRev = (targets || []).length - newWords.length
+  return (
+    <div data-topic-track-panel={topic.id} style={{ background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.45)', borderRadius: 12, padding: compact ? '8px 12px' : '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div data-topic-track-label="1" style={{ fontSize: 13, fontWeight: 700, color: '#c4b5fd' }}>{(topic.icon ? topic.icon + ' ' : '') + topic.title + ' · Daily Track'}</div>
+      {!compact && (newWords.length ? (
+        <>
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{newWords.length} new topic word{newWords.length === 1 ? '' : 's'} + {nRev} revision</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {newWords.map(w => (
+              <span key={w.id} data-topic-new-word={w.id} style={{ fontSize: 13, padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(74,144,226,0.55)', background: 'rgba(74,144,226,0.07)' }}>
+                <span className="thai">{w.thai}</span> <span style={{ fontSize: 11, color: 'var(--muted)' }}>{w.english}</span>
+              </span>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div data-topic-track-all-introduced="1" style={{ fontSize: 12, color: '#10b981' }}>All topic words introduced — this track is {nRev} revision words.</div>
+      ))}
+    </div>
+  )
+}
 // v659.1 — the explicit ▶ Listen action on a saved Listening Track (Recent Tracks, every language)
 function ListenTrackRowButton({ onClick, compact }) {
   return (
@@ -29763,14 +30290,20 @@ function ListenTrackRowButton({ onClick, compact }) {
 }
 // v661 — the learner's LATEST Listening Track, right under the Daily / Revision / Listening buttons, so it can be
 // played (or, after a NOT_READY attempt, rebuilt with the same 30 words) without scrolling to Recent Tracks.
+// The latest playable Listening Track, and a failed / interrupted attempt that is NEWER than it (what the learner just made).
+// v698: shared by the bar and by the Listening screen, which now offers the repair before starting anything new.
+function listeningRepairCandidate(attempts, tracks) {
+  const latest = [...(tracks || [])].reverse().find(t => isListeningTrack(t) && (t.ready || t.playable) && t.listening) || null
+  const attempt = (attempts || [])[0] || null
+  const failed = attempt && attempt.state !== 'READY' && (!latest || String(attempt.createdAt || '') > String(latest.createdAt || '')) ? attempt : null
+  return { latest, failed }
+}
 function ListeningLatestBar({ lang, tracks, onListen, onRebuild }) {
-  const latest = useMemo(() => [...(tracks || [])].reverse().find(t => isListeningTrack(t) && (t.ready || t.playable) && t.listening) || null, [tracks])
   const [attempt, setAttempt] = useState(null)
   useEffect(() => { let live = true
     loadListeningAttempts(lang).then(a => { if (live) setAttempt((a || [])[0] || null) })
     return () => { live = false } }, [lang, tracks])
-  // a failed / interrupted attempt that is NEWER than the latest playable track is what the learner just made
-  const failed = attempt && attempt.state !== 'READY' && (!latest || String(attempt.createdAt || '') > String(latest.createdAt || '')) ? attempt : null
+  const { latest, failed } = listeningRepairCandidate(attempt ? [attempt] : [], tracks)
   if (!latest && !failed) return null
   const box = { gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: '#0d1f33', border: '1px solid #3b82f6' }
   const btn = { padding: '8px 14px', borderRadius: 10, border: 'none', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -29969,7 +30502,7 @@ function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onSt
     </div>
   )
 }
-function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack, autoPlay, startIds, startRebuildOf, speechStyle: speechStyleProp }) {
+function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack, autoPlay, startIds, startRebuildOf, speechStyle: speechStyleProp, tracks }) {
   // v667 §4/§34/§35 — Japanese speech style: a saved track keeps ITS OWN style; a new attempt freezes the dashboard
   // selection when the generator opens. A later change of the selector never reaches this generator.
   const [speechStyle] = useState(() => lang !== 'ja' ? null : canonicalJapaneseSpeechStyle((saved && saved.speechStyle) || speechStyleProp))
@@ -29987,7 +30520,11 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   const wordOf = id => { const w = words.find(x => x.id === id); return w ? (lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : w.thai) || String(id) : String(id) }
   const initialCov = () => saved ? Object.fromEntries(ids.map(id => [id, ((saved.coverage && saved.coverage.missing) || []).includes(id) ? 'repair' : 'verified'])) : Object.fromEntries(ids.map(id => [id, 'pending']))
   const [coverage, setCoverage] = useState(initialCov)
-  const [phase, setPhase] = useState(saved ? 'done' : 'building')
+  // v698: opened from the app (tracks given) with no saved track and no rebuild → first check for a failed last attempt ('checking'),
+  // and offer its repair ('repair-offer') before anything new is built. The repair moved here from the dashboard banner.
+  const offersRepair = !saved && !rebuildStart && Array.isArray(tracks)
+  const [phase, setPhase] = useState(saved ? 'done' : offersRepair ? 'checking' : 'building')
+  const [repairOffer, setRepairOffer] = useState(null)
   const [stage, setStage] = useState(saved ? 'final' : 'selection')
   const [sceneDone, setSceneDone] = useState(null)   // v662: the last scene verified (scene-by-scene progress)
   const [result, setResult] = useState(saved || null)
@@ -30041,7 +30578,12 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
     setUsage(t.usage); setResult(t); setStage('final'); setPhase('done')
     if (!t.listening) setCoverage(Object.fromEntries(useIds.map(id => [id, 'repair'])))
   }
-  useEffect(() => { if (!saved && !startedRef.current) { startedRef.current = true; rebuildStart ? run(rebuildStart, startRebuildOf || null) : run(null, null) } }, [])
+  useEffect(() => { if (!saved && !startedRef.current) { startedRef.current = true
+    if (rebuildStart) run(rebuildStart, startRebuildOf || null)
+    else if (offersRepair) loadListeningAttempts(lang).then(a => { if (!liveRef.current) return
+      const cand = listeningRepairCandidate(a, tracks)
+      if (cand.failed && (cand.failed.selectedTargetIds || []).length) { setRepairOffer(cand); setPhase('repair-offer') } else run(null, null) }, () => { if (liveRef.current) run(null, null) })
+    else run(null, null) } }, [])
   const cancel = () => { if (runRef.current) { try { aiCancelRun(runRef.current.runId, 'cancelled by the learner') } catch (e) {} } onBack && onBack() }
   // v664 — a NOT_READY conversation that HAS lines is still a conversation: the learner may listen to it. It is saved
   // (so it shows in Recent / the dashboard bar) with playable:true and its failed checks, never disguised as READY.
@@ -30061,6 +30603,26 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
       qualityNotes: a.qualityNotes || [], ready: a.state === 'READY', playable: true, listening: { lines: a.lines, readiness: a.state === 'READY' ? 'READY' : 'NOT_READY', coverage: null }, _coverageLabel: a.coverageLabel || '' })
     setPhase('done'); setPlaying(true)
   }
+  if (phase === 'repair-offer' && repairOffer) {
+    const f = repairOffer.failed, cov = f.coverage || {}
+    const btn = { width: '100%', padding: '12px', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 14 }
+    return (
+      <div className="fade-in" data-listening-repair-offer={lang} style={{ padding: 24, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 40 }}>
+        <div data-listening-latest="needs-repair" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid #f97316', background: 'rgba(249,115,22,0.08)' }}>
+          <div style={{ fontSize: 22 }}>🎧</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#f97316' }}>Your last Listening Track needs repair</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>TARGET COVERAGE {cov.covered || 0}/{cov.required || (f.selectedTargetIds || []).length} · not playable yet{repairOffer.latest ? ' · an older one is in Recent Tracks' : ''}</div>
+          </div>
+        </div>
+        <button data-listening-latest-rebuild="1" onClick={() => { const ids0 = (f.selectedTargetIds || []).slice(); setRepairOffer(null); run(ids0, f.attemptId || null) }}
+          style={{ ...btn, border: 'none', background: '#f97316', color: '#0b1120' }}>🔁 Rebuild with the same {(f.selectedTargetIds || []).length} words</button>
+        <button data-listening-repair-new="1" onClick={() => { setRepairOffer(null); run(null, null) }}
+          style={{ ...btn, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}>Build a new Listening Track instead</button>
+        <button onClick={() => onBack && onBack()} style={{ ...btn, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 600 }}>Back</button>
+      </div>
+    )
+  }
   const lt = result && result.listening
   if (playing && lt) return (
     <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>
@@ -30070,7 +30632,7 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   )
   // ── derived from the ONE coverage map ──
   const counts = listeningCoverageCounts(coverage, ids)
-  const building = phase === 'building'
+  const building = phase === 'building' || phase === 'checking'
   const ready = !!(result && result.ready)
   const pct = ready ? 100 : (ids.length ? Math.round((counts.present / ids.length) * 100) : 0)
   const stageText = { selection: 'Selecting the 30 Revision words…', composing: 'Planning where every word goes…', scene: 'Writing scene by scene — each scene is checked before the next…', composed: 'Checking target coverage, max 3 per turn, vocabulary, naturalness…',
@@ -30681,7 +31243,10 @@ function CompactGeneratorHeader({ label, labelColor, pct, leftNote, rightNote })
   )
 }
 
-function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, customTargets, onTrackCost, tracks, resumeDraft, dailyNewWords, onSaveDailyNewWords }) {
+function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, customTargets, onTrackCost, tracks, resumeDraft, dailyNewWords, onSaveDailyNewWords, topicId }) {
+  // v698 — a Topic Track (e.g. Wedding Speech) is a Daily Track whose NEW words come from the topic; everything else is this engine
+  const topic = topicId ? topicById('th', topicId) : null
+  const cpLang = topic ? 'th-topic' : 'th'
   const genModel = GEMINI_DEFAULT_MODEL                    // v648: Gemini Flash-Lite for every Generator stage
   const [error, setError] = useState('')
   const [listenPhase, setListenPhase] = useState(null)   // v644: Listening build at generation complete
@@ -30756,6 +31321,17 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     if (resumeDraft && resumeDraft.targetsRemaining && resumeDraft.targetsRemaining.length > 0) {
       return { targets: resumeDraft.targetsRemaining, anchors: resumeDraft.anchors || [] }
     }
+    if (topic) {
+      // v698 — topic words (up to 5, priority order, not yet introduced anywhere) + the global revision queue; no curriculum new words
+      const pendingT = (tracks || []).filter(t => !t.rated && !isListeningTrack(t))
+      const usedT = new Set(pendingT.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
+      const ts = selectThaiTopicTargets(vocab, topic.id, { pendingWordIds: usedT })
+      const tsIds = new Set(ts.targetIds)
+      const anchT = vocab.filter(w => (w.status === 'known' || w.status === 'learning') && !tsIds.has(w.id))
+        .sort((a, b) => (!a.lastSeen ? -1 : !b.lastSeen ? 1 : a.lastSeen.localeCompare(b.lastSeen))).slice(0, 25)
+      return { targets: ts.raw, anchors: anchT, contract: true, reserve: ts.reserve, selectionBackfills: ts.selectionBackfills,
+        skippedCandidates: ts.skippedCandidates, candidateStats: ts.candidateStats, canon: ts, lockedByUnratedTracks: usedT.size }
+    }
     if (customTargets && customTargets.length) {
       const targetIds = new Set(customTargets.map(w => w.id))
       const anch = vocab.filter(w => (w.status === 'known' || w.status === 'learning') && !targetIds.has(w.id))
@@ -30810,7 +31386,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     // Slot words bypass the pending-track exclusion so they persist across same-day tracks
     const filteredVocab = vocab.filter(w => !usedWordIds.has(w.id) || slotIdSet.has(w.id))
     return { ...pickWords(filteredVocab, mode, slotWords), lockedByUnratedTracks: usedWordIds.size, contract: true }
-  }, [vocab, mode, customTargets, tracks, dailyNewWords])
+  }, [vocab, mode, customTargets, tracks, dailyNewWords, topic])
   // Every Thai target — Daily and Revision alike — passes through the shared canonical
   // resolver BEFORE any prompt is built: learner state from saved vocab, lexical
   // metadata from the canonical bank by id. Nothing here is written back.
@@ -30867,6 +31443,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     // first sight keeps status 'new' although it IS introduced, so without this
     // guard a revision track would write its words into the Daily new-word slots.
     if (!targets || !targets.length || mode === 'weak' || mode === 'revision') return
+    if (topic) return   // v698: topic words never occupy the curriculum's Daily new-word slots
     const slotIds = targets.filter(w => w.status === 'new').slice(0, newSlotsFor(vocab)).map(w => w.id)
     if (!slotIds.length) return
     const prev = dailyNewWords?.wordIds || []
@@ -30938,8 +31515,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   useEffect(() => {
     if (phase !== 'draft-check') return
     ;(async () => {
-      const cp = await genCheckpointLoad('th')
-      if (cp && cp.extra && cp.extra.track && Array.isArray(cp.extra.track.pairs)) {
+      const cp = await genCheckpointLoad(cpLang)
+      if (cp && cp.extra && cp.extra.track && Array.isArray(cp.extra.track.pairs) && (cp.extra.track.topicId || null) === (topicId || null)) {
         const tg = thDraftTargets(cp.extra.track)
         const compat = genCheckpointCompatible(cp, 'th', tg, thDraftAuthorised(new Set(tg.map(t => t.id))))
         setThDraftOffer({ cp, compat, summary: genCheckpointSummary(cp, tg) }); setPhase('resume-choice')
@@ -30955,7 +31532,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     ;(generatedTrack.pairs || []).filter(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId != null && !p._qcInvalid && !p._qcUnresolved)
       .forEach(p => { nth[p.targetId] = (nth[p.targetId] || 0) + 1; if (nth[p.targetId] <= 3) genCheckpointAddPair(cp, { ...p, recallIndex: nth[p.targetId] }) })
     cp.extra = { track: generatedTrack }; cp.updatedAt = new Date().toISOString()
-    thCpRef.current = cp; genCheckpointWrite('th', cp)
+    thCpRef.current = cp; genCheckpointWrite(cpLang, cp)
   }, [phase, listenPhase, generatedTrack, thRetrying])
   async function retryThaiMissing(trackIn) {
     const t0 = trackIn || generatedTrack, r = trackReadiness(t0)
@@ -30972,7 +31549,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   async function resumeThaiDraft() {
     const o = thDraftOffer; if (!o || !o.compat.ok) return
     o.cp.resumes = (o.cp.resumes || 0) + 1; o.cp.history.push({ at: new Date().toISOString(), event: 'resume', n: o.cp.resumes, build: APP_BUILD_VERSION })
-    thCpRef.current = o.cp; genCheckpointWrite('th', o.cp)
+    thCpRef.current = o.cp; genCheckpointWrite(cpLang, o.cp)
     const t0 = o.cp.extra.track
     setThDraftOffer(null); setGeneratedTrack(t0); setPhase('done'); setListenPhase('DONE')
     if (trackReadiness(t0).unresolvedTargetIds.length) await retryThaiMissing(t0)
@@ -31011,7 +31588,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
             setBuildingScene(true)
             try {
               activeTargets.forEach(t => { t._trackTargets = activeTargets })
-    const sd = await establishConvoScene(activeTargets, vocab, apiKey, genModel)
+    const sd = await establishConvoScene(activeTargets, vocab, apiKey, genModel, topic ? { topic } : undefined)
               sceneDataRef.current = sd
               setSceneData(sd)
             } catch(e) { sceneDataRef.current = { scene:'Two friends at a market.', characterA:'Somchai', characterB:'Nida', opening:'สวัสดีครับ' } }
@@ -31112,6 +31689,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
                     anchors: anchors,
                     scene: sceneDataRef.current,  // save scene so resume skips regen
                     mode: mode,
+                    ...(topic ? { topicId: topic.id, topicTitle: topic.title, selectedNewTargetIds: (_revCanon && _revCanon.selectedNewTargetIds) || (resumeDraft && resumeDraft.selectedNewTargetIds) || [] } : {}),
                     totalTargets: activeTargets.length,
                     savedAt: new Date().toISOString()
                   }))
@@ -31156,7 +31734,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           pairs = [...resumeDraft.pairs, ...(pairs || [])]
         }
         const allTargets = resumeDraft ? (resumeDraft.targets || targets) : targets
-        const _kwOf = w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: w.status === 'new', isUnseen: w.status === 'new' && isUnseen(w), phonetic: phoneticsRef.current[w.id] || phoneticsRef.current[w.thai] || '' })
+        // v698 — on a Topic Track "new" is the selector's role (a due topic word rated Hard keeps status 'new' but is REVISION)
+        const _topicNewIds = topic ? ((_revCanon && _revCanon.selectedNewTargetIds) || (resumeDraft && resumeDraft.selectedNewTargetIds) || null) : null
+        const _topicNew = _topicNewIds ? new Set(_topicNewIds) : null
+        const _isNewKw = w => _topicNew ? _topicNew.has(w.id) : w.status === 'new'
+        const _kwOf = w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: _isNewKw(w), isUnseen: _isNewKw(w) && isUnseen(w), phonetic: phoneticsRef.current[w.id] || phoneticsRef.current[w.thai] || '' })
         // AUTHORITATIVE SELECTION: every selected target stays in the lesson, in selection
         // order. One that could not be generated is listed as UNRESOLVED, never dropped.
         // v645: under the contract the frozen selection IS the lesson (nothing unresolved)
@@ -31187,6 +31769,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           selectedTargetIds: track.selectedTargetIds, selectedNewTargetIds: keywords.filter(k => k && k.isNew && k.isUnseen !== false).map(k => k.wordId),
           generationRunId: AI_CTX.runId })
         track.selectedNewTargetIds = track.trackContext.selectedNewTargetIds.slice()
+        if (topic) {   // v698 — topic provenance travels with the track (Recent Tracks label, reopening, export)
+          Object.assign(track, { trackType: 'daily', selectionMode: 'topic', topicId: topic.id, topicTitle: topic.title, topicsVersion: TOPICS_VERSION, qcVersion: QC_VERSION,
+            selectedRevisionTargetIds: track.selectedTargetIds.filter(id => !track.selectedNewTargetIds.includes(id)) })
+          track.trackContext = { ...track.trackContext, selectionMode: 'topic', topicId: topic.id }
+        }
         // Item 42: Verify track can be serialized before showing ready
         try { JSON.stringify(track) } catch(e) { throw new Error('Track data invalid: ' + e.message) }
         aiSetTrackId(track.createdAt)                     // v647: telemetry rows from here on carry the track id
@@ -31282,7 +31869,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   if (phase === 'resume-choice') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:16 }}>
       <GenCheckpointChoice offer={thDraftOffer} total={90} langLabel="Thai" unitLabel="target pairs" onRetryMissing={resumeThaiDraft}
-        onStartNew={async () => { await genCheckpointClear('th'); thCpRef.current = null; setThDraftOffer(null); setPhase('starting') }} onBack={onBack} />
+        onStartNew={async () => { await genCheckpointClear(cpLang); thCpRef.current = null; setThDraftOffer(null); setPhase('starting') }} onBack={onBack} />
     </div>
   )
   // Scene preview render
@@ -31292,6 +31879,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
         <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>
           {buildingScene ? '🎬 Setting the scene...' : '✅ Scene Ready'}
         </h2>
+        {topic && <TopicTrackSelectionPanel topic={topic} selection={_revCanon} targets={activeTargets} />}
         {sceneData && !buildingScene && (
           <>
             <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:16, display:'flex', flexDirection:'column', gap:10 }}>
@@ -31357,6 +31945,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:24, paddingTop:40 }}>
 
+      {topic && <TopicTrackSelectionPanel topic={topic} selection={_revCanon} targets={activeTargets} compact />}
       {/* Title */}
       <GeneratorTitle
         title={phase === 'done' && generatedTrack
@@ -31402,7 +31991,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
             <Btn onClick={() => retryThaiMissing()} disabled={thRetrying || listenPhase === 'FINALISING'} style={{ width:'100%', justifyContent:'center' }}>
               {thRetrying ? '\u267B Retrying the missing recalls\u2026' : '\u21BB Retry missing recalls (' + (_readiness.unresolvedTargetIds || []).length + ' word' + ((_readiness.unresolvedTargetIds || []).length > 1 ? 's' : '') + ') \u2014 the ' + _readiness.validTargetPairs + ' verified pairs are kept'}
             </Btn>)}
-          <Btn onClick={() => { if (mode === 'daily') genCheckpointClear('th'); onGenerated(generatedTrack) }} disabled={listenPhase === 'BUILDING' || listenPhase === 'FINALISING'} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
+          <Btn onClick={() => { if (mode === 'daily' && topic) genCheckpointClear(cpLang); else if (mode === 'daily') genCheckpointClear('th'); onGenerated(generatedTrack) }} disabled={listenPhase === 'BUILDING' || listenPhase === 'FINALISING'} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
             {listenPhase === 'FINALISING' ? '🔍 Quality check · FINAL_TRACK…' : listenPhase === 'BUILDING' ? '🎧 Building listening track…'
               : _readiness.ready ? '▶ Start SRS Track' : '▶ Start anyway — track not ready (' + _readiness.validTargetPairs + '/' + _readiness.expectedTargetPairs + ')'}
           </Btn>
@@ -35536,7 +36125,7 @@ function lexicallyInvalidIdSet(bank) {
   return s
 }
 function isEligibleNewTarget(w, invalidIds) {
-  return !!w && !(invalidIds && invalidIds.has(w.id))
+  return !!w && !(invalidIds && invalidIds.has(w.id)) && !isThaiTopicOnly(w)   // v697: topic-only words are introduced by their topic track only
 }
 let _thaiInvalidIds = null
 function thaiInvalidLexicalIds() {
@@ -35965,6 +36554,10 @@ function thaiEligibleCandidatePool(vocab, today) {
       return
     }
     if (!e.ok) { skipped.push({ id: w.id, thai: w.thai, reason: e.reason, detail: e.detail || '' }); return }
+    // v697 — a topic-only word (no curriculum position) is introduced ONLY by its topic track: until then it is not a
+    // candidate for any ordinary selection (no Daily new pick, no new-reserve overflow). Once introduced it is ordinary
+    // vocabulary — due for revision, a Listening target, a Daily review word — like every other learned word.
+    if (isThaiTopicOnly(w) && !hasBeenIntroduced(w)) return
     // v654 §4/§6 — TARGET_ACTIVITY_PREFLIGHT is part of eligibility: a target that cannot serve a spoken
     // conversation lesson (formal/written, recognition-only, suspect entry, lexicon evidence) is skipped
     // HERE, before scene planning and paid generation, and the next eligible candidate takes the slot.
@@ -36948,6 +37541,9 @@ function ThaiTeacher({ lang, onSetLang }) {
   const [listenBuildInfo, setListenBuildInfo] = useState(null)   // v644: Listening BUILDING at the save boundary
 
   const [genMode, setGenMode] = useState('daily')
+  const [genTopicId, setGenTopicId] = useState(null)        // v698: the topic of a Topic Track (null = the normal Daily Track)
+  const [topicWordsId, setTopicWordsId] = useState(null)
+  const [returnTopic, setReturnTopic] = useState(null)      // Browse opened from a topic's word list returns there
   const [resumeDraft, setResumeDraft] = useState(null)
   const [pendingReviewTrack, setPendingReviewTrack] = useState(null)
   const [kruOpen, setKruOpen] = useState(false)
@@ -37199,6 +37795,12 @@ function ThaiTeacher({ lang, onSetLang }) {
   }, [])
 
   function navigate(v, data) {
+    if (!(v === 'browse' && data && data.fromTopic)) setReturnTopic(null)
+    if (v.startsWith('generate-')) setGenTopicId(v === 'generate-topic' ? (data && data.topicId) || null : v === 'generate-resume' && data && data.topicId ? data.topicId : null)
+    if (v === 'topics') { setView('topics'); return }
+    if (v === 'topic-words') { if (data && data.topicId) setTopicWordsId(data.topicId); setView('topic-words'); return }
+    if (v === 'generate-topic') { if (!data || !topicById('th', data.topicId)) return; setResumeDraft(null); setGenMode('daily'); setCustomTargets(null); setView('generate'); return }
+    if (v === 'browse' && data && data.fromTopic) { setReturnTopic(data.fromTopic); setView('browse'); return }
     if (v === 'listening-track') { setListeningOpen(data && isListeningTrack(data) ? data : null); setListeningRebuild(data && data.rebuildIds ? data : null); setListeningKey(k => k + 1); setView('listening-track'); return }
     if (v === 'generate-daily') { setResumeDraft(null); setGenMode('daily'); setCustomTargets(null); setView('generate') }
     else if (v === 'generate-revision') {
@@ -37215,7 +37817,7 @@ function ThaiTeacher({ lang, onSetLang }) {
   }
 
   function onCustomTrack(targets) {
-    setCustomTargets(targets); setGenMode('custom'); setView('generate')
+    setGenTopicId(null); setCustomTargets(targets); setGenMode('custom'); setView('generate')
   }
 
   async function onTrackGenerated(rawTrack) {
@@ -37382,7 +37984,7 @@ function ThaiTeacher({ lang, onSetLang }) {
             }}
           />
         )}
-        {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
+        {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} topicId={genTopicId} onGenerated={onTrackGenerated} onBack={() => navigate(genTopicId ? 'topics' : 'dashboard')}
           apiKey={apiKey}
           onPhonetics={onPhonetics} customTargets={customTargets}
           resumeDraft={resumeDraft}
@@ -37392,7 +37994,7 @@ function ThaiTeacher({ lang, onSetLang }) {
           onSaveDailyNewWords={saveDailyNewWords}
         /></ErrorBoundary>}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} tracks={tracks} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracks([...tracks, t]) }} onBack={() => { setListeningOpen(null); navigate('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -37415,7 +38017,11 @@ function ThaiTeacher({ lang, onSetLang }) {
           />
           </ErrorBoundary>
         )}
-        {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate(returnBelt ? 'belt-rank' : 'dashboard')} initialFilter={browseFilter} initialQuery={beltWordQuery} initialBelt={browseBelt} phonetics={{}} onCustomTrack={onCustomTrack} apiKey={apiKey} onVocabUpdate={saveVocab} />}
+        {view === 'topics' && <TopicsView lang="th" vocab={vocab} onBack={() => navigate('dashboard')}
+          onOpenWords={id => navigate('topic-words', { topicId: id })} onGenerate={id => navigate('generate-topic', { topicId: id })} />}
+        {view === 'topic-words' && <TopicWordsView lang="th" topicId={topicWordsId} vocab={vocab} onBack={() => navigate('topics')}
+          onOpenWord={w => { setBrowseFilter('all'); setBrowseBelt('all'); setBeltWordQuery(w.thai); setReturnBelt(null); navigate('browse', { fromTopic: topicWordsId }) }} />}
+        {view === 'browse' && <Browser vocab={vocab} onBack={() => returnTopic ? navigate('topic-words', { topicId: returnTopic }) : navigate(returnBelt ? 'belt-rank' : 'dashboard')} initialFilter={browseFilter} initialQuery={beltWordQuery} initialBelt={browseBelt} phonetics={{}} onCustomTrack={onCustomTrack} apiKey={apiKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} apiKey={apiKey} />}
         {view === 'settings' && <Settings onBack={() => navigate('dashboard')} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} geminiBackupKey={geminiBackupKey} onSaveGeminiBackupKey={async k => { setGeminiBackupKey(k); await stSet('tt-gemini-fallback-key', k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} fillApiKey={apiKey} fillModel={GEMINI_DEFAULT_MODEL} />}
@@ -37719,7 +38325,7 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartRevision} />
         <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
-        <ListeningLatestBar lang={"ja"} tracks={tracks} onListen={t => onOpenTrack && onOpenTrack(t)} onRebuild={onRebuildListening} />
+        <TopicsEntryCard lang="ja" onOpen={() => onNav && onNav('topics')} />
       </div>
 
       {/* Rank Test — same component and behaviour in every language */}
@@ -42857,6 +43463,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
             onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} />
         )}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
+        {view === 'topics' && <TopicsView lang="ja" vocab={vocab} onBack={() => setView('dashboard')} />}
         {view === 'generate' && (
           <ErrorBoundary>
             <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} trackMode={trackMode} register={register} cred={cred}
@@ -42872,7 +43479,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="ja" speechStyle={register} vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} tracks={tracks} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="ja" speechStyle={register} vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksJa([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -45560,7 +46167,7 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartSrsTrack} />
         <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
-        <ListeningLatestBar lang={"zh"} tracks={tracks} onListen={t => onOpenTrack && onOpenTrack(t)} onRebuild={onRebuildListening} />
+        <TopicsEntryCard lang="zh" onOpen={() => onNav && onNav('topics')} />
       </div>
       <Gen2Switch settingKey={ZH_GEN2_SETTING_KEY} note={'Daily Track only. Test version: each sentence is checked by a second model. A word it cannot teach well is left for a later lesson (it stays due). Costs a little more than the standard generator.'} />
 
@@ -45796,6 +46403,7 @@ function MandarinTeacher({ lang, onSetLang }) {
             onDeleteTrack={onDeleteTrack} />
         )}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
+        {view === 'topics' && <TopicsView lang="zh" vocab={vocab} onBack={() => setView('dashboard')} />}
         {view === 'learn' && (
           <ErrorBoundary>
             <MandarinLearnWords words={newTargets.filter(w => w.selectionRole === 'new')} gcpTtsKey={cred.gcpTtsKey}
@@ -45815,7 +46423,7 @@ function MandarinTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} tracks={tracks} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksZh([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (

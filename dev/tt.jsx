@@ -3637,7 +3637,7 @@ function buildMandarinPrompt(target, inv, vocab, recallIndex, rules, exch) {
       : 'Controlled repetition and similar structures are DESIRABLE at this stage (\u00a754).\n') +
     (oct13On() ? ZH_NATURALNESS_GUIDE : '') + vocabStagePromptRule((inv.allContent || []).length) +
     '\u00a770: adjectives take \u5F88 etc., NOT \u662F. \u00a771: use \u4E0D vs \u6CA1 correctly. \u00a769: keep the subject when it aids clarity.\n' +
-    '\u00a766: the English prompt must cue the meaning naturally without revealing the Chinese.\n' +
+    '\u00a766: the English prompt must cue the meaning naturally without revealing the Chinese.' + (cueClarityOn() ? ' ' + DAILY_CUE_CONTRACT : '') + '\n' +
     'Return ONLY JSON:\n' +
     '{"chinese":"...","pinyin":"tone-MARK pinyin, spaced by word","english":"...","prompt":"English cue",' +
     '"segments":[{"surface":"\u4F60","pinyin":"n\u01D0","english":"you"}]}'
@@ -3922,6 +3922,8 @@ function mandarinCueFromProposition(c) {
   const en = String(c && c.english || '').trim().replace(/[.!。！]+$/, '')
   const zh = String(c && c.chinese || '').trim()
   if (en.length < 2 || /[\u4e00-\u9fff]/.test(en) || !zh) return null
+  // v696: a short instruction ("Ask if they want to eat together." · "Say you haven't arrived yet.") instead of the copy template
+  if (cueClarityOn()) { const cc = cueFromEnglish('zh', c.english, zh, cueClarityCtx('zh')); if (cc && !zhCueFormProblems({ ...c, prompt: cc }).length) return cc }
   const q = /[？?]$|[吗呢][。？?]?$/.test(zh)
   const cue = q ? 'Ask: ' + en.replace(/[?？]\s*$/, '') + '?' : 'Tell the other person: ' + en + '.'
   return zhCueFormProblems({ ...c, prompt: cue }).length ? null : cue
@@ -16416,8 +16418,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• ซึ่ง is formal written Thai — only use it when ซึ่ง is the target word being practised. In all other sentences, use ที่ instead.\n' +
     '• PHONETIC ACCURACY: romanise the EXACT Thai words written — ZERO IPA allowed (ɛɔʉəŋɪʊ forbidden). Use e/ae/o/aw/ue/ng instead. Example: ต้อง→dtâwng, งาน→ngaan, เอง→eeng.\n' +
     '• ACCURACY: the \"english\" field must be a faithful natural translation of the Thai — if the Thai says X, english must say X\n' +
+    (cueClarityOn() ? '• ' + DAILY_CUE_CONTRACT + ' The scene above is for writing the Thai only — it never goes into the prompt.\n' :
     '• PROMPT ACCURACY: the "prompt" field must describe the SPECIFIC CONTENT of the Thai sentence — include the actual numbers, names, and facts. WRONG: "He states his age." RIGHT: "He says he is fifty-six years old." WRONG: "She asks about the shop." RIGHT: "She asks if the shop is near here."\n' +
-    '• The "prompt" field must accurately describe exactly what is said — not generic, must match the Thai sentence\n' +
+    '• The "prompt" field must accurately describe exactly what is said — not generic, must match the Thai sentence\n') +
     '• SELF-CHECK: before returning, re-read each line and ask: "Would a real Thai person say this naturally in this scene?" If no, rewrite it\n' +
     '• Add a "ok": true field to each line object — only set true if the line is natural, accurate, and the target word is used correctly\n' +
     '• EXPERIENCER RULE: feeling/state verbs (หิว เหนื่อย ดีใจ กลัว) need a person as subject — NEVER apply to places or objects\n' +
@@ -16425,7 +16428,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     (restaurantUses >= 2 ? '• LOCATION BAN: ร้านอาหาร already used twice — use a different location\n' : '') +
     (usedSubjects && usedSubjects.size > 0 ? '• SUBJECT BAN: these topics have already appeared — do NOT use them again: ' + [...usedSubjects].join(', ') + '\n' : '') +
     '• NUMBERS: only include a number if it arises NATURALLY from the topic (e.g. discussing price → mention amount, discussing time → mention hour). NEVER force a random number into an unrelated sentence just to add variety.\n' +
-    '• "prompt" = English instruction telling exactly what to SAY (e.g. "Tell her you want to go to the airport" or "Ask if there are three seats") — not a translation\n' +
+    (cueClarityOn() ? '' : '• "prompt" = English instruction telling exactly what to SAY (e.g. "Tell her you want to go to the airport" or "Ask if there are three seats") — not a translation\n') +
     '• "english" = natural fluent English — NOT word-for-word. Examples: ผมไม่รู้ → "I have no idea", น่าเห็นใจ → "that\'s unfortunate" (NOT "that\'s very sympathetic"), น่าสนใจ → "that\'s interesting", แย่จัง → "oh no" or "that\'s too bad"\n' +
     (numberHint ? numberHint + '\n' : '') +
     'Return ONLY JSON array of exactly 3 objects:\n' +
@@ -17258,6 +17261,7 @@ function thaiCueFormRepair(p) {
   if (!thaiCueFormProblems(p).length) return null
   const en = String(p.english || '').trim().replace(/[.!]+$/, '')
   if (en.length < 4 || /[\u0e00-\u0e7f]/.test(en)) return null
+  if (cueClarityOn()) { const cc = cueFromEnglish('th', p.english, p.thai, cueClarityCtx('th')); if (cc && !thaiCueFormProblems({ ...p, prompt: cc }).length) return cc }
   const q = /[?？]\s*$/.test(en)
   const cue = q ? 'Ask: ' + en.replace(/[?？]\s*$/, '') + '?' : 'Tell the other person: ' + en + '.'
   return thaiCueFormProblems({ ...p, prompt: cue }).length ? null : cue
@@ -17267,11 +17271,479 @@ function thaiCueFormRepair(p) {
 function thaiLocalCueRepair(l) {
   const en = String((l && l.english) || '').trim().replace(/[.!]+$/, '')
   if (en.length < 8 || /[\u0e00-\u0e7f]/.test(en)) return null
+  // v696: the rebuilt cue is a short instruction ("Say you came by songthaew."), not "Tell the other person: I came by songthaew."
+  if (cueClarityOn()) { const cc = cueFromEnglish('th', l.english, l.thai, cueClarityCtx('th')); if (cc && !thaiCueFormProblems({ ...l, prompt: cc }).length) return cc !== l.prompt ? cc : null }
   const isQ = /\?$/.test(en) || /ไหม|มั้ย|หรือเปล่า|หรือยัง|อะไร|ที่ไหน|ใคร|ทำไม|ยังไง|เมื่อไหร่|เท่าไหร่|กี่/.test(String(l.thai || ''))
   // v669 §10: never the generic "Say: …" template (the final audit rejects it as a fallback cue — v668 lost a valid จ่าย pair
   // that way); a statement is cued as what to tell the other person
   const cue = isQ ? 'Ask: ' + en.replace(/\?$/, '') + '?' : 'Tell the other person: ' + en + '.'
   return cue !== l.prompt ? cue : null
+}
+// ══ v696 DAILY CUE CLARITY ═════════════════════════════════════════════════════════════════════════════════════════════
+// The learner-facing English cue is for RECALL, not for generation: it says the speaking act and exactly the meaning the
+// sentence expresses ("Say you don't want any salt.", "Ask where the station is."). The generators see a rich scene and
+// were told to "describe what the speaker says" with third-person examples ("He says …", "She asks …"), so the scene
+// leaked into the cue ("Tell her you don't want any salt with the shrimp order", "… since you're ordering to share"), and
+// the fallback rebuild copied the English after a template ("Tell the other person: I came by songthaew.").
+// cueClarify() is DETERMINISTIC and idempotent, and edits only the cue — never the sentence, its English, its target or
+// its pronunciation. It (1) turns third-person narration into an instruction to the speaker, (2) turns "Ask: …?" /
+// "Tell the other person: …" copies into reported form, (3) removes background the sentence does not express (a clause or
+// phrase none of whose words are in the verified meaning), and (4) rebuilds the cue from the verified meaning when its core
+// names something the sentence does not say. Every change is checked: questions stay questions, negation, numbers,
+// comparison and "already / still / too / only / might" are kept unless they were inside removed background. The English
+// translation is the verified meaning only where it agrees with the sentence (negation / comparison markers); where it
+// does not, it is FLAGGED (a meaning error for review), never used to rebuild the cue.
+// Classes (brief §7): A meaning mismatch (cue or translation says what the sentence does not) · B background only (cue
+// shortened, sentence untouched) · C contextual interpretation (an elided referent kept from the dialogue) · D unchanged.
+const CUE_CLARITY_VERSION = 'cue-clarity-1'
+let CUE_CLARITY_ACTIVE = true
+function cueClarityOn() { return dailyV693On() && CUE_CLARITY_ACTIVE }
+function setCueClarity(on) { const was = CUE_CLARITY_ACTIVE; CUE_CLARITY_ACTIVE = !!on; return was }
+// the cue contract every Daily generator now asks for (replaces "a third-person cue that describes what is said")
+const DAILY_CUE_CONTRACT = 'prompt = a SHORT instruction to the speaker: the speaking act + exactly what the sentence says, ' +
+  'in the second person ("Say you want some water." · "Ask where the station is." · "Suggest going together." · "Tell her to go straight, then turn left."). ' +
+  'Keep negation, question vs statement, time, numbers, comparison and words like already / still / too / might. Name the other person only when the ' +
+  'sentence is addressed to them or it is needed. NEVER narrate ("He tells her…", "She asks…"), never give the scene, reasons or background ' +
+  '("since…", "because you are at…", "to share with…", "pointing at…", "in a casual tone"), and never say what the sentence does not say. Usually 4–12 words.'
+function dailyCueRule(legacy) { return cueClarityOn() ? DAILY_CUE_CONTRACT : legacy }
+// the cue judges classify (brief §7) — a cue that only carries extra background is a CUE defect, never a reason to change the sentence
+const CUE_JUDGE_CLASS_RULE = 'CUE CLASSES — for every item also return "cls": "D" = the cue asks for exactly what the sentence says · ' +
+  '"B" = the cue only adds background the sentence does not say (scene, reason, manner, place): score 4 — it is never a reason to change the sentence · ' +
+  '"C" = the sentence leaves out a referent the dialogue makes clear and the cue names it: score 5 · ' +
+  '"A" = the cue or the English says something the sentence does not (another thing, a negation, a comparison, a number, a time, question vs statement): score 1–3.'
+
+const CC_STOP = new Set(('a an the this that these those it its it\'s is are am was were be been being do does did done to of in on at for with from by as and or ' +
+  'but if whether so then too also just only really very much more most less some any no not never there here now what where when who whom whose why how which ' +
+  'you your yours yourself he him his himself she her hers herself they them their theirs themselves we us our ours i me my mine myself one ones please can could ' +
+  'will would should shall may might must have has had get gets got getting go goes going went come comes came let lets let\'s say says said tell tells told ask asks ' +
+  'asked suggest suggests offer offers want wants like likes need needs know knows think thinks make makes take takes took give gives see sees look looks okay ok ' +
+  'yes yeah sure well oh right other person friend friends them\'re that\'s there\'s what\'s don\'t doesn\'t didn\'t isn\'t aren\'t won\'t can\'t i\'m you\'re ' +
+  'he\'s she\'s we\'re they\'re i\'ll you\'ll he\'ll she\'ll we\'ll they\'ll i\'ve you\'ve we\'ve again still already about even since because while after before ' +
+  'until though although unless during through into onto over under between among behind across around off out up down away back yet either each every all both').split(/\s+/))
+// paraphrases the support test accepts (cue word → words of the English that express it)
+const CC_SYN = { cost: ['how much', 'price', 'baht', 'yen', 'expensive', 'cheap'], costs: ['how much', 'price', 'baht', 'yen', 'expensive', 'cheap'], price: ['how much', 'cost', 'expensive', 'cheap'],
+  pricey: ['expensive'], expensive: ['pricey', 'cost'], tasty: ['delicious', 'good'], delicious: ['tasty', 'good'], big: ['large'], large: ['big'], small: ['little'], little: ['small', 'bit'],
+  bigger: ['larger'], larger: ['bigger'], amount: ['little', 'bit', 'lot'], lot: ['many', 'much'], many: ['lot'], late: ['late'], arrive: ['get there', 'here', 'come'], agree: [', right', 'isn\'t it', 'don\'t you think', ' huh', ', eh', 'right?', 'aren\'t'],
+  agreement: [', right', 'isn\'t it', 'don\'t you think', ' huh', 'right?'], check: [', right', 'isn\'t it', 'right?'], quick: ['fast'], fast: ['quick'], soon: ['quick', 'shortly'],
+  meal: ['food', 'eat'], food: ['meal', 'eat'], lunch: ['midday', 'noon'], midday: ['lunch', 'noon'], noon: ['midday', 'lunch'], place: ['spot', 'there'], spot: ['place'],
+  restaurant: ['shop', 'place'], shop: ['store', 'place'], phone: ['call'], call: ['phone'], ride: ['take'], trip: ['travel', 'go out'], van: ['van'],
+  very: ['really', 'so ', 'so,'], good: ['worth', 'fine', 'nice', 'okay'], deal: ['worth'], really: ['very', 'so '], order: ['get', 'take', 'have', 'want', 'buy'], arrive: ['come', 'late', 'get there', 'get here'], leave: ['go', 'set off', 'head'],
+  time: ['make it', 'in time', 'enough'], back: ['home', 'return', 'head'], enough: ['time'], seven: ['7'], eight: ['8'], five: ['5'], thousand: ['1000', '1,000'] }
+// unsupported VERBS never trigger a rebuild (the English paraphrases them: order ≈ get, leave ≈ go) — only things / qualities do
+const CC_VERBISH = new Set(('leave arrive use order turn park rent cross eat drink buy sell pay wait come go get take put open close walk drive ride sit stand sleep cook wash ' +
+  'clean call send bring carry hold keep help start finish stop try need want like love know think feel see look watch hear listen read write speak talk play work study ' +
+  'learn teach live stay visit meet change move return decide plan choose check share add ahead back supposed going head make made show find lose win spend save ' +
+  'agree answer reply mention explain suggest offer ask tell say pick fill hurry relax worry miss catch join follow arrive deciding ordering sharing').split(/\s+/))
+const CC_NEG = /\b(not|no|never|nothing|none|nobody|neither|nor|can't|cannot|don't|doesn't|didn't|isn't|aren't|wasn't|weren't|won't|wouldn't|shouldn't|haven't|hasn't|couldn't|mustn't)\b|n't\b/gi
+const CC_COMP = /\b(more|less|better|worse|than|cheaper|bigger|smaller|larger|faster|slower|easier|harder|closer|nearer|further|farther|longer|shorter|higher|lower|hotter|colder|newer|older|quicker|tastier|spicier)\b/gi
+const CC_MODS = ['already', 'still', 'too', 'also', 'only', 'just', 'might', 'maybe', 'again', 'yet', 'probably']
+const CC_NUMW = /\b(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand)\b/gi
+// target-language markers: negation · comparison · question (the English is trusted only where it agrees with the sentence)
+const CC_LANG = {
+  th: { neg: /ไม่|อย่า|ห้าม/, comp: /กว่า|ที่สุด/, q: /(ไหม|มั้ย|หรือเปล่า|หรือยัง|หรือไม่|เหรอ|หรอ|ใช่ไหม|อะไร|ที่ไหน|ไหน|ใคร|ทำไม|ยังไง|อย่างไร|เมื่อไหร่|เมื่อไร|เท่าไหร่|เท่าไร|กี่)/,
+    here: /ที่นี่|ตรงนี้|แถวนี้/, there: /ที่นั่น|ตรงนั้น|โน่น|นั้น/, now: /ตอนนี้|เดี๋ยวนี้/, today: /วันนี้/, already: /แล้ว/, still: /ยัง/, too: /ด้วย|เหมือนกัน|เกินไป/, only: /แค่|เท่านั้น|นิดเดียว/, again: /อีก/, maybe: /อาจจะ|คง/ },
+  ja: { neg: /ない|ません|なかった|じゃない|ではない|ず[、。]|いいえ/, comp: /より|ほう|もっと|一番|どっち|どちら/, q: /[？?]$|か[。！!]?$/,
+    here: /ここ/, there: /あそこ|そこ|あれ/, now: /今/, today: /今日/, already: /もう/, still: /まだ/, too: /も|すぎ/, only: /だけ|しか/, again: /また/, maybe: /かも|でしょう|だろう/ },
+  zh: { neg: /不|没|别/, comp: /比|更|最|一点|一些|哪个|哪一个/, q: /[？?]$|[吗呢][。？?]?$/,
+    here: /这里|这儿/, there: /那里|那儿/, now: /现在/, today: /今天/, already: /已经|了/, still: /还/, too: /也|太/, only: /只|就/, again: /再|又/, maybe: /可能|也许|吧/ },
+}
+const CC_DEIXIS = { here: 'here', there: 'there', now: 'now', today: 'today', already: 'already', still: 'still', too: 'too', also: 'too', only: 'only', again: 'again', maybe: 'maybe', might: 'maybe' }
+const CC_VERB_BASE = { tells: 'Tell', says: 'Say', asks: 'Ask', suggests: 'Suggest', offers: 'Offer', agrees: 'Agree', answers: 'Answer', replies: 'Reply', explains: 'Explain',
+  apologises: 'Apologise', apologizes: 'Apologize', thanks: 'Thank', invites: 'Invite', declines: 'Decline', refuses: 'Refuse', accepts: 'Accept', greets: 'Greet',
+  wishes: 'Wish', warns: 'Warn', reminds: 'Remind', admits: 'Admit', adds: 'Add', checks: 'Check', confirms: 'Confirm', mentions: 'Mention', proposes: 'Propose',
+  recommends: 'Recommend', promises: 'Promise', insists: 'Insist', complains: 'Complain', points: 'Point', responds: 'Respond', informs: 'Tell', notes: 'Say', wraps: 'Wrap', remarks: 'Say', states: 'Say', comments: 'Say' }
+const CC_GERUND_BASE = { asking: 'Ask', saying: 'Say', telling: 'Tell', suggesting: 'Suggest', declining: 'Decline', agreeing: 'Agree', offering: 'Offer', answering: 'Answer',
+  apologising: 'Apologise', apologizing: 'Apologize', accepting: 'Accept', checking: 'Check', thanking: 'Thank', replying: 'Reply', explaining: 'Explain', greeting: 'Greet', wrapping: 'Wrap', confirming: 'Confirm', inviting: 'Invite', refusing: 'Refuse' }
+const CC_ADV = new Set(['really', 'also', 'just', 'still', 'already', 'never', 'always', 'often', 'only', 'even', 'probably', 'actually', 'then', 'usually', 'definitely', 'not'])
+const CC_IRREG_3SG = { is: 'are', was: 'were', has: 'have', does: 'do', "doesn't": "don't", "isn't": "aren't", "wasn't": "weren't", "hasn't": "haven't", goes: 'go' }
+const CC_BASE_VERBS = new Set(('go come take get eat drink buy use wait look check turn cross have try sit stand walk drive run order pay give bring put stop park rent call answer help ' +
+  'let leave hurry move open close carry keep choose pick sleep rest stay show follow meet join tell ask say be relax hold slow speed').split(' '))
+const ccCap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+const ccHasWord = (text, w) => new RegExp('(^|[^a-zà-ÿ\'])' + String(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-zà-ÿ])').test(String(text || ''))
+const ccWords = s => String(s || '').toLowerCase().replace(/[“”"]/g, '').match(/[a-zà-ÿ][a-zà-ÿ'’-]*/g) || []
+const ccStem = w => { w = w.replace(/[’']s$/, '').replace(/[’']$/, ''); if (w.length > 4 && /ies$/.test(w)) return w.slice(0, -3) + 'y'; if (w.length > 5 && /(ches|shes|sses|xes)$/.test(w)) return w.slice(0, -2)
+  if (w.length > 3 && /[^s]s$/.test(w)) w = w.slice(0, -1); if (w.length > 5 && /ing$/.test(w)) w = w.slice(0, -3); else if (w.length > 4 && /ed$/.test(w)) w = w.slice(0, -2); return w }
+function ccSig(s) {
+  const t = String(s || ''), l = t.toLowerCase()
+  return { neg: (l.replace(/^\s*no[,.!]\s*/, '').replace(/,?\s*(isn't it|aren't you|aren't they|don't you( think)?|doesn't it|isn't that|won't you|didn't you)\s*[?.!]*\s*$/, '').match(CC_NEG) || []).length, comp: (l.match(CC_COMP) || []).filter(w => !/^(than)$/.test(w)).length, nums: (l.match(CC_NUMW) || []).map(x => ({ 7: 'seven', 8: 'eight', 5: 'five', 1: 'one', 2: 'two', 3: 'three', 4: 'four', 6: 'six', 9: 'nine', 10: 'ten', 1000: 'thousand' })[x.toLowerCase()] || x.toLowerCase()).sort().join(','),
+    mods: CC_MODS.filter(m => new RegExp('\\b' + m + '\\b').test(l)) }
+}
+// is this cue word expressed by the verified meaning (its English), or — for deixis / aspect words — by the sentence itself?
+function ccSupported(w, enL, enStems, lang, sent, sentGloss) {
+  const st = ccStem(w)
+  if (enStems.has(st) || ccHasWord(enL, w)) return true
+  if (sentGloss && (sentGloss.has(w) || sentGloss.has(st))) return true
+  if ((CC_SYN[w] || CC_SYN[st] || []).some(x => enL.includes(x))) return true
+  const dx = CC_DEIXIS[w], M = CC_LANG[lang]
+  if (dx && M && M[dx] && M[dx].test(sent || '')) return true
+  return false
+}
+// person shifting. Addressee "you" → they/them/their (singular they needs no verb change); speaker "I" → you.
+const CC_ADDR = { you: 'they', your: 'their', yours: 'theirs', yourself: 'themselves', "you're": "they're", "you've": "they've", "you'll": "they'll", "you'd": "they'd" }
+const CC_SPK = { i: 'you', me: 'you', my: 'your', mine: 'yours', myself: 'yourself', "i'm": "you're", "i've": "you've", "i'll": "you'll", "i'd": "you'd" }
+function ccShiftPersons(s, o) {
+  o = o || {}
+  const tag = (String(s).match(/,?\s*(don't you think|aren't you|isn't it|right|huh)\s*[?.!]*\s*$/i) || [''])[0]
+  if (tag) return ccShiftPersons(String(s).slice(0, String(s).length - tag.length), o) + tag
+  // tokens with their separators kept
+  const parts = String(s).split(/(\s+|[,.!?;:])/)
+  let prevWord = ''
+  const out = parts.map((tok, k) => {
+    if (!tok || /^\s+$/.test(tok) || /^[,.!?;:]$/.test(tok)) return tok
+    const low = tok.toLowerCase().replace(/’/g, "'")
+    let rep = null
+    if (o.addressee !== false && o.addr && /^(your|yours|yourself)$/.test(low)) rep = ({ your: o.addr === 'm' ? 'his' : 'her', yours: o.addr === 'm' ? 'his' : 'hers', yourself: o.addr === 'm' ? 'himself' : 'herself' })[low]
+    else if (o.addressee !== false && CC_ADDR[low] != null) {
+      // "you" after a verb / preposition is an object → them
+      rep = low === 'you' && prevWord && !/^(and|or|but|if|that|so|when|because|whether|then|,)$/.test(prevWord) && !/^(are|were|have|had|will|would|can|could|should|do|did|don't|didn't)$/.test(prevWord) && k > 0 && !/^(is|are|was|were)$/.test(nextWord(parts, k)) && !CC_BASE_VERBS.has(nextWord(parts, k)) && !/^(want|need|like|know|think|feel|have|can|will|should|must|might|could|would|really|also|just|still|already|don't|didn't|are|were|'re)$/.test(nextWord(parts, k)) ? 'them' : CC_ADDR[low]
+    } else if (CC_SPK[low] != null) rep = CC_SPK[low]
+    if (rep == null) { prevWord = low; return tok }
+    prevWord = low
+    if (rep === 'them' && o.addr) rep = o.addr === 'm' ? 'him' : 'her'
+    return tok.charAt(0) === tok.charAt(0).toUpperCase() && k > 0 && low !== 'i' && !/^i'/.test(low) ? ccCap(rep) : rep
+  })
+  // "you am / you was" after a shifted I
+  return out.join('').replace(/\byou am\b/gi, 'you are').replace(/\byou was\b/gi, 'you were').replace(/\bthem are\b/g, 'they are')
+}
+function nextWord(parts, k) { for (let j = k + 1; j < parts.length; j++) { const t = parts[j]; if (t && !/^\s+$/.test(t) && !/^[,.!?;:]$/.test(t)) return t.toLowerCase(); if (/^[,.!?;:]$/.test(t || '')) return t } return '' }
+// "he likes" → "you like": the verb after the replaced speaker pronoun loses its third-person -s (skipping adverbs)
+function ccDeinflectAfter(words, i) {
+  let j = i + 1
+  while (j < words.length && CC_ADV.has(words[j].toLowerCase())) j++
+  if (j >= words.length) return
+  const w = words[j], low = w.toLowerCase().replace(/[.,!?]+$/, ''), tail = w.slice(low.length)
+  if (CC_IRREG_3SG[low]) { words[j] = CC_IRREG_3SG[low] + tail; return }
+  if (/^(can|could|will|would|should|shall|may|might|must|'ll)$/.test(low)) return
+  if (/[^s]ies$/.test(low)) words[j] = low.slice(0, -3) + 'y' + tail
+  else if (/(ches|shes|sses|xes|oes)$/.test(low)) words[j] = low.slice(0, -2) + tail
+  else if (/[^su]s$/.test(low) && low.length > 2) words[j] = low.slice(0, -1) + tail
+}
+// third-person narration about the SPEAKER → second person (he / his / himself, or she / her / herself)
+function ccSpeakerToYou(s, g) {
+  if (!g) return s
+  const W = String(s).split(' ')
+  for (let i = 0; i < W.length; i++) {
+    const raw = W[i], low = raw.toLowerCase().replace(/[.,!?]+$/, ''), tail = raw.slice(low.length)
+    if ((g === 'm' && low === 'he') || (g === 'f' && low === 'she')) { W[i] = 'you' + tail; ccDeinflectAfter(W, i) }
+    else if ((g === 'm' && low === "he's") || (g === 'f' && low === "she's")) W[i] = "you're" + tail
+    else if ((g === 'm' && low === "he'll") || (g === 'f' && low === "she'll")) W[i] = "you'll" + tail
+    else if ((g === 'm' && low === "he'd") || (g === 'f' && low === "she'd")) W[i] = "you'd" + tail
+    else if ((g === 'm' && low === 'his') || (g === 'f' && low === 'her' && W[i + 1] && !CC_STOP.has(W[i + 1].toLowerCase().replace(/[.,!?]+$/, '')) && !/[.,!?]$/.test(raw))) W[i] = 'your' + tail
+    else if ((g === 'm' && low === 'himself') || (g === 'f' && low === 'herself')) W[i] = 'yourself' + tail
+  }
+  return W.join(' ')
+}
+const CC_PRED_START = new Set(('far near close big small cheap expensive good okay ok fine tasty delicious hot cold spicy open closed ready free busy here there in on at from to ' +
+  'with for really very too still already yellow red blue green white black new old nice easy hard difficult quick fast slow full empty right wrong true late early worth ' +
+  'enough much many a an the').split(' '))
+// subject of an inverted question: pronoun / "this|that (one|NOUN)" / "the … NOUN" before the first predicate word
+function ccSubject(tokens) {
+  if (!tokens.length) return null
+  const t0 = tokens[0].toLowerCase()
+  if (/^(you|i|we|he|she|it|they|there)$/.test(t0)) return 1
+  if (/^(this|that|these|those)$/.test(t0)) { const t1 = (tokens[1] || '').toLowerCase(); if (/^(one|ones)$/.test(t1)) return 2; if (!t1 || CC_PRED_START.has(t1) || tokens.length < 3) return 1; return 2 }
+  if (/^(the|your|my|his|her|our|their|any|some)$/.test(t0)) { for (let k = 2; k < tokens.length; k++) if (CC_PRED_START.has(tokens[k].toLowerCase()) || /ing$|ed$/.test(tokens[k])) return k; return tokens.length <= 3 ? tokens.length : null }
+  if (/^[A-Z]/.test(tokens[0])) return 1
+  return null
+}
+const CC_SUBJ = { you: 'they', i: 'you', we: 'we', he: 'he', she: 'she', it: 'it', they: 'they', there: 'there', this: 'this', that: 'that', these: 'these', those: 'those' }
+function ccBeFor(subj, be) { const s = subj.toLowerCase(); if (/^(he|she)$/.test(s)) return /^(was|were)$/.test(be) ? 'was' : 'is'; if (/^(they|you|we|these|those)$/.test(s)) return /^(was|were)$/.test(be) ? 'were' : 'are'; if (s === 'i') return be === 'was' ? 'was' : 'am'; return be }
+// a direct English question → reported clause ("if they want to eat together" · "where we buy the tickets"), or null
+function ccIndirect(q, addr) {
+  let s = String(q || '').trim().replace(/[?？]+\s*$/, '')
+  if (!s || /[?.!]\s/.test(s) || /^(okay|ok|so|really|well|oh|hey|then|good|great|sure|yes|no)\b[,!]/i.test(s)) return null
+  const T = s.split(/\s+/), L = T.map(x => x.toLowerCase())
+  const map = arr => ccShiftPersons(arr.join(' '), { addr })
+  const mapSubj = arr => { const l0 = arr.length === 1 && arr[0].toLowerCase(); if (l0 === 'you' && addr) return addr === 'm' ? 'he' : 'she'
+    const one = arr.length === 1 && CC_SUBJ[l0]; return one ? one : map(arr) }
+  if (/^(is|are|was|were|am)$/.test(L[0])) {
+    const n = ccSubject(T.slice(1)); if (n == null) return null
+    const subjArr = T.slice(1, 1 + n), subj = mapSubj(subjArr), pred = T.slice(1 + n)
+    return 'if ' + subj + ' ' + ccBeFor(subj, L[0]) + (pred.length ? ' ' + map(pred) : '')
+  }
+  if (/^(do|does)$/.test(L[0])) {
+    const n = ccSubject(T.slice(1)); if (n == null || n > 1) return null
+    const subj = mapSubj(T.slice(1, 2)), rest = T.slice(2); if (!rest.length) return null
+    if (/^(he|she|it|this|that)$/.test(subj)) { const W = [subj].concat(rest); ccInflect3sg(W, 0); return 'if ' + map(W) }
+    return 'if ' + subj + ' ' + map(rest)
+  }
+  if (/^(can|could|will|would|should|shall|may|might|must|have|has)$/.test(L[0])) {
+    const n = ccSubject(T.slice(1)); if (n == null) return null
+    const subj = mapSubj(T.slice(1, 1 + n)), rest = T.slice(1 + n); if (!rest.length) return null
+    let m = L[0] === 'shall' ? 'should' : L[0]
+    if (/^(have|has)$/.test(m)) m = /^(they|you|we|i)$/.test(subj) ? 'have' : 'has'
+    return 'if ' + subj + ' ' + m + ' ' + map(rest)
+  }
+  if (/^(want|wanna)$/.test(L[0]) && T.length > 1) return 'if ' + (addr ? (addr === 'm' ? 'he wants ' : 'she wants ') : 'they want ') + map(T.slice(1))
+  const wh = s.match(/^(what|where|when|who|why|which(?:\s+\w+)?|how(?:\s+(?:much|many|long|far|old|often))?)\s+(.*)$/i)
+  if (wh) {
+    const W = wh[1].toLowerCase(), R = wh[2].split(/\s+/), RL = R.map(x => x.toLowerCase())
+    if (/^(is|are|was|were)$/.test(RL[0])) {
+      const n = ccSubject(R.slice(1))
+      if (n == null) return W + ' ' + map(R)                                          // "what is over there" — the wh word is the subject
+      const subj = mapSubj(R.slice(1, 1 + n)), pred = R.slice(1 + n)
+      return W + ' ' + subj + ' ' + ccBeFor(subj, RL[0]) + (pred.length ? ' ' + map(pred) : '')
+    }
+    if (/^(do|does)$/.test(RL[0])) { const n = ccSubject(R.slice(1)); if (n == null || n > 1) return null
+      const subj = mapSubj(R.slice(1, 2)), rest = R.slice(2); if (!rest.length) return null
+      if (/^(he|she|it|this|that)$/.test(subj)) { const X = [subj].concat(rest); ccInflect3sg(X, 0); return W + ' ' + map(X) }
+      return W + ' ' + subj + ' ' + map(rest) }
+    if (/^(did|didn't|don't|doesn't|aren't|isn't)$/.test(RL[0])) return null
+    if (/^(can|could|will|would|should|shall)$/.test(RL[0])) { const n = ccSubject(R.slice(1)); if (n == null) return null
+      const subj = mapSubj(R.slice(1, 1 + n)), rest = R.slice(1 + n); return W + ' ' + subj + ' ' + (RL[0] === 'shall' ? 'should' : RL[0]) + (rest.length ? ' ' + map(rest) : '') }
+    return W + ' ' + map(R)                                                            // "which bus routes serve this stop"
+  }
+  return null
+}
+function ccInflect3sg(W, i) {
+  let j = i + 1; while (j < W.length && CC_ADV.has(W[j].toLowerCase())) j++
+  if (j >= W.length) return
+  const w = W[j].toLowerCase()
+  const irr = { be: 'is', have: 'has', do: 'does', go: 'goes', "don't": "doesn't" }
+  if (irr[w]) W[j] = irr[w]
+  else if (/[^aeiou]y$/.test(w)) W[j] = w.slice(0, -1) + 'ies'
+  else if (/(ch|sh|ss|x|o)$/.test(w)) W[j] = w + 'es'
+  else if (!/s$/.test(w)) W[j] = w + 's'
+}
+const ccLowerFirst = (s, names) => { const w = (String(s).match(/^[A-Za-z']+/) || [''])[0]
+  if (!w || w === 'I' || /^I'/.test(w) || (names || []).includes(w) || /^[A-Z]{2,}/.test(w)) return s
+  return CC_STOP.has(w.toLowerCase()) || CC_BASE_VERBS.has(w.toLowerCase()) || /^[A-Z][a-z]+$/.test(w) && !/^(Thai|Japanese|Chinese|Mandarin|English|Bangkok|Tokyo|Beijing|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/.test(w) ? w.toLowerCase() + s.slice(w.length) : s }
+const ccEnd = s => { s = String(s).trim().replace(/\s+/g, ' ').replace(/\s+([,.!?])/g, '$1').replace(/[,;:\s]+$/, ''); return /[.!?]$/.test(s) ? s : s + '.' }
+// the cue built from the VERIFIED meaning (the line's English, where it agrees with the sentence)
+function cueFromEnglish(lang, en, sentence, ctx) {
+  ctx = ctx || {}
+  // ", you know" (よ / นะ emphasis) is not something to say; agreement tags stay as they are
+  const e = String(en || '').trim().replace(/[.!。！]+$/, '').replace(/,\s*(you know|huh|eh)$/i, '')
+  if (e.length < 2 || /[฀-๿぀-ヿ一-鿿]/.test(e)) return null
+  const M = CC_LANG[lang] || CC_LANG.th
+  const isQ = /[?？]\s*$/.test(e) || (lang === 'th' ? /(ไหม|มั้ย|หรือเปล่า|หรือยัง|เหรอ|หรอ)\s*(ครับ|ค่ะ|คะ|คับ|จ้ะ|จ๊ะ|นะ)?\s*$/.test(sentence || '') : M.q.test(String(sentence || '').trim()))
+  // a leading connective stays in front of the instruction ("Then where do cars park?" → "Then ask where cars park.")
+  const lead = (e.match(/^(then)\s+/i) || e.match(/^(then|so|okay|ok|sure|well|alright|in that case)(?:,\s*|\s+(?=(?:i|you|we|he|she|they|it|let's|let|this|that|what|where|when|who|why|how|which|is|are|do|does|can|will|shall|then)\b))/i) || [])
+  if (lead[0] && e.length > lead[0].length + 3) {
+    const rest = e.slice(lead[0].length), l1 = lead[1].toLowerCase()
+    if (/^let'?s\b/i.test(rest)) return cueFromEnglish(lang, rest, sentence, ctx)
+    const r = cueFromEnglish(lang, ccCap(rest), sentence, ctx)
+    if (!r || /^Ask:/.test(r)) return isQ ? ccEnd('Ask: ' + e.replace(/[?？]*$/, '?')).replace(/\?\.$/, '?') : r
+    if (/^(then|so|in that case)$/.test(l1)) return /^Then\b/.test(r) ? r : ccEnd('Then ' + r.charAt(0).toLowerCase() + r.slice(1))
+    const rs = r.replace(/^(?:Then say|Say)\s+/, m0 => /Then/.test(m0) ? 'then ' : '')
+    return rs !== r ? ccEnd('Say ' + l1 + ', ' + rs) : ccEnd('Say ' + l1 + ', then ' + r.charAt(0).toLowerCase() + r.slice(1))
+  }
+  if (isQ) {
+    if (/^shall we\b/i.test(e)) return ccEnd('Suggest we ' + ccShiftPersons(e.replace(/^shall we\s+/i, '').replace(/[?？]+$/, '')))
+    if (/^(how about|what about)\b/i.test(e)) return ccEnd('Suggest ' + ccShiftPersons(e.replace(/^(how|what) about\s+/i, '').replace(/[?？]+$/, '')))
+    const ind = ccIndirect(e, ctx.addr)
+    return ind ? ccEnd('Ask ' + ind) : ccEnd('Ask: ' + e.replace(/[?？]*$/, '?')).replace(/\?\.$/, '?')
+  }
+  if (/^let'?s\b/i.test(e)) return ccEnd('Suggest we ' + ccShiftPersons(e.replace(/^let'?s\s+/i, '')))
+  if (/^(don't|do not|never)\s+[a-z]/i.test(e)) return ccEnd('Tell them not to ' + ccShiftPersons(e.replace(/^(don't|do not|never)\s+/i, '')))
+  const first = (e.match(/^(?:just\s+|please\s+)?([a-z]+)/i) || [])[1]
+  if (first && CC_BASE_VERBS.has(first.toLowerCase()) && !/^(i|you|we|he|she|they)\b/i.test(e)) return ccEnd('Tell them to ' + ccShiftPersons(ccLowerFirst(e, ctx.names)))
+  const yv = e.match(/^(?:then\s+)?you(?:\s+should)?\s+([a-z]+)\b(.*)$/i)
+  if (yv && CC_BASE_VERBS.has(yv[1].toLowerCase()) && !/^(have|are|were)$/i.test(yv[1])) return ccEnd('Tell them to ' + yv[1].toLowerCase() + ccShiftPersons(yv[2]))
+  const yc = e.match(/^(.*?),\s*you\s+([a-z]+)\b(.*)$/i)
+  if (yc && CC_BASE_VERBS.has(yc[2].toLowerCase()) && !/\byou\b/i.test(yc[1])) return ccEnd('Say ' + ccShiftPersons(ccLowerFirst(yc[1], ctx.names)) + ' and tell them to ' + yc[2].toLowerCase() + ccShiftPersons(yc[3]))
+  return ccEnd('Say ' + ccShiftPersons(ccLowerFirst(e, ctx.names)))
+}
+// trailing / inserted background: openers of a clause or phrase that may be removed when NONE of its words is in the meaning
+const CC_BG_TRAIL = /(?:,\s*(?=pointing\b)|,\s*|\s+)(?=(?:pointing|since|because|as you|as an alternative|so (?:that|you|they|we|she|he)|so you two|to share|to go with|to add|following|while|in case|sounding|seeking|before (?:you|they|we|she|he)|by asking|with a [a-z]+ tone|in a [a-z]+ (?:way|tone|voice)|on the walk|on foot|for the day|at the (?:next|café|cafe|table|shop|counter|display|menu)|on the (?:menu|table|display|way)|with the [a-z]+|from here|here|instead|casually|warmly|softly|happily|gently|cheerfully|not a lot|not (?:today|tomorrow|yesterday|now|here|there)|to (?:him|her|them)|close to|after (?:[AB]|they|he|she|you|your friend) (?:said|asked|says|asks))\b)/gi
+const CC_BG_INSERT = /,\s*(?:with a [a-z ]+ tone|in a [a-z]+ (?:way|tone|voice)|as you [a-z ]+|while [a-z ]+|on the walk|pointing [a-z ]+|following [a-z ]+|casually|softly|warmly|politely|happily|then)\s*,/gi
+const CC_MANNER = /^(?:casually|warmly|softly|gently|happily|cheerfully)\s+/i
+function cueClarify(lang, p, ctx) {
+  ctx = ctx || {}
+  const cue0 = String(p && p.prompt || '').trim(), en = String(p && p.english || '').trim()
+  const sent = String((p && (p.thai || p.japanese || p.chinese)) || '').trim()
+  const res = { cue: cue0, changed: false, cls: 'D', reasons: [], flags: [] }
+  if (!cue0 || !en || !sent) return res
+  const framing = !!(p.pairType === 'framing' || p._framing || /^(greet|say goodbye|greeting)/i.test(cue0))
+  const enL = en.toLowerCase(), enStems = new Set(ccWords(en).map(ccStem))
+  const M = CC_LANG[lang] || CC_LANG.th
+  const g = ctx.genderOf ? ctx.genderOf(p) : null
+  if (ctx.addr === undefined && ctx.addrOf) ctx = { ...ctx, addr: ctx.addrOf(p) || null }
+  const names = ctx.names || []
+  // what the SENTENCE says, word by word: the glosses of the learner's words it contains (the English may leave one out —
+  // ต้องข้ามสะพาน "you have to cross" keeps "cross"; เลี้ยวซ้ายหรือเลี้ยวขวา "left or right?" still says "turn")
+  const sentGloss = new Set()
+  ;(ctx.lexicon || []).forEach(x => { if (x.s && sent.includes(x.s)) x.g.forEach(w => sentGloss.add(w)) })
+  let cue = cue0
+  const note = r => { if (!res.reasons.includes(r)) res.reasons.push(r) }
+  // ── meaning check FIRST: is the English the verified meaning? (translation vs sentence)
+  const enSig = ccSig(en), sentNeg = M.neg.test(sent), sentComp = M.comp.test(sent)
+  const enTrusted = !(enSig.comp > 0 && !sentComp && !/\bthan\b|\bmore\b|\bless\b/.test(enL) && /\b\w+er\b/.test(enL.replace(/\b(other|ever|never|over|after|later|water|number|together|whether|either|neither|corner|dinner|order|paper|sister|brother|mother|father|teacher|weather|super)\b/g, '')))
+  if (!enTrusted) res.flags.push('TRANSLATION_ADDS_COMPARISON: the English compares ("' + en + '") but the sentence has no comparison marker')
+  if (enSig.neg > 0 && !sentNeg && lang !== 'ja') res.flags.push('TRANSLATION_ADDS_NEGATION: the English is negative ("' + en + '") but the sentence has no negation')
+  // ── 1. narration → instruction
+  cue = cue.replace(/^As [A-Z][a-z]+,\s*/, '')
+  cue = cue.replace(CC_MANNER, '')
+  let m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+(tells|says to|informs)\s+(her|him|them|you|the other person|[A-Z][a-z]+)\s*(?:,\s*)?(?:that\s+)?(.*)$/)
+  const subjG = x => x === 'He' ? 'm' : x === 'She' ? 'f' : g
+  if (m) { const og = subjG(m[1]), obj = m[3]
+    const rest = ccSpeakerToYou(m[4], og)
+    cue = obj === 'you' ? 'Say ' + rest : 'Tell ' + obj + ' ' + rest; note('NARRATION → instruction') }
+  else if ((m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+(says|answers|replies|explains|admits|adds|mentions|notes|responds|remarks|states|comments)\s*:\s*(.+)$/))) {
+    // "He remarks: i like money" — a quoted line: reported from the speaker ("Say you like money.")
+    const r = cueFromEnglish(lang, ccCap(m[3].trim()), '', ctx); if (r) { cue = /^Ask/.test(r) && !/[?]\s*$/.test(m[3]) ? 'Say ' + ccShiftPersons(m[3]) : r; note('NARRATION → instruction') } }
+  else if ((m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+(says|answers|replies|explains|admits|adds|mentions|notes|responds|remarks|states|comments)(?:\s+(?:back\s+)?(?:to\s+(?:her|him|them|[A-Z][a-z]+)))?\s*,?\s*(?:that\s+)?(.*)$/))) {
+    cue = (CC_VERB_BASE[m[2]] || 'Say') + ' ' + ccSpeakerToYou(m[3], subjG(m[1])); note('NARRATION → instruction') }
+  else if ((m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+asks\s*:\s*(.+)$/))) {
+    const r = cueFromEnglish(lang, ccCap(m[2].trim().replace(/[?]?$/, '?')), '', ctx); if (r) { cue = r; note('NARRATION → instruction') } }
+  else if ((m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+(asks|suggests|offers|agrees|apologises|apologizes|thanks|invites|declines|refuses|accepts|greets|wishes|warns|reminds|checks|confirms|proposes|recommends|promises|insists|complains|wraps)\b\s*(.*)$/))) {
+    cue = CC_VERB_BASE[m[2]] + (m[3] ? ' ' + ccSpeakerToYou(m[3].replace(/^,\s*/, ''), subjG(m[1])) : ''); note('NARRATION → instruction') }
+  else if ((m = cue.match(/^(Asking|Saying|Telling|Suggesting|Declining|Agreeing|Offering|Answering|Apologising|Apologizing|Accepting|Checking|Thanking|Replying|Explaining|Wrapping|Confirming|Inviting|Refusing)\b\s*(.*)$/))) {
+    cue = CC_GERUND_BASE[m[1].toLowerCase()] + ' ' + m[2]; note('NARRATION → instruction') }
+  else if ((m = cue.match(/^(Asks|Says|Tells|Agrees|Suggests|Offers|Answers|Accepts|Apologises|Apologizes|Declines|Replies)\b\s*(.*)$/))) {
+    cue = CC_VERB_BASE[m[1].toLowerCase()] + ' ' + m[2]; note('NARRATION → instruction') }
+  cue = cue.replace(/\band (says|tells|asks|adds|suggests|offers|explains)\b/g, (_, v) => 'and ' + CC_VERB_BASE[v].toLowerCase())
+  // ── 2. "Tell the other person: …" / "Ask: …?" copies → reported form (from the copied English itself)
+  if ((m = cue.match(/^(?:Tell the other person|Say|Tell (?:him|her|them))\s*:\s*(.+)$/))) {
+    const r = cueFromEnglish(lang, m[1], '', { ...ctx, names }); if (r && !/^Ask/.test(r)) { cue = r; note('TEMPLATE COPY → reported') } }
+  else if ((m = cue.match(/^Ask(?:\s+([A-Z][a-z]+|him|her|them))?\s*:\s*(.+?)\s*$/))) {
+    const q = m[2], ind = /[?？]\s*$/.test(q) ? ccIndirect(q, ctx.addr) : null
+    if (ind) { cue = 'Ask ' + (m[1] && /^[A-Z]/.test(m[1]) && names.includes(m[1]) ? m[1] + ' ' : '') + ind; note('TEMPLATE COPY → reported') } }
+  // manner / setting asides the sentence cannot carry ("with a happy tone", "as you walk", "casually") — politeness words stay
+  const asideRemoved = []
+  cue = cue.replace(/^As you [a-z ]+?,\s*/i, m0 => { asideRemoved.push(m0); return '' })
+  cue = cue.replace(/,\s*(?:with a [a-z ]+? tone|in a [a-z]+ (?:way|tone|voice)|as you [a-z ]+?|while [a-z ]+?|on the walk|pointing [a-z ]+?|casually|softly|warmly|happily),/gi, m0 => { asideRemoved.push(m0); return '' })
+  cue = cue.replace(/\s+(?:with a (?:happy|relaxed|casual|friendly|soft|cheerful|warm|light) tone|in a casual (?:way|tone|voice)|casually|warmly|softly|happily|cheerfully)\b(?=[\s,.]|$)/gi, m0 => { asideRemoved.push(m0); return '' })
+  cue = cue.replace(/^(Ask|Say|Tell \w+)\s*,\s*/, '$1 ')
+  // generic addressee words add nothing: "Ask your friend whether…" → "Ask whether…", "Tell the other person (that) …" → "Say …"
+  cue = cue.replace(/^Suggest (?:to your friend|to the other person|to [A-Z][a-z]+)\s+(?=that\b)/i, 'Suggest ')
+  cue = cue.replace(/^Ask (?:your friend|the other person)\s*,?\s*/i, 'Ask ')
+  if (/^Tell (?:your friend|the other person|B|A)\s+to\b/i.test(cue)) cue = cue.replace(/^Tell (?:your friend|the other person|B|A)\s+to\b/i, 'Tell them to')
+  else cue = cue.replace(/^Tell (?:your friend|the other person|B|A)\s*,?\s*(?:that\s+)?/i, 'Say ')
+  if (framing) { cue = cue.replace(/\s+/g, ' ').trim(); if (cue.replace(/[.!]+$/, '') === cue0.replace(/[.!]+$/, '')) return res
+    res.cue = ccCap(ccEnd(cue)); res.changed = true; res.cls = 'B'; res.style = true; return res }
+  // ── 3. background the sentence does not express
+  const removed = []
+  const enContent = ccWords(en).filter(w => w.length > 2 && !CC_STOP.has(w))
+  const removable = (seg, before) => {
+    const ws = ccWords(seg).filter(w => w.length > 1)
+    const content = ws.filter(w => !CC_STOP.has(w) || CC_DEIXIS[w])
+    const reason = /^(?:,\s*)?(?:since|because|so\b|so that|to share|to go with|to add|following|pointing|while|in case|as you|as an alternative|before|by asking|seeking|sounding)/i.test(seg.trim())
+    // a reason / purpose / manner clause is extra when the rest of the cue already carries the whole meaning
+    if (reason && before != null && content.some(w => !ccSupported(w, enL, enStems, lang, sent, sentGloss))) {
+      const bw = new Set(ccWords(before).map(ccStem)), bl = String(before).toLowerCase()
+      if (enContent.every(w => bw.has(ccStem(w)) || ccHasWord(bl, w) || (CC_SYN[w] || []).some(x => bl.includes(x)) || CC_DEIXIS[w] && (CC_LANG[lang] || CC_LANG.th)[CC_DEIXIS[w]] && !bl.includes(w) && false)) return true
+    }
+    if (!content.length) return /^(?:,\s*)?(?:instead|casually|warmly|softly|happily|gently|cheerfully)\b/i.test(seg.trim()) ? !ccSupported(ws[0] || 'instead', enL, enStems, lang, sent, sentGloss) : false
+    if (content.some(w => ccSupported(w, enL, enStems, lang, sent, sentGloss))) return false
+    // C — an elided referent the dialogue supplies stays ("Ask how much it is" needs "the shrimp")
+    const prev = String(ctx.prevEnglish || '').toLowerCase()
+    if (!reason && prev && /\b(it|one|ones|them|some)\b|\b(that|this)[.?!]?$/.test(enL) && content.some(w => prev.includes(w) && !CC_DEIXIS[w])) { res.contextKept = true; return false }
+    return true
+  }
+  cue = cue.replace(CC_BG_INSERT, (seg) => { if (removable(seg, null)) { removed.push(seg); return ' ' } return seg })
+  for (let pass = 0; pass < 4; pass++) {
+    const body = cue.replace(/[.!]+$/, '')
+    const idx = []; let mm; CC_BG_TRAIL.lastIndex = 0
+    while ((mm = CC_BG_TRAIL.exec(body))) { idx.push(mm.index); if (mm[0] === '') CC_BG_TRAIL.lastIndex++ }
+    let cut = false
+    for (const k of idx) { const seg = body.slice(k); if (k < 6) continue
+      if (/^\s*pointing\b/i.test(seg) && body.charAt(k) !== ',') continue
+      if (removable(seg, body.slice(0, k))) { removed.push(seg); cue = /^[\s,]*(?:here|there|now)\b/i.test(seg) ? body.slice(0, k).replace(/\s+(?:from|to|at|in|on|with|for|of)$/i, '') : body.slice(0, k); cut = true; break } }
+    if (!cut) break
+  }
+  removed.push(...asideRemoved)
+  if (removed.length) note('BACKGROUND REMOVED: ' + removed.map(x => '"' + x.trim().replace(/^,\s*/, '') + '"').join(' · '))
+  // "Tell her you …" needs no addressee: "Say you …"; a pronoun addressee is kept when the sentence is about / addressed to them
+  if ((m = cue.match(/^Tell (him|her|them)\s+(?:that\s+)?(?!to\b)(.*)$/)) && !/\b(he|she|him|her|they|them|their|his)\b/.test(m[2]) && /^(you|i|we|this|that|the|there|it|a|an|my|your)\b/i.test(m[2])) cue = 'Say ' + m[2]
+  cue = cue.replace(/^Suggest (?:that\s+)?(?:they|you both|you two|we)\s+([a-z]+)\b/i, (all, v) => /^(should|could|can|will|go|get|order|take|have|try|eat|buy|use|leave|wait|stay)$/.test(v) ? 'Suggest we ' + v : all)
+  // degree: "only a little easy" vs "pretty easy" — which one is right is a question for the sentence, not for the cue
+  const lowD = /\b(a little|a bit|slightly|only a little|not very)\b/i, highD = /\b(very|really|so|pretty|quite|extremely|super)\b/i
+  const degreeClash = (lowD.test(cue) && highD.test(en) && !lowD.test(en)) || (highD.test(cue) && lowD.test(en) && !highD.test(en))
+  if (degreeClash) res.flags.push('DEGREE_DIFFERS: cue "' + cue.replace(/[.]$/, '') + '" vs meaning "' + en + '" — check the sentence')
+  // ── 4. the core still names something the meaning does not → rebuild from the verified meaning
+  const coreWords = ccWords(cue.replace(/^(say|ask|tell|suggest|offer|agree|answer|reply|explain|apologise|apologize|decline|accept)\b/i, '').replace(/\b(so far|all the way|right now|for a moment|a bit|a little)\b/gi, ' '))
+    .filter(w => w.length > 2 && (!CC_STOP.has(w) || CC_DEIXIS[w]) && !names.map(x => x.toLowerCase()).includes(w))
+  const gl = ctx.glosses
+  const unsupported = coreWords.filter(w => !ccSupported(w, enL, enStems, lang, sent, sentGloss))
+  const unsupportedLex = gl ? unsupported.filter(w => (gl.has(w) || gl.has(ccStem(w))) && !CC_VERBISH.has(w) && !CC_VERBISH.has(ccStem(w)) && !/(ing|ed)$/.test(w) && !CC_DEIXIS[w] && !/^(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|hundred|thousand)$/.test(w)) : []
+  // C — the sentence is elliptical ("it's worth it") and the cue names the referent the dialogue just gave ("the large size")
+  const prevL = String(ctx.prevEnglish || '').toLowerCase()
+  if (unsupportedLex.length && prevL && /\b(it|one|ones|them|that|this)\b/.test(enL) && unsupported.some(w => ccHasWord(prevL, w))) res.contextKept = true
+  const enRebuildable = !/[.!?]\s+[A-Za-z]/.test(en) && ccWords(en).length >= 3
+  const enExtra = gl ? ccWords(en).filter(w => w.length > 2 && !CC_STOP.has(w) && (gl.has(w) || gl.has(ccStem(w))) && !ccWords(cue).map(ccStem).includes(ccStem(w)) && !(CC_SYN[w] || []).some(x => cue.toLowerCase().includes(x))) : []
+  let rebuilt = false
+  if (unsupportedLex.length && enTrusted && enRebuildable && !degreeClash && !framing && !res.contextKept) {
+    const r = cueFromEnglish(lang, en, sent, { ...ctx, names })
+    if (r && (!/^Ask:|^Say:/.test(r) || enExtra.length)) { const subst = enExtra.length > 0
+      note((subst ? 'MEANING MISMATCH (cue names ' : 'CUE NAMES WHAT THE SENTENCE DOES NOT SAY (') + unsupportedLex.map(w => '"' + w + '"').join(', ') + (subst ? ', the sentence says ' + enExtra.map(w => '"' + w + '"').join(', ') : '') + ') → rebuilt from the verified meaning')
+      if (subst) res.flags.push('CUE_MEANING_MISMATCH: cue says ' + unsupportedLex.join('/') + ', sentence says ' + enExtra.join('/'))
+      cue = r; rebuilt = true } }
+  cue = ccEnd(cue.replace(/\s+/g, ' ').trim())
+  cue = ccCap(cue)
+  // ── 5. checks: what the change may never lose
+  const s0 = ccSig(cue0), s1 = ccSig(cue), sr = ccSig(removed.join(' '))
+  const qOf = c => /^\s*(ask|check)\b|[?？]\s*$|\b(asks?|wonders?|whether)\b/i.test(c)
+  const sentQ = M.q.test(sent) || /[?？]\s*$/.test(en)
+  if (!rebuilt) {
+    const lostNeg = s1.neg < s0.neg - sr.neg, lostComp = s1.comp < s0.comp - sr.comp, lostMods = s0.mods.filter(x => !sr.mods.includes(x) && !s1.mods.includes(x))
+    const lostNums = s0.nums !== s1.nums && sr.nums === ''
+    if (qOf(cue0) !== qOf(cue) && qOf(cue0) === sentQ) { res.reasons = ['kept: the change would turn a question into a statement']; return res }
+    if (lostNeg || lostComp || lostNums || lostMods.length) { res.reasons = ['kept: the change would lose ' + [lostNeg && 'negation', lostComp && 'comparison', lostNums && 'a number', lostMods.length && lostMods.join('/')].filter(Boolean).join(', ')]; return res }
+  }
+  // language validators must not get worse
+  const val = x => { try { return lang === 'th' ? thaiCueFormProblems(x).length : lang === 'ja' ? jaCueFormProblems(x).length : zhCueFormProblems(x).length } catch (e) { return 0 } }
+  if (cue !== cue0 && val({ ...p, prompt: cue }) > val(p)) { res.reasons = ['kept: the rewritten cue fails the cue-form check']; res.cue = cue0; return res }
+  // meaning flags on the FINAL cue vs the verified meaning
+  if (!!ccSig(cue).neg !== sentNeg && !!ccSig(cue).neg !== !!enSig.neg && !/\bno\b/i.test(cue)) res.flags.push('CUE_NEGATION_DIFFERS: cue ' + (ccSig(cue).neg ? 'negative' : 'positive') + ', sentence ' + (sentNeg ? 'negative' : 'positive'))
+  if (cue.replace(/[.!]+$/, '') === cue0.replace(/[.!]+$/, '')) cue = cue0
+  res.cue = cue
+  res.changed = cue !== cue0
+  // the cue ADDED meaning the sentence does not have (a negation / comparison / number inside the removed part): a real mismatch, fixed
+  const srM = ccSig(removed.filter(x => !/^[\s,]*(?:since|because|so\b|so that|to share|to go with|to add|following|pointing|while|in case|as you|as an alternative|before|by asking|seeking|sounding)/i.test(x)).join(' ').replace(/\b(you two|the two of you|you both|wants? one|another one|this one|that one|the one|a lot|not a lot|not much|not many)\b/gi, ' '))
+  if (removed.length && (srM.neg > 0 || srM.comp > 0 || srM.nums)) res.flags.push('CUE_ADDED_MEANING (fixed): the cue said ' + removed.map(x => '"' + x.trim().replace(/^,\s*/, '') + '"').join(', ') + ', which the sentence does not')
+  res.cls = res.flags.length ? 'A' : rebuilt || removed.length ? 'B' : res.contextKept ? 'C' : res.changed ? 'B' : 'D'
+  if (res.changed && res.cls === 'B' && !removed.length && !rebuilt) res.style = true      // narration / template → instruction only
+  return res
+}
+// the deterministic context: the learner bank's glosses (which English words name a learnable thing), each word's gloss (what the
+// sentence itself says), the speakers' genders (Thai from the particle: ครับ = a man, ค่ะ / คะ = a woman; otherwise the scene's characters)
+const CUE_CLARITY_BANK = {}
+function cueClarityCtx(lang, track) {
+  let base = CUE_CLARITY_BANK[lang]
+  if (!base) {
+    let bank = []; try { bank = lang === 'th' ? initVocab() : lang === 'ja' ? initJapaneseVocab() : initMandarinVocab() } catch (e) {}
+    const field = lang === 'th' ? 'thai' : lang === 'ja' ? 'japanese' : 'chinese'
+    const glosses = new Set(), lexicon = []
+    bank.forEach(w => { const g = String(w.english || '').toLowerCase().split(/[^a-zà-ÿ]+/).filter(x => x.length > 2); g.forEach(x => glosses.add(x))
+      const sf = String(w[field] || '').split(/[\s(（/、,]/)[0]; if (sf && sf.length >= (lang === 'zh' ? 1 : 2) && g.length) lexicon.push({ s: sf, g }) })
+    base = CUE_CLARITY_BANK[lang] = { glosses, lexicon }
+  }
+  const sc = (track && track.sceneContract) || {}, scene = (track && track.scene) || {}
+  const ch = sp => { const c = (sc.characters || []).find(x => x && x.speaker === sp) || {}; const desc = c.description || (sp === 'A' ? scene.characterA : scene.characterB) || ''
+    let name = ''; try { name = c.name || _sceneEnglishName(desc) } catch (e) {}
+    let gender = null; try { gender = _sceneCharGender(desc) } catch (e) {}
+    return { name: /^[A-Za-z][A-Za-z'-]+$/.test(name || '') ? name : '', gender } }
+  const A = ch('A'), B = ch('B'), G = { A: A.gender, B: B.gender }
+  const thG = p => { const t = String(p && p.thai || ''); return /ครับ|คับ/.test(t) ? 'm' : /ค่ะ|คะ/.test(t) ? 'f' : null }
+  return { ...base, names: [A.name, B.name].filter(Boolean), genderOf: p => (lang === 'th' ? thG(p) : null) || G[p && p.speaker] || (lang === 'th' ? (p && p.speaker === 'B' ? 'f' : 'm') : null),
+    addrOf: p => { const o = p && p.speaker === 'A' ? 'B' : 'A'; return G[o] || (lang === 'th' ? (o === 'B' ? 'f' : 'm') : null) } }
+}
+function cueClarityLog(log, lang, label, st) {
+  if (!log || !st || st.off || !st.checked) return
+  log('  ✂ CUE_CLARITY (' + label + ', ' + lang + ') checked=' + st.checked + ' · A meaning mismatch=' + st.A + ' (cue fixed ' + (st.cueMismatch || 0) + ', translation flagged ' + st.translationFlags + ')' +
+    ' · B background removed / instruction form=' + st.B + ' · C context kept=' + st.C + ' · D unchanged=' + st.D + ' · changed=' + st.changed + ' — deterministic, cue only (sentence, translation, target and pronunciation untouched), no paid call' +
+    (st.examples.length ? ' · e.g. ' + st.examples.slice(0, 3).map(x => '"' + String(x.from).slice(0, 60) + '" → "' + x.to + '"').join(' | ') : ''))
+}
+// one pass over a track's pairs (cue only). Returns new pair objects for changed cues; records why on the pair.
+function cueClarityPass(lang, pairs, ctx) {
+  ctx = ctx || {}
+  const stats = { version: CUE_CLARITY_VERSION, checked: 0, A: 0, B: 0, C: 0, D: 0, changed: 0, styleOnly: 0, translationFlags: 0, cueMismatch: 0, examples: [] }
+  if (!cueClarityOn() && !ctx.force) return { pairs, stats: { ...stats, off: true } }
+  const out = (pairs || []).map((p, i) => {
+    if (!p || !p.prompt || !p.english) return p
+    stats.checked++
+    const prev = (pairs || []).slice(Math.max(0, i - 2), i).map(x => x && x.english || '').join(' ')
+    const r = cueClarify(lang, p, { ...ctx, prevEnglish: prev })
+    stats[r.cls]++
+    if (r.flags.some(f => /^TRANSLATION_/.test(f))) stats.translationFlags++
+    if (r.flags.some(f => /^CUE_MEANING_MISMATCH/.test(f))) stats.cueMismatch++
+    if (r.style) stats.styleOnly++
+    if (!r.changed && !r.flags.length) return p
+    if (r.changed) { stats.changed++; if (stats.examples.length < 120) stats.examples.push({ from: p.prompt, to: r.cue, cls: r.cls, why: r.reasons.join(' · '), sentence: p.thai || p.japanese || p.chinese, english: p.english }) }
+    return { ...p, prompt: r.cue, ...(r.changed ? { _cueClarifiedFrom: p._cueClarifiedFrom || p.prompt, _cueClass: r.cls } : { _cueClass: r.cls }), ...(r.flags.length ? { _cueFlags: r.flags } : {}) }
+  })
+  return { pairs: out, stats }
 }
 
 
@@ -20833,6 +21305,12 @@ async function finaliseMainTrack(track, adapter, ctx) {
   // v693: cue addressees are corrected BEFORE the quota is counted, and a Thai cue that changed is judged again, so a pair that fails
   // on its corrected cue is replaced by quota recovery instead of disappearing from the count after recovery has run
   if (dailyV693On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {}
+    // v696 — FINAL cue clarity on the pairs that will be saved: a cue a QC repair wrote is clarified too; a Thai cue that changes here is
+    // judged again just below (thaiRevalidateStaleCues), a Japanese / Mandarin one by the final text check — the saved cue is always revalidated
+    if (cueClarityOn()) { const cc = cueClarityPass(adapter.lang, t.pairs, cueClarityCtx(adapter.lang, t))
+      t = { ...t, pairs: cc.pairs,
+        cueClarity: { ...cc.stats, examples: cc.stats.examples.slice(0, 40), flagged: cc.pairs.filter(p => p && p._cueFlags).map(p => ({ sentence: p.thai || p.japanese || p.chinese, english: p.english, cue: p.prompt, flags: p._cueFlags })).slice(0, 30) } }
+      cueClarityLog(log, adapter.lang, 'final', cc.stats) }
     if (adapter.lang === 'th') { const rv = await thaiRevalidateStaleCues(t.pairs, c, log, 'cue-revalidation'); t = { ...t, pairs: rv.pairs }
       // v694: lines that contradict the lines just before them go to quota recovery (a bridge line is removed)
       const lc = thaiLocalContradictions(t.pairs)
@@ -21420,7 +21898,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v695'
+const APP_BUILD_VERSION = 'v696'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -21579,6 +22057,8 @@ async function jazhQcFinaliseAndListen(track, lang, o) {
       return { track: out, res: null }
     }
   }
+  // v696 — Japanese / Mandarin cues are clarified before QC judges them (deterministic, cue only)
+  if (cueClarityOn() && (lang === 'ja' || lang === 'zh')) { const cc = cueClarityPass(lang, track.pairs, cueClarityCtx(lang, track)); track = { ...track, pairs: cc.pairs }; cueClarityLog(push, lang, 'before QC', cc.stats) }
   let runQc = null
   try { runQc = qcRunnerFor(lang) } catch (e) {
     push('⛔ PIPELINE INTERNAL_ERROR ' + e.code + ' — ' + e.message)
@@ -21719,6 +22199,11 @@ function trackIntegrityLines(track) {
 function trackIntegrityExportLines(track) {
   const out = ['TRACK INTEGRITY (v649 shared core)', '-'.repeat(30)].concat(trackIntegritySummaryLines(track), ['DEBUG TRACE:'], trackIntegrityLines(track).map(l => l.replace(/^🧾 /, '')))
   const g = track && track.integrity
+  // v696 — the learner-facing cue audit of the saved pairs (deterministic, cue only)
+  const cc = track && track.cueClarity
+  if (cc && cc.checked) { out.push('CUE CLARITY (' + (cc.version || 'cue-clarity') + '): checked ' + cc.checked + ' · A meaning mismatch ' + cc.A + ' (cue fixed ' + (cc.cueMismatch || 0) + ', translation flagged ' + (cc.translationFlags || 0) + ') · B background removed / instruction form ' + cc.B + ' · C context kept ' + cc.C + ' · D unchanged ' + cc.D + ' · cues changed ' + cc.changed)
+    ;(cc.examples || []).slice(0, 12).forEach(x => out.push('  CUE_CLARIFIED [' + x.cls + '] "' + x.from + '" → "' + x.to + '"'))
+    ;(cc.flagged || []).forEach(x => out.push('  CUE_FLAG "' + x.sentence + '" (' + x.english + ') — ' + x.flags.join(' | '))) }
   if (g) {
     out.push('Invariants: ' + Object.entries(g.invariants).map(([k, v]) => k + '=' + v).join(' · '))
     ;(g.quota.unresolved || []).forEach(u => out.push('TARGET_PAIR_QUOTA_UNMET ' + u.target + ' (' + u.targetId + '): ' + u.valid + '/3 · ' + u.reason))
@@ -22332,7 +22817,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     (thaiGenderedTargetSpeaker(kw.thai) ? 'Every sentence is spoken by ' + thaiGenderedTargetSpeaker(kw.thai) + ' ("' + kw.thai + '" is said only by ' + (thaiGenderedTargetSpeaker(kw.thai) === 'B' ? 'women' : 'men') + ').' + (kw.thai === '\u0e04\u0e30' ? ' คะ ends QUESTIONS only (…ไหมคะ / …อะไรคะ / …ที่ไหนคะ) — every sentence must be a question.' : '') + ' ' : 'Alternate speakers A and B. ') + getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }).promptRule + ' Continuous Thai (no spaces between words), no English in the Thai field.\n' +
     'USE ONLY THESE CONTENT WORDS (all taught to this learner) plus the target "' + kw.thai + '":\n  ' + palette.words.join(' ') + '\n' +
     'and these speaker words / particles: ' + palette.particles.join(' ') + (sceneEntities.length ? ' · names: ' + sceneEntities.map(e => e.surface || e).join(' ') : '') + '\n' +
-    'Any other content word will be rejected. english = a faithful natural translation. prompt = a third-person cue that says exactly what is said ("He asks if…", "She says…").\n' +
+    'Any other content word will be rejected. english = a faithful natural translation. ' + dailyCueRule('prompt = a third-person cue that says exactly what is said ("He asks if…", "She says…").') + '\n' +
     'For each candidate also return targetId (' + kw.wordId + ') and targetSurfaceUsed (the exact target word as it appears in your Thai).\n' +
     'Return ONLY a JSON array: [{"targetId":' + kw.wordId + ',"targetSurfaceUsed":"' + kw.thai + '","speaker":"A","thai":"...","english":"...","prompt":"..."}]'
   let raw = null
@@ -33592,6 +34077,7 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
   // Step 1: Prompt-match scoring
   if (run.promptMatch) {
   onLog?.('Checking prompt alignment…')
+  if (cueClarityOn()) { const cc = cueClarityPass('th', allPairs, cueClarityCtx('th')); allPairs = cc.pairs; cueClarityLog(onLog, 'th', 'quality review', cc.stats) }
   try { allPairs = await _qrBatchPromptCheck(allPairs, apiKey, model, onLog) }
   catch(e) { onLog?.('⚠️ Prompt check failed: ' + e.message) }
   if (cancelled()) return null
@@ -33927,7 +34413,7 @@ function thaiCueSpeakerLine(p) {
 }
 async function _finalCueJudge(chunk, apiKey, model) {
   const numbered = chunk.map((p, ci) => `${ci + 1}. Prompt: "${p.prompt}"\n   Thai: ${p.thai}\n   English: ${p.english}` + thaiCueSpeakerLine(p)).join('\n\n')
-  const q = `Rate how well each Thai sentence matches its prompt description, judging the PROMPT (cue), the THAI and the ENGLISH translation together.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\nDIALOGUE RULE: These are conversation pairs. Prompts describe what a character says in third person ("He says he likes...", "She asks if...") but the Thai sentence naturally uses first person ("ผม/ฉัน = I"). This is CORRECT and NEVER a mismatch.\n\n${THAI_CUE_PERSPECTIVE_RULE}\n\nWELL-FORMEDNESS RULE: the prompt and the English must themselves be grammatical, meaningful English. If either is garbled or has a dictionary gloss pasted into a template (e.g. "Ask if you can have a to enter", "Can I have a to enter, please?") score 1 — even when they agree with each other and with the Thai.\n\nFor EVERY item also give "thaiEnglishMatch": true when the Thai and the English say the same thing. When s < 4 but the Thai and English match, give "cueRepair": a corrected third-person prompt that describes exactly what the Thai says (e.g. "He asks if she wants him to recommend it."); otherwise null.\n\n${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5,"thaiEnglishMatch":true,"cueRepair":null},{"i":2,"s":3,"note":"prompt says X but sentence says Y","thaiEnglishMatch":true,"cueRepair":"He says ..."},...]\nno markdown, no explanation.`
+  const q = `Rate how well each Thai sentence matches its prompt description, judging the PROMPT (cue), the THAI and the ENGLISH translation together.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\nDIALOGUE RULE: These are conversation pairs. Prompts describe what a character says in third person ("He says he likes...", "She asks if...") but the Thai sentence naturally uses first person ("ผม/ฉัน = I"). This is CORRECT and NEVER a mismatch.\n\n${THAI_CUE_PERSPECTIVE_RULE}\n\nWELL-FORMEDNESS RULE: the prompt and the English must themselves be grammatical, meaningful English. If either is garbled or has a dictionary gloss pasted into a template (e.g. "Ask if you can have a to enter", "Can I have a to enter, please?") score 1 — even when they agree with each other and with the Thai.\n\nFor EVERY item also give "thaiEnglishMatch": true when the Thai and the English say the same thing. When s < 4 but the Thai and English match, give "cueRepair": ${cueClarityOn() ? 'a corrected SHORT instruction to the speaker that says exactly what the Thai says (e.g. "Ask if she wants you to recommend it.")' : 'a corrected third-person prompt that describes exactly what the Thai says (e.g. "He asks if she wants him to recommend it.")'}; otherwise null.\n\n${cueClarityOn() ? CUE_JUDGE_CLASS_RULE + '\n\n' : ''}${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5,"thaiEnglishMatch":true,"cueRepair":null},{"i":2,"s":3,"note":"prompt says X but sentence says Y","thaiEnglishMatch":true,"cueRepair":"He says ..."},...]\nno markdown, no explanation.`
   return _semanticReplyArray(await geminiJudge(apiKey, model, q, 1200))
 }
 function _cueCheckEligible(p) {
@@ -34082,6 +34568,11 @@ async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
     const fx = thaiCueFormRepair(p); if (!fx) return p
     cueFormFixed++; return { ...p, prompt: fx, _cueFormRepairedFrom: p.prompt } })
   if (cueFormFixed && onLog) onLog('  🎯 THAI_CUE_FORM_REPAIRED ' + cueFormFixed + ' cue(s) rebuilt from the line\'s own English (question ↔ statement form) — no paid call')
+  // v696 — the cue is clarified BEFORE it is judged (so the judged cue is the saved cue and no verdict is paid for twice)
+  if (cueClarityOn()) { const idx = all.map((p, i) => [p, i]).filter(([p]) => p && p.pairType !== 'framing' && p.thai && _cueCheckEligible(p))
+    const cc = cueClarityPass('th', idx.map(([p]) => p), { ...cueClarityCtx('th', o.track), force: true })
+    idx.forEach(([, i], k) => { all[i] = cc.pairs[k] })
+    if (cc.stats.changed && label !== 'early-generation') cueClarityLog(onLog, 'th', label, cc.stats) }
   const content = []
   all.forEach((p, i) => { if (p && p.pairType !== 'framing' && p.thai) content.push({ p, i }) })
   const stats = { label, failClosed: !!o.failClosed, checked: content.length, cueEligible: 0, cueJudged: 0, cueNotApplicable: 0,
@@ -34120,6 +34611,7 @@ async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
   stats.trace = { cue: cue.trace, naturalness: nat.trace }
   stats.cachedVerdicts = (cue.trace.cached || 0) + (nat.trace.cached || 0)
   stats.cueJudged = [...cueBy.values()].filter(v => v.s != null).length
+  if (cueClarityOn()) { const jc = {}; [...cueBy.values()].forEach(v => { if (v && v.cls) { const k = String(v.cls).toUpperCase().slice(0, 1); jc[k] = (jc[k] || 0) + 1 } }); if (Object.keys(jc).length) stats.judgeCueClasses = jc }
   stats.naturalnessJudged = [...natBy.values()].filter(v => v.s != null).length
   const out = []
   all.forEach((p, i) => {
@@ -34146,6 +34638,7 @@ async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
         onLog && onLog('  ⛔ CUE_MISMATCH_DROP_PAIR [' + (p._target || '?') + '] ' + _rep.why + ': ' + p.thai)
         return drop('CUE_MISMATCH', (cv.note || 'cue does not match the final sentence') + ' (' + _rep.why + ')', cv.s)
       }
+      if (cueClarityOn()) { const r2 = cueClarify('th', { ...p, prompt: _rep.cue }, cueClarityCtx('th', o.track)); if (r2.changed) _rep.cue = r2.cue }
       _cueRepaired = { from: p.prompt || '', to: _rep.cue, method: _rep.method, score: cv.s, note: cv.note || '' }
       stats.cueRepaired = (stats.cueRepaired || 0) + 1
       stats.cueRepairs = stats.cueRepairs || []; stats.cueRepairs.push({ targetId: p.targetId, target: p._target, thai: p.thai, ..._cueRepaired })
@@ -34186,7 +34679,7 @@ async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
   stats.status = stats.unverified.length === 0 ? 'COMPLETE' : (live.length && !stats.naturalnessJudged ? 'FAILED' : 'PARTIAL')
   onLog && onLog('  🧭 FINAL_PAIR_SEMANTIC_AUDIT (' + label + '): checked=' + stats.checked + ' cue=' + stats.cueCheck + ' naturalness=' + stats.naturalnessCheck +
     ' templateGarbage=' + stats.templateGarbage + ' invalidTime=' + stats.invalidTime + ' cueMismatch=' + stats.cueMismatch + ' cueRepaired=' + (stats.cueRepaired || 0) + ' unnatural=' + stats.unnatural +
-    ' unverified=' + stats.unverified.length + (o.failClosed ? ' (dropped: fail closed)' : ' (kept, marked)') + ' dropped=' + stats.dropped + (stats.cachedVerdicts ? ' reusedVerdicts=' + stats.cachedVerdicts + ' (judged earlier on the same text, not paid again)' : '') + ' status=' + stats.status)
+    (stats.judgeCueClasses ? ' cueClasses=' + Object.entries(stats.judgeCueClasses).map(([k, v]) => k + ':' + v).join('/') : '') + ' unverified=' + stats.unverified.length + (o.failClosed ? ' (dropped: fail closed)' : ' (kept, marked)') + ' dropped=' + stats.dropped + (stats.cachedVerdicts ? ' reusedVerdicts=' + stats.cachedVerdicts + ' (judged earlier on the same text, not paid again)' : '') + ' status=' + stats.status)
   return { pairs: out, stats }
 }
 // Final status is measured on the pairs that are actually saved — never on an earlier
@@ -38531,6 +39024,7 @@ async function aiQcPromptMatch(pairs, engine, apiKey, model, onLog) {
         'DIALOGUE RULE: cues are written in the third person ("Ask whether they...") while the sentence is ' +
         'naturally first/second person. That is CORRECT and never a mismatch. Only penalise a real ' +
         'difference of CONTENT — for example a translation that adds a word the sentence does not contain.\n\n' +
+        (cueClarityOn() ? CUE_JUDGE_CLASS_RULE + '\n\n' : '') +
         numbered + '\n\nReturn ONLY a JSON array: [{"i":1,"s":5},{"i":2,"s":3,"note":"translation adds \'want\'"}]\n' +
         'no markdown, no explanation.' }], 700)
     } catch (e) { onLog && onLog('  \u26A0 prompt-match batch failed: ' + (e.message || '') + ' — ' + chunk.length + ' pair(s) carry NO cue verdict (CUE_CHECK_UNVERIFIED)'); continue }
@@ -38539,10 +39033,10 @@ async function aiQcPromptMatch(pairs, engine, apiKey, model, onLog) {
       // v675 (Step 0, log only) — a pair the reply does not score is unverified; a verdict without a score is counted 5
       // by the existing rule — both are now visible instead of silently looking verified
       const _n0 = scored.size; let _noScore = 0
-      parsed.forEach(({ i: ci, s, note }) => {
+      parsed.forEach(({ i: ci, s, note, cls }) => {
         const orig = chunk[ci - 1]
         if (orig && s == null) _noScore++
-        if (orig) scored.set(orig.i, { score: s || 5, note: note || '' })
+        if (orig) scored.set(orig.i, { score: s || 5, note: note || '', ...(cls ? { cls: String(cls).toUpperCase().slice(0, 1) } : {}) })
       })
       const _unscored = chunk.length - (scored.size - _n0)
       if ((_unscored > 0 || _noScore) && onLog) onLog('  \u26A0 CUE_CHECK_PARTIAL batch ' + (Math.floor(b / AI_QC_BATCH) + 1) + ': ' + _unscored + ' pair(s) not scored (no cue verdict)' + (_noScore ? ' · ' + _noScore + ' verdict(s) without a score (counted as 5 by the current rule)' : ''))
@@ -43606,7 +44100,7 @@ function buildJapaneseRecallPrompt(target, recallIndex, inv, vocab, registerId, 
   let blocks = ''
   try { const av = jaBlocksAvailable(vocab, c.grammarProgress || {}); blocks = av.map(b => b.id + '=' + jaBlockRealisation(b, registerId)).join(' · ') } catch (e) {}
   const role = (() => { try { return targetRoleLine(targetLinguisticRole(target, 'ja'), target, 'ja').trim() } catch (e) { return '' } })()
-  const system = 'You are a Japanese teacher writing natural spoken Japanese for a learner.\n' + JA_RECALL_POLICY + '\n' + japaneseRegisterContract(registerId)
+  const system = 'You are a Japanese teacher writing natural spoken Japanese for a learner.\n' + JA_RECALL_POLICY + (cueClarityOn() ? '\nenglishCue: ' + DAILY_CUE_CONTRACT.replace(/^prompt = /, '') : '') + '\n' + japaneseRegisterContract(registerId)
   const user =
     'JAPANESE TARGET: ★ ' + target.japanese + (target.reading ? ' [' + target.reading + ']' : '') + ' = ' + (target.english || '') +
       (target.note ? ' — use when ' + target.note : '') + (role && !teachingPlanOn() ? '\n  ' + role : '') + '\n' +
@@ -44197,7 +44691,7 @@ function buildJapaneseGroupPrompt(target, slots, inv, vocab, registerId, o) {
       ? 'Normal inflection of allowed words is free. GRAMMAR you may use: ' + [...new Set((inv.grammarScaffold || []).map(g => g.form))].join(' ') + '. ' + jaTpPermissionLine() + 'If an idea needs another word or particle, choose a simpler idea.\n'
       : 'Particles, the copula and normal inflection of allowed words are free. If an idea needs another word, choose a simpler idea.\n') +
     'Fields per recall: englishMeaning = what the sentence means; englishCue = an instruction a learner can act on without seeing the Japanese ' +
-    '(never quote Japanese or romaji); reading = kana for the sentence as written; romaji = Hepburn, spaced by word, matching the reading; ' +
+    '(never quote Japanese or romaji' + (cueClarityOn() ? '; ' + DAILY_CUE_CONTRACT.replace(/^prompt = /, '') : '') + '); reading = kana for the sentence as written; romaji = Hepburn, spaced by word, matching the reading; ' +
     'segments = every word in order with surface, lemma (dictionary form), reading, romaji, english, type ("content" or "grammar").\n' +
     japaneseRegisterContract(registerId) + '\n' +
     'REGISTER CHECK before you answer: every sentence must fit the register above (for example no plain form + です, and no です/ます where the register forbids them).'

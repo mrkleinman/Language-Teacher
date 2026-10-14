@@ -215,7 +215,7 @@ The flagged rows are listed in the export ("CUE_FLAG …"). They are for sentenc
 | Check | Result |
 |---|---|
 | **New `tests54.js` — Daily cue clarity** | **57/57** (C11 / C12 added after the Haiku check, §10); registered in `run_all.sh` |
-| Full offline regression (snapshot) | OFFLINE REGRESSION: OK — 1,847 checks passed; the only failures are the 3 already-known ones (tests33 2G; tests35 2C-thTH, 2C-zhZH — blocked on missing v673 replay files). tests54 55/55. |
+| Full offline regression (snapshot, after the §10 fixes) | OFFLINE REGRESSION: OK — 1,849 checks passed; the only failures are the 3 already-known ones (tests33 2G; tests35 2C-thTH, 2C-zhZH — blocked on missing v673 replay files). tests54 57/57. |
 | Production cassette replay (v682-final4 ja / th / zh) | 0 mismatches, content identical (the switch is gated on the Oct13 quality path, as before) |
 | check_sync | v696 in sync |
 

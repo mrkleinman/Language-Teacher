@@ -29289,7 +29289,9 @@ function lnMfRepairPrompt(env, mp, scopes, note) {
 // why (Japanese run 3: its last round was lost to one unknown word, そろそろ, and four lesson words in one turn — the rewrite was
 // otherwise right, and the track was blocked)
 const LN_MF_RETRY_HINT = { CLOSED_VOCAB: 'use ONLY the allowed vocabulary — replace the unknown word(s) with allowed words or drop them', MAX_TARGETS_PER_TURN: 'one turn carries too many lesson words — spread them over the turns', PROTECTED_TARGET_LOST: 'a lesson word went missing — every listed lesson word must be heard',
-  GRAMMAR_CONTRACT: 'fix the grammar named', TOO_COMPLEX: 'make the turn shorter', SCENE_TURN_BUDGET: 'do not add turns — return the same number of turns', EXACT_DUPLICATE: 'do not repeat a line already in the conversation', NEAR_DUPLICATE: 'do not repeat a line already in the conversation' }
+  GRAMMAR_CONTRACT: 'fix the grammar named', TOO_COMPLEX: 'make the turn shorter', SCENE_TURN_BUDGET: 'do not add turns — return the same number of turns', EXACT_DUPLICATE: 'do not repeat a line already in the conversation', NEAR_DUPLICATE: 'do not repeat a line already in the conversation',
+  SPEAKER_ALTERNATION: 'the speakers alternate — the new turns continue A / B / A / B from the turn before them and into the turn after them',
+  ONE_SPEAKER_RUN: 'the speakers alternate — the new turns continue A / B / A / B from the turn before them and into the turn after them' }
 function lnMfRetryNote(s, byId) {
   const r = s.patchRejected
   if (!r) return ''
@@ -29394,12 +29396,18 @@ function lnMfApply(env, mp, scopes, rep, round) {
     const freshIds = new Set(fresh.map(t => t.id))
     const bad = tr.issues.filter(is => (LN_MF_PATCH_HARD.has(is.code) && is.turnIds.some(id => freshIds.has(id))) ||
       (is.code === 'TURN_BUDGET' && trial.scenes.reduce((a, x) => a + x.turns.length, 0) > env.turnsMax))
+    // v697 (live Haiku relay, Mandarin run 3): a patch may not put two of ITS turns by the same speaker side by side — a boundary patch
+    // came back A / B / B / A and the track read "B: 好，我知道了。 B: 现在去，好吗？" (the plan's own turns are not re-judged here)
+    { const tf = trial.scenes.flatMap(x => x.turns)
+      for (let i = 1; i < tf.length; i++) if (tf[i].speaker === tf[i - 1].speaker && freshIds.has(tf[i].id) && freshIds.has(tf[i - 1].id)) {
+        bad.push({ fault: 1, code: 'SPEAKER_ALTERNATION', turnIds: [tf[i].id], detail: 'two turns in a row by speaker ' + tf[i].speaker + ' ("' + tf[i - 1].text + '" / "' + tf[i].text + '") — the speakers alternate' }); break } }
     // a patch may not GROW a situation past its reserved budget (v694 Thai grew to 45 turns through repairs)
     const bud = env.mfGrouping && env.mfGrouping._budgets
     trial.scenes.forEach((x, k) => { const was = (mp.scenes.find(y => y.key === x.key) || { turns: [] }).turns.length
       if (bud && bud[k] && sceneKeys.includes(x.key) && x.turns.length > was && x.turns.length > bud[k].max) bad.push({ fault: 8, code: 'SCENE_TURN_BUDGET', turnIds: [], detail: x.key + ' would grow from ' + was + ' to ' + x.turns.length + ' turns — its budget is ' + bud[k].max }) })
     if (bad.length) {
-      bad.filter(is => [1, 3, 4, 5].includes(is.fault)).forEach(is => is.turnIds.forEach(id => { const t = fresh.find(x => x.id === id); if (t) mf.rejectedTexts.set(lnMfNorm(t.text), is.fault) }))
+      // the ORDER of speakers is not a defect of the sentence: a turn rejected only for who says it may come back in the right place
+      bad.filter(is => [1, 3, 4, 5].includes(is.fault) && is.code !== 'SPEAKER_ALTERNATION' && is.code !== 'ONE_SPEAKER_RUN').forEach(is => is.turnIds.forEach(id => { const t = fresh.find(x => x.id === id); if (t) mf.rejectedTexts.set(lnMfNorm(t.text), is.fault) }))
       fail('PATCH_INVALID — ' + bad.slice(0, 3).map(is => is.code + ': ' + String(is.detail || '').slice(0, 90)).join(' · '), fresh.map(t => t.text), bad.map(is => is.code)); return }
     // remember what failed, so no later round may bring it back
     // what may never come back: a defective SENTENCE (wording, vocabulary, grammar, meaning) and, for a meaning fault the audit

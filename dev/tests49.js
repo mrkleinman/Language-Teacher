@@ -129,6 +129,14 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     T('D4b', 'a patch rejected for an unknown word (CLOSED_VOCAB) is retried ONCE in the same round with the exact reason and its rejected version → applied → READY in ONE round (2 repair calls)',
       /PART_REJECTED x1 \([a-z]+\) — PATCH_INVALID — CLOSED_VOCAB/.test(zh4.Ls) && /PATCH_RETRY round \d+ · x1/.test(zh4.Ls) && zr.length >= 2 && /YOUR LAST VERSION OF THIS PART WAS REJECTED[^\n]*CLOSED_VOCAB/.test(zr[1].prompt) && /rejected version: 我们现在一起到咖啡馆了。/.test(zr[1].prompt) &&
       /PART_REPAIRED x1 \(line/.test(zh4.Ls) && zr.length === 2 && !/MEANING_REPAIR round 2/.test(zh4.Ls) && zh4.track.status === 'READY', { st: zh4.track.status, r: zh4.track.failureReason, n: zr.length })
+    // D4c · v697 (live Haiku relay, Mandarin run 3: a boundary patch came back A / B / B / A): a patch whose own turns put one
+    // speaker twice in a row is rejected (SPEAKER_ALTERNATION) and retried with that reason → the alternating version is applied
+    const ja5 = await run('ja', { plan: splice(GOOD.ja, 7, V691_BAD.ja.slice(0, 2)), repair: (scope, head, q, st) => st.repair === 1
+      ? [['A', 'ASK', 'TIME', 'we', 'いつ行く？', 'When shall we go?'], ['A', 'ANSWER', '', 'we', '明日、行こう。', 'Let\'s go tomorrow.']]
+      : [['A', 'ASK', 'TIME', 'we', 'いつ行く？', 'When shall we go?'], ['B', 'ANSWER', '', 'we', '明日、行こう。', 'Let\'s go tomorrow.']] })
+    const jr = ja5.st.calls.filter(x => x.stage === 'O_listening_plan_repair')
+    T('D4c', 'a patch whose own turns put one speaker twice in a row (A / A) is rejected (SPEAKER_ALTERNATION), retried once with "the speakers alternate", and the A / B version is applied → READY',
+      /PART_REJECTED x1 \([a-z]+\) — PATCH_INVALID — [^\n]*SPEAKER_ALTERNATION/.test(ja5.Ls) && jr.length === 2 && /the speakers alternate/.test(jr[1].prompt) && /PART_REPAIRED x1/.test(ja5.Ls) && ja5.track.status === 'READY', { st: ja5.track.status, r: ja5.track.failureReason, n: jr.length })
     // D5 · a target the plan forgot → GROUPING recovery adds an exchange for it; the target is never silently lost
     const noCost = GOOD.th.filter(r => !/ค่าโดยสาร|สิบบาท/.test(r[5]))
     const th1 = await run('th', { plan: noCost, repair: () => [['A', 'ASK', 'PRICE', 'the fare', 'ค่าโดยสารเท่าไหร่ครับ', 'How much is the fare?'], ['B', 'ANSWER', '', 'the fare', 'สิบบาทค่ะ', 'Ten baht.']] })

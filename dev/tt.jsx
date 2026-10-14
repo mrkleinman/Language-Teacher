@@ -15310,11 +15310,14 @@ const THAI_DISCOURSE_INTERJECTIONS = ['อ้อ', 'อ๋อ', 'อืม', '�
 // The validator is the existing validateThaiVocabulary on the RAW Thai string (its
 // own segmentation, never the model's words[]). Nothing here ever marks a word as
 // learned or widens the allowed set: the OUTPUT adapts to the learner.
+// The bank that decides whether an approved grammar-list word needs exposure. v698: a topic-only entry (added to the dictionary
+// for a topic, e.g. ทุกคน / ทุกอย่าง / ปัญหา for Wedding Speech) never takes away a word the approved lists already authorised.
+function thaiExposureBank(vocab) { return new Set((vocab || []).filter(w => !isThaiTopicOnly(w)).map(w => w.thai || w.t)) }
 function buildThaiTrackVocabContext(vocab, targets, sceneEntities) {
   // A BANK vocabulary entry is authorised only by learner exposure (introduced /
   // known / target), never by a grammar list: alwaysOk contained 34 content words
   // (โอกาส, โรงพยาบาล, สถานี, เค้ก …). Only its NON-bank function words are grammar.
-  const _bank = new Set((vocab || []).map(w => w.thai || w.t))
+  const _bank = thaiExposureBank(vocab)
   const _gram = [...new Set([...THAI_TRACK_GRAMMAR_WORDS, ...THAI_ALWAYS_OK_WORDS.filter(w => !_bank.has(w)), ...THAI_DISCOURSE_INTERJECTIONS.filter(w => !_bank.has(w))])]
   const set = buildThaiAllowedSet({ vocab, trackTargets: targets || [], grammarWords: _gram })
   ;(targets || []).forEach(t => { const th = typeof t === 'string' ? t : (t && (t.thai || t.t)); if (th) set.add(th) })
@@ -15733,7 +15736,7 @@ function validateSmartPairs(pairs, target, vocab, strict=true, existingThais=new
   // listed here as universally legal, which defeated the closed-vocabulary gate
   // entirely — they must be earned through introduction or chosen as targets.
   const alwaysOk = (() => {   // bank vocabulary is authorised by exposure, not by this list
-    const _bank = new Set((vocab || []).map(w => w.thai || w.t))
+    const _bank = thaiExposureBank(vocab)
     return new Set(THAI_ALWAYS_OK_WORDS.filter(w => !_bank.has(w)))
   })()
 
@@ -31952,7 +31955,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
             <Btn onClick={() => retryThaiMissing()} disabled={thRetrying || listenPhase === 'FINALISING'} style={{ width:'100%', justifyContent:'center' }}>
               {thRetrying ? '\u267B Retrying the missing recalls\u2026' : '\u21BB Retry missing recalls (' + (_readiness.unresolvedTargetIds || []).length + ' word' + ((_readiness.unresolvedTargetIds || []).length > 1 ? 's' : '') + ') \u2014 the ' + _readiness.validTargetPairs + ' verified pairs are kept'}
             </Btn>)}
-          <Btn onClick={() => { if (mode === 'daily') genCheckpointClear(cpLang); onGenerated(generatedTrack) }} disabled={listenPhase === 'BUILDING' || listenPhase === 'FINALISING'} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
+          <Btn onClick={() => { if (mode === 'daily' && topic) genCheckpointClear(cpLang); else if (mode === 'daily') genCheckpointClear('th'); onGenerated(generatedTrack) }} disabled={listenPhase === 'BUILDING' || listenPhase === 'FINALISING'} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
             {listenPhase === 'FINALISING' ? '🔍 Quality check · FINAL_TRACK…' : listenPhase === 'BUILDING' ? '🎧 Building listening track…'
               : _readiness.ready ? '▶ Start SRS Track' : '▶ Start anyway — track not ready (' + _readiness.validTargetPairs + '/' + _readiness.expectedTargetPairs + ')'}
           </Btn>

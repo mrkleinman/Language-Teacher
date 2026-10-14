@@ -76,11 +76,13 @@ const DISPLAY = { 'Mukyu': '0–99', '10th Kyu': '100–199', '9th Kyu': '200–
     const v = c[fn](), ids = v.map(w => w.id)
     const placed = WANT.reduce((a, w) => a + c.wordsForRank(v, w[0]).length, 0), curr = v.filter(w => (w.curriculumIndex || 0) >= 1 && (w.curriculumIndex || 0) <= 2000 && !w.duplicateOf).length
     T('W3' + lang, lang + ': the real bank keeps every word and ID (' + size + ' words, no duplicates) and every curriculum word sits in exactly one belt; the stored belt label matches the new ranges',
-      v.length === size && new Set(ids).size === ids.length && placed === curr && v.every(w => !w.curriculumIndex || c.beltForCurriculumIndex(w.curriculumIndex) === (w.belt || c.beltForCurriculumIndex(w.curriculumIndex))), { len: v.length, placed, curr })
+      // v698: the owner's Topics brief adds the 50 Wedding Speech words once, unranked (topicOnly) — the original bank is unchanged
+      v.filter(w => !(lang === 'th' && c.isThaiTopicOnly(w))).length === size && (lang !== 'th' || v.filter(w => c.isThaiTopicOnly(w)).length === 50) && new Set(ids).size === ids.length && placed === curr && v.every(w => !w.curriculumIndex || c.beltForCurriculumIndex(w.curriculumIndex) === (w.belt || c.beltForCurriculumIndex(w.curriculumIndex))), { len: v.length, placed, curr })
   }
   const raw = c.ev('RAW_VOCAB')
   T('W4', 'Thai dictionary: every stored belt label agrees with the new ranges (today\'s curriculum ends at 500, so no word changes belt; 1,143 words stay "Beyond curriculum")',
-    raw.filter(d => d.curriculumIndex).every(d => d.belt === c.beltForCurriculumIndex(d.curriculumIndex)) && raw.filter(d => !d.curriculumIndex).length === 1143)
+    raw.filter(d => d.curriculumIndex).every(d => d.belt === c.beltForCurriculumIndex(d.curriculumIndex)) && raw.filter(d => !d.curriculumIndex && !d.topicOnly).length === 1143 &&
+    raw.filter(d => d.topicOnly).length === 50 && raw.filter(d => d.topicOnly).every(d => !d.curriculumIndex && d.belt === 'Beyond curriculum'))   // v698: + the 50 unranked Wedding Speech entries
   // ══ P — what must not change ═════════════════════════════════════════════════════════════════════════════════
   const cx = c.ev('BELT_COMPLEXITY')
   const wantCx = { 'Mukyu': [2, 4, 6], '10th Kyu': [3, 5, 7], '9th Kyu': [4, 6, 8], '8th Kyu': [5, 7, 9], '7th Kyu': [5, 8, 10], '6th Kyu': [6, 9, 11], '5th Kyu': [6, 10, 12],

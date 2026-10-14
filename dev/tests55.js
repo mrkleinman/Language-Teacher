@@ -271,6 +271,19 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
       { leaks: leaks.slice(0, 5), keptBad, stats: cv.stats, a: audit(bad) })
   }
   {
+    // 22b words the approved grammar lists already authorised for EVERY learner stay authorised although a topic made them dictionary entries
+    const Lr = learner(c), tg = Lr.filter(w => w.status === 'learning').slice(0, 30)
+    const A = c.buildThaiTrackVocabContext(Lr, tg, []).allowedSet
+    let baseSame = null
+    if (process.env.TT_BASE && fs.existsSync(process.env.TT_BASE)) {
+      const b = load(process.env.TT_BASE); b.console.info = () => {}; b.console.warn = () => {}
+      const Lb = learner(b), tb = Lb.filter(w => w.status === 'learning').slice(0, 30), Ab = b.buildThaiTrackVocabContext(Lb, tb, []).allowedSet
+      baseSame = WEDDING.filter(w => Ab.has(w)).join() === WEDDING.filter(w => A.has(w)).join()
+    }
+    T('22b', 'approved-list words (ทุกคน, ทุกอย่าง, ปัญหา) stay legal in every regular track exactly as before Topics; other unintroduced topic words stay locked' + (baseSame == null ? ' (TT_BASE not set)' : ''),
+      ['ทุกคน', 'ทุกอย่าง', 'ปัญหา'].every(w => A.has(w)) && !A.has('ตลอดไป') && !A.has('ความหวัง') && baseSame !== false, { allowed: WEDDING.filter(w => A.has(w)), baseSame })
+  }
+  {
     // 23 the same complexity contract (9th Kyu learner → same limits as the Daily Track)
     // the owner's belt (9th Kyu) pinned, as the app resolves it; the contract takes no topic input at all
     const st9 = { rank: '9th Kyu', label: 'Orange + Stripe', source: 'test' }

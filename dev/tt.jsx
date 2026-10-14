@@ -17491,6 +17491,10 @@ function ccIndirect(q, addr) {
       const subj = mapSubj(R.slice(1, 2)), rest = R.slice(2); if (!rest.length) return null
       if (/^(he|she|it|this|that)$/.test(subj)) { const X = [subj].concat(rest); ccInflect3sg(X, 0); return W + ' ' + map(X) }
       return W + ' ' + subj + ' ' + map(rest) }
+    // "why can't you buy it" → "why they can't buy it" (a negated modal needs no agreement; did / don't / isn't stay unsafe)
+    if (/^(can't|cannot|won't|couldn't|wouldn't|shouldn't)$/.test(RL[0])) { const n = ccSubject(R.slice(1)); if (n == null) return null
+      const subj = mapSubj(R.slice(1, 1 + n)), rest = R.slice(1 + n); if (!rest.length) return null
+      return W + ' ' + subj + ' ' + RL[0] + ' ' + map(rest) }
     if (/^(did|didn't|don't|doesn't|aren't|isn't)$/.test(RL[0])) return null
     if (/^(can|could|will|would|should|shall)$/.test(RL[0])) { const n = ccSubject(R.slice(1)); if (n == null) return null
       const subj = mapSubj(R.slice(1, 1 + n)), rest = R.slice(1 + n); return W + ' ' + subj + ' ' + (RL[0] === 'shall' ? 'should' : RL[0]) + (rest.length ? ' ' + map(rest) : '') }
@@ -17577,10 +17581,11 @@ function cueClarify(lang, p, ctx) {
   // ── 1. narration → instruction
   cue = cue.replace(/^As [A-Z][a-z]+,\s*/, '')
   cue = cue.replace(CC_MANNER, '')
-  let m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+(tells|says to|informs)\s+(her|him|them|you|the other person|[A-Z][a-z]+)\s*(?:,\s*)?(?:that\s+)?(.*)$/)
+  // "that" is kept: in "He tells her that pair of socks costs…" it is the determiner, and "Tell her that …" reads either way
+  let m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+(tells|says to|informs)\s+(her|him|them|you|the other person|[A-Z][a-z]+)\s*(?:,\s*)?(that\s+)?(.*)$/)
   const subjG = x => x === 'He' ? 'm' : x === 'She' ? 'f' : g
   if (m) { const og = subjG(m[1]), obj = m[3]
-    const rest = ccSpeakerToYou(m[4], og)
+    const rest = ccSpeakerToYou((obj === 'you' ? '' : m[4] || '') + m[5], og)
     cue = obj === 'you' ? 'Say ' + rest : 'Tell ' + obj + ' ' + rest; note('NARRATION → instruction') }
   else if ((m = cue.match(/^(He|She|[A-Z][a-z]+|A|B)\s+(says|answers|replies|explains|admits|adds|mentions|notes|responds|remarks|states|comments)\s*:\s*(.+)$/))) {
     // "He remarks: i like money" — a quoted line: reported from the speaker ("Say you like money.")

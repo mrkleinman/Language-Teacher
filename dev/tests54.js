@@ -92,6 +92,12 @@ const NARR = /^(He|She|A|B)\s+(tells|says|asks|suggests|offers|answers|agrees|ap
     T('C9', 'ja addressee is resolved from the scene: "Ask Ken: Are you taking the train today?" → "Ask Ken if he is taking the train today."', ja.by(81).prompt === 'Ask Ken if he is taking the train today.', ja.by(81).prompt)
     T('C10', 'zh: the "Tell the other person: …" / "Ask: …?" template copies become instructions — "Ask if they want to eat together." · "Say you haven\'t arrived yet." · "Tell them to drive a little faster." · "Suggest we go home together."',
       zh.by(39).prompt === 'Ask if they want to eat together.' && zh.by(7).prompt === "Say you haven't arrived yet." && zh.by(21).prompt === 'Tell them to drive a little faster.' && zh.by(41).prompt === 'Suggest we go home together.', [39, 7, 21, 41].map(k => zh.by(k).prompt))
+    // two grammar faults found by the Haiku prompt-following check (old-contract cues through the pass)
+    const one = (cue, en, thai) => c.cueClarify('th', { prompt: cue, english: en, thai, speaker: 'A', pairType: 'recall' }, ctxOf('th')).cue
+    const c11 = one('He tells her that pair of socks costs twenty-nine baht.', 'That pair of socks is twenty-nine baht.', 'ถุงเท้าคู่นั้นยี่สิบเก้าบาทครับ')
+    T('C11', 'narration "He tells her that pair of socks costs…" keeps the determiner "that" (not "Tell her pair of socks…")', /\bthat pair of socks\b/.test(c11) && !/^He\b/.test(c11), c11)
+    const c12 = one("Ask him why he can't buy the plane ticket.", "Why can't you buy it?", 'ทำไมซื้อไม่ได้คะ')
+    T('C12', 'a rebuilt wh-question with a negated modal is in reported order: "Ask why she can\'t buy it." (listener Nida; not "why can\'t they")', /^Ask why (she|they) can't buy it\.$/.test(c12), c12)
   }
   // ══ D — prompt-length: shorter on average, never a hard gate (§2) ════════════════════════════════════════════════════════════
   for (const [lang, R] of [['th', th], ['ja', ja], ['zh', zh]]) {

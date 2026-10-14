@@ -214,7 +214,7 @@ The flagged rows are listed in the export ("CUE_FLAG …"). They are for sentenc
 
 | Check | Result |
 |---|---|
-| **New `tests54.js` — Daily cue clarity** | **55/55**; registered in `run_all.sh` |
+| **New `tests54.js` — Daily cue clarity** | **57/57** (C11 / C12 added after the Haiku check, §10); registered in `run_all.sh` |
 | Full offline regression (snapshot) | OFFLINE REGRESSION: OK — 1,847 checks passed; the only failures are the 3 already-known ones (tests33 2G; tests35 2C-thTH, 2C-zhZH — blocked on missing v673 replay files). tests54 55/55. |
 | Production cassette replay (v682-final4 ja / th / zh) | 0 mismatches, content identical (the switch is gated on the Oct13 quality path, as before) |
 | check_sync | v696 in sync |
@@ -292,6 +292,56 @@ What tests54 covers:
 - **Live behaviour is unmeasured.** The generator contract change should make most cues short at the source; how well the real model follows it is unknown until a paid run.
 - **The flagged meaning errors** are reported, not repaired automatically. Six on these three tracks need a decision on the sentence or translation.
 
+## 10. Haiku prompt-following check (added after the report)
+
+The production Haiku server cannot be reached from this environment: the network policy blocks the Cloud Run host, and the site access code is not set. So this check is not a full live track. It answers one question: **does Haiku follow the new short-prompt instruction?**
+
+**How it was run:**
+- The app built its real Daily generator requests, using the 12 Oct Thai, Japanese and Mandarin fixtures. The model replies were simulated only so that the requests could be captured.
+- 15 matched requests were taken (5 per language, same target), each in two versions: the v696 contract, and the v695 wording (`setCueClarity(false)`).
+- Each of the 30 requests went to its own Haiku agent, which returned the raw reply.
+- **Caveat:** these agents carry some Claude Code instructions of their own. The results are therefore indicative, not identical to a production API call.
+- The English prompts in the replies were scored and then run through the v696 cue pass.
+- Files are in `sandbox/haiku-cue-check-v696/`: the requests, the replies, `items.json`, and the scripts.
+
+| Language | Contract | Prompts | Avg words | Over 12 words | Narration ("He tells her…") | Changed by the v696 pass |
+|---|---|---|---|---|---|---|
+| Thai | v695 | 15 | 10.9 | 4 | 12 | 14 |
+| Thai | **v696** | 15 | **7.7** | **0** | **0** | **0** |
+| Japanese | v695 | 15 | 13.7 | 7 | 0 | 12 |
+| Japanese | **v696** | 15 | **7.0** | **0** | **0** | 3 (only "your friend" removed) |
+| Mandarin | v695 | 5 | 11.2 | 2 | 0 | 4 |
+| Mandarin | **v696** | 5 | **8.8** | 1 | **0** | 3 (only "your friend" removed) |
+
+Example: the same Thai target, ถุงเท้าคู่นั้นยี่สิบเก้าบาทครับ:
+
+| Contract | Haiku's prompt |
+|---|---|
+| v695 | "He tells her that pair of socks costs twenty-nine baht." |
+| v696 | "Say that pair of socks costs twenty-nine baht." |
+
+Example: Japanese どれ:
+
+| Contract | Haiku's prompt |
+|---|---|
+| v695 | "Tell your friend you still don't know which one you are going to buy." |
+| v696 | "Say you don't know which one to buy." |
+
+**Two grammar faults found and fixed.** Running the v695-style Haiku prompts through the pass exposed them:
+
+| Haiku's prompt | Before the fix | After the fix | Test |
+|---|---|---|---|
+| "He tells her that pair of socks costs…" | "Tell her pair of socks costs…" (the determiner "that" was dropped) | "Tell her that pair of socks costs…" | tests54 C11 |
+| "Ask him why he can't buy the plane ticket." (for ทำไมซื้อไม่ได้คะ) | "Ask why can't they buy it." (wrong word order) | "Ask why she can't buy it." | tests54 C12 |
+
+With these two fixes tests54 has 57 checks, all passing.
+
+**What this does not show:**
+- whole-track behaviour: recovery, the judges, 30 × 3;
+- the exact production API path.
+
+A full live run still needs the environment change described in the chat: allow the Cloud Run host and set `LT_ACCESS`.
+
 ---
 
 ## TL;DR
@@ -310,4 +360,5 @@ What tests54 covers:
   - Thai 64/94, Japanese 67/101 and Mandarin 80/94 cues changed, with average length down about 20%;
   - 6 genuine sentence or translation meaning errors are flagged, not hidden;
   - 2 cue meaning mismatches are fixed.
-- **Tests and cost:** tests54 is 55/55, the replay shows 0 mismatches, there are no extra calls, and the cost is about +US$0.0006 per track. No sentence, pronunciation or SRS data changed. No paid test and no deploy — a live Daily run needs your approval.
+- **Haiku check (§10):** with the new instruction, Haiku's own prompts were short (7–9 words) with no narration, before the pass touched them. The check found two grammar faults in the fallback, both fixed.
+- **Tests and cost:** tests54 is 57/57, the replay shows 0 mismatches, there are no extra calls, and the cost is about +US$0.0006 per track. No sentence, pronunciation or SRS data changed. No paid test and no deploy — a live Daily run needs your approval.

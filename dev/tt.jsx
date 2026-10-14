@@ -29008,6 +29008,9 @@ function lnMfScenePrompt(env, g, k, prior, fix) {
     (scaffold ? 'GRAMMAR / FUNCTION WORDS you may use: ' + scaffold + '\n' : '') +
     'RULES:\n' +
     '- ' + b.min + '–' + b.max + ' turns (never more than ' + b.max + '). A and B alternate. Every turn makes sense for these two people at this moment.\n' +
+    // v697 (live Haiku relay): situations planned one by one drifted — a movie was agreed, then a book of photos appeared; a
+    // restaurant was planned, then "is the shop still far?" before anyone set off. The final judge failed 3 of 6 parts.
+    (before.length ? '- ONE STORYLINE: S' + (k + 1) + ' follows from what was just said, agreed or planned above — if they decided to do something, they are now doing it (or one of them says why not); a new place, object or topic is brought in by what the speakers say, never by a jump.\n' : '') +
     '- A reply ANSWERS the turn before it: what time → a clock time · how much → an amount · why → a real reason · where → a place · which → one of the options. Never answer a question with something it did not ask.\n' +
     (lnMfHasNumbers(env) ? '' : LN_MF_NO_NUMBERS_RULE) + LN_MF_PHONE_RULE +
     '- One lesson word in a turn is fine; never more than 3. Never force unrelated lesson words into one sentence — give a word its own short exchange.\n' +

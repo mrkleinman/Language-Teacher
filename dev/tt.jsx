@@ -28844,6 +28844,10 @@ function lnMfValidate(env, mp) {
 // ── AUDIT (one batched model call): sense · reply · usage (natural / acceptable / awkward / incorrect) · scenes ──
 const LN_MF_GUIDE = () => ({ th: typeof THAI_NATURALNESS_GUIDE !== 'undefined' ? THAI_NATURALNESS_GUIDE : '', ja: typeof JA_NATURALNESS_GUIDE !== 'undefined' ? JA_NATURALNESS_GUIDE : '', zh: typeof ZH_NATURALNESS_GUIDE !== 'undefined' ? ZH_NATURALNESS_GUIDE : '' })
 function lnMfVerdictKey(tu, prev) { return tu.text + '␟' + tu.english + '␟' + (prev ? prev.text : '') }
+// v697 (live Haiku relay, Japanese run 5): a FAILING verdict is tied to its situation as it was judged — "ready today" failed as
+// "nothing is being made", the repair added "they make them here" three turns earlier, and the cached fail (same line, same line
+// before it) came back unchanged. A fail is judged again once anything in its situation changed; a pass stays.
+function lnMfTurnCtx(mp, tu) { const s = mp.scenes.find(x => x.key === tu.scene); return s ? s.turns.map(t => t.text).join('|') : '' }
 function lnMfSceneKey(s, prevScene) { return s.turns.map(t => t.text).join('|') + '␟' + (prevScene && prevScene.turns.length ? prevScene.turns[prevScene.turns.length - 1].text : '') }
 function lnMfConversationRows(mp, byId, mark, headNote) {
   // v697 (live Haiku relay): only what the listener HEARS is shown — the planner's invented place label ("a restaurant near the
@@ -28881,7 +28885,7 @@ async function lnMfAuditCall(env, mp, scopeIds, needScenes) {
   }
   const got = new Map(((obj && obj.turns) || []).map(v => [+v.n, v]))
   mp.flat.forEach((tu, i) => { if (!mark.has(tu.id)) return; const v = got.get(tu.n)
-    if (v) mf.verdicts.set(lnMfVerdictKey(tu, mp.flat[i - 1]), { sense: String(v.sense || 'ok').toLowerCase(), responds: String(v.responds || 'n/a').toLowerCase(), usage: String(v.usage || '').toLowerCase(), fault: +v.fault || 0, note: String(v.note || '') }) })
+    if (v) mf.verdicts.set(lnMfVerdictKey(tu, mp.flat[i - 1]), { sense: String(v.sense || 'ok').toLowerCase(), responds: String(v.responds || 'n/a').toLowerCase(), usage: String(v.usage || '').toLowerCase(), fault: +v.fault || 0, note: String(v.note || ''), ctx: lnMfTurnCtx(mp, tu) }) })
   ;((obj && obj.situations) || []).forEach(v => { const k = +String(v.key || '').replace(/\D/g, '') - 1; const s = mp.scenes[k]; if (!s || !need.has(s.key)) return
     const sv = { coherent: v.coherent !== false, transition: String(v.transition || 'ok').toLowerCase(), note: String(v.note || '') }
     mf.sceneVerdicts.set(lnMfSceneKey(s, mp.scenes[k - 1]), sv); mf.sceneLast.set(s.key, sv) })
@@ -28899,7 +28903,9 @@ async function lnMfValidateAndAudit(env, mp) {
   const det = lnMfValidate(env, mp)
   const detIds = new Set(det.issues.flatMap(x => x.turnIds))
   // the model judges only turns that passed the deterministic proof and have no verdict for this exact text in this context
-  const scope = mp.flat.filter((tu, i) => !detIds.has(tu.id) && !mf.verdicts.has(lnMfVerdictKey(tu, mp.flat[i - 1])))
+  const scope = mp.flat.filter((tu, i) => { if (detIds.has(tu.id)) return false
+    const v = mf.verdicts.get(lnMfVerdictKey(tu, mp.flat[i - 1]))
+    return !v || (lnMfVerdictIssue(v) && v.ctx != null && v.ctx !== lnMfTurnCtx(mp, tu)) })
   const scenesNeeding = mp.scenes.filter((s, k) => !mf.sceneVerdicts.has(lnMfSceneKey(s, mp.scenes[k - 1])))
   if (scope.length || scenesNeeding.length) await lnMfAuditCall(env, mp, scope.map(t => t.id), scenesNeeding.map(x => x.key))
   const sem = []

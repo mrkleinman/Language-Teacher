@@ -29495,11 +29495,17 @@ async function _lnComposeMeaningFirst(env) {
     meaning: { intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects, respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null } })) }))
   const cohOf = scs => scs.map((sc, k) => ({ title: (mp.scenes[k] && mp.scenes[k].title) || '', lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, meaning: tn.meaning })) }))
   const cohPass = c => !!c && c.state === QUALITY.VERIFIED && c.verdicts.every(v => v.pass) && (c.overall == null || c.overall >= 3)
-  let coh = null
+  let coh = null, judgedSig = null
   mf.storyRounds = 0
+  const textSig = () => mp.flat.map(t => t.speaker + ':' + t.text).join('|')
   if (env.o && env.o.apiKey) for (;;) {
-    tel.LISTENING_QC_CALLS++
-    coh = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: true }, log)
+    // a story repair that changed nothing (every patch rejected) is not judged again — the same text would get the same verdict;
+    // the next story round escalates instead (live Haiku relay: a patch with an unknown word, then the identical text re-judged)
+    if (judgedSig !== textSig()) {
+      tel.LISTENING_QC_CALLS++
+      coh = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: true }, log)
+      judgedSig = textSig()
+    } else log && log('📖 STORY_JUDGE skipped — the story repair changed nothing (its patch was rejected); the next round escalates')
     log && log('📖 STORY_JUDGE ' + (cohPass(coh) ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (coh.overall != null ? ' · overall ' + coh.overall + '/5' : '') + ' · the situations judged as ONE conversation' + (mf.storyRounds ? ' · after story repair ' + mf.storyRounds : ''))
     if (cohPass(coh) || coh.state !== QUALITY.VERIFIED || mf.storyRounds >= LN_MF_STORY_ROUNDS) break
     mf.storyRounds++

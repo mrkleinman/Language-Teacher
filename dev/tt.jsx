@@ -28441,7 +28441,7 @@ const LN_MF_CONTRACTS = {
     // v697 (live Haiku relay): 買うのができる — the verb form before できる was wrong, and the scene could not be repaired
     // v697 (Japanese runs 3–4, both blocked on できる in the shop: 買うのができる · "できる for a machine is odd"): a flexible word, it
     // often lands in the shopping situation, where its natural sense is an ORDER BEING READY — said here so the planner uses it so
-    'できる': { rule: 'できる = can (a skill: 日本語ができる · 料理ができる) or be READY — in a shop or café: an order is ready (もうできた？ · はい、できました) — never a verb + の + できる, never "can buy" (that is 買える)' },
+    'できる': { rule: 'できる = can (a skill: 日本語ができる) or be READY — something being MADE is ready (a coffee or food just ordered: もうできた？ · はい、できました); never for a thing bought off the shelf, never a verb + の + できる, never "can buy" (that is 買える)' },
   },
   th: {
     'แก่': { describes: ['PERSON', 'ANIMAL'], rule: 'แก่ = old (people / animals) — never about a thing or a place (things are เก่า)' },

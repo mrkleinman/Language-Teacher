@@ -24592,10 +24592,14 @@ const LN_QTYPE_RX = [
   { q: /^\s*who\b/i, expects: 'a person' },
 ]
 const LN_BARE_YESNO = /^\s*(yes|yeah|yep|no|nope|okay|ok|sure|right)[.!]?\s*$/i
+const LN_APOLOGY_ACK = /^\s*(yeah|yes|yep|ok|okay|oh|ah|sure|fine|alright|all right|got it|i see|i understand|understood|no problem|no worries|never mind|don'?t worry|it'?s (ok|okay|fine|alright|all right)|that'?s (ok|okay|fine|alright|all right)|why|how come)\b/i
 function listeningQtypeIssue(aEn, bEn, aIsQ, bIsQ) {
   const a = String(aEn || '').trim(), b = String(bEn || '').trim()
   if (!a || !b || /\b(i don't know|not sure|no idea|i'm not sure)\b/i.test(b)) return null
-  if (/^\s*(sorry|i'm sorry|i am sorry|my apologies)\b/i.test(a) && bIsQ && !/^(are you|is it|really|what happened)/i.test(b)) return 'APOLOGY expects an acknowledgement, got an unrelated question'
+  // v699 (live relay run 6, Japanese): "Sorry, I didn't come yesterday." → "Yeah, got it. Why didn't you come?" acknowledges FIRST and
+  // asks about the same thing — it was rejected three repair rounds running and blocked the track. An acknowledgement opener, or a
+  // why-question about what was apologised for, is a reply to the apology; only a question that ignores it is not.
+  if (/^\s*(sorry|i'm sorry|i am sorry|my apologies)\b/i.test(a) && bIsQ && !/^(are you|is it|really|what happened)/i.test(b) && !LN_APOLOGY_ACK.test(b)) return 'APOLOGY expects an acknowledgement, got an unrelated question'
   if (!aIsQ) return null
   const qt = LN_QTYPE_RX.find(x => x.q.test(a))
   if (!qt) return null

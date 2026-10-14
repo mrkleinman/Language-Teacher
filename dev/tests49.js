@@ -141,6 +141,12 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     { const c = load(__dirname + '/tt.compiled.js', { realBelt: true }), adj = new Set(['大', '好', '小']), w = t => (c.lnMfZhProblems(t, '', adj) || []).map(x => x.word)
       T('D4d', 'zh: 到 + a possessor + place noun is a place (到朋友的地方吧 · 到他家吗 · 我们到朋友家了 pass); a bare 到 still fails (我到。· 我现在一起到。)',
         !w('到朋友的地方吧。').includes('到') && !w('到他家吗？').includes('到') && !w('我们到朋友家了。').includes('到') && w('我到。').includes('到') && w('我现在一起到。').includes('到')) }
+    // D4e · v699 (live relay run 6, Japanese): an apology answered by an acknowledgement + a follow-up question was rejected three
+    // repair rounds running ("ごめん、昨日、来なかった。" → "うん、分かった。なんで来なかったの？") and blocked the whole track
+    { const c = load(__dirname + '/tt.compiled.js', { realBelt: true }), q = (a, b) => c.listeningQtypeIssue(a, b, false, true)
+      T('D4e', 'an apology may be answered by an acknowledgement + a question about it ("Yeah, got it. Why didn\'t you come?" · "Why?" pass); a question that ignores the apology still fails ("Do you like movies?" · "Shall we go by train?")',
+        q("Sorry, I didn't come yesterday.", "Yeah, got it. Why didn't you come?") === null && q("Sorry, I didn't eat with you yesterday.", 'Why?') === null &&
+        /APOLOGY expects/.test(q("Sorry, I'm late.", 'Do you like movies?') || '') && /APOLOGY expects/.test(q('Sorry.', 'Shall we go by train?') || '')) }
     // D5 · a target the plan forgot → GROUPING recovery adds an exchange for it; the target is never silently lost
     const noCost = GOOD.th.filter(r => !/ค่าโดยสาร|สิบบาท/.test(r[5]))
     const th1 = await run('th', { plan: noCost, repair: () => [['A', 'ASK', 'PRICE', 'the fare', 'ค่าโดยสารเท่าไหร่ครับ', 'How much is the fare?'], ['B', 'ANSWER', '', 'the fare', 'สิบบาทค่ะ', 'Ten baht.']] })

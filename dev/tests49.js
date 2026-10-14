@@ -364,6 +364,10 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
       { r: lineOf(ja.Ls, /MEANING_REPAIR round[^\n]*/), n: bnd.length })
     T('K10-ja', 'ja v694 learner: FULL ASSEMBLY → READY — 30/30, 0 new, SRS untouched, 24–44 turns, ≤3 targets per turn, two speakers, hard length 7, every FAILED situation re-checked and named',
       contract(ja, 'ja') && failedCleared(ja) && /COMPLEXITY_HARD_MAX=7/.test(ja.Ls), { st: ja.track.status, r: ja.track.failureReason, f: ja.track.failedChecks })
+    // v697 (live Haiku relay, Japanese runs 3–5: できる in the shop was never natural) — a flexible word with situations it fits is
+    // moved, alone, to one of them that has room; every other word keeps its situation
+    T('K10b-ja', 'ja v694 learner: できる (fits: catching up · eating · looking around) is grouped into S1 MEET, not the shop; the shop keeps 買う + お金, and the conversation keeps its 6 situations',
+      /LISTENING_SITUATION S1 MEET[^\n]*できる/.test(ja.Ls) && /LISTENING_SITUATION S6 SHOP [^\n]*targets=\[買う, お金\]/.test(ja.Ls) && !/LISTENING_SITUATION S7 /.test(ja.Ls), lineOf(ja.Ls, /LISTENING_SITUATION S\d SHOP[^\n]*/))
     // the repair is the boundary even when it fails once (second attempt is again a boundary repair, never "rewrite S4 only")
     {
       const g = await run('ja', { ...jaBase, repair: (scope, head, q, st) => !/BOUNDARY/.test(head) ? null : st.repair === 1 ? F.JA_FIX.boundary.slice(0, 3) : F.JA_FIX.boundary }, {}, L694('ja'))

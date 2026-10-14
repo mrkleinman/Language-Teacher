@@ -28439,9 +28439,10 @@ const LN_MF_CONTRACTS = {
     'まだ': { rule: 'まだ = not yet / still (まだ食べてない · まだいる？)' },
     'もう': { rule: 'もう = already / (not) any more (もう食べた？ · もう帰る)' },
     // v697 (live Haiku relay): 買うのができる — the verb form before できる was wrong, and the scene could not be repaired
-    // v697 (Japanese runs 3–4, both blocked on できる in the shop: 買うのができる · "できる for a machine is odd"): a flexible word, it
-    // often lands in the shopping situation, where its natural sense is an ORDER BEING READY — said here so the planner uses it so
-    'できる': { rule: 'できる = can (a skill: 日本語ができる) or be READY — something being MADE is ready (a coffee or food just ordered: もうできた？ · はい、できました); never for a thing bought off the shelf, never a verb + の + できる, never "can buy" (that is 買える)' },
+    // v697 (Japanese runs 3–5, all stuck on できる in the shop: 買うのができる · "できる for a machine is odd" · and when it was made to
+    // mean "the food is ready", the bookshop scene turned into a food stall and broke the story): as a flexible word it went to the
+    // lightest situation. fits: the situations its talk belongs to — a skill when catching up, food being ready, looking at things
+    'できる': { fits: ['MEET', 'EAT', 'LOOK'], rule: 'できる = can (a skill: 日本語ができる) or be READY — something being MADE is ready (a coffee or food just ordered: もうできた？ · はい、できました); never for a thing bought off the shelf, never a verb + の + できる, never "can buy" (that is 買える)' },
   },
   th: {
     'แก่': { describes: ['PERSON', 'ANIMAL'], rule: 'แก่ = old (people / animals) — never about a thing or a place (things are เก่า)' },
@@ -28492,7 +28493,7 @@ function lnMfProfile(t, lang) {
   const general = /^(to )?(can|be able( to)?|want( to)?|would like|like|love|know|understand|think|have|has|need|say|tell|is|are|be|mean|try|help|feel)\b/.test(head) || /^is \(identif/.test(g)
   const flexible = !asks && (['YESNO', 'MODIFIER'].includes(meta.valueType) || ['RESPONSE_TOKEN', 'DISCOURSE_MARKER', 'APOLOGY', 'FUNCTIONAL_PHRASE'].includes(meta.role) ||
     (meta.valueType === 'STATE' && !describes && generic) || generic || (general && !(c && (c.asks || c.describes || c.needs))))
-  return { id: t.id, surface: t.surface, gloss: t.gloss || '', role: meta.role, valueType: meta.valueType, asks, nounClass, describes, needs: (c && c.needs) || [], rule: c ? c.rule : null, flexible, past: !!meta.past, meta }
+  return { id: t.id, surface: t.surface, gloss: t.gloss || '', role: meta.role, valueType: meta.valueType, asks, nounClass, describes, needs: (c && c.needs) || [], rule: c ? c.rule : null, fits: (c && c.fits) || null, flexible, past: !!meta.past, meta }
 }
 // ── SITUATIONS: everyday settings a conversation can move through. Chosen FROM the targets (never a fixed arc); a
 // situation is available only when the learner's words can carry its core (needs).
@@ -28571,6 +28572,13 @@ function lnMfGroupTargets(profiles, glosses, o) {
     return lnMfSituationScore(p, s) }
   flex.forEach(p => { const pick = chosen.slice().sort((a, b) => (hostScore(p, b) - hostScore(p, a)) || (groups.get(a.key).length - groups.get(b.key).length) || a.rank - b.rank)
     .find(s => groups.get(s.key).length < LN_MF_SITUATION_CAP + 1) || chosen[0]; groups.get(pick.key).push(p) })
+  // v697: a flexible word that FITS only some situations (fits) and landed elsewhere is then MOVED — alone — to a fitting situation
+  // that still has room (never splitting it); every other word stays exactly where it was placed
+  flex.filter(p => p.fits).forEach(p => {
+    const from = chosen.find(s => groups.get(s.key).includes(p)); if (!from || p.fits.includes(from.key)) return
+    const to = chosen.filter(s => p.fits.includes(s.key) && groups.get(s.key).length < LN_MF_SITUATION_CAP).sort((a, b) => groups.get(a.key).length - groups.get(b.key).length || a.rank - b.rank)[0]
+    if (!to) return
+    groups.set(from.key, groups.get(from.key).filter(x => x !== p)); groups.get(to.key).push(p) })
   // an overfull situation becomes two consecutive parts of it
   const scenes = []
   chosen.slice().sort((a, b) => a.rank - b.rank).forEach(s => { const ps = groups.get(s.key)
@@ -28678,7 +28686,8 @@ function lnMfZhProblems(text, prevText, adjSet) {
   // a short echo answer (你找钱吗？ — 找。 · 你回家吗？ — 我不回。) — the verb's complement is recoverable from the question
   const echo = v => bare.replace(/^(我们|你们|我|你|他|她)/, '').replace(/^(也|就|都)/, '').replace(/^(不|没)/, '') === v && String(prevText || '').includes(v)
   // v695: a short REPLY after a turn that names the thing (你拿这个吗？ — 好，我拿。) carries its object by ellipsis
-  const objReply = v => (dailyV693On() || oct13On()) && /^(好|行|对|嗯|可以)[，,]?/.test(s) && bare.replace(/^(好|行|对|嗯|可以)/, '').replace(/^(我们|我|你)/, '').replace(/^(也|就)/, '') === v && /(这个|那个|东西|钱|它)/.test(String(prevText || ''))
+  // v697 (live Haiku relay, Mandarin run 5): 好，我帮你找。 — "I'll help you look" after a turn about what is looked for
+  const objReply = v => (dailyV693On() || oct13On()) && /^(好|行|对|嗯|可以)[，,]?/.test(s) && bare.replace(/^(好|行|对|嗯|可以)/, '').replace(/^(我们|我|你)/, '').replace(/^(也|就)/, '').replace(/^帮(你|我)/, '') === v && (/(这个|那个|东西|钱|它)/.test(String(prevText || '')) || String(prevText || '').includes(v))
   const g = (w, why, fault) => out.push({ fault: fault || 4, word: w, detail: why })
   let r
   if ((r = after('跟')) != null && !(ZH_MF_PERSON.test(r) && !end(r.replace(ZH_MF_PERSON, '')))) g('跟', '跟 needs a person and then a verb (跟 + 朋友 + 去) — "' + s + '"')
@@ -29224,6 +29233,9 @@ function lnMfScopes(env, mp, issues) {
     // the same failure signature again → one rung higher per repeat
     const rung = Math.min(LN_MF_LADDER.length - 1, LN_MF_LADDER.indexOf(kind) + (is.repeats || 0))
     kind = LN_MF_LADDER[Math.max(rung, LN_MF_LADDER.indexOf(kind))]
+    // v697 (live Haiku relay, Mandarin run 5): a WORDING fault (one clipped reply) climbed to a whole-situation rewrite in round 3,
+    // which then failed on five lesson words in one turn — a wording fault is rewritten at most as its exchange's intention
+    if (is.fault === 1 && LN_MF_LADDER.indexOf(kind) > LN_MF_LADDER.indexOf('intention')) kind = 'intention'
     // v695: a transition between two situations is a DISCOURSE-STATE fault at their boundary: the end of the earlier situation and
     // the start of the later one are repaired together (live v694 Japanese: "agreed today" at the end of S3 vs "tomorrow?" at the
     // start of S4 — v694 could only rewrite the start of S4, which cannot undo the earlier agreement)

@@ -88,7 +88,8 @@ const TH_FIX = {
 const JA_V694 = [
   ['S1', 'A', 'GREET', '', '', 'こんにちは。', 'Hello.'],
   ['S1', 'B', 'ASK', 'YESNO', 'today free', '今日は暇？', 'Are you free today?'],
-  ['S1', 'A', 'ANSWER', '', 'today free', 'うん、暇。', 'Yeah, I\'m free.'],
+  // v697: できる now belongs to S1 (catching up) — the grouping no longer leaves it in the shop
+  ['S1', 'A', 'ANSWER', '', 'today free', 'うん、暇。今日はできるよ。', 'Yeah, I\'m free. Today I can.'],
   ['S1', 'B', 'ASK', 'STATE', 'yesterday', '昨日どうだった？', 'How was yesterday?'],
   ['S1', 'A', 'ANSWER', '', 'yesterday', 'ちょっと忙しかった。', 'It was a little busy.'],
   ['S1', 'B', 'ASK', 'REASON', 'being busy', 'なんで忙しかったの？', 'Why were you busy?'],
@@ -128,14 +129,14 @@ const JA_V694 = [
   ['S6', 'A', 'ANSWER', '', 'this', 'うん、買おうかな。', 'Yeah, I think I\'ll buy it.'],
   ['S6', 'B', 'ASK', 'YESNO', 'money', 'お金ある？', 'Do you have money?'],
   ['S6', 'A', 'ANSWER', '', 'money', 'うん、ある。大丈夫だよ。', 'Yeah, I have it. It\'s okay.'],
-  ['S6', 'B', 'ASK', 'YESNO', 'paying here', 'ここで買うことできる？', 'Can we buy it here?'],
-  ['S6', 'A', 'FAREWELL', '', 'paying here', 'うん、できるよ。じゃ、またね。', 'Yeah, we can. Okay, see you later.'],
+  ['S6', 'B', 'ASK', 'YESNO', 'paying here', 'ここで買うこと、いい？', 'Is it okay to buy it here?'],
+  ['S6', 'A', 'FAREWELL', '', 'paying here', 'うん、いいよ。じゃ、またね。', 'Yeah, it\'s fine. Okay, see you later.'],
 ]
 const JA_FIX = {
   // S3 replan: こっち → あそこ (the replan keeps the today agreement — the model does not see S4 yet)
   S3: [['こっちの店がいい。', ['S3', 'A', 'ANSWER', '', 'that shop', 'あそこの店がいい。', 'That shop over there.']]],
   // S6 replan: こと → a plain question
-  S6: [['ここで買うことできる？', ['S6', 'B', 'ASK', 'YESNO', 'paying here', 'ここで買うの、できる？', 'Can we buy it here?']]],
+  S6: [['ここで買うこと、いい？', ['S6', 'B', 'ASK', 'YESNO', 'paying here', 'ここで買うの、いい？', 'Is it okay to buy it here?']]],
   // the BOUNDARY repair (end of S3 + start of S4): the day is no longer fixed in S3
   boundary: [['A', 'PROPOSE', '', 'going there', 'じゃ、あそこ行こう。', 'Then let\'s go there.'], ['B', 'ACCEPT', '', 'going there', 'いいよ、行こう。', 'Okay, let\'s go.'],
     ['A', 'PROPOSE', '', 'tomorrow', '明日、行かない？', 'Want to go tomorrow?'], ['B', 'COUNTER', '', 'tomorrow', '明日はまだ分からない。', 'I don\'t know yet about tomorrow.']],

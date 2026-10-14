@@ -218,20 +218,20 @@ async function openListening(S, lang, props = {}) {
       const lb = rt.root.findAll(x => x.props && x.props['data-listen-button'] && x.type === 'button')
       const rowText = textOf(rt.toJSON())
       const calls0 = cR.__geminiMockCalls.length
-      const recentBtn = lb[lb.length - 1]   // the last one is the Recent Tracks row (the first is the v661 dashboard bar)
+      const recentBtn = lb[lb.length - 1]   // the Recent Tracks row (v698: the dashboard bar's place is now the Topics card)
       if (recentBtn) await TR.act(async () => { recentBtn.props.onClick({ stopPropagation() {} }); await flush(20) })
       const opened = rt.root.findAllByType(cR.ConvoPlayer).length === 1
-      T(lang, 'V2', 'Recent Tracks: a saved Listening Track shows "🎧 ▶ Listen" (no "SRS Track" / convo buttons) — one tap opens the player, 0 model calls (plus the v661 dashboard bar = 2 Listen buttons)',
-        lb.length === 2 && opened && cR.__geminiMockCalls.length === calls0 && (lang !== 'th' || !/SRS Track/.test(rowText)), { listenButtons: lb.length, opened })
+      T(lang, 'V2', 'Recent Tracks: a saved Listening Track shows "🎧 ▶ Listen" (no "SRS Track" / convo buttons) — one tap opens the player, 0 model calls (v698: 1 Listen button — the dashboard bar\'s place is now Topics)',
+        lb.length === 1 && opened && cR.__geminiMockCalls.length === calls0 && (lang !== 'th' || !/SRS Track/.test(rowText)), { listenButtons: lb.length, opened })
       await TR.act(async () => { rt.unmount() })
-      // v661: the latest Listening Track sits right under the three track buttons (no scrolling to Recent Tracks)
+      // v698 (owner's Topics brief, Phase 1): the Topics card takes the bar's place under the three track buttons; the ready
+      // Listening Track stays one tap away in Recent Tracks (V2) and the repair moved INTO the Listening screen (V4)
       let rt3
       await TR.act(async () => { rt3 = TR.create(React.createElement(Teacher, { lang, onSetLang: () => {} })); await flush(60) })
-      const bar = rt3.root.findAll(x => x.props && x.props['data-listening-latest'] === 'ready' && typeof x.type === 'string')
-      const barBtn = bar[0] && bar[0].findAll(x => x.props && x.props['data-listen-button'] && x.type === 'button')[0]
-      if (barBtn) await TR.act(async () => { barBtn.props.onClick({ stopPropagation() {} }); await flush(20) })
-      T(lang, 'V3', 'dashboard: "Your Listening Track is ready" bar directly under the track buttons, its ▶ Listen opens the player',
-        bar.length === 1 && !!barBtn && rt3.root.findAllByType(cR.ConvoPlayer).length === 1, { bar: bar.length })
+      const bar = rt3.root.findAll(x => x.props && x.props['data-listening-latest'] && typeof x.type === 'string')
+      const topicsCard = rt3.root.findAll(x => x.props && x.props['data-topics-entry'] === lang && x.type === 'button')
+      T(lang, 'V3', 'dashboard (v698): the Topics card sits where the Listening bar was; no Listening bar on the dashboard',
+        bar.length === 0 && topicsCard.length === 1, { bar: bar.length, topics: topicsCard.length })
       await TR.act(async () => { rt3.unmount() })
       // a NEWER failed attempt: the bar says so and Rebuild restarts it with the SAME ids (selector not re-run)
       const cF = rc(lang); const SF = setup(lang); SF.c = cF
@@ -243,6 +243,10 @@ async function openListening(S, lang, props = {}) {
       let selN = 0; const rs = cF.selectRevisionTargets
       let rt4
       await TR.act(async () => { rt4 = TR.create(React.createElement(lang === 'ja' ? cF.JapaneseTeacher : lang === 'zh' ? cF.MandarinTeacher : cF.ThaiTeacher, { lang, onSetLang: () => {} })); await flush(60) })
+      // v698: the repair is offered INSIDE the Listening screen — dashboard → Listening Track → "needs repair" → Rebuild
+      const dashBar = rt4.root.findAll(x => x.props && x.props['data-listening-latest'] && typeof x.type === 'string').length
+      const lnOpen = rt4.root.findAll(x => x.type === 'button').find(b => /Listening Track/.test(textOf(b.children)))
+      if (lnOpen) await TR.act(async () => { lnOpen.props.onClick(); await flush(30) })
       const fb = rt4.root.findAll(x => x.props && x.props['data-listening-latest'] === 'needs-repair' && typeof x.type === 'string')
       const fbt = textOf(fb[0] || null)
       cF.selectRevisionTargets = (...a) => { selN++; return rs(...a) }
@@ -250,8 +254,8 @@ async function openListening(S, lang, props = {}) {
       if (rbb) await TR.act(async () => { rbb.props.onClick(); await flush(10) })
       const tilesF = attrIds(rt4, 'data-listening-tile')
       cF.selectRevisionTargets = rs
-      T(lang, 'V4', 'dashboard: a newer NOT_READY attempt shows "Your last Listening Track needs repair · 27/30" with Rebuild → the generator restarts with the SAME 30 ids (selector not re-run)',
-        fb.length === 1 && /needs repair/.test(fbt) && /27\/30/.test(fbt.replace(/\s/g, '')) && selN === 0 && same(tilesF, failIds), { fb: fb.length, selN, tiles: tilesF.length })
+      T(lang, 'V4', 'Listening (v698): a newer NOT_READY attempt is offered first — "Your last Listening Track needs repair · 27/30" with Rebuild → the generator restarts with the SAME 30 ids (selector not re-run); nothing on the dashboard',
+        dashBar === 0 && fb.length === 1 && /needs repair/.test(fbt) && /27\/30/.test(fbt.replace(/\s/g, '')) && selN === 0 && same(tilesF, failIds), { fb: fb.length, selN, tiles: tilesF.length })
       await TR.act(async () => { rt4.unmount() })
     }
 

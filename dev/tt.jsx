@@ -96,7 +96,7 @@ THAI_LEXICON_AUDIT_V645.forEach(a => {
   a.applied = true
 })
 
-// ══ v697 TOPICS — vocabulary for specific situations ══════════════════════════════════════════
+// ══ v698 TOPICS — vocabulary for specific situations ══════════════════════════════════════════
 // A topic is an ORDERED LIST OF CANONICAL VOCABULARY IDS, never a second dictionary. Each topic word is one record in the
 // master dictionary (RAW_VOCAB): an existing entry with exactly the same Thai is reused (its id, SRS history and curriculum
 // position untouched); a genuinely absent word is added ONCE, unranked (curriculumIndex 0 — no Shodan position, no belt) and
@@ -191,6 +191,7 @@ const _weddingSeed = seedThaiTopicEntries(RAW_VOCAB, TOPIC_WEDDING_SPEECH_TH, 'w
 const LANGUAGE_TOPICS = Object.freeze({
   th: [{ id: 'wedding-speech', title: 'Wedding Speech', icon: '💍', available: true,
     description: 'Learn useful Thai for thanking family, telling your story, making promises and celebrating your wedding.',
+    sceneHint: 'thanking their families, memories, plans and promises, wishing each other well, or an upcoming wedding',
     vocabIds: Object.freeze(_weddingSeed.ids.slice()), groups: TOPIC_WEDDING_SPEECH_GROUPS, groupSize: 5,
     seed: { reused: _weddingSeed.reused, created: _weddingSeed.created } }],
   ja: [],
@@ -14104,7 +14105,7 @@ function randomNumberHint(vocab, pairIndex) {
 }
 
 // ── Conversation-track generation ────────────────────────────────────────────
-async function establishConvoScene(targets, vocab, apiKey, model) {
+async function establishConvoScene(targets, vocab, apiKey, model, opts) {
   const wordList = targets.slice(0, 15).map(t => t.thai + '=' + t.english).join(', ')
   // The scene is built from the SAME allowed vocabulary the sentence generator is
   // bound by. Previously it was invented freely and then fed words like วันศุกร์ and
@@ -14120,6 +14121,10 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
     '\nIf a scene idea needs a Thai word that is NOT listed, simplify the scene or pick\n' +
     'a different situation. Never build the scene around an unlisted content word.\n' +
     'A simple situation using allowed words beats a vivid one that needs new vocabulary.'
+  // v698 — a Topic Track (e.g. Wedding Speech): a light preference only, never a forced theme; the two speakers stay friends
+  const _tp = opts && opts.topic
+  const _topicHint = _tp ? '\n\nTOPIC (preference only): this lesson\'s NEW words come from "' + _tp.title + '". Where it is natural, set the scene so these friends can ' +
+    'talk about ' + (_tp.sceneHint || 'that topic') + '. The other (revision) words must still fit naturally — never force them into the topic.' : ''
   const system = 'You design Thai language lesson scenarios. Given vocabulary words, create a vivid realistic scene where two Thai adult friends (not family members) naturally use these words. Characters A and B are friends or acquaintances — never parent/child, never siblings.'
   const user = 'Vocabulary: ' + wordList + '\n\nReturn ONLY valid JSON (no markdown):\n' +
     '{"scene":"2-sentence scene in English",' +
@@ -14146,7 +14151,7 @@ async function establishConvoScene(targets, vocab, apiKey, model) {
   try {
     let raw = ''
     // v648: through the central Gemini client (was a second, hand-rolled Gemini fetch)
-    raw = await geminiRequest({ apiKey, model, messages: [{ role:'user', content: system + '\n\n' + user + _sceneConstraint }], maxTokens: 1200, temperature: 0.9 })
+    raw = await geminiRequest({ apiKey, model, messages: [{ role:'user', content: system + '\n\n' + user + _sceneConstraint + _topicHint }], maxTokens: 1200, temperature: 0.9 })
     const clean = raw.replace(/```json|```/g,'').trim()
     const parsed = JSON.parse(clean)
     if (parsed.scene && parsed.characterA) return parsed
@@ -28414,7 +28419,7 @@ function selectRevisionTargets(lang, vocab) {
   return { language: lang, rule: 'revision', selector: 'selectRevisionTargets(' + lang + ') = selectRevisionTrackTargets' + (lang === 'zh' ? ' → feasibility gate' : '') + ' → jazhContractTargets(revision)',
     selection: sel, raw: sel.targets, targets, targetIds: targets.map(w => w.id), counts: sel.counts, blocked: null }
 }
-// ══ v697 TOPICS — selection (the ONLY difference between a Topic Track and a Daily Track is where the NEW words come from) ══
+// ══ v698 TOPICS — selection (the ONLY difference between a Topic Track and a Daily Track is where the NEW words come from) ══
 const TOPIC_NEW_PER_TRACK = 5
 function topicsFor(lang) { return (LANGUAGE_TOPICS[lang] || []).filter(t => t.available !== false) }
 function topicById(lang, topicId) { return topicsFor(lang).find(t => t.id === topicId) || null }
@@ -28613,7 +28618,7 @@ const LN_MF_CONTRACTS = {
     'ごめん': { rule: 'ごめん = sorry (casual) — an apology the other speaker acknowledges' },
     'まだ': { rule: 'まだ = not yet / still (まだ食べてない · まだいる？)' },
     'もう': { rule: 'もう = already / (not) any more (もう食べた？ · もう帰る)' },
-    // v697 (live Haiku relay): 買うのができる — the verb form before できる was wrong, and the scene could not be repaired
+    // v697 (live relay run): 買うのができる — the verb form before できる was wrong, and the scene could not be repaired
     // v697 (Japanese runs 3–5, all stuck on できる in the shop: 買うのができる · "できる for a machine is odd" · and when it was made to
     // mean "the food is ready", the bookshop scene turned into a food stall and broke the story): as a flexible word it went to the
     // lightest situation. fits: the situations its talk belongs to — a skill when catching up, food being ready, looking at things
@@ -28861,7 +28866,7 @@ function lnMfZhProblems(text, prevText, adjSet) {
   // a short echo answer (你找钱吗？ — 找。 · 你回家吗？ — 我不回。) — the verb's complement is recoverable from the question
   const echo = v => bare.replace(/^(我们|你们|我|你|他|她)/, '').replace(/^(也|就|都)/, '').replace(/^(不|没)/, '') === v && String(prevText || '').includes(v)
   // v695: a short REPLY after a turn that names the thing (你拿这个吗？ — 好，我拿。) carries its object by ellipsis
-  // v697 (live Haiku relay, Mandarin run 5): 好，我帮你找。 — "I'll help you look" after a turn about what is looked for
+  // v697 (live relay run, Mandarin run 5): 好，我帮你找。 — "I'll help you look" after a turn about what is looked for
   const objReply = v => (dailyV693On() || oct13On()) && /^(好|行|对|嗯|可以)[，,]?/.test(s) && bare.replace(/^(好|行|对|嗯|可以)/, '').replace(/^(我们|我|你)/, '').replace(/^(也|就)/, '').replace(/^帮(你|我)/, '') === v && (/(这个|那个|东西|钱|它)/.test(String(prevText || '')) || String(prevText || '').includes(v))
   const g = (w, why, fault) => out.push({ fault: fault || 4, word: w, detail: why })
   let r
@@ -28870,7 +28875,7 @@ function lnMfZhProblems(text, prevText, adjSet) {
   for (const v of ['用', '找', '拿']) if ((r = after(v)) != null && end(r) && !echo(v) && !objReply(v)) g(v, v + ' needs what is ' + (v === '找' ? 'looked for' : v === '用' ? 'used' : 'taken') + ' — "' + s + '"')
   if ((r = after('做')) != null && end(r) && !/怎么做|做的|谁做/.test(s) && !echo('做')) g('做', '做 needs what is done (做什么 · 做工作) — "' + s + '"')
   if ((r = after('回')) != null && !/^(家|这里|那里|哪里|去|来|国|了)/.test(r) && !echo('回')) g('回', '回 needs where to (回家) — "' + s + '"')
-  // v697 (live Haiku relay): 到朋友的地方 / 到朋友家 name a place — a possessor (+ 的) before a place noun is a place
+  // v697 (live relay run): 到朋友的地方 / 到朋友家 name a place — a possessor (+ 的) before a place noun is a place
   if ((r = after('到')) != null && !/^(了|这里|那里|哪里|这|那|(我们|你们|他们|我|你|他|她|朋友|妈妈|爸爸|老师)?的?(家|地方|店|商店|饭店|学校|公司|医院|车站|机场|公园|这儿|那儿))/.test(r) && !/到了/.test(s) && !echo('到')) g('到', '到 needs a place or 了 (我到了 · 到家了) — "' + s + '"')
   if ((r = after('很')) != null && !([...adjSet].some(a => r.startsWith(a)))) g('很', '很 must be followed by an adjective (很大 · 很好) — "' + s + '"')
   if ((r = after('太')) != null) { if (!([...adjSet].some(a => r.startsWith(a)))) g('太', '太 must be followed by an adjective — "' + s + '"'); else if (!/了/.test(r) && !/不太/.test(s)) g('太', '太 + adjective needs 了 (太大了) — "' + s + '"') }
@@ -29028,13 +29033,13 @@ function lnMfValidate(env, mp) {
 // ── AUDIT (one batched model call): sense · reply · usage (natural / acceptable / awkward / incorrect) · scenes ──
 const LN_MF_GUIDE = () => ({ th: typeof THAI_NATURALNESS_GUIDE !== 'undefined' ? THAI_NATURALNESS_GUIDE : '', ja: typeof JA_NATURALNESS_GUIDE !== 'undefined' ? JA_NATURALNESS_GUIDE : '', zh: typeof ZH_NATURALNESS_GUIDE !== 'undefined' ? ZH_NATURALNESS_GUIDE : '' })
 function lnMfVerdictKey(tu, prev) { return tu.text + '␟' + tu.english + '␟' + (prev ? prev.text : '') }
-// v697 (live Haiku relay, Japanese run 5): a FAILING verdict is tied to its situation as it was judged — "ready today" failed as
+// v697 (live relay run, Japanese run 5): a FAILING verdict is tied to its situation as it was judged — "ready today" failed as
 // "nothing is being made", the repair added "they make them here" three turns earlier, and the cached fail (same line, same line
 // before it) came back unchanged. A fail is judged again once anything in its situation changed; a pass stays.
 function lnMfTurnCtx(mp, tu) { const s = mp.scenes.find(x => x.key === tu.scene); return s ? s.turns.map(t => t.text).join('|') : '' }
 function lnMfSceneKey(s, prevScene) { return s.turns.map(t => t.text).join('|') + '␟' + (prevScene && prevScene.turns.length ? prevScene.turns[prevScene.turns.length - 1].text : '') }
 function lnMfConversationRows(mp, byId, mark, headNote) {
-  // v697 (live Haiku relay): only what the listener HEARS is shown — the planner's invented place label ("a restaurant near the
+  // v697 (live relay run): only what the listener HEARS is shown — the planner's invented place label ("a restaurant near the
   // National Museum" vs "restaurant near Sanam Luang") is never spoken, but the audit failed transitions on the labels alone
   return mp.scenes.map((s, k) => 'S' + (k + 1) + ' — ' + s.title + (headNote && headNote.get(s.key) ? '   ' + headNote.get(s.key) : '') + '\n' + s.turns.map(tu => (mark && mark.has(tu.id) ? '★' : ' ') + tu.n + '. ' + tu.speaker + ' [' + tu.intent + (tu.asks && tu.intent === 'ASK' ? ' ' + tu.asks : '') +
     (tu.respondsToId ? ' → reply to ' + ((mp.flat.find(x => x.id === tu.respondsToId) || {}).n) : '') + '] ' + tu.text + ' — ' + tu.english + ((tu.targetIds || []).length ? '   (lesson words: ' + tu.targetIds.map(id => (byId.get(id) || {}).surface).filter(Boolean).join(', ') + ')' : '')).join('\n')).join('\n\n')
@@ -29042,7 +29047,7 @@ function lnMfConversationRows(mp, byId, mark, headNote) {
 async function lnMfAuditCall(env, mp, scopeIds, needScenes) {
   const { la, log, tel, o, ctx } = env, mf = env.mf, byId = env.byId
   const mark = new Set(scopeIds)
-  // v697 (live Haiku relay, Japanese run 4): a re-audit judged EVERY situation again and its verdicts overwrote earlier passes —
+  // v697 (live relay run, Japanese run 4): a re-audit judged EVERY situation again and its verdicts overwrote earlier passes —
   // a one-line wording fix in S3 brought back "S3 is incoherent" (approved before), and the plan escalated to moving lesson words
   // and rewriting whole situations. Now only the situations that changed are judged; one approved before is shown as such, with
   // its changed turns, and the question is whether the CHANGE keeps it coherent. Unchanged situations keep their verdict.
@@ -29057,7 +29062,7 @@ async function lnMfAuditCall(env, mp, scopeIds, needScenes) {
     '- usage: "natural" | "acceptable" | "awkward" | "incorrect". "acceptable" = correct and fine here although another wording is more common — a REQUIRED lesson word used correctly is at least "acceptable" (e.g. いいえ where ううん would be more casual). "awkward" = a native speaker would find it odd HERE. "incorrect" = ungrammatical or the wrong meaning.\n' +
     '- fault: 0 none · 1 wording · 2 the English is wrong · 4 grammar · 5 it does not make sense · 6 the reply does not answer · 7 it does not follow from what came before\n- note: a short reason in English.\n' +
     'Then for ' + (reaudit ? 'each situation marked NEEDS A VERDICT' : 'EVERY situation') + ': coherent (true / false — one plausible everyday moment), transition ("ok" | "fail" — does it follow naturally from the situation before, as ONE storyline: what was just said, agreed or planned still holds, and a new topic or place is introduced by what the speakers say, not by a jump? A situation may be a LATER moment of the same day when its first turn says what happened in between (we have seen the museum · we are here now): that stated time skip is ok, not a jump), note.\n' +
-    // v697 (live Haiku relay): the note was passed into the repair request and dictated wording the lesson rules forbid (a phrase
+    // v697 (live relay run): the note was passed into the repair request and dictated wording the lesson rules forbid (a phrase
     // the learner was never taught; 去 for the lesson word 来) — two patches were rejected and two repair rounds were lost
     'NOTES: say WHAT is wrong, never dictate new wording. A turn\'s lesson words (shown in brackets) MUST stay — never advise replacing or removing one; the learner knows only a small vocabulary, so never suggest other words or phrases.\n\nCONVERSATION:\n' + lnMfConversationRows(mp, byId, mark, reaudit ? head : null) +
     '\n\nReply ONLY with JSON: {"turns":[{"n":1,"sense":"ok","responds":"n/a","usage":"natural","fault":0,"note":""}],"situations":[{"key":"S1","coherent":true,"transition":"ok","note":""}]}'
@@ -29206,7 +29211,7 @@ function lnMfScenePrompt(env, g, k, prior, fix) {
     'LEARNER: ' + (cc ? cc.belt + ' — each turn ' + cc.preferredMin + '–' + cc.preferredMax + ' ' + cc.unitName + ', never more than ' + cc.hardMax + '. ' + (cc.promptRule || '') : 'beginner — short turns') + '\n' +
     'SPEAKERS: A and B, ' + rel + '. ' + la.speakerContract + (extra || '') + '\n' +
     'THE WHOLE CONVERSATION: ' + g.scenes.map((x, j) => (j === k ? '★' : '') + 'S' + (j + 1) + ' ' + x.title).join(' → ') + '\n' +
-    // v697 (live Haiku relay, Thai): S2 planned "the museum first, then a restaurant", but no later situation visits a museum
+    // v697 (live relay run, Thai): S2 planned "the museum first, then a restaurant", but no later situation visits a museum
     // (getting there → eating) — every repair then had to bridge a visit that never happens. A plan must fit what comes next.
     (k < g.scenes.length - 1 ? 'WHAT HAPPENS NEXT (after S' + (k + 1) + '): ' + g.scenes.slice(k + 1).map((x, j) => 'S' + (k + j + 2) + ' — ' + ((LN_MF_SITUATIONS.find(y => y.key === x.situation) || {}).desc || x.title)).join(' · ') + '. Any plan the speakers make here must fit exactly this: never plan an activity, visit or place that these later situations do not include. These situations follow straight on, the SAME day, in this order — so a day or time agreed here must let them happen next (agree on today / now, not another day, when the next situation already goes there).\n' : '') +
     (before.length ? 'SO FAR (keep everything consistent with it — places, plans, what was agreed, who knows what; do not repeat it):\n' + before.map((tu, j) => (j + 1) + '. ' + tu.speaker + ': ' + tu.text + ' — ' + tu.english).join('\n') + '\n' : '') +
@@ -29216,15 +29221,15 @@ function lnMfScenePrompt(env, g, k, prior, fix) {
     'ALLOWED VOCABULARY (the ONLY other content words you may use): ' + lnMfVocabRows(env).join(' · ') + '\n' +
     (scaffold ? 'GRAMMAR / FUNCTION WORDS you may use: ' + scaffold + '\n' : '') +
     'RULES:\n' +
-    // v697 (live Haiku relay, Thai run 4): S6 opened with the speaker who had just ended S5 — "A: … เลี้ยวซ้ายครับ / A: ดูเสร็จแล้วครับ"
+    // v697 (live relay run, Thai run 4): S6 opened with the speaker who had just ended S5 — "A: … เลี้ยวซ้ายครับ / A: ดูเสร็จแล้วครับ"
     '- ' + b.min + '–' + b.max + ' turns (never more than ' + b.max + '). A and B alternate' + (before.length ? ' — the last turn above is ' + before[before.length - 1].speaker + "'s, so S" + (k + 1) + ' starts with ' + (before[before.length - 1].speaker === 'A' ? 'B' : 'A') : '') + '. Every turn makes sense for these two people at this moment.\n' +
-    // v697 (live Haiku relay): situations planned one by one drifted — a movie was agreed, then a book of photos appeared; a
+    // v697 (live relay run): situations planned one by one drifted — a movie was agreed, then a book of photos appeared; a
     // restaurant was planned, then "is the shop still far?" before anyone set off. The final judge failed 3 of 6 parts.
     (before.length ? '- ONE STORYLINE: S' + (k + 1) + ' follows from what was just said, agreed or planned above — if they decided to do something, they are now doing it (or one of them says why not); a new place, object or topic is brought in by what the speakers say, never by a jump.\n' : '') +
     '- A reply ANSWERS the turn before it: what time → a clock time · how much → an amount · why → a real reason · where → a place · which → one of the options. Never answer a question with something it did not ask.\n' +
     (lnMfHasNumbers(env) ? '' : LN_MF_NO_NUMBERS_RULE) + LN_MF_PHONE_RULE +
     '- One lesson word in a turn is fine; never more than 3. Never force unrelated lesson words into one sentence — give a word its own short exchange.\n' +
-    // v697 (live Haiku relay, Japanese): 電車 / バス / 車 in one situation became "no train — the car is better — the bus?" with
+    // v697 (live relay run, Japanese): 電車 / バス / 車 in one situation became "no train — the car is better — the bus?" with
     // no choice ever made, and the audit failed it as "not one storyline" in every round
     '- When several lesson words are alternatives (vehicles, foods, places, times …), the speakers COMPARE them and CHOOSE one; from then on that choice holds (it is not changed again without a reason).\n' +
     '- Use ONLY the lesson words, the allowed vocabulary and the grammar words. If an idea needs another word, choose a different idea. No narration, no names.\n' +
@@ -29408,7 +29413,7 @@ function lnMfScopes(env, mp, issues) {
     // the same failure signature again → one rung higher per repeat
     const rung = Math.min(LN_MF_LADDER.length - 1, LN_MF_LADDER.indexOf(kind) + (is.repeats || 0))
     kind = LN_MF_LADDER[Math.max(rung, LN_MF_LADDER.indexOf(kind))]
-    // v697 (live Haiku relay, Mandarin run 5): a WORDING fault (one clipped reply) climbed to a whole-situation rewrite in round 3,
+    // v697 (live relay run, Mandarin run 5): a WORDING fault (one clipped reply) climbed to a whole-situation rewrite in round 3,
     // which then failed on five lesson words in one turn — a wording fault is rewritten at most as its exchange's intention
     if (is.fault === 1 && LN_MF_LADDER.indexOf(kind) > LN_MF_LADDER.indexOf('intention')) kind = 'intention'
     // v695: a transition between two situations is a DISCOURSE-STATE fault at their boundary: the end of the earlier situation and
@@ -29491,7 +29496,7 @@ function lnMfRepairPrompt(env, mp, scopes, note) {
     'Return ONLY the new turns of each part — nothing else, no explanations. For each turn: speaker (A | B), intent, asks, about, object, targetIds, ' + LN_MF_TEXT_FIELD_RULE(la) + '\n' +
     'Reply ONLY with JSON: {"parts":[{"scope":"x1","turns":[{"speaker":"A","intent":"ASK","asks":"PLACE","about":"","object":"","targetIds":[],"text":"...","pron":"","english":"..."}]}]}' + (note || '')
 }
-// v697 (live Haiku relay) — a part whose patch the hard checks REJECTED gets one corrected retry in the same round, told exactly
+// v697 (live relay run) — a part whose patch the hard checks REJECTED gets one corrected retry in the same round, told exactly
 // why (Japanese run 3: its last round was lost to one unknown word, そろそろ, and four lesson words in one turn — the rewrite was
 // otherwise right, and the track was blocked)
 const LN_MF_RETRY_HINT = { CLOSED_VOCAB: 'use ONLY the allowed vocabulary — replace the unknown word(s) with allowed words or drop them', MAX_TARGETS_PER_TURN: 'one turn carries too many lesson words — spread them over the turns', PROTECTED_TARGET_LOST: 'a lesson word went missing — every listed lesson word must be heard',
@@ -29594,7 +29599,7 @@ function lnMfApply(env, mp, scopes, rep, round) {
       if (s.kind === 'add') { const k = s.insertAfter ? sc.turns.findIndex(t => t.id === s.insertAfter) + 1 : sc.turns.length; sc.turns.splice(k, 0, ...ins); return }
       const idx = sc.turns.findIndex(t => s.turnIds.includes(t.id)); if (idx < 0) return
       sc.turns = sc.turns.filter(t => !s.turnIds.includes(t.id)); sc.turns.splice(idx, 0, ...ins)
-      // v697 (live Haiku relay): a situation rewritten as a whole keeps no stale place label — the audit and the judge read the
+      // v697 (live relay run): a situation rewritten as a whole keeps no stale place label — the audit and the judge read the
       // old "where" ("a restaurant near the National Museum") against the new turns and failed it as "spans two places"
       if (s.kind === 'scene') sc.where = '' }
     trial.scenes.filter(x => sceneKeys.includes(x.key)).forEach(place)
@@ -29602,7 +29607,7 @@ function lnMfApply(env, mp, scopes, rep, round) {
     const freshIds = new Set(fresh.map(t => t.id))
     const bad = tr.issues.filter(is => (LN_MF_PATCH_HARD.has(is.code) && is.turnIds.some(id => freshIds.has(id))) ||
       (is.code === 'TURN_BUDGET' && trial.scenes.reduce((a, x) => a + x.turns.length, 0) > env.turnsMax))
-    // v697 (live Haiku relay, Mandarin run 3): a patch may not put two of ITS turns by the same speaker side by side — a boundary patch
+    // v697 (live relay run, Mandarin run 3): a patch may not put two of ITS turns by the same speaker side by side — a boundary patch
     // came back A / B / B / A and the track read "B: 好，我知道了。 B: 现在去，好吗？" (the plan's own turns are not re-judged here)
     { const tf = trial.scenes.flatMap(x => x.turns)
       for (let i = 1; i < tf.length; i++) if (tf[i].speaker === tf[i - 1].speaker && freshIds.has(tf[i].id) && freshIds.has(tf[i - 1].id)) {
@@ -29715,7 +29720,7 @@ async function _lnComposeMeaningFirst(env) {
     }
     return false
   }
-  // v697 — a lone reply the audit calls "does not answer" while rating its wording natural / acceptable (live Haiku Mandarin:
+  // v697 — a lone reply the audit calls "does not answer" while rating its wording natural / acceptable (live relay run, Mandarin:
   // 吃了，你怎么回家？ — 不知道，我去朋友家。 blocked the whole track after 3 rounds) no longer blocks the plan: it is DEFERRED to the
   // final story judge, which reads the whole conversation; the line still fails the naturalness gate unless that judge passes
   mf.deferredQA = new Set()
@@ -29751,7 +29756,7 @@ async function _lnComposeMeaningFirst(env) {
   const textSig = () => mp.flat.map(t => t.speaker + ':' + t.text).join('|')
   if (env.o && env.o.apiKey) for (;;) {
     // a story repair that changed nothing (every patch rejected) is not judged again — the same text would get the same verdict;
-    // the next story round escalates instead (live Haiku relay: a patch with an unknown word, then the identical text re-judged)
+    // the next story round escalates instead (live relay run: a patch with an unknown word, then the identical text re-judged)
     if (judgedSig !== textSig()) {
       tel.LISTENING_QC_CALLS++
       coh = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: true }, log)
@@ -31544,7 +31549,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
             setBuildingScene(true)
             try {
               activeTargets.forEach(t => { t._trackTargets = activeTargets })
-    const sd = await establishConvoScene(activeTargets, vocab, apiKey, genModel)
+    const sd = await establishConvoScene(activeTargets, vocab, apiKey, genModel, topic ? { topic } : undefined)
               sceneDataRef.current = sd
               setSceneData(sd)
             } catch(e) { sceneDataRef.current = { scene:'Two friends at a market.', characterA:'Somchai', characterB:'Nida', opening:'สวัสดีครับ' } }

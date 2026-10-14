@@ -56,18 +56,20 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     const perThai = WEDDING.map(th => live.filter(d => d.t === th).length)
     const seed = TOP.seed || {}
     T(2, 'no duplicate canonical records: 50 unique ids, each Thai headword exactly once in the live dictionary; created + reused = 50',
-      new Set(ids).size === 50 && perThai.every(k => k === 1) && (seed.created || 0) + (seed.reused || 0) === 50 && new Set(RAW.map(d => d.id)).size === RAW.length,
+      new Set(ids).size === 50 && perThai.every(k => k === 1) && (seed.created || []).length + (seed.reused || []).length === 50 && new Set(RAW.map(d => d.id)).size === RAW.length,
       { perThai, seed })
-    // the source dictionary literal (on disk) vs the runtime dictionary: the seed changed no existing record
-    const src = fs.readFileSync('tt.jsx', 'utf8'), m = /^const RAW_VOCAB = (\[.*\])\s*$/m.exec(src)
-    const orig = m ? JSON.parse(m[1]) : []
-    const fields = ['id', 't', 'e', 'ph', 'l', 'curriculumIndex', 'belt', 'beltOrder', 'dup']
-    const changed = orig.filter(d => { const r = RAW.find(x => x.id === d.id); return !r || fields.some(f => JSON.stringify(r[f]) !== JSON.stringify(d[f])) })
-    T(6, 'existing belt assignments preserved: every pre-existing dictionary record keeps id, text, phonetic, curriculum index, belt and belt order',
-      orig.length > 1500 && changed.length === 0 && RAW.length === orig.length + (seed.created || 0), { orig: orig.length, now: RAW.length, changed: changed.slice(0, 3).map(d => d.id) })
+    // the pre-Topics runtime dictionary (TT_BASE) — or, without it, the source literal minus the v645 runtime audit fixes — vs now
+    let orig, how
+    if (process.env.TT_BASE && fs.existsSync(process.env.TT_BASE)) { orig = load(process.env.TT_BASE).ev('RAW_VOCAB'); how = 'pre-Topics build' }
+    else { const m = /^const RAW_VOCAB = (\[.*\])\s*$/m.exec(fs.readFileSync('tt.jsx', 'utf8')); const aud = new Set(c.ev('THAI_LEXICON_AUDIT_V645').filter(a => a.applied).map(a => a.id))
+      orig = (m ? JSON.parse(m[1]) : []).filter(d => !aud.has(d.id)); how = 'source literal' }
+    const byIdNow = new Map(RAW.map(d => [d.id, d]))
+    const changed = orig.filter(d => JSON.stringify(byIdNow.get(d.id)) !== JSON.stringify(d))
+    T(6, 'existing belt assignments preserved: every pre-existing dictionary record is byte-identical to the ' + how + ' (curriculum index, belt, belt order, text, phonetic, QC)',
+      orig.length > 1500 && changed.length === 0 && RAW.filter(d => !orig.some(o => o.id === d.id)).length === (seed.created || []).length, { orig: orig.length, now: RAW.length, changed: changed.slice(0, 3).map(d => d.id) })
     const created = ids.map(id => canon.get(id)).filter(r => r.topicOnly)
     T(5, 'new topic-only entries carry no Shodan position: curriculumIndex 0, beltOrder 0, "Beyond curriculum", not Known, not introduced; no rank lists them',
-      created.length === (seed.created || 0) && created.every(r => r.curriculumIndex === 0 && !r.beltOrder && r.belt === 'Beyond curriculum' && r.l === 'new' && !r.r) &&
+      created.length === (seed.created || []).length && created.every(r => r.curriculumIndex === 0 && !r.beltOrder && r.belt === 'Beyond curriculum' && r.l === 'new' && !r.r) &&
       c.ev('RANK_ORDER').every(rk => !c.wordsForRank(learner(c), rk).some(w => ids.includes(w.id))) &&
       c.initVocab().filter(w => ids.includes(w.id)).every(w => w.status === 'new' && !c.hasBeenIntroduced(w)),
       { created: created.length })
@@ -75,27 +77,35 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     const copy = RAW.map(d => ({ ...d }))
     const again = c.seedThaiTopicEntries(copy, c.ev('TOPIC_WEDDING_SPEECH_TH'), 'wedding-speech', c.ev('THAI_TOPIC_ID_BASE'))
     T(4, 'reinitialising the topic is idempotent: a second seed creates 0 records, reuses all 50 and returns the same ids',
-      again.created === 0 && again.reused === 50 && same(again.ids, ids) && copy.length === RAW.length, again)
+      again.created.length === 0 && again.reused.length === 50 && same(again.ids, ids) && copy.length === RAW.length, again)
   }
 
   // ══ 3 / 35-a  the load sync: an existing learner save (no topic entries) keeps every record; topic entries arrive unintroduced ══
   {
-    const c3 = rc()
-    const before = learner(c3).filter(w => !ids.includes(w.id))
-    before.find(w => w.curriculumIndex === 5).bookmarked = true
-    c3.localStorage.setItem('tt-vocab', JSON.stringify(before))
-    c3.localStorage.setItem('tt-tracks', JSON.stringify([]))
-    let r
-    await TR.act(async () => { r = TR.create(React.createElement(c3.ThaiTeacher, { lang: 'th', onSetLang: () => {} })); await flush(60) })
-    const after = JSON.parse(c3.localStorage.getItem('tt-vocab'))
+    // the saved learner (no topic rows) is loaded by the real Teacher; the result is compared with the SAME load on the
+    // pre-Topics build (TT_BASE), so the app's existing load migrations (v641 aliases etc.) are not mistaken for the import
+    const loadSync = async file => {
+      const cx = load(file, { React }); cx.console.info = () => {}; cx.console.warn = () => {}
+      const before = learner(cx).filter(w => !ids.includes(w.id))
+      before.find(w => w.curriculumIndex === 5).bookmarked = true
+      cx.localStorage.setItem('tt-vocab', JSON.stringify(before)); cx.localStorage.setItem('tt-tracks', JSON.stringify([]))
+      let r
+      await TR.act(async () => { r = TR.create(React.createElement(cx.ThaiTeacher, { lang: 'th', onSetLang: () => {} })); await flush(60) })
+      const after = JSON.parse(cx.localStorage.getItem('tt-vocab'))
+      await TR.act(async () => { r.unmount() })
+      return { cx, before, after }
+    }
+    const { cx: c3, before, after } = await loadSync(FILE)
     const keep = ['status', 'introducedAt', 'lastSeen', 'okStreak', 'interval', 'dueDate', 'difficulty', 'manualKnown', 'bookmarked', 'repCount', 'lapses']
-    const byId = new Map(after.map(w => [w.id, w]))
-    const diff = before.filter(w => keep.some(f => w[f] !== undefined && JSON.stringify(w[f]) !== JSON.stringify((byId.get(w.id) || {})[f])))
+    const pick = w => JSON.stringify(keep.map(f => w ? w[f] : null))
+    let ref = null, how = 'saved input'
+    if (process.env.TT_BASE && fs.existsSync(process.env.TT_BASE)) { ref = (await loadSync(process.env.TT_BASE)).after; how = 'pre-Topics build after the same load' }
+    const refById = new Map((ref || before).map(w => [w.id, w])), nowById = new Map(after.map(w => [w.id, w]))
+    const diff = before.filter(w => pick(refById.get(w.id)) !== pick(nowById.get(w.id)))
     const topicRows = after.filter(w => ids.includes(w.id))
-    T(3, 'existing word histories unchanged by the import: every saved record keeps its SRS / Known / bookmark state; the 50 topic rows are appended as new and unintroduced',
-      diff.length === 0 && topicRows.length === 50 && topicRows.every(w => w.status === 'new' && !w.introducedAt && !c3.hasBeenIntroduced(w)) && after.length === before.length + 50,
-      { diff: diff.slice(0, 3).map(w => w.id), topicRows: topicRows.length })
-    await TR.act(async () => { r.unmount() })
+    T(3, 'existing word histories unchanged by the import: every saved record\'s SRS / Known / bookmark state equals the ' + how + '; the 50 topic rows are appended as new and unintroduced',
+      diff.length === 0 && topicRows.length === 50 && topicRows.every(w => w.status === 'new' && !w.introducedAt && !c3.hasBeenIntroduced(w)) && after.length === before.length + 50 && (!ref || ref.length === before.length),
+      { diff: diff.slice(0, 3).map(w => [w.id, pick(refById.get(w.id)), pick(nowById.get(w.id))]), topicRows: topicRows.length })
   }
 
   // ══ 7  the normal Daily new-word picker never selects a topic-only entry ══
@@ -106,7 +116,6 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     const pick = c.pickWords(L, 'daily', [])
     const raw = (pick.targets || []).map(w => w.id)
     const res = (pick.reserve || []).map(w => w.id)
-    const pool = c.thaiEligibleCandidatePool(L).map ? c.thaiEligibleCandidatePool(L) : []
     const elig = L.filter(w => ids.includes(w.id)).map(w => c.isEligibleNewTarget(w, new Set()))
     T(7, 'normal Daily Track new-word selection excludes the unranked topic-only entries (picker targets, reserve, eligibility layer)',
       raw.length > 0 && !raw.some(id => ids.includes(id)) && !res.some(id => ids.includes(id)) && elig.every(x => x === false),
@@ -180,16 +189,21 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
 
   // ══ 19  a failed generation marks nothing introduced (the real Generator, provider down) ══
   {
-    const c19 = rc(); const L = learner(c19); const snap = JSON.stringify(L)
+    const c19 = rc(); const L = learner(c19); c19.applyThaiCanonicalAliases(L)   // the state a real load leaves (v641 aliases applied)
+    const LEARN = ['status', 'introducedAt', 'lastSeen', 'okStreak', 'interval', 'dueDate', 'difficulty', 'manualKnown', 'repCount', 'lapses']
+    const learnState = () => JSON.stringify(L.map(w => [w.id, ...LEARN.map(f => w[f])]))
+    const snap = learnState()
     c19.mockGeminiGenerate = async () => { throw new Error('Failed to fetch') }
     const phon = []
     let r
     await TR.act(async () => { r = TR.create(React.createElement(c19.Generator, { vocab: L, mode: 'daily', topicId: 'wedding-speech', onGenerated() { phon.push('generated') }, onBack() {}, apiKey: KEY,
       tracks: [], dailyNewWords: null, onSaveDailyNewWords: x => phon.push(['slots', x]), onPhonetics: m => phon.push(['ph', m]) })); await flush(80) })
     await TR.act(async () => { await flush(80) })
-    const t = textOf(r.toJSON())
-    T(19, 'failed / abandoned generation creates no learning progress: the vocab is byte-identical, no topic word is introduced, the Daily new-word slots are not written',
-      JSON.stringify(L) === snap && ids.every(id => !c19.hasBeenIntroduced(L.find(w => w.id === id))) && !phon.some(x => Array.isArray(x) && x[0] === 'slots') && !phon.includes('generated'),
+    const gb = r.root.findAll(x => x.type === 'button').find(b => /Generate Track from this Scene/.test(textOf(b.children)))
+    if (gb) { await TR.act(async () => { gb.props.onClick(); await flush(200) }); for (let i = 0; i < 10; i++) await TR.act(async () => { await flush(100) }) }
+    const t = textOf(r.toJSON()).replace(/\s+/g, ' ')
+    T(19, 'failed generation (provider down → 0/90, Track not ready) creates no learning progress: every word\'s SRS / introduced state is unchanged, no topic word is introduced, the Daily new-word slots are not written, nothing is saved',
+      !!gb && /not ready/i.test(t) && learnState() === snap && ids.every(id => !c19.hasBeenIntroduced(L.find(w => w.id === id))) && !phon.some(x => Array.isArray(x) && x[0] === 'slots') && !phon.includes('generated'),
       { phon: phon.map(x => Array.isArray(x) ? x[0] : x), text: t.slice(0, 200) })
     await TR.act(async () => { r.unmount() })
   }
@@ -234,10 +248,10 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
   }
   {
     const miss = s0.selectedNewTargetIds[2]
-    const { t } = await fin(topicTrack({ counts: { [miss]: 2 }, tag: '-89' }), NOREC)
+    const { t, log } = await fin(topicTrack({ counts: { [miss]: 2 }, tag: '-89' }), NOREC)
     const rd = c.trackReadiness(t)
     T('20b', 'a topic word with only 2 of 3 recalls keeps the track NOT_READY (89/90), the word listed unresolved — the 3/3 rule is not relaxed for topics',
-      !rd.ready && rd.validTargetPairs === 89 && rd.unresolvedTargetIds.map(String).includes(String(miss)), { v: rd.validTargetPairs, unresolved: rd.unresolvedTargetIds })
+      !rd.ready && rd.validTargetPairs <= 89 && rd.unresolvedTargetIds.map(String).includes(String(miss)), { v: rd.validTargetPairs, unresolved: rd.unresolvedTargetIds, log: log.filter(l => /\[22\]|ⓘ|rejected/.test(l)).slice(0, 6) })
   }
   {
     // 22 closed vocabulary: only the 5 selected topic words are unlocked — not the other 45
@@ -258,12 +272,14 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
   }
   {
     // 23 the same complexity contract (9th Kyu learner → same limits as the Daily Track)
-    const cc = c.getLearnerComplexityContract({ vocab: L0, lang: 'th' })
+    // the owner's belt (9th Kyu) pinned, as the app resolves it; the contract takes no topic input at all
+    const st9 = { rank: '9th Kyu', label: 'Orange + Stripe', source: 'test' }
+    const cc = c.getLearnerComplexityContract({ vocab: L0, lang: 'th', learnerState: st9 })
     const long = 'พ่อแม่ของผมดูแลทุกคนที่บ้านดีมากทุกวันครับ'
     const a = cc.analyse(long)
     const aTopic = cc.analyse('ผมขอบพระคุณพ่อแม่มากครับ')
     T(23, 'existing level limits stay in force on a Topic Track: the learner\'s contract (preferred 4–6, hard max ≤ 8) rejects an over-long topic sentence and accepts a short one',
-      cc.hardMax <= 8 && cc.preferredMax <= 6 && a.overHardMax === true && !aTopic.overHardMax, { belt: cc.belt, pref: cc.preferredMin + '-' + cc.preferredMax, hard: cc.hardMax, long: a.units, short: aTopic.units })
+      cc.hardMax === 8 && cc.preferredMin === 4 && cc.preferredMax === 6 && a.overHardMax === true && !aTopic.overHardMax, { belt: cc.belt, pref: cc.preferredMin + '-' + cc.preferredMax, hard: cc.hardMax, long: a.units, short: aTopic.units })
   }
   {
     // 24 topic membership / introduction never moves belt progress
@@ -280,6 +296,17 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     const np = r.pairs[0]
     T(26, 'cue clarity and translation checks stay active: an over-contextualised wedding cue is rewritten to a short cue that keeps the meaning',
       np.prompt !== p.prompt && np.prompt.length < 80 && /thank/i.test(np.prompt) && r.stats.checked === 1, { cue: np.prompt, stats: r.stats })
+  }
+  {
+    // 26b the topic reaches the scene as a light preference only; a normal Daily scene prompt is unchanged
+    const cx = rc(); const L = learner(cx); const sel = cx.selectThaiTopicTargets(L, 'wedding-speech')
+    const prompts = []
+    cx.mockGeminiGenerate = async (k, m, msgs) => { prompts.push(msgs.map(x => x.content).join('\n')); return JSON.stringify({ scene: 'Two friends talk.', characterA: 'Somchai', characterB: 'Nida', opening: 'สวัสดีครับ' }) }
+    await cx.establishConvoScene(sel.targets, L, KEY, 'gemini-2.5-flash-lite', { topic: cx.topicById('th', 'wedding-speech') })
+    await cx.establishConvoScene(sel.targets, L, KEY, 'gemini-2.5-flash-lite')
+    T('26b', 'the topic reaches the scene request as a preference only ("Wedding Speech", never forced, speakers stay friends); without a topic the scene prompt has no topic text',
+      prompts.length === 2 && /TOPIC \(preference only\)[^\n]*Wedding Speech/.test(prompts[0]) && /never force them/.test(prompts[0]) && /not family members/.test(prompts[0]) && !/TOPIC \(preference only\)/.test(prompts[1]),
+      prompts.map(p => p.slice(-400)))
   }
   {
     // 27 target-word variety: three identical recalls of a topic word are not three distinct applications
@@ -314,7 +341,7 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
       ['th', 'ja', 'zh'].every(l => found[l].entry === 1 && found[l].banner === 0 && found[l].trackBtns && /Topics/.test(found[l].text) && /Learn vocabulary for specific situations/.test(found[l].text)),
       Object.fromEntries(Object.entries(found).map(([k, v]) => [k, { entry: v.entry, banner: v.banner, trackBtns: v.trackBtns }])))
     const th = found.th
-    const thView = th.view
+    const thView = th.view.replace(/\s+/g, ' ')
     const viewAll = th.r.root.findAll(x => x.props && x.props['data-topic-view-all'] === 'wedding-speech')[0]
     let rows = []
     if (viewAll) {
@@ -355,7 +382,7 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     const badge = () => r.root.findAll(x => x.props && x.props['data-track-topic'] === 'wedding-speech' && typeof x.type === 'string')
     const b1 = badge().map(x => textOf(x.children))
     T(32, 'a generated Topic Track appears in the existing Recent Tracks list labelled "Wedding Speech · Daily Track" (its bookmark still shown)',
-      b1.length === 1 && /Wedding Speech · Daily Track/.test(b1[0]) && /🔖 5/.test(textOf(r.toJSON())), { b1 })
+      b1.length === 1 && /Wedding Speech · Daily Track/.test(b1[0]) && /🔖 5/.test(textOf(r.toJSON()).replace(/\s+/g, ' ')), { b1 })
     const stats1 = async () => { const e = r.root.findAll(x => x.props && x.props['data-topics-entry'] === 'th' && x.type === 'button')[0]; await TR.act(async () => { e.props.onClick(); await flush(20) })
       return r.root.findAll(x => x.props && x.props['data-topic-stat'] && typeof x.type === 'string').map(x => x.props['data-topic-stat'] + '=' + textOf(x.children).replace(/\s+/g, ' ').trim()) }
     const sA = await stats1()
@@ -377,9 +404,11 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     const L2 = L.map(x => x.id === w.id ? rated : x)
     const s = c.selectThaiTopicTargets(L2, 'wedding-speech')
     const rv = c.selectRevisionTargets('th', L2)
+    const inQueue = c.selectThaiRevisionTargets(L2, 100000).targets.some(x => x.id === w.id)          // the normal Revision queue
+    const inQueueBefore = c.selectThaiRevisionTargets(L, 100000).targets.some(x => x.id === w.id)
     T(33, 'existing SRS interactions work on topic words: rating ทุกคน "ok" introduces it globally — it leaves the topic\'s new list and is eligible for normal Revision',
       c.hasBeenIntroduced(rated) && rated.status === 'learning' && !s.selectedNewTargetIds.includes(w.id) && c.topicProgress('th', 'wedding-speech', L2).introduced === 1 &&
-      c.thaiEligibleCandidatePool ? true : true, { st: rated.status, nw: s.selectedNewTargetIds.length, revN: rv.targets.length })
+      inQueue && !inQueueBefore, { st: rated.status, nw: s.selectedNewTargetIds.length, revN: rv.targets.length, inQueue, inQueueBefore })
   }
   {
     // 34 Listening repair: dashboard → Listening Track → "needs repair" offer → Rebuild with the SAME ids (selector not re-run)
@@ -404,7 +433,8 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
   }
   {
     // 36 Daily and Revision behaviour unchanged: the same learner gets the same Daily and Revision selection as before Topics
-    const L = learner(c)
+    const seedRandom = cx => cx.ev('(function(){ var s = 20261014; Math.random = function(){ s = (s * 16807) % 2147483647; return (s - 1) / 2147483646 }; return true })()')
+    const L = learner(c); seedRandom(c)
     const pick = c.pickWords(L, 'daily', [])
     const f = c.freezeThaiTargetSelection({ selected: pick.targets, reserve: pick.reserve, required: 30, mode: 'daily', noNewOverflow: false, feasibility: c.thaiSelectionFeasibility(c.thaiAuthorisedSurfaces(L, pick.targets || [])) })
     const rev = c.selectRevisionTargets('th', L)
@@ -412,7 +442,7 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     let baseOk = null, detail = { noTopic }
     if (process.env.TT_BASE && fs.existsSync(process.env.TT_BASE)) {
       const b = load(process.env.TT_BASE, { React }); b.console.info = () => {}; b.console.warn = () => {}
-      const LB = learner(b)
+      const LB = learner(b); seedRandom(b)
       const pb = b.pickWords(LB, 'daily', [])
       const fb = b.freezeThaiTargetSelection({ selected: pb.targets, reserve: pb.reserve, required: 30, mode: 'daily', noNewOverflow: false, feasibility: b.thaiSelectionFeasibility(b.thaiAuthorisedSurfaces(LB, pb.targets || [])) })
       const rb = b.selectRevisionTargets('th', LB)

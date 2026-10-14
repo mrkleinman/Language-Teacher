@@ -1,6 +1,6 @@
 # v698 build report: Topics + Thai Wedding Speech
 
-Dev branch only. Nothing is deployed, and no paid API calls were made.
+**Released as v698 on 14 Oct 2026** (owner: "go live"). The release is commit `ad78636` on `main`, and the GitHub Pages deployment succeeded. No paid API calls were made.
 
 ## TL;DR
 
@@ -18,9 +18,10 @@ Dev branch only. Nothing is deployed, and no paid API calls were made.
 - **Unchanged:** regular Daily and Revision selection is identical to the pre-Topics build (same learner, same random seed).
 - **Listening repair moved.** It is now offered inside the Listening screen, before any new build.
 - **Tests:**
-  - New suite (tests55): __TESTS55__.
-  - Full regression: __REGRESSION__.
-- **Not done:** no live generation was run (paid, needs approval), and nothing is deployed.
+  - New suite (tests55): 41/41.
+  - Full regression: 1,892 passed. The only failures are the 5 known ones, and all 5 also fail on v696 (v696 itself had 6; one, tests13, is fixed here).
+- **Found and fixed before release:** adding the 50 words to the dictionary had silently taken ทุกคน, ทุกอย่าง and ปัญหา off every learner's always-allowed list. They are restored.
+- **Not done:** no live Wedding Speech generation yet (paid; needs your go-ahead).
 
 ## Features implemented
 
@@ -143,9 +144,52 @@ All 50 have `curriculumIndex 0` and `beltOrder 0`, and no belt's word list conta
 5. **Listening**, after a failed attempt: the "needs repair · 27/30" panel with Rebuild, Build new, and Back.
 6. **Japanese and Mandarin dashboard → Topics:** "Topics coming soon."
 
+## Closed vocabulary: what changed for regular tracks
+
+- **Found by the regression run, fixed before release.** The approved function-word list (`THAI_ALWAYS_OK_WORDS`) authorises a word for every learner only when it is *not* a dictionary word. ทุกคน, ทุกอย่าง and ปัญหา are on that list, so adding them as topic entries silently locked them in every regular track.
+  - The Gen2 cassette replay (tests39 C1) showed this.
+  - **Fix:** `thaiExposureBank` leaves topic-only entries out of that rule. The three words are authorised exactly as before (test 22b compares against v696), and the Gen2 replay is identical again.
+- **Intended change: 25 topic words are now locked until introduced.** ความรัก, ดูแล, ต้อนรับ, จริงใจ, เชื่อใจ, เสมอ, ให้อภัย, เคารพ, ความทรงจำ, ร่วมกัน, ความสัมพันธ์, อวยพร, ผ่าน, ฝัน, ซื่อสัตย์, เอาใจใส่, ความหวัง, สบายใจ, แบ่งปัน, ประสบการณ์, เปลี่ยนแปลง, คำพูด, สนับสนุน, คนอื่น, เจ้าบ่าว.
+  - **Before:** a regular track could use them only because the checker did not recognise them as words. For example, เจ้าบ่าว or ความหวัง was accepted for a learner who had never learned it.
+  - **Now:** they are dictionary words, so the normal closed-vocabulary rule applies. This follows the brief: only introduced words, approved grammar and the 5 selected topic words; a component is not proof of the whole word.
+- **Unchanged:** words with an existing approved composition (พ่อแม่, ขอให้, คิดถึง, เรียนรู้, ในที่สุด, ทำให้, ยินดี) behave as before.
+
 ## Offline test results
 
-__RESULTS__
+**tests55 (new): 41/41 PASS.** It covers the owner's cases 1–36, plus:
+- 20b: 2/3 recalls → NOT_READY;
+- 22b: approved-list words unchanged;
+- 26b: topic scene hint only on topic tracks;
+- 29b: tapping a word opens Browse;
+- 33a: provenance survives the finaliser.
+
+Cases 3, 6, 22b and 36 compare against the real v696 build (`TT_BASE`).
+
+**Full regression (all 52 suites, with v696 run side by side):**
+
+| | v696 (before) | v698 (released) |
+|---|---|---|
+| Checks passed | 1,850 | 1,892 |
+| Failures | 6 | 5 |
+
+The 5 remaining failures are identical on v696:
+- tests33 2G;
+- tests35 2C-th and 2C-zh (missing v673 replay files);
+- tests37 C1;
+- tests39 A5.
+
+tests13 I1 (a model name in code comments) is fixed.
+
+**Existing checks updated to the owner's requested behaviour, not to hide a defect:**
+- **tests24 V2–V4:** the repair moved from the dashboard into Listening. The rebuild still uses the same 30 ids, and the selector is not re-run.
+- **tests46 W3/W4:** the dictionary is now 1,643 original + exactly 50 topic-only entries, and Beyond-curriculum is 1,143 + 50.
+- **tests39 F20:** ความหวัง is now a dictionary word, so the "no dictionary pronunciation" example became ความเหงา. A new assertion checks that ความหวัง is still rejected as untaught for this learner.
+
+**Release checks:**
+- `check_sync`: IN SYNC (app-version v698, SW cache tt-v698).
+- Credential scan of both built pages: clean.
+- Chromium smoke of the production page: no page errors; Topics → words → Generate all work.
+- Test-build isolation: 11/12. The failing check ("Delete test data" kept every real key identical) fails identically on the live v696 files, so it is not a v698 change.
 
 ## Unresolved issues and notes
 
@@ -159,16 +203,22 @@ __RESULTS__
 - **Pre-existing failures,** unchanged from the pre-Topics build:
   - tests35: 2 checks blocked on missing v673 replay files.
   - tests13 I1 failed on the pre-Topics build too, because a model name appeared in the v697 code comments. Those comments are reworded, so I1 now passes.
-- **Version.** The app build label still reads v696 (the v697 Listening work did not bump it either). A version bump and index rebuild belong to release prep.
 
 ## Deployment
 
-**Pending approval.** Everything is on `claude/session-continuation-check-a19meq`. Nothing has been merged or deployed, and no paid API test was run.
+- **Released v698 to production on 14 Oct 2026.**
+  - Commit `ad78636` on `main` updates `index.html` and `test/index.html` (the phone test build, copy-on-write storage).
+  - The GitHub Pages "pages build and deployment" run succeeded.
+  - Source: `claude/session-continuation-check-a19meq` at `32b38a9`.
+- **The release also carries the v697 Listening relay fixes** from the paused Listening work. tests49 passes 93/93.
+- **To roll back:** re-publish the v696 `index.html` and `test/index.html` from `2d4fa9f`.
+- **On first load of v698, the 50 Wedding Speech words are appended to the saved Thai vocabulary** as new, unintroduced words. Nothing else in saved data changes.
 
 ## TL;DR
 
 - **Built:** Topics on all three dashboards; Thai **Wedding Speech** with the owner's exact 50 words; a word list with live status; and a **Wedding Speech Track** on the unchanged Daily engine (up to 5 topic words + 25 revision).
 - **Dictionary:** one master dictionary. 50 new unranked entries were added: no Shodan positions, no belt change, and every existing record byte-identical. Learning a word anywhere counts everywhere.
 - **Unchanged:** regular Daily and Revision selection is identical to before (proved with the same learner and seed). The Listening repair now lives inside Listening.
-- **Tests:** tests55 __TESTS55__; full regression __REGRESSION__.
-- **Next:** one live Wedding Speech Track (paid) and deployment, both waiting for the owner's approval.
+- **Tests:** tests55 41/41. Full regression: 1,892 passed, with only the 5 known failures that also fail on v696.
+- **Live:** v698 is released and the GitHub Pages deployment succeeded.
+- **Next:** one live Wedding Speech Track (paid), when you want it.

@@ -96,6 +96,107 @@ THAI_LEXICON_AUDIT_V645.forEach(a => {
   a.applied = true
 })
 
+// ══ v697 TOPICS — vocabulary for specific situations ══════════════════════════════════════════
+// A topic is an ORDERED LIST OF CANONICAL VOCABULARY IDS, never a second dictionary. Each topic word is one record in the
+// master dictionary (RAW_VOCAB): an existing entry with exactly the same Thai is reused (its id, SRS history and curriculum
+// position untouched); a genuinely absent word is added ONCE, unranked (curriculumIndex 0 — no Shodan position, no belt) and
+// flagged topicOnly, so the ordinary Daily new-word picker never introduces it (only its topic track does). Learner state
+// (introduced / SRS / known) lives on the one vocabulary record, so learning a word anywhere counts everywhere.
+const TOPICS_VERSION = 'topics-v1'
+const THAI_TOPIC_ID_BASE = 5001                 // new topic-only ids live well clear of learner-added words (max id + 1)
+// [Thai, English, tone-marked romanisation (the bank's convention: ɔɔ→aaw · ɛɛ→aae · ɤɤ→ooe · ʉʉ→uue · ia→iia · ua→uua ·
+//  ก g · ต dt · ป bp), usage note for constructions]
+const TOPIC_WEDDING_SPEECH_TH = [
+  ['ทุกคน', 'everyone', 'thúk-khon'],
+  ['ขอบพระคุณ', 'thank you (respectfully)', 'khàawp-phrá-khun', 'A respectful thank-you — to parents, elders and guests; ขอบคุณ is the everyday form.'],
+  ['พ่อแม่', 'parents', 'phâaw-mâae'],
+  ['ความรัก', 'love (noun)', 'khwaam-rák', 'The noun "love" (ความ + รัก): ความรักของเรา "our love". The verb is รัก.'],
+  ['ดูแล', 'take care of', 'duu-laae', 'Takes an object: ดูแลลูก "take care of the children", ดูแลกัน "take care of each other".'],
+  ['ต้อนรับ', 'welcome', 'dtâawn-ráp', 'To welcome / receive someone: ต้อนรับแขก "welcome the guests", ขอบคุณที่ต้อนรับ "thank you for welcoming (me)".'],
+  ['เลี้ยงดู', 'raise and care for (someone)', 'líiang-duu', 'Bringing someone up: พ่อแม่เลี้ยงดูฉัน "my parents raised me".'],
+  ['ขอให้', 'may … / wish that …', 'khǎaw-hâi', 'A wish followed by a clause: ขอให้มีความสุข "may you be happy". Not ขอ (ask for) + ให้ (give) separately.'],
+  ['งานแต่งงาน', 'wedding', 'ngaan-dtàeng-ngaan', 'The wedding (the event, งาน + แต่งงาน). แต่งงาน alone is the verb "to marry".'],
+  ['จริงใจ', 'sincere, genuine', 'jing-jai'],
+  ['เชื่อใจ', 'trust (someone)', 'chûea-jai', 'Trust a person: ฉันเชื่อใจคุณ "I trust you". เชื่อ alone is "believe".'],
+  ['เสมอ', 'always, consistently', 'sà-mǒoe', 'Usually after the verb phrase: เขาช่วยฉันเสมอ "he always helps me".'],
+  ['ให้อภัย', 'forgive', 'hâi-à-phai', 'Forgive someone: ให้อภัยฉันนะ "please forgive me".'],
+  ['ตลอดไป', 'forever', 'dtà-làawt-pai', 'After the verb: รักคุณตลอดไป "love you forever".'],
+  ['เคารพ', 'respect', 'khao-róp', 'Respect someone: เคารพพ่อแม่ "respect (one\'s) parents".'],
+  ['ความทรงจำ', 'memories', 'khwaam-song-jam', 'Memories (noun): ความทรงจำที่ดี "good memories".'],
+  ['อบอุ่น', 'warm, comforting', 'òp-ùn', 'Warm in feeling (a family, a welcome, a home), not only temperature.'],
+  ['คิดถึง', 'miss (someone)', 'khít-thǔeng', 'Miss someone: คิดถึงแม่ "I miss Mum".'],
+  ['หัวเราะ', 'laugh', 'hǔua-ráw'],
+  ['เจ้าสาว', 'bride', 'jâo-sǎao'],
+  ['ร่วมกัน', 'together, jointly', 'rûuam-gan', 'Doing something jointly, after the verb: สร้างร่วมกัน "build together".'],
+  ['เป็นห่วง', 'worry about; care about', 'bpen-hùuang', 'Worry about someone out of care: เป็นห่วงคุณ "(I) worry about you".'],
+  ['ให้กำลังใจ', 'encourage, give moral support', 'hâi-gam-lang-jai', 'Encourage someone: ให้กำลังใจฉันเสมอ "always encouraged me".'],
+  ['ความสัมพันธ์', 'relationship', 'khwaam-sǎm-phan'],
+  ['อวยพร', 'give blessings or good wishes', 'uai-phaawn', 'Give someone blessings: อวยพรให้เรา "give us your blessing".'],
+  ['ทุกอย่าง', 'everything', 'thúk-yàang'],
+  ['ปัญหา', 'problem', 'bpan-hǎa'],
+  ['ผ่าน', 'pass through; get through', 'phàan', 'Get through something: ผ่านปัญหามาด้วยกัน "got through problems together".'],
+  ['เรียนรู้', 'learn', 'riian-rúu', 'Learn (come to understand), often from experience: เรียนรู้กันและกัน "learn about each other".'],
+  ['ในที่สุด', 'finally, eventually', 'nai-thîi-sùt', 'At the start of the clause: ในที่สุดเราก็แต่งงาน "finally we got married".'],
+  ['ทำให้', 'make or cause (something)', 'tham-hâi', 'Causes a result: คุณทำให้ฉันมีความสุข "you make me happy". Not ทำ (do) + ให้ (give) separately.'],
+  ['ความหมาย', 'meaning, significance', 'khwaam-mǎai'],
+  ['ฝัน', 'dream', 'fǎn'],
+  ['ซื่อสัตย์', 'honest, faithful', 'sûue-sàt'],
+  ['เอาใจใส่', 'be attentive, caring', 'ao-jai-sài', 'Pay caring attention to someone: เอาใจใส่ครอบครัว "take good care of the family".'],
+  ['ความหวัง', 'hope', 'khwaam-wǎng', 'The noun "hope". The verb is หวัง.'],
+  ['สบายใจ', 'feel at ease', 'sà-baai-jai'],
+  ['ยินดี', 'glad, pleased', 'yin-dii', 'Glad / pleased: ยินดีมาก "very glad". ยินดีต้อนรับ is "welcome".'],
+  ['ยอมรับ', 'accept', 'yaawm-ráp'],
+  ['แบ่งปัน', 'share', 'bàeng-bpan'],
+  ['ประสบการณ์', 'experience', 'bprà-sòp-gaan'],
+  ['เติบโต', 'grow, mature', 'dtòoep-dtoo'],
+  ['เปลี่ยนแปลง', 'change', 'plìian-plaaeng'],
+  ['บางครั้ง', 'sometimes', 'baang-khráng'],
+  ['คำพูด', 'words, what someone says', 'kham-phûut'],
+  ['สนับสนุน', 'support', 'sà-nàp-sà-nǔn'],
+  ['แสดง', 'express, show', 'sà-daaeng', 'Show / express (a feeling): แสดงความรัก "show love".'],
+  ['คนอื่น', 'other people', 'khon-ùuen'],
+  ['แม้ว่า', 'although, even though', 'máae-wâa', 'Starts a clause: แม้ว่าจะยาก … "even though it is hard …".'],
+  ['เจ้าบ่าว', 'groom', 'jâo-bàao'],
+]
+// the learning progression of the 50 (display only — never fixed batches or track ids)
+const TOPIC_WEDDING_SPEECH_GROUPS = [
+  'Opening and gratitude', 'Thanking the families', 'Promises and commitment', 'Talking about the relationship', 'Love and support',
+  'The journey together', 'Expressing deeper feelings', 'Looking to the future', 'Life experiences', 'Additional expression']
+// Resolve each topic word to ONE canonical dictionary record: an exact existing headword (a retired alias follows to its kept
+// record) is reused; otherwise one topic-only record is added. Idempotent — runs once at module load, never duplicates.
+function seedThaiTopicEntries(raw, words, topicId, base) {
+  const alias = { 688: 790, 776: 885, 431: 1626 }                // THAI_CANONICAL_ALIASES (defined later in this file)
+  const ids = [], reused = [], created = []
+  words.forEach(([t, e, ph, usage], k) => {
+    const hit = raw.find(d => d && d.t === t && !d.dup)
+    if (hit) {
+      const id = alias[hit.id] != null ? alias[hit.id] : hit.id
+      const d = raw.find(x => x && x.id === id) || hit
+      d.topics = [...new Set([...(d.topics || []), topicId])]    // membership only — curriculum, text and phonetics untouched
+      ids.push(id); reused.push({ id, thai: t }); return
+    }
+    const id = base + k
+    const ex = raw.find(d => d && d.id === id)
+    if (ex) { if (ex.t !== t) throw new Error('TOPIC_ID_COLLISION ' + id + ' ' + ex.t + ' vs ' + t); ids.push(id); return }
+    raw.push({ t, e, ph, l: 'new', i: 0, r: 0, lp: 0, curriculumIndex: 0, belt: 'Beyond curriculum', beltOrder: 0, id,
+      qcVersion: 'thai-canonical-v1', semanticQc: 'PASS', phoneticQc: 'PASS', qcStatus: 'PASS', qcIssues: [], conversationGroup: 'A',
+      lexiconDisposition: 'ACTIVE', curriculumBucket: 'TOPIC', topicOnly: true, topics: [topicId],
+      ...(usage ? { usageNote: usage } : {}) })
+    ids.push(id); created.push({ id, thai: t })
+  })
+  return { ids, reused, created }
+}
+const _weddingSeed = seedThaiTopicEntries(RAW_VOCAB, TOPIC_WEDDING_SPEECH_TH, 'wedding-speech', THAI_TOPIC_ID_BASE)
+// THE TOPIC REGISTRY — data-driven: a new topic (any language) is one entry here; the selection and the generator are shared.
+const LANGUAGE_TOPICS = Object.freeze({
+  th: [{ id: 'wedding-speech', title: 'Wedding Speech', icon: '💍', available: true,
+    description: 'Learn useful Thai for thanking family, telling your story, making promises and celebrating your wedding.',
+    vocabIds: Object.freeze(_weddingSeed.ids.slice()), groups: TOPIC_WEDDING_SPEECH_GROUPS, groupSize: 5,
+    seed: { reused: _weddingSeed.reused, created: _weddingSeed.created } }],
+  ja: [],
+  zh: [],
+})
+
 
 // ══════════════════════════════════════════════════════════════════════════════ — Noob Season One (ThaiPod101 Absolute Beginner S1, Lessons 1-25)
 // ── Full-vocab gloss enricher (fills missing gloss dots from all 861 words) ──
@@ -4779,7 +4880,8 @@ function mandarinFramingPairs(inv) {
 //     carrying the sentences already rejected for it, so a retry never pays for the same rejected construction again.
 //   · never a lesson: a checkpoint is not a track, is not playable, never counts as a completed lesson and never touches SRS.
 const GEN_CHECKPOINT_VERSION = 1
-const GEN_CHECKPOINT_KEYS = Object.freeze({ th: 'tt-th-gen-checkpoint', ja: 'tt-ja-gen-checkpoint', zh: 'tt-zh-gen-checkpoint' })
+const GEN_CHECKPOINT_KEYS = Object.freeze({ th: 'tt-th-gen-checkpoint', ja: 'tt-ja-gen-checkpoint', zh: 'tt-zh-gen-checkpoint',
+  'th-topic': 'tt-th-topic-gen-checkpoint' })   // v698: a Topic track keeps its own draft slot (a Daily draft is never offered inside a Topic, or overwritten by one)
 const GEN_CHECKPOINT_MAX_RESUMES = 3
 const GEN_CHECKPOINT_REJECTED_CAP = 24
 function genCheckpointSig(words) {
@@ -8396,7 +8498,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => {
               // Load partial track as-is
-              const track = { date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), mode: genDraft.mode || 'daily', pairs: genDraft.pairs, keywords: (genDraft.targets||[]).map(w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '', isNew: w.status === 'new', isUnseen: w.status === 'new' && isUnseen(w) })), rated: false, createdAt: new Date().toISOString(), partial: true }
+              const track = { date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }), mode: genDraft.mode || 'daily', pairs: genDraft.pairs, keywords: (genDraft.targets||[]).map(w => { const nw = genDraft.topicId ? (genDraft.selectedNewTargetIds || []).includes(w.id) : w.status === 'new'; return { thai: w.thai, english: w.english, wordId: w.id, rating: null, phonetic: '', isNew: nw, isUnseen: nw && isUnseen(w) } }), rated: false, createdAt: new Date().toISOString(), partial: true,
+                ...(genDraft.topicId ? { language: 'th', trackType: 'daily', selectionMode: 'topic', topicId: genDraft.topicId, topicTitle: genDraft.topicTitle, topicsVersion: TOPICS_VERSION, selectedNewTargetIds: (genDraft.selectedNewTargetIds || []).slice() } : {}) }
               onNav('open-draft-track', track)
               localStorage.removeItem('tt-gen-draft')
               setGenDraft(null)
@@ -8429,7 +8532,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={() => onNav('generate-revision')} />
         <ListeningTrackButton selection={listeningSelection} onStart={() => onNav('listening-track')} />
-        <ListeningLatestBar lang="th" tracks={tracks} onListen={t => onOpenTrack(t)} onRebuild={(ids, from) => onNav('listening-track', { rebuildIds: ids, rebuildOf: from })} />
+        {/* v698: Topics sits where the Listening repair banner was; the repair now lives inside the Listening screen */}
+        <TopicsEntryCard lang="th" onOpen={() => onNav('topics')} />
         <button onClick={() => onNav('lessons')}
           style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, #1a1e3a, #1e2a5a)', border: '1px solid #2d3a6b', borderRadius: 12, padding: '18px 12px', cursor: 'pointer', textAlign: 'center', color: 'var(--text)', transition: 'all 0.15s' }}
           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
@@ -8461,7 +8565,8 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, fontWeight:600 }}>{track.date}
                       {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6, fontSize:10, fontWeight:700 }}>REVISION</span>}
-                      {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}</p>
+                      {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}
+                      <TopicTrackBadge track={track} /></p>
                     <p style={{ fontSize:11, color:'var(--muted)' }}>
                       {isListeningTrack(track) ? listeningTrackSummary(track) : (track.pairs?.length||0) + ' pairs · ' + (track.keywords?.length||0) + ' words'}
                       {track.bookmark > 0 && <span style={{ color:'#86c900', marginLeft:6 }}>🔖 {track.bookmark+1}</span>}
@@ -28309,6 +28414,76 @@ function selectRevisionTargets(lang, vocab) {
   return { language: lang, rule: 'revision', selector: 'selectRevisionTargets(' + lang + ') = selectRevisionTrackTargets' + (lang === 'zh' ? ' → feasibility gate' : '') + ' → jazhContractTargets(revision)',
     selection: sel, raw: sel.targets, targets, targetIds: targets.map(w => w.id), counts: sel.counts, blocked: null }
 }
+// ══ v697 TOPICS — selection (the ONLY difference between a Topic Track and a Daily Track is where the NEW words come from) ══
+const TOPIC_NEW_PER_TRACK = 5
+function topicsFor(lang) { return (LANGUAGE_TOPICS[lang] || []).filter(t => t.available !== false) }
+function topicById(lang, topicId) { return topicsFor(lang).find(t => t.id === topicId) || null }
+// a dictionary word that exists for a topic and has no curriculum position (a later curriculum assignment ends this)
+function isThaiTopicOnly(w) {
+  const c = w && w.id != null ? thaiCanonicalById().get(w.id) : null
+  return !!(c && c.topicOnly && !(c.curriculumIndex > 0) && !(w.curriculumIndex > 0))
+}
+// the learner-facing state of one word, from the ONE authoritative record (never a topic counter):
+// known (the app's Known status) · learning (introduced, in SRS) · new (never introduced)
+function topicWordStatus(w) {
+  if (!w) return 'missing'
+  if (w.status === 'known' || w.manualKnown) return 'known'
+  return hasBeenIntroduced(w) ? 'learning' : 'new'
+}
+// Topic progress = a view over the learner's vocabulary: introduced ANYWHERE in the app counts, nothing is stored per topic
+function topicProgress(lang, topicId, vocab) {
+  const topic = topicById(lang, topicId)
+  if (!topic) return null
+  const byId = new Map((vocab || []).map(w => [w && w.id, w]))
+  const words = topic.vocabIds.map((id, k) => {
+    const w = byId.get(id), c = lang === 'th' ? thaiCanonicalById().get(id) : null
+    return { priority: k + 1, id, word: w || null, thai: (c && c.t) || (w && w.thai) || '', english: (c && c.e) || (w && w.english) || '',
+      phonetic: (w && w.phonetic) || (c && c.ph ? loadCanonicalThaiPhonetic(c.ph, c.t) : ''), status: topicWordStatus(w),
+      group: topic.groups ? topic.groups[Math.floor(k / (topic.groupSize || 5))] || null : null }
+  })
+  const introduced = words.filter(x => x.status !== 'new' && x.status !== 'missing').length
+  const known = words.filter(x => x.status === 'known').length
+  return { topicId, title: topic.title, total: words.length, introduced, remaining: words.filter(x => x.status === 'new').length, known,
+    pct: words.length ? Math.round(100 * introduced / words.length) : 0, words, allIntroduced: introduced === words.length }
+}
+// A Topic Track's 30 targets: up to TOPIC_NEW_PER_TRACK not-yet-introduced topic words in priority order, then the GLOBAL
+// revision queue in its existing order (the same ranking a Revision Track uses), then the shared freeze. Zero curriculum
+// new words: no curriculum picker runs, and the freeze may never overflow into new words. A topic word that is already
+// introduced and due is a REVISION target like any other. `pendingWordIds`: words already queued in an unplayed track (the
+// Daily safety check) are not selected again.
+function selectThaiTopicTargets(vocab, topicId, opts = {}) {
+  const V = vocab || [], topic = topicById('th', topicId)
+  const required = opts.required || THAI_TRACK_TARGET_COUNT, quota = opts.newQuota != null ? opts.newQuota : TOPIC_NEW_PER_TRACK
+  if (!topic) return { language: 'th', topicId, targets: [], targetIds: [], selectedNewTargetIds: [], selectedRevisionTargetIds: [], reserve: [],
+    blocked: { code: 'TOPIC_NOT_FOUND', eligible: 0, required, mode: 'topic', reason: 'no topic "' + topicId + '"' } }
+  const byId = new Map(V.map(w => [w && w.id, w])), pending = opts.pendingWordIds || new Set()
+  const newOk = w => w && !hasBeenIntroduced(w) && w.duplicateOf == null && thaiVocabEligibility(w).ok && targetActivityPreflight(w, 'th', {}).suitable
+  const topicNew = topic.vocabIds.map(id => byId.get(id)).filter(w => newOk(w) && !pending.has(w.id))
+  const newPick = topicNew.slice(0, Math.max(0, quota)).map(w => ({ ...w, _selectorStage: 'topic-new', selectionRole: 'new', topicId }))
+  const newIds = new Set(newPick.map(w => w.id))
+  const rvAll = selectThaiRevisionTargets(V, 100000)
+  const ranked = rvAll.targets.filter(w => !newIds.has(w.id))
+  const reviewOrder = ranked.filter(w => !pending.has(w.id)).concat(ranked.filter(w => pending.has(w.id)))   // a queued word only as a last resort
+  const nRev = Math.max(0, required - newPick.length)
+  const selected = newPick.concat(reviewOrder.slice(0, nRev).map(w => ({ ...w, selectionRole: 'review' })))
+  // the reserve: the next topic words first (they only ever replace a deferred NEW topic word), then the rest of the queue
+  const reserve = topicNew.slice(newPick.length).map(w => ({ ...w, _selectorStage: 'topic-new', selectionRole: 'new', topicId }))
+    .concat(reviewOrder.slice(nRev).map(w => ({ ...w, selectionRole: 'review' })))
+  const frozen = freezeThaiTargetSelection({ selected, reserve, required, mode: 'topic', noNewOverflow: true,
+    feasibility: thaiSelectionFeasibility(thaiAuthorisedSurfaces(V, selected)) })
+  const topicIdSet = new Set(topic.vocabIds)
+  const isTopicNew = t => topicIdSet.has(t.id) && !hasBeenIntroduced(byId.get(t.id) || t)
+  const finalNewIds = frozen.targets.filter(isTopicNew).map(t => t.id)
+  const blocked = frozen.blocked ? { ...frozen.blocked, mode: 'topic',
+    reason: 'a ' + topic.title + ' track needs ' + required + ' targets: ' + finalNewIds.length + ' new topic word(s) + the introduced words due for revision, but only ' +
+      frozen.targets.length + ' are available — learn more words in Daily or Revision Tracks first (no curriculum word is ever added to make up the number)' } : null
+  return { language: 'th', rule: 'topic', topicId, topicTitle: topic.title,
+    selector: 'selectThaiTopicTargets = topic words (priority order, not yet introduced) → selectThaiRevisionTargets order → freezeThaiTargetSelection(noNewOverflow)',
+    raw: selected, targets: frozen.targets, targetIds: frozen.targets.map(t => t.id),
+    selectedNewTargetIds: finalNewIds, selectedRevisionTargetIds: frozen.targets.filter(t => !finalNewIds.includes(t.id)).map(t => t.id),
+    topicNewAvailable: topicNew.length, topicNewRemainingAfter: Math.max(0, topicNew.length - finalNewIds.length),
+    reserve, blocked, selectionBackfills: frozen.backfills || [], skippedCandidates: [], candidateStats: rvAll.candidateStats || null, frozen, deferred: frozen.deferred || [] }
+}
 function listeningTrackKeyword(lang, w) {
   const base = { wordId: w.id, english: w.english, rating: null, isNew: false, isUnseen: false }
   if (lang === 'ja') return { ...base, japanese: w.japanese, reading: w.reading, romaji: w.romaji, thai: w.japanese, phonetic: w.romaji }
@@ -29883,6 +30058,184 @@ async function downloadListeningTrack(t) {
   a.href = url; a.download = (t.language || 'th') + '-listening-track-' + String(t.date || '').replace(/ /g, '-') + '.txt'
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url)
 }
+// ── Topics (v698) ─────────────────────────────────────────────────────────────
+// Situation vocabulary sets (LANGUAGE_TOPICS). A topic is a data-driven ordered list of canonical word ids in the ONE
+// master dictionary: progress here is read from the learner's real vocab / SRS state, never stored separately.
+const TOPIC_STATUS_STYLE = Object.freeze({
+  new: { label: 'Not introduced', color: 'var(--muted)', border: 'var(--border)' },
+  learning: { label: 'Introduced', color: '#60a5fa', border: 'rgba(96,165,250,0.5)' },
+  known: { label: 'Known', color: '#10b981', border: 'rgba(16,185,129,0.5)' },
+  missing: { label: 'Missing', color: '#ef4444', border: 'rgba(239,68,68,0.5)' },
+})
+// The dashboard entry — the same card, in the same place, in every language.
+function TopicsEntryCard({ lang, onOpen }) {
+  return (
+    <button data-topics-entry={lang} onClick={() => onOpen && onOpen()}
+      style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #261a33, #33204a)',
+               border: '1px solid #5b3a80', color: 'var(--text)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = '#a78bfa'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = '#5b3a80'}>
+      <div style={{ fontSize: 24, lineHeight: 1 }}>🗂️</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 15 }}>Topics</div>
+        <div style={{ fontSize: 11, color: '#c4b5fd', marginTop: 2 }}>Learn vocabulary for specific situations</div>
+      </div>
+      <div style={{ fontSize: 20, color: '#c4b5fd' }}>›</div>
+    </button>
+  )
+}
+function TopicBackRow({ onBack, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <button data-topics-back="1" onClick={() => onBack && onBack()} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', cursor: 'pointer', padding: '6px 10px', fontSize: 13 }}>← Back</button>
+      <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{label}</h2>
+    </div>
+  )
+}
+function TopicStatGrid({ p }) {
+  const cell = (n, l, c, k) => (
+    <div key={k} data-topic-stat={k} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '8px 6px', textAlign: 'center' }}>
+      <div style={{ fontSize: 18, fontWeight: 800, color: c }}>{n}</div>
+      <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{l}</div>
+    </div>
+  )
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+      {cell(p.total, 'Total', 'var(--text)', 'total')}
+      {cell(p.introduced, 'Introduced', '#60a5fa', 'introduced')}
+      {cell(p.remaining, 'Not yet introduced', 'var(--muted)', 'remaining')}
+      {cell(p.known, 'Known', '#10b981', 'known')}
+    </div>
+  )
+}
+// The Topics screen: every available topic for this language, or the explicit empty state (no placeholder topics).
+function TopicsView({ lang, vocab, onBack, onOpenWords, onGenerate }) {
+  const topics = topicsFor(lang)
+  return (
+    <div className="fade-in" data-topics-view={lang} style={{ padding: 16, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <TopicBackRow onBack={onBack} label="Topics" />
+      {!topics.length && (
+        <Card hover={false} style={{ textAlign: 'center', padding: '28px 16px' }}>
+          <div style={{ fontSize: 28 }}>🗂️</div>
+          <p data-topics-empty="1" style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Topics coming soon.</p>
+        </Card>
+      )}
+      {topics.map(t => {
+        const p = topicProgress(lang, t.id, vocab)
+        return (
+          <Card key={t.id} hover={false} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div data-topic-card={t.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 28, lineHeight: 1 }}>{t.icon || '🗂️'}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, lineHeight: 1.45 }}>{t.description}</div>
+              </div>
+            </div>
+            <TopicStatGrid p={p} />
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>
+                <span>Progress</span><span data-topic-progress={t.id}>{p.introduced}/{p.total} introduced · {p.pct}%</span>
+              </div>
+              <div style={{ height: 6, background: 'var(--surface2)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: p.pct + '%', background: 'linear-gradient(90deg, #a78bfa, #10b981)', borderRadius: 3 }} />
+              </div>
+            </div>
+            {p.allIntroduced && (
+              <div data-topic-all-introduced={t.id} style={{ fontSize: 12, color: '#10b981', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, padding: '8px 10px' }}>
+                ✓ All topic words introduced. A {t.title} Track is now revision only.
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Btn variant="secondary" onClick={() => onOpenWords && onOpenWords(t.id)} style={{ width: '100%', justifyContent: 'center' }}>
+                <span data-topic-view-all={t.id}>View all {p.total} words</span>
+              </Btn>
+              {lang === 'th' && (
+                <Btn variant="primary" onClick={() => onGenerate && onGenerate(t.id)} style={{ width: '100%', justifyContent: 'center' }}>
+                  <span data-topic-generate={t.id}>Generate {t.title} Track</span>
+                </Btn>
+              )}
+            </div>
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+// All words of one topic, in priority order, with their live status. Tapping a word opens it in the existing
+// vocabulary inspector (no second editor).
+function TopicWordsView({ lang, topicId, vocab, onBack, onOpenWord }) {
+  const t = topicById(lang, topicId)
+  const p = t ? topicProgress(lang, topicId, vocab) : null
+  if (!t || !p) return (
+    <div style={{ padding: 16, maxWidth: 500, margin: '0 auto' }}><TopicBackRow onBack={onBack} label="Topic not found" /></div>
+  )
+  const groups = t.groups || []
+  const gs = t.groupSize || 0
+  return (
+    <div className="fade-in" data-topic-words={topicId} style={{ padding: 16, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <TopicBackRow onBack={onBack} label={(t.icon ? t.icon + ' ' : '') + t.title} />
+      <TopicStatGrid p={p} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {p.words.map((w, k) => {
+          const st = TOPIC_STATUS_STYLE[w.status] || TOPIC_STATUS_STYLE.new
+          const head = gs && groups.length && k % gs === 0 ? groups[Math.floor(k / gs)] : null
+          return (
+            <React.Fragment key={w.id}>
+              {head && <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: k ? 8 : 0 }}>{head}</p>}
+              <div data-topic-word={w.id} data-topic-word-status={w.status} onClick={() => w.word && onOpenWord && onOpenWord(w.word)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, cursor: onOpenWord ? 'pointer' : 'default' }}>
+                <div style={{ width: 24, fontSize: 12, color: 'var(--muted)', textAlign: 'right', flexShrink: 0 }}>{w.priority}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 18, fontWeight: 600, fontFamily: 'Sarabun, sans-serif' }}>{w.thai}</span>
+                    <span className="phon" style={{ fontSize: 12, color: 'var(--gold)' }}>{w.phonetic}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{w.english}</div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: st.color, border: '1px solid ' + st.border, borderRadius: 6, padding: '3px 6px', whiteSpace: 'nowrap' }}>{st.label}</span>
+              </div>
+            </React.Fragment>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+// Recent Tracks: a topic track is labelled with its topic ("Wedding Speech · Daily Track"); every other track keeps its label.
+function trackTopicLabel(track) {
+  return track && track.selectionMode === 'topic' && track.topicTitle ? track.topicTitle + ' · ' + trackModeLabel(track) : ''
+}
+function TopicTrackBadge({ track }) {
+  const l = trackTopicLabel(track)
+  return l ? <span data-track-topic={track.topicId} style={{ color: '#c4b5fd', marginLeft: 6, fontSize: 10, fontWeight: 700 }}>{((topicById(track.language || 'th', track.topicId) || {}).icon || '🗂️') + ' ' + l}</span> : null
+}
+// The Topic Track header on the generator screens: which topic, and the ACTUAL new topic words selected for this track
+// (or the explicit "all introduced" state, when the track is revision only).
+function TopicTrackSelectionPanel({ topic, selection, targets, compact }) {
+  const newIds = (selection && selection.selectedNewTargetIds) || []
+  const byId = new Map((targets || []).map(t => [t.id, t]))
+  const newWords = newIds.map(id => byId.get(id)).filter(Boolean)
+  const nRev = (targets || []).length - newWords.length
+  return (
+    <div data-topic-track-panel={topic.id} style={{ background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.45)', borderRadius: 12, padding: compact ? '8px 12px' : '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div data-topic-track-label="1" style={{ fontSize: 13, fontWeight: 700, color: '#c4b5fd' }}>{(topic.icon ? topic.icon + ' ' : '') + topic.title + ' · Daily Track'}</div>
+      {!compact && (newWords.length ? (
+        <>
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{newWords.length} new topic word{newWords.length === 1 ? '' : 's'} + {nRev} revision</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {newWords.map(w => (
+              <span key={w.id} data-topic-new-word={w.id} style={{ fontSize: 13, padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(74,144,226,0.55)', background: 'rgba(74,144,226,0.07)' }}>
+                <span className="thai">{w.thai}</span> <span style={{ fontSize: 11, color: 'var(--muted)' }}>{w.english}</span>
+              </span>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div data-topic-track-all-introduced="1" style={{ fontSize: 12, color: '#10b981' }}>All topic words introduced — this track is {nRev} revision words.</div>
+      ))}
+    </div>
+  )
+}
 // v659.1 — the explicit ▶ Listen action on a saved Listening Track (Recent Tracks, every language)
 function ListenTrackRowButton({ onClick, compact }) {
   return (
@@ -29893,14 +30246,20 @@ function ListenTrackRowButton({ onClick, compact }) {
 }
 // v661 — the learner's LATEST Listening Track, right under the Daily / Revision / Listening buttons, so it can be
 // played (or, after a NOT_READY attempt, rebuilt with the same 30 words) without scrolling to Recent Tracks.
+// The latest playable Listening Track, and a failed / interrupted attempt that is NEWER than it (what the learner just made).
+// v698: shared by the bar and by the Listening screen, which now offers the repair before starting anything new.
+function listeningRepairCandidate(attempts, tracks) {
+  const latest = [...(tracks || [])].reverse().find(t => isListeningTrack(t) && (t.ready || t.playable) && t.listening) || null
+  const attempt = (attempts || [])[0] || null
+  const failed = attempt && attempt.state !== 'READY' && (!latest || String(attempt.createdAt || '') > String(latest.createdAt || '')) ? attempt : null
+  return { latest, failed }
+}
 function ListeningLatestBar({ lang, tracks, onListen, onRebuild }) {
-  const latest = useMemo(() => [...(tracks || [])].reverse().find(t => isListeningTrack(t) && (t.ready || t.playable) && t.listening) || null, [tracks])
   const [attempt, setAttempt] = useState(null)
   useEffect(() => { let live = true
     loadListeningAttempts(lang).then(a => { if (live) setAttempt((a || [])[0] || null) })
     return () => { live = false } }, [lang, tracks])
-  // a failed / interrupted attempt that is NEWER than the latest playable track is what the learner just made
-  const failed = attempt && attempt.state !== 'READY' && (!latest || String(attempt.createdAt || '') > String(latest.createdAt || '')) ? attempt : null
+  const { latest, failed } = listeningRepairCandidate(attempt ? [attempt] : [], tracks)
   if (!latest && !failed) return null
   const box = { gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: '#0d1f33', border: '1px solid #3b82f6' }
   const btn = { padding: '8px 14px', borderRadius: 10, border: 'none', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -30099,7 +30458,7 @@ function ListeningStatusPanel({ track, wordOf, building, onRebuild, onBack, onSt
     </div>
   )
 }
-function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack, autoPlay, startIds, startRebuildOf, speechStyle: speechStyleProp }) {
+function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: saved, onSave, onBack, autoPlay, startIds, startRebuildOf, speechStyle: speechStyleProp, tracks }) {
   // v667 §4/§34/§35 — Japanese speech style: a saved track keeps ITS OWN style; a new attempt freezes the dashboard
   // selection when the generator opens. A later change of the selector never reaches this generator.
   const [speechStyle] = useState(() => lang !== 'ja' ? null : canonicalJapaneseSpeechStyle((saved && saved.speechStyle) || speechStyleProp))
@@ -30117,7 +30476,11 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   const wordOf = id => { const w = words.find(x => x.id === id); return w ? (lang === 'ja' ? w.japanese : lang === 'zh' ? w.chinese : w.thai) || String(id) : String(id) }
   const initialCov = () => saved ? Object.fromEntries(ids.map(id => [id, ((saved.coverage && saved.coverage.missing) || []).includes(id) ? 'repair' : 'verified'])) : Object.fromEntries(ids.map(id => [id, 'pending']))
   const [coverage, setCoverage] = useState(initialCov)
-  const [phase, setPhase] = useState(saved ? 'done' : 'building')
+  // v698: opened from the app (tracks given) with no saved track and no rebuild → first check for a failed last attempt ('checking'),
+  // and offer its repair ('repair-offer') before anything new is built. The repair moved here from the dashboard banner.
+  const offersRepair = !saved && !rebuildStart && Array.isArray(tracks)
+  const [phase, setPhase] = useState(saved ? 'done' : offersRepair ? 'checking' : 'building')
+  const [repairOffer, setRepairOffer] = useState(null)
   const [stage, setStage] = useState(saved ? 'final' : 'selection')
   const [sceneDone, setSceneDone] = useState(null)   // v662: the last scene verified (scene-by-scene progress)
   const [result, setResult] = useState(saved || null)
@@ -30171,7 +30534,12 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
     setUsage(t.usage); setResult(t); setStage('final'); setPhase('done')
     if (!t.listening) setCoverage(Object.fromEntries(useIds.map(id => [id, 'repair'])))
   }
-  useEffect(() => { if (!saved && !startedRef.current) { startedRef.current = true; rebuildStart ? run(rebuildStart, startRebuildOf || null) : run(null, null) } }, [])
+  useEffect(() => { if (!saved && !startedRef.current) { startedRef.current = true
+    if (rebuildStart) run(rebuildStart, startRebuildOf || null)
+    else if (offersRepair) loadListeningAttempts(lang).then(a => { if (!liveRef.current) return
+      const cand = listeningRepairCandidate(a, tracks)
+      if (cand.failed && (cand.failed.selectedTargetIds || []).length) { setRepairOffer(cand); setPhase('repair-offer') } else run(null, null) }, () => { if (liveRef.current) run(null, null) })
+    else run(null, null) } }, [])
   const cancel = () => { if (runRef.current) { try { aiCancelRun(runRef.current.runId, 'cancelled by the learner') } catch (e) {} } onBack && onBack() }
   // v664 — a NOT_READY conversation that HAS lines is still a conversation: the learner may listen to it. It is saved
   // (so it shows in Recent / the dashboard bar) with playable:true and its failed checks, never disguised as READY.
@@ -30191,6 +30559,26 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
       qualityNotes: a.qualityNotes || [], ready: a.state === 'READY', playable: true, listening: { lines: a.lines, readiness: a.state === 'READY' ? 'READY' : 'NOT_READY', coverage: null }, _coverageLabel: a.coverageLabel || '' })
     setPhase('done'); setPlaying(true)
   }
+  if (phase === 'repair-offer' && repairOffer) {
+    const f = repairOffer.failed, cov = f.coverage || {}
+    const btn = { width: '100%', padding: '12px', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 14 }
+    return (
+      <div className="fade-in" data-listening-repair-offer={lang} style={{ padding: 24, maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 40 }}>
+        <div data-listening-latest="needs-repair" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid #f97316', background: 'rgba(249,115,22,0.08)' }}>
+          <div style={{ fontSize: 22 }}>🎧</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#f97316' }}>Your last Listening Track needs repair</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>TARGET COVERAGE {cov.covered || 0}/{cov.required || (f.selectedTargetIds || []).length} · not playable yet{repairOffer.latest ? ' · an older one is in Recent Tracks' : ''}</div>
+          </div>
+        </div>
+        <button data-listening-latest-rebuild="1" onClick={() => { const ids0 = (f.selectedTargetIds || []).slice(); setRepairOffer(null); run(ids0, f.attemptId || null) }}
+          style={{ ...btn, border: 'none', background: '#f97316', color: '#0b1120' }}>🔁 Rebuild with the same {(f.selectedTargetIds || []).length} words</button>
+        <button data-listening-repair-new="1" onClick={() => { setRepairOffer(null); run(null, null) }}
+          style={{ ...btn, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)' }}>Build a new Listening Track instead</button>
+        <button onClick={() => onBack && onBack()} style={{ ...btn, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 600 }}>Back</button>
+      </div>
+    )
+  }
   const lt = result && result.listening
   if (playing && lt) return (
     <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>
@@ -30200,7 +30588,7 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   )
   // ── derived from the ONE coverage map ──
   const counts = listeningCoverageCounts(coverage, ids)
-  const building = phase === 'building'
+  const building = phase === 'building' || phase === 'checking'
   const ready = !!(result && result.ready)
   const pct = ready ? 100 : (ids.length ? Math.round((counts.present / ids.length) * 100) : 0)
   const stageText = { selection: 'Selecting the 30 Revision words…', composing: 'Planning where every word goes…', scene: 'Writing scene by scene — each scene is checked before the next…', composed: 'Checking target coverage, max 3 per turn, vocabulary, naturalness…',
@@ -30811,7 +31199,10 @@ function CompactGeneratorHeader({ label, labelColor, pct, leftNote, rightNote })
   )
 }
 
-function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, customTargets, onTrackCost, tracks, resumeDraft, dailyNewWords, onSaveDailyNewWords }) {
+function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, customTargets, onTrackCost, tracks, resumeDraft, dailyNewWords, onSaveDailyNewWords, topicId }) {
+  // v698 — a Topic Track (e.g. Wedding Speech) is a Daily Track whose NEW words come from the topic; everything else is this engine
+  const topic = topicId ? topicById('th', topicId) : null
+  const cpLang = topic ? 'th-topic' : 'th'
   const genModel = GEMINI_DEFAULT_MODEL                    // v648: Gemini Flash-Lite for every Generator stage
   const [error, setError] = useState('')
   const [listenPhase, setListenPhase] = useState(null)   // v644: Listening build at generation complete
@@ -30886,6 +31277,17 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     if (resumeDraft && resumeDraft.targetsRemaining && resumeDraft.targetsRemaining.length > 0) {
       return { targets: resumeDraft.targetsRemaining, anchors: resumeDraft.anchors || [] }
     }
+    if (topic) {
+      // v698 — topic words (up to 5, priority order, not yet introduced anywhere) + the global revision queue; no curriculum new words
+      const pendingT = (tracks || []).filter(t => !t.rated && !isListeningTrack(t))
+      const usedT = new Set(pendingT.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
+      const ts = selectThaiTopicTargets(vocab, topic.id, { pendingWordIds: usedT })
+      const tsIds = new Set(ts.targetIds)
+      const anchT = vocab.filter(w => (w.status === 'known' || w.status === 'learning') && !tsIds.has(w.id))
+        .sort((a, b) => (!a.lastSeen ? -1 : !b.lastSeen ? 1 : a.lastSeen.localeCompare(b.lastSeen))).slice(0, 25)
+      return { targets: ts.raw, anchors: anchT, contract: true, reserve: ts.reserve, selectionBackfills: ts.selectionBackfills,
+        skippedCandidates: ts.skippedCandidates, candidateStats: ts.candidateStats, canon: ts, lockedByUnratedTracks: usedT.size }
+    }
     if (customTargets && customTargets.length) {
       const targetIds = new Set(customTargets.map(w => w.id))
       const anch = vocab.filter(w => (w.status === 'known' || w.status === 'learning') && !targetIds.has(w.id))
@@ -30940,7 +31342,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     // Slot words bypass the pending-track exclusion so they persist across same-day tracks
     const filteredVocab = vocab.filter(w => !usedWordIds.has(w.id) || slotIdSet.has(w.id))
     return { ...pickWords(filteredVocab, mode, slotWords), lockedByUnratedTracks: usedWordIds.size, contract: true }
-  }, [vocab, mode, customTargets, tracks, dailyNewWords])
+  }, [vocab, mode, customTargets, tracks, dailyNewWords, topic])
   // Every Thai target — Daily and Revision alike — passes through the shared canonical
   // resolver BEFORE any prompt is built: learner state from saved vocab, lexical
   // metadata from the canonical bank by id. Nothing here is written back.
@@ -30997,6 +31399,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     // first sight keeps status 'new' although it IS introduced, so without this
     // guard a revision track would write its words into the Daily new-word slots.
     if (!targets || !targets.length || mode === 'weak' || mode === 'revision') return
+    if (topic) return   // v698: topic words never occupy the curriculum's Daily new-word slots
     const slotIds = targets.filter(w => w.status === 'new').slice(0, newSlotsFor(vocab)).map(w => w.id)
     if (!slotIds.length) return
     const prev = dailyNewWords?.wordIds || []
@@ -31068,8 +31471,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   useEffect(() => {
     if (phase !== 'draft-check') return
     ;(async () => {
-      const cp = await genCheckpointLoad('th')
-      if (cp && cp.extra && cp.extra.track && Array.isArray(cp.extra.track.pairs)) {
+      const cp = await genCheckpointLoad(cpLang)
+      if (cp && cp.extra && cp.extra.track && Array.isArray(cp.extra.track.pairs) && (cp.extra.track.topicId || null) === (topicId || null)) {
         const tg = thDraftTargets(cp.extra.track)
         const compat = genCheckpointCompatible(cp, 'th', tg, thDraftAuthorised(new Set(tg.map(t => t.id))))
         setThDraftOffer({ cp, compat, summary: genCheckpointSummary(cp, tg) }); setPhase('resume-choice')
@@ -31085,7 +31488,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     ;(generatedTrack.pairs || []).filter(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId != null && !p._qcInvalid && !p._qcUnresolved)
       .forEach(p => { nth[p.targetId] = (nth[p.targetId] || 0) + 1; if (nth[p.targetId] <= 3) genCheckpointAddPair(cp, { ...p, recallIndex: nth[p.targetId] }) })
     cp.extra = { track: generatedTrack }; cp.updatedAt = new Date().toISOString()
-    thCpRef.current = cp; genCheckpointWrite('th', cp)
+    thCpRef.current = cp; genCheckpointWrite(cpLang, cp)
   }, [phase, listenPhase, generatedTrack, thRetrying])
   async function retryThaiMissing(trackIn) {
     const t0 = trackIn || generatedTrack, r = trackReadiness(t0)
@@ -31102,7 +31505,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   async function resumeThaiDraft() {
     const o = thDraftOffer; if (!o || !o.compat.ok) return
     o.cp.resumes = (o.cp.resumes || 0) + 1; o.cp.history.push({ at: new Date().toISOString(), event: 'resume', n: o.cp.resumes, build: APP_BUILD_VERSION })
-    thCpRef.current = o.cp; genCheckpointWrite('th', o.cp)
+    thCpRef.current = o.cp; genCheckpointWrite(cpLang, o.cp)
     const t0 = o.cp.extra.track
     setThDraftOffer(null); setGeneratedTrack(t0); setPhase('done'); setListenPhase('DONE')
     if (trackReadiness(t0).unresolvedTargetIds.length) await retryThaiMissing(t0)
@@ -31242,6 +31645,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
                     anchors: anchors,
                     scene: sceneDataRef.current,  // save scene so resume skips regen
                     mode: mode,
+                    ...(topic ? { topicId: topic.id, topicTitle: topic.title, selectedNewTargetIds: (_revCanon && _revCanon.selectedNewTargetIds) || (resumeDraft && resumeDraft.selectedNewTargetIds) || [] } : {}),
                     totalTargets: activeTargets.length,
                     savedAt: new Date().toISOString()
                   }))
@@ -31286,7 +31690,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           pairs = [...resumeDraft.pairs, ...(pairs || [])]
         }
         const allTargets = resumeDraft ? (resumeDraft.targets || targets) : targets
-        const _kwOf = w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: w.status === 'new', isUnseen: w.status === 'new' && isUnseen(w), phonetic: phoneticsRef.current[w.id] || phoneticsRef.current[w.thai] || '' })
+        // v698 — on a Topic Track "new" is the selector's role (a due topic word rated Hard keeps status 'new' but is REVISION)
+        const _topicNewIds = topic ? ((_revCanon && _revCanon.selectedNewTargetIds) || (resumeDraft && resumeDraft.selectedNewTargetIds) || null) : null
+        const _topicNew = _topicNewIds ? new Set(_topicNewIds) : null
+        const _isNewKw = w => _topicNew ? _topicNew.has(w.id) : w.status === 'new'
+        const _kwOf = w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: _isNewKw(w), isUnseen: _isNewKw(w) && isUnseen(w), phonetic: phoneticsRef.current[w.id] || phoneticsRef.current[w.thai] || '' })
         // AUTHORITATIVE SELECTION: every selected target stays in the lesson, in selection
         // order. One that could not be generated is listed as UNRESOLVED, never dropped.
         // v645: under the contract the frozen selection IS the lesson (nothing unresolved)
@@ -31317,6 +31725,11 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           selectedTargetIds: track.selectedTargetIds, selectedNewTargetIds: keywords.filter(k => k && k.isNew && k.isUnseen !== false).map(k => k.wordId),
           generationRunId: AI_CTX.runId })
         track.selectedNewTargetIds = track.trackContext.selectedNewTargetIds.slice()
+        if (topic) {   // v698 — topic provenance travels with the track (Recent Tracks label, reopening, export)
+          Object.assign(track, { trackType: 'daily', selectionMode: 'topic', topicId: topic.id, topicTitle: topic.title, topicsVersion: TOPICS_VERSION, qcVersion: QC_VERSION,
+            selectedRevisionTargetIds: track.selectedTargetIds.filter(id => !track.selectedNewTargetIds.includes(id)) })
+          track.trackContext = { ...track.trackContext, selectionMode: 'topic', topicId: topic.id }
+        }
         // Item 42: Verify track can be serialized before showing ready
         try { JSON.stringify(track) } catch(e) { throw new Error('Track data invalid: ' + e.message) }
         aiSetTrackId(track.createdAt)                     // v647: telemetry rows from here on carry the track id
@@ -31412,7 +31825,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   if (phase === 'resume-choice') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', gap:16 }}>
       <GenCheckpointChoice offer={thDraftOffer} total={90} langLabel="Thai" unitLabel="target pairs" onRetryMissing={resumeThaiDraft}
-        onStartNew={async () => { await genCheckpointClear('th'); thCpRef.current = null; setThDraftOffer(null); setPhase('starting') }} onBack={onBack} />
+        onStartNew={async () => { await genCheckpointClear(cpLang); thCpRef.current = null; setThDraftOffer(null); setPhase('starting') }} onBack={onBack} />
     </div>
   )
   // Scene preview render
@@ -31422,6 +31835,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
         <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>
           {buildingScene ? '🎬 Setting the scene...' : '✅ Scene Ready'}
         </h2>
+        {topic && <TopicTrackSelectionPanel topic={topic} selection={_revCanon} targets={activeTargets} />}
         {sceneData && !buildingScene && (
           <>
             <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:16, display:'flex', flexDirection:'column', gap:10 }}>
@@ -31487,6 +31901,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:24, paddingTop:40 }}>
 
+      {topic && <TopicTrackSelectionPanel topic={topic} selection={_revCanon} targets={activeTargets} compact />}
       {/* Title */}
       <GeneratorTitle
         title={phase === 'done' && generatedTrack
@@ -31532,7 +31947,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
             <Btn onClick={() => retryThaiMissing()} disabled={thRetrying || listenPhase === 'FINALISING'} style={{ width:'100%', justifyContent:'center' }}>
               {thRetrying ? '\u267B Retrying the missing recalls\u2026' : '\u21BB Retry missing recalls (' + (_readiness.unresolvedTargetIds || []).length + ' word' + ((_readiness.unresolvedTargetIds || []).length > 1 ? 's' : '') + ') \u2014 the ' + _readiness.validTargetPairs + ' verified pairs are kept'}
             </Btn>)}
-          <Btn onClick={() => { if (mode === 'daily') genCheckpointClear('th'); onGenerated(generatedTrack) }} disabled={listenPhase === 'BUILDING' || listenPhase === 'FINALISING'} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
+          <Btn onClick={() => { if (mode === 'daily') genCheckpointClear(cpLang); onGenerated(generatedTrack) }} disabled={listenPhase === 'BUILDING' || listenPhase === 'FINALISING'} variant="primary" style={{ width:'100%', justifyContent:'center', fontSize:16, padding:'14px' }}>
             {listenPhase === 'FINALISING' ? '🔍 Quality check · FINAL_TRACK…' : listenPhase === 'BUILDING' ? '🎧 Building listening track…'
               : _readiness.ready ? '▶ Start SRS Track' : '▶ Start anyway — track not ready (' + _readiness.validTargetPairs + '/' + _readiness.expectedTargetPairs + ')'}
           </Btn>
@@ -35666,7 +36081,7 @@ function lexicallyInvalidIdSet(bank) {
   return s
 }
 function isEligibleNewTarget(w, invalidIds) {
-  return !!w && !(invalidIds && invalidIds.has(w.id))
+  return !!w && !(invalidIds && invalidIds.has(w.id)) && !isThaiTopicOnly(w)   // v697: topic-only words are introduced by their topic track only
 }
 let _thaiInvalidIds = null
 function thaiInvalidLexicalIds() {
@@ -36095,6 +36510,10 @@ function thaiEligibleCandidatePool(vocab, today) {
       return
     }
     if (!e.ok) { skipped.push({ id: w.id, thai: w.thai, reason: e.reason, detail: e.detail || '' }); return }
+    // v697 — a topic-only word (no curriculum position) is introduced ONLY by its topic track: until then it is not a
+    // candidate for any ordinary selection (no Daily new pick, no new-reserve overflow). Once introduced it is ordinary
+    // vocabulary — due for revision, a Listening target, a Daily review word — like every other learned word.
+    if (isThaiTopicOnly(w) && !hasBeenIntroduced(w)) return
     // v654 §4/§6 — TARGET_ACTIVITY_PREFLIGHT is part of eligibility: a target that cannot serve a spoken
     // conversation lesson (formal/written, recognition-only, suspect entry, lexicon evidence) is skipped
     // HERE, before scene planning and paid generation, and the next eligible candidate takes the slot.
@@ -37078,6 +37497,9 @@ function ThaiTeacher({ lang, onSetLang }) {
   const [listenBuildInfo, setListenBuildInfo] = useState(null)   // v644: Listening BUILDING at the save boundary
 
   const [genMode, setGenMode] = useState('daily')
+  const [genTopicId, setGenTopicId] = useState(null)        // v698: the topic of a Topic Track (null = the normal Daily Track)
+  const [topicWordsId, setTopicWordsId] = useState(null)
+  const [returnTopic, setReturnTopic] = useState(null)      // Browse opened from a topic's word list returns there
   const [resumeDraft, setResumeDraft] = useState(null)
   const [pendingReviewTrack, setPendingReviewTrack] = useState(null)
   const [kruOpen, setKruOpen] = useState(false)
@@ -37329,6 +37751,12 @@ function ThaiTeacher({ lang, onSetLang }) {
   }, [])
 
   function navigate(v, data) {
+    if (!(v === 'browse' && data && data.fromTopic)) setReturnTopic(null)
+    if (v.startsWith('generate-')) setGenTopicId(v === 'generate-topic' ? (data && data.topicId) || null : v === 'generate-resume' && data && data.topicId ? data.topicId : null)
+    if (v === 'topics') { setView('topics'); return }
+    if (v === 'topic-words') { if (data && data.topicId) setTopicWordsId(data.topicId); setView('topic-words'); return }
+    if (v === 'generate-topic') { if (!data || !topicById('th', data.topicId)) return; setResumeDraft(null); setGenMode('daily'); setCustomTargets(null); setView('generate'); return }
+    if (v === 'browse' && data && data.fromTopic) { setReturnTopic(data.fromTopic); setView('browse'); return }
     if (v === 'listening-track') { setListeningOpen(data && isListeningTrack(data) ? data : null); setListeningRebuild(data && data.rebuildIds ? data : null); setListeningKey(k => k + 1); setView('listening-track'); return }
     if (v === 'generate-daily') { setResumeDraft(null); setGenMode('daily'); setCustomTargets(null); setView('generate') }
     else if (v === 'generate-revision') {
@@ -37345,7 +37773,7 @@ function ThaiTeacher({ lang, onSetLang }) {
   }
 
   function onCustomTrack(targets) {
-    setCustomTargets(targets); setGenMode('custom'); setView('generate')
+    setGenTopicId(null); setCustomTargets(targets); setGenMode('custom'); setView('generate')
   }
 
   async function onTrackGenerated(rawTrack) {
@@ -37512,7 +37940,7 @@ function ThaiTeacher({ lang, onSetLang }) {
             }}
           />
         )}
-        {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} onGenerated={onTrackGenerated} onBack={() => navigate('dashboard')}
+        {view === 'generate' && <ErrorBoundary><Generator vocab={vocab} mode={genMode} topicId={genTopicId} onGenerated={onTrackGenerated} onBack={() => navigate(genTopicId ? 'topics' : 'dashboard')}
           apiKey={apiKey}
           onPhonetics={onPhonetics} customTargets={customTargets}
           resumeDraft={resumeDraft}
@@ -37522,7 +37950,7 @@ function ThaiTeacher({ lang, onSetLang }) {
           onSaveDailyNewWords={saveDailyNewWords}
         /></ErrorBoundary>}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} tracks={tracks} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="th" vocab={vocab} apiKey={apiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracks([...tracks, t]) }} onBack={() => { setListeningOpen(null); navigate('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -37545,7 +37973,11 @@ function ThaiTeacher({ lang, onSetLang }) {
           />
           </ErrorBoundary>
         )}
-        {view === 'browse' && <Browser vocab={vocab} onBack={() => navigate(returnBelt ? 'belt-rank' : 'dashboard')} initialFilter={browseFilter} initialQuery={beltWordQuery} initialBelt={browseBelt} phonetics={{}} onCustomTrack={onCustomTrack} apiKey={apiKey} onVocabUpdate={saveVocab} />}
+        {view === 'topics' && <TopicsView lang="th" vocab={vocab} onBack={() => navigate('dashboard')}
+          onOpenWords={id => navigate('topic-words', { topicId: id })} onGenerate={id => navigate('generate-topic', { topicId: id })} />}
+        {view === 'topic-words' && <TopicWordsView lang="th" topicId={topicWordsId} vocab={vocab} onBack={() => navigate('topics')}
+          onOpenWord={w => { setBrowseFilter('all'); setBrowseBelt('all'); setBeltWordQuery(w.thai); setReturnBelt(null); navigate('browse', { fromTopic: topicWordsId }) }} />}
+        {view === 'browse' && <Browser vocab={vocab} onBack={() => returnTopic ? navigate('topic-words', { topicId: returnTopic }) : navigate(returnBelt ? 'belt-rank' : 'dashboard')} initialFilter={browseFilter} initialQuery={beltWordQuery} initialBelt={browseBelt} phonetics={{}} onCustomTrack={onCustomTrack} apiKey={apiKey} onVocabUpdate={saveVocab} />}
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} apiKey={apiKey} />}
         {view === 'settings' && <Settings onBack={() => navigate('dashboard')} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} geminiBackupKey={geminiBackupKey} onSaveGeminiBackupKey={async k => { setGeminiBackupKey(k); await stSet('tt-gemini-fallback-key', k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} fillApiKey={apiKey} fillModel={GEMINI_DEFAULT_MODEL} />}
@@ -37849,7 +38281,7 @@ function JapaneseDashboard({ vocab, tracks, register, targets, onSetRegister, on
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartRevision} />
         <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
-        <ListeningLatestBar lang={"ja"} tracks={tracks} onListen={t => onOpenTrack && onOpenTrack(t)} onRebuild={onRebuildListening} />
+        <TopicsEntryCard lang="ja" onOpen={() => onNav && onNav('topics')} />
       </div>
 
       {/* Rank Test — same component and behaviour in every language */}
@@ -42987,6 +43419,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
             onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} />
         )}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
+        {view === 'topics' && <TopicsView lang="ja" vocab={vocab} onBack={() => setView('dashboard')} />}
         {view === 'generate' && (
           <ErrorBoundary>
             <JapaneseGenerator vocab={vocab} targets={targets} selection={trackMode === 'revision' ? revisionSelection : selection} trackMode={trackMode} register={register} cred={cred}
@@ -43002,7 +43435,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="ja" speechStyle={register} vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} tracks={tracks} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="ja" speechStyle={register} vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksJa([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (
@@ -45690,7 +46123,7 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartSrsTrack} />
         <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
-        <ListeningLatestBar lang={"zh"} tracks={tracks} onListen={t => onOpenTrack && onOpenTrack(t)} onRebuild={onRebuildListening} />
+        <TopicsEntryCard lang="zh" onOpen={() => onNav && onNav('topics')} />
       </div>
       <Gen2Switch settingKey={ZH_GEN2_SETTING_KEY} note={'Daily Track only. Test version: each sentence is checked by a second model. A word it cannot teach well is left for a later lesson (it stays due). Costs a little more than the standard generator.'} />
 
@@ -45926,6 +46359,7 @@ function MandarinTeacher({ lang, onSetLang }) {
             onDeleteTrack={onDeleteTrack} />
         )}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
+        {view === 'topics' && <TopicsView lang="zh" vocab={vocab} onBack={() => setView('dashboard')} />}
         {view === 'learn' && (
           <ErrorBoundary>
             <MandarinLearnWords words={newTargets.filter(w => w.selectionRole === 'new')} gcpTtsKey={cred.gcpTtsKey}
@@ -45945,7 +46379,7 @@ function MandarinTeacher({ lang, onSetLang }) {
           </ErrorBoundary>
         )}
         {view === 'listening-track' && (
-          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
+          <ErrorBoundary><ListeningGenerator key={'lt' + listeningKey} tracks={tracks} autoPlay={!!listeningOpen} startIds={listeningRebuild && !listeningOpen ? listeningRebuild.rebuildIds : null} startRebuildOf={listeningRebuild && listeningRebuild.rebuildOf} lang="zh" vocab={vocab} apiKey={cred.geminiKey} model={GEMINI_DEFAULT_MODEL} gcpTtsKey={cred.gcpTtsKey}
             track={listeningOpen} onSave={async t => { await saveTracksZh([...tracks, t]) }} onBack={() => { setListeningOpen(null); setView('dashboard') }} /></ErrorBoundary>
         )}
         {view === 'player' && activeTrack && trackHasLegacyListening(activeTrack) && listenDoneFor !== listeningTrackId(activeTrack) && (

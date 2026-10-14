@@ -1,0 +1,20 @@
+=== SYSTEM ===
+(none)
+
+=== USER ===
+Fill every empty "e" (English gloss) and "ph" (romanization) in these Thai word arrays.
+CRITICAL: Use the "thai" field (the full Thai sentence) to identify each word. The words appear IN ORDER matching the Thai sentence. Even if "p" is romanization, find the corresponding Thai word by position and meaning, then provide its English gloss.
+EVERY word with empty "e" MUST get a gloss — no empty strings allowed.
+NOTE: The "p" field may contain Thai text OR romanization. Use either to identify the word.
+
+
+
+Rules for "e": 1-3 words. PARTICLES: ครับ→"[m]" ค่ะ/คะ→"[f]" ไม่→"not" ไหม/มั้ย→"?" จะ→"will" ก็→"also" แล้ว→"already" ที่→"that/at" ให้→"to" นะ→"[softener]" เลย→"so/then" มาก→"very" แค่→"just" ตอน→"at/when" ก่อน→"first/before" กำลัง→"currently" เหรอ/เหรอะ→"[surprise?]" เกือบ→"almost" อัน→"[item]" ทำไม→"why". NUMBERS: หนึ่ง→"one" สอง→"two" สาม→"three" สี่→"four" ห้า→"five" หก→"six" เจ็ด→"seven" แปด→"eight" เก้า→"nine" สิบ→"ten". Time: โมง→"o'clock" เช้า→"morning" เย็น→"evening" ทุ่ม→"p.m." คืน→"night". CRITICAL HOMOPHONES: หา (hǎa)→"to find" NOT five (five=ห้า=hâa). PROPER NOUNS: if the Thai token is a person's name (romanised capitalised like Nida Somchai), set e="[name]". COMMON WORDS: ห้อง→"room" พื้น→"floor" ช้อน→"spoon" ส้อม→"fork" จาน→"plate" แก้ว→"glass" ถัง→"bucket" ผ้า→"cloth" รีบ→"hurry" ขัด→"scrub" ทำความสะอาด→"clean" นั่งเล่น→"living room" ห้องนั่งเล่น→"living room" เสร็จ→"finished/done" ต้อง→"must" รู้→"know" หา→"look for" เจอ→"find/meet" นาน→"long time" สบาย→"well/comfortable".
+
+Rules for "ph": toned RTGS only — NO IPA (no ɛ ɔ ʉ ŋ ə). Use standard Latin with tone marks only (à á â ǎ). Examples: ครับ→"khráp" ค่ะ→"khâ" ไม่→"mâi" สวัสดี→"sà-wàt-dii" อยาก→"yàak" มาก→"mâak". If a word already has a "ph" value but it contains IPA characters (like ɛ ə ʉ ŋ ɔ), REPLACE it with correct toned RTGS.
+
+Keep existing non-empty "e" values exactly as-is. For "ph": keep existing values ONLY if they contain no IPA characters — if "ph" has ɛ ə ʉ ŋ ɔ ɪ ʊ, replace it with correct toned RTGS.
+
+Input: [{"id":0,"thai":"อ้อผมไปทะเลกับนักท่องเที่ยวครับ","words":[{"p":"อ้อ","e":"","ph":""},{"p":"ผม","e":"I","ph":""},{"p":"ไป","e":"go","ph":"pai"},{"p":"ทะเล","e":"sea","ph":"thà-lee"},{"p":"กับ","e":"with","ph":"gàp"},{"p":"นักท่องเที่ยว","e":"tourist","ph":"nák-thâwng-thîiao"},{"p":"ครับ","e":"polite particle","ph":""}]},{"id":1,"thai":"เอ่อ ทางเข้าอยู่ที่ไหนคะ","words":[{"p":"เอ่อ","e":"","ph":""},{"p":"ทางเข้า","e":"entrance","ph":"thaang-khâo"},{"p":"อยู่","e":"to be located","ph":"yùu"},{"p":"ที่ไหน","e":"where","ph":"thîi-nǎi"},{"p":"คะ","e":"polite question particle","ph":"khá"}]}]
+
+Return ONLY valid JSON array: [{"id":0,"words":[{"p":"...","e":"...","ph":"..."},...]},...]

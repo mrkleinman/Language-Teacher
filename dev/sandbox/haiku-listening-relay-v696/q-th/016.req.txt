@@ -1,0 +1,62 @@
+=== SYSTEM ===
+(none)
+
+=== USER ===
+Judge the WHOLE listening track below, scene by scene. Each scene must be ONE continuous, natural Thai conversation.
+A scene PASSES only if: the topic continues (no unexplained jumps), questions get answers, time/place/activity stay consistent, speakers are consistent (A = a man: ผม for "I", every sentence ends with ครับ. B = a woman: ฉัน for "I", ends with ค่ะ (statement) or คะ (question).), pronouns and references make sense, nothing contradicts, and it does not read like unrelated sentences stitched together.
+Scene breaks are allowed between scenes. The conversation as a whole needs a natural opening and closing, questions answered by the other speaker, and no duplicated content. If a scene fails, give breakAfterLine = the line number after which it breaks (or null).
+
+Scene 1 — a café
+  1. A: สวัสดีครับ พวกคุณสบายดีไหมครับ — Hello. How are you all?
+  2. B: พวกเราสบายดีค่ะ — We're all fine.
+  3. A: ทำไมเมื่อวานคุณไม่มาครับ — Why didn't you come yesterday?
+  4. B: เพราะฉันไม่มีเวลาค่ะ — Because I had no time.
+  5. A: อ้อผมไปทะเลกับนักท่องเที่ยวครับ — Oh, I went to the sea with a tourist.
+  6. B: เขาเป็นอย่างไรคะ — What's he like?
+  7. A: เขาตลกมากครับ — He's very funny.
+  8. B: คุณอายุเท่าไหร่คะ — How old are you?
+  9. A: ผมอายุยี่สิบเจ็ดครับ — I'm twenty-seven.
+  10. B: คุณยังไม่แก่เลยค่ะ — You're not old at all.
+
+Scene 2 — Bangkok: National Museum and Sanam Luang
+  1. A: ขอบคุณครับ — Thank you.
+  2. B: งั้นเราไปที่ไหนดีคะ — Then where should we go?
+  3. A: ผมอยากไปที่พิพิธภัณฑสถานแห่งชาติครับ — I want to go to the National Museum.
+  4. B: ดีค่ะ ไปสนามหลวงด้วยไหมคะ — Good. Shall we go to Sanam Luang too?
+  5. A: ได้ครับ ที่นั่นน่าดูมากครับ — Sure. It's really worth seeing there.
+  6. B: เอ่อ ทางเข้าอยู่ที่ไหนคะ — Um, where is the entrance?
+  7. A: ทางเข้าอยู่ทางนั้นไม่ไกลครับ — The entrance is that way, not far.
+  8. B: งั้นไปกินที่ร้านอาหารกันไหมคะ — Then shall we go eat at a restaurant?
+  9. A: ได้เลยครับ ผมชอบร้านอาหารแถวนี้ครับ — Sure. I like the restaurants around here.
+  10. B: ดีค่ะ ฉันก็ชอบเหมือนกันค่ะ — Good. I like it too.
+
+Scene 3 — Bangkok, near the National Museum
+  1. A: ไปตอนสิบโมงเช้าไหมครับ — Shall we go at 10 AM?
+  2. B: ฉันว่าสิบเอ็ดโมงเช้าดีกว่าค่ะ — I think 11 AM is better.
+  3. A: ได้เลยครับ สิบเอ็ดโมงเช้า ผมรอที่ร้านกาแฟครับ — Sure, 11 AM. I'll wait for you at the coffee shop.
+  4. B: ดีค่ะ ฉันจะไปตรงนั้นค่ะ — Good, I'll head there.
+
+Scene 4 — Bangkok, near Sanam Luang, on the way to the National Museum
+  1. A: ร้อนมากครับ นั่งรถแท็กซี่ไปไหมครับ — It's very hot. Shall we take a taxi?
+  2. B: นั่งรถสองแถวดีกว่า ถูกกว่าค่ะ — Better to take a songthaew. It's cheaper.
+  3. A: ค่าโดยสารเท่าไหร่ครับ — What's the fare?
+  4. B: สิบบาทค่ะ — Ten baht.
+  5. A: ตรงไปแล้วเลี้ยวซ้ายครับ — Go straight, then turn left.
+  6. B: ไปนานเท่าไหร่คะ — How long does it take to go?
+  7. A: สิบนาทีครับ แต่วันนี้ตรงนั้นปิดครับ — Ten minutes. But it's closed there today.
+
+Scene 5 — restaurant near Sanam Luang
+  1. B: งั้นไปทานกันเลยค่ะ — Then let's go eat right away.
+  2. A: ถึงแล้วครับ สั่งอะไรดีครับ — We're here. What should we order?
+  3. B: ฉันอยากกินผัดไทยค่ะ — I want to eat pad thai.
+  4. A: ราคานี้คุ้มไหมครับ — Is the price worth it?
+  5. B: ไม่เชิงค่ะ ก็แพงนิดหน่อยค่ะ — Not exactly, it's a bit expensive.
+
+Scene 6 — restaurant near Sanam Luang
+  1. A: ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ — Can I ask for your phone number?
+  2. B: ได้ค่ะ เดี๋ยวส่งให้นะคะ — Sure, I'll send it to you.
+  3. A: ขอบคุณครับ คุณคือเพื่อนครับ — Thanks. You are a friend.
+  4. B: โชคดีนะคะ ฉันไปทะเลพรุ่งนี้ค่ะ — Good luck. I'm going to the sea tomorrow.
+
+Reply ONLY with JSON: {"scenes":[{"scene":1,"pass":true,"breakAfterLine":null,"reason":"..."}],"overall":1-5,"reason":"..."}
+Keep every reason under 12 words.

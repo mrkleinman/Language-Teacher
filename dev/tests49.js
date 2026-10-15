@@ -37,6 +37,7 @@ async function run(lang, opt = {}, extra = {}, lopt) {
 // a plan with extra rows spliced in after turn `at` (0-based, in the GOOD order)
 const splice = (rows, at, add) => rows.slice(0, at).concat(add.map(a => [rows[at - 1][0], ...a]), rows.slice(at))
 const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
+const SALV = x => ({ st: x.track.status, fc: x.track.failedChecks, cov: x.track.coverage, salv: (x.Ls.match(/[^\n]*(LISTENING_SALVAGE|SALVAGE_FLOOR|LISTENING_SALVAGED|PLAN_BLOCKED|STORY_JUDGE)[^\n]*/g) || []).map(l => l.slice(0, 400)) })
 
 ;(async () => {
   if (process.env.T49_ONLY !== 'K') {
@@ -97,10 +98,16 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     T('C8', 'zh: 我们昨天去这里吧。 — a suggestion about yesterday AND 去这里 ("go here")', /MEANING_RULE[^\n]*a suggestion \(吧\) cannot be about yesterday/.test(Z) && /MEANING_RULE[^\n]*去这里/.test(Z))
     T('C9', 'zh: 我们明天跟用这个吧。 fails 跟; 我现在一起到。 fails 一起 (one speaker, a statement) and 到 (no place / 了)',
       /GRAMMAR_CONTRACT[^\n]*跟用这个/.test(Z) && /GRAMMAR_CONTRACT[^\n]*一起 needs a plural subject[^\n]*我现在一起到/.test(Z) && /GRAMMAR_CONTRACT[^\n]*到 needs a place[^\n]*我现在一起到/.test(Z))
-    T('C10', 'no defective plan is committed: each run ends LISTENING_PLAN_BLOCKED, NOT_READY, no SCENE_COMMITTED, and NO legacy fallback (no scene composer, no preflight)',
-      LANGS.every(l => bad[l].track.status === 'NOT_READY' && /LISTENING_PLAN_BLOCKED/.test(bad[l].Ls) && !/SCENE_COMMITTED/.test(bad[l].Ls) && !/SCENE_PREFLIGHT|LISTENING_COMPOSITION scene/.test(bad[l].Ls) && !bad[l].stages.O_listening_scene),
-      LANGS.map(l => bad[l].track.failureReason))
-    T('C11', 'the blocked run names the fault classes and stops before paid scene generation ("no further paid scene generation")', LANGS.every(l => /fault classes: [^\n]*(GRAMMAR|SEMANTIC|QUESTION_ANSWER)/.test(bad[l].Ls) && /no further paid scene generation/.test(bad[l].Ls)))
+    // v700 SALVAGE: a defective exchange that survives the repair rounds is CUT (its lesson words, if heard nowhere else, are moved to
+    // Revision) — the track is never thrown away for it, and a defective line is still never committed
+    const finalTexts = x => x.track.listening ? x.track.listening.lines.map(l => l.thai || l.japanese || l.chinese) : []
+    const badTexts = { th: V691_BAD.th.map(r => r[4]), ja: V691_BAD.ja.map(r => r[4]), zh: V691_BAD.zh.map(r => r[4]) }
+    T('C10', 'no defective line is committed: every v691 defective sentence is absent from the final text — the run is either SALVAGED (cut, re-checked, READY with every remaining line passing) or BLOCKED (NOT_READY) — and NO legacy fallback (no scene composer, no preflight)',
+      LANGS.every(l => !finalTexts(bad[l]).some(t => badTexts[l].includes(t)) && ((bad[l].track.status === 'READY' && /LISTENING_SALVAGE_OK/.test(bad[l].Ls)) || (bad[l].track.status === 'NOT_READY' && /LISTENING_PLAN_BLOCKED/.test(bad[l].Ls))) &&
+        !/SCENE_PREFLIGHT|LISTENING_COMPOSITION scene/.test(bad[l].Ls) && !bad[l].stages.O_listening_scene),
+      LANGS.map(l => SALV(bad[l])))
+    T('C11', 'the salvage names what it cut and why (fault class per cut line), states which lesson words move to Revision, and checks the rest again with the same checks — no paid scene generation',
+      LANGS.every(l => /LISTENING_SALVAGE \(after [^\n]*\((GRAMMAR|SEMANTIC|QUESTION_ANSWER|SURFACE)\)[^\n]*moved to Revision: [^\n]*the remaining turns are validated and audited again/.test(bad[l].Ls) && !bad[l].stages.O_listening_scene), LANGS.map(l => SALV(bad[l]).salv[0]))
   }
   // ══ D — RECOVERY by fault class ═══════════════════════════════════════════════════════════════════════════════
   {
@@ -115,8 +122,9 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     T('D2', 'zh: 我现在一起到 (GRAMMAR + more than 3 lesson words) → repaired into two turns (我现在到了 / 好，我们一起去吧) keeping 现在 + 一起 + 到 → READY', zh1.track.status === 'READY' && /PART_REPAIRED x1 \([a-z]+ · [A-Z+_]*GRAMMAR/.test(zh1.Ls), { st: zh1.track.status, r: zh1.track.failureReason })
     // D3 · the repair returns the SAME rejected sentence → caught at once, bounded, BLOCKED (no loop)
     const zh2 = await run('zh', { plan: splice(GOOD.zh, 6, [['A', 'INFORM', '', 'I', '我现在一起到。', 'I now together arrive.'], ['B', 'REACT', '', '', '真的吗？', 'Really?']]), repair: () => [['A', 'INFORM', '', 'I', '我现在一起到。', 'I now together arrive.']] })
-    T('D3', 'a repair that brings back a REJECTED sentence is rejected at once (REPEATED_REJECTED_SENTENCE), the loop stops within 3 rounds (no repeated failure spiral), BLOCKED',
-      /REPEATED_REJECTED_SENTENCE/.test(zh2.Ls) && zh2.track.status === 'NOT_READY' && (zh2.stages.O_listening_plan_repair || 0) <= 3 && /LISTENING_PLAN_BLOCKED/.test(zh2.Ls), zh2.stages)
+    T('D3', 'a repair that brings back a REJECTED sentence is rejected at once (REPEATED_REJECTED_SENTENCE), the loop stops within 3 rounds (no repeated failure spiral); v700: the exchange is then CUT by the salvage — 我现在一起到 never reaches the final text',
+      /REPEATED_REJECTED_SENTENCE/.test(zh2.Ls) && (zh2.stages.O_listening_plan_repair || 0) <= 3 && !(zh2.track.listening ? zh2.track.listening.lines : []).some(l => /我现在一起到/.test(l.chinese || '')) &&
+        ((zh2.track.status === 'READY' && /LISTENING_SALVAGE \(after[^\n]*我现在一起到/.test(zh2.Ls)) || (zh2.track.status === 'NOT_READY' && /LISTENING_PLAN_BLOCKED/.test(zh2.Ls))), SALV(zh2))
     // D4 · a repair that drops the protected lesson word is rejected and escalates (never silently lost)
     const zh3 = await run('zh', { plan: splice(GOOD.zh, 6, [['A', 'INFORM', '', 'I', '我现在一起到。', 'I now together arrive.'], ['B', 'REACT', '', '', '真的吗？', 'Really?']]),
       repair: (scope, head, q, st) => st.repair === 1 ? [['A', 'INFORM', '', 'I', '我们去吧。', 'Let\'s go.']] : [['A', 'INFORM', '', 'I', '我现在到了。', 'I\'m here now.'], ['B', 'REACT', '', 'we', '好，我们一起去吧！', 'Great, let\'s go together!']] })
@@ -186,12 +194,14 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     const ja3 = await run('ja', { audit: t => /いいえ/.test(t) ? { usage: 'acceptable', note: 'いいえ is a little formal between friends but correct' } : null })
     T('E1', 'ja: いいえ judged "acceptable" (more formal than うん / ううん, but correct) PASSES — a mandatory target is not rejected for register preference', ja3.track.status === 'READY' && !ja3.stages.O_listening_plan_repair)
     const ja4 = await run('ja', { audit: t => /いいえ/.test(t) ? { usage: 'awkward', note: 'odd here' } : null, repair: () => null })
-    T('E2', 'ja: the same line judged "awkward" FAILS (only natural / acceptable pass)', ja4.track.status === 'NOT_READY' && /SEMANTIC_AUDIT \(candidate\) FAIL/.test(ja4.Ls))
+    T('E2', 'ja: the same line judged "awkward" FAILS (only natural / acceptable pass) — v700: it never reaches the final text (cut by the salvage, its lesson word moved to Revision if heard nowhere else) or the track is NOT_READY',
+      /SEMANTIC_AUDIT \(candidate\) FAIL/.test(ja4.Ls) && (ja4.track.status === 'NOT_READY' || (/LISTENING_SALVAGE \(after[^\n]*いいえ/.test(ja4.Ls) && !(ja4.track.listening ? ja4.track.listening.lines : []).some(l => /いいえ/.test(l.japanese || '')))), SALV(ja4))
     const zh4 = await run('zh', { audit: (t, n, st) => st.audit === 1 && /我们去哪里/.test(t) ? '__omit__' : null })
     T('E3', 'a turn the audit returned NO verdict for is never treated as passed: SEMANTIC_UNVERIFIED (fault 9) → audited again → committed only after a real verdict',
       /SEMANTIC_UNVERIFIED/.test(zh4.Ls) && zh4.stages.O_listening_semantic_audit >= 2 && zh4.track.status === 'READY' && !zh4.stages.O_listening_plan_repair, { st: zh4.track.status, s: zh4.stages })
     const zh5 = await run('zh', { audit: t => /我们去哪里/.test(t) ? '__omit__' : null })
-    T('E4', 'a turn that NEVER gets a verdict blocks the track (UNVERIFIED never passes)', zh5.track.status === 'NOT_READY' && /SEMANTIC_UNVERIFIED/.test(zh5.Ls))
+    T('E4', 'a turn that NEVER gets a verdict never passes (UNVERIFIED is not a pass): it is cut by the salvage and absent from the final text, or the track is NOT_READY',
+      /SEMANTIC_UNVERIFIED/.test(zh5.Ls) && !(zh5.track.listening ? zh5.track.listening.lines : []).some(l => /我们去哪里/.test(l.chinese || '')) && (zh5.track.status === 'NOT_READY' || /LISTENING_SALVAGE \(after[^\n]*我们去哪里/.test(zh5.Ls)), SALV(zh5))
   }
   // ══ F — beginner repetition is acceptable; G — readiness is judged on the FINAL output ══════════════════════════
   {
@@ -199,7 +209,8 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     const texts = z.lines.map(l => l.chinese || l.thai)
     T('F1', 'zh: the Mukyu conversation repeats short words / replies (好 · 明天 · 去 …) and still passes the duplicate policy (repetition ≠ duplicate)', texts.filter(t => /好/.test(t)).length >= 5 && z.gates.NO_DUPLICATES === true)
     const coh = await run('zh', { cohFail: true })
-    T('G1', 'a plan approved by validation + audit is still NOT_READY when the FINAL whole-conversation coherence judge fails (readiness is the final output\'s)', coh.track.status === 'NOT_READY' && /WHOLE_CONVERSATION_COHERENCE=FAIL/.test(coh.track.failedChecks.join(' ')), coh.track.failedChecks)
+    T('G1', 'a plan approved by validation + audit is still NOT_READY when the FINAL whole-conversation coherence judge fails every part (readiness is the final output\'s; v700: the salvage cannot keep any part, so the floor stops it)',
+      coh.track.status === 'NOT_READY' && (/WHOLE_CONVERSATION_COHERENCE=FAIL/.test(coh.track.failedChecks.join(' ')) || /LISTENING_PLAN_BLOCKED — SALVAGE_FLOOR/.test(coh.Ls)), SALV(coh))
     T('G2', 'the final gates run on the committed text: closed vocabulary, length, coverage and pronunciation all PASS on the final lines (not on the plan)', LANGS.every(l => { const gs = good[l].track.listening.gates; return gs.CLOSED_VOCAB === true && gs.LENGTH_PASS === true && gs.COVERAGE_PASS === true && gs.PRONUNCIATION === true }))
   }
   // ══ H — technical failures are TECHNICAL (fault 9), never a language verdict, never a legacy fallback ════════════
@@ -289,9 +300,13 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
         /SCENE_PLAN_TRUNCATED S3 attempt 1 — the reply was cut off: a TECHNICAL failure \(fault 9\); a cut-off plan is never parsed, validated or kept/.test(zh.Ls) && zh.st.scenes.join(',') === 'S1,S2,S3,S3,S4,S5,S6' &&
         /was too long and was cut off/.test(planCalls(zh)[3].prompt) && zh.track.status === 'READY' && /LISTENING_MF_TRUNCATIONS=1/.test(zh.Ls), { st: zh.track.status, scenes: zh.st.scenes })
       const th = await run('th', { plan: GOOD693.th, scenePlan: key => key === 'S4' ? '__truncated__' : null }, {}, L693('th'))
-      T('J9', 'th: S4 cut off twice → BLOCKED as TECHNICAL (fault 9) naming the situation; the 3 situations planned before it are KEPT in the result (not discarded), no validation / audit / repair ran on anything partial, no linguistic fault is named, NOT_READY — never READY from a truncated reply, no legacy fallback',
-        th.track.status === 'NOT_READY' && /TECHNICAL \(fault 9\): situation S4 could not be planned after 2 attempts \(2 cut-off replies\) — 3 situation\(s\) planned before it were kept/.test(th.Ls) &&
-        !th.stages.O_listening_semantic_audit && !th.stages.O_listening_plan_repair && !/STRUCTURAL_VALIDATION|GRAMMAR_CONTRACT|SEMANTIC_AUDIT \(/.test(th.Ls) && !/SCENE_PREFLIGHT|LISTENING_COMPOSITION scene/.test(th.Ls) && th.st.scenes.join(',') === 'S1,S2,S3,S4,S4', { st: th.track.status, r: th.track.failureReason, scenes: th.st.scenes })
+      // v700: a situation that cannot be planned (technical) is SKIPPED — the conversation goes on without it; its lesson words are
+      // placed elsewhere or moved to Revision (honestly reported); nothing from a cut-off reply is ever parsed or kept
+      const cov9 = th.track.coverage || {}
+      T('J9', 'th: S4 cut off twice → SITUATION_SKIPPED as TECHNICAL (fault 9) — never parsed; S1–S3 are kept and S5 / S6 are still planned; the result is a usable track: READY with S4\'s lesson words moved to Revision and stated (coverage 26/30 + 4 deferred), no legacy fallback',
+        /SITUATION_SKIPPED S4 [^\n]*could not be planned after 2 attempts \(technical\)/.test(th.Ls) && th.st.scenes.join(',') === 'S1,S2,S3,S4,S4,S5,S6' && !/SCENE_PREFLIGHT|LISTENING_COMPOSITION scene/.test(th.Ls) &&
+        th.track.status === 'READY' && cov9.covered + (cov9.deferred || []).length === 30 && (cov9.deferred || []).length === 4 && (cov9.deferredDetail || []).every(d => d.reason),
+        { ...SALV(th), scenes: th.st.scenes })
     }
     // Japanese closed-vocabulary false positives seen in the v693 repairs (the words are reported correctly or accepted)
     {
@@ -434,6 +449,36 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
     }
     T('K17', 'scene planning keeps the same safeguards: every situation request is bounded (≤ 2700 tokens), the text field rule forbids romanisation / labels / notes and gives the reading its own "pron" field, the phone rule is in every prompt',
       [th, ja, zh].every(g => planCalls(g).every(x => x.max <= 2700 && /no romanisation/.test(x.prompt) && /"pron"/.test(x.prompt) && /phone number/i.test(x.prompt))), planCalls(zh)[0].prompt.slice(-600))
+  }
+  // ══ S — v700 SALVAGE: one faulty exchange never throws a whole Listening track away ═══════════════════════════════
+  if (process.env.T49_ONLY !== 'K') {
+    const c = load(__dirname + '/tt.compiled.js', { realBelt: true })
+    const mk = () => { const tu = (id, scene, speaker, intent, resp) => ({ id, scene, speaker, intent, respondsToId: resp || null, targetIds: [], text: id, english: id })
+      return c.lnMfRenumber({ scenes: [
+        { key: 'S1', turns: [tu('t1', 'S1', 'A', 'ASK'), tu('t2', 'S1', 'B', 'ANSWER', 't1'), tu('t3', 'S1', 'A', 'INFORM'), tu('t4', 'S1', 'B', 'REACT', 't3')] },
+        { key: 'S2', turns: [tu('t5', 'S2', 'A', 'ASK'), tu('t6', 'S2', 'B', 'ANSWER', 't5'), tu('t7', 'S2', 'A', 'PROPOSE'), tu('t8', 'S2', 'B', 'ACCEPT', 't7')] },
+        { key: 'S3', turns: [tu('t9', 'S3', 'A', 'INFORM'), tu('t10', 'S3', 'B', 'REACT', 't9')] }] }) }
+    const ids = mp => mp.flat.map(t => t.id).join(',')
+    let m = mk(); const a = c.lnMfSalvageCut({}, m, [{ fault: 3, code: 'CLOSED_VOCAB', turnIds: ['t2'], scene: 'S1' }])
+    let m2 = mk(); const b = c.lnMfSalvageCut({}, m2, [{ fault: 6, code: 'ADJACENCY', turnIds: ['t9'], scene: 'S3' }])
+    let m3 = mk(); const d = c.lnMfSalvageCut({}, m3, [{ fault: 7, code: 'SCENE_INCOHERENT', turnIds: ['t5', 't6', 't7', 't8'], scene: 'S2' }])
+    let m4 = mk(); const e = c.lnMfSalvageCut({}, m4, ['S1', 'S2', 'S3'].map(k => ({ fault: 7, code: 'SCENE_INCOHERENT', turnIds: [], scene: k })))
+    T('S1', 'the salvage cuts the WHOLE exchange: a failing answer takes the question it answers (no unanswered question left), a failing turn takes the replies to it; a situation left with < 2 turns is dropped; an incoherent situation is dropped; nothing left → no salvage',
+      ids(m) === 't3,t4,t5,t6,t7,t8,t9,t10' && a.removed.length === 2 && ids(m2) === 't1,t2,t3,t4,t5,t6,t7,t8' && b.droppedScenes.join() === 'S3' && ids(m3) === 't1,t2,t3,t4,t9,t10' && d.droppedScenes.join() === 'S2' && e === null && m.flat.every((t, i) => t.n === i + 1),
+      { a: ids(m), b: ids(m2), d: ids(m3), e })
+    // a line that fails in every round is cut; its lesson word, heard nowhere else, is DEFERRED with a reason; READY on the rest
+    const ja4 = await run('ja', { audit: t => /いいえ/.test(t) ? { usage: 'awkward', note: 'odd here' } : null, repair: () => null })
+    const cv = ja4.track.coverage || {}, sum = ja4.c.listeningTrackSummary(ja4.track)
+    T('S2', 'ja: a line judged awkward in every round is CUT (not the whole track): the track is READY on the remaining lines, the lesson word heard nowhere else is moved to Revision WITH its reason, coverage says so honestly ("covered + deferred = 30"), and the SRS of every word is untouched',
+      ja4.track.status === 'READY' && cv.covered + (cv.deferred || []).length === 30 && (cv.deferredDetail || []).length >= 1 && cv.deferredDetail.every(x => x.reason && x.target) && ja4.srsUntouched &&
+      /stay due for Revision/.test(sum) && ja4.track.listening.gates.SALVAGE_FLOOR === true && (ja4.track.listening.lines || []).length >= 16,
+      { st: ja4.track.status, cov: cv, sum, gates: ja4.track.listening && ja4.track.listening.gates })
+    const ex = ja4.c.listeningCoverageExportLines(ja4.track.listening).join('\n')
+    T('S3', 'the export states the salvage plainly: what was cut and why, and each word that stays due for Revision', /SALVAGE: \d+ turn\(s\) cut/.test(ex) && /MOVED TO REVISION [^\n]*still due in SRS/.test(ex) && /CUT "[^"]*いいえ/.test(ex), ex.split('\n').filter(l => /SALVAGE|MOVED|CUT/.test(l)).join(' | '))
+    // too little left → the floor stops it: never a tiny "READY" track
+    const zh9 = await run('zh', { audit: t => /[我你他她们]/.test(t) ? { usage: 'awkward', note: 'odd' } : null, repair: () => null })
+    T('S4', 'the FLOOR: when cutting would leave too little (fewer than 16 lines, 2 situations, or half the lesson words), the track is NOT_READY with the reason named — never a tiny track called READY',
+      zh9.track.status === 'NOT_READY' && /LISTENING_PLAN_BLOCKED — (SALVAGE_FLOOR|\d+ unresolved after [^\n]*salvage)/.test(zh9.Ls), SALV(zh9))
   }
   console.log(out.join('\n'))
   console.log('\n' + (n - fails) + '/' + n + ' passed')

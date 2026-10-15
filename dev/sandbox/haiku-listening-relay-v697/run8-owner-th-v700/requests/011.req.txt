@@ -1,0 +1,62 @@
+=== SYSTEM ===
+(none)
+
+=== USER ===
+Judge the WHOLE listening track below as ONE continuous, natural Thai conversation between the SAME two people. It was written in internal parts (numbered as "scenes" below) — they are NOT separate scenes: every part must continue directly from the previous part.
+Check the WHOLE text: the beginning makes sense; topics move on naturally; every answer responds to its question (why → a reason, where → a place, when → a time, how long → a duration, how much → an amount, a proposal → accept / refuse / counter-proposal); facts stay consistent (an agreed time or place stays agreed unless someone explicitly corrects it; whose mother / friend it is stays the same); names and pronouns stay consistent; a change of place is said in the dialogue; the time sequence makes sense (a part may start LATER the same day when its first line says what happened in between — "we have seen the museum", "we are here now": that stated time skip is fine); nobody greets again in the middle; the ending follows from the conversation. Speakers: A = a man: ผม for "I", every sentence ends with ครับ. B = a woman: ฉัน for "I", ends with ค่ะ (statement) or คะ (question)..
+A part PASSES only if it is coherent in itself AND continues the previous part. If a part fails, give breakAfterLine = the line number after which it breaks (or null).
+
+Scene 1 — meeting and catching up
+  1. A: สวัสดีครับ ยินดีที่ได้รู้จักครับ — Hello, nice to meet you.
+  2. B: ยินดีที่ได้รู้จักเหมือนกันค่ะ — Nice to meet you too.
+  3. A: ไม่ทราบว่าเมื่อวานพวกคุณไปทะเลไหมครับ — May I ask, did you all go to the sea yesterday?
+  4. B: ไปค่ะ — Yes, we went.
+  5. A: ทำไมไปทะเลครับ — Why did you go to the sea?
+  6. B: เพราะอยากพักค่ะ — Because I wanted to rest.
+  7. A: ขอดูรูปได้ไหมครับ — Can I see the photos?
+  8. B: ได้ค่ะ ถ่ายรูปไว้เยอะค่ะ — Sure, I took lots of photos.
+  9. A: คนนี้ตลกไหมครับ — Is this person funny?
+  10. B: ไม่เชิงค่ะ นิดหน่อยค่ะ — Not exactly, a little.
+
+Scene 2 — deciding what to do
+  1. A: รูปนี้คุณอยู่ที่ไหนครับ — Where were you in this photo?
+  2. B: อยู่ที่หาดค่ะ — I was at the beach.
+  3. A: งั้นวันนี้ไปดูหนังไหมครับ — So, shall we go watch a movie today?
+  4. B: ไปพิพิธภัณฑสถานแห่งชาติดีกว่าค่ะ — It's better to go to the National Museum.
+  5. A: ดีครับ ตึกเก่าน่าดูนะครับ — Good, old buildings are worth seeing.
+  6. B: พิพิธภัณฑสถานแห่งชาติอยู่ที่ไหนคะ — Where is the National Museum?
+  7. A: อยู่ใกล้สนามหลวงครับ — It's near Sanam Luang.
+  8. B: ดีค่ะ แล้วไปร้านอาหารด้วยไหมคะ — Good, then shall we go to a restaurant too?
+  9. A: ได้ครับ วันนี้ไปกันนะครับ — Sure, let's go today.
+
+Scene 3 — agreeing when
+  1. B: วันนี้ไปกี่โมงดีคะ — What time shall we go today?
+  2. A: สิบโมงเช้าครับ — Ten in the morning.
+  3. B: แย่แล้วค่ะ ฉันต้องทำงานค่ะ — Oh no, I have to work.
+  4. A: เมื่อเสร็จงาน ไปกี่โมงดีครับ — When you finish work, what time is good?
+  5. B: บ่ายสองโมงดีค่ะ — Two in the afternoon is good.
+  6. A: ได้ครับ ไปกันบ่ายสองโมงนะครับ — Sure, let's go together at two.
+
+Scene 4 — getting there
+  1. B: ฉันไปติดต่อธุรกิจมาแล้วค่ะ — I've just come back from my business trip.
+  2. A: ไปด้วยอะไรดีครับ — So, what should we go by?
+  3. B: นั่งรถบัสหรือนั่งเรือดีคะ — Shall we take the bus or the boat?
+  4. A: ป้ายรถเมล์ไกลไหมครับ — Is the bus stop far?
+  5. B: ไม่ไกลค่ะ แต่ร้อนมากค่ะ — Not far, but very hot.
+  6. A: ผมมีรถขับครับ ไปรถผมดีกว่าครับ — I have a car, so let's go by my car.
+  7. B: ดีค่ะ ไปรถคุณเลยค่ะ — Good, let's go by your car right away.
+
+Scene 5 — eating and drinking
+  1. A: ดูเสร็จแล้วครับ หิวไหมครับ — We've finished looking. Are you hungry?
+  2. B: หิวแล้วค่ะ ถึงแล้วทานกันเลยค่ะ — I'm already hungry. Once we arrive, let's eat right away.
+  3. A: ถึงแล้วครับ เชิญนั่งครับ กินอะไรดีครับ — We've arrived. Please sit. What shall we eat?
+  4. B: ผัดไทยดีค่ะ — Pad thai sounds good.
+
+Scene 6 — wrapping up
+  1. A: กินเสร็จแล้วครับ — We've finished eating.
+  2. B: ฉันมีนัดกับลูกค้าค่ะ — I have an appointment with a client.
+  3. A: ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ — Can I have your phone number?
+  4. B: ได้ค่ะ ส่งให้นะคะ แล้วคุยกันนะคะ — Sure, I'll send it to you. Talk later, okay?
+
+Reply ONLY with JSON: {"scenes":[{"scene":1,"pass":true,"breakAfterLine":null,"reason":"..."}],"overall":1-5,"reason":"..."}
+Keep every reason under 12 words.

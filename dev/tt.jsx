@@ -20375,6 +20375,10 @@ function listeningCoverageExportLines(lt) {
       'Status: ' + (lt.readiness === 'READY' ? 'READY' : 'NOT_READY — Listening track needs repair') + ' · ' + (lt.listeningQuality || ''),
       'Turns: ' + lt.lines.length + ' in ' + (lt.sceneGroups || []).length + ' scene(s) · speakers A ' + ((lt.dialogueStats || {}).speakers || {}).A + ' / B ' + ((lt.dialogueStats || {}).speakers || {}).B]
     if (lt.gates) out.push('Gates: ' + Object.entries(lt.gates).map(([k, v]) => k + '=' + v).join(' · '))
+    // v700 — the salvage, stated plainly: what was cut and which words stay due for the next Revision (SRS untouched)
+    if (lt.salvage) { out.push('SALVAGE: ' + lt.salvage.removedTurns + ' turn(s) cut' + (lt.salvage.droppedScenes.length ? ' · situation(s) dropped ' + lt.salvage.droppedScenes.join(', ') : '') + ' after ' + lt.salvage.from + ' · every remaining line passed every check')
+      ;(lt.salvage.deferred || []).forEach(d => out.push('  MOVED TO REVISION ' + d.target + ' (' + d.targetId + ') — ' + d.reason + ' · still due in SRS'))
+      ;(lt.salvage.cuts || []).slice(0, 12).forEach(x => out.push('  CUT "' + x.text + '" (' + x.english + ') — ' + x.fault + ' ' + x.code)) }
     if (lt.telemetry) out.push('Cost: ' + Object.entries(lt.telemetry).map(([k, v]) => k + '=' + v).join(' '))
     ;(lt.issues || []).slice(0, 30).forEach(x => out.push('ISSUE ' + x.code + (x.line ? ' line ' + x.line : '') + ': ' + x.detail))
     out.push('', 'TARGET | TARGET_ID | NEW | OCCURRENCES | LINE_IDS | STATUS')
@@ -20983,10 +20987,13 @@ function thaiSelfContradiction(a, b) {
   // v700 — two recalls of the SAME target by the same speaker that assert and deny it about the same subject (live v699:
   // พ่อแม่เลี้ยงดูผมดีมากครับ "my parents raised me very well" then พ่อแม่ไม่เลี้ยงดูผมเลยครับ "…didn't raise me at all")
   const tw = (a.targetId != null && a.targetId === b.targetId) ? String(a._target || a.targetSurface || b._target || b.targetSurface || '') : ''
-  if (tw && !/^ไม่/.test(tw)) { const pv = (t, w) => { const i = t.indexOf(w); if (i < 0) return null; const pre = t.slice(0, i)
-      return { p: /ไม่(ได้|เคย|ค่อย)?$/.test(pre) ? 'neg' : 'pos', subj: thaiSubjectKey(pre.replace(/ไม่(ได้|เคย|ค่อย)?$/, '').replace(/^(ผม|ฉัน|เรา)?/, '')) } }
+  // only a GENUINE contradiction: the same subject AND the same object (who / what), at least one of them named — "I believe this
+  // story" and "I don't believe (it)" are two different mini-exchanges, not a contradiction
+  if (tw && !/^ไม่/.test(tw)) { const tail = x => String(x || '').replace(/(ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า|เลย|มากๆ|มาก|ดี|จริงๆ|แล้ว|อยู่|ด้วย|หรอก|ๆ|\s)+$/g, '').replace(/(ดี|มาก|เลย)+$/, '')
+    const pv = (t, w) => { const i = t.indexOf(w); if (i < 0) return null; const pre = t.slice(0, i)
+      return { p: /ไม่(ได้|เคย|ค่อย)?$/.test(pre) ? 'neg' : 'pos', subj: thaiSubjectKey(pre.replace(/ไม่(ได้|เคย|ค่อย)?$/, '').replace(/^(ผม|ฉัน|เรา)?/, '')), obj: tail(t.slice(i + w.length)) } }
     const x = pv(a.thai, tw), y = pv(b.thai, tw)
-    if (x && y && x.p !== y.p && x.subj === y.subj) return '"' + a.thai + '" vs "' + b.thai + '" — the same speaker says ' + tw + ' and not ' + tw + ' about the same person'
+    if (x && y && x.p !== y.p && x.subj === y.subj && x.obj === y.obj && (x.subj || x.obj)) return '"' + a.thai + '" vs "' + b.thai + '" — the same speaker says ' + tw + ' and not ' + tw + ' about the same person'
   }
   return ''
 }
@@ -28375,8 +28382,12 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
         (pf ? ' · ⚠ PLANNER_FAILURE — ' + (tel.LISTENING_REPAIR_CALLS >= 50 ? '50+ repair calls' : 'repair calls > generation calls') + ': diagnose upstream planning (feasibility / meaning plan / palettes)' : ' · ⚠ nothing validated') + ' — health targets, not gates')
       return { ok: false, empty: true, listeningQuality: 'NEEDS_REPAIR — ' + why, reason: why, stats: {}, telemetry: tel, plan: r.plan, uncommitted: r.uncommitted || [] }
     }
-    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh, uncommitted: r.uncommitted || [], contract: r.contract || null, story: r.story || null, phaseHealth: r.phaseHealth || [] }
+    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh, uncommitted: r.uncommitted || [], contract: r.contract || null, story: r.story || null, phaseHealth: r.phaseHealth || [], salvage: r.salvage || null }
   }
+  // v700 — words DEFERRED by the salvage (their exchange was cut): they stay due in SRS for the next Revision; the gates read the
+  // contract "every selected word is heard OR honestly deferred", plus the salvage floor
+  const salv = sceneGates && sceneGates.salvage ? sceneGates.salvage : null
+  const deferredIds = new Set(salv ? salv.deferred.map(d => d.targetId) : [])
   // ── 3. whole-conversation coherence (scene + whole) — a HARD gate ──
   // v695: a meaning-first turn carries its planned act (meaning.intent / respondsTo) into the deterministic continuity check
   const cohScenes = scenes.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, ...(tn.meaning ? { meaning: tn.meaning } : {}) })) }))
@@ -28420,6 +28431,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   if (sceneGates) {
     const before = audit.covered.length
     audit = listeningConversationAudit(scenes, targets, la, ctx)
+    if (deferredIds.size) audit.covered.forEach(id => deferredIds.delete(id))      // heard after all → not deferred
     if (audit.covered.length < before) log && log('⛔ LISTENING_COVERAGE_INVARIANT_BROKEN — final text has ' + audit.covered.length + '/' + targets.length + ' after metadata (was ' + before + ')')
     log && log('🎧 LISTENING_TARGET_AUDIT (final) covered=' + audit.covered.length + '/' + targets.length + (audit.missing.length ? ' missing=[' + audit.missing.map(t => t.surface).join(', ') + ']' : ''))
     tel.LISTENING_VERIFIED_TARGETS = audit.covered.length
@@ -28432,9 +28444,10 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     log && log('🗣 JA_REGISTER_AUDIT scenes=' + ra.length + ' pass=' + ra.filter(r => r.verdict === 'PASS').length + ' fail=' + ra.filter(r => r.verdict === 'FAIL').length + ' REGISTER_PASS=' + !ra.some(r => r.verdict === 'FAIL'))
   }
   // ── 5. gates ──
-  const hard = audit.issues.concat(natIssues, pronIssues)
+  const hard = audit.issues.filter(x => !(x.code === 'TARGET_MISSING' && deferredIds.has(x.targetId))).concat(natIssues, pronIssues)
+  const heardOrDeferred = targets.length > 0 && targets.every(t => audit.covered.includes(t.id) || deferredIds.has(t.id))
   const gates = {
-    TARGET_COVERAGE: audit.covered.length + '/' + targets.length, COVERAGE_PASS: audit.covered.length === targets.length && targets.length > 0,
+    TARGET_COVERAGE: audit.covered.length + '/' + targets.length + (deferredIds.size ? ' (' + deferredIds.size + ' moved to Revision)' : ''), COVERAGE_PASS: heardOrDeferred && (deferredIds.size ? true : audit.covered.length === targets.length),
     MAX_TARGETS_PER_TURN: audit.lines.reduce((m, r) => Math.max(m, r.targetCount), 0), MAX3_PASS: !audit.issues.some(x => x.code === 'MAX_TARGETS_PER_TURN'),
     BOTH_SPEAKERS: audit.speakers.length >= 2, NO_MERGED_SPEAKER_LINES: !audit.issues.some(x => x.code === 'MERGED_SPEAKERS'),
     NO_DUPLICATES: !audit.issues.some(x => /DUPLICATE/.test(x.code)), NO_SINGLETON_SCENES: !audit.issues.some(x => x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION'),
@@ -28446,7 +28459,8 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     NATURALNESS: !natIssues.length, WHOLE_CONVERSATION_COHERENCE: cohPassed ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED', PRONUNCIATION: !pronIssues.length,
     // v662 — the standalone track also needs every scene's required coverage and the turn budget
     // v664: a word that ended up heard somewhere else in the final text satisfies its scene requirement (coverage is the text)
-    ...(sceneGates ? { SCENE_REQUIRED_COVERAGE: audit.covered.length === targets.length ? 'PASS' : sceneGates.SCENE_REQUIRED_COVERAGE, TURN_COUNT: sceneGates.TURN_COUNT, TURN_BUDGET: sceneGates.TURN_BUDGET,
+    ...(salv ? { SALVAGE_FLOOR: scenes.reduce((a, sc) => a + sc.turns.length, 0) >= salv.floor.turns && scenes.length >= salv.floor.scenes && audit.covered.length >= salv.floor.words } : {}),
+    ...(sceneGates ? { SCENE_REQUIRED_COVERAGE: heardOrDeferred ? 'PASS' : sceneGates.SCENE_REQUIRED_COVERAGE, TURN_COUNT: sceneGates.TURN_COUNT, TURN_BUDGET: sceneGates.TURN_BUDGET,
       // v669 §17 — no INVALID_CANDIDATE was committed, and every target of an uncommitted scene is verified (from the
       // final lines) in a validated scene — else the uncommitted scene is unresolved and the track cannot be READY
       SCENES_VALIDATED: (sceneGates.uncommitted || []).every(u => (u.targets || []).every(id => audit.covered.includes(id))) } : {}),
@@ -28511,7 +28525,9 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   const quality = ready ? 'VERIFIED' : 'NEEDS_REPAIR — ' + reasons.slice(0, 4).join(' · ')
   audit.lines.forEach(r => log && log('    LISTENING_LINE L' + r.n + ' speaker=' + r.speaker + ' actualTargetIds=[' + r.actualTargetIds.join(',') + '] targetCount=' + r.targetCount))
   if (sceneGates && (sceneGates.uncommitted || []).length) log && log((gates.SCENES_VALIDATED ? '🧭 LISTENING_UNCOMMITTED_SCENES ' : '⛔ LISTENING_UNCOMMITTED_SCENES ') + sceneGates.uncommitted.map(u => { const st = (u.targets || []).filter(id => !audit.covered.includes(id)); return u.sceneId + ' (' + u.residual + (st.length ? ' — unheard ' + st.length : ' — all targets re-allocated to validated scenes') + ')' }).join(' · ') + ' — SCENES_VALIDATED=' + !!gates.SCENES_VALIDATED)
-  log && log('🎧 LISTENING_FINAL_INTEGRITY ' + (ready ? 'READY' : 'NOT_READY') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length + (failed.length ? ' · failed: ' + failed.join(', ') : ' · every gate passed'))
+  if (salv) log && log('✂ LISTENING_SALVAGED ' + salv.removedTurns + ' turn(s) cut' + (salv.droppedScenes.length ? ' · situation(s) dropped: ' + salv.droppedScenes.join(', ') : '') + ' · moved to Revision (still due — SRS untouched): ' +
+    (salv.deferred.filter(d => deferredIds.has(d.targetId)).map(d => d.target + ' — ' + d.reason).join(' · ') || 'none'))
+  log && log('🎧 LISTENING_FINAL_INTEGRITY ' + (ready ? 'READY' : 'NOT_READY') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length + (deferredIds.size ? ' · ' + deferredIds.size + ' moved to Revision' : '') + (failed.length ? ' · failed: ' + failed.join(', ') : ' · every gate passed'))
   progress('final', audit, { ready, failedChecks: reasons })
   log && log('  🎧 LISTENING_GATES ' + Object.entries(gates).map(([k, v]) => k + '=' + v).join(' · '))
   log && log('  🎧 LISTENING ' + (ready ? 'READY' : 'NOT_READY — Listening track needs repair (' + reasons.join(', ') + ')') + ' · TARGET COVERAGE ' + covered.length + '/' + targets.length +
@@ -28524,7 +28540,8 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     continuityIssues: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? conversationContinuityAudit(scenes, la, targets) : [],
     eligibleTargetIds: targets.map(t => t.id), excludedNewTargetIds: [], omittedTargetIds: audit.missing.map(t => t.id),
     coverage: { language: lang, contract: 'ALL_SELECTED_TARGETS', selectedTargetIds: targets.map(t => t.id), newTargetIds: newIds, reviewTargetIds: targets.filter(t => !t.isNew).map(t => t.id),
-      requiredTargetIds: targets.map(t => t.id), coveredRequiredIds: covered, coveredTargetIds: covered, uncoveredTargetIds: audit.missing.map(t => t.id),
+      requiredTargetIds: targets.map(t => t.id), coveredRequiredIds: covered, coveredTargetIds: covered, uncoveredTargetIds: audit.missing.filter(t => !deferredIds.has(t.id)).map(t => t.id),
+      deferredTargetIds: [...deferredIds], deferred: salv ? salv.deferred.filter(d => deferredIds.has(d.targetId)) : [],
       newHeardIds: newIds.filter(id => covered.includes(id)), reviewHeardIds: covered.filter(id => !newIds.includes(id)),
       unresolved: audit.missing.map(t => ({ targetId: t.id, target: t.surface, reason: t.unresolved ? 'unresolved at selection' : 'TARGET_MISSING', reasons: [] })),
       rows, eligibleTargetCount: targets.length, coveredTargetCount: covered.length, uncoveredTargetCount: audit.missing.length,
@@ -28538,6 +28555,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     coveragePlan: sceneGates ? { scenes: sceneGates.plan.scenes.map(sc => ({ sceneId: sc.sceneId, purpose: sc.purpose, requiredTargetIds: sc.requiredTargetIds.slice(), optionalTargetIds: [], expectedTurns: sc.expectedTurns, maxTurns: sc.maxTurns })),
       assignments: sceneGates.plan.assignments, seed: sceneGates.plan.seed } : null, sceneReport: sceneGates ? sceneGates.report : null,
     uncommittedScenes: sceneGates ? (sceneGates.uncommitted || []) : [],      // v669 §17 — explicit diagnostic
+    salvage: salv ? { ...salv, deferred: salv.deferred.filter(d => deferredIds.has(d.targetId)) } : null,
     dialogueStats: { scenes: scenes.length, lines: lines.length, speakers: { A: lines.filter(l => l.speaker === 'A').length, B: lines.filter(l => l.speaker === 'B').length },
       maxTargetsPerTurn: gates.MAX_TARGETS_PER_TURN, singleLineScenes: scenes.filter(sc => sc.turns.length < 2).length, monologueScenes: scenes.filter(sc => sc.turns.length >= 3 && new Set(sc.turns.map(t => t.speaker)).size < 2).length },
     compositionFailure: !gates.BOTH_SPEAKERS || !gates.NO_SINGLETON_SCENES || !gates.NO_MERGED_SPEAKER_LINES,
@@ -29947,9 +29965,12 @@ async function _lnComposeMeaningFirst(env) {
   // PLAN — one situation at a time; a technical failure retries that situation only, the situations already planned stay
   const byScene = await lnMfPlanByScenes(env, grouping)
   if (!byScene.mp) { plan.keptScenes = byScene.kept.map(s => ({ key: s.key, situation: s.situation, turns: s.turns.map(t => ({ speaker: t.speaker, text: t.text, english: t.english })) }))
-    return blocked('TECHNICAL (fault 9): situation ' + byScene.failed + ' could not be planned after ' + LN_MF_SCENE_ATTEMPTS + ' attempts' + (mf.truncations ? ' (' + mf.truncations + ' cut-off repl' + (mf.truncations > 1 ? 'ies' : 'y') + ')' : '') + ' — ' + byScene.kept.length + ' situation(s) planned before it were kept, not discarded, and nothing was validated from a cut-off reply') }
+    return blocked('TECHNICAL (fault 9): no situation could be planned (' + byScene.failed + ' first) after ' + LN_MF_SCENE_ATTEMPTS + ' attempts each' + (mf.truncations ? ' (' + mf.truncations + ' cut-off repl' + (mf.truncations > 1 ? 'ies' : 'y') + ')' : '') + ' — ' + byScene.kept.length + ' situation(s) planned before it were kept, not discarded, and nothing was validated from a cut-off reply') }
   let mp = byScene.mp
   env.mfPlan = mp
+  // v700 — the FLOOR below which a salvaged conversation is not a useful track (lines, situations, lesson words heard)
+  const floor = lnMfSalvageFloor(env, targets.length, grouping.scenes.length)
+  if ((byScene.skipped || []).length) log && log('⏭ LISTENING_SITUATIONS_SKIPPED ' + byScene.skipped.join(', ') + ' — the conversation goes on with ' + mp.scenes.length + ' situation(s); their lesson words are placed by the repair rounds or moved to Revision')
   lnMfLogPlan(env, mp, 'candidate')
   log && log('📝 MEANING_PLAN state=CANDIDATE_GENERATED · ' + mp.flat.length + ' turns — not yet validated, not committed')
   let res = await lnMfValidateAndAudit(env, mp)
@@ -30002,11 +30023,42 @@ async function _lnComposeMeaningFirst(env) {
     return blocked(res.issues.length + ' unresolved after ' + label + ': ' + res.issues.slice(0, 5).map(is => LN_MF_FAULTS[is.fault] + ' ' + is.code + ' — ' + String(is.detail || '').slice(0, 90)).join(' · ') + (unheard.length ? ' · lesson words in the failing parts: ' + unheard.join(', ') : ''),
       mp.scenes.filter(s => res.issues.some(is => is.scene === s.key)).map(s => ({ sceneId: s.key, residual: res.issues.filter(is => is.scene === s.key).map(is => LN_MF_FAULTS[is.fault]).join('+'), targets: s.targetIds.slice() })))
   }
+  // v700 SALVAGE — instead of stopping: cut what still fails, defer its lesson words, check what remains again (same checks)
+  const floorProblem = () => { const a = listeningConversationAudit(lnMfScenesForAudit(mp), targets, la, ctx), pr = []
+    if (mp.flat.length < floor.turns) pr.push(mp.flat.length + ' lines left (needs ' + floor.turns + ')')
+    if (mp.scenes.length < floor.scenes) pr.push(mp.scenes.length + ' situation(s) left (needs ' + floor.scenes + ')')
+    if (a.covered.length < floor.words) pr.push(a.covered.length + ' of ' + targets.length + ' lesson words heard (needs ' + floor.words + ')')
+    return pr.join(' · ') }
+  const salvage = async (label, issues0) => {
+    if (!env.salvage) env.salvage = { from: label, passes: 0, removedTurns: 0, droppedScenes: [], cuts: [] }
+    let issues = issues0 || res.issues
+    for (let pass = 0; pass < LN_SALVAGE_PASSES && issues.length; pass++) {
+      const cut = lnMfSalvageCut(env, mp, issues)
+      if (!cut) return 'nothing would be left after cutting the failing parts'
+      env.salvage.passes++; env.salvage.removedTurns += cut.removed.length; env.salvage.droppedScenes.push(...cut.droppedScenes)
+      env.salvage.cuts.push(...cut.removed.map(r => ({ text: r.tu.text, english: r.tu.english, fault: LN_MF_FAULTS[r.is.fault], code: r.is.code })))
+      lnMfSalvageDefer(env, mp, cut.removed)
+      log && log('✂ LISTENING_SALVAGE (after ' + label + ') pass ' + (pass + 1) + ' · cut ' + cut.removed.length + ' turn(s)' + (cut.droppedScenes.length ? ' · dropped situation(s) ' + cut.droppedScenes.join(', ') : '') +
+        (cut.removed.length ? ' [' + cut.removed.map(r => '"' + r.tu.text + '" (' + LN_MF_FAULTS[r.is.fault] + ')').join(' · ').slice(0, 500) + ']' : '') + ' · ' + mp.flat.length + ' turns left · moved to Revision: ' +
+        ([...env.deferred.keys()].map(id => (byId.get(id) || {}).surface).join(', ') || 'none') + ' — the remaining turns are validated and audited again (the same checks)')
+      res = await lnMfValidateAndAudit(env, mp); lnMfIssueLog(env, res, 'after salvage pass ' + (pass + 1))
+      deferSoftQA()
+      if (!cut.removed.length) break
+      issues = res.issues
+    }
+    const fp = floorProblem()
+    if (fp) return 'too little left — ' + fp
+    if (res.issues.length) return res.issues.length + ' defect(s) still left after ' + env.salvage.passes + ' salvage pass(es)'
+    log && log('✅ LISTENING_SALVAGE_OK ' + mp.flat.length + ' turns · ' + mp.scenes.length + ' situation(s) · ' + env.deferred.size + ' lesson word(s) moved to Revision — every remaining turn passed every check')
+    return null
+  }
+  const salvageOrBlock = async (label, issues0) => { const why = await salvage(label, issues0); if (!why) return null
+    return res.issues.length ? blockedUnresolved(label + ' and salvage (' + why + ')') : blocked('SALVAGE_FLOOR — ' + why) }
   const setTel = () => Object.assign(tel, { LISTENING_MF_PLAN_CALLS: mf.calls.plan, LISTENING_MF_SCENE_REPLANS: mf.calls.sceneReplan, LISTENING_MF_AUDIT_CALLS: mf.calls.audit, LISTENING_MF_REPAIR_CALLS: mf.calls.repair, LISTENING_MF_REPAIR_ROUNDS: round, LISTENING_MF_TRUNCATIONS: mf.truncations, LISTENING_PLANNER: LISTENING_PLANNER_VERSION, LISTENING_MF_STORY_ROUNDS: mf.storyRounds || 0 })
   if (await repairLoop(LN_MF_MAX_ROUNDS)) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
   deferSoftQA()
   setTel()
-  if (res.issues.length) return blockedUnresolved(round + ' repair round(s)')
+  if (res.issues.length) { const b = await salvageOrBlock(round + ' repair round(s)'); if (b) return b }
   // v697 — THE FINAL STORY JUDGE runs here, on the approved plan, reading the situations as ONE conversation. It used to run only
   // after the commit, with the SEPARATE-SCENES prompt: a situation that opens by answering the one before ("Thank you." after a
   // compliment; うん、そうしよう。) was failed as "no referent", and a failure was terminal. Now a failed part gets a bounded story
@@ -30054,20 +30106,47 @@ async function _lnComposeMeaningFirst(env) {
     if (await repairLoop(round + 2)) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
     deferSoftQA()
     setTel()
-    if (res.issues.length) return blockedUnresolved('story repair ' + mf.storyRounds + ' and ' + round + ' repair round(s)')
+    if (res.issues.length) { const b = await salvageOrBlock('story repair ' + mf.storyRounds + ' and ' + round + ' repair round(s)'); if (b) return b }
+  }
+  // v700 — the story judge still fails after its repair rounds: cut each failing part at its break (the turns before it stay), or
+  // drop the part when it breaks at its start; the rest is checked again and judged ONCE more
+  if (env.o && env.o.apiKey && coh && coh.state === QUALITY.VERIFIED && !cohPass(coh)) {
+    const cuts = coh.verdicts.filter(v => !v.pass).map(v => { const s = mp.scenes[v.scene - 1]; if (!s) return null
+      const b = Number.isFinite(+v.breakAfterLine) ? +v.breakAfterLine : null, why = 'the final story judge: ' + String(v.reason || '')
+      if (b != null && b >= 2 && b < s.turns.length) return { fault: 7, code: 'STORY_CUT', scene: s.key, turnIds: s.turns.slice(b).map(t => t.id), targetIds: [], detail: why }
+      if (b != null && b >= s.turns.length && s.turns.length > 3) return { fault: 7, code: 'STORY_CUT', scene: s.key, turnIds: s.turns.slice(-2).map(t => t.id), targetIds: [], detail: why }
+      return { fault: 7, code: 'STORY_CUT', dropScene: true, scene: s.key, turnIds: [], targetIds: [], detail: why } }).filter(Boolean)
+    if (cuts.length) {
+      const b = await salvageOrBlock('the final story judge', cuts); if (b) return b
+      tel.LISTENING_QC_CALLS++
+      coh = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: true }, log)
+      log && log('📖 STORY_JUDGE ' + (cohPass(coh) ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (coh.overall != null ? ' · overall ' + coh.overall + '/5' : '') + ' · after the salvage (judged once more)')
+    }
   }
   setTel()
   // COMMIT — every situation passed BOTH gates; the shared final gates still judge the final text
   lnMfLogPlan(env, mp, 'approved')
   log && log('✅ MEANING_PLAN state=APPROVED · structural validation PASS · semantic audit PASS · ' + mp.flat.length + ' turns · ' + round + ' repair round(s)')
-  const scenes = scenesOf()
-  const audit = listeningConversationAudit(scenes, targets, la, ctx)
   // v695: a situation marked FAILED by its local check is never accepted silently — it is checked again on the final plan;
   // a remaining lesson-word / meaning defect blocks, and only the planning reserve (turns over the situation's share of ~34,
   // which exists to leave room for repairs) may remain once the whole plan has passed every hard check
+  // v700: a lesson word assigned to a situation but heard in a LATER one (or moved to Revision) is not a local defect; a situation
+  // that still fails is DROPPED (salvage) instead of stopping the whole track
+  const _heardAll = listeningConversationAudit(lnMfScenesForAudit(mp), targets, la, ctx).covered
+  const _localLeft = (s, k) => lnMfSceneLocalIssues(env, mp.scenes.slice(0, k), s, null, k).filter(is => is.code !== 'SCENE_TURN_BUDGET' &&
+    !(is.code === 'SCENE_TARGET_MISSING' && (is.targetIds || []).every(id => _heardAll.includes(id) || (env.deferred && env.deferred.has(id)))))
+  const stillFailing = mp.scenes.map((s, k) => [s, k]).filter(([s, k]) => s.status === 'FAILED' && _localLeft(s, k).length)
+  if (stillFailing.length) {
+    const b = await salvageOrBlock('the local re-check', stillFailing.map(([s, k]) => ({ fault: 7, code: 'SCENE_LOCAL_FAIL', dropScene: true, scene: s.key, turnIds: [], targetIds: [], detail: _localLeft(s, k).map(is => is.code).join('+') })))
+    if (b) return b
+    if (env.o && env.o.apiKey) { tel.LISTENING_QC_CALLS++; coh = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: true }, log)
+      log && log('📖 STORY_JUDGE ' + (cohPass(coh) ? 'PASS' : coh.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + ' · after dropping the situation(s) that failed their local re-check') }
+  }
+  const scenes = scenesOf()
+  const audit = listeningConversationAudit(scenes, targets, la, ctx)
   const failedLocal = mp.scenes.map((s, k) => [s, k]).filter(([s]) => s.status === 'FAILED')
   for (const [s, k] of failedLocal) {
-    const left = lnMfSceneLocalIssues(env, mp.scenes.slice(0, k), s, null, k).filter(is => is.code !== 'SCENE_TURN_BUDGET')
+    const left = _localLeft(s, k)
     const over = s.turns.length > lnMfSceneAllowance(env, env.mfGrouping, k, mp.scenes.slice(0, k)).max
     if (left.length) return blocked('situation ' + s.key + ' still FAILS its local check on the final plan: ' + left.map(is => is.code + ' — ' + String(is.detail || '').slice(0, 80)).join(' · '))
     s.status = 'CLEARED_BY_GLOBAL_VALIDATION'
@@ -30086,11 +30165,14 @@ async function _lnComposeMeaningFirst(env) {
   plan.meaningPlan = { valid: true, turnCount: mp.flat.length, problems: [], turns: mp.flat.map(tu => ({ n: tu.n, speaker: tu.speaker, addressee: tu.addressee, intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects,
     respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null, targetIds: tu.targetIds.slice(), text: tu.text, english: tu.english })), repairRounds: round, byFault: { ...mf.byFault } }
   const total = audit.lines.length
-  const allIn = mp.scenes.every(s => s.targetIds.every(id => audit.covered.includes(id)))
+  const deferredNow = env.deferred ? [...env.deferred.keys()].filter(id => !audit.covered.includes(id)) : []
+  const allIn = mp.scenes.every(s => s.targetIds.every(id => audit.covered.includes(id) || deferredNow.includes(id)))
   log && log('🎧 LISTENING_SCENE_COVERAGE_UNION ' + audit.covered.length + '/' + targets.length + ' · committed ' + scenes.length + ' situations · ' + total + ' turns (allowed ' + env.turnsMin + '–' + env.turnsMax + ')')
   const contract = createConversationContract({ speakers: 'A and B (the same two people throughout)', relationship: ctx.jaStyle === 'polite' ? 'acquaintances' : 'friends', objective: grouping.scenes.map(s => s.title).join(' → '), scenes: plan.scenes, byId })
   return { ok: true, scenes, audit, natIssues, plan, report: scenes.map((sc, k) => ({ sceneId: sc.sceneId, required: mp.scenes[k].targetIds.length, heard: mp.scenes[k].targetIds.filter(id => audit.covered.includes(id)).length, turns: sc.turns.length })), coh,
-    gates: { SCENE_REQUIRED_COVERAGE: allIn ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total >= env.turnsMin && total <= env.turnsMax, SCENES_VALIDATED: true, ONE_CONVERSATION: 'PASS' },
+    gates: { SCENE_REQUIRED_COVERAGE: allIn ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total >= lnMfTurnsMin(env) && total <= env.turnsMax, SCENES_VALIDATED: true, ONE_CONVERSATION: 'PASS' },
+    salvage: env.salvage ? { from: env.salvage.from, passes: env.salvage.passes, removedTurns: env.salvage.removedTurns, droppedScenes: env.salvage.droppedScenes.slice(), cuts: env.salvage.cuts.slice(0, 24), floor,
+      deferred: deferredNow.map(id => ({ targetId: id, target: (byId.get(id) || {}).surface || '', reason: env.deferred.get(id) })) } : null,
     uncommitted: [], contract, story: plan.story, phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
 }
 // TT_V692_MEANING_FIRST_END
@@ -30293,9 +30375,11 @@ async function _buildStandaloneListeningTrackCore(o) {
   if (!lt) return fail((res && res.reason) || 'the conversation could not be composed', res && res.uncommitted, res && res.telemetry)
   const ut = usageTel()
   const tel = { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, ...(lt.telemetry || {}), LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST }
-  const ready = lt.readiness === 'READY' && lt.coverage.coveredTargetIds.length === keywords.length
+  // v700: READY = every selected word heard OR honestly deferred by the salvage (it stays due for Revision), all gates passed
+  const _def = lt.coverage.deferredTargetIds || []
+  const ready = lt.readiness === 'READY' && lt.coverage.coveredTargetIds.length + _def.length === keywords.length
   const track = { ...source, listening: { ...lt, telemetry: tel }, status: ready ? 'READY' : 'NOT_READY', ready, usage: ut.usage,
-    coverage: { covered: lt.coverage.coveredTargetIds.length, required: keywords.length, missing: lt.coverage.uncoveredTargetIds.slice() },
+    coverage: { covered: lt.coverage.coveredTargetIds.length, required: keywords.length, missing: lt.coverage.uncoveredTargetIds.slice(), deferred: _def.slice(), deferredDetail: (lt.coverage.deferred || []).slice() },
     // v665: every failed gate blocks READY (§47); the level contract, length audit and unknown words travel with the track
     failedChecks: Object.entries(lt.gates || {}).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k, v]) => k + '=' + (v === false ? 'FAIL' : v)),
     qualityNotes: [], level: lt.level || null, lengthAudit: lt.lengthAudit || null, unknownWords: (lt.unknownWords || []).slice(), playable: ready, telemetry: tel }
@@ -30309,7 +30393,8 @@ async function _buildStandaloneListeningTrackCore(o) {
 function listeningTrackSummary(t) {
   if (!isListeningTrack(t)) return ''
   const n = (t.listening && t.listening.lines || []).length
-  return n + ' lines · TARGET COVERAGE ' + ((t.coverage && t.coverage.covered) || 0) + '/' + ((t.coverage && t.coverage.required) || LISTENING_TRACK_TARGETS) + ' · NEW 0 · REVIEW ' + ((t.keywords || []).length)
+  const dn = (t.coverage && t.coverage.deferred || []).length
+  return n + ' lines · TARGET COVERAGE ' + ((t.coverage && t.coverage.covered) || 0) + '/' + ((t.coverage && t.coverage.required) || LISTENING_TRACK_TARGETS) + (dn ? ' · ' + dn + ' word' + (dn > 1 ? 's' : '') + ' stay due for Revision' : '') + ' · NEW 0 · REVIEW ' + ((t.keywords || []).length)
 }
 function listeningTrackExportLines(t) {
   const lt = t.listening
@@ -30652,7 +30737,7 @@ function ListeningAttemptHistory({ attempts, currentId, words, onRebuildIds, bui
               <span style={{ color: stColor(st), fontWeight:700 }}>{st}</span>
             </div>
             <div style={{ color:'var(--muted)', fontSize:10 }}>
-              TARGET COVERAGE {(a.coverage && a.coverage.covered) || 0}/{(a.coverage && a.coverage.required) || (a.selectedTargetIds || []).length} · {(a.selectedTargetIds || []).length} selected · NEW 0
+              TARGET COVERAGE {(a.coverage && a.coverage.covered) || 0}/{(a.coverage && a.coverage.required) || (a.selectedTargetIds || []).length}{a.coverage && (a.coverage.deferred || []).length ? ' · ' + a.coverage.deferred.length + ' moved to Revision' : ''} · {(a.selectedTargetIds || []).length} selected · NEW 0
               {a.usage ? ' · ' + a.usage.requests + ' requests · ' + formatTokensShort(a.usage.totalTokens || 0) + ' tokens · ' + formatSgdChip(a.usage.costSgd || 0) : ''}{a.model ? ' · ' + a.model : ''}
             </div>
             {isOpen && (

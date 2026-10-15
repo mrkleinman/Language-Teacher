@@ -1,0 +1,274 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v699 language=zh path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=zh)
+🧭 LISTENING_FEASIBILITY PASS language=zh planner=meaning-first-3 · pool=60 candidate(s) in SRS order · authorised support=30 word(s) · selected 30 · deferred 1: 多少 (individual: needs an amount to answer with (a number, money, expensive / cheap, a lot / a little) — no) · situations VALID [MEET 5, TIME 3, TRAVEL-1 4, TRAVEL-2 5, SHOP 6, LOOK 7] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+⏭ LISTENING_TARGET_DEFERRED target=29 多少 reason=needs an amount to answer with (a number, money, expensive / cheap, a lot / a little) — not in the learner's authorised vocabulary stage=individual srsObligationPreserved=true
+🧭 LISTENING_DEFERRED_SRS ids=[29] — skipped words keep their SRS obligation (due date untouched; the next Revision / Daily selection still takes them)
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(zh) = selectRevisionTrackTargets → feasibility gate → jazhContractTargets(revision)
+🎧 LISTENING_SELECTED_TARGET_IDS=[32,54,62,63,57,58,55,56,51,53,50,47,48,49,16,17,18,19,20,21,22,23,24,25,26,27,28,30,31,52]
+🎧 LISTENING_TRACK_START language=zh trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=zh introducedContent=30 targets=30 authorised=60 snapshot=l2ujdq (frozen at generation start) · Layer A lexicon 439 entries (segmentation only — not permission)
+📏 LEVEL belt=Mukyu preferred=2–4 hardMax=6 · LEVEL Mukyu · target 2–4 · max 6 (Mandarin words, v692-regression) · Listening: no minimum, aim 2–4, no turn above 6
+📚 VOCAB INVENTORY introducedContent=30 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Mandarin grammar particles
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=zh belt=Mukyu · targets=30 · authorised support=30 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET "meeting and catching up" targets=[人, 做, 昨天, 谁, 为什么] · opens the conversation
+🗺 LISTENING_SITUATION S2 TIME "agreeing when" targets=[现在, 今天, 明天]
+🗺 LISTENING_SITUATION S3 TRAVEL-1 "getting there (1)" targets=[到, 回, 等, 去]
+🗺 LISTENING_SITUATION S4 TRAVEL-2 "getting there (2)" targets=[来, 哪里, 怎么, 跟, 一起]
+🗺 LISTENING_SITUATION S5 SHOP "shopping and paying" targets=[拿, 用, 钱, 买, 开, 在]
+🗺 LISTENING_SITUATION S6 LOOK "looking around" targets=[大, 小, 找, 很, 太, 这里, 那里] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 5 targets
+🔎 SCENE_LOCAL_CHECK S1 STATUS=PASS · 8 turns (budget 4–8)
+📝 SCENE_PLAN S2 (TIME) call 2 · 3 targets
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS · 6 turns (budget 2–6)
+📝 SCENE_PLAN S3 (TRAVEL) call 3 · 4 targets
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS · 5 turns (budget 3–5)
+📝 SCENE_PLAN S4 (TRAVEL) call 4 · 5 targets
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS · 5 turns (budget 4–6)
+📝 SCENE_PLAN S5 (SHOP) call 5 · 6 targets
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS · 8 turns (budget 5–8)
+📝 SCENE_PLAN S6 (LOOK) call 6 · 7 targets
+🔎 SCENE_LOCAL_CHECK S6 STATUS=PASS · 8 turns (budget 6–8)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[人, 做, 昨天, 谁, 为什么]
+   T1 A→B GREET · about greeting · - ⟦你好吗？⟧ "Hi, how are you?"
+   T2 B→A ANSWER ↩T1 · about how I am · - ⟦我好。⟧ "I'm good."
+   T3 A→B ASK(THING) · about yesterday · - ⟦昨天你做什么？⟧ "What did you do yesterday?" [做+昨天]
+   T4 B→A ANSWER ↩T3 · about work yesterday · - work ⟦我工作了。⟧ "I worked."
+   T5 A→B ASK(REASON) · about reason for work · - ⟦为什么？⟧ "Why?" [为什么]
+   T6 B→A ANSWER ↩T5 · about having to work · - work ⟦我要工作啊。⟧ "I had to work."
+   T7 A→B ASK(PERSON) · about the job · - job ⟦谁给你的工作？⟧ "Who gave you that job?" [谁]
+   T8 B→A ANSWER ↩T7 · about my friend · - ⟦那个人，我朋友。⟧ "That person, my friend." [人]
+  S2 agreeing when targets=[现在, 今天, 明天]
+   T9 A→B ASK(YESNO) · about work now · - work ⟦你现在要工作吗？⟧ "Do you have to work now?" [现在]
+   T10 B→A ANSWER ↩T9 · about work now · - work ⟦现在不工作了。⟧ "I'm not working now." [现在]
+   T11 A→B PROPOSE · about outing today · - things ⟦今天看东西吧？⟧ "Shall we look at things today?" [今天]
+   T12 B→A COUNTER ↩T11 · about tomorrow · - ⟦明天可以吗？⟧ "Can it be tomorrow?" [明天]
+   T13 A→B DECLINE ↩T12 · about tomorrow work · - work ⟦明天我要工作。⟧ "Tomorrow I have to work." [明天]
+   T14 B→A ACCEPT ↩T11 · about today plan · - ⟦好，今天吧。⟧ "Okay, today then." [今天]
+  S3 getting there (1) targets=[到, 回, 等, 去]
+   T15 A→B PROPOSE · about going there · - that place ⟦我们到那个地方吧。⟧ "Let's get to that place, then." [到]
+   T16 B→A ASK(YESNO) ↩T15 · about you, going home · - home ⟦你要回家吗？⟧ "Do you need to go home first?" [回]
+   T17 A→B ANSWER ↩T16 · about going home · - home ⟦不回家。⟧ "No, I'm not going home." [回]
+   T18 B→A ASK(YESNO) ↩T17 · about that place · - that place ⟦等，你知道吗？⟧ "Wait, do you know it?" [等]
+   T19 A→B ANSWER ↩T18 · about that place · - that place ⟦知道，我去过。⟧ "I know it, I've been there." [去]
+  S4 getting there (2) targets=[来, 哪里, 怎么, 跟, 一起]
+   T20 B→A ASK(PLACE) · about the place · - place ⟦那个地方，哪里？⟧ "That place, where is it?" [哪里]
+   T21 A→B ANSWER ↩T20 · about friend's place · - friend's place ⟦我朋友的地方。⟧ "My friend's place."
+   T22 B→A ASK(METHOD) · about the way · - ⟦我怎么去？⟧ "How do I get there?" [去+怎么]
+   T23 A→B OFFER ↩T22 · about the way · - ⟦你跟我来吧。⟧ "Come with me, okay?" [跟+来]
+   T24 B→A ACCEPT ↩T23 · about going together · - ⟦好，一起来。⟧ "Okay, let's come together." [一起+来]
+  S5 shopping and paying targets=[拿, 用, 钱, 买, 开, 在]
+   T25 A→B INFORM · about us, here · - ⟦我们在这个地方了。⟧ "We're at this place now." [在]
+   T26 B→A ASK(YESNO) · about opening · - this ⟦可以开这个吗？⟧ "Can I open this one?" [开]
+   T27 A→B ANSWER ↩T26 · about opening · - ⟦可以啊。⟧ "Sure, go ahead."
+   T28 B→A ASK(YESNO) · about price · - money ⟦这个要钱吗？⟧ "Does this one cost money?" [钱]
+   T29 A→B ANSWER ↩T28 · about price · - ⟦要啊。⟧ "Yes, it does."
+   T30 B→A ACCEPT ↩T29 · about this one · - this one ⟦好，我拿这个。⟧ "Okay, I'll take this one." [拿]
+   T31 A→B ASK(THING) ↩T30 · about paying · - ⟦你用什么？⟧ "What will you pay with?" [用]
+   T32 B→A INFORM ↩T31 · about paying · - money ⟦我用钱买。⟧ "I'll buy it with cash." [用+钱+买]
+  S6 looking around targets=[大, 小, 找, 很, 太, 这里, 那里]
+   T33 A→B REQUEST · about looking around · - this place ⟦好，你看这里。⟧ "Okay, look over here." [这里]
+   T34 B→A ASK(THING) ↩T33 · about over there · - things ⟦那里有什么？⟧ "What's over there?" [那里]
+   T35 A→B ANSWER ↩T34 · about a big one · - big one ⟦那里有大的。⟧ "There's a big one over there." [大+那里]
+   T36 B→A REACT ↩T35 · about the big one · - big one ⟦太大了！⟧ "Too big!" [大+太]
+   T37 A→B COUNTER ↩T36 · about a small one · - small one ⟦我找小的。⟧ "Then I'll look for a small one." [小+找]
+   T38 B→A ASK(YESNO) ↩T37 · about small one there · - small one ⟦那里有小的吗？⟧ "Is there a small one over there?" [小+那里]
+   T39 A→B ANSWER ↩T38 · about that one · - small one ⟦有啊，那个很小。⟧ "Yes, that one is very small." [小+很]
+   T40 B→A FAREWELL ↩T39 · about ending · - ⟦好吧。⟧ "Okay then, see you."
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed
+🔎 STRUCTURAL_VALIDATION (candidate) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (candidate) FAIL 4 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ GRAMMAR SEMANTIC_AUDIT T20 — awkward · no verb: the place question is a fragment, the verb meaning is at is missing
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T20,T21 — awkward · does not answer · names whose place it is, not where it is; 哪里 asks for a location
+   ⛔ SURFACE SEMANTIC_AUDIT T40 — awkward · 好吧 agrees but does not say goodbye; the English see you is not in the Chinese
+   ⛔ TRANSITION SCENE_TRANSITION T33,T34 — after buying this one with cash in S5, the speakers look for a small one with no change of plan stated
+   fault classes: GRAMMAR×1 · QUESTION_ANSWER×1 · SURFACE×1 · TRANSITION×1
+🔧 MEANING_REPAIR round 1/3 · 3 part(s): x1 exchange [GRAMMAR+QUESTION_ANSWER] · x2 line [SURFACE] · x3 boundary [TRANSITION] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (exchange · GRAMMAR+QUESTION_ANSWER) 2 turn(s) → 2 new (validated in place): B: 那个地方在哪里？ / A: 在我朋友家。
+✅ PART_REPAIRED x2 (line · SURFACE) 1 turn(s) → 1 new (validated in place): B: 好吧，再见。
+✅ PART_REPAIRED x3 (boundary · TRANSITION) 4 turn(s) → 4 new (validated in place): A: 你用什么？ / B: 我用钱买。 / A: 我要买，你看这里。 / B: 那里有什么？
+🔎 STRUCTURAL_VALIDATION (after repair round 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 1) FAIL 3 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T33 — awkward · In S5 A gives permission and says the item costs money, so A is the seller and B buys. Here A announces a purchase of its own, so the roles flip with 
+   ⛔ TRANSITION SEMANTIC_AUDIT T40 — awkward · Goodbye right after the small one is confirmed, while the two are still shopping together and nothing is decided or paid. It does not follow from 39.
+   ⛔ TRANSITION SCENE_INCOHERENT T33,T34,T35,T36,T37,T38,T39,T40 — The roles flip from S5 (A sells, B buys) to S6 (A buys and searches), with no link to the completed sale. The moment also breaks at its end with the goodbye in 
+   fault classes: TRANSITION×3
+🔧 MEANING_REPAIR round 2/3 · 1 part(s): x1 scene [TRANSITION] — every other turn is kept exactly
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — TOO_COMPLEX: 7 Mandarin words > hardMax 6 (belt Mukyu) — rewrite it shorter (prefer 2–4 Mandarin words, · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round 2 · x1 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x1 (scene · TRANSITION) 8 turn(s) → 8 new (validated in place): A: 好，给你。 / B: 这个很好。 / A: 你找什么？ / B: 朋友要小的。 / A: 这里没有，那里有。 / B: 那个不太大吧？ / A: 不大，很小。 / B: 好，我买这个。
+🔎 STRUCTURAL_VALIDATION (after repair round 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 2) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SURFACE SEMANTIC_AUDIT T40 — awkward · 这个 points to the near item, but the small one under discussion was just placed over there (那个, 那里). The referent of 这个 does not match the item being d
+   ⛔ TRANSITION SCENE_TRANSITION T33,T34 — The S5 purchase is left open: 33 hands over an item B has just agreed to buy with cash (我拿这个, 我用钱买), yet 35-37 turn to finding a small one for a friend and 40 b
+   fault classes: SURFACE×1 · TRANSITION×1
+🔧 MEANING_REPAIR round 3/3 · 2 part(s): x1 intention [SURFACE] · x2 boundary [TRANSITION] — every other turn is kept exactly
+⛔ PART_REJECTED x1 (intention) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: 那 · the old turns stay; one corrected retry this round
+⛔ PART_REJECTED x2 (boundary) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: 那 · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round 3 · x1, x2 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x1 (intention · SURFACE) 2 turn(s) → 2 new (validated in place): A: 不大，朋友家很小。 / B: 好，我想买，朋友喜欢。
+✅ PART_REPAIRED x2 (boundary · TRANSITION) 4 turn(s) → 4 new (validated in place): A: 你用什么？ / B: 我用钱买。 / A: 好，给你。 / B: 我的，这个很好。
+🔎 STRUCTURAL_VALIDATION (after repair round 3) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 3) PASS · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+  🎬 COHERENCE AUDIT: 5/6 scene(s) pass · scene 5 FAIL: deterministic continuity 3/5: confirmation is about something else [decided by the model judge (fail); the deterministic 3/5 alone would have been accepted]
+📖 STORY_JUDGE FAIL · overall 3/5 · the situations judged as ONE conversation
+📖 STORY_REPAIR 1/2 · 1 part(s): x1 boundary (S4+S5) — from the final story judge; every other turn is kept exactly
+✅ PART_REPAIRED x1 (boundary · TRANSITION) 4 turn(s) → 4 new (validated in place): A: 你跟我来吧。 / B: 好，我跟你一起来。 / A: 我们在这个地方了。 / B: 可以开这个吗？
+🔎 STRUCTURAL_VALIDATION (after story repair 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after story repair 1) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SCENE_TRANSITION T25,T26 — Shopping and paying is coherent on its own, but turn 21 set the destination as the friend's home, and 25 brings them to a different place with no line introduci
+   fault classes: TRANSITION×1
+🔁 REPEATED_FAILURE_SIGNATURE S5|SCENE_TRANSITION|19+52| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 4/5 · 1 part(s): x1 boundary [TRANSITION] — every other turn is kept exactly
+⛔ PART_REJECTED x1 (boundary) — PATCH_INVALID — TOO_COMPLEX: 7 Mandarin words > hardMax 6 (belt Mukyu) — rewrite it shorter (prefer 2–4 Mandarin words, · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round 4 · x1 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x1 (boundary · TRANSITION) 4 turn(s) → 4 new (validated in place): A: 你跟我来吧。 / B: 好，我跟你一起来。 / A: 给朋友，东西在这个地方。 / B: 可以开这个吗？
+🔎 STRUCTURAL_VALIDATION (after repair round 4) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 4) PASS · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+  🎬 COHERENCE AUDIT: 5/6 scene(s) pass · scene 6 FAIL: deterministic continuity 3/5: turn does not follow from the previous line [decided by the model judge (fail); the deterministic 3/5 alone would have been accepted]
+📖 STORY_JUDGE FAIL · overall 3/5 · the situations judged as ONE conversation · after story repair 1
+📖 STORY_REPAIR 2/2 · 1 part(s): x1 intention (S6) — from the final story judge; every other turn is kept exactly
+⛔ PART_REJECTED x1 (intention) — PATCH_INVALID — TOO_COMPLEX: 8 Mandarin words > hardMax 6 (belt Mukyu) — rewrite it shorter (prefer 2–4 Mandarin words, · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round story-2 · x1 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x1 (intention · TRANSITION) 3 turn(s) → 3 new (validated in place): B: 这个很好。 / A: 你找什么？ / B: 朋友要小的。
+🔎 STRUCTURAL_VALIDATION (after story repair 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after story repair 2) FAIL 1 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SCENE_TRANSITION T33,T34 — S5 ends with B agreeing to take this item and pay cash (我拿这个 / 我用钱买), but S6 reopens the purchase: after A's 给你 B asks what A is looking for, then at the end sa
+   fault classes: TRANSITION×1
+🔁 REPEATED_FAILURE_SIGNATURE S6|SCENE_TRANSITION|57| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 5/6 · 1 part(s): x1 boundary [TRANSITION] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (boundary · TRANSITION) 4 turn(s) → 4 new (validated in place): A: 你用钱买这个吗？ / B: 我没有钱。 / A: 好，你看东西吧。 / B: 很好，我看看东西。
+🔎 STRUCTURAL_VALIDATION (after repair round 5) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 5) FAIL 3 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T31,T32 — awkward · does not answer · The yes/no question about paying with money is not answered: the line gives an unrelated fact about money, and it contradicts B's 好，
+   ⛔ TRANSITION SCENE_INCOHERENT T25,T26,T27,T28,T29,T30,T31,T32 — Turns 25-30 are unchanged and were approved, so S5 still follows on from S4. But B says she will take this one and then says she has no money, with nothing reso
+   ⛔ TRANSITION SCENE_TRANSITION T33,T34 — S6 opens with A accepting the 'no money' line and moving on to looking for something small, as if the agreed purchase of this one never happened. The plan to ta
+   fault classes: QUESTION_ANSWER×1 · TRANSITION×2
+🔁 REPEATED_FAILURE_SIGNATURE S6|SCENE_TRANSITION|57| ×3 — escalated 2 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 6/6 · 2 part(s): x1 scene [QUESTION_ANSWER+TRANSITION] · x2 scene [TRANSITION] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 6 — 2 part(s) in 2 bounded request(s) (≤ 10 turns each)
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — TOO_COMPLEX: 7 Mandarin words > hardMax 6 (belt Mukyu) — rewrite it shorter (prefer 2–4 Mandarin words, · the old turns stay; one corrected retry this round
+⛔ PART_REJECTED x2 (scene) — PATCH_INVALID — MAX_TARGETS_PER_TURN: 4 current targets (62,63,20,21) · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round 6 · x1, x2 — rejected by the hard checks; asked once more with the exact reason
+🔧 REPAIR_BATCHES round 6-retry — 2 part(s) in 2 bounded request(s) (≤ 10 turns each)
+✅ PART_REPAIRED x1 (scene · QUESTION_ANSWER+TRANSITION) 8 turn(s) → 8 new (validated in place): A: 东西在那个地方。 / B: 这个可以开吗？ / A: 可以啊。 / B: 这个要钱吗？ / A: 要啊。 / B: 好，我拿这个。 / A: 用钱买吗？ / B: 用钱，可以看吗？
+⛔ PART_REJECTED x2 (scene) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: 那 · CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: 那 · the old turns stay; the part escalates next round
+🔎 STRUCTURAL_VALIDATION (after repair round 6) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 6) PASS · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+  🎬 COHERENCE AUDIT: 6/6 scene(s) pass
+📖 STORY_JUDGE PASS · overall 3/5 · the situations judged as ONE conversation · after story repair 2
+🧠 LISTENING_MEANING_PLAN (approved) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[人, 做, 昨天, 谁, 为什么]
+   T1 A→B GREET · about greeting · - ⟦你好吗？⟧ "Hi, how are you?"
+   T2 B→A ANSWER ↩T1 · about how I am · - ⟦我好。⟧ "I'm good."
+   T3 A→B ASK(THING) · about yesterday · - ⟦昨天你做什么？⟧ "What did you do yesterday?" [做+昨天]
+   T4 B→A ANSWER ↩T3 · about work yesterday · - work ⟦我工作了。⟧ "I worked."
+   T5 A→B ASK(REASON) · about reason for work · - ⟦为什么？⟧ "Why?" [为什么]
+   T6 B→A ANSWER ↩T5 · about having to work · - work ⟦我要工作啊。⟧ "I had to work."
+   T7 A→B ASK(PERSON) · about the job · - job ⟦谁给你的工作？⟧ "Who gave you that job?" [谁]
+   T8 B→A ANSWER ↩T7 · about my friend · - ⟦那个人，我朋友。⟧ "That person, my friend." [人]
+  S2 agreeing when targets=[现在, 今天, 明天]
+   T9 A→B ASK(YESNO) · about work now · - work ⟦你现在要工作吗？⟧ "Do you have to work now?" [现在]
+   T10 B→A ANSWER ↩T9 · about work now · - work ⟦现在不工作了。⟧ "I'm not working now." [现在]
+   T11 A→B PROPOSE · about outing today · - things ⟦今天看东西吧？⟧ "Shall we look at things today?" [今天]
+   T12 B→A COUNTER ↩T11 · about tomorrow · - ⟦明天可以吗？⟧ "Can it be tomorrow?" [明天]
+   T13 A→B DECLINE ↩T12 · about tomorrow work · - work ⟦明天我要工作。⟧ "Tomorrow I have to work." [明天]
+   T14 B→A ACCEPT ↩T11 · about today plan · - ⟦好，今天吧。⟧ "Okay, today then." [今天]
+  S3 getting there (1) targets=[到, 回, 等, 去]
+   T15 A→B PROPOSE · about going there · - that place ⟦我们到那个地方吧。⟧ "Let's get to that place, then." [到]
+   T16 B→A ASK(YESNO) ↩T15 · about you, going home · - home ⟦你要回家吗？⟧ "Do you need to go home first?" [回]
+   T17 A→B ANSWER ↩T16 · about going home · - home ⟦不回家。⟧ "No, I'm not going home." [回]
+   T18 B→A ASK(YESNO) ↩T17 · about that place · - that place ⟦等，你知道吗？⟧ "Wait, do you know it?" [等]
+   T19 A→B ANSWER ↩T18 · about that place · - that place ⟦知道，我去过。⟧ "I know it, I've been there." [去]
+  S4 getting there (2) targets=[来, 哪里, 怎么, 跟, 一起]
+   T20 B→A ASK(PLACE) · about - · - ⟦那个地方在哪里？⟧ "Where is that place?" [哪里+在]
+   T21 A→B ANSWER ↩T20 · about - · - ⟦在我朋友家。⟧ "It's at my friend's home." [在]
+   T22 B→A ASK(METHOD) · about the way · - ⟦我怎么去？⟧ "How do I get there?" [去+怎么]
+   T23 A→B OFFER · about - · - ⟦你跟我来吧。⟧ "Come with me, okay?" [跟+来]
+   T24 B→A ACCEPT ↩T23 · about - · - ⟦好，我跟你一起来。⟧ "Okay, I'll come with you." [跟+一起+来]
+  S5 shopping and paying targets=[拿, 用, 钱, 买, 开, 在]
+   T25 A→B INFORM · about - · - ⟦东西在那个地方。⟧ "The stuff is at that place." [在]
+   T26 B→A ASK(YESNO) · about - · - ⟦这个可以开吗？⟧ "Can I open this one?" [开]
+   T27 A→B ANSWER ↩T26 · about - · - ⟦可以啊。⟧ "Sure, go ahead."
+   T28 B→A ASK(YESNO) · about - · - ⟦这个要钱吗？⟧ "Does this one cost money?" [钱]
+   T29 A→B ANSWER ↩T28 · about - · - ⟦要啊。⟧ "Yes, it does."
+   T30 B→A ACCEPT ↩T29 · about - · - ⟦好，我拿这个。⟧ "Okay, I'll take this one." [拿]
+   T31 A→B ASK(YESNO) · about - · - ⟦用钱买吗？⟧ "Will you pay cash for it?" [用+钱+买]
+   T32 B→A ANSWER ↩T31 · about - · - ⟦用钱，可以看吗？⟧ "Cash, can I look first?" [用+钱]
+  S6 looking around targets=[大, 小, 找, 很, 太, 这里, 那里]
+   T33 A→B INFORM · about - · - ⟦好，你看东西吧。⟧ "Okay, go look at the stuff."
+   T34 B→A REACT ↩T33 · about - · - ⟦很好，我看看东西。⟧ "Great, I'll look at the stuff." [很]
+   T35 A→B ASK(THING) · about - · - ⟦你找什么？⟧ "What are you looking for?" [找]
+   T36 B→A ANSWER ↩T35 · about 小 · - 朋友 ⟦朋友要小的。⟧ "My friend wants a small one." [小]
+   T37 A→B ANSWER ↩T36 · about - · - ⟦这里没有，那里有。⟧ "Not here, there is one over there." [这里+那里]
+   T38 B→A ASK(YESNO) · about - · - ⟦那个不太大吧？⟧ "That one isn't too big, right?" [大+太]
+   T39 A→B ANSWER ↩T38 · about SIZE · - ⟦不大，朋友家很小。⟧ "No, it's not big. My friend's home is very small." [大+小+很]
+   T40 B→A ACCEPT ↩T39 · about BUY · - ⟦好，我想买，朋友喜欢。⟧ "Okay, I want to buy it, my friend likes it." [买]
+✅ MEANING_PLAN state=APPROVED · structural validation PASS · semantic audit PASS · 40 turns · 6 repair round(s)
+✅ SCENE_ACCEPTED LS1 (MEET) · structural PASS · semantic PASS · 8 turns · targets [人, 做, 昨天, 谁, 为什么]
+🧵 SCENE_COMMITTED LS1 — enters the conversation
+✅ SCENE_ACCEPTED LS2 (TIME) · structural PASS · semantic PASS · 6 turns · targets [现在, 今天, 明天]
+🧵 SCENE_COMMITTED LS2 — enters the conversation
+✅ SCENE_ACCEPTED LS3 (TRAVEL) · structural PASS · semantic PASS · 5 turns · targets [到, 回, 等, 去]
+🧵 SCENE_COMMITTED LS3 — enters the conversation
+✅ SCENE_ACCEPTED LS4 (TRAVEL) · structural PASS · semantic PASS · 5 turns · targets [来, 哪里, 怎么, 跟, 一起]
+🧵 SCENE_COMMITTED LS4 — enters the conversation
+✅ SCENE_ACCEPTED LS5 (SHOP) · structural PASS · semantic PASS · 8 turns · targets [拿, 用, 钱, 买, 开, 在]
+🧵 SCENE_COMMITTED LS5 — enters the conversation
+✅ SCENE_ACCEPTED LS6 (LOOK) · structural PASS · semantic PASS · 8 turns · targets [大, 小, 找, 很, 太, 这里, 那里]
+🧵 SCENE_COMMITTED LS6 — enters the conversation
+🎧 LISTENING_SCENE_COVERAGE_UNION 30/30 · committed 6 situations · 40 turns (allowed 24–44)
+🎧 LISTENING_COHERENCE PASS · overall 3/5 · Coherent and continuous overall, though some phrasing is stilted and awkward.
+  🔤 FINAL pinyin/segments (after recovery): 0 alignment issue(s)
+🎧 LISTENING_PRONUNCIATION PASS
+🎧 LISTENING_TARGET_AUDIT (final) covered=30/30
+🩺 LISTENING_REPAIR_HEALTH repairCalls=15 (target < 10) HIGH · sceneRegenerations=0 · scenesCommittedFirstPass=0 · afterRepair=0 · withDefects=0 · firstGenerationUnknownLexemeLines=0 — telemetry only, not a gate
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=100% (target ≥70%) · repairCalls=15 (target <10) · generationCalls=6 · phaseRegenerations=0 · globalReplans=0 · targetReassignments=0 · ⚠ PLANNER_FAILURE — repair calls > generation calls: diagnose upstream planning (feasibility / meaning plan / palettes), even if READY passes — health targets, not gates
+📏 LISTENING_COMPLEXITY_AUDIT belt=Mukyu preferred=2–4 hardMax=6 lines=40 withinPreferred=34 shortNatural=2 abovePreferredAllowed=4 overHardMax=0 maxObserved=6 · preferredRatio=88% (advisory ≥80%) PASS
+📚 LISTENING_CLOSED_VOCAB unknown=0 PASS
+    LISTENING_LINE L1 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L2 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L3 speaker=A actualTargetIds=[49,25] targetCount=2
+    LISTENING_LINE L4 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L5 speaker=A actualTargetIds=[27] targetCount=1
+    LISTENING_LINE L6 speaker=B actualTargetIds=[] targetCount=0
+    LISTENING_LINE L7 speaker=A actualTargetIds=[28] targetCount=1
+    LISTENING_LINE L8 speaker=B actualTargetIds=[32] targetCount=1
+    LISTENING_LINE L9 speaker=A actualTargetIds=[22] targetCount=1
+    LISTENING_LINE L10 speaker=B actualTargetIds=[22] targetCount=1
+    LISTENING_LINE L11 speaker=A actualTargetIds=[23] targetCount=1
+    LISTENING_LINE L12 speaker=B actualTargetIds=[24] targetCount=1
+    LISTENING_LINE L13 speaker=A actualTargetIds=[24] targetCount=1
+    LISTENING_LINE L14 speaker=B actualTargetIds=[23] targetCount=1
+    LISTENING_LINE L15 speaker=A actualTargetIds=[54] targetCount=1
+    LISTENING_LINE L16 speaker=B actualTargetIds=[53] targetCount=1
+    LISTENING_LINE L17 speaker=A actualTargetIds=[53] targetCount=1
+    LISTENING_LINE L18 speaker=B actualTargetIds=[47] targetCount=1
+    LISTENING_LINE L19 speaker=A actualTargetIds=[16] targetCount=1
+    LISTENING_LINE L20 speaker=B actualTargetIds=[18,19] targetCount=2
+    LISTENING_LINE L21 speaker=A actualTargetIds=[19] targetCount=1
+    LISTENING_LINE L22 speaker=B actualTargetIds=[16,26] targetCount=2
+    LISTENING_LINE L23 speaker=A actualTargetIds=[55,17] targetCount=2
+    LISTENING_LINE L24 speaker=B actualTargetIds=[55,56,17] targetCount=3
+    LISTENING_LINE L25 speaker=A actualTargetIds=[19] targetCount=1
+    LISTENING_LINE L26 speaker=B actualTargetIds=[52] targetCount=1
+    LISTENING_LINE L27 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L28 speaker=B actualTargetIds=[30] targetCount=1
+    LISTENING_LINE L29 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L30 speaker=B actualTargetIds=[51] targetCount=1
+    LISTENING_LINE L31 speaker=A actualTargetIds=[50,30,31] targetCount=3
+    LISTENING_LINE L32 speaker=B actualTargetIds=[50,30] targetCount=2
+    LISTENING_LINE L33 speaker=A actualTargetIds=[] targetCount=0
+    LISTENING_LINE L34 speaker=B actualTargetIds=[57] targetCount=1
+    LISTENING_LINE L35 speaker=A actualTargetIds=[48] targetCount=1
+    LISTENING_LINE L36 speaker=B actualTargetIds=[63] targetCount=1
+    LISTENING_LINE L37 speaker=A actualTargetIds=[20,21] targetCount=2
+    LISTENING_LINE L38 speaker=B actualTargetIds=[62,58] targetCount=2
+    LISTENING_LINE L39 speaker=A actualTargetIds=[62,63,57] targetCount=3
+    LISTENING_LINE L40 speaker=B actualTargetIds=[31] targetCount=1
+🎧 LISTENING_FINAL_INTEGRITY READY · TARGET COVERAGE 30/30 · every gate passed
+  🎧 LISTENING_GATES TARGET_COVERAGE=30/30 · COVERAGE_PASS=true · MAX_TARGETS_PER_TURN=3 · MAX3_PASS=true · BOTH_SPEAKERS=true · NO_MERGED_SPEAKER_LINES=true · NO_DUPLICATES=true · NO_SINGLETON_SCENES=true · CLOSED_VOCAB=true · LENGTH_PASS=true · LINE_QUALITY=true · NATURALNESS=true · WHOLE_CONVERSATION_COHERENCE=PASS · PRONUNCIATION=true · SCENE_REQUIRED_COVERAGE=PASS · TURN_COUNT=40/44 · TURN_BUDGET=true · SCENES_VALIDATED=true · ONE_CONVERSATION=PASS · MEANING_PLAN_VALIDATED=PASS · QUESTION_ANSWER=PASS · NO_DEFECTIVE_COMMITTED_PHASES=true
+  🎧 LISTENING READY · TARGET COVERAGE 30/30 · 40 turns · 6 scene(s) · 💰 LISTENING_GENERATION_CALLS=6 LISTENING_REPAIR_CALLS=15 LISTENING_QC_CALLS=12 LISTENING_TOTAL_PAID_CALLS=33 LISTENING_MF_PLAN_CALLS=6 LISTENING_MF_SCENE_REPLANS=0 LISTENING_MF_AUDIT_CALLS=9 LISTENING_MF_REPAIR_CALLS=15 LISTENING_MF_REPAIR_ROUNDS=6 LISTENING_MF_TRUNCATIONS=0 LISTENING_PLANNER=meaning-first-3 LISTENING_MF_STORY_ROUNDS=2 LISTENING_VERIFIED_TARGETS=30 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=100 LISTENING_PLANNER_FAILURE=true COMPLEXITY_PREFERRED_RANGE=2–4 COMPLEXITY_HARD_MAX=6 COMPLEXITY_WITHIN_PREFERRED=34 COMPLEXITY_SHORT_NATURAL=2 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=4 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=88%
+🎧 LISTENING_SNAPSHOT_INVARIANT PASS — track / coverage target ids === the frozen snapshot (30)
+🎧 LISTENING_TRACK_RESULT status=READY · TARGET COVERAGE 30/30 · level Mukyu hardMax 6 · LISTENING_SELECTION_COUNT=30 LISTENING_MAIN_GENERATION_CALLS=0 LISTENING_GENERATION_CALLS=6 LISTENING_REPAIR_CALLS=15 LISTENING_QC_CALLS=12 LISTENING_TOTAL_PAID_CALLS=33 LISTENING_MF_PLAN_CALLS=6 LISTENING_MF_SCENE_REPLANS=0 LISTENING_MF_AUDIT_CALLS=9 LISTENING_MF_REPAIR_CALLS=15 LISTENING_MF_REPAIR_ROUNDS=6 LISTENING_MF_TRUNCATIONS=0 LISTENING_PLANNER=meaning-first-3 LISTENING_MF_STORY_ROUNDS=2 LISTENING_VERIFIED_TARGETS=30 LISTENING_REPAIR_CALL_TARGET=10 LISTENING_PHASES_FIRST_GENERATION_PCT=100 LISTENING_PLANNER_FAILURE=true COMPLEXITY_PREFERRED_RANGE=2–4 COMPLEXITY_HARD_MAX=6 COMPLEXITY_WITHIN_PREFERRED=34 COMPLEXITY_SHORT_NATURAL=2 COMPLEXITY_ABOVE_PREFERRED_ALLOWED=4 COMPLEXITY_HARD_FAIL=0 COMPLEXITY_PREFERRED_RATIO=88% LISTENING_TOKEN_USAGE=0 LISTENING_COST=0

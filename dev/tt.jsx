@@ -29375,7 +29375,20 @@ function lnMfValidate(env, mp) {
     if (mf.rejectedTexts.has(lnMfNorm(tu.text))) add(mf.rejectedTexts.get(lnMfNorm(tu.text)), 'REPEATED_REJECTED_SENTENCE', [tu], 'this sentence was already rejected: "' + tu.text + '"')
     else if ((tu.targetIds || []).length && mf.rejectedRel.has(lnMfRelSig(tu, byId, lang))) add(5, 'REPEATED_REJECTED_RELATIONSHIP', [tu], 'the same rejected relationship again (' + lnMfRelSig(tu, byId, lang) + ')')
   })
+  issues.forEach(is => { if (is && is.code === 'CLOSED_VOCAB') lnMfNoteUntaught(env, is.detail) })
   return { issues, audit }
+}
+// v701 (relay run9, Mandarin): the model reused the same untaught word (那) in four separate repairs, each rejected on its own —
+// a word rejected as not taught once is named in EVERY later request of this build ("do not use"), so no repair is lost to it again
+function lnMfNoteUntaught(env, text) {
+  const mf = env && env.mf; if (!mf) return
+  if (!mf.untaught) mf.untaught = new Set()
+  const re = /unknown words?: ([^·|\n—(]+)/g; let m
+  while ((m = re.exec(String(text || '')))) m[1].split(/[\s,、，]+/).map(x => x.trim()).filter(x => x && !/^[A-Za-z0-9.]+$/.test(x)).forEach(x => mf.untaught.add(x))
+}
+function lnMfUntaughtRule(env) {
+  const u = env && env.mf && env.mf.untaught
+  return u && u.size ? '- NOT TAUGHT to this learner (already rejected in this conversation — never use them): ' + [...u].slice(-16).join(' ') + '\n' : ''
 }
 // ── AUDIT (one batched model call): sense · reply · usage (natural / acceptable / awkward / incorrect) · scenes ──
 const LN_MF_GUIDE = () => ({ th: typeof THAI_NATURALNESS_GUIDE !== 'undefined' ? THAI_NATURALNESS_GUIDE : '', ja: typeof JA_NATURALNESS_GUIDE !== 'undefined' ? JA_NATURALNESS_GUIDE : '', zh: typeof ZH_NATURALNESS_GUIDE !== 'undefined' ? ZH_NATURALNESS_GUIDE : '' })
@@ -29567,7 +29580,7 @@ function lnMfScenePrompt(env, g, k, prior, fix) {
     (unheard.length ? 'NOT HEARD YET from earlier situations (use them here too if they fit naturally):\n' + lnMfTargetRows(env, unheard).map(r => '  ' + r).join('\n') + '\n' : '') +
     'ALLOWED VOCABULARY (the ONLY other content words you may use): ' + lnMfVocabRows(env).join(' · ') + '\n' +
     (scaffold ? 'GRAMMAR / FUNCTION WORDS you may use: ' + scaffold + '\n' : '') +
-    'RULES:\n' +
+    'RULES:\n' + lnMfUntaughtRule(env) +
     // v697 (live relay run, Thai run 4): S6 opened with the speaker who had just ended S5 — "A: … เลี้ยวซ้ายครับ / A: ดูเสร็จแล้วครับ"
     '- ' + b.min + '–' + b.max + ' turns (never more than ' + b.max + '). A and B alternate' + (before.length ? ' — the last turn above is ' + before[before.length - 1].speaker + "'s, so S" + (k + 1) + ' starts with ' + (before[before.length - 1].speaker === 'A' ? 'B' : 'A') : '') + '. Every turn makes sense for these two people at this moment.\n' +
     // v697 (live relay run): situations planned one by one drifted — a movie was agreed, then a book of photos appeared; a
@@ -29861,6 +29874,7 @@ function lnMfRepairPrompt(env, mp, scopes, note) {
     'FIX THESE PARTS (keep the same speakers alternating; each new part must make sense, answer what it replies to, and lead naturally into the turn after it):\n' + lines.join('\n') + '\n' +
     (rejected.length ? 'NEVER reuse these rejected sentences (or the same idea with the same lesson words): ' + rejected.join(' · ') + '\n' : '') +
     (lnMfHasNumbers(env) ? '' : LN_MF_NO_NUMBERS_RULE.replace(/^- /, '')) + LN_MF_PHONE_RULE.replace(/^- /, '') +
+    lnMfUntaughtRule(env).replace(/^- /, '') +
     'ALLOWED VOCABULARY (the ONLY other content words): ' + lnMfVocabRows(env).join(' · ') + '\n' +
     'Return ONLY the new turns of each part — nothing else, no explanations. For each turn: speaker (A | B), intent, asks, about, object, targetIds, ' + LN_MF_TEXT_FIELD_RULE(la) + '\n' +
     'Reply ONLY with JSON: {"parts":[{"scope":"x1","turns":[{"speaker":"A","intent":"ASK","asks":"PLACE","about":"","object":"","targetIds":[],"text":"...","pron":"","english":"..."}]}]}' + (note || '')
@@ -29950,6 +29964,7 @@ function lnMfApply(env, mp, scopes, rep, round) {
       log && log('⛔ PART_REJECTED ' + s.id + ' (' + s.kind + ') — ' + why + ' · the old turns stay; ' + (retry ? 'one corrected retry this round' : 'the part escalates next round'))
       // the retry of a part is the same recovery level: the part climbs ONE rung per round, however many replies it took
       if (!s.patchRetried) s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1))
+      lnMfNoteUntaught(env, why)
       s.patchRejected = retry ? { why, texts: texts || [] } : null }
     if (!part || !scene || !Array.isArray(part.turns) || !part.turns.length) { log && log('⛔ PART_NOT_REPAIRED ' + s.id + ' (' + s.kind + ') — no replacement returned · the part escalates next round'); s.turnIds.forEach(id => mf.attempts.set(id, (mf.attempts.get(id) || 0) + 1)); return }
     // where the span lies: one situation, or the boundary of two (its new turns are split in the same proportion)

@@ -99,7 +99,10 @@ Suspected, not confirmed: the fixture's AI ledger shows only 3 quota-recovery re
 
 ## 4. Offline results
 
-REGRESSION_PLACEHOLDER
+- tests56 (new, this brief, on the live v699 export): **31/31**.
+- tests49 (Listening, salvage contract): **100/100**.
+- Full regression before release (frozen copy of the v700 build): **1,930 checks passed, 5 failed**. All 5 also fail on the v699 baseline: tests33 2G, tests35 2C-th / 2C-zh, tests37 C1, tests39 A5.
+- v700 was released to main as `22ff42e`.
 
 ## 5. Expected effect on requests and cost (not measured live)
 
@@ -129,7 +132,10 @@ REGRESSION_PLACEHOLDER
 - **Floor:** under 16 lines, under 2 situations, or under half the words heard → NOT_READY with the reason named. A tiny track is never called READY.
 - **Relay evidence (Haiku answering the real app requests):**
   - Your 30 Thai words reached **READY 30/30** on the v700 build before the salvage change: 40 turns, 6 scenes, 11 calls, 1 small repair (`dev/sandbox/haiku-listening-relay-v697/run8-owner-th-v700`).
-  - RELAY_PLACEHOLDER
+  - On the salvage build (run9, `dev/sandbox/haiku-listening-relay-v697/run9-salvage-v700`):
+    - **Japanese:** READY 30/30, 40 turns, 11 calls.
+    - **Mandarin:** READY 30/30, 40 turns, 33 calls. It needed 6 repair rounds (15 repair calls, above the target of 10), but every part was repaired, so nothing had to be cut and no word moved to Revision.
+    - Salvage was not triggered in either run. It only acts when an exchange is still faulty after the repairs. Its cut / drop / defer behaviour is covered offline by tests49 S1–S4.
 
 ## 8. Remaining risks / needs a live test
 

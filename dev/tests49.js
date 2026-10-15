@@ -480,6 +480,17 @@ const SALV = x => ({ st: x.track.status, fc: x.track.failedChecks, cov: x.track.
     T('S4', 'the FLOOR: when cutting would leave too little (fewer than 16 lines, 2 situations, or half the lesson words), the track is NOT_READY with the reason named — never a tiny track called READY',
       zh9.track.status === 'NOT_READY' && /LISTENING_PLAN_BLOCKED — (SALVAGE_FLOOR|\d+ unresolved after [^\n]*salvage)/.test(zh9.Ls), SALV(zh9))
   }
+  // ══ S5 — v701: a word rejected as not taught is named in every later request of the same build (relay run9: 那 ×4) ══
+  {
+    const c5 = load(process.env.TT_FILE || 'tt.compiled.js', { realBelt: true }), env = { mf: { rejectedTexts: new Map() } }
+    c5.lnMfNoteUntaught(env, 'PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: 那 · CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: 那')
+    c5.lnMfNoteUntaught(env, 'VOCABULARY_FAILED: unknown words: そろそろ 結構')
+    const rule = c5.lnMfUntaughtRule(env), SRC5 = require('fs').readFileSync('tt.jsx', 'utf8')
+    const body = name => SRC5.slice(SRC5.indexOf('function ' + name + '('), SRC5.indexOf('function ' + name + '(') + 9000)
+    T('S5', 'a word rejected as untaught is remembered for the whole Listening build and named in every later scene / repair request ("NOT TAUGHT … 那 そろそろ 結構"); empty when nothing was rejected',
+      /NOT TAUGHT[^\n]*那 そろそろ 結構/.test(rule) && env.mf.untaught.size === 3 && c5.lnMfUntaughtRule({ mf: {} }) === '' &&
+      /lnMfUntaughtRule\(env\)/.test(body('lnMfScenePrompt')) && /lnMfUntaughtRule\(env\)/.test(body('lnMfRepairPrompt')), rule)
+  }
   console.log(out.join('\n'))
   console.log('\n' + (n - fails) + '/' + n + ' passed')
   process.exit(fails ? 1 : 0)

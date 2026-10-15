@@ -1,0 +1,62 @@
+=== SYSTEM ===
+(none)
+
+=== USER ===
+Judge the WHOLE listening track below as ONE continuous, natural Mandarin conversation between the SAME two people. It was written in internal parts (numbered as "scenes" below) — they are NOT separate scenes: every part must continue directly from the previous part.
+Check the WHOLE text: the beginning makes sense; topics move on naturally; every answer responds to its question (why → a reason, where → a place, when → a time, how long → a duration, how much → an amount, a proposal → accept / refuse / counter-proposal); facts stay consistent (an agreed time or place stays agreed unless someone explicitly corrects it; whose mother / friend it is stays the same); names and pronouns stay consistent; a change of place is said in the dialogue; the time sequence makes sense (a part may start LATER the same day when its first line says what happened in between — "we have seen the museum", "we are here now": that stated time skip is fine); nobody greets again in the middle; the ending follows from the conversation. Speakers: A and B are friends talking; natural, casual-polite spoken Mandarin (simplified characters)..
+A part PASSES only if it is coherent in itself AND continues the previous part. If a part fails, give breakAfterLine = the line number after which it breaks (or null).
+
+Scene 1 — meeting and catching up
+  1. A: 你好吗？ — Hi, how are you?
+  2. B: 我好。 — I'm good.
+  3. A: 昨天你做什么？ — What did you do yesterday?
+  4. B: 我工作了。 — I worked.
+  5. A: 为什么？ — Why?
+  6. B: 我要工作啊。 — I had to work.
+  7. A: 谁给你的工作？ — Who gave you that job?
+  8. B: 那个人，我朋友。 — That person, my friend.
+
+Scene 2 — agreeing when
+  1. A: 你现在要工作吗？ — Do you have to work now?
+  2. B: 现在不工作了。 — I'm not working now.
+  3. A: 今天看东西吧？ — Shall we look at things today?
+  4. B: 明天可以吗？ — Can it be tomorrow?
+  5. A: 明天我要工作。 — Tomorrow I have to work.
+  6. B: 好，今天吧。 — Okay, today then.
+
+Scene 3 — getting there (1)
+  1. A: 我们到那个地方吧。 — Let's get to that place, then.
+  2. B: 你要回家吗？ — Do you need to go home first?
+  3. A: 不回家。 — No, I'm not going home.
+  4. B: 等，你知道吗？ — Wait, do you know it?
+  5. A: 知道，我去过。 — I know it, I've been there.
+
+Scene 4 — getting there (2)
+  1. B: 那个地方在哪里？ — Where is that place?
+  2. A: 在我朋友家。 — It's at my friend's home.
+  3. B: 我怎么去？ — How do I get there?
+  4. A: 你跟我来吧。 — Come with me, okay?
+  5. B: 好，我跟你一起来。 — Okay, I'll come with you.
+
+Scene 5 — shopping and paying
+  1. A: 东西在那个地方。 — The stuff is at that place.
+  2. B: 这个可以开吗？ — Can I open this one?
+  3. A: 可以啊。 — Sure, go ahead.
+  4. B: 这个要钱吗？ — Does this one cost money?
+  5. A: 要啊。 — Yes, it does.
+  6. B: 好，我拿这个。 — Okay, I'll take this one.
+  7. A: 用钱买吗？ — Will you pay cash for it?
+  8. B: 用钱，可以看吗？ — Cash, can I look first?
+
+Scene 6 — looking around
+  1. A: 好，你看东西吧。 — Okay, go look at the stuff.
+  2. B: 很好，我看看东西。 — Great, I'll look at the stuff.
+  3. A: 你找什么？ — What are you looking for?
+  4. B: 朋友要小的。 — My friend wants a small one.
+  5. A: 这里没有，那里有。 — Not here, there is one over there.
+  6. B: 那个不太大吧？ — That one isn't too big, right?
+  7. A: 不大，朋友家很小。 — No, it's not big. My friend's home is very small.
+  8. B: 好，我想买，朋友喜欢。 — Okay, I want to buy it, my friend likes it.
+
+Reply ONLY with JSON: {"scenes":[{"scene":1,"pass":true,"breakAfterLine":null,"reason":"..."}],"overall":1-5,"reason":"..."}
+Keep every reason under 12 words.

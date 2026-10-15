@@ -16715,6 +16715,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const CHECK_EMOJIS = CHECK_BELT_SEQUENCE.map(b => b.icon)          // v671 §B1 — the canonical sequence
   const CHECK_NAMES  = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
 
+  let _disputeStreak = 0
   let failureReasons = []
   const _politenessSeen = new Set()
   // Survives every retry for this target — never reset mid-target.
@@ -16795,6 +16796,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       const _t0 = _texts[0] || null
       _sameFailStreak = _t0 && _t0 === _lastFailText ? _sameFailStreak + 1 : 0
       _lastFailText = _t0
+      // v700 — a VALIDATOR DISPUTE is not a candidate problem: the target is visibly in the sentence and the matcher still says
+      // TARGET_MISSING. Twice in a row → no more paid regeneration for it (live v699: โมงเช้า in แปด/เจ็ด/เก้าโมงเช้า, 11 checks)
+      _disputeStreak = _t0 && /^TARGET_MISSING/.test(String(failureReasons[0] || '')) && String(_t0).replace(/\s+/g, '').includes(String(target.thai || '').replace(/\s+/g, '')) ? _disputeStreak + 1 : 0
+      if (_disputeStreak >= 2) {
+        onProgress && onProgress(-1, -1, { apiError: '⚖ VALIDATOR_DISPUTE ' + target.thai + ': the target is visibly present but the matcher rejected it twice ("' + String(_t0).slice(0, 40) + '") — not re-generated (a matcher problem, not a sentence problem); left to QUOTA RECOVERY (' + attempt + ' checks used)' }, null, null)
+        break
+      }
       if (_sameFailStreak >= 2 || (_genState.strategyIndex >= 3 && attempt >= 6)) {
         onProgress && onProgress(-1, -1, { apiError: '⛔ GENERATION_STOPPED_REPEATING ' + target.thai + ': ' + (_sameFailStreak >= 2 ? 'the same rejected sentence came back 3 times ("' + String(_t0).slice(0, 40) + '")' : 'still failing after ' + _genState.strategyIndex + ' strategy changes') + ' — left to QUOTA RECOVERY (' + attempt + ' checks used)' }, null, null)
         break

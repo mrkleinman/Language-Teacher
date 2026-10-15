@@ -61,6 +61,9 @@ function learner(c) {
       /THAI_USAGE_TARGET_GUIDE\[target\.thai\]/.test(SRC) && /THAI_USAGE_TARGET_GUIDE\[kw\.thai\]/.test(SRC) && /'โมงเช้า': 'TEACH โมงเช้า AS A MORNING CLOCK TIME, hours 6–11/.test(SRC))
   }
 
+  T('1h', 'stop expensive loops: a TARGET_MISSING where the target is visibly in the sentence twice in a row is a VALIDATOR DISPUTE — no more paid regeneration for it (it goes to quota recovery and is logged), next to the existing same-sentence guard',
+    /_disputeStreak >= 2\) \{\s*\n\s*onProgress && onProgress\(-1, -1, \{ apiError: '⚖ VALIDATOR_DISPUTE '/.test(SRC) && /GENERATION_STOPPED_REPEATING/.test(SRC))
+
   // ══ 2. ไม่ทราบว่า — the variety ban never fights the target ══
   {
     const lint = tw => c.lintThaiContent('ไม่ทราบว่าห้องน้ำอยู่ที่ไหนครับ', 'May I ask where the restroom is?', 'A', { thai: tw })

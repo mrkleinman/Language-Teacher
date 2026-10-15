@@ -3702,6 +3702,7 @@ const JA_NATURALNESS_GUIDE =
   '  - choosing between restaurants: どこにする？ / どっちの店にする？ — not どれで食べる？\n' +
   '  - おいしそう describes FOOD (あれ、おいしそうだね about a dish) — not a restaurant; for a place say よさそう / 人気だね\n' +
   '  - いいえ answers a question that was actually asked; in casual speech between friends ううん / いや is usual — use はい / いいえ only where they fit (a polite or clear yes/no answer)\n' +
+  '  - はい / うん / いいえ are REPLIES: the line answers a yes/no question (今日、時間ある？ → うん、あるよ), agrees to a suggestion (一緒に行こう → うん、いいよ) or acknowledges (ちょっと待って → うん、分かった). What follows the reply word IS the answer — never はい / うん as a filler before an unrelated statement (はい、ご飯だと思う。 ✗), and the cue says what is answered ("Say yes, you have time today")\n' +
   '  - the cue names the OTHER person (Ken talks to Yuka), never the speaker\n'
 function buildMandarinPrompt(target, inv, vocab, recallIndex, rules, exch) {
   const content = inv.allContent.map(w => '  ' + w.chinese + ' [' + w.pinyin + '] = ' + w.english +
@@ -6372,7 +6373,9 @@ function matchesJapaneseTarget(sentence, target) {
   const lemma = target.lemma || target.japanese || ''
   if (!lemma) return false
   // (a question word followed by か as the QUESTION particle — どこか？ at the very end — is still the question word)
-  if (JA_QUESTION_WORD_COMPOUNDS[lemma]) JA_QUESTION_WORD_COMPOUNDS[lemma].forEach(cpd => { s = s.replace(new RegExp(cpd + '(?![\uFF1F?\u3002]?$)', 'g'), '\u3000') })
+  // v700: nor is Q + か opening an EMBEDDED question or a sentence-final かな / かしら (駅はどっちかな — "which way is the station, I wonder";
+  // どっちか分かんない — "I don't know which"): only the indefinite (どっちかにする "either one") is a different word
+  if (JA_QUESTION_WORD_COMPOUNDS[lemma]) JA_QUESTION_WORD_COMPOUNDS[lemma].forEach(cpd => { s = s.replace(new RegExp(cpd + '(?![\uFF1F?\u3002]?$)' + (/か$/.test(cpd) ? '(?!な|しら|分|わか|知|教|聞|覚|決)' : ''), 'g'), '\u3000') })
   // v692 — a ONE-kanji target inside a longer bank word is a different word (車 is not heard in 電車, 本 not in 日本語)
   if (oct13On() && /^[\u4E00-\u9FFF]$/.test(lemma)) jaCompoundsContaining(lemma).forEach(cpd => { s = s.split(cpd).join('\u3000'.repeat(cpd.length)) })
   // v693 — あれ followed by a pause (あれ、… / あれ？ / あれっ) is the interjection "huh?", not the demonstrative "that over there"
@@ -17794,7 +17797,12 @@ function cueClarify(lang, p, ctx) {
   removed.push(...asideRemoved)
   if (removed.length) note('BACKGROUND REMOVED: ' + removed.map(x => '"' + x.trim().replace(/^,\s*/, '') + '"').join(' · '))
   // "Tell her you …" needs no addressee: "Say you …"; a pronoun addressee is kept when the sentence is about / addressed to them
-  if ((m = cue.match(/^Tell (him|her|them)\s+(?:that\s+)?(?!to\b)(.*)$/)) && !/\b(he|she|him|her|they|them|their|his)\b/.test(m[2]) && /^(you|i|we|this|that|the|there|it|a|an|my|your)\b/i.test(m[2])) cue = 'Say ' + m[2]
+  if ((m = cue.match(/^Tell (him|her|them)\s+(?:that\s+)?(?!to\b)(.*)$/)) && !/\b(he|she|him|her|they|them|their|his)\b/.test(m[2]) && /^(you|i|we|this|that|the|there|it|a|an|my|your|after|before|once)\b/i.test(m[2])) cue = 'Say ' + m[2]
+  // v700 — an unnecessary gendered addressee goes (the owner's rule: "Ask what she wants"): "Ask him what he'd like" → "Ask what he'd like"
+  // (only when the rest still names the listener as its subject, so the instruction stays clear)
+  if ((m = cue.match(/^Ask (him|her)\s+((?:what|where|which|who|if|whether)\b.*)$/)) && /\b(he|she)\b/i.test(m[2])) cue = 'Ask ' + m[2]
+  // v700 — "Apologise (to him) and tell him you got a little late" (an English calque of 遅くなった) → "Apologise for being a little late."
+  cue = cue.replace(/^Apologi([sz])e(?: to (?:him|her|them|[A-Z][a-z]+))?,? and (?:tell|say to) (?:him|her|them|[A-Z][a-z]+)? ?(?:that )?you (?:got|were|are|'re) (a (?:little|bit) )?late\.?$/, (m0, z, d) => 'Apologi' + z + 'e for being ' + (d || '') + 'late.')
   cue = cue.replace(/^Suggest (?:that\s+)?(?:they|you both|you two|we)\s+([a-z]+)\b/i, (all, v) => /^(should|could|can|will|go|get|order|take|have|try|eat|buy|use|leave|wait|stay)$/.test(v) ? 'Suggest we ' + v : all)
   // v700 — the ADDRESSEE's possessive: the English asks about "your …" (the listener's) and the cue names the listener as him / her,
   // so "your" in the cue is the learner's own — wrong. "Ask how your parents raised him." → "Ask him how his parents raised him."
@@ -20432,7 +20440,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v699'
+const LISTENING_BUILD_VERSION = 'v700'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -21447,14 +21455,37 @@ async function thaiRevalidateStaleCues(pairs, c, log, label) {
 const JA_WH_RE = /何|なに|なん|どこ|いつ|どれ|どの|どう|どっち|誰|だれ|いくら|なんで|なぜ/
 function jaIsYesNoQuestion(p) { const jp = String(p && p.japanese || '').trim(); return /[？?]$/.test(jp) && !JA_WH_RE.test(jp) }
 function jaIsReplyLine(p) { return !!(p && classifyTrackPair(p) === 'TARGET' && /^(はい|うん|いいえ|ううん)[、。！!]/.test(String(p.japanese || '').trim())) }
+// v700 — a reply word does not always need a yes/no question: はい / うん also ACKNOWLEDGE or AGREE with what the other person just said
+// (a suggestion, a request, a statement): ちょっと待って → うん、分かった · 一緒に行こう → うん、いいよ. いいえ rejects a proposition the
+// other person stated. Only a reply that answers nothing (はい、ご飯だと思う。 after an unrelated line) is a genuine discourse error.
+const JA_ACK_RE = /^(はい|うん|ええ)[、。！!]?\s*(分かった|わかった|分かりました|いいよ|いいね|いいですよ|そうだね|そうだよね|そう|そうしよう|大丈夫|了解|ありがとう|お願い|行こう|食べよう|しよう|待って)?/
+function jaReplyAcknowledges(q, r) {
+  if (!q || !r || !q.speaker || !r.speaker || q.speaker === r.speaker || !q.japanese) return false
+  const qj = String(q.japanese).trim(), rj = String(r.japanese || '').trim()
+  if (JA_WH_RE.test(qj) && /[？?]$/.test(qj)) return false                                    // a question-word question is not answered by yes / no
+  const tok = (rj.match(/^(はい|うん|いいえ|ううん|ええ)/) || [])[1], rest = rj.replace(/^(はい|うん|いいえ|ううん|ええ)[、。！!]?\s*/, '')
+  if (tok === 'はい' || tok === 'うん' || tok === 'ええ') {
+    // agreeing to a suggestion / request, or a plain acknowledgement of a statement
+    if (/(よう|おう|こう|ごう|そう|とう|のう|ぼう|もう|ろう)(か|よ|ね)?[。！!？?]?$|て(ね|よ|ください)?[。！!]?$|てくれる[？?]?$|ましょう|ない[？?]$/.test(qj)) return true
+    return !rest || /^(分かった|わかった|分かりました|いいよ|いいね|そうだね|そうだよね|そう|そうしよう|大丈夫|了解|ありがとう)/.test(rest) }
+  // いいえ / ううん reject what the other person just said ABOUT THE SAME THING (高い → 高くない; ごめん → 大丈夫; もう…た → まだ)
+  if (/^大丈夫/.test(rest)) return /ごめん|すみません|悪い|ありがとう|大丈夫/.test(qj)
+  if (/^まだ/.test(rest)) return /もう|た[？?]$/.test(qj)
+  return /ない|じゃない|違う/.test(rest) && jaSharesContent(qj, rest)
+}
+// two lines are about the same thing when they share a content character (kanji / katakana) — 高い / 高くない, 時間ある / 時間ない
+function jaSharesContent(a, b) { const ks = x => new Set((String(x || '').match(/[一-鿿ァ-ヶー]/g) || []).filter(ch => ch !== 'ー')); const A = ks(a); return [...ks(b)].some(ch => A.has(ch)) }
 function jaPlaceReplyLines(pairs, log) {
   const out = (pairs || []).slice(), moved = [], orphan = []
-  const triggered = i => { const r = out[i], q = out[i - 1]; return !!(q && q.speaker && r.speaker && q.speaker !== r.speaker && jaIsYesNoQuestion(q)) }
+  const triggered = i => { const r = out[i], q = out[i - 1]; return !!(q && q.speaker && r.speaker && q.speaker !== r.speaker && (jaIsYesNoQuestion(q) || jaReplyAcknowledges(q, r))) }
   for (let pass = 0; pass < out.length; pass++) {
     const i = out.findIndex((p, k) => jaIsReplyLine(p) && !triggered(k) && !moved.includes(p) && !orphan.includes(p))
     if (i < 0) break
     const r = out[i]
-    const qi = out.findIndex((q, k) => k !== i && q && q.speaker && q.speaker !== r.speaker && jaIsYesNoQuestion(q) && (!r.sceneId || !q.sceneId || q.sceneId === r.sceneId) &&
+    // v700: the question must be ABOUT the reply (a shared content word) unless the reply is a bare acknowledgement — moving
+    // はい、ご飯だと思う。 after an unrelated "do you have time?" makes a new discourse error
+    const _bare = !String(r.japanese || '').replace(/^(はい|うん|いいえ|ううん|ええ)[、。！!]?\s*/, '').replace(/[。！!]/g, '').trim()
+    const qi = out.findIndex((q, k) => k !== i && q && q.speaker && q.speaker !== r.speaker && jaIsYesNoQuestion(q) && (!r.sceneId || !q.sceneId || q.sceneId === r.sceneId) && (_bare || jaSharesContent(q.japanese, r.japanese)) &&
       !(out[k + 1] && out[k + 1].speaker && out[k + 1].speaker !== q.speaker))   // the question is not already answered
     if (qi < 0) { orphan.push(r); continue }
     const qLine = out[qi]; out.splice(i, 1); out.splice(out.indexOf(qLine) + 1, 0, r); moved.push(r)
@@ -21466,11 +21497,12 @@ function jaPlaceReplyLines(pairs, log) {
 // v693 — a reply with nothing to answer gets the question that makes it natural: ONE batched request writes, for every such reply, a
 // short yes/no question the OTHER speaker asks just before it (a BRIDGE line — never counted as a target pair). Each question passes the
 // same closed-vocabulary, grammar, usage and length gates as any Japanese line; a question that fails is not inserted (logged instead).
+const JA_REPLY_TRIGGER_BATCH = 3
 const JA_REPLY_TRIGGER_SCHEMA = { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: { type: 'INTEGER' }, japanese: { type: 'STRING' }, english: { type: 'STRING' } }, required: ['i', 'japanese', 'english'] } }
 async function jaBridgeReplyTriggers(t, c, log) {
   const placed = jaPlaceReplyLines(t.pairs, log)
   let pairs = placed.pairs
-  if (!placed.orphan.length || !c.apiKey || !c.vocab) return { pairs, inserted: [] }
+  if (!placed.orphan.length || !c.apiKey || !c.vocab) return { pairs, inserted: [], unresolved: placed.orphan.slice(), acknowledged: placed.acknowledged || 0 }
   const kws = (t.keywords || []).map(k => (c.vocabById && c.vocabById.get(k.wordId)) || null).filter(Boolean)
   const inv = japaneseLearnerInventory(c.vocab, kws)
   const cc = getLearnerComplexityContract({ lang: 'ja', vocab: c.vocab })
@@ -21483,9 +21515,18 @@ async function jaBridgeReplyTriggers(t, c, log) {
     'person, so the reply makes sense. Write ONE short casual yes/no question for each (no question words like 何/どこ/いつ/どう; at most ' + cc.hardMax +
     ' words), using ONLY these words and particles: ' + words.join(' ') + '\nThe question must not contradict the line before it.\n\n' + rows.join('\n') +
     '\n\nReply ONLY with JSON: [{"i":1,"japanese":"…？","english":"…?"}]'
-  let got = []
-  try { aiTagNextCall('reply triggers (one batched request)'); got = _semanticReplyArray(await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: q }], maxTokens: 900, temperature: 0.3, json: JA_REPLY_TRIGGER_SCHEMA, stage: 'ja_reply_trigger' })) }
-  catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; log && log('  ⚠️ RESPONSE_TRIGGER request failed: ' + String(e && e.message || e).slice(0, 80)); return { pairs, inserted: [] } }
+  // v700 — BOUNDED BATCHES (≤ JA_REPLY_TRIGGER_BATCH replies per request, enough room per reply): the v699 request for 10 replies was cut
+  // off (MAX_TOKENS) and the whole repair was silently dropped while the track stayed READY. A failed batch is retried once one reply
+  // at a time; whatever still has no question is UNRESOLVED and reported (it blocks READY — RESPONSE_CONTEXT_UNRESOLVED).
+  let got = [], failedRequests = 0
+  const ask = async (idx, tag) => { const qq = q.replace(rows.join('\n'), idx.map(k => rows[k].replace(/^\d+\./, (k + 1) + '.')).join('\n'))
+    try { aiTagNextCall('reply triggers ' + tag); return _semanticReplyArray(await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: qq }], maxTokens: 400 + 220 * idx.length, temperature: 0.3, json: JA_REPLY_TRIGGER_SCHEMA, stage: 'ja_reply_trigger' })) || [] }
+    catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; failedRequests++; log && log('  ⚠️ RESPONSE_TRIGGER request failed (' + tag + '): ' + String(e && e.message || e).slice(0, 80)); return null } }
+  for (let b = 0; b < rows.length; b += JA_REPLY_TRIGGER_BATCH) {
+    const idx = rows.map((_, k) => k).slice(b, b + JA_REPLY_TRIGGER_BATCH)
+    const r1 = await ask(idx, 'batch ' + (b / JA_REPLY_TRIGGER_BATCH + 1))
+    if (r1) { got.push(...r1); continue }
+    for (const k of idx) { const r2 = await ask([k], 'single ' + (k + 1)); if (r2) got.push(...r2) } }
   const inserted = [], refused = []
   placed.orphan.forEach((r, k) => {
     const g = (got || []).find(x => x && +x.i === k + 1)
@@ -21503,9 +21544,11 @@ async function jaBridgeReplyTriggers(t, c, log) {
     if (why.length) { refused.push(b.japanese + ' (' + why[0] + ')'); return }
     const i = pairs.indexOf(r); pairs = pairs.slice(0, i).concat([b], pairs.slice(i)); inserted.push(b)
   })
-  log && log('  💬 RESPONSE_TRIGGER ' + inserted.length + '/' + placed.orphan.length + ' reply line(s) given the yes/no question they answer (bridge lines, one request)' +
-    (inserted.length ? ': ' + inserted.map(b => b.japanese).join(' | ').slice(0, 160) : '') + (refused.length ? ' · not inserted: ' + refused.join(' | ').slice(0, 200) : ''))
-  return { pairs, inserted, refused }
+  const unresolved = placed.orphan.filter(r => !inserted.some(b => pairs.indexOf(b) === pairs.indexOf(r) - 1))
+  log && log('  💬 RESPONSE_TRIGGER ' + inserted.length + '/' + placed.orphan.length + ' reply line(s) given the yes/no question they answer (bridge lines, ' + Math.ceil(placed.orphan.length / JA_REPLY_TRIGGER_BATCH) + ' batch request(s)' + (failedRequests ? ', ' + failedRequests + ' failed' : '') + ')' +
+    (inserted.length ? ': ' + inserted.map(b => b.japanese).join(' | ').slice(0, 160) : '') + (refused.length ? ' · not inserted: ' + refused.join(' | ').slice(0, 200) : '') +
+    (unresolved.length ? ' · ⛔ UNRESOLVED ' + unresolved.length + ': ' + unresolved.map(r => r.japanese).join(' | ').slice(0, 200) : ''))
+  return { pairs, inserted, refused, unresolved, failedRequests }
 }
 // v693 — Japanese conversational STATE across the final lines (owner's list: "proposing today right after 'busy today'"). Deterministic,
 // narrow and explainable: (1) a speaker rules out a day (今日は忙しい / 明日はだめ / 昼は一緒に食べられない …) and the OTHER speaker then
@@ -21680,7 +21723,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
   // so the frozen text (and everything pronunciation builds from it) is the spoken text only
   try { const _nm = _trackSpeakerNames(t).concat(adapter.lang === 'th' ? thaiSceneNameEntries(t, c.vocab).map(n => n.surface) : [])
     t = { ...t, pairs: normaliseSpokenTextOwnership(t.pairs, adapter.lang, _nm, log, 'before FINAL_LINE_TEXT freeze').pairs } } catch (e) {}
-  if (dailyV693On() && adapter.lang === 'ja') { try { t = { ...t, pairs: (await jaBridgeReplyTriggers(t, c, log)).pairs } } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
+  let _replyCtx = null
+  if (dailyV693On() && adapter.lang === 'ja') { try { const rb = await jaBridgeReplyTriggers(t, c, log); t = { ...t, pairs: rb.pairs }; _replyCtx = rb } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
   if (oct13On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {} }
   if (oct13On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiTidyCommas(t.pairs, log) } } catch (e) {} }
   // v700 — FINAL SNAPSHOT AUDIT on the text that will be saved; a line that fails goes to ONE more bounded quota round (same
@@ -21738,6 +21782,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (oct13On()) { const tl = targetLinesExact(t.pairs, kws, k => adapter.surfaceOf(k)); inv.TARGET_LINES_EXACT = tl.ok; if (!tl.ok) inv.TARGET_LINES_DETAIL = tl.detail }
   // v693: no persisted cue may address its own speaker ("As Daiki, tell Daiki …", "Nida greets Nida …") — checked on the final lines
   if (dailyV693On() && adapter.lang === 'th') { const sc = thaiLocalContradictions(t.pairs); inv.STATE_CONTRADICTIONS = sc.length; if (sc.length) { inv.STATE_CONTRADICTIONS_DETAIL = sc.slice(0, 2).map(x => x.pair.thai + ' — ' + x.reason.slice(0, 120)).join(' | '); log && log('  ⛔ STATE_CONTRADICTIONS ' + sc.length + ': ' + inv.STATE_CONTRADICTIONS_DETAIL) } }
+  if (dailyV693On() && adapter.lang === 'ja' && _replyCtx) { const ur = (_replyCtx.unresolved || []).filter(r => (t.pairs || []).some(p => p && p.japanese === r.japanese))
+    inv.RESPONSE_CONTEXT_UNRESOLVED = ur.length; if (ur.length) inv.RESPONSE_CONTEXT_DETAIL = ur.slice(0, 3).map(r => r.japanese).join(' | ') + ' — the reply answers nothing before it' }
   if (dailyV693On() && adapter.lang === 'ja') { const sc = jaStateContradictions(t.pairs); inv.STATE_CONTRADICTIONS = sc.length; if (sc.length) { inv.STATE_CONTRADICTIONS_DETAIL = sc.slice(0, 2).map(x => x.pair.japanese + ' — ' + x.reason).join(' | '); log && log('  ⛔ STATE_CONTRADICTIONS ' + sc.length + ': ' + inv.STATE_CONTRADICTIONS_DETAIL) } }
   if (dailyV693On()) { const sa = cueSelfAddressLines(t.pairs, t); inv.CUE_SELF_ADDRESS = sa.length; if (sa.length) { inv.CUE_SELF_ADDRESS_DETAIL = sa.slice(0, 3).join(' | '); log && log('  ⛔ CUE_SELF_ADDRESS ' + sa.length + ': ' + inv.CUE_SELF_ADDRESS_DETAIL) } }
   if (dailyV693On()) { const ca = cueAddresseeProblems(t.pairs, t); inv.CUE_ADDRESSEE = ca.length; if (ca.length) { inv.CUE_ADDRESSEE_DETAIL = ca.slice(0, 3).join(' | '); log && log('  ⛔ CUE_ADDRESSEE ' + ca.length + ' cue(s) still address the wrong person or describe the line instead of instructing: ' + inv.CUE_ADDRESSEE_DETAIL) } }
@@ -21784,6 +21830,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (inv.SELECTED_TARGETS !== TRACK_CONTRACT.TARGETS) reasons.push('SELECTED_TARGETS=' + inv.SELECTED_TARGETS + ' (required ' + TRACK_CONTRACT.TARGETS + ')')
   if (quota.quotaMet !== TRACK_CONTRACT.TARGETS * TRACK_CONTRACT.PAIRS_PER_TARGET) reasons.push('TARGET_PAIR_QUOTA=' + inv.TARGET_PAIR_QUOTA + ' (required 90/90)')
   if (inv.STATE_CONTRADICTIONS) reasons.push('STATE_CONTRADICTIONS=' + inv.STATE_CONTRADICTIONS + ' (' + inv.STATE_CONTRADICTIONS_DETAIL + ')')
+  // v700 — a Japanese reply line that answers nothing, whose repair failed, is a learner-facing defect: never READY (it used to be logged and ignored)
+  if (inv.RESPONSE_CONTEXT_UNRESOLVED) reasons.push('RESPONSE_CONTEXT_UNRESOLVED=' + inv.RESPONSE_CONTEXT_UNRESOLVED + ' (' + inv.RESPONSE_CONTEXT_DETAIL + ')')
   if (inv.CUE_SELF_ADDRESS) reasons.push('CUE_SELF_ADDRESS=' + inv.CUE_SELF_ADDRESS + ' (' + inv.CUE_SELF_ADDRESS_DETAIL + ')')
   if (inv.CUE_ADDRESSEE) reasons.push('CUE_ADDRESSEE=' + inv.CUE_ADDRESSEE + ' (' + inv.CUE_ADDRESSEE_DETAIL + ')')
   if (inv.TARGET_LINES_EXACT === false) reasons.push('TARGET_LINES_EXACT=false (' + inv.TARGET_LINES_DETAIL + '; required exactly 3 per target, 90 in all)')
@@ -22190,7 +22238,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v699'
+const APP_BUILD_VERSION = 'v700'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -23456,6 +23504,23 @@ async function _zhRecoverTargetPairs(kw, need, ctx) {
 // ("Tell / Ask / Suggest to / with … <name>") becomes the addressee's name; he/she/him/her/his in THAT cue then follow the
 // addressee's gender when the scene states both genders. Anything else in the cue is left alone.
 const CUE_ADDRESS_VERBS = 'tell|ask|remind|invite|thank|greet|warn|show|answer|reassure|encourage|urge|help|let|offer|promise|reply to|say to|suggest to|explain to|apologi[sz]e to|admit to|confirm to|mention to|point out to|agree with|check with|to|with'
+// v700 — when the scene description does not say man / woman (live v699 Japanese: "Two close friends, Ken and Mai"), the characters'
+// genders are INFERRED deterministically: (1) a gendered first-person word in the character's own lines (僕 / 俺 → male; あたし → female),
+// (2) the cues' co-reference — "Ask Mai if she has time", "Ask Ken whether he has time" (the first pronoun after the name, majority).
+// Without a gender the listener-pronoun check was silently skipped and the finaliser reported 0 addressee problems.
+function _cueInferGenders(pairs, A, B) {
+  const vote = { A: { m: 0, f: 0 }, B: { m: 0, f: 0 } }
+  ;(pairs || []).forEach(p => { if (!p || (p.speaker !== 'A' && p.speaker !== 'B')) return
+    const jp = String(p.japanese || '')
+    if (/僕|俺/.test(jp)) vote[p.speaker].m += 2
+    if (/あたし/.test(jp)) vote[p.speaker].f += 2
+    const cue = String(p.prompt || p.cue || '')
+    ;[['A', A], ['B', B]].forEach(([L, ch]) => { if (!ch || !ch.name) return
+      const m = new RegExp('\\b' + ch.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b(?:[\\s,]+[\\w\'’]+){0,6}?[\\s,]+(he|him|his|she|her)\\b', 'i').exec(cue)
+      if (m) vote[L][/^(he|him|his)$/i.test(m[1]) ? 'm' : 'f']++ }) })
+  const pick = v => v.m >= 2 && v.m >= 3 * v.f ? 'm' : v.f >= 2 && v.f >= 3 * v.m ? 'f' : null
+  return { A: pick(vote.A), B: pick(vote.B), votes: vote }
+}
 function _sceneCharGender(desc) {
   const d = String(desc || '').toLowerCase()
   const m = /\b(male|man|boy|guy|husband|brother|he|his)\b/.test(d), f = /\b(female|woman|girl|lady|wife|sister|she|her)\b/.test(d)
@@ -23482,6 +23547,8 @@ const CUE_NOT_A_NAME = /^(I|Japanese|English|Mandarin|Chinese|Thai|Yes|No|Okay|S
 function _cuePronounsFor(s, gender) {
   const cap = (w, r) => w[0] === w[0].toUpperCase() ? r[0].toUpperCase() + r.slice(1) : r
   if (gender === 'f') return s.replace(/\b(he|him|his)\b/gi, w => cap(w, { he: 'she', him: 'her', his: 'her' }[w.toLowerCase()]))
+  // v700: "her" right after a verb / preposition is the OBJECT (him), never "his" (live: "tell his you …", "Ask his which one …")
+  s = s.replace(/\b(ask|tell|to|thank|remind|invite|help|call|meet|give|show|apologi[sz]e to|with|for)\s+her\b/gi, (m, v) => v + ' ' + (m.slice(-3)[0] === 'H' ? 'Him' : 'him'))
   return s.replace(/\b(she|hers|her)\b(\s+(\w+))?/gi, (m, w, gap, nxt) => { const l = w.toLowerCase()
     return cap(w, l === 'she' ? 'he' : l === 'hers' ? 'his' : nxt && !/^(and|or|but|that|if|whether|to|about|for|with|at|in|on|again|back|too|now|so|know|why|how|what|when|where|the|a|an)$/i.test(nxt) ? 'his' : 'him') + (gap || '') })
 }
@@ -23515,6 +23582,7 @@ function cueAddresseeProblems(pairs, track) {
   const ch = sp => { const c = (sc.characters || []).find(x => x && x.speaker === sp) || {}; const desc = c.description || (sp === 'A' ? scene.characterA : scene.characterB) || ''
     return { name: c.name || _sceneEnglishName(desc), gender: _sceneCharGender(desc), letter: sp } }
   const A = ch('A'), B = ch('B')
+  if (A.name && B.name && (!A.gender || !B.gender)) { const ig = _cueInferGenders(pairs, A, B); A.gender = A.gender || ig.A; B.gender = B.gender || ig.B }
   if (!A.name || !B.name || A.name.toLowerCase() === B.name.toLowerCase())
     return (pairs || []).map((p, i) => p && (p.prompt || p.cue) && _cueImperative(p.prompt || p.cue) !== (p.prompt || p.cue) ? '[' + (i + 1) + ' ' + p.speaker + '] ' + String(p.prompt || p.cue).slice(0, 70) : null).filter(Boolean)
   const esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -23533,6 +23601,8 @@ function fixCueAddressees(pairs, track, log) {
   const ch = sp => { const c = (sc.characters || []).find(x => x && x.speaker === sp) || {}; const desc = c.description || (sp === 'A' ? scene.characterA : scene.characterB) || ''
     return { name: c.name || _sceneEnglishName(desc), gender: _sceneCharGender(desc), letter: sp } }
   const A = ch('A'), B = ch('B')
+  if (A.name && B.name && (!A.gender || !B.gender)) { const ig = _cueInferGenders(pairs, A, B); A.gender = A.gender || ig.A; B.gender = B.gender || ig.B
+    if (log && (ig.A || ig.B)) log('  🗣 CUE_GENDER_INFERRED ' + A.name + '=' + (A.gender || '?') + ' · ' + B.name + '=' + (B.gender || '?') + ' (the scene description did not say — from the cues / first-person words)') }
   if (!A.name || !B.name || A.name.toLowerCase() === B.name.toLowerCase() || !/^[A-Za-z][A-Za-z'-]+$/.test(A.name + B.name)) {
     // v694: without character names only the instruction form is repaired (Mandarin v693: "A suggests that …", "Agrees and says …")
     if (!dailyV693On() || (pairs || []).some(p => p && p.thai)) return { pairs, fixed: [] }
@@ -23674,6 +23744,10 @@ function jaTidyRomaji(r) {
     .replace(/([?!.,])(?=[A-Za-z])/g, '$1 ').replace(/\s{2,}/g, ' ').trim()
     // particle spacing as learners see it in Hepburn textbooks: da ne / da yo, mata ne, kamo, o (を)
     .replace(/\b([Dd])a(yone|yo|ne)\b/g, '$1a $2').replace(/\b([Mm])atane\b/g, '$1ata ne').replace(/\b([Kk])a mo\b/g, '$1amo').replace(/\bwo\b/g, 'o')
+    // v700 — a conjugated word stays ONE word (live v699: tabeta ra, shite nai, hima na nda, wakan'nai): ～たら / ～だら conditional,
+    // ～てない / ～でない contraction, the explanatory ん(だ) after な (nan da) or a plain form (iku n da), ん before n needs no apostrophe
+    .replace(/\b(\w*[td]a) ra\b/g, '$1ra').replace(/\b(\w+[td]e) (nai|nakatta|naku)\b/g, '$1$2')
+    .replace(/\b([Nn])a nda\b/g, '$1an da').replace(/(\w) nda\b/g, '$1 n da').replace(/n'n/g, 'nn')
 }
 function jaFinalRomaji(q, bank, onLog) {
   if (!q || !q.japanese) return q
@@ -45299,6 +45373,10 @@ function jaWhQuestion(jp) {
   if (/^(か|も|でも|ぞ)/.test(rest) || /^(も|ぞ)/.test(rest) && m[0] === 'どう') return false
   if (m[0] === 'どう' && /^(も|ぞ)/.test(rest)) return false
   if (/か(?![。！!？?]?$)/.test(rest)) return false
+  // v700 — a question word is not a question in a UNIVERSAL / CONCESSIVE use (live v699: どっちの店も行ったことない。 "I haven't been to
+  // either shop" was called a question): Q + の + noun + も ("either / neither / every"), and Q … ても / でも ("wherever / whatever")
+  if (/^の[^\s、。？?！!]{1,4}も/.test(rest) && !/[？?]$/.test(s)) return false
+  if (/^[^、。？?！!]*?(て|で)も/.test(rest) && !/[？?]$/.test(s)) return false
   return true
 }
 function jaCueFormProblems(p) {
@@ -45308,6 +45386,9 @@ function jaCueFormProblems(p) {
   if (teachingPlanOn()) en = en.replace(/\s*\([^()]*\)\s*$/, '').trim()
   if (!jp || !en) return []
   const out = []
+  // v700 — the writer itself calls the reply word a FILLER (live v699: "Say yes as a filler, then say you think it'll be rice" ×3):
+  // はい / うん used without anything to answer — rejected at generation, before it costs a repair
+  if (cue && /^(はい|うん|いいえ|ええ)/.test(jp) && /\bfiller\b|\bas a (?:hesitation|pause)\b/i.test(cue)) out.push('RESPONSE_AS_FILLER: the reply word is used as a filler ("' + cue.slice(0, 60) + '") — はい / うん / いいえ must answer or acknowledge something')
   // v672 §3 — a sentence-final か is a Japanese question / proposal even when it is written with 。 (行こうか。 = "shall we go?",
   // 食べようか。 = "shall we eat?", 行かないか。 = "won't you come?") — the live log rejected those as "statement vs question"
   // v691: a question-word question written with 。 counts only when the English has no question word at all (the v690 case: どこで食べよう。

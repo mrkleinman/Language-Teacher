@@ -16584,7 +16584,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const restaurantUses = prevLines.filter(l => l.thai && l.thai.includes('ร้านอาหาร')).length
 
   // v703 (cost): everything up to PROMPT_CACHE_MARK is the same for every target of this track (scene, rules, allowed words, format), so
-  // Haiku reads it from its prompt cache; the per-target lines (target, usage frame, bans, number hint) and any rewrite hint follow it.
+  // the optional generation model reads it from its prompt cache; the per-target lines (target, usage frame, bans, number hint) and any rewrite hint follow it.
   const _stableSystem = 'You write Pimsleur-style Thai lessons. Write one exchange in an ongoing conversation.\n' +
     'SCENE: ' + scene + '\n' +
     'A = ' + charA + ' — MUST end every sentence with ครับ\n' +

@@ -82,7 +82,7 @@ The new writer guidance should mean fewer bad lines are written in the first pla
 - **tests16 X:** the version-pin regex accepts qc-v7xx (same widening as before).
 - **tests45:** the replay stand-in for the Haiku server reads text blocks. **83/83**.
 - **tests59:** 19/19.
-- **Full regression:** see §8.
+- **Full regression:** 2,066 passed, 7 failed (the same 7 known failures; see §8).
 
 ## 7. Next step: needs approval
 
@@ -90,7 +90,12 @@ Stage 4 is one full 30-word Haiku Daily run, then an independent audit of all 90
 
 ## 8. Full regression
 
-(filled in below)
+**60 suites on a frozen copy of this build: 2,066 checks passed, 7 failed.**
+
+- The 7 are the same ones that fail on the unchanged earlier builds:
+  - 5 long-standing: tests33 2G, tests35 2C-th / 2C-zh, tests37 C1, tests39 A5;
+  - 2 from tests55: cases 3 and 6, which are date-dependent and also fail on v700 today.
+- The run also found one new failure: tests13 I1. A comment I added named the generation model outside its own code block, which that test forbids. I reworded the comment, and tests13 passes again (28/28).
 
 ## TL;DR
 

@@ -26,7 +26,9 @@ real export.
   - pair 02 is repaired in place (いいよ → 大丈夫);
   - the English of pairs 24 and 46 is corrected without regenerating the Japanese.
 - The deterministic Japanese rules now run on every final target line, not only on lines changed after acceptance.
-- Offline: the new Japanese suite (tests57) passes 50/50. Full regression: REGRESSION_PLACEHOLDER.
+- Offline: the new Japanese suite (tests57) passes 50/50. Full regression: **2,010 checks passed, 7 failed** (frozen copy of the combined Japanese + syllabus build, 58 suites).
+  - 5 are the long-standing known failures, which also fail on v699: tests33 2G, tests35 2C-th / 2C-zh, tests37 C1, tests39 A5.
+  - 2 are tests55 cases 3 and 6. They fail identically on the unchanged v700 code when run today, but passed yesterday, so they are not caused by these changes. They look date-dependent and are worth a separate look..
 - Not claimed: that Japanese quality has reached 8.5/10. That needs a fresh generated track and an independent content review.
 
 ## 2. Confirmed root causes
@@ -142,7 +144,9 @@ Yes, within limits.
 - tests57 (new, live v699 export): **50/50**.
 - Japanese suites: tests16 40/40, tests47 47/47, tests48 24/24, tests50 20/20, tests51 29/29, tests53 24/24.
 - Thai suite tests56: 31/31.
-- Full regression: REGRESSION_PLACEHOLDER
+- Full regression: **2,010 checks passed, 7 failed** (frozen copy of the combined Japanese + syllabus build, 58 suites).
+  - 5 are the long-standing known failures, which also fail on v699: tests33 2G, tests35 2C-th / 2C-zh, tests37 C1, tests39 A5.
+  - 2 are tests55 cases 3 and 6. They fail identically on the unchanged v700 code when run today, but passed yesterday, so they are not caused by these changes. They look date-dependent and are worth a separate look.
 
 ## 11. 90/90 track integrity
 

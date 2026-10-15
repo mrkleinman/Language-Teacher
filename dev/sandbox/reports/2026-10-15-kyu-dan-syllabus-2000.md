@@ -17,7 +17,9 @@ Owner brief: "LANGUAGE TEACHER APP — CORRECT KYU–DAN SYLLABUS TO 2,000 WORDS
   - new tests58: 32/32;
   - updated tests46: 26/26;
   - tests37 G2 is updated for the new table (C1 is a known old failure);
-  - full regression: SYLLABUS_REGRESSION_PLACEHOLDER.
+  - full regression: **2,010 checks passed, 7 failed** (frozen copy of the combined Japanese + syllabus build, 58 suites).
+  - 5 are the long-standing known failures, which also fail on v699: tests33 2G, tests35 2C-th / 2C-zh, tests37 C1, tests39 A5.
+  - 2 are tests55 cases 3 and 6. They fail identically on the unchanged v700 code when run today, but passed yesterday, so they are not caused by these changes. They look date-dependent and are worth a separate look..
 - Not deployed.
 
 ## 2. Old versus new thresholds
@@ -133,7 +135,9 @@ The proven count was 96/99 because the corrupt duplicate flag hid position 136. 
 - tests58 (new): **32/32**.
 - tests46 (updated to the new ladder): **26/26**.
 - tests28, 29, 43, 55: unchanged results. tests55 cases 3 and 6 fail identically on the v700 baseline, so they are not caused by this change.
-- Full regression on the syllabus build: SYLLABUS_REGRESSION_PLACEHOLDER
+- Full regression on the syllabus build: **2,010 checks passed, 7 failed** (frozen copy of the combined Japanese + syllabus build, 58 suites).
+  - 5 are the long-standing known failures, which also fail on v699: tests33 2G, tests35 2C-th / 2C-zh, tests37 C1, tests39 A5.
+  - 2 are tests55 cases 3 and 6. They fail identically on the unchanged v700 code when run today, but passed yesterday, so they are not caused by these changes. They look date-dependent and are worth a separate look.
 
 ## 11. Remaining issues
 

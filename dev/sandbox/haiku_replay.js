@@ -9,6 +9,10 @@
 const { promptTextOf } = require('../benchmark/lib/cassette')
 const squash = s => String(s || '').replace(/\s+/g, '')
 
+// v703: a request may carry its text as blocks (the cached shared part + the rest); the app joins them with a newline for Gemini,
+// so the same join gives the exact prompt the Gemini run sent
+const blockText = c => Array.isArray(c) ? c.filter(b => b && b.type === 'text').map(b => String(b.text || '')).join('\n') : (c || '')
+
 function haikuReplayWrap(cassette, o) {
   o = o || {}
   const thinkingTokens = o.thinkingTokens == null ? 120 : o.thinkingTokens
@@ -22,7 +26,7 @@ function haikuReplayWrap(cassette, o) {
     stats.accessHeaders.add(opts.headers['x-lt-access'])
     const body = JSON.parse(opts.body)
     stats.bodies.push(body)
-    const prompt = [body.system || ''].concat(body.messages.map(m => m.content)).join('')
+    const prompt = [blockText(body.system)].concat(body.messages.map(m => blockText(m.content))).join('')
     const q = byPrompt.get(squash(prompt)) || []
     const e = q.find(x => !taken.has(x.seq))
     if (!e) { stats.unmatched.push(prompt.slice(0, 160)); return { ok: false, status: 400, json: async () => ({ type: 'error', error: { type: 'invalid_request_error', message: 'HAIKU_REPLAY: prompt not in recording' } }) } }
@@ -62,7 +66,7 @@ function haikuSimWrap(o) {
     if (String(url) !== '/api/anthropic') { stats.gemini++; return innerFetch(url, opts) }
     stats.anthropic++
     const body = JSON.parse(opts.body)
-    const prompt = [body.system || ''].concat(body.messages.map(m => m.content)).filter(Boolean).join('\n')
+    const prompt = [blockText(body.system)].concat(body.messages.map(m => blockText(m.content))).filter(Boolean).join('\n')
     const res = await innerFetch('https://generativelanguage.googleapis.com/v1beta/models/sim-haiku:generateContent?key=SIM',
       { method: 'POST', body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: {} }) })
     const data = await res.json().catch(() => null)

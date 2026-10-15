@@ -167,8 +167,11 @@ const thirdOf = (tr, id) => tr.pairs.filter(p => p && p.targetId === id && p.pai
     T('F1', 'a cue that asks for more than the Thai says is fixed on the CUE side — the Thai is kept (live: ป้ายนี้ถูกครับ became ป้ายนี้ถูกที่รอครับ); v696 removes the extra background before the prompt judge, v693 rebuilt it after a 3/5',
       !!pm && !/while they wait/.test(pm.prompt) && logs.some(l => /THAI_CUE_REBUILT_FROM_TRANSLATION|CUE_CLARITY \(quality review/.test(l)) && !asked.improve.includes(tP.thai), { prompt: pm && pm.prompt, improve: asked.improve })
     T('F2', 'a remark that is ONLY a topic jump is not turned into a rewrite (live: ถอดได้เลยครับ จานนั้นขนาดใหญ่มาก)', !asked.improve.includes(tTopic.thai) && logs.some(l => /topic-change remark only/.test(l)), asked.improve)
-    T('F3', 'a QC rewrite that loses the target is discarded and the original line kept (live: the จอด line became ใช่ครับ ไปด้วยกันไหมครับ, then the final audit dropped it)',
-      asked.improve.includes(tLose.thai) && after(tLose.id).map(p => p.thai).join('|') === loseOrig.join('|') && logs.some(l => /QC improve discarded.*TARGET_MISSING/.test(l)), { now: after(tLose.id).map(p => p.thai), logs: logs.filter(l => /discarded/.test(l)) })
+    // v703 (owner plan "To reach 8/10", Stage 2: a failed repair must never restore the original): the rewrite is still discarded, but the
+    // line the judge flagged is no longer kept as valid — it is marked QC_FLAGGED_NOT_REPAIRED and its slot goes to quota recovery (tests60 A)
+    T('F3', 'a QC rewrite that loses the target is discarded (live: the จอด line became ใช่ครับ ไปด้วยกันไหมครับ) — and since v703 the flagged original is marked invalid for quota recovery, not kept',
+      asked.improve.includes(tLose.thai) && after(tLose.id).map(p => p.thai).join('|') === loseOrig.join('|') && logs.some(l => /QC improve for .*the rewrite failed \(TARGET_MISSING/.test(l)) &&
+      after(tLose.id).filter(p => /^QC_FLAGGED_NOT_REPAIRED/.test(p._qcInvalid || '')).length === 1, { now: after(tLose.id).map(p => p.thai), logs: logs.filter(l => /discarded/.test(l)) })
   }
 
   out.forEach(l => console.log(l))

@@ -132,6 +132,11 @@ function mock(S, lang, opt = {}) {
       return JSON.stringify(lang === 'ja' ? (k > 1 || /TARGET GROUP|REPLACEMENT ONLY/.test(q) ? { recalls: out } : out) : out[0])
     }
     if (/Evaluate this .*group/.test(q)) return JSON.stringify({ action: 'clean', reason: 'ok' })
+    // v703 — the EPISODES judge (separate short scenes): fails with cohFail unless only the one-story judge is meant to fail (storyOnlyFail)
+    if (/Judge the listening track below as a set of SEPARATE SHORT SCENES/.test(q)) {
+      const scenes = [...q.matchAll(/^Scene (\d+)/gm)].map(x => +x[1]), bad = !!opt.cohFail && !opt.storyOnlyFail
+      return JSON.stringify({ scenes: scenes.map(n => ({ scene: n, pass: !bad, breakAfterLine: bad ? 1 : null, reason: bad ? 'unrelated sentences' : 'ok' })), overall: bad ? 2 : 4, reason: 'mock episodes' })
+    }
     if (/Judge the WHOLE listening track/.test(q)) {
       const scenes = [...q.matchAll(/^Scene (\d+)/gm)].map(x => +x[1])
       return JSON.stringify({ scenes: scenes.map(n => ({ scene: n, pass: !opt.cohFail, breakAfterLine: opt.cohFail ? 1 : null, reason: opt.cohFail ? 'topic jumps between unrelated sentences' : 'ok' })), overall: opt.cohFail ? 2 : 5, reason: 'mock' })

@@ -9267,6 +9267,7 @@ async function geminiRequest({ apiKey, model, messages, maxTokens, temperature, 
   const _aiModel = aiModelForRequest(runId, stage)
   const _optModel = !!(AI_GEN_MODELS[_aiModel] && AI_GEN_MODELS[_aiModel].provider === 'anthropic')
   const _prov = _optModel ? 'anthropic' : 'gemini', _rowModel = _optModel ? _aiModel : modelId
+  if (!_optModel && (messages || []).some(m => typeof m.content === 'string' && m.content.includes(PROMPT_CACHE_MARK))) messages = messages.map(m => ({ ...m, content: stripPromptCacheMark(m.content) }))
   const schema = json && typeof json === 'object' ? json : null
   const schemaKey = schema ? Object.keys(GEMINI_SCHEMAS).find(k => GEMINI_SCHEMAS[k] === schema) || 'custom' : (json ? 'json' : null)
   if (!_optModel && !isGeminiApiKey(key)) {
@@ -9524,8 +9525,25 @@ function anthropicJsonFormat(geminiSchema) {
   const isObj = inner.type === 'object'
   return { wrapped: !isObj, format: { type: 'json_schema', schema: isObj ? inner : { type: 'object', properties: { items: inner }, required: ['items'], additionalProperties: false } } }
 }
+// v703 — PROMPT CACHING (cost). A prompt builder puts PROMPT_CACHE_MARK where the part shared by many requests ends (the Thai writer's
+// rules + allowed-word list, identical for all 30 targets of a track). Haiku gets that part as a cached block — later requests read it at
+// 10% of the input price; Gemini and any other provider simply get the text without the mark. The mark is invisible if it ever leaks.
+const PROMPT_CACHE_MARK = '\n\u2063\u2063\u2063\n'
+const stripPromptCacheMark = t => typeof t === 'string' ? t.split(PROMPT_CACHE_MARK).join('\n') : t
+function anthropicCacheBlocks(text) {
+  const t = String(text || ''), i = t.indexOf(PROMPT_CACHE_MARK)
+  if (i <= 0) return null
+  const head = t.slice(0, i), tail = stripPromptCacheMark(t.slice(i + PROMPT_CACHE_MARK.length))
+  return [{ type: 'text', text: head, cache_control: { type: 'ephemeral' } }].concat(tail.trim() ? [{ type: 'text', text: tail }] : [])
+}
 function anthropicRequestBody({ model, messages, maxTokens, json }) {
   const m = anthropicMessages(messages)
+  // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
+  let marked = false
+  if (m.system && m.system.includes(PROMPT_CACHE_MARK)) { const bl = anthropicCacheBlocks(m.system); if (bl) { m.system = bl; marked = true } else m.system = stripPromptCacheMark(m.system) }
+  m.messages = m.messages.map(x => { if (typeof x.content !== 'string' || !x.content.includes(PROMPT_CACHE_MARK)) return x
+    const bl = !marked && anthropicCacheBlocks(x.content); if (bl) { marked = true; return { ...x, content: bl } }
+    return { ...x, content: stripPromptCacheMark(x.content) } })
   const fmt = json && typeof json === 'object' ? anthropicJsonFormat(json) : null
   // Gemini ran with thinking off and a short cap; Haiku thinks adaptively and thinking counts toward max_tokens, so the cap
   // leaves room for it (within the ceiling the server function enforces).
@@ -14898,7 +14916,8 @@ function thaiIsTokenSpaced(thai) {
 // real utterance boundary (ใช่ครับ ไม่ต้องจ่ายครับ · ฟรีจริงๆเหรอคะ ไม่ต้องจ่ายเลยค่ะ): it is kept as ONE space. Spaces inside
 // a clause (token spacing from the model) are still removed. No underscores / markers are ever introduced.
 const THAI_CLAUSE_END_RE = /(ครับ|ค่ะ|คะ|จ้ะ|จ้า|นะ|เหรอ|หรอ|ไหม|มั้ย|เถอะ|ล่ะ)$/
-const THAI_RESPONSE_HEAD_RE = /^(ใช่|ไม่ใช่|โอเค|จริงเหรอ|งั้น|อ๋อ|อืม|เอ่อ|เปล่า|แน่นอน)\s+(?!แล้ว|เลย|ไหม|มั้ย|หรือ)[\u0e00-\u0e7f]/
+// v703: ได้ before a pronoun is a reply of its own (live v702: "ได้ ผมลองซาลาเปาครับ" was collapsed into ได้ผมลอง…)
+const THAI_RESPONSE_HEAD_RE = /^(ใช่|ไม่ใช่|โอเค|จริงเหรอ|งั้น|อ๋อ|อืม|เอ่อ|เปล่า|แน่นอน|ได้(?=\s+(?:ผม|ฉัน|คุณ|เรา|เขา)))\s+(?!แล้ว|เลย|ไหม|มั้ย|หรือ)[\u0e00-\u0e7f]/
 const THAI_CLAUSE_FOLLOW_RE = /^(ครับ|ค่ะ|คะ|จ้ะ|จ้า|จ๊ะ|นะ|ล่ะ|เหรอ|หรอ|ไหม|มั้ย)/   // v669: a particle that continues the same clause
 function normaliseThaiSpacing(thai) {
   let s = String(thai || '').trim().replace(/[_]+/g, ' ')
@@ -16355,7 +16374,11 @@ const THAI_NATURALNESS_GUIDE_V701 =
   '  - ไม่เชิง is a hedged answer and says HOW it is not quite so: ไม่เชิงค่ะ แค่ชอบนิดหน่อย — never followed by an unrelated statement\n' +
   '  - ask about a love STORY (เรื่องความรักของเขา), never "listen to love" (ฟังความรัก) · a wish is ขอให้มีความสุข / ขอให้โชคดี, not ขอให้เขาดี\n' +
   '  - เชิญนั่งครับ is an invitation — never a yes/no question (not เชิญนั่งไหม) · ยินดีต้อนรับครับ — not "welcome you with water"\n' +
-  '  - "I will tell you when I know" is รู้แล้วจะบอกนะครับ (not บอกคุณเมื่อรู้) · คุณมีรถไหม (not มีรถขับไหม) · งั้น or แล้ว, never งั้นแล้ว\n'
+  '  - "I will tell you when I know" is รู้แล้วจะบอกนะครับ (not บอกคุณเมื่อรู้) · คุณมีรถไหม (not มีรถขับไหม) · งั้น or แล้ว, never งั้นแล้ว\n' +
+  // v703 — from the owner's review of the live v702 Thai track
+  '  - นี่ครับ (handing something over) comes FIRST: นี่ครับ ช้อนครับ — not ช้อนนะ นี่ครับ / อร่อยไหม นี่ครับ · a reason is เหตุผล…คืออะไร (not เป็นอะไร)\n' +
+  '  - ไม่ได้เจอกันตั้งนาน is said when meeting again — never with วันนี้ · ชื่ออะไรก็ได้ means "whatever it is called", not "what is it called?"\n' +
+  '  - fit the relationship: no romantic promises between friends (ผมอยากอยู่กับคุณตลอดไป / คุณจะรักผมตลอดไปไหม); give the three lines of a word three different jobs, not three echoes\n'
 const THAI_NATURALNESS_GUIDE =
   '• NATURAL THAI — mistakes seen before (write the natural form):\n' +
   '  - "there" is ที่นั่น (ทางเข้าอยู่ที่นั่นครับ), never ที่นั้น (นั้น = "that" after a noun)\n' +
@@ -16560,7 +16583,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
 
   const restaurantUses = prevLines.filter(l => l.thai && l.thai.includes('ร้านอาหาร')).length
 
-  const baseSystem = 'You write Pimsleur-style Thai lessons. Write one exchange in an ongoing conversation.\n' +
+  // v703 (cost): everything up to PROMPT_CACHE_MARK is the same for every target of this track (scene, rules, allowed words, format), so
+  // Haiku reads it from its prompt cache; the per-target lines (target, usage frame, bans, number hint) and any rewrite hint follow it.
+  const _stableSystem = 'You write Pimsleur-style Thai lessons. Write one exchange in an ongoing conversation.\n' +
     'SCENE: ' + scene + '\n' +
     'A = ' + charA + ' — MUST end every sentence with ครับ\n' +
     'B = ' + charB + ' — MUST end every sentence with ' + (/\bman\b|\bmale\b|\bboy\b|\bold man\b|\bgentleman\b/i.test(charB) ? 'ครับ (B is MALE)' : 'ค่ะ or คะ') + '\n' +
@@ -16572,8 +16597,6 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     // like เรื่อง and อาจจะ and being rejected 8–11 times. Constrain first,
     // do not generate freely and clean up afterwards.
     '• ALLOWED WORDS — use ONLY these, plus the target:\n' + allowedVocabLine + '\n' +
-    '• The target word for this exchange is: ' + target.thai + '\n' +
-    thaiUsageFrameLine(target) +
     '• THAI ORTHOGRAPHY: write normal continuous Thai. Thai does not put spaces\n' +
     '  between words. Do NOT space words apart, do NOT put spaces around the target,\n' +
     '  and do NOT add English-style commas. Write หาไม่ได้ครับ, never หา ไม่ได้ ครับ.\n' +
@@ -16606,12 +16629,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• Add a "ok": true field to each line object — only set true if the line is natural, accurate, and the target word is used correctly\n' +
     '• EXPERIENCER RULE: feeling/state verbs (หิว เหนื่อย ดีใจ กลัว) need a person as subject — NEVER apply to places or objects\n' +
     '• CREATIVITY: vary locations (ที่บ้าน ตลาด ชายหาด สนามบิน) — do NOT repeat ร้านอาหาร\n' +
-    (restaurantUses >= 2 ? '• LOCATION BAN: ร้านอาหาร already used twice — use a different location\n' : '') +
-    (usedSubjects && usedSubjects.size > 0 ? '• SUBJECT BAN: these topics have already appeared — do NOT use them again: ' + [...usedSubjects].join(', ') + '\n' : '') +
     '• NUMBERS: only include a number if it arises NATURALLY from the topic (e.g. discussing price → mention amount, discussing time → mention hour). NEVER force a random number into an unrelated sentence just to add variety.\n' +
     (cueClarityOn() ? '' : '• "prompt" = English instruction telling exactly what to SAY (e.g. "Tell her you want to go to the airport" or "Ask if there are three seats") — not a translation\n') +
     '• "english" = natural fluent English — NOT word-for-word. Examples: ผมไม่รู้ → "I have no idea", น่าเห็นใจ → "that\'s unfortunate" (NOT "that\'s very sympathetic"), น่าสนใจ → "that\'s interesting", แย่จัง → "oh no" or "that\'s too bad"\n' +
-    (numberHint ? numberHint + '\n' : '') +
     'Return ONLY JSON array of exactly 3 objects:\n' +
     // The model writes THAI ONLY. Learner-facing phonetics are composed afterwards
     // from the canonical dictionary (see composeThaiPhonetic), so asking for them
@@ -16625,6 +16645,20 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'spaces. Never output token-spaced Thai such as คุณ อยาก ซื้อ อะไร ครับ — write\n' +
     'คุณอยากซื้ออะไรครับ. This applies to normal, repair, fallback and survival modes.\n' +
     'glosses = one English word per Thai word, in order (e.g. ผมจะไป → ["I","will","go"]). Use "-" for particles like ครับ/ค่ะ.'
+  const _targetSystem = '\nTHIS EXCHANGE:\n' +
+    '• The target word for this exchange is: ' + target.thai + '\n' +
+    thaiUsageFrameLine(target) +
+    (restaurantUses >= 2 ? '• LOCATION BAN: ร้านอาหาร already used twice — use a different location\n' : '') +
+    (usedSubjects && usedSubjects.size > 0 ? '• SUBJECT BAN: these topics have already appeared — do NOT use them again: ' + [...usedSubjects].join(', ') + '\n' : '') +
+    (numberHint ? numberHint + '\n' : '')
+  // (with the v693+ Daily switch off — the recorded-run replays — the prompt is byte-identical to v702: the same lines in the old order)
+  const _cacheOrder = dailyV693On()
+  const _legacySystem = () => _stableSystem
+    .replace('• ALLOWED WORDS — use ONLY these, plus the target:\n' + allowedVocabLine + '\n', m0 => m0 + '• The target word for this exchange is: ' + target.thai + '\n' + thaiUsageFrameLine(target))
+    .replace('• CREATIVITY: vary locations (ที่บ้าน ตลาด ชายหาด สนามบิน) — do NOT repeat ร้านอาหาร\n', m0 => m0 + (restaurantUses >= 2 ? '• LOCATION BAN: ร้านอาหาร already used twice — use a different location\n' : '') +
+      (usedSubjects && usedSubjects.size > 0 ? '• SUBJECT BAN: these topics have already appeared — do NOT use them again: ' + [...usedSubjects].join(', ') + '\n' : ''))
+    .replace('Return ONLY JSON array of exactly 3 objects:\n', m0 => (numberHint ? numberHint + '\n' : '') + m0)
+  const baseSystem = _cacheOrder ? _stableSystem + PROMPT_CACHE_MARK + _targetSystem : _legacySystem()
 
   // Build natural context hint for how to use the target word
   // Detect proper nouns (capitalized English or known place names)
@@ -16952,7 +16986,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           '\nKeep the same target word and meaning. Change as little as possible —\n' +
           'prefer a SHORTER, simpler sentence.\n\n---\n\n'
         : ''
-      const combinedMsg = failHint + baseSystem + '\n\n---\n\n' + baseUser
+      // v703: the rewrite hint follows the cached shared part (it used to come first, so no retry could reuse the cache)
+      const combinedMsg = _cacheOrder ? _stableSystem + PROMPT_CACHE_MARK + failHint + _targetSystem + '\n\n---\n\n' + baseUser : failHint + baseSystem + '\n\n---\n\n' + baseUser
       const tokenBudget = model && model.includes('32b') ? 4500 : model && model.includes('gemini') ? 4500 : 3800
       if (attempt > 0) aiTagNextCall('generation check ' + (attempt + 1) + '/' + CHECK_SRCS.length + (failureReasons[0] ? ': ' + String(failureReasons[0]).slice(0, 60) : ''))
       _tel.paid++
@@ -17556,6 +17591,8 @@ const CC_IRREG_3SG = { is: 'are', was: 'were', has: 'have', does: 'do', "doesn't
 const CC_BASE_VERBS = new Set(('go come take get eat drink buy use wait look check turn cross have try sit stand walk drive run order pay give bring put stop park rent call answer help ' +
   'let leave hurry move open close carry keep choose pick sleep rest stay show follow meet join tell ask say be relax hold slow speed').split(' '))
 const ccCap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+// v703 — imperative verbs the strict (final Thai cue lint) builder also recognises ("Just listen a bit." · "Teach me slowly.")
+const CC_STRICT_VERBS = new Set('listen teach see love forgive trust think wish enjoy learn speak talk read write sing dance smile remember forget believe wear cook clean'.split(' '))
 const ccHasWord = (text, w) => new RegExp('(^|[^a-zà-ÿ\'])' + String(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-zà-ÿ])').test(String(text || ''))
 const ccWords = s => String(s || '').toLowerCase().replace(/[“”"]/g, '').match(/[a-zà-ÿ][a-zà-ÿ'’-]*/g) || []
 const ccStem = w => { w = w.replace(/[’']s$/, '').replace(/[’']$/, ''); if (w.length > 4 && /ies$/.test(w)) return w.slice(0, -3) + 'y'; if (w.length > 5 && /(ches|shes|sses|xes)$/.test(w)) return w.slice(0, -2)
@@ -17600,6 +17637,9 @@ function ccShiftPersons(s, o) {
     // v701: "glad you came" / "hope you like it" — a "you" followed by its verb is the SUBJECT (she / he), never her / him
     if (rep === 'them' && low === 'you' && /^(came|come|comes|are|were|was|will|would|can|could|did|do|does|have|had|went|go|got|get|like|liked|want|wanted|know|knew|made|make|said|say|think|thought|need|needed|left|arrived|enjoy|enjoyed|look|looked|feel|felt|'re|'ll|'ve)$/i.test(nextWord(parts, k) || '')) rep = o.addr ? (o.addr === 'm' ? 'he' : 'she') : 'they'
     if (rep === 'them' && o.addr) rep = o.addr === 'm' ? 'him' : 'her'
+    // v703 (strict, the final Thai cue lint only): the listener is one known person — a subject "you" is he / she, never "they"
+    if (o.strict && o.addr && CC_ADDR[low] != null) { const M3 = o.addr === 'm' ? { they: 'he', "they're": "he's", "they've": "he's", "they'll": "he'll", "they'd": "he'd", their: 'his', theirs: 'his', themselves: 'himself' }
+      : { they: 'she', "they're": "she's", "they've": "she's", "they'll": "she'll", "they'd": "she'd", their: 'her', theirs: 'hers', themselves: 'herself' }; if (M3[rep]) rep = M3[rep] }
     return tok.charAt(0) === tok.charAt(0).toUpperCase() && k > 0 && low !== 'i' && !/^i'/.test(low) ? ccCap(rep) : rep
   })
   // "you am / you was" after a shifted I
@@ -17655,11 +17695,12 @@ function ccSubject(tokens) {
 const CC_SUBJ = { you: 'they', i: 'you', we: 'we', he: 'he', she: 'she', it: 'it', they: 'they', there: 'there', this: 'this', that: 'that', these: 'these', those: 'those' }
 function ccBeFor(subj, be) { const s = subj.toLowerCase(); if (/^(he|she)$/.test(s)) return /^(was|were)$/.test(be) ? 'was' : 'is'; if (/^(they|you|we|these|those)$/.test(s)) return /^(was|were)$/.test(be) ? 'were' : 'are'; if (s === 'i') return be === 'was' ? 'was' : 'am'; return be }
 // a direct English question → reported clause ("if they want to eat together" · "where we buy the tickets"), or null
-function ccIndirect(q, addr) {
+function ccIndirect(q, addr, strict) {
   let s = String(q || '').trim().replace(/[?？]+\s*$/, '')
   if (!s || /[?.!]\s/.test(s) || /^(okay|ok|so|really|well|oh|hey|then|good|great|sure|yes|no)\b[,!]/i.test(s)) return null
   const T = s.split(/\s+/), L = T.map(x => x.toLowerCase())
-  const map = arr => ccShiftPersons(arr.join(' '), { addr })
+  const map = arr => ccShiftPersons(arr.join(' '), { addr, strict })
+  const is3 = x => /^(he|she|it|this|that)$/.test(x) || (strict && /^[A-Z][A-Za-z'-]+$/.test(x) && x !== 'I')
   const mapSubj = arr => { const l0 = arr.length === 1 && arr[0].toLowerCase(); if (l0 === 'you' && addr) return addr === 'm' ? 'he' : 'she'
     const one = arr.length === 1 && CC_SUBJ[l0]; return one ? one : map(arr) }
   if (/^(is|are|was|were|am)$/.test(L[0])) {
@@ -17670,7 +17711,7 @@ function ccIndirect(q, addr) {
   if (/^(do|does)$/.test(L[0])) {
     const n = ccSubject(T.slice(1)); if (n == null || n > 1) return null
     const subj = mapSubj(T.slice(1, 2)), rest = T.slice(2); if (!rest.length) return null
-    if (/^(he|she|it|this|that)$/.test(subj)) { const W = [subj].concat(rest); ccInflect3sg(W, 0); return 'if ' + map(W) }
+    if (is3(subj)) { const W = [subj].concat(rest); ccInflect3sg(W, 0); return 'if ' + map(W) }
     return 'if ' + subj + ' ' + map(rest)
   }
   if (/^(can|could|will|would|should|shall|may|might|must|have|has)$/.test(L[0])) {
@@ -17692,7 +17733,7 @@ function ccIndirect(q, addr) {
     }
     if (/^(do|does)$/.test(RL[0])) { const n = ccSubject(R.slice(1)); if (n == null || n > 1) return null
       const subj = mapSubj(R.slice(1, 2)), rest = R.slice(2); if (!rest.length) return null
-      if (/^(he|she|it|this|that)$/.test(subj)) { const X = [subj].concat(rest); ccInflect3sg(X, 0); return W + ' ' + map(X) }
+      if (is3(subj)) { const X = [subj].concat(rest); ccInflect3sg(X, 0); return W + ' ' + map(X) }
       return W + ' ' + subj + ' ' + map(rest) }
     // "why can't you buy it" → "why they can't buy it" (a negated modal needs no agreement; did / don't / isn't stay unsafe)
     if (/^(can't|cannot|won't|couldn't|wouldn't|shouldn't)$/.test(RL[0])) { const n = ccSubject(R.slice(1)); if (n == null) return null
@@ -17722,6 +17763,10 @@ const ccEnd = s => { s = String(s).trim().replace(/\s+/g, ' ').replace(/\s+([,.!
 // the cue built from the VERIFIED meaning (the line's English, where it agrees with the sentence)
 function cueFromEnglish(lang, en, sentence, ctx) {
   ctx = ctx || {}
+  // v703: strict = the final Thai cue lint — the listener is one known person (him / her, never "them"), and more imperative verbs
+  const SA = ctx.strict && ctx.addr ? { addr: ctx.addr, strict: true } : undefined
+  const TT = SA ? (ctx.addr === 'm' ? 'Tell him' : 'Tell her') : 'Tell them'
+  const isBaseV = w => CC_BASE_VERBS.has(w) || (!!SA && CC_STRICT_VERBS.has(w))
   // ", you know" (よ / นะ emphasis) is not something to say; agreement tags stay as they are
   const e = String(en || '').trim().replace(/[.!。！]+$/, '').replace(/,\s*(you know|huh|eh)$/i, '')
   if (e.length < 2 || /[฀-๿぀-ヿ一-鿿]/.test(e)) return null
@@ -17738,13 +17783,20 @@ function cueFromEnglish(lang, en, sentence, ctx) {
     const rs = r.replace(/^(?:Then say|Say)\s+/, m0 => /Then/.test(m0) ? 'then ' : '')
     return rs !== r ? ccEnd('Say ' + l1 + ', ' + rs) : ccEnd('Say ' + l1 + ', then ' + r.charAt(0).toLowerCase() + r.slice(1))
   }
+  // v703 (strict): "You're sincere with him, right?" → "Check that he is sincere with him." (was "Ask: You're sincere …?")
+  if (SA) { const tq = e.match(/^(you(?:'re| are)|you)\s+(.+?),\s*(?:right|aren't you|don't you|isn't it)\s*\??$/i)
+    if (tq) { const subj = ctx.addr === 'm' ? 'he' : 'she', W = tq[2].split(/\s+/)
+      let body
+      if (/^you(?:'re| are)$/i.test(tq[1])) body = subj + ' is ' + ccShiftPersons(tq[2], SA)
+      else { const X = [subj].concat(W); ccInflect3sg(X, 0); body = subj + ' ' + ccShiftPersons(X.slice(1).join(' '), SA) }
+      return ccEnd('Check that ' + body) } }
   if (isQ) {
-    if (/^shall we\b/i.test(e)) return ccEnd('Suggest we ' + ccShiftPersons(e.replace(/^shall we\s+/i, '').replace(/[?？]+$/, '')))
-    if (/^(how about|what about)\b/i.test(e)) return ccEnd('Suggest ' + ccShiftPersons(e.replace(/^(how|what) about\s+/i, '').replace(/[?？]+$/, '')))
-    const ind = ccIndirect(e, ctx.addr)
+    if (/^shall we\b/i.test(e)) return ccEnd('Suggest we ' + ccShiftPersons(e.replace(/^shall we\s+/i, '').replace(/[?？]+$/, ''), SA))
+    if (/^(how about|what about)\b/i.test(e)) return ccEnd('Suggest ' + ccShiftPersons(e.replace(/^(how|what) about\s+/i, '').replace(/[?？]+$/, ''), SA))
+    const ind = ccIndirect(e, ctx.addr, !!SA)
     return ind ? ccEnd('Ask ' + ind) : ccEnd('Ask: ' + e.replace(/[?？]*$/, '?')).replace(/\?\.$/, '?')
   }
-  if (/^let'?s\b/i.test(e)) return ccEnd('Suggest we ' + ccShiftPersons(e.replace(/^let'?s\s+/i, '')))
+  if (/^let'?s\b/i.test(e)) return ccEnd('Suggest we ' + ccShiftPersons(e.replace(/^let'?s\s+/i, ''), SA))
   // v700 — "Thank you (very much), Somchai" → "Thank Somchai very much." (was "Say thank them very much, Somchai.")
   { const ty = e.match(/^(?:thank you|thanks)\b(.*)$/i)
     if (ty) { let rest = ty[1]; const nm = (ctx.names || []).find(n => n && new RegExp(',?\\s*\\b' + n + '\\b').test(rest))
@@ -17755,14 +17807,14 @@ function cueFromEnglish(lang, en, sentence, ctx) {
       const sp = rest.match(/^([^.!?]*[.!?])\s+(\S[\s\S]*)$/)
       if (sp) return ccEnd('Thank ' + who + ccShiftPersons(sp[1].replace(/^\s*,\s*/, ' ').replace(/[.!?]+$/, ''), { addr: ctx.addr }).replace(/\s+$/, '') + ', and say ' + ccShiftPersons(ccLowerFirst(sp[2], ctx.names), { addr: ctx.addr }).replace(/[.!?]+$/, ''))
       return ccEnd('Thank ' + who + ccShiftPersons(rest.replace(/^\s*,\s*/, ' '), { addr: ctx.addr }).replace(/\s+$/, '')) } }
-  if (/^(don't|do not|never)\s+[a-z]/i.test(e)) return ccEnd('Tell them not to ' + ccShiftPersons(e.replace(/^(don't|do not|never)\s+/i, '')))
+  if (/^(don't|do not|never)\s+[a-z]/i.test(e)) return ccEnd(TT + ' not to ' + ccShiftPersons(e.replace(/^(don't|do not|never)\s+/i, ''), SA))
   const first = (e.match(/^(?:just\s+|please\s+)?([a-z]+)/i) || [])[1]
-  if (first && CC_BASE_VERBS.has(first.toLowerCase()) && !/^(i|you|we|he|she|they)\b/i.test(e)) return ccEnd('Tell them to ' + ccShiftPersons(ccLowerFirst(e, ctx.names)))
+  if (first && isBaseV(first.toLowerCase()) && !/^(i|you|we|he|she|they)\b/i.test(e)) return ccEnd(TT + ' to ' + ccShiftPersons(ccLowerFirst(e, ctx.names), SA))
   const yv = e.match(/^(?:then\s+)?you(?:\s+should)?\s+([a-z]+)\b(.*)$/i)
-  if (yv && CC_BASE_VERBS.has(yv[1].toLowerCase()) && !/^(have|are|were)$/i.test(yv[1])) return ccEnd('Tell them to ' + yv[1].toLowerCase() + ccShiftPersons(yv[2]))
+  if (yv && isBaseV(yv[1].toLowerCase()) && !/^(have|are|were)$/i.test(yv[1]) && !(SA && /^(look|seem|feel|sound|smell|taste|know|like|want|need|can|love|see)$/i.test(yv[1]))) return ccEnd(TT + ' to ' + yv[1].toLowerCase() + ccShiftPersons(yv[2], SA))
   const yc = e.match(/^(.*?),\s*you\s+([a-z]+)\b(.*)$/i)
-  if (yc && CC_BASE_VERBS.has(yc[2].toLowerCase()) && !/\byou\b/i.test(yc[1])) return ccEnd('Say ' + ccShiftPersons(ccLowerFirst(yc[1], ctx.names)) + ' and tell them to ' + yc[2].toLowerCase() + ccShiftPersons(yc[3]))
-  return ccEnd('Say ' + ccShiftPersons(ccLowerFirst(e, ctx.names)))
+  if (yc && isBaseV(yc[2].toLowerCase()) && !/\byou\b/i.test(yc[1])) return ccEnd('Say ' + ccShiftPersons(ccLowerFirst(yc[1], ctx.names), SA) + ' and ' + TT.toLowerCase() + ' to ' + yc[2].toLowerCase() + ccShiftPersons(yc[3], SA))
+  return ccEnd('Say ' + ccShiftPersons(ccLowerFirst(e, ctx.names), SA))
 }
 // trailing / inserted background: openers of a clause or phrase that may be removed when NONE of its words is in the meaning
 const CC_BG_TRAIL = /(?:,\s*(?=pointing\b)|,\s*|\s+)(?=(?:pointing|since|because|as you|as an alternative|so (?:that|you|they|we|she|he)|so you two|to share|to go with|to add|following|while|in case|sounding|seeking|before (?:you|they|we|she|he)|by asking|with a [a-z]+ tone|in a [a-z]+ (?:way|tone|voice)|on the walk|on foot|for the day|at the (?:next|café|cafe|table|shop|counter|display|menu)|on the (?:menu|table|display|way)|with the [a-z]+|from here|here|instead|casually|warmly|softly|happily|gently|cheerfully|not a lot|not (?:today|tomorrow|yesterday|now|here|there)|to (?:him|her|them)|close to|after (?:[AB]|they|he|she|you|your friend) (?:said|asked|says|asks))\b)/gi
@@ -18483,7 +18535,12 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       allPairs.concat(batch).forEach(p => { if (!p || p.targetId == null || (batch.includes(p) && !kept.has(p._pairKey))) return
         const prior = seenBy.get(p.targetId) || []
         const c = prior.map(q => thaiSelfContradiction(q, p)).find(Boolean)
+        // v703: a second bare echo of the target, or a romantic promise between friends, is regenerated here (no extra audit call)
+        const echo = !c && thaiBareEcho(p.thai, p._target) && prior.some(q => thaiBareEcho(q.thai, p._target))
+        const rel = !c && !echo && thaiRelationshipProblem(p.thai, scene + ' ' + charA + ' ' + charB)
         if (c && batch.includes(p)) { kept.delete(p._pairKey); why.set(p.thai, 'STATE_CONTRADICTION: ' + c) }
+        else if (echo && batch.includes(p)) { kept.delete(p._pairKey); why.set(p.thai, 'ECHO_RECALL: only repeats "' + p._target + '" like an earlier line — say something new with it') }
+        else if (rel && batch.includes(p)) { kept.delete(p._pairKey); why.set(p.thai, rel) }
         else seenBy.set(p.targetId, prior.concat([p])) })
     }
     const dropped = batch.filter(p => !kept.has(p._pairKey))
@@ -20463,6 +20520,7 @@ function listeningCoverageExportLines(lt) {
       'Status: ' + (lt.readiness === 'READY' ? 'READY' : 'NOT_READY — Listening track needs repair') + ' · ' + (lt.listeningQuality || ''),
       'Turns: ' + lt.lines.length + ' in ' + (lt.sceneGroups || []).length + ' scene(s) · speakers A ' + ((lt.dialogueStats || {}).speakers || {}).A + ' / B ' + ((lt.dialogueStats || {}).speakers || {}).B]
     if (lt.gates) out.push('Gates: ' + Object.entries(lt.gates).map(([k, v]) => k + '=' + v).join(' · '))
+    if (lt.episodes) out.push('FORMAT: separate short scenes (the situations did not read as one story, so each scene was judged on its own; the player shows each scene\'s heading)')
     // v700 — the salvage, stated plainly: what was cut and which words stay due for the next Revision (SRS untouched)
     if (lt.salvage) { out.push('SALVAGE: ' + lt.salvage.removedTurns + ' turn(s) cut' + (lt.salvage.droppedScenes.length ? ' · situation(s) dropped ' + lt.salvage.droppedScenes.join(', ') : '') + ' after ' + lt.salvage.from + ' · every remaining line passed every check')
       ;(lt.salvage.deferred || []).forEach(d => out.push('  MOVED TO REVISION ' + d.target + ' (' + d.targetId + ') — ' + d.reason + ' · still due in SRS'))
@@ -21061,6 +21119,31 @@ function thaiLocalContradictions(pairs) {
   })
   return out
 }
+// v703 — a target line that is ONLY the target (plus particles / agreement words) is a bare echo. One per target is fine; the owner's v702
+// review: three near-identical ไม่ได้เจอกันตั้งนาน lines ("…ตั้งนานครับ", "…ตั้งนานแล้วค่ะ", "ใช่ …ตั้งนานมากครับ") teach nothing new.
+function thaiBareEcho(thai, target) {
+  const t = String(thai || '').replace(/\s+/g, ''), tg = String(target || '').replace(/\s+/g, '')
+  if (!tg || !t.includes(tg)) return false
+  return !t.replace(tg, '').replace(/ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า|ใช่|แล้ว|มาก|เลย|จริงๆ|จริง|ก็|เหมือนกัน|วันนี้|ๆ|เนอะ|สิ|ล่ะ|เนี่ย|ด้วย|โอ้|ว้าว|อืม/g, '').length
+}
+// v703 — the scene says the two speakers are friends / colleagues (not a couple): a romantic promise to the listener does not fit
+// (v702: ผมอยากอยู่กับคุณตลอดไปครับ / คุณจะรักผมตลอดไปไหมครับ, said to a close friend)
+function thaiSceneIsNonRomantic(sceneText) {
+  const t = String(sceneText || '')
+  return /\b(friends?|colleagues?|co-?workers?|classmates?|neighbou?rs?|boss|teacher|student|customer|shop ?keeper|vendor|guest|host|stranger)\b|เพื่อน/i.test(t) &&
+    !/\b(couple|partner|girlfriend|boyfriend|husband|wife|fianc[eé]e?|married|dating|lovers?|spouse|newlyweds?)\b|แฟน|สามี|ภรรยา|คู่รัก/i.test(t)
+}
+function thaiRelationshipProblem(thai, sceneText) {
+  const t = String(thai || '').replace(/\s+/g, '')
+  if (!thaiSceneIsNonRomantic(sceneText)) return null
+  if (/(อยู่กับ|รัก)(คุณ|ผม|ฉัน|เธอ)\S{0,6}(ตลอดไป|เสมอ|ตลอด)|คุณจะรัก(ผม|ฉัน)|แต่งงานกับ(คุณ|ผม|ฉัน)|(ผม|ฉัน)รักคุณ/.test(t))
+    return 'RELATIONSHIP_MISMATCH: a romantic promise to the listener, but the two speakers are friends / colleagues in this scene — make it about the friendship, a memory or a wish for the couple (เราจะเป็นเพื่อนกันตลอดไปนะครับ / ขอให้ทั้งสองคนรักกันตลอดไปค่ะ)'
+  return null
+}
+function thaiSceneTextOf(track) {
+  const t = track || {}, sc = t.sceneContract || {}, scene = t.scene || {}
+  try { return [typeof scene === 'string' ? scene : JSON.stringify(scene), sc.premise || '', JSON.stringify(sc.characters || [])].join(' ') } catch (e) { return '' }
+}
 function thaiSelfContradiction(a, b) {
   if (!a || !b || !a.thai || !b.thai || a === b || (a.speaker || 'A') !== (b.speaker || 'A')) return ''
   const isQ = t => THAI_Q_END_RE.test(t) || /อะไร|เท่าไหร่|ที่ไหน|ไหน|ยังไง|ทำไม|เมื่อไหร่|กี่|ใคร|หรือเปล่า|หรือยัง|ใช่ไหม/.test(t)
@@ -21423,7 +21506,139 @@ function thaiEnglishFaithfulFix(p) {
   let e2 = en
   if (!/อยาก|ต้องการ/.test(th)) e2 = e2.replace(/\b([Dd])o you want to (come|go) to\b/, (m0, d, v, at) => (at === 0 ? 'Are' : 'are') + ' you ' + (v === 'come' ? 'coming' : 'going') + ' to')
   if (/ดีใจ/.test(th) && !/มา(?!ก)/.test(th)) e2 = e2.replace(/\b(I'm|I am) (so |really |very )?glad (that )?you (came|could come|made it)\b/, (m0, a, b) => a + ' ' + (b || '') + 'glad')
+  // v703 (owner review of v702, pair 54): เลขาผมจัดนัดให้ — a third person does it for the SPEAKER; the Thai names no คุณ, so not "for you"
+  if (!/คุณ|เธอ/.test(th)) e2 = e2.replace(/^((?:My|The|His|Her|Our) [a-z]+ (?:[a-z]+s|will [a-z]+|can [a-z]+)\b.*?) for you\b/, '$1 for me')
+  // v703 (pair 68): งั้นไป…กับคุณไหม is the speaker offering to go WITH the listener, not "how about going … with you"
+  if (/กับคุณ\S*(ไหม|มั้ย)/.test(th.replace(/\s+/g, ''))) e2 = e2.replace(/\b([Hh])ow about going\b(.*?)\bwith you\?$/, (m0, h, mid) => (h === 'H' ? 'Shall' : 'shall') + ' I go' + mid + 'with you?')
   return e2
+}
+// v703 — FINAL CUE LINT (Thai, deterministic, no paid call). The owner's v702 review found cues that name the wrong person or read
+// badly: "Ask whether he always trusts him." (who trusts whom?), "Offer to buy you a pair of shorts." (the listener, not the
+// learner), "Then suggest going … with them.", "Say just listen a bit. you have to speak sincerely.", "Ask what café is this.".
+// A cue with one of these defects is rebuilt from the line's (verified) English in the strict builder — the listener is one known
+// person, named when a "he … him" would be ambiguous — and replaced only when the rebuilt cue has no defect. The Thai, English,
+// target and pronunciation are untouched. A changed cue loses its cached cue verdict, so the final snapshot audit judges it again.
+const TH_CUE_IDIOMS = [[/\bhere you go\b/gi, 'QQHEREYOUGO', 'here you go'], [/\bhere you are\b/gi, 'QQHEREYOUARE', 'here you are'], [/(?<!^)\bthank you\b/gi, 'QQTHANKYOU', 'thank you'], [/\bsee you\b/gi, 'QQSEEYOU', 'see you'],
+  [/\bnice to meet you\b/gi, 'QQNICETOMEETYOU', 'nice to meet you'], [/\bgood to see you\b/gi, 'QQGOODTOSEEYOU', 'good to see you']]
+const thCueStripIdioms = x => TH_CUE_IDIOMS.reduce((a, [re]) => a.replace(re, ' '), String(x || ''))
+const TH_CUE_YOU_VERBS = 'buy|teach|tell|give|show|help|with|for|love|meet|call|trust|forgive|invite|thank|bring|send|pay|take|wait for|join'
+function thaiCueDefects(cue, p, o) {
+  o = o || {}
+  const d = [], c = String(cue || '').trim(), en = String(p && p.english || '')
+  if (!c) return d
+  // a plural listener ("you all", "you two") is not one person: nothing here applies
+  if (/\byou (all|two|guys|both)\b|\bboth of you\b|\ball of you\b/i.test(en)) return d
+  const enX = thCueStripIdioms(en), cX = thCueStripIdioms(c)
+  if (/[.!?]\s+[a-z]/.test(c)) d.push('LOWER_SENTENCE')
+  // a second sentence that is the line itself, not an instruction: "Say nice to meet her. Have some water."
+  else if (/[.!?]\s+(?!(?:Say|Ask|Tell|Then|Suggest|Offer|Check|Thank|Agree|Answer|Explain|Apologi[sz]e|Invite|Wish|Remind|Promise)\b)[A-Z]/.test(c)) d.push('RAW_SECOND_SENTENCE')
+  if (/^Say thank (him|her|them)\b/.test(c)) d.push('SAY_THANK')
+  if (/^(?:Ask|Say|Tell (?:him|her|them))\s*:/.test(c)) d.push('TEMPLATE_COPY')
+  const enFirst = /\b(I|I'm|I've|I'll|I'd|me|my|mine|we|us|our|let's|Let's)\b/.test(enX)
+  if (!enFirst && /\byou\b/i.test(enX) && /\byou\b/i.test(cX)) d.push('ADDRESSEE_AS_YOU')
+  else { const m = cX.match(new RegExp('\\b(' + TH_CUE_YOU_VERBS + ')\\s+you\\b', 'i')); if (m && new RegExp('\\b' + m[1] + '\\s+you\\b', 'i').test(enX)) d.push('ADDRESSEE_AS_YOU') }
+  if (/^(?:Then\s+)?[Ss]ay\s+(?:just\s+|please\s+)?([a-z]+)\b/.test(c)) { const v = c.match(/^(?:Then\s+)?[Ss]ay\s+(?:just\s+|please\s+)?([a-z]+)\b/)[1]
+    if ((CC_BASE_VERBS.has(v) || CC_STRICT_VERBS.has(v)) && !/^(thank|sorry|hello|goodbye|yes|no|please|okay|sure)$/.test(v)) d.push('SAY_IMPERATIVE') }
+  const enThey = /\b(they|them|their|people|everyone|everybody|both|guys|friends|parents|kids|children)\b/i.test(en)
+  if (o.addr && !enThey && ((/\b(them|themselves|they|their|theirs)\b/i.test(c) && /\byou(r|rs|rself)?\b/i.test(en)) || /\b(thank|tell|ask|with|for|help|meet|invite)\s+them\b|\bthemselves\b/i.test(c))) d.push('GENERIC_THEM')
+  if (/^Ask (?:what|which|who|whose|how many|how much)(?:\s+[A-Za-z]+){0,3}?\s+(?:is|are)\s+(?:this|that|it|he|she|they)\b/.test(c)) d.push('INVERTED_QUESTION')
+  if (/\b(bangkokians?|thailand|bangkok)\b|(?<!pad |tom yum |kaeng )\bthai\b/.test(c)) d.push('LOWERCASE_PROPER')
+  // the listener and a third person of the same gender both appear as pronouns: "Ask whether he always trusts him."
+  const P = o.addr === 'm' ? /\b(he|him|his|himself)\b/gi : o.addr === 'f' ? /\b(she|her|hers|herself)\b/gi : null
+  if (P && /\byou(r|rs|rself)?\b/i.test(enX) && new RegExp(P.source, 'i').test(enX) && (c.match(P) || []).length >= 2 && !(o.addrName && c.includes(o.addrName))) d.push('AMBIGUOUS_PRONOUN')
+  return d
+}
+// simple, meaning-preserving edits
+function thaiCueSimpleFix(cue, o) {
+  o = o || {}
+  let c = String(cue || '')
+  c = c.replace(/\b(bangkokians?|thailand|bangkok)\b|(?<!pad |tom yum |kaeng )\bthai\b/g, w => w.charAt(0).toUpperCase() + w.slice(1))
+  c = c.replace(/^Ask (what|which|who|whose|how many|how much)((?:\s+[A-Za-z]+){0,3}?)\s+(is|are)\s+(this|that|it|he|she|they)\b([^.?!]*)[.?!]?$/, (m0, w, n, be, s0, rest) => 'Ask ' + w + n + ' ' + s0 + ' ' + be + rest + '.')
+  if (o.addr) { const H = o.addr === 'm' ? { them: 'him', themselves: 'himself', their: 'his' } : { them: 'her', themselves: 'herself', their: 'her' }
+    c = c.replace(/\b(Tell|tell|ask|Ask|with|for|to|thank|Thank|help|meet|invite|join)\s+them\b/g, (m0, v) => v + ' ' + H.them).replace(/\bthemselves\b/g, H.themselves)
+      .replace(/\bhow they are\b/g, 'how ' + (o.addr === 'm' ? 'he is' : 'she is')) }
+  return c
+}
+function thaiCueRebuild(p, o) {
+  o = o || {}
+  let en = String(p && p.english || '').trim()
+  if (!en) return null
+  TH_CUE_IDIOMS.forEach(([re, tok]) => { en = en.replace(re, tok) })
+  // a third person of the listener's gender is marked so the listener (built from "you") can be told apart and named
+  const same = o.addr === 'm' ? { he: 'QQHE', him: 'QQHIM', his: 'QQHIS' } : o.addr === 'f' ? { she: 'QQSHE', her: 'QQHER' } : {}
+  const marked = o.addrName && /\byou(r)?\b/i.test(thCueStripIdioms(p.english)) && Object.keys(same).some(k => new RegExp('\\b' + k + '\\b', 'i').test(en))
+  if (marked) en = en.replace(/\b(he|him|his|she|her)\b/gi, w => same[w.toLowerCase()] || w)
+  // an interjection before a question is its own clause: "Oh no, who do you …?" → "Say oh no, then ask who he …"
+  en = en.replace(/^(Oh no|Oh|Wow|Ah|Hmm|Yes|Yeah|Okay|OK|Sure|Right|Well|Really),\s+(?=(?:then\s+)?(?:what|where|when|who|why|how|which|do|does|did|is|are|can|could|will|would|shall)\b[^.!]*\?$)/i, (m0, w) => w + '. ')
+    .replace(/^(\w[\w ]*)\. (then\s+)?([a-z])/i, (m0, a, t, ch) => a + '. ' + (t ? 'Then ' : '') + (t ? ch : ch.toUpperCase()))
+  const parts = en.split(/(?<=[.!?])\s+(?=[A-Z])/).filter(Boolean)
+  if (!parts.length || parts.length > 2) return null
+  const built = []
+  for (let i = 0; i < parts.length; i++) {
+    const r = cueFromEnglish('th', parts[i], i === parts.length - 1 ? p.thai : '', { names: o.names || [], addr: o.addr, strict: true })
+    if (!r || /^Ask\s*:/.test(r)) return null
+    built.push(r) }
+  let cue = built.length === 1 ? built[0] : built[0].replace(/[.!?]+$/, '') + ', then ' + built[1].charAt(0).toLowerCase() + built[1].slice(1)
+  cue = cue.replace(/,\s*then then\b/i, ', then')
+  if (marked) {
+    const N = o.addrName
+    const L = o.addr === 'm' ? [[/\bhe\b/, N], [/\bhim\b/, N], [/\bhis\b/, N + "'s"], [/\bhimself\b/, 'himself']] : [[/\bshe\b/, N], [/\bher\b/, N], [/\bhers\b/, N + "'s"]]
+    // the listener's pronouns are the unmarked ones: name the first, keep the rest (a reflexive stays)
+    let named = false
+    for (const [re, rep] of L) if (!named && re.test(cue)) { cue = cue.replace(re, rep); named = true }
+    cue = cue.replace(/QQ(HE|HIM|HIS|SHE|HER)\b/g, (m0, w) => w.toLowerCase())
+  }
+  TH_CUE_IDIOMS.forEach(([, tok, txt]) => { cue = cue.split(tok).join(txt).split(tok.toLowerCase()).join(txt) })
+  cue = thaiCueSimpleFix(cue, o)
+  return ccEnd(cue.replace(/^([a-z])/, x => x.toUpperCase()))
+}
+// → { cue, defects, fixed, via }  (cue unchanged when nothing better is found)
+function thaiFinalCueLint(p, o) {
+  o = o || {}
+  const cue0 = String(p && p.prompt || '')
+  const d0 = thaiCueDefects(cue0, p, o)
+  if (!d0.length) return { cue: cue0, defects: [], fixed: false }
+  const s1 = thaiCueSimpleFix(cue0, o), d1 = thaiCueDefects(s1, p, o)
+  if (!d1.length) return { cue: s1, defects: d0, fixed: true, via: 'simple' }
+  let r = null; try { r = thaiCueRebuild(p, o) } catch (e) {}
+  // a question line may be cued as "…, then suggest / ask …" (thaiCueFormProblems reads only the first verb)
+  const formOk = x => !thaiCueFormProblems({ ...p, prompt: x }).length || /\b(?:then|and) (?:ask|suggest|check|offer)\b|^(?:Suggest|Check|Offer)\b/i.test(x)
+  if (r && !thaiCueDefects(r, p, o).length && formOk(r)) return { cue: r, defects: d0, fixed: true, via: 'rebuilt' }
+  return { cue: s1, defects: d0, fixed: s1 !== cue0, via: s1 !== cue0 ? 'simple-partial' : null, remaining: d1 }
+}
+function thaiFinalCueLintPass(pairs, track, log) {
+  let A = { name: '', gender: 'm' }, B = { name: '', gender: 'f' }
+  try { const cx = cueClarityCtx('th', track); const nm = cx.names || []; A.name = nm[0] || ''; B.name = nm[1] || '' } catch (e) {}
+  const fx = [], left = []
+  const out = (pairs || []).map(p => { if (!p || !p.thai || !p.prompt || !p.english) return p
+    const addr = p.speaker === 'A' ? 'f' : 'm', addrName = p.speaker === 'A' ? B.name : A.name
+    const r = thaiFinalCueLint(p, { addr, addrName, names: [A.name, B.name].filter(Boolean) })
+    if (r.remaining && r.remaining.length) left.push(r.remaining[0] + ': "' + r.cue + '"')
+    if (!r.fixed || r.cue === p.prompt) return p
+    fx.push('"' + p.prompt + '" → "' + r.cue + '" (' + r.defects.join('+') + ')')
+    return { ...p, prompt: r.cue, _cueLintFrom: p._cueLintFrom || p.prompt, _cueLint: r.defects } })
+  if (log && fx.length) log('  🎯 TH_FINAL_CUE_LINT ' + fx.length + ' cue(s) fixed (deterministic, no paid call; the changed cues are judged again below): ' + fx.join(' | ').slice(0, 700))
+  if (log && left.length) log('  ⚠ TH_FINAL_CUE_LINT ' + left.length + ' cue defect(s) left for the cue judge: ' + left.join(' | ').slice(0, 300))
+  return out
+}
+// v703 (owner review of v702: "long time no see" came after the extended catch-up). A GREETING target is said when the two people
+// meet: its lines move to just after the opening greeting. Only whole target groups move; nothing is rewritten.
+const THAI_GREETING_TARGET_RE = /^(ไม่ได้เจอกันตั้งนาน|ไม่ได้เจอกันนาน|สวัสดี|ยินดีที่ได้รู้จัก|สบายดีไหม|เป็นยังไงบ้าง|ไปไหนมา)/
+function thaiGreetingTargetsFirst(pairs, log) {
+  const P = (pairs || []).slice()
+  let lead = 0; while (lead < P.length && P[lead] && classifyTrackPair(P[lead]) === 'FRAMING') lead++
+  const ids = []
+  P.forEach(p => { if (p && classifyTrackPair(p) === 'TARGET' && THAI_GREETING_TARGET_RE.test(String(p.targetSurface || p._target || '').trim()) && !ids.includes(p.targetId)) ids.push(p.targetId) })
+  const moved = []
+  let at = lead
+  ids.forEach(id => {
+    const first = P.findIndex(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId === id)
+    const grp = P.filter(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId === id)
+    if (first <= at) { at = Math.max(at, P.lastIndexOf(grp[grp.length - 1]) + 1); return }
+    for (let k = P.length - 1; k >= 0; k--) if (grp.includes(P[k])) P.splice(k, 1)
+    P.splice(at, 0, ...grp); at += grp.length; moved.push(grp[0].targetSurface || grp[0]._target || id) })
+  if (moved.length && log) log('  👋 TH_GREETING_FIRST ' + moved.join(', ') + ' moved to just after the opening greeting (a greeting is said when they meet, not after the catch-up)')
+  return P
 }
 function finalTrackIdentityFields(ft) {
   const out = {}
@@ -21450,10 +21665,15 @@ function applyThaiTargetSubstitutions(track, subs) {
 async function thaiFinalSnapshotAudit(track, ctx, log) {
   const c = ctx || {}
   let pairs = (track.pairs || []).slice()
+  try { pairs = thaiFinalCueLintPass(pairs, track, log) } catch (e) {}
   const tgt = pairs.filter(p => p && classifyTrackPair(p) === 'TARGET')
   const bad = new Map()
   tgt.forEach(p => { const x = thaiTimeExpressionProblems(p.thai)[0] || thaiLexicalSenseProblems(p)[0]; if (x) bad.set(p, x.id + ' — ' + x.why) })
   thaiLocalContradictions(pairs).forEach(x => { if (classifyTrackPair(x.pair) === 'TARGET' && !bad.has(x.pair)) bad.set(x.pair, x.reason) })
+  { const _st = thaiSceneTextOf(track); tgt.forEach(p => { if (bad.has(p)) return; const r = thaiRelationshipProblem(p.thai, _st); if (r) bad.set(p, r) }) }
+  { const echo = new Map(); tgt.forEach(p => { if (bad.has(p) || !thaiBareEcho(p.thai, p.targetSurface || p._target)) return
+      if (echo.has(p.targetId)) bad.set(p, 'ECHO_RECALL: the line only repeats "' + (p.targetSurface || p._target) + '", as "' + echo.get(p.targetId) + '" already did — each recall must say something new')
+      else echo.set(p.targetId, p.thai) }) }
   const byT = new Map(); tgt.forEach(p => { if (!byT.has(p.targetId)) byT.set(p.targetId, []); byT.get(p.targetId).push(p) })
   byT.forEach(ps => ps.forEach((b, j) => { if (bad.has(b)) return
     for (let k = 0; k < j; k++) { if (bad.has(ps[k])) continue; const r = thaiSelfContradiction(ps[k], b); if (r) { bad.set(b, 'SELF_CONTRADICTION: ' + r); break } } }))
@@ -21857,6 +22077,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (dailyV693On() && adapter.lang === 'ja') { try { const rb = await jaBridgeReplyTriggers(t, c, log); t = { ...t, pairs: rb.pairs }; _replyCtx = rb } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
   if (oct13On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {} }
   if (oct13On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiTidyCommas(t.pairs, log) } } catch (e) {} }
+  if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiGreetingTargetsFirst(t.pairs, log) } } catch (e) {} }
   // v700 — FINAL SNAPSHOT AUDIT on the text that will be saved; a line that fails goes to ONE more bounded quota round (same
   // fail-closed recovery, substitution included), and the result is audited again — whatever still fails stays invalid (NOT_READY)
   let _snap = null
@@ -22370,9 +22591,11 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
 const APP_BUILD_VERSION = 'v702'
 const PIPELINE_VERSION = 'v651-canonical'
-const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
-const QC_VERSION = 'qc-v657-unified-acceptance'
-const FINALIZER_VERSION = 'final-v657-expected-tokens'
+// v703 (owner review: the v702 export still said th-gen-v657 / qc-v657, so the active code could not be verified from the export).
+// Bumped with the Thai changes: QC-flagged lines are never kept, final cue lint, echo / relationship / sense rules.
+const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v703-echo-relationship', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
+const QC_VERSION = 'qc-v703'
+const FINALIZER_VERSION = 'final-v703-cue-lint'
 const TRACK_LANGUAGES = Object.freeze(['th', 'ja', 'zh'])
 const LANGUAGE_NAMES = Object.freeze({ th: 'Thai', ja: 'Japanese', zh: 'Mandarin' })
 function pipelineInternalError(code, detail) {
@@ -24437,6 +24660,11 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
         'Check the WHOLE text: the beginning makes sense; topics move on naturally; every answer responds to its question (why → a reason, where → a place, when → a time, how long → a duration, how much → an amount, a proposal → accept / refuse / counter-proposal); ' +
         'facts stay consistent (an agreed time or place stays agreed unless someone explicitly corrects it; whose mother / friend it is stays the same); names and pronouns stay consistent; a change of place is said in the dialogue; the time sequence makes sense (a part may start LATER the same day when its first line says what happened in between — "we have seen the museum", "we are here now": that stated time skip is fine); nobody greets again in the middle; the ending follows from the conversation. ' +
         'Speakers: ' + la.speakerContract + '.\nA part PASSES only if it is coherent in itself AND continues the previous part. If a part fails, give breakAfterLine = the line number after which it breaks (or null).\n\n'
+      : o.episodes
+      // v703 — EPISODES: the track is a set of separate short scenes with the same two people (a Daily-style practice set, not one story)
+      ? 'Judge the listening track below as a set of SEPARATE SHORT SCENES with the same two people (like episodes: a new place, day, time or topic at the START of a scene is normal and needs no explanation — never fail a scene for how it links to the scene before it). ' +
+        'Judge each scene ON ITS OWN: it must be ONE continuous, natural ' + la.label + ' exchange — the topic continues inside the scene, questions get answers, facts inside the scene stay consistent, speakers are consistent (' + la.speakerContract + '), references make sense, and it does not read like unrelated sentences stitched together.\n' +
+        'The overall score rates the scenes as useful listening practice. If a scene fails, give breakAfterLine = the line number INSIDE the scene after which it breaks (or null).\n\n'
       : 'Judge the WHOLE listening track below, scene by scene. Each scene must be ONE continuous, natural ' + la.label + ' conversation.\n' +
       'A scene PASSES only if: the topic continues (no unexplained jumps), questions get answers, time/place/activity stay consistent, ' +
       'speakers are consistent (' + la.speakerContract + '), pronouns and references make sense, nothing contradicts, and it does not read like unrelated sentences stitched together.\n' +
@@ -24557,7 +24785,9 @@ function listeningFunctionRole(src) {
   const eng = String(src.english || '').toLowerCase().trim()
   if (/\?\s*(\)|$)|\?…|…\?/.test(eng) || /^(how (old|long|much|many|far|is|are|was|do|did)|what time|what|where|when|why|who|which|may i ask|do you know)\b/.test(eng)) return 'QUESTION_WORD'
   if (/^(not (exactly|really|quite)|no way|of course|sure|exactly|that's right|yes|no)\b/.test(eng)) return 'RESPONSE_TOKEN'
-  if (/^(good luck|take care|have a (good|nice)|see you|bye|goodbye|safe travels?|good night)\b/.test(eng)) return 'PARTING'
+  // v703 (live v702 Thai Listening: ขอให้มีสัปดาห์ที่ดี "have a great week" and ดีใจที่ได้คุยกันอีก "glad to talk again" were read as TIME,
+  // เที่ยวให้สนุกนะ "have fun (on your trip)" as PLACE — each was put in a middle situation and rejected as EARLY_GOODBYE for 4 rounds)
+  if (/^(good luck|take care|have a (good|nice|great|lovely|wonderful)|have fun|enjoy (your|the) (trip|day|weekend|evening|holiday|stay)|see you|bye|goodbye|safe (travels?|trip|journey)|good night|sweet dreams|(glad|nice|good) (to talk|talking|to see you|seeing you|to have talked)|it was (nice|good|great) (talking|to talk|seeing))\b/.test(eng)) return 'PARTING'
   // v700 (live v699 Thai): แล้วคุยกัน "talk later" was grouped into "agreeing when" and forced into "keep the beach, talk later"
   if (/^((let's |we'll |i'll )?(talk|speak|chat) (later|again|soon)|catch you later|(i )?(have|need|got) to go|gotta go)\b/.test(eng)) return 'PARTING'
   if (/^(oh no|wow|oh|really|great|nice|too bad)\b/.test(eng)) return 'DISCOURSE_MARKER'
@@ -28740,7 +28970,9 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     listeningTrackId: ltId, sourceMainTrackId: listeningTrackId(mainTrack), sourceFingerprint: trackPairsFingerprint(mainTrack.pairs), sourceFinal: trackFinal,
     language: lang, listeningVersion: o.version || 1, creationMode: o.creationMode || 'AUTO_PRETRACK', createdAt: new Date().toISOString(),
     status: 'not_started', architecture: sceneGates && sceneGates.plan && sceneGates.plan.meaningFirst ? LISTENING_ARCHITECTURE_V692 : sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? (sceneGates.plan && sceneGates.plan.meaningPlan ? (sceneGates.plan.verbalized ? LISTENING_ARCHITECTURE_V674 : LISTENING_ARCHITECTURE_V673) : LISTENING_ARCHITECTURE_V672) : LISTENING_ARCHITECTURE, composer: 'model',
-    oneConversation: !!(sceneGates && sceneGates.ONE_CONVERSATION === 'PASS'), conversationContract: sceneGates && sceneGates.contract ? { ...sceneGates.contract, transcript: undefined } : null, story: sceneGates ? sceneGates.story || null : null,
+    oneConversation: !!(sceneGates && sceneGates.ONE_CONVERSATION === 'PASS'),
+    // v703 — separate short scenes (the episode fallback): the player shows each scene's heading
+    episodes: !!(sceneGates && sceneGates.ONE_CONVERSATION === 'EPISODES'), conversationContract: sceneGates && sceneGates.contract ? { ...sceneGates.contract, transcript: undefined } : null, story: sceneGates ? sceneGates.story || null : null,
     continuityIssues: sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? conversationContinuityAudit(scenes, la, targets) : [],
     eligibleTargetIds: targets.map(t => t.id), excludedNewTargetIds: [], omittedTargetIds: audit.missing.map(t => t.id),
     coverage: { language: lang, contract: 'ALL_SELECTED_TARGETS', selectedTargetIds: targets.map(t => t.id), newTargetIds: newIds, reviewTargetIds: targets.filter(t => !t.isNew).map(t => t.id),
@@ -30327,6 +30559,30 @@ async function _lnComposeMeaningFirst(env) {
     setTel()
     if (res.issues.length) { const b = await salvageOrBlock('story repair ' + mf.storyRounds + ' and ' + round + ' repair round(s)'); if (b) return b }
   }
+  // v703 — EPISODES FALLBACK (live v702 Thai Listening: the story judge still said 2/5 after two story repairs and the salvage — cutting
+  // only removed the bridges between situations — and the whole track was NOT_READY at 17/30). Thirty revision words rarely make ONE
+  // natural story across six situations; they always make good SHORT SCENES. The track becomes separate scenes (a new place / topic at
+  // a scene start is fine, like a Daily Track) and each scene is judged ON ITS OWN; a scene that breaks inside is cut at its break (or
+  // dropped) by the same salvage, and the scenes are judged once more. Every remaining line still passed every hard check.
+  if (env.o && env.o.apiKey && coh && coh.state === QUALITY.VERIFIED && !cohPass(coh) && mp.scenes.length >= 2) {
+    log && log('📺 LISTENING_EPISODES the situations do not read as ONE conversation (story judge ' + (coh.overall != null ? coh.overall + '/5' : 'FAIL') + ' after its repairs) — the track becomes separate short scenes, each judged on its own')
+    tel.LISTENING_QC_CALLS++
+    let ep = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: false, episodes: true }, log)
+    log && log('📺 EPISODE_JUDGE ' + (cohPass(ep) ? 'PASS' : ep.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (ep.overall != null ? ' · overall ' + ep.overall + '/5' : '') + ' · each scene judged on its own')
+    if (ep.state === QUALITY.VERIFIED && !cohPass(ep)) {
+      const cuts = ep.verdicts.filter(v => !v.pass).map(v => { const s = mp.scenes[v.scene - 1]; if (!s) return null
+        const b = Number.isFinite(+v.breakAfterLine) ? +v.breakAfterLine : null, why = 'the episode judge: ' + String(v.reason || '')
+        if (b != null && b >= 2 && b < s.turns.length) return { fault: 7, code: 'STORY_CUT', scene: s.key, turnIds: s.turns.slice(b).map(t => t.id), targetIds: [], detail: why }
+        return { fault: 7, code: 'STORY_CUT', dropScene: true, scene: s.key, turnIds: [], targetIds: [], detail: why } }).filter(Boolean)
+      if (cuts.length) {
+        const b = await salvageOrBlock('the episode judge', cuts); if (b) return b
+        tel.LISTENING_QC_CALLS++
+        ep = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: false, episodes: true }, log)
+        log && log('📺 EPISODE_JUDGE ' + (cohPass(ep) ? 'PASS' : ep.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (ep.overall != null ? ' · overall ' + ep.overall + '/5' : '') + ' · after the salvage')
+      }
+    }
+    if (ep.state === QUALITY.VERIFIED) { coh = { ...ep, episodes: true }; mf.episodes = true }
+  }
   // v700 — the story judge still fails after its repair rounds: cut each failing part at its break (the turns before it stay), or
   // drop the part when it breaks at its start; the rest is checked again and judged ONCE more
   if (env.o && env.o.apiKey && coh && coh.state === QUALITY.VERIFIED && !cohPass(coh)) {
@@ -30389,7 +30645,7 @@ async function _lnComposeMeaningFirst(env) {
   log && log('🎧 LISTENING_SCENE_COVERAGE_UNION ' + audit.covered.length + '/' + targets.length + ' · committed ' + scenes.length + ' situations · ' + total + ' turns (allowed ' + env.turnsMin + '–' + env.turnsMax + ')')
   const contract = createConversationContract({ speakers: 'A and B (the same two people throughout)', relationship: ctx.jaStyle === 'polite' ? 'acquaintances' : 'friends', objective: grouping.scenes.map(s => s.title).join(' → '), scenes: plan.scenes, byId })
   return { ok: true, scenes, audit, natIssues, plan, report: scenes.map((sc, k) => ({ sceneId: sc.sceneId, required: mp.scenes[k].targetIds.length, heard: mp.scenes[k].targetIds.filter(id => audit.covered.includes(id)).length, turns: sc.turns.length })), coh,
-    gates: { SCENE_REQUIRED_COVERAGE: allIn ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total >= lnMfTurnsMin(env) && total <= env.turnsMax, SCENES_VALIDATED: true, ONE_CONVERSATION: 'PASS' },
+    gates: { SCENE_REQUIRED_COVERAGE: allIn ? 'PASS' : 'FAIL', TURN_COUNT: total + '/' + env.turnsMax, TURN_BUDGET: total >= lnMfTurnsMin(env) && total <= env.turnsMax, SCENES_VALIDATED: true, ONE_CONVERSATION: mf.episodes ? 'EPISODES' : 'PASS' },
     salvage: env.salvage ? { from: env.salvage.from, passes: env.salvage.passes, removedTurns: env.salvage.removedTurns, droppedScenes: env.salvage.droppedScenes.slice(), cuts: env.salvage.cuts.slice(0, 24), floor,
       deferred: deferredNow.map(id => ({ targetId: id, target: (byId.get(id) || {}).surface || '', reason: env.deferred.get(id) })) } : null,
     uncommitted: [], contract, story: plan.story, phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
@@ -31156,7 +31412,7 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   const lt = result && result.listening
   if (playing && lt) return (
     <div style={{ maxWidth:720, margin:'0 auto', padding:'12px 10px' }}>
-      <ConvoPlayer lines={lt.lines.map(l => ({ ...l, _scene: l.scene }))} speed={speed} onSpeedChange={v => { setSpeed(v); saveListeningPlaybackSpeed(v) }} speedPresets={LISTENING_SPEED_PRESETS}
+      <ConvoPlayer lines={lt.lines.map(l => ({ ...l, _scene: l.scene, _episodeTitle: lt.episodes ? (l.sceneTitle || 'Scene ' + l.scene) : null }))} speed={speed} onSpeedChange={v => { setSpeed(v); saveListeningPlaybackSpeed(v) }} speedPresets={LISTENING_SPEED_PRESETS}
         gcpTtsKey={gcpTtsKey} lang={lang} coverageLabel={result._coverageLabel || listeningCoverageLabel(lt, result)} title="Listening Track" onSkip={() => setPlaying(false)} onDone={() => { setPlaying(false); onBack && onBack() }} />
     </div>
   )
@@ -31574,8 +31830,12 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, t
           const isA = convoLineIsMale(l)
           const isCurrent = i === lineIdx && playing
           const isPast = i < lineIdx
+          // v703: a track of separate short scenes shows where each scene starts
+          const head = l._episodeTitle && (i === 0 || lines[i - 1]._scene !== l._scene)
           return (
-            <div key={i} style={{ display:'flex', flexDirection: isA ? 'row' : 'row-reverse', gap:8, opacity: isPast ? 0.45 : isCurrent ? 1 : 0.75 }}>
+            <React.Fragment key={i}>
+            {head && <div style={{ fontSize:11, color:'var(--gold)', textTransform:'uppercase', letterSpacing:1, margin: i === 0 ? '0 0 2px' : '10px 0 2px' }}>Scene {l._scene} · {l._episodeTitle}</div>}
+            <div style={{ display:'flex', flexDirection: isA ? 'row' : 'row-reverse', gap:8, opacity: isPast ? 0.45 : isCurrent ? 1 : 0.75 }}>
               <div style={{ width:30, height:30, borderRadius:'50%', background: isA ? '#1e3a5f' : '#2a1e3a', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0, marginTop:4, border: isCurrent ? `2px solid ${isA ? '#4a90e2' : '#c084fc'}` : '2px solid transparent', transition:'border 0.2s' }}>
                 {isA ? '👨' : '👩'}
               </div>
@@ -31585,6 +31845,7 @@ function ConvoPlayer({ lines, onSkip, onDone, speed, onSpeedChange, gcpTtsKey, t
                 <p style={{ fontSize:12, color:'#c8d8f0', fontStyle:'italic' }}>{learnerDisplayText(l.english)}</p>
               </div>
             </div>
+            </React.Fragment>
           )
         })}
       </div>
@@ -35330,13 +35591,22 @@ async function runQualityCheckCore(track, apiKey, model, { onLog, onProgress, ca
       let _qcCC = null; try { _qcCC = getLearnerComplexityContract({ lang: 'th', vocab }) } catch (e) {}
       if (newPairs) group.indices.forEach((idx, pi) => { if (!newPairs[pi]) return
         const _an = _qcCC && newPairs[pi].thai ? _qcCC.analyse(newPairs[pi].thai) : null
-        if (_an && _an.overHardMax && !(allPairs[idx] && allPairs[idx].thai && _qcCC.analyse(allPairs[idx].thai).overHardMax)) { onLog?.(`  ⛔ QC ${verdict.action} discarded for ${group.targetWord}: ${_an.units} units > max ${_an.hardMax} — "${String(newPairs[pi].thai).slice(0, 40)}" (original kept)`); return }
+        // v703 (owner review of the live v702 Thai track): a line the judge called defective must NOT survive because its rewrite failed a
+        // hard rule (ผมอยากรักเขาเสมอครับ — the rewrite dropped เสมอ; คุณดูหิวนะร้านใกล้ๆอร่อยมากครับ — the rewrite was 9 units). The
+        // original is marked invalid (its slot goes to the bounded, fail-closed quota recovery with the judge's reason), never kept as-is.
+        const _flag = (why) => { const o0 = allPairs[idx]
+          if (dailyV693On() && o0 && o0.pairType === 'content' && o0.thai && String(newPairs[pi].thai || '').replace(/\s+/g, '') !== String(o0.thai).replace(/\s+/g, '')) {
+            allPairs[idx] = { ...o0, _qcInvalid: 'QC_FLAGGED_NOT_REPAIRED: ' + String(verdict.reason || '').slice(0, 160) + ' (the rewrite failed: ' + why + ')', _qcAvoid: o0.thai }
+            onLog?.(`  ⛔ QC ${verdict.action} for ${group.targetWord}: the rewrite failed (${why}) — the flagged line "${String(o0.thai).slice(0, 40)}" is NOT kept; its slot goes to quota recovery`)
+            counts.flaggedNotKept = (counts.flaggedNotKept || 0) + 1; return true }
+          return false }
+        if (_an && _an.overHardMax && !(allPairs[idx] && allPairs[idx].thai && _qcCC.analyse(allPairs[idx].thai).overHardMax)) { if (_flag(_an.units + ' units > max ' + _an.hardMax)) return; onLog?.(`  ⛔ QC ${verdict.action} discarded for ${group.targetWord}: ${_an.units} units > max ${_an.hardMax} — "${String(newPairs[pi].thai).slice(0, 40)}" (original kept)`); return }
         // v693: a rewrite must pass the hard line invariants (target present, line gate, lexical sense) BEFORE it replaces the
         // original — live v691 QC turned the จอด line into ใช่ครับ ไปด้วยกันไหมครับ (target lost), which the final audit then dropped
         const _rec = reconcileMutatedThaiPair(newPairs[pi], allPairs[idx], `ai:${verdict.action}:${group.targetWord}`, verdict.action)
         if (dailyV693On() && _rec && _rec.thai && allPairs[idx] && allPairs[idx].pairType === 'content') {
           const _hp = thaiQcRewriteProblems(_rec, allPairs[idx], vocab, track)
-          if (_hp.length) { onLog?.(`  ⛔ QC ${verdict.action} discarded for ${group.targetWord}: ${_hp[0]} — "${String(_rec.thai).slice(0, 40)}" (original kept)`); return }
+          if (_hp.length) { if (_flag(String(_hp[0]).slice(0, 80))) return; onLog?.(`  ⛔ QC ${verdict.action} discarded for ${group.targetWord}: ${_hp[0]} — "${String(_rec.thai).slice(0, 40)}" (original kept)`); return }
         }
         allPairs[idx] = _rec })
       counts[verdict.action] = (counts[verdict.action] || 0) + 1
@@ -36062,8 +36332,19 @@ const THAI_JOE_PERSON_RE = /เจอ(กัน|เพื่อน|คุณ|เ
 // v671 §B2 — "just" requires เพิ่ง ONLY in its TEMPORAL sense ("has just arrived", "just now"); "just right", "just enough",
 // "just one", "just looking" are not เพิ่ง (live: เสื้อตัวนี้ขนาดพอดีครับ was rejected for "just right")
 const THAI_JUST_TEMPORAL_RE = /\b(has|have|had|'ve) just\b|\bjust (now|arrived|got (back|home|here)|finished|came|left|ate|bought|woke|called|went|saw|started|heard|met|moved|returned|had|paid|sent|opened|closed|told|said)\b/
-function thaiLexicalSenseProblems(p) {
+function thaiLexicalSenseProblems(p, targetSurface) {
   const th = String(p && p.thai || ''), en = String(p && p.english || '').toLowerCase(), out = []
+  // v703 — from the live v702 Thai Daily track (owner review; every one passed the model judges)
+  { const tg = String(targetSurface || (p && (p.targetSurface || p._target)) || '').replace(/\s+/g, ''), t0 = th.replace(/\s+/g, '')
+    // a QUESTION-word target + ก็ได้ / ก็ตาม is "whatever / anywhere", a different meaning (ชื่ออะไรก็ได้ ≠ "what is it called?")
+    if (tg && /(อะไร|ไหน|ใคร|เมื่อไหร่|ยังไง|กี่)/.test(tg) && t0.includes(tg) && new RegExp(tg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\S{0,3}ก็(ได้|ตาม)').test(t0))
+      out.push({ id: 'QWORD_INDEFINITE_SENSE', code: 'WRONG_SENSE', why: '"' + tg + 'ก็ได้" means "whatever / any", not the question "' + tg + '" this word teaches — ask it as a question (ร้านนี้ชื่ออะไรคะ)' }) }
+  if (/วันนี้\S{0,4}ไม่ได้เจอกัน(ตั้ง)?นาน/.test(th.replace(/\s+/g, '')))
+    out.push({ id: 'TODAY_LONG_TIME', code: 'UNNATURAL', why: '"วันนี้ไม่ได้เจอกันตั้งนาน" ("today we haven\'t met for ages") contradicts itself — ไม่ได้เจอกันตั้งนานเลยนะครับ / ไม่ได้เจอกันตั้งนาน สบายดีไหมคะ' })
+  if (/(นะ|ไหม|มั้ย|หรือเปล่า)\s*นี่(ครับ|ค่ะ)$/.test(th))
+    out.push({ id: 'NI_KHRAP_AFTER', code: 'UNNATURAL', why: 'นี่ครับ hands something over and comes FIRST — นี่ครับ ช้อนครับ / นี่ครับ ลองชิมดูนะ (not "ช้อนนะ นี่ครับ" / "อร่อยไหม นี่ครับ")' })
+  if (/เหตุผล\S{0,12}เป็นอะไร/.test(th.replace(/\s+/g, '')))
+    out.push({ id: 'REASON_PEN_ARAI', code: 'UNNATURAL', why: 'a reason is asked with คืออะไร or ทำไม — เหตุผลในการมาคืออะไรคะ / มาที่นี่ทำไมคะ (not เหตุผล…เป็นอะไร)' })
   // v700 — from the live v699 Thai Daily track (each one passed the model judges)
   // ไม่เชิง is a hedged ANSWER ("not exactly / not really"): ไม่เชิงครับ, ก็ไม่เชิงนะ, ไม่เชิงหรอก, ไม่เชิงว่าไม่ชอบ ("it's not that I
   // don't like it"), ไม่เชิงอย่างนั้น. Put straight before a verb / adjective it is an English "not exactly V" calque (ชอบแต่ไม่เชิงชอบมาก).
@@ -36276,7 +36557,7 @@ function thaiLineGate(p, keywords, vocab) {
   if (sp.status === 'linguistic-conflict') problems.push({ code: 'SPEAKER_CONFLICT', why: sp.reason })
   if (sp.status === 'metadata-conflict') problems.push({ code: 'SPEAKER_CONFLICT', why: sp.reason })
   if (id.type !== 'framing') thaiLineNaturalnessProblems(p, id.target, vocab).forEach(w => problems.push({ code: 'UNNATURAL', why: w }))
-  if (id.type !== 'framing') thaiLexicalSenseProblems(p).forEach(g => problems.push({ code: g.code, why: g.id + ': ' + g.why }))
+  if (id.type !== 'framing') thaiLexicalSenseProblems(p, id.target && id.target.thai).forEach(g => problems.push({ code: g.code, why: g.id + ': ' + g.why }))
   // v644: deterministic guards — shared by every path, including recovery and rescue
   if (id.type !== 'framing') thaiTemplateGarbageProblems(p).forEach(g => problems.push({ code: 'TEMPLATE_GARBAGE', why: g.why }))
   thaiTimeExpressionProblems(p.thai).forEach(g => problems.push({ code: 'INVALID_TIME_EXPRESSION', why: g.why }))
@@ -37004,6 +37285,13 @@ const THAI_USAGE_TARGET_GUIDE = Object.freeze({
   'เลี้ยงดู': 'TEACH เลี้ยงดู AS RAISING / CARING FOR someone (a child, a parent, a pet): พ่อแม่เลี้ยงดูผมมาดีมากครับ, ใครเลี้ยงดูคุณคะ, ผมอยากเลี้ยงดูพ่อแม่ตอนแก่ครับ. The three lines must not contradict each other (raised well vs not raised at all).',
   'ความรัก': 'TEACH ความรัก AS LOVE the topic: เรื่องความรักของพ่อแม่ (their love story), ความรักของเราเริ่มที่นี่, ความรักทำให้ทุกอย่างง่าย — NOT "listen to love" (ฟังความรัก) and not as a verb (that is รัก)',
   'ขอให้': 'TEACH ขอให้ AS A WISH or a polite request: ขอให้มีความสุขมากๆ นะครับ (wishing happiness), ขอให้โชคดีค่ะ, ขอให้ทุกคนสุขภาพดี, ขอให้ช่วยหน่อยได้ไหม — NOT ขอให้เขาดี ("may he be good")',
+  // v703 (owner review of the live v702 Thai track)
+  'ตลอดไป': 'TEACH ตลอดไป AS "forever" for something lasting that fits WHO is speaking. Between friends or colleagues it is the friendship, a memory or a wish for others: เราจะเป็นเพื่อนกันตลอดไปนะครับ, ผมจะจำวันนี้ไว้ตลอดไปครับ, ขอให้ทั้งสองคนรักกันตลอดไปค่ะ (a wedding wish). NEVER a romantic promise to the person you are talking to (ผมอยากอยู่กับคุณตลอดไป, คุณจะรักผมตลอดไปไหม) unless the two speakers are a couple. Do not swap it for เสมอ.',
+  'เสมอ': 'TEACH เสมอ AS "always" for a habit or a lasting attitude, at the END of the verb phrase: เขาช่วยผมเสมอครับ, เธอยิ้มเสมอค่ะ, ผมจะคิดถึงพวกคุณเสมอครับ, เขามาตรงเวลาเสมอค่ะ. Use actions and qualities the listener can picture. AVOID love promises between friends (ผมอยากรักเขาเสมอ). Do not swap it for ตลอดไป.',
+  'ไม่ได้เจอกันตั้งนาน': 'TEACH ไม่ได้เจอกันตั้งนาน AS THE GREETING "long time no see", said when two people meet again at the START of a conversation. The three lines must do DIFFERENT things: greet + ask how they are (ไม่ได้เจอกันตั้งนาน สบายดีไหมครับ), reply + say you missed them (ไม่ได้เจอกันตั้งนานเลยค่ะ คิดถึงนะ), say how long it has been (ไม่ได้เจอกันตั้งนาน เกือบปีแล้วนะครับ). NEVER with วันนี้, and never three bare echoes of the phrase.',
+  'นี่ครับ': 'TEACH นี่ครับ AS HANDING SOMETHING OVER ("here you are"). It comes FIRST, then what it is or what to do with it: นี่ครับ ช้อนครับ, นี่ครับ ลองชิมดูนะครับ, นี่ครับ น้ำเย็นครับ. NEVER after a question or after นะ (อร่อยไหม นี่ครับ / ช้อนนะ นี่ครับ are wrong). Only the man says นี่ครับ.',
+  'เหตุผลในการมา': 'TEACH เหตุผลในการมา AS a slightly formal "reason for coming", with คือ: เหตุผลในการมาวันนี้คือเรื่องงานครับ, ไม่ทราบว่าเหตุผลในการมาคืออะไรคะ, เหตุผลในการมาของผมคือมาเจอคุณครับ. NEVER เหตุผล…เป็นอะไร (use คืออะไร), and do not write three lines that only say "I have a reason".',
+  'ชื่ออะไร': 'TEACH ชื่ออะไร AS THE QUESTION "what is … called / what is … name": คุณชื่ออะไรครับ, ร้านนี้ชื่ออะไรคะ, เพื่อนคุณชื่ออะไรครับ. NEVER ชื่ออะไรก็ได้ ("whatever it is called") — that is a different meaning.',
   'เชิญนั่ง': 'TEACH เชิญนั่ง AS AN INVITATION to sit (a statement): เชิญนั่งครับ, เชิญนั่งก่อนนะคะ, เชิญนั่งตรงนี้ได้เลยครับ — NEVER as a yes/no question (เชิญนั่งไหม is wrong)',
   'ไม่ทราบว่า': 'TEACH ไม่ทราบว่า AS THE POLITE OPENER of a question ("may I ask…?"), said to someone you do not know well — a stranger, a shop assistant, a guest: ไม่ทราบว่าห้องน้ำอยู่ที่ไหนครับ, ไม่ทราบว่าคุณชื่ออะไรคะ, ไม่ทราบว่าร้านนี้เปิดกี่โมงครับ. It BEGINS the question; the scene is background only (between old friends use a short polite exchange with a stranger instead).',
 })

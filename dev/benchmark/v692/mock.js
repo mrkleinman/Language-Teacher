@@ -7,7 +7,7 @@ const { planJson, sceneJson } = require('./plans')
 //      cohFail · down (network) · log (array to record stages)
 function mockMeaningFirst(c, vocab, lang, opt = {}) {
   const S = { c, vocab, targets: [], zhLex: null }
-  base14(S, lang, { cohFail: !!opt.cohFail })
+  base14(S, lang, { cohFail: !!opt.cohFail, storyOnlyFail: !!opt.storyOnlyFail })
   const inner = S._mockFn, st = { stages: [], plan: 0, audit: 0, repair: 0, auditedTexts: [], scenes: [], calls: [] }
   c.mockGeminiGenerate = async (k, m, msgs, max, o) => {
     const q = msgs[msgs.length - 1].content, stage = o && o.stage

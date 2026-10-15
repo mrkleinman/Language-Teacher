@@ -211,6 +211,13 @@ const SALV = x => ({ st: x.track.status, fc: x.track.failedChecks, cov: x.track.
     const coh = await run('zh', { cohFail: true })
     T('G1', 'a plan approved by validation + audit is still NOT_READY when the FINAL whole-conversation coherence judge fails every part (readiness is the final output\'s; v700: the salvage cannot keep any part, so the floor stops it)',
       coh.track.status === 'NOT_READY' && (/WHOLE_CONVERSATION_COHERENCE=FAIL/.test(coh.track.failedChecks.join(' ')) || /LISTENING_PLAN_BLOCKED — SALVAGE_FLOOR/.test(coh.Ls)), SALV(coh))
+    // v703 (live v702 Thai Listening: story judge 2/5 after its repairs and the salvage → NOT_READY 17/30): when only the ONE-story
+    // judge fails, the track becomes separate short scenes, each judged on its own — READY, every line still passing every hard check
+    const ep = await run('zh', { cohFail: true, storyOnlyFail: true })
+    const el = ep.track.listening || {}
+    T('G3', 'the one-story judge keeps failing but each scene is fine on its own → the track becomes SEPARATE SHORT SCENES (EPISODES) and is READY with every word heard; the export says so and the player shows scene headings',
+      ep.track.status === 'READY' && /LISTENING_EPISODES/.test(ep.Ls) && el.episodes === true && (el.gates || {}).ONE_CONVERSATION === undefined && (el.gates || {}).WHOLE_CONVERSATION_COHERENCE === 'PASS' &&
+      /FORMAT: separate short scenes/.test(ep.c.listeningCoverageExportLines(el).join('\n')), { st: ep.track.status, fc: ep.track.failedChecks, ep: (ep.Ls.match(/[^\n]*(EPISODE|STORY_JUDGE)[^\n]*/g) || []).slice(0, 6) })
     T('G2', 'the final gates run on the committed text: closed vocabulary, length, coverage and pronunciation all PASS on the final lines (not on the plan)', LANGS.every(l => { const gs = good[l].track.listening.gates; return gs.CLOSED_VOCAB === true && gs.LENGTH_PASS === true && gs.COVERAGE_PASS === true && gs.PRONUNCIATION === true }))
   }
   // ══ H — technical failures are TECHNICAL (fault 9), never a language verdict, never a legacy fallback ════════════

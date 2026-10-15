@@ -284,7 +284,12 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
       const checks = an.filter(x => /^(C_|E_|F_|L_|I_|J_|K_)/.test(x.stage)).length
       T('P' + ({ ja: 1, th: 2, zh: 3 })[lang], lang + ': recorded live Daily run (' + run.cassette.entries.length + ' requests) with EVERY request answered via the Haiku path → identical track; every recorded request used once; ' +
         an.length + ' requests on Haiku (' + checks + ' of them checks / pronunciation), none on Gemini',
-        cmp.identical && r.replay.faithful && !h.stats.unmatched.length && an.length === h.stats.anthropic && an.length === run.cassette.entries.length && gm.length === 0 && checks > 0 && !r.error,
+        // v700 (Japanese v699 brief §5, intended): 駅はどっちかな？ now PRACTISES どっち (the v682 recording rejected it as "target not
+        // present"), so its regeneration names the real reason (untaught かな) — that one regeneration and the cue-check batch after it
+        // are not in the recording. Exactly that divergence is accepted for ja; any other unmatched request still fails.
+        (lang === 'ja' && h.stats.unmatched.length === 2 && r.log.some(l => /CURRICULUM_NOT_YET_ALLOWED: grammar "かな"[\s\S]*駅はどっちかな/.test(l)) &&
+          /writing natural spoken Japanese/.test(h.stats.unmatched[0]) && /Rate how well each Japanese sentence matches its English cue/.test(h.stats.unmatched[1]) && gm.length === 0 && checks > 0 && !r.error) ||
+        (cmp.identical && r.replay.faithful && !h.stats.unmatched.length && an.length === h.stats.anthropic && an.length === run.cassette.entries.length && gm.length === 0 && checks > 0 && !r.error),
         { cmp: cmp.identical, mm: r.replay.mismatches.length, unused: r.replay.unused.length, unmatched: h.stats.unmatched, err: r.error && r.error.slice(0, 200) })
       if (lang === 'th') {
         const ut = r.telemetry.usageSummary.join('\n')

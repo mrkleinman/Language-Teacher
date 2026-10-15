@@ -225,10 +225,15 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
       Object.keys(NEW_ROWS).forEach(r => { const [f, to] = NEW_ROWS[r], [of, oto] = OLD_ROWS[r]
         u = u.replace(new RegExp("rank:'" + r + "',(\\s*)from:" + f + ",(\\s*)to:" + to + "(\\s*)\\}"), (m, a, b) => "rank:'" + r + "'," + a + 'from:' + pad(of, 6) + 'to:' + (String(oto) + ' ').padEnd(5) + '}') })
       return u }
-    T('G2', 'no vocabulary entry or complexity contract changed in the source (bank / belt tables byte-identical to v674) except the owner\'s v689 re-banding of 6th–1st Kyu, which is exactly those six rows', banks(undo689(src)) === banks(base) && banks(src).length > 1000, [banks(undo689(src)).length, banks(base).length])
+    // v701 (owner, 2026-10-15): the curriculum ladder was replaced on purpose (Mukyu/10th Kyu 100, 9th–1st Kyu 200 each, Shodan awarded at 2,000) — it is
+    // pinned by tests46 / tests58. The Japanese bank and the complexity contract must still be byte-identical to v674.
+    const banks701 = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0]
+    const ladder = JSON.stringify(c.ev('CURRICULUM_BELTS').map(b => [b.rank, b.from, b.to]))
+    T('G2', 'no vocabulary entry or complexity contract changed in the source (Japanese bank / complexity table byte-identical to v674); the belt ladder is exactly the owner\'s v701 table', banks701(src) === banks701(base) && banks701(src).length > 1000 &&
+      ladder === JSON.stringify([['Mukyu', 1, 100], ['10th Kyu', 101, 200], ['9th Kyu', 201, 400], ['8th Kyu', 401, 600], ['7th Kyu', 601, 800], ['6th Kyu', 801, 1000], ['5th Kyu', 1001, 1200], ['4th Kyu', 1201, 1400], ['3rd Kyu', 1401, 1600], ['2nd Kyu', 1601, 1800], ['1st Kyu', 1801, 2000]]), ladder)
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
     T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings; v682 one: the generation-draft write site; v685 at most three: the AI Generation Model setting and site access code in Settings)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length + (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length + (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length && (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length <= 3 && (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
-    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[0-9]|69[0-9])$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
+    T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[0-9]|69[0-9]|7\d\d)$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
 
   console.log(out.join('\n'))

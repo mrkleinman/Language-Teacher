@@ -359,7 +359,7 @@ function scriptedModel(plan, need) {
   // ══ version ═══════════════════════════════════════════════════════════════════════════════════════════════
   {
     const S = setup('th')
-    T('6A', 'version v672+ (app + Listening build)', /^v(67[2-9]|68[0-9]|69[0-9])$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[2-9]|68[0-9]|69[0-9])$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
+    T('6A', 'version v672+ (app + Listening build)', /^v(67[2-9]|68[0-9]|69[0-9]|7\d\d)$/.test(S.c.ev('APP_BUILD_VERSION')) && /^v(67[2-9]|68[0-9]|69[0-9]|7\d\d)$/.test(S.c.ev('LISTENING_BUILD_VERSION')))
   }
 
   out.forEach(l => console.log(l))

@@ -1,0 +1,515 @@
+🎬 SCENE_CONTRACT premise="Two friends catching up at a local café." · A=สมชาย · B=นิดา · SCENE_PROPER_NAME: สมชาย นิดา
+📚 CANDIDATES_TOTAL=870 CANDIDATES_INELIGIBLE=68 CANDIDATES_ELIGIBLE=802 SELECTED_TARGETS=30 GENERATION_TARGETS=30 NEW_TARGETS=5 REVIEW_TARGETS=25 LISTENING_REQUIRED_TARGETS=30 EXPECTED_TARGET_PAIRS=90 · trackAllowedSetId=trk-30-917 allowedCount=917
+📚 SUITABILITY_METADATA_AUDIT audited=177 (v654 FORMAL_WRITTEN / RECOGNITION_ONLY / VULGAR) · reclassified=66 (FORMAL_SPOKEN 65) · confirmed=19 · METADATA_REVIEW_REQUIRED=92 (kept excluded until reviewed)
+🗺 SCENE_PLAN_DOMAIN_SPLIT "parting & greetings" spread over 2 mini-scenes (advisory)
+🗺 SCENE_CLUSTER_VALIDATION FAIL "Discussing travel and transport options" [6] — no single everyday situation holds places & travel + household actions → split into 2 mini-scene(s): Getting somewhere [5] · Tidying up [1]
+🗺 SCENE_CLUSTER_VALIDATION FAIL "Exchanging contact details" [4] — no single everyday situation holds numbers & prices + parting & greetings → split into 2 mini-scene(s): Prices [3] · Saying goodbye [1]
+🗺 SCENE_ID=S1 SCENE_PURPOSE="Ordering food and drinks" LOCAL_PREMISE="Somchai and Nida are seated at the café and Somchai suggests they order something to share and drink." TARGET_IDS=779,789,794 TARGET_ROLES=779:CONTENT,789:CONTENT,794:CONTENT SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (food & cooking))
+🗺 SCENE_ID=S2 SCENE_PURPOSE="Talking about a wedding and family life" LOCAL_PREMISE="Over their drinks, Nida tells Somchai about a friend's upcoming wedding and how the couple's families raised and care for them." TARGET_IDS=5009,5004,5007,5008 TARGET_ROLES=5009:CONTENT,5004:CONTENT,5007:CONTENT,5008:CONTENT SCENE_CLUSTER_VALIDATION=PASS (discourse / general words only)
+🗺 SCENE_ID=S3 SCENE_PURPOSE="Making plans and schedules" LOCAL_PREMISE="Somchai and Nida are deciding what to do next and checking their calendars for free time." TARGET_IDS=752,837,671,661,705,726,860,700 TARGET_ROLES=752:CONTENT,837:CONTENT,671:CONTENT,661:CONTENT,705:CONTENT,726:CONTENT,860:CONTENT,700:QUESTION_WORD SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (plans & schedule))
+🗺 SCENE_ID=S4 SCENE_PURPOSE="Getting somewhere" LOCAL_PREMISE="A and B talk about where they need to go next and what they need to book or buy" TARGET_IDS=1545,675,648,612,840 TARGET_ROLES=1545:CONTENT,675:CONTENT,648:CONTENT,612:CONTENT,840:CONTENT SCENE_CLUSTER_VALIDATION=SPLIT (no single everyday situation holds places & travel + household actions)
+🗺 SCENE_ID=S5 SCENE_PURPOSE="Tidying up" LOCAL_PREMISE="A and B tidy up after using things: cleaning, putting things away, taking things off" TARGET_IDS=799 TARGET_ROLES=799:CONTENT SCENE_CLUSTER_VALIDATION=SPLIT (no single everyday situation holds places & travel + household actions)
+🗺 SCENE_ID=S6 SCENE_PURPOSE="Prices" LOCAL_PREMISE="A and B talk about how much things cost" TARGET_IDS=712,842,692 TARGET_ROLES=712:CONTENT,842:CONTENT,692:CONTENT SCENE_CLUSTER_VALIDATION=SPLIT (no single everyday situation holds numbers & prices + parting & greetings)
+🗺 SCENE_ID=S7 SCENE_PURPOSE="Greeting and welcoming each other at the café" LOCAL_PREMISE="Nida arrives at the café and Somchai greets her, inviting her to sit and thanking her respectfully for coming." TARGET_IDS=788,785,816,5002,5006 TARGET_ROLES=788:GREETING,785:CONTENT,816:FUNCTIONAL_PHRASE,5002:FUNCTIONAL_PHRASE,5006:GREETING SCENE_CLUSTER_VALIDATION=PASS (one semantic domain (parting & greetings))
+🗺 SCENE_ID=S8 SCENE_PURPOSE="Saying goodbye" LOCAL_PREMISE="A and B say goodbye as they part" TARGET_IDS=694 TARGET_ROLES=694:GREETING SCENE_CLUSTER_VALIDATION=SPLIT (no single everyday situation holds numbers & prices + parting & greetings)
+🗺 SCENE_PLAN 8 mini-scene(s): S1. Ordering food and drinks [3] · S2. Talking about a wedding and family life [4] · S3. Making plans and schedules [8] · S4. Getting somewhere [5] · S5. Tidying up [1] · S6. Prices [3] · S7. Greeting and welcoming each other at the café [5] · S8. Saying goodbye [1]
+━━ 💬 1/30: ทานกันเลย [let's eat]
+⚪ 1st check: ทานกันเลย · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"เอาอาหารมาทานกันเลยครับ","english":"Let's get some food and eat right away.","prompt":"Suggest 
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ทานกันเลย
+📊 THAI_GENERATION_BUDGET target=ทานกันเลย CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 2/30: น้ำเปล่า [(plain) drinking water]
+⚪ 1st check: น้ำเปล่า · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ผมอยากดื่มน้ำเปล่าครับ","english":"I want to drink plain water.","prompt":"Say you want to drin
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: น้ำเปล่า
+📊 THAI_GENERATION_BUDGET target=น้ำเปล่า CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 3/30: กระป๋อง [tin, can (container)]
+⚪ 1st check: กระป๋อง · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"น้ำเปล่าอยู่ในกระป๋องครับ","english":"The plain water is in a can.","prompt":"Say that t
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: กระป๋อง
+📊 THAI_GENERATION_BUDGET target=กระป๋อง CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 4/30: งานแต่งงาน [wedding]
+⚪ 1st check: งานแต่งงาน · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ผมไปงานแต่งงานพรุ่งนี้ครับ","english":"I'm going to a wedding tomorrow.","prompt":"Say you are 
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: งานแต่งงาน
+📊 THAI_GENERATION_BUDGET target=งานแต่งงาน CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 5/30: ความรัก [love (noun)]
+⚪ 1st check: ความรัก · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ความรักเขาดีมากครับ","english":"Their love is really good.","prompt":"Say their love is very go
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ความรัก
+📊 THAI_GENERATION_BUDGET target=ความรัก CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 6/30: เลี้ยงดู [raise and care for (someone)]
+⚪ 1st check: เลี้ยงดู · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ครอบครัวเขาเลี้ยงดูมาดีมากครับ","english":"Their family has raised them really well.","prompt":
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: เลี้ยงดู
+📊 THAI_GENERATION_BUDGET target=เลี้ยงดู CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 7/30: ขอให้ [may … / wish that …]
+⚪ 1st check: ขอให้ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"ขอให้เขามีครอบครัวที่ดีนะครับ","english":"I wish they have a good family.","prompt":"Say
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ขอให้
+📊 THAI_GENERATION_BUDGET target=ขอให้ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): ทานกันเลย 3/3 PASSED · น้ำเปล่า 3/3 PASSED · กระป๋อง 3/3 PASSED · งานแต่งงาน 3/3 PASSED · ความรัก 3/3 PASSED · เลี้ยงดู 3/3 PASSED · ขอให้ 2/3 — 1 slot(s) to regenerate
+ℹ 🧪 EARLY_SEMANTIC_GATE batch 1: 21 line(s) judged · 1 rejected before the group counts as PASSED — [ขอให้] คุณขอให้เขาอะไรคะ (UNNATURAL: unnatural 2/5 — Asking what someone wishes for is)
+🟠 2nd check: ขอให้ · recall 2
+📄 [
+{"speaker":"A","thai":"ขอให้เขาดีครับ","english":"I wish them well.","prompt":"Say you wish the couple well.","ok":tru
+✅ recall 2 at its 2nd check passed: ขอให้
+📊 THAI_GENERATION_BUDGET target=ขอให้ CHECKS per recall r2=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+ℹ 🧪 EARLY_SLOT_REGENERATION 1 target(s) · 1 candidate(s) · 1 slot(s) refilled so far (only the rejected slots were regenerated)
+━━ 💬 8/30: มีนัดกับ [have an appointment with]
+⚪ 1st check: มีนัดกับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"พรุ่งนี้ผมมีนัดกับคุณแม่ครับ","english":"I have an appointment with my mom tomorrow.","p
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: มีนัดกับ
+📊 THAI_GENERATION_BUDGET target=มีนัดกับ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 9/30: แผน [plan]
+⚪ 1st check: แผน · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ผมมีแผนพาคุณแม่กินข้าวครับ","english":"I have a plan to take Mom out for a meal.","prompt":"Say
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: แผน
+📊 THAI_GENERATION_BUDGET target=แผน CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 10/30: แล้วคุยกัน [talk later]
+⚪ 1st check: แล้วคุยกัน · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"วันนี้ยุ่งก็แล้วคุยกันนะครับ","english":"If today's busy, let's talk later.","prompt":"S
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: แล้วคุยกัน
+📊 THAI_GENERATION_BUDGET target=แล้วคุยกัน CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 11/30: ดูหนัง [watch movie]
+⚪ 1st check: ดูหนัง · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ห้าโมงเย็นผมอยากดูหนังครับ","english":"I want to watch a movie at five in the evening.","prompt
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ดูหนัง
+📊 THAI_GENERATION_BUDGET target=ดูหนัง CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 12/30: มวยไทย [Muay Thai]
+⚪ 1st check: มวยไทย · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"ห้าโมงเย็นผมอยากดูมวยไทยด้วยครับ","english":"At five in the evening I want to watch Muay
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: มวยไทย
+📊 THAI_GENERATION_BUDGET target=มวยไทย CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 13/30: แย่แล้ว [oh no!]
+⚪ 1st check: แย่แล้ว · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"แย่แล้วผมมีนัดห้าโมงเย็นครับ","english":"Oh no, I have an appointment at five.","prompt":"Say o
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: แย่แล้ว
+📊 THAI_GENERATION_BUDGET target=แย่แล้ว CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 14/30: ไม่เชิง [not exactly]
+⚪ 1st check: ไม่เชิง · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"ไม่เชิงครับ ผมยังไม่รู้เลย","english":"Not exactly, I don't know yet.","prompt":"Say not
+ℹ POLITENESS_ISSUE (advisory) speaker=A: politeness particle only in an earlier clause (ครับ) (each advisory shown once per target)
+ℹ POLITENESS_ISSUE (advisory) speaker=B: politeness particle only in an earlier clause (ค่ะ) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ไม่เชิง
+📊 THAI_GENERATION_BUDGET target=ไม่เชิง CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 15/30: เมื่อ [when (conjunction, not a question)]
+⚪ 1st check: เมื่อ · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ผมบอกคุณเมื่อรู้ครับ","english":"I'll tell you when I know.","prompt":"Say you'll tell her when
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: เมื่อ
+📊 THAI_GENERATION_BUDGET target=เมื่อ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): มีนัดกับ 3/3 PASSED · แผน 3/3 PASSED · แล้วคุยกัน 2/3 — 1 slot(s) to regenerate · ดูหนัง 3/3 PASSED · มวยไทย 3/3 PASSED · แย่แล้ว 3/3 PASSED · ไม่เชิง 3/3 PASSED · เมื่อ 3/3 PASSED
+ℹ 🧪 EARLY_SEMANTIC_GATE batch 2: 24 line(s) judged · 1 rejected before the group counts as PASSED — [แล้วคุยกัน] วันนี้ยุ่งก็แล้วคุยกันนะครับ (UNNATURAL: unnatural 2/5 — Glued clauses; แล้วคุยกัน after ย)
+🟠 2nd check: แล้วคุยกัน · recall 1
+📄 ```json
+[{"speaker":"A","thai":"งั้นแล้วคุยกันบ่ายสามโมงครับ","english":"Then let's talk at three in the afternoon.","pr
+ℹ POLITENESS_ISSUE (advisory) speaker=A: politeness particle only in an earlier clause (ครับ) (each advisory shown once per target)
+✅ recall 1 at its 2nd check passed: แล้วคุยกัน
+📊 THAI_GENERATION_BUDGET target=แล้วคุยกัน CHECKS per recall r1=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+ℹ 🧪 EARLY_SLOT_REGENERATION 1 target(s) · 1 candidate(s) · 2 slot(s) refilled so far (only the rejected slots were regenerated)
+━━ 💬 16/30: ป้ายรถเมล์ [bus stop]
+⚪ 1st check: ป้ายรถเมล์ · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ป้ายรถเมล์อยู่ไม่ไกลครับ","english":"The bus stop is not far.","prompt":"Tell her the bus stop 
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ป้ายรถเมล์
+📊 THAI_GENERATION_BUDGET target=ป้ายรถเมล์ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 17/30: รถบัส [bus]
+⚪ 1st check: รถบัส · recall 1+2+3
+📄 [{"speaker":"A","thai":"รถบัสไปก็ได้ครับ","english":"Going by bus is fine too.","prompt":"Say going by bus is fine too."
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: รถบัส
+📊 THAI_GENERATION_BUDGET target=รถบัส CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 18/30: มีรถขับ [have a car]
+⚪ 1st check: มีรถขับ · recall 1+2+3
+📄 [
+  {"speaker":"A","thai":"รถบัสไม่แพง แต่ผมมีรถขับครับ","english":"The bus isn't expensive, but I have a car.","prompt"
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: มีรถขับ
+📊 THAI_GENERATION_BUDGET target=มีรถขับ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 19/30: นั่งเรือ [boat ride]
+⚪ 1st check: นั่งเรือ · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"หรือนั่งเรือไปก็ได้ครับ","english":"Or taking the boat is fine too.","prompt":"Suggest that goi
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: นั่งเรือ
+📊 THAI_GENERATION_BUDGET target=นั่งเรือ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 20/30: พิพิธภัณฑสถานแห่งชาติ [national museum]
+⚪ 1st check: พิพิธภัณฑสถานแห่งชาติ · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ผมอยากไปพิพิธภัณฑสถานแห่งชาติครับ","english":"I want to go to the National Museum.","prompt":"S
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: พิพิธภัณฑสถานแห่งชาติ
+📊 THAI_GENERATION_BUDGET target=พิพิธภัณฑสถานแห่งชาติ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): ป้ายรถเมล์ 3/3 PASSED · รถบัส 3/3 PASSED · มีรถขับ 0/3 — 3 slot(s) to regenerate · นั่งเรือ 3/3 PASSED · พิพิธภัณฑสถานแห่งชาติ 3/3 PASSED
+ℹ 🧪 EARLY_SEMANTIC_GATE batch 3: 15 line(s) judged · 3 rejected before the group counts as PASSED — [มีรถขับ] รถบัสไม่แพง แต่ผมมีรถขับครับ (UNNATURAL: unnatural 2/5 — มีรถขับ is not a normal phrase; s) | [มีรถขับ] คุณมีรถขับจริงเหรอคะ (UNNATURAL: unnatural 2/5 — มีรถขับ is unnatural; a Thai spea) | [มีรถขับ] ผมมีรถขับ ไปด้วยไหมครับ (UNNATURAL: unnatural 2/5 — มีรถขับ is unnatural; the second )
+🟠 2nd check: มีรถขับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"ผมไม่มีรถขับครับ","english":"I don't have a car to drive.","prompt":"Say you don't have 
+✅ recall 1 at its 2nd check, recall 2 at its 2nd check, recall 3 at its 2nd check passed: มีรถขับ
+📊 THAI_GENERATION_BUDGET target=มีรถขับ CHECKS per recall r1=2/11 r2=2/11 r3=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+ℹ 🧪 EARLY_SLOT_REGENERATION 1 target(s) · 3 candidate(s) · 5 slot(s) refilled so far (only the rejected slots were regenerated)
+━━ 💬 21/30: ไว้ [(do) in advance; keep, put]
+⚪ 1st check: ไว้ · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ผมเอารถไว้ที่นี่ครับ","english":"I'll leave my car here.","prompt":"Say you'll leave your car h
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ไว้
+📊 THAI_GENERATION_BUDGET target=ไว้ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 22/30: เบอร์โทรศัพท์ [phone number]
+⚪ 1st check: เบอร์โทรศัพท์ · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"เบอร์โทรศัพท์ร้านตัวที่เก้าเป็นศูนย์ครับ","english":"The shop's phone number's ninth digit is z
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: เบอร์โทรศัพท์
+📊 THAI_GENERATION_BUDGET target=เบอร์โทรศัพท์ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 23/30: ไม่ทราบว่า [may I ask…? (polite opener)]
+⚪ 1st check: ไม่ทราบว่า · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ไม่ทราบว่าราคาเท่าไหร่ครับ","english":"May I ask how much the price is?","prompt":"Politely ask
+🔧 LOCAL_REPAIR cue (no paid call): "Politely ask where the restroom is, starting with " → "Ask if you may ask where the restroom is."
+🔧 LOCAL_REPAIR cue (no paid call): "Politely ask where you pay, starting with may I as" → "Ask if you may ask where we pay."
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ไม่ทราบว่า
+📊 THAI_GENERATION_BUDGET target=ไม่ทราบว่า CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=2 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 24/30: ได้ไหม [can (I/you)?]
+⚪ 1st check: ได้ไหม · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"แพงนะ ลดให้หน่อยได้ไหมครับ","english":"It's pricey, can you give me a little discount?","prompt
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ได้ไหม
+📊 THAI_GENERATION_BUDGET target=ได้ไหม CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): ไว้ 3/3 PASSED · เบอร์โทรศัพท์ 3/3 PASSED · ไม่ทราบว่า 3/3 PASSED · ได้ไหม 3/3 PASSED
+ℹ 🧪 EARLY_SEMANTIC_GATE batch 4: 12 line(s) judged · 0 rejected
+━━ 💬 25/30: สวัสดีครับ [hello (male)]
+⚪ 1st check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"สวัสดีครับ ขอบคุณที่มาครับ","english":"Hello, thanks for coming.","prompt":"Say hello to
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+ค่ะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: สวัสดีครับ
+🟠 2nd check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"สวัสดีครับ มาถึงแล้วครับ","english":"Hello, you've arrived.","prompt":"Greet her and tel
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+คะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: คุณพูดสวัส
+ℹ 🔀 RECOVERY_STRATEGY_CHANGE สวัสดีครับ → CHANGE THE LEXICAL CONSTRUCTION (same failure class twice (SPEAKER_CONFLICT))
+🔶 3rd check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"สวัสดีครับ วันนี้ดีไหมครับ","english":"Hello, how's your day going?","prompt":"Greet her
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+ค่ะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: คุณพูดว่าส
+🔵 4th check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[
+  {"speaker":"A","thai":"สวัสดีครับ คุณดีไหมครับ","english":"Hello, how are you?","prompt":"Greet her with hel
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+ค่ะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: สวัสดีครับ
+🔷 5th check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[
+  {"speaker":"A","thai":"สวัสดีครับ ขอบคุณมากครับ","english":"Hello, thanks so much for coming.","prompt":"Gre
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+ค่ะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: คุณพูดสวัส
+🟡 6th check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"สวัสดีครับมาถึงแล้วครับ","english":"Hello, you've arrived.","prompt":"Greet her as she a
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+ค่ะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: คุณพูดว่าส
+🟨 7th check: สวัสดีครับ · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ผมเอง สวัสดีครับ","english":"Hi, it's me.","prompt":"Say it's you, then say hello (male) to her
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+ค่ะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: คุณพูดสวัส
+🟢 8th check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"สวัสดีครับคุณมาที่นี่ครับ","english":"Hello, you came here.","prompt":"Greet her with he
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+ค่ะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: สวัสดีครับ
+🟩 9th check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"สวัสดีครับขอบคุณที่มาครับ","english":"Hello, thanks for coming.","prompt":"Say hello to 
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+คะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: ขอบคุณที่พ
+🟤 10th check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"สวัสดีครับ คุณมาที่นี่ครับ","english":"Hello, so you made it here.","prompt":"Greet Nida
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+คะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: สวัสดีครับ
+🟫 11th check: สวัสดีครับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"สวัสดีครับ วันนี้ดีไหมครับ","english":"Hello, how's your day going?","prompt":"Greet her
+⚠️ SPEAKER_GENDER_CONFLICT speaker=B gender=female particles=ครับ+คะ result=FAIL (female speaker uses ครับ (male particle))
+ℹ ⚠️ Speaker/particle fail: SPEAKER_GENDER_CONFLICT: female speaker uses ครับ (male particle) (speaker B, female) in: คุณพูดสวัส
+📊 THAI_GENERATION_BUDGET target=สวัสดีครับ CHECKS per recall r1=11/11 r2=11/11 r3=11/11 PAID_GENERATION_ATTEMPTS=11 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=FAILED
+━━ 💬 26/30: ผมเอง [it's me]
+⚪ 1st check: ผมเอง · recall 1+2+3
+📄 [{"speaker":"A","thai":"ใช่ ผมเองครับ ขอโทษที่มาสาย","english":"Yes, it's me, sorry I'm late.","prompt":"Say yes, it's m
+ℹ POLITENESS_ISSUE (advisory) speaker=A: politeness particle only in an earlier clause (ครับ) (each advisory shown once per target)
+ℹ POLITENESS_ISSUE (advisory) speaker=B: ค่ะ on a question (คะ is usual) (each advisory shown once per target)
+ℹ ⚠️ Quality fail: ผม+ค่ะ gender mismatch: ผมเองเหรอคะ ไม่เป็นไรค่ะ
+🟠 2nd check: ผมเอง · recall 3
+📄 ```json
+[
+  {"speaker":"A","thai":"ผมเองครับ เชิญนั่งครับ","english":"It's me. Please, have a seat.","prompt":"Say it's 
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 2nd check passed: ผมเอง
+📊 THAI_GENERATION_BUDGET target=ผมเอง CHECKS per recall r1=1/11 r2=1/11 r3=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 27/30: เชิญนั่ง [please sit]
+⚪ 1st check: เชิญนั่ง · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ไม่มีก็ได้ เชิญนั่งครับ","english":"No worries, please sit.","prompt":"Tell her it's fine, and 
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: เชิญนั่ง
+📊 THAI_GENERATION_BUDGET target=เชิญนั่ง CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 28/30: ขอบพระคุณ [thank you (respectfully)]
+⚪ 1st check: ขอบพระคุณ · recall 1+2+3
+📄 [{"speaker":"A","thai":"ขอบพระคุณที่มาไกลนะครับ","english":"Thank you for coming all this way.","prompt":"Thank her resp
+ℹ POLITENESS_ISSUE (advisory) speaker=A: politeness particle only in an earlier clause (ครับ) (each advisory shown once per target)
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ขอบพระคุณ
+📊 THAI_GENERATION_BUDGET target=ขอบพระคุณ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+━━ 💬 29/30: ต้อนรับ [welcome]
+⚪ 1st check: ต้อนรับ · recall 1+2+3
+📄 ```json
+[{"speaker":"A","thai":"ยินดีต้อนรับครับ","english":"Welcome, I'm glad you're here.","prompt":"Welcome her to th
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ต้อนรับ
+📊 THAI_GENERATION_BUDGET target=ต้อนรับ CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): ผมเอง 1/3 — 2 slot(s) to regenerate · เชิญนั่ง 2/3 — 1 slot(s) to regenerate · ขอบพระคุณ 3/3 PASSED · ต้อนรับ 2/3 — 1 slot(s) to regenerate
+ℹ 🧪 EARLY_SEMANTIC_GATE batch 5: 12 line(s) judged · 4 rejected before the group counts as PASSED — [ผมเอง] ขอผมเองหน่อยครับ (CUE_MISMATCH: Prompt and English are garbled; sentence asks ) | [ผมเอง] ไม่มีผมเองครับ (CUE_MISMATCH: Prompt is garbled; sentence says there is no m) | [เชิญนั่ง] เชิญนั่งที่ไหนดีคะ (WRONG_SENSE: target used in the wrong sense (intended: pleas) | [ต้อนรับ] ยินดีต้อนรับครับ (CUE_MISMATCH: Thai lacks 'glad'; English adds it, mismatch ()
+🔶 3rd check: ผมเอง · recall 1+2
+📄 ```json
+[{"speaker":"A","thai":"ผมเองที่ดีใจที่คุณมาครับ","english":"I'm the one who's glad you came.","prompt":"Tell he
+✅ recall 1 at its 3rd check, recall 2 at its 3rd check passed: ผมเอง
+📊 THAI_GENERATION_BUDGET target=ผมเอง CHECKS per recall r1=3/11 r2=3/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🟠 2nd check: เชิญนั่ง · recall 2
+📄 [
+{"speaker":"A","thai":"คุณเชิญนั่งที่ไหนก็ได้ครับ","english":"Please sit wherever you like.","prompt":"Tell her she ca
+✅ recall 2 at its 2nd check passed: เชิญนั่ง
+📊 THAI_GENERATION_BUDGET target=เชิญนั่ง CHECKS per recall r2=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+🟠 2nd check: ต้อนรับ · recall 1
+📄 ```json
+[{"speaker":"A","thai":"ที่นี่ผมต้อนรับคุณครับ","english":"Here, I welcome you.","prompt":"Say that here you wel
+✅ recall 1 at its 2nd check passed: ต้อนรับ
+📊 THAI_GENERATION_BUDGET target=ต้อนรับ CHECKS per recall r1=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 LOCAL_REJECTS=0 outcome=PASSED
+ℹ 🧪 EARLY_SLOT_REGENERATION 3 target(s) · 4 candidate(s) · 7 slot(s) refilled so far (only the rejected slots were regenerated)
+━━ 💬 30/30: ยินดีที่ได้รู้จัก [nice to meet you]
+⚪ 1st check: ยินดีที่ได้รู้จัก · recall 1+2+3
+📄 [
+{"speaker":"A","thai":"ยินดีที่ได้รู้จักคุณนะครับ","english":"Nice to meet you.","prompt":"Tell her it's nice to meet 
+ℹ POLITENESS_ISSUE (advisory) speaker=B: คะ on a statement (ค่ะ is usual) (each advisory shown once per target)
+🔧 LOCAL_REPAIR cue (no paid call): "Say nice to meet you, then tell her to drink some " → "Say nice to meet them. Have some water."
+✅ recall 1 at its 1st check, recall 2 at its 1st check, recall 3 at its 1st check passed: ยินดีที่ได้รู้จัก
+📊 THAI_GENERATION_BUDGET target=ยินดีที่ได้รู้จัก CHECKS per recall r1=1/11 r2=1/11 r3=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 LOCAL_REJECTS=0 outcome=PASSED
+🧪 TARGET_GROUP_ACCEPTANCE (same contract as the final audit): ยินดีที่ได้รู้จัก 3/3 PASSED
+ℹ 🧪 EARLY_SEMANTIC_GATE batch 6: 3 line(s) judged · 0 rejected
+ℹ token=นาน canonicalId=none learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=ai:check-1 stage=generation
+ℹ token=นาน canonicalId=none learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=ai:check-1 stage=generation
+ℹ 🔒 closed-vocab [generation] checked=89 pass=87 blockedUnseen=2 tokens=นาน repairs=2 (restored 0, fallback 0, framing 2, dropped 0) remainingIllegalPairs=0
+ℹ final audit rejected [085] ยินดีที่ได้รู้จักคุณนะครับ — translation is the raw dictionary gloss
+⚠   🧾 FINAL_TRACK_AUDIT (generation): accepted 88/89 · content 84 · bridge 0 · framing 4 · rejected 1 · coverage 29/30 · invariants OK
+Checking prompt alignment…
+  ✂ CUE_CLARITY (quality review, th) checked=88 · A meaning mismatch=0 (cue fixed 0, translation flagged 0) · B background removed / instruction form=2 · C context kept=0 · D unchanged=86 · changed=2 — deterministic, cue only (sentence, translation, target and pronunciation untouched), no paid call · e.g. "He says goodbye to Nida and tells her to take care" → "Say goodbye to Nida and tell her to take care." | "Nida says goodbye back to Somchai" → "Say goodbye back to Somchai."
+  Batch 1/8: checking 12 pairs (e.g. "Suggest getting some food over and eatin…")
+  Batch 2/8: checking 12 pairs (e.g. "Say their love is very good.…")
+  Batch 3/8: checking 12 pairs (e.g. "Say you have a plan to take your mom out…")
+  Batch 4/8: checking 12 pairs (e.g. "Say oh no, you have an appointment at fi…")
+  Batch 5/8: checking 12 pairs (e.g. "Say going by bus is fine too.…")
+  Batch 6/8: checking 12 pairs (e.g. "Say you'll leave your car here.…")
+  Batch 7/8: checking 12 pairs (e.g. "Say it's you and invite her to sit down.…")
+  Batch 8/8: checking 2 pairs (e.g. "Say goodbye to Nida and tell her to take…")
+⚠️ 6 prompt mismatches:
+  [Say oh no, ask who he has an appointment with.] score 3/5 — Prompt asks about speaker's appointment; Thai asks about listener's
+  [Ask how many digits his phone number has.] score 2/5 — Prompt asks about his own number; Thai asks about listener's number
+  [Ask if you can pay right now.] score 4/5 — Thai and English say 'we pay' rather than 'you pay'
+  [Thank her respectfully again, then say you're glad she ] score 3/5 — prompt says thank respectfully again; sentence lacks 'again' but otherwise matches
+  [Say goodbye to Nida and tell her to take care.] score 4/5 — Prompt says say goodbye to Nida; sentence omits naming her but conveys farewell and take care
+  [Say goodbye back to Somchai.] score 3/5 — Prompt says say goodbye; sentence wishes safe trip, which is a farewell but not an explicit goodbye
+Evaluating 30 groups…
+  ✓ ทานกันเลย
+  ✓ น้ำเปล่า
+  ✓ กระป๋อง
+  ✓ งานแต่งงาน
+  ✏️ ความรัก: The line "คุณอยากฟังความรักเขาไหมครับ" is unnatural because love is not usually something one 'listens to' in this form; it should be "คุณอยากฟังเรื่องความรักของเขาไหมครับ", and the other lines are natural and use the target correctly.
+  ✓ เลี้ยงดู
+  ✓ ขอให้
+  ✓ มีนัดกับ
+  ✏️ แผน: The first line is natural, but the B line's word order is awkward ('แผนพรุ่งนี้คุณมีไหม' should be 'พรุ่งนี้คุณมีแผนไหมคะ'), and the last A line lacks 'ก็' ('ไม่มีแผนก็ไปดูหนังกันไหมครับ'), so it reads as 'don't you have plans to go see a movie?'.
+  ✓ แล้วคุยกัน
+  ✓ ดูหนัง
+  ✓ มวยไทย
+  🎯 THAI_CUE_REBUILT_FROM_TRANSLATION แย่แล้ว: "Say oh no, ask who he has an appointment with." → "Ask: Oh no, who do you have an appointment with?" (cue asked for more than the Thai says; the Thai is kept)
+  ✓ แย่แล้ว
+  ✓ ไม่เชิง
+  ✓ เมื่อ
+  ✓ ป้ายรถเมล์
+  ✓ รถบัส
+  ✓ นั่งเรือ
+  ✓ พิพิธภัณฑสถานแห่งชาติ
+  ✓ มีรถขับ
+  ✓ ไว้
+  🔄 เบอร์โทรศัพท์: Prompt mismatch (2/5): "Ask how many digits his phone number has" — "So how many digits does your phone numbe". Prompt asks about his own number; Thai asks about listener's number
+  ⛔ QC replace discarded for เบอร์โทรศัพท์: TARGET_MISSING: "เบอร์โทรศัพท์" is not in the rewrite — "ผมจะออกตอนกี่โมงครับ" (original kept)
+  ✓ ไม่ทราบว่า
+  ✓ ได้ไหม
+  ✓ ผมเอง
+  ✏️ เชิญนั่ง: Lines 1 and 2 are natural and match their cues, but line 3 "คุณเชิญนั่งที่ไหนก็ได้ครับ" is awkward because the subject "คุณ" precedes เชิญ; the natural form is "เชิญนั่งที่ไหนก็ได้ครับ".
+  🎯 THAI_CUE_REBUILT_FROM_TRANSLATION ขอบพระคุณ: "Thank her respectfully again, then say you're glad" → "Thank her so much. you're glad her came." (cue asked for more than the Thai says; the Thai is kept)
+  ✓ ขอบพระคุณ
+  ✓ ต้อนรับ
+  ✓ ยินดีที่ได้รู้จัก
+  🎯 THAI_CUE_REBUILT_FROM_TRANSLATION parting: "Say goodbye back to Somchai." → "Say yes, have a safe trip." (cue asked for more than the Thai says; the Thai is kept)
+  ✓ parting
+  ℹ token=เรื่อง canonicalId=660 learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=ai:improve:ความรัก stage=qc
+  ℹ token=เดี๋ยว canonicalId=186 learnerIntroduced=false isCurrentTarget=false isGrammar=false isApprovedComposition=false vocabAuthorisation=BLOCKED_UNSEEN generationSource=ai:replace:เบอร์โทรศัพท์ stage=qc
+  🔒 closed-vocab [qc] checked=88 pass=86 blockedUnseen=2 tokens=เรื่อง เดี๋ยว repairs=2 (restored 2, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔒 closed-vocab [qc-final] checked=88 pass=88 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  ✂ CUE_CLARITY (main, th) checked=84 · A meaning mismatch=2 (cue fixed 2, translation flagged 0) · B background removed / instruction form=7 · C context kept=0 · D unchanged=75 · changed=9 — deterministic, cue only (sentence, translation, target and pronunciation untouched), no paid call · e.g. "He says that the love between the couple is really wonderful" → "Say their love is really good." | "She is surprised and asks what the couple's love is like." → "She is surprised and ask what the couple's love is like." | "He says he has a plan to take his mom out for a meal." → "Say you have a plan to take your mom out for a meal."
+  ⚖ THAI_SEMANTIC_ADJUDICATION 2 borderline rejection(s) without a quoted construction → one batched adjudication · 2 decided
+  ⚖ THAI_VERDICT_CONFLICT "ไม่มีก็ได้ เชิญนั่งครับ" — earlier natural (4/5), now unnatural (2/5), isolated re-judgement 3/5 → UNNATURAL for the rest of this run
+  ℹ final audit: [เชิญนั่ง] UNNATURAL — unnatural 2/5 — ไม่มีก็ได้ has no clear referent; the line does not follow. → dropped
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (main): checked=84 cue=COMPLETE (84/84 judged) naturalness=COMPLETE (84/84 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=1 unverified=0 (kept, marked) dropped=1 reusedVerdicts=149 (judged earlier on the same text, not paid again) status=COMPLETE
+  🔒 closed-vocab [post-audit] checked=87 pass=87 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🧾 FINAL_TRACK_AUDIT (qc): accepted 87/87 · content 83 · bridge 0 · framing 4 · rejected 0 · coverage 29/30 · invariants OK
+  📊 coverage: 3+ candidates 25 · 2 4 · 1 0 · 0 1
+  ⛔ TARGET_UNCOVERED: สวัสดีครับ — track is NOT fully covered
+  🧭 SEMANTIC_AUDIT COMPLETE · NATURALNESS_AUDIT COMPLETE (83/83 judged) (pair-level only — MAIN_TRACK status is decided by TRACK INTEGRITY)
+━━ FINAL_TRACK (th): quota → recovery → coherence → freeze text → pronunciation → final audit → invariants
+  ✂ CUE_CLARITY (final, th) checked=87 · A meaning mismatch=0 (cue fixed 0, translation flagged 0) · B background removed / instruction form=0 · C context kept=0 · D unchanged=87 · changed=0 — deterministic, cue only (sentence, translation, target and pronunciation untouched), no paid call
+♻️ QUOTA RECOVERY round 1: 5 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 7 · TARGET PAIRS 83/90
+  🔶 3rd check: ต้อนรับ · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  ⚖ THAI_SEMANTIC_ADJUDICATION 1 borderline rejection(s) without a quoted construction → one batched adjudication · 1 decided
+  ℹ final audit: [ต้อนรับ] UNNATURAL — unnatural 2/5 — Asking permission to welcome is odd; Thai says ยินดีต้อนรับ directly. → dropped
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=1 unverified=0 (dropped: fail closed) dropped=1 status=COMPLETE
+  ✅ QUOTA RECOVERY ต้อนรับ: +1 TARGET PAIR(S) (needed 1) — ฉันยังไม่ได้ต้อนรับคุณค่ะ
+  🟠 2nd check: เชิญนั่ง · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🔧 CUE_REPAIRED_KEEP_PAIR [เชิญนั่ง] "Suggest sitting down together, asking him if he agrees." → "Suggest sitting down together and ask if he agrees." (judge-repair; cue 3/5 — Prompt asks if he agrees; sentence only suggests sitting together)
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=1 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY เชิญนั่ง: +1 TARGET PAIR(S) (needed 1) — เชิญนั่งไหมครับ
+  🟠 2nd check: ยินดีที่ได้รู้จัก · recall 1 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=2 pass=2 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=2 cue=COMPLETE (2/2 judged) naturalness=COMPLETE (2/2 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY ยินดีที่ได้รู้จัก: +1 TARGET PAIR(S) (needed 1) — ยินดีที่ได้รู้จักครับ แล้วเจอกันนะครับ
+  🔵 4th check: ผมเอง · recall 2 · quota recovery (paid, one request)
+  ℹ QUOTA RECOVERY ผมเอง: 0/1 accepted — 
+  ⛔ CHECKS_EXHAUSTED สวัสดีครับ recall 1+2+3: 11/11 attempts used — UNRESOLVED
+♻️ QUOTA RECOVERY round 2: 1 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 1 · TARGET PAIRS 86/90
+  🔷 5th check: ผมเอง · recall 2 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=1 pass=1 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  ℹ final audit: [ผมเอง] WRONG_SENSE — target used in the wrong sense (intended: it's me — a man identifying himself) — ผมเอง means 'I myself' here, not 'it's me'; better: ผมไปด้วยได้ไหมครับ → dropped
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=1 status=COMPLETE
+  ℹ QUOTA RECOVERY ผมเอง: 0/1 accepted — WRONG_SENSE: target used in the wrong sense (intended: it's me — a man identifying himself) — ผมเอง means 'I myself' here, not 'it's me'; better: ผมไปด้วยได้ไหมครับ: ผมเองไปด้วยไหมครับ
+♻️ QUOTA RECOVERY round 3: 1 TARGET WORD(S) below 3 valid TARGET PAIRS · deficit 1 · TARGET PAIRS 86/90
+  🟡 6th check: ผมเอง · recall 2 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=1 pass=1 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  ✂ CUE_CLARITY (quota-recovery, th) checked=1 · A meaning mismatch=0 (cue fixed 0, translation flagged 0) · B background removed / instruction form=1 · C context kept=0 · D unchanged=0 · changed=1 — deterministic, cue only (sentence, translation, target and pronunciation untouched), no paid call · e.g. "Tell her it's you, Nida, identifying yourself by name." → "Say it's you, Somchai."
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=1 cue=COMPLETE (1/1 judged) naturalness=COMPLETE (1/1 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 status=COMPLETE
+  ✅ QUOTA RECOVERY ผมเอง: +1 TARGET PAIR(S) (needed 1) — ผมเองครับ สมชาย
+  🔁 TARGET_SUBSTITUTION สวัสดีครับ (788) 0/3 — CHECKS_EXHAUSTED · a revision word: trying ใกล้ๆ, กางเกงขาสั้น from the revision queue
+  ⚪ 1st check: ใกล้ๆ · recall 1+2+3 · quota recovery (paid, one request)
+  🔒 closed-vocab [quota-recovery] checked=4 pass=4 blockedUnseen=0 tokens=none repairs=0 (restored 0, fallback 0, framing 0, dropped 0) remainingIllegalPairs=0
+  ✂ CUE_CLARITY (quota-recovery, th) checked=4 · A meaning mismatch=0 (cue fixed 0, translation flagged 0) · B background removed / instruction form=3 · C context kept=0 · D unchanged=1 · changed=3 — deterministic, cue only (sentence, translation, target and pronunciation untouched), no paid call · e.g. "Ask the other person if there is anywhere nearby." → "Ask if there is anywhere nearby." | "Tell him there is nothing nearby here." → "Say there is nothing nearby here." | "Tell him the nearby place here is very good." → "Say the nearby place here is very good."
+  ⚖ THAI_SEMANTIC_ADJUDICATION 2 borderline rejection(s) without a quoted construction → one batched adjudication · 2 decided
+  ℹ final audit: [ใกล้ๆ] UNNATURAL — unnatural 2/5 — ใกล้ๆนี้ดี does not sound like a Thai description of a place. → dropped
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (quota-recovery): checked=4 cue=COMPLETE (4/4 judged) naturalness=COMPLETE (4/4 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=1 unverified=0 (dropped: fail closed) dropped=1 status=COMPLETE
+    ✅ TARGET_SUBSTITUTED สวัสดีครับ → ใกล้ๆ (3/3 recalls, each through the fail-closed recovery audit) — สวัสดีครับ stays due in SRS: มีที่ใกล้ๆไหมครับ / ใกล้ๆนี้ไม่มีค่ะ / ไปใกล้ๆด้วยกันไหมครับ
+📏 LEVEL belt=9th Kyu preferred=4–6 hardMax=8 · LEVEL 9th Kyu · target 4–6 · max 8 (Thai words, rankProgressFor)
+📚 VOCAB INVENTORY introducedContent=887 selectedTargets=30 newTargets=5 (daily)
+  🧩 MAIN_TRACK_COHERENCE 8/9 scene(s) coherent · overall 4/5 (threshold 3) · S1=4 S2=5 S3=4 S4=5 S5=4 S6=3 S7=4 S8=2 S9=4 · S8:  → FAIL
+  🗺 SCENE_CLUSTER_VALIDATION S8 PASS (one semantic domain (parting & greetings)) — the cluster is valid, so only its off-topic lines are rewritten
+  🗺 MAIN_TRACK_PREMISE_REPLAN S8 "Saying goodbye": LOCAL_PREMISE "A and B say goodbye as they part" → "A and B meet for the first time and say nice to meet you." (judge: premise did not fit the scene's targets)
+  🧩 MAIN_TRACK_COHERENCE 9/9 scene(s) coherent · overall 4/5 (threshold 3) · S1=4 S2=4 S3=3 S4=4 S5=3 S6=3 S7=4 S8=4 S9=4 → PASS
+  🗣 CUE_ADDRESSEE_FIXED 1 cue(s) named the speaker as the listener — now addressed to the other character: "Say it's you, Nida."
+  🧭 FINAL_PAIR_SEMANTIC_AUDIT (final-snapshot): checked=90 cue=COMPLETE (90/90 judged) naturalness=COMPLETE (90/90 judged) templateGarbage=0 invalidTime=0 cueMismatch=0 cueRepaired=0 unnatural=0 unverified=0 (dropped: fail closed) dropped=0 reusedVerdicts=179 (judged earlier on the same text, not paid again) status=COMPLETE
+  🔍 FINAL_SNAPSHOT_AUDIT 90 target line(s) checked on the final text · 1 without a verdict for their exact final text · 89 verdict(s) reused · 1 judge call(s) · 0 invalid
+  🧊 FINAL_LINE_TEXT frozen: 94 line(s) · fingerprint 94:oxd9dm
+  🔤 86 broken romanisation(s) rebuilt from the canonical dictionary (no model request)
+  Batch 1/2: re-romanizing 5 pairs (e.g. ความรักเขาดีมากครับ…)
+  Batch 2/2: re-romanizing 3 pairs (e.g. ขอเบอร์โทรศัพท์ได้ไหมคะ…)
+  🔤 8 phonetics re-romanized (after recovery)
+  🔍 SEGMENTATION: 94 deterministic · 0 cached · 0 ambiguous → 0 batched Gemini request(s)
+  📖 GLOSS FILL: 0 of 94 pair(s) have a word without an English gloss — no model request
+  🔤 final phonetics: 525 canonical tokens, 0 derived, 0 alignment issue(s)
+  🗺 SCENE_ID_RESTORED 4 line(s) had no sceneId (target pairs are now stamped at creation; recovery / repair lines inherit their target's scene)
+  🔤 FINAL_PRONUNCIATION_AUDIT (authoritative, persisted Main Track): 0 issue(s) over 94 line(s)
+  🧩 TARGET_VARIETY_AUDIT 30/30 target(s) practise 3 distinct applications
+📏 MAIN_COMPLEXITY_AUDIT belt=9th Kyu preferred=4–6 hardMax=8 lines=94 withinPreferred=54 shortNatural=34 abovePreferredAllowed=6 overHardMax=0 maxObserved=8 · preferredRatio=90% (advisory ≥80%) PASS
+  🔁 FINAL_DUPLICATE_AUDIT target pairs=90 duplicates=0 PASS (run on the FINAL persisted pairs)
+  📊 CHECK_MODEL recalls=93 candidateAttempts=142 (1.53/recall) accepted=90 unresolved=3 firstAttemptSuccess=91% acceptedAtCheck=1:82,2:7,3:1 rejectionClasses=OTHER×44 CUE_FORM×3
+  🧮 CANDIDATE_ACCOUNTING (check ledger — one entry per displayed check) recalls=93 candidates=142 · by origin: model reply 139 · deterministic fallback (no request) 3 · outcomes: accepted 94 · rejected 47 · provisional 1 · fallback accepted for 0 recall(s) · candidates ≠ paid requests: one paid reply may carry candidates for several recalls; a fallback costs no request
+  ⛔ UNRESOLVED_RECALLS 3: 788|1 (11/11 checks: all 11 checks used) · 788|2 (11/11 checks: all 11 checks used) · 788|3 (11/11 checks: all 11 checks used)
+📋 MAIN TRACK READY — 90/90 target pairs · coherence PASS overall 4/5 (threshold 3) · S1=4 S2=4 S3=3 S4=4 S5=3 S6=3 S7=4 S8=4 S9=4 · before repair 4/5 · pronunciation 0 issues
+🧾 TRACK INTEGRITY (th): READY
+  MAIN_TRACK: READY · TARGET PAIRS 90/90 · COHERENCE PASS overall 4/5 (threshold 3) · S1=4 S2=4 S3=3 S4=4 S5=3 S6=3 S7=4 S8=4 S9=4 · before repair 4/5
+  TARGET WORDS: 30/30 covered
+  TARGET PAIRS: 90/90 valid target-practice sentences (3 per target word)
+  QC: 1 candidate sentence(s) rejected (0 cue mismatch · 1 unnatural · 0 other) · 8 replacement sentence(s) generated and verified · scope: removals AFTER generation (final audit / quota) only — all candidates: 142 evaluated, 47 rejected during generation/recovery (CANDIDATE_ACCOUNTING)
+  BRIDGE PAIRS: 0 · FRAMING PAIRS: 4 · TOTAL PLAYABLE LINES: 94
+  PRONUNCIATION ALIGNMENT: 0 issue(s) · UNVERIFIED FINAL PAIRS: 0
+🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a Daily Track
+🤖 AI USAGE SUMMARY (Claude Haiku)
+Model: claude-haiku-5-5 ×153
+Track ID: 2026-10-15T04:56:28.246Z · run daily-track-1792039234778-579
+Total requests: 153 · Successful: 152 · Failed: 1 · Retried: 11
+Generation calls: 49 · QC calls: 86 · Segmentation calls: 0 · Romanisation/pinyin/reading calls: 2 · Gloss calls: 0 · Recovery calls: 9 · Listening calls: 0 · Other: 7
+Input tokens: 565850 · Output tokens: 220995 · Total tokens: 786845 (provider usage metadata)
+Retry requests: 11 · caused by provider errors: 0 · DUPLICATES: candidates 1 · prevented 0 (answered from an identical request, not sent) · actually sent 1 (H_recovery ×1)
+Provider requests: 153 · Provider-error retries: 0
+GENERATION (app level; unit = one TARGET-GROUP request (3 recalls each) — not one recall): target-group requests 36 · first attempts 36 · regeneration attempts 11 · total attempts 47 · average 1.31 per target group · resolved first attempt 34/36 · requiring 2 attempts 1 · requiring 3 attempts 0 · hitting fallback 0 · repetition accepted 0 · unresolved 0 · deterministic repairs (no request) 3
+GENERATION WASTE: first-attempt tokens 372214 · regeneration tokens 124498 · regeneration share 25% · regeneration cost USD 0.0245 · fallback-after-paid-retries 0
+PAID REQUESTS BY PURPOSE: QC judging 82 (214946 tok, USD 0.0479) · generation (first attempt / scene) 38 (383358 tok, USD 0.0769) · regeneration (paid retry of a rejected candidate) 11 (124498 tok, USD 0.0245) · quota / target recovery 9 (27448 tok, USD 0.0065) · other 7 (16892 tok, USD 0.0039) · QC repair (replace / improve) 4 (12540 tok, USD 0.0043) · pronunciation / segmentation / gloss 2 (7163 tok, USD 0.0032)
+THAI GENERATION: targets generated 36 · recall checks 54 (sum of each target's highest recall check; max 11 per recall — one check = one candidate attempt) · initial paid generation calls 36 · paid regeneration calls 11 · deterministic/local checks 7 · local repairs 3 · quota-recovery generation calls 9 · cue-QC calls 29 · naturalness-QC calls 21 · passed on the first paid call 34/36
+  THAI_GENERATION_BUDGET ทานกันเลย HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET น้ำเปล่า HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET กระป๋อง HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET งานแต่งงาน HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ความรัก HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET เลี้ยงดู HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ขอให้ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ขอให้ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET มีนัดกับ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET แผน HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET แล้วคุยกัน HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ดูหนัง HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET มวยไทย HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET แย่แล้ว HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ไม่เชิง HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET เมื่อ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET แล้วคุยกัน HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ป้ายรถเมล์ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET รถบัส HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET มีรถขับ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET นั่งเรือ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET พิพิธภัณฑสถานแห่งชาติ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET มีรถขับ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ไว้ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET เบอร์โทรศัพท์ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ไม่ทราบว่า HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=2 outcome=accepted
+  THAI_GENERATION_BUDGET ได้ไหม HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET สวัสดีครับ HIGHEST_RECALL_CHECK=11/11 PAID_GENERATION_ATTEMPTS=11 LOCAL_REPAIRS=0 outcome=failed
+  THAI_GENERATION_BUDGET ผมเอง HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=2 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET เชิญนั่ง HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ขอบพระคุณ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ต้อนรับ HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ผมเอง HIGHEST_RECALL_CHECK=3/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET เชิญนั่ง HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ต้อนรับ HIGHEST_RECALL_CHECK=2/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=0 outcome=accepted
+  THAI_GENERATION_BUDGET ยินดีที่ได้รู้จัก HIGHEST_RECALL_CHECK=1/11 PAID_GENERATION_ATTEMPTS=1 LOCAL_REPAIRS=1 outcome=accepted
+Estimated AI cost (Claude Haiku): USD 0.1671 (≈ SGD 0.2172 at 1.3 — assumed rate)
+TOP CLAUDE HAIKU COST SOURCES
+  1. A_generation — 36 requests / 372214 tokens / ~44%
+  2. B_generation_retry — 11 requests / 124498 tokens / ~15%
+  3. F_naturalness_final — 21 requests / 72711 tokens / ~10%
+  4. L_final_cue_audit — 21 requests / 65203 tokens / ~8%
+  5. C_group_eval — 30 requests / 44902 tokens / ~7%
+AI PROVIDERS (this run) · selected generation model: Claude Haiku 5.5 (experimental) — every request of this run goes to it (writing, quality checks, pronunciation)
+  ANTHROPIC: 153 requests (1 failed, 0 provider retries) · input 565850 · output 220995 tok (thinking 179919 of them) · USD 0.1671 · requested claude-haiku-5-5 ×153 · served by claude-haiku-5-5 ×153
+  ANTHROPIC cost by stage: A_generation 36 / USD 0.0736 · B_generation_retry 11 / USD 0.0245 · F_naturalness_final 21 / USD 0.0163 · L_final_cue_audit 21 / USD 0.0135 · C_group_eval 30 / USD 0.0113 · H_recovery 9 / USD 0.0065 · P_other 7 / USD 0.0039 · E_cue_check 8 / USD 0.0039 · J_romanisation 2 / USD 0.0032 · G_improve 3 / USD 0.0031 · F_main_coherence 2 / USD 0.0029 · A0_scene 1 / USD 0.0022 · G_replace 1 / USD 0.0012 · A0_scene_plan 1 / USD 0.0011
+  Estimated total track cost (all providers): USD 0.1671 · Haiku priced at US$0.1 / 0.5 per M tokens (US$0.5 / 2.5 for a prompt over 100K tokens), thinking included as output

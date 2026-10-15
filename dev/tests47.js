@@ -201,7 +201,7 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     T('T2', 'the spelling check is part of the shared Thai checks', /\(\) => thaiQcCheckSpelling\(pair\),/.test(SRC))
     const t = c.thaiTidyCommas([{ thai: 'ของฝากนี่ถูกมาก, เอาไหมครับ' }, { thai: 'ทันครับ, เรารีบไปครับ' }, { thai: 'ไม่มีจุลภาคครับ' }], null)
     T('T3', 'commas inside Thai become a space (live: ของฝากนี่ถูกมาก, เอาไหมครับ)', t[0].thai === 'ของฝากนี่ถูกมาก เอาไหมครับ' && t[1].thai === 'ทันครับ เรารีบไปครับ' && t[2].thai === 'ไม่มีจุลภาคครับ', t.map(x => x.thai))
-    T('T4', 'the Thai writer is no longer told to add commas (it contradicted the orthography rule) and gets the naturalness guide', /\(oct13On\(\) \? '• PAUSES: Thai marks a pause with a SPACE, never a comma/.test(SRC) && /THAI_NATURALNESS_GUIDE \+\n\s*vocabStagePromptRule\(knownWords\.length\)\n\s*: '• COMMAS: add commas/.test(SRC))
+    T('T4', 'the Thai writer is no longer told to add commas (it contradicted the orthography rule) and gets the naturalness guide', /\(oct13On\(\) \? '• PAUSES: Thai marks a pause with a SPACE, never a comma/.test(SRC) && /THAI_NATURALNESS_GUIDE \+(?: \(dailyV693On\(\) \? THAI_NATURALNESS_GUIDE_V701 : ''\) \+)?\n\s*vocabStagePromptRule\(knownWords\.length\)\n\s*: '• COMMAS: add commas/.test(SRC))
     const g = c.ev('THAI_NATURALNESS_GUIDE')
     T('T5', 'the Thai guide covers the brief\'s examples (ที่นั่น, ลดให้, คู่ละ, ว่า, นิดหน่อย, พยายาม, หลัง) and the reviewer uses it too', ['ที่นั่น', 'ลดให้หน่อย', 'คู่ละ', 'ผมไม่รู้ว่า', 'นิดหน่อย', 'พยายาม', 'หลัง'].every(w => g.includes(w)) && /THAI_NATURALNESS_GUIDE\.replace\('write the natural form', 'reject these and give the natural form'\)/.test(SRC))
   }

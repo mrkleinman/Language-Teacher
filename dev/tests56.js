@@ -101,7 +101,7 @@ function learner(c) {
     const cue = (prompt, english, thai, x = {}) => c.cueClarify('th', { prompt, english, thai, ...x }, { ...ctx, ...(x.ctx || {}) })
     const cases = [
       ["Say you can't go, then politely ask him when he will be back, starting with 'may I ask'.", "I can't go. When are you coming back, if I may ask?", 'ไปไม่ได้ค่ะ ไม่ทราบว่าคุณกลับเมื่อไหร่คะ', "Say you can't go, then politely ask him when he will be back."],
-      ["Ask her if she wants pad thai, since you're going to get it.", 'Do you want pad thai?', 'คุณเอาผัดไทยไหมครับ', 'Ask her if she wants pad thai.'],
+      ["Ask her if she wants pad thai, since you're going to get it.", 'Do you want pad thai?', 'คุณเอาผัดไทยไหมครับ', 'Ask if she wants pad thai.'],
       ['Ask how your parents raised him.', 'How did your parents raise you?', 'พ่อแม่เลี้ยงดูคุณอย่างไรคะ', 'Ask him how his parents raised him.'],
       ['Say okay, then asks where she is at this moment.', 'Okay. So where are you right now?', 'ได้ครับ แล้วตอนนี้คุณอยู่ที่ไหนครับ', 'Say okay, then ask where she is at this moment.'],
       ['Nida says: thank you very much, Somchai', 'Thank you very much, Somchai', 'ขอบคุณมากค่ะ สมชาย', 'Thank Somchai very much.', { pairType: 'framing' }],

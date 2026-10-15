@@ -3702,6 +3702,8 @@ const JA_NATURALNESS_GUIDE =
   '  - choosing between restaurants: どこにする？ / どっちの店にする？ — not どれで食べる？\n' +
   '  - おいしそう describes FOOD (あれ、おいしそうだね about a dish) — not a restaurant; for a place say よさそう / 人気だね\n' +
   '  - いいえ answers a question that was actually asked; in casual speech between friends ううん / いや is usual — use はい / いいえ only where they fit (a polite or clear yes/no answer)\n' +
+  '  - 今日どう？ ("how is your day?") is answered with 大丈夫 / 楽しい / ちょっと忙しい — いいよ means "sure / that is fine" (agreeing to an offer)\n' +
+  '  - あれ points at a THING (あれは何？); a place you go to is あそこ (あそこ、行ったことある？) · no けど without a contrast · a goodbye is じゃあ、またね\n' +
   '  - はい / うん / いいえ are REPLIES: the line answers a yes/no question (今日、時間ある？ → うん、あるよ), agrees to a suggestion (一緒に行こう → うん、いいよ) or acknowledges (ちょっと待って → うん、分かった). What follows the reply word IS the answer — never はい / うん as a filler before an unrelated statement (はい、ご飯だと思う。 ✗), and the cue says what is answered ("Say yes, you have time today")\n' +
   '  - the cue names the OTHER person (Ken talks to Yuka), never the speaker\n'
 function buildMandarinPrompt(target, inv, vocab, recallIndex, rules, exch) {
@@ -6257,6 +6259,9 @@ function japaneseFormulaKey(jp, surface) {
   // (ここで), is not a new application (live v682: え、ここで何してるの？ / え、何してるの？ counted as distinct). Time words and
   // これで ("with this") stay: 明日は大丈夫？ (is tomorrow OK?) and これで大丈夫。 (this will do) are real new uses.
   let raw = String(jp || '').replace(/^(\u3046\u3093|\u306F\u3044|\u3046\u3046\u3093|\u3044\u3084|\u3048\u3048|\u3044\u3044\u3048)[\u3001\uFF0C,\uFF01!]*/, '')
+  // v700 — a leading discourse connective (じゃあ / ねえ / でも / それで / あ / え) does not make a new application (live v699:
+  // どっちにする？ / じゃあ、どっちにする？ counted as two distinct uses) — unless the connective IS the target
+  if (!/^(じゃあ|じゃ|ねえ|ね|でも|それで|あ|え|あの)$/.test(String(surface || ''))) raw = raw.replace(/^(じゃあ|じゃ|ねえ|でも|それで|あの|あ|え)[\u3001\uFF0C,\s]+/, '')
   if (!/^(\u3053\u3053|\u305D\u3053|\u3042\u305D\u3053)$/.test(String(surface || ''))) raw = raw.replace(/(\u3042\u305D\u3053|\u3053\u3053|\u305D\u3053)\u3067/g, '')
   if (!/^(\u3053\u308C|\u305D\u308C|\u3042\u308C)$/.test(String(surface || ''))) raw = raw.replace(/^(\u3053\u308C|\u305D\u308C|\u3042\u308C)[\u3001\uFF0C,]\s*/, '')   // これ、好き？ = 好き？ (a bare topic demonstrative); それは… keeps its shape
   // v682 final run — a softener or intensifier added to an accepted recall is not a new application:
@@ -17755,6 +17760,13 @@ function cueClarify(lang, p, ctx) {
   cue = cue.replace(/^As you [a-z ]+?,\s*/i, m0 => { asideRemoved.push(m0); return '' })
   cue = cue.replace(/,\s*(?:with a [a-z ]+? tone|in a [a-z]+ (?:way|tone|voice)|as you [a-z ]+?|while [a-z ]+?|on the walk|pointing [a-z ]+?|casually|softly|warmly|happily),/gi, m0 => { asideRemoved.push(m0); return '' })
   cue = cue.replace(/\s+(?:with a (?:happy|relaxed|casual|friendly|soft|cheerful|warm|light) tone|in a casual (?:way|tone|voice)|casually|warmly|softly|happily|cheerfully)\b(?=[\s,.]|$)/gi, m0 => { asideRemoved.push(m0); return '' })
+  // v700 (live Japanese v699): plan narration the learner cannot say — "Following up on the lunch plan, ask…" → "Ask…",
+  // "then get Ken's attention and suggest asking where they should go" → "then ask where to go"
+  cue = cue.replace(/^(?:Following up on|Going back to|Continuing|Coming back to|Returning to) [^,]{2,40},\s*/i, m0 => { asideRemoved.push(m0); return '' })
+  cue = cue.replace(/\bget (?:[A-Z][a-z]+'s|his|her|their|the other person's) attention and\s+/g, m0 => { asideRemoved.push(m0); return '' })
+  cue = cue.replace(/\bsuggest asking (where|what|which|when|how) (?:they|we|you) should (\w+)/gi, (_, w, v) => 'ask ' + w.toLowerCase() + ' to ' + v)
+  cue = cue.replace(/^(?:ask|say|tell|suggest)\b/, w => w[0].toUpperCase() + w.slice(1))
+  cue = cue.replace(/\b(whether|if) the other person (will|would|can|should)\b/g, '$1 they $2')
   cue = cue.replace(/^(Ask|Say|Tell \w+)\s*,\s*/, '$1 ')
   // generic addressee words add nothing: "Ask your friend whether…" → "Ask whether…", "Tell the other person (that) …" → "Say …"
   cue = cue.replace(/^Suggest (?:to your friend|to the other person|to [A-Z][a-z]+)\s+(?=that\b)/i, 'Suggest ')
@@ -21638,8 +21650,21 @@ async function finaliseMainTrack(track, adapter, ctx) {
     // v694 C1 — the FINAL pairs are the authoritative object: a target line CHANGED after it was accepted (a QC group rewrite, a cue
     // fix) is judged again by the deterministic language rules on its final text, not trusted on an old verdict. An untouched line
     // already passed the same rules at acceptance.
+    // v700 (live Japanese v699, pairs 02 / 24 / 46): deterministic text fixes that never regenerate good Japanese —
+    // the English translation is brought back to what the Japanese says, and いいよ ("sure") answering 今日どう？ becomes いい感じ
+    if (adapter.lang === 'ja') { const fx = []
+      t = { ...t, pairs: t.pairs.map((p, i) => { if (!p || !p.japanese) return p
+        let q = p; const e2 = jaEnglishFaithfulFix(q)
+        if (e2 !== q.english) { fx.push('"' + q.english + '" → "' + e2 + '"'); q = { ...q, english: e2, _enFaithfulFixed: true } }
+        const prev = i > 0 && t.pairs[i - 1] && t.pairs[i - 1].japanese || ''
+        const hr = jaHowAreYouReplyFix(prev, q)
+        if (hr) { fx.push('"' + q.japanese + '" → "' + hr.japanese + '"'); q = { ...q, ...hr, _replyFixed: true } }
+        return q }) }
+      if (fx.length) { log && log('  🔤 JA_TEXT_FIX ' + fx.length + ' line(s) corrected without regenerating: ' + fx.join(' | ').slice(0, 400)); c._jaTextFixes = fx } }
     if (adapter.lang === 'zh' || adapter.lang === 'ja') { const fin = []
-      t.pairs.forEach((p, i) => { if (!p || classifyTrackPair(p) !== 'TARGET' || p._qcInvalid || !(p._qcAction || p._cueAddresseeFixed)) return
+      // v700 (Japanese brief §8): READY means the learner-facing text passes — the deterministic Japanese rules (free, no model call)
+      // run on EVERY final target line, not only on lines changed after acceptance (live v699: あれは行ったことある？ / …から、ここでね。 shipped)
+      t.pairs.forEach((p, i) => { if (!p || classifyTrackPair(p) !== 'TARGET' || p._qcInvalid || !(p._qcAction || p._cueAddresseeFixed || p._replyFixed || p._enFaithfulFixed || adapter.lang === 'ja')) return
         const pr = adapter.lang === 'zh' ? mandarinSurfaceGrammarProblems(p.chinese, null, null).concat(zhEnglishAddsMeaning(p.chinese, p.english))
           : jaCueFormProblems(p).concat(jaPragmaticProblems(p.japanese, (c.vocabById && c.vocabById.get(p.targetId)) || null))
         if (pr.length) fin.push({ p, why: pr[0] }) })
@@ -45355,7 +45380,36 @@ function jaPragmaticProblems(jp, target) {
   if (what && !/^(\u3053\u308C|\u305D\u308C|\u3042\u308C|\u540D\u524D|\u3053\u3053|\u305D\u3053)$/.test(what[1]) && !(dailyV693On() && /^((好き|嫌い)な(物|もの|こと)|仕事|趣味)$/.test(what[1]))) out.push('UNNATURAL: "' + s + '" — "X は何？" does not ask about a concrete thing or place in Japanese')
   if (/(\u3053\u306E|\u305D\u306E|\u3042\u306E)\u7269/.test(s)) out.push('UNNATURAL: "' + s.match(/(\u3053\u306E|\u305D\u306E|\u3042\u306E)\u7269/)[0] + '" — a demonstrative with bare 物 is not natural (これ / それ / あれ)')
   if (/^(\u4ECA\u65E5|\u660E\u65E5|\u4ECA|\u4E00\u7DD2\u306B)?\u3059\u308B[\uFF1F?\u3002]?$/.test(s)) out.push('PRAGMATIC_INCOMPLETE: "' + s + '" — する needs an object (何する？ / テニスする？)')
+  // v700 — from the live v699 Japanese track (all passed the judges):
+  // あれ points at a THING; a place you go to is あそこ (あれは行ったことある？ → あそこ、行ったことある？)
+  if (/あれ(は|に|へ|まで)[^。？?]{0,8}(行った|行く|行こう|行きたい|行かない|来た)/.test(s)) out.push('UNNATURAL: "' + s + '" — あれ points at a thing; a place you go to is あそこ (あそこ、行ったことある？)')
+  // けど with nothing to contrast before an "also" question (あそこで食べるけど、水も飲む？ → 水も飲む？ / あそこで水も飲む？)
+  if (/^[^、。]{2,}(る|た|ない|だ)けど[、,][^、。]*も[^、。]*[？?]$/.test(s)) out.push('UNNATURAL: "' + s + '" — けど sets up a contrast that is not there; ask the question directly (水も飲む？)')
+  // a reason + ここでね is not a goodbye (電車で行くから、ここでね。→ 電車で行くね。じゃあ、またね。)
+  if (/から[、,]?ここでね[。！!]?$/.test(s)) out.push('UNNATURAL: "' + s + '" — ここでね does not say goodbye; use じゃあ、またね / じゃあ、ここで。')
   return out
+}
+// v700 — the English says MORE than the Japanese (the Japanese is good — fix the translation, never regenerate the Japanese):
+// "something we both like" for 好きな物 (no 二人 / 両方 / どっちも), "I got a little late" for 遅くなった (English: I'm a little late)
+// v700 — いいよ means "sure / fine by me" (agreeing to an offer); 今日どう？ / 調子どう？ ("how's your day?") is answered with
+// 大丈夫 ("I'm good" — a taught word; いい感じ / 元気 are not on the 10th Kyu list).
+// Returns the corrected fields or null. Only the opening うん、いいよ / いいよ is changed; the rest of the line stays as written.
+function jaHowAreYouReplyFix(prevJp, p) {
+  const jp = String(p && p.japanese || '')
+  if (!/(今日|調子|最近|元気)[はー、]?(どう|どんな感じ)[？?]\s*$/.test(String(prevJp || '').replace(/[。！!]\s*$/, '')) || !/^(うん、)?いいよ[。、！!]/.test(jp)) return null
+  if (p.target && !jp.replace(/いいよ/, '大丈夫').includes(p.target)) return null
+  const out = { japanese: jp.replace(/いいよ/, '大丈夫') }
+  if (p.reading) out.reading = String(p.reading).replace(/いいよ/, 'だいじょうぶ')
+  if (p.romaji) out.romaji = String(p.romaji).replace(/\bii yo\b/, 'daijoubu')
+  if (p.english) out.english = String(p.english).replace(/^(Yeah|Yes)?,?\s*(it's|it is) (good|fine|okay)\b/i, (m, y) => (y ? y + ', ' : '') + "I'm good")
+  return out
+}
+function jaEnglishFaithfulFix(p) {
+  const jp = String(p && p.japanese || ''), en = String(p && p.english || '')
+  let e2 = en
+  if (/\b(we|you) both\b|\bboth (of us|like)\b/i.test(e2) && !/二人|両方|どっちも|二つとも|みんな/.test(jp)) e2 = e2.replace(/\b(we|you) both\b/gi, '$1').replace(/\bboth of us\b/gi, 'we').replace(/\bboth like\b/gi, 'like')
+  if (/遅くなった|遅れた/.test(jp)) e2 = e2.replace(/\bI got (a (?:little|bit) )?late\b/i, (m, d) => "I'm " + (d || '') + 'late')
+  return e2
 }
 // v671 §B3 — OBJECTIVE cue accuracy for Japanese (unambiguous evidence only): a question cued as a statement or the reverse,
 // and DESIRE (〜たい / 欲しい) vs a plain statement or opinion ("I want to eat" ≠ "I eat" / "I like")

@@ -105,17 +105,19 @@ function exportPairs() {
     const byId = L.byId, kw = V691_IDS.ja.map(id => byId.get(id)).filter(Boolean).map(w => ({ wordId: w.id, japanese: w.japanese }))
     const hai = L.vocab.find(w => w.japanese === 'はい') || W('はい')
     const t = { keywords: kw, scene: SCENE, pairs: [
-      { speaker: 'A', japanese: 'ちょっと待ってて。', english: 'Wait a moment.', prompt: 'x', pairType: 'content', targetId: 999 },
-      { speaker: 'B', japanese: 'はい、分かった。', english: 'Yes, got it.', prompt: 'y', pairType: 'content', targetId: hai.id },
+      // v700: はい、分かった。 after ちょっと待ってて。 is now a VALID acknowledgement (Japanese v699 brief §2) — the reply that needs a
+      // question is one that answers nothing before it (はい、時間ある。 after a statement about a film)
+      { speaker: 'A', japanese: '映画、見た。', english: 'I saw a film.', prompt: 'x', pairType: 'content', targetId: 999 },
+      { speaker: 'B', japanese: 'はい、時間ある。', english: 'Yes, I have time.', prompt: 'y', pairType: 'content', targetId: hai.id },
       { speaker: 'A', japanese: 'お店、行く。', english: 'Going to the shop.', prompt: 'z', pairType: 'content', targetId: 998 },
-      { speaker: 'B', japanese: 'うん、いいよ。', english: 'Yeah, sure.', prompt: 'w', pairType: 'content', targetId: 997 }] }
+      { speaker: 'B', japanese: 'うん、水ある。', english: 'Yeah, there is water.', prompt: 'w', pairType: 'content', targetId: 997 }] }
     let calls = 0
     c2.mockGeminiGenerate = async (k, m, msgs, max, o) => { calls++; return JSON.stringify([{ i: 1, japanese: '今、大丈夫？', english: 'Are you okay now?' }, { i: 2, japanese: '寿司、食べたい？', english: 'Want sushi?' }]) }
     const logs = []
     const r = await c2.jaBridgeReplyTriggers(t, { apiKey: 'k', model: 'm', vocab: L.vocab, vocabById: byId }, m => logs.push(m))
     const ins = r.inserted || []
     T('F2', 'ONE request writes the missing questions; a valid one is inserted as a BRIDGE line by the OTHER speaker right before the reply (never a target pair)',
-      calls === 1 && ins.length === 1 && ins[0].pairType === 'bridge' && ins[0].speaker === 'A' && r.pairs[r.pairs.indexOf(ins[0]) + 1].japanese === 'はい、分かった。' && ins[0].reading && ins[0].romaji, { calls, ins, logs })
+      calls === 1 && ins.length === 1 && ins[0].pairType === 'bridge' && ins[0].speaker === 'A' && r.pairs[r.pairs.indexOf(ins[0]) + 1].japanese === 'はい、時間ある。' && ins[0].reading && ins[0].romaji, { calls, ins, logs })
     T('F3', 'a question with a word the learner was never taught is refused, not inserted (same closed-vocabulary gate as every line)', (r.refused || []).some(x => /寿司/.test(x)) && !r.pairs.some(p => /寿司/.test(p.japanese)), r.refused)
   } catch (e) { T('ERR', 'section crashed: ' + String(e && e.message).slice(0, 120), false) }
 

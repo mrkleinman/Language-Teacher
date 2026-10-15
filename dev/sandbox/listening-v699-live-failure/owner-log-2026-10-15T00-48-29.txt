@@ -1,0 +1,235 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v699 language=th path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=th)
+🧭 LISTENING_FEASIBILITY PASS language=th planner=meaning-first-3 · pool=150 candidate(s) in SRS order · authorised support=880 word(s) · selected 30 · deferred 5: ภาษาอังกฤษ (situation: no everyday situation the learner can talk about fits "English language"); เก่ง (situation: no everyday situation the learner can talk about fits "skilled"); อเมริกัน (situation: no everyday situation the learner can talk about fits "American"); กระป๋อง (situation: no everyday situation the learner can talk about fits "tin, can (container)"); แผน (situation: no everyday situation the learner can talk about fits "plan") · situations VALID [MEET 8, PLAN 8, TIME 3, TRAVEL 5, EAT 3, PART 3] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+⏭ LISTENING_TARGET_DEFERRED target=765 ภาษาอังกฤษ reason=no everyday situation the learner can talk about fits "English language" stage=situation srsObligationPreserved=true
+⏭ LISTENING_TARGET_DEFERRED target=767 เก่ง reason=no everyday situation the learner can talk about fits "skilled" stage=situation srsObligationPreserved=true
+⏭ LISTENING_TARGET_DEFERRED target=774 อเมริกัน reason=no everyday situation the learner can talk about fits "American" stage=situation srsObligationPreserved=true
+⏭ LISTENING_TARGET_DEFERRED target=794 กระป๋อง reason=no everyday situation the learner can talk about fits "tin, can (container)" stage=situation srsObligationPreserved=true
+⏭ LISTENING_TARGET_DEFERRED target=837 แผน reason=no everyday situation the learner can talk about fits "plan" stage=situation srsObligationPreserved=true
+🧭 LISTENING_DEFERRED_SRS ids=[765,767,774,794,837] — skipped words keep their SRS obligation (due date untouched; the next Revision / Daily selection still takes them)
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(th) = selectThaiRevisionTargets → freezeThaiTargetSelection
+🎧 LISTENING_SELECTED_TARGET_IDS=[779,1545,839,676,817,840,841,860,787,815,847,712,726,799,842,857,617,661,707,715,740,752,816,612,648,671,675,692,694,700]
+🎧 LISTENING_TRACK_START language=th trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=th introducedContent=880 targets=30 authorised=910 snapshot=digrgh (frozen at generation start) · Layer A lexicon 1932 entries (segmentation only — not permission)
+📏 LEVEL belt=9th Kyu preferred=4–6 hardMax=8 · LEVEL 9th Kyu · target 4–6 · max 8 (Thai words, rankProgressFor) · Listening: no minimum, aim 4–6, no turn above 8
+📚 VOCAB INVENTORY introducedContent=880 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Thai particles + structural markers
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=th belt=9th Kyu · targets=30 · authorised support=880 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET "meeting and catching up" targets=[พวกคุณ, ยินดีที่ได้รู้จัก, เพราะ, ตลก, ไว้, ไม่ทราบว่า, ได้ไหม, ไม่เชิง] · opens the conversation
+🗺 LISTENING_SITUATION S2 PLAN "deciding what to do" targets=[พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ตึก, หาด, ดูหนัง, น่าดู, ร้านอาหาร, คุณอยู่ที่ไหน]
+🗺 LISTENING_SITUATION S3 TIME "agreeing when" targets=[โมงเช้า, เมื่อ, แล้วคุยกัน]
+🗺 LISTENING_SITUATION S4 TRAVEL "getting there" targets=[ไปติดต่อธุรกิจ, นั่งเรือ, ป้ายรถเมล์, รถบัส, มีรถขับ]
+🗺 LISTENING_SITUATION S5 EAT "eating and drinking" targets=[ทานกันเลย, ผัดไทย, มีนัดกับ]
+🗺 LISTENING_SITUATION S6 PART "wrapping up" targets=[เบอร์โทรศัพท์, แย่แล้ว, เชิญนั่ง] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 8 targets
+🔎 SCENE_LOCAL_CHECK S1 FAIL 3: LINE_QUALITY — QUALITY_REJECTED: TRANSLATION_HAS_ALTERNATIVES: the English offers alternatives ("he/she") · SCENE_TARGET_MISSING — เพราะ (because) is assigned to S1 but is not heard in it · SCENE_TARGET_MISSING — ได้ไหม (can (I) is assigned to S1 but is not heard in it
+📝 SCENE_PLAN S1 (MEET) call 2 · 8 targets · REPLAN (3 defect(s) in the first version)
+⛔ SCENE_PLAN_TRUNCATED S1 attempt 1 — the reply was cut off: a TECHNICAL failure (fault 9); a cut-off plan is never parsed, validated or kept
+📝 SCENE_PLAN S1 (MEET) call 3 · 8 targets · REPLAN (3 defect(s) in the first version) · retry after a technical failure
+🔎 SCENE_LOCAL_CHECK S1 (replan) FAIL 1: CLOSED_VOCAB — VOCABULARY_FAILED: unknown words: จอง · the replanned version is kept
+🔎 SCENE_LOCAL_CHECK S1 STATUS=FAILED (1: CLOSED_VOCAB) — kept for global recovery, NOT approved · 10 turns (budget 7–11)
+📝 SCENE_PLAN S2 (PLAN) call 4 · 8 targets
+🔎 SCENE_LOCAL_CHECK S2 FAIL 2: SCENE_TARGET_MISSING — หาด (beach) is assigned to S2 but is not heard in it · SCENE_TARGET_MISSING — คุณอยู่ที่ไหน (where are you?) is assigned to S2 but is not heard in it
+📝 SCENE_PLAN S2 (PLAN) call 5 · 8 targets · REPLAN (2 defect(s) in the first version)
+🔎 SCENE_LOCAL_CHECK S2 (replan) FAIL 2: CLOSED_VOCAB — VOCABULARY_FAILED: unknown words: พิพิธภัณฑสถาน · SCENE_TARGET_MISSING — สนามหลวง (Sanam Luang) is assigned to S2 but is not heard in it · the first version is kept (the replan was not better)
+🔁 LISTENING_TARGET_REASSIGNED 617 หาด S2 → S3 (TIME) — S2 did not carry it after a replan
+🔁 LISTENING_TARGET_REASSIGNED 707 คุณอยู่ที่ไหน S2 → S4 (TRAVEL) — S2 did not carry it after a replan
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS_TARGETS_MOVED · 9 turns (budget 7–11)
+📝 SCENE_PLAN S3 (TIME) call 6 · 4 targets
+🔎 SCENE_LOCAL_CHECK S3 FAIL 2: SCENE_TARGET_MISSING — โมงเช้า (o clock AM) is assigned to S3 but is not heard in it · SCENE_TARGET_MISSING — หาด (beach) is assigned to S3 but is not heard in it
+📝 SCENE_PLAN S3 (TIME) call 7 · 4 targets · REPLAN (2 defect(s) in the first version)
+🔎 SCENE_LOCAL_CHECK S3 (replan) FAIL 1: SCENE_TARGET_MISSING — โมงเช้า (o clock AM) is assigned to S3 but is not heard in it · the replanned version is kept
+🔁 LISTENING_TARGET_REASSIGNED 740 โมงเช้า S3 → S4 (TRAVEL) — S3 did not carry it after a replan
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS_AFTER_REPLAN_TARGETS_MOVED · 6 turns (budget 2–6)
+📝 SCENE_PLAN S4 (TRAVEL) call 8 · 7 targets
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS · 7 turns (budget 4–7)
+📝 SCENE_PLAN S5 (EAT) call 9 · 3 targets
+🔎 SCENE_LOCAL_CHECK S5 FAIL 1: SCENE_TARGET_MISSING — มีนัดกับ (have an appointment with) is assigned to S5 but is not heard in it
+📝 SCENE_PLAN S5 (EAT) call 10 · 3 targets · REPLAN (1 defect(s) in the first version)
+🔎 SCENE_LOCAL_CHECK S5 (replan) FAIL 1: CLOSED_VOCAB — VOCABULARY_FAILED: unknown words: สั่ง · the first version is kept (the replan was not better)
+🔁 LISTENING_TARGET_REASSIGNED 752 มีนัดกับ S5 → S6 (PART) — S5 did not carry it after a replan
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS_TARGETS_MOVED · 4 turns (budget 2–4)
+📝 SCENE_PLAN S6 (PART) call 11 · 4 targets
+🔎 SCENE_LOCAL_CHECK S6 FAIL 1: CLOSED_VOCAB — VOCABULARY_FAILED: unknown words: เดี๋ยว
+📝 SCENE_PLAN S6 (PART) call 12 · 4 targets · REPLAN (1 defect(s) in the first version)
+🔎 SCENE_LOCAL_CHECK S6 (replan) FAIL 3: SCENE_TARGET_MISSING — แย่แล้ว (oh no!) is assigned to S6 but is not heard in it · SCENE_TARGET_MISSING — เชิญนั่ง (please sit) is assigned to S6 but is not heard in it · SCENE_TARGET_MISSING — มีนัดกับ (have an appointment with) is assigned to S6 but is not heard in it · the first version is kept (the replan was not better)
+🔎 SCENE_LOCAL_CHECK S6 STATUS=FAILED (1: CLOSED_VOCAB) — kept for global recovery, NOT approved · 4 turns (budget 2–4)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[พวกคุณ, ยินดีที่ได้รู้จัก, เพราะ, ตลก, ไว้, ไม่ทราบว่า, ได้ไหม, ไม่เชิง]
+   T1 A→B GREET · about greeting · - ⟦สวัสดีครับ⟧ "Hello."
+   T2 B→A ASK(STATE) ↩T1 · about how A is · - ⟦สวัสดีค่ะ เหนื่อยไหมคะ⟧ "Hello. Are you tired?"
+   T3 A→B ANSWER ↩T2 · about A's day · - ⟦ไม่เชิงครับ วันนี้ยุ่งนิดหน่อยครับ⟧ "Not exactly. Today I'm a little busy." [ไม่เชิง]
+   T4 B→A INFORM ↩T3 · about B's movie · - movie ⟦เมื่อวานฉันดูหนังตลกค่ะ⟧ "Yesterday I watched a funny movie." [ตลก+ดูหนัง]
+   T5 A→B ASK(PERSON) ↩T4 · about who B watched with · - person ⟦ไม่ทราบว่าคุณดูกับใครครับ⟧ "May I ask who you watched with?" [ไม่ทราบว่า]
+   T6 B→A ANSWER ↩T5 · about companion · - friend ⟦กับเพื่อนค่ะ นี่เพื่อนฉันค่ะ⟧ "With a friend. This is my friend."
+   T7 A→B GREET ↩T6 · about meeting the friend · - ⟦ยินดีที่ได้รู้จักครับ⟧ "Nice to meet you." [ยินดีที่ได้รู้จัก]
+   T8 B→A INFORM · about booking · - table ⟦ฉันจองโต๊ะไว้แล้วค่ะ⟧ "I already booked a table." [ไว้]
+   T9 A→B REQUEST ↩T8 · about joining them · - ⟦ผมไปกับพวกคุณได้ไหมครับ⟧ "Can I come with you all?" [พวกคุณ+ได้ไหม]
+   T10 B→A ACCEPT ↩T9 · about A joining · - ⟦ได้ค่ะ เพราะวันนี้ว่างค่ะ⟧ "Yes, because today I'm free." [เพราะ]
+  S2 deciding what to do targets=[พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ตึก, ดูหนัง, น่าดู, ร้านอาหาร]
+   T11 A→B ASK(PLACE) · about where to go · - ⟦ขอบคุณครับ วันนี้ไปไหนดีครับ⟧ "Thanks. Where should we go today?"
+   T12 B→A PROPOSE ↩T11 · about national museum · - national museum ⟦ฉันอยากไปพิพิธภัณฑสถานแห่งชาติค่ะ⟧ "I want to go to the National Museum." [พิพิธภัณฑสถานแห่งชาติ]
+   T13 A→B ASK(YESNO) ↩T12 · about museum worth seeing · - ⟦น่าดูไหมครับ⟧ "Is it worth seeing?" [น่าดู]
+   T14 B→A ANSWER ↩T13 · about museum building · - building ⟦น่าดูค่ะ มีตึกเก่ามากค่ะ⟧ "It's worth seeing. There are very old buildings." [น่าดู+ตึก]
+   T15 A→B PROPOSE ↩T14 · about Sanam Luang · - Sanam Luang ⟦ไปสนามหลวงก่อนไหมครับ⟧ "Shall we go to Sanam Luang first?" [สนามหลวง]
+   T16 B→A ACCEPT ↩T15 · about restaurant after · - restaurant ⟦ได้ค่ะ แล้วไปร้านอาหารนะคะ⟧ "Okay. Then we go to the restaurant." [ร้านอาหาร]
+   T17 A→B INFORM ↩T16 · about being hungry · - ⟦ผมก็หิวแล้วครับ⟧ "I'm also hungry already."
+   T18 B→A ASK(CLOCK_TIME) · about current time · - ⟦ตอนนี้กี่โมงแล้วคะ⟧ "What time is it now?"
+   T19 A→B ACKNOWLEDGE ↩T18 · about going now · - ⟦ตกลงครับ ไปกันเลยครับ⟧ "Okay, let's go right away."
+  S3 agreeing when targets=[เมื่อ, แล้วคุยกัน, หาด]
+   T20 B→A ASK(CLOCK_TIME) · about time today · - ⟦วันนี้ตื่นกี่โมงคะ⟧ "What time did you wake up today?"
+   T21 A→B ANSWER ↩T20 · about waking time · - ⟦วันนี้ผมตื่นเจ็ดโมงเช้าครับ⟧ "Today I woke up at 7 AM."
+   T22 B→A REACT ↩T21 · about waking time · - ⟦เร็วจังค่ะ ฉันตื่นสายค่ะ⟧ "So early! I woke up late."
+   T23 A→B PROPOSE ↩T22 · about going now · - ⟦ตอนนี้ไปเลยไหมครับ⟧ "Shall we go right now?"
+   T24 B→A ACCEPT ↩T23 · about going when ready · - ⟦ได้ค่ะ เมื่อพร้อมแล้วไปค่ะ⟧ "Okay, when we're ready, let's go." [เมื่อ]
+   T25 A→B INFORM ↩T24 · about beach · - beach ⟦หาดไว้แล้วคุยกันครับ⟧ "The beach, we'll talk about it later." [ไว้+หาด+แล้วคุยกัน]
+  S4 getting there targets=[ไปติดต่อธุรกิจ, นั่งเรือ, ป้ายรถเมล์, รถบัส, มีรถขับ, คุณอยู่ที่ไหน, โมงเช้า]
+   T26 B→A ASK(PLACE) · about you · - where are you ⟦คุณอยู่ที่ไหนคะ⟧ "Where are you?" [คุณอยู่ที่ไหน]
+   T27 A→B ANSWER ↩T26 · about me · - bus stop ⟦ผมอยู่ที่ป้ายรถเมล์ครับ⟧ "I'm at the bus stop." [ป้ายรถเมล์]
+   T28 B→A PROPOSE ↩T27 · about how to go · - bus or boat ⟦นั่งรถบัสหรือนั่งเรือดีคะ⟧ "Should we take the bus or a boat?" [นั่งเรือ+รถบัส]
+   T29 A→B COUNTER ↩T28 · about me · - car ⟦ผมมีรถขับครับ⟧ "I have a car, I can drive." [มีรถขับ]
+   T30 B→A ASK(CLOCK_TIME) ↩T29 · about arrival · - what time ⟦ไปถึงกี่โมงเช้าคะ⟧ "What time do we arrive in the morning?"
+   T31 A→B ANSWER ↩T30 · about arrival · - 10 AM ⟦สิบโมงเช้าครับ⟧ "At 10 AM." [โมงเช้า]
+   T32 B→A ASK(YESNO) ↩T31 · about you · - go on business ⟦ไปติดต่อธุรกิจก่อนไหมคะ⟧ "Do you go on business first?" [ไปติดต่อธุรกิจ]
+  S5 eating and drinking targets=[ทานกันเลย, ผัดไทย]
+   T33 A→B PROPOSE · about food choice · - pad thai ⟦ทานกันเลยครับ ผัดไทยดีไหมครับ⟧ "Let's eat. Is pad thai good, shall we?" [ทานกันเลย+ผัดไทย]
+   T34 B→A ACCEPT ↩T33 · about food choice · - pad thai ⟦ได้ค่ะ ฉันชอบผัดไทยค่ะ⟧ "Okay, I like pad thai." [ผัดไทย]
+   T35 A→B INFORM ↩T34 · about food taste · - ⟦อร่อยมากเลยครับ⟧ "It's really delicious."
+   T36 B→A REACT ↩T35 · about food taste · - ⟦อร่อยจังค่ะ⟧ "So delicious!"
+  S6 wrapping up targets=[เบอร์โทรศัพท์, แย่แล้ว, เชิญนั่ง, มีนัดกับ]
+   T37 A→B REQUEST · about phone number · - phone number ⟦ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ⟧ "Can I get your phone number, please?" [เบอร์โทรศัพท์+ได้ไหม]
+   T38 B→A ACCEPT ↩T37 · about phone number · - ⟦ได้ค่ะ เดี๋ยวส่งให้นะคะ⟧ "Sure, I'll send it to you."
+   T39 A→B REACT ↩T38 · about appointment · - ⟦แย่แล้วครับ ผมมีนัดกับเพื่อนครับ⟧ "Oh no, I have an appointment with a friend." [แย่แล้ว+มีนัดกับ]
+   T40 B→A FAREWELL ↩T39 · about goodbye · - ⟦เชิญนั่งก่อนค่ะ ลาก่อนนะคะ⟧ "Please sit a moment first. Goodbye." [เชิญนั่ง]
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed
+🔎 STRUCTURAL_VALIDATION (candidate) FAIL 2 · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (candidate) FAIL 5 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ VOCABULARY CLOSED_VOCAB T8 — VOCABULARY_FAILED: unknown words: จอง
+   ⛔ VOCABULARY CLOSED_VOCAB T38 — VOCABULARY_FAILED: unknown words: เดี๋ยว
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T24,T25 — incorrect · does not make sense · does not answer · หาดไว้แล้วคุยกัน does not make sense as an answer to going now; the beach idea is unclear.
+   ⛔ GRAMMAR SEMANTIC_AUDIT T29 — awkward · มีรถขับ is an unnatural way to say having a car to drive.
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T39,T40 — incorrect · does not make sense · does not answer · Asking someone to sit first does not fit as a goodbye after they say they have an appointment.
+   ⛔ TRANSITION SCENE_INCOHERENT T20,T21,T22,T23,T24,T25 — Turn 25 about the beach does not clearly follow from waking and going now.
+   ⛔ TRANSITION SCENE_INCOHERENT T37,T38,T39,T40 — The farewell in turn 40 does not fit the appointment reply.
+   fault classes: VOCABULARY×2 · QUESTION_ANSWER×2 · GRAMMAR×1 · TRANSITION×2
+🔧 MEANING_REPAIR round 1/3 · 4 part(s): x1 line [VOCABULARY] · x2 scene [VOCABULARY+QUESTION_ANSWER+TRANSITION] · x3 scene [QUESTION_ANSWER+TRANSITION] · x4 line [GRAMMAR] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 1 — 4 part(s) in 2 bounded request(s) (≤ 10 turns each)
+✅ PART_REPAIRED x1 (line · VOCABULARY) 1 turn(s) → 1 new (validated in place): B: ฉันเก็บโต๊ะไว้แล้วค่ะ
+✅ PART_REPAIRED x2 (scene · VOCABULARY+QUESTION_ANSWER+TRANSITION) 4 turn(s) → 4 new (validated in place): A: ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ / B: ได้ค่ะ จะส่งให้นะคะ / A: แย่แล้วครับ ผมมีนัดกับเพื่อนครับ / B: งั้นเชิญนั่งก่อนนะคะ ไว้เจอกันค่ะ
+⛔ PART_REJECTED x3 (scene) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: จอง · the old turns stay; one corrected retry this round
+⛔ PART_REJECTED x4 (line) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: เอง · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round 1 · x3, x4 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x3 (scene · QUESTION_ANSWER+TRANSITION) 6 turn(s) → 6 new (validated in place): B: วันนี้คุณตื่นกี่โมงคะ / A: วันนี้ผมตื่นเจ็ดโมงเช้าครับ / B: เร็วจังค่ะ ฉันตื่นสายค่ะ / A: ตอนนี้ไปหาดกันไหมครับ / B: ได้ค่ะ เมื่อพร้อมแล้วไปค่ะ / A: ดีครับ หาดนั้นเก็บไว้ก่อนแล้วคุยกันครับ
+✅ PART_REPAIRED x4 (line · GRAMMAR) 1 turn(s) → 1 new (validated in place): A: ผมมีรถขับได้ครับ
+🔎 STRUCTURAL_VALIDATION (after repair round 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 1) FAIL 7 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SEMANTIC SEMANTIC_AUDIT T25 — awkward · does not make sense · Keeping the beach for later and talking later contradicts the just-agreed plan to go now; the meaning does not follow from the p
+   ⛔ SURFACE SEMANTIC_AUDIT T29 — awkward · As a counter-offer it works, but a native speaker would say it more naturally with a clearer phrasing for having a car to drive.
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T38,T39 — awkward · does not answer · Saying oh no and having an appointment does not react to being sent the number; the reply does not follow from the previous turn.
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T40 — awkward · does not make sense · does not answer · Inviting someone to sit down and then saying goodbye contradicts the appointment just mentioned, so the reply 
+   ⛔ TRANSITION SCENE_TRANSITION T20,T21 — After S2 they were heading to the museum and restaurant and were hungry; S3 jumps to wake-up times and a beach plan with no stated change of plan.
+   ⛔ TRANSITION SCENE_TRANSITION T26,T27 — The beach plan from S3 and the museum plan from S2 are dropped and a business visit is introduced without the speakers setting that new plan.
+   ⛔ TRANSITION SCENE_INCOHERENT T37,T38,T39,T40 — Following the meal, asking for a phone number is fine, but inviting someone to sit and then saying goodbye after an appointment is mentioned does not hold toget
+   fault classes: SEMANTIC×1 · SURFACE×1 · QUESTION_ANSWER×2 · TRANSITION×3
+🔁 REPEATED_FAILURE_SIGNATURE |SEMANTIC_AUDIT|648| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 2/3 · 4 part(s): x1 scene [SEMANTIC+TRANSITION] · x2 intention [SURFACE] · x3 scene [QUESTION_ANSWER+TRANSITION] · x4 exchange [QUESTION_ANSWER] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 2 — 4 part(s) in 2 bounded request(s) (≤ 10 turns each)
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — SCENE_TURN_BUDGET: S3 would grow from 6 to 8 turns — its budget is 6 · the old turns stay; one corrected retry this round
+✅ PART_REPAIRED x2 (intention · SURFACE) 2 turn(s) → 2 new (validated in place): B: ฉันอยากนั่งเรือ ไม่อยากนั่งรถบัสค่ะ / A: ดีครับ ผมไม่มีรถขับ นั่งเรือกันครับ
+⛔ PART_REJECTED x3 (scene) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: เดี๋ยว · the old turns stay; one corrected retry this round
+✅ PART_REPAIRED x4 (exchange · QUESTION_ANSWER) 1 turn(s) → 1 new (validated in place): B: งั้นเชิญนั่งก่อนค่ะ ฉันเก็บโต๊ะไว้ให้ค่ะ
+🔁 PATCH_RETRY round 2 · x1, x3 — rejected by the hard checks; asked once more with the exact reason
+🔧 REPAIR_BATCHES round 2-retry — 2 part(s) in 2 bounded request(s) (≤ 10 turns each)
+⚠ MEANING_REPAIR_UNREADABLE round 2-retry attempt 1 — Cannot read properties of undefined (reading 'n') (fault 9 TECHNICAL)
+⚠ MEANING_REPAIR_UNREADABLE round 2-retry attempt 2 — Cannot read properties of undefined (reading 'n') (fault 9 TECHNICAL)
+⛔ PARTS_TECHNICAL x3 — no readable repair (fault 9); those parts keep their old turns, every other part goes on
+⛔ PART_REJECTED x1 (scene) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: ป้าย · SCENE_TURN_BUDGET: S3 would grow from 6 to 8 turns — its budget is 6 · the old turns stay; the part escalates next round
+⛔ PART_NOT_REPAIRED x3 (scene) — no replacement returned · the part escalates next round
+🔎 STRUCTURAL_VALIDATION (after repair round 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 2) FAIL 5 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SEMANTIC SEMANTIC_AUDIT T25 — awkward · does not make sense · Keeping the beach for later and talking later contradicts the just-agreed plan to go now; the meaning does not follow from the p
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T38,T39 — awkward · does not answer · Sentence is grammatical, but the reaction does not follow from 38, where B just promised to send the phone number. An appointment wi
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T40 — awkward · does not answer · Inviting A to sit down does not answer A's news about an appointment, and it does not work as a farewell as the function requires. I
+   ⛔ TRANSITION SCENE_TRANSITION T20,T21 — After S2 they were heading to the museum and restaurant and were hungry; S3 jumps to wake-up times and a beach plan with no stated change of plan.
+   ⛔ TRANSITION SCENE_INCOHERENT T37,T38,T39,T40 — Asking for a phone number after eating is fine, but turns 39 and 40 jump to an unrelated appointment and an invitation to sit down, so the wrap-up does not hold
+   fault classes: SEMANTIC×1 · QUESTION_ANSWER×2 · TRANSITION×2
+🔁 REPEATED_FAILURE_SIGNATURE |SEMANTIC_AUDIT|617+671+799| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔁 REPEATED_FAILURE_SIGNATURE |SEMANTIC_AUDIT|726+752| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔁 REPEATED_FAILURE_SIGNATURE |SEMANTIC_AUDIT|799+816| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔁 REPEATED_FAILURE_SIGNATURE S3|SCENE_TRANSITION|| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔁 REPEATED_FAILURE_SIGNATURE S6|SCENE_INCOHERENT|692+712+726+752+799+816| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔁 LISTENING_TARGET_REASSIGNED 617 หาด S3 → S2 (the same failure after a scene replan: SEMANTIC_AUDIT)
+📏 TURN_RESERVE 40 turns — หาด is fitted into an existing exchange (T17,T18) instead of adding turns
+🔁 LISTENING_TARGET_REASSIGNED 671 แล้วคุยกัน S3 → S1 (the same failure after a scene replan: SEMANTIC_AUDIT)
+📏 TURN_RESERVE 40 turns — แล้วคุยกัน is fitted into an existing exchange (T20,T21) instead of adding turns
+🔧 MEANING_REPAIR round 3/3 · 3 part(s): x1 boundary [GROUPING+TRANSITION] · x2 scene [GROUPING+SEMANTIC] · x3 scene [QUESTION_ANSWER+TRANSITION] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 3 — 3 part(s) in 2 bounded request(s) (≤ 10 turns each)
+⛔ REPAIR_TRUNCATED round 3 · parts x2, x3 (10 turns) — the reply was cut off: a TECHNICAL failure (fault 9); nothing from it is applied
+✂ REPAIR_SPLIT round 3 — the cut-off request is split: x2 | x3
+✅ PART_REPAIRED x1 (boundary · GROUPING+TRANSITION) 5 turn(s) → 5 new (validated in place): A: ผมหิวแล้วครับ อยากไปหาดครับ / B: ไปหาดกี่โมงดีคะ / A: ตกลงครับ ไปหาดตอนสิบโมงครับ / B: วันนี้คุณตื่นกี่โมงคะ / A: ผมตื่นตั้งแต่ตีห้าครับ
+⛔ PART_REJECTED x2 (scene) — PATCH_INVALID — EXACT_DUPLICATE: repeats substantive line 20 · SCENE_TURN_BUDGET: S3 would grow from 6 to 8 turns — its budget is 6 · the old turns stay; one corrected retry this round
+⛔ PART_REJECTED x3 (scene) — PATCH_INVALID — CLOSED_VOCAB: VOCABULARY_FAILED: unknown words: จด · the old turns stay; one corrected retry this round
+🔁 PATCH_RETRY round 3 · x2, x3 — rejected by the hard checks; asked once more with the exact reason
+⚠ MEANING_REPAIR_UNREADABLE round 3-retry attempt 1 — Cannot read properties of undefined (reading 'n') (fault 9 TECHNICAL)
+⚠ MEANING_REPAIR_UNREADABLE round 3-retry attempt 2 — Cannot read properties of undefined (reading 'n') (fault 9 TECHNICAL)
+⛔ PARTS_TECHNICAL x2, x3 — no readable repair (fault 9); those parts keep their old turns, every other part goes on
+🔎 STRUCTURAL_VALIDATION (after repair round 3) FAIL 1 · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 3) FAIL 7 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SURFACE REPEATED_REJECTED_SENTENCE T20 — this sentence was already rejected: "วันนี้คุณตื่นกี่โมงคะ"
+   ⛔ TRANSITION SEMANTIC_AUDIT T17 — awkward · Right after agreeing to lunch at a restaurant next, saying he is hungry and wants the beach does not follow from what was just said.
+   ⛔ SEMANTIC SEMANTIC_AUDIT T25 — incorrect · does not make sense · Keeping a beach for later does not make sense; a beach is not kept or stored, and it contradicts the just-accepted plan to go 
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T38,T39 — awkward · does not answer · Sentence is grammatical, but the reaction does not follow from 38, where B just promised to send the phone number. An appointment wi
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T40 — awkward · does not answer · Inviting A to sit down does not answer A's news about an appointment, and it does not work as a farewell as the function requires. I
+   ⛔ TRANSITION SCENE_INCOHERENT T11,T12,T13,T14,T15,T16,T17,T18,T19 — Agreeing to a restaurant next is followed by hunger and a sudden switch to the beach, which breaks the storyline.
+   ⛔ TRANSITION SCENE_INCOHERENT T20,T21,T22,T23,T24,T25 — The wake-up talk follows on from the beach plan, but turn 25 about keeping the beach makes no sense and contradicts the proposal to go now.
+   ⛔ TRANSITION SCENE_INCOHERENT T37,T38,T39,T40 — Asking for a phone number after eating is fine, but turns 39 and 40 jump to an unrelated appointment and an invitation to sit down, so the wrap-up does not hold
+   fault classes: SURFACE×1 · TRANSITION×4 · SEMANTIC×1 · QUESTION_ANSWER×2
+🧠 LISTENING_MEANING_PLAN (not approved) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up targets=[พวกคุณ, ยินดีที่ได้รู้จัก, เพราะ, ตลก, ไว้, ไม่ทราบว่า, ได้ไหม, ไม่เชิง, แล้วคุยกัน]
+   T1 A→B GREET · about greeting · - ⟦สวัสดีครับ⟧ "Hello."
+   T2 B→A ASK(STATE) ↩T1 · about how A is · - ⟦สวัสดีค่ะ เหนื่อยไหมคะ⟧ "Hello. Are you tired?"
+   T3 A→B ANSWER ↩T2 · about A's day · - ⟦ไม่เชิงครับ วันนี้ยุ่งนิดหน่อยครับ⟧ "Not exactly. Today I'm a little busy." [ไม่เชิง]
+   T4 B→A INFORM ↩T3 · about B's movie · - movie ⟦เมื่อวานฉันดูหนังตลกค่ะ⟧ "Yesterday I watched a funny movie." [ตลก+ดูหนัง]
+   T5 A→B ASK(PERSON) ↩T4 · about who B watched with · - person ⟦ไม่ทราบว่าคุณดูกับใครครับ⟧ "May I ask who you watched with?" [ไม่ทราบว่า]
+   T6 B→A ANSWER ↩T5 · about companion · - friend ⟦กับเพื่อนค่ะ นี่เพื่อนฉันค่ะ⟧ "With a friend. This is my friend."
+   T7 A→B GREET ↩T6 · about meeting the friend · - ⟦ยินดีที่ได้รู้จักครับ⟧ "Nice to meet you." [ยินดีที่ได้รู้จัก]
+   T8 B→A INFORM · about table · - ⟦ฉันเก็บโต๊ะไว้แล้วค่ะ⟧ "I already saved a table for us." [ไว้]
+   T9 A→B REQUEST · about joining them · - ⟦ผมไปกับพวกคุณได้ไหมครับ⟧ "Can I come with you all?" [พวกคุณ+ได้ไหม]
+   T10 B→A ACCEPT ↩T9 · about A joining · - ⟦ได้ค่ะ เพราะวันนี้ว่างค่ะ⟧ "Yes, because today I'm free." [เพราะ]
+  S2 deciding what to do targets=[พิพิธภัณฑสถานแห่งชาติ, สนามหลวง, ตึก, ดูหนัง, น่าดู, ร้านอาหาร, หาด]
+   T11 A→B ASK(PLACE) · about where to go · - ⟦ขอบคุณครับ วันนี้ไปไหนดีครับ⟧ "Thanks. Where should we go today?"
+   T12 B→A PROPOSE ↩T11 · about national museum · - national museum ⟦ฉันอยากไปพิพิธภัณฑสถานแห่งชาติค่ะ⟧ "I want to go to the National Museum." [พิพิธภัณฑสถานแห่งชาติ]
+   T13 A→B ASK(YESNO) ↩T12 · about museum worth seeing · - ⟦น่าดูไหมครับ⟧ "Is it worth seeing?" [น่าดู]
+   T14 B→A ANSWER ↩T13 · about museum building · - building ⟦น่าดูค่ะ มีตึกเก่ามากค่ะ⟧ "It's worth seeing. There are very old buildings." [น่าดู+ตึก]
+   T15 A→B PROPOSE ↩T14 · about Sanam Luang · - Sanam Luang ⟦ไปสนามหลวงก่อนไหมครับ⟧ "Shall we go to Sanam Luang first?" [สนามหลวง]
+   T16 B→A ACCEPT ↩T15 · about restaurant after · - restaurant ⟦ได้ค่ะ แล้วไปร้านอาหารนะคะ⟧ "Okay. Then we go to the restaurant." [ร้านอาหาร]
+   T17 A→B INFORM · about hunger and plan · - ⟦ผมหิวแล้วครับ อยากไปหาดครับ⟧ "I'm already hungry, I want to go to the beach." [หาด]
+   T18 B→A ASK(CLOCK_TIME) · about beach trip · - ⟦ไปหาดกี่โมงดีคะ⟧ "What time should we go to the beach?" [หาด]
+   T19 A→B ACKNOWLEDGE ↩T18 · about beach trip · - ⟦ตกลงครับ ไปหาดตอนสิบโมงครับ⟧ "Okay, let's go to the beach at 10 AM." [หาด]
+  S3 agreeing when targets=[เมื่อ]
+   T20 B→A ASK(CLOCK_TIME) · about wake-up time · - ⟦วันนี้คุณตื่นกี่โมงคะ⟧ "What time did you wake up today?"
+   T21 A→B ANSWER ↩T20 · about wake-up time · - ⟦ผมตื่นตั้งแต่ตีห้าครับ⟧ "I woke up as early as 5 AM."
+   T22 B→A REACT ↩T21 · about wake time · - ⟦เร็วจังค่ะ ฉันตื่นสายค่ะ⟧ "So early! I woke up late."
+   T23 A→B PROPOSE · about beach · - ⟦ตอนนี้ไปหาดกันไหมครับ⟧ "Shall we go to the beach now?" [หาด]
+   T24 B→A ACCEPT ↩T23 · about beach · - ⟦ได้ค่ะ เมื่อพร้อมแล้วไปค่ะ⟧ "Okay, when we're ready, let's go." [เมื่อ]
+   T25 A→B INFORM · about beach · - ⟦ดีครับ หาดนั้นเก็บไว้ก่อนแล้วคุยกันครับ⟧ "Good. Keep that beach for now, we'll talk later." [ไว้+หาด+แล้วคุยกัน]
+  S4 getting there targets=[ไปติดต่อธุรกิจ, นั่งเรือ, ป้ายรถเมล์, รถบัส, มีรถขับ, คุณอยู่ที่ไหน, โมงเช้า]
+   T26 B→A ASK(PLACE) · about you · - where are you ⟦คุณอยู่ที่ไหนคะ⟧ "Where are you?" [คุณอยู่ที่ไหน]
+   T27 A→B ANSWER ↩T26 · about me · - bus stop ⟦ผมอยู่ที่ป้ายรถเมล์ครับ⟧ "I'm at the bus stop." [ป้ายรถเมล์]
+   T28 B→A PROPOSE · about - · - ⟦ฉันอยากนั่งเรือ ไม่อยากนั่งรถบัสค่ะ⟧ "I want to take the boat, not the bus." [นั่งเรือ+รถบัส]
+   T29 A→B ANSWER ↩T28 · about - · - ⟦ดีครับ ผมไม่มีรถขับ นั่งเรือกันครับ⟧ "Good. I don't have a car to drive, so let's take the boat." [นั่งเรือ+มีรถขับ]
+   T30 B→A ASK(CLOCK_TIME) · about arrival · - what time ⟦ไปถึงกี่โมงเช้าคะ⟧ "What time do we arrive in the morning?"
+   T31 A→B ANSWER ↩T30 · about arrival · - 10 AM ⟦สิบโมงเช้าครับ⟧ "At 10 AM." [โมงเช้า]
+   T32 B→A ASK(YESNO) ↩T31 · about you · - go on business ⟦ไปติดต่อธุรกิจก่อนไหมคะ⟧ "Do you go on business first?" [ไปติดต่อธุรกิจ]
+  S5 eating and drinking targets=[ทานกันเลย, ผัดไทย]
+   T33 A→B PROPOSE · about food choice · - pad thai ⟦ทานกันเลยครับ ผัดไทยดีไหมครับ⟧ "Let's eat. Is pad thai good, shall we?" [ทานกันเลย+ผัดไทย]
+   T34 B→A ACCEPT ↩T33 · about food choice · - pad thai ⟦ได้ค่ะ ฉันชอบผัดไทยค่ะ⟧ "Okay, I like pad thai." [ผัดไทย]
+   T35 A→B INFORM ↩T34 · about food taste · - ⟦อร่อยมากเลยครับ⟧ "It's really delicious."
+   T36 B→A REACT ↩T35 · about food taste · - ⟦อร่อยจังค่ะ⟧ "So delicious!"
+  S6 wrapping up targets=[เบอร์โทรศัพท์, แย่แล้ว, เชิญนั่ง, มีนัดกับ]
+   T37 A→B REQUEST · about phone number · - ⟦ขอเบอร์โทรศัพท์หน่อยได้ไหมครับ⟧ "Can I get your phone number, please?" [เบอร์โทรศัพท์+ได้ไหม]
+   T38 B→A ACCEPT ↩T37 · about phone number · - ⟦ได้ค่ะ จะส่งให้นะคะ⟧ "Sure, I'll send it to you."
+   T39 A→B REACT ↩T38 · about appointment · - ⟦แย่แล้วครับ ผมมีนัดกับเพื่อนครับ⟧ "Oh no, I have an appointment with a friend." [แย่แล้ว+มีนัดกับ]
+   T40 B→A FAREWELL · about - · - โต๊ะ ⟦งั้นเชิญนั่งก่อนค่ะ ฉันเก็บโต๊ะไว้ให้ค่ะ⟧ "Then please sit down first, I'll keep the table for you." [ไว้+เชิญนั่ง]
+⛔ LISTENING_PLAN_BLOCKED — 8 unresolved after 3 repair round(s): SURFACE REPEATED_REJECTED_SENTENCE — this sentence was already rejected: "วันนี้คุณตื่นกี่โมงคะ" · TRANSITION SEMANTIC_AUDIT — awkward · Right after agreeing to lunch at a restaurant next, saying he is hungry and want · SEMANTIC SEMANTIC_AUDIT — incorrect · does not make sense · Keeping a beach for later does not make sense; a beach i · QUESTION_ANSWER SEMANTIC_AUDIT — awkward · does not answer · Sentence is grammatical, but the reaction does not follow from · QUESTION_ANSWER SEMANTIC_AUDIT — awkward · does not answer · Inviting A to sit down does not answer A's news about an appoi · lesson words in the failing parts: หาด, ไว้, แล้วคุยกัน, แย่แล้ว, มีนัดกับ, เชิญนั่ง, พิพิธภัณฑสถานแห่งชาติ, น่าดู, ตึก, สนามหลวง, ร้านอาหาร, เมื่อ, เบอร์โทรศัพท์, ได้ไหม · composition stops here: no further paid scene generation (calls: plan 12 · audit 4 · repair 14)
+🩺 LISTENING_EFFICIENCY phasesCommittedFirstGeneration=0% (target ≥70%) · repairCalls=14 (target <10) · generationCalls=12 · ⚠ PLANNER_FAILURE — repair calls > generation calls: diagnose upstream planning (feasibility / meaning plan / palettes) — health targets, not gates

@@ -8,6 +8,7 @@
 // modelled on the three v693 runs (benchmark/v692/learners.js V693_IDS · benchmark/v694/plans.js, incl. the plan Claude Haiku
 // actually returned for the Japanese v693 run).
 'use strict'
+const SRC_TT = require('fs').readFileSync(__dirname + '/tt.jsx', 'utf8')
 const { load } = require('./harness')
 const { learner, V691_IDS, V693_IDS, V693_DEFERRED } = require('./benchmark/v692/learners')
 const { GOOD693, JA_V693 } = require('./benchmark/v694/plans')
@@ -147,6 +148,24 @@ const lineOf = (Ls, re) => (Ls.match(re) || [''])[0]
       T('D4e', 'an apology may be answered by an acknowledgement + a question about it ("Yeah, got it. Why didn\'t you come?" · "Why?" pass); a question that ignores the apology still fails ("Do you like movies?" · "Shall we go by train?")',
         q("Sorry, I didn't come yesterday.", "Yeah, got it. Why didn't you come?") === null && q("Sorry, I didn't eat with you yesterday.", 'Why?') === null &&
         /APOLOGY expects/.test(q("Sorry, I'm late.", 'Do you like movies?') || '') && /APOLOGY expects/.test(q('Sorry.', 'Shall we go by train?') || '')) }
+    // D4f · v700 (live v699 Thai, 15 Oct): repair parts that overlapped (a scene part T37–T40 and an exchange part T40) rewrote the same
+    // turn, and the corrected retry of one pointed at a turn the other had replaced — it crashed ("reading 'n'") in two of three rounds
+    { const c = load(__dirname + '/tt.compiled.js', { realBelt: true })
+      const Tu = (n, sp, scene, resp) => ({ id: 't' + n, n, speaker: sp, scene, targetIds: [n], intent: 'INFORM', respondsToId: resp || null })
+      const flat = [Tu(35, 'A', 'S5'), Tu(36, 'B', 'S5', 't35'), Tu(37, 'A', 'S6'), Tu(38, 'B', 'S6', 't37'), Tu(39, 'A', 'S6', 't38'), Tu(40, 'B', 'S6')]
+      const mp = { flat, scenes: [{ key: 'S5', situation: 'EAT', turns: flat.slice(0, 2), targetIds: [35, 36] }, { key: 'S6', situation: 'PART', turns: flat.slice(2), targetIds: [37, 38, 39, 40] }] }
+      const env = { mf: { attempts: new Map(), moves: new Map(), released: new Set() }, byId: new Map(flat.map(t => [t.n, { surface: 'w' + t.n, gloss: 'g' }])), mfProfiles: new Map(), turnsMax: 44, log: () => {} }
+      const sc = c.lnMfScopes(env, mp, [{ fault: 6, code: 'SEMANTIC_AUDIT', turnIds: ['t38', 't39'], detail: 'x' }, { fault: 6, code: 'SEMANTIC_AUDIT', turnIds: ['t40'], detail: 'x' }, { fault: 7, code: 'SCENE_INCOHERENT', turnIds: ['t37', 't38', 't39', 't40'], detail: 'x' }])
+      const overlap = sc.some((a, i) => sc.some((b, j) => j > i && a.kind !== 'add' && b.kind !== 'add' && a.turnIds.some(id => b.turnIds.includes(id))))
+      T('D4f', 'repair parts never overlap: a scene part (T37–T40) and an exchange part (T40) of the same situation become ONE part — no turn is rewritten twice, the corrected retry never points at a replaced turn',
+        !overlap && sc.length === 1 && sc[0].kind === 'scene' && sc[0].turnIds.join() === 't37,t38,t39,t40' && /PATCH_RETRY_SKIPPED/.test(SRC_TT), sc.map(s => [s.id, s.kind, s.turnIds])) }
+    // D4g · v700 (live v699 Thai): เชิญนั่ง "please sit" was grouped into the goodbye and แล้วคุยกัน "talk later" into "agreeing when" —
+    // neither can be said there, and no repair could save them. Hosting phrases go where someone arrives / sits down; "talk later" parts.
+    { const c = load(__dirname + '/tt.compiled.js', { realBelt: true }), S = c.ev('LN_MF_SITUATIONS'), pr = (th, en) => { const t = { id: 1, surface: th, gloss: en, english: en }; t.role = c.listeningTargetRole(t, 'th'); return c.lnMfProfile(t, 'th') }
+      const best = p => S.map(s => [s.key, c.lnMfSituationScore(p, s)]).sort((a, b) => b[1] - a[1])
+      const sit = best(pr('เชิญนั่ง', 'please sit')), talk = best(pr('แล้วคุยกัน', 'talk later')), appt = best(pr('มีนัดกับ', 'have an appointment with'))
+      T('D4g', 'situations a word can be said in: "please sit" fits meeting / eating, never the goodbye; "talk later" fits the goodbye (a parting phrase); "have an appointment" fits agreeing a time or the goodbye',
+        ['MEET', 'EAT'].includes(sit[0][0]) && sit[0][1] >= 2 && sit.find(x => x[0] === 'PART')[1] < 2 && talk[0][0] === 'PART' && talk.find(x => x[0] === 'TIME')[1] < 0 && ['TIME', 'PART'].includes(appt[0][0]), { sit: sit.slice(0, 3), talk: talk.slice(0, 3), appt: appt.slice(0, 3) }) }
     // D5 · a target the plan forgot → GROUPING recovery adds an exchange for it; the target is never silently lost
     const noCost = GOOD.th.filter(r => !/ค่าโดยสาร|สิบบาท/.test(r[5]))
     const th1 = await run('th', { plan: noCost, repair: () => [['A', 'ASK', 'PRICE', 'the fare', 'ค่าโดยสารเท่าไหร่ครับ', 'How much is the fare?'], ['B', 'ANSWER', '', 'the fare', 'สิบบาทค่ะ', 'Ten baht.']] })

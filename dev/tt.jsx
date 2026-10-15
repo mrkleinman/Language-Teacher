@@ -24173,6 +24173,8 @@ function listeningFunctionRole(src) {
   if (/\?\s*(\)|$)|\?…|…\?/.test(eng) || /^(how (old|long|much|many|far|is|are|was|do|did)|what time|what|where|when|why|who|which|may i ask|do you know)\b/.test(eng)) return 'QUESTION_WORD'
   if (/^(not (exactly|really|quite)|no way|of course|sure|exactly|that's right|yes|no)\b/.test(eng)) return 'RESPONSE_TOKEN'
   if (/^(good luck|take care|have a (good|nice)|see you|bye|goodbye|safe travels?|good night)\b/.test(eng)) return 'PARTING'
+  // v700 (live v699 Thai): แล้วคุยกัน "talk later" was grouped into "agreeing when" and forced into "keep the beach, talk later"
+  if (/^((let's |we'll |i'll )?(talk|speak|chat) (later|again|soon)|catch you later|(i )?(have|need|got) to go|gotta go)\b/.test(eng)) return 'PARTING'
   if (/^(oh no|wow|oh|really|great|nice|too bad)\b/.test(eng)) return 'DISCOURSE_MARKER'
   // v671 §B3/§B5 — an apology is its own act (live: ごめん was planned into a QUESTION turn)
   if (/^(sorry|i'm sorry|i am sorry|my apologies|my bad|excuse me|pardon)\b/.test(eng)) return 'APOLOGY'
@@ -24182,6 +24184,7 @@ function listeningTargetRole(src, lang) {
   const base = targetConversationRole(src, lang)
   const fr = listeningFunctionRole(src)
   if (fr && (base === 'CONTENT' || base === 'FUNCTIONAL_PHRASE')) return fr
+  if (fr === 'PARTING') return fr   // v700: "talk later" is a parting phrase even though "later" reads as a time word
   if (base !== 'CONTENT') return base
   const eng = String(src.english || '').toLowerCase().trim(), g = eng.split(/[;,/(]/)[0].trim(), pos = String(src.partOfSpeech || src.pos || '').toLowerCase()
   const dom = targetSemanticDomain(src)
@@ -28686,17 +28689,17 @@ function lnMfProfile(t, lang) {
 // situation is available only when the learner's words can carry its core (needs).
 const LN_MF_SITUATIONS = [
   { key: 'MEET', rank: 1, title: 'meeting and catching up', where: 'where they meet', desc: 'they meet, greet each other and catch up (how they are, what they did, who they were with)',
-    rx: /\b(friends?|family|name|age|how are|yesterday|last|meet|work|job|busy|tired|happy|fine|sorry|hello|hi|you all|people|person|who|speak|talk|do|because)\b/, cls: ['PERSON', 'ANIMAL'], asks: ['PERSON', 'AGE', 'STATE', 'YESNO', 'REASON'], val: ['PERSON'] },
+    rx: /\b(friends?|family|name|age|how are|yesterday|last|meet|work|job|busy|tired|happy|fine|sorry|hello|hi|you all|people|person|who|speak|talk|do|because|sit|have a seat|come in|welcome)\b/, cls: ['PERSON', 'ANIMAL'], asks: ['PERSON', 'AGE', 'STATE', 'YESNO', 'REASON'], val: ['PERSON'] },
   { key: 'PLAN', rank: 2, title: 'deciding what to do', where: 'still where they meet', desc: 'they decide what to do together and where to go',
     rx: /\b(movies?|films?|books?|photos?|see|watch|want|visit|museum|temple|park|palace|tourists?|which|where|there|over there|here|worth seeing|go to|sanam luang|national|do|because)\b/, cls: ['MEDIA', 'PLACE', 'EVENT'], asks: ['THING', 'CHOICE', 'PLACE', 'REASON', 'YESNO'], val: ['PLACE'] },
   { key: 'TIME', rank: 3, title: 'agreeing when', where: 'still where they meet', desc: 'they agree a day or a time to go; once a time is agreed it stays agreed',
-    rx: /\b(today|tomorrow|tonight|now|later|o'clock|a\.?m\.?|p\.?m\.?|morning|evening|afternoon|what time|when|again|still|not yet|already|in advance|soon)\b/, asks: ['CLOCK_TIME', 'TIME'], val: ['TIME'],
+    rx: /\b(today|tomorrow|tonight|now|later|o'clock|a\.?m\.?|p\.?m\.?|morning|evening|afternoon|what time|when|again|still|not yet|already|in advance|soon|appointment)\b/, asks: ['CLOCK_TIME', 'TIME'], val: ['TIME'],
     needs: /\b(today|tomorrow|now|o'clock|time|morning|evening|afternoon|tonight)\b/ },
   { key: 'TRAVEL', rank: 4, title: 'getting there', where: 'on the way', desc: 'they go there: how to get there, by bus / train / taxi, the way, how long it takes, the fare',
     rx: /\b(bus|train|taxi|cars?|songthaew|way|road|turn|walk|drive|ride|arrive|come|go|entrance|exit|fares?|how long|far|near|wait|return|go back|get on|get off|station)\b/, cls: ['VEHICLE'], asks: ['DURATION', 'METHOD', 'PLACE', 'REASON', 'YESNO'],
     needs: /\b(go|come|arrive|bus|train|cars?|taxi|walk|ride)\b/ },
   { key: 'EAT', rank: 5, title: 'eating and drinking', where: 'at a place to eat', desc: 'they eat or drink somewhere: choosing, ordering, how it tastes',
-    rx: /\b(eat|drink|food|rice|noodles?|restaurant|delicious|tasty|spicy|hungry|full|order|menu|coffee|tea|let's eat|pad thai|meal|water|worthwhile|worth)\b/, cls: ['FOOD', 'DRINK'], asks: ['THING', 'STATE', 'CHOICE', 'YESNO'],
+    rx: /\b(eat|drink|food|rice|noodles?|restaurant|delicious|tasty|spicy|hungry|full|order|menu|coffee|tea|let's eat|pad thai|meal|water|worthwhile|worth|sit|have a seat)\b/, cls: ['FOOD', 'DRINK'], asks: ['THING', 'STATE', 'CHOICE', 'YESNO'],
     needs: /\b(eat|drink|food|rice|coffee|tea|restaurant|meal|water)\b/ },
   { key: 'SHOP', rank: 6, title: 'shopping and paying', where: 'at a shop', desc: 'they look at something to buy, ask the price, decide and pay',
     rx: /\b(buy|pay|price|cost|money|expensive|cheap|worth|how much|how many|thing|stuff|use|take|hold|open|baht|yen|yuan|shop|store|size|clothes|shirt|try on)\b/, cls: ['MONEY'], asks: ['PRICE', 'QUANTITY', 'CHOICE', 'THING', 'YESNO'],
@@ -28706,7 +28709,7 @@ const LN_MF_SITUATIONS = [
   { key: 'HOME', rank: 8, title: 'at home', where: 'at home', desc: 'they talk about home and everyday things to do there',
     rx: /\b(home|house|do|make|cook|wait|open|close|work|rest|sleep|family|return|go home|find|look for)\b/, asks: ['METHOD', 'THING', 'PLACE', 'YESNO'], needs: /\b(home|house)\b/ },
   { key: 'PART', rank: 9, title: 'wrapping up', where: 'as they part', desc: 'they wrap up, maybe swap phone numbers or plan to meet again, and say goodbye',
-    rx: /\b(goodbye|bye|see you|good luck|take care|phone|number|again|go home|thanks?|thank you)\b/, val: ['PHONE', 'DIGITS'], asks: ['YESNO'] },
+    rx: /\b(goodbye|bye|see you|good luck|take care|phone|number|again|go home|thanks?|thank you|appointment|talk later|have to go)\b/, val: ['PHONE', 'DIGITS'], asks: ['YESNO'] },
 ]
 function lnMfSituationScore(p, s) {
   let sc = 0
@@ -29464,6 +29467,25 @@ function lnMfScopes(env, mp, issues) {
     s.targetIds = [...new Set(s.turnIds.flatMap(id => at(id).targetIds).concat(s.mustInclude || []))].filter(id => byId.has(id) && !(s.release || []).includes(id))
     s.scene = first.scene
     s.scenes = [...new Set(s.turnIds.map(id => at(id).scene))] })
+  // v700 (live v699 Thai): parts are merged when they are created, but the contiguous spans above can still OVERLAP (a scene part
+  // T37–T40 and an exchange part T40; a boundary part T17–T21 and a scene part T20–T25). Two parts then rewrote the same turn, and
+  // the corrected retry of the rejected one pointed at a turn the other had already replaced — it crashed ("reading 'n'") and the
+  // retry was lost in two rounds. Overlapping parts become ONE part (the higher repair level; a boundary when it spans two situations).
+  for (let i = 0; i < scopes.length; i++) for (let j = i + 1; j < scopes.length; j++) {
+    const a = scopes[i], b = scopes[j]
+    if (a.kind === 'add' || b.kind === 'add' || !a.turnIds.some(id => b.turnIds.includes(id))) continue
+    const ids = [...new Set(a.turnIds.concat(b.turnIds))].sort((x, y) => at(x).n - at(y).n), f = at(ids[0]), l = at(ids[ids.length - 1])
+    a.turnIds = flat.filter(t => t.n >= f.n && t.n <= l.n).map(t => t.id)
+    a.issues = a.issues.concat(b.issues)
+    if (b.mustInclude) a.mustInclude = [...new Set((a.mustInclude || []).concat(b.mustInclude))]
+    if (b.release) a.release = [...new Set((a.release || []).concat(b.release))]
+    if (rank[b.kind] > rank[a.kind]) a.kind = b.kind
+    a.scene = f.scene
+    a.scenes = [...new Set(a.turnIds.map(id => at(id).scene))]
+    if (a.scenes.length > 1 && a.kind !== 'boundary') a.kind = 'boundary'
+    a.targetIds = [...new Set(a.turnIds.flatMap(id => at(id).targetIds).concat(a.mustInclude || []))].filter(id => byId.has(id) && !(a.release || []).includes(id))
+    scopes.splice(j, 1); j = i
+  }
   return scopes
 }
 // v695 — BOUNDED REPAIR REQUESTS. A repair reply holds only the changed turns of a few parts, in the compact turn format, and a
@@ -29521,7 +29543,10 @@ async function lnMfRepairRound(env, mp, scopes, round) {
   const rep = await lnMfRepairCall(env, mp, scopes, round)
   if (!rep) return null
   lnMfApply(env, mp, scopes, rep, round)
-  const again = scopes.filter(s => s.patchRejected && !s.patchRetried)
+  // v700: a part is retried only while every turn it names still exists (never a stale turn another part replaced)
+  const live = new Set(mp.flat.map(t => t.id))
+  const again = scopes.filter(s => s.patchRejected && !s.patchRetried && (s.kind === 'add' || s.turnIds.every(id => live.has(id))))
+  scopes.filter(s => s.patchRejected && !s.patchRetried && !again.includes(s)).forEach(s => env.log && env.log('⏭ PATCH_RETRY_SKIPPED ' + s.id + ' — its turns were changed by another part this round; it is repaired again next round'))
   if (!again.length) return rep
   again.forEach(s => { s.patchRetried = true })
   env.log && env.log('🔁 PATCH_RETRY round ' + round + ' · ' + again.map(s => s.id).join(', ') + ' — rejected by the hard checks; asked once more with the exact reason')

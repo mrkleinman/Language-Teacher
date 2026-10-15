@@ -24,7 +24,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     var b = document.createElement('div');
     b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#7c3aed;color:#fff;font:600 11px/1.4 system-ui,sans-serif;padding:3px 8px;display:flex;gap:8px;align-items:center;justify-content:center;pointer-events:auto';
-    b.innerHTML = '<span>TEST BUILD v701 · separate test data (your real progress is read, never changed)</span>';
+    b.innerHTML = '<span>TEST BUILD v702 · separate test data (your real progress is read, never changed)</span>';
     var x = document.createElement('button'); x.textContent = 'Delete test data';
     x.style.cssText = 'font:600 10px system-ui;border:0;border-radius:4px;padding:1px 6px;background:#fff;color:#7c3aed';
     x.onclick = function () { if (confirm('Delete all TEST data on this phone? Your real lessons and progress are not touched.')) { var n = window.__TT_TEST_BUILD__.clear(); alert(n + ' test item(s) deleted.'); location.reload() } };
@@ -40,7 +40,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v701"/>
+<meta name="app-version" content="v702"/>
   <title>TEST · Thai Teacher v699</title>
   
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -10049,11 +10049,11 @@ async function ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId, useGen2) {  
     if (result) {
       _finalTrack = await finaliseThaiTrackAfterQc(track, result, { vocab, apiKey, model, onLog: L, cancelRef: qrCancel })
       const _ft = _finalTrack
-      shown = { ...shown, pairs: _ft.pairs, _finalAudit: _ft._finalAudit, _coverage: _ft._coverage, _semanticAudit: _ft._semanticAudit, _closedVocab: _ft._closedVocab, integrity: _ft.integrity, finalTrack: _ft.finalTrack }
+      shown = { ...shown, ...finalTrackIdentityFields(_ft), pairs: _ft.pairs, _finalAudit: _ft._finalAudit, _coverage: _ft._coverage, _semanticAudit: _ft._semanticAudit, _closedVocab: _ft._closedVocab, integrity: _ft.integrity, finalTrack: _ft.finalTrack }
     }
   } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; L('⚠️ Auto QC failed: ' + e.message) }
   if (!isFinalTrack(_finalTrack)) {
-    try { _finalTrack = await finaliseMainTrack(_finalTrack, TRACK_ADAPTERS.th, { vocab, apiKey, model, onLog: L }); const _ft = _finalTrack; shown = { ...shown, pairs: _ft.pairs, integrity: _ft.integrity, finalTrack: _ft.finalTrack } }
+    try { _finalTrack = await finaliseMainTrack(_finalTrack, TRACK_ADAPTERS.th, { vocab, apiKey, model, onLog: L }); const _ft = _finalTrack; shown = { ...shown, ...finalTrackIdentityFields(_ft), pairs: _ft.pairs, integrity: _ft.integrity, finalTrack: _ft.finalTrack } }
     catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; L('⚠️ FINAL_TRACK failed: ' + e.message) }
   }
   L('🎧 LISTENING_CALLS=0 — Listening is a separate track (Listening Track button); none is built after a Daily Track')
@@ -16165,6 +16165,13 @@ function thaiGenderedTargetSpeaker(thai) {
   const t = String(thai || '').trim()
   if (/^(\u0e04\u0e30|\u0e04\u0e48\u0e30|\u0e19\u0e30\u0e04\u0e30|\u0e14\u0e34\u0e09\u0e31\u0e19)$/.test(t)) return 'B'
   if (/^(\u0e04\u0e23\u0e31\u0e1a|\u0e19\u0e30\u0e04\u0e23\u0e31\u0e1a|\u0e1c\u0e21)$/.test(t)) return 'A'
+  // v701 (owner review, live v700): a PHRASE that carries a gendered particle or pronoun is just as speaker-bound — สวัสดีครับ took
+  // 11 paid checks and failed because every request still asked the woman (B) to say one of its three lines; ผมเอง needed 3 rounds.
+  // ครับ anywhere / a leading ผม (ผมเอง, ผมชื่อ) → the man; ดิฉัน, or a final ค่ะ / คะ / นะคะ → the woman.
+  if (t.length > 2) {
+    if (/\u0e04\u0e23\u0e31\u0e1a/.test(t) || /^\u0e1c\u0e21(?!\u0e31|\u0e22\u0e32\u0e27|\u0e2a\u0e31\u0e49\u0e19|\u0e2a\u0e35|\u0e2b\u0e07\u0e2d\u0e01)/.test(t)) return 'A'
+    if (/\u0e14\u0e34\u0e09\u0e31\u0e19/.test(t) || /(\u0e04\u0e48\u0e30|\u0e04\u0e30)$/.test(t)) return 'B'
+  }
   return null
 }
 function thaiSpeakerMapGender(letter) { const m = THAI_SPEAKER_MAP[letter]; return m ? m.gender : null }
@@ -16410,6 +16417,12 @@ function evaluatePromptAlignment(promptText, english) {
 
 // Oct13 — the kinds of Thai a native speaker would not say, taken from the live 13-Oct track (each with the natural form). Shared by
 // the writer and the native-speaker reviewer so both hold the same standard. They teach the PATTERN; nothing is blacklisted.
+// v701 — from the owner's review of the live v700 Thai track: constructions the judges passed but a Thai speaker would not say
+const THAI_NATURALNESS_GUIDE_V701 =
+  '  - ไม่เชิง is a hedged answer and says HOW it is not quite so: ไม่เชิงค่ะ แค่ชอบนิดหน่อย — never followed by an unrelated statement\n' +
+  '  - ask about a love STORY (เรื่องความรักของเขา), never "listen to love" (ฟังความรัก) · a wish is ขอให้มีความสุข / ขอให้โชคดี, not ขอให้เขาดี\n' +
+  '  - เชิญนั่งครับ is an invitation — never a yes/no question (not เชิญนั่งไหม) · ยินดีต้อนรับครับ — not "welcome you with water"\n' +
+  '  - "I will tell you when I know" is รู้แล้วจะบอกนะครับ (not บอกคุณเมื่อรู้) · คุณมีรถไหม (not มีรถขับไหม) · งั้น or แล้ว, never งั้นแล้ว\n'
 const THAI_NATURALNESS_GUIDE =
   '• NATURAL THAI — mistakes seen before (write the natural form):\n' +
   '  - "there" is ที่นั่น (ทางเข้าอยู่ที่นั่นครับ), never ที่นั้น (นั้น = "that" after a noun)\n' +
@@ -16444,7 +16457,7 @@ function buildThaiLanguageQcPrompt(pairs, allowedWords) {
     '"\u0e15\u0e2d\u0e19\u0e40\u0e27\u0e25\u0e32\u0e2a\u0e32\u0e21". Do NOT reject playful or large numbers when the context\n' +
     'genuinely supports them. Prefer a simple plausible sentence over a creative\n' +
     'strange one.\n\n' +
-    (oct13On() ? THAI_NATURALNESS_GUIDE.replace('write the natural form', 'reject these and give the natural form') + '\n' : '') +
+    (oct13On() ? THAI_NATURALNESS_GUIDE.replace('write the natural form', 'reject these and give the natural form') + (dailyV693On() ? THAI_NATURALNESS_GUIDE_V701 : '') + '\n' : '') +
     'Do NOT comment on which words a learner has studied. Do NOT suggest words\n' +
     'outside this list:\n' + (allowedWords || []).slice(0, 300).join(' ') + '\n\n' +
     'If a sentence is awkward, incomplete, or the English does not match, give a\n' +
@@ -16642,7 +16655,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     '• GRAMMAR: sentences must be complete and natural spoken Thai — the kind real friends say to each other\n' +
     // Oct13: this used to ASK for commas (contradicting the orthography rule above) — the live track had ของฝากนี่ถูกมาก, เอาไหมครับ
     (oct13On() ? '• PAUSES: Thai marks a pause with a SPACE, never a comma: ผมไปตลาดมา เจอของสวยมากเลยครับ\n' +
-    THAI_NATURALNESS_GUIDE +
+    THAI_NATURALNESS_GUIDE + (dailyV693On() ? THAI_NATURALNESS_GUIDE_V701 : '') +
     vocabStagePromptRule(knownWords.length)
       : '• COMMAS: add commas where natural speech pauses occur — after topic-setting phrases, before the main comment, e.g. ผมไปตลาดมา, เจอของสวยมากเลยครับ\n') +
     (target && target.thai === 'ไม่ทราบว่า' ? '' : '• VARIETY: NEVER start a line with ไม่ทราบว่า — banned completely. Use: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, จริงๆ เหรอ, ยังไม่รู้เลย\n') +
@@ -16828,7 +16841,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const CHECK_EMOJIS = CHECK_BELT_SEQUENCE.map(b => b.icon)          // v671 §B1 — the canonical sequence
   const CHECK_NAMES  = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th']
 
-  let _disputeStreak = 0
+  let _disputeStreak = 0, _speakerStreak = 0
   let failureReasons = []
   const _politenessSeen = new Set()
   // Survives every retry for this target — never reset mid-target.
@@ -16912,6 +16925,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       // v700 — a VALIDATOR DISPUTE is not a candidate problem: the target is visibly in the sentence and the matcher still says
       // TARGET_MISSING. Twice in a row → no more paid regeneration for it (live v699: โมงเช้า in แปด/เจ็ด/เก้าโมงเช้า, 11 checks)
       _disputeStreak = _t0 && /^TARGET_MISSING/.test(String(failureReasons[0] || '')) && String(_t0).replace(/\s+/g, '').includes(String(target.thai || '').replace(/\s+/g, '')) ? _disputeStreak + 1 : 0
+      // v701 (live v700: สวัสดีครับ — the same SPEAKER_GENDER_CONFLICT 11 times, US$ spent on every one): the same speaker conflict three
+      // checks in a row is not fixed by asking again — stop; quota recovery / substitution handles the target
+      _speakerStreak = /^SPEAKER_GENDER_CONFLICT/.test(String(failureReasons[0] || '')) ? _speakerStreak + 1 : 0
+      if (_speakerStreak >= 3 && dailyV693On()) {
+        onProgress && onProgress(-1, -1, { apiError: '⛔ SPEAKER_CONFLICT_REPEATED ' + target.thai + ': the same speaker / particle conflict 3 checks in a row — no further paid attempt (' + String(failureReasons[0]).slice(0, 90) + ')' }, null, null)
+        break
+      }
       if (_disputeStreak >= 2) {
         onProgress && onProgress(-1, -1, { apiError: '⚖ VALIDATOR_DISPUTE ' + target.thai + ': the target is visibly present but the matcher rejected it twice ("' + String(_t0).slice(0, 40) + '") — not re-generated (a matcher problem, not a sentence problem); left to QUOTA RECOVERY (' + attempt + ' checks used)' }, null, null)
         break
@@ -17644,11 +17664,17 @@ function ccShiftPersons(s, o) {
     } else if (CC_SPK[low] != null) rep = CC_SPK[low]
     if (rep == null) { prevWord = low; return tok }
     prevWord = low
+    // v701: "glad you came" / "hope you like it" — a "you" followed by its verb is the SUBJECT (she / he), never her / him
+    if (rep === 'them' && low === 'you' && /^(came|come|comes|are|were|was|will|would|can|could|did|do|does|have|had|went|go|got|get|like|liked|want|wanted|know|knew|made|make|said|say|think|thought|need|needed|left|arrived|enjoy|enjoyed|look|looked|feel|felt|'re|'ll|'ve)$/i.test(nextWord(parts, k) || '')) rep = o.addr ? (o.addr === 'm' ? 'he' : 'she') : 'they'
     if (rep === 'them' && o.addr) rep = o.addr === 'm' ? 'him' : 'her'
     return tok.charAt(0) === tok.charAt(0).toUpperCase() && k > 0 && low !== 'i' && !/^i'/.test(low) ? ccCap(rep) : rep
   })
   // "you am / you was" after a shifted I
   return out.join('').replace(/\byou am\b/gi, 'you are').replace(/\byou was\b/gi, 'you were').replace(/\bthem are\b/g, 'they are')
+    // v701: a "you" that became he / she takes its verb in the third person ("you hope he like it" → "he likes it"), except after an
+    // auxiliary or "let / make / help" (would she like · let him come)
+    .replace(/(?<!\b(?:would|does|did|will|can|could|should|do|let|make|help|might|may|must|to)\s)\b(he|she) (like|want|need|know|enjoy|think|feel|look|come|get|make|say|go|have|do|are|were)\b/g,
+      (m0, pr, v) => pr + ' ' + ({ go: 'goes', have: 'has', do: 'does', are: 'is', were: 'was' }[v] || v + 's'))
 }
 function nextWord(parts, k) { for (let j = k + 1; j < parts.length; j++) { const t = parts[j]; if (t && !/^\s+$/.test(t) && !/^[,.!?;:]$/.test(t)) return t.toLowerCase(); if (/^[,.!?;:]$/.test(t || '')) return t } return '' }
 // "he likes" → "you like": the verb after the replaced speaker pronoun loses its third-person -s (skipping adverbs)
@@ -17791,6 +17817,10 @@ function cueFromEnglish(lang, en, sentence, ctx) {
     if (ty) { let rest = ty[1]; const nm = (ctx.names || []).find(n => n && new RegExp(',?\\s*\\b' + n + '\\b').test(rest))
       if (nm) rest = rest.replace(new RegExp(',?\\s*\\b' + nm + '\\b'), '')
       const who = nm || (ctx.addr === 'm' ? 'him' : ctx.addr === 'f' ? 'her' : 'them')
+      // v701 (owner review, pair 83): "Thank you so much. I'm glad you came." became "Thank her so much. you're glad her came." — a
+      // following sentence is its own "say …" clause
+      const sp = rest.match(/^([^.!?]*[.!?])\s+(\S[\s\S]*)$/)
+      if (sp) return ccEnd('Thank ' + who + ccShiftPersons(sp[1].replace(/^\s*,\s*/, ' ').replace(/[.!?]+$/, ''), { addr: ctx.addr }).replace(/\s+$/, '') + ', and say ' + ccShiftPersons(ccLowerFirst(sp[2], ctx.names), { addr: ctx.addr }).replace(/[.!?]+$/, ''))
       return ccEnd('Thank ' + who + ccShiftPersons(rest.replace(/^\s*,\s*/, ' '), { addr: ctx.addr }).replace(/\s+$/, '')) } }
   if (/^(don't|do not|never)\s+[a-z]/i.test(e)) return ccEnd('Tell them not to ' + ccShiftPersons(e.replace(/^(don't|do not|never)\s+/i, '')))
   const first = (e.match(/^(?:just\s+|please\s+)?([a-z]+)/i) || [])[1]
@@ -20557,7 +20587,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v701'
+const LISTENING_BUILD_VERSION = 'v702'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -21238,7 +21268,14 @@ function _quotaInsertAt(pairs, targetId, memory) {
     if (ai >= 0) return ai + 1
   }
   const close = pairs.findIndex(p => p && classifyTrackPair(p) === 'FRAMING' && /part|clos/i.test(String(p._kind || p._target || p._pairKey || '')))
-  return close >= 0 ? close : pairs.length
+  return close >= 0 ? close : _beforeClosingFraming(pairs)
+}
+// v701 (owner review, live v700 Thai: three substituted ใกล้ๆ lines after the goodbye at 90–91) — a recovered / substituted line with
+// no group to join goes before the closing exchange: the trailing run of framing lines always stays last
+function _beforeClosingFraming(pairs) {
+  let i = (pairs || []).length
+  while (i > 0 && pairs[i - 1] && classifyTrackPair(pairs[i - 1]) === 'FRAMING') i--
+  return i
 }
 // §3/§5/§6 — QUOTA RECOVERY (not coverage recovery). deficit = 3 − valid TARGET PAIRS.
 // Rejected TARGET PAIRS are removed first; each deficient word then receives exactly
@@ -21391,7 +21428,7 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
         const acc = ((res && res.accepted) || []).slice(0, TRACK_CONTRACT.PAIRS_PER_TARGET)
         if (acc.length < TRACK_CONTRACT.PAIRS_PER_TARGET) { log && log('    ⛔ ' + w.thai + ': ' + acc.length + '/3 recalls passed — not swapped (' + (((res && res.reasons) || []).slice(0, 2).join(' | ') || 'no candidate') + ')'); continue }
         const at = pairs.findIndex(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId === r.targetId)
-        const insertAt = at < 0 ? without.length : pairs.slice(0, at).filter(p => without.includes(p)).length
+        const insertAt = at < 0 ? _beforeClosingFraming(without) : pairs.slice(0, at).filter(p => without.includes(p)).length
         const stamped = acc.map((p, k) => stampPairIdentity({ ...p, sourceStage: 'target-substitution', language: adapter.lang, isTargetPair: true, targetSurface: w.thai, substitutedFor: r.targetId, generationRunId: p.generationRunId || AI_CTX.runId || null },
           { trackId: listeningTrackId(track), lang: adapter.lang, adapter, index: 'sub-' + w.id + '-' + k, surfaceOf: () => w.thai }))
         pairs = without; pairs.splice(insertAt, 0, ...stamped)
@@ -21442,6 +21479,25 @@ function thaiSubstitutionCandidates(track, vocab, kws) {
     const ti = targetIssueCounts('th', w.id); return !(ti && (ti.TARGET_USAGE_UNSUITABLE_FOR_REGISTER || ti.TARGET_CANONICAL_ENTRY_SUSPECT)) })
 }
 // the swap recorded on the track: keywords, the selection snapshot and the TrackContext name the new word (provenance kept)
+// v701 (owner review of the live v700 Thai track): the finaliser can CHANGE the track's target identity (a bounded substitution
+// สวัสดีครับ → ใกล้ๆ). The app copied back only pairs + integrity, so the saved track kept the old keyword, selectedTargetIds and
+// requiredListeningTargetIds (788) while its lines taught 838 — a later Listening Track would expect a word the lesson never taught.
+// Every copy-back takes these identity fields from the finalised track.
+// v701 — the English adds meaning the Thai does not carry: "Do you want to come to the wedding too?" for คุณไปงานแต่งงานด้วยไหมครับ
+// (no อยาก) and "I'm glad you came." for ผมดีใจ (no มา). Narrow rewrites only; anything else is left to the cue / naturalness audit.
+function thaiEnglishFaithfulFix(p) {
+  const th = String(p && p.thai || ''), en = String(p && p.english || '')
+  let e2 = en
+  if (!/อยาก|ต้องการ/.test(th)) e2 = e2.replace(/\b([Dd])o you want to (come|go) to\b/, (m0, d, v, at) => (at === 0 ? 'Are' : 'are') + ' you ' + (v === 'come' ? 'coming' : 'going') + ' to')
+  if (/ดีใจ/.test(th) && !/มา(?!ก)/.test(th)) e2 = e2.replace(/\b(I'm|I am) (so |really |very )?glad (that )?you (came|could come|made it)\b/, (m0, a, b) => a + ' ' + (b || '') + 'glad')
+  return e2
+}
+function finalTrackIdentityFields(ft) {
+  const out = {}
+  if (!ft) return out
+  ;['keywords', 'selectedTargetIds', 'selectedRevisionTargetIds', 'trackContext', 'targetSubstitutions'].forEach(k => { if (ft[k] !== undefined) out[k] = ft[k] })
+  return out
+}
 function applyThaiTargetSubstitutions(track, subs) {
   if (!subs || !subs.length) return track
   const swap = id => { const s0 = subs.find(x => x.fromId === id); return s0 ? s0.toId : id }
@@ -21757,6 +21813,17 @@ async function finaliseMainTrack(track, adapter, ctx) {
     // already passed the same rules at acceptance.
     // v700 (live Japanese v699, pairs 02 / 24 / 46): deterministic text fixes that never regenerate good Japanese —
     // the English translation is brought back to what the Japanese says, and いいよ ("sure") answering 今日どう？ becomes いい感じ
+    // v701 (owner review of the live v700 Thai track, pairs 14 / 83): the English says more than the Thai and the cue is built from that
+    // English. The Thai is kept; the English is brought back to what the Thai says and the cue is rebuilt from it (no paid call).
+    if (adapter.lang === 'th' && dailyV693On()) { const fx = []
+      t = { ...t, pairs: t.pairs.map(p => { if (!p || !p.thai || classifyTrackPair(p) === 'FRAMING') return p
+        const e2 = thaiEnglishFaithfulFix(p); if (!e2 || e2 === p.english) return p
+        const addr = p.speaker === 'B' ? 'm' : 'f'
+        let cue = p.prompt
+        try { const c2 = cueFromEnglish('th', e2, p.thai, { addr, names: [] }); if (c2) cue = c2 } catch (e) {}
+        fx.push('"' + p.english + '" → "' + e2 + '"')
+        return { ...p, english: e2, prompt: cue, _enFaithfulFixed: true, _cueRebuiltFrom: p.prompt } }) }
+      if (fx.length) log && log('  🔤 TH_TEXT_FIX ' + fx.length + ' translation(s) brought back to what the Thai says (Thai kept, cue rebuilt): ' + fx.join(' | ').slice(0, 400)) }
     if (adapter.lang === 'ja' && dailyV693On()) { const fx = []
       t = { ...t, pairs: t.pairs.map((p, i) => { if (!p || !p.japanese) return p
         let q = p; const e2 = jaEnglishFaithfulFix(q)
@@ -22368,7 +22435,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v701'
+const APP_BUILD_VERSION = 'v702'
 const PIPELINE_VERSION = 'v651-canonical'
 const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v657-early-acceptance', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
 const QC_VERSION = 'qc-v657-unified-acceptance'
@@ -32346,7 +32413,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
             const _qlog = (msg) => { logAll(msg); setGenLog(prev => [...prev.slice(-300), generationLogFormat(msg)]) }
             _finalTrack = await finaliseThaiTrackAfterQc(track, result, { vocab, apiKey, model: _qcModel, onLog: _qlog, cancelRef: qrCancel })
             const _ft = _finalTrack
-            setGeneratedTrack(prev => prev ? { ...prev, pairs: _ft.pairs, _finalAudit: _ft._finalAudit, _coverage: _ft._coverage, _semanticAudit: _ft._semanticAudit,
+            setGeneratedTrack(prev => prev ? { ...prev, ...finalTrackIdentityFields(_ft), pairs: _ft.pairs, _finalAudit: _ft._finalAudit, _coverage: _ft._coverage, _semanticAudit: _ft._semanticAudit,
               _closedVocab: _ft._closedVocab, integrity: _ft.integrity, finalTrack: _ft.finalTrack } : prev)
           }
         } catch(e) {
@@ -32359,7 +32426,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           try {
             _finalTrack = await finaliseMainTrack(_finalTrack, TRACK_ADAPTERS.th, { vocab, apiKey, model: _qcModel, onLog: (msg) => { logAll(msg); setGenLog(prev => [...prev.slice(-300), msg]) } })
             const _ft = _finalTrack
-            setGeneratedTrack(prev => prev ? { ...prev, pairs: _ft.pairs, integrity: _ft.integrity, finalTrack: _ft.finalTrack } : prev)
+            setGeneratedTrack(prev => prev ? { ...prev, ...finalTrackIdentityFields(_ft), pairs: _ft.pairs, integrity: _ft.integrity, finalTrack: _ft.finalTrack } : prev)
           } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; setGenLog(prev => [...prev, '⚠️ FINAL_TRACK failed: ' + e.message]) }
         }
         // v658 §3 — the Daily / Revision track ENDS with its Main Track: no Listening is built here (0 calls).
@@ -36076,6 +36143,26 @@ function thaiLexicalSenseProblems(p) {
   // a LANGUAGE is not a product with a price (ภาษาอังกฤษต้องจ่ายเงินไหม / ภาษาอังกฤษไม่แพง): a price needs a course, a class, a book, a teacher
   if (/ภาษา/.test(th) && /(จ่ายเงิน|เสียเงิน|แพง|ราคา|กี่บาท|ฟรี)/.test(th) && !/(เรียน|คอร์ส|ครู|หนังสือ|ห้องเรียน|โรงเรียน|ติว|สอน)/.test(th))
     out.push({ id: 'LANGUAGE_AS_PRODUCT', code: 'WRONG_SENSE', why: 'a language has no price — talk about learning / speaking it, or about a course, class, book or teacher (เรียนภาษาอังกฤษแพงไหม)' })
+  // v701 — from the live v700 Thai Daily track (owner review; every one passed the model judges)
+  // ไม่เชิงค่ะ + an unrelated statement: the hedge must be qualified (ไม่เชิงค่ะ แค่… / …มากกว่า / แต่… / เพราะ…)
+  { const mc = th.match(/^(?:ก็)?ไม่เชิง(?:ครับ|ค่ะ|คะ|นะ|หรอก)*\s+(\S.*)$/)
+    if (mc && !/(แค่|แต่|มากกว่า|เพราะ|ก็|บ้าง|นิดหน่อย|ส่วน|ไม่ได้|คือ|จริงๆ|ไม่ค่อย|เฉยๆ|พอ|ยังไม่|ไม่แน่ใจ)/.test(mc[1]))
+      out.push({ id: 'MAI_CHOENG_UNQUALIFIED', code: 'UNNATURAL', why: '"' + th + '" — after ไม่เชิง the speaker says HOW it is not quite so (ไม่เชิงค่ะ แค่ชอบนิดหน่อย / ไม่เชิงครับ ผมชอบมวยไทยมากกว่า); an unrelated statement does not follow' }) }
+  if (/ฟังความรัก/.test(th))
+    out.push({ id: 'LISTEN_TO_LOVE', code: 'UNNATURAL', why: 'one does not "listen to" love — ask about the love story: อยากฟังเรื่องความรักของเขาไหม / เล่าเรื่องความรักให้ฟังหน่อย' })
+  if (/ขอให้(?:เขา|คุณ|เธอ|ทุกคน|พวกเขา|เรา)?ดี(?:ครับ|ค่ะ|คะ|นะ|จ้ะ)*$/.test(th.replace(/\s+/g, '')))
+    out.push({ id: 'KHO_HAI_BARE_DI', code: 'UNNATURAL', why: '"ขอให้…ดี" is not how a wish is said — ขอให้มีความสุขนะ / ขอให้โชคดีครับ / ขอให้ทุกอย่างราบรื่น' })
+  if (/งั้นแล้ว/.test(th))
+    out.push({ id: 'NGAN_LAEW', code: 'UNNATURAL', why: 'งั้น and แล้ว do not stack — งั้นคุยกันเมื่อไหร่ดีคะ / แล้วคุยกันเมื่อไหร่คะ' })
+  if (/บอก\S{0,8}เมื่อรู้/.test(th))
+    out.push({ id: 'MUEA_RU_CALQUE', code: 'UNNATURAL', why: '"…บอก…เมื่อรู้" is a literal "tell you when I know" — say รู้แล้วจะบอกนะครับ / ถ้ารู้จะบอกค่ะ' })
+  // "ผมไม่มีรถขับ" (no car to drive) is fine; ASKING มีรถขับไหม is the awkward calque of "do you have a car?"
+  if (/มีรถขับ(ไหม|มั้ย|หรือเปล่า|รึเปล่า)/.test(th))
+    out.push({ id: 'MEE_ROT_KHAP', code: 'UNNATURAL', why: 'มีรถขับไหม is an awkward way to ask about a car — คุณมีรถไหมคะ / ขับรถเป็นไหม' })
+  if (/เชิญ\S{0,6}(ไหม|มั้ย)/.test(th))
+    out.push({ id: 'CHOEN_AS_QUESTION', code: 'UNNATURAL', why: 'เชิญ is an invitation, not a yes / no question — เชิญนั่งครับ / นั่งก่อนไหมคะ' })
+  if (/ต้อนรับ\S{0,10}ด้วย(น้ำ|ข้าว|อาหาร|กาแฟ|ขนม|ชา)/.test(th))
+    out.push({ id: 'TONRAP_WITH_THING', code: 'UNNATURAL', why: '"welcome you with water" is contrived — ยินดีต้อนรับครับ เชิญดื่มน้ำก่อนนะ / ขอบคุณที่มาครับ' })
   if (/(ศูนย์|\b0)\s*บาท/.test(th) && !/(ฟรี|ไม่ต้องจ่าย|ไม่เสียเงิน|ไม่เสียค่า)/.test(th))
     out.push({ id: 'ZERO_PRICE_IMPLAUSIBLE', code: 'WRONG_SENSE', why: 'a price of zero baht is not a credible everyday price — ศูนย์ belongs in a phone number, a score, a temperature, a room number or a code' })
   if (THAI_DESCRIPTIVE_ADJ_RE.test(th) && !THAI_NOI_REQUEST_RE.test(th))
@@ -36982,6 +37069,9 @@ const THAI_USAGE_TARGET_GUIDE = Object.freeze({
   'ต้อนรับ': 'TEACH ต้อนรับ AS WELCOMING SOMEONE — always say who, or use a fixed frame: ยินดีต้อนรับครับ (welcome!), ขอบคุณที่ต้อนรับนะคะ (thanks for welcoming me), ทุกคนมาต้อนรับเราค่ะ, เขาต้อนรับเราดีมากครับ. NEVER end with a bare ต้อนรับ (ผมต้อนรับ).',
   'ภาษาอังกฤษ': 'TEACH ภาษาอังกฤษ AS THE LANGUAGE: speaking, learning, understanding it — พูดภาษาอังกฤษได้ไหมคะ, ผมเรียนภาษาอังกฤษอยู่ครับ, ภาษาอังกฤษยากไหมคะ. A language has no price: talk about the price of a COURSE or a BOOK, never of "English".',
   'เลี้ยงดู': 'TEACH เลี้ยงดู AS RAISING / CARING FOR someone (a child, a parent, a pet): พ่อแม่เลี้ยงดูผมมาดีมากครับ, ใครเลี้ยงดูคุณคะ, ผมอยากเลี้ยงดูพ่อแม่ตอนแก่ครับ. The three lines must not contradict each other (raised well vs not raised at all).',
+  'ความรัก': 'TEACH ความรัก AS LOVE the topic: เรื่องความรักของพ่อแม่ (their love story), ความรักของเราเริ่มที่นี่, ความรักทำให้ทุกอย่างง่าย — NOT "listen to love" (ฟังความรัก) and not as a verb (that is รัก)',
+  'ขอให้': 'TEACH ขอให้ AS A WISH or a polite request: ขอให้มีความสุขมากๆ นะครับ (wishing happiness), ขอให้โชคดีค่ะ, ขอให้ทุกคนสุขภาพดี, ขอให้ช่วยหน่อยได้ไหม — NOT ขอให้เขาดี ("may he be good")',
+  'เชิญนั่ง': 'TEACH เชิญนั่ง AS AN INVITATION to sit (a statement): เชิญนั่งครับ, เชิญนั่งก่อนนะคะ, เชิญนั่งตรงนี้ได้เลยครับ — NEVER as a yes/no question (เชิญนั่งไหม is wrong)',
   'ไม่ทราบว่า': 'TEACH ไม่ทราบว่า AS THE POLITE OPENER of a question ("may I ask…?"), said to someone you do not know well — a stranger, a shop assistant, a guest: ไม่ทราบว่าห้องน้ำอยู่ที่ไหนครับ, ไม่ทราบว่าคุณชื่ออะไรคะ, ไม่ทราบว่าร้านนี้เปิดกี่โมงครับ. It BEGINS the question; the scene is background only (between old friends use a short polite exchange with a stranger instead).',
 })
 // v682 — CLASSIFIER targets get a real teaching contract: what the classifier counts, natural frames, and what it NEVER counts.
@@ -38428,7 +38518,7 @@ function ThaiTeacher({ lang, onSetLang }) {
       try {
         const _re = await finaliseMainTrack(track, TRACK_ADAPTERS.th, { vocab, apiKey, model: GEMINI_DEFAULT_MODEL, closedVocab: track._closedVocab, finalAudit: track._finalAudit,
           onLog: m => console.info('[final-track] ' + m) })
-        Object.assign(track, { pairs: _re.pairs, integrity: _re.integrity, finalTrack: _re.finalTrack })
+        Object.assign(track, { ...finalTrackIdentityFields(_re), pairs: _re.pairs, integrity: _re.integrity, finalTrack: _re.finalTrack })
       } catch (e) {
         console.error('[final-track] re-finalise after save gate failed', e)
         track.integrity = { ...(track.integrity || {}), status: 'NOT_READY', reasons: [...((track.integrity && track.integrity.reasons) || []), 'FINAL_TRACK_STALE: save gate changed pairs and re-finalisation failed'] }

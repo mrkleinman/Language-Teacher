@@ -28970,6 +28970,8 @@ function lnMfValidate(env, mp) {
   const audit = listeningConversationAudit(scenes, targets, la, ctx)
   const FAULT_OF = { CLOSED_VOCAB: 3, TOKENIZATION_ERROR: 3, TOO_COMPLEX: 1, MAX_TARGETS_PER_TURN: 8, MERGED_SPEAKERS: 1, SPEAKER_IDENTITY: 1, LINE_QUALITY: 1, REGISTER: 1, EXACT_DUPLICATE: 1, NEAR_DUPLICATE: 1, REPETITIVE_LOOP: 1, DUPLICATE_EXCHANGE: 1 }
   audit.issues.forEach(x => {
+    // v700 salvage: a lesson word whose exchange was cut is DEFERRED to Revision — no longer a missing target here
+    if (x.code === 'TARGET_MISSING' && env.deferred && env.deferred.has(x.targetId)) return
     if (x.code === 'TARGET_MISSING') { const t = byId.get(x.targetId); add(8, 'TARGET_MISSING', [], (t ? t.surface : x.targetId) + ' is not heard anywhere in the plan', { targetIds: [x.targetId] }); return }
     if (x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION' || x.code === 'ONE_SPEAKER') { add(7, x.code, [], x.detail); return }
     const tu = flat[x.line - 1]; if (!tu) return
@@ -29011,7 +29013,7 @@ function lnMfValidate(env, mp) {
   // E · conversation state: greetings only at the start, goodbyes only at the end, no three turns by one speaker, an agreed
   // clock time is not silently changed later
   flat.forEach((tu, i) => {
-    if (tu.intent === 'GREET' && tu.scene !== 'S1') add(7, 'LATE_GREETING', [tu], 'a greeting in the middle of the conversation: "' + tu.text + '"')
+    if (tu.intent === 'GREET' && tu.scene !== mp.scenes[0].key) add(7, 'LATE_GREETING', [tu], 'a greeting in the middle of the conversation: "' + tu.text + '"')
     if (tu.intent === 'FAREWELL' && tu.scene !== mp.scenes[mp.scenes.length - 1].key) add(7, 'EARLY_GOODBYE', [tu], 'a goodbye before the last situation: "' + tu.text + '"')
     if (i >= 2 && flat[i - 1].speaker === tu.speaker && flat[i - 2].speaker === tu.speaker) add(1, 'ONE_SPEAKER_RUN', [tu], 'three turns in a row by speaker ' + tu.speaker)
   })
@@ -29032,8 +29034,8 @@ function lnMfValidate(env, mp) {
   // v695 · the per-situation turn reserve is a PLANNING budget (local check + replan) and a REPAIR limit (lnMfScopes / lnMfApply:
   // no add past the reserve, no patch may grow a situation past its budget); the whole plan's hard limit stays TURN_BUDGET 24–44
   // a plan inside the turn budget (24–44), and a turn that repeats a REJECTED sentence or relationship is rejected at once
-  const n = flat.length
-  if (n < env.turnsMin || n > env.turnsMax) add(8, 'TURN_BUDGET', [], n + ' turns — the conversation must have ' + env.turnsMin + '–' + env.turnsMax)
+  const n = flat.length, tMin = lnMfTurnsMin(env)
+  if (n < tMin || n > env.turnsMax) add(8, 'TURN_BUDGET', [], n + ' turns — the conversation must have ' + tMin + '–' + env.turnsMax)
   flat.forEach(tu => {
     if (mf.rejectedTexts.has(lnMfNorm(tu.text))) add(mf.rejectedTexts.get(lnMfNorm(tu.text)), 'REPEATED_REJECTED_SENTENCE', [tu], 'this sentence was already rejected: "' + tu.text + '"')
     else if ((tu.targetIds || []).length && mf.rejectedRel.has(lnMfRelSig(tu, byId, lang))) add(5, 'REPEATED_REJECTED_RELATIONSHIP', [tu], 'the same rejected relationship again (' + lnMfRelSig(tu, byId, lang) + ')')
@@ -29298,11 +29300,13 @@ function lnMfUnheardSoFar(env, prior) {
 }
 async function lnMfPlanByScenes(env, g) {
   const { log } = env, mf = env.mf
-  const scenes = []
+  const scenes = [], skipped = []
   g.scenes.forEach(x => { if (x._assigned0 == null) x._assigned0 = x.targetIds.length })
   for (let k = 0; k < g.scenes.length; k++) {
     let sc = await lnMfScenePlanCall(env, g, k, scenes, null)
-    if (!sc) return { mp: null, kept: scenes, failed: 'S' + (k + 1) }
+    // v700: a situation that cannot be planned (technical) is SKIPPED — the situations around it go on; its lesson words are
+    // placed elsewhere by the repair rounds, or deferred to Revision by the salvage
+    if (!sc) { skipped.push('S' + (k + 1)); log && log('⏭ SITUATION_SKIPPED S' + (k + 1) + ' (' + g.scenes[k].situation + ') — could not be planned after ' + LN_MF_SCENE_ATTEMPTS + ' attempts (technical); the other situations go on and its lesson words are placed elsewhere or moved to Revision'); continue }
     let local = lnMfSceneLocalIssues(env, scenes, sc, g, k)
     if (local.length) {
       // recovery level "replan the scene": once, with its defects named; the version with fewer defects is kept and the
@@ -29333,7 +29337,8 @@ async function lnMfPlanByScenes(env, g) {
     log && log('🔎 SCENE_LOCAL_CHECK ' + sc.key + ' ' + (sc.status === 'FAILED' ? 'STATUS=FAILED (' + local.length + ': ' + local.slice(0, 3).map(is => is.code).join(', ') + ') — kept for global recovery, NOT approved' : 'STATUS=' + sc.status) + ' · ' + sc.turns.length + ' turns (budget ' + lnMfSceneAllowance(env, g, k, scenes).min + '–' + lnMfSceneAllowance(env, g, k, scenes).max + ')')
     scenes.push(sc)
   }
-  return { mp: lnMfRenumber({ scenes }), kept: scenes, failed: null }
+  if (!scenes.length) return { mp: null, kept: scenes, failed: skipped[0] || 'S1', skipped }
+  return { mp: lnMfRenumber({ scenes }), kept: scenes, failed: null, skipped }
 }
 // ── RECOVER by fault class: issues → scopes (line · exchange · scene start · add-in-another-situation) ──
 // v694 A4 · a FAILURE SIGNATURE: what failed (the check), about which lesson words, and for a question → answer fault which
@@ -29692,6 +29697,54 @@ function lnMfIssueLog(env, res, label) {
   if (res.issues.length) log('   fault classes: ' + Object.entries(by).map(([k, v]) => k + '×' + v).join(' · '))
 }
 // ── THE COMPOSER: PLAN → VALIDATE → AUDIT → RECOVER → COMMIT (same result shape as _lnComposeByScenes) ──
+// ══ v700 SALVAGE — one faulty exchange never throws a whole Listening track away ═══════════════════════════════════
+// After the bounded repair rounds, an exchange that still fails a check is CUT (with the turns that depend on it: the turn it
+// answers, the replies to it); a situation that cannot be saved is DROPPED. The lesson words they carried are DEFERRED to the
+// next Revision — the learner's SRS is untouched (Listening never changes SRS). What remains is validated and audited again
+// with exactly the same checks, so every line that ships still passes every check. Only when too little survives (the FLOOR:
+// fewer than 16 lines, fewer than 2 situations, or fewer than half of the lesson words heard) is the track not ready.
+const LN_SALVAGE_MIN_TURNS = 16, LN_SALVAGE_PASSES = 3
+function lnMfTurnsMin(env) { return env.salvage ? Math.min(env.turnsMin, LN_SALVAGE_MIN_TURNS) : env.turnsMin }
+function lnMfSalvageFloor(env, nTargets, nScenes0) { return { turns: Math.min(env.turnsMin, LN_SALVAGE_MIN_TURNS), scenes: Math.min(2, nScenes0), words: Math.ceil(nTargets / 2) } }
+// plain-words reasons, shown to the learner next to a deferred word
+const LN_SALVAGE_REASON = Object.freeze({ 1: 'its line did not read cleanly', 2: 'its English did not match the line', 3: 'its line needed words you have not learned yet', 4: 'its grammar did not pass',
+  5: 'its meaning did not fit the conversation', 6: 'its question and answer did not match', 7: 'its part of the story did not follow on', 8: 'it could not be placed naturally', 9: 'its line could not be checked' })
+const LN_SALVAGE_DROP_CODES = new Set(['SCENE_INCOHERENT', 'SINGLETON_SCENE', 'SCENE_FRAGMENTATION', 'ONE_SPEAKER'])
+// cuts the failing exchanges / drops the failing situations IN PLACE; returns what was removed (null when nothing would be left)
+function lnMfSalvageCut(env, mp, issues) {
+  const flat = mp.flat, byTid = new Map(flat.map(t => [t.id, t]))
+  const rm = new Map(), drop = new Map()
+  issues.forEach(is => {
+    if (is.scene && (is.dropScene || LN_SALVAGE_DROP_CODES.has(is.code))) { if (!drop.has(is.scene)) drop.set(is.scene, is); return }
+    ;(is.turnIds || []).forEach(id => { if (byTid.has(id) && !rm.has(id)) rm.set(id, is) }) })
+  // the whole exchange goes: a cut reply takes the turn it answers (it would be left unanswered), a cut turn takes its replies
+  for (let pass = 0; pass < 6; pass++) { let grew = false
+    flat.forEach(tu => { const q = tu.respondsToId ? byTid.get(tu.respondsToId) : null
+      if (rm.has(tu.id) && q && !rm.has(q.id) && q.scene === tu.scene && LN_MF_REPLY_INTENTS.has(tu.intent)) { rm.set(q.id, rm.get(tu.id)); grew = true }
+      if (!rm.has(tu.id) && q && rm.has(q.id)) { rm.set(tu.id, rm.get(q.id)); grew = true } })
+    if (!grew) break }
+  // a situation left with under two turns, or with one speaker only, is dropped whole
+  mp.scenes.forEach(s => { if (drop.has(s.key)) return
+    const left = s.turns.filter(t => !rm.has(t.id))
+    if (left.length < s.turns.length && (left.length < 2 || new Set(left.map(t => t.speaker)).size < 2)) drop.set(s.key, rm.get(s.turns.find(t => rm.has(t.id)).id)) })
+  if (mp.scenes.every(s => drop.has(s.key))) return null
+  const removed = []
+  mp.scenes.forEach(s => s.turns.forEach(t => { if (drop.has(s.key)) removed.push({ tu: t, is: drop.get(s.key) }); else if (rm.has(t.id)) removed.push({ tu: t, is: rm.get(t.id) }) }))
+  mp.scenes = mp.scenes.filter(s => !drop.has(s.key))
+  mp.scenes.forEach(s => { s.turns = s.turns.filter(t => !rm.has(t.id)) })
+  lnMfRenumber(mp)
+  return { removed, droppedScenes: [...drop.keys()] }
+}
+// every selected lesson word not heard in the remaining text is deferred, with the reason of the cut that removed it
+function lnMfSalvageDefer(env, mp, removed) {
+  const a = listeningConversationAudit(lnMfScenesForAudit(mp), env.targets, env.la, env.ctx)
+  const prev = env.deferred || new Map(), next = new Map()
+  env.targets.forEach(t => { if (a.covered.includes(t.id)) return
+    const hit = (removed || []).find(r => (r.tu.targetIds || []).includes(t.id))
+    next.set(t.id, prev.get(t.id) || (hit ? LN_SALVAGE_REASON[hit.is.fault] || LN_SALVAGE_REASON[8] : LN_SALVAGE_REASON[8])) })
+  env.deferred = next
+  return a
+}
 async function _lnComposeMeaningFirst(env) {
   const { la, log, tel, targets, ctx } = env
   const byId = new Map(targets.map(t => [t.id, t])); env.byId = byId

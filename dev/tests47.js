@@ -159,7 +159,8 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     T('K1', 'Kenji\'s lines cued "Tell Kenji …" / "Suggest to Kenji …" now address Mika (live ja pairs 24, 38)', /^Tell Mika casually/.test(p[0]) && /^Suggest to Mika/.test(p[1]), p)
     T('K2', 'a correct cue is untouched; the speaker named outside an addressing position is untouched', p[2] === 'Tell Kenji that you really like meals.' && p[4] === 'Say that Kenji is your name.', p)
     T('K3', 'a fixed cue\'s pronouns follow the addressee (Mika → Kenji: she → he)', p[3] === 'Ask Kenji whether he wants rice.', p[3])
-    T('K4', 'runs on the final track before the text is frozen (every language)', /if \(oct13On\(\)\) \{ try \{ t = \{ \.\.\.t, pairs: fixCueAddressees\(t\.pairs, t, log\)\.pairs \} \} catch \(e\) \{\} \}\n[^\n]*\n  \/\/ v655 §22 — the learner text is FROZEN here/.test(SRC))
+    // v700: the Thai FINAL SNAPSHOT AUDIT (it reads the cues this fix wrote) sits between the comma tidy and the freeze
+    T('K4', 'runs on the final track before the text is frozen (every language)', /if \(oct13On\(\)\) \{ try \{ t = \{ \.\.\.t, pairs: fixCueAddressees\(t\.pairs, t, log\)\.pairs \} \} catch \(e\) \{\} \}\n[^\n]*thaiTidyCommas[^\n]*\n(?:(?!  const _frozen)[^\n]*\n)*?  \/\/ v655 §22 — the learner text is FROZEN here/.test(SRC))
   }
 
   // ══ P — pronunciation on the final text ═════════════════════════════════════════════════════════════════════════

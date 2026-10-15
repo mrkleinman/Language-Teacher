@@ -7658,10 +7658,17 @@ function semanticAuditExportLines(track) {
   out.push('Unnatural pairs dropped: ' + (sa.unnatural || 0))
   out.push('Template-garbage cue/English dropped: ' + (sa.templateGarbage || 0) + ' · invalid Thai time expressions dropped: ' + (sa.invalidTime || 0))
   if ((sa.cueRepaired || 0) > 0) out.push('Cues repaired, pair kept (CUE_REPAIRED_KEEP_PAIR): ' + sa.cueRepaired)
-  out.push('QC recovery pairs audited: ' + (ra ? ra.audited + '/' + ra.candidates + ' (accepted ' + ra.accepted + ' · rejected ' + ra.rejected + ' · unverified ' + ra.unverified + ' — fail closed)' : 'none (no QC-stage recovery ran)') +
+  out.push('QC recovery pairs audited: ' + (ra ? ra.audited + '/' + ra.candidates + ' (accepted ' + ra.accepted + ' · rejected ' + ra.rejected + ' · unverified ' + ra.unverified + ' — fail closed)' : 'none at the QC stage (quota-recovery and repair lines are audited when accepted — see POST-QUOTA RECOVERY and FINAL SNAPSHOT AUDIT)') +
     (rs ? ' · rescued pairs audited: ' + rs.audited + ' (accepted ' + rs.accepted + ' · rejected ' + rs.rejected + ')' : ''))
   if (integ && integ.counts) out.push('POST-QUOTA RECOVERY: ' + (integ.counts.quotaRecovered || 0) + ' target pair(s) recovered, each through the same fail-closed semantic audit' +
     (integ.quota ? ' · quota ' + integ.quota.before + ' → ' + integ.quota.after : ''))
+  // v700 — the audit of the SAVED text (the PRE-QUOTA block above judged an earlier version of the track)
+  if (integ && integ.finalSnapshotAudit) { const fa = integ.finalSnapshotAudit, last = fa.after || fa.first
+    out.push(fa.error ? 'FINAL SNAPSHOT AUDIT: ERROR — ' + fa.error : 'FINAL SNAPSHOT AUDIT (the saved text): ' + (last ? last.checked : 0) + ' target line(s) checked · deterministic + contradiction checks · model audit ' + (last ? last.semantic : '-') +
+      ' · lines without a verdict for their final text ' + (fa.first ? fa.first.judgedNow : 0) + ' (judged now, ' + (fa.first ? fa.first.judgeCalls || 0 : 0) + ' judge call(s)) · verdicts reused ' + (fa.first ? fa.first.reusedVerdicts : 0) + ' · invalid ' + (fa.first ? fa.first.invalid.length : 0) +
+      (fa.secondPass ? ' → bounded recovery +' + fa.secondPass.recovered + ' → still invalid ' + (fa.after ? fa.after.invalid.length : '?') : ''))
+    ;((fa.first && fa.first.invalid) || []).forEach(x => out.push('  FINAL_SNAPSHOT_INVALID [' + (x.target || '-') + '] ' + x.thai + ' — ' + x.reason)) }
+  if (integ && integ.targetSubstitutions) integ.targetSubstitutions.forEach(x => out.push('TARGET SUBSTITUTED: ' + x.fromSurface + ' (' + x.fromId + ') → ' + x.toSurface + ' (' + x.toId + ') — ' + x.reason + ' · ' + x.recalls + '/3 recalls · ' + x.fromSurface + ' stays due in SRS'))
   out.push('Status: ' + st.status + '  (' + thaiNaturalnessStatusLine(st) + ' · CUE_AUDIT ' + (sa.cueCheck || 'not recorded') + ')')
   const retried = sa.trace ? ((sa.trace.cue && sa.trace.cue.retries) || 0) + ((sa.trace.naturalness && sa.trace.naturalness.retries) || 0) : 0
   if (sa.trace) out.push('Batches: cue ' + ((sa.trace.cue && sa.trace.cue.calls) || 0) + ' call(s) · naturalness ' + ((sa.trace.naturalness && sa.trace.naturalness.calls) || 0) + ' call(s) · retries ' + retried)
@@ -14170,7 +14177,9 @@ function lintThaiContent(thai, english, speaker, target, opts) {
   // ซึ่ง is written register — only allowed when it IS the target word
   if (t.includes('ซึ่ง') && tgt !== 'ซึ่ง') fails.push('Remove ซึ่ง — use ที่ instead. ซึ่ง is written Thai only.')
   if (t.startsWith('ซึ่ง')) fails.push('Sentence starts with ซึ่ง — fragment. Write a complete main clause.')
-  if (t.startsWith('ไม่ทราบว่า') || t.startsWith('ผมไม่ทราบว่า') || t.startsWith('ฉันไม่ทราบว่า'))
+  // v700: a variety rule, never applied when ไม่ทราบว่า IS the target (the polite opener "may I ask…?" begins its question —
+  // live v699: every recall was rejected for starting with it, and the target ended 2/3)
+  if (tgt !== 'ไม่ทราบว่า' && (t.startsWith('ไม่ทราบว่า') || t.startsWith('ผมไม่ทราบว่า') || t.startsWith('ฉันไม่ทราบว่า')))
     fails.push('Do not start with ไม่ทราบว่า — use ไม่รู้ or ไม่แน่ใจ instead.')
   // เธอ to a person who is present (A's own lines) — must use คุณ
   if (speaker !== 'B' && t.includes('เธอ') && tgt !== 'เธอ')
@@ -16523,7 +16532,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     THAI_NATURALNESS_GUIDE +
     vocabStagePromptRule(knownWords.length)
       : '• COMMAS: add commas where natural speech pauses occur — after topic-setting phrases, before the main comment, e.g. ผมไปตลาดมา, เจอของสวยมากเลยครับ\n') +
-    '• VARIETY: NEVER start a line with ไม่ทราบว่า — banned completely. Use: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, จริงๆ เหรอ, ยังไม่รู้เลย\n' +
+    (target && target.thai === 'ไม่ทราบว่า' ? '' : '• VARIETY: NEVER start a line with ไม่ทราบว่า — banned completely. Use: ไม่รู้, ไม่แน่ใจ, อาจจะ, คงจะ, น่าจะ, จริงๆ เหรอ, ยังไม่รู้เลย\n') +
     '• PRONOUNS: when A speaks TO or about B who is present → คุณ. เธอ is ONLY for absent 3rd party females NOT in this conversation. ผม = A always. ฉัน = B always. เรา = we. พวกเขา = group. NEVER use เธอ for B.\n' +
     '• ENGLISH FIELD: if Thai uses คุณ, English must say "you". If Thai uses เขา/เธอ for 3rd party, English says "he/she". NEVER put Thai particles (ครับ ค่ะ คะ) in the English field.\n' +
     '• NATURAL SPEECH: casual spoken Thai only. FORBIDDEN: ซึ่ง (relative clauses), ดิฉัน, กระผม, ท่าน, อันซึ่ง. Use simple direct sentences like real friends talk\n' +
@@ -16630,6 +16639,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     // Grammar particles — appear naturally in any sentence, don't force them
     const grammarParticles = ['ที่','ก็','แล้ว','ด้วย','อยู่','เลย','นะ','สิ','แต่','เพราะ','ถ้า','หรือ','และ','กับ','จน','พอ','ตอน','เมื่อ','ว่า','ให้','จาก','โดย','ของ','ใน','บน','ใต้']
     if (THAI_FUNCTION_TARGET_GUIDE[target.thai]) return THAI_FUNCTION_TARGET_GUIDE[target.thai]   // v681: a real teaching contract
+    if (THAI_USAGE_TARGET_GUIDE[target.thai]) return THAI_USAGE_TARGET_GUIDE[target.thai]         // v700: a usage contract
     if (thaiClassifierGuideFor(target)) return thaiClassifierGuideFor(target)   // v682: classifier teaching contract (v683: by sense under the plan)
     // v681: a vehicle is travelled BY with นั่ง / ขึ้น (+ ไป / มา) — the model kept writing ไปรถไฟฟ้า, which the sense rule rejects
     if (/^(รถไฟฟ้า|รถไฟใต้ดิน|รถไฟ|รถเมล์|รถบัส|รถตู้|รถแท็กซี่|แท็กซี่|วินมอเตอร์ไซค์|มอเตอร์ไซค์|เรือ|เครื่องบิน)$/.test(target.thai))
@@ -17108,7 +17118,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         if (lThai.includes('ซึ่ง') && target.thai !== 'ซึ่ง') {
           naturalFails.push('Remove ซึ่ง — use ที่ instead or restructure. ซึ่ง is written Thai only.')
         }
-        if (lThai.startsWith('ไม่ทราบว่า') || lThai.startsWith('ผมไม่ทราบว่า') || lThai.startsWith('ฉันไม่ทราบว่า')) {
+        if (target.thai !== 'ไม่ทราบว่า' && (lThai.startsWith('ไม่ทราบว่า') || lThai.startsWith('ผมไม่ทราบว่า') || lThai.startsWith('ฉันไม่ทราบว่า'))) {
           naturalFails.push('Do not start with ไม่ทราบว่า — use ไม่รู้ or ไม่แน่ใจ instead')
         }
         if ((lThai.includes(charA.split(',')[0]) || lThai.includes(charB.split(',')[0])) && li > 0) {
@@ -17478,7 +17488,7 @@ const ccStem = w => { w = w.replace(/[’']s$/, '').replace(/[’']$/, ''); if (
   if (w.length > 3 && /[^s]s$/.test(w)) w = w.slice(0, -1); if (w.length > 5 && /ing$/.test(w)) w = w.slice(0, -3); else if (w.length > 4 && /ed$/.test(w)) w = w.slice(0, -2); return w }
 function ccSig(s) {
   const t = String(s || ''), l = t.toLowerCase()
-  return { neg: (l.replace(/^\s*no[,.!]\s*/, '').replace(/,?\s*(isn't it|aren't you|aren't they|don't you( think)?|doesn't it|isn't that|won't you|didn't you)\s*[?.!]*\s*$/, '').match(CC_NEG) || []).length, comp: (l.match(CC_COMP) || []).filter(w => !/^(than)$/.test(w)).length, nums: (l.match(CC_NUMW) || []).map(x => ({ 7: 'seven', 8: 'eight', 5: 'five', 1: 'one', 2: 'two', 3: 'three', 4: 'four', 6: 'six', 9: 'nine', 10: 'ten', 1000: 'thousand' })[x.toLowerCase()] || x.toLowerCase()).sort().join(','),
+  return { neg: (l.replace(/^\s*no[,.!]\s*/, '').replace(/\b(oh,?\s*no|no way|no problem|no worries)\b/g, ' ').replace(/,?\s*(isn't it|aren't you|aren't they|don't you( think)?|doesn't it|isn't that|won't you|didn't you)\s*[?.!]*\s*$/, '').match(CC_NEG) || []).length, comp: (l.match(CC_COMP) || []).filter(w => !/^(than)$/.test(w)).length, nums: (l.match(CC_NUMW) || []).map(x => ({ 7: 'seven', 8: 'eight', 5: 'five', 1: 'one', 2: 'two', 3: 'three', 4: 'four', 6: 'six', 9: 'nine', 10: 'ten', 1000: 'thousand' })[x.toLowerCase()] || x.toLowerCase()).sort().join(','),
     mods: CC_MODS.filter(m => new RegExp('\\b' + m + '\\b').test(l)) }
 }
 // is this cue word expressed by the verified meaning (its English), or — for deixis / aspect words — by the sentence itself?
@@ -17655,6 +17665,12 @@ function cueFromEnglish(lang, en, sentence, ctx) {
     return ind ? ccEnd('Ask ' + ind) : ccEnd('Ask: ' + e.replace(/[?？]*$/, '?')).replace(/\?\.$/, '?')
   }
   if (/^let'?s\b/i.test(e)) return ccEnd('Suggest we ' + ccShiftPersons(e.replace(/^let'?s\s+/i, '')))
+  // v700 — "Thank you (very much), Somchai" → "Thank Somchai very much." (was "Say thank them very much, Somchai.")
+  { const ty = e.match(/^(?:thank you|thanks)\b(.*)$/i)
+    if (ty) { let rest = ty[1]; const nm = (ctx.names || []).find(n => n && new RegExp(',?\\s*\\b' + n + '\\b').test(rest))
+      if (nm) rest = rest.replace(new RegExp(',?\\s*\\b' + nm + '\\b'), '')
+      const who = nm || (ctx.addr === 'm' ? 'him' : ctx.addr === 'f' ? 'her' : 'them')
+      return ccEnd('Thank ' + who + ccShiftPersons(rest.replace(/^\s*,\s*/, ' '), { addr: ctx.addr }).replace(/\s+$/, '')) } }
   if (/^(don't|do not|never)\s+[a-z]/i.test(e)) return ccEnd('Tell them not to ' + ccShiftPersons(e.replace(/^(don't|do not|never)\s+/i, '')))
   const first = (e.match(/^(?:just\s+|please\s+)?([a-z]+)/i) || [])[1]
   if (first && CC_BASE_VERBS.has(first.toLowerCase()) && !/^(i|you|we|he|she|they)\b/i.test(e)) return ccEnd('Tell them to ' + ccShiftPersons(ccLowerFirst(e, ctx.names)))
@@ -17715,7 +17731,7 @@ function cueClarify(lang, p, ctx) {
     cue = CC_GERUND_BASE[m[1].toLowerCase()] + ' ' + m[2]; note('NARRATION → instruction') }
   else if ((m = cue.match(/^(Asks|Says|Tells|Agrees|Suggests|Offers|Answers|Accepts|Apologises|Apologizes|Declines|Replies)\b\s*(.*)$/))) {
     cue = CC_VERB_BASE[m[1].toLowerCase()] + ' ' + m[2]; note('NARRATION → instruction') }
-  cue = cue.replace(/\band (says|tells|asks|adds|suggests|offers|explains)\b/g, (_, v) => 'and ' + CC_VERB_BASE[v].toLowerCase())
+  cue = cue.replace(/\b(and|then|but) (says|tells|asks|adds|suggests|offers|explains)\b/g, (_, c0, v) => c0 + ' ' + CC_VERB_BASE[v].toLowerCase())
   // ── 2. "Tell the other person: …" / "Ask: …?" copies → reported form (from the copied English itself)
   if ((m = cue.match(/^(?:Tell the other person|Say|Tell (?:him|her|them))\s*:\s*(.+)$/))) {
     const r = cueFromEnglish(lang, m[1], '', { ...ctx, names }); if (r && !/^Ask/.test(r)) { cue = r; note('TEMPLATE COPY → reported') } }
@@ -17724,6 +17740,7 @@ function cueClarify(lang, p, ctx) {
     if (ind) { cue = 'Ask ' + (m[1] && /^[A-Z]/.test(m[1]) && names.includes(m[1]) ? m[1] + ' ' : '') + ind; note('TEMPLATE COPY → reported') } }
   // manner / setting asides the sentence cannot carry ("with a happy tone", "as you walk", "casually") — politeness words stay
   const asideRemoved = []
+  cue = cue.replace(/,?\s*(?:starting|beginning|opening) with\s+(?:the (?:word|phrase)\s+)?['"‘“][^'"’”]+['"’”]/gi, m0 => { asideRemoved.push(m0); return '' })
   cue = cue.replace(/^As you [a-z ]+?,\s*/i, m0 => { asideRemoved.push(m0); return '' })
   cue = cue.replace(/,\s*(?:with a [a-z ]+? tone|in a [a-z]+ (?:way|tone|voice)|as you [a-z ]+?|while [a-z ]+?|on the walk|pointing [a-z ]+?|casually|softly|warmly|happily),/gi, m0 => { asideRemoved.push(m0); return '' })
   cue = cue.replace(/\s+(?:with a (?:happy|relaxed|casual|friendly|soft|cheerful|warm|light) tone|in a casual (?:way|tone|voice)|casually|warmly|softly|happily|cheerfully)\b(?=[\s,.]|$)/gi, m0 => { asideRemoved.push(m0); return '' })
@@ -17747,6 +17764,7 @@ function cueClarify(lang, p, ctx) {
       const bw = new Set(ccWords(before).map(ccStem)), bl = String(before).toLowerCase()
       if (enContent.every(w => bw.has(ccStem(w)) || ccHasWord(bl, w) || (CC_SYN[w] || []).some(x => bl.includes(x)) || CC_DEIXIS[w] && (CC_LANG[lang] || CC_LANG.th)[CC_DEIXIS[w]] && !bl.includes(w) && false)) return true
     }
+    if (!content.length && reason && before != null) return true
     if (!content.length) return /^(?:,\s*)?(?:instead|casually|warmly|softly|happily|gently|cheerfully)\b/i.test(seg.trim()) ? !ccSupported(ws[0] || 'instead', enL, enStems, lang, sent, sentGloss) : false
     if (content.some(w => ccSupported(w, enL, enStems, lang, sent, sentGloss))) return false
     // C — an elided referent the dialogue supplies stays ("Ask how much it is" needs "the shrimp")
@@ -17770,6 +17788,12 @@ function cueClarify(lang, p, ctx) {
   // "Tell her you …" needs no addressee: "Say you …"; a pronoun addressee is kept when the sentence is about / addressed to them
   if ((m = cue.match(/^Tell (him|her|them)\s+(?:that\s+)?(?!to\b)(.*)$/)) && !/\b(he|she|him|her|they|them|their|his)\b/.test(m[2]) && /^(you|i|we|this|that|the|there|it|a|an|my|your)\b/i.test(m[2])) cue = 'Say ' + m[2]
   cue = cue.replace(/^Suggest (?:that\s+)?(?:they|you both|you two|we)\s+([a-z]+)\b/i, (all, v) => /^(should|could|can|will|go|get|order|take|have|try|eat|buy|use|leave|wait|stay)$/.test(v) ? 'Suggest we ' + v : all)
+  // v700 — the ADDRESSEE's possessive: the English asks about "your …" (the listener's) and the cue names the listener as him / her,
+  // so "your" in the cue is the learner's own — wrong. "Ask how your parents raised him." → "Ask him how his parents raised him."
+  if ((m = cue.match(/^Ask\b.*\byour\b.*\b(him|her)\b/)) && /\byour?\b/i.test(en) && !/\b(he|him|his|she|her|hers)\b/i.test(en)) {
+    const pr = m[1], poss = pr === 'him' ? 'his' : 'her'
+    cue = cue.replace(/\byour\b/g, poss); if (!/^Ask (him|her)\b/.test(cue)) cue = cue.replace(/^Ask\s+/, 'Ask ' + pr + ' ')
+    note('PERSPECTIVE: the listener\'s "your" → ' + poss) }
   // degree: "only a little easy" vs "pretty easy" — which one is right is a question for the sentence, not for the cue
   const lowD = /\b(a little|a bit|slightly|only a little|not very)\b/i, highD = /\b(very|really|so|pretty|quite|extremely|super)\b/i
   const degreeClash = (lowD.test(cue) && highD.test(en) && !lowD.test(en)) || (highD.test(cue) && lowD.test(en) && !highD.test(en))
@@ -18274,7 +18298,9 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       thai: replyThai,
       phonetic: sceneData.reply_phonetic || '',
       english: sceneData.reply_english || 'Hello, nice to meet you.',
-      prompt: sceneData.reply_prompt ? (sceneData.reply_prompt||'').replace(/\bhe\b/gi,_nameA).replace(/\bhim\b/gi,_nameA).replace(/\bshe\b/gi,_nameB).replace(/\bher\b/gi,_nameB) : _nameB + ' greets ' + _nameA + ' back',
+      // v700: under cue clarity B's own "she / her" stays a pronoun — cue clarity turns it into "you" (it used to become B's name, which
+      // fixCueAddressees then swapped for A's: "Greet Somchai back and say Somchai is very well today" for Nida's ฉันดีมากค่ะ)
+      prompt: sceneData.reply_prompt ? (cueClarityOn() ? (sceneData.reply_prompt||'').replace(/\bhe\b/gi,_nameA).replace(/\bhim\b/gi,_nameA) : (sceneData.reply_prompt||'').replace(/\bhe\b/gi,_nameA).replace(/\bhim\b/gi,_nameA).replace(/\bshe\b/gi,_nameB).replace(/\bher\b/gi,_nameB)) : _nameB + ' greets ' + _nameA + ' back',
       _source: 'ai:check-1', _target: 'greeting', words: []
     }
     // Add word glosses to greeting pairs from phonetic
@@ -18561,7 +18587,8 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
         thai: (sceneData.closing_reply || '').trim(),
         phonetic: sceneData.closing_reply_phonetic || '',
         english: sceneData.closing_reply_english || 'You too, take care.',
-        prompt: (sceneData.closing_reply_prompt || (_nB + ' says goodbye back to ' + _nA))
+        prompt: cueClarityOn() ? (sceneData.closing_reply_prompt || (_nB + ' says goodbye back to ' + _nA)).replace(/\bhe\b/gi,_nA).replace(/\bhim\b/gi,_nA)
+          : (sceneData.closing_reply_prompt || (_nB + ' says goodbye back to ' + _nA))
           .replace(/\bhe\b/gi,_nA).replace(/\bhim\b/gi,_nA)
           .replace(/\bshe\b/gi,_nB).replace(/\bher\b/gi,_nB),
         _source:'ai:check-1', _target:'parting', words:[]
@@ -20945,6 +20972,14 @@ function thaiSelfContradiction(a, b) {
     const x = pol(a.thai, adj), y = pol(b.thai, adj)
     if (x && y && x.p !== y.p && x.subj === y.subj) return '"' + a.thai + '" vs "' + b.thai + '" — the same speaker says ' + adj + ' and not ' + adj
   }
+  // v700 — two recalls of the SAME target by the same speaker that assert and deny it about the same subject (live v699:
+  // พ่อแม่เลี้ยงดูผมดีมากครับ "my parents raised me very well" then พ่อแม่ไม่เลี้ยงดูผมเลยครับ "…didn't raise me at all")
+  const tw = (a.targetId != null && a.targetId === b.targetId) ? String(a._target || a.targetSurface || b._target || b.targetSurface || '') : ''
+  if (tw && !/^ไม่/.test(tw)) { const pv = (t, w) => { const i = t.indexOf(w); if (i < 0) return null; const pre = t.slice(0, i)
+      return { p: /ไม่(ได้|เคย|ค่อย)?$/.test(pre) ? 'neg' : 'pos', subj: thaiSubjectKey(pre.replace(/ไม่(ได้|เคย|ค่อย)?$/, '').replace(/^(ผม|ฉัน|เรา)?/, '')) } }
+    const x = pv(a.thai, tw), y = pv(b.thai, tw)
+    if (x && y && x.p !== y.p && x.subj === y.subj) return '"' + a.thai + '" vs "' + b.thai + '" — the same speaker says ' + tw + ' and not ' + tw + ' about the same person'
+  }
   return ''
 }
 function validateThaiTargetPair(pair, target, ctx, stage) {
@@ -21122,7 +21157,8 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
     late.forEach(x => { removed.push(x); log && log('  ⛔ TARGET PAIR rejected ' + why + ' [' + x.target + '] "' + x.text + '" — ' + x.reasons.join('; ') + ' (its slot is replaced, never appended)') })
     return late.length
   }
-  for (let round = 1; round <= TRACK_CONTRACT.QUOTA_ROUNDS; round++) {
+  const _rounds = c.quotaRounds || TRACK_CONTRACT.QUOTA_ROUNDS
+  for (let round = 1; round <= _rounds; round++) {
     if (c.cancelled && c.cancelled()) break
     if (round > 1 && oct13On()) dropInvalidNow('(found invalid after round ' + (round - 1) + ')')
     const rep = trackQuotaReport(pairs, kws, adapter, c)
@@ -21142,7 +21178,7 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
       const ti = targetIssueCounts(adapter.lang, r.targetId)
       const tiKind = ti && (ti.TARGET_USAGE_UNSUITABLE_FOR_REGISTER >= 2 ? 'TARGET_USAGE_UNSUITABLE_FOR_REGISTER' : ti.TARGET_CANONICAL_ENTRY_SUSPECT >= 2 ? 'TARGET_CANONICAL_ENTRY_SUSPECT' : null)
       if (tiKind) {
-        const avoided = TRACK_CONTRACT.QUOTA_ROUNDS - round + 1
+        const avoided = _rounds - round + 1
         h.attempts.push({ round, need: r.deficit, accepted: 0, reasons: [tiKind + ' (escalated; no further recovery)'], escalated: tiKind })
         h.escalated = tiKind; h.avoided = (h.avoided || 0) + avoided
         c.recoveryCallsAvoided = (c.recoveryCallsAvoided || 0) + avoided
@@ -21189,6 +21225,44 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
     }
   }
   if (oct13On()) dropInvalidNow('(still invalid after the last recovery round — never kept in the final track)')
+  // v700 — TARGET SUBSTITUTION (Thai): a REVISION target that still cannot get three natural recalls after its bounded recovery (the
+  // QC blames the word itself for this context, its checks are used up, or no further function exists) is REPLACED by the next
+  // due revision word, which needs three accepted recalls through the same fail-closed recovery before the swap is made. Bounded
+  // (≤ TH_SUBSTITUTION_MAX_TARGETS targets × TH_SUBSTITUTION_CANDIDATES candidates, one request each). Never a NEW word: a new
+  // curriculum word or a topic word is never swapped, and nothing unselected-new is introduced. The replaced word is untouched
+  // in SRS (it was not practised) — it stays due for the next track. Live v699: ไม่ทราบว่า stayed 2/3 and the track was NOT_READY.
+  const substitutions = []
+  if (adapter.lang === 'th' && c.vocab && !c.noSubstitution) {
+    const _newIds = new Set(((trackContextOf(track) || {}).selectedNewTargetIds) || track.selectedNewTargetIds || [])
+    const _rp = trackQuotaReport(pairs, kws, adapter, c)
+    const stuck = _rp.rows.filter(r => r.deficit > 0 && !r.unresolvedAtSelection && !_newIds.has(r.targetId)).slice(0, TH_SUBSTITUTION_MAX_TARGETS)
+    for (const r of stuck) {
+      if (c.cancelled && c.cancelled()) break
+      const why = (history.get(r.targetId) || {}).escalated || 'QUOTA_RECOVERY_EXHAUSTED'
+      const cands = thaiSubstitutionCandidates(track, c.vocab, kws).slice(0, TH_SUBSTITUTION_CANDIDATES)
+      log && log('  🔁 TARGET_SUBSTITUTION ' + r.target + ' (' + r.targetId + ') ' + r.valid + '/3 — ' + why + ' · a revision word: trying ' + (cands.length ? cands.map(w => w.thai).join(', ') : 'nothing (no eligible due revision word)') + ' from the revision queue')
+      for (const w of cands) {
+        const nkw = { wordId: w.id, thai: w.thai, english: w.english }
+        const without = pairs.filter(p => !(p && classifyTrackPair(p) === 'TARGET' && p.targetId === r.targetId))
+        const kwsT = (track.keywords || kws).map(k => k.wordId === r.targetId ? { ...k, wordId: w.id, thai: w.thai, english: w.english, phonetic: w.phonetic || '', isNew: false, isUnseen: false } : k)
+        let res = null
+        try { res = await adapter.recoverTargetPairs(nkw, TRACK_CONTRACT.PAIRS_PER_TARGET, { ...c, track: { ...track, pairs: without, keywords: kwsT }, existing: without, round: 'substitute', recallSlots: [1, 2, 3] }) }
+        catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; res = { accepted: [], reasons: ['substitution error: ' + (e && e.message || e)] } }
+        const acc = ((res && res.accepted) || []).slice(0, TRACK_CONTRACT.PAIRS_PER_TARGET)
+        if (acc.length < TRACK_CONTRACT.PAIRS_PER_TARGET) { log && log('    ⛔ ' + w.thai + ': ' + acc.length + '/3 recalls passed — not swapped (' + (((res && res.reasons) || []).slice(0, 2).join(' | ') || 'no candidate') + ')'); continue }
+        const at = pairs.findIndex(p => p && classifyTrackPair(p) === 'TARGET' && p.targetId === r.targetId)
+        const insertAt = at < 0 ? without.length : pairs.slice(0, at).filter(p => without.includes(p)).length
+        const stamped = acc.map((p, k) => stampPairIdentity({ ...p, sourceStage: 'target-substitution', language: adapter.lang, isTargetPair: true, targetSurface: w.thai, substitutedFor: r.targetId, generationRunId: p.generationRunId || AI_CTX.runId || null },
+          { trackId: listeningTrackId(track), lang: adapter.lang, adapter, index: 'sub-' + w.id + '-' + k, surfaceOf: () => w.thai }))
+        pairs = without; pairs.splice(insertAt, 0, ...stamped)
+        kws.splice(kws.findIndex(k => k.wordId === r.targetId), 1, nkw)
+        stamped.forEach(p => recovered.push({ targetId: w.id, target: w.thai, round: 'substitute', pairId: p.pairId, text: adapter.sentenceOf(p) }))
+        substitutions.push({ fromId: r.targetId, fromSurface: r.target, toId: w.id, toSurface: w.thai, toEnglish: w.english, reason: why, recalls: stamped.length })
+        log && log('    ✅ TARGET_SUBSTITUTED ' + r.target + ' → ' + w.thai + ' (3/3 recalls, each through the fail-closed recovery audit) — ' + r.target + ' stays due in SRS: ' + stamped.map(p => adapter.sentenceOf(p)).join(' / '))
+        break
+      }
+    }
+  }
   const after = trackQuotaReport(pairs, kws, adapter, c)
   const unresolved = after.rows.filter(r => r.deficit > 0).map(r => ({ targetId: r.targetId, target: r.target, valid: r.valid, deficit: r.deficit,
     attempts: (history.get(r.targetId) || { attempts: [] }).attempts, reason: r.unresolvedAtSelection ? 'unresolved at selection' : (history.get(r.targetId) || {}).escalated || 'QUOTA_RECOVERY_EXHAUSTED' }))
@@ -21215,7 +21289,67 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
   })
   const recoveryCallsAvoided = [...history.values()].reduce((n, h) => n + (h.avoided || 0), 0)
   if (recoveryCallsAvoided) log && log('  💰 RECOVERY_CALLS_AVOIDED=' + recoveryCallsAvoided + ' (targets escalated as unsuitable instead of re-generated)')
-  return { pairs, before, after, removed, recovered, unresolved, recoveryCallsAvoided, recoveryStates: [...states.values()].map(recoveryStateSummary) }
+  return { pairs, before, after, removed, recovered, unresolved, recoveryCallsAvoided, substitutions, recoveryStates: [...states.values()].map(recoveryStateSummary) }
+}
+const TH_SUBSTITUTION_MAX_TARGETS = 2, TH_SUBSTITUTION_CANDIDATES = 2
+// the next due REVISION words (the Revision queue order), never a word already in the track, never a new word
+function thaiSubstitutionCandidates(track, vocab, kws) {
+  const taken = new Set((kws || []).map(k => k.wordId).concat((track && track.selectedTargetIds) || [], ((track && track.targetSubstitutions) || []).map(x => x.fromId)))
+  let rv = []; try { rv = selectThaiRevisionTargets(vocab, 100000).targets || [] } catch (e) {}
+  return rv.filter(w => { if (!w || taken.has(w.id) || !hasBeenIntroduced(w)) return false
+    try { if (!thaiVocabEligibility(w).ok || !targetActivityPreflight(w, 'th', {}).suitable) return false } catch (e) { return false }
+    if (THAI_FUNCTION_TARGET_GUIDE[w.thai] || thaiClassifierGuideFor(w)) return false
+    const ti = targetIssueCounts('th', w.id); return !(ti && (ti.TARGET_USAGE_UNSUITABLE_FOR_REGISTER || ti.TARGET_CANONICAL_ENTRY_SUSPECT)) })
+}
+// the swap recorded on the track: keywords, the selection snapshot and the TrackContext name the new word (provenance kept)
+function applyThaiTargetSubstitutions(track, subs) {
+  if (!subs || !subs.length) return track
+  const swap = id => { const s0 = subs.find(x => x.fromId === id); return s0 ? s0.toId : id }
+  const t = { ...track }
+  t.keywords = (track.keywords || []).map(k => { const s0 = subs.find(x => x.fromId === k.wordId); return s0 ? { ...k, wordId: s0.toId, thai: s0.toSurface, english: (s0.toEnglish || k.english), isNew: false, isUnseen: false, substitutedFor: s0.fromId } : k })
+  if (Array.isArray(track.selectedTargetIds)) t.selectedTargetIds = track.selectedTargetIds.map(swap)
+  if (Array.isArray(track.selectedRevisionTargetIds)) t.selectedRevisionTargetIds = track.selectedRevisionTargetIds.map(swap)
+  if (track.trackContext) t.trackContext = { ...track.trackContext, selectedTargetIds: (track.trackContext.selectedTargetIds || []).map(swap), requiredReviewTargetIds: (track.trackContext.requiredReviewTargetIds || []).map(swap) }
+  t.targetSubstitutions = (track.targetSubstitutions || []).concat(subs.map(x => ({ ...x, at: new Date().toISOString() })))
+  return t
+}
+// v700 — FINAL SNAPSHOT AUDIT (Thai): every TARGET line of the track as it will be saved — after quota recovery, coherence repair and
+// the late cue / addressee / comma fixes — is checked on its FINAL text: the objective rules (time, lexical sense), contradictions
+// (the local window and every two recalls of one target, any distance) and the fail-closed cue + naturalness audit. A verdict for
+// this exact text / English / cue is reused (no paid call); a line changed after its verdict is judged now. Live v699: the PRE-QUOTA
+// audit said 83/83 while 16 saved lines came from later stages, two of them contradicting each other.
+async function thaiFinalSnapshotAudit(track, ctx, log) {
+  const c = ctx || {}
+  let pairs = (track.pairs || []).slice()
+  const tgt = pairs.filter(p => p && classifyTrackPair(p) === 'TARGET')
+  const bad = new Map()
+  tgt.forEach(p => { const x = thaiTimeExpressionProblems(p.thai)[0] || thaiLexicalSenseProblems(p)[0]; if (x) bad.set(p, x.id + ' — ' + x.why) })
+  thaiLocalContradictions(pairs).forEach(x => { if (classifyTrackPair(x.pair) === 'TARGET' && !bad.has(x.pair)) bad.set(x.pair, x.reason) })
+  const byT = new Map(); tgt.forEach(p => { if (!byT.has(p.targetId)) byT.set(p.targetId, []); byT.get(p.targetId).push(p) })
+  byT.forEach(ps => ps.forEach((b, j) => { if (bad.has(b)) return
+    for (let k = 0; k < j; k++) { if (bad.has(ps[k])) continue; const r = thaiSelfContradiction(ps[k], b); if (r) { bad.set(b, 'SELF_CONTRADICTION: ' + r); break } } }))
+  const deterministic = bad.size
+  const live = tgt.filter(p => !bad.has(p))
+  const fresh = p => { const v = p._semVerdicts || {}; return !!(v.nat && v.nat.key === _semCacheKey('nat', p)) && (!_cueCheckEligible(p) || !!(v.cue && v.cue.key === _semCacheKey('cue', p))) }
+  const stale = live.filter(p => !fresh(p))
+  let semantic = 'NOT_RUN (no model credentials — unjudged lines stay UNVERIFIED and do not count)', paidCalls = 0
+  if (c.apiKey && live.length) {
+    const keyOf = p => p.pairId || p._pairKey || p.thai
+    const sem = await finalPairSemanticAudit(live, c.apiKey, c.model, log, { label: 'final-snapshot', failClosed: true, track })
+    const outBy = new Map(sem.pairs.filter(Boolean).map(p => [keyOf(p), p]))
+    live.forEach(p => { const np = outBy.get(keyOf(p))
+      if (np) { const i = pairs.indexOf(p); if (i >= 0) pairs[i] = np; return }
+      const f = sem.stats.failures.find(x => x.thai === p.thai) || sem.stats.unverified.find(x => x.thai === p.thai)
+      bad.set(p, f ? (f.code || f.state) + ' — ' + String(f.reason || '') : 'not accepted by the final audit') })
+    semantic = sem.stats.status
+    paidCalls = ((sem.stats.trace.cue && sem.stats.trace.cue.calls) || 0) + ((sem.stats.trace.naturalness && sem.stats.trace.naturalness.calls) || 0)
+  }
+  const invalid = []
+  pairs = pairs.map(p => { if (!bad.has(p)) return p; invalid.push({ pairId: p.pairId, targetId: p.targetId, target: p._target || p.targetSurface || '', thai: p.thai, reason: bad.get(p) }); return { ...p, _qcInvalid: 'FINAL_SNAPSHOT: ' + bad.get(p) } })
+  const report = { checked: tgt.length, deterministicFailures: deterministic, judgedNow: c.apiKey ? stale.length : 0, reusedVerdicts: c.apiKey ? live.length - stale.length : 0, judgeCalls: paidCalls, semantic, invalid }
+  log && log('  🔍 FINAL_SNAPSHOT_AUDIT ' + tgt.length + ' target line(s) checked on the final text · ' + (c.apiKey ? stale.length + ' without a verdict for their exact final text · ' + (live.length - stale.length) + ' verdict(s) reused · ' + paidCalls + ' judge call(s)' : 'model audit not run') +
+    ' · ' + invalid.length + ' invalid' + (invalid.length ? ': ' + invalid.map(x => '"' + x.thai + '" (' + String(x.reason).slice(0, 70) + ')').join(' | ').slice(0, 500) : ''))
+  return { pairs, report }
 }
 
 // ── FINAL_TRACK ─────────────────────────────────────────────────────────────────────
@@ -21463,6 +21597,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
     c.track = t }
   const q = await enforceTrackPairQuota(t, adapter, c)
   t = { ...t, pairs: q.pairs }
+  if (q.substitutions && q.substitutions.length) { t = applyThaiTargetSubstitutions(t, q.substitutions); c.track = t }
   // v665 — ONE learner level: the belt contract + the learner-authorised inventory (same as Listening)
   const _cc = getLearnerComplexityContract({ lang: adapter.lang, vocab: c.vocab })
   log && log('📏 ' + complexityContractLog(_cc))
@@ -21533,6 +21668,24 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (dailyV693On() && adapter.lang === 'ja') { try { t = { ...t, pairs: (await jaBridgeReplyTriggers(t, c, log)).pairs } } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
   if (oct13On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {} }
   if (oct13On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiTidyCommas(t.pairs, log) } } catch (e) {} }
+  // v700 — FINAL SNAPSHOT AUDIT on the text that will be saved; a line that fails goes to ONE more bounded quota round (same
+  // fail-closed recovery, substitution included), and the result is audited again — whatever still fails stays invalid (NOT_READY)
+  let _snap = null
+  if (adapter.lang === 'th' && dailyV693On()) {
+    try {
+      const s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap = { first: s1.report }
+      if (s1.report.invalid.length) {
+        c.track = t
+        const q2 = await enforceTrackPairQuota(t, adapter, { ...c, quotaRounds: 1 })
+        t = { ...t, pairs: q2.pairs }
+        if (q2.substitutions && q2.substitutions.length) { t = applyThaiTargetSubstitutions(t, q2.substitutions); q.substitutions.push(...q2.substitutions) }
+        q.recovered.push(...q2.recovered); q.removed.push(...q2.removed)
+        c.track = t
+        const s2 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s2.pairs }
+        _snap.secondPass = { recovered: q2.recovered.length, unresolved: q2.unresolved.map(u => u.target) }; _snap.after = s2.report
+      }
+    } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; _snap = { error: String(e && e.message || e).slice(0, 160) } }
+  }
   // v655 §22 — the learner text is FROZEN here (after quota recovery and coherence repair); pronunciation is
   // built from this exact text, and any later text change is detected as STALE and rebuilt before the audit
   const _frozen = new Map((t.pairs || []).map((p, i) => [thaiLineId(p, i), p && (p.thai || p.japanese || p.chinese)]))
@@ -21667,6 +21820,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
       rows: quota.rows.map(r => ({ targetId: r.targetId, target: r.target, valid: r.valid, deficit: r.deficit })) },
     removedTargetPairs: q.removed.map(x => ({ target: x.target, pairId: x.pairId, text: x.text, reasons: x.reasons })),
     recoveredTargetPairs: q.recovered,
+    ...(_snap ? { finalSnapshotAudit: _snap } : {}), ...(q.substitutions && q.substitutions.length ? { targetSubstitutions: q.substitutions } : {}),
     recoveryStates: (q.recoveryStates || []).filter(x => x && (x.attempts || x.strategyChanges.length)),
     alignmentIssues: meta.alignmentIssues.slice(0, 20), pronunciation: (meta.stats && meta.stats.pronunciation) || null,
     finalisedAt: new Date().toISOString(),
@@ -22265,6 +22419,7 @@ function trackVersionExportLines(track) {
       ' · requiredListeningTargetIds=' + req.requiredIds.length,
     'selectedTargetIds: [' + req.selected.join(',') + ']',
     'selectedNewTargetIds: [' + req.newIds.join(',') + ']' + (tc && tc.newCountException ? ' · exception: ' + tc.newCountException : ''),
+    ...(track && track.topicSkipped && track.topicSkipped.length ? ['topic words passed over: ' + track.topicSkipped.map(x => x.thai + ' (' + x.id + ': ' + x.reason + ')').join(' · ')] : []),
     'requiredListeningTargetIds: [' + req.requiredIds.join(',') + ']']
   if (t.pipelineFailure) out.push('PIPELINE FAILURE: ' + t.pipelineFailure.code + ' at ' + (t.pipelineFailure.stage || '-') + ' — ' + t.pipelineFailure.detail)
   return out
@@ -22429,7 +22584,9 @@ const _thaiGlossStop = new Set(['to', 'a', 'an', 'the', 'of', 'be', 'is', 'are',
 const _thaiGlossCache = new WeakMap()
 let _thaiRawGloss = null
 function _thaiGlossWordsOf(str) {
-  return new Set(String(str || '').toLowerCase().replace(/\([^)]*\)/g, ' ').split(/[^a-z]+/).filter(w => w && w.length >= 2 && !_thaiGlossStop.has(w)).map(w => w.length > 3 ? w.replace(/(ing|ed|es|s)$/, '') : w))
+  // v700: "7 a.m." / "8 p.m." / "o'clock" are one meaning word each — split on the dots they became single letters (dropped), so
+  // แปดโมงเช้า "8 a.m." shared no gloss word with โมงเช้า "o clock AM" and was read as a different word (live v699: 11 checks)
+  return new Set(String(str || '').toLowerCase().replace(/\b([ap])\.\s?m\.?(?![a-z])/g, '$1m').replace(/\bo'?\s?clock\b/g, 'clock').replace(/\([^)]*\)/g, ' ').split(/[^a-z]+/).filter(w => w && w.length >= 2 && !_thaiGlossStop.has(w)).map(w => w.length > 3 ? w.replace(/(ing|ed|es|s)$/, '') : w))
 }
 function thaiGlossWords(surface, vocab) {
   if (!_thaiRawGloss) { _thaiRawGloss = new Map(); (typeof RAW_VOCAB !== 'undefined' ? RAW_VOCAB : []).forEach(d => { if (d && d.t && !d.dup && d.e) _thaiRawGloss.set(d.t, (_thaiRawGloss.get(d.t) || '') + ' / ' + d.e) }) }
@@ -22457,6 +22614,8 @@ function thaiRawGlossOf(surface, vocab) {
   return a.concat(b).join(' / ')
 }
 const THAI_PREVERBAL_GLUE = Object.freeze(['ไม่', 'ไม่ได้', 'ได้', 'จะ', 'ก็', 'ยัง', 'ยังไม่', 'เคย', 'ไม่เคย', 'กำลัง', 'อยาก', 'ไม่อยาก', 'ต้อง', 'ไม่ต้อง', 'ควร', 'คง', 'ค่อย', 'ไม่ค่อย', 'อย่า', 'เลย', 'แล้ว'])
+const THAI_TIME_UNITS = Object.freeze(['โมงเช้า', 'โมงเย็น', 'ทุ่ม', 'โมง'])
+const THAI_HOUR_PREFIX_RE = /^(ตี|บ่าย)?(สิบเอ็ด|สิบสอง|สิบ|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|[0-9]{1,2})?$/
 function thaiTargetConceptPresent(target, sentence, vocab) {
   const s = String(sentence || '').replace(/\s+/g, ''), t = String((target && (target.thai || target.t || target.surface)) || target || '').replace(/\s+/g, '')
   if (!t) return { present: false, form: 'NO_TARGET', reason: 'no target surface' }
@@ -22469,6 +22628,11 @@ function thaiTargetConceptPresent(target, sentence, vocab) {
   // v681: a reduplicated word (สบายๆ / ช้าๆ / เร็วๆ — ๆ repeats the word it follows) IS the target, used in its intensified /
   // relaxed form. Live v681 retest: ผมอยากสบายๆครับ was rejected as TARGET_MISSING, and สบาย ended 2/3.
   if (toks.includes(t + '\u0E46')) return { present: true, form: 'REDUPLICATION', token: t + '\u0E46' }
+  // v700: a clock-time unit (โมงเช้า, โมงเย็น, ทุ่ม, โมง) IS heard in an hour + unit time word (แปดโมงเช้า, สองทุ่ม, บ่ายสามโมง) —
+  // Thai morphology, not a substring: the part before the unit must be an hour number (whether that hour is a VALID time is
+  // judged separately by thaiTimeExpressionProblems: สามโมงเช้า is not 3 AM)
+  if (THAI_TIME_UNITS.includes(t)) { const tt0 = toks.find(tok => tok.length > t.length && tok.endsWith(t) && THAI_HOUR_PREFIX_RE.test(tok.slice(0, tok.length - t.length)))
+    if (tt0) return { present: true, form: 'TIME_EXPRESSION', token: tt0 } }
   const tg = thaiGlossWords(t, vocab)
   for (const tok of toks) {
     if (tok === t || tok.length <= t.length || !tok.includes(t)) continue
@@ -22923,7 +23087,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     // round, or for a classifier / function word, the scene is background only
     ((st.failedAttempts || []).length || thaiClassifierGuideFor(kw) || THAI_FUNCTION_TARGET_GUIDE[kw.thai]
       ? 'The scene is BACKGROUND ONLY: if it offers no natural use of "' + kw.thai + '", write a short self-contained everyday moment where the word is used correctly (correct meaning beats fitting the scene).\n' : '') +
-    (thaiClassifierGuideFor(kw) || THAI_FUNCTION_TARGET_GUIDE[kw.thai] ? 'TEACHING CONTRACT FOR "' + kw.thai + '": ' + (thaiClassifierGuideFor(kw) || THAI_FUNCTION_TARGET_GUIDE[kw.thai]) + '\n' : '') +
+    (thaiClassifierGuideFor(kw) || THAI_FUNCTION_TARGET_GUIDE[kw.thai] || THAI_USAGE_TARGET_GUIDE[kw.thai] ? 'TEACHING CONTRACT FOR "' + kw.thai + '": ' + (thaiClassifierGuideFor(kw) || THAI_FUNCTION_TARGET_GUIDE[kw.thai] || THAI_USAGE_TARGET_GUIDE[kw.thai]) + '\n' : '') +
     (_tpPlan ? teachingPlanLine(_tpPlan) + slots.map(r => 'MISSING recall ' + r + ' = application: ' + tpUseFor(_tpPlan, r).text + '\n').join('') + TP_CUE_DEFINITION + '\n' : '') +
     (sc && sc.characters && sc.characters.length ? 'Characters: ' + sc.characters.map(x => x.speaker + ' = ' + (x.nativeName || x.name) + (x.role ? ' (' + x.role + ')' : '')).join(' · ') + '\n' : '') +
     'A = a man: says ผม for "I" and ends every sentence with ครับ. B = a woman: says ฉัน for "I" and ends with ค่ะ (statements) or คะ (questions).\n' +
@@ -23655,7 +23819,9 @@ const TRACK_ADAPTERS = {
     keywordsOf: t => thaiAuditKeywords(t),
     canonicalId: id => (typeof thaiCanonicalId === 'function' ? thaiCanonicalId(id) : id),
     targetPresent: (p, k, ctx) => thaiTargetPresent(p && p.thai, k && k.thai, ctx && ctx.vocab),
-    invalidReason: p => (p && p._semanticState && p._semanticState !== 'VERIFIED') ? 'SEMANTIC_' + p._semanticState + (p._semanticUnverified ? ' (' + p._semanticUnverified.reason + ')' : '') : null,
+    // v700: a Thai line marked invalid by a finaliser check (v694 local contradiction, v700 final snapshot audit) is NOT a valid recall —
+    // only the semantic state was read, so those marks never reached the quota (the slot was neither counted missing nor recovered)
+    invalidReason: p => (p && p._qcInvalid) ? String(p._qcInvalid) : (p && p._semanticState && p._semanticState !== 'VERIFIED') ? 'SEMANTIC_' + p._semanticState + (p._semanticUnverified ? ' (' + p._semanticUnverified.reason + ')' : '') : null,
     hardProblems: p => {
       const out = [], th = String((p && p.thai) || '')
       if (/[A-Za-z]/.test(th)) out.push('SCRIPT_CONTAMINATION: Latin text inside the Thai sentence ("' + th.slice(0, 40) + '")')
@@ -28474,6 +28640,12 @@ function selectThaiTopicTargets(vocab, topicId, opts = {}) {
   const byId = new Map(V.map(w => [w && w.id, w])), pending = opts.pendingWordIds || new Set()
   const newOk = w => w && !hasBeenIntroduced(w) && w.duplicateOf == null && thaiVocabEligibility(w).ok && targetActivityPreflight(w, 'th', {}).suitable
   const topicNew = topic.vocabIds.map(id => byId.get(id)).filter(w => newOk(w) && !pending.has(w.id))
+  // v700 — WHY a higher-priority topic word was not picked, recorded with the track (the v699 export could not say why ทุกคน / ดูแล
+  // were passed over); the first skipped words before the last picked one are the ones that matter
+  const skipWhy = w => !w ? 'not in the dictionary' : hasBeenIntroduced(w) ? 'already introduced (' + (w.status || 'seen') + ')' : pending.has(w.id) ? 'queued in an unrated track' : w.duplicateOf != null ? 'a duplicate entry' :
+    !thaiVocabEligibility(w).ok ? 'not eligible (' + (thaiVocabEligibility(w).reason || 'dictionary check') + ')' : !targetActivityPreflight(w, 'th', {}).suitable ? 'unsuitable for a spoken drill' : ''
+  const lastPick = topicNew.length ? topic.vocabIds.indexOf(topicNew[Math.min(quota, topicNew.length) - 1].id) : -1
+  const topicSkipped = topic.vocabIds.slice(0, Math.max(0, lastPick)).map(id => ({ id, w: byId.get(id) })).filter(x => !topicNew.some(t => t.id === x.id)).map(x => ({ id: x.id, thai: x.w ? x.w.thai : '', reason: skipWhy(x.w) }))
   const newPick = topicNew.slice(0, Math.max(0, quota)).map(w => ({ ...w, _selectorStage: 'topic-new', selectionRole: 'new', topicId }))
   const newIds = new Set(newPick.map(w => w.id))
   const rvAll = selectThaiRevisionTargets(V, 100000)
@@ -28496,7 +28668,7 @@ function selectThaiTopicTargets(vocab, topicId, opts = {}) {
     selector: 'selectThaiTopicTargets = topic words (priority order, not yet introduced) → selectThaiRevisionTargets order → freezeThaiTargetSelection(noNewOverflow)',
     raw: selected, targets: frozen.targets, targetIds: frozen.targets.map(t => t.id),
     selectedNewTargetIds: finalNewIds, selectedRevisionTargetIds: frozen.targets.filter(t => !finalNewIds.includes(t.id)).map(t => t.id),
-    topicNewAvailable: topicNew.length, topicNewRemainingAfter: Math.max(0, topicNew.length - finalNewIds.length),
+    topicNewAvailable: topicNew.length, topicNewRemainingAfter: Math.max(0, topicNew.length - finalNewIds.length), topicSkipped,
     reserve, blocked, selectionBackfills: frozen.backfills || [], skippedCandidates: [], candidateStats: rvAll.candidateStats || null, frozen, deferred: frozen.deferred || [] }
 }
 function listeningTrackKeyword(lang, w) {
@@ -31817,7 +31989,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
         track.selectedNewTargetIds = track.trackContext.selectedNewTargetIds.slice()
         if (topic) {   // v698 — topic provenance travels with the track (Recent Tracks label, reopening, export)
           Object.assign(track, { trackType: 'daily', selectionMode: 'topic', topicId: topic.id, topicTitle: topic.title, topicsVersion: TOPICS_VERSION, qcVersion: QC_VERSION,
-            selectedRevisionTargetIds: track.selectedTargetIds.filter(id => !track.selectedNewTargetIds.includes(id)) })
+            selectedRevisionTargetIds: track.selectedTargetIds.filter(id => !track.selectedNewTargetIds.includes(id)), topicSkipped: (_revCanon && _revCanon.topicSkipped) || [] })
           track.trackContext = { ...track.trackContext, selectionMode: 'topic', topicId: topic.id }
         }
         // Item 42: Verify track can be serialized before showing ready
@@ -35568,6 +35740,18 @@ const THAI_JOE_PERSON_RE = /เจอ(กัน|เพื่อน|คุณ|เ
 const THAI_JUST_TEMPORAL_RE = /\b(has|have|had|'ve) just\b|\bjust (now|arrived|got (back|home|here)|finished|came|left|ate|bought|woke|called|went|saw|started|heard|met|moved|returned|had|paid|sent|opened|closed|told|said)\b/
 function thaiLexicalSenseProblems(p) {
   const th = String(p && p.thai || ''), en = String(p && p.english || '').toLowerCase(), out = []
+  // v700 — from the live v699 Thai Daily track (each one passed the model judges)
+  // ไม่เชิง is a hedged ANSWER ("not exactly / not really"): ไม่เชิงครับ, ก็ไม่เชิงนะ, ไม่เชิงหรอก, ไม่เชิงว่าไม่ชอบ ("it's not that I
+  // don't like it"), ไม่เชิงอย่างนั้น. Put straight before a verb / adjective it is an English "not exactly V" calque (ชอบแต่ไม่เชิงชอบมาก).
+  if (/ไม่เชิง(?!ว่า|อย่างนั้น|แบบนั้น|ขนาดนั้น|ครับ|ค่ะ|คะ|นะ|หรอก|เลย|จ้ะ|จ้า|\s|$)/.test(th))
+    out.push({ id: 'MAI_CHOENG_CALQUE', code: 'UNNATURAL', why: '"' + th.match(/ไม่เชิง\S{0,6}/)[0] + '" — ไม่เชิง is a hedged answer (ไม่เชิงครับ / ก็ไม่เชิงนะ / ไม่เชิงว่า…), not "not exactly" placed before a verb or adjective' })
+  // ต้อนรับ needs WHO is welcomed, or a fixed frame (ยินดีต้อนรับ, ขอบคุณที่(มา)ต้อนรับ): ending a clause bare it is incomplete
+  // (ผมต้อนรับ "I welcome." · คุณจะมาต้อนรับไหม — welcome whom?). An object, adverb or frame keeps it (ต้อนรับแขก, ต้อนรับดีมาก).
+  if (th.split(/\s+/).some(cl => /ต้อนรับ(ครับ|ค่ะ|คะ|นะ|ไหม|มั้ย|ด้วย|เลย)*$/.test(cl) && !/(ยินดี|ที่|ที่มา)ต้อนรับ/.test(cl)))
+    out.push({ id: 'TONRAP_INCOMPLETE', code: 'UNNATURAL', why: 'ต้อนรับ ends the clause with nobody welcomed — say who (ต้อนรับแขก / ต้อนรับคุณ) or use a fixed frame (ยินดีต้อนรับ, ขอบคุณที่ต้อนรับ)' })
+  // a LANGUAGE is not a product with a price (ภาษาอังกฤษต้องจ่ายเงินไหม / ภาษาอังกฤษไม่แพง): a price needs a course, a class, a book, a teacher
+  if (/ภาษา/.test(th) && /(จ่ายเงิน|เสียเงิน|แพง|ราคา|กี่บาท|ฟรี)/.test(th) && !/(เรียน|คอร์ส|ครู|หนังสือ|ห้องเรียน|โรงเรียน|ติว|สอน)/.test(th))
+    out.push({ id: 'LANGUAGE_AS_PRODUCT', code: 'WRONG_SENSE', why: 'a language has no price — talk about learning / speaking it, or about a course, class, book or teacher (เรียนภาษาอังกฤษแพงไหม)' })
   if (/(ศูนย์|\b0)\s*บาท/.test(th) && !/(ฟรี|ไม่ต้องจ่าย|ไม่เสียเงิน|ไม่เสียค่า)/.test(th))
     out.push({ id: 'ZERO_PRICE_IMPLAUSIBLE', code: 'WRONG_SENSE', why: 'a price of zero baht is not a credible everyday price — ศูนย์ belongs in a phone number, a score, a temperature, a room number or a code' })
   if (THAI_DESCRIPTIVE_ADJ_RE.test(th) && !THAI_NOI_REQUEST_RE.test(th))
@@ -35615,8 +35799,19 @@ function thaiTimeExpressionProblems(thai) {
   const s = String(thai || ''), out = []
   const m = s.match(THAI_INVALID_OMONG_RE) || s.match(THAI_INVALID_OMONG_DIGIT_RE)
   if (m) out.push({ id: 'INVALID_TIME_EXPRESSION', why: '"' + m[0].replace(/^[^฀-๿0-9]/, '') + '" is not a Thai clock time (13–24 + โมง) — use N ทุ่ม / บ่าย N โมง / N นาฬิกา' })
+  // v700 — the Thai six-hour clock: each period word takes only its own hours (live v699 accepted พรุ่งนี้สามโมงเช้า… as "3 AM";
+  // 3 AM is ตีสาม). Only unambiguous misuses are flagged.
+  if (!m) for (const r of THAI_PERIOD_HOUR_RULES) { const x = s.match(r.re); if (x) { out.push({ id: 'INVALID_TIME_EXPRESSION', why: '"' + x[0] + '" is not a Thai clock time — ' + r.why }); break } }
   return out
 }
+// the hours each period word does NOT take (Thai number words; the digit forms are checked the same way)
+const THAI_PERIOD_HOUR_RULES = [
+  { re: /(?<!สิบ)(หนึ่ง|สอง|สาม|สี่)โมงเช้า|สิบสองโมงเช้า|(?<![0-9])([1-4]|12)\s*โมงเช้า/, why: 'โมงเช้า takes the hours 5–11 (หกโมงเช้า 6 AM … สิบเอ็ดโมงเช้า 11 AM); 1–5 AM is ตี + number (ตีสาม = 3 AM), noon is เที่ยง' },
+  { re: /(?<!สิบ)(หนึ่ง|สอง|เจ็ด|แปด|เก้า)โมงเย็น|สิบ(เอ็ด|สอง)?โมงเย็น|(?<![0-9])([1-2]|[7-9]|1[0-2])\s*โมงเย็น/, why: 'โมงเย็น takes the hours 4–6 PM (ห้าโมงเย็น 5 PM); 7–11 PM is N ทุ่ม (หนึ่งทุ่ม = 7 PM)' },
+  { re: /(เจ็ด|แปด|เก้า|สิบ(เอ็ด|สอง)?)ทุ่ม|(?<![0-9])([7-9]|1[0-2])\s*ทุ่ม/, why: 'ทุ่ม counts the hours 1–6 after 6 PM (หนึ่งทุ่ม 7 PM … ห้าทุ่ม 11 PM, หกทุ่ม midnight)' },
+  { re: /ตี(เจ็ด|แปด|เก้า|สิบ)/, why: 'ตี counts the hours 1–5 after midnight (ตีหนึ่ง 1 AM … ตีห้า 5 AM)' },
+  { re: /บ่าย(หก|เจ็ด|แปด|เก้า|สิบ)โมง/, why: 'บ่าย … โมง is 1–4 PM (บ่ายโมง, บ่ายสองโมง … บ่ายสี่โมง); later is N โมงเย็น' },
+]
 // Number targets (ยี่สิบ …) are practised as counts, prices, dates or quantities.
 const THAI_NUMBER_GLOSS_RE = /^(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|(a |one )?hundred|(a |one )?thousand|ten thousand|(a |one )?hundred thousand|(a |one )?million|\d+)$/i
 function thaiIsNumberTarget(t) {
@@ -36455,6 +36650,16 @@ const THAI_FUNCTION_TARGET_GUIDE = Object.freeze({
   'ว่า': 'TEACH ว่า AFTER A VERB OF SAYING / THINKING: คิดว่า (I think that…), บอกว่า (said that…), รู้ว่า (know that…).',
 })
 const THAI_FUNCTION_TARGETS_PER_TRACK = 2
+// v700 — USAGE contracts for content targets the live v699 Thai track used unnaturally. Prompt guidance only (generation + quota
+// recovery); the objective rules that enforce them are in thaiLexicalSenseProblems / thaiTimeExpressionProblems / thaiSelfContradiction.
+const THAI_USAGE_TARGET_GUIDE = Object.freeze({
+  'โมงเช้า': 'TEACH โมงเช้า AS A MORNING CLOCK TIME, hours 6–11 only: หกโมงเช้า (6 AM), เจ็ดโมงเช้า, แปดโมงเช้า, เก้าโมงเช้า, สิบโมงเช้า, สิบเอ็ดโมงเช้า (11 AM). 1–5 AM is ตี + number (ตีสาม = 3 AM) — NEVER สามโมงเช้า. e.g. พรุ่งนี้เจอกันแปดโมงเช้านะครับ, ร้านเปิดสิบโมงเช้าค่ะ.',
+  'ไม่เชิง': 'TEACH ไม่เชิง AS A HEDGED ANSWER ("not exactly / not really") to a yes / no question or a statement: ก็ไม่เชิงครับ, ไม่เชิงหรอกค่ะ, ไม่เชิงว่าไม่ชอบนะครับ ("it\'s not that I don\'t like it"), ไม่เชิงครับ แค่เหนื่อยนิดหน่อย. NEVER put ไม่เชิง straight before a verb or adjective (ไม่เชิงชอบ / ไม่เชิงหิว are English calques — say ไม่ค่อยชอบ / ไม่ค่อยหิว instead of forcing it).',
+  'ต้อนรับ': 'TEACH ต้อนรับ AS WELCOMING SOMEONE — always say who, or use a fixed frame: ยินดีต้อนรับครับ (welcome!), ขอบคุณที่ต้อนรับนะคะ (thanks for welcoming me), ทุกคนมาต้อนรับเราค่ะ, เขาต้อนรับเราดีมากครับ. NEVER end with a bare ต้อนรับ (ผมต้อนรับ).',
+  'ภาษาอังกฤษ': 'TEACH ภาษาอังกฤษ AS THE LANGUAGE: speaking, learning, understanding it — พูดภาษาอังกฤษได้ไหมคะ, ผมเรียนภาษาอังกฤษอยู่ครับ, ภาษาอังกฤษยากไหมคะ. A language has no price: talk about the price of a COURSE or a BOOK, never of "English".',
+  'เลี้ยงดู': 'TEACH เลี้ยงดู AS RAISING / CARING FOR someone (a child, a parent, a pet): พ่อแม่เลี้ยงดูผมมาดีมากครับ, ใครเลี้ยงดูคุณคะ, ผมอยากเลี้ยงดูพ่อแม่ตอนแก่ครับ. The three lines must not contradict each other (raised well vs not raised at all).',
+  'ไม่ทราบว่า': 'TEACH ไม่ทราบว่า AS THE POLITE OPENER of a question ("may I ask…?"), said to someone you do not know well — a stranger, a shop assistant, a guest: ไม่ทราบว่าห้องน้ำอยู่ที่ไหนครับ, ไม่ทราบว่าคุณชื่ออะไรคะ, ไม่ทราบว่าร้านนี้เปิดกี่โมงครับ. It BEGINS the question; the scene is background only (between old friends use a short polite exchange with a stranger instead).',
+})
 // v682 — CLASSIFIER targets get a real teaching contract: what the classifier counts, natural frames, and what it NEVER counts.
 // The live v681 Thai run tried ชิ้น with boats, tickets and seats (ที่นั่ง) for all three recalls and both recovery attempts —
 // the prompt only said "classifier for a piece of something", inside a transport scene.

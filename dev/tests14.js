@@ -114,7 +114,9 @@ function mock(S, lang, opt = {}) {
     st.calls.push({ stage: o && o.stage, model: m, q: q.slice(0, 80) })
     if (opt.down) throw new Error('Failed to fetch')
     if (/QUOTA RECOVERY — Thai/.test(q)) {
-      const t = byField.get(q.match(/TARGET WORD: "([^"]+)"/)[1]); st.rec[t.id] = (st.rec[t.id] || 0) + 1
+      // a word outside the fixture's targets (v700: a revision word tried as a substitution) gets no candidate, as for ja / zh below
+      const t = byField.get(q.match(/TARGET WORD: "([^"]+)"/)[1]); if (!t) return '[]'
+      st.rec[t.id] = (st.rec[t.id] || 0) + 1
       if (opt.noRecovery) return '[]'
       return JSON.stringify(FR.th.rec.map((_, k) => sentence(S, 'th', t, 'rec', k)))
     }

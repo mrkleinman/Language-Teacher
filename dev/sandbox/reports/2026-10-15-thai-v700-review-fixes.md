@@ -32,7 +32,7 @@ The cue error ("you're glad her came") came from the step that rebuilds a cue fr
 
 - tests59 (new, built on the live v700 export): **19/19**.
 - The Thai, Japanese, syllabus and Topics suites run after these changes all pass, except tests55 cases 3 and 6. Those two also fail on the unchanged v700 code today.
-- Full regression: REGRESSION_PLACEHOLDER.
+- Full regression: **2,030 checks passed, 7 failed** (59 suites). The 7 are the same as before: 5 long-standing (tests33 2G, tests35 2C-th / 2C-zh, tests37 C1, tests39 A5), plus tests55 cases 3 and 6, which fail identically on the unchanged v700 code today.
 
 ## What this does not fix
 

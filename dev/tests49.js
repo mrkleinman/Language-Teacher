@@ -474,6 +474,17 @@ const SALV = x => ({ st: x.track.status, fc: x.track.failedChecks, cov: x.track.
     T('S1', 'the salvage cuts the WHOLE exchange: a failing answer takes the question it answers (no unanswered question left), a failing turn takes the replies to it; a situation left with < 2 turns is dropped; an incoherent situation is dropped; nothing left → no salvage',
       ids(m) === 't3,t4,t5,t6,t7,t8,t9,t10' && a.removed.length === 2 && ids(m2) === 't1,t2,t3,t4,t5,t6,t7,t8' && b.droppedScenes.join() === 'S3' && ids(m3) === 't1,t2,t3,t4,t9,t10' && d.droppedScenes.join() === 'S2' && e === null && m.flat.every((t, i) => t.n === i + 1),
       { a: ids(m), b: ids(m2), d: ids(m3), e })
+    // v703 (run 5 on the owner's profile): a chain where every turn replies to the one before — a failing price question + answer
+    // is cut alone; the ACCEPT / REQUEST / ACCEPT after it stay (re-linked, then re-checked); with the switch off the old cascade
+    const mkChain = () => { const tu = (id, speaker, intent, resp) => ({ id, scene: 'S4', speaker, intent, respondsToId: resp || null, targetIds: [], text: id, english: id })
+      return c.lnMfRenumber({ scenes: [{ key: 'S3', turns: [{ id: 'p1', scene: 'S3', speaker: 'A', intent: 'PROPOSE', respondsToId: null, targetIds: [], text: 'p1', english: 'p1' }, { id: 'p2', scene: 'S3', speaker: 'B', intent: 'ACCEPT', respondsToId: 'p1', targetIds: [], text: 'p2', english: 'p2' }] },
+        { key: 'S4', turns: [tu('u1', 'A', 'ASK', 'p2'), tu('u2', 'B', 'ANSWER', 'u1'), tu('u3', 'A', 'ACCEPT', 'u2'), tu('u4', 'B', 'REQUEST', 'u3'), tu('u5', 'A', 'ACCEPT', 'u4')] }] }) }
+    const chainIss = [{ fault: 6, code: 'ADJACENCY', turnIds: ['u1', 'u2'], scene: 'S4' }]
+    let mc = mkChain(); const cc = c.lnMfSalvageCut({}, mc, chainIss)
+    const wasV = c.setDailyV693(false); let mo = mkChain(); const co = c.lnMfSalvageCut({}, mo, chainIss); c.setDailyV693(wasV)
+    T('S1b', 'v703: a cut question + answer takes only that exchange — the turns after it that merely follow on stay (re-linked to the turn before, then validated and audited again), so one bad price question no longer removes a whole situation and its lesson words; switch off → the v700 cascade',
+      ids(mc) === 'p1,p2,u3,u4,u5' && cc.removed.length === 2 && !cc.droppedScenes.length && mc.flat.find(t => t.id === 'u3').respondsToId === 'p2' && ids(mo) === 'p1,p2' && co.droppedScenes.join() === 'S4',
+      { v703: ids(mc), old: ids(mo), relink: (mc.flat.find(t => t.id === 'u3') || {}).respondsToId })
     // a line that fails in every round is cut; its lesson word, heard nowhere else, is DEFERRED with a reason; READY on the rest
     const ja4 = await run('ja', { audit: t => /いいえ/.test(t) ? { usage: 'awkward', note: 'odd here' } : null, repair: () => null })
     const cv = ja4.track.coverage || {}, sum = ja4.c.listeningTrackSummary(ja4.track)

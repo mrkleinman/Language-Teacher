@@ -30412,10 +30412,16 @@ function lnMfSalvageCut(env, mp, issues) {
     if (is.scene && (is.dropScene || LN_SALVAGE_DROP_CODES.has(is.code))) { if (!drop.has(is.scene)) drop.set(is.scene, is); return }
     ;(is.turnIds || []).forEach(id => { if (byTid.has(id) && !rm.has(id)) rm.set(id, is) }) })
   // the whole exchange goes: a cut reply takes the turn it answers (it would be left unanswered), a cut turn takes its replies
+  // v703 (Listening run 5 on the owner's profile: one bad price question + answer took 5 turns and 5 lesson words with it, because
+  // every turn "replies to" the one before, so the cut ran down the whole chain): only a turn that EXPECTS a reply (a question,
+  // proposal, request, offer) is taken with its cut reply, and only its direct replies, in the same situation, go with it. Any
+  // other surviving turn is re-linked by lnMfRenumber and the same validation + audit run again — a leftover that no longer
+  // fits is cut in the next salvage pass, so the cut stays as small as the checks allow.
+  const narrow = dailyV693On(), EXPECTS = new Set(['ASK', 'PROPOSE', 'REQUEST', 'OFFER', 'COUNTER'])
   for (let pass = 0; pass < 6; pass++) { let grew = false
     flat.forEach(tu => { const q = tu.respondsToId ? byTid.get(tu.respondsToId) : null
-      if (rm.has(tu.id) && q && !rm.has(q.id) && q.scene === tu.scene && LN_MF_REPLY_INTENTS.has(tu.intent)) { rm.set(q.id, rm.get(tu.id)); grew = true }
-      if (!rm.has(tu.id) && q && rm.has(q.id)) { rm.set(tu.id, rm.get(q.id)); grew = true } })
+      if (rm.has(tu.id) && q && !rm.has(q.id) && q.scene === tu.scene && LN_MF_REPLY_INTENTS.has(tu.intent) && (!narrow || EXPECTS.has(q.intent))) { rm.set(q.id, rm.get(tu.id)); grew = true }
+      if (!rm.has(tu.id) && q && rm.has(q.id) && (!narrow || (EXPECTS.has(q.intent) && q.scene === tu.scene && LN_MF_REPLY_INTENTS.has(tu.intent)))) { rm.set(tu.id, rm.get(q.id)); grew = true } })
     if (!grew) break }
   // a situation left with under two turns, or with one speaker only, is dropped whole
   mp.scenes.forEach(s => { if (drop.has(s.key)) return

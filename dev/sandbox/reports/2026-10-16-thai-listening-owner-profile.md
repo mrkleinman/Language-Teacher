@@ -7,7 +7,7 @@ finished track line by line, fixed each fault I found in the code, and ran again
 
 Evidence: `sandbox/listening-v703-relay/` (README, logs, final lines of every run).
 
-## Results on the final build
+## Results
 
 | Word set | Run | Result | Words heard | Judge | Model requests |
 |---|---|---|---|---|---|
@@ -17,6 +17,7 @@ Evidence: `sandbox/listening-v703-relay/` (README, logs, final lines of every ru
 | 4 (nature, body, clothing: raft, Karen, nose, swimsuit) | run7c | READY | 30/30 | 4/5 | 11 |
 | 5 (amulet, Khmer, wood-flower craft, "clear up") | run8 | READY | 30/30 | 3/5 | 20 |
 
+- Each run used the newest build at that time. Sets 1 and 2 ran before fixes 5–11, so their result on the final build is not measured, but those fixes only change cases those sets did not hit.
 - Set 5 ran start to finish on the final build with no code change during the run.
 - Sets 3 and 4 needed fixes mid-run. They were replayed with the earlier answers reused only where the request was byte-identical.
 - All five tracks are one conversation; no lines were cut on sets 3–5.

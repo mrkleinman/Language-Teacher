@@ -29587,7 +29587,11 @@ function lnMfThProblems(text, english, verbSurfaces) {
   const i = s.indexOf('ไว้')
   if (i >= 0) {
     const before = s.slice(0, i)
-    if (!before.trim() || /^(ผม|ฉัน|เรา|คุณ)?$/.test(before.trim())) out.push({ fault: 4, word: 'ไว้', detail: 'ไว้ follows a verb (จองไว้ · เก็บไว้) — "' + s + '"' })
+    // v703 (Listening run 5 on the owner's profile): a sentence-initial ไว้ before เจอกัน / คุยกัน / ค่อย… / คราวหน้า … is the fixed
+    // "later / another time" (ไว้เจอกันนะคะ = see you later; ไว้เจอกัน is itself a lesson word) — not the verb-final ไว้ of จองไว้
+    const laterIdiom = dailyV693On() && !before.trim() && /^(เจอกัน|คุยกัน|ค่อย|คราวหน้า|วันหลัง|โอกาสหน้า|ทีหลัง|กลับมา|มาใหม่)/.test(s.slice(i + 3))
+    if (laterIdiom) {}
+    else if (!before.trim() || /^(ผม|ฉัน|เรา|คุณ)?$/.test(before.trim())) out.push({ fault: 4, word: 'ไว้', detail: 'ไว้ follows a verb (จองไว้ · เก็บไว้) — "' + s + '"' })
     else if (/^(ตลก|สวย|ดี|อร่อย|แพง|ถูก|น่าดู|มาก)/.test(s.slice(i + 3))) out.push({ fault: 4, word: 'ไว้', detail: 'ไว้ cannot come before an adjective — "' + s + '"' })
   }
   if (/แก่/.test(s) && /^(นี่|นั่น|โน่น|อันนี้|อันนั้น|ที่นี่|ที่นั่น)/.test(s)) out.push({ fault: 5, word: 'แก่', detail: 'แก่ is "old" for people / animals — not for this thing / place — "' + s + '"' })

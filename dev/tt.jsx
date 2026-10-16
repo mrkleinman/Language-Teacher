@@ -23037,7 +23037,9 @@ const THAI_PREVERBAL_GLUE = Object.freeze(['ไม่', 'ไม่ได้', '�
 const THAI_TIME_UNITS = Object.freeze(['โมงเช้า', 'โมงเย็น', 'ทุ่ม', 'โมง'])
 const THAI_HOUR_PREFIX_RE = /^(ตี|บ่าย)?(สิบเอ็ด|สิบสอง|สิบ|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|[0-9]{1,2})?$/
 function thaiTargetConceptPresent(target, sentence, vocab) {
-  const s = String(sentence || '').replace(/\s+/g, ''), t = String((target && (target.thai || target.t || target.surface)) || target || '').replace(/\s+/g, '')
+  // v703 (relay run 4: "…อยู่ที่ไหน" was "not heard" in ชายหาดอยู่ที่ไหนครับ): a pattern target's leading / trailing "..." / "…" marks
+  // the open slot, not text the sentence contains
+  const s = String(sentence || '').replace(/\s+/g, ''), t = String((target && (target.thai || target.t || target.surface)) || target || '').replace(/\s+/g, '').replace(dailyV693On() ? /^(?:\.{2,}|…)+|(?:\.{2,}|…)+$/g : /$^/, '')
   if (!t) return { present: false, form: 'NO_TARGET', reason: 'no target surface' }
   if (!s.includes(t)) return { present: false, form: 'ABSENT', reason: 'target "' + t + '" is not in the sentence' }
   if (!thaiContainsLexeme(s, t)) return { present: false, form: 'SHADOWED', reason: 'target "' + t + '" only occurs inside a fixed expression (' + (THAI_LEXEME_SHADOWS[t] || []).filter(x => s.includes(x)).join(', ') + ')' }
@@ -29878,6 +29880,9 @@ function lnMfCleanText(lang, text) {
   t = t.replace(/\s*[（(][^()（）]*[)）]/g, m => LN_MF_LATIN_RE.test(m) ? '' : m)
   t = t.replace(/([。？！?!.…]|ครับ|ค่ะ|คะ|นะ)\s+[A-Za-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü][^\u0E00-\u0E7F\u3040-\u30FF\u4E00-\u9FFF]*$/, '$1')
   t = t.replace(/\s+[—–-]\s*(note|i\.e\.|meaning)\b.*$/i, '')
+  // v703 (relay run 4: "ชายหาดอยู่ที่ไหนครับ?" failed the speaker check — Thai writes no ? / ! / . after the particle): a Thai line's
+  // trailing Latin punctuation is dropped, as the Daily writer already does
+  if (lang === 'th' && dailyV693On()) t = t.replace(/\s*[?!.…？！]+\s*$/, '')
   return t.trim()
 }
 const LN_MF_NO_NUMBERS_RULE = '- The learner has NO number words: never ask what time, how much, how many, how long or how old (nobody could answer). Ask about a day (today / tomorrow), a place, a choice, a yes / no, an opinion instead.\n'

@@ -29380,6 +29380,17 @@ function lnMfGroupTargets(profiles, glosses, o) {
   }
   left.forEach(p => unplaceable.push({ id: p.id, surface: p.surface, reason: 'its situations (' + opts.get(p.id).map(x => x[0].key).join(', ') + ') could not join this conversation (at most ' + LN_MF_MAX_SITUATIONS + ' situations)' }))
   if (!chosen.length) chosen.push(sits.find(s => s.key === 'MEET') || sits[0])
+  // v703 (live v702 Thai Listening: 21 of 150 due words deferred — ใกล้ๆ "nearby", ช้าๆ "slowly", สอน "teach", แล้วคุณล่ะ "and you?",
+  // แป๊บหนึ่ง "just a moment" — because their English gloss matched no situation keyword). A keyword miss is not a reason to skip a
+  // word the learner owes: such a word joins the chosen situation that hosts it best, like the flexible words below. Only the
+  // situation CAP still defers (the conversation has at most LN_MF_MAX_SITUATIONS settings).
+  if (dailyV693On() && !opt.strictSituations) {
+    const rescue = unplaceable.filter(u => !/could not join this conversation/.test(u.reason)).map(u => u.id)
+    if (rescue.length) { const rs = new Set(rescue)
+      const moved = firm.filter(p => rs.has(p.id)); moved.forEach(p => flex.push(p))
+      for (let k = firm.length - 1; k >= 0; k--) if (rs.has(firm[k].id)) firm.splice(k, 1)
+      for (let k = unplaceable.length - 1; k >= 0; k--) if (rs.has(unplaceable[k].id)) unplaceable.splice(k, 1)
+      if (opt.onRescue) opt.onRescue(moved.map(p => p.surface)) } }
   const groups = new Map(chosen.map(s => [s.key, []]))
   const unp = new Set(unplaceable.map(u => u.id))
   firm.filter(p => !unp.has(p.id)).sort((a, b) => opts.get(a.id).filter(x => chosen.includes(x[0])).length - opts.get(b.id).filter(x => chosen.includes(x[0])).length).forEach(p => {

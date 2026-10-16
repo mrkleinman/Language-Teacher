@@ -29214,7 +29214,7 @@ const LN_MF_RECOVERY = Object.freeze({ 1: 'rewrite this line (same intention, sa
   4: 'rewrite this line so the grammar of every word is complete', 5: 'replace the INTENTION: write a NEW meaningful exchange for these lesson words (not the rejected one)',
   6: 'rewrite the WHOLE exchange so the reply really answers the question', 7: 'rewrite the start of this situation so it follows naturally from what came before',
   8: 'add one short natural exchange for this lesson word in this situation', 9: 'bounded connection retry' })
-const LN_MF_MAX_ROUNDS = 3, LN_MF_SITUATION_CAP = 8, LN_MF_MAX_SITUATIONS = 6
+const LN_MF_MAX_ROUNDS = 3, LN_MF_SITUATION_CAP = 8, LN_MF_MAX_SITUATIONS = 6, LN_MF_SOFT_SIZE = 5
 // v697 — the final story judge runs inside the composer; a failed part gets at most this many bounded story repairs
 const LN_MF_STORY_ROUNDS = 2
 
@@ -29375,14 +29375,15 @@ const LN_MF_SITUATIONS = [
 // v703 (relay on the owner's profile): meanings the situation keywords missed, so a due word lands where people really say it — trust /
 // forgive / secretary while catching up, shorts while shopping, climb / admire while looking around — instead of being forced into an
 // unrelated scene ("wearing shorts" on the walk to the bus, "are you my secretary?" over lunch)
+// v703 (relay run 7: nature / body / clothing words had no situation — PLAN, TRAVEL, SHOP, LOOK extended)
 const LN_MF_SITUATION_EXTRA_RX = {
   MEET: /\b(trust|sincere|honest|forgive|always|forever|love|wedding|marry|married|secretary|office|boss|colleague|teach|teacher|learn|study|raise|bring up|child|children|daughter|son|mother|father|parents|it'?s me|myself|may i ask|excuse me|not exactly|cope|manage|bangkokian|thailand|thai)\b/,
-  PLAN: /\b(plan|idea|climb|mountain|beach|trip|holiday|museum|palace|admire|praise|view)\b/,
+  PLAN: /\b(plan|idea|climb|mountain|beach|trip|holiday|museum|palace|admire|praise|view|nature|lifestyle|way of life|north|south|countryside|village|river|waterfall|island|sea|raft|float|long-neck|karen|hill tribe)\b/,
   TIME: /\b(just a moment|a moment|moment|minute|second|slowly|january|february|march|april|may|june|july|august|september|october|november|december|month|week|weekend|year|birthday)\b/,
-  TRAVEL: /\b(nearby|near|slowly|bus stop|stop|cope|manage|map)\b/,
+  TRAVEL: /\b(nearby|near|slowly|bus stop|stop|cope|manage|map|winding|dusk|dark|aviation|flight|fly|plane|airport|downtown|north|south|raft|float)\b/,
   EAT: /\b(cans?|tins?|bottles?|steamed buns?|buns?|soup|beer|just a little|a little|let'?s eat|sit down|have a seat|celsius|degrees?|hot|cold)\b/,
-  SHOP: /\b(shorts|clothes|wear|shirt|dress|shoes|cans?|tins?|twenty|thirty|forty|fifty|hundred)\b/,
-  LOOK: /\b(admire|praise|climb|shorts|wear|view|museum|palace|temple)\b/,
+  SHOP: /\b(shorts|clothes|wear|shirt|dress|shoes|cans?|tins?|twenty|thirty|forty|fifty|hundred|swimsuit|underwear|trousers|pants|skirt|socks|hat|shampoo|soap|cream)\b/,
+  LOOK: /\b(admire|praise|climb|shorts|wear|view|museum|palace|temple|skin|nose|finger|hair|fur|face|eyes?|ears?|hands?|nature|long-neck|karen|winding)\b/,
   PART: /\b(forever|always|again|keep|save|take care|safe trip|good night|sweet dreams)\b/,
 }
 function lnMfSituationScore(p, s) {
@@ -29434,6 +29435,19 @@ function lnMfGroupTargets(profiles, glosses, o) {
       for (let k = firm.length - 1; k >= 0; k--) if (rs.has(firm[k].id)) firm.splice(k, 1)
       for (let k = unplaceable.length - 1; k >= 0; k--) if (rs.has(unplaceable[k].id)) unplaceable.splice(k, 1)
       if (opt.onRescue) opt.onRescue(moved.map(p => p.surface)) } }
+  // v703 (relay run 7 on the owner's profile: a set full of nature / body words — ผิว, จมูก, นิ้ว, คดเคี้ยว, มืดค่ำ … — matched no
+  // situation keyword, so only 4 situations were chosen and each took 7–8 words: nose, skin and finger in "agreeing when"). When
+  // the words would average more than LN_MF_SOFT_SIZE a situation, more situations join (up to LN_MF_MAX_SITUATIONS) — those that
+  // best host the flexible words (LOOK for things seen, SHOP for things bought …) — so each scene has room to say its words
+  if (dailyV693On() && !opt.strictSituations) {
+    const unp0 = new Set(unplaceable.map(u => u.id)), nWords = firm.filter(p => !unp0.has(p.id)).length + flex.length
+    // only words with NO home among the chosen situations call for another one, and only a situation that fits some of them joins
+    const homeless = () => flex.filter(p => p.valueType !== 'MODIFIER' && p.valueType !== 'YESNO' && p.role !== 'RESPONSE_TOKEN' && chosen.every(s => lnMfSituationScore(p, s) < 2))
+    const extra = sits.filter(s => !chosen.includes(s) && s.key !== 'PART' && s.key !== 'HOME')
+    for (;;) { const hl = homeless(); if (!(chosen.length < LN_MF_MAX_SITUATIONS && nWords / chosen.length > LN_MF_SOFT_SIZE && hl.length && extra.length)) break
+      const fit = s => hl.filter(p => lnMfSituationScore(p, s) >= 2).length
+      extra.sort((x, y) => fit(y) - fit(x) || x.rank - y.rank); if (!fit(extra[0])) break; chosen.push(extra.shift()) }
+  }
   const groups = new Map(chosen.map(s => [s.key, []]))
   const unp = new Set(unplaceable.map(u => u.id))
   firm.filter(p => !unp.has(p.id)).sort((a, b) => opts.get(a.id).filter(x => chosen.includes(x[0])).length - opts.get(b.id).filter(x => chosen.includes(x[0])).length).forEach(p => {

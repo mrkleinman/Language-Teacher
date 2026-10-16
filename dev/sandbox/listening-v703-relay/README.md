@@ -15,6 +15,8 @@ Claude Haiku stand-in (no API cost); `bridge-live.js` is the relay.
 | run6c | third set, fresh, + time-greeting split, นะคะ — stopped: the story judge failed the planned "good evening" as a mid-track greeting | — | — | — | 17 |
 | run6d | fresh, + reopening scene says so (title, judge) — stopped: the continuity check flagged the reply สวัสดีค่ะ | — | — | — | 8 |
 | run6e | run6d replayed (answers 1–7 reused) + continuity exception | READY | **30/30** (one conversation, story judge 4/5, no cut) | 40 | 29 |
+| run7 | fourth set (nature / body / clothing words) — stopped twice: crowded grouping (4 situations × 8 words), then ไม่หรอก blocked | — | — | — | 6 |
+| run7c | fresh with regrouping + หรอก fix, answers 1–11 reused after the planned-REACT continuity fix | READY | **30/30** (one conversation, story judge 4/5, no cut) | 42 | **11** |
 
 run2 was interrupted by a container restart after request 6; the resumed bridge reused answers 1–6 only for
 byte-identical requests (`run2/log.before-restart.txt` is the first part of its log).

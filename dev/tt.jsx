@@ -29437,9 +29437,13 @@ function lnMfGroupTargets(profiles, glosses, o) {
     groups.set(from.key, groups.get(from.key).filter(x => x !== p)); groups.get(to.key).push(p) })
   // an overfull situation becomes two consecutive parts of it
   const scenes = []
-  chosen.slice().sort((a, b) => a.rank - b.rank).forEach(s => { const ps = groups.get(s.key)
+  chosen.slice().sort((a, b) => a.rank - b.rank).forEach(s => { let ps = groups.get(s.key)
     if (!ps.length) return
-    const parts = Math.ceil(ps.length / LN_MF_SITUATION_CAP)
+    // v703 (relay run 3 on the owner's profile: MEET split in two and สวัสดีตอนเช้า landed in the SECOND part → "a greeting in the middle
+    // of the conversation"; nine parting words made two goodbye scenes): greetings go in the first part, partings in the last, and the
+    // closing situation stays ONE scene up to LN_MF_SITUATION_CAP + 3 short wishes
+    if (dailyV693On()) ps = ps.slice().sort((x, y) => (x.role === 'GREETING' ? 0 : x.role === 'PARTING' ? 2 : 1) - (y.role === 'GREETING' ? 0 : y.role === 'PARTING' ? 2 : 1))
+    const parts = dailyV693On() && s.key === 'PART' && ps.length <= LN_MF_SITUATION_CAP + 3 ? 1 : Math.ceil(ps.length / LN_MF_SITUATION_CAP)
     for (let k = 0; k < parts; k++) scenes.push({ key: s.key + (parts > 1 ? '-' + (k + 1) : ''), situation: s.key, title: s.title + (parts > 1 ? ' (' + (k + 1) + ')' : ''), where: s.where, desc: s.desc, targetIds: ps.slice(Math.floor(k * ps.length / parts), Math.floor((k + 1) * ps.length / parts)).map(p => p.id) }) })
   if (scenes.length) { scenes[0].opening = true; scenes[scenes.length - 1].closing = true }
   return { scenes, unplaceable, available: sits.map(s => s.key), situations: chosen.map(s => s.key), valid: !unplaceable.length && scenes.length > 0 }

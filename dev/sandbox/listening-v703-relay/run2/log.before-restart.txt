@@ -1,0 +1,77 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v702 language=th path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=th)
+🧭 LISTENING_FEASIBILITY PASS language=th planner=meaning-first-3 · pool=150 candidate(s) in SRS order · authorised support=889 word(s) · selected 30 · deferred 0 · situations VALID [MEET-1 5, MEET-2 6, PLAN 8, TIME 3, EAT 5, SHOP 3] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(th) = selectThaiRevisionTargets → freezeThaiTargetSelection
+🎧 LISTENING_SELECTED_TARGET_IDS=[779,1545,5007,5009,5010,5011,5012,5013,5014,840,860,799,842,794,816,837,700,785,728,753,771,859,720,742,768,797,823,824,827,708]
+🎧 LISTENING_TRACK_START language=th trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=th introducedContent=889 targets=30 authorised=919 snapshot=i2insk (frozen at generation start) · Layer A lexicon 1932 entries (segmentation only — not permission)
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Thai words, rankProgressFor) · Listening: no minimum, aim 3–5, no turn above 7
+📚 VOCAB INVENTORY introducedContent=889 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Thai particles + structural markers
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=th belt=10th Kyu · targets=30 · authorised support=889 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET-1 "meeting and catching up (1)" targets=[เลี้ยงดู, งานแต่งงาน, จริงใจ, เชื่อใจ, เสมอ] · opens the conversation
+🗺 LISTENING_SITUATION S2 MEET-2 "meeting and catching up (2)" targets=[ให้อภัย, ตลอดไป, ผมเอง, เลขา, สอน, ดิฉันเอง]
+🗺 LISTENING_SITUATION S3 PLAN "deciding what to do" targets=[ป้ายรถเมล์, พิพิธภัณฑสถานแห่งชาติ, แผน, พระบรมมหาราชวัง, ชม, ปีน, ไว้, ไม่ทราบว่า]
+🗺 LISTENING_SITUATION S4 TIME "agreeing when" targets=[เมื่อ, แป๊บหนึ่ง, นัด]
+🗺 LISTENING_SITUATION S5 EAT "eating and drinking" targets=[ทานกันเลย, แค่นิดหน่อย, กระป๋อง, ไม่เชิง, เชิญนั่ง]
+🗺 LISTENING_SITUATION S6 SHOP "shopping and paying" targets=[กางเกงขาสั้น, ยี่สิบเจ็ด, ไหว] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 5 targets
+🔎 SCENE_LOCAL_CHECK S1 STATUS=PASS · 8 turns (budget 4–8)
+📝 SCENE_PLAN S2 (MEET) call 2 · 6 targets
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS · 9 turns (budget 5–9)
+📝 SCENE_PLAN S3 (PLAN) call 3 · 8 targets
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS · 9 turns (budget 7–9)
+📝 SCENE_PLAN S4 (TIME) call 4 · 3 targets
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS · 4 turns (budget 2–4)
+📝 SCENE_PLAN S5 (EAT) call 5 · 5 targets
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS · 6 turns (budget 4–6)
+📝 SCENE_PLAN S6 (SHOP) call 6 · 3 targets
+🔎 SCENE_LOCAL_CHECK S6 STATUS=PASS · 4 turns (budget 2–4)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up (1) targets=[เลี้ยงดู, งานแต่งงาน, จริงใจ, เชื่อใจ, เสมอ]
+   T1 A→B GREET · about meeting again · - ⟦สวัสดีครับ ไม่ได้เจอกันตั้งนานครับ⟧ "Hello. Long time no see."
+   T2 B→A ASK(STATE) ↩T1 · about how you are · - ⟦สวัสดีค่ะ สบายดีไหมคะ⟧ "Hello. How are you?"
+   T3 A→B ANSWER ↩T2 · about wedding yesterday · - wedding ⟦สบายดีครับ เมื่อวานผมไปงานแต่งงานครับ⟧ "I'm fine. Yesterday I went to a wedding." [งานแต่งงาน]
+   T4 B→A ASK(PERSON) ↩T3 · about who went with · - ⟦ไปกับใครคะ⟧ "Who did you go with?"
+   T5 A→B ANSWER ↩T4 · about parents · - parents ⟦ไปกับพ่อแม่ครับ⟧ "With my parents."
+   T6 B→A REACT ↩T5 · about parents raised you · - ⟦พ่อแม่เลี้ยงดูคุณดีจังค่ะ⟧ "Your parents raised you so well, huh." [เลี้ยงดู]
+   T7 A→B ACKNOWLEDGE ↩T6 · about trust parents · - parents ⟦ใช่ครับ ผมเชื่อใจพ่อแม่เสมอครับ⟧ "Yes. I always trust my parents." [เชื่อใจ+เสมอ]
+   T8 B→A REACT ↩T7 · about your sincerity · - ⟦คุณนี่จริงใจจังค่ะ⟧ "You're really sincere." [จริงใจ]
+  S2 meeting and catching up (2) targets=[ให้อภัย, ตลอดไป, ผมเอง, เลขา, สอน, ดิฉันเอง]
+   T9 A→B ASK(PERSON) · about phone call · - ⟦ขอบคุณครับ เมื่อวานใครโทรมาครับ⟧ "Thanks. Who called yesterday?"
+   T10 B→A ANSWER ↩T9 · about phone call · - ⟦ดิฉันเองค่ะ⟧ "It was me." [ดิฉันเอง]
+   T11 A→B APOLOGISE ↩T10 · about missed call · - ⟦ขอโทษนะครับ ผมเองที่ไม่ได้รับครับ⟧ "Sorry, it was me who didn't pick up." [ผมเอง]
+   T12 B→A ACCEPT ↩T11 · about forgiveness · - ⟦ไม่เป็นไรค่ะ ฉันให้อภัยคุณค่ะ⟧ "It's okay, I forgive you." [ให้อภัย]
+   T13 A→B ASK(THING) · about her work · - ⟦ช่วงนี้คุณทำอะไรครับ⟧ "What have you been doing lately?"
+   T14 B→A ANSWER ↩T13 · about her job · - ⟦ฉันเป็นเลขาที่บริษัทค่ะ⟧ "I'm a secretary at a company." [เลขา]
+   T15 A→B INFORM ↩T14 · about his job · - English ⟦ผมสอนภาษาอังกฤษที่มหาวิทยาลัยครับ⟧ "I teach English at a university." [สอน]
+   T16 B→A REACT ↩T15 · about his job · - ⟦ดีจังค่ะ⟧ "That's great."
+   T17 A→B REACT ↩T16 · about friendship · - ⟦เป็นเพื่อนกันตลอดไปนะครับ⟧ "Let's be friends forever, okay?" [ตลอดไป]
+  S3 deciding what to do targets=[ป้ายรถเมล์, พิพิธภัณฑสถานแห่งชาติ, แผน, พระบรมมหาราชวัง, ชม, ปีน, ไว้, ไม่ทราบว่า]
+   T18 B→A ASK(PLACE) · about where to go · - ⟦ดีค่ะ วันนี้ไปไหนดีคะ⟧ "Good. Where shall we go today?"
+   T19 A→B PROPOSE ↩T18 · about national museum · - national museum ⟦ไปพิพิธภัณฑสถานแห่งชาติกันไหมครับ⟧ "Shall we go to the National Museum?" [พิพิธภัณฑสถานแห่งชาติ]
+   T20 B→A COUNTER ↩T19 · about grand palace · - Grand Palace ⟦ไปชมพระบรมมหาราชวังดีกว่าค่ะ⟧ "Better to go and admire the Grand Palace." [พระบรมมหาราชวัง+ชม]
+   T21 A→B ASK(YESNO) ↩T20 · about climbing · - ⟦ที่นั่นต้องปีนไหมครับ⟧ "Do we have to climb there?" [ปีน]
+   T22 B→A ANSWER ↩T21 · about climbing · - ⟦ใช่ค่ะ ฉันปีนไม่ได้ค่ะ⟧ "Yes, we do. I can't climb." [ปีน]
+   T23 A→B INFORM ↩T22 · about the plan · - national museum ⟦งั้นแผนคือไปพิพิธภัณฑสถานแห่งชาติครับ⟧ "So the plan is to go to the National Museum." [พิพิธภัณฑสถานแห่งชาติ+แผน]
+   T24 B→A ASK(YESNO) ↩T23 · about going by bus · - bus ⟦ไม่ทราบว่านั่งรถเมล์ไปได้ไหมคะ⟧ "May I ask, can we go by bus?" [ไม่ทราบว่า]
+   T25 A→B ANSWER ↩T24 · about meeting place · - bus stop ⟦ได้ครับ เจอกันที่ป้ายรถเมล์นะครับ⟧ "Yes. Let's meet at the bus stop, okay?" [ป้ายรถเมล์]
+   T26 B→A ACCEPT ↩T25 · about taking photos · - photos ⟦ดีค่ะ ฉันจะถ่ายรูปไว้ค่ะ⟧ "Good. I'll take photos to keep." [ไว้]
+  S4 agreeing when targets=[เมื่อ, แป๊บหนึ่ง, นัด]
+   T27 A→B ASK(TIME) · about going together · - ⟦ไปเมื่อคุณว่างดีไหมครับ⟧ "Shall we go when you're free?" [เมื่อ]
+   T28 B→A ANSWER ↩T27 · about free time · - ⟦แป๊บหนึ่งนะคะ ฉันว่างตอนสิบโมงเช้าค่ะ⟧ "Hang on... I'm free at 10 a.m." [แป๊บหนึ่ง]
+   T29 A→B ACCEPT ↩T28 · about meeting time · - ⟦ได้ครับ นัดกันสิบโมงเช้านะครับ⟧ "Okay, let's meet at 10 a.m." [นัด]
+   T30 B→A ACCEPT ↩T29 · about meeting time · - ⟦ตกลงค่ะ ฉันไม่มาสายค่ะ⟧ "Agreed, I won't be late."
+  S5 eating and drinking targets=[ทานกันเลย, แค่นิดหน่อย, กระป๋อง, ไม่เชิง, เชิญนั่ง]
+   T31 A→B INFORM · about museum visit · - ⟦ดูเสร็จแล้วครับ⟧ "We're done looking around."
+   T32 B→A PROPOSE ↩T31 · about eating · - ⟦ทานกันเลยค่ะ⟧ "Let's eat." [ทานกันเลย]
+   T33 A→B ASK(YESNO) ↩T32 · about spicy food · - food ⟦อาหารที่นี่เผ็ดไหมครับ⟧ "Is the food here spicy?"
+   T34 B→A ANSWER ↩T33 · about spiciness · - ⟦ไม่เชิงค่ะ แค่นิดหน่อยค่ะ⟧ "Not exactly, just a little." [ไม่เชิง+แค่นิดหน่อย]
+   T35 A→B OFFER ↩T34 · about sitting down · - ⟦เชิญนั่งครับ⟧ "Please, have a seat." [เชิญนั่ง]
+   T36 B→A REQUEST · about canned coffee · - canned coffee ⟦ฉันเอากาแฟกระป๋องค่ะ⟧ "I'll have a canned coffee." [กระป๋อง]
+  S6 shopping and paying targets=[กางเกงขาสั้น, ยี่สิบเจ็ด, ไหว]
+   T37 A→B ASK(PRICE) · about shorts price · - shorts ⟦กางเกงขาสั้นตัวนี้เท่าไหร่ครับ⟧ "How much are these shorts?" [กางเกงขาสั้น]
+   T38 B→A ANSWER ↩T37 · about price · - shorts ⟦ยี่สิบเจ็ดบาทค่ะ ซื้อไหวค่ะ⟧ "Twenty-seven baht. I can afford to buy them." [ยี่สิบเจ็ด+ไหว]
+   T39 A→B OFFER ↩T38 · about paying · - ⟦งั้นผมจ่ายครับ⟧ "Then I'll pay."
+   T40 B→A FAREWELL ↩T39 · about thanks, goodbye · - ⟦ขอบคุณค่ะ แล้วเจอกันค่ะ⟧ "Thank you. See you then."
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed

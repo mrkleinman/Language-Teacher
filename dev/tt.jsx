@@ -15627,6 +15627,10 @@ function thaiSupportBlockCategory(toks, k) {
   if (THAI_CLASSIFIER_BLOCKS.has(t) && (isNum(prev) || isNum(next) || _THAI_CLF_LEFT.has(prev) || _THAI_CLF_RIGHT.has(next))) return 'CLASSIFIER_BUILDING_BLOCK'
   if (THAI_DISCOURSE_INITIAL.has(t) && (k === 0 || _THAI_PARTICLE_TAIL.has(prev))) return 'DISCOURSE_BUILDING_BLOCK'
   if (THAI_DISCOURSE_FINAL.has(t) && (k === toks.length - 1 || toks.slice(k + 1).every(x => _THAI_PARTICLE_TAIL.has(x)))) return 'DISCOURSE_BUILDING_BLOCK'
+  // v703 (live v702 / relay Thai Listening: "ไม่สายหรอกครับ แผนนี้ดีครับ", "ไปพระบรมมหาราชวังเถอะค่ะ" were blocked as unknown words): a
+  // final particle closes its CLAUSE — directly before ครับ / ค่ะ / คะ / นะ it is final even when a second clause follows; เถอะ
+  // ("let's / go ahead") is the same kind of clause-final particle
+  if (dailyV693On() && (THAI_DISCOURSE_FINAL.has(t) || t === 'เถอะ') && (k === toks.length - 1 || _THAI_PARTICLE_TAIL.has(next) || toks.slice(k + 1).every(x => _THAI_PARTICLE_TAIL.has(x)))) return 'DISCOURSE_BUILDING_BLOCK'
   return null
 }
 // v654 §7 — SUPPORT-LANGUAGE AUTHORITY. Every Thai token in a learner sentence must belong to exactly one

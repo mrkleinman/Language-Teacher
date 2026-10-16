@@ -23041,6 +23041,11 @@ function thaiTargetConceptPresent(target, sentence, vocab) {
   // the open slot, not text the sentence contains
   const s = String(sentence || '').replace(/\s+/g, ''), t = String((target && (target.thai || target.t || target.surface)) || target || '').replace(/\s+/g, '').replace(dailyV693On() ? /^(?:\.{2,}|…)+|(?:\.{2,}|…)+$/g : /$^/, '')
   if (!t) return { present: false, form: 'NO_TARGET', reason: 'no target surface' }
+  // v703 (relay run 6: ช่วย...ได้ไหม was "not heard" in ช่วยเลือกได้ไหมคะ): an inner "..." / "…" is the open slot too — the parts
+  // are heard in order, with the slot filled (ช่วยเลือกได้ไหม) or empty (ช่วยได้ไหม)
+  if (dailyV693On() && /\.{2,}|…/.test(t)) { const parts = t.split(/(?:\.{2,}|…)+/).filter(Boolean)
+    let at = 0; for (const p of parts) { const k = s.indexOf(p, at); if (k < 0) return { present: false, form: 'ABSENT', reason: 'pattern "' + t + '": "' + p + '" is not in the sentence (in order)' }; at = k + p.length }
+    return { present: true, form: 'PATTERN_SLOT', token: t } }
   if (!s.includes(t)) return { present: false, form: 'ABSENT', reason: 'target "' + t + '" is not in the sentence' }
   if (!thaiContainsLexeme(s, t)) return { present: false, form: 'SHADOWED', reason: 'target "' + t + '" only occurs inside a fixed expression (' + (THAI_LEXEME_SHADOWS[t] || []).filter(x => s.includes(x)).join(', ') + ')' }
   let toks = null

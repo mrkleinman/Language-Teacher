@@ -20375,7 +20375,9 @@ function listeningCoherenceCheck(lines) {
     const penA = oct13On() ? pen.replace(/\b(years?|months?) old\b/gi, '') : pen
     // v695: a meaning-first turn PLANNED as the reply to the line before it (accept / counter / decline / answer — the semantic audit
     // judged that relationship) is dialogue, not two alternative candidates ("Not today, tomorrow." → "Okay, tomorrow.")
-    const mi = lines[i].meaning, planned = !!(mi && mi.respondsTo != null && ['ACCEPT', 'COUNTER', 'DECLINE', 'ANSWER'].includes(mi.intent))
+    // v703 (relay run 7: "Not really, her fingers are so pretty!" → "Her hair is so long too!" — a planned REACT — failed a scene the
+    // judge passed): a planned reaction / acknowledgement is dialogue too
+    const mi = lines[i].meaning, planned = !!(mi && mi.respondsTo != null && ['ACCEPT', 'COUNTER', 'DECLINE', 'ANSWER'].concat(dailyV693On() ? ['REACT', 'ACKNOWLEDGE'] : []).includes(mi.intent))
     if (!planned && neg(en) !== neg(pen) && _sharesReferent(penA, en) && !_isQuestion(cur) && !_isQuestion(prev) &&
         !/actually|sorry|but |i mean|instead/i.test(en))
       flag(2, 'one line asserts what the other denies', i)

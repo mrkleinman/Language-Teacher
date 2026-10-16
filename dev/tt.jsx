@@ -29287,6 +29287,8 @@ const LN_MF_CONTRACTS = {
     'แก่': { describes: ['PERSON', 'ANIMAL'], rule: 'แก่ = old (people / animals) — never about a thing or a place (things are เก่า)' },
     'ตลก': { describes: ['PERSON', 'MEDIA', 'EVENT'], rule: 'ตลก = funny — a person, a story, a film; never after ไว้' },
     'ไว้': { rule: 'ไว้ follows a verb (จองไว้ · เก็บไว้ = in advance / keep) — never before an adjective' },
+    // v703 (relay runs 6b / 6e: อย่ามาสายตลอดไป · ฉันต้องขับตลอดไป — both passed the audit)
+    'ตลอดไป': { rule: 'ตลอดไป = forever — a lasting state or a promise (เป็นเพื่อนกันตลอดไป · จำได้ตลอดไป); a habit or a duty is ตลอด / เสมอ (ต้องขับตลอด), never ตลอดไป' },
     'คุ้ม': { describes: ['MONEY', 'THING', 'FOOD', 'PLACE', 'MEDIA', 'EVENT', 'VEHICLE'], rule: 'คุ้ม = worth it (the price / the trip)' },
     'ค่าโดยสาร': { rule: 'ค่าโดยสาร = the fare — ask or give its amount (ค่าโดยสารเท่าไหร่ · …บาท); never "like the fare"' },
     'นานเท่าไหร่': { asks: 'DURATION', rule: 'how long — answered with a length of time (สิบนาที)' },
@@ -29620,6 +29622,7 @@ function lnMfThProblems(text, english, verbSurfaces) {
     else if (!before.trim() || /^(ผม|ฉัน|เรา|คุณ)?$/.test(before.trim())) out.push({ fault: 4, word: 'ไว้', detail: 'ไว้ follows a verb (จองไว้ · เก็บไว้) — "' + s + '"' })
     else if (/^(ตลก|สวย|ดี|อร่อย|แพง|ถูก|น่าดู|มาก)/.test(s.slice(i + 3))) out.push({ fault: 4, word: 'ไว้', detail: 'ไว้ cannot come before an adjective — "' + s + '"' })
   }
+  if (dailyV693On() && /ตลอดไป/.test(s) && /ต้อง|อย่า|ทุกวัน|บ่อย/.test(s)) out.push({ fault: 5, word: 'ตลอดไป', detail: 'ตลอดไป is "forever" (a lasting state, a promise) — a habit, a duty or a "don\'t" is ตลอด / เสมอ — "' + s + '"' })
   if (/แก่/.test(s) && /^(นี่|นั่น|โน่น|อันนี้|อันนั้น|ที่นี่|ที่นั่น)/.test(s)) out.push({ fault: 5, word: 'แก่', detail: 'แก่ is "old" for people / animals — not for this thing / place — "' + s + '"' })
   if (/ค่าโดยสาร/.test(s) && !/เท่าไหร่|กี่บาท|บาท|แพง|ถูก|จ่าย|ราคา|คุ้ม|ฟรี/.test(s) && !/\b(how much|price|cost|pay|paid|expensive|cheap|baht|free|worth)\b/.test(en))
     out.push({ fault: 5, word: 'ค่าโดยสาร', detail: 'talk about the fare\'s amount (ค่าโดยสารเท่าไหร่ · …บาท) — "' + s + '"' })

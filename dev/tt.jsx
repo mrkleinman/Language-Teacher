@@ -15054,8 +15054,18 @@ function classifyThaiSpan(span, ctx) {
   units.delete(span)
   const words = [...units].filter(u => u && u.length >= 1 && u !== span)
     .sort((a, b) => b.length - a.length)
-  const segs = []
+  let segs = []
   let i = 0, orphan = false
+  // v703 (relay run 6e on the owner's profile: ไม่ว่าง "not free" was BLOCKED although ไม่ and ว่าง are both taught — the greedy
+  // longest match took ไม่ว่า "no matter" and left an orphan ง): first look for ANY full cover by allowed units (fewest pieces);
+  // only when there is none does the original greedy split decide
+  if (dailyV693On()) {
+    const allowedUnits = [...new Set([...(c.allowedThaiWords || []), ...THAI_APPROVED_COMPOSITION_UNITS])].filter(u => u && u !== span)
+    const best = new Array(span.length + 1).fill(null); best[0] = []
+    for (let k = 0; k < span.length; k++) if (best[k]) for (const w of allowedUnits) if (span.startsWith(w, k)) {
+      const j = k + w.length, cand = best[k].concat([w]); if (!best[j] || cand.length < best[j].length) best[j] = cand }
+    if (best[span.length] && best[span.length].length >= 2) { segs = best[span.length]; i = span.length }
+  }
   while (i < span.length) {
     const hit = words.find(w => span.startsWith(w, i))
     if (hit) { segs.push(hit); i += hit.length } else { orphan = true; break }

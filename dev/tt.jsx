@@ -15641,6 +15641,9 @@ function thaiSupportBlockCategory(toks, k) {
   // final particle closes its CLAUSE — directly before ครับ / ค่ะ / คะ / นะ it is final even when a second clause follows; เถอะ
   // ("let's / go ahead") is the same kind of clause-final particle
   if (dailyV693On() && (THAI_DISCOURSE_FINAL.has(t) || t === 'เถอะ') && (k === toks.length - 1 || _THAI_PARTICLE_TAIL.has(next) || toks.slice(k + 1).every(x => _THAI_PARTICLE_TAIL.has(x)))) return 'DISCOURSE_BUILDING_BLOCK'
+  // v703 (relay run 7: "ไม่หรอก นิ้วเขาสวยจังค่ะ" blocked): หรอก softens a NEGATION — ไม่หรอก / ไม่ใช่หรอก / ไม่เป็นไรหรอก close their
+  // clause right after the negated words, even when a new clause follows without a particle
+  if (dailyV693On() && t === 'หรอก' && toks.slice(Math.max(0, k - 3), k).some(x => /^ไม่/.test(x))) return 'DISCOURSE_BUILDING_BLOCK'
   return null
 }
 // v654 §7 — SUPPORT-LANGUAGE AUTHORITY. Every Thai token in a learner sentence must belong to exactly one

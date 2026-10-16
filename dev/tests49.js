@@ -246,6 +246,13 @@ const SALV = x => ({ st: x.track.status, fc: x.track.failedChecks, cov: x.track.
     T('I4', 'th: ไว้ after a verb passes (จองไว้แล้ว); แก่ about a person passes (คุณยายแก่แล้ว)', !c.lnMfThProblems('ฉันจองไว้แล้วค่ะ', '').length && !c.lnMfThProblems('คุณยายแก่แล้วค่ะ', '').length)
     T('I4b', 'th: sentence-initial ไว้ + เจอกัน / คุยกัน is the fixed "see you later" and passes (ไว้เจอกันนะคะ); ไว้ before an adjective still fails', !c.lnMfThProblems('ไว้เจอกันนะคะ', '').length && !c.lnMfThProblems('ไว้คุยกันใหม่นะครับ', '').length && c.lnMfThProblems('ไว้ตลกมากครับ', '').length === 1)
     T('I4c', 'th: a pattern target with an inner slot (ช่วย...ได้ไหม) is heard when its parts come in order — ช่วยเลือกได้ไหมคะ, ช่วยได้ไหมคะ — and not when they do not (ได้ไหม ช่วยหน่อย)', c.thaiTargetPresent('ช่วยเลือกได้ไหมคะ', 'ช่วย...ได้ไหม', []) && c.thaiTargetPresent('ช่วยได้ไหมคะ', 'ช่วย…ได้ไหม', []) && !c.thaiTargetPresent('ได้ไหมช่วยหน่อย', 'ช่วย...ได้ไหม', []))
+    { const v = c.initVocab(), grp = sur => { const ts = sur.map(x => { const w = v.find(y => y.thai === x); return w ? { id: w.id, surface: x, gloss: w.english } : null }).filter(Boolean)
+        const g = c.lnMfGroupTargets(ts.map(t => c.lnMfProfile(t, 'th')), [], { lang: 'th' }); return g.scenes.map(x => ({ key: x.key, re: x.reopenGreeting ? ts.find(t => t.id === x.reopenGreeting).surface : null, w: x.targetIds.map(id => ts.find(t => t.id === id).surface), open: !!x.opening, close: !!x.closing })) }
+      const g1 = grp(['สวัสดีตอนบ่าย', 'สวัสดีตอนเย็น', 'สวัสดีทุกคน', 'เลี้ยงดู', 'งานแต่งงาน', 'จริงใจ', 'ป้ายรถเมล์', 'ชาเขียว', 'อาหารญี่ปุ่น', 'ทานกันเลย', 'โชคดีนะ', 'เสมอ', 'วันหลัง', 'ตอนที่'])
+      const g2 = grp(['สวัสดีตอนเช้า', 'เลี้ยงดู', 'งานแต่งงาน', 'ป้ายรถเมล์', 'ชาเขียว', 'โชคดีนะ'])
+      T('I4d', 'th (relay run 6: "Good afternoon." answered by "Good evening!"): two time-of-day greetings never open the same meeting — the earliest opens the conversation, the later one opens a later situation where they meet again that day; a lone time greeting always goes to the opening situation and no empty situation is left; โชคดีนะค่ะ is written นะคะ',
+        g1[0].w[0] === 'สวัสดีตอนบ่าย' && !g1[0].w.includes('สวัสดีตอนเย็น') && g1.some(x => x.re === 'สวัสดีตอนเย็น' && x.w[0] === 'สวัสดีตอนเย็น' && !x.open && !x.close) &&
+        g2[0].w[0] === 'สวัสดีตอนเช้า' && g2.every(x => x.w.length) && g2[0].open && g2[g2.length - 1].close && !g2.some(x => x.re) && c.lnMfCleanText('th', 'โชคดีนะค่ะ') === 'โชคดีนะคะ', { g1, g2 }) }
     T('I5', 'ja: あそこに行く passes; あれに行く (a thing as a place) fails; a suggestion about 昨日 fails', !c.lnMfJaProblems('あそこに行く？').length && c.lnMfJaProblems('あれに行こう。').length === 1 && c.lnMfJaProblems('昨日、行こう。').length === 1)
     T('I6', 'answer types: an honest "I don\'t know" answers a clock-time question; a clock time must contain a number + 時/点/โมง', c.lnMfAnswerProblem('ja', 'CLOCK_TIME', { text: 'まだ分からない。' }, { text: '何時に行く？' }) === null &&
       c.lnMfAnswerProblem('zh', 'CLOCK_TIME', { text: '三点。' }, { text: '几点去？' }) === null && !!c.lnMfAnswerProblem('th', 'CLOCK_TIME', { text: 'พรุ่งนี้ค่ะ' }, { text: 'ไปกี่โมงคะ' }))
@@ -495,6 +502,14 @@ const SALV = x => ({ st: x.track.status, fc: x.track.failedChecks, cov: x.track.
       { st: ja4.track.status, cov: cv, sum, gates: ja4.track.listening && ja4.track.listening.gates })
     const ex = ja4.c.listeningCoverageExportLines(ja4.track.listening).join('\n')
     T('S3', 'the export states the salvage plainly: what was cut and why, and each word that stays due for Revision', /SALVAGE: \d+ turn\(s\) cut/.test(ex) && /MOVED TO REVISION [^\n]*still due in SRS/.test(ex) && /CUT "[^"]*いいえ/.test(ex), ex.split('\n').filter(l => /SALVAGE|MOVED|CUT/.test(l)).join(' | '))
+    // v703 (relay run 6): a defect only at the JOIN of two situations is never cut (cutting only moves the join) — it becomes a scene
+    // break: the episode judge judges each scene on its own, nothing is cut, no lesson word is lost
+    const jn = await run('th', { scene: k => k === 'S3' ? { transition: 'fail', note: 'the place changes with nothing said about getting there' } : null, repair: () => null })
+    const jcv = jn.track && jn.track.coverage || {}
+    T('S4b', 'th: a situation join the audit fails in every round → SCENE_BOUNDARY_DEFERRED, the track becomes separate scenes (episode judge), NOTHING is cut and no lesson word moves to Revision — READY 30/30; the one-conversation story judge is not asked to fail the same join again',
+      jn.track && jn.track.status === 'READY' && /SCENE_BOUNDARY_DEFERRED/.test(jn.Ls) && /LISTENING_EPISODES the only defects left were at the joins/.test(jn.Ls) && !/LISTENING_SALVAGE \(after/.test(jn.Ls) &&
+        jcv.covered === 30 && !(jcv.deferred || []).length && jn.track.listening.episodes === true && !/STORY_JUDGE/.test(jn.Ls),
+      { st: jn.track && jn.track.status, cov: jcv.covered, salv: SALV(jn).salv, ep: jn.track && jn.track.listening && jn.track.listening.episodes, lines: (jn.Ls.match(/[^\n]*(SCENE_BOUNDARY|EPISODE|STORY_JUDGE|BLOCKED)[^\n]*/g) || []).map(l => l.slice(0, 200)) })
     // too little left → the floor stops it: never a tiny "READY" track
     const zh9 = await run('zh', { audit: t => /[我你他她们]/.test(t) ? { usage: 'awkward', note: 'odd' } : null, repair: () => null })
     T('S4', 'the FLOOR: when cutting would leave too little (fewer than 16 lines, 2 situations, or half the lesson words), the track is NOT_READY with the reason named — never a tiny track called READY',

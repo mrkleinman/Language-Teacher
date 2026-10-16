@@ -29389,6 +29389,8 @@ function lnMfSituationScore(p, s) {
 // GROUP the targets by situation (deterministic): a greedy cover by the situations the targets genuinely fit, then every
 // target to its best chosen situation (≤ LN_MF_SITUATION_CAP each); flexible words (yes / no, very, together …) join the
 // situation that can host them. A non-flexible word with no available situation is UNPLACEABLE (deferred before the freeze).
+// greetings that name a time of day, earliest first (v703)
+const LN_MF_TIME_GREETINGS = Object.freeze({ th: [/^สวัสดีตอนเช้า/, /^สวัสดีตอนบ่าย/, /^สวัสดีตอนเย็น/, /^ราตรีสวัสดิ์/], ja: [/^おはよう/, /^こんにちは/, /^こんばんは/, /^おやすみ/], zh: [/^早上好|^早安/, /^下午好/, /^晚上好/, /^晚安/] })
 function lnMfGroupTargets(profiles, glosses, o) {
   const opt = o || {}
   const allG = (glosses || []).concat(profiles.map(p => p.gloss)).map(x => String(x || '').toLowerCase())
@@ -29453,6 +29455,24 @@ function lnMfGroupTargets(profiles, glosses, o) {
     const parts = dailyV693On() && s.key === 'PART' && ps.length <= LN_MF_SITUATION_CAP + 3 ? 1 : Math.ceil(ps.length / LN_MF_SITUATION_CAP)
     for (let k = 0; k < parts; k++) scenes.push({ key: s.key + (parts > 1 ? '-' + (k + 1) : ''), situation: s.key, title: s.title + (parts > 1 ? ' (' + (k + 1) + ')' : ''), where: s.where, desc: s.desc, targetIds: ps.slice(Math.floor(k * ps.length / parts), Math.floor((k + 1) * ps.length / parts)).map(p => p.id) }) })
   if (scenes.length) { scenes[0].opening = true; scenes[scenes.length - 1].closing = true }
+  // v703 (relay run 6 on the owner's profile: สวัสดีตอนบ่าย, สวัสดีตอนเย็น and สวัสดีทุกคน were all S1's lesson words → "Good afternoon."
+  // answered by "Good evening!"): two greetings for different times of day cannot open the same meeting. The earliest stays in the
+  // opening situation (even when it is the only one); each later one opens a later situation, where the two meet again later that
+  // day (reopenGreeting)
+  if (dailyV693On() && scenes.length >= 3) {
+    const tod = ((LN_MF_TIME_GREETINGS[o && o.lang] || [])), rankOf = id => { const p = profiles.find(x => x.id === id); return p ? tod.findIndex(re => re.test(String(p.surface || ''))) : -1 }
+    const tg = scenes.flatMap(x => x.targetIds).filter(id => rankOf(id) >= 0).sort((a, b) => rankOf(a) - rankOf(b))
+    const later = tg.slice(1).filter(id => rankOf(id) > rankOf(tg[0]))
+    if (tg.length && (later.length || !scenes[0].targetIds.includes(tg[0]))) {
+      const take = id => scenes.forEach(x => { x.targetIds = x.targetIds.filter(y => y !== id) })
+      take(tg[0]); scenes[0].targetIds = [tg[0]].concat(scenes[0].targetIds)
+      const hosts = scenes.slice(1, -1).filter(x => x.situation !== 'MEET').reverse()
+      later.reverse().forEach((id, j) => { const h = hosts[j]; if (!h) return; take(id); h.targetIds = [id].concat(h.targetIds); h.reopenGreeting = id })
+      // a situation the move left empty goes; the first / last situation flags follow
+      for (let i = scenes.length - 1; i >= 0; i--) if (!scenes[i].targetIds.length) scenes.splice(i, 1)
+      scenes.forEach((x, i) => { x.opening = i === 0; x.closing = i === scenes.length - 1 })
+    }
+  }
   return { scenes, unplaceable, available: sits.map(s => s.key), situations: chosen.map(s => s.key), valid: !unplaceable.length && scenes.length > 0 }
 }
 // is ONE target usable at all with the learner's words? (the v673 support needs + answer vocabulary + the contract's needs)
@@ -29694,7 +29714,8 @@ function lnMfValidate(env, mp) {
   // E · conversation state: greetings only at the start, goodbyes only at the end, no three turns by one speaker, an agreed
   // clock time is not silently changed later
   flat.forEach((tu, i) => {
-    if (tu.intent === 'GREET' && tu.scene !== mp.scenes[0].key) add(7, 'LATE_GREETING', [tu], 'a greeting in the middle of the conversation: "' + tu.text + '"')
+    // v703: a situation where the two meet again later that day (reopenGreeting) opens with its greeting and the reply to it
+    if (tu.intent === 'GREET' && tu.scene !== mp.scenes[0].key && !(dailyV693On() && (() => { const sc = mp.scenes.find(x => x.key === tu.scene); return sc && sc.reopenGreeting && sc.turns.indexOf(tu) <= 1 })())) add(7, 'LATE_GREETING', [tu], 'a greeting in the middle of the conversation: "' + tu.text + '"')
     if (tu.intent === 'FAREWELL' && tu.scene !== mp.scenes[mp.scenes.length - 1].key) add(7, 'EARLY_GOODBYE', [tu], 'a goodbye before the last situation: "' + tu.text + '"')
     if (i >= 2 && flat[i - 1].speaker === tu.speaker && flat[i - 2].speaker === tu.speaker) add(1, 'ONE_SPEAKER_RUN', [tu], 'three turns in a row by speaker ' + tu.speaker)
   })
@@ -29892,6 +29913,8 @@ function lnMfCleanText(lang, text) {
   // v703 (relay run 4: "ชายหาดอยู่ที่ไหนครับ?" failed the speaker check — Thai writes no ? / ! / . after the particle): a Thai line's
   // trailing Latin punctuation is dropped, as the Daily writer already does
   if (lang === 'th' && dailyV693On()) t = t.replace(/\s*[?!.…？！]+\s*$/, '')
+  // v703 (relay run 6: โชคดีนะค่ะ) — the polite particle after นะ is written คะ (นะคะ), a common misspelling corrected deterministically
+  if (lang === 'th' && dailyV693On()) t = t.replace(/นะค่ะ/g, 'นะคะ')
   return t.trim()
 }
 const LN_MF_NO_NUMBERS_RULE = '- The learner has NO number words: never ask what time, how much, how many, how long or how old (nobody could answer). Ask about a day (today / tomorrow), a place, a choice, a yes / no, an opinion instead.\n'
@@ -29924,7 +29947,7 @@ function lnMfScenePrompt(env, g, k, prior, fix) {
     // (getting there → eating) — every repair then had to bridge a visit that never happens. A plan must fit what comes next.
     (k < g.scenes.length - 1 ? 'WHAT HAPPENS NEXT (after S' + (k + 1) + '): ' + g.scenes.slice(k + 1).map((x, j) => 'S' + (k + j + 2) + ' — ' + ((LN_MF_SITUATIONS.find(y => y.key === x.situation) || {}).desc || x.title)).join(' · ') + '. Any plan the speakers make here must fit exactly this: never plan an activity, visit or place that these later situations do not include. These situations follow straight on, the SAME day, in this order — so a day or time agreed here must let them happen next (agree on today / now, not another day, when the next situation already goes there).\n' : '') +
     (before.length ? 'SO FAR (keep everything consistent with it — places, plans, what was agreed, who knows what; do not repeat it):\n' + before.map((tu, j) => (j + 1) + '. ' + tu.speaker + ': ' + tu.text + ' — ' + tu.english).join('\n') + '\n' : '') +
-    'NOW S' + (k + 1) + ' — ' + s.title + ': ' + s.desc + (k === 0 ? ' · starts with a short natural greeting' : ' · continues straight on from the last turn above (a natural link, no new greeting); if what was planned above puts something between the last turn and this situation (a visit, a ride, a wait …), the FIRST turn says in a few words that it has happened') + (s.closing ? ' · ends with goodbye' : ' · no goodbye yet (the conversation goes on)') + '\n' +
+    'NOW S' + (k + 1) + ' — ' + s.title + ': ' + s.desc + (k === 0 ? ' · starts with a short natural greeting' : s.reopenGreeting && env.byId.get(s.reopenGreeting) ? ' · the two meet again LATER THE SAME DAY: the FIRST turn of S' + (k + 1) + ' is the greeting ' + env.byId.get(s.reopenGreeting).surface + ' as they meet again (the other answers it), then the situation goes on' : ' · continues straight on from the last turn above (a natural link, no new greeting); if what was planned above puts something between the last turn and this situation (a visit, a ride, a wait …), the FIRST turn says in a few words that it has happened') + (s.closing ? ' · ends with goodbye' : ' · no goodbye yet (the conversation goes on)') + '\n' +
     'LESSON WORDS for S' + (k + 1) + ' (each heard at least once, in its real meaning, its grammar complete):\n' + lnMfTargetRows(env, s.targetIds).map(r => '  ' + r).join('\n') + '\n' +
     (unheard.length ? 'NOT HEARD YET from earlier situations (use them here too if they fit naturally):\n' + lnMfTargetRows(env, unheard).map(r => '  ' + r).join('\n') + '\n' : '') +
     'ALLOWED VOCABULARY (the ONLY other content words you may use): ' + lnMfVocabRows(env).join(' · ') + '\n' +
@@ -29953,7 +29976,7 @@ function lnMfSceneFromReply(env, g, k, raw, offset, idPrefix) {
   const turns = rows.map((x, j) => { const r = +x.respondsTo
     const tu = lnMfMakeTurn(env.la, { ...x, referent: x.about || x.referent || '', respondsTo: Number.isFinite(r) && r > 0 && r <= j ? offset + r : 0 }, idPrefix + (k + 1) + '_' + (j + 1), key)
     return { ...tu, nRaw: offset + j + 1 } })
-  return { key, situation: s.situation, title: s.title, where: String((raw && raw.where) || s.where || ''), targetIds: s.targetIds.slice(), turns }
+  return { key, situation: s.situation, title: s.title, where: String((raw && raw.where) || s.where || ''), targetIds: s.targetIds.slice(), turns, ...(s.reopenGreeting ? { reopenGreeting: s.reopenGreeting } : {}) }
 }
 async function lnMfScenePlanCall(env, g, k, prior, fix) {
   const { log, tel, o } = env, mf = env.mf, key = 'S' + (k + 1)
@@ -30524,6 +30547,29 @@ async function _lnComposeMeaningFirst(env) {
     log && log('⚖ QUESTION_ANSWER_DEFERRED T' + (tu ? tu.n : '?') + ' — the only defect left is a reply the audit rated "' + String(is.detail).split(' · ')[0] + '" but "does not answer" (' + String(is.detail).slice(0, 120) + ') · not a blocker: the final story judge decides, and the line fails the naturalness gate unless that judge passes')
     res = { ...res, issues: [], sem: [] }
   }
+  // v703 (relay run 6 on the owner's profile: three salvage passes cut the bus stop → restaurant join again and again — every cut
+  // only moved the gap — until two whole situations and 11 lesson words were gone): a defect that lies only AT THE JOIN of two
+  // situations (the last line before it, the first two after it: "does not follow on", a first line that "does not answer" the
+  // line before the join) cannot be cured by cutting. When nothing else is left, those joins become SCENE BREAKS: the track is
+  // judged as separate short scenes by the episode judge (a new place or topic at a scene start is normal there), and the lines
+  // at the join still fail the naturalness gate unless that judge passes their scene.
+  const boundaryIssue = is => {
+    if (!dailyV693On() || is.dropScene || /^(STORY_CUT|SCENE_LOCAL_FAIL)$/.test(is.code) || !(is.fault === 6 || is.fault === 7) || !(is.turnIds || []).length) return false
+    const pos = is.turnIds.map(id => { for (let k = 0; k < mp.scenes.length; k++) { const j = mp.scenes[k].turns.findIndex(t => t.id === id); if (j >= 0) return { k, j, last: j === mp.scenes[k].turns.length - 1 } } return null })
+    if (pos.some(p => !p)) return false
+    const kMax = Math.max(...pos.map(p => p.k)), two = pos.some(p => p.k === kMax - 1)
+    if (kMax < 1 || !pos.every(p => (p.k === kMax && p.j <= 1) || (p.k === kMax - 1 && p.last))) return false
+    return two || (is.fault === 7 && pos.some(p => p.k === kMax && p.j === 0))
+  }
+  const deferBoundaryToEpisodes = () => {
+    if (!dailyV693On() || !res.issues.length || res.det.length || mp.scenes.length < 2 || !res.issues.every(boundaryIssue)) return false
+    res.issues.forEach(is => is.turnIds.forEach(id => { const i = mp.flat.findIndex(t => t.id === id); if (i >= 0) mf.deferredQA.add(lnMfVerdictKey(mp.flat[i], mp.flat[i - 1])) }))
+    mf.forceEpisodes = true
+    log && log('⚖ SCENE_BOUNDARY_DEFERRED ' + res.issues.length + ' defect(s) only at the join of two situations (' + res.issues.map(is => is.turnIds.map(id => 'T' + ((mp.flat.find(t => t.id === id) || {}).n)).join(',')).join(' · ') +
+      ') — cutting cannot cure a join (it only moves it), so the track is judged as separate short scenes; those lines fail the naturalness gate unless the episode judge passes their scene')
+    res = { ...res, issues: [], sem: [] }
+    return true
+  }
   const blockedUnresolved = label => {
     const unheard = [...new Set(res.issues.flatMap(is => is.targetIds || []))].map(id => (byId.get(id) || {}).surface).filter(Boolean)
     lnMfLogPlan(env, mp, 'not approved')
@@ -30540,6 +30586,8 @@ async function _lnComposeMeaningFirst(env) {
     if (!env.salvage) env.salvage = { from: label, passes: 0, removedTurns: 0, droppedScenes: [], cuts: [] }
     let issues = issues0 || res.issues
     for (let pass = 0; pass < LN_SALVAGE_PASSES && issues.length; pass++) {
+      // v703: a defect only at the join of two situations is never cut (it becomes a scene break once nothing else is left)
+      if (dailyV693On() && !issues.some(is => is.dropScene)) { const inner = issues.filter(is => !boundaryIssue(is)); if (!inner.length) { deferBoundaryToEpisodes(); break } issues = inner }
       const cut = lnMfSalvageCut(env, mp, issues)
       if (!cut) return 'nothing would be left after cutting the failing parts'
       env.salvage.passes++; env.salvage.removedTurns += cut.removed.length; env.salvage.droppedScenes.push(...cut.droppedScenes)
@@ -30553,6 +30601,7 @@ async function _lnComposeMeaningFirst(env) {
       if (!cut.removed.length) break
       issues = res.issues
     }
+    if (res.issues.length) deferBoundaryToEpisodes()
     const fp = floorProblem()
     if (fp) return 'too little left — ' + fp
     if (res.issues.length) return res.issues.length + ' defect(s) still left after ' + env.salvage.passes + ' salvage pass(es)'
@@ -30564,6 +30613,7 @@ async function _lnComposeMeaningFirst(env) {
   const setTel = () => Object.assign(tel, { LISTENING_MF_PLAN_CALLS: mf.calls.plan, LISTENING_MF_SCENE_REPLANS: mf.calls.sceneReplan, LISTENING_MF_AUDIT_CALLS: mf.calls.audit, LISTENING_MF_REPAIR_CALLS: mf.calls.repair, LISTENING_MF_REPAIR_ROUNDS: round, LISTENING_MF_TRUNCATIONS: mf.truncations, LISTENING_PLANNER: LISTENING_PLANNER_VERSION, LISTENING_MF_STORY_ROUNDS: mf.storyRounds || 0 })
   if (await repairLoop(LN_MF_MAX_ROUNDS)) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
   deferSoftQA()
+  deferBoundaryToEpisodes()
   setTel()
   if (res.issues.length) { const b = await salvageOrBlock(round + ' repair round(s)'); if (b) return b }
   // v697 — THE FINAL STORY JUDGE runs here, on the approved plan, reading the situations as ONE conversation. It used to run only
@@ -30578,7 +30628,8 @@ async function _lnComposeMeaningFirst(env) {
   let coh = null, judgedSig = null
   mf.storyRounds = 0
   const textSig = () => mp.flat.map(t => t.speaker + ':' + t.text).join('|')
-  if (env.o && env.o.apiKey) for (;;) {
+  // v703: joins already deferred as scene breaks → no one-conversation judge (it would fail them again); straight to the episode judge
+  if (env.o && env.o.apiKey && !mf.forceEpisodes) for (;;) {
     // a story repair that changed nothing (every patch rejected) is not judged again — the same text would get the same verdict;
     // the next story round escalates instead (live relay run: a patch with an unknown word, then the identical text re-judged)
     if (judgedSig !== textSig()) {
@@ -30620,8 +30671,8 @@ async function _lnComposeMeaningFirst(env) {
   // natural story across six situations; they always make good SHORT SCENES. The track becomes separate scenes (a new place / topic at
   // a scene start is fine, like a Daily Track) and each scene is judged ON ITS OWN; a scene that breaks inside is cut at its break (or
   // dropped) by the same salvage, and the scenes are judged once more. Every remaining line still passed every hard check.
-  if (env.o && env.o.apiKey && coh && coh.state === QUALITY.VERIFIED && !cohPass(coh) && mp.scenes.length >= 2) {
-    log && log('📺 LISTENING_EPISODES the situations do not read as ONE conversation (story judge ' + (coh.overall != null ? coh.overall + '/5' : 'FAIL') + ' after its repairs) — the track becomes separate short scenes, each judged on its own')
+  if (env.o && env.o.apiKey && ((coh && coh.state === QUALITY.VERIFIED && !cohPass(coh)) || mf.forceEpisodes) && mp.scenes.length >= 2) {
+    log && log('📺 LISTENING_EPISODES ' + (mf.forceEpisodes && !coh ? 'the only defects left were at the joins of situations (scene breaks)' : 'the situations do not read as ONE conversation (story judge ' + (coh.overall != null ? coh.overall + '/5' : 'FAIL') + ' after its repairs)') + ' — the track becomes separate short scenes, each judged on its own')
     tel.LISTENING_QC_CALLS++
     let ep = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: false, episodes: true }, log)
     log && log('📺 EPISODE_JUDGE ' + (cohPass(ep) ? 'PASS' : ep.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (ep.overall != null ? ' · overall ' + ep.overall + '/5' : '') + ' · each scene judged on its own')

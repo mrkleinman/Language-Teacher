@@ -1,0 +1,254 @@
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v702 language=th path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=th)
+🧭 LISTENING_FEASIBILITY PASS language=th planner=meaning-first-3 · pool=150 candidate(s) in SRS order · authorised support=889 word(s) · selected 30 · deferred 0 · situations VALID [MEET-1 4, MEET-2 5, TIME 5, TRAVEL 5, EAT 6, PART 5] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(th) = selectThaiRevisionTargets → freezeThaiTargetSelection
+🎧 LISTENING_SELECTED_TARGET_IDS=[779,1545,5007,5009,5010,5011,5012,5013,5014,350,900,1402,1403,1407,1408,650,695,898,374,375,498,759,855,280,378,380,727,1424,1461,276]
+🎧 LISTENING_TRACK_START language=th trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=th introducedContent=889 targets=30 authorised=919 snapshot=i2insk (frozen at generation start) · Layer A lexicon 1932 entries (segmentation only — not permission)
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Thai words, rankProgressFor) · Listening: no minimum, aim 3–5, no turn above 7
+📚 VOCAB INVENTORY introducedContent=889 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Thai particles + structural markers
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=th belt=10th Kyu · targets=30 · authorised support=889 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET-1 "meeting and catching up (1)" targets=[สวัสดีตอนบ่าย, สวัสดีตอนเย็น, สวัสดีทุกคน, เลี้ยงดู] · opens the conversation
+🗺 LISTENING_SITUATION S2 MEET-2 "meeting and catching up (2)" targets=[งานแต่งงาน, จริงใจ, เชื่อใจ, ให้อภัย, สุดท้าย]
+🗺 LISTENING_SITUATION S3 TIME "agreeing when" targets=[ตอนที่, วันหลัง, สด, กัปตัน, รุ่น]
+🗺 LISTENING_SITUATION S4 TRAVEL "getting there" targets=[ป้ายรถเมล์, บาง, ชัด, ฤดู, หมวก]
+🗺 LISTENING_SITUATION S5 EAT "eating and drinking" targets=[ทานกันเลย, ดื่มเหล้า, ชาเขียว, อาหารญี่ปุ่น, เป็นยังไงบ้าง, ช่วย...ได้ไหม]
+🗺 LISTENING_SITUATION S6 PART "wrapping up" targets=[เสมอ, ตลอดไป, แดดออก, อิจฉา, โชคดีนะ] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 4 targets
+🔎 SCENE_LOCAL_CHECK S1 STATUS=PASS · 7 turns (budget 3–7)
+📝 SCENE_PLAN S2 (MEET) call 2 · 5 targets
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS · 7 turns (budget 4–8)
+📝 SCENE_PLAN S3 (TIME) call 3 · 5 targets
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS · 7 turns (budget 4–7)
+📝 SCENE_PLAN S4 (TRAVEL) call 4 · 5 targets
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS · 6 turns (budget 4–6)
+📝 SCENE_PLAN S5 (EAT) call 5 · 6 targets
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS · 7 turns (budget 5–7)
+📝 SCENE_PLAN S6 (PART) call 6 · 5 targets
+🔎 SCENE_LOCAL_CHECK S6 STATUS=PASS · 6 turns (budget 4–6)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up (1) targets=[สวัสดีตอนบ่าย, สวัสดีตอนเย็น, สวัสดีทุกคน, เลี้ยงดู]
+   T1 A→B GREET · about greeting · - ⟦สวัสดีตอนบ่ายครับ⟧ "Good afternoon." [สวัสดีตอนบ่าย]
+   T2 B→A ASK(STATE) ↩T1 · about greeting and wellbeing · - ⟦สวัสดีตอนเย็นค่ะ สบายดีไหมคะ⟧ "Good evening! How are you?" [สวัสดีตอนเย็น]
+   T3 A→B ASK(THING) ↩T2 · about his recent activities · - ⟦สบายดีครับ ช่วงนี้ทำอะไรครับ⟧ "I'm well. What have you been doing lately?"
+   T4 B→A ANSWER ↩T3 · about her job · - children ⟦ฉันเลี้ยงดูเด็กกับเพื่อนค่ะ⟧ "I look after children with a friend." [เลี้ยงดู]
+   T5 A→B ASK(THING) ↩T4 · about morning routine · - ⟦ตอนเช้าทำอะไรครับ⟧ "What do you do in the morning?"
+   T6 B→A ANSWER ↩T5 · about morning greeting · - everyone ⟦ฉันพูดสวัสดีทุกคนค่ะ⟧ "I say hello to everyone." [สวัสดีทุกคน]
+   T7 A→B REACT ↩T6 · about the children · - ⟦น่ารักจังครับ⟧ "So cute!"
+  S2 meeting and catching up (2) targets=[งานแต่งงาน, จริงใจ, เชื่อใจ, ให้อภัย, สุดท้าย]
+   T8 B→A THANK ↩T7 · about friend's wedding · - wedding ⟦ขอบคุณค่ะ ไปงานแต่งงานเพื่อนมาค่ะ⟧ "Thank you. I went to a friend's wedding." [งานแต่งงาน]
+   T9 A→B ASK(STATE) ↩T8 · about friend · - ⟦เพื่อนคุณเป็นคนยังไงครับ⟧ "What is your friend like?"
+   T10 B→A ANSWER ↩T9 · about friend · - ⟦เขาจริงใจมากค่ะ⟧ "He is very sincere." [จริงใจ]
+   T11 A→B ASK(YESNO) ↩T10 · about trust · - ⟦คุณเชื่อใจเขาไหมครับ⟧ "Do you trust him?" [เชื่อใจ]
+   T12 B→A ANSWER ↩T11 · about trust, forgiveness · - ⟦เชื่อใจค่ะ เขาให้อภัยง่ายด้วยค่ะ⟧ "Yes, I trust him. He also forgives easily." [เชื่อใจ+ให้อภัย]
+   T13 A→B ASK(TIME) · about last meeting · - ⟦เจอกันครั้งสุดท้ายเมื่อไหร่ครับ⟧ "When was the last time we met?" [สุดท้าย]
+   T14 B→A ANSWER ↩T13 · about last meeting · - ⟦ปีที่แล้วค่ะ⟧ "Last year."
+  S3 agreeing when targets=[ตอนที่, วันหลัง, สด, กัปตัน, รุ่น]
+   T15 A→B PROPOSE · about going downtown together · - downtown ⟦งั้นวันหลังไปตัวเมืองกันไหมครับ⟧ "So, shall we go downtown another day?" [วันหลัง]
+   T16 B→A COUNTER ↩T15 · about meeting today · - ⟦วันนี้ได้ค่ะ ตอนที่เด็กกลับค่ะ⟧ "Today's fine, once the kids go home." [ตอนที่]
+   T17 A→B ASK(CLOCK_TIME) ↩T16 · about time to meet · - ⟦งั้นกี่โมงดีครับ⟧ "Then what time is good?"
+   T18 B→A ANSWER ↩T17 · about time to meet · - ⟦ห้าโมงเย็นค่ะ⟧ "5 p.m."
+   T19 A→B ACCEPT ↩T18 · about coffee after · - fresh coffee ⟦ได้ครับ ไปกาแฟสดกันนะครับ⟧ "Okay, let's go for fresh coffee." [สด]
+   T20 B→A ASK(THING) ↩T19 · about A's work lately · - ⟦ดีค่ะ ช่วงนี้คุณทำอะไรคะ⟧ "Good. What have you been doing lately?"
+   T21 A→B ANSWER ↩T20 · about his job · - airplane captain ⟦ผมเป็นกัปตันเครื่องบินรุ่นใหม่ครับ⟧ "I'm a captain of a new-model airplane." [กัปตัน+รุ่น]
+  S4 getting there targets=[ป้ายรถเมล์, บาง, ชัด, ฤดู, หมวก]
+   T22 B→A PROPOSE · about taking the bus · - bus ⟦เก่งจังค่ะ นั่งรถเมล์ไหมคะ⟧ "So skilled! Shall we take the bus?"
+   T23 A→B ASK(PLACE) ↩T22 · about bus stop location · - bus stop ⟦ได้ครับ ป้ายรถเมล์อยู่ที่ไหนครับ⟧ "Okay, where is the bus stop?" [ป้ายรถเมล์]
+   T24 B→A ANSWER ↩T23 · about bus stop location · - bus stop ⟦ที่บ้านฉันค่ะ เห็นชัดเลยค่ะ⟧ "It's at my house, you can see it clearly." [ชัด]
+   T25 A→B ASK(STATE) ↩T24 · about weather this season · - season ⟦ดีเลยครับ ฤดูนี้ร้อนไหมครับ⟧ "Great. Is it hot this season?" [ฤดู]
+   T26 B→A ANSWER ↩T25 · about heat and hat · - hat ⟦ร้อนจังค่ะ ฉันใส่หมวกค่ะ⟧ "It's very hot. I'm wearing a hat." [หมวก]
+   T27 A→B REACT ↩T26 · about forgetting a hat · - hat ⟦ดีครับ บางวันผมก็ลืมหมวกครับ⟧ "Good. Some days I forget my hat too." [บาง+หมวก]
+  S5 eating and drinking targets=[ทานกันเลย, ดื่มเหล้า, ชาเขียว, อาหารญี่ปุ่น, เป็นยังไงบ้าง, ช่วย...ได้ไหม]
+   T28 B→A PROPOSE · about eating now · - ⟦ถึงแล้วค่ะ ทานกันเลยค่ะ⟧ "We're here. Let's eat!" [ทานกันเลย]
+   T29 A→B PROPOSE ↩T28 · about Japanese food · - Japanese food ⟦อาหารญี่ปุ่นดีไหมครับ⟧ "How about Japanese food?" [อาหารญี่ปุ่น]
+   T30 B→A ASK(YESNO) ↩T29 · about help choosing · - ⟦ดีค่ะ ช่วยเลือกได้ไหมคะ⟧ "Good. Can you help me choose?" [ช่วย...ได้ไหม]
+   T31 A→B ASK(YESNO) ↩T30 · about drinking alcohol · - ⟦ได้ครับ คุณดื่มเหล้าไหมครับ⟧ "Sure. Do you drink alcohol?" [ดื่มเหล้า]
+   T32 B→A COUNTER ↩T31 · about green tea choice · - green tea ⟦ไม่ดื่มค่ะ ชาเขียวดีกว่าค่ะ⟧ "I don't drink. Green tea is better." [ชาเขียว]
+   T33 A→B ASK(STATE) · about the food · - ⟦มาแล้วครับ เป็นยังไงบ้างครับ⟧ "The food's here. How is it?" [เป็นยังไงบ้าง]
+   T34 B→A REACT ↩T33 · about taste of food · - ⟦อร่อยมากค่ะ⟧ "Very delicious."
+  S6 wrapping up targets=[เสมอ, ตลอดไป, แดดออก, อิจฉา, โชคดีนะ]
+   T35 A→B REACT ↩T34 · about food here · - ⟦ที่นี่อร่อยเสมอครับ⟧ "The food here is always delicious." [เสมอ]
+   T36 B→A ASK(THING) ↩T35 · about tomorrow plans · - ⟦ดีค่ะ พรุ่งนี้คุณทำอะไรคะ⟧ "Good. What are you doing tomorrow?"
+   T37 A→B ANSWER ↩T36 · about A's flight · - airplane ⟦พรุ่งนี้ผมขับเครื่องบินครับ⟧ "Tomorrow I'm flying the airplane."
+   T38 B→A REACT ↩T37 · about B envies A · - ⟦ฉันอิจฉาคุณจังค่ะ โชคดีนะค่ะ⟧ "I'm so jealous of you! Good luck!" [โชคดีนะ+อิจฉา]
+   T39 A→B THANK ↩T38 · about tomorrow weather · - weather ⟦ขอบคุณครับ พรุ่งนี้แดดออกนะครับ⟧ "Thanks. I hope tomorrow is sunny." [แดดออก]
+   T40 B→A FAREWELL ↩T39 · about friendship, goodbye · - ⟦เพื่อนกันตลอดไปนะค่ะ แล้วเจอกันค่ะ⟧ "Let's be friends forever. See you!" [ตลอดไป]
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed
+🔎 STRUCTURAL_VALIDATION (candidate) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (candidate) FAIL 4 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SURFACE SEMANTIC_AUDIT T24 — awkward · A bus stop is not normally located at someone's house; the location answer is vague and unnatural for where a bus stop is.
+   ⛔ TRANSITION SEMANTIC_AUDIT T28 — awkward · They agreed to go for coffee at 5 (turn 19); 'we're here, let's eat' does not follow from that plan and nothing says the plan changed.
+   ⛔ SURFACE SEMANTIC_AUDIT T40 — awkward · 'Let's be friends forever' is over-sentimental and does not fit a casual goodbye after a meal; the farewell itself is fine.
+   ⛔ TRANSITION SCENE_TRANSITION T28,T29 — The agreed coffee plan is dropped without explanation; they arrive and move to a Japanese meal as if the plan had never been made.
+   fault classes: SURFACE×2 · TRANSITION×2
+🔧 MEANING_REPAIR round 1/3 · 3 part(s): x1 line [SURFACE] · x2 scene [TRANSITION] · x3 line [SURFACE] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 1 — 3 part(s) in 2 bounded request(s) (≤ 10 turns each)
+⛔ PART_REJECTED x1 (line) — PROTECTED_TARGET_LOST ชัด · the old turns stay; one corrected retry this round
+✅ PART_REPAIRED x2 (scene · TRANSITION) 9 turn(s) → 9 new (validated in place): B: ร้อนจังค่ะ ฉันใส่หมวกค่ะ / A: ดีครับ บางวันผมก็ลืมหมวกครับ / B: หิวจังค่ะ ทานกันเลยไหมคะ / A: ได้ครับ กาแฟห้าโมงเย็นก็ได้ครับ / B: งั้นอาหารญี่ปุ่นดีไหมคะ / A: ดีครับ ช่วยเลือกได้ไหมครับ / B: ได้ค่ะ คุณดื่มเหล้าไหมคะ / A: ไม่ดื่มครับ ชาเขียวดีกว่าครับ / B: มาแล้วค่ะ อาหารเป็นยังไงบ้างคะ
+⛔ PART_NOT_REPAIRED x3 (line) — no replacement returned · the part escalates next round
+🔁 PATCH_RETRY round 1 · x1 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x1 (line · SURFACE) 1 turn(s) → 1 new (validated in place): B: อยู่ตรงนั้นค่ะ เห็นชัดเลยค่ะ
+🔎 STRUCTURAL_VALIDATION (after repair round 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 1) FAIL 4 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T29 — awkward · ได้ answers the eat proposal, but the clause about the 5 p.m. coffee does not connect to it. Turn 28 never mentions coffee, so ก็ได้ (also fine) has n
+   ⛔ TRANSITION SEMANTIC_AUDIT T34 — awkward · The question is grammatical, but it comes the moment the food arrives, before anyone has tasted it. A native speaker would find asking how the food is
+   ⛔ SURFACE SEMANTIC_AUDIT T40 — awkward · 'Let's be friends forever' is over-sentimental and does not fit a casual goodbye after a meal; the farewell itself is fine.
+   ⛔ TRANSITION SCENE_TRANSITION T28,T29 — S4 ends at the bus stop with no ride or arrival. S5 opens with a proposal to eat now, and within a few turns they are ordering at a restaurant and the food has 
+   fault classes: TRANSITION×3 · SURFACE×1
+🔁 REPEATED_FAILURE_SIGNATURE |SEMANTIC_AUDIT|5014| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 2/3 · 2 part(s): x1 scene [TRANSITION] · x2 intention [SURFACE] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 2 — 2 part(s) in 2 bounded request(s) (≤ 10 turns each)
+✅ PART_REPAIRED x1 (scene · TRANSITION) 9 turn(s) → 9 new (validated in place): B: ร้อนจังค่ะ ฉันใส่หมวกค่ะ / A: บางวันผมก็ลืมหมวกครับ / B: นั่งรถเมล์ไปกินอาหารญี่ปุ่นค่ะ / A: ถึงแล้วครับ ช่วยเลือกได้ไหมครับ / B: ได้ค่ะ ทานกันเลยค่ะ / A: ไม่ดื่มเหล้าครับ ชาเขียวดีกว่าครับ / B: ได้ค่ะ อาหารมาแล้วค่ะ / A: ลองชิมแล้วครับ / B: เป็นยังไงบ้างคะ
+✅ PART_REPAIRED x2 (intention · SURFACE) 2 turn(s) → 2 new (validated in place): A: ขอบคุณครับ ถ้าแดดออกไปเที่ยวไหมครับ / B: ได้ค่ะ แต่อย่ามาสายตลอดไปค่ะ
+🔎 STRUCTURAL_VALIDATION (after repair round 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 2) FAIL 5 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T29 — awkward · 'We're here' is announced straight after proposing the bus ride; no ride or time passes, so it does not follow.
+   ⛔ TRANSITION SEMANTIC_AUDIT T30 — awkward · Accepts the help request, then says let's eat now, though no choice has been made; the choosing step is skipped.
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T30,T31 — awkward · does not answer · No drink or alcohol has been offered, so refusing alcohol and preferring green tea does not answer 'let's eat'.
+   ⛔ TRANSITION SEMANTIC_AUDIT T32 — awkward · Accepts the drink, but the food arrives right after a drink order, with no food ordered or chosen in the dialogue.
+   ⛔ TRANSITION SCENE_INCOHERENT T28,T29,T30,T31,T32,T33,T34 — The bus trip agreed in S4 is proposed again as if new; the coffee outing agreed in S3 becomes Japanese food with no mention; 'we're here' comes with no ride in 
+   fault classes: TRANSITION×4 · QUESTION_ANSWER×1
+🔁 REPEATED_FAILURE_SIGNATURE S5|SEMANTIC_AUDIT|779| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔁 REPEATED_FAILURE_SIGNATURE S5|SEMANTIC_AUDIT|| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 3/3 · 1 part(s): x1 scene [TRANSITION+QUESTION_ANSWER] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (scene · TRANSITION+QUESTION_ANSWER) 7 turn(s) → 7 new (validated in place): B: ไม่เป็นไร รถติด ไม่ไปกาแฟแล้วค่ะ / A: ถึงแล้วครับ ช่วยเลือกได้ไหมครับ / B: เอาอาหารญี่ปุ่นค่ะ ดื่มอะไรดีคะ / A: ผมไม่ดื่มเหล้าครับ ขอชาเขียวครับ / B: มาแล้วค่ะ ทานกันเลยค่ะ / A: ลองชิมนิดหน่อยครับ / B: เป็นยังไงบ้างคะ
+🔎 STRUCTURAL_VALIDATION (after repair round 3) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 3) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T27,T28 — awkward · does not answer · Reacts to the hat remark in turn 27 with traffic and a cancelled coffee plan; the hat remark itself is not answered.
+   ⛔ TRANSITION SCENE_TRANSITION T28,T29 — The coffee plan agreed in S3 is dropped in turn 28, then turn 29 says they have arrived at a place that is never named or introduced, so the destination changes
+   fault classes: QUESTION_ANSWER×1 · TRANSITION×1
+✂ LISTENING_SALVAGE (after 3 repair round(s)) pass 1 · cut 4 turn(s) ["บางวันผมก็ลืมหมวกครับ" (QUESTION_ANSWER) · "ไม่เป็นไร รถติด ไม่ไปกาแฟแล้วค่ะ" (QUESTION_ANSWER) · "ถึงแล้วครับ ช่วยเลือกได้ไหมครับ" (TRANSITION) · "เอาอาหารญี่ปุ่นค่ะ ดื่มอะไรดีคะ" (TRANSITION)] · 36 turns left · moved to Revision: บาง, ช่วย...ได้ไหม, อาหารญี่ปุ่น — the remaining turns are validated and audited again (the same checks)
+🎧 LISTENING_RUNTIME planner=generateCohesiveListeningTrack build=v702 language=th path=SELECT → FEASIBILITY → MEANING_PLAN → VALIDATE → GENERATE → LIGHT_REPAIR → FINAL_AUDIT (one shared runtime for th / ja / zh; adapter=th)
+🧭 LISTENING_FEASIBILITY PASS language=th planner=meaning-first-3 · pool=150 candidate(s) in SRS order · authorised support=889 word(s) · selected 30 · deferred 0 · situations VALID [MEET-1 4, MEET-2 5, TIME 5, TRAVEL 5, EAT 6, PART 5] — checked BEFORE the targets are frozen (0 paid calls)
+🧩 LISTENING_SEMANTIC_FEASIBILITY PASS · every target has a usable meaning (vocabulary for its answer, the words its grammar needs, an everyday situation it belongs to) — a FEASIBILITY check, not a proof that sentences will be natural: that is the semantic audit after planning
+🎧 LISTENING_TARGET_SELECTION selected=30 new=0 review=30 · selector=selectRevisionTargets(th) = selectThaiRevisionTargets → freezeThaiTargetSelection
+🎧 LISTENING_SELECTED_TARGET_IDS=[779,1545,5007,5009,5010,5011,5012,5013,5014,350,900,1402,1403,1407,1408,650,695,898,374,375,498,759,855,280,378,380,727,1424,1461,276]
+🎧 LISTENING_TRACK_START language=th trackType=listening selection=REVISION_RULES LISTENING_SELECTION_COUNT=30 NEW=0 REVIEW=30 LISTENING_MAIN_GENERATION_CALLS=0
+  🎧 LISTENING (fresh conversation) · SOURCE STANDALONE LISTENING TRACK (Revision selection, no Main Track) · TARGETS 30 (NEW 0 · REVIEW 30) — every selected target must be heard
+📚 LEARNER_INVENTORY language=th introducedContent=889 targets=30 authorised=919 snapshot=i2insk (frozen at generation start) · Layer A lexicon 1932 entries (segmentation only — not permission)
+📏 LEVEL belt=10th Kyu preferred=3–5 hardMax=7 · LEVEL 10th Kyu · target 3–5 · max 7 (Thai words, rankProgressFor) · Listening: no minimum, aim 3–5, no turn above 7
+📚 VOCAB INVENTORY introducedContent=889 selectedTargets=30 NEW=0 (listening) · grammar/function scaffold: Thai particles + structural markers
+🧭 LISTENING_PLANNER planner=meaning-first-3 (v692 meaning-first) · language=th belt=10th Kyu · targets=30 · authorised support=889 · path PROFILE → GROUP BY SITUATION → PLAN EACH SITUATION (compact, in order) → LOCAL CHECK → VALIDATE (A–E) → SEMANTIC AUDIT → RECOVER BY FAULT CLASS (escalating by failure signature) → COMMIT
+🗺 LISTENING_SITUATION S1 MEET-1 "meeting and catching up (1)" targets=[สวัสดีตอนบ่าย, สวัสดีตอนเย็น, สวัสดีทุกคน, เลี้ยงดู] · opens the conversation
+🗺 LISTENING_SITUATION S2 MEET-2 "meeting and catching up (2)" targets=[งานแต่งงาน, จริงใจ, เชื่อใจ, ให้อภัย, สุดท้าย]
+🗺 LISTENING_SITUATION S3 TIME "agreeing when" targets=[ตอนที่, วันหลัง, สด, กัปตัน, รุ่น]
+🗺 LISTENING_SITUATION S4 TRAVEL "getting there" targets=[ป้ายรถเมล์, บาง, ชัด, ฤดู, หมวก]
+🗺 LISTENING_SITUATION S5 EAT "eating and drinking" targets=[ทานกันเลย, ดื่มเหล้า, ชาเขียว, อาหารญี่ปุ่น, เป็นยังไงบ้าง, ช่วย...ได้ไหม]
+🗺 LISTENING_SITUATION S6 PART "wrapping up" targets=[เสมอ, ตลอดไป, แดดออก, อิจฉา, โชคดีนะ] · ends with goodbye
+📝 SCENE_PLAN S1 (MEET) call 1 · 4 targets
+🔎 SCENE_LOCAL_CHECK S1 STATUS=PASS · 7 turns (budget 3–7)
+📝 SCENE_PLAN S2 (MEET) call 2 · 5 targets
+🔎 SCENE_LOCAL_CHECK S2 STATUS=PASS · 7 turns (budget 4–8)
+📝 SCENE_PLAN S3 (TIME) call 3 · 5 targets
+🔎 SCENE_LOCAL_CHECK S3 STATUS=PASS · 7 turns (budget 4–7)
+📝 SCENE_PLAN S4 (TRAVEL) call 4 · 5 targets
+🔎 SCENE_LOCAL_CHECK S4 STATUS=PASS · 6 turns (budget 4–6)
+📝 SCENE_PLAN S5 (EAT) call 5 · 6 targets
+🔎 SCENE_LOCAL_CHECK S5 STATUS=PASS · 7 turns (budget 5–7)
+📝 SCENE_PLAN S6 (PART) call 6 · 5 targets
+🔎 SCENE_LOCAL_CHECK S6 STATUS=PASS · 6 turns (budget 4–6)
+🧠 LISTENING_MEANING_PLAN (candidate) 40 turns · 6 situations · planner=meaning-first-3
+  S1 meeting and catching up (1) targets=[สวัสดีตอนบ่าย, สวัสดีตอนเย็น, สวัสดีทุกคน, เลี้ยงดู]
+   T1 A→B GREET · about greeting · - ⟦สวัสดีตอนบ่ายครับ⟧ "Good afternoon." [สวัสดีตอนบ่าย]
+   T2 B→A ASK(STATE) ↩T1 · about greeting and wellbeing · - ⟦สวัสดีตอนเย็นค่ะ สบายดีไหมคะ⟧ "Good evening! How are you?" [สวัสดีตอนเย็น]
+   T3 A→B ASK(THING) ↩T2 · about his recent activities · - ⟦สบายดีครับ ช่วงนี้ทำอะไรครับ⟧ "I'm well. What have you been doing lately?"
+   T4 B→A ANSWER ↩T3 · about her job · - children ⟦ฉันเลี้ยงดูเด็กกับเพื่อนค่ะ⟧ "I look after children with a friend." [เลี้ยงดู]
+   T5 A→B ASK(THING) ↩T4 · about morning routine · - ⟦ตอนเช้าทำอะไรครับ⟧ "What do you do in the morning?"
+   T6 B→A ANSWER ↩T5 · about morning greeting · - everyone ⟦ฉันพูดสวัสดีทุกคนค่ะ⟧ "I say hello to everyone." [สวัสดีทุกคน]
+   T7 A→B REACT ↩T6 · about the children · - ⟦น่ารักจังครับ⟧ "So cute!"
+  S2 meeting and catching up (2) targets=[งานแต่งงาน, จริงใจ, เชื่อใจ, ให้อภัย, สุดท้าย]
+   T8 B→A THANK ↩T7 · about friend's wedding · - wedding ⟦ขอบคุณค่ะ ไปงานแต่งงานเพื่อนมาค่ะ⟧ "Thank you. I went to a friend's wedding." [งานแต่งงาน]
+   T9 A→B ASK(STATE) ↩T8 · about friend · - ⟦เพื่อนคุณเป็นคนยังไงครับ⟧ "What is your friend like?"
+   T10 B→A ANSWER ↩T9 · about friend · - ⟦เขาจริงใจมากค่ะ⟧ "He is very sincere." [จริงใจ]
+   T11 A→B ASK(YESNO) ↩T10 · about trust · - ⟦คุณเชื่อใจเขาไหมครับ⟧ "Do you trust him?" [เชื่อใจ]
+   T12 B→A ANSWER ↩T11 · about trust, forgiveness · - ⟦เชื่อใจค่ะ เขาให้อภัยง่ายด้วยค่ะ⟧ "Yes, I trust him. He also forgives easily." [เชื่อใจ+ให้อภัย]
+   T13 A→B ASK(TIME) · about last meeting · - ⟦เจอกันครั้งสุดท้ายเมื่อไหร่ครับ⟧ "When was the last time we met?" [สุดท้าย]
+   T14 B→A ANSWER ↩T13 · about last meeting · - ⟦ปีที่แล้วค่ะ⟧ "Last year."
+  S3 agreeing when targets=[ตอนที่, วันหลัง, สด, กัปตัน, รุ่น]
+   T15 A→B PROPOSE · about going downtown together · - downtown ⟦งั้นวันหลังไปตัวเมืองกันไหมครับ⟧ "So, shall we go downtown another day?" [วันหลัง]
+   T16 B→A COUNTER ↩T15 · about meeting today · - ⟦วันนี้ได้ค่ะ ตอนที่เด็กกลับค่ะ⟧ "Today's fine, once the kids go home." [ตอนที่]
+   T17 A→B ASK(CLOCK_TIME) ↩T16 · about time to meet · - ⟦งั้นกี่โมงดีครับ⟧ "Then what time is good?"
+   T18 B→A ANSWER ↩T17 · about time to meet · - ⟦ห้าโมงเย็นค่ะ⟧ "5 p.m."
+   T19 A→B ACCEPT ↩T18 · about coffee after · - fresh coffee ⟦ได้ครับ ไปกาแฟสดกันนะครับ⟧ "Okay, let's go for fresh coffee." [สด]
+   T20 B→A ASK(THING) ↩T19 · about A's work lately · - ⟦ดีค่ะ ช่วงนี้คุณทำอะไรคะ⟧ "Good. What have you been doing lately?"
+   T21 A→B ANSWER ↩T20 · about his job · - airplane captain ⟦ผมเป็นกัปตันเครื่องบินรุ่นใหม่ครับ⟧ "I'm a captain of a new-model airplane." [กัปตัน+รุ่น]
+  S4 getting there targets=[ป้ายรถเมล์, บาง, ชัด, ฤดู, หมวก]
+   T22 B→A PROPOSE · about taking the bus · - bus ⟦เก่งจังค่ะ นั่งรถเมล์ไหมคะ⟧ "So skilled! Shall we take the bus?"
+   T23 A→B ASK(PLACE) ↩T22 · about bus stop location · - bus stop ⟦ได้ครับ ป้ายรถเมล์อยู่ที่ไหนครับ⟧ "Okay, where is the bus stop?" [ป้ายรถเมล์]
+   T24 B→A ANSWER ↩T23 · about bus stop location · - bus stop ⟦ที่บ้านฉันค่ะ เห็นชัดเลยค่ะ⟧ "It's at my house, you can see it clearly." [ชัด]
+   T25 A→B ASK(STATE) ↩T24 · about weather this season · - season ⟦ดีเลยครับ ฤดูนี้ร้อนไหมครับ⟧ "Great. Is it hot this season?" [ฤดู]
+   T26 B→A ANSWER ↩T25 · about heat and hat · - hat ⟦ร้อนจังค่ะ ฉันใส่หมวกค่ะ⟧ "It's very hot. I'm wearing a hat." [หมวก]
+   T27 A→B REACT ↩T26 · about forgetting a hat · - hat ⟦ดีครับ บางวันผมก็ลืมหมวกครับ⟧ "Good. Some days I forget my hat too." [บาง+หมวก]
+  S5 eating and drinking targets=[ทานกันเลย, ดื่มเหล้า, ชาเขียว, อาหารญี่ปุ่น, เป็นยังไงบ้าง, ช่วย...ได้ไหม]
+   T28 B→A PROPOSE · about eating now · - ⟦ถึงแล้วค่ะ ทานกันเลยค่ะ⟧ "We're here. Let's eat!" [ทานกันเลย]
+   T29 A→B PROPOSE ↩T28 · about Japanese food · - Japanese food ⟦อาหารญี่ปุ่นดีไหมครับ⟧ "How about Japanese food?" [อาหารญี่ปุ่น]
+   T30 B→A ASK(YESNO) ↩T29 · about help choosing · - ⟦ดีค่ะ ช่วยเลือกได้ไหมคะ⟧ "Good. Can you help me choose?" [ช่วย...ได้ไหม]
+   T31 A→B ASK(YESNO) ↩T30 · about drinking alcohol · - ⟦ได้ครับ คุณดื่มเหล้าไหมครับ⟧ "Sure. Do you drink alcohol?" [ดื่มเหล้า]
+   T32 B→A COUNTER ↩T31 · about green tea choice · - green tea ⟦ไม่ดื่มค่ะ ชาเขียวดีกว่าค่ะ⟧ "I don't drink. Green tea is better." [ชาเขียว]
+   T33 A→B ASK(STATE) · about the food · - ⟦มาแล้วครับ เป็นยังไงบ้างครับ⟧ "The food's here. How is it?" [เป็นยังไงบ้าง]
+   T34 B→A REACT ↩T33 · about taste of food · - ⟦อร่อยมากค่ะ⟧ "Very delicious."
+  S6 wrapping up targets=[เสมอ, ตลอดไป, แดดออก, อิจฉา, โชคดีนะ]
+   T35 A→B REACT ↩T34 · about food here · - ⟦ที่นี่อร่อยเสมอครับ⟧ "The food here is always delicious." [เสมอ]
+   T36 B→A ASK(THING) ↩T35 · about tomorrow plans · - ⟦ดีค่ะ พรุ่งนี้คุณทำอะไรคะ⟧ "Good. What are you doing tomorrow?"
+   T37 A→B ANSWER ↩T36 · about A's flight · - airplane ⟦พรุ่งนี้ผมขับเครื่องบินครับ⟧ "Tomorrow I'm flying the airplane."
+   T38 B→A REACT ↩T37 · about B envies A · - ⟦ฉันอิจฉาคุณจังค่ะ โชคดีนะค่ะ⟧ "I'm so jealous of you! Good luck!" [โชคดีนะ+อิจฉา]
+   T39 A→B THANK ↩T38 · about tomorrow weather · - weather ⟦ขอบคุณครับ พรุ่งนี้แดดออกนะครับ⟧ "Thanks. I hope tomorrow is sunny." [แดดออก]
+   T40 B→A FAREWELL ↩T39 · about friendship, goodbye · - ⟦เพื่อนกันตลอดไปนะค่ะ แล้วเจอกันค่ะ⟧ "Let's be friends forever. See you!" [ตลอดไป]
+📝 MEANING_PLAN state=CANDIDATE_GENERATED · 40 turns — not yet validated, not committed
+🔎 STRUCTURAL_VALIDATION (candidate) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (candidate) FAIL 4 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ SURFACE SEMANTIC_AUDIT T24 — awkward · A bus stop is not normally located at someone's house; the location answer is vague and unnatural for where a bus stop is.
+   ⛔ TRANSITION SEMANTIC_AUDIT T28 — awkward · They agreed to go for coffee at 5 (turn 19); 'we're here, let's eat' does not follow from that plan and nothing says the plan changed.
+   ⛔ SURFACE SEMANTIC_AUDIT T40 — awkward · 'Let's be friends forever' is over-sentimental and does not fit a casual goodbye after a meal; the farewell itself is fine.
+   ⛔ TRANSITION SCENE_TRANSITION T28,T29 — The agreed coffee plan is dropped without explanation; they arrive and move to a Japanese meal as if the plan had never been made.
+   fault classes: SURFACE×2 · TRANSITION×2
+🔧 MEANING_REPAIR round 1/3 · 3 part(s): x1 line [SURFACE] · x2 scene [TRANSITION] · x3 line [SURFACE] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 1 — 3 part(s) in 2 bounded request(s) (≤ 10 turns each)
+⛔ PART_REJECTED x1 (line) — PROTECTED_TARGET_LOST ชัด · the old turns stay; one corrected retry this round
+✅ PART_REPAIRED x2 (scene · TRANSITION) 9 turn(s) → 9 new (validated in place): B: ร้อนจังค่ะ ฉันใส่หมวกค่ะ / A: ดีครับ บางวันผมก็ลืมหมวกครับ / B: หิวจังค่ะ ทานกันเลยไหมคะ / A: ได้ครับ กาแฟห้าโมงเย็นก็ได้ครับ / B: งั้นอาหารญี่ปุ่นดีไหมคะ / A: ดีครับ ช่วยเลือกได้ไหมครับ / B: ได้ค่ะ คุณดื่มเหล้าไหมคะ / A: ไม่ดื่มครับ ชาเขียวดีกว่าครับ / B: มาแล้วค่ะ อาหารเป็นยังไงบ้างคะ
+⛔ PART_NOT_REPAIRED x3 (line) — no replacement returned · the part escalates next round
+🔁 PATCH_RETRY round 1 · x1 — rejected by the hard checks; asked once more with the exact reason
+✅ PART_REPAIRED x1 (line · SURFACE) 1 turn(s) → 1 new (validated in place): B: อยู่ตรงนั้นค่ะ เห็นชัดเลยค่ะ
+🔎 STRUCTURAL_VALIDATION (after repair round 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 1) FAIL 4 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T29 — awkward · ได้ answers the eat proposal, but the clause about the 5 p.m. coffee does not connect to it. Turn 28 never mentions coffee, so ก็ได้ (also fine) has n
+   ⛔ TRANSITION SEMANTIC_AUDIT T34 — awkward · The question is grammatical, but it comes the moment the food arrives, before anyone has tasted it. A native speaker would find asking how the food is
+   ⛔ SURFACE SEMANTIC_AUDIT T40 — awkward · 'Let's be friends forever' is over-sentimental and does not fit a casual goodbye after a meal; the farewell itself is fine.
+   ⛔ TRANSITION SCENE_TRANSITION T28,T29 — S4 ends at the bus stop with no ride or arrival. S5 opens with a proposal to eat now, and within a few turns they are ordering at a restaurant and the food has 
+   fault classes: TRANSITION×3 · SURFACE×1
+🔁 REPEATED_FAILURE_SIGNATURE |SEMANTIC_AUDIT|5014| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 2/3 · 2 part(s): x1 scene [TRANSITION] · x2 intention [SURFACE] — every other turn is kept exactly
+🔧 REPAIR_BATCHES round 2 — 2 part(s) in 2 bounded request(s) (≤ 10 turns each)
+✅ PART_REPAIRED x1 (scene · TRANSITION) 9 turn(s) → 9 new (validated in place): B: ร้อนจังค่ะ ฉันใส่หมวกค่ะ / A: บางวันผมก็ลืมหมวกครับ / B: นั่งรถเมล์ไปกินอาหารญี่ปุ่นค่ะ / A: ถึงแล้วครับ ช่วยเลือกได้ไหมครับ / B: ได้ค่ะ ทานกันเลยค่ะ / A: ไม่ดื่มเหล้าครับ ชาเขียวดีกว่าครับ / B: ได้ค่ะ อาหารมาแล้วค่ะ / A: ลองชิมแล้วครับ / B: เป็นยังไงบ้างคะ
+✅ PART_REPAIRED x2 (intention · SURFACE) 2 turn(s) → 2 new (validated in place): A: ขอบคุณครับ ถ้าแดดออกไปเที่ยวไหมครับ / B: ได้ค่ะ แต่อย่ามาสายตลอดไปค่ะ
+🔎 STRUCTURAL_VALIDATION (after repair round 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 2) FAIL 5 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ TRANSITION SEMANTIC_AUDIT T29 — awkward · 'We're here' is announced straight after proposing the bus ride; no ride or time passes, so it does not follow.
+   ⛔ TRANSITION SEMANTIC_AUDIT T30 — awkward · Accepts the help request, then says let's eat now, though no choice has been made; the choosing step is skipped.
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T30,T31 — awkward · does not answer · No drink or alcohol has been offered, so refusing alcohol and preferring green tea does not answer 'let's eat'.
+   ⛔ TRANSITION SEMANTIC_AUDIT T32 — awkward · Accepts the drink, but the food arrives right after a drink order, with no food ordered or chosen in the dialogue.
+   ⛔ TRANSITION SCENE_INCOHERENT T28,T29,T30,T31,T32,T33,T34 — The bus trip agreed in S4 is proposed again as if new; the coffee outing agreed in S3 becomes Japanese food with no mention; 'we're here' comes with no ride in 
+   fault classes: TRANSITION×4 · QUESTION_ANSWER×1
+🔁 REPEATED_FAILURE_SIGNATURE S5|SEMANTIC_AUDIT|779| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔁 REPEATED_FAILURE_SIGNATURE S5|SEMANTIC_AUDIT|| ×2 — escalated 1 recovery level(s) (never the same repair again)
+🔧 MEANING_REPAIR round 3/3 · 1 part(s): x1 scene [TRANSITION+QUESTION_ANSWER] — every other turn is kept exactly
+✅ PART_REPAIRED x1 (scene · TRANSITION+QUESTION_ANSWER) 7 turn(s) → 7 new (validated in place): B: ไม่เป็นไร รถติด ไม่ไปกาแฟแล้วค่ะ / A: ถึงแล้วครับ ช่วยเลือกได้ไหมครับ / B: เอาอาหารญี่ปุ่นค่ะ ดื่มอะไรดีคะ / A: ผมไม่ดื่มเหล้าครับ ขอชาเขียวครับ / B: มาแล้วค่ะ ทานกันเลยค่ะ / A: ลองชิมนิดหน่อยครับ / B: เป็นยังไงบ้างคะ
+🔎 STRUCTURAL_VALIDATION (after repair round 3) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after repair round 3) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T27,T28 — awkward · does not answer · Reacts to the hat remark in turn 27 with traffic and a cancelled coffee plan; the hat remark itself is not answered.
+   ⛔ TRANSITION SCENE_TRANSITION T28,T29 — The coffee plan agreed in S3 is dropped in turn 28, then turn 29 says they have arrived at a place that is never named or introduced, so the destination changes
+   fault classes: QUESTION_ANSWER×1 · TRANSITION×1
+✂ LISTENING_SALVAGE (after 3 repair round(s)) pass 1 · cut 4 turn(s) ["บางวันผมก็ลืมหมวกครับ" (QUESTION_ANSWER) · "ไม่เป็นไร รถติด ไม่ไปกาแฟแล้วค่ะ" (QUESTION_ANSWER) · "ถึงแล้วครับ ช่วยเลือกได้ไหมครับ" (TRANSITION) · "เอาอาหารญี่ปุ่นค่ะ ดื่มอะไรดีคะ" (TRANSITION)] · 36 turns left · moved to Revision: บาง, ช่วย...ได้ไหม, อาหารญี่ปุ่น — the remaining turns are validated and audited again (the same checks)
+🔎 STRUCTURAL_VALIDATION (after salvage pass 1) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after salvage pass 1) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T26,T27 — awkward · does not answer · Thai is grammatical and both lesson words are used correctly, but the reply does not pick up the heat and hat remark in 26, and it r
+   ⛔ TRANSITION SCENE_TRANSITION T27,T28 — As one ordering and eating moment it is plausible, but the change leaves a jump from the bus stop to a seated drink order: the bus ride and arrival are never me
+   fault classes: QUESTION_ANSWER×1 · TRANSITION×1
+✂ LISTENING_SALVAGE (after 3 repair round(s)) pass 2 · cut 4 turn(s) ["ดีเลยครับ ฤดูนี้ร้อนไหมครับ" (QUESTION_ANSWER) · "ร้อนจังค่ะ ฉันใส่หมวกค่ะ" (QUESTION_ANSWER) · "ผมไม่ดื่มเหล้าครับ ขอชาเขียวครับ" (QUESTION_ANSWER) · "มาแล้วค่ะ ทานกันเลยค่ะ" (TRANSITION)] · 32 turns left · moved to Revision: ทานกันเลย, บาง, ดื่มเหล้า, ช่วย...ได้ไหม, ชาเขียว, ฤดู, อาหารญี่ปุ่น, หมวก — the remaining turns are validated and audited again (the same checks)
+🔎 STRUCTURAL_VALIDATION (after salvage pass 2) PASS · vocabulary, grammar contracts, meaning rules, answer types, state — deterministic
+🧠 SEMANTIC_AUDIT (after salvage pass 2) FAIL 2 · sense, replies, usage (natural / acceptable pass; awkward / incorrect fail), situations, transitions
+   ⛔ QUESTION_ANSWER SEMANTIC_AUDIT T24,T25 — awkward · does not answer · Does not react to 24: the bus-stop answer (it is over there, clearly visible) gets a remark about tasting something, and no food or 
+   ⛔ TRANSITION SCENE_TRANSITION T25,T26 — Turn 25 starts a tasting moment straight after the bus stop, with no arrival at any eating place and no food or drink mentioned before; no later moment is state
+   fault classes: QUESTION_ANSWER×1 · TRANSITION×1
+✂ LISTENING_SALVAGE (after 3 repair round(s)) pass 3 · cut 5 turn(s) · dropped situation(s) S4, S5 ["เก่งจังค่ะ นั่งรถเมล์ไหมคะ" (QUESTION_ANSWER) · "ได้ครับ ป้ายรถเมล์อยู่ที่ไหนครับ" (QUESTION_ANSWER) · "อยู่ตรงนั้นค่ะ เห็นชัดเลยค่ะ" (QUESTION_ANSWER) · "ลองชิมนิดหน่อยครับ" (QUESTION_ANSWER) · "เป็นยังไงบ้างคะ" (QUESTION_ANSWER)] · 27 turns left · moved to Revision: ทานกันเลย, ป้ายรถเมล์, บาง, เป็นยังไงบ้าง, ดื่มเหล้า, ช่วย...ได้ไหม, ชัด, ชาเขียว, ฤดู, อาหารญี่ปุ่น, หมวก — the remaining turns are validated and audited again (the same checks)

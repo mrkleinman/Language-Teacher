@@ -24573,7 +24573,10 @@ const LISTENING_ADAPTERS = {
   th: {
     lang: 'th', label: 'Thai',
     text: p => (p && p.thai) || '',
-    speakerContract: 'A = a man: ผม for "I", every sentence ends with ครับ. B = a woman: ฉัน for "I", ends with ค่ะ (statement) or คะ (question).',
+    // v703 (relay on the owner's profile: the story judge failed a scene because B said ดิฉันเอง — a LESSON word she must say — "instead of
+    // the required ฉัน"): a lesson word that carries its own pronoun or politeness is correct where it appears
+    get speakerContract() { return 'A = a man: ผม for "I", every sentence ends with ครับ. B = a woman: ฉัน for "I", ends with ค่ะ (statement) or คะ (question).' +
+      (dailyV693On() ? ' A lesson word that has its own pronoun or politeness (ดิฉันเอง, ผมเอง, ขอบพระคุณ …) is correct where it appears — never a speaker or register error.' : '') },
     present: (text, surface, ctx) => thaiTargetPresent(text, surface, ctx.vocab),
     verdicts: (pairs, o, log) => listeningQualityVerdicts(pairs, o.apiKey, o.model, log),
     bridgeProblems(p, ctx) {
@@ -29349,10 +29352,24 @@ const LN_MF_SITUATIONS = [
   { key: 'PART', rank: 9, title: 'wrapping up', where: 'as they part', desc: 'they wrap up, maybe swap phone numbers or plan to meet again, and say goodbye',
     rx: /\b(goodbye|bye|see you|good luck|take care|phone|number|again|go home|thanks?|thank you|appointment|talk later|have to go)\b/, val: ['PHONE', 'DIGITS'], asks: ['YESNO'] },
 ]
+// v703 (relay on the owner's profile): meanings the situation keywords missed, so a due word lands where people really say it — trust /
+// forgive / secretary while catching up, shorts while shopping, climb / admire while looking around — instead of being forced into an
+// unrelated scene ("wearing shorts" on the walk to the bus, "are you my secretary?" over lunch)
+const LN_MF_SITUATION_EXTRA_RX = {
+  MEET: /\b(trust|sincere|honest|forgive|always|forever|love|wedding|marry|married|secretary|office|boss|colleague|teach|teacher|learn|study|raise|bring up|child|children|daughter|son|mother|father|parents|it'?s me|myself|may i ask|excuse me|not exactly|cope|manage|bangkokian|thailand|thai)\b/,
+  PLAN: /\b(plan|idea|climb|mountain|beach|trip|holiday|museum|palace|admire|praise|view)\b/,
+  TIME: /\b(just a moment|a moment|moment|minute|second|slowly|january|february|march|april|may|june|july|august|september|october|november|december|month|week|weekend|year|birthday)\b/,
+  TRAVEL: /\b(nearby|near|slowly|bus stop|stop|cope|manage|map)\b/,
+  EAT: /\b(cans?|tins?|bottles?|steamed buns?|buns?|soup|beer|just a little|a little|let'?s eat|sit down|have a seat|celsius|degrees?|hot|cold)\b/,
+  SHOP: /\b(shorts|clothes|wear|shirt|dress|shoes|cans?|tins?|twenty|thirty|forty|fifty|hundred)\b/,
+  LOOK: /\b(admire|praise|climb|shorts|wear|view|museum|palace|temple)\b/,
+  PART: /\b(forever|always|again|keep|save|take care|safe trip|good night|sweet dreams)\b/,
+}
 function lnMfSituationScore(p, s) {
   let sc = 0
   const g = p.gloss.toLowerCase()
   if (s.rx.test(g)) sc += 3
+  else if (dailyV693On() && LN_MF_SITUATION_EXTRA_RX[s.key] && LN_MF_SITUATION_EXTRA_RX[s.key].test(g)) sc += 3
   if (p.nounClass && (s.cls || []).includes(p.nounClass)) sc += 3
   if (p.asks && (s.asks || []).includes(p.asks)) sc += 3
   if (p.valueType && (s.val || []).includes(p.valueType)) sc += 2
@@ -30584,6 +30601,33 @@ async function _lnComposeMeaningFirst(env) {
     tel.LISTENING_QC_CALLS++
     let ep = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: false, episodes: true }, log)
     log && log('📺 EPISODE_JUDGE ' + (cohPass(ep) ? 'PASS' : ep.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (ep.overall != null ? ' · overall ' + ep.overall + '/5' : '') + ' · each scene judged on its own')
+    // v703 (relay on the owner's profile: the episode judge failed 4 scenes and the salvage cut 12 turns — 12 of 30 words lost — without
+    // one attempt to fix them): each failing scene first gets ONE targeted repair of the lines around its break, with the judge's reason;
+    // only what still fails afterwards is cut
+    if (dailyV693On() && ep.state === QUALITY.VERIFIED && !cohPass(ep)) {
+      const epIssues = ep.verdicts.filter(v => !v.pass).map(v => { const s = mp.scenes[v.scene - 1]; if (!s || !s.turns.length) return null
+        const b = Number.isFinite(+v.breakAfterLine) && +v.breakAfterLine >= 1 && +v.breakAfterLine <= s.turns.length ? +v.breakAfterLine : null
+        const tus = b == null ? s.turns.slice(0, Math.min(3, s.turns.length)) : s.turns.slice(Math.max(0, b - 1), Math.min(s.turns.length, b + 2))
+        return { fault: 7, code: 'STORY_BREAK', story: true, turnIds: tus.map(t => t.id), scene: s.key, targetIds: [...new Set(tus.flatMap(t => t.targetIds))],
+          detail: 'the scene judge (this scene is judged on its own — a new place or topic at its start is fine): ' + String(v.reason || '') + (b != null ? ' (breaks after line ' + b + ' of ' + s.key + ')' : '') } }).filter(Boolean)
+      lnMfCountSignatures(env, mp, epIssues)
+      const scopes = epIssues.length ? lnMfScopes(env, mp, epIssues) : []
+      log && log('📺 EPISODE_REPAIR ' + scopes.length + ' part(s): ' + scopes.map(sc => sc.id + ' ' + sc.kind + ' (' + sc.scenes.join('+') + ')').join(' · ') + ' — one targeted repair before anything is cut; every other turn is kept exactly')
+      const rep = scopes.length ? await lnMfRepairRound(env, mp, scopes, 'episode-1') : null
+      if (rep) {
+        res = await lnMfValidateAndAudit(env, mp)
+        lnMfIssueLog(env, res, 'after episode repair')
+        boundaryRound = false; stale = 0; prevSig = null; mf.boundaryRound = false
+        mf.deferredQA = new Set()
+        if (await repairLoop(round + 2)) return blocked('TECHNICAL (fault 9): the repair reply could not be read')
+        deferSoftQA()
+        setTel()
+        if (res.issues.length) { const bb = await salvageOrBlock('the episode repair'); if (bb) return bb }
+        tel.LISTENING_QC_CALLS++
+        ep = await listeningWholeCoherenceAudit(cohOf(scenesOf()), la, { ...env.o, oneConversation: false, episodes: true }, log)
+        log && log('📺 EPISODE_JUDGE ' + (cohPass(ep) ? 'PASS' : ep.state === QUALITY.VERIFIED ? 'FAIL' : 'UNVERIFIED') + (ep.overall != null ? ' · overall ' + ep.overall + '/5' : '') + ' · after the episode repair')
+      }
+    }
     if (ep.state === QUALITY.VERIFIED && !cohPass(ep)) {
       const cuts = ep.verdicts.filter(v => !v.pass).map(v => { const s = mp.scenes[v.scene - 1]; if (!s) return null
         const b = Number.isFinite(+v.breakAfterLine) ? +v.breakAfterLine : null, why = 'the episode judge: ' + String(v.reason || '')

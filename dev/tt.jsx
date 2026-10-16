@@ -24731,11 +24731,12 @@ function conversationContinuityAudit(scenes, la, targets) {
   const out = [], n = (scenes || []).length
   let line = 0
   const tSurf = (targets || []).map(t => t.surface).filter(Boolean)
-  ;(scenes || []).forEach((sc, k) => (sc.turns || []).forEach(tn => { line++
+  ;(scenes || []).forEach((sc, k) => (sc.turns || []).forEach((tn, j) => { line++
     const txt = la.text(tn.pair) || ''
     const isTargetWord = rx => tSurf.some(s => rx.test(s) && txt.includes(s))
     const g = LISTENING_GREETING_RE[la.lang], b = LISTENING_GOODBYE_RE[la.lang]
-    if (k > 0 && g && g.test(txt) && !isTargetWord(g)) out.push({ code: 'CONTINUITY', line, detail: 're-greeting in part ' + (k + 1) })
+    // v703: a part where the two meet again later that day (reopen) opens with a greeting and the reply to it
+    if (k > 0 && g && g.test(txt) && !isTargetWord(g) && !(dailyV693On() && sc.reopen && j <= 1)) out.push({ code: 'CONTINUITY', line, detail: 're-greeting in part ' + (k + 1) })
     if (k < n - 1 && b && b.test(txt) && !isTargetWord(b)) out.push({ code: 'CONTINUITY', line, detail: 'goodbye in part ' + (k + 1) + ' before the end' })
   }))
   return out
@@ -29656,7 +29657,7 @@ function lnMfRenumber(mp) {
   mp.flat = flat
   return mp
 }
-function lnMfScenesForAudit(mp) { return mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: tu.pair, intendedTargetIds: tu.targetIds })) })) }
+function lnMfScenesForAudit(mp) { return mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, ...(s.reopenGreeting ? { reopen: true } : {}), turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: tu.pair, intendedTargetIds: tu.targetIds })) })) }
 const lnMfNorm = t => String(t || '').replace(/[\s。？！，、,.?!…「」]/g, '').toLowerCase()
 // the RELATIONSHIP an audit-rejected turn expressed: its lesson words, its act, what it really asks for (何時 = a clock time,
 // いつ = a day — computed, not the plan's label), its referent and action
@@ -30621,7 +30622,7 @@ async function _lnComposeMeaningFirst(env) {
   // compliment; うん、そうしよう。) was failed as "no referent", and a failure was terminal. Now a failed part gets a bounded story
   // repair (around its break; its boundary when it breaks at its first line), the plan is validated and audited again, and the
   // conversation is judged again — at most LN_MF_STORY_ROUNDS times. The verdict travels to the final gates (no second call).
-  const scenesOf = () => mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, intendedTargetIds: tu.targetIds.slice() }, intendedTargetIds: tu.targetIds.slice(),
+  const scenesOf = () => mp.scenes.map((s, k) => ({ sceneId: 'LS' + (k + 1), setting: s.where || s.title, ...(s.reopenGreeting ? { reopen: true } : {}), turns: s.turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, intendedTargetIds: tu.targetIds.slice() }, intendedTargetIds: tu.targetIds.slice(),
     meaning: { intent: tu.intent, asks: tu.asks, referent: tu.referent, action: tu.action, object: tu.object, context: tu.context, expects: tu.expects, respondsTo: tu.respondsToId ? (mp.flat.find(x => x.id === tu.respondsToId) || {}).n : null } })) }))
   const cohOf = scs => scs.map((sc, k) => ({ title: (mp.scenes[k] && mp.scenes[k].title) || '', lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, meaning: tn.meaning })) }))
   const cohPass = c => !!c && c.state === QUALITY.VERIFIED && c.verdicts.every(v => v.pass) && (c.overall == null || c.overall >= 3)

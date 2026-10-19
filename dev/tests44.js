@@ -34,7 +34,10 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
     // Oct13 (owner, 13 Oct): the ɔi diphthong is now displayed "oi" (หน่อย nòi, อร่อย à-ròi) — lines 7, 71, 85 carry the old "nàwi / à-ràwi"
     // and are flagged for that rendering ONLY (nothing else on those lines)
     // (v704 also writes a long ɔɔ / əə / ʉʉ / ɛɛ long — aaw / ooe / uue / aae — where the old export wrote aw / oe / ue / ae: spelling too)
-    const conv = s => String(s || '').normalize('NFD').replace(/a([\u0300-\u036f]*)a(?=w|e)/g, 'a$1').replace(/o([\u0300-\u036f]*)o(?=e)/g, 'o$1').replace(/u([\u0300-\u036f]*)u(?=e)/g, 'u$1').normalize('NFC')
+    // (v704, relay run 5 review: the diphthongs \u0e40\u0e2d\u0e35\u0e22 \u0e2d\u0e31\u0e27 \u0e40\u0e2d\u0e37\u0e2d are displayed one way \u2014 ia, ua, uea \u2014 where the old export wrote iia / uua:
+    // spelling too; \u0e40\u0e17\u0e35\u0e48\u0e22\u0e27 th\u00eeiao \u2192 th\u00eeao, \u0e04\u0e23\u0e31\u0e27 khruua \u2192 khrua, \u0e40\u0e1b\u0e25\u0e35\u0e48\u0e22\u0e19 pl\u00ecian \u2192 bpl\u00ecan)
+    const conv = s => String(s || '').normalize('NFD').replace(/a([\u0300-\u036f]*)a(?=w|e)/g, 'a$1').replace(/o([\u0300-\u036f]*)o(?=e)/g, 'o$1').replace(/u([\u0300-\u036f]*)u(?=e)/g, 'u$1')
+      .replace(/i([\u0300-\u036f]*)i(?=a)/g, 'i$1').replace(/u([\u0300-\u036f]*)u(?=a)/g, 'u$1').normalize('NFC')
       .replace(/(^|[\s-])bp/g, '$1p').replace(/(^|[\s-])dt/g, '$1t').replace(/(^|[\s-])g/g, '$1k').replace(/[\s-]+/g, '')
     const ɔiOnly = J('th.json').filter(p => [7, 71, 85].includes(p.pos)).every(p => { const pr = c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex)
       // (v704: compared through conv — line 71 also writes ไป as "pai", the old spelling of bpai)

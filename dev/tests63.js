@@ -81,10 +81,11 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   { const lex = c.buildThaiPhoneticLexicon([]), comp = th => c.composeThaiPhonetic(th, lex).phonetic
     const got = { 'เพิ่ง': disp('เพิ่ง'), 'รถบัส': disp('รถบัส'), 'ได้ยิน': disp('ได้ยิน'), 'ผมไม่ได้ยินครับ': comp('ผมไม่ได้ยินครับ'), 'สวัสดีครับ': comp('สวัสดีครับ'),
       'แล้วคุณล่ะคะ': comp('แล้วคุณล่ะคะ'), 'ผมไม่มีช้อนครับ': comp('ผมไม่มีช้อนครับ'), 'เดินทางปลอดภัยนะครับ': comp('เดินทางปลอดภัยนะครับ'), 'ก๋วยเตี๋ยว': disp('ก๋วยเตี๋ยว'), 'ครอบครัว': disp('ครอบครัว'), 'เสียง': disp('เสียง') }
-    const want = { 'เพิ่ง': 'phôeng', 'รถบัส': 'rót-bát', 'ได้ยิน': 'dâi-yin', 'ผมไม่ได้ยินครับ': 'phǒm mâi dâi-yin khráp', 'สวัสดีครับ': 'sà-wàt-dii khráp',
-      'แล้วคุณล่ะคะ': 'láaeo khun lâ khá', 'ผมไม่มีช้อนครับ': 'phǒm mâi mii cháawn khráp', 'เดินทางปลอดภัยนะครับ': 'dooen-thaang bplàawt-phai ná khráp', 'ก๋วยเตี๋ยว': 'gǔai-dtǐao', 'ครอบครัว': 'khrâawp-khrua', 'เสียง': 'sǐang' }
+    // (phrase entries keep their hyphens: one token is one whitespace piece for the positional pronunciation alignment — tests20 N5)
+    const want = { 'เพิ่ง': 'phôeng', 'รถบัส': 'rót-bát', 'ได้ยิน': 'dâi-yin', 'ผมไม่ได้ยินครับ': 'phǒm mâi-dâi-yin khráp', 'สวัสดีครับ': 'sà-wàt-dii-khráp',
+      'แล้วคุณล่ะคะ': 'láaeo-khun-lâ khá', 'ผมไม่มีช้อนครับ': 'phǒm mâi-mii cháawn khráp', 'เดินทางปลอดภัยนะครับ': 'dooen-thaang-bplàawt-phai ná khráp', 'ก๋วยเตี๋ยว': 'gǔai-dtǐao', 'ครอบครัว': 'khrâawp-khrua', 'เสียง': 'sǐang' }
     const bad = Object.keys(want).filter(k => String(got[k]).normalize('NFC') !== want[k].normalize('NFC'))
-    T('R7', 'reviewed spellings: เพิ่ง phôeng · รถบัส rót-bát · ได้ยิน dâi-yin; a hyphen joins one word only (sà-wàt-dii khráp, mâi mii); diphthongs one way (gǔai-dtǐao, khrua, sǐang)', !bad.length, bad.map(k => k + ' → ' + got[k])) }
+    T('R7', 'reviewed spellings: เพิ่ง phôeng · รถบัส rót-bát · ได้ยิน dâi-yin (ไม่ได้ยิน mâi-dâi-yin, not mâi-dâi yin); diphthongs one way (gǔai-dtǐao, khrua, sǐang)', !bad.length, bad.map(k => k + ' → ' + got[k])) }
   { const p1 = { speaker: 'A', thai: 'ขอบคุณครับ ตอนนี้ผมมีช้อนแล้วครับ', english: 'Thanks, now I have a spoon.', prompt: 'Say thanks, now you have a spoon.' }
     const p2 = { speaker: 'B', thai: 'บ้านที่คุณเช่าใหญ่ไหมคะ', english: 'Is the house you rent big?', prompt: 'Ask if the house you rent is big.' }
     const p3 = { speaker: 'B', thai: 'ขอบคุณ สมชาย วันศุกร์หน้าเจอกันค่ะ', english: 'Thank you, Somchai, see you next Friday.', prompt: 'Thank Somchai and say you will see Somchai next Friday.' }

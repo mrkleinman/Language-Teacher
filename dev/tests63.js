@@ -53,6 +53,7 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   T('L6', 'แล้วไหม (an already / yet question) is ALREADY_QUESTION and ไม่ทุกวัน is NOT_EVERY_DAY; แล้วหรือยัง and ไม่ใช่ทุกวัน are not',
     ids('รถมาถึงป้ายรถเมล์แล้วไหมคะ').includes('ALREADY_QUESTION') && !ids('รถเมล์มาแล้วหรือยังคะ').includes('ALREADY_QUESTION') &&
     ids('ไม่ทุกวันแต่วันหยุดมีหลายคนครับ').includes('NOT_EVERY_DAY') && !ids('ไม่ใช่ทุกวันครับ').includes('NOT_EVERY_DAY'))
+  T('L7', 'ครึ่งพัน ("half a thousand") is HALF_THOUSAND; ห้าร้อยบาท and ครึ่งราคา are not', ids('ครึ่งพันก็ถูกครับ').includes('HALF_THOUSAND') && !ids('ห้าร้อยบาทครับ').includes('HALF_THOUSAND') && !ids('ลดครึ่งราคาครับ').includes('HALF_THOUSAND'))
   const ft = c.thaiFramingTidy([
     { _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ นิดา วันนี้เป็นยังไงบ้างครับ', english: 'Hello Nida, how are you today', prompt: 'Greet Nida and ask how she is doing today.' },
     { _target: 'parting', speaker: 'A', thai: 'แล้วเจอกันนะครับคุณนิดา', english: 'See you later, Nida.', prompt: 'Say goodbye to Nida' },
@@ -64,17 +65,22 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   const src2 = require('fs').readFileSync('tt.jsx', 'utf8')
   T('X1', 'writer: the three lines are ONE exchange (LINE 3 answers LINE 2, roles straight, no contradiction, แล้วหรือยัง) and a line only fills a slot of its own speaker (A-B-A)',
     /EXCHANGE \(overrides the plan above when they clash\)/.test(src2) && /LINE 3 ANSWERS LINE 2/.test(src2) && /const _slotSp = x => x === 2 \? 'B' : 'A'/.test(src2) && /_unfilled\(\)\.find\(x => _open\.has\(x\) && _spOk\(x\)\)/.test(src2))
-  const tones = { 'ห้าทุ่ม': 'hâa-thûm', 'จริงเหรอ': 'jing-rǒe', 'ทะเล': 'thá-lee', 'ยำทะเล': 'yam-thá-lee' }
+  const tones = { 'ต้อง': 'dtâawng', 'ไม่ต้อง': 'mâi-dtâawng', 'ห้าทุ่ม': 'hâa-thûm', 'จริงเหรอ': 'jing-rǒe', 'ทะเล': 'thá-lee', 'ยำทะเล': 'yam-thá-lee' }
   const tw = Object.entries(tones).filter(([t, p]) => ph(t) !== p).map(([t, p]) => t + ' ' + ph(t))
-  T('R5', 'reviewed tones: ห้าทุ่ม hâa-thûm · จริงเหรอ jing-rǒe · ทะเล thá-lee (and its compounds)', !tw.length, tw)
+  T('R5', 'reviewed spellings: ต้อง dtâawng (long) · ห้าทุ่ม hâa-thûm · จริงเหรอ jing-rǒe · ทะเล thá-lee (and its compounds)', !tw.length, tw)
 
+  const disp = t => c.loadCanonicalThaiPhonetic(ph(t), t)
+  T('R6', 'long ɔɔ / əə display long like the app\'s own spellings: ชอบ châawp · ตอบ dtàawp · เงิน ngooen; short ก็ gâw and the owner\'s หน่อย nòi unchanged',
+    disp('ชอบ') === 'châawp' && disp('ตอบ') === 'dtàawp' && disp('เงิน') === 'ngooen' && disp('ก็') === 'gâw' && disp('หน่อย') === 'nòi', ['ชอบ', 'ตอบ', 'เงิน', 'ก็', 'หน่อย'].map(disp))
   const ex = (id, r, sp) => ({ targetId: id, recallIndex: r, speaker: sp, thai: 'x' + id + r, english: 'e', prompt: 'p', wordId: id, _target: 't' + id, targetSurface: 't' + id })
   const ord = c.thaiOrderExchanges([{ _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ' }, ex(1, 3, 'A'), ex(1, 1, 'A'), ex(1, 2, 'B'), ex(2, 1, 'A'), ex(2, 2, 'B'), ex(2, 3, 'A')], null)
+  const keep = c.thaiOrderExchanges([ex(3, 2, 'B'), ex(3, 1, 'A'), ex(3, 3, 'B')], null)
+  T('X3', 'a block that already alternates (B-A-B from quota recovery) is never reshuffled by recall number', keep.map(p => p.recallIndex).join('') === '213', keep.map(p => p.recallIndex))
   T('X2', 'each word block is put back in recall order (3-1-2 → 1-2-3, A-B-A); ordered blocks and framing lines are untouched',
     ord.slice(1, 4).map(p => p.recallIndex).join('') === '123' && ord.slice(1, 4).map(p => p.speaker).join('') === 'ABA' && ord.slice(4).map(p => p.recallIndex).join('') === '123' && ord[0]._target === 'greeting', ord.map(p => p.recallIndex))
 
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
-  const keys = ['บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
+  const keys = ['ฉันนึกว่าพันบาทค่ะ', 'เสื้อตัวนี้', 'บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))
   const src = require('fs').readFileSync('tt.jsx', 'utf8')
   const uses = (src.match(/THAI_NATURALNESS_GUIDE \+ \(dailyV693On\(\) \? THAI_NATURALNESS_GUIDE_V701/g) || []).length + (src.match(/\+ \(dailyV693On\(\) \? THAI_NATURALNESS_GUIDE_V701 : ''\) \+ '\\n'/g) || []).length

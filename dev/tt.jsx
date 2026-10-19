@@ -120,7 +120,7 @@ const TOPIC_WEDDING_SPEECH_TH = [
   ['เชื่อใจ', 'trust (someone)', 'chûea-jai', 'Trust a person: ฉันเชื่อใจคุณ "I trust you". เชื่อ alone is "believe".'],
   ['เสมอ', 'always, consistently', 'sà-mǒoe', 'Usually after the verb phrase: เขาช่วยฉันเสมอ "he always helps me".'],
   ['ให้อภัย', 'forgive', 'hâi-à-phai', 'Forgive someone: ให้อภัยฉันนะ "please forgive me".'],
-  ['ตลอดไป', 'forever', 'dtà-làawt-pai', 'After the verb: รักคุณตลอดไป "love you forever".'],
+  ['ตลอดไป', 'forever', 'dtà-làawt-bpai', 'After the verb: รักคุณตลอดไป "love you forever".'],
   ['เคารพ', 'respect', 'khao-róp', 'Respect someone: เคารพพ่อแม่ "respect (one\'s) parents".'],
   ['ความทรงจำ', 'memories', 'khwaam-song-jam', 'Memories (noun): ความทรงจำที่ดี "good memories".'],
   ['อบอุ่น', 'warm, comforting', 'òp-ùn', 'Warm in feeling (a family, a welcome, a home), not only temperature.'],
@@ -149,7 +149,7 @@ const TOPIC_WEDDING_SPEECH_TH = [
   ['แบ่งปัน', 'share', 'bàeng-bpan'],
   ['ประสบการณ์', 'experience', 'bprà-sòp-gaan'],
   ['เติบโต', 'grow, mature', 'dtòoep-dtoo'],
-  ['เปลี่ยนแปลง', 'change', 'plìian-plaaeng'],
+  ['เปลี่ยนแปลง', 'change', 'bplìian-bplaaeng'],
   ['บางครั้ง', 'sometimes', 'baang-khráng'],
   ['คำพูด', 'words, what someone says', 'kham-phûut'],
   ['สนับสนุน', 'support', 'sà-nàp-sà-nǔn'],
@@ -16432,7 +16432,13 @@ const THAI_NATURALNESS_GUIDE_V701 =
   // v703 — from the owner's review of the live v702 Thai track
   '  - นี่ครับ (handing something over) comes FIRST: นี่ครับ ช้อนครับ — not ช้อนนะ นี่ครับ / อร่อยไหม นี่ครับ · a reason is เหตุผล…คืออะไร (not เป็นอะไร)\n' +
   '  - ไม่ได้เจอกันตั้งนาน is said when meeting again — never with วันนี้ · ชื่ออะไรก็ได้ means "whatever it is called", not "what is it called?"\n' +
-  '  - fit the relationship: no romantic promises between friends (ผมอยากอยู่กับคุณตลอดไป / คุณจะรักผมตลอดไปไหม); give the three lines of a word three different jobs, not three echoes\n'
+  '  - fit the relationship: no romantic promises between friends (ผมอยากอยู่กับคุณตลอดไป / คุณจะรักผมตลอดไปไหม); give the three lines of a word three different jobs, not three echoes\n' +
+  // v704 — from the independent review of the relay Daily track on the owner's profile (new 501–800 words)
+  '  - Thai word order, not English: ที่ป้ายรถเมล์ร้อนมากเลยครับ — not ผมร้อนมากที่ป้ายรถเมล์ · an arrival takes แล้ว: รถเมล์สีเหลืองมาแล้วค่ะ — not รถสีเหลืองนั้นมา · ผมจะไปทางออกนั้นครับ — not ผมใช้ทางออกนั้น\n' +
+  '  - an offer is เดี๋ยว…ให้นะ: เดี๋ยวผมเอาช้อนมาให้นะครับ — a bare เอาช้อนมา is an order · a condition is ถ้า…ก็… / ถ้า…จะ…: ถ้าถูกก็ซื้อครับ, ถ้ารู้จะบอกนะครับ\n' +
+  '  - correcting a mistake: ศูนย์ครับ ไม่ใช่สอง · บางที (sometimes / maybe) does not go in a ไหม question: คุณตื่นสายบ่อยไหมคะ / บางทีคุณก็ตื่นสายใช่ไหมคะ — not บางทีคุณตื่นสายไหม · ใช่ค่ะ only answers a yes/no question\n' +
+  '  - ร้านอาหาร is a restaurant (a street stall is ร้านข้างทาง); the english adds nothing the Thai does not say\n' +
+  '  - a reply answers the line before it (a price question gets a price, a where question a place), and facts stay true for the whole lesson: a number, time, how often (every day / sometimes) or plan said earlier is never contradicted later\n'
 const THAI_NATURALNESS_GUIDE =
   '• NATURAL THAI — mistakes seen before (write the natural form):\n' +
   '  - "there" is ที่นั่น (ทางเข้าอยู่ที่นั่นครับ), never ที่นั้น (นั้น = "that" after a noun)\n' +
@@ -36631,6 +36637,10 @@ function thaiLexicalSenseProblems(p, targetSurface) {
   // classifier, number): ไปรถ… is not "take the … bus"; นั่งรถสีเหลืองไปไหม is. ไปที่รถ / ไปเอารถ / ไปขึ้นรถ are untouched (ไป is not before รถ).
   else if (dailyV693On() && /ไปรถ(?!ติด)/.test(th.replace(/\s+/g, '')))
     out.push({ id: 'COLLOCATION_VEHICLE_GO', code: 'UNNATURAL', why: '"' + th.replace(/\s+/g, '').match(/ไปรถ\S{0,8}/)[0] + '" — travelling BY a vehicle is นั่ง / ขึ้น + vehicle (+ ไป): นั่งรถสีเหลืองไปไหมครับ' })
+  // v704 (relay Daily run: บางทีคุณตื่นสายไหมคะ) — บางที "sometimes / maybe" inside a ไหม question; a native asks คุณตื่นสายบ่อยไหมคะ or
+  // checks with บางทีคุณก็ตื่นสายใช่ไหมคะ (ใช่ไหม is untouched)
+  if (dailyV693On() && /บางที(?:(?!ใช่ไหม).)*ไหม/.test(th.replace(/\s+/g, '')))
+    out.push({ id: 'BANGTHII_QUESTION', code: 'UNNATURAL', why: 'บางที (sometimes / maybe) does not go in a ไหม question — ask คุณตื่นสายบ่อยไหมคะ, or check with บางทีคุณก็ตื่นสายใช่ไหมคะ' })
   // (2) คู่ classifies things that come in PAIRS (รองเท้า ถุงเท้า ตะเกียบ ต่างหู ถุงมือ) or a couple — never a single object
   //     (ผมอยากได้ตู้เย็นคู่หนึ่งครับ). Each object keeps its own classifier (ตู้เย็นเครื่องหนึ่ง / เก้าอี้ตัวหนึ่ง).
   if (/(ตู้เย็น|โต๊ะ|เก้าอี้|รถ|บ้าน|ห้อง|ทีวี|โทรศัพท์|มือถือ|เสื้อ|กระเป๋า|หนังสือ|แก้ว|จาน|ชาม|ประตู|หน้าต่าง|เตียง|แอร์|พัดลม|คอมพิวเตอร์|นาฬิกา)คู่/.test(th))

@@ -15450,7 +15450,8 @@ function thaiScenePolishPrompt(sc, allowed, names) {
     '• use ONLY these Thai words (plus the target words and ครับ ค่ะ คะ นะ): ' + allowed.slice(0, 380).join(' ') + '\n' +
     '• for each line you change, also give its natural English and a short cue: the speaking act + exactly what the Thai says, second person ("Ask where the sugar is.")\n' +
     THAI_NATURALNESS_GUIDE_V701 +
-    'Return ONLY JSON: {"lines":[{"n":12,"thai":"...","english":"...","cue":"..."}]} with ONLY the lines you changed ({"lines":[]} when the scene is already good).'
+    'Return ONLY JSON: {"lines":[{"n":12,"thai":"...","english":"...","cue":"..."}]} with ONLY the lines you changed ({"lines":[]} when the scene is already good)' +
+    (sc.lines.some(l => l.framing) ? '; an opening / closing line is named by its label ({"n":"C1",…})' : '') + '.'
 }
 async function thaiScenePolish(t, c, log) {
   if (!THAI_SCENE_POLISH_ACTIVE || !dailyV693On() || !c.apiKey) return { pairs: t.pairs, changed: 0, calls: 0 }

@@ -15421,6 +15421,10 @@ function thaiScenePolishHints(lines) {
     // v704 (blind review of relay run 8: "she rents far away" then "I don't rent", both B) — two B lines in a row inside the scene
     else if (a.pair.speaker === 'B' && b.pair.speaker === 'B' && !a.framing && !b.framing)
       out.push(id(a) + ' and ' + id(b) + ' are both B — make ' + id(b) + ' follow on from ' + id(a) + ' without contradicting it')
+    // v704 (blind review of relay run 10: น้ำแข็ง A "I'll have ice too" · A "not much ice" · B "is there any ice?") — inside ONE word's
+    // exchange two lines of the same speaker mean the turns broke: the other person's line belongs between them
+    else if (a.pair.speaker === b.pair.speaker && !a.framing && !b.framing && (a.pair.targetSurface || a.pair._target) && (a.pair.targetSurface || a.pair._target) === (b.pair.targetSurface || b.pair._target))
+      out.push(id(a) + ' and ' + id(b) + ' (same word) are both ' + a.pair.speaker + ' — rewrite so the exchange alternates and nobody answers their own question')
   }
   // (same review: งั้น opened nine lines) — "then / so" at most once a scene
   const ngan = lines.filter(l => /^งั้น/.test(t0(l)))

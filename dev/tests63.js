@@ -73,6 +73,7 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('H1', 'scene polish hints: ใช่ answering a ไหม question (L2) and a question followed by the same speaker (L3) are named; ใช่ answering ใช่ไหม (L6) is not · a phrase-final ค่ะ / ครับ gets a space before more Thai (ครับผม, คะแนน untouched)',
       h.length === 2 && /^L2 answers the ไหม question in L1 with ใช่/.test(h[0]) && /^L3 asks a question/.test(h[1]) &&
       (h2 => h2.some(x => /^L1 and L2 are both B/.test(x)) && h2.some(x => /งั้น .* opens L3, L4/.test(x)))(c.thaiScenePolishHints([L(1, 'B', 'ฉันเช่าห้องไกลค่ะ'), L(2, 'B', 'ฉันไม่ได้เช่าค่ะ'), L(3, 'A', 'งั้นไปกันครับ'), L(4, 'B', 'งั้นไปค่ะ')])) &&
+      (h3 => h3.some(x => /^L1 and L2 \(same word\) are both A/.test(x)))(c.thaiScenePolishHints([{ n: 1, pair: { speaker: 'A', thai: 'ผมเอาน้ำแข็งด้วยครับ', targetSurface: 'น้ำแข็ง' } }, { n: 2, pair: { speaker: 'A', thai: 'ผมไม่เอาน้ำแข็งมากครับ', targetSurface: 'น้ำแข็ง' } }])) &&
       fp.join('|') === 'ไม่ใช่ค่ะ ศูนย์แปดเจ็ด|ครับผม|ขอบคุณครับ คุณนิดา|คะแนนดีค่ะ', { h, fp }) }
   const ft = c.thaiFramingTidy([
     { _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ นิดา วันนี้เป็นยังไงบ้างครับ', english: 'Hello Nida, how are you today', prompt: 'Greet Nida and ask how she is doing today.' },

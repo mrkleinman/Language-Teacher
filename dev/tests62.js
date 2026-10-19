@@ -52,7 +52,7 @@ const DIGEST_1_800 = '9339125df5f4dbdcf2bcba374d7b007ef2fba84851b18345469c385a12
     const a = span(Lp, 'น้ำแข็ง'), b = span(Lk, 'น้ำแข็ง')
     const vb = c.validateThaiVocabulary([{ thai: 'ผมอยากได้น้ำแข็งครับ' }], ctxOf(Lp))
     T('C2', 'closed vocabulary: a learner who knows น้ำ and แข็ง but not น้ำแข็ง is NOT authorised to read น้ำแข็ง by composition; once taught it is INTRODUCED',
-      a.finalResult === CL.BLOCKED && /curriculum lexical item/.test(a.reason || '') && !vb.ok && vb.blocked.includes('น้ำแข็ง') && b.finalResult === CL.INTRODUCED, { a: [a.finalResult, a.reason], b: b.finalResult, vb: vb.blocked })
+      a.finalResult === CL.BLOCKED && /its own lesson/.test(a.reason || '') && !vb.ok && vb.blocked.includes('น้ำแข็ง') && b.finalResult === CL.INTRODUCED, { a: [a.finalResult, a.reason], b: b.finalResult, vb: vb.blocked })
     const A = c.ev('TRACK_ADAPTERS').th, LA = c.ev('LISTENING_ADAPTERS').th, VV = learner()
     const stages = (th, s) => {
       const w = VV.find(x => x.thai === th), kw = { wordId: w.id, thai: th, english: w.english }

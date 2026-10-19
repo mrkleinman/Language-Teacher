@@ -14855,7 +14855,7 @@ function thaiQcCheckVocabulary(pair, allowedSet, vocab) {
   while (i < th.length) {
     const hit = dict.find(w => th.startsWith(w, i))
     if (hit) {
-      if (!allowedSet.has(hit)) {
+      if (!allowedSet.has(hit) && !THAI_NOMINALISER_GRAMMAR.has(hit)) {   // v704: การ / ความ are approved grammar units
         if (!_units) { _units = new Set(typeof THAI_EXTRA_UNITS !== 'undefined' ? THAI_EXTRA_UNITS : []); (vocab || []).forEach(w => { const t2 = w.thai || w.t; if (t2) _units.add(t2) }) }
         const r = resolveThaiSpan(hit, allowedSet, [..._units].filter(u => u !== hit))
         if (!(r.covered && r.parts.length >= 2)) offenders.push(hit)
@@ -14953,8 +14953,8 @@ function normaliseThaiSpacing(thai) {
 function resolveThaiSpan(span, allowedSet, lexUnits) {
   const s = String(span || '')
   if (!s) return { covered: true, parts: [] }
-  // v704: a curriculum lexical item is authorised only as itself, never composed from known parts
-  if (thaiIsCurriculumLexeme(s)) return allowedSet.has(s) ? { covered: true, parts: [s] } : { covered: false, parts: [] }
+  // v704: a lexical item with its own lesson is authorised only as itself, never composed from known parts
+  if (thaiHasOwnLesson(s)) return allowedSet.has(s) ? { covered: true, parts: [s] } : { covered: false, parts: [] }
   const units = [...(lexUnits || [])].filter(u => u && u.length >= 1).sort((a, b) => b.length - a.length)
   const memo = new Map()
   function walk(i) {
@@ -15024,7 +15024,7 @@ function classifyThaiToken(token, ctx) {
   const targetRec = targets.find(x => ((x && (x.thai || x.t)) || x) === token)
   const currentTrackTarget = !!targetRec
   const grammarAllowed = (c.grammarWords || []).includes(token) ||
-                         THAI_APPROVED_COMPOSITION_UNITS.has(token)
+                         THAI_APPROVED_COMPOSITION_UNITS.has(token) || THAI_NOMINALISER_GRAMMAR.has(token)   // v704: การ / ความ in every context
   let cls = THAI_CLASS.BLOCKED
   let reason = 'never introduced and not a current-track target'
   if (currentTrackTarget) {
@@ -15053,12 +15053,12 @@ function classifyThaiSpan(span, ctx) {
     return { rawSpan: span, fullEntry: span, fullEntryAllowed: true,
              segmentation: [span], allSegmentsAllowed: true,
              finalResult: full.classification, blocked: [] }
-  // v704: a curriculum lexical item is authorised only as itself, never composed from known parts
-  if (thaiIsCurriculumLexeme(span))
+  // v704: a lexical item with its own lesson is authorised only as itself, never composed from known parts
+  if (thaiHasOwnLesson(span))
     return { rawSpan: span, fullEntry: span, fullEntryAllowed: false,
              segmentation: [span], allSegmentsAllowed: false,
              finalResult: THAI_CLASS.BLOCKED, blocked: [span],
-             reason: 'curriculum lexical item — authorised only as itself (introduced or a current target), not composed from its parts' }
+             reason: 'lexical item with its own lesson (curriculum slot or topic) — authorised only as itself (introduced or a current target), not composed from its parts' }
   // Try a segmentation into allowed parts.
   const units = new Set([...(c.allowedThaiWords || []), ...THAI_APPROVED_COMPOSITION_UNITS])
   ;(c.vocab || []).forEach(w => { const t = w.thai || w.t; if (t) units.add(t) })
@@ -23022,14 +23022,22 @@ function thaiIsExactLexicalEntry(surface, vocab) {
   if (!_thaiRawHeadwords) { _thaiRawHeadwords = new Set(); (typeof RAW_VOCAB !== 'undefined' ? RAW_VOCAB : []).forEach(d => { if (d && d.t && !d.dup) _thaiRawHeadwords.add(d.t) }) }
   return _thaiRawHeadwords.has(surface) || (vocab || []).some(w => w && (w.thai || w.t) === surface)
 }
-// v704 — a CURRICULUM lexical item (an entry with its own curriculum slot) is authorised only as itself: introduced / known, or a
-// current target. Composing it from known parts would let a word through before its own lesson (น้ำแข็ง = น้ำ + แข็ง, ทำอาหาร =
-// ทำ + อาหาร). Phrase entries outside the curriculum (ไม่ต้อง, กลับบ้าน) are never taught on their own and keep the compositional rule.
-let _thaiCurriculumHeadwords = null
-function thaiIsCurriculumLexeme(surface) {
+// v704 — a lexical item with its OWN LESSON (a curriculum slot, or a topic list such as Wedding Speech) is authorised only as itself:
+// introduced / known, or a current target. Composing it from known parts would let a word through before its own lesson (น้ำแข็ง =
+// น้ำ + แข็ง, ทำอาหาร = ทำ + อาหาร, ความหวัง = ความ + หวัง). Two exceptions keep everyday Thai legal: an entry made ONLY of approved
+// grammar units is grammar itself (ไม่ได้ = ไม่ + ได้), and phrase entries with no lesson of their own (ไม่ต้อง, กลับบ้าน) keep the
+// compositional rule — they are never taught on their own.
+let _thaiOwnLessonHeadwords = null
+function thaiHasOwnLesson(surface) {
   if (!surface) return false
-  if (!_thaiCurriculumHeadwords) { _thaiCurriculumHeadwords = new Set(); (typeof RAW_VOCAB !== 'undefined' ? RAW_VOCAB : []).forEach(d => { if (d && d.t && !d.dup && d.curriculumIndex > 0) _thaiCurriculumHeadwords.add(d.t) }) }
-  return _thaiCurriculumHeadwords.has(surface)
+  if (!_thaiOwnLessonHeadwords) { _thaiOwnLessonHeadwords = new Set(); (typeof RAW_VOCAB !== 'undefined' ? RAW_VOCAB : []).forEach(d => { if (d && d.t && !d.dup && (d.curriculumIndex > 0 || d.topicOnly || (d.topics || []).length)) _thaiOwnLessonHeadwords.add(d.t) }) }
+  return _thaiOwnLessonHeadwords.has(surface) && !thaiIsGrammarComposition(surface)
+}
+function thaiIsGrammarComposition(span) {
+  const units = [...THAI_TRACK_GRAMMAR_WORDS, ...THAI_NOMINALISER_GRAMMAR, ...THAI_APPROVED_COMPOSITION_UNITS, ...THAI_DISCOURSE_INTERJECTIONS].filter(u => u && u !== span)
+  const best = new Array(span.length + 1).fill(-1); best[0] = 0
+  for (let k = 0; k < span.length; k++) if (best[k] >= 0) for (const u of units) if (span.startsWith(u, k) && (best[k + u.length] < 0 || best[k] + 1 < best[k + u.length])) best[k + u.length] = best[k] + 1
+  return best[span.length] >= 2
 }
 function thaiCompoundHasComponent(token, target, vocab) {
   const words = _thaiUnits(vocab).filter(u => u !== token && u.length < token.length)

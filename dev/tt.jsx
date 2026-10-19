@@ -24327,6 +24327,9 @@ function targetLinguisticRole(t, lang) {
   if (/adjective|na-adjective|i-adjective/.test(pos)) return 'STATE/ADJECTIVE'
   if (/verb/.test(pos)) return 'VERB'
   if (/noun/.test(pos)) return 'NOUN'
+  // v704 (relay Daily run: ทางออก "exit" was briefed as a VERB, เครื่องดื่ม "drink" too) — a Thai compound on a noun-forming head
+  // (ทาง ห้อง ร้าน ป้าย สถานี เครื่อง บัตร ตั๋ว …) is a thing or place whatever its English gloss; ทางนี้ / ทางนั้น / ทางโน้น are deictic
+  if (lang === 'th' && /^(ทาง|ห้อง|ร้าน|ป้าย|สถานี|โรง|นัก|เครื่อง|ตู้|บัตร|ตั๋ว)./.test(surf) && !/^ทาง(นี้|นั้น|โน้น)$/.test(surf)) return 'NOUN'
   const fn = typeof lexicalFunctionFromGloss === 'function' ? lexicalFunctionFromGloss(t.english || t.e) : 'unknown'
   if (fn === 'verb') return 'VERB'
   if (fn === 'adjective') return 'STATE/ADJECTIVE'

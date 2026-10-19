@@ -35,6 +35,11 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     ids('บางทีคุณตื่นสายไหมคะ').includes('BANGTHII_QUESTION') && !ids('บางทีคุณก็ตื่นสายใช่ไหมคะ').includes('BANGTHII_QUESTION') &&
     !ids('คุณตื่นสายบ่อยไหมคะ').includes('BANGTHII_QUESTION') && !ids('บางทีผมก็ตื่นสายครับ').includes('BANGTHII_QUESTION'))
 
+  const role = t => { const d = RAW.find(x => x.t === t && !x.dup); return c.targetLinguisticRole({ thai: d.t, english: d.e }, 'th') }
+  const roles = { 'ทางออก': 'NOUN', 'เครื่องดื่ม': 'NOUN', 'บัตรเครดิต': 'NOUN', 'ห้องน้ำ': 'NOUN', 'กิน': 'VERB', 'สวย': 'STATE/ADJECTIVE' }
+  const rb = Object.entries(roles).filter(([t, r]) => role(t) !== r).map(([t, r]) => t + ' ' + role(t) + ' (want ' + r + ')')
+  T('L3', 'target role: a Thai compound on a noun head is a NOUN whatever its gloss (ทางออก "exit", เครื่องดื่ม "drink"); verbs and adjectives unchanged', !rb.length, rb)
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))

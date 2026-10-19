@@ -1,11 +1,13 @@
 # Thai Daily quality rounds after the 501–800 update (19 Oct)
 
 Goal from the owner: "keep testing until the tracks are 8–8.5/10".
-Status: **not reached.** Four tracks were rated blind; all scored between 6.2 and 6.5. Nothing has been deployed.
+
+Status: **not reached.** Ten tracks have been blind-rated. The best score is 7.0, up from 6.2–6.5 in the first four rounds. Nothing has been deployed.
 
 ## How it was tested
 
-- **Track generation.** The real app path ran on the owner's profile (backup 2026-10-15, never committed): `pickWords` → scene → generation → QC → quota recovery → final audit → the app's own export. Every model request was answered by a Claude Haiku stand-in through a file queue (`sandbox/daily-relay/bridge-daily.js`), at no API cost. Each track takes about 126–133 requests.
+- **Track generation.** The real app path ran on the owner's profile (backup 2026-10-15, never committed): `pickWords` → scene → generation → QC → quota recovery → coherence repair → scene polish → final audit → the app's own export.
+- **Model requests.** Every model request was answered by a Claude Haiku stand-in through a file queue (`sandbox/daily-relay/bridge-daily.js`), at no API cost. Each track takes about 130–185 requests.
 - **Words.** The same 30 words were used every time (5 new, 25 review), so tracks can be compared.
 - **Rating.** An independent reviewer rated each track blind, reading only the exported lines. It used the owner's rubric:
 
@@ -17,82 +19,106 @@ Status: **not reached.** Four tracks were rated blind; all scored between 6.2 an
   | Romanisation | 15% |
   | Coherence | 10% |
 
+- **Who answered.** Track 5 is the exception to the Haiku rule. When the stand-ins ran out, I answered its last ~45 requests myself, including the whole scene polish. That makes track 5 a less faithful test. From track 6 on, Haiku stand-ins answered every request.
+
 ## Results
 
-| Track | Total | Thai | Cue / EN | Vocab | Roman | Coherence | Notes |
+| Track | Total | Thai | Cue / EN | Vocab | Roman | Coherence | What changed before this track |
 |---|---|---|---|---|---|---|---|
 | 1 | 6.5 | 6.0 | 7.5 | 7.5 | 5.0 | 6.5 | Baseline after the 501–800 data |
-| 2 | 6.4 | 6.5 | 6.5 | 6.0 | **8.0** | 4.5 | Romanisation fixed; line 3 often ignored line 2 |
-| 3 | 6.2 | 6.0 | 6.5 | 6.0 | 7.5 | 5.0 | Exchanges answer better; new forced-Thai cases (ครึ่งพัน) |
-| 4 | 6.3 | 6.5 | 6.5 | 6.0 | 7.0 | 4.5 | Lines in A-B-A order; coherence judge sees real order |
+| 2 | 6.4 | 6.5 | 6.5 | 6.0 | 8.0 | 4.5 | Romanisation spellings |
+| 3 | 6.2 | 6.0 | 6.5 | 6.0 | 7.5 | 5.0 | Exchange rule (line 3 answers line 2) |
+| 4 | 6.3 | 6.5 | 6.5 | 6.0 | 7.0 | 4.5 | Speaker slots, A-B-A order |
+| 5 | 6.7 | 7.0 | 7.0 | 6.0 | 7.5 | 5.5 | Scene polish (one request per mini-scene) |
+| 6 | 6.9 | 7.0 | 7.0 | 6.0 | **9.0** | 5.0 | Cue fixes, romanisation, polish sees framing lines |
+| 8 | **7.0** | 6.5 | 7.0 | **7.0** | 9.0 | 5.5 | Five exchange shapes, polish hints, naturalness rules |
+| 10 | 6.9 | 7.0 | 6.5 | 6.5 | 9.0 | 5.0 | Coherence re-judged after polish, more rules |
 
-All four tracks were READY 90/90, with technical reliability rated 8–10.
+Tracks 7 and 9 were stopped early so the next build could run sooner.
 
-## What was fixed (all pushed, `tests63` 22/22)
+Every track was READY 90/90 except track 8. Track 8 went NOT_READY because its last coherence verdict was given before the polish rewrote the scene. That gap is now fixed (see below).
 
-**Romanisation**
-- Unaspirated ป, ต and ก are now spelled bp, dt and g in 167 dictionary entries.
-- Long vowels are now written long when shown: ชอบ châawp, ต้อง dtâawng, เงิน ngooen.
-- Tone and vowel-length errors were corrected in 25 dictionary words, plus the compounds that contain them:
-  - ห้าทุ่ม, จริงเหรอ, ทะเล, ตึก;
-  - ร้อน, ห้อง, น้อง, ส้อม, ข่าว, ดื่ม, ครอบครัว and others.
-- The app's one-syllable checker now flags only ยาวเฟื้อย, a two-word entry it misreads.
-- The old v684 correction table now uses the same convention as the dictionary.
+## What was fixed after round 4 (all pushed; tests63 33/33)
 
-**Conversation structure**
-- **Writer rule:** the three lines of a word are one exchange. Line 3 answers line 2, roles stay straight, and nothing contradicts an earlier line.
-- **Speaker slots:** a regenerated line only fills a slot of its own speaker. This removes the A-A-A monologues where a man's line took the woman's slot.
-- **Line order:** each word's lines are put back in A-B-A order, but only when that repairs the turn-taking.
-- **Coherence judge:** it now reads the lines in the track's real order. Before, it saw every word's line 1, then every line 2.
+**Coherence**
+- **Scene polish.** One request per mini-scene shows the writer the whole scene in order and asks for the smallest edits that make it one conversation. Each edit must keep its speaker particle, its exact target word, the taught vocabulary and the lexical rules; otherwise the original line stays. An edited line loses its old verdicts and is judged again.
+- **Polish context.** The opening and closing lines join the first and last scenes, so the greeting and goodbye fit the place and the plan. A refused edit gets one retry with the reasons. The polisher also receives concrete "fix these" hints a rule can see:
+  - ใช่ answering a ไหม question;
+  - a question followed by the same speaker;
+  - two lines of the same speaker inside one word's exchange;
+  - งั้น opening several lines;
+  - one phrase repeated in all three of a word's lines.
+- **Coherence after the polish.** When the coherence verdict failed and the polish changed lines, coherence is judged again on the polished text. This costs one request.
+- **Recovered lines.** A line written in quota recovery now sees the exchange it joins and the line after it.
 
-**Generation inputs**
-- Number words (ศูนย์, พัน, ครึ่ง) no longer get a random extra number forced in. For other words, the number hint is now an example, not an order.
-- Thai compounds on a noun head (ทางออก, เครื่องดื่ม …) are briefed as nouns, not verbs.
+**Vocabulary practice**
+- Each word gets one of five exchange shapes (comment → follow-up → detail; request → accept → react; plan → problem → solve; opinion → reason → reply; problem → suggestion → accept). Neighbouring words get different shapes, and an answer must add something new.
+- Track 8's vocabulary score rose from 6.0 to 7.0 after this change.
 
-**Framing lines**
-- No Thai name inside an English cue.
-- A "you too" reply is changed when the closing it answered was replaced.
-- Every English line now ends with punctuation, and whether it is a question is decided from the Thai.
+**Thai naturalness rules** (deterministic; the writer and the final audit both apply them)
+- เวลาไหน for "what time?" (use กี่โมง).
+- A location without อยู่ (น้ำตาลบนโต๊ะครับ).
+- มีคนหลายคน for "lots of people" (use คนเยอะ).
+- A price per day, month or person without ละ (use เดือนละพันบาท).
+- A space after a phrase-final ค่ะ or ครับ.
+- Guide lines:
+  - a price question gets an amount;
+  - ไม่ใช่ทุกวัน;
+  - มา…กันอีกไหม;
+  - people already together don't say where they are.
 
-**Naturalness guidance and rules**
-- The writer and the native-speaker checker share about 15 new guidance lines for recurring errors, including:
-  - English word order;
-  - offers with เดี๋ยว…ให้นะ and conditionals with ถ้า…ก็/จะ;
-  - บางที + อาจจะ for "maybe";
-  - แล้วหรือยัง for "yet?";
-  - ไม่ใช่ทุกวัน, ห้าร้อย, นึกว่า, บนโต๊ะ;
-  - a classifier with นี้.
-- Six deterministic rules were added for common errors:
-  - travelling by vehicle with ไปรถ…;
-  - บางที inside a ไหม question;
-  - แล้วไหม for "yet?";
-  - ไม่ทุกวัน;
-  - ครึ่งพัน for 500;
-  - นะค่ะ, corrected automatically to นะคะ.
+**Cues, roles and romanisation**
+- **Cue wording bugs:**
+  - "Say thanks, …" was misread as narration;
+  - "he rent" now agrees as "he rents";
+  - an addressee false alarm on "say you will see";
+  - "Here's" stayed capitalised.
+- **Names and roles:**
+  - a character's Thai name in English text becomes the English name;
+  - แล้ว, ข้าม, ตอบ and บ่อย are briefed with the right word class.
+- **Romanisation:**
+  - เพิ่ง phôeng, รถบัส rót-bát, ได้ยิน dâi-yin, ไม่ได้ยิน mâi-dâi-yin;
+  - the diphthongs เอีย อัว เอือ are always shown as ia, ua, uea.
+  - Romanisation now scores 9/10.
 
 ## Regression suite
 
-The full run shows the same 11 known failures as the integration report: 8 that predate this work and 3 intentional ones. There are no new regressions.
+The full run shows the same known failures as before, with no new regressions.
 
-Five expectation changes were made on purpose, each with a comment in the test:
-- **tests17 G2:** the dictionary now spells it bplàwt.
-- **tests34 1L/1M:** a man's line no longer takes the woman's slot.
-- **tests44 V3/T3/G1th:** spelling-only differences, and fixtures updated to the dictionary spelling.
-- **tests47 P4/P6:** long ɔɔ is written aaw; กระ is spelled grà.
+Three regressions appeared during the work and were fixed before moving on:
+- Phrase entries spelled with a space broke pronunciation alignment. They are hyphenated again.
+- One cue-lint exception hid two real addressee leaks.
+- A diphthong spelling change needed the test normaliser updated.
 
-## Why the score has stalled
+Expectation changes made on purpose, each explained in the test:
+- **tests63 S1:** one follow-up request for refused polish edits.
+- **tests44 V3:** diphthong spelling counts as a spelling-only difference.
+- **tests20 N7:** the closing line now has a space after ครับ.
 
-Every round removes the specific defects the reviewer named, but the reviewer then finds new instances of the same two kinds:
+## Cost
 
-1. **Forced Thai built around a target word.** Examples: ครึ่งพัน, ที่นี่ for "right here", and three near-identical uses of one word.
-2. **Replies that don't follow the previous line.** This happens mostly where a slot was regenerated or a line came from quota recovery. Those lines are written with only partial context. Some checking stages deliberately judge the three lines as unrelated alternatives, not as one conversation.
+Request volume rose by about 30% from track 4 to track 10, from about 1.03M to 1.34M characters sent.
+- **Scene polish:** about 5–7 requests per track, plus one coherence re-judgement when it is needed.
+- **Recovery:** most of the remaining increase. The stricter rules send more lines back for rewriting.
 
-The tracks are also written by free Haiku stand-ins, not the paid Haiku path. A coherence of 4.5–5 out of 10 accounts for most of the gap; the weighted Thai and vocabulary scores sit at 6–6.5.
+Paid cost per track has not been measured on the real Haiku path.
 
-Reaching 8 most likely needs a structural change rather than more rules. The main candidate is one final pass per mini-scene that rewrites the scene's lines together with full context and is then re-checked. It costs one or two extra model calls per scene, about 6–8 per track. This changes cost and architecture, so it is the owner's decision.
+## Why the score sits at about 7
+
+Tracks 6, 8 and 10 scored 6.9, 7.0 and 6.9. Each round removes the defects the reviewer named, and the reviewer then finds new ones of the same kinds:
+
+1. **Semantic slips that rules can't see.** Examples: นมเย็น means pink milk, not "cold milk"; รถ needs to be รถเมล์ for "bus"; หลายจาน means many plates, not many dishes; เงินพันบาท means 1,000 baht of money, not a 1,000-baht note.
+2. **Replies that don't follow the line before.** Examples are a man who can't find the spoon then saying where it is, and a woman answering her own question.
+
+Both kinds come from the model that writes and polishes the lines. The pipeline now gives Haiku the scene, the order, the hints and the rules, but Haiku's own Thai is the ceiling at about 7.
+
+Track 11 is testing whether a stronger model for the scene polish alone (5–7 requests per track) lifts the score. If it does, the owner can choose a "polish model" setting.
 
 ## TL;DR
 
-- Four blind-rated tracks on the owner's profile scored 6.5, 6.4, 6.2 and 6.3. The 8–8.5 target is not reached, and nothing has been deployed.
-- Romanisation went from 5.0 to 7–8. Speaker order, line order, number forcing, noun roles, punctuation and about 40 dictionary spellings are fixed, with tests63 at 22/22 and no new regressions.
-- The remaining gap is mostly coherence (4.5–5) and forced Thai in lines written outside their exchange. Closing it likely needs a per-scene rewrite pass, about 6–8 extra calls per track, or paid Haiku testing. Both are owner decisions.
+- Ten blind-rated tracks on the owner's profile. The best score is 7.0, up from 6.2–6.5 before the scene polish, but the 8–8.5 target is not reached. Nothing has been deployed.
+- What improved:
+  - romanisation, from 5 to 9;
+  - vocabulary practice, from 6 to 7, thanks to the exchange shapes;
+  - coherence verdicts, which now judge the polished text.
+- The remaining gap is Haiku's own Thai: semantic slips and replies that don't follow. Rules have stopped moving the score. A stronger model for the 5–7 polish requests per track is being tested in track 11.

@@ -15473,11 +15473,15 @@ async function thaiScenePolish(t, c, log) {
     sections[0].lines = open.concat(sections[0].lines)
     sections[sections.length - 1].lines = sections[sections.length - 1].lines.concat(close)
   }
+  // v705 (relay run 12: the polish lengthened a เช่า line to 8 words; the final MAIN_COMPLEXITY_AUDIT then failed LENGTH_PASS and
+  // dropped the pair, so the track went NOT_READY at 89/90) — an edit is measured against the same belt ceiling the final audit uses
+  let _cc = null; try { _cc = getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }) } catch (e) {}
   const check = (line, ed) => {
     const old = line.pair, th = normaliseThaiSpacing(String(ed.thai || '').trim()), t0 = th.replace(/\s+/g, '')
     if (!th || t0 === String(old.thai || '').replace(/\s+/g, '')) return { skip: true }
     const surf = line.framing ? '' : (old.targetSurface || old._target || '')
     const why = []
+    if (_cc) { const a = _cc.analyse(th); if (a.overHardMax) why.push('too long: ' + a.units + ' words (max ' + _cc.hardMax + ')') }
     if (surf && !thaiTargetPresent(th, surf, c.vocab)) why.push('target ' + surf + ' missing')
     if (old.speaker === 'A' ? !/ครับ/.test(t0) || /(ค่ะ|คะ)$/.test(t0) : !/(ค่ะ|คะ)$/.test(t0) || /ครับ/.test(t0)) why.push('speaker particle')
     try { const v = validateThaiVocabulary([{ thai: th }], vctx); if (v.blocked && v.blocked.length) why.push('untaught: ' + v.blocked.slice(0, 3).map(b => b.token || b).join(' ')) } catch (e) { why.push('vocabulary check failed') }

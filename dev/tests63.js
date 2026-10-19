@@ -155,7 +155,16 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const same = c.thaiSamePhraseTargets([{ pair: { targetSurface: 'สีเหลือง', thai: 'รถบัสสีเหลืองออกแล้วครับ' } }, { pair: { targetSurface: 'สีเหลือง', thai: 'รถบัสสีเหลืองมาไหมคะ' } }, { pair: { targetSurface: 'สีเหลือง', thai: 'ผมชอบรถบัสสีเหลืองครับ' } }])
     T('S2', 'scene polish sees the opening / closing framing lines (O1 … C1, no target) with the scene they belong to, and names a word whose three lines repeat one phrase (VARY: รถบัสสีเหลือง)',
       /O1 A \[opening line, no target\]: สวัสดีครับ/.test(p2) && /C1 B \[closing line, no target\]: แล้วเจอกันค่ะ/.test(p2) && calls2 === 1 && r2.pairs[r2.pairs.length - 1].thai === 'มีช้อนไหมคะ' &&
-      same.length === 1 && same[0][1] === 'รถบัสสีเหลือง', { calls2, same, rej: r2.rejected, last: r2.pairs[r2.pairs.length - 1].thai }) }
+      same.length === 1 && same[0][1] === 'รถบัสสีเหลือง', { calls2, same, rej: r2.rejected, last: r2.pairs[r2.pairs.length - 1].thai })
+    // v705 (relay run 12: a polished เช่า line of 8 words failed the final LENGTH_PASS → NOT_READY 89/90) — an edit above the belt's
+    // hardMax is refused (with the reason, so the one retry can shorten it) and the original line stays
+    const long = 'ผมไม่มีช้อน ช้อนอยู่ที่ไหน ผมเอาช้อนมาให้ที่นี่นะครับ', cc = c.ev('getLearnerComplexityContract')({ lang: 'th', vocab: v })
+    let p3 = '', calls3 = 0
+    c.mockGeminiGenerate = async (k, m, msgs) => { calls3++; p3 = msgs[0].content; return JSON.stringify({ lines: [{ n: 3, thai: long, english: 'x', cue: 'y' }] }) }
+    const r3 = await c.thaiScenePolish(tr, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v }, null)
+    T('S3', 'scene polish refuses an edit above the learner\'s hardMax (the same ceiling as the final length audit); the retry names it and the original line is kept',
+      cc.analyse(long).overHardMax && calls3 === 2 && /L3: .* — refused: too long: \d+ words \(max \d+\)/.test(p3) && r3.pairs[2].thai === 'ผมเอาช้อนมาให้นะครับ' && r3.changed === 0,
+      { units: cc.analyse(long).units, hardMax: cc.hardMax, calls3, changed: r3.changed, rej: r3.rejected }) }
 
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ฉันนึกว่าพันบาทค่ะ', 'เสื้อตัวนี้', 'บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']

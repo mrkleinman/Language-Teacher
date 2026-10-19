@@ -2,7 +2,7 @@
 
 Goal from the owner: "keep testing until the tracks are 8–8.5/10".
 
-Status: **not reached.** Ten tracks have been blind-rated. The best score is 7.0, up from 6.2–6.5 in the first four rounds. Nothing has been deployed.
+Status: **not reached.** Eight tracks have been blind-rated (tracks 7 and 9 were stopped early). The best score is 7.0, up from 6.2–6.5 in the first four rounds. Nothing has been deployed.
 
 ## How it was tested
 
@@ -116,7 +116,7 @@ Track 11 is testing whether a stronger model for the scene polish alone (5–7 r
 
 ## TL;DR
 
-- Ten blind-rated tracks on the owner's profile. The best score is 7.0, up from 6.2–6.5 before the scene polish, but the 8–8.5 target is not reached. Nothing has been deployed.
+- Eight blind-rated tracks on the owner's profile (of ten started). The best score is 7.0, up from 6.2–6.5 before the scene polish, but the 8–8.5 target is not reached. Nothing has been deployed.
 - What improved:
   - romanisation, from 5 to 9;
   - vocabulary practice, from 6 to 7, thanks to the exchange shapes;

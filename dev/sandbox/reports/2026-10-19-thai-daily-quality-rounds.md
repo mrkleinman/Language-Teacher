@@ -2,7 +2,7 @@
 
 Goal from the owner: "keep testing until the tracks are 8–8.5/10".
 
-Status: **not reached.** Ten tracks have been blind-rated (tracks 7 and 9 were stopped early). The best Haiku score is 7.0, up from 6.2–6.5 in the first four rounds. A stronger model answering every request scored 7.3. Nothing has been deployed.
+Status: **not reached.** Eleven tracks have been blind-rated (tracks 7 and 9 were stopped early). The best Haiku score is 7.0, up from 6.2–6.5 in the first four rounds. Haiku has now scored 6.8–7.0 on four builds in a row. A stronger model answering every request scored 7.3. Nothing has been deployed.
 
 ## How it was tested
 
@@ -35,10 +35,11 @@ Status: **not reached.** Ten tracks have been blind-rated (tracks 7 and 9 were s
 | 10 | 6.9 | 7.0 | 6.5 | 6.5 | 9.0 | 5.0 | Coherence re-judged after polish, more rules |
 | 11 | 7.2 | 7.5 | 7.0 | 7.0 | 8.0 | 6.0 | Same build; stronger model for the scene polish only |
 | 12 | 7.3 | 7.0 | 7.5 | 7.0 | 9.0 | 5.5 | Same build; stronger model for every request |
+| 13 | 6.8 | 6.5 | 7.0 | 6.5 | 8.5 | 5.0 | Haiku again; scene-plan fit, cross-scene context, length check |
 
 Tracks 7 and 9 were stopped early so the next build could run sooner.
 
-Every track was READY 90/90 except tracks 8 and 12. Track 8 went NOT_READY because its last coherence verdict was given before the polish rewrote the scene. Track 12 went NOT_READY at 89/90 because the polish lengthened a เช่า line to 8 words, one above this learner's limit of 7, and the final length audit then dropped it. Both gaps are now fixed (see below).
+Every track was READY 90/90 except tracks 8 and 12. Track 13 was READY with 155 requests, against 184 in track 10. Track 8 went NOT_READY because its last coherence verdict was given before the polish rewrote the scene. Track 12 went NOT_READY at 89/90 because the polish lengthened a เช่า line to 8 words, one above this learner's limit of 7, and the final length audit then dropped it. Both gaps are now fixed (see below).
 
 ## What was fixed after round 4 (all pushed; tests63 33/33)
 
@@ -128,7 +129,7 @@ A stronger model is worth about 0.3. The rest of the gap to 8 comes from how the
 - **Facts and problems repeated across scenes.** "ราคาไม่ถึงพัน" was said four times, and the missing spoon was solved twice. Each polish request saw only its own scene.
 - **The same use three times.** เช่า was "rent a car" in all three lines, and แล้ว meant "already" in all three.
 
-## Fixes after track 12 (being tested in track 13)
+## Fixes after track 12 (tested in track 13)
 
 - **Scene plan.** A Thai Daily mini-scene holds at most 6 words. Its premise must give every word a reason to be said there (a ticket needs a vehicle or counter; an exit needs a station, mall or cinema).
 - **Polish context.** Each scene's polish request also lists the lines already said in earlier scenes, with "do not repeat a fact, a problem or a phrase".
@@ -138,10 +139,44 @@ A stronger model is worth about 0.3. The rest of the gap to 8 comes from how the
   - ที่นี่ครับ was read as ที่ + นี่ครับ "here you are" (thîi nîi-khráp). A bare ครับ, ค่ะ or คะ now wins that tie (thîi-nîi khráp).
   - ปอเปี๊ยะทอด and มันฝรั่งทอด now read thâawt.
 
+**Track 13 result: 6.8.** The fixes did what they were meant to do:
+
+- **Scene plan.** The plan fitted its words. The ticket was bought at a ticket window, and the exit was in a bus station.
+- **Coherence verdict.** The app's coherence judge rose from 3/5 to 4/5 overall.
+- **Length.** 93% of lines were within the preferred length (58% in track 12).
+- **Requests.** It needed fewer requests: 155, against 184 in track 10.
+
+The blind score did not move. The reviewer's list was again mostly Haiku's sentence-level Thai:
+- ชอบสะพาน for "I like this bridge";
+- a bridge that is "cool";
+- ช้อนพอดีไหม for "are there enough spoons?";
+- ตื่นเป็นประจำ for "I usually wake up early".
+
+It also found contradictions inside a scene (A says he answered; B asks why "he" didn't answer), a word drilled in only one sense (ถูก "cheap", บางที "sometimes"), and three small romanisation slips (อันตราย an-dtà-raai, ประจำ bprà-jam, ครึ่งหนึ่ง as one word).
+
+## Where this leaves the target
+
+| Who writes the Thai | Tracks | Blind score |
+|---|---|---|
+| Haiku, on the four latest builds | 6, 8, 10, 13 | 6.8–7.0 |
+| Stronger model, scene polish only | 11 | 7.2 |
+| Stronger model, every request | 12 | 7.3 |
+
+Four builds of pipeline fixes have not moved Haiku past 7.0. Each round removes the defects the reviewer named, and the next track brings new ones of the same kinds. Even the stronger model for every request reached only 7.3. 8–8.5 is not reachable by more rules on this design. It needs one of these, which are the owner's choice:
+
+1. **Accept about 7 for now.** Tracks are READY, readable and correctly romanised. Their main weakness is natural phrasing.
+2. **A stronger model for writing.** It is worth about +0.3, and the paid cost per track rises several times. This is not measured on the real paid path.
+3. **A different design for the Thai itself.** For example, a reviewed bank of natural example sentences per word that the generator adapts, instead of free writing. This is the only option likely to reach 8+, and it is a larger piece of work.
+
 ## TL;DR
 
 - Ten blind-rated tracks on the owner's profile (of twelve started). The best Haiku score is 7.0, up from 6.2–6.5 before the scene polish, but the 8–8.5 target is not reached. Nothing has been deployed.
-- A stronger model for every request reached only 7.3. The model is worth about 0.3; the rest is the scene plan (words in scenes where they don't fit) and repetition across scenes. Track 13 tests fixes for both on Haiku.
+- A stronger model for every request reached only 7.3, about 0.3 above Haiku.
+- Track 13 fixed the scene plan and cross-scene repetition, and also cut the request count. It scored 6.8. Haiku's sentence-level Thai is the ceiling at about 7.
+- 8–8.5 needs an owner decision:
+  - accept about 7;
+  - pay for a stronger model, worth about +0.3;
+  - build a reviewed sentence bank per word, the only route likely to reach 8+.
 - What improved:
   - romanisation, from 5 to 9;
   - vocabulary practice, from 6 to 7, thanks to the exchange shapes;

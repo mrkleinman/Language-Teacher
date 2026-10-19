@@ -22411,7 +22411,13 @@ function mainCoherenceSections(track) {
   if (extra.length) sections.push({ sceneId: 'S' + (sections.length + 1), purpose: premise, localPremise: premise, targetRoles: {}, ids: extra })
   // lines numbered across the lesson so the judge can name the off-topic ones
   let n = 0
-  sections.forEach(sc => { sc.lines = []; for (let round = 0; round < 3; round++) sc.ids.forEach(id => { const p = (byTarget.get(id) || [])[round]; if (p) sc.lines.push({ n: ++n, pair: p }) }) })
+  // v704: the judge reads the lines in the TRACK's own order (each word's A-B-A exchange together, as the learner hears it). The
+  // round-by-round order (every word's line 1, then every line 2 …) dates from interleaved tracks and showed the judge five A lines in
+  // a row that never follow each other in the lesson.
+  const _trackOrder = dailyV693On() && !zhExch
+  sections.forEach(sc => { sc.lines = []
+    if (_trackOrder) { const ids = new Set(sc.ids); (track.pairs || []).forEach(p => { if (p && classifyTrackPair(p) === 'TARGET' && ids.has(p.targetId)) sc.lines.push({ n: ++n, pair: p }) }); return }
+    for (let round = 0; round < 3; round++) sc.ids.forEach(id => { const p = (byTarget.get(id) || [])[round]; if (p) sc.lines.push({ n: ++n, pair: p }) }) })
   return sections.filter(sc => sc.lines.length)
 }
 // v671 §B2 — robust parse of a judge JSON reply: code fences, prose around the object, trailing commas, and a reply

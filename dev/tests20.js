@@ -162,8 +162,9 @@ async function main() {
       pr2.preRepair === 1 && pr2.final <= pr2.preRepair && !r2.log.some(l => /PRONUNCIATION_REPAIR_REGRESSION final/.test(l)), { pr2, log: r2.log.filter(l => /PRONUNC/.test(l)) })
     // the remaining issue is printed exactly (line ID, Thai, failing token, class, source)
     const fl = r2.log.filter(l => /PRONUNCIATION_ALIGNMENT_FAIL /.test(l))
+    // (v704: a phrase-final ครับ is now followed by a space — thai=สวัสดีครับ คุณมานพ — the printed fields are what this checks)
     T('N7', '§11 every final issue prints lineId · sceneId · thai · tokens · expectedTokenCount · actualPronunciationCount · failingToken · failureClass · source (log and export)',
-      pr2.final === 0 || (fl.length >= 1 && fl.every(l => /lineId=th-close-name sceneId=\S+ thai=สวัสดีครับคุณมานพ tokens=\S+ expectedTokenCount=\d+ actualPronunciationCount=\d+ failingToken=\S+ failureClass=(UNKNOWN_TOKEN|SCENE_NAME_ALIGNMENT|MISSING_ROMANISATION|TOKEN_COUNT_MISMATCH) source=\S+/.test(l)) &&
+      pr2.final === 0 || (fl.length >= 1 && fl.every(l => /lineId=th-close-name sceneId=\S+ thai=สวัสดีครับ ?คุณมานพ tokens=\S+ expectedTokenCount=\d+ actualPronunciationCount=\d+ failingToken=\S+ failureClass=(UNKNOWN_TOKEN|SCENE_NAME_ALIGNMENT|MISSING_ROMANISATION|TOKEN_COUNT_MISMATCH) source=\S+/.test(l)) &&
       S.c.trackIntegrityExportLines(r2.t).some(l => /^PRONUNCIATION_ALIGNMENT_FAIL lineId=th-close-name /.test(l))), fl)
     // the guard itself: a repair that mutates text is discarded; one that loses tokens is rolled back
     const S3 = setup('th'); const c3 = S3.c; mock(S3, 'th')

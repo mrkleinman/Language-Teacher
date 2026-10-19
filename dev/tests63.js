@@ -68,6 +68,11 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   const tw = Object.entries(tones).filter(([t, p]) => ph(t) !== p).map(([t, p]) => t + ' ' + ph(t))
   T('R5', 'reviewed tones: ห้าทุ่ม hâa-thûm · จริงเหรอ jing-rǒe · ทะเล thá-lee (and its compounds)', !tw.length, tw)
 
+  const ex = (id, r, sp) => ({ targetId: id, recallIndex: r, speaker: sp, thai: 'x' + id + r, english: 'e', prompt: 'p', wordId: id, _target: 't' + id, targetSurface: 't' + id })
+  const ord = c.thaiOrderExchanges([{ _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ' }, ex(1, 3, 'A'), ex(1, 1, 'A'), ex(1, 2, 'B'), ex(2, 1, 'A'), ex(2, 2, 'B'), ex(2, 3, 'A')], null)
+  T('X2', 'each word block is put back in recall order (3-1-2 → 1-2-3, A-B-A); ordered blocks and framing lines are untouched',
+    ord.slice(1, 4).map(p => p.recallIndex).join('') === '123' && ord.slice(1, 4).map(p => p.speaker).join('') === 'ABA' && ord.slice(4).map(p => p.recallIndex).join('') === '123' && ord[0]._target === 'greeting', ord.map(p => p.recallIndex))
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))

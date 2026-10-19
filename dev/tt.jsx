@@ -15367,6 +15367,23 @@ function thaiFixParticleSpelling(pairs, log) {
   if (n && log) log('  ✂ THAI_PARTICLE_SPELLING ' + n + ' line(s): นะค่ะ → นะคะ')
   return out
 }
+// v704 (relay track 3: เริ่ม played recall 3, 1, 2 → A-A-B; วันศุกร์ 2, 3, 1) — a word's three lines are kept in the order they were
+// ACCEPTED, so a slot regenerated later lands after the others. Each word's block is put back in recall order (1 A · 2 B · 3 A), the
+// order its exchange was written in. Only a contiguous block of one target whose lines all carry distinct recall indices moves.
+function thaiOrderExchanges(pairs, log) {
+  const P = (pairs || []).slice(), moved = []
+  const tgt = p => p && typeof classifyTrackPair === 'function' && classifyTrackPair(p) === 'TARGET' && p.targetId != null
+  for (let i = 0; i < P.length;) {
+    if (!tgt(P[i])) { i++; continue }
+    let j = i; while (j < P.length && tgt(P[j]) && P[j].targetId === P[i].targetId) j++
+    const blk = P.slice(i, j), ri = blk.map(p => p.recallIndex)
+    if (blk.length > 1 && ri.every(r => typeof r === 'number') && new Set(ri).size === ri.length && ri.some((r, k) => k && r < ri[k - 1])) {
+      P.splice(i, blk.length, ...blk.slice().sort((a, b) => a.recallIndex - b.recallIndex)); moved.push((blk[0].targetSurface || blk[0]._target || blk[0].targetId) + ' ' + ri.join('-')) }
+    i = j
+  }
+  if (moved.length && log) log('  ↕ THAI_EXCHANGE_ORDER ' + moved.length + ' word(s) put back in recall order (1 A · 2 B · 3 A): ' + moved.join(' | '))
+  return P
+}
 // v704 (relay Daily run, framing lines): (1) a cue carried the Thai name in brackets twice ("Thank Somchai (สมชาย) and say you wish
 // Somchai (สมชาย) the same."); (2) the closing was replaced by a closed-vocabulary parting (แล้วเจอกันนะครับ) while the reply still
 // answered the old wish (ขอบคุณ คุณก็เหมือนกันค่ะ "thanks, you too"); (3) framing English had no full stop ("Hello Nida, how are you today")
@@ -22183,6 +22200,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (oct13On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {} }
   if (oct13On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiTidyCommas(t.pairs, log) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiFixParticleSpelling(t.pairs, log) } } catch (e) {} }
+  if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiOrderExchanges(t.pairs, log) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiFramingTidy(t.pairs, log) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiGreetingTargetsFirst(t.pairs, log) } } catch (e) {} }
   // v700 — FINAL SNAPSHOT AUDIT on the text that will be saved; a line that fails goes to ONE more bounded quota round (same
@@ -22416,7 +22434,7 @@ function mainCoherenceSections(track) {
   // a row that never follow each other in the lesson.
   const _trackOrder = dailyV693On() && !zhExch
   sections.forEach(sc => { sc.lines = []
-    if (_trackOrder) { const ids = new Set(sc.ids); (track.pairs || []).forEach(p => { if (p && classifyTrackPair(p) === 'TARGET' && ids.has(p.targetId)) sc.lines.push({ n: ++n, pair: p }) }); return }
+    if (_trackOrder) { const ids = new Set(sc.ids); thaiOrderExchanges(track.pairs || []).forEach(p => { if (p && classifyTrackPair(p) === 'TARGET' && ids.has(p.targetId)) sc.lines.push({ n: ++n, pair: p }) }); return }
     for (let round = 0; round < 3; round++) sc.ids.forEach(id => { const p = (byTarget.get(id) || [])[round]; if (p) sc.lines.push({ n: ++n, pair: p }) }) })
   return sections.filter(sc => sc.lines.length)
 }

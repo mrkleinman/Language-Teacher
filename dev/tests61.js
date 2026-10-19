@@ -8,8 +8,11 @@ const out = []; let fails = 0, n = 0
 const T = (id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + String(id).padEnd(4) + ' ' + name + (!pass && detail !== undefined ? '\n      ' + JSON.stringify(detail).slice(0, 600) : '')) }
 const FILE = process.env.TT_FILE || 'tt.compiled.js'
 const LIT = JSON.parse(/^const RAW_VOCAB = (\[.*\])\s*$/m.exec(fs.readFileSync('tt.jsx', 'utf8'))[1])
-// sha256 of the 1–500 records (sorted by curriculumIndex) as they stood before 501–800 were assigned
-const DIGEST_1_500 = '155c5a906f8e25e4755b1d3fd0254c78d5f081b20c92844f05f78e842956c622'
+// sha256 of the 1–500 records (sorted by curriculumIndex) as they stood before 501–800 were assigned, WITHOUT the pronunciation
+// fields: v704 corrects wrong romanisations in the dictionary on purpose (แล้ว láaeo, ใช้ chái, เช่า châo …); everything else —
+// Thai, gloss, ids, curriculum position, belt, SRS seeds, semantic QC — must stay byte-identical
+const PRON_FIELDS = ['ph', 'phoneticQc', 'qcStatus', 'qcIssues', 'qcAudit', 'verificationEvidence']
+const DIGEST_1_500 = 'f0dedc125d67dfee774604427b1e808810d66f9260287bee499c366e3451c791'
 const TOPIC_REUSED = { 532: 5028, 539: 5027, 542: 5032, 555: 5019, 676: 5005 }
 
 ;(async () => {
@@ -21,8 +24,8 @@ const TOPIC_REUSED = { 532: 5028, 539: 5027, 542: 5032, 555: 5019, 676: 5005 }
   }
   const cur = LIT.filter(d => d.curriculumIndex > 0)
   const at = (lo, hi) => cur.filter(d => d.curriculumIndex >= lo && d.curriculumIndex <= hi)
-  const dg = crypto.createHash('sha256').update(JSON.stringify(at(1, 500).sort((a, b) => a.curriculumIndex - b.curriculumIndex))).digest('hex')
-  T('B', '1–500 byte-identical to the pre-update records', dg === DIGEST_1_500, dg)
+  const dg = crypto.createHash('sha256').update(JSON.stringify(at(1, 500).sort((a, b) => a.curriculumIndex - b.curriculumIndex).map(d => { const o = { ...d }; PRON_FIELDS.forEach(k => delete o[k]); return o }))).digest('hex')
+  T('B', '1–500 byte-identical to the pre-update records apart from romanisation corrections', dg === DIGEST_1_500, dg)
   T('C', '501–600: exactly 100 records', at(501, 600).length === 100)
   T('D', '601–800: exactly 200 records', at(601, 800).length === 200)
   const belt = (name, lo) => { const rs = cur.filter(d => d.belt === name), bo = rs.map(d => d.beltOrder).sort((a, b) => a - b)

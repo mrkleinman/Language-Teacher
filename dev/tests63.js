@@ -154,6 +154,11 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   const src = require('fs').readFileSync('tt.jsx', 'utf8')
   const uses = (src.match(/THAI_NATURALNESS_GUIDE \+ \(dailyV693On\(\) \? THAI_NATURALNESS_GUIDE_V701/g) || []).length + (src.match(/\+ \(dailyV693On\(\) \? THAI_NATURALNESS_GUIDE_V701 : ''\) \+ '\\n'/g) || []).length
   T('W2', 'both the writer prompt and the native-speaker reviewer include that guide (one standard for both)', uses >= 2, uses)
+  // v704 (relay run 8: NOT_READY on a coherence verdict judged BEFORE the polish rewrote 17 lines) — the finaliser judges coherence again
+  // on the polished text when the earlier verdict failed and the polish changed lines (source check: the call sits right after the polish)
+  { const at = src.indexOf('const sp = await thaiScenePolish(t, c, log)'), seg = at >= 0 ? src.slice(at, at + 1600) : ''
+    T('X4', 'after the scene polish, a failed coherence verdict is judged again on the polished text (only when the polish changed lines)',
+      /if \(sp\.changed && _coh && _coh\.state === 'VERIFIED' && !_coh\.passed\)/.test(seg) && /await mainTrackCoherenceAudit\(t, adapter, c\)/.test(seg) && /afterPolish: true/.test(seg), seg.slice(0, 200)) }
   // v704 (blind review of relay run 6: "X แพงไหม / X ไม่แพง" word after word) — each word's writer prompt carries one of five exchange shapes, by its id
   { const v = c.initVocab(), w1 = v.find(x => x.thai === 'กุ้ง'), w2 = v.find(x => x.thai === 'ช้อน'), seen = []
     c.mockGeminiGenerate = async (k, m, msgs) => { const t = msgs.map(x => x.content).join('\n'); const mm = t.match(/SHAPE of this exchange: ([^.]*)/); if (mm) seen.push(mm[1]); return '[]' }

@@ -22383,7 +22383,14 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (oct13On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {} }
   if (oct13On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiTidyCommas(t.pairs, log) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiOrderExchanges(t.pairs, log) } } catch (e) {} }
-  if (dailyV693On() && adapter.lang === 'th') { try { const sp = await thaiScenePolish(t, c, log); t = { ...t, pairs: sp.pairs, scenePolish: { calls: sp.calls, changed: sp.changed, refused: (sp.rejected || []).length } } } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_POLISH skipped: ' + String(e && e.message || e).slice(0, 100)) } }
+  if (dailyV693On() && adapter.lang === 'th') { try { const sp = await thaiScenePolish(t, c, log); t = { ...t, pairs: sp.pairs, scenePolish: { calls: sp.calls, changed: sp.changed, refused: (sp.rejected || []).length } }
+    // v704 (relay run 8: NOT_READY on "MAIN_TRACK_COHERENCE=FAIL S2=2" — a verdict on the text BEFORE the polish rewrote 17 lines) — when
+    // the coherence verdict failed and the polish changed lines, coherence is judged once more on the polished text (one request)
+    if (sp.changed && _coh && _coh.state === 'VERIFIED' && !_coh.passed) {
+      const a3 = await mainTrackCoherenceAudit(t, adapter, c)
+      log && log('  🧭 MAIN_TRACK_COHERENCE after the scene polish: overall ' + a3.overall + '/5 · ' + (a3.sectionScores || []).map(d => d.sceneId + '=' + d.score).join(' ') + ' (before the polish: overall ' + _coh.overall + ')')
+      if (a3.state === 'VERIFIED') _coh = { ...a3, before: _coh.before || { overall: _coh.overall, sectionScores: _coh.sectionScores }, recluster: _coh.recluster, premiseReplan: _coh.premiseReplan, repair: _coh.repair, afterPolish: true } }
+  } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_POLISH skipped: ' + String(e && e.message || e).slice(0, 100)) } }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiFramingTidy(t.pairs, log, (t.sceneContract && t.sceneContract.characters) || []) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiGreetingTargetsFirst(t.pairs, log) } } catch (e) {} }
   // (after the scene polish, so its edits are spelled and spaced too — and before the final snapshot audit judges the text)

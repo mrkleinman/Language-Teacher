@@ -50,8 +50,26 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   T('L5', 'the number hint for other number-practising words is an example the writer may replace, never a MANDATORY order, and must agree with numbers already said',
     hints.every(h => /use another number if it fits better/.test(h) && /agree with any number already said/.test(h) && !/MANDATORY/.test(h)), hints)
 
+  T('L6', 'แล้วไหม (an already / yet question) is ALREADY_QUESTION and ไม่ทุกวัน is NOT_EVERY_DAY; แล้วหรือยัง and ไม่ใช่ทุกวัน are not',
+    ids('รถมาถึงป้ายรถเมล์แล้วไหมคะ').includes('ALREADY_QUESTION') && !ids('รถเมล์มาแล้วหรือยังคะ').includes('ALREADY_QUESTION') &&
+    ids('ไม่ทุกวันแต่วันหยุดมีหลายคนครับ').includes('NOT_EVERY_DAY') && !ids('ไม่ใช่ทุกวันครับ').includes('NOT_EVERY_DAY'))
+  const ft = c.thaiFramingTidy([
+    { _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ นิดา วันนี้เป็นยังไงบ้างครับ', english: 'Hello Nida, how are you today', prompt: 'Greet Nida and ask how she is doing today.' },
+    { _target: 'parting', speaker: 'A', thai: 'แล้วเจอกันนะครับคุณนิดา', english: 'See you later, Nida.', prompt: 'Say goodbye to Nida' },
+    { _target: 'parting', speaker: 'B', thai: 'ขอบคุณ คุณก็เหมือนกันค่ะ', english: 'Thanks, you too', prompt: 'Thank Somchai (สมชาย) and say you wish Somchai (สมชาย) the same.' }], null)
+  T('F1', 'framing tidy: Thai names in brackets leave the cue; framing English and cues end with punctuation; a "you too" reply to a replaced "see you" closing becomes แล้วเจอกันค่ะ',
+    ft[0].english === 'Hello Nida, how are you today.' && ft[1].prompt === 'Say goodbye to Nida.' && ft[2].thai === 'แล้วเจอกันค่ะ' && ft[2].english === 'See you.' && !/[\u0E00-\u0E7F]/.test(ft[2].prompt), ft)
+  const ft2 = c.thaiFramingTidy([{ _target: 'parting', speaker: 'A', thai: 'ขอให้มีความสุขนะครับ แล้วเจอกัน', english: 'Be happy. See you.', prompt: 'Wish her well.' }, { _target: 'parting', speaker: 'B', thai: 'ขอบคุณ คุณก็เหมือนกันค่ะ', english: 'Thanks, you too.', prompt: 'Thank him and wish him the same.' }], null)
+  T('F2', 'a "you too" reply to a real wish (ขอให้…) is kept', ft2[1].thai === 'ขอบคุณ คุณก็เหมือนกันค่ะ')
+  const src2 = require('fs').readFileSync('tt.jsx', 'utf8')
+  T('X1', 'writer: the three lines are ONE exchange (LINE 3 answers LINE 2, roles straight, no contradiction, แล้วหรือยัง) and a line only fills a slot of its own speaker (A-B-A)',
+    /EXCHANGE \(overrides the plan above when they clash\)/.test(src2) && /LINE 3 ANSWERS LINE 2/.test(src2) && /const _slotSp = x => x === 2 \? 'B' : 'A'/.test(src2) && /_unfilled\(\)\.find\(x => _open\.has\(x\) && _spOk\(x\)\)/.test(src2))
+  const tones = { 'ห้าทุ่ม': 'hâa-thûm', 'จริงเหรอ': 'jing-rǒe', 'ทะเล': 'thá-lee', 'ยำทะเล': 'yam-thá-lee' }
+  const tw = Object.entries(tones).filter(([t, p]) => ph(t) !== p).map(([t, p]) => t + ' ' + ph(t))
+  T('R5', 'reviewed tones: ห้าทุ่ม hâa-thûm · จริงเหรอ jing-rǒe · ทะเล thá-lee (and its compounds)', !tw.length, tw)
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
-  const keys = ['ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
+  const keys = ['บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))
   const src = require('fs').readFileSync('tt.jsx', 'utf8')
   const uses = (src.match(/THAI_NATURALNESS_GUIDE \+ \(dailyV693On\(\) \? THAI_NATURALNESS_GUIDE_V701/g) || []).length + (src.match(/\+ \(dailyV693On\(\) \? THAI_NATURALNESS_GUIDE_V701 : ''\) \+ '\\n'/g) || []).length

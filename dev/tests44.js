@@ -33,9 +33,17 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
     const tf = J('th.json').filter(p => c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex).length).map(p => p.pos)
     // Oct13 (owner, 13 Oct): the ɔi diphthong is now displayed "oi" (หน่อย nòi, อร่อย à-ròi) — lines 7, 71, 85 carry the old "nàwi / à-ràwi"
     // and are flagged for that rendering ONLY (nothing else on those lines)
+    const conv = s => String(s || '').normalize('NFC').replace(/(^|[\s-])bp/g, '$1p').replace(/(^|[\s-])dt/g, '$1t').replace(/(^|[\s-])g/g, '$1k').replace(/[\s-]+/g, '')
     const ɔiOnly = J('th.json').filter(p => [7, 71, 85].includes(p.pos)).every(p => { const pr = c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex)
-      return pr.length === 1 && /≠ dictionary rendering/.test(pr[0]) && p.ph.replace(/nàwi/g, 'nòi').replace(/à-ràwi/g, 'à-ròi') === pr[0].split('rendering "')[1].replace(/"$/, '') })
-    T('V3', 'Thai: the 94 exported lines → exactly the 12 audited errors (แล้ว lâeo ×5, ร้อน rón, โกรธ krôot ×3, ผู้ชาย chai ×3) + the 3 lines whose only difference is the Oct13 ɔi rendering (nàwi → nòi)', eq(tf, [7, 11, 14, 27, 38, 54, 55, 60, 61, 62, 71, 78, 79, 80, 85]) && ɔiOnly, tf)
+      // (v704: compared through conv — line 71 also writes ไป as "pai", the old spelling of bpai)
+      return pr.length === 1 && /≠ dictionary rendering/.test(pr[0]) && conv(p.ph.replace(/nàwi/g, 'nòi').replace(/à-ràwi/g, 'à-ròi')) === conv(pr[0].split('rendering "')[1].replace(/"$/, '')) })
+    // v704: the dictionary now spells unaspirated ป ต ก as bp dt g (ไป bpai, ตัว dtua, กัน gan) — the old export wrote p t k, so lines
+    // whose ONLY difference is that initial-consonant spelling are flagged too; they must carry nothing else
+    const AUDITED = [7, 11, 14, 27, 38, 54, 55, 60, 61, 62, 71, 78, 79, 80, 85]
+    const convOnly = p => { const pr = c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex); return pr.length === 1 && /≠ dictionary rendering/.test(pr[0]) && conv(p.ph) === conv(pr[0].split('rendering "')[1].replace(/"$/, '')) }
+    const th = J('th.json'), extra = tf.filter(x => !AUDITED.includes(x))
+    T('V3', 'Thai: the 94 exported lines → the 12 audited errors (แล้ว lâeo ×5, ร้อน rón, โกรธ krôot ×3, ผู้ชาย chai ×3) + the 3 lines whose only difference is the Oct13 ɔi rendering (nàwi → nòi) are all flagged and none of them is a spelling-only difference; every other flagged line differs ONLY in the v704 bp/dt/g spelling',
+      AUDITED.every(x => tf.includes(x)) && ɔiOnly && th.filter(p => AUDITED.includes(p.pos) && ![7, 71, 85].includes(p.pos)).every(p => !convOnly(p)) && extra.length > 0 && th.filter(p => extra.includes(p.pos)).every(convOnly), { extra: th.filter(p => extra.includes(p.pos) && !convOnly(p)).map(p => p.pos) })
     const zlexT = zlex.concat([{ w: '是', p: 'shì' }, { w: '个', p: 'gè' }, { w: '人', p: 'rén' }])     // rule cases need these three syllables
     const sp = (t) => { const p = c.v684ZhPronunciation(t, zlexT); return p.spoken || p.pinyin }
     const cases = [['有一点', 'yǒu yì diǎn'], ['我们一起去', 'wǒ men yì qǐ qù'], ['你等一下', 'ní děng yí xià'], ['可以', 'ké yǐ'], ['你好', 'ní hǎo'], ['不是', 'bú shì'], ['要不要', 'yào bu yào'], ['我很好', 'wó hén hǎo'], ['一个人', 'yí gè rén']]
@@ -65,8 +73,9 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
     const tb = tc.filter(([w, t]) => c.v684ThToneOf(w) !== t).map(([w, t]) => w + ' → ' + c.v684ThToneOf(w) + ' (want ' + t + ')')
     T('T2', 'Thai tone: live/dead from the FINAL consonant (เป็น, เย็น mid), long medial อ (ชอบ falling), silent letters (สัตว์, บัตร, ญาติ), -ะ endings (เกาะ)', !tb.length, tb)
     const lex = c.v684ThLexicon(null)
-    T('T3', 'the pending dictionary corrections also reach compound entries (แล้วคุณล่ะ lâeo-khun-lâ → láaeo-khun-lâ); stored vocabulary untouched',
-      /láaeo/.test(lex.get('แล้วคุณล่ะ') || '') && c.ev("RAW_VOCAB.find(d => d.t === 'แล้ว').ph") === 'lâeo', lex.get('แล้วคุณล่ะ'))
+    // v704: the corrections now live in the stored dictionary itself (owner-approved Thai Daily quality pass), not only in the lexicon
+    T('T3', 'the dictionary corrections reach compound entries (แล้วคุณล่ะ láaeo-khun-lâ) and the stored word itself (แล้ว láaeo)',
+      /láaeo/.test(lex.get('แล้วคุณล่ะ') || '') && c.ev("RAW_VOCAB.find(d => d.t === 'แล้ว').ph") === 'láaeo', lex.get('แล้วคุณล่ะ'))
   }
   // ══ P — the teaching plan ═════════════════════════════════════════════════════════════════════════════════════════
   {

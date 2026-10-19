@@ -14175,6 +14175,9 @@ function randomNumberHint(vocab, pairIndex) {
     () => { const n = r(10); const ords = ['ที่หนึ่ง','ที่สอง','ที่สาม','ที่สี่','ที่ห้า','ที่หก','ที่เจ็ด','ที่แปด','ที่เก้า','ที่สิบ']; return 'Include an ordinal in Thai script: ' + ords[n-1] },
     () => { const n = r(9); const clfs = ['คน','อัน','ชิ้น','แก้ว','จาน','ครั้ง','วัน','ปี','เดือน','ลำ','ตัว']; return 'Include a number + classifier in Thai script: ' + safeWord(n) + ' ' + clfs[Math.floor(Math.random()*clfs.length)] },
   ]
+  // v704 (relay Daily run: สัปดาห์ was ordered to fit in ที่สี่, ศูนย์ in สิบสอง) — the specific number is an EXAMPLE, never an order: the
+  // writer picks the number that fits the moment, so the line stays natural and agrees with the facts already said
+  if (dailyV693On()) return '\nNUMBER: LINE 1 includes a number that genuinely fits this moment of the conversation (a count, a time, a price, a duration) inside the main sentence, written in Thai script (สาม not 3). It must agree with any number already said in the conversation. BANNED: calendar dates, months, detached number fragments. Example of the kind (use another number if it fits better): ' + types[typeIdx]().replace(/^Include (a |the )?/, '') + '\n'
   return '\nMANDATORY NUMBER: LINE 1 must include a number naturally WITHIN the main sentence. BANNED: calendar dates, months, counting household objects, detached number fragments appended at end (e.g. สามอย่างครับ as a standalone clause). The number must be integrated into the sentence. Write in Thai script (สาม not 3).\n' + types[typeIdx]()
 }
 

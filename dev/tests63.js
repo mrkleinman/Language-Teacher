@@ -46,6 +46,10 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     ['ศูนย์', 'พัน', 'ครึ่ง'].every(self) && !self('สัปดาห์') && /_skipNumber \|\| _selfNumber \|\| !exerciseRequiresNumber\(target\)/.test(srcL4) &&
     /exerciseRequiresNumber\(target\) && !\(dailyV693On\(\) && \(thaiIsNumberTarget\(target\)/.test(srcL4))
 
+  const hints = [0, 2, 4, 6].map(i => c.randomNumberHint(c.initVocab(), i))
+  T('L5', 'the number hint for other number-practising words is an example the writer may replace, never a MANDATORY order, and must agree with numbers already said',
+    hints.every(h => /use another number if it fits better/.test(h) && /agree with any number already said/.test(h) && !/MANDATORY/.test(h)), hints)
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))

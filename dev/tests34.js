@@ -131,15 +131,18 @@ function scriptedModel(plan, need) {
     ], { _ledger: Lt })
     const hs = (g.res || []).map(l => [l.recallIndex, c.checkHistoryIndices(l._checkHistory).join('.')])
     const budget = g.log.find(l => /THAI_GENERATION_BUDGET/.test(l)) || ''
+    // v704: a line only fills a slot of its OWN speaker (A-B-A). Attempt 1's line 3 is A, so it fills recall 3 — B's recall 2 is the one
+    // regenerated at check 2 (before v704 the A line took B's slot 2 and recall 3 was regenerated, leaving the exchange A-A-?)
     T('1L', 'THAI parity: recalls accepted at attempt 1 show [1]; the recall that needed attempt 2 shows [1,2]; the visible "2nd check" IS check 2 (no QUALITY_CHECKS_USED=4/11 hybrid)',
-      g.res && g.res.length === 3 && hs.filter(x => x[1] === '1').length === 2 && hs.filter(x => x[1] === '1.2').length === 1 && g.log.some(l => /🟠 2nd check: แนะนำ · recall 3/.test(l)) &&
-      /CHECKS per recall r1=1\/11 r2=1\/11 r3=2\/11 PAID_GENERATION_ATTEMPTS=2/.test(budget) && !/QUALITY_CHECKS_USED/.test(budget), { hs, budget, log: g.log.filter(l => /check/.test(l)) })
+      g.res && g.res.length === 3 && hs.filter(x => x[1] === '1').length === 2 && hs.filter(x => x[1] === '1.2').length === 1 && g.log.some(l => /🟠 2nd check: แนะนำ · recall 2/.test(l)) &&
+      /CHECKS per recall r1=1\/11 r2=2\/11 r3=1\/11 PAID_GENERATION_ATTEMPTS=2/.test(budget) && !/QUALITY_CHECKS_USED/.test(budget), { hs, budget, log: g.log.filter(l => /check/.test(l)) })
     // early semantic regeneration of recall 3 continues ITS history (check 3), never restarting at "1st check"
     const g2 = await runGen(t, [[L('A', 'ฉันแนะนำชาค่ะ', 'I recommend tea.', 'x'), L('B', 'ฉันแนะนำชาเย็นค่ะ', 'I recommend iced tea.', 'She says she recommends iced tea'), L('A', 'ผมแนะนำชาเย็นครับ', 'I recommend iced tea.', 'He says he recommends iced tea')]],
       { _ledger: Lt, _slotPlan: [3], _maxChecks: 3 })
     T('1M', 'THAI slot regeneration (early semantic gate / recovery) asks ONLY for the rejected slot and continues its history: recall 3 → check 3; recalls 1/2 untouched',
-      g2.res && g2.res.length === 1 && g2.res[0].recallIndex === 3 && c.checkHistoryIndices(g2.res[0]._checkHistory).join() === '1,2,3' && g2.log.some(l => /🔶 3rd check: แนะนำ · recall 3/.test(l)) &&
-      Lt.count(t.id, 1) === 1 && Lt.count(t.id, 2) === 1, { r: g2.res && g2.res.map(l => [l.recallIndex, l._checkCount]), log: g2.log.filter(l => /check/.test(l)) })
+      // (v704: recall 3 was accepted at check 1 above, so its regeneration is check 2; recall 2 keeps the 2 checks it used)
+      g2.res && g2.res.length === 1 && g2.res[0].recallIndex === 3 && c.checkHistoryIndices(g2.res[0]._checkHistory).join() === '1,2' && g2.log.some(l => /🟠 2nd check: แนะนำ · recall 3/.test(l)) &&
+      Lt.count(t.id, 1) === 1 && Lt.count(t.id, 2) === 2, { r: g2.res && g2.res.map(l => [l.recallIndex, l._checkCount]), log: g2.log.filter(l => /check/.test(l)) })
     // the local cue re-validation is part of the attempt (v671 added a check for it)
     const t2 = V('โกรธ') || V('ขอโทษ')
     const g3 = await runGen(t2, [[L('A', 'คุณ' + t2.thai + 'ไหมครับ', 'Are you angry?', 'Say: angry'), L('B', 'ฉันไม่' + t2.thai + 'ค่ะ', "I'm not angry.", 'She says she is not angry'), L('A', 'ผม' + t2.thai + 'นิดหน่อยครับ', "I'm a little angry.", 'He says he is a little angry')]], { _ledger: c.createRecallCheckLedger('th') })

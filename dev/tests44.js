@@ -33,7 +33,9 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
     const tf = J('th.json').filter(p => c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex).length).map(p => p.pos)
     // Oct13 (owner, 13 Oct): the ɔi diphthong is now displayed "oi" (หน่อย nòi, อร่อย à-ròi) — lines 7, 71, 85 carry the old "nàwi / à-ràwi"
     // and are flagged for that rendering ONLY (nothing else on those lines)
-    const conv = s => String(s || '').normalize('NFC').replace(/(^|[\s-])bp/g, '$1p').replace(/(^|[\s-])dt/g, '$1t').replace(/(^|[\s-])g/g, '$1k').replace(/[\s-]+/g, '')
+    // (v704 also writes a long ɔɔ / əə / ʉʉ / ɛɛ long — aaw / ooe / uue / aae — where the old export wrote aw / oe / ue / ae: spelling too)
+    const conv = s => String(s || '').normalize('NFD').replace(/a([\u0300-\u036f]*)a(?=w|e)/g, 'a$1').replace(/o([\u0300-\u036f]*)o(?=e)/g, 'o$1').replace(/u([\u0300-\u036f]*)u(?=e)/g, 'u$1').normalize('NFC')
+      .replace(/(^|[\s-])bp/g, '$1p').replace(/(^|[\s-])dt/g, '$1t').replace(/(^|[\s-])g/g, '$1k').replace(/[\s-]+/g, '')
     const ɔiOnly = J('th.json').filter(p => [7, 71, 85].includes(p.pos)).every(p => { const pr = c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex)
       // (v704: compared through conv — line 71 also writes ไป as "pai", the old spelling of bpai)
       return pr.length === 1 && /≠ dictionary rendering/.test(pr[0]) && conv(p.ph.replace(/nàwi/g, 'nòi').replace(/à-ràwi/g, 'à-ròi')) === conv(pr[0].split('rendering "')[1].replace(/"$/, '')) })
@@ -42,7 +44,7 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
     const AUDITED = [7, 11, 14, 27, 38, 54, 55, 60, 61, 62, 71, 78, 79, 80, 85]
     const convOnly = p => { const pr = c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex); return pr.length === 1 && /≠ dictionary rendering/.test(pr[0]) && conv(p.ph) === conv(pr[0].split('rendering "')[1].replace(/"$/, '')) }
     const th = J('th.json'), extra = tf.filter(x => !AUDITED.includes(x))
-    T('V3', 'Thai: the 94 exported lines → the 12 audited errors (แล้ว lâeo ×5, ร้อน rón, โกรธ krôot ×3, ผู้ชาย chai ×3) + the 3 lines whose only difference is the Oct13 ɔi rendering (nàwi → nòi) are all flagged and none of them is a spelling-only difference; every other flagged line differs ONLY in the v704 bp/dt/g spelling',
+    T('V3', 'Thai: the 94 exported lines → the 12 audited errors (แล้ว lâeo ×5, ร้อน rón, โกรธ krôot ×3, ผู้ชาย chai ×3) + the 3 lines whose only difference is the Oct13 ɔi rendering (nàwi → nòi) are all flagged and none of them is a spelling-only difference; every other flagged line differs ONLY in the v704 spelling (bp/dt/g, long vowels written long)',
       AUDITED.every(x => tf.includes(x)) && ɔiOnly && th.filter(p => AUDITED.includes(p.pos) && ![7, 71, 85].includes(p.pos)).every(p => !convOnly(p)) && extra.length > 0 && th.filter(p => extra.includes(p.pos)).every(convOnly), { extra: th.filter(p => extra.includes(p.pos) && !convOnly(p)).map(p => p.pos) })
     const zlexT = zlex.concat([{ w: '是', p: 'shì' }, { w: '个', p: 'gè' }, { w: '人', p: 'rén' }])     // rule cases need these three syllables
     const sp = (t) => { const p = c.v684ZhPronunciation(t, zlexT); return p.spoken || p.pinyin }

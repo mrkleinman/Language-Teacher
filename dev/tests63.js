@@ -65,9 +65,9 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   const src2 = require('fs').readFileSync('tt.jsx', 'utf8')
   T('X1', 'writer: the three lines are ONE exchange (LINE 3 answers LINE 2, roles straight, no contradiction, แล้วหรือยัง) and a line only fills a slot of its own speaker (A-B-A)',
     /EXCHANGE \(overrides the plan above when they clash\)/.test(src2) && /LINE 3 ANSWERS LINE 2/.test(src2) && /const _slotSp = x => x === 2 \? 'B' : 'A'/.test(src2) && /_unfilled\(\)\.find\(x => _open\.has\(x\) && _spOk\(x\)\)/.test(src2))
-  const tones = { 'ต้อง': 'dtâawng', 'ไม่ต้อง': 'mâi-dtâawng', 'ห้าทุ่ม': 'hâa-thûm', 'จริงเหรอ': 'jing-rǒe', 'ทะเล': 'thá-lee', 'ยำทะเล': 'yam-thá-lee' }
+  const tones = { 'ต้อง': 'dtâawng', 'ไม่ต้อง': 'mâi-dtâawng', 'ห้าทุ่ม': 'hâa-thûm', 'จริงเหรอ': 'jing-rǒoe', 'เริ่ม': 'rôoem', 'ทะเล': 'thá-lee', 'ยำทะเล': 'yam-thá-lee' }
   const tw = Object.entries(tones).filter(([t, p]) => ph(t) !== p).map(([t, p]) => t + ' ' + ph(t))
-  T('R5', 'reviewed spellings: ต้อง dtâawng (long) · ห้าทุ่ม hâa-thûm · จริงเหรอ jing-rǒe · ทะเล thá-lee (and its compounds)', !tw.length, tw)
+  T('R5', 'reviewed spellings: ต้อง dtâawng (long) · ห้าทุ่ม hâa-thûm · จริงเหรอ jing-rǒoe · เริ่ม rôoem (long vowels long) · ทะเล thá-lee (and its compounds)', !tw.length, tw)
 
   const disp = t => c.loadCanonicalThaiPhonetic(ph(t), t)
   T('R6', 'long ɔɔ / əə display long like the app\'s own spellings: ชอบ châawp · ตอบ dtàawp · เงิน ngooen; short ก็ gâw and the owner\'s หน่อย nòi unchanged',

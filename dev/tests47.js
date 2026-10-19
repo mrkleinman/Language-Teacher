@@ -184,7 +184,8 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     const zh = [['wǒmen yìqǐ qù ba', 'wǒmen yìqǐ qù ba'], ['wǒ kěyǐ hē ma?', 'wó kéyǐ hē ma?'], ['nǐ hǎo', 'ní hǎo'], ['zhège bù dà', 'zhège bú dà'], ['wǒmen yìqǐ děng', 'wǒmen yìqí děng'], ['wǒ xiǎng chī zhège', 'wó xiǎng chī zhège']]
     T('P3', 'Mandarin spoken tones are decided per syllable: 我们一起 stays wǒmen (live: "wómen"); 我可以 → wó kéyǐ (live: "wó kěyǐ")', zh.every(([a, b]) => sp(a) === b), zh.map(([a]) => [a, sp(a)]))
     const L = c.loadCanonicalThaiPhonetic
-    const th = [['nɔ̀i', 'nòi'], ['nít-nɔ̀i', 'nít-nòi'], ['à-rɔ̀i', 'à-ròi'], ['sɔɔi', 'soi'], ['khɔ̌ɔng', 'khǎwng'], ['looong-níi-sì', 'laawng-níi-sì'], ['ráawy', 'rói'], ['khâawy', 'khôi'], ['bplàawy', 'bplòi'], ['dooi', 'dooi']]
+    // v704: a long ɔɔ that is not the ɔi diphthong is written long, like the app's own spellings (ลอง laawng below, สอง sǎawng)
+    const th = [['nɔ̀i', 'nòi'], ['nít-nɔ̀i', 'nít-nòi'], ['à-rɔ̀i', 'à-ròi'], ['sɔɔi', 'soi'], ['khɔ̌ɔng', 'khǎawng'], ['looong-níi-sì', 'laawng-níi-sì'], ['ráawy', 'rói'], ['khâawy', 'khôi'], ['bplàawy', 'bplòi'], ['dooi', 'dooi']]
     T('P4', 'Thai (owner, 13 Oct): the ɔi diphthong is "oi" everywhere — หน่อย nòi, อร่อย à-ròi, ซอย soi, and the app\'s own ร้อย ráawy → rói, ค่อย khôi; โดย dooi untouched; ลอง "looong" → laawng', th.every(([a, b]) => L(a) === b), th.map(([a]) => [a, L(a)]))
     const v0 = c.initVocab(), ph = t => (v0.find(w => w.thai === t) || {}).phonetic
     T('P6', 'the dictionary the learner sees uses the same spelling (word list, flashcards): ลอยกระทง loi-, วันลอยกระทง wan-loi-, น้อย nói, โดยสาร dooi', ph('ลอยกระทง') === 'loi-grà-thong' && ph('วันลอยกระทง') === 'wan-loi-grà-thoong' && ph('น้อย') === 'nói' && ph('ผู้โดยสาร') === 'phûu-dooi-sǎan', ['ลอยกระทง', 'วันลอยกระทง', 'น้อย', 'ผู้โดยสาร'].map(ph))

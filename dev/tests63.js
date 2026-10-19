@@ -187,6 +187,14 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
       /thâawt$/.test(lex.get('ปอเปี๊ยะทอด')) && /thâawt$/.test(lex.get('มันฝรั่งทอด')),
       [seg('เจอกันที่นี่ครับ'), ph('เจอกันที่นี่ครับ'), seg('อยู่ที่นี่ค่ะ'), seg('อ่านหนังสือพิมพ์ครับ'), seg('นี่ครับ ช้อนครับ'), lex.get('ปอเปี๊ยะทอด'), lex.get('มันฝรั่งทอด')]) }
 
+  // v706 — concrete natural uses per word (THAI_WORD_USES) reach the writer and the polish; a word with two senses asks for both
+  { const ul = c.ev('thaiWordUsesLine'), sp = c.ev('thaiScenePolishPrompt')
+    const L = (n, sp0, th, tg) => ({ n, pair: { speaker: sp0, thai: th, targetSurface: tg, english: 'e', prompt: 'p' } })
+    const pp = sp({ sceneId: 'S1', purpose: 'p', lines: [L(1, 'A', 'ราคาถูกมากครับ', 'ถูก'), L(2, 'B', 'ถูกจริงค่ะ', 'ถูก'), L(3, 'A', 'ใช่ครับ', 'ถูก')] }, ['ราคา'], ['A', 'B'])
+    T('U1', 'each target with a THAI_WORD_USES entry shows real example uses to the writer and the scene polish; ถูก names both senses (cheap / correct); a word without an entry adds nothing',
+      /HOW THAI SPEAKERS USE "ถูก"/.test(ul({ thai: 'ถูก' })) && /2 senses \(cheap \/ correct\)/.test(ul({ thai: 'ถูก' })) && /ตอบถูกแล้ว/.test(ul({ thai: 'ถูก' })) &&
+      ul({ thai: 'ผม' }) === '' && /NATURAL USES of this scene's words[^\n]*\n  ถูก: ราคาถูกมาก · /.test(pp), ul({ thai: 'ถูก' }).slice(0, 200)) }
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ฉันนึกว่าพันบาทค่ะ', 'เสื้อตัวนี้', 'บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))

@@ -63,6 +63,10 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   T('L9', 'มีคนหลายคน is MANY_PEOPLE_LAAI (คนเยอะ); a per-unit price without ละ (ค่าเช่าเดือนพันบาท) is PER_UNIT_LA; เดือนละพันบาท, หลายคนชอบ and สองคนครับ are not flagged',
     ids('ตรงทางออกมีคนหลายคนครับ').includes('MANY_PEOPLE_LAAI') && !ids('หลายคนชอบร้านนี้ครับ').includes('MANY_PEOPLE_LAAI') && ids('ค่าเช่าเดือนพันบาทครับ').includes('PER_UNIT_LA') &&
     !ids('ค่าเช่าเดือนละพันบาทครับ').includes('PER_UNIT_LA') && !ids('มาสองคนครับ').includes('PER_UNIT_LA'), ['ตรงทางออกมีคนหลายคนครับ', 'ค่าเช่าเดือนพันบาทครับ', 'ค่าเช่าเดือนละพันบาทครับ'].map(t => t + ':' + ids(t).join(',')))
+  { const v = c.initVocab(), R = th => { c.__t = v.find(x => x.thai === th); return c.ev("targetLinguisticRole(__t, 'th')") }
+    const got = ['ข้าม', 'ตอบ', 'บ่อย', 'ทางออก', 'สีเหลือง', 'แล้ว'].map(R)
+    T('L10', 'Thai roles from the gloss: ข้าม "cross" and ตอบ "answer, reply" are VERBs, บ่อย "often" an ADVERB; ทางออก stays a NOUN (noun head), แล้ว a FUNCTION WORD',
+      got.join(',') === 'VERB,VERB,ADVERB,NOUN,NOUN,FUNCTION WORD', got) }
   { const L = (n, sp, th) => ({ n, pair: { speaker: sp, thai: th } })
     const h = c.thaiScenePolishHints([L(1, 'B', 'คุณมาที่ป้ายรถเมล์ทุกวันไหมคะ'), L(2, 'A', 'ใช่ ผมมาทุกวันครับ'), L(3, 'A', 'สัปดาห์นี้ไปตัวเมืองกันไหมครับ'), L(4, 'A', 'บางทีก็ยุ่งครับ'), L(5, 'B', 'ใช่ไหมคะ'), L(6, 'A', 'ใช่ครับ')])
     const fp = c.thaiFixParticleSpelling([{ thai: 'ไม่ใช่ค่ะศูนย์แปดเจ็ด' }, { thai: 'ครับผม' }, { thai: 'ขอบคุณครับคุณนิดา' }, { thai: 'คะแนนดีค่ะ' }], null).map(p => p.thai)

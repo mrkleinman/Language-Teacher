@@ -24606,6 +24606,11 @@ function targetLinguisticRole(t, lang) {
   // v704 (relay Daily run: ทางออก "exit" was briefed as a VERB, เครื่องดื่ม "drink" too) — a Thai compound on a noun-forming head
   // (ทาง ห้อง ร้าน ป้าย สถานี เครื่อง บัตร ตั๋ว …) is a thing or place whatever its English gloss; ทางนี้ / ทางนั้น / ทางโน้น are deictic
   if (lang === 'th' && /^(ทาง|ห้อง|ร้าน|ป้าย|สถานี|โรง|นัก|เครื่อง|ตู้|บัตร|ตั๋ว)./.test(surf) && !/^ทาง(นี้|นั้น|โน้น)$/.test(surf)) return 'NOUN'
+  // v704 (relay run 10: ข้าม "cross" was briefed as a NOUN, ตอบ "answer, reply" and บ่อย "often" as OTHER) — for a Thai word, a gloss that
+  // starts with a bare English verb is a verb (the noun-head compounds above are already nouns), and a frequency word is an adverb
+  if (lang === 'th') { const g0 = eng.split(/[;,/(]/)[0].trim()
+    if (/^(often|always|sometimes|usually|never|rarely|frequently|seldom)\b/.test(g0)) return 'ADVERB'
+    if (/^[a-z]+( up| out| off| on| back| down)?$/.test(g0) && typeof CC_BASE_VERBS !== 'undefined' && CC_BASE_VERBS.has(g0.split(' ')[0]) && !/^(yellow|red|blue|green|white|black|water|ice|milk|sugar|plate|bottle|spoon)$/.test(g0)) return 'VERB' }
   const fn = typeof lexicalFunctionFromGloss === 'function' ? lexicalFunctionFromGloss(t.english || t.e) : 'unknown'
   if (fn === 'verb') return 'VERB'
   if (fn === 'adjective') return 'STATE/ADJECTIVE'

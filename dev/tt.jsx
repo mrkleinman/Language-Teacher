@@ -15367,6 +15367,69 @@ function thaiFixParticleSpelling(pairs, log) {
   if (n && log) log('  ✂ THAI_PARTICLE_SPELLING ' + n + ' line(s): นะค่ะ → นะคะ')
   return out
 }
+// v704 — SCENE POLISH (independent reviews of relay tracks 1–4: 6.2–6.5/10, coherence 4.5–5). Each word's lines are written, checked
+// and regenerated one slot at a time, so a mini-scene reaches the end with replies that do not answer the line before, roles that
+// flip and near-identical uses. ONE request per mini-scene shows the writer the whole scene in order and asks for the smallest edits
+// that make it one conversation. Every edited line must keep its speaker, its target word (exact surface), the closed vocabulary and
+// the lexical rules — otherwise the original line stays. An edited line loses its earlier verdicts, so the FINAL SNAPSHOT AUDIT
+// judges its new text (and a line that fails there goes to the bounded quota round, as before). Bounded: one call per scene.
+const THAI_SCENE_POLISH_ACTIVE = true
+function thaiScenePolishPrompt(sc, allowed, names) {
+  const lines = sc.lines.map(l => 'L' + l.n + ' ' + (l.pair.speaker || 'A') + ' [target ' + (l.pair.targetSurface || l.pair._target || '') + ']: ' + l.pair.thai + '  |  EN: ' + (l.pair.english || '') + '  |  CUE: ' + (l.pair.prompt || ''))
+  return 'You are a native Thai teacher polishing ONE mini-scene of a spoken Thai lesson for an adult learner.\n' +
+    'SCENE: ' + (sc.localPremise || sc.purpose || '') + '\n' +
+    'A = ' + (names[0] || 'the man') + ' (a man: says ผม, ends ครับ). B = ' + (names[1] || 'the woman') + ' (a woman: says ฉัน, ends ค่ะ for statements, คะ for questions).\n' +
+    'The lines are spoken IN THIS ORDER. Each target word has three lines; every line must keep its target word exactly as written.\n\n' +
+    lines.join('\n') + '\n\n' +
+    'Make the SMALLEST edits so the scene is one natural conversation:\n' +
+    '• every reply answers the line before it (a question gets its answer: a place, a time, a price, a reason, yes/no); no line ignores or contradicts an earlier one\n' +
+    '• the people keep their roles (the one who lacks something asks; the one who has it offers) and facts stay true (numbers, times, plans)\n' +
+    '• natural spoken Thai, Thai word order, 3–7 words, the target used in its normal sense; no English-shaped Thai\n' +
+    '• keep each line\'s SPEAKER and its target word; keep the line count; change nothing that is already good\n' +
+    '• use ONLY these Thai words (plus the target words and ครับ ค่ะ คะ นะ): ' + allowed.slice(0, 380).join(' ') + '\n' +
+    '• for each line you change, also give its natural English and a short cue: the speaking act + exactly what the Thai says, second person ("Ask where the sugar is.")\n' +
+    THAI_NATURALNESS_GUIDE_V701 +
+    'Return ONLY JSON: {"lines":[{"n":12,"thai":"...","english":"...","cue":"..."}]} with ONLY the lines you changed ({"lines":[]} when the scene is already good).'
+}
+async function thaiScenePolish(t, c, log) {
+  if (!THAI_SCENE_POLISH_ACTIVE || !dailyV693On() || !c.apiKey) return { pairs: t.pairs, changed: 0, calls: 0 }
+  const sections = mainCoherenceSections(t)
+  const targets = (thaiTargetsFromTrack(t, c.vocab).list || [])
+  let ents = []; try { ents = thaiSceneNameEntries(t, c.vocab).map(n => n.surface) } catch (e) {}
+  const vctx = buildThaiTrackVocabContext(c.vocab || [], targets, ents)
+  const allowed = [...vctx.allowedThaiWords]
+  const names = [0, 1].map(k => { const ch = ((t.sceneContract && t.sceneContract.characters) || [])[k] || {}; return (ch.name || '') + (ch.nativeName ? ' (' + ch.nativeName + ')' : '') })
+  let pairs = (t.pairs || []).slice(), changed = 0, calls = 0, rejected = []
+  for (const sc of sections) {
+    if (c.cancelled && c.cancelled()) break
+    if (!sc.lines || sc.lines.length < 3) continue
+    let raw = null; calls++
+    try { raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: thaiScenePolishPrompt(sc, allowed, names) }], maxTokens: 2400, temperature: 0.3, json: true, stage: 'F_scene_polish' }) }
+    catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_POLISH ' + sc.sceneId + ': request failed — scene kept (' + String(e && e.message || e).slice(0, 80) + ')'); continue }
+    let o = null; try { o = coherenceJudgeParse(raw) || JSON.parse(String(raw)) } catch (e) {}
+    const edits = (o && Array.isArray(o.lines) ? o.lines : []).filter(x => x && x.n != null && typeof x.thai === 'string')
+    edits.forEach(ed => {
+      const line = sc.lines.find(l => l.n === +ed.n); if (!line) return
+      const old = line.pair, at = pairs.indexOf(old); if (at < 0) return
+      const th = normaliseThaiSpacing(String(ed.thai).trim()), t0 = th.replace(/\s+/g, '')
+      if (!th || t0 === String(old.thai || '').replace(/\s+/g, '')) return
+      const surf = old.targetSurface || old._target || ''
+      const why = []
+      if (surf && !thaiTargetPresent(th, surf, c.vocab)) why.push('target ' + surf + ' missing')
+      if (old.speaker === 'A' ? !/ครับ/.test(t0) || /(ค่ะ|คะ)$/.test(t0) : !/(ค่ะ|คะ)$/.test(t0) || /ครับ/.test(t0)) why.push('speaker particle')
+      try { const v = validateThaiVocabulary([{ thai: th }], vctx); if (v.blocked && v.blocked.length) why.push('untaught: ' + v.blocked.slice(0, 3).map(b => b.token || b).join(' ')) } catch (e) { why.push('vocabulary check failed') }
+      try { const lx = thaiLexicalSenseProblems({ thai: th, english: ed.english || '' }, surf).filter(x => x.code === 'UNNATURAL' || x.code === 'WRONG_SENSE'); if (lx.length) why.push(lx[0].id) } catch (e) {}
+      if (!ed.english || !ed.cue) why.push('no english / cue')
+      if (why.length) { rejected.push('L' + ed.n + ' ' + th + ' (' + why.join('; ') + ')'); return }
+      pairs[at] = { ...old, thai: th, text: th, english: String(ed.english).trim(), prompt: String(ed.cue).trim(), phonetic: '', words: [], _scenePolishedFrom: old.thai,
+        _semanticState: undefined, _semCue: undefined, _semNat: undefined, _semanticUnverified: { stage: 'NOT_AUDITED', reason: 'text rewritten by the scene polish — judged by the final snapshot audit' } }
+      changed++
+      log && log('    ✏ SCENE_POLISH ' + sc.sceneId + ' L' + ed.n + ': ' + old.thai + ' → ' + th)
+    })
+  }
+  log && log('  ✏ SCENE_POLISH ' + calls + ' scene request(s) · ' + changed + ' line(s) rewritten · ' + rejected.length + ' edit(s) refused (original kept)' + (rejected.length ? ': ' + rejected.slice(0, 6).join(' | ') : ''))
+  return { pairs, changed, calls, rejected }
+}
 // v704 (relay track 3: เริ่ม played recall 3, 1, 2 → A-A-B; วันศุกร์ 2, 3, 1) — a word's three lines are kept in the order they were
 // ACCEPTED, so a slot regenerated later lands after the others. Each word's block is put back in recall order (1 A · 2 B · 3 A), the
 // order its exchange was written in. Only a contiguous block of one target whose lines all carry distinct recall indices moves,
@@ -22210,6 +22273,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (oct13On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiTidyCommas(t.pairs, log) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiFixParticleSpelling(t.pairs, log) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiOrderExchanges(t.pairs, log) } } catch (e) {} }
+  if (dailyV693On() && adapter.lang === 'th') { try { const sp = await thaiScenePolish(t, c, log); t = { ...t, pairs: sp.pairs, scenePolish: { calls: sp.calls, changed: sp.changed, refused: (sp.rejected || []).length } } } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_POLISH skipped: ' + String(e && e.message || e).slice(0, 100)) } }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiFramingTidy(t.pairs, log) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiGreetingTargetsFirst(t.pairs, log) } } catch (e) {} }
   // v700 — FINAL SNAPSHOT AUDIT on the text that will be saved; a line that fails goes to ONE more bounded quota round (same

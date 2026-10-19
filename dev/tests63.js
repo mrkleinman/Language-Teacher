@@ -84,6 +84,18 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   T('X2', 'each word block is put back in recall order (3-1-2 → 1-2-3, A-B-A); ordered blocks and framing lines are untouched',
     ord.slice(1, 4).map(p => p.recallIndex).join('') === '123' && ord.slice(1, 4).map(p => p.speaker).join('') === 'ABA' && ord.slice(4).map(p => p.recallIndex).join('') === '123' && ord[0]._target === 'greeting', ord.map(p => p.recallIndex))
 
+  { const v = c.initVocab(), W = t => v.find(x => x.thai === t)
+    ;['ช้อน', 'น้ำตาล', 'ผม', 'ไม่', 'มี', 'อยู่', 'ไหน', 'ที่ไหน', 'ที่นี่', 'เอา', 'ให้', 'งั้น', 'มา', 'หน่อย'].forEach(t => { const w = W(t); if (w) Object.assign(w, { status: 'learning', introducedAt: '2026-08-01', repCount: 3 }) })
+    const a = W('ช้อน'), b = W('น้ำตาล'), P = (id, surf, r, sp, th) => ({ targetId: id, wordId: id, targetSurface: surf, recallIndex: r, speaker: sp, thai: th, english: 'e', prompt: 'p', isTargetPair: true, pairId: 'x' + id + r, _semCue: { s: 5 } })
+    const tr = { pairs: [P(a.id, 'ช้อน', 1, 'A', 'ผมไม่มีช้อนครับ'), P(a.id, 'ช้อน', 2, 'B', 'ช้อนอยู่ไหนคะ'), P(a.id, 'ช้อน', 3, 'A', 'ผมเอาช้อนมาให้นะครับ'), P(b.id, 'น้ำตาล', 1, 'A', 'น้ำตาลอยู่ที่ไหนครับ'), P(b.id, 'น้ำตาล', 2, 'B', 'น้ำตาลอยู่ที่นี่ค่ะ'), P(b.id, 'น้ำตาล', 3, 'A', 'งั้นเอาน้ำตาลมาหน่อยครับ')],
+      keywords: [{ wordId: a.id, thai: 'ช้อน' }, { wordId: b.id, thai: 'น้ำตาล' }], scenePlan: { scenes: [{ sceneId: 'S1', purpose: 'eating', localPremise: 'at a stall', targetIds: [a.id, b.id] }] } }
+    let calls = 0
+    c.mockGeminiGenerate = async () => { calls++; return JSON.stringify({ lines: [{ n: 3, thai: 'เดี๋ยวฉันเอาช้อนมาให้นะคะ', english: 'x', cue: 'y' }, { n: 5, thai: 'อยู่ที่นี่ค่ะ', english: 'x', cue: 'y' }, { n: 6, thai: 'ผมไม่เอาน้ำตาลครับ', english: "I don't want sugar.", cue: "Say you don't want sugar." }] }) }
+    const r = await c.thaiScenePolish(tr, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v }, null)
+    T('S1', 'scene polish: ONE request per mini-scene; a valid edit replaces the line and drops its old verdicts; an edit with the wrong speaker particle / untaught words / no target is refused and the original kept',
+      calls === 1 && r.changed === 1 && r.pairs[5].thai === 'ผมไม่เอาน้ำตาลครับ' && r.pairs[5]._semCue === undefined && r.pairs[5]._scenePolishedFrom === 'งั้นเอาน้ำตาลมาหน่อยครับ' &&
+      r.pairs[2].thai === 'ผมเอาช้อนมาให้นะครับ' && r.pairs[4].thai === 'น้ำตาลอยู่ที่นี่ค่ะ' && r.rejected.length === 2, { changed: r.changed, rejected: r.rejected, th: r.pairs.map(p => p.thai) }) }
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ฉันนึกว่าพันบาทค่ะ', 'เสื้อตัวนี้', 'บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))

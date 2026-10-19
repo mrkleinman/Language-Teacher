@@ -15381,6 +15381,14 @@ function thaiFixParticleSpelling(pairs, log) {
 // the lexical rules — otherwise the original line stays. An edited line loses its earlier verdicts, so the FINAL SNAPSHOT AUDIT
 // judges its new text (and a line that fails there goes to the bounded quota round, as before). Bounded: one call per scene.
 const THAI_SCENE_POLISH_ACTIVE = true
+// v704 — the exchange shapes a word's three lines can take (A · B · A); the writer prompt gives each word one, by its id
+const THAI_EXCHANGE_SHAPES = [
+  'A says something new about it → B asks a follow-up question → A answers with a detail (a place, a time, an amount or a reason)',
+  'A asks for or offers something → B answers or accepts, with a detail → A reacts (thanks, agrees or adds one thing)',
+  'A suggests a plan → B checks a detail or raises a small problem → A answers it or solves it',
+  'A asks what B thinks → B gives an opinion with a reason → A agrees or disagrees, with a reason',
+  'A notices a problem → B suggests what to do → A accepts or offers another idea',
+]
 // v704 (blind review of relay run 5: สีเหลือง ×3 "รถบัสสีเหลือง", หลาย ×3 "หลายคน") — a word whose three lines all carry the same phrase
 // around it is named for the polisher: the phrase is the longest stretch around the target that every one of its lines contains
 function thaiSamePhraseTargets(lines) {
@@ -17070,7 +17078,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     (dailyV693On() ? 'EXCHANGE (overrides the plan above when they clash): the three lines are ONE short exchange in this order — LINE 2 reacts to LINE 1, and LINE 3 ANSWERS LINE 2 ' +
       '(a where-question gets a place, a when-question a time, how much a price, why a reason, "which?" a choice; a yes/no question gets yes/no first). ' +
       'Keep the roles straight (the one who lacks something asks; the one who has it offers) and never contradict an earlier line (after ฉันไม่ชอบนม, do not offer milk). ' +
-      'A question about "already / yet" is แล้วหรือยัง (รถเมล์มาแล้วหรือยังคะ — not มาแล้วไหม) and its answer uses แล้ว or ยัง.\n' : '') +
+      'A question about "already / yet" is แล้วหรือยัง (รถเมล์มาแล้วหรือยังคะ — not มาแล้วไหม) and its answer uses แล้ว or ยัง.\n' +
+      // v704 (blind review of relay run 6: "X แพงไหม / X ไม่แพง", "X อยู่ไหน / อยู่บนโต๊ะ" for word after word) — each word gets one of
+      // five exchange shapes (by its id, so neighbouring words differ), and an answer adds something the question did not say
+      'SHAPE of this exchange: ' + THAI_EXCHANGE_SHAPES[Math.abs(Number(target.id) || 0) % THAI_EXCHANGE_SHAPES.length] + '. An answer adds something new — not the question echoed with ไม่ ' +
+      '(กุ้งแพงไหมคะ → ไม่แพงครับ ตัวละสิบบาทเอง, not just กุ้งไม่แพงครับ).\n' : '') +
     targetRoleLine(targetLinguisticRole(target, 'th'), target, 'th') +
     'Make it feel like real speech between two friends.\n' +
     'The "prompt" field = specific description of what is said, e.g. "He says his ear hurts" or "She asks if he cleaned his ears" — precise, not vague'

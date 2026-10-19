@@ -154,6 +154,13 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   const src = require('fs').readFileSync('tt.jsx', 'utf8')
   const uses = (src.match(/THAI_NATURALNESS_GUIDE \+ \(dailyV693On\(\) \? THAI_NATURALNESS_GUIDE_V701/g) || []).length + (src.match(/\+ \(dailyV693On\(\) \? THAI_NATURALNESS_GUIDE_V701 : ''\) \+ '\\n'/g) || []).length
   T('W2', 'both the writer prompt and the native-speaker reviewer include that guide (one standard for both)', uses >= 2, uses)
+  // v704 (blind review of relay run 6: "X แพงไหม / X ไม่แพง" word after word) — each word's writer prompt carries one of five exchange shapes, by its id
+  { const v = c.initVocab(), w1 = v.find(x => x.thai === 'กุ้ง'), w2 = v.find(x => x.thai === 'ช้อน'), seen = []
+    c.mockGeminiGenerate = async (k, m, msgs) => { const t = msgs.map(x => x.content).join('\n'); const mm = t.match(/SHAPE of this exchange: ([^.]*)/); if (mm) seen.push(mm[1]); return '[]' }
+    for (const t of [w1, w2]) { const n0 = seen.length; try { await c.generateWordLines({ ...t }, 'at a noodle shop', 'Somchai (สมชาย)', 'Nida (นิดา)', [], v, 'AIzaSyTEST-harness-key-000000', c.ev('GEMINI_DEFAULT_MODEL'), 0, () => {}, '', []) } catch (e) {} ; seen.push('|' + (seen.length > n0)) }
+    const S = c.ev('THAI_EXCHANGE_SHAPES'), first = seen.find(x => x !== '|true' && x !== '|false'), last = seen.slice().reverse().find(x => x !== '|true' && x !== '|false')
+    T('W3', 'the writer prompt gives each word one of five exchange shapes by its id (กุ้ง and ช้อน get different ones) and asks that an answer add something new',
+      S.length === 5 && first && last && first !== last && S.some(x => x.startsWith(first.slice(0, 20))), { first, last }) }
 
   out.forEach(l => console.log(l))
   console.log('\nv704 Thai Daily quality round: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))

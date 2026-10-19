@@ -60,11 +60,15 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('L8', '"what time?" asked with เวลาไหน is WHAT_TIME_WHICH (กี่โมง); a location without อยู่ (น้ำตาลบนโต๊ะครับ) is LOCATION_NO_YUU; เวลาไหนก็ได้, อยู่บนโต๊ะ, วาง / มี / ใส่ … บนโต๊ะ are not flagged',
       W.every(t => ids(t).includes('WHAT_TIME_WHICH')) && Wok.every(t => !ids(t).includes('WHAT_TIME_WHICH')) && Y.every(t => ids(t).includes('LOCATION_NO_YUU')) && Yok.every(t => !ids(t).includes('LOCATION_NO_YUU')),
       W.concat(Wok, Y, Yok).map(t => t + ':' + ids(t).join(','))) }
+  T('L9', 'มีคนหลายคน is MANY_PEOPLE_LAAI (คนเยอะ); a per-unit price without ละ (ค่าเช่าเดือนพันบาท) is PER_UNIT_LA; เดือนละพันบาท, หลายคนชอบ and สองคนครับ are not flagged',
+    ids('ตรงทางออกมีคนหลายคนครับ').includes('MANY_PEOPLE_LAAI') && !ids('หลายคนชอบร้านนี้ครับ').includes('MANY_PEOPLE_LAAI') && ids('ค่าเช่าเดือนพันบาทครับ').includes('PER_UNIT_LA') &&
+    !ids('ค่าเช่าเดือนละพันบาทครับ').includes('PER_UNIT_LA') && !ids('มาสองคนครับ').includes('PER_UNIT_LA'), ['ตรงทางออกมีคนหลายคนครับ', 'ค่าเช่าเดือนพันบาทครับ', 'ค่าเช่าเดือนละพันบาทครับ'].map(t => t + ':' + ids(t).join(',')))
   { const L = (n, sp, th) => ({ n, pair: { speaker: sp, thai: th } })
     const h = c.thaiScenePolishHints([L(1, 'B', 'คุณมาที่ป้ายรถเมล์ทุกวันไหมคะ'), L(2, 'A', 'ใช่ ผมมาทุกวันครับ'), L(3, 'A', 'สัปดาห์นี้ไปตัวเมืองกันไหมครับ'), L(4, 'A', 'บางทีก็ยุ่งครับ'), L(5, 'B', 'ใช่ไหมคะ'), L(6, 'A', 'ใช่ครับ')])
     const fp = c.thaiFixParticleSpelling([{ thai: 'ไม่ใช่ค่ะศูนย์แปดเจ็ด' }, { thai: 'ครับผม' }, { thai: 'ขอบคุณครับคุณนิดา' }, { thai: 'คะแนนดีค่ะ' }], null).map(p => p.thai)
     T('H1', 'scene polish hints: ใช่ answering a ไหม question (L2) and a question followed by the same speaker (L3) are named; ใช่ answering ใช่ไหม (L6) is not · a phrase-final ค่ะ / ครับ gets a space before more Thai (ครับผม, คะแนน untouched)',
       h.length === 2 && /^L2 answers the ไหม question in L1 with ใช่/.test(h[0]) && /^L3 asks a question/.test(h[1]) &&
+      (h2 => h2.some(x => /^L1 and L2 are both B/.test(x)) && h2.some(x => /งั้น .* opens L3, L4/.test(x)))(c.thaiScenePolishHints([L(1, 'B', 'ฉันเช่าห้องไกลค่ะ'), L(2, 'B', 'ฉันไม่ได้เช่าค่ะ'), L(3, 'A', 'งั้นไปกันครับ'), L(4, 'B', 'งั้นไปค่ะ')])) &&
       fp.join('|') === 'ไม่ใช่ค่ะ ศูนย์แปดเจ็ด|ครับผม|ขอบคุณครับ คุณนิดา|คะแนนดีค่ะ', { h, fp }) }
   const ft = c.thaiFramingTidy([
     { _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ นิดา วันนี้เป็นยังไงบ้างครับ', english: 'Hello Nida, how are you today', prompt: 'Greet Nida and ask how she is doing today.' },

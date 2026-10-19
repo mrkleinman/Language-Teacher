@@ -15418,7 +15418,13 @@ function thaiScenePolishHints(lines) {
       out.push(id(b) + ' answers the ไหม question in ' + id(a) + ' with ใช่ — answer with its verb or adjective (มาครับ · เย็นครับ · ไม่แพงครับ)')
     if (a.pair.speaker === b.pair.speaker && isQ(a) && !a.framing)
       out.push(id(a) + ' asks a question but the next line is the same speaker\'s — make the other person answer it, or change ' + id(a))
+    // v704 (blind review of relay run 8: "she rents far away" then "I don't rent", both B) — two B lines in a row inside the scene
+    else if (a.pair.speaker === 'B' && b.pair.speaker === 'B' && !a.framing && !b.framing)
+      out.push(id(a) + ' and ' + id(b) + ' are both B — make ' + id(b) + ' follow on from ' + id(a) + ' without contradicting it')
   }
+  // (same review: งั้น opened nine lines) — "then / so" at most once a scene
+  const ngan = lines.filter(l => /^งั้น/.test(t0(l)))
+  if (ngan.length > 1) out.push('งั้น ("then / so") opens ' + ngan.map(id).join(', ') + ' — keep it in at most one line; start the others another way')
   return out
 }
 function thaiScenePolishPrompt(sc, allowed, names) {
@@ -36924,6 +36930,11 @@ function thaiLexicalSenseProblems(p, targetSurface) {
   // v704 (blind review of relay run 6: งั้นคุณตื่นเวลาไหนคะ · งั้นเริ่มกินเวลาไหนดีคะ) — "what time?" is กี่โมง; เวลาไหนก็ได้ ("any time") is untouched
   if (dailyV693On() && /เวลาไหน(ดี)?(คะ|ครับ|นะ)?$/.test(th.replace(/\s+/g, '')))
     out.push({ id: 'WHAT_TIME_WHICH', code: 'UNNATURAL', why: '"what time?" is กี่โมง (ตื่นกี่โมงคะ · เริ่มกินกี่โมงดีคะ), not เวลาไหน' })
+  // v704 (blind review of relay run 8: มีคนหลายคน for "lots of people"; ค่าเช่าเดือนพันบาท without ละ)
+  if (dailyV693On() && /มีคนหลายคน/.test(th.replace(/\s+/g, '')))
+    out.push({ id: 'MANY_PEOPLE_LAAI', code: 'UNNATURAL', why: '"lots of people" is คนเยอะ (ที่นี่คนเยอะครับ), not มีคนหลายคน' })
+  if (dailyV693On() && /(เดือน|วัน|คืน|ชั่วโมง|คน)(หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ|ยี่สิบ|ร้อย|พัน|หมื่น)\S{0,8}บาท/.test(th.replace(/\s+/g, '')) && !/(เดือน|วัน|คืน|ชั่วโมง|คน)ละ/.test(th))
+    out.push({ id: 'PER_UNIT_LA', code: 'UNNATURAL', why: 'a price per day / month / person takes ละ: เดือนละพันบาท · คนละร้อยบาท (not เดือนพันบาท)' })
   // (same review: น้ำตาลบนโต๊ะครับ "the sugar on the table" — a noun phrase, not a sentence) — where something is takes อยู่
   if (dailyV693On() && /^[฀-๿]{1,12}?(?<!อยู่|มี|วาง|ไว้)(บน|ใต้|ใน)(โต๊ะ|ตู้|กระเป๋า|รถ|ห้อง)(ครับ|ค่ะ)$/.test(th.replace(/\s+/g, '')) && !/อยู่|มี|วาง|ไว้|เอา|ใส่/.test(th))
     out.push({ id: 'LOCATION_NO_YUU', code: 'UNNATURAL', why: 'where something is takes อยู่: น้ำตาลอยู่บนโต๊ะครับ (not น้ำตาลบนโต๊ะครับ)' })

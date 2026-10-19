@@ -77,6 +77,23 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   const disp = t => c.loadCanonicalThaiPhonetic(ph(t), t)
   T('R6', 'long ɔɔ / əə display long like the app\'s own spellings: ชอบ châawp · ตอบ dtàawp · เงิน ngooen; short ก็ gâw and the owner\'s หน่อย nòi unchanged',
     disp('ชอบ') === 'châawp' && disp('ตอบ') === 'dtàawp' && disp('เงิน') === 'ngooen' && disp('ก็') === 'gâw' && disp('หน่อย') === 'nòi', ['ชอบ', 'ตอบ', 'เงิน', 'ก็', 'หน่อย'].map(disp))
+  // v704 (blind review of relay run 5)
+  { const lex = c.buildThaiPhoneticLexicon([]), comp = th => c.composeThaiPhonetic(th, lex).phonetic
+    const got = { 'เพิ่ง': disp('เพิ่ง'), 'รถบัส': disp('รถบัส'), 'ได้ยิน': disp('ได้ยิน'), 'ผมไม่ได้ยินครับ': comp('ผมไม่ได้ยินครับ'), 'สวัสดีครับ': comp('สวัสดีครับ'),
+      'แล้วคุณล่ะคะ': comp('แล้วคุณล่ะคะ'), 'ผมไม่มีช้อนครับ': comp('ผมไม่มีช้อนครับ'), 'เดินทางปลอดภัยนะครับ': comp('เดินทางปลอดภัยนะครับ'), 'ก๋วยเตี๋ยว': disp('ก๋วยเตี๋ยว'), 'ครอบครัว': disp('ครอบครัว'), 'เสียง': disp('เสียง') }
+    const want = { 'เพิ่ง': 'phôeng', 'รถบัส': 'rót-bát', 'ได้ยิน': 'dâi-yin', 'ผมไม่ได้ยินครับ': 'phǒm mâi dâi-yin khráp', 'สวัสดีครับ': 'sà-wàt-dii khráp',
+      'แล้วคุณล่ะคะ': 'láaeo khun lâ khá', 'ผมไม่มีช้อนครับ': 'phǒm mâi mii cháawn khráp', 'เดินทางปลอดภัยนะครับ': 'dooen-thaang bplàawt-phai ná khráp', 'ก๋วยเตี๋ยว': 'gǔai-dtǐao', 'ครอบครัว': 'khrâawp-khrua', 'เสียง': 'sǐang' }
+    const bad = Object.keys(want).filter(k => String(got[k]).normalize('NFC') !== want[k].normalize('NFC'))
+    T('R7', 'reviewed spellings: เพิ่ง phôeng · รถบัส rót-bát · ได้ยิน dâi-yin; a hyphen joins one word only (sà-wàt-dii khráp, mâi mii); diphthongs one way (gǔai-dtǐao, khrua, sǐang)', !bad.length, bad.map(k => k + ' → ' + got[k])) }
+  { const p1 = { speaker: 'A', thai: 'ขอบคุณครับ ตอนนี้ผมมีช้อนแล้วครับ', english: 'Thanks, now I have a spoon.', prompt: 'Say thanks, now you have a spoon.' }
+    const p2 = { speaker: 'B', thai: 'บ้านที่คุณเช่าใหญ่ไหมคะ', english: 'Is the house you rent big?', prompt: 'Ask if the house you rent is big.' }
+    const p3 = { speaker: 'B', thai: 'ขอบคุณ สมชาย วันศุกร์หน้าเจอกันค่ะ', english: 'Thank you, Somchai, see you next Friday.', prompt: 'Thank Somchai and say you will see Somchai next Friday.' }
+    const cl1 = c.cueClarify('th', p1, { addr: 'f', names: ['Somchai', 'Nida'] }).cue
+    const l2 = c.thaiFinalCueLint(p2, { addr: 'm', addrName: 'Somchai', names: ['Somchai', 'Nida'] }).cue
+    const l3 = c.thaiFinalCueLint(p3, { addr: 'm', addrName: 'Somchai', names: ['Somchai', 'Nida'] }).cue
+    const lf = c.ev('ccLowerFirst')("Here's a spoon", [])
+    T('C1', 'cue wording: "Say thanks, …" is not read as narration (was "Thank now you have a spoon."); a rebuilt "you rent" agrees as "he rents"; "say you will see Somchai" is the learner, not a leak; "Here\'s" is lowered after Say',
+      cl1 === 'Say thanks, now you have a spoon.' && l2 === 'Ask if the house he rents is big.' && l3 === p3.prompt && lf === "here's a spoon", { cl1, l2, l3, lf }) }
   const ex = (id, r, sp) => ({ targetId: id, recallIndex: r, speaker: sp, thai: 'x' + id + r, english: 'e', prompt: 'p', wordId: id, _target: 't' + id, targetSurface: 't' + id })
   const ord = c.thaiOrderExchanges([{ _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ' }, ex(1, 3, 'A'), ex(1, 1, 'A'), ex(1, 2, 'B'), ex(2, 1, 'A'), ex(2, 2, 'B'), ex(2, 3, 'A')], null)
   const keep = c.thaiOrderExchanges([ex(3, 2, 'B'), ex(3, 1, 'A'), ex(3, 3, 'B')], null)
@@ -89,12 +106,28 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const a = W('ช้อน'), b = W('น้ำตาล'), P = (id, surf, r, sp, th) => ({ targetId: id, wordId: id, targetSurface: surf, recallIndex: r, speaker: sp, thai: th, english: 'e', prompt: 'p', isTargetPair: true, pairId: 'x' + id + r, _semCue: { s: 5 } })
     const tr = { pairs: [P(a.id, 'ช้อน', 1, 'A', 'ผมไม่มีช้อนครับ'), P(a.id, 'ช้อน', 2, 'B', 'ช้อนอยู่ไหนคะ'), P(a.id, 'ช้อน', 3, 'A', 'ผมเอาช้อนมาให้นะครับ'), P(b.id, 'น้ำตาล', 1, 'A', 'น้ำตาลอยู่ที่ไหนครับ'), P(b.id, 'น้ำตาล', 2, 'B', 'น้ำตาลอยู่ที่นี่ค่ะ'), P(b.id, 'น้ำตาล', 3, 'A', 'งั้นเอาน้ำตาลมาหน่อยครับ')],
       keywords: [{ wordId: a.id, thai: 'ช้อน' }, { wordId: b.id, thai: 'น้ำตาล' }], scenePlan: { scenes: [{ sceneId: 'S1', purpose: 'eating', localPremise: 'at a stall', targetIds: [a.id, b.id] }] } }
-    let calls = 0
-    c.mockGeminiGenerate = async () => { calls++; return JSON.stringify({ lines: [{ n: 3, thai: 'เดี๋ยวฉันเอาช้อนมาให้นะคะ', english: 'x', cue: 'y' }, { n: 5, thai: 'อยู่ที่นี่ค่ะ', english: 'x', cue: 'y' }, { n: 6, thai: 'ผมไม่เอาน้ำตาลครับ', english: "I don't want sugar.", cue: "Say you don't want sugar." }] }) }
+    // Expectation changed in v704 (relay run 5): a scene whose edits were refused gets ONE follow-up request naming each refused edit
+    // and why (four of the polisher's fixes were refused in run 5 and the contradictions stayed). So: 2 requests here (the first
+    // reply has two refused edits), the retry's valid fix of L5 is applied, and the retry's repeat of the bad L3 is refused again.
+    let calls = 0, retryPrompt = ''
+    c.mockGeminiGenerate = async (k, m, msgs) => { calls++
+      if (calls === 2) { retryPrompt = msgs[0].content; return JSON.stringify({ lines: [{ n: 3, thai: 'เดี๋ยวฉันเอาช้อนมาให้นะคะ', english: 'x', cue: 'y' }, { n: 5, thai: 'มีน้ำตาลค่ะ', english: 'There is sugar.', cue: 'Say there is sugar.' }] }) }
+      return JSON.stringify({ lines: [{ n: 3, thai: 'เดี๋ยวฉันเอาช้อนมาให้นะคะ', english: 'x', cue: 'y' }, { n: 5, thai: 'อยู่ที่นี่ค่ะ', english: 'x', cue: 'y' }, { n: 6, thai: 'ผมไม่เอาน้ำตาลครับ', english: "I don't want sugar.", cue: "Say you don't want sugar." }] }) }
     const r = await c.thaiScenePolish(tr, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v }, null)
-    T('S1', 'scene polish: ONE request per mini-scene; a valid edit replaces the line and drops its old verdicts; an edit with the wrong speaker particle / untaught words / no target is refused and the original kept',
-      calls === 1 && r.changed === 1 && r.pairs[5].thai === 'ผมไม่เอาน้ำตาลครับ' && r.pairs[5]._semCue === undefined && r.pairs[5]._scenePolishedFrom === 'งั้นเอาน้ำตาลมาหน่อยครับ' &&
-      r.pairs[2].thai === 'ผมเอาช้อนมาให้นะครับ' && r.pairs[4].thai === 'น้ำตาลอยู่ที่นี่ค่ะ' && r.rejected.length === 2, { changed: r.changed, rejected: r.rejected, th: r.pairs.map(p => p.thai) }) }
+    T('S1', 'scene polish: one request per mini-scene (+ one follow-up only for refused edits); a valid edit replaces the line and drops its old verdicts; an edit with the wrong speaker particle / untaught words / no target is refused and the original kept',
+      calls === 2 && /REFUSED/.test(retryPrompt) && /L5: อยู่ที่นี่ค่ะ — refused: target น้ำตาล missing/.test(retryPrompt) && r.changed === 2 &&
+      r.pairs[5].thai === 'ผมไม่เอาน้ำตาลครับ' && r.pairs[5]._semCue === undefined && r.pairs[5]._scenePolishedFrom === 'งั้นเอาน้ำตาลมาหน่อยครับ' &&
+      r.pairs[2].thai === 'ผมเอาช้อนมาให้นะครับ' && r.pairs[4].thai === 'มีน้ำตาลค่ะ' && r.rejected.length === 1, { calls, changed: r.changed, rejected: r.rejected, th: r.pairs.map(p => p.thai) })
+    // v704 — framing lines join the first / last scene (no target needed); a word whose three lines share one phrase is named
+    const fr = (sp, th, tg) => ({ speaker: sp, thai: th, english: 'e', prompt: 'p', _target: tg, pairType: 'framing', _framing: true })
+    const tr2 = { ...tr, pairs: [fr('A', 'สวัสดีครับ', 'greeting')].concat(tr.pairs, [fr('B', 'แล้วเจอกันค่ะ', 'parting')]) }
+    let p2 = '', calls2 = 0
+    c.mockGeminiGenerate = async (k, m, msgs) => { calls2++; p2 = msgs[0].content; return JSON.stringify({ lines: [{ n: 'C1', thai: 'มีช้อนไหมคะ', english: 'Is there a spoon?', cue: 'Ask if there is a spoon.' }] }) }
+    const r2 = await c.thaiScenePolish(tr2, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v }, null)
+    const same = c.thaiSamePhraseTargets([{ pair: { targetSurface: 'สีเหลือง', thai: 'รถบัสสีเหลืองออกแล้วครับ' } }, { pair: { targetSurface: 'สีเหลือง', thai: 'รถบัสสีเหลืองมาไหมคะ' } }, { pair: { targetSurface: 'สีเหลือง', thai: 'ผมชอบรถบัสสีเหลืองครับ' } }])
+    T('S2', 'scene polish sees the opening / closing framing lines (O1 … C1, no target) with the scene they belong to, and names a word whose three lines repeat one phrase (VARY: รถบัสสีเหลือง)',
+      /O1 A \[opening line, no target\]: สวัสดีครับ/.test(p2) && /C1 B \[closing line, no target\]: แล้วเจอกันค่ะ/.test(p2) && calls2 === 1 && r2.pairs[r2.pairs.length - 1].thai === 'มีช้อนไหมคะ' &&
+      same.length === 1 && same[0][1] === 'รถบัสสีเหลือง', { calls2, same, rej: r2.rejected, last: r2.pairs[r2.pairs.length - 1].thai }) }
 
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ฉันนึกว่าพันบาทค่ะ', 'เสื้อตัวนี้', 'บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']

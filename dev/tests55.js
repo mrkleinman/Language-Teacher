@@ -44,6 +44,9 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
   const canon = c.thaiCanonicalById()
   const RAW = c.ev('RAW_VOCAB')
   const idOf = th => ids[WEDDING.indexOf(th)]
+  // Topic words that are still unranked. Five Wedding Speech words now also hold curriculum slots (ผ่าน 532, ปัญหา 539, ความหมาย 542,
+  // หัวเราะ 555, ดูแล 676 — the 501–800 curriculum reuses their canonical ids), so they are ordinary ranked words, no longer topic-only.
+  const topicOnlyIds = ids.filter(id => canon.get(id) && canon.get(id).topicOnly)
 
   // ══ Vocabulary integrity ══
   {
@@ -70,7 +73,7 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     const created = ids.map(id => canon.get(id)).filter(r => r.topicOnly)
     T(5, 'new topic-only entries carry no Shodan position: curriculumIndex 0, beltOrder 0, "Beyond curriculum", not Known, not introduced; no rank lists them',
       created.length === (seed.created || []).length && created.every(r => r.curriculumIndex === 0 && !r.beltOrder && r.belt === 'Beyond curriculum' && r.l === 'new' && !r.r) &&
-      c.ev('RANK_ORDER').every(rk => !c.wordsForRank(learner(c), rk).some(w => ids.includes(w.id))) &&
+      c.ev('RANK_ORDER').every(rk => !c.wordsForRank(learner(c), rk).some(w => topicOnlyIds.includes(w.id))) &&
       c.initVocab().filter(w => ids.includes(w.id)).every(w => w.status === 'new' && !c.hasBeenIntroduced(w)),
       { created: created.length })
     // idempotent: seeding again finds all 50 and creates nothing
@@ -116,10 +119,10 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     const pick = c.pickWords(L, 'daily', [])
     const raw = (pick.targets || []).map(w => w.id)
     const res = (pick.reserve || []).map(w => w.id)
-    const elig = L.filter(w => ids.includes(w.id)).map(w => c.isEligibleNewTarget(w, new Set()))
+    const elig = L.filter(w => topicOnlyIds.includes(w.id)).map(w => c.isEligibleNewTarget(w, new Set()))
     T(7, 'normal Daily Track new-word selection excludes the unranked topic-only entries (picker targets, reserve, eligibility layer)',
-      raw.length > 0 && !raw.some(id => ids.includes(id)) && !res.some(id => ids.includes(id)) && elig.every(x => x === false),
-      { topicInPick: raw.filter(id => ids.includes(id)), topicInReserve: res.filter(id => ids.includes(id)).length })
+      raw.length > 0 && !raw.some(id => topicOnlyIds.includes(id)) && !res.some(id => topicOnlyIds.includes(id)) && elig.every(x => x === false),
+      { topicInPick: raw.filter(id => topicOnlyIds.includes(id)), topicInReserve: res.filter(id => topicOnlyIds.includes(id)).length })
   }
 
   // ══ 8  dictionary search and detail views reach topic words ══
@@ -278,10 +281,14 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     if (process.env.TT_BASE && fs.existsSync(process.env.TT_BASE)) {
       const b = load(process.env.TT_BASE); b.console.info = () => {}; b.console.warn = () => {}
       const Lb = learner(b), tb = Lb.filter(w => w.status === 'learning').slice(0, 30), Ab = b.buildThaiTrackVocabContext(Lb, tb, []).allowedSet
-      baseSame = WEDDING.filter(w => Ab.has(w)).join() === WEDDING.filter(w => A.has(w)).join()
+      const still = w => topicOnlyIds.includes(idOf(w))
+      baseSame = WEDDING.filter(w => still(w) && Ab.has(w)).join() === WEDDING.filter(w => still(w) && A.has(w)).join()
     }
-    T('22b', 'approved-list words (ทุกคน, ทุกอย่าง, ปัญหา) stay legal in every regular track exactly as before Topics; other unintroduced topic words stay locked' + (baseSame == null ? ' (TT_BASE not set)' : ''),
-      ['ทุกคน', 'ทุกอย่าง', 'ปัญหา'].every(w => A.has(w)) && !A.has('ตลอดไป') && !A.has('ความหวัง') && baseSame !== false, { allowed: WEDDING.filter(w => A.has(w)), baseSame })
+    // ปัญหา is now curriculum word 539 (an ordinary ranked entry), so it follows the normal exposure rule: locked until introduced
+    const Lp = learner(c); introduce(Lp.find(w => w.thai === 'ปัญหา'))
+    const Ap = c.buildThaiTrackVocabContext(Lp, Lp.filter(w => w.status === 'learning').slice(0, 30), []).allowedSet
+    T('22b', 'approved-list words that are still topic-only (ทุกคน, ทุกอย่าง) stay legal in every regular track exactly as before Topics; other unintroduced topic words stay locked; ปัญหา (now curriculum 539) is legal once introduced' + (baseSame == null ? ' (TT_BASE not set)' : ''),
+      ['ทุกคน', 'ทุกอย่าง'].every(w => A.has(w)) && !A.has('ตลอดไป') && !A.has('ความหวัง') && !A.has('ปัญหา') && Ap.has('ปัญหา') && baseSame !== false, { allowed: WEDDING.filter(w => A.has(w)), baseSame })
   }
   {
     // 23 the same complexity contract (9th Kyu learner → same limits as the Daily Track)

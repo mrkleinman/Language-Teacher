@@ -34,8 +34,11 @@ function learner(lang, c) {
   return S
 }
 // a VARIED learner state (non-trivial Revision ordering: tiers, due dates, streaks)
+// At most 20 'hard' words, so the 30 can never all come from one tier however large the dictionary grows (Thai 501–800 added
+// 151 entries: every-53rd alone then gave 30+ hard words and a single-tier selection). Japanese / Mandarin (4 / 2) are unchanged.
 function variedState(S) {
-  S.vocab.forEach((w, i) => { if (w.status !== 'new' && w.status !== 'locked') { w.dueDate = '2026-0' + (1 + (i % 9)) + '-1' + (i % 9); w.okStreak = i % 4; w.difficulty = i % 53 === 0 ? 'hard' : 'medium' } })
+  let hard = 0
+  S.vocab.forEach((w, i) => { if (w.status !== 'new' && w.status !== 'locked') { w.dueDate = '2026-0' + (1 + (i % 9)) + '-1' + (i % 9); w.okStreak = i % 4; w.difficulty = i % 53 === 0 && hard++ < 20 ? 'hard' : 'medium' } })
 }
 function rc(lang) { const c = load(process.env.TT_FILE || 'tt.compiled.js', { React }); c.console.info = () => {}; return c }
 // mock + an AI-ledger row per paid call (the harness transport bypasses the ledger) so cost accounting is exercised

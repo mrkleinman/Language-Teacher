@@ -54,6 +54,18 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     ids('รถมาถึงป้ายรถเมล์แล้วไหมคะ').includes('ALREADY_QUESTION') && !ids('รถเมล์มาแล้วหรือยังคะ').includes('ALREADY_QUESTION') &&
     ids('ไม่ทุกวันแต่วันหยุดมีหลายคนครับ').includes('NOT_EVERY_DAY') && !ids('ไม่ใช่ทุกวันครับ').includes('NOT_EVERY_DAY'))
   T('L7', 'ครึ่งพัน ("half a thousand") is HALF_THOUSAND; ห้าร้อยบาท and ครึ่งราคา are not', ids('ครึ่งพันก็ถูกครับ').includes('HALF_THOUSAND') && !ids('ห้าร้อยบาทครับ').includes('HALF_THOUSAND') && !ids('ลดครึ่งราคาครับ').includes('HALF_THOUSAND'))
+  // v704 (blind review of relay run 6)
+  { const W = ['งั้นคุณตื่นเวลาไหนคะ', 'งั้นเริ่มกินเวลาไหนดีคะ'], Wok = ['เวลาไหนก็ได้ค่ะ', 'ตื่นกี่โมงคะ']
+    const Y = ['น้ำตาลบนโต๊ะครับ', 'ช้อนในกระเป๋าค่ะ'], Yok = ['น้ำตาลอยู่บนโต๊ะครับ', 'ผมวางช้อนบนโต๊ะครับ', 'มีน้ำบนโต๊ะค่ะ', 'เอาน้ำใส่ในแก้วครับ']
+    T('L8', '"what time?" asked with เวลาไหน is WHAT_TIME_WHICH (กี่โมง); a location without อยู่ (น้ำตาลบนโต๊ะครับ) is LOCATION_NO_YUU; เวลาไหนก็ได้, อยู่บนโต๊ะ, วาง / มี / ใส่ … บนโต๊ะ are not flagged',
+      W.every(t => ids(t).includes('WHAT_TIME_WHICH')) && Wok.every(t => !ids(t).includes('WHAT_TIME_WHICH')) && Y.every(t => ids(t).includes('LOCATION_NO_YUU')) && Yok.every(t => !ids(t).includes('LOCATION_NO_YUU')),
+      W.concat(Wok, Y, Yok).map(t => t + ':' + ids(t).join(','))) }
+  { const L = (n, sp, th) => ({ n, pair: { speaker: sp, thai: th } })
+    const h = c.thaiScenePolishHints([L(1, 'B', 'คุณมาที่ป้ายรถเมล์ทุกวันไหมคะ'), L(2, 'A', 'ใช่ ผมมาทุกวันครับ'), L(3, 'A', 'สัปดาห์นี้ไปตัวเมืองกันไหมครับ'), L(4, 'A', 'บางทีก็ยุ่งครับ'), L(5, 'B', 'ใช่ไหมคะ'), L(6, 'A', 'ใช่ครับ')])
+    const fp = c.thaiFixParticleSpelling([{ thai: 'ไม่ใช่ค่ะศูนย์แปดเจ็ด' }, { thai: 'ครับผม' }, { thai: 'ขอบคุณครับคุณนิดา' }, { thai: 'คะแนนดีค่ะ' }], null).map(p => p.thai)
+    T('H1', 'scene polish hints: ใช่ answering a ไหม question (L2) and a question followed by the same speaker (L3) are named; ใช่ answering ใช่ไหม (L6) is not · a phrase-final ค่ะ / ครับ gets a space before more Thai (ครับผม, คะแนน untouched)',
+      h.length === 2 && /^L2 answers the ไหม question in L1 with ใช่/.test(h[0]) && /^L3 asks a question/.test(h[1]) &&
+      fp.join('|') === 'ไม่ใช่ค่ะ ศูนย์แปดเจ็ด|ครับผม|ขอบคุณครับ คุณนิดา|คะแนนดีค่ะ', { h, fp }) }
   const ft = c.thaiFramingTidy([
     { _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ นิดา วันนี้เป็นยังไงบ้างครับ', english: 'Hello Nida, how are you today', prompt: 'Greet Nida and ask how she is doing today.' },
     { _target: 'parting', speaker: 'A', thai: 'แล้วเจอกันนะครับคุณนิดา', english: 'See you later, Nida.', prompt: 'Say goodbye to Nida' },
@@ -62,6 +74,12 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     ft[0].english === 'Hello Nida, how are you today.' && ft[1].prompt === 'Say goodbye to Nida.' && ft[2].thai === 'แล้วเจอกันค่ะ' && ft[2].english === 'See you.' && !/[\u0E00-\u0E7F]/.test(ft[2].prompt), ft)
   const ft2 = c.thaiFramingTidy([{ _target: 'parting', speaker: 'A', thai: 'ขอให้มีความสุขนะครับ แล้วเจอกัน', english: 'Be happy. See you.', prompt: 'Wish her well.' }, { _target: 'parting', speaker: 'B', thai: 'ขอบคุณ คุณก็เหมือนกันค่ะ', english: 'Thanks, you too.', prompt: 'Thank him and wish him the same.' }], null)
   T('F2', 'a "you too" reply to a real wish (ขอให้…) is kept', ft2[1].thai === 'ขอบคุณ คุณก็เหมือนกันค่ะ')
+  // v704 (relay run 6) — the closing lines carried Thai names in their English and cue
+  const chars = [{ name: 'Somchai', nativeName: 'สมชาย' }, { name: 'Nida', nativeName: 'นิดา' }]
+  const ft4 = c.thaiFramingTidy([{ _target: 'parting', speaker: 'A', thai: 'แล้วเจอกันนะครับคุณนิดา', english: 'See you later, นิดา.', prompt: 'Say goodbye to นิดา.' },
+    { _target: 'parting', speaker: 'B', thai: 'ขอบคุณ สมชาย ดูแลตัวเองด้วยค่ะ', english: 'Thank you Somchai, take care of yourself.', prompt: 'Thank สมชาย (Somchai) and tell สมชาย (Somchai) to look after himself.' }], null, chars)
+  T('F4', 'a character\'s Thai name in a line\'s English or cue becomes the English name ("See you later, Nida." · "Thank Somchai and tell Somchai …"); the Thai is untouched',
+    ft4[0].english === 'See you later, Nida.' && ft4[0].prompt === 'Say goodbye to Nida.' && ft4[1].prompt === 'Thank Somchai and tell Somchai to look after himself.' && ft4[0].thai === 'แล้วเจอกันนะครับคุณนิดา', ft4.map(p => [p.english, p.prompt]))
   const pu = c.thaiFramingTidy([{ _target: 'parting', speaker: 'A', thai: 'เดินทางปลอดภัยนะครับ', english: 'Have a safe trip', prompt: 'Wish her a safe trip.' },
     { speaker: 'A', thai: 'ผมมาถึงป้ายรถเมล์แล้วครับ', english: 'I have already reached the bus stop', prompt: 'Say you have reached the bus stop.', targetId: 1 },
     { speaker: 'B', thai: 'ทางออกนั้นไกลไหมคะ', english: 'Is that exit far', prompt: 'Ask if that exit is far.', targetId: 2 }], null)

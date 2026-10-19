@@ -15365,9 +15365,13 @@ function thaiTidyCommas(pairs, log) {
 // as Listening already corrects (lnMfCleanText); applied to the Daily final text before it is frozen, so the romanisation follows
 function thaiFixParticleSpelling(pairs, log) {
   let n = 0
-  const out = (pairs || []).map(p => { if (!p || typeof p.thai !== 'string' || !/นะค่ะ/.test(p.thai)) return p; n++
-    const th = p.thai.replace(/นะค่ะ/g, 'นะคะ'); return { ...p, thai: th, ...(p.text === p.thai ? { text: th } : {}) } })
-  if (n && log) log('  ✂ THAI_PARTICLE_SPELLING ' + n + ' line(s): นะค่ะ → นะคะ')
+  // v704 (blind review of relay run 6: ไม่ใช่ค่ะศูนย์แปดเจ็ด) — a polite particle that ends a phrase is followed by a space when more
+  // Thai follows (ไม่ใช่ค่ะ ศูนย์แปดเจ็ด); ครับผม is one phrase
+  const sp = th => th.replace(/(ค่ะ|ครับ)(?=[ก-ฮเ-ไ])(?!ผม)/g, '$1 ')
+  const out = (pairs || []).map(p => { if (!p || typeof p.thai !== 'string') return p
+    const th = sp(p.thai.replace(/นะค่ะ/g, 'นะคะ')); if (th === p.thai) return p; n++
+    return { ...p, thai: th, ...(p.text === p.thai ? { text: th } : {}) } })
+  if (n && log) log('  ✂ THAI_PARTICLE_SPELLING ' + n + ' line(s): นะค่ะ → นะคะ · a space after a phrase-final ค่ะ / ครับ')
   return out
 }
 // v704 — SCENE POLISH (independent reviews of relay tracks 1–4: 6.2–6.5/10, coherence 4.5–5). Each word's lines are written, checked
@@ -15394,6 +15398,21 @@ function thaiSamePhraseTargets(lines) {
   })
   return out
 }
+// v704 (blind review of relay run 6: ใช่ answering a ไหม question twice, a question nobody answers) — checks a rule can make on the
+// scene in order, handed to the polisher as concrete things to fix
+function thaiScenePolishHints(lines) {
+  const out = [], id = l => l.framing ? l.n : 'L' + l.n
+  const t0 = l => String(l.pair.thai || '').replace(/\s+/g, '')
+  const isQ = l => /(ไหม|มั้ย|หรือ|เหรอ|หรอ|ยังไง|อะไร|ที่ไหน|ไหน|เมื่อไหร่|ทำไม|ใคร|เท่าไหร่|กี่\S{0,4})(ครับ|คะ|นะ)?$|คะ$/.test(t0(l))
+  for (let k = 1; k < lines.length; k++) {
+    const a = lines[k - 1], b = lines[k]
+    if (a.pair.speaker !== b.pair.speaker && /ไหม(ครับ|คะ)?$/.test(t0(a)) && !/ใช่ไหม/.test(t0(a)) && /^ใช่/.test(t0(b)))
+      out.push(id(b) + ' answers the ไหม question in ' + id(a) + ' with ใช่ — answer with its verb or adjective (มาครับ · เย็นครับ · ไม่แพงครับ)')
+    if (a.pair.speaker === b.pair.speaker && isQ(a) && !a.framing)
+      out.push(id(a) + ' asks a question but the next line is the same speaker\'s — make the other person answer it, or change ' + id(a))
+  }
+  return out
+}
 function thaiScenePolishPrompt(sc, allowed, names) {
   const lines = sc.lines.map(l => (l.framing ? l.n : 'L' + l.n) + ' ' + (l.pair.speaker || 'A') + (l.framing ? ' [' + l.framing + ' line, no target]' : ' [target ' + (l.pair.targetSurface || l.pair._target || '') + ']') + ': ' + l.pair.thai + '  |  EN: ' + (l.pair.english || '') + '  |  CUE: ' + (l.pair.prompt || ''))
   const same = thaiSamePhraseTargets(sc.lines)
@@ -15404,6 +15423,7 @@ function thaiScenePolishPrompt(sc, allowed, names) {
     (sc.lines.some(l => l.framing) ? ' The opening / closing lines (no target) greet and say goodbye: they must fit where the two people are and what they planned.' : '') + '\n\n' +
     lines.join('\n') + '\n\n' +
     (same.length ? 'VARY: ' + same.map(([s, ph]) => 'all three ' + s + ' lines say "' + ph + '" — give at least one of them a different phrase').join(' · ') + '\n' : '') +
+    (thaiScenePolishHints(sc.lines).length ? 'FIX THESE:\n' + thaiScenePolishHints(sc.lines).map(h => '  - ' + h).join('\n') + '\n' : '') +
     'Make the SMALLEST edits so the scene is one natural conversation:\n' +
     '• every reply answers the line before it (a question gets its answer: a place, a time, a price, a reason, yes/no); no line ignores or contradicts an earlier one\n' +
     '• the people keep their roles (the one who lacks something asks; the one who has it offers) and facts stay true (numbers, times, plans)\n' +
@@ -15513,13 +15533,19 @@ function thaiOrderExchanges(pairs, log) {
 // v704 (relay Daily run, framing lines): (1) a cue carried the Thai name in brackets twice ("Thank Somchai (สมชาย) and say you wish
 // Somchai (สมชาย) the same."); (2) the closing was replaced by a closed-vocabulary parting (แล้วเจอกันนะครับ) while the reply still
 // answered the old wish (ขอบคุณ คุณก็เหมือนกันค่ะ "thanks, you too"); (3) framing English had no full stop ("Hello Nida, how are you today")
-function thaiFramingTidy(pairs, log) {
+function thaiFramingTidy(pairs, log, chars) {
   const fx = []
+  // v704 (relay run 6: "See you later, นิดา." · "Thank สมชาย (Somchai) and tell สมชาย (Somchai) …") — the English and the cue are English:
+  // a character's Thai name becomes the English name ("สมชาย (Somchai)" → "Somchai")
+  const nm = (chars || []).filter(ch => ch && ch.nativeName && ch.name && /[\u0E00-\u0E7F]/.test(ch.nativeName) && !/[\u0E00-\u0E7F]/.test(ch.name))
+  const enName = x => nm.reduce((a, ch) => a.split(ch.nativeName + ' (' + ch.name + ')').join(ch.name).split(ch.nativeName).join(ch.name), String(x))
   const isFr = p => p && (THAI_FRAMING_TARGETS.has(p._target) || (typeof classifyTrackPair === 'function' && classifyTrackPair(p) === 'FRAMING'))
   const punct = (x, q) => { const s = String(x || '').trim(); return !s || /[.?!…]["')]?$/.test(s) ? s : s + (q ? '?' : '.') }
   const out = (pairs || []).map(p => { if (!p) return p
     let n = p
     if (p.prompt && /\s*\([\u0E00-\u0E7F]+\)/.test(p.prompt)) { n = { ...n, prompt: p.prompt.replace(/\s*\([\u0E00-\u0E7F]+\)/g, '') }; fx.push('cue name') }
+    if (nm.length && /[\u0E00-\u0E7F]/.test((n.english || '') + (n.prompt || ''))) { const e2 = enName(n.english || ''), c2 = enName(n.prompt || '')
+      if (e2 !== (n.english || '') || c2 !== (n.prompt || '')) { n = { ...n, english: e2, prompt: c2 }; fx.push('Thai name in English') } }
     // the English of EVERY line ends with punctuation (relay track 4: "I have already reached the bus stop"); a question is decided by the
     // THAI (ไหม / หรือ / เหรอ / question words / a woman's คะ), never by the English first word ("Have a safe trip" is not a question)
     if (n.thai && n.english) {
@@ -22344,11 +22370,12 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (dailyV693On() && adapter.lang === 'ja') { try { const rb = await jaBridgeReplyTriggers(t, c, log); t = { ...t, pairs: rb.pairs }; _replyCtx = rb } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
   if (oct13On()) { try { t = { ...t, pairs: fixCueAddressees(t.pairs, t, log).pairs } } catch (e) {} }
   if (oct13On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiTidyCommas(t.pairs, log) } } catch (e) {} }
-  if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiFixParticleSpelling(t.pairs, log) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiOrderExchanges(t.pairs, log) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { const sp = await thaiScenePolish(t, c, log); t = { ...t, pairs: sp.pairs, scenePolish: { calls: sp.calls, changed: sp.changed, refused: (sp.rejected || []).length } } } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_POLISH skipped: ' + String(e && e.message || e).slice(0, 100)) } }
-  if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiFramingTidy(t.pairs, log) } } catch (e) {} }
+  if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiFramingTidy(t.pairs, log, (t.sceneContract && t.sceneContract.characters) || []) } } catch (e) {} }
   if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiGreetingTargetsFirst(t.pairs, log) } } catch (e) {} }
+  // (after the scene polish, so its edits are spelled and spaced too — and before the final snapshot audit judges the text)
+  if (dailyV693On() && adapter.lang === 'th') { try { t = { ...t, pairs: thaiFixParticleSpelling(t.pairs, log) } } catch (e) {} }
   // v700 — FINAL SNAPSHOT AUDIT on the text that will be saved; a line that fails goes to ONE more bounded quota round (same
   // fail-closed recovery, substitution included), and the result is audited again — whatever still fails stays invalid (NOT_READY)
   let _snap = null
@@ -23820,6 +23847,13 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     'A = a man: says ผม for "I" and ends every sentence with ครับ. B = a woman: says ฉัน for "I" and ends with ค่ะ (statements) or คะ (questions).\n' +
     'TARGET WORD: "' + kw.thai + '" = ' + (kw.english || '') + '\n' + (_tpPlan ? '' : targetRoleLine(role, kw, 'th')) +
     coherenceRepairPromptLines(c.coherenceRepair) +
+    // v704 (relay run 6: a recovered จาน line "ผมไม่มีจานครับ" answered "is this dish spicy?") — a recovered line is inserted RIGHT AFTER
+    // the word's last line (_quotaInsertAt), so the writer sees the exchange it joins and the line that follows it
+    (!c.coherenceRepair && dailyV693On() && have.length ? (() => {
+      const lastAt = all.lastIndexOf(have[have.length - 1]), next = all.slice(lastAt + 1).find(p => p && p.thai)
+      return 'WHERE YOUR LINE GOES: right after these lines of the same exchange —\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai + ' (' + (p.english || '') + ')').join('\n') + '\n' +
+        (next ? 'and before: ' + (next.speaker || 'A') + ': ' + next.thai + ' (' + (next.english || '') + ')\n' : '') +
+        'It must follow the last line naturally (a question gets its answer; an answer is not asked again) and say something new.\n' })() : '') +
     (have.length ? 'This word already has these lines — do NOT repeat or paraphrase them:\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai).join('\n') + '\n' : '') +
     // v669 §5/§9/§11 — the missing SLOT is repaired: the intended sense, and a communicative use the existing lines do not cover yet
     'INTENDED SENSE: ' + thaiTargetSense(kw, c.vocab) + '\n' + (_tpPlan ? '' : thaiMissingFunctionLine(have)) +
@@ -36868,6 +36902,12 @@ function thaiLexicalSenseProblems(p, targetSurface) {
     out.push({ id: 'HALF_THOUSAND', code: 'UNNATURAL', why: '"ครึ่งพัน" is not said — 500 is ห้าร้อย (ห้าร้อยบาทครับ)' })
   if (dailyV693On() && /(^|[^ใ])ไม่ทุกวัน/.test(th.replace(/\s+/g, '')))
     out.push({ id: 'NOT_EVERY_DAY', code: 'UNNATURAL', why: '"not every day" is ไม่ใช่ทุกวัน (ไม่ใช่ทุกวันครับ แต่…)' })
+  // v704 (blind review of relay run 6: งั้นคุณตื่นเวลาไหนคะ · งั้นเริ่มกินเวลาไหนดีคะ) — "what time?" is กี่โมง; เวลาไหนก็ได้ ("any time") is untouched
+  if (dailyV693On() && /เวลาไหน(ดี)?(คะ|ครับ|นะ)?$/.test(th.replace(/\s+/g, '')))
+    out.push({ id: 'WHAT_TIME_WHICH', code: 'UNNATURAL', why: '"what time?" is กี่โมง (ตื่นกี่โมงคะ · เริ่มกินกี่โมงดีคะ), not เวลาไหน' })
+  // (same review: น้ำตาลบนโต๊ะครับ "the sugar on the table" — a noun phrase, not a sentence) — where something is takes อยู่
+  if (dailyV693On() && /^[฀-๿]{1,12}?(?<!อยู่|มี|วาง|ไว้)(บน|ใต้|ใน)(โต๊ะ|ตู้|กระเป๋า|รถ|ห้อง)(ครับ|ค่ะ)$/.test(th.replace(/\s+/g, '')) && !/อยู่|มี|วาง|ไว้|เอา|ใส่/.test(th))
+    out.push({ id: 'LOCATION_NO_YUU', code: 'UNNATURAL', why: 'where something is takes อยู่: น้ำตาลอยู่บนโต๊ะครับ (not น้ำตาลบนโต๊ะครับ)' })
   // (2) คู่ classifies things that come in PAIRS (รองเท้า ถุงเท้า ตะเกียบ ต่างหู ถุงมือ) or a couple — never a single object
   //     (ผมอยากได้ตู้เย็นคู่หนึ่งครับ). Each object keeps its own classifier (ตู้เย็นเครื่องหนึ่ง / เก้าอี้ตัวหนึ่ง).
   if (/(ตู้เย็น|โต๊ะ|เก้าอี้|รถ|บ้าน|ห้อง|ทีวี|โทรศัพท์|มือถือ|เสื้อ|กระเป๋า|หนังสือ|แก้ว|จาน|ชาม|ประตู|หน้าต่าง|เตียง|แอร์|พัดลม|คอมพิวเตอร์|นาฬิกา)คู่/.test(th))

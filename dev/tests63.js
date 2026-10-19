@@ -164,7 +164,28 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const r3 = await c.thaiScenePolish(tr, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v }, null)
     T('S3', 'scene polish refuses an edit above the learner\'s hardMax (the same ceiling as the final length audit); the retry names it and the original line is kept',
       cc.analyse(long).overHardMax && calls3 === 2 && /L3: .* — refused: too long: \d+ words \(max \d+\)/.test(p3) && r3.pairs[2].thai === 'ผมเอาช้อนมาให้นะครับ' && r3.changed === 0,
-      { units: cc.analyse(long).units, hardMax: cc.hardMax, calls3, changed: r3.changed, rej: r3.rejected }) }
+      { units: cc.analyse(long).units, hardMax: cc.hardMax, calls3, changed: r3.changed, rej: r3.rejected })
+    // v705 (blind review of relay run 12: one fact repeated in four scenes) — the second scene's request lists what the first scene said
+    const tr4 = { ...tr, scenePlan: { scenes: [{ sceneId: 'S1', purpose: 'spoon', localPremise: 'at a stall', targetIds: [a.id] }, { sceneId: 'S2', purpose: 'sugar', localPremise: 'at a stall', targetIds: [b.id] }] } }
+    const p4 = []
+    c.mockGeminiGenerate = async (k, m, msgs) => { p4.push(msgs[0].content); return '{"lines":[]}' }
+    await c.thaiScenePolish(tr4, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v }, null)
+    T('S4', 'scene polish: a later scene sees the earlier scenes\' lines ("EARLIER IN THIS LESSON … do not repeat"); the first scene has none',
+      p4.length === 2 && !/EARLIER IN THIS LESSON/.test(p4[0]) && /EARLIER IN THIS LESSON[^\n]*\n(A|B): ผมไม่มีช้อนครับ\n(A|B): ช้อนอยู่ไหนคะ\n(A|B): ผมเอาช้อนมาให้นะครับ/.test(p4[1]),
+      { n: p4.length, second: (p4[1] || '').slice((p4[1] || '').indexOf('EARLIER'), (p4[1] || '').indexOf('EARLIER') + 160) }) }
+  { const src0 = require('fs').readFileSync('tt.jsx', 'utf8')
+    T('P1', 'Thai Daily scene planner: at most 6 words per mini-scene, and a premise that gives every word a reason to be said (ticket → vehicle / counter; exit → station); the writer asks for three different combinations of the word',
+      /\(c\.lang \|\| 'th'\) === 'th' && dailyV693On\(\) \? 'Keep each mini-scene to at most 6 words\. Its localPremise must give EVERY word/.test(src0) && /Across the three lines use the word in DIFFERENT combinations or senses/.test(src0)) }
+
+  // v705 (blind review of relay run 12) — ที่นี่|ครับ, not ที่|นี่ครับ "here you are"; the v704 tie rule still keeps อ่าน|หนังสือพิมพ์;
+  // นี่ครับ at the start of a line stays one word; ทอด in the bank's compounds is thâawt (long ɔɔ, falling)
+  { const V = c.initVocab(), lex = c.ev('buildThaiPhoneticLexicon')(V), seg = t => c.segmentThaiWithDiagnostics(t, V, null, null, true).map(x => x.matchedSpan).join('|')
+    const ph = t => c.ev('composeThaiPhonetic')(t, lex).phonetic
+    T('R8', 'segmentation and romanisation keep a bare polite particle apart in a tie (เจอกันที่นี่ครับ → …ที่นี่|ครับ, thîi-nîi khráp); อ่าน|หนังสือพิมพ์ and a line-initial นี่ครับ are unchanged; ปอเปี๊ยะทอด / มันฝรั่งทอด read thâawt',
+      /ที่นี่\|ครับ$/.test(seg('เจอกันที่นี่ครับ')) && /thîi-nîi khráp$/.test(ph('เจอกันที่นี่ครับ')) && /ที่นี่\|ค่ะ$/.test(seg('อยู่ที่นี่ค่ะ')) &&
+      /^อ่าน\|หนังสือพิมพ์/.test(seg('อ่านหนังสือพิมพ์ครับ')) && /^นี่ครับ\|/.test(seg('นี่ครับ ช้อนครับ')) && /^nîi-khráp/.test(ph('นี่ครับ ช้อนครับ')) &&
+      /thâawt$/.test(lex.get('ปอเปี๊ยะทอด')) && /thâawt$/.test(lex.get('มันฝรั่งทอด')),
+      [seg('เจอกันที่นี่ครับ'), ph('เจอกันที่นี่ครับ'), seg('อยู่ที่นี่ค่ะ'), seg('อ่านหนังสือพิมพ์ครับ'), seg('นี่ครับ ช้อนครับ'), lex.get('ปอเปี๊ยะทอด'), lex.get('มันฝรั่งทอด')]) }
 
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ฉันนึกว่าพันบาทค่ะ', 'เสื้อตัวนี้', 'บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']

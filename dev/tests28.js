@@ -39,7 +39,11 @@ async function run(S, lang, ln, opt = {}) {
 // one long line of KNOWN words: turn 0 + turn 2 of a scene (same speaker), folded into turn 0
 // a dictionary word that was never introduced (the fixture banks are mostly studied, so one is reset explicitly)
 const makeNew = (S, lang, skip) => { const used = new Set((skip || []).map(w => w.id)), c = S.c, la = c.listeningAdapterFor(lang)
+  // Fixture change in v705: ที่นี่ is in the app's always-allowed Thai core (tt.jsx ALWAYS_ALLOWED_V), so Listening rightly accepts it
+  // even when untaught. This helper was always meant to skip it (see the comment below), but it did so only by accident: the old
+  // segmenter read ผม|ที่|นี่ครับ ("here you are"). Now that a bare ครับ wins that tie (ผม|ที่นี่|ครับ), the skip is explicit.
   const cands = S.vocab.filter(x => !used.has(x.id) && !S.targets.some(t => t.id === x.id) && surfOf(lang, x) && surfOf(lang, x).length >= 2 && !/[.…\s]/.test(surfOf(lang, x)) &&
+    !(lang === 'th' && surfOf(lang, x) === 'ที่นี่') &&
     !S.vocab.some(y => y !== x && surfOf(lang, y) && surfOf(lang, y).includes(surfOf(lang, x))))
   for (const w of cands) {
     const keep = { ...w }

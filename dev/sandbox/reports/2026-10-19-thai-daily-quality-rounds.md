@@ -2,7 +2,7 @@
 
 Goal from the owner: "keep testing until the tracks are 8–8.5/10".
 
-Status: **not reached.** Eight tracks have been blind-rated (tracks 7 and 9 were stopped early). The best score is 7.0, up from 6.2–6.5 in the first four rounds. Nothing has been deployed.
+Status: **not reached.** Ten tracks have been blind-rated (tracks 7 and 9 were stopped early). The best Haiku score is 7.0, up from 6.2–6.5 in the first four rounds. A stronger model answering every request scored 7.3. Nothing has been deployed.
 
 ## How it was tested
 
@@ -19,7 +19,7 @@ Status: **not reached.** Eight tracks have been blind-rated (tracks 7 and 9 were
   | Romanisation | 15% |
   | Coherence | 10% |
 
-- **Who answered.** Track 5 is the exception to the Haiku rule. When the stand-ins ran out, I answered its last ~45 requests myself, including the whole scene polish. That makes track 5 a less faithful test. From track 6 on, Haiku stand-ins answered every request.
+- **Who answered.** Tracks 11 and 12 are model experiments. In track 11 a stronger model (Claude Sonnet stand-ins) answered only the scene-polish requests. In track 12 it answered every request. Track 5 is the other exception to the Haiku rule. When the stand-ins ran out, I answered its last ~45 requests myself, including the whole scene polish. That makes track 5 a less faithful test. From track 6 on, Haiku stand-ins answered every request.
 
 ## Results
 
@@ -33,10 +33,12 @@ Status: **not reached.** Eight tracks have been blind-rated (tracks 7 and 9 were
 | 6 | 6.9 | 7.0 | 7.0 | 6.0 | **9.0** | 5.0 | Cue fixes, romanisation, polish sees framing lines |
 | 8 | **7.0** | 6.5 | 7.0 | **7.0** | 9.0 | 5.5 | Five exchange shapes, polish hints, naturalness rules |
 | 10 | 6.9 | 7.0 | 6.5 | 6.5 | 9.0 | 5.0 | Coherence re-judged after polish, more rules |
+| 11 | 7.2 | 7.5 | 7.0 | 7.0 | 8.0 | 6.0 | Same build; stronger model for the scene polish only |
+| 12 | 7.3 | 7.0 | 7.5 | 7.0 | 9.0 | 5.5 | Same build; stronger model for every request |
 
 Tracks 7 and 9 were stopped early so the next build could run sooner.
 
-Every track was READY 90/90 except track 8. Track 8 went NOT_READY because its last coherence verdict was given before the polish rewrote the scene. That gap is now fixed (see below).
+Every track was READY 90/90 except tracks 8 and 12. Track 8 went NOT_READY because its last coherence verdict was given before the polish rewrote the scene. Track 12 went NOT_READY at 89/90 because the polish lengthened a เช่า line to 8 words, one above this learner's limit of 7, and the final length audit then dropped it. Both gaps are now fixed (see below).
 
 ## What was fixed after round 4 (all pushed; tests63 33/33)
 
@@ -112,13 +114,36 @@ Tracks 6, 8 and 10 scored 6.9, 7.0 and 6.9. Each round removes the defects the r
 
 Both kinds come from the model that writes and polishes the lines. The pipeline now gives Haiku the scene, the order, the hints and the rules, but Haiku's own Thai is the ceiling at about 7.
 
-Track 11 is testing whether a stronger model for the scene polish alone (5–7 requests per track) lifts the score. If it does, the owner can choose a "polish model" setting.
+Tracks 11 and 12 tested that claim, and it is only partly true:
+
+| Who answered | Track | Total |
+|---|---|---|
+| Haiku for everything | 6, 8, 10 | 6.9–7.0 |
+| Stronger model for the polish only | 11 | 7.2 |
+| Stronger model for everything | 12 | 7.3 |
+
+A stronger model is worth about 0.3. The rest of the gap to 8 comes from how the pipeline plans the lesson. The track 12 review found the same kinds of problems with the stronger model:
+
+- **Words put in scenes where they don't fit.** The plan put ทางออก (exit), ตั๋ว (ticket) and เช่า (rent) in "meeting at the bus stop and crossing the bridge". That gave an exit and a ticket with no station or vehicle. Two scenes held 7 words each.
+- **Facts and problems repeated across scenes.** "ราคาไม่ถึงพัน" was said four times, and the missing spoon was solved twice. Each polish request saw only its own scene.
+- **The same use three times.** เช่า was "rent a car" in all three lines, and แล้ว meant "already" in all three.
+
+## Fixes after track 12 (being tested in track 13)
+
+- **Scene plan.** A Thai Daily mini-scene holds at most 6 words. Its premise must give every word a reason to be said there (a ticket needs a vehicle or counter; an exit needs a station, mall or cinema).
+- **Polish context.** Each scene's polish request also lists the lines already said in earlier scenes, with "do not repeat a fact, a problem or a phrase".
+- **Writer.** A word's three lines use it in different combinations or senses (เช่ารถ · ค่าเช่า · เช่าห้อง).
+- **Length.** A polish edit above the learner's length limit is refused with its reason, so the retry can shorten it.
+- **Romanisation:**
+  - ที่นี่ครับ was read as ที่ + นี่ครับ "here you are" (thîi nîi-khráp). A bare ครับ, ค่ะ or คะ now wins that tie (thîi-nîi khráp).
+  - ปอเปี๊ยะทอด and มันฝรั่งทอด now read thâawt.
 
 ## TL;DR
 
-- Eight blind-rated tracks on the owner's profile (of ten started). The best score is 7.0, up from 6.2–6.5 before the scene polish, but the 8–8.5 target is not reached. Nothing has been deployed.
+- Ten blind-rated tracks on the owner's profile (of twelve started). The best Haiku score is 7.0, up from 6.2–6.5 before the scene polish, but the 8–8.5 target is not reached. Nothing has been deployed.
+- A stronger model for every request reached only 7.3. The model is worth about 0.3; the rest is the scene plan (words in scenes where they don't fit) and repetition across scenes. Track 13 tests fixes for both on Haiku.
 - What improved:
   - romanisation, from 5 to 9;
   - vocabulary practice, from 6 to 7, thanks to the exchange shapes;
   - coherence verdicts, which now judge the polished text.
-- The remaining gap is Haiku's own Thai: semantic slips and replies that don't follow. Rules have stopped moving the score. A stronger model for the 5–7 polish requests per track is being tested in track 11.
+- The remaining gap is partly Haiku's own Thai (semantic slips) and partly the plan. Rules on single lines have stopped moving the score, so the latest fixes work on the scene plan and on the whole track.

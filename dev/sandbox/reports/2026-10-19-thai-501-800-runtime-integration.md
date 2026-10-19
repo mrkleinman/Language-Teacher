@@ -1,5 +1,7 @@
 # Thai 501–800: runtime integration fixes (dev branch, not deployed)
 
+A mid-way check also caught tests49 S4b and tests39 F20 failing. Both were fixed before the final commit (the grammar-only exception for ไม่ได้, and topic words such as ความหวัง being taught as themselves) and both pass in the final run.
+
 This follow-up fixes the integration problems that the 501–800 curriculum exposed in the regression suite. The approved curriculum data was not reordered or replaced. Japanese and Mandarin are untouched.
 
 ## Files and functions changed
@@ -125,7 +127,10 @@ No stored pronunciation was changed.
 
 **REAL regressions: none found.** No existing test was edited to make it pass.
 
-**Final full run: FULL_RUN_RESULT.**
+**Final full run (`run_all.sh` on 2477bca):** 11 failing checks. 8 are pre-existing, 3 are intentional, and there are no real regressions.
+- **Pre-existing (8):** tests33 2G, tests35 2C-th and 2C-zh, tests37 C1, tests39 A5, tests55 cases 3 and 6.
+- **Intentional (3):** tests39 C1, tests42 T5, tests45 P2.
+- **Every other suite passes,** including tests49 113/113, tests58, tests60, tests61 13/13 and tests62 18/18.
 
 ## Proof of the requested points
 

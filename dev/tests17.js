@@ -213,11 +213,12 @@ async function fin(S, track, adapter) {
       t.integrity.status === 'READY' && t.integrity.invariants.PRONUNCIATION_ALIGNMENT_ISSUES === 0 && !cl._phoneticIssues &&
       log.some(l => /FINAL_PRONUNCIATION_AUDIT \(authoritative, persisted Main Track\): 0 issue\(s\)/.test(l)), { status: t.integrity.status, reasons: t.integrity.reasons, fl: log.filter(l => /PRONUNCIATION|final phonetics/.test(l)) })
     const lex = c.withThaiSceneNamePhonetics(c.buildThaiPhoneticLexicon(S.vocab), c.thaiSceneNameEntries(track, S.vocab))
-    const staleOnly = [{ thai: 'ค่ะ เดินทางปลอดภัยนะคะ', phonetic: 'khâ doen-thaang-plàwt-phai ná khá', _phoneticIssues: ['phonetic is missing "เดินทางปลอดภัย"'] }]
+    const staleOnly = [{ thai: 'ค่ะ เดินทางปลอดภัยนะคะ', phonetic: 'khâ doen-thaang-bplàwt-phai ná khá', _phoneticIssues: ['phonetic is missing "เดินทางปลอดภัย"'] }]
     const fa = c.thaiFinalPronunciationAudit(staleOnly, lex)
-    T('G2', 'final audit recomputes from the exact Thai + phonetic: the live th-close-B line (PH contains doen-thaang-plàwt-phai) has 0 issues; a wrong line keeps its issue',
+    // v704: the dictionary spells ปลอดภัย bplàwt-phai (unaspirated ป = bp), so the live line is quoted in that spelling
+    T('G2', 'final audit recomputes from the exact Thai + phonetic: the live th-close-B line (PH contains doen-thaang-bplàwt-phai) has 0 issues; a wrong line keeps its issue',
       fa.issues.length === 0 && !fa.pairs[0]._phoneticIssues && c.thaiFinalPronunciationAudit([{ thai: 'เดินทางปลอดภัยนะคะ', phonetic: 'ná khá' }], lex).issues.length === 1)
-    const fp = c.finaliseThaiTrackPhonetics([{ thai: 'ค่ะ เดินทางปลอดภัยนะคะ', phonetic: 'khâ doen-thaang-plàwt-phai ná khá', _phoneticIssues: ['stale'] }], lex)
+    const fp = c.finaliseThaiTrackPhonetics([{ thai: 'ค่ะ เดินทางปลอดภัยนะคะ', phonetic: 'khâ doen-thaang-bplàwt-phai ná khá', _phoneticIssues: ['stale'] }], lex)
     T('G3', 'finaliseThaiTrackPhonetics clears an earlier stage\'s _phoneticIssues when the line now aligns (no stale overwrite)', !fp[0]._phoneticIssues)
   }
 

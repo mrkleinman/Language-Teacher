@@ -4,6 +4,7 @@
 // fixture; no learner data exists here and nothing is persisted or deployed.
 //
 //   LT_ACCESS=<site access code> node sandbox/live_haiku.js --fixture th-daily-device-2026-10-09 [--cap 0.20] [--session-cap 0.60] [--label x]
+//   LT_ACCESS=… node sandbox/live_haiku.js --owner-backup <backup.json outside the repo> [--targets id,id,…] [--cap 0.20] (owner-profile Thai Daily)
 //
 // • The site access code comes from the environment only. It is never written to any file, log or export (checked at the end).
 // • HARD BUDGET: per run (--cap) and per session (--session-cap, the owner's US$0.60; ledger sandbox/haiku-spend-ledger.json).
@@ -35,12 +36,18 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
   if (!ACCESS) { console.log('LIVE RUN NOT RUN: LT_ACCESS (the site access code) is not set'); process.exit(2) }
   const fixtureId = arg('fixture'), cap = +arg('cap', 0.20), sessionCap = +arg('session-cap', 0.60)
   const appFile = path.resolve(DEV, arg('app', 'tt.compiled.js'))
-  const fx = loadFixture(fixtureId)
+  // --owner-backup <file> [--targets id,id,…]: a Thai Daily on the OWNER'S profile (the backup stays outside the repository) instead of
+  // a fixture — the same path as sandbox/daily-relay/bridge-daily.js, so a paid track is directly comparable with the relay tracks
+  const ownerBackup = arg('owner-backup'), ownerTargets = arg('targets')
+  const fx = ownerBackup ? { id: 'th-daily-owner', language: 'th' } : loadFixture(fixtureId)
   const ledger = readLedger(); const spentBefore = ledger.runs.reduce((a, r) => a + (r.costUsd || 0), 0)
   if (spentBefore >= sessionCap) { console.log('LIVE RUN NOT RUN: session budget used (US$' + spentBefore.toFixed(4) + ' of US$' + sessionCap + ')'); process.exit(2) }
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  const runId = fixtureId + '.haiku.' + (arg('label') ? arg('label') + '.' : '') + stamp
-  const dir = path.join(__dirname, 'runs', runId); fs.mkdirSync(dir, { recursive: true })
+  const runId = (ownerBackup ? 'th-daily-owner' : fixtureId) + '.haiku.' + (arg('label') ? arg('label') + '.' : '') + stamp
+  // owner mode: the saved prompts carry the owner's word list, so the run is written OUTSIDE the repository, next to the backup
+  const dir = ownerBackup ? path.join(arg('out-dir', path.join(path.dirname(path.resolve(ownerBackup)), 'runs')), runId) : path.join(__dirname, 'runs', runId)
+  if (ownerBackup && path.resolve(dir).startsWith(path.resolve(DEV, '..'))) { console.log('LIVE RUN NOT RUN: owner-profile output must be outside the repository (--out-dir)'); process.exit(2) }
+  fs.mkdirSync(dir, { recursive: true })
   console.log('▶ ' + runId + ' · app ' + path.relative(DEV, appFile) + ' · cap US$' + cap + ' (session US$' + sessionCap + ', spent so far US$' + spentBefore.toFixed(4) + ')')
 
   const acct = { requests: 0, sent: 0, refusedCap: 0, geminiRefused: 0, costUsd: 0, tokens: { in: 0, out: 0, thinking: 0, cacheRead: 0 }, httpErrors: {}, lostBodies: 0 }
@@ -79,10 +86,28 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
   const noGemini = async () => ({ ok: false, status: 403, json: async () => ({ error: { code: 403, message: 'SANDBOX: Gemini not used (not sent)' } }) })
   let C = null
   const t0 = Date.now()
-  const r = await runOnceUi(fx, { mode: 'record', provider: 'live', liveFetch: noGemini, apiKey: 'SANDBOX_NO_GEMINI', appFile, pipeline: 'production', wrapFetch,
+  const r = ownerBackup ? await ownerRun() : await runOnceUi(fx, { mode: 'record', provider: 'live', liveFetch: noGemini, apiKey: 'SANDBOX_NO_GEMINI', appFile, pipeline: 'production', wrapFetch,
     prepare: c => { C = c
       c.aiSetGenerationPreference({ model: MODEL, limitUsd: Math.min(1, cap), limitRequests: 600, serverUrl: SERVER })
       c.aiSetAnthropicAccess(ACCESS) } })
+  async function ownerRun() {
+    const { load } = require(path.join(DEV, 'harness'))
+    C = load(appFile, { realBelt: true, globals: { setTimeout, clearTimeout } }); C.console.info = () => {}; C.console.warn = () => {}
+    C.fetch = wrapFetch(noGemini, C)
+    C.aiSetGenerationPreference({ model: MODEL, limitUsd: Math.min(1, cap), limitRequests: 600, serverUrl: SERVER })
+    C.aiSetAnthropicAccess(ACCESS)
+    const B = JSON.parse(fs.readFileSync(ownerBackup, 'utf8')), byId = new Map(B.vocab.map(w => [w.id, w]))
+    const F = ['status', 'difficulty', 'interval', 'lastSeen', 'dueDate', 'repCount', 'lapses', 'okStreak', 'manualKnown', 'introducedAt', 'note']
+    const vocab = C.initVocab().map(w => { const o = byId.get(w.id); if (!o) return w; const n = { ...w }; F.forEach(k => { if (o[k] !== undefined) n[k] = o[k] }); return n })
+    B.vocab.forEach(o => { if (!vocab.some(w => w.id === o.id)) vocab.push({ ...o }) })
+    const picked = ownerTargets ? ownerTargets.split(',').map(Number) : C.pickWords(vocab, 'daily', []).targets.map(w => w.id)
+    const log = [], L = x => log.push(typeof x === 'string' ? x : JSON.stringify(x))
+    let res = null, error = null
+    try { const runIdApp = C.aiBeginRun('daily-track'); res = await C.ttBenchThaiDaily({ targets: picked.map(id => ({ id })) }, vocab, 'SANDBOX_NO_GEMINI', C.ev('GEMINI_DEFAULT_MODEL'), L, runIdApp)
+      C.ev('TT_BENCH').lastTrack = res && res.track; C.ev('TT_BENCH').lastRunId = runIdApp } catch (e) { error = e }
+    const tr = res && res.track, rd = tr ? C.trackReadiness(tr) : null
+    return { log, error, content: { status: tr && tr.status, reasons: rd && { ready: rd.ready, valid: rd.validTargetPairs, expected: rd.expectedTargetPairs } }, telemetry: {} }
+  }
   const secs = Math.round((Date.now() - t0) / 1000)
   const appPrice = C.ev('ANTHROPIC_PRICE_USD_PER_MTOK')[MODEL]
   if (appPrice.in !== PRICE.in || appPrice.out !== PRICE.out) console.log('⚠ price table differs from the app: ' + JSON.stringify(appPrice))

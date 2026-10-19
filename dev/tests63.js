@@ -62,6 +62,11 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     ft[0].english === 'Hello Nida, how are you today.' && ft[1].prompt === 'Say goodbye to Nida.' && ft[2].thai === 'แล้วเจอกันค่ะ' && ft[2].english === 'See you.' && !/[\u0E00-\u0E7F]/.test(ft[2].prompt), ft)
   const ft2 = c.thaiFramingTidy([{ _target: 'parting', speaker: 'A', thai: 'ขอให้มีความสุขนะครับ แล้วเจอกัน', english: 'Be happy. See you.', prompt: 'Wish her well.' }, { _target: 'parting', speaker: 'B', thai: 'ขอบคุณ คุณก็เหมือนกันค่ะ', english: 'Thanks, you too.', prompt: 'Thank him and wish him the same.' }], null)
   T('F2', 'a "you too" reply to a real wish (ขอให้…) is kept', ft2[1].thai === 'ขอบคุณ คุณก็เหมือนกันค่ะ')
+  const pu = c.thaiFramingTidy([{ _target: 'parting', speaker: 'A', thai: 'เดินทางปลอดภัยนะครับ', english: 'Have a safe trip', prompt: 'Wish her a safe trip.' },
+    { speaker: 'A', thai: 'ผมมาถึงป้ายรถเมล์แล้วครับ', english: 'I have already reached the bus stop', prompt: 'Say you have reached the bus stop.', targetId: 1 },
+    { speaker: 'B', thai: 'ทางออกนั้นไกลไหมคะ', english: 'Is that exit far', prompt: 'Ask if that exit is far.', targetId: 2 }], null)
+  T('F3', 'every line\'s English ends with punctuation, a question decided by the Thai ("Have a safe trip." not "?"; "Is that exit far?")',
+    pu[0].english === 'Have a safe trip.' && pu[1].english === 'I have already reached the bus stop.' && pu[2].english === 'Is that exit far?', pu.map(p => p.english))
   const src2 = require('fs').readFileSync('tt.jsx', 'utf8')
   T('X1', 'writer: the three lines are ONE exchange (LINE 3 answers LINE 2, roles straight, no contradiction, แล้วหรือยัง) and a line only fills a slot of its own speaker (A-B-A)',
     /EXCHANGE \(overrides the plan above when they clash\)/.test(src2) && /LINE 3 ANSWERS LINE 2/.test(src2) && /const _slotSp = x => x === 2 \? 'B' : 'A'/.test(src2) && /_unfilled\(\)\.find\(x => _open\.has\(x\) && _spOk\(x\)\)/.test(src2))

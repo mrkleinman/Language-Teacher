@@ -15398,10 +15398,13 @@ function thaiFramingTidy(pairs, log) {
   const out = (pairs || []).map(p => { if (!p) return p
     let n = p
     if (p.prompt && /\s*\([\u0E00-\u0E7F]+\)/.test(p.prompt)) { n = { ...n, prompt: p.prompt.replace(/\s*\([\u0E00-\u0E7F]+\)/g, '') }; fx.push('cue name') }
-    if (isFr(n)) {
-      const q = /^(how|what|where|when|why|who|are|is|do|did|have|can)\b/i.test(String(n.english || '').trim())
-      const en = punct(n.english, q), pr = punct(n.prompt, false)
-      if (en !== (n.english || '').trim() || pr !== (n.prompt || '').trim()) { n = { ...n, english: en, prompt: pr }; fx.push('framing punctuation') }
+    // the English of EVERY line ends with punctuation (relay track 4: "I have already reached the bus stop"); a question is decided by the
+    // THAI (ไหม / หรือ / เหรอ / question words / a woman's คะ), never by the English first word ("Have a safe trip" is not a question)
+    if (n.thai && n.english) {
+      const t0 = String(n.thai).replace(/\s+/g, '')
+      const q = /(ไหม|มั้ย|หรือ|เหรอ|หรอ|ยังไง|อย่างไร|อะไร|ที่ไหน|ไหน|เมื่อไหร่|ทำไม|ใคร|เท่าไหร่|กี่)(ครับ|คะ|นะ)?$/.test(t0) || /คะ$/.test(t0)
+      const en = punct(n.english, q), pr = isFr(n) ? punct(n.prompt, false) : (n.prompt || '').trim()
+      if (en !== (n.english || '').trim() || pr !== (n.prompt || '').trim()) { n = { ...n, english: en, prompt: pr }; fx.push('punctuation') }
     }
     return n })
   for (let i = 1; i < out.length; i++) {

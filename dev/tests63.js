@@ -40,6 +40,12 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   const rb = Object.entries(roles).filter(([t, r]) => role(t) !== r).map(([t, r]) => t + ' ' + role(t) + ' (want ' + r + ')')
   T('L3', 'target role: a Thai compound on a noun head is a NOUN whatever its gloss (ทางออก "exit", เครื่องดื่ม "drink"); verbs and adjectives unchanged', !rb.length, rb)
 
+  const NW = c.ev('THAI_NUMBER_WORDS'), self = t => { const d = RAW.find(x => x.t === t && !x.dup); return c.thaiIsNumberTarget({ thai: d.t, english: d.e }) || NW.includes(d.t) }
+  const srcL4 = require('fs').readFileSync('tt.jsx', 'utf8')
+  T('L4', 'a target that IS a number (ศูนย์, พัน, ครึ่ง) gets no extra random "MANDATORY NUMBER" (both generators guard it); สัปดาห์ still may',
+    ['ศูนย์', 'พัน', 'ครึ่ง'].every(self) && !self('สัปดาห์') && /_skipNumber \|\| _selfNumber \|\| !exerciseRequiresNumber\(target\)/.test(srcL4) &&
+    /exerciseRequiresNumber\(target\) && !\(dailyV693On\(\) && \(thaiIsNumberTarget\(target\)/.test(srcL4))
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))

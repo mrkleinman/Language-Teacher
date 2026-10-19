@@ -16634,7 +16634,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   const _noNumberWords = ['advance','compete','beauty queen','beauty pageant','Khmer','long-neck Karen','clear up','then','such as','which','who','where','when','how','jealous','trust','promise','rent']
   const _skipNumber = _noNumberWords.some(w => (target.english||'').toLowerCase().includes(w.toLowerCase()))
   // Only ask the model for a number when the exercise actually practises numbers.
-  const numberHint = (_skipNumber || !exerciseRequiresNumber(target)) ? '' : randomNumberHint(vocab, pairIndex)
+  // v704 (relay Daily run: ศูนย์ was told to fit in ยี่สิบสาม → "my cell number is zero twenty-three"; ครึ่ง got ห้าทุ่ม) — a target that IS a
+  // number supplies the number itself and already has its NUMBER TARGET plan; a second, random number only fights it
+  const _selfNumber = dailyV693On() && (thaiIsNumberTarget(target) || THAI_NUMBER_WORDS.includes(target.thai || target.t || ''))
+  const numberHint = (_skipNumber || _selfNumber || !exerciseRequiresNumber(target)) ? '' : randomNumberHint(vocab, pairIndex)
   const context = prevLines.length > 0
     ? 'CONVERSATION SO FAR (most recent first):\n' + prevLines.slice(-6).map(l =>
         (l.speaker==='A' ? charA.split(',')[0] : charB.split(',')[0]) + ': ' + l.thai + ' (' + l.english + ')'
@@ -18914,7 +18917,7 @@ async function generateTrack(targets, anchors, apiKey, onProgress, vocab, model,
     opts = opts || {}
     const restaurantOverused = opts.restaurantOverused || false
     const topicContext = opts.runningTopic ? '\n[CONVERSATION THREAD: They have been talking about: ' + opts.runningTopic + '. Connect the new word to this topic naturally.]\n' : ''
-    const numberHint = exerciseRequiresNumber(target) ? randomNumberHint(vocab, pairIndex || 0) : ''
+    const numberHint = exerciseRequiresNumber(target) && !(dailyV693On() && (thaiIsNumberTarget(target) || THAI_NUMBER_WORDS.includes(target.thai || target.t || ''))) ? randomNumberHint(vocab, pairIndex || 0) : ''
     const type = classifyWord(target)
     const lenResult = getSentenceLengthForVocab(vocab) || {}
     const scenarioCtx = scenario ? (SCENARIO_CONTEXTS[scenario] || SCENARIO_CONTEXTS.general) : SCENARIO_CONTEXTS.general

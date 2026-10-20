@@ -15539,6 +15539,8 @@ async function thaiScenePolish(t, c, log) {
     const why = []
     if (_cc) { const a = _cc.analyse(th); if (a.overHardMax) why.push('too long: ' + a.units + ' words (max ' + _cc.hardMax + ')') }
     if (surf && !thaiTargetPresent(th, surf, c.vocab)) why.push('target ' + surf + ' missing')
+    // v707 (paid track 4: a critic fix made L41 identical to L40 → FINAL_DUPLICATE_AUDIT FAIL, NOT_READY 89/90) — never a copy of another line
+    if (pairs.some(q => q && q !== old && String(q.thai || '').replace(/\s+/g, '') === t0)) why.push('same as another line in the lesson')
     if (old.speaker === 'A' ? !/ครับ/.test(t0) || /(ค่ะ|คะ)$/.test(t0) : !/(ค่ะ|คะ)$/.test(t0) || /ครับ/.test(t0)) why.push('speaker particle')
     try { const v = validateThaiVocabulary([{ thai: th }], vctx); if (v.blocked && v.blocked.length) why.push('untaught: ' + v.blocked.slice(0, 3).map(b => b.token || b).join(' ')) } catch (e) { why.push('vocabulary check failed') }
     try { const lx = thaiLexicalSenseProblems({ thai: th, english: ed.english || '' }, surf).filter(x => x.code === 'UNNATURAL' || x.code === 'WRONG_SENSE'); if (lx.length) why.push(lx[0].id) } catch (e) {}

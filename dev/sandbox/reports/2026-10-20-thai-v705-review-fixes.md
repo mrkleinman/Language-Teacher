@@ -163,6 +163,44 @@ The line judge already catches the known error types. What it does not catch:
 - Greeting lines now take the speaker's particle: สวัสดีค่ะ, not a bare สวัสดี. Test: tests63 F5.
 - tests54 E2 now ignores the cue-lint fields as cue metadata, with a comment. The cue guard correctly flags a broken fixture cue: "he really like the price".
 
+## v706 released (owner: "once you set those rules, go live")
+
+v706 is on main as commit 79d602a. It includes:
+
+- **The owner's fixed English for three verbs:** ดู = watch / look, เห็น = notice, ชม = admire / appreciate. This is enforced in several places:
+  - the writer, recovery and polish prompts, and the cue judge;
+  - a deterministic fix of "see / saw" in the English and the cue;
+  - a final VERB_SENSE check that refuses a line still breaking the rule;
+  - the dictionary glosses.
+- **The strict in-context final judge, the polish fix mode and the cue grammar guard.**
+- **The 2,500-word Kyu–Dan standard.**
+
+**Checks before release:**
+- The full suite shows no new failures.
+  - Two expected failures were fixed before release and re-verified:
+    - tests60 J4: the verb rule moved into the writer's shared, cached prompt part;
+    - tests61 B: the gloss change is a documented exception.
+- The page is in sync.
+- The browser smoke test is clean. Its only console error, a 404, is also on the live v705.
+- No keys or access codes are in the page.
+
+## Paid tracks after the release (real Haiku, same 30 words)
+
+| Track | Build | Result | Cost | Calibrated reviewer |
+|---|---|---|---|---|
+| paid 2 | v706 candidate | READY 90/90 | US$0.202 | 5.8 (coherence 3.5) |
+| paid 3 | v707: scene critic, one call | READY 90/90 | US$0.234 | **6.0** (Thai 6.0 · cues 6.0 · vocabulary 5.5 · reading 8.5 · coherence 3.5) |
+| paid 4 | v707: per-scene critic, two rounds, cue fixes | running | | |
+
+**What the paid 3 review found:**
+- **Contradictions inside a scene** remain: no sugar then a little sugar, ice then no ice.
+- **"Too / then" pointing at nothing.**
+- **Words used in one frame three times:** ถึงพัน, ข้ามสะพาน, ชอบสีเหลือง, สัปดาห์นี้.
+- **About 15 non-native lines:** ช้อนอยู่ที่นี่, สีเหลืองนี้, ไม่ใช่ answering "is it cheaper?", คนหลายคน.
+- **Cue grammar slips.**
+
+**The one-call critic named only 7 lines.** It now runs once per scene, sees the cue and the English, has DANGLING and CUE_EN problem types, and runs two rounds.
+
 ## TL;DR
 
 The strict in-context judge catches what the owner flags. With real Haiku it catches 27 of 31 known bad lines on the benchmark.

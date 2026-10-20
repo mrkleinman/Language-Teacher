@@ -182,6 +182,12 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('S7', 'scene critic: one request reads every scene in order (Thai + English, speakers, CONTRADICTION / NO_FOLLOW / WRONG_SPEAKER / REPEAT / IMPLAUSIBLE / UNNATURAL); a named line becomes a fix entry "SCENE_CONTRADICTION — …" for the scene polish; unknown lines are ignored',
       callsC === 1 && /L5 B: น้ำตาลอยู่ที่นี่ค่ะ/.test(pc) && /WRONG_SPEAKER/.test(pc) && /REPEAT/.test(pc) && cr && cr.named.length === 1 && /^SCENE_CONTRADICTION — A just said/.test(cr.fix.get('x' + b.id + '2')),
       { callsC, named: cr && cr.named })
+    // v707 (paid track 4: a fix made L41 identical to L40 → FINAL_DUPLICATE_AUDIT FAIL) — an edit that copies another line is refused
+    let callsD = 0
+    c.mockGeminiGenerate = async () => { callsD++; return JSON.stringify({ lines: [{ n: 2, thai: 'ผมไม่มีช้อนครับ', english: 'I have no spoon.', cue: 'Say you have no spoon.' }] }) }
+    const rd = await c.thaiScenePolish(tr, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v }, null)
+    T('S8', 'scene polish refuses an edit that would make a line identical to another line of the lesson (the original is kept)',
+      rd.changed === 0 && rd.pairs[1].thai === 'ช้อนอยู่ไหนคะ' && rd.rejected.some(x => /same as another line/.test(x)), { changed: rd.changed, rej: rd.rejected })
     // v705 (relay run 12: a polished เช่า line of 8 words failed the final LENGTH_PASS → NOT_READY 89/90) — an edit above the belt's
     // hardMax is refused (with the reason, so the one retry can shorten it) and the original line stays
     const long = 'ผมไม่มีช้อน ช้อนอยู่ที่ไหน ผมเอาช้อนมาให้ที่นี่นะครับ', cc = c.ev('getLearnerComplexityContract')({ lang: 'th', vocab: v })

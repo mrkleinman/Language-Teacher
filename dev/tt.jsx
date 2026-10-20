@@ -15531,6 +15531,9 @@ async function thaiScenePolish(t, c, log) {
   let _cc = null; try { _cc = getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }) } catch (e) {}
   const check = (line, ed) => {
     const old = line.pair, th = normaliseThaiSpacing(String(ed.thai || '').trim()), t0 = th.replace(/\s+/g, '')
+    // v707 — a line the critic named for its cue / English (the Thai is fine) may change only those
+    if (th && t0 === String(old.thai || '').replace(/\s+/g, '') && fixOf(old) && ed.english && ed.cue && (String(ed.english).trim() !== String(old.english || '').trim() || String(ed.cue).trim() !== String(old.prompt || '').trim()) &&
+      !thaiCueEnglishBroken(ed.cue).length && !thaiVerbSenseProblem({ thai: old.thai, english: ed.english })) return { th: old.thai, why: [], enOnly: true }
     if (!th || t0 === String(old.thai || '').replace(/\s+/g, '')) return { skip: true }
     const surf = line.framing ? '' : (old.targetSurface || old._target || '')
     const why = []
@@ -15544,10 +15547,11 @@ async function thaiScenePolish(t, c, log) {
   }
   const apply = (sc, line, ed, th) => {
     const old = line.pair, at = pairs.indexOf(old); if (at < 0) return
-    const nu = { ...old, thai: th, text: th, english: String(ed.english).trim(), prompt: String(ed.cue).trim(), phonetic: '', words: [], _scenePolishedFrom: old.thai,
+    const same = th === old.thai   // v707: a cue / English-only fix keeps the reading and the words
+    const nu = { ...old, thai: th, text: th, english: String(ed.english).trim(), prompt: String(ed.cue).trim(), phonetic: same ? old.phonetic : '', words: same ? old.words : [], _scenePolishedFrom: old.thai,
       _semanticState: undefined, _semCue: undefined, _semNat: undefined, _qcInvalid: undefined, _semanticUnverified: { stage: 'NOT_AUDITED', reason: 'text rewritten by the scene polish — judged by the final snapshot audit' } }
     pairs[at] = nu; line.pair = nu; changed++
-    log && log('    ✏ SCENE_POLISH ' + sc.sceneId + ' ' + (line.framing ? line.n : 'L' + line.n) + ': ' + old.thai + ' → ' + th)
+    log && log('    ✏ SCENE_POLISH ' + sc.sceneId + ' ' + (line.framing ? line.n : 'L' + line.n) + ': ' + (same ? '(cue / English) "' + (old.english || '') + '" → "' + nu.english + '"' : old.thai + ' → ' + th))
   }
   const ask = async (prompt) => {
     calls++
@@ -15566,7 +15570,8 @@ async function thaiScenePolish(t, c, log) {
     if (c.polishFix && !sc.lines.some(l => fixOf(l.pair))) continue
     let edits
     const earlier = sections.slice(0, sections.indexOf(sc)).flatMap(x => (x.lines || []).map(l => (l.pair.speaker || 'A') + ': ' + l.pair.thai))
-    const fixBlock = c.polishFix ? '\n\nTHE FINAL NATIVE REVIEWER REFUSED THESE LINES. Rewrite EACH one (you may also change the line just before it when that is what makes the reply natural); change nothing else:\n' +
+    const fixBlock = c.polishFix ? '\n\nTHE FINAL NATIVE REVIEWER REFUSED THESE LINES. Rewrite EACH one (you may also change the line just before it when that is what makes the reply natural); change nothing else. ' +
+      'For a CUE_EN refusal keep the Thai exactly and give only a corrected english and cue:\n' +
       sc.lines.filter(l => fixOf(l.pair)).map(l => (l.framing ? l.n : 'L' + l.n) + ' ' + (l.pair.speaker || 'A') + ': ' + l.pair.thai + ' — refused: ' + String(fixOf(l.pair)).replace(/^[A-Z_ ]+—\s*/, '').slice(0, 160)).join('\n') : ''
     const mayEdit = l => { if (!c.polishFix) return true; const k = sc.lines.indexOf(l); return !!fixOf(l.pair) || (k >= 0 && k + 1 < sc.lines.length && !!fixOf(sc.lines[k + 1].pair)) }
     try { edits = await ask(thaiScenePolishPrompt(sc, allowed, names, earlier) + fixBlock) }
@@ -15594,6 +15599,55 @@ async function thaiScenePolish(t, c, log) {
   }
   log && log('  ✏ SCENE_POLISH ' + calls + ' request(s) · ' + changed + ' line(s) rewritten · ' + rejected.length + ' edit(s) refused (original kept)' + (rejected.length ? ': ' + rejected.slice(0, 6).join(' | ') : ''))
   return { pairs, changed, calls, rejected }
+}
+// v707 — SCENE CRITIC (calibrated blind review of paid track 2: coherence 3.5/10 while the lenient coherence judge passed it 4/5 —
+// "no sugar" then "where is the sugar?", a man asking himself why he must get up at five, the same decision made three times, a car
+// for 50 baht, each ศูนย์ line the same "086"). One strict call reads every scene IN ORDER (Thai + English, speakers) and names lines
+// with a problem; each named line goes to the scene polish in FIX mode (the critic's reason; the line and the one before it may change),
+// and the final snapshot audit then judges the result in context. A critic that fails or names nothing changes nothing.
+const THAI_SCENE_CRITIC_MAX = 24
+const THAI_SCENE_CRITIC_ROUNDS = 2
+// v707 (paid track 3: one whole-lesson call named 7 lines; the calibrated reviewer found ~40) — one request PER SCENE, each line with its
+// cue and English, so the critic reads a few lines closely and can also name a cue / translation that is wrong
+function thaiSceneCriticPrompt(sc, names, earlier) {
+  const body = sc.lines.map(l => '  ' + (l.framing ? l.n : 'L' + l.n) + ' ' + (l.pair.speaker || '?') + ': ' + l.pair.thai + '\n      cue: "' + (l.pair.prompt || '') + '" · English: "' + (l.pair.english || '') + '"').join('\n')
+  return 'You are a strict native Thai teacher reviewing ONE scene of a spoken lesson for an adult beginner, who will memorise every line as model Thai. ' +
+    'A = ' + (names[0] || 'the man') + ', a man (ผม, ends ครับ); B = ' + (names[1] || 'the woman') + ', a woman (ฉัน, ends ค่ะ / คะ); they are close friends. ' +
+    'The learner hears the CUE (an English instruction) and must say the Thai. Read the scene IN ORDER and name EVERY line with one of these problems:\n' +
+    'CONTRADICTION — says the opposite of an earlier line (in this scene or the lesson so far).\n' +
+    'NO_FOLLOW — does not answer or follow the line just before it (a yes/no question answered with neither; a reply about something else; an abrupt new topic).\n' +
+    'DANGLING — "too / also / then / again / that one" (ด้วย / ก็ / งั้น / อีก / นั้น) pointing at something nobody said.\n' +
+    'WRONG_SPEAKER — says what only the other person would say (asks themself about their own plans, asks the price as if the other were the seller).\n' +
+    'REPEAT — repeats a decision, question or fact already said, or a target word in the same frame as its earlier line (each word needs three DIFFERENT uses).\n' +
+    'IMPLAUSIBLE — not believable for two friends here.\n' +
+    'UNNATURAL — Thai a native speaker would not say (wrong word order, a missing มี / กัน / ก็ / ยัง, a phrase that means something else, English-shaped Thai).\n' +
+    'CUE_EN — the cue or the English is ungrammatical, or says something the Thai does not (the Thai is fine).\n' +
+    'A real beginner scene usually has several of these; do not pass a line you would correct before teaching it. For each, say in a few words exactly what to change.\n' +
+    (earlier && earlier.length ? 'THE LESSON SO FAR (for contradictions and repeats): ' + earlier.slice(-24).join(' / ') + '\n' : '') +
+    '\nSCENE ' + sc.sceneId + ' — ' + (sc.localPremise || sc.purpose || '') + '\n' + body +
+    '\n\nReply ONLY with JSON: {"problems":[{"n":"L12","type":"CONTRADICTION","why":"…"}]} ({"problems":[]} when nothing is wrong).'
+}
+async function thaiSceneCritic(t, c, log) {
+  if (!THAI_SCENE_POLISH_ACTIVE || !dailyV693On() || !c.apiKey) return null
+  const sections = mainCoherenceSections(t)
+  if (!sections.length) return null
+  const names = [0, 1].map(k => { const ch = ((t.sceneContract && t.sceneContract.characters) || [])[k] || {}; return ch.name || '' })
+  const fix = new Map(), named = []; let calls = 0
+  for (const sc of sections) {
+    if (c.cancelled && c.cancelled()) break
+    if (named.length >= THAI_SCENE_CRITIC_MAX) break
+    const earlier = sections.slice(0, sections.indexOf(sc)).flatMap(x => (x.lines || []).map(l => (l.pair.speaker || 'A') + ': ' + l.pair.thai))
+    let raw
+    try { calls++; raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: thaiSceneCriticPrompt(sc, names, earlier) }], maxTokens: 1800, temperature: 0.2, json: true, stage: 'F_scene_critic' }) }
+    catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_CRITIC ' + sc.sceneId + ' skipped: ' + String(e && e.message || e).slice(0, 80)); continue }
+    let o = null; try { o = coherenceJudgeParse(raw) || JSON.parse(String(raw)) } catch (e) {}
+    const byN = new Map(sc.lines.map(l => [String(l.n), l.pair]))
+    ;((o && o.problems) || []).forEach(x => { const p = x && byN.get(String(x.n).replace(/^L/, '')); if (!p || named.length >= THAI_SCENE_CRITIC_MAX || fix.has(p.pairId || p.thai)) return
+      const why = 'SCENE_' + String(x.type || 'PROBLEM').toUpperCase().replace(/[^A-Z_]/g, '') + ' — ' + String(x.why || '').slice(0, 160)
+      if (p.pairId) fix.set(p.pairId, why); if (p.thai) fix.set(p.thai, why); named.push('L' + String(x.n).replace(/^L/, '') + ' ' + p.thai + ' (' + why.slice(0, 90) + ')') })
+  }
+  log && log('  🔎 SCENE_CRITIC ' + calls + ' request(s) · ' + named.length + ' line(s) named' + (named.length ? ': ' + named.slice(0, 8).join(' | ').slice(0, 600) : ''))
+  return { fix, named, calls }
 }
 // v704 (relay track 3: เริ่ม played recall 3, 1, 2 → A-A-B; วันศุกร์ 2, 3, 1) — a word's three lines are kept in the order they were
 // ACCEPTED, so a slot regenerated later lands after the others. Each word's block is put back in recall order (1 A · 2 B · 3 A), the
@@ -22611,7 +22665,15 @@ async function finaliseMainTrack(track, adapter, ctx) {
   let _snap = null
   if (adapter.lang === 'th' && dailyV693On()) {
     try {
-      let s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap = { first: s1.report }
+      // v707 — the scene critic names contradictions / wrong speakers / non-answers / repeats; they are fixed in context first
+      const _crit = []
+      for (let round = 1; round <= THAI_SCENE_CRITIC_ROUNDS; round++) {
+        try { const cr = await thaiSceneCritic(t, c, log); if (!cr || !cr.named.length) { _crit.push({ round, named: 0, changed: 0, calls: cr ? cr.calls : 0 }); break }
+          const fx = await thaiScenePolish(t, { ...c, polishFix: cr.fix }, log); if (fx.changed) { t = { ...t, pairs: fx.pairs }; c.track = t }
+          _crit.push({ round, named: cr.named.length, changed: fx.changed, calls: cr.calls + fx.calls }); if (!fx.changed) break
+        } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; break }
+      }
+      let s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap = { first: s1.report, sceneCritic: _crit }
       // v706 (relay tracks 16/17) — refused lines first go back to the SCENE polish (fix mode: the judge's reasons, the line and the one
       // before it may change), are judged again in context, and only what still fails goes to single-slot quota recovery
       // (relay track 18: one fix pass took 18 refusals to 8; single-slot recovery then added lines that jumped topic or contradicted
@@ -36586,6 +36648,10 @@ const THAI_NAT_STRICT_RUBRIC = 'STRICT STANDARD — these lines are MODEL THAI a
   'a missing future/softener where Thai needs one (ตอนบ่ายผมตอบ → เดี๋ยวตอนบ่ายผมค่อยตอบ); a translated wish or set phrase (ขอให้ประชุมดี, ขอให้วันพุธดี, คุณก็ขอให้มีสัปดาห์ที่ดี — a returned wish is เช่นกัน / คุณก็เหมือนกันนะ); ' +
   'a wrong collocation (รูปนี้มีความทรงจำดี — a photo IS a memory: เป็นความทรงจำที่ดี; ชอบความทรงจำ); ของนี้ for "this one" (อันนี้); a question word plus ไหม (กินอะไรไหม = "anything?", not "what?"); ' +
   'ไม่ใช่ answering a ไหม question (use ไม่ / ไม่ครับ); หลาย for "so many / a lot" (use เยอะ); คนมาก (spoken: คนเยอะ); a target word used in two different senses across its lines; an English gloss that adds what the Thai does not say.\n' +
+  // v707 (calibrated blind review of paid track 2, 5.8/10 — lines every gate had passed)
+  'Also s ≤ 3: a suggestion without กัน / กันเถอะ / กันเลย (ข้ามสะพานไปครับ for "let\'s cross" → ข้ามสะพานกันเลยครับ); a new, indefinite subject without มี (น้ำสองขวดอยู่บนโต๊ะ → มีน้ำสองขวดอยู่บนโต๊ะ); ' +
+  'a yes/no question answered with neither yes nor no (มีปลาหมึกด้วยครับ to "is there shrimp?" → มีครับ…); บ่อยกี่ครั้ง (→ บ่อยแค่ไหน or กี่ครั้ง); the written หรือ as a spoken question tag (→ เหรอ); ' +
+  'an English-shaped possessive (สีเหลืองของร้านนี้ → ร้านนี้ทาสีเหลือง); มือถือ for "phone number" (→ เบอร์มือถือ); a speaker asking themself about their own plans.\n' +
   'Do NOT give 4 to a sentence you would not teach as is. 5 = exactly what a Thai speaker says here; 4 = fine to teach with a tiny quirk; 3 = understandable but not what a Thai would say → reject.\n'
 function _naturalnessPromptText(chunk) {
   const numbered = chunk.map((p, ci) => (ci + 1) + '. Thai: ' + p.thai + '\n   Intended meaning: ' + (p.english || '') +

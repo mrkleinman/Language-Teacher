@@ -174,6 +174,14 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('S2', 'scene polish sees the opening / closing framing lines (O1 … C1, no target) with the scene they belong to, and names a word whose three lines repeat one phrase (VARY: รถบัสสีเหลือง)',
       /O1 A \[opening line, no target\]: สวัสดีครับ/.test(p2) && /C1 B \[closing line, no target\]: แล้วเจอกันค่ะ/.test(p2) && calls2 === 1 && r2.pairs[r2.pairs.length - 1].thai === 'มีช้อนไหมคะ' &&
       same.length === 1 && same[0][1] === 'รถบัสสีเหลือง', { calls2, same, rej: r2.rejected, last: r2.pairs[r2.pairs.length - 1].thai })
+    // v707 (blind review of paid track 2, coherence 3.5/10) — the scene critic reads the scenes in order and names lines; each named line
+    // becomes a polish-fix entry keyed by its pair (and Thai) with the critic's type and reason; an unknown line number is ignored
+    let pc = '', callsC = 0
+    c.mockGeminiGenerate = async (k, m, msgs) => { callsC++; pc = msgs[0].content; return JSON.stringify({ problems: [{ n: 'L5', type: 'contradiction', why: 'A just said there is no sugar' }, { n: 'L99', type: 'REPEAT', why: 'x' }] }) }
+    const cr = await c.thaiSceneCritic(tr, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v }, null)
+    T('S7', 'scene critic: one request reads every scene in order (Thai + English, speakers, CONTRADICTION / NO_FOLLOW / WRONG_SPEAKER / REPEAT / IMPLAUSIBLE / UNNATURAL); a named line becomes a fix entry "SCENE_CONTRADICTION — …" for the scene polish; unknown lines are ignored',
+      callsC === 1 && /L5 B: น้ำตาลอยู่ที่นี่ค่ะ/.test(pc) && /WRONG_SPEAKER/.test(pc) && /REPEAT/.test(pc) && cr && cr.named.length === 1 && /^SCENE_CONTRADICTION — A just said/.test(cr.fix.get('x' + b.id + '2')),
+      { callsC, named: cr && cr.named })
     // v705 (relay run 12: a polished เช่า line of 8 words failed the final LENGTH_PASS → NOT_READY 89/90) — an edit above the belt's
     // hardMax is refused (with the reason, so the one retry can shorten it) and the original line stays
     const long = 'ผมไม่มีช้อน ช้อนอยู่ที่ไหน ผมเอาช้อนมาให้ที่นี่นะครับ', cc = c.ev('getLearnerComplexityContract')({ lang: 'th', vocab: v })

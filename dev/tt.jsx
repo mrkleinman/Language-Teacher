@@ -6650,13 +6650,13 @@ const BELT_VIEW_META = {
   'Brown + Stripe':  { label:'Brown + Stripe', color:'#b45309', desc:'Advanced fluency. Rare words, register switching.' },
   'Shodan':          { label:'Shodan',         color:'#111827', desc:'Master level. Natural unrestricted Thai.' },
 }
-// v701 (owner, 2026-10-15) — THE authoritative Kyu–Dan syllabus for Thai, Japanese and Mandarin. Two 100-word stages, then 200
-// words per rank through 1st Kyu: 11 pre-Shodan stages covering curriculum positions 1–2,000 with no gaps or overlaps. There is
-// NO Shodan word range (the old 1,801–2,000 "Shodan" band is now the second half of 1st Kyu): Shodan is AWARDED once all 2,000
-// positions are populated and proven under the existing rank-test rules. Every other table (BELT_RANKS, RANK_ORDER,
-// NEW_SLOTS_BY_KNOWN, the belt page, the dictionary filter, the selectors) is DERIVED from this one list.
-// (replaces v689's 100/100/100/100/100/200/200/200/200/250/250 + a 1,801–2,000 Shodan band)
-const SHODAN_CURRICULUM_TOTAL = 2000
+// v706 (owner, 2026-10-20) — THE authoritative Kyu–Dan syllabus for Thai, Japanese and Mandarin (2,500 is the standard for all
+// three). Two 100-word stages, five 200-word stages (through 5th Kyu, 1,200), then 325 words per rank from 4th Kyu to 1st Kyu: 11
+// pre-Shodan stages covering curriculum positions 1–2,500 with no gaps or overlaps. There is NO Shodan word range: Shodan is AWARDED
+// once all 2,500 positions are populated and proven under the existing rank-test rules (no separate assessment). Every other table
+// (BELT_RANKS, RANK_ORDER, NEW_SLOTS_BY_KNOWN, the belt page, the dictionary filter, the selectors) is DERIVED from this one list.
+// (replaces v701's 2,000-word ladder, which had 200 words for each of 4th–1st Kyu; 1–1,200 are unchanged)
+const SHODAN_CURRICULUM_TOTAL = 2500
 const CURRICULUM_STAGE_SIZES = Object.freeze([
   ['White',           'Mukyu',    100],
   ['Orange',          '10th Kyu', 100],
@@ -6665,22 +6665,22 @@ const CURRICULUM_STAGE_SIZES = Object.freeze([
   ['Blue + Stripe',   '7th Kyu',  200],
   ['Yellow',          '6th Kyu',  200],
   ['Yellow + Stripe', '5th Kyu',  200],
-  ['Green',           '4th Kyu',  200],
-  ['Green + Stripe',  '3rd Kyu',  200],
-  ['Brown',           '2nd Kyu',  200],
-  ['Brown + Stripe',  '1st Kyu',  200],
+  ['Green',           '4th Kyu',  325],
+  ['Green + Stripe',  '3rd Kyu',  325],
+  ['Brown',           '2nd Kyu',  325],
+  ['Brown + Stripe',  '1st Kyu',  325],
 ])
 const CURRICULUM_BELTS = (() => { let at = 0
   return CURRICULUM_STAGE_SIZES.map(([name, rank, size]) => { const from = at + 1; at += size
     return Object.freeze({ name, rank, from, to: at, size, start: from - 1 }) }) })()
-// Shodan: a rank, not a vocabulary stage — reached at SHODAN_CURRICULUM_TOTAL qualifying words plus the rank-test proof
+// Shodan: a rank, not a vocabulary stage — awarded at SHODAN_CURRICULUM_TOTAL qualifying words proven by the existing rank tests
 const SHODAN_RANK = Object.freeze({ name: 'Shodan', rank: 'Shodan', from: null, to: null, size: 0, start: SHODAN_CURRICULUM_TOTAL, requires: SHODAN_CURRICULUM_TOTAL })
 // every rank in promotion order (11 stages + Shodan)
 const RANK_LADDER = CURRICULUM_BELTS.concat([SHODAN_RANK])
-// "201–400 · 200 words" / "2,000 qualifying words + required assessment" — the one wording for every surface
+// "201–400 · 200 words" / "all 2,500 qualifying words" — the one wording for every surface
 function rankRangeText(b) {
   if (!b) return ''
-  if (b.name === 'Shodan' || b.from == null) return SHODAN_CURRICULUM_TOTAL.toLocaleString('en-US') + ' qualifying words + required assessment'
+  if (b.name === 'Shodan' || b.from == null) return 'all ' + SHODAN_CURRICULUM_TOTAL.toLocaleString('en-US') + ' qualifying words'
   return b.from.toLocaleString('en-US') + '–' + b.to.toLocaleString('en-US') + ' · ' + b.size + ' words'
 }
 // the word's position inside its stage (1-based) — derived, never the stored v689-era beltOrder
@@ -6693,7 +6693,7 @@ const NEW_SLOTS_BY_KNOWN = RANK_LADDER.map((b, i) => ({
   minWords: b.start,
   slots: [3, 5, 5, 7, 7, 10, 10, 12, 12, 15, 15, 15][i] || 15,
 }))
-// Words inside the curated 2000 carry a rank. Anything beyond sits OUTSIDE the
+// Words inside the curated 2,500 carry a rank. Anything beyond sits OUTSIDE the
 // pre-Shodan curriculum: still fully learnable through Daily Tracks, Lessons, SRS
 // and reinforcement, but not required by any current rank test.
 const POST_CURRICULUM = 'Beyond curriculum'
@@ -7938,7 +7938,7 @@ function rankTestStatus(vocab, rank) {
   const outstanding = words.filter(w => !isWordRankPassed(w))
   // v701 — a stage is measured against the POSITIONS it requires (200 for 9th Kyu), not the entries the bank happens to hold:
   // a stage whose curriculum is not fully written yet can never be completed by learning the words that do exist (the live
-  // banks hold Thai 1–500, Japanese 1–200, Mandarin 1–100 — learning all of them used to show "Shodan").
+  // banks hold Thai 1–800, Japanese 1–200, Mandarin 1–100 — learning all of them used to show "Shodan").
   const range = curriculumRangeFor(rank), positions = range ? range.size : 0
   const populated = words.length, missingPositions = Math.max(0, positions - populated)
   return {
@@ -7961,7 +7961,7 @@ function unseenRankTargets(vocab, rank, limit) {
     .filter(w => !isWordSeen(w))
     .sort((a, b) => (a.curriculumIndex || 0) - (b.curriculumIndex || 0))   // v701: curriculum order (beltOrder restarts per old 100-word band)
   if (required.length >= cap) return required.slice(0, cap)
-  // Spare capacity may be filled with vocabulary beyond the curated 2000. These
+  // Spare capacity may be filled with vocabulary beyond the curated 2,500. These
   // words are never blocked \u2014 they simply rank below current-rank requirements.
   const optional = (vocab || [])
     .filter(w => w && !w.duplicateOf && !isCurriculumWord(w) && !isWordSeen(w))
@@ -8020,7 +8020,7 @@ function calculateBeltRank(known) {
 // words. Derived from the syllabus, never from raw known-count alone.
 function currentRankName(vocab) {
   // v701: the first stage NOT complete — including a stage the bank has not written yet (it can never be skipped). Shodan only
-  // when all 11 stages (all 2,000 positions) are populated and proven.
+  // when all 11 stages (all 2,500 positions) are populated and proven.
   for (const b of CURRICULUM_BELTS) {
     const st = rankTestStatus(vocab, b.name)
     if (!st.complete) return b.name
@@ -8044,7 +8044,7 @@ function rankProgressFor(vocab) {
   const current = BELT_RANKS[idx] || BELT_RANKS[0]
   const next = BELT_RANKS[idx + 1] || null
   const st = rankTestStatus(vocab, name)
-  // measured against the stage's required positions (passed words / 200), never the bank's size
+  // measured against the stage's required positions (passed words / stage size), never the bank's size
   const wordsToNext = name === 'Shodan' ? 0 : Math.max(0, st.total - st.passedCount)
   const progress = name === 'Shodan' ? 100 : st.total ? Math.round((st.passedCount / st.total) * 100) : 0
   const aw = awardedRankName(vocab), awarded = aw ? BELT_RANKS.find(b => b.label === aw) || null : null
@@ -15638,6 +15638,14 @@ function thaiFramingTidy(pairs, log, chars) {
       const q = /(ไหม|มั้ย|หรือ|เหรอ|หรอ|ยังไง|อย่างไร|อะไร|ที่ไหน|ไหน|เมื่อไหร่|ทำไม|ใคร|เท่าไหร่|กี่)(ครับ|คะ|นะ)?$/.test(t0) || /คะ$/.test(t0)
       const en = punct(n.english, q), pr = isFr(n) ? punct(n.prompt, false) : (n.prompt || '').trim()
       if (en !== (n.english || '').trim() || pr !== (n.prompt || '').trim()) { n = { ...n, english: en, prompt: pr }; fx.push('punctuation') }
+    }
+    // v706 (paid track 2, line 2: "สวัสดี ฉันสบายดีค่ะ") — a greeting line opens with the speaker's polite particle: a bare สวัสดี before
+    // more words becomes สวัสดีครับ / สวัสดีค่ะ (the reading is patched the same way, or rebuilt when it does not start with sà-wàt-dii)
+    if (dailyV693On() && isFr(n) && (n.speaker === 'A' || n.speaker === 'B') && /^สวัสดี\s+(?!ครับ|ค่ะ|คะ|จ้ะ|จ้า)\S/.test(String(n.thai || '').trim())) {
+      const pt = n.speaker === 'A' ? 'ครับ' : 'ค่ะ', ph = String(n.phonetic || '')
+      const th2 = String(n.thai).trim().replace(/^สวัสดี/, 'สวัสดี' + pt)
+      const ph2 = /^sà-wàt-dii\s/.test(ph) ? ph.replace(/^sà-wàt-dii/, 'sà-wàt-dii-' + (n.speaker === 'A' ? 'khráp' : 'khâ')) : ''
+      n = { ...n, thai: th2, text: th2, phonetic: ph2, words: [] }; fx.push('greeting particle')
     }
     return n })
   for (let i = 1; i < out.length; i++) {

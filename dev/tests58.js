@@ -1,6 +1,9 @@
 // v701 — CORRECT KYU–DAN SYLLABUS TO 2,000 WORDS (the owner's brief, 2026-10-15), cases 1–27.
 //   Mukyu 1–100 · 10th Kyu 101–200 · 9th 201–400 · 8th 401–600 · 7th 601–800 · 6th 801–1,000 · 5th 1,001–1,200 · 4th 1,201–1,400
 //   · 3rd 1,401–1,600 · 2nd 1,601–1,800 · 1st Kyu 1,801–2,000 · Shodan = 2,000 qualifying words + the rank-test proof.
+// v706 — EXPECTED THRESHOLD CHANGE (owner, 2026-10-20): 2,500 is the standard for all three languages. 1–1,200 unchanged; 4th Kyu
+//   1,201–1,525 · 3rd 1,526–1,850 · 2nd 1,851–2,175 · 1st Kyu 2,176–2,500 (325 each); Shodan = all 2,500 proven (no separate
+//   assessment). The numbers below were moved to that table; each check still tests the same property.
 // Real app code throughout (the one rank table, rank tests, rank progress, belt page and dashboard rendered with React, the
 // Thai / Japanese / Mandarin selectors, the Thai load sync rendered with react-test-renderer). No provider calls.
 //   node tests58.js            (current build: tt.compiled.js, or TT_FILE)
@@ -15,11 +18,11 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
 const SRC = fs.readFileSync('tt.jsx', 'utf8')
 const flush = async (k = 40) => { for (let i = 0; i < k; i++) await new Promise(r => setImmediate(r)) }
 const WANT = [['Mukyu', 1, 100], ['10th Kyu', 101, 200], ['9th Kyu', 201, 400], ['8th Kyu', 401, 600], ['7th Kyu', 601, 800], ['6th Kyu', 801, 1000],
-  ['5th Kyu', 1001, 1200], ['4th Kyu', 1201, 1400], ['3rd Kyu', 1401, 1600], ['2nd Kyu', 1601, 1800], ['1st Kyu', 1801, 2000]]
+  ['5th Kyu', 1001, 1200], ['4th Kyu', 1201, 1525], ['3rd Kyu', 1526, 1850], ['2nd Kyu', 1851, 2175], ['1st Kyu', 2176, 2500]]
 const FIELD = { th: 'thai', ja: 'japanese', zh: 'chinese' }
-// a complete 2,000-position curriculum (as every bank will grow into); the first k words proven (Known, seen)
-const full = (lang, k, extra) => Array.from({ length: 2000 + (extra || 0) }, (_, i) => ({ id: 500000 + i, [FIELD[lang]]: 'w' + i, english: 'w' + i,
-  curriculumIndex: i < 2000 ? i + 1 : 0, status: i < k ? 'known' : 'new', repCount: i < k ? 3 : 0, okStreak: i < k ? 7 : 0, lastSeen: i < k ? '2026-10-01' : null }))
+// a complete 2,500-position curriculum (as every bank will grow into); the first k words proven (Known, seen)
+const full = (lang, k, extra) => Array.from({ length: 2500 + (extra || 0) }, (_, i) => ({ id: 500000 + i, [FIELD[lang]]: 'w' + i, english: 'w' + i,
+  curriculumIndex: i < 2500 ? i + 1 : 0, status: i < k ? 'known' : 'new', repCount: i < k ? 3 : 0, okStreak: i < k ? 7 : 0, lastSeen: i < k ? '2026-10-01' : null }))
 const strip = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
 
 ;(async () => {
@@ -27,27 +30,27 @@ const strip = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
   const CB = c.ev('CURRICULUM_BELTS'), RL = c.ev('RANK_LADDER')
 
   // ══ 1–16  the table ══
-  T(1, 'total Shodan vocabulary requirement = 2,000', c.ev('SHODAN_CURRICULUM_TOTAL') === 2000 && c.ev('SHODAN_RANK').requires === 2000)
+  T(1, 'total Shodan vocabulary requirement = 2,500', c.ev('SHODAN_CURRICULUM_TOTAL') === 2500 && c.ev('SHODAN_RANK').requires === 2500)
   T(2, 'exactly 11 pre-Shodan vocabulary stages (Shodan is a rank, not a stage)', CB.length === 11 && RL.length === 12 && RL[11].name === 'Shodan' && RL[11].from == null)
-  T(3, 'allocations sum to exactly 2,000', CB.reduce((a, b) => a + b.size, 0) === 2000)
-  const owner = new Map(); for (let i = 1; i <= 2000; i++) owner.set(i, CB.filter(b => i >= b.from && i <= b.to).map(b => b.rank))
-  T(4, 'every position 1–2,000 belongs to exactly one stage (beltForCurriculumIndex agrees); 2,001 belongs to none', [...owner.values()].every(r => r.length === 1) &&
-    [...owner.keys()].every(i => c.beltForCurriculumIndex(i) === CB.find(b => b.rank === owner.get(i)[0]).name) && c.beltForCurriculumIndex(2001) === 'Beyond curriculum')
-  T(5, 'no gaps or overlaps: each stage starts one after the previous ends; the first starts at 1, the last ends at 2,000', CB.every((b, i) => i === 0 ? b.from === 1 : b.from === CB[i - 1].to + 1) && CB[10].to === 2000)
+  T(3, 'allocations sum to exactly 2,500', CB.reduce((a, b) => a + b.size, 0) === 2500)
+  const owner = new Map(); for (let i = 1; i <= 2500; i++) owner.set(i, CB.filter(b => i >= b.from && i <= b.to).map(b => b.rank))
+  T(4, 'every position 1–2,500 belongs to exactly one stage (beltForCurriculumIndex agrees); 2,501 belongs to none', [...owner.values()].every(r => r.length === 1) &&
+    [...owner.keys()].every(i => c.beltForCurriculumIndex(i) === CB.find(b => b.rank === owner.get(i)[0]).name) && c.beltForCurriculumIndex(2501) === 'Beyond curriculum')
+  T(5, 'no gaps or overlaps: each stage starts one after the previous ends; the first starts at 1, the last ends at 2,500', CB.every((b, i) => i === 0 ? b.from === 1 : b.from === CB[i - 1].to + 1) && CB[10].to === 2500)
   WANT.forEach(([rank, f, t], k) => { const b = CB[k]
     T(6 + k, rank + ' = ' + f.toLocaleString('en-US') + '–' + t.toLocaleString('en-US') + ' (' + (t - f + 1) + ' words)', b.rank === rank && b.from === f && b.to === t && b.size === t - f + 1, [b.rank, b.from, b.to]) })
 
-  // ══ 17–18  Shodan only at 2,000 + proof ══
+  // ══ 17–18  Shodan only at 2,500 + proof ══
   const rk = (lang, k) => c.rankProgressFor(full(lang, k)).current.rank
-  T(17, 'Shodan is NOT awarded at 1,800 or 1,999 qualifying words (still studying 1st Kyu: 0/200 and 199/200); the old 1,801–2,000 "Shodan" band is gone',
-    rk('th', 1800) === '1st Kyu' && rk('th', 1999) === '1st Kyu' && c.rankProgressFor(full('th', 1999)).rankState.passedCount === 199 && c.curriculumRangeFor('Shodan') === null, [rk('th', 1800), rk('th', 1999)])
-  const v2000 = full('th', 2000), seenOnly = full('th', 2000).map(w => ({ ...w, status: 'learning', okStreak: 0, rankPassed: false }))
-  T(18, 'Shodan = 2,000 qualifying words PLUS the existing rank-test proof: all 2,000 passed → Shodan; 2,000 seen but unproven → 1st Kyu (the rank test unlocks, not complete)',
-    rk('th', 2000) === 'Shodan' && c.awardedRankName(v2000) === 'Shodan' && c.currentRankName(seenOnly) === 'White' && c.rankTestStatus(seenOnly, 'White').unlocked && !c.rankTestStatus(seenOnly, 'White').complete)
+  T(17, 'Shodan is NOT awarded at 2,175 or 2,499 qualifying words (still studying 1st Kyu: 0/325 and 324/325); Shodan has no word band',
+    rk('th', 2175) === '1st Kyu' && rk('th', 2499) === '1st Kyu' && c.rankProgressFor(full('th', 2499)).rankState.passedCount === 324 && c.curriculumRangeFor('Shodan') === null, [rk('th', 2175), rk('th', 2499)])
+  const v2000 = full('th', 2500), seenOnly = full('th', 2500).map(w => ({ ...w, status: 'learning', okStreak: 0, rankPassed: false }))
+  T(18, 'Shodan = all 2,500 qualifying words proven by the existing rank tests: all 2,500 passed → Shodan; 2,500 seen but unproven → not Shodan (the rank test unlocks, not complete)',
+    rk('th', 2500) === 'Shodan' && c.awardedRankName(v2000) === 'Shodan' && c.currentRankName(seenOnly) === 'White' && c.rankTestStatus(seenOnly, 'White').unlocked && !c.rankTestStatus(seenOnly, 'White').complete)
 
   // ══ 19  all three languages ══
-  const per = ['th', 'ja', 'zh'].map(l => [rk(l, 399), rk(l, 400), rk(l, 1999), rk(l, 2000)].join('|'))
-  T(19, 'Thai, Japanese and Mandarin use the same requirements (399 → 9th, 400 → 8th, 1,999 → 1st Kyu, 2,000 → Shodan in each)', per.every(x => x === '9th Kyu|8th Kyu|1st Kyu|Shodan'), per)
+  const per = ['th', 'ja', 'zh'].map(l => [rk(l, 399), rk(l, 400), rk(l, 2499), rk(l, 2500)].join('|'))
+  T(19, 'Thai, Japanese and Mandarin use the same requirements (399 → 9th, 400 → 8th, 2,499 → 1st Kyu, 2,500 → Shodan in each)', per.every(x => x === '9th Kyu|8th Kyu|1st Kyu|Shodan'), per)
 
   // ══ 20  every surface agrees ══
   {

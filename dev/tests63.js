@@ -94,6 +94,12 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     { speaker: 'B', thai: 'ทางออกนั้นไกลไหมคะ', english: 'Is that exit far', prompt: 'Ask if that exit is far.', targetId: 2 }], null)
   T('F3', 'every line\'s English ends with punctuation, a question decided by the Thai ("Have a safe trip." not "?"; "Is that exit far?")',
     pu[0].english === 'Have a safe trip.' && pu[1].english === 'I have already reached the bus stop.' && pu[2].english === 'Is that exit far?', pu.map(p => p.english))
+  // v706 (paid track 2, line 2) — a greeting opens with the speaker's particle
+  const gp = c.thaiFramingTidy([{ _target: 'greeting', speaker: 'B', thai: 'สวัสดี ฉันสบายดีค่ะ', phonetic: 'sà-wàt-dii chǎn sà-baai-dii khâ', english: 'Hello, I am doing well.', prompt: 'Greet him back.' },
+    { _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ คุณนิดา', phonetic: 'sà-wàt-dii-khráp khun ní-daa', english: 'Hello Nida.', prompt: 'Greet Nida.' },
+    { speaker: 'A', thai: 'สวัสดี ผมชื่อสมชายครับ', english: 'Hi, I am Somchai.', prompt: 'Introduce yourself.', targetId: 3 }], null)
+  T('F5', 'a greeting line\'s bare สวัสดี takes the speaker\'s particle (B: "สวัสดีค่ะ ฉันสบายดีค่ะ", reading sà-wàt-dii-khâ …); a greeting that has it, and target lines, are untouched',
+    gp[0].thai === 'สวัสดีค่ะ ฉันสบายดีค่ะ' && gp[0].phonetic === 'sà-wàt-dii-khâ chǎn sà-baai-dii khâ' && gp[1].thai === 'สวัสดีครับ คุณนิดา' && gp[2].thai === 'สวัสดี ผมชื่อสมชายครับ', gp.map(p => [p.thai, p.phonetic]))
   const src2 = require('fs').readFileSync('tt.jsx', 'utf8')
   T('X1', 'writer: the three lines are ONE exchange (LINE 3 answers LINE 2, roles straight, no contradiction, แล้วหรือยัง) and a line only fills a slot of its own speaker (A-B-A)',
     /EXCHANGE \(overrides the plan above when they clash\)/.test(src2) && /LINE 3 ANSWERS LINE 2/.test(src2) && /const _slotSp = x => x === 2 \? 'B' : 'A'/.test(src2) && /_unfilled\(\)\.find\(x => _open\.has\(x\) && _spOk\(x\)\)/.test(src2))

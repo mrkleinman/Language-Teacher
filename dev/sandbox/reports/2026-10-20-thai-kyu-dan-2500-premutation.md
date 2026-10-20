@@ -232,8 +232,29 @@ The owner needs to supply **42 replacement words**: 41 if slot 1849 is meant to 
   - 976 แว่นตา / 1531 แว่นสายตา
   - 899 วิน / 2320 วินมอเตอร์ไซค์
 
+## Owner decisions (20 Oct) and what was done
+
+- **2,500 is the standard for Thai, Japanese and Mandarin.** The shared table now reads:
+  - 4th Kyu 1,201–1,525
+  - 3rd Kyu 1,526–1,850
+  - 2nd Kyu 1,851–2,175
+  - 1st Kyu 2,176–2,500
+
+  Total 2,500. Positions 1–1,200 are unchanged. There is no per-language split.
+- **Shodan is awarded on completing all 2,500,** under the existing rank-test rules, with no separate assessment. The belt page reads "all 2,500 qualifying words".
+- **Replacement words come in a later session.** No word data for 801–2,500 has been written. The Thai bank still holds 1–800, so no learner changes belt.
+- **Tests.** The tests that pinned the old ladder (tests46, tests58, tests37 G2) were moved to the new table. Each is marked EXPECTED THRESHOLD CHANGE, and every check still tests the same property:
+
+  | Test | Result |
+  |---|---|
+  | tests46 | 26/26 |
+  | tests58 | 32/32 |
+  | tests29 | pass |
+  | tests61 | pass |
+  | tests43 | pass |
+
 ## TL;DR
 
-One table drives every Thai belt range. Changing four sizes (200 → 325) and the total (2000 → 2500) moves everything that derives from it, and 1–800 does not change. To keep Japanese and Mandarin untouched, the ladder must become per-language. Shodan must stop being auto-awarded when all belts are complete; it should show "assessment required" instead.
+One table drives every belt range. It now runs to 2,500 for all three languages, with 4th–1st Kyu at 325 words each and 1–1,200 unchanged. Shodan is awarded on completing all 2,500.
 
-All six lists (1,700 slots) have been matched. 229 words reuse an existing record and its history, and 1,436 need a new record. But 35 words are already taught in 1–800 and 6 are listed twice, so **the migration has stopped as instructed**. It needs 42 replacement words (41 if slot 1849 absorbs one) before anything is written.
+All six word lists (1,700 slots) have been matched: 229 reuse an existing record and its history, and 1,436 need a new record. But 35 words are already taught in 1–800 and 6 are listed twice, so no word data has been written. That needs 42 replacement words (41 if slot 1849 absorbs one), which the owner will supply next session.

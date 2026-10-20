@@ -1,6 +1,9 @@
 // v701 — the owner's corrected Kyu–Dan syllabus (2026-10-15; supersedes the v689 re-banding this file first pinned).
 //   Mukyu 1–100 · 10th Kyu 101–200 · then 200 words per rank: 9th 201–400 … 1st Kyu 1,801–2,000. Shodan has NO word range:
 //   it is awarded at 2,000 qualifying words + the rank-test proof. Belt page shows "201–400 · 200 words".
+// v706 — EXPECTED THRESHOLD CHANGE (owner, 2026-10-20): 2,500 is the standard for Thai, Japanese and Mandarin. 1–1,200 unchanged; 4th–1st
+//   Kyu are 325 words each (1,201–1,525 · 1,526–1,850 · 1,851–2,175 · 2,176–2,500); Shodan is awarded on completing all 2,500 (rank-test
+//   proof, no separate assessment). The expectations below were moved to that table; nothing else about these checks changed.
 // Real application functions; no model calls.
 //   B — the one canonical table and every derived table (belt page, rank ladder, new-word slots) agree
 //   E — every boundary, as curriculum positions (word → belt) and as known-word counts (learner → belt)
@@ -17,22 +20,22 @@ const ai = process.argv.indexOf('--app'), APP = ai > 0 ? path.resolve(process.ar
 const SRC = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')
 
 const WANT = [['White', 'Mukyu', 1, 100], ['Orange', '10th Kyu', 101, 200], ['Orange + Stripe', '9th Kyu', 201, 400], ['Blue', '8th Kyu', 401, 600], ['Blue + Stripe', '7th Kyu', 601, 800],
-  ['Yellow', '6th Kyu', 801, 1000], ['Yellow + Stripe', '5th Kyu', 1001, 1200], ['Green', '4th Kyu', 1201, 1400], ['Green + Stripe', '3rd Kyu', 1401, 1600],
-  ['Brown', '2nd Kyu', 1601, 1800], ['Brown + Stripe', '1st Kyu', 1801, 2000]]
+  ['Yellow', '6th Kyu', 801, 1000], ['Yellow + Stripe', '5th Kyu', 1001, 1200], ['Green', '4th Kyu', 1201, 1525], ['Green + Stripe', '3rd Kyu', 1526, 1850],
+  ['Brown', '2nd Kyu', 1851, 2175], ['Brown + Stripe', '1st Kyu', 2176, 2500]]
 const DISPLAY = { 'Mukyu': '1–100 · 100 words', '10th Kyu': '101–200 · 100 words', '9th Kyu': '201–400 · 200 words', '8th Kyu': '401–600 · 200 words', '7th Kyu': '601–800 · 200 words',
-  '6th Kyu': '801–1,000 · 200 words', '5th Kyu': '1,001–1,200 · 200 words', '4th Kyu': '1,201–1,400 · 200 words', '3rd Kyu': '1,401–1,600 · 200 words', '2nd Kyu': '1,601–1,800 · 200 words',
-  '1st Kyu': '1,801–2,000 · 200 words', 'Shodan': '2,000 qualifying words \\+ required assessment' }
+  '6th Kyu': '801–1,000 · 200 words', '5th Kyu': '1,001–1,200 · 200 words', '4th Kyu': '1,201–1,525 · 325 words', '3rd Kyu': '1,526–1,850 · 325 words', '2nd Kyu': '1,851–2,175 · 325 words',
+  '1st Kyu': '2,176–2,500 · 325 words', 'Shodan': 'all 2,500 qualifying words' }
 
 ;(async () => {
   const c = load(APP, { realBelt: true })
   // ══ B — one table, every derived table agrees ═══════════════════════════════════════════════════════════════════
   const CB = c.ev('CURRICULUM_BELTS')
-  T('B1', 'CURRICULUM_BELTS is exactly the owner\'s ladder (Mukyu and 10th Kyu 100 words; 9th–1st Kyu 200 each; 11 stages; no Shodan word range)',
-    JSON.stringify(CB.map(b => [b.name, b.rank, b.from, b.to])) === JSON.stringify(WANT) && CB.slice(0, 2).every(b => b.size === 100) && CB.slice(2).every(b => b.size === 200) && CB.length === 11,
+  T('B1', 'CURRICULUM_BELTS is exactly the owner\'s ladder (Mukyu and 10th Kyu 100 words; 9th–5th Kyu 200 each; 4th–1st Kyu 325 each; 11 stages; no Shodan word range)',
+    JSON.stringify(CB.map(b => [b.name, b.rank, b.from, b.to])) === JSON.stringify(WANT) && CB.slice(0, 2).every(b => b.size === 100) && CB.slice(2, 7).every(b => b.size === 200) && CB.slice(7).every(b => b.size === 325) && CB.length === 11,
     CB.map(b => [b.rank, b.from, b.to, b.size]))
   T('B2', 'the ladder is contiguous: every belt starts one after the previous ends (no gap, no overlap)', CB.every((b, i) => i === 0 ? b.from === 1 : b.from === CB[i - 1].to + 1))
   T('B3', 'the rank ladder, new-word slot table and belt page agree with it (assertBeltTablesAligned finds nothing)', c.assertBeltTablesAligned().length === 0 &&
-    JSON.stringify(c.ev('BELT_RANKS').map(b => b.minWords)) === JSON.stringify(WANT.map(w => w[2] - 1).concat([2000])) && JSON.stringify(c.ev('NEW_SLOTS_BY_KNOWN').map(s => s.minWords)) === JSON.stringify(WANT.map(w => w[2] - 1).concat([2000])))
+    JSON.stringify(c.ev('BELT_RANKS').map(b => b.minWords)) === JSON.stringify(WANT.map(w => w[2] - 1).concat([2500])) && JSON.stringify(c.ev('NEW_SLOTS_BY_KNOWN').map(s => s.minWords)) === JSON.stringify(WANT.map(w => w[2] - 1).concat([2500])))
   T('B4', 'no second copy of the ranges anywhere in the app: no hand-written from:/to: bounds remain (the v689 1301 / 1551 / 1801 bands are gone); the table is defined once, from stage sizes',
     !/from:\s*\d{3,4}\b|to:\s*\d{3,4}\b/.test(SRC.replace(/^const RAW_VOCAB = .*$/m, '')) && (SRC.match(/const CURRICULUM_BELTS =/g) || []).length === 1 && (SRC.match(/const CURRICULUM_STAGE_SIZES =/g) || []).length === 1)
   // the belt page, rendered for each language
@@ -40,46 +43,46 @@ const DISPLAY = { 'Mukyu': '1–100 · 100 words', '10th Kyu': '101–200 · 100
   for (const lang of ['th', 'ja', 'zh']) {
     const html = RDS.renderToStaticMarkup(React.createElement(cr.BeltRankView, { vocab: [], onBack() {}, lang })).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
     const miss = Object.entries(DISPLAY).filter(([rank, range]) => !new RegExp(rank.replace(/ /g, '\\s*') + '[\\s\\S]{0,400}?' + range).test(html)).map(([r, g]) => r + ' ' + g)
-    T('B5' + lang, 'belt page (' + lang + ') shows every rank\'s positions: 9th Kyu 201–400 · 200 words … 1st Kyu 1,801–2,000 · 200 words · Shodan 2,000 qualifying words + required assessment',
+    T('B5' + lang, 'belt page (' + lang + ') shows every rank\'s positions: 9th Kyu 201–400 · 200 words … 1st Kyu 2,176–2,500 · 325 words · Shodan all 2,500 qualifying words',
       !miss.length && !/500–699|1550–1799|1800–∞|1300–1549/.test(html), { miss, sample: html.slice(0, 300) })
   }
   // ══ E — every boundary ════════════════════════════════════════════════════════════════════════════════════════
   const pos = [[200, 'Orange'], [201, 'Orange + Stripe'], [350, 'Orange + Stripe'], [400, 'Orange + Stripe'], [401, 'Blue'], [500, 'Blue'], [600, 'Blue'], [601, 'Blue + Stripe'], [750, 'Blue + Stripe'],
-    [800, 'Blue + Stripe'], [801, 'Yellow'], [1000, 'Yellow'], [1001, 'Yellow + Stripe'], [1200, 'Yellow + Stripe'], [1201, 'Green'], [1400, 'Green'], [1401, 'Green + Stripe'], [1600, 'Green + Stripe'],
-    [1601, 'Brown'], [1800, 'Brown'], [1801, 'Brown + Stripe'], [1850, 'Brown + Stripe'], [2000, 'Brown + Stripe'], [2001, 'Beyond curriculum'], [1, 'White'], [100, 'White'], [101, 'Orange']]
+    [800, 'Blue + Stripe'], [801, 'Yellow'], [1000, 'Yellow'], [1001, 'Yellow + Stripe'], [1200, 'Yellow + Stripe'], [1201, 'Green'], [1525, 'Green'], [1526, 'Green + Stripe'], [1850, 'Green + Stripe'],
+    [1851, 'Brown'], [2175, 'Brown'], [2176, 'Brown + Stripe'], [2300, 'Brown + Stripe'], [2500, 'Brown + Stripe'], [2501, 'Beyond curriculum'], [1, 'White'], [100, 'White'], [101, 'Orange']]
   const posBad = pos.filter(([i, b]) => c.beltForCurriculumIndex(i) !== b).map(([i, b]) => i + '→' + c.beltForCurriculumIndex(i) + ' (want ' + b + ')')
-  T('E1', 'word → belt at every boundary by curriculum position (200/201, 400/401, 600/601 … 1800/1801, 2000/2001; 350 → 9th, 500 → 8th, 750 → 7th, 1850 → 1st Kyu)', !posBad.length, posBad)
+  T('E1', 'word → belt at every boundary by curriculum position (200/201, 400/401, 600/601 … 2175/2176, 2500/2501; 350 → 9th, 500 → 8th, 750 → 7th, 2300 → 1st Kyu)', !posBad.length, posBad)
   const known = [[199, '10th Kyu'], [200, '9th Kyu'], [399, '9th Kyu'], [400, '8th Kyu'], [599, '8th Kyu'], [600, '7th Kyu'], [999, '6th Kyu'], [1000, '5th Kyu'],
-    [1599, '3rd Kyu'], [1600, '2nd Kyu'], [1799, '2nd Kyu'], [1800, '1st Kyu'], [1999, '1st Kyu'], [2000, 'Shodan'], [2500, 'Shodan']]
+    [1524, '4th Kyu'], [1525, '3rd Kyu'], [2174, '2nd Kyu'], [2175, '1st Kyu'], [2499, '1st Kyu'], [2500, 'Shodan'], [3000, 'Shodan']]
   const knownBad = known.filter(([k, r]) => c.calculateBeltRank(k).current.rank !== r).map(([k, r]) => k + '→' + c.calculateBeltRank(k).current.rank + ' (want ' + r + ')')
-  T('E2', 'known-word-count ladder (calculateBeltRank, used by the Japanese stats line) follows the same table: 1,800 and 1,999 are 1st Kyu, Shodan only at 2,000', !knownBad.length, knownBad)
-  const togo = [[100, 100], [200, 200], [399, 1], [400, 200], [1800, 200], [1999, 1]]
+  T('E2', 'known-word-count ladder (calculateBeltRank, used by the Japanese stats line) follows the same table: 2,175 and 2,499 are 1st Kyu, Shodan only at 2,500', !knownBad.length, knownBad)
+  const togo = [[100, 100], [200, 200], [399, 1], [400, 200], [2175, 325], [2499, 1]]
   const togoBad = togo.filter(([k, w]) => c.calculateBeltRank(k).wordsToNext !== w).map(([k, w]) => k + ': ' + c.calculateBeltRank(k).wordsToNext + ' (want ' + w + ')')
-  T('E3', 'words-to-next-belt counter (known-count ladder): 100 at the start of 10th Kyu, 200 at the start of 9th / 8th / 1st Kyu, 1 at 399 and 1,999', !togoBad.length, togoBad)
-  // the belt page now reads the SAME stage progress as the dashboard (rankProgressFor) on a full 2,000-position curriculum
-  const fullBank = k => Array.from({ length: 2000 }, (_, i) => ({ id: i + 1, thai: 'w' + i, curriculumIndex: i + 1, status: i < k ? 'known' : 'new', repCount: i < k ? 3 : 0, lastSeen: i < k ? '2026-10-01' : null }))
+  T('E3', 'words-to-next-belt counter (known-count ladder): 100 at the start of 10th Kyu, 200 at the start of 9th / 8th Kyu, 325 at the start of 1st Kyu, 1 at 399 and 2,499', !togoBad.length, togoBad)
+  // the belt page now reads the SAME stage progress as the dashboard (rankProgressFor) on a full 2,500-position curriculum
+  const fullBank = k => Array.from({ length: 2500 }, (_, i) => ({ id: i + 1, thai: 'w' + i, curriculumIndex: i + 1, status: i < k ? 'known' : 'new', repCount: i < k ? 3 : 0, lastSeen: i < k ? '2026-10-01' : null }))
   const pv = (k) => RDS.renderToStaticMarkup(React.createElement(cr.BeltRankView, { vocab: fullBank(k), onBack() {}, lang: 'th' })).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
-  const p399 = pv(399), p400 = pv(400), p1999 = pv(1999), p2000 = pv(2000)
-  T('E4', 'belt page counter with 399 / 400 / 1,999 / 2,000 proven words: "1 to 8th Kyu", "200 to 7th Kyu", "1 to Shodan", and no next rank at Shodan',
+  const p399 = pv(399), p400 = pv(400), p1999 = pv(2499), p2000 = pv(2500)
+  T('E4', 'belt page counter with 399 / 400 / 2,499 / 2,500 proven words: "1 to 8th Kyu", "200 to 7th Kyu", "1 to Shodan", and no next rank at Shodan',
     /\b1 to 8th Kyu\b/.test(p399) && /\b200 to 7th Kyu\b/.test(p400) && /\b1 to Shodan\b/.test(p1999) && !/\bto Shodan\b/.test(p2000), [p399.match(/\d+ to [^ ]+ Kyu|\d+ to Shodan/), p400.match(/\d+ to [^ ]+ Kyu/), p1999.match(/\d+ to Shodan/)])
   T('E5', 'curriculumRangeFor returns the new ranges for each belt; Shodan has none', JSON.stringify(['Yellow', 'Yellow + Stripe', 'Green', 'Green + Stripe', 'Brown', 'Brown + Stripe', 'Shodan'].map(x => { const r = c.curriculumRangeFor(x); return r && [r.from, r.to] }))
-    === JSON.stringify([[801, 1000], [1001, 1200], [1201, 1400], [1401, 1600], [1601, 1800], [1801, 2000], null]))
+    === JSON.stringify([[801, 1000], [1001, 1200], [1201, 1525], [1526, 1850], [1851, 2175], [2176, 2500], null]))
   // ══ W — membership and counters, all three languages ═══════════════════════════════════════════════════════════
-  // a full 2000-word curriculum (as Thai / Japanese / Mandarin banks will grow into): each belt gets exactly its range
+  // a full 2,500-word curriculum (as Thai / Japanese / Mandarin banks will grow into): each belt gets exactly its range
   for (const lang of ['th', 'ja', 'zh']) {
     const F = { th: 'thai', ja: 'japanese', zh: 'chinese' }[lang]
-    const full = Array.from({ length: 2100 }, (_, i) => ({ id: 100000 + i, [F]: 'w' + i, curriculumIndex: i < 2000 ? i + 1 : 0, status: i < 700 ? 'known' : 'new', repCount: i < 700 ? 3 : 0, okStreak: i < 700 ? 2 : 0 }))
+    const full = Array.from({ length: 2600 }, (_, i) => ({ id: 100000 + i, [F]: 'w' + i, curriculumIndex: i < 2500 ? i + 1 : 0, status: i < 700 ? 'known' : 'new', repCount: i < 700 ? 3 : 0, okStreak: i < 700 ? 2 : 0 }))
     const counts = WANT.map(w => c.wordsForRank(full, w[0]).length), want = WANT.map(w => w[3] - w[2] + 1)
     const firstLast = WANT.map(w => { const ws = c.wordsForRank(full, w[0]); return [ws[0].curriculumIndex, ws[ws.length - 1].curriculumIndex] })
     const all = WANT.flatMap(w => c.wordsForRank(full, w[0]).map(x => x.id))
-    T('W1' + lang, lang + ': with a full 2000-word curriculum every belt holds exactly its range (Mukyu / 10th Kyu 100, 9th–1st Kyu 200); every word in exactly one belt; words beyond 2000 in none',
-      JSON.stringify(counts) === JSON.stringify(want) && JSON.stringify(firstLast) === JSON.stringify(WANT.map(w => [w[2], w[3]])) && new Set(all).size === 2000 && all.length === 2000, { counts, firstLast: firstLast.slice(5) })
+    T('W1' + lang, lang + ': with a full 2,500-word curriculum every belt holds exactly its range (Mukyu / 10th Kyu 100, 9th–5th Kyu 200, 4th–1st Kyu 325); every word in exactly one belt; words beyond 2,500 in none',
+      JSON.stringify(counts) === JSON.stringify(want) && JSON.stringify(firstLast) === JSON.stringify(WANT.map(w => [w[2], w[3]])) && new Set(all).size === 2500 && all.length === 2500, { counts, firstLast: firstLast.slice(5) })
     const st6 = c.rankTestStatus(full, 'Blue'), st5 = c.rankTestStatus(full, 'Blue + Stripe')
     T('W2' + lang, lang + ': rank-test counters follow the new ranges (8th Kyu 401–600: 200 words, all passed with 700 known; 7th Kyu 601–800: 200 words, 100 passed)', st6.total === 200 && st6.passedCount === 200 && st5.total === 200 && st5.passedCount === 100, { st6: [st6.total, st6.passedCount], st5: [st5.total, st5.passedCount] })
   }
   for (const [lang, fn, size] of [['th', 'initVocab', 1799], ['ja', 'initJapaneseVocab', 200], ['zh', 'initMandarinVocab', 100]]) {
     const v = c[fn](), ids = v.map(w => w.id)
-    const placed = WANT.reduce((a, w) => a + c.wordsForRank(v, w[0]).length, 0), curr = v.filter(w => (w.curriculumIndex || 0) >= 1 && (w.curriculumIndex || 0) <= 2000 && !w.duplicateOf).length
+    const placed = WANT.reduce((a, w) => a + c.wordsForRank(v, w[0]).length, 0), curr = v.filter(w => (w.curriculumIndex || 0) >= 1 && (w.curriculumIndex || 0) <= 2500 && !w.duplicateOf).length
     T('W3' + lang, lang + ': the real bank keeps every word and ID (' + size + ' words, no duplicates) and every curriculum word sits in exactly one belt; the stored belt label matches the new ranges',
       // v698: the owner's Topics brief adds the 50 Wedding Speech words once, unranked (topicOnly) — the original bank is unchanged
       // Thai 501–800: +151 new curriculum words, and 5 Wedding Speech words became curriculum words (1643 + 151 + 5; 45 topic-only)

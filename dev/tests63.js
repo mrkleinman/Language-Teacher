@@ -172,7 +172,20 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     await c.thaiScenePolish(tr4, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v }, null)
     T('S4', 'scene polish: a later scene sees the earlier scenes\' lines ("EARLIER IN THIS LESSON … do not repeat"); the first scene has none',
       p4.length === 2 && !/EARLIER IN THIS LESSON/.test(p4[0]) && /EARLIER IN THIS LESSON[^\n]*\n(A|B): ผมไม่มีช้อนครับ\n(A|B): ช้อนอยู่ไหนคะ\n(A|B): ผมเอาช้อนมาให้นะครับ/.test(p4[1]),
-      { n: p4.length, second: (p4[1] || '').slice((p4[1] || '').indexOf('EARLIER'), (p4[1] || '').indexOf('EARLIER') + 160) }) }
+      { n: p4.length, second: (p4[1] || '').slice((p4[1] || '').indexOf('EARLIER'), (p4[1] || '').indexOf('EARLIER') + 160) })
+    // v706 (relay tracks 16/17) — FIX MODE: only the scene holding a refused line is sent, with the refusal's reason; only the refused line
+    // and the line before it may change; the rewritten line loses its refused mark
+    const tr6 = { ...tr4, pairs: tr4.pairs.map((p, i) => i === 2 ? { ...p, _qcInvalid: 'FINAL_SNAPSHOT: UNNATURAL — x' } : p) }
+    const p6 = []
+    c.mockGeminiGenerate = async (k, m, msgs) => { p6.push(msgs[0].content); return JSON.stringify({ lines: [
+      { n: 1, thai: 'ช้อนไม่มีครับ', english: 'No spoon.', cue: 'Say there is no spoon.' },
+      { n: 2, thai: 'ช้อนอยู่ที่ไหนคะ', english: 'Where is the spoon?', cue: 'Ask where the spoon is.' },
+      { n: 3, thai: 'ผมเอาช้อนมาให้ครับ', english: "I'll bring a spoon.", cue: "Say you'll bring a spoon." }] }) }
+    const r6 = await c.thaiScenePolish(tr6, { apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), vocab: v, polishFix: new Map([['ผมเอาช้อนมาให้นะครับ', 'UNNATURAL — does not answer where the spoon is']]) }, null)
+    T('S6', 'scene polish FIX MODE: one request, only for the scene with the refused line, naming the refusal; the refused line (L3) and the line before it (L2) change, L1 does not; the rewritten line loses its refused mark',
+      p6.length === 1 && /THE FINAL NATIVE REVIEWER REFUSED THESE LINES[\s\S]*L3 A: ผมเอาช้อนมาให้นะครับ — refused: does not answer where the spoon is/.test(p6[0]) &&
+      r6.pairs[0].thai === 'ผมไม่มีช้อนครับ' && r6.pairs[1].thai === 'ช้อนอยู่ที่ไหนคะ' && r6.pairs[2].thai === 'ผมเอาช้อนมาให้ครับ' && r6.pairs[2]._qcInvalid === undefined,
+      { n: p6.length, th: r6.pairs.slice(0, 3).map(p => p.thai), inv: r6.pairs[2]._qcInvalid, rej: r6.rejected }) }
   { const src0 = require('fs').readFileSync('tt.jsx', 'utf8')
     T('P1', 'Thai Daily scene planner: at most 6 words per mini-scene, and a premise that gives every word a reason to be said (ticket → vehicle / counter; exit → station); the writer asks for three different combinations of the word',
       /\(c\.lang \|\| 'th'\) === 'th' && dailyV693On\(\) \? 'Keep each mini-scene to at most 6 words\. Its localPremise must give EVERY word/.test(src0) && /Across the three lines use the word in DIFFERENT combinations or senses/.test(src0)) }

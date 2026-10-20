@@ -176,7 +176,8 @@ const KEY = 'k', MODEL = 'gemini-2.5-flash-lite'
     const o2 = c.thaiGreetingTargetsFirst(o, null)
     T('H2', 'already first → unchanged (idempotent)', o2.map(p => p._pairKey).join(',') === o.map(p => p._pairKey).join(','))
     T('H3', 'the finaliser applies it before the final snapshot audit (whose local-contradiction check then sees the final order)',
-      SRC.indexOf('thaiGreetingTargetsFirst(t.pairs, log)') > 0 && SRC.indexOf('thaiGreetingTargetsFirst(t.pairs, log)') < SRC.indexOf('const s1 = await thaiFinalSnapshotAudit(t, c, log)'))
+      // v706: the declaration became `let s1` (the scene-polish fix mode reassigns it); the ORDER this checks is unchanged
+      SRC.indexOf('thaiGreetingTargetsFirst(t.pairs, log)') > 0 && SRC.indexOf('thaiGreetingTargetsFirst(t.pairs, log)') < SRC.search(/(?:const|let) s1 = await thaiFinalSnapshotAudit\(t, c, log\)/))
   } catch (e) { T('ERR', 'section H crashed: ' + String(e && e.stack).slice(0, 300), false) }
 
   // ══ I — the export says which code produced the track ══

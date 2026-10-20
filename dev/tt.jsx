@@ -15544,7 +15544,7 @@ async function thaiScenePolish(t, c, log) {
   const apply = (sc, line, ed, th) => {
     const old = line.pair, at = pairs.indexOf(old); if (at < 0) return
     const nu = { ...old, thai: th, text: th, english: String(ed.english).trim(), prompt: String(ed.cue).trim(), phonetic: '', words: [], _scenePolishedFrom: old.thai,
-      _semanticState: undefined, _semCue: undefined, _semNat: undefined, _semanticUnverified: { stage: 'NOT_AUDITED', reason: 'text rewritten by the scene polish — judged by the final snapshot audit' } }
+      _semanticState: undefined, _semCue: undefined, _semNat: undefined, _qcInvalid: undefined, _semanticUnverified: { stage: 'NOT_AUDITED', reason: 'text rewritten by the scene polish — judged by the final snapshot audit' } }
     pairs[at] = nu; line.pair = nu; changed++
     log && log('    ✏ SCENE_POLISH ' + sc.sceneId + ' ' + (line.framing ? line.n : 'L' + line.n) + ': ' + old.thai + ' → ' + th)
   }
@@ -15554,16 +15554,25 @@ async function thaiScenePolish(t, c, log) {
     let o = null; try { o = coherenceJudgeParse(raw) || JSON.parse(String(raw)) } catch (e) {}
     return (o && Array.isArray(o.lines) ? o.lines : []).filter(x => x && x.n != null && typeof x.thai === 'string')
   }
+  // v706 (relay tracks 16/17: single-slot quota recovery rewrote refused lines and the strict judge refused 2 in 3 again) — FIX MODE:
+  // c.polishFix maps a refused line (pairId or Thai) to the final judge's reason; only scenes holding one are sent, the prompt names
+  // each refusal, and only a refused line or the line just before it may change (a reply often needs its question changed)
+  const fixKey = p => p && (p.pairId || p.thai)
+  const fixOf = p => c.polishFix && (c.polishFix.get(p && p.pairId) || c.polishFix.get(p && p.thai))
   for (const sc of sections) {
     if (c.cancelled && c.cancelled()) break
     if (!sc.lines || sc.lines.filter(l => !l.framing).length < 3) continue
+    if (c.polishFix && !sc.lines.some(l => fixOf(l.pair))) continue
     let edits
     const earlier = sections.slice(0, sections.indexOf(sc)).flatMap(x => (x.lines || []).map(l => (l.pair.speaker || 'A') + ': ' + l.pair.thai))
-    try { edits = await ask(thaiScenePolishPrompt(sc, allowed, names, earlier)) }
+    const fixBlock = c.polishFix ? '\n\nTHE FINAL NATIVE REVIEWER REFUSED THESE LINES. Rewrite EACH one (you may also change the line just before it when that is what makes the reply natural); change nothing else:\n' +
+      sc.lines.filter(l => fixOf(l.pair)).map(l => (l.framing ? l.n : 'L' + l.n) + ' ' + (l.pair.speaker || 'A') + ': ' + l.pair.thai + ' — refused: ' + String(fixOf(l.pair)).replace(/^[A-Z_ ]+—\s*/, '').slice(0, 160)).join('\n') : ''
+    const mayEdit = l => { if (!c.polishFix) return true; const k = sc.lines.indexOf(l); return !!fixOf(l.pair) || (k >= 0 && k + 1 < sc.lines.length && !!fixOf(sc.lines[k + 1].pair)) }
+    try { edits = await ask(thaiScenePolishPrompt(sc, allowed, names, earlier) + fixBlock) }
     catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_POLISH ' + sc.sceneId + ': request failed — scene kept (' + String(e && e.message || e).slice(0, 80) + ')'); continue }
     const refusedHere = []
     edits.forEach(ed => {
-      const line = sc.lines.find(l => String(l.n) === String(ed.n).replace(/^L/, '')); if (!line) return
+      const line = sc.lines.find(l => String(l.n) === String(ed.n).replace(/^L/, '')); if (!line || !mayEdit(line)) return
       const r = check(line, ed); if (r.skip) return
       if (r.why.length) { refusedHere.push({ line, ed, why: r.why }); return }
       apply(sc, line, ed, r.th)
@@ -22547,7 +22556,15 @@ async function finaliseMainTrack(track, adapter, ctx) {
   let _snap = null
   if (adapter.lang === 'th' && dailyV693On()) {
     try {
-      const s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap = { first: s1.report }
+      let s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap = { first: s1.report }
+      // v706 (relay tracks 16/17) — refused lines first go back to the SCENE polish (fix mode: the judge's reasons, the line and the one
+      // before it may change), are judged again in context, and only what still fails goes to single-slot quota recovery
+      if (s1.report.invalid.length && THAI_SCENE_POLISH_ACTIVE) {
+        try { const fix = new Map(); s1.report.invalid.forEach(x => { if (x.pairId) fix.set(x.pairId, x.reason); if (x.thai) fix.set(x.thai, x.reason) })
+          const fx = await thaiScenePolish(t, { ...c, polishFix: fix }, log)
+          if (fx.changed) { t = { ...t, pairs: fx.pairs }; c.track = t; s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap.polishFix = { calls: fx.calls, changed: fx.changed, afterInvalid: s1.report.invalid.length } }
+        } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e }
+      }
       if (s1.report.invalid.length) {
         c.track = t
         const q2 = await enforceTrackPairQuota(t, adapter, { ...c, quotaRounds: 1 })

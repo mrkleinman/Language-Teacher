@@ -15415,10 +15415,16 @@ function thaiFixParticleSpelling(pairs, log) {
   // v704 (blind review of relay run 6: ไม่ใช่ค่ะศูนย์แปดเจ็ด) — a polite particle that ends a phrase is followed by a space when more
   // Thai follows (ไม่ใช่ค่ะ ศูนย์แปดเจ็ด); ครับผม is one phrase
   const sp = th => th.replace(/(ค่ะ|ครับ)(?=[ก-ฮเ-ไ])(?!ผม)/g, '$1 ')
+  // v707 (blind reviews of paid tracks 2–4: "ใช่ ผมมาครับ", "ไม่รู้ ลองถามดู", "ไม่แพงนะ ห้าสิบบาท" — a bare reply word before more Thai is curt
+  // as model speech) — the opening ใช่ / ได้ / ไม่ใช่ / ไม่ / ไม่รู้ / ไม่เป็นไร / โอเค / จริง takes the speaker's particle
+  const curt = (th, sp0) => { if (!dailyV693On() || (sp0 !== 'A' && sp0 !== 'B')) return th
+    const m = th.match(/^(ใช่|ได้|ไม่ใช่|ไม่รู้|ไม่เป็นไร|ไม่|โอเค|จริง)(นะ)?\s+(?=\S)/) || th.match(/^([^\s]{2,12}?)(นะ)\s+(?=\S)/)
+    if (!m || /(ครับ|ค่ะ|คะ|จ้ะ|จ้า)$/.test(m[1])) return th
+    return m[1] + (m[2] || '') + (sp0 === 'A' ? 'ครับ' : 'ค่ะ') + ' ' + th.slice(m[0].length) }
   const out = (pairs || []).map(p => { if (!p || typeof p.thai !== 'string') return p
-    const th = sp(p.thai.replace(/นะค่ะ/g, 'นะคะ')); if (th === p.thai) return p; n++
+    const th = sp(curt(p.thai.replace(/นะค่ะ/g, 'นะคะ'), p.speaker)); if (th === p.thai) return p; n++
     return { ...p, thai: th, ...(p.text === p.thai ? { text: th } : {}) } })
-  if (n && log) log('  ✂ THAI_PARTICLE_SPELLING ' + n + ' line(s): นะค่ะ → นะคะ · a space after a phrase-final ค่ะ / ครับ')
+  if (n && log) log('  ✂ THAI_PARTICLE_SPELLING ' + n + ' line(s): นะค่ะ → นะคะ · a space after a phrase-final ค่ะ / ครับ · a bare opening reply word takes the speaker\'s particle')
   return out
 }
 // v704 — SCENE POLISH (independent reviews of relay tracks 1–4: 6.2–6.5/10, coherence 4.5–5). Each word's lines are written, checked
@@ -22040,6 +22046,9 @@ function thaiCueEnglishBroken(cue) {
   if (/\bdoes\s+(?:I|you|we|they)\b/i.test(c)) out.push('does + I/you/we/they')
   if (/\bmake\s+sure\s+(?:him|her|them|me|us)\b/i.test(c)) out.push('make sure + object pronoun')
   if (/\bthank\s+(?:him|her|them)\s+(?:they|he|she|we|I)\b/i.test(c)) out.push('thank + pronoun + clause')
+  // v707 (paid track 4: "Thank her today was really good." · "…and wishes Somchai a safe trip.")
+  if (/\bthank\s+(?:him|her|them)\s+(?:today|it|that|this|everything)\s+(?:was|is|were)\b/i.test(c)) out.push('thank + pronoun + clause')
+  if (/^(?:Say|Tell|Ask|Thank|Wish)\b[^.?!]*\band\s+(?:wishes|says|asks|tells|thanks)\b/.test(c)) out.push('and + -s verb after an instruction')
   // v706 (relay track 16: "Say yes, tell her to have to cross, …")
   if (/\b(?:tell|ask|remind)\s+(?:him|her|them|me)\s+to\s+(?:have\s+to|must|can|should|will)\b/i.test(c)) out.push('tell + pronoun + to + modal')
   // v706 (relay track 19: "Check that he sometimes swim.") — an adverb between the pronoun and the verb hides nothing

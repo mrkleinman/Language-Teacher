@@ -94,6 +94,11 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     { speaker: 'B', thai: 'ทางออกนั้นไกลไหมคะ', english: 'Is that exit far', prompt: 'Ask if that exit is far.', targetId: 2 }], null)
   T('F3', 'every line\'s English ends with punctuation, a question decided by the Thai ("Have a safe trip." not "?"; "Is that exit far?")',
     pu[0].english === 'Have a safe trip.' && pu[1].english === 'I have already reached the bus stop.' && pu[2].english === 'Is that exit far?', pu.map(p => p.english))
+  // v707 (paid tracks 2–4) — a bare opening reply word before more Thai takes the speaker's particle; a line that has it is untouched
+  { const pf = c.ev('thaiFixParticleSpelling')([{ speaker: 'A', thai: 'ใช่ ผมมาทุกวันครับ' }, { speaker: 'B', thai: 'ไม่รู้ ลองถามดูนะคะ' }, { speaker: 'A', thai: 'ไม่แพงนะ ห้าสิบบาทเองครับ' },
+      { speaker: 'A', thai: 'ใช่ครับ ผมมาครับ' }, { speaker: 'B', thai: 'ไม่ไปค่ะ' }], null).map(p => p.thai)
+    T('F6', 'a bare opening ใช่ / ไม่รู้ / ไม่…นะ before more Thai takes the speaker\'s particle (ใช่ครับ ผมมาทุกวันครับ · ไม่รู้ค่ะ ลองถามดูนะคะ · ไม่แพงนะครับ ห้าสิบบาทเองครับ); lines that have it, and ไม่ไป, are untouched',
+      JSON.stringify(pf) === JSON.stringify(['ใช่ครับ ผมมาทุกวันครับ', 'ไม่รู้ค่ะ ลองถามดูนะคะ', 'ไม่แพงนะครับ ห้าสิบบาทเองครับ', 'ใช่ครับ ผมมาครับ', 'ไม่ไปค่ะ']), pf) }
   // v706 (paid track 2, line 2) — a greeting opens with the speaker's particle
   const gp = c.thaiFramingTidy([{ _target: 'greeting', speaker: 'B', thai: 'สวัสดี ฉันสบายดีค่ะ', phonetic: 'sà-wàt-dii chǎn sà-baai-dii khâ', english: 'Hello, I am doing well.', prompt: 'Greet him back.' },
     { _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ คุณนิดา', phonetic: 'sà-wàt-dii-khráp khun ní-daa', english: 'Hello Nida.', prompt: 'Greet Nida.' },
@@ -246,7 +251,7 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const P67 = { speaker: 'B', thai: 'ไปชายหาดต้องใช้รถอะไรคะ', english: 'What vehicle do you need to go to the beach?', prompt: 'Ask what vehicle you need to use to go to the beach.' }
     const P85 = { speaker: 'B', thai: 'ขอให้คุณมาถึงห้าโมงเย็นนะคะ', english: 'Please make sure you arrive by five in the evening.', prompt: 'Say please make sure you arrive by five in the evening.' }
     const l67 = lint(P67, { addr: 'm', addrName: 'Somchai', names: ['Somchai', 'Nida'] }).cue, l85 = lint(P85, { addr: 'm', addrName: 'Somchai', names: ['Somchai', 'Nida'] }).cue
-    const bad = ['Ask what vehicle do he need to go to the beach.', 'Say please make sure him arrive by five in the evening.', 'Thank him they have fun too.', 'Ask if she want some tea.', 'Say yes, tell her to have to cross, but it is not far.', 'Check that he sometimes swim.']
+    const bad = ['Ask what vehicle do he need to go to the beach.', 'Say please make sure him arrive by five in the evening.', 'Thank him they have fun too.', 'Ask if she want some tea.', 'Say yes, tell her to have to cross, but it is not far.', 'Check that he sometimes swim.', 'Thank her today was really good.', 'Thank Nida and wishes Somchai a safe trip.']
     const good = ['Ask what time he wakes up.', 'Let him go first.', 'Say he can come too.', 'Ask if she wants some tea.', 'Thank him and tell him to have fun too.', 'Tell her she can sit here.', 'Ask what vehicle you need to use to go to the beach.',
       'Ask if he sometimes swims.', 'Ask when he will start.', 'Does he sometimes swim?']
     T('C2', 'cue lint (owner review of v705): pair 67 / 85 rewrites are never ungrammatical ("do he need", "make sure him arrive" are refused); the guard flags the four broken cues and none of seven sound ones; a broken cue is a BROKEN_ENGLISH defect',

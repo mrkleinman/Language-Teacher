@@ -15444,6 +15444,31 @@ const THAI_EXCHANGE_SHAPES = [
 ]
 // v704 (blind review of relay run 5: สีเหลือง ×3 "รถบัสสีเหลือง", หลาย ×3 "หลายคน") — a word whose three lines all carry the same phrase
 // around it is named for the polisher: the phrase is the longest stretch around the target that every one of its lines contains
+// v707 — a word's line that uses the SAME partner word right before or right after the target as one of the word's earlier lines
+// (ข้าม|สะพาน twice, ถึง|พัน twice, หลาย|คน twice). Words are the dictionary's (longest match); particles, pronouns, ไม่ / มี / เป็น / ที่ /
+// ก็ / แล้ว and the unit บาท are not partners. Each repeating line is reported once, with the shared phrase.
+const THAI_FRAME_STOP = new Set(['ครับ', 'ค่ะ', 'คะ', 'นะ', 'ไหม', 'ผม', 'ฉัน', 'คุณ', 'เรา', 'เขา', 'ไม่', 'มี', 'เป็น', 'ที่', 'ก็', 'แล้ว', 'บาท', 'จ้ะ', 'จ้า', 'หน่อย', 'ด้วย'])
+let _thaiFrameUnits = null
+function thaiFrameTokens(thai, target) {
+  if (!_thaiFrameUnits) { const u = new Set(THAI_EXTRA_UNITS); RAW_VOCAB.forEach(v => { if (v.t && v.t.length >= 2 && !/\s|\.\.\./.test(v.t)) u.add(v.t) }); _thaiFrameUnits = [...u].sort((x, y) => y.length - x.length) }
+  const units = target && !_thaiFrameUnits.includes(target) ? [target].concat(_thaiFrameUnits) : _thaiFrameUnits
+  const s = String(thai || '').replace(/\s+/g, ''), out = []; let i = 0
+  while (i < s.length) { const hit = (target && s.startsWith(target, i)) ? target : units.find(w => s.startsWith(w, i)); if (hit) { out.push(hit); i += hit.length } else { out.push(s[i]); i++ } }
+  return out
+}
+function thaiRepeatedFrames(lines) {
+  const by = new Map(), out = []
+  ;(lines || []).forEach(l => { const p = l && l.pair, s = p && (p.targetSurface || p._target); if (!s || l.framing || !p.thai) return; if (!by.has(s)) by.set(s, []); by.get(s).push(p) })
+  by.forEach((ps, s) => {
+    const nb = ps.map(p => { const tk = thaiFrameTokens(p.thai, s), k = tk.indexOf(s); if (k < 0) return null
+      const L = tk[k - 1], R = tk[k + 1]; return { L: L && !THAI_FRAME_STOP.has(L) && L.length >= 2 ? L : null, R: R && !THAI_FRAME_STOP.has(R) && R.length >= 2 ? R : null } })
+    for (let j = 1; j < ps.length; j++) { if (!nb[j]) continue
+      for (let i = 0; i < j; i++) { if (!nb[i]) continue
+        if (nb[j].L && nb[j].L === nb[i].L) { out.push({ pair: ps[j], target: s, phrase: nb[j].L + s }); break }
+        if (nb[j].R && nb[j].R === nb[i].R) { out.push({ pair: ps[j], target: s, phrase: s + nb[j].R }); break } } }
+  })
+  return out
+}
 function thaiSamePhraseTargets(lines) {
   const by = new Map()
   lines.forEach(l => { const s = l.pair.targetSurface || l.pair._target; if (s && !l.framing) { if (!by.has(s)) by.set(s, []); by.get(s).push(String(l.pair.thai || '').replace(/\s+/g, '')) } })
@@ -15654,6 +15679,11 @@ async function thaiSceneCritic(t, c, log) {
       const why = 'SCENE_' + String(x.type || 'PROBLEM').toUpperCase().replace(/[^A-Z_]/g, '') + ' — ' + String(x.why || '').slice(0, 160)
       if (p.pairId) fix.set(p.pairId, why); if (p.thai) fix.set(p.thai, why); named.push('L' + String(x.n).replace(/^L/, '') + ' ' + p.thai + ' (' + why.slice(0, 90) + ')') })
   }
+  // v707 (blind reviews of paid tracks 2–5: ข้ามสะพาน ×3, ถึงพัน ×3, คนวิ่งหลายคน ×3 — vocabulary 5.5–6/10) — a word's later line that
+  // repeats the earlier line's phrase around the target is named deterministically (no call): it needs a different construction
+  try { thaiRepeatedFrames(sections.flatMap(sc => sc.lines)).forEach(r => { const p = r.pair; if (fix.has(p.pairId || p.thai) || named.length >= THAI_SCENE_CRITIC_MAX + 6) return
+    const why = 'SCENE_REPEAT — repeats "' + r.phrase + '" from this word\'s earlier line; use ' + r.target + ' in a DIFFERENT construction (another partner word, a question, a request)'
+    if (p.pairId) fix.set(p.pairId, why); if (p.thai) fix.set(p.thai, why); named.push(p.thai + ' (' + why.slice(0, 90) + ')') }) } catch (e) {}
   log && log('  🔎 SCENE_CRITIC ' + calls + ' request(s) · ' + named.length + ' line(s) named' + (named.length ? ': ' + named.slice(0, 8).join(' | ').slice(0, 600) : ''))
   return { fix, named, calls }
 }
@@ -22012,10 +22042,30 @@ function thaiVerbSenseProblem(p) {
   const en = String(p && p.english || ''), miss = thaiVerbSenseUses(p && p.thai).filter(v => !THAI_VERB_SENSE[v].ok.test(en))
   return miss.length ? { id: 'VERB_SENSE', why: 'the English must translate ' + miss.map(v => v + ' as "' + THAI_VERB_SENSE[v].en + '"').join(' and ') + ' (never a generic "see"): "' + en + '"' } : null
 }
+// v707 (blind reviews of paid tracks 2–5: "really" with no มาก, "so" with no งั้น, "No," before a yes, "too" with no ด้วย, "already" with
+// no แล้ว — cues / English 6/10) — a word the English adds and the Thai does not say is dropped from the English (the cue is then rebuilt
+// from it). Only clear cases: each word has a list of Thai words that justify it, and nothing is removed when one of them is present.
+const THAI_EN_EXTRA = [
+  { re: /(?<!,\s)\b(really|very|so) (?=[a-z])/gi, thai: /มาก|จัง|จริง|เลย|สุด|เหลือเกิน|ค่อนข้าง|เยอะ|แสน|ทีเดียว|ทั้งนั้น|นัก/ },
+  { re: /,? (too|as well)(?=[.!?]$)/gi, thai: /ด้วย|ก็|เหมือนกัน|เช่นกัน|อีก|เกินไป/ },
+  { re: /\b(also) /gi, thai: /ด้วย|ก็|เหมือนกัน|เช่นกัน|อีก/ },
+  { re: /\b(already) /gi, thai: /แล้ว|เคย/ },
+  { re: /\b(still) /gi, thai: /ยัง|อยู่/ },
+  { re: /^(So),? (?=[a-zA-Z])/g, thai: /งั้น|เลย|ดังนั้น|ก็|ถ้า|แล้ว/ },
+  { re: /^(No),? (?=[a-zA-Z])/g, thai: /ไม่|เปล่า/ },
+]
+function thaiEnglishExtraWordsFix(thai, english) {
+  const th = String(thai || ''); let e = String(english || '')
+  THAI_EN_EXTRA.forEach(x => { if (x.thai.test(th)) return
+    const before = e; e = e.replace(x.re, '')
+    if (e !== before && /^[a-z]/.test(e) && /^[A-Z]/.test(before)) e = e[0].toUpperCase() + e.slice(1) })
+  return e.replace(/\s{2,}/g, ' ').trim()
+}
 function thaiEnglishFaithfulFix(p) {
   const th = String(p && p.thai || ''), en = String(p && p.english || '')
   let e2 = en
   if (dailyV693On()) e2 = thaiVerbSenseEnglishFix(th, e2)
+  if (dailyV693On()) e2 = thaiEnglishExtraWordsFix(th, e2)
   if (!/อยาก|ต้องการ/.test(th)) e2 = e2.replace(/\b([Dd])o you want to (come|go) to\b/, (m0, d, v, at) => (at === 0 ? 'Are' : 'are') + ' you ' + (v === 'come' ? 'coming' : 'going') + ' to')
   if (/ดีใจ/.test(th) && !/มา(?!ก)/.test(th)) e2 = e2.replace(/\b(I'm|I am) (so |really |very )?glad (that )?you (came|could come|made it)\b/, (m0, a, b) => a + ' ' + (b || '') + 'glad')
   // v703 (owner review of v702, pair 54): เลขาผมจัดนัดให้ — a third person does it for the SPEAKER; the Thai names no คุณ, so not "for you"

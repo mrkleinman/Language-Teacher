@@ -115,6 +115,17 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('V1', 'owner rule: ดู = watch / look, เห็น = notice, ชม = admire / appreciate — the standalone verbs are found (ดูแล, เห็นด้วย, ชมพู, ลอง…ดู, ดูเหมือน, ความเห็น are other words), "see" in the English becomes the owner\'s word, and a line that still breaks the rule is a VERB_SENSE defect; the dictionary glosses say the same',
       !ub.length && !fb.length && P({ thai: 'ผมเห็นเขาครับ', english: 'I caught sight of him.' }) && P({ thai: 'ผมเห็นเขาครับ', english: 'I caught sight of him.' }).id === 'VERB_SENSE' && !P({ thai: 'ผมเห็นเขาครับ', english: 'I noticed him.' }) &&
       V.find(v => v.id === 53).e === 'watch / look' && V.find(v => v.id === 786).e === 'notice' && V.find(v => v.id === 824).e === 'admire / appreciate' && /ดู = "watch" or "look"/.test(c.ev('THAI_VERB_SENSE_LINE')), { ub, fb }) }
+  // v707 (paid tracks 2–5) — English words the Thai does not say are dropped; a word's later line repeating the earlier phrase is named
+  { const X = c.ev('thaiEnglishExtraWordsFix'), RF = c.ev('thaiRepeatedFrames')
+    const xs = [['ผมชอบสีเหลืองครับ', 'I really like yellow.', 'I like yellow.'], ['ผมชอบสีเหลืองมากครับ', 'I really like yellow.', 'I really like yellow.'],
+      ['ไปกินข้าวกันครับ', 'So, let\'s go eat.', "Let's go eat."], ['งั้นไปกินข้าวกันครับ', 'So, let\'s go eat.', "So, let's go eat."],
+      ['ยังมีน้ำแข็งค่ะ', 'No, there is still some ice.', 'There is still some ice.'], ['ฉันชอบค่ะ', 'I like it too.', 'I like it.'], ['ฉันก็ชอบค่ะ', 'I like it too.', 'I like it too.'],
+      ['ผมกินข้าวครับ', 'I have already eaten.', 'I have eaten.'], ['ผมเหนื่อย ก็เลยกลับบ้านครับ', 'I was tired, so I went home.', 'I was tired, so I went home.']]
+    const xb = xs.filter(([t, e, w]) => X(t, e) !== w).map(([t, e, w]) => X(t, e) + ' (want ' + w + ')')
+    const L3 = (s, ths) => ths.map((th, k) => ({ n: k + 1, pair: { targetSurface: s, thai: th, pairId: s + k } }))
+    const rf = RF(L3('ข้าม', ['ข้ามสะพานไปครับ', 'ข้ามสะพานตรงนี้ได้ไหมคะ', 'ข้ามถนนระวังนะครับ']).concat(L3('พัน', ['ราคาไม่ถึงพันบาทครับ', 'สองพันบาทค่ะ', 'ห้าคนก็ไม่ถึงพันครับ'])))
+    T('V2', 'English words the Thai does not say are dropped ("really" without มาก, "So," without งั้น, "No," before a yes, "too" without ก็ / ด้วย, "already" without แล้ว) and kept when the Thai has them; a word\'s later line repeating its earlier phrase (ข้ามสะพาน, ไม่ถึงพัน) is named, a different use is not',
+      !xb.length && rf.length === 2 && rf.some(r => r.pair.thai === 'ข้ามสะพานตรงนี้ได้ไหมคะ') && rf.some(r => r.pair.thai === 'ห้าคนก็ไม่ถึงพันครับ'), { xb, rf: rf.map(r => [r.pair.thai, r.phrase]) }) }
   T('F5', 'a greeting line\'s bare สวัสดี takes the speaker\'s particle (B: "สวัสดีค่ะ ฉันสบายดีค่ะ", reading sà-wàt-dii-khâ …); a greeting that has it, and target lines, are untouched',
     gp[0].thai === 'สวัสดีค่ะ ฉันสบายดีค่ะ' && gp[0].phonetic === 'sà-wàt-dii-khâ chǎn sà-baai-dii khâ' && gp[1].thai === 'สวัสดีครับ คุณนิดา' && gp[2].thai === 'สวัสดี ผมชื่อสมชายครับ', gp.map(p => [p.thai, p.phonetic]))
   const src2 = require('fs').readFileSync('tt.jsx', 'utf8')

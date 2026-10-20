@@ -1,0 +1,27 @@
+// node match.js <owner-list.txt> — match an owner belt list against Thai RAW_VOCAB (read-only)
+const fs = require('fs')
+const { load } = require(require('path').join(__dirname, '..', '..', '..', 'harness.js'))
+const c = load(require('path').join(__dirname, '..', '..', '..', 'tt.compiled.js'), { realBelt: true })
+const V = c.ev('RAW_VOCAB')
+const nf = s => String(s || '').normalize('NFC').replace(/\s+/g, '')
+const items = [...fs.readFileSync(process.argv[2], 'utf8').matchAll(/(\d+) `([^`]+)`( 🇹🇭)? — ([^·\n]+)/g)].map(m => ({ slot: +m[1], t: m[2].normalize('NFC'), ctx: !!m[3], en: m[4].trim() }))
+const slots = items.map(x => x.slot), lo = Math.min(...slots), hi = Math.max(...slots)
+const gaps = []; for (let s = lo; s <= hi; s++) if (!slots.includes(s)) gaps.push(s)
+const seen = {}, dupList = items.filter(x => { const k = nf(x.t); if (seen[k]) return true; seen[k] = 1 })
+const out = { reuse: [], collision: [], fresh: [], ambiguous: [] }
+for (const it of items) {
+  const hits = V.filter(v => nf(v.t) === nf(it.t) || nf(String(v.t).replace(/\s*\.\.\.$/, '')) === nf(it.t))
+  const canon = hits.map(v => v.dup ? V.find(w => w.id === v.dup) || v : v).filter((v, i, a) => a.indexOf(v) === i)
+  const placed = canon.filter(v => v.curriculumIndex)
+  if (placed.length) out.collision.push({ ...it, ids: placed.map(v => v.id + '@' + v.curriculumIndex) })
+  else if (canon.length === 1) out.reuse.push({ ...it, id: canon[0].id, disp: canon[0].lexiconDisposition, e: canon[0].e })
+  else if (canon.length > 1) out.ambiguous.push({ ...it, ids: canon.map(v => v.id + ':' + v.lexiconDisposition) })
+  else out.fresh.push(it)
+}
+console.log(`list ${items.length} (slots ${lo}–${hi}, gaps ${gaps.length}, duplicates in list ${dupList.length}) · context ${items.filter(x => x.ctx).length} / general ${items.filter(x => !x.ctx).length}`)
+console.log(`reuse ${out.reuse.length} · new ${out.fresh.length} · collisions with 1–800 ${out.collision.length} · ambiguous ${out.ambiguous.length}`)
+out.collision.forEach(x => console.log('  COLLISION', x.slot, x.t, x.ids.join(',')))
+out.ambiguous.forEach(x => console.log('  AMBIGUOUS', x.slot, x.t, x.ids.join(',')))
+const disp = out.reuse.reduce((a, x) => (a[x.disp] = (a[x.disp] || 0) + 1, a), {}); console.log('  reused dispositions', JSON.stringify(disp))
+if (process.argv.includes('-v')) { out.reuse.forEach(x => console.log('  reuse', x.slot, x.t, '→ id', x.id, x.disp, '|', x.e)); console.log('  new:', out.fresh.map(x => x.slot + ' ' + x.t).join(' · ')) }
+if (process.argv.includes('--json')) fs.writeFileSync(process.argv[2].replace(/\.txt$/, '.match.json'), JSON.stringify({ items, ...out }, null, 1))

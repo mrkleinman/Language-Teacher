@@ -107,4 +107,20 @@ Expectation changes, each explained in its test:
 
 ## Status
 
-Test track 15 is in progress: same 30 words, Haiku stand-ins, the new judge. Its calibrated score will be added here.
+- **Relay test tracks.**
+  - Tracks 15 and 17 were lost to container restarts.
+  - Tracks 16 and 18 ended NOT_READY: 82/90 and 80/90. The strict judge refused lines, and single-line replacements failed again in context.
+  - Track 16 scored 6.5 with the calibrated reviewer.
+  - Track 19 (three polish-fix passes) is still running.
+- **First paid test track** (real Haiku, the owner's API, cap US$0.20): it **hit the cap at US$0.197 after 178 requests and did not finish.**
+  - **Quality.** It was close: 90 target lines, and the strict judge refused only 2, then 1 after repair. Real Haiku is refused far less often than the stand-ins.
+  - **Cost.** Tokens were 766k input and 241k output, of which 191k were thinking. That is about US$0.077 for input and US$0.12 for output.
+  - **Caching was not working.** 41 requests carried a cache mark, but the API created no cache entries. **Cause: the Cloud Run server the site uses (`dev/server/google-cloud-anthropic/index.js`) flattened the message blocks to plain text, which dropped the cache marks.** The Netlify function has passed them through since v703; the Cloud Run one never did.
+  - **Fix.** Fixed in the repository, with test tests45 G7. The live server only changes when the owner redeploys the function. Deploying is the owner's step and has not been done.
+- **Cue guard.** It now also catches an adverb between the pronoun and the verb ("Check that he sometimes swim.", seen on track 19). Test: tests63 C2.
+
+## TL;DR
+
+The strict in-context judge catches what the owner flags. Relay tracks still end a few lines short, because the stand-ins can't write passing replacements.
+
+The first real-Haiku track nearly finished, with only 1–2 strict refusals, but it ran out of its US$0.20 cap. Part of the reason is that prompt caching never worked on the Cloud Run server. That is fixed in code and needs a redeploy by the owner.

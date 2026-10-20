@@ -214,8 +214,9 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const P67 = { speaker: 'B', thai: 'ไปชายหาดต้องใช้รถอะไรคะ', english: 'What vehicle do you need to go to the beach?', prompt: 'Ask what vehicle you need to use to go to the beach.' }
     const P85 = { speaker: 'B', thai: 'ขอให้คุณมาถึงห้าโมงเย็นนะคะ', english: 'Please make sure you arrive by five in the evening.', prompt: 'Say please make sure you arrive by five in the evening.' }
     const l67 = lint(P67, { addr: 'm', addrName: 'Somchai', names: ['Somchai', 'Nida'] }).cue, l85 = lint(P85, { addr: 'm', addrName: 'Somchai', names: ['Somchai', 'Nida'] }).cue
-    const bad = ['Ask what vehicle do he need to go to the beach.', 'Say please make sure him arrive by five in the evening.', 'Thank him they have fun too.', 'Ask if she want some tea.', 'Say yes, tell her to have to cross, but it is not far.']
-    const good = ['Ask what time he wakes up.', 'Let him go first.', 'Say he can come too.', 'Ask if she wants some tea.', 'Thank him and tell him to have fun too.', 'Tell her she can sit here.', 'Ask what vehicle you need to use to go to the beach.']
+    const bad = ['Ask what vehicle do he need to go to the beach.', 'Say please make sure him arrive by five in the evening.', 'Thank him they have fun too.', 'Ask if she want some tea.', 'Say yes, tell her to have to cross, but it is not far.', 'Check that he sometimes swim.']
+    const good = ['Ask what time he wakes up.', 'Let him go first.', 'Say he can come too.', 'Ask if she wants some tea.', 'Thank him and tell him to have fun too.', 'Tell her she can sit here.', 'Ask what vehicle you need to use to go to the beach.',
+      'Ask if he sometimes swims.', 'Ask when he will start.', 'Does he sometimes swim?']
     T('C2', 'cue lint (owner review of v705): pair 67 / 85 rewrites are never ungrammatical ("do he need", "make sure him arrive" are refused); the guard flags the four broken cues and none of seven sound ones; a broken cue is a BROKEN_ENGLISH defect',
       !br(l67).length && !br(l85).length && bad.every(x => br(x).length) && good.every(x => !br(x).length) &&
       c.ev('thaiCueDefects')('Thank him they have fun too.', { thai: 'ขอบคุณค่ะ คุณก็เที่ยวให้สนุกนะคะ', english: 'Thanks, you have fun too.' }, { addr: 'm' }).includes('BROKEN_ENGLISH'),

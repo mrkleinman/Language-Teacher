@@ -424,6 +424,15 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
     const gEnv = { ...env, ALLOWED_ORIGINS: 'https://owner.example.org, https://mrkleinman.github.io' }
     const g2 = await GH(mkReq('OPTIONS', null, { Origin: 'https://owner.example.org' }), gEnv)
     T('G3', 'Google function: ALLOWED_ORIGINS can name another site address (e.g. a custom domain)', g2.code === 204 && g2.headers['access-control-allow-origin'] === 'https://owner.example.org')
+    // v706 (paid track 1: 41 cache-marked requests, cache_creation 0) — the Cloud Run function flattened text blocks to a string, so the
+    // app's cache marks never reached the API; it now keeps them like the Netlify function (ephemeral only, at most 4)
+    { const P = G.buildParams({ model: HAIKU, max_tokens: 100, system: [{ type: 'text', text: 'S', cache_control: { type: 'ephemeral', ttl: '1h' } }],
+        messages: [{ role: 'user', content: [1, 2, 3, 4].map(i => ({ type: 'text', text: 'b' + i, cache_control: { type: 'ephemeral' } })).concat([{ type: 'image', source: {} }]) }] }).params
+      const P0 = G.buildParams({ model: HAIKU, max_tokens: 100, system: 'plain', messages: [{ role: 'user', content: 'hi' }] }).params
+      const marks = JSON.stringify(P).match(/cache_control/g) || []
+      T('G7', 'Google function keeps cache marks: text blocks stay blocks with {type:"ephemeral"} (TTL and other block types dropped), at most 4 marks; plain strings stay strings',
+        marks.length === 4 && P.system[0].cache_control.type === 'ephemeral' && !('ttl' in P.system[0].cache_control) && P.messages[0].content.length === 4 && !P.messages[0].content[3].cache_control &&
+        P0.system === 'plain' && P0.messages[0].content === 'hi', P) }
     if (SDK) {
       const gnet = []
       const gmk = queue => class extends SDK { constructor(o) { super({ ...o, fetch: async (url, init) => { gnet.push({ url: String(url), headers: Object.fromEntries(new Headers(init.headers)), body: JSON.parse(init.body) }); const [s, b] = queue.shift(); return new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } }) } }) } }

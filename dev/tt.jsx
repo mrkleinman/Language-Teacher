@@ -21937,8 +21937,10 @@ function thaiCueEnglishBroken(cue) {
   if (/\bthank\s+(?:him|her|them)\s+(?:they|he|she|we|I)\b/i.test(c)) out.push('thank + pronoun + clause')
   // v706 (relay track 16: "Say yes, tell her to have to cross, …")
   if (/\b(?:tell|ask|remind)\s+(?:him|her|them|me)\s+to\s+(?:have\s+to|must|can|should|will)\b/i.test(c)) out.push('tell + pronoun + to + modal')
-  const bv = c.match(/\b(?:he|she)\s+(need|want|have|go|come|arrive|like|know|get|make|take|eat|drink|live|work|think|feel|look|say|see|buy|pay|rent|climb|play|try|wait|stay|leave|use)\b/i)
-  if (bv && !new RegExp('\\b(?:let|make|help|see|watch|hear|have|did|does|can|will|should|must|could|would|might|may|to)\\s+(?:he|she)\\s+' + bv[1] + '\\b', 'i').test(c)) out.push('he/she + ' + bv[1])
+  // v706 (relay track 19: "Check that he sometimes swim.") — an adverb between the pronoun and the verb hides nothing
+  const ADV = '(?:(?:sometimes|always|often|usually|never|really|also|still|just|ever|even)\\s+)?'
+  const bv = c.match(new RegExp('\\b(?:he|she)\\s+' + ADV + '(need|want|have|go|come|arrive|like|know|get|make|take|eat|drink|live|work|think|feel|look|say|see|buy|pay|rent|climb|play|try|wait|stay|leave|use|swim|run|cook|read|sleep|walk|start|finish|answer|understand)\\b', 'i'))
+  if (bv && !new RegExp('\\b(?:let|make|help|see|watch|hear|have|did|does|can|will|should|must|could|would|might|may|to)\\s+(?:he|she)\\s+' + ADV + bv[1] + '\\b', 'i').test(c)) out.push('he/she + ' + bv[1])
   return out
 }
 function thaiCueDefects(cue, p, o) {

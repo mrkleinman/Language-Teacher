@@ -9,7 +9,7 @@
 //   • refuses to run unless ANTHROPIC_API_KEY and LT_ACCESS_CODE are set (never an open relay)
 //   • answers browsers only from the allowed site origins (ALLOWED_ORIGINS, default https://mrkleinman.github.io)
 //   • only the model claude-haiku-5-5; max_tokens capped at 16000; request body ≤ 300 KB
-//   • only these fields are forwarded: model, max_tokens, system, messages (text), adaptive thinking,
+//   • only these fields are forwarded: model, max_tokens, system, messages (text blocks, ≤ 4 ephemeral cache marks), adaptive thinking,
 //     output_config.effort and output_config.format (json_schema). temperature / top_p / top_k / tools / stream are dropped.
 //   • no retries here (maxRetries: 0): the app retries rate limits / overload itself so every attempt is logged and costed
 //
@@ -34,16 +34,31 @@ function sameSecret(a, b) {
 function textContent(c) {
   return typeof c === "string" ? c : Array.isArray(c) ? c.filter((b) => b && b.type === "text").map((b) => String(b.text || "")).join("\n") : "";
 }
+// v706 — prompt caching (cost), as the Netlify edge function has had since v703: text blocks are kept as blocks, and a block may
+// carry cache_control {type:"ephemeral"} (nothing else: no TTL, no other block types). At most 4 breakpoints, as the API allows.
+// Without this the app's cache marks were flattened away here and every paid request was billed at the full input price.
+const MAX_CACHE_BREAKPOINTS = 4;
+function textBlocks(c, budget) {
+  if (!Array.isArray(c)) return textContent(c);
+  const blocks = c.filter((b) => b && b.type === "text" && String(b.text || "")).map((b) => {
+    const out = { type: "text", text: String(b.text) };
+    if (b.cache_control && b.cache_control.type === "ephemeral" && budget.left > 0) { out.cache_control = { type: "ephemeral" }; budget.left--; }
+    return out;
+  });
+  return blocks.length ? blocks : "";
+}
 // Only the fields the app needs, validated; everything else is dropped.
 export function buildParams(body) {
   if (!body || typeof body !== "object") return { error: "body must be a JSON object" };
   if (!ALLOWED_MODELS.includes(body.model)) return { error: "model not allowed: " + String(body.model) };
   if (!Array.isArray(body.messages) || !body.messages.length) return { error: "messages required" };
-  const messages = body.messages.map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: textContent(m && m.content) }));
+  const budget = { left: MAX_CACHE_BREAKPOINTS };
+  const system = textBlocks(body.system, budget);
+  const messages = body.messages.map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: textBlocks(m && m.content, budget) }));
   if (messages[0].role !== "user" || messages[messages.length - 1].role !== "user") return { error: "messages must start and end with a user turn" };
   const max = Math.floor(Number(body.max_tokens));
   const params = { model: body.model, max_tokens: Math.max(1, Math.min(MAX_TOKENS_CEILING, Number.isFinite(max) ? max : 4096)), messages, thinking: { type: "adaptive" } };
-  if (typeof body.system === "string" && body.system.trim()) params.system = body.system;
+  if (Array.isArray(system) ? system.length : String(system).trim()) params.system = system;
   const oc = body.output_config || {};
   params.output_config = { effort: EFFORTS.includes(oc.effort) ? oc.effort : "low" };
   if (oc.format && oc.format.type === "json_schema" && oc.format.schema && typeof oc.format.schema === "object") params.output_config.format = { type: "json_schema", schema: oc.format.schema };

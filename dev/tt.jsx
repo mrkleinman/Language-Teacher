@@ -15646,7 +15646,7 @@ async function thaiSceneCritic(t, c, log) {
     if (named.length >= THAI_SCENE_CRITIC_MAX) break
     const earlier = sections.slice(0, sections.indexOf(sc)).flatMap(x => (x.lines || []).map(l => (l.pair.speaker || 'A') + ': ' + l.pair.thai))
     let raw
-    try { calls++; raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: thaiSceneCriticPrompt(sc, names, earlier) }], maxTokens: 1800, temperature: 0.2, json: true, stage: 'F_scene_critic' }) }
+    try { calls++; raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: thaiSceneCriticPrompt(sc, names, earlier) }], maxTokens: 2600, temperature: 0.2, json: true, stage: 'F_scene_critic' }) }
     catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_CRITIC ' + sc.sceneId + ' skipped: ' + String(e && e.message || e).slice(0, 80)); continue }
     let o = null; try { o = coherenceJudgeParse(raw) || JSON.parse(String(raw)) } catch (e) {}
     const byN = new Map(sc.lines.map(l => [String(l.n), l.pair]))
@@ -22716,8 +22716,16 @@ async function finaliseMainTrack(track, adapter, ctx) {
           if (q3.substitutions && q3.substitutions.length) { t = applyThaiTargetSubstitutions(t, q3.substitutions); q.substitutions.push(...q3.substitutions) }
           q.recovered.push(...q3.recovered); q.removed.push(...q3.removed)
           c.track = t
-          const s3 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s3.pairs }
+          let s3 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s3.pairs }
           _snap.thirdPass = { recovered: q3.recovered.length, unresolved: q3.unresolved.map(u => u.target) }; _snap.after = s3.report
+          // v707 (paid tracks 4 / 5: NOT_READY 89/90 on ONE line refused after every cycle) — a last in-context fix pass for what is still
+          // refused (the scene polish sees the judge's reason and the line before it), then the same strict audit
+          if (s3.report.invalid.length && THAI_SCENE_POLISH_ACTIVE) {
+            try { const fix = new Map(); s3.report.invalid.forEach(x => { if (x.pairId) fix.set(x.pairId, x.reason); if (x.thai) fix.set(x.thai, x.reason) })
+              const fx = await thaiScenePolish(t, { ...c, polishFix: fix }, log)
+              if (fx.changed) { t = { ...t, pairs: fx.pairs }; c.track = t; s3 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s3.pairs }; _snap.after = s3.report; _snap.lastFix = { changed: fx.changed, after: s3.report.invalid.length } }
+            } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e }
+          }
         }
       }
     } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; _snap = { error: String(e && e.message || e).slice(0, 160) } }

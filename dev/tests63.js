@@ -98,6 +98,18 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   const gp = c.thaiFramingTidy([{ _target: 'greeting', speaker: 'B', thai: 'สวัสดี ฉันสบายดีค่ะ', phonetic: 'sà-wàt-dii chǎn sà-baai-dii khâ', english: 'Hello, I am doing well.', prompt: 'Greet him back.' },
     { _target: 'greeting', speaker: 'A', thai: 'สวัสดีครับ คุณนิดา', phonetic: 'sà-wàt-dii-khráp khun ní-daa', english: 'Hello Nida.', prompt: 'Greet Nida.' },
     { speaker: 'A', thai: 'สวัสดี ผมชื่อสมชายครับ', english: 'Hi, I am Somchai.', prompt: 'Introduce yourself.', targetId: 3 }], null)
+  // v706 (owner, 2026-10-20) — fixed English for three verbs: ดู = watch / look · เห็น = notice · ชม = admire / appreciate
+  { const U = c.ev('thaiVerbSenseUses'), F = c.ev('thaiVerbSenseEnglishFix'), P = c.ev('thaiVerbSenseProblem'), V = c.ev('RAW_VOCAB')
+    const uses = [['ผมเห็นเขาที่ตลาดครับ', ['เห็น']], ['คืนนี้ไปดูหนังกันไหมคะ', ['ดู']], ['เราไปชมวิวกันครับ', ['ชม']], ['ผมดูแลลูกครับ', []], ['ฉันเห็นด้วยค่ะ', []],
+      ['เสื้อสีชมพูสวยค่ะ', []], ['ลองชิมดูสิครับ', []], ['ดูเหมือนฝนจะตกค่ะ', []], ['ความเห็นของคุณดีครับ', []], ['ขอดูเมนูหน่อยครับ', ['ดู']]]
+    const ub = uses.filter(([t, w]) => JSON.stringify(U(t)) !== JSON.stringify(w)).map(([t]) => t + ' → ' + JSON.stringify(U(t)))
+    const fx = [['ผมเห็นเขาที่ตลาดครับ', 'I saw him at the market.', 'I noticed him at the market.'], ['คืนนี้ไปดูหนังกันไหมคะ', 'Shall we go see a movie tonight?', 'Shall we go watch a movie tonight?'],
+      ['ขอดูเมนูหน่อยครับ', 'Can I see the menu, please?', 'Can I look at the menu, please?'], ['เราไปชมวิวกันครับ', "Let's go see the view.", "Let's go admire the view."],
+      ['ฉันเห็นด้วยค่ะ', 'I agree.', 'I agree.'], ['ผมดูทีวีอยู่ครับ', "I'm watching TV.", "I'm watching TV."]]
+    const fb = fx.filter(([t, e, w]) => F(t, e) !== w).map(([t, e, w]) => F(t, e) + ' (want ' + w + ')')
+    T('V1', 'owner rule: ดู = watch / look, เห็น = notice, ชม = admire / appreciate — the standalone verbs are found (ดูแล, เห็นด้วย, ชมพู, ลอง…ดู, ดูเหมือน, ความเห็น are other words), "see" in the English becomes the owner\'s word, and a line that still breaks the rule is a VERB_SENSE defect; the dictionary glosses say the same',
+      !ub.length && !fb.length && P({ thai: 'ผมเห็นเขาครับ', english: 'I caught sight of him.' }) && P({ thai: 'ผมเห็นเขาครับ', english: 'I caught sight of him.' }).id === 'VERB_SENSE' && !P({ thai: 'ผมเห็นเขาครับ', english: 'I noticed him.' }) &&
+      V.find(v => v.id === 53).e === 'watch / look' && V.find(v => v.id === 786).e === 'notice' && V.find(v => v.id === 824).e === 'admire / appreciate' && /ดู = "watch" or "look"/.test(c.ev('THAI_VERB_SENSE_LINE')), { ub, fb }) }
   T('F5', 'a greeting line\'s bare สวัสดี takes the speaker\'s particle (B: "สวัสดีค่ะ ฉันสบายดีค่ะ", reading sà-wàt-dii-khâ …); a greeting that has it, and target lines, are untouched',
     gp[0].thai === 'สวัสดีค่ะ ฉันสบายดีค่ะ' && gp[0].phonetic === 'sà-wàt-dii-khâ chǎn sà-baai-dii khâ' && gp[1].thai === 'สวัสดีครับ คุณนิดา' && gp[2].thai === 'สวัสดี ผมชื่อสมชายครับ', gp.map(p => [p.thai, p.phonetic]))
   const src2 = require('fs').readFileSync('tt.jsx', 'utf8')

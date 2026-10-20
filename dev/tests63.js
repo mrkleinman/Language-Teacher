@@ -195,6 +195,41 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
       /HOW THAI SPEAKERS USE "ถูก"/.test(ul({ thai: 'ถูก' })) && /2 senses \(cheap \/ correct\)/.test(ul({ thai: 'ถูก' })) && /ตอบถูกแล้ว/.test(ul({ thai: 'ถูก' })) &&
       ul({ thai: 'ผม' }) === '' && /NATURAL USES of this scene's words[^\n]*\n  ถูก: ราคาถูกมาก · /.test(pp), ul({ thai: 'ถูก' }).slice(0, 200)) }
 
+  // v706 (owner review of v705, pairs 67 / 79 / 85 / 94) — the cue lint never writes broken English; a broken cue is a defect; a Thai
+  // statement's English does not end in "?"
+  { const br = c.ev('thaiCueEnglishBroken'), lint = c.ev('thaiFinalCueLint'), ef = c.ev('thaiEnglishFaithfulFix')
+    const P67 = { speaker: 'B', thai: 'ไปชายหาดต้องใช้รถอะไรคะ', english: 'What vehicle do you need to go to the beach?', prompt: 'Ask what vehicle you need to use to go to the beach.' }
+    const P85 = { speaker: 'B', thai: 'ขอให้คุณมาถึงห้าโมงเย็นนะคะ', english: 'Please make sure you arrive by five in the evening.', prompt: 'Say please make sure you arrive by five in the evening.' }
+    const l67 = lint(P67, { addr: 'm', addrName: 'Somchai', names: ['Somchai', 'Nida'] }).cue, l85 = lint(P85, { addr: 'm', addrName: 'Somchai', names: ['Somchai', 'Nida'] }).cue
+    const bad = ['Ask what vehicle do he need to go to the beach.', 'Say please make sure him arrive by five in the evening.', 'Thank him they have fun too.', 'Ask if she want some tea.']
+    const good = ['Ask what time he wakes up.', 'Let him go first.', 'Say he can come too.', 'Ask if she wants some tea.', 'Thank him and tell him to have fun too.', 'Tell her she can sit here.', 'Ask what vehicle you need to use to go to the beach.']
+    T('C2', 'cue lint (owner review of v705): pair 67 / 85 rewrites are never ungrammatical ("do he need", "make sure him arrive" are refused); the guard flags the four broken cues and none of seven sound ones; a broken cue is a BROKEN_ENGLISH defect',
+      !br(l67).length && !br(l85).length && bad.every(x => br(x).length) && good.every(x => !br(x).length) &&
+      c.ev('thaiCueDefects')('Thank him they have fun too.', { thai: 'ขอบคุณค่ะ คุณก็เที่ยวให้สนุกนะคะ', english: 'Thanks, you have fun too.' }, { addr: 'm' }).includes('BROKEN_ENGLISH'),
+      { l67, l85, missed: bad.filter(x => !br(x).length), falseAlarms: good.filter(x => br(x).length) })
+    T('C3', 'a Thai statement keeps a statement in English: ค่ะ เดินทางปลอดภัยนะคะ "Yes, have a safe trip?" → "."; real questions (ไหม, ไหน, bare final คะ) keep "?"',
+      ef({ thai: 'ค่ะ เดินทางปลอดภัยนะคะ', english: 'Yes, have a safe trip?' }) === 'Yes, have a safe trip.' && ef({ thai: 'ไปไหนคะ', english: 'Where are you going?' }) === 'Where are you going?' &&
+      ef({ thai: 'ไปด้วยกันไหมคะ', english: 'Shall we go together?' }) === 'Shall we go together?' && ef({ thai: 'จริงเหรอคะ', english: 'Really?' }) === 'Really?',
+      ef({ thai: 'ค่ะ เดินทางปลอดภัยนะคะ', english: 'Yes, have a safe trip?' })) }
+
+  // v706 (owner review of v705: แวะ [dì-chǎn-eeng] in the target list) — a substitution carries the new word's dictionary reading, and
+  // the final target-list audit sets any stale reading to the dictionary's
+  { const tr = { keywords: [{ wordId: 708, thai: 'ดิฉันเอง', phonetic: 'dì-chǎn-eeng', english: 'it is me' }] }
+    const out = c.ev('applyThaiTargetSubstitutions')(tr, [{ fromId: 708, toId: 180, toSurface: 'แวะ', toEnglish: 'stop by' }])
+    const au = c.ev('thaiKeywordPhoneticAudit')([{ thai: 'แวะ', phonetic: 'dì-chǎn-eeng' }, { thai: 'กุ้ง', phonetic: c.ev('thaiCanonicalPhoneticOf')('กุ้ง') }])
+    T('K1', 'after ดิฉันเอง → แวะ the target list reads แวะ as wáe (not dì-chǎn-eeng); the final audit corrects a stale reading and leaves a correct one alone',
+      out.keywords[0].thai === 'แวะ' && out.keywords[0].phonetic === c.ev('thaiCanonicalPhoneticOf')('แวะ') && /^w/.test(out.keywords[0].phonetic) &&
+      au.fixed.length === 1 && au.keywords[0].phonetic === out.keywords[0].phonetic, { kw: out.keywords[0], fixed: au.fixed }) }
+
+  // v706 (owner review of v705: ดิฉันเอง, 11 paid checks, every one refused for ดิฉัน) — such a target is skipped before generation, and
+  // the same rejection reason three checks in a row stops paid attempts
+  { const v = c.initVocab(), pf = c.ev('targetActivityPreflight'), w = v.find(x => x.thai === 'ดิฉันเอง'), k = v.find(x => x.thai === 'กุ้ง')
+    let calls = 0
+    c.mockGeminiGenerate = async () => { calls++; return JSON.stringify([{ speaker: 'B', thai: 'ดิฉันชอบกุ้งค่ะ', english: 'I like shrimp.', prompt: 'Say you like shrimp.' }, { speaker: 'A', thai: 'ผมก็ชอบกุ้งครับ', english: 'I like shrimp too.', prompt: 'Say you like shrimp too.' }, { speaker: 'B', thai: 'ดิฉันกินกุ้งทุกวันค่ะ', english: 'I eat shrimp every day.', prompt: 'Say you eat shrimp every day.' }]) }
+    try { await c.generateWordLines({ ...k, id: k.id }, 'at a noodle shop', 'Somchai (สมชาย)', 'Nida (นิดา)', [], v, 'AIzaSyTEST-harness-key-000000', c.ev('GEMINI_DEFAULT_MODEL'), 0, () => {}, '', []) } catch (e) {}
+    T('R9', 'a target the writer rules always refuse (ดิฉันเอง ⊃ ดิฉัน) is skipped by the preflight before any paid call; an ordinary target (กุ้ง) is not; the writer stops after the same rejection 3 checks in a row (not 11)',
+      pf(w, 'th', {}).reason === 'TARGET_CONTAINS_BANNED_TOKEN' && pf(w, 'th', {}).suitable === false && pf(k, 'th', {}).suitable === true && calls >= 1 && calls <= 3, { calls, r: pf(w, 'th', {}).reason }) }
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ฉันนึกว่าพันบาทค่ะ', 'เสื้อตัวนี้', 'บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))

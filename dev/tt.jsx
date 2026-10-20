@@ -17231,7 +17231,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   // (same blocked word / same sentence twice) switches strategy, and a target that keeps
   // returning the SAME sentence stops early — QUOTA RECOVERY takes over with its own state.
   const _genState = createRecoveryState({ wordId: target.id, thai: target.thai, english: target.english }, { surface: target.thai, sense: thaiTargetSense({ wordId: target.id, english: target.english }, vocab) })
-  let _lastFailText = null, _sameFailStreak = 0, _lastRawSig = null
+  let _lastFailText = null, _sameFailStreak = 0, _lastRawSig = null, _lastReasonKey = null, _reasonStreak = 0
   // v657 §4 — a selective slot regeneration is bounded (target._maxChecks), never another full 11-check ladder
   const _maxChecks = Math.max(1, Math.min(CHECK_SRCS.length, (target && target._maxChecks) || CHECK_SRCS.length))
   for (let attempt = 0; attempt < _maxChecks; attempt++) {
@@ -17264,6 +17264,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         onProgress && onProgress(-1, -1, { apiError: '⛔ SPEAKER_CONFLICT_REPEATED ' + target.thai + ': the same speaker / particle conflict 3 checks in a row — no further paid attempt (' + String(failureReasons[0]).slice(0, 90) + ')' }, null, null)
         break
       }
+      // v706 (owner review of v705: ดิฉันเอง — "Do not use ดิฉัน — use ฉัน instead" on 10 of 11 paid checks) — the SAME rejection reason
+      // three checks in a row is not fixed by asking again: stop paying; quota recovery / substitution takes the target
+      { const rk = String(failureReasons[0] || '').replace(/ in: .*$/, '').replace(/\s+/g, ' ').trim().slice(0, 80)
+        _reasonStreak = rk && rk === _lastReasonKey ? _reasonStreak + 1 : 1; _lastReasonKey = rk
+        if (_reasonStreak >= 3 && dailyV693On()) {
+          onProgress && onProgress(-1, -1, { apiError: '⛔ SAME_REJECTION_REPEATED ' + target.thai + ': "' + rk + '" 3 checks in a row — no further paid attempt; left to QUOTA RECOVERY / substitution (' + attempt + ' checks used)' }, null, null)
+          break } }
       if (_disputeStreak >= 2) {
         onProgress && onProgress(-1, -1, { apiError: '⚖ VALIDATOR_DISPUTE ' + target.thai + ': the target is visibly present but the matcher rejected it twice ("' + String(_t0).slice(0, 40) + '") — not re-generated (a matcher problem, not a sentence problem); left to QUOTA RECOVERY (' + attempt + ' checks used)' }, null, null)
         break
@@ -21815,7 +21822,7 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
       for (const w of cands) {
         const nkw = { wordId: w.id, thai: w.thai, english: w.english }
         const without = pairs.filter(p => !(p && classifyTrackPair(p) === 'TARGET' && p.targetId === r.targetId))
-        const kwsT = (track.keywords || kws).map(k => k.wordId === r.targetId ? { ...k, wordId: w.id, thai: w.thai, english: w.english, phonetic: w.phonetic || '', isNew: false, isUnseen: false } : k)
+        const kwsT = (track.keywords || kws).map(k => k.wordId === r.targetId ? { ...k, wordId: w.id, thai: w.thai, english: w.english, phonetic: thaiCanonicalPhoneticOf(w.thai) || w.phonetic || '', isNew: false, isUnseen: false } : k)
         let res = null
         try { res = await adapter.recoverTargetPairs(nkw, TRACK_CONTRACT.PAIRS_PER_TARGET, { ...c, track: { ...track, pairs: without, keywords: kwsT }, existing: without, round: 'substitute', recallSlots: [1, 2, 3] }) }
         catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; res = { accepted: [], reasons: ['substitution error: ' + (e && e.message || e)] } }
@@ -21828,7 +21835,7 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
         pairs = without; pairs.splice(insertAt, 0, ...stamped)
         kws.splice(kws.findIndex(k => k.wordId === r.targetId), 1, nkw)
         stamped.forEach(p => recovered.push({ targetId: w.id, target: w.thai, round: 'substitute', pairId: p.pairId, text: adapter.sentenceOf(p) }))
-        substitutions.push({ fromId: r.targetId, fromSurface: r.target, toId: w.id, toSurface: w.thai, toEnglish: w.english, reason: why, recalls: stamped.length })
+        substitutions.push({ fromId: r.targetId, fromSurface: r.target, toId: w.id, toSurface: w.thai, toEnglish: w.english, toPhonetic: thaiCanonicalPhoneticOf(w.thai) || w.phonetic || '', reason: why, recalls: stamped.length })
         log && log('    ✅ TARGET_SUBSTITUTED ' + r.target + ' → ' + w.thai + ' (3/3 recalls, each through the fail-closed recovery audit) — ' + r.target + ' stays due in SRS: ' + stamped.map(p => adapter.sentenceOf(p)).join(' / '))
         break
       }
@@ -21887,6 +21894,9 @@ function thaiEnglishFaithfulFix(p) {
   // v703 (owner review of v702, pair 54): เลขาผมจัดนัดให้ — a third person does it for the SPEAKER; the Thai names no คุณ, so not "for you"
   if (!/คุณ|เธอ/.test(th)) e2 = e2.replace(/^((?:My|The|His|Her|Our) [a-z]+ (?:[a-z]+s|will [a-z]+|can [a-z]+)\b.*?) for you\b/, '$1 for me')
   // v703 (pair 68): งั้นไป…กับคุณไหม is the speaker offering to go WITH the listener, not "how about going … with you"
+  // v706 (owner review of v705, pair 94: ค่ะ เดินทางปลอดภัยนะคะ → "Yes, have a safe trip?") — no question word and no bare final คะ: a statement
+  if (dailyV693On() && /\?\s*$/.test(e2) && !/ไหม|มั้ย|หรือ|เหรอ|เปล่า|ไหน|อะไร|ใคร|เมื่อไร|เมื่อไหร่|ทำไม|ยังไง|อย่างไร|เท่าไร|เท่าไหร่|กี่|ไง|บ้าง/.test(th) &&
+    !/คะ\s*$/.test(th.replace(/นะคะ\s*$/, 'นะ'))) e2 = e2.replace(/\?\s*$/, '.')
   if (/กับคุณ\S*(ไหม|มั้ย)/.test(th.replace(/\s+/g, ''))) e2 = e2.replace(/\b([Hh])ow about going\b(.*?)\bwith you\?$/, (m0, h, mid) => (h === 'H' ? 'Shall' : 'shall') + ' I go' + mid + 'with you?')
   return e2
 }
@@ -21900,6 +21910,19 @@ const TH_CUE_IDIOMS = [[/\bhere you go\b/gi, 'QQHEREYOUGO', 'here you go'], [/\b
   [/\bnice to meet you\b/gi, 'QQNICETOMEETYOU', 'nice to meet you'], [/\bgood to see you\b/gi, 'QQGOODTOSEEYOU', 'good to see you']]
 const thCueStripIdioms = x => TH_CUE_IDIOMS.reduce((a, [re]) => a.replace(re, ' '), String(x || ''))
 const TH_CUE_YOU_VERBS = 'buy|teach|tell|give|show|help|with|for|love|meet|call|trust|forgive|invite|thank|bring|send|pay|take|wait for|join'
+// v706 (owner review of v705: the lint itself wrote "Ask what vehicle do he need to go to the beach.", "Say please make sure him
+// arrive by five in the evening.", "Thank him they have fun too.") — English a learner must never hear. A lint result that trips
+// this guard is discarded (the original cue is kept), and a cue that still trips it fails the final cue audit and is repaired.
+function thaiCueEnglishBroken(cue) {
+  const c = String(cue || ''), out = []
+  if (/\b(?:do|did)\s+(?:he|she|it)\b/i.test(c)) out.push('do + he/she')
+  if (/\bdoes\s+(?:I|you|we|they)\b/i.test(c)) out.push('does + I/you/we/they')
+  if (/\bmake\s+sure\s+(?:him|her|them|me|us)\b/i.test(c)) out.push('make sure + object pronoun')
+  if (/\bthank\s+(?:him|her|them)\s+(?:they|he|she|we|I)\b/i.test(c)) out.push('thank + pronoun + clause')
+  const bv = c.match(/\b(?:he|she)\s+(need|want|have|go|come|arrive|like|know|get|make|take|eat|drink|live|work|think|feel|look|say|see|buy|pay|rent|climb|play|try|wait|stay|leave|use)\b/i)
+  if (bv && !new RegExp('\\b(?:let|make|help|see|watch|hear|have|did|does|can|will|should|must|could|would|might|may|to)\\s+(?:he|she)\\s+' + bv[1] + '\\b', 'i').test(c)) out.push('he/she + ' + bv[1])
+  return out
+}
 function thaiCueDefects(cue, p, o) {
   o = o || {}
   const d = [], c = String(cue || '').trim(), en = String(p && p.english || '')
@@ -21916,6 +21939,9 @@ function thaiCueDefects(cue, p, o) {
   // v704 (relay run 5): "…and say you will see Somchai…" — the "you" of "say you" / "that you" is the learner when the English has no
   // "you" doing the same thing ("see you next Friday"); "Say you can take it" for "You can take it" is still the listener copied over
   const cXl = cX.replace(/\b(?:say|says|that)\s+you\s+([a-z']+)/gi, (m0, w) => new RegExp('\\byou\\s+' + w.replace(/'/g, "'") + '\\b', 'i').test(enX) ? m0 : ' ')
+  // v706 (owner review of v705) — broken cue English is a defect of its own (Thai drops the listener's pronoun, so "you" cannot be
+  // told apart from a generic "you" by the Thai; the rewrite is kept only when its English is sound — see thaiFinalCueLint)
+  if (dailyV693On() && thaiCueEnglishBroken(c).length) d.push('BROKEN_ENGLISH')
   if (!enFirst && /\byou\b/i.test(enX) && /\byou\b/i.test(cXl)) d.push('ADDRESSEE_AS_YOU')
   else { const m = cX.match(new RegExp('\\b(' + TH_CUE_YOU_VERBS + ')\\s+you\\b', 'i')); if (m && new RegExp('\\b' + m[1] + '\\s+you\\b', 'i').test(enX)) d.push('ADDRESSEE_AS_YOU') }
   if (/^(?:Then\s+)?[Ss]ay\s+(?:just\s+|please\s+)?([a-z]+)\b/.test(c)) { const v = c.match(/^(?:Then\s+)?[Ss]ay\s+(?:just\s+|please\s+)?([a-z]+)\b/)[1]
@@ -21979,12 +22005,14 @@ function thaiFinalCueLint(p, o) {
   const cue0 = String(p && p.prompt || '')
   const d0 = thaiCueDefects(cue0, p, o)
   if (!d0.length) return { cue: cue0, defects: [], fixed: false }
-  const s1 = thaiCueSimpleFix(cue0, o), d1 = thaiCueDefects(s1, p, o)
-  if (!d1.length) return { cue: s1, defects: d0, fixed: true, via: 'simple' }
+  // v706 — a fix never makes the English worse: a result that trips thaiCueEnglishBroken is discarded
+  const _broken = x => dailyV693On() && thaiCueEnglishBroken(x).length > 0
+  const s1raw = thaiCueSimpleFix(cue0, o), s1 = _broken(s1raw) && !_broken(cue0) ? cue0 : s1raw, d1 = thaiCueDefects(s1, p, o)
+  if (!d1.length) return { cue: s1, defects: d0, fixed: s1 !== cue0, via: 'simple' }
   let r = null; try { r = thaiCueRebuild(p, o) } catch (e) {}
   // a question line may be cued as "…, then suggest / ask …" (thaiCueFormProblems reads only the first verb)
   const formOk = x => !thaiCueFormProblems({ ...p, prompt: x }).length || /\b(?:then|and) (?:ask|suggest|check|offer)\b|^(?:Suggest|Check|Offer)\b/i.test(x)
-  if (r && !thaiCueDefects(r, p, o).length && formOk(r)) return { cue: r, defects: d0, fixed: true, via: 'rebuilt' }
+  if (r && !thaiCueDefects(r, p, o).length && formOk(r) && !_broken(r)) return { cue: r, defects: d0, fixed: true, via: 'rebuilt' }
   return { cue: s1, defects: d0, fixed: s1 !== cue0, via: s1 !== cue0 ? 'simple-partial' : null, remaining: d1 }
 }
 function thaiFinalCueLintPass(pairs, track, log) {
@@ -22027,11 +22055,25 @@ function finalTrackIdentityFields(ft) {
   ;['keywords', 'selectedTargetIds', 'selectedRevisionTargetIds', 'trackContext', 'targetSubstitutions'].forEach(k => { if (ft[k] !== undefined) out[k] = ft[k] })
   return out
 }
+// v706 (owner review of v705: the target list showed แวะ [dì-chǎn-eeng], the reading of the word it replaced) — the canonical
+// dictionary reading of a Thai surface; '' when the bank has none
+function thaiCanonicalPhoneticOf(surface) {
+  try { const d = (typeof RAW_VOCAB !== 'undefined' ? RAW_VOCAB : []).find(x => x && x.t === surface && x.ph); return d ? loadCanonicalThaiPhonetic(d.ph, d.t) : '' } catch (e) { return '' }
+}
+// v706 — every target-list reading equals the dictionary's reading of the target's own surface (sentence readings are audited
+// elsewhere; this field was not). → { keywords, fixed: [...] }
+function thaiKeywordPhoneticAudit(keywords) {
+  const fixed = []
+  const out = (keywords || []).map(k => { if (!k || !k.thai) return k
+    const ph = thaiCanonicalPhoneticOf(k.thai); if (!ph || String(k.phonetic || '').normalize('NFC') === ph.normalize('NFC')) return k
+    fixed.push(k.thai + ' [' + (k.phonetic || '—') + ' → ' + ph + ']'); return { ...k, phonetic: ph } })
+  return { keywords: out, fixed }
+}
 function applyThaiTargetSubstitutions(track, subs) {
   if (!subs || !subs.length) return track
   const swap = id => { const s0 = subs.find(x => x.fromId === id); return s0 ? s0.toId : id }
   const t = { ...track }
-  t.keywords = (track.keywords || []).map(k => { const s0 = subs.find(x => x.fromId === k.wordId); return s0 ? { ...k, wordId: s0.toId, thai: s0.toSurface, english: (s0.toEnglish || k.english), isNew: false, isUnseen: false, substitutedFor: s0.fromId } : k })
+  t.keywords = (track.keywords || []).map(k => { const s0 = subs.find(x => x.fromId === k.wordId); return s0 ? { ...k, wordId: s0.toId, thai: s0.toSurface, english: (s0.toEnglish || k.english), phonetic: s0.toPhonetic || thaiCanonicalPhoneticOf(s0.toSurface) || '', isNew: false, isUnseen: false, substitutedFor: s0.fromId } : k })
   if (Array.isArray(track.selectedTargetIds)) t.selectedTargetIds = track.selectedTargetIds.map(swap)
   if (Array.isArray(track.selectedRevisionTargetIds)) t.selectedRevisionTargetIds = track.selectedRevisionTargetIds.map(swap)
   if (track.trackContext) t.trackContext = { ...track.trackContext, selectedTargetIds: (track.trackContext.selectedTargetIds || []).map(swap), requiredReviewTargetIds: (track.trackContext.requiredReviewTargetIds || []).map(swap) }
@@ -22350,11 +22392,14 @@ async function finaliseMainTrack(track, adapter, ctx) {
     // v701 (owner review of the live v700 Thai track, pairs 14 / 83): the English says more than the Thai and the cue is built from that
     // English. The Thai is kept; the English is brought back to what the Thai says and the cue is rebuilt from it (no paid call).
     if (adapter.lang === 'th' && dailyV693On()) { const fx = []
-      t = { ...t, pairs: t.pairs.map(p => { if (!p || !p.thai || classifyTrackPair(p) === 'FRAMING') return p
+      t = { ...t, pairs: t.pairs.map(p => { if (!p || !p.thai) return p
         const e2 = thaiEnglishFaithfulFix(p); if (!e2 || e2 === p.english) return p
+        // v706 — a punctuation-only fix ("Yes, have a safe trip?" → ".") keeps the cue; framing lines get only that fix
+        const punctOnly = e2.replace(/[.?!]\s*$/, '') === String(p.english).replace(/[.?!]\s*$/, '')
+        if (classifyTrackPair(p) === 'FRAMING' && !punctOnly) return p
         const addr = p.speaker === 'B' ? 'm' : 'f'
         let cue = p.prompt
-        try { const c2 = cueFromEnglish('th', e2, p.thai, { addr, names: [] }); if (c2) cue = c2 } catch (e) {}
+        if (!punctOnly) try { const c2 = cueFromEnglish('th', e2, p.thai, { addr, names: [] }); if (c2 && !thaiCueEnglishBroken(c2).length) cue = c2 } catch (e) {}
         fx.push('"' + p.english + '" → "' + e2 + '"')
         return { ...p, english: e2, prompt: cue, _enFaithfulFixed: true, _cueRebuiltFrom: p.prompt } }) }
       if (fx.length) log && log('  🔤 TH_TEXT_FIX ' + fx.length + ' translation(s) brought back to what the Thai says (Thai kept, cue rebuilt): ' + fx.join(' | ').slice(0, 400)) }
@@ -22500,6 +22545,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
   t = { ...t, pairs: meta.pairs }
   const _textChanged = (t.pairs || []).filter((p, i) => _frozen.has(thaiLineId(p, i)) && _frozen.get(thaiLineId(p, i)) !== (p && (p.thai || p.japanese || p.chinese)))
   if (_textChanged.length) log && log('  ⛔ FINAL_LINE_TEXT changed during pronunciation finalisation: ' + _textChanged.map((p, i) => thaiLineId(p, i)).join(', '))
+  if (adapter.lang === 'th' && dailyV693On() && Array.isArray(t.keywords)) { try { const ka = thaiKeywordPhoneticAudit(t.keywords)
+    if (ka.fixed.length) { t = { ...t, keywords: ka.keywords }; log && log('  🔤 TARGET_LIST_PHONETIC ' + ka.fixed.length + ' target-list reading(s) set to the dictionary reading: ' + ka.fixed.join(' | ').slice(0, 300)) } } catch (e) {} }
   const kws = adapter.keywordsOf(t)
   if (adapter.lang === 'th') { try { _idViol.push(...thaiTargetIdentityViolations(t.pairs, kws, 'after final metadata')) } catch (e) {} }
   _idViol.forEach(v => log && log('  ⛔ TARGET_IDENTITY_VIOLATION ' + v.pairId + ' (' + v.stage + '): ' + v.problem))
@@ -36475,10 +36522,11 @@ function thaiCueRepairDecision(p, cv, nv) {
   if (tgt && !thaiTargetPresent(p.thai, tgt, null)) return { repair: false, why: 'target missing from the Thai' }
   if (!p.english || String(p.english).trim().length < 3) return { repair: false, why: 'no English to anchor the cue' }
   const clean = x => typeof x === 'string' && x.trim().length >= 8 && x.trim().length <= 160 && !/[\u0e00-\u0e7f]/.test(x) && /[a-z]/i.test(x) && !/_{2,}|\*\*/.test(x)
-  if (clean(cv.cueRepair)) return { repair: true, cue: cv.cueRepair.trim(), method: 'judge-repair' }
+  const okEn = x => !dailyV693On() || !thaiCueEnglishBroken(x).length
+  if (clean(cv.cueRepair) && okEn(cv.cueRepair)) return { repair: true, cue: cv.cueRepair.trim(), method: 'judge-repair' }
   // v696: the cue may ALREADY be the one built from the English (clarified before judging) — it is then kept, not the pair dropped
   const det = thaiLocalCueRepair(p) || (cueClarityOn() ? (() => { const cx = cueClarityCtx('th'), r = cueFromEnglish('th', p.english, p.thai, { ...cx, addr: cx.addrOf(p) }); return r && !thaiCueFormProblems({ ...p, prompt: r }).length ? r : null })() : null)
-  if (det) return { repair: true, cue: det, method: 'rebuilt-from-english' }
+  if (det && okEn(det)) return { repair: true, cue: det, method: 'rebuilt-from-english' }
   return { repair: false, why: 'no safe cue could be built' }
 }
 function _semanticPairId(p, i) { return (p && p._pairKey) || ('#' + String(i + 1).padStart(3, '0')) }
@@ -36642,6 +36690,9 @@ async function finalPairSemanticAudit(pairs, apiKey, model, onLog, opts) {
     : apiKey ? await _judgeCached('cue', cueEl.map(x => x.p), ch => _finalCueJudge(ch, apiKey, model), label + ' cue check', onLog) : noKey(cueEl)
   const cueBy = new Map()
   cueEl.forEach((x, k) => cueBy.set(x.i, cue.verdicts.has(k) ? cue.verdicts.get(k) : { s: null, reason: cue.failed.get(k) || 'not judged' }))
+  // v706 — the cue judge scores meaning; a cue whose English is broken ("Ask what vehicle do he need…") fails here too and is repaired
+  if (dailyV693On()) cueBy.forEach((v, i) => { const b = all[i] && thaiCueEnglishBroken(all[i].prompt); if (b && b.length && v && v.s != null && v.s >= 4)
+    cueBy.set(i, { ...v, s: 3, note: 'cue English is ungrammatical (' + b[0] + ')' + (v.note ? '; ' + v.note : '') }) })
   // 2. naturalness
   const nat = !live.length ? { verdicts: new Map(), failed: new Map(), trace: { calls: 0 } }
     : apiKey ? await _judgeCached('nat', live.map(x => x.p), ch => _finalNaturalnessJudge(ch, apiKey, model), label + ' naturalness', onLog,
@@ -37832,9 +37883,14 @@ function noteTargetIssue(lang, targetId, issue, note) {
 function targetIssueCounts(lang, targetId) { return TARGET_ISSUE_COUNTS.get((AI_CTX.runId || 'run') + ':' + lang + ':' + targetId) || null }
 function targetSuitabilityEvidence(lang, targetId) { const ev = _readSuitEvidence(); return (ev[lang + ':' + targetId] || {}).kinds || {} }
 // THE preflight verdict for one target in one activity
+const THAI_WRITER_BANNED_TOKENS = ['\u0e14\u0e34\u0e09\u0e31\u0e19']   // ดิฉัน — refused in every Daily line (see generateWordLines)
 function targetActivityPreflight(w, lang, ctx) {
   const c = ctx || {}, activity = c.activity || 'spokenConversation', register = c.register || 'natural'
   const md = targetActivityMetadata(w, lang)
+  // v706 (owner review of v705) — a target the writer's own rules always reject cannot be taught: ดิฉันเอง contains ดิฉัน, which every
+  // Daily line is refused for ("use ฉัน instead"), so 11 paid checks could never succeed. It is skipped here, before any paid call.
+  if (lang === 'th' && dailyV693On() && THAI_WRITER_BANNED_TOKENS.some(b => String((w && (w.thai || w.t)) || '').includes(b)))
+    return { status: TARGET_SUITABILITY.UNSUITABLE_FOR_ACTIVITY, reason: 'TARGET_CONTAINS_BANNED_TOKEN', detail: 'every Daily line with ' + THAI_WRITER_BANNED_TOKENS.find(b => String(w.thai || w.t).includes(b)) + ' is refused by the writer rules (formal register)', metadata: md, suitable: false }
   const out = (status, reason, detail) => ({ status, reason: reason || '', detail: detail || '', metadata: md, suitable: status === TARGET_SUITABILITY.SUITABLE || status === TARGET_SUITABILITY.NEEDS_REVIEW || status === TARGET_SUITABILITY.REGISTER_DEPENDENT })
   if (md.curriculumQualityState === 'REVIEW_REQUIRED')
     return out(TARGET_SUITABILITY.CURRICULUM_QUALITY_REVIEW_REQUIRED, 'TARGET_CANONICAL_ENTRY_SUSPECT', 'lexiconDisposition=' + md.lexiconDisposition + '; ' + (md.knownUsageConstraints[0] || md.canonicalSense))

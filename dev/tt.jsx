@@ -14110,7 +14110,7 @@ const THAI_USAGE_FRAMES = {
     frames:['\u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c\u0e19\u0e35\u0e49','\u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c\u0e2b\u0e19\u0e49\u0e32'],
     avoid:'forcing a number where none is natural' },
 }
-// v706 (blind reviews of relay tracks 6\u201313: Haiku's Thai sits at ~7 \u2014 \u0e0a\u0e2d\u0e1a\u0e2a\u0e30\u0e1e\u0e32\u0e19, \u0e0a\u0e49\u0e2d\u0e19\u0e1e\u0e2d\u0e14\u0e35\u0e44\u0e2b\u0e21, \u0e15\u0e37\u0e48\u0e19\u0e40\u0e1b\u0e47\u0e19\u0e1b\u0e23\u0e30\u0e08\u0e33, a word drilled in one
+// v706 (blind reviews of relay tracks 6\u201313: the generated Thai sits at ~7 \u2014 \u0e0a\u0e2d\u0e1a\u0e2a\u0e30\u0e1e\u0e32\u0e19, \u0e0a\u0e49\u0e2d\u0e19\u0e1e\u0e2d\u0e14\u0e35\u0e44\u0e2b\u0e21, \u0e15\u0e37\u0e48\u0e19\u0e40\u0e1b\u0e47\u0e19\u0e1b\u0e23\u0e30\u0e08\u0e33, a word drilled in one
 // sense only) \u2014 concrete natural uses per word, written by a native-level reviewer: the writer, quota recovery and the scene polish
 // see real Thai to adapt instead of writing it from scratch. `senses` lists the senses a learner meets; the three lines spread over them.
 const THAI_WORD_USES = {
@@ -17267,7 +17267,11 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       // v706 (owner review of v705: ดิฉันเอง — "Do not use ดิฉัน — use ฉัน instead" on 10 of 11 paid checks) — the SAME rejection reason
       // three checks in a row is not fixed by asking again: stop paying; quota recovery / substitution takes the target
       { const rk = String(failureReasons[0] || '').replace(/ in: .*$/, '').replace(/\s+/g, ' ').trim().slice(0, 80)
-        _reasonStreak = rk && rk === _lastReasonKey ? _reasonStreak + 1 : 1; _lastReasonKey = rk
+        // only a refusal triggered by the TARGET ITSELF counts (the reason names part of the target, as "use ฉัน instead" names ดิฉัน
+        // in ดิฉันเอง): a missing target, a lazy cue or an untaught word is fixable by asking again (live โกรธ: accepted at check 4)
+        const tgtNoSp = String(target.thai || '').replace(/\s+/g, '')
+        const byTarget = !/^(no target|TARGET_MISSING|too short|lazy prompt|untaught)/i.test(rk) && (rk.match(/[\u0e00-\u0e7f]{2,}/g) || []).some(w => tgtNoSp.includes(w))
+        _reasonStreak = rk && byTarget && rk === _lastReasonKey ? _reasonStreak + 1 : 1; _lastReasonKey = rk
         if (_reasonStreak >= 3 && dailyV693On()) {
           onProgress && onProgress(-1, -1, { apiError: '⛔ SAME_REJECTION_REPEATED ' + target.thai + ': "' + rk + '" 3 checks in a row — no further paid attempt; left to QUOTA RECOVERY / substitution (' + attempt + ' checks used)' }, null, null)
           break } }

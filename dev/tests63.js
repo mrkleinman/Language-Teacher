@@ -225,8 +225,11 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   // the same rejection reason three checks in a row stops paid attempts
   { const v = c.initVocab(), pf = c.ev('targetActivityPreflight'), w = v.find(x => x.thai === 'ดิฉันเอง'), k = v.find(x => x.thai === 'กุ้ง')
     let calls = 0
-    c.mockGeminiGenerate = async () => { calls++; return JSON.stringify([{ speaker: 'B', thai: 'ดิฉันชอบกุ้งค่ะ', english: 'I like shrimp.', prompt: 'Say you like shrimp.' }, { speaker: 'A', thai: 'ผมก็ชอบกุ้งครับ', english: 'I like shrimp too.', prompt: 'Say you like shrimp too.' }, { speaker: 'B', thai: 'ดิฉันกินกุ้งทุกวันค่ะ', english: 'I eat shrimp every day.', prompt: 'Say you eat shrimp every day.' }]) }
-    try { await c.generateWordLines({ ...k, id: k.id }, 'at a noodle shop', 'Somchai (สมชาย)', 'Nida (นิดา)', [], v, 'AIzaSyTEST-harness-key-000000', c.ev('GEMINI_DEFAULT_MODEL'), 0, () => {}, '', []) } catch (e) {}
+    // the writer is called directly with ดิฉันเอง (the preflight would skip it); every reply is a DIFFERENT sentence, so only the
+    // same-reason rule ("Do not use ดิฉัน", triggered by the target itself) can stop it
+    const V = ['ดิฉันเองค่ะ', 'ใช่ ดิฉันเองค่ะ', 'ดิฉันเองนะคะ', 'นี่ดิฉันเองค่ะ', 'ค่ะ ดิฉันเองค่ะ', 'ดิฉันเองที่มาค่ะ', 'อ๋อ ดิฉันเองค่ะ', 'ดิฉันเองจ้ะค่ะ', 'ดิฉันเองไงคะ', 'ดิฉันเองแหละค่ะ']
+    c.mockGeminiGenerate = async () => { const t = V[calls % V.length]; calls++; return JSON.stringify([{ speaker: 'B', thai: t, english: "It's me.", prompt: "Say it's you." }, { speaker: 'A', thai: 'อ๋อ คุณเองเหรอครับ', english: "Oh, it's you?", prompt: "Ask if it's her." }, { speaker: 'B', thai: t.replace('ค่ะ', 'นะคะ'), english: "Yes, it's me.", prompt: "Say yes, it's you." }]) }
+    try { await c.generateWordLines({ ...w, id: w.id }, 'at a noodle shop', 'Somchai (สมชาย)', 'Nida (นิดา)', [], v, 'AIzaSyTEST-harness-key-000000', c.ev('GEMINI_DEFAULT_MODEL'), 0, () => {}, '', []) } catch (e) {}
     T('R9', 'a target the writer rules always refuse (ดิฉันเอง ⊃ ดิฉัน) is skipped by the preflight before any paid call; an ordinary target (กุ้ง) is not; the writer stops after the same rejection 3 checks in a row (not 11)',
       pf(w, 'th', {}).reason === 'TARGET_CONTAINS_BANNED_TOKEN' && pf(w, 'th', {}).suitable === false && pf(k, 'th', {}).suitable === true && calls >= 1 && calls <= 3, { calls, r: pf(w, 'th', {}).reason }) }
 

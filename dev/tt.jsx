@@ -21443,7 +21443,10 @@ function recoveryStrategyPromptLines(st, o) {
   if (st.failedNaturalnessPatterns && st.failedNaturalnessPatterns.length) L.push('Judged unnatural — do not reuse these constructions:\n' + st.failedNaturalnessPatterns.slice(-3).map(x => '  ✗ ' + x).join('\n'))
   if (st.failedSensePatterns.length) L.push('These used it in the WRONG sense — do not repeat that meaning:\n' + st.failedSensePatterns.slice(-4).map(x => '  ✗ ' + x).join('\n'))
   if (st.forbiddenTokensFromPreviousFailures.length) L.push('DO NOT USE these words (rejected: not taught to this learner): ' + st.forbiddenTokensFromPreviousFailures.join(' ') + ' — or any other word outside the allowed list.')
-  if (st.failedConstructions.length) L.push('These sentences were REJECTED — do not write them or close variants:\n' + st.failedConstructions.slice(-6).map(x => '  ✗ ' + x).join('\n'))
+  // v706 (relay track 16: "ครึ่งวันไม่แพงเลยครับ" was rejected for not answering "how much for half a day?", and the rewrite was never told
+  // why) — each rejected sentence carries the judge's reason, so the next candidate fixes THAT problem
+  const _whyOf = x => { const f = (st.failedAttempts || []).slice().reverse().find(a => a.text === x && a.reason); return f && dailyV693On() ? ' — rejected because: ' + String(f.reason).replace(/^.*?(?:UNNATURAL|WRONG_SENSE|CUE_MISMATCH)[^—]*—\s*/, '').slice(0, 120) : '' }
+  if (st.failedConstructions.length) L.push('These sentences were REJECTED — do not write them or close variants:\n' + st.failedConstructions.slice(-6).map(x => '  ✗ ' + x + _whyOf(x)).join('\n'))
   if (st.successfulPatterns.length) L.push('Already accepted for this word (write something different):\n' + st.successfulPatterns.slice(-3).map(x => '  ✓ ' + x).join('\n'))
   for (let k = 1; k <= st.strategyIndex; k++) L.push('RECOVERY_STRATEGY_CHANGE ' + k + ': ' + RECOVERY_STRATEGIES[k])
   if (st.strategyIndex >= 5 && c.supportWords && c.supportWords.length) L.push('SUPPORTING WORDS: ' + c.supportWords.slice(0, 24).join(' '))
@@ -22552,6 +22555,18 @@ async function finaliseMainTrack(track, adapter, ctx) {
         c.track = t
         const s2 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s2.pairs }
         _snap.secondPass = { recovered: q2.recovered.length, unresolved: q2.unresolved.map(u => u.target) }; _snap.after = s2.report
+        // v706 (relay track 16: the strict in-context judge refused 7 of 11 recovered lines → NOT_READY 82/90) — ONE more bounded cycle
+        // for what the second audit still refuses; the recovery prompt now names each refusal's reason
+        if (s2.report.invalid.length) {
+          c.track = t
+          const q3 = await enforceTrackPairQuota(t, adapter, { ...c, quotaRounds: 1 })
+          t = { ...t, pairs: q3.pairs }
+          if (q3.substitutions && q3.substitutions.length) { t = applyThaiTargetSubstitutions(t, q3.substitutions); q.substitutions.push(...q3.substitutions) }
+          q.recovered.push(...q3.recovered); q.removed.push(...q3.removed)
+          c.track = t
+          const s3 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s3.pairs }
+          _snap.thirdPass = { recovered: q3.recovered.length, unresolved: q3.unresolved.map(u => u.target) }; _snap.after = s3.report
+        }
       }
     } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; _snap = { error: String(e && e.message || e).slice(0, 160) } }
   }
@@ -24048,6 +24063,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
   })
   // deterministic gates first (target presence, script, speaker, markup, template, time)
   const _tpKept = []   // v683: candidates of THIS batch are compared with each other too (live: ผมสามารถไปได้ครับ / ฉันสามารถไปได้ค่ะ)
+  const _v706Kept = new Set()
   cands = cands.filter(p => {
     const why = []
     // v652 §6 — enforced BEFORE closed vocabulary, cue QC, naturalness QC and phonetics: no paid check
@@ -24057,6 +24073,11 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     const g = thaiLineGate(p, keywords, c.vocab)
     g.problems.forEach(x => why.push(x.code + ': ' + x.why))
     if (have.some(h => h.thai === p.thai)) why.push('DUPLICATE of an existing TARGET PAIR')
+    // v706 (relay track 16: a recovered อยากมาบ่อยไหมคะ equalled the line before it → FINAL_DUPLICATE_AUDIT FAIL) — spacing-blind, against
+    // every line of the track and every candidate already kept in this batch
+    else if (dailyV693On()) { const nk = x => String(x || '').replace(/\s+/g, ''), me = nk(p.thai)
+      if (((c.track && c.track.pairs) || []).some(h => h && !h._qcInvalid && nk(h.thai) === me) || _tpKept.some(h => nk(h.thai) === me) || (_v706Kept.has(me))) why.push('DUPLICATE of a line already in the track')
+      else if (!why.length) _v706Kept.add(me) }
     if (dailyV693On()) { const _sc = have.filter(h => h && (h.targetId === kw.wordId || h.wordId === kw.wordId)).map(h => thaiSelfContradiction(h, p)).find(Boolean); if (_sc) why.push('STATE_CONTRADICTION: ' + _sc) }
     { const _sf = teachingPlanOn() ? thaiTpSameFrame(p, have.filter(h => h && (h.targetId === kw.wordId || h.wordId === kw.wordId)).concat(_tpKept), kw) : ''; if (_sf) why.push('same application as the accepted recall "' + _sf + '" with a word swapped') }
     // v657 §3 — the same acceptance contract as generation and the final count (deterministic dimensions here)

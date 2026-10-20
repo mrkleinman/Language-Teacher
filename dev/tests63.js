@@ -246,6 +246,14 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
       /STRICT STANDARD/.test(pr) && /Previous line in the conversation: A: สวัสดีครับ/.test(pr) && !/STRICT STANDARD/.test(plain) && /Stylistic preference is s=4/.test(plain) &&
       key('nat', out[0]) !== key('nat', { ...out[0], _strictNat: undefined, _context: undefined }), out.map(x => x._context)) }
 
+  // v706 (relay track 16) — a recovery prompt names WHY each rejected sentence failed, not just the sentence
+  { const mk = c.ev('createRecoveryState'), rec = c.ev('recordRecoveryFailure'), lines = c.ev('recoveryStrategyPromptLines')
+    const st = mk({ wordId: 1, thai: 'ครึ่ง', english: 'half' }, { surface: 'ครึ่ง', sense: 'half' })
+    rec(st, { code: 'QC_REJECTED', text: 'ครึ่งวันไม่แพงเลยครับ', reason: 'FINAL_SNAPSHOT: UNNATURAL — unnatural 3/5 — does not answer "how much for half a day?"' })
+    const out = String(lines(st, {}) || '')
+    T('Q1', 'recovery prompt: each rejected sentence carries the judge\'s reason ("✗ ครึ่งวันไม่แพงเลยครับ — rejected because: does not answer …")',
+      /✗ ครึ่งวันไม่แพงเลยครับ — rejected because: unnatural 3\/5 — does not answer "how much for half a day\?"|✗ ครึ่งวันไม่แพงเลยครับ — rejected because: does not answer/.test(out), out.slice(0, 300)) }
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ฉันนึกว่าพันบาทค่ะ', 'เสื้อตัวนี้', 'บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))

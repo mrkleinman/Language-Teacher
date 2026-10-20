@@ -22559,11 +22559,16 @@ async function finaliseMainTrack(track, adapter, ctx) {
       let s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap = { first: s1.report }
       // v706 (relay tracks 16/17) — refused lines first go back to the SCENE polish (fix mode: the judge's reasons, the line and the one
       // before it may change), are judged again in context, and only what still fails goes to single-slot quota recovery
-      if (s1.report.invalid.length && THAI_SCENE_POLISH_ACTIVE) {
+      // (relay track 18: one fix pass took 18 refusals to 8; single-slot recovery then added lines that jumped topic or contradicted
+      // their neighbours — the in-context judge refused those again) — up to THREE fix passes, each on what is still refused
+      for (let pass = 1; pass <= 3 && s1.report.invalid.length && THAI_SCENE_POLISH_ACTIVE; pass++) {
+        let stop = true
         try { const fix = new Map(); s1.report.invalid.forEach(x => { if (x.pairId) fix.set(x.pairId, x.reason); if (x.thai) fix.set(x.thai, x.reason) })
           const fx = await thaiScenePolish(t, { ...c, polishFix: fix }, log)
-          if (fx.changed) { t = { ...t, pairs: fx.pairs }; c.track = t; s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap.polishFix = { calls: fx.calls, changed: fx.changed, afterInvalid: s1.report.invalid.length } }
+          if (fx.changed) { stop = false; const before = s1.report.invalid.length; t = { ...t, pairs: fx.pairs }; c.track = t; s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }
+            _snap.polishFix = (_snap.polishFix || []).concat([{ pass, calls: fx.calls, changed: fx.changed, before, after: s1.report.invalid.length }]) }
         } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e }
+        if (stop) break
       }
       if (s1.report.invalid.length) {
         c.track = t

@@ -119,8 +119,54 @@ Expectation changes, each explained in its test:
   - **Fix.** Fixed in the repository, with test tests45 G7. The live server only changes when the owner redeploys the function. Deploying is the owner's step and has not been done.
 - **Cue guard.** It now also catches an adverb between the pronoun and the verb ("Check that he sometimes swim.", seen on track 19). Test: tests63 C2.
 
+## Paid track 2 (real Haiku, cap raised to US$0.35 with the owner's approval)
+
+**Result:** READY, 90/90, US$0.202, 168 requests. This is the first real-Haiku track to finish on the strict judge.
+
+**Calibrated blind reviewer: 5.8 / 10**, the same as the owner's v705 track:
+
+| Area | Score |
+|---|---|
+| Thai | 5.5 |
+| Cues / English | 5.5 |
+| Vocabulary | 6.0 |
+| Reading | 8.0 |
+| Coherence | 3.5 |
+
+**So READY is not the same as good.** The reviewer's main findings:
+- **Coherence (3.5).** The scene jumps from bus stop to bridge, mall, tickets, car rental, noodles and the work week. Lines contradict each other:
+  - 032/035: half price, then only a bit cheaper;
+  - 045/046: no sugar, then where is the sugar.
+
+  One line has the wrong speaker (073), and A speaks twice in a row at most word boundaries.
+- **Unnatural or ungrammatical Thai that every gate passed.** For example คุณมาบ่อยกี่ครั้งคะ, มีปลาหมึกด้วยครับ as a yes/no answer, missing มี before a new subject, and suggestions without กัน / กันเถอะ.
+- **Same-frame repetition.** For example ศูนย์ ×3 is the same "086", ถึงพัน ×3, ไม่เอาน้ำแข็ง ×3, and ถูก always means "cheap".
+
+**Is the judge's effort the cause? No.** On the fixed 63-line benchmark, the real Haiku strict judge was run at both effort levels (US$0.029):
+
+| Effort | Owner's bad lines caught | Good lines wrongly rejected |
+|---|---|---|
+| Low (what the app uses) | 27 of 31 | 4 of 32 |
+| High | 26 of 27 (one batch failed to parse) | 2 of 25 |
+
+The line judge already catches the known error types. What it does not catch:
+- **Scene-level coherence.** The coherence check passed this track at 4/5, while the reviewer gave 3.5/10.
+- **Repetition across a word's three lines.**
+- **New error types** outside the owner's list.
+
+**Next levers, in order:**
+1. A stricter scene-coherence check (contradictions, wrong speaker, topic jumps), with scene repair.
+2. A deterministic check that a word's three lines don't share one frame.
+3. Widening the strict rubric with the error types above.
+
+**Other changes:**
+- Greeting lines now take the speaker's particle: สวัสดีค่ะ, not a bare สวัสดี. Test: tests63 F5.
+- tests54 E2 now ignores the cue-lint fields as cue metadata, with a comment. The cue guard correctly flags a broken fixture cue: "he really like the price".
+
 ## TL;DR
 
-The strict in-context judge catches what the owner flags. Relay tracks still end a few lines short, because the stand-ins can't write passing replacements.
+The strict in-context judge catches what the owner flags. With real Haiku it catches 27 of 31 known bad lines on the benchmark.
 
-The first real-Haiku track nearly finished, with only 1–2 strict refusals, but it ran out of its US$0.20 cap. Part of the reason is that prompt caching never worked on the Cloud Run server. That is fixed in code and needs a redeploy by the owner.
+The first finished real-Haiku track (READY 90/90, US$0.20) still scores only 5.8, the same as v705. The weak points are scene coherence (3.5/10), repeated frames and new Thai error types; the line judge does not see these. That is where the next work goes.
+
+Prompt caching never worked on the Cloud Run server. It is fixed in code and needs a redeploy by the owner.

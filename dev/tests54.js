@@ -116,7 +116,9 @@ const NARR = /^(He|She|A|B)\s+(tells|says|asks|suggests|offers|answers|agrees|ap
       const ON = await go(true), OFF = await go(false), t = ON.t, Ls = ON.Ls
       const content = t.pairs.filter(p => p && p.targetId != null)
       const narr = content.filter(p => /^(He|She)\s+(says|remarks|asks)\b/.test(p.prompt || ''))
-      const strip = p => { const { prompt, _cueClarifiedFrom, _cueClass, _cueFlags, _semVerdicts, _semCue, ...rest } = p || {}; return JSON.stringify(rest) }
+      // v706 — _cueLint / _cueLintFrom are cue metadata like _cueFlags: with the cue pass OFF the fixture's "He says: he really like the price"
+      // now (correctly) carries BROKEN_ENGLISH from the cue grammar guard; with it ON the cue is rewritten first. Only the cue side differs.
+      const strip = p => { const { prompt, _cueClarifiedFrom, _cueClass, _cueFlags, _semVerdicts, _semCue, _cueLint, _cueLintFrom, ...rest } = p || {}; return JSON.stringify(rest) }
       const offBy = new Map(OFF.t.pairs.map(p => [t14.txt(lang, p), p]))
       const meta = content.filter(p => { const b = offBy.get(t14.txt(lang, p)); return !b || strip(b) !== strip(p) })
       const qOn = JSON.stringify((t.integrity || {}).quota || null), qOff = JSON.stringify((OFF.t.integrity || {}).quota || null)

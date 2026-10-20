@@ -233,6 +233,19 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('R9', 'a target the writer rules always refuse (ดิฉันเอง ⊃ ดิฉัน) is skipped by the preflight before any paid call; an ordinary target (กุ้ง) is not; the writer stops after the same rejection 3 checks in a row (not 11)',
       pf(w, 'th', {}).reason === 'TARGET_CONTAINS_BANNED_TOKEN' && pf(w, 'th', {}).suitable === false && pf(k, 'th', {}).suitable === true && calls >= 1 && calls <= 3, { calls, r: pf(w, 'th', {}).reason }) }
 
+  // v706 (owner benchmark: the lenient judge caught 11–13 of 31 owner-confirmed bad lines, the strict in-context judge 29–30) — the final
+  // snapshot judge sees the previous lines of the same scene and the strict standard; its verdicts are cached apart from plain ones
+  { const wc = c.ev('thaiWithSceneContext'), np = c.ev('_naturalnessPromptTextFor'), key = c.ev('_semCacheKey')
+    const P = (id, sp, th) => ({ targetId: id, speaker: sp, thai: th, english: 'e' })
+    const pairs = [{ speaker: 'A', thai: 'สวัสดีครับ', english: 'Hello.', pairType: 'framing' }, P(1, 'B', 'ไปไหนคะ'), P(1, 'A', 'ไปตลาดครับ'), P(2, 'B', 'ฉันอยากไปชายหาดค่ะ'), P(2, 'A', 'ไปด้วยกันไหมครับ')]
+    const track = { scenePlan: { scenes: [{ targetIds: [1] }, { targetIds: [2] }] } }
+    const out = wc([pairs[2], pairs[3], pairs[4]], pairs, track)
+    const pr = np(out.slice(0, 1).map(x => ({ ...x, _target: 'ตลาด', _targetSense: 'market' }))), plain = np([{ thai: 'ไปตลาดครับ', english: 'e', speaker: 'A' }])
+    T('J1', 'final judge context: a line sees up to two earlier lines of its own scene (the opening line counts with the first scene) but never the previous scene; the strict standard and the context reach the prompt only for marked lines; a strict verdict is cached apart',
+      out[0]._context === 'A: สวัสดีครับ (Hello.) / B: ไปไหนคะ (e)' && out[1]._context === '' && out[2]._context === 'B: ฉันอยากไปชายหาดค่ะ (e)' && out.every(x => x._strictNat) &&
+      /STRICT STANDARD/.test(pr) && /Previous line in the conversation: A: สวัสดีครับ/.test(pr) && !/STRICT STANDARD/.test(plain) && /Stylistic preference is s=4/.test(plain) &&
+      key('nat', out[0]) !== key('nat', { ...out[0], _strictNat: undefined, _context: undefined }), out.map(x => x._context)) }
+
   const guide = c.ev('THAI_NATURALNESS_GUIDE_V701')
   const keys = ['ฉันนึกว่าพันบาทค่ะ', 'เสื้อตัวนี้', 'บางทีผมอาจจะอยู่บ้านครับ', 'ให้ผมช่วยถือไหมครับ', 'ไม่ใช่ทุกวัน', 'ค่าเช่า', 'ที่ป้ายรถเมล์ร้อนมากเลยครับ', 'เดี๋ยวผมเอาช้อนมาให้นะครับ', 'ถ้าถูกก็ซื้อครับ', 'ศูนย์ครับ ไม่ใช่สอง', 'บางที', 'ร้านอาหาร is a restaurant', 'facts stay true for the whole lesson']
   T('W1', 'the shared Thai guide carries the v704 lessons (word order, offers, conditionals, corrections, บางที, ร้านอาหาร, answers and facts that stay true)', keys.every(k => guide.includes(k)), keys.filter(k => !guide.includes(k)))

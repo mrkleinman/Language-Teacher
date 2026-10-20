@@ -22089,6 +22089,20 @@ function applyThaiTargetSubstitutions(track, subs) {
 // (the local window and every two recalls of one target, any distance) and the fail-closed cue + naturalness audit. A verdict for
 // this exact text / English / cue is reused (no paid call); a line changed after its verdict is judged now. Live v699: the PRE-QUOTA
 // audit said 83/83 while 16 saved lines came from later stages, two of them contradicting each other.
+// v706 — each target line with up to two previous lines of the SAME scene (opening lines belong to the first scene, closing lines to
+// the last), nearest last, as "A: … / B: …"; marked _strictNat for the strict final judge
+function thaiWithSceneContext(lines, pairs, track) {
+  const scenes = (track && track.scenePlan && track.scenePlan.scenes) || []
+  const sceneOfId = new Map(); scenes.forEach((sc, k) => (sc.targetIds || []).forEach(id => sceneOfId.set(id, k)))
+  const firstT = pairs.findIndex(p => p && p.targetId != null && sceneOfId.has(p.targetId))
+  const sceneAt = i => { const p = pairs[i]; if (p && p.targetId != null && sceneOfId.has(p.targetId)) return sceneOfId.get(p.targetId)
+    return i < firstT ? 0 : scenes.length ? scenes.length - 1 : 0 }
+  return lines.map(p => { const i = pairs.indexOf(p); if (i < 0) return { ...p, _strictNat: true, _context: '' }
+    const sc = sceneAt(i), prev = []
+    for (let k = i - 1; k >= 0 && prev.length < 2; k--) { const q = pairs[k]; if (!q || !q.thai) continue; if (sceneAt(k) !== sc) break
+      prev.unshift((q.speaker || 'A') + ': ' + q.thai + (q.english ? ' (' + q.english + ')' : '')) }
+    return { ...p, _strictNat: true, _context: prev.join(' / ') } })
+}
 async function thaiFinalSnapshotAudit(track, ctx, log) {
   const c = ctx || {}
   let pairs = (track.pairs || []).slice()
@@ -22111,7 +22125,10 @@ async function thaiFinalSnapshotAudit(track, ctx, log) {
   let semantic = 'NOT_RUN (no model credentials — unjudged lines stay UNVERIFIED and do not count)', paidCalls = 0
   if (c.apiKey && live.length) {
     const keyOf = p => p.pairId || p._pairKey || p.thai
-    const sem = await finalPairSemanticAudit(live, c.apiKey, c.model, log, { label: 'final-snapshot', failClosed: true, track })
+    // v706 — the final judge reads each line after the one or two lines before it (same scene) and applies the owner's strict standard
+    const judged = dailyV693On() ? thaiWithSceneContext(live, pairs, track) : live
+    const sem = await finalPairSemanticAudit(judged, c.apiKey, c.model, log, { label: 'final-snapshot', failClosed: true, track })
+    // the context fields stay on the pair: its verdict is stored under the strict key, and later checks recompute that same key
     const outBy = new Map(sem.pairs.filter(Boolean).map(p => [keyOf(p), p]))
     live.forEach(p => { const np = outBy.get(keyOf(p))
       if (np) { const i = pairs.indexOf(p); if (i >= 0) pairs[i] = np; return }
@@ -36458,6 +36475,17 @@ const THAI_SEMANTIC_JUDGE_RULES = 'JUDGE IN CONTEXT. Grammatical possibility is 
   'เจอ + a person = "meet / see"; เจอ + a thing = "find". พี่ can ADDRESS the listener ("you", someone a little older) or mean "older sibling" — judge which by context; either is correct Thai. ' +
   'หน่อย softens a request or asks for "a bit more" (ช่วยหน่อย, เร็วหน่อย); it does not attach to a descriptive adjective to mean "quite". ' +
   'A price of zero baht is only credible when something is free. A speaker variation that is merely stylistic is never an error.\n'
+// v706 (owner benchmark: 31 owner-confirmed bad lines + 32 good ones from the v700 / v702 / v705 reviews) — the lenient judge caught
+// 11–13 of the 31; with the previous lines and this strict standard the same model caught 29–30, 17–18 of 19 on reviews it had never
+// seen, rejecting 2–3 of 32 good lines. Used by the FINAL SNAPSHOT audit (pairs marked _strictNat), with the scene context.
+const THAI_NAT_STRICT_RUBRIC = 'STRICT STANDARD — these lines are MODEL THAI a beginner will memorise and repeat. A sentence that is merely understandable, or that a Thai speaker ' +
+  'would not actually say in this situation, is s ≤ 3. Judge it AFTER the previous line(s): a reply that does not answer, contradicts, or repeats what was just said ' +
+  'is s ≤ 3; asking an adult friend something odd for the situation is s ≤ 3.\n' +
+  'Owner-confirmed errors to catch (all s ≤ 3): a verb missing the object or destination Thai needs (ชม with no วิว/what, แวะ with no ไป/มา/place, เริ่ม/ทำ with no object: ทำห้อง for "tidy the room" = เก็บห้อง); ' +
+  'a missing future/softener where Thai needs one (ตอนบ่ายผมตอบ → เดี๋ยวตอนบ่ายผมค่อยตอบ); a translated wish or set phrase (ขอให้ประชุมดี, ขอให้วันพุธดี, คุณก็ขอให้มีสัปดาห์ที่ดี — a returned wish is เช่นกัน / คุณก็เหมือนกันนะ); ' +
+  'a wrong collocation (รูปนี้มีความทรงจำดี — a photo IS a memory: เป็นความทรงจำที่ดี; ชอบความทรงจำ); ของนี้ for "this one" (อันนี้); a question word plus ไหม (กินอะไรไหม = "anything?", not "what?"); ' +
+  'ไม่ใช่ answering a ไหม question (use ไม่ / ไม่ครับ); หลาย for "so many / a lot" (use เยอะ); คนมาก (spoken: คนเยอะ); a target word used in two different senses across its lines; an English gloss that adds what the Thai does not say.\n' +
+  'Do NOT give 4 to a sentence you would not teach as is. 5 = exactly what a Thai speaker says here; 4 = fine to teach with a tiny quirk; 3 = understandable but not what a Thai would say → reject.\n'
 function _naturalnessPromptText(chunk) {
   const numbered = chunk.map((p, ci) => (ci + 1) + '. Thai: ' + p.thai + '\n   Intended meaning: ' + (p.english || '') +
     (p._context ? '\n   Previous line in the conversation: ' + p._context : '') +
@@ -36481,8 +36509,16 @@ function _naturalnessPromptText(chunk) {
     '"TARGET_CANONICAL_ENTRY_SUSPECT" (the target expression itself is not a normal expression for its meaning).\n' +
     numbered + '\n\nReply ONLY with a JSON array: [{"i":1,"s":5,"note":"..."' + (anySense ? ',"wrongSense":false' : '') + ',"issue":null,"construction":"","alternative":""}]'
 }
+// v706 — the strict variant (see THAI_NAT_STRICT_RUBRIC): the leniency lines are replaced and the owner's standard follows the scale
+function _naturalnessPromptTextFor(chunk) {
+  let p = _naturalnessPromptText(chunk)
+  if (!chunk.some(x => x && x._strictNat)) return p
+  return p.replace(/Stylistic preference is s=4, not a rejection\./, 'A sentence a Thai teacher would correct before teaching is NOT a stylistic preference.')
+    .replace(/never reject a sentence for a word being "formal" unless that word is genuinely written \/ literary Thai\.?/, '')
+    .replace(/(Scale: 5 natural[^\n]*\n)/, '$1' + THAI_NAT_STRICT_RUBRIC)
+}
 async function _finalNaturalnessJudge(chunk, apiKey, model) {
-  return _semanticReplyArray(await geminiJudge(apiKey, model, _naturalnessPromptText(chunk), 1400))
+  return _semanticReplyArray(await geminiJudge(apiKey, model, _naturalnessPromptTextFor(chunk), 1400))
 }
 // Cue + Thai + English judged TOGETHER: a broken cue and a broken translation that
 // merely agree with each other must fail.
@@ -36539,7 +36575,9 @@ function _semanticPairId(p, i) { return (p && p._pairKey) || ('#' + String(i + 1
 // Thai + English + speaker + cue / sense) and is reused while that text is unchanged instead of being paid for
 // again. So judging EARLY costs almost nothing extra, and a sentence can never PASS early and FAIL later on the
 // same text. Any edit of the Thai, the English, the cue or the speaker changes the key, so it is judged again.
-function _semCacheKey(kind, p) { return kind + '\u0001' + [p.thai || '', p.english || '', p.speaker || '', kind === 'cue' ? (p.prompt || '') : ((p._target || '') + '|' + (p._targetSense || ''))].join('\u0001') }
+function _semCacheKey(kind, p) { return kind + '\u0001' + [p.thai || '', p.english || '', p.speaker || '', kind === 'cue' ? (p.prompt || '') : ((p._target || '') + '|' + (p._targetSense || ''))].join('\u0001') +
+  // v706 — a strict, in-context verdict is its own verdict: one judged without the context is never reused for it
+  (kind === 'nat' && p._strictNat ? '\u0001strict\u0001' + (p._context || '') : '') }
 // v669 §2/§3 — OBJECTIVE errors stay deterministic hard gates. A SEMANTIC rejection is never one unsubstantiated opinion:
 //   1. a blanket register claim about the TARGET WORD that the reviewed register metadata contradicts (spoken COMMON /
 //      NATURAL / CONTEXTUAL, or a reviewed sense-policy entry) is OVERRULED (REGISTER_CLAIM_OVERRULED);

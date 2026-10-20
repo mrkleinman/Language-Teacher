@@ -5,6 +5,7 @@
 //
 //   LT_ACCESS=<site access code> node sandbox/live_haiku.js --fixture th-daily-device-2026-10-09 [--cap 0.20] [--session-cap 0.60] [--label x]
 //   LT_ACCESS=… node sandbox/live_haiku.js --owner-backup <backup.json outside the repo> [--targets id,id,…] [--cap 0.20] (owner-profile Thai Daily)
+//   node sandbox/live_haiku.js --via-network-secret … (the cloud environment's network secret adds the x-lt-access header itself)
 //
 // • The site access code comes from the environment only. It is never written to any file, log or export (checked at the end).
 // • HARD BUDGET: per run (--cap) and per session (--session-cap, the owner's US$0.60; ledger sandbox/haiku-spend-ledger.json).
@@ -32,8 +33,11 @@ const readLedger = () => { try { return JSON.parse(fs.readFileSync(LEDGER, 'utf8
 const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_tokens || 0) * PRICE.in * PRICE.cacheRead + (u.cache_creation_input_tokens || 0) * PRICE.in * PRICE.cacheWrite + (u.output_tokens || 0) * PRICE.out) / 1e6 : null
 
 ;(async () => {
-  const ACCESS = String(process.env.LT_ACCESS || '').replace(/\s+/g, '')
-  if (!ACCESS) { console.log('LIVE RUN NOT RUN: LT_ACCESS (the site access code) is not set'); process.exit(2) }
+  // --via-network-secret: the cloud environment's network secret adds x-lt-access to every request for SERVER, so the code never
+  // enters this process; the app gets a placeholder (it only checks that one is set) and the runner sends no x-lt-access of its own
+  const VIA_SECRET = process.argv.includes('--via-network-secret')
+  const ACCESS = VIA_SECRET ? 'NETWORK-SECRET' : String(process.env.LT_ACCESS || '').replace(/\s+/g, '')
+  if (!ACCESS) { console.log('LIVE RUN NOT RUN: LT_ACCESS (the site access code) is not set (or pass --via-network-secret)'); process.exit(2) }
   const fixtureId = arg('fixture'), cap = +arg('cap', 0.20), sessionCap = +arg('session-cap', 0.60)
   const appFile = path.resolve(DEV, arg('app', 'tt.compiled.js'))
   // --owner-backup <file> [--targets id,id,…]: a Thai Daily on the OWNER'S profile (the backup stays outside the repository) instead of
@@ -68,6 +72,7 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
     }
     acct.sent++
     const t0 = Date.now(), headers = { ...opts.headers, 'x-lt-access': ACCESS }
+    if (VIA_SECRET) { delete headers['x-lt-access']; delete headers['X-Lt-Access'] }
     let res, text = null, data = null
     try { res = await fetch(SERVER, { method: 'POST', headers, body: opts.body, signal: opts.signal }); text = await res.text() }
     catch (e) { calls.push({ seq: acct.sent, ms: Date.now() - t0, request: body, error: String(e && e.message || e) }); throw e }
@@ -139,7 +144,7 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
   }
   const out = { 'export.txt': exportText || ('(no export: ' + exportError + ')'), 'log.txt': (r.log || []).join('\n'), 'calls.json': JSON.stringify(calls, null, 1), 'summary.json': JSON.stringify(summary, null, 1) }
   for (const [f, txt] of Object.entries(out)) {
-    if (txt.includes(ACCESS)) throw new Error('REFUSING TO SAVE ' + f + ': it contains the access code')   // never persisted
+    if (!VIA_SECRET && txt.includes(ACCESS)) throw new Error('REFUSING TO SAVE ' + f + ': it contains the access code')   // never persisted
     fs.writeFileSync(path.join(dir, f), txt)
   }
   const ledgerNow = readLedger()

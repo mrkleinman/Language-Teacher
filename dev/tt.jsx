@@ -14156,7 +14156,7 @@ function thaiWordUsesLine(target) {
 function thaiUsageFrameLine(target) {
   const th = target && (target.thai || target.t)
   const f = THAI_USAGE_FRAMES[th]
-  const uses = thaiWordUsesLine(target) + (dailyV693On() ? THAI_VERB_SENSE_LINE : '')
+  const uses = thaiWordUsesLine(target)
   if (!f) return uses ? '\n' + uses : ''
   return '\n\u2022 USAGE OF "' + th + '" \u2014 sense: ' + f.sense + '\n' +
          '  natural patterns: ' + f.frames.join(' / ') + '\n' +
@@ -17025,7 +17025,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     .replace('• CREATIVITY: vary locations (ที่บ้าน ตลาด ชายหาด สนามบิน) — do NOT repeat ร้านอาหาร\n', m0 => m0 + (restaurantUses >= 2 ? '• LOCATION BAN: ร้านอาหาร already used twice — use a different location\n' : '') +
       (usedSubjects && usedSubjects.size > 0 ? '• SUBJECT BAN: these topics have already appeared — do NOT use them again: ' + [...usedSubjects].join(', ') + '\n' : ''))
     .replace('Return ONLY JSON array of exactly 3 objects:\n', m0 => (numberHint ? numberHint + '\n' : '') + m0)
-  const baseSystem = _cacheOrder ? _stableSystem + PROMPT_CACHE_MARK + _targetSystem : _legacySystem()
+  // v706 — the owner's fixed renderings of ดู / เห็น / ชม are the same for every target: they sit in the shared (cached) part
+  const baseSystem = _cacheOrder ? _stableSystem + THAI_VERB_SENSE_LINE + PROMPT_CACHE_MARK + _targetSystem : _legacySystem()
 
   // Build natural context hint for how to use the target word
   // Detect proper nouns (capitalized English or known place names)
@@ -17381,7 +17382,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
           'prefer a SHORTER, simpler sentence.\n\n---\n\n'
         : ''
       // v703: the rewrite hint follows the cached shared part (it used to come first, so no retry could reuse the cache)
-      const combinedMsg = _cacheOrder ? _stableSystem + PROMPT_CACHE_MARK + failHint + _targetSystem + '\n\n---\n\n' + baseUser : failHint + baseSystem + '\n\n---\n\n' + baseUser
+      const combinedMsg = _cacheOrder ? _stableSystem + THAI_VERB_SENSE_LINE + PROMPT_CACHE_MARK + failHint + _targetSystem + '\n\n---\n\n' + baseUser : failHint + baseSystem + '\n\n---\n\n' + baseUser
       const tokenBudget = model && model.includes('32b') ? 4500 : model && model.includes('gemini') ? 4500 : 3800
       if (attempt > 0) aiTagNextCall('generation check ' + (attempt + 1) + '/' + CHECK_SRCS.length + (failureReasons[0] ? ': ' + String(failureReasons[0]).slice(0, 60) : ''))
       _tel.paid++

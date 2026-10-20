@@ -14,6 +14,10 @@ const LIT = JSON.parse(/^const RAW_VOCAB = (\[.*\])\s*$/m.exec(fs.readFileSync('
 const PRON_FIELDS = ['ph', 'phoneticQc', 'qcStatus', 'qcIssues', 'qcAudit', 'verificationEvidence']
 const DIGEST_1_500 = 'f0dedc125d67dfee774604427b1e808810d66f9260287bee499c366e3451c791'
 const TOPIC_REUSED = { 532: 5028, 539: 5027, 542: 5032, 555: 5019, 676: 5005 }
+// v706 — EXPECTED CHANGE (owner, 2026-10-20: "ดู = watch / look, เห็น = notice — never generalise them as look or see"): the glosses of
+// ดู (id 53, slot 55) and เห็น (id 786, slot 214) were changed on purpose. Only those gloss fields are put back before hashing, so every
+// other field of 1–500 is still pinned byte-for-byte.
+const V706_OWNER_GLOSS = { 53: { e: 'look' }, 786: { e: 'see', note: 'seeing something', usageNote: 'Perceive with the eyes. Deliberately "look at / watch" is ดู.' } }
 
 ;(async () => {
   const c = load(FILE, { realBelt: true }); c.console.info = () => {}; c.console.warn = () => {}
@@ -24,7 +28,7 @@ const TOPIC_REUSED = { 532: 5028, 539: 5027, 542: 5032, 555: 5019, 676: 5005 }
   }
   const cur = LIT.filter(d => d.curriculumIndex > 0)
   const at = (lo, hi) => cur.filter(d => d.curriculumIndex >= lo && d.curriculumIndex <= hi)
-  const dg = crypto.createHash('sha256').update(JSON.stringify(at(1, 500).sort((a, b) => a.curriculumIndex - b.curriculumIndex).map(d => { const o = { ...d }; PRON_FIELDS.forEach(k => delete o[k]); return o }))).digest('hex')
+  const dg = crypto.createHash('sha256').update(JSON.stringify(at(1, 500).sort((a, b) => a.curriculumIndex - b.curriculumIndex).map(d => { const o = { ...d, ...(V706_OWNER_GLOSS[d.id] || {}) }; PRON_FIELDS.forEach(k => delete o[k]); return o }))).digest('hex')
   T('B', '1–500 byte-identical to the pre-update records apart from romanisation corrections', dg === DIGEST_1_500, dg)
   T('C', '501–600: exactly 100 records', at(501, 600).length === 100)
   T('D', '601–800: exactly 200 records', at(601, 800).length === 200)

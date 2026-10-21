@@ -33,6 +33,9 @@ function load(file, opts = {}) {
   // reaches the mock. The mock records every call so tests can prove no other transport exists.
   ctx.__geminiMockCalls = []
   Object.defineProperty(ctx, 'mockGeminiGenerate', { configurable: true, set(fn) {
+    // v709: a test that mocks the model is testing the MODEL writer path, so the curated Thai exchange bank (which answers bank words
+    // without a model call) is switched off — unless the test opted in (ctx.__bankForced, e.g. the bank validator)
+    if (typeof ctx.thaiBankSetEnabled === 'function' && !ctx.__bankForced) ctx.thaiBankSetEnabled(false)
     if (typeof ctx.geminiRequest === 'function' || typeof ctx.geminiGenerate === 'function')
       ctx.geminiRequest = async o => { ctx.__geminiMockCalls.push({ model: o.model, stage: o.stage || null }); return fn(o.apiKey, o.model, o.messages, o.maxTokens, o) }
     else ctx.callOpenRouterOnce = fn   // pre-v648 builds (loaded only for before/after comparisons) used the old transport name

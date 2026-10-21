@@ -381,6 +381,8 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
       /\(dailyV693On\(\) \? '' : 'ขอให้เป็นวันที่ดีนะครับ, '\)/.test(src) && /never a translated wish with ขอให้/.test(src)) }
 
   // v709 (owner: "please get to at least 7/10") — Z1–Z5: the curated exchange bank, trust of vetted lines, romanisation word breaks
+  // the earlier model mocks switched the bank off (harness.js); these checks are about the bank itself
+  c.__bankForced = true; c.thaiBankSetEnabled(true)
   { const bank = c.ev('THAI_EXCHANGE_BANK'), bx = c.ev('thaiBankExchange'), bv = c.ev('thaiBankVerdict'), isB = c.ev('thaiIsBankLine')
     const w = Object.keys(bank).find(t => t === 'สะพาน') || Object.keys(bank)[0], ex = bx({ thai: w })
     T('Z1', 'the bank holds vetted A–B–A exchanges (≥ 500 words); the writer\'s first candidate for a bank word is its exchange; a word with no entry gets none',

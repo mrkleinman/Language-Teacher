@@ -42,12 +42,12 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
   const appFile = path.resolve(DEV, arg('app', 'tt.compiled.js'))
   // --owner-backup <file> [--targets id,id,…]: a Thai Daily on the OWNER'S profile (the backup stays outside the repository) instead of
   // a fixture — the same path as sandbox/daily-relay/bridge-daily.js, so a paid track is directly comparable with the relay tracks
-  const ownerBackup = arg('owner-backup'), ownerTargets = arg('targets')
+  const ownerBackup = arg('owner-backup'), ownerTargets = arg('targets'), LISTENING = process.argv.includes('--listening')
   const fx = ownerBackup ? { id: 'th-daily-owner', language: 'th' } : loadFixture(fixtureId)
   const ledger = readLedger(); const spentBefore = ledger.runs.reduce((a, r) => a + (r.costUsd || 0), 0)
   if (spentBefore >= sessionCap) { console.log('LIVE RUN NOT RUN: session budget used (US$' + spentBefore.toFixed(4) + ' of US$' + sessionCap + ')'); process.exit(2) }
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  const runId = (ownerBackup ? 'th-daily-owner' : fixtureId) + '.haiku.' + (arg('label') ? arg('label') + '.' : '') + stamp
+  const runId = (ownerBackup ? (LISTENING ? 'th-listening-owner' : 'th-daily-owner') : fixtureId) + '.haiku.' + (arg('label') ? arg('label') + '.' : '') + stamp
   // owner mode: the saved prompts carry the owner's word list, so the run is written OUTSIDE the repository, next to the backup
   const dir = ownerBackup ? path.join(arg('out-dir', path.join(path.dirname(path.resolve(ownerBackup)), 'runs')), runId) : path.join(__dirname, 'runs', runId)
   if (ownerBackup && path.resolve(dir).startsWith(path.resolve(DEV, '..'))) { console.log('LIVE RUN NOT RUN: owner-profile output must be outside the repository (--out-dir)'); process.exit(2) }
@@ -105,9 +105,20 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
     const F = ['status', 'difficulty', 'interval', 'lastSeen', 'dueDate', 'repCount', 'lapses', 'okStreak', 'manualKnown', 'introducedAt', 'note']
     const vocab = C.initVocab().map(w => { const o = byId.get(w.id); if (!o) return w; const n = { ...w }; F.forEach(k => { if (o[k] !== undefined) n[k] = o[k] }); return n })
     B.vocab.forEach(o => { if (!vocab.some(w => w.id === o.id)) vocab.push({ ...o }) })
-    const picked = ownerTargets ? ownerTargets.split(',').map(Number) : C.pickWords(vocab, 'daily', []).targets.map(w => w.id)
+    const picked = ownerTargets ? ownerTargets.split(',').map(Number) : (LISTENING ? [] : C.pickWords(vocab, 'daily', []).targets.map(w => w.id))
     const log = [], L = x => log.push(typeof x === 'string' ? x : JSON.stringify(x))
     let res = null, error = null
+    // --listening: a Thai Listening Track on the owner's profile — the app's own path (selectRevisionTargets snapshot, or the given --targets
+    // as a rebuild's frozen ids → generateCohesiveListeningTrack), every request on Haiku; the lines are written to listening-lines.json
+    if (LISTENING) {
+      try { const runIdApp = C.aiBeginRun('listening-track'), snap = picked.length ? null : C.selectRevisionTargets('th', vocab)
+        res = await C.generateCohesiveListeningTrack({ lang: 'th', vocab, apiKey: 'SANDBOX_NO_GEMINI', model: C.ev('GEMINI_DEFAULT_MODEL'), attemptId: 'lattempt-' + runId, rebuildOf: null, speechStyle: null,
+          snapshot: snap, targetIds: picked.length ? picked : null, onLog: L, onProgress: () => {} })
+        C.ev('TT_BENCH').lastTrack = res && res.track; C.ev('TT_BENCH').lastRunId = runIdApp } catch (e) { error = e }
+      const tr = res && res.track, Lx = tr && tr.listening
+      if (Lx && Lx.lines) fs.writeFileSync(path.join(dir, 'listening-lines.json'), JSON.stringify({ targets: (tr.coverage && tr.coverage.targets) || tr.targetIds || null, coverage: tr.coverage || null, lines: Lx.lines }, null, 1))
+      return { log, error, content: { status: tr && tr.status, reasons: tr && { failureReason: tr.failureReason || null, failedChecks: tr.failedChecks || null, coverage: tr.coverage && (tr.coverage.covered + '/' + tr.coverage.required), turns: Lx && Lx.lines && Lx.lines.length } }, telemetry: {} }
+    }
     try { const runIdApp = C.aiBeginRun('daily-track'); res = await C.ttBenchThaiDaily({ targets: picked.map(id => ({ id })) }, vocab, 'SANDBOX_NO_GEMINI', C.ev('GEMINI_DEFAULT_MODEL'), L, runIdApp)
       C.ev('TT_BENCH').lastTrack = res && res.track; C.ev('TT_BENCH').lastRunId = runIdApp } catch (e) { error = e }
     const tr = res && res.track, rd = tr ? C.trackReadiness(tr) : null

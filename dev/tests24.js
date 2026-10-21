@@ -18,7 +18,9 @@ const T = (lang, id, name, pass, detail) => { n++; if (!pass) fails++; out.push(
 const LANGS = process.argv[2] ? process.argv[2].split(',') : ['th', 'ja', 'zh']
 const KEY = 'AIzaSyTEST-harness-key-000000'
 const textOf = x => x == null ? '' : typeof x === 'string' ? x : Array.isArray(x) ? x.map(textOf).join(' ') : textOf(x.children)
-const flush = async (k = 40) => { for (let i = 0; i < k; i++) await new Promise(r => setImmediate(r)) }
+// v709 — the wait is 160 event-loop turns (was 40): the screens now load a larger app (curated Thai exchange bank, 2,500-word dictionary)
+// and 40 turns was intermittently too short (P2 / R1 / R2 failed about 1 run in 3–4 with the SAME ids once rendered; 5/5 pass at 160)
+const flush = async (k = 160) => { for (let i = 0; i < k; i++) await new Promise(r => setImmediate(r)) }
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 const attrIds = (r, attr) => r.root.findAll(x => x.props && x.props[attr] != null && typeof x.type === 'string').map(x => +x.props[attr])
 const done = r => r.root.findAll(x => x.props && (x.props['data-listening-track-ready'] || x.props['data-listening-needs-repair'])).length > 0

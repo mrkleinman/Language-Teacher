@@ -63,6 +63,14 @@ function scriptedModel(c, vocab, opt = {}) {
         sc[gOnly ? 0 : bOnly ? nS - 1 : i % nS].push(r.id) })
       return JSON.stringify({ title: 'Scripted story ' + st.variant, story: 'two friends plan a day out', scenes: sc.map((t, i) => ({ title: 'Scene ' + (i + 1), happens: 'part ' + (i + 1), targets: t })) })
     }
+    if (stage === 'O_listening_story_write' && /TASK: write the WHOLE conversation/.test(p)) {
+      // v712: one call writes every scene — the prompt lists each scene's lesson words under "SCENE n —"
+      const body = p.slice(p.lastIndexOf('STORY: "')), parts = body.split(/^SCENE \d+ — /m).slice(1)
+      const scenes = parts.map((part, si) => { const turns = sceneTurns([...part.matchAll(/^\s*T(\d+) \| ([^|]+) \|/gm)].map(m => ({ id: Number(m[1]), s: m[2].trim() })), si, parts.length)
+        if (opt.inject && si === 0) turns[1] = { speaker: turns[1].speaker, thai: opt.inject[turns[1].speaker], english: 'injected' }
+        return { turns } })
+      return JSON.stringify({ scenes })
+    }
     if (stage === 'O_listening_story_write') {
       const mm = p.match(/TASK: write scene (\d+) of (\d+)/), si = Number(mm[1]) - 1, nS = Number(mm[2])
       const turns = sceneTurns(rowsOf(p.slice(p.indexOf('TASK: write'))), si, nS)
@@ -113,19 +121,20 @@ async function run(c, vocab, opt = {}) {
       A.tr.selectedTargetIds.join() === frozen.join() && frozen.length === 30, { track: A.tr.selectedTargetIds.length })
   }
   {
+    // v712: one call writes the whole conversation (a scene it left out would be written on its own)
     const L = (A.tr.listening || {}).lines || [], gen = A.st.calls.filter(s => s === 'O_listening_story_write').length
-    const wrote = A.st.prompts.filter(x => x.stage === 'O_listening_story_write').length
+    const wrote = A.st.prompts.filter(x => x.stage === 'O_listening_story_write' && /TASK: write the WHOLE conversation/.test(x.p)).length
     const tel = A.tr.telemetry || {}
-    T('S3', 'end to end: READY with all 30 frozen words heard, composer = story, written by the model (plan + one call per scene), the whole-conversation edit and the paid QC ran (naturalness + coherence), real call counts on the track',
-      A.tr.status === 'READY' && A.tr.coverage.covered === 30 && A.tr.listening.composer === 'story' && gen === 4 && wrote === 4 &&
-      A.st.calls.includes('O_listening_story_edit') && A.st.calls.includes('verdicts') && A.st.calls.includes('O_listening_coherence') && tel.LISTENING_GENERATION_CALLS >= 5 && tel.LISTENING_QC_CALLS >= 1 && L.length >= 30,
+    T('S3', 'end to end: READY with all 30 frozen words heard, composer = story, written by the model (plan + one call for the whole conversation), the whole-conversation edit and the paid QC ran (naturalness + coherence), real call counts on the track',
+      A.tr.status === 'READY' && A.tr.coverage.covered === 30 && A.tr.listening.composer === 'story' && gen === 1 && wrote === 1 &&
+      A.st.calls.includes('O_listening_story_edit') && A.st.calls.includes('verdicts') && A.st.calls.includes('O_listening_coherence') && tel.LISTENING_GENERATION_CALLS >= 2 && tel.LISTENING_QC_CALLS >= 1 && L.length >= 30,
       { status: A.tr.status, cov: A.tr.coverage, composer: A.tr.listening && A.tr.listening.composer, calls: A.st.calls, tel, failed: A.tr.failedChecks })
   }
   {
     const B = await run(c, vocab, { variant: 1 })
     const la = (A.tr.listening.lines || []).map(l => l.thai).join('|'), lb = ((B.tr.listening || {}).lines || []).map(l => l.thai).join('|')
     T('S4', 'a second Listening request generates again — new plan and write calls, a different conversation, the same frozen targets (nothing replayed from storage)',
-      B.st.calls.filter(s => s === 'O_listening_story_plan').length === 1 && B.st.calls.filter(s => s === 'O_listening_story_write').length === 4 && la !== lb && B.tr.selectedTargetIds.join() === frozen.join(),
+      B.st.calls.filter(s => s === 'O_listening_story_plan').length === 1 && B.st.calls.filter(s => s === 'O_listening_story_write').length === 1 && la !== lb && B.tr.selectedTargetIds.join() === frozen.join(),
       { bStatus: B.tr.status, same: la === lb })
   }
   {

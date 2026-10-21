@@ -31978,6 +31978,19 @@ async function _lnComposeThaiStory(env) {
   const remainingTurns = si => Math.max(LN_STORY_TURNS.sceneMin, Math.min(LN_STORY_TURNS.sceneMax, Math.round((LN_STORY_TURNS.min + 8 - written.reduce((n, w) => n + (w || []).length, 0)) / (nS - si))))
   const sceneOf = si => lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [written[si]], targets, ctx)[0]
   const take = r => (r && Array.isArray(r.turns) ? r.turns : []).filter(x => x && x.thai).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', thai: String(x.thai).trim(), english: String(x.english || '').trim() }))
+  {
+    const planRows = plan.scenes.map((x, i) => 'SCENE ' + (i + 1) + ' — "' + x.title + '"' + (x.present ? ' — ' + x.present : '') + ': ' + x.happens + (x.facts ? ' (true after it: ' + x.facts + ')' : '') +
+      '\n  lesson words (each at least once, spelled exactly, at its moment):\n' + sceneTargets(i).map(t => '  T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (x.moments && x.moments[t.id] ? ' — moment: ' + x.moments[t.id] : '')).join('\n')).join('\n')
+    try {
+      const r = await call('O_listening_story_write', 'STORY: "' + plan.title + '" — ' + plan.story + '\n\n' + planRows +
+        '\n\nTASK: write the WHOLE conversation, scene by scene, ' + LN_STORY_TURNS.min + '–' + (LN_STORY_TURNS.max - 4) + ' lines in all (' + LN_STORY_TURNS.sceneMin + '–' + LN_STORY_TURNS.sceneMax + ' per scene). ' +
+        'Only A and B speak, to each other. Every line answers or follows the one before it; every later scene respects what earlier scenes established (who was where, what was decided, bought, said). ' +
+        'The first scene may open with a greeting; only the last scene ends with a goodbye. Not more than 3 lesson words in one line.\n' +
+        'Reply ONLY with JSON: {"scenes":[{"turns":[{"speaker":"A","thai":"…","english":"…"}]}]} — one entry per scene, in order.', 9000, 'LISTENING_GENERATION_CALLS')
+      ;(r && Array.isArray(r.scenes) ? r.scenes : []).slice(0, nS).forEach((x, i) => { written[i] = take(x) })
+      log && log('  ✍ LISTENING_STORY whole conversation written in one call · ' + written.map((w, i) => 'S' + (i + 1) + ' ' + ((w || []).length) + ' lines').join(' · '))
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY whole-conversation write unusable: ' + String(e && e.message || e).slice(0, 100) + ' — scenes are written one by one') }
+  }
   for (let si = 0; si < nS; si++) {
     const s = plan.scenes[si], st = sceneTargets(si), n = remainingTurns(si)
     const brief = 'STORY: "' + plan.title + '" — ' + plan.story + '\nALL SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ': ' + x.happens + (x.facts ? ' (true after it: ' + x.facts + ')' : '')).join(' | ') + '\n' +
@@ -31989,7 +32002,7 @@ async function _lnComposeThaiStory(env) {
       '\nA new topic or event in this scene must follow from something said before it.' +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}'
     let best = null
-    try { written[si] = take(await call('O_listening_story_write', brief, 3500, 'LISTENING_GENERATION_CALLS')) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
+    if (!(written[si] && written[si].length >= 2)) try { written[si] = take(await call('O_listening_story_write', brief, 3500, 'LISTENING_GENERATION_CALLS')) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
     for (let round = 0; round <= 2; round++) {
       const sc = sceneOf(si), probs = lnStorySceneProblems(la, sc, si, nS, st, ctx)
       if (!best || probs.length < best.probs.length) best = { turns: written[si].slice(), probs }

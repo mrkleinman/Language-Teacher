@@ -31859,7 +31859,7 @@ async function _lnComposeMeaningFirst(env) {
 // Lesson words are never substituted. No stored conversation is used (the offline library is a test fixture only).
 // each request must finish inside ~30 s (the provider path cuts longer ones off): token caps of ~5,700 (the app allows 3× the asked
 // output for adaptive thinking) and scenes of at most 12 lines
-const LN_STORY_TURNS = { min: 40, max: 60, sceneMin: 8, sceneMax: 12 }
+const LN_STORY_TURNS = { min: 40, max: 60, sceneMin: 7, sceneMax: 12 }
 // the vetted-content switch (off in tests of the older model composers, which mock the model for those paths)
 function thaiListeningStoryOn() { return THAI_BANK_ON && dailyV693On() }
 // common words a writer reaches for; the ones THIS learner has not been taught are named in the prompt (the gate decides, not the list)
@@ -31931,9 +31931,11 @@ function lnStoryRank(r) {
   return (r.audit ? r.audit.covered.length : 0) * 2 - (r.hardLeft || 0) * 10 - fails * 4 + (c.overall != null ? c.overall * 2 : 0) - (r.natIssues || []).length + (r.editorGrade != null ? r.editorGrade : 0)
 }
 async function _lnComposeThaiStoryBest(env) {
-  let best = null
+  let best = null, avoid = ''
   for (let k = 1; k <= LN_STORY_CANDIDATES; k++) {
-    const r = await _lnComposeThaiStory(env)
+    // the provider path ignores temperature, so the same prompt gives the same story: a later candidate is told what to avoid
+    const r = await _lnComposeThaiStory(env, avoid)
+    if (r && r.storyTitle) avoid = r.storyTitle
     if (!r) return best
     const rank = lnStoryRank(r)
     env.log && env.log('🎧 LISTENING_STORY candidate ' + k + ' of ' + LN_STORY_CANDIDATES + (r.ok ? ' · rank ' + rank.toFixed(1) + ' (coherence ' + ((r.coh || {}).overall != null ? r.coh.overall + '/5' : '?') + ', ' + ((r.coh || {}).verdicts || []).filter(v => !v.pass).length + ' scene(s) failed, ' + (r.natIssues || []).length + ' unnatural line(s), editor ' + (r.editorGrade != null ? r.editorGrade + '/10' : '?') + ')' : ' · not usable: ' + String(r.reason || '').slice(0, 80)))
@@ -31944,7 +31946,7 @@ async function _lnComposeThaiStoryBest(env) {
   if (best && LN_STORY_CANDIDATES > 1) env.log && env.log('🎧 LISTENING_STORY kept candidate ' + best.k + ' (the higher-rated fresh story)')
   return best ? best.r : null
 }
-async function _lnComposeThaiStory(env) {
+async function _lnComposeThaiStory(env, avoid) {
   const { la, log, targets, ctx, o, tel } = env
   if (la.lang !== 'th') return null
   const byId = new Map(targets.map(t => [t.id, t]))
@@ -31972,9 +31974,12 @@ async function _lnComposeThaiStory(env) {
   for (let attempt = 1; attempt <= 2 && !plan; attempt++) {
     try {
       const p = await call('O_listening_story_plan', 'TASK: plan ONE new conversation. The learner must hear EVERY ONE of these ' + targets.length + ' lesson words. They are fixed: never drop, replace or add a lesson word.\n' +
-        lnStoryTargetRows(targets) + '\n\nInvent one believable everyday story for the two friends in which every word comes up naturally, in its common sense. ' +
+        lnStoryTargetRows(targets) + '\n\nWork in two steps. FIRST group the words into 5–6 SITUATIONS where they are naturally said together (e.g. eating at a friend\'s home: let\'s eat / ' +
+        'please sit / would you like more / just a little; at the museum desk: may I ask / everyone / national museum; making up after a quarrel: sincere / trust / forgive / always). ' +
+        'THEN link the situations into one believable everyday story for A and his friend, each situation becoming one scene, so that every word comes up naturally, in its common sense. ' +
+        (avoid ? 'It must be a DIFFERENT story from this earlier one (other events and settings): "' + avoid + '". ' : '') +
         'Opening and closing phrases (greetings, wishes, goodbyes) belong at the start or the end; a formal word needs a situation where it fits (reading a sign, a host speaking to guests). ' +
-        'Use 3–5 scenes that move the story forward in time or place (e.g. "At the café, Friday" → "On the phone that evening" → "At the station, Saturday"). ' +
+        'Use 5–6 scenes that move the story forward in time or place (e.g. "At the café, Friday" → "On the phone that evening" → "At the station, Saturday"). ' +
         'The story needs ONE simple through-line the listener can follow (one plan or problem from start to end) — not a list of topics. Every topic and event is CAUSED by something said earlier: ' +
         'words about feelings or relationships (trust, forgive, sincere, always, forever, jealous …) need a real cause set up in an earlier scene (e.g. a friend broke a promise in scene 1, so scene 3 is about forgiving); ' +
         'a set phrase belongs to the person whose role says it (a waiter asks "anything else?", a host says "please sit", staff say "everyone") — A or B can quote them ("the waiter asked…") only where natural.\n' +
@@ -31986,10 +31991,10 @@ async function _lnComposeThaiStory(env) {
         'Give each scene: a title (place and time, plus B\'s role if she is not the friend), "present" (where A and B are and who B is, e.g. "together at the café" / "on the phone: A at work, B at home" / "B is the waitress, A a customer"), what happens (2–3 sentences that carry the plot), ' +
         '"facts" (what is true by the end of the scene, which later scenes must respect), and "uses": for each of its lesson words, the id and the MOMENT it is said — ' +
         'who says it and why, in at most 10 English words (e.g. {"id":842,"moment":"B, at the museum desk, asks A for his ticket"}). Pick moments where the word is the natural thing to say. ' +
-        'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–8 per scene.\n' +
+        'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–6 per scene.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
         'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"moment":"…"}]}]}', 1950, 'LISTENING_GENERATION_CALLS')
-      const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 5)
+      const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 6)
       if (sc.length < 2) throw new Error('fewer than 2 scenes')
       const used = new Set()
       sc.forEach(x => { x.moments = {}; (Array.isArray(x.uses) ? x.uses : []).forEach(u => { const id = Number(String(u && u.id).replace(/\D/g, '')); if (byId.has(id)) x.moments[id] = String(u.moment || '').slice(0, 200) })
@@ -32181,7 +32186,7 @@ async function _lnComposeThaiStory(env) {
   if (audit.covered.length < floor.words) return { ok: false, scenes: [], composer: 'story', reason: 'LISTENING_STORY_FLOOR: only ' + audit.covered.length + ' of ' + targets.length + ' frozen words heard (needs ' + floor.words + ')', uncommitted: [] }
   const plan2 = { story: scenes.map(sc => sc.setting), storyFirst: true, oneConversation: true, title: plan.title, assignments: [],
     scenes: scenes.map((sc, si) => ({ sceneId: sc.sceneId, phase: 'STORY', purpose: plan.scenes[si].happens, requiredTargetIds: plan.scenes[si].targets.filter(id => audit.covered.includes(id)), expectedTurns: sc.turns.length, maxTurns: sc.turns.length })) }
-  return { ok: true, composer: 'story', scenes, audit, natIssues, plan: plan2, coh, editorGrade, hardLeft: hard.length,
+  return { ok: true, composer: 'story', scenes, audit, natIssues, plan: plan2, coh, editorGrade, hardLeft: hard.length, storyTitle: plan.title + ' — ' + plan.story,
     report: scenes.map(sc => ({ sceneId: sc.sceneId, required: 0, heard: 0, turns: sc.turns.length })),
     gates: { SCENE_REQUIRED_COVERAGE: 'PASS', TURN_COUNT: total + '/' + LN_STORY_TURNS.max, TURN_BUDGET: total >= floor.turns && total <= LN_STORY_TURNS.max + 20, SCENES_VALIDATED: !hard.length, ONE_CONVERSATION: 'PASS' },
     salvage: deferred.length ? { from: 'story', passes: 0, removedTurns: 0, droppedScenes: [], cuts: [], floor, deferred: deferred.map(t => ({ targetId: t.id, target: t.surface, reason: 'not heard after the bounded rewrites' })) } : null,

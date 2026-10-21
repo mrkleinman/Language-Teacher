@@ -31962,10 +31962,10 @@ async function _lnComposeThaiStory(env) {
         'FORMAL or SET-PHRASE lesson words (polite forms, host / staff / announcer phrases, greetings, wishes) must come from a speaker whose ROLE says them: give one of them a role in a scene ' +
         '(B works at the museum desk and A asks her a question; A hosts the party and welcomes the guests; B serves at the café) — say so in "present" — or have them quote someone ("the waiter asked …"). Never put them in casual chat between the friends.\n' +
         'Give each scene: a title (place and time), "present" (where A and B are, e.g. "together at the café" / "on the phone: A at work, B at home"), what happens (2–3 sentences that carry the plot), ' +
-        '"facts" (what is true by the end of the scene, which later scenes must respect), and "uses": for EACH lesson word of the scene, the moment it comes up — who says it and why, in at most 12 words. Keep the whole plan short. ' +
+        '"facts" (what is true by the end of the scene, which later scenes must respect), and "targets": the ids of its lesson words. Keep the whole plan short (no explanations). ' +
         'Every id in exactly one scene, 4–8 per scene.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
-        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"moment":"…"}]}]}', 1600, 'LISTENING_GENERATION_CALLS')
+        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","targets":[123,456]}]}', 3000, 'LISTENING_GENERATION_CALLS')
       const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 5)
       if (sc.length < 2) throw new Error('fewer than 2 scenes')
       const used = new Set()

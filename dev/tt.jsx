@@ -17089,7 +17089,7 @@ function formatTrackMetrics(m) {
 // v671 §B1 — the number of checks the last Thai target actually ran (a template fallback after them shows that count)
 let THAI_LAST_CHECKS_USED = 0
 // v709 (owner: "please get to at least 7/10"; the same 30-word lesson written by a stronger writer under the same rules scored 8.2 in the
-// blind review, every Haiku track 5.5–6.2) — a curated bank of vetted three-line exchanges, written and reviewed offline
+// blind review, every model-written track 5.5–6.2) — a curated bank of vetted three-line exchanges, written and reviewed offline
 // (sandbox/curriculum/thai-exchange-bank). The writer tries a word's bank exchange first; the closed-vocabulary, speaker, target and
 // naturalness checks still decide, and a word with no usable bank exchange is written by the model as before.
 let THAI_BANK_ON = true

@@ -1,4 +1,4 @@
-// Thai curriculum 501–800 (8th Kyu Blue 501–600, 7th Kyu Blue + Stripe 601–800): data integrity.
+// Thai curriculum 501–800 (8th Kyu Blue 501–600, 7th Kyu Blue + Stripe 601–800): data integrity. (v708: 801–2500 counted in A, I, J2.)
 // Reads the RAW_VOCAB source literal and the runtime dictionary of the compiled build. No provider calls.
 //   node tests61.js            (current build: tt.compiled.js, or TT_FILE)
 'use strict'
@@ -24,7 +24,9 @@ const V706_OWNER_GLOSS = { 53: { e: 'look' }, 786: { e: 'see', note: 'seeing som
   const RT = c.ev('RAW_VOCAB')
   for (const [label, R] of [['source', LIT], ['runtime', RT]]) {
     const cur = R.filter(d => d.curriculumIndex > 0), cis = cur.map(d => d.curriculumIndex).sort((a, b) => a - b)
-    T('A-' + label[0], label + ': curriculumIndex 1–800 continuous, no duplicate', cis.length === 800 && cis.every((v, i) => v === i + 1), { n: cis.length })
+    // v708 — EXPECTED CHANGE (owner, 2026-10-20: "2,500 will be the standard"; words 801–2500 imported from the owner's 6th–1st Kyu
+    // lists, commit f132349): the curriculum is now 1–2500 (was 1–800); the 1–800 checks below are unchanged
+    T('A-' + label[0], label + ': curriculumIndex 1–2500 continuous, no duplicate', cis.length === 2500 && cis.every((v, i) => v === i + 1), { n: cis.length })
   }
   const cur = LIT.filter(d => d.curriculumIndex > 0)
   const at = (lo, hi) => cur.filter(d => d.curriculumIndex >= lo && d.curriculumIndex <= hi)
@@ -43,16 +45,21 @@ const V706_OWNER_GLOSS = { 53: { e: 'look' }, 786: { e: 'see', note: 'seeing som
   T('G2', '8th Kyu 501–600: GENERAL_CONVERSATION', at(501, 600).every(d => d.curriculumBucket === 'GENERAL_CONVERSATION'))
   const norm = t => t.normalize('NFC').replace(/[\s​-‍﻿]/g, '')
   const ids = LIT.map(d => d.id), thai = cur.map(d => norm(d.t))
-  T('I', 'unique ids; no duplicate Thai headword within 1–800; no curriculum record is a duplicate alias', new Set(ids).size === ids.length && new Set(thai).size === 800 && cur.every(d => !d.dup))
+  // v708 — EXPECTED CHANGE (2,500-word curriculum): no duplicate headword across all 2,500 slots (was 800)
+  T('I', 'unique ids; no duplicate Thai headword within 1–2500; no curriculum record is a duplicate alias', new Set(ids).size === ids.length && new Set(thai).size === 2500 && cur.every(d => !d.dup))
   T('I2', 'Thai field clean in 501–800 (Thai script only — no [CTX], numbering, Latin or labels)', at(501, 800).every(d => /^[฀-๿]+$/.test(d.t)),
     at(501, 800).filter(d => !/^[฀-๿]+$/.test(d.t)).map(d => d.curriculumIndex + ' ' + d.t))
   const top = c.topicById('th', 'wedding-speech'), rt = new Map(RT.map(d => [d.id, d]))
   T('I3', 'reused topic words keep their topic ids and membership; the topic still lists the same 50 ids 5001–5050',
     Object.entries(TOPIC_REUSED).every(([ci, id]) => { const d = rt.get(id); return d && d.curriculumIndex === +ci && !d.topicOnly && (d.topics || []).includes('wedding-speech') }) &&
     top.vocabIds.length === 50 && top.vocabIds.every((id, k) => id === 5001 + k))
-  const fresh = LIT.filter(d => d.id >= 6001)
+  // v708 — EXPECTED CHANGE: ids from 6152 are the 801–2500 import (checked in J2); J still pins the 501–800 records 6001–6151
+  const fresh = LIT.filter(d => d.id >= 6001 && d.id <= 6151)
   T('J', 'new records 6001–6151 are curriculum words that start unintroduced (l hard, i/r/lp 0), semantic QC PASS',
     fresh.length === 151 && fresh.every((d, k) => d.id === 6001 + k && d.curriculumIndex > 500 && d.l === 'hard' && !d.i && !d.r && !d.lp && d.semanticQc === 'PASS' && d.ph))
+  const fresh2 = LIT.filter(d => d.id >= 6152)
+  T('J2', 'v708: new records 6152–7580 (801–2500 import) are curriculum words 801–2500 that start unintroduced (l hard, i/r/lp 0), semantic QC PASS, with a reading',
+    fresh2.length === 1429 && fresh2.every((d, k) => d.id === 6152 + k && d.curriculumIndex > 800 && d.curriculumIndex <= 2500 && d.l === 'hard' && !d.i && !d.r && !d.lp && d.semanticQc === 'PASS' && d.ph))
   out.forEach(l => console.log(l))
   console.log('\nThai curriculum 501–800 data: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

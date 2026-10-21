@@ -1,7 +1,7 @@
 # python3 suitability.py — v708 (owner review of v707: "correct dictionary suitability metadata": the preflight skipped ordinary words
 # such as เส้นทาง, วัฒนธรรม, ผู้โดยสาร, อุณหภูมิ). Those records carried lexiconDisposition RECOGNITION with no reason recorded, a blanket
 # early decision; the grader treats that as "recognition only, a human must review" and the Daily preflight skips the word.
-# Every such record becomes ACTIVE, except the few whose limit is real (listed below with the reason, which is recorded on the
+# Every such record becomes ACTIVE (85), except the few whose limit is real (listed below with the reason, which is recorded on the
 # record). Data only; the json.dumps settings of the line are kept (checked byte-identical before the change).
 import json
 TT = '../../../tt.jsx'

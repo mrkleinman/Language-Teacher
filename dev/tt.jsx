@@ -31850,8 +31850,8 @@ async function _lnComposeMeaningFirst(env) {
 //          flagged scenes (≤ 2 rounds), re-checked by the same gates and judges
 //   DEFER  a frozen word that still is not heard is reported and stays due for Revision (the established salvage floor applies)
 // Lesson words are never substituted. No stored conversation is used (the offline library is a test fixture only).
-// each request must finish well inside ~30 s (the provider path cuts longer ones off): small token caps (the app allows 3× for adaptive
-// thinking) and scenes of at most 12 lines
+// each request must finish inside ~30 s (the provider path cuts longer ones off): token caps of ~5,700 (the app allows 3× the asked
+// output for adaptive thinking) and scenes of at most 12 lines
 const LN_STORY_TURNS = { min: 40, max: 60, sceneMin: 8, sceneMax: 12 }
 // the vetted-content switch (off in tests of the older model composers, which mock the model for those paths)
 function thaiListeningStoryOn() { return THAI_BANK_ON && dailyV693On() }
@@ -31935,7 +31935,8 @@ async function _lnComposeThaiStory(env) {
     for (let attempt = 1; ; attempt++) {
       tel[kind] = (tel[kind] || 0) + 1
       try {
-        const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prefix + PROMPT_CACHE_MARK + prompt }], maxTokens, temperature: kind === 'LISTENING_GENERATION_CALLS' ? 0.8 : 0.4, json: true, stage })
+        // Haiku writes ~210 tokens / s and thinking counts toward the cap: caps of ~5,700 tokens finish inside the ~30 s cut-off
+        const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prefix + PROMPT_CACHE_MARK + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: kind === 'LISTENING_GENERATION_CALLS' ? 0.8 : 0.4, json: true, stage })
         return lnStoryJson(raw)
       } catch (e) {
         const transient = !(e && (e.fatalProvider || e.cancelled)) && /\b(5\d\d|429)\b|overloaded|timeout|ECONNRESET|MAX_TOKENS|cut off|no JSON|Unexpected end/i.test(String((e && (e.status || '')) + ' ' + (e && e.message || e)))
@@ -31965,7 +31966,7 @@ async function _lnComposeThaiStory(env) {
         '"facts" (what is true by the end of the scene, which later scenes must respect), and "targets": the ids of its lesson words. Keep the whole plan short (no explanations). ' +
         'Every id in exactly one scene, 4–8 per scene.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
-        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","targets":[123,456]}]}', 3000, 'LISTENING_GENERATION_CALLS')
+        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","targets":[123,456]}]}', 1950, 'LISTENING_GENERATION_CALLS')
       const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 5)
       if (sc.length < 2) throw new Error('fewer than 2 scenes')
       const used = new Set()
@@ -31998,7 +31999,7 @@ async function _lnComposeThaiStory(env) {
       '\nA new topic or event in this scene must follow from something said before it.' +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}'
     let best = null
-    try { written[si] = take(await call('O_listening_story_write', brief, 1300, 'LISTENING_GENERATION_CALLS')) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
+    try { written[si] = take(await call('O_listening_story_write', brief, 1900, 'LISTENING_GENERATION_CALLS')) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
     for (let round = 0; round <= 2; round++) {
       const sc = sceneOf(si), probs = lnStorySceneProblems(la, sc, si, nS, st, ctx)
       if (!best || probs.length < best.probs.length) best = { turns: written[si].slice(), probs }
@@ -32007,7 +32008,7 @@ async function _lnComposeThaiStory(env) {
       try {
         const r = take(await call('O_listening_story_repair', brief.replace(/\nTASK: [\s\S]*$/, '') + '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sc, la) +
           '\n\nPROBLEMS (fix every one; keep every lesson word of this scene; change as little as possible; keep the story):\n' + probs.map(p => '- ' + (p.line ? 'line ' + p.line + ' ' : '') + p.code + ': ' + p.detail).join('\n') +
-          '\nLesson words of this scene:\n' + lnStoryTargetRows(st) + '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1300, 'LISTENING_REPAIR_CALLS'))
+          '\nLesson words of this scene:\n' + lnStoryTargetRows(st) + '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_REPAIR_CALLS'))
         if (r.length >= 2) written[si] = r
       } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' rewrite unusable: ' + String(e && e.message || e).slice(0, 100)) }
     }
@@ -32042,7 +32043,7 @@ async function _lnComposeThaiStory(env) {
         'For each fault, REPLACE a span of 1–3 consecutive lines ("from" … "to"): give exactly as many new lines as you replace, with the SAME speakers in the same order. ' +
         'Every lesson word of the span must still appear somewhere in the new span (it may move to another line of the span). Each new line: at most 7 Thai words, only known words, ends with the speaker\'s particle. ' +
         'Fix the cause (often an earlier line). At most 8 fixes, the worst first; "problem" in at most 8 words. Also give "score": the grade (0–10) this lesson deserves NOW, as the strict grader would.\n' +
-        'Reply ONLY with JSON: {"score":6.5,"fixes":[{"from":12,"to":13,"problem":"…","turns":[{"speaker":"A","thai":"…","english":"…"},{"speaker":"B","thai":"…","english":"…"}]}]}', 1100, 'LISTENING_REPAIR_CALLS')
+        'Reply ONLY with JSON: {"score":6.5,"fixes":[{"from":12,"to":13,"problem":"…","turns":[{"speaker":"A","thai":"…","english":"…"},{"speaker":"B","thai":"…","english":"…"}]}]}', 1900, 'LISTENING_REPAIR_CALLS')
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY edit round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)); break }
     const fixes = (r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 8)
     let kept = 0; rejected = []
@@ -32112,7 +32113,7 @@ async function _lnComposeThaiStory(env) {
         const r = take(await call('O_listening_story_qc_repair', 'STORY: "' + plan.title + '" — ' + plan.story + '\nTHE WHOLE CONVERSATION:\n' + soFar(nS) +
           '\n\nA native teacher flagged scene ' + (si + 1) + ' ("' + plan.scenes[si].title + '"):\n' + probs.map(p => '- ' + (p.line ? 'line ' + p.line + ' ' : '') + p.code + ': ' + p.detail).join('\n') +
           '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sc, la) + '\n\nRewrite the flagged lines (and a neighbouring line if the fix needs it) so the scene is natural spoken Thai and follows on. Keep every lesson word of this scene:\n' + lnStoryTargetRows(st) +
-          '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1300, 'LISTENING_REPAIR_CALLS'))
+          '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_REPAIR_CALLS'))
         if (r.length >= 2) {
           written[si] = r
           // the rewrite must not break a deterministic gate or lose a lesson word the scene had
@@ -32135,7 +32136,7 @@ async function _lnComposeThaiStory(env) {
     try {
       const r = take(await call('O_listening_story_repair', 'STORY: "' + plan.title + '" — ' + plan.story + '\nTHE WHOLE CONVERSATION:\n' + soFar(nS) + '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sceneOf(si), la) +
         '\n\nPROBLEMS (fix every one; change as little as possible; keep the story and every lesson word):\n' + pr.map(p => '- ' + (p.line ? 'line ' + p.line + ' ' : '') + p.code + ': ' + p.detail).join('\n') +
-        '\nLesson words of this scene:\n' + lnStoryTargetRows(st) + '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1300, 'LISTENING_REPAIR_CALLS'))
+        '\nLesson words of this scene:\n' + lnStoryTargetRows(st) + '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_REPAIR_CALLS'))
       if (r.length >= 2) { written[si] = r; if (lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).filter(p => p.code !== 'SCENE_TOO_SHORT').length >= pr.length) written[si] = before }
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = before }
     if (written[si] !== before) {

@@ -134,7 +134,9 @@ async function run(c, vocab, opt = {}) {
     const B = await run(c, vocab, { variant: 1 })
     const la = (A.tr.listening.lines || []).map(l => l.thai).join('|'), lb = ((B.tr.listening || {}).lines || []).map(l => l.thai).join('|')
     T('S4', 'a second Listening request generates again — new plan and write calls, a different conversation, the same frozen targets (nothing replayed from storage)',
-      B.st.calls.filter(s => s === 'O_listening_story_plan').length === 1 && B.st.calls.filter(s => s === 'O_listening_story_write').length === 4 && la !== lb && B.tr.selectedTargetIds.join() === frozen.join(),
+      // best-of-2 (v712): a run may write a second complete fresh story when the first is not rated well, so the counts are per candidate
+      // (each candidate = one plan + one write per scene); before best-of-2 this asserted exactly 1 plan and 4 writes
+      (np => np >= 1 && np <= 2 && B.st.calls.filter(s => s === 'O_listening_story_write').length === 4 * np)(B.st.calls.filter(s => s === 'O_listening_story_plan').length) && la !== lb && B.tr.selectedTargetIds.join() === frozen.join(),
       { bStatus: B.tr.status, same: la === lb })
   }
   {
@@ -168,7 +170,7 @@ async function run(c, vocab, opt = {}) {
   {
     const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')
     T('S8', 'no stored-conversation path in production (no THAI_LISTENING_LIBRARY, no library pick, no bank-stitched Listening composer); the Daily exchange bank is unchanged',
-      !/THAI_LISTENING_LIBRARY|thaiListeningLibraryPick|_lnComposeThaiLibrary|_lnComposeThaiBank/.test(src) && /await _lnComposeThaiStory\(_env\)/.test(src) &&
+      !/THAI_LISTENING_LIBRARY|thaiListeningLibraryPick|_lnComposeThaiLibrary|_lnComposeThaiBank/.test(src) && /await _lnComposeThaiStoryBest\(_env\)/.test(src) /* best-of-2 wrapper around _lnComposeThaiStory (v712) */ &&
       Object.keys(c.ev('THAI_EXCHANGE_BANK')).length > 1000 && typeof c.thaiBankLineOf === 'function')
   }
 

@@ -14508,6 +14508,8 @@ const THAI_FUNCTION_PHONETICS = {
   // v704 (blind review of relay run 5): read as ไม่ + ได้ยิน (dâi-yin), not ไม่ได้ + ยิน. One token, so hyphenated like the bank's
   // other multi-word entries — a space inside one token breaks the positional pronunciation alignment
   'ไม่ได้ยิน':'mâi-dâi-yin',
+  // v710 — words in vetted bank lines with no dictionary record (ประเพณีไทย, ไม่นาน, ใบละ / สัปดาห์ละ): read from here, not the model
+  'ไทย':'thai','นาน':'naan','ละ':'lá',
 }
 // v705 — a bare polite particle after a word wins a segmentation tie (ที่นี่|ครับ, not ที่|นี่ครับ)
 const THAI_TIE_PARTICLES = new Set(['ครับ', 'ค่ะ', 'คะ'])

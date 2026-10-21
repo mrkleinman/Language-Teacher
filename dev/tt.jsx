@@ -21275,7 +21275,7 @@ async function listeningSetStatus(lt, status) { return listeningSave({ ...lt, st
 // Nothing about Listening was stored on the track, so nothing could tell the screen that
 // a build was due. Now Listening is built at the generation-complete boundary, persisted
 // (and read back) BEFORE navigation, and its state lives on the track itself.
-const LISTENING_BUILD_VERSION = 'v709'
+const LISTENING_BUILD_VERSION = 'v710'
 const LISTENING_BUILD_STATES = ['NOT_STARTED', 'BUILDING', 'READY', 'PARTIAL', 'FAILED', 'NOT_STARTED_LEGACY', 'BLOCKED_MAIN_NOT_READY']
 function listeningBuildStateOf(track) {
   const b = track && track.listeningBuild
@@ -23556,7 +23556,7 @@ async function finaliseJaZhTrackAfterQc(track, res, lang, ctx) {
 // back to Thai, and nothing stopped Listening after the FINAL_TRACK failure. Language is now
 // carried by ONE TrackContext created with the track; every dispatcher is an explicit table with
 // no default branch, and an unknown language is an INTERNAL_ERROR, never a fallthrough.
-const APP_BUILD_VERSION = 'v709'
+const APP_BUILD_VERSION = 'v710'
 const PIPELINE_VERSION = 'v651-canonical'
 // v703 (owner review: the v702 export still said th-gen-v657 / qc-v657, so the active code could not be verified from the export).
 // Bumped with the Thai changes: QC-flagged lines are never kept, final cue lint, echo / relationship / sense rules.
@@ -23566,9 +23566,11 @@ const PIPELINE_VERSION = 'v651-canonical'
 // set-phrase closings, corrected suitability metadata, words 801–2500.
 // v709: curated Thai exchange bank (vetted three-line exchanges tried first; vetted lines are not re-judged or rewritten), vetted
 // opening / closing set pieces, romanisation word breaks, dictionary reading fixes.
-const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v709-exchange-bank', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
-const QC_VERSION = 'qc-v709'
-const FINALIZER_VERSION = 'final-v709-exchange-bank'
+// v710: the exchange bank after three more native-teacher reviews; checker false positives fixed in the checks; vetted lines skip only the
+// paid re-judging (every integrity check still runs); dictionary reading audit and word breaks.
+const GENERATOR_VERSIONS = Object.freeze({ th: 'th-gen-v710-exchange-bank', ja: 'ja-gen-v654-scene-plan', zh: 'zh-gen-v650' })
+const QC_VERSION = 'qc-v710'
+const FINALIZER_VERSION = 'final-v710-exchange-bank'
 const TRACK_LANGUAGES = Object.freeze(['th', 'ja', 'zh'])
 const LANGUAGE_NAMES = Object.freeze({ th: 'Thai', ja: 'Japanese', zh: 'Mandarin' })
 function pipelineInternalError(code, detail) {

@@ -466,6 +466,13 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const both = Object.entries(bank).filter(([t, vs]) => vs.some(v => v.some(l => l.thai === 'ได้กำไรกี่แสนคะ'))).map(([t]) => t)
     T('Z19', 'a sentence in two exchanges is recognised as vetted under each of its targets', both.length >= 2 && both.every(t => f({ thai: 'ได้กำไรกี่แสนคะ', _target: t })) && !f({ thai: 'ได้กำไรกี่แสนคะ', _target: 'ถ้วย' }), both) }
 
+  // v710 (blind review of paid track 19) — Z20: เก็บไว้ / ให้หน่อย / คุยกัน read as separate words; the compound noun รถสองแถว stays one word;
+  // the tens are one number word (สี่สิบ sìi-sìp)
+  { const lex = c.buildThaiPhoneticLexicon(c.initVocab()), sp = t => c.thaiPhraseReadingSplit(t, lex.get(t), lex)
+    const got = { a: sp('เก็บไว้'), b: sp('ให้หน่อย'), d: sp('คุยกัน'), e: sp('รถสองแถว'), f: c.composeThaiPhonetic('สี่สิบบาทค่ะ', lex).phonetic }
+    T('Z20', 'readings: gèp wái · hâi nòi · khui gan; รถสองแถว rót-sǎawng-thǎaeo; สี่สิบบาท sìi-sìp bàat',
+      got.a === 'gèp wái' && got.b === 'hâi nòi' && got.d === 'khui gan' && got.e === 'rót-sǎawng-thǎaeo' && /^sìi-sìp bàat/.test(got.f), got) }
+
   // v709 (owner's live v709 track) — Z6: a group of vetted bank lines is clean without the paid group check; Z7: วันนี้วันอังคาร is not a
   // "duplicated head" of the fixed phrase (ขอให้คุณขอให้… still is)
   { const bank = c.ev('THAI_EXCHANGE_BANK'), t = Object.keys(bank).find(k => k === 'ถ้วย') || Object.keys(bank)[0], ex = bank[t][0]

@@ -14510,6 +14510,8 @@ const THAI_FUNCTION_PHONETICS = {
   'ไม่ได้ยิน':'mâi-dâi-yin',
   // v710 — words in vetted bank lines with no dictionary record (ประเพณีไทย, ไม่นาน, ใบละ / สัปดาห์ละ): read from here, not the model
   'ไทย':'thai','นาน':'naan','ละ':'lá','ไว้':'wái',
+  // v710 (blind review of paid track 19: "sìi sìp" beside "yîi-sìp") — the tens are one number word each
+  'สามสิบ':'sǎam-sìp','สี่สิบ':'sìi-sìp','ห้าสิบ':'hâa-sìp','หกสิบ':'hòk-sìp','เจ็ดสิบ':'jèt-sìp','แปดสิบ':'bpàaet-sìp','เก้าสิบ':'gâo-sìp',
 }
 // v705 — a bare polite particle after a word wins a segmentation tie (ที่นี่|ครับ, not ที่|นี่ครับ)
 const THAI_TIE_PARTICLES = new Set(['ครับ', 'ค่ะ', 'คะ'])
@@ -14589,10 +14591,13 @@ function thaiPhraseReadingSplit(th, ph, lex) {
       if (sub2.size < sub0.size) { const r = _wordsOf(th, sub2); if (r.c.unresolved === 0 && r.w.length >= 3) { sub = sub2; comp = r.c; words = r.w } } }
     // two words count as a phrase too when one of them is a polite particle or a leading แล้ว (สวัสดี ครับ, แล้ว คุยกัน)
     // v710 (blind review of paid track 14: "mâi-dâi" beside "mâi dâi", "sà-baai-dii-mǎi") — also ไม่ + one word (ไม่ได้, ไม่มี, ไม่ใช่: two
-    // syllables in all, so ไม่เป็นไร stays one expression) and any word + the question particle ไหม (ได้ไหม, สบายดีไหม)
+    // syllables in all, so ไม่เป็นไร stays one expression) and any word + the question particle ไหม (ได้ไหม, สบายดีไหม), ไว้ (เก็บไว้), หน่อย (ให้หน่อย) or the reciprocal กัน (คุยกัน / เจอกัน alike)
     const two = words.length === 2 && (/^.+(ครับ|ค่ะ|คะ|นะ)$/.test(th) || /^แล้ว.+/.test(th) ||
-      (dailyV693On() && ((/^ไม่/.test(th) && own.length === 2) || /.+(ไหม|มั้ย)$/.test(th))))
-    const phrase = words.length >= 3 || two
+      (dailyV693On() && ((/^ไม่/.test(th) && own.length === 2) || /.+(ไหม|มั้ย|ไว้|หน่อย|กัน)$/.test(th))))
+    // v710 (blind review of paid track 19: "rót sǎawng thǎaeo" beside "rót-fai-fáa") — three or more words make a PHRASE only when one of them
+    // is a function word (ดูแล ตัวเอง ด้วย, เป็น ยังไง บ้าง, ไว้ เจอ กัน ใหม่); a compound noun of content words (รถสองแถว) stays one word
+    const _fn = /ด้วย|บ้าง|เป็น|กัน|ไว้|ใหม่|ครับ|ค่ะ|คะ|นะ|ไม่|ไหม|หน่อย|แล้ว|ยังไง|อะไร|ที่ไหน|เถอะ|สิ|จ้ะ/
+    const phrase = (words.length >= 3 && (!dailyV693On() || _fn.test(th))) || two
     if (comp.unresolved === 0 && phrase && words.reduce((a, w) => a + syl(w).length, 0) === own.length) {
       let k = 0; out = words.map(w => { const n = syl(w).length, seg = own.slice(k, k + n).join('-'); k += n; return seg }).join(' ') } } catch (e) {}
   _THAI_PHRASE_SPLIT.set(key, out); return out

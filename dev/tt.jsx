@@ -18673,6 +18673,9 @@ function cueClarityPass(lang, pairs, ctx) {
   const out = (pairs || []).map((p, i) => {
     if (!p || !p.prompt || !p.english) return p
     stats.checked++
+    // v709 (paid track 11: "Tell her your nose is too big" → "Say your nose is too big" → judge "repair" → "Say my nose is too big") —
+    // a vetted Thai bank cue keeps its "Tell him / Tell her / Ask her" form, which is what says whose nose it is
+    if (lang === 'th' && thaiBankVerdict('cue', p)) { stats.D++; return p }
     const prev = (pairs || []).slice(Math.max(0, i - 2), i).map(x => x && x.english || '').join(' ')
     const r = cueClarify(lang, p, { ...ctx, prevEnglish: prev })
     stats[r.cls]++

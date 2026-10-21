@@ -2,7 +2,7 @@
 
 The owner asked: "now get the listening track to 7.5", Thai only. Japanese and Mandarin Listening are unchanged.
 
-**Not released.** The work is on the development branch, waiting for the owner's "go live".
+**Released as v711 to main (commit 1be806a)** after the owner's "go live if ready".
 
 ## Result
 
@@ -108,7 +108,10 @@ Twelve dictionary readings were corrected after the reviewers flagged them:
   - the library is off when the vetted content is off;
   - a structure lint covers every embedded conversation.
 - **Other suites:** tests63 80/80, tests60 36/36, tests54 57/57, tests17 49/49.
-- **Full suite:** see below.
+- **Full suite (62 files):** no test fails that passed on v710, and some v710 failures now pass (tests24 TH P2, tests44 G1th / V3, tests47 P6, tests39 A5).
+  - The first run found three storage-write guards (tests37 G3, tests38 O3, tests39 A6) catching a new storage key I had used for "recently played".
+  - That key is gone: "recently played" is now read from the saved Listening attempts, which record the conversation id, and all three guards are back to their v710 results.
+  - The remaining failures (tests35, tests37 C1, tests39 C1, tests45 P2, tests55) also fail on v710.
 
 ## Spend
 
@@ -135,4 +138,7 @@ Thai Listening now plays a whole conversation written and reviewed in advance, i
 - **Cost:** each track costs nothing (no model calls).
 - **Gates:** every deterministic gate still runs.
 - **Live check:** a live run on the owner's profile came back READY 30/30 in 11 seconds.
-- **Release:** not released; waiting for the owner's "go live".
+- **Release:** **released as v711 to main (commit 1be806a)**. Release checks:
+  - the page is in sync (app-version v711, service-worker cache tt-v711);
+  - the browser smoke test shows only the Babel note and a 404, as on v710;
+  - the page contains no keys or access codes.

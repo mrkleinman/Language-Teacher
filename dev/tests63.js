@@ -303,9 +303,12 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const track = { scenePlan: { scenes: [{ targetIds: [1] }, { targetIds: [2] }] } }
     const out = wc([pairs[2], pairs[3], pairs[4]], pairs, track)
     const pr = np(out.slice(0, 1).map(x => ({ ...x, _target: 'ตลาด', _targetSense: 'market' }))), plain = np([{ thai: 'ไปตลาดครับ', english: 'e', speaker: 'A' }])
-    T('J1', 'final judge context: a line sees up to two earlier lines of its own scene (the opening line counts with the first scene) but never the previous scene; the strict standard and the context reach the prompt only for marked lines; a strict verdict is cached apart',
-      out[0]._context === 'A: สวัสดีครับ (Hello.) / B: ไปไหนคะ (e)' && out[1]._context === '' && out[2]._context === 'B: ฉันอยากไปชายหาดค่ะ (e)' && out.every(x => x._strictNat) &&
-      /STRICT STANDARD/.test(pr) && /Previous line in the conversation: A: สวัสดีครับ/.test(pr) && !/STRICT STANDARD/.test(plain) && /Stylistic preference is s=4/.test(plain) &&
+    // v708 — EXPECTED CHANGE (owner review of v707: "separate Daily practice from one connected story — short, self-contained
+    // mini-conversations"): a target line's context is now the earlier lines of its OWN word's exchange only, so the opening greeting
+    // is no longer context for the first word (was 'A: สวัสดีครับ (Hello.) / B: ไปไหนคะ (e)'); a different scene is still never context
+    T('J1', 'final judge context: a line sees up to two earlier lines of its own word\'s exchange (v708: not the opening, not another word) and never the previous scene; the strict standard and the context reach the prompt only for marked lines; a strict verdict is cached apart',
+      out[0]._context === 'B: ไปไหนคะ (e)' && out[1]._context === '' && out[2]._context === 'B: ฉันอยากไปชายหาดค่ะ (e)' && out.every(x => x._strictNat) &&
+      /STRICT STANDARD/.test(pr) && /Previous line in the conversation: B: ไปไหนคะ/.test(pr) && !/STRICT STANDARD/.test(plain) && /Stylistic preference is s=4/.test(plain) &&
       key('nat', out[0]) !== key('nat', { ...out[0], _strictNat: undefined, _context: undefined }), out.map(x => x._context)) }
 
   // v706 (relay track 16) — a recovery prompt names WHY each rejected sentence failed, not just the sentence
@@ -334,6 +337,46 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const S = c.ev('THAI_EXCHANGE_SHAPES'), first = seen.find(x => x !== '|true' && x !== '|false'), last = seen.slice().reverse().find(x => x !== '|true' && x !== '|false')
     T('W3', 'the writer prompt gives each word one of five exchange shapes by its id (กุ้ง and ช้อน get different ones) and asks that an answer add something new',
       S.length === 5 && first && last && first !== last && S.some(x => x.startsWith(first.slice(0, 20))), { first, last }) }
+
+  // v708 (owner review of v707, 6.0/10) — Y1–Y7
+  { const G = c.ev('thaiCueGuarantee'), GP = c.ev('thaiCueGuaranteePass'), B = c.ev('thaiCueEnglishBroken')
+    const g = (cue, en, sp) => G({ prompt: cue, english: en, speaker: sp }, { addr: sp === 'A' ? 'f' : 'm' })
+    const r = [g('Say are they cold?', 'Are they cold?', 'A'), g('Thank Somchai you wish him a safe trip.', 'Thank you, Somchai. Have a safe trip.', 'B'),
+      g('Say what time do you leave?', 'What time do you leave?', 'A'), g('Ask whether he is cold.', 'Are you cold?', 'A'), g('Say oh, are you cold?', 'Oh, are you cold?', 'A')]
+    T('Y1', 'cue guarantee: "Say are they cold?" → "Ask whether they are cold."; "Thank Somchai you wish him…" → "Thank Somchai and wish him…"; an unfixable shape becomes a quoted instruction; a sound cue is unchanged; nothing it returns is broken',
+      r[0] === 'Ask whether they are cold.' && r[1] === 'Thank Somchai and wish him a safe trip.' && r[2] === 'Ask, \u201cWhat time do you leave?\u201d' && r[3] === 'Ask whether he is cold.' &&
+      r[4] === 'Say oh, then ask whether she is cold.' && r.every(x => !B(x).length) && B('Say are they cold?').length && B('Thank Somchai you wish him a safe trip.').length, r)
+    const P = [{ speaker: 'B', thai: 'ขอบคุณค่ะ', english: 'Thank you.', prompt: 'Thank Somchai you wish him a good day.', pairType: 'framing' }, { speaker: 'A', targetId: 3, thai: 'หนาวไหมครับ', english: 'Are they cold?', prompt: 'Say are they cold?' }]
+    const out2 = GP(P, {}, null), src = require('fs').readFileSync('tt.jsx', 'utf8')
+    T('Y2', 'the guarantee runs on every line with a cue (closing lines included), after the cue lint inside the final audit and again on the saved text',
+      out2[0].prompt === 'Thank Somchai and wish him a good day.' && out2[1].prompt === 'Ask whether they are cold.' &&
+      /pairs = thaiFinalCueLintPass\(pairs, track, log\) \} catch \(e\) \{\}\n  try \{ pairs = thaiCueGuaranteePass\(pairs, track, log\)/.test(src) && /t = \{ \.\.\.t, pairs: meta\.pairs \}\n  if \(adapter\.lang === 'th'\) \{ try \{ t = \{ \.\.\.t, pairs: thaiCueGuaranteePass\(t\.pairs, t, log\)/.test(src), out2.map(x => x.prompt)) }
+  { const ft = c.ev('thaiFramingTidy')
+    const P = [{ speaker: 'A', thai: 'ไว้เจอกันใหม่นะครับ', english: 'See you again.', prompt: 'Say see you again.', _target: 'closing' }, { speaker: 'B', thai: 'ขอบคุณ สมชาย ขอให้เดินทางดีค่ะ', english: 'Thank you, Somchai, have a good trip.', prompt: 'Thank Somchai you wish him a good trip.', _target: 'closing_reply' },
+      { speaker: 'A', thai: 'โชคดีนะครับ ขอให้มีความสุข', english: 'Good luck, be happy.', prompt: 'Wish her luck.', _target: 'closing' }]
+    const o = ft(P, null, [])
+    T('Y3', 'a closing line built on a translated wish (ขอให้เดินทางดี) becomes the set phrase ขอบคุณค่ะ เดินทางปลอดภัยนะคะ with a matching English and cue; ขอให้มีความสุข (a real set phrase) is kept',
+      o[1].thai === 'ขอบคุณค่ะ เดินทางปลอดภัยนะคะ' && o[1].english === 'Thank you. Have a safe trip.' && o[1].prompt === 'Thank him and wish him a safe trip.' && o[1].phonetic === '' && o[2].thai === P[2].thai, o.map(x => x.thai + ' · ' + x.prompt)) }
+  { const rv = c.ev('thaiRevertBrokenEdits')
+    const before = [{ pairId: 'a', thai: 'ก่อน1' }, { pairId: 'b', thai: 'ผิด' }, { pairId: 'c', thai: 'ดี' }]
+    const after = [{ pairId: 'a', thai: 'หลัง1' }, { pairId: 'b', thai: 'แก้แล้ว' }, { pairId: 'c', thai: 'ดี' }]
+    const r = rv(before, [{ pairId: 'b', thai: 'ผิด' }], after, [{ pairId: 'a', thai: 'หลัง1' }], null)
+    T('Y4', 'revert-on-fail: a line that passed before a fix pass, was changed by it and now fails gets its earlier text back; the refused line keeps its fix; an untouched line stays',
+      r.reverted === 1 && r.pairs[0].thai === 'ก่อน1' && r.pairs[1].thai === 'แก้แล้ว' && r.pairs[2].thai === 'ดี', r) }
+  { const src = require('fs').readFileSync('tt.jsx', 'utf8'), crit = c.ev('thaiSceneCriticPrompt')
+    const sc = { sceneId: 'S1', lines: [{ n: 1, pair: { speaker: 'B', thai: 'หนาวไหมคะ', targetSurface: 'หนาว', prompt: 'Ask if he is cold.', english: 'Are you cold?' } }, { n: 2, pair: { speaker: 'A', thai: 'ไม่หนาวครับ', targetSurface: 'หนาว', prompt: 'Say no.', english: 'No.' } },
+      { n: 3, pair: { speaker: 'B', thai: 'ถ้วยนี้สวยค่ะ', targetSurface: 'ถ้วย', prompt: 'Say this cup is pretty.', english: 'This cup is pretty.' } }] }
+    const pr = crit(sc, ['Somchai', 'Nida'], ['x'])
+    T('Y5', 'mini-conversations: the writer asks for one SELF-CONTAINED three-line exchange; the critic shows and judges each exchange on its own (no "lesson so far"); one critic round; the open-ended scene polish is off; fix mode changes only refused lines (the line before only for a reply that does not follow, same exchange); two fix passes',
+      /SELF-CONTAINED three-line exchange/.test(src) && /exchange 1 \(word: หนาว\)/.test(pr) && /exchange 2 \(word: ถ้วย\)/.test(pr) && /judge each one ON ITS OWN/.test(pr) && !/THE LESSON SO FAR/.test(pr) &&
+      c.ev('THAI_SCENE_CRITIC_ROUNDS') === 1 && c.ev('THAI_OPEN_SCENE_POLISH') === false && c.ev('THAI_POLISH_FIX_PASSES') === 2 && /NO_FOLLOW\|CONTRADICTION\|DANGLING/.test(src) && /SMALLEST change that fixes the stated problem/.test(src), pr.slice(0, 300)) }
+  { const v = c.initVocab(), pf = c.ev('targetActivityPreflight'), ok = t => { const w = v.find(x => x.thai === t); return w && pf(w, 'th', {}).suitable }
+    const ord = ['เส้นทาง', 'วัฒนธรรม', 'ผู้โดยสาร', 'อุณหภูมิ', 'ประเพณี', 'กำไร', 'รายได้'], no = ['ขอให้เป็นวันที่ดี', 'จ้ะ', 'มึง', 'ดิฉันเอง']
+    T('Y6', 'dictionary metadata: ordinary words the preflight skipped as "recognition only" (เส้นทาง, วัฒนธรรม, ผู้โดยสาร, อุณหภูมิ …) are teachable; a translated wish, a familiar particle, a rude word and the ดิฉัน rule still are not',
+      ord.every(ok) && no.every(t => !ok(t)), { ordinary: ord.filter(t => !ok(t)), stillSkipped: no.filter(ok) }) }
+  { const src = require('fs').readFileSync('tt.jsx', 'utf8')
+    T('Y7', 'the closing-line prompt no longer suggests the translated wish ขอให้เป็นวันที่ดี and asks B for a set phrase (Daily switch on; the legacy prompt is unchanged)',
+      /\(dailyV693On\(\) \? '' : 'ขอให้เป็นวันที่ดีนะครับ, '\)/.test(src) && /never a translated wish with ขอให้/.test(src)) }
 
   out.forEach(l => console.log(l))
   console.log('\nv704 Thai Daily quality round: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))

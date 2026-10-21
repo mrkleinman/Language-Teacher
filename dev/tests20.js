@@ -214,7 +214,9 @@ async function main() {
     const row = t => au.rows.find(r => r.thai === t) || {}
     const cols = ['id', 'thai', 'gloss', 'currentClassification', 'reason', 'spokenAlternative', 'recommendedClassification', 'confidence', 'needsHumanReview']
     T('G6', '§17 deterministic audit of every v654 FORMAL_WRITTEN / RECOGNITION_ONLY / VULGAR entry with id · thai · gloss · currentClassification · reason · spokenAlternative · recommendedClassification · confidence · needsHumanReview',
-      au.rows.length > 100 && au.rows.every(r => cols.every(k => k in r)) && row('แตกต่าง').currentClassification === 'FORMAL_WRITTEN_REGISTER' && row('แตกต่าง').recommendedClassification === 'FORMAL_SPOKEN' &&
+      // v708 — EXPECTED CHANGE (owner review of v707: "correct dictionary suitability metadata"): 85 reasonless RECOGNITION entries are
+      // ACTIVE now and leave the audit, so it audits 94 rows (was > 100)
+      au.rows.length > 80 && au.rows.every(r => cols.every(k => k in r)) && row('แตกต่าง').currentClassification === 'FORMAL_WRITTEN_REGISTER' && row('แตกต่าง').recommendedClassification === 'FORMAL_SPOKEN' &&
       row('แตกต่าง').spokenAlternative === 'ไม่เหมือน' && row('ซึ่ง').status === 'CONFIRMED' && au.summary.audited === au.rows.length &&
       c.thaiSuitabilityAuditCsv(au).split('\n')[0] === 'id,thai,gloss,currentClassification,reason,spokenAlternative,recommendedClassification,confidence,needsHumanReview,status', au.summary)
     const low = au.rows.filter(r => r.needsHumanReview)

@@ -204,7 +204,9 @@ function mock(S, lang, opt = {}) {
         const prot = ((b.match(/PROTECTED lesson words \(must stay in the new text\): (.*)/) || [])[1] || '').split(/,\s*/).filter(x => x && x !== '(none)').map(bySurf).filter(Boolean)
         const place = (b.match(/MUST NOW ALSO CONTAIN the lesson word (\S+)/) || [])[1]
         let words = prot.slice(); if (place && bySurf(place)) words.push(bySurf(place))
-        if (ln.atomicDropProtected && st.atomicDrops < ln.atomicDropProtected && prot.length) { st.atomicDrops++; words = words.filter(w => w !== prot[0]) }
+        // v708 — the dropped word is one that no other protected word contains: with the corrected suitability metadata the §28
+        // scene protects รถ AND รถยนต์, and dropping รถ left it inside รถยนต์, so the "lost" target was never actually lost
+        if (ln.atomicDropProtected && st.atomicDrops < ln.atomicDropProtected && prot.length) { st.atomicDrops++; const _d = prot.find(p => !prot.some(q => q !== p && String(q[field]).includes(String(p[field])))) || prot[0]; words = words.filter(w => w !== _d) }
         const spk = id => ((b.match(new RegExp(id + ' ([AB]):')) || [])[1]) || 'A'
         const per = scope.map(() => [])
         words.forEach((w, k) => per[k % scope.length].push(w))

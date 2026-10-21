@@ -185,7 +185,8 @@ const KEY = 'k', MODEL = 'gemini-2.5-flash-lite'
     const v = c.ev('GENERATOR_VERSIONS').th + ' ' + c.ev('QC_VERSION') + ' ' + c.ev('FINALIZER_VERSION')
     // Expectation widened in v705: the labels move with each Thai Daily release (v705: scene polish); the point of I1 is that they
     // are no longer the v657 labels, so any v703–v709 label passes
-    T('I1', 'the Thai generator / QC / finaliser labels are no longer the v657 ones the owner saw on v702 (th-gen-v70x…, qc-v70x…, final-v70x…)', /th-gen-v70[3-9]/.test(v) && /qc-v70[3-9]/.test(v) && /final-v70[3-9]/.test(v) && !/v657/.test(v), v)
+    // v710: the pattern accepts v703 and later (v710 = th-gen-v710…); the check — not the v657 labels — is unchanged
+    T('I1', 'the Thai generator / QC / finaliser labels are no longer the v657 ones the owner saw on v702 (th-gen-v70x…, qc-v70x…, final-v70x…)', /th-gen-v7(0[3-9]|[1-9]\d)/.test(v) && /qc-v7(0[3-9]|[1-9]\d)/.test(v) && /final-v7(0[3-9]|[1-9]\d)/.test(v) && !/v657/.test(v), v)
   } catch (e) { T('ERR', 'section I crashed: ' + String(e && e.stack).slice(0, 300), false) }
 
   // ══ J — cost: prompt caching of the shared part of the Thai writer prompt ══

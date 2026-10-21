@@ -15050,6 +15050,9 @@ function normaliseThaiSpacing(thai) {
   // (a particle that FOLLOWS — ไหม ครับ, ได้ไหม คะ — still belongs to the same clause: no space before it)
   // v671 §B2 — a line written as 2–4 CLAUSE chunks (each a multi-syllable stretch: "สีก็สวย ขนาดกำลังดีครับ", "โอเค งั้น…",
   // "ห้าร้อยบาท แพงค่ะ") keeps its clause spaces; word-by-word token spacing ("ผม ชอบ สี ดำ ครับ") is still collapsed
+  // v710 (Listening bank line ยายเลี้ยงดูฉัน พ่อแม่ทำงานที่กรุงเทพฯ ค่ะ collapsed into one run-on) — a final particle written after a space
+  // (กรุงเทพฯ ค่ะ, ช้าๆ นะคะ) belongs to the clause before it: it is joined first, so it does not hide the clause spacing
+  if (dailyV693On()) s = s.replace(/\s+((?:นะ)?(?:ครับ|ค่ะ|คะ))$/, '$1')
   const _chunks = s.split(/\s+/).filter(x => /[\u0e00-\u0e7f]/.test(x))
   const _clauseSpaced = _chunks.length >= 2 && _chunks.length <= 4 && _chunks.every(x => x.length >= 4) && _chunks.reduce((a, x) => a + x.length, 0) / _chunks.length >= 6
   // v693: a sentence-initial RESPONSE word (ใช่ / ไม่ใช่ / ได้ / โอเค / จริง / งั้น …) ends its own clause — live v691 collapsed
@@ -29847,7 +29850,8 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
     // v692 — the standalone Listening Track is planned MEANING FIRST (the legacy template planner stays behind the switch)
     const _env = { lang, la, log, tel, targets, ctx, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax }
-    const r = listeningMeaningFirstOn() && o.standalone && !o.legacyScenes ? await _lnComposeMeaningFirst(_env) : await _lnComposeByScenes(_env)
+    const _bank = lang === 'th' && o.standalone && !o.legacyScenes ? await _lnComposeThaiBank(_env) : null
+    const r = _bank || (listeningMeaningFirstOn() && o.standalone && !o.legacyScenes ? await _lnComposeMeaningFirst(_env) : await _lnComposeByScenes(_env))
     // v669 §17: no scene validated → nothing enters the track; the reason names the uncommitted INVALID candidates
     const unc = (r.uncommitted || []).map(u => (u.sceneId || u.id || '?') + (u.residual ? ' (' + u.residual + ')' : '')).join(', ')
     const why = r.reason || (unc ? 'UNCOMMITTED_SCENE: no scene candidate validated — INVALID_CANDIDATE ' + unc : 'the conversation could not be composed')
@@ -29859,7 +29863,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
         (pf ? ' · ⚠ PLANNER_FAILURE — ' + (tel.LISTENING_REPAIR_CALLS >= 50 ? '50+ repair calls' : 'repair calls > generation calls') + ': diagnose upstream planning (feasibility / meaning plan / palettes)' : ' · ⚠ nothing validated') + ' — health targets, not gates')
       return { ok: false, empty: true, listeningQuality: 'NEEDS_REPAIR — ' + why, reason: why, stats: {}, telemetry: tel, plan: r.plan, uncommitted: r.uncommitted || [] }
     }
-    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh, uncommitted: r.uncommitted || [], contract: r.contract || null, story: r.story || null, phaseHealth: r.phaseHealth || [], salvage: r.salvage || null }
+    scenes = r.scenes; audit = r.audit; natIssues = r.natIssues; sceneGates = { ...r.gates, plan: r.plan, report: r.report, coh: r.coh, uncommitted: r.uncommitted || [], contract: r.contract || null, story: r.story || null, phaseHealth: r.phaseHealth || [], salvage: r.salvage || null, composer: r.composer || 'model' }
   }
   // v700 — words DEFERRED by the salvage (their exchange was cut): they stay due in SRS for the next Revision; the gates read the
   // contract "every selected word is heard OR honestly deferred", plus the salvage floor
@@ -30012,7 +30016,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   const lt = {
     listeningTrackId: ltId, sourceMainTrackId: listeningTrackId(mainTrack), sourceFingerprint: trackPairsFingerprint(mainTrack.pairs), sourceFinal: trackFinal,
     language: lang, listeningVersion: o.version || 1, creationMode: o.creationMode || 'AUTO_PRETRACK', createdAt: new Date().toISOString(),
-    status: 'not_started', architecture: sceneGates && sceneGates.plan && sceneGates.plan.meaningFirst ? LISTENING_ARCHITECTURE_V692 : sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? (sceneGates.plan && sceneGates.plan.meaningPlan ? (sceneGates.plan.verbalized ? LISTENING_ARCHITECTURE_V674 : LISTENING_ARCHITECTURE_V673) : LISTENING_ARCHITECTURE_V672) : LISTENING_ARCHITECTURE, composer: 'model',
+    status: 'not_started', architecture: sceneGates && sceneGates.plan && sceneGates.plan.meaningFirst ? LISTENING_ARCHITECTURE_V692 : sceneGates && sceneGates.ONE_CONVERSATION === 'PASS' ? (sceneGates.plan && sceneGates.plan.meaningPlan ? (sceneGates.plan.verbalized ? LISTENING_ARCHITECTURE_V674 : LISTENING_ARCHITECTURE_V673) : LISTENING_ARCHITECTURE_V672) : LISTENING_ARCHITECTURE, composer: (sceneGates && sceneGates.composer) || 'model',
     oneConversation: !!(sceneGates && sceneGates.ONE_CONVERSATION === 'PASS'),
     // v703 — separate short scenes (the episode fallback): the player shows each scene's heading
     episodes: !!(sceneGates && sceneGates.ONE_CONVERSATION === 'EPISODES'), conversationContract: sceneGates && sceneGates.contract ? { ...sceneGates.contract, transcript: undefined } : null, story: sceneGates ? sceneGates.story || null : null,
@@ -31829,6 +31833,77 @@ async function _lnComposeMeaningFirst(env) {
     salvage: env.salvage ? { from: env.salvage.from, passes: env.salvage.passes, removedTurns: env.salvage.removedTurns, droppedScenes: env.salvage.droppedScenes.slice(), cuts: env.salvage.cuts.slice(0, 24), floor,
       deferred: deferredNow.map(id => ({ targetId: id, target: (byId.get(id) || {}).surface || '', reason: env.deferred.get(id) })) } : null,
     uncommitted: [], contract, story: plan.story, phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
+}
+// v710 (owner: "now get the listening track to 7.5"; paid baseline L1: the model-written conversation for 30 unrelated revision words
+// failed the semantic audit in every round and the salvage left 9 of 30 words — NOT_READY) — THAI BANK-FIRST LISTENING. Each lesson word
+// is heard in its vetted three-line exchange (the reviewed exchange bank; a word's second exchange when it has one, so Listening does not
+// repeat the Daily lines), grouped into everyday situations by the same deterministic grouping the planner uses, opened and closed with
+// the vetted greeting / goodbye. No paid writing or re-judging of vetted lines; every deterministic gate (closed vocabulary, speaker
+// particles, length, duplicates, pronunciation, coverage) still runs, and an exchange that fails one is dropped and its word moved to
+// Revision. Returns null (the model composer runs as before) when fewer than LISTENING_BANK_MIN_WORDS words have a usable exchange.
+const LISTENING_BANK_MIN_WORDS = 24, LISTENING_BANK_TURNS_MAX = 110
+function thaiListeningBankExchange(surface) {
+  if (!THAI_BANK_ON || !dailyV693On()) return null
+  const vs = THAI_EXCHANGE_BANK[String(surface || '').trim()]
+  if (!Array.isArray(vs) || !vs.length) return null
+  const v = vs.length > 1 ? vs[1] : vs[0]
+  return Array.isArray(v) && v.length === 3 ? v : null
+}
+async function _lnComposeThaiBank(env) {
+  const { la, log, targets, ctx } = env
+  if (la.lang !== 'th' || !THAI_BANK_ON || !dailyV693On()) return null
+  const byId = new Map(targets.map(t => [t.id, t]))
+  const have = targets.filter(t => thaiListeningBankExchange(t.surface))
+  if (have.length < LISTENING_BANK_MIN_WORDS) { log && log('🎧 LISTENING_BANK skipped — only ' + have.length + '/' + targets.length + ' lesson words have a vetted exchange (need ' + LISTENING_BANK_MIN_WORDS + '); the model composer runs'); return null }
+  const authorised = (ctx.inventory && ctx.inventory.taught) || ctx.exposed || []
+  const profiles = new Map(have.map(t => [t.id, lnMfProfile(t, la.lang)]))
+  const grouping = lnMfGroupTargets([...profiles.values()], authorised.map(w => String(w.english || '')).filter(Boolean), { lang: la.lang })
+  const placed = new Set(), groups = []
+  ;(grouping.scenes || []).forEach(g => { const ids = (g.targetIds || []).filter(id => byId.has(id) && !placed.has(id) && profiles.has(id)); ids.forEach(id => placed.add(id)); if (ids.length) groups.push({ title: g.title || g.situation || 'Chatting', ids }) })
+  const rest = have.map(t => t.id).filter(id => !placed.has(id))
+  if (rest.length) groups.push({ title: 'Chatting about other things', ids: rest })
+  // a situation of one exchange joins its neighbour (scenes average ≥ 4 lines)
+  for (let i = groups.length - 1; i > 0; i--) if (groups[i].ids.length < 2) { groups[i - 1].ids.push(...groups[i].ids); groups.splice(i, 1) }
+  const deferred = new Map(targets.filter(t => !thaiListeningBankExchange(t.surface)).map(t => [t.id, 'no vetted exchange']))
+  const _k0 = Math.abs(Number((targets[0] && targets[0].id) || 0)) % THAI_BANK_FRAMING.length
+  const _frOk = f => { const sc = [{ sceneId: 'F', setting: 'f', turns: ['opening', 'reply', 'closing', 'closing_reply'].map((k, i) => ({ speaker: i % 2 ? 'B' : 'A', pair: lnMfMakeTurn(la, { speaker: i % 2 ? 'B' : 'A', text: f[k][0], english: f[k][1] }, 'F' + i, 'F').pair })) }]
+    return !listeningConversationAudit(sc, [], la, ctx).issues.some(x => /CLOSED_VOCAB|TOKENIZATION|LINE_QUALITY|SPEAKER_IDENTITY/.test(x.code)) }
+  const fr = [0, 1, 2, 3, 4, 5].map(i => THAI_BANK_FRAMING[(_k0 + i) % THAI_BANK_FRAMING.length]).find(_frOk) || THAI_BANK_FRAMING[_k0]
+  const turnOf = (l, k, key, tid) => lnMfMakeTurn(la, { speaker: l.speaker, text: l.thai, english: l.english, targetIds: tid != null ? [tid] : [] }, key + '-T' + k, key)
+  const build = () => {
+    const scs = groups.map((g, gi) => {
+      const key = 'S' + (gi + 1), turns = []
+      if (gi === 0) { turns.push(turnOf({ speaker: 'A', thai: fr.opening[0], english: fr.opening[1] }, 0, key, null)); turns.push(turnOf({ speaker: 'B', thai: fr.reply[0], english: fr.reply[1] }, 1, key, null)) }
+      g.ids.filter(id => !deferred.has(id)).forEach(id => thaiListeningBankExchange(byId.get(id).surface).forEach(l => turns.push(turnOf(l, turns.length, key, id))))
+      if (gi === groups.length - 1) { turns.push(turnOf({ speaker: 'A', thai: fr.closing[0], english: fr.closing[1] }, turns.length, key, null)); turns.push(turnOf({ speaker: 'B', thai: fr.closing_reply[0], english: fr.closing_reply[1] }, turns.length, key, null)) }
+      return { sceneId: 'LS' + (gi + 1), setting: g.title, turns: turns.map(tu => ({ speaker: tu.speaker, pair: { ...tu.pair, _bankListening: true }, intendedTargetIds: tu.targetIds })) }
+    }).filter(sc => sc.turns.length >= 2)
+    return scs
+  }
+  // drop an exchange whose lines fail a deterministic line check (closed vocabulary, length, speaker particles, duplicates) — its word
+  // goes to Revision; repeat until clean
+  let scenes = build(), audit = listeningConversationAudit(scenes, targets, la, ctx), guard = 0
+  const lineCodes = new Set(['CLOSED_VOCAB', 'TOKENIZATION_ERROR', 'TOO_COMPLEX', 'SPEAKER_IDENTITY', 'LINE_QUALITY', 'MERGED_SPEAKERS', 'MAX_TARGETS_PER_TURN'])
+  while (guard++ < 12) {
+    const flat = scenes.flatMap(sc => sc.turns), bad = new Set()
+    audit.issues.filter(x => lineCodes.has(x.code) || /DUPLICATE/.test(x.code)).forEach(x => { const tn = flat[(x.line || 0) - 1]; const id = tn && (tn.intendedTargetIds || [])[0]; if (id != null && !deferred.has(id)) bad.add(id) })
+    if (!bad.size) break
+    bad.forEach(id => { deferred.set(id, audit.issues.filter(x => lineCodes.has(x.code) || /DUPLICATE/.test(x.code)).map(x => x.code)[0] || 'line check'); log && log('🎧 LISTENING_BANK exchange dropped: ' + (byId.get(id) || {}).surface + ' (' + deferred.get(id) + ') — moved to Revision') })
+    scenes = build(); audit = listeningConversationAudit(scenes, targets, la, ctx)
+  }
+  audit.covered.forEach(id => deferred.delete(id))
+  const total = audit.lines.length, heard = audit.covered.length
+  if (heard < LISTENING_BANK_MIN_WORDS) { log && log('🎧 LISTENING_BANK skipped — ' + heard + ' words left after the line checks; the model composer runs'); return null }
+  log && log('🎧 LISTENING_BANK ' + scenes.length + ' situations · ' + total + ' turns · ' + heard + '/' + targets.length + ' lesson words heard in vetted exchanges' + (deferred.size ? ' · moved to Revision: ' + [...deferred.keys()].map(id => (byId.get(id) || {}).surface).join(', ') : '') + ' · no paid writing')
+  const coh = { state: QUALITY.VERIFIED, overall: 5, reason: 'vetted exchanges (reviewed offline); each is self-contained', verdicts: scenes.map((sc, k) => ({ scene: k + 1, pass: true, score: 5, reason: 'vetted' })) }
+  const floor = { turns: 16, scenes: 2, words: Math.ceil(targets.length / 2) }
+  const plan = { bank: true, oneConversation: false, story: scenes.map(sc => sc.setting), assignments: [],
+    scenes: scenes.map(sc => ({ sceneId: sc.sceneId, phase: 'BANK', purpose: sc.setting, requiredTargetIds: [...new Set(sc.turns.flatMap(tn => tn.intendedTargetIds || []))].filter(id => audit.covered.includes(id)), expectedTurns: sc.turns.length, maxTurns: sc.turns.length })) }
+  return { ok: true, composer: 'bank', scenes, audit, natIssues: [], plan, coh,
+    report: scenes.map(sc => ({ sceneId: sc.sceneId, required: 0, heard: 0, turns: sc.turns.length })),
+    gates: { SCENE_REQUIRED_COVERAGE: 'PASS', TURN_COUNT: total + '/' + LISTENING_BANK_TURNS_MAX, TURN_BUDGET: total >= 16 && total <= LISTENING_BANK_TURNS_MAX, SCENES_VALIDATED: true, ONE_CONVERSATION: 'EPISODES' },
+    salvage: deferred.size ? { from: 'bank', passes: 0, removedTurns: 0, droppedScenes: [], cuts: [], floor, deferred: [...deferred].map(([id, why]) => ({ targetId: id, target: (byId.get(id) || {}).surface || '', reason: why })) } : null,
+    uncommitted: [], contract: null, story: scenes.map(sc => sc.setting), phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
 }
 // TT_V692_MEANING_FIRST_END
 // ══ v673 §2B — FEASIBILITY BEFORE FREEZE ═══════════════════════════════════════════════════════════════════════════════

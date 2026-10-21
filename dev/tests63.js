@@ -413,6 +413,38 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('Z11', 'framing cues use the Latin name when the character is given Thai-first (นิดา (Nida) → Nida); no Thai script in any framing cue',
       cues.every(q => !/[\u0E00-\u0E7F]/.test(q)) && /Nida/.test(sd.opening_prompt) && cues.some(q => /Somchai/.test(q)), cues) }
 
+  // v710 (paid track 14) — Z12: the batch cue check skips a vetted bank line with its bank cue (no paid call) and still judges it once the cue
+  // differs; Z13: the early gate's cue-form rule — a line that asks then explains, and "Ask her to … / for …" requests, are not statements
+  // cued as questions (a plain statement cued "Ask …" still fails); Z14: a marker inside the target (ไดร์เป่าผม) is not the speaker's
+  { const bank = c.ev('THAI_EXCHANGE_BANK'), t = Object.keys(bank).find(k => k === 'อิจฉา') || Object.keys(bank)[0], l = { ...bank[t][0][2], _target: t }
+    let calls = 0; const old = c.mockGeminiGenerate
+    c.mockGeminiGenerate = async () => { calls++; return JSON.stringify([{ i: 1, s: 2, note: 'x' }]) }
+    c.__bankForced = true; c.thaiBankSetEnabled(true)
+    const a = await c.ev('_qrBatchPromptCheck')([l], 'k', 'm', () => {}), callsA = calls
+    const b = await c.ev('_qrBatchPromptCheck')([{ ...l, prompt: l.prompt + ' Really.' }], 'k', 'm', () => {})
+    c.mockGeminiGenerate = old
+    T('Z12', 'the batch cue check does not re-judge a vetted bank line with its bank cue; a changed cue is judged as before',
+      callsA === 0 && !a[0]._pm && calls === 1 && b[0]._pm === 2, { callsA, calls, a: a[0]._pm, b: b[0]._pm }) }
+  { const f = c.ev('thaiCueFormProblems')
+    const r1 = f({ thai: 'มีกระดาษไหมครับ ผมจะเขียนเบอร์โทรศัพท์ครับ', english: 'Do you have any paper? I want to write down a phone number.', prompt: 'Ask her if she has paper; you want to write down a phone number.' })
+    const r2 = f({ thai: 'ยี่สิบบาทเหรอคะ เซเว่นถูกกว่าค่ะ', english: 'Twenty baht? 7-Eleven is cheaper.', prompt: 'Ask him, surprised, if it is twenty baht; 7-Eleven is cheaper.' })
+    const r3 = f({ thai: 'ช่วยถือกระเป๋าหน่อยครับ', english: 'Please help me carry the bag.', prompt: 'Ask her to please help carry the bag.' })
+    const r4 = f({ thai: 'ขอน้ำปลาหน่อยครับ', english: 'The fish sauce, please.', prompt: 'Ask her for the fish sauce, please.' })
+    const r5 = f({ thai: 'ร้านนี้อร่อยครับ', english: 'This shop is delicious.', prompt: 'Ask her if this shop is delicious.' })
+    T('Z13', 'cue-form rule: ask-then-explain lines and "Ask her to / for …" requests pass; a plain statement cued as a question still fails',
+      !r1.length && !r2.length && !r3.length && !r4.length && r5.length === 1, [r1, r2, r3, r4, r5]) }
+  { const v = c.validateThaiTargetPair, w = c.initVocab().find(x => x.thai === 'ไดร์เป่าผม')
+    const ok = w ? v({ speaker: 'B', thai: 'มีค่ะ ไดร์เป่าผมอยู่ในห้องน้ำ', english: 'Yes, the hair dryer is in the bathroom.', prompt: 'Tell him there is one; the hair dryer is in the bathroom.', speakerGender: 'female', pairType: 'content', targetId: w.id }, w, { vocab: c.initVocab() }, 'early-generation') : null
+    const bad = v({ speaker: 'B', thai: 'ผมไปตลาดค่ะ', english: 'I go to the market.', prompt: 'Tell him you go to the market.', speakerGender: 'female', pairType: 'content' }, { thai: 'ตลาด' }, { vocab: c.initVocab() }, 'early-generation')
+    T('Z14', 'speaker check: ผม inside the target ไดร์เป่าผม is not the speaker\'s; ผม + ค่ะ in an ordinary line still fails',
+      ok && ok.dimensions.SPEAKER_REGISTER === 'PASS' && bad.dimensions.SPEAKER_REGISTER === 'FAIL', [ok && ok.dimensions.SPEAKER_REGISTER, bad.dimensions.SPEAKER_REGISTER]) }
+
+  // v710 (paid track 14: two vetted ล่ะ lines re-translated, then dropped as UNVERIFIED) — Z15: the final translation fix leaves a vetted bank line
+  // with its vetted English and cue alone (source check: the fix runs inside the long finaliser)
+  { const src = require('fs').readFileSync('tt.jsx', 'utf8'), i = src.indexOf('const e2 = thaiEnglishFaithfulFix(p)')
+    T('Z15', 'the final translation fix (TH_TEXT_FIX) skips a vetted bank line that still has its bank English and cue',
+      i > 0 && /thaiBankLineOf\(p\); if \(_b && String\(p\.english/.test(src.slice(i - 600, i))) }
+
   // v709 (owner's live v709 track) — Z6: a group of vetted bank lines is clean without the paid group check; Z7: วันนี้วันอังคาร is not a
   // "duplicated head" of the fixed phrase (ขอให้คุณขอให้… still is)
   { const bank = c.ev('THAI_EXCHANGE_BANK'), t = Object.keys(bank).find(k => k === 'ถ้วย') || Object.keys(bank)[0], ex = bank[t][0]
@@ -429,12 +461,15 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const cup = [{ speaker: 'B', thai: 'ถ้วยนั้นของฉันค่ะ', english: 'That cup is mine.', prompt: 'Tell him that cup is yours.' }]
     const seen = []; const old = c.mockGeminiGenerate
     c.mockGeminiGenerate = async (k, m, msgs) => { seen.push(msgs.map(x => x.content).join('\n')); return JSON.stringify([{ i: 1, s: 5 }, { i: 2, s: 5 }]) }
-    c.__bankForced = true; c.thaiBankSetEnabled(true)
+    // v710: a vetted bank line with its bank cue is no longer sent to _qrBatchPromptCheck (Z12), so the judges' prompts are checked with the
+    // bank switched off — the same lines as a model would write them, which is what the perspective rule protects
+    c.__bankForced = true; c.thaiBankSetEnabled(false)
     try { await c.ev('_finalCueJudge')(med.concat(cup), 'k', 'm') } catch (e) {}
     try { await c.ev('_qrBatchPromptCheck')(med.concat(cup), 'k', 'm', () => {}) } catch (e) {}
     const rule = seen.filter(t => /PERSPECTIVE RULE: the learner PLAYS the speaker/.test(t) && /medicine is in your bag/.test(t) && /that cup is yours/.test(t)).length
     T('Z8', 'both Thai cue judges are told the perspective rule with the owner\'s two cases ("Tell him not yet; the medicine is in your bag" ↔ ยาอยู่ในกระเป๋า, "Tell him that cup is yours" ↔ ถ้วยนั้นของฉัน): your = the speaker, never a mismatch',
       seen.length >= 2 && rule === seen.length, { prompts: seen.length, withRule: rule })
+    c.thaiBankSetEnabled(true)
     const bank = c.ev('THAI_EXCHANGE_BANK'), gv = c.ev('_qrEvaluateGroup')
     const g = t => bank[t] ? gv({ targetWord: t, indices: [0, 1, 2], pairs: bank[t][0].map(l => ({ ...l, _target: t })) }, [], 'k', 'm') : null
     const vm = await g('ยา'), vc = await g('ถ้วย')

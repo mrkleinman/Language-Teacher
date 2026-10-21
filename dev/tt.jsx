@@ -18130,7 +18130,13 @@ function thaiCueFormProblems(p) {
   const enQ = /[?？]\s*$/.test(en), thQ = THAI_Q_END_RE.test(th) || (enQ && THAI_Q_WORD_RE.test(th))
   const out = []
   if (thQ && enQ && CUE_SAYS_RE.test(cue) && !CUE_ASKS_RE.test(cue)) out.push('CUE_FORM_MISMATCH: the Thai is a question ("' + en + '") but the cue asks for a statement ("' + cue.slice(0, 80) + '")')
-  if (!thQ && !enQ && !THAI_Q_WORD_RE.test(th) && /^\s*ask\b|\basks\b|\bwants to know\b/i.test(cue) && !CUE_SAYS_RE.test(cue))
+  // v710 (paid track 14: vetted มีกระดาษไหมครับ ผมจะเขียนเบอร์โทรศัพท์ครับ — "Ask her if she has paper; you want to write down …") — a line
+  // that asks and then explains is not a statement: any question clause in the Thai (or a ? in the English) clears this rule
+  const qClause = dailyV693On() && (/[?？]/.test(en) || th.split(/\s+/).some(c => THAI_Q_END_RE.test(c) || THAI_Q_WORD_RE.test(c)))
+  // v710 — "Ask her to help carry the bag" / "Ask her for the fish sauce" is a REQUEST (ช่วย…หน่อย, ขอ…หน่อย), not a question: ask + person +
+  // to / for never fails this rule
+  const askTo = dailyV693On() && /^\s*ask\s+(him|her|them|me|us|[A-Z][a-z]+)\s+((then|please|politely),?\s+)?(to|not to|for)\b/i.test(cue)
+  if (!thQ && !enQ && !qClause && !askTo && !THAI_Q_WORD_RE.test(th) && /^\s*ask\b|\basks\b|\bwants to know\b/i.test(cue) && !CUE_SAYS_RE.test(cue))
     out.push('CUE_FORM_MISMATCH: the Thai is a statement ("' + en + '") but the cue asks a question ("' + cue.slice(0, 80) + '")')
   return out
 }
@@ -21864,7 +21870,11 @@ function validateThaiTargetPair(pair, target, ctx, stage) {
   // v665 — LENGTH: the learner's belt hardMax (one contract for generation, recovery, quota and the final audit)
   { const _cc = getLearnerComplexityContract({ lang: 'th', vocab: c.vocab }), _an = _cc.analyse(p.thai)
     if (_an.overHardMax) fail('LENGTH', 'LEVEL_COMPLEXITY_FAIL ' + _an.units + ' Thai words > hardMax ' + _cc.hardMax + ' (belt ' + _cc.belt + ')'); else d.LENGTH = 'PASS' }
-  const sp = thaiSpeakerIdentity(p)
+  let sp = thaiSpeakerIdentity(p)
+  // v710 (bank lines for ไดร์เป่าผม, ผมเอง, สวัสดีครับ) — a marker that is part of the TARGET word itself (ผม "hair", a quoted สวัสดีครับ) is not the
+  // speaker's own: the speaker check reads the line without the target
+  if (dailyV693On() && (sp.status === 'linguistic-conflict' || sp.status === 'metadata-conflict') && tw && /ผม|ครับ|ค่ะ|คะ|ฉัน|ดิฉัน/.test(tw) && String(p.thai || '').includes(tw)) {
+    const rest = String(p.thai).split(tw).join(' ').replace(/\s+/g, ' ').trim(); if (rest) sp = thaiSpeakerIdentity({ ...p, thai: rest }) }
   if (sp.status === 'linguistic-conflict' || sp.status === 'metadata-conflict') fail('SPEAKER_REGISTER', sp.reason); else d.SPEAKER_REGISTER = 'PASS'
   const comp = TRACK_ADAPTERS.th.hardProblems(p).concat(thaiTemplateGarbageProblems(p).map(g => g.why), thaiTimeExpressionProblems(p.thai).map(g => g.why), thaiNumberExpressionProblems(p.thai).map(g => g.why), thaiLexicalSenseProblems(p).map(g => g.id + ': ' + g.why))
   if (comp.length) fail('COMPOSITION', comp[0]); else d.COMPOSITION = 'PASS'
@@ -22815,6 +22825,9 @@ async function finaliseMainTrack(track, adapter, ctx) {
     // English. The Thai is kept; the English is brought back to what the Thai says and the cue is rebuilt from it (no paid call).
     if (adapter.lang === 'th' && dailyV693On()) { const fx = []
       t = { ...t, pairs: t.pairs.map(p => { if (!p || !p.thai) return p
+        // v710 (paid track 14: ล่ะ "So what are you going to have?" → "What are you going to have?", then "And what about drinks." — the
+        // changed lines lost their verdict and were dropped as UNVERIFIED) — a vetted bank line with its vetted English is not re-translated
+        { const _b = thaiBankLineOf(p); if (_b && String(p.english || '').trim() === String(_b.english || '').trim() && String(p.prompt || '').trim() === String(_b.prompt || '').trim()) return p }
         const e2 = thaiEnglishFaithfulFix(p)
         // v706 (owner: ดู = watch / look · เห็น = notice · ชม = admire / appreciate) — the cue gets the same verb fix as the English
         const cv = dailyV693On() ? thaiVerbSenseEnglishFix(p.thai, p.prompt) : p.prompt
@@ -38025,7 +38038,10 @@ async function _qrBatchPromptCheck(pairs, apiKey, model, onLog) {
   // Only check pairs that have both a real prompt and Thai content
   const eligible = pairs.map((p, i) => ({ i, p })).filter(({ p }) =>
     p.prompt && p.prompt.length > 8 && p.thai && p.english &&
-    !p.prompt.startsWith('.') && !/^(greet|greeting)/i.test(p.prompt)
+    !p.prompt.startsWith('.') && !/^(greet|greeting)/i.test(p.prompt) &&
+    // v710 (paid track 14: the vetted อิจฉา cue "Tell her then your friends at the office will probably envy you" scored 2/5 and the group was
+    // replaced) — a vetted bank line with its bank cue is not re-judged here (bank-level judging only; the final audit still checks it)
+    !thaiBankVerdict('cue', p)
   )
   if (!eligible.length) return pairs
 

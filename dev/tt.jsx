@@ -15695,19 +15695,21 @@ async function thaiSceneCritic(t, c, log) {
   for (const sc of sections) {
     if (c.cancelled && c.cancelled()) break
     if (named.length >= THAI_SCENE_CRITIC_MAX) break
+    // v709 — vetted bank lines are not re-judged: a scene whose word lines are all bank lines is not sent at all
+    if ((sc.lines || []).every(l => l.framing || thaiIsBankLine(l.pair))) continue
     const earlier = sections.slice(0, sections.indexOf(sc)).flatMap(x => (x.lines || []).map(l => (l.pair.speaker || 'A') + ': ' + l.pair.thai))
     let raw
     try { calls++; raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: thaiSceneCriticPrompt(sc, names, earlier) }], maxTokens: 2600, temperature: 0.2, json: true, stage: 'F_scene_critic' }) }
     catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_CRITIC ' + sc.sceneId + ' skipped: ' + String(e && e.message || e).slice(0, 80)); continue }
     let o = null; try { o = coherenceJudgeParse(raw) || JSON.parse(String(raw)) } catch (e) {}
     const byN = new Map(sc.lines.map(l => [String(l.n), l.pair]))
-    ;((o && o.problems) || []).forEach(x => { const p = x && byN.get(String(x.n).replace(/^L/, '')); if (!p || named.length >= THAI_SCENE_CRITIC_MAX || fix.has(p.pairId || p.thai)) return
+    ;((o && o.problems) || []).forEach(x => { const p = x && byN.get(String(x.n).replace(/^L/, '')); if (!p || thaiIsBankLine(p) || named.length >= THAI_SCENE_CRITIC_MAX || fix.has(p.pairId || p.thai)) return
       const why = 'SCENE_' + String(x.type || 'PROBLEM').toUpperCase().replace(/[^A-Z_]/g, '') + ' — ' + String(x.why || '').slice(0, 160)
       if (p.pairId) fix.set(p.pairId, why); if (p.thai) fix.set(p.thai, why); named.push('L' + String(x.n).replace(/^L/, '') + ' ' + p.thai + ' (' + why.slice(0, 90) + ')') })
   }
   // v707 (blind reviews of paid tracks 2–5: ข้ามสะพาน ×3, ถึงพัน ×3, คนวิ่งหลายคน ×3 — vocabulary 5.5–6/10) — a word's later line that
   // repeats the earlier line's phrase around the target is named deterministically (no call): it needs a different construction
-  try { thaiRepeatedFrames(sections.flatMap(sc => sc.lines)).forEach(r => { const p = r.pair; if (fix.has(p.pairId || p.thai) || named.length >= THAI_SCENE_CRITIC_MAX + 6) return
+  try { thaiRepeatedFrames(sections.flatMap(sc => sc.lines)).forEach(r => { const p = r.pair; if (thaiIsBankLine(p) || fix.has(p.pairId || p.thai) || named.length >= THAI_SCENE_CRITIC_MAX + 6) return
     const why = 'SCENE_REPEAT — repeats "' + r.phrase + '" from this word\'s earlier line; use ' + r.target + ' in a DIFFERENT construction (another partner word, a question, a request)'
     if (p.pairId) fix.set(p.pairId, why); if (p.thai) fix.set(p.thai, why); named.push(p.thai + ' (' + why.slice(0, 90) + ')') }) } catch (e) {}
   log && log('  🔎 SCENE_CRITIC ' + calls + ' request(s) · ' + named.length + ' line(s) named' + (named.length ? ': ' + named.slice(0, 8).join(' | ').slice(0, 600) : ''))
@@ -17048,6 +17050,26 @@ let THAI_LAST_CHECKS_USED = 0
 const THAI_BANK_ON = true
 const THAI_EXCHANGE_BANK = {}
 const _thaiBankTurn = new Map()
+// v709 (paid track 8: 68 of 90 bank lines kept, 13 of 30 exchanges then rewritten for the worse by the judges, the scene critic, quota
+// recovery and the polish — ครึ่ง became "ครึ่งชิ้น" three times by one speaker) — a line whose Thai is still exactly a bank line of ITS
+// word is vetted: the paid judges and the critic do not re-judge it (the deterministic checks — closed vocabulary, particles, length,
+// target — still run). For the cue judge the cue must also still be the bank cue.
+let _THAI_BANK_INDEX = null
+const _bankNorm = x => String(x || '').replace(/\s+/g, '')
+function thaiBankLineOf(p) {
+  if (!THAI_BANK_ON || !p || !p.thai) return null
+  if (!_THAI_BANK_INDEX) { _THAI_BANK_INDEX = new Map(); Object.entries(THAI_EXCHANGE_BANK).forEach(([t, vs]) => (vs || []).forEach(v => (v || []).forEach(l => { if (l && l.thai) _THAI_BANK_INDEX.set(_bankNorm(l.thai), { ...l, target: t }) }))) }
+  const b = _THAI_BANK_INDEX.get(_bankNorm(p.thai)); if (!b) return null
+  const tg = String(p._target || p.targetSurface || '').trim()
+  return !tg || tg === b.target ? b : null
+}
+function thaiIsBankLine(p) { return !!(dailyV693On() && thaiBankLineOf(p)) }
+function thaiBankVerdict(kind, p) {
+  if (!dailyV693On()) return null
+  const b = thaiBankLineOf(p); if (!b) return null
+  if (kind === 'cue' && String(p.prompt || '').trim() !== String(b.prompt || '').trim()) return null
+  return { s: 5, ok: true, note: 'curated bank exchange (vetted offline)', bank: true }
+}
 // v709 — the opening and closing lines are vetted set pieces too (blind review of paid track 7: "วันนี้ฉันดีค่ะ" sounds like "I am a
 // good person"); no Thai names, so they fit any pair of characters; the cue names them. Picked by the track's first target id.
 const THAI_BANK_FRAMING = [
@@ -37029,6 +37051,8 @@ async function _judgeCached(kind, items, judge, label, onLog, adjudicate) {
   // the run-wide cache is keyed by the RUN as well: it only exists inside a generation / QC run (aiBeginRun)
   const runKey = AI_CTX && AI_CTX.runId ? AI_CTX.runId + '\u0002' : null
   items.forEach((p, k) => { const key = p ? _semCacheKey(kind, p) : null; const c0 = p && p._semVerdicts && p._semVerdicts[kind]
+    // v709 — a line that is still exactly its curated bank text (and, for the cue, its bank cue) was vetted offline: no paid verdict
+    const bv = thaiBankVerdict(kind, p); if (bv) { verdicts.set(k, bv); runCacheHits++; return }
     const dec = kind === 'nat' && runKey && p && p.thai ? THAI_SENTENCE_VERDICTS.get(runKey + thaiSentenceKey(p.thai)) : null
     if (dec && dec.decided) { verdicts.set(k, dec.v); runCacheHits++ }
     else if (c0 && c0.key === key && c0.v && c0.v.s != null) verdicts.set(k, c0.v)

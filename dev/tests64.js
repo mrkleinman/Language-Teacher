@@ -1,111 +1,166 @@
-// v711 — Thai Listening conversation library (sandbox/curriculum/thai-listening-library): whole conversations written and reviewed
-// offline; a new Listening Track picks the one holding the most of the learner's due words, and those words become the lesson words.
-//   Y1–Y4  the pick: revision priority, ≤ 3 lesson words per line, recent conversations (from the saved attempts) skipped, a
-//          Rebuild keeps its frozen ids,
-//          a conversation that fails a gate for this learner is never picked
-//   Y5–Y7  end to end through generateCohesiveListeningTrack: READY with no paid writing, the conversation as written, the fallbacks
-//   Y8     every embedded conversation is structurally sound (speakers, particles, turn-taking, greeting / goodbye placement, length)
-// Real app code; no provider calls. The learner is built from the library itself: every dictionary word heard in it is "known" and due.
+// v712 — Thai Listening = a FRESH conversation written around the frozen revision words (owner, on v711: "Your Listening Track is
+// supposed to be a newly generated conversation built around the vocabulary you're due to revise, not a prewritten conversation selected
+// from a library"). This file replaces the v711 library tests (that path is removed from production; the reviewed library conversations
+// are used here only as FIXTURE TEXT for the scripted model below).
+//   S1–S2  targets first: the Revision selector's 30 ids are frozen BEFORE any story call, unchanged, and the plan is asked for exactly them
+//   S3     end to end: READY, every frozen word heard, composer = story, the lines are what the model wrote, real write + QC calls logged
+//   S4     repeated requests generate again (new calls, a different conversation) — nothing is replayed from storage
+//   S5–S6  the deterministic gates and the paid QC drive targeted rewrites (an untaught word; a line the naturalness judge rejects)
+//   S7     a frozen word the writer never uses is deferred and reported; its SRS state is untouched
+//   S8     no stored-conversation path in production; the Daily exchange bank is unchanged
+// Real app code; the model is a deterministic script (no provider calls).
 //   node tests64.js            (current build: tt.compiled.js, or TT_FILE)
 'use strict'
+const fs = require('fs')
 const { load } = require('./harness')
 const out = []; let fails = 0, n = 0
-const T = (id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + String(id).padEnd(4) + ' ' + name + (!pass && detail !== undefined ? '\n      ' + JSON.stringify(detail).slice(0, 600) : '')) }
+const T = (id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + String(id).padEnd(4) + ' ' + name + (!pass && detail !== undefined ? '\n      ' + JSON.stringify(detail).slice(0, 700) : '')) }
 const FILE = process.env.TT_FILE || 'tt.compiled.js'
+const FIX = JSON.parse(fs.readFileSync(__dirname + '/sandbox/curriculum/thai-listening-library/library.json', 'utf8'))
+const FIXLINES = FIX.flatMap(cv => cv.scenes.flatMap(s => s.lines.map(l => ({ sp: l[0], th: l[1], en: l[2], conv: cv.id }))))
 
-function learnerFrom(c, lib, opt = {}) {
-  const lines = lib.flatMap(cv => cv.scenes.flatMap(s => s.lines.map(l => l[1])))
-  const day = 86400000, now = Date.now()
-  return c.initVocab().map((w, i) => {
-    const heard = w.thai && lines.some(t => t.includes(w.thai))
-    if (!heard && !(opt.extra && opt.extra(w))) return w
-    // due a little longer ago for lower ids → a stable revision order
+// a learner whose due words all occur somewhere in the fixture text (so the scripted writer can place each one); ~1000 taught words
+function learner(c) {
+  const day = 86400000, now = Date.now(), text = FIXLINES.map(l => l.th), v0 = c.initVocab()
+  // heard as a WORD (ตู้ inside ตู้เย็น does not count), so the scripted writer can always place it
+  return v0.map((w, i) => {
+    const inFix = !!w.thai && text.some(t => t.includes(w.thai) && c.thaiTargetPresent(t, w.thai, v0)), core = w.curriculumIndex > 0 && w.curriculumIndex <= 1000
+    if (!inFix && !core) return w
     return { ...w, status: 'known', repCount: 3, interval: 4, okStreak: 1, lapses: 0, introducedAt: new Date(now - 60 * day).toISOString(),
-      lastSeen: new Date(now - 20 * day).toISOString(), dueDate: new Date(now - (5 + (i % 9)) * day).toISOString() }
+      lastSeen: new Date(now - 20 * day).toISOString(), dueDate: new Date(now + (inFix ? -(5 + (i % 9)) : 30) * day).toISOString() }
   })
+}
+
+// the scripted model: plan = targets spread over 4 scenes (greetings first, goodbyes last); each scene = fixture lines holding its words,
+// alternating speakers, padded with neutral fixture lines; QC passes unless a test says otherwise
+function scriptedModel(c, vocab, opt = {}) {
+  const la = c.ev('LISTENING_ADAPTERS').th, G = c.ev('LISTENING_GREETING_RE').th, B = c.ev('LISTENING_GOODBYE_RE').th, V = c.ev('GEMINI_SCHEMAS').verdicts
+  const ctx = { vocab }
+  const st = { calls: [], prompts: [], seq: opt.seq || [], used: new Set(), variant: opt.variant || 0 }
+  const has = (l, s) => l.th.includes(s) && la.present(l.th, s, ctx)
+  const rowsOf = p => [...p.matchAll(/^T(\d+) \| ([^|]+) \|/gm)].map(m => ({ id: Number(m[1]), s: m[2].trim() }))
+  const filler = sp => FIXLINES.find((l, k) => (k + st.variant * 7) % 3 === 0 && l.sp === sp && !st.used.has(l.th) && !G.test(l.th) && !B.test(l.th) && la.text({ thai: l.th }).length > 6 && !opt.avoid?.some(a => l.th.includes(a)))
+  const sceneTurns = (rows, si, nS) => {
+    const lines = []
+    rows.filter(r => !(opt.skip || []).includes(r.s)).forEach(r => {
+      const cand = FIXLINES.filter(l => has(l, r.s) && !st.used.has(l.th) && !(si > 0 && G.test(l.th)) && !(si < nS - 1 && B.test(l.th)))
+      const l = cand[st.variant % Math.max(1, cand.length)] || cand[0]
+      if (l) { st.used.add(l.th); lines.push(l) }
+    })
+    const turns = []
+    lines.forEach(l => { const want = turns.length % 2 ? 'B' : 'A'
+      if (l.sp !== want) { const f = filler(want); if (f) { st.used.add(f.th); turns.push(f) } }
+      turns.push(l) })
+    while (turns.length < 10) { const f = filler(turns.length % 2 ? 'B' : 'A'); if (!f) break; st.used.add(f.th); turns.push(f) }
+    return turns.map(l => ({ speaker: l.sp, thai: l.th, english: l.en }))
+  }
+  c.mockGeminiGenerate = async (k, m, msgs, max, o) => {
+    const p = msgs.map(x => typeof x.content === 'string' ? x.content : '').join('\n'), stage = (o && o.stage) || (o && o.json === V ? 'verdicts' : '?')
+    st.calls.push(stage); st.prompts.push({ stage, p }); st.seq.push('call:' + stage)
+    if (stage === 'O_listening_story_plan') {
+      const rows = rowsOf(p.slice(p.indexOf('TASK: plan'))), nS = 4, sc = [[], [], [], []]
+      rows.forEach((r, i) => { const ls = FIXLINES.filter(l => has(l, r.s)); const gOnly = ls.length && ls.every(l => G.test(l.th)), bOnly = ls.length && ls.every(l => B.test(l.th))
+        sc[gOnly ? 0 : bOnly ? nS - 1 : i % nS].push(r.id) })
+      return JSON.stringify({ title: 'Scripted story ' + st.variant, story: 'two friends plan a day out', scenes: sc.map((t, i) => ({ title: 'Scene ' + (i + 1), happens: 'part ' + (i + 1), targets: t })) })
+    }
+    if (stage === 'O_listening_story_write') {
+      const mm = p.match(/TASK: write scene (\d+) of (\d+)/), si = Number(mm[1]) - 1, nS = Number(mm[2])
+      const turns = sceneTurns(rowsOf(p.slice(p.indexOf('TASK: write'))), si, nS)
+      if (opt.inject && si === 0) turns[1] = { speaker: turns[1].speaker, thai: opt.inject[turns[1].speaker], english: 'injected' }
+      return JSON.stringify({ turns })
+    }
+    if (stage === 'O_listening_story_repair' || stage === 'O_listening_story_qc_repair') {
+      const body = p.slice(p.lastIndexOf('AS WRITTEN:') + 11).split('\n\n')[0].trim().split('\n').map(r => r.split(' | ')).filter(r => r.length >= 3)
+      const turns = body.map(r => ({ speaker: r[0].replace(/^\d+\.\s*/, '').trim(), thai: r[1].trim(), english: r[2].trim() }))
+      if (opt.fix) turns.forEach(t => { const f = opt.fix(t); if (f) Object.assign(t, f) })
+      return JSON.stringify({ turns })
+    }
+    if (stage === 'verdicts') {
+      const items = [...p.matchAll(/^\s*(\d+)[.)]\s/gm)].map(x => Number(x[1]))
+      const nItems = Math.max(12, ...items)
+      return JSON.stringify(Array.from({ length: nItems }, (_, i) => ({ i: i + 1, s: opt.reject && opt.reject(p, i + 1) ? 2 : 5, note: opt.reject && opt.reject(p, i + 1) ? 'stiff wording' : '' })))
+    }
+    if (stage === 'O_listening_coherence') return JSON.stringify({ scenes: [1, 2, 3, 4, 5].map(s => ({ scene: s, pass: true, breakAfterLine: null, reason: 'ok' })), overall: 5, reason: 'ok' })
+    return '[]'
+  }
+  return st
+}
+async function run(c, vocab, opt = {}) {
+  const seq = [], logs = []
+  const st = scriptedModel(c, vocab, { ...opt, seq })
+  const snap = c.selectRevisionTargets('th', vocab)
+  const r = await c.generateCohesiveListeningTrack({ lang: 'th', vocab, apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), attemptId: 'lattempt-t64-' + (opt.variant || 0), snapshot: snap,
+    onLog: x => { logs.push(String(x)); seq.push('log:' + String(x).slice(0, 60)) }, onProgress: () => {} })
+  return { r, tr: r.track, st, seq, logs, snap }
 }
 
 ;(async () => {
   const c = load(FILE, { realBelt: true }); c.console.info = () => {}; c.console.warn = () => {}
-  const LIB = c.ev('THAI_LISTENING_LIBRARY')
-  T('Y0', 'the build embeds a conversation library (' + LIB.length + ' conversations) and it is on for Thai', LIB.length >= 2 && c.thaiListeningLibraryOn(), LIB.length)
-  if (LIB.length < 2) { out.forEach(l => console.log(l)); process.exit(1) }
-  // about 1000 taught words (the owner's level, belt hardMax 7): the curriculum's first 900 plus every word the library uses
-  const vocab = learnerFrom(c, LIB, { extra: w => w.curriculumIndex > 0 && w.curriculumIndex <= 1000 })
-  const snap = c.selectRevisionTargets('th', vocab), pool = c.listeningCandidatePool('th', vocab, snap)
-  const la = c.ev('LISTENING_ADAPTERS').th
-  const pick = c.thaiListeningLibraryPick(vocab, pool, { need: 30 })
-  const linesOf = cv => cv.scenes.flatMap(s => s.lines.map(l => l[1]))
-  const ctx0 = c.thaiListeningLibraryContext(vocab, [])
-  const at = (cv, w) => linesOf(cv).map((t, i) => t.includes(w.thai) && la.present(t, w.thai, ctx0) ? i : -1).filter(i => i >= 0)
+  c.__bankForced = true
+  const vocab = learner(c)
+  c.thaiBankSetEnabled(true)
+  const A = await run(c, vocab, { variant: 0 })
+  const frozen = A.snap.targetIds.slice()
   {
-    const ok = pick && pick.words.length === 30 && pick.words.every(w => at(pick.conv, w).length > 0)
-    const per = pick ? linesOf(pick.conv).map((t, i) => pick.words.filter(w => at(pick.conv, w).includes(i)).length) : []
-    const order = pick ? pick.words.map(w => pool.indexOf(w)) : []
-    T('Y1', 'the pick returns a conversation and 30 due words that are all heard in it, in revision order, never more than 3 in one line',
-      ok && Math.max(...per) <= 3 && order.every((x, k) => k === 0 || x > order[k - 1]), { conv: pick && pick.conv.id, words: pick && pick.words.length, max: Math.max(...per) })
+    const firstCall = A.seq.findIndex(x => x.startsWith('call:O_listening_story')), sel = A.seq.findIndex(x => x.startsWith('log:🎧 LISTENING_SELECTED_TARGET_IDS'))
+    const planP = (A.st.prompts.find(x => x.stage === 'O_listening_story_plan') || {}).p || ''
+    const planIds = [...planP.slice(planP.indexOf('TASK: plan')).matchAll(/^T(\d+) \|/gm)].map(m => Number(m[1]))
+    T('S1', 'the 30 revision targets are selected and frozen BEFORE the first story call, and the plan is asked for exactly those ids',
+      sel >= 0 && firstCall > sel && planIds.length === 30 && planIds.join() === frozen.join(), { sel, firstCall, planIds: planIds.length })
+    T('S2', 'the frozen ids are the Revision selector\'s 30, unchanged (no substitution before the story; the track carries them)',
+      A.tr.selectedTargetIds.join() === frozen.join() && frozen.length === 30, { track: A.tr.selectedTargetIds.length })
   }
   {
-    const p2 = c.thaiListeningLibraryPick(vocab, pool, { need: 30, recent: [pick.conv.id] })
-    const frozen = pick.words.map(w => w.id)
-    const p3 = c.thaiListeningLibraryPick(vocab, frozen.map(id => vocab.find(w => w.id === id)), { need: frozen.length, frozen: true })
-    T('Y2', 'a conversation played recently is not picked again (another one that fits is)', p2 && p2.conv.id !== pick.conv.id, p2 && p2.conv.id)
-    T('Y3', 'a Rebuild (frozen ids) ignores recency and gets a conversation that holds every frozen word, ids unchanged',
-      p3 && p3.words.map(w => w.id).join() === frozen.join(), p3 && { conv: p3.conv.id, n: p3.words.length })
+    const L = (A.tr.listening || {}).lines || [], gen = A.st.calls.filter(s => s === 'O_listening_story_write').length
+    const wrote = A.st.prompts.filter(x => x.stage === 'O_listening_story_write').length
+    const tel = A.tr.telemetry || {}
+    T('S3', 'end to end: READY with all 30 frozen words heard, composer = story, written by the model (plan + one call per scene), paid QC ran (naturalness + coherence), real call counts on the track',
+      A.tr.status === 'READY' && A.tr.coverage.covered === 30 && A.tr.listening.composer === 'story' && gen === 4 && wrote === 4 &&
+      A.st.calls.includes('verdicts') && A.st.calls.includes('O_listening_coherence') && tel.LISTENING_GENERATION_CALLS >= 5 && tel.LISTENING_QC_CALLS >= 1 && L.length >= 30,
+      { status: A.tr.status, cov: A.tr.coverage, composer: A.tr.listening && A.tr.listening.composer, calls: A.st.calls, tel, failed: A.tr.failedChecks })
   }
   {
-    // the picked conversation, for a learner who has not been taught one content word in it, fails the closed-vocabulary gate → not picked
-    const cv = pick.conv, w0 = c.initVocab().find(w => w.thai && w.thai.length >= 4 && w.curriculumIndex > 400 && at(cv, w).length > 0 && !pick.words.some(p => p.id === w.id) && !c.isThaiFunctionWord?.(w.thai))
-    const v2 = vocab.map(w => w.id === w0.id ? { ...w, status: 'new', repCount: 0, interval: 0, lastSeen: null, dueDate: null, okStreak: 0, introducedAt: null } : w)
-    const logs = []; const p4 = c.thaiListeningLibraryPick(v2, c.listeningCandidatePool('th', v2, c.selectRevisionTargets('th', v2)), { need: 30, log: x => logs.push(x) })
-    T('Y4', 'a conversation that fails a gate for this learner (an untaught word: ' + (w0 && w0.thai) + ') is never picked, and the reason is logged',
-      (!p4 || p4.conv.id !== cv.id) && logs.some(l => l.includes(cv.id) && /CLOSED_VOCAB/.test(l)), { p4: p4 && p4.conv.id, logs: logs.slice(0, 2) })
+    const B = await run(c, vocab, { variant: 1 })
+    const la = (A.tr.listening.lines || []).map(l => l.thai).join('|'), lb = ((B.tr.listening || {}).lines || []).map(l => l.thai).join('|')
+    T('S4', 'a second Listening request generates again — new plan and write calls, a different conversation, the same frozen targets (nothing replayed from storage)',
+      B.st.calls.filter(s => s === 'O_listening_story_plan').length === 1 && B.st.calls.filter(s => s === 'O_listening_story_write').length === 4 && la !== lb && B.tr.selectedTargetIds.join() === frozen.join(),
+      { bStatus: B.tr.status, same: la === lb })
   }
   {
-    let calls = 0; const stages = {}
-    c.__bankForced = true
-    c.mockGeminiGenerate = async (k, m, msgs, max, o) => { calls++; const st = (o && o.stage) || '?'; stages[st] = (stages[st] || 0) + 1; return '[]' }
-    c.thaiBankSetEnabled(true)
-    const logs = []
-    const r = await c.generateCohesiveListeningTrack({ lang: 'th', vocab, apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), attemptId: 'lattempt-t64', snapshot: c.selectRevisionTargets('th', vocab), onLog: x => logs.push(String(x)), onProgress: () => {} })
-    const tr = r.track, Lx = tr.listening || {}
-    const conv = LIB.find(cv => cv.id === tr.listeningLibraryId)
-    const asWritten = conv && Lx.lines && Lx.lines.length === linesOf(conv).length && Lx.lines.every((l, i) => l.thai.replace(/\s+/g, '') === linesOf(conv)[i].replace(/\s+/g, ''))
-    T('Y5', 'end to end: READY, every lesson word heard, composer = library, the conversation exactly as written, no paid writing / repair / judging call',
-      tr.status === 'READY' && tr.coverage.covered === 30 && Lx.composer === 'library' && asWritten && !logs.some(l => /LISTENING_GENERATION_CALLS=[1-9]|LISTENING_REPAIR_CALLS=[1-9]|LISTENING_QC_CALLS=[1-9]/.test(l)),
-      { status: tr.status, cov: tr.coverage, composer: Lx.composer, lib: tr.listeningLibraryId, asWritten, calls, stages, failed: tr.failedChecks })
-    // v711 (tests37 G3 / tests38 O3 / tests39 A6: no new storage write) — "recently played" is read from the saved Listening attempts,
-    // which now record the conversation id
-    await c.saveListeningAttempt('th', c.listeningAttemptRecord({ attemptId: 'lattempt-t64', createdAt: new Date().toISOString(), lang: 'th', ids: tr.selectedTargetIds, state: 'READY', track: tr }))
-    const recent = await c.thaiListeningLibraryRecent()
-    const logs2 = []
-    const r2 = await c.generateCohesiveListeningTrack({ lang: 'th', vocab, apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), attemptId: 'lattempt-t64b', snapshot: c.selectRevisionTargets('th', vocab), onLog: x => logs2.push(String(x)), onProgress: () => {} })
-    T('Y6', 'the track and its saved attempt record the conversation; the next new track reads it back as recently played and picks another one',
-      !!tr.listeningLibraryId && recent[0] === tr.listeningLibraryId && r2.track.listeningLibraryId && r2.track.listeningLibraryId !== tr.listeningLibraryId,
-      { id: tr.listeningLibraryId, recent, next: r2.track.listeningLibraryId })
-    c.thaiBankSetEnabled(false)
-    T('Y7', 'with the vetted Thai content switched off (tests of the model writer) the library is off too; a learner no conversation fits gets null (the planner runs)',
-      !c.thaiListeningLibraryOn() && (c.thaiBankSetEnabled(true), c.thaiListeningLibraryPick(c.initVocab(), [], { need: 30 }) === null))
+    // a common word THIS learner has not been taught (the gate decides)
+    const un = c.ev('LN_STORY_UNTAUGHT_PROBE').find(w => c.listeningUnexposedWords('th', { thai: 'ผมอยาก' + w + 'ครับ', speaker: 'A' }, c.snapshotLearnerInventory('th', vocab, [], 'listening').inventory.taught, [], vocab).length)
+    const C = await run(c, vocab, { variant: 2, inject: { A: 'ผมอยาก' + un + 'ครับ', B: 'ฉันอยาก' + un + 'ค่ะ' }, fix: t => t.thai.includes(un) ? { thai: t.speaker === 'A' ? 'ผมอยากไปด้วยครับ' : 'ฉันอยากไปด้วยค่ะ', english: 'I want to go too.' } : null })
+    const rep = C.st.prompts.find(x => x.stage === 'O_listening_story_repair')
+    T('S5', 'a deterministic gate failure (a word this learner was not taught) sends that scene back with the named problem; the rewrite is checked again and the final track has no untaught word',
+      !!un && !!rep && /CLOSED_VOCAB/.test(rep.p) && !(C.tr.listening.lines || []).some(l => l.thai.includes(un)) && C.tr.status === 'READY' && (C.tr.telemetry.LISTENING_REPAIR_CALLS || 0) >= 1,
+      { repair: !!rep, status: C.tr.status, rc: C.tr.telemetry.LISTENING_REPAIR_CALLS, un, left: (C.tr.listening.lines || []).filter(l => l.thai.includes(un)).map(l => l.thai), rp: rep && rep.p.slice(rep.p.indexOf('PROBLEMS'), rep.p.indexOf('PROBLEMS') + 300) })
   }
   {
-    const G = c.ev('LISTENING_GREETING_RE').th, B = c.ev('LISTENING_GOODBYE_RE').th, bad = []
-    LIB.forEach(cv => { const L = cv.scenes.flatMap((s, si) => s.lines.map(l => ({ si, sp: l[0], th: l[1], en: l[2] }))), ns = cv.scenes.length
-      if (L.length < 36 || L.length > 60) bad.push(cv.id + ' length ' + L.length)
-      if (ns < 2 || cv.scenes.some(s => s.lines.length < 6)) bad.push(cv.id + ' scenes')
-      L.forEach((l, i) => {
-        if (!/^[AB]$/.test(l.sp)) bad.push(cv.id + ' speaker ' + (i + 1))
-        if (!(l.sp === 'A' ? /ครับ$/ : /(ค่ะ|คะ)$/).test(l.th)) bad.push(cv.id + ' particle ' + (i + 1))
-        if (i >= 2 && L[i - 1].sp === l.sp && L[i - 2].sp === l.sp) bad.push(cv.id + ' three in a row ' + (i + 1))
-        if (l.si > 0 && G.test(l.th)) bad.push(cv.id + ' greeting ' + (i + 1))
-        if (l.si < ns - 1 && B.test(l.th)) bad.push(cv.id + ' goodbye ' + (i + 1))
-        if (!l.en || /[฀-๿]/.test(l.en)) bad.push(cv.id + ' english ' + (i + 1))
-      }) })
-    const ids = LIB.map(cv => cv.id)
-    T('Y8', 'every embedded conversation: 36–60 turns, ≥ 2 scenes of ≥ 6, A ends with ครับ / B with ค่ะ·คะ, never three turns in a row, greetings only in scene 1, goodbyes only in the last, English present, unique ids',
-      !bad.length && new Set(ids).size === ids.length, bad.slice(0, 12))
+    let target = null
+    const D = await run(c, vocab, { variant: 3, reject: (p, i) => { if (/\[\[QC-FIXED\]\]/.test(p)) return false; if (target == null && i === 3) { target = true; return true } return false },
+      fix: null })
+    const qr = D.st.prompts.find(x => x.stage === 'O_listening_story_qc_repair')
+    T('S6', 'a line the paid naturalness judge rejects sends its scene to a QC rewrite naming the line and the judge\'s verdict (the QC is real, not a label)',
+      !!qr && /line \d+ UNNATURAL: naturalness 2\/5/.test(qr.p), { qc: !!qr, p: qr && qr.p.slice(qr.p.indexOf('flagged'), qr.p.indexOf('flagged') + 300) })
+  }
+  {
+    const before = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))
+    const word = c.selectRevisionTargets('th', vocab).targets[5]
+    const E = await run(c, vocab, { variant: 4, skip: [String(word.thai).trim()] })
+    const after = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))
+    const repairAsked = E.st.prompts.some(x => x.stage === 'O_listening_story_repair' && x.p.includes('LESSON_WORD_MISSING') && x.p.includes(String(word.thai).trim()))
+    T('S7', 'a frozen word the writer never uses is asked for in a rewrite, then deferred and reported (covered + deferred = 30, ids unchanged); SRS state is untouched',
+      repairAsked && (E.tr.coverage.deferred || []).includes(word.id) && E.tr.coverage.covered + E.tr.coverage.deferred.length === 30 && E.tr.selectedTargetIds.join() === frozen.join() && before === after,
+      { repairAsked, deferred: E.tr.coverage.deferred, covered: E.tr.coverage.covered, status: E.tr.status })
+  }
+  {
+    const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')
+    T('S8', 'no stored-conversation path in production (no THAI_LISTENING_LIBRARY, no library pick, no bank-stitched Listening composer); the Daily exchange bank is unchanged',
+      !/THAI_LISTENING_LIBRARY|thaiListeningLibraryPick|_lnComposeThaiLibrary|_lnComposeThaiBank/.test(src) && /await _lnComposeThaiStory\(_env\)/.test(src) &&
+      Object.keys(c.ev('THAI_EXCHANGE_BANK')).length > 1000 && typeof c.thaiBankLineOf === 'function')
   }
 
   out.forEach(l => console.log(l))
-  console.log('\nv711 Thai Listening library: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
+  console.log('\nv712 Thai Listening fresh story: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)
 })().catch(e => { out.forEach(l => console.log(l)); console.error(e); process.exit(1) })

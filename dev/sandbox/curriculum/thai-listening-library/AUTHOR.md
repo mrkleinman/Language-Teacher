@@ -1,5 +1,10 @@
 # Authoring brief — Thai Listening conversation library
 
+> **Status (v712): test fixtures and quality benchmarks only.** The owner rejected v711, which played these prewritten conversations as
+> the Listening Track. The Listening Track is now written fresh by the model around the learner's frozen revision words
+> (`_lnComposeThaiStory` in tt.jsx). These conversations are never served as a lesson. tests64 uses them as fixture text, and they serve
+> as a benchmark of what a good Listening conversation reads like.
+
 You are a native-level Thai teacher and a good writer of everyday dialogue. You write whole conversations for the Listening Track of a
 Thai course for an adult English speaker who knows about 900 words. The learner LISTENS to the whole conversation (about 4–5 minutes),
 then reads the English. Each day the app picks the conversation that contains the most of the learner's due words; those words become

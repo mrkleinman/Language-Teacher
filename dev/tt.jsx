@@ -31925,6 +31925,8 @@ function lnStorySceneText(sc, la) { return sc.turns.map((tn, k) => (k + 1) + '. 
 // v712 — up to LN_STORY_CANDIDATES fresh stories are written for the same frozen words and the better one is kept (each is a complete
 // generation — plan, scenes, edit, QC — never a stored text). A first story the judges already rate well stops the search.
 const LN_STORY_CANDIDATES = 2
+// the most frozen words one story may leave out (owner brief: a bounded, reported deferral; the words stay due in SRS)
+const LN_STORY_MAX_DEFER = 4
 function lnStoryRank(r) {
   if (!r || !r.ok) return -1e9
   const c = r.coh || {}, fails = (c.verdicts || []).filter(v => !v.pass).length
@@ -31993,15 +31995,19 @@ async function _lnComposeThaiStory(env, avoid) {
         'who says it and why, in at most 10 English words (e.g. {"id":842,"moment":"B, at the museum desk, asks A for his ticket"}). Pick moments where the word is the natural thing to say. ' +
         'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–6 per scene.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
-        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"moment":"…"}]}]}', 1950, 'LISTENING_GENERATION_CALLS')
+        'If a word (at most ' + LN_STORY_MAX_DEFER + ') has NO natural place in this story — it could only be forced in — list it in "defer" instead of a scene: it stays due and comes back in the next lesson. Use this rarely.\n' +
+        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"moment":"…"}]}],"defer":[]}', 1950, 'LISTENING_GENERATION_CALLS')
       const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 6)
       if (sc.length < 2) throw new Error('fewer than 2 scenes')
       const used = new Set()
       sc.forEach(x => { x.moments = {}; (Array.isArray(x.uses) ? x.uses : []).forEach(u => { const id = Number(String(u && u.id).replace(/\D/g, '')); if (byId.has(id)) x.moments[id] = String(u.moment || '').slice(0, 200) })
         x.targets = (Array.isArray(x.uses) && x.uses.length ? x.uses.map(u => u && u.id) : (x.targets || [])).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id) && !used.has(id) && used.add(id)) })
-      // a word the plan left out joins the scene with the fewest lesson words (it is never dropped)
-      targets.filter(t => !used.has(t.id)).forEach(t => { sc.slice().sort((a, b) => a.targets.length - b.targets.length)[0].targets.push(t.id) })
-      plan = { title: String(p.title || 'Listening'), story: String(p.story || ''), scenes: sc.map(x => ({ title: String(x.title).slice(0, 80), present: String(x.present || ''), happens: String(x.happens || ''), facts: String(x.facts || ''), targets: x.targets, moments: x.moments || {} })) }
+      // bounded deferral: at most LN_STORY_MAX_DEFER words the planner says have no natural place stay out of the story (they stay due in
+      // SRS and are reported as deferred); any other word the plan left out joins the scene with the fewest lesson words
+      const deferIds = new Set((Array.isArray(p.defer) ? p.defer : []).map(v => Number(String(v && v.id != null ? v.id : v).replace(/\D/g, ''))).filter(id => byId.has(id) && !used.has(id)).slice(0, LN_STORY_MAX_DEFER))
+      targets.filter(t => !used.has(t.id) && !deferIds.has(t.id)).forEach(t => { sc.slice().sort((a, b) => a.targets.length - b.targets.length)[0].targets.push(t.id) })
+      if (deferIds.size) log && log('  ↪ LISTENING_STORY planner deferred ' + deferIds.size + ' word(s) with no natural place in this story (they stay due for the next lesson): ' + [...deferIds].map(id => byId.get(id).surface).join(', '))
+      plan = { title: String(p.title || 'Listening'), story: String(p.story || ''), scenes: sc.map(x => ({ title: String(x.title).slice(0, 80), present: String(x.present || ''), happens: String(x.happens || ''), facts: String(x.facts || ''), targets: x.targets, moments: x.moments || {} })), deferred: [...deferIds] }
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY plan attempt ' + attempt + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
   }
   if (!plan) return { ok: false, scenes: [], reason: 'LISTENING_STORY_PLAN_FAILED: the story plan could not be made', composer: 'story', uncommitted: [] }
@@ -32189,7 +32195,7 @@ async function _lnComposeThaiStory(env, avoid) {
   return { ok: true, composer: 'story', scenes, audit, natIssues, plan: plan2, coh, editorGrade, hardLeft: hard.length, storyTitle: plan.title + ' — ' + plan.story,
     report: scenes.map(sc => ({ sceneId: sc.sceneId, required: 0, heard: 0, turns: sc.turns.length })),
     gates: { SCENE_REQUIRED_COVERAGE: 'PASS', TURN_COUNT: total + '/' + LN_STORY_TURNS.max, TURN_BUDGET: total >= floor.turns && total <= LN_STORY_TURNS.max + 20, SCENES_VALIDATED: !hard.length, ONE_CONVERSATION: 'PASS' },
-    salvage: deferred.length ? { from: 'story', passes: 0, removedTurns: 0, droppedScenes: [], cuts: [], floor, deferred: deferred.map(t => ({ targetId: t.id, target: t.surface, reason: 'not heard after the bounded rewrites' })) } : null,
+    salvage: deferred.length ? { from: 'story', passes: 0, removedTurns: 0, droppedScenes: [], cuts: [], floor, deferred: deferred.map(t => ({ targetId: t.id, target: t.surface, reason: (plan.deferred || []).includes(t.id) ? 'the story planner found no natural place for it in this story' : 'not heard after the bounded rewrites' })) } : null,
     uncommitted: [], contract: null, story: scenes.map(sc => sc.setting), phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
 }
 // TT_V692_MEANING_FIRST_END

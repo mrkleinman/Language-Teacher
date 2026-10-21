@@ -7,6 +7,7 @@
 //   S4     repeated requests generate again (new calls, a different conversation) — nothing is replayed from storage
 //   S5–S6  the deterministic gates and the paid QC drive targeted rewrites (an untaught word; a line the naturalness judge rejects)
 //   S7     a frozen word the writer never uses is deferred and reported; its SRS state is untouched
+//   S9     the planner may defer at most 4 words with no natural place (reported, still due in SRS); a 5th and 6th are placed anyway
 //   S8     no stored-conversation path in production; the Daily exchange bank is unchanged
 // Real app code; the model is a deterministic script (no provider calls).
 //   node tests64.js            (current build: tt.compiled.js, or TT_FILE)
@@ -61,7 +62,9 @@ function scriptedModel(c, vocab, opt = {}) {
       const rows = rowsOf(p.slice(p.indexOf('TASK: plan'))), nS = 4, sc = [[], [], [], []]
       rows.forEach((r, i) => { const ls = FIXLINES.filter(l => has(l, r.s)); const gOnly = ls.length && ls.every(l => G.test(l.th)), bOnly = ls.length && ls.every(l => B.test(l.th))
         sc[gOnly ? 0 : bOnly ? nS - 1 : i % nS].push(r.id) })
-      return JSON.stringify({ title: 'Scripted story ' + st.variant, story: 'two friends plan a day out', scenes: sc.map((t, i) => ({ title: 'Scene ' + (i + 1), happens: 'part ' + (i + 1), targets: t })) })
+      // opt.defer: the planner asks to defer these ids (taken out of the scenes and listed in "defer")
+      const dset = new Set(opt.defer || [])
+      return JSON.stringify({ title: 'Scripted story ' + st.variant, story: 'two friends plan a day out', scenes: sc.map((t, i) => ({ title: 'Scene ' + (i + 1), happens: 'part ' + (i + 1), targets: t.filter(id => !dset.has(id)) })), defer: [...dset] })
     }
     if (stage === 'O_listening_story_write' && /TASK: write the WHOLE conversation/.test(p)) {
       // v712: one call writes every scene — the prompt lists each scene's lesson words under "SCENE n —"
@@ -166,6 +169,17 @@ async function run(c, vocab, opt = {}) {
     T('S7', 'a frozen word the writer never uses is asked for in a rewrite, then deferred and reported (covered + deferred = 30, ids unchanged); SRS state is untouched',
       repairAsked && (E.tr.coverage.deferred || []).includes(word.id) && E.tr.coverage.covered + E.tr.coverage.deferred.length === 30 && E.tr.selectedTargetIds.join() === frozen.join() && before === after,
       { repairAsked, deferred: E.tr.coverage.deferred, covered: E.tr.coverage.covered, status: E.tr.status })
+  }
+  {
+    const before = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))
+    const ask = frozen.slice(10, 16)
+    const F = await run(c, vocab, { variant: 5, defer: ask })
+    const after = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))
+    const d = F.tr.coverage.deferred || [], sal = ((F.tr.listening || {}).salvage || {}).deferred || []
+    T('S9', 'the planner defers at most 4 frozen words it finds no natural place for (reported with that reason, still due in SRS); words beyond the cap are placed in the story anyway',
+      ask.slice(0, 4).every(id => d.includes(id)) && ask.slice(4).every(id => !d.includes(id)) && d.length === 4 && F.tr.coverage.covered === 26 &&
+      sal.filter(x => /no natural place/.test(x.reason)).length === 4 && F.tr.selectedTargetIds.join() === frozen.join() && before === after,
+      { deferred: d, covered: F.tr.coverage.covered, reasons: sal.map(x => x.reason), status: F.tr.status })
   }
   {
     const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')

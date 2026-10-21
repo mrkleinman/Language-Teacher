@@ -22,7 +22,16 @@ const bank = C.ev('THAI_EXCHANGE_BANK'), only = process.argv.slice(4)
     const nz = x => String(x || '').replace(/\s+/g, '')
     const kept = want.filter(x => lines.some(l => l && nz(l.thai) === nz(x))).length
     if (process.env.SHOW) console.log(t, JSON.stringify(lines.map(l => l && l.thai)), '| want', JSON.stringify(want))
-    if (kept === 3 && calls === 0) res.ok.push(t)
+    // v710 (paid tracks 14–16): a line the writer accepts can still be dropped later in a real run — by the early acceptance contract, the
+    // track-level closed-vocabulary gate or the fixed-verb rule (ดู = watch). Each bank line is checked by those too.
+    const later = []
+    const cvCtx = C.buildThaiTrackVocabContext(vocab, [w], [])
+    bank[t][0].forEach(l => { const p = { ...l, language: 'th', _target: t, targetId: w.id, wordId: w.id, pairType: 'content', speakerGender: l.speaker === 'B' ? 'female' : 'male' }
+      const v = C.validateThaiTargetPair(p, w, { vocab }, 'early-generation'); if (v.state === 'FAIL') later.push('contract: ' + v.reasons.join('; ').slice(0, 160) + ' — ' + l.thai)
+      const cv = C.validateThaiVocabulary([{ thai: l.thai }], cvCtx); if (cv.blocked && cv.blocked.length) later.push('track vocabulary gate: untaught ' + cv.blocked.map(b => b.token || b).join(' ') + ' — ' + l.thai)
+      const vs = C.thaiVerbSenseProblem(p); if (vs) later.push('fixed verb: ' + String(vs.why || vs).slice(0, 140) + ' — ' + l.thai) })
+    if (kept === 3 && calls === 0 && !later.length) res.ok.push(t)
+    else if (kept === 3 && calls === 0) res.fail.push([t, 'writer OK, later checks fail', later])
     else res.fail.push([t, 'kept ' + kept + '/3, model calls ' + calls, log.filter(x => /✗|reject|fail|FAIL|untaught|⛔|⚠/i.test(x)).slice(0, 4).map(x => x.slice(0, 220))])
   }
   console.log('USABLE', res.ok.length, '/', res.ok.length + res.fail.length)

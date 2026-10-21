@@ -452,6 +452,15 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('Z16', 'readings: mâi dâi · sà-baai-dii mǎi · wái jooe gan mài; ไม่เป็นไร, เบอร์โทรศัพท์, ได้ยิน stay one word; ถวาย thà-wǎai',
       got.a === 'mâi dâi' && got.b === 'sà-baai-dii mǎi' && got.d === 'wái jooe gan mài' && got.e === 'mâi-bpen-rai' && got.f === 'booe-thoo-rá-sàp' && got.g === 'dâi-yin' && got.h === 'thà-wǎai', got) }
 
+  // v710 (bank validation, paid track 16) — Z17: ดู inside ฤดู / เลี้ยงดู / ฟังดู / น่าดู / มาให้ดู is not the verb (the line is not refused for a
+  // missing "watch"); ดูหนัง still needs "watch". Z18: ละ "per" passes the track closed-vocabulary gate (the vetted ชิ้นละยี่สิบบาทค่ะ was dropped)
+  { const u = c.ev('thaiVerbSenseUses')
+    T('Z17', 'fixed-verb rule: ฤดู, เลี้ยงดู, ฟังดู, น่าดู, มาให้ดู are not the verb ดู; ไปดูหนัง still is',
+      ['เมืองไทยมีกี่ฤดูครับ', 'ยายเลี้ยงดูฉันค่ะ', 'ฟังดูน่าสนใจครับ', 'ปีนี้งานไม้ดอกน่าดูไหมครับ', 'ถ่ายรูปมาให้ดูด้วย'].every(t => !u(t).includes('ดู')) && u('คืนนี้ไปดูหนังกันไหมครับ').includes('ดู')) }
+  { const vocab = c.initVocab(), w = vocab.find(x => x.thai === 'ชิ้น'), ctx = c.buildThaiTrackVocabContext(vocab, [w], [])
+    const r = c.validateThaiVocabulary([{ thai: 'ชิ้นละยี่สิบบาทค่ะ' }], ctx)
+    T('Z18', 'ละ "per" passes the track closed-vocabulary gate (ชิ้นละยี่สิบบาทค่ะ)', !(r.blocked || []).some(b => (b.token || b) === 'ละ'), r.blocked) }
+
   // v709 (owner's live v709 track) — Z6: a group of vetted bank lines is clean without the paid group check; Z7: วันนี้วันอังคาร is not a
   // "duplicated head" of the fixed phrase (ขอให้คุณขอให้… still is)
   { const bank = c.ev('THAI_EXCHANGE_BANK'), t = Object.keys(bank).find(k => k === 'ถ้วย') || Object.keys(bank)[0], ex = bank[t][0]

@@ -481,6 +481,12 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('Z21', 'particle spelling: a vetted line keeps its reviewed particles; a model line "ไม่แพงนะ ห้าสิบบาท" still gets ครับ',
       !!hit && a.thai === hit.thai && /^ไม่แพงนะครับ /.test(b.thai), [hit && hit.thai, a && a.thai, b.thai]) }
 
+  // v710 (blind reviews of paid tracks 21–23) — Z22: named phrase entries read as their words; เช้า is cháo throughout; loanword readings
+  { const lex = c.buildThaiPhoneticLexicon(c.initVocab()), sp = t => c.thaiPhraseReadingSplit(t, lex.get(t), lex)
+    const got = { a: sp('สวัสดีทุกคน'), b: sp('นานเท่าไหร่'), d: sp('มาจาก'), e: lex.get('เช้า'), f: lex.get('ตอนเช้า'), g: lex.get('แอร์โฮสเตส') }
+    T('Z22', 'readings: sà-wàt-dii thúk-khon · naan thâo-rài · maa jàak; เช้า cháo, ตอนเช้า dtaawn-cháo; แอร์โฮสเตส aae-hòot-dtèet',
+      got.a === 'sà-wàt-dii thúk-khon' && got.b === 'naan thâo-rài' && got.d === 'maa jàak' && got.e === 'cháo' && got.f === 'dtaawn-cháo' && got.g === 'aae-hòot-dtèet', got) }
+
   // v709 (owner's live v709 track) — Z6: a group of vetted bank lines is clean without the paid group check; Z7: วันนี้วันอังคาร is not a
   // "duplicated head" of the fixed phrase (ขอให้คุณขอให้… still is)
   { const bank = c.ev('THAI_EXCHANGE_BANK'), t = Object.keys(bank).find(k => k === 'ถ้วย') || Object.keys(bank)[0], ex = bank[t][0]

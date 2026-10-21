@@ -395,8 +395,10 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
   { const v = c.initVocab(), lex = c.ev('buildThaiPhoneticLexicon')(v), seg = c.ev('segmentThaiWithDiagnostics'), fin = c.ev('finaliseThaiTrackPhonetics')
     const ph = t => fin([{ thai: t, words: seg(t, v, null, [], false).map(x => ({ p: x.matchedSpan, thai: x.matchedSpan })) }], lex, null)[0].phonetic
     const a = ph('นมหมดครับ ผมไปซื้อนะครับ'), b = ph('ได้ค่ะ ดูแลตัวเองด้วยนะคะ'), d = ph('สวัสดีครับ วันนี้เป็นยังไงบ้างครับ')
+    // v710: duu-laae (was duu-lae) — the phrase entry's reading was corrected to the long แ its own word ดูแล already had (dictionary
+    // reading audit); the check is unchanged: the phrase still reads as three separate words
     T('Z3', 'romanisation: a word never spans a space (ครับ ผม → khráp phǒm, not ครับผม "yes, sir"); a phrase entry reads as its words (duu-lae dtua-eeng dûai, sà-wàt-dii khráp, bpen yang-ngai bâang); a compound stays one word (wan-níi)',
-      /khráp phǒm/.test(a) && !/khráp-phǒm/.test(a) && /duu-lae dtua-eeng dûai/.test(b) && /sà-wàt-dii khráp/.test(d) && /bpen yang-ngai bâang/.test(d) && /wan-níi/.test(d), [a, b, d]) }
+      /khráp phǒm/.test(a) && !/khráp-phǒm/.test(a) && /duu-laae dtua-eeng dûai/.test(b) && /sà-wàt-dii khráp/.test(d) && /bpen yang-ngai bâang/.test(d) && /wan-níi/.test(d), [a, b, d]) }
   { const f = c.ev('thaiBannedOnlyInsideTaught')
     T('Z4', 'a word on the "not in your vocabulary" list is allowed when the learner has been taught it or it is the target (อินเทอร์เน็ต, รถยนต์); still refused when untaught',
       f('ฉันใช้อินเทอร์เน็ตทุกวันค่ะ', 'อินเทอร์เน็ต', new Set(['อินเทอร์เน็ต'])) === true && f('ฉันใช้อินเทอร์เน็ตทุกวันค่ะ', 'อินเทอร์เน็ต', new Set(['ใช้'])) === false) }

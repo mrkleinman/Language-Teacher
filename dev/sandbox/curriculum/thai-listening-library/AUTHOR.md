@@ -48,6 +48,16 @@ one line `A | <Thai> | <English>` (or `B | …`). Blank lines are ignored.
 - ENGLISH: a natural, idiomatic translation of exactly what the Thai says (no added or missing content, no Thai word order). Thai
   rarely marks gender: give a third person "they" or repeat the noun unless the conversation makes it clear.
 
+## What the first blind reviews flagged (avoid these)
+- คุณ in nearly every line sounds distant between close friends: drop the pronoun where Thai does (ไปไหมครับ, not คุณไปไหมครับ);
+  เธอ (in the list) is fine for B when A talks about her or to her casually.
+- Time words must fit the timeline: on a Monday, a wedding "this Saturday" is วันเสาร์นี้ (วันเสาร์หน้า = Saturday next week).
+- Words in their real collocation: ดีใจ is "glad" about news or an event, not "a happy couple" (ดูมีความสุข); a referent the listener has
+  not heard ("the wedding" before any wedding was mentioned) needs "a friend's wedding".
+- English must match the Thai exactly ("you have to find the right one" ≠ "you're bound to meet"), and be natural English ("I went and
+  tried on the suit", not "I've been to try on the suit").
+- A line that answers a yes/no question begins with the answer where Thai would (ใช่ค่ะ / ไม่ครับ), if it fits the length.
+
 ## Self-check (fast; run until every conversation is USABLE)
     sh /home/user/Language-Teacher/dev/sandbox/curriculum/thai-listening-library/check.sh <your file>
 It prints, per conversation, every problem by line: CLOSED_VOCAB (untaught word), TOO_COMPLEX (too long), SPEAKER_IDENTITY (particle

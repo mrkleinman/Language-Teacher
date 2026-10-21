@@ -100,8 +100,33 @@ The owner gave four priorities and one constraint: "I wouldn't add more QC layer
 
 ## Paid track 7 (real Haiku, same 30 words as tracks 2–6)
 
-_Running._
+**Result:** READY, 90/90, **US$0.216**, 178 requests. For comparison, v707 took 219 requests and US$0.249.
+
+**Calibrated blind reviewer: 5.5 / 10.** Paid track 5 (v707) scored 6.2, and the owner rated v707 6.0.
+
+| Area | Score |
+|---|---|
+| Thai | 5.0 |
+| Cues / English | 5.5 |
+| Vocabulary | 5.0 |
+| Reading | 8.0 |
+| Coherence | 4.5 |
+
+**Main findings:**
+- **The same frame three times** remains: "X is delicious", เย็นดี, ตื่นสาย, yellow bus, หลายคน.
+- **Answers that do not answer**, e.g. "how much?" → "very cheap".
+- **The same speaker twice in a row** in several exchanges.
+- **Non-native usage:** ใช้รถเมล์, เป็น + noun + ไหม, ร้านให้เช่า.
+- **A romanisation bug introduced in v706:** the greeting fix joins สวัสดีครับ with a hyphen ("sà-wàt-dii-khráp").
+
+**Decision.** v708 is **not proposed for release**. The simpler structure did not raise the Thai quality with Haiku. Worth keeping:
+- the cue guarantee;
+- the metadata correction;
+- set-phrase closings;
+- the lower cost.
+
+**Separate live issue.** The owner's v707 track stopped at the US$0.25 / 300-request per-track default (US$0.2465, 185 requests), because a v707 track costs about US$0.25. The owner can raise the limit in Settings → AI Generation Model and press Continue (the draft is kept). Raising the default to US$0.40 / 400 is offered as a small update, pending the owner's go-live.
 
 ## TL;DR
 
-_To be filled after the paid track._
+All four of the owner's priorities are built and tested, at lower cost: 178 requests and US$0.216 per track. But the first real-Haiku track scored 5.5 against v707's 6.0, so v708 is not proposed for release. The live per-track default of US$0.25 is too low for v707 and should go to US$0.40.

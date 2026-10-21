@@ -31896,7 +31896,10 @@ function lnStoryScenes(la, plan, written, targets, ctx) {
     const th = String(x.thai || '').trim()
     const tid = targets.filter(t => t.surface && th.includes(t.surface) && la.present(th, t.surface, ctx)).map(t => t.id)
     const tu = lnMfMakeTurn(la, { speaker: x.speaker === 'B' ? 'B' : 'A', text: th, english: String(x.english || '').trim(), targetIds: tid }, 'S' + (si + 1) + '-T' + k, 'S' + (si + 1))
-    return { speaker: tu.speaker, pair: { ...tu.pair, _storyListening: true }, intendedTargetIds: tid } }) }))
+    // each line is written as the reply to the line before it: a different speaker answering is a planned reply (a disagreement is
+    // dialogue, not two alternative candidates — the deterministic continuity check reads this; the paid coherence judge still decides)
+    const prevSp = k > 0 ? ((written[si] || [])[k - 1] || {}).speaker : null
+    return { speaker: tu.speaker, pair: { ...tu.pair, _storyListening: true }, intendedTargetIds: tid, ...(prevSp && prevSp !== tu.speaker ? { meaning: { respondsTo: k - 1, intent: 'REACT' } } : {}) } }) }))
 }
 // deterministic problems of ONE scene (line numbers inside the scene), including its planned lesson words and greeting / goodbye placement
 function lnStorySceneProblems(la, sc, si, nScenes, sceneTargets, ctx) {
@@ -31936,16 +31939,21 @@ async function _lnComposeThaiStory(env) {
         lnStoryTargetRows(targets) + '\n\nInvent one believable everyday story for the two friends in which every word comes up naturally, in its common sense. ' +
         'Opening and closing phrases (greetings, wishes, goodbyes) belong at the start or the end; a formal word needs a situation where it fits (reading a sign, a host speaking to guests). ' +
         'Use 3–5 scenes that move the story forward in time or place (e.g. "At the café, Friday" → "On the phone that evening" → "At the station, Saturday"). ' +
-        'Give each scene: a title (place and time), what happens (2–3 sentences that carry the plot: a plan, a small problem or decision, how it turns out), and the ids of the lesson words it uses — every id in exactly one scene, 4–10 per scene.\n' +
+        'The story needs ONE simple through-line the listener can follow (one plan or problem from start to end) — not a list of topics. Every topic and event is CAUSED by something said earlier: ' +
+        'words about feelings or relationships (trust, forgive, sincere, always, forever, jealous …) need a real cause set up in an earlier scene (e.g. a friend broke a promise in scene 1, so scene 3 is about forgiving); ' +
+        'a set phrase belongs to the person whose role says it (a waiter asks "anything else?", a host says "please sit", staff say "everyone") — A or B can quote them ("the waiter asked…") only where natural.\n' +
+        'Give each scene: a title (place and time), what happens (2–3 sentences that carry the plot), and "uses": for EACH lesson word of the scene, the moment it comes up — who says it, to whom, why (one short English sentence). ' +
+        'Every id in exactly one scene, 4–8 per scene.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
-        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","happens":"…","targets":[123,456]}]}', 3000, 'LISTENING_GENERATION_CALLS')
+        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","happens":"…","uses":[{"id":123,"moment":"…"}]}]}', 4000, 'LISTENING_GENERATION_CALLS')
       const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 5)
       if (sc.length < 2) throw new Error('fewer than 2 scenes')
       const used = new Set()
-      sc.forEach(x => { x.targets = (x.targets || []).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id) && !used.has(id) && used.add(id)) })
+      sc.forEach(x => { x.moments = {}; (Array.isArray(x.uses) ? x.uses : []).forEach(u => { const id = Number(String(u && u.id).replace(/\D/g, '')); if (byId.has(id)) x.moments[id] = String(u.moment || '').slice(0, 200) })
+        x.targets = (Array.isArray(x.uses) && x.uses.length ? x.uses.map(u => u && u.id) : (x.targets || [])).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id) && !used.has(id) && used.add(id)) })
       // a word the plan left out joins the scene with the fewest lesson words (it is never dropped)
       targets.filter(t => !used.has(t.id)).forEach(t => { sc.slice().sort((a, b) => a.targets.length - b.targets.length)[0].targets.push(t.id) })
-      plan = { title: String(p.title || 'Listening'), story: String(p.story || ''), scenes: sc.map(x => ({ title: String(x.title).slice(0, 80), happens: String(x.happens || ''), targets: x.targets })) }
+      plan = { title: String(p.title || 'Listening'), story: String(p.story || ''), scenes: sc.map(x => ({ title: String(x.title).slice(0, 80), happens: String(x.happens || ''), targets: x.targets, moments: x.moments || {} })) }
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY plan attempt ' + attempt + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
   }
   if (!plan) return { ok: false, scenes: [], reason: 'LISTENING_STORY_PLAN_FAILED: the story plan could not be made', composer: 'story', uncommitted: [] }
@@ -31963,7 +31971,9 @@ async function _lnComposeThaiStory(env) {
       (si ? '\nTHE CONVERSATION SO FAR:\n' + soFar(si) + '\n' : '') +
       '\nTASK: write scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '": ' + s.happens + '\nAbout ' + n + ' lines (' + LN_STORY_TURNS.sceneMin + '–' + LN_STORY_TURNS.sceneMax + '), continuing directly from the conversation so far. ' +
       (si === 0 ? 'It opens the conversation (a greeting is fine). ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends the conversation with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
-      '\nUse EVERY ONE of these lesson words at least once, spelled exactly, in its common sense (not more than 3 lesson words in one line):\n' + lnStoryTargetRows(st) +
+      '\nUse EVERY ONE of these lesson words at least once, spelled exactly, in its common sense (not more than 3 lesson words in one line), at its planned moment:\n' +
+      st.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (s.moments && s.moments[t.id] ? ' — moment: ' + s.moments[t.id] : '')).join('\n') +
+      '\nA new topic or event in this scene must follow from something said before it.' +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}'
     let best = null
     try { written[si] = take(await call('O_listening_story_write', brief, 3500, 'LISTENING_GENERATION_CALLS')) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
@@ -31983,9 +31993,14 @@ async function _lnComposeThaiStory(env) {
   }
   // ── QC: paid naturalness verdicts (in context) + the whole-conversation coherence judge → rewrite the flagged scenes (≤ 2 rounds) ──
   const build = () => lnStoryScenes(la, plan, written, targets, ctx)
-  const cohOf = async scs => { tel.LISTENING_QC_CALLS = (tel.LISTENING_QC_CALLS || 0) + 1; return listeningWholeCoherenceAudit(scs.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair })) })), la, { ...o, oneConversation: true }, log) }
+  const cohOf = async scs => { tel.LISTENING_QC_CALLS = (tel.LISTENING_QC_CALLS || 0) + 1; return listeningWholeCoherenceAudit(scs.map(sc => ({ title: sc.setting, lines: sc.turns.map(tn => ({ kind: 'turn', speaker: tn.speaker, pair: tn.pair, ...(tn.meaning ? { meaning: tn.meaning } : {}) })) })), la, { ...o, oneConversation: true }, log) }
   let scenes = build(), natIssues = await env.naturalness(scenes), coh = await cohOf(scenes)
-  for (let round = 1; round <= 2; round++) {
+  // the version kept is the best one seen (a rewrite that makes the whole worse is undone): gate issues weigh most, then failed
+  // scenes, then unnatural lines
+  const hardOf = scs => listeningConversationAudit(scs, targets, la, ctx).issues.concat(conversationContinuityAudit(scs, la, targets)).filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN|EXACT_DUPLICATE|NEAR_DUPLICATE|CONTINUITY)$/.test(x.code)).length
+  const score = (scs, ni, ch) => hardOf(scs) * 10 + (ch.verdicts || []).filter(v => !v.pass).length * 4 + (ch.overall != null ? (5 - ch.overall) * 2 : 4) + ni.length
+  let best = { written: written.map(w => w.slice()), natIssues, coh, score: score(scenes, natIssues, coh) }
+  for (let round = 1; round <= 3; round++) {
     const offs = []; let n0 = 0
     scenes.forEach(sc => { offs.push(n0); n0 += sc.turns.length })
     const flagged = new Map()
@@ -32009,7 +32024,30 @@ async function _lnComposeThaiStory(env) {
       } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' QC rewrite unusable: ' + String(e && e.message || e).slice(0, 100)) }
     }
     scenes = build(); natIssues = await env.naturalness(scenes); coh = await cohOf(scenes)
+    const sc2 = score(scenes, natIssues, coh)
+    if (sc2 < best.score) best = { written: written.map(w => w.slice()), natIssues, coh, score: sc2 }
+    else log && log('  ↩ LISTENING_STORY QC round ' + round + ' did not improve the whole (score ' + sc2 + ' vs ' + best.score + ') — the better version is kept')
+    written.splice(0, written.length, ...best.written.map(w => w.slice())); natIssues = best.natIssues; coh = best.coh; scenes = build()
   }
+  // a gate issue still left in a scene gets one more targeted rewrite (kept only if the scene's checks improve and the judges agree)
+  for (let si = 0; si < nS; si++) {
+    const st = sceneTargets(si), pr = lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).filter(p => p.code !== 'SCENE_TOO_SHORT')
+    if (!pr.length) continue
+    const before = written[si].slice()
+    try {
+      const r = take(await call('O_listening_story_repair', 'STORY: "' + plan.title + '" — ' + plan.story + '\nTHE WHOLE CONVERSATION:\n' + soFar(nS) + '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sceneOf(si), la) +
+        '\n\nPROBLEMS (fix every one; change as little as possible; keep the story and every lesson word):\n' + pr.map(p => '- ' + (p.line ? 'line ' + p.line + ' ' : '') + p.code + ': ' + p.detail).join('\n') +
+        '\nLesson words of this scene:\n' + lnStoryTargetRows(st) + '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 3500, 'LISTENING_REPAIR_CALLS'))
+      if (r.length >= 2) { written[si] = r; if (lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).filter(p => p.code !== 'SCENE_TOO_SHORT').length >= pr.length) written[si] = before }
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = before }
+    if (written[si] !== before) {
+      scenes = build(); const ni = await env.naturalness(scenes), ch = await cohOf(scenes), sc3 = score(scenes, ni, ch)
+      if (sc3 <= best.score) { best = { written: written.map(w => w.slice()), natIssues: ni, coh: ch, score: sc3 }; natIssues = ni; coh = ch }
+      else { written[si] = before; scenes = build() }
+      log && log('  🧹 LISTENING_STORY scene ' + (si + 1) + ' final clean-up ' + (written[si] === before ? 'not kept' : 'kept'))
+    }
+  }
+  scenes = build()
   // ── final: the whole conversation through every deterministic gate; a frozen word not heard is deferred (it stays due) ──
   const audit = listeningConversationAudit(scenes, targets, la, ctx)
   const hard = audit.issues.concat(conversationContinuityAudit(scenes, la, targets)).filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN|EXACT_DUPLICATE|NEAR_DUPLICATE|ONE_SPEAKER|SINGLETON_SCENE|SCENE_FRAGMENTATION|CONTINUITY)$/.test(x.code))

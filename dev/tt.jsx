@@ -19166,12 +19166,16 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     const batch = _earlyPending.splice(0)
     if (!batch.length || !apiKey) return
     _early.batches++; _early.checked += batch.length
-    const sem = await finalPairSemanticAudit(batch, apiKey, GEN_MODEL, null, { label: 'early-generation' })
-    const kept = new Map(sem.pairs.filter(Boolean).map(p => [p._pairKey, p]))
+    // v709 (paid track 10: the early gate refused vetted bank lines — an "echo" of another exchange, a classifier rule that could not see
+    // the previous line's รองเท้า) — vetted bank lines pass this gate as they are; only the model's lines are judged
+    const _vettedB = batch.filter(p => thaiIsBankLine(p)), _toJudge = batch.filter(p => !thaiIsBankLine(p))
+    const sem = _toJudge.length ? await finalPairSemanticAudit(_toJudge, apiKey, GEN_MODEL, null, { label: 'early-generation' }) : { pairs: [], stats: { failures: [] } }
+    const kept = new Map(sem.pairs.filter(Boolean).concat(_vettedB).map(p => [p._pairKey, p]))
     const why = new Map(sem.stats.failures.map(f => [f.thai, f.code + ': ' + f.reason]))
     // the ONE acceptance contract decides PASS (not "parseable + target-looking + vocab-safe")
     const _vctx = { vocab, track: { scenePlan: _scenePlan }, existing: allPairs }
     kept.forEach((p, key) => {
+      if (thaiIsBankLine(p)) return
       const tg = targets.find(x => x && x.id === p.targetId)
       const v = tg ? validateThaiTargetPair(p, tg, _vctx, 'early-generation') : null
       if (v && v.state === 'FAIL') { kept.delete(key); why.set(p.thai, 'ACCEPTANCE_CONTRACT: ' + v.reasons.join('; ')) }
@@ -19182,6 +19186,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       const seenBy = new Map()
       allPairs.concat(batch).forEach(p => { if (!p || p.targetId == null || (batch.includes(p) && !kept.has(p._pairKey))) return
         const prior = seenBy.get(p.targetId) || []
+        if (thaiIsBankLine(p)) { seenBy.set(p.targetId, prior.concat([p])); return }
         const c = prior.map(q => thaiSelfContradiction(q, p)).find(Boolean)
         // v703: a second bare echo of the target, or a romantic promise between friends, is regenerated here (no extra audit call)
         const echo = !c && thaiBareEcho(p.thai, p._target) && prior.some(q => thaiBareEcho(q.thai, p._target))
@@ -22404,6 +22409,8 @@ function thaiFinalCueLintPass(pairs, track, log) {
   try { const cx = cueClarityCtx('th', track); const nm = cx.names || []; A.name = nm[0] || ''; B.name = nm[1] || '' } catch (e) {}
   const fx = [], left = []
   const out = (pairs || []).map(p => { if (!p || !p.thai || !p.prompt || !p.english) return p
+    // v709 (paid track 10: "Tell her your nose is too big" → "Say that my nose is too big") — a vetted bank cue is not re-linted
+    if (thaiBankVerdict('cue', p)) return p
     const addr = p.speaker === 'A' ? 'f' : 'm', addrName = p.speaker === 'A' ? B.name : A.name
     const r = thaiFinalCueLint(p, { addr, addrName, names: [A.name, B.name].filter(Boolean) })
     if (r.remaining && r.remaining.length) left.push(r.remaining[0] + ': "' + r.cue + '"')
@@ -37484,6 +37491,8 @@ const THAI_JOE_PERSON_RE = /เจอ(กัน|เพื่อน|คุณ|เ
 // "just one", "just looking" are not เพิ่ง (live: เสื้อตัวนี้ขนาดพอดีครับ was rejected for "just right")
 const THAI_JUST_TEMPORAL_RE = /\b(has|have|had|'ve) just\b|\bjust (now|arrived|got (back|home|here)|finished|came|left|ate|bought|woke|called|went|saw|started|heard|met|moved|returned|had|paid|sent|opened|closed|told|said)\b/
 function thaiLexicalSenseProblems(p, targetSurface) {
+  // v709 — a vetted bank line is not re-checked by these single-sentence rules (paid track 10: ซื้อสองคู่ after a line about รองเท้า)
+  if (p && thaiIsBankLine({ ...p, _target: p._target || targetSurface })) return []
   const th = String(p && p.thai || ''), en = String(p && p.english || '').toLowerCase(), out = []
   // v703 — from the live v702 Thai Daily track (owner review; every one passed the model judges)
   { const tg = String(targetSurface || (p && (p.targetSurface || p._target)) || '').replace(/\s+/g, ''), t0 = th.replace(/\s+/g, '')

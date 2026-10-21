@@ -445,6 +445,13 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('Z15', 'the final translation fix (TH_TEXT_FIX) skips a vetted bank line that still has its bank English and cue',
       i > 0 && /thaiBankLineOf\(p\); if \(_b && String\(p\.english/.test(src.slice(i - 600, i))) }
 
+  // v710 (blind review of paid track 14) — Z16: ไม่ + one word and word + ไหม read as separate words; a phrase hidden behind a longer entry
+  // (ไว้เจอกัน|ใหม่) reads as its words; two-word compounds and fixed expressions stay one word; ถวาย has the rising tone
+  { const lex = c.buildThaiPhoneticLexicon(c.initVocab()), sp = t => c.thaiPhraseReadingSplit(t, lex.get(t), lex)
+    const got = { a: sp('ไม่ได้'), b: sp('สบายดีไหม'), d: sp('ไว้เจอกันใหม่'), e: sp('ไม่เป็นไร'), f: sp('เบอร์โทรศัพท์'), g: sp('ได้ยิน'), h: lex.get('ถวาย') }
+    T('Z16', 'readings: mâi dâi · sà-baai-dii mǎi · wái jooe gan mài; ไม่เป็นไร, เบอร์โทรศัพท์, ได้ยิน stay one word; ถวาย thà-wǎai',
+      got.a === 'mâi dâi' && got.b === 'sà-baai-dii mǎi' && got.d === 'wái jooe gan mài' && got.e === 'mâi-bpen-rai' && got.f === 'booe-thoo-rá-sàp' && got.g === 'dâi-yin' && got.h === 'thà-wǎai', got) }
+
   // v709 (owner's live v709 track) — Z6: a group of vetted bank lines is clean without the paid group check; Z7: วันนี้วันอังคาร is not a
   // "duplicated head" of the fixed phrase (ขอให้คุณขอให้… still is)
   { const bank = c.ev('THAI_EXCHANGE_BANK'), t = Object.keys(bank).find(k => k === 'ถ้วย') || Object.keys(bank)[0], ex = bank[t][0]

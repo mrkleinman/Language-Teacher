@@ -14546,6 +14546,45 @@ function composeThaiPhonetic(thai, lex) {
 //   canonical lexicon cannot resolve → rebuild the line → validate.
 // Known words are never re-toned, never re-lengthened and never passed through the
 // legacy IPA corrector. Nothing here is written back to vocabulary.
+// v709 (blind review of paid tracks 8 / 9: "duu-lae-dtua-eeng-dûai", "bpen-yang-ngai-bâang", "láaeo-khui-gan") — a dictionary PHRASE
+// entry is read as its words: when the phrase splits into two or more other dictionary words whose readings give exactly the phrase's
+// reading (hyphens and spaces aside), the words are separated by spaces (ดูแล ตัวเอง ด้วย → duu-lae dtua-eeng dûai). Otherwise unchanged.
+// v709 — the segmenter reads the Thai without its spaces, so a dictionary entry can swallow a clause break (ครับ ผม → ครับผม "yes, sir").
+// A token that spans a space is split there when every piece is a dictionary word; every token followed by a space is marked
+// (_spaceAfter) so no compound is rebuilt across it.
+function thaiSplitTokensAtSpaces(thai, words, lex) {
+  if (!dailyV693On() || !Array.isArray(words) || !/\s/.test(String(thai || '').trim())) return words
+  const T = String(thai).trim(), out = []; let pos = 0
+  for (const w of words) {
+    const th = String((w && (w.p || w.thai)) || ''); if (!th) { out.push(w); continue }
+    while (pos < T.length && /\s/.test(T[pos])) pos++
+    const cut = []; let k = 0
+    while (k < th.length && pos < T.length) { if (/\s/.test(T[pos])) { if (k > 0) cut.push(k); pos++; continue } pos++; k++ }
+    const after = pos < T.length && /\s/.test(T[pos])
+    const pieces = []; let a = 0; cut.concat([th.length]).forEach(b => { pieces.push(th.slice(a, b)); a = b })
+    if (cut.length && lex && pieces.every(x => lex.has(x))) pieces.forEach((x, j) => out.push({ ...w, p: x, thai: x, ph: lex.get(x), _spaceAfter: j < pieces.length - 1 || after, _splitAtSpace: true }))
+    else out.push(after ? { ...w, _spaceAfter: true } : w)
+  }
+  return out
+}
+const _THAI_PHRASE_SPLIT = new Map()
+function thaiPhraseReadingSplit(th, ph, lex) {
+  if (!dailyV693On() || !th || !ph || !/-/.test(ph) || !lex) return ph
+  const key = th + '\u0001' + ph
+  if (_THAI_PHRASE_SPLIT.has(key)) return _THAI_PHRASE_SPLIT.get(key)
+  let out = ph
+  // a PHRASE is three or more dictionary words (เป็น ยังไง บ้าง; ดูแล ตัวเอง ด้วย); a two-word compound (วันนี้, เบอร์โทรศัพท์) stays one word.
+  // The phrase keeps its OWN reading; only the separators change, by each word's syllable count (dictionary readings can differ
+  // slightly from the phrase's, e.g. ดูแล duu-laae vs duu-lae inside the phrase).
+  try { const sub = new Map([...lex].filter(([k]) => k !== th && k.length < th.length && th.includes(k)))
+    const comp = composeThaiPhonetic(th, sub), syl = x => String(x || '').trim().split(/[-\s]+/).filter(Boolean)
+    const words = comp.phonetic.split(/\s+/).filter(Boolean), own = syl(ph)
+    // two words count as a phrase too when one of them is a polite particle or a leading แล้ว (สวัสดี ครับ, แล้ว คุยกัน)
+    const phrase = words.length >= 3 || (words.length === 2 && (/^.+(ครับ|ค่ะ|คะ|นะ)$/.test(th) || /^แล้ว.+/.test(th)))
+    if (comp.unresolved === 0 && phrase && words.reduce((a, w) => a + syl(w).length, 0) === own.length) {
+      let k = 0; out = words.map(w => { const n = syl(w).length, seg = own.slice(k, k + n).join('-'); k += n; return seg }).join(' ') } } catch (e) {}
+  _THAI_PHRASE_SPLIT.set(key, out); return out
+}
 function finaliseThaiTrackPhonetics(pairs, lex, onLog) {
   const stats = { pairs: 0, canonicalTokens: 0, derivedTokens: 0, derivedLines: 0, alignmentIssues: 0 }
   const keys = [...lex.keys()].filter(Boolean).sort((a, b) => b.length - a.length)
@@ -14554,7 +14593,7 @@ function finaliseThaiTrackPhonetics(pairs, lex, onLog) {
     stats.pairs++
     const q = { ...p }
     let missing = []
-    const words = Array.isArray(p.words) && p.words.length ? p.words : null
+    const words = Array.isArray(p.words) && p.words.length ? thaiSplitTokensAtSpaces(p.thai, p.words, lex) : null
     if (words && words.every(w => w && (w.p || w.thai))) {
       // per-token: canonical if the lexicon knows the token, otherwise the model's
       // derivation (IPA converted to the learner convention; never re-toned)
@@ -14589,14 +14628,20 @@ function finaliseThaiTrackPhonetics(pairs, lex, onLog) {
       }
       // the line: merge adjacent tokens that form an exact canonical compound, so
       // ชาเขียว is read as its own entry rather than rebuilt from ชา + เขียว
+      // v709 (blind review of paid track 9: "นมหมดครับ ผมไปซื้อ" read "khráp-phǒm", i.e. ครับผม "yes, sir") — a space in the Thai is a
+      // clause break: tokens on either side of it are never merged into one compound
+      const gapAfter = new Set()
+      w2.forEach((w, idx) => { if (w && w._spaceAfter) gapAfter.add(idx) })
       const parts = []
       for (let i = 0; i < w2.length; ) {
         let took = false
         for (let j = w2.length; j > i + 1; j--) {
+          let gap = false; for (let k = i; k < j - 1; k++) if (gapAfter.has(k)) { gap = true; break }
+          if (gap) continue
           const joined = w2.slice(i, j).map(w => w.p || w.thai).join('')
-          if (lex.has(joined)) { parts.push(lex.get(joined)); i = j; took = true; break }
+          if (lex.has(joined)) { parts.push(thaiPhraseReadingSplit(joined, lex.get(joined), lex)); i = j; took = true; break }
         }
-        if (!took) { if (w2[i].ph) parts.push(w2[i].ph); i++ }
+        if (!took) { if (w2[i].ph) parts.push(w2[i]._phSrc === 'canonical' ? thaiPhraseReadingSplit(w2[i].p || w2[i].thai, w2[i].ph, lex) : w2[i].ph); i++ }
       }
       q.words = w2
       q.phonetic = parts.join(' ').replace(/\s+/g, ' ').trim()

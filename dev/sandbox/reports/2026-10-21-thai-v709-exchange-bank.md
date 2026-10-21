@@ -75,7 +75,11 @@ There are three set-piece greeting and goodbye pairs, written without Thai names
   - tests14: the §28 mock now drops a protected word that no other protected word contains;
   - tests44, tests46, tests39 and tests61: the 2,500-word import;
   - tests63 F5 and J1.
-- **Full suite:** see the end of this report.
+- **Full suite:** no new failures. Every remaining failure also fails on v707, except one intermittent UI test.
+  - **The test:** tests24, which checks that the Teacher screens list the same ids.
+  - **What happened:** it failed about 1 run in 3–4 with a 40-turn wait. The failing check varied between runs (P2, R1, R2), and where the ids were shown they matched.
+  - **The change:** the wait is now 160 turns (13 of 14 runs pass), with the reason given in the test.
+  - **What it does not affect:** Daily generation.
 
 ## Spend
 
@@ -99,4 +103,9 @@ There are three set-piece greeting and goodbye pairs, written without Thai names
 
 v709 scores **7.4/10 on three separate sets of 30 words**, up from 6.0 for the live v707. Each track costs about US$0.04, a quarter of before.
 
-It works by using vetted, reviewed exchanges for 1,092 words instead of having Haiku write them, and by stopping the old Haiku-oriented checks from rewriting those lines. It is ready to go live once the owner says so.
+It works by using vetted, reviewed exchanges for 1,092 words instead of having Haiku write them, and by stopping the old Haiku-oriented checks from rewriting those lines. **Released as v709 to main (commit 2b7beb2) after the owner's "go live when ready".**
+
+Release checks:
+- the page is in sync;
+- the browser smoke test shows only the Babel note and a 404, both already on v707;
+- the page contains no keys or access codes.

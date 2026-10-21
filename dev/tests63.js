@@ -406,6 +406,13 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('Z5', 'opening and closing lines are vetted set pieces (no Thai names; the cue names the characters; the reading is rebuilt from the dictionary)',
       /^สวัสดีครับ/.test(sd.opening) && /ค่ะ$|คะ$/.test(sd.closing_reply) && /Nida/.test(sd.opening_prompt) && !/[\u0E00-\u0E7F]/.test(sd.opening_prompt) && sd.opening_phonetic === '' && !/สมชาย|นิดา/.test(sd.opening + sd.reply + sd.closing + sd.closing_reply), sd) }
 
+  // v710 (blind review of paid track 13) — Z11: the vetted opening/closing cues name the characters in Latin script when the character is
+  // given Thai-first ("นิดา (Nida)"), as in the live run; unchanged for "Nida (นิดา)"
+  { const fr = c.ev('thaiBankFraming'), sd = fr({ characterA: 'สมชาย (Somchai), a Thai man', characterB: 'นิดา (Nida), a Thai woman', opening: 'x', reply: 'y', closing: 'z', closing_reply: 'w' }, [{ id: 3 }])
+    const cues = [sd.opening_prompt, sd.reply_prompt, sd.closing_prompt, sd.closing_reply_prompt]
+    T('Z11', 'framing cues use the Latin name when the character is given Thai-first (นิดา (Nida) → Nida); no Thai script in any framing cue',
+      cues.every(q => !/[\u0E00-\u0E7F]/.test(q)) && /Nida/.test(sd.opening_prompt) && cues.some(q => /Somchai/.test(q)), cues) }
+
   // v709 (owner's live v709 track) — Z6: a group of vetted bank lines is clean without the paid group check; Z7: วันนี้วันอังคาร is not a
   // "duplicated head" of the fixed phrase (ขอให้คุณขอให้… still is)
   { const bank = c.ev('THAI_EXCHANGE_BANK'), t = Object.keys(bank).find(k => k === 'ถ้วย') || Object.keys(bank)[0], ex = bank[t][0]

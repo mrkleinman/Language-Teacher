@@ -17131,7 +17131,11 @@ const THAI_BANK_FRAMING = [
 ]
 function thaiBankFraming(sd, targets) {
   if (!THAI_BANK_ON || !dailyV693On() || !sd) return sd
-  const nA = String(sd.characterA || 'Somchai').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim(), nB = String(sd.characterB || 'Nida').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim()
+  // v710 (blind review of paid track 13: "Greet นิดา …", "tell สมชาย (Somchai) …") — the English cue names a character in Latin script: a
+  // character given as "นิดา (Nida)" is cued as Nida (the Thai name is kept only when no Latin form is given)
+  const latin = (c, d) => { const head = String(c || d).split(',')[0], par = (head.match(/\(([^)]*)\)/) || [])[1], bare = head.replace(/\s*\([^)]*\)/g, '').trim()
+    return /[\u0E00-\u0E7F]/.test(bare) && par && !/[\u0E00-\u0E7F]/.test(par) ? par.trim() : bare }
+  const nA = latin(sd.characterA, 'Somchai'), nB = latin(sd.characterB, 'Nida')
   const k = Math.abs(Number((targets && targets[0] && targets[0].id) || 0)) % THAI_BANK_FRAMING.length, f = THAI_BANK_FRAMING[k], out = { ...sd, _bankFraming: k }
   // v710 (owner's review of the live v709 track: "medicine upstairs" while "at a café" — whole-track coherence 4.5/10) — the lesson is a set
   // of separate everyday exchanges, not one café conversation: the setting says so (no single place to contradict)

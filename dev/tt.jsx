@@ -15763,7 +15763,8 @@ function thaiFramingTidy(pairs, log, chars) {
     if (dailyV693On() && isFr(n) && (n.speaker === 'A' || n.speaker === 'B') && /^สวัสดี\s+(?!ครับ|ค่ะ|คะ|จ้ะ|จ้า)\S/.test(String(n.thai || '').trim())) {
       const pt = n.speaker === 'A' ? 'ครับ' : 'ค่ะ', ph = String(n.phonetic || '')
       const th2 = String(n.thai).trim().replace(/^สวัสดี/, 'สวัสดี' + pt)
-      const ph2 = /^sà-wàt-dii\s/.test(ph) ? ph.replace(/^sà-wàt-dii/, 'sà-wàt-dii-' + (n.speaker === 'A' ? 'khráp' : 'khâ')) : ''
+      // v708 (blind review of paid track 7: "sà-wàt-dii-khráp" — a hyphen joins syllables of ONE word; the particle is its own word)
+      const ph2 = /^sà-wàt-dii\s/.test(ph) ? ph.replace(/^sà-wàt-dii/, 'sà-wàt-dii ' + (n.speaker === 'A' ? 'khráp' : 'khâ')) : ''
       n = { ...n, thai: th2, text: th2, phonetic: ph2, words: [] }; fx.push('greeting particle')
     }
     return n })

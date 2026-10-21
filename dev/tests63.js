@@ -127,7 +127,9 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('V2', 'English words the Thai does not say are dropped ("really" without มาก, "So," without งั้น, "No," before a yes, "too" without ก็ / ด้วย, "already" without แล้ว) and kept when the Thai has them; a word\'s later line repeating its earlier phrase (ข้ามสะพาน, ไม่ถึงพัน) is named, a different use is not',
       !xb.length && rf.length === 2 && rf.some(r => r.pair.thai === 'ข้ามสะพานตรงนี้ได้ไหมคะ') && rf.some(r => r.pair.thai === 'ห้าคนก็ไม่ถึงพันครับ'), { xb, rf: rf.map(r => [r.pair.thai, r.phrase]) }) }
   T('F5', 'a greeting line\'s bare สวัสดี takes the speaker\'s particle (B: "สวัสดีค่ะ ฉันสบายดีค่ะ", reading sà-wàt-dii-khâ …); a greeting that has it, and target lines, are untouched',
-    gp[0].thai === 'สวัสดีค่ะ ฉันสบายดีค่ะ' && gp[0].phonetic === 'sà-wàt-dii-khâ chǎn sà-baai-dii khâ' && gp[1].thai === 'สวัสดีครับ คุณนิดา' && gp[2].thai === 'สวัสดี ผมชื่อสมชายครับ', gp.map(p => [p.thai, p.phonetic]))
+    // v708 — EXPECTED CHANGE (blind review of paid track 7): the added particle is its own word, so it is spaced, not hyphenated
+    // (was 'sà-wàt-dii-khâ …')
+    gp[0].thai === 'สวัสดีค่ะ ฉันสบายดีค่ะ' && gp[0].phonetic === 'sà-wàt-dii khâ chǎn sà-baai-dii khâ' && gp[1].thai === 'สวัสดีครับ คุณนิดา' && gp[2].thai === 'สวัสดี ผมชื่อสมชายครับ', gp.map(p => [p.thai, p.phonetic]))
   const src2 = require('fs').readFileSync('tt.jsx', 'utf8')
   T('X1', 'writer: the three lines are ONE exchange (LINE 3 answers LINE 2, roles straight, no contradiction, แล้วหรือยัง) and a line only fills a slot of its own speaker (A-B-A)',
     /EXCHANGE \(overrides the plan above when they clash\)/.test(src2) && /LINE 3 ANSWERS LINE 2/.test(src2) && /const _slotSp = x => x === 2 \? 'B' : 'A'/.test(src2) && /_unfilled\(\)\.find\(x => _open\.has\(x\) && _spOk\(x\)\)/.test(src2))

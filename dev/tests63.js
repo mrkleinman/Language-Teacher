@@ -473,6 +473,14 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('Z20', 'readings: gèp wái · hâi nòi · khui gan; รถสองแถว rót-sǎawng-thǎaeo; สี่สิบบาท sìi-sìp bàat',
       got.a === 'gèp wái' && got.b === 'hâi nòi' && got.d === 'khui gan' && got.e === 'rót-sǎawng-thǎaeo' && /^sìi-sìp bàat/.test(got.f), got) }
 
+  // v710 (paid track 21) — Z21: the particle-spelling pass leaves a vetted bank line's particles as reviewed; a model line still gets the
+  // curt-reply particle
+  { c.__bankForced = true; c.thaiBankSetEnabled(true); const f = c.ev('thaiFixParticleSpelling'), bank = c.ev('THAI_EXCHANGE_BANK')
+    const hit = Object.entries(bank).flatMap(([t, vs]) => vs.flatMap(v => v.map(l => ({ ...l, _target: t })))).find(l => /^[^\s]{2,12}?นะ\s/.test(l.thai) && !/^(ใช่|ได้|ไม่)/.test(l.thai))
+    const a = hit ? f([hit])[0] : null, b = f([{ speaker: 'A', thai: 'ไม่แพงนะ ห้าสิบบาท', _target: 'แพง' }])[0]
+    T('Z21', 'particle spelling: a vetted line keeps its reviewed particles; a model line "ไม่แพงนะ ห้าสิบบาท" still gets ครับ',
+      !!hit && a.thai === hit.thai && /^ไม่แพงนะครับ /.test(b.thai), [hit && hit.thai, a && a.thai, b.thai]) }
+
   // v709 (owner's live v709 track) — Z6: a group of vetted bank lines is clean without the paid group check; Z7: วันนี้วันอังคาร is not a
   // "duplicated head" of the fixed phrase (ขอให้คุณขอให้… still is)
   { const bank = c.ev('THAI_EXCHANGE_BANK'), t = Object.keys(bank).find(k => k === 'ถ้วย') || Object.keys(bank)[0], ex = bank[t][0]

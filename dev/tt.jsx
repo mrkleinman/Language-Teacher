@@ -15483,8 +15483,10 @@ function thaiFixParticleSpelling(pairs, log) {
     const m = th.match(/^(ใช่|ได้|ไม่ใช่|ไม่รู้|ไม่เป็นไร|ไม่|โอเค|จริง)(นะ)?\s+(?=\S)/) || th.match(/^([^\s]{2,12}?)(นะ)\s+(?=\S)/)
     if (!m || /(ครับ|ค่ะ|คะ|จ้ะ|จ้า)$/.test(m[1])) return th
     return m[1] + (m[2] || '') + (sp0 === 'A' ? 'ครับ' : 'ค่ะ') + ' ' + th.slice(m[0].length) }
+  // v710 (paid track 21: the vetted รีบหน่อยนะ จะไม่ทันเครื่องแล้วครับ became …นะครับ… — no longer a bank line, so the scene critic rewrote it)
+  // — a vetted bank line keeps its reviewed particles; the curt-reply rule is for the model's lines
   const out = (pairs || []).map(p => { if (!p || typeof p.thai !== 'string') return p
-    const th = sp(curt(p.thai.replace(/นะค่ะ/g, 'นะคะ'), p.speaker)); if (th === p.thai) return p; n++
+    const th = sp(thaiIsBankLine(p) ? p.thai.replace(/นะค่ะ/g, 'นะคะ') : curt(p.thai.replace(/นะค่ะ/g, 'นะคะ'), p.speaker)); if (th === p.thai) return p; n++
     return { ...p, thai: th, ...(p.text === p.thai ? { text: th } : {}) } })
   if (n && log) log('  ✂ THAI_PARTICLE_SPELLING ' + n + ' line(s): นะค่ะ → นะคะ · a space after a phrase-final ค่ะ / ครับ · a bare opening reply word takes the speaker\'s particle')
   return out

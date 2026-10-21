@@ -461,6 +461,11 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const r = c.validateThaiVocabulary([{ thai: 'ชิ้นละยี่สิบบาทค่ะ' }], ctx)
     T('Z18', 'ละ "per" passes the track closed-vocabulary gate (ชิ้นละยี่สิบบาทค่ะ)', !(r.blocked || []).some(b => (b.token || b) === 'ละ'), r.blocked) }
 
+  // v710 (paid track 18) — Z19: a sentence held by two exchanges (ได้กำไรกี่แสนคะ: แสน and กำไร) is a vetted line under both targets
+  { c.__bankForced = true; c.thaiBankSetEnabled(true); const f = c.ev('thaiIsBankLine'), bank = c.ev('THAI_EXCHANGE_BANK')
+    const both = Object.entries(bank).filter(([t, vs]) => vs.some(v => v.some(l => l.thai === 'ได้กำไรกี่แสนคะ'))).map(([t]) => t)
+    T('Z19', 'a sentence in two exchanges is recognised as vetted under each of its targets', both.length >= 2 && both.every(t => f({ thai: 'ได้กำไรกี่แสนคะ', _target: t })) && !f({ thai: 'ได้กำไรกี่แสนคะ', _target: 'ถ้วย' }), both) }
+
   // v709 (owner's live v709 track) — Z6: a group of vetted bank lines is clean without the paid group check; Z7: วันนี้วันอังคาร is not a
   // "duplicated head" of the fixed phrase (ขอให้คุณขอให้… still is)
   { const bank = c.ev('THAI_EXCHANGE_BANK'), t = Object.keys(bank).find(k => k === 'ถ้วย') || Object.keys(bank)[0], ex = bank[t][0]

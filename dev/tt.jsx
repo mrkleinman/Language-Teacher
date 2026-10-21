@@ -17119,10 +17119,13 @@ let _THAI_BANK_INDEX = null
 const _bankNorm = x => String(x || '').replace(/\s+/g, '')
 function thaiBankLineOf(p) {
   if (!THAI_BANK_ON || !p || !p.thai) return null
-  if (!_THAI_BANK_INDEX) { _THAI_BANK_INDEX = new Map(); Object.entries(THAI_EXCHANGE_BANK).forEach(([t, vs]) => (vs || []).forEach(v => (v || []).forEach(l => { if (l && l.thai) _THAI_BANK_INDEX.set(_bankNorm(l.thai), { ...l, target: t }) }))) }
-  const b = _THAI_BANK_INDEX.get(_bankNorm(p.thai)); if (!b) return null
+  // v710 (paid track 18: ได้กำไรกี่แสนคะ is in both the แสน and the กำไร exchange; the index kept only one, so under แสน the vetted line was not
+  // recognised, its section was judged and the line rewritten — NOT_READY) — every exchange that holds a sentence is indexed
+  if (!_THAI_BANK_INDEX) { _THAI_BANK_INDEX = new Map(); Object.entries(THAI_EXCHANGE_BANK).forEach(([t, vs]) => (vs || []).forEach(v => (v || []).forEach(l => { if (l && l.thai) { const k = _bankNorm(l.thai)
+    _THAI_BANK_INDEX.set(k, (_THAI_BANK_INDEX.get(k) || []).concat([{ ...l, target: t }])) } }))) }
+  const bs = _THAI_BANK_INDEX.get(_bankNorm(p.thai)); if (!bs || !bs.length) return null
   const tg = String(p._target || p.targetSurface || '').trim()
-  return !tg || tg === b.target ? b : null
+  return !tg ? bs[0] : (bs.find(b => b.target === tg) || null)
 }
 function thaiIsBankLine(p) { return !!(dailyV693On() && thaiBankLineOf(p)) }
 function thaiBankVerdict(kind, p) {

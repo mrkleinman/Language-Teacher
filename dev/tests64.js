@@ -1,6 +1,7 @@
 // v711 — Thai Listening conversation library (sandbox/curriculum/thai-listening-library): whole conversations written and reviewed
 // offline; a new Listening Track picks the one holding the most of the learner's due words, and those words become the lesson words.
-//   Y1–Y4  the pick: revision priority, ≤ 3 lesson words per line, recent conversations skipped, a Rebuild keeps its frozen ids,
+//   Y1–Y4  the pick: revision priority, ≤ 3 lesson words per line, recent conversations (from the saved attempts) skipped, a
+//          Rebuild keeps its frozen ids,
 //          a conversation that fails a gate for this learner is never picked
 //   Y5–Y7  end to end through generateCohesiveListeningTrack: READY with no paid writing, the conversation as written, the fallbacks
 //   Y8     every embedded conversation is structurally sound (speakers, particles, turn-taking, greeting / goodbye placement, length)
@@ -45,15 +46,12 @@ function learnerFrom(c, lib, opt = {}) {
       ok && Math.max(...per) <= 3 && order.every((x, k) => k === 0 || x > order[k - 1]), { conv: pick && pick.conv.id, words: pick && pick.words.length, max: Math.max(...per) })
   }
   {
-    c.localStorage.removeItem(c.ev('LISTENING_LIBRARY_RECENT_KEY'))
-    c.thaiListeningLibraryRemember(pick.conv.id)
-    const p2 = c.thaiListeningLibraryPick(vocab, pool, { need: 30 })
+    const p2 = c.thaiListeningLibraryPick(vocab, pool, { need: 30, recent: [pick.conv.id] })
     const frozen = pick.words.map(w => w.id)
     const p3 = c.thaiListeningLibraryPick(vocab, frozen.map(id => vocab.find(w => w.id === id)), { need: frozen.length, frozen: true })
     T('Y2', 'a conversation played recently is not picked again (another one that fits is)', p2 && p2.conv.id !== pick.conv.id, p2 && p2.conv.id)
     T('Y3', 'a Rebuild (frozen ids) ignores recency and gets a conversation that holds every frozen word, ids unchanged',
       p3 && p3.words.map(w => w.id).join() === frozen.join(), p3 && { conv: p3.conv.id, n: p3.words.length })
-    c.localStorage.removeItem(c.ev('LISTENING_LIBRARY_RECENT_KEY'))
   }
   {
     // the picked conversation, for a learner who has not been taught one content word in it, fails the closed-vocabulary gate → not picked
@@ -68,7 +66,6 @@ function learnerFrom(c, lib, opt = {}) {
     c.__bankForced = true
     c.mockGeminiGenerate = async (k, m, msgs, max, o) => { calls++; const st = (o && o.stage) || '?'; stages[st] = (stages[st] || 0) + 1; return '[]' }
     c.thaiBankSetEnabled(true)
-    c.localStorage.removeItem(c.ev('LISTENING_LIBRARY_RECENT_KEY'))
     const logs = []
     const r = await c.generateCohesiveListeningTrack({ lang: 'th', vocab, apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), attemptId: 'lattempt-t64', snapshot: c.selectRevisionTargets('th', vocab), onLog: x => logs.push(String(x)), onProgress: () => {} })
     const tr = r.track, Lx = tr.listening || {}
@@ -77,8 +74,15 @@ function learnerFrom(c, lib, opt = {}) {
     T('Y5', 'end to end: READY, every lesson word heard, composer = library, the conversation exactly as written, no paid writing / repair / judging call',
       tr.status === 'READY' && tr.coverage.covered === 30 && Lx.composer === 'library' && asWritten && !logs.some(l => /LISTENING_GENERATION_CALLS=[1-9]|LISTENING_REPAIR_CALLS=[1-9]|LISTENING_QC_CALLS=[1-9]/.test(l)),
       { status: tr.status, cov: tr.coverage, composer: Lx.composer, lib: tr.listeningLibraryId, asWritten, calls, stages, failed: tr.failedChecks })
-    T('Y6', 'the track records its conversation and the conversation is remembered as played (the next pick skips it)',
-      !!tr.listeningLibraryId && c.thaiListeningLibraryRecent()[0] === tr.listeningLibraryId, { id: tr.listeningLibraryId, recent: c.thaiListeningLibraryRecent() })
+    // v711 (tests37 G3 / tests38 O3 / tests39 A6: no new storage write) — "recently played" is read from the saved Listening attempts,
+    // which now record the conversation id
+    await c.saveListeningAttempt('th', c.listeningAttemptRecord({ attemptId: 'lattempt-t64', createdAt: new Date().toISOString(), lang: 'th', ids: tr.selectedTargetIds, state: 'READY', track: tr }))
+    const recent = await c.thaiListeningLibraryRecent()
+    const logs2 = []
+    const r2 = await c.generateCohesiveListeningTrack({ lang: 'th', vocab, apiKey: 'AIzaSyTEST-harness-key-000000', model: c.ev('GEMINI_DEFAULT_MODEL'), attemptId: 'lattempt-t64b', snapshot: c.selectRevisionTargets('th', vocab), onLog: x => logs2.push(String(x)), onProgress: () => {} })
+    T('Y6', 'the track and its saved attempt record the conversation; the next new track reads it back as recently played and picks another one',
+      !!tr.listeningLibraryId && recent[0] === tr.listeningLibraryId && r2.track.listeningLibraryId && r2.track.listeningLibraryId !== tr.listeningLibraryId,
+      { id: tr.listeningLibraryId, recent, next: r2.track.listeningLibraryId })
     c.thaiBankSetEnabled(false)
     T('Y7', 'with the vetted Thai content switched off (tests of the model writer) the library is off too; a learner no conversation fits gets null (the planner runs)',
       !c.thaiListeningLibraryOn() && (c.thaiBankSetEnabled(true), c.thaiListeningLibraryPick(c.initVocab(), [], { need: 30 }) === null))

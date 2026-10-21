@@ -414,6 +414,28 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('Z7', 'the duplicated-head rule needs a head of at least 4 characters (วันนี้วันอังคาร is ordinary Thai; ขอให้คุณขอให้… is still caught)',
       /for \(let k = Math\.min\(8, target\.thai\.length - 1\); k >= 4; k--\)/.test(src)) }
 
+  // v710 (owner's review of the live v709 track) — Z8–Z10: the two perspective false positives (medicine-bag, cup) and the scope of the shortcut
+  { const med = [{ speaker: 'A', thai: 'คุณกินยาหรือยังครับ', english: 'Have you taken your medicine yet?', prompt: 'Ask her if she has taken her medicine yet.' },
+      { speaker: 'B', thai: 'ยังค่ะ ยาอยู่ในกระเป๋า', english: 'Not yet. The medicine is in my bag.', prompt: 'Tell him not yet; the medicine is in your bag.' }]
+    const cup = [{ speaker: 'B', thai: 'ถ้วยนั้นของฉันค่ะ', english: 'That cup is mine.', prompt: 'Tell him that cup is yours.' }]
+    const seen = []; const old = c.mockGeminiGenerate
+    c.mockGeminiGenerate = async (k, m, msgs) => { seen.push(msgs.map(x => x.content).join('\n')); return JSON.stringify([{ i: 1, s: 5 }, { i: 2, s: 5 }]) }
+    c.__bankForced = true; c.thaiBankSetEnabled(true)
+    try { await c.ev('_finalCueJudge')(med.concat(cup), 'k', 'm') } catch (e) {}
+    try { await c.ev('_qrBatchPromptCheck')(med.concat(cup), 'k', 'm', () => {}) } catch (e) {}
+    const rule = seen.filter(t => /PERSPECTIVE RULE: the learner PLAYS the speaker/.test(t) && /medicine is in your bag/.test(t) && /that cup is yours/.test(t)).length
+    T('Z8', 'both Thai cue judges are told the perspective rule with the owner\'s two cases ("Tell him not yet; the medicine is in your bag" ↔ ยาอยู่ในกระเป๋า, "Tell him that cup is yours" ↔ ถ้วยนั้นของฉัน): your = the speaker, never a mismatch',
+      seen.length >= 2 && rule === seen.length, { prompts: seen.length, withRule: rule })
+    const bank = c.ev('THAI_EXCHANGE_BANK'), gv = c.ev('_qrEvaluateGroup')
+    const g = t => bank[t] ? gv({ targetWord: t, indices: [0, 1, 2], pairs: bank[t][0].map(l => ({ ...l, _target: t })) }, [], 'k', 'm') : null
+    const vm = await g('ยา'), vc = await g('ถ้วย')
+    T('Z9', 'the bank\'s medicine (ยา) and cup (ถ้วย) exchanges pass the group evaluation as vetted (no paid call, no rewrite)', vm && vm.action === 'clean' && vc && vc.action === 'clean', { vm, vc })
+    c.mockGeminiGenerate = old || (async () => '[]'); c.__bankForced = true; c.thaiBankSetEnabled(true) }
+  { const src = require('fs').readFileSync('tt.jsx', 'utf8'), at = src.indexOf('const _vettedB = batch.filter'), seg = src.slice(at, at + 1500)
+    T('Z10', 'the shortcut skips only the repeated quality judging: in the early gate a vetted line still goes through the deterministic acceptance contract (validateThaiTargetPair); the closed-vocabulary, particle, length and target checks and the final pronunciation / integrity audit are unchanged; the setting is "separate everyday exchanges", not one café',
+      at > 0 && /validateThaiTargetPair\(p, tg, _vctx, 'early-generation'\)/.test(seg) && !/if \(thaiIsBankLine\(p\)\) return\n      const tg = targets/.test(seg) &&
+      /out\.scene = 'Two friends chatting about everyday things — a set of short, separate exchanges/.test(src)) }
+
   out.forEach(l => console.log(l))
   console.log('\nv704 Thai Daily quality round: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

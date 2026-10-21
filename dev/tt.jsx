@@ -17131,6 +17131,9 @@ function thaiBankFraming(sd, targets) {
   if (!THAI_BANK_ON || !dailyV693On() || !sd) return sd
   const nA = String(sd.characterA || 'Somchai').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim(), nB = String(sd.characterB || 'Nida').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim()
   const k = Math.abs(Number((targets && targets[0] && targets[0].id) || 0)) % THAI_BANK_FRAMING.length, f = THAI_BANK_FRAMING[k], out = { ...sd, _bankFraming: k }
+  // v710 (owner's review of the live v709 track: "medicine upstairs" while "at a café" — whole-track coherence 4.5/10) — the lesson is a set
+  // of separate everyday exchanges, not one café conversation: the setting says so (no single place to contradict)
+  out.scene = 'Two friends chatting about everyday things — a set of short, separate exchanges, each on its own topic.'
   ;['opening', 'reply', 'closing', 'closing_reply'].forEach(key => { const [th, en, cue] = f[key]
     out[key] = th; out[key + '_english'] = en; out[key + '_prompt'] = cue.replace(/\{A\}/g, nA).replace(/\{B\}/g, nB); out[key + '_phonetic'] = '' })
   return out
@@ -19178,7 +19181,6 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     // the ONE acceptance contract decides PASS (not "parseable + target-looking + vocab-safe")
     const _vctx = { vocab, track: { scenePlan: _scenePlan }, existing: allPairs }
     kept.forEach((p, key) => {
-      if (thaiIsBankLine(p)) return
       const tg = targets.find(x => x && x.id === p.targetId)
       const v = tg ? validateThaiTargetPair(p, tg, _vctx, 'early-generation') : null
       if (v && v.state === 'FAIL') { kept.delete(key); why.set(p.thai, 'ACCEPTANCE_CONTRACT: ' + v.reasons.join('; ')) }
@@ -37012,7 +37014,7 @@ function thaiCueSpeakerLine(p) {
 }
 async function _finalCueJudge(chunk, apiKey, model) {
   const numbered = chunk.map((p, ci) => `${ci + 1}. Prompt: "${p.prompt}"\n   Thai: ${p.thai}\n   English: ${p.english}` + thaiCueSpeakerLine(p)).join('\n\n')
-  const q = `Rate how well each Thai sentence matches its prompt description, judging the PROMPT (cue), the THAI and the ENGLISH translation together.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\nDIALOGUE RULE: These are conversation pairs. Prompts describe what a character says in third person ("He says he likes...", "She asks if...") but the Thai sentence naturally uses first person ("ผม/ฉัน = I"). This is CORRECT and NEVER a mismatch.\n\n${THAI_CUE_PERSPECTIVE_RULE}\n\nWELL-FORMEDNESS RULE: the prompt and the English must themselves be grammatical, meaningful English. If either is garbled or has a dictionary gloss pasted into a template (e.g. "Ask if you can have a to enter", "Can I have a to enter, please?") score 1 — even when they agree with each other and with the Thai.\n\nFor EVERY item also give "thaiEnglishMatch": true when the Thai and the English say the same thing. When s < 4 but the Thai and English match, give "cueRepair": ${cueClarityOn() ? 'a corrected SHORT instruction to the speaker that says exactly what the Thai says (e.g. "Ask if she wants you to recommend it.")' : 'a corrected third-person prompt that describes exactly what the Thai says (e.g. "He asks if she wants him to recommend it.")'}; otherwise null.\n\n${cueClarityOn() ? CUE_JUDGE_CLASS_RULE + '\n\n' : ''}${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5,"thaiEnglishMatch":true,"cueRepair":null},{"i":2,"s":3,"note":"prompt says X but sentence says Y","thaiEnglishMatch":true,"cueRepair":"He says ..."},...]\nno markdown, no explanation.`
+  const q = `Rate how well each Thai sentence matches its prompt description, judging the PROMPT (cue), the THAI and the ENGLISH translation together.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\nDIALOGUE RULE: These are conversation pairs. Prompts describe what a character says in third person ("He says he likes...", "She asks if...") but the Thai sentence naturally uses first person ("ผม/ฉัน = I"). This is CORRECT and NEVER a mismatch.${dailyV693On() ? THAI_CUE_LEARNER_YOU_RULE : ''}\n\n${THAI_CUE_PERSPECTIVE_RULE}\n\nWELL-FORMEDNESS RULE: the prompt and the English must themselves be grammatical, meaningful English. If either is garbled or has a dictionary gloss pasted into a template (e.g. "Ask if you can have a to enter", "Can I have a to enter, please?") score 1 — even when they agree with each other and with the Thai.\n\nFor EVERY item also give "thaiEnglishMatch": true when the Thai and the English say the same thing. When s < 4 but the Thai and English match, give "cueRepair": ${cueClarityOn() ? 'a corrected SHORT instruction to the speaker that says exactly what the Thai says (e.g. "Ask if she wants you to recommend it.")' : 'a corrected third-person prompt that describes exactly what the Thai says (e.g. "He asks if she wants him to recommend it.")'}; otherwise null.\n\n${cueClarityOn() ? CUE_JUDGE_CLASS_RULE + '\n\n' : ''}${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5,"thaiEnglishMatch":true,"cueRepair":null},{"i":2,"s":3,"note":"prompt says X but sentence says Y","thaiEnglishMatch":true,"cueRepair":"He says ..."},...]\nno markdown, no explanation.`
   // v706 — the owner's fixed renderings of ดู / เห็น / ชม: a translation that says "see" instead is a mismatch (only when a line has one)
   const qv = dailyV693On() && chunk.some(p => thaiVerbSenseUses(p.thai).length) ? q + '\n\n' + THAI_VERB_SENSE_LINE.replace(/^\u2022 /, '') +
     'A translation or prompt that renders one of these verbs any other way ("see", "check", "enjoy") is s ≤ 3.' : q
@@ -38034,7 +38036,7 @@ async function _qrBatchPromptCheck(pairs, apiKey, model, onLog) {
     ).join('\n\n')
 
     const raw = await geminiJudge(apiKey, model,
-      `Rate how well each Thai sentence matches its prompt description.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\nDIALOGUE RULE: These are conversation pairs. Prompts describe what a character says in third person ("He says he likes...", "She asks if...") but the Thai sentence naturally uses first person ("ผม/ฉัน = I"). This is CORRECT and NEVER a mismatch. Score 5 when "She says she agrees" matches "I agree", or "He says he wants" matches "I want". Only penalise if the actual CONTENT or TOPIC differs.\n\n${THAI_CUE_PERSPECTIVE_RULE}\n\n${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5},{"i":2,"s":3,"note":"prompt says X but sentence says Y"},...]\nno markdown, no explanation.`, 1200)
+      `Rate how well each Thai sentence matches its prompt description.\n\nScale:\n5 = sentence perfectly expresses exactly what the prompt says (including when the meaning is identical)\n4 = very close, minor phrasing difference only\n3 = related but a key detail is missing or changed\n2 = loosely related, significant mismatch\n1 = sentence does not match the prompt\n\nCRITICAL: If the prompt and English translation convey the SAME meaning (even with different wording), score 5. Only score below 5 if there is a genuine factual or content mismatch.\n\nDIALOGUE RULE: These are conversation pairs. Prompts describe what a character says in third person ("He says he likes...", "She asks if...") but the Thai sentence naturally uses first person ("ผม/ฉัน = I"). This is CORRECT and NEVER a mismatch.${dailyV693On() ? THAI_CUE_LEARNER_YOU_RULE : ''} Score 5 when "She says she agrees" matches "I agree", or "He says he wants" matches "I want". Only penalise if the actual CONTENT or TOPIC differs.\n\n${THAI_CUE_PERSPECTIVE_RULE}\n\n${numbered}\n\nReturn ONLY JSON array: [{"i":1,"s":5},{"i":2,"s":3,"note":"prompt says X but sentence says Y"},...]\nno markdown, no explanation.`, 1200)
 
     try {
       const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
@@ -39250,6 +39252,13 @@ function thaiQcRewriteProblems(np, orig, vocab, track) {
   try { thaiLexicalSenseProblems({ ...orig, ...np }).forEach(g => out.push(g.id + ': ' + g.why)) } catch (e) {}
   return out
 }
+// v710 (owner's live v709 track: "Tell him not yet; the medicine is in your bag." ↔ "ยังค่ะ ยาอยู่ในกระเป๋า" (my bag) and "Tell him that cup is
+// yours." ↔ "ถ้วยนั้นของฉันค่ะ" (mine) were scored 2/5 "your vs my") — the learner PLAYS the speaker, so a cue's you / your is the speaker's
+// own: every Thai cue judge is told so
+const THAI_CUE_LEARNER_YOU_RULE = '\n\nPERSPECTIVE RULE: the learner PLAYS the speaker. In an instruction cue ("Tell him …", "Tell her …", "Say …", "Ask …") ' +
+  'you / your / yours / yourself mean the SPEAKER (the Thai ผม / ฉัน / my / mine), and he / him / his / she / her mean the LISTENER (the Thai คุณ). ' +
+  '"Tell him the medicine is in your bag" for "ยาอยู่ในกระเป๋าค่ะ" (my bag) and "Tell him that cup is yours" for "ถ้วยนั้นของฉันค่ะ" (that cup is mine) are ' +
+  'CORRECT — never a mismatch.'
 async function _qrEvaluateGroup(group, allPairs, apiKey, model) {
   const { targetWord, indices, pairs: groupPairs } = group
   // v709 (owner's live v709 track: this group check misread a correct bank cue — "Tell him that cup is yours" said by Nida about her own
@@ -39262,7 +39271,7 @@ async function _qrEvaluateGroup(group, allPairs, apiKey, model) {
   const fmt = p => `  ${p.speaker||'A'}: ${p.thai} (${p.english})`
   const prompt = `Evaluate this Thai language learning group. Target word: "${targetWord}"
 
-IMPORTANT: the lines in "Group to evaluate" are ALTERNATIVE practice candidates for the same
+${dailyV693On() ? THAI_CUE_LEARNER_YOU_RULE.trim() + '\n' : ''}IMPORTANT: the lines in "Group to evaluate" are ALTERNATIVE practice candidates for the same
 target, not consecutive turns of one conversation. Judge EACH line on its own: does it use the
 target naturally, does it match its own cue, is it natural Thai? Do NOT penalise the group because
 two alternatives state different facts (e.g. "three days" vs "two days") or because one does not

@@ -17041,6 +17041,39 @@ function formatTrackMetrics(m) {
 
 // v671 §B1 — the number of checks the last Thai target actually ran (a template fallback after them shows that count)
 let THAI_LAST_CHECKS_USED = 0
+// v709 (owner: "please get to at least 7/10"; the same 30-word lesson written by a stronger writer under the same rules scored 8.2 in the
+// blind review, every Haiku track 5.5–6.2) — a curated bank of vetted three-line exchanges, written and reviewed offline
+// (sandbox/curriculum/thai-exchange-bank). The writer tries a word's bank exchange first; the closed-vocabulary, speaker, target and
+// naturalness checks still decide, and a word with no usable bank exchange is written by the model as before.
+const THAI_BANK_ON = true
+const THAI_EXCHANGE_BANK = {}
+const _thaiBankTurn = new Map()
+// v709 — the opening and closing lines are vetted set pieces too (blind review of paid track 7: "วันนี้ฉันดีค่ะ" sounds like "I am a
+// good person"); no Thai names, so they fit any pair of characters; the cue names them. Picked by the track's first target id.
+const THAI_BANK_FRAMING = [
+  { opening: ['สวัสดีครับ สบายดีไหมครับ', 'Hello, how are you?', 'Greet {B} and ask how she is.'], reply: ['สวัสดีค่ะ สบายดีค่ะ', "Hello, I'm fine.", "Greet {A} back and say you're fine."],
+    closing: ['ไว้เจอกันใหม่นะครับ', 'See you again.', 'Tell {B} you will see her again.'], closing_reply: ['ค่ะ แล้วเจอกันค่ะ', 'Okay, see you.', 'Say okay, see you.'] },
+  { opening: ['สวัสดีครับ วันนี้เป็นยังไงบ้างครับ', 'Hello, how is your day?', 'Greet {B} and ask how her day is.'], reply: ['สวัสดีค่ะ วันนี้ก็ดีค่ะ', 'Hello, today is good.', 'Greet {A} back and say today is good.'],
+    closing: ['แล้วคุยกันใหม่นะครับ', "Let's talk again.", 'Tell {B} you will talk again.'], closing_reply: ['ได้ค่ะ ดูแลตัวเองด้วยนะคะ', 'Sure, take care of yourself.', 'Say sure, and tell him to take care of himself.'] },
+  { opening: ['สวัสดีครับ ไม่ได้เจอกันนานเลยนะครับ', "Hello, it's been a long time.", "Greet {B} and say it's been a long time."], reply: ['สวัสดีค่ะ นานมากเลยค่ะ', 'Hello, it really has been a long time.', 'Greet {A} back and say it really has been a long time.'],
+    closing: ['งั้นผมไปก่อนนะครับ', "Well, I'll be going now.", "Tell {B} you'll be going now."], closing_reply: ['ค่ะ เดินทางปลอดภัยนะคะ', 'Okay, have a safe trip.', 'Say okay, and wish him a safe trip.'] },
+]
+function thaiBankFraming(sd, targets) {
+  if (!THAI_BANK_ON || !dailyV693On() || !sd) return sd
+  const nA = String(sd.characterA || 'Somchai').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim(), nB = String(sd.characterB || 'Nida').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim()
+  const k = Math.abs(Number((targets && targets[0] && targets[0].id) || 0)) % THAI_BANK_FRAMING.length, f = THAI_BANK_FRAMING[k], out = { ...sd, _bankFraming: k }
+  ;['opening', 'reply', 'closing', 'closing_reply'].forEach(key => { const [th, en, cue] = f[key]
+    out[key] = th; out[key + '_english'] = en; out[key + '_prompt'] = cue.replace(/\{A\}/g, nA).replace(/\{B\}/g, nB); out[key + '_phonetic'] = '' })
+  return out
+}
+function thaiBankExchange(target) {
+  if (!THAI_BANK_ON || !dailyV693On()) return null
+  const t = String((target && (target.thai || target.t)) || '').trim(), vs = THAI_EXCHANGE_BANK[t]
+  if (!t || !Array.isArray(vs) || !vs.length) return null
+  const k = _thaiBankTurn.get(t) || 0; _thaiBankTurn.set(t, k + 1)       // a word seen again gets its next variant
+  const v = vs[k % vs.length]
+  return Array.isArray(v) && v.length === 3 ? v.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english, prompt: l.prompt })) : null
+}
 async function generateWordLines(target, scene, charA, charB, prevLines, vocab, apiKey, model, pairIndex, onProgress, runningTopic, usedSubjects) {
   const _nameA = (charA.split(',')[0] || 'A').replace(/\s*\([^)]*\)/g,'').trim()
   const _nameB = (charB.split(',')[0] || 'B').replace(/\s*\([^)]*\)/g,'').trim()
@@ -17520,8 +17553,13 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       const combinedMsg = _cacheOrder ? _stableSystem + THAI_VERB_SENSE_LINE + PROMPT_CACHE_MARK + failHint + _targetSystem + '\n\n---\n\n' + baseUser : failHint + baseSystem + '\n\n---\n\n' + baseUser
       const tokenBudget = model && model.includes('32b') ? 4500 : model && model.includes('gemini') ? 4500 : 3800
       if (attempt > 0) aiTagNextCall('generation check ' + (attempt + 1) + '/' + CHECK_SRCS.length + (failureReasons[0] ? ': ' + String(failureReasons[0]).slice(0, 60) : ''))
-      _tel.paid++
-      const raw = await geminiGenerate(apiKey, model, [{ role:'user', content:combinedMsg }], tokenBudget)
+      // v709 — a vetted exchange from the curated bank is the FIRST candidate (no paid call); it goes through exactly the same checks as
+      // a model reply below, and any failure falls back to the model on the next attempt
+      const _bankX = attempt === 0 && !failureReasons.length ? thaiBankExchange(target) : null
+      let raw
+      if (_bankX) { raw = JSON.stringify(_bankX.map(l => ({ ...l, ok: true }))); _tel.bank = (_tel.bank || 0) + 1
+        onProgress && onProgress(-1, -1, { apiError: '📚 TH_BANK ' + target.thai + ': vetted exchange used as the first candidate (no paid call)' }, null, null) }
+      else { _tel.paid++; raw = await geminiGenerate(apiKey, model, [{ role:'user', content:combinedMsg }], tokenBudget) }
 
       if (!raw || raw.length < 5) {
         onProgress && onProgress(-1, -1, { apiError: '❌ Empty response' }, null, null)
@@ -18942,7 +18980,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   const allPairs = []
   const prevLines = []
   // Use pre-established scene or fall back to default
-  const sceneData = normaliseSceneSpokenFields(preScene || { scene:'Two friends at a market.', characterA:'Somchai, a Thai man', characterB:'Nida, a Thai woman', opening:'สวัสดีครับ วันนี้เราจะคุยเรื่องอะไรดีครับ' }, 'th')
+  const sceneData = thaiBankFraming(normaliseSceneSpokenFields(preScene || { scene:'Two friends at a market.', characterA:'Somchai, a Thai man', characterB:'Nida, a Thai woman', opening:'สวัสดีครับ วันนี้เราจะคุยเรื่องอะไรดีครับ' }, 'th'), targets)
   const scene = sceneData.scene || 'Two friends at a market.'
   const charA = sceneData.characterA || 'Somchai, a Thai man'
   const charB = sceneData.characterB || 'Nida, a Thai woman'

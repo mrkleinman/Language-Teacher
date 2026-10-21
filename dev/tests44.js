@@ -44,10 +44,12 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
       return pr.length === 1 && /≠ dictionary rendering/.test(pr[0]) && conv(p.ph.replace(/nàwi/g, 'nòi').replace(/à-ràwi/g, 'à-ròi')) === conv(pr[0].split('rendering "')[1].replace(/"$/, '')) })
     // v704: the dictionary now spells unaspirated ป ต ก as bp dt g (ไป bpai, ตัว dtua, กัน gan) — the old export wrote p t k, so lines
     // whose ONLY difference is that initial-consonant spelling are flagged too; they must carry nothing else
-    const AUDITED = [7, 11, 14, 27, 38, 54, 55, 60, 61, 62, 71, 78, 79, 80, 85]
+    // v710: + line 36 — the export's เสื้อแจ็กเก็ต "sûea-jǎek-gèt" has the wrong tone (แจ็ก is a mid-class dead syllable: jàek); the corrected
+    // dictionary reading now exposes it, so it is a real error like the others, not a spelling-only difference
+    const AUDITED = [7, 11, 14, 27, 36, 38, 54, 55, 60, 61, 62, 71, 78, 79, 80, 85]
     const convOnly = p => { const pr = c.v684ThVerify({ text: p.text, ph: p.ph }, bank, lex); return pr.length === 1 && /≠ dictionary rendering/.test(pr[0]) && conv(p.ph) === conv(pr[0].split('rendering "')[1].replace(/"$/, '')) }
     const th = J('th.json'), extra = tf.filter(x => !AUDITED.includes(x))
-    T('V3', 'Thai: the 94 exported lines → the 12 audited errors (แล้ว lâeo ×5, ร้อน rón, โกรธ krôot ×3, ผู้ชาย chai ×3) + the 3 lines whose only difference is the Oct13 ɔi rendering (nàwi → nòi) are all flagged and none of them is a spelling-only difference; every other flagged line differs ONLY in the v704 spelling (bp/dt/g, long vowels written long)',
+    T('V3', 'Thai: the 94 exported lines → the 13 audited errors (แล้ว lâeo ×5, ร้อน rón, โกรธ krôot ×3, ผู้ชาย chai ×3, แจ็ก jǎek) + the 3 lines whose only difference is the Oct13 ɔi rendering (nàwi → nòi) are all flagged and none of them is a spelling-only difference; every other flagged line differs ONLY in the v704 spelling (bp/dt/g, long vowels written long)',
       AUDITED.every(x => tf.includes(x)) && ɔiOnly && th.filter(p => AUDITED.includes(p.pos) && ![7, 71, 85].includes(p.pos)).every(p => !convOnly(p)) && extra.length > 0 && th.filter(p => extra.includes(p.pos)).every(convOnly), { extra: th.filter(p => extra.includes(p.pos) && !convOnly(p)).map(p => p.pos) })
     const zlexT = zlex.concat([{ w: '是', p: 'shì' }, { w: '个', p: 'gè' }, { w: '人', p: 'rén' }])     // rule cases need these three syllables
     const sp = (t) => { const p = c.v684ZhPronunciation(t, zlexT); return p.spoken || p.pinyin }
@@ -124,6 +126,8 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
       const det = c.v684Deterministic(lang, lines, g.ctx), bad = lines.filter(l => Object.keys(det.get(l.id)).length)
       V.passAllJudge(c, lines)
       const gate = c.v684FinalGate(lang, lines, g.ctx)
+      // v710: the Thai reference lines spell กาแฟ gaa-faae (sandbox/v684/reference-fixtures.json, 3 lines) — the dictionary reading audit wrote
+      // the long แ of แฟ as aae; the fixtures follow the dictionary they are checked against
       T('G1' + lang, lang + ': the 15 reference recalls (designed, not model output) pass all 12 criteria; READY with every verdict bound to the final text', !bad.length && gate.ready && gate.judged === lines.length, bad.map(l => l.id + ' ' + JSON.stringify(det.get(l.id))))
     }
     const mut = (lang, fn, crit, label) => {

@@ -37654,7 +37654,9 @@ function thaiLineNaturalnessProblems(p, target, vocab) {
   if (target && target.thai && target.thai.length >= 6) {
     // the phrase's own opening repeated just before it (ขอให้คุณขอให้…). Checked on the
     // literal text, longest prefix first, so it does not depend on the head being a vocab entry.
-    for (let k = Math.min(8, target.thai.length - 1); k >= 3; k--) {
+    // v709 (owner's live v709 track: วันนี้วันอังคาร "today is Tuesday" refused for a duplicated "วัน") — a head of at least 4 characters
+    // (ขอให้ is still caught; a bare วัน / ไป / มา before the phrase is ordinary Thai)
+    for (let k = Math.min(8, target.thai.length - 1); k >= 4; k--) {
       const head = target.thai.slice(0, k)
       if (new RegExp(_escRe(head) + '[\\u0e00-\\u0e7f]{0,6}' + _escRe(target.thai)).test(s)) {
         out.push('"' + head + '" duplicated in front of the fixed phrase "' + target.thai + '"'); break
@@ -39250,6 +39252,10 @@ function thaiQcRewriteProblems(np, orig, vocab, track) {
 }
 async function _qrEvaluateGroup(group, allPairs, apiKey, model) {
   const { targetWord, indices, pairs: groupPairs } = group
+  // v709 (owner's live v709 track: this group check misread a correct bank cue — "Tell him that cup is yours" said by Nida about her own
+  // cup — and the replacement lines that followed were the ones the owner's review flagged) — a group whose lines are all vetted bank
+  // lines with their bank cues is clean without a paid call
+  if ((groupPairs || []).length && groupPairs.every(p => thaiBankVerdict('cue', { ...p, _target: p._target || targetWord }))) return { action: 'clean', reason: 'curated bank exchange (vetted offline)' }
   const startIdx = indices[0]
   const prevPairs = allPairs.slice(Math.max(0, startIdx - 3), startIdx)
   const nextPairs = allPairs.slice(startIdx + groupPairs.length, Math.min(allPairs.length, startIdx + groupPairs.length + 3))

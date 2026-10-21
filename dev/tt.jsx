@@ -31860,22 +31860,11 @@ const LN_STORY_UNTAUGHT_PROBE = ['คุย', 'แค่', 'เอง', 'ขึ�
   'สั่ง', 'จอง', 'เลี้ยง', 'ไม่ค่อย', 'แล้วก็', 'เดือนหน้า', 'ปีหน้า', 'แถวนี้', 'ของขวัญ', 'โรงเรียน', 'ครู', 'หมอ', 'โรงพยาบาล', 'ร่ม', 'แมว', 'เปียก',
   'อ้วน', 'เงินเดือน', 'ทำอาหาร', 'อาหารไทย', 'เพื่อนบ้าน', 'เหลือ', 'เกิน', 'ห่วง', 'คิดถึง', 'เสียดาย', 'แรก', 'เริ่ม', 'ต่อ', 'อื่น', 'เดียว', 'ทั้ง',
   'อย่าง', 'ครบ', 'นึง', 'เมื่อคืน', 'ข้างนอก', 'ดึก', 'ไฟดับ', 'หลับ', 'ละลาย', 'ตู้', 'เครื่อง', 'ป้าย', 'ชนะ', 'แพ้', 'ลูกค้า', 'พนักงาน', 'ห้องน้ำ']
-const LN_STORY_RULES =
-  'SPEAKERS: two close friends. A = a man: ผม for "I"; EVERY line ENDS with ครับ (or นะครับ). B = a woman: ฉัน for "I"; every line ENDS with ค่ะ / นะคะ, ' +
-  'or คะ when it is a question. A particle inside a line only right after a one-word reply (ได้ครับ, ใช่ค่ะ, ไม่ครับ, ยังค่ะ, จริงเหรอคะ); otherwise ONE particle, at the end.\n' +
-  'LENGTH: at most 7 Thai words per line (ครับ / ค่ะ / คะ / นะ not counted); most lines 3–6. Split a longer thought over two turns.\n' +
-  'TURN-TAKING: the speakers alternate. Never three lines in a row by one speaker; two in a row only when natural, rarely.\n' +
-  'VOCABULARY: use ONLY words from the KNOWN WORDS list (particles and numbers are fine) plus this lesson\'s words. No names: use คุณ / ผม / ฉัน / เขา / เพื่อน / พี่ / น้อง / แม่.\n' +
-  'STORY: one continuous story — every reply follows the line before it, every question gets an answer (a yes/no question gets its yes / no first), ' +
-  'facts stay consistent (times, prices, who does what, how many), nothing the listener cannot follow, no line that exists only to show a word. ' +
-  'Plant a reason before something happens (why the news is secret, why the fuel is low). Roles stay right (who sells, who pays).\n' +
-  'THAI: what a Thai friend really says — natural word order and everyday collocations, spoken register (no bookish เมื่อ / และ / จำนวน), no translated ' +
-  'English, ellipsis as Thai uses it (drop คุณ / ผม where Thai drops them), varied openers. Each lesson word in its common sense, in a line that makes its meaning clear.\n' +
-  'CLOSE FRIENDS: drop pronouns where Thai drops them; A may call B เธอ; use คุณ only a few times in the whole conversation. Formal words (ท่าน, ทุกท่าน, ไม่ทราบว่า, เชิญ…) belong to a speaker in a role (staff, host) or to a quote — never friendly chat.\n' +
-  'COMMON TRAPS: 1 p.m. = บ่ายโมง (2 p.m. บ่ายสองโมง; 7 p.m. หนึ่งทุ่ม), never หนึ่งโมงบ่าย; temperature is สูง / ต่ำ (the weather is ร้อน); "always there for me" = อยู่ข้าง…เสมอ, not อยู่กับ; ' +
-  'ทำไม… needs a reason in reply; a yes / no question gets yes / no first; "and you?" only before the other has answered; a joke needs its set-up; an apology needs a fault; a scene set AT a place does not say "let\'s go to" it.\n' +
-  'ENGLISH: a natural, idiomatic translation of exactly what the Thai says; a third person is "they" unless the conversation makes the gender clear; no stage directions.\n' +
-  'GREETINGS (สวัสดี…) only at the start of the first scene; GOODBYES (ลาก่อน, แล้วเจอกันใหม่, แล้วพบกันใหม่, บ๊ายบาย) only in the last scene.'
+const LN_STORY_RULES_LEAN =
+  'A = a man: ผม; every line ends with ครับ. B = a woman: ฉัน; every line ends with ค่ะ (คะ in a question). One particle per line, at the end (ได้ครับ / ใช่ค่ะ may open a line).\n' +
+  'Lines of 3–7 Thai words. The speakers alternate (never three lines in a row by one). Close friends: drop pronouns where Thai drops them, คุณ rarely.\n' +
+  'One story: each reply follows the line before, questions get answers, facts stay consistent. Each lesson word in its everyday sense. No names.\n' +
+  'English: a natural translation of exactly what the Thai says. Greetings only at the very start, goodbyes only at the very end.'
 function lnStoryJson(raw) {
   const t = String(raw || '').replace(/```json|```/g, '')
   const a = t.indexOf('{'), b = t.lastIndexOf('}')
@@ -31885,15 +31874,17 @@ function lnStoryJson(raw) {
 function lnStoryNeverUse(la, ctx) {
   return LN_STORY_UNTAUGHT_PROBE.filter(w => listeningUnexposedWords('th', { thai: w + 'ครับ', speaker: 'A' }, ctx.exposed || [], ctx.eligTargets || [], ctx.vocab).length)
 }
+// the shared start of every story prompt. It is kept lean: with the full rule set, the long naturalness notes and a glossed list of
+// ~950 known words, the model's hidden reasoning used the whole token cap on every scene write (paid run S11 and probes: 5,700 of
+// 5,700 tokens, no text, ~28 s); with short rules and the known words as a plain Thai list it finishes in ~20 s. The common traps live
+// in the editor's checklist, where a strict read of the whole conversation catches them.
 function lnStoryPrefix(la, ctx, targets, never) {
-  const seen = new Set(), vocabRows = []
-  ;(ctx.exposed || []).concat(targets.map(t => ({ thai: t.surface, english: t.gloss }))).forEach(w => { const th = String((w && (w.thai || w.t)) || '').trim(); if (th && !seen.has(th)) { seen.add(th); vocabRows.push(th + ' = ' + String(w.english || w.e || '').split(/[;(]/)[0].trim().slice(0, 28)) } })
-  return 'You write Thai LISTENING conversations for an adult English-speaking learner (' + ((ctx.complexity && ctx.complexity.belt) || 'beginner') + '). The learner listens to the whole ' +
-    'conversation, then reads the English. An independent native teacher grades it: Thai naturalness 35 %, story and coherence 25 %, lesson words used naturally 20 %, English 10 %. ' +
-    '"Merely understandable" Thai is a defect.\n\nRULES\n' + LN_STORY_RULES + '\n' +
-    (typeof THAI_NATURALNESS_GUIDE !== 'undefined' && THAI_NATURALNESS_GUIDE ? '\nTHAI NOTES\n' + THAI_NATURALNESS_GUIDE + '\n' : '') +
-    (never.length ? '\nNOT TAUGHT to this learner — never use: ' + never.join(' ') + '\n' : '') +
-    '\nKNOWN WORDS (the only content words allowed besides the lesson words):\n' + vocabRows.join('\n') + '\n'
+  const seen = new Set(), known = []
+  ;(ctx.exposed || []).concat(targets.map(t => ({ thai: t.surface }))).forEach(w => { const th = String((w && (w.thai || w.t)) || '').trim(); if (th && !seen.has(th)) { seen.add(th); known.push(th) } })
+  return 'You write Thai LISTENING conversations for an adult English-speaking learner (' + ((ctx.complexity && ctx.complexity.belt) || 'beginner') + '): two close friends talking, in natural ' +
+    'spoken Thai, built around this lesson\'s words. A native teacher grades it.\n' + LN_STORY_RULES_LEAN + '\n' +
+    (never.length ? 'NOT TAUGHT to this learner — never use: ' + never.join(' ') + '\n' : '') +
+    'KNOWN WORDS (use only these, the lesson words, particles and numbers): ' + known.join(' ') + '\n'
 }
 function lnStoryTargetRows(targets) { return targets.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (t.sense ? ' (sense: ' + t.sense + ')' : '')).join('\n') }
 function lnStoryScenes(la, plan, written, targets, ctx) {

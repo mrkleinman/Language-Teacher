@@ -75,6 +75,8 @@ function scriptedModel(c, vocab, opt = {}) {
       if (opt.fix) turns.forEach(t => { const f = opt.fix(t); if (f) Object.assign(t, f) })
       return JSON.stringify({ turns })
     }
+    if (stage === 'O_listening_story_edit') { st.edits = (st.edits || 0) + 1; return JSON.stringify({ fixes: [] }) }
+    if (stage === 'O_listening_story_line_fix') return JSON.stringify({ fixes: [] })
     if (stage === 'verdicts') {
       const items = [...p.matchAll(/^\s*(\d+)[.)]\s/gm)].map(x => Number(x[1]))
       const nItems = Math.max(12, ...items)
@@ -114,9 +116,9 @@ async function run(c, vocab, opt = {}) {
     const L = (A.tr.listening || {}).lines || [], gen = A.st.calls.filter(s => s === 'O_listening_story_write').length
     const wrote = A.st.prompts.filter(x => x.stage === 'O_listening_story_write').length
     const tel = A.tr.telemetry || {}
-    T('S3', 'end to end: READY with all 30 frozen words heard, composer = story, written by the model (plan + one call per scene), paid QC ran (naturalness + coherence), real call counts on the track',
+    T('S3', 'end to end: READY with all 30 frozen words heard, composer = story, written by the model (plan + one call per scene), the whole-conversation edit and the paid QC ran (naturalness + coherence), real call counts on the track',
       A.tr.status === 'READY' && A.tr.coverage.covered === 30 && A.tr.listening.composer === 'story' && gen === 4 && wrote === 4 &&
-      A.st.calls.includes('verdicts') && A.st.calls.includes('O_listening_coherence') && tel.LISTENING_GENERATION_CALLS >= 5 && tel.LISTENING_QC_CALLS >= 1 && L.length >= 30,
+      A.st.calls.includes('O_listening_story_edit') && A.st.calls.includes('verdicts') && A.st.calls.includes('O_listening_coherence') && tel.LISTENING_GENERATION_CALLS >= 5 && tel.LISTENING_QC_CALLS >= 1 && L.length >= 30,
       { status: A.tr.status, cov: A.tr.coverage, composer: A.tr.listening && A.tr.listening.composer, calls: A.st.calls, tel, failed: A.tr.failedChecks })
   }
   {
@@ -139,9 +141,10 @@ async function run(c, vocab, opt = {}) {
     let target = null
     const D = await run(c, vocab, { variant: 3, reject: (p, i) => { if (/\[\[QC-FIXED\]\]/.test(p)) return false; if (target == null && i === 3) { target = true; return true } return false },
       fix: null })
-    const qr = D.st.prompts.find(x => x.stage === 'O_listening_story_qc_repair')
-    T('S6', 'a line the paid naturalness judge rejects sends its scene to a QC rewrite naming the line and the judge\'s verdict (the QC is real, not a label)',
-      !!qr && /line \d+ UNNATURAL: naturalness 2\/5/.test(qr.p), { qc: !!qr, p: qr && qr.p.slice(qr.p.indexOf('flagged'), qr.p.indexOf('flagged') + 300) })
+    // v712: a rejected line is rewritten on its own (O_listening_story_line_fix) — the prompt names the line and the judge's verdict
+    const qr = D.st.prompts.find(x => x.stage === 'O_listening_story_line_fix')
+    T('S6', 'a line the paid naturalness judge rejects is sent to a line rewrite naming the line and the judge\'s verdict (the QC is real, not a label)',
+      !!qr && /- line \d+: naturalness 2\/5/.test(qr.p), { qc: !!qr, p: qr && qr.p.slice(qr.p.indexOf('flagged'), qr.p.indexOf('flagged') + 300) })
   }
   {
     const before = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))

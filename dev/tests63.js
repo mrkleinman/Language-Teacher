@@ -380,6 +380,28 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('Y7', 'the closing-line prompt no longer suggests the translated wish ขอให้เป็นวันที่ดี and asks B for a set phrase (Daily switch on; the legacy prompt is unchanged)',
       /\(dailyV693On\(\) \? '' : 'ขอให้เป็นวันที่ดีนะครับ, '\)/.test(src) && /never a translated wish with ขอให้/.test(src)) }
 
+  // v709 (owner: "please get to at least 7/10") — Z1–Z5: the curated exchange bank, trust of vetted lines, romanisation word breaks
+  { const bank = c.ev('THAI_EXCHANGE_BANK'), bx = c.ev('thaiBankExchange'), bv = c.ev('thaiBankVerdict'), isB = c.ev('thaiIsBankLine')
+    const w = Object.keys(bank).find(t => t === 'สะพาน') || Object.keys(bank)[0], ex = bx({ thai: w })
+    T('Z1', 'the bank holds vetted A–B–A exchanges (≥ 500 words); the writer\'s first candidate for a bank word is its exchange; a word with no entry gets none',
+      Object.keys(bank).length >= 500 && Object.values(bank).every(vs => vs.every(v => v.length === 3 && v[0].speaker === 'A' && v[1].speaker === 'B' && v[2].speaker === 'A')) &&
+      ex && ex.length === 3 && ex[0].thai === bank[w][0][0].thai && bx({ thai: 'คำที่ไม่มีในคลัง' }) === null, { w, ex })
+    const l = bank[w][0][1], p0 = { thai: l.thai, english: l.english, prompt: l.prompt, speaker: l.speaker, _target: w }
+    T('Z2', 'a line that is still exactly its bank text is vetted (naturalness pass; the cue too while it is the bank cue); an edited line, another word\'s line or a changed cue is judged as usual',
+      bv('nat', p0) && bv('nat', p0).s === 5 && bv('cue', p0) && isB(p0) && !bv('nat', { ...p0, thai: p0.thai + 'เลย' }) && !bv('cue', { ...p0, prompt: 'Say something else.' }) &&
+      !bv('nat', { ...p0, _target: 'ช้อน' })) }
+  { const v = c.initVocab(), lex = c.ev('buildThaiPhoneticLexicon')(v), seg = c.ev('segmentThaiWithDiagnostics'), fin = c.ev('finaliseThaiTrackPhonetics')
+    const ph = t => fin([{ thai: t, words: seg(t, v, null, [], false).map(x => ({ p: x.matchedSpan, thai: x.matchedSpan })) }], lex, null)[0].phonetic
+    const a = ph('นมหมดครับ ผมไปซื้อนะครับ'), b = ph('ได้ค่ะ ดูแลตัวเองด้วยนะคะ'), d = ph('สวัสดีครับ วันนี้เป็นยังไงบ้างครับ')
+    T('Z3', 'romanisation: a word never spans a space (ครับ ผม → khráp phǒm, not ครับผม "yes, sir"); a phrase entry reads as its words (duu-lae dtua-eeng dûai, sà-wàt-dii khráp, bpen yang-ngai bâang); a compound stays one word (wan-níi)',
+      /khráp phǒm/.test(a) && !/khráp-phǒm/.test(a) && /duu-lae dtua-eeng dûai/.test(b) && /sà-wàt-dii khráp/.test(d) && /bpen yang-ngai bâang/.test(d) && /wan-níi/.test(d), [a, b, d]) }
+  { const f = c.ev('thaiBannedOnlyInsideTaught')
+    T('Z4', 'a word on the "not in your vocabulary" list is allowed when the learner has been taught it or it is the target (อินเทอร์เน็ต, รถยนต์); still refused when untaught',
+      f('ฉันใช้อินเทอร์เน็ตทุกวันค่ะ', 'อินเทอร์เน็ต', new Set(['อินเทอร์เน็ต'])) === true && f('ฉันใช้อินเทอร์เน็ตทุกวันค่ะ', 'อินเทอร์เน็ต', new Set(['ใช้'])) === false) }
+  { const fr = c.ev('thaiBankFraming'), sd = fr({ characterA: 'Somchai (สมชาย), a Thai man', characterB: 'Nida (นิดา), a Thai woman', opening: 'x', reply: 'y', closing: 'z', closing_reply: 'w' }, [{ id: 3 }])
+    T('Z5', 'opening and closing lines are vetted set pieces (no Thai names; the cue names the characters; the reading is rebuilt from the dictionary)',
+      /^สวัสดีครับ/.test(sd.opening) && /ค่ะ$|คะ$/.test(sd.closing_reply) && /Nida/.test(sd.opening_prompt) && !/[\u0E00-\u0E7F]/.test(sd.opening_prompt) && sd.opening_phonetic === '' && !/สมชาย|นิดา/.test(sd.opening + sd.reply + sd.closing + sd.closing_reply), sd) }
+
   out.forEach(l => console.log(l))
   console.log('\nv704 Thai Daily quality round: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

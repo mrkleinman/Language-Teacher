@@ -69,10 +69,15 @@ const eq = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sor
     // adjudicated errors still present in the RUNNING bank (the app already corrects some entries at load, e.g. สาย)
     const live = new Map(bank.map(d => [d.id, d.ph]))
     const adj = new Set(J('th-bank-tone-scan.json').filter(x => x.proposed_phonetic && live.get(x.id) === x.bank_phonetic).map(x => x.id))
+    // v708 — EXPECTED CHANGE (owner's 801–2500 import): eight new one-syllable words whose spoken tone departs from the spelling rule,
+    // so the rule checker flags a CORRECT reading. Six are English loanwords said with a high tone (เมตร méet, เมาส์ máo, ซอส sáawt,
+    // โพสต์ phóot, ชอล์ก cháawk, ลิงก์ líng); ฤกษ์ rôoek and หงส์ hǒng are the standard readings (the checker misreads the silent
+    // ษ์ / ส์). Each carries qcStatus NEEDS_REVIEW (PHONETIC:TONE_CHECKER_DISAGREES) in the bank. Any OTHER flag still fails.
+    const V708_IRREGULAR = new Set(['เมตร', 'เมาส์', 'ซอส', 'โพสต์', 'ชอล์ก', 'ฤกษ์', 'หงส์', 'ลิงก์'])
     let mono = 0; const flagged = [], missed = []
     bank.forEach(d => { if (!d.ph || /[\s-]/.test(d.ph.trim()) || /\s/.test(d.t)) return; mono++
       const p = c.v684ThWordProblems(d.t, c.loadCanonicalThaiPhonetic(d.ph)).filter(x => /tone/.test(x))
-      if (p.length && !adj.has(d.id)) flagged.push(d.t + ' ' + d.ph); if (!p.length && adj.has(d.id)) missed.push(d.t + ' ' + d.ph) })
+      if (p.length && !adj.has(d.id) && !V708_IRREGULAR.has(d.t)) flagged.push(d.t + ' ' + d.ph); if (!p.length && adj.has(d.id)) missed.push(d.t + ' ' + d.ph) })
     T('T1', 'Thai tone rules on all ' + mono + ' one-syllable bank entries: every adjudicated bank error flagged, no other entry flagged', mono > 500 && !flagged.length && !missed.length, { flagged, missed })
     const tc = [['เป็น', 'mid'], ['เย็น', 'mid'], ['ชอบ', 'falling'], ['แล้ว', 'high'], ['โกรธ', 'low'], ['หน่อย', 'low'], ['รถ', 'high'], ['นวด', 'falling'], ['สัตว์', 'low'], ['บัตร', 'low'], ['เกาะ', 'low'], ['ใช้', 'high'], ['ซ้าย', 'high'], ['ไหม', 'rising'], ['ญาติ', 'falling']]
     const tb = tc.filter(([w, t]) => c.v684ThToneOf(w) !== t).map(([w, t]) => w + ' → ' + c.v684ThToneOf(w) + ' (want ' + t + ')')

@@ -219,7 +219,10 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
       const zi = mk('zh'), ti = mk('th')
       T('F20', 'Mandarin / Thai pronunciation is composed from the dictionary (pinyin with tone marks, Thai phonetics); a piece the dictionary cannot pronounce is an untaught word and is rejected (v677 accepted 们 in 我们 and ความหวัง)',
         /[āáǎàēéěèīíǐìōóǒòūúǔù]/.test(c.gen2Pron('zh', '你喜欢这个东西吗？', zi).pron) && c.gen2PronProblem('zh', '你喜欢这个东西吗？', zi) === null &&
-        /们/.test(c.gen2PronProblem('zh', '我们一起去', zi) || '') && !!c.gen2PronProblem('th', 'ฉันอยากได้ความเหงาค่ะ', ti) &&
+        /们/.test(c.gen2PronProblem('zh', '我们一起去', zi) || '') &&
+        // v708 — EXPECTED CHANGE: เหงา is now a dictionary word (801–2500 import, slot 866), so ความเหงา can be pronounced; the
+        // "not in the dictionary" example is now ความเศร้า (neither it nor เศร้า is in the bank)
+        !!c.gen2PronProblem('th', 'ฉันอยากได้ความเศร้าค่ะ', ti) &&
         // v698: ความหวัง is now a dictionary word (Wedding Speech, unranked) — still UNTAUGHT for this learner, so the vocabulary check rejects it
         /untaught vocabulary: ความหวัง/.test((ti.check('ฉันอยากได้ความหวังค่ะ') || []).join(' ')) &&
         c.gen2PronProblem('th', 'คุณรีบไปไหนครับ', ti) === null && /khráp/.test(c.gen2Pron('th', 'คุณรีบไปไหนครับ', ti).pron)) }

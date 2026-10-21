@@ -80,18 +80,20 @@ const DISPLAY = { 'Mukyu': '1–100 · 100 words', '10th Kyu': '101–200 · 100
     const st6 = c.rankTestStatus(full, 'Blue'), st5 = c.rankTestStatus(full, 'Blue + Stripe')
     T('W2' + lang, lang + ': rank-test counters follow the new ranges (8th Kyu 401–600: 200 words, all passed with 700 known; 7th Kyu 601–800: 200 words, 100 passed)', st6.total === 200 && st6.passedCount === 200 && st5.total === 200 && st5.passedCount === 100, { st6: [st6.total, st6.passedCount], st5: [st5.total, st5.passedCount] })
   }
-  for (const [lang, fn, size] of [['th', 'initVocab', 1799], ['ja', 'initJapaneseVocab', 200], ['zh', 'initMandarinVocab', 100]]) {
+  // v708 — EXPECTED CHANGE (owner's 801–2500 import, commit f132349): Thai 3249 = 1799 + 1,429 new records + 21 Wedding Speech words
+  // that became curriculum words (topic-only 45 → 24); "Beyond curriculum" 999 → 749 (250 existing records placed in 801–2500)
+  for (const [lang, fn, size] of [['th', 'initVocab', 3249], ['ja', 'initJapaneseVocab', 200], ['zh', 'initMandarinVocab', 100]]) {
     const v = c[fn](), ids = v.map(w => w.id)
     const placed = WANT.reduce((a, w) => a + c.wordsForRank(v, w[0]).length, 0), curr = v.filter(w => (w.curriculumIndex || 0) >= 1 && (w.curriculumIndex || 0) <= 2500 && !w.duplicateOf).length
     T('W3' + lang, lang + ': the real bank keeps every word and ID (' + size + ' words, no duplicates) and every curriculum word sits in exactly one belt; the stored belt label matches the new ranges',
       // v698: the owner's Topics brief adds the 50 Wedding Speech words once, unranked (topicOnly) — the original bank is unchanged
       // Thai 501–800: +151 new curriculum words, and 5 Wedding Speech words became curriculum words (1643 + 151 + 5; 45 topic-only)
-      v.filter(w => !(lang === 'th' && c.isThaiTopicOnly(w))).length === size && (lang !== 'th' || v.filter(w => c.isThaiTopicOnly(w)).length === 45) && new Set(ids).size === ids.length && placed === curr && v.every(w => !w.curriculumIndex || c.beltForCurriculumIndex(w.curriculumIndex) === (w.belt || c.beltForCurriculumIndex(w.curriculumIndex))), { len: v.length, placed, curr })
+      v.filter(w => !(lang === 'th' && c.isThaiTopicOnly(w))).length === size && (lang !== 'th' || v.filter(w => c.isThaiTopicOnly(w)).length === 24) && new Set(ids).size === ids.length && placed === curr && v.every(w => !w.curriculumIndex || c.beltForCurriculumIndex(w.curriculumIndex) === (w.belt || c.beltForCurriculumIndex(w.curriculumIndex))), { len: v.length, placed, curr })
   }
   const raw = c.ev('RAW_VOCAB')
-  T('W4', 'Thai dictionary: every stored belt label agrees with the new ranges (v701 relabelled positions 301–500: 301–400 are now 9th Kyu, 401–500 8th Kyu; 999 words stay "Beyond curriculum" after 501–800 placed 144 of them)',
-    raw.filter(d => d.curriculumIndex).every(d => d.belt === c.beltForCurriculumIndex(d.curriculumIndex)) && raw.filter(d => !d.curriculumIndex && !d.topicOnly).length === 999 &&
-    raw.filter(d => d.topicOnly).length === 45 && raw.filter(d => d.topicOnly).every(d => !d.curriculumIndex && d.belt === 'Beyond curriculum'))   // v698: + the unranked Wedding Speech entries (45 since 501–800)
+  T('W4', 'Thai dictionary: every stored belt label agrees with the new ranges (v701 relabelled positions 301–500: 301–400 are now 9th Kyu, 401–500 8th Kyu; 749 words stay "Beyond curriculum" after 501–800 placed 144 and 801–2500 placed 250 more)',
+    raw.filter(d => d.curriculumIndex).every(d => d.belt === c.beltForCurriculumIndex(d.curriculumIndex)) && raw.filter(d => !d.curriculumIndex && !d.topicOnly).length === 749 &&
+    raw.filter(d => d.topicOnly).length === 24 && raw.filter(d => d.topicOnly).every(d => !d.curriculumIndex && d.belt === 'Beyond curriculum'))   // v698: + the unranked Wedding Speech entries (45 since 501–800)
   // ══ P — what must not change ═════════════════════════════════════════════════════════════════════════════════
   const cx = c.ev('BELT_COMPLEXITY')
   const wantCx = { 'Mukyu': [2, 4, 6], '10th Kyu': [3, 5, 7], '9th Kyu': [4, 6, 8], '8th Kyu': [5, 7, 9], '7th Kyu': [5, 8, 10], '6th Kyu': [6, 9, 11], '5th Kyu': [6, 10, 12],

@@ -31954,10 +31954,11 @@ async function _lnComposeThaiStory(env) {
         'FORMAL or SET-PHRASE lesson words (polite forms, host / staff / announcer phrases, greetings, wishes) must come from a speaker whose ROLE says them: give one of them a role in a scene ' +
         '(B works at the museum desk and A asks her a question; A hosts the party and welcomes the guests; B serves at the café) — say so in "present" — or have them quote someone ("the waiter asked …"). Never put them in casual chat between the friends.\n' +
         'Give each scene: a title (place and time), "present" (where A and B are, e.g. "together at the café" / "on the phone: A at work, B at home"), what happens (2–3 sentences that carry the plot), ' +
-        '"facts" (what is true by the end of the scene, which later scenes must respect), and "targets": the ids of its lesson words. Keep the whole plan short (no explanations). ' +
-        'Every id in exactly one scene, 4–8 per scene.\n' +
+        '"facts" (what is true by the end of the scene, which later scenes must respect), and "uses": for each of its lesson words, the id and the MOMENT it is said — ' +
+        'who says it and why, in at most 10 English words (e.g. {"id":842,"moment":"B, at the museum desk, asks A for his ticket"}). Pick moments where the word is the natural thing to say. ' +
+        'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–8 per scene.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
-        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","targets":[123,456]}]}', 1950, 'LISTENING_GENERATION_CALLS')
+        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"moment":"…"}]}]}', 1950, 'LISTENING_GENERATION_CALLS')
       const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 5)
       if (sc.length < 2) throw new Error('fewer than 2 scenes')
       const used = new Set()
@@ -31987,7 +31988,7 @@ async function _lnComposeThaiStory(env) {
       (si === 0 ? 'It opens the conversation (a greeting is fine). ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends the conversation with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
       '\nUse EVERY ONE of these lesson words at least once, spelled exactly, in its common sense (not more than 3 lesson words in one line), at its planned moment:\n' +
       st.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (s.moments && s.moments[t.id] ? ' — moment: ' + s.moments[t.id] : '')).join('\n') +
-      '\nA new topic or event in this scene must follow from something said before it.' +
+      '\nA new topic or event in this scene must follow from something said before it. Every line moves the story on (no filler such as a bare ดีค่ะ / ขอบคุณครับ after every line); most lines 4–7 words.' +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}'
     let best = null
     try { written[si] = take(await call('O_listening_story_write', brief, 1900, 'LISTENING_GENERATION_CALLS')) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
@@ -32030,7 +32031,7 @@ async function _lnComposeThaiStory(env) {
         '- THAI: not what a Thai friend would say (bookish, translated, wrong collocation, ungrammatical, odd particle).\n' +
         '- WORD: a lesson word used in an odd sense or forced into a line — give it a context where it is natural (a set-up line before it, or a speaker in a role).\n- EN: the English does not match the Thai.\n' +
         'Check especially: the scene title vs what is said; "why?" answered with a reason; yes / no answered; times agreed then kept; something mentioned for the first time as if known; "and you?" after the other already answered; ' +
-        'a joke or apology with no set-up; formal / staff phrases between friends; คุณ in many lines; wrong collocations (หนึ่งโมงบ่าย → บ่ายโมง; อุณหภูมิ…ร้อน → สูง; อยู่กับ…เสมอ → อยู่ข้าง…เสมอ).\n' +
+        'a joke or apology with no set-up; formal / staff phrases between friends; คุณ in many lines; wrong collocations (1 p.m. is บ่ายโมง, not หนึ่งโมงบ่าย; a temperature is สูง / ต่ำ while the weather is ร้อน — both are right; standing by someone is อยู่ข้าง…เสมอ).\n' +
         'For each fault, REPLACE a span of 1–3 consecutive lines ("from" … "to"): give exactly as many new lines as you replace, with the SAME speakers in the same order. ' +
         'Every lesson word of the span must still appear somewhere in the new span (it may move to another line of the span). Each new line: at most 7 Thai words, only known words, ends with the speaker\'s particle. ' +
         'Fix the cause (often an earlier line). At most 8 fixes, the worst first; "problem" in at most 8 words. Also give "score": the grade (0–10) this lesson deserves NOW, as the strict grader would.\n' +

@@ -31957,7 +31957,8 @@ async function _lnComposeThaiStory(env) {
         'a set phrase belongs to the person whose role says it (a waiter asks "anything else?", a host says "please sit", staff say "everyone") — A or B can quote them ("the waiter asked…") only where natural.\n' +
         'A and B are the ONLY speakers, so EVERY scene is the two of them talking to each other — together in person, or on the phone. Nobody else speaks (a waiter, a host or a boss is only quoted). ' +
         'If the story needs one of them to miss an event, the scene happens before or after it, or on the phone. ' +
-        'To make set phrases natural, you may give one of them a ROLE in a scene (B works at the café and serves A; A is the host of a party; B is a guide at the museum) — say so in "present".\n' +
+        'FORMAL or SET-PHRASE lesson words (polite forms, host / staff / announcer phrases, greetings, wishes) must come from a speaker whose ROLE says them: give one of them a role in a scene ' +
+        '(B works at the museum desk and A asks her a question; A hosts the party and welcomes the guests; B serves at the café) — say so in "present" — or have them quote someone ("the waiter asked …"). Never put them in casual chat between the friends.\n' +
         'Give each scene: a title (place and time), "present" (where A and B are, e.g. "together at the café" / "on the phone: A at work, B at home"), what happens (2–3 sentences that carry the plot), ' +
         '"facts" (what is true by the end of the scene, which later scenes must respect), and "uses": for EACH lesson word of the scene, the moment it comes up — who says it and why, in at most 12 words. Keep the whole plan short. ' +
         'Every id in exactly one scene, 4–8 per scene.\n' +
@@ -32015,41 +32016,51 @@ async function _lnComposeThaiStory(env) {
   const build = () => lnStoryScenes(la, plan, written, targets, ctx)
   // ── EDIT: a strict native-teacher read of the WHOLE conversation (the way the independent grader reads it) lists every faulty line
   //    with a replacement; each replacement is kept only if it passes every line gate and keeps the line's lesson words (≤ 3 rounds) ──
-  const lineGateBad = (si, cand, oldTn) => {
+  // why a candidate line fails the line gates ('' = it passes)
+  const lineGateWhy = (si, cand) => {
     const one = lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [[cand]], targets, ctx)[0]
-    const bad = listeningConversationAudit([one], targets, la, ctx).issues.some(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN)$/.test(x.code))
-    const lost = (oldTn.intendedTargetIds || []).some(id => !(one.turns[0].intendedTargetIds || []).includes(id))
-    return bad || lost
+    const iss = listeningConversationAudit([one], targets, la, ctx).issues.filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN)$/.test(x.code))
+    return { why: iss.map(x => x.code + (x.detail ? ' (' + String(x.detail).replace(/^[A-Z_]+: /, '').slice(0, 60) + ')' : '')).join('; '), ids: one.turns[0].intendedTargetIds || [] }
   }
+  let rejected = []
   for (let round = 1; round <= 5; round++) {
     const flat = build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
     let r = null
     try {
       r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') +
         '\n\nTHE CONVERSATION (numbered; scene titles in brackets):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +
-        '\n\nTASK: you are a strict native Thai teacher grading this listening lesson. Read it start to finish as the listener will, and find EVERY faulty line:\n' +
+        (rejected.length ? '\n\nYOUR LAST REPLACEMENTS THAT COULD NOT BE USED (fix them another way):\n' + rejected.slice(0, 8).map(x => '- lines ' + x.span + ': ' + x.why).join('\n') : '') +
+        '\n\nTASK: you are a strict native Thai teacher grading this listening lesson. Read it start to finish as the listener will, and find EVERY fault:\n' +
         '- STORY: contradicts an earlier line or scene (who is where, what was bought or decided, times, excuses); a reply that does not follow the line before; a question not answered; ' +
-        'a person or thing the listener cannot identify (เขา / ยาย / "that room" with no referent); a role mix-up (a friend talking like staff); an event with no cause; a topic that jumps in from nowhere.\n' +
+        'a person or thing the listener cannot identify; a role mix-up; an event with no cause; a topic that jumps in from nowhere.\n' +
         '- THAI: not what a Thai friend would say (bookish, translated, wrong collocation, ungrammatical, odd particle).\n' +
-        '- WORD: a lesson word used in an odd sense or forced into a line.\n- EN: the English does not match the Thai.\n' +
-        'For each faulty line give a REPLACEMENT for that line only: same speaker, the same lesson words, at most 7 Thai words, only known words, ends with the speaker\'s particle — and it must fit the lines around it. ' +
-        'Check especially: the scene title vs what is said (already at the bus stop → not "let\'s go to the bus stop"); "why?" answered with a reason; yes / no answered; times agreed then kept (arriving at the agreed time is not "late"); ' +
-        'something mentioned for the first time as if known ("the tickets"); "and you?" after the other already answered; a joke or apology with no set-up; formal / staff phrases between friends (give them to a role or rephrase); คุณ in many lines; ' +
-        'wrong collocations (หนึ่งโมงบ่าย → บ่ายโมง; อุณหภูมิ…ร้อน → สูง; อยู่กับ…เสมอ → อยู่ข้าง…เสมอ).\n' +
-        'Fix the cause (often an earlier line). List at most 8 lines, the worst first; "problem" in at most 8 words. Also give "score": the grade (0–10) this lesson deserves NOW, as the strict grader would. If nothing is wrong, reply {"score":9,"fixes":[]}.\n' +
-        'Reply ONLY with JSON: {"score":6.5,"fixes":[{"line":12,"problem":"…","thai":"…","english":"…"}]}', 2500, 'LISTENING_REPAIR_CALLS')
+        '- WORD: a lesson word used in an odd sense or forced into a line — give it a context where it is natural (a set-up line before it, or a speaker in a role).\n- EN: the English does not match the Thai.\n' +
+        'Check especially: the scene title vs what is said; "why?" answered with a reason; yes / no answered; times agreed then kept; something mentioned for the first time as if known; "and you?" after the other already answered; ' +
+        'a joke or apology with no set-up; formal / staff phrases between friends; คุณ in many lines; wrong collocations (หนึ่งโมงบ่าย → บ่ายโมง; อุณหภูมิ…ร้อน → สูง; อยู่กับ…เสมอ → อยู่ข้าง…เสมอ).\n' +
+        'For each fault, REPLACE a span of 1–3 consecutive lines ("from" … "to"): give exactly as many new lines as you replace, with the SAME speakers in the same order. ' +
+        'Every lesson word of the span must still appear somewhere in the new span (it may move to another line of the span). Each new line: at most 7 Thai words, only known words, ends with the speaker\'s particle. ' +
+        'Fix the cause (often an earlier line). At most 8 fixes, the worst first; "problem" in at most 8 words. Also give "score": the grade (0–10) this lesson deserves NOW, as the strict grader would.\n' +
+        'Reply ONLY with JSON: {"score":6.5,"fixes":[{"from":12,"to":13,"problem":"…","turns":[{"speaker":"A","thai":"…","english":"…"},{"speaker":"B","thai":"…","english":"…"}]}]}', 3000, 'LISTENING_REPAIR_CALLS')
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY edit round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)); break }
     const fixes = (r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 8)
-    let kept = 0
+    let kept = 0; rejected = []
+    const touched = new Set()
     fixes.forEach(fx => {
-      const f = flat[Number(fx && fx.line) - 1]; if (!f || !fx.thai) return
-      const old = written[f.si][f.k], cand = { speaker: old.speaker, thai: String(fx.thai).trim(), english: String(fx.english || old.english).trim() }
-      if (lineGateBad(f.si, cand, f.tn)) return
-      written[f.si][f.k] = cand; kept++
+      const from = Number(fx && (fx.from != null ? fx.from : fx.line)), to = Number(fx && (fx.to != null ? fx.to : from))
+      const nt = Array.isArray(fx && fx.turns) ? fx.turns : (fx && fx.thai ? [{ thai: fx.thai, english: fx.english }] : [])
+      const span = flat.slice(from - 1, to)
+      if (!span.length || span.length > 3 || nt.length !== span.length || span.some(f => f.si !== span[0].si) || span.some((f, i) => touched.has(from - 1 + i))) return
+      const want = new Set(span.flatMap(f => f.tn.intendedTargetIds || [])), got = new Set(), whys = []
+      const cands = span.map((f, i) => ({ speaker: f.tn.speaker, thai: String(nt[i].thai || '').trim(), english: String(nt[i].english || '').trim() }))
+      cands.forEach(c => { const g = lineGateWhy(span[0].si, c); if (g.why) whys.push('"' + c.thai + '": ' + g.why); g.ids.forEach(id => got.add(id)) })
+      const lost = [...want].filter(id => !got.has(id)).map(id => byId.get(id).surface)
+      if (lost.length) whys.push('lesson word(s) lost: ' + lost.join(', '))
+      if (whys.length) { rejected.push({ span: from + (to > from ? '–' + to : ''), why: whys.join(' · ').slice(0, 220) }); return }
+      span.forEach((f, i) => { written[f.si][f.k] = cands[i]; touched.add(from - 1 + i) }); kept++
     })
     const grade = r && r.score != null ? Number(r.score) : null
-    log && log('  📝 LISTENING_STORY edit round ' + round + (grade != null ? ' · editor grade ' + grade + '/10' : '') + ' · ' + fixes.length + ' faulty line(s) named · ' + kept + ' replacement(s) kept' + (fixes.length ? ' · e.g. ' + fixes.slice(0, 3).map(x => 'L' + x.line + ': ' + String(x.problem || '').slice(0, 60)).join(' | ') : ''))
-    if (!fixes.length || !kept || (grade != null && grade >= 8.5 && fixes.length <= 2)) break
+    log && log('  📝 LISTENING_STORY edit round ' + round + (grade != null ? ' · editor grade ' + grade + '/10' : '') + ' · ' + fixes.length + ' fault(s) named · ' + kept + ' fix(es) kept' + (rejected.length ? ' · ' + rejected.length + ' could not be used' : '') + (fixes.length ? ' · e.g. ' + fixes.slice(0, 3).map(x => 'L' + (x.from || x.line) + ': ' + String(x.problem || '').slice(0, 60)).join(' | ') : ''))
+    if (!fixes.length || (!kept && !rejected.length) || (grade != null && grade >= 8.5 && fixes.length <= 2)) break
   }
   // the edits must leave every scene's gates and lesson words as they were (a scene the edits broke goes back to its written text)
   // ── QC: paid naturalness verdicts (in context) + the whole-conversation coherence judge → rewrite the flagged scenes (≤ 2 rounds) ──

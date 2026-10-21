@@ -31925,10 +31925,20 @@ async function _lnComposeThaiStory(env) {
   const byId = new Map(targets.map(t => [t.id, t]))
   const never = lnStoryNeverUse(la, ctx)
   const prefix = lnStoryPrefix(la, ctx, targets, never)
+  // a server-side failure (5xx / 429) is retried twice after a pause; anything else (and a fatal provider error) is not retried
   const call = async (stage, prompt, maxTokens, kind) => {
-    tel[kind] = (tel[kind] || 0) + 1
-    const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prefix + PROMPT_CACHE_MARK + prompt }], maxTokens, temperature: kind === 'LISTENING_GENERATION_CALLS' ? 0.8 : 0.4, json: true, stage })
-    return lnStoryJson(raw)
+    for (let attempt = 1; ; attempt++) {
+      tel[kind] = (tel[kind] || 0) + 1
+      try {
+        const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prefix + PROMPT_CACHE_MARK + prompt }], maxTokens, temperature: kind === 'LISTENING_GENERATION_CALLS' ? 0.8 : 0.4, json: true, stage })
+        return lnStoryJson(raw)
+      } catch (e) {
+        const transient = !(e && (e.fatalProvider || e.cancelled)) && /\b(5\d\d|429)\b|overloaded|timeout|ECONNRESET/i.test(String((e && (e.status || '')) + ' ' + (e && e.message || e)))
+        if (!transient || attempt >= 3) throw e
+        log && log('  ⏳ LISTENING_STORY ' + stage + ' server error (' + String(e && e.message || e).slice(0, 40) + ') — retry ' + attempt + ' of 2')
+        await new Promise(res => setTimeout(res, 2000 * attempt))
+      }
+    }
   }
   log && log('🎧 LISTENING_STORY targets frozen first: ' + targets.length + ' revision words [' + targets.map(t => t.surface).join(', ') + '] · a fresh story is planned and written around them · ' + never.length + ' common untaught word(s) named as off-limits')
   // ── PLAN ──
@@ -31990,6 +32000,8 @@ async function _lnComposeThaiStory(env) {
       } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' rewrite unusable: ' + String(e && e.message || e).slice(0, 100)) }
     }
     if (best && lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).length > best.probs.length) written[si] = best.turns
+    // a scene the provider could not write at all stops the composition here (QC on an empty conversation would only spend money)
+    if (!written[si].length) return { ok: false, scenes: [], composer: 'story', reason: 'LISTENING_STORY_WRITE_FAILED: scene ' + (si + 1) + ' could not be written (provider error) — nothing to play; no QC run', uncommitted: [] }
   }
   // ── QC: paid naturalness verdicts (in context) + the whole-conversation coherence judge → rewrite the flagged scenes (≤ 2 rounds) ──
   const build = () => lnStoryScenes(la, plan, written, targets, ctx)

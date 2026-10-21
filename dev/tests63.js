@@ -410,8 +410,7 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     let calls = 0; const old = c.mockGeminiGenerate
     const v = await c.ev('_qrEvaluateGroup')({ targetWord: t, indices: [0, 1, 2], pairs: ex.map(l => ({ ...l, _target: t })) }, ex.map(l => ({ ...l, _target: t })), 'k', 'm')
     T('Z6', 'a target group made of vetted bank lines (with their bank cues) is clean without a paid group-evaluation call', v && v.action === 'clean' && /curated bank/.test(v.reason), v) }
-  { const f = c.ev('thaiFinalLineInvariantProblems') || null
-    const src = require('fs').readFileSync('tt.jsx', 'utf8')
+  { const src = require('fs').readFileSync('tt.jsx', 'utf8')
     T('Z7', 'the duplicated-head rule needs a head of at least 4 characters (วันนี้วันอังคาร is ordinary Thai; ขอให้คุณขอให้… is still caught)',
       /for \(let k = Math\.min\(8, target\.thai\.length - 1\); k >= 4; k--\)/.test(src)) }
 

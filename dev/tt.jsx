@@ -29850,8 +29850,9 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     if (!o.apiKey) return { ok: false, empty: true, listeningQuality: 'VALIDATION UNAVAILABLE', reason: 'Listening composition needs a model; none available', stats: {} }
     // v692 — the standalone Listening Track is planned MEANING FIRST (the legacy template planner stays behind the switch)
     const _env = { lang, la, log, tel, targets, ctx, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax }
-    const _bank = lang === 'th' && o.standalone && !o.legacyScenes ? await _lnComposeThaiBank(_env) : null
-    const r = _bank || (listeningMeaningFirstOn() && o.standalone && !o.legacyScenes ? await _lnComposeMeaningFirst(_env) : await _lnComposeByScenes(_env))
+    const _lib = lang === 'th' && o.standalone && !o.legacyScenes && o.libraryId ? await _lnComposeThaiLibrary(_env) : null
+    const _bank = !_lib && lang === 'th' && o.standalone && !o.legacyScenes ? await _lnComposeThaiBank(_env) : null
+    const r = _lib || _bank || (listeningMeaningFirstOn() && o.standalone && !o.legacyScenes ? await _lnComposeMeaningFirst(_env) : await _lnComposeByScenes(_env))
     // v669 §17: no scene validated → nothing enters the track; the reason names the uncommitted INVALID candidates
     const unc = (r.uncommitted || []).map(u => (u.sceneId || u.id || '?') + (u.residual ? ' (' + u.residual + ')' : '')).join(', ')
     const why = r.reason || (unc ? 'UNCOMMITTED_SCENE: no scene candidate validated — INVALID_CANDIDATE ' + unc : 'the conversation could not be composed')
@@ -31905,6 +31906,92 @@ async function _lnComposeThaiBank(env) {
     salvage: deferred.size ? { from: 'bank', passes: 0, removedTurns: 0, droppedScenes: [], cuts: [], floor, deferred: [...deferred].map(([id, why]) => ({ targetId: id, target: (byId.get(id) || {}).surface || '', reason: why })) } : null,
     uncommitted: [], contract: null, story: scenes.map(sc => sc.setting), phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
 }
+// v711 (owner: "now get the listening track to 7.5"; the bank-first Listening track — one vetted exchange per lesson word — scored 5.7 and
+// 5.9 in blind review: Thai 6.5–7 but story 2/10, a string of drill blocks) — a library of whole conversations written and reviewed
+// offline (sandbox/curriculum/thai-listening-library): one continuous story between two friends, closed vocabulary, every line within
+// the belt's length. A new Listening Track picks the conversation that holds the most of the learner's due Listening words (weighted by
+// revision priority; a recently played conversation is not picked again); the due words it holds become the lesson words, and the rest
+// stay due for Revision. Every deterministic Listening gate still runs on the conversation, and a conversation that fails one for this
+// learner is never picked. No paid writing or judging.
+const THAI_LISTENING_LIBRARY = []
+const LISTENING_LIBRARY_RECENT_KEY = 'lt_th_listening_library_recent', LISTENING_LIBRARY_RECENT = 8
+function thaiListeningLibraryOn() { return THAI_BANK_ON && dailyV693On() && THAI_LISTENING_LIBRARY.length > 0 }
+function thaiListeningLibraryRecent() {
+  try { const a = JSON.parse(localStorage.getItem(LISTENING_LIBRARY_RECENT_KEY) || '[]'); return Array.isArray(a) ? a.map(String) : [] } catch (e) { return [] }
+}
+function thaiListeningLibraryRemember(id) {
+  try { localStorage.setItem(LISTENING_LIBRARY_RECENT_KEY, JSON.stringify([String(id)].concat(thaiListeningLibraryRecent().filter(x => x !== String(id))).slice(0, 30))) } catch (e) {}
+}
+// the same learner context buildListeningConversation gives the gates (taught inventory, belt length contract)
+function thaiListeningLibraryContext(vocab, eligTargets) {
+  const s = snapshotLearnerInventory('th', vocab, eligTargets || [], 'listening')
+  return { vocab, track: {}, exposed: s.inventory.taught, eligTargets: eligTargets || [], complexity: getLearnerComplexityContract({ lang: 'th', vocab }), inventory: s.inventory, snapshot: s }
+}
+function thaiListeningLibraryScenes(la, conv, targets, ctx) {
+  return conv.scenes.map((s, si) => ({ sceneId: 'LS' + (si + 1), setting: s.title, turns: s.lines.map(([sp, th, en], k) => {
+    const tid = (targets || []).filter(t => t.surface && th.includes(t.surface) && la.present(th, t.surface, ctx)).map(t => t.id)
+    const tu = lnMfMakeTurn(la, { speaker: sp, text: th, english: en, targetIds: tid }, 'S' + (si + 1) + '-T' + k, 'S' + (si + 1))
+    return { speaker: sp, pair: { ...tu.pair, _libraryListening: true }, intendedTargetIds: tid } }) }))
+}
+// the gates a library conversation must pass as it stands (no repair): line checks, duplicates, scenes, continuity
+const LISTENING_LIBRARY_HARD = /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN|EXACT_DUPLICATE|NEAR_DUPLICATE|ONE_SPEAKER|SINGLETON_SCENE|SCENE_FRAGMENTATION|CONTINUITY)$/
+function thaiListeningLibraryProblems(la, scenes, targets, ctx) {
+  return listeningConversationAudit(scenes, targets, la, ctx).issues.concat(conversationContinuityAudit(scenes, la, targets)).filter(x => LISTENING_LIBRARY_HARD.test(x.code))
+}
+// pool = the learner's due Listening words in revision order (listeningCandidatePool), or the frozen ids of a Rebuild (then every one of
+// them must be heard). Returns { conv, words, candidates } or null.
+function thaiListeningLibraryPick(vocab, pool, o) {
+  o = o || {}
+  if (!thaiListeningLibraryOn() || !pool || !pool.length) return null
+  const la = LISTENING_ADAPTERS.th, need = o.need || LISTENING_TRACK_TARGETS, ctx0 = thaiListeningLibraryContext(vocab, [])
+  const recent = new Set(o.frozen ? [] : thaiListeningLibraryRecent().slice(0, Math.min(LISTENING_LIBRARY_RECENT, Math.floor(THAI_LISTENING_LIBRARY.length / 2))))
+  const rank = new Map(pool.map((w, i) => [w.id, i])), cands = []
+  THAI_LISTENING_LIBRARY.forEach(conv => {
+    if (recent.has(conv.id)) return
+    const lines = conv.scenes.flatMap(s => s.lines.map(l => l[1]))
+    // the due words the conversation holds, in revision order, at most LISTENING_MAX_TARGETS_PER_TURN in any one line
+    const perLine = lines.map(() => 0), words = []
+    for (const w of pool) {
+      if (words.length >= need) break
+      const s = String(w.thai || '').trim(); if (!s) continue
+      const at = []; lines.forEach((t, i) => { if (t.includes(s) && la.present(t, s, ctx0)) at.push(i) })
+      if (!at.length || at.some(i => perLine[i] >= LISTENING_MAX_TARGETS_PER_TURN)) continue
+      at.forEach(i => perLine[i]++); words.push(w)
+    }
+    if (words.length < need) return
+    cands.push({ conv, words, score: words.reduce((a, w) => a + 1 / (1 + rank.get(w.id) / 30), 0) })
+  })
+  cands.sort((a, b) => b.score - a.score)
+  for (const c of cands) {
+    const ctx = thaiListeningLibraryContext(vocab, c.words)
+    const bad = thaiListeningLibraryProblems(la, thaiListeningLibraryScenes(la, c.conv, c.words.map(w => ({ id: w.id, surface: String(w.thai).trim() })), ctx), c.words.map(w => ({ id: w.id, surface: String(w.thai).trim() })), ctx)
+    if (!bad.length) return { conv: c.conv, words: c.words, candidates: cands.length }
+    o.log && o.log('🎧 LISTENING_LIBRARY ' + c.conv.id + ' not usable for this learner: ' + bad.slice(0, 3).map(x => x.code + ' line ' + x.line).join(', '))
+  }
+  return null
+}
+async function _lnComposeThaiLibrary(env) {
+  const { la, log, targets, ctx, o } = env
+  if (la.lang !== 'th' || !o.libraryId || !thaiListeningLibraryOn()) return null
+  const conv = THAI_LISTENING_LIBRARY.find(c => c.id === o.libraryId)
+  if (!conv) { log && log('🎧 LISTENING_LIBRARY ' + o.libraryId + ' is not in this build; the model composer runs'); return null }
+  const scenes = thaiListeningLibraryScenes(la, conv, targets, ctx)
+  const bad = thaiListeningLibraryProblems(la, scenes, targets, ctx)
+  if (bad.length) { log && log('🎧 LISTENING_LIBRARY ' + conv.id + ' fails ' + bad.slice(0, 4).map(x => x.code + ' line ' + x.line).join(', ') + '; the model composer runs'); return null }
+  const audit = listeningConversationAudit(scenes, targets, la, ctx)
+  const byId = new Map(targets.map(t => [t.id, t]))
+  const deferred = targets.filter(t => !audit.covered.includes(t.id))
+  const total = audit.lines.length
+  log && log('🎧 LISTENING_LIBRARY ' + conv.id + ' "' + conv.title + '" · ' + scenes.length + ' scenes · ' + total + ' turns · ' + audit.covered.length + '/' + targets.length + ' lesson words heard · no paid writing')
+  const coh = { state: QUALITY.VERIFIED, overall: 5, reason: 'library conversation (written and reviewed offline)', verdicts: scenes.map((sc, k) => ({ scene: k + 1, pass: true, score: 5, reason: 'vetted' })) }
+  const plan = { library: conv.id, oneConversation: true, story: scenes.map(sc => sc.setting), assignments: [],
+    scenes: scenes.map(sc => ({ sceneId: sc.sceneId, phase: 'LIBRARY', purpose: sc.setting, requiredTargetIds: [...new Set(sc.turns.flatMap(tn => tn.intendedTargetIds || []))], expectedTurns: sc.turns.length, maxTurns: sc.turns.length })) }
+  return { ok: true, composer: 'library', scenes, audit, natIssues: [], plan, coh,
+    report: scenes.map(sc => ({ sceneId: sc.sceneId, required: 0, heard: 0, turns: sc.turns.length })),
+    gates: { SCENE_REQUIRED_COVERAGE: 'PASS', TURN_COUNT: total + '/' + total, TURN_BUDGET: total >= 16, SCENES_VALIDATED: true, ONE_CONVERSATION: 'PASS' },
+    salvage: deferred.length ? { from: 'library', passes: 0, removedTurns: 0, droppedScenes: [], cuts: [], floor: { turns: 16, scenes: 2, words: Math.ceil(targets.length / 2) }, deferred: deferred.map(t => ({ targetId: t.id, target: (byId.get(t.id) || {}).surface || '', reason: 'not heard in the conversation' })) } : null,
+    uncommitted: [], contract: null, story: scenes.map(sc => sc.setting), phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
+}
 // TT_V692_MEANING_FIRST_END
 // ══ v673 §2B — FEASIBILITY BEFORE FREEZE ═══════════════════════════════════════════════════════════════════════════════
 // The 30 Listening targets are NOT frozen merely because they are due: the candidate pool (existing revision / SRS order)
@@ -32043,8 +32130,19 @@ async function _buildStandaloneListeningTrackCore(o) {
   const snap = o.targetIds && o.targetIds.length ? null : (o.snapshot || selectRevisionTargets(lang, vocab))
   // v673 §2B — feasibility BEFORE the freeze (a rebuild tests its frozen ids without substitution)
   const _attemptId = o.attemptId || ('lattempt-' + new Date().toISOString())
+  // v711 — Thai: the conversation library is tried first. The picked conversation's due words become the frozen targets (a Rebuild
+  // needs a conversation that holds every frozen id); no conversation fits → the feasibility step and the model composer run as before
+  let lib = null
+  if (lang === 'th' && !o.legacyScenes && !o.skipLibrary && thaiListeningLibraryOn()) {
+    try {
+      const pool = snap ? listeningCandidatePool(lang, vocab, snap) : o.targetIds.map(id => byId.get(id)).filter(Boolean)
+      lib = thaiListeningLibraryPick(vocab, pool, { need: snap ? LISTENING_TRACK_TARGETS : pool.length, frozen: !snap, log })
+      log && log(lib ? '🎧 LISTENING_LIBRARY picked ' + lib.conv.id + ' "' + lib.conv.title + '" — ' + lib.words.length + ' due words heard in it become the lesson words (' + lib.candidates + ' conversation(s) fit)'
+        : '🎧 LISTENING_LIBRARY no conversation holds ' + (snap ? LISTENING_TRACK_TARGETS + ' due words' : 'every frozen word') + ' for this learner; the planner runs')
+    } catch (e) { log && log('⚠ LISTENING_LIBRARY could not run: ' + String(e && e.message || e).slice(0, 100)); lib = null }
+  }
   let feas = null
-  if (!o.skipFeasibility) {
+  if (!o.skipFeasibility && !lib) {
     try {
       const pool = snap ? listeningCandidatePool(lang, vocab, snap) : o.targetIds.map(id => byId.get(id)).filter(Boolean)
       if (pool.length >= LISTENING_TRACK_TARGETS) {
@@ -32054,7 +32152,7 @@ async function _buildStandaloneListeningTrackCore(o) {
       }
     } catch (e) { log && log('⚠ LISTENING_FEASIBILITY could not run: ' + String(e && e.message || e).slice(0, 100)); feas = null }
   }
-  const frozenIds = Object.freeze((feas && feas.feasible && snap ? feas.targetIds : (o.targetIds && o.targetIds.length ? o.targetIds : snap.targetIds)).slice())
+  const frozenIds = Object.freeze((lib ? lib.words.map(w => w.id) : feas && feas.feasible && snap ? feas.targetIds : (o.targetIds && o.targetIds.length ? o.targetIds : snap.targetIds)).slice())
   const snapWord = new Map(((snap && snap.targets) || []).map(w => [w.id, w]))
   const words = frozenIds.map(id => snapWord.get(id) || byId.get(id)).filter(Boolean)
   const createdAt = new Date().toISOString()
@@ -32068,7 +32166,7 @@ async function _buildStandaloneListeningTrackCore(o) {
     keywords, selectedTargetIds: keywords.map(k => k.wordId), listeningSelectedTargetIds: frozenIds.slice(), selector: snap ? snap.selector : 'snapshot (rebuild)',
     pairs: [], sceneContract: contract, lessonContext: buildLessonContext(contract, lang),
     targetCounts: { selectedTargetCount: keywords.length, newTargetCount: 0, reviewTargetCount: keywords.length, requiredListeningTargetCount: keywords.length, mode: 'listening' },
-    rebuildOf: o.rebuildOf || null }
+    rebuildOf: o.rebuildOf || null, ...(lib ? { listeningLibraryId: lib.conv.id } : {}) }
   const isNew = words.filter(w => typeof isGenuinelyNew === 'function' && isGenuinelyNew(w)).length
   log && log('🎧 LISTENING_TARGET_SELECTION selected=' + keywords.length + ' new=' + isNew + ' review=' + (keywords.length - isNew) + ' · ' + (snap ? 'selector=' + snap.selector : 'REBUILD — the frozen snapshot, selector NOT re-run'))
   log && log('🎧 LISTENING_SELECTED_TARGET_IDS=[' + frozenIds.join(',') + ']')
@@ -32099,7 +32197,7 @@ async function _buildStandaloneListeningTrackCore(o) {
   let res = null
   if (o.targetIds && o.targetIds.length) log && log('🎧 LISTENING_REBUILD_TARGET_SET=UNCHANGED (' + frozenIds.length + ' frozen ids)')
   try { res = await buildListeningConversation(source, vocab, { lang, apiKey: o.apiKey, model: o.model, onLog: log, onProgress: o.onProgress, creationMode: 'LISTENING_TRACK', standalone: true,
-    planSeed: source.attemptId, rebuild: !!(o.targetIds && o.targetIds.length), speechStyle }) }
+    planSeed: source.attemptId, rebuild: !!(o.targetIds && o.targetIds.length), speechStyle, libraryId: lib ? lib.conv.id : null }) }
   catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return fail('LISTENING_BUILD_ERROR: ' + (e && e.message || e)) }
   const lt = res && res.listeningTrack
   if (!lt) return fail((res && res.reason) || 'the conversation could not be composed', res && res.uncommitted, res && res.telemetry)
@@ -32114,6 +32212,7 @@ async function _buildStandaloneListeningTrackCore(o) {
     failedChecks: Object.entries(lt.gates || {}).filter(([k, v]) => v === false || v === 'FAIL' || v === 'UNVERIFIED').map(([k, v]) => k + '=' + (v === false ? 'FAIL' : v)),
     qualityNotes: [], level: lt.level || null, lengthAudit: lt.lengthAudit || null, unknownWords: (lt.unknownWords || []).slice(), playable: ready, telemetry: tel }
   // §9 invariant: what the track carries IS the frozen snapshot
+  if (lib && ready && lt.composer === 'library') thaiListeningLibraryRemember(lib.conv.id)
   const inv = JSON.stringify(track.selectedTargetIds) === JSON.stringify(frozenIds) && JSON.stringify(lt.coverage.selectedTargetIds) === JSON.stringify(frozenIds)
   log && log('🎧 LISTENING_SNAPSHOT_INVARIANT ' + (inv ? 'PASS' : 'FAIL') + ' — track / coverage target ids === the frozen snapshot (' + frozenIds.length + ')')
   log && log('🎧 LISTENING_TRACK_RESULT status=' + track.status + ' · TARGET COVERAGE ' + track.coverage.covered + '/' + track.coverage.required +

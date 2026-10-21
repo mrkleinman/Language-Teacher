@@ -12,7 +12,9 @@ Read every Thai line aloud as a Thai friend would say it in conversation. Fix it
    phrases → กับ; จำนวน …. Teach spoken uses (เมื่อกี้, เมื่อเช้า, เมื่อวาน, …ที่แล้ว).
 4. TRANSLATED ENGLISH. "แผนผมคือ…" (my plan is …) → ผมว่าจะ…; "ราคาแสนไหม" → clipped; คุณเป็นคนตลก is fine, but not three times in one
    frame.
-5. PARTICLES. Two ครับ in a short utterance (อิจฉาคุณจังครับ ได้ไปพักร้อนครับ) → one at the end; B's question ends คะ.
+5. PARTICLES. Every line ENDS with the speaker's particle (A ครับ / นะครับ; B ค่ะ / นะคะ, คะ for a question). Keep a particle after the
+   first clause only when that clause is a short reply word (ได้ค่ะ, ใช่ครับ, ไม่ค่ะ, ยังครับ, มีค่ะ, จริงเหรอคะ); otherwise ONE particle, at
+   the end (อิจฉาคุณจัง ได้ไปพักร้อนครับ · มีสองคน ยังเด็กมากค่ะ — never มีสองคนค่ะ ยังเด็กมาก).
 6. ONE NARROW SENSE THREE TIMES. ขน only as bird feathers → add fur / body hair (ขนแมว); เติม only fuel → เติมเงิน, เติมน้ำ, เติมข้าว;
    เครื่อง only "machine" → ขึ้นเครื่อง, the classifier (มือถือสองเครื่อง); เมื่อ only clause "when" → เมื่อกี้, เมื่อวาน.
 7. THE REPLY DOES NOT FOLLOW (he asks for directions, then tells her which way is closer → make it a question; จะ is "going to", not

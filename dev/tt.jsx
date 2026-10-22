@@ -17210,7 +17210,9 @@ const THAI_BANK_FRAMING = [
     closing: ['งั้นผมไปก่อนนะครับ', "Well, I'll be going now.", "Tell {B} you'll be going now."], closing_reply: ['ค่ะ เดินทางปลอดภัยนะคะ', 'Okay, have a safe trip.', 'Say okay, and wish him a safe trip.'] },
 ]
 function thaiBankFraming(sd, targets) {
-  if (!THAI_BANK_ON || !dailyV693On() || !sd) return sd
+  // v713 — the four greeting / goodbye set pieces are app framing, not per-word vetted content: they stay on when the exchange bank is
+  // switched off (D3 / D4, bank off: the model's own reply was "ฉันดีมาก" — "I am a very good person" — in both blind reviews)
+  if (!dailyV693On() || !sd) return sd
   // v710 (blind review of paid track 13: "Greet นิดา …", "tell สมชาย (Somchai) …") — the English cue names a character in Latin script: a
   // character given as "นิดา (Nida)" is cued as Nida (the Thai name is kept only when no Latin form is given)
   const latin = (c, d) => { const head = String(c || d).split(',')[0], par = (head.match(/\(([^)]*)\)/) || [])[1], bare = head.replace(/\s*\([^)]*\)/g, '').trim()
@@ -18048,6 +18050,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         for (let i = 0; i < g.length; i++) for (let j = i + 1; j < g.length; j++)
           if (bare(g[i].thai) && bare(g[i].thai) === bare(g[j].thai)) naturalFails.push('Lines ' + (i + 1) + ' and ' + (j + 1) + ' say the same thing — every line must say something new')
         g.forEach((l, li) => { if (/\.\.\.|…|\[|\]|_{2,}/.test(l.thai || '')) naturalFails.push('Line ' + (li + 1) + ' has a placeholder (… or [ ]) — write the real words') })
+        // D4 blind reviews: "คุณไม่ชอบน้ำแข็งไหมคะ" — a negative question takes เหรอ / หรือ, never ไหม (ไม่สบาย "unwell" is one word)
+        g.forEach((l, li) => { if (/(คุณ|เธอ|เขา)ไม่(?!สบาย)[^ ]*ไหม(คะ|ครับ)?$/.test(sq(l.thai))) naturalFails.push('Line ' + (li + 1) + ' is a negative question ending in ไหม — Thai says …ไม่…เหรอคะ / หรือคะ, not ไม่…ไหม') })
       }
       if (naturalFails.length > 0) {
         failureReasons = naturalFails.slice(0, 3)
@@ -22213,7 +22217,9 @@ async function enforceTrackPairQuota(track, adapter, ctx) {
         // pair it replaces, so the dialogue keeps its turn order (live: recovered pairs all became speaker A)
         const mem = slotMemory.get(r.targetId)
         if (oct13On() && adapter.lang === 'ja' && mem && mem.length) acc.forEach((p, k) => { const m = mem.find(x => x.recallIndex === p.recallIndex) || mem[k]; if (m && m.speaker) acc[k] = { ...p, speaker: m.speaker } })
-        pairs.splice(at, 0, ...acc)
+        // v713 — a Thai refill that fills a same-speaker gap goes between those two lines (see _thRecoverTargetPairs)
+        const _gapI = res && res.insertBefore ? pairs.findIndex(q => q && (q._pairKey === res.insertBefore || q.pairId === res.insertBefore)) : -1
+        pairs.splice(_gapI >= 0 ? _gapI : at, 0, ...acc)
         acc.forEach(p => recovered.push({ targetId: r.targetId, target: r.target, round, pairId: p.pairId, text: adapter.sentenceOf(p) }))
         log && log('  ✅ QUOTA RECOVERY ' + r.target + ': +' + acc.length + ' TARGET PAIR(S) (needed ' + r.deficit + ') — ' + acc.map(p => adapter.sentenceOf(p)).join(' / '))
       } else log && log('  ⛔ QUOTA RECOVERY ' + r.target + ': 0/' + r.deficit + ' accepted — ' + ((res && res.reasons) || ['no candidate passed QC']).slice(0, 3).join(' | '))
@@ -24626,7 +24632,11 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     const k = 'th|' + kw.wordId + '|' + r
     if ((TP_USE_SHIFT.get(k) || 0) < (_tpPlan.spare || []).length) { tpSwitchUse('th', kw.wordId, r); log && log('  🔀 APPLICATION_SWITCH ' + kw.thai + ' recall ' + r + ' after a failed recovery round — now: ' + tpUseFor(_tpPlan, r).text.slice(0, 90)) }
   })
-  const _needSp = !c.coherenceRepair && dailyV693On() && have.length && !thaiGenderedTargetSpeaker(kw.thai) ? (have[have.length - 1].speaker === 'B' ? 'A' : 'B') : null
+  // v713 (D4: QC removed the B line of บางที's A-B-A exchange; the refill went after the last A line → A-A-A) — when two remaining lines
+  // of the word have the same speaker, the refill goes BETWEEN them, as the other speaker; otherwise it is the next speaker's turn
+  const _gapAt = !c.coherenceRepair && dailyV693On() && !thaiGenderedTargetSpeaker(kw.thai) ? have.findIndex((h, i) => i > 0 && (have[i - 1].speaker || 'A') === (h.speaker || 'A')) : -1
+  const _needSp = !c.coherenceRepair && dailyV693On() && have.length && !thaiGenderedTargetSpeaker(kw.thai)
+    ? (_gapAt > 0 ? (have[_gapAt].speaker === 'B' ? 'A' : 'B') : (have[have.length - 1].speaker === 'B' ? 'A' : 'B')) : null
   const prompt = 'YOU ARE REPAIRING TARGET: ' + kw.thai + ' (id ' + kw.wordId + ')\n' +
     'EVERY candidate MUST contain "' + kw.thai + '" literally, in its normal meaning (' + (THAI_SENSE_POLICY[kw.thai] ? THAI_SENSE_POLICY[kw.thai].sense : (kw.english || '')) + '). Return FEWER candidates — or an empty array — rather than any candidate without "' + kw.thai + '".\n' +
     'QUOTA RECOVERY — Thai target-practice sentences for a learner.\n' +
@@ -24644,8 +24654,9 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     // v704 (relay run 6: a recovered จาน line "ผมไม่มีจานครับ" answered "is this dish spicy?") — a recovered line is inserted RIGHT AFTER
     // the word's last line (_quotaInsertAt), so the writer sees the exchange it joins and the line that follows it
     (!c.coherenceRepair && dailyV693On() && have.length ? (() => {
-      const lastAt = all.lastIndexOf(have[have.length - 1]), next = all.slice(lastAt + 1).find(p => p && p.thai)
-      return 'WHERE YOUR LINE GOES: right after these lines of the same exchange —\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai + ' (' + (p.english || '') + ')').join('\n') + '\n' +
+      const before = _gapAt > 0 ? have.slice(0, _gapAt) : have
+      const lastAt = all.lastIndexOf(before[before.length - 1]), next = _gapAt > 0 ? have[_gapAt] : all.slice(lastAt + 1).find(p => p && p.thai)
+      return 'WHERE YOUR LINE GOES: right after these lines of the same exchange —\n' + before.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai + ' (' + (p.english || '') + ')').join('\n') + '\n' +
         (next ? 'and before: ' + (next.speaker || 'A') + ': ' + next.thai + ' (' + (next.english || '') + ')\n' : '') +
         'It must follow the last line naturally (a question gets its answer; an answer is not asked again) and say something new.\n' +
         // v713 (D3: a recovered ค่ะ line followed a B line → B–A–B) — the recovered line is the NEXT speaker's turn
@@ -24734,7 +24745,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
   const out = cands.slice(0, opened.length).map((p, k) => { const x = opened[k]; L.settle(kw.wordId, x.r, 'accepted', 'quota recovery passed every gate', x.n)
     const h = L.history(kw.wordId, x.r); return { ...p, recallIndex: x.r, _checkHistory: h, _checkCount: h.length, checkTier: h.length, _function: thaiLineFunctionId(kw.thai, p) } })
   opened.slice(out.length).forEach(x => L.settle(kw.wordId, x.r, 'rejected', reasons[reasons.length - 1] || 'no candidate passed', x.n))
-  return { accepted: out, reasons, strategy: st.strategyIndex, functionPlan: st.functionPlan }
+  return { accepted: out, reasons, strategy: st.strategyIndex, functionPlan: st.functionPlan, insertBefore: _gapAt > 0 && out.length ? have[_gapAt]._pairKey || have[_gapAt].pairId || null : null }
 }
 async function _thFinaliseMetadata(pairs, ctx) {
   const c = ctx || {}, log = c.onLog || null

@@ -29836,7 +29836,8 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   const turnsMin = Math.max(12, Math.ceil(targets.length / 1.5) + 4), turnsMax = targets.length + 14
   let scenes = null, audit = null, natIssues = [], sceneGates = null
   let verdictsCache = new Map()
-  const naturalness = async (scs) => {
+  // opt.strict (v712 story composer, line rewrites only): a line scored 3/5 is also flagged (the gate still rejects only the usual)
+  const naturalness = async (scs, opt) => {
     const cur = scs || scenes
     // v669 §2 — each line is judged IN CONTEXT (the previous line of its scene travels with it)
     const all = cur.flatMap(sc => sc.turns.map((tn, k) => k > 0 ? { ...tn.pair, _context: la.text(sc.turns[k - 1].pair) + (sc.turns[k - 1].pair.english ? ' (' + sc.turns[k - 1].pair.english + ')' : '') } : tn.pair))
@@ -29850,7 +29851,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     const keyAt = (sc, k) => vKey(k > 0 ? { ...sc.turns[k].pair, _context: la.text(sc.turns[k - 1].pair) + (sc.turns[k - 1].pair.english ? ' (' + sc.turns[k - 1].pair.english + ')' : '') } : sc.turns[k].pair)
     cur.forEach(sc => sc.turns.forEach((tn, k) => { n++; const v = verdictsCache.get(keyAt(sc, k))
       if (!v || v.state === QUALITY.UNVERIFIED) issues.push({ code: 'NATURALNESS_UNVERIFIED', line: n, detail: (v && v.error) || 'no verdict' })
-      else if (v.state === QUALITY.REJECTED) issues.push({ code: 'UNNATURAL', line: n, detail: 'naturalness ' + v.score + '/5' + (v.note ? ' — ' + v.note : '') }) }))
+      else if (v.state === QUALITY.REJECTED || (opt && opt.strict && Number(v.score) <= 3)) issues.push({ code: 'UNNATURAL', line: n, detail: 'naturalness ' + v.score + '/5' + (v.note ? ' — ' + v.note : '') }) }))
     return issues
   }
   // v668 §53/§74 — ONE flow. The v656 whole-conversation composer (one call with "KNOWN WORDS: <900 words>", then
@@ -32192,7 +32193,9 @@ async function _lnComposeThaiStory(env, avoid) {
     if (!flagged.size) break
     // 1) lines the naturalness judge rejected: only those lines are rewritten (a fix is kept only if it passes every line gate and
     //    keeps the line's lesson words)
-    const unn = natIssues.filter(x => x.code === 'UNNATURAL' && x.line > 0)
+    // the line rewrites also take lines the judge scored 3/5 (cached verdicts — no extra call); blind reviews flag far more lines than
+    // the gate's rejections
+    const unn = (await env.naturalness(scenes, { strict: true })).filter(x => x.code === 'UNNATURAL' && x.line > 0).slice(0, 12)
     if (unn.length) {
       const flat = scenes.flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
       try {
@@ -32254,6 +32257,20 @@ async function _lnComposeThaiStory(env, avoid) {
       log && log('  🧹 LISTENING_STORY scene ' + (si + 1) + ' final clean-up ' + (written[si] === before ? 'not kept' : 'kept'))
     }
   }
+  // ── ENGLISH: each scene's English is translated again from its final Thai, so it says exactly what the Thai says (the edits and line
+  //    fixes left English with words the Thai does not have — blind reviews: English 6 / 10) ──
+  for (let si = 0; si < nS; si++) {
+    const w = written[si]
+    if (!w || !w.length) continue
+    try {
+      const r = await call('O_listening_story_english', 'Translate each Thai line of this scene into natural, idiomatic English that says EXACTLY what the Thai says — nothing added (no "let\'s", "sorry", "please", "again" unless the Thai has it), nothing left out. ' +
+        'A is a man, B a woman (' + (plan.scenes[si].present || plan.scenes[si].title) + '); a third person is "they" unless the Thai makes it clear.\n' + w.map((x, k) => (k + 1) + '. ' + x.speaker + ': ' + x.thai).join('\n') +
+        '\nReply ONLY with JSON: {"english":["…"]} — one entry per line, in order.', 900, 'LISTENING_REPAIR_CALLS', true)
+      const en = r && Array.isArray(r.english) ? r.english : []
+      if (en.length === w.length && en.every(x => typeof x === 'string' && x.trim())) w.forEach((x, k) => { x.english = en[k].trim() })
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' English re-translation unusable: ' + String(e && e.message || e).slice(0, 100)) }
+  }
+  log && log('  🔤 LISTENING_STORY English re-translated from the final Thai, scene by scene')
   scenes = build()
   // ── final: the whole conversation through every deterministic gate; a frozen word not heard is deferred (it stays due) ──
   const audit = listeningConversationAudit(scenes, targets, la, ctx)

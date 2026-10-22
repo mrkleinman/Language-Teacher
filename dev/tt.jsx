@@ -25705,9 +25705,9 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
     const prompt = (o.storyScenes
       // v712 — a STORY in scenes (the Thai story composer): each scene title gives the place and time, and who B is when she is not A's
       // friend; the story continues across scenes; a jump in time or place at a scene start is normal
-      ? 'Judge the listening track below as ONE STORY told in scenes, in natural ' + la.label + '. A is the same man throughout. B is a woman: his friend, except in a scene whose title says she is someone else (staff, a host) — then judge her as that person. ' +
+      ? 'Judge the listening track below as scenes from A\'s week, in natural ' + la.label + '. A is the same man throughout. B is a woman: whoever A talks to in that scene (his friend unless the title says she is someone else — staff, a waitress, a colleague); judge her as that person. Each scene should make sense on its own. ' +
         'A new scene may start later or elsewhere (its title says where and when) — that needs no explanation. Check: inside each scene every line follows the one before and every answer responds to its question (why → a reason, when → a time, a proposal → accept / refuse); ' +
-        'across scenes the story follows on (what was decided or said earlier stays true; nothing is referred to before it was set up; a person never acts as both A\'s friend and staff); no line reads like a sentence put in only to show a word.\n' +
+        'across scenes nothing contradicts (what was said earlier stays true; nothing is referred to before it was set up; a person never acts as both A\'s friend and staff in one scene); no line reads like a sentence put in only to show a word.\n' +
         'Speakers: ' + la.speakerContract + '.\nA scene PASSES only if it is coherent in itself AND fits the story so far. If a scene fails, give breakAfterLine = the line number after which it breaks (or null).\n\n'
       : o.oneConversation
       // v672 §2 — ONE conversation: the parts are internal generation chunks, NOT scenes; continuity across parts is judged too
@@ -31999,20 +31999,16 @@ async function _lnComposeThaiStory(env, avoid) {
       const p = await call('O_listening_story_plan', 'TASK: plan ONE new conversation. The learner must hear EVERY ONE of these ' + targets.length + ' lesson words. They are fixed: never drop, replace or add a lesson word.\n' +
         lnStoryTargetRows(targets) + '\n\nWork in two steps. FIRST group the words into 5–6 SITUATIONS where they are naturally said together (e.g. a meal at a restaurant: please sit (the waitress) / would you like more (the waitress) / let\'s eat / ' +
         'just a little; at the museum desk: may I ask / everyone / national museum; making up after a quarrel: sincere / trust / forgive / always). ' +
-        'THEN link the situations into one believable everyday story for A and his friend, each situation becoming one scene, so that every word comes up naturally, in its common sense. ' +
-        (avoid ? 'It must be a DIFFERENT story from this earlier one (other events and settings): "' + avoid + '". ' : '') +
-        'Opening and closing phrases (greetings, wishes, goodbyes) belong at the start or the end; a formal word needs a situation where it fits (reading a sign, a host speaking to guests). ' +
-        'Use 5–6 scenes IN TIME ORDER (a later scene never happens earlier in the week than the one before) that move the story forward in time or place (e.g. "At the café, Friday" → "On the phone that evening" → "At the station, Saturday"). ' +
-        'The story needs ONE simple through-line the listener can follow (one plan or problem from start to end) — not a list of topics. Every topic and event is CAUSED by something said earlier: ' +
-        'words about feelings or relationships (trust, forgive, sincere, always, forever, jealous …) need a real cause set up in an earlier scene (e.g. a friend broke a promise in scene 1, so scene 3 is about forgiving); ' +
-        'a set phrase belongs to the person whose role says it (a waiter asks "anything else?", a host says "please sit", staff say "everyone") — A or B can quote them ("the waiter asked…") only where natural.\n' +
-        'CAST: two voices only. A is a man, the main character, in every scene. B is a woman: his close friend in most scenes, but in a scene where lesson words belong to ' +
-        'someone in a role (a host welcoming guests, a waitress, museum desk staff, a shop assistant), B IS that other person in that scene, a stranger or acquaintance who speaks as her role says. ' +
-        'Put B\'s role in the scene title when she is not the friend (e.g. "Saturday, at the museum desk — B works there"). A friend never speaks like staff, and staff never act as A\'s friend: a role scene is only about the role\'s business (ordering, buying a ticket), and the friend story continues in the friend scenes. ' +
-        'FORMAL or SET-PHRASE lesson words (polite forms, host / staff / announcer phrases, greetings, wishes) come from such a role, never from casual chat between the friends. ' +
-        'If the story needs the friend to miss an event, that scene is before or after it, or on the phone.\n' +
+        'THEN make each situation one scene of A\'s WEEK: 5–6 scenes in time order (e.g. "Monday morning, at the bus stop" → "Tuesday, at the café — B is the waitress" → "Wednesday evening, on the phone with his friend"). ' +
+        (avoid ? 'Use DIFFERENT situations and settings from this earlier week: "' + avoid + '". ' : '') +
+        'Each scene is a COMPLETE small situation in one place: a clear purpose or small problem, what happens, and how it ends — it makes sense on its own, without remembering details of other scenes. ' +
+        'A light thread may link the week (A is planning a trip, preparing for a friend\'s wedding, starting a new job), but no scene may contradict another and nothing is mentioned before it is set up IN THAT SCENE. ' +
+        'Opening and closing phrases (greetings, goodbyes) open and close a scene naturally; feelings words (trust, forgive, sincere, forever) need their cause inside the same scene.\n' +
+        'CAST: two voices only. A is a man, the same person in every scene. B is a woman: whoever A talks to in that scene — his close friend, his sister, a colleague, a waitress, museum desk staff, a shop assistant. ' +
+        'Put who B is in the scene title when she is not his friend (e.g. "Thursday, at the museum desk — B works there"); staff speak politely as staff, friends speak casually. ' +
+        'FORMAL or SET-PHRASE lesson words (polite forms, host / staff phrases) go to a scene where B (or A) has that role.\n' +
         'Give each scene: a title (place and time, plus B\'s role if she is not the friend), "present" (where A and B are and who B is, e.g. "together at the café" / "on the phone: A at work, B at home" / "B is the waitress, A a customer"), what happens (2–3 sentences that carry the plot), ' +
-        '"facts" (what is true by the end of the scene, which later scenes must respect), and "uses": for each of its lesson words, the id and the MOMENT it is said — ' +
+        '"facts" (who B is and what is true in this scene), and "uses": for each of its lesson words, the id and the MOMENT it is said — ' +
         'who says it and why, in at most 10 English words (e.g. {"id":842,"moment":"B, at the museum desk, asks A for his ticket"}). Pick moments where the word is the natural thing to say. ' +
         'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–6 per scene.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +

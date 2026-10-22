@@ -32133,12 +32133,14 @@ async function _lnComposeThaiStory(env, avoid) {
         'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
         'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1500, 'LISTENING_REPAIR_CALLS', true)
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY review round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
-    const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 8)
+    // at most 4 faults per fix call: with 8 faults and the whole checklist the fix reply ran out of tokens every time (paid run S20)
+    const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 4)
     try {
       r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') +
         '\n\nTHE CONVERSATION (numbered; scene titles in brackets):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +
         (faults.length ? '\n\nA NATIVE TEACHER FOUND THESE FAULTS — fix them first:\n' + faults.map(x => '- lines ' + x.from + (Number(x.to) > Number(x.from) ? '–' + x.to : '') + ': ' + String(x.problem || '').slice(0, 140) + (x.fix ? ' → ' + String(x.fix).slice(0, 120) : '')).join('\n') : '') +
         (rejected.length ? '\n\nYOUR LAST REPLACEMENTS THAT COULD NOT BE USED (fix them another way):\n' + rejected.slice(0, 8).map(x => '- lines ' + x.span + ': ' + x.why).join('\n') : '') +
+        (faults.length ? '\n\nTASK: fix ONLY the faults the native teacher listed above (no others).\n' : (
         '\n\nTASK: you are a strict native Thai teacher grading this listening lesson. Read it start to finish as the listener will, and find EVERY fault:\n' +
         '- STORY: contradicts an earlier line or scene (who is where, what was bought or decided, times, excuses); a reply that does not follow the line before; a question not answered; ' +
         'a person or thing the listener cannot identify; a role mix-up; an event with no cause; a topic that jumps in from nowhere.\n' +
@@ -32146,11 +32148,12 @@ async function _lnComposeThaiStory(env, avoid) {
         '- WORD: a lesson word used in an odd sense or forced into a line — give it a context where it is natural (a set-up line before it, or a speaker in a role).\n- EN: the English does not match the Thai.\n' +
         'Check especially: the scene title vs what is said; "why?" answered with a reason; yes / no answered; times agreed then kept; something mentioned for the first time as if known; "and you?" after the other already answered; ' +
         'a joke or apology with no set-up; formal / staff phrases between friends, or B acting as both A\'s friend and staff in one scene; a gift, person or event mentioned before it is set up; verb + noun collocations (วางแผน, not ทำแผน); a missing small word that changes the meaning (ใส่ before clothes, เรื่อง after ขอโทษ, กัน after a shared action, ที่ / อยู่ / เป็น); written forms in speech (อย่างไร → ยังไง, เมื่อ… → ตอน…); มา vs ไป for the speaker\'s position; คุณ in many lines; wrong collocations (1 p.m. is บ่ายโมง, not หนึ่งโมงบ่าย; a temperature is สูง / ต่ำ while the weather is ร้อน — both are right; standing by someone is อยู่ข้าง…เสมอ).\n' +
+        '')) +
         'For each fault, REPLACE a span of 1–3 consecutive lines ("from" … "to"): give exactly as many new lines as you replace, with the SAME speakers in the same order. ' +
         'Every lesson word of the span must still appear somewhere in the new span (it may move to another line of the span). Each new line: at most ' + lnStoryLen(ctx).max + ' Thai words, only known words, ends with the speaker\'s particle. ' +
         'Fix the cause (often an earlier line). At most 5 fixes, the worst first; "problem" in at most 8 words. Also give "score": the grade (0–10) this lesson deserves NOW, as the strict grader would.\n' +
         'Reply ONLY with JSON: {"score":6.5,"fixes":[{"from":12,"to":13,"problem":"…","turns":[{"speaker":"A","thai":"…","english":"…"},{"speaker":"B","thai":"…","english":"…"}]}]}', 1900, 'LISTENING_REPAIR_CALLS')
-    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY edit round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)); break }
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY edit round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)); if (round >= 3) break; continue }
     const fixes = (r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 5)
     let kept = 0; rejected = []
     const touched = new Set()

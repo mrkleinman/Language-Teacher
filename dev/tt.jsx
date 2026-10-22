@@ -9539,7 +9539,10 @@ function anthropicCacheBlocks(text) {
   const head = t.slice(0, i), tail = stripPromptCacheMark(t.slice(i + PROMPT_CACHE_MARK.length))
   return [{ type: 'text', text: head, cache_control: { type: 'ephemeral' } }].concat(tail.trim() ? [{ type: 'text', text: tail }] : [])
 }
-function anthropicRequestBody({ model, messages, maxTokens, json }) {
+// v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
+// word list, where more reasoning improves the story and still finishes in ~15 s)
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium' })
+function anthropicRequestBody({ model, messages, maxTokens, json, effort }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
   let marked = false
@@ -9551,7 +9554,7 @@ function anthropicRequestBody({ model, messages, maxTokens, json }) {
   // Gemini ran with thinking off and a short cap; Haiku thinks adaptively and thinking counts toward max_tokens, so the cap
   // leaves room for it (within the ceiling the server function enforces).
   const max_tokens = Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, Math.max(2048, Math.round((maxTokens || 1200) * 3)))
-  const body = { model, max_tokens, messages: m.messages, thinking: { type: 'adaptive' }, output_config: { effort: ANTHROPIC_CONFIG.effort } }
+  const body = { model, max_tokens, messages: m.messages, thinking: { type: 'adaptive' }, output_config: { effort: effort || ANTHROPIC_CONFIG.effort } }
   if (m.system) body.system = m.system
   if (fmt) body.output_config.format = fmt.format
   return { body, wrapped: !!(fmt && fmt.wrapped), structured: !!fmt, loose: json === true }
@@ -9619,7 +9622,7 @@ function aiRunSpend(runId, provider) {
 // ── the Anthropic transport (one ledger row per HTTP attempt, like Gemini) ──────────────────────────────────────────────
 async function anthropicRequest({ model, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId }) {
   const stageNow = stage || aiStageOf(_promptText, _chain)
-  const req = anthropicRequestBody({ model, messages, maxTokens, json })
+  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow] })
   const latched = AI_ANTHROPIC_LATCH.get(runId)
   const notSent = (why, err) => { const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens }); row.latched = true; aiRecordEnd(row, { http: null, ok: false, error: why }); throw err }
   if (latched) notSent('LATCHED: ' + latched.fatalProvider.reason, latched)
@@ -31989,7 +31992,7 @@ async function _lnComposeThaiStory(env, avoid) {
         'a set phrase belongs to the person whose role says it (a waiter asks "anything else?", a host says "please sit", staff say "everyone") — A or B can quote them ("the waiter asked…") only where natural.\n' +
         'CAST: two voices only. A is a man, the main character, in every scene. B is a woman: his close friend in most scenes, but in a scene where lesson words belong to ' +
         'someone in a role (a host welcoming guests, a waitress, museum desk staff, a shop assistant), B IS that other person in that scene, a stranger or acquaintance who speaks as her role says. ' +
-        'Put B\'s role in the scene title when she is not the friend (e.g. "Saturday, at the museum desk — B works there"). A friend never speaks like staff, and staff never act as A\'s friend. ' +
+        'Put B\'s role in the scene title when she is not the friend (e.g. "Saturday, at the museum desk — B works there"). A friend never speaks like staff, and staff never act as A\'s friend: a role scene is only about the role\'s business (ordering, buying a ticket), and the friend story continues in the friend scenes. ' +
         'FORMAL or SET-PHRASE lesson words (polite forms, host / staff / announcer phrases, greetings, wishes) come from such a role, never from casual chat between the friends. ' +
         'If the story needs the friend to miss an event, that scene is before or after it, or on the phone.\n' +
         'Give each scene: a title (place and time, plus B\'s role if she is not the friend), "present" (where A and B are and who B is, e.g. "together at the café" / "on the phone: A at work, B at home" / "B is the waitress, A a customer"), what happens (2–3 sentences that carry the plot), ' +
@@ -32046,7 +32049,7 @@ async function _lnComposeThaiStory(env, avoid) {
     try {
       const b = await call('O_listening_story_beats', 'You script one scene of a listening lesson for a learner of Thai. Write it in ENGLISH first; it is put into simple spoken Thai afterwards.\n' + brief.replace(/\nReply ONLY with JSON[\s\S]*$/, '') +
         '\n\nWrite the scene as ' + n + ' short spoken lines (at most ' + (lnStoryLen(ctx).max + 3) + ' English words each), A and B alternating. Every line answers or follows the line before; nothing is mentioned that was not set up; ' +
-        'each lesson word comes where it is the natural thing to say (mark the line with its id). Plain everyday words.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"…","ids":[123]}]}', 1200, 'LISTENING_GENERATION_CALLS', true)
+        'each lesson word comes where it is the natural thing to say (mark the line with its id). Plain everyday words. If B is someone in a role in this scene (staff, a waitress), she speaks ONLY as that person — she is not A\'s friend here and knows nothing of their story.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"…","ids":[123]}]}', 1500, 'LISTENING_GENERATION_CALLS', true)
       beats = (b && Array.isArray(b.lines) ? b.lines : []).filter(x => x && x.english).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', english: String(x.english).trim(), ids: (Array.isArray(x.ids) ? x.ids : []).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id)) }))
       if (beats.length < 4) beats = null
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' English script unusable: ' + String(e && e.message || e).slice(0, 100)) }

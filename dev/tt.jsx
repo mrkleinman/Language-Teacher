@@ -9541,7 +9541,7 @@ function anthropicCacheBlocks(text) {
 }
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
-const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium', O_listening_story_review: 'medium' })
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_story_usage: 'medium' })
 function anthropicRequestBody({ model, messages, maxTokens, json, effort }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -31958,7 +31958,7 @@ async function _lnComposeThaiStory(env, avoid) {
   if (la.lang !== 'th') return null
   const byId = new Map(targets.map(t => [t.id, t]))
   const never = lnStoryNeverUse(la, ctx)
-  const prefix = lnStoryPrefix(la, ctx, targets, never)
+  let prefix = lnStoryPrefix(la, ctx, targets, never)
   // a server-side failure (5xx / 429) is retried twice after a pause; anything else (and a fatal provider error) is not retried
   const call = async (stage, prompt, maxTokens, kind, bare) => {
     for (let attempt = 1; ; attempt++) {
@@ -31976,6 +31976,21 @@ async function _lnComposeThaiStory(env, avoid) {
     }
   }
   log && log('🎧 LISTENING_STORY targets frozen first: ' + targets.length + ' revision words [' + targets.map(t => t.surface).join(', ') + '] · a fresh story is planned and written around them · ' + never.length + ' common untaught word(s) named as off-limits')
+  // ── USAGE NOTES: how each lesson word is really used (when, by whom, a typical pattern), written fresh by the model once per track
+  //    and shared by every later call; blind reviews S13–S19 kept marking the same words used in the wrong sense (ไหว for "convenient",
+  //    นัด for booking a table, ไม่เชิง with no yes / no question before it, เลี้ยงดู for one afternoon) ──
+  if (env._lnUsageNotes == null) {
+    env._lnUsageNotes = ''
+    try {
+      const u = await call('O_listening_story_usage', 'You are a native Thai teacher. For each Thai word or phrase below, say in ONE short line how Thai speakers really use it in everyday speech: ' +
+        'its common sense, when and by whom it is said (e.g. staff to customers, on the phone), the usual pattern or partner words, and the common mistake to avoid (a sense it does NOT have). No full example conversations.\n' +
+        lnStoryTargetRows(targets) + '\nReply ONLY with JSON: {"notes":[{"id":123,"note":"…"}]}', 1500, 'LISTENING_GENERATION_CALLS', true)
+      const rows = (u && Array.isArray(u.notes) ? u.notes : []).map(x => ({ id: Number(String(x && x.id).replace(/\D/g, '')), note: String((x && x.note) || '').replace(/\s+/g, ' ').slice(0, 220) })).filter(x => byId.has(x.id) && x.note)
+      env._lnUsageNotes = rows.map(x => byId.get(x.id).surface + ' — ' + x.note).join('\n')
+      log && log('  📖 LISTENING_STORY usage notes for ' + rows.length + ' of ' + targets.length + ' lesson words')
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY usage notes unusable: ' + String(e && e.message || e).slice(0, 100)) }
+  }
+  if (env._lnUsageNotes) prefix += 'HOW THE LESSON WORDS ARE USED (use each in this sense):\n' + env._lnUsageNotes + '\n'
   // ── PLAN ──
   let plan = null
   for (let attempt = 1; attempt <= 2 && !plan; attempt++) {
@@ -32048,6 +32063,7 @@ async function _lnComposeThaiStory(env, avoid) {
     let beats = null
     try {
       const b = await call('O_listening_story_beats', 'You script one scene of a listening lesson for a learner of Thai. Write it in ENGLISH first; it is put into simple spoken Thai afterwards.\n' + brief.replace(/\nReply ONLY with JSON[\s\S]*$/, '') +
+        (env._lnUsageNotes ? '\nHOW THIS SCENE\'S LESSON WORDS ARE USED:\n' + env._lnUsageNotes.split('\n').filter(l => st.some(t => l.startsWith(t.surface + ' — '))).join('\n') : '') +
         '\n\nWrite the scene as ' + n + ' short spoken lines (at most ' + (lnStoryLen(ctx).max + 3) + ' English words each), A and B alternating. Every line answers or follows the line before; nothing is mentioned that was not set up; ' +
         'each lesson word comes where it is the natural thing to say (mark the line with its id). Plain everyday words. If B is someone in a role in this scene (staff, a waitress), she speaks ONLY as that person — she is not A\'s friend here and knows nothing of their story.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"…","ids":[123]}]}', 1500, 'LISTENING_GENERATION_CALLS', true)
       beats = (b && Array.isArray(b.lines) ? b.lines : []).filter(x => x && x.english).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', english: String(x.english).trim(), ids: (Array.isArray(x.ids) ? x.ids : []).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id)) }))

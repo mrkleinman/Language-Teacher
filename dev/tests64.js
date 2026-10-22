@@ -98,6 +98,11 @@ function scriptedModel(c, vocab, opt = {}) {
       return JSON.stringify({ turns })
     }
     if (stage === 'O_listening_story_review') return JSON.stringify({ score: 7, faults: [] })
+    if (stage === 'O_listening_story_usage') {
+      // v712: one usage note per lesson word, written fresh per track and shared by the later calls
+      const rows = rowsOf(p)
+      return JSON.stringify({ notes: rows.map(r => ({ id: r.id, note: 'everyday sense of ' + r.s + ' (usage-note)' })) })
+    }
     if (stage === 'O_listening_story_edit') { st.edits = (st.edits || 0) + 1; return JSON.stringify({ fixes: [] }) }
     if (stage === 'O_listening_story_line_fix') return JSON.stringify({ fixes: [] })
     if (stage === 'verdicts') {
@@ -129,9 +134,11 @@ async function run(c, vocab, opt = {}) {
   {
     const firstCall = A.seq.findIndex(x => x.startsWith('call:O_listening_story')), sel = A.seq.findIndex(x => x.startsWith('log:🎧 LISTENING_SELECTED_TARGET_IDS'))
     const planP = (A.st.prompts.find(x => x.stage === 'O_listening_story_plan') || {}).p || ''
+    const usageOnce = A.st.calls.filter(x => x === 'O_listening_story_usage').length === 1 && /HOW THE LESSON WORDS ARE USED[\s\S]*\(usage-note\)/.test(planP)
     const planIds = [...planP.slice(planP.indexOf('TASK: plan')).matchAll(/^T(\d+) \|/gm)].map(m => Number(m[1]))
     T('S1', 'the 30 revision targets are selected and frozen BEFORE the first story call, and the plan is asked for exactly those ids',
-      sel >= 0 && firstCall > sel && planIds.length === 30 && planIds.join() === frozen.join(), { sel, firstCall, planIds: planIds.length })
+      // v712: the per-track usage notes (one call, after the freeze) reach the plan prompt
+      sel >= 0 && firstCall > sel && planIds.length === 30 && planIds.join() === frozen.join() && usageOnce, { sel, firstCall, planIds: planIds.length, usageOnce })
     T('S2', 'the frozen ids are the Revision selector\'s 30, unchanged (no substitution before the story; the track carries them)',
       A.tr.selectedTargetIds.join() === frozen.join() && frozen.length === 30, { track: A.tr.selectedTargetIds.length })
   }

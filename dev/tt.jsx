@@ -14161,16 +14161,12 @@ function thaiWordUsesLine(target) {
 // word"). Before writing, the model describes each word's everyday use — sense, who says it and when, its usual partner words, the
 // common learner mistake, and three different situations where it is the natural thing to say. AI-derived (nothing hand-written),
 // one batched call for the words that need it, cached per word on this device; shared by the Daily writer and the Listening story.
-const TH_USAGE_CACHE_KEY = 'tt_th_word_usage_v1'
+// v713 — the usage profiles live in memory for the session only: the app adds no storage write (the storage guards in tests37 G3,
+// tests38 O3 and tests39 A6 hold the number of write sites); a new session asks again (a few short calls per track)
 const TH_USAGE_MEM = new Map()
 function thaiUsageKey(surface) { return String(surface || '').trim() }
-function thaiUsageLoad() {
-  if (TH_USAGE_MEM.size) return
-  try { const raw = typeof localStorage !== 'undefined' && localStorage.getItem(TH_USAGE_CACHE_KEY); if (raw) Object.entries(JSON.parse(raw) || {}).forEach(([k, v]) => { if (v && v.use) TH_USAGE_MEM.set(k, v) }) } catch (e) {}
-}
-function thaiUsageSave() {
-  try { if (typeof localStorage !== 'undefined') localStorage.setItem(TH_USAGE_CACHE_KEY, JSON.stringify(Object.fromEntries([...TH_USAGE_MEM.entries()].slice(-3000)))) } catch (e) {}
-}
+function thaiUsageLoad() {}
+function thaiUsageSave() {}
 function thaiUsageOf(surface) { thaiUsageLoad(); return TH_USAGE_MEM.get(thaiUsageKey(surface)) || null }
 // words: [{ thai, english }]; returns how many profiles are known afterwards
 async function thaiEnsureUsageProfiles(words, o, log) {
@@ -19423,7 +19419,11 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     _elog('🧪 EARLY_SLOT_REGENERATION ' + byT.size + ' target(s) · ' + fresh.length + ' candidate(s) · ' + _early.recovered + ' slot(s) refilled so far (only the rejected slots were regenerated)')
   }
   // v712 — every word the bank does not cover is described first (how Thai speakers use it), once, cached per word
-  if (dailyV693On()) { try { await thaiEnsureUsageProfiles(genOrder.filter(t => !thaiBankExchange(t)).map(t => ({ thai: t.thai, english: t.english })), { apiKey, model: GEN_MODEL }, m => onProgress && onProgress(-1, -1, { apiError: m }, null, null)) } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
+  if (dailyV693On()) { try { await thaiEnsureUsageProfiles(genOrder.filter(t => !thaiBankExchange(t)).map(t => ({ thai: t.thai, english: t.english })), { apiKey, model: GEN_MODEL }, _elog) } catch (e) {
+    if (e && e.cancelled) throw e
+    // a deterministic provider failure on this FIRST request stops generation with the same report as a writer request (tests12 F5)
+    if (e && e.fatalProvider) { _elog('⛔ SEMANTIC_PROVIDER_FAILED provider=' + e.fatalProvider.provider + ' http=' + e.fatalProvider.status +
+      ' reason=' + e.fatalProvider.reason + ' — generation stopped (no retries)'); throw e } } }
   for (let i = 0; i < genOrder.length; i++) {
     // v649: Cancel / leaving the screen stops the loop (stopSignal used to be passed but never read)
     if (stopSignal && stopSignal.cancelled) throw _cancelledError('Thai generation stopped')
@@ -23194,7 +23194,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (dailyV693On() && adapter.lang === 'th') {
     let _pf = 0
     t = { ...t, pairs: (t.pairs || []).map(p => {
-      const fx = p && (p.speaker === 'A' || p.speaker === 'B') && /[\u0E00-\u0E7F]/.test(p.thai || '') ? thaiEnsureFinalParticle(p.thai, p.speaker, p.english) : null
+      // the greeting / goodbye set pieces are left as written ("สวัสดีครับ คุณมานพ" ends on the name — tests20 N7)
+      const fx = p && (p.speaker === 'A' || p.speaker === 'B') && classifyTrackPair(p) !== 'FRAMING' && /[\u0E00-\u0E7F]/.test(p.thai || '') ? thaiEnsureFinalParticle(p.thai, p.speaker, p.english) : null
       if (!fx || fx === p.thai) return p
       _pf++; return { ...p, thai: fx, text: fx, phonetic: '', words: [], _finalParticleAdded: true }
     }) }
@@ -32144,7 +32145,7 @@ async function _lnComposeThaiStory(env, avoid) {
     for (let attempt = 1; ; attempt++) {
       tel[kind] = (tel[kind] || 0) + 1
       try {
-        // Haiku writes ~210 tokens / s and thinking counts toward the cap: caps of ~5,700 tokens finish inside the ~30 s cut-off
+        // the model writes ~210 tokens / s and thinking counts toward the cap: caps of ~5,700 tokens finish inside the ~30 s cut-off
         const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: (bare ? '' : prefix + PROMPT_CACHE_MARK) + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: kind === 'LISTENING_GENERATION_CALLS' ? 0.8 : 0.4, json: true, stage })
         return lnStoryJson(raw)
       } catch (e) {

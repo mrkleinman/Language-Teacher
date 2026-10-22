@@ -186,6 +186,9 @@ function daily(c, vocab, mode = 'daily') {
     Object.isFrozen(dC.f.selectedTargetIds) && threw && dC.f.selectedTargetIds.length === 30 && kw.length === 30 && !kw.some(k => k.unresolved))
   // J: generation progress Word 1…30 of 30 and pairs 0/90 … 90/90 (before QC/bridge/framing transformations)
   const cJ = load('tt.compiled.js'); const vJ = learner(cJ); const dJ = daily(cJ, vJ)
+  // v713: the Thai Daily writer first asks the model how each word is used (thaiEnsureUsageProfiles). This test stubs the writer and
+  // checks progress counting only, so that request is answered with no profiles instead of going to the network.
+  cJ.mockGeminiGenerate = async () => '{"words":[]}'
   cJ.generateWordLines = async (t) => [
     { speaker: 'A', thai: 'ผมชอบ' + t.thai + 'ครับ', english: 'x', prompt: 'He says x', phonetic: 'x' },
     { speaker: 'B', thai: 'จริงเหรอคะ', english: 'Really?', prompt: 'She asks', phonetic: 'x' },

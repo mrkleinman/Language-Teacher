@@ -18070,7 +18070,8 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
       // v713 (D3 blind reviews) — exchange-level checks on the three lines written together
       if (dailyV693On() && genderValid.length >= 3) {
         const g = genderValid.slice(0, 3), sq = x => String(x || '').replace(/\s+/g, '')
-        const bare = x => sq(x).replace(/(ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า)+$/, '')
+        // (the speaker's own pronoun does not make a new line: ผมตื่นแล้วครับ / ฉันตื่นแล้วค่ะ say the same thing — D7)
+        const bare = x => sq(x).replace(/(ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า)+$/, '').replace(/^(ผม|ฉัน)(ก็)?/, '')
         for (let i = 1; i < g.length; i++) {
           const q = sq(g[i - 1].thai), a = sq(g[i].thai)
           if (g[i - 1].speaker !== g[i].speaker && /ไหม(ครับ|คะ|ค่ะ)?$/.test(q) && !/ใช่ไหม(ครับ|คะ|ค่ะ)?$/.test(q) && /^(ไม่)?ใช่/.test(a))
@@ -24719,7 +24720,8 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
         (next ? 'and before: ' + (next.speaker || 'A') + ': ' + next.thai + ' (' + (next.english || '') + ')\n' : '') +
         'It must follow the last line naturally (a question gets its answer; an answer is not asked again) and say something new.\n' +
         // v713 (D3: a recovered ค่ะ line followed a B line → B–A–B) — the recovered line is the NEXT speaker's turn
-        (_needSp ? 'It is spoken by ' + _needSp + ' (' + (_needSp === 'A' ? 'the man: ผม … ครับ' : 'the woman: ฉัน … ค่ะ / คะ') + ') — the other person answers or reacts.\n' : '') })() : '') +
+        (_needSp ? (slots.length > 1 ? 'Your lines are the NEXT turns, alternating: the first is spoken by ' + _needSp + ', the next by the other person (A = the man: ผม … ครับ; B = the woman: ฉัน … ค่ะ / คะ) — each answers or reacts to the line before.\n'
+          : 'It is spoken by ' + _needSp + ' (' + (_needSp === 'A' ? 'the man: ผม … ครับ' : 'the woman: ฉัน … ค่ะ / คะ') + ') — the other person answers or reacts.\n') : '') })() : '') +
     (have.length ? 'This word already has these lines — do NOT repeat or paraphrase them:\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai).join('\n') + '\n' : '') +
     // v669 §5/§9/§11 — the missing SLOT is repaired: the intended sense, and a communicative use the existing lines do not cover yet
     'INTENDED SENSE: ' + thaiTargetSense(kw, c.vocab) + '\n' + thaiWordUsesLine(kw) + (dailyV693On() ? THAI_VERB_SENSE_LINE : '') + (_tpPlan ? '' : thaiMissingFunctionLine(have)) +
@@ -24760,7 +24762,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     { const _ws = teachingPlanOn() ? thaiTpSenseProblem(p.thai, kw) : ''; if (_ws) why.push(_ws) }
     const g = thaiLineGate(p, keywords, c.vocab)
     g.problems.forEach(x => why.push(x.code + ': ' + x.why))
-    if (_needSp && p.speaker !== _needSp) why.push('SPEAKER_TURN: this line follows a ' + (_needSp === 'A' ? 'B' : 'A') + ' line, so it must be spoken by ' + _needSp)
+    if (_needSp && slots.length === 1 && p.speaker !== _needSp) why.push('SPEAKER_TURN: this line follows a ' + (_needSp === 'A' ? 'B' : 'A') + ' line, so it must be spoken by ' + _needSp)
     if (have.some(h => h.thai === p.thai)) why.push('DUPLICATE of an existing TARGET PAIR')
     // v706 (relay track 16: a recovered อยากมาบ่อยไหมคะ equalled the line before it → FINAL_DUPLICATE_AUDIT FAIL) — spacing-blind, against
     // every line of the track and every candidate already kept in this batch
@@ -24800,6 +24802,11 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
   }
   const seen = new Set()
   cands = cands.filter(p => { if (seen.has(p.thai)) return false; seen.add(p.thai); return true })
+  // v713 (D7: two refilled เขา lines were both B → A–B–B) — several refilled lines continue the exchange in turn: first the next
+  // speaker, then the other; a candidate that would put one speaker twice in a row is not taken (its slot goes to the next round)
+  if (_needSp && slots.length > 1) { const picked = []; let want = _needSp
+    for (let k = 0; k < opened.length; k++) { const i = cands.findIndex(p => p.speaker === want && !picked.includes(p)); if (i < 0) break; picked.push(cands[i]); want = want === 'A' ? 'B' : 'A' }
+    cands = picked }
   // v672 §1 — accepted candidates fill the opened slots in order (their open check is ACCEPTED); the others are REJECTED
   const out = cands.slice(0, opened.length).map((p, k) => { const x = opened[k]; L.settle(kw.wordId, x.r, 'accepted', 'quota recovery passed every gate', x.n)
     const h = L.history(kw.wordId, x.r); return { ...p, recallIndex: x.r, _checkHistory: h, _checkCount: h.length, checkTier: h.length, _function: thaiLineFunctionId(kw.thai, p) } })
@@ -38301,6 +38308,10 @@ function thaiLexicalSenseProblems(p, targetSurface) {
     if (/เชื่อ\s+(?!(ครับ|ค่ะ|คะ|นะ|เลย|จริง|ไหม|หรอก|ใจ|ผม|ฉัน|คุณ|เขา|เธอ))[\u0E00-\u0E7F]/.test(th) && !/เชื่อว่า/.test(t0)) out.push({ id: 'CHUEA_WAA', code: 'UNNATURAL', why: 'believing a fact needs ว่า — ผมไม่เชื่อว่าโรงแรมเต็มครับ' })
     // โต๊ะ / เก้าอี้ take the classifier ตัว (โต๊ะตัวนี้) or none (โต๊ะนี้), never อัน
     if (/(โต๊ะ|เก้าอี้)อัน(นี้|นั้น|ไหน|โน้น|นู้น)/.test(t0)) out.push({ id: 'TO_CLASSIFIER_TUA', code: 'UNNATURAL', why: 'โต๊ะ / เก้าอี้ take ตัว — โต๊ะตัวนี้ (or just โต๊ะนี้), not โต๊ะอันนี้' })
+    // ในสัปดาห์ alone is "in a week" (habitual), not "this week" (D7 blind reviews)
+    if (/ในสัปดาห์(?!นี้|หน้า|ที่|ละ|ก่อน)/.test(t0)) out.push({ id: 'NAI_SAPDAA', code: 'UNNATURAL', why: 'ในสัปดาห์ alone means "in a week" — say สัปดาห์นี้ (this week) / สัปดาห์หน้า (next week)' })
+    // "that yellow one" needs a classifier: อันสีเหลืองนั้น — ชอบสีเหลืองนั้น is "that yellow colour" (D7 blind reviews)
+    if (/(ชอบ|เอา|ซื้อ|ใช้|ได้)สี(เหลือง|แดง|เขียว|ฟ้า|น้ำเงิน|ขาว|ดำ|ชมพู|ม่วง|ส้ม|เทา|น้ำตาล)(นี้|นั้น|โน้น)/.test(t0)) out.push({ id: 'COLOUR_NEEDS_CLASSIFIER', code: 'UNNATURAL', why: '"that yellow one" needs a classifier — อันสีเหลืองนั้น / ตัวสีเหลืองนั้น (สีเหลืองนั้น means "that yellow colour")' })
     // a "did you …?" question about something DONE needs แล้ว(หรือยัง) — คุณกินยาไหม asks about a habit or the future
     if (/^(did|have) you (take|eat|go|buy|book|call|pay|finish|drink|bring|see|meet|send|get)\b/.test(en) && /ไหม(ครับ|คะ|ค่ะ)?$/.test(t0) && !/(แล้ว|หรือยัง|ยัง|เมื่อ|มาแล้ว|เคย)/.test(t0))
       out.push({ id: 'DONE_NEEDS_LAEW', code: 'UNNATURAL', why: 'for "did you … ?" about something done, ask …แล้วหรือยัง (กินยาแล้วหรือยังครับ) — …ไหม asks about a habit or the future' })

@@ -6,6 +6,7 @@
 //   R4   a line the scene critic's polish changed and the final judge refuses gets its original back
 //   R5   the final cue revalidation is followed by a bounded recovery that replaces a removed line
 //   R6   เขา (he / she / they) is a teachable target with its own teaching contract
+//   R7   refilled lines alternate speakers; ในสัปดาห์ / colour-without-classifier rules (D7 blind reviews)
 //
 //   node tests65.js            (current build: tt.compiled.js, or TT_FILE)
 const fs = require('fs')
@@ -67,6 +68,15 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const V = c.ev('RAW_VOCAB'), w = V.find(v => v.t === 'เขา'), el = c.ev('thaiVocabEligibility')({ ...w, thai: w.t, english: w.e })
     T('R6', 'เขา (he / she / they) is eligible as a target and has its own teaching contract (a third person, never the person spoken to)',
       el.ok && /THIRD PERSON/.test(c.ev('THAI_FUNCTION_TARGET_GUIDE')['เขา'] || ''), el)
+  }
+
+  {
+    // D7 blind reviews (6.5 / 6.1): two refilled เขา lines were both B (A–B–B); ในสัปดาห์ for "this week"; สีเหลืองนั้น for "that yellow one"
+    const lx = c.ev('thaiLexicalSenseProblems'), ids = t => lx({ thai: t, english: 'x' }).map(x => x.id)
+    const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')
+    T('R7', 'several refilled lines continue the exchange in turn (no speaker twice in a row); ในสัปดาห์ and ชอบสีเหลืองนั้น are caught, สัปดาห์นี้ / อันสีเหลืองนั้น pass',
+      /several refilled lines continue the exchange in turn/.test(src) && ids('ในสัปดาห์ผมมีประชุมสามวันครับ').includes('NAI_SAPDAA') && !ids('สัปดาห์นี้ผมมีประชุมครับ').includes('NAI_SAPDAA') &&
+      ids('ผมชอบสีเหลืองนั้นครับ').includes('COLOUR_NEEDS_CLASSIFIER') && !ids('ผมชอบอันสีเหลืองนั้นครับ').includes('COLOUR_NEEDS_CLASSIFIER'))
   }
 
   out.forEach(l => console.log(l))

@@ -14177,10 +14177,11 @@ async function thaiEnsureUsageProfiles(words, o, log) {
   const need = [], seen = new Set()
   ;(words || []).forEach(w => { const k = thaiUsageKey(w && (w.thai || w.surface)); if (k && !seen.has(k) && !TH_USAGE_MEM.has(k)) { seen.add(k); need.push({ thai: k, english: String((w && (w.english || w.gloss)) || '').slice(0, 60) }) } })
   if (!need.length || !o || !o.apiKey) return (words || []).filter(w => thaiUsageOf(w && (w.thai || w.surface))).length
-  for (let i = 0; i < need.length; i += 15) {
-    const batch = need.slice(i, i + 15)
+  // 6 words per call (15 ran out of tokens — paid run S27), three calls at a time
+  const batches = []; for (let i = 0; i < need.length; i += 6) batches.push(need.slice(i, i + 6))
+  const one = async batch => {
     try {
-      const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, maxTokens: 1500, temperature: 0.3, json: true, stage: 'O_word_usage', messages: [{ role: 'user', content:
+      const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, maxTokens: 1800, temperature: 0.3, json: true, stage: 'O_word_usage', messages: [{ role: 'user', content:
         'You are a native Thai teacher. For each Thai word or phrase below, describe how Thai speakers really use it in everyday speech, for an adult learner:\n' +
         '"use": 1–2 short lines — its everyday sense (as glossed), who says it to whom and when (friends, staff to customers, on the phone …), the words it usually goes with (partner words / pattern), and the common learner mistake (a sense it does NOT have, a wrong partner word, the wrong register).\n' +
         '"situations": 3 DIFFERENT everyday situations where a speaker would naturally say it (a few words each, no full sentences).\n' +
@@ -14191,9 +14192,10 @@ async function thaiEnsureUsageProfiles(words, o, log) {
       ;((j && j.words) || []).forEach(x => { const k = thaiUsageKey(x && x.thai); if (k && batch.some(w => w.thai === k) && x.use) TH_USAGE_MEM.set(k, { use: String(x.use).replace(/\s+/g, ' ').slice(0, 300), situations: (Array.isArray(x.situations) ? x.situations : []).map(v => String(v).slice(0, 80)).slice(0, 3) }) })
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ WORD_USAGE batch unusable: ' + String(e && e.message || e).slice(0, 100)) }
   }
+  for (let i = 0; i < batches.length; i += 3) await Promise.all(batches.slice(i, i + 3).map(one))
   thaiUsageSave()
   const known = (words || []).filter(w => thaiUsageOf(w && (w.thai || w.surface))).length
-  log && log('  📖 WORD_USAGE ' + need.length + ' word(s) described by the model (cached for next time) · ' + known + ' of ' + (words || []).length + ' known')
+  log && log('  📖 WORD_USAGE ' + need.filter(w => TH_USAGE_MEM.has(w.thai)).length + ' of ' + need.length + ' new word(s) described by the model (cached for next time) · ' + known + ' of ' + (words || []).length + ' known')
   return known
 }
 function thaiUsageProfileLine(target) {

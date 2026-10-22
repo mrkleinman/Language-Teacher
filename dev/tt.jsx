@@ -23647,7 +23647,7 @@ async function mainTrackCoherenceRepair(track, adapter, ctx, audit) {
       let res = null
       calls++
       try { res = await adapter.recoverTargetPairs(kw, olds.length, { ...c, track: { ...track, pairs: without }, existing: without, round: 'coherence',
-        coherenceRepair: { sceneId: d.sceneId, purpose: d.purpose, localPremise: sc.localPremise || d.localPremise || null, sectionLines: keep.slice(0, 12), replacing: olds.map(p => adapter.sentenceOf(p)) } }) }
+        coherenceRepair: { sceneId: d.sceneId, purpose: d.purpose, localPremise: sc.localPremise || d.localPremise || null, sectionLines: keep.slice(0, 12), replacing: olds.map(p => adapter.sentenceOf(p)), replacingSpeakers: olds.map(p => p.speaker || null) } }) }
       catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; res = { accepted: [], reasons: ['repair error: ' + (e && e.message || e)] } }
       const acc = ((res && res.accepted) || []).slice(0, olds.length)
       acc.forEach((np, k) => {
@@ -24695,8 +24695,10 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
   // v713 (D4: QC removed the B line of บางที's A-B-A exchange; the refill went after the last A line → A-A-A) — when two remaining lines
   // of the word have the same speaker, the refill goes BETWEEN them, as the other speaker; otherwise it is the next speaker's turn
   const _gapAt = !c.coherenceRepair && dailyV693On() && !thaiGenderedTargetSpeaker(kw.thai) ? have.findIndex((h, i) => i > 0 && (have[i - 1].speaker || 'A') === (h.speaker || 'A')) : -1
-  const _needSp = !c.coherenceRepair && dailyV693On() && have.length && !thaiGenderedTargetSpeaker(kw.thai)
-    ? (_gapAt > 0 ? (have[_gapAt].speaker === 'B' ? 'A' : 'B') : (have[have.length - 1].speaker === 'B' ? 'A' : 'B')) : null
+  // v713 (D8: a coherence repair replaced the B line of ตอบ with an A line → A–A–B) — a coherence repair keeps the replaced line's speaker
+  const _crSp = c.coherenceRepair && dailyV693On() && !thaiGenderedTargetSpeaker(kw.thai) && Array.isArray(c.coherenceRepair.replacingSpeakers) ? (c.coherenceRepair.replacingSpeakers[0] || null) : null
+  const _needSp = _crSp || (!c.coherenceRepair && dailyV693On() && have.length && !thaiGenderedTargetSpeaker(kw.thai)
+    ? (_gapAt > 0 ? (have[_gapAt].speaker === 'B' ? 'A' : 'B') : (have[have.length - 1].speaker === 'B' ? 'A' : 'B')) : null)
   const prompt = 'YOU ARE REPAIRING TARGET: ' + kw.thai + ' (id ' + kw.wordId + ')\n' +
     'EVERY candidate MUST contain "' + kw.thai + '" literally, in its normal meaning (' + (THAI_SENSE_POLICY[kw.thai] ? THAI_SENSE_POLICY[kw.thai].sense : (kw.english || '')) + '). Return FEWER candidates — or an empty array — rather than any candidate without "' + kw.thai + '".\n' +
     'QUOTA RECOVERY — Thai target-practice sentences for a learner.\n' +
@@ -24711,6 +24713,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     'A = a man: says ผม for "I" and ends every sentence with ครับ. B = a woman: says ฉัน for "I" and ends with ค่ะ (statements) or คะ (questions).\n' +
     'TARGET WORD: "' + kw.thai + '" = ' + (kw.english || '') + '\n' + (_tpPlan ? '' : targetRoleLine(role, kw, 'th')) +
     coherenceRepairPromptLines(c.coherenceRepair) +
+    (_crSp ? 'The new line is spoken by ' + _crSp + ' (' + (_crSp === 'A' ? 'the man: ผม … ครับ' : 'the woman: ฉัน … ค่ะ / คะ') + '), like the line it replaces.\n' : '') +
     // v704 (relay run 6: a recovered จาน line "ผมไม่มีจานครับ" answered "is this dish spicy?") — a recovered line is inserted RIGHT AFTER
     // the word's last line (_quotaInsertAt), so the writer sees the exchange it joins and the line that follows it
     (!c.coherenceRepair && dailyV693On() && have.length ? (() => {

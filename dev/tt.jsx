@@ -31867,9 +31867,11 @@ const LN_STORY_UNTAUGHT_PROBE = ['คุย', 'แค่', 'เอง', 'ขึ�
   'สั่ง', 'จอง', 'เลี้ยง', 'ไม่ค่อย', 'แล้วก็', 'เดือนหน้า', 'ปีหน้า', 'แถวนี้', 'ของขวัญ', 'โรงเรียน', 'ครู', 'หมอ', 'โรงพยาบาล', 'ร่ม', 'แมว', 'เปียก',
   'อ้วน', 'เงินเดือน', 'ทำอาหาร', 'อาหารไทย', 'เพื่อนบ้าน', 'เหลือ', 'เกิน', 'ห่วง', 'คิดถึง', 'เสียดาย', 'แรก', 'เริ่ม', 'ต่อ', 'อื่น', 'เดียว', 'ทั้ง',
   'อย่าง', 'ครบ', 'นึง', 'เมื่อคืน', 'ข้างนอก', 'ดึก', 'ไฟดับ', 'หลับ', 'ละลาย', 'ตู้', 'เครื่อง', 'ป้าย', 'ชนะ', 'แพ้', 'ลูกค้า', 'พนักงาน', 'ห้องน้ำ']
-const LN_STORY_RULES_LEAN =
+// the line length follows the learner's belt (the same contract the TOO_COMPLEX gate enforces): 10th Kyu 3–7 words, 7th Kyu 5–10 …
+function lnStoryLen(ctx) { const c = (ctx && ctx.complexity) || {}; return { min: c.preferredMin || 3, max: c.hardMax || 7 } }
+const LN_STORY_RULES_LEAN = ctx =>
   'A = a man: ผม; every line ends with ครับ. B = a woman: ฉัน; every line ends with ค่ะ (คะ in a question). One particle per line, at the end (ได้ครับ / ใช่ค่ะ may open a line).\n' +
-  'Lines of 3–7 Thai words, each a complete natural sentence: never drop the small words Thai needs (ที่, กัน, อยู่, เป็น, ใส่, เรื่อง, มา / ไป) to save length; if a thought is too long, say less or split it over two turns. The speakers alternate (never three lines in a row by one). A and B are close friends (drop pronouns where Thai drops them, คุณ rarely) unless the scene makes B someone in a role (staff, host): then she speaks politely as that person.\n' +
+  'Lines of ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).max + ' Thai words, each a complete natural sentence: never drop the small words Thai needs (ที่, กัน, อยู่, เป็น, ใส่, เรื่อง, มา / ไป) to save length; if a thought is too long, say less or split it over two turns. The speakers alternate (never three lines in a row by one). A and B are close friends (drop pronouns where Thai drops them, คุณ rarely) unless the scene makes B someone in a role (staff, host): then she speaks politely as that person.\n' +
   'One story: each reply follows the line before, questions get answers, facts stay consistent. Each lesson word in its everyday sense. No names.\n' +
   'English: a natural translation of exactly what the Thai says. Greetings only at the very start, goodbyes only at the very end.'
 function lnStoryJson(raw) {
@@ -31889,7 +31891,7 @@ function lnStoryPrefix(la, ctx, targets, never) {
   const seen = new Set(), known = []
   ;(ctx.exposed || []).concat(targets.map(t => ({ thai: t.surface }))).forEach(w => { const th = String((w && (w.thai || w.t)) || '').trim(); if (th && !seen.has(th)) { seen.add(th); known.push(th) } })
   return 'You write Thai LISTENING conversations for an adult English-speaking learner (' + ((ctx.complexity && ctx.complexity.belt) || 'beginner') + '): two close friends talking, in natural ' +
-    'spoken Thai, built around this lesson\'s words. A native teacher grades it.\n' + LN_STORY_RULES_LEAN + '\n' +
+    'spoken Thai, built around this lesson\'s words. A native teacher grades it.\n' + LN_STORY_RULES_LEAN(ctx) + '\n' +
     (never.length ? 'NOT TAUGHT to this learner — never use: ' + never.join(' ') + '\n' : '') +
     'KNOWN WORDS (use only these, the lesson words, particles and numbers): ' + known.join(' ') + '\n'
 }
@@ -32043,7 +32045,7 @@ async function _lnComposeThaiStory(env, avoid) {
     let beats = null
     try {
       const b = await call('O_listening_story_beats', 'You script one scene of a listening lesson for a learner of Thai. Write it in ENGLISH first; it is put into simple spoken Thai afterwards.\n' + brief.replace(/\nReply ONLY with JSON[\s\S]*$/, '') +
-        '\n\nWrite the scene as ' + n + ' short spoken lines (at most 10 English words each), A and B alternating. Every line answers or follows the line before; nothing is mentioned that was not set up; ' +
+        '\n\nWrite the scene as ' + n + ' short spoken lines (at most ' + (lnStoryLen(ctx).max + 3) + ' English words each), A and B alternating. Every line answers or follows the line before; nothing is mentioned that was not set up; ' +
         'each lesson word comes where it is the natural thing to say (mark the line with its id). Plain everyday words.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"…","ids":[123]}]}', 1200, 'LISTENING_GENERATION_CALLS', true)
       beats = (b && Array.isArray(b.lines) ? b.lines : []).filter(x => x && x.english).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', english: String(x.english).trim(), ids: (Array.isArray(x.ids) ? x.ids : []).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id)) }))
       if (beats.length < 4) beats = null
@@ -32112,7 +32114,7 @@ async function _lnComposeThaiStory(env, avoid) {
         'Check especially: the scene title vs what is said; "why?" answered with a reason; yes / no answered; times agreed then kept; something mentioned for the first time as if known; "and you?" after the other already answered; ' +
         'a joke or apology with no set-up; formal / staff phrases between friends, or B acting as both A\'s friend and staff in one scene; a gift, person or event mentioned before it is set up; verb + noun collocations (วางแผน, not ทำแผน); a missing small word that changes the meaning (ใส่ before clothes, เรื่อง after ขอโทษ, กัน after a shared action, ที่ / อยู่ / เป็น); written forms in speech (อย่างไร → ยังไง, เมื่อ… → ตอน…); มา vs ไป for the speaker\'s position; คุณ in many lines; wrong collocations (1 p.m. is บ่ายโมง, not หนึ่งโมงบ่าย; a temperature is สูง / ต่ำ while the weather is ร้อน — both are right; standing by someone is อยู่ข้าง…เสมอ).\n' +
         'For each fault, REPLACE a span of 1–3 consecutive lines ("from" … "to"): give exactly as many new lines as you replace, with the SAME speakers in the same order. ' +
-        'Every lesson word of the span must still appear somewhere in the new span (it may move to another line of the span). Each new line: at most 7 Thai words, only known words, ends with the speaker\'s particle. ' +
+        'Every lesson word of the span must still appear somewhere in the new span (it may move to another line of the span). Each new line: at most ' + lnStoryLen(ctx).max + ' Thai words, only known words, ends with the speaker\'s particle. ' +
         'Fix the cause (often an earlier line). At most 5 fixes, the worst first; "problem" in at most 8 words. Also give "score": the grade (0–10) this lesson deserves NOW, as the strict grader would.\n' +
         'Reply ONLY with JSON: {"score":6.5,"fixes":[{"from":12,"to":13,"problem":"…","turns":[{"speaker":"A","thai":"…","english":"…"},{"speaker":"B","thai":"…","english":"…"}]}]}', 1900, 'LISTENING_REPAIR_CALLS')
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY edit round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)); break }

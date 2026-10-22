@@ -8,6 +8,7 @@
 //   S5–S6  the deterministic gates and the paid QC drive targeted rewrites (an untaught word; a line the naturalness judge rejects)
 //   S7     a frozen word the writer never uses is deferred and reported; its SRS state is untouched
 //   S9     the planner may defer at most 4 words with no natural place (reported, still due in SRS); a 5th and 6th are placed anyway
+//   S10    the story prompts take the line length from the learner's belt (not a fixed 7 words)
 //   S8     no stored-conversation path in production; the Daily exchange bank is unchanged
 // Real app code; the model is a deterministic script (no provider calls).
 //   node tests64.js            (current build: tt.compiled.js, or TT_FILE)
@@ -192,6 +193,16 @@ async function run(c, vocab, opt = {}) {
       ask.slice(0, 4).every(id => d.includes(id)) && ask.slice(4).every(id => !d.includes(id)) && d.length === 4 && F.tr.coverage.covered === 26 &&
       sal.filter(x => /no natural place/.test(x.reason)).length === 4 && F.tr.selectedTargetIds.join() === frozen.join() && before === after,
       { deferred: d, covered: F.tr.coverage.covered, reasons: sal.map(x => x.reason), status: F.tr.status })
+  }
+  {
+    // the length in the prompt follows the belt contract the TOO_COMPLEX gate uses: this learner's run, plus two other belts
+    const runP = (A.st.prompts.find(x => x.stage === 'O_listening_story_write') || {}).p || ''
+    const lv = A.tr.level || {}
+    const p7 = c.lnStoryPrefix({ text: x => x }, { complexity: { belt: '7th Kyu', preferredMin: 5, hardMax: 10 }, exposed: [] }, [], [])
+    const pM = c.lnStoryPrefix({ text: x => x }, { complexity: { belt: 'Mukyu', preferredMin: 2, hardMax: 6 }, exposed: [] }, [], [])
+    T('S10', 'the story prompts take the line length from the learner\'s belt (this run: ' + lv.belt + ' up to ' + lv.hardMax + ' words; 7th Kyu 5–10; Mukyu 2–6), not a fixed 7',
+      !!lv.hardMax && runP.includes('–' + lv.hardMax + ' Thai words') && /Lines of 5–10 Thai words/.test(p7) && /Lines of 2–6 Thai words/.test(pM),
+      { level: lv, p7: (p7.match(/Lines of [^ ]+ Thai words/) || [])[0], pM: (pM.match(/Lines of [^ ]+ Thai words/) || [])[0] })
   }
   {
     const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')

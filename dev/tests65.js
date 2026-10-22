@@ -8,6 +8,7 @@
 //   R6   เขา (he / she / they) is a teachable target with its own teaching contract
 //   R7   refilled lines alternate speakers; ในสัปดาห์ / colour-without-classifier rules (D7 blind reviews)
 //   R8   no repeated phrase across an exchange, line 1 starts fresh, dish classifiers, กัน in invitations (D8 blind reviews)
+//   R9   the exchange checks do not burn the track budget (D9b ran out at US$0.40: 117 exchange writes, two checks alternating)
 //
 //   node tests65.js            (current build: tt.compiled.js, or TT_FILE)
 const fs = require('fs')
@@ -88,6 +89,14 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
       /two lines must not use the\s*\n?\s*\/\/ target in the same phrase/.test(src) && /every exchange starts fresh/.test(src) &&
       ids('ขอก๋วยเตี๋ยวหนึ่งครับ').includes('FOOD_NEEDS_CLASSIFIER') && !ids('ขอก๋วยเตี๋ยวน้ำชามหนึ่งครับ').includes('FOOD_NEEDS_CLASSIFIER') && !ids('กาแฟหนึ่งร้อยบาทครับ').includes('FOOD_NEEDS_CLASSIFIER') &&
       ids('วันศุกร์ไปร้านกาแฟไหมคะ', 'Shall we go to the café on Friday?').includes('INVITE_NEEDS_KAN') && !ids('วันศุกร์ไปร้านกาแฟกันไหมคะ', 'Shall we go to the café on Friday?').includes('INVITE_NEEDS_KAN'))
+  }
+
+  {
+    // D9b: "two lines repeat the phrase" and "ใช่ answers a ไหม question" alternated (สีเหลือง: 10 paid rewrites; พัน, นม: 4–7) — the first
+    // now refuses only a phrase shared by all three lines, the second is repaired locally (…ไหม → …ใช่ไหม) with no paid call
+    const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')
+    T('R9', 'a phrase shared by only two of three lines is not refused; a ไหม question answered with ใช่ is turned into …ใช่ไหม locally (no paid rewrite)',
+      /nWith >= 3 && v\.length === nWith && v\.every\(x => x === v\[0\]\)/.test(src) && /LOCAL_REPAIR ไหม → ใช่ไหม/.test(src) && /'ใช่ไหม\$1\$2'/.test(src))
   }
 
   out.forEach(l => console.log(l))

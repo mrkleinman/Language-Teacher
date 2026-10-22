@@ -18072,10 +18072,16 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         const g = genderValid.slice(0, 3), sq = x => String(x || '').replace(/\s+/g, '')
         // (the speaker's own pronoun does not make a new line: ผมตื่นแล้วครับ / ฉันตื่นแล้วค่ะ say the same thing — D7)
         const bare = x => sq(x).replace(/(ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า)+$/, '').replace(/^(ผม|ฉัน)(ก็)?/, '')
+        // v715 (D9b: this check and the phrase check below alternated for 10 paid rewrites of one word and the track ran out of budget)
+        // — a ไหม question answered with ใช่ / ไม่ใช่ is repaired HERE, without a paid call: the question becomes …ใช่ไหม, the
+        // confirmation question ใช่ answers ("จานสีเหลืองไหมคะ" → "จานสีเหลืองใช่ไหมคะ")
         for (let i = 1; i < g.length; i++) {
           const q = sq(g[i - 1].thai), a = sq(g[i].thai)
-          if (g[i - 1].speaker !== g[i].speaker && /ไหม(ครับ|คะ|ค่ะ)?$/.test(q) && !/ใช่ไหม(ครับ|คะ|ค่ะ)?$/.test(q) && /^(ไม่)?ใช่/.test(a))
-            naturalFails.push('Line ' + (i + 1) + ' answers "' + g[i - 1].thai + '" with ใช่/ไม่ใช่ — a Thai ไหม question is answered by repeating its verb (อยากค่ะ / ไม่อยากค่ะ, ชอบครับ, มีครับ, ไม่ได้อยู่ครับ); ใช่ only answers ใช่ไหม')
+          if (g[i - 1].speaker !== g[i].speaker && /ไหม(ครับ|คะ|ค่ะ)?$/.test(q) && !/ใช่ไหม(ครับ|คะ|ค่ะ)?$/.test(q) && /^(ไม่)?ใช่/.test(a)) {
+            const fixed = String(g[i - 1].thai).replace(/\s*ไหม(\s*)(ครับ|คะ|ค่ะ)?\s*$/, 'ใช่ไหม$1$2')
+            if (fixed !== g[i - 1].thai && /ใช่ไหม(ครับ|คะ|ค่ะ)?$/.test(sq(fixed))) { onProgress && onProgress(-1, -1, { apiError: '🔧 LOCAL_REPAIR ไหม → ใช่ไหม (answered with ใช่): ' + g[i - 1].thai + ' → ' + fixed + ' (no paid call)' }, null, null); g[i - 1].thai = fixed }
+            else naturalFails.push('Line ' + (i + 1) + ' answers "' + g[i - 1].thai + '" with ใช่/ไม่ใช่ — a Thai ไหม question is answered by repeating its verb (อยากค่ะ / ไม่อยากค่ะ, ชอบครับ, มีครับ, ไม่ได้อยู่ครับ); ใช่ only answers ใช่ไหม')
+          }
         }
         for (let i = 0; i < g.length; i++) for (let j = i + 1; j < g.length; j++)
           if (bare(g[i].thai) && bare(g[i].thai) === bare(g[j].thai)) naturalFails.push('Lines ' + (i + 1) + ' and ' + (j + 1) + ' say the same thing — every line must say something new')
@@ -18088,7 +18094,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         { const tg = sq(target.thai), win = g.map(l => { const t = sq(l.thai), i = t.indexOf(tg); if (i < 0) return null
             const after = t.slice(i + tg.length).replace(/^(ครับ|ค่ะ|คะ|นะ)+/, '').slice(0, 3), before = t.slice(Math.max(0, i - 3), i)
             return { after: after.length >= 2 ? after : null, before: before.length >= 2 && !/^(ผม|ฉัน|คุณ)$/.test(before) ? before : null } })
-          const rep = k => { const v = win.map(w => w && w[k]).filter(Boolean); return v.find((x, i) => v.indexOf(x) !== i) }
+          // v715 — refused only when EVERY line with the target uses the same phrase (the reviewers' complaint was "all three"); two of three
+          // sharing a natural phrase (พันบาท, นมเย็น) cost up to 7 paid rewrites a word in D9b and pushed the track past its budget
+          const nWith = win.filter(Boolean).length
+          const rep = k => { const v = win.map(w => w && w[k]).filter(Boolean); return nWith >= 3 && v.length === nWith && v.every(x => x === v[0]) ? v[0] : undefined }
           const ra = rep('after'), rb = rep('before')
           if (tg.length >= 2 && (ra || rb)) naturalFails.push('Two lines use "' + target.thai + '" in the same phrase ("' + (ra ? target.thai + ra : rb + target.thai) + '…") — give each line a DIFFERENT use of the word (another phrase, another situation, another meaning it has)') }
         // (D8: "ไม่ เอาแก้ว ผมอยากได้นม" refused a glass from the exchange before) — every exchange starts fresh: line 1 does not answer or

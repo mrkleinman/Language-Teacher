@@ -32085,7 +32085,9 @@ async function _lnComposeMeaningFirst(env) {
 // Lesson words are never substituted. No stored conversation is used (the offline library is a test fixture only).
 // each request must finish inside ~30 s (the provider path cuts longer ones off): token caps of ~5,700 (the app allows 3× the asked
 // output for adaptive thinking) and scenes of at most 12 lines
-const LN_STORY_TURNS = { min: 40, max: 60, sceneMin: 7, sceneMax: 12 }
+// v715 — room for a set-up line before every lesson word (S39 blind reviews: "I trust you" / "I forgive you" / a wedding with nothing
+// before them; 25 words in 59 lines left almost every other line carrying a lesson word)
+const LN_STORY_TURNS = { min: 55, max: 75, sceneMin: 9, sceneMax: 15 }
 // the vetted-content switch (off in tests of the older model composers, which mock the model for those paths)
 function thaiListeningStoryOn() { return THAI_BANK_ON && dailyV693On() }
 // common words a writer reaches for; the ones THIS learner has not been taught are named in the prompt (the gate decides, not the list)
@@ -32259,6 +32261,9 @@ async function _lnComposeThaiStory(env, avoid) {
         'naturally says it (B is the host at her own home: "please sit"; A reads out a sign or repeats what the shop said). ' +
         'Pick each lesson word\'s MOMENT from something that really happens on this outing: the word must be the natural thing to say there, set up by what came before. ' +
         'FEELINGS and VALUE words (trust, forgive, sincere, forever, reputation) are SPREAD OUT: at most ONE per scene, each caused by a small, ordinary event (B finds the wallet A dropped → trust; A is late and says sorry → B forgives him). Friends never make speeches about their friendship. ' +
+        // S39 blind reviews: ทุกท่าน said to strangers at a bus stop, ไม่ทราบว่า asked of a friend — a formal word needs a formal frame
+        'FORMAL or SET-PHRASE words (ทุกท่าน, ไม่ทราบว่า, เชิญ…, polite staff phrases) are not said casually to a friend: give them a frame where the friend really says them — B practising the welcome speech she will give, A reading a sign or a message aloud, one of them telling how a stranger or the staff spoke. ' +
+        'Every lesson word needs a SET-UP just before it: something asked, offered, done or found that makes the word the natural reply (no "I trust you" or "I forgive you" out of nothing; no event, person or plan mentioned before it is introduced). ' +
         'A scene title names the PLACE only (no day, no time of day, no roles). Greetings only in scene 1, goodbyes only in the last scene.\n' +
         'Give each scene: a title (the place), "present" (where the two are, e.g. "together on the bus"), what happens (2–3 sentences that carry the plot on from the scene before), ' +
         '"facts" (what is true after this scene), and "uses": for each of its lesson words, the id and the MOMENT it is said — ' +
@@ -32303,11 +32308,11 @@ async function _lnComposeThaiStory(env, avoid) {
     const s = plan.scenes[si], st = sceneTargets(si), n = remainingTurns(si)
     const brief = 'STORY: "' + plan.title + '" — ' + plan.story + '\nALL SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ': ' + x.happens + (x.facts ? ' (true after it: ' + x.facts + ')' : '')).join(' | ') + '\n' +
       (si ? '\nTHE CONVERSATION SO FAR:\n' + soFar(si) + '\n' : '') +
-      '\nTASK: write scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '"' + (s.present ? ' — ' + s.present : '') + ': ' + s.happens + '\nOnly A and B speak, to each other (B is the person the scene title and "present" say); respect everything the earlier scenes established. About ' + n + ' lines (' + LN_STORY_TURNS.sceneMin + '–' + LN_STORY_TURNS.sceneMax + '), continuing directly from the conversation so far. ' +
+      '\nTASK: write scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '"' + (s.present ? ' — ' + s.present : '') + ': ' + s.happens + '\nOnly A and B speak, to each other, as the same two friends; respect everything the earlier scenes established. About ' + n + ' lines (' + LN_STORY_TURNS.sceneMin + '–' + LN_STORY_TURNS.sceneMax + '), continuing directly from the conversation so far. ' +
       (si === 0 ? 'It opens the conversation (a greeting is fine). ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends the conversation with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
       '\nUse EVERY ONE of these lesson words at least once, spelled exactly, in its common sense (not more than 3 lesson words in one line), at its planned moment:\n' +
       st.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (s.moments && s.moments[t.id] ? ' — moment: ' + s.moments[t.id] : '')).join('\n') +
-      '\nA new topic or event in this scene must follow from something said before it. Every line moves the story on (no filler such as a bare ดีค่ะ / ขอบคุณครับ after every line); most lines ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' words.' +
+      '\nThe line just BEFORE each lesson word gives the reason to say it (a question, an offer, something that happens). A new topic or event in this scene must follow from something said before it. Every line moves the story on (no filler such as a bare ดีค่ะ / ขอบคุณครับ after every line); most lines ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' words.' +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}'
     let best = null
     // the scene is first scripted in ENGLISH (a short call without the Thai word list: the model can think about the story alone),
@@ -32319,7 +32324,7 @@ async function _lnComposeThaiStory(env, avoid) {
         '\n\nOutline the scene as ' + Math.max(4, Math.round(n / 2)) + '–' + Math.round(n / 2 + 1) + ' short story BEATS in English, in order (who does or asks what, and how the other reacts — not the dialogue itself). Every beat follows from the one before; nothing is mentioned that was not set up; ' +
         // v713 (S32 blind reviews: at the bus stop A says "see you at the bus stop" and B asks where the bus stop is)
         'the scene STARTS where "present" says A and B already are — nobody arranges to meet at, asks the way to, or says he will wait at the place they are standing in; a question is answered before the talk moves on; ' +
-        'each lesson word comes at the beat where it is the natural thing to say (mark the beat with its id). Plain everyday words. A and B are the same two close friends on one outing; nobody else speaks.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"A asks …; B says …","ids":[123]}]}', 1500, 'LISTENING_GENERATION_CALLS', true)
+        'each lesson word comes at the beat where it is the natural thing to say, right after a beat that sets it up (the other person asks, offers, does or finds something) — mark the beat with its id. Plain everyday words. A and B are the same two close friends on one outing; nobody else speaks.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"A asks …; B says …","ids":[123]}]}', 1500, 'LISTENING_GENERATION_CALLS', true)
       beats = (b && Array.isArray(b.lines) ? b.lines : []).filter(x => x && x.english).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', english: String(x.english).trim(), ids: (Array.isArray(x.ids) ? x.ids : []).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id)) }))
       if (beats.length < 3) beats = null
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' English script unusable: ' + String(e && e.message || e).slice(0, 100)) }

@@ -205,7 +205,7 @@ function daily(c, vocab, mode = 'daily') {
   const audit = c.ev('THAI_LEXICON_AUDIT_V645')
   T('K', 'the four records were repaired from bank evidence (not blind): before/after kept; ids unchanged; Thursday duplicate 431 retired into 1626',
     audit.every(a => a.applied && a.before && a.evidence) && raw.find(d => d.id === 108).ph === 'sǎai' && raw.find(d => d.id === 108).e.startsWith('late') &&
-    raw.find(d => d.id === 67).e === 'cheap' && raw.find(d => d.id === 324).ph === 'rɔɔng-tháo' && /bɔɔ-dii/.test(raw.find(d => d.id === 1626).ph) &&
+    /* v713: owner decision — ถูก (67) carries both senses in one entry */ raw.find(d => d.id === 67).e === 'cheap; correct, right' && raw.find(d => d.id === 324).ph === 'rɔɔng-tháo' && /bɔɔ-dii/.test(raw.find(d => d.id === 1626).ph) &&
     c.thaiCanonicalId(431) === 1626, audit.map(a => a.id + ' ' + a.thai + ': ' + JSON.stringify(a.before.e) + ' → ' + JSON.stringify(raw.find(d => d.id === a.id).e) + ', ph ' + a.before.ph + ' → ' + raw.find(d => d.id === a.id).ph))
   // S: สาย stored as "late" with an explicit sense, and every generation-side hint agrees
   const sai = raw.find(d => d.id === 108), srcS = fs.readFileSync('tt.jsx', 'utf8')

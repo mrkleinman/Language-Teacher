@@ -68,7 +68,8 @@ const RAW_VOCAB = [{"t": "ผม", "e": "I (male)", "l": "easy", "i": 40, "r": 7
 // is untouched (ids are unchanged).
 const THAI_LEXICON_AUDIT_V645 = [
   { id: 67, thai: 'ถูก',
-    set: { e: 'cheap', senseId: 'ถูก:cheap', note: 'price sense — the opposite of แพง (expensive). ถูก "correct/right" and the passive marker ถูก are different senses and are not taught by this entry.' },
+    // v713 — the owner's decision: ONE entry carries both everyday senses (cheap / correct, right); only the passive marker stays out
+    set: { e: 'cheap; correct, right', senseId: 'ถูก:cheap+correct', note: 'two everyday senses: cheap (price — ราคาถูก, the opposite of แพง) and correct / right (ถูกแล้ว, ตอบถูก). The passive marker ถูก (ถูกขโมย) is a different use and is not taught by this entry.' },
     why: 'SEMANTIC:HOMONYM_COLLISION — the gloss "cheap / correct" named two unrelated senses.',
     evidence: 'Curriculum 61–68 is the shopping/price cluster (ซื้อ buy, จ่าย pay, เงิน money, บาท baht, ราคา price, แพง expensive, ถูก, ดี) ⇒ the taught sense is "cheap". Phonetic thùuk already correct (high-class ถ, dead syllable, no mark ⇒ low tone).' },
   { id: 108, thai: 'สาย',

@@ -14201,7 +14201,7 @@ async function thaiEnsureUsageProfiles(words, o, log) {
 function thaiUsageProfileLine(target) {
   const u = thaiUsageOf(target && (target.thai || target.t || target.surface))
   if (!u) return ''
-  return '\u2022 HOW THAI SPEAKERS USE "' + (target.thai || target.t || target.surface) + '": ' + u.use + (u.situations && u.situations.length ? ' — natural situations: ' + u.situations.join(' / ') : '') + '\n'
+  return '\u2022 HOW THAI SPEAKERS USE "' + (target.thai || target.t || target.surface) + '": ' + u.use + (u.situations && u.situations.length ? ' — natural situations (build the whole exchange around ONE of them): ' + u.situations.join(' / ') : '') + '\n'
 }
 function thaiUsageFrameLine(target) {
   const th = target && (target.thai || target.t)
@@ -17276,7 +17276,10 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
   // v708 (owner review of v707: "separate Daily practice from one connected story — short, natural three-recall mini-conversations") —
   // each exchange stands on its own; the scene is only its setting
   const _stableSystem = 'You write Pimsleur-style Thai lessons. ' + (dailyV693On() ? 'Write one short, SELF-CONTAINED three-line exchange between two friends: it does not continue earlier lines, ' +
-    'so nothing in it ("too", "then", "that one", ด้วย / ก็ / งั้น / นั้น) points at something not said in these three lines; the scene below is only the setting.\n' : 'Write one exchange in an ongoing conversation.\n') +
+    'so nothing in it ("too", "then", "that one", ด้วย / ก็ / งั้น / นั้น) points at something not said in these three lines; the scene below is only the setting. ' +
+    // v712 (blind reviews of the no-bank Daily run D1: coherence 4.5 — "the spoon is very big" … "it is not big"; a third line that
+    // ignores the second) — the three lines are one small exchange that holds together
+    'The three lines are ONE small situation: line 2 answers or reacts to line 1, and line 3 follows from line 2 (accepts, answers or adds) — it never contradicts or ignores lines 1–2, and the facts (size, price, time, who) stay the same.\n' : 'Write one exchange in an ongoing conversation.\n') +
     'SCENE: ' + scene + '\n' +
     'A = ' + charA + ' — MUST end every sentence with ครับ\n' +
     'B = ' + charB + ' — MUST end every sentence with ' + (/\bman\b|\bmale\b|\bboy\b|\bold man\b|\bgentleman\b/i.test(charB) ? 'ครับ (B is MALE)' : 'ค่ะ or คะ') + '\n' +
@@ -22512,11 +22515,22 @@ function thaiFinalCueLint(p, o) {
   if (r && !thaiCueDefects(r, p, o).length && formOk(r) && !_broken(r)) return { cue: r, defects: d0, fixed: true, via: 'rebuilt' }
   return { cue: s1, defects: d0, fixed: s1 !== cue0, via: s1 !== cue0 ? 'simple-partial' : null, remaining: d1 }
 }
+// v712 (blind reviews of the no-bank Daily run D1: "Greet นิดา", "Hello นิดา") — a learner-facing English cue or translation never
+// carries Thai script: a scene name written in Thai becomes its English spelling (Nida, Somchai), from the name tables
+function thaiEnglishNameFix(text) {
+  const t = String(text || '')
+  if (!/[\u0E00-\u0E7F]/.test(t)) return t
+  const rev = {}
+  try { Object.entries(THAI_NAME_TRANSLIT).forEach(([en, th]) => { if (!rev[th]) rev[th] = en.charAt(0).toUpperCase() + en.slice(1) }) } catch (e) {}
+  return t.replace(/[\u0E00-\u0E7F]+/g, m => rev[m] || (THAI_NAME_PHONETIC[m] ? THAI_NAME_PHONETIC[m].normalize('NFD').replace(/[\u0300-\u036f-]/g, '').replace(/(aa|ii|uu|ee|oo)/g, x => x[0]).replace(/^./, x => x.toUpperCase()) : m))
+}
 function thaiFinalCueLintPass(pairs, track, log) {
   let A = { name: '', gender: 'm' }, B = { name: '', gender: 'f' }
   try { const cx = cueClarityCtx('th', track); const nm = cx.names || []; A.name = nm[0] || ''; B.name = nm[1] || '' } catch (e) {}
   const fx = [], left = []
-  const out = (pairs || []).map(p => { if (!p || !p.thai || !p.prompt || !p.english) return p
+  const out = (pairs || []).map(p0 => { if (!p0 || !p0.thai || !p0.prompt || !p0.english) return p0
+    const p = dailyV693On() && /[\u0E00-\u0E7F]/.test(p0.prompt + p0.english) ? { ...p0, prompt: thaiEnglishNameFix(p0.prompt), english: thaiEnglishNameFix(p0.english) } : p0
+    if (p !== p0) fx.push('Thai script in English → "' + p.english + '"')
     // v709 (paid track 10: "Tell her your nose is too big" → "Say that my nose is too big") — a vetted bank cue is not re-linted
     if (thaiBankVerdict('cue', p)) return p
     const addr = p.speaker === 'A' ? 'f' : 'm', addrName = p.speaker === 'A' ? B.name : A.name
@@ -32057,7 +32071,7 @@ async function _lnComposeThaiStory(env, avoid) {
         'Each scene is a COMPLETE small situation in one place: a clear purpose or small problem, what happens, and how it ends — it makes sense on its own, without remembering details of other scenes. ' +
         'A light thread may link the week (A is planning a trip, preparing for a friend\'s wedding, starting a new job), but no scene may contradict another and nothing is mentioned before it is set up IN THAT SCENE. ' +
         'Opening and closing phrases (greetings, goodbyes) open and close a scene naturally; feelings words (trust, forgive, sincere, forever) need their cause inside the same scene.\n' +
-        'CAST: two voices only. A is a man, the same person in every scene. B is a woman: whoever A talks to in that scene — his close friend, his sister, a colleague, a waitress, museum desk staff, a shop assistant. ' +
+        'CAST: two voices only. A is a man, the same person in every scene. B is a woman: whoever A talks to in that scene — his close friend, a colleague, a waitress, museum desk staff, a shop assistant (not a relative: B always says ฉัน). ' +
         'Put who B is in the scene title when she is not his friend (e.g. "Thursday, at the museum desk — B works there"); staff speak politely as staff, friends speak casually. ' +
         'FORMAL or SET-PHRASE lesson words (polite forms, host / staff phrases) go to a scene where B (or A) has that role.\n' +
         'Give each scene: a title (place and time, plus B\'s role if she is not the friend), "present" (where A and B are and who B is, e.g. "together at the café" / "on the phone: A at work, B at home" / "B is the waitress, A a customer"), what happens (2–3 sentences that carry the plot), ' +
@@ -32179,7 +32193,7 @@ async function _lnComposeThaiStory(env, avoid) {
         'SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '')).join(' | ') +
         '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
         '\n\nRead it start to finish as the listener will. List the worst faults (at most 8), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
-        'time running backwards, a person / thing / event mentioned before it is set up, B acting as both friend and staff), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
+        'time running backwards, a person / thing / event mentioned before it is set up, B acting as both friend and staff, the scene title not matching what is said (together vs on the phone, the place), a day or time that clashes with another scene (on Thursday asking about "this Wednesday"), feelings words piled into one melodramatic exchange without a real cause), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
         (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') +
         'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
         'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1500, 'LISTENING_REPAIR_CALLS', true)

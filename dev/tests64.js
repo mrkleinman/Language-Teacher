@@ -161,7 +161,10 @@ async function run(c, vocab, opt = {}) {
     const planP = (A.st.prompts.find(x => x.stage === 'O_listening_story_plan') || {}).p || ''
     // the per-track usage notes are written once and reach the English scene scripts (not the shared prefix: it made every call longer — S21)
     const beatP = (A.st.prompts.find(x => x.stage === 'O_listening_story_beats') || {}).p || ''
-    const usageOnce = A.st.calls.filter(x => x === 'O_word_usage').length >= 1 && /LESSON WORDS ARE USED[\s\S]*\(usage-note\)/.test(beatP) && !/\(usage-note\)/.test(planP)
+    // v715: the notes now also reach the PLAN (the owner chose the episode restructure after S39 / S40: the planner picks each word's moment
+    // from how the word is really used); this used to assert they were kept out of the plan. A plan with per-word set-ups skips the English
+    // script, so the beat prompt may be absent.
+    const usageOnce = A.st.calls.filter(x => x === 'O_word_usage').length >= 1 && /HOW THESE WORDS ARE REALLY USED[\s\S]*\(usage-note\)/.test(planP) && (!beatP || /\(usage-note\)/.test(beatP))
     const planIds = [...planP.slice(planP.indexOf('TASK: plan')).matchAll(/^T(\d+) \|/gm)].map(m => Number(m[1]))
     T('S1', 'the 30 revision targets are selected and frozen BEFORE the first story call, and the plan is asked for exactly those ids',
       // v712: the per-track usage notes (one call, after the freeze) reach the English scene scripts

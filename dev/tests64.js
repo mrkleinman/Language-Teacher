@@ -74,9 +74,16 @@ function scriptedModel(c, vocab, opt = {}) {
         return { turns } })
       return JSON.stringify({ scenes })
     }
+    if (stage === 'O_listening_story_beats') {
+      // v712: the scene is scripted in English first — one line per lesson word of the scene, marked with its id
+      const rows = rowsOf(p.slice(p.indexOf('TASK: write')))
+      return JSON.stringify({ lines: rows.map((r, k) => ({ speaker: k % 2 ? 'B' : 'A', english: 'line about ' + r.s, ids: [r.id] })) })
+    }
     if (stage === 'O_listening_story_write') {
-      const mm = p.match(/TASK: write scene (\d+) of (\d+)/), si = Number(mm[1]) - 1, nS = Number(mm[2])
-      const turns = sceneTurns(rowsOf(p.slice(p.indexOf('TASK: write'))), si, nS)
+      // the write call either writes the scene from its brief ("TASK: write scene n of m") or puts the English script into Thai
+      // ("TASK: put scene n of m")
+      const mm = p.match(/TASK: (?:write|put) scene (\d+) of (\d+)/), si = Number(mm[1]) - 1, nS = Number(mm[2])
+      const turns = sceneTurns(rowsOf(p.slice(p.search(/TASK: (?:write|put) scene/))), si, nS)
       if (opt.inject && si === 0) turns[1] = { speaker: turns[1].speaker, thai: opt.inject[turns[1].speaker], english: 'injected' }
       return JSON.stringify({ turns })
     }
@@ -126,12 +133,14 @@ async function run(c, vocab, opt = {}) {
   {
     // v712: scenes are written one by one (each request kept short), each with the whole plan and the earlier scenes as context
     const L = (A.tr.listening || {}).lines || [], gen = A.st.calls.filter(s => s === 'O_listening_story_write').length
-    const wrote = A.st.prompts.filter(x => x.stage === 'O_listening_story_write' && /TASK: write scene \d+ of 4/.test(x.p)).length
+    // v712: each scene is scripted in English first, then the write call puts that script into Thai (it carries the English lines)
+    const wrote = A.st.prompts.filter(x => x.stage === 'O_listening_story_write' && /TASK: put scene \d+ of 4/.test(x.p) && /SCENE \(English\):/.test(x.p)).length
+    const beats = A.st.calls.filter(s => s === 'O_listening_story_beats').length
     const tel = A.tr.telemetry || {}
     T('S3', 'end to end: READY with all 30 frozen words heard, composer = story, written by the model (plan + one call per scene), the whole-conversation edit and the paid QC ran (naturalness + coherence), real call counts on the track',
-      A.tr.status === 'READY' && A.tr.coverage.covered === 30 && A.tr.listening.composer === 'story' && gen === 4 && wrote === 4 &&
+      A.tr.status === 'READY' && A.tr.coverage.covered === 30 && A.tr.listening.composer === 'story' && gen === 4 && wrote === 4 && beats === 4 &&
       A.st.calls.includes('O_listening_story_edit') && A.st.calls.includes('verdicts') && A.st.calls.includes('O_listening_coherence') && tel.LISTENING_GENERATION_CALLS >= 2 && tel.LISTENING_QC_CALLS >= 1 && L.length >= 30,
-      { status: A.tr.status, cov: A.tr.coverage, composer: A.tr.listening && A.tr.listening.composer, calls: A.st.calls, tel, failed: A.tr.failedChecks })
+      { status: A.tr.status, cov: A.tr.coverage, composer: A.tr.listening && A.tr.listening.composer, beats, wrote, calls: A.st.calls, tel, failed: A.tr.failedChecks })
   }
   {
     const B = await run(c, vocab, { variant: 1 })

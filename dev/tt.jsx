@@ -31955,12 +31955,12 @@ async function _lnComposeThaiStory(env, avoid) {
   const never = lnStoryNeverUse(la, ctx)
   const prefix = lnStoryPrefix(la, ctx, targets, never)
   // a server-side failure (5xx / 429) is retried twice after a pause; anything else (and a fatal provider error) is not retried
-  const call = async (stage, prompt, maxTokens, kind) => {
+  const call = async (stage, prompt, maxTokens, kind, bare) => {
     for (let attempt = 1; ; attempt++) {
       tel[kind] = (tel[kind] || 0) + 1
       try {
         // Haiku writes ~210 tokens / s and thinking counts toward the cap: caps of ~5,700 tokens finish inside the ~30 s cut-off
-        const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: prefix + PROMPT_CACHE_MARK + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: kind === 'LISTENING_GENERATION_CALLS' ? 0.8 : 0.4, json: true, stage })
+        const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, messages: [{ role: 'user', content: (bare ? '' : prefix + PROMPT_CACHE_MARK) + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: kind === 'LISTENING_GENERATION_CALLS' ? 0.8 : 0.4, json: true, stage })
         return lnStoryJson(raw)
       } catch (e) {
         const transient = !(e && (e.fatalProvider || e.cancelled)) && /\b(5\d\d|429)\b|overloaded|timeout|ECONNRESET|MAX_TOKENS|cut off|no JSON|Unexpected end/i.test(String((e && (e.status || '')) + ' ' + (e && e.message || e)))
@@ -32032,7 +32032,22 @@ async function _lnComposeThaiStory(env, avoid) {
       '\nA new topic or event in this scene must follow from something said before it. Every line moves the story on (no filler such as a bare ดีค่ะ / ขอบคุณครับ after every line); most lines 4–7 words.' +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}'
     let best = null
-    try { written[si] = take(await call('O_listening_story_write', brief, 1900, 'LISTENING_GENERATION_CALLS')) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
+    // the scene is first scripted in ENGLISH (a short call without the Thai word list: the model can think about the story alone),
+    // then put into Thai with the word list (blind reviews of S13: story 3/10 — writing both at once lost the thread)
+    let beats = null
+    try {
+      const b = await call('O_listening_story_beats', 'You script one scene of a listening lesson for a learner of Thai. Write it in ENGLISH first; it is put into simple spoken Thai afterwards.\n' + brief.replace(/\nReply ONLY with JSON[\s\S]*$/, '') +
+        '\n\nWrite the scene as ' + n + ' short spoken lines (at most 10 English words each), A and B alternating. Every line answers or follows the line before; nothing is mentioned that was not set up; ' +
+        'each lesson word comes where it is the natural thing to say (mark the line with its id). Plain everyday words.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"…","ids":[123]}]}', 1200, 'LISTENING_GENERATION_CALLS', true)
+      beats = (b && Array.isArray(b.lines) ? b.lines : []).filter(x => x && x.english).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', english: String(x.english).trim(), ids: (Array.isArray(x.ids) ? x.ids : []).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id)) }))
+      if (beats.length < 4) beats = null
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' English script unusable: ' + String(e && e.message || e).slice(0, 100)) }
+    const writeTask = beats ? brief.replace(/\nTASK: [\s\S]*$/, '') + '\n\nTASK: put scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '" — into natural spoken Thai, line by line: same speakers, same meaning (small changes are fine where Thai says it differently). ' +
+      'Each lesson word must appear in its marked line, spelled exactly, in its common sense.\nLesson words:\n' + lnStoryTargetRows(st) +
+      '\nSCENE (English):\n' + beats.map((x, k) => (k + 1) + '. ' + x.speaker + ': ' + x.english + (x.ids.length ? '   [' + x.ids.map(id => byId.get(id).surface).join(', ') + ']' : '')).join('\n') +
+      '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}' : brief
+    if (beats) log && log('  📜 LISTENING_STORY scene ' + (si + 1) + ' scripted in English first · ' + beats.length + ' lines')
+    try { written[si] = take(await call('O_listening_story_write', writeTask, 1900, 'LISTENING_GENERATION_CALLS')) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; written[si] = []; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' reply unusable: ' + String(e && e.message || e).slice(0, 100)) }
     for (let round = 0; round <= 2; round++) {
       const sc = sceneOf(si), probs = lnStorySceneProblems(la, sc, si, nS, st, ctx)
       if (!best || probs.length < best.probs.length) best = { turns: written[si].slice(), probs }

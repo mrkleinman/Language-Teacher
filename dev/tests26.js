@@ -144,7 +144,9 @@ const changed = (a, b) => a.map((x, i) => x !== b[i] ? i + 1 : null).filter(Bool
       const r = await run(S, lang, {}, { mockOpt: { reject: rej }, inject: (sid, j) => {
         const k = +sid.slice(2)
         if (j.turns[1]) j.turns[1].text = addWord(lang, j.turns[1].text, F)
-        if (sid === 'LS2' && j.turns.length >= 3) { j.turns[0].english = 'Shall we buy rice at the market?'; j.turns[2].english = 'The rice at this market stall costs one million baht.' } } })
+        // v715: was "Shall we buy rice at the market?" — since v714 an invitation in English whose Thai has no กัน is flagged
+        // (INVITE_NEEDS_KAN, D8 blind reviews) and this mock cannot repair it; the absurd-price line below is what this fixture tests
+        if (sid === 'LS2' && j.turns.length >= 3) { j.turns[0].english = 'Do you want to buy rice at the market?'; j.turns[2].english = 'The rice at this market stall costs one million baht.' } } })
       const t = r.track.telemetry
       if (process.env.TT_DEBUG) console.log('K2', lang, JSON.stringify({ repair: t.LISTENING_REPAIR_CALLS, atomic: t.LISTENING_ATOMIC_REPAIR_CALLS, acc: t.LISTENING_ATOMIC_PATCHES_ACCEPTED, rej: t.LISTENING_ATOMIC_PATCHES_REJECTED, qc: t.LISTENING_QC_CALLS, paid: t.LISTENING_TOTAL_PAID_CALLS }))
       // v669 §17: a scene whose unknown word cannot be repaired is RE-PLANNED (one generation + its repairs) instead of being

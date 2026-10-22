@@ -16792,6 +16792,8 @@ const THAI_QUESTION_RE = /\?|\uFF1F|\u0e44\u0e2b\u0e21|\u0e2b\u0e23\u0e37\u0e2d|
 function thaiNormalisePoliteParticle(thai, english, gender) {
   const t = String(thai || '')
   if (gender !== 'female') return { thai: t, changed: false }
+  // v713 — นะค่ะ is a misspelling of นะคะ (the softener นะ always takes the high-tone คะ; S31 / D3 blind reviews)
+  if (/นะ\s*ค่ะ$/.test(t)) return { thai: t.replace(/นะ\s*ค่ะ$/, 'นะคะ'), changed: true, why: 'นะค่ะ → นะคะ (spelling)' }
   // both signals required: a question word AND a question in the English (ฉันไม่รู้ว่า…หรือเปล่าค่ะ is a statement)
   if (/ค่ะ$/.test(t) && THAI_QUESTION_RE.test(t) && /\?\s*$/.test(String(english || '')))
     return { thai: t.replace(/ค่ะ$/, 'คะ'), changed: true, why: 'ค่ะ → คะ on a question' }
@@ -18034,6 +18036,19 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         naturalFails.push('Model flagged line as unnatural: ' + (selfFailed[0].thai||'').slice(0,50))
       }
 
+      // v713 (D3 blind reviews) — exchange-level checks on the three lines written together
+      if (dailyV693On() && genderValid.length >= 3) {
+        const g = genderValid.slice(0, 3), sq = x => String(x || '').replace(/\s+/g, '')
+        const bare = x => sq(x).replace(/(ครับ|ค่ะ|คะ|นะ|จ้ะ|จ้า)+$/, '')
+        for (let i = 1; i < g.length; i++) {
+          const q = sq(g[i - 1].thai), a = sq(g[i].thai)
+          if (g[i - 1].speaker !== g[i].speaker && /ไหม(ครับ|คะ|ค่ะ)?$/.test(q) && !/ใช่ไหม(ครับ|คะ|ค่ะ)?$/.test(q) && /^(ไม่)?ใช่/.test(a))
+            naturalFails.push('Line ' + (i + 1) + ' answers "' + g[i - 1].thai + '" with ใช่/ไม่ใช่ — a Thai ไหม question is answered by repeating its verb (อยากค่ะ / ไม่อยากค่ะ, ชอบครับ, มีครับ, ไม่ได้อยู่ครับ); ใช่ only answers ใช่ไหม')
+        }
+        for (let i = 0; i < g.length; i++) for (let j = i + 1; j < g.length; j++)
+          if (bare(g[i].thai) && bare(g[i].thai) === bare(g[j].thai)) naturalFails.push('Lines ' + (i + 1) + ' and ' + (j + 1) + ' say the same thing — every line must say something new')
+        g.forEach((l, li) => { if (/\.\.\.|…|\[|\]|_{2,}/.test(l.thai || '')) naturalFails.push('Line ' + (li + 1) + ' has a placeholder (… or [ ]) — write the real words') })
+      }
       if (naturalFails.length > 0) {
         failureReasons = naturalFails.slice(0, 3)
         onProgress && onProgress(-1, -1, { apiError: '⚠️ Natural fail: ' + failureReasons[0].slice(0,70) }, null, null)
@@ -19307,6 +19322,8 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     for (let k = 0; k < allPairs.length; k++) { const p = allPairs[k]; if (p && kept.has(p._pairKey)) allPairs[k] = kept.get(p._pairKey) }
     if (!dropped.length) { _elog('🧪 EARLY_SEMANTIC_GATE batch ' + _early.batches + ': ' + batch.length + ' line(s) judged · 0 rejected'); return }
     const dropKeys = new Set(dropped.map(p => p._pairKey))
+    const dropRecalls = new Map()
+    dropped.forEach(p => { if (!dropRecalls.has(p.targetId)) dropRecalls.set(p.targetId, new Set()); dropRecalls.get(p.targetId).add(p.recallIndex) })
     for (let k = allPairs.length - 1; k >= 0; k--) if (allPairs[k] && dropKeys.has(allPairs[k]._pairKey)) allPairs.splice(k, 1)
     for (let k = prevLines.length - 1; k >= 0; k--) if (prevLines[k] && dropKeys.has(prevLines[k]._pairKey)) prevLines.splice(k, 1)
     _early.rejected += dropped.length
@@ -19323,12 +19340,17 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       const tg = targets.find(x => x && x.id === tid)
       if (!tg) continue
       const have = allPairs.filter(p => p && p.pairType === 'content' && p.targetId === tid).map(p => p.thai)
+      // v713 (D3 blind reviews 6.4 / 6.4: "the exchanges don't hold together"): a single regenerated line was dropped between two
+      // lines it was never written with ("I can't answer" with no question; a B line in A's slot → B–A–B). When a model-written
+      // exchange loses a line, the WHOLE exchange is rewritten; the surviving lines are kept only if the rewrite fails.
+      const _survivors = allPairs.filter(p => p && p.pairType === 'content' && p.targetId === tid)
+      const _whole = dailyV693On() && _survivors.length > 0 && !_survivors.some(p => thaiIsBankLine(p)) && _survivors.every(p => p.recallIndex != null)
       tg._earlyRejected = olds.map(p => ({ thai: p.thai, why: why.get(p.thai) || '' }))
       tg._maxChecks = 3
       // v672 §1 — the semantic verdict SETTLES the dropped recall's last check (no new check); its regeneration continues
       // THAT recall's history (it never restarts at "1st check"), and only the rejected slots are asked for
       olds.forEach(p => { if (p.recallIndex != null && _thLedger.count(tid, p.recallIndex)) _thLedger.settle(tid, p.recallIndex, 'rejected', 'semantic QC: ' + (why.get(p.thai) || 'rejected')) })
-      tg._ledger = _thLedger; tg._slotPlan = olds.map(p => p.recallIndex).filter(r => r != null); tg._stage = 'early-regeneration'
+      tg._ledger = _thLedger; tg._slotPlan = _whole ? [1, 2, 3] : olds.map(p => p.recallIndex).filter(r => r != null); tg._stage = 'early-regeneration'
       _early.regenerated++
       let ls = null
       try { ls = await generateWordLines(tg, scene, charA, charB, prevLines, vocab, apiKey, GEN_MODEL, Math.max(0, genOrder.indexOf(tg)), onProgress, '', usedSubjects) }
@@ -19339,14 +19361,34 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       const _sp = x => String(x || '').replace(/\s+/g, '')
       const _trackLines = new Set(allPairs.filter(Boolean).map(q => _sp(q.thai)))
       const cands = (ls || []).filter(l => l && l.thai && thaiTargetPresent(l.thai, tg.thai, vocab) && !have.includes(l.thai) && !olds.some(o => o.thai === l.thai) && !_trackLines.has(_sp(l.thai)))
-        .slice(0, olds.length + 1).map((l, k) => ({ ..._earlyTag(tg, l, 'th-' + tid + '-e' + (k + 1)), recallIndex: l.recallIndex != null ? l.recallIndex : null, _checkHistory: l._checkHistory || [], _checkCount: l._checkCount || 0, checkTier: l._checkCount || 0 }))
-      fresh.push(...cands.map(p => ({ p, need: olds.length })))
+        .slice(0, _whole ? 3 : olds.length + 1).map((l, k) => ({ ..._earlyTag(tg, l, 'th-' + tid + '-e' + (k + 1)), recallIndex: l.recallIndex != null ? l.recallIndex : null, _checkHistory: l._checkHistory || [], _checkCount: l._checkCount || 0, checkTier: l._checkCount || 0 }))
+      fresh.push(...cands.map(p => ({ p, need: olds.length, whole: _whole && cands.length === 3 ? { survivors: _survivors, cands } : null })))
     }
     if (!fresh.length) return
     const sem2 = await finalPairSemanticAudit(fresh.map(x => x.p), apiKey, GEN_MODEL, null, { label: 'early-regeneration', failClosed: true })
     const ok = new Map(sem2.pairs.filter(Boolean).map(p => [p._pairKey, p]))
     const taken = new Map()
-    fresh.forEach(({ p, need }) => {
+    // v713 — a whole rewritten exchange replaces the survivors only when all three new lines pass, in A-B-A order
+    const _wholeDone = new Set()
+    fresh.forEach(({ p, whole }) => {
+      if (!whole || _wholeDone.has(p.targetId)) return
+      const vs = whole.cands.map(c => ok.get(c._pairKey))
+      const order = vs.map(v => v && v.speaker).join('')
+      if (vs.some(v => !v) || (order !== 'ABA' && !thaiGenderedTargetSpeaker(p._target))) return
+      _wholeDone.add(p.targetId)
+      const gone = new Set(whole.survivors.map(q => q._pairKey))
+      let at = allPairs.findIndex(q => q && gone.has(q._pairKey))
+      for (let k = allPairs.length - 1; k >= 0; k--) if (allPairs[k] && gone.has(allPairs[k]._pairKey)) allPairs.splice(k, 1)
+      for (let k = prevLines.length - 1; k >= 0; k--) if (prevLines[k] && gone.has(prevLines[k]._pairKey)) prevLines.splice(k, 1)
+      if (at < 0 || at > allPairs.length) at = allPairs.length
+      allPairs.splice(at, 0, ...vs)
+      _early.recovered += (fresh.find(x => x.p.targetId === p.targetId) || { need: 0 }).need
+      _elog('🧪 EARLY_EXCHANGE_REWRITE [' + p._target + '] the whole exchange was rewritten (' + whole.survivors.length + ' surviving line(s) replaced so the three lines belong together): ' + vs.map(v => v.thai).join(' / '))
+    })
+    fresh.forEach(({ p, need, whole }) => {
+      if (_wholeDone.has(p.targetId)) return
+      // the rewrite failed: the survivors stay, and only a new line for a DROPPED recall may join them
+      if (whole && !(dropRecalls.get(p.targetId) || new Set()).has(p.recallIndex)) return
       const v = ok.get(p._pairKey)
       if (!v && p.recallIndex != null) _thLedger.settle(p.targetId, p.recallIndex, 'rejected', 'semantic QC (early regeneration)')
       if (!v || (taken.get(p.targetId) || 0) >= need) return

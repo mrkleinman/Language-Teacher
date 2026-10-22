@@ -97,6 +97,7 @@ function scriptedModel(c, vocab, opt = {}) {
       if (opt.fix) turns.forEach(t => { const f = opt.fix(t); if (f) Object.assign(t, f) })
       return JSON.stringify({ turns })
     }
+    if (stage === 'O_listening_story_review') return JSON.stringify({ score: 7, faults: [] })
     if (stage === 'O_listening_story_edit') { st.edits = (st.edits || 0) + 1; return JSON.stringify({ fixes: [] }) }
     if (stage === 'O_listening_story_line_fix') return JSON.stringify({ fixes: [] })
     if (stage === 'verdicts') {
@@ -143,7 +144,7 @@ async function run(c, vocab, opt = {}) {
     const tel = A.tr.telemetry || {}
     T('S3', 'end to end: READY with all 30 frozen words heard, composer = story, written by the model (plan + one call per scene), the whole-conversation edit and the paid QC ran (naturalness + coherence), real call counts on the track',
       A.tr.status === 'READY' && A.tr.coverage.covered === 30 && A.tr.listening.composer === 'story' && gen === 4 && wrote === 4 && beats === 4 &&
-      A.st.calls.includes('O_listening_story_edit') && A.st.calls.includes('verdicts') && A.st.calls.includes('O_listening_coherence') && tel.LISTENING_GENERATION_CALLS >= 2 && tel.LISTENING_QC_CALLS >= 1 && L.length >= 30,
+      A.st.calls.includes('O_listening_story_edit') && A.st.calls.includes('O_listening_story_review') /* v712: find-then-fix editor */ && A.st.calls.includes('verdicts') && A.st.calls.includes('O_listening_coherence') && tel.LISTENING_GENERATION_CALLS >= 2 && tel.LISTENING_QC_CALLS >= 1 && L.length >= 30,
       { status: A.tr.status, cov: A.tr.coverage, composer: A.tr.listening && A.tr.listening.composer, beats, wrote, calls: A.st.calls, tel, failed: A.tr.failedChecks })
   }
   {

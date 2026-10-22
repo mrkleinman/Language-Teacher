@@ -9541,7 +9541,7 @@ function anthropicCacheBlocks(text) {
 }
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
-const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium' })
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium', O_listening_story_review: 'medium' })
 function anthropicRequestBody({ model, messages, maxTokens, json, effort }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -31986,7 +31986,7 @@ async function _lnComposeThaiStory(env, avoid) {
         'THEN link the situations into one believable everyday story for A and his friend, each situation becoming one scene, so that every word comes up naturally, in its common sense. ' +
         (avoid ? 'It must be a DIFFERENT story from this earlier one (other events and settings): "' + avoid + '". ' : '') +
         'Opening and closing phrases (greetings, wishes, goodbyes) belong at the start or the end; a formal word needs a situation where it fits (reading a sign, a host speaking to guests). ' +
-        'Use 5–6 scenes that move the story forward in time or place (e.g. "At the café, Friday" → "On the phone that evening" → "At the station, Saturday"). ' +
+        'Use 5–6 scenes IN TIME ORDER (a later scene never happens earlier in the week than the one before) that move the story forward in time or place (e.g. "At the café, Friday" → "On the phone that evening" → "At the station, Saturday"). ' +
         'The story needs ONE simple through-line the listener can follow (one plan or problem from start to end) — not a list of topics. Every topic and event is CAUSED by something said earlier: ' +
         'words about feelings or relationships (trust, forgive, sincere, always, forever, jealous …) need a real cause set up in an earlier scene (e.g. a friend broke a promise in scene 1, so scene 3 is about forgiving); ' +
         'a set phrase belongs to the person whose role says it (a waiter asks "anything else?", a host says "please sit", staff say "everyone") — A or B can quote them ("the waiter asked…") only where natural.\n' +
@@ -32104,10 +32104,24 @@ async function _lnComposeThaiStory(env, avoid) {
   let rejected = [], editorGrade = null
   for (let round = 1; round <= 5; round++) {
     const flat = build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
-    let r = null
+    let r = null, review = null
+    // 1) FIND: a short call without the Thai word list (it thinks harder, at medium effort) reads the whole story the way the blind
+    //    grader does and lists the faults; 2) FIX: the editor below replaces those spans within the word list. One call doing both
+    //    under every Thai constraint kept missing story faults (blind reviews of S13 / S17 / S18: story 3–3.5 / 10).
+    try {
+      review = await call('O_listening_story_review', 'You are a strict native Thai teacher grading a Thai listening lesson (a story in scenes; A is a man, B a woman — his friend unless the scene title says she is someone else).\n' +
+        'SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '')).join(' | ') +
+        '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
+        '\n\nRead it start to finish as the listener will. List the worst faults (at most 8), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
+        'time running backwards, a person / thing / event mentioned before it is set up, B acting as both friend and staff), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
+        'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
+        'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1500, 'LISTENING_REPAIR_CALLS', true)
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY review round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
+    const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 8)
     try {
       r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') +
         '\n\nTHE CONVERSATION (numbered; scene titles in brackets):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +
+        (faults.length ? '\n\nA NATIVE TEACHER FOUND THESE FAULTS — fix them first:\n' + faults.map(x => '- lines ' + x.from + (Number(x.to) > Number(x.from) ? '–' + x.to : '') + ': ' + String(x.problem || '').slice(0, 140) + (x.fix ? ' → ' + String(x.fix).slice(0, 120) : '')).join('\n') : '') +
         (rejected.length ? '\n\nYOUR LAST REPLACEMENTS THAT COULD NOT BE USED (fix them another way):\n' + rejected.slice(0, 8).map(x => '- lines ' + x.span + ': ' + x.why).join('\n') : '') +
         '\n\nTASK: you are a strict native Thai teacher grading this listening lesson. Read it start to finish as the listener will, and find EVERY fault:\n' +
         '- STORY: contradicts an earlier line or scene (who is where, what was bought or decided, times, excuses); a reply that does not follow the line before; a question not answered; ' +
@@ -32137,10 +32151,10 @@ async function _lnComposeThaiStory(env, avoid) {
       if (whys.length) { rejected.push({ span: from + (to > from ? '–' + to : ''), why: whys.join(' · ').slice(0, 220) }); return }
       span.forEach((f, i) => { written[f.si][f.k] = cands[i]; touched.add(from - 1 + i) }); kept++
     })
-    const grade = r && r.score != null ? Number(r.score) : null
+    const grade = review && review.score != null && isFinite(Number(review.score)) ? Number(review.score) : r && r.score != null ? Number(r.score) : null
     if (grade != null && isFinite(grade)) editorGrade = grade
     log && log('  📝 LISTENING_STORY edit round ' + round + (grade != null ? ' · editor grade ' + grade + '/10' : '') + ' · ' + fixes.length + ' fault(s) named · ' + kept + ' fix(es) kept' + (rejected.length ? ' · ' + rejected.length + ' could not be used' : '') + (fixes.length ? ' · e.g. ' + fixes.slice(0, 3).map(x => 'L' + (x.from || x.line) + ': ' + String(x.problem || '').slice(0, 60)).join(' | ') : ''))
-    if (!fixes.length || (!kept && !rejected.length) || (grade != null && grade >= 8.5 && fixes.length <= 2)) break
+    if ((!fixes.length && !faults.length) || (!kept && !rejected.length && !faults.length) || (grade != null && grade >= 8.5 && fixes.length <= 2)) break
   }
   // the edits must leave every scene's gates and lesson words as they were (a scene the edits broke goes back to its written text)
   // ── QC: paid naturalness verdicts (in context) + the whole-conversation coherence judge → rewrite the flagged scenes (≤ 2 rounds) ──

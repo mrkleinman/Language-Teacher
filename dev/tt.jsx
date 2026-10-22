@@ -16791,6 +16791,21 @@ const THAI_QUESTION_RE = /\?|\uFF1F|\u0e44\u0e2b\u0e21|\u0e2b\u0e23\u0e37\u0e2d|
 // v657 §25 — deterministic, meaning-preserving particle normalisation for a FEMALE line: ค่ะ right after a
 // question word → คะ; a bare คะ on a line with no question word, no softener and an English statement → ค่ะ.
 // Anything ambiguous (intonation questions, softeners) is left alone.
+// v713 — every A / B line ENDS with its speaker's polite particle (D5 / D6 blind reviews). The particle does not change what the line
+// says, so its judged verdicts move to the new text (live v712: the เชื่อ line got its ครับ, its verdict key went stale, the final cue
+// revalidation judged it again, dropped it, and nothing replaced it → 89/90). Greeting / goodbye set pieces are left as written.
+function thaiFinalParticlePass(pairs) {
+  let fixed = 0
+  const out = (pairs || []).map(p => {
+    const fx = p && (p.speaker === 'A' || p.speaker === 'B') && classifyTrackPair(p) !== 'FRAMING' && /[\u0E00-\u0E7F]/.test(p.thai || '') ? thaiEnsureFinalParticle(p.thai, p.speaker, p.english) : null
+    if (!fx || fx === p.thai) return p
+    fixed++
+    const np = { ...p, thai: fx, text: fx, phonetic: '', words: [], _finalParticleAdded: true }
+    if (p._semVerdicts) np._semVerdicts = { cue: p._semVerdicts.cue ? { ...p._semVerdicts.cue, key: _semCacheKey('cue', np) } : null, nat: p._semVerdicts.nat ? { ...p._semVerdicts.nat, key: _semCacheKey('nat', np) } : null }
+    return np
+  })
+  return { pairs: out, fixed }
+}
 // v713 — the closing polite particle a line must end with: A ครับ; B คะ on a question, ค่ะ otherwise (นะ → นะครับ / นะคะ). A line that
 // already ends with a particle (or with the other speaker's particle — a different defect, left to its own gate) is returned unchanged.
 function thaiEnsureFinalParticle(thai, speaker, english) {
@@ -18064,6 +18079,9 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         for (let i = 0; i < g.length; i++) for (let j = i + 1; j < g.length; j++)
           if (bare(g[i].thai) && bare(g[i].thai) === bare(g[j].thai)) naturalFails.push('Lines ' + (i + 1) + ' and ' + (j + 1) + ' say the same thing — every line must say something new')
         g.forEach((l, li) => { if (/\.\.\.|…|\[|\]|_{2,}/.test(l.thai || '')) naturalFails.push('Line ' + (li + 1) + ' has a placeholder (… or [ ]) — write the real words') })
+        // v713 (owner's v712 review: "make natural spoken Thai the generation standard, not a late QC requirement") — the objective
+        // lexical rules the final audit applies are applied here, while the exchange can still be rewritten in full
+        g.forEach((l, li) => { try { thaiLexicalSenseProblems({ thai: l.thai, english: l.english }, target.thai).forEach(x => naturalFails.push('Line ' + (li + 1) + ': ' + x.why)) } catch (e) {} })
         // D4 blind reviews: "คุณไม่ชอบน้ำแข็งไหมคะ" — a negative question takes เหรอ / หรือ, never ไหม (ไม่สบาย "unwell" is one word)
         g.forEach((l, li) => { if (/(คุณ|เธอ|เขา)ไม่(?!สบาย)[^ ]*ไหม(คะ|ครับ)?$/.test(sq(l.thai))) naturalFails.push('Line ' + (li + 1) + ' is a negative question ending in ไหม — Thai says …ไม่…เหรอคะ / หรือคะ, not ไม่…ไหม') })
       }
@@ -23131,7 +23149,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (adapter.lang === 'th' && dailyV693On()) {
     try {
       // v707 — the scene critic names contradictions / wrong speakers / non-answers / repeats; they are fixed in context first
-      const _crit = []
+      const _crit = [], _preCritic = t.pairs
       for (let round = 1; round <= THAI_SCENE_CRITIC_ROUNDS; round++) {
         try { const cr = await thaiSceneCritic(t, c, log); if (!cr || !cr.named.length) { _crit.push({ round, named: 0, changed: 0, calls: cr ? cr.calls : 0 }); break }
           const fx = await thaiScenePolish(t, { ...c, polishFix: cr.fix }, log); if (fx.changed) { t = { ...t, pairs: fx.pairs }; c.track = t }
@@ -23139,6 +23157,10 @@ async function finaliseMainTrack(track, adapter, ctx) {
         } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; break }
       }
       let s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap = { first: s1.report, sceneCritic: _crit }
+      // v713 (owner's v712 review: the critic's polish rewrote 29 lines and several rewrites were then refused — "a repair should be
+      // retained only when it improves") — a line the critic's polish changed that the final judge now refuses gets its original back
+      if (_preCritic !== t.pairs) { const rv0 = thaiRevertBrokenEdits(_preCritic, [], t.pairs, s1.report.invalid, log)
+        if (rv0.reverted) { t = { ...t, pairs: rv0.pairs }; c.track = t; s1 = await thaiFinalSnapshotAudit(t, c, log); t = { ...t, pairs: s1.pairs }; _snap.first = s1.report; _snap.criticReverted = rv0.reverted } }
       // v706 (relay tracks 16/17) — refused lines first go back to the SCENE polish (fix mode: the judge's reasons, the line and the one
       // before it may change), are judged again in context, and only what still fails goes to single-slot quota recovery
       // (relay track 18: one fix pass took 18 refusals to 8; single-slot recovery then added lines that jumped topic or contradicted
@@ -23191,16 +23213,9 @@ async function finaliseMainTrack(track, adapter, ctx) {
   // v713 (D5 / D6 blind reviews: "คืนนี้ตื่นตีห้า", "ตื่นกี่โมง", "บ้านนี้ไม่แพงครับ อยากเช่า" — lines from the writer, quota recovery and
   // the coherence repair went out without their closing particle) — every A / B line ENDS with its speaker's polite particle. Appended
   // here, once, before the text is frozen (pronunciation is rebuilt from the final text; particles do not count toward the length cap).
-  if (dailyV693On() && adapter.lang === 'th') {
-    let _pf = 0
-    t = { ...t, pairs: (t.pairs || []).map(p => {
-      // the greeting / goodbye set pieces are left as written ("สวัสดีครับ คุณมานพ" ends on the name — tests20 N7)
-      const fx = p && (p.speaker === 'A' || p.speaker === 'B') && classifyTrackPair(p) !== 'FRAMING' && /[\u0E00-\u0E7F]/.test(p.thai || '') ? thaiEnsureFinalParticle(p.thai, p.speaker, p.english) : null
-      if (!fx || fx === p.thai) return p
-      _pf++; return { ...p, thai: fx, text: fx, phonetic: '', words: [], _finalParticleAdded: true }
-    }) }
-    if (_pf) log && log('  🔧 LOCAL_REPAIR final particle (no paid call): ' + _pf + ' line(s) now end with ครับ / ค่ะ / คะ')
-  }
+  if (dailyV693On() && adapter.lang === 'th') { const fp = thaiFinalParticlePass(t.pairs); t = { ...t, pairs: fp.pairs }
+    if (fp.fixed) log && log('  🔧 LOCAL_REPAIR final particle (no paid call): ' + fp.fixed + ' line(s) now end with ครับ / ค่ะ / คะ') }
+
   // v655 §22 — the learner text is FROZEN here (after quota recovery and coherence repair); pronunciation is
   // built from this exact text, and any later text change is detected as STALE and rebuilt before the audit
   const _frozen = new Map((t.pairs || []).map((p, i) => [thaiLineId(p, i), p && (p.thai || p.japanese || p.chinese)]))
@@ -23219,7 +23234,20 @@ async function finaliseMainTrack(track, adapter, ctx) {
   if (adapter.lang === 'th') { try { _idViol.push(...thaiTargetIdentityViolations(t.pairs, kws, 'after final metadata')) } catch (e) {} }
   _idViol.forEach(v => log && log('  ⛔ TARGET_IDENTITY_VIOLATION ' + v.pairId + ' (' + v.stage + '): ' + v.problem))
   // v693: any cue still changed after its judgement (a coherence-repaired line, a late addressee fix) is judged again before counting
-  if (dailyV693On() && adapter.lang === 'th') { try { const rv = await thaiRevalidateStaleCues(t.pairs, c, log, 'cue-revalidation (final)'); t = { ...t, pairs: rv.pairs } } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
+  if (dailyV693On() && adapter.lang === 'th') { try { const rv = await thaiRevalidateStaleCues(t.pairs, c, log, 'cue-revalidation (final)'); t = { ...t, pairs: rv.pairs }
+    // v713 (owner review of live v712: "the final audit removed the third เชื่อ line and never replaced it") — a line removed HERE is
+    // replaced: ONE bounded quota-recovery round, its pronunciation built, and the new line judged like every other
+    if (rv.dropped.length) {
+      c.track = t
+      const qf = await enforceTrackPairQuota(t, adapter, { ...c, quotaRounds: 1 })
+      t = { ...t, pairs: qf.pairs }
+      if (qf.recovered && qf.recovered.length) {
+        try { const m2 = await adapter.finaliseMetadata(t.pairs, { ...c, track: t }); t = { ...t, pairs: m2.pairs }; meta.alignmentIssues = m2.alignmentIssues || meta.alignmentIssues } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+        try { t = { ...t, pairs: thaiCueGuaranteePass(t.pairs, t, log) } } catch (e) {}
+        const rv2 = await thaiRevalidateStaleCues(t.pairs, c, log, 'cue-revalidation (after final recovery)'); t = { ...t, pairs: rv2.pairs }
+      }
+      log && log('  ♻️ FINAL_RECOVERY ' + rv.dropped.length + ' line(s) removed by the final cue revalidation · ' + ((qf.recovered || []).length) + ' replaced')
+    } } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
   const quota = trackQuotaReport(t.pairs, kws, adapter, c)
   const status = adapter.qcStatus(t, c)
   const inv = {
@@ -38261,6 +38289,22 @@ function thaiLexicalSenseProblems(p, targetSurface) {
   // v709 — a vetted bank line is not re-checked by these single-sentence rules (paid track 10: ซื้อสองคู่ after a line about รองเท้า)
   if (p && thaiIsBankLine({ ...p, _target: p._target || targetSurface })) return []
   const th = String(p && p.thai || ''), en = String(p && p.english || '').toLowerCase(), out = []
+  // v713 — from the owner's review of the live v712 Thai Daily track (5.0/10); general spoken-Thai rules, not single sentences
+  { const t0 = th.replace(/\s+/g, '')
+    // a stomach / head ache is ปวด (ปวดท้อง, ปวดหัว); เจ็บ is a sharp or wound pain
+    if (/เจ็บ(ท้อง|หัว|ฟัน)|(ท้อง|หัว|ฟัน)เจ็บ/.test(t0)) out.push({ id: 'PUAT_NOT_JEP', code: 'UNNATURAL', why: 'an ache is ปวด — ปวดท้อง / ปวดหัว / ปวดฟัน (เจ็บ is a sharp or wound pain)' })
+    // choosing among places is ไหนก็ได้ (โรงพยาบาลไหนก็ได้), not อะไรก็ได้
+    if (/(โรงพยาบาล|โรงแรม|โรงเรียน|ตลาด|ห้าง|ที่)อะไรก็ได้/.test(t0)) out.push({ id: 'PLACE_NAI_KO_DAI', code: 'UNNATURAL', why: 'choosing among places is …ไหนก็ได้ (โรงพยาบาลไหนก็ได้), not …อะไรก็ได้' })
+    // a hope is not asked for confirmation: หวังว่า … ใช่ไหม mixes a wish with a tag question
+    if (/หวัง\S*ใช่ไหม/.test(t0)) out.push({ id: 'HOPE_TAG_QUESTION', code: 'UNNATURAL', why: 'หวังว่า… states a hope — do not add ใช่ไหม (ฉันหวังว่าคุณจะไม่ต้องไปโรงพยาบาลนะคะ)' })
+    // believing a CLAUSE needs ว่า: ผมไม่เชื่อว่าโรงแรมเต็ม (not ผมไม่เชื่อ โรงแรมเต็ม)
+    if (/เชื่อ\s+(?!(ครับ|ค่ะ|คะ|นะ|เลย|จริง|ไหม|หรอก|ใจ|ผม|ฉัน|คุณ|เขา|เธอ))[\u0E00-\u0E7F]/.test(th) && !/เชื่อว่า/.test(t0)) out.push({ id: 'CHUEA_WAA', code: 'UNNATURAL', why: 'believing a fact needs ว่า — ผมไม่เชื่อว่าโรงแรมเต็มครับ' })
+    // โต๊ะ / เก้าอี้ take the classifier ตัว (โต๊ะตัวนี้) or none (โต๊ะนี้), never อัน
+    if (/(โต๊ะ|เก้าอี้)อัน(นี้|นั้น|ไหน|โน้น|นู้น)/.test(t0)) out.push({ id: 'TO_CLASSIFIER_TUA', code: 'UNNATURAL', why: 'โต๊ะ / เก้าอี้ take ตัว — โต๊ะตัวนี้ (or just โต๊ะนี้), not โต๊ะอันนี้' })
+    // a "did you …?" question about something DONE needs แล้ว(หรือยัง) — คุณกินยาไหม asks about a habit or the future
+    if (/^(did|have) you (take|eat|go|buy|book|call|pay|finish|drink|bring|see|meet|send|get)\b/.test(en) && /ไหม(ครับ|คะ|ค่ะ)?$/.test(t0) && !/(แล้ว|หรือยัง|ยัง|เมื่อ|มาแล้ว|เคย)/.test(t0))
+      out.push({ id: 'DONE_NEEDS_LAEW', code: 'UNNATURAL', why: 'for "did you … ?" about something done, ask …แล้วหรือยัง (กินยาแล้วหรือยังครับ) — …ไหม asks about a habit or the future' })
+  }
   // v703 — from the live v702 Thai Daily track (owner review; every one passed the model judges)
   { const tg = String(targetSurface || (p && (p.targetSurface || p._target)) || '').replace(/\s+/g, ''), t0 = th.replace(/\s+/g, '')
     // a QUESTION-word target + ก็ได้ / ก็ตาม is "whatever / anywhere", a different meaning (ชื่ออะไรก็ได้ ≠ "what is it called?")
@@ -39227,6 +39271,8 @@ const VOCAB_INELIGIBLE = Object.freeze({
 // At most THAI_FUNCTION_TARGETS_PER_TRACK are taken per track; the rest stay due for the next one. Personal pronouns, the
 // copula/core verbs and pure structure words below stay non-targets (practised implicitly in every sentence).
 const THAI_FUNCTION_TARGET_GUIDE = Object.freeze({
+  // v713 (owner's v712 review: "เขา is an extremely useful conversational pronoun") — a teachable target with its own contract
+  'เขา': 'TEACH เขา AS "he / she / they" for a THIRD PERSON who is not in the conversation, named or clear from the line before: เขาไปไหนคะ (where did he go?), เขาเป็นเพื่อนผมครับ (she is my friend), เขาบอกว่าจะมาสาย (he said he would be late). Never for the person spoken to (that is คุณ).',
   'แล้ว': 'TEACH แล้ว AS A CHANGE OF STATE or completion: กินข้าวแล้ว (already ate), ถึงแล้ว (I have arrived), ดีขึ้นแล้ว (it is better now) — or "and then" between two actions. Each sentence must NEED แล้ว for its meaning.',
   'ก็': 'TEACH ก็ AS A LINK OF REACTION or "too / then / so": ผมก็ชอบ (I like it too), ถ้าว่างก็มานะ (if you are free, then come), งั้นก็ไปกัน (then let us go). Each sentence must NEED ก็.',
   'นะ': 'TEACH นะ AS A SOFTENER on a suggestion, request or reminder: ไปกันนะ (let us go, OK?), อย่าลืมนะ (don\'t forget, OK?), รอแป๊บนะ (wait a moment, OK?). The cue must name the speech act (suggest / remind / ask gently).',

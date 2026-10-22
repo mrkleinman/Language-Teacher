@@ -125,7 +125,9 @@ async function fin(S, track, adapter) {
       c.thaiNumberRequirement({ thai: 'ลดราคา', english: 'discount', requiresNumber: true }).required && !c.thaiNumberRequirement({ thai: 'ล้าน', english: 'million', requiresNumber: false }).required)
     for (const [t, x] of cases) {
       const tv = V(S, t)
-      const g = await runGen(S, tv, [[L('A', x, 'This price is ' + tv.english + '.', 'He says the price is ' + tv.english), L('B', 'ราคา' + t + 'บาทเลยเหรอคะ', 'The price is ' + tv.english + ' baht?', 'She asks if the price is ' + tv.english + ' baht'), L('A', 'ใช่ครับราคา' + t + 'บาทครับ', 'Yes, it is ' + tv.english + ' baht.', 'He says yes, it is ' + tv.english + ' baht')]])
+      // v715: lines 2–3 no longer repeat line 1's phrase "ราคา…บาท" — since v714 an exchange whose three lines all use the target in the same
+      // phrase is refused (D7 / D8 blind reviews), which this number-rule fixture tripped; the number rule it checks is unchanged
+      const g = await runGen(S, tv, [[L('A', x, 'This price is ' + tv.english + '.', 'He says the price is ' + tv.english), L('B', 'ราคา' + t + 'เลยเหรอคะ', 'The price is ' + tv.english + '?', 'She asks if the price is really ' + tv.english), L('A', 'ใช่ครับ ' + t + 'บาทครับ', 'Yes, ' + tv.english + ' baht.', 'He says yes, ' + tv.english + ' baht')]])
       T('C5' + t, t + ' "' + x + '" → PASS at check 1 (no "MANDATORY number missing")', g.res && g.calls === 1 && !g.log.some(l => /MANDATORY number missing/.test(l)), g.log.filter(l => /fail|MANDATORY/.test(l)))
     }
   }

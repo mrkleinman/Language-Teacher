@@ -14201,7 +14201,7 @@ async function thaiEnsureUsageProfiles(words, o, log) {
 function thaiUsageProfileLine(target) {
   const u = thaiUsageOf(target && (target.thai || target.t || target.surface))
   if (!u) return ''
-  return '\u2022 HOW THAI SPEAKERS USE "' + (target.thai || target.t || target.surface) + '": ' + u.use + (u.situations && u.situations.length ? ' — natural situations (build the whole exchange around ONE of them): ' + u.situations.join(' / ') : '') + '\n'
+  return '\u2022 HOW THAI SPEAKERS USE "' + (target.thai || target.t || target.surface) + '": ' + u.use + (u.situations && u.situations.length ? ' — natural situations: ' + u.situations.join(' / ') : '') + '\n'
 }
 function thaiUsageFrameLine(target) {
   const th = target && (target.thai || target.t)
@@ -17279,7 +17279,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
     'so nothing in it ("too", "then", "that one", ด้วย / ก็ / งั้น / นั้น) points at something not said in these three lines; the scene below is only the setting. ' +
     // v712 (blind reviews of the no-bank Daily run D1: coherence 4.5 — "the spoon is very big" … "it is not big"; a third line that
     // ignores the second) — the three lines are one small exchange that holds together
-    'The three lines are ONE small situation: line 2 answers or reacts to line 1, and line 3 follows from line 2 (accepts, answers or adds) — it never contradicts or ignores lines 1–2, and the facts (size, price, time, who) stay the same.\n' : 'Write one exchange in an ongoing conversation.\n') +
+    'Line 2 answers or reacts to line 1, and line 3 follows from line 2 (accepts, answers or adds) — it never contradicts or ignores lines 1–2, and the facts (size, price, time, who) stay the same. Each line still uses the target in a DIFFERENT way (not the same phrase three times).\n' : 'Write one exchange in an ongoing conversation.\n') +
     'SCENE: ' + scene + '\n' +
     'A = ' + charA + ' — MUST end every sentence with ครับ\n' +
     'B = ' + charB + ' — MUST end every sentence with ' + (/\bman\b|\bmale\b|\bboy\b|\bold man\b|\bgentleman\b/i.test(charB) ? 'ครับ (B is MALE)' : 'ค่ะ or คะ') + '\n' +
@@ -22518,7 +22518,8 @@ function thaiFinalCueLint(p, o) {
 // v712 (blind reviews of the no-bank Daily run D1: "Greet นิดา", "Hello นิดา") — a learner-facing English cue or translation never
 // carries Thai script: a scene name written in Thai becomes its English spelling (Nida, Somchai), from the name tables
 function thaiEnglishNameFix(text) {
-  const t = String(text || '')
+  // a bracketed Thai answer in a cue gives the answer away (blind reviews of D2: "(สองชาม)") — it is removed
+  const t = String(text || '').replace(/\s*[(（][^)）]*[\u0E00-\u0E7F][^)）]*[)）]/g, '').replace(/\s+([.,!?])/g, '$1')
   if (!/[\u0E00-\u0E7F]/.test(t)) return t
   const rev = {}
   try { Object.entries(THAI_NAME_TRANSLIT).forEach(([en, th]) => { if (!rev[th]) rev[th] = en.charAt(0).toUpperCase() + en.slice(1) }) } catch (e) {}
@@ -32182,7 +32183,7 @@ async function _lnComposeThaiStory(env, avoid) {
   // ── EDIT: a strict native-teacher read of the WHOLE conversation (the way the independent grader reads it) lists every faulty line
   //    with a replacement; each replacement is kept only if it passes every line gate and keeps the line's lesson words (≤ 3 rounds) ──
   let rejected = [], editorGrade = null
-  for (let round = 1; round <= 8; round++) {
+  for (let round = 1; round <= 10; round++) {
     const flat = build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
     let r = null, review = null
     // 1) FIND: a short call without the Thai word list (it thinks harder, at medium effort) reads the whole story the way the blind
@@ -32192,14 +32193,15 @@ async function _lnComposeThaiStory(env, avoid) {
       review = await call('O_listening_story_review', 'You are a strict native Thai teacher grading a Thai listening lesson (a story in scenes; A is a man, B a woman — his friend unless the scene title says she is someone else).\n' +
         'SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '')).join(' | ') +
         '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
-        '\n\nRead it start to finish as the listener will. List the worst faults (at most 8), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
+        '\n\nRead it start to finish as the listener will. List the worst faults (at most 6), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
         'time running backwards, a person / thing / event mentioned before it is set up, B acting as both friend and staff, the scene title not matching what is said (together vs on the phone, the place), a day or time that clashes with another scene (on Thursday asking about "this Wednesday"), feelings words piled into one melodramatic exchange without a real cause), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
         (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') +
         'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
-        'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1500, 'LISTENING_REPAIR_CALLS', true)
+        'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1800, 'LISTENING_REPAIR_CALLS', true)
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY review round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
     // at most 4 faults per fix call: with 8 faults and the whole checklist the fix reply ran out of tokens every time (paid run S20)
-    const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 4)
+    // at most 2 faults per fix call (4 still ran out of tokens in every round of paid run S30); more rounds instead
+    const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 2)
     try {
       r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') +
         '\n\n' + (faults.length ? 'THE SCENES WITH FAULTS (numbered as in the whole conversation):\n' : 'THE CONVERSATION (numbered; scene titles in brackets):\n') + flat.map((f, i) => ({ f, i })).filter(({ f }) => !faults.length || faults.some(x => { const g = flat[Number(x.from) - 1]; return g && g.si === f.si })).map(({ f, i }) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +

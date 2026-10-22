@@ -24626,6 +24626,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     const k = 'th|' + kw.wordId + '|' + r
     if ((TP_USE_SHIFT.get(k) || 0) < (_tpPlan.spare || []).length) { tpSwitchUse('th', kw.wordId, r); log && log('  🔀 APPLICATION_SWITCH ' + kw.thai + ' recall ' + r + ' after a failed recovery round — now: ' + tpUseFor(_tpPlan, r).text.slice(0, 90)) }
   })
+  const _needSp = !c.coherenceRepair && dailyV693On() && have.length && !thaiGenderedTargetSpeaker(kw.thai) ? (have[have.length - 1].speaker === 'B' ? 'A' : 'B') : null
   const prompt = 'YOU ARE REPAIRING TARGET: ' + kw.thai + ' (id ' + kw.wordId + ')\n' +
     'EVERY candidate MUST contain "' + kw.thai + '" literally, in its normal meaning (' + (THAI_SENSE_POLICY[kw.thai] ? THAI_SENSE_POLICY[kw.thai].sense : (kw.english || '')) + '). Return FEWER candidates — or an empty array — rather than any candidate without "' + kw.thai + '".\n' +
     'QUOTA RECOVERY — Thai target-practice sentences for a learner.\n' +
@@ -24646,7 +24647,9 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
       const lastAt = all.lastIndexOf(have[have.length - 1]), next = all.slice(lastAt + 1).find(p => p && p.thai)
       return 'WHERE YOUR LINE GOES: right after these lines of the same exchange —\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai + ' (' + (p.english || '') + ')').join('\n') + '\n' +
         (next ? 'and before: ' + (next.speaker || 'A') + ': ' + next.thai + ' (' + (next.english || '') + ')\n' : '') +
-        'It must follow the last line naturally (a question gets its answer; an answer is not asked again) and say something new.\n' })() : '') +
+        'It must follow the last line naturally (a question gets its answer; an answer is not asked again) and say something new.\n' +
+        // v713 (D3: a recovered ค่ะ line followed a B line → B–A–B) — the recovered line is the NEXT speaker's turn
+        (_needSp ? 'It is spoken by ' + _needSp + ' (' + (_needSp === 'A' ? 'the man: ผม … ครับ' : 'the woman: ฉัน … ค่ะ / คะ') + ') — the other person answers or reacts.\n' : '') })() : '') +
     (have.length ? 'This word already has these lines — do NOT repeat or paraphrase them:\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai).join('\n') + '\n' : '') +
     // v669 §5/§9/§11 — the missing SLOT is repaired: the intended sense, and a communicative use the existing lines do not cover yet
     'INTENDED SENSE: ' + thaiTargetSense(kw, c.vocab) + '\n' + thaiWordUsesLine(kw) + (dailyV693On() ? THAI_VERB_SENSE_LINE : '') + (_tpPlan ? '' : thaiMissingFunctionLine(have)) +
@@ -24687,6 +24690,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     { const _ws = teachingPlanOn() ? thaiTpSenseProblem(p.thai, kw) : ''; if (_ws) why.push(_ws) }
     const g = thaiLineGate(p, keywords, c.vocab)
     g.problems.forEach(x => why.push(x.code + ': ' + x.why))
+    if (_needSp && p.speaker !== _needSp) why.push('SPEAKER_TURN: this line follows a ' + (_needSp === 'A' ? 'B' : 'A') + ' line, so it must be spoken by ' + _needSp)
     if (have.some(h => h.thai === p.thai)) why.push('DUPLICATE of an existing TARGET PAIR')
     // v706 (relay track 16: a recovered อยากมาบ่อยไหมคะ equalled the line before it → FINAL_DUPLICATE_AUDIT FAIL) — spacing-blind, against
     // every line of the track and every candidate already kept in this batch

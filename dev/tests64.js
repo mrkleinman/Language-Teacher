@@ -134,10 +134,12 @@ async function run(c, vocab, opt = {}) {
   {
     const firstCall = A.seq.findIndex(x => x.startsWith('call:O_listening_story')), sel = A.seq.findIndex(x => x.startsWith('log:🎧 LISTENING_SELECTED_TARGET_IDS'))
     const planP = (A.st.prompts.find(x => x.stage === 'O_listening_story_plan') || {}).p || ''
-    const usageOnce = A.st.calls.filter(x => x === 'O_listening_story_usage').length === 1 && /HOW THE LESSON WORDS ARE USED[\s\S]*\(usage-note\)/.test(planP)
+    // the per-track usage notes are written once and reach the English scene scripts (not the shared prefix: it made every call longer — S21)
+    const beatP = (A.st.prompts.find(x => x.stage === 'O_listening_story_beats') || {}).p || ''
+    const usageOnce = A.st.calls.filter(x => x === 'O_listening_story_usage').length === 1 && /LESSON WORDS ARE USED[\s\S]*\(usage-note\)/.test(beatP) && !/\(usage-note\)/.test(planP)
     const planIds = [...planP.slice(planP.indexOf('TASK: plan')).matchAll(/^T(\d+) \|/gm)].map(m => Number(m[1]))
     T('S1', 'the 30 revision targets are selected and frozen BEFORE the first story call, and the plan is asked for exactly those ids',
-      // v712: the per-track usage notes (one call, after the freeze) reach the plan prompt
+      // v712: the per-track usage notes (one call, after the freeze) reach the English scene scripts
       sel >= 0 && firstCall > sel && planIds.length === 30 && planIds.join() === frozen.join() && usageOnce, { sel, firstCall, planIds: planIds.length, usageOnce })
     T('S2', 'the frozen ids are the Revision selector\'s 30, unchanged (no substitution before the story; the track carries them)',
       A.tr.selectedTargetIds.join() === frozen.join() && frozen.length === 30, { track: A.tr.selectedTargetIds.length })

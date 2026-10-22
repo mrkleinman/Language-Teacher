@@ -31990,7 +31990,8 @@ async function _lnComposeThaiStory(env, avoid) {
       log && log('  📖 LISTENING_STORY usage notes for ' + rows.length + ' of ' + targets.length + ' lesson words')
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY usage notes unusable: ' + String(e && e.message || e).slice(0, 100)) }
   }
-  if (env._lnUsageNotes) prefix += 'HOW THE LESSON WORDS ARE USED (use each in this sense):\n' + env._lnUsageNotes + '\n'
+  // the notes go to the English script and the review (short calls); added to the shared prefix they made every call longer and the
+  // plan / fix replies ran out of tokens (paid run S21)
   // ── PLAN ──
   let plan = null
   for (let attempt = 1; attempt <= 2 && !plan; attempt++) {
@@ -32130,6 +32131,7 @@ async function _lnComposeThaiStory(env, avoid) {
         '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
         '\n\nRead it start to finish as the listener will. List the worst faults (at most 8), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
         'time running backwards, a person / thing / event mentioned before it is set up, B acting as both friend and staff), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
+        (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') +
         'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
         'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1500, 'LISTENING_REPAIR_CALLS', true)
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY review round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
@@ -32137,7 +32139,7 @@ async function _lnComposeThaiStory(env, avoid) {
     const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 4)
     try {
       r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') +
-        '\n\nTHE CONVERSATION (numbered; scene titles in brackets):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +
+        '\n\n' + (faults.length ? 'THE SCENES WITH FAULTS (numbered as in the whole conversation):\n' : 'THE CONVERSATION (numbered; scene titles in brackets):\n') + flat.map((f, i) => ({ f, i })).filter(({ f }) => !faults.length || faults.some(x => { const g = flat[Number(x.from) - 1]; return g && g.si === f.si })).map(({ f, i }) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +
         (faults.length ? '\n\nA NATIVE TEACHER FOUND THESE FAULTS — fix them first:\n' + faults.map(x => '- lines ' + x.from + (Number(x.to) > Number(x.from) ? '–' + x.to : '') + ': ' + String(x.problem || '').slice(0, 140) + (x.fix ? ' → ' + String(x.fix).slice(0, 120) : '')).join('\n') : '') +
         (rejected.length ? '\n\nYOUR LAST REPLACEMENTS THAT COULD NOT BE USED (fix them another way):\n' + rejected.slice(0, 8).map(x => '- lines ' + x.span + ': ' + x.why).join('\n') : '') +
         (faults.length ? '\n\nTASK: fix ONLY the faults the native teacher listed above (no others).\n' : (

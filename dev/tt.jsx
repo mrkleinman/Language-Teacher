@@ -9541,7 +9541,7 @@ function anthropicCacheBlocks(text) {
 }
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
-const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
 function anthropicRequestBody({ model, messages, maxTokens, json, effort }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -32037,6 +32037,20 @@ function lnStoryScenes(la, plan, written, targets, ctx) {
     return { speaker: tu.speaker, pair: { ...tu.pair, _storyListening: true }, intendedTargetIds: tid, ...(prevSp && prevSp !== tu.speaker ? { meaning: { respondsTo: k - 1, intent: 'REACT' } } : {}) } }) }))
 }
 // deterministic problems of ONE scene (line numbers inside the scene), including its planned lesson words and greeting / goodbye placement
+// v713 — single-line faults the blind reviews keep finding; used by the scene check AND by every line fix (lineGateWhy), so an editor
+// or QC fix cannot bring them back (S33: an editor fix wrote "กลางคืนอุณหภูมิเย็น" after the scene check had passed)
+function lnStoryLineFaults(t) {
+  const out = [], x = String(t || '')
+  // a leftover placeholder ("ผมชื่อ...ครับ" went out with no name — S31) is never a line
+  if (/\.\.\.|…|\[|\]|_{2,}/.test(x)) out.push('a placeholder (… / [ ]) instead of real words')
+  // อุณหภูมิ is high / low, never hot / cold (S29, S31, S32, S33 blind reviews)
+  if (/อุณหภูมิ[^ ]{0,8}(ร้อน|เย็น|หนาว)/.test(x) && !/อุณหภูมิ[^ ]{0,8}(สูง|ต่ำ)/.test(x)) out.push('อุณหภูมิ is สูง / ต่ำ (high / low), never ร้อน / เย็น')
+  // ไม่ทราบว่า opens a polite QUESTION (S31, S33: ไม่ทราบว่า + a statement)
+  if (/ไม่ทราบว่า/.test(x) && !/(ไหม|ไร|ไหน|ใคร|เท่าไ|กี่|เมื่อไ|อย่างไร|ยังไง|หรือ|เปล่า|ไม่)(ครับ|คะ|ค่ะ)?$/.test(x.replace(/\s+/g, ''))) out.push('ไม่ทราบว่า must open a polite question (ไม่ทราบว่า…ไหมครับ / …กี่โมงครับ)')
+  // ลาก่อน is a final farewell, not an everyday goodbye (S33)
+  if (/ลาก่อน/.test(x)) out.push('ลาก่อน is a final farewell — use แล้วเจอกัน / ไปก่อนนะ')
+  return out
+}
 function lnStorySceneProblems(la, sc, si, nScenes, sceneTargets, ctx) {
   const out = []
   listeningConversationAudit([sc], sceneTargets, la, ctx).issues.filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN|EXACT_DUPLICATE|NEAR_DUPLICATE)$/.test(x.code))
@@ -32044,10 +32058,7 @@ function lnStorySceneProblems(la, sc, si, nScenes, sceneTargets, ctx) {
   const G = LISTENING_GREETING_RE.th, B = LISTENING_GOODBYE_RE.th
   sc.turns.forEach((tn, k) => {
     const t = la.text(tn.pair)
-    // a leftover placeholder ("ผมชื่อ...ครับ" went out with no name — S31) is never a line
-    // อุณหภูมิ is high / low, never hot / cold (S29, S31, S32 blind reviews)
-    if (/อุณหภูมิ[^ ]{0,8}(ร้อน|เย็น|หนาว)/.test(t) && !/อุณหภูมิ[^ ]{0,8}(สูง|ต่ำ)/.test(t)) out.push({ line: k + 1, code: 'LINE_QUALITY', detail: 'อุณหภูมิ is สูง / ต่ำ (high / low), never ร้อน / เย็น' })
-    if (/\.\.\.|…|\[|\]|_{2,}/.test(t)) out.push({ line: k + 1, code: 'LINE_QUALITY', detail: 'a placeholder (… / [ ]) instead of real words' })
+    lnStoryLineFaults(t).forEach(d => out.push({ line: k + 1, code: 'LINE_QUALITY', detail: d }))
     if (k >= 2 && sc.turns[k - 1].speaker === tn.speaker && sc.turns[k - 2].speaker === tn.speaker) out.push({ line: k + 1, code: 'TURN_TAKING', detail: 'three lines in a row by ' + tn.speaker })
     if (si > 0 && G.test(t)) out.push({ line: k + 1, code: 'CONTINUITY', detail: 'a greeting outside the first scene' })
     if (si < nScenes - 1 && B.test(t)) out.push({ line: k + 1, code: 'CONTINUITY', detail: 'a goodbye before the last scene' })
@@ -32168,6 +32179,7 @@ async function _lnComposeThaiStory(env, avoid) {
   const lineGateWhy = (si, cand) => {
     const one = lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [[cand]], targets, ctx)[0]
     const iss = listeningConversationAudit([one], targets, la, ctx).issues.filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN)$/.test(x.code))
+    one.turns.forEach(tn => lnStoryLineFaults(la.text(tn.pair)).forEach(d => iss.push({ code: 'LINE_QUALITY', detail: d })))
     return { why: iss.map(x => x.code + (x.detail ? ' (' + String(x.detail).replace(/^[A-Z_]+: /, '').slice(0, 60) + ')' : '')).join('; '), ids: one.turns[0].intendedTargetIds || [] }
   }
   // ── WRITE each scene in order, then CHECK and rewrite it (≤ 2 rounds) ──
@@ -32318,6 +32330,41 @@ async function _lnComposeThaiStory(env, avoid) {
     if (grade != null && isFinite(grade)) editorGrade = grade
     log && log('  📝 LISTENING_STORY edit round ' + round + (grade != null ? ' · editor grade ' + grade + '/10' : '') + ' · ' + fixes.length + ' fault(s) named · ' + kept + ' fix(es) kept' + (rejected.length ? ' · ' + rejected.length + ' could not be used' : '') + (fixes.length ? ' · e.g. ' + fixes.slice(0, 3).map(x => 'L' + (x.from || x.line) + ': ' + String(x.problem || '').slice(0, 60)).join(' | ') : ''))
     if ((!fixes.length && !faults.length) || (!kept && !rejected.length && !faults.length) || (grade != null && grade >= 8.5 && fixes.length <= 2)) break
+  }
+  // v713 — LESSON-WORD USAGE CHECK: one short call per scene, all scenes in parallel, that looks ONLY at how each lesson word is used
+  // (S32 / S33 blind reviews: ทุกท่าน to one man, ทานกันเลย by a man eating alone, ไม่ทราบว่า + a statement, ให้อภัย with nothing to
+  // forgive — the whole-story editor names 3 faults a round and never reached them). A fix replaces that one line and is kept only if
+  // it passes every line gate and keeps the line's lesson words.
+  {
+    const res = await Promise.all(plan.scenes.map(async (s, si) => {
+      const st = sceneTargets(si)
+      if (!st.length || !written[si] || !written[si].length) return { si, fixes: [] }
+      const notes = env._lnUsageNotes ? env._lnUsageNotes.split('\n').filter(l => st.some(t => l.startsWith(t.surface + ' — '))).join('\n') : ''
+      try {
+        const r = await call('O_listening_word_check', 'You are a native Thai teacher checking ONE scene of a Thai listening lesson. A is a man (ผม / ครับ), B a woman (ฉัน / ค่ะ).\n' +
+          'SCENE: "' + s.title + '"' + (s.present ? ' [' + s.present + ']' : '') + '\n' + lnStorySceneText(sceneOf(si), la) +
+          '\nLESSON WORDS in this scene: ' + st.map(t => t.surface + ' (' + t.gloss + ')').join(', ') + (notes ? '\nHOW THAI SPEAKERS USE THEM:\n' + notes : '') +
+          '\n\nCheck ONLY how each lesson word is used: said by the right person, to the right listener (a word for a group needs a group; "let\'s …" / กัน needs two people doing it together), ' +
+          'in a situation where a Thai speaker would really say it, with the grammar it needs (e.g. ไม่ทราบว่า opens a polite question). ' +
+          'For each WRONG use, rewrite that ONE line so the word is used correctly: keep the word, the same speaker, and make it fit between the lines around it. Reply {"fixes":[]} if every use is right.\n' +
+          'Reply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…","why":"…"}]}', 1200, 'LISTENING_REPAIR_CALLS', true)
+        return { si, fixes: (r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 4) }
+      } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return { si, fixes: [] } }
+    }))
+    let named = 0, kept = 0; const refused = []
+    res.forEach(({ si, fixes }) => {
+      named += fixes.length
+      const sc = sceneOf(si)
+      fixes.forEach(fx => {
+        const k = Number(fx && fx.line) - 1, tn = sc.turns[k], cur = written[si][k]
+        if (!tn || !cur || !fx.thai) return
+        const cand = { speaker: cur.speaker, thai: String(fx.thai).trim(), english: String(fx.english || '').trim() }
+        const g = lineGateWhy(si, cand), lost = (tn.intendedTargetIds || []).filter(id => !g.ids.includes(id))
+        if (g.why || lost.length) { refused.push('S' + (si + 1) + ' L' + (k + 1) + ': ' + (g.why || 'lesson word lost')); return }
+        written[si][k] = cand; kept++
+      })
+    })
+    log && log('  🔎 LISTENING_STORY lesson-word check · ' + named + ' wrong use(s) named across ' + plan.scenes.length + ' scene(s) · ' + kept + ' line(s) fixed' + (refused.length ? ' · refused: ' + refused.slice(0, 3).join(' | ').slice(0, 200) : ''))
   }
   // the edits must leave every scene's gates and lesson words as they were (a scene the edits broke goes back to its written text)
   // ── QC: paid naturalness verdicts (in context) + the whole-conversation coherence judge → rewrite the flagged scenes (≤ 2 rounds) ──

@@ -10,6 +10,7 @@
 //   S9     the planner may defer at most 4 words with no natural place (reported, still due in SRS); a 5th and 6th are placed anyway
 //   S10    the story prompts take the line length from the learner's belt (not a fixed 7 words)
 //   S11    an editor fix may add a missing reply (a span of 1 line replaced by 2), kept when the gates and turn-taking still pass
+//   S12    the lesson-word usage check (one call per scene): a fix that drops the lesson word is refused, a valid fix is applied
 //   S8     no stored-conversation path in production; the Daily exchange bank is unchanged
 // Real app code; the model is a deterministic script (no provider calls).
 //   node tests64.js            (current build: tt.compiled.js, or TT_FILE)
@@ -113,6 +114,18 @@ function scriptedModel(c, vocab, opt = {}) {
           return JSON.stringify({ score: 6, fixes: [{ from: 2, to: 2, problem: 'reply missing', turns: [{ speaker: sp, thai: m[2].trim(), english: m[3].trim() }, { speaker: ot, thai: st.added, english: 'Sure.' }] }] }) } }
       return JSON.stringify({ fixes: [] }) }
     if (stage === 'O_listening_story_line_fix') return JSON.stringify({ fixes: [] })
+    if (stage === 'O_listening_word_check') { st.wordChecks = (st.wordChecks || 0) + 1
+      // opt.wordCheck: in the first scene checked, one fix drops the line's lesson word (must be refused) and one rewrites a line with
+      // the same words (kept); every other scene reports no wrong use
+      if (opt.wordCheck && st.wordChecks === 1) {
+        const lw = [...p.matchAll(/^LESSON WORDS in this scene: (.+)$/gm)].map(m => m[1])[0] || ''
+        const words = [...lw.matchAll(/([^\s,(]+) \(/g)].map(m => m[1])
+        const ls = [...p.matchAll(/^(\d+)\. ([AB]) \| ([^|]+) \| /gm)].map(m => ({ n: Number(m[1]), sp: m[2], th: m[3].trim() }))
+        const withW = ls.filter(l => words.some(w => l.th.includes(w)))
+        if (withW.length >= 2) { const w0 = words.find(w => withW[0].th.includes(w)); st.wcDrop = withW[0].n; st.wcKeep = withW[1].n
+          return JSON.stringify({ fixes: [{ line: withW[0].n, thai: withW[0].th.replace(w0, ''), english: 'x', why: 'test: word dropped' }, { line: withW[1].n, thai: withW[1].th, english: 'kept', why: 'test: same words' }] }) }
+      }
+      return JSON.stringify({ fixes: [] }) }
     if (stage === 'verdicts') {
       const items = [...p.matchAll(/^\s*(\d+)[.)]\s/gm)].map(x => Number(x[1]))
       const nItems = Math.max(12, ...items)
@@ -229,6 +242,14 @@ async function run(c, vocab, opt = {}) {
     T('S11', 'an editor fix may add a missing reply (1 line → 2 lines), kept when every gate and the turn-taking still pass; the lesson words stay',
       !!G.st.added && L.some(l => l.thai === G.st.added) && G.tr.coverage.covered === 30,
       { added: G.st.added, found: L.some(l => l.thai === G.st.added), covered: G.tr.coverage.covered, status: G.tr.status })
+  }
+  {
+    // v713 lesson-word usage check: one call per scene; a fix that loses the line's lesson word is refused, a fix that keeps it passes
+    const H = await run(c, vocab, { variant: 7, wordCheck: true })
+    const lg = H.logs.find(x => /lesson-word check/.test(x)) || ''
+    T('S12', 'the lesson-word usage check runs once per scene; a line fix that drops the lesson word is refused, one that keeps every gate and word is applied; coverage stays 30/30',
+      H.st.wordChecks >= 4 && /2 wrong use\(s\) named/.test(lg) && /1 line\(s\) fixed/.test(lg) && /lesson word lost/.test(lg) && H.tr.coverage.covered === 30,
+      { checks: H.st.wordChecks, log: lg.slice(0, 220), covered: H.tr.coverage.covered })
   }
   {
     const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')

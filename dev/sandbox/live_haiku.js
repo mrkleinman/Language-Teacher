@@ -98,6 +98,8 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
   async function ownerRun() {
     const { load } = require(path.join(DEV, 'harness'))
     C = load(appFile, { realBelt: true, globals: { setTimeout, clearTimeout } }); C.console.info = () => {}; C.console.warn = () => {}
+    // --no-bank: the Thai Daily writer gets no vetted exchanges (measures fresh generation on its own — owner: new words must work without vetting)
+    if (process.argv.includes('--no-bank')) { C.ev('thaiBankSetEnabled')(false); console.log('  (Thai exchange bank OFF for this run)') }
     C.fetch = wrapFetch(noGemini, C)
     C.aiSetGenerationPreference({ model: MODEL, limitUsd: Math.min(1, cap), limitRequests: 600, serverUrl: SERVER })
     C.aiSetAnthropicAccess(ACCESS)

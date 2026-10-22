@@ -30144,8 +30144,12 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
   // ── 5. gates ──
   const hard = audit.issues.filter(x => !(x.code === 'TARGET_MISSING' && deferredIds.has(x.targetId))).concat(natIssues, pronIssues)
   const heardOrDeferred = targets.length > 0 && targets.every(t => audit.covered.includes(t.id) || deferredIds.has(t.id))
+  const strictCoverage = !!(sceneGates && sceneGates.composer === 'story')
   const gates = {
-    TARGET_COVERAGE: audit.covered.length + '/' + targets.length + (deferredIds.size ? ' (' + deferredIds.size + ' moved to Revision)' : ''), COVERAGE_PASS: heardOrDeferred && (deferredIds.size ? true : audit.covered.length === targets.length),
+    // v715 — the Thai story track passes coverage only when EVERY selected word is heard (owner review of v713: "COVERAGE_PASS=true at
+    // 25/30" — a deferred word no longer counts as covered); the other composers keep "heard or honestly deferred"
+    TARGET_COVERAGE: audit.covered.length + '/' + targets.length + (deferredIds.size ? (strictCoverage ? ' (' + deferredIds.size + ' not heard)' : ' (' + deferredIds.size + ' moved to Revision)') : ''),
+    COVERAGE_PASS: strictCoverage ? audit.covered.length === targets.length : heardOrDeferred && (deferredIds.size ? true : audit.covered.length === targets.length),
     MAX_TARGETS_PER_TURN: audit.lines.reduce((m, r) => Math.max(m, r.targetCount), 0), MAX3_PASS: !audit.issues.some(x => x.code === 'MAX_TARGETS_PER_TURN'),
     BOTH_SPEAKERS: audit.speakers.length >= 2, NO_MERGED_SPEAKER_LINES: !audit.issues.some(x => x.code === 'MERGED_SPEAKERS'),
     NO_DUPLICATES: !audit.issues.some(x => /DUPLICATE/.test(x.code)), NO_SINGLETON_SCENES: !audit.issues.some(x => x.code === 'SINGLETON_SCENE' || x.code === 'SCENE_FRAGMENTATION'),
@@ -32090,10 +32094,12 @@ const LN_STORY_UNTAUGHT_PROBE = ['คุย', 'แค่', 'เอง', 'ขึ�
   'อ้วน', 'เงินเดือน', 'ทำอาหาร', 'อาหารไทย', 'เพื่อนบ้าน', 'เหลือ', 'เกิน', 'ห่วง', 'คิดถึง', 'เสียดาย', 'แรก', 'เริ่ม', 'ต่อ', 'อื่น', 'เดียว', 'ทั้ง',
   'อย่าง', 'ครบ', 'นึง', 'เมื่อคืน', 'ข้างนอก', 'ดึก', 'ไฟดับ', 'หลับ', 'ละลาย', 'ตู้', 'เครื่อง', 'ป้าย', 'ชนะ', 'แพ้', 'ลูกค้า', 'พนักงาน', 'ห้องน้ำ']
 // the line length follows the learner's belt (the same contract the TOO_COMPLEX gate enforces): 10th Kyu 3–7 words, 7th Kyu 5–10 …
-function lnStoryLen(ctx) { const c = (ctx && ctx.complexity) || {}; return { min: c.preferredMin || 3, max: c.hardMax || 7 } }
+function lnStoryLen(ctx) { const c = (ctx && ctx.complexity) || {}; return { min: c.preferredMin || 3, max: c.hardMax || 7, aim: Math.min(c.preferredMax || c.hardMax || 7, c.hardMax || 7) } }
 const LN_STORY_RULES_LEAN = ctx =>
   'A = a man: ผม; every line ends with ครับ. B = a woman: ฉัน; every line ends with ค่ะ (คะ in a question). One particle per line, at the end (ได้ครับ / ใช่ค่ะ may open a line).\n' +
-  'Lines of ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).max + ' Thai words, each a complete natural sentence: never drop the small words Thai needs (ที่, กัน, อยู่, เป็น, ใส่, เรื่อง, มา / ไป) to save length; if a thought is too long, say less or split it over two turns. The speakers alternate (never three lines in a row by one). A and B are close friends (drop pronouns where Thai drops them, คุณ rarely) unless the scene makes B someone in a role (staff, host): then she speaks politely as that person.\n' +
+  // v715 — most lines in the learner's PREFERRED range, the hard maximum only when a line needs it (owner review of v713: only 35% of
+  // lines were in the preferred range — the prompt gave the hard maximum as the range)
+  'Most lines ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' Thai words, never more than ' + lnStoryLen(ctx).max + '; each a complete natural sentence: never drop the small words Thai needs (ที่, กัน, อยู่, เป็น, ใส่, เรื่อง, มา / ไป) to save length; if a thought is too long, say less or split it over two turns. The speakers alternate (never three lines in a row by one). A and B are the SAME two close friends from start to finish (drop pronouns where Thai drops them, คุณ rarely); B never plays anyone else.\n' +
   'One story: each reply follows the line before, questions get answers, facts stay consistent. Each lesson word in its everyday sense. No names.\n' +
   'English: a natural translation of exactly what the Thai says. Greetings only at the very start, goodbyes only at the very end.'
 function lnStoryJson(raw) {
@@ -32168,8 +32174,9 @@ function lnStorySceneText(sc, la) { return sc.turns.map((tn, k) => (k + 1) + '. 
 // one story, edited longer: the second candidate cost as much as the story and the in-app judges did not pick the one blind reviewers
 // preferred (S14–S28); its budget goes to more find-then-fix editing rounds instead
 const LN_STORY_CANDIDATES = 1
-// the most frozen words one story may leave out (owner brief: a bounded, reported deferral; the words stay due in SRS)
-const LN_STORY_MAX_DEFER = 4
+// the most frozen words the planner may leave out. v715: 0 — the owner's review of v713 asks that the selected words are never quietly
+// reduced: every selected word is placed, and a word still not heard at the end makes the track NOT_READY (it is not deferred)
+const LN_STORY_MAX_DEFER = 0
 function lnStoryRank(r) {
   if (!r || !r.ok) return -1e9
   const c = r.coh || {}, fails = (c.verdicts || []).filter(v => !v.pass).length
@@ -32238,31 +32245,27 @@ async function _lnComposeThaiStory(env, avoid) {
   for (let attempt = 1; attempt <= 2 && !plan; attempt++) {
     try {
       const p = await call('O_listening_story_plan', 'TASK: plan ONE new conversation. The learner must hear EVERY ONE of these ' + planTargets.length + ' lesson words. They are fixed: never drop, replace or add a lesson word.\n' +
-        lnStoryTargetRows(planTargets) + '\n\nWork in two steps. FIRST group the words into 5–6 SITUATIONS where they are naturally said together (e.g. a meal at a restaurant: please sit (the waitress) / would you like more (the waitress) / let\'s eat / ' +
-        'just a little; at the museum desk: may I ask / everyone / national museum). ' +
-        // v713 (S36 blind reviews: an "afternoon" scene says "it's already ten o'clock"; a colleague says "I'm the secretary"; forgiveness for a
-        // lateness nobody mentioned) — titles name the day and place only; B is ONE person per scene; nothing is referred to before it happens
-        'THEN make each situation one scene of A\'s WEEK: 5–6 scenes in day order (e.g. "Monday, at the bus stop" → "Tuesday, at the café — B is the waitress" → "Wednesday, on the phone with his friend"). ' +
-        'A title names the DAY and the PLACE only (no time of day). In each scene B is exactly ONE person (his friend OR the waitress OR a colleague — never two roles), and a line may refer only to what happened earlier IN THAT SCENE (an apology needs the mistake first). ' +
-        (avoid ? 'Use DIFFERENT situations and settings from this earlier week: "' + avoid + '". ' : '') +
-        'Each scene is a COMPLETE small situation in one place: a clear purpose or small problem, what happens, and how it ends — it makes sense on its own, without remembering details of other scenes. ' +
-        'A light thread may link the week (A is planning a trip, preparing for a friend\'s wedding, starting a new job), but no scene may contradict another and nothing is mentioned before it is set up IN THAT SCENE. ' +
-        'Opening and closing phrases (greetings, goodbyes) open and close a scene naturally. ' +
-        // v713 (S32 blind-review set: "เราจริงใจและเชื่อใจกัน / ผมให้อภัยคุณเสมอ / เราเป็นเพื่อนกันตลอดไป" — the plan's own example grouped
-        // sincere / trust / forgive / always into one scene, and every run wrote that melodramatic cluster)
-        'FEELINGS and VALUE words (trust, forgive, sincere, forever, reputation, keep one\'s word) are SPREAD OUT: at most ONE per scene, each caused by a small, ordinary event in that scene ' +
-        '(B returns the wallet A left behind → trust; A arrives late and says sorry → B forgives him; a shop everyone recommends → reputation). Friends never make speeches about their friendship.\n' +
-        'CAST: two voices only. A is a man, the same person in every scene. B is a woman: whoever A talks to in that scene — his close friend, a colleague, a waitress, museum desk staff, a shop assistant (not a relative: B always says ฉัน). ' +
-        'Put who B is in the scene title when she is not his friend (e.g. "Thursday, at the museum desk — B works there"); staff speak politely as staff, friends speak casually. ' +
-        'FORMAL or SET-PHRASE lesson words (polite forms, host / staff phrases) go to a scene where B (or A) has that role.\n' +
-        'Give each scene: a title (day and place, plus B\'s role if she is not the friend), "present" (where A and B are and who B is, e.g. "together at the café" / "on the phone: A at work, B at home" / "B is the waitress, A a customer"), what happens (2–3 sentences that carry the plot), ' +
-        '"facts" (who B is and what is true in this scene), and "uses": for each of its lesson words, the id and the MOMENT it is said — ' +
-        'who says it and why, in at most 10 English words (e.g. {"id":842,"moment":"B, at the museum desk, asks A for his ticket"}). Pick moments where the word is the natural thing to say. ' +
-        'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–6 per scene.\n' +
+        lnStoryTargetRows(planTargets) + '\n\n' +
+        // v715 — ONE OUTING WITH ONE CAST (owner review of v713, 4.5/10: five unrelated role-plays, B playing a waitress, a nurse, a friend,
+        // a flight attendant and a colleague; words forced in — "งานเจ้าสาว", "the captain is still on the plane"). The story is now one
+        // believable outing of the same two friends, in time order, and a lesson word is fitted by choosing where the friends go and what
+        // happens to them, never by casting B as someone else.
+        'THE STORY: ONE ordinary outing of the same two close friends, A (a man) and B (a woman), told in time order on ONE day — e.g. a Saturday trip to the market and lunch, ' +
+        'a day helping B move house, a visit to B\'s family for a meal, a day trip to the beach, getting ready for a friend\'s party. Choose the outing in which these lesson words come up most naturally. ' +
+        (avoid ? 'Choose a DIFFERENT outing from this earlier one: "' + avoid + '". ' : '') +
+        'Split it into 4–5 SCENES, each the next stop or moment of the same outing (e.g. "at the bus stop" → "on the bus" → "at the market" → "lunch at a noodle shop" → "walking home"); ' +
+        'each scene continues from the one before (same day, same plan, nothing contradicts what was said earlier). ' +
+        'CAST: only A and B speak, to each other, in every scene, as friends. B NEVER plays anyone else (no waitress, staff, nurse or colleague voice). A word staff or a host would say goes where one of the FRIENDS ' +
+        'naturally says it (B is the host at her own home: "please sit"; A reads out a sign or repeats what the shop said). ' +
+        'Pick each lesson word\'s MOMENT from something that really happens on this outing: the word must be the natural thing to say there, set up by what came before. ' +
+        'FEELINGS and VALUE words (trust, forgive, sincere, forever, reputation) are SPREAD OUT: at most ONE per scene, each caused by a small, ordinary event (B finds the wallet A dropped → trust; A is late and says sorry → B forgives him). Friends never make speeches about their friendship. ' +
+        'A scene title names the PLACE only (no day, no time of day, no roles). Greetings only in scene 1, goodbyes only in the last scene.\n' +
+        'Give each scene: a title (the place), "present" (where the two are, e.g. "together on the bus"), what happens (2–3 sentences that carry the plot on from the scene before), ' +
+        '"facts" (what is true after this scene), and "uses": for each of its lesson words, the id and the MOMENT it is said — ' +
+        'who says it and why, in at most 10 English words (e.g. {"id":842,"moment":"B asks A to hold the bags while she pays"}). ' +
+        'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–7 per scene. Every lesson word must be placed: none may be left out.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
-        // v713 — the reviewers' worst lines are words forced in with no setup (ไม่เชิง, ชื่อเสียง, ตลอดไป); a deferred word stays due in SRS
-        'If a word (at most ' + LN_STORY_MAX_DEFER + ') has NO natural place in this story — it could only be forced in — list it in "defer" instead of a scene: it stays due and comes back in the next lesson. A forced line is worse than a deferred word.\n' +
-        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"moment":"…"}]}],"defer":[]}', 1950, 'LISTENING_GENERATION_CALLS')
+        'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"moment":"…"}]}]}', 1950, 'LISTENING_GENERATION_CALLS')
       const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 6)
       if (sc.length < 2) throw new Error('fewer than 2 scenes')
       const used = new Set()
@@ -32304,7 +32307,7 @@ async function _lnComposeThaiStory(env, avoid) {
       (si === 0 ? 'It opens the conversation (a greeting is fine). ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends the conversation with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
       '\nUse EVERY ONE of these lesson words at least once, spelled exactly, in its common sense (not more than 3 lesson words in one line), at its planned moment:\n' +
       st.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (s.moments && s.moments[t.id] ? ' — moment: ' + s.moments[t.id] : '')).join('\n') +
-      '\nA new topic or event in this scene must follow from something said before it. Every line moves the story on (no filler such as a bare ดีค่ะ / ขอบคุณครับ after every line); most lines 4–7 words.' +
+      '\nA new topic or event in this scene must follow from something said before it. Every line moves the story on (no filler such as a bare ดีค่ะ / ขอบคุณครับ after every line); most lines ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' words.' +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}'
     let best = null
     // the scene is first scripted in ENGLISH (a short call without the Thai word list: the model can think about the story alone),
@@ -32316,7 +32319,7 @@ async function _lnComposeThaiStory(env, avoid) {
         '\n\nOutline the scene as ' + Math.max(4, Math.round(n / 2)) + '–' + Math.round(n / 2 + 1) + ' short story BEATS in English, in order (who does or asks what, and how the other reacts — not the dialogue itself). Every beat follows from the one before; nothing is mentioned that was not set up; ' +
         // v713 (S32 blind reviews: at the bus stop A says "see you at the bus stop" and B asks where the bus stop is)
         'the scene STARTS where "present" says A and B already are — nobody arranges to meet at, asks the way to, or says he will wait at the place they are standing in; a question is answered before the talk moves on; ' +
-        'each lesson word comes at the beat where it is the natural thing to say (mark the beat with its id). Plain everyday words. If B is someone in a role in this scene (staff, a waitress), she speaks ONLY as that person — she is not A\'s friend here and knows nothing of their story.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"A asks …; B says …","ids":[123]}]}', 1500, 'LISTENING_GENERATION_CALLS', true)
+        'each lesson word comes at the beat where it is the natural thing to say (mark the beat with its id). Plain everyday words. A and B are the same two close friends on one outing; nobody else speaks.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"A asks …; B says …","ids":[123]}]}', 1500, 'LISTENING_GENERATION_CALLS', true)
       beats = (b && Array.isArray(b.lines) ? b.lines : []).filter(x => x && x.english).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', english: String(x.english).trim(), ids: (Array.isArray(x.ids) ? x.ids : []).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id)) }))
       if (beats.length < 3) beats = null
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' English script unusable: ' + String(e && e.message || e).slice(0, 100)) }
@@ -32335,6 +32338,21 @@ async function _lnComposeThaiStory(env, avoid) {
       // rewritten and each replacement is kept only if it passes the gates and keeps its lesson words (a whole-scene rewrite for a few
       // untaught words also rewrote the good lines — paid run S17: 43 repair calls, the scenes drifted into stilted Thai)
       const lineOnly = probs.every(p => p.line > 0 && p.code !== 'TURN_TAKING')
+      // v715 — SIMPLIFY ON REPEATED FAILURE (owner review of v713: 32 repair calls for 14 writing calls): a scene that still fails after
+      // one repair is not patched again — it is written afresh from a simpler plan (the friends just do what "present" says, short plain
+      // lines, each lesson word in a question or its answer), and the better of the drafts is kept
+      if (round === 1 && !lineOnly) {
+        try {
+          const r = take(await call('O_listening_story_write', brief.replace(/\nTASK: [\s\S]*$/, '') + '\n\nTASK: write scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '"' + (s.present ? ' — ' + s.present : '') + ' — again, SIMPLER. ' +
+            'The earlier drafts kept failing (' + probs.slice(0, 4).map(p => p.code + (p.detail ? ': ' + String(p.detail).slice(0, 60) : '')).join('; ') + '). Keep only the plainest version of what happens: the two friends talk about what they are doing right there. ' +
+            LN_STORY_TURNS.sceneMin + '–' + Math.min(LN_STORY_TURNS.sceneMax, n + 1) + ' lines, A and B alternating, short plain sentences (' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' words). Each lesson word once, in its common sense, most easily in a question or in the answer to one. ' +
+            (si === 0 ? 'It opens the conversation. ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
+            '\nLesson words:\n' + lnStoryTargetRows(st) + '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_GENERATION_CALLS'))
+          if (r.length >= 2) written[si] = r
+          log && log('  ↺ LISTENING_STORY scene ' + (si + 1) + ' still failing after a repair — written again from a simpler plan (no further patching)')
+        } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' simpler rewrite unusable: ' + String(e && e.message || e).slice(0, 100)) }
+        continue
+      }
       if (lineOnly) {
         try {
           const lines = [...new Set(probs.map(p => p.line))]
@@ -32378,11 +32396,11 @@ async function _lnComposeThaiStory(env, avoid) {
     //    grader does and lists the faults; 2) FIX: the editor below replaces those spans within the word list. One call doing both
     //    under every Thai constraint kept missing story faults (blind reviews of S13 / S17 / S18: story 3–3.5 / 10).
     try {
-      review = await call('O_listening_story_review', 'You are a strict native Thai teacher grading a Thai listening lesson (a story in scenes; A is a man, B a woman — his friend unless the scene title says she is someone else).\n' +
+      review = await call('O_listening_story_review', 'You are a strict native Thai teacher grading a Thai listening lesson (one outing of two close friends in scenes; A is a man, B a woman — always the same friend).\n' +
         'SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '')).join(' | ') +
         '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
         '\n\nRead it start to finish as the listener will. List the worst faults (at most 6), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
-        'time running backwards, a person / thing / event mentioned before it is set up, B acting as both friend and staff, the scene title not matching what is said (together vs on the phone, the place), a day or time that clashes with another scene (on Thursday asking about "this Wednesday"), feelings words piled into one melodramatic exchange without a real cause), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
+        'time running backwards, a person / thing / event mentioned before it is set up, B speaking as anyone other than A\'s friend, a lesson word forced into a line where nobody would say it, the scene title not matching what is said (together vs on the phone, the place), a day or time that clashes with another scene (on Thursday asking about "this Wednesday"), feelings words piled into one melodramatic exchange without a real cause), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
         (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') +
         'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
         'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1800, 'LISTENING_REPAIR_CALLS', true)

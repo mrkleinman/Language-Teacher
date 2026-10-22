@@ -7,7 +7,7 @@
 //   S4     repeated requests generate again (new calls, a different conversation) — nothing is replayed from storage
 //   S5–S6  the deterministic gates and the paid QC drive targeted rewrites (an untaught word; a line the naturalness judge rejects)
 //   S7     a frozen word the writer never uses is deferred and reported; its SRS state is untouched
-//   S9     the planner may defer at most 4 words with no natural place (reported, still due in SRS); a 5th and 6th are placed anyway
+//   S9     the planner cannot defer words (v715): every frozen word is placed
 //   S10    the story prompts take the line length from the learner's belt (not a fixed 7 words)
 //   S11    an editor fix may add a missing reply (a span of 1 line replaced by 2), kept when the gates and turn-taking still pass
 //   S12    the lesson-word usage check (one call per scene): a fix that drops the lesson word is refused, a valid fix is applied
@@ -197,7 +197,10 @@ async function run(c, vocab, opt = {}) {
     const C = await run(c, vocab, { variant: 2, inject: { A: 'ผมอยาก' + un + 'ครับ', B: 'ฉันอยาก' + un + 'ค่ะ' }, fix: t => t.thai.includes(un) ? { thai: t.speaker === 'A' ? 'ผมอยากไปด้วยครับ' : 'ฉันอยากไปด้วยค่ะ', english: 'I want to go too.' } : null })
     const rep = C.st.prompts.find(x => x.stage === 'O_listening_story_repair')
     T('S5', 'a deterministic gate failure (a word this learner was not taught) sends that scene back with the named problem; the rewrite is checked again and the final track has no untaught word',
-      !!un && !!rep && /CLOSED_VOCAB/.test(rep.p) && !(C.tr.listening.lines || []).some(l => l.thai.includes(un)) && C.tr.status === 'READY' && (C.tr.telemetry.LISTENING_REPAIR_CALLS || 0) >= 1,
+      !!un && !!rep && /CLOSED_VOCAB/.test(rep.p) && !(C.tr.listening.lines || []).some(l => l.thai.includes(un)) &&
+      // v715: the injected line also displaces a lesson word the scripted repair never puts back; that word used to be deferred (READY),
+      // and now fails coverage (owner: a track is READY only when every selected word is heard). Untaught words are what this test checks.
+      (C.tr.status === 'READY' || (C.tr.failedChecks || []).join() === 'COVERAGE_PASS=FAIL') && (C.tr.telemetry.LISTENING_REPAIR_CALLS || 0) >= 1,
       { repair: !!rep, status: C.tr.status, rc: C.tr.telemetry.LISTENING_REPAIR_CALLS, un, left: (C.tr.listening.lines || []).filter(l => l.thai.includes(un)).map(l => l.thai), rp: rep && rep.p.slice(rep.p.indexOf('PROBLEMS'), rep.p.indexOf('PROBLEMS') + 300) })
   }
   {
@@ -225,20 +228,23 @@ async function run(c, vocab, opt = {}) {
     const F = await run(c, vocab, { variant: 5, defer: ask })
     const after = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))
     const d = F.tr.coverage.deferred || [], sal = ((F.tr.listening || {}).salvage || {}).deferred || []
-    T('S9', 'the planner defers at most 4 frozen words it finds no natural place for (reported with that reason, still due in SRS); words beyond the cap are placed in the story anyway',
-      ask.slice(0, 4).every(id => d.includes(id)) && ask.slice(4).every(id => !d.includes(id)) && d.length === 4 && F.tr.coverage.covered === 26 &&
-      sal.filter(x => /no natural place/.test(x.reason)).length === 4 && F.tr.selectedTargetIds.join() === frozen.join() && before === after,
+    // v715 (owner review of v713: the selected words are never quietly reduced) — the planner may no longer leave words out: a "defer"
+    // list in its reply is ignored and every frozen word is placed (this test used to check that up to 4 were deferred)
+    T('S9', 'the planner cannot defer frozen words any more: its "defer" list is ignored, every word is placed and heard, nothing is reported as deferred',
+      !d.length && !sal.length && F.tr.coverage.covered === 30 && F.tr.selectedTargetIds.join() === frozen.join() && before === after,
       { deferred: d, covered: F.tr.coverage.covered, reasons: sal.map(x => x.reason), status: F.tr.status })
   }
   {
     // the length in the prompt follows the belt contract the TOO_COMPLEX gate uses: this learner's run, plus two other belts
     const runP = (A.st.prompts.find(x => x.stage === 'O_listening_story_write') || {}).p || ''
     const lv = A.tr.level || {}
-    const p7 = c.lnStoryPrefix({ text: x => x }, { complexity: { belt: '7th Kyu', preferredMin: 5, hardMax: 10 }, exposed: [] }, [], [])
-    const pM = c.lnStoryPrefix({ text: x => x }, { complexity: { belt: 'Mukyu', preferredMin: 2, hardMax: 6 }, exposed: [] }, [], [])
+    // v715: most lines aim at the PREFERRED range and the hard maximum is a ceiling (owner review of v713: only 35% of lines were in the
+    // preferred range); the test used to read "Lines of min–hardMax"
+    const p7 = c.lnStoryPrefix({ text: x => x }, { complexity: { belt: '7th Kyu', preferredMin: 5, preferredMax: 8, hardMax: 10 }, exposed: [] }, [], [])
+    const pM = c.lnStoryPrefix({ text: x => x }, { complexity: { belt: 'Mukyu', preferredMin: 2, preferredMax: 4, hardMax: 6 }, exposed: [] }, [], [])
     T('S10', 'the story prompts take the line length from the learner\'s belt (this run: ' + lv.belt + ' up to ' + lv.hardMax + ' words; 7th Kyu 5–10; Mukyu 2–6), not a fixed 7',
-      !!lv.hardMax && runP.includes('–' + lv.hardMax + ' Thai words') && /Lines of 5–10 Thai words/.test(p7) && /Lines of 2–6 Thai words/.test(pM),
-      { level: lv, p7: (p7.match(/Lines of [^ ]+ Thai words/) || [])[0], pM: (pM.match(/Lines of [^ ]+ Thai words/) || [])[0] })
+      !!lv.hardMax && runP.includes('–' + lv.preferredMax + ' Thai words, never more than ' + lv.hardMax) && /Most lines 5–8 Thai words, never more than 10/.test(p7) && /Most lines 2–4 Thai words, never more than 6/.test(pM),
+      { level: lv, p7: (p7.match(/Most lines [^;]+/) || [])[0], pM: (pM.match(/Most lines [^;]+/) || [])[0] })
   }
   {
     const G = await run(c, vocab, { variant: 6, addReply: true })

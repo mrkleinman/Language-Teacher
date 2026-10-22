@@ -100,10 +100,11 @@ function scriptedModel(c, vocab, opt = {}) {
     }
     if (stage === 'O_listening_story_review') return JSON.stringify({ score: 7, faults: [] })
     if (stage === 'O_listening_story_english') { st.english = (st.english || 0) + 1; return JSON.stringify({ english: [...p.matchAll(/^\d+\. [AB]: (.+)$/gm)].map(m => 'EN of ' + m[1]) }) }
-    if (stage === 'O_listening_story_usage') {
-      // v712: one usage note per lesson word, written fresh per track and shared by the later calls
-      const rows = rowsOf(p)
-      return JSON.stringify({ notes: rows.map(r => ({ id: r.id, note: 'everyday sense of ' + r.s + ' (usage-note)' })) })
+    if (stage === 'O_word_usage') {
+      // v712: the shared per-word usage profiles (one batched call for the words not yet described; cached per word)
+      const ws = [...p.matchAll(/^(\S+) = /gm)].map(m => m[1])
+      st.usageCalls = (st.usageCalls || 0) + 1
+      return JSON.stringify({ words: ws.map(w => ({ thai: w, use: 'everyday sense of ' + w + ' (usage-note)', situations: ['at home', 'at work', 'on the phone'] })) })
     }
     if (stage === 'O_listening_story_edit') { st.edits = (st.edits || 0) + 1
       // opt.addReply: in the first edit round, line 2 is kept and a reply by the other speaker is added after it (span 1 → 2 lines)
@@ -143,7 +144,7 @@ async function run(c, vocab, opt = {}) {
     const planP = (A.st.prompts.find(x => x.stage === 'O_listening_story_plan') || {}).p || ''
     // the per-track usage notes are written once and reach the English scene scripts (not the shared prefix: it made every call longer — S21)
     const beatP = (A.st.prompts.find(x => x.stage === 'O_listening_story_beats') || {}).p || ''
-    const usageOnce = A.st.calls.filter(x => x === 'O_listening_story_usage').length === 1 && /LESSON WORDS ARE USED[\s\S]*\(usage-note\)/.test(beatP) && !/\(usage-note\)/.test(planP)
+    const usageOnce = A.st.calls.filter(x => x === 'O_word_usage').length >= 1 && /LESSON WORDS ARE USED[\s\S]*\(usage-note\)/.test(beatP) && !/\(usage-note\)/.test(planP)
     const planIds = [...planP.slice(planP.indexOf('TASK: plan')).matchAll(/^T(\d+) \|/gm)].map(m => Number(m[1]))
     T('S1', 'the 30 revision targets are selected and frozen BEFORE the first story call, and the plan is asked for exactly those ids',
       // v712: the per-track usage notes (one call, after the freeze) reach the English scene scripts

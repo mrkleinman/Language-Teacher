@@ -9541,7 +9541,7 @@ function anthropicCacheBlocks(text) {
 }
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
-const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_story_usage: 'medium' })
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
 function anthropicRequestBody({ model, messages, maxTokens, json, effort }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -14156,10 +14156,55 @@ function thaiWordUsesLine(target) {
     (u.senses ? '  It has ' + u.senses.length + ' senses (' + u.senses.join(' / ') + '): use at least two of them across the three lines.\n' : '') +
     (u.note ? '  Note: ' + u.note + '\n' : '')
 }
+// v712 — HOW A WORD IS USED (owner: "AI needs to understand how words are used … and then apply it; can't be doing every single
+// word"). Before writing, the model describes each word's everyday use — sense, who says it and when, its usual partner words, the
+// common learner mistake, and three different situations where it is the natural thing to say. AI-derived (nothing hand-written),
+// one batched call for the words that need it, cached per word on this device; shared by the Daily writer and the Listening story.
+const TH_USAGE_CACHE_KEY = 'tt_th_word_usage_v1'
+const TH_USAGE_MEM = new Map()
+function thaiUsageKey(surface) { return String(surface || '').trim() }
+function thaiUsageLoad() {
+  if (TH_USAGE_MEM.size) return
+  try { const raw = typeof localStorage !== 'undefined' && localStorage.getItem(TH_USAGE_CACHE_KEY); if (raw) Object.entries(JSON.parse(raw) || {}).forEach(([k, v]) => { if (v && v.use) TH_USAGE_MEM.set(k, v) }) } catch (e) {}
+}
+function thaiUsageSave() {
+  try { if (typeof localStorage !== 'undefined') localStorage.setItem(TH_USAGE_CACHE_KEY, JSON.stringify(Object.fromEntries([...TH_USAGE_MEM.entries()].slice(-3000)))) } catch (e) {}
+}
+function thaiUsageOf(surface) { thaiUsageLoad(); return TH_USAGE_MEM.get(thaiUsageKey(surface)) || null }
+// words: [{ thai, english }]; returns how many profiles are known afterwards
+async function thaiEnsureUsageProfiles(words, o, log) {
+  thaiUsageLoad()
+  const need = [], seen = new Set()
+  ;(words || []).forEach(w => { const k = thaiUsageKey(w && (w.thai || w.surface)); if (k && !seen.has(k) && !TH_USAGE_MEM.has(k)) { seen.add(k); need.push({ thai: k, english: String((w && (w.english || w.gloss)) || '').slice(0, 60) }) } })
+  if (!need.length || !o || !o.apiKey) return (words || []).filter(w => thaiUsageOf(w && (w.thai || w.surface))).length
+  for (let i = 0; i < need.length; i += 15) {
+    const batch = need.slice(i, i + 15)
+    try {
+      const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, maxTokens: 1500, temperature: 0.3, json: true, stage: 'O_word_usage', messages: [{ role: 'user', content:
+        'You are a native Thai teacher. For each Thai word or phrase below, describe how Thai speakers really use it in everyday speech, for an adult learner:\n' +
+        '"use": 1–2 short lines — its everyday sense (as glossed), who says it to whom and when (friends, staff to customers, on the phone …), the words it usually goes with (partner words / pattern), and the common learner mistake (a sense it does NOT have, a wrong partner word, the wrong register).\n' +
+        '"situations": 3 DIFFERENT everyday situations where a speaker would naturally say it (a few words each, no full sentences).\n' +
+        batch.map(w => w.thai + ' = ' + w.english).join('\n') +
+        '\nReply ONLY with JSON: {"words":[{"thai":"…","use":"…","situations":["…","…","…"]}]}' }] })
+      const t = String(raw || '').replace(/```json|```/g, ''), a = t.indexOf('{'), b = t.lastIndexOf('}')
+      const j = a >= 0 && b > a ? JSON.parse(t.slice(a, b + 1)) : null
+      ;((j && j.words) || []).forEach(x => { const k = thaiUsageKey(x && x.thai); if (k && batch.some(w => w.thai === k) && x.use) TH_USAGE_MEM.set(k, { use: String(x.use).replace(/\s+/g, ' ').slice(0, 300), situations: (Array.isArray(x.situations) ? x.situations : []).map(v => String(v).slice(0, 80)).slice(0, 3) }) })
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ WORD_USAGE batch unusable: ' + String(e && e.message || e).slice(0, 100)) }
+  }
+  thaiUsageSave()
+  const known = (words || []).filter(w => thaiUsageOf(w && (w.thai || w.surface))).length
+  log && log('  📖 WORD_USAGE ' + need.length + ' word(s) described by the model (cached for next time) · ' + known + ' of ' + (words || []).length + ' known')
+  return known
+}
+function thaiUsageProfileLine(target) {
+  const u = thaiUsageOf(target && (target.thai || target.t || target.surface))
+  if (!u) return ''
+  return '\u2022 HOW THAI SPEAKERS USE "' + (target.thai || target.t || target.surface) + '": ' + u.use + (u.situations && u.situations.length ? ' — natural situations: ' + u.situations.join(' / ') : '') + '\n'
+}
 function thaiUsageFrameLine(target) {
   const th = target && (target.thai || target.t)
   const f = THAI_USAGE_FRAMES[th]
-  const uses = thaiWordUsesLine(target)
+  const uses = thaiWordUsesLine(target) + (dailyV693On() ? thaiUsageProfileLine(target) : '')
   if (!f) return uses ? '\n' + uses : ''
   return '\n\u2022 USAGE OF "' + th + '" \u2014 sense: ' + f.sense + '\n' +
          '  natural patterns: ' + f.frames.join(' / ') + '\n' +
@@ -17655,8 +17700,12 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         ? 'REWRITE REQUIRED — previous attempt had these problems:\n' +
           failureReasons.map((r,i) => '  ' + (i+1) + '. ' + _translateFail(r)).join('\n') +
           '\n' + _banLine + _simpleLine + recoveryStrategyPromptLines(_genState, { supportWords: _altPool.slice(0, 24) }) +
+          // v712 — after two failed checks the sentence is rebuilt around a DIFFERENT situation (rewording the same failing collocation
+          // again and again was the v711 ความทรงจำ / ร่วมกัน failure)
+          (attempt >= 2 && dailyV693On() && (thaiUsageOf(target.thai) || {}).situations && thaiUsageOf(target.thai).situations.length ? 'CHANGE THE SITUATION — do not reword the failed sentence: build the exchange around this situation instead: ' + thaiUsageOf(target.thai).situations[(attempt - 2) % thaiUsageOf(target.thai).situations.length] + ', using "' + target.thai + '" the way it is described above.\n' : '') +
+          (attempt >= 2 && dailyV693On() && ((thaiUsageOf(target.thai) || {}).situations || []).length ? '\nKeep the same target word, in its everyday sense; prefer a short, simple sentence.\n\n---\n\n' :
           '\nKeep the same target word and meaning. Change as little as possible —\n' +
-          'prefer a SHORTER, simpler sentence.\n\n---\n\n'
+          'prefer a SHORTER, simpler sentence.\n\n---\n\n')
         : ''
       // v703: the rewrite hint follows the cached shared part (it used to come first, so no retry could reuse the cache)
       const combinedMsg = _cacheOrder ? _stableSystem + THAI_VERB_SENSE_LINE + PROMPT_CACHE_MARK + failHint + _targetSystem + '\n\n---\n\n' + baseUser : failHint + baseSystem + '\n\n---\n\n' + baseUser
@@ -19304,6 +19353,8 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     })
     _elog('🧪 EARLY_SLOT_REGENERATION ' + byT.size + ' target(s) · ' + fresh.length + ' candidate(s) · ' + _early.recovered + ' slot(s) refilled so far (only the rejected slots were regenerated)')
   }
+  // v712 — every word the bank does not cover is described first (how Thai speakers use it), once, cached per word
+  if (dailyV693On()) { try { await thaiEnsureUsageProfiles(genOrder.filter(t => !thaiBankExchange(t)).map(t => ({ thai: t.thai, english: t.english })), { apiKey, model: GEN_MODEL }, m => onProgress && onProgress(-1, -1, { apiError: m }, null, null)) } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e } }
   for (let i = 0; i < genOrder.length; i++) {
     // v649: Cancel / leaving the screen stops the loop (stopSignal used to be passed but never read)
     if (stopSignal && stopSignal.cancelled) throw _cancelledError('Thai generation stopped')
@@ -31982,14 +32033,11 @@ async function _lnComposeThaiStory(env, avoid) {
   //    นัด for booking a table, ไม่เชิง with no yes / no question before it, เลี้ยงดู for one afternoon) ──
   if (env._lnUsageNotes == null) {
     env._lnUsageNotes = ''
-    try {
-      const u = await call('O_listening_story_usage', 'You are a native Thai teacher. For each Thai word or phrase below, say in ONE short line how Thai speakers really use it in everyday speech: ' +
-        'its common sense, when and by whom it is said (e.g. staff to customers, on the phone), the usual pattern or partner words, and the common mistake to avoid (a sense it does NOT have). No full example conversations.\n' +
-        lnStoryTargetRows(targets) + '\nReply ONLY with JSON: {"notes":[{"id":123,"note":"…"}]}', 1500, 'LISTENING_GENERATION_CALLS', true)
-      const rows = (u && Array.isArray(u.notes) ? u.notes : []).map(x => ({ id: Number(String(x && x.id).replace(/\D/g, '')), note: String((x && x.note) || '').replace(/\s+/g, ' ').slice(0, 220) })).filter(x => byId.has(x.id) && x.note)
-      env._lnUsageNotes = rows.map(x => byId.get(x.id).surface + ' — ' + x.note).join('\n')
-      log && log('  📖 LISTENING_STORY usage notes for ' + rows.length + ' of ' + targets.length + ' lesson words')
-    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY usage notes unusable: ' + String(e && e.message || e).slice(0, 100)) }
+    // the same per-word usage profiles the Daily writer uses (AI-derived, cached per word)
+    try { await thaiEnsureUsageProfiles(targets.map(t => ({ thai: t.surface, english: t.gloss })), o, log) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+    const rows = targets.map(t => ({ t, u: thaiUsageOf(t.surface) })).filter(x => x.u)
+    env._lnUsageNotes = rows.map(x => x.t.surface + ' — ' + x.u.use + (x.u.situations && x.u.situations.length ? ' (natural situations: ' + x.u.situations.join(' / ') + ')' : '')).join('\n')
+    log && log('  📖 LISTENING_STORY usage notes for ' + rows.length + ' of ' + targets.length + ' lesson words')
   }
   // the notes go to the English script and the review (short calls); added to the shared prefix they made every call longer and the
   // plan / fix replies ran out of tokens (paid run S21)

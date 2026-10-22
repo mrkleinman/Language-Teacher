@@ -18083,6 +18083,17 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
         // v713 (owner's v712 review: "make natural spoken Thai the generation standard, not a late QC requirement") — the objective
         // lexical rules the final audit applies are applied here, while the exchange can still be rewritten in full
         g.forEach((l, li) => { try { thaiLexicalSenseProblems({ thai: l.thai, english: l.english }, target.thai).forEach(x => naturalFails.push('Line ' + (li + 1) + ': ' + x.why)) } catch (e) {} })
+        // v713 (D7 / D8 blind reviews: "all three ครึ่ง lines are half price", สัปดาห์นี้ / ข้ามสะพาน three times) — two lines must not use the
+        // target in the same phrase: the few letters straight after (or before) the word may not repeat
+        { const tg = sq(target.thai), win = g.map(l => { const t = sq(l.thai), i = t.indexOf(tg); if (i < 0) return null
+            const after = t.slice(i + tg.length).replace(/^(ครับ|ค่ะ|คะ|นะ)+/, '').slice(0, 3), before = t.slice(Math.max(0, i - 3), i)
+            return { after: after.length >= 2 ? after : null, before: before.length >= 2 && !/^(ผม|ฉัน|คุณ)$/.test(before) ? before : null } })
+          const rep = k => { const v = win.map(w => w && w[k]).filter(Boolean); return v.find((x, i) => v.indexOf(x) !== i) }
+          const ra = rep('after'), rb = rep('before')
+          if (tg.length >= 2 && (ra || rb)) naturalFails.push('Two lines use "' + target.thai + '" in the same phrase ("' + (ra ? target.thai + ra : rb + target.thai) + '…") — give each line a DIFFERENT use of the word (another phrase, another situation, another meaning it has)') }
+        // (D8: "ไม่ เอาแก้ว ผมอยากได้นม" refused a glass from the exchange before) — every exchange starts fresh: line 1 does not answer or
+        // continue an earlier exchange
+        if (/^(งั้น|ไม่เอา|ไม่ครับ|ไม่ค่ะ|ใช่|ได้ครับ|ได้ค่ะ|แล้ว(?!ก็)|ก็)/.test(sq(g[0].thai))) naturalFails.push('Line 1 continues an earlier exchange ("' + g[0].thai + '") — start this exchange fresh: a new question or statement that makes sense on its own')
         // D4 blind reviews: "คุณไม่ชอบน้ำแข็งไหมคะ" — a negative question takes เหรอ / หรือ, never ไหม (ไม่สบาย "unwell" is one word)
         g.forEach((l, li) => { if (/(คุณ|เธอ|เขา)ไม่(?!สบาย)[^ ]*ไหม(คะ|ครับ)?$/.test(sq(l.thai))) naturalFails.push('Line ' + (li + 1) + ' is a negative question ending in ไหม — Thai says …ไม่…เหรอคะ / หรือคะ, not ไม่…ไหม') })
       }
@@ -38311,6 +38322,10 @@ function thaiLexicalSenseProblems(p, targetSurface) {
     if (/เชื่อ\s+(?!(ครับ|ค่ะ|คะ|นะ|เลย|จริง|ไหม|หรอก|ใจ|ผม|ฉัน|คุณ|เขา|เธอ))[\u0E00-\u0E7F]/.test(th) && !/เชื่อว่า/.test(t0)) out.push({ id: 'CHUEA_WAA', code: 'UNNATURAL', why: 'believing a fact needs ว่า — ผมไม่เชื่อว่าโรงแรมเต็มครับ' })
     // โต๊ะ / เก้าอี้ take the classifier ตัว (โต๊ะตัวนี้) or none (โต๊ะนี้), never อัน
     if (/(โต๊ะ|เก้าอี้)อัน(นี้|นั้น|ไหน|โน้น|นู้น)/.test(t0)) out.push({ id: 'TO_CLASSIFIER_TUA', code: 'UNNATURAL', why: 'โต๊ะ / เก้าอี้ take ตัว — โต๊ะตัวนี้ (or just โต๊ะนี้), not โต๊ะอันนี้' })
+    // a food / drink + หนึ่ง needs its classifier: ก๋วยเตี๋ยวชามหนึ่ง, กาแฟแก้วหนึ่ง (D8 blind reviews: ขอก๋วยเตี๋ยวหนึ่ง)
+    if (/(ก๋วยเตี๋ยว|ข้าวผัด|กาแฟ|ชาเย็น|ชา|นม|เบียร์|น้ำส้ม|น้ำเปล่า)หนึ่ง(?!ร้อย|พัน|หมื่น|แสน|ล้าน)/.test(t0)) out.push({ id: 'FOOD_NEEDS_CLASSIFIER', code: 'UNNATURAL', why: 'a dish or drink + หนึ่ง needs its classifier — ก๋วยเตี๋ยวชามหนึ่ง / กาแฟแก้วหนึ่ง / น้ำขวดหนึ่ง' })
+    // an invitation ("shall we / let's …") needs กัน (D8 blind reviews: ไปร้านกาแฟไหมคะ for "Shall we go to the café?")
+    if (/^(shall we|let'?s|should we|how about we|do you want to go .* together)/.test(en) && !/กัน/.test(t0) && !/ด้วย/.test(t0)) out.push({ id: 'INVITE_NEEDS_KAN', code: 'UNNATURAL', why: 'an invitation ("shall we / let\'s …") needs กัน — ไปร้านกาแฟกันไหมคะ / ไปกันเถอะครับ' })
     // ในสัปดาห์ alone is "in a week" (habitual), not "this week" (D7 blind reviews)
     if (/ในสัปดาห์(?!นี้|หน้า|ที่|ละ|ก่อน)/.test(t0)) out.push({ id: 'NAI_SAPDAA', code: 'UNNATURAL', why: 'ในสัปดาห์ alone means "in a week" — say สัปดาห์นี้ (this week) / สัปดาห์หน้า (next week)' })
     // "that yellow one" needs a classifier: อันสีเหลืองนั้น — ชอบสีเหลืองนั้น is "that yellow colour" (D7 blind reviews)

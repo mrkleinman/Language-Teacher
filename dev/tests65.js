@@ -7,6 +7,7 @@
 //   R5   the final cue revalidation is followed by a bounded recovery that replaces a removed line
 //   R6   เขา (he / she / they) is a teachable target with its own teaching contract
 //   R7   refilled lines alternate speakers; ในสัปดาห์ / colour-without-classifier rules (D7 blind reviews)
+//   R8   no repeated phrase across an exchange, line 1 starts fresh, dish classifiers, กัน in invitations (D8 blind reviews)
 //
 //   node tests65.js            (current build: tt.compiled.js, or TT_FILE)
 const fs = require('fs')
@@ -77,6 +78,16 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('R7', 'several refilled lines continue the exchange in turn (no speaker twice in a row); ในสัปดาห์ and ชอบสีเหลืองนั้น are caught, สัปดาห์นี้ / อันสีเหลืองนั้น pass',
       /several refilled lines continue the exchange in turn/.test(src) && ids('ในสัปดาห์ผมมีประชุมสามวันครับ').includes('NAI_SAPDAA') && !ids('สัปดาห์นี้ผมมีประชุมครับ').includes('NAI_SAPDAA') &&
       ids('ผมชอบสีเหลืองนั้นครับ').includes('COLOUR_NEEDS_CLASSIFIER') && !ids('ผมชอบอันสีเหลืองนั้นครับ').includes('COLOUR_NEEDS_CLASSIFIER'))
+  }
+
+  {
+    // D8 blind reviews (6.1 / 6.3): the same phrase in all three uses, an exchange leaning on the one before, a dish without its classifier, an invitation without กัน
+    const lx = c.ev('thaiLexicalSenseProblems'), ids = (t, e) => lx({ thai: t, english: e || 'x' }).map(x => x.id)
+    const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')
+    T('R8', 'generation refuses an exchange that repeats the target\'s phrase or whose line 1 continues an earlier exchange; ก๋วยเตี๋ยวหนึ่ง and an invitation without กัน are caught, the fixed forms pass',
+      /two lines must not use the\s*\n?\s*\/\/ target in the same phrase/.test(src) && /every exchange starts fresh/.test(src) &&
+      ids('ขอก๋วยเตี๋ยวหนึ่งครับ').includes('FOOD_NEEDS_CLASSIFIER') && !ids('ขอก๋วยเตี๋ยวน้ำชามหนึ่งครับ').includes('FOOD_NEEDS_CLASSIFIER') && !ids('กาแฟหนึ่งร้อยบาทครับ').includes('FOOD_NEEDS_CLASSIFIER') &&
+      ids('วันศุกร์ไปร้านกาแฟไหมคะ', 'Shall we go to the café on Friday?').includes('INVITE_NEEDS_KAN') && !ids('วันศุกร์ไปร้านกาแฟกันไหมคะ', 'Shall we go to the café on Friday?').includes('INVITE_NEEDS_KAN'))
   }
 
   out.forEach(l => console.log(l))

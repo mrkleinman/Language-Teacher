@@ -9,6 +9,7 @@
 //   S7     a frozen word the writer never uses is deferred and reported; its SRS state is untouched
 //   S9     the planner may defer at most 4 words with no natural place (reported, still due in SRS); a 5th and 6th are placed anyway
 //   S10    the story prompts take the line length from the learner's belt (not a fixed 7 words)
+//   S11    an editor fix may add a missing reply (a span of 1 line replaced by 2), kept when the gates and turn-taking still pass
 //   S8     no stored-conversation path in production; the Daily exchange bank is unchanged
 // Real app code; the model is a deterministic script (no provider calls).
 //   node tests64.js            (current build: tt.compiled.js, or TT_FILE)
@@ -104,7 +105,12 @@ function scriptedModel(c, vocab, opt = {}) {
       const rows = rowsOf(p)
       return JSON.stringify({ notes: rows.map(r => ({ id: r.id, note: 'everyday sense of ' + r.s + ' (usage-note)' })) })
     }
-    if (stage === 'O_listening_story_edit') { st.edits = (st.edits || 0) + 1; return JSON.stringify({ fixes: [] }) }
+    if (stage === 'O_listening_story_edit') { st.edits = (st.edits || 0) + 1
+      // opt.addReply: in the first edit round, line 2 is kept and a reply by the other speaker is added after it (span 1 → 2 lines)
+      if (opt.addReply && st.edits === 1) { const m = p.match(/^2\. ([AB]) \| ([^|]+) \| ([^|\n]*)/m)
+        if (m) { const sp = m[1], ot = sp === 'A' ? 'B' : 'A'; st.added = ot === 'A' ? 'ได้เลยครับ' : 'ได้เลยค่ะ'
+          return JSON.stringify({ score: 6, fixes: [{ from: 2, to: 2, problem: 'reply missing', turns: [{ speaker: sp, thai: m[2].trim(), english: m[3].trim() }, { speaker: ot, thai: st.added, english: 'Sure.' }] }] }) } }
+      return JSON.stringify({ fixes: [] }) }
     if (stage === 'O_listening_story_line_fix') return JSON.stringify({ fixes: [] })
     if (stage === 'verdicts') {
       const items = [...p.matchAll(/^\s*(\d+)[.)]\s/gm)].map(x => Number(x[1]))
@@ -215,6 +221,13 @@ async function run(c, vocab, opt = {}) {
     T('S10', 'the story prompts take the line length from the learner\'s belt (this run: ' + lv.belt + ' up to ' + lv.hardMax + ' words; 7th Kyu 5–10; Mukyu 2–6), not a fixed 7',
       !!lv.hardMax && runP.includes('–' + lv.hardMax + ' Thai words') && /Lines of 5–10 Thai words/.test(p7) && /Lines of 2–6 Thai words/.test(pM),
       { level: lv, p7: (p7.match(/Lines of [^ ]+ Thai words/) || [])[0], pM: (pM.match(/Lines of [^ ]+ Thai words/) || [])[0] })
+  }
+  {
+    const G = await run(c, vocab, { variant: 6, addReply: true })
+    const L = (G.tr.listening || {}).lines || []
+    T('S11', 'an editor fix may add a missing reply (1 line → 2 lines), kept when every gate and the turn-taking still pass; the lesson words stay',
+      !!G.st.added && L.some(l => l.thai === G.st.added) && G.tr.coverage.covered === 30,
+      { added: G.st.added, found: L.some(l => l.thai === G.st.added), covered: G.tr.coverage.covered, status: G.tr.status })
   }
   {
     const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')

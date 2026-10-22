@@ -32148,7 +32148,7 @@ async function _lnComposeThaiStory(env, avoid) {
         'Check especially: the scene title vs what is said; "why?" answered with a reason; yes / no answered; times agreed then kept; something mentioned for the first time as if known; "and you?" after the other already answered; ' +
         'a joke or apology with no set-up; formal / staff phrases between friends, or B acting as both A\'s friend and staff in one scene; a gift, person or event mentioned before it is set up; verb + noun collocations (วางแผน, not ทำแผน); a missing small word that changes the meaning (ใส่ before clothes, เรื่อง after ขอโทษ, กัน after a shared action, ที่ / อยู่ / เป็น); written forms in speech (อย่างไร → ยังไง, เมื่อ… → ตอน…); มา vs ไป for the speaker\'s position; คุณ in many lines; wrong collocations (1 p.m. is บ่ายโมง, not หนึ่งโมงบ่าย; a temperature is สูง / ต่ำ while the weather is ร้อน — both are right; standing by someone is อยู่ข้าง…เสมอ).\n' +
         '')) +
-        'For each fault, REPLACE a span of 1–3 consecutive lines ("from" … "to"): give exactly as many new lines as you replace, with the SAME speakers in the same order. ' +
+        'For each fault, REPLACE a span of 1–3 consecutive lines ("from" … "to") with 1–4 new lines (you may add a missing reply); give each new line its speaker; A and B must still alternate. ' +
         'Every lesson word of the span must still appear somewhere in the new span (it may move to another line of the span). Each new line: at most ' + lnStoryLen(ctx).max + ' Thai words, only known words, ends with the speaker\'s particle. ' +
         'Fix the cause (often an earlier line). At most 5 fixes, the worst first; "problem" in at most 8 words. Also give "score": the grade (0–10) this lesson deserves NOW, as the strict grader would.\n' +
         'Reply ONLY with JSON: {"score":6.5,"fixes":[{"from":12,"to":13,"problem":"…","turns":[{"speaker":"A","thai":"…","english":"…"},{"speaker":"B","thai":"…","english":"…"}]}]}', 1900, 'LISTENING_REPAIR_CALLS')
@@ -32156,18 +32156,24 @@ async function _lnComposeThaiStory(env, avoid) {
     const fixes = (r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 5)
     let kept = 0; rejected = []
     const touched = new Set()
-    fixes.forEach(fx => {
-      const from = Number(fx && (fx.from != null ? fx.from : fx.line)), to = Number(fx && (fx.to != null ? fx.to : from))
-      const nt = Array.isArray(fx && fx.turns) ? fx.turns : (fx && fx.thai ? [{ thai: fx.thai, english: fx.english }] : [])
+    // a span of 1–3 lines may be replaced by 1–4 new lines (a missing reply can be added — the review often asks for one); the speakers
+    // must still alternate across the edited scene, and the span's lesson words must survive. Fixes apply from the end backwards so
+    // earlier line numbers stay valid.
+    fixes.map(fx => ({ fx, from: Number(fx && (fx.from != null ? fx.from : fx.line)) })).sort((x, y) => y.from - x.from).forEach(({ fx, from }) => {
+      const to = Number(fx && (fx.to != null ? fx.to : from))
+      const nt = Array.isArray(fx && fx.turns) ? fx.turns : (fx && fx.thai ? [{ speaker: fx.speaker, thai: fx.thai, english: fx.english }] : [])
       const span = flat.slice(from - 1, to)
-      if (!span.length || span.length > 3 || nt.length !== span.length || span.some(f => f.si !== span[0].si) || span.some((f, i) => touched.has(from - 1 + i))) return
+      if (!span.length || span.length > 3 || !nt.length || nt.length > 4 || span.some(f => f.si !== span[0].si) || span.some((f, i) => touched.has(from - 1 + i))) return
+      const si = span[0].si, k0 = span[0].k
       const want = new Set(span.flatMap(f => f.tn.intendedTargetIds || [])), got = new Set(), whys = []
-      const cands = span.map((f, i) => ({ speaker: f.tn.speaker, thai: String(nt[i].thai || '').trim(), english: String(nt[i].english || '').trim() }))
-      cands.forEach(c => { const g = lineGateWhy(span[0].si, c); if (g.why) whys.push('"' + c.thai + '": ' + g.why); g.ids.forEach(id => got.add(id)) })
+      const cands = nt.map((t, i) => ({ speaker: nt.length === span.length ? span[i].tn.speaker : (t && t.speaker === 'B' ? 'B' : 'A'), thai: String((t && t.thai) || '').trim(), english: String((t && t.english) || '').trim() }))
+      cands.forEach(c => { const g = lineGateWhy(si, c); if (g.why) whys.push('"' + c.thai + '": ' + g.why); g.ids.forEach(id => got.add(id)) })
       const lost = [...want].filter(id => !got.has(id)).map(id => byId.get(id).surface)
       if (lost.length) whys.push('lesson word(s) lost: ' + lost.join(', '))
+      const next = written[si].slice(0, k0).concat(cands, written[si].slice(k0 + span.length))
+      if (next.some((x, k) => k >= 2 && x.speaker === next[k - 1].speaker && x.speaker === next[k - 2].speaker)) whys.push('three lines in a row by one speaker')
       if (whys.length) { rejected.push({ span: from + (to > from ? '–' + to : ''), why: whys.join(' · ').slice(0, 220) }); return }
-      span.forEach((f, i) => { written[f.si][f.k] = cands[i]; touched.add(from - 1 + i) }); kept++
+      written[si] = next; span.forEach((f, i) => touched.add(from - 1 + i)); kept++
     })
     const grade = review && review.score != null && isFinite(Number(review.score)) ? Number(review.score) : r && r.score != null ? Number(r.score) : null
     if (grade != null && isFinite(grade)) editorGrade = grade

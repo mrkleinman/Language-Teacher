@@ -5,6 +5,7 @@ const fs = require('fs'), path = require('path'); const DEV = path.join(__dirnam
 const { load } = require(path.join(DEV, 'harness'))
 const C = load(process.argv[2], { realBelt: true }); C.console.info = () => {}; C.console.warn = () => {}
 C.__bankForced = true   // the model stub below must not switch the bank off (see harness.js)
+C.thaiBankSetEnabled(true)   // v713: the app ships with the Daily exchanges OFF; the validator exercises the bank, so it switches them on
 const B = JSON.parse(fs.readFileSync(process.argv[3], 'utf8')), byId = new Map(B.vocab.map(w => [w.id, w]))
 const F = ['status', 'difficulty', 'interval', 'lastSeen', 'dueDate', 'repCount', 'lapses', 'okStreak', 'manualKnown', 'introducedAt', 'note']
 const vocab = C.initVocab().map(w => { const o = byId.get(w.id); if (!o) return w; const n = { ...w }; F.forEach(k => { if (o[k] !== undefined) n[k] = o[k] }); return n })

@@ -32030,6 +32030,8 @@ function lnStorySceneProblems(la, sc, si, nScenes, sceneTargets, ctx) {
   sc.turns.forEach((tn, k) => {
     const t = la.text(tn.pair)
     // a leftover placeholder ("ผมชื่อ...ครับ" went out with no name — S31) is never a line
+    // อุณหภูมิ is high / low, never hot / cold (S29, S31, S32 blind reviews)
+    if (/อุณหภูมิ[^ ]{0,8}(ร้อน|เย็น|หนาว)/.test(t) && !/อุณหภูมิ[^ ]{0,8}(สูง|ต่ำ)/.test(t)) out.push({ line: k + 1, code: 'LINE_QUALITY', detail: 'อุณหภูมิ is สูง / ต่ำ (high / low), never ร้อน / เย็น' })
     if (/\.\.\.|…|\[|\]|_{2,}/.test(t)) out.push({ line: k + 1, code: 'LINE_QUALITY', detail: 'a placeholder (… / [ ]) instead of real words' })
     if (k >= 2 && sc.turns[k - 1].speaker === tn.speaker && sc.turns[k - 2].speaker === tn.speaker) out.push({ line: k + 1, code: 'TURN_TAKING', detail: 'three lines in a row by ' + tn.speaker })
     if (si > 0 && G.test(t)) out.push({ line: k + 1, code: 'CONTINUITY', detail: 'a greeting outside the first scene' })
@@ -32129,7 +32131,8 @@ async function _lnComposeThaiStory(env, avoid) {
         'who says it and why, in at most 10 English words (e.g. {"id":842,"moment":"B, at the museum desk, asks A for his ticket"}). Pick moments where the word is the natural thing to say. ' +
         'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–6 per scene.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
-        'If a word (at most ' + LN_STORY_MAX_DEFER + ') has NO natural place in this story — it could only be forced in — list it in "defer" instead of a scene: it stays due and comes back in the next lesson. Use this rarely.\n' +
+        // v713 — the reviewers' worst lines are words forced in with no setup (ไม่เชิง, ชื่อเสียง, ตลอดไป); a deferred word stays due in SRS
+        'If a word (at most ' + LN_STORY_MAX_DEFER + ') has NO natural place in this story — it could only be forced in — list it in "defer" instead of a scene: it stays due and comes back in the next lesson. A forced line is worse than a deferred word.\n' +
         'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"moment":"…"}]}],"defer":[]}', 1950, 'LISTENING_GENERATION_CALLS')
       const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 6)
       if (sc.length < 2) throw new Error('fewer than 2 scenes')
@@ -32179,6 +32182,8 @@ async function _lnComposeThaiStory(env, avoid) {
       const b = await call('O_listening_story_beats', 'You script one scene of a listening lesson for a learner of Thai. Write it in ENGLISH first; it is put into simple spoken Thai afterwards.\n' + brief.replace(/\nReply ONLY with JSON[\s\S]*$/, '') +
         (env._lnUsageNotes ? '\nHOW THIS SCENE\'S LESSON WORDS ARE USED:\n' + env._lnUsageNotes.split('\n').filter(l => st.some(t => l.startsWith(t.surface + ' — '))).join('\n') : '') +
         '\n\nOutline the scene as ' + Math.max(4, Math.round(n / 2)) + '–' + Math.round(n / 2 + 1) + ' short story BEATS in English, in order (who does or asks what, and how the other reacts — not the dialogue itself). Every beat follows from the one before; nothing is mentioned that was not set up; ' +
+        // v713 (S32 blind reviews: at the bus stop A says "see you at the bus stop" and B asks where the bus stop is)
+        'the scene STARTS where "present" says A and B already are — nobody arranges to meet at, asks the way to, or says he will wait at the place they are standing in; a question is answered before the talk moves on; ' +
         'each lesson word comes at the beat where it is the natural thing to say (mark the beat with its id). Plain everyday words. If B is someone in a role in this scene (staff, a waitress), she speaks ONLY as that person — she is not A\'s friend here and knows nothing of their story.\nReply ONLY with JSON: {"lines":[{"speaker":"A","english":"A asks …; B says …","ids":[123]}]}', 1500, 'LISTENING_GENERATION_CALLS', true)
       beats = (b && Array.isArray(b.lines) ? b.lines : []).filter(x => x && x.english).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', english: String(x.english).trim(), ids: (Array.isArray(x.ids) ? x.ids : []).map(v => Number(String(v).replace(/\D/g, ''))).filter(id => byId.has(id)) }))
       if (beats.length < 3) beats = null

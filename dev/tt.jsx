@@ -32267,7 +32267,8 @@ async function _lnComposeThaiStory(env, avoid) {
         'THE STORY: ONE ordinary outing of the same two close friends, A (a man) and B (a woman), told in time order on ONE day — e.g. a Saturday trip to the market and lunch, ' +
         'a day helping B move house, a visit to B\'s family for a meal, a day trip to the beach, getting ready for a friend\'s party. Choose the outing in which these lesson words come up most naturally. ' +
         (avoid ? 'Choose a DIFFERENT outing from this earlier one: "' + avoid + '". ' : '') +
-        'Split it into 4–5 SCENES, each the next stop or moment of the same outing (e.g. "at the bus stop" → "on the bus" → "at the market" → "lunch at a noodle shop" → "walking home"); ' +
+        // v715 (owner's suggestion): five lesson words per scene — 25 words → 5 scenes of 5
+        'Split it into exactly ' + Math.max(2, Math.ceil(planTargets.length / 5)) + ' SCENES, each the next stop or moment of the same outing (e.g. "at the bus stop" → "on the bus" → "at the market" → "lunch at a noodle shop" → "walking home"); ' +
         'each scene continues from the one before (same day, same plan, nothing contradicts what was said earlier). ' +
         'CAST: only A and B speak, to each other, in every scene, as friends. B NEVER plays anyone else (no waitress, staff, nurse or colleague voice). A word staff or a host would say goes where one of the FRIENDS ' +
         'naturally says it (B is the host at her own home: "please sit"; A reads out a sign or repeats what the shop said). ' +
@@ -32285,7 +32286,7 @@ async function _lnComposeThaiStory(env, avoid) {
         'Give each scene: a title (the place), "present" (where the two are, e.g. "together on the bus"), what happens (1–2 sentences), ' +
         '"facts" (what is true after this scene), and "uses": one entry per lesson word — the id, the SET-UP (what the other friend says or does just before, at most 10 English words) and the MOMENT (who says the word and why, at most 10 words) ' +
         '(e.g. {"id":842,"setup":"B holds up two heavy bags at the till","moment":"A offers to carry one"}). ' +
-        'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–7 per scene. Every lesson word must be placed: none may be left out.\n' +
+        'Keep the whole plan short (no explanations). Every id in exactly one scene, exactly 5 per scene (the last scene may have fewer). Every lesson word must be placed: none may be left out.\n' +
         (attempt > 1 ? 'YOUR PREVIOUS PLAN WAS INVALID: every id must appear exactly once.\n' : '') +
         'Reply ONLY with JSON: {"title":"…","story":"one sentence","scenes":[{"title":"…","present":"…","happens":"…","facts":"…","uses":[{"id":123,"setup":"…","moment":"…"}]}]}', 2400, 'LISTENING_GENERATION_CALLS')
       const sc = (p && Array.isArray(p.scenes) ? p.scenes : []).filter(x => x && x.title).slice(0, 6)
@@ -32321,10 +32322,17 @@ async function _lnComposeThaiStory(env, avoid) {
   const take = r => (r && Array.isArray(r.turns) ? r.turns : []).filter(x => x && x.thai).map(x => ({ speaker: x.speaker === 'B' ? 'B' : 'A', thai: String(x.thai).trim(), english: String(x.english || '').trim(), ...(Number(x.ep) > 0 ? { ep: Number(x.ep) } : {}) }))
   // each call is kept short (the provider path cuts a request off at about 30 s: one call for the whole conversation, or a long edit,
   // never finished — paid runs S4–S6): scenes are written one by one, each with the whole plan and every earlier scene as context
+  // v715 (owner's suggestion: each scene is built with the earlier scenes as context) — besides the earlier scenes' text, every scene
+  // writer returns the FACTS its scene made true (who has what, where they are, what was decided, what was already asked); the later
+  // scenes and every edit get them as a short list they must not contradict (S39 / S40: a wallet forgotten, then a purchase; a lunch
+  // at home moved to a restaurant; the same question asked twice) — no extra call
+  const factsLedger = []
+  const factsLine = () => { const f = factsLedger.flat(); return f.length ? '\nFACTS ESTABLISHED SO FAR (keep every one true; never contradict or repeat them):\n' + f.map(x => '- ' + x).join('\n') + '\n' : '' }
+  const factsAsk = '\nAlso give "facts": up to 5 short English facts this scene made TRUE that later scenes must respect (who has, bought or lost what; where they are going next; what was decided; what was already asked and answered), e.g. {"turns":[…],"facts":["B paid for both bus tickets"]}.'
   for (let si = 0; si < nS; si++) {
     const s = plan.scenes[si], st = sceneTargets(si), n = remainingTurns(si)
     const brief = 'STORY: "' + plan.title + '" — ' + plan.story + '\nALL SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ': ' + x.happens + (x.facts ? ' (true after it: ' + x.facts + ')' : '')).join(' | ') + '\n' +
-      (si ? '\nTHE CONVERSATION SO FAR:\n' + soFar(si) + '\n' : '') +
+      (si ? '\nTHE CONVERSATION SO FAR:\n' + soFar(si) + '\n' : '') + factsLine() +
       '\nTASK: write scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '"' + (s.present ? ' — ' + s.present : '') + ': ' + s.happens + '\nOnly A and B speak, to each other, as the same two friends; respect everything the earlier scenes established. About ' + n + ' lines (' + LN_STORY_TURNS.sceneMin + '–' + LN_STORY_TURNS.sceneMax + '), continuing directly from the conversation so far. ' +
       (si === 0 ? 'It opens the conversation (a greeting is fine). ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends the conversation with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
       '\nUse EVERY ONE of these lesson words at least once, spelled exactly, in its common sense (not more than 3 lesson words in one line), at its planned moment:\n' +
@@ -32360,7 +32368,9 @@ async function _lnComposeThaiStory(env, avoid) {
       '\nSCENE (English):\n' + beats.map((x, k) => (k + 1) + '. ' + x.english + (x.ids.length ? '   [' + x.ids.map(id => byId.get(id).surface).join(', ') + ']' : '')).join('\n') +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}' : brief
     if (beats) log && log('  📜 LISTENING_STORY scene ' + (si + 1) + ' outlined first · ' + beats.length + ' story beats')
-    try { written[si] = take(await call('O_listening_story_write', writeTask, 1900, 'LISTENING_GENERATION_CALLS'))
+    try { const _raw = await call('O_listening_story_write', writeTask + factsAsk, 1900, 'LISTENING_GENERATION_CALLS'); written[si] = take(_raw)
+      factsLedger[si] = (_raw && Array.isArray(_raw.facts) ? _raw.facts : []).map(x => String(x || '').trim().slice(0, 120)).filter(Boolean).slice(0, 5)
+      if (factsLedger[si].length) log && log('  📌 LISTENING_STORY scene ' + (si + 1) + ' facts carried forward: ' + factsLedger[si].join(' · ').slice(0, 300))
       // telemetry: in how many episodes the lesson word comes AFTER a set-up line (not in the episode's first line)
       if (epOn) { const eps = new Map(); written[si].forEach((x, k) => { if (x.ep) { if (!eps.has(x.ep)) eps.set(x.ep, []); eps.get(x.ep).push(x) } })
         const ok = st.filter(t => [...eps.values()].some(ls => ls.length >= 2 && !ls[0].thai.includes(t.surface) && ls.slice(1).some(l => l.thai.includes(t.surface)))).length
@@ -32433,7 +32443,7 @@ async function _lnComposeThaiStory(env, avoid) {
     //    under every Thai constraint kept missing story faults (blind reviews of S13 / S17 / S18: story 3–3.5 / 10).
     try {
       review = await call('O_listening_story_review', 'You are a strict native Thai teacher grading a Thai listening lesson (one outing of two close friends in scenes; A is a man, B a woman — always the same friend).\n' +
-        'SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '')).join(' | ') +
+        'SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '')).join(' | ') + factsLine() +
         '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
         '\n\nRead it start to finish as the listener will. List the worst faults (at most 6), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
         'time running backwards, a person / thing / event mentioned before it is set up, B speaking as anyone other than A\'s friend, a lesson word forced into a line where nobody would say it, the scene title not matching what is said (together vs on the phone, the place), a day or time that clashes with another scene (on Thursday asking about "this Wednesday"), feelings words piled into one melodramatic exchange without a real cause), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
@@ -32445,7 +32455,7 @@ async function _lnComposeThaiStory(env, avoid) {
     // at most 2 faults per fix call (4 still ran out of tokens in every round of paid run S30); more rounds instead
     const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 3)
     try {
-      r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') +
+      r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') + factsLine() +
         '\n\n' + (faults.length ? 'THE SCENES WITH FAULTS (numbered as in the whole conversation):\n' : 'THE CONVERSATION (numbered; scene titles in brackets):\n') + flat.map((f, i) => ({ f, i })).filter(({ f }) => !faults.length || faults.some(x => { const g = flat[Number(x.from) - 1]; return g && g.si === f.si })).map(({ f, i }) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +
         (faults.length ? '\n\nA NATIVE TEACHER FOUND THESE FAULTS — fix them first:\n' + faults.map(x => '- lines ' + x.from + (Number(x.to) > Number(x.from) ? '–' + x.to : '') + ': ' + String(x.problem || '').slice(0, 140) + (x.fix ? ' → ' + String(x.fix).slice(0, 120) : '')).join('\n') : '') +
         (rejected.length ? '\n\nYOUR LAST REPLACEMENTS THAT COULD NOT BE USED (fix them another way):\n' + rejected.slice(0, 8).map(x => '- lines ' + x.span + ': ' + x.why).join('\n') : '') +
@@ -32586,7 +32596,7 @@ async function _lnComposeThaiStory(env, avoid) {
       if (!probs.length) continue
       const st = sceneTargets(si), before = written[si].slice(), sc = scenes[si]
       try {
-        const r = take(await call('O_listening_story_qc_repair', 'STORY: "' + plan.title + '" — ' + plan.story + '\nTHE WHOLE CONVERSATION:\n' + soFar(nS) +
+        const r = take(await call('O_listening_story_qc_repair', 'STORY: "' + plan.title + '" — ' + plan.story + '\nTHE WHOLE CONVERSATION:\n' + soFar(nS) + factsLine() +
           '\n\nA native teacher flagged scene ' + (si + 1) + ' ("' + plan.scenes[si].title + '"):\n' + probs.map(p => '- ' + (p.line ? 'line ' + p.line + ' ' : '') + p.code + ': ' + p.detail).join('\n') +
           '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sc, la) + '\n\nRewrite the flagged lines (and a neighbouring line if the fix needs it) so the scene is natural spoken Thai and follows on. Keep every lesson word of this scene:\n' + lnStoryTargetRows(st) +
           '\nReply ONLY with JSON: the WHOLE corrected scene {"turns":[{"speaker":"A","thai":"…","english":"…"}]}', 1900, 'LISTENING_REPAIR_CALLS'))

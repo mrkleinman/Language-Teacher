@@ -11,6 +11,7 @@
 //   S10    the story prompts take the line length from the learner's belt (not a fixed 7 words)
 //   S11    an editor fix may add a missing reply (a span of 1 line replaced by 2), kept when the gates and turn-taking still pass
 //   S12    the lesson-word usage check (one call per scene): a fix that drops the lesson word is refused, a valid fix is applied
+//   S13    the app default plans the story around 25 of the 30 frozen words; the other 5 stay due (reported as over the cap)
 //   S8     no stored-conversation path in production; the Daily exchange bank is unchanged
 // Real app code; the model is a deterministic script (no provider calls).
 //   node tests64.js            (current build: tt.compiled.js, or TT_FILE)
@@ -137,6 +138,9 @@ function scriptedModel(c, vocab, opt = {}) {
   return st
 }
 async function run(c, vocab, opt = {}) {
+  // v713: the app plans the story around 25 of the 30 frozen words (owner's decision). These checks were written for the uncapped
+  // composer, so they run with the cap off (0) unless a test asks for one; S13 checks the 25-word default itself.
+  c.ev('LN_STORY_WORD_CAP').maxWords = opt.cap != null ? opt.cap : 0
   const seq = [], logs = []
   const st = scriptedModel(c, vocab, { ...opt, seq })
   const snap = c.selectRevisionTargets('th', vocab)
@@ -250,6 +254,20 @@ async function run(c, vocab, opt = {}) {
     T('S12', 'the lesson-word usage check runs once per scene; a line fix that drops the lesson word is refused, one that keeps every gate and word is applied; coverage stays 30/30',
       H.st.wordChecks >= 4 && /2 wrong use\(s\) named/.test(lg) && /1 line\(s\) fixed/.test(lg) && /lesson word lost/.test(lg) && H.tr.coverage.covered === 30,
       { checks: H.st.wordChecks, log: lg.slice(0, 220), covered: H.tr.coverage.covered })
+  }
+  {
+    // v713 default: the story is planned around the first 25 frozen words; the other 5 are reported deferred (the cap reason), SRS untouched
+    const before = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))
+    const K = await run(c, vocab, { variant: 8, cap: 25 })
+    const after = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))
+    const planP = (K.st.prompts.find(x => x.stage === 'O_listening_story_plan') || {}).p || ''
+    const asked = [...planP.matchAll(/^T(\d+) \|/gm)].map(m => Number(m[1]))
+    const d = K.tr.coverage.deferred || [], sal = ((K.tr.listening || {}).salvage || {}).deferred || []
+    T('S13', 'the app default plans the story around 25 of the 30 frozen words (the first 25, in the selector\'s order); the other 5 are reported deferred as over the cap and stay due; the frozen ids are unchanged',
+      asked.length === 25 && asked.join() === frozen.slice(0, 25).join() && frozen.slice(25).every(id => d.includes(id)) && K.tr.coverage.covered === 25 &&
+      sal.filter(x => /25-word cap/.test(x.reason)).length === 5 && K.tr.selectedTargetIds.join() === frozen.join() && before === after,
+      { asked: asked.length, deferred: d.length, covered: K.tr.coverage.covered, reasons: sal.map(x => x.reason).slice(0, 2), status: K.tr.status })
+    c.ev('LN_STORY_WORD_CAP').maxWords = 25
   }
   {
     const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')

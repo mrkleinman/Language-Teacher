@@ -32129,16 +32129,16 @@ async function _lnComposeThaiStoryBest(env) {
   if (best && LN_STORY_CANDIDATES > 1) env.log && env.log('🎧 LISTENING_STORY kept candidate ' + best.k + ' (the higher-rated fresh story)')
   return best ? best.r : null
 }
-// v713 — EXPERIMENT ONLY (the paid-run sandbox sets it; the app never does): plan the story around the first N frozen words; the rest
-// are reported as deferred and stay due. It measures whether fewer words per Listening track lifts quality — the owner decides the count.
-const LN_STORY_EXPERIMENT = { maxWords: null }
+// v713 — the story is planned around the first 25 frozen words (owner's decision: blind reviews 5.1 with 25 words vs 4.7 with 30); the
+// rest are reported as deferred and stay due for the next lesson. 0 = no cap (the older tests and the sandbox flag --ln-max-words set it).
+const LN_STORY_WORD_CAP = { maxWords: 25 }
 async function _lnComposeThaiStory(env, avoid) {
   const { la, log, targets, ctx, o, tel } = env
   if (la.lang !== 'th') return null
   const byId = new Map(targets.map(t => [t.id, t]))
-  const capN = Number(LN_STORY_EXPERIMENT.maxWords) > 0 ? Number(LN_STORY_EXPERIMENT.maxWords) : 0
+  const capN = Number(LN_STORY_WORD_CAP.maxWords) > 0 ? Number(LN_STORY_WORD_CAP.maxWords) : 0
   const planTargets = capN && targets.length > capN ? targets.slice(0, capN) : targets
-  if (planTargets !== targets) log && log('  🧪 LISTENING_STORY EXPERIMENT word cap ' + capN + ': the story uses ' + planTargets.length + ' of ' + targets.length + ' frozen words; the rest stay due')
+  if (planTargets !== targets) log && log('  🎧 LISTENING_STORY word cap ' + capN + ': the story uses ' + planTargets.length + ' of ' + targets.length + ' frozen words; the rest stay due')
   const never = lnStoryNeverUse(la, ctx)
   let prefix = lnStoryPrefix(la, ctx, targets, never)
   // a server-side failure (5xx / 429) is retried twice after a pause; anything else (and a fatal provider error) is not retried
@@ -32535,7 +32535,7 @@ async function _lnComposeThaiStory(env, avoid) {
   return { ok: true, composer: 'story', scenes, audit, natIssues, plan: plan2, coh, editorGrade, hardLeft: hard.length, storyTitle: plan.title + ' — ' + plan.story,
     report: scenes.map(sc => ({ sceneId: sc.sceneId, required: 0, heard: 0, turns: sc.turns.length })),
     gates: { SCENE_REQUIRED_COVERAGE: 'PASS', TURN_COUNT: total + '/' + LN_STORY_TURNS.max, TURN_BUDGET: total >= floor.turns && total <= LN_STORY_TURNS.max + 20, SCENES_VALIDATED: !hard.length, ONE_CONVERSATION: 'PASS' },
-    salvage: deferred.length ? { from: 'story', passes: 0, removedTurns: 0, droppedScenes: [], cuts: [], floor, deferred: deferred.map(t => ({ targetId: t.id, target: t.surface, reason: (plan.deferred || []).includes(t.id) ? 'the story planner found no natural place for it in this story' : capN && !planTargets.includes(t) ? 'experiment: word cap ' + capN + ' (not planned)' : 'not heard after the bounded rewrites' })) } : null,
+    salvage: deferred.length ? { from: 'story', passes: 0, removedTurns: 0, droppedScenes: [], cuts: [], floor, deferred: deferred.map(t => ({ targetId: t.id, target: t.surface, reason: (plan.deferred || []).includes(t.id) ? 'the story planner found no natural place for it in this story' : capN && !planTargets.includes(t) ? 'over the ' + capN + '-word cap for one Listening track (comes back in the next lesson)' : 'not heard after the bounded rewrites' })) } : null,
     uncommitted: [], contract: null, story: scenes.map(sc => sc.setting), phaseHealth: scenes.map(sc => ({ sceneId: sc.sceneId, committed: true, phaseRegenerations: 0, atomicRepairCalls: 0, exchangeRepairCalls: 0 })) }
 }
 // TT_V692_MEANING_FIRST_END

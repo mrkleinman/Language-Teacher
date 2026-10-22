@@ -15629,7 +15629,7 @@ function thaiScenePolishHints(lines) {
   if (ngan.length > 1) out.push('งั้น ("then / so") opens ' + ngan.map(id).join(', ') + ' — keep it in at most one line; start the others another way')
   return out
 }
-function thaiScenePolishPrompt(sc, allowed, names, earlier) {
+function thaiScenePolishPrompt(sc, allowed, names, earlier, cc) {
   const lines = sc.lines.map(l => (l.framing ? l.n : 'L' + l.n) + ' ' + (l.pair.speaker || 'A') + (l.framing ? ' [' + l.framing + ' line, no target]' : ' [target ' + (l.pair.targetSurface || l.pair._target || '') + ']') + ': ' + l.pair.thai + '  |  EN: ' + (l.pair.english || '') + '  |  CUE: ' + (l.pair.prompt || ''))
   const same = thaiSamePhraseTargets(sc.lines)
   return 'You are a native Thai teacher polishing ONE mini-scene of a spoken Thai lesson for an adult learner.\n' +
@@ -15649,7 +15649,10 @@ function thaiScenePolishPrompt(sc, allowed, names, earlier) {
     'Make the SMALLEST edits so the scene is one natural conversation:\n' +
     '• every reply answers the line before it (a question gets its answer: a place, a time, a price, a reason, yes/no); no line ignores or contradicts an earlier one\n' +
     '• the people keep their roles (the one who lacks something asks; the one who has it offers) and facts stay true (numbers, times, plans)\n' +
-    '• natural spoken Thai, Thai word order, 3–7 words, the target used in its normal sense; no English-shaped Thai\n' +
+    // v713 — the line length follows the learner's belt (the same ceiling the final complexity audit uses), not a fixed 3–7
+    '• natural spoken Thai, Thai word order, ' + (cc && cc.hardMax ? (cc.preferredMin || 2) + '–' + cc.hardMax : '3–7') + ' words, the target used in its normal sense; no English-shaped Thai\n' +
+    // v713 (D5 blind reviews) — general spoken-Thai rules the polish kept breaking
+    '• every line ENDS with its speaker\'s polite particle (ครับ / ค่ะ / คะ) — never a clause after it; a suggestion ("let\'s …", "shall we …") has กัน; นี้ = this one here, นั้น / โน้น = that one there\n' +
     '• keep each line\'s SPEAKER and its target word; keep the line count; change nothing that is already good\n' +
     '• use ONLY these Thai words (plus the target words and ครับ ค่ะ คะ นะ): ' + allowed.slice(0, 380).join(' ') + '\n' +
     '• for each line you change, also give its natural English and a short cue: the speaking act + exactly what the Thai says, second person ("Ask where the sugar is.")\n' +
@@ -15692,7 +15695,9 @@ async function thaiScenePolish(t, c, log) {
     if (surf && !thaiTargetPresent(th, surf, c.vocab)) why.push('target ' + surf + ' missing')
     // v707 (paid track 4: a critic fix made L41 identical to L40 → FINAL_DUPLICATE_AUDIT FAIL, NOT_READY 89/90) — never a copy of another line
     if (pairs.some(q => q && q !== old && String(q.thai || '').replace(/\s+/g, '') === t0)) why.push('same as another line in the lesson')
-    if (old.speaker === 'A' ? !/ครับ/.test(t0) || /(ค่ะ|คะ)$/.test(t0) : !/(ค่ะ|คะ)$/.test(t0) || /ครับ/.test(t0)) why.push('speaker particle')
+    // v713 (D5 blind reviews: "ลดพันไม่ได้ครับ จ่ายเต็มราคา", "ได้ครับ ให้ครึ่งราคาเลย" — the polish added a clause after the particle, and
+    // both reviewers read it as a curt or role-reversed line) — the line must END with the speaker's polite particle, as the original did
+    if (old.speaker === 'A' ? !/ครับ$/.test(t0) || /(ค่ะ|คะ)$/.test(t0) : !/(ค่ะ|คะ)$/.test(t0) || /ครับ/.test(t0)) why.push('speaker particle: the line must end with ' + (old.speaker === 'A' ? 'ครับ' : 'ค่ะ / คะ'))
     try { const v = validateThaiVocabulary([{ thai: th }], vctx); if (v.blocked && v.blocked.length) why.push('untaught: ' + v.blocked.slice(0, 3).map(b => b.token || b).join(' ')) } catch (e) { why.push('vocabulary check failed') }
     try { const lx = thaiLexicalSenseProblems({ thai: th, english: ed.english || '' }, surf).filter(x => x.code === 'UNNATURAL' || x.code === 'WRONG_SENSE'); if (lx.length) why.push(lx[0].id) } catch (e) {}
     if (!ed.english || !ed.cue) why.push('no english / cue')
@@ -15733,7 +15738,7 @@ async function thaiScenePolish(t, c, log) {
     const mayEdit = l => { if (!c.polishFix) return true; const k = sc.lines.indexOf(l); if (fixOf(l.pair)) return true
       const nx = k >= 0 && k + 1 < sc.lines.length ? sc.lines[k + 1] : null
       return !!(nx && fixOf(nx.pair) && sameEx(l, nx) && /NO_FOLLOW|CONTRADICTION|DANGLING|does not (answer|follow)|doesn't (answer|follow)|contradict/i.test(String(fixOf(nx.pair)))) }
-    try { edits = await ask(thaiScenePolishPrompt(sc, allowed, names, earlier) + fixBlock) }
+    try { edits = await ask(thaiScenePolishPrompt(sc, allowed, names, earlier, _cc) + fixBlock) }
     catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ SCENE_POLISH ' + sc.sceneId + ': request failed — scene kept (' + String(e && e.message || e).slice(0, 80) + ')'); continue }
     const refusedHere = []
     edits.forEach(ed => {
@@ -15746,7 +15751,7 @@ async function thaiScenePolish(t, c, log) {
     // follow-up request per scene names each refused edit and why, and asks for another fix of only those lines
     if (refusedHere.length) {
       let again = []
-      try { again = await ask(thaiScenePolishPrompt(sc, allowed, names, earlier) + '\n\nYOUR EARLIER EDITS BELOW WERE REFUSED. Fix ONLY these lines again, another way that passes:\n' +
+      try { again = await ask(thaiScenePolishPrompt(sc, allowed, names, earlier, _cc) + '\n\nYOUR EARLIER EDITS BELOW WERE REFUSED. Fix ONLY these lines again, another way that passes:\n' +
         refusedHere.map(x => (x.line.framing ? x.line.n : 'L' + x.line.n) + ': ' + x.ed.thai + ' — refused: ' + x.why.join('; ')).join('\n')) }
       catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
       refusedHere.forEach(x => {

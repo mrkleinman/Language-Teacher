@@ -11,7 +11,7 @@
 //   S10    the story prompts take the line length from the learner's belt (not a fixed 7 words)
 //   S11    an editor fix may add a missing reply (a span of 1 line replaced by 2), kept when the gates and turn-taking still pass
 //   S12    the lesson-word usage check (one call per scene): a fix that drops the lesson word is refused, a valid fix is applied
-//   S13    the app default plans the story around 25 of the 30 frozen words; the other 5 stay due (reported as over the cap)
+//   S13    the app default selects 25 words for Listening (no 30-then-defer-5); coverage 25/25
 //   S8     no stored-conversation path in production; the Daily exchange bank is unchanged
 // Real app code; the model is a deterministic script (no provider calls).
 //   node tests64.js            (current build: tt.compiled.js, or TT_FILE)
@@ -256,17 +256,19 @@ async function run(c, vocab, opt = {}) {
       { checks: H.st.wordChecks, log: lg.slice(0, 220), covered: H.tr.coverage.covered })
   }
   {
-    // v713 default: the story is planned around the first 25 frozen words; the other 5 are reported deferred (the cap reason), SRS untouched
+    // v714 default (owner, after reviewing v713: "why is it 30 words when it needs only 25"): the Listening track SELECTS 25 —
+    // the first 25 of the Revision selector's order — so nothing is deferred for the cap and a full track reads 25/25.
+    // (v713 froze 30 and reported 5 deferred; this test used to check that.)
     const before = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))
     const K = await run(c, vocab, { variant: 8, cap: 25 })
     const after = JSON.stringify(vocab.map(w => [w.id, w.dueDate, w.interval, w.status]))
     const planP = (K.st.prompts.find(x => x.stage === 'O_listening_story_plan') || {}).p || ''
     const asked = [...planP.matchAll(/^T(\d+) \|/gm)].map(m => Number(m[1]))
-    const d = K.tr.coverage.deferred || [], sal = ((K.tr.listening || {}).salvage || {}).deferred || []
-    T('S13', 'the app default plans the story around 25 of the 30 frozen words (the first 25, in the selector\'s order); the other 5 are reported deferred as over the cap and stay due; the frozen ids are unchanged',
-      asked.length === 25 && asked.join() === frozen.slice(0, 25).join() && frozen.slice(25).every(id => d.includes(id)) && K.tr.coverage.covered === 25 &&
-      sal.filter(x => /25-word cap/.test(x.reason)).length === 5 && K.tr.selectedTargetIds.join() === frozen.join() && before === after,
-      { asked: asked.length, deferred: d.length, covered: K.tr.coverage.covered, reasons: sal.map(x => x.reason).slice(0, 2), status: K.tr.status })
+    const d = K.tr.coverage.deferred || [], lg = K.logs.join('\n')
+    T('S13', 'the app default selects 25 words for Listening (the first 25 in the selector\'s order): 25 frozen, all 25 planned, none deferred for a cap, coverage 25/25 READY, SRS untouched',
+      K.tr.selectedTargetIds.join() === frozen.slice(0, 25).join() && asked.join() === frozen.slice(0, 25).join() && !d.length && K.tr.coverage.covered === 25 &&
+      K.tr.coverage.required === 25 && K.tr.status === 'READY' && /LISTENING_TARGET_SELECTION selected=25 /.test(lg) && !/word cap/.test(lg) && before === after,
+      { sel: K.tr.selectedTargetIds.length, asked: asked.length, deferred: d.length, covered: K.tr.coverage.covered, required: K.tr.coverage.required, status: K.tr.status })
     c.ev('LN_STORY_WORD_CAP').maxWords = 25
   }
   {

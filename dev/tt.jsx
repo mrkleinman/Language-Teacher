@@ -30285,6 +30285,19 @@ function saveListeningPlaybackSpeed(v) { try { if (Number.isFinite(v)) localStor
 // no Main READY gate. It has its own readiness contract (30/30 coverage + every Listening gate) and only a
 // READY track is persisted and playable. Rebuild keeps the same 30 target ids.
 const LISTENING_TRACK_TARGETS = 30
+// v714 — the Thai story Listening track SELECTS only the words one story can carry (LN_STORY_WORD_CAP, 25): it no longer
+// freezes 30 and quietly leaves 5 out, so a complete track reads 25/25 (owner review of v713: "why 30 when it needs 25").
+// Japanese and Mandarin keep 30.
+function listeningTargetCount(lang) {
+  const cap = Number(LN_STORY_WORD_CAP.maxWords)
+  return lang === 'th' && thaiListeningStoryOn() && cap > 0 ? Math.min(LISTENING_TRACK_TARGETS, cap) : LISTENING_TRACK_TARGETS
+}
+// the Revision selector's snapshot, cut to the Listening count (the most-due words first — the selector's own order)
+function listeningSnapshotOf(lang, snap) {
+  const n = listeningTargetCount(lang)
+  if (!snap || !Array.isArray(snap.targetIds) || snap.targetIds.length <= n) return snap
+  return { ...snap, targets: (snap.targets || []).slice(0, n), targetIds: snap.targetIds.slice(0, n), listeningCount: n }
+}
 // v659 §1 — THE canonical Revision target selector. It is the ONE source of truth for "the 30 words a Revision
 // Track would get right now": the Thai / Japanese / Mandarin Revision Track generators call it, and the
 // Listening Track calls the SAME function (no copy, no approximation). Same learner state ⇒ same ordered 30 ids.
@@ -32722,7 +32735,8 @@ async function _buildStandaloneListeningTrackCore(o) {
   // v659 §4/§18/§19 — the 30 targets are a SNAPSHOT taken when the attempt starts. A new Listening Track runs the
   // canonical Revision selector (selectRevisionTargets — the very call the Revision Track makes); a Rebuild passes
   // the frozen ids and never runs the selector again. Nothing is substituted mid-generation.
-  const snap = o.targetIds && o.targetIds.length ? null : (o.snapshot || selectRevisionTargets(lang, vocab))
+  const snap = o.targetIds && o.targetIds.length ? null : listeningSnapshotOf(lang, o.snapshot || selectRevisionTargets(lang, vocab))
+  const need = listeningTargetCount(lang)
   // v673 §2B — feasibility BEFORE the freeze (a rebuild tests its frozen ids without substitution)
   const _attemptId = o.attemptId || ('lattempt-' + new Date().toISOString())
   // v712 — Thai Listening freezes the Revision selector's 30 targets as they are (a fresh story is written around them; nothing is
@@ -32766,13 +32780,13 @@ async function _buildStandaloneListeningTrackCore(o) {
     const fc = ['TARGET_COVERAGE=FAIL'].concat(uncommitted && uncommitted.length ? ['SCENES_VALIDATED=FAIL'] : [])
     try { o.onProgress && o.onProgress({ stage: 'final', coverage: Object.fromEntries(frozenIds.map(id => [id, 'repair'])), targetIds: frozenIds.slice(), covered: 0, required: frozenIds.length, missing: frozenIds.slice(), ready: false, failedChecks: fc }) } catch (e) {}
     return { track: { ...source, status: 'NOT_READY', ready: false, failureReason: reason, listening: null,
-      coverage: { covered: 0, required: Math.max(LISTENING_TRACK_TARGETS, keywords.length), missing: keywords.map(k => k.wordId) }, failedChecks: fc, uncommittedScenes: uncommitted || [], usage: ut.usage,
+      coverage: { covered: 0, required: Math.max(need, keywords.length), missing: keywords.map(k => k.wordId) }, failedChecks: fc, uncommittedScenes: uncommitted || [], usage: ut.usage,
       // v673 — a composition that validated nothing still REPORTS what it spent (it used to print 0 calls next to real tokens)
       telemetry: { LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0, LISTENING_GENERATION_CALLS: 0, LISTENING_REPAIR_CALLS: 0, LISTENING_QC_CALLS: 0, LISTENING_TOTAL_PAID_CALLS: 0,
         ...(spentTel ? Object.fromEntries(Object.entries(spentTel).filter(([k, v]) => /^LISTENING_/.test(k) && typeof v !== 'object')) : {}), LISTENING_SELECTION_COUNT: keywords.length, LISTENING_MAIN_GENERATION_CALLS: 0,
         LISTENING_TOTAL_PAID_CALLS: spentTel ? (spentTel.LISTENING_GENERATION_CALLS || 0) + (spentTel.LISTENING_REPAIR_CALLS || 0) + (spentTel.LISTENING_QC_CALLS || 0) : 0,
         LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST } }, result: null } }
-  if (keywords.length < LISTENING_TRACK_TARGETS) { log && log('⛔ LISTENING_TRACK_NOT_READY — only ' + keywords.length + ' learned word(s) are eligible (needs ' + LISTENING_TRACK_TARGETS + ')'); return fail('only ' + keywords.length + ' learned words available (needs ' + LISTENING_TRACK_TARGETS + ')') }
+  if (keywords.length < need) { log && log('⛔ LISTENING_TRACK_NOT_READY — only ' + keywords.length + ' learned word(s) are eligible (needs ' + need + ')'); return fail('only ' + keywords.length + ' learned words available (needs ' + need + ')') }
   // v673 §2B — no feasible 30-target conversation ⇒ NOT_READY BEFORE generation (never 100+ calls proving it)
   if (feas && !feas.feasible) {
     log && log('⛔ LISTENING_PLAN_INFEASIBLE paidLanguageGenerationCalls=0 — ' + feas.reason + ' · NOT_READY before generation (0 paid calls)')
@@ -33058,16 +33072,16 @@ function ListeningLatestBar({ lang, tracks, onListen, onRebuild }) {
   )
 }
 function ListeningTrackButton({ selection, onStart }) {
-  const n = ((selection && selection.targets) || []).length
-  const on = n >= LISTENING_TRACK_TARGETS
+  const n = ((selection && selection.targets) || []).length, need = listeningTargetCount(selection && selection.language)
+  const on = n >= need
   return (
     <button onClick={() => on && onStart && onStart()} disabled={!on} data-listening-track-button="1"
       style={{ background: on ? 'linear-gradient(135deg,#0d1f33,#132c4a)' : 'var(--surface)', border: '1px solid ' + (on ? '#3b82f6' : 'var(--border)'), borderRadius: 12,
                padding: '18px 12px', cursor: on ? 'pointer' : 'not-allowed', textAlign: 'center', color: 'var(--text)', opacity: on ? 1 : 0.55 }}>
       <div style={{ fontSize: 20, lineHeight: '22px' }}>🎧</div>
       <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>Listening Track</div>
-      <div style={{ fontSize: 11, color: '#8ab8f0', marginTop: 2 }}>{on ? 'Listen using learned words' : 'Needs ' + LISTENING_TRACK_TARGETS + ' learned words'}</div>
-      <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>{on ? LISTENING_TRACK_TARGETS + ' words · ' : n + ' so far · '}<span style={{ color: '#8ab8f0', fontWeight: 700 }}>0 NEW</span></div>
+      <div style={{ fontSize: 11, color: '#8ab8f0', marginTop: 2 }}>{on ? 'Listen using learned words' : 'Needs ' + need + ' learned words'}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>{on ? need + ' words · ' : n + ' so far · '}<span style={{ color: '#8ab8f0', fontWeight: 700 }}>0 NEW</span></div>
     </button>
   )
 }
@@ -33235,7 +33249,7 @@ function ListeningGenerator({ lang, vocab, apiKey, model, gcpTtsKey, track: save
   // §4 — the target SNAPSHOT: taken once, when this generator opens (a saved track keeps its own ids)
   // v661: `startIds` = a Rebuild of a failed attempt started from the dashboard — the frozen ids, selector NOT re-run
   const rebuildStart = !saved && startIds && startIds.length ? startIds.slice() : null
-  const [snap] = useState(() => saved || rebuildStart ? null : selectRevisionTargets(lang, vocab))
+  const [snap] = useState(() => saved || rebuildStart ? null : listeningSnapshotOf(lang, selectRevisionTargets(lang, vocab)))
   const [ids, setIds] = useState(() => (saved ? (saved.listeningSelectedTargetIds || saved.selectedTargetIds || []) : rebuildStart || snap.targetIds).slice())
   const words = useMemo(() => {
     const byId = new Map((vocab || []).map(w => [w.id, w]))

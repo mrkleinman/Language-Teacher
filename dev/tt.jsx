@@ -16795,6 +16795,14 @@ const THAI_QUESTION_RE = /\?|\uFF1F|\u0e44\u0e2b\u0e21|\u0e2b\u0e23\u0e37\u0e2d|
 // v657 §25 — deterministic, meaning-preserving particle normalisation for a FEMALE line: ค่ะ right after a
 // question word → คะ; a bare คะ on a line with no question word, no softener and an English statement → ค่ะ.
 // Anything ambiguous (intonation questions, softeners) is left alone.
+// v713 — the closing polite particle a line must end with: A ครับ; B คะ on a question, ค่ะ otherwise (นะ → นะครับ / นะคะ). A line that
+// already ends with a particle (or with the other speaker's particle — a different defect, left to its own gate) is returned unchanged.
+function thaiEnsureFinalParticle(thai, speaker, english) {
+  const t = String(thai || '').trim(), t0 = t.replace(/\s+/g, '')
+  if (!t0 || /(ครับ|ค่ะ|คะ|จ้ะ|จ้า|ครับผม)$/.test(t0)) return t
+  const q = THAI_QUESTION_RE.test(t0) || /\?\s*$/.test(String(english || ''))
+  return t + (speaker === 'A' ? 'ครับ' : q || /(นะ|ล่ะ|สิ)$/.test(t0) ? 'คะ' : 'ค่ะ')   // นะคะ, never นะค่ะ
+}
 function thaiNormalisePoliteParticle(thai, english, gender) {
   const t = String(thai || '')
   if (gender !== 'female') return { thai: t, changed: false }
@@ -23175,6 +23183,18 @@ async function finaliseMainTrack(track, adapter, ctx) {
         }
       }
     } catch (e) { if (e && (e.cancelled || e.fatalProvider)) throw e; _snap = { error: String(e && e.message || e).slice(0, 160) } }
+  }
+  // v713 (D5 / D6 blind reviews: "คืนนี้ตื่นตีห้า", "ตื่นกี่โมง", "บ้านนี้ไม่แพงครับ อยากเช่า" — lines from the writer, quota recovery and
+  // the coherence repair went out without their closing particle) — every A / B line ENDS with its speaker's polite particle. Appended
+  // here, once, before the text is frozen (pronunciation is rebuilt from the final text; particles do not count toward the length cap).
+  if (dailyV693On() && adapter.lang === 'th') {
+    let _pf = 0
+    t = { ...t, pairs: (t.pairs || []).map(p => {
+      const fx = p && (p.speaker === 'A' || p.speaker === 'B') && /[\u0E00-\u0E7F]/.test(p.thai || '') ? thaiEnsureFinalParticle(p.thai, p.speaker, p.english) : null
+      if (!fx || fx === p.thai) return p
+      _pf++; return { ...p, thai: fx, text: fx, phonetic: '', words: [], _finalParticleAdded: true }
+    }) }
+    if (_pf) log && log('  🔧 LOCAL_REPAIR final particle (no paid call): ' + _pf + ' line(s) now end with ครับ / ค่ะ / คะ')
   }
   // v655 §22 — the learner text is FROZEN here (after quota recovery and coherence repair); pronunciation is
   // built from this exact text, and any later text change is detected as STALE and rebuilt before the audit

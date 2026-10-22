@@ -32111,12 +32111,16 @@ async function _lnComposeThaiStory(env, avoid) {
     try {
       const p = await call('O_listening_story_plan', 'TASK: plan ONE new conversation. The learner must hear EVERY ONE of these ' + targets.length + ' lesson words. They are fixed: never drop, replace or add a lesson word.\n' +
         lnStoryTargetRows(targets) + '\n\nWork in two steps. FIRST group the words into 5–6 SITUATIONS where they are naturally said together (e.g. a meal at a restaurant: please sit (the waitress) / would you like more (the waitress) / let\'s eat / ' +
-        'just a little; at the museum desk: may I ask / everyone / national museum; making up after a quarrel: sincere / trust / forgive / always). ' +
+        'just a little; at the museum desk: may I ask / everyone / national museum). ' +
         'THEN make each situation one scene of A\'s WEEK: 5–6 scenes in time order (e.g. "Monday morning, at the bus stop" → "Tuesday, at the café — B is the waitress" → "Wednesday evening, on the phone with his friend"). ' +
         (avoid ? 'Use DIFFERENT situations and settings from this earlier week: "' + avoid + '". ' : '') +
         'Each scene is a COMPLETE small situation in one place: a clear purpose or small problem, what happens, and how it ends — it makes sense on its own, without remembering details of other scenes. ' +
         'A light thread may link the week (A is planning a trip, preparing for a friend\'s wedding, starting a new job), but no scene may contradict another and nothing is mentioned before it is set up IN THAT SCENE. ' +
-        'Opening and closing phrases (greetings, goodbyes) open and close a scene naturally; feelings words (trust, forgive, sincere, forever) need their cause inside the same scene.\n' +
+        'Opening and closing phrases (greetings, goodbyes) open and close a scene naturally. ' +
+        // v713 (S32 blind-review set: "เราจริงใจและเชื่อใจกัน / ผมให้อภัยคุณเสมอ / เราเป็นเพื่อนกันตลอดไป" — the plan's own example grouped
+        // sincere / trust / forgive / always into one scene, and every run wrote that melodramatic cluster)
+        'FEELINGS and VALUE words (trust, forgive, sincere, forever, reputation, keep one\'s word) are SPREAD OUT: at most ONE per scene, each caused by a small, ordinary event in that scene ' +
+        '(B returns the wallet A left behind → trust; A arrives late and says sorry → B forgives him; a shop everyone recommends → reputation). Friends never make speeches about their friendship.\n' +
         'CAST: two voices only. A is a man, the same person in every scene. B is a woman: whoever A talks to in that scene — his close friend, a colleague, a waitress, museum desk staff, a shop assistant (not a relative: B always says ฉัน). ' +
         'Put who B is in the scene title when she is not his friend (e.g. "Thursday, at the museum desk — B works there"); staff speak politely as staff, friends speak casually. ' +
         'FORMAL or SET-PHRASE lesson words (polite forms, host / staff phrases) go to a scene where B (or A) has that role.\n' +

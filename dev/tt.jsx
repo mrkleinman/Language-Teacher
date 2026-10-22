@@ -32375,35 +32375,49 @@ async function _lnComposeThaiStory(env, avoid) {
   // forgive — the whole-story editor names 3 faults a round and never reached them). A fix replaces that one line and is kept only if
   // it passes every line gate and keeps the line's lesson words.
   {
+    // S35: every fix the check proposed was refused (11 words for a 7-word belt; an untaught word) — the call is told the line length and
+    // the words this learner does not know, and a refused fix gets ONE more try that names the reason
+    const lenR = lnStoryLen(ctx)
+    const limits = 'Each new line: at most ' + lenR.max + ' Thai words (the particle not counted), only simple everyday words a beginner knows' + (never.length ? ' — NOT these untaught words: ' + never.join(' ') : '') + '.\n'
+    const ask = (s, si, extra) => call('O_listening_word_check', 'You are a native Thai teacher checking ONE scene of a Thai listening lesson. A is a man (ผม / ครับ), B a woman (ฉัน / ค่ะ).\n' +
+      'SCENE: "' + s.title + '"' + (s.present ? ' [' + s.present + ']' : '') + '\n' + lnStorySceneText(sceneOf(si), la) +
+      '\nLESSON WORDS in this scene: ' + sceneTargets(si).map(t => t.surface + ' (' + t.gloss + ')').join(', ') + extra, 1200, 'LISTENING_REPAIR_CALLS', true)
+    const tryFix = (si, fx, refused) => {
+      const sc = sceneOf(si), k = Number(fx && fx.line) - 1, tn = sc.turns[k], cur = written[si][k]
+      if (!tn || !cur || !fx || !fx.thai) return false
+      const cand = { speaker: cur.speaker, thai: String(fx.thai).trim(), english: String(fx.english || '').trim() }
+      const g = lineGateWhy(si, cand), lost = (tn.intendedTargetIds || []).filter(id => !g.ids.includes(id))
+      if (g.why || lost.length) { refused.push({ si, line: k + 1, thai: cand.thai, why: g.why || 'lesson word lost' }); return false }
+      written[si][k] = cand; return true
+    }
     const res = await Promise.all(plan.scenes.map(async (s, si) => {
       const st = sceneTargets(si)
       if (!st.length || !written[si] || !written[si].length) return { si, fixes: [] }
       const notes = env._lnUsageNotes ? env._lnUsageNotes.split('\n').filter(l => st.some(t => l.startsWith(t.surface + ' — '))).join('\n') : ''
       try {
-        const r = await call('O_listening_word_check', 'You are a native Thai teacher checking ONE scene of a Thai listening lesson. A is a man (ผม / ครับ), B a woman (ฉัน / ค่ะ).\n' +
-          'SCENE: "' + s.title + '"' + (s.present ? ' [' + s.present + ']' : '') + '\n' + lnStorySceneText(sceneOf(si), la) +
-          '\nLESSON WORDS in this scene: ' + st.map(t => t.surface + ' (' + t.gloss + ')').join(', ') + (notes ? '\nHOW THAI SPEAKERS USE THEM:\n' + notes : '') +
+        const r = await ask(s, si, (notes ? '\nHOW THAI SPEAKERS USE THEM:\n' + notes : '') +
           '\n\nCheck ONLY how each lesson word is used: said by the right person, to the right listener (a word for a group needs a group; "let\'s …" / กัน needs two people doing it together), ' +
           'in a situation where a Thai speaker would really say it, with the grammar it needs (e.g. ไม่ทราบว่า opens a polite question). ' +
-          'For each WRONG use, rewrite that ONE line so the word is used correctly: keep the word, the same speaker, and make it fit between the lines around it. Reply {"fixes":[]} if every use is right.\n' +
-          'Reply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…","why":"…"}]}', 1200, 'LISTENING_REPAIR_CALLS', true)
+          'For each WRONG use, rewrite that ONE line so the word is used correctly: keep the word, the same speaker, and make it fit between the lines around it. ' + limits +
+          'Reply {"fixes":[]} if every use is right.\nReply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…","why":"…"}]}')
         return { si, fixes: (r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 4) }
       } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; return { si, fixes: [] } }
     }))
-    let named = 0, kept = 0; const refused = []
-    res.forEach(({ si, fixes }) => {
-      named += fixes.length
-      const sc = sceneOf(si)
-      fixes.forEach(fx => {
-        const k = Number(fx && fx.line) - 1, tn = sc.turns[k], cur = written[si][k]
-        if (!tn || !cur || !fx.thai) return
-        const cand = { speaker: cur.speaker, thai: String(fx.thai).trim(), english: String(fx.english || '').trim() }
-        const g = lineGateWhy(si, cand), lost = (tn.intendedTargetIds || []).filter(id => !g.ids.includes(id))
-        if (g.why || lost.length) { refused.push('S' + (si + 1) + ' L' + (k + 1) + ': ' + (g.why || 'lesson word lost')); return }
-        written[si][k] = cand; kept++
-      })
-    })
-    log && log('  🔎 LISTENING_STORY lesson-word check · ' + named + ' wrong use(s) named across ' + plan.scenes.length + ' scene(s) · ' + kept + ' line(s) fixed' + (refused.length ? ' · refused: ' + refused.slice(0, 3).join(' | ').slice(0, 200) : ''))
+    let named = 0, kept = 0, retried = 0; const refused = []
+    res.forEach(({ si, fixes }) => { named += fixes.length; fixes.forEach(fx => { if (tryFix(si, fx, refused)) kept++ }) })
+    // one more try for the refused fixes, per scene, with the reason each was refused
+    const bySc = new Map(); refused.forEach(x => { if (!bySc.has(x.si)) bySc.set(x.si, []); bySc.get(x.si).push(x) })
+    const still = []
+    await Promise.all([...bySc.entries()].map(async ([si, xs]) => {
+      try {
+        const r = await ask(plan.scenes[si], si, '\n\nYOUR FIXES FOR THESE LINES WERE REFUSED — rewrite each again so it passes (same lesson word, same speaker, fits between the lines around it). ' + limits +
+          xs.map(x => 'L' + x.line + ' "' + x.thai + '" — refused: ' + String(x.why).slice(0, 120)).join('\n') + '\nReply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…"}]}')
+        ;(r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 4).forEach(fx => { retried++; if (tryFix(si, fx, still)) kept++ })
+      } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+    }))
+    const fmt = xs => xs.slice(0, 3).map(x => 'S' + (x.si + 1) + ' L' + x.line + ': ' + x.why).join(' | ').slice(0, 200)
+    log && log('  🔎 LISTENING_STORY lesson-word check · ' + named + ' wrong use(s) named across ' + plan.scenes.length + ' scene(s) · ' + kept + ' line(s) fixed' +
+      (refused.length ? ' · refused at first: ' + fmt(refused) + ' · ' + retried + ' retried' : '') + (still.length ? ' · still refused: ' + fmt(still) : ''))
   }
   // the edits must leave every scene's gates and lesson words as they were (a scene the edits broke goes back to its written text)
   // ── QC: paid naturalness verdicts (in context) + the whole-conversation coherence judge → rewrite the flagged scenes (≤ 2 rounds) ──

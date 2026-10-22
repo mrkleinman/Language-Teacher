@@ -31970,7 +31970,8 @@ function lnStoryPrefix(la, ctx, targets, never) {
 function lnStoryTargetRows(targets) { return targets.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (t.sense ? ' (sense: ' + t.sense + ')' : '')).join('\n') }
 function lnStoryScenes(la, plan, written, targets, ctx) {
   return plan.scenes.map((s, si) => ({ sceneId: 'LS' + (si + 1), setting: s.title, turns: (written[si] || []).map((x, k) => {
-    const th = String(x.thai || '').trim()
+    // นะค่ะ is a misspelling of นะคะ (S31 blind reviews)
+    const th = String(x.thai || '').trim().replace(/นะค่ะ$/, 'นะคะ')
     const tid = targets.filter(t => t.surface && th.includes(t.surface) && la.present(th, t.surface, ctx)).map(t => t.id)
     const tu = lnMfMakeTurn(la, { speaker: x.speaker === 'B' ? 'B' : 'A', text: th, english: String(x.english || '').trim(), targetIds: tid }, 'S' + (si + 1) + '-T' + k, 'S' + (si + 1))
     // each line is written as the reply to the line before it: a different speaker answering is a planned reply (a disagreement is
@@ -31986,6 +31987,8 @@ function lnStorySceneProblems(la, sc, si, nScenes, sceneTargets, ctx) {
   const G = LISTENING_GREETING_RE.th, B = LISTENING_GOODBYE_RE.th
   sc.turns.forEach((tn, k) => {
     const t = la.text(tn.pair)
+    // a leftover placeholder ("ผมชื่อ...ครับ" went out with no name — S31) is never a line
+    if (/\.\.\.|…|\[|\]|_{2,}/.test(t)) out.push({ line: k + 1, code: 'LINE_QUALITY', detail: 'a placeholder (… / [ ]) instead of real words' })
     if (k >= 2 && sc.turns[k - 1].speaker === tn.speaker && sc.turns[k - 2].speaker === tn.speaker) out.push({ line: k + 1, code: 'TURN_TAKING', detail: 'three lines in a row by ' + tn.speaker })
     if (si > 0 && G.test(t)) out.push({ line: k + 1, code: 'CONTINUITY', detail: 'a greeting outside the first scene' })
     if (si < nScenes - 1 && B.test(t)) out.push({ line: k + 1, code: 'CONTINUITY', detail: 'a goodbye before the last scene' })
@@ -32183,7 +32186,9 @@ async function _lnComposeThaiStory(env, avoid) {
   // ── EDIT: a strict native-teacher read of the WHOLE conversation (the way the independent grader reads it) lists every faulty line
   //    with a replacement; each replacement is kept only if it passes every line gate and keeps the line's lesson words (≤ 3 rounds) ──
   let rejected = [], editorGrade = null
-  for (let round = 1; round <= 10; round++) {
+  // 3 rounds: more rounds made the track WORSE in blind review (S31: 10 rounds ran → 4.7 / 4.3; S29: ~3 rounds → 5.7 / 5.5) — each
+  // fix can bring new faults the gates do not see
+  for (let round = 1; round <= 3; round++) {
     const flat = build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
     let r = null, review = null
     // 1) FIND: a short call without the Thai word list (it thinks harder, at medium effort) reads the whole story the way the blind
@@ -32201,7 +32206,7 @@ async function _lnComposeThaiStory(env, avoid) {
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY review round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }
     // at most 4 faults per fix call: with 8 faults and the whole checklist the fix reply ran out of tokens every time (paid run S20)
     // at most 2 faults per fix call (4 still ran out of tokens in every round of paid run S30); more rounds instead
-    const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 2)
+    const faults = (review && Array.isArray(review.faults) ? review.faults : []).filter(x => x && Number(x.from) > 0).slice(0, 3)
     try {
       r = await call('O_listening_story_edit', 'STORY PLAN: "' + plan.title + '" — ' + plan.story + '\n' + plan.scenes.map((x, i) => 'Scene ' + (i + 1) + ': ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ' — ' + x.happens).join('\n') +
         '\n\n' + (faults.length ? 'THE SCENES WITH FAULTS (numbered as in the whole conversation):\n' : 'THE CONVERSATION (numbered; scene titles in brackets):\n') + flat.map((f, i) => ({ f, i })).filter(({ f }) => !faults.length || faults.some(x => { const g = flat[Number(x.from) - 1]; return g && g.si === f.si })).map(({ f, i }) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '') + ((f.tn.intendedTargetIds || []).length ? '   (lesson words: ' + f.tn.intendedTargetIds.map(id => byId.get(id).surface).join(', ') + ')' : '')).join('\n') +

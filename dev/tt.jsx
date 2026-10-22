@@ -32059,7 +32059,8 @@ function lnStoryTargetRows(targets) { return targets.map(t => 'T' + t.id + ' | '
 function lnStoryScenes(la, plan, written, targets, ctx) {
   return plan.scenes.map((s, si) => ({ sceneId: 'LS' + (si + 1), setting: s.title, turns: (written[si] || []).map((x, k) => {
     // นะค่ะ is a misspelling of นะคะ (S31 blind reviews)
-    const th = String(x.thai || '').trim().replace(/นะค่ะ$/, 'นะคะ')
+    // อุณหภูมิ is high / low, never hot / cold (S29–S36): corrected in place, deterministically
+    const th = String(x.thai || '').trim().replace(/นะค่ะ$/, 'นะคะ').replace(/(อุณหภูมิ[^ ]{0,8}?)(เย็น|หนาว)/, '$1ต่ำ').replace(/(อุณหภูมิ[^ ]{0,8}?)ร้อน/, '$1สูง')
     const tid = targets.filter(t => t.surface && th.includes(t.surface) && la.present(th, t.surface, ctx)).map(t => t.id)
     const tu = lnMfMakeTurn(la, { speaker: x.speaker === 'B' ? 'B' : 'A', text: th, english: String(x.english || '').trim(), targetIds: tid }, 'S' + (si + 1) + '-T' + k, 'S' + (si + 1))
     // each line is written as the reply to the line before it: a different speaker answering is a planned reply (a disagreement is
@@ -32177,7 +32178,10 @@ async function _lnComposeThaiStory(env, avoid) {
       const p = await call('O_listening_story_plan', 'TASK: plan ONE new conversation. The learner must hear EVERY ONE of these ' + planTargets.length + ' lesson words. They are fixed: never drop, replace or add a lesson word.\n' +
         lnStoryTargetRows(planTargets) + '\n\nWork in two steps. FIRST group the words into 5–6 SITUATIONS where they are naturally said together (e.g. a meal at a restaurant: please sit (the waitress) / would you like more (the waitress) / let\'s eat / ' +
         'just a little; at the museum desk: may I ask / everyone / national museum). ' +
-        'THEN make each situation one scene of A\'s WEEK: 5–6 scenes in time order (e.g. "Monday morning, at the bus stop" → "Tuesday, at the café — B is the waitress" → "Wednesday evening, on the phone with his friend"). ' +
+        // v713 (S36 blind reviews: an "afternoon" scene says "it's already ten o'clock"; a colleague says "I'm the secretary"; forgiveness for a
+        // lateness nobody mentioned) — titles name the day and place only; B is ONE person per scene; nothing is referred to before it happens
+        'THEN make each situation one scene of A\'s WEEK: 5–6 scenes in day order (e.g. "Monday, at the bus stop" → "Tuesday, at the café — B is the waitress" → "Wednesday, on the phone with his friend"). ' +
+        'A title names the DAY and the PLACE only (no time of day). In each scene B is exactly ONE person (his friend OR the waitress OR a colleague — never two roles), and a line may refer only to what happened earlier IN THAT SCENE (an apology needs the mistake first). ' +
         (avoid ? 'Use DIFFERENT situations and settings from this earlier week: "' + avoid + '". ' : '') +
         'Each scene is a COMPLETE small situation in one place: a clear purpose or small problem, what happens, and how it ends — it makes sense on its own, without remembering details of other scenes. ' +
         'A light thread may link the week (A is planning a trip, preparing for a friend\'s wedding, starting a new job), but no scene may contradict another and nothing is mentioned before it is set up IN THAT SCENE. ' +
@@ -32189,7 +32193,7 @@ async function _lnComposeThaiStory(env, avoid) {
         'CAST: two voices only. A is a man, the same person in every scene. B is a woman: whoever A talks to in that scene — his close friend, a colleague, a waitress, museum desk staff, a shop assistant (not a relative: B always says ฉัน). ' +
         'Put who B is in the scene title when she is not his friend (e.g. "Thursday, at the museum desk — B works there"); staff speak politely as staff, friends speak casually. ' +
         'FORMAL or SET-PHRASE lesson words (polite forms, host / staff phrases) go to a scene where B (or A) has that role.\n' +
-        'Give each scene: a title (place and time, plus B\'s role if she is not the friend), "present" (where A and B are and who B is, e.g. "together at the café" / "on the phone: A at work, B at home" / "B is the waitress, A a customer"), what happens (2–3 sentences that carry the plot), ' +
+        'Give each scene: a title (day and place, plus B\'s role if she is not the friend), "present" (where A and B are and who B is, e.g. "together at the café" / "on the phone: A at work, B at home" / "B is the waitress, A a customer"), what happens (2–3 sentences that carry the plot), ' +
         '"facts" (who B is and what is true in this scene), and "uses": for each of its lesson words, the id and the MOMENT it is said — ' +
         'who says it and why, in at most 10 English words (e.g. {"id":842,"moment":"B, at the museum desk, asks A for his ticket"}). Pick moments where the word is the natural thing to say. ' +
         'Keep the whole plan short (no explanations). Every id in exactly one scene, 4–6 per scene.\n' +

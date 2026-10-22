@@ -31869,7 +31869,7 @@ const LN_STORY_UNTAUGHT_PROBE = ['คุย', 'แค่', 'เอง', 'ขึ�
   'อย่าง', 'ครบ', 'นึง', 'เมื่อคืน', 'ข้างนอก', 'ดึก', 'ไฟดับ', 'หลับ', 'ละลาย', 'ตู้', 'เครื่อง', 'ป้าย', 'ชนะ', 'แพ้', 'ลูกค้า', 'พนักงาน', 'ห้องน้ำ']
 const LN_STORY_RULES_LEAN =
   'A = a man: ผม; every line ends with ครับ. B = a woman: ฉัน; every line ends with ค่ะ (คะ in a question). One particle per line, at the end (ได้ครับ / ใช่ค่ะ may open a line).\n' +
-  'Lines of 3–7 Thai words. The speakers alternate (never three lines in a row by one). A and B are close friends (drop pronouns where Thai drops them, คุณ rarely) unless the scene makes B someone in a role (staff, host): then she speaks politely as that person.\n' +
+  'Lines of 3–7 Thai words, each a complete natural sentence: never drop the small words Thai needs (ที่, กัน, อยู่, เป็น, ใส่, เรื่อง, มา / ไป) to save length; if a thought is too long, say less or split it over two turns. The speakers alternate (never three lines in a row by one). A and B are close friends (drop pronouns where Thai drops them, คุณ rarely) unless the scene makes B someone in a role (staff, host): then she speaks politely as that person.\n' +
   'One story: each reply follows the line before, questions get answers, facts stay consistent. Each lesson word in its everyday sense. No names.\n' +
   'English: a natural translation of exactly what the Thai says. Greetings only at the very start, goodbyes only at the very end.'
 function lnStoryJson(raw) {
@@ -31976,8 +31976,8 @@ async function _lnComposeThaiStory(env, avoid) {
   for (let attempt = 1; attempt <= 2 && !plan; attempt++) {
     try {
       const p = await call('O_listening_story_plan', 'TASK: plan ONE new conversation. The learner must hear EVERY ONE of these ' + targets.length + ' lesson words. They are fixed: never drop, replace or add a lesson word.\n' +
-        lnStoryTargetRows(targets) + '\n\nWork in two steps. FIRST group the words into 5–6 SITUATIONS where they are naturally said together (e.g. eating at a friend\'s home: let\'s eat / ' +
-        'please sit / would you like more / just a little; at the museum desk: may I ask / everyone / national museum; making up after a quarrel: sincere / trust / forgive / always). ' +
+        lnStoryTargetRows(targets) + '\n\nWork in two steps. FIRST group the words into 5–6 SITUATIONS where they are naturally said together (e.g. a meal at a restaurant: please sit (the waitress) / would you like more (the waitress) / let\'s eat / ' +
+        'just a little; at the museum desk: may I ask / everyone / national museum; making up after a quarrel: sincere / trust / forgive / always). ' +
         'THEN link the situations into one believable everyday story for A and his friend, each situation becoming one scene, so that every word comes up naturally, in its common sense. ' +
         (avoid ? 'It must be a DIFFERENT story from this earlier one (other events and settings): "' + avoid + '". ' : '') +
         'Opening and closing phrases (greetings, wishes, goodbyes) belong at the start or the end; a formal word needs a situation where it fits (reading a sign, a host speaking to guests). ' +
@@ -32012,6 +32012,12 @@ async function _lnComposeThaiStory(env, avoid) {
   }
   if (!plan) return { ok: false, scenes: [], reason: 'LISTENING_STORY_PLAN_FAILED: the story plan could not be made', composer: 'story', uncommitted: [] }
   log && log('🎧 LISTENING_STORY plan "' + plan.title + '" — ' + plan.story + ' · ' + plan.scenes.map((s, i) => 'S' + (i + 1) + ' ' + s.title + ' [' + s.targets.map(id => byId.get(id).surface).join(', ') + ']').join(' · '))
+  // why a candidate line fails the line gates ('' = it passes)
+  const lineGateWhy = (si, cand) => {
+    const one = lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [[cand]], targets, ctx)[0]
+    const iss = listeningConversationAudit([one], targets, la, ctx).issues.filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN)$/.test(x.code))
+    return { why: iss.map(x => x.code + (x.detail ? ' (' + String(x.detail).replace(/^[A-Z_]+: /, '').slice(0, 60) + ')' : '')).join('; '), ids: one.turns[0].intendedTargetIds || [] }
+  }
   // ── WRITE each scene in order, then CHECK and rewrite it (≤ 2 rounds) ──
   const written = [], nS = plan.scenes.length
   const sceneTargets = si => plan.scenes[si].targets.map(id => byId.get(id))
@@ -32043,7 +32049,7 @@ async function _lnComposeThaiStory(env, avoid) {
       if (beats.length < 4) beats = null
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' English script unusable: ' + String(e && e.message || e).slice(0, 100)) }
     const writeTask = beats ? brief.replace(/\nTASK: [\s\S]*$/, '') + '\n\nTASK: put scene ' + (si + 1) + ' of ' + nS + ' — "' + s.title + '" — into natural spoken Thai, line by line: same speakers, same meaning (small changes are fine where Thai says it differently). ' +
-      'Each lesson word must appear in its marked line, spelled exactly, in its common sense.\nLesson words:\n' + lnStoryTargetRows(st) +
+      'Each lesson word must appear in its marked line, spelled exactly, in its common sense. Say each line the way a Thai speaker would — it may be shorter than the English, but keep the small words Thai grammar needs (ที่, กัน, อยู่, เป็น, เรื่อง, มา / ไป).\nLesson words:\n' + lnStoryTargetRows(st) +
       '\nSCENE (English):\n' + beats.map((x, k) => (k + 1) + '. ' + x.speaker + ': ' + x.english + (x.ids.length ? '   [' + x.ids.map(id => byId.get(id).surface).join(', ') + ']' : '')).join('\n') +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}' : brief
     if (beats) log && log('  📜 LISTENING_STORY scene ' + (si + 1) + ' scripted in English first · ' + beats.length + ' lines')
@@ -32053,6 +32059,29 @@ async function _lnComposeThaiStory(env, avoid) {
       if (!best || probs.length < best.probs.length) best = { turns: written[si].slice(), probs }
       log && log('  ✍ LISTENING_STORY scene ' + (si + 1) + (round ? ' rewrite ' + round : ' written') + ' · ' + sc.turns.length + ' lines · ' + (probs.length ? probs.length + ' problem(s): ' + probs.slice(0, 4).map(p => (p.line ? 'L' + p.line + ' ' : '') + p.code).join(', ') : 'all checks pass'))
       if (!probs.length || round === 2) break
+      // problems tied to single lines (an untaught word, a line too long, a wrong particle …) are fixed LINE BY LINE: only those lines are
+      // rewritten and each replacement is kept only if it passes the gates and keeps its lesson words (a whole-scene rewrite for a few
+      // untaught words also rewrote the good lines — paid run S17: 43 repair calls, the scenes drifted into stilted Thai)
+      const lineOnly = probs.every(p => p.line > 0 && p.code !== 'TURN_TAKING')
+      if (lineOnly) {
+        try {
+          const lines = [...new Set(probs.map(p => p.line))]
+          const r = await call('O_listening_story_repair', brief.replace(/\nTASK: [\s\S]*$/, '') + '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sc, la) +
+            '\n\nPROBLEMS:\n' + probs.map(p => '- line ' + p.line + ' ' + p.code + ': ' + p.detail).join('\n') +
+            '\nRewrite ONLY lines ' + lines.join(', ') + ': same speaker, same meaning in the scene, natural spoken Thai, only known words, keeping any lesson word the line has.\nLesson words of this scene:\n' + lnStoryTargetRows(st) +
+            '\nReply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…"}]}', 1200, 'LISTENING_REPAIR_CALLS')
+          let kept = 0
+          ;(r && Array.isArray(r.fixes) ? r.fixes : []).forEach(fx => {
+            const k = Number(fx && fx.line) - 1, old = written[si][k]
+            if (!old || !fx.thai || !lines.includes(k + 1)) return
+            const cand = { speaker: old.speaker, thai: String(fx.thai).trim(), english: String(fx.english || old.english).trim() }
+            const g = lineGateWhy(si, cand), had = (sc.turns[k].intendedTargetIds || [])
+            if (!g.why && had.every(id => g.ids.includes(id))) { written[si][k] = cand; kept++ }
+          })
+          log && log('  🔧 LISTENING_STORY scene ' + (si + 1) + ' line repair: ' + kept + ' of ' + lines.length + ' line(s) fixed')
+        } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' line repair unusable: ' + String(e && e.message || e).slice(0, 100)) }
+        continue
+      }
       try {
         const r = take(await call('O_listening_story_repair', brief.replace(/\nTASK: [\s\S]*$/, '') + '\n\nSCENE ' + (si + 1) + ' AS WRITTEN:\n' + lnStorySceneText(sc, la) +
           '\n\nPROBLEMS (fix every one; keep every lesson word of this scene; change as little as possible; keep the story):\n' + probs.map(p => '- ' + (p.line ? 'line ' + p.line + ' ' : '') + p.code + ': ' + p.detail).join('\n') +
@@ -32067,12 +32096,6 @@ async function _lnComposeThaiStory(env, avoid) {
   const build = () => lnStoryScenes(la, plan, written, targets, ctx)
   // ── EDIT: a strict native-teacher read of the WHOLE conversation (the way the independent grader reads it) lists every faulty line
   //    with a replacement; each replacement is kept only if it passes every line gate and keeps the line's lesson words (≤ 3 rounds) ──
-  // why a candidate line fails the line gates ('' = it passes)
-  const lineGateWhy = (si, cand) => {
-    const one = lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [[cand]], targets, ctx)[0]
-    const iss = listeningConversationAudit([one], targets, la, ctx).issues.filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN)$/.test(x.code))
-    return { why: iss.map(x => x.code + (x.detail ? ' (' + String(x.detail).replace(/^[A-Z_]+: /, '').slice(0, 60) + ')' : '')).join('; '), ids: one.turns[0].intendedTargetIds || [] }
-  }
   let rejected = [], editorGrade = null
   for (let round = 1; round <= 5; round++) {
     const flat = build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
@@ -32087,7 +32110,7 @@ async function _lnComposeThaiStory(env, avoid) {
         '- THAI: not what a Thai friend would say (bookish, translated, wrong collocation, ungrammatical, odd particle).\n' +
         '- WORD: a lesson word used in an odd sense or forced into a line — give it a context where it is natural (a set-up line before it, or a speaker in a role).\n- EN: the English does not match the Thai.\n' +
         'Check especially: the scene title vs what is said; "why?" answered with a reason; yes / no answered; times agreed then kept; something mentioned for the first time as if known; "and you?" after the other already answered; ' +
-        'a joke or apology with no set-up; formal / staff phrases between friends, or B acting as both A\'s friend and staff in one scene; a gift, person or event mentioned before it is set up; verb + noun collocations (วางแผน, not ทำแผน); คุณ in many lines; wrong collocations (1 p.m. is บ่ายโมง, not หนึ่งโมงบ่าย; a temperature is สูง / ต่ำ while the weather is ร้อน — both are right; standing by someone is อยู่ข้าง…เสมอ).\n' +
+        'a joke or apology with no set-up; formal / staff phrases between friends, or B acting as both A\'s friend and staff in one scene; a gift, person or event mentioned before it is set up; verb + noun collocations (วางแผน, not ทำแผน); a missing small word that changes the meaning (ใส่ before clothes, เรื่อง after ขอโทษ, กัน after a shared action, ที่ / อยู่ / เป็น); written forms in speech (อย่างไร → ยังไง, เมื่อ… → ตอน…); มา vs ไป for the speaker\'s position; คุณ in many lines; wrong collocations (1 p.m. is บ่ายโมง, not หนึ่งโมงบ่าย; a temperature is สูง / ต่ำ while the weather is ร้อน — both are right; standing by someone is อยู่ข้าง…เสมอ).\n' +
         'For each fault, REPLACE a span of 1–3 consecutive lines ("from" … "to"): give exactly as many new lines as you replace, with the SAME speakers in the same order. ' +
         'Every lesson word of the span must still appear somewhere in the new span (it may move to another line of the span). Each new line: at most 7 Thai words, only known words, ends with the speaker\'s particle. ' +
         'Fix the cause (often an earlier line). At most 5 fixes, the worst first; "problem" in at most 8 words. Also give "score": the grade (0–10) this lesson deserves NOW, as the strict grader would.\n' +

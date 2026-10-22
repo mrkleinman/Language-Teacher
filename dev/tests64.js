@@ -90,6 +90,9 @@ function scriptedModel(c, vocab, opt = {}) {
     if (stage === 'O_listening_story_repair' || stage === 'O_listening_story_qc_repair') {
       const body = p.slice(p.lastIndexOf('AS WRITTEN:') + 11).split('\n\n')[0].trim().split('\n').map(r => r.split(' | ')).filter(r => r.length >= 3)
       const turns = body.map(r => ({ speaker: r[0].replace(/^\d+\.\s*/, '').trim(), thai: r[1].trim(), english: r[2].trim() }))
+      // v712 line repair: only the named lines come back, as {"fixes":[{line, thai, english}]}
+      if (/Rewrite ONLY lines/.test(p)) { st.lineRepairs = (st.lineRepairs || 0) + 1
+        return JSON.stringify({ fixes: turns.map((t, k) => ({ line: k + 1, ...t, ...(opt.fix && opt.fix(t) || {}) })).filter((t, k) => opt.fix && opt.fix(turns[k])) }) }
       if (opt.fix) turns.forEach(t => { const f = opt.fix(t); if (f) Object.assign(t, f) })
       return JSON.stringify({ turns })
     }

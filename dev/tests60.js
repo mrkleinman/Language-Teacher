@@ -202,7 +202,9 @@ const KEY = 'k', MODEL = 'gemini-2.5-flash-lite'
     const plain = c.anthropicRequestBody({ model: 'claude-haiku-5-5', messages: [{ role: 'user', content: 'no mark here' }], maxTokens: 1000 })
     T('J2', 'a prompt without the mark is sent exactly as before (a plain string, no cache_control)', plain.body.messages[0].content === 'no mark here')
     T('J3', 'Gemini (and any other provider) never sees the mark: it is replaced by a newline before the request is built',
-      c.ev('stripPromptCacheMark')('a' + M + 'b') === 'a\nb' && /if \(!_optModel && \(messages \|\| \[\]\)\.some\(m => typeof m\.content === 'string' && m\.content\.includes\(PROMPT_CACHE_MARK\)\)\) messages = messages\.map/.test(SRC))
+      c.ev('stripPromptCacheMark')('a' + M + 'b') === 'a\nb' && /if \(!_optModel && \(messages \|\| \[\]\)\.some\(m => hasPromptMark\(m\.content\)\)\) messages = messages\.map/.test(SRC) &&
+      // v716: the speaking guide's mark (a second cache mark) is stripped the same way — the check now covers both marks
+      c.ev('stripPromptCacheMark')('a' + c.ev('PROMPT_GUIDE_MARK') + 'b') === 'a\nb')
     // the real writer prompts of a mocked 6-target generation: the part before the mark is byte-identical for every target
     const S = setup('th'); mock(S, 'th', {}); const inner = S._mockFn, cap = []
     S.c.mockGeminiGenerate = async (k, m, msgs, max, o) => { cap.push(msgs.map(x => x.content).join('\n')); return inner(k, m, msgs, max, o) }

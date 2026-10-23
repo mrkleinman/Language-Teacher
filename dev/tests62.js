@@ -90,14 +90,18 @@ const DIGEST_1_800 = '9339125df5f4dbdcf2bcba374d7b007ef2fba84851b18345469c385a12
     const dk = (r.diagnostics || []).find(d => d.token === 'การ') || {}
     const sp = c.validateSmartPairs([{ thai: line, english: 'I mean going on a trip.', prompt: 'He explains what he means', speaker: 'A' }], { thai: 'หมายถึง', english: 'mean' }, V)
     const failText = JSON.stringify(sp && (sp.failures || sp.reasons || sp))
-    T('F1', 'the recorded Daily line ผมหมายถึง การไปเที่ยวครับ passes because การ is an approved grammar unit (nominaliser) — closed-vocabulary gate and generation gate',
-      r.ok && dk.classification === CL.GRAMMAR && dk.introduced === false && !/untaught vocabulary: การ/.test(failText), { blocked: r.blocked, dk, failText: failText.slice(0, 300) })
+    // v716 (owner decision on the speaking guide, 23 Oct): การ / ความ are no longer approved grammar — nouns made with การ are written style,
+    // so the line is refused until การ is taught, and passes once it is (the expectation changed with the decision, not to hide a defect)
+    const VT = learner({ 'หมายถึง': taught, 'ไปเที่ยว': taught, 'การ': taught }), rT = c.validateThaiVocabulary([{ thai: line }], ctxOf(VT))
+    T('F1', 'ผมหมายถึง การไปเที่ยวครับ is refused while การ is untaught (no longer a grammar unit) and passes once การ is taught',
+      !r.ok && (r.blocked || []).some(b => (b.token || b) === 'การ') && /untaught vocabulary: การ/.test(failText) && rT.ok, { blocked: r.blocked, taughtOk: rT.ok, failText: failText.slice(0, 300) })
     const w = V.find(y => y.thai === 'การ'), before = JSON.stringify(w)
     const rk = c.rankTestStatus(V, 'Blue')
     T('F2', 'grammar authorisation is NOT introduction: การ stays new — not introduced, not revision-eligible, not seen or proven for its belt — and as a target it is still a NEW target to teach',
       JSON.stringify(w) === before && w.status === 'new' && !c.hasBeenIntroduced(w) && !c.revisionEligible(w) && !c.isWordSeen(w) && !c.isWordRankPassed(w) &&
       !rk.words.filter(c.isWordSeen).some(y => y.thai === 'การ') && c.classifyThaiToken('การ', { ...ctxOf(V, [w]), vocab: V }).classification === CL.TRACK_NEW &&
-      c.classifyThaiToken('ความ', { ...x, vocab: V }).classification === CL.GRAMMAR,
+      // v716: ความ left the grammar override; an untaught curriculum word on it (เถอะ, conversation glue) is the grammar example now
+      c.classifyThaiToken('เถอะ', { ...x, vocab: V }).classification === CL.GRAMMAR,
       { status: w.status, cls: c.classifyThaiToken('การ', { ...ctxOf(V, [w]), vocab: V }).classification })
     const CONTENT = ['ปัญหา', 'คำ', 'สวน', 'ผล', 'เสิร์ฟ', 'รสชาติ', 'อย่าง', 'ทั้ง', 'เท่า']
     const still = CONTENT.filter(t => span(V, t).finalResult !== CL.BLOCKED)

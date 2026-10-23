@@ -67,6 +67,19 @@ const RAW_VOCAB = [{"t": "ผม", "e": "I (male)", "l": "easy", "i": 40, "r": 7
 // the original values for the report and for rollback. Learner history is keyed by id and
 // is untouched (ids are unchanged).
 const THAI_LEXICON_AUDIT_V645 = [
+  // v715 — the owner: รถเมล์ is the PUBLIC (city) bus, not any bus; พยายาม is to try HARD (make an effort), not just "try"
+  { id: 1530, thai: 'รถเมล์',
+    set: { e: 'public bus, city bus', senseId: 'รถเมล์:public-bus',
+      note: 'the public city bus on a fixed route, with a stop (ป้ายรถเมล์), a route number (สาย) and a fare — not a tour bus, coach or school bus (รถทัวร์, รถบัส)',
+      usageNote: 'A line with รถเมล์ makes clear it is the PUBLIC bus: waiting at the stop, the route number, paying the fare, a crowded bus (รอรถเมล์ที่ป้าย · นั่งรถเมล์สาย 8 · ค่ารถเมล์แปดบาท · รถเมล์คนเยอะ). English: "the (public) bus" / "the city bus".' },
+    why: 'OWNER_REVIEW: the gloss "bus" did not say it is the public bus; sentences used it for any bus.',
+    evidence: 'Owner instruction (23 Oct): sentences for รถเมล์ must make clear it is the public bus. รถเมล์ is the public city bus; other buses are รถทัวร์ / รถบัส / รถตู้.' },
+  { id: 1150, thai: 'พยายาม',
+    set: { e: 'to try hard, to make an effort', senseId: 'พยายาม:try-hard',
+      note: 'to try hard / make an effort at something difficult (พยายามเรียน, พยายามมาให้ทัน, พยายามอีกครั้ง) — stronger than just "try"',
+      usageNote: 'Use it for real EFFORT at something hard — practising, getting somewhere in time, not giving up. NOT "try" in the sense of sample / try on / try out, which is ลอง (ลองชิม, ลองใส่). English: "try hard", "make an effort", "do my best".' },
+    why: 'OWNER_REVIEW: the gloss "to try, to attempt" lost the effort; sentences used it like ลอง (have a go).',
+    evidence: 'Owner instruction (23 Oct): พยายาม is not just try but try hard. Having a go / sampling / trying on is ลอง.' },
   { id: 67, thai: 'ถูก',
     // v713 — the owner's decision: ONE entry carries both everyday senses (cheap / correct, right); only the passive marker stays out
     set: { e: 'cheap; correct, right', senseId: 'ถูก:cheap+correct', note: 'two everyday senses: cheap (price — ราคาถูก, the opposite of แพง) and correct / right (ถูกแล้ว, ตอบถูก). The passive marker ถูก (ถูกขโมย) is a different use and is not taught by this entry.' },
@@ -24422,6 +24435,9 @@ function recoveryFailureMemoryLines(st) {
 // NOT this one), so generation, cue, translation and QC all practise the same meaning. Reviewed entries only; every
 // other target keeps its gloss + usage note.
 const THAI_SENSE_POLICY = {
+  // v715 — the owner: รถเมล์ is clearly the PUBLIC bus; พยายาม is trying HARD
+  'รถเมล์': { sense: 'the public city bus (fixed route, a stop, a route number, a fare)', not: 'not a tour bus, coach, school bus or private van (รถทัวร์ / รถบัส / รถตู้)', usage: 'make it clear it is the public bus — waiting at the stop, the route number (สาย 8), paying the fare, a crowded bus; English "the (public) bus" / "the city bus"' },
+  'พยายาม': { sense: 'to try HARD / make an effort at something difficult', not: 'not "try" as in sample / try on / have a go — that is ลอง (ลองชิม, ลองใส่)', usage: 'real effort: practising, studying, getting somewhere in time, not giving up (พยายามเรียน, พยายามมาให้ทัน, พยายามอีกครั้ง); English "try hard", "make an effort", "do my best"' },
   'ศูนย์': { sense: 'zero — the number 0 (phone numbers ศูนย์แปด…, scores, temperatures)', not: 'the "centre" sense (ศูนย์การค้า) is a different meaning; never an implausible zero price', usage: 'use it where a 0 genuinely occurs: a phone number, a score, a temperature' },
   'พอดี': { sense: 'just right / fits exactly (size, amount, timing)', not: 'the "happen to" use (พอดีเจอ) is a different meaning', usage: 'a size that fits, an amount that is exactly enough, arriving at just the right time' },
   'พี่': { sense: 'older sibling, or a friendly way to address / refer to someone a little older', not: 'never a younger person', usage: 'between friends it addresses an older friend; the English must say which (brother / sister, or the person\'s role)' },

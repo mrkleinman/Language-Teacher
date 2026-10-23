@@ -9,6 +9,7 @@
 //   R7   refilled lines alternate speakers; ในสัปดาห์ / colour-without-classifier rules (D7 blind reviews)
 //   R8   no repeated phrase across an exchange, line 1 starts fresh, dish classifiers, กัน in invitations (D8 blind reviews)
 //   R10  the invitation rule only flags an invitation question (…ไหม) without กัน, not a suggestion like นั่งรถสองแถวไปค่ะ
+//   R11  รถเมล์ is the public bus and พยายาม is trying hard (owner): dictionary entry and the sense the writer is given
 //   R9   the exchange checks do not burn the track budget (D9b ran out at US$0.40: 117 exchange writes, two checks alternating)
 //
 //   node tests65.js            (current build: tt.compiled.js, or TT_FILE)
@@ -105,6 +106,15 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const lx = c.ev('thaiLexicalSenseProblems'), ids = (t, e) => lx({ thai: t, english: e }).map(x => x.id)
     T('R10', 'an invitation question without กัน is still caught (ไปร้านกาแฟไหมคะ); a suggestion answer is not (นั่งรถสองแถวไปค่ะ "Let\'s take a songthaew.")',
       ids('วันศุกร์ไปร้านกาแฟไหมคะ', 'Shall we go to the café on Friday?').includes('INVITE_NEEDS_KAN') && !ids('นั่งรถสองแถวไปค่ะ', "Let's take a songthaew.").includes('INVITE_NEEDS_KAN'))
+  }
+
+  {
+    const V = c.ev('RAW_VOCAB'), f = c.ev('thaiTargetSenseInfo')
+    const bus = V.find(v => v.t === 'รถเมล์'), tr = V.find(v => v.t === 'พยายาม')
+    const sb = f({ wordId: bus.id, thai: bus.t, english: bus.e }, [{ ...bus, thai: bus.t, english: bus.e }]), st = f({ wordId: tr.id, thai: tr.t, english: tr.e }, [{ ...tr, thai: tr.t, english: tr.e }])
+    T('R11', 'รถเมล์ = "public bus, city bus" and พยายาม = "to try hard, to make an effort" in the dictionary, and the writer is told the public-bus / try-hard sense (not ลอง)',
+      /public bus/.test(bus.e) && /try hard/.test(tr.e) && /public city bus/.test(sb.targetSense) && /tour bus/.test(sb.targetNotSense) && /HARD/.test(st.targetSense) && /ลอง/.test(st.targetNotSense),
+      { bus: bus.e, tr: tr.e, sb: sb.targetSense, st: st.targetSense })
   }
 
   out.forEach(l => console.log(l))

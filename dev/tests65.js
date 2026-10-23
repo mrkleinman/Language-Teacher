@@ -10,6 +10,7 @@
 //   R8   no repeated phrase across an exchange, line 1 starts fresh, dish classifiers, กัน in invitations (D8 blind reviews)
 //   R10  the invitation rule only flags an invitation question (…ไหม) without กัน, not a suggestion like นั่งรถสองแถวไปค่ะ
 //   R11  รถเมล์ is the public bus and พยายาม is trying hard (owner): dictionary entry and the sense the writer is given
+//   R12  a formal lesson word with an everyday alternative (สามารถ ↔ ได้) gets a cue that says "formally"; the writer is told where it fits
 //   R9   the exchange checks do not burn the track budget (D9b ran out at US$0.40: 117 exchange writes, two checks alternating)
 //
 //   node tests65.js            (current build: tt.compiled.js, or TT_FILE)
@@ -115,6 +116,17 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('R11', 'รถเมล์ = "public bus, city bus" and พยายาม = "to try hard, to make an effort" in the dictionary, and the writer is told the public-bus / try-hard sense (not ลอง)',
       /public bus/.test(bus.e) && /try hard/.test(tr.e) && /public city bus/.test(sb.targetSense) && /tour bus/.test(sb.targetNotSense) && /HARD/.test(st.targetSense) && /ลอง/.test(st.targetNotSense),
       { bus: bus.e, tr: tr.e, sb: sb.targetSense, st: st.targetSense })
+  }
+
+  {
+    // owner: "with สามารถ it's confusing if I don't have context — I'd just use ได้"
+    const pass = c.ev('thaiFinalCueLintPass'), f = c.ev('thaiTargetSenseInfo'), V = c.ev('RAW_VOCAB'), w = V.find(v => v.t === 'สามารถ')
+    const r = pass([{ pairId: 'p1', speaker: 'A', thai: 'สามารถจ่ายด้วยบัตรได้ไหมครับ', english: 'Can I pay by card?', prompt: 'Ask if you can pay by card.', _target: 'สามารถ' },
+      { pairId: 'p2', speaker: 'B', thai: 'จ่ายด้วยบัตรได้ค่ะ', english: 'You can pay by card.', prompt: 'Say he can pay by card.', _target: 'บัตร' }], {}, null)
+    const si = f({ wordId: w.id, thai: w.t, english: w.e }, [{ ...w, thai: w.t, english: w.e }])
+    T('R12', 'a สามารถ line gets the cue "Ask formally if you can pay by card." (a line without a formal lesson word keeps its cue); the writer is told สามารถ is the formal form, not chat between friends, and the cue says "formally"',
+      r[0].prompt === 'Ask formally if you can pay by card.' && r[1].prompt === 'Say he can pay by card.' && /FORMAL/.test(si.targetSense) && /ได้/.test(si.targetNotSense) && /formally/.test(si.targetUsageNote),
+      { cues: r.map(p => p.prompt), sense: si.targetSense })
   }
 
   out.forEach(l => console.log(l))

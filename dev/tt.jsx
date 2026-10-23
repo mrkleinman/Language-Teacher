@@ -22643,13 +22643,29 @@ function thaiEnglishNameFix(text) {
   try { Object.entries(THAI_NAME_TRANSLIT).forEach(([en, th]) => { if (!rev[th]) rev[th] = en.charAt(0).toUpperCase() + en.slice(1) }) } catch (e) {}
   return t.replace(/[\u0E00-\u0E7F]+/g, m => rev[m] || (THAI_NAME_PHONETIC[m] ? THAI_NAME_PHONETIC[m].normalize('NFD').replace(/[\u0300-\u036f-]/g, '').replace(/(aa|ii|uu|ee|oo)/g, x => x[0]).replace(/^./, x => x.toUpperCase()) : m))
 }
+// v715 (owner: "with สามารถ it's confusing without context — I would just use ได้") — a FORMAL lesson word that has an everyday
+// alternative gets a cue that says FORMALLY, so the learner knows to answer with the formal word ("Ask formally whether you can pay by
+// card" → สามารถจ่ายด้วยบัตรได้ไหมคะ, not ได้ไหม)
+const THAI_FORMAL_CUE_WORDS = { 'สามารถ': 'ได้', 'ต้องการ': 'อยาก', 'สอบถาม': 'ถาม', 'ทราบ': 'รู้', 'ทุกท่าน': 'ทุกคน', 'ท่าน': 'คุณ', 'รับประทาน': 'กิน', 'อนุญาต': 'ให้' }
+function thaiFormalCue(cue) {
+  const c = String(cue || '').trim()
+  if (!c || /\b(formal(ly)?|polite(ly)?)\b/i.test(c)) return c
+  const m = c.match(/^(Ask (?:him|her|them)?|Say|Tell (?:him|her|them)|Explain|Offer|Suggest|Answer|Reply|Confirm|Check|Announce)\b/i)
+  return m ? m[0].replace(/\s+$/, '') + ' formally' + c.slice(m[0].replace(/\s+$/, '').length) : 'Say formally: ' + c.charAt(0).toLowerCase() + c.slice(1)
+}
+function thaiFormalCueTarget(p) {
+  const t = String((p && (p._target || p.target)) || '').trim()
+  return THAI_FORMAL_CUE_WORDS[t] && String(p.thai || '').includes(t) ? t : ''
+}
 function thaiFinalCueLintPass(pairs, track, log) {
   let A = { name: '', gender: 'm' }, B = { name: '', gender: 'f' }
   try { const cx = cueClarityCtx('th', track); const nm = cx.names || []; A.name = nm[0] || ''; B.name = nm[1] || '' } catch (e) {}
   const fx = [], left = []
   const out = (pairs || []).map(p0 => { if (!p0 || !p0.thai || !p0.prompt || !p0.english) return p0
-    const p = dailyV693On() && /[\u0E00-\u0E7F]/.test(p0.prompt + p0.english) ? { ...p0, prompt: thaiEnglishNameFix(p0.prompt), english: thaiEnglishNameFix(p0.english) } : p0
+    let p = dailyV693On() && /[\u0E00-\u0E7F]/.test(p0.prompt + p0.english) ? { ...p0, prompt: thaiEnglishNameFix(p0.prompt), english: thaiEnglishNameFix(p0.english) } : p0
     if (p !== p0) fx.push('Thai script in English → "' + p.english + '"')
+    { const ft = thaiFormalCueTarget(p), fc = ft ? thaiFormalCue(p.prompt) : p.prompt
+      if (fc !== p.prompt) { fx.push('"' + p.prompt + '" → "' + fc + '" (FORMAL_WORD ' + ft + ')'); p = { ...p, prompt: fc, _cueLintFrom: p._cueLintFrom || p.prompt } } }
     // v709 (paid track 10: "Tell her your nose is too big" → "Say that my nose is too big") — a vetted bank cue is not re-linted
     if (thaiBankVerdict('cue', p)) return p
     const addr = p.speaker === 'A' ? 'f' : 'm', addrName = p.speaker === 'A' ? B.name : A.name
@@ -24437,6 +24453,8 @@ function recoveryFailureMemoryLines(st) {
 const THAI_SENSE_POLICY = {
   // v715 — the owner: รถเมล์ is clearly the PUBLIC bus; พยายาม is trying HARD
   'รถเมล์': { sense: 'the public city bus (fixed route, a stop, a route number, a fare)', not: 'not a tour bus, coach, school bus or private van (รถทัวร์ / รถบัส / รถตู้)', usage: 'make it clear it is the public bus — waiting at the stop, the route number (สาย 8), paying the fare, a crowded bus; English "the (public) bus" / "the city bus"' },
+  // v715 — the owner: with สามารถ a learner would just say ได้ unless the line is clearly formal and the cue says so
+  'สามารถ': { sense: 'be able to — the FORMAL way (สามารถ…ได้)', not: 'not casual chat between friends, where ได้ alone is what people say', usage: 'only where a speaker is formal: staff to a customer, asking at a counter or an office, at work, an announcement (คุณสามารถจ่ายด้วยบัตรได้ค่ะ · ไม่ทราบว่าสามารถจองล่วงหน้าได้ไหมครับ); the English cue says "formally" (Ask formally whether …)' },
   'พยายาม': { sense: 'to try HARD / make an effort at something difficult', not: 'not "try" as in sample / try on / have a go — that is ลอง (ลองชิม, ลองใส่)', usage: 'real effort: practising, studying, getting somewhere in time, not giving up (พยายามเรียน, พยายามมาให้ทัน, พยายามอีกครั้ง); English "try hard", "make an effort", "do my best"' },
   'ศูนย์': { sense: 'zero — the number 0 (phone numbers ศูนย์แปด…, scores, temperatures)', not: 'the "centre" sense (ศูนย์การค้า) is a different meaning; never an implausible zero price', usage: 'use it where a 0 genuinely occurs: a phone number, a score, a temperature' },
   'พอดี': { sense: 'just right / fits exactly (size, amount, timing)', not: 'the "happen to" use (พอดีเจอ) is a different meaning', usage: 'a size that fits, an amount that is exactly enough, arriving at just the right time' },

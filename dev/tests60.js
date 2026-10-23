@@ -122,9 +122,12 @@ const KEY = 'k', MODEL = 'gemini-2.5-flash-lite'
     const want = {
       4: 'Check that Thana is sincere with him.',
       5: 'Tell her to just listen a bit, then say you have to speak sincerely.',
-      7: 'Ask if he trusts Thana.',
-      10: 'Ask if Thana always trusts him.',
-      13: 'Ask if Thana forgives him.',
+      // v715 (owner's review of the live v714 track: "Ask why Somchai respects him" was read with Somchai as the third person and the
+      // cue judge turned it back into "you") — the listener is named after Ask and the third person (เขา) is "that person"; these three
+      // used to expect 'Ask if he trusts Thana.' / 'Ask if Thana always trusts him.' / 'Ask if Thana forgives him.'
+      7: 'Ask Thana if that person trusts him.',
+      10: 'Ask Thana if he always trusts that person.',
+      13: 'Ask Thana if he forgives that person.',
       42: 'Say Bangkokians like to come here.',
       67: 'Ask who he is going to the Grand Palace with.',
       80: "Then say you'll buy her a pair of shorts.",

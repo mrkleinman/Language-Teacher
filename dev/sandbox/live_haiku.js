@@ -109,6 +109,11 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
     C.aiSetAnthropicAccess(ACCESS)
     const B = JSON.parse(fs.readFileSync(ownerBackup, 'utf8')), byId = new Map(B.vocab.map(w => [w.id, w]))
     const F = ['status', 'difficulty', 'interval', 'lastSeen', 'dueDate', 'repCount', 'lapses', 'okStreak', 'manualKnown', 'introducedAt', 'note']
+    // --history a.txt,b.txt: earlier track exports become the learner's saved tracks (v715 recent-lesson repeat check — used only to refuse
+    // repeats, as in the app)
+    { const k = process.argv.indexOf('--history'); if (k > 0) { const files = String(process.argv[k + 1] || '').split(',').filter(Boolean)
+      const tracks = files.map(f => ({ pairs: fs.readFileSync(f, 'utf8').split('\n').filter(l => /^\s*TH: /.test(l)).map(l => ({ thai: l.replace(/^\s*TH: /, '').trim() })) }))
+      await C.ev('stSet')('tt-tracks', tracks); console.log('  (history: ' + tracks.map(t => t.pairs.length).join(' + ') + ' lines from ' + files.length + ' earlier export(s))') } }
     const vocab = C.initVocab().map(w => { const o = byId.get(w.id); if (!o) return w; const n = { ...w }; F.forEach(k => { if (o[k] !== undefined) n[k] = o[k] }); return n })
     B.vocab.forEach(o => { if (!vocab.some(w => w.id === o.id)) vocab.push({ ...o }) })
     const picked = ownerTargets ? ownerTargets.split(',').map(Number) : (LISTENING ? [] : C.pickWords(vocab, 'daily', []).targets.map(w => w.id))

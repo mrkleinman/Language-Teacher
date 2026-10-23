@@ -38403,7 +38403,9 @@ function thaiLexicalSenseProblems(p, targetSurface) {
     // a food / drink + หนึ่ง needs its classifier: ก๋วยเตี๋ยวชามหนึ่ง, กาแฟแก้วหนึ่ง (D8 blind reviews: ขอก๋วยเตี๋ยวหนึ่ง)
     if (/(ก๋วยเตี๋ยว|ข้าวผัด|กาแฟ|ชาเย็น|ชา|นม|เบียร์|น้ำส้ม|น้ำเปล่า)หนึ่ง(?!ร้อย|พัน|หมื่น|แสน|ล้าน)/.test(t0)) out.push({ id: 'FOOD_NEEDS_CLASSIFIER', code: 'UNNATURAL', why: 'a dish or drink + หนึ่ง needs its classifier — ก๋วยเตี๋ยวชามหนึ่ง / กาแฟแก้วหนึ่ง / น้ำขวดหนึ่ง' })
     // an invitation ("shall we / let's …") needs กัน (D8 blind reviews: ไปร้านกาแฟไหมคะ for "Shall we go to the café?")
-    if (/^(shall we|let'?s|should we|how about we|do you want to go .* together)/.test(en) && !/กัน/.test(t0) && !/ด้วย/.test(t0)) out.push({ id: 'INVITE_NEEDS_KAN', code: 'UNNATURAL', why: 'an invitation ("shall we / let\'s …") needs กัน — ไปร้านกาแฟกันไหมคะ / ไปกันเถอะครับ' })
+    // v715: only an invitation QUESTION (…ไหม) — "นั่งรถสองแถวไปค่ะ" ("Let's take a songthaew"), a natural answer, was refused and broke
+    // the Thai meaning-first Listening plans (tests49)
+    if (/^(shall we|should we|how about we|do you want to go .* together)/.test(en) && /(ไหม|มั้ย)(ครับ|คะ|ค่ะ|จ๊ะ)?$/.test(t0.replace(/\s+/g, '')) && !/กัน/.test(t0) && !/ด้วย/.test(t0)) out.push({ id: 'INVITE_NEEDS_KAN', code: 'UNNATURAL', why: 'an invitation ("shall we / let\'s …") needs กัน — ไปร้านกาแฟกันไหมคะ / ไปกันเถอะครับ' })
     // ในสัปดาห์ alone is "in a week" (habitual), not "this week" (D7 blind reviews)
     if (/ในสัปดาห์(?!นี้|หน้า|ที่|ละ|ก่อน)/.test(t0)) out.push({ id: 'NAI_SAPDAA', code: 'UNNATURAL', why: 'ในสัปดาห์ alone means "in a week" — say สัปดาห์นี้ (this week) / สัปดาห์หน้า (next week)' })
     // "that yellow one" needs a classifier: อันสีเหลืองนั้น — ชอบสีเหลืองนั้น is "that yellow colour" (D7 blind reviews)

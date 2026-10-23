@@ -8,6 +8,7 @@
 //   R6   เขา (he / she / they) is a teachable target with its own teaching contract
 //   R7   refilled lines alternate speakers; ในสัปดาห์ / colour-without-classifier rules (D7 blind reviews)
 //   R8   no repeated phrase across an exchange, line 1 starts fresh, dish classifiers, กัน in invitations (D8 blind reviews)
+//   R10  the invitation rule only flags an invitation question (…ไหม) without กัน, not a suggestion like นั่งรถสองแถวไปค่ะ
 //   R9   the exchange checks do not burn the track budget (D9b ran out at US$0.40: 117 exchange writes, two checks alternating)
 //
 //   node tests65.js            (current build: tt.compiled.js, or TT_FILE)
@@ -97,6 +98,13 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8')
     T('R9', 'a phrase shared by only two of three lines is not refused; a ไหม question answered with ใช่ is turned into …ใช่ไหม locally (no paid rewrite)',
       /nWith >= 3 && v\.length === nWith && v\.every\(x => x === v\[0\]\)/.test(src) && /LOCAL_REPAIR ไหม → ใช่ไหม/.test(src) && /'ใช่ไหม\$1\$2'/.test(src))
+  }
+
+  {
+    // the v714 rule also refused "นั่งรถสองแถวไปค่ะ" ("Let's take a songthaew") and broke the Thai Listening plans (tests49, 10 checks)
+    const lx = c.ev('thaiLexicalSenseProblems'), ids = (t, e) => lx({ thai: t, english: e }).map(x => x.id)
+    T('R10', 'an invitation question without กัน is still caught (ไปร้านกาแฟไหมคะ); a suggestion answer is not (นั่งรถสองแถวไปค่ะ "Let\'s take a songthaew.")',
+      ids('วันศุกร์ไปร้านกาแฟไหมคะ', 'Shall we go to the café on Friday?').includes('INVITE_NEEDS_KAN') && !ids('นั่งรถสองแถวไปค่ะ', "Let's take a songthaew.").includes('INVITE_NEEDS_KAN'))
   }
 
   out.forEach(l => console.log(l))

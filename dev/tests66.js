@@ -10,6 +10,8 @@
 //   R7   greetings / goodbyes are written fresh: the scene plan's own lines are used when they pass, "ฉันดีมาก" does not pass, a failing
 //        pair with no fresh replacement is left out — the four set pieces are never used; the provenance says where each came from
 //   R8   the final speaker-order pass puts every exchange in A–B–A (D12: two exchanges went out A–A–A)
+//   R9   D13: a swapped line changes ผม / ฉัน wherever it stands (Thai has no spaces) but not ผม = hair, and the cue's pronouns follow
+//   R10  D13: recovered lines for the same word from two recovery cycles get different keys (th-654-q1-1-s0 twice → NOT_READY)
 //
 //   node tests66.js            (current build: tt.compiled.js, or TT_FILE)
 const fs = require('fs')
@@ -89,6 +91,23 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('R8', 'D12\'s A–A–A exchange becomes A–B–A (the middle line ฉันจ่ายสิบบาทค่ะ, cue "Tell him …"); a correct exchange is untouched; a changed line is no longer its judged text, so the final revalidation judges it',
       r.fixed === 1 && r.pairs[1].speaker === 'B' && r.pairs[1].thai === 'ฉันจ่ายสิบบาทค่ะ' && r.pairs[1].prompt === 'Tell him you will pay ten baht.' && r.pairs.slice(3).map(p => p.speaker).join('') === 'ABA' &&
       src.indexOf('thaiFinalSpeakerOrderPass(t.pairs)') < src.indexOf("'cue-revalidation (final)'"), r.pairs.map(p => p.speaker + ':' + p.thai))
+  }
+
+  {
+    const f = c.ev('thaiFinalSpeakerOrderPass')
+    const P = (sp, th, pr, id) => ({ speaker: sp, thai: th, english: 'x', prompt: pr, targetId: id, _target: 'วันศุกร์', pairType: 'content' })
+    const r = f([P('A', 'วันศุกร์ไปไหมครับ', 'Ask her if she will go on Friday.', 9), P('A', 'วันศุกร์ผมไม่ได้ไปครับ', 'Tell her her plan is off: you are not going.', 9), P('A', 'วันศุกร์ผมไปตัดผมครับ', 'Say you get a haircut on Friday.', 9),
+      P('B', 'ถ้าว่างฉันช่วยได้ค่ะ', 'Tell him he can ask you.', 10), P('B', 'ช่วยอะไรครับ', 'x', 10), P('A', 'ช่วยยกของครับ', 'x', 10)])
+    const sw = r.pairs
+    T('R9', 'D13 "วันศุกร์ผมไม่ได้ไปค่ะ": the swapped line reads วันศุกร์ฉันไม่ได้ไปค่ะ, its cue "Tell him his plan …"; ผม = hair stays (ตัดผม); a B line moved to A reads ผม…ครับ',
+      sw[1].thai === 'วันศุกร์ฉันไม่ได้ไปค่ะ' && sw[1].prompt === 'Tell him his plan is off: you are not going.' && sw[3].thai === 'ถ้าว่างผมช่วยได้ครับ' && sw[3].prompt === 'Tell her she can ask you.' &&
+      sw.slice(0, 3).map(p => p.speaker).join('') === 'ABA', sw.map(p => p.speaker + ':' + p.thai + ' | ' + p.prompt))
+    const hair = c.ev('thaiSwapFirstPerson')('ผมไปตัดผมมาครับผม', 'B')
+    T('R9', 'ผมไปตัดผมมาครับผม as a female line: ฉันไปตัดผมมาค่ะ (the pronoun swaps, the hair word does not)', hair === 'ฉันไปตัดผมมาค่ะ', hair)
+    // the recovery prompt runs only against a live model, so the key itself is checked where it is built: a running number is part of it
+    const k = src.match(/_pairKey: 'th-' \+ kw\.wordId \+ '-q'[^\n]*/)
+    T('R10', 'a quota-recovery line key carries a running number, so a second recovery cycle for the same word cannot reuse th-654-q1-1-s0',
+      !!k && /\+\+_thQuotaKeySeq/.test(k[0]), k && k[0].slice(0, 160))
   }
 
   out.forEach(l => console.log(l))

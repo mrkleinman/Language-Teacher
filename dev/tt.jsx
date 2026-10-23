@@ -14824,6 +14824,10 @@ function trackIntegritySummaryLines(track) {
   g.reasons.filter(r => !/^(TARGET_PAIR_QUOTA|MAIN_TRACK_COHERENCE|PRONUNCIATION_ALIGNMENT_ISSUES|EVERY_TARGET_3_OF_3)/.test(r)).forEach(r => out.push('- ' + r))
   return out
 }
+// v715 (D13: NOT_READY on PRONUNCIATION_STALE_LINES=1) — every quota-recovery cycle restarts at round 1, so two recovered lines for
+// the same word from different cycles got the same key (th-654-q1-1-s0); the frozen-text check then compared one line with the
+// other's text. A running number keeps each recovered line's key unique.
+let _thQuotaKeySeq = 0
 function thaiLineId(p, i) { return (p && (p.pairId || p._pairKey)) || ('#' + (i + 1)) }
 // v655 §9/§11 — THE line-level pronunciation validator. finaliseThaiTrackPhonetics, the repair pass and the
 // final authoritative audit all call this one function, so a count can never differ between stages because
@@ -16811,15 +16815,33 @@ const THAI_QUESTION_RE = /\?|\uFF1F|\u0e44\u0e2b\u0e21|\u0e2b\u0e23\u0e37\u0e2d|
 // review asks that READY reflect the final lesson) — the LAST look at every Daily exchange's speaker order: three lines of one target
 // are A–B–A; a line in the wrong seat is turned into the right speaker's line (ผม ↔ ฉัน, ครับ ↔ ค่ะ / คะ, and the cue's him ↔ her).
 // The changed line is no longer the text that was judged, so the final revalidation judges it again (and drops it if it now fails).
+// v715 (D13: "วันศุกร์ผมไม่ได้ไปค่ะ", "ถ้าว่างฉันช่วยได้ครับ" — Thai has no spaces, so the old space-bounded swap changed only the
+// particle and the judge then refused 3 swapped lines) — the first-person pronoun is swapped wherever it stands, except ผม meaning
+// hair (ตัดผม, ทรงผม, ผมยาว …); the cue's he / she, him / her and his / her follow the new listener.
+const THAI_PHOM_HAIR_RE = /(ตัด|ทรง|สระ|เส้น|ดัด|ย้อม|หวี|ไว้|ทำ|มัด|เป่า|ร้าน|สี)ผม|ผม(ยาว|สั้น|ร่วง|หงอก|หยิก|ตรง|ดำ|ขาว|บาง|เปียก|ทอง)/g
+function thaiSwapFirstPerson(t, to) {
+  if (to === 'B') {
+    const keep = []; t = t.replace(THAI_PHOM_HAIR_RE, m => { keep.push(m); return '\u0000' + (keep.length - 1) + '\u0000' })
+    t = t.replace(/ครับผม/g, 'ค่ะ').replace(/ผม/g, 'ฉัน').replace(/ครับ/g, 'ค่ะ')
+    return t.replace(/\u0000(\d+)\u0000/g, (m0, k) => keep[+k])
+  }
+  return t.replace(/ดิฉัน|ฉัน/g, 'ผม').replace(/ค่ะ|คะ/g, 'ครับ')
+}
+function thaiSwapCuePronouns(cue, to) {
+  const OBJ_NEXT = /^(if|to|that|when|about|what|why|how|where|whether|for|again|back|up|out|now|today|tonight|tomorrow|later|and|or|so|too|a|an|the|this|some|one|she|he|her|his|him|you|your|it|they|their)$/i
+  const cap = (w, r) => /^[A-Z]/.test(w) ? r[0].toUpperCase() + r.slice(1) : r
+  return String(cue || '').replace(/\b(she|he|herself|himself|him|his|her)\b/gi, (w, _w, off, all) => {
+    const lw = w.toLowerCase(), nx = (all.slice(off + w.length).match(/^\s+([A-Za-z']+)/) || [])[1]
+    const r = to === 'B' ? { she: 'he', herself: 'himself', her: (!nx || OBJ_NEXT.test(nx)) ? 'him' : 'his' }[lw]
+      : { he: 'she', himself: 'herself', him: 'her', his: 'her' }[lw]
+    return r ? cap(w, r) : w
+  })
+}
 function thaiSwapSpeakerLine(p, to) {
-  let t = String(p.thai || '').trim()
-  if (to === 'B') t = t.replace(/(^|\s)ผม(?=[^\s])/g, '$1ฉัน').replace(/ครับผม/g, 'ค่ะ').replace(/ครับ/g, 'ค่ะ')
-  else t = t.replace(/(^|\s)ฉัน(?=[^\s])/g, '$1ผม').replace(/ค่ะ|คะ/g, 'ครับ')
+  let t = thaiSwapFirstPerson(String(p.thai || '').trim(), to)
   const t0 = t.replace(/\s+/g, '')
   if (to === 'B' && /ค่ะ$/.test(t0) && (THAI_QUESTION_RE.test(t0.replace(/ค่ะ$/, '')) || /\?\s*$/.test(String(p.english || '')))) t = t.replace(/ค่ะ\s*$/, 'คะ')
-  const sw = to === 'B' ? [['her', 'him'], ['she', 'he'], ['herself', 'himself']] : [['him', 'her'], ['he', 'she'], ['himself', 'herself']]
-  let cue = String(p.prompt || '')
-  cue = cue.replace(/^(Tell|Ask|Remind|Thank) (her|him)\b/, (m0, v, pr) => v + ' ' + (to === 'B' ? 'him' : 'her'))
+  const cue = thaiSwapCuePronouns(p.prompt, to)
   return { ...p, speaker: to, thai: t, text: t, prompt: cue, phonetic: '', words: [], speakerGender: to === 'B' ? 'female' : 'male', _speakerOrderFixed: true }
 }
 function thaiFinalSpeakerOrderPass(pairs) {
@@ -24951,7 +24973,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     const l = sanitizeModelPair({ ...l0, speaker: sp, thai: normaliseThaiSpacing(String(l0.thai || '')) }, 'quota-recovery')
     return { ...l, language: 'th', pairType: 'content', targetId: kw.wordId, wordId: kw.wordId, _target: kw.thai, _targetSense: st.targetSense, recallGroupId: 'rg-' + kw.wordId,
       recallRole: sp === 'A' ? 'alternative' : 'response-with-target', targetRequired: true, _typedAt: 'creation', speakerGender: thaiSpeakerMapGender(sp),
-      _source: 'quota-recovery:' + kw.thai, _pairKey: 'th-' + kw.wordId + '-q' + (c.round || 1) + '-' + (k + 1) + '-s' + st.strategyIndex,
+      _source: 'quota-recovery:' + kw.thai, _pairKey: 'th-' + kw.wordId + '-q' + (c.round || 1) + '-' + (k + 1) + '-s' + st.strategyIndex + '-n' + (++_thQuotaKeySeq),
       sceneId: (c.coherenceRepair && c.coherenceRepair.sceneId) || (_lp && _lp.sceneId) || null, scenePurpose: (_lp && _lp.purpose) || null }
   })
   // deterministic gates first (target presence, script, speaker, markup, template, time)

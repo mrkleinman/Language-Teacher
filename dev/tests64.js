@@ -8,6 +8,8 @@
 //   S5–S6  the deterministic gates and the paid QC drive targeted rewrites (an untaught word; a line the naturalness judge rejects)
 //   S7     a frozen word the writer never uses is deferred and reported; its SRS state is untouched
 //   S9     the planner cannot defer words (v715): every frozen word is placed
+//   S14    one coherence definition (v715) reaches the scene writer, the whole-story reviewer and the final judge; the judge no longer
+//          checks the old "week of role-plays" brief
 //   S10    the story prompts take the line length from the learner's belt (not a fixed 7 words)
 //   S11    an editor fix may add a missing reply (a span of 1 line replaced by 2), kept when the gates and turn-taking still pass
 //   S12    the scene check as each scene is written (v715): a fix that drops the lesson word is refused, a valid fix is applied
@@ -290,6 +292,14 @@ async function run(c, vocab, opt = {}) {
       Object.keys(c.ev('THAI_EXCHANGE_BANK')).length > 1000 && typeof c.thaiBankLineOf === 'function')
   }
 
+  {
+    const src = fs.readFileSync(__dirname + '/tt.jsx', 'utf8'), A2 = await run(c, vocab, { variant: 11 })
+    const ps = A2.st.prompts, has = st => ps.filter(x => x.stage === st).some(x => /COHERENCE means a listener can follow it/.test(x.p))
+    T('S14', 'the same coherence definition reaches the scene writer, the whole-story reviewer and the final coherence judge; the judge describes one outing of two friends, not a week of role-plays',
+      has('O_listening_story_write') && has('O_listening_story_review') && has('O_listening_coherence') && !/scenes from A\\'s week/.test(src) &&
+      ps.filter(x => x.stage === 'O_listening_coherence').some(x => /ONE outing of two close friends/.test(x.p)),
+      { write: has('O_listening_story_write'), review: has('O_listening_story_review'), judge: has('O_listening_coherence') })
+  }
   out.forEach(l => console.log(l))
   console.log('\nv712 Thai Listening fresh story: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

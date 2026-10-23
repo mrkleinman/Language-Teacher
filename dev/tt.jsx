@@ -25953,9 +25953,11 @@ async function listeningWholeCoherenceAudit(scenes, la, o, log) {
     const prompt = (o.storyScenes
       // v712 — a STORY in scenes (the Thai story composer): each scene title gives the place and time, and who B is when she is not A's
       // friend; the story continues across scenes; a jump in time or place at a scene start is normal
-      ? 'Judge the listening track below as scenes from A\'s week, in natural ' + la.label + '. A is the same man throughout. B is a woman: whoever A talks to in that scene (his friend unless the title says she is someone else — staff, a waitress, a colleague); judge her as that person. Each scene should make sense on its own. ' +
-        'A new scene may start later or elsewhere (its title says where and when) — that needs no explanation. Check: inside each scene every line follows the one before and every answer responds to its question (why → a reason, when → a time, a proposal → accept / refuse); ' +
-        'across scenes nothing contradicts (what was said earlier stays true; nothing is referred to before it was set up; a person never acts as both A\'s friend and staff in one scene); no line reads like a sentence put in only to show a word.\n' +
+      // v715 — the story is ONE outing of the same two friends (the "week of role-plays" brief it used to judge against was dropped
+      // after the owner's review of v713); it judges with the same coherence definition the writer and the reviewer are given
+      ? 'Judge the listening track below: ONE outing of two close friends told in scenes, in natural ' + la.label + '. A is a man and B a woman, the same two friends in every scene; nobody else speaks. ' +
+        'A new scene is the next stop of the same day (its title says where) — that needs no explanation. Things they talk about from another time (work, a wedding, childhood) are told in the past and are fine.\n' +
+        LN_COHERENCE_CHECKLIST +
         'Speakers: ' + la.speakerContract + '.\nA scene PASSES only if it is coherent in itself AND fits the story so far. If a scene fails, give breakAfterLine = the line number after which it breaks (or null).\n\n'
       : o.oneConversation
       // v672 §2 — ONE conversation: the parts are internal generation chunks, NOT scenes; continuity across parts is judged too
@@ -32140,12 +32142,25 @@ const LN_STORY_UNTAUGHT_PROBE = ['คุย', 'แค่', 'เอง', 'ขึ�
   'อย่าง', 'ครบ', 'นึง', 'เมื่อคืน', 'ข้างนอก', 'ดึก', 'ไฟดับ', 'หลับ', 'ละลาย', 'ตู้', 'เครื่อง', 'ป้าย', 'ชนะ', 'แพ้', 'ลูกค้า', 'พนักงาน', 'ห้องน้ำ']
 // the line length follows the learner's belt (the same contract the TOO_COMPLEX gate enforces): 10th Kyu 3–7 words, 7th Kyu 5–10 …
 function lnStoryLen(ctx) { const c = (ctx && ctx.complexity) || {}; return { min: c.preferredMin || 3, max: c.hardMax || 7, aim: Math.min(c.preferredMax || c.hardMax || 7, c.hardMax || 7) } }
+// v715 (owner: "is the app given instructions to what coherence means?") — ONE definition of coherence, given to the scene writer,
+// the whole-story reviewer and the final coherence judge. Built from what the blind reviewers of S39–S47 kept marking down; before,
+// the writer had one line on it and the judge still checked the old "week of role-plays" design.
+const LN_COHERENCE_CHECKLIST =
+  'COHERENCE means a listener can follow it as one real conversation:\n' +
+  '1. Each line answers or reacts to the line just before it; every question is answered (why → a reason, when → a time, yes / no → yes or no, an offer → accepted or refused).\n' +
+  '2. Who is here and what already happened stay true: no "who is it?" or "you\'ve arrived" after they have been talking; nobody apologises for being late after they met; nothing is bought, handed over or decided twice.\n' +
+  '3. Where they are stays true: no asking the way to, or waiting for, the place they are standing in; no "when I get home" at home; a move to a new place is said.\n' +
+  '4. Things happen in order: the bus comes, THEN they get on; food is ordered, THEN it comes; a plan is made before it is followed.\n' +
+  '5. Everything is introduced before it is referred to: no "there", "that thing", "the secretary", "the wedding", "this company" the listener has not heard about.\n' +
+  '6. People talk, they do not narrate: no "I am sitting down", "I picked up my spoon"; no asking what you can see ("what are you wearing?" to the person in front of you).\n' +
+  '7. No repeats: the same line, the same thanks or the same question twice; a reply that only echoes the question.\n' +
+  '8. A lesson word comes where a Thai speaker would really say it, in its everyday sense, to the right person (formal words only where someone is formal).\n'
 const LN_STORY_RULES_LEAN = ctx =>
   'A = a man: ผม; every line ends with ครับ. B = a woman: ฉัน; every line ends with ค่ะ (คะ in a question). One particle per line, at the end (ได้ครับ / ใช่ค่ะ may open a line).\n' +
   // v715 — most lines in the learner's PREFERRED range, the hard maximum only when a line needs it (owner review of v713: only 35% of
   // lines were in the preferred range — the prompt gave the hard maximum as the range)
   'Most lines ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' Thai words, never more than ' + lnStoryLen(ctx).max + '; each a complete natural sentence: never drop the small words Thai needs (ที่, กัน, อยู่, เป็น, ใส่, เรื่อง, มา / ไป) to save length; if a thought is too long, say less or split it over two turns. The speakers alternate (never three lines in a row by one). A and B are the SAME two close friends from start to finish (drop pronouns where Thai drops them, คุณ rarely); B never plays anyone else.\n' +
-  'One story: each reply follows the line before, questions get answers, facts stay consistent. Each lesson word in its everyday sense. No names.\n' +
+  'One story, coherent as defined below. Each lesson word in its everyday sense. No names.\n' + LN_COHERENCE_CHECKLIST +
   'English: a natural translation of exactly what the Thai says. Greetings only at the very start, goodbyes only at the very end.'
 function lnStoryJson(raw) {
   const t = String(raw || '').replace(/```json|```/g, '')
@@ -32527,7 +32542,7 @@ async function _lnComposeThaiStory(env, avoid) {
         '\n\nTHE CONVERSATION (numbered):\n' + flat.map((f, i) => (f.k === 0 ? '[' + plan.scenes[f.si].title + ']\n' : '') + (i + 1) + '. ' + f.tn.speaker + ' | ' + la.text(f.tn.pair) + ' | ' + (f.tn.pair.english || '')).join('\n') +
         '\n\nRead it start to finish as the listener will. List the worst faults (at most 6), most damaging first: STORY (a reply that does not follow, a question not answered, a contradiction with an earlier line or scene, ' +
         'time running backwards, a person / thing / event mentioned before it is set up, B speaking as anyone other than A\'s friend, a lesson word forced into a line where nobody would say it, the scene title not matching what is said (together vs on the phone, the place), a day or time that clashes with another scene (on Thursday asking about "this Wednesday"), feelings words piled into one melodramatic exchange without a real cause), THAI (ungrammatical, a missing small word, bookish, wrong collocation, a word in an odd sense), EN (does not match the Thai). ' +
-        (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') +
+        (env._lnUsageNotes ? 'How the lesson words are really used (a lesson word in another sense is a fault):\n' + env._lnUsageNotes + '\n' : '') + LN_COHERENCE_CHECKLIST +
         'Give the line span to change (the cause, often an earlier line) and in a few words how to fix it. Also give "score": the grade 0–10 it deserves now.\n' +
         'Reply ONLY with JSON: {"score":5.5,"faults":[{"from":12,"to":13,"problem":"…","fix":"…"}]}', 1800, 'LISTENING_REPAIR_CALLS', true)
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY review round ' + round + ' unusable: ' + String(e && e.message || e).slice(0, 100)) }

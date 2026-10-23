@@ -23460,6 +23460,10 @@ async function finaliseMainTrack(track, adapter, ctx) {
       const qf = await enforceTrackPairQuota(t, adapter, { ...c, quotaRounds: 1 })
       t = { ...t, pairs: qf.pairs }
       if (qf.recovered && qf.recovered.length) {
+        // v715 (D13 blind reviews: ช่วย went out B–A–B — its two replacement lines were written after the speaker-order pass) — the
+        // replacements take their A–B–A seat and closing particle too, before their pronunciation is built and they are judged
+        { const so = thaiFinalSpeakerOrderPass(t.pairs); const fp = thaiFinalParticlePass(so.pairs); t = { ...t, pairs: fp.pairs }
+          if (so.fixed || fp.fixed) log && log('  🔧 LOCAL_REPAIR after final recovery (no paid call): speaker order ' + so.fixed + ' · final particle ' + fp.fixed + ' — judged again below') }
         try { const m2 = await adapter.finaliseMetadata(t.pairs, { ...c, track: t }); t = { ...t, pairs: m2.pairs }; meta.alignmentIssues = m2.alignmentIssues || meta.alignmentIssues } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
         try { t = { ...t, pairs: thaiCueGuaranteePass(t.pairs, t, log) } } catch (e) {}
         const rv2 = await thaiRevalidateStaleCues(t.pairs, c, log, 'cue-revalidation (after final recovery)'); t = { ...t, pairs: rv2.pairs }

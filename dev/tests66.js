@@ -11,6 +11,7 @@
 //        pair with no fresh replacement is left out — the four set pieces are never used; the provenance says where each came from
 //   R8   the final speaker-order pass puts every exchange in A–B–A (D12: two exchanges went out A–A–A)
 //   R9   D13: a swapped line changes ผม / ฉัน wherever it stands (Thai has no spaces) but not ผม = hair, and the cue's pronouns follow
+//   R11  D13: lines written by the final recovery (after the speaker-order pass) also take their A–B–A seat before they are judged
 //   R10  D13: recovered lines for the same word from two recovery cycles get different keys (th-654-q1-1-s0 twice → NOT_READY)
 //
 //   node tests66.js            (current build: tt.compiled.js, or TT_FILE)
@@ -108,6 +109,14 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     const k = src.match(/_pairKey: 'th-' \+ kw\.wordId \+ '-q'[^\n]*/)
     T('R10', 'a quota-recovery line key carries a running number, so a second recovery cycle for the same word cannot reuse th-654-q1-1-s0',
       !!k && /\+\+_thQuotaKeySeq/.test(k[0]), k && k[0].slice(0, 160))
+  }
+
+  {
+    // structural: the final recovery runs only after a live judge refuses a line, so the order of the steps is checked in the source
+    const a = src.indexOf("const qf = await enforceTrackPairQuota(t, adapter, { ...c, quotaRounds: 1 })"), so = src.indexOf('thaiFinalSpeakerOrderPass(t.pairs)', a),
+      m2 = src.indexOf('const m2 = await adapter.finaliseMetadata', a), rv2 = src.indexOf("'cue-revalidation (after final recovery)'", a)
+    T('R11', 'after the final recovery the speaker-order and particle passes run, then pronunciation, then the replacement lines are judged',
+      a > 0 && so > a && so < m2 && m2 < rv2, [a, so, m2, rv2].join(' '))
   }
 
   out.forEach(l => console.log(l))

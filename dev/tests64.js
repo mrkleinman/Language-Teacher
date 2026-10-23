@@ -10,7 +10,7 @@
 //   S9     the planner cannot defer words (v715): every frozen word is placed
 //   S10    the story prompts take the line length from the learner's belt (not a fixed 7 words)
 //   S11    an editor fix may add a missing reply (a span of 1 line replaced by 2), kept when the gates and turn-taking still pass
-//   S12    the lesson-word usage check (one call per scene): a fix that drops the lesson word is refused, a valid fix is applied
+//   S12    the scene check as each scene is written (v715): a fix that drops the lesson word is refused, a valid fix is applied
 //   S13    the app default selects 25 words for Listening (no 30-then-defer-5); coverage 25/25
 //   S8     no stored-conversation path in production; the Daily exchange bank is unchanged
 // Real app code; the model is a deterministic script (no provider calls).
@@ -115,7 +115,7 @@ function scriptedModel(c, vocab, opt = {}) {
           return JSON.stringify({ score: 6, fixes: [{ from: 2, to: 2, problem: 'reply missing', turns: [{ speaker: sp, thai: m[2].trim(), english: m[3].trim() }, { speaker: ot, thai: st.added, english: 'Sure.' }] }] }) } }
       return JSON.stringify({ fixes: [] }) }
     if (stage === 'O_listening_story_line_fix') return JSON.stringify({ fixes: [] })
-    if (stage === 'O_listening_word_check') { st.wordChecks = (st.wordChecks || 0) + 1
+    if (stage === 'O_listening_word_check' || stage === 'O_listening_scene_check') { st.wordChecks = (st.wordChecks || 0) + 1
       // opt.wordCheck: in the first scene checked, one fix drops the line's lesson word (must be refused) and one rewrites a line with
       // the same words (kept); every other scene reports no wrong use
       if (opt.wordCheck && st.wordChecks === 1) {
@@ -257,11 +257,12 @@ async function run(c, vocab, opt = {}) {
       { added: G.st.added, found: L.some(l => l.thai === G.st.added), covered: G.tr.coverage.covered, status: G.tr.status })
   }
   {
-    // v713 lesson-word usage check: one call per scene; a fix that loses the line's lesson word is refused, a fix that keeps it passes
+    // v715: the lesson-word usage check became the SCENE CHECK made as each scene is written (owner's suggestion: grammar, coherence and
+    // lesson words checked per scene, before the next scene is built); the same refuse / apply rule is checked on it
     const H = await run(c, vocab, { variant: 7, wordCheck: true })
-    const lg = H.logs.find(x => /lesson-word check/.test(x)) || ''
-    T('S12', 'the lesson-word usage check runs once per scene; a line fix that drops the lesson word is refused, one that keeps every gate and word is applied; coverage stays 30/30',
-      H.st.wordChecks >= 4 && /2 wrong use\(s\) named/.test(lg) && /1 line\(s\) fixed/.test(lg) && /lesson word lost/.test(lg) && H.tr.coverage.covered === 30,
+    const lg = H.logs.find(x => /checked as written/.test(x) && /fault\(s\) named/.test(x) && !/· 0 fault/.test(x)) || ''
+    T('S12', 'the scene check runs as each scene is written (once per scene); a line fix that drops the lesson word is refused, one that keeps every gate and word is applied; coverage stays 30/30',
+      H.st.wordChecks >= 4 && /2 fault\(s\) named/.test(lg) && /1 line\(s\) fixed/.test(lg) && /lesson word lost/.test(lg) && H.tr.coverage.covered === 30,
       { checks: H.st.wordChecks, log: lg.slice(0, 220), covered: H.tr.coverage.covered })
   }
   {

@@ -32212,6 +32212,8 @@ async function _lnComposeThaiStoryBest(env) {
 // v713 — the story is planned around the first 25 frozen words (owner's decision: blind reviews 5.1 with 25 words vs 4.7 with 30); the
 // rest are reported as deferred and stay due for the next lesson. 0 = no cap (the older tests and the sandbox flag --ln-max-words set it).
 const LN_STORY_WORD_CAP = { maxWords: 25 }
+// v715 — each scene is checked (grammar, naturalness, coherence, lesson words) as soon as it is written (owner's suggestion)
+const LN_SCENE_CHECK_ON = true
 async function _lnComposeThaiStory(env, avoid) {
   const { la, log, targets, ctx, o, tel } = env
   if (la.lang !== 'th') return null
@@ -32428,6 +32430,45 @@ async function _lnComposeThaiStory(env, avoid) {
     if (best && lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).length > best.probs.length) written[si] = best.turns
     // a scene the provider could not write at all stops the composition here (QC on an empty conversation would only spend money)
     if (!written[si].length) return { ok: false, scenes: [], composer: 'story', reason: 'LISTENING_STORY_WRITE_FAILED: scene ' + (si + 1) + ' could not be written (provider error) — nothing to play; no QC run', uncommitted: [] }
+    // v715 (owner's suggestion after S42) — SCENE CHECK as soon as the scene is written: a native-teacher read of THIS scene against the
+    // story so far and the facts (grammar, naturalness, coherence, lesson-word use); a fix replaces one line and is kept only if it
+    // passes every line gate and keeps the line's lesson words. The next scene is then written on top of the corrected text — the
+    // faults used to be found only at the end, after later scenes had been built on them. (It replaces the end-of-story lesson-word
+    // check, and the whole-story editor runs one round instead of three.)
+    if (LN_SCENE_CHECK_ON) {
+      const lenR = lnStoryLen(ctx)
+      const limits = 'Each new line: at most ' + lenR.max + ' Thai words (the particle not counted), only simple everyday words a beginner knows' + (never.length ? ' — NOT these untaught words: ' + never.join(' ') : '') + '. '
+      const notes = env._lnUsageNotes ? env._lnUsageNotes.split('\n').filter(l => st.some(t => l.startsWith(t.surface + ' — '))).join('\n') : ''
+      const ask = extra => call('O_listening_scene_check', 'You are a strict native Thai teacher checking ONE scene of a Thai listening lesson as soon as it is written (the earlier scenes are final). A is a man (ผม / ครับ), B a woman (ฉัน / ค่ะ / คะ), the same two close friends all day.\n' +
+        (si ? 'THE STORY SO FAR:\n' + soFar(si) + '\n' : '') + factsLine() +
+        '\nSCENE ' + (si + 1) + ' — "' + s.title + '"' + (s.present ? ' [' + s.present + ']' : '') + ' (numbered):\n' + lnStorySceneText(sceneOf(si), la) +
+        '\nLESSON WORDS in this scene: ' + st.map(t => t.surface + ' (' + t.gloss + ')').join(', ') + (notes ? '\nHOW THAI SPEAKERS USE THEM:\n' + notes : '') +
+        '\n\nFind the faults IN THIS SCENE only (at most 5, worst first): THAI — ungrammatical, a missing small word (อยู่, ได้, ต่อ, กัน, ที่), bookish or translated wording, a wrong classifier, ใช่ answering a ไหม question; ' +
+        'STORY — a line that does not follow the one before, a question not answered, a contradiction of the story so far or of the facts, something mentioned before it is set up, the same thing said twice; ' +
+        'WORD — a lesson word in the wrong sense, said to the wrong person, or forced in with no set-up. For each, rewrite that ONE line: same speaker, keep every lesson word it has, make it fit between the lines around it. ' + limits + extra +
+        '\nReply {"fixes":[]} if the scene is right.\nReply ONLY with JSON: {"fixes":[{"line":3,"thai":"…","english":"…","why":"…"}]}', 1500, 'LISTENING_REPAIR_CALLS', true)
+      const tryFix = (fx, refused) => {
+        const sc = sceneOf(si), k = Number(fx && fx.line) - 1, tn = sc.turns[k], cur = written[si][k]
+        if (!tn || !cur || !fx || !fx.thai) return false
+        const cand = { ...cur, thai: String(fx.thai).trim(), english: String(fx.english || cur.english).trim() }
+        const g = lineGateWhy(si, cand), lost = (tn.intendedTargetIds || []).filter(id => !g.ids.includes(id))
+        if (g.why || lost.length) { refused.push({ line: k + 1, thai: cand.thai, why: g.why || 'lesson word lost' }); return false }
+        written[si][k] = cand; return true
+      }
+      try {
+        const r = await ask('')
+        const fixes = (r && Array.isArray(r.fixes) ? r.fixes : []).slice(0, 5), refused = [], still = []
+        let kept = 0, kept2 = 0
+        fixes.forEach(fx => { if (tryFix(fx, refused)) kept++ })
+        if (refused.length) {
+          const r2 = await ask('\nYOUR FIXES FOR THESE LINES WERE REFUSED — rewrite each again so it passes:\n' + refused.map(x => 'L' + x.line + ' "' + x.thai + '" — refused: ' + String(x.why).slice(0, 120)).join('\n') + '\n')
+          ;(r2 && Array.isArray(r2.fixes) ? r2.fixes : []).slice(0, 5).forEach(fx => { if (refused.some(x => x.line === Number(fx && fx.line)) && tryFix(fx, still)) kept2++ })
+        }
+        log && log('  🔍 LISTENING_STORY scene ' + (si + 1) + ' checked as written · ' + fixes.length + ' fault(s) named · ' + (kept + kept2) + ' line(s) fixed' + (refused.length ? ' (' + kept2 + ' on a second try)' : '') +
+          (fixes.length ? ' · e.g. ' + fixes.slice(0, 3).map(x => 'L' + x.line + ': ' + String(x.why || '').slice(0, 50)).join(' | ') : '') +
+          (refused.length ? ' · refused at first: ' + refused.slice(0, 3).map(x => 'L' + x.line + ' ' + String(x.why).slice(0, 50)).join(' | ') : '') + (still.length ? ' · still refused: ' + still.length : ''))
+      } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ LISTENING_STORY scene ' + (si + 1) + ' check unusable: ' + String(e && e.message || e).slice(0, 100)) }
+    }
   }
   const build = () => lnStoryScenes(la, plan, written, targets, ctx)
   // ── EDIT: a strict native-teacher read of the WHOLE conversation (the way the independent grader reads it) lists every faulty line
@@ -32435,7 +32476,7 @@ async function _lnComposeThaiStory(env, avoid) {
   let rejected = [], editorGrade = null
   // 3 rounds: more rounds made the track WORSE in blind review (S31: 10 rounds ran → 4.7 / 4.3; S29: ~3 rounds → 5.7 / 5.5) — each
   // fix can bring new faults the gates do not see
-  for (let round = 1; round <= 3; round++) {
+  for (let round = 1; round <= (LN_SCENE_CHECK_ON ? 1 : 3); round++) {
     const flat = build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
     let r = null, review = null
     // 1) FIND: a short call without the Thai word list (it thinks harder, at medium effort) reads the whole story the way the blind
@@ -32503,8 +32544,8 @@ async function _lnComposeThaiStory(env, avoid) {
   // v713 — LESSON-WORD USAGE CHECK: one short call per scene, all scenes in parallel, that looks ONLY at how each lesson word is used
   // (S32 / S33 blind reviews: ทุกท่าน to one man, ทานกันเลย by a man eating alone, ไม่ทราบว่า + a statement, ให้อภัย with nothing to
   // forgive — the whole-story editor names 3 faults a round and never reached them). A fix replaces that one line and is kept only if
-  // it passes every line gate and keeps the line's lesson words.
-  {
+  // it passes every line gate and keeps the line's lesson words. (v715: replaced by the scene check made as each scene is written)
+  if (!LN_SCENE_CHECK_ON) {
     // S35: every fix the check proposed was refused (11 words for a 7-word belt; an untaught word) — the call is told the line length and
     // the words this learner does not know, and a refused fix gets ONE more try that names the reason
     const lenR = lnStoryLen(ctx)

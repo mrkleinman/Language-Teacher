@@ -259,7 +259,9 @@ async function run(c, vocab, opt = {}) {
   {
     // v715: the lesson-word usage check became the SCENE CHECK made as each scene is written (owner's suggestion: grammar, coherence and
     // lesson words checked per scene, before the next scene is built); the same refuse / apply rule is checked on it
+    c.ev('LN_SCENE_CHECK').on = true      // the scene check is off by default (v715 blind reviews); this test switches it on
     const H = await run(c, vocab, { variant: 7, wordCheck: true })
+    c.ev('LN_SCENE_CHECK').on = false
     const lg = H.logs.find(x => /checked as written/.test(x) && /fault\(s\) named/.test(x) && !/· 0 fault/.test(x)) || ''
     T('S12', 'the scene check runs as each scene is written (once per scene); a line fix that drops the lesson word is refused, one that keeps every gate and word is applied; coverage stays 30/30',
       H.st.wordChecks >= 4 && /2 fault\(s\) named/.test(lg) && /1 line\(s\) fixed/.test(lg) && /lesson word lost/.test(lg) && H.tr.coverage.covered === 30,

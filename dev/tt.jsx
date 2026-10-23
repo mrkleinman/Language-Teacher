@@ -32212,8 +32212,10 @@ async function _lnComposeThaiStoryBest(env) {
 // v713 — the story is planned around the first 25 frozen words (owner's decision: blind reviews 5.1 with 25 words vs 4.7 with 30); the
 // rest are reported as deferred and stay due for the next lesson. 0 = no cap (the older tests and the sandbox flag --ln-max-words set it).
 const LN_STORY_WORD_CAP = { maxWords: 25 }
-// v715 — each scene is checked (grammar, naturalness, coherence, lesson words) as soon as it is written (owner's suggestion)
-const LN_SCENE_CHECK_ON = true
+// v715 — each scene can be checked (grammar, naturalness, coherence, lesson words) as soon as it is written (owner's suggestion).
+// OFF: two paid runs each, blind-reviewed — with the check 5.05 / 4.85, without it 5.5 / 5.2 (its line fixes did not repair story
+// faults, and it replaced the three-round whole-story edit). Kept switchable for the tests and for later trials.
+const LN_SCENE_CHECK = { on: false }
 async function _lnComposeThaiStory(env, avoid) {
   const { la, log, targets, ctx, o, tel } = env
   if (la.lang !== 'th') return null
@@ -32278,6 +32280,9 @@ async function _lnComposeThaiStory(env, avoid) {
         'FEELINGS and VALUE words (trust, forgive, sincere, forever, reputation) are SPREAD OUT: at most ONE per scene, each caused by a small, ordinary event (B finds the wallet A dropped → trust; A is late and says sorry → B forgives him). Friends never make speeches about their friendship. ' +
         // S39 blind reviews: ทุกท่าน said to strangers at a bus stop, ไม่ทราบว่า asked of a friend — a formal word needs a formal frame
         'FORMAL or SET-PHRASE words (ทุกท่าน, ไม่ทราบว่า, เชิญ…, polite staff phrases) are not said casually to a friend: give them a frame where the friend really says them — B practising the welcome speech she will give, A reading a sign or a message aloud, one of them telling how a stranger or the staff spoke. ' +
+        // v715 (S41–S45 blind reviews: "I'm late" while they had been together all day, ให้อภัย for nothing, a secretary at a museum,
+        // เลี้ยงดู for museum objects) — a word that needs an event the friends did not share is TOLD as a story from elsewhere
+        'A word that needs an event the two did NOT share today (forgive, a secretary, someone\'s reputation, being raised by someone, a formal speech, a wedding) goes into a STORY one friend TELLS the other — what happened at work, at a family wedding, when they were a child — told in the past, inside the conversation. Never invent such an event in today\'s outing (nobody arrives late after they met; nothing is bought twice). ' +
         'Every lesson word needs a SET-UP just before it: something asked, offered, done or found that makes the word the natural reply (no "I trust you" or "I forgive you" out of nothing; no event, person or plan mentioned before it is introduced). ' +
         'A scene title names the PLACE only (no day, no time of day, no roles). Greetings only in scene 1, goodbyes only in the last scene.\n' +
         // v715 — EPISODES (S39 / S40 blind reviews: story 2.5–3.5 / 10 — a wallet forgotten in scene 2 and a purchase in scene 4, a lunch at
@@ -32435,7 +32440,7 @@ async function _lnComposeThaiStory(env, avoid) {
     // passes every line gate and keeps the line's lesson words. The next scene is then written on top of the corrected text — the
     // faults used to be found only at the end, after later scenes had been built on them. (It replaces the end-of-story lesson-word
     // check, and the whole-story editor runs one round instead of three.)
-    if (LN_SCENE_CHECK_ON) {
+    if (LN_SCENE_CHECK.on) {
       const lenR = lnStoryLen(ctx)
       const limits = 'Each new line: at most ' + lenR.max + ' Thai words (the particle not counted), only simple everyday words a beginner knows' + (never.length ? ' — NOT these untaught words: ' + never.join(' ') : '') + '. '
       const notes = env._lnUsageNotes ? env._lnUsageNotes.split('\n').filter(l => st.some(t => l.startsWith(t.surface + ' — '))).join('\n') : ''
@@ -32476,7 +32481,7 @@ async function _lnComposeThaiStory(env, avoid) {
   let rejected = [], editorGrade = null
   // 3 rounds: more rounds made the track WORSE in blind review (S31: 10 rounds ran → 4.7 / 4.3; S29: ~3 rounds → 5.7 / 5.5) — each
   // fix can bring new faults the gates do not see
-  for (let round = 1; round <= (LN_SCENE_CHECK_ON ? 1 : 3); round++) {
+  for (let round = 1; round <= (LN_SCENE_CHECK.on ? 1 : 3); round++) {
     const flat = build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
     let r = null, review = null
     // 1) FIND: a short call without the Thai word list (it thinks harder, at medium effort) reads the whole story the way the blind
@@ -32545,7 +32550,7 @@ async function _lnComposeThaiStory(env, avoid) {
   // (S32 / S33 blind reviews: ทุกท่าน to one man, ทานกันเลย by a man eating alone, ไม่ทราบว่า + a statement, ให้อภัย with nothing to
   // forgive — the whole-story editor names 3 faults a round and never reached them). A fix replaces that one line and is kept only if
   // it passes every line gate and keeps the line's lesson words. (v715: replaced by the scene check made as each scene is written)
-  if (!LN_SCENE_CHECK_ON) {
+  if (!LN_SCENE_CHECK.on) {
     // S35: every fix the check proposed was refused (11 words for a 7-word belt; an untaught word) — the call is told the line length and
     // the words this learner does not know, and a refused fix gets ONE more try that names the reason
     const lenR = lnStoryLen(ctx)

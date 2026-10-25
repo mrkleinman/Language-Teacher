@@ -79,7 +79,9 @@ const msg = [{ role: 'user', content: 'Segment this Thai sentence into individua
     T('N3', 'Kru chat (was a direct call to another vendor) runs on Gemini Flash-Lite through the central client', r === 'สวัสดีครับ — hello' && log.length === 1 && log[0].model === 'gemini-2.5-flash-lite', log) }
 
   // ── 6. Source invariants: one transport, zero banned identifiers ──
-  const src = fs.readFileSync('tt.jsx', 'utf8')
+  // v717: the embedded gap-fill module data is one long base64 string (gzip); random letters in it can spell a banned name by accident, so the
+  // scan reads the source without that data block (it holds no identifiers)
+  const src = fs.readFileSync('tt.jsx', 'utf8').replace(/(THAI_MODULES_DATA_BEGIN\n)[\s\S]*?(\n\/\/ THAI_MODULES_DATA_END)/, '$1const THAI_MODULES_GZ = ""$2')
   const shell = (() => { const h = fs.readFileSync(fs.existsSync('/mnt/user-data/uploads/index-1.html') ? '/mnt/user-data/uploads/index-1.html' : require('path').join(__dirname, 'build/index-1.shell.html'), 'utf8'); return h.slice(0, h.indexOf('<script type="text/babel">')) + h.slice(h.lastIndexOf('</script>')) })()
   const BANNED = /qwen|anthropic|claude|openai|gpt-|openrouter|deepseek|mistral|groq|ollama|huggingface|together\.ai|fallbackProvider|secondaryProvider|fallbackModel|secondaryModel|alternateModel|haiku|sk-or-|x-api-key|chat\/completions/i
   // v685 (owner brief 2026-10-12): Claude Haiku 5.5 is an owner-approved OPTIONAL generation model. Its names may appear only in

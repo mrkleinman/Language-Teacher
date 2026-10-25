@@ -17371,7 +17371,7 @@ function thaiBankExchange(target) {
 // the first candidate of the word's check ladder (no paid call) and goes through the same deterministic checks as a model reply; a word
 // with no usable module (the 31 skipped words, a thin group, nothing in the learner's vocabulary) is written by the model as before.
 // Source files: dev/thai-modules/ · rebuild the data below with `python3 tools/build_thai_modules.py`.
-const THAI_MODULES = { on: true, ver: 'm1', data: null, loading: null, used: new Set(), cand: new Map(), lines: new Map(), rand: Math.random, stats: { offered: 0, noModule: 0, noVocab: 0 } }
+const THAI_MODULES = { on: true, ver: 'm1', data: null, loading: null, used: new Set(), cand: new Map(), lines: new Map(), exch: new Map(), rand: Math.random, stats: { offered: 0, noModule: 0, noVocab: 0 } }
 const THAI_MODULE_ATTEMPTS = 6          // module candidates tried (no paid call each) before the model writes the exchange
 const THAI_MODULE_POOL = 80             // candidates rendered and pre-checked per word (the first THAI_MODULE_ATTEMPTS that pass are kept)
 const THAI_MODULE_TIER_OF_BELT = Object.freeze({ 'White': 1, 'Orange': 1, 'Orange + Stripe': 2, 'Blue': 2, 'Blue + Stripe': 2, 'Yellow': 3, 'Yellow + Stripe': 3,
@@ -17402,7 +17402,7 @@ async function thaiModulesLoad(log) {
   return THAI_MODULES.loading
 }
 function thaiModulesBeginRun(vocab, log) {
-  THAI_MODULES.used.clear(); THAI_MODULES.cand.clear(); THAI_MODULES.lines.clear(); THAI_MODULES.stats = { offered: 0, noModule: 0, noVocab: 0 }
+  THAI_MODULES.used.clear(); THAI_MODULES.cand.clear(); THAI_MODULES.lines.clear(); THAI_MODULES.exch.clear(); THAI_MODULES.stats = { offered: 0, noModule: 0, noVocab: 0 }
   const d = THAI_MODULES.data
   if (log) log(d ? '📦 THAI_MODULES ' + d.ver + ' · ' + d.count + ' gap-fill modules · learner tier T' + thaiModuleLearnerTier(vocab) + ' · a word with no module that fits the learner\'s vocabulary is written by the model'
     : '📦 THAI_MODULES not loaded — every word is written by the model')
@@ -17489,9 +17489,26 @@ function thaiModuleExchange(target, vocab, log) {
   }
   const c = list.shift(); if (!c) return null
   THAI_MODULES.used.add(c.id); THAI_MODULES.stats.offered++
+  THAI_MODULES.exch.set(c.id, c.lines.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english })))
   c.lines.forEach(l => THAI_MODULES.lines.set(_bankNorm(l.thai), { speaker: l.speaker, thai: l.thai, english: l.english, prompt: l.prompt, target: String(target.thai || target.t || ''), module: c.id }))
   log && log('📦 TH_MODULE ' + target.thai + ': module ' + c.id + ' (T' + c.tier + ') as the first candidate (no paid call)')
   return c.lines.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english, prompt: l.prompt, _moduleId: l.module || l._moduleId }))
+}
+// v718 (D17: a module line was dropped by the final cue check and quota recovery asked the model for three bare lines — the scene then scored 2/5):
+//   · the WHOLE exchange is missing → the next unused module for the word replaces it (no model request; the same deterministic gates run on it)
+//   · only SOME lines are missing and the remaining ones came from a module → the model is shown that reviewed exchange and told to keep its
+//     meaning and structure, changing only what is needed (its words still have to pass the closed-vocabulary and every other gate)
+function thaiModuleRecovery(kw, have, vocab, trackTargets, log) {
+  if (!THAI_MODULES.on || !THAI_MODULES.data || !dailyV693On() || (have && have.length)) return null
+  const x = thaiModuleExchange({ id: kw.wordId, wordId: kw.wordId, thai: kw.thai, english: kw.english, _trackTargets: trackTargets || [] }, vocab, log)
+  return x ? { arr: x } : null
+}
+function thaiModuleRepairBlock(have) {
+  if (!THAI_MODULES.on || !(have && have.length)) return ''
+  for (const p of have) { const m = THAI_MODULES.lines.get(_bankNorm(p.thai)), ex = m && THAI_MODULES.exch.get(m.module)
+    if (ex) return 'THE REVIEWED EXCHANGE THE REMAINING LINES CAME FROM (a native-checked 3-line exchange; one of its lines did not pass this learner\'s checks and must be written again):\n' +
+      ex.map(l => '  ' + l.speaker + ': ' + l.thai + ' (' + l.english + ')').join('\n') + '\nWrite the missing line so the exchange keeps this meaning and structure: change only what is needed, use only the taught words listed below, and do not copy a line that is already in the track.\n' }
+  return ''
 }
 // a word that has a module (not yet vocabulary-checked) needs no usage profile from the model
 function thaiModuleHas(target) {
@@ -25152,7 +25169,7 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
         // v713 (D3: a recovered ค่ะ line followed a B line → B–A–B) — the recovered line is the NEXT speaker's turn
         (_needSp ? (slots.length > 1 ? 'Your lines are the NEXT turns, alternating: the first is spoken by ' + _needSp + ', the next by the other person (A = the man: ผม … ครับ; B = the woman: ฉัน … ค่ะ / คะ) — each answers or reacts to the line before.\n'
           : 'It is spoken by ' + _needSp + ' (' + (_needSp === 'A' ? 'the man: ผม … ครับ' : 'the woman: ฉัน … ค่ะ / คะ') + ') — the other person answers or reacts.\n') : '') })() : '') +
-    (have.length ? 'This word already has these lines — do NOT repeat or paraphrase them:\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai).join('\n') + '\n' : '') +
+    (have.length ? 'This word already has these lines — do NOT repeat or paraphrase them:\n' + have.map(p => '  ' + (p.speaker || 'A') + ': ' + p.thai).join('\n') + '\n' : '') + thaiModuleRepairBlock(have) +
     // v669 §5/§9/§11 — the missing SLOT is repaired: the intended sense, and a communicative use the existing lines do not cover yet
     'INTENDED SENSE: ' + thaiTargetSense(kw, c.vocab) + '\n' + thaiWordUsesLine(kw) + (dailyV693On() ? THAI_VERB_SENSE_LINE : '') + (_tpPlan ? '' : thaiMissingFunctionLine(have)) +
     // v671 §B2 — quota recovery names the missing target + its sense and a CONSTRUCTION the taught words can express;
@@ -25167,7 +25184,10 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
     'For each candidate also return targetId (' + kw.wordId + ') and targetSurfaceUsed (the exact target word as it appears in your Thai).\n' +
     'Return ONLY a JSON array: [{"targetId":' + kw.wordId + ',"targetSurfaceUsed":"' + kw.thai + '","speaker":"A","thai":"...","english":"...","prompt":"..."}]'
   let raw = null
-  try { raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: prompt }], maxTokens: 1400, temperature: 0.8, json: GEMINI_SCHEMAS.recoveryLines, stage: 'H_recovery', attempt: 'quota-' + kw.wordId + '-r' + (c.round || 1) + '-s' + st.strategyIndex + '-f' + st.failedAttempts.length }) }
+  // v718 — the whole exchange missing: the next unused module replaces it, no request
+  const _modRec = !c.coherenceRepair ? thaiModuleRecovery(kw, have, c.vocab, thaiTargetsFromTrack(track, c.vocab).list, m0 => log && log('  ' + m0)) : null
+  if (_modRec) log && log('  📦 TH_MODULE_RECOVERY ' + kw.thai + ': the missing exchange is replaced by the next reviewed module (no paid request)')
+  try { if (_modRec) raw = JSON.stringify(_modRec.arr); else raw = await geminiRequest({ apiKey: c.apiKey, model: c.model, messages: [{ role: 'user', content: prompt }], maxTokens: 1400, temperature: 0.8, json: GEMINI_SCHEMAS.recoveryLines, stage: 'H_recovery', attempt: 'quota-' + kw.wordId + '-r' + (c.round || 1) + '-s' + st.strategyIndex + '-f' + st.failedAttempts.length }) }
   catch (e) { if (e && (e.fatalProvider || e.cancelled)) { settleAll('provider: ' + String(e && e.message || e).slice(0, 60)); throw e } settleAll('generation failed'); return { accepted: [], reasons: ['generation failed: ' + (e && e.message || e)] } }
   let arr = []
   try { arr = JSON.parse(String(raw || '').replace(/```json|```/g, '').trim()) } catch (e) { settleAll('PARSE: recovery reply was not JSON'); return { accepted: [], reasons: ['PARSE: recovery reply was not JSON'] } }
@@ -25175,8 +25195,8 @@ async function _thRecoverTargetPairs(kw, need, ctx) {
   const fail = (p, why, tokens) => { if (teachingPlanOn()) log && log('  ' + thaiTpRejectLine('quota-recovery', p && p.thai, '[' + kw.thai + '] ' + why)); reasons.push(why + ': ' + (p && p.thai)); recordRecoveryFailure(st, { code: _thaiFailCode(why), text: p && p.thai, tokens: tokens || [], reason: why }) }
   let cands = (Array.isArray(arr) ? arr : []).filter(x => x && x.thai).map((l0, k) => {
     const sp = l0.speaker === 'B' ? 'B' : 'A'
-    const l = sanitizeModelPair({ ...l0, speaker: sp, thai: normaliseThaiSpacing(String(l0.thai || '')) }, 'quota-recovery')
-    return { ...l, language: 'th', pairType: 'content', targetId: kw.wordId, wordId: kw.wordId, _target: kw.thai, _targetSense: st.targetSense, recallGroupId: 'rg-' + kw.wordId,
+    const l = sanitizeModelPair({ ...l0, speaker: sp, thai: l0._moduleId ? String(l0.thai || '') : normaliseThaiSpacing(String(l0.thai || '')) }, 'quota-recovery')
+    return { ...l, _moduleId: l0._moduleId, language: 'th', pairType: 'content', targetId: kw.wordId, wordId: kw.wordId, _target: kw.thai, _targetSense: st.targetSense, recallGroupId: 'rg-' + kw.wordId,
       recallRole: sp === 'A' ? 'alternative' : 'response-with-target', targetRequired: true, _typedAt: 'creation', speakerGender: thaiSpeakerMapGender(sp),
       _source: 'quota-recovery:' + kw.thai, _pairKey: 'th-' + kw.wordId + '-q' + (c.round || 1) + '-' + (k + 1) + '-s' + st.strategyIndex + '-n' + (++_thQuotaKeySeq),
       sceneId: (c.coherenceRepair && c.coherenceRepair.sceneId) || (_lp && _lp.sceneId) || null, scenePurpose: (_lp && _lp.purpose) || null }

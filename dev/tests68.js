@@ -7,6 +7,8 @@
 //   M5   a word with no module that fits (skipped words, nothing in the learner's vocabulary) gets none — the model writes it
 //   M6   a filled module line is vetted (the judges skip it) exactly as filled; a changed line is not
 //   M7   the real writer: a module word is written with ZERO requests, from ONE module (never lines of two modules), clause spaces kept
+//   M9   recovery: when a whole exchange is missing the next unused module replaces it (no request); when some lines remain, the reviewed exchange they
+//        came from is shown to the model so it repairs only the missing line
 //   M8   wiring: first candidate of the check ladder, up to THAI_MODULE_ATTEMPTS; no usage profile for module words; loaded at the run's
 //        start; off in the test harness and in the live runner unless asked
 //
@@ -146,6 +148,24 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
       /ctx\.thaiModulesSetEnabled\(false\)/.test(fs.readFileSync(__dirname + '/harness.js', 'utf8')))
     T('M8', 'a browser without DecompressionStream, or a failed unpack, keeps writing with the model (the loader never throws into the run)',
       /typeof DecompressionStream === 'undefined'/.test(src) && /catch \(e\) \{ log && log\('📦 THAI_MODULES unavailable/.test(src))
+  }
+
+  // M9 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  {
+    c.ev('thaiModulesBeginRun')(V, null)
+    const t = wordOf('นม'), kw = { wordId: t.id, thai: t.thai, english: t.english }
+    const first = c.ev('thaiModuleExchange')({ ...t, _trackTargets: [t] }, V, null)          // the exchange the track started with
+    const rec = c.ev('thaiModuleRecovery')(kw, [], V, [t], null)                               // the whole exchange was dropped
+    const partial = c.ev('thaiModuleRecovery')(kw, [{ thai: first[0].thai, speaker: 'A' }], V, [t], null)
+    T('M9', 'a dropped exchange is replaced by the NEXT unused module (3 lines A-B-A, a different module, vetted), with no request; when some of its lines remain, recovery does not swap it',
+      !!first && !!rec && rec.arr.length === 3 && rec.arr.map(l => l.speaker).join('') === 'ABA' && rec.arr[0]._moduleId !== first[0]._moduleId && !!c.ev('thaiIsBankLine')({ thai: rec.arr[1].thai, _target: 'นม' }) && partial === null,
+      [first && first[0]._moduleId, rec && rec.arr.map(l => l._moduleId), partial])
+    const blockTxt = c.ev('thaiModuleRepairBlock')([{ thai: first[0].thai }])
+    T('M9', 'when lines of a module remain, the model is shown the whole reviewed exchange they came from (all three lines) and told to change only what is needed; a line that is not from a module gets no such block',
+      first.every(l => blockTxt.includes(l.thai)) && /change only what is needed/.test(blockTxt) && c.ev('thaiModuleRepairBlock')([{ thai: 'ผมไปตลาดครับ' }]) === '' && c.ev('thaiModuleRepairBlock')([]) === '', blockTxt.slice(0, 200))
+    T('M9', 'wired into quota recovery: the module replacement runs before the request (and skips it), module lines keep their clause spaces, and the repair block is in the prompt',
+      /const _modRec = !c\.coherenceRepair \? thaiModuleRecovery\(kw, have/.test(src) && /if \(_modRec\) raw = JSON\.stringify\(_modRec\.arr\); else raw = await geminiRequest/.test(src) &&
+      /thai: l0\._moduleId \? String\(l0\.thai \|\| ''\) : normaliseThaiSpacing/.test(src) && /thaiModuleRepairBlock\(have\)/.test(src))
   }
 
   out.forEach(l => console.log(l))

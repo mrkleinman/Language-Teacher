@@ -104,6 +104,11 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
     // --bank: switch the vetted Daily exchanges ON (v713: the app's default is off)
     if (process.argv.includes('--bank')) { C.ev('thaiBankSetEnabled')(true); console.log('  (Thai exchange bank ON for this run)') }
     if (process.argv.includes('--no-bank')) { C.ev('thaiBankSetEnabled')(false); console.log('  (Thai exchange bank OFF for this run)') }
+    // --modules: the Thai Daily writer takes a gap-fill module (filled for the word, checked against the learner's vocabulary) as its first candidate
+    if (process.argv.includes('--modules')) {
+      const gz = C.ev('THAI_MODULES_GZ'), d = JSON.parse(require('zlib').gunzipSync(Buffer.from(gz, 'base64')).toString('utf8'))
+      C.ev('thaiModulesSetEnabled')(true); const n = C.ev('thaiModulesUseData')(d); console.log('  (Thai gap-fill modules ON for this run: ' + n + ' modules)')
+    }
     C.fetch = wrapFetch(noGemini, C)
     C.aiSetGenerationPreference({ model: MODEL, limitUsd: Math.min(1, cap), limitRequests: 600, serverUrl: SERVER })
     C.aiSetAnthropicAccess(ACCESS)

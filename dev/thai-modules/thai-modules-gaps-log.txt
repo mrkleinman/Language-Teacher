@@ -1,0 +1,55 @@
+V_WANTLIKE: ids 43 (LIKE T1) and 1173 (ENTHUSE T5) have only 2 modules; need 1 more each (post-merge gap fill)
+V_CONSUME: ใช้ 327 (T1) has 3 modules (brief wants 4); acceptable
+X_FUNCTION@T2 module 12 length alarm is false (สีขาว split by tokenizer) - accepted
+X_ADVERB-T2-06 B length alarm false (สองทุ่ม/ชั่วโมงนึง split) - accepted
+V_SOCIAL: 8 replacement modules (SERVE-T5-04/05, CONFLICT-T5-10, LOVE-T5-05, MANAGE-T5-05/06, JOIN-T5-06/07) unreviewed - final spot review
+X_FUNCTION@T5 modules 12 (A1) and 14 (B): length alarms false (tokenizer merges compounds) - accepted
+X_PROPER SIGHT-T4-04 B length alarm false; new modules SIGHT-T4-04, BRANCH-T5-04 unreviewed
+X_PHRASE: 4 replacement modules (T4-44,45,46, T5-59) unreviewed
+V_CHANGE: ~11 replacement modules at ends of cells (START-T1-06, START-T2-05, BECOME-T2-05, BREAK-T2-08, BREAK-T5-09, STATE-T5 x3, TREND-T5-04, MISS-T5-05/06) unreviewed
+X_FUNCTION@T1: modules 34,36 (เท่าไหร่) replacements unreviewed; module 59 A2 length alarm false
+PENDING: T_TIME a done (apply with b), b running acf63e660e32a36a7. N_OUTDOORS done; 7 replacement modules unreviewed (T4-29..34, T5-22); false length alarms T2-04 B, T5-03 B, T5-08 A1
+PENDING N_STUDYWORK: a,b done; c running afcdcc384e93ebcb1. T_TIME fixer running ab60049dedf1b7049. Check slot 913 สอบ (N_STUDYWORK vs V_ groups)
+N_TIMEUNIT reviewer a3f395b61d7074de3 (single, 103 modules in packet vs writer claimed 55: check count discrepancy)
+A_PERSONSTATE review (205 modules): a (1-52) a397b906f9669b3d5 running, b (53-104) a36c293defe718b6b running; c (105-156) and d (157-205) NOT launched (limit)
+N_HEALTH MEDS-T3-03 A1 length alarm false (ท้องว่าง)
+N_HEALTH review: a (1-50) a8b95996c579c4341 running; b (51-100) NOT launched
+N_TIMEUNIT: DATE-T1-04 A2 length alarm false; 4 T1 replacement modules (DAYPART-T1-05, SHORT-T1-05, CALENDAR-T1-05, FREETIME-T1-04) unreviewed
+N_STUDYWORK: 11 replacement modules unreviewed (T3-45, T4-47..51, T5-41..45)
+N_MEDIA: false length alarm (แอป split); 
+A_PERSONSTATE: a,b,c findings done (19,11,18); d running a79d0d86ba7b1b62d -> then apply all
+V_ROUTINE: ประชุม 458, ค้าง 1051 only second_group (no V_ROUTINE modules)
+N_HEALTH: 8 replacement modules unreviewed (WELL-T2-05/06, KIT-T4-04, MEDINFO-T5-04, STATE-T5-04, MEASURE-T5-06/07, CHECK-T5-06/07)
+N_ABSTRACT fixer aeae174e438da9b39 running (all 8 findings)
+STATE (apply-phase): fixers running/done: N_ABSTRACT aeae174e438da9b39, N_EVENT a5e5cceb3696a4d9b, N_MEDIA aa97b8a7ab50b74da, N_MONEY a1e280cc4ca8c04e2, N_ITEM a9d4d1d97468c57d6, A_PERSONSTATE a19654ba16954e32b, N_STUDYWORK a45d4aa6d5ad9f259 (done), N_HEALTH (done), T_TIME (done), N_TIMEUNIT (done), N_OUTDOORS (done)
+Review waiting to apply: V_MIND (a done; b a9333efacc9b5e4e6, c a9aedf7c6747eabf0), V_MOVE (a done; b ae49183793a19fc60; c aa68b269178e15bb9), V_ROUTINE (a af4d9e7ffe23ca617, b a8e38a4086205f955, c a464085661af6a43f), V_COMMUNICATE (a ac0636169d63643c0 running; b done), N_HOME (a done; b,c queued)
+Writers still running: A_THING a36e2d485ddbdc55f, N_PERSONROLE a13b565556be79ee8, N_PLACE a73de43930dc286c6, N_BODY a8cf33f4b0e23cc08, V_HANDLE abef2c1749fdb154a
+A_PERSONSTATE: 13 replacement modules unreviewed (SICK-T3-05, SICK-T5-07, PAIN-T2-06, WORRY-T2-05, SAD-T5-07, ANGRY-T4-04..06, TOUCHED-T5-06/07, MISFORTUNE-T5-04..07)
+N_EVENT: PICNIC-T4-02 and -03 A2 have no {W} (checker problem, accepted on reviewer's advice: ปิกนิก not in vocab) - SHOULD FIX at final pass; replacement modules unreviewed: HOBBY-T3-05, ADVENTURE-T4-05/06, WATCH-T4-06, WEDRITE-T4-04
+N_BODY writer done (144 modules, 0 problems); notes: ขาหนีบ in 3 clinical modules (review); กระดูกสันหลัง tier T4 in tags vs T5 in allowed list; เอว slot "lower back" (means waist); หุ่น tag; vocab gaps T2: ปวด/เจ็บ(T3), นวด, ทา, แปรง, เมื่อย, แหวน, ขยับ, ชี้, เถอะ, โต, นิสัย, หรอก, ท่าน, โยคะ(คะ clash)
+N_PLACE writer done (296 modules, 0 problems); vocab gaps: ตารางเดินรถ, ค่ารักษา, ถ่ายอีกรูป
+A_PERSONSTATE fixer done; N_EVENT fixer done (see above lists)
+N_MEDIA fixer done (134 modules): 12 replacement modules unreviewed (SHOW-T4-04/05, NET-T5-04, NEWS-T5-04/05/06/07, SYSTEM-T5-04, STORE-T5-04, STORY-T5-05, READ-T5-04, ACCOUNT-T5-04/05)
+V_COMMUNICATE fixer a603d866cf6b45554 running (a,b findings; 114 modules)
+N_MONEY fixer done: 7 replacement modules unreviewed (BIZ-T5-05, RENEW-T4-06/07, PERKS-T5-06, DOC-T5-07, PRICE-T5-07); slot 6941 changed
+N_PERSONROLE writer done (246 modules, 24 subgroups, 0 problems). Mis-tags: 620 ฝรั่ง second_group only (not in subgroups); 973 หญิง adjective-like (own FEMALE subgroup); 7016 and 217 duplicate (novice monk); 1566/6044/6047 all 'vendor' (6044 and 6047 tagged identically); 6406 ดับเพลิง and 6913 ทีม are not persons; 6202 แม่บ้าน tiered T3. Vocab gaps: ธุรกิจ ฝึก ซ้อม เก่ง ตลก เพลง ทีวี โรงงาน สนาม เกม แข่ง สู้ แต้ม คลิป กล้อง วิดีโอ กล้า; คะแนน unusable (contains คะ)
+N_ITEM fixer done (167 modules): replacement modules unreviewed: T2-23/24, T3-24/25, T4-59..66; T2 words may sit at 3 modules vs 4 (not checked - verify with coverage at final)
+A_THING writer done (289 modules, 0 problems). Mis-tags: ใกล้เคียง (nearby/similar, used as similar); เด็ด/เด็ดๆ dup; ชัด/ชัดเจน/แน่ชัด dup; โต เตี้ย เปล่า ว่าง สบาย are second-group words from other groups; สอดคล้อง is a verb; ดีกว่า comparative; ใกล้ๆ reduplicated; พอดี also 'happen to' (one SUIT module spells English out); ถาวร/ชั่วคราว two TERM modules spell out English (adverb use). Slots changed: 522 tall, 6106 light. Vocab gaps: ชัด น่า ต้น ปลูก โชคดี หรอก ไหว ช่าง ท่อ อ่าง สัญญา ระบบ ตาราง ผี ฝัน กล้า ขยับ ย่าน หายาก, classifiers คัน บาน เล่ม, colours ฟ้า ขาว ดำ at low tiers
+A_THING packet is 277 modules vs writer-claimed 289 (discrepancy, check at final)
+V_MOVE fixer done (154 modules): accepted alarms TRANSFER-T3-02 B, JOURNEY-T5-02 B, LATE-T5-03 B. 12 replacement modules unreviewed: FALL-T5-06/07, GESTURE-T4-04/05/06, ARRIVE-T3-05, WALK-T4-05, TRIP-T4-04/05 (+others). Old V_MOVE modules superseded in merge (V_MOVE in REPLACED).
+V_MIND fixer done (168 modules, 0 problems): 17 replacement modules unreviewed (SENSE-T2-05/06, ADMIT-T3-02/03, INTEND-T3-05/06, GUESS-T5-07..10, INTEND-T5-07..09, CHOOSE-T5-03, ANALYSE-T5-14..16)
+N_HOME fixer done (143 modules, 0 problems): 13 replacement modules unreviewed (CLEAN-T5-05/06/07, PARTS-T2-05/06, ROOM-T3-04, ELEC-T3-04, CUTLERY-T4-06, TOOLS-T4-04/05, PARTS-T4-04/05, ELEC-T4-05); ROOM-T4-03 reads oddly (ห้องว่าง dark vacant room)
+N_BODY fixer done (161 modules, 0 problems): ~25 replacement modules unreviewed (ACHE-T3-04/05, UPPER-T3-04, FLUID-T4-06, FACE-T4-11..15, HAIR-T4-06..08, TASTE-T4-04/05, LOWER-T4-10..13, FINGER-T5-03, BONE-T5-07/08, FIGURE-T5-10, ORGAN-T5-06/07). Weak: ขนบนใบหน้า (facial hair) modules - stiff word, vocab lacks โกน/หนวด/เครา
+N_ABSTRACT fixer done (456 modules, 0 problems): 25 replacement modules unreviewed (SENSE-T2-10/11/12, FORM-T2-05, FORM-T5-07, INFO-T2-10, INFO-T5-05/06, CODE-T5-07/08, CRITERIA-T5-08, CAUSE-T5-13..16, IDEAL-T5-12, NUMID-T4-06, OPINION-T5-07, KIND-T5-14, PROBLEM-T5-07/08, QUALITY-T3-04/05, QUALITY-T5-06, SKILL-T5-04). Awkward: เหตุ 7027 (special frame), ประวัติ 1285 (background of a person only). ตอบแทน lookup MISSING but splits ตอบ+แทน OK.
+V_ROUTINE fixer done (174 modules, 0 problems): ~30 replacement modules unreviewed (MORNING-T1-04, MORNING-T2-08..11, LEARN-T3-05, LEARN-T5-06..08, LEAVE-T5-04..06, FITNESS-T5-06..08, EXPRESS-T2-05..08, MERIT-T3-06, PRAY-T5-07..09, FORTUNE-T5-08/09, LIVE-T2-01..04, PREPARE-T5-03). V_ROUTINE MORNING-T5-01..03/MORNING-T2-08..11 spell English out (no {E}) for possessive verbs - intentional
+N_PLACE fixer done (327 modules, 0 problems): ~34 replacement modules unreviewed (REGION-T3-07..09, WORK-T2-04..07, AWAY/STAY/SHOP/OFFICE/HEALTH T3, ROOM/GATE/STATION/STUDY/SERVICE/TEMPLE/CROSS/SPOT/WORK T4, AWAY/LEISURE/HALL/ROAD/CONTROL T5). GAP: word 517 'ถนนคนเดิน ...' (T5 MARKET) has 0 modules - headword contains literal '...' placeholder in word list; fix word list or write modules
+N_PERSONROLE fixer done (261 modules, 0 problems): 20 replacement modules unreviewed (WORKER-T4-06, BOSS-T5-10, LAW-T3-06, SERVICE-T4-10, SELLER-T4-06, LAW-T4-06, OFFICIAL-T5-04/05, OWNER-T5-06, CASE-T5-04, LAW-T5-09, AUDIENCE-T5-04/05, MONK-T5-07, CONTEST-T4-07..09, AGE-T4-04..06). Dubious spoken Thai: ผู้แพ้ 6788, พลเมืองอาวุโส 6871
+V_COMMUNICATE fixer done (190 modules, 0 problems): ~77 replacement modules appended at file end, unreviewed (all +id restricted); dropped PROPOSE-T5-03, THAT-T5-03 (หาว่า 1395 covered by replacements). Slots changed 7073 reprimand, 7506 tag, 1109 joke around. NOTE: scratchpad is shared by agents; drafts verified via check at end
+merge_v2.py test run OK (REPLACED covers all overlapping groups; no old non-superseded overlap)
+A_THING fixer done (302 modules, 2 accepted false alarms: LOOKS-T2-09 A2 (สีขาว/สีเขียว compound), METHOD-T5-01 B (embedded question, ค่ะ correct)): ~33 replacement modules unreviewed (CLEAN-T2-10/11, CLEAN-T3-03, TERM-T3-06, SPEED-T5-04, AGE-T5-04, QUALITY-T5-09, SAME-T5-03, FAULT-T5-06, INFO-T5-07..11, METHOD-T5-06..09, EASE-T2-05..08, NORMAL-T2-05/06, SIZE-T2-14/15, TEXTURE-T2-08, WEIGHT-T2-09, INFO-T2-05)
+V_HANDLE writer done (346 modules, 37 subgroups, 0 problems). Awkward: ตรวจรับ ปฏิบัติ ดำเนินการ formal (object-less frames); ฉีด 1096 only medical sense; สระ 1180 {W}ผม/{W}หัว; ฝากกระเป๋า includes object; ตี ยกเว้น เด็ด only in slots. Slots: 7306 organise, 7331 comply. Vocab gaps (not allowed at any tier): ตุ๊กตา วิดีโอ โรงหนัง ธูป เข็ม แชมพู โรค เหงื่อ อุ่น อนุญาต ตึก แรง นาน เก่ง คัน เดิม บันทึก ช่าง; tech vocab missing: แบต เสียบ กล้อง เพลง เกม ระบบ รหัส คิวอาร์ ปุ่ม จอ
+V_WANTLIKE: added LIKE-T1-05/06 (+43), ENTHUSE-T5 (+1173) by me; unreviewed. รัก/ติดอกติดใจ now 4/3 modules
+N_EVENT PICNIC-T4-02/03 A2 fixed (now have {W}); 0 problems
+spot fixer A done (A_THING,N_BODY,N_HEALTH,N_HOME,N_ITEM,N_MEDIA,N_MONEY,N_OUTDOORS): +N_HOME ELEC-T4-06; accepted alarms LOOKS-T2-09 A2, N_OUTDOORS-T2-04 B, METHOD-T5-01 B
+spot fixer B done: dropped extra modules (V_COMM ANNOUNCE-T5-05, REPLY-T5-05; V_MIND INTEND-T5-07..09, GUESS-T5-07 replaced); V_SOCIAL CONFLICT-T5-10 dropped; replacements appended (N_PLACE MARKET-T5 x3 for 517 now covered; V_SOCIAL CONFLICT T5 x3 ประนีประนอม ...). Accepted V_MOVE alarms x3. 517 word text still contains '...' placeholder in tags - check
+V_HANDLE fixer done (381 modules, 0 problems; ~45 replacement modules unreviewed: DOOR/LIQUID/CLEAN/PAPER/TAKE/LAUNDRY/PREP/RECORD/RELEASE T1-T2; HEAT/CUT/DECOR/CARE T4; HIDE/CARE/STORE/FILE/RULES/PROBLEM/SORT/DEVICE/APP/CHECK T5). Slot 6643 ยึด=confiscate. ALL WRITERS/REVIEWS/FIXERS DONE -> final merge+verify

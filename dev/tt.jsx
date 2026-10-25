@@ -19551,7 +19551,7 @@ async function thaiFreshFraming(sd, o, log) {
   const out = { ...sd, _framingSource: {} }
   const pairs = [['opening', 'reply', 'greeting'], ['closing', 'closing_reply', 'goodbye']]
   const nA = String(out.characterA || 'Somchai').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim(), nB = String(out.characterB || 'Nida').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim()
-  // v718 (D17: the opening pair was dropped because Haiku's reply ended "…ซื้อผักมาเยอะเลย" with no closing particle) — a greeting line that has no
+  // v718 (D17: the opening pair was dropped because the model's reply ended "…ซื้อผักมาเยอะเลย" with no closing particle) — a greeting line that has no
   // polite particle at all gets its speaker's closing particle locally (the same repair every other line gets), instead of the pair being left out
   const withParticle = (th, sp, en) => { const v = String(th || '').trim(); return v && !/(ครับ|ค่ะ|คะ)/.test(v) ? thaiEnsureFinalParticle(v, sp, en) : v }
   for (const [ka, kb, what] of pairs) {

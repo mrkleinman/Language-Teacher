@@ -1,5 +1,5 @@
 // v717 — the owner's gap-fill exchange modules (25 Oct, dev/thai-modules/) built into the Thai Daily writer
-//   M1   the embedded data: 6,181 usable modules (no superseded; 6,115 in the first delivery, +46 for the thin words and 6 fixes on 25 Oct, +11 edits, +20 for เล่น and the quantity words), 2,860 word tags whose ids and Thai match the app's own vocabulary
+//   M1   the embedded data: 6,199 usable modules (no superseded; 6,115 in the first delivery, +46 for the thin words and 6 fixes on 25 Oct, +11 edits, +20 for เล่น and the quantity words, +18 T1 modules for สิบ พัน หลาย เล่น), 2,860 word tags whose ids and Thai match the app's own vocabulary
 //   M2   English slot filling is render.py's: {E} {Es} {a} (a / an by sound; none for pair and mass nouns), no leftover braces
 //   M3   picking: tier between the word's own and the learner's (never below the word's), the word's subgroup, excluded words skipped,
 //        a module is used once per lesson, the learner's own tier first
@@ -28,8 +28,8 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const ids = new Set(data.m.map(r => r[0])), tags = Object.entries(data.t), byId = new Map(vocab0.map(w => [String(w.id), w]))
     const clean = x => String(x || '').replace(/\s*(\.\.\.|…)\s*$/, '').trim()
     const mismatch = tags.filter(([id, t]) => { const w = byId.get(id); return !w || clean(w.thai || w.t) !== clean(t[0]) })
-    T('M1', '6,181 usable modules with unique ids and 2,860 word tags; every tag id is the app\'s own word id with the same Thai',
-      data.m.length === 6181 && ids.size === 6181 && tags.length === 2860 && !mismatch.length && data.m.every(r => r.length === 13 && r[2] >= 1 && r[2] <= 5), { mods: data.m.length, ids: ids.size, tags: tags.length, mismatch: mismatch.slice(0, 3) })
+    T('M1', '6,199 usable modules with unique ids and 2,860 word tags; every tag id is the app\'s own word id with the same Thai',
+      data.m.length === 6199 && ids.size === 6199 && tags.length === 2860 && !mismatch.length && data.m.every(r => r.length === 13 && r[2] >= 1 && r[2] <= 5), { mods: data.m.length, ids: ids.size, tags: tags.length, mismatch: mismatch.slice(0, 3) })
     T('M1', 'the data is reproducible: tools/build_thai_modules.py rebuilds the embedded line from dev/thai-modules (same module and tag counts)',
       fs.existsSync(__dirname + '/tools/build_thai_modules.py') && fs.existsSync(__dirname + '/thai-modules/thai-modules.csv') && /THAI_MODULES_DATA_BEGIN/.test(src) && /THAI_MODULES_DATA_END/.test(src))
   }

@@ -174,12 +174,13 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const t = wordOf('นม'), tg = { id: t.id, surface: t.thai, gloss: t.english }
     const usedBefore = c.ev('THAI_MODULES').used.size
     const ex = c.ev('thaiModuleExamples')({ id: t.id, wordId: t.id, thai: t.thai, english: t.english }, V, 2)
+    c.ev('LN_MODULE_EXAMPLES').on = true        // shipped default is off; the block is tested with it on
     const blk = c.ev('thaiModuleExamplesBlock')([tg], V)
     T('M10', 'a word gets up to two reviewed 3-line examples, each passing the writer\'s checks for this learner, and they are NOT marked used (a Daily track can still take them)',
       ex.length >= 1 && ex.length <= 2 && ex.every(e => e.length === 3 && c.ev('thaiModuleLinesProblems')(e, { id: t.id, wordId: t.id, thai: t.thai, english: t.english }, V).length === 0) && c.ev('THAI_MODULES').used.size === usedBefore, ex.length)
     T('M10', 'the block tells the writer not to copy and not to reuse the situations; it lists the word; it is empty when the switch is off or no module is loaded',
       /do NOT copy them/.test(blk) && blk.includes(t.thai + ':') && (c.ev('LN_MODULE_EXAMPLES').on = false, c.ev('thaiModuleExamplesBlock')([tg], V) === '') , blk.slice(0, 120))
-    c.ev('LN_MODULE_EXAMPLES').on = true
+    c.ev('LN_MODULE_EXAMPLES').on = true  // the shipped default is off (see the note at its definition); the test switches it on
     T('M10', 'wired into the story: each scene brief carries the examples after its lesson-word list, and a standalone Thai Listening run loads the modules first',
       /thaiModuleExamplesBlock\(st, ctx\.vocab\)/.test(src) && /LN_MODULE_EXAMPLES\.on\) \{ await thaiLoadRecentLines\(log\); await thaiModulesLoad\(log\)/.test(src))
   }

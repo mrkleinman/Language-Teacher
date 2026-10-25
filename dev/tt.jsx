@@ -17514,7 +17514,8 @@ function thaiModuleRepairBlock(have) {
 // For a lesson word: up to LN_MODULE_EXAMPLES.n reviewed module exchanges, filled for that word and pre-checked for THIS learner (closed
 // vocabulary and the writer's other rules), shown as "correct uses of the word". They are NOT marked used (a Daily track may still use
 // them) and they never enter the story themselves: the story writer is told to write its own lines from the moment its plan chose.
-const LN_MODULE_EXAMPLES = { on: true, n: 2 }
+// OFF in the release: the first paid Listening run with the examples scored 3.8 in one blind review (story coherence 1.5), below the 6.0 bar; kept switchable for further trials
+const LN_MODULE_EXAMPLES = { on: false, n: 2 }
 function thaiModuleExamples(target, vocab, n) {
   if (!THAI_MODULES.on || !THAI_MODULES.data || !target) return []
   const out = []

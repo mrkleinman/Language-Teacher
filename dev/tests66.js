@@ -12,6 +12,7 @@
 //   R8   the final speaker-order pass puts every exchange in A–B–A (D12: two exchanges went out A–A–A)
 //   R9   D13: a swapped line changes ผม / ฉัน wherever it stands (Thai has no spaces) but not ผม = hair, and the cue's pronouns follow
 //   R11  D13: lines written by the final recovery (after the speaker-order pass) also take their A–B–A seat before they are judged
+//   R12  D15 (owner's review, line 94): a parting is a set phrase — "See you then." is cued "Say see you then.", never "Say see them then."
 //   R10  D13: recovered lines for the same word from two recovery cycles get different keys (th-654-q1-1-s0 twice → NOT_READY)
 //
 //   node tests66.js            (current build: tt.compiled.js, or TT_FILE)
@@ -117,6 +118,14 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
       m2 = src.indexOf('const m2 = await adapter.finaliseMetadata', a), rv2 = src.indexOf("'cue-revalidation (after final recovery)'", a)
     T('R11', 'after the final recovery the speaker-order and particle passes run, then pronunciation, then the replacement lines are judged',
       a > 0 && so > a && so < m2 && m2 < rv2, [a, so, m2, rv2].join(' '))
+  }
+
+  {
+    const rep = c.ev('thaiLocalCueRepair'), strict = en => c.ev('cueFromEnglish')('th', en, 'x', { names: [], addr: 'm', strict: true })
+    const cases = [['See you then.', 'Say see you then.'], ['See you tomorrow.', 'Say see you tomorrow.'], ['Goodbye, see you!', 'Say goodbye, see you.'], ['See you on Friday.', 'Say see you on Friday.']]
+    T('R12', 'a parting keeps its "you": See you then / tomorrow / Goodbye, see you / on Friday are cued "Say see you …" (the local cue repair and the strict builder), while a real object ("Thank you very much.") is still "Thank him"',
+      cases.every(([en, want]) => rep({ english: en, thai: 'แล้วเจอกันค่ะ', speaker: 'B', prompt: 'Say see you then and say you are leaving.' }) === want && strict(en) === want) && strict('Thank you very much.') === 'Thank him very much.',
+      cases.map(([en]) => [rep({ english: en, thai: 'x', speaker: 'B', prompt: 'a b c d' }), strict(en)]))
   }
 
   out.forEach(l => console.log(l))

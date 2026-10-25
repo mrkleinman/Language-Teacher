@@ -18888,6 +18888,10 @@ function cueFromEnglish(lang, en, sentence, ctx) {
     return ind ? ccEnd('Ask ' + ind) : ccEnd('Ask: ' + e.replace(/[?？]*$/, '?')).replace(/\?\.$/, '?')
   }
   if (/^let'?s\b/i.test(e)) return ccEnd('Suggest we ' + ccShiftPersons(e.replace(/^let'?s\s+/i, ''), SA))
+  // v717 (D15 owner review, line 94: "Say see them then." for "See you then.") — a parting is a set phrase the learner SAYS; its "you" is the
+  // phrase itself, not an object to shift to him / her / them: "See you then." → "Say see you then.", "Goodbye, see you!" → "Say goodbye, see you."
+  { const sy = e.match(/^(?:(good\s?bye|bye|bye-bye|good night|take care)[,!]?\s+)?(see you\b(?:\s+(?:then|later|soon|again|tomorrow|tonight|next (?:week|time|month)|on [a-z]+day|in [a-z ]+|at [a-z0-9: ]+))?)$/i)
+    if (sy) return ccEnd('Say ' + (sy[1] ? sy[1].toLowerCase() + ', ' : '') + sy[2].toLowerCase().replace(/\b(mon|tues|wednes|thurs|fri|satur|sun)day\b/g, (m0, d) => d.charAt(0).toUpperCase() + d.slice(1) + 'day')) }
   // v700 — "Thank you (very much), Somchai" → "Thank Somchai very much." (was "Say thank them very much, Somchai.")
   { const ty = e.match(/^(?:thank you|thanks)\b(.*)$/i)
     if (ty) { let rest = ty[1]; const nm = (ctx.names || []).find(n => n && new RegExp(',?\\s*\\b' + n + '\\b').test(rest))

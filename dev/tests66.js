@@ -13,6 +13,7 @@
 //   R9   D13: a swapped line changes ผม / ฉัน wherever it stands (Thai has no spaces) but not ผม = hair, and the cue's pronouns follow
 //   R11  D13: lines written by the final recovery (after the speaker-order pass) also take their A–B–A seat before they are judged
 //   R12  D15 (owner's review, line 94): a parting is a set phrase — "See you then." is cued "Say see you then.", never "Say see them then."
+//   R13  D17: a greeting line with no closing particle at all gets its speaker's particle locally, so the opening pair is no longer dropped
 //   R10  D13: recovered lines for the same word from two recovery cycles get different keys (th-654-q1-1-s0 twice → NOT_READY)
 //
 //   node tests66.js            (current build: tt.compiled.js, or TT_FILE)
@@ -126,6 +127,17 @@ const FILE = process.env.TT_FILE || 'tt.compiled.js'
     T('R12', 'a parting keeps its "you": See you then / tomorrow / Goodbye, see you / on Friday are cued "Say see you …" (the local cue repair and the strict builder), while a real object ("Thank you very much.") is still "Thank him"',
       cases.every(([en, want]) => rep({ english: en, thai: 'แล้วเจอกันค่ะ', speaker: 'B', prompt: 'Say see you then and say you are leaving.' }) === want && strict(en) === want) && strict('Thank you very much.') === 'Thank him very much.',
       cases.map(([en]) => [rep({ english: en, thai: 'x', speaker: 'B', prompt: 'a b c d' }), strict(en)]))
+  }
+
+  {
+    // Haiku's greeting ends without a particle ("…ซื้อผักมาเยอะเลย", "…ไปตลาดมาแล้ว"); the pair must be kept with the particle added, and a line that already
+    // has one (or a name after it) is left alone
+    const fresh = c.ev('thaiFreshFraming')
+    const sd = { characterA: 'Somchai, a man', characterB: 'Nida, a woman', opening: 'วันนี้ไปธุระที่ไหนมาบ้าง', opening_english: 'Where did you go on errands today?', reply: 'ไปธนาคารมา ทำธุระเสร็จหมดเลย', reply_english: 'To the bank. I finished everything.',
+      closing: 'งั้นผมไปก่อนนะครับ', closing_reply: 'ได้ค่ะ ไปดีๆ นะคะ', _defaultScene: false }
+    const log = []; const r = await fresh(sd, null, m => log.push(m))
+    T('R13', 'a greeting without a closing particle is kept with it added (…มาบ้างครับ / …หมดเลยค่ะ), provenance ai:scene; lines that already end with a particle are unchanged',
+      r.opening === 'วันนี้ไปธุระที่ไหนมาบ้างครับ' && r.reply === 'ไปธนาคารมา ทำธุระเสร็จหมดเลยค่ะ' && r.closing === 'งั้นผมไปก่อนนะครับ' && r.closing_reply === 'ได้ค่ะ ไปดีๆ นะคะ' && r._framingSource.opening === 'ai:scene', [r.opening, r.reply, r._framingSource, log])
   }
 
   out.forEach(l => console.log(l))

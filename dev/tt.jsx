@@ -19551,7 +19551,12 @@ async function thaiFreshFraming(sd, o, log) {
   const out = { ...sd, _framingSource: {} }
   const pairs = [['opening', 'reply', 'greeting'], ['closing', 'closing_reply', 'goodbye']]
   const nA = String(out.characterA || 'Somchai').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim(), nB = String(out.characterB || 'Nida').split(',')[0].replace(/\s*\([^)]*\)/g, '').trim()
+  // v718 (D17: the opening pair was dropped because Haiku's reply ended "…ซื้อผักมาเยอะเลย" with no closing particle) — a greeting line that has no
+  // polite particle at all gets its speaker's closing particle locally (the same repair every other line gets), instead of the pair being left out
+  const withParticle = (th, sp, en) => { const v = String(th || '').trim(); return v && !/(ครับ|ค่ะ|คะ)/.test(v) ? thaiEnsureFinalParticle(v, sp, en) : v }
   for (const [ka, kb, what] of pairs) {
+    if (out[ka]) out[ka] = withParticle(out[ka], 'A', out[ka + '_english'])
+    if (out[kb]) out[kb] = withParticle(out[kb], 'B', out[kb + '_english'])
     let pa = thaiFramingLineProblems(out[ka], 'A'), pb = thaiFramingLineProblems(out[kb], 'B')
     if (!pa.length && !pb.length && !out._defaultScene) { out._framingSource[ka] = out._framingSource[kb] = 'ai:scene'; continue }
     log && log('  👋 FRAMING ' + what + ' from the scene plan not used (' + (pa.concat(pb).slice(0, 3).join('; ') || 'no scene plan') + ') — written again')
@@ -19563,6 +19568,8 @@ async function thaiFreshFraming(sd, o, log) {
         'Do not use these recent lines: ' + [...((TH_RECENT_LINES && TH_RECENT_LINES.exact) || [])].filter(x => x.length < 40).slice(0, 12).join(' / ') + '\n' +
         'Reply ONLY with JSON: {"a":{"thai":"…","english":"…","cue":"Greet ' + nB + ' and …"},"b":{"thai":"…","english":"…","cue":"…"}}' }] })
       const t = String(raw || '').replace(/```json|```/g, ''), j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1))
+      if (j && j.a) j.a.thai = withParticle(j.a.thai, 'A', j.a.english)
+      if (j && j.b) j.b.thai = withParticle(j.b.thai, 'B', j.b.english)
       if (j && j.a && j.b && !thaiFramingLineProblems(j.a.thai, 'A').length && !thaiFramingLineProblems(j.b.thai, 'B').length) {
         out[ka] = String(j.a.thai).trim(); out[ka + '_english'] = String(j.a.english || '').trim(); out[ka + '_prompt'] = String(j.a.cue || '').trim(); out[ka + '_phonetic'] = ''
         out[kb] = String(j.b.thai).trim(); out[kb + '_english'] = String(j.b.english || '').trim(); out[kb + '_prompt'] = String(j.b.cue || '').trim(); out[kb + '_phonetic'] = ''

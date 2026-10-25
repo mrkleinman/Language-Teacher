@@ -17510,6 +17510,28 @@ function thaiModuleRepairBlock(have) {
       ex.map(l => '  ' + l.speaker + ': ' + l.thai + ' (' + l.english + ')').join('\n') + '\nWrite the missing line so the exchange keeps this meaning and structure: change only what is needed, use only the taught words listed below, and do not copy a line that is already in the track.\n' }
   return ''
 }
+// v720 — REVIEWED USES AS EXAMPLES FOR THE LISTENING STORY (owner: keep the narrative; modules guide the writer, they are not the script).
+// For a lesson word: up to LN_MODULE_EXAMPLES.n reviewed module exchanges, filled for that word and pre-checked for THIS learner (closed
+// vocabulary and the writer's other rules), shown as "correct uses of the word". They are NOT marked used (a Daily track may still use
+// them) and they never enter the story themselves: the story writer is told to write its own lines from the moment its plan chose.
+const LN_MODULE_EXAMPLES = { on: true, n: 2 }
+function thaiModuleExamples(target, vocab, n) {
+  if (!THAI_MODULES.on || !THAI_MODULES.data || !target) return []
+  const out = []
+  for (const c of thaiModuleCandidates(target, thaiModuleLearnerTier(vocab)).slice(0, 12)) {
+    if (out.length >= (n || 2)) break
+    const lines = thaiModuleRender(c, target); if (!lines || thaiModuleLinesProblems(lines, target, vocab).length) continue
+    out.push(lines.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english, prompt: l.prompt })))
+  }
+  return out
+}
+function thaiModuleExamplesBlock(targets, vocab) {
+  if (!LN_MODULE_EXAMPLES.on) return ''
+  const rows = []
+  ;(targets || []).forEach(t => { const ex = thaiModuleExamples({ id: t.id, wordId: t.id, thai: t.surface, english: t.gloss }, vocab, LN_MODULE_EXAMPLES.n)
+    if (ex.length) rows.push(t.surface + ':\n' + ex.map(e => '  ' + e.map(l => l.speaker + ': ' + l.thai + ' (' + l.english + ')').join(' / ')).join('\n')) })
+  return rows.length ? '\nREVIEWED EXAMPLES of these words used correctly (native-checked, from other situations). They show the SENSE and a natural frame only: do NOT copy them, do NOT reuse their situations; write your own lines for THIS scene at the planned moment:\n' + rows.join('\n') + '\n' : ''
+}
 // a word that has a module (not yet vocabulary-checked) needs no usage profile from the model
 function thaiModuleHas(target) {
   if (!THAI_MODULES.on || !THAI_MODULES.data || !target) return false
@@ -30505,6 +30527,7 @@ async function buildListeningConversation(mainTrack, vocab0, o) {
     // v692 — the standalone Listening Track is planned MEANING FIRST (the legacy template planner stays behind the switch)
     const _env = { lang, la, log, tel, targets, ctx, extra, sc0, lessonCtx, o, progress, naturalness, tRow, turnsMin, turnsMax }
     // v712 — Thai: a fresh story written around the frozen revision words (no stored conversation, no stitched bank exchanges)
+    if (lang === 'th' && o.standalone && LN_MODULE_EXAMPLES.on) { await thaiLoadRecentLines(log); await thaiModulesLoad(log); thaiModulesBeginRun(ctx.vocab, log) }
     const _story = lang === 'th' && o.standalone && !o.legacyScenes && thaiListeningStoryOn() ? await _lnComposeThaiStoryBest(_env) : null
     const r = _story || (listeningMeaningFirstOn() && o.standalone && !o.legacyScenes ? await _lnComposeMeaningFirst(_env) : await _lnComposeByScenes(_env))
     // v669 §17: no scene validated → nothing enters the track; the reason names the uncommitted INVALID candidates
@@ -32786,6 +32809,7 @@ async function _lnComposeThaiStory(env, avoid) {
       (si === 0 ? 'It opens the conversation (a greeting is fine). ' : 'Do NOT greet again. ') + (si === nS - 1 ? 'It ends the conversation with a natural goodbye. ' : 'Do NOT say goodbye yet. ') +
       '\nUse EVERY ONE of these lesson words at least once, spelled exactly, in its common sense (not more than 3 lesson words in one line), at its planned moment:\n' +
       st.map(t => 'T' + t.id + ' | ' + t.surface + ' | ' + t.gloss + (s.setups && s.setups[t.id] ? ' — set-up: ' + s.setups[t.id] : '') + (s.moments && s.moments[t.id] ? ' — moment: ' + s.moments[t.id] : '')).join('\n') +
+      thaiModuleExamplesBlock(st, ctx.vocab) +
       '\nThe line just BEFORE each lesson word gives the reason to say it (a question, an offer, something that happens). A new topic or event in this scene must follow from something said before it. Every line moves the story on (no filler such as a bare ดีค่ะ / ขอบคุณครับ after every line); most lines ' + lnStoryLen(ctx).min + '–' + lnStoryLen(ctx).aim + ' words.' +
       '\nReply ONLY with JSON: {"turns":[{"speaker":"A","thai":"…","english":"…"}]}'
     let best = null

@@ -168,6 +168,21 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
       /thai: l0\._moduleId \? String\(l0\.thai \|\| ''\) : normaliseThaiSpacing/.test(src) && /thaiModuleRepairBlock\(have\)/.test(src))
   }
 
+  // M10 — v720: modules guide the Listening story writer as EXAMPLES only (the story keeps its narrative) ─────────────────────
+  {
+    c.ev('thaiModulesBeginRun')(V, null)
+    const t = wordOf('นม'), tg = { id: t.id, surface: t.thai, gloss: t.english }
+    const usedBefore = c.ev('THAI_MODULES').used.size
+    const ex = c.ev('thaiModuleExamples')({ id: t.id, wordId: t.id, thai: t.thai, english: t.english }, V, 2)
+    const blk = c.ev('thaiModuleExamplesBlock')([tg], V)
+    T('M10', 'a word gets up to two reviewed 3-line examples, each passing the writer\'s checks for this learner, and they are NOT marked used (a Daily track can still take them)',
+      ex.length >= 1 && ex.length <= 2 && ex.every(e => e.length === 3 && c.ev('thaiModuleLinesProblems')(e, { id: t.id, wordId: t.id, thai: t.thai, english: t.english }, V).length === 0) && c.ev('THAI_MODULES').used.size === usedBefore, ex.length)
+    T('M10', 'the block tells the writer not to copy and not to reuse the situations; it lists the word; it is empty when the switch is off or no module is loaded',
+      /do NOT copy them/.test(blk) && blk.includes(t.thai + ':') && (c.ev('LN_MODULE_EXAMPLES').on = false, c.ev('thaiModuleExamplesBlock')([tg], V) === '') , blk.slice(0, 120))
+    c.ev('LN_MODULE_EXAMPLES').on = true
+    T('M10', 'wired into the story: each scene brief carries the examples after its lesson-word list, and a standalone Thai Listening run loads the modules first',
+      /thaiModuleExamplesBlock\(st, ctx\.vocab\)/.test(src) && /LN_MODULE_EXAMPLES\.on\) \{ await thaiLoadRecentLines\(log\); await thaiModulesLoad\(log\)/.test(src))
+  }
   out.forEach(l => console.log(l))
   console.log('\nv717 Thai gap-fill modules: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

@@ -33570,7 +33570,9 @@ async function _buildStandaloneListeningTrackCore(o) {
         LISTENING_TOKEN_USAGE: ut.LISTENING_TOKEN_USAGE, LISTENING_COST: ut.LISTENING_COST } }, result: null } }
   if (keywords.length < need) { log && log('⛔ LISTENING_TRACK_NOT_READY — only ' + keywords.length + ' learned word(s) are eligible (needs ' + need + ')'); return fail('only ' + keywords.length + ' learned words available (needs ' + need + ')') }
   // v673 §2B — no feasible 30-target conversation ⇒ NOT_READY BEFORE generation (never 100+ calls proving it)
-  if (feas && !feas.feasible) {
+  // v722 — the module-led prototype fits the words to the modules' own scenes, so the old situation-count feasibility test does not apply to it
+  if (feas && !feas.feasible && LN_MODULE_STORY.on) log && log('ℹ LISTENING_PLAN_FEASIBILITY skipped for the module-led story (' + feas.reason + ')')
+  if (feas && !feas.feasible && !LN_MODULE_STORY.on) {
     log && log('⛔ LISTENING_PLAN_INFEASIBLE paidLanguageGenerationCalls=0 — ' + feas.reason + ' · NOT_READY before generation (0 paid calls)')
     const r = fail('LISTENING_PLAN_INFEASIBLE: ' + feas.reason)
     r.track.failedChecks = ['LISTENING_PLAN_INFEASIBLE']; r.track.feasibility = { feasible: false, reason: feas.reason, deferred: feas.deferred.slice(0, 30) }

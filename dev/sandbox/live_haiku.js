@@ -104,6 +104,19 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
     // --bank: switch the vetted Daily exchanges ON (v713: the app's default is off)
     if (process.argv.includes('--bank')) { C.ev('thaiBankSetEnabled')(true); console.log('  (Thai exchange bank ON for this run)') }
     if (process.argv.includes('--no-bank')) { C.ev('thaiBankSetEnabled')(false); console.log('  (Thai exchange bank OFF for this run)') }
+    // --ln-module-story <links.csv> [--ln-exclude id,id,…]: the module-led Listening prototype (v722): the story is built from reviewed modules
+    // (links file: scene / job / story_safe per module), the model adds only bridge lines; the reading track's module ids are left out
+    { const k = process.argv.indexOf('--ln-module-story')
+      if (k > 0) {
+        const csv = fs.readFileSync(process.argv[k + 1], 'utf8').replace(/^\ufeff/, '').split(/\r?\n/).filter(Boolean), head = csv[0].split(',')
+        const rows = csv.slice(1).map(l => { const f = l.split(','), o = {}; head.forEach((h, i) => { o[h.trim()] = f[i] }); return o })
+        const ex = arg('ln-exclude') ? (fs.existsSync(arg('ln-exclude')) ? fs.readFileSync(arg('ln-exclude'), 'utf8').split(/[\s,]+/) : arg('ln-exclude').split(',')).filter(Boolean) : []
+        C.ev('thaiModulesSetEnabled')(true)
+        const zlib = require('zlib'); C.ev('thaiModulesUseData')(JSON.parse(zlib.gunzipSync(Buffer.from(C.ev('THAI_MODULES_GZ'), 'base64')).toString('utf8')))
+        console.log('  (module-led Listening ON: ' + C.ev('lnModuleStoryUseLinks')(rows) + ' module links, ' + ex.length + ' reading-track modules left out)')
+        const M = C.ev('LN_MODULE_STORY'); M.on = true; ex.forEach(x => M.exclude.add(x))
+        const T = C.ev('LN_STORY_TURNS'); T.max = 150; T.sceneMax = 30; T.min = 40
+      } }
     // --modules: the Thai Daily writer takes a gap-fill module (filled for the word, checked against the learner's vocabulary) as its first candidate
     if (process.argv.includes('--modules')) {
       const gz = C.ev('THAI_MODULES_GZ'), d = JSON.parse(require('zlib').gunzipSync(Buffer.from(gz, 'base64')).toString('utf8'))

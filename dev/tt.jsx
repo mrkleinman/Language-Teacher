@@ -32733,6 +32733,150 @@ async function _lnComposeThaiStoryBest(env) {
 // v713 — the story is planned around the first 25 frozen words (owner's decision: blind reviews 5.1 with 25 words vs 4.7 with 30); the
 // rest are reported as deferred and stay due for the next lesson. 0 = no cap (the older tests and the sandbox flag --ln-max-words set it).
 const LN_STORY_WORD_CAP = { maxWords: 25 }
+// ══ v722 — MODULE-LED LISTENING PROTOTYPE (owner's Phase 1b, 26 Oct) ═══════════════════════════════════════════════════════════════
+// The story is built from reviewed modules instead of fresh model scenes: each of the learner's words gets one reviewed 3-line module
+// (a different one from the reading track's where there is one), the modules are grouped by the scene they are tagged for (the module
+// chat's links file: scene, job, story_safe, fact types), a short spine (two characters, one day, fixed facts, the order of the places)
+// is written, and the model adds ONLY short bridge lines between the modules — plus, where a module's detail clashes with the spine,
+// a change to that one detail (kept only if the changed exchange passes every module check and stays close to the original; otherwise
+// the original lines are used). Off by default: a prototype for the owner's approval.
+const LN_MODULE_STORY = { on: false, links: null, exclude: new Set(), noRepair: true, maxScenes: 7, perScene: 6 }
+const LN_MODULE_SCENE_ORDER = { home: 1, kitchen: 1, condo: 1, family: 2, street: 3, car: 3, travel: 3, station: 3, airport: 3, school: 4, class: 4, work: 4, office: 4, phone: 5, online: 5,
+  hospital: 5, clinic: 5, bank: 5, temple: 5, market: 6, shop: 6, park: 6, 'café': 7, restaurant: 7, hotel: 7, friends: 8, party: 8 }
+const LN_MODULE_JOB_ORDER = { chat: 1, invite: 1, ask: 2, check: 2, tell: 3, explain: 3, report: 3, share: 3, plan: 4, decide: 4, suggest: 4, offer: 5, request: 5, order: 5, recommend: 5, advise: 5,
+  react: 6, praise: 6, compare: 6, complain: 7, warn: 7, worry: 7, decline: 8, apologise: 8, bargain: 8 }
+function lnModuleStoryUseLinks(rows) {
+  const m = new Map()
+  ;(rows || []).forEach(r => { const id = String(r.module_id || '').replace(/^﻿/, ''); if (!id) return
+    m.set(id, { scene: String(r.scene || '').toLowerCase().replace(/^cafe$/, 'café'), job: String(r.job || '').toLowerCase(), safe: String(r.story_safe) === '1', facts: String(r.fact_types || '') }) })
+  LN_MODULE_STORY.links = m; return m.size
+}
+// small edit distance (the changed exchange must stay close to the reviewed one)
+function lnEditRatio(a, b) {
+  a = String(a || ''); b = String(b || ''); const n = a.length, m = b.length; if (!n || !m) return 1
+  let prev = Array.from({ length: m + 1 }, (_, j) => j)
+  for (let i = 1; i <= n; i++) { const cur = [i]; for (let j = 1; j <= m; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = cur }
+  return prev[m] / Math.max(n, m)
+}
+// 1) one module per word, then the words grouped into scenes by the scene each module is tagged for
+function lnModuleStoryBeats(planTargets, vocab, log) {
+  const links = LN_MODULE_STORY.links, tier = thaiModuleLearnerTier(vocab), cands = new Map()
+  const sibs = planTargets.map(t => ({ id: t.id, wordId: t.id, thai: t.surface, english: t.gloss }))      // the story's other words are legal vocabulary for each module
+  planTargets.forEach(t => {
+    const tg = { id: t.id, wordId: t.id, thai: t.surface, english: t.gloss, _trackTargets: sibs }, list = []
+    // a module the reading track used is left out where the word has another; a word with no other module reuses it (flagged)
+    for (const pass of [false, true]) {
+      for (const c of thaiModuleCandidates(tg, tier)) {
+        if (list.length >= 14) break
+        const reused = LN_MODULE_STORY.exclude.has(c.m.id)
+        if (reused !== pass) continue
+        const lines = thaiModuleRender(c, tg); if (!lines || thaiModuleLinesProblems(lines, tg, vocab).length) continue
+        const lk = links.get(c.m.id) || { scene: 'friends', job: 'chat', safe: false, facts: '' }
+        list.push({ id: c.m.id, tier: c.m.tier, lines, reused, ...lk })
+      }
+      if (list.length) break
+    }
+    cands.set(t.id, list)
+  })
+  const unassigned = new Set(planTargets.filter(t => (cands.get(t.id) || []).length).map(t => t.id)), scenes = []
+  const val = (t, sc) => { const c = (cands.get(t.id) || []).filter(x => x.scene === sc); return c.length ? (c.some(x => x.safe) ? 2 : 1) : 0 }
+  while (unassigned.size && scenes.length < LN_MODULE_STORY.maxScenes) {
+    const sceneNames = [...new Set([...unassigned].flatMap(id => (cands.get(id) || []).map(c => c.scene)))]
+    let bestSc = null, bestV = -1
+    sceneNames.forEach(sc => { const v = planTargets.filter(t => unassigned.has(t.id)).reduce((a, t) => a + val(t, sc), 0); if (v > bestV) { bestV = v; bestSc = sc } })
+    // the words with the fewest other scenes go in first
+    const ws = planTargets.filter(t => unassigned.has(t.id) && val(t, bestSc)).sort((a, b) => (new Set((cands.get(a.id) || []).map(c => c.scene)).size) - (new Set((cands.get(b.id) || []).map(c => c.scene)).size) || val(b, bestSc) - val(a, bestSc)).slice(0, LN_MODULE_STORY.perScene)
+    scenes.push({ place: bestSc, beats: ws.map(t => { const pool = (cands.get(t.id) || []).filter(c => c.scene === bestSc).sort((a, b) => (b.safe - a.safe) || (b.tier - a.tier)); const c = pool[0]; return { target: t, ...c } }) })
+    ws.forEach(t => unassigned.delete(t.id))
+  }
+  // any word still left joins the scene with the fewest beats, with its best module wherever it is tagged
+  unassigned.forEach(id => { const t = planTargets.find(x => x.id === id), c = (cands.get(id) || []).sort((a, b) => (b.safe - a.safe) || (b.tier - a.tier))[0]; if (!c) return
+    scenes.sort((a, b) => a.beats.length - b.beats.length)[0].beats.push({ target: t, ...c, stray: true }) })
+  // one place is one scene (the greedy pass can come back to a place once its cap of words is spent)
+  for (let i = scenes.length - 1; i > 0; i--) { const j = scenes.findIndex(x => x.place === scenes[i].place); if (j >= 0 && j < i) { scenes[j].beats = scenes[j].beats.concat(scenes[i].beats); scenes.splice(i, 1) } }
+  scenes.sort((a, b) => (LN_MODULE_SCENE_ORDER[a.place] || 9) - (LN_MODULE_SCENE_ORDER[b.place] || 9))
+  scenes.forEach(s => s.beats.sort((a, b) => (LN_MODULE_JOB_ORDER[a.job] || 6) - (LN_MODULE_JOB_ORDER[b.job] || 6)))
+  const none = planTargets.filter(t => !(cands.get(t.id) || []).length)
+  log && log('📦 LISTENING_MODULES ' + (planTargets.length - none.length) + '/' + planTargets.length + ' words have a module that passes this learner\'s checks (' + (LN_MODULE_STORY.exclude.size ? 'a different one from the reading track\'s ' + LN_MODULE_STORY.exclude.size + ' wherever the word has one; reused: ' + [...cands.values()].filter(l => l[0] && l[0].reused).map(l => l[0].id).join(', ') : 'no module left out') + ')' + (none.length ? ' · none for: ' + none.map(t => t.surface).join(', ') : '') +
+    ' · scenes: ' + scenes.map(s => s.place + '(' + s.beats.length + ')').join(' → '))
+  return { scenes, none }
+}
+function lnModuleBeatText(b) { return b.lines.map(l => '   ' + l.speaker + ': ' + l.thai + ' (' + l.english + ')').join('\n') }
+// 2) the spine, then 3) one short call per scene for bridges and detail changes; everything the model returns is checked
+async function lnModuleStoryBuild(env, call, planTargets) {
+  const { la, log, ctx } = env
+  if (!LN_MODULE_STORY.links || !THAI_MODULES.data) { log && log('📦 LISTENING_MODULES not available (no module data or links) — the story is written by the model'); return null }
+  const { scenes, none } = lnModuleStoryBeats(planTargets, ctx.vocab, log)
+  if (scenes.length < 2) return null
+  const nS = scenes.length, byId = new Map(planTargets.map(t => [t.id, t]))
+  let spine = null
+  try {
+    spine = await call('O_listening_module_spine', 'TASK: the day of two close friends is built from ' + nS + ' reviewed mini-exchanges grouped into places. Write the SPINE that makes it ONE believable day.\n' +
+      'A is a man, B a woman, friends. Give them Thai-style first names (used only in this plan, never in the Thai lines), one DAY (a weekday), and 3–5 FIXED FACTS that hold all day (where they live, the one reason they are out together, the main plan and its time, who else is in their lives — a sister, a boss — if the exchanges mention such people).\n' +
+      'PLACES IN ORDER, with what is said there:\n' + scenes.map((s, i) => (i + 1) + ') ' + s.place + ':\n' + s.beats.map((b, k) => '  ' + String.fromCharCode(65 + k) + ') [' + b.job + '] ' + b.lines.map(l => l.english).join(' / ')).join('\n')).join('\n') +
+      '\nFor each place: a title that names the PLACE only, where the two are ("present"), what happens there in 1–2 sentences that make those exchanges natural (the plan must be reachable from the day before), and the facts true after it. Keep the places in this order.\n' +
+      'Reply ONLY with JSON: {"title":"…","story":"one sentence","a":"…","b":"…","day":"…","fixed":["…"],"scenes":[{"title":"…","present":"…","happens":"…","facts":"…"}]}', 1800, 'LISTENING_GENERATION_CALLS')
+    if (!spine || !Array.isArray(spine.scenes) || spine.scenes.length !== nS) throw new Error('the spine has ' + (spine && spine.scenes && spine.scenes.length) + ' scenes, not ' + nS)
+  } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('⚠ LISTENING_MODULES spine unusable: ' + String(e && e.message || e).slice(0, 100)); return null }
+  log && log('🧭 LISTENING_MODULES spine "' + spine.title + '" — ' + spine.story + ' · ' + spine.a + ' & ' + spine.b + ' · ' + spine.day + ' · fixed: ' + (spine.fixed || []).join(' | '))
+  const fixedLine = '\nFIXED FACTS (hold all day): ' + spine.day + '. ' + (spine.fixed || []).join('; ') + '.'
+  const written = [], facts = [], report = []
+  const plan = { title: String(spine.title || 'Listening'), story: String(spine.story || ''), scenes: scenes.map((s, i) => ({ title: String((spine.scenes[i] || {}).title || s.place).slice(0, 80), present: String((spine.scenes[i] || {}).present || ''),
+    happens: String((spine.scenes[i] || {}).happens || ''), facts: String((spine.scenes[i] || {}).facts || ''), targets: s.beats.map(b => b.target.id), moments: {}, setups: {} })) }
+  const lenR = lnStoryLen(ctx), never = lnStoryNeverUse(la, ctx)
+  const gate = (si, cand) => { const one = lnStoryScenes(la, { scenes: [plan.scenes[si]] }, [[cand]], planTargets, ctx)[0]
+    const iss = listeningConversationAudit([one], planTargets, la, ctx).issues.filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS)$/.test(x.code))
+    one.turns.forEach(tn => lnStoryLineFaults(la.text(tn.pair)).forEach(d => iss.push({ code: 'LINE_QUALITY', detail: d })))
+    return iss.map(x => x.code + (x.detail ? ' (' + String(x.detail).replace(/^[A-Z_]+: /, '').slice(0, 60) + ')' : '')).join('; ') }
+  const ends = x => (String(x.thai || '').replace(/\s+/g, '').match(/(ครับ|ค่ะ|คะ)$/) || [''])[0]
+  for (let si = 0; si < nS; si++) {
+    const s = scenes[si], sp = plan.scenes[si], last = si === nS - 1
+    let r = null
+    try {
+      r = await call('O_listening_module_scene', 'THE DAY: ' + plan.title + ' — ' + plan.story + '. A = ' + spine.a + ' (man), B = ' + spine.b + ' (woman).' + fixedLine + '\nALL PLACES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + ': ' + x.happens).join(' | ') +
+        (si ? '\nFACTS SO FAR (keep true):\n' + facts.flat().map(x => '- ' + x).join('\n') : '') + '\n\nNOW: place ' + (si + 1) + ' of ' + nS + ' — "' + sp.title + '" — ' + sp.present + ': ' + sp.happens + '\n' +
+        'These reviewed exchanges happen here, IN THIS ORDER (each is three lines A, B, A about one lesson word; their Thai is fixed and checked):\n' + s.beats.map((b, k) => 'E' + (k + 1) + ' [' + b.target.surface + ' = ' + b.target.gloss + ']\n' + lnModuleBeatText(b)).join('\n') +
+        '\n\nYour job is ONLY the glue:\n1. BRIDGES: between exchanges (and ' + (si === 0 ? 'at the very start — a short greeting that fits where they are' : 'only if the place changes — one line that moves them here') + (last ? ', and a short goodbye at the very end' : '') + '), write at most ONE short bridge line where the next exchange would otherwise come from nowhere. Each bridge: ' +
+        'a complete natural spoken sentence of at most ' + lenR.max + ' Thai words, only simple everyday words a beginner knows' + (never.length ? ' (NOT: ' + never.join(' ') + ')' : '') + ', A ends with ครับ and says ผม, B ends with ค่ะ/คะ and says ฉัน, and it must alternate with the line before it (the speaker after an A line is B, and so on). No names. A bridge must not repeat or pre-empt an exchange.\n' +
+        '2. CHANGES: if a detail INSIDE an exchange (a time, number, place, person or thing) clashes with the day, the fixed facts or the lines before it, change ONLY that detail in the line(s) concerned — keep the lesson word, the grammar and the speakers. Do not rewrite for style. If nothing clashes, change nothing.\n' +
+        'Reply ONLY with JSON: {"bridges":[{"after":"START"|"E1"|"E2"|…,"speaker":"A","thai":"…","english":"…"}],"changes":[{"exchange":"E2","line":2,"thai":"…","english":"…","why":"…"}],"facts":["up to 4 short English facts this place made true"]}', 1500, 'LISTENING_GENERATION_CALLS')
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('⚠ LISTENING_MODULES scene ' + (si + 1) + ' glue call unusable: ' + String(e && e.message || e).slice(0, 100)); r = {} }
+    // the exchanges, with only the accepted detail changes
+    const beatLines = s.beats.map(b => b.lines.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english, _moduleId: b.id })))
+    const changed = new Map()
+    ;(r && Array.isArray(r.changes) ? r.changes : []).slice(0, 4).forEach(ch => {
+      const bi = Number(String(ch && ch.exchange).replace(/\D/g, '')) - 1, li = Number(ch && ch.line) - 1, b = s.beats[bi]
+      if (!b || !(li >= 0 && li < 3) || !ch.thai) return
+      const mod = beatLines[bi].map(l => ({ ...l })); mod[li] = { ...mod[li], thai: String(ch.thai).trim(), english: String(ch.english || mod[li].english).trim() }
+      const tg = { id: b.target.id, wordId: b.target.id, thai: b.target.surface, english: b.target.gloss, _trackTargets: planTargets.map(t => ({ id: t.id, wordId: t.id, thai: t.surface, english: t.gloss })) }
+      const ratio = lnEditRatio(b.lines[li].thai.replace(/\s+/g, ''), mod[li].thai.replace(/\s+/g, ''))
+      const probs = thaiModuleLinesProblems(mod.map(l => ({ ...l, prompt: '.' })), tg, ctx.vocab).filter(x => x !== 'prompt too short')
+      const g = gate(si, mod[li])
+      if (ratio > 0.45 || probs.length || g || ends(mod[li]) !== ends(b.lines[li])) { report.push({ scene: si + 1, exchange: b.id, line: li + 1, kept: 'original', why: ratio > 0.45 ? 'changed too much (' + ratio.toFixed(2) + ')' : (probs[0] || g || 'particle changed') }); return }
+      beatLines[bi][li] = mod[li]; changed.set(bi + ':' + li, true); report.push({ scene: si + 1, exchange: b.id, line: li + 1, kept: 'changed', from: b.lines[li].thai, to: mod[li].thai, why: String(ch.why || '').slice(0, 80) })
+    })
+    // assemble: START bridge, E1, bridge, E2 …
+    const seq = []; const bridgesAfter = new Map()
+    ;(r && Array.isArray(r.bridges) ? r.bridges : []).forEach(br => { const key = String(br && br.after || '').toUpperCase(); if (!br || !br.thai || bridgesAfter.has(key)) return; bridgesAfter.set(key, br) })
+    const tryBridge = (key) => { const br = bridgesAfter.get(key); if (!br) return
+      const prev = seq[seq.length - 1], cand = { speaker: br.speaker === 'B' ? 'B' : 'A', thai: String(br.thai).trim(), english: String(br.english || '').trim(), _bridge: true }
+      if (prev && prev.speaker === cand.speaker) { report.push({ scene: si + 1, bridge: key, kept: 'dropped', why: 'same speaker as the line before', thai: cand.thai }); return }
+      const nextSp = key === 'START' ? (beatLines[0] || [{}])[0].speaker : (beatLines[Number(key.replace(/\D/g, ''))] || [{}])[0].speaker
+      if (nextSp && nextSp === cand.speaker) { report.push({ scene: si + 1, bridge: key, kept: 'dropped', why: 'same speaker as the next line', thai: cand.thai }); return }
+      const g = gate(si, cand); if (g) { report.push({ scene: si + 1, bridge: key, kept: 'dropped', why: g, thai: cand.thai }); return }
+      seq.push(cand); report.push({ scene: si + 1, bridge: key, kept: 'bridge', thai: cand.thai }) }
+    tryBridge('START')
+    beatLines.forEach((bl, k) => { bl.forEach(l => seq.push(l)); tryBridge('E' + (k + 1)) })
+    written[si] = seq; facts[si] = (r && Array.isArray(r.facts) ? r.facts : []).slice(0, 4).map(x => String(x).slice(0, 140))
+  }
+  // module lines are vetted lines: the naturalness judge skips them (the bridges are judged)
+  scenes.forEach(s => s.beats.forEach(b => { THAI_MODULES.used.add(b.id); b.lines.forEach(l => THAI_MODULES.lines.set(_bankNorm(l.thai), { speaker: l.speaker, thai: l.thai, english: l.english, prompt: '.', target: b.target.surface, module: b.id })) }))
+  log && log('🧾 LISTENING_MODULES_MAP ' + JSON.stringify(written.map((w, si) => ({ scene: plan.scenes[si].title, place: scenes[si].place, lines: w.map(x => (x._bridge ? 'bridge' : x._moduleId) + ' ' + x.speaker + ': ' + x.thai) }))))
+  log && log('🧾 LISTENING_MODULES_REPORT ' + JSON.stringify({ changes: report.filter(r => r.kept === 'changed' || r.kept === 'original'), bridges: report.filter(r => r.bridge).map(r => r.kept) }))
+  const picks = scenes.map((s, i) => ({ scene: plan.scenes[i].title, place: s.place, beats: s.beats.map(b => ({ word: b.target.surface, id: b.id, job: b.job, safe: b.safe, stray: !!b.stray, reused: !!b.reused })) }))
+  return { plan, written, facts, picks, report, none, spine }
+}
+
 // v715 — each scene can be checked (grammar, naturalness, coherence, lesson words) as soon as it is written (owner's suggestion).
 // OFF: two paid runs each, blind-reviewed — with the check 5.05 / 4.85, without it 5.5 / 5.2 (its line fixes did not repair story
 // faults, and it replaced the three-round whole-story edit). Kept switchable for the tests and for later trials.
@@ -32766,7 +32910,7 @@ async function _lnComposeThaiStory(env, avoid) {
   // ── USAGE NOTES: how each lesson word is really used (when, by whom, a typical pattern), written fresh by the model once per track
   //    and shared by every later call; blind reviews S13–S19 kept marking the same words used in the wrong sense (ไหว for "convenient",
   //    นัด for booking a table, ไม่เชิง with no yes / no question before it, เลี้ยงดู for one afternoon) ──
-  if (env._lnUsageNotes == null) {
+  if (env._lnUsageNotes == null && !LN_MODULE_STORY.on) {
     env._lnUsageNotes = ''
     // the same per-word usage profiles the Daily writer uses (AI-derived, cached per word)
     try { await thaiEnsureUsageProfiles(targets.map(t => ({ thai: t.surface, english: t.gloss })), o, log) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
@@ -32778,6 +32922,9 @@ async function _lnComposeThaiStory(env, avoid) {
   // plan / fix replies ran out of tokens (paid run S21)
   // ── PLAN ──
   let plan = null
+  // v722 — the module-led prototype supplies the plan AND the written scenes (the model only adds bridges); anything it cannot build falls back to the model's own story
+  const pre = LN_MODULE_STORY.on ? await lnModuleStoryBuild(env, call, planTargets) : null
+  if (pre) { plan = pre.plan; env._lnModuleReport = pre }
   for (let attempt = 1; attempt <= 2 && !plan; attempt++) {
     try {
       const p = await call('O_listening_story_plan', 'TASK: plan ONE new conversation. The learner must hear EVERY ONE of these ' + planTargets.length + ' lesson words. They are fixed: never drop, replace or add a lesson word.\n' +
@@ -32858,6 +33005,7 @@ async function _lnComposeThaiStory(env, avoid) {
   const factsLine = () => { const f = factsLedger.flat(); return f.length ? '\nFACTS ESTABLISHED SO FAR (keep every one true; never contradict or repeat them):\n' + f.map(x => '- ' + x).join('\n') + '\n' : '' }
   const factsAsk = '\nAlso give "facts": up to 5 short English facts this scene made TRUE that later scenes must respect (who has, bought or lost what; where they are going next; what was decided; what was already asked and answered), e.g. {"turns":[…],"facts":["B paid for both bus tickets"]}.'
   for (let si = 0; si < nS; si++) {
+    if (pre) { written[si] = pre.written[si].map(x => ({ ...x })); factsLedger.push(pre.facts[si] || []); continue }
     const s = plan.scenes[si], st = sceneTargets(si), n = remainingTurns(si)
     const brief = 'STORY: "' + plan.title + '" — ' + plan.story + '\nALL SCENES: ' + plan.scenes.map((x, i) => (i + 1) + ') ' + x.title + (x.present ? ' [' + x.present + ']' : '') + ': ' + x.happens + (x.facts ? ' (true after it: ' + x.facts + ')' : '')).join(' | ') + '\n' +
       (si ? '\nTHE CONVERSATION SO FAR:\n' + soFar(si) + '\n' : '') + factsLine() +
@@ -33072,7 +33220,8 @@ async function _lnComposeThaiStory(env, avoid) {
   // (S32 / S33 blind reviews: ทุกท่าน to one man, ทานกันเลย by a man eating alone, ไม่ทราบว่า + a statement, ให้อภัย with nothing to
   // forgive — the whole-story editor names 3 faults a round and never reached them). A fix replaces that one line and is kept only if
   // it passes every line gate and keeps the line's lesson words. (v715: replaced by the scene check made as each scene is written)
-  if (!LN_SCENE_CHECK.on) {
+  const _protoRaw = !!(pre && LN_MODULE_STORY.noRepair)      // v722 prototype: the story is scored as built, with no edit rounds
+  if (!LN_SCENE_CHECK.on && !_protoRaw) {
     // S35: every fix the check proposed was refused (11 words for a 7-word belt; an untaught word) — the call is told the line length and
     // the words this learner does not know, and a refused fix gets ONE more try that names the reason
     const lenR = lnStoryLen(ctx)
@@ -33126,7 +33275,7 @@ async function _lnComposeThaiStory(env, avoid) {
   const hardOf = scs => listeningConversationAudit(scs, targets, la, ctx).issues.concat(conversationContinuityAudit(scs, la, targets)).filter(x => /^(CLOSED_VOCAB|TOKENIZATION_ERROR|TOO_COMPLEX|SPEAKER_IDENTITY|LINE_QUALITY|MERGED_SPEAKERS|MAX_TARGETS_PER_TURN|EXACT_DUPLICATE|NEAR_DUPLICATE|CONTINUITY)$/.test(x.code)).length
   const score = (scs, ni, ch) => hardOf(scs) * 10 + (ch.verdicts || []).filter(v => !v.pass).length * 4 + (ch.overall != null ? (5 - ch.overall) * 2 : 4) + ni.length
   let best = { written: written.map(w => w.slice()), natIssues, coh, score: score(scenes, natIssues, coh) }
-  for (let round = 1; round <= 3; round++) {
+  for (let round = 1; round <= (_protoRaw ? 0 : 3); round++) {
     const offs = []; let n0 = 0
     scenes.forEach(sc => { offs.push(n0); n0 += sc.turns.length })
     const flagged = new Map()
@@ -33184,6 +33333,7 @@ async function _lnComposeThaiStory(env, avoid) {
   }
   // a gate issue still left in a scene gets one more targeted rewrite (kept only if the scene's checks improve and the judges agree)
   for (let si = 0; si < nS; si++) {
+    if (_protoRaw) break
     const st = sceneTargets(si), pr = lnStorySceneProblems(la, sceneOf(si), si, nS, st, ctx).filter(p => p.code !== 'SCENE_TOO_SHORT')
     if (!pr.length) continue
     const before = written[si].slice()
@@ -33204,7 +33354,7 @@ async function _lnComposeThaiStory(env, avoid) {
   //    fixes left English with words the Thai does not have — blind reviews: English 6 / 10) ──
   for (let si = 0; si < nS; si++) {
     const w = written[si]
-    if (!w || !w.length) continue
+    if (!w || !w.length || pre) continue      // module exchanges keep their reviewed English; the bridges came with theirs
     try {
       const r = await call('O_listening_story_english', 'Translate each Thai line of this scene into natural, idiomatic English that says EXACTLY what the Thai says — nothing added (no "let\'s", "sorry", "please", "again" unless the Thai has it), nothing left out. ' +
         'A is a man, B a woman (' + (plan.scenes[si].present || plan.scenes[si].title) + '); a third person is "they" unless the Thai makes it clear.\n' + w.map((x, k) => (k + 1) + '. ' + x.speaker + ': ' + x.thai).join('\n') +

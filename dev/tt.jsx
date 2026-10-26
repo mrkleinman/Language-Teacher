@@ -9575,7 +9575,7 @@ function anthropicCacheBlocks(text) {
 }
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
-const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_module_scene: 'low', O_listening_module_spine: 'low', O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
 function anthropicRequestBody({ model, messages, maxTokens, json, effort }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -32839,7 +32839,7 @@ async function lnModuleStoryBuild(env, call, planTargets) {
         '\n\nYour job is ONLY the glue:\n1. BRIDGES: between exchanges (and ' + (si === 0 ? 'at the very start — a short greeting that fits where they are' : 'only if the place changes — one line that moves them here') + (last ? ', and a short goodbye at the very end' : '') + '), write at most ONE short bridge line where the next exchange would otherwise come from nowhere. Each bridge: ' +
         'a complete natural spoken sentence of at most ' + lenR.max + ' Thai words, only simple everyday words a beginner knows' + (never.length ? ' (NOT: ' + never.join(' ') + ')' : '') + ', A ends with ครับ and says ผม, B ends with ค่ะ/คะ and says ฉัน, and it must alternate with the line before it (the speaker after an A line is B, and so on). No names. A bridge must not repeat or pre-empt an exchange.\n' +
         '2. CHANGES: if a detail INSIDE an exchange (a time, number, place, person or thing) clashes with the day, the fixed facts or the lines before it, change ONLY that detail in the line(s) concerned — keep the lesson word, the grammar and the speakers. Do not rewrite for style. If nothing clashes, change nothing.\n' +
-        'Reply ONLY with JSON: {"bridges":[{"after":"START"|"E1"|"E2"|…,"speaker":"A","thai":"…","english":"…"}],"changes":[{"exchange":"E2","line":2,"thai":"…","english":"…","why":"…"}],"facts":["up to 4 short English facts this place made true"]}', 1500, 'LISTENING_GENERATION_CALLS')
+        'Reply ONLY with JSON: {"bridges":[{"after":"START"|"E1"|"E2"|…,"speaker":"A","thai":"…","english":"…"}],"changes":[{"exchange":"E2","line":2,"thai":"…","english":"…","why":"…"}],"facts":["up to 4 short English facts this place made true"]}', 2600, 'LISTENING_GENERATION_CALLS')
     } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('⚠ LISTENING_MODULES scene ' + (si + 1) + ' glue call unusable: ' + String(e && e.message || e).slice(0, 100)); r = {} }
     // the exchanges, with only the accepted detail changes
     const beatLines = s.beats.map(b => b.lines.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english, _moduleId: b.id })))
@@ -33151,7 +33151,7 @@ async function _lnComposeThaiStory(env, avoid) {
   let rejected = [], editorGrade = null
   // 3 rounds: more rounds made the track WORSE in blind review (S31: 10 rounds ran → 4.7 / 4.3; S29: ~3 rounds → 5.7 / 5.5) — each
   // fix can bring new faults the gates do not see
-  for (let round = 1; round <= (LN_SCENE_CHECK.on ? 1 : 3); round++) {
+  for (let round = 1; round <= (pre && LN_MODULE_STORY.noRepair ? 0 : LN_SCENE_CHECK.on ? 1 : 3); round++) {      // v722: the module-led prototype is scored as built
     const flat = build().flatMap((sc, si) => sc.turns.map((tn, k) => ({ si, k, tn })))
     let r = null, review = null
     // 1) FIND: a short call without the Thai word list (it thinks harder, at medium effort) reads the whole story the way the blind

@@ -14560,6 +14560,7 @@ function thaiTangTaeNeedsThueng() { return false }
 // The model invented romanisation per call, so one track showed เดิน as
 // doern/dəən/dern, ไป as pai/bpai, ตอน as dtawn/dɔɔn. The dictionary is the source
 // of truth: any token that IS a dictionary word must use that entry's phonetic.
+const THAI_PHONETIC_OVERRIDES = Object.freeze({ 'แต่': 'dtàae', 'เพิ่ง': 'phôoeng' })
 function buildThaiPhoneticLexicon(vocab, extra) {
   const lex = new Map()
   // 1. CANONICAL bank phonetics, read-only (never written back). Saved vocab can hold
@@ -14568,6 +14569,8 @@ function buildThaiPhoneticLexicon(vocab, extra) {
     if (!d || !d.t || !d.ph || (d.qcStatus && LEXICALLY_INVALID_STATUSES.has(d.qcStatus))) return
     if (!lex.has(d.t)) lex.set(d.t, loadCanonicalThaiPhonetic(d.ph, d.t))
   })
+  // v722 (owner's list): two readings the stored entries get wrong against the app's own convention (แ is "aae", long əə is "ooe")
+  Object.entries(THAI_PHONETIC_OVERRIDES).forEach(([k, v]) => lex.set(k, v))
   // 2. approved grammar / function-word phonetics
   Object.entries(extra || THAI_FUNCTION_PHONETICS).forEach(([k, v]) => { if (!lex.has(k)) lex.set(k, thaiOiDisplay(v, k)) })
   // 3. the learner's own custom words (not in the bank)
@@ -14652,7 +14655,8 @@ function thaiSplitTokensAtSpaces(thai, words, lex) {
   return out
 }
 const _THAI_PHRASE_SPLIT = new Map()
-const THAI_PHRASE_ENTRIES = new Set(['สวัสดีทุกคน', 'เดินทางปลอดภัย', 'เอากลับบ้าน', 'มาจาก', 'นานเท่าไหร่'])
+// v722 (owner's list): ได้เลย / จริงเหรอ / ก็ได้ are read as two words, not one hyphenated block (dâi looei, jing rǒoe, gâw dâi)
+const THAI_PHRASE_ENTRIES = new Set(['สวัสดีทุกคน', 'เดินทางปลอดภัย', 'เอากลับบ้าน', 'มาจาก', 'นานเท่าไหร่', 'ได้เลย', 'จริงเหรอ', 'ก็ได้'])
 function thaiPhraseReadingSplit(th, ph, lex) {
   if (!dailyV693On() || !th || !ph || !/-/.test(ph) || !lex) return ph
   const key = th + '\u0001' + ph
@@ -14685,6 +14689,23 @@ function thaiPhraseReadingSplit(th, ph, lex) {
       let k = 0; out = words.map(w => { const n = syl(w).length, seg = own.slice(k, k + n).join('-'); k += n; return seg }).join(' ') } } catch (e) {}
   _THAI_PHRASE_SPLIT.set(key, out); return out
 }
+// v722 — the ways a Thai token can be cut into dictionary words, fewest pieces first; null when some part is not in the dictionary
+function thaiLexPieces(th, lex) {
+  const memo = new Map()
+  const best = (i) => {
+    if (i >= th.length) return []
+    if (memo.has(i)) return memo.get(i)
+    let res = null
+    for (let j = th.length; j > i; j--) {
+      const w = th.slice(i, j)
+      if (!lex.has(w) || (typeof thaiClusterBoundaryOk === 'function' && !thaiClusterBoundaryOk(th, j))) continue
+      const rest = best(j)
+      if (rest && (!res || rest.length + 1 < res.length)) res = [w].concat(rest)
+    }
+    memo.set(i, res); return res
+  }
+  return best(0)
+}
 function finaliseThaiTrackPhonetics(pairs, lex, onLog) {
   const stats = { pairs: 0, canonicalTokens: 0, derivedTokens: 0, derivedLines: 0, alignmentIssues: 0 }
   const keys = [...lex.keys()].filter(Boolean).sort((a, b) => b.length - a.length)
@@ -14714,6 +14735,11 @@ function finaliseThaiTrackPhonetics(pairs, lex, onLog) {
         const th = w.p || w.thai
         // v655 §11 — ๆ repeats the previous word: it is read as that word again (never an unknown token)
         if (th === '\u0E46') { const prev = w2[w2.length - 1]; w2.push({ ...w, ph: (prev && prev.ph) || '', _phSrc: 'repetition' }); if (!(prev && prev.ph)) missing.push(th); return }
+        // v722 (owner's list: "tòn-glaang-khuun" for ตอนกลางคืน — the model had written the whole phrase as ONE token the dictionary does not
+        // hold, so its own romanisation was kept) — an unknown token that is wholly made of dictionary words is split into them and read
+        // from the dictionary (dtaawn glaang-khuuen); only a token with a part the dictionary lacks keeps the model's reading
+        const parts = !lex.has(th) && /[\u0E00-\u0E7F]/.test(th) ? thaiLexPieces(th, lex) : null
+        if (parts && parts.length > 1) { parts.forEach(pc => { stats.canonicalTokens++; w2.push({ ...w, p: pc, thai: undefined, ph: lex.get(pc), _phSrc: 'canonical', _split: true }) }); return }
         w2.push(_tokPh(w, th, idx))
       })
       function _tokPh(w, th, idx) {
@@ -16882,6 +16908,33 @@ function thaiFinalSpeakerOrderPass(pairs) {
     g.forEach((p, k) => { if (p.speaker !== want[k] && (p.speaker === 'A' || p.speaker === 'B')) { out[i + k] = thaiSwapSpeakerLine(p, want[k]); fixed++ } })
     i += 2
   }
+  return { pairs: out, fixed }
+}
+// v722 (owner's list; blind reviews of D18–D20: "see Somchai (Somchai) again", "Say goodbye to Nida and tell her to take care" over a line with no goodbye):
+//   · a name repeated in brackets straight after itself — "Somchai (Somchai)" — is written once
+//   · a cue that opens "Say goodbye (to X)" over a Thai line with no goodbye in it drops that opening and keeps what the line really says
+const THAI_GOODBYE_RE = /(ลาก่อน|เจอกัน|ไปก่อน|กลับก่อน|บาย|ไปนะ|กลับนะ|ลา(?![a-z])|ไว้เจอ|พบกัน|แล้วพบ)/
+function thaiCueTidy(cue, thai) {
+  let c = String(cue || '')
+  if (!c) return c
+  c = c.replace(/\b([A-Z][a-z]+) \(\1\)/g, '$1')
+  if (/^\s*Say goodbye\b/i.test(c) && !THAI_GOODBYE_RE.test(String(thai || '').replace(/\s+/g, ''))) {
+    const rest = c.replace(/^\s*Say goodbye(?: to [A-Z][a-z]+)?(?:,|\s+and)?\s*/i, '').trim()
+    if (rest && !/^[.!]*$/.test(rest)) c = rest.charAt(0).toUpperCase() + rest.slice(1)
+  }
+  return c
+}
+function thaiFinalCueTidyPass(pairs) {
+  let fixed = 0
+  const out = (pairs || []).map(p => {
+    if (!p || !p.prompt) return p
+    const np0 = thaiCueTidy(p.prompt, p.thai)
+    if (np0 === p.prompt) return p
+    fixed++
+    const np = { ...p, prompt: np0 }
+    if (p._semVerdicts) np._semVerdicts = { cue: p._semVerdicts.cue ? { ...p._semVerdicts.cue, key: _semCacheKey('cue', np) } : null, nat: p._semVerdicts.nat ? { ...p._semVerdicts.nat, key: _semCacheKey('nat', np) } : null }
+    return np
+  })
   return { pairs: out, fixed }
 }
 function thaiFinalParticlePass(pairs) {
@@ -23674,6 +23727,8 @@ async function finaliseMainTrack(track, adapter, ctx) {
     if (so.fixed) log && log('  🔧 LOCAL_REPAIR speaker order (no paid call): ' + so.fixed + ' line(s) put in their A–B–A seat — judged again below') }
   if (dailyV693On() && adapter.lang === 'th') { const fp = thaiFinalParticlePass(t.pairs); t = { ...t, pairs: fp.pairs }
     if (fp.fixed) log && log('  🔧 LOCAL_REPAIR final particle (no paid call): ' + fp.fixed + ' line(s) now end with ครับ / ค่ะ / คะ') }
+  if (dailyV693On() && adapter.lang === 'th') { const ct = thaiFinalCueTidyPass(t.pairs); t = { ...t, pairs: ct.pairs }
+    if (ct.fixed) log && log('  🔧 LOCAL_REPAIR cue wording (no paid call): ' + ct.fixed + ' cue(s) tidied (a name repeated in brackets, or "Say goodbye" over a line with no goodbye)') }
 
   // v655 §22 — the learner text is FROZEN here (after quota recovery and coherence repair); pronunciation is
   // built from this exact text, and any later text change is detected as STALE and rebuilt before the audit
@@ -23703,7 +23758,7 @@ async function finaliseMainTrack(track, adapter, ctx) {
       if (qf.recovered && qf.recovered.length) {
         // v715 (D13 blind reviews: ช่วย went out B–A–B — its two replacement lines were written after the speaker-order pass) — the
         // replacements take their A–B–A seat and closing particle too, before their pronunciation is built and they are judged
-        { const so = thaiFinalSpeakerOrderPass(t.pairs); const fp = thaiFinalParticlePass(so.pairs); t = { ...t, pairs: fp.pairs }
+        { const so = thaiFinalSpeakerOrderPass(t.pairs); const fp0 = thaiFinalParticlePass(so.pairs); const fp = { ...fp0, pairs: thaiFinalCueTidyPass(fp0.pairs).pairs }; t = { ...t, pairs: fp.pairs }
           if (so.fixed || fp.fixed) log && log('  🔧 LOCAL_REPAIR after final recovery (no paid call): speaker order ' + so.fixed + ' · final particle ' + fp.fixed + ' — judged again below') }
         try { const m2 = await adapter.finaliseMetadata(t.pairs, { ...c, track: t }); t = { ...t, pairs: m2.pairs }; meta.alignmentIssues = m2.alignmentIssues || meta.alignmentIssues } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
         try { t = { ...t, pairs: thaiCueGuaranteePass(t.pairs, t, log) } } catch (e) {}

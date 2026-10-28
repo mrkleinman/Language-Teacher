@@ -151,6 +151,7 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
     // --yes-and N: the yes-and TEST format (v723 handover) for the first N target words; the default Daily path is not used
     if (process.argv.includes('--yes-and')) {
       C.ev('THAI_YESAND').on = true
+      if (arg('yes-and-per')) C.ev('THAI_YESAND').perConv = Number(arg('yes-and-per'))     // k words per conversation (4 → a 30-word track is 90 lines)
       if (process.argv.includes('--yes-and-batch')) C.ev('THAI_YESAND').mode = 'batch'     // one call per conversation (cheap mode)
       try { const runIdApp = C.aiBeginRun('daily-track'); const nW = Number(arg('yes-and')) || picked.length
         await C.ev('thaiModulesLoad')(null)

@@ -32750,6 +32750,16 @@ const YESAND_BANNED = ['ต้องการ', 'โอเค', 'แน่ใจ
 function yesAndPlan(words, opts) {
   const o = { ...THAI_YESAND, ...(opts || {}) }, N = words.length
   if (N < 2) return { convs: [], gapMin: 0, ok: false }
+  // perConv > 2 (v723, owner: "a track is 30 words for 90 lines"): k words per conversation keeps the track at the Daily's length — 30 words need 60 word-slots
+  // (2 conversations each), so 15 conversations of 4 words = 90 lines. Pass one puts every word's first conversation (2 mentions), pass two the second
+  // (1 mention), half a track later: word i is in conversation floor(i / k) and floor((N + i) / k).
+  if (o.perConv > 2) {
+    const k = o.perConv, G = Math.ceil(2 * N / k), convs = Array.from({ length: G }, (_, i) => ({ idx: i, words: [] }))
+    words.forEach((w, i) => { convs[Math.floor(i / k)].words.push({ word: w, mentions: o.mentions[0], exposure: 1 }); convs[Math.min(G - 1, Math.floor((N + i) / k))].words.push({ word: w, mentions: o.mentions[1], exposure: 2 }) })
+    const where = words.map((w, i) => [Math.floor(i / k), Math.min(G - 1, Math.floor((N + i) / k))])
+    const gapMin = Math.min(...where.map(([a, b]) => b - a)), twice = where.some(([a, b]) => a === b)
+    return { convs, gapMin, ok: !twice && gapMin >= o.minGap + 1, lines: G * o.lines, perConv: k }
+  }
   const g = Math.max(1, Math.floor(N / 2)), convs = Array.from({ length: N }, (_, i) => ({ idx: i, words: [] }))
   words.forEach((w, i) => { const a = i, b = (i + g) % N, first = Math.min(a, b), second = Math.max(a, b)
     convs[first].words.push({ word: w, mentions: o.mentions[0], exposure: 1 }); convs[second].words.push({ word: w, mentions: o.mentions[1], exposure: 2 }) })

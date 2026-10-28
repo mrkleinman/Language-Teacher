@@ -26,6 +26,14 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     T('Y1', 'a track too small for the gap rule says so (ok = false) instead of silently placing the word closer', small.convs.length === 6 && small.ok === false && small.gapMin < 4, small.gapMin)
   }
   {
+    // 90 lines: 30 words, 4 per conversation → 15 conversations of 6 lines; every word still has 3 exposures in 2 conversations
+    const p4 = plan(words(30), { perConv: 4 }), per = new Map()
+    p4.convs.forEach(cv => cv.words.forEach(x => { if (!per.has(x.word.id)) per.set(x.word.id, []); per.get(x.word.id).push({ idx: cv.idx, m: x.mentions }) }))
+    const okW = [...per.values()].every(v => v.length === 2 && v[0].idx !== v[1].idx && v[0].m + v[1].m === 3 && Math.abs(v[0].idx - v[1].idx) >= 4)
+    T('Y1', 'perConv 4: 30 words → 15 conversations = 90 lines (the Daily length); every conversation carries 4 words, every word 3 exposures in 2 conversations at least 4 apart',
+      p4.convs.length === 15 && p4.lines === 90 && p4.convs.every(cv => cv.words.length === 4) && okW && p4.ok, { n: p4.convs.length, lines: p4.lines, gapMin: p4.gapMin, sizes: p4.convs.map(c => c.words.length) })
+  }
+  {
     const vocab = c.initVocab(), taught = new Set(['ไป', 'กิน', 'ข้าว', 'ร้าน', 'นี้', 'ดี', 'ราคา', 'เท่าไหร่', 'ผม', 'ฉัน', 'ที่', 'ไหม'])
     vocab.forEach(w => { if (taught.has(w.thai)) { w.status = 'learning'; w.repCount = 5; w.lastSeen = Date.now() } else if (w.status !== 'locked') { w.status = 'new'; w.repCount = 0; w.lastSeen = null } })
     const tg = vocab.find(w => w.thai === 'ราคา'), vctx = c.buildThaiTrackVocabContext(vocab, [tg], [])

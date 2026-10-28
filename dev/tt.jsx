@@ -9577,7 +9577,7 @@ function anthropicCacheBlocks(text) {
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
 const ANTHROPIC_STAGE_EFFORT = Object.freeze({ Y_batch: 'low', Y_fix: 'low', Y_judge: 'low', Y_seed: 'low', Y_line: 'low', Y_gate: 'low', Y_final: 'low', O_listening_module_scene: 'low', O_listening_module_spine: 'low', O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
-function anthropicRequestBody({ model, messages, maxTokens, json, effort }) {
+function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThinking }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
   let marked = false
@@ -9589,7 +9589,8 @@ function anthropicRequestBody({ model, messages, maxTokens, json, effort }) {
   // Gemini ran with thinking off and a short cap; Haiku thinks adaptively and thinking counts toward max_tokens, so the cap
   // leaves room for it (within the ceiling the server function enforces).
   const max_tokens = Math.min(ANTHROPIC_CONFIG.maxTokensCeiling, Math.max(2048, Math.round((maxTokens || 1200) * 3)))
-  const body = { model, max_tokens, messages: m.messages, thinking: { type: 'adaptive' }, output_config: { effort: effort || ANTHROPIC_CONFIG.effort } }
+  const body = { model, max_tokens, messages: m.messages, thinking: { type: noThinking ? 'disabled' : 'adaptive' }, output_config: { effort: effort || ANTHROPIC_CONFIG.effort } }
+  if (noThinking) delete body.output_config.effort      // v723: the yes-and stages write one short line; thinking was ~85% of their output tokens
   if (m.system) body.system = m.system
   if (fmt) body.output_config.format = fmt.format
   return { body, wrapped: !!(fmt && fmt.wrapped), structured: !!fmt, loose: json === true }
@@ -9657,7 +9658,7 @@ function aiRunSpend(runId, provider) {
 // ── the Anthropic transport (one ledger row per HTTP attempt, like Gemini) ──────────────────────────────────────────────
 async function anthropicRequest({ model, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId }) {
   const stageNow = stage || aiStageOf(_promptText, _chain)
-  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow] })
+  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow], noThinking: /^Y_/.test(String(stageNow)) && THAI_YESAND.noThinking })
   const latched = AI_ANTHROPIC_LATCH.get(runId)
   const notSent = (why, err) => { const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens }); row.latched = true; aiRecordEnd(row, { http: null, ok: false, error: why }); throw err }
   if (latched) notSent('LATCHED: ' + latched.fatalProvider.reason, latched)
@@ -32742,7 +32743,7 @@ const LN_STORY_WORD_CAP = { maxWords: 25 }
 // cannot be written cleanly is DROPPED, never padded. A word's exposures are peppered around the track: see yesAndPlan.
 // EXPOSURE = one line that contains the word (a line naming it twice is one exposure). A conversation names a word at most twice; every word
 // gets 3 exposures in 2 conversations (2 + 1) at least `minGap` conversations apart, and a conversation carries 2 target words.
-const THAI_YESAND = { on: false, lean: true, mode: 'lines', lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
+const THAI_YESAND = { on: false, lean: true, mode: 'lines', noThinking: true, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
 const YESAND_BANNED = ['ต้องการ', 'โอเค', 'แน่ใจ', 'อ๋อ', 'สักครู่', 'ปั่นจักรยาน', 'แล้วไหม']
 // words → conversations. Word i meets conversation i and conversation (i + g) mod N, g = floor(N/2): every conversation then holds exactly two
 // words, every word sits in exactly two conversations, and they are N - g ≥ g apart. The earlier conversation names the word twice, the later once.
@@ -32833,6 +32834,16 @@ async function yesAndConversation(conv, env) {
 // (still yes-and: each line answers the one before and adds one thing), every line then goes through the SAME mechanical checks, only a failing
 // line is asked for again on its own, and ONE judge call replaces the per-line gates and the final check. About 2.5 calls per conversation
 // instead of about 21. It departs from the handover's "one line at a time"; whether the quality holds is for the native speaker to mark.
+// formatting slips are repaired locally, never asked for again: a particle in the middle of a line is dropped and the line ends with its own
+// speaker's particle (man ครับ; woman ค่ะ, or คะ on a question)
+function yesAndFixParticles(l) {
+  let t = String(l.thai || '').trim(); if (!t) return l
+  t = t.replace(/(ครับ|ค่ะ|คะ|ค่ะ)(?=\s*[ก-๙])/g, ' ').replace(/\s{2,}/g, ' ').trim()
+  const q = THAI_QUESTION_RE.test(t.replace(/\s+/g, '')) || /\?\s*$/.test(String(l.english || ''))
+  t = t.replace(/(ครับ|ค่ะ|คะ)\s*$/, '').trim()
+  t = t + (l.speaker === 'A' ? 'ครับ' : q ? 'คะ' : 'ค่ะ')
+  return { ...l, thai: t }
+}
 async function yesAndConversationBatch(conv, env) {
   const { vocab, call, log, ctxFor } = env, words = conv.words.map(x => x.word), k = conv.idx + 1
   const vctx = ctxFor(words), allowed = [...(vctx.allowedThaiWords || vctx.allowedSet || [])]
@@ -32856,14 +32867,15 @@ async function yesAndConversationBatch(conv, env) {
       '\nOutput exactly 7 lines: SEED|<sentence> then 1|<Thai>||<English> … 6|<Thai>||<English>, nothing else.', 1800); out.calls++ } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; out.why = 'no reply'; continue }
     const rows = String(raw || '').split('\n').map(x => x.trim()), sd = rows.find(x => /^SEED\|/.test(x)); out.seed = sd ? sd.replace(/^SEED\|/, '').trim() : out.seed
     let lines = [1, 2, 3, 4, 5, 6].map(n => { const r = rows.find(x => new RegExp('^' + n + '\\|').test(x)); if (!r || !r.includes('||')) return null; const [thai, english] = r.replace(/^\d\|/, '').split('||').map(x => x.trim()); return { speaker: n % 2 ? 'A' : 'B', thai, english } })
+    if (lines.every(l => l && l.thai)) lines = lines.map(yesAndFixParticles)
     if (lines.some(l => !l || !l.thai)) { out.why = 'the reply did not hold six lines'; log && log('  ✂ YES_AND conversation ' + k + ' try ' + ct + ' failed — ' + out.why); continue }
     // only a failing line is asked for again (≤ 2 tries per line, ≤ 4 asks in all)
     let asks = 0, pr = problemsOf(lines)
-    while (pr.length && asks < 4) {
+    while (pr.length && asks < 3) {
       const f = pr[0]; asks++
       let fixed = null
       try { const r = await call('Y_fix', 'Six lines of a short Thai scene (man A, woman B, alternating). Rewrite ONLY line ' + (f.i + 1) + ' (spoken by ' + (lines[f.i].speaker === 'A' ? 'the man: ผม, ends ครับ' : 'the woman: ฉัน, ends ค่ะ / คะ') + ') so it passes. It was rejected: ' + f.why + '\nSCENE: ' + out.seed + '\n' + lines.map((l, j) => (j + 1) + '. ' + l.speaker + ': ' + l.thai + ' (' + l.english + ')').join('\n') +
-        '\nLESSON WORDS: ' + wordRows + '\nKeep the yes-and flow: answer the line before, add one small thing, do not contradict the others.' + rulesTxt + '\nOutput exactly ONE line: <Thai>||<English>', 400); out.calls++
+        '\nLESSON WORDS: ' + wordRows + '\nKeep the yes-and flow: answer the line before, add one small thing, do not contradict the others. ' + lnStoryLen(env.ctx).min + '–' + lnStoryLen(env.ctx).max + ' Thai words, one end particle at the very end, only simple everyday words a beginner knows (avoid the words named above).\nOutput exactly ONE line: <Thai>||<English>', 250); out.calls++
         const m = String(r || '').split('\n').map(x => x.trim()).find(x => x.includes('||')); if (m) { const [thai, english] = m.replace(/^\d\|/, '').split('||').map(x => x.trim()); fixed = { speaker: lines[f.i].speaker, thai, english } } } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
       if (fixed) lines = lines.map((l, j) => j === f.i ? fixed : l)
       pr = problemsOf(lines)

@@ -26,6 +26,15 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     T('Y1', 'a track too small for the gap rule says so (ok = false) instead of silently placing the word closer', small.convs.length === 6 && small.ok === false && small.gapMin < 4, small.gapMin)
   }
   {
+    // the closing particle follows the LAST clause (the D-run bridge 064: "จำได้หมดแล้วเหรอ เก่งจังเลยคะ" ended a statement with the question particle)
+    const f = c.ev('yesAndFixParticles')
+    const a = f({ speaker: 'B', thai: 'จำได้หมดแล้วเหรอ เก่งจังเลยคะ', english: "You've remembered them all? So impressive!" }).thai, b = f({ speaker: 'B', thai: 'ไปไหนดี', english: 'Where to?' }).thai
+    T('Y5', 'a woman line whose LAST clause is a statement ends with ค่ะ even when an earlier clause is a question; a real question still ends with คะ', a === 'จำได้หมดแล้วเหรอ เก่งจังเลยค่ะ' && b === 'ไปไหนดีคะ', [a, b])
+    const vocab = c.initVocab(), lex = c.ev('buildThaiPhoneticLexicon')(vocab)
+    const r = c.ev('finaliseThaiTrackPhonetics')([{ speaker: 'B', thai: 'ฉันช่วยจำได้ค่ะ', phonetic: '', english: 'x', words: ['ฉัน', 'ช่วย', 'จำได้', 'ค่ะ'].map(w => ({ p: w, e: '' })) }], lex, () => {})
+    T('Y5', 'จำได้ is read as two words (jam dâi), not one hyphenated block', /jam dâi/.test((r.pairs || r)[0].phonetic), (r.pairs || r)[0].phonetic)
+  }
+  {
     // 90 lines: 30 words, 4 per conversation → 15 conversations of 6 lines; every word still has 3 exposures in 2 conversations
     const p4 = plan(words(30), { perConv: 4 }), per = new Map()
     p4.convs.forEach(cv => cv.words.forEach(x => { if (!per.has(x.word.id)) per.set(x.word.id, []); per.get(x.word.id).push({ idx: cv.idx, m: x.mentions }) }))

@@ -14658,7 +14658,7 @@ function thaiSplitTokensAtSpaces(thai, words, lex) {
 }
 const _THAI_PHRASE_SPLIT = new Map()
 // v722 (owner's list): ได้เลย / จริงเหรอ / ก็ได้ are read as two words, not one hyphenated block (dâi looei, jing rǒoe, gâw dâi)
-const THAI_PHRASE_ENTRIES = new Set(['สวัสดีทุกคน', 'เดินทางปลอดภัย', 'เอากลับบ้าน', 'มาจาก', 'นานเท่าไหร่', 'ได้เลย', 'จริงเหรอ', 'ก็ได้'])
+const THAI_PHRASE_ENTRIES = new Set(['สวัสดีทุกคน', 'เดินทางปลอดภัย', 'เอากลับบ้าน', 'มาจาก', 'นานเท่าไหร่', 'ได้เลย', 'จริงเหรอ', 'ก็ได้', 'จำได้'])
 function thaiPhraseReadingSplit(th, ph, lex) {
   if (!dailyV693On() || !th || !ph || !/-/.test(ph) || !lex) return ph
   const key = th + '\u0001' + ph
@@ -16915,7 +16915,8 @@ function thaiFinalSpeakerOrderPass(pairs) {
 // v722 (owner's list; blind reviews of D18–D20: "see Somchai (Somchai) again", "Say goodbye to Nida and tell her to take care" over a line with no goodbye):
 //   · a name repeated in brackets straight after itself — "Somchai (Somchai)" — is written once
 //   · a cue that opens "Say goodbye (to X)" over a Thai line with no goodbye in it drops that opening and keeps what the line really says
-const THAI_GOODBYE_RE = /(ลาก่อน|เจอกัน|ไปก่อน|กลับก่อน|บาย|ไปนะ|กลับนะ|ลา(?![a-z])|ไว้เจอ|พบกัน|แล้วพบ)/
+// a real farewell word; "see you …" (เจอกัน / ไว้เจอ / พบกัน) is a parting line, not the word goodbye: its cue says what is said ("Say you will see her on Friday"), never "Say goodbye"
+const THAI_GOODBYE_RE = /(ลาก่อน|ไปก่อน|กลับก่อน|บาย|ไปนะ|กลับนะ|ลา(?![a-z]))/
 function thaiCueTidy(cue, thai) {
   let c = String(cue || '')
   if (!c) return c
@@ -32870,7 +32871,9 @@ async function yesAndConversation(conv, env) {
 function yesAndFixParticles(l) {
   let t = String(l.thai || '').trim(); if (!t) return l
   t = t.replace(/(ครับ|ค่ะ|คะ|ค่ะ)(?=\s*[ก-๙])/g, ' ').replace(/\s{2,}/g, ' ').trim()
-  const q = THAI_QUESTION_RE.test(t.replace(/\s+/g, '')) || /\?\s*$/.test(String(l.english || ''))
+  // the closing particle follows the LAST clause ("จำได้หมดแล้วเหรอ เก่งจังเลย" ends a statement: ค่ะ, even though an earlier clause is a question)
+  const lastClause = t.split(/\s+/).filter(Boolean).pop() || t
+  const q = THAI_QUESTION_RE.test(lastClause.replace(/\s+/g, '')) || /\?\s*$/.test(String(l.english || '').trim())
   t = t.replace(/(ครับ|ค่ะ|คะ)\s*$/, '').trim()
   t = t + (l.speaker === 'A' ? 'ครับ' : q ? 'คะ' : 'ค่ะ')
   return { ...l, thai: t }
@@ -32970,31 +32973,44 @@ function thaiYesAndOrder(order, vocab) {
   return rows.slice().sort((a, b) => (rank(a.sc) - rank(b.sc)) || ((first.get(a.sc || '~')) - (first.get(b.sc || '~'))) || (a.i - b.i)).map(r => r.t)
 }
 async function thaiYesAndBridges(pairs, vocab, o, log) {
-  const out = { asked: 0, inserted: 0, dropped: 0, calls: 0 }
+  const out = { asked: 0, inserted: 0, dropped: 0, calls: 0, retried: 0 }
   const isC = p => p && p.pairType === 'content' && p.targetId != null && !p._framing
   const spots = []
   for (let i = 0; i < pairs.length - 1; i++) { const a = pairs[i], b = pairs[i + 1]
-    if (isC(a) && isC(b) && a.targetId !== b.targetId && a.speaker === b.speaker && (a.speaker === 'A' || a.speaker === 'B')) spots.push({ i, a, b, sp: a.speaker === 'A' ? 'B' : 'A' }) }
+    if (isC(a) && isC(b) && a.targetId !== b.targetId && a.speaker === b.speaker && (a.speaker === 'A' || a.speaker === 'B')) {
+      // the previous exchange's last two lines and ALL the next exchange's lines (up to three), so the bridge answers the one and still fits the other
+      const prev = [], next = []; for (let k = i; k >= 0 && prev.length < 2 && isC(pairs[k]) && pairs[k].targetId === a.targetId; k--) prev.unshift(pairs[k])
+      for (let k = i + 1; k < pairs.length && next.length < 3 && isC(pairs[k]) && pairs[k].targetId === b.targetId; k++) next.push(pairs[k])
+      spots.push({ i, a, b, prev, next, sp: a.speaker === 'A' ? 'B' : 'A' }) } }
   out.asked = spots.length; if (!spots.length) return out
   const lenR = lnStoryLen({ complexity: getLearnerComplexityContract({ lang: 'th', vocab }) })
   const vctx = buildThaiTrackVocabContext(vocab, o.targets || [], [])
-  let arr = []
-  try {
+  const fmt = (l) => '    ' + l.speaker + ': ' + l.thai + ' (' + (l.english || '') + ')'
+  const ask = async (list, reasons) => {
     const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, stage: 'Y_bridge', maxTokens: 1500, temperature: 0.8, messages: [{ role: 'user', content: thaiGuidePrefix() +
-      'Two Thai friends, a man (A: ผม, ends ครับ) and a woman (B: ฉัน, ends ค่ะ / คะ), practise short exchanges one after another. Between some exchanges there is a GAP: the same person speaks the last line of one exchange and the first line of the next, so the other person needs ONE short line in between. For each gap write that line, YES-AND: it takes what was just said as true and answers it (yes) and adds one small thing that leads naturally into the NEXT line (and), as a real conversation would move on. The two outer lines are fixed; do not repeat or pre-empt the next line; invent no fact that contradicts either.\n' +
-      'THE CHAIN (the owner\'s picture): A says something; B says "yes, and…" and brings up the NEXT WORD; A replies; B says "yes, and…" and brings up the next word, and so on. So each bridge, when it sounds natural, brings up the NEXT WORD named for its gap (use it in the bridge); if that would sound forced, lead into it without naming it.\n' +
+      'Two Thai friends, a man (A: ผม, ends ครับ) and a woman (B: ฉัน, ends ค่ะ / คะ), practise short exchanges one after another. Between some exchanges there is a GAP: the same person speaks the last line of one exchange and the first line of the next, so the other person needs ONE short line in between. For each gap write that line, YES-AND: it takes what was just said as true and ANSWERS it (yes), and adds one small thing that leads naturally into the next exchange (and), as a real conversation would move on.\n' +
+      'THE CHAIN: A says something; B says "yes, and…" and brings up the NEXT WORD; A replies; B says "yes, and…" and brings up the next word, and so on. So each bridge, when it sounds natural, uses the NEXT WORD named for its gap; if that would sound forced, lead into it without naming it.\n' +
+      'The bridge must (1) respond to what the previous exchange just ended on, and (2) fit ALL the lines of the next exchange: do not contradict them, do not ask what they answer, do not say what they say, and do not move to a new place or time they do not have. The exchanges themselves are fixed.\n' +
       'Each bridge: a complete natural spoken sentence of at most ' + lenR.max + ' Thai words (the end particle is not counted), only simple everyday words a beginner knows, the speaker named for the gap, one end particle at the very end (A ครับ; B ค่ะ, or คะ on a question), no names.\n\n' +
-      spots.map((s, k) => { const nt = (o.targets || []).find(t => t && t.id === s.b.targetId); return 'GAP ' + (k + 1) + ' — bridge speaker ' + s.sp + (nt ? ' — NEXT WORD: ' + nt.thai + ' (' + (nt.english || '') + ')' : '') + ':\n  ' + s.a.speaker + ': ' + s.a.thai + ' (' + (s.a.english || '') + ')\n  [' + s.sp + ': your bridge line]\n  ' + s.b.speaker + ': ' + s.b.thai + ' (' + (s.b.english || '') + ')' }).join('\n') +
+      list.map(s => { const k = spots.indexOf(s) + 1, nt = (o.targets || []).find(t => t && t.id === s.b.targetId)
+        return 'GAP ' + k + ' — bridge speaker ' + s.sp + (nt ? ' — NEXT WORD: ' + nt.thai + ' (' + (nt.english || '') + ')' : '') + (reasons && reasons.get(s) ? ' — YOUR LAST TRY WAS REFUSED: ' + reasons.get(s) : '') + '\n  END OF THE PREVIOUS EXCHANGE:\n' + s.prev.map(fmt).join('\n') + '\n  [' + s.sp + ': your bridge line]\n  THE NEXT EXCHANGE:\n' + s.next.map(fmt).join('\n') }).join('\n\n') +
       '\n\nReply ONLY with JSON: {"bridges":[{"gap":1,"thai":"…","english":"…"}]}' }] })
     out.calls++
-    const t = String(raw || '').replace(/```json|```/g, ''); arr = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).bridges || []
-  } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ YES_AND_DAILY bridges unusable: ' + String(e && e.message || e).slice(0, 100)); return out }
-  const made = []
-  arr.forEach(b => { const k = Number(b && b.gap) - 1, s = spots[k]; if (!s || !b.thai) return
+    const t = String(raw || '').replace(/```json|```/g, ''); return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).bridges || []
+  }
+  const made = [], refused = new Map()
+  const judge = (arr, list) => { arr.forEach(b => { const s = spots[Number(b && b.gap) - 1]; if (!s || !list.includes(s) || !b.thai) return
     const cand = yesAndFixParticles({ speaker: s.sp, thai: String(b.thai).trim(), english: String(b.english || '').trim() })
-    const probs = yesAndLineProblems(cand, { vocab, vocabCtx: vctx, prior: [s.a, s.b], words: [] })
-    if (probs.length) { out.dropped++; log && log('  ✂ YES_AND_DAILY bridge ' + (k + 1) + ' dropped — ' + probs[0]); return }
-    made.push({ s, cand, k }) })
+    const probs = yesAndLineProblems(cand, { vocab, vocabCtx: vctx, prior: s.prev.concat(s.next), words: [] })
+    if (probs.length) { refused.set(s, probs.slice(0, 2).join('; ')); return }
+    refused.delete(s); made.push({ s, cand, k: spots.indexOf(s) }) }) }
+  let todo = spots.slice()
+  for (let round = 1; round <= 2 && todo.length; round++) {
+    try { judge(await ask(todo, round > 1 ? refused : null), todo) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ YES_AND_DAILY bridges unusable: ' + String(e && e.message || e).slice(0, 100)); break }
+    todo = spots.filter(s => !made.some(m => m.s === s)); if (round === 1) out.retried = todo.length
+  }
+  out.dropped = spots.length - made.length
+  todo.forEach(s => log && log('  ✂ YES_AND_DAILY gap ' + (spots.indexOf(s) + 1) + ' left without a bridge — ' + (refused.get(s) || 'no usable line')))
   made.sort((x, y) => y.s.i - x.s.i).forEach(({ s, cand, k }) => {
     const key = 'th-yb-' + (k + 1), g = thaiSpeakerMapGender(cand.speaker)
     const bp = { speaker: cand.speaker, thai: cand.thai, text: cand.thai, english: cand.english, phonetic: '', words: [], language: 'th', pairType: 'bridge', targetId: null, wordId: null, supportsTargetId: s.b.targetId, recallRole: 'response', targetRequired: false,
@@ -33002,7 +33018,7 @@ async function thaiYesAndBridges(pairs, vocab, o, log) {
       prompt: cueFromEnglish('th', cand.english, cand.thai, { strict: true, addr: cand.speaker === 'A' ? 'f' : 'm' }) || '' }
     try { assertThaiPairIdentity(bp) } catch (e) { out.dropped++; return }
     pairs.splice(s.i + 1, 0, bp); out.inserted++ })
-  log && log('💬 YES_AND_DAILY ' + out.inserted + ' of ' + out.asked + ' gaps bridged (' + out.dropped + ' dropped by the checks) in ' + out.calls + ' call')
+  log && log('💬 YES_AND_DAILY ' + out.inserted + ' of ' + out.asked + ' gaps bridged (' + out.retried + ' needed a second try) in ' + out.calls + ' call(s)')
   return out
 }
 // ══ v722 — MODULE-LED LISTENING PROTOTYPE (owner's Phase 1b, 26 Oct) ═══════════════════════════════════════════════════════════════

@@ -19,7 +19,8 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     T('P1', 'a name repeated in brackets straight after itself is written once (the D19 closing cue)', a === 'Thank Somchai and say you will see Somchai again.', a)
     const b = tidy('Say goodbye to Nida and tell her to take care of herself.', 'ดูแลตัวเองด้วยนะครับ')
     T('P1', '"Say goodbye to X and …" over a Thai line with no goodbye keeps only what the line says', b === 'Tell her to take care of herself.', b)
-    const k = tidy('Say goodbye to Nida and tell her to take care of herself.', 'ไว้เจอกันนะครับ ดูแลตัวเองด้วย')
+    const k = tidy('Say goodbye to Nida and tell her to take care of herself.', 'ไปก่อนนะครับ ดูแลตัวเองด้วย')   // v723: a real farewell word keeps the cue; "see you …" does not (tested below)
+    T('P1', '"see you on Friday" is not the word goodbye: its cue becomes "Say you will see her on Friday" (the D-run line 110)', tidy('Say goodbye to Nida and say you will see her on Friday.', 'วันศุกร์เจอกันนะครับ') === 'Say you will see her on Friday.', tidy('Say goodbye to Nida and say you will see her on Friday.', 'วันศุกร์เจอกันนะครับ'))
     T('P1', 'a line that does say goodbye keeps its "Say goodbye" cue; a bare "Say goodbye" is never emptied', k.startsWith('Say goodbye') && tidy('Say goodbye', 'ครับ') === 'Say goodbye', [k, tidy('Say goodbye', 'ครับ')])
     const m = c.ev('thaiFinalCueTidyPass')([{ speaker: 'A', thai: 'ดูแลตัวเองนะครับ', prompt: 'Say goodbye and take care' }, { speaker: 'B', thai: 'ค่ะ', prompt: 'Agree' }])
     T('P1', 'the final pass tidies the cue of a track line and leaves other lines untouched; it is wired after the final particle pass and after final recovery',

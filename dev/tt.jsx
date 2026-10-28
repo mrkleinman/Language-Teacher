@@ -32743,7 +32743,7 @@ const LN_STORY_WORD_CAP = { maxWords: 25 }
 // cannot be written cleanly is DROPPED, never padded. A word's exposures are peppered around the track: see yesAndPlan.
 // EXPOSURE = one line that contains the word (a line naming it twice is one exposure). A conversation names a word at most twice; every word
 // gets 3 exposures in 2 conversations (2 + 1) at least `minGap` conversations apart, and a conversation carries 2 target words.
-const THAI_YESAND = { on: false, lean: true, mode: 'lines', noThinking: true, knownList: true, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
+const THAI_YESAND = { on: false, lean: true, mode: 'lines', noThinking: true, knownList: true, refs: false, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
 const YESAND_BANNED = ['ต้องการ', 'โอเค', 'แน่ใจ', 'อ๋อ', 'สักครู่', 'ปั่นจักรยาน', 'แล้วไหม']
 // words → conversations. Word i meets conversation i and conversation (i + g) mod N, g = floor(N/2): every conversation then holds exactly two
 // words, every word sits in exactly two conversations, and they are N - g ≥ g apart. The earlier conversation names the word twice, the later once.
@@ -32797,6 +32797,11 @@ async function yesAndConversation(conv, env) {
     'YES, AND: take what the other person just said as true and answer it directly (yes), then add one new small thing that builds on it (and): a detail, a choice, a number, a question or a reaction. Do not ignore, contradict or restate what was said. No planned ending; in line 6 let it come to a natural stop. Nobody may refer to a fact (a person, a number, a place, "this one") that no one has said yet.\n' + YESAND_NATIVE_RULES +
     '\nRULES: ' + lnStoryLen(env.ctx).min + '–' + lnStoryLen(env.ctx).max + ' Thai words per line (the end particle is not counted); exactly one end particle, at the end; a space only BETWEEN clauses; short natural spoken lines (drop pronouns Thai drops); never use ' + YESAND_BANNED.join(' ') + '. ' +
     (THAI_YESAND.knownList ? 'Build the line ONLY from the words this learner knows (the lesson words named in the request are always fine):\nKNOWN WORDS: ' + yaAllowed.join(' ') : 'Use only simple everyday words a beginner knows (a checker refuses any other word and names it; the lesson words are always fine).')
+  // reviewed module exchanges as REFERENCES (the handover's use of them: tone and vocabulary inspiration, never copied): up to two per lesson word, filled for the
+  // word and already checked against THIS learner's vocabulary, so they show which words and how long a line this learner can use
+  let yaRefs = ''
+  if (THAI_YESAND.refs && THAI_MODULES.data) { try { const rows = []; words.forEach(w => { thaiModuleExamples({ id: w.id, wordId: w.id, thai: w.thai, english: w.english, _trackTargets: words }, vocab, 2).forEach(e => rows.push(e.map(l => l.speaker + ': ' + l.thai).join(' / '))) })
+    if (rows.length) yaRefs = '\nREFERENCE EXCHANGES (reviewed Thai written for THIS learner: they show the words and line length that work; take the TONE from them, do NOT copy or reuse their situations):\n' + rows.join('\n') + '\n' } catch (e) {} }
   const out = { idx: conv.idx, ok: false, lines: [], seed: '', tries: 0, calls: 0, why: '' }
   for (let ct = 1; ct <= env.convTries && !out.ok; ct++) {
     out.tries = ct
@@ -32816,7 +32821,7 @@ async function yesAndConversation(conv, env) {
         // the part every line request shares (role, native rules, length / particle rules, the learner's taught words) comes FIRST and ends at the cache mark;
         // the conversation-specific part follows (v723: with the server's cache marks kept, the shared part is read at a tenth of the price)
         try { raw = await call('Y_line', yaStable + PROMPT_CACHE_MARK + 'You write ONLY line ' + i + ', spoken by ' + (sp === 'A' ? 'the man (A: ผม, ends ครับ)' : 'the woman (B: ฉัน, ends ค่ะ, or คะ if it is a question)') + '.\n' +
-          'LESSON WORDS of this conversation (use the real Thai word, spelled exactly; each may appear in at most TWO lines of the conversation; each must appear in at least one line' + (need.length ? '; STILL MISSING: ' + need.map(r => r.x.word.thai).join(', ') + (left <= 1 ? ' — use ' + (need.length > 1 ? 'one of them' : 'it') + ' in THIS line' : '') : '') + '):\n' + wordRows + '\n\nSCENE SEED: ' + seed + '\n\nCONVERSATION SO FAR:\n' + sofar +
+          'LESSON WORDS of this conversation (use the real Thai word, spelled exactly; each may appear in at most TWO lines of the conversation; each must appear in at least one line' + (need.length ? '; STILL MISSING: ' + need.map(r => r.x.word.thai).join(', ') + (left <= 1 ? ' — use ' + (need.length > 1 ? 'one of them' : 'it') + ' in THIS line' : '') : '') + '):\n' + wordRows + '\n\nSCENE SEED: ' + seed + '\n' + yaRefs + '\nCONVERSATION SO FAR:\n' + sofar +
           '\n\nFACTS ALREADY STATED (never ask about these again, never contradict them):\n' + (ledger.length ? ledger.map(f => '- ' + f).join('\n') : '(none)') +
           (retry ? '\nYOUR LAST TRY WAS REJECTED: ' + retry : '') + '\nOutput exactly ONE line: <Thai>||<English>  and nothing else.', 400); out.calls++ } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; retry = 'no reply'; continue }
         const m = String(raw || '').split('\n').map(s => s.trim()).find(s => s.includes('||')); if (!m) { retry = 'wrong format — use <Thai>||<English>'; continue }

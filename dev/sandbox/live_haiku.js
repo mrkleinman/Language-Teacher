@@ -152,6 +152,8 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
     if (process.argv.includes('--yes-and')) {
       C.ev('THAI_YESAND').on = true
       if (process.argv.includes('--yes-and-nolist')) C.ev('THAI_YESAND').knownList = false      // the known-word list is not sent (the checker names refused words instead)
+      if (process.argv.includes('--yes-and-refs')) { C.ev('THAI_YESAND').refs = true      // reviewed module exchanges shown to the writer as references
+        C.ev('thaiModulesSetEnabled')(true); const zl = require('zlib'); C.ev('thaiModulesUseData')(JSON.parse(zl.gunzipSync(Buffer.from(C.ev('THAI_MODULES_GZ'), 'base64')).toString('utf8'))) }
       if (arg('yes-and-per')) C.ev('THAI_YESAND').perConv = Number(arg('yes-and-per'))     // k words per conversation (4 → a 30-word track is 90 lines)
       if (process.argv.includes('--yes-and-batch')) C.ev('THAI_YESAND').mode = 'batch'     // one call per conversation (cheap mode)
       try { const runIdApp = C.aiBeginRun('daily-track'); const nW = Number(arg('yes-and')) || picked.length

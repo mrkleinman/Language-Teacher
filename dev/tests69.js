@@ -37,6 +37,12 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     T('P2', 'แต่ is dtàae and เพิ่ง is phôoeng (the app\'s own convention for แ and long əə)', /dtàae/.test(ph[4]) && /phôoeng/.test(ph[4]) && !/dtàe\b/.test(ph[4]), ph[4])
     T('P2', 'none of the five lines has a pronunciation issue', (r.pairs || r).every(p => !(p._pronIssues || []).length), (r.pairs || r).map(p => (p._pronIssues || []).length))
   }
+  {
+    // v723 (owner: "use the word jointly — together makes me want to say duai gan")
+    const G = c.ev('THAI_USAGE_TARGET_GUIDE')['ร่วมกัน'] || ''
+    T('P3', 'ร่วมกัน is taught as "jointly": the word card says jointly (not "together, jointly") and the writer is told to say "jointly" in the English and the cue, never "together" (that is ด้วยกัน)',
+      /"jointly"/.test(G) && /NEVER "together"/.test(G) && /ด้วยกัน/.test(G) && /\['ร่วมกัน', 'jointly',/.test(src) && !/\['ร่วมกัน', 'together/.test(src), G.slice(0, 120))
+  }
   out.forEach(l => console.log(l))
   console.log('\nv722 Phase 1 (cue + romanisation) and the module-led Listening prototype: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

@@ -141,7 +141,8 @@ const TOPIC_WEDDING_SPEECH_TH = [
   ['คิดถึง', 'miss (someone)', 'khít-thǔeng', 'Miss someone: คิดถึงแม่ "I miss Mum".'],
   ['หัวเราะ', 'laugh', 'hǔua-ráw'],
   ['เจ้าสาว', 'bride', 'jâo-sǎao'],
-  ['ร่วมกัน', 'together, jointly', 'rûuam-gan', 'Doing something jointly, after the verb: สร้างร่วมกัน "build together".'],
+  // v723 (owner: "use the word jointly — together makes me want to say duai gan"): the gloss, the note and every cue say "jointly"; ด้วยกัน is the word for "together"
+  ['ร่วมกัน', 'jointly', 'rûuam-gan', 'Doing something jointly, as a shared effort, after the verb: สร้างร่วมกัน "build jointly".'],
   ['เป็นห่วง', 'worry about; care about', 'bpen-hùuang', 'Worry about someone out of care: เป็นห่วงคุณ "(I) worry about you".'],
   ['ให้กำลังใจ', 'encourage, give moral support', 'hâi-gam-lang-jai', 'Encourage someone: ให้กำลังใจฉันเสมอ "always encouraged me".'],
   ['ความสัมพันธ์', 'relationship', 'khwaam-sǎm-phan'],
@@ -40148,6 +40149,8 @@ const THAI_USAGE_TARGET_GUIDE = Object.freeze({
   'ชื่ออะไร': 'TEACH ชื่ออะไร AS THE QUESTION "what is … called / what is … name": คุณชื่ออะไรครับ, ร้านนี้ชื่ออะไรคะ, เพื่อนคุณชื่ออะไรครับ. NEVER ชื่ออะไรก็ได้ ("whatever it is called") — that is a different meaning.',
   'เชิญนั่ง': 'TEACH เชิญนั่ง AS AN INVITATION to sit (a statement): เชิญนั่งครับ, เชิญนั่งก่อนนะคะ, เชิญนั่งตรงนี้ได้เลยครับ — NEVER as a yes/no question (เชิญนั่งไหม is wrong)',
   'ไม่ทราบว่า': 'TEACH ไม่ทราบว่า AS THE POLITE OPENER of a question ("may I ask…?"), said to someone you do not know well — a stranger, a shop assistant, a guest: ไม่ทราบว่าห้องน้ำอยู่ที่ไหนครับ, ไม่ทราบว่าคุณชื่ออะไรคะ, ไม่ทราบว่าร้านนี้เปิดกี่โมงครับ. It BEGINS the question; the scene is background only (between old friends use a short polite exchange with a stranger instead).',
+  // v723 (owner: "when building a sentence use the word jointly — together makes me want to say duai gan")
+  'ร่วมกัน': 'TEACH ร่วมกัน AS "jointly": people sharing one effort or one thing, after the verb — ทำงานร่วมกันครับ (work on it jointly), สร้างร่วมกัน, ตัดสินใจร่วมกันค่ะ, ร่วมกันจ่ายค่าอาหาร. In the English line and in the cue always say "jointly" (or "as a joint effort"), NEVER "together" — "together" is ด้วยกัน, a different word, and must not replace it.',
 })
 // v682 — CLASSIFIER targets get a real teaching contract: what the classifier counts, natural frames, and what it NEVER counts.
 // The live v681 Thai run tried ชิ้น with boats, tickets and seats (ที่นั่ง) for all three recalls and both recovery attempts —

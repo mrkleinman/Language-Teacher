@@ -32846,8 +32846,9 @@ async function ttBenchYesAnd(fx, vocab, apiKey, model, L, runId, nWords) {
   words.forEach(w => { w._trackTargets = words })
   try { await thaiLoadRecentLines(L) } catch (e) {}
   try { await thaiEnsureUsageProfiles(words.map(w => ({ thai: w.thai, english: w.english })), { apiKey, model }, L) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+  // the speaking guide (~6k tokens) goes ONLY to the line writer: the seed, gate and final check do not write Thai (v723: the first test sent it with all 214 requests)
   const guide = thaiGuidePrefix()
-  const call = async (stage, prompt, maxTokens) => geminiRequest({ apiKey, model, messages: [{ role: 'user', content: guide + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: 0.8, stage })
+  const call = async (stage, prompt, maxTokens) => geminiRequest({ apiKey, model, messages: [{ role: 'user', content: (stage === 'Y_line' ? guide : '') + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: 0.8, stage })
   const r = await yesAndTestTrack(words, vocab, { ...THAI_YESAND, call, log: L, ctx: { complexity: getLearnerComplexityContract({ lang: 'th', vocab }) } })
   r.pairs.forEach(p => { p.prompt = cueFromEnglish('th', p.english, p.thai, { strict: true, addr: p.speaker === 'A' ? 'f' : 'm' }) || p.prompt })
   const _kwOf = w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: w.status === 'new', isUnseen: false, phonetic: w.phonetic || '' })

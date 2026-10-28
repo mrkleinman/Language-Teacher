@@ -80,6 +80,11 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     T('Y4', 'both yes-and switches are OFF by default; the Daily generator reaches yes-and only through THAI_YESAND.daily (ordering and bridges), never the test-track writer',
       c.ev('THAI_YESAND').on === false && c.ev('THAI_YESAND').daily === false && !/yesAndTestTrack|yesAndConversation/.test(body) && /thaiYesAndBridges\(allPairs/.test(body) && /if \(THAI_YESAND\.daily && dailyV693On\(\)\)/.test(body), [c.ev('THAI_YESAND').on, c.ev('THAI_YESAND').daily])
   }
+  {
+    // v723: the final Daily line pass re-ran the clause-space collapser on module lines (ดี ฉันรอเริ่มค่ะ → ดีฉันรอเริ่มค่ะ); module lines keep their vetted spacing like the other two paths
+    const i = src.indexOf("thai: l._moduleId ? l.thai : normaliseThaiSpacing(l.thai), phonetic: phon")
+    T('Y6', 'the final line pass leaves vetted module lines unspaced-changed', i > 0 && c.ev('normaliseThaiSpacing')('ดี ฉันรอเริ่มค่ะ') === 'ดีฉันรอเริ่มค่ะ', i)
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

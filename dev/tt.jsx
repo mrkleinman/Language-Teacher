@@ -18599,7 +18599,7 @@ async function generateWordLines(target, scene, charA, charB, prevLines, vocab, 
             if (comp.phonetic) phon = comp.phonetic
           } catch (e) { /* keep whatever we had */ }
           const hit = hitOf(l), r = hit ? hit.recallIndex : null, h = r != null ? _L.history(_tid, r) : []
-          return { ...l, thai: normaliseThaiSpacing(l.thai), phonetic: phon, _source: tierOf(l), words, recallIndex: r, _checkHistory: h, _checkCount: h.length, checkTier: h.length }
+          return { ...l, thai: l._moduleId ? l.thai : normaliseThaiSpacing(l.thai), phonetic: phon, _source: tierOf(l), words, recallIndex: r, _checkHistory: h, _checkCount: h.length, checkTier: h.length }
         })
       onProgress && onProgress(-1, -1, { apiError: '✅ ' + accepted.map(a => 'recall ' + a.recallIndex + ' at its ' + CHECK_ORDINALS[a.check - 1] + ' check').join(', ') + ' passed: ' + target.thai }, null, null)
       _telLine('PASSED')

@@ -104,6 +104,14 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
     // --bank: switch the vetted Daily exchanges ON (v713: the app's default is off)
     if (process.argv.includes('--bank')) { C.ev('thaiBankSetEnabled')(true); console.log('  (Thai exchange bank ON for this run)') }
     if (process.argv.includes('--no-bank')) { C.ev('thaiBankSetEnabled')(false); console.log('  (Thai exchange bank OFF for this run)') }
+    // --yes-and-daily <links.csv>: the Thai DAILY in the yes-and form (v723): modules ordered by scene (links file) + one yes-and line between exchanges
+    { const k = process.argv.indexOf('--yes-and-daily')
+      if (k > 0) {
+        const csv = fs.readFileSync(process.argv[k + 1], 'utf8').replace(/^\ufeff/, '').split(/\r?\n/).filter(Boolean), head = csv[0].split(',')
+        C.ev('thaiModulesSetEnabled')(true); const zl = require('zlib'); C.ev('thaiModulesUseData')(JSON.parse(zl.gunzipSync(Buffer.from(C.ev('THAI_MODULES_GZ'), 'base64')).toString('utf8')))
+        console.log('  (yes-and Daily ON: ' + C.ev('lnModuleStoryUseLinks')(csv.slice(1).map(l => { const f = l.split(','), o = {}; head.forEach((h, i) => { o[h.trim()] = f[i] }); return o })) + ' module links)')
+        C.ev('THAI_YESAND').daily = true
+      } }
     // --ln-module-story <links.csv> [--ln-exclude id,id,…]: the module-led Listening prototype (v722): the story is built from reviewed modules
     // (links file: scene / job / story_safe per module), the model adds only bridge lines; the reading track's module ids are left out
     { const k = process.argv.indexOf('--ln-module-story')

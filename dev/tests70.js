@@ -65,8 +65,12 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const r3 = await c.ev('yesAndConversation')(conv, { ...env, call: call3, convTries: 1 })
     T('Y3', 'a problem in the final logic check drops the conversation', r3.ok === false && /final check/.test(r3.why), r3.why)
   }
-  T('Y4', 'the format is OFF by default and only the benchmark entry uses it; the default track code does not call it',
-    c.ev('THAI_YESAND').on === false && !/yesAnd/i.test(src.slice(src.indexOf('async function generateConversationTrack'), src.indexOf('async function generateConversationTrack') + 60000).replace(/THAI_YESAND_NEVER/g, '')), c.ev('THAI_YESAND').on)
+  {
+    // v723: the yes-and DAILY hooks live in the Daily generator, behind THAI_YESAND.daily (off); the test-track writer (yesAndTestTrack) is still only used by the benchmark entry
+    const g0 = src.indexOf('async function generateConversationTrack'), body = src.slice(g0, g0 + 60000)
+    T('Y4', 'both yes-and switches are OFF by default; the Daily generator reaches yes-and only through THAI_YESAND.daily (ordering and bridges), never the test-track writer',
+      c.ev('THAI_YESAND').on === false && c.ev('THAI_YESAND').daily === false && !/yesAndTestTrack|yesAndConversation/.test(body) && /thaiYesAndBridges\(allPairs/.test(body) && /if \(THAI_YESAND\.daily && dailyV693On\(\)\)/.test(body), [c.ev('THAI_YESAND').on, c.ev('THAI_YESAND').daily])
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

@@ -9576,7 +9576,7 @@ function anthropicCacheBlocks(text) {
 }
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
-const ANTHROPIC_STAGE_EFFORT = Object.freeze({ Y_batch: 'low', Y_fix: 'low', Y_judge: 'low', Y_seed: 'low', Y_line: 'low', Y_gate: 'low', Y_final: 'low', O_listening_module_scene: 'low', O_listening_module_spine: 'low', O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({ Y_bridge: 'low', Y_batch: 'low', Y_fix: 'low', Y_judge: 'low', Y_seed: 'low', Y_line: 'low', Y_gate: 'low', Y_final: 'low', O_listening_module_scene: 'low', O_listening_module_spine: 'low', O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
 function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThinking }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -17525,6 +17525,16 @@ function thaiModuleLinesProblems(lines, target, vocab) {
 // the next unused module exchange for a word, vocabulary-checked against THIS learner; null when there is none (the model writes it)
 function thaiModuleExchange(target, vocab, log) {
   if (!THAI_MODULES.on || !THAI_MODULES.data || !dailyV693On() || !target) return null
+  const list = thaiModuleListFor(target, vocab, log)
+  const c = list.shift(); if (!c) return null
+  THAI_MODULES.used.add(c.id); THAI_MODULES.stats.offered++
+  THAI_MODULES.exch.set(c.id, c.lines.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english })))
+  c.lines.forEach(l => THAI_MODULES.lines.set(_bankNorm(l.thai), { speaker: l.speaker, thai: l.thai, english: l.english, prompt: l.prompt, target: String(target.thai || target.t || ''), module: c.id }))
+  log && log('📦 TH_MODULE ' + target.thai + ': module ' + c.id + ' (T' + c.tier + ') as the first candidate (no paid call)')
+  return c.lines.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english, prompt: l.prompt, _moduleId: l.module || l._moduleId }))
+}
+// the word's usable modules (rendered, pre-checked for THIS learner), built once and kept in THAI_MODULES.cand; the first is the next one offered
+function thaiModuleListFor(target, vocab, log) {
   const key = String(target.id != null ? target.id : target.thai)
   let list = THAI_MODULES.cand.get(key)
   if (!list) {
@@ -17542,12 +17552,7 @@ function thaiModuleExchange(target, vocab, log) {
     if (!list.length) { if (cands.length) THAI_MODULES.stats.noVocab++; else THAI_MODULES.stats.noModule++
       log && log('📦 TH_MODULE ' + (target.thai || key) + ': ' + (cands.length ? 'none of ' + Math.min(cands.length, THAI_MODULE_POOL) + ' modules passes the writer\'s checks for this learner (' + blocked + ' refused)' : 'no module for this word') + ' — written by the model') }
   }
-  const c = list.shift(); if (!c) return null
-  THAI_MODULES.used.add(c.id); THAI_MODULES.stats.offered++
-  THAI_MODULES.exch.set(c.id, c.lines.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english })))
-  c.lines.forEach(l => THAI_MODULES.lines.set(_bankNorm(l.thai), { speaker: l.speaker, thai: l.thai, english: l.english, prompt: l.prompt, target: String(target.thai || target.t || ''), module: c.id }))
-  log && log('📦 TH_MODULE ' + target.thai + ': module ' + c.id + ' (T' + c.tier + ') as the first candidate (no paid call)')
-  return c.lines.map(l => ({ speaker: l.speaker, thai: l.thai, english: l.english, prompt: l.prompt, _moduleId: l.module || l._moduleId }))
+  return list
 }
 // v718 (D17: a module line was dropped by the final cue check and quota recovery asked the model for three bare lines — the scene then scored 2/5):
 //   · the WHOLE exchange is missing → the next unused module for the word replaces it (no model request; the same deterministic gates run on it)
@@ -19783,7 +19788,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     onLog: m => onProgress && onProgress(0, targets.length * 3, { apiError: m }, null, null) }) }
   catch (e) { if (e && e.cancelled) throw e; _scenePlan = null }
   _sceneContract.majorTopics = ((_scenePlan && _scenePlan.scenes) || []).map(x => x.purpose)
-  const genOrder = orderTargetsByPlan(targets, _scenePlan)
+  const genOrder = thaiYesAndOrder(orderTargetsByPlan(targets, _scenePlan), vocab)      // v723: yes-and Daily orders the words by their module's scene (off: unchanged)
   targets.forEach(t => { if (t) t._scenePremise = _sceneContract.premise })
   // v657 §3/§4 — EARLY SEMANTIC GATE. A target group is not "passed" until its lines clear the SAME cue +
   // naturalness + sense judge the final audit uses (finalPairSemanticAudit, verdicts cached, so the final
@@ -20037,6 +20042,11 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     if (i < targets.length - 1) await new Promise(r => setTimeout(r, 5000))
   }
 
+  // v723 — yes-and Daily: one short yes-and line between exchanges that meet with the same speaker (one model call; a failing bridge is dropped)
+  if (THAI_YESAND.daily && dailyV693On()) {
+    try { await thaiYesAndBridges(allPairs, vocab, { apiKey, model: GEN_MODEL, targets }, m0 => onProgress && onProgress(0, targets.length * 3, { apiError: m0 }, null, null)) }
+    catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+  }
   // ── Closing exchange ───────────────────────────────────────────────────────
   // A conversation that just stops after the last target word never teaches how to
   // leave one. Bookend the track with a parting pair, mirroring the opening.
@@ -32743,7 +32753,7 @@ const LN_STORY_WORD_CAP = { maxWords: 25 }
 // cannot be written cleanly is DROPPED, never padded. A word's exposures are peppered around the track: see yesAndPlan.
 // EXPOSURE = one line that contains the word (a line naming it twice is one exposure). A conversation names a word at most twice; every word
 // gets 3 exposures in 2 conversations (2 + 1) at least `minGap` conversations apart, and a conversation carries 2 target words.
-const THAI_YESAND = { on: false, lean: true, mode: 'lines', noThinking: true, knownList: true, refs: false, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
+const THAI_YESAND = { on: false, daily: false, lean: true, mode: 'lines', noThinking: true, knownList: true, refs: false, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
 const YESAND_BANNED = ['ต้องการ', 'โอเค', 'แน่ใจ', 'อ๋อ', 'สักครู่', 'ปั่นจักรยาน', 'แล้วไหม']
 // words → conversations. Word i meets conversation i and conversation (i + g) mod N, g = floor(N/2): every conversation then holds exactly two
 // words, every word sits in exactly two conversations, and they are N - g ≥ g apart. The earlier conversation names the word twice, the later once.
@@ -32945,6 +32955,55 @@ async function ttBenchYesAnd(fx, vocab, apiKey, model, L, runId, nWords) {
     status: 'EXPERIMENT_YES_AND', ready: false, selectedTargetIds: keywords.map(k => k.wordId), yesAnd: { plan: { gapMin: r.plan.gapMin, ok: r.plan.ok, conversations: r.plan.convs.length, lines: r.plan.lines }, written: r.written, dropped: r.dropped,
       exposures: r.exp, seeds: r.results.map(x => ({ conv: x.idx + 1, ok: x.ok, seed: x.seed, why: x.why, calls: x.calls, tries: x.tries })) } }
   return { track, yesAnd: r }
+}
+// ══ v723 — YES-AND DAILY (owner: "daily is yes-and, using modules") ═══════════════════════════════════════════════════════════════════
+// The Daily keeps a reviewed module exchange for each word (vocabulary, length and particles already pass this learner's checks), but the words are
+// ORDERED by the scene their module is tagged for (the module-links file: scene / job), so neighbouring exchanges share a place, and where two
+// exchanges meet with the SAME speaker on both sides one short yes-and line (the other speaker answers what was just said and leads into the next
+// line) is written between them — ONE model call for the whole track. The track already has "bridge" lines (they never count towards a word); a
+// bridge that fails a check is dropped, so a word can never lose its three lines. Off by default (THAI_YESAND.daily).
+function thaiYesAndOrder(order, vocab) {
+  if (!THAI_YESAND.daily || !THAI_MODULES.data || !LN_MODULE_STORY.links) return order
+  const sceneOf = t => { try { const l = thaiModuleListFor(t, vocab, null), c = l && l[0]; const lk = c && LN_MODULE_STORY.links.get(c.id); return lk ? lk.scene : null } catch (e) { return null } }
+  const rows = order.map((t, i) => ({ t, i, sc: sceneOf(t) })), rank = sc => (LN_MODULE_SCENE_ORDER[sc] || 9)
+  const first = new Map(); rows.forEach(r => { const k = r.sc || '~'; if (!first.has(k)) first.set(k, r.i) })
+  return rows.slice().sort((a, b) => (rank(a.sc) - rank(b.sc)) || ((first.get(a.sc || '~')) - (first.get(b.sc || '~'))) || (a.i - b.i)).map(r => r.t)
+}
+async function thaiYesAndBridges(pairs, vocab, o, log) {
+  const out = { asked: 0, inserted: 0, dropped: 0, calls: 0 }
+  const isC = p => p && p.pairType === 'content' && p.targetId != null && !p._framing
+  const spots = []
+  for (let i = 0; i < pairs.length - 1; i++) { const a = pairs[i], b = pairs[i + 1]
+    if (isC(a) && isC(b) && a.targetId !== b.targetId && a.speaker === b.speaker && (a.speaker === 'A' || a.speaker === 'B')) spots.push({ i, a, b, sp: a.speaker === 'A' ? 'B' : 'A' }) }
+  out.asked = spots.length; if (!spots.length) return out
+  const lenR = lnStoryLen({ complexity: getLearnerComplexityContract({ lang: 'th', vocab }) })
+  const vctx = buildThaiTrackVocabContext(vocab, o.targets || [], [])
+  let arr = []
+  try {
+    const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, stage: 'Y_bridge', maxTokens: 1500, temperature: 0.8, messages: [{ role: 'user', content: thaiGuidePrefix() +
+      'Two Thai friends, a man (A: ผม, ends ครับ) and a woman (B: ฉัน, ends ค่ะ / คะ), practise short exchanges one after another. Between some exchanges there is a GAP: the same person speaks the last line of one exchange and the first line of the next, so the other person needs ONE short line in between. For each gap write that line, YES-AND: it takes what was just said as true and answers it (yes) and adds one small thing that leads naturally into the NEXT line (and), as a real conversation would move on. The two outer lines are fixed; do not repeat or pre-empt the next line; invent no fact that contradicts either.\n' +
+      'THE CHAIN (the owner\'s picture): A says something; B says "yes, and…" and brings up the NEXT WORD; A replies; B says "yes, and…" and brings up the next word, and so on. So each bridge, when it sounds natural, brings up the NEXT WORD named for its gap (use it in the bridge); if that would sound forced, lead into it without naming it.\n' +
+      'Each bridge: a complete natural spoken sentence of at most ' + lenR.max + ' Thai words (the end particle is not counted), only simple everyday words a beginner knows, the speaker named for the gap, one end particle at the very end (A ครับ; B ค่ะ, or คะ on a question), no names.\n\n' +
+      spots.map((s, k) => { const nt = (o.targets || []).find(t => t && t.id === s.b.targetId); return 'GAP ' + (k + 1) + ' — bridge speaker ' + s.sp + (nt ? ' — NEXT WORD: ' + nt.thai + ' (' + (nt.english || '') + ')' : '') + ':\n  ' + s.a.speaker + ': ' + s.a.thai + ' (' + (s.a.english || '') + ')\n  [' + s.sp + ': your bridge line]\n  ' + s.b.speaker + ': ' + s.b.thai + ' (' + (s.b.english || '') + ')' }).join('\n') +
+      '\n\nReply ONLY with JSON: {"bridges":[{"gap":1,"thai":"…","english":"…"}]}' }] })
+    out.calls++
+    const t = String(raw || '').replace(/```json|```/g, ''); arr = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).bridges || []
+  } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ YES_AND_DAILY bridges unusable: ' + String(e && e.message || e).slice(0, 100)); return out }
+  const made = []
+  arr.forEach(b => { const k = Number(b && b.gap) - 1, s = spots[k]; if (!s || !b.thai) return
+    const cand = yesAndFixParticles({ speaker: s.sp, thai: String(b.thai).trim(), english: String(b.english || '').trim() })
+    const probs = yesAndLineProblems(cand, { vocab, vocabCtx: vctx, prior: [s.a, s.b], words: [] })
+    if (probs.length) { out.dropped++; log && log('  ✂ YES_AND_DAILY bridge ' + (k + 1) + ' dropped — ' + probs[0]); return }
+    made.push({ s, cand, k }) })
+  made.sort((x, y) => y.s.i - x.s.i).forEach(({ s, cand, k }) => {
+    const key = 'th-yb-' + (k + 1), g = thaiSpeakerMapGender(cand.speaker)
+    const bp = { speaker: cand.speaker, thai: cand.thai, text: cand.thai, english: cand.english, phonetic: '', words: [], language: 'th', pairType: 'bridge', targetId: null, wordId: null, supportsTargetId: s.b.targetId, recallRole: 'response', targetRequired: false,
+      respondsToPairKey: s.a._pairKey || null, _typedAt: 'creation', _pairKey: key, lineId: key, sceneId: s.b.sceneId || null, speakerGender: g, _source: 'ai:yes-and-bridge', _yesAndBridge: true,
+      prompt: cueFromEnglish('th', cand.english, cand.thai, { strict: true, addr: cand.speaker === 'A' ? 'f' : 'm' }) || '' }
+    try { assertThaiPairIdentity(bp) } catch (e) { out.dropped++; return }
+    pairs.splice(s.i + 1, 0, bp); out.inserted++ })
+  log && log('💬 YES_AND_DAILY ' + out.inserted + ' of ' + out.asked + ' gaps bridged (' + out.dropped + ' dropped by the checks) in ' + out.calls + ' call')
+  return out
 }
 // ══ v722 — MODULE-LED LISTENING PROTOTYPE (owner's Phase 1b, 26 Oct) ═══════════════════════════════════════════════════════════════
 // The story is built from reviewed modules instead of fresh model scenes: each of the learner's words gets one reviewed 3-line module

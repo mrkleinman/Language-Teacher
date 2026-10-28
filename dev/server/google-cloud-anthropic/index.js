@@ -9,7 +9,7 @@
 //   • refuses to run unless ANTHROPIC_API_KEY and LT_ACCESS_CODE are set (never an open relay)
 //   • answers browsers only from the allowed site origins (ALLOWED_ORIGINS, default https://mrkleinman.github.io)
 //   • only the model claude-haiku-5-5; max_tokens capped at 16000; request body ≤ 300 KB
-//   • only these fields are forwarded: model, max_tokens, system, messages (text blocks, ≤ 4 ephemeral cache marks), adaptive thinking,
+//   • only these fields are forwarded: model, max_tokens, system, messages (text blocks, ≤ 4 ephemeral cache marks), adaptive thinking (or thinking switched off, only when the request asks for {type:"disabled"} — v723, for the short one-line Thai calls),
 //     output_config.effort and output_config.format (json_schema). temperature / top_p / top_k / tools / stream are dropped.
 //   • no retries here (maxRetries: 0): the app retries rate limits / overload itself so every attempt is logged and costed
 //
@@ -57,7 +57,7 @@ export function buildParams(body) {
   const messages = body.messages.map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: textBlocks(m && m.content, budget) }));
   if (messages[0].role !== "user" || messages[messages.length - 1].role !== "user") return { error: "messages must start and end with a user turn" };
   const max = Math.floor(Number(body.max_tokens));
-  const params = { model: body.model, max_tokens: Math.max(1, Math.min(MAX_TOKENS_CEILING, Number.isFinite(max) ? max : 4096)), messages, thinking: { type: "adaptive" } };
+  const params = { model: body.model, max_tokens: Math.max(1, Math.min(MAX_TOKENS_CEILING, Number.isFinite(max) ? max : 4096)), messages, thinking: body.thinking && body.thinking.type === "disabled" ? { type: "disabled" } : { type: "adaptive" } };
   if (Array.isArray(system) ? system.length : String(system).trim()) params.system = system;
   const oc = body.output_config || {};
   params.output_config = { effort: EFFORTS.includes(oc.effort) ? oc.effort : "low" };

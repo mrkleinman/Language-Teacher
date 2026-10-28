@@ -13,7 +13,7 @@ SERVICE="language-teacher-anthropic"
 REGION="${REGION:-asia-southeast1}"
 SECRET="anthropic-api-key"
 SITE="${ALLOWED_ORIGINS:-https://mrkleinman.github.io}"
-SRC_REF="053245d7c34bd50f913563986a80cabb3967a478"   # the tested version of index.js / package.json
+SRC_REF="a0971e43989f5854e5b2fbfc5ceb57b553485bf6"   # the tested version of index.js / package.json (v723: cache marks kept + thinking can be switched off)
 RAW="https://raw.githubusercontent.com/mrkleinman/Language-Teacher/${SRC_REF}/dev/server/google-cloud-anthropic"
 
 say()  { printf '\n\033[1m%s\033[0m\n' "$*"; }

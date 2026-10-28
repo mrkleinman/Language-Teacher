@@ -32742,7 +32742,7 @@ const LN_STORY_WORD_CAP = { maxWords: 25 }
 // cannot be written cleanly is DROPPED, never padded. A word's exposures are peppered around the track: see yesAndPlan.
 // EXPOSURE = one line that contains the word (a line naming it twice is one exposure). A conversation names a word at most twice; every word
 // gets 3 exposures in 2 conversations (2 + 1) at least `minGap` conversations apart, and a conversation carries 2 target words.
-const THAI_YESAND = { on: false, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
+const THAI_YESAND = { on: false, lean: true, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
 const YESAND_BANNED = ['ต้องการ', 'โอเค', 'แน่ใจ', 'อ๋อ', 'สักครู่', 'ปั่นจักรยาน', 'แล้วไหม']
 // words → conversations. Word i meets conversation i and conversation (i + g) mod N, g = floor(N/2): every conversation then holds exactly two
 // words, every word sits in exactly two conversations, and they are N - g ≥ g apart. The earlier conversation names the word twice, the later once.
@@ -32772,6 +32772,9 @@ function yesAndLineProblems(line, ctx) {
   ctx.words.forEach(w => { try { thaiLexicalSenseProblems({ thai: th, english: line.english }, w.thai).forEach(x => out.push(x.why)) } catch (e) {} })
   return out
 }
+// the handover's native-speaker rules (generation-prompts.md), shortened: they replace the 6,000-token speaking guide in the line writer's prompt (v723: the guide was
+// 60% of every writer request and the writer is retried ~2.6 times per accepted line)
+const YESAND_NATIVE_RULES = 'RULES FROM A NATIVE THAI SPEAKER: (1) Nobody knows what was not said: do not mention a person, number, place or purpose until a speaker has said it. The first speaker opens neutrally. (2) Think how this is really done in Thailand; the one who explains gives facts and rules, the one who needs something asks and decides; nobody asks the other for information only they would know. (3) Do not repeat the lesson word in every line: use อันนี้ / ตัวนี้ / นั่น or drop it ("เอาอันนี้ครับ"). (4) Spoken, not scripted: short lines, drop pronouns Thai drops, no pushy "ซื้อเลยไหม", no abrupt "รอก่อน" (say "รอสักห้านาทีนะคะ"), accept an offer with "เอาครับ/ค่ะ" not "ใช่", thank with "ขอบคุณครับ/ค่ะ". (5) Everyday words, not literal translations. (6) Logic: times, numbers and decisions agree across lines; no thanks before something was given; no "ไม่ต้อง" followed by taking it. (7) Answer the question just asked with a real detail. (8) If the word cannot be part of an ordinary small scene, still use it in its everyday sense.'
 async function yesAndConversation(conv, env) {
   const { vocab, call, log, ctxFor } = env, words = conv.words.map(x => x.word), k = conv.idx + 1
   const vctx = ctxFor(words), allowed = [...(vctx.allowedThaiWords || vctx.allowedSet || [])]
@@ -32797,7 +32800,7 @@ async function yesAndConversation(conv, env) {
           'LESSON WORDS of this conversation (use the real Thai word, spelled exactly; each may appear in at most TWO lines of the conversation; each must appear in at least one line' + (need.length ? '; STILL MISSING: ' + need.map(r => r.x.word.thai).join(', ') + (left <= 1 ? ' — use ' + (need.length > 1 ? 'one of them' : 'it') + ' in THIS line' : '') : '') + '):\n' + wordRows + '\n\nSCENE SEED: ' + seed + '\n\nCONVERSATION SO FAR:\n' + sofar +
           '\n\nYES, AND: take what the other person just said as true and answer it directly (yes), then add one new small thing that builds on it (and): a detail, a choice, a number, a question or a reaction. Do not ignore, contradict or restate what was said. No planned ending; in line 6 let it come to a natural stop. Nobody may refer to a fact (a person, a number, a place, "this one") that no one has said yet.\n' +
           'FACTS ALREADY STATED (never ask about these again, never contradict them):\n' + (ledger.length ? ledger.map(f => '- ' + f).join('\n') : '(none)') +
-          '\nRULES: ' + lnStoryLen(env.ctx).min + '–' + lnStoryLen(env.ctx).max + ' Thai words per line (the end particle is not counted); exactly one end particle, at the end; a space only BETWEEN clauses; short natural spoken lines (drop pronouns Thai drops); never use ' + YESAND_BANNED.join(' ') + '. Build the line ONLY from the words this learner knows:\nKNOWN WORDS: ' + allowed.join(' ') +
+          '\n' + YESAND_NATIVE_RULES + '\nRULES: ' + lnStoryLen(env.ctx).min + '–' + lnStoryLen(env.ctx).max + ' Thai words per line (the end particle is not counted); exactly one end particle, at the end; a space only BETWEEN clauses; short natural spoken lines (drop pronouns Thai drops); never use ' + YESAND_BANNED.join(' ') + '. Build the line ONLY from the words this learner knows:\nKNOWN WORDS: ' + allowed.join(' ') +
           (retry ? '\nYOUR LAST TRY WAS REJECTED: ' + retry : '') + '\nOutput exactly ONE line: <Thai>||<English>  and nothing else.', 400); out.calls++ } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; retry = 'no reply'; continue }
         const m = String(raw || '').split('\n').map(s => s.trim()).find(s => s.includes('||')); if (!m) { retry = 'wrong format — use <Thai>||<English>'; continue }
         const [thai, english] = m.split('||').map(s => s.trim()); const cand = { speaker: sp, thai, english }
@@ -32848,7 +32851,7 @@ async function ttBenchYesAnd(fx, vocab, apiKey, model, L, runId, nWords) {
   try { await thaiEnsureUsageProfiles(words.map(w => ({ thai: w.thai, english: w.english })), { apiKey, model }, L) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
   // the speaking guide (~6k tokens) goes ONLY to the line writer: the seed, gate and final check do not write Thai (v723: the first test sent it with all 214 requests)
   const guide = thaiGuidePrefix()
-  const call = async (stage, prompt, maxTokens) => geminiRequest({ apiKey, model, messages: [{ role: 'user', content: (stage === 'Y_line' ? guide : '') + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: 0.8, stage })
+  const call = async (stage, prompt, maxTokens) => geminiRequest({ apiKey, model, messages: [{ role: 'user', content: (stage === 'Y_line' && !THAI_YESAND.lean ? guide : '') + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: 0.8, stage })
   const r = await yesAndTestTrack(words, vocab, { ...THAI_YESAND, call, log: L, ctx: { complexity: getLearnerComplexityContract({ lang: 'th', vocab }) } })
   r.pairs.forEach(p => { p.prompt = cueFromEnglish('th', p.english, p.thai, { strict: true, addr: p.speaker === 'A' ? 'f' : 'm' }) || p.prompt })
   const _kwOf = w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: w.status === 'new', isUnseen: false, phonetic: w.phonetic || '' })

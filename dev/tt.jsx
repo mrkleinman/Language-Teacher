@@ -9576,7 +9576,7 @@ function anthropicCacheBlocks(text) {
 }
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
-const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_listening_module_scene: 'low', O_listening_module_spine: 'low', O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({ Y_seed: 'low', Y_line: 'low', Y_gate: 'low', Y_final: 'low', O_listening_module_scene: 'low', O_listening_module_spine: 'low', O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
 function anthropicRequestBody({ model, messages, maxTokens, json, effort }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -32734,6 +32734,131 @@ async function _lnComposeThaiStoryBest(env) {
 // v713 — the story is planned around the first 25 frozen words (owner's decision: blind reviews 5.1 with 25 words vs 4.7 with 30); the
 // rest are reported as deferred and stay due for the next lesson. 0 = no cap (the older tests and the sandbox flag --ln-max-words set it).
 const LN_STORY_WORD_CAP = { maxWords: 25 }
+// ══ v723 — YES-AND CONVERSATIONS (owner's experiment, 28 Oct; handover: thai-yes-and-handover) ═══════════════════════════════════════
+// A TEST format for the Daily track, behind THAI_YESAND.on (off; the default track is untouched). A conversation is six lines (man, woman,
+// man, woman, man, woman) written ONE LINE AT A TIME from a one-sentence scene seed; every line must (1) pass the app's own mechanical
+// checks (closed vocabulary of THIS learner, belt length, particles, banned words, mentions, repeats, lexical sense), (2) pass a coherence
+// gate that also keeps a running list of facts already stated, and the finished conversation passes a final logic check. A conversation that
+// cannot be written cleanly is DROPPED, never padded. A word's exposures are peppered around the track: see yesAndPlan.
+// EXPOSURE = one line that contains the word (a line naming it twice is one exposure). A conversation names a word at most twice; every word
+// gets 3 exposures in 2 conversations (2 + 1) at least `minGap` conversations apart, and a conversation carries 2 target words.
+const THAI_YESAND = { on: false, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
+const YESAND_BANNED = ['ต้องการ', 'โอเค', 'แน่ใจ', 'อ๋อ', 'สักครู่', 'ปั่นจักรยาน', 'แล้วไหม']
+// words → conversations. Word i meets conversation i and conversation (i + g) mod N, g = floor(N/2): every conversation then holds exactly two
+// words, every word sits in exactly two conversations, and they are N - g ≥ g apart. The earlier conversation names the word twice, the later once.
+function yesAndPlan(words, opts) {
+  const o = { ...THAI_YESAND, ...(opts || {}) }, N = words.length
+  if (N < 2) return { convs: [], gapMin: 0, ok: false }
+  const g = Math.max(1, Math.floor(N / 2)), convs = Array.from({ length: N }, (_, i) => ({ idx: i, words: [] }))
+  words.forEach((w, i) => { const a = i, b = (i + g) % N, first = Math.min(a, b), second = Math.max(a, b)
+    convs[first].words.push({ word: w, mentions: o.mentions[0], exposure: 1 }); convs[second].words.push({ word: w, mentions: o.mentions[1], exposure: 2 }) })
+  const gapMin = Math.min(...words.map((w, i) => Math.abs(i - ((i + g) % N))))
+  return { convs, gapMin, ok: gapMin >= o.minGap + 1, lines: N * o.lines }
+}
+function yesAndLineProblems(line, ctx) {
+  const out = [], th = String(line.thai || '').trim(), sp = line.speaker, t0 = th.replace(/\s+/g, '')
+  if (!th) return ['empty line']
+  const parts = t0.match(/(ครับ|ค่ะ|คะ)/g) || []
+  if (sp === 'A') { if (!/ครับ$/.test(t0)) out.push('the man must end with ครับ'); if (/ค่ะ|คะ/.test(t0)) out.push('the man never uses ค่ะ / คะ') }
+  else { if (!/(ค่ะ|คะ)$/.test(t0)) out.push('the woman must end with ค่ะ (คะ only on a question)'); if (/ครับ/.test(t0)) out.push('the woman never uses ครับ')
+    if (/คะ$/.test(t0) && !THAI_QUESTION_RE.test(t0) && !/\?\s*$/.test(String(line.english || ''))) out.push('คะ is only for a question — use ค่ะ')
+    if (/ค่ะ$/.test(t0) && THAI_QUESTION_RE.test(t0)) out.push('a question ends with คะ, not ค่ะ') }
+  if (parts.length > 1) out.push('one end particle only, none in the middle')
+  YESAND_BANNED.forEach(b => { if (t0.includes(b)) out.push('never use ' + b) })
+  try { const v = validateThaiVocabulary([{ thai: th }], ctx.vocabCtx); (v.blocked || []).slice(0, 3).forEach(b => out.push('not taught to this learner: ' + (b.token || b))) } catch (e) {}
+  try { const an = getLearnerComplexityContract({ lang: 'th', vocab: ctx.vocab }).analyse(th); if (an.overHardMax) out.push('too long: ' + an.units + ' words (most ' + getLearnerComplexityContract({ lang: 'th', vocab: ctx.vocab }).hardMax + ')') } catch (e) {}
+  try { const r = thaiRecentRepeat(th); if (r) out.push('a sentence from a recent lesson') } catch (e) {}
+  ctx.prior.forEach(p => { const a = t0, b = String(p.thai || '').replace(/\s+/g, ''); for (let i = 0; i + 9 <= a.length; i++) if (b.includes(a.slice(i, i + 9))) { out.push('repeats a phrase from an earlier line: ' + a.slice(i, i + 9)); break } })
+  ctx.words.forEach(w => { try { thaiLexicalSenseProblems({ thai: th, english: line.english }, w.thai).forEach(x => out.push(x.why)) } catch (e) {} })
+  return out
+}
+async function yesAndConversation(conv, env) {
+  const { vocab, call, log, ctxFor } = env, words = conv.words.map(x => x.word), k = conv.idx + 1
+  const vctx = ctxFor(words), allowed = [...(vctx.allowedThaiWords || vctx.allowedSet || [])]
+  const wordRows = conv.words.map(x => x.word.thai + ' = ' + (x.word.english || x.word.gloss) + (thaiUsageOf(x.word.thai) ? ' (' + thaiUsageOf(x.word.thai).use + ')' : '')).join('\n')
+  const facts = conv.words.map(x => { const u = thaiUsageOf(x.word.thai) || {}; return x.word.thai + ': ' + (u.use || '') + (u.situations && u.situations.length ? ' · everyday situations: ' + u.situations.join(' / ') : '') }).join('\n')
+  const out = { idx: conv.idx, ok: false, lines: [], seed: '', tries: 0, calls: 0, why: '' }
+  for (let ct = 1; ct <= env.convTries && !out.ok; ct++) {
+    out.tries = ct
+    // 1) the scene seed: one sentence, no outcome
+    let seed = ''
+    try { const raw = await call('Y_seed', 'You set up a short everyday Thai scene for an improv-style conversation between a man (A) and a woman (B), friends or acquaintances. Write ONE sentence: where it takes place and what small ordinary situation brings them to talk. It must be a situation where BOTH of these words come up naturally. Do not say how it ends; the actors find that out. Do not state facts about real services, prices of real things or procedures — stay with a small ordinary moment.\nWORDS:\n' + facts + (ct > 1 ? '\nChoose a DIFFERENT situation from: ' + out.seed : '') + '\nReply with the one sentence only.', 200); out.calls++; seed = String(raw || '').split('\n')[0].replace(/^SEED\|\d+\|/, '').trim() } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+    if (!seed) { out.why = 'no scene seed'; continue }
+    out.seed = seed
+    const lines = [], ledger = []; let failed = ''
+    const mentions = new Map(words.map(w => [w.id, 0]))
+    for (let i = 1; i <= THAI_YESAND.lines && !failed; i++) {
+      const sp = i % 2 ? 'A' : 'B', sofar = lines.map((l, j) => (j + 1) + '. ' + l.speaker + ': ' + l.thai + ' (' + l.english + ')').join('\n') || '(nothing yet)'
+      const left = THAI_YESAND.lines - i, need = conv.words.map(x => ({ x, short: Math.max(0, 1 - [...lines].filter(l => thaiTargetPresent(l.thai, x.word.thai, vocab)).length) })).filter(r => r.short > 0)
+      let accepted = null, retry = ''
+      for (let a = 1; a <= env.lineTries && !accepted; a++) {
+        let raw = ''
+        try { raw = await call('Y_line', 'You are a native Bangkok Thai speaker playing a short scene as an improv actor. The scene has six lines: man (A), woman (B), man, woman, man, woman. You write ONLY line ' + i + ', spoken by ' + (sp === 'A' ? 'the man (A: ผม, ends ครับ)' : 'the woman (B: ฉัน, ends ค่ะ, or คะ if it is a question)') + ', in simple everyday spoken Thai.\n' +
+          'LESSON WORDS of this conversation (use the real Thai word, spelled exactly; each may appear in at most TWO lines of the conversation; each must appear in at least one line' + (need.length ? '; STILL MISSING: ' + need.map(r => r.x.word.thai).join(', ') + (left <= 1 ? ' — use ' + (need.length > 1 ? 'one of them' : 'it') + ' in THIS line' : '') : '') + '):\n' + wordRows + '\n\nSCENE SEED: ' + seed + '\n\nCONVERSATION SO FAR:\n' + sofar +
+          '\n\nYES, AND: take what the other person just said as true and answer it directly (yes), then add one new small thing that builds on it (and): a detail, a choice, a number, a question or a reaction. Do not ignore, contradict or restate what was said. No planned ending; in line 6 let it come to a natural stop. Nobody may refer to a fact (a person, a number, a place, "this one") that no one has said yet.\n' +
+          'FACTS ALREADY STATED (never ask about these again, never contradict them):\n' + (ledger.length ? ledger.map(f => '- ' + f).join('\n') : '(none)') +
+          '\nRULES: ' + lnStoryLen(env.ctx).min + '–' + lnStoryLen(env.ctx).max + ' Thai words per line (the end particle is not counted); exactly one end particle, at the end; a space only BETWEEN clauses; short natural spoken lines (drop pronouns Thai drops); never use ' + YESAND_BANNED.join(' ') + '. Build the line ONLY from the words this learner knows:\nKNOWN WORDS: ' + allowed.join(' ') +
+          (retry ? '\nYOUR LAST TRY WAS REJECTED: ' + retry : '') + '\nOutput exactly ONE line: <Thai>||<English>  and nothing else.', 400); out.calls++ } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; retry = 'no reply'; continue }
+        const m = String(raw || '').split('\n').map(s => s.trim()).find(s => s.includes('||')); if (!m) { retry = 'wrong format — use <Thai>||<English>'; continue }
+        const [thai, english] = m.split('||').map(s => s.trim()); const cand = { speaker: sp, thai, english }
+        const probs = yesAndLineProblems(cand, { vocab, vocabCtx: vctx, prior: lines, words })
+        words.forEach(w => { const n = lines.concat([cand]).filter(l => thaiTargetPresent(l.thai, w.thai, vocab)).length; if (n > 2) probs.push(w.thai + ' is in more than two lines') })
+        if (i === THAI_YESAND.lines && need.some(r => !thaiTargetPresent(cand.thai, r.x.word.thai, vocab))) probs.push('this is the last line and ' + need.map(r => r.x.word.thai).join(', ') + ' has not appeared yet')
+        if (probs.length) { retry = probs.slice(0, 3).join('; '); continue }
+        // 2) coherence gate + the running list of facts, in one reply
+        let g = null
+        try { g = lnStoryJson(await call('Y_gate', 'You are a native Bangkok Thai speaker reading a short conversation that is being written line by line. Do not judge style or word choice. One question: is the conversation so far still within the realm of coherence?\nSCENE: ' + seed + '\nFACTS ALREADY STATED:\n' + (ledger.length ? ledger.map(f => '- ' + f).join('\n') : '(none)') + '\nCONVERSATION SO FAR (the newest line is the last):\n' + sofar.replace('(nothing yet)', '') + '\n' + i + '. ' + sp + ': ' + thai + ' (' + english + ')\n\n' +
+          'It is NOT coherent if: the new line does not follow from the line before it; it refers to something (this one, a number, a person, a place) nobody has mentioned; it contradicts an earlier line; it asks for something already said; it is cut off; or the situation could not happen. Otherwise it is coherent.\nAlso list, as short bullets (max 12 words each), EVERY fact stated or asked so far INCLUDING this line.\nReply ONLY with JSON: {"ok":true|false,"reason":"max 15 words","facts":["…"]}', 500)); out.calls++ } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; retry = 'coherence check unavailable'; continue }
+        if (!g || g.ok !== true) { retry = 'not coherent: ' + String(g && g.reason || '').slice(0, 100); continue }
+        ledger.splice(0, ledger.length, ...(Array.isArray(g.facts) ? g.facts : []).slice(0, 14).map(x => String(x).slice(0, 100))); accepted = cand
+      }
+      if (!accepted) { failed = 'line ' + i + ': ' + retry; break }
+      lines.push(accepted)
+    }
+    if (failed) { out.why = failed; log && log('  ✂ YES_AND conversation ' + k + ' try ' + ct + ' failed — ' + failed); continue }
+    // 3) the final logic check on the finished conversation
+    let probs = []
+    try { const raw = await call('Y_final', 'You check a short conversation (man, woman, man, woman, man, woman) for logic slips only. Do not judge style or word choice. Report a problem ONLY of these kinds:\nA. A number, price, quantity, size, person or "this one/that one" is relied on before anybody stated or showed it.\nB. The same thing is given two different numbers or sizes, or a later line contradicts an earlier one.\nC. A reply does not answer what was just asked, or a speaker asks for something already said.\nD. The conversation ends mid-sentence.\nE. A speaker states as known something nobody has told him, or asks something already answered.\nConversation:\n' + lines.map((l, j) => (j + 1) + '. ' + l.speaker + ': ' + l.thai + ' (' + l.english + ')').join('\n') + '\nReply with exactly `NONE` or one line per problem: `PROBLEM|<line number>|<kind letter>|<reason, max 15 words>`.', 300); out.calls++
+      probs = String(raw || '').split('\n').filter(s => /^PROBLEM\|/.test(s.trim())) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+    if (probs.length) { out.why = 'final check: ' + probs[0].slice(0, 100); log && log('  ✂ YES_AND conversation ' + k + ' try ' + ct + ' failed the final logic check — ' + probs.slice(0, 2).join(' | ')); continue }
+    out.ok = true; out.lines = lines; out.facts = ledger.slice()
+  }
+  return out
+}
+// the test track: plan → conversations (dropped when they cannot be written) → pairs with cues, in the app's track shape
+async function yesAndTestTrack(words, vocab, env) {
+  const plan = yesAndPlan(words, env), log = env.log, results = []
+  log && log('💬 YES_AND plan: ' + words.length + ' words → ' + plan.convs.length + ' conversations × ' + THAI_YESAND.lines + ' lines (' + plan.lines + ' lines) · every word in 2 conversations (2 + 1 mentions) · smallest gap between a word\'s conversations ' + plan.gapMin + ' (rule: ≥ ' + (env.minGap + 1) + ')' + (plan.ok ? '' : ' — GAP RULE NOT MET'))
+  const ctxCache = new Map(), ctxFor = ws => { const key = ws.map(w => w.id).join(','); if (!ctxCache.has(key)) ctxCache.set(key, buildThaiTrackVocabContext(vocab, ws, [])); return ctxCache.get(key) }
+  const e2 = { ...env, vocab, ctxFor, ctx: env.ctx || { complexity: getLearnerComplexityContract({ lang: 'th', vocab }) } }
+  for (const conv of plan.convs) { const r = await yesAndConversation(conv, e2); results.push(r); log && log('  💬 YES_AND conversation ' + (conv.idx + 1) + '/' + plan.convs.length + ' [' + conv.words.map(x => x.word.thai + '×' + x.mentions).join(', ') + '] ' + (r.ok ? 'written (' + r.calls + ' calls)' : 'DROPPED after ' + r.tries + ' tr' + (r.tries === 1 ? 'y' : 'ies') + ' — ' + r.why)) }
+  const pairs = []
+  results.forEach(r => { if (!r.ok) return; r.lines.forEach((l, j) => { const tg = plan.convs[r.idx].words.map(x => x.word).filter(w => thaiTargetPresent(l.thai, w.thai, vocab))
+    pairs.push({ speaker: l.speaker, thai: l.thai, phonetic: '', english: l.english, prompt: cueFromEnglish('th', l.english, l.thai, { vocab }), words: [], language: 'th', pairType: 'content', _yesAnd: r.idx + 1, _line: j + 1, _target: tg.map(w => w.thai).join(' + '), targetId: tg.length ? tg[0].id : null }) }) })
+  // exposures per word, in track order
+  const exp = words.map(w => ({ id: w.id, thai: w.thai, lines: pairs.map((p, i) => thaiTargetPresent(p.thai, w.thai, vocab) ? i + 1 : null).filter(Boolean) }))
+  return { plan, results, pairs, exp, written: results.filter(r => r.ok).length, dropped: results.filter(r => !r.ok).length }
+}
+// benchmark entry (the sandbox runner's --yes-and flag): the track object the app's own export can print
+async function ttBenchYesAnd(fx, vocab, apiKey, model, L, runId, nWords) {
+  const byId = new Map(vocab.map(w => [w.id, w]))
+  const words = fx.targets.map(t => byId.get(t.id)).filter(Boolean).slice(0, nWords || 99)
+  words.forEach(w => { w._trackTargets = words })
+  try { await thaiLoadRecentLines(L) } catch (e) {}
+  try { await thaiEnsureUsageProfiles(words.map(w => ({ thai: w.thai, english: w.english })), { apiKey, model }, L) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
+  const guide = thaiGuidePrefix()
+  const call = async (stage, prompt, maxTokens) => geminiRequest({ apiKey, model, messages: [{ role: 'user', content: guide + prompt + '\nKeep your reasoning brief and answer directly.' }], maxTokens, temperature: 0.8, stage })
+  const r = await yesAndTestTrack(words, vocab, { ...THAI_YESAND, call, log: L, ctx: { complexity: getLearnerComplexityContract({ lang: 'th', vocab }) } })
+  r.pairs.forEach(p => { p.prompt = cueFromEnglish('th', p.english, p.thai, { strict: true, addr: p.speaker === 'A' ? 'f' : 'm' }) || p.prompt })
+  const _kwOf = w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null, isNew: w.status === 'new', isUnseen: false, phonetic: w.phonetic || '' })
+  const keywords = buildTrackKeywords(words, words, [], _kwOf)
+  const lex = buildThaiPhoneticLexicon(vocab)
+  r.pairs.forEach(p => { try { p.phonetic = composeThaiPhonetic(p.thai, lex).phonetic } catch (e) {} })
+  const track = { date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), mode: 'daily', pairs: r.pairs, keywords, rated: false, createdAt: new Date().toISOString(),
+    status: 'EXPERIMENT_YES_AND', ready: false, selectedTargetIds: keywords.map(k => k.wordId), yesAnd: { plan: { gapMin: r.plan.gapMin, ok: r.plan.ok, conversations: r.plan.convs.length, lines: r.plan.lines }, written: r.written, dropped: r.dropped,
+      exposures: r.exp, seeds: r.results.map(x => ({ conv: x.idx + 1, ok: x.ok, seed: x.seed, why: x.why, calls: x.calls, tries: x.tries })) } }
+  return { track, yesAnd: r }
+}
 // ══ v722 — MODULE-LED LISTENING PROTOTYPE (owner's Phase 1b, 26 Oct) ═══════════════════════════════════════════════════════════════
 // The story is built from reviewed modules instead of fresh model scenes: each of the learner's words gets one reviewed 3-line module
 // (a different one from the reading track's where there is one), the modules are grouped by the scene they are tagged for (the module

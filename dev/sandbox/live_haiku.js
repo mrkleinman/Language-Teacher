@@ -148,6 +148,16 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
       if (Lx && Lx.lines) fs.writeFileSync(path.join(dir, 'listening-lines.json'), JSON.stringify({ targets: (tr.coverage && tr.coverage.targets) || tr.targetIds || null, coverage: tr.coverage || null, lines: Lx.lines }, null, 1))
       return { log, error, content: { status: tr && tr.status, reasons: tr && { failureReason: tr.failureReason || null, failedChecks: tr.failedChecks || null, coverage: tr.coverage && (tr.coverage.covered + '/' + tr.coverage.required), turns: Lx && Lx.lines && Lx.lines.length } }, telemetry: {} }
     }
+    // --yes-and N: the yes-and TEST format (v723 handover) for the first N target words; the default Daily path is not used
+    if (process.argv.includes('--yes-and')) {
+      C.ev('THAI_YESAND').on = true
+      try { const runIdApp = C.aiBeginRun('daily-track'); const nW = Number(arg('yes-and')) || picked.length
+        await C.ev('thaiModulesLoad')(null)
+        res = await C.ev('ttBenchYesAnd')({ targets: picked.map(id => ({ id })) }, vocab, 'SANDBOX_NO_GEMINI', C.ev('GEMINI_DEFAULT_MODEL'), L, runIdApp, nW)
+        res.yesAndResult = res.yesAnd; C.ev('TT_BENCH').lastTrack = res.track; C.ev('TT_BENCH').lastRunId = runIdApp } catch (e) { error = e }
+      const tr0 = res && res.track
+      return { log, error, content: { status: tr0 && tr0.status, reasons: tr0 && { written: tr0.yesAnd.written, dropped: tr0.yesAnd.dropped, gapMin: tr0.yesAnd.plan.gapMin, lines: tr0.pairs.length } }, telemetry: {} }
+    }
     try { const runIdApp = C.aiBeginRun('daily-track'); res = await C.ttBenchThaiDaily({ targets: picked.map(id => ({ id })) }, vocab, 'SANDBOX_NO_GEMINI', C.ev('GEMINI_DEFAULT_MODEL'), L, runIdApp)
       C.ev('TT_BENCH').lastTrack = res && res.track; C.ev('TT_BENCH').lastRunId = runIdApp } catch (e) { error = e }
     const tr = res && res.track, rd = tr ? C.trackReadiness(tr) : null

@@ -175,7 +175,7 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
       const tr0 = res && res.track
       return { log, error, content: { status: tr0 && tr0.status, reasons: tr0 && { written: tr0.yesAnd.written, dropped: tr0.yesAnd.dropped, gapMin: tr0.yesAnd.plan.gapMin, lines: tr0.pairs.length } }, telemetry: {} }
     }
-    try { const runIdApp = C.aiBeginRun('daily-track'); res = await C.ttBenchThaiDaily({ targets: picked.map(id => ({ id })) }, vocab, 'SANDBOX_NO_GEMINI', C.ev('GEMINI_DEFAULT_MODEL'), L, runIdApp)
+    try { const runIdApp = C.aiBeginRun('daily-track'); res = await C.ttBenchThaiDaily({ targets: picked.map(id => ({ id })), framingIds: fx.framingIds || [] }, vocab, 'SANDBOX_NO_GEMINI', C.ev('GEMINI_DEFAULT_MODEL'), L, runIdApp)
       C.ev('TT_BENCH').lastTrack = res && res.track; C.ev('TT_BENCH').lastRunId = runIdApp } catch (e) { error = e }
     const tr = res && res.track, rd = tr ? C.trackReadiness(tr) : null
     return { log, error, content: { status: tr && tr.status, reasons: rd && { ready: rd.ready, valid: rd.validTargetPairs, expected: rd.expectedTargetPairs } }, telemetry: {} }

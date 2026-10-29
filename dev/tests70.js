@@ -160,6 +160,21 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const k = c.ev('__cf')
     T('Y11', 'a cut-off cue-fidelity batch is split into two halves and each half is asked (1 failed call + 2 half-size calls), the fixes are applied', k.n === 3 && k.sizes[1] === 6 && k.sizes[2] === 6 && r.fixed === 2, JSON.stringify({ k, r }))
   }
+  {
+    // Belt Rank Test button -> blank screen (29 Oct): the button navigated to 'rank-test' and no app rendered that view.
+    const React = require('react'), RDS = require('react-dom/server')
+    const mk = (lang, f) => Array.from({ length: 200 }, (_, i) => Object.assign({ id: i + 1, english: 'e' + i, curriculumIndex: i + 1, status: 'known' }, f(i)))
+    const cr = load(FILE, { realBelt: true, React }); cr.console.info = () => {}; cr.console.warn = () => {}
+    const rank = cr.ev('currentRankName')
+    const cases = [['th', i => ({ thai: 'ไทย' + i, phonetic: 'p' + i })], ['ja', i => ({ japanese: '日' + i, reading: 'r' + i })], ['zh', i => ({ chinese: '中' + i, pinyin: 'z' + i })]]
+    const res = cases.map(([lang, f]) => {
+      const v = mk(lang, f); v[7].status = 'learning'; v[7].repCount = 1; v[7].okStreak = 0
+      const html = RDS.renderToStaticMarkup(React.createElement(cr.ev('RankTestView'), { vocab: v, lang, onBack() {} }))
+      return { lang, rank: rank(v), shown: (html.match(/data-rank-passed="0"/g) || []).length, headword: html.includes(f(7)[Object.keys(f(7))[0]]) }
+    })
+    T('Y12', 'the Rank Test screen lists the words still to prove (here exactly 1) with their headword, in Thai, Japanese and Mandarin; each app renders the view the button opens',
+      res.every(r => r.shown === 1 && r.headword) && (src.match(/view === 'rank-test' && <RankTestView/g) || []).length === 3, res)
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

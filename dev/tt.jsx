@@ -8436,6 +8436,54 @@ function RankTestButton({ vocab, rank, onStart }) {
   )
 }
 
+// The screen the Rank Test button opens (it used to navigate to a view nothing rendered, so the app showed a blank page).
+// Same in every language: lists the words of the current rank that are still to be proven, then the ones already passed.
+function RankTestView({ vocab, lang, onBack }) {
+  const rank = useMemo(() => currentRankName(vocab), [vocab])
+  const st = useMemo(() => rankTestStatus(vocab, rank), [vocab, rank])
+  const head = w => lang === 'ja' ? { main: w.japanese, sub: [w.reading, w.romaji].filter(Boolean).join(' \u00B7 ') }
+    : lang === 'zh' ? { main: w.chinese, sub: w.pinyin || '' } : { main: w.thai, sub: w.phonetic || '' }
+  const todo = st.outstanding, done = st.words.filter(isWordRankPassed)
+  const row = (w, passed) => {
+    const h = head(w)
+    return (
+      <div key={w.id} data-rank-word={w.id} data-rank-passed={passed ? '1' : '0'}
+        style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10 }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:8, flexWrap:'wrap' }}>
+            <span style={{ fontSize:18, fontWeight:600 }}>{h.main}</span>
+            <span className="phon" style={{ fontSize:12, color:'var(--gold)' }}>{h.sub}</span>
+          </div>
+          <div style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>{w.english}</div>
+        </div>
+        <span style={{ fontSize:10, fontWeight:700, whiteSpace:'nowrap', color: passed ? '#4caf50' : isWordSeen(w) ? 'var(--gold)' : 'var(--muted)' }}>
+          {passed ? 'Passed' : isWordSeen(w) ? 'Seen, not proven' : 'Not seen yet'}
+        </span>
+      </div>
+    )
+  }
+  return (
+    <div className="fade-in" data-rank-test-view={rank} style={{ padding:16, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:12 }}>
+      <button onClick={onBack} style={{ alignSelf:'flex-start', background:'none', border:'none', color:'var(--muted)', fontSize:14, cursor:'pointer', padding:0 }}>{'\u2190 Back'}</button>
+      <div>
+        <div style={{ fontWeight:700, fontSize:18 }}>{rank} Belt Rank Test</div>
+        <div style={{ fontSize:12, color:'var(--gold)', marginTop:3 }}>
+          {st.complete ? 'All words passed \u2014 ready to promote'
+            : todo.length + ' word' + (todo.length === 1 ? '' : 's') + ' still to prove (' + st.passedCount + ' of ' + st.total + ' passed)'}
+        </div>
+        {!st.complete && <p style={{ fontSize:12, color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>A word is proven when you get it right in a track. Keep these in your daily and revision tracks and the belt completes itself.</p>}
+      </div>
+      {todo.length > 0 && <div style={{ display:'flex', flexDirection:'column', gap:6 }}>{todo.map(w => row(w, false))}</div>}
+      {done.length > 0 && (
+        <details>
+          <summary style={{ fontSize:12, color:'var(--muted)', cursor:'pointer', margin:'6px 0' }}>{done.length} passed</summary>
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>{done.map(w => row(w, true))}</div>
+        </details>
+      )}
+    </div>
+  )
+}
+
 function BeltRankCard({ vocab, onNav, langName }) {
   const known = useMemo(() => vocab.filter(w => w.status === 'known').length, [vocab])
   // Current rank now comes from CURRICULUM COMPLETION, the same state the rank test
@@ -42301,6 +42349,7 @@ function ThaiTeacher({ lang, onSetLang }) {
         {view === 'add-words' && <Adder onBack={() => navigate('dashboard')} onAdded={onWordsAdded} apiKey={apiKey} />}
         {view === 'settings' && <Settings onBack={() => navigate('dashboard')} geminiKey={geminiKey} onSaveGeminiKey={async k => { setGeminiKey(k); await stSet('tt-gemini-key',k) }} geminiSpend={geminiSpend} onResetGeminiSpend={async () => { setGeminiSpend(0); await stSet('tt-gemini-spend', 0) }} gcpTtsKey={gcpTtsKey} onSaveGcpTtsKey={async k => { setGcpTtsKey(k); await stSet('tt-gcp-tts-key', k) }} geminiBackupKey={geminiBackupKey} onSaveGeminiBackupKey={async k => { setGeminiBackupKey(k); await stSet('tt-gemini-fallback-key', k) }} />}
         {view === 'data' && <DataManager onBack={() => navigate('dashboard')} vocab={vocab} tracks={tracks} onImport={async (v,t) => { await saveVocab(v); await saveTracks(t); navigate('dashboard') }} onSaveTracks={async t => { await saveTracks(t) }} fillApiKey={apiKey} fillModel={GEMINI_DEFAULT_MODEL} />}
+        {view === 'rank-test' && <RankTestView vocab={vocab} lang="th" onBack={() => navigate('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="th" onBack={() => navigate('dashboard')}
           initialBelt={returnBelt} initialBeltFilter={returnBeltFilter}
           onOpenWord={w => { setBrowseFilter('all'); setBrowseBelt('all'); setBeltWordQuery(w.thai); setReturnBelt(null); navigate('browse') }}
@@ -47738,6 +47787,7 @@ function JapaneseTeacher({ lang, onSetLang }) {
             hasVocab={hasVocab}
             onOpenTrack={onOpenTrack} onDeleteTrack={onDeleteTrack} />
         )}
+        {view === 'rank-test' && <RankTestView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="ja" onBack={() => setView('dashboard')} />}
         {view === 'topics' && <TopicsView lang="ja" vocab={vocab} onBack={() => setView('dashboard')} />}
         {view === 'generate' && (
@@ -50715,6 +50765,7 @@ function MandarinTeacher({ lang, onSetLang }) {
               setActiveTrack(t); setPlayerResumeCompleted(false); setView('player') }}
             onDeleteTrack={onDeleteTrack} />
         )}
+        {view === 'rank-test' && <RankTestView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
         {view === 'belt-rank' && <BeltRankView vocab={vocab} lang="zh" onBack={() => setView('dashboard')} />}
         {view === 'topics' && <TopicsView lang="zh" vocab={vocab} onBack={() => setView('dashboard')} />}
         {view === 'learn' && (

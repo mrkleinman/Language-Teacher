@@ -19648,6 +19648,94 @@ function thaiFramingLineProblems(thai, speaker) {
   if (thaiRecentRepeat(t) === 'exact') out.push('the same line was in a recent lesson')
   return out
 }
+// v724 — owner: the track's opening and closing are a greeting / parting word from the vocabulary bank. A and B say THE SAME phrase to each other (A with
+// ครับ, B with ค่ะ / คะ), so each phrase is used exactly twice, and it is used nowhere else in the track. Only phrases the learner may see (closed
+// vocabulary) are offered; the choice rotates by the day and the first target so consecutive tracks differ. Formal wishes with ขอให้ are not used
+// (native review: "never a translated wish with ขอให้"), nor welcome / first-meeting greetings (the two characters are friends).
+const THAI_GREET_FRAMING = { on: true }
+const THAI_GREET_POOL = [
+  // kind, key, Thai stem, English (no particle), question?, นะ + particle?, cue for A, cue for B, hours (local) it fits (null = any)
+  ['open', 'hello', 'สวัสดี', 'Hello.', 0, 0, 'Greet {B}.', 'Greet {A} back.', null],
+  ['open', 'hi', 'หวัดดี', 'Hi.', 0, 0, 'Say hi to {B}.', 'Say hi back to {A}.', null],
+  ['open', 'morning', 'สวัสดีตอนเช้า', 'Good morning.', 0, 0, 'Wish {B} good morning.', 'Wish {A} good morning back.', [5, 11]],
+  ['open', 'afternoon', 'สวัสดีตอนบ่าย', 'Good afternoon.', 0, 0, 'Wish {B} good afternoon.', 'Wish {A} good afternoon back.', [12, 16]],
+  ['open', 'evening', 'สวัสดีตอนเย็น', 'Good evening.', 0, 0, 'Wish {B} good evening.', 'Wish {A} good evening back.', [17, 20]],
+  ['open', 'morningf', 'อรุณสวัสดิ์', 'Good morning.', 0, 0, 'Wish {B} a formal good morning.', 'Wish {A} a formal good morning back.', [5, 10]],
+  ['open', 'nicetosee', 'ดีใจที่ได้เจอ', 'Nice to see you.', 0, 0, 'Tell {B} it is nice to see her.', 'Tell {A} it is nice to see him.', null],
+  ['open', 'howru1', 'สบายดีไหม', 'How are you?', 1, 0, 'Ask {B} how she is.', 'Ask {A} how he is.', null],
+  ['open', 'howru2', 'คุณเป็นยังไงบ้าง', 'How are you?', 1, 0, 'Ask {B} how she is.', 'Ask {A} how he is.', null],
+  ['open', 'howthings', 'เป็นยังไงบ้าง', 'How are things?', 1, 0, 'Ask {B} how things are.', 'Ask {A} how things are.', null],
+  ['open', 'longtime1', 'ไม่ได้เจอกันนาน', 'Long time no see.', 0, 0, 'Tell {B} it has been a long time.', 'Tell {A} it has been a long time.', null],
+  ['open', 'longtime2', 'ไม่ได้เจอกันตั้งนาน', 'Long time no see.', 0, 0, 'Tell {B} it has been a long time.', 'Tell {A} it has been a long time.', null],
+  ['close', 'goodbye', 'ลาก่อน', 'Goodbye.', 0, 0, 'Say goodbye to {B}.', 'Say goodbye to {A}.', null],
+  ['close', 'seeyou', 'แล้วเจอกัน', 'See you.', 0, 0, 'Say see you to {B}.', 'Say see you to {A}.', null],
+  ['close', 'seeyousoon', 'แล้วเจอกันเร็วๆนี้', 'See you soon.', 0, 0, 'Tell {B} you will see her soon.', 'Tell {A} you will see him soon.', null],
+  ['close', 'catchlater', 'ไว้เจอกัน', 'Catch you later.', 0, 0, 'Tell {B} you will catch her later.', 'Tell {A} you will catch him later.', null],
+  ['close', 'nexttime', 'ไว้เจอกันใหม่', 'Until next time.', 0, 0, 'Tell {B} until next time.', 'Tell {A} until next time.', null],
+  ['close', 'talklater', 'แล้วคุยกัน', 'Talk later.', 0, 0, 'Tell {B} you will talk later.', 'Tell {A} you will talk later.', null],
+  ['close', 'gladagain', 'ดีใจที่ได้คุยกันอีก', 'Glad to talk again.', 0, 0, 'Tell {B} you are glad to talk again.', 'Tell {A} you are glad to talk again.', null],
+  ['close', 'takecare', 'ดูแลตัวเองด้วย', 'Take care.', 0, 1, 'Tell {B} to take care.', 'Tell {A} to take care.', null],
+  ['close', 'safetravel', 'เดินทางปลอดภัย', 'Safe travels.', 0, 1, 'Wish {B} safe travels.', 'Wish {A} safe travels.', null],
+  ['close', 'luck1', 'โชคดี', 'Good luck.', 0, 0, 'Wish {B} good luck.', 'Wish {A} good luck.', null],
+  ['close', 'luck2', 'โชคดี', 'Good luck, all the best.', 0, 1, 'Wish {B} good luck and all the best.', 'Wish {A} good luck and all the best.', null],
+  ['close', 'goodnight', 'ราตรีสวัสดิ์', 'Good night.', 0, 0, 'Wish {B} good night.', 'Wish {A} good night.', [19, 28]],
+  ['close', 'sweetdreams', 'ฝันดี', 'Good night, sweet dreams.', 0, 0, 'Wish {B} good night and sweet dreams.', 'Wish {A} good night and sweet dreams.', [19, 28]],
+]
+function thaiGreetingLine(e, sp) {
+  const [, , stem, , q, np] = e
+  const part = sp === 'A' ? (np ? 'นะครับ' : 'ครับ') : (q ? 'คะ' : (np ? 'นะคะ' : 'ค่ะ'))
+  return stem + part
+}
+// the ordered list of phrases the learner may use for one end of the track; the caller takes the first that the track does not already contain
+function thaiGreetingCandidates(kind, o) {
+  const now = o && o.now ? o.now : new Date(), h = now.getHours(), doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 864e5)
+  const t0 = Math.abs(Number((o && o.targets && o.targets[0] && o.targets[0].id) || 0)), mine = THAI_GREET_POOL.filter(e => e[0] === kind)
+  const fits = mine.filter(e => !e[8] || (h >= e[8][0] && h <= e[8][1]) || (e[8][1] > 24 && h + 24 <= e[8][1]) || (e[8][1] > 24 && h >= e[8][0]))
+  const targetThai = (o && o.targets || []).map(x => String(x.thai || ''))
+  const free = fits.filter(e => !targetThai.some(t => t && (t.includes(e[2]) || e[2].includes(t))))
+  const ctx = o && o.ctx
+  const legal = free.filter(e => { if (!ctx) return true; try { return ['A', 'B'].every(sp => validateThaiVocabulary([{ thai: thaiGreetingLine(e, sp) }], ctx).ok) } catch (er) { return false } })
+  const base = (legal.length ? legal : []).filter(e => { try { return thaiRecentRepeat(thaiGreetingLine(e, 'A')) !== 'exact' } catch (er) { return true } })
+  const pool = base.length ? base : legal
+  if (!pool.length) return []
+  const k = (t0 + doy + (kind === 'close' ? 7 : 0)) % pool.length
+  return pool.slice(k).concat(pool.slice(0, k))
+}
+function thaiGreetingApply(sd, kind, e, names) {
+  const [ka, kb] = kind === 'open' ? ['opening', 'reply'] : ['closing', 'closing_reply'], rn = c => String(c || '').replace(/\{A\}/g, names.A).replace(/\{B\}/g, names.B)
+  sd[ka] = thaiGreetingLine(e, 'A'); sd[ka + '_english'] = e[3]; sd[ka + '_prompt'] = rn(e[6]); sd[ka + '_phonetic'] = ''
+  sd[kb] = thaiGreetingLine(e, 'B'); sd[kb + '_english'] = e[3]; sd[kb + '_prompt'] = rn(e[7]); sd[kb + '_phonetic'] = ''
+  sd._framingSource = { ...(sd._framingSource || {}), [ka]: 'vocab:greeting', [kb]: 'vocab:greeting' }
+  sd._greetPick = { ...(sd._greetPick || {}), [kind]: e[1] }
+}
+function thaiGreetingFraming(sd, o) {
+  if (!THAI_GREET_FRAMING.on || !sd) return sd
+  const latin = (c, d) => { const head = String(c || d).split(',')[0], par = (head.match(/\(([^)]*)\)/) || [])[1], bare = head.replace(/\s*\([^)]*\)/g, '').trim()
+    return /[฀-๿]/.test(bare) && par && !/[฀-๿]/.test(par) ? par.trim() : bare }
+  const names = { A: latin(sd.characterA, 'Somchai'), B: latin(sd.characterB, 'Nida') }, out = { ...sd }
+  ;['open', 'close'].forEach(kind => { const c = thaiGreetingCandidates(kind, o); if (c.length) thaiGreetingApply(out, kind, c[0], names) })
+  out._greetNames = names
+  return out
+}
+// after the whole track is written: a greeting / parting phrase must appear only in its own two framing lines — if a content line already has it,
+// that end of the track takes the next phrase that the track does not contain
+function thaiGreetingGuard(pairs, sd, o) {
+  if (!THAI_GREET_FRAMING.on || !sd || !sd._greetPick || !Array.isArray(pairs)) return { swapped: 0 }
+  const sq = x => String(x || '').replace(/\s+/g, ''), body = pairs.filter(p => p && p.pairType !== 'framing' && !THAI_FRAMING_TARGETS.has(p._target)).map(p => sq(p.thai))
+  let swapped = 0
+  ;[['open', 'th-open-A', 'th-open-B'], ['close', 'th-close-A', 'th-close-B']].forEach(([kind, ka, kb]) => {
+    const cur = THAI_GREET_POOL.find(e => e[0] === kind && e[1] === sd._greetPick[kind]); if (!cur) return
+    const leaks = e => body.some(b => b.includes(e[2]))
+    if (!leaks(cur)) return
+    const alt = thaiGreetingCandidates(kind, o).find(e => !leaks(e)); if (!alt) return
+    const pa = pairs.find(p => p && p._pairKey === ka), pb = pairs.find(p => p && p._pairKey === kb); if (!pa || !pb) return
+    const tmp = { _framingSource: {} }; thaiGreetingApply(tmp, kind, alt, sd._greetNames || { A: 'Somchai', B: 'Nida' })
+    const [xa, xb] = kind === 'open' ? ['opening', 'reply'] : ['closing', 'closing_reply']
+    ;[[pa, xa], [pb, xb]].forEach(([pp, key]) => { pp.thai = tmp[key]; pp.english = tmp[key + '_english']; pp.prompt = tmp[key + '_prompt']; pp.phonetic = ''; pp.words = []; pp._source = 'vocab:greeting' })
+    sd._greetPick[kind] = alt[1]; swapped++
+  })
+  return { swapped }
+}
 async function thaiFreshFraming(sd, o, log) {
   const out = { ...sd, _framingSource: {} }
   const pairs = [['opening', 'reply', 'greeting'], ['closing', 'closing_reply', 'goodbye']]
@@ -19693,7 +19781,9 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   if (dailyV693On()) { await thaiLoadRecentLines(_flog); await thaiModulesLoad(_flog); thaiModulesBeginRun(vocab, _flog) }
   const _sd0 = normaliseSceneSpokenFields(preScene || { scene:'Two friends at a market.', characterA:'Somchai, a Thai man', characterB:'Nida, a Thai woman', opening:'สวัสดีครับ วันนี้เราจะคุยเรื่องอะไรดีครับ', _defaultScene: true }, 'th')
   // v715 — the greeting and goodbye are the scene plan's own (or written fresh): the four set pieces of thaiBankFraming are no longer used
-  const sceneData = dailyV693On() ? await thaiFreshFraming({ ...thaiBankFramingScene(_sd0), _defaultScene: !preScene }, { apiKey, model }, _flog) : _sd0
+  const sceneData0 = dailyV693On() ? await thaiFreshFraming({ ...thaiBankFramingScene(_sd0), _defaultScene: !preScene }, { apiKey, model }, _flog) : _sd0
+  // v724 — the opening and closing are the same greeting / parting from the vocabulary bank, said by A and then B (THAI_GREET_FRAMING)
+  const sceneData = dailyV693On() ? thaiGreetingFraming(sceneData0, { targets, ctx: (() => { try { return buildThaiTrackVocabContext(vocab, targets, []) } catch (e) { return null } })() }) : sceneData0
   const scene = sceneData.scene || 'Two friends at a market.'
   const charA = sceneData.characterA || 'Somchai, a Thai man'
   const charB = sceneData.characterB || 'Nida, a Thai woman'
@@ -20091,6 +20181,8 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     try { const _cf = await thaiCueFidelityPass(allPairs, { apiKey, model: GEN_MODEL }, m0 => onProgress && onProgress(0, targets.length * 3, { apiError: m0 }, null, null)); console.info('[cue-fidelity]', JSON.stringify(_cf)) }
     catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
   }
+  // v724 — a greeting / parting phrase is used only in its own two framing lines
+  try { if (dailyV693On()) thaiGreetingGuard(allPairs, sceneData, { targets, ctx: buildThaiTrackVocabContext(vocab, targets, []) }) } catch (e) { console.error('[greeting-guard]', e) }
   // CLOSED-VOCABULARY GATE on the final generated Thai (greeting/parting included),
   // BEFORE phonetic enrichment. Nothing changes Thai after this point.
   // allPairs is a const shared array: build a NEW local list instead of reassigning it,

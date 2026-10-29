@@ -96,6 +96,32 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     T('Y7', 'accurate fixes are applied; a fix with Thai script and a no-change fix are refused; the Thai is never touched',
       r.fixed === 2 && r.refused === 2 && pairs[1].english === 'Ten baht.' && pairs[1].prompt === 'Say it is ten baht.' && pairs[3].prompt === 'Say see you again.' && pairs[2].prompt === 'Say really.' && pairs[1].thai === 'สิบบาทครับ', JSON.stringify(r))
   }
+  {
+    // v724: opening / closing = the same greeting / parting from the vocabulary bank, A then B, used only in those two lines
+    const POOL = c.ev('THAI_GREET_POOL'), line = c.ev('thaiGreetingLine'), cands = c.ev('thaiGreetingCandidates'), mkSd = () => ({ characterA: 'Somchai, a Thai man', characterB: 'Nida, a Thai woman', scene: 'x' })
+    const bad = []
+    POOL.forEach(e => ['A', 'B'].forEach(sp => {
+      const th = line(e, sp), probs = c.ev('thaiFramingLineProblems')(th, sp)
+      const cue = e[sp === 'A' ? 6 : 7].replace('{A}', 'Somchai').replace('{B}', 'Nida'), pair = { thai: th, english: e[3], prompt: cue }
+      const cp = c.ev('thaiCueFormProblems')(pair).concat(c.ev('thaiCueEnglishBroken')(cue))
+      if (probs.filter(x => !/recent/.test(x)).length || cp.length) bad.push([e[1], sp, probs, cp])
+    }))
+    T('Y8', 'every opening / closing phrase passes the framing-line checks and the cue checks for both speakers (' + POOL.length + ' phrases)', bad.length === 0, JSON.stringify(bad.slice(0, 3)))
+    const noon = new Date(2026, 9, 29, 14, 0), night = new Date(2026, 9, 29, 22, 0), tg = [{ id: 5, thai: 'กิน' }]
+    const open14 = cands('open', { now: noon, targets: tg }).map(e => e[1]), open22 = cands('open', { now: night, targets: tg }).map(e => e[1]), close22 = cands('close', { now: night, targets: tg }).map(e => e[1]), close14 = cands('close', { now: noon, targets: tg }).map(e => e[1])
+    T('Y8', 'time-of-day phrases fit the hour: afternoon at 14:00 (not morning/evening); good night only in the evening', open14.includes('afternoon') && !open14.includes('morning') && !open14.includes('evening') && close22.includes('goodnight') && !close14.includes('goodnight') && cands('open', { now: new Date(2026, 9, 29, 18, 0), targets: tg }).some(e => e[1] === 'evening'), { open14, close14 })
+    const sd = c.ev('thaiGreetingFraming')(mkSd(), { now: noon, targets: tg }), strip = x => x.replace(/(นะ)?(ครับ|ค่ะ|คะ)$/, '')
+    T('Y8', 'A and B say the SAME phrase (own particle) at both ends, with the matching English and cues', strip(sd.opening) === strip(sd.reply) && strip(sd.closing) === strip(sd.closing_reply) && /ครับ$/.test(sd.opening) && /(ค่ะ|คะ)$/.test(sd.reply) && sd.opening_english === sd.reply_english && !/\{/.test(sd.opening_prompt + sd.reply_prompt + sd.closing_prompt + sd.closing_reply_prompt) && sd._framingSource.opening === 'vocab:greeting', JSON.stringify([sd.opening, sd.reply, sd.closing, sd.closing_reply]))
+    const tg2 = [{ id: 1, thai: sd.opening.replace(/(ครับ)$/, '') }], sd2 = c.ev('thaiGreetingFraming')(mkSd(), { now: noon, targets: tg2 })
+    T('Y8', 'a phrase that is one of the track\'s own target words is not used for the framing', strip(sd2.opening) !== strip(sd.opening), [sd.opening, sd2.opening])
+    // the guard: a content line that already holds the closing phrase moves that end to another phrase
+    const pairs = [{ speaker: 'A', thai: sd.opening, _pairKey: 'th-open-A', pairType: 'framing', _target: 'greeting' }, { speaker: 'B', thai: sd.reply, _pairKey: 'th-open-B', pairType: 'framing', _target: 'greeting' },
+      { speaker: 'A', thai: 'ผมขอบคุณมากแล้วเจอกันที่ร้านครับ', pairType: 'content' },
+      { speaker: 'A', thai: sd.closing, _pairKey: 'th-close-A', pairType: 'framing', _target: 'goodbye' }, { speaker: 'B', thai: sd.closing_reply, _pairKey: 'th-close-B', pairType: 'framing', _target: 'goodbye' }]
+    const keep = sd.closing; const sd3 = { ...sd, _greetPick: { ...sd._greetPick, close: 'seeyou' } }; pairs[3].thai = 'แล้วเจอกันครับ'; pairs[4].thai = 'แล้วเจอกันค่ะ'
+    const g = c.ev('thaiGreetingGuard')(pairs, sd3, { now: noon, targets: tg })
+    T('Y8', 'the guard: a content line holding แล้วเจอกัน moves the closing to a phrase the track does not contain (both lines, same phrase)', g.swapped === 1 && !/แล้วเจอกัน/.test(pairs[3].thai) && strip(pairs[3].thai) === strip(pairs[4].thai) && pairs[3]._source === 'vocab:greeting', [pairs[3].thai, pairs[4].thai, keep])
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

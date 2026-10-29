@@ -33162,6 +33162,7 @@ async function thaiYesAndBridges(pairs, vocab, o, log) {
       'Two Thai friends, a man (A: ผม, ends ครับ) and a woman (B: ฉัน, ends ค่ะ / คะ), practise short exchanges one after another. Between some exchanges there is a GAP: the same person speaks the last line of one exchange and the first line of the next, so the other person needs ONE short line in between. For each gap write that line, YES-AND: it takes what was just said as true and ANSWERS it (yes), and adds one small thing that leads naturally into the next exchange (and), as a real conversation would move on.\n' +
       'THE CHAIN: A says something; B says "yes, and…" and brings up the NEXT WORD; A replies; B says "yes, and…" and brings up the next word, and so on. So each bridge, when it sounds natural, uses the NEXT WORD named for its gap; if that would sound forced, lead into it without naming it.\n' +
       'The bridge must (1) respond to what the previous exchange just ended on, and (2) fit ALL the lines of the next exchange: do not contradict them, do not ask what they answer, do not say what they say, and do not move to a new place or time they do not have. The exchanges themselves are fixed.\n' +
+      'FORM: the bridge is a short REACTION in the form of a statement (agree, add a small true detail, comment) that leads towards the next exchange\'s topic. It is NOT a question about the next exchange\'s topic: the next exchange asks its own questions, and a bridge that asks the same thing makes the pair repeat. Ask a question only when the previous exchange ended on something that needs a different question.\n' +
       'THE BRIDGE MUST ANSWER: if the previous exchange ended on a question put to the bridge speaker, the bridge answers it; if it ended on a statement, the bridge reacts to that statement ("yes, and…") and never ignores it; it never repeats what was just said, never contradicts the previous or the next exchange, and never makes a statement that the next exchange already makes.\n' +
       'Each bridge: a complete natural spoken sentence of at most ' + lenR.max + ' Thai words (the end particle is not counted), only simple everyday words a beginner knows, the speaker named for the gap, one end particle at the very end (A ครับ; B ค่ะ, or คะ on a question), no names.\n\n' +
       list.map(s => { const k = spots.indexOf(s) + 1, nt = (o.targets || []).find(t => t && t.id === s.b.targetId)
@@ -33197,7 +33198,7 @@ async function thaiYesAndBridges(pairs, vocab, o, log) {
     bad.forEach(b => { const sp = spots[Number(b && b.gap) - 1], i = made.findIndex(m => m.s === sp); if (i >= 0) { made.splice(i, 1); refused.set(sp, 'a native speaker would not accept it: ' + String(b.why || '').slice(0, 80)); out.judged = (out.judged || 0) + 1 } })
   }
   let todo = spots.slice()
-  for (let round = 1; round <= 2 && todo.length; round++) {
+  for (let round = 1; round <= 3 && todo.length; round++) {
     try { judge(await ask(todo, round > 1 ? refused : null), todo); await semantic(todo) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ YES_AND_DAILY bridges unusable: ' + String(e && e.message || e).slice(0, 100)); break }
     todo = spots.filter(s => !made.some(m => m.s === s)); if (round === 1) out.retried = todo.length
   }

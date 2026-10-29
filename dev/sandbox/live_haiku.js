@@ -104,6 +104,8 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
     // --bank: switch the vetted Daily exchanges ON (v713: the app's default is off)
     if (process.argv.includes('--bank')) { C.ev('thaiBankSetEnabled')(true); console.log('  (Thai exchange bank ON for this run)') }
     if (process.argv.includes('--no-bank')) { C.ev('thaiBankSetEnabled')(false); console.log('  (Thai exchange bank OFF for this run)') }
+    // --cue-fidelity: the final cue / English accuracy pass (v724)
+    if (process.argv.includes('--cue-fidelity')) { C.ev('THAI_CUE_FIDELITY').on = true; console.log('  (cue / English accuracy pass ON)') }
     // --yes-and-daily <links.csv>: the Thai DAILY in the yes-and form (v723): modules ordered by scene (links file) + one yes-and line between exchanges
     { const k = process.argv.indexOf('--yes-and-daily')
       if (k > 0) {

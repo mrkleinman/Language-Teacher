@@ -9576,7 +9576,7 @@ function anthropicCacheBlocks(text) {
 }
 // v712 — a stage may think harder than the default effort (the English story script of a Listening scene: a short call without the Thai
 // word list, where more reasoning improves the story and still finishes in ~15 s)
-const ANTHROPIC_STAGE_EFFORT = Object.freeze({ Y_bridge: 'low', Y_batch: 'low', Y_fix: 'low', Y_judge: 'low', Y_seed: 'low', Y_line: 'low', Y_gate: 'low', Y_final: 'low', O_listening_module_scene: 'low', O_listening_module_spine: 'low', O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
+const ANTHROPIC_STAGE_EFFORT = Object.freeze({ O_cue_fidelity: 'low', Y_bridge: 'low', Y_batch: 'low', Y_fix: 'low', Y_judge: 'low', Y_seed: 'low', Y_line: 'low', Y_gate: 'low', Y_final: 'low', O_listening_module_scene: 'low', O_listening_module_spine: 'low', O_listening_story_beats: 'medium', O_listening_story_review: 'medium', O_listening_word_check: 'medium', O_listening_story_usage: 'medium', O_word_usage: 'medium' })
 function anthropicRequestBody({ model, messages, maxTokens, json, effort, noThinking }) {
   const m = anthropicMessages(messages)
   // one cache breakpoint: the first message (or system) that carries the mark; every other mark is removed
@@ -20085,6 +20085,11 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       allPairs.push(closeB)
     }
     onProgress && onProgress(allPairs.length, targets.length*3, { targetThai:'parting', allPairs:[...allPairs] }, ['ai:check-1'], targets.length)
+  }
+  // v724 — cue / English accuracy pass (THAI_CUE_FIDELITY, off by default): English and cue are made to say exactly what the Thai says; the Thai is never edited
+  if (THAI_CUE_FIDELITY.on && dailyV693On()) {
+    try { const _cf = await thaiCueFidelityPass(allPairs, { apiKey, model: GEN_MODEL }, m0 => onProgress && onProgress(0, targets.length * 3, { apiError: m0 }, null, null)); console.info('[cue-fidelity]', JSON.stringify(_cf)) }
+    catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e }
   }
   // CLOSED-VOCABULARY GATE on the final generated Thai (greeting/parting included),
   // BEFORE phonetic enrichment. Nothing changes Thai after this point.
@@ -32755,6 +32760,9 @@ const LN_STORY_WORD_CAP = { maxWords: 25 }
 // EXPOSURE = one line that contains the word (a line naming it twice is one exposure). A conversation names a word at most twice; every word
 // gets 3 exposures in 2 conversations (2 + 1) at least `minGap` conversations apart, and a conversation carries 2 target words.
 const THAI_YESAND = { on: false, daily: false, lean: true, mode: 'lines', noThinking: true, knownList: true, refs: false, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0, bridgeThinking: false }
+// v724 — owner: every cue and English line must say exactly what the Thai says, whatever word is being practised. One cheap pass over the finished Daily track
+// (batches of 40 lines) fixes the ENGLISH and the CUE to match the Thai; it never edits the Thai. Off until the owner approves it for release.
+const THAI_CUE_FIDELITY = { on: false, batch: 40, minLen: 4 }
 const YESAND_BANNED = ['ต้องการ', 'โอเค', 'แน่ใจ', 'อ๋อ', 'สักครู่', 'ปั่นจักรยาน', 'แล้วไหม']
 // words → conversations. Word i meets conversation i and conversation (i + g) mod N, g = floor(N/2): every conversation then holds exactly two
 // words, every word sits in exactly two conversations, and they are N - g ≥ g apart. The earlier conversation names the word twice, the later once.
@@ -32971,6 +32979,37 @@ function thaiYesAndOrder(order, vocab) {
   const rows = order.map((t, i) => ({ t, i, sc: sceneOf(t) })), rank = sc => (LN_MODULE_SCENE_ORDER[sc] || 9)
   const first = new Map(); rows.forEach(r => { const k = r.sc || '~'; if (!first.has(k)) first.set(k, r.i) })
   return rows.slice().sort((a, b) => (rank(a.sc) - rank(b.sc)) || ((first.get(a.sc || '~')) - (first.get(b.sc || '~'))) || (a.i - b.i)).map(r => r.t)
+}
+async function thaiCueFidelityPass(pairs, o, log) {
+  const out = { asked: 0, fixed: 0, refused: 0, calls: 0 }
+  const all = (pairs || []).filter(p => p && p.thai && p.english && p.prompt && (p.speaker === 'A' || p.speaker === 'B'))
+  out.asked = all.length; if (!all.length) return out
+  for (let s0 = 0; s0 < all.length; s0 += THAI_CUE_FIDELITY.batch) {
+    const part = all.slice(s0, s0 + THAI_CUE_FIDELITY.batch)
+    let fixes = []
+    try {
+      const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, stage: 'O_cue_fidelity', maxTokens: 3000, temperature: 0, messages: [{ role: 'user', content:
+        'A Thai lesson track: a man (A: ผม, ends ครับ) and a woman (B: ฉัน, ends ค่ะ / คะ) speak in turn. Each line has the THAI (fixed, correct, never change it), its ENGLISH translation and a CUE, the English instruction the learner reads before saying the Thai ("Tell her …", "Ask him …", "Say …").\n' +
+        'Check every line and report ONLY the lines that need a change. The THAI is the truth:\n' +
+        '1. ENGLISH must be a faithful translation of exactly the Thai: every idea the Thai says, and NOTHING it does not say (no "now", "then", "just", "instead", "also", "again", "very", "he/she/they" unless a Thai word carries it; keep tense as the Thai gives it; a Thai question ends with ?, a statement with . or !).\n' +
+        '2. CUE must make the learner able to say exactly that Thai, no more and no less: it carries every idea in the Thai that cannot be guessed (who or what, a negative, a question, a link like "then" / "but" / "so" when the Thai has งั้น / แต่ / เลย, a reaction word the Thai starts with) and nothing the Thai lacks. A cue for a question starts "Ask …", for a statement "Say …" or "Tell …". Keep the existing cue\'s style and the person it speaks to (A speaks to a woman: "her"; B to a man: "him") and change only what is wrong. It never contains Thai script or romanisation, and it never gives away the Thai word-for-word when a plain meaning will do.\n' +
+        '3. The cue and the English must agree with each other.\n' +
+        'If a line is already accurate, leave it out. Do not fix style, only accuracy. Never invent facts.\n\n' +
+        part.map((l, k) => (k + 1) + '. ' + l.speaker + ' | THAI: ' + l.thai + ' | ENGLISH: ' + l.english + ' | CUE: ' + l.prompt).join('\n') +
+        '\n\nReply ONLY with JSON: {"fixes":[{"n":1,"english":"…","cue":"…"}]} — give english and/or cue only when it changes.' }] })
+      out.calls++
+      const t = String(raw || '').replace(/```json|```/g, ''); fixes = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).fixes || []
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('cue-fidelity batch failed: ' + (e && e.message)); continue }
+    for (const fx of fixes) {
+      const l = part[Number(fx && fx.n) - 1]; if (!l) continue
+      const en = fx.english != null ? String(fx.english).trim() : l.english, cue = fx.cue != null ? String(fx.cue).trim() : l.prompt
+      const next = { ...l, english: en, prompt: cue }
+      const bad = en.length < THAI_CUE_FIDELITY.minLen || cue.length < THAI_CUE_FIDELITY.minLen || cue.length > 160 || /[\u0e00-\u0e7f]/.test(en + cue) || thaiCueFormProblems(next).length || thaiCueEnglishBroken(cue).length || (en === l.english && cue === l.prompt)
+      if (bad) { out.refused++; continue }
+      l.english = en; l.prompt = cue; l._cueFidelityFixed = true; out.fixed++
+    }
+  }
+  return out
 }
 async function thaiYesAndBridges(pairs, vocab, o, log) {
   const out = { asked: 0, inserted: 0, dropped: 0, calls: 0, retried: 0 }

@@ -85,6 +85,17 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const i = src.indexOf("thai: l._moduleId ? l.thai : normaliseThaiSpacing(l.thai), phonetic: phon")
     T('Y6', 'the final line pass leaves vetted module lines unspaced-changed', i > 0 && c.ev('normaliseThaiSpacing')('ดี ฉันรอเริ่มค่ะ') === 'ดีฉันรอเริ่มค่ะ', i)
   }
+  {
+    // v724: the cue / English accuracy pass edits ONLY english + cue, refuses bad fixes (Thai script, wrong form, no change), and is off by default
+    T('Y7', 'cue-fidelity is off by default', c.ev('THAI_CUE_FIDELITY').on === false)
+    const mk = (th, en, cue, sp) => ({ speaker: sp || 'A', thai: th, english: en, prompt: cue, pairType: 'content' })
+    const pairs = [mk('ทำไมคุณตอบเขาไม่ได้คะ', 'Why can\'t you answer him?', 'Ask her why she can\'t answer him.', 'A'), mk('สิบบาทครับ', 'Just ten baht, please.', 'Say just ten baht, please.'), mk('จริงค่ะ', 'Really.', 'Say really.', 'B'), mk('แล้วเจอกันนะคะ', 'See you again.', 'Say see you again and you smile', 'B')]
+    const reply = { fixes: [{ n: 2, english: 'Ten baht.', cue: 'Say it is ten baht.' }, { n: 3, cue: 'Say ทำ in Thai' }, { n: 4, cue: 'Say see you again.' }, { n: 1, english: 'Why can\'t you answer him?', cue: 'Ask her why she can\'t answer him.' }] }
+    c.ev('geminiRequest = async function () { return JSON.stringify(' + JSON.stringify(reply) + ') }')
+    const r = await c.ev('thaiCueFidelityPass')(pairs, { apiKey: 'x', model: 'm' })
+    T('Y7', 'accurate fixes are applied; a fix with Thai script and a no-change fix are refused; the Thai is never touched',
+      r.fixed === 2 && r.refused === 2 && pairs[1].english === 'Ten baht.' && pairs[1].prompt === 'Say it is ten baht.' && pairs[3].prompt === 'Say see you again.' && pairs[2].prompt === 'Say really.' && pairs[1].thai === 'สิบบาทครับ', JSON.stringify(r))
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

@@ -26,7 +26,7 @@ def build():
     clean = lambda v: '' if v in ('-', None) else v
     t = {r['id']: [r['thai'], tier(r['tier']), r['group'], clean(r['second_group']), clean(r['subgroup']), clean(r['classifier']),
                    r['english_slot'], r['english_slot_2'], r['english_plural']] for r in tags}
-    cols = ['module_id', 'group', 'tier', 'exclude_ids', 'A1_thai', 'A1_english', 'A1_prompt', 'B_thai', 'B_english', 'B_prompt', 'A2_thai', 'A2_english', 'A2_prompt']
+    cols = ['module_id', 'group', 'tier', 'exclude_ids', 'A1_thai', 'A1_english', 'A1_prompt', 'B_thai', 'B_english', 'B_prompt', 'A2_thai', 'A2_english', 'A2_prompt', 'scene', 'job']
     m = [[tier(r[c]) if c == 'tier' else r[c] for c in cols] for r in mods]
     return {'v': 'm1', 't': t, 'm': m}
 

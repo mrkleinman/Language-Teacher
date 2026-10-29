@@ -111,6 +111,7 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
         C.ev('thaiModulesSetEnabled')(true); const zl = require('zlib'); C.ev('thaiModulesUseData')(JSON.parse(zl.gunzipSync(Buffer.from(C.ev('THAI_MODULES_GZ'), 'base64')).toString('utf8')))
         console.log('  (yes-and Daily ON: ' + C.ev('lnModuleStoryUseLinks')(csv.slice(1).map(l => { const f = l.split(','), o = {}; head.forEach((h, i) => { o[h.trim()] = f[i] }); return o })) + ' module links)')
         C.ev('THAI_YESAND').daily = true
+        if (process.argv.includes('--bridge-thinking')) { C.ev('THAI_YESAND').bridgeThinking = true; console.log('  (bridge line written with thinking ON)') }
       } }
     // --ln-module-story <links.csv> [--ln-exclude id,id,…]: the module-led Listening prototype (v722): the story is built from reviewed modules
     // (links file: scene / job / story_safe per module), the model adds only bridge lines; the reading track's module ids are left out

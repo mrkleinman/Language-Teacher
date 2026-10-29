@@ -9658,7 +9658,7 @@ function aiRunSpend(runId, provider) {
 // ── the Anthropic transport (one ledger row per HTTP attempt, like Gemini) ──────────────────────────────────────────────
 async function anthropicRequest({ model, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId }) {
   const stageNow = stage || aiStageOf(_promptText, _chain)
-  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow], noThinking: /^Y_/.test(String(stageNow)) && THAI_YESAND.noThinking })
+  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow], noThinking: /^Y_/.test(String(stageNow)) && THAI_YESAND.noThinking && !(stageNow === 'Y_bridge' && THAI_YESAND.bridgeThinking) })
   const latched = AI_ANTHROPIC_LATCH.get(runId)
   const notSent = (why, err) => { const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens }); row.latched = true; aiRecordEnd(row, { http: null, ok: false, error: why }); throw err }
   if (latched) notSent('LATCHED: ' + latched.fatalProvider.reason, latched)
@@ -32754,7 +32754,7 @@ const LN_STORY_WORD_CAP = { maxWords: 25 }
 // cannot be written cleanly is DROPPED, never padded. A word's exposures are peppered around the track: see yesAndPlan.
 // EXPOSURE = one line that contains the word (a line naming it twice is one exposure). A conversation names a word at most twice; every word
 // gets 3 exposures in 2 conversations (2 + 1) at least `minGap` conversations apart, and a conversation carries 2 target words.
-const THAI_YESAND = { on: false, daily: false, lean: true, mode: 'lines', noThinking: true, knownList: true, refs: false, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0 }
+const THAI_YESAND = { on: false, daily: false, lean: true, mode: 'lines', noThinking: true, knownList: true, refs: false, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0, bridgeThinking: false }
 const YESAND_BANNED = ['ต้องการ', 'โอเค', 'แน่ใจ', 'อ๋อ', 'สักครู่', 'ปั่นจักรยาน', 'แล้วไหม']
 // words → conversations. Word i meets conversation i and conversation (i + g) mod N, g = floor(N/2): every conversation then holds exactly two
 // words, every word sits in exactly two conversations, and they are N - g ≥ g apart. The earlier conversation names the word twice, the later once.

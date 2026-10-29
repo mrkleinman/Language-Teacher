@@ -175,6 +175,31 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     T('Y12', 'the Rank Test screen lists the words still to prove (here exactly 1) with their headword, in Thai, Japanese and Mandarin; each app renders the view the button opens',
       res.every(r => r.shown === 1 && r.headword) && (src.match(/view === 'rank-test' && <RankTestView/g) || []).length === 3, res)
   }
+  {
+    // 29 Oct blind reviews of the live track (6.8 / 6.6): the listener-copy cue lint turned the correct cue "Tell her you'll catch her later." into "Say catch her later."; the greeting cues named
+    // people the Thai never names ("Tell Nida it has been a long time"); a speaker said "I don't know where the entrance is", was asked it back, and then answered; bridges answered
+    // "where?" with "yes", answered a question with a question, or said "too" about something nobody had said; ลูกค้า was spelt with the wrong tone
+    const cd = c.ev('thaiCueDefects'), sc = c.ev('thaiSelfContradictionProblems'), br = c.ev('thaiYesAndBridgeAnswerProblems')
+    T('Y13', 'the cue "Tell her you\'ll catch her later." for "Catch you later." is NOT flagged as the listener copied over; "Say you can take it." for "You can take it." still is',
+      !cd("Tell her you'll catch her later.", { english: 'Catch you later.', thai: 'ไว้เจอกันครับ', prompt: "Tell her you'll catch her later.", speaker: 'A' }, { addr: 'f' }).includes('ADDRESSEE_AS_YOU') &&
+      cd('Say you can take it.', { english: 'You can take it.', thai: 'เอาได้ครับ', prompt: 'Say you can take it.', speaker: 'A' }, { addr: 'f' }).includes('ADDRESSEE_AS_YOU'))
+    const ap = c.ev('thaiGreetingApply'), tmp = {}; ap(tmp, 'open', c.ev('THAI_GREET_POOL').find(e => e[1] === 'longtime2'), { A: 'Somchai', B: 'Nida' })
+    T('Y13', 'a greeting cue says him / her, never the scene names', tmp.opening_prompt === 'Tell her it has been a long time.' && tmp.reply_prompt === 'Tell him it has been a long time.', [tmp.opening_prompt, tmp.reply_prompt])
+    T('Y14', 'A says "I don\'t know where the entrance is", B asks it back, A answers → flagged; B who TELLS A (no ask-back) is normal; "I don\'t know what to do" then a plan is normal',
+      sc([{ speaker: 'A', thai: 'ผมไม่รู้ว่าทางเข้าอยู่ไหนครับ' }, { speaker: 'B', thai: 'ทางเข้าร้านสะดวกซื้ออยู่ไหนคะ' }, { speaker: 'A', thai: 'ทางเข้าอยู่ทางนั้นครับ' }]).length === 1 &&
+      sc([{ speaker: 'A', thai: 'ผมไม่รู้ว่าอันไหนเป็นของแท้ครับ' }, { speaker: 'B', thai: 'ดูที่ป้ายสิคะ' }, { speaker: 'A', thai: 'ผมดูแล้ว อันนี้เป็นของแท้ครับ' }]).length === 0 &&
+      sc([{ speaker: 'A', thai: 'ผมไม่รู้จะทำยังไงครับ' }, { speaker: 'B', thai: 'ลองถามเขาสิคะ' }, { speaker: 'A', thai: 'ผมจะลองถามครับ' }]).length === 0)
+    T('Y14', 'wired into the module checks and the exchange writer', /thaiSelfContradictionProblems\(lines\)\.forEach/.test(src) && /thaiSelfContradictionProblems\(g\)\.forEach/.test(src))
+    const A1 = 'ดีเลย แต่จะเก็บหอมใหญ่ที่ไหนครับ'
+    T('Y15', 'a bridge: "ใช่" to a "where?" question is refused; answering it is kept; a question answered with a question is refused; "too" with nothing to be the same as is refused',
+      br({ thai: 'ใช่ค่ะ ต้องซื้อน้ำแข็งด้วยไหมคะ', english: 'Yes. Should we buy ice too?' }, { thai: A1 }, [{ thai: A1 }]).length >= 1 &&
+      br({ thai: 'เก็บในตู้เย็นก็ได้ค่ะ ต้องซื้อน้ำแข็งด้วยไหมคะ', english: 'Keep it in the fridge. Should we buy ice too?' }, { thai: A1 }, [{ thai: A1 }]).length === 0 &&
+      br({ thai: 'ที่นี่ฝนตกบ่อยไหมคะ', english: 'Does it rain often here?' }, { thai: 'ที่บ้านฝนตกบ่อยไหมครับ' }, []).length === 1 &&
+      br({ thai: 'ฉันก็ง่วงเหมือนกันค่ะ', english: 'I am sleepy too.' }, { thai: 'ผมไม่รู้ว่าทางเข้าอยู่ไหนครับ' }, []).length === 1)
+    T('Y15', 'the bridge check runs on every candidate bridge', /thaiYesAndBridgeAnswerProblems\(cand, s\.a, s\.prev\)/.test(src))
+    const rec = c.ev('RAW_VOCAB').find(w => w.t === 'ลูกค้า')
+    T('Y16', 'ลูกค้า (customer) is lûuk-kháa (high tone, mái-tho on a low-class consonant)', rec && rec.ph === 'lûuk-kháa' && c.ev('THAI_PHONETIC_OVERRIDES')['ลูกค้า'] === 'lûuk-kháa', rec && rec.ph)
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

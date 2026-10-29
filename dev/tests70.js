@@ -144,6 +144,14 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const kw = c.ev('thaiFramingKeywords')({ open: w1, close: null }, w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null }))
     T('Y9', 'the framing words become rated keywords flagged framing (kept apart from the 30 the audit counts)', kw.length === 1 && kw[0].framing === 'open' && kw[0].wordId === w1.id, kw)
   }
+  {
+    // v724: a bridge reply cut off at the token cap (thinking on) is asked again once with thinking off
+    const mk = (sp, th, en, k) => ({ speaker: sp, thai: th, english: en, prompt: 'x', pairType: 'content', targetId: k, targetSurface: 'w' + k, recallIndex: 1 })
+    const pairs = [mk('A', 'ผมกินข้าวครับ', 'I eat rice.', 1), mk('B', 'ฉันกินปลาค่ะ', 'I eat fish.', 1), mk('A', 'ผมไปตลาดครับ', 'I go to the market.', 1), mk('A', 'ผมซื้อน้ำครับ', 'I buy water.', 2), mk('B', 'ฉันซื้อนมค่ะ', 'I buy milk.', 2)]
+    c.ev("globalThis.__cnt = { n: 0, seen: [] }; geminiRequest = async function (o) { __cnt.n++; __cnt.seen.push(THAI_YESAND._bridgeNoThink === true); if (__cnt.n === 1) throw new Error('CLAUDE HAIKU REPLY REJECTED: MAX_TOKENS: the reply was cut off'); return JSON.stringify({ bridges: [{ gap: 1, thai: 'ดีเลยค่ะ', english: 'That is nice.' }] }) }")
+    let res; try { res = await c.ev('thaiYesAndBridges')(pairs, c.ev('initVocab')(), { apiKey: 'x', model: 'm', targets: [{ id: 2, thai: 'ซื้อ', english: 'buy' }] }, () => {}) } catch (e) { res = { error: String(e) } }
+    T('Y10', 'a bridge reply cut off at the token cap is asked once more with thinking off (flag set for the retry only, then cleared)', (() => { const k = c.ev('__cnt'); return k.n >= 2 && k.seen[0] === false && k.seen[1] === true && c.ev('THAI_YESAND')._bridgeNoThink === false && res.noThinkRetry === 1 })(), JSON.stringify({ cnt: c.ev('__cnt'), res }))
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

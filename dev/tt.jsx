@@ -9664,7 +9664,7 @@ function aiRunSpend(runId, provider) {
 // ── the Anthropic transport (one ledger row per HTTP attempt, like Gemini) ──────────────────────────────────────────────
 async function anthropicRequest({ model, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId }) {
   const stageNow = stage || aiStageOf(_promptText, _chain)
-  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow], noThinking: /^Y_/.test(String(stageNow)) && THAI_YESAND.noThinking && !(stageNow === 'Y_bridge' && THAI_YESAND.bridgeThinking) })
+  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow], noThinking: /^Y_/.test(String(stageNow)) && THAI_YESAND.noThinking && !(stageNow === 'Y_bridge' && THAI_YESAND.bridgeThinking && !THAI_YESAND._bridgeNoThink) })
   const latched = AI_ANTHROPIC_LATCH.get(runId)
   const notSent = (why, err) => { const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens }); row.latched = true; aiRecordEnd(row, { http: null, ok: false, error: why }); throw err }
   if (latched) notSent('LATCHED: ' + latched.fatalProvider.reason, latched)
@@ -33155,7 +33155,7 @@ async function thaiYesAndBridges(pairs, vocab, o, log) {
   const lenR = lnStoryLen({ complexity: getLearnerComplexityContract({ lang: 'th', vocab }) })
   const vctx = buildThaiTrackVocabContext(vocab, o.targets || [], [])
   const fmt = (l) => '    ' + l.speaker + ': ' + l.thai + ' (' + (l.english || '') + ')'
-  const ask = async (list, reasons) => {
+  const ask0 = async (list, reasons) => {
     const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, stage: 'Y_bridge', maxTokens: 1500, temperature: 0.8, messages: [{ role: 'user', content: thaiGuidePrefix() +
       'Two Thai friends, a man (A: ผม, ends ครับ) and a woman (B: ฉัน, ends ค่ะ / คะ), practise short exchanges one after another. Between some exchanges there is a GAP: the same person speaks the last line of one exchange and the first line of the next, so the other person needs ONE short line in between. For each gap write that line, YES-AND: it takes what was just said as true and ANSWERS it (yes), and adds one small thing that leads naturally into the next exchange (and), as a real conversation would move on.\n' +
       'THE CHAIN: A says something; B says "yes, and…" and brings up the NEXT WORD; A replies; B says "yes, and…" and brings up the next word, and so on. So each bridge, when it sounds natural, uses the NEXT WORD named for its gap; if that would sound forced, lead into it without naming it.\n' +
@@ -33166,6 +33166,13 @@ async function thaiYesAndBridges(pairs, vocab, o, log) {
       '\n\nReply ONLY with JSON: {"bridges":[{"gap":1,"thai":"…","english":"…"}]}' }] })
     out.calls++
     const t = String(raw || '').replace(/```json|```/g, ''); return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).bridges || []
+  }
+  // v724 — with thinking on, the reply can be cut off at the token cap (live D-run: 3 of 3 gaps left without a bridge); one retry with thinking off
+  const ask = async (list, reasons) => {
+    try { return await ask0(list, reasons) }
+    catch (e) { if (!/MAX_TOKENS/.test(String(e && e.message || e))) throw e
+      THAI_YESAND._bridgeNoThink = true; out.noThinkRetry = (out.noThinkRetry || 0) + 1
+      try { return await ask0(list, reasons) } finally { THAI_YESAND._bridgeNoThink = false } }
   }
   const made = [], refused = new Map()
   const judge = (arr, list) => { arr.forEach(b => { const s = spots[Number(b && b.gap) - 1]; if (!s || !list.includes(s) || !b.thai) return

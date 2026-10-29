@@ -44,6 +44,7 @@ const usdOf = u => u ? ((u.input_tokens || 0) * PRICE.in + (u.cache_read_input_t
   // a fixture — the same path as sandbox/daily-relay/bridge-daily.js, so a paid track is directly comparable with the relay tracks
   const ownerBackup = arg('owner-backup'), ownerTargets = arg('targets'), LISTENING = process.argv.includes('--listening')
   const fx = ownerBackup ? { id: 'th-daily-owner', language: 'th' } : loadFixture(fixtureId)
+  if (arg('framing-ids')) fx.framingIds = String(arg('framing-ids')).split(',').map(Number).filter(Boolean)   // v724: greeting / parting words that are the opening / closing
   const ledger = readLedger(); const spentBefore = ledger.runs.reduce((a, r) => a + (r.costUsd || 0), 0)
   if (spentBefore >= sessionCap) { console.log('LIVE RUN NOT RUN: session budget used (US$' + spentBefore.toFixed(4) + ' of US$' + sessionCap + ')'); process.exit(2) }
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)

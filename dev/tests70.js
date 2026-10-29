@@ -122,6 +122,28 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const g = c.ev('thaiGreetingGuard')(pairs, sd3, { now: noon, targets: tg })
     T('Y8', 'the guard: a content line holding แล้วเจอกัน moves the closing to a phrase the track does not contain (both lines, same phrase)', g.swapped === 1 && !/แล้วเจอกัน/.test(pairs[3].thai) && strip(pairs[3].thai) === strip(pairs[4].thai) && pairs[3]._source === 'vocab:greeting', [pairs[3].thai, pairs[4].thai, keep])
   }
+  {
+    // v724: a DUE greeting / parting word is the opening / closing (2 recalls), on top of the 30 — not one of the 30
+    const vocab = c.ev('initVocab')(), ids = new Set([97, 1418, 1401, 1402, ...vocab.filter(w => w.belt === 'White' && w.id < 400).slice(0, 45).map(w => w.id)])
+    const v = vocab.map(w => ids.has(w.id) ? { ...w, status: 'learning', introducedAt: '2026-08-01', lastSeen: '2026-09-20', okStreak: 1, interval: 3, dueDate: '2026-09-21' } : { ...w, status: 'locked', introducedAt: null, lastSeen: null, okStreak: 0, repCount: 0, dueDate: null, interval: 0 })
+    const pw = c.ev('pickWords')(v, 'daily', []), kinds = c.ev('thaiGreetKindOf')
+    T('Y9', 'pickWords: the due greeting becomes a framing word and none of the 30 is a greeting / parting word',
+      pw.targets.length === 30 && pw.framing && pw.framing.open && kinds(pw.framing.open.thai) === 'open' && !pw.targets.some(w => kinds(w.thai)), { n: pw.targets.length, framing: pw.framing && Object.keys(pw.framing).map(k => pw.framing[k] && pw.framing[k].thai) })
+    const pwW = c.ev('pickWords')(v, 'weak', [])
+    T('Y9', 'other modes are unchanged (no framing words)', !pwW.framing)
+    const w1 = vocab.find(w => w.thai === 'ยินดีต้อนรับ'), w2 = vocab.find(w => w.thai === 'ดูแลตัวเองด้วย'), w3 = vocab.find(w => w.thai === 'สวัสดีครับ')
+    const sd = c.ev('thaiGreetingFraming')({ characterA: 'Somchai, a Thai man', characterB: 'Nida, a Thai woman' }, { now: new Date(2026, 9, 29, 14), targets: [{ id: 1, thai: 'กิน' }], framingWords: { open: w1, close: w2 } })
+    const strip = x => x.replace(/(นะ)?(ครับ|ค่ะ|คะ)$/, '')
+    T('Y9', 'a forced word is the framing at its end: A and B say it, with valid particles, English and cue; the guard never replaces it',
+      strip(sd.opening) === 'ยินดีต้อนรับ' && strip(sd.reply) === 'ยินดีต้อนรับ' && sd.closing === 'ดูแลตัวเองด้วยนะครับ' && sd.closing_reply === 'ดูแลตัวเองด้วยนะคะ' && sd._greetForced.open === w1.id && sd._greetForced.close === w2.id &&
+      c.ev('thaiGreetingGuard')([{ _pairKey: 'th-open-A', pairType: 'framing' }, { pairType: 'content', thai: 'ยินดีต้อนรับค่ะ' }], sd, { targets: [] }).swapped === 0, JSON.stringify([sd.opening, sd.reply, sd.closing, sd.closing_reply, sd.opening_prompt]))
+    const sd3 = c.ev('thaiGreetingFraming')({ characterA: 'Somchai', characterB: 'Nida' }, { now: new Date(2026, 9, 29, 14), targets: [], framingWords: { open: w3 } })
+    const gen = c.ev('thaiGreetingEntryForWord')(vocab.find(w => w.thai === 'ยินดีที่ได้รู้จัก'), 'open'), pa = { thai: c.ev('thaiGreetingLine')(gen, 'A'), english: gen[3], prompt: gen[6].replace('{B}', 'Nida') }
+    T('Y9', 'สวัสดีครับ as a target gives สวัสดีครับ / สวัสดีค่ะ (no doubled particle); a word outside the pool gets a valid generated phrase and cue',
+      sd3.opening === 'สวัสดีครับ' && sd3.reply === 'สวัสดีค่ะ' && c.ev('thaiFramingLineProblems')(pa.thai, 'A').filter(x => !/recent/.test(x)).length === 0 && c.ev('thaiCueFormProblems')(pa).length === 0, JSON.stringify([sd3.opening, sd3.reply, pa]))
+    const kw = c.ev('thaiFramingKeywords')({ open: w1, close: null }, w => ({ thai: w.thai, english: w.english, wordId: w.id, rating: null }))
+    T('Y9', 'the framing words become rated keywords flagged framing (kept apart from the 30 the audit counts)', kw.length === 1 && kw[0].framing === 'open' && kw[0].wordId === w1.id, kw)
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

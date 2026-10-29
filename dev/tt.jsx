@@ -7249,6 +7249,12 @@ function pickWords(vocab, mode, todayNewWords) {
       return false
     })
   }
+  // v724 — greeting / parting words are the opening / closing, not part of the 30: the first due one of each kind becomes a framing word
+  const framing = { open: null, close: null }
+  if (THAI_GREET_TARGETS.on && mode === 'daily') {
+    ordered.slice(0, N).forEach(w => { const k = w && thaiGreetKindOf(w.thai); if (k && !framing[k]) framing[k] = w })
+    ordered = ordered.filter(w => !(w && thaiGreetKindOf(w.thai)))
+  }
   let targets = ordered.slice(0, N)
   const tIds = new Set(targets.map(w => w.id))
   const reserve = ordered.slice(N).filter(w => !tIds.has(w.id))
@@ -7293,7 +7299,7 @@ function pickWords(vocab, mode, todayNewWords) {
   overflowWords.forEach(w => { w._newCeilingOverflow = true })
   targets = targets.map(w => overflowWords.includes(w) ? { ...w, _newCeilingOverflow: true } : w)
   if (overflowWords.length) candidateStats.newCeilingOverflow = overflowWords.length
-  return { targets, anchors, reserve, skippedCandidates, selectionBackfills, candidateStats, shortfall }
+  return { targets, anchors, reserve, skippedCandidates, selectionBackfills, candidateStats, shortfall, framing: (framing.open || framing.close) ? framing : null }
 }
 
 // Freezes the lesson selection (v645.1). Every selected target is resolved against the
@@ -8640,7 +8646,7 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
                       {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}
                       <TopicTrackBadge track={track} /></p>
                     <p style={{ fontSize:11, color:'var(--muted)' }}>
-                      {isListeningTrack(track) ? listeningTrackSummary(track) : (track.pairs?.length||0) + ' pairs · ' + (track.keywords?.length||0) + ' words'}
+                      {isListeningTrack(track) ? listeningTrackSummary(track) : (track.pairs?.length||0) + ' pairs · ' + ((track.keywords?.length||0) + (track.framingWords?.length||0)) + ' words'}
                       {track.bookmark > 0 && <span style={{ color:'#86c900', marginLeft:6 }}>🔖 {track.bookmark+1}</span>}
                       {track.convo && <span style={{ color:'#4a90e2', marginLeft:6 }}>💬</span>}
                     </p>
@@ -10010,6 +10016,9 @@ async function ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId, useGen2) {  
   const needsPhonetics = activeTargets.filter(t => !t.phonetic)
   const phonP = needsPhonetics.length > 0 ? fetchTargetPhonetics(needsPhonetics, apiKey).then(map => { if (map && Object.keys(map).length) Object.assign(phon, map) }).catch(() => {}) : Promise.resolve()
   try { Object.defineProperty(activeTargets, '_targetCounts', { value: targetCounts, configurable: true }) } catch (e) {}
+  // v724 — framing words (greeting / parting) named by the fixture: the opening / closing, on top of the 30
+  const _fwB = (fx.framingIds || []).map(id => byId.get(id)).filter(Boolean).reduce((a, w) => { const k = thaiGreetKindOf(w.thai); if (k && !a[k]) a[k] = w; return a }, {})
+  if (_fwB.open || _fwB.close) try { Object.defineProperty(activeTargets, '_framingWords', { value: _fwB, configurable: true }) } catch (e) {}
   const g2 = useGen2 ? await thGen2MainPairs({ targets: activeTargets, vocab, apiKey, scene: sd, onLog: L }) : null
   if (g2 && !g2.pairs) { L('\u26D4 ' + g2.error); return { track: null, stop: 'GEN2_NOT_READY', gen2: g2.gen2 } }
   const pairs = g2 ? g2.pairs : await generateConversationTrack(activeTargets, activeAnchors, apiKey, (done, total, meta) => {
@@ -10026,7 +10035,7 @@ async function ttBenchThaiDaily(fx, vocab, apiKey, model, L, runId, useGen2) {  
     mode: 'daily', pairs, keywords, rated: false, createdAt: new Date().toISOString(),
     _finalAudit: (pairs && pairs._finalAudit) || null, scene: sd || null, sceneContract: sc, scenePlan: (pairs && pairs._scenePlan) || null,
     lessonContext: buildLessonContext((pairs && pairs._sceneContract) || (sd ? buildSceneContract(sd, 'th', { vocab }) : null), 'th'),
-    targetCounts, selectedTargetIds: keywords.map(k => k.wordId),
+    targetCounts, selectedTargetIds: keywords.map(k => k.wordId), framingWords: thaiFramingKeywords(activeTargets._framingWords, _kwOf),
     unresolvedTargets: keywords.filter(k => k.unresolved).map(k => ({ wordId: k.wordId, thai: k.thai, reason: k.unresolvedReason })),
     skippedCandidates: (targetCounts && targetCounts.skippedCandidates) || [], selectionBackfills: (targetCounts && targetCounts.backfills) || [] }
   track.language = 'th'; track.pipelineVersion = PIPELINE_VERSION; track.generatorVersion = GENERATOR_VERSIONS.th
@@ -19653,6 +19662,14 @@ function thaiFramingLineProblems(thai, speaker) {
 // vocabulary) are offered; the choice rotates by the day and the first target so consecutive tracks differ. Formal wishes with ขอให้ are not used
 // (native review: "never a translated wish with ขอให้"), nor welcome / first-meeting greetings (the two characters are friends).
 const THAI_GREET_FRAMING = { on: true }
+// v724 — a DUE greeting / parting word is not one of the 30: it is the opening / closing itself (A, then B = 2 recalls, no module lines), on top of the 30
+// words, so a track can carry up to 32 words. Wishes with ขอให้, ยินดีด้วย, สุขสันต์วันศุกร์, ไชโย and the verb ลา stay ordinary words.
+const THAI_GREET_TARGETS = { on: true }
+const THAI_GREET_WORDS = {
+  open: ['สวัสดี', 'สวัสดีครับ', 'หวัดดี', 'สวัสดีทุกคน', 'สวัสดีตอนเช้า', 'สวัสดีตอนบ่าย', 'สวัสดีตอนเย็น', 'อรุณสวัสดิ์', 'ยินดีที่ได้รู้จัก', 'ดีใจที่ได้เจอ', 'ยินดีต้อนรับ', 'ยินดีต้อนรับกลับมา',
+    'สบายดีไหม', 'คุณเป็นยังไงบ้าง', 'เป็นยังไงบ้าง', 'ไม่ได้เจอกันนาน', 'ไม่ได้เจอกันตั้งนาน'],
+  close: ['ลาก่อน', 'แล้วเจอกัน', 'แล้วเจอกันเร็วๆนี้', 'ไว้เจอกัน', 'ไว้เจอกันใหม่', 'แล้วคุยกัน', 'ดีใจที่ได้คุยกันอีก', 'ดูแลตัวเองด้วย', 'เดินทางปลอดภัย', 'โชคดี', 'โชคดีนะ', 'ราตรีสวัสดิ์', 'ฝันดี'] }
+function thaiGreetKindOf(thai) { const t = String(thai || '').replace(/\s+/g, ''); return THAI_GREET_WORDS.open.includes(t) ? 'open' : THAI_GREET_WORDS.close.includes(t) ? 'close' : null }
 const THAI_GREET_POOL = [
   // kind, key, Thai stem, English (no particle), question?, นะ + particle?, cue for A, cue for B, hours (local) it fits (null = any)
   ['open', 'hello', 'สวัสดี', 'Hello.', 0, 0, 'Greet {B}.', 'Greet {A} back.', null],
@@ -19681,6 +19698,19 @@ const THAI_GREET_POOL = [
   ['close', 'goodnight', 'ราตรีสวัสดิ์', 'Good night.', 0, 0, 'Wish {B} good night.', 'Wish {A} good night.', [19, 28]],
   ['close', 'sweetdreams', 'ฝันดี', 'Good night, sweet dreams.', 0, 0, 'Wish {B} good night and sweet dreams.', 'Wish {A} good night and sweet dreams.', [19, 28]],
 ]
+// the keyword records of the framing words (they are rated like any word; they are NOT part of the 30 the audit counts)
+function thaiFramingKeywords(fw, kwOf) {
+  if (!fw) return []
+  return ['open', 'close'].map(k => fw[k] ? { ...(kwOf ? kwOf(fw[k]) : { thai: fw[k].thai, english: fw[k].english, wordId: fw[k].id, rating: null }), framing: k } : null).filter(Boolean)
+}
+// the phrase entry for a due greeting / parting word: the pool's own entry when the word is one of them, else one built from the word itself
+function thaiGreetingEntryForWord(w, kind) {
+  const stem = String(w.thai || '').replace(/\s+/g, '').replace(/(ครับ|ค่ะ|คะ)$/, ''), hit = THAI_GREET_POOL.find(e => e[0] === kind && e[2] === stem)
+  if (hit) return hit
+  const en = String(w.english || w.e || '').replace(/\s*\([^)]*\)/g, '').split(/;/)[0].trim(), q = /[?]$/.test(en) || /(ไหม|บ้าง)$/.test(stem)
+  const E = (en.charAt(0).toUpperCase() + en.slice(1)).replace(/[.?!]+$/, '') + (q ? '?' : '.')
+  return [kind, 'word' + (w.id != null ? w.id : ''), stem, E, q ? 1 : 0, 0, q ? 'Ask {B} "' + E + '"' : 'Say "' + E.replace(/[.]$/, '') + '" to {B}.', q ? 'Ask {A} "' + E + '"' : 'Say "' + E.replace(/[.]$/, '') + '" back to {A}.', null]
+}
 function thaiGreetingLine(e, sp) {
   const [, , stem, , q, np] = e
   const part = sp === 'A' ? (np ? 'นะครับ' : 'ครับ') : (q ? 'คะ' : (np ? 'นะคะ' : 'ค่ะ'))
@@ -19713,7 +19743,10 @@ function thaiGreetingFraming(sd, o) {
   const latin = (c, d) => { const head = String(c || d).split(',')[0], par = (head.match(/\(([^)]*)\)/) || [])[1], bare = head.replace(/\s*\([^)]*\)/g, '').trim()
     return /[฀-๿]/.test(bare) && par && !/[฀-๿]/.test(par) ? par.trim() : bare }
   const names = { A: latin(sd.characterA, 'Somchai'), B: latin(sd.characterB, 'Nida') }, out = { ...sd }
-  ;['open', 'close'].forEach(kind => { const c = thaiGreetingCandidates(kind, o); if (c.length) thaiGreetingApply(out, kind, c[0], names) })
+  const fw = (o && o.framingWords) || null
+  ;['open', 'close'].forEach(kind => {
+    if (fw && fw[kind]) { thaiGreetingApply(out, kind, thaiGreetingEntryForWord(fw[kind], kind), names); out._greetForced = { ...(out._greetForced || {}), [kind]: fw[kind].id }; return }   // a due word is always the framing
+    const c = thaiGreetingCandidates(kind, o); if (c.length) thaiGreetingApply(out, kind, c[0], names) })
   out._greetNames = names
   return out
 }
@@ -19724,6 +19757,7 @@ function thaiGreetingGuard(pairs, sd, o) {
   const sq = x => String(x || '').replace(/\s+/g, ''), body = pairs.filter(p => p && p.pairType !== 'framing' && !THAI_FRAMING_TARGETS.has(p._target)).map(p => sq(p.thai))
   let swapped = 0
   ;[['open', 'th-open-A', 'th-open-B'], ['close', 'th-close-A', 'th-close-B']].forEach(([kind, ka, kb]) => {
+    if (sd._greetForced && sd._greetForced[kind] != null) return              // a due greeting / parting word is the framing: nothing replaces it
     const cur = THAI_GREET_POOL.find(e => e[0] === kind && e[1] === sd._greetPick[kind]); if (!cur) return
     const leaks = e => body.some(b => b.includes(e[2]))
     if (!leaks(cur)) return
@@ -19783,7 +19817,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
   // v715 — the greeting and goodbye are the scene plan's own (or written fresh): the four set pieces of thaiBankFraming are no longer used
   const sceneData0 = dailyV693On() ? await thaiFreshFraming({ ...thaiBankFramingScene(_sd0), _defaultScene: !preScene }, { apiKey, model }, _flog) : _sd0
   // v724 — the opening and closing are the same greeting / parting from the vocabulary bank, said by A and then B (THAI_GREET_FRAMING)
-  const sceneData = dailyV693On() ? thaiGreetingFraming(sceneData0, { targets, ctx: (() => { try { return buildThaiTrackVocabContext(vocab, targets, []) } catch (e) { return null } })() }) : sceneData0
+  const sceneData = dailyV693On() ? thaiGreetingFraming(sceneData0, { targets, framingWords: targets && targets._framingWords, ctx: (() => { try { return buildThaiTrackVocabContext(vocab, targets, []) } catch (e) { return null } })() }) : sceneData0
   const scene = sceneData.scene || 'Two friends at a market.'
   const charA = sceneData.characterA || 'Somchai, a Thai man'
   const charB = sceneData.characterB || 'Nida, a Thai woman'
@@ -19839,6 +19873,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     replyLine.words = _greetingWords(replyLine.phonetic)
     prevLines.push(openingPair, replyLine)
     _stampFraming(openingPair, 'th-open-A'); _stampFraming(replyLine, 'th-open-B')
+    if (sceneData._greetForced && sceneData._greetForced.open != null) { openingPair._framingWordId = replyLine._framingWordId = sceneData._greetForced.open }
     allPairs.push(openingPair, replyLine)
   }
   const usedSubjects = new Set()  // Fix 1: track subjects/topics used to prevent repetition
@@ -20157,6 +20192,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
     }
     closeA.words = _cw(closeA.phonetic)
     _stampFraming(closeA, 'th-close-A')
+    if (sceneData._greetForced && sceneData._greetForced.close != null) closeA._framingWordId = sceneData._greetForced.close
     allPairs.push(closeA)
     if (sceneData.closing_reply) {
       const closeB = {
@@ -20172,6 +20208,7 @@ async function generateConversationTrack(targets, anchors, apiKey, onProgress, v
       }
       closeB.words = _cw(closeB.phonetic)
       _stampFraming(closeB, 'th-close-B')
+      if (sceneData._greetForced && sceneData._greetForced.close != null) closeB._framingWordId = sceneData._greetForced.close
       allPairs.push(closeB)
     }
     onProgress && onProgress(allPairs.length, targets.length*3, { targetThai:'parting', allPairs:[...allPairs] }, ['ai:check-1'], targets.length)
@@ -35265,7 +35302,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
   const [thUseGen2, setThUseGen2] = useState(false)          // v680 — label of the Generate button only; build() reads the stored setting
   const phoneticsRef = useRef({})
   const { targets: _rawTargets, anchors: _rawAnchors, shortfall: _selShortfall, lockedByUnratedTracks: _lockedByUnrated,
-          reserve: _reserve, skippedCandidates: _skippedCandidates, candidateStats: _candidateStats, contract: _contract, selectionBackfills: _selBackfills, canon: _revCanon } = useMemo(() => {
+          reserve: _reserve, skippedCandidates: _skippedCandidates, candidateStats: _candidateStats, contract: _contract, selectionBackfills: _selBackfills, canon: _revCanon, framing: _framingPick } = useMemo(() => {
     // If resuming from a draft, use the remaining targets from the draft
     if (resumeDraft && resumeDraft.targetsRemaining && resumeDraft.targetsRemaining.length > 0) {
       return { targets: resumeDraft.targetsRemaining, anchors: resumeDraft.anchors || [] }
@@ -35273,7 +35310,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     if (topic) {
       // v698 — topic words (up to 5, priority order, not yet introduced anywhere) + the global revision queue; no curriculum new words
       const pendingT = (tracks || []).filter(t => !t.rated && !isListeningTrack(t))
-      const usedT = new Set(pendingT.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
+      const usedT = new Set(pendingT.flatMap(t => (t.keywords || []).concat(t.framingWords || []).map(k => k.wordId).filter(Boolean)))
       const ts = selectThaiTopicTargets(vocab, topic.id, { pendingWordIds: usedT })
       const tsIds = new Set(ts.targetIds)
       const anchT = vocab.filter(w => (w.status === 'known' || w.status === 'learning') && !tsIds.has(w.id))
@@ -35301,7 +35338,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
     }
     // Exclude words already queued in any unplayed track (not just today's)
     const pendingTracks = (tracks || []).filter(t => !t.rated && !isListeningTrack(t))   // v658: a Listening Track queues no words
-    const usedWordIds = new Set(pendingTracks.flatMap(t => (t.keywords || []).map(k => k.wordId).filter(Boolean)))
+    const usedWordIds = new Set(pendingTracks.flatMap(t => (t.keywords || []).concat(t.framingWords || []).map(k => k.wordId).filter(Boolean)))
 
     // ── New-word slots ────────────────────────────────────────────────────────
     // Belt-scaled new-word slots are carried across tracks. A slot is only released when its
@@ -35572,6 +35609,8 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           const _sceneForGen = useConvoTrack ? sceneDataRef.current : null
           // named counts travel with the target list (non-enumerable, never persisted in it)
           try { Object.defineProperty(activeTargets, '_targetCounts', { value: targetCounts, configurable: true }) } catch (e) {}
+          // v724 — the due greeting / parting word(s) are the opening / closing (2 recalls each), on top of the 30
+          try { if (mode === 'daily' && !resumeDraft && _framingPick) Object.defineProperty(activeTargets, '_framingWords', { value: _framingPick, configurable: true }) } catch (e) {}
           // v680 — "Use the new generator (test)" (Daily Track only, not a resumed draft): Gen2 writes the recalls; the keywords,
           // track object, QC, FINAL_TRACK and Save below are unchanged
           const _g2on = mode === 'daily' && !resumeDraft && (await stGet(TH_GEN2_SETTING_KEY).catch(() => null)) === true
@@ -35703,6 +35742,7 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
           scenePlan: (pairs && pairs._scenePlan) || null,
           lessonContext: buildLessonContext((pairs && pairs._sceneContract) || (sceneDataRef.current ? buildSceneContract(sceneDataRef.current, 'th', { vocab }) : null), 'th'),
           targetCounts,
+          framingWords: thaiFramingKeywords(activeTargets && activeTargets._framingWords, _kwOf),
           selectedTargetIds: keywords.map(k => k.wordId),
           unresolvedTargets: keywords.filter(k => k.unresolved).map(k => ({ wordId: k.wordId, thai: k.thai, reason: k.unresolvedReason })),
           skippedCandidates: (targetCounts && targetCounts.skippedCandidates) || [],
@@ -36285,7 +36325,7 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
   const [speaking, setSpeaking] = useState(false)
   const [countdown, setCountdown] = useState(1)
   const [lessonDone, setLessonDone] = useState(!!startCompleted)   // §7 resume the rating screen after QC
-  const [keywords, setKeywords] = useState((track.keywords || []).map(k => ({ ...k, rating: null })))
+  const [keywords, setKeywords] = useState((track.keywords || []).concat(track.framingWords || []).map(k => ({ ...k, rating: null })))   // v724: the opening / closing words are rated with the rest
   const [allRated, setAllRated] = useState(false)
   const [voices, setVoices] = useState([])
   const [thaiSpeed, setThaiSpeed] = useState(() => { try { const s = localStorage.getItem('tt-speed'); return s ? parseFloat(s) : 0.8 } catch { return 0.8 } })
@@ -50431,7 +50471,7 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
                   <p style={{ fontSize:13, fontWeight:600 }}>{track.date}
                     {track.rated && <span style={{ color:'#10b981', marginLeft:6, fontSize:11 }}>{'\u2713'}</span>}</p>
                   <p style={{ fontSize:11, color:'var(--muted)' }}>
-                    {isListeningTrack(track) ? listeningTrackSummary(track) : (track.pairs || []).length + ' pairs \u00b7 ' + (track.keywords || []).length + ' words'}
+                    {isListeningTrack(track) ? listeningTrackSummary(track) : (track.pairs || []).length + ' pairs \u00b7 ' + ((track.keywords || []).length + (track.framingWords || []).length) + ' words'}
                     {trackModeOf(track) === 'revision' && <span style={{ color:'var(--gold)', marginLeft:6 }}>REVISION</span>}
                     {trackModeOf(track) === 'listening' && <span data-track-type-listening="1" style={{ color:'#8ab8f0', marginLeft:6, fontSize:10, fontWeight:700 }}>🎧 LISTENING</span>}
                   </p>

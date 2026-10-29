@@ -26,14 +26,15 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
   const vocab0 = c.initVocab()
 
   // v724: 21 of the 6,205 modules were put on hold (status 'hold') after the full read: their scenario does not hold together or the practised word's sense is unclear, so they are not in the embedded data
+  // v724: +27 dedicated modules for the thin-sense words (เล่น, ศูนย์, ข้าม, ตื่น, บางที, บ่อย, ใช้, ครึ่ง, เขา, เปิด, สัปดาห์), each held out of every other word's list
   // v724: each embedded row now ends with the module's scene and job (r[13], r[14]) so the yes-and Daily can order by scene without the links file
   // M1 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   {
     const ids = new Set(data.m.map(r => r[0])), tags = Object.entries(data.t), byId = new Map(vocab0.map(w => [String(w.id), w]))
     const clean = x => String(x || '').replace(/\s*(\.\.\.|…)\s*$/, '').trim()
     const mismatch = tags.filter(([id, t]) => { const w = byId.get(id); return !w || clean(w.thai || w.t) !== clean(t[0]) })
-    T('M1', '6,184 usable modules with unique ids and 2,860 word tags; every tag id is the app\'s own word id with the same Thai',
-      data.m.length === 6184 && ids.size === 6184 && tags.length === 2860 && !mismatch.length && data.m.every(r => r.length === 15 && r[13] && r[14] && r[2] >= 1 && r[2] <= 5), { mods: data.m.length, ids: ids.size, tags: tags.length, mismatch: mismatch.slice(0, 3) })
+    T('M1', '6,211 usable modules with unique ids and 2,860 word tags; every tag id is the app\'s own word id with the same Thai',
+      data.m.length === 6211 && ids.size === 6211 && tags.length === 2860 && !mismatch.length && data.m.every(r => r.length === 15 && r[13] && r[14] && r[2] >= 1 && r[2] <= 5), { mods: data.m.length, ids: ids.size, tags: tags.length, mismatch: mismatch.slice(0, 3) })
     T('M1', 'the data is reproducible: tools/build_thai_modules.py rebuilds the embedded line from dev/thai-modules (same module and tag counts)',
       fs.existsSync(__dirname + '/tools/build_thai_modules.py') && fs.existsSync(__dirname + '/thai-modules/thai-modules.csv') && /THAI_MODULES_DATA_BEGIN/.test(src) && /THAI_MODULES_DATA_END/.test(src))
   }

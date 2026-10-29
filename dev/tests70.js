@@ -77,8 +77,8 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
   {
     // v723: the yes-and DAILY hooks live in the Daily generator, behind THAI_YESAND.daily (off); the test-track writer (yesAndTestTrack) is still only used by the benchmark entry
     const g0 = src.indexOf('async function generateConversationTrack'), body = src.slice(g0, g0 + 60000)
-    T('Y4', 'both yes-and switches are OFF by default; the Daily generator reaches yes-and only through THAI_YESAND.daily (ordering and bridges), never the test-track writer',
-      c.ev('THAI_YESAND').on === false && c.ev('THAI_YESAND').daily === false && !/yesAndTestTrack|yesAndConversation/.test(body) && /thaiYesAndBridges\(allPairs/.test(body) && /if \(THAI_YESAND\.daily && dailyV693On\(\)\)/.test(body), [c.ev('THAI_YESAND').on, c.ev('THAI_YESAND').daily])
+    T('Y4', 'the Daily is yes-and by default (v724: THAI_YESAND.daily on, bridge written with thinking); the free-written test-track writer stays OFF and the Daily generator reaches yes-and only through THAI_YESAND.daily (ordering and bridges), never the test-track writer',
+      c.ev('THAI_YESAND').on === false && c.ev('THAI_YESAND').daily === true && c.ev('THAI_YESAND').bridgeThinking === true && !/yesAndTestTrack|yesAndConversation/.test(body) && /thaiYesAndBridges\(allPairs/.test(body) && /if \(THAI_YESAND\.daily && dailyV693On\(\)\)/.test(body), [c.ev('THAI_YESAND').on, c.ev('THAI_YESAND').daily])
   }
   {
     // v723: the final Daily line pass re-ran the clause-space collapser on module lines (ดี ฉันรอเริ่มค่ะ → ดีฉันรอเริ่มค่ะ); module lines keep their vetted spacing like the other two paths
@@ -87,7 +87,7 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
   }
   {
     // v724: the cue / English accuracy pass edits ONLY english + cue, refuses bad fixes (Thai script, wrong form, no change), and is off by default
-    T('Y7', 'cue-fidelity is off by default', c.ev('THAI_CUE_FIDELITY').on === false)
+    T('Y7', 'cue-fidelity is on by default for the Daily (v724)', c.ev('THAI_CUE_FIDELITY').on === true)
     const mk = (th, en, cue, sp) => ({ speaker: sp || 'A', thai: th, english: en, prompt: cue, pairType: 'content' })
     const pairs = [mk('ทำไมคุณตอบเขาไม่ได้คะ', 'Why can\'t you answer him?', 'Ask her why she can\'t answer him.', 'A'), mk('สิบบาทครับ', 'Just ten baht, please.', 'Say just ten baht, please.'), mk('จริงค่ะ', 'Really.', 'Say really.', 'B'), mk('แล้วเจอกันนะคะ', 'See you again.', 'Say see you again and you smile', 'B')]
     const reply = { fixes: [{ n: 2, english: 'Ten baht.', cue: 'Say it is ten baht.' }, { n: 3, cue: 'Say ทำ in Thai' }, { n: 4, cue: 'Say see you again.' }, { n: 1, english: 'Why can\'t you answer him?', cue: 'Ask her why she can\'t answer him.' }] }

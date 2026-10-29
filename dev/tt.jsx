@@ -9664,7 +9664,7 @@ function aiRunSpend(runId, provider) {
 // ── the Anthropic transport (one ledger row per HTTP attempt, like Gemini) ──────────────────────────────────────────────
 async function anthropicRequest({ model, messages, maxTokens, signal, stage, json, _chain, _promptText, runCtl, runId }) {
   const stageNow = stage || aiStageOf(_promptText, _chain)
-  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow], noThinking: /^Y_/.test(String(stageNow)) && THAI_YESAND.noThinking && !(stageNow === 'Y_bridge' && THAI_YESAND.bridgeThinking && !THAI_YESAND._bridgeNoThink) })
+  const req = anthropicRequestBody({ model, messages, maxTokens, json, effort: ANTHROPIC_STAGE_EFFORT[stageNow], noThinking: (/^Y_/.test(String(stageNow)) || stageNow === 'O_cue_fidelity') && THAI_YESAND.noThinking && !(stageNow === 'Y_bridge' && THAI_YESAND.bridgeThinking && !THAI_YESAND._bridgeNoThink) })
   const latched = AI_ANTHROPIC_LATCH.get(runId)
   const notSent = (why, err) => { const row = aiRecordStart({ provider: 'anthropic', stage: stageNow, model, chain: _chain, prompt: _promptText, maxTokens: req.body.max_tokens }); row.latched = true; aiRecordEnd(row, { http: null, ok: false, error: why }); throw err }
   if (latched) notSent('LATCHED: ' + latched.fatalProvider.reason, latched)
@@ -14854,7 +14854,7 @@ function thaiFinalPronunciationAudit(pairs, lex, o) {
 function generationLogSeverity(msg) {
   const s = String(msg || '').trim()
   if (/TARGET_PAIR_QUOTA_UNMET|PRONUNCIATION_ALIGNMENT_FAIL|validator defect|TRACK INTEGRITY \(\w+\): NOT_READY|INTERNAL_SPEAKER_MAP_CONFLICT|SEMANTIC_PROVIDER_FAILED|MAIN_TRACK_COHERENCE .*→ FAIL$|MAIN TRACK NOT_READY/.test(s)) return 'BLOCKER'
-  if (/token=.*BLOCKED_UNSEEN|dropped pair \d+|no authorised repair|TARGET_MISSING_LOCAL_REJECT|TARGET_MISSING_LINE_REJECT|Quality fail|Natural fail|Speaker\/particle fail|recalls accepted|CUE_MISMATCH_DROP_PAIR|final audit: \[|final audit rejected|closed-vocab \[|EARLY_SEMANTIC_GATE|EARLY_SLOT_REGENERATION|POLITENESS_ISSUE|RECOVERY_STRATEGY_CHANGE|QUOTA RECOVERY .*: 0\/|model markup removed|PARSE_RETRY/.test(s)) return 'DEBUG'
+  if (/YES_AND_DAILY|cue-fidelity|token=.*BLOCKED_UNSEEN|dropped pair \d+|no authorised repair|TARGET_MISSING_LOCAL_REJECT|TARGET_MISSING_LINE_REJECT|Quality fail|Natural fail|Speaker\/particle fail|recalls accepted|CUE_MISMATCH_DROP_PAIR|final audit: \[|final audit rejected|closed-vocab \[|EARLY_SEMANTIC_GATE|EARLY_SLOT_REGENERATION|POLITENESS_ISSUE|RECOVERY_STRATEGY_CHANGE|QUOTA RECOVERY .*: 0\/|model markup removed|PARSE_RETRY/.test(s)) return 'DEBUG'
   if (/^[⛔❌]|failed|error/i.test(s)) return 'WARN'
   return 'INFO'
 }
@@ -32893,7 +32893,7 @@ const LN_STORY_WORD_CAP = { maxWords: 25 }
 const THAI_YESAND = { on: false, daily: true, lean: true, mode: 'lines', noThinking: true, knownList: true, refs: false, lines: 6, perConv: 2, minGap: 3, lineTries: 4, convTries: 2, mentions: [2, 1], nextSeed: 0, bridgeThinking: true }
 // v724 — owner: every cue and English line must say exactly what the Thai says, whatever word is being practised. One cheap pass over the finished Daily track
 // (batches of 40 lines) fixes the ENGLISH and the CUE to match the Thai; it never edits the Thai. On for the Daily from v724 (owner: switch to yes-and and fix all cue problems); the app is not released until the owner says so.
-const THAI_CUE_FIDELITY = { on: true, batch: 40, minLen: 4 }
+const THAI_CUE_FIDELITY = { on: true, batch: 20, minLen: 4 }
 const YESAND_BANNED = ['ต้องการ', 'โอเค', 'แน่ใจ', 'อ๋อ', 'สักครู่', 'ปั่นจักรยาน', 'แล้วไหม']
 // words → conversations. Word i meets conversation i and conversation (i + g) mod N, g = floor(N/2): every conversation then holds exactly two
 // words, every word sits in exactly two conversations, and they are N - g ≥ g apart. The earlier conversation names the word twice, the later once.
@@ -33120,10 +33120,12 @@ async function thaiCueFidelityPass(pairs, o, log) {
   const out = { asked: 0, fixed: 0, refused: 0, calls: 0 }
   const all = (pairs || []).filter(p => p && p.thai && p.english && p.prompt && (p.speaker === 'A' || p.speaker === 'B'))
   out.asked = all.length; if (!all.length) return out
-  for (let s0 = 0; s0 < all.length; s0 += THAI_CUE_FIDELITY.batch) {
-    const part = all.slice(s0, s0 + THAI_CUE_FIDELITY.batch)
+  const queue = []; for (let s0 = 0; s0 < all.length; s0 += THAI_CUE_FIDELITY.batch) queue.push(all.slice(s0, s0 + THAI_CUE_FIDELITY.batch))
+  while (queue.length) {
+    const part = queue.shift()
     let fixes = []
     try {
+      // v738 (live log: "cue-fidelity batch failed: MAX_TOKENS … 9000 output tokens") — no thinking for this stage, and a batch that is still cut off is split in two
       const raw = await geminiRequest({ apiKey: o.apiKey, model: o.model, stage: 'O_cue_fidelity', maxTokens: 3000, temperature: 0, messages: [{ role: 'user', content:
         'A Thai lesson track: a man (A: ผม, ends ครับ) and a woman (B: ฉัน, ends ค่ะ / คะ) speak in turn. Each line has the THAI (fixed, correct, never change it), its ENGLISH translation and a CUE, the English instruction the learner reads before saying the Thai ("Tell her …", "Ask him …", "Say …").\n' +
         'Check every line and report ONLY the lines that need a change. The THAI is the truth:\n' +
@@ -33135,7 +33137,8 @@ async function thaiCueFidelityPass(pairs, o, log) {
         '\n\nReply ONLY with JSON: {"fixes":[{"n":1,"english":"…","cue":"…"}]} — give english and/or cue only when it changes.' }] })
       out.calls++
       const t = String(raw || '').replace(/```json|```/g, ''); fixes = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).fixes || []
-    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('cue-fidelity batch failed: ' + (e && e.message)); continue }
+    } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; if (/MAX_TOKENS/.test(String(e && e.message || e)) && part.length > 6) { const h = Math.ceil(part.length / 2); queue.unshift(part.slice(0, h), part.slice(h)); continue }   // cut off: ask for each half
+      log && log('cue-fidelity batch failed: ' + (e && e.message)); continue }
     for (const fx of fixes) {
       const l = part[Number(fx && fx.n) - 1]; if (!l) continue
       const en = fx.english != null ? String(fx.english).trim() : l.english, cue = fx.cue != null ? String(fx.cue).trim() : l.prompt
@@ -33204,7 +33207,7 @@ async function thaiYesAndBridges(pairs, vocab, o, log) {
   }
   let todo = spots.slice()
   for (let round = 1; round <= 3 && todo.length; round++) {
-    try { judge(await ask(todo, round > 1 ? refused : null), todo); await semantic(todo) } catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ YES_AND_DAILY bridges unusable: ' + String(e && e.message || e).slice(0, 100)); break }
+    try { judge(await ask(todo, round > 1 ? refused : null), todo); if (round < 3) await semantic(todo) }   // v738: the last round keeps what passes the deterministic checks — a track with few bridges fails its whole-track coherence gate (live: 6 of 26 bridged) catch (e) { if (e && (e.fatalProvider || e.cancelled)) throw e; log && log('  ⚠ YES_AND_DAILY bridges unusable: ' + String(e && e.message || e).slice(0, 100)); break }
     todo = spots.filter(s => !made.some(m => m.s === s)); if (round === 1) out.retried = todo.length
   }
   out.dropped = spots.length - made.length

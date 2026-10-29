@@ -152,6 +152,14 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     let res; try { res = await c.ev('thaiYesAndBridges')(pairs, c.ev('initVocab')(), { apiKey: 'x', model: 'm', targets: [{ id: 2, thai: 'ซื้อ', english: 'buy' }] }, () => {}) } catch (e) { res = { error: String(e) } }
     T('Y10', 'a bridge reply cut off at the token cap is asked once more with thinking off (flag set for the retry only, then cleared)', (() => { const k = c.ev('__cnt'); return k.n >= 2 && k.seen[0] === false && k.seen[1] === true && c.ev('THAI_YESAND')._bridgeNoThink === false && res.noThinkRetry === 1 })(), JSON.stringify({ cnt: c.ev('__cnt'), res }))
   }
+  {
+    // v738: a cue-fidelity batch cut off at the token cap is split in two and asked again (live log: MAX_TOKENS on a 40-line batch)
+    const lines = Array.from({ length: 12 }, (_, i) => ({ speaker: i % 2 ? 'B' : 'A', thai: 'ผมกินข้าวครับ', english: 'I eat rice now.', prompt: 'Say you eat rice.', pairType: 'content' }))
+    c.ev("globalThis.__cf = { n: 0, sizes: [] }; geminiRequest = async function (o) { __cf.n++; const k = (o.messages[0].content.match(/\\n\\d+\\. [AB] \\|/g) || []).length; __cf.sizes.push(k); if (__cf.n === 1) throw new Error('CLAUDE HAIKU REPLY REJECTED: MAX_TOKENS: cut off'); return JSON.stringify({ fixes: [{ n: 1, english: 'I eat rice.' }] }) }")
+    const r = await c.ev('thaiCueFidelityPass')(lines, { apiKey: 'x', model: 'm' }, () => {})
+    const k = c.ev('__cf')
+    T('Y11', 'a cut-off cue-fidelity batch is split into two halves and each half is asked (1 failed call + 2 half-size calls), the fixes are applied', k.n === 3 && k.sizes[1] === 6 && k.sizes[2] === 6 && r.fixed === 2, JSON.stringify({ k, r }))
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

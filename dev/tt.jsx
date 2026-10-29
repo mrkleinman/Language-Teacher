@@ -6770,6 +6770,35 @@ function thaiPhraseSplitTags(data) {
   let n = 0; THAI_PHRASE_SPLIT_DATA.promoted.forEach(([id, , tier]) => { const t = data.tags[String(id)]; if (t && t[1] !== tier) { t[1] = tier; n++ } })
   return n
 }
+// ── scheduling (PROPOSAL awaiting the product owner's approval — every number is in THAI_PHRASE_SCHEDULE) ──────────────────────────────
+// Phrases are never part of the 30 words. A Daily track may carry: the opening and the closing (a greeting / parting phrase, A then B = 2 recalls, as now) and at most
+// ONE further phrase as an ordinary target. At most ONE phrase per track is NEW. A due phrase always comes before a new one; the oldest due first.
+// A NEW phrase is offered once the learner's current belt has reached the phrase's default-home belt (a Beyond-curriculum phrase once White is complete) — it is not
+// gated on how many words are learnt. Review: the same ladder and "known" rule as a word, kept on the phrase's own record.
+const THAI_PHRASE_SCHEDULE = { newPerTrack: 1, extraPerTrack: 1, beyondAfterBeltIndex: 1 }
+function thaiPhraseHomeIndex(w) {
+  const d = (typeof RAW_VOCAB !== 'undefined' && RAW_VOCAB.find(x => x.id === w.id)) || null, hb = d && d.homeBelt
+  if (!hb || hb === POST_CURRICULUM) return THAI_PHRASE_SCHEDULE.beyondAfterBeltIndex
+  const i = CURRICULUM_BELTS.findIndex(b => b.name === hb); return i < 0 ? THAI_PHRASE_SCHEDULE.beyondAfterBeltIndex : i
+}
+function thaiPhrasePlan(vocab, today, eligibleIds, o) {
+  const none = { open: null, close: null, extra: null, newCount: 0, due: 0, newAvailable: 0 }
+  if (!THAI_PHRASE_SPLIT.on) return none
+  const ph = (vocab || []).filter(w => isThaiPhraseEntry(w) && !w.duplicateOf && (!eligibleIds || eligibleIds.has(w.id)) && w.status !== 'locked')
+  const rank = currentRankName(vocab), ri = rank === 'Shodan' ? 99 : Math.max(0, CURRICULUM_BELTS.findIndex(b => b.name === rank))
+  const isNew = w => isGenuinelyNew(w), isDue = w => !isNew(w) && w.dueDate && w.dueDate <= today
+  const kind = w => thaiGreetKindOf(w.thai)
+  const dueList = ph.filter(isDue).sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || a.id - b.id)
+  const raw = new Map(RAW_VOCAB.map(d => [d.id, d])), pos = w => { const d = raw.get(w.id); return (d && d._ci0) || 1e6 }
+  const fresh = ph.filter(w => isNew(w) && thaiPhraseHomeIndex(w) <= ri).sort((a, b) => (kind(b) ? 1 : 0) - (kind(a) ? 1 : 0) || pos(a) - pos(b) || a.id - b.id)
+  const out = { ...none, due: dueList.length, newAvailable: fresh.length }
+  let newLeft = (o && o.newPerTrack != null) ? o.newPerTrack : THAI_PHRASE_SCHEDULE.newPerTrack
+  const takeNew = pred => { if (newLeft <= 0) return null; const w = fresh.find(pred); if (w) { newLeft--; out.newCount++ } return w || null }
+  out.open = dueList.find(w => kind(w) === 'open') || takeNew(w => kind(w) === 'open')
+  out.close = dueList.find(w => kind(w) === 'close') || takeNew(w => kind(w) === 'close')
+  out.extra = dueList.find(w => !kind(w)) || takeNew(w => !kind(w))
+  return out
+}
 if (THAI_PHRASE_SPLIT.on) thaiPhraseSplitApply(RAW_VOCAB)      // start-up: the bank carries the split before anything reads it
 // Imported or legacy words may lack okStreak entirely. Treat a Known word with no
 // recorded streak as having met its gate, so it is never silently demoted.
@@ -7301,13 +7330,26 @@ function pickWords(vocab, mode, todayNewWords) {
   }
   // v724 — greeting / parting words are the opening / closing, not part of the 30: the first due one of each kind becomes a framing word
   const framing = { open: null, close: null }
+  // phrase / word split (off by default): phrases leave the word order; the phrase plan supplies the opening, the closing and at most one more phrase
+  let phraseExtra = null
+  if (THAI_PHRASE_SPLIT.on) {
+    ordered = ordered.filter(w => !isThaiPhraseEntry(w))
+    if (mode === 'daily') {
+      const pp = thaiPhrasePlan(vocab, today, pool.eligibleIds)
+      framing.open = pp.open; framing.close = pp.close
+      // a NEW phrase as an ordinary target still respects the belt's new-word allowance
+      const newIn = ordered.slice(0, N - 1).filter(w => isGenuinelyNew(w)).length, lim = getBeltConfig(currentRankName(vocab)).newWordLimit
+      if (pp.extra && (!isGenuinelyNew(pp.extra) || newIn < lim)) { phraseExtra = { ...pp.extra, _selectorStage: 'phrase' } }
+    }
+  }
   if (THAI_GREET_TARGETS.on && mode === 'daily') {
     ordered.slice(0, N).forEach(w => { const k = w && thaiGreetKindOf(w.thai); if (k && !framing[k]) framing[k] = w })
     ordered = ordered.filter(w => !(w && thaiGreetKindOf(w.thai)))
   }
-  let targets = ordered.slice(0, N)
+  const nWords = phraseExtra ? N - 1 : N
+  let targets = ordered.slice(0, nWords).concat(phraseExtra ? [phraseExtra] : [])
   const tIds = new Set(targets.map(w => w.id))
-  const reserve = ordered.slice(N).filter(w => !tIds.has(w.id))
+  const reserve = ordered.slice(nWords).filter(w => !tIds.has(w.id))
   const targetIds = new Set(targets.map(w => w.id))
   const anchors = vocab
     .filter(w => (w.status === 'known' || w.status === 'learning') && !targetIds.has(w.id))
@@ -8613,6 +8655,14 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
   const stats = useMemo(() => getStats(vocab), [vocab])
   const pct = stats.total ? Math.round((stats.known / stats.total) * 100) : 0
   const recent = useMemo(() => [...tracks].reverse().slice(0, 8), [tracks])
+  // phrase / word split (off by default): three groups — new items, due words, due phrases. Phrase counts are never added to word counts.
+  const itemGroups = useMemo(() => {
+    if (!stats.phrases) return null
+    const today = new Date().toISOString().slice(0, 10)
+    let pp = null; try { pp = thaiPhrasePlan(vocab, today, thaiEligibleCandidatePool(vocab, today).eligibleIds) } catch (e) {}
+    const newWords = Math.min(newWordQuotaFor(vocab, 'th'), stats.newW), newPhrases = pp ? pp.newCount : 0
+    return { newItems: newWords + newPhrases, newWords, newPhrases, dueWords: stats.due, duePhrases: stats.phrases.due }
+  }, [vocab, stats])
 
   const [genDraft, setGenDraft] = useState(() => {
     try {
@@ -8646,6 +8696,22 @@ function Dashboard({ vocab, tracks, onNav, onOpenTrack, onDeleteTrack, onOpenCon
           </Card>
         ))}
       </div>
+
+      {itemGroups && (
+        <div data-item-groups="1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          {[
+            { label: 'New items', val: itemGroups.newItems, sub: itemGroups.newWords + ' words' + (itemGroups.newPhrases ? ' + ' + itemGroups.newPhrases + ' phrase' : ''), color: 'var(--gold)' },
+            { label: 'Due words', val: itemGroups.dueWords, sub: 'of ' + stats.total + ' words', color: '#f59e0b' },
+            { label: 'Due phrases', val: itemGroups.duePhrases, sub: 'of ' + stats.phrases.total + ' phrases', color: '#4a90e2' },
+          ].map(g => (
+            <Card key={g.label} style={{ padding: '12px 10px', textAlign: 'center' }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: g.color }}>{g.val}</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, fontWeight: 500 }}>{g.label}</div>
+              <div style={{ fontSize: 9, color: 'var(--muted)', marginTop: 1 }}>{g.sub}</div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Progress */}
       <Card style={{ padding: '14px 16px' }}>
@@ -44997,6 +45063,7 @@ function revisionSurface(w) { return (w && (w.thai || w.japanese || w.chinese ||
 // alone (ผม known, เรา learning…). Only real events write introducedAt/lastSeen —
 // applyRating and markWordKnown set both, and no bank in any language seeds them.
 function revisionEligible(w) {
+  if (isThaiPhraseEntry(w)) return false      // phrase / word split: phrases are reviewed as the opening / closing of a Daily, not in Revision
   if (!w || typeof hasBeenIntroduced !== 'function' || !hasBeenIntroduced(w)) return false
   // A real learner event: only applyRating / markWordKnown write these. The Thai
   // load migration stamps introducedAt:'legacy' onto SEEDED words too, so 'legacy'

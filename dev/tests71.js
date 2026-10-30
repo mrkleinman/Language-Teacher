@@ -1,5 +1,5 @@
-// Thai phrase / word split (builder prompt of 29 Oct) — a candidate behind THAI_PHRASE_SPLIT.on (off by default; nothing changes until the owner confirms)
-//   S1  off by default: the bank, the belt sizes and getStats are exactly as before
+// Thai phrase / word split (builder prompt of 29 Oct) — ON since v741 (owner: fix the listed problems, then switch on); THAI_PHRASE_SPLIT.on = false + thaiPhraseSplitRevert is the rollback
+//   S1  switched off and reverted: the bank, the belt sizes and getStats are exactly as before the split
 //   S2  on: 114 phrases + 3,159 words = 3,273 entries; every numbered belt keeps its size; phrases leave the syllabus; the 55 promoted words fill the vacated positions
 //   S3  the plan is complete (no unfilled position, no missing record) and applying it twice changes nothing
 //   S4  stats: phrases are counted on their own and never added to the word figures; fill-in templates are held out of selection
@@ -12,15 +12,17 @@ const FILE = process.env.TT_FILE || __dirname + '/tt.compiled.js'
 const out = []; let n = 0, fails = 0
 const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS ' : 'FAIL ') + id.padEnd(4) + ' ' + name + (ok ? '' : '\n       got: ' + JSON.stringify(got).slice(0, 400))) }
 const React0 = require('react')
-const mk = (on, withReact) => { const c = load(FILE, withReact ? { realBelt: true, React: React0 } : { realBelt: true }); c.console.info = () => {}; c.console.warn = () => {}; if (on) { c.ev('THAI_PHRASE_SPLIT').on = true; c.plan = c.ev('thaiPhraseSplitApply')(c.ev('RAW_VOCAB')) } return c }
+const mk = (on, withReact) => { const c = load(FILE, withReact ? { realBelt: true, React: React0 } : { realBelt: true }); c.console.info = () => {}; c.console.warn = () => {}
+  if (on) { c.ev('THAI_PHRASE_SPLIT').on = true; c.plan = c.ev('thaiPhraseSplitApply')(c.ev('RAW_VOCAB')) } else { c.ev('THAI_PHRASE_SPLIT').on = false; c.ev('thaiPhraseSplitRevert')(c.ev('RAW_VOCAB')) }
+  return c }
 const sizes = c => { const iv = c.ev('initVocab')(); const r = {}; c.ev('CURRICULUM_BELTS').forEach(b => { r[b.name] = c.ev('wordsForRank')(iv, b.name).length }); return r }
 
 ;(async () => {
   const off = mk(false), on = mk(true)
   const on2 = mk(true, true), off2 = mk(false, true)       // copies loaded with React, for rendering
   const D = off.ev('THAI_PHRASE_SPLIT_DATA'), ivOff = off.ev('initVocab')(), ivOn = on.ev('initVocab')()
-  T('S1', 'off by default: the phrase list is not applied, stats are the old flat counts, no phrase is flagged',
-    off.ev('THAI_PHRASE_SPLIT').on === false && off.ev('RAW_VOCAB').every(d => d.entryType == null) && off.ev('getStats')(ivOff).phrases === undefined && !ivOff.some(w => off.ev('isThaiPhraseEntry')(w)), off.ev('getStats')(ivOff))
+  T('S1', 'switched off and reverted: the phrase list is not applied, stats are the old flat counts, no phrase is flagged; the shipped default is ON',
+    fs.readFileSync(__dirname + '/tt.jsx', 'utf8').includes('const THAI_PHRASE_SPLIT = { on: true }') && off.ev('THAI_PHRASE_SPLIT').on === false && off.ev('RAW_VOCAB').every(d => d.entryType == null) && off.ev('getStats')(ivOff).phrases === undefined && !ivOff.some(w => off.ev('isThaiPhraseEntry')(w)), off.ev('getStats')(ivOff))
   T('S2', 'the file lists 114 phrases and 55 promoted words; the bank holds 3,273 entries = 3,159 words + 114 phrases',
     D.phrases.length === 114 && D.promoted.length === 55 && ivOn.length === 3273 && ivOn.filter(w => on.ev('isThaiPhraseEntry')(w)).length === 114, [D.phrases.length, D.promoted.length, ivOn.length])
   T('S2', 'every numbered belt keeps exactly its size (100/100/200/200/200/200/200/325/325/325/325) with the split on',
@@ -74,6 +76,17 @@ const sizes = c => { const iv = c.ev('initVocab')(); const r = {}; c.ev('CURRICU
       /New items/.test(txt) && /Due words/.test(txt) && /Due phrases/.test(txt) && html.includes('data-item-groups'), txt.slice(0, 300))
     const html0 = require('react-dom/server').renderToStaticMarkup(require('react').createElement(off2.ev('Dashboard'), { vocab: ivOff, tracks: [], onNav() {}, onOpenTrack() {}, onDeleteTrack() {} }))
     T('P5', 'with the split off the home screen is unchanged (no item groups)', !html0.includes('data-item-groups'), null)
+  }
+  {
+    // the problems found in the owner's file (30 Oct), fixed before switching on
+    const D2 = on.ev('THAI_PHRASE_SPLIT_DATA'), el2 = on.ev('thaiVocabEligibility'), raw2 = on.ev('RAW_VOCAB')
+    const bad = D2.promoted.map(([id]) => ivOn.find(w => w.id === id)).filter(w => !el2(w).ok || (raw2.find(d => d.id === w.id).lexiconDisposition !== 'ACTIVE'))
+    T('F1', 'every one of the 55 promoted words can be learnt through the Daily (eligible and ACTIVE) — มั้ย (a duplicate of ไหม), มักจะ (recognition-only) and น่าสนุก (excluded) were swapped for ไม่ดี, คุณแม่ and น่ากลัว',
+      bad.length === 0 && [69, 335, 297].every(id => D2.promoted.some(p => p[0] === id)) && ![492, 1069, 613].some(id => D2.promoted.some(p => p[0] === id)), bad.map(w => w.thai))
+    const topicWords = raw2.filter(d => d.topicOnly && D2.promoted.some(p => p[0] === d.id)), isTO = on.ev('isThaiTopicOnly')
+    T('F2', 'the Wedding Speech topic words that were promoted are no longer topic-only (the Daily can teach them) and still belong to their topic',
+      topicWords.length >= 6 && topicWords.every(d => d.curriculumIndex > 0 && (d.topics || []).length > 0 && !isTO(ivOn.find(w => w.id === d.id))), topicWords.map(d => d.t))
+    T('F3', 'the CSV spells id 845 correctly (ให้หน่อย), and the phrase list is the 114 ids of the file', /ให้หน่อย/.test(fs.readFileSync(__dirname + '/thai-modules/thai-phrase-word-split.csv', 'utf8')) && !/ให้น่อย/.test(fs.readFileSync(__dirname + '/thai-modules/thai-phrase-word-split.csv', 'utf8')) && D2.phrases.length === 114, null)
   }
   out.forEach(l => console.log(l))
   console.log('\nThai phrase / word split: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))

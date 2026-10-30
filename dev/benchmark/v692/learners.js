@@ -20,6 +20,10 @@ const surf = lang => lang === 'ja' ? 'japanese' : lang === 'zh' ? 'chinese' : 't
 // v695: o.dueOrder — the due words fall due one day apart in the order given (the order a run's log selected them in)
 const lnDay = i => new Date(Date.UTC(2026, 0, 1 + Math.max(0, i))).toISOString().slice(0, 10)
 function learner(c, lang, o = {}) {
+  // 30 Oct (phrase / word split): these fixtures replay the owner's 13 Oct logs under the syllabus of that day — their due lists hold phrases (ทานกันเลย, คุณอายุเท่าไหร่ …), which Revision and
+  // Listening no longer take once phrases are tracked on their own (the Daily's phrase plan reviews them), and the recorded model plans are tied to exactly those 30 targets.
+  // The split is switched off for the replay (tests71 covers the split itself).
+  try { if (lang === 'th' && c.ev('THAI_PHRASE_SPLIT').on) { c.ev('THAI_PHRASE_SPLIT').on = false; c.ev('thaiPhraseSplitRevert')(c.ev('RAW_VOCAB')) } } catch (e) {}
   const vocab = lang === 'th' ? c.initVocab() : lang === 'ja' ? c.initJapaneseVocab() : c.initMandarinVocab()
   const due = new Set(o.dueIds || V691_IDS[lang].concat(lang === 'zh' ? [29] : []))
   const learn = w => { w.status = 'learning'; w.lastSeen = '2026-10-05'; w.introducedAt = w.introducedAt || '2026-09-01'; w.repCount = Math.max(w.repCount || 0, 3); w.okStreak = 1 }

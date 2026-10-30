@@ -220,7 +220,11 @@ function daily(c, vocab, mode = 'daily') {
     c.makeFallbackPairs({ ...tS.target }).every(p => /มาสาย|ตื่นสาย/.test(p.thai)) && c.classifyWord({ thai: 'สาย', english: 'late' }) !== 'object',
     { gloss: sai.e, note: sai.note, frame: c.thaiUsageFrameLine({ thai: 'สาย' }).trim().split('\n')[0], fallbacks: c.makeFallbackPairs({ ...tS.target }).map(p => p.thai) })
   // L: JA/ZH selector unchanged when no `eligible` is passed
+  // 30 Oct (phrase / word split): this check is about the SELECTOR CODE, which must return what v644 returned on the same data — v644 has the old flat syllabus, so the current build is
+  // compared with the split switched off (and put back right after)
+  c.ev('THAI_PHRASE_SPLIT').on = false; c.ev('thaiPhraseSplitRevert')(c.ev('RAW_VOCAB'))
   const cz = c644.selectRevisionTrackTargets({ vocab: learner(c644), maxTargets: 30, today: DAY }), cz2 = c.selectRevisionTrackTargets({ vocab: learner(c), maxTargets: 30, today: DAY })
+  c.ev('THAI_PHRASE_SPLIT').on = true; c.ev('thaiPhraseSplitApply')(c.ev('RAW_VOCAB'))
   T('L', 'the shared revision selector without `eligible` (Japanese/Mandarin path) returns exactly what v644 returned',
     JSON.stringify(cz.targets.map(t => t.id)) === JSON.stringify(cz2.targets.map(t => t.id)) && cz2.reserve === undefined && cz2.skippedCandidates === undefined)
   // M: the real Generator (server-rendered with React) — the lesson header the learner sees

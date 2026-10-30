@@ -81,11 +81,13 @@ const sizes = c => { const iv = c.ev('initVocab')(); const r = {}; c.ev('CURRICU
     // the problems found in the owner's file (30 Oct), fixed before switching on
     const D2 = on.ev('THAI_PHRASE_SPLIT_DATA'), el2 = on.ev('thaiVocabEligibility'), raw2 = on.ev('RAW_VOCAB')
     const bad = D2.promoted.map(([id]) => ivOn.find(w => w.id === id)).filter(w => !el2(w).ok || (raw2.find(d => d.id === w.id).lexiconDisposition !== 'ACTIVE'))
-    T('F1', 'every one of the 55 promoted words can be learnt through the Daily (eligible and ACTIVE) — มั้ย (a duplicate of ไหม), มักจะ (recognition-only) and น่าสนุก (excluded) were swapped for ไม่ดี, คุณแม่ and น่ากลัว',
-      bad.length === 0 && [69, 335, 297].every(id => D2.promoted.some(p => p[0] === id)) && ![492, 1069, 613].some(id => D2.promoted.some(p => p[0] === id)), bad.map(w => w.thai))
-    const topicWords = raw2.filter(d => d.topicOnly && D2.promoted.some(p => p[0] === d.id)), isTO = on.ev('isThaiTopicOnly')
-    T('F2', 'the Wedding Speech topic words that were promoted are no longer topic-only (the Daily can teach them) and still belong to their topic',
-      topicWords.length >= 6 && topicWords.every(d => d.curriculumIndex > 0 && (d.topics || []).length > 0 && !isTO(ivOn.find(w => w.id === d.id))), topicWords.map(d => d.t))
+    // swapped for words the Daily can teach: มั้ย → บ่อยๆ, ทุกคน → คุณพ่อ, มักจะ → คุณแม่, น่าสนุก → น่ากลัว, บางครั้ง → เป็นประจำ, คิดถึง → ขี้อาย, เป็นห่วง → เสียงดัง, ความรัก → ประทับใจ, เรียนรู้ → ฟังเพลง, ทำให้ → จนถึง
+    const SWAP = { 492: 233, 5001: 631, 1069: 335, 613: 297, 5044: 351, 5018: 308, 5022: 317, 5004: 969, 5029: 915, 5031: 428 }
+    T('F1', 'every one of the 55 promoted words can be learnt through the Daily (eligible and ACTIVE): the ten that were not (a duplicate of ไหม, recognition-only, excluded, or a Wedding Speech topic word) were swapped',
+      bad.length === 0 && Object.entries(SWAP).every(([from, to]) => D2.promoted.some(p => p[0] === +to) && !D2.promoted.some(p => p[0] === +from)), bad.map(w => w.thai))
+    const topicWords = raw2.filter(d => d.topicOnly && D2.promoted.some(p => p[0] === d.id))
+    T('F2', 'no Wedding Speech topic word is promoted: the Topics feature (its fixed priority order, 24 topic-only words) is untouched by the split',
+      topicWords.length === 0 && raw2.filter(d => d.topicOnly).length === 24, topicWords.map(d => d.t))
     T('F3', 'the CSV spells id 845 correctly (ให้หน่อย), and the phrase list is the 114 ids of the file', /ให้หน่อย/.test(fs.readFileSync(__dirname + '/thai-modules/thai-phrase-word-split.csv', 'utf8')) && !/ให้น่อย/.test(fs.readFileSync(__dirname + '/thai-modules/thai-phrase-word-split.csv', 'utf8')) && D2.phrases.length === 114, null)
   }
   out.forEach(l => console.log(l))

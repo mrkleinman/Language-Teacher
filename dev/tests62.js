@@ -13,7 +13,9 @@ const out = []; let fails = 0, n = 0
 const T = (id, name, pass, detail) => { n++; if (!pass) fails++; out.push((pass ? 'PASS ' : 'FAIL ') + String(id).padEnd(4) + ' ' + name + (!pass && detail !== undefined ? '\n      ' + JSON.stringify(detail).slice(0, 700) : '')) }
 const FILE = process.env.TT_FILE || 'tt.compiled.js'
 // sha256 of every 1–800 curriculum assignment (t, id, curriculumIndex, belt, beltOrder, curriculumBucket) as approved in f049313
-const DIGEST_1_800 = '9339125df5f4dbdcf2bcba374d7b007ef2fba84851b18345469c385a12c9e386'
+// 30 Oct (phrase / word split, the owner's approved list): the 1–800 assignment changed on purpose — the phrases that sat in belts 1–800 left (curriculum position 0) and the promoted words took their positions.
+// The old digest was 9339125d…e386; the new one is the digest of the data after the split, belt sizes unchanged (tests71 S2)
+const DIGEST_1_800 = '64980fd89646af40a6d102e84a3a33fafba56124fdc0a3cb7186be9ebf0f5f54'
 
 ;(async () => {
   const c = load(FILE, { realBelt: true }); c.console.info = () => {}; c.console.warn = () => {}
@@ -108,8 +110,9 @@ const DIGEST_1_800 = '9339125df5f4dbdcf2bcba374d7b007ef2fba84851b18345469c385a12
     const vp = c.validateThaiVocabulary([{ thai: 'ผมมีปัญหาครับ' }], x)
     T('G1', 'ordinary unseen content vocabulary stays blocked until taught: ' + CONTENT.join(' ') + ' (no blanket pre-teaching authorisation)',
       still.length === 0 && !vp.ok && vp.blocked.includes('ปัญหา'), { still, vp: vp.blocked })
-    const cook = span(V, 'ทำอาหาร'), notNeed = span(V, 'ไม่ต้อง')
-    T('G2', 'a curriculum compound is not composed from known parts (ทำอาหาร 557 = ทำ + อาหาร stays blocked until taught); a phrase outside the curriculum still is (ไม่ต้อง = ไม่ + ต้อง)',
+    // 30 Oct (phrase / word split): ไม่ต้อง is a 9th Kyu curriculum word since the owner's promotion list, so it is now a curriculum compound like ทำอาหาร; the "outside the curriculum" example is ไม่ชอบ
+    const cook = span(V, 'ทำอาหาร'), notNeed = span(V, 'ไม่ชอบ')
+    T('G2', 'a curriculum compound is not composed from known parts (ทำอาหาร 557 = ทำ + อาหาร stays blocked until taught); a phrase outside the curriculum still is (ไม่ชอบ = ไม่ + ชอบ)',
       cook.finalResult === CL.BLOCKED && notNeed.finalResult === CL.COMPOSITION, { cook: cook.finalResult, notNeed: notNeed.finalResult })
   }
 

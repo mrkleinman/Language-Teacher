@@ -200,6 +200,14 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const rec = c.ev('RAW_VOCAB').find(w => w.t === 'ลูกค้า')
     T('Y16', 'ลูกค้า (customer) is lûuk-kháa (high tone, mái-tho on a low-class consonant)', rec && rec.ph === 'lûuk-kháa' && c.ev('THAI_PHONETIC_OVERRIDES')['ลูกค้า'] === 'lûuk-kháa', rec && rec.ph)
   }
+  {
+    // 31 Oct (owner): sentences with ร่วมกัน say "jointly" in the English and the cue, never "together"
+    const z = require('zlib'), data = JSON.parse(z.gunzipSync(Buffer.from(c.ev('THAI_MODULES_GZ'), 'base64')).toString('utf8'))
+    T('Y17', 'the module tag for ร่วมกัน gives the English "jointly" (it was "together")', data.t['5021'] && data.t['5021'][6] === 'jointly', data.t['5021'])
+    const ps = [{ thai: 'เราทำงานร่วมกันครับ', english: 'We work together.', prompt: 'Say we work together.' }, { thai: 'เราไปด้วยกันครับ', english: 'We go together.', prompt: 'Say we go together.' }]
+    const n = c.ev('thaiJointlyFix')(ps)
+    T('Y17', 'a line with ร่วมกัน gets "jointly" in its English and cue; a line with ด้วยกัน keeps "together"', n === 2 && ps[0].english === 'We work jointly.' && ps[0].prompt === 'Say we work jointly.' && ps[1].english === 'We go together.', ps)
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

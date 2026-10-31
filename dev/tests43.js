@@ -52,7 +52,8 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
     const thPick = c.pickWords(T10, 'daily', []), thNew = thPick.targets.filter(w => c.isGenuinelyNew(w)).length
     const j10 = sel(J10), j10New = j10.targets.filter(t => t.selectionRole === 'new').length
     T('Q6', 'quota follows the learner\'s RANK: White rank test passed but White words still learning (like the owner\'s Thai profile) → rank ' + c.rankProgressFor(T10).current.rank + ', strict belt ' + c.earliestIncompleteBelt(T10) + ': Thai dashboard ' + c.newSlotsFor(T10) + ' / Thai selector ' + thNew + ' new; Japanese ' + c.newWordsPerTrack('ja', 'daily', J10) + ' / selector ' + j10New + ' new (all 5, not the Mukyu 3)',
-      c.rankProgressFor(T10).current.rank === '10th Kyu' && c.earliestIncompleteBelt(T10) === 'White' && c.newSlotsFor(T10) === 5 && thNew === 5 && thPick.targets.length === 30 &&
+      c.rankProgressFor(T10).current.rank === '10th Kyu' && c.earliestIncompleteBelt(T10) === 'White' && c.newSlotsFor(T10) === 5 && thNew === 5 && thPick.targets.filter(w => !w._phraseReview).length === 30 &&      // 31 Oct: the due phrases (seeded learners have some) ride on top of the 30 words
+      
       c.rankProgressFor(J10).current.rank === '10th Kyu' && c.newWordsPerTrack('ja', 'daily', J10) === 5 && j10New === 5 && j10.targets.length === 30)
     T('Q5', 'Revision and Listening tracks introduce 0 new words in every language (unchanged)',
       ['th', 'ja', 'zh'].every(l => c.newWordsPerTrack(l, 'revision', []) === 0 && c.newWordsPerTrack(l, 'listening', []) === 0))

@@ -71,7 +71,8 @@ const safe = f => { try { return f() } catch (e) { return { __error: String(e &&
     const G = has(c, 'THAI_FUNCTION_TARGET_GUIDE') ? c.ev('THAI_FUNCTION_TARGET_GUIDE') : {}
     const pw = safe(() => c.pickWords(VT, 'daily', null)), tg = (pw && (pw.targets || pw)) || [], fnSel = Array.isArray(tg) ? tg.filter(w => G[w.thai]).map(w => w.thai) : []
     T('T5', 'pickWords (real learner, 10th Kyu): the overdue function words are TAUGHT again (not VOCAB_NOT_GENERATABLE forever) — at most 2 per Daily Track, most overdue first; the rest stay due',
-      Array.isArray(tg) && tg.length === 30 && fnSel.length >= 1 && fnSel.length <= 2 && ['แล้ว', 'ก็', 'นะ'].some(x => fnSel.includes(x)), { fnSel })
+      // 31 Oct (phrase scheduling): the due phrases ride on top of the 30 words, so the 30 are counted without them
+      Array.isArray(tg) && tg.filter(w => !w._phraseReview).length === 30 && fnSel.length >= 1 && fnSel.length <= 2 && ['แล้ว', 'ก็', 'นะ'].some(x => fnSel.includes(x)), { fnSel })
     T('T6', 'function-word teaching contract: แล้ว / ก็ / นะ each have their own guide (change of state · linking reaction · softener on a suggestion), used by the Thai prompt',
       ['แล้ว', 'ก็', 'นะ'].every(x => G[x] && G[x].length > 40) && /THAI_FUNCTION_TARGET_GUIDE\[target\.thai\]\) return THAI_FUNCTION_TARGET_GUIDE\[target\.thai\]/.test(fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8')))
     const fbS = safe(() => c.makeFallbackPairs({ thai: 'สั้น', english: 'short', phonetic: 'sân', partOfSpeech: 'adjective' })), fbT = safe(() => c.makeFallbackPairs({ thai: 'เหนื่อย', english: 'tired', phonetic: 'nùeai', partOfSpeech: 'adjective' }))

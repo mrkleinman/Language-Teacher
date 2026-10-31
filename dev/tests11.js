@@ -19,8 +19,9 @@ const learnerOnly = (c, ids) => { const keep = new Set(ids); return learner(c).m
 // the Generator's contract path, exactly: pickWords → freezeThaiTargetSelection → thaiTargetCounts
 function daily(c, vocab, mode = 'daily') {
   const pw = c.pickWords(vocab, mode, [])
-  const f = c.freezeThaiTargetSelection({ selected: pw.targets, reserve: pw.reserve, required: 30, mode })
-  const cnt = c.thaiTargetCounts({ requested: 30, selectedTargets: f.targets, generationTargets: f.targets, unresolved: [], mode,
+  const nPh = pw.targets.filter(w => w._phraseReview).length       // 31 Oct: the due phrases ride on top of the 30 words (the Generator asks for 30 + them)
+  const f = c.freezeThaiTargetSelection({ selected: pw.targets, reserve: pw.reserve, required: 30 + nPh, mode })
+  const cnt = c.thaiTargetCounts({ requested: 30 + nPh, selectedTargets: f.targets, generationTargets: f.targets, unresolved: [], mode,
     candidateStats: pw.candidateStats, skippedCandidates: pw.skippedCandidates, backfills: f.backfills, blocked: f.blocked, contract: true })
   return { pw, f, cnt, line: c.thaiTargetCountsLine(cnt), log: c.thaiSelectionLogLines(cnt) }
 }
@@ -103,13 +104,13 @@ function daily(c, vocab, mode = 'daily') {
     dC.cnt.selectedTargetCount === 30 && dC.cnt.newTargetCount === 3 && dC.cnt.generationTargetCount === 30 && dC.cnt.expectedTargetPairs === 90 &&
     /SELECTED_TARGETS=30 GENERATION_TARGETS=30 NEW_TARGETS=3 REVIEW_TARGETS=27 LISTENING_REQUIRED_TARGETS=30 EXPECTED_TARGET_PAIRS=90/.test(dC.line) && dC.f.targets.filter(t => !c.isGenuinelyNew(t)).length === 27, dC.line)
   // C2: a NEW slot that fails preflight is backfilled with a NEW word (NEW count preserved)
-  const newVictim = dC.pw.targets.find(t => c.isGenuinelyNew(t))
+  const newVictim = dC.pw.targets.find(t => c.isGenuinelyNew(t) && !c.isThaiPhraseEntry(t))      // 31 Oct: a new PHRASE is taught inside the new words too; the check is about a new WORD failing preflight
   const nRec = raw.find(d => d.id === newVictim.id), nSave = { semanticQc: nRec.semanticQc, qcStatus: nRec.qcStatus }
   nRec.semanticQc = 'NEEDS_REVIEW'; nRec.qcStatus = 'NEEDS_REVIEW'
-  const fC2 = c.freezeThaiTargetSelection({ selected: dC.pw.targets, reserve: dC.pw.reserve, required: 30, mode: 'daily' })
+  const nPhC2 = dC.pw.targets.filter(w => w._phraseReview).length, fC2 = c.freezeThaiTargetSelection({ selected: dC.pw.targets, reserve: dC.pw.reserve, required: 30 + nPhC2, mode: 'daily' })
   Object.assign(nRec, nSave)
   T('C2', 'a NEW target failing preflight is replaced by the next eligible NEW word ⇒ NEW stays 3 (v683 Thai Mukyu), total 30',
-    fC2.targets.length === 30 && fC2.targets.filter(t => c.isGenuinelyNew(t)).length === 3 && fC2.backfills[0] && fC2.backfills[0].bucket === 'belt-new', fC2.log)
+    fC2.targets.filter(t => !t._phraseReview).length === 30 && fC2.targets.filter(t => c.isGenuinelyNew(t)).length === 3 && fC2.backfills[0] && fC2.backfills[0].bucket === 'belt-new', fC2.log)
   // D: Revision
   const rv = c.selectThaiRevisionTargets(learner(c), 30)
   const rvAll = c.selectThaiRevisionTargets(learner(c), 100000)

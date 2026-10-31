@@ -48,32 +48,40 @@ const sizes = c => { const iv = c.ev('initVocab')(); const r = {}; c.ev('CURRICU
   T('S5', 'with the split on, สบายดี (877) is a T1 word, ร้านกาแฟ (278) T4, ความรัก (5004) T5 in the module tags; before it was T5',
     tag(877).tier === 1 && tag(278).tier === 4 && tag(5004).tier === 5, [tag(877), tag(278)])
   {
-    // scheduling (the PROPOSAL awaiting the owner's approval): phrases are never among the 30 words; the opening / closing / one extra phrase come from the phrase plan
+    // scheduling (owner's design, 31 Oct): one greeting + one parting per track (the due ones, else the pool); 30 words in which a NEW phrase — a greeting or parting too — is taught within
+    // the new words; due phrases ride on top of the 30; review is kept in three groups (greetings and partings · words · phrases)
     const today = new Date().toISOString().slice(0, 10), yest = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
     const iv = on.ev('initVocab')(), set = (id, o) => Object.assign(iv.find(w => w.id === id), o)
     iv.forEach(w => { if (w.status !== 'new' && w.dueDate) w.dueDate = '2999-01-01' })      // nothing is due unless the test says so
+    iv.forEach(w => { if (w.belt === 'White' && w.curriculumIndex > 0) Object.assign(w, { status: 'known', okStreak: 9, introducedAt: '2026-09-01', lastSeen: '2026-10-20', repCount: 5, dueDate: '2999-01-01' }) })      // a learner who has finished White (Orange now), so Beyond-curriculum phrases may be offered
     const due = { status: 'learning', dueDate: yest, repCount: 2, lastSeen: yest, introducedAt: '2026-10-01', okStreak: 1 }
-    set(97, due); set(100, due)                      // สวัสดี (an opening) and ไม่เป็นไร (an ordinary phrase) are due
+    set(97, due); set(884, due); set(100, due); set(98, due)       // สวัสดี (greeting), แล้วเจอกัน (parting), ไม่เป็นไร and ขอบคุณ (ordinary phrases) are due
     const pool = on.ev('thaiEligibleCandidatePool')(iv, today), plan = on.ev('thaiPhrasePlan')(iv, today, pool.eligibleIds)
-    T('P1', 'a due opening phrase is the opening and a due ordinary phrase is the one extra target; no NEW phrase while a due one is available for that place',
-      plan.open && plan.open.id === 97 && plan.extra && plan.extra.id === 100 && plan.open.status !== 'new', [plan.open && plan.open.thai, plan.extra && plan.extra.thai, plan.close && plan.close.thai])
-    const r = on.ev('pickWords')(iv, 'daily', 0), ph = x => on.ev('isThaiPhraseEntry')(x)
-    T('P2', 'a Daily has 30 targets of which exactly one is a phrase (the extra); the opening is a framing word; no other phrase is among the targets or the reserve',
-      r.targets.length === 30 && r.targets.filter(ph).length === 1 && r.targets.find(ph).id === 100 && r.framing && r.framing.open && r.framing.open.id === 97 && !r.reserve.some(ph), [r.targets.length, r.targets.filter(ph).map(w => w.thai), r.framing && r.framing.open && r.framing.open.thai])
+    T('P1', 'the plan: the due greeting is the opening, the due parting the closing, the due ordinary phrases are the review phrases (not greetings), and one NEW phrase is offered',
+      plan.open && plan.open.id === 97 && plan.close && plan.close.id === 884 && plan.review.map(w => w.id).sort((a, b) => a - b).join() === '98,100' && plan.dueGreetings === 2 && plan.duePhrases === 2 && plan.newCount === 1 && plan.newPhrase && plan.newPhrase.status === 'new',
+      [plan.open && plan.open.thai, plan.close && plan.close.thai, plan.review.map(w => w.thai), plan.newPhrase && plan.newPhrase.thai])
+    const r = on.ev('pickWords')(iv, 'daily', 0), ph = x => on.ev('isThaiPhraseEntry')(x), isNew = x => on.ev('isGenuinelyNew')(x)
+    const words = r.targets.filter(w => !ph(w)), phr = r.targets.filter(ph), newPh = phr.filter(isNew), rev = phr.filter(w => w._phraseReview)
+    T('P2', 'a Daily has 30 words and the phrases on top: the new phrase sits INSIDE the 30 (30 = 29 words + 1 new phrase), the 2 due phrases are extra (32 entries), the opening and closing are the due greeting and parting',
+      r.targets.length === 32 && words.length === 29 && newPh.length === 1 && rev.length === 2 && r.framing && r.framing.open.id === 97 && r.framing.close.id === 884 && !r.reserve.some(ph), [r.targets.length, words.length, phr.map(w => w.thai)])
+    const lim = on.ev('getBeltConfig')(on.ev('currentRankName')(iv)).newWordLimit
+    T('P2', 'the new places are shared: new words + the new phrase never exceed the belt\'s new-word allowance (' + lim + ')', r.targets.filter(w => !w._phraseReview && isNew(w)).length <= lim, r.targets.filter(isNew).length)
+    const fz = on.ev('freezeThaiTargetSelection')({ selected: r.targets, reserve: r.reserve, required: 32, mode: 'daily' })
+    const tc = on.ev('thaiTargetCounts')({ requested: 32, selectedTargets: fz.targets, generationTargets: fz.targets, unresolved: [], mode: 'daily', contract: true })
+    T('P2', 'the selection freeze and the target counts accept 32 targets (30 words + 2 phrases): consistent, 96 expected pairs', fz.targets.length === 32 && tc.consistent === true && tc.expectedTargetPairs === 96, [fz.targets.length, tc.consistent, tc.expectedTargetPairs])
     const rv = on.ev('revisionEligible')
     T('P3', 'Revision never takes a phrase; with the split off a phrase is an ordinary word again',
       !rv(iv.find(w => w.id === 97)) && off.ev('revisionEligible')(Object.assign({}, ivOff.find(w => w.id === 97), due, { introducedAt: '2026-10-01', okStreak: 1, lastSeen: yest })), null)
-    // NEW phrases: at most one per track, and only once the belt has been reached
+    // a new greeting / parting is taught as a NEW word (three recalls), not as the framing; and with nothing due the framing falls back to the day's pool
     const fresh = on.ev('initVocab')(); fresh.forEach(w => { if (w.status !== 'new' && w.dueDate) w.dueDate = '2999-01-01' })
     const p2 = on.ev('thaiPhrasePlan')(fresh, today, on.ev('thaiEligibleCandidatePool')(fresh, today).eligibleIds)
-    const newOnes = [p2.open, p2.close, p2.extra].filter(x => x && on.ev('isGenuinelyNew')(x))
     const rank = on.ev('currentRankName')(fresh), idx = on.ev('CURRICULUM_BELTS').findIndex(b => b.name === rank)
-    T('P4', 'NEW phrases: never more than one per track, and each one\'s default-home belt is at or below the learner\'s current belt',
-      newOnes.length <= 1 && newOnes.every(w => on.ev('thaiPhraseHomeIndex')(w) <= Math.max(idx, 0)), [rank, newOnes.map(w => w.thai)])
+    T('P4', 'NEW phrases: never more than one per track, only once the belt has been reached, greetings and partings first; nothing due → no opening / closing from the vocabulary (the pool supplies them)',
+      p2.newCount <= 1 && p2.newPhrases.every(w => on.ev('thaiPhraseHomeIndex')(w) <= Math.max(idx, 0)) && !p2.open && !p2.close && p2.review.length === 0, [rank, p2.newPhrases.map(w => w.thai)])
     const html = require('react-dom/server').renderToStaticMarkup(require('react').createElement(on2.ev('Dashboard'), { vocab: iv, tracks: [], onNav() {}, onOpenTrack() {}, onDeleteTrack() {} }))
     const txt = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
-    T('P5', 'the home screen shows three groups — New items, Due words, Due phrases — and the phrase count is not in the word figure',
-      /New items/.test(txt) && /Due words/.test(txt) && /Due phrases/.test(txt) && html.includes('data-item-groups'), txt.slice(0, 300))
+    T('P5', 'the home screen shows four groups — New items, Due greetings & partings, Due words, Due phrases — and the phrase counts are not in the word figure',
+      /New items/.test(txt) && /Due greetings &amp; partings|Due greetings & partings/.test(txt) && /Due words/.test(txt) && /Due phrases/.test(txt) && html.includes('data-item-groups'), txt.slice(0, 300))
     const html0 = require('react-dom/server').renderToStaticMarkup(require('react').createElement(off2.ev('Dashboard'), { vocab: ivOff, tracks: [], onNav() {}, onOpenTrack() {}, onDeleteTrack() {} }))
     T('P5', 'with the split off the home screen is unchanged (no item groups)', !html0.includes('data-item-groups'), null)
   }

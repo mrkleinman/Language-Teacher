@@ -23486,7 +23486,9 @@ function thaiLineSpellingFix(pairs) {
     if (typeof p.phonetic === 'string' && /ná khâ(?=\s|$)/.test(p.phonetic) && /นะคะ/.test(String(p.thai || ''))) p.phonetic = p.phonetic.replace(/ná khâ(?=\s|$)/g, 'ná khá')
     if (typeof p.prompt === 'string') {
       const sp = p.speaker === 'A' ? 'her' : 'him'
-      if (/\b(Somchai|Nida)\b/.test(p.prompt)) { p.prompt = p.prompt.replace(/\b(Somchai|Nida)\b/g, sp); n++ }
+      // only where the name is the person spoken TO ("Tell Somchai …", "Ask Nida …"); a name that is the subject ("Somchai says …") belongs to the cue and stays
+      // (framing lines only — the opening / closing are not linted like content lines; a content cue that names the listener goes through the cue lint and is judged again)
+      if ((p.pairType === 'framing' || p._framing) && /\b(?:Tell|Ask|Thank|Wish|Greet|Invite|Remind|Warn|Offer|Suggest to|Say hi to|Say goodbye to) (?:Somchai|Nida)\b/.test(p.prompt)) { p.prompt = p.prompt.replace(/\b(Tell|Ask|Thank|Wish|Greet|Invite|Remind|Warn|Offer|Suggest to|Say hi to|Say goodbye to) (?:Somchai|Nida)\b/g, '$1 ' + sp); n++ }
       if (/\btheir\b/i.test(p.prompt) && /\b(our|we|us)\b/i.test(String(p.english || '')) && !/\b(they|them|people|everyone|parents|kids|children|friends)\b/i.test(String(p.english || '') + ' ' + p.prompt)) { p.prompt = p.prompt.replace(/\btheir\b/g, 'your').replace(/\bTheir\b/g, 'Your'); n++ }
     } })
   return n

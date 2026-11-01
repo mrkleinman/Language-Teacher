@@ -212,8 +212,8 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     // 31 Oct (owner's review of the live 31 Oct track — translation, prompt and phonetic errors): deterministic fixes
     const ps = [{ speaker: 'B', thai: 'ฉันจะไปด้วยนะค่ะ ไม่ต้องกลัวค่ะ', phonetic: 'chǎn jà bpai dûai ná khâ mâi dtâawng glua khâ', prompt: 'Tell him you will go too.', english: 'I will go too.' },
       { speaker: 'B', thai: 'ความสัมพันธ์ระหว่างเราดีไหมคะ', phonetic: '', prompt: 'Ask whether their relationship is good.', english: 'Is our relationship good?' },
-      { speaker: 'B', thai: 'ไม่ได้เจอกันตั้งนานค่ะ', phonetic: '', prompt: 'Tell Somchai you haven\'t seen each other in a long time.', english: 'We haven\'t seen each other in a long time.' },
-      { speaker: 'A', thai: 'ไม่ได้เจอกันตั้งนานครับ', phonetic: '', prompt: 'Tell Nida it has been a long time.', english: 'It has been a long time.' }]
+      { speaker: 'B', pairType: 'framing', thai: 'ไม่ได้เจอกันตั้งนานค่ะ', phonetic: '', prompt: 'Tell Somchai you haven\'t seen each other in a long time.', english: 'We haven\'t seen each other in a long time.' },
+      { speaker: 'A', pairType: 'framing', thai: 'ไม่ได้เจอกันตั้งนานครับ', phonetic: '', prompt: 'Tell Nida it has been a long time.', english: 'It has been a long time.' }]
     const n = c.ev('thaiLineSpellingFix')(ps)
     T('Y18', 'นะค่ะ → นะคะ (the pronunciation follows: ná khá); a cue never names Somchai / Nida (B → "him", A → "her"); "their relationship" for "our relationship" becomes "your"',
       n >= 4 && ps[0].thai === 'ฉันจะไปด้วยนะคะ ไม่ต้องกลัวค่ะ' && /ná khá /.test(ps[0].phonetic) && /ค่ะ$/.test(ps[0].thai) && /your relationship/.test(ps[1].prompt) && ps[2].prompt === 'Tell him you haven\'t seen each other in a long time.' && ps[3].prompt === 'Tell her it has been a long time.', ps)

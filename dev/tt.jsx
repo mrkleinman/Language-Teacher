@@ -14751,7 +14751,7 @@ function thaiTangTaeNeedsThueng() { return false }
 // The model invented romanisation per call, so one track showed เดิน as
 // doern/dəən/dern, ไป as pai/bpai, ตอน as dtawn/dɔɔn. The dictionary is the source
 // of truth: any token that IS a dictionary word must use that entry's phonetic.
-const THAI_PHONETIC_OVERRIDES = Object.freeze({ 'แต่': 'dtàae', 'เพิ่ง': 'phôoeng', 'เล่น': 'lêen', 'ลูกค้า': 'lûuk-kháa' })
+const THAI_PHONETIC_OVERRIDES = Object.freeze({ 'แต่': 'dtàae', 'เพิ่ง': 'phôoeng', 'เล่น': 'lêen', 'ลูกค้า': 'lûuk-kháa', 'ขี่': 'khìi' })      // 31 Oct: ขี่ (ride) came out as "khî" (falling tone, short vowel) in a live track
 function buildThaiPhoneticLexicon(vocab, extra) {
   const lex = new Map()
   // 1. CANONICAL bank phonetics, read-only (never written back). Saved vocab can hold
@@ -23373,6 +23373,8 @@ function thaiCueDefects(cue, p, o) {
   const enThey = /\b(they|them|their|people|everyone|everybody|both|guys|friends|parents|kids|children)\b/i.test(en)
   if (o.addr && !enThey && ((/\b(them|themselves|they|their|theirs)\b/i.test(c) && /\byou(r|rs|rself)?\b/i.test(en)) || /\b(thank|tell|ask|with|for|help|meet|invite)\s+them\b|\bthemselves\b/i.test(c))) d.push('GENERIC_THEM')
   if (/^Ask (?:what|which|who|whose|how many|how much)(?:\s+[A-Za-z]+){0,3}?\s+(?:is|are)\s+(?:this|that|it|he|she|they)\b/.test(c)) d.push('INVERTED_QUESTION')
+  // 31 Oct (live track: "Ask what blessing did they get"): a wh-question cue with the auxiliary BEFORE its subject is English a learner cannot read as an instruction
+  else if (/^Ask (?:what|which|who|whose|how many|how much|where|when|why|how)(?:\s+[A-Za-z]+){0,3}?\s+(?:did|do|does|was|were|will|can|could|would|should)\s+(?:they|he|she|you|we|it|i)\b/.test(c)) d.push('INVERTED_QUESTION')
   if (/\b(bangkokians?|thailand|bangkok)\b|(?<!pad |tom yum |kaeng )\bthai\b/.test(c)) d.push('LOWERCASE_PROPER')
   // the listener and a third person of the same gender both appear as pronouns: "Ask whether he always trusts him."
   const P = o.addr === 'm' ? /\b(he|him|his|himself)\b/gi : o.addr === 'f' ? /\b(she|her|hers|herself)\b/gi : null
@@ -23472,6 +23474,22 @@ function thaiFormalCue(cue) {
 function thaiFormalCueTarget(p) {
   const t = String((p && (p._target || p.target)) || '').trim()
   return THAI_FORMAL_CUE_WORDS[t] && String(p.thai || '').includes(t) ? t : ''
+}
+// 31 Oct (live track of 31 Oct): small deterministic fixes on the final lines —
+//  • นะค่ะ is spelt นะคะ (and its pronunciation follows)
+//  • a cue never names the scene's characters ("Tell Somchai …" for the line the learner says to him) — it says him / her
+//  • a cue that says "their relationship" for a Thai line the English calls "our relationship" says "your"
+function thaiLineSpellingFix(pairs) {
+  let n = 0
+  ;(pairs || []).forEach(p => { if (!p) return
+    ;['thai', 'text'].forEach(k => { if (typeof p[k] === 'string' && /นะค่ะ/.test(p[k])) { p[k] = p[k].replace(/นะค่ะ/g, 'นะคะ'); n++ } })
+    if (typeof p.phonetic === 'string' && /ná khâ(?=\s|$)/.test(p.phonetic) && /นะคะ/.test(String(p.thai || ''))) p.phonetic = p.phonetic.replace(/ná khâ(?=\s|$)/g, 'ná khá')
+    if (typeof p.prompt === 'string') {
+      const sp = p.speaker === 'A' ? 'her' : 'him'
+      if (/\b(Somchai|Nida)\b/.test(p.prompt)) { p.prompt = p.prompt.replace(/\b(Somchai|Nida)\b/g, sp); n++ }
+      if (/\btheir\b/i.test(p.prompt) && /\b(our|we|us)\b/i.test(String(p.english || '')) && !/\b(they|them|people|everyone|parents|kids|children|friends)\b/i.test(String(p.english || '') + ' ' + p.prompt)) { p.prompt = p.prompt.replace(/\btheir\b/g, 'your').replace(/\bTheir\b/g, 'Your'); n++ }
+    } })
+  return n
 }
 // 31 Oct (owner: "when making sentences with ร่วมกัน say jointly instead of together, so it is clear" — "together" makes the learner reach for ด้วยกัน): in a line that
 // contains ร่วมกัน the English and the cue say "jointly" (or "jointly with") where they said "together"
@@ -23576,6 +23594,7 @@ function thaiWithSceneContext(lines, pairs, track) {
 async function thaiFinalSnapshotAudit(track, ctx, log) {
   const c = ctx || {}
   let pairs = (track.pairs || []).slice()
+  try { thaiLineSpellingFix(pairs) } catch (e) {}
   try { thaiJointlyFix(pairs) } catch (e) {}
   try { pairs = thaiFinalCueLintPass(pairs, track, log) } catch (e) {}
   try { pairs = thaiCueGuaranteePass(pairs, track, log) } catch (e) {}
@@ -33231,6 +33250,7 @@ function yesAndFixParticles(l) {
   const q = THAI_QUESTION_RE.test(lastClause.replace(/\s+/g, '')) || /\?\s*$/.test(String(l.english || '').trim())
   t = t.replace(/(ครับ|ค่ะ|คะ)\s*$/, '').trim()
   t = t + (l.speaker === 'A' ? 'ครับ' : q ? 'คะ' : 'ค่ะ')
+  t = t.replace(/นะค่ะ/g, 'นะคะ')
   return { ...l, thai: t }
 }
 async function yesAndConversationBatch(conv, env) {

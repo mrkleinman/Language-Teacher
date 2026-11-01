@@ -208,6 +208,22 @@ const T = (id, name, ok, got) => { n++; if (!ok) fails++; out.push((ok ? 'PASS '
     const n = c.ev('thaiJointlyFix')(ps)
     T('Y17', 'a line with ร่วมกัน gets "jointly" in its English and cue; a line with ด้วยกัน keeps "together"', n === 2 && ps[0].english === 'We work jointly.' && ps[0].prompt === 'Say we work jointly.' && ps[1].english === 'We go together.', ps)
   }
+  {
+    // 31 Oct (owner's review of the live 31 Oct track — translation, prompt and phonetic errors): deterministic fixes
+    const ps = [{ speaker: 'B', thai: 'ฉันจะไปด้วยนะค่ะ ไม่ต้องกลัวค่ะ', phonetic: 'chǎn jà bpai dûai ná khâ mâi dtâawng glua khâ', prompt: 'Tell him you will go too.', english: 'I will go too.' },
+      { speaker: 'B', thai: 'ความสัมพันธ์ระหว่างเราดีไหมคะ', phonetic: '', prompt: 'Ask whether their relationship is good.', english: 'Is our relationship good?' },
+      { speaker: 'B', thai: 'ไม่ได้เจอกันตั้งนานค่ะ', phonetic: '', prompt: 'Tell Somchai you haven\'t seen each other in a long time.', english: 'We haven\'t seen each other in a long time.' },
+      { speaker: 'A', thai: 'ไม่ได้เจอกันตั้งนานครับ', phonetic: '', prompt: 'Tell Nida it has been a long time.', english: 'It has been a long time.' }]
+    const n = c.ev('thaiLineSpellingFix')(ps)
+    T('Y18', 'นะค่ะ → นะคะ (the pronunciation follows: ná khá); a cue never names Somchai / Nida (B → "him", A → "her"); "their relationship" for "our relationship" becomes "your"',
+      n >= 4 && ps[0].thai === 'ฉันจะไปด้วยนะคะ ไม่ต้องกลัวค่ะ' && /ná khá /.test(ps[0].phonetic) && /ค่ะ$/.test(ps[0].thai) && /your relationship/.test(ps[1].prompt) && ps[2].prompt === 'Tell him you haven\'t seen each other in a long time.' && ps[3].prompt === 'Tell her it has been a long time.', ps)
+    const cd = c.ev('thaiCueDefects')
+    T('Y18', '"Ask what blessing did they get" is an INVERTED_QUESTION cue; "Ask what blessing she gave him" and "Ask where he is" are not',
+      cd('Ask what blessing did they get.', { english: 'What blessing did you get?', thai: 'อวยพรอะไรให้คุณคะ', prompt: 'x', speaker: 'B' }, { addr: 'm' }).includes('INVERTED_QUESTION') &&
+      !cd('Ask what blessing she gave him.', { english: 'What blessing did you get?', thai: 'อวยพรอะไรให้คุณคะ', prompt: 'x', speaker: 'B' }, { addr: 'm' }).includes('INVERTED_QUESTION') &&
+      !cd('Ask where he is.', { english: 'Where are you?', thai: 'คุณอยู่ที่ไหนคะ', prompt: 'x', speaker: 'B' }, { addr: 'm' }).includes('INVERTED_QUESTION'))
+    T('Y18', 'ขี่ (ride) is pronounced khìi (low tone), not khî', c.ev('THAI_PHONETIC_OVERRIDES')['ขี่'] === 'khìi', null)
+  }
   out.forEach(l => console.log(l))
   console.log('\nv723 yes-and experiment: ' + (n - fails) + '/' + n + ' passed' + (fails ? ' — ' + fails + ' FAILED' : ''))
   process.exit(fails ? 1 : 0)

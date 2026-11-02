@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Thai Teacher"/>
-<meta name="app-version" content="v742"/>
+<meta name="app-version" content="v743"/>
   <title>Thai Teacher</title>
   <link rel="manifest" href="./manifest.json"/>
   <style>html,body,#root{margin:0;padding:0;height:100%;background:#0b1120}body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}</style>
@@ -19,7 +19,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <script>
-    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v742';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v742').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
+    if('serviceWorker'in navigator){const b=new Blob(["const CACHE='tt-v743';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!=='tt-v743').map(k=>caches.delete(k)))));self.clients.claim()});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.pathname==='/'||u.pathname.endsWith('index.html'))return;e.respondWith(caches.open(CACHE).then(c=>fetch(e.request).then(r=>{c.put(e.request,r.clone());return r}).catch(()=>caches.match(e.request))))});"],{type:'text/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});}
     let dp;
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ib').style.display='flex'});
     function installApp(){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null;document.getElementById('ib').style.display='none'})}}
@@ -6836,11 +6836,16 @@ function thaiPhrasePlan(vocab, today, eligibleIds, o) {
   const dueList = ph.filter(isDue).sort(byDue)
   const raw = new Map(RAW_VOCAB.map(d => [d.id, d])), pos = w => { const d = raw.get(w.id); return (d && d._ci0) || 1e6 }
   const fresh = ph.filter(w => isNew(w) && thaiPhraseHomeIndex(w) <= ri).sort((a, b) => (kind(b) ? 1 : 0) - (kind(a) ? 1 : 0) || pos(a) - pos(b) || a.id - b.id)
+  // a QUEUED phrase ("Next in queue" in the vocab bank) goes first: a learned one is the opening / closing (a greeting) or a review phrase, a new one is taught inside the new words
+  const queued = ph.filter(w => w.queuedNext).sort((x, y) => String(x.queuedNext).localeCompare(String(y.queuedNext)))
+  const qOld = queued.filter(w => !isNew(w)), qNew = queued.filter(isNew).slice(0, 3)
   const out = { ...none, dueGreetings: dueList.filter(kind).length, duePhrases: dueList.filter(w => !kind(w)).length, newAvailable: fresh.length }
-  out.open = dueList.find(w => kind(w) === 'open') || null
-  out.close = dueList.find(w => kind(w) === 'close') || null
-  out.review = dueList.filter(w => !kind(w)).slice(0, Math.max(0, cfg.reviewPhrasesPerTrack))
-  out.newPhrases = fresh.slice(0, Math.max(0, cfg.newPhrasesPerTrack)); out.newPhrase = out.newPhrases[0] || null; out.newCount = out.newPhrases.length
+  out.open = qOld.find(w => kind(w) === 'open') || dueList.find(w => kind(w) === 'open') || null
+  out.close = qOld.find(w => kind(w) === 'close') || dueList.find(w => kind(w) === 'close') || null
+  const revPool = qOld.filter(w => !kind(w)).concat(dueList.filter(w => !kind(w) && !w.queuedNext))
+  out.review = revPool.slice(0, Math.max(0, cfg.reviewPhrasesPerTrack, qOld.filter(w => !kind(w)).length))
+  const newPool = qNew.concat(fresh.filter(w => !w.queuedNext)), nNew = Math.max(Math.max(0, cfg.newPhrasesPerTrack), qNew.length)
+  out.newPhrases = newPool.slice(0, nNew); out.newPhrase = out.newPhrases[0] || null; out.newCount = out.newPhrases.length
   return out
 }
 if (THAI_PHRASE_SPLIT.on) thaiPhraseSplitApply(RAW_VOCAB)      // start-up: the bank carries the split before anything reads it
@@ -7374,6 +7379,19 @@ function pickWords(vocab, mode, todayNewWords) {
   }
   // v724 — greeting / parting words are the opening / closing, not part of the 30: the first due one of each kind becomes a framing word
   const framing = { open: null, close: null }
+  // "Next in queue" (vocab bank): the words the learner put in the queue come FIRST in the next Daily (not Revision / weak). A queued NEW word takes one of the belt's new places (the
+  // last new words give way, so the allowance still holds); a queued word already learned is reviewed. Only eligible words are used; the rest of the queue waits.
+  if (mode === 'daily') {
+    const qAll = (vocab || []).filter(w => w && w.queuedNext && !w.duplicateOf && pool.eligibleIds.has(w.id) && !isThaiPhraseEntry(w)).sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)))
+    if (qAll.length) {
+      let limit = 5; try { limit = getBeltConfig(currentRankName(vocab)).newWordLimit } catch (e) {}
+      const qNew = qAll.filter(w => isGenuinelyNew(w)).slice(0, limit), qOld = qAll.filter(w => !isGenuinelyNew(w))
+      const picks = qNew.concat(qOld).slice(0, N).map(w => { w._selectorStage = 'queued'; return w })
+      const pickIds = new Set(picks.map(w => w.id)); let newLeft = Math.max(0, limit - qNew.length)
+      const rest = ordered.filter(w => !pickIds.has(w.id)).filter(w => { if (!isGenuinelyNew(w)) return true; if (newLeft > 0) { newLeft--; return true } return false })
+      ordered = picks.concat(rest)
+    }
+  }
   // phrase / word split: phrases leave the word order; the phrase plan supplies the opening / closing (the due ones), the NEW phrase (taught inside the new words) and the due phrases
   let phraseNew = [], phraseReview = []
   if (THAI_PHRASE_SPLIT.on) {
@@ -7393,8 +7411,10 @@ function pickWords(vocab, mode, todayNewWords) {
   const nWords = N
   let targets = ordered.slice(0, nWords)
   phraseNew.forEach(pn => {
-    let at = -1; targets.forEach((w, i) => { if (isGenuinelyNew(w)) at = i })
-    if (at < 0) at = targets.length - 1
+    // never at the expense of a word the learner queued by hand: the phrase takes the last NEW word that was not queued; a phrase the learner queued may also take the last non-queued place
+    let at = -1; targets.forEach((w, i) => { if (isGenuinelyNew(w) && w._selectorStage !== 'queued') at = i })
+    if (at < 0 && pn.queuedNext) targets.forEach((w, i) => { if (w._selectorStage !== 'queued') at = i })
+    if (at < 0 && !pn.queuedNext) return
     if (at >= 0) targets[at] = pn; else targets.push(pn)
   })
   targets = targets.concat(phraseReview)          // the due phrases ride on top of the 30
@@ -7421,6 +7441,11 @@ function pickWords(vocab, mode, todayNewWords) {
     ...targets.filter(w => w.status === 'new'),
     ...targets.filter(w => w.status !== 'new')
   ]
+  // the words the learner queued by hand lead the track, in the order they were queued
+  {
+    const qd = targets.filter(w => w._selectorStage === 'queued').sort((a, b) => String(a.queuedNext).localeCompare(String(b.queuedNext)))
+    if (qd.length) targets = qd.concat(targets.filter(w => w._selectorStage !== 'queued'))
+  }
   const reachedList = [...reached.values()]
   const skippedCandidates = reachedList.filter(x => x.position < N)
   // selection-time BACKFILL records: the ineligible candidate that ranked into slot N, and the
@@ -37117,6 +37142,22 @@ function Player({ track, onComplete, onBack, onKru, onBookmark, gcpTtsKey, onRev
 }
 
 // ── Browse Vocab ──────────────────────────────────────────────────────────────
+// "Next in queue" (vocab bank). Pure helpers: put words in / take them out of the queue, and empty the queue of the words a generated track has used.
+function thaiQueueApply(vocab, ids, on, stamp) {
+  const refused = [], at = stamp || new Date().toISOString()
+  const next = (vocab || []).map(w => {
+    if (!ids.has(w.id)) return w
+    if (!on) return w.queuedNext ? { ...w, queuedNext: null } : w
+    if (w.thai != null) { let el = { ok: true }; try { el = thaiVocabEligibility(w) } catch (e) {}
+      if (!el.ok) { refused.push({ id: w.id, thai: w.thai, reason: String(el.reason || 'not usable').replace(/^VOCAB_/, '').replace(/_/g, ' ').toLowerCase() }); return w } }
+    return w.queuedNext ? w : { ...w, queuedNext: at }
+  })
+  return { vocab: next, refused }
+}
+function thaiQueueClearUsed(vocab, track) {
+  const used = new Set(((track && track.selectedTargetIds) || []).concat(((track && track.framingWords) || []).map(k => k && k.wordId)))
+  return (vocab || []).some(w => w.queuedNext && used.has(w.id)) ? vocab.map(w => w.queuedNext && used.has(w.id) ? { ...w, queuedNext: null } : w) : null
+}
 function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phonetics, onCustomTrack, apiKey, onVocabUpdate }) {
   const [q, setQ] = useState(initialQuery || '')
   const [filter, setFilter] = useState(initialFilter || 'all')
@@ -37129,6 +37170,7 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phon
   const [askPractised, setAskPractised] = useState(false)
   const [practisedInput, setPractisedInput] = useState('')
   const [askReset, setAskReset] = useState(false)
+  const [queueNote, setQueueNote] = useState('')
   const today = new Date().toISOString().slice(0, 10)
 
   const filtered = useMemo(() => {
@@ -37139,6 +37181,7 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phon
       let matchF
       if (filter === 'all') matchF = true
       else if (filter === 'due') matchF = w.status !== 'new' && w.dueDate && w.dueDate <= today
+      else if (filter === 'queued') matchF = !!w.queuedNext
       else matchF = w.status === filter
       // Belt membership is DERIVED from curriculumIndex \u2014 no separate belt dataset.
       let matchB = true
@@ -37176,6 +37219,15 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phon
     if (!onVocabUpdate) return
     const ids = managed
     onVocabUpdate(vocab.map(w => ids.has(w.id) ? fn(w) : w))
+  }
+  // "Next in queue": the chosen words go FIRST into the next Daily track (a new word takes one of the belt's new places; a word you already know is reviewed). The queue is cleared when
+  // that track has been generated. A word the generator can never teach (a duplicate, an unverified entry, a fill-in template) is refused here with the reason.
+  function queueWords(ids, on) {
+    if (!onVocabUpdate) return
+    const r = thaiQueueApply(vocab, ids, on)
+    onVocabUpdate(r.vocab)
+    const done = on ? ids.size - r.refused.length : ids.size
+    setQueueNote((on ? done + ' word' + (done === 1 ? '' : 's') + ' will be first in the next track' : done + ' removed from the queue') + (r.refused.length ? ' \u00B7 not queued: ' + r.refused.slice(0, 4).map(x => x.thai + ' (' + x.reason + ')').join(', ') : ''))
   }
   function setStatusManual(status) {
     const todayStr = new Date().toISOString().slice(0, 10)
@@ -37263,7 +37315,8 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phon
     setTimeout(() => setFetchProgress(''), 5000)
   }
 
-  const filters = [['all','All'],['due','Due'],['new','New'],['learning','Learning'],['known','Known'],['lapsed','Lapsed']]
+  const queuedCount = vocab.filter(w => w.queuedNext).length
+  const filters = [['all','All'],['due','Due'],['new','New'],['learning','Learning'],['known','Known'],['lapsed','Lapsed']].concat(queuedCount ? [['queued','\u23ED Queued (' + queuedCount + ')']] : [])
   // Belt options come from the canonical ranges \u2014 nothing belt-specific is stored.
   const beltOptions = [['all','All belts'], ...CURRICULUM_BELTS.map(b => [b.name, b.rank]), ['extended','Extended']]
 
@@ -37365,6 +37418,7 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phon
         )}
       </div>
 
+      {queueNote && <p data-queue-note="1" onClick={() => setQueueNote('')} style={{ fontSize:12, color:'var(--gold)', margin:'0 0 8px', cursor:'pointer' }}>{queueNote}</p>}
       {/* List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 'calc(100vh - 300px)' }}>
         {filtered.map(w => {
@@ -37389,6 +37443,9 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phon
                     <button onClick={e => { e.stopPropagation(); onVocabUpdate && onVocabUpdate(vocab.map(v => v.id===w.id ? markWordKnown(v) : v)) }}
                       style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, padding:'0 3px', color:'#10b981', lineHeight:1, fontWeight:700 }} title="Mark Known">✓K</button>
                   )}
+                  <button data-queue-word={w.id} onClick={e => { e.stopPropagation(); queueWords(new Set([w.id]), !w.queuedNext) }}
+                    style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, padding:'0 3px', lineHeight:1, fontWeight:700, color: w.queuedNext ? 'var(--gold)' : 'var(--muted)' }}
+                    title={w.queuedNext ? 'Queued as first in the next track — tap to remove' : 'Put this word first in the next track'}>{w.queuedNext ? '\u23ED queued' : '\u23ED'}</button>
                 </div>
                 {phonetic && <p className="phon" style={{ fontSize: 11, color: 'var(--gold)', marginTop: 2 }}>{phonetic}</p>}
                 <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>{w.english}</p>
@@ -37415,6 +37472,14 @@ function Browser({ vocab, onBack, initialFilter, initialQuery, initialBelt, phon
                 style={{ flex:1, minWidth:96, padding:'8px 6px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700,
                   border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text)' }}>{label}</button>
             ))}
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            <button onClick={() => { queueWords(managed, true); exitManage() }}
+              style={{ flex:2, padding:'8px 6px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700,
+                border:'1px solid var(--gold)', background:'#1a1200', color:'var(--gold)' }}>{'\u23ED'} Next in queue</button>
+            <button onClick={() => { queueWords(managed, false); exitManage() }}
+              style={{ flex:1, padding:'8px 6px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:700,
+                border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--muted)' }}>Remove</button>
           </div>
           <div style={{ display:'flex', gap:6 }}>
             <button onClick={() => { setPractisedInput(''); setAskPractised(true) }}
@@ -42403,6 +42468,8 @@ function ThaiTeacher({ lang, onSetLang }) {
     // generation-complete boundary, and persisted before any navigation.
     const track = stampTrackMode(rawTrack, genMode === 'revision' ? 'revision' : 'daily', customTargets || [])
     if (!track) { navigate('dashboard'); return }
+    // "Next in queue": the queued words have been used by this track — the queue starts empty again
+    try { if (genMode !== 'revision') { const _cl = thaiQueueClearUsed(vocab, track); if (_cl) saveVocab(_cl) } } catch (e) {}
     aiBeginRun('listening-handoff', listeningTrackId(track))   // v649: save-boundary calls get their own live run
     // CLOSED-VOCABULARY GATE at the point a new Thai track leaves the generator,
     // immediately before it is saved. Audits the raw Thai of every pair against THIS

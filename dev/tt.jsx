@@ -6761,13 +6761,13 @@ function thaiPhraseSplitApply(raw) {
   const plan = thaiPhraseSplitPlan(raw); if (plan.problems.length) { try { console.warn('[phrase-split] not applied: ' + plan.problems.slice(0, 4).join('; ')) } catch (e) {} return plan }
   const byId = new Map(raw.map(d => [d.id, d]))
   plan.phrases.forEach(x => { const d = byId.get(x.id); if (d._ci0 == null) d._ci0 = d.curriculumIndex || 0; d.curriculumIndex = 0; d.beltOrder = 0; d.homeBelt = x.homeBelt; d.entryType = 'phrase' })
-  plan.words.forEach(x => { const d = byId.get(x.id); if (d._ci0 == null) d._ci0 = d.curriculumIndex || 0; d.curriculumIndex = x.curriculumIndex; d.belt = x.belt; d.beltOrder = beltOrderForCurriculumIndex(x.curriculumIndex); d.entryType = 'word'; d.tierProposed = x.tier })
+  plan.words.forEach(x => { const d = byId.get(x.id); if (d._ci0 == null) { d._ci0 = d.curriculumIndex || 0; d._belt0 = d.belt } d.curriculumIndex = x.curriculumIndex; d.belt = x.belt; d.beltOrder = beltOrderForCurriculumIndex(x.curriculumIndex); d.entryType = 'word'; d.tierProposed = x.tier })
   return plan
 }
 // puts the bank back as it was before the split (tests and a quick rollback: set THAI_PHRASE_SPLIT.on = false, call this, and reload)
 function thaiPhraseSplitRevert(raw) {
   ;(raw || []).forEach(d => { if (d._ci0 == null) return
-    d.curriculumIndex = d._ci0; d.beltOrder = beltOrderForCurriculumIndex(d._ci0); delete d._ci0; delete d.homeBelt; delete d.entryType; delete d.tierProposed })
+    d.curriculumIndex = d._ci0; d.beltOrder = beltOrderForCurriculumIndex(d._ci0); if (d._belt0 !== undefined) { d.belt = d._belt0; delete d._belt0 } delete d._ci0; delete d.homeBelt; delete d.entryType; delete d.tierProposed })
   try { _thaiCanonById = null } catch (e) {}
 }
 // a promoted word takes its new belt's tier in the module tags (the owner's file says which)

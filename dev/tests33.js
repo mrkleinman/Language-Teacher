@@ -180,8 +180,11 @@ function scriptedAdapter(plan) {
     const r1 = await c.mainTrackCoherenceAudit(track, adapter, { apiKey: KEY, model: 'm', onLog: m => logs.push(m) })
     calls = 0; c.mockGeminiGenerate = async () => 'not json at all'
     const r2 = await c.mainTrackCoherenceAudit(track, adapter, { apiKey: KEY, model: 'm', onLog: m => logs.push(m) })
-    T('2G', 'MAIN coherence: an unparseable judge reply gets ONE bounded chunked retry (2 smaller calls) → VERIFIED 4/4 sections; still unparseable → UNVERIFIED with the precise reason (≤ 3 calls, blocks READY)',
-      r1.state === 'VERIFIED' && r1.sectionScores.length === 4 && r1.passed && /MAIN_TRACK_COHERENCE_RECOVERED/.test(logs.join('\n')) && r2.state === 'UNVERIFIED' && r2.attempts >= 2 && r2.attempts <= 3 && /unparseable after \d judge call/.test(r2.reason),
+    // 11 Nov: the audit was redesigned (scores-only first pass, then up to TWO more calls asking only for the sections still missing, in halves): the
+    // bound is 1 + 2 rounds (the second round can split in two) = at most 4 calls, and the reason reads "no section verdict parsed after N judge call(s)".
+    // What this check protects is unchanged: a reply that never parses is UNVERIFIED with a precise reason, bounded, and blocks READY.
+    T('2G', 'MAIN coherence: an unparseable judge reply gets ONE bounded chunked retry (2 smaller calls) → VERIFIED 4/4 sections; still unparseable → UNVERIFIED with the precise reason (≤ 4 calls, blocks READY)',
+      r1.state === 'VERIFIED' && r1.sectionScores.length === 4 && r1.passed && /MAIN_TRACK_COHERENCE_RECOVERED/.test(logs.join('\n')) && r2.state === 'UNVERIFIED' && r2.attempts >= 2 && r2.attempts <= 4 && /no section verdict parsed after \d judge call/.test(r2.reason),
       { r1: [r1.state, r1.passed], r2 })
     const ap = c.thaiSpeakerParticleLocalRepair('ใช่ค่ะ ฉันอยากทานอาหาร', 'Yes, I want to eat.', 'female', { appendMissing: true })
     const ap2 = c.thaiSpeakerParticleLocalRepair('ฉันไม่มีชุดนักเรียนค่ะพิเศษ', 'x', 'female', { appendMissing: true })

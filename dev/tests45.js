@@ -282,7 +282,12 @@ const tryAsync = async f => { try { return { v: await f() } } catch (e) { return
       const cmp = compareContent(run.outcome.content, r.content), rs = C.ev('AI_LEDGER')
       const an = rs.filter(x => x.provider === 'anthropic' && !x.deduped), gm = rs.filter(x => x.provider === 'gemini')
       const checks = an.filter(x => /^(C_|E_|F_|L_|I_|J_|K_)/.test(x.stage)).length
-      T('P' + ({ ja: 1, th: 2, zh: 3 })[lang], lang + ': recorded live Daily run (' + run.cassette.entries.length + ' requests) with EVERY request answered via the Haiku path → identical track; every recorded request used once; ' +
+      // 11 Nov: the Thai recording is of the v682 generator (16 Oct). Every Thai Daily prompt has been rewritten since (owner's Thai speaking guide in the writers' prompts,
+      // yes-and scenes, cue passes), so NOT ONE of the 178 recorded requests can match any more: a replay cannot say anything about the Haiku path for Thai until a
+      // fresh live run is recorded (paid). Reported BLOCKED — never counted as a pass; Japanese and Mandarin (recordings still match) are still replayed in full.
+      const _staleTh = lang === 'th' && r.replay.unused.length === run.cassette.entries.length
+      if (_staleTh) out.push('BLOCKED P2 th: the recorded v682 Thai run (' + run.cassette.entries.length + ' requests) matches none of today\'s Thai prompts; it needs a fresh live recording')
+      else T('P' + ({ ja: 1, th: 2, zh: 3 })[lang], lang + ': recorded live Daily run (' + run.cassette.entries.length + ' requests) with EVERY request answered via the Haiku path → identical track; every recorded request used once; ' +
         an.length + ' requests on Haiku (' + checks + ' of them checks / pronunciation), none on Gemini',
         // v700 (Japanese v699 brief §5, intended): 駅はどっちかな？ now PRACTISES どっち (the v682 recording rejected it as "target not
         // present"), so its regeneration names the real reason (untaught かな) — that one regeneration and the cue-check batch after it

@@ -92,8 +92,14 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
       const r = await (cas.cassette.meta.path === 'ui-path/1' ? runOnceUi : runOnce)(loadFixture(cas.cassette.meta.fixture), { mode: 'replay', cassette: cas.cassette, qualityOct13: false })   // Oct13 changes off (tests47 covers them)
       rows.push({ f, onV674: cas.cassette.meta.appBuild === BASELINE_BUILD, faithful: r.replay.faithful, same: compareContent(cas.outcome.content, r.content).identical, n: r.replay.served })
     }
-    T('C1', 'BEHAVIOUR UNCHANGED: every cassette recorded on the production baseline build (' + BASELINE_BUILD + ', ' + rows.length + ' runs · 6 historical fixtures + synthetic + stress variants) replays on this build with byte-identical prompts, no unused request and identical learner-facing content',
-      rows.length >= 12 && rows.every(x => x.onV674 && x.faithful && x.same), rows.filter(x => !(x.onV674 && x.faithful && x.same)))
+    if (process.env.TT_DEBUG) console.log('ROWS ' + JSON.stringify(rows))
+    // 11 Nov: two areas were rewritten on purpose after the v682 recordings, so those cassettes cannot replay byte-for-byte any more and are reported BLOCKED
+    // (never as passes): every Listening Track (v692 meaning-first planner, v712 fresh-conversation writer) and the Thai Daily writer (v693–v716 owner rewrites:
+    // speaking guide in the prompts, yes-and scenes, cue passes). Japanese and Mandarin Daily are untouched, so those cassettes must still replay identically.
+    const superseded = x => /listening|th-daily/.test(x.f), live = rows.filter(x => !superseded(x))
+    T('C1', 'BEHAVIOUR UNCHANGED: every Japanese / Mandarin Daily cassette recorded on the production baseline build (' + BASELINE_BUILD + ', ' + live.length + ' runs) replays on this build with byte-identical prompts, no unused request and identical learner-facing content',
+      live.length >= 10 && live.every(x => x.onV674 && x.faithful && x.same), live.filter(x => !(x.onV674 && x.faithful && x.same)))
+    out.push('BLOCKED C1 (' + (rows.length - live.length) + ' of ' + rows.length + ' cassettes): Listening and Thai Daily were rewritten after the v682 recordings; they need fresh recordings before they can be replayed')
     T('C2', 'the equivalence set covers all six combinations (TH/JA/ZH × Daily/Listening) including recovery, QC-replacement, coherence-failure and missing-target paths',
       ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening', 'zh-listening'].every(k => rows.some(x => x.f.includes(k))) && rows.some(x => /reject/.test(x.f)) && rows.some(x => /cohfail/.test(x.f)) && rows.some(x => /missing/.test(x.f)), rows.map(x => x.f))
   }
@@ -215,7 +221,8 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
     const s0 = srs(V)
     const rp = await runOnce(fxZ, { mode: 'replay', cassette: r1.cassette })
     T('G1', 'the benchmark applies fixtures to a FRESH in-memory copy of the bundled banks — the bank (ids, entries, SRS defaults) of a new app instance is unchanged', srs(c.initMandarinVocab()) === s0 && JSON.stringify(c.initMandarinVocab().map(w => [w.id, w.chinese, w.pinyin, w.english])) === idsBefore && rp.replay.faithful)
-    const src = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8'), base = fs.readFileSync(path.join(__dirname, 'tt.v674.jsx'), 'utf8')
+    const src = fs.readFileSync(path.join(__dirname, 'tt.jsx'), 'utf8'), HAS_BASE = fs.existsSync(path.join(__dirname, 'tt.v674.jsx')), base = HAS_BASE ? fs.readFileSync(path.join(__dirname, 'tt.v674.jsx'), 'utf8') : ''
+    const TB = HAS_BASE ? T : id => out.push('BLOCKED ' + id + ': the historical source tt.v674.jsx is not in the repository (never published), so this comparison cannot run here: reported BLOCKED, not passed')
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0] + (s.match(/const CURRICULUM_BELTS = [\s\S]*?\n\]/) || [''])[0]
     // v689 (owner, 2026-10-13): the 6th–1st Kyu rows were re-banded on purpose. Undoing exactly those six rows (and their comment) must give v674's table back.
     const OLD_ROWS = { '6th Kyu': [501, 750], '5th Kyu': [751, 1000], '4th Kyu': [1001, 1200], '3rd Kyu': [1201, 1400], '2nd Kyu': [1401, 1600], '1st Kyu': [1601, 1800] }
@@ -230,10 +237,10 @@ const FIX = ['th-daily', 'ja-daily', 'zh-daily', 'th-listening', 'ja-listening',
     // v706 — EXPECTED THRESHOLD CHANGE (owner, 2026-10-20): 2,500 for all three languages, 4th–1st Kyu 325 each; 1–1,200 unchanged.
     const banks701 = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0]
     const ladder = JSON.stringify(c.ev('CURRICULUM_BELTS').map(b => [b.rank, b.from, b.to]))
-    T('G2', 'no vocabulary entry or complexity contract changed in the source (Japanese bank / complexity table byte-identical to v674); the belt ladder is exactly the owner\'s v706 table', banks701(src) === banks701(base) && banks701(src).length > 1000 &&
+    TB('G2', 'no vocabulary entry or complexity contract changed in the source (Japanese bank / complexity table byte-identical to v674); the belt ladder is exactly the owner\'s v706 table', banks701(src) === banks701(base) && banks701(src).length > 1000 &&
       ladder === JSON.stringify([['Mukyu', 1, 100], ['10th Kyu', 101, 200], ['9th Kyu', 201, 400], ['8th Kyu', 401, 600], ['7th Kyu', 601, 800], ['6th Kyu', 801, 1000], ['5th Kyu', 1001, 1200], ['4th Kyu', 1201, 1525], ['3rd Kyu', 1526, 1850], ['2nd Kyu', 1851, 2175], ['1st Kyu', 2176, 2500]]), ladder)
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
-    T('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings; v682 one: the generation-draft write site; v685 at most three: the AI Generation Model setting and site access code in Settings)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length + (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length + (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length && (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length <= 3 && (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
+    TB('G3', 'Step 0 adds NO storage write anywhere in the app (same number of stSet / localStorage.setItem call sites as v674; v679/v680 add exactly two: the new-generator switch settings; v682 one: the generation-draft write site; v685 at most three: the AI Generation Model setting and site access code in Settings)', writes(src) === writes(base) + (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length + (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length + (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length && (src.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length <= 3 && (src.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length === 1 && (src.match(/stSet\((JA_GEN2_SETTING_KEY|settingKey), v\)/g) || []).length <= 2, [writes(src), writes(base)])
     T('G4', 'version v675+ (Step 0 build)', /^v(67[5-9]|68[0-9]|69[0-9]|7\d\d)$/.test(c.ev('APP_BUILD_VERSION')) && c.ev('LISTENING_BUILD_VERSION') === c.ev('APP_BUILD_VERSION'))
   }
 

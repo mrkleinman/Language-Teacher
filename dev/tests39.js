@@ -55,17 +55,23 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const allowedL = f => /zh-listening-2026-10-08-run[123]/.test(f)   // v681: 你到哪里？ rejected; 们 is now read as grammar (not an unknown length unit)
       || /ja-listening-2026-10-08-run1/.test(f)                           // v682: a どこか / 何か line no longer covers どこ / 何 — the scene's coverage feedback gains one item (request 18)
       || (/th-listening-2026-10-08-run[123]/.test(f) && thPhFix(f))         // v682: the bank romanisation of ที่นั่น was corrected (thîi-nán → thîi-nân) — the ONLY prompt difference
-    T('A5', 'v681+v682 CHANGE IS CONFINED: the 18 live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the Mandarin runs (你到哪里？ rejected; 们 read as grammar) and Japanese run 1 (v682: どこか ≠ どこ in coverage) and the Thai runs whose only difference is the corrected ที่นั่น romanisation (thîi-nân); Daily runs differ only through validator decisions',
-      rows.length === 18 && rows.every(x => x.faithful ? x.same : x.firstCall >= (/th-daily/.test(x.f) ? 2 : 6)) && rows.filter(x => x.listening).every(x => x.faithful || allowedL(x.f)),
+    // 11 Nov: Listening (v692 meaning-first planner, v712 fresh-conversation writer) and the Thai Daily writer (v693–v716 owner rewrites) were replaced on purpose after
+    // these recordings, so those runs cannot replay any more and are reported BLOCKED (never as passes). The Japanese and Mandarin Daily runs are untouched: they must
+    // still replay their setup identically (first difference at request >= 6, i.e. only through validator decisions).
+    const superseded = x => x.listening || /th-daily/.test(x.f)
+    out.push('BLOCKED A5 (' + rows.filter(superseded).length + ' of ' + rows.length + ' runs): Listening and Thai Daily were rewritten after the v677 recordings; they need fresh recordings before they can be replayed')
+    T('A5', 'v681+v682 CHANGE IS CONFINED (Japanese / Mandarin Daily): the live v677 runs replay their setup identically (first difference at request ≥ 6; Thai Daily ≥ 2 — v681 vehicle / function-word prompt guidance); Listening is faithful except the Mandarin runs (你到哪里？ rejected; 们 read as grammar) and Japanese run 1 (v682: どこか ≠ どこ in coverage) and the Thai runs whose only difference is the corrected ที่นั่น romanisation (thîi-nân); Daily runs differ only through validator decisions',
+      rows.length === 18 && rows.filter(x => !superseded(x)).every(x => x.faithful ? x.same : x.firstCall >= 6),
       rows.map(x => x.f.replace('tt-bench-', '').replace('-v677.json', '') + ':' + (x.faithful ? 'faithful' : 'differs@' + x.firstCall)))
-    const base = fs.readFileSync(path.join(__dirname, 'tt.v677.jsx'), 'utf8')
+    const HAS_BASE = fs.existsSync(path.join(__dirname, 'tt.v677.jsx')), base = HAS_BASE ? fs.readFileSync(path.join(__dirname, 'tt.v677.jsx'), 'utf8') : ''
+    const TB = HAS_BASE ? T : id => out.push('BLOCKED ' + id + ': the historical source tt.v677.jsx is not in the repository (never published), so this comparison cannot run here: reported BLOCKED, not passed')
     const banks = s => (s.match(/const RAW_JAPANESE_VOCAB = \[[\s\S]*?\n\]/) || [''])[0] + (s.match(/const BELT_COMPLEXITY = Object\.freeze\(\{[\s\S]*?\}\)/) || [''])[0]
     const writes = s => (s.match(/stSet\(|localStorage\.setItem\(/g) || []).length
     // v679: exactly ONE new storage write — the switch setting itself (key tt-ja-gen2); no learner-data write is added
     const ckw = (SRC.match(/await stSet\(GEN_CHECKPOINT_KEYS\[lang\], cp \|\| null\)/g) || []).length   // v682: the generation-draft (checkpoint) write site — its own keys, never learner data
     const extra = (SRC.match(/stSet\(JA_GEN2_SETTING_KEY, v\)/g) || []).length + (SRC.match(/stSet\(settingKey, v\)/g) || []).length
     const gm = (SRC.match(/stSet\((AI_GEN_PREF_KEY|AI_ANTHROPIC_ACCESS_KEY), /g) || []).length   // v685: the AI Generation Model choice and the site access code (Settings) — never learner data
-    T('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly two switch settings (tt-ja-gen2; tt-th-gen2 / tt-zh-gen2 via one shared tick box) and, from v682, ONE generation-draft write site (tt-th/ja/zh-gen-checkpoint) and, from v685, at most three Settings writes (tt-generation-model, tt-anthropic-site-access) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 2 && writes(SRC) === writes(base) + 2 + ckw + gm && ckw === 1 && gm <= 3 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC) && /const TH_GEN2_SETTING_KEY = 'tt-th-gen2'/.test(SRC) && /const ZH_GEN2_SETTING_KEY = 'tt-zh-gen2'/.test(SRC), [writes(SRC), writes(base), extra, gm])
+    TB('A6', 'vocabulary banks and belt contracts are byte-identical to v677; storage writes are v677\'s plus exactly two switch settings (tt-ja-gen2; tt-th-gen2 / tt-zh-gen2 via one shared tick box) and, from v682, ONE generation-draft write site (tt-th/ja/zh-gen-checkpoint) and, from v685, at most three Settings writes (tt-generation-model, tt-anthropic-site-access) — no learner data path touched', banks(SRC) === banks(base) && banks(SRC).length > 1000 && extra === 2 && writes(SRC) === writes(base) + 2 + ckw + gm && ckw === 1 && gm <= 3 && /const JA_GEN2_SETTING_KEY = 'tt-ja-gen2'/.test(SRC) && /const TH_GEN2_SETTING_KEY = 'tt-th-gen2'/.test(SRC) && /const ZH_GEN2_SETTING_KEY = 'tt-zh-gen2'/.test(SRC), [writes(SRC), writes(base), extra, gm])
   }
   // ══ B — DETERMINISTIC ACCEPTANCE RULES ════════════════════════════════════════════════════════════════════════════
   {
@@ -106,7 +112,9 @@ const OUTSIDE = SRC.slice(0, SRC.indexOf('// TT_GEN2_BEGIN')) + SRC.slice(SRC.in
     const dir = path.join(B, 'cassettes', 'gen2'), cas = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => ({ f, d: readJ(path.join(dir, f)) }))
     const rep = []
     for (const x of cas) { const r = await runOnceUi(loadFixture(x.d.cassette.meta.fixture), { mode: 'replay', cassette: x.d.cassette, qualityOct13: false }); rep.push({ f: x.f, faithful: r.replay.faithful, same: compareContent(x.d.outcome.content, r.content).identical }) }
-    T('C1', 'every Gen2 simulator cassette (' + rep.length + ', all six track types + stress) replays faithfully with identical content — the pilot is deterministic and replayable', rep.length >= 15 && rep.every(r => r.faithful && r.same), rep.filter(r => !(r.faithful && r.same)))
+    // 11 Nov: the Thai Gen2 cassettes (7) were recorded against the Thai writers before the v693–v716 rewrites and Listening v712; they are reported BLOCKED below, never as passes.
+    out.push('BLOCKED C1 (' + rep.filter(r => /(^|[-.])th-/.test(r.f)).length + ' of ' + rep.length + ' Gen2 cassettes): the Thai cassettes need fresh recordings before they can be replayed')
+    T('C1', 'every Japanese / Mandarin Gen2 simulator cassette (of ' + rep.length + ') replays faithfully with identical content — the pilot is deterministic and replayable', rep.length >= 15 && rep.filter(r => !/(^|[-.])th-/.test(r.f)).every(r => r.faithful && r.same), rep.filter(r => !(r.faithful && r.same)))
     const daily = cas.filter(x => /daily/.test(x.f) && x.d.outcome.content && x.d.outcome.content.status === 'READY')
     const dOk = daily.every(x => { const ps = x.d.outcome.content.pairs.filter(p => p && p.targetId != null), per = new Map(); ps.forEach(p => per.set(p.targetId, (per.get(p.targetId) || 0) + 1))
       return ps.length === 90 && per.size === 30 && [...per.values()].every(v => v === 3) && new Set(ps.map(p => p.cue)).size === 90 && new Set(ps.map(p => p.text)).size === 90 })

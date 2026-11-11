@@ -62,14 +62,21 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
       new Set(ids).size === 50 && perThai.every(k => k === 1) && (seed.created || []).length + (seed.reused || []).length === 50 && new Set(RAW.map(d => d.id)).size === RAW.length,
       { perThai, seed })
     // the pre-Topics runtime dictionary (TT_BASE) — or, without it, the source literal minus the v645 runtime audit fixes — vs now
+    // 11 Nov: since the phrase / word split (30 Oct) the runtime re-derives the syllabus at load (phrases leave the word syllabus, promoted words
+    // change tier), so the SOURCE LITERAL is only comparable with the split switched off. This check is about the Topics import not touching
+    // existing records, so it runs with the split off and puts it back right after.
+    c.ev('THAI_PHRASE_SPLIT').on = false; c.ev('thaiPhraseSplitRevert')(c.ev('RAW_VOCAB'))
     let orig, how
+    const aud = new Set(c.ev('THAI_LEXICON_AUDIT_V645').filter(a => a.applied).map(a => a.id))
     if (process.env.TT_BASE && fs.existsSync(process.env.TT_BASE)) { orig = load(process.env.TT_BASE).ev('RAW_VOCAB'); how = 'pre-Topics build' }
-    else { const m = /^const RAW_VOCAB = (\[.*\])\s*$/m.exec(fs.readFileSync('tt.jsx', 'utf8')); const aud = new Set(c.ev('THAI_LEXICON_AUDIT_V645').filter(a => a.applied).map(a => a.id))
+    else { const m = /^const RAW_VOCAB = (\[.*\])\s*$/m.exec(fs.readFileSync('tt.jsx', 'utf8'))
       orig = (m ? JSON.parse(m[1]) : []).filter(d => !aud.has(d.id)); how = 'source literal' }
     const byIdNow = new Map(RAW.map(d => [d.id, d]))
     const changed = orig.filter(d => JSON.stringify(byIdNow.get(d.id)) !== JSON.stringify(d))
     T(6, 'existing belt assignments preserved: every pre-existing dictionary record is byte-identical to the ' + how + ' (curriculum index, belt, belt order, text, phonetic, QC)',
-      orig.length > 1500 && changed.length === 0 && RAW.filter(d => !orig.some(o => o.id === d.id)).length === (seed.created || []).length, { orig: orig.length, now: RAW.length, changed: changed.slice(0, 3).map(d => d.id) })
+      orig.length > 1500 && changed.length === 0 && RAW.filter(d => !orig.some(o => o.id === d.id) && !aud.has(d.id)).length === (seed.created || []).length, {   // the v645 audit-fixed records are left out of `orig` above, so they are not "new" here either
+       orig: orig.length, now: RAW.length, changed: changed.slice(0, 3).map(d => d.id), extra: RAW.filter(d => !orig.some(o => o.id === d.id) && !aud.has(d.id)).length, created: (seed.created || []).length })
+    c.ev('THAI_PHRASE_SPLIT').on = true; c.ev('thaiPhraseSplitApply')(c.ev('RAW_VOCAB'))
     const created = ids.map(id => canon.get(id)).filter(r => r.topicOnly)
     T(5, 'new topic-only entries carry no Shodan position: curriculumIndex 0, beltOrder 0, "Beyond curriculum", not Known, not introduced; no rank lists them',
       created.length === (seed.created || []).length && created.every(r => r.curriculumIndex === 0 && !r.beltOrder && r.belt === 'Beyond curriculum' && r.l === 'new' && !r.r) &&
@@ -104,7 +111,11 @@ const introduce = (w, extra = {}) => Object.assign(w, { status: 'learning', intr
     let ref = null, how = 'saved input'
     if (process.env.TT_BASE && fs.existsSync(process.env.TT_BASE)) { ref = (await loadSync(process.env.TT_BASE)).after; how = 'pre-Topics build after the same load' }
     const refById = new Map((ref || before).map(w => [w.id, w])), nowById = new Map(after.map(w => [w.id, w]))
-    const diff = before.filter(w => pick(refById.get(w.id)) !== pick(nowById.get(w.id)))
+    // 11 Nov: the app's own load rules touch records nobody has studied: a still-locked word is opened ("All lesson-gated vocabulary is now open") and a
+    // never-introduced word takes the bank's starting interval. That is not learner history, so such records only have to stay never-introduced and 'new';
+    // every record that HAS history (status, introducedAt, streak, due date, bookmark, reps) must still be identical.
+    const untouched = w => !w || (['new', 'locked'].includes(w.status) && !w.introducedAt && !w.lastSeen && !w.bookmarked && !w.repCount && !w.manualKnown && !w.okStreak && !w.dueDate)
+    const diff = before.filter(w => pick(refById.get(w.id)) !== pick(nowById.get(w.id)) && !(untouched(w) && untouched(nowById.get(w.id)) && (nowById.get(w.id) || {}).status === 'new'))
     const topicRows = after.filter(w => ids.includes(w.id))
     T(3, 'existing word histories unchanged by the import: every saved record\'s SRS / Known / bookmark state equals the ' + how + '; the 50 topic rows are appended as new and unintroduced',
       diff.length === 0 && topicRows.length === 50 && topicRows.every(w => w.status === 'new' && !w.introducedAt && !c3.hasBeenIntroduced(w)) && after.length === before.length + 50 && (!ref || ref.length === before.length),

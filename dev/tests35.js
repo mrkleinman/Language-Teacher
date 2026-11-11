@@ -72,6 +72,7 @@ const tg = (id, surface, gloss, role) => ({ id, surface, gloss, english: gloss, 
   }
   for (const [lang, file] of [['th', 'listening-log-2026-10-07T14-25-40.txt'], ['zh', 'listening-log-2026-10-07T14-33-11.txt']]) {
     const { execFileSync } = require('child_process')
+    if (!require('fs').existsSync(__dirname + '/replay_v673_listening_plan.js') || !require('fs').existsSync(__dirname + '/logs673/' + file)) { out.push('BLOCKED 2C-' + lang + ' live 7 Oct regression fixture: replay_v673_listening_plan.js and logs673/ are not in the repository (never published), so it cannot run here: reported BLOCKED, not passed'); continue }
     let txt = '', code = 0
     try { txt = execFileSync('node', [__dirname + '/replay_v673_listening_plan.js', __dirname + '/logs673/' + file, lang], { encoding: 'utf8' }) } catch (e) { txt = String(e.stdout || ''); code = e.status }
     T('2C-' + lang, lang.toUpperCase() + ' LIVE regression fixture (7 Oct targets) through the v673 planner: meaning plan VALID, 24–44 planned turns, and ' + (lang === 'th' ? 'ศูนย์ is a digit GIVEN for the requested phone number · เบอร์โทรศัพท์ is requested (never a proposal) · พัน answers an amount (never a counter-proposal) · 10 → 11 am is proposal → counter-proposal → acceptance · ไม่เชิง answers a yes/no question'

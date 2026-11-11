@@ -21,9 +21,11 @@ function render(file, lang) {
 }
 let fails = 0
 for (const lang of ['ja', 'zh', 'th']) {
-  const b = render('tt.orig.compiled.js', lang), a = render('tt.compiled.js', lang)
+  // tt.orig.compiled.js (the v638 build) was never published to the repository: without it only the v639 side is shown and checked against the expected text
+  const HAS_ORIG = require('fs').existsSync('tt.orig.compiled.js')
+  const b = HAS_ORIG ? render('tt.orig.compiled.js', lang) : null, a = render('tt.compiled.js', lang)
   console.log('\n' + lang.toUpperCase())
-  console.log('  v638 shows:', JSON.stringify(b.text), 'icons', b.icons.join(''), '| header:', b.header, '| Google TTS input:', JSON.stringify(b.gcpInputV638))
+  if (b) console.log('  v638 shows:', JSON.stringify(b.text), 'icons', b.icons.join(''), '| header:', b.header, '| Google TTS input:', JSON.stringify(b.gcpInputV638))
   console.log('  v639 shows:', JSON.stringify(a.text), 'icons', a.icons.join(''), '| header:', a.header, '| TTS input:', JSON.stringify(a.tts))
   const exp = { ja: { text: ['今日、何を食べる？', 'ご飯を食べる。'], tts: ['きょう、なにをたべる？', 'ごはんをたべる。'], phon: ['きょう、なにをたべる？', 'ごはんをたべる。'] },
                 zh: { text: ['你吃什么？', '我吃饭。'], tts: ['你吃什么？', '我吃饭。'], phon: ['nǐ chī shénme?', 'wǒ chī fàn.'] },

@@ -65,7 +65,7 @@ const has = (c, name) => { try { return c.ev('typeof ' + name) === 'function' } 
     // asserts the removal and that the shared target preview is wired into all three generators.
     T('D1', 'Next targets / Learn New Words / register badge are gone from the Japanese and Mandarin dashboards; Thai, Japanese and Mandarin generate screens use the targets preview',
       !/Next targets \(/.test(SRC) && !/>Learn New Words</.test(SRC) && !/very casual, still polite/.test(SRC) &&
-      /<GenTargetPreview targets=\{activeTargets\}/.test(SRC) && /<GenTargetPreview targets=\{targets\}/.test(SRC) && /<TargetHeader \/>/.test(SRC) &&
+      /<GenTargetPreview targets=\{_wd\}/.test(SRC) && /<GenTargetPreview targets=\{targets\}/.test(SRC) && /<TargetHeader \/>/.test(SRC) &&
       /<JapaneseSpeechStyle value=\{register\}/.test(SRC))
     T('D2', 'generation-screen headings (Mandarin and Japanese) count the targets actually generated, not the raw new-word selection',
       (SRC.match(/describeTargetSelection\(\(selection && selection\.counts\) \|\| \{[^}]*\}, targets\)/g) || []).length === 3)

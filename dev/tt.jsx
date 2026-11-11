@@ -36213,7 +36213,15 @@ function Generator({ vocab, mode, onGenerated, onBack, apiKey, onPhonetics, cust
                 </div>
               )}
             </div>
-            <GenTargetPreview targets={activeTargets} textOf={w => w.thai} subOf={w => w.phonetic} />
+            {(() => {
+              // Words as chips; greetings / partings / phrases listed as Conversation basics (the same split the Daily Track uses).
+              const _ph = activeTargets.filter(isThaiPhraseEntry), _wd = activeTargets.filter(w => !isThaiPhraseEntry(w))
+              const _ids = new Set(activeTargets.map(w => w.id))
+              const _avail = (vocab || []).filter(w => w && !isThaiPhraseEntry(w) && (w.status === 'known' || w.status === 'learning' || _ids.has(w.id))).length
+              const _role = w => { const r = w.selectionRole || (w.status === 'new' ? 'new' : ''); return r ? String(r).toUpperCase() : '' }
+              return <GenTargetPreview targets={_wd} availableCount={_avail} textOf={w => w.thai} subOf={w => w.phonetic}
+                basics={_ph.map(w => ({ id:w.id, text:w.thai, sub:w.phonetic, english:w.english, role:_role(w) }))} />
+            })()}
             <Btn onClick={() => { setGenLog([]); setPairsDone(0); setBrickSources({}); setBrickChecks({}); setBrickHist({}); setSessionTargets(null); setSessionAnchors(null); setPhase('starting') }}
               style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>
               ▶ {mode === 'daily' && thUseGen2 ? 'Generate with the NEW generator (test)' : 'Generate Track from this Scene'}
@@ -46300,14 +46308,33 @@ function MandarinGenerator({ vocab, targets, selection, cred, trackMode, onGener
   const filled = (phase === 'idle' ? 0 : FRAMING) + recallDone
   const pct = totalSlots ? Math.min(100, Math.round((filled / totalSlots) * 100)) : 0
 
-  if (phase === 'preview') return (
-    <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, paddingTop:40 }}>
-      <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>{'\u2705'} Ready</h2>
-      <GenTargetPreview targets={targets} textOf={w => w.chinese} subOf={w => w.pinyin} />
-      <Btn onClick={() => startGeneration(null)} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>{'\u25B6'} Generate Track</Btn>
-      <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
-    </div>
-  )
+  if (phase === 'preview') {
+    // Same pre-generation screen as Japanese and Thai. Mandarin tracks have no invented scene: they open and close with the fixed
+    // greeting / goodbye exchange, so that real exchange is what is shown (never a made-up scene).
+    const _inv = mandarinLearnerInventory(vocab, targets)
+    const _fr = mandarinFramingPairs(_inv)
+    const _line = p => (
+      <div key={p.speaker + p.chinese + p._kind} style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 10px' }}>
+        <div style={{ fontSize:10, color:'var(--muted)', marginBottom:4 }}>{p.speaker === 'A' ? 'A' : 'B'} {'\u00b7'} {p._kind === 'parting' ? 'Closing' : 'Opening'}</div>
+        <div className="zh" style={{ fontSize:15, color:'var(--gold)' }}>{p.chinese}</div>
+        <div className="phon" style={{ fontSize:12, color:'var(--text)', marginTop:3 }}>{p.pinyin}</div>
+        <div style={{ fontSize:11, color:'var(--muted)', marginTop:2, fontStyle:'italic' }}>{p.english}</div>
+      </div>)
+    const _basics = mandarinBasicsFor(vocab).map(b => ({ id:b.id, text:b.form, sub:b.pinyin, english:b.english }))
+    return (
+      <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, paddingTop:40 }}>
+        <h2 style={{ textAlign:'center', color:'var(--gold)', margin:0 }}>{'\u2705'} Scene Ready</h2>
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:16, display:'flex', flexDirection:'column', gap:10 }}>
+          <p style={{ color:'var(--text)', fontSize:14, margin:0, lineHeight:1.5 }}>Two friends talking in everyday casual-polite Mandarin. The track opens and closes with a greeting and a goodbye.</p>
+          {[..._fr.open, ..._fr.close].map(_line)}
+        </div>
+        <GenTargetPreview targets={targets} availableCount={_inv.allContent.length} textOf={w => w.chinese} subOf={w => w.pinyin} basics={_basics} />
+        <Btn onClick={() => startGeneration(null)} style={{ width:'100%', justifyContent:'center', fontSize:15, padding:'14px' }}>{'\u25B6'} Generate Track from this Scene</Btn>
+        {isDailyZh && <Gen2Switch settingKey={ZH_GEN2_SETTING_KEY} note={'Test version: each sentence is checked by a second model. A word it cannot teach well is left for a later lesson (it stays due).'} />}
+        <Btn onClick={onBack} variant="ghost" style={{ width:'100%', justifyContent:'center' }}>Back</Btn>
+      </div>
+    )
+  }
 
   if (phase === 'error' || phase === 'resume-choice') return (
     <div className="fade-in" style={{ padding:24, maxWidth:500, margin:'0 auto', display:'flex', flexDirection:'column', gap:16, alignItems:'center', minHeight:'50vh', justifyContent:'center' }}>
@@ -46843,9 +46870,10 @@ function jaSceneRows(vocab, store, sceneText, register) {
 
 // One "what this track will teach" block, shared by Thai, Japanese-style and Mandarin generate screens:
 // the TARGETING summary line (counts by NEW / DUE / REINFORCE...) and one chip per target word.
-function GenTargetPreview({ targets, availableCount, textOf, subOf }) {
+function GenTargetPreview({ targets, availableCount, textOf, subOf, basics, basicLabel }) {
   const list = targets || []
-  if (!list.length) return null
+  const bl = basics || []
+  if (!list.length && !bl.length) return null
   return (
     <div>
       <p style={{ fontSize:11, color:'var(--muted)', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
@@ -46866,6 +46894,22 @@ function GenTargetPreview({ targets, availableCount, textOf, subOf }) {
           )
         })}
       </div>
+      {bl.length > 0 && (
+        <>
+          <p style={{ fontSize:11, color:'var(--muted)', margin:'12px 0 8px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Conversation basics</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+            {bl.map((b, i) => (
+              <div key={b.id != null ? b.id : i} style={{ display:'flex', alignItems:'baseline', gap:8, background:'var(--surface2)',
+                border:'1px solid ' + (b.role === 'NEW' ? 'var(--accent)' : 'var(--border)'), borderRadius:8, padding:'6px 10px', minWidth:0 }}>
+                <span className="thai" style={{ color:'var(--text)', fontSize:15, fontWeight:700, lineHeight:1.2 }}>{b.text}</span>
+                {b.sub && <span className="phon" style={{ color:'var(--muted)', fontSize:11 }}>{b.sub}</span>}
+                {b.english && <span style={{ color:'var(--muted)', fontSize:11, marginLeft:'auto' }}>{b.english}</span>}
+                {b.role && <span style={{ fontSize:9, fontWeight:700, color: b.role === 'NEW' ? '#4a90e2' : b.role === 'DUE' ? '#f59e0b' : 'var(--muted)' }}>{b.role}</span>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -50789,14 +50833,13 @@ function MandarinDashboard({ vocab, tracks, targets, trackTargets, onStartTrack,
           <Icon name="sparkles" size={22} color="#10b981" />
           <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>Daily Track</div>
           <div style={{ fontSize:11, color:'#4a9960', marginTop:2 }}>{(targets && targets.length) ? 'Learn + review' : 'No targets'}</div>
-          {(targets && targets.length) ? <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>{(() => { const n = (targets || []).filter(t => t.selectionRole ? t.selectionRole === 'new' : t.status === 'new').length; return n + ' new word' + (n === 1 ? '' : 's') })()}</div> : null}
+          {(targets && targets.length) ? <div style={{ fontSize:11, color:'var(--text-2)', marginTop:4 }}>{'~45 min \u00b7 ' + stats.due + ' due'}</div> : null}   {/* same line as the Thai and Japanese Daily buttons */}
         </button>
         {/* Revision Track — shared component, identical in every language */}
         <RevisionTrackButton selection={revisionSelection} onStart={onStartSrsTrack} />
         <ListeningTrackButton selection={listeningSelection} onStart={onStartListening} />
         <TopicsEntryCard lang="zh" onOpen={() => onNav && onNav('topics')} />
       </div>
-      <Gen2Switch settingKey={ZH_GEN2_SETTING_KEY} note={'Daily Track only. Test version: each sentence is checked by a second model. A word it cannot teach well is left for a later lesson (it stays due). Costs a little more than the standard generator.'} />
 
       {/* Rank Test — same component and behaviour in every language */}
       <RankTestButton vocab={vocab} rank={currentRankName(vocab)}
